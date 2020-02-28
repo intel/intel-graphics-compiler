@@ -104,6 +104,7 @@ namespace IGC
         ConstantPlacement.clear();
         PairOutputMap.clear();
         UniformBools.clear();
+        StructValueInsertMap.clear();
 
         delete[] m_blocks;
         m_blocks = nullptr;
@@ -1336,6 +1337,14 @@ namespace IGC
         MatchDbgInstruction(I);
     }
 
+    void CodeGenPatternMatch::visitInsertValueInst(InsertValueInst& I)
+    {
+        if (!MatchCopyToStruct(&I))
+        {
+            assert(0 && "Unknown `insertvalue` instruction!");
+        }
+    }
+
     void CodeGenPatternMatch::visitExtractValueInst(ExtractValueInst& I) {
         bool Match = false;
 
@@ -1347,12 +1356,101 @@ namespace IGC
         }
 
         Match = isExtractFromInlineAsm ||
+            MatchCopyFromStruct(&I) ||
             matchAddPair(&I) ||
             matchSubPair(&I) ||
             matchMulPair(&I) ||
             matchPtrToPair(&I);
 
         assert(Match && "Unknown `extractvalue` instruction!");
+    }
+
+    bool CodeGenPatternMatch::MatchCopyToStruct(InsertValueInst* II)
+    {
+        if (II->getNumIndices() != 1)
+            return false;
+
+        // Find the final insertvalue instruction, this will be
+        // the instruction we map to the VISA struct variable.
+        // Matches the following type of sequence:
+        //  %struct.S = type { i32, i32 }
+        //  % 3 = insertvalue % struct.S undef, i32 % 0, 0
+        //  % 4 = insertvalue % struct.S % 3, i32 % 2, 1   <--- Mapped Instruction
+        InsertValueInst* baseInst = II;
+        while (true)
+        {
+            Value* user = *baseInst->user_begin();
+            if (baseInst->getNumUses() != 1)
+                return false;
+            else if (InsertValueInst* inst = dyn_cast<InsertValueInst>(user))
+                baseInst = inst;
+            else
+                break;
+        }
+        assert(baseInst);
+
+        auto Iter = StructValueInsertMap.find(baseInst);
+        if (Iter != StructValueInsertMap.end())
+        {
+            // Already handled for this set of insertvalue instructions
+            return true;
+        }
+
+        // Find the list of all source values and indices inserted for this struct
+        std::vector<std::pair<SSource, unsigned>> srcList;
+        Value* initValue = baseInst;
+        while (true)
+        {
+            if (InsertValueInst* inst = dyn_cast<InsertValueInst>(initValue))
+            {
+                srcList.push_back(std::make_pair(GetSource(inst->getOperand(1), false, false), *inst->idx_begin()));
+                initValue = inst->getOperand(0);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        Constant* constInit = dyn_cast<Constant>(initValue);
+        StructValueInsertMap[baseInst] = std::make_pair(constInit, srcList);
+
+        struct AddCopyStructPattern : public Pattern {
+            InsertValueInst* inst;
+            virtual void Emit(EmitPass* Pass, const DstModifier& DstMod) {
+                Pass->EmitCopyToStruct(inst, DstMod);
+            }
+        };
+
+        AddCopyStructPattern* Pat = new (m_allocator) AddCopyStructPattern();
+        Pat->inst = baseInst;
+        AddPattern(Pat);
+
+        return true;
+    }
+
+    bool CodeGenPatternMatch::MatchCopyFromStruct(ExtractValueInst* EI)
+    {
+        if (EI->getNumIndices() != 1)
+            return false;
+        if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(EI->getOperand(0)))
+            return false;
+
+        struct AddReadStructPattern : public Pattern {
+            Value* value;
+            unsigned idx;
+            virtual void Emit(EmitPass* Pass, const DstModifier& DstMod) {
+                Pass->EmitCopyFromStruct(value, idx, DstMod);
+            }
+        };
+
+        AddReadStructPattern* Pat = new (m_allocator) AddReadStructPattern();
+        Pat->value = EI->getOperand(0);
+        Pat->idx = *EI->idx_begin();
+        AddPattern(Pat);
+
+        MarkAsSource(EI->getOperand(0));
+        return true;
     }
 
     bool CodeGenPatternMatch::matchAddPair(ExtractValueInst* Ex) {

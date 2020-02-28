@@ -135,6 +135,8 @@ namespace IGC
         void emitMulAdd16(llvm::Instruction* I, const SSource source[2], const DstModifier& dstMod);
         void emitCall(llvm::CallInst* inst);
         void emitReturn(llvm::ReturnInst* inst);
+        void EmitCopyToStruct(llvm::InsertValueInst* inst, const DstModifier& DstMod);
+        void EmitCopyFromStruct(llvm::Value* value, unsigned idx, const DstModifier& DstMod);
 
         /// stack-call code-gen functions
         void emitStackCall(llvm::CallInst* inst);

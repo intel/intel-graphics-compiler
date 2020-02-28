@@ -126,13 +126,10 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
 
     bool hasValidDestination = (sdag.m_root->getType()->getTypeID() != llvm::Type::VoidTyID);
 
-    // Special case for inline asm with multiple outputs, we will not be able to handle a struct type destination
-    if (CallInst * call = dyn_cast<CallInst>(sdag.m_root))
+    // Disable for struct type destinations
+    if (sdag.m_root->getType()->isStructTy())
     {
-        if (call->isInlineAsm() && call->getType()->isStructTy())
-        {
-            hasValidDestination = false;
-        }
+        hasValidDestination = false;
     }
 
     if (hasValidDestination)
@@ -2002,6 +1999,62 @@ void EmitPass::EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const
 
     m_encoder->Cast(dst, src);
     m_encoder->Push();
+}
+
+void EmitPass::EmitCopyToStruct(InsertValueInst* inst, const DstModifier& DstMod)
+{
+    auto Iter = m_pattern->StructValueInsertMap.find(inst);
+    assert(Iter != m_pattern->StructValueInsertMap.end());
+
+    StructType* sTy = dyn_cast<StructType>(inst->getType());
+    auto& DL = inst->getParent()->getParent()->getParent()->getDataLayout();
+    const StructLayout* SL = DL.getStructLayout(sTy);
+
+    // Create a new struct variable with constant values initialized
+    Constant* initValue = Iter->second.first;
+    if (initValue->getValueID() == llvm::Value::ValueTy::UndefValueVal)
+    {
+        initValue = nullptr;
+    }
+    CVariable* DstV = m_currShader->GetStructVariable(inst, initValue);
+
+    unsigned nLanes = DstV->IsUniform() ? 1 : numLanes(m_currShader->m_dispatchSize);
+
+    // Copy each source value into the struct offset
+    auto srcList = Iter->second.second;
+    for (auto src : srcList)
+    {
+        CVariable* SrcV = GetSrcVariable(src.first);
+        unsigned idx = src.second;
+        unsigned elementOffset = (unsigned)SL->getElementOffset(idx);
+        CVariable* elementDst = nullptr;
+        if (SrcV->IsUniform())
+            elementDst = m_currShader->GetNewAlias(DstV, SrcV->GetType(), elementOffset * nLanes, SrcV->GetNumberElement() * nLanes);
+        else
+            elementDst = m_currShader->GetNewAlias(DstV, SrcV->GetType(), elementOffset * nLanes, SrcV->GetNumberElement());
+
+        emitCopyAll(elementDst, SrcV, sTy->getStructElementType(idx));
+    }
+}
+
+void EmitPass::EmitCopyFromStruct(Value* value, unsigned idx, const DstModifier& DstMod)
+{
+    assert(isa<Instruction>(value));
+    CVariable* SrcV = GetSymbol(value);
+    StructType* sTy = dyn_cast<StructType>(value->getType());
+    auto& DL = cast<Instruction>(value)->getParent()->getParent()->getParent()->getDataLayout();
+    const StructLayout* SL = DL.getStructLayout(sTy);
+
+    // For extract value, src and dest should share uniformity
+    assert(m_destination && m_destination->IsUniform() == SrcV->IsUniform());
+    bool isUniform = SrcV->IsUniform();
+    unsigned nLanes = SrcV->IsUniform() ? 1 : numLanes(m_currShader->m_dispatchSize);
+    unsigned elementOffset = (unsigned)SL->getElementOffset(idx) * nLanes;
+    //unsigned elementSize = (unsigned)DL.getTypeAllocSize(sTy->getStructElementType(idx)) * nLanes;
+    SrcV = m_currShader->GetNewAlias(SrcV, m_destination->GetType(), elementOffset, m_destination->GetNumberElement(), isUniform);
+
+    // Copy from struct to dest
+    emitCopyAll(m_destination, SrcV, sTy->getStructElementType(idx));
 }
 
 void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
@@ -9838,34 +9891,84 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
     llvm::Type* RetTy = F->getReturnType();
     if (!RetTy->isVoidTy())
     {
+        bool RetOnStack = false;
+        unsigned RetSize = 0;
+        unsigned nLanes = numLanes(m_currShader->m_dispatchSize);
         CVariable* Dst = m_currShader->GetRETV();
         CVariable* Src = GetSymbol(inst->getReturnValue());
-        if (Dst->GetSize() >= Src->GetSize())
+
+        if (Src->GetType() == ISA_TYPE_BOOL)
         {
-            if (Src->GetType() == ISA_TYPE_BOOL)
+            CVariable* one = m_currShader->ImmToVariable(1, ISA_TYPE_W);
+            CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_W);
+            CVariable* DstAlias = m_currShader->GetNewAlias(Dst, ISA_TYPE_W, 0, nLanes, false);
+            m_encoder->Select(Src, DstAlias, one, zero);
+            RetSize = nLanes * SIZE_WORD;
+        }
+        else if (Src->IsUniform())
+        {
+            // If Src is uniform, we have to vectorize it since caller cannot assume uniform return value
+            RetSize = nLanes * Src->GetSize();
+            if (Dst->GetSize() < RetSize)
             {
-                CVariable* one = m_currShader->ImmToVariable(1, ISA_TYPE_W);
-                CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_W);
-                CVariable* DstAlias = m_currShader->GetNewAlias(Dst, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
-                m_encoder->Select(Src, DstAlias, one, zero);
-                uint RetSize = numLanes(m_currShader->m_dispatchSize) * SIZE_WORD;
-                m_encoder->SetStackFunctionRetSize((RetSize + getGRFSize() - 1) / getGRFSize());
+                // If return register cannot hold the value, create a new variable to hold it and return on stack
+                RetOnStack = true;
+                Dst = m_currShader->GetNewVariable(Src->GetNumberElement() * nLanes, Src->GetType(), Src->GetAlign(), false);
+            }
+            if (RetTy->isStructTy())
+            {
+                // For struct uniform to non-uniform copy, we need to expand each element separately
+                // since we use the SoA (struct of arrays) layout
+                StructType* STy = dyn_cast<StructType>(RetTy);
+                auto& DL = inst->getParent()->getParent()->getParent()->getDataLayout();
+                const StructLayout* SL = DL.getStructLayout(STy);
+
+                // Do uniform to non-uniform copy for each struct element
+                for (unsigned i = 0; i < STy->getNumElements(); i++)
+                {
+                    unsigned elementOffset = (unsigned)SL->getElementOffset(i);
+                    unsigned elementSize = (unsigned)DL.getTypeAllocSize(STy->getElementType(i));
+                    CVariable* srcElement = m_currShader->GetNewAlias(Src, ISA_TYPE_B, elementOffset, elementSize, true);
+                    CVariable* dstElement = m_currShader->GetNewAlias(Dst, ISA_TYPE_B, elementOffset * nLanes, elementSize * nLanes, false);
+                    emitCopyAll(dstElement, srcElement, STy->getElementType(i));
+                }
             }
             else
             {
-                if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
+                if (Dst->GetType() != Src->GetType())
                 {
-                    Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, Src->GetNumberElement(), Src->IsUniform());
+                    Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, Src->GetNumberElement() * nLanes, false);
                 }
                 emitCopyAll(Dst, Src, RetTy);
-                m_encoder->SetStackFunctionRetSize((Src->GetSize() + getGRFSize() - 1) / getGRFSize());
+            }
+
+            if (RetOnStack)
+            {
+                Src = Dst;
             }
         }
-        else
+        else  // Non-uniform copy
+        {
+            RetSize = Src->GetSize();
+            if (Dst->GetSize() < RetSize)
+            {
+                RetOnStack = true;
+            }
+            else
+            {
+                if (Dst->GetType() != Src->GetType())
+                {
+                    Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, Src->GetNumberElement(), false);
+                }
+                emitCopyAll(Dst, Src, RetTy);
+            }
+        }
+
+        if (RetOnStack)
         {
             // write return value onto stack at (SP+n)
             // emit oword_stores
-            int RmnBytes = Src->GetSize();
+            int RmnBytes = RetSize;
             uint32_t WrtBytes = 0;
             do
             {
@@ -9910,6 +10013,10 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
             } while (RmnBytes > 0);
             // end of writing return-value to stack
             m_encoder->SetStackFunctionRetSize(0);
+        }
+        else
+        {
+            m_encoder->SetStackFunctionRetSize((RetSize + getGRFSize() - 1) / getGRFSize());
         }
     }
     else
@@ -15641,6 +15748,13 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
     {
         unsigned NElts = Ty->getVectorNumElements();
         emitVectorCopy(Dst, Src, NElts);
+    }
+    else if (Ty->isStructTy())
+    {
+        assert(Src->IsUniform() == Dst->IsUniform());
+        assert(Dst->GetNumberElement() == Src->GetNumberElement());
+        assert(Dst->GetType() == ISA_TYPE_B && Src->GetType() == ISA_TYPE_B);
+        emitVectorCopy(Dst, Src, Src->GetNumberElement());
     }
     else
     {

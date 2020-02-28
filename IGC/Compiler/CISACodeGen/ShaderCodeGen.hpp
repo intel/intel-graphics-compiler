@@ -166,6 +166,7 @@ namespace IGC
         CVariable* ImmToVariable(uint64_t immediate, VISA_Type type);
         CVariable* GetConstant(llvm::Constant* C, CVariable* dstVar = nullptr);
         CVariable* GetScalarConstant(llvm::Value* c);
+        CVariable* GetStructVariable(llvm::Value* v, llvm::Constant* initValue = nullptr);
         CVariable* GetUndef(VISA_Type type);
         llvm::Constant* findCommonConstant(llvm::Constant* C, uint elts, uint currentEmitElts, bool& allSame);
         virtual unsigned int GetGlobalMappingValue(llvm::Value* c);
