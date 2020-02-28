@@ -622,8 +622,8 @@ namespace IGC
 
         unsigned numParts = 0;
         if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
-            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true, dst->IsUniform()) ||
-            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true, dst->IsUniform())) {
+            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
+            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true)) {
 
             VISA_EMask_Ctrl execMask = GetAluEMask(dst);
             VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
@@ -1050,8 +1050,8 @@ namespace IGC
 
         unsigned numParts = 0;
         if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
-            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true, dst->IsUniform()) ||
-            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true, dst->IsUniform())) {
+            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
+            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true)) {
 
             VISA_EMask_Ctrl execMask = GetAluEMask(dst);
             VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
@@ -1097,7 +1097,7 @@ namespace IGC
     // numParts - return the total parts to be split, e.g. if the region spans 4
     // GRFs, it needs splitting into 2 parts at least.
     bool CEncoder::NeedSplitting(CVariable* var, const SModifier& mod,
-        unsigned& numParts, bool isSource, bool dstIsUniform) const
+        unsigned& numParts, bool isSource) const
     {
         // If nothing is specified, don't split.
         if (!var)
@@ -1132,10 +1132,9 @@ namespace IGC
             return false;
         }
 
-        // Only varying variable need splitting so far,
-        // Avoid splitting if destination is uniform
+        // Only varying variable need splitting so far.
         // NOTE: uniform variable is assumed to take less than 2 GRF+.
-        if (var->IsUniform() || dstIsUniform)
+        if (var->IsUniform())
         {
             return false;
         }
@@ -1567,8 +1566,8 @@ namespace IGC
                 }
             }
             unsigned numParts = 0;
-            if ( (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts)) ||
-                NeedSplitting(src, m_encoderState.m_srcOperand[0], numParts, true, dst->IsUniform())) {
+            if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
+                NeedSplitting(src, m_encoderState.m_srcOperand[0], numParts, true)) {
 
                 VISA_EMask_Ctrl execMask = GetAluEMask(dst);
                 VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
@@ -1757,10 +1756,10 @@ namespace IGC
         {
             unsigned numParts = 0;
             if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
-                NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true, dst->IsUniform()) ||
-                NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true, dst->IsUniform()) ||
-                NeedSplitting(src2, m_encoderState.m_srcOperand[2], numParts, true, dst->IsUniform()) ||
-                NeedSplitting(src3, m_encoderState.m_srcOperand[3], numParts, true, dst->IsUniform())) {
+                NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
+                NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true) ||
+                NeedSplitting(src2, m_encoderState.m_srcOperand[2], numParts, true) ||
+                NeedSplitting(src3, m_encoderState.m_srcOperand[3], numParts, true)) {
 
                 VISA_EMask_Ctrl execMask = GetAluEMask(dst);
                 VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
@@ -1811,9 +1810,9 @@ namespace IGC
     {
         unsigned numParts = 0;
         if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
-            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true, dst->IsUniform()) ||
-            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true, dst->IsUniform()) ||
-            NeedSplitting(src2, m_encoderState.m_srcOperand[2], numParts, true, dst->IsUniform())) {
+            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
+            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true) ||
+            NeedSplitting(src2, m_encoderState.m_srcOperand[2], numParts, true)) {
 
             VISA_EMask_Ctrl execMask = GetAluEMask(dst);
             VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
