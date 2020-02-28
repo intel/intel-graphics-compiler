@@ -2785,7 +2785,6 @@ void FlowGraph::markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfo
 // Note: this will be used to replace inSIMDCF gradually.
 void FlowGraph::markDivergentBBs()
 {
-    // temporarily turn it off
     return;
     // Assumption:
     //       1.  For each function, it has a single return (for function)
@@ -2965,10 +2964,22 @@ void FlowGraph::markDivergentBBs()
                 // joinBB is the BB right after backward-goto/while
                 BB_LIST_ITER loopJoinIter = LoopIterEnd;
                 ++loopJoinIter;
-                assert(loopJoinIter != BBs.end() && "ICE: missing join BB!");
+                if (loopJoinIter == BBs.end())
+                {
+                    // Loop end is the last BB (no Join BB). This happens for CM
+                    // in which CM's return is in the middle of code! Note that
+                    // IGC's return is the last BB always.
+                    if (builder->kernel.getOptions()->getTarget() != VISA_CM)
+                    {
+                        // IGC: loop end should not be the last BB as the last
+                        //      BB must be the return.
+                        assert(false && "ICE: return must be the last BB!");
+                    }
+                    continue;
+                }
                 G4_BB* joinBB = *loopJoinIter;
 
-                // Scan loop to find any out-of-loop branch, set join if any
+                // Scan loop to find any out-of-loop branch, set join if found
                 for (auto LoopIter = IT; LoopIter != LoopIterEnd; ++LoopIter)
                 {
                     G4_BB* BB1 = *LoopIter;
