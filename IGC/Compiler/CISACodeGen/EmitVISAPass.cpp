@@ -13097,7 +13097,7 @@ void EmitPass::emitTypedMemoryFence(llvm::Instruction* inst)
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     bool CommitEnable = true;
-    bool L3_Flush_RW_Data = true;   //ToDo: determine if it's actually necessary
+    bool L3_Flush_RW_Data = m_currShader->m_Platform->flushL3ForTypedMemory();
     bool L3_Flush_Constant_Data = false;
     bool L3_Flush_Texture_Data = false;
     bool L3_Flush_Instructions = false;

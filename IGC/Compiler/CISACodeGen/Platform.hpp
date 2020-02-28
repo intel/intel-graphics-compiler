@@ -274,6 +274,7 @@ namespace IGC
             m_platformInfo.eProductFamily == IGFX_BROXTON &&
             m_GTSystemInfo.SubSliceCount == 2);
     }
+
     bool enableMaxWorkGroupSizeCalculation() const
     {
         return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE) &&
@@ -281,6 +282,11 @@ namespace IGC
     }
 
     bool has8DWA64ScatteredMessage() const { return m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE; }
+
+    bool flushL3ForTypedMemory() const
+    {
+        return m_platformInfo.eRenderCoreFamily <= IGFX_GEN11_CORE;
+    }
 
     bool supportsSIMD16TypedRW() const
     {
