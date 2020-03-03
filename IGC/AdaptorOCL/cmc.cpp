@@ -482,6 +482,9 @@ static void populateKernelInfo(const cmc_kernel_info* info,
                 numUAVs++;
             else
                 numResources++;
+            // cmc does not do stateless-to-stateful optimization, therefore
+            if (AI.kind == cmc_arg_kind::SVM)
+                kInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = true;
         }
     }
 
