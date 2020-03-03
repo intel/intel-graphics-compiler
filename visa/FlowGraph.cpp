@@ -4272,21 +4272,66 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         for (auto dcl : Declares)
         {
             dcl->emit(output, false, m_options->getOption(vISA_SymbolReg));
-            output << "\n";
         }
+        output << std::endl;
 
         // emit input location and size
         output << "//.kernel_reordering_info_start" << std::endl;
-        output << "//id\tbyte_offset\tbyte_size\tkind\timplicit_kind" << std::endl;
+        output <<
+            "//" <<
+            "  " << std::setw(12) << "id" <<
+            "  " << std::setw(12) << "location" <<
+            "  " << std::setw(12) << "bytes" <<
+            "  " << std::setw(12) << "class" <<
+            "  " << std::setw(12) << "kind" <<
+            std::endl;
 
+        const unsigned grfSize = getGRFSize();
         unsigned int inputCount = fg.builder->getInputCount();
         for (unsigned int id = 0; id < inputCount; id++)
         {
-            input_info_t* input_info = fg.builder->getInputArg(id);
-            output << "//.arg_" << (id + 1) << "\t" << input_info->offset
-                << "\t" << input_info->size << "\t"
-                << (int)input_info->getInputClass() << "\t"
-                << (int)input_info->getImplicitKind() << std::endl;
+            const input_info_t* input_info = fg.builder->getInputArg(id);
+            //
+            output << "//";
+            //
+            // id
+            std::stringstream ss;
+            ss << ".arg_" << (id + 1);
+            output <<
+                "   " << std::setw(12) << ss.str();
+
+            // location
+            unsigned reg = input_info->offset / grfSize,
+                     subRegBytes = input_info->offset % grfSize;
+            std::stringstream ss2;
+            ss2 << "r" << reg;
+            if (subRegBytes != 0)
+                ss2 << "+" << subRegBytes;
+            //
+            // offset and size
+            output <<
+                "  " << std::setw(12) << ss2.str() <<
+                "  " << std::setw(12) << input_info->size;
+
+            // class and kind
+            output << "  ";
+            switch (input_info->getInputClass()) {
+            case INPUT_GENERAL: output << std::setw(12) << "general"; break;
+            case INPUT_SAMPLER: output << std::setw(12) << "sampler"; break;
+            case INPUT_SURFACE: output << std::setw(12) << "surface"; break;
+            default: output << std::setw(12) << (int)input_info->getInputClass(); break;
+            }
+            //
+            output << "  ";
+            switch ((int)input_info->getImplicitKind()) {
+            case 0x00: output << std::setw(12) << "explicit"; break;
+            case 0x01: output << std::setw(12) << "local_size"; break;
+            case 0x02: output << std::setw(12) << "group_count"; break;
+            case 0x03: output << std::setw(12) << "local_id"; break;
+            case 0x10: output << std::setw(12) << "pseudo_input"; break;
+            default: output << std::setw(12) << (int)input_info->getImplicitKind(); break;
+            }
+            output << std::endl;
         }
 
         output << "//.kernel_reordering_info_end" << std::endl;
