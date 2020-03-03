@@ -2785,7 +2785,7 @@ void FlowGraph::markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfo
 // Note: this will be used to replace inSIMDCF gradually.
 void FlowGraph::markDivergentBBs()
 {
-    return;
+    //return;
     // Assumption:
     //       1.  For each function, it has a single return (for function)
     //           or exit (for entry function). And that return/exit is the
