@@ -35,7 +35,7 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
 {
     int iStepId_TGL_LP = (int)pWaParam->usRevId;
 
-    // Components affected: igc 
+    // Components affected: igc
     SI_WA_ENABLE(
         Wa_1604402567,
         "No link provided",
@@ -43,7 +43,7 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc 
+    // Components affected: igc
     SI_WA_ENABLE(
         Wa_220856683,
         "No link provided",
@@ -51,7 +51,7 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc visa 
+    // Components affected: igc visa
     SI_WA_ENABLE(
         Wa_1406872168,
         "No link provided",
@@ -59,7 +59,7 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc visa 
+    // Components affected: igc visa
     SI_WA_ENABLE(
         Wa_1407528679,
         "No link provided",
@@ -67,7 +67,7 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc 
+    // Components affected: igc
     SI_WA_ENABLE(
         Wa_1409392000,
         "No link provided",
@@ -75,7 +75,7 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc 
+    // Components affected: igc
     SI_WA_ENABLE(
         Wa_1409460247,
         "No link provided",
@@ -83,7 +83,7 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: compute 
+    // Components affected: compute
     SI_WA_ENABLE(
         Wa_1604727933,
         "No link provided",
@@ -91,11 +91,19 @@ void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_IN
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, TGL_LP_REV_ID_B0));
 
-    // Components affected: igc visa 
+    // Components affected: igc visa
     SI_WA_ENABLE(
         Wa_1606931601,
         "No link provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, TGL_LP_REV_ID_B0));
+
+    // Components affected: i915_kmd igc kmd
+    SI_WA_ENABLE(
+        Wa_1808850743,
+        "No link provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_TGL_LP, TGL_LP_REV_ID_A0, FUTURE_PROJECT));
 }

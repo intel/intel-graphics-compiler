@@ -4002,13 +4002,14 @@ namespace IGC
 
         if (IGC_IS_FLAG_ENABLED(ForceNoMaskWA)) {
             SaveOption(vISA_forceNoMaskWA, true);
+            // Turn off jmpi as there is no wa for jmpi
             SaveOption(vISA_EnableScalarJmp, false);
         }
         if (m_program->m_Platform->getWATable().Wa_1808850743 != 0 &&
             IGC_GET_FLAG_VALUE(NoMaskWA) > 0)
         {
             SaveOption(vISA_noMaskWA, IGC_GET_FLAG_VALUE(NoMaskWA));
-            // turn off jmpi as there is no wa for jmpi
+            // Turn off jmpi as there is no wa for jmpi
             SaveOption(vISA_EnableScalarJmp, false);
         }
 
