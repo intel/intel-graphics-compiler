@@ -1045,6 +1045,17 @@ bool TranslateBuild(
         // Now, perform code generation
         IGC::CodeGen(&oclContext);
 
+        if( !( oclContext.oclErrorMessage.empty() ) )
+        {
+            //The error buffer returned will be deleted when the module is unloaded so
+            //a copy is necessary
+            if( const char* pErrorMsg = oclContext.oclErrorMessage.c_str() )
+            {
+                SetErrorMessage( oclContext.oclErrorMessage, *pOutputArgs );
+            }
+            return false;
+        }
+
         retry = (oclContext.m_retryManager.AdvanceState() &&
                 !oclContext.m_retryManager.kernelSet.empty());
 
