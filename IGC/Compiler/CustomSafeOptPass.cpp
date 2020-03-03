@@ -2130,34 +2130,18 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
 #if LLVM_VERSION_MAJOR >= 10
 void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
 {
-    /*
-    from
-    %22 = fneg float %a
-    to
-    %22 = bitcast float %a to i32
-    %23 = xor i32 %22, 2147483648
-    %24 = bitcast i32 %23 to float
-    GEN does not support natively negation
-    */
+    // from
+    // %neg = fneg double %1
+    // to
+    // %neg = fsub double -0.000000e+00, %1
+    // vISA have parser which looks for such operation pattern "0 - x"
+    // and adds source modifier for this region/value.
 
     IRBuilder<> builder(&I);
 
-    unsigned long bitSizeOfFloat = (unsigned int)I.getOperand(0)->getType()->getPrimitiveSizeInBits();
-    unsigned long bitToChange = 1 << (bitSizeOfFloat - 1);
+    Value* fsub = builder.CreateFSub(ConstantFP::get(I.getType(), 0.0f), I.getOperand(0));
 
-    Value* bitcastFPtoUI = builder.CreateBitCast(
-        I.getOperand(0),
-        builder.getIntNTy(bitSizeOfFloat));
-
-    Value* native_neg = builder.CreateXor(
-        bitcastFPtoUI,
-        builder.getIntN(bitSizeOfFloat, bitToChange));
-
-    Value* bitcastUItoFP = builder.CreateBitCast(
-        native_neg,
-        I.getOperand(0)->getType());
-
-    I.replaceAllUsesWith(bitcastUItoFP);
+    I.replaceAllUsesWith(fsub);
 }
 #endif
 
