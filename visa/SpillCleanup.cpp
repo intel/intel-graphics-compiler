@@ -1748,10 +1748,11 @@ void CoalesceSpillFills::spillFillCleanup()
                         }
                     }
 
+                    auto type = Type_UD;
                     // Insert SIMD8 mov per row
                     G4_DstRegRegion* nDst = kernel.fg.builder->createDst(
                         inst->getDst()->getBase(), row + inst->getDst()->asDstRegRegion()->getRegOff() - rowStart,
-                        0, 1, Type_UD);
+                        0, 1, type);
 
                     auto write = writesPerOffset.find(row)->second;
                     G4_SrcRegRegion* src1Write = write->getSrc(1)->asSrcRegRegion();
@@ -1759,7 +1760,7 @@ void CoalesceSpillFills::spillFillCleanup()
                     unsigned int diff = row - writeRowStart;
                     G4_SrcRegRegion* nSrc = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
                         src1Write->getBase(), diff + src1Write->getRegOff(), 0,
-                        kernel.fg.builder->getRegionStride1(), Type_UD);
+                        kernel.fg.builder->getRegionStride1(), type);
 
                     G4_INST* mov = kernel.fg.builder->createMov((unsigned char)execSize,
                         nDst, nSrc, InstOpt_WriteEnable, false);
