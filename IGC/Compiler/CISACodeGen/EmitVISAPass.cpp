@@ -279,16 +279,24 @@ bool EmitPass::canCompileCurrentShader(llvm::Function& F)
             MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
             FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
             int simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+
+            // Finds the kernel and get the group simd size from the kernel
+            if (m_FGA)
+            {
+                llvm::Function* Kernel = &F;
+                auto FG = m_FGA->getGroup(&F);
+                Kernel = FG->getHead();
+                funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
+                simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+            }
+
             if (simd_size)
             {
                 // Can't support SIMD32 due to slicing
                 return m_SimdMode != SIMDMode::SIMD32;
             }
             // If no sub group size is specified, only allow SIMD8
-            else
-            {
-                return m_SimdMode == SIMDMode::SIMD8;
-            }
+            return m_SimdMode == SIMDMode::SIMD8;
         }
     }
 
