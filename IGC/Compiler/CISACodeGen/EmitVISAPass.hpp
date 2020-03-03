@@ -338,8 +338,6 @@ namespace IGC
         void emitPSInputCst(llvm::Instruction* inst);
         void emitEvalAttribute(llvm::GenIntrinsicInst* inst);
         void emitInterpolate(llvm::GenIntrinsicInst* inst);
-        void emitInterpolate2(llvm::GenIntrinsicInst* inst);
-        void emitInterpolant(llvm::GenIntrinsicInst* inst);
 
         void emitGradientX(const SSource& source, const DstModifier& modifier);
         void emitGradientY(const SSource& source, const DstModifier& modifier);
@@ -461,7 +459,7 @@ namespace IGC
         ResourceDescriptor GetResourceVariable(llvm::Value* resourcePtr);
         SamplerDescriptor GetSamplerVariable(llvm::Value* samplerPtr);
         CVariable* ComputeSampleIntOffset(llvm::Instruction* sample, uint sourceIndex);
-        void emitPlnInterpolation(CVariable* bary, CVariable* inputvar);
+        void emitPlnInterpolation(CVariable* bary, unsigned int delatIndex);
 
         CVariable* GetExecutionMask();
         CVariable* GetExecutionMask(CVariable* &vecMaskVar);

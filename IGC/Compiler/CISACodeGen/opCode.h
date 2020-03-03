@@ -58,7 +58,6 @@ DECLARE_OPCODE(GenISA_resinfoptr, GenISAIntrinsic, llvm_resinfoptr, false, false
 DECLARE_OPCODE(GenISA_sampleinfoptr, GenISAIntrinsic, llvm_sampleinfoptr, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_PullSampleIndexBarys, GenISAIntrinsic, llvm_pullSampleIndexBarys, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_PullSnappedBarys, GenISAIntrinsic, llvm_pullSnappedBarys, false, false, false, false, false, false, false)
-DECLARE_OPCODE(GenISA_PullCentroidBarys,          GenISAIntrinsic,      llvm_pullCentroidBarys, false, false, false, false, false, false,  false  )
 DECLARE_OPCODE(sqrt, Intrinsic, llvm_sqrt, true, true, true, false, true, false, false)
 DECLARE_OPCODE(GenISA_rsq, GenISAIntrinsic, llvm_rsq, true, true, true, false, true, false, false)
 DECLARE_OPCODE(FMul, Instruction, llvm_fmul, true, true, true, true, false, false, false)
