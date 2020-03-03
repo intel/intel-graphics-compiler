@@ -875,6 +875,7 @@ namespace IGC
             }
             case GenISAIntrinsic::GenISA_PullSampleIndexBarys:
             case GenISAIntrinsic::GenISA_PullSnappedBarys:
+            case GenISAIntrinsic::GenISA_PullCentroidBarys:
                 m_HasPullBary = true;
                 break;
             default:

@@ -3485,17 +3485,15 @@ void EmitPass::emitPSInput(llvm::Instruction* inst)
     }
 }
 
-void EmitPass::emitPlnInterpolation(CVariable* baryVar, unsigned int delatIndex)
+void EmitPass::emitPlnInterpolation(CVariable* baryVar, CVariable* inputvar)
 {
-    CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
     unsigned int numPln = 1;
-    // temp variable should be the same type as the destination
-    CVariable* inputVar = psProgram->GetInputDelta(delatIndex);
+
     for (unsigned int i = 0; i < numPln; i++)
     {
         // plane will access 4 operands
         m_encoder->SetSrcRegion(0, 0, 4, 1);
-        m_encoder->Pln(m_destination, inputVar, baryVar);
+        m_encoder->Pln(m_destination, inputvar, baryVar);
         m_encoder->Push();
     }
 }
@@ -3505,10 +3503,12 @@ void EmitPass::emitPSInputPln(llvm::Instruction* inst)
     //create the payload and do interpolationd
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
     uint setupIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
+    // temp variable should be the same type as the destination
+    CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
     e_interpolation mode = (e_interpolation)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
     // need to do interpolation unless we do constant interpolation
     CVariable* baryVar = psProgram->GetBaryReg(mode);
-    emitPlnInterpolation(baryVar, setupIndex);
+    emitPlnInterpolation(baryVar, inputVar);
 }
 
 void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
@@ -3583,10 +3583,27 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
     break;
 
     case GenISAIntrinsic::GenISA_PullSnappedBarys:
+    case GenISAIntrinsic::GenISA_PullCentroidBarys:
     {
-        ConstantInt* xCstOffset = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0));
-        ConstantInt* yCstOffset = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1));
-        if (xCstOffset && yCstOffset && psProgram->GetPhase() != PSPHASE_COARSE)
+        uint offsetX = 0;
+        uint offsetY = 0;
+        bool offsetIsConst = true;
+        auto messageType = EU_PI_MESSAGE_EVAL_CENTROID_POSITION;
+        if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_PullSnappedBarys)
+        {
+            messageType = EU_PI_MESSAGE_EVAL_PER_SLOT_OFFSET;
+            offsetIsConst = false;
+            auto xCstOffset = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0));
+            auto yCstOffset = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1));
+            if (xCstOffset && yCstOffset)
+            {
+                offsetIsConst = true;
+                offsetX = (uint) xCstOffset->getZExtValue();
+                offsetY = (uint) yCstOffset->getZExtValue();
+                messageType = EU_PI_MESSAGE_EVAL_PER_MESSAGE_OFFSET;
+            }
+        }
+        if (offsetIsConst && psProgram->GetPhase() != PSPHASE_COARSE)
         {
             payload = m_currShader->GetNewVariable(messageLength * (getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
             desc = PixelInterpolator(
@@ -3594,13 +3611,15 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
                 responseLength,
                 m_encoder->IsSecondHalf() ? 1 : 0,
                 executionMode,
-                EU_PI_MESSAGE_EVAL_PER_MESSAGE_OFFSET,
+                messageType,
                 interpolationMode,
-                (uint)xCstOffset->getZExtValue(),
-                (uint)yCstOffset->getZExtValue());
+                offsetX,
+                offsetY);
         }
         else
         {
+            assert(messageType != EU_PI_MESSAGE_EVAL_CENTROID_POSITION);
+
             messageLength = 2 * numLanes(m_currShader->m_SIMDSize) / 8;
             payload = m_currShader->GetNewVariable(messageLength * (getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
             desc = PixelInterpolator(
@@ -3609,7 +3628,7 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
                 m_encoder->IsSecondHalf() ? 1 : 0,
                 psProgram->GetPhase() == PSPHASE_COARSE,
                 executionMode,
-                EU_PI_MESSAGE_EVAL_PER_SLOT_OFFSET,
+                messageType,
                 interpolationMode);
             CVariable* XOffset = GetSymbol(inst->getOperand(0));
             CVariable* YOffset = GetSymbol(inst->getOperand(1));
@@ -3635,9 +3654,31 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::emitInterpolate(llvm::GenIntrinsicInst* inst)
 {
+    CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
     CVariable* barys = GetSymbol(inst->getOperand(1));
     uint setupIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
-    emitPlnInterpolation(barys, setupIndex);
+    // temp variable should be the same type as the destination
+    CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
+    emitPlnInterpolation(barys, inputVar);
+}
+
+void EmitPass::emitInterpolate2(llvm::GenIntrinsicInst* inst)
+{
+    CVariable* inputVar = GetSymbol(inst->getOperand(0));
+    CVariable* barys = GetSymbol(inst->getOperand(1));
+    emitPlnInterpolation(barys, inputVar);
+}
+
+void EmitPass::emitInterpolant(llvm::GenIntrinsicInst* inst)
+{
+    uint setupIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
+    auto psProgram = static_cast<CPixelShader*>(m_currShader);
+    CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
+    m_encoder->SetSrcRegion(0, 4, 4, 1);
+    m_encoder->SetSimdSize(SIMDMode::SIMD4);
+    m_encoder->SetNoMask();
+    m_encoder->Copy(m_destination, inputVar);
+    m_encoder->Push();
 }
 
 void EmitPass::emitDSInput(llvm::Instruction* pInst)
@@ -7627,10 +7668,17 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_PullSampleIndexBarys:
     case GenISAIntrinsic::GenISA_PullSnappedBarys:
+    case GenISAIntrinsic::GenISA_PullCentroidBarys:
         emitEvalAttribute(inst);
         break;
     case GenISAIntrinsic::GenISA_Interpolate:
         emitInterpolate(inst);
+        break;
+    case GenISAIntrinsic::GenISA_Interpolate2:
+        emitInterpolate2(inst);
+        break;
+    case GenISAIntrinsic::GenISA_Interpolant:
+        emitInterpolant(inst);
         break;
     case GenISAIntrinsic::GenISA_DCL_DSCntrlPtInputVec:
         emitInput(inst);
