@@ -531,6 +531,18 @@ namespace IGC
         return m_InternalOptions.hasNoLocalToGeneric;
     }
 
+    int16_t OpenCLProgramContext::getVectorCoalescingControl() const
+    {
+        // cmdline option > registry key
+        int val = m_InternalOptions.VectorCoalescingControl;
+        if (val < 0)
+        {
+            // no cmdline option
+            val = IGC_GET_FLAG_VALUE(VATemp);
+        }
+        return val;
+    }
+
     void CodeGenContext::initLLVMContextWrapper(bool createResourceDimTypes)
     {
         llvmCtxWrapper = new LLVMContextWrapper(createResourceDimTypes);
@@ -700,6 +712,11 @@ namespace IGC
     bool CodeGenContext::hasNoLocalToGenericCast() const
     {
         return false;
+    }
+
+    int16_t CodeGenContext::getVectorCoalescingControl() const
+    {
+        return 0;
     }
 
     bool CodeGenContext::isPOSH() const

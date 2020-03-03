@@ -1218,7 +1218,7 @@ void EmitPass::InitConstant(llvm::BasicBlock* BB)
 
 void EmitPass::emitLifetimeStartAtEndOfBB(BasicBlock* BB)
 {
-    if (IGC_GET_FLAG_VALUE(VATemp) == 0) {
+    if (m_pCtx->getVectorCoalescingControl() == 0) {
         return;
     }
 
@@ -8244,7 +8244,7 @@ CVariable* EmitPass::Add(CVariable* Src0, CVariable* Src1, const CVariable* DstP
 // Insert lifetime start right before instruction I if it is a candidate.
 void EmitPass::emitLifetimeStart(CVariable* Var, BasicBlock* BB, Instruction* I, bool ForAllInstance)
 {
-    if (IGC_GET_FLAG_VALUE(VATemp) == 0 || Var == nullptr) {
+    if (m_pCtx->getVectorCoalescingControl() == 0 || Var == nullptr) {
         return;
     }
 
