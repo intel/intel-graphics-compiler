@@ -3955,6 +3955,13 @@ void G4_Kernel::dumpPassInternal(const char* appendix)
         // Emit BB number
         G4_BB* bb = (*it);
         bb->writeBBId(ofile);
+
+        // Emit BB type
+        if (bb->getBBType())
+        {
+            ofile << " [" << bb->getBBTypeStr() << "] ";
+        }
+
         ofile << "\tPreds: ";
         for (auto pred : bb->Preds)
         {
@@ -5804,6 +5811,23 @@ void G4_BB::resetLocalId()
     }
 }
 
+const char* G4_BB::getBBTypeStr() const
+{
+    switch (getBBType()) {
+    default:
+        break;
+    case G4_BB_CALL_TYPE:
+        return "CALL";
+    case G4_BB_RETURN_TYPE:
+        return "RETURN";
+    case G4_BB_INIT_TYPE:
+        return "INIT";
+    case G4_BB_EXIT_TYPE:
+        return "EXIT";
+    }
+    return " ";
+}
+
 void G4_BB::dump(bool printCFG = false) const
 {
     std::cerr << "BB" << getId();
@@ -5811,7 +5835,7 @@ void G4_BB::dump(bool printCFG = false) const
     {
         if (getBBType())
         {
-            std::cerr << ";  BB type: " << getBBType();
+            std::cerr << " [" << getBBTypeStr() << "]; ";
         }
         std::cerr << "        Pred: ";
         for (auto pred : Preds)

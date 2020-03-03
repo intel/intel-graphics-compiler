@@ -492,6 +492,7 @@ public:
     void addEOTSend(G4_INST* lastInst = NULL);
 
     /// Dump instructions into the standard error.
+    const char* getBBTypeStr() const;
     void dump(bool printCFG) const;
     void dumpDefUse() const;
 
