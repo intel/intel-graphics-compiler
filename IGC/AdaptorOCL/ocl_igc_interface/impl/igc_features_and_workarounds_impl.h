@@ -43,7 +43,6 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcFeaturesAndWorkarounds) : CIF::PimplBase {
 
   CIF_PIMPL_DECLARE_CONSTRUCTOR() {
       CIF::SafeZeroOut(FeTable);
-      OCLCaps.MaxParameterSize = OCLCaps::MINIMAL_MAX_PARAMETER_SIZE;
   }
 
   _SUscSkuFeatureTable FeTable;
