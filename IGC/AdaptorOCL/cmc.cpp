@@ -471,6 +471,9 @@ static void populateKernelInfo(const cmc_kernel_info* info,
         return false;
     };
 
+    // cmc does not do stateless-to-stateful optimization, therefore
+    // set >4GB to true by default, to false if we see any resource-type
+    kInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = true;
     for (unsigned i = 0; i < info->num_args; ++i) {
         assert(info->arg_descs);
         cmc_arg_info& AI = info->arg_descs[i];
@@ -482,9 +485,7 @@ static void populateKernelInfo(const cmc_kernel_info* info,
                 numUAVs++;
             else
                 numResources++;
-            // cmc does not do stateless-to-stateful optimization, therefore
-            if (AI.kind == cmc_arg_kind::SVM)
-                kInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = true;
+            kInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = false;
         }
     }
 
