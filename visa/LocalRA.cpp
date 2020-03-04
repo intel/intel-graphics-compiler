@@ -1400,7 +1400,16 @@ void LocalRA::calculateInputIntervals()
                                         pregs->isGRFAvailable(idx / G4_GRF_REG_SIZE))
                                     {
                                         inputRegLastRef[idx] = curInstId;
-                                        inputIntervals.push_front(new (mem)InputLiveRange(idx, curInstId));
+                                        if (builder.avoidDstSrcOverlap() &&
+                                            curInst->getDst() != NULL &&
+                                            hasDstSrcOverlapPotential(curInst->getDst(), src->asSrcRegRegion()))
+                                        {
+                                            inputIntervals.push_front(new (mem)InputLiveRange(idx, curInstId + 1));
+                                        }
+                                        else
+                                        {
+                                            inputIntervals.push_front(new (mem)InputLiveRange(idx, curInstId));
+                                        }
                                         if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
                                         {
                                             updateDebugInfo(kernel, topdcl, 0, curInst->getCISAOff());
@@ -1448,29 +1457,32 @@ bool LocalRA::hasDstSrcOverlapPotential(G4_DstRegRegion* dst, G4_SrcRegRegion* s
 {
     int dstOpndNumRows = 0;
 
-    if (dst->getBase()->isRegVar() && dst->getBase()->isRegAllocPartaker())
+    if (dst->getBase()->isRegVar())
     {
         G4_Declare* dstDcl = dst->getBase()->asRegVar()->getDeclare();
-        int dstOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) / G4_GRF_REG_NBYTES;
-        G4_DstRegRegion* dstRgn = dst;
-        dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
-
-        if (src != NULL &&
-            src->isSrcRegRegion() &&
-            src->asSrcRegRegion()->getBase()->isRegVar())
+        if (dstDcl != nullptr)
         {
-            G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
-            G4_Declare* srcDcl = src->getBase()->asRegVar()->getDeclare();
-            int srcOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
-            bool srcOpndNumRows = srcRgn->getSubRegOff() + srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+            int dstOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) / G4_GRF_REG_NBYTES;
+            G4_DstRegRegion* dstRgn = dst;
+            dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
 
-            if (dstOpndNumRows || srcOpndNumRows)
+            if (src != NULL &&
+                src->isSrcRegRegion() &&
+                src->asSrcRegRegion()->getBase()->isRegVar())
             {
-                if (!(gra.isEvenAligned(dstDcl) && gra.isEvenAligned(srcDcl) &&
-                    srcOffset % 2 == dstOffset % 2 &&
-                    dstOpndNumRows && srcOpndNumRows))
+                G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
+                G4_Declare* srcDcl = src->getBase()->asRegVar()->getDeclare();
+                int srcOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
+                bool srcOpndNumRows = srcRgn->getSubRegOff() + srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+
+                if (dstOpndNumRows || srcOpndNumRows)
                 {
-                    return true;
+                    if (!(gra.isEvenAligned(dstDcl) && gra.isEvenAligned(srcDcl) &&
+                        srcOffset % 2 == dstOffset % 2 &&
+                        dstOpndNumRows && srcOpndNumRows))
+                    {
+                        return true;
+                    }
                 }
             }
         }
