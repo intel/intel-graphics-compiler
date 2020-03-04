@@ -1156,11 +1156,6 @@ namespace IGC
                 match = MatchSingleInstruction(I);
             }
         }
-        if (!match)
-        {
-            auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-            ctx->EmitError( "unknown function/builtin call" );
-        }
         assert(match && "no match for this call");
     }
 

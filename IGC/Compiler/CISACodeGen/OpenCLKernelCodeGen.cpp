@@ -1964,72 +1964,69 @@ namespace IGC
         CShaderProgram::KernelShaderMap shaders;
         CodeGen(ctx, shaders);
 
-        if (ctx->oclErrorMessage.empty())
+        if (ctx->m_programOutput.m_pSystemThreadKernelOutput == nullptr)
         {
-            if (ctx->m_programOutput.m_pSystemThreadKernelOutput == nullptr)
+            const auto options = ctx->m_InternalOptions;
+            if (options.IncludeSIPCSR ||
+                options.IncludeSIPKernelDebug ||
+                options.IncludeSIPKernelDebugWithLocalMemory ||
+                options.KernelDebugEnable)
             {
-                const auto options = ctx->m_InternalOptions;
-                if (options.IncludeSIPCSR ||
-                    options.IncludeSIPKernelDebug ||
-                    options.IncludeSIPKernelDebugWithLocalMemory ||
-                    options.KernelDebugEnable)
+                DWORD systemThreadMode = 0;
+
+                if (options.IncludeSIPCSR)
                 {
-                    DWORD systemThreadMode = 0;
-
-                    if (options.IncludeSIPCSR)
-                    {
-                        systemThreadMode |= USC::SYSTEM_THREAD_MODE_CSR;
-                    }
-
-                    if (options.KernelDebugEnable ||
-                        options.IncludeSIPKernelDebug)
-                    {
-                        systemThreadMode |= USC::SYSTEM_THREAD_MODE_DEBUG;
-                    }
-
-                    if (options.IncludeSIPKernelDebugWithLocalMemory)
-                    {
-                        systemThreadMode |= USC::SYSTEM_THREAD_MODE_DEBUG_LOCAL;
-                    }
-
-                    SIP::CSystemThread::CreateSystemThreadKernel(
-                        ctx->platform,
-                        (USC::SYSTEM_THREAD_MODE)systemThreadMode,
-                        ctx->m_programOutput.m_pSystemThreadKernelOutput);
+                    systemThreadMode |= USC::SYSTEM_THREAD_MODE_CSR;
                 }
+
+                if (options.KernelDebugEnable ||
+                    options.IncludeSIPKernelDebug)
+                {
+                    systemThreadMode |= USC::SYSTEM_THREAD_MODE_DEBUG;
+                }
+
+                if (options.IncludeSIPKernelDebugWithLocalMemory)
+                {
+                    systemThreadMode |= USC::SYSTEM_THREAD_MODE_DEBUG_LOCAL;
+                }
+
+                SIP::CSystemThread::CreateSystemThreadKernel(
+                    ctx->platform,
+                    (USC::SYSTEM_THREAD_MODE)systemThreadMode,
+                    ctx->m_programOutput.m_pSystemThreadKernelOutput);
             }
+        }
 
-            ctx->m_retryManager.kernelSet.clear();
+        ctx->m_retryManager.kernelSet.clear();
 
-            // gather data to send back to the driver
-            for (auto k : shaders)
+        // gather data to send back to the driver
+        for (auto k : shaders)
+        {
+            Function* pFunc = k.first;
+            CShaderProgram* pKernel = static_cast<CShaderProgram*>(k.second);
+            COpenCLKernel* simd8Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
+            COpenCLKernel* simd16Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
+            COpenCLKernel* simd32Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
+
+            if (ctx->m_DriverInfo.sendMultipleSIMDModes() && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
             {
-                Function* pFunc = k.first;
-                CShaderProgram* pKernel = static_cast<CShaderProgram*>(k.second);
-                COpenCLKernel* simd8Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
-                COpenCLKernel* simd16Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
-                COpenCLKernel* simd32Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
-
-                if (ctx->m_DriverInfo.sendMultipleSIMDModes() && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
-                {
-                    //Gather the kernel binary for each compiled kernel
-                    if (SetKernelProgram(simd32Shader, 32))
-                        GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
-                    if (SetKernelProgram(simd16Shader, 16))
-                        GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
-                    if (SetKernelProgram(simd8Shader, 8))
-                        GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
-                }
-                else
-                {
-                    //Gather the kernel binary only for 1 SIMD mode of the kernel
-                    if (SetKernelProgram(simd32Shader, 32))
-                        GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
-                    else if (SetKernelProgram(simd16Shader, 16))
-                        GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
-                    else if (SetKernelProgram(simd8Shader, 8))
-                        GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
-                }
+                //Gather the kernel binary for each compiled kernel
+                if (SetKernelProgram(simd32Shader, 32))
+                    GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
+                if (SetKernelProgram(simd16Shader, 16))
+                    GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
+                if (SetKernelProgram(simd8Shader, 8))
+                    GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
+            }
+            else
+            {
+                //Gather the kernel binary only for 1 SIMD mode of the kernel
+                if (SetKernelProgram(simd32Shader, 32))
+                    GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
+                else if (SetKernelProgram(simd16Shader, 16))
+                    GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
+                else if (SetKernelProgram(simd8Shader, 8))
+                    GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
             }
         }
     }
