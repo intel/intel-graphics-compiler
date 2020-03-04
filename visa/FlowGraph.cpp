@@ -5967,7 +5967,6 @@ void GlobalOpndHashTable::dump()
 
 void G4_Kernel::computeChannelSlicing()
 {
-    std::unordered_set<G4_Declare*> skipSendDcls;
     unsigned int simdSize = getSimdSize();
     channelSliced = true;
 
@@ -5978,30 +5977,6 @@ void G4_Kernel::computeChannelSlicing()
         return;
     }
 
-    for (auto bb : fg)
-    {
-        for (auto inst : bb->getInstList())
-        {
-            if (inst->isPseudoKill() || inst->isWriteEnableInst())
-                continue;
-
-            if (inst->isSend())
-            {
-                auto dst = inst->getDst();
-                if (dst && dst->isDstRegRegion())
-                    skipSendDcls.insert(dst->getTopDcl());
-
-                auto src = inst->getSrc(0);
-                if (src && src->isSrcRegRegion())
-                    skipSendDcls.insert(src->getTopDcl());
-
-                src = inst->getSrc(1);
-                if (src && src->isSrcRegRegion())
-                    skipSendDcls.insert(src->getTopDcl());
-            }
-        }
-    }
-
     // .dcl V1 size = 128 bytes
     // op (16|M0) V1(0,0)     ..
     // op (16|M16) V1(2,0)    ..
@@ -6010,16 +5985,21 @@ void G4_Kernel::computeChannelSlicing()
     // Allocation of dcl is still as if it were a
     // SIMD32 kernel.
 
-    // dcl -> lb, rb, emask offset
-    std::unordered_map<G4_Declare*, std::vector<std::tuple<unsigned int, unsigned int, unsigned int>>> defaultDefs;
+    // Store emask bits that are ever used to define a variable
+    std::unordered_map<G4_Declare*, std::bitset<32>> emaskRef;
     for (auto bb : fg)
     {
         for (auto inst : bb->getInstList())
         {
+            if (inst->isSend())
+                continue;
+
             auto dst = inst->getDst();
-            if (!dst || !dst->isDstRegRegion() || !dst->getTopDcl() ||
-                skipSendDcls.find(dst->getTopDcl()) != skipSendDcls.end() ||
-                dst->asDstRegRegion()->getHorzStride() != 1)
+            if (!dst || !dst->getTopDcl() ||
+                dst->getHorzStride() != 1)
+                continue;
+
+            if (inst->isWriteEnableInst())
                 continue;
 
             auto regFileKind = dst->getTopDcl()->getRegFile();
@@ -6031,31 +6011,32 @@ void G4_Kernel::computeChannelSlicing()
             if (dst->getTopDcl()->getByteSize() <= dstElemSize * simdSize)
                 continue;
 
-            std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> v =
-                { std::make_tuple(dst->getLeftBound(), dst->getRightBound(), inst->getMaskOffset()) };
-            defaultDefs.insert(std::make_pair(dst->getTopDcl(), v));
+            auto emaskOffStart = inst->getMaskOffset();
+
+            // Reset all bits on first encounter of dcl
+            if (emaskRef.find(dst->getTopDcl()) == emaskRef.end())
+                emaskRef[dst->getTopDcl()].reset();
+
+            // Set bits based on which EM bits are used in the def
+            for (unsigned int i = emaskOffStart; i != (emaskOffStart + inst->getExecSize()); i++)
+            {
+                emaskRef[dst->getTopDcl()].set(i);
+            }
         }
     }
 
-    for (auto dd : defaultDefs)
+    // Check whether any variable's emask usage straddles across lower and upper 16 bits
+    for (auto& emRefs : emaskRef)
     {
-        auto elemSize = dd.first->getElemSize();
-        for (auto defs : dd.second)
+        auto& bits = emRefs.second;
+        auto num = bits.to_ulong();
+
+        // Check whether any lower 16 and upper 16 bits are set
+        if (((num & 0xffff) != 0) && ((num & 0xffff0000) != 0))
         {
-            auto lb = std::get<0>(defs);
-            auto rb = std::get<1>(defs);
-            auto emaskOffset = std::get<2>(defs);
-
-            // Look for single instruction
-            if (emaskOffset == 0 && lb == 0 && rb == elemSize * 32)
-                channelSliced = false;
-            // Or broken instruction
-            if (emaskOffset == 16 && lb == elemSize * 16 && rb == elemSize * 32)
-                channelSliced = false;
+            channelSliced = false;
+            return;
         }
-
-        if (!channelSliced)
-            break;
     }
 
     return;

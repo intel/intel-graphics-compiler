@@ -4254,6 +4254,11 @@ unsigned int GlobalRA::hwordToGRFSize(unsigned int numHwords)
     return owordToGRFSize(numHwords * 2);
 }
 
+unsigned int GlobalRA::GRFToHwordSize(unsigned int numGRFs)
+{
+    return GRFSizeToOwords(numGRFs) / 2;
+}
+
 unsigned int GlobalRA::GRFSizeToOwords(unsigned int numGRFs)
 {
     return numGRFs * (G4_GRF_REG_NBYTES / OWORD_BYTE_SIZE);

@@ -50,7 +50,7 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(unsigned int scratch
         fp = kernel.fg.getFramePtrDcl();
     unsigned int option = useNoMask ? InstOpt_WriteEnable : 0;
     auto spillInst = kernel.fg.builder->createSpill(kernel.fg.builder->createNullDst(Type_UW), header, spillSrcPayload, 16, payloadSize,
-        scratchOffset, fp, static_cast<G4_InstOption>(option), 0, srcCISAOff);
+        GlobalRA::GRFToHwordSize(scratchOffset), fp, static_cast<G4_InstOption>(option), 0, srcCISAOff);
 
     if (!useNoMask)
     {
@@ -94,8 +94,8 @@ G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchO
     if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
         fp = kernel.fg.getFramePtrDcl();
 
-    kernel.fg.builder->createFill(header, fillDst, 16, payloadSize, scratchOffset, fp,
-        InstOpt_WriteEnable, 0, srcCISAOff);
+    kernel.fg.builder->createFill(header, fillDst, 16, payloadSize,
+        GlobalRA::GRFToHwordSize(scratchOffset), fp, InstOpt_WriteEnable, 0, srcCISAOff);
 
 #if 0
     fillInst->dump();

@@ -829,6 +829,7 @@ namespace vISA
 
         static unsigned int owordToGRFSize(unsigned int numOwords);
         static unsigned int hwordToGRFSize(unsigned int numHwords);
+        static unsigned int GRFToHwordSize(unsigned int numGRFs);
         static unsigned int GRFSizeToOwords(unsigned int numGRFs);
 
         // RA specific fields
