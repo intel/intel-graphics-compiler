@@ -538,11 +538,11 @@ __private void* __builtin_IB_to_private(void*);
 // SubGroup Functions
 int     __builtin_IB_get_simd_size( void );
 int     __builtin_IB_get_simd_id( void );
-int     __builtin_IB_simd_shuffle( int, int );
+uint     __builtin_IB_simd_shuffle( uint, uint );
 ushort  __builtin_IB_simd_shuffle_us( ushort, uint );
 float     __builtin_IB_simd_shuffle_f( float, uint );
 half     __builtin_IB_simd_shuffle_h( half, uint );
-char    __builtin_IB_simd_shuffle_b( char, uint );
+uchar    __builtin_IB_simd_shuffle_b( uchar, uint );
 double  __builtin_IB_simd_shuffle_df(double, uint);
 uint    __builtin_IB_simd_shuffle_down( uint, uint, uint );
 ushort  __builtin_IB_simd_shuffle_down_us( ushort, ushort, uint );
