@@ -499,15 +499,18 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
     bool mov_dst = false;
 
     MUST_BE_TRUE(inst->isMath(), "Expect math instruction");
+    G4_InstMath* mathInst = inst->asMathInst();
 
-    if (inst->asMathInst()->getMathCtrl() == MATH_INVM || inst->asMathInst()->getMathCtrl() == MATH_RSQRTM)
+    if (mathInst->getMathCtrl() == MATH_INVM || mathInst->getMathCtrl() == MATH_RSQRTM)
     {
-        if (IS_DFTYPE(inst->getDst()->getType()) && ((uint32_t) (inst->getExecSize() * 2)) > builder.getNativeExecSize())
+        // split two GRF math macros. This should only happen for FP64
+        if (!builder.hasTwoGRFMathMacro() &&
+            IS_DFTYPE(inst->getDst()->getType()) && ((uint32_t)(inst->getExecSize() * 2)) > builder.getNativeExecSize())
         {
-            // need to scale exec size by two since it's 64b type
             evenlySplitInst(it, bb);
             return true;
         }
+        // math macros are constructed internally and should already conform to all other HW rules
         return false;
     }
 

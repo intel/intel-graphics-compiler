@@ -593,5 +593,10 @@
         return false;
     }
 
+    bool hasTwoGRFMathMacro() const
+    {
+        return false;
+    }
+
 
     // end HW capabilities
