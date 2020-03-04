@@ -54,13 +54,6 @@ Use for function stubs which are yet to be implemented.
 
 
 /*****************************************************************************\
-MACRO: ASSERT
-\*****************************************************************************/
-#ifndef ASSERT
-#define ASSERT assert
-#endif
-
-/*****************************************************************************\
 MACRO: IGC_WARN_ON_CONDITION
 Use for warnings about the input to different phases of the compiler.
 

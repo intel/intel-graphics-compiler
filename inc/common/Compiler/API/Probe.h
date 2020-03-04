@@ -23,49 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#pragma once
 
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/Support/raw_ostream.h>
-#include "common/LLVMWarningsPop.hpp"
-#include "IGC/common/igc_debug.h"
-#include "common/debug/DebugMacros.hpp"
-#include <string>
+#ifndef IGC_PROBE_H
+#define IGC_PROBE_H
 
-namespace llvm
-{
-    class AssemblyAnnotationWriter;
-    class Value;
-}
+#include <cassert>
 
+#define IGC_ASSERT assert
 
-namespace IGC
-{
-    namespace Debug
-    {
-        void Banner(llvm::raw_ostream & OS, std::string const& message);
-
-        /// Stream that writes to both std::cout and OutputDebugString
-        llvm::raw_ostream& ods();
-
-        void Warning(
-            const char*           pExpr,
-            unsigned int          line,
-            const char*           pFileName,
-            std::string    const& message );
-
-        void RegisterErrHandlers();
-        void ReleaseErrHandlers();
-
-        void RegisterComputeErrHandlers(llvm::LLVMContext &C);
-
-        extern void DumpLock();
-        extern void DumpUnlock();
-    }
-
-    int getPointerSize(llvm::Module &M);
-}
-
-#define IF_DEBUG_INFO(X) X
-#define IF_DEBUG_INFO_IF(C, X) if (C) { X }
+#endif // IGC_PROBE_H

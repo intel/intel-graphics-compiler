@@ -48,7 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../AdaptorOCL/OCL/LoadBuffer.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/debug/Debug.hpp"
-
+#include "Probe.h"
 
 namespace SIP
 {
@@ -104,8 +104,8 @@ namespace SIP
             void Delete(CGenSystemInstructionKernelProgram* &pKernelProgram );
 
             CGenSystemInstructionKernelProgram(const USC::SYSTEM_THREAD_MODE mode);
-            unsigned int  GetProgramSize(){ ASSERT(m_ProgramSize) ; return m_ProgramSize;}
-            void * GetLinearAddress(){ ASSERT(m_LinearAddress); return m_LinearAddress;}
+            unsigned int  GetProgramSize(){ IGC_ASSERT(m_ProgramSize) ; return m_ProgramSize;}
+            void * GetLinearAddress(){ IGC_ASSERT(m_LinearAddress); return m_LinearAddress;}
 
     protected:
 

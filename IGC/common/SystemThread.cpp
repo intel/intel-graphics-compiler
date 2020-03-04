@@ -47,6 +47,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/SIPKernels/Gen11LKFSIPCSR.h"
 #include "common/SIPKernels/Gen12LPSIPCSR.h"
 #include "common/SIPKernels/Gen12LPSIPCSRDebug.h"
+#include "Probe.h"
 
 using namespace llvm;
 using namespace USC;
@@ -74,7 +75,7 @@ bool CSystemThread::CreateSystemThreadKernel(
            ( mode & SYSTEM_THREAD_MODE_CSR ) ) )
     {
         success = false;
-        ASSERT( success );
+        IGC_ASSERT( success );
     }
 
     // Create System Thread kernel program.
@@ -83,16 +84,16 @@ bool CSystemThread::CreateSystemThreadKernel(
         CGenSystemInstructionKernelProgram* pKernelProgram =
             new CGenSystemInstructionKernelProgram(mode);
         success = pKernelProgram ? true : false;
-        ASSERT( success );
+        IGC_ASSERT( success );
 
         // Allocate memory for SSystemThreadKernelOutput.
         if( success )
         {
-            ASSERT( pSystemThreadKernelOutput == nullptr );
+            IGC_ASSERT( pSystemThreadKernelOutput == nullptr );
             pSystemThreadKernelOutput = new SSystemThreadKernelOutput;
 
             success = ( pSystemThreadKernelOutput != nullptr );
-            ASSERT( success );
+            IGC_ASSERT( success );
 
             if( success )
             {
@@ -128,7 +129,7 @@ bool CSystemThread::CreateSystemThreadKernel(
 
             if( !pStartAddress )
             {
-                ASSERT( 0 );
+                IGC_ASSERT( 0 );
                 success = false;
             }
 
@@ -143,7 +144,7 @@ bool CSystemThread::CreateSystemThreadKernel(
         }
         else
         {
-            ASSERT( false );
+            IGC_ASSERT( false );
             success = false;
         }
         pKernelProgram->Delete( pKernelProgram );
@@ -346,7 +347,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         break;
     }
     default:
-        ASSERT(0);
+        IGC_ASSERT(0);
         break;
     }
 
