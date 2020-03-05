@@ -1281,6 +1281,40 @@ namespace IGC
 
     void CodeGenPatternMatch::visitBitCastInst(BitCastInst& I)
     {
+        // detect
+        // %66 = insertelement <2 x i32> <i32 0, i32 undef>, i32 %xor19.i, i32 1
+        // %67 = bitcast <2 x i32> % 66 to i64
+        // and replace it with a shl 32
+        struct Shl32Pattern : public Pattern
+        {
+            SSource sources[2];
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                pass->Binary(EOPCODE_SHL, sources, modifier);
+            }
+        };
+
+        if (I.getType()->isIntegerTy(64) && I.getOperand(0)->getType()->isVectorTy() &&
+            I.getOperand(0)->getType()->getVectorElementType()->isIntegerTy(32))
+        {
+            if (auto IEI = dyn_cast<InsertElementInst>(I.getOperand(0)))
+            {
+                auto vec = dyn_cast<ConstantVector>(IEI->getOperand(0));
+                bool isCandidate = vec && vec->getNumOperands() == 2 && IsZero(vec->getOperand(0)) &&
+                    isa<UndefValue>(vec->getOperand(1));
+                auto index = dyn_cast<ConstantInt>(IEI->getOperand(2));
+                isCandidate &= index && index->getZExtValue() == 1;
+                if (isCandidate)
+                {
+                    Shl32Pattern* Pat = new (m_allocator) Shl32Pattern();
+                    Pat->sources[0] = GetSource(IEI->getOperand(1), false, false);
+                    Pat->sources[1] = GetSource(ConstantInt::get(Type::getInt32Ty(I.getContext()), 32), false, false);
+                    AddPattern(Pat);
+                    return;
+                }
+            }
+        }
+
         MatchSingleInstruction(I);
     }
 
