@@ -252,6 +252,14 @@ namespace IGC
             bool isA64,
             int bitSize);
 
+        void emitScalarAtomicLoad(
+            llvm::Instruction* pInst,
+            ResourceDescriptor& resource,
+            CVariable* pDstAddr,
+            CVariable* pSrc,
+            bool isA64,
+            int bitSize);
+
         /// reduction and prefix/postfix facilities
         CVariable* ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue, bool negate, bool secondHalf,
             CVariable* src, CVariable* dst, CVariable* flag = nullptr);

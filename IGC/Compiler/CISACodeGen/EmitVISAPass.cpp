@@ -12076,6 +12076,79 @@ void EmitPass::emitScalarAtomics(
     }
 }
 
+//
+// We emulate an atomic_load with an atomic_or with zero.
+// when the atomic is uniform we can directly generate a SIMD1 atomic_or
+//
+void EmitPass::emitScalarAtomicLoad(
+    llvm::Instruction* pInst,
+    ResourceDescriptor& resource,
+    CVariable* pDstAddr,
+    CVariable* pSrc,
+    bool isA64,
+    int bitWidth)
+{
+    if (pDstAddr->IsImmediate())
+    {
+        CVariable* pDstAddrCopy = m_currShader->GetNewVariable(1, ISA_TYPE_UD, IGC::EALIGN_GRF, true);
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->Copy(pDstAddrCopy, pDstAddr);
+        m_encoder->Push();
+        pDstAddr = pDstAddrCopy;
+    }
+
+    {
+        // pSrc is imm zero
+        CVariable* pSrcCopy = m_currShader->GetNewVariable(1, ISA_TYPE_UD, IGC::EALIGN_GRF, true);
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->Copy(pSrcCopy, pSrc);
+        m_encoder->Push();
+        pSrc = pSrcCopy;
+    }
+
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+    m_encoder->SetNoMask();
+
+    CVariable* atomicDst = !pInst->use_empty() ? m_currShader->GetNewVariable(
+        1,
+        ISA_TYPE_UD,
+        isA64 ? IGC::EALIGN_2GRF : IGC::EALIGN_GRF,
+        true) : nullptr;
+
+        if (isA64)
+        {
+            m_encoder->AtomicRawA64(
+                EATOMIC_OR, resource,
+                atomicDst, pDstAddr,
+                pSrc, nullptr,
+                bitWidth);
+        }
+        else
+        {
+            m_encoder->DwordAtomicRaw(
+                EATOMIC_OR, resource,
+                atomicDst, pDstAddr,
+                pSrc,
+                nullptr, bitWidth == 16);
+        }
+    m_encoder->Push();
+
+    if (!pInst->use_empty())
+    {
+        // we need to broadcast the return value
+        // ToDo: change divergence analysis to mark scalar atomic load as uniform
+        unsigned int counter = m_currShader->m_numberInstance;
+        for (unsigned int i = 0; i < counter; ++i)
+        {
+            m_encoder->SetSecondHalf(i == 1);
+            m_encoder->Copy(m_destination, atomicDst);
+            m_encoder->Push();
+        }
+    }
+}
+
 bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
 {
     if (llvm::GenIntrinsicInst * pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(pInst))
@@ -12106,7 +12179,11 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
                     atomic_op == EATOMIC_IMIN ||
                     atomic_op == EATOMIC_IMAX;
 
-                if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()))
+                // capture the special case of atomic_or with 0 (it's used to simulate atomic_load)
+                bool isOrWith0Atomic = atomic_op == EATOMIC_OR &&
+                    isa<ConstantInt>(pInst->getOperand(2)) && cast<ConstantInt>(pInst->getOperand(2))->isZero();
+
+                if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrWith0Atomic)
                     return true;
             }
         }
@@ -12212,8 +12289,16 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         e_alignment uniformAlign = isA64 ? EALIGN_2GRF : EALIGN_GRF;
         // Re-align the pointer if it's not GRF aligned.
         pDstAddr = ReAlignUniformVariable(pDstAddr, uniformAlign);
-        emitScalarAtomics(pInsn, resource, atomic_op, pDstAddr, pSrc0, isA64, bitwidth);
-        ResetVMask();
+        if (atomic_op == EATOMIC_OR)
+        {
+            // special case of atomic_load
+            emitScalarAtomicLoad(pInsn, resource, pDstAddr, pSrc0, isA64, bitwidth);
+        }
+        else
+        {
+            emitScalarAtomics(pInsn, resource, atomic_op, pDstAddr, pSrc0, isA64, bitwidth);
+            ResetVMask();
+        }
         return;
     }
 
