@@ -9882,6 +9882,11 @@ int IR_Builder::translateVISASVMAtomicInst(
 
     VISA_Exec_Size instExecSize = execSize;
     execSize = roundUpExecSize(execSize);
+    if (execSize == EXEC_SIZE_16)
+    {
+        // SVM atomics is SIMD8 only
+        execSize = EXEC_SIZE_8;
+    }
 
     unsigned op = Get_Atomic_Op(atomicOp);
 
