@@ -450,7 +450,7 @@ namespace IGC
 
         // Variable splitting facilities (if crosses 2 GRF boundary).
         bool NeedSplitting(CVariable* var, const SModifier& mod,
-            unsigned& numParts, bool isSource = false, CVariable* dstVar = nullptr) const;
+            unsigned& numParts, bool isSource = false) const;
         SModifier SplitVariable(VISA_Exec_Size fromExecSize,
             VISA_Exec_Size toExecSize,
             unsigned thePart,
