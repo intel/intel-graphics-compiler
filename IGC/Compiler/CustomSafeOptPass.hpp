@@ -99,6 +99,8 @@ namespace IGC
         void visitBinaryOperatorPropNegate(llvm::BinaryOperator& I);
         void visitBitCast(llvm::BitCastInst& BC);
 
+        void matchDp4a(llvm::BinaryOperator& I);
+
     private:
         bool psHasSideEffect;
     };

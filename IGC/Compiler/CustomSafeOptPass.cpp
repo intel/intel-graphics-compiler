@@ -733,6 +733,167 @@ void CustomSafeOptPass::visitBitCast(BitCastInst& BC)
     }
 }
 
+/*
+Search for DP4A pattern, e.g.:
+
+%14 = load i32, i32 addrspace(1)* %13, align 4 <---- c variable (accumulator)
+// Instructions to be matched:
+%conv.i.i4 = sext i8 %scalar35 to i32
+%conv.i7.i = sext i8 %scalar39 to i32
+%mul.i = mul nsw i32 %conv.i.i4, %conv.i7.i
+%conv.i6.i = sext i8 %scalar36 to i32
+%conv.i5.i = sext i8 %scalar40 to i32
+%mul4.i = mul nsw i32 %conv.i6.i, %conv.i5.i
+%add.i = add nsw i32 %mul.i, %mul4.i
+%conv.i4.i = sext i8 %scalar37 to i32
+%conv.i3.i = sext i8 %scalar41 to i32
+%mul7.i = mul nsw i32 %conv.i4.i, %conv.i3.i
+%add8.i = add nsw i32 %add.i, %mul7.i
+%conv.i2.i = sext i8 %scalar38 to i32
+%conv.i1.i = sext i8 %scalar42 to i32
+%mul11.i = mul nsw i32 %conv.i2.i, %conv.i1.i
+%add12.i = add nsw i32 %add8.i, %mul11.i
+%add13.i = add nsw i32 %14, %add12.i
+// end matched instructions
+store i32 %add13.i, i32 addrspace(1)* %18, align 4
+
+=>
+
+%14 = load i32, i32 addrspace(1)* %13, align 4
+%15 = insertelement <4 x i8> undef, i8 %scalar35, i64 0
+%16 = insertelement <4 x i8> undef, i8 %scalar39, i64 0
+%17 = insertelement <4 x i8> %15, i8 %scalar36, i64 1
+%18 = insertelement <4 x i8> %16, i8 %scalar40, i64 1
+%19 = insertelement <4 x i8> %17, i8 %scalar37, i64 2
+%20 = insertelement <4 x i8> %18, i8 %scalar41, i64 2
+%21 = insertelement <4 x i8> %19, i8 %scalar38, i64 3
+%22 = insertelement <4 x i8> %20, i8 %scalar42, i64 3
+%23 = bitcast <4 x i8> %21 to i32
+%24 = bitcast <4 x i8> %22 to i32
+%25 = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %14, i32 %23, i32 %24)
+...
+store i32 %25, i32 addrspace(1)* %29, align 4
+*/
+void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
+    using namespace llvm::PatternMatch;
+
+    if (I.getOpcode() != Instruction::Add) return;
+    CodeGenContext* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (!Ctx->platform.hasHWDp4AddSupport()) return;
+
+    static constexpr int NUM_DP4A_COMPONENTS = 4;
+
+    // Holds sext/zext instructions.
+    std::array<Instruction *, NUM_DP4A_COMPONENTS> ExtA{}, ExtB{};
+    // Holds i8 values that were multiplied.
+    std::array<Value *, NUM_DP4A_COMPONENTS> ArrA{}, ArrB{};
+    // Holds the accumulator.
+    Value* AccVal = nullptr;
+    IRBuilder<> Builder(&I);
+
+    // Note: the returned pattern from this lambda doesn't use m_ZExtOrSExt pattern on purpose -
+    // There is no way to bind to both instruction and it's arguments, so we bind to instruction and
+    // check the opcode later.
+    auto getMulPat = [&](int i) { return m_c_Mul(m_Instruction(ExtA[i]), m_Instruction(ExtB[i])); };
+    auto getAdd4Pat = [&](const auto& pat0, const auto& pat1, const auto& pat2, const auto& pat3) {
+      return m_c_Add(m_c_Add(m_c_Add(pat0, pat1), pat2), pat3);
+    };
+    auto getAdd5Pat = [&](const auto& pat0, const auto& pat1, const auto& pat2, const auto& pat3, const auto& pat4) {
+      return m_c_Add(getAdd4Pat(pat0, pat1, pat2, pat3), pat4);
+    };
+    auto PatternAccAtBeginning = getAdd5Pat(m_Value(AccVal), getMulPat(0), getMulPat(1), getMulPat(2), getMulPat(3));
+    auto PatternAccAtEnd = getAdd5Pat(getMulPat(0), getMulPat(1), getMulPat(2), getMulPat(3), m_Value(AccVal));
+    auto PatternNoAcc = getAdd4Pat(getMulPat(0), getMulPat(1), getMulPat(2), getMulPat(3));
+
+    if (!match(&I, PatternAccAtEnd) && !match(&I, PatternAccAtBeginning)) {
+      if (match(&I, PatternNoAcc)) {
+        AccVal = Builder.getInt32(0);
+      } else {
+        return;
+      }
+    }
+
+    // Check if values in A and B all have the same extension type (sext/zext) and that they come from i8 type.
+    // A and B extension types can be different.
+    auto checkExt = [](auto &range) {
+      assert((range.begin() != range.end()) &&
+             "Cannot check empty collection.");
+      const unsigned OP = range[0]->getOpcode();
+      return (OP == Instruction::SExt || OP == Instruction::ZExt) &&
+             std::all_of(range.begin(), range.end(), [&](Instruction *I) {
+               return I->getOpcode() == OP &&
+                      I->getOperand(0)->getType()->isIntegerTy(8);
+             });
+    };
+
+    bool canMatch = AccVal->getType()->isIntegerTy(32) && checkExt(ExtA) && checkExt(ExtB);
+    if (!canMatch) return;
+
+    auto AOpc = ExtA[0]->getOpcode(), BOpc = ExtB[0]->getOpcode();
+    GenISAIntrinsic::ID IntrinsicID{};
+
+    if (AOpc == BOpc) {
+      if (AOpc == Instruction::SExt) {
+        IntrinsicID = GenISAIntrinsic::GenISA_dp4a_ss;
+      } else {
+        IntrinsicID = GenISAIntrinsic::GenISA_dp4a_uu;
+      }
+    } else {
+      if (AOpc == Instruction::SExt) {
+        IntrinsicID = GenISAIntrinsic::GenISA_dp4a_su;
+      } else {
+        IntrinsicID = GenISAIntrinsic::GenISA_dp4a_us;
+      }
+    }
+
+    static_assert(ExtA.size() == ArrA.size() && ExtB.size() == ArrB.size() && ExtA.size() == NUM_DP4A_COMPONENTS, "array sizes must match!");
+    std::transform(ExtA.begin(), ExtA.end(), ArrA.begin(), [](Instruction* ExtInst) { return ExtInst->getOperand(0); });
+    std::transform(ExtB.begin(), ExtB.end(), ArrB.begin(), [](Instruction* ExtInst) { return ExtInst->getOperand(0); });
+
+    // Additional optimisation: check if the values come from an ExtractElement instruction.
+    // If this is the case, reorder the elements in the array to match the ExtractElement pattern.
+    // This way we avoid potential shufflevector instructions which cause additional mov instructions in final asm.
+    // Note: indices in ExtractElement do not have to be in range [0-3], they can be greater. We just want to have them ordered ascending.
+    auto extractElementOrderOpt = [&](std::array<Value*, NUM_DP4A_COMPONENTS> & Arr) {
+      bool CanOptOrder = true;
+      llvm::SmallPtrSet<Value*, NUM_DP4A_COMPONENTS> OriginValues;
+      std::map<int, Value*> IndexMap;
+      for (int i = 0; i < NUM_DP4A_COMPONENTS; ++i) {
+        ConstantInt* IndexVal = nullptr;
+        Value* OriginVal = nullptr;
+        auto P = m_ExtractElement(m_Value(OriginVal), m_ConstantInt(IndexVal));
+        if (!match(Arr[i], P)) {
+          CanOptOrder = false;
+          break;
+        }
+        OriginValues.insert(OriginVal);
+        IndexMap.insert({ IndexVal->getSExtValue(), Arr[i] });
+      }
+
+      if (CanOptOrder && OriginValues.size() == 1 && IndexMap.size() == NUM_DP4A_COMPONENTS) {
+        int i = 0;
+        for(auto &El : IndexMap) {
+          Arr[i++] = El.second;
+        }
+      }
+    };
+    extractElementOrderOpt(ArrA);
+    extractElementOrderOpt(ArrB);
+
+    Value* VectorA = UndefValue::get(VectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
+    Value* VectorB = UndefValue::get(VectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
+    for (int i = 0; i < NUM_DP4A_COMPONENTS; ++i) {
+      VectorA = Builder.CreateInsertElement(VectorA, ArrA[i], i);
+      VectorB = Builder.CreateInsertElement(VectorB, ArrB[i], i);
+    }
+    Value* ValA = Builder.CreateBitCast(VectorA, Builder.getInt32Ty());
+    Value* ValB = Builder.CreateBitCast(VectorB, Builder.getInt32Ty());
+
+    Function* Dp4aFun = GenISAIntrinsic::getDeclaration(I.getModule(), IntrinsicID, Builder.getInt32Ty());
+    Value* Res = Builder.CreateCall(Dp4aFun, { AccVal, ValA, ValB });
+    I.replaceAllUsesWith(Res);
+}
+
 bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator& I)
 {
     if (I.getOpcode() == Instruction::Or)
@@ -784,6 +945,8 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator& I)
 
 void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
 {
+    matchDp4a(I);
+
     // move immediate value in consecutive integer adds to the last added value.
     // this can allow more chance of doing CSE and memopt.
     //    a = b + 8

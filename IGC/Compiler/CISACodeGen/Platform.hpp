@@ -347,6 +347,9 @@ namespace IGC
             m_platformInfo.eProductFamily != IGFX_JASPERLAKE &&
             m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP);
     }
+    bool hasHWDp4AddSupport() const {
+        return m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP;
+    }
     bool useOnlyEightPatchDispatchHS() const { return false; }
     bool hasFusedEU() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
     bool supports256GRFPerThread() const { return false; }
