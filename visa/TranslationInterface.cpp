@@ -252,7 +252,7 @@ void IR_Builder::expandPow(uint8_t exsize, G4_Predicate *predOpnd, bool saturate
     // math.log tmp abs(src0)
     // mul dst tmp tmp src1
     // math.exp dst tmp
-    G4_Type mathType = src0Opnd->getType();
+    G4_Type mathType = G4_Operand::GetNonVectorImmType(src0Opnd->getType());
     G4_Declare* tmpVar = createTempVar(exsize, mathType, Any);
     G4_DstRegRegion* logDst = Create_Dst_Opnd_From_Dcl(tmpVar, 1);
     G4_Operand* logSrc = src0Opnd;
@@ -299,6 +299,9 @@ void IR_Builder::expandPow(uint8_t exsize, G4_Predicate *predOpnd, bool saturate
                 }
                 break;
             }
+            case Type_VF:
+                // ToDo: what if VF contains negative values?
+                break;
             default:
                 assert(false && "unexpected src0 type for pow");
         }
@@ -441,7 +444,7 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
     {
         //src is an immediate
         MUST_BE_TRUE(src->isImm(), "expect immediate operand");
-        G4_Declare *tmpSrc = builder.createTempVarWithNoSpill(exsize, src->getType(), Any);
+        G4_Declare *tmpSrc = builder.createTempVarWithNoSpill(exsize, G4_Operand::GetNonVectorImmType(src->getType()), Any);
         builder.Create_MOV_Inst(tmpSrc, 0, 0, exsize, nullptr, nullptr, src, true);
         return builder.Create_Src_Opnd_From_Dcl(tmpSrc, builder.getRegionStride1());
     }

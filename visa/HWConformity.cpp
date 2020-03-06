@@ -588,7 +588,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
         bool needsSrc0Mov = needsMove(0, src0_type);
         if (needsSrc0Mov)
         {
-            inst->setSrc(insertMovBefore(it, 0, src0->isImm() ? getNonVectorType(src0_type) : src0_type, bb), 0);
+            inst->setSrc(insertMovBefore(it, 0, src0->isImm() ? G4_Operand::GetNonVectorImmType(src0_type) : src0_type, bb), 0);
             src0 = inst->getSrc(0);
         }
     }
@@ -609,7 +609,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
             }
             else
             {
-                inst->setSrc(insertMovBefore(it, 1, src1->isImm() ? getNonVectorType(src1_type) : src1_type, bb), 1);
+                inst->setSrc(insertMovBefore(it, 1, src1->isImm() ? G4_Operand::GetNonVectorImmType(src1_type) : src1_type, bb), 1);
             }
             src1 = inst->getSrc(1);
         }
@@ -752,7 +752,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
 
                 if (needConstMov)
                 {
-                    G4_Type tmpType = getNonVectorType(src0->getType());
+                    G4_Type tmpType = G4_Operand::GetNonVectorImmType(src0->getType());
 
                     G4_Operand* newSrc0 = insertMovBefore(it, 0, tmpType, bb);
                     inst->setSrc(newSrc0, 0);
@@ -859,7 +859,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                 //   mov(8) TV0(0, 0)<1> : uw 0xeca86420 : uv{ Align1 }
                 //   add(8) A0(0, 0)<1> : uw &V36 + 0 TV0(0, 0)<8; 8, 1> : uw{ Align1, Q1 }
                 G4_Type type = src1->getType();
-                inst->setSrc(insertMovBefore(it, 1, getNonVectorType(type), bb), 1);
+                inst->setSrc(insertMovBefore(it, 1, G4_Operand::GetNonVectorImmType(type), bb), 1);
                 // And we swap addr expr and the new variable
                 //   add(8) A0(0, 0)<1> : uw TV0(0, 0)<8; 8, 1> : uw &V36 + 0 {Align1, Q1}
                 // The final code sequence is
@@ -872,7 +872,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
             else
             {
                 G4_Type newSrcType = inst->needsDWType() ? (IS_UNSIGNED_INT(src0->getType()) ? Type_UD : Type_D) :
-                    getNonVectorType(src0->getType());
+                    G4_Operand::GetNonVectorImmType(src0->getType());
                 inst->setSrc(insertMovBefore(it, 0, newSrcType, bb), 0);
             }
         }

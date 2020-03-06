@@ -1604,12 +1604,12 @@ static void verifyInstructionArith(
                       "mul/div does not support Q/UQ types for src%d", i);
                   break;
             case ISA_DIVM:
-                  REPORT_INSTRUCTION(options,srcType == ISA_TYPE_F || srcType == ISA_TYPE_DF,
-                      "ieee div does not support types for src%d, other than F/DF", i);
+                  REPORT_INSTRUCTION(options,srcType == ISA_TYPE_F || srcType == ISA_TYPE_DF || srcType == ISA_TYPE_VF,
+                      "ieee div does not support types for src%d, other than F/DF/VF", i);
                   break;
             case ISA_SQRTM:
-                  REPORT_INSTRUCTION(options,srcType == ISA_TYPE_F || srcType == ISA_TYPE_DF,
-                      "ieee sqrt does not support types for src%d, other than F/DF", i);
+                  REPORT_INSTRUCTION(options,srcType == ISA_TYPE_F || srcType == ISA_TYPE_DF || srcType == ISA_TYPE_VF,
+                      "ieee sqrt does not support types for src%d, other than F/DF/VF", i);
                   break;
             case ISA_ADDC:
             case ISA_SUBB:

@@ -31,23 +31,6 @@ using namespace vISA;
 
 using std::printf;
 
-G4_Type HWConformity::getNonVectorType( G4_Type srcType )
-{
-    if( srcType == Type_V )
-    {
-        return Type_W;
-    }
-    else if( srcType == Type_UV )
-    {
-        return Type_UW;
-    }
-    else if( srcType == Type_VF )
-    {
-        return Type_F;
-    }
-    return srcType;
-}
-
 uint8_t HWConformity::checkMinExecSize( G4_opcode op )
 {
     if( op == G4_dp2 ||
@@ -1514,7 +1497,7 @@ bool HWConformity::checkSrcDstOverlap( INST_LIST_ITER iter, G4_BB* bb, bool comp
             if (useTmp)
             {
                 // insert mov
-                inst->setSrc(insertMovBefore(iter, i, getNonVectorType(srcs[i]->getType()), bb), i);
+                inst->setSrc(insertMovBefore(iter, i, G4_Operand::GetNonVectorImmType(srcs[i]->getType()), bb), i);
                 srcs[i] = inst->getSrc(i);
                 // reducing exec size for new MOV
                 INST_LIST_ITER newMovIter = iter;
@@ -1549,7 +1532,7 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
     G4_INST* def_inst = NULL;
     def_inst = checkSrcDefInst(inst, def_inst, srcNum);
 
-    G4_Type tmpType = getNonVectorType(src->getType());
+    G4_Type tmpType = G4_Operand::GetNonVectorImmType(src->getType());
 
     if( def_inst && def_inst->getDst()->getType() == tmpType &&
         ( def_inst->getExecSize() == execSize ) &&

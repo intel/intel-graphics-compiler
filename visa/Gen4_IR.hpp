@@ -2303,6 +2303,21 @@ public:
     {
         return Rel_disjoint;
     }
+
+    static G4_Type GetNonVectorImmType(G4_Type type)
+    {
+        switch (type)
+        {
+            case Type_V:
+                return Type_W;
+            case Type_UV:
+                return Type_UW;
+            case Type_VF:
+                return Type_F;
+            default:
+                return type;
+        }
+    }
 };
 
 class G4_VarBase
