@@ -1017,8 +1017,12 @@ void FlowGraph::handleWait()
                 if (!sunk)
                 {
                     auto fenceInst = builder->createSLMFence();
-                    fenceInst->asSendInst()->setSendc();
-                    bb->insert(iter, fenceInst);
+                    auto sendInst = fenceInst->asSendInst();
+                    if (sendInst != NULL)
+                    {
+                        sendInst->setSendc();
+                        bb->insert(iter, fenceInst);
+                    }
                 }
                 iter = bb->erase(iter);
             }

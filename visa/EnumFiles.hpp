@@ -12,6 +12,7 @@ using namespace std;
 #include <unistd.h>
 #include <sys/param.h>
 #include <dirent.h>
+#include "secure_string.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -298,7 +299,7 @@ void dirListFiles(const char* startDir, std::list<std::string> &inputFileList)
     printf("IGA: Number of files = %d \n", count);
     for (i = 0; i<count; ++i)
     {
-        sprintf(temp, "%s%s", startDir, files[i]->d_name);
+        sprintf_s(temp, MAXPATHLEN, "%s%s", startDir, files[i]->d_name);
         printf("%s \n", temp);
         inputFileList.push_back((string)temp);
     }
