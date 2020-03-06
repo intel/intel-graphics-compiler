@@ -106,6 +106,10 @@ IGC_IR_LLVM_INTRINSIC(fshr)
 IGC_IR_LLVM_INTRINSIC(usub_sat)
 IGC_IR_LLVM_INTRINSIC(ssub_sat)
 #endif
+#if LLVM_VERSION_MAJOR >= 10
+IGC_IR_LLVM_INTRINSIC(uadd_sat)
+IGC_IR_LLVM_INTRINSIC(sadd_sat)
+#endif
 
 // LLVM instructions allowed in IGC IR
 //------------------------------------

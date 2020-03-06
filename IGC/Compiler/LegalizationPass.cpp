@@ -1619,17 +1619,122 @@ void Legalization::visitAlloca(AllocaInst& I)
 void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
 {
     m_ctx->m_instrTypes.numInsts++;
-    switch (I.getIntrinsicID())
+    IRBuilder<> Builder(&I);
+
+    auto intrinsicID = I.getIntrinsicID();
+
+    switch (intrinsicID)
     {
+#if LLVM_VERSION_MAJOR >= 9
+    case Intrinsic::usub_sat:
+    case Intrinsic::ssub_sat:
+#if LLVM_VERSION_MAJOR >= 10
+    case Intrinsic::uadd_sat:
+    case Intrinsic::sadd_sat:
+#endif
+    {
+        llvm::Intrinsic::ID OverflowIntrinID;
+        switch (I.getIntrinsicID()) {
+        case Intrinsic::usub_sat: OverflowIntrinID = Intrinsic::usub_with_overflow; break;
+        case Intrinsic::ssub_sat: OverflowIntrinID = Intrinsic::ssub_with_overflow; break;
+#if LLVM_VERSION_MAJOR >= 10
+        case Intrinsic::uadd_sat: OverflowIntrinID = Intrinsic::uadd_with_overflow; break;
+        case Intrinsic::sadd_sat: OverflowIntrinID = Intrinsic::sadd_with_overflow; break;
+#endif
+        default: assert(0 && "Incorrect intrinsic"); break;
+        }
+
+        int BitWidth = I.getType()->getIntegerBitWidth();
+        auto OverFlowIntrin = Builder.CreateIntrinsic(OverflowIntrinID,
+            { I.getArgOperand(0)->getType(), I.getArgOperand(1)->getType() },
+            { I.getArgOperand(0), I.getArgOperand(1) }
+        );
+        Value* Result = Builder.CreateExtractValue(OverFlowIntrin, (uint64_t)0);
+        Value* Overflow = Builder.CreateExtractValue(OverFlowIntrin, (uint64_t)1);
+
+        Value* Boundary = nullptr;
+        switch (I.getIntrinsicID()) {
+        case Intrinsic::usub_sat:
+            Boundary = Builder.getInt(APInt::getMinValue(BitWidth));
+            break;
+        case Intrinsic::ssub_sat: {
+            Value* isMaxOrMinOverflow = Builder.CreateICmpSLT(Builder.getIntN(BitWidth, 0), I.getArgOperand(1));
+            APInt MinVal = APInt::getSignedMinValue(BitWidth);
+            APInt MaxVal = APInt::getSignedMaxValue(BitWidth);
+            Boundary = Builder.CreateSelect(isMaxOrMinOverflow, Builder.getInt(MinVal), Builder.getInt(MaxVal));
+        }
+            break;
+#if LLVM_VERSION_MAJOR >= 10
+        case Intrinsic::uadd_sat:
+            Boundary = Builder.getInt(APInt::getMaxValue(BitWidth));
+            break;
+        case Intrinsic::sadd_sat: {
+            Value* isMaxOrMinOverflow = Builder.CreateICmpSLT(Builder.getIntN(BitWidth, 0), I.getArgOperand(1));
+            APInt MinVal = APInt::getSignedMinValue(BitWidth);
+            APInt MaxVal = APInt::getSignedMaxValue(BitWidth);
+            Boundary = Builder.CreateSelect(isMaxOrMinOverflow, Builder.getInt(MaxVal), Builder.getInt(MinVal));
+        }
+            break;
+#endif
+        default: assert(0 && "Incorrect intrinsic"); break;
+        }
+
+        Value* Saturated = Builder.CreateSelect(Overflow, Boundary, Result);
+        I.replaceAllUsesWith(Saturated);
+        I.eraseFromParent();
+        visit(*OverFlowIntrin);
+    }
+    break;
+#endif
+    case Intrinsic::sadd_with_overflow:
+    case Intrinsic::usub_with_overflow:
+    case Intrinsic::ssub_with_overflow:
     case Intrinsic::uadd_with_overflow:
     {
         Value* src0 = I.getArgOperand(0);
         Value* src1 = I.getArgOperand(1);
-        Value* res = BinaryOperator::Create(Instruction::Add, src0, src1, "", &I);
-        // Unsigned a + b overflows iff a + b < a (for an unsigned comparison)
-        Value* isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULT, res, src0, "", &I);
 
-        // llvm.uadd.with.overflow returns a struct, where the first element is the add result,
+        Value* res = nullptr;
+        Value* isOverflow = nullptr;
+
+        switch (intrinsicID)
+        {
+            case Intrinsic::uadd_with_overflow:
+                res = BinaryOperator::Create(Instruction::Add, src0, src1, "", &I);
+                // Unsigned a + b overflows if a + b < a (for an unsigned comparison)
+                isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULT, res, src0, "", &I);
+                break;
+            case Intrinsic::usub_with_overflow:
+                res = BinaryOperator::Create(Instruction::Sub, src0, src1, "", &I);
+                // Unsigned a - b overflows if a - b > a (for an unsigned comparison)
+                isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGT, res, src0, "", &I);
+            break;
+            case Intrinsic::sadd_with_overflow:
+            case Intrinsic::ssub_with_overflow:
+            {
+                Value* usrc0 = BitCastInst::CreateZExtOrBitCast(src0, src0->getType(), "", &I);
+                Value* usrc1 = BitCastInst::CreateZExtOrBitCast(src1, src1->getType(), "", &I);
+                res = BinaryOperator::Create(
+                    intrinsicID == Intrinsic::sadd_with_overflow ? Instruction::Add : Instruction::Sub,
+                    usrc0, usrc1, "", &I);
+                if (intrinsicID == Intrinsic::ssub_with_overflow)
+                {
+                    usrc1 = BinaryOperator::CreateNot(usrc1, "", &I);
+                }
+                Value* usrc0_xor_usrc1 = BinaryOperator::Create(Instruction::Xor, usrc0, usrc1, "", &I);
+                Value* res_xor_usrc0 = BinaryOperator::Create(Instruction::Xor, res, usrc0, "", &I);
+                Value* negOpt = BinaryOperator::CreateNot(usrc0_xor_usrc1, "", &I);
+                Value* andOpt = BinaryOperator::CreateAnd(negOpt, res_xor_usrc0, "", &I);
+                auto zero = ConstantInt::get(src0->getType(), 0, true);
+                // Signed a - b overflows if the sign of a and -b are the same, but diffrent from the result
+                // Signed a + b overflows if the sign of a and b are the same, but diffrent from the result
+                isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_SLT, andOpt, zero, "", &I);
+            }
+            break;
+            default: assert(0 && "Incorrect intrinsic"); break;
+        }
+
+        // llvm.x.with.overflow returns a struct, where the first element is the operation result,
         // and the second is the overflow flag.
         // Replace each extract with the correct instruction.
         for (auto U = I.user_begin(), EU = I.user_end(); U != EU; ++U)
@@ -1664,9 +1769,6 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
     case Intrinsic::assume:
         m_instructionsToRemove.push_back(&I);
         break;
-    case Intrinsic::sadd_with_overflow:
-    case Intrinsic::usub_with_overflow:
-    case Intrinsic::ssub_with_overflow:
     case Intrinsic::umul_with_overflow:
     case Intrinsic::smul_with_overflow:
         TODO("Handle the other with_overflow intrinsics");
@@ -1685,11 +1787,10 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         case llvm::Intrinsic::floor:
         case llvm::Intrinsic::ceil:
         case llvm::Intrinsic::trunc: {
-            IRBuilder<> IRB(&I);
-            Value* Val = IRB.CreateFPExt(I.getOperand(0), IRB.getFloatTy());
-            Value* Callee = Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), IID, IRB.getFloatTy());
-            Val = IRB.CreateCall(Callee, Val);
-            Val = IRB.CreateFPTrunc(Val, I.getType());
+            Value* Val = Builder.CreateFPExt(I.getOperand(0), Builder.getFloatTy());
+            Value* Callee = Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), IID, Builder.getFloatTy());
+            Val = Builder.CreateCall(Callee, Val);
+            Val = Builder.CreateFPTrunc(Val, I.getType());
             I.replaceAllUsesWith(Val);
             I.eraseFromParent();
             break;
