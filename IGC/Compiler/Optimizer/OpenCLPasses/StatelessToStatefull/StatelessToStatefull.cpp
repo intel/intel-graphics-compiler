@@ -376,10 +376,16 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
 
     // stripPointerCasts might skip addrSpaceCast, thus check if AS is still
     // the original one. Also, if base is still instruction, skip.
-    if (gep && cast<PointerType>(base->getType())->getAddressSpace() == ptrAS && !isa<Instruction>(base))
+    if (cast<PointerType>(base->getType())->getAddressSpace() == ptrAS && !isa<Instruction>(base))
     {
         if (const KernelArg * arg = getKernelArg(base))
         {
+            // not promote to stateful if GEP is null and address type is not DW-aligned
+            if (nullptr == gep && getPointeeAlign(DL, base) < 4)
+            {
+                return false;
+            }
+
             // base is the argument!
             argNumber = arg->getAssociatedArgNo();
             bool gepProducesPositivePointer = true;
