@@ -66,7 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVEntry.h"
 #include "SPIRVFunction.h"
 #include "SPIRVInstruction.h"
-#include "../SPIRVException.h"
+#include "Probe.h"
 
 namespace spv{
 
@@ -82,7 +82,8 @@ SPIRVEntry::create(Op OpCode) {
 #include "SPIRVOpCodeEnum.h"
 #undef _SPIRV_OP
   default:
-    spirv_assert(0 && "No factory the OpCode ");
+    IGC_ASSERT(0 && "No factory the OpCode ");
+    break;
   }
   return 0;
 }
@@ -133,10 +134,10 @@ SPIRVEntry::setName(const std::string& TheName) {
 
 void
 SPIRVEntry::setModule(SPIRVModule *TheModule) {
-  assert(TheModule && "Invalid module");
+  IGC_ASSERT(TheModule && "Invalid module");
   if (TheModule == Module)
     return;
-  assert(Module == NULL && "Cannot change owner of entry");
+  IGC_ASSERT(Module == NULL && "Cannot change owner of entry");
   Module = TheModule;
 }
 
@@ -146,7 +147,7 @@ SPIRVEntry::setModule(SPIRVModule *TheModule) {
 // contains the remaining part of the words for the SPIRVEntry.
 void
 SPIRVEntry::decode(std::istream &I) {
-  spirv_assert (0 && "Not implemented");
+  IGC_ASSERT (0 && "Not implemented");
 }
 
 std::vector<SPIRVValue *>
@@ -193,7 +194,7 @@ SPIRVEntry::validateValues(const std::vector<SPIRVId> &Ids)const {
 
 void
 SPIRVEntry::validateBuiltin(SPIRVWord TheSet, SPIRVWord Index)const {
-  assert(TheSet != SPIRVWORD_MAX && Index != SPIRVWORD_MAX &&
+  IGC_ASSERT(TheSet != SPIRVWORD_MAX && Index != SPIRVWORD_MAX &&
       "Invalid builtin");
 }
 
@@ -246,7 +247,7 @@ SPIRVEntry::takeLine(SPIRVEntry *E){
 
 void
 SPIRVEntry::addMemberDecorate(const SPIRVMemberDecorate *Dec){
-  assert(canHaveMemberDecorates() && MemberDecorates.find(Dec->getPair()) ==
+  IGC_ASSERT(canHaveMemberDecorates() && MemberDecorates.find(Dec->getPair()) ==
       MemberDecorates.end());
   MemberDecorates[Dec->getPair()] = Dec;
   Module->addDecorate(Dec);
@@ -305,7 +306,7 @@ SPIRVEntry::getDecorate(Decoration Kind, size_t Index) const {
   auto Range = Decorates.equal_range(Kind);
   std::set<SPIRVWord> Value;
   for (auto I = Range.first, E = Range.second; I != E; ++I) {
-    assert(Index < I->second->getLiteralCount() && "Invalid index");
+    IGC_ASSERT(Index < I->second->getLiteralCount() && "Invalid index");
     Value.insert(I->second->getLiteral(Index));
   }
   return Value;
@@ -349,7 +350,7 @@ SPIRVEntry::getLinkageType() const {
       return true;
   };
 
-  assert(hasLinkageType());
+  IGC_ASSERT(hasLinkageType());
   SPIRVWord LT = SPIRVLinkageTypeKind::LinkageTypeCount;
   if (!hasLinkageAttr(&LT))
      return SPIRVLinkageTypeKind::LinkageTypeInternal;
@@ -358,8 +359,8 @@ SPIRVEntry::getLinkageType() const {
 
 void
 SPIRVEntry::setLinkageType(SPIRVLinkageTypeKind LT) {
-  assert(isValid(LT));
-  assert(hasLinkageType());
+  IGC_ASSERT(isValid(LT));
+  IGC_ASSERT(hasLinkageType());
   addDecorate(new SPIRVDecorate(DecorationLinkageAttributes, this, LT));
 }
 
@@ -410,7 +411,7 @@ SPIRVForward *
 SPIRVAnnotationGeneric::getOrCreateTarget()const {
   SPIRVEntry *Entry = nullptr;
   bool Found = Module->exist(Target, &Entry);
-  assert((!Found || Entry->getOpCode() == OpForward) &&
+  IGC_ASSERT((!Found || Entry->getOpCode() == OpForward) &&
       "Annotations only allowed on forward");
   if (!Found)
     Entry = Module->addForward(Target, nullptr);
@@ -429,7 +430,7 @@ SPIRVName::decode(std::istream &I) {
 
 void
 SPIRVName::validate() const {
-  assert(WordCount == getSizeInWords(Str) + 2 && "Incorrect word count");
+  IGC_ASSERT(WordCount == getSizeInWords(Str) + 2 && "Incorrect word count");
 }
 
 _SPIRV_IMP_DEC2(SPIRVString, Id, Str)
@@ -442,11 +443,11 @@ SPIRVLine::decode(std::istream &I) {
 
 void
 SPIRVLine::validate() const {
-  assert(OpCode == OpLine);
-  assert(WordCount == 5);
-  assert(get<SPIRVEntry>(FileName)->getOpCode() == OpString);
-  assert(Line != SPIRVWORD_MAX);
-  assert(Column != SPIRVWORD_MAX);
+  IGC_ASSERT(OpCode == OpLine);
+  IGC_ASSERT(WordCount == 5);
+  IGC_ASSERT(get<SPIRVEntry>(FileName)->getOpCode() == OpString);
+  IGC_ASSERT(Line != SPIRVWORD_MAX);
+  IGC_ASSERT(Column != SPIRVWORD_MAX);
 }
 
 void
@@ -455,16 +456,16 @@ SPIRVNoLine::decode(std::istream &I) {
 
 void
 SPIRVNoLine::validate() const {
-    assert(OpCode == OpNoLine);
-    assert(WordCount == 1);
+    IGC_ASSERT(OpCode == OpNoLine);
+    IGC_ASSERT(WordCount == 1);
 }
 
 void
 SPIRVMemberName::validate() const {
-  assert(OpCode == OpMemberName);
-  assert(WordCount == getSizeInWords(Str) + FixedWC);
-  assert(get<SPIRVEntry>(Target)->getOpCode() == OpTypeStruct);
-  assert(MemberNumber < get<SPIRVTypeStruct>(Target)->getStructMemberCount());
+  IGC_ASSERT(OpCode == OpMemberName);
+  IGC_ASSERT(WordCount == getSizeInWords(Str) + FixedWC);
+  IGC_ASSERT(get<SPIRVEntry>(Target)->getOpCode() == OpTypeStruct);
+  IGC_ASSERT(MemberNumber < get<SPIRVTypeStruct>(Target)->getStructMemberCount());
 }
 
 SPIRVExtInstImport::SPIRVExtInstImport(SPIRVModule *TheModule, SPIRVId TheId,
@@ -482,7 +483,7 @@ SPIRVExtInstImport::decode(std::istream &I) {
 void
 SPIRVExtInstImport::validate() const {
   SPIRVEntry::validate();
-  assert(!Str.empty() && "Invalid builtin set");
+  IGC_ASSERT(!Str.empty() && "Invalid builtin set");
 }
 
 void

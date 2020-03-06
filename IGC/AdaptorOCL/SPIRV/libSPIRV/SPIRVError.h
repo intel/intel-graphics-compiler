@@ -67,7 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SPIRVUtil.h"
 #include "SPIRVDebug.h"
-#include "SPIRV/SPIRVException.h"
+#include "Probe.h"
 #include <string>
 #include <sstream>
 
@@ -143,7 +143,7 @@ SPIRVErrorLog::checkError(bool Cond, SPIRVErrorCode ErrCode,
   if (SPIRVDbgAssertOnError) {
     bildbgs() << SS.str() << '\n';
     bildbgs().flush();
-    spirv_assert (0);
+    IGC_ASSERT(0);
   }
   return Cond;
 }

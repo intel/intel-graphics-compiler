@@ -52,8 +52,6 @@ if(IGC_BUILD__SPIRV_ENABLED)
       SPIRV/libSPIRV/SPIRVValue.cpp
       SPIRV/SPIRVReader.cpp
       SPIRV/SPIRVUtil.cpp
-      SPIRV/SPIRVException.h
-      SPIRV/SPIRVException.cpp
       SPIRV/libSPIRV/SPIRV.DebugInfo.h
       SPIRV/libSPIRV/SPIRV.DebugInfofuncs.h
       SPIRV/libSPIRV/SPIRVDebugInfoExt.h

@@ -65,7 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVFunction.h"
 #include "SPIRVInstruction.h"
 #include "SPIRVStream.h"
-#include "../SPIRVException.h"
+#include "Probe.h"
 
 using namespace spv;
 
@@ -85,7 +85,7 @@ SPIRVFunctionParameter::foreachAttr(
   for (auto I = Locs.first, E = Locs.second; I != E; ++I){
     auto Attr = static_cast<SPIRVFuncParamAttrKind>(
         I->second->getLiteral(0));
-    assert(isValid(Attr));
+    IGC_ASSERT(isValid(Attr));
     Func(Attr);
   }
 }
@@ -116,7 +116,7 @@ SPIRVFunction::decode(std::istream &I) {
           continue;
       }
       else{
-          spirv_fatal_error();
+          IGC_ASSERT(0);
       }
       break;
     }
@@ -125,7 +125,8 @@ SPIRVFunction::decode(std::istream &I) {
       break;
     }
     default:
-      spirv_assert (0 && "Invalid SPIRV format");
+      IGC_ASSERT(0 && "Invalid SPIRV format");
+      break;
     }
   }
 }
@@ -134,10 +135,10 @@ SPIRVFunction::decode(std::istream &I) {
 /// Do it here instead of in BB:decode to avoid back track in input stream.
 void
 SPIRVFunction::decodeBB(SPIRVDecoder &Decoder) {
-  SPIRVBasicBlock *BB = static_cast<SPIRVBasicBlock*>(Decoder.getEntry());
-  SPIRVLine* line = nullptr;
-  SPIRVExtInst* diScope = nullptr;
-  if (BB){
+  SPIRVBasicBlock* const BB = static_cast<SPIRVBasicBlock*>(Decoder.getEntry());
+  if (nullptr != BB){
+      SPIRVLine* line = nullptr;
+      SPIRVExtInst* diScope = nullptr;
       addBasicBlock(BB);
 
       Decoder.setScope(BB);
@@ -183,12 +184,12 @@ SPIRVFunction::decodeBB(SPIRVDecoder &Decoder) {
           else if (newEntry->endsScope())
               diScope = nullptr;
           else
-              assert(false && "Non-instruction entry found");
+              IGC_ASSERT(false && "Non-instruction entry found");
       }
       Decoder.setScope(this);
   }
   else{
-      spirv_fatal_error();
+      IGC_ASSERT(0);
   }
 }
 
@@ -199,7 +200,7 @@ SPIRVFunction::foreachReturnValueAttr(
   for (auto I = Locs.first, E = Locs.second; I != E; ++I){
     auto Attr = static_cast<SPIRVFuncParamAttrKind>(
         I->second->getLiteral(0));
-    assert(isValid(Attr));
+    IGC_ASSERT(isValid(Attr));
     Func(Attr);
   }
 }

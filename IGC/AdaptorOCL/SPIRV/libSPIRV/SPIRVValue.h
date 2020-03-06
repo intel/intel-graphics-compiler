@@ -72,6 +72,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVEntry.h"
 #include "SPIRVType.h"
 #include "SPIRVDecorate.h"
+#include "Probe.h"
 
 #include <iostream>
 #include <map>
@@ -113,7 +114,7 @@ public:
 
   bool hasType()const { return !(Attrib & SPIRVEA_NOTYPE);}
   SPIRVType *getType()const {
-    assert(hasType() && "value has no type");
+    IGC_ASSERT(hasType() && "value has no type");
     return Type;
   }
   bool isVolatile()const;
@@ -128,12 +129,12 @@ public:
 
   void validate()const {
     SPIRVEntry::validate();
-    assert((!hasType() || Type) && "Invalid type");
+    IGC_ASSERT((!hasType() || Type) && "Invalid type");
   }
 
   void setType(SPIRVType *Ty) {
     Type = Ty;
-    assert(!Ty || !Ty->isTypeVoid() || OpCode == OpFunction);
+    IGC_ASSERT(!Ty || !Ty->isTypeVoid() || OpCode == OpFunction);
     if (Ty && (!Ty->isTypeVoid() || OpCode == OpFunction))
       setHasType();
     else
@@ -202,7 +203,7 @@ protected:
   }
   void validate() const {
     SPIRVValue::validate();
-    assert(NumWords >= 1 && NumWords <= 2 && "Invalid constant size");
+    IGC_ASSERT(NumWords >= 1 && NumWords <= 2 && "Invalid constant size");
   }
   void setWordCount(SPIRVWord WordCount) {
     SPIRVValue::setWordCount(WordCount);
@@ -257,7 +258,7 @@ public:
 protected:
   void validate() const {
     SPIRVConstantEmpty<OC>::validate();
-    assert(this->Type->isTypeBool() && "Invalid type");
+    IGC_ASSERT(this->Type->isTypeBool() && "Invalid type");
   }
 };
 
@@ -280,7 +281,7 @@ public:
 protected:
     void validate() const override {
         SPIRVConstantEmpty::validate();
-        assert((Type->isTypeInt() || Type->isTypeBool() || Type->isTypeFloat() ||
+        IGC_ASSERT((Type->isTypeInt() || Type->isTypeBool() || Type->isTypeFloat() ||
             Type->isTypeComposite() || Type->isTypeOpaque() ||
             Type->isTypeEvent() || Type->isTypePointer() ||
             Type->isTypeReserveId() || Type->isTypeDeviceEvent() ||
@@ -368,9 +369,9 @@ protected:
   SPIRVWord FilterMode;
   void validate() const {
     SPIRVValue::validate();
-    assert(OpCode == OC);
-    assert(WordCount == WC);
-    assert(Type->isTypeSampler());
+    IGC_ASSERT(OpCode == OC);
+    IGC_ASSERT(WordCount == WC);
+    IGC_ASSERT(Type->isTypeSampler());
   }
   _SPIRV_DEF_DEC5(Type, Id, AddrMode, Normalized, FilterMode)
 };
@@ -385,7 +386,7 @@ public:
       setType(TheTy);
   }
   SPIRVForward():SPIRVValue(OC) {
-    spirv_assert(0 && "should never be called");
+    IGC_ASSERT(0 && "should never be called");
   }
   _SPIRV_DEF_DEC1(Id)
   friend class SPIRVFunction;

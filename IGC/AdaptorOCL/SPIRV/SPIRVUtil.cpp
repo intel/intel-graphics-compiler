@@ -77,6 +77,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "libSPIRV/SPIRVInstruction.h"
 #include "SPIRVInternal.h"
 #include "Mangler/ParameterType.h"
+#include "Probe.h"
 
 namespace spv{
 
@@ -85,7 +86,7 @@ saveLLVMModule(Module *M, const std::string &OutputFile) {
   std::error_code EC;
   IGCLLVM::tool_output_file Out(OutputFile.c_str(), EC, sys::fs::F_None);
   if (EC) {
-    spirv_assert(0 && "Failed to open file");
+    IGC_ASSERT(0 && "Failed to open file");
     return;
   }
 
@@ -195,7 +196,7 @@ std::string recursive_mangle(const Type* pType)
             return "a" + utostr(numElems) + recursive_mangle(elemType);
         }
         default:
-            spirv_assert(0 && "unhandled type to mangle!");
+            IGC_ASSERT(0 && "unhandled type to mangle!");
             return "";
     }
 }
@@ -299,7 +300,7 @@ getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, st
   }
   else
   {
-    spirv_assert(0 && "Couldn't find opcode in map!");
+    IGC_ASSERT(0 && "Couldn't find opcode in map!");
   }
   return name;
 }
@@ -327,7 +328,7 @@ mutateCallInst(Module *M, CallInst *CI,
     // This means that we need to clone the old function into new one.
     // It is needed because when Clang is compiling to llvm-bc it does the same thing.
     // If we want to link with such modules, we need to make the behaviour similar.
-    assert(OldF->getNumOperands() == NewF->getNumOperands());
+    IGC_ASSERT(OldF->getNumOperands() == NewF->getNumOperands());
     ValueToValueMapTy VMap;
     llvm::SmallVector<llvm::ReturnInst*, 8> Returns;
     BasicBlock* EntryBB = BasicBlock::Create(M->getContext(), "", NewF);
@@ -339,7 +340,7 @@ mutateCallInst(Module *M, CallInst *CI,
         VMap[&*OldArgIt] = &*NewArgIt;
       }
       else {
-        assert(NewArgIt->getType()->isPointerTy());
+        IGC_ASSERT(NewArgIt->getType()->isPointerTy());
         LoadInst* Load = builder.CreateLoad(&*NewArgIt);
         VMap[&*OldArgIt] = Load;
       }

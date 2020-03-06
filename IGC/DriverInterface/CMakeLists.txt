@@ -39,7 +39,6 @@ if(IGC_BUILD__SPIRV_ENABLED)
       "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/libSPIRV/SPIRVValue.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/SPIRVReader.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/SPIRVUtil.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/SPIRV/SPIRVException.cpp"
     )
 endif(IGC_BUILD__SPIRV_ENABLED)
 

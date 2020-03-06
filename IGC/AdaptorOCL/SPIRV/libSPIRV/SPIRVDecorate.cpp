@@ -66,7 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SPIRVDecorate.h"
 #include "SPIRVValue.h"
-
+#include "Probe.h"
 
 namespace spv{
 
@@ -94,7 +94,7 @@ SPIRVDecorateGeneric::getDecorateKind()const {
 
 SPIRVWord
 SPIRVDecorateGeneric::getLiteral(size_t i) const {
-  spirv_assert(i <= Literals.size() && "Out of bounds");
+  IGC_ASSERT(i <= Literals.size() && "Out of bounds");
   return Literals[i];
 }
 
@@ -163,7 +163,7 @@ SPIRVGroupDecorate::decorateTargets() {
   for(auto &I:Targets) {
     auto Target = getOrCreate(I);
     for (auto &Dec:DecorationGroup->getDecorations()) {
-      assert(Dec->isDecorate());
+      IGC_ASSERT(Dec->isDecorate());
       Target->addDecorate(static_cast<const SPIRVDecorate *const>(Dec));
     }
   }
@@ -174,7 +174,7 @@ SPIRVGroupMemberDecorate::decorateTargets() {
   for(auto &I:Targets) {
     auto Target = getOrCreate(I);
     for (auto &Dec:DecorationGroup->getDecorations()) {
-      assert(Dec->isMemberDecorate());
+      IGC_ASSERT(Dec->isMemberDecorate());
       Target->addMemberDecorate(static_cast<const SPIRVMemberDecorate*>(Dec));
     }
   }
