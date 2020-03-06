@@ -9457,7 +9457,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
                 }
                 else
                 {
-                    WrtSize = 1 * SIZE_OWORD;
+                    WrtSize = SIZE_OWORD;
                 }
 
                 // record list of write
@@ -9633,13 +9633,9 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
                 {
                     RdSize = 2 * SIZE_OWORD;
                 }
-                else if (RmnBytes >= SIZE_OWORD)
-                {
-                    RdSize = SIZE_OWORD;
-                }
                 else
                 {
-                    RdSize = RmnBytes;
+                    RdSize = SIZE_OWORD;
                 }
 
                 CVariable* pSP = m_currShader->GetSP();
@@ -9654,7 +9650,9 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
                 // emit write address
                 CVariable* pStackOffset = m_currShader->ImmToVariable(RdBytes, ISA_TYPE_UD);
                 emitAddSP(pTempVar, pSP, pStackOffset);
-                if (RdSize >= SIZE_OWORD)
+
+                bool needRmCopy = RdSize == SIZE_OWORD && RmnBytes < SIZE_OWORD;
+                if (!needRmCopy)
                 {
                     if (is64BitSP)
                         m_encoder->OWLoadA64(Dst, pTempVar, RdSize, RdBytes);
@@ -9784,13 +9782,9 @@ void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
                 {
                     RdSize = 2 * SIZE_OWORD;
                 }
-                else if (RmnBytes >= SIZE_OWORD)
-                {
-                    RdSize = SIZE_OWORD;
-                }
                 else
                 {
-                    RdSize = RmnBytes;
+                    RdSize = SIZE_OWORD;
                 }
                 owordReads.push_back(std::make_tuple(Dst, offsetS, RdSize, RdBytes));
                 offsetS += RdSize;
@@ -9829,7 +9823,9 @@ void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
                     ISA_TYPE_W,
                     EALIGN_HWORD, false, 1);
             }
-            if (RdSize >= SIZE_OWORD)
+
+            bool needRmCopy = RdSize == SIZE_OWORD && LdDst->GetSize() < (DstOffset + RdSize);
+            if (!needRmCopy)
             {
                 if (is64bitSP)
                     m_encoder->OWLoadA64(LdDst, pTempVar, RdSize, DstOffset);
@@ -9987,7 +9983,7 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
                 }
                 else
                 {
-                    WrtSize = 1 * SIZE_OWORD;
+                    WrtSize = SIZE_OWORD;
                 }
 
                 CVariable* pSP = m_currShader->GetSP();
