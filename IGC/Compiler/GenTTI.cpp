@@ -133,11 +133,11 @@ namespace llvm {
             LoopUnrollThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold);
         }
         unsigned totalInstCountInShader = countTotalInstructions(L->getBlocks()[0]->getParent());
-        bool lowPressure = (this->ctx->m_tempCount < 64) && (totalInstCountInShader < LoopUnrollThreshold);
+        bool lowPressure = (this->ctx->m_tempCount < IGC_GET_FLAG_VALUE(SetRegisterPressureThresholdForLoopUnroll)) && (totalInstCountInShader < LoopUnrollThreshold);
         // For OCL shaders, do a two-step loop unrolling. The first
         // unrolling is simple and full, and the second runs after
         // LICM, which allows partial unrolling. Same for other APIs?
-        if (lowPressure || (ctx->type == ShaderType::OPENCL_SHADER) || (IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold)))
+        if (lowPressure || (ctx->type == ShaderType::OPENCL_SHADER))
         {
             UP.Threshold = LoopUnrollThreshold;
             UP.PartialThreshold = LoopUnrollThreshold;
@@ -145,7 +145,10 @@ namespace llvm {
         }
         else  // for high registry pressure shaders, limit the unrolling to small loops and only fully unroll
         {
-            UP.Threshold = 200;
+            if(IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure) != 0)
+                UP.Threshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
+            else
+                UP.Threshold = 200;
         }
 
 #if LLVM_VERSION_MAJOR == 4
