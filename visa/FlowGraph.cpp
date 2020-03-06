@@ -4241,9 +4241,10 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
 
         output << "\n" << "//.platform " << platformString[getGenxPlatform()];
         output << "\n" << "//.stepping " << GetSteppingString();
-        output << "\n" << "//.CISA version " << (unsigned int)major_version
+        output << "\n" << "//.vISA version " << (unsigned int)major_version
             << "." << (unsigned int)minor_version;
-        output << "\n" << "//.options " << m_options->getArgString().str();
+        output << "\n" << "//.options_string \"" << m_options->getUserArgString().str() << "\"";
+        output << "\n" << "//.full_options \"" << m_options->getFullArgString() << "\"";
         output << "\n" << "//.instCount " << asmInstCount;
         output << "\n//.RA type\t" << RATypeString[RAType];
 

@@ -489,60 +489,70 @@ void Options::setOption(vISAOptions option, const char* str)
     setOptionInternally(option, str);
 }
 
-std::stringstream& Options::getArgString()
+//
+// return full set of arguments ever set by user, either through
+// string options or the various setOptions()
+//
+std::string Options::getFullArgString()
 {
-    if (argString.str().empty())
+    std::stringstream args;
+    // Collect all user-set options.
+    // This is for igc. When igc invokes vISA, it sets options
+    // via setOption() api instead of options string, thus leave
+    // argString empty. Here, we re-generate this options strings
+    // (This is for debugging)
+    for (int i = vISA_OPTIONS_UNINIT + 1; i < vISA_NUM_OPTIONS; ++i)
     {
-        // Collect all user-set options.
-        // This is for igc. When igc invokes vISA, it sets options
-        // via setOption() api instead of options string, thus leave
-        // argString empty. Here, we re-generate this options strings
-        // (This is for debugging)
-        for (int i = vISA_OPTIONS_UNINIT + 1; i < vISA_NUM_OPTIONS; ++i)
+        vISAOptions o = (vISAOptions)i;
+        if (isOptionSetByUser(o))
         {
-            vISAOptions o = (vISAOptions)i;
-            if (isOptionSetByUser(o))
-            {
-                EntryType type = m_vISAOptions.getType(o);
-                switch (type) {
-                case ET_BOOL:
-                    if (m_vISAOptions.getBool(o) != m_vISAOptions.getDefaultBool(o))
-                    {
-                        // Boolean option means the reverse of the default!
-                        // (Probably should avoid such reverse handling)
-                        argString << m_vISAOptions.getArgStr(o) << " ";
-                    }
-                    break;
-                case ET_INT32:
-                    argString << m_vISAOptions.getArgStr(o) << " "
-                              << m_vISAOptions.getUint32(o) << " ";
-                    break;
-                case ET_INT64:
-                    argString << m_vISAOptions.getArgStr(o) << " "
-                              << m_vISAOptions.getUint64(o) << " ";
-                    break;
-                case ET_2xINT32:
-                    {
-                        uint32_t lo32, hi32;
-                        uint64_t val = m_vISAOptions.getUint64(o);
-                        lo32 = (uint32_t)val;
-                        hi32 = (uint32_t)(val >> 32);
-                        argString << m_vISAOptions.getArgStr(o) << " "
-                                  << hi32 << " " << lo32 << " ";
-                    }
-                    break;
-                case ET_CSTR:
-                    argString << m_vISAOptions.getArgStr(o) << " "
-                              << m_vISAOptions.getCstr(o) << " ";
-                    break;
-                default:
-                    assert(false && "Invalid vISA option type!");
-                    argString << "UNDEFINED ";
-                    break;
+            EntryType type = m_vISAOptions.getType(o);
+            switch (type) {
+            case ET_BOOL:
+                if (m_vISAOptions.getBool(o) != m_vISAOptions.getDefaultBool(o))
+                {
+                    // Boolean option means the reverse of the default!
+                    // (Probably should avoid such reverse handling)
+                    args << m_vISAOptions.getArgStr(o) << " ";
                 }
+                break;
+            case ET_INT32:
+                args << m_vISAOptions.getArgStr(o) << " "
+                    << m_vISAOptions.getUint32(o) << " ";
+                break;
+            case ET_INT64:
+                args << m_vISAOptions.getArgStr(o) << " "
+                    << m_vISAOptions.getUint64(o) << " ";
+                break;
+            case ET_2xINT32:
+            {
+                uint32_t lo32, hi32;
+                uint64_t val = m_vISAOptions.getUint64(o);
+                lo32 = (uint32_t)val;
+                hi32 = (uint32_t)(val >> 32);
+                args << m_vISAOptions.getArgStr(o) << " "
+                    << hi32 << " " << lo32 << " ";
+            }
+            break;
+            case ET_CSTR:
+                args << m_vISAOptions.getArgStr(o) << " "
+                    << m_vISAOptions.getCstr(o) << " ";
+                break;
+            default:
+                assert(false && "Invalid vISA option type!");
+                args << "UNDEFINED ";
+                break;
             }
         }
     }
+    return args.str();
+}
+
+//
+// this returns the options string explicitly passed in by user
+//
+std::stringstream& Options::getUserArgString()
+{
     return argString;
 }
 

@@ -166,7 +166,8 @@ public:
 
     static void showUsage(std::ostream& output);
 
-    std::stringstream& getArgString();
+    std::stringstream& getUserArgString();
+    std::string getFullArgString();
     std::string getEncoderOutputFile();
     // Debug print of options
     void dump(void) const;
