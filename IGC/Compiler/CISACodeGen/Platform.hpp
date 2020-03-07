@@ -500,9 +500,7 @@ namespace IGC
 
     bool alignBindlessSampler() const
     {
-        if (m_platformInfo.eProductFamily == IGFX_SKYLAKE)
             return true;
-        return false;
     }
 
     bool WaDisableSendSrcDstOverlap() const
