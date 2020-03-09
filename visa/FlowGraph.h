@@ -1095,8 +1095,9 @@ public:
     void removeRedundMov();
     //
     // Remove any placeholder empty blocks that could have been inserted to aid analysis.
+    // Return true if a block was removed.
     //
-    void removeEmptyBlocks();
+    bool removeEmptyBlocks();
     //
     // Add a dummy BB for multiple-exit flow graph
     //
