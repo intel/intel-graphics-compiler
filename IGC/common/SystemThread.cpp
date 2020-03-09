@@ -75,7 +75,7 @@ bool CSystemThread::CreateSystemThreadKernel(
            ( mode & SYSTEM_THREAD_MODE_CSR ) ) )
     {
         success = false;
-        IGC_ASSERT( success );
+        IGC_ASSERT(success);
     }
 
     // Create System Thread kernel program.
@@ -84,7 +84,7 @@ bool CSystemThread::CreateSystemThreadKernel(
         CGenSystemInstructionKernelProgram* pKernelProgram =
             new CGenSystemInstructionKernelProgram(mode);
         success = pKernelProgram ? true : false;
-        IGC_ASSERT( success );
+        IGC_ASSERT(success);
 
         // Allocate memory for SSystemThreadKernelOutput.
         if( success )
@@ -93,7 +93,7 @@ bool CSystemThread::CreateSystemThreadKernel(
             pSystemThreadKernelOutput = new SSystemThreadKernelOutput;
 
             success = ( pSystemThreadKernelOutput != nullptr );
-            IGC_ASSERT( success );
+            IGC_ASSERT(success);
 
             if( success )
             {
@@ -129,7 +129,7 @@ bool CSystemThread::CreateSystemThreadKernel(
 
             if( !pStartAddress )
             {
-                IGC_ASSERT( 0 );
+                IGC_ASSERT(0);
                 success = false;
             }
 
@@ -144,7 +144,7 @@ bool CSystemThread::CreateSystemThreadKernel(
         }
         else
         {
-            IGC_ASSERT( false );
+            IGC_ASSERT(0);
             success = false;
         }
         pKernelProgram->Delete( pKernelProgram );
@@ -358,7 +358,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         {
             pBuffer = LoadFile(sipFile);
         }
-        assert(pBuffer);
+        IGC_ASSERT(pBuffer);
         if (pBuffer)
         {
             m_LinearAddress = (void *)pBuffer->getBuffer().data();
@@ -367,7 +367,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     }
     else
     {
-        assert(SIPIndex < SIPKernelInfo.size() && "Invalid SIPIndex while loading");
+        IGC_ASSERT((SIPIndex < SIPKernelInfo.size()) && ("Invalid SIPIndex while loading"));
         m_LinearAddress = SIPKernelInfo[SIPIndex].first;
         m_ProgramSize = SIPKernelInfo[SIPIndex].second;
     }

@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "cmd_media_init_g8.h"
 
 #include "IGC/common/igc_regkeys.hpp"
+#include "Probe.h"
 
 namespace G6HWC
 {
@@ -46,7 +47,7 @@ __forceinline float FixedToFloat(
       const int whole,
       const int fractional )
 {
-    ICBE_ASSERT( fractional + whole <= 32 );
+    IGC_ASSERT( fractional + whole <= 32 );
 
     float value = (float)fixed / (float)( 1 << fractional );
 
@@ -132,7 +133,7 @@ void DebugSurfaceStateCommand(
         else
         {
             // Unsupported platform
-            ICBE_ASSERT(0);
+            IGC_ASSERT(0);
         }
 
         // DWORD 0
@@ -247,7 +248,7 @@ void DebugSurfaceStateCommand(
         else
         {
             // Unsupported platform
-            ICBE_ASSERT(0);
+            IGC_ASSERT(0);
         }
 
         // DWORD 1
@@ -274,7 +275,7 @@ void DebugSurfaceStateCommand(
         else
         {
             // Unsupported platform
-            ICBE_ASSERT(0);
+            IGC_ASSERT(0);
         }
 
         if (productID.eRenderCoreFamily >= IGFX_GEN7_CORE   &&
@@ -484,7 +485,7 @@ void DebugSurfaceStateCommand(
         else
         {
             // Unsupported platform
-            ICBE_ASSERT(0);
+            IGC_ASSERT(0);
         }
     }
 
@@ -529,7 +530,7 @@ void DebugInterfaceDescriptorDataCommand(
     else
     {
         // Unsupported platform
-        ICBE_ASSERT(0);
+        IGC_ASSERT(0);
     }
 
     // DWORD 0
@@ -677,7 +678,7 @@ void DebugInterfaceDescriptorDataCommand(
     else
     {
         // Unsupported platform
-        ICBE_ASSERT(0);
+        IGC_ASSERT(0);
     }
 
 #endif
@@ -799,7 +800,7 @@ void DebugSamplerStateCommand(
     else
     {
         // Unsupported platform
-        ICBE_ASSERT( 0 );
+        IGC_ASSERT(0);
     }
 
     if( productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
@@ -847,14 +848,14 @@ void DebugSamplerStateCommand(
             break;
         default:
             // Unknown flexible filter mode.
-            ICBE_ASSERT( 0 );
+            IGC_ASSERT(0);
             break;
         }
     }
     else
     {
         // Unsupported platform
-        ICBE_ASSERT( 0 );
+        IGC_ASSERT(0);
     }
 
     if( productID.eRenderCoreFamily >= IGFX_GEN7_CORE &&
@@ -926,7 +927,7 @@ void DebugSamplerStateCommand(
     else
     {
         // Unsupported platform
-        ICBE_ASSERT( 0 );
+        IGC_ASSERT(0);
     }
 #endif
 }

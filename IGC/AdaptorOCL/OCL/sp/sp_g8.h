@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "inc/common/Compiler/API/SurfaceFormats.h"
 #include "usc.h"
 #include "sp_debug.h"
+#include "Probe.h"
 
 namespace IGC
 {
@@ -252,10 +253,7 @@ inline DWORD CGen8OpenCLStateProcessor::GetSamplerStateSizeMultiplier(
     case SAMPLER_OBJECT_SAMPLE_8X8_BOOL_CENTROID:   multiplier =   0; break;
     case SAMPLER_OBJECT_SAMPLE_8X8_BOOL_SUM:        multiplier =   0; break;
     default:
-#if defined(_DEBUG)
-        ICBE_DPF( GFXDBG_CRITICAL, "Unknown sampler type: %d\n", samplerType );
-        ICBE_ASSERT( 0 && "Unknown sampler type!" );
-#endif
+        IGC_ASSERT(0 && "Unknown sampler type");
         multiplier = 0;
         break;
     }

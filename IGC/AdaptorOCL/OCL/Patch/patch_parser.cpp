@@ -33,8 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "patch_g8.h"
 #include "patch_g9.h"
 #include "visa/include/RelocationInfo.h"
-
 #include "../sp/sp_debug.h"
+#include "Probe.h"
 
 namespace iOpenCL
 {
@@ -170,7 +170,7 @@ void DebugPatchList(
                     break;
                 default:
                     type = "Unknown";
-                    ICBE_ASSERT( 0 );
+                    IGC_ASSERT(0);
                     break;
                 };
 
@@ -1561,8 +1561,7 @@ void DebugPatchList(
 
         default:
             {
-                ICBE_ASSERT( 0 );
-
+                IGC_ASSERT(0);
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "*** UNKNOWN TOKEN %08X (size = %d)***\n",
                     pHeader->Token,

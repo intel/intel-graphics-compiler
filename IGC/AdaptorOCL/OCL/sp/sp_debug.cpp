@@ -31,41 +31,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Windows.h>
 #endif
 #include <string>
-
 #include "IGC/common/igc_regkeys.hpp"
+#include "sp_debug.h"
 
 namespace iOpenCL
 {
-
-/*****************************************************************************\
-Function: DebugMessage
-\*****************************************************************************/
-void __cdecl DebugMessage( unsigned int ulDebugLevel, const char* str, ... )
-{
-    //if( str && ( ( g_DebugControl.MsgLevel & ulDebugLevel ) != GFXDBG_OFF ) )
-    {
-        va_list args;
-        va_start( args, str );
-
-#if defined(ICBE_LHDM) || defined(_WIN32)
-        if (IGC_IS_FLAG_ENABLED(DumpPatchTokens))
-        {
-          const size_t length = _vscprintf(str, args);
-          char* temp = new char[length + 1];
-
-          if (temp)
-          {
-            vsprintf_s(temp, length + 1, str, args);
-            OutputDebugStringA("INTC CBE: ");
-            OutputDebugStringA(temp);
-            delete[] temp;
-          }
-        }
-#endif
-
-        va_end( args );
-    }
-}
 
 void __cdecl DebugMessageStr(std::string& output, unsigned int ulDebugLevel, const char* fmt, ...)
 {

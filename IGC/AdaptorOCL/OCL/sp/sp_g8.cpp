@@ -63,7 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <algorithm>
 #include <cstring>
-
+#include "Probe.h"
 
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -84,7 +84,7 @@ __forceinline long FloatToLong( const float value )
 template<typename Type>
 __forceinline Type GetAlignmentOffset( const Type size, const size_t alignSize )
 {
-    ICBE_ASSERT( alignSize );
+    IGC_ASSERT(alignSize);
     Type typedAlignSize = (Type)alignSize;
     return (typedAlignSize - (size % typedAlignSize)) % typedAlignSize;
 }
@@ -96,7 +96,7 @@ __forceinline Type FloatToFixed(
     const int fractional,
     const int round = 0 )
 {
-    ICBE_ASSERT( fractional + whole <= 32 );
+    IGC_ASSERT(fractional + whole <= 32);
 
     // Optional floating point rounding precision
     value += ( round != 0 )
@@ -105,12 +105,10 @@ __forceinline Type FloatToFixed(
 
     Type fixed = (Type)FloatToLong( value * (float)( 1 << fractional ) );
 
-#ifdef _DEBUG
     DWORD mask = 0xffffffff << ( whole + fractional );
-    ICBE_ASSERT(
+    IGC_ASSERT(
         (( fixed >= 0 ) && (( fixed & mask ) == 0 )) ||
-        (( fixed <  0 ) && (( fixed & mask ) == mask )) );
-#endif
+        (( fixed <  0 ) && (( fixed & mask ) == mask )));
 
     return fixed;
 }
@@ -134,7 +132,7 @@ inline QWORD Hash( const DWORD *data, DWORD count )
     while( count-- )
     {
         a ^= *(data++);
-        //ICBE_DPF( 0xffffffff, "%8x, %8x, %8x, %8x\n", a ,hi, lo, *data );
+        // printf("%8x, %8x, %8x, %8x\n", a ,hi, lo, *data);
         HASH_JENKINS_MIX( a, hi, lo );
     }
     return (((QWORD)hi)<<32)|lo;
@@ -455,7 +453,7 @@ void CGen8OpenCLStateProcessor::CreateKernelDebugData(
     // Source -> VISA debug info
     if( kernelVisaDbg.Write( rawDebugDataVISA, rawDebugDataVISASize ) == false )
     {
-        ICBE_ASSERT( 0 );
+        IGC_ASSERT(0);
         retValue.Success = false;
     }
     kernelVisaDbg.Align( sizeof( DWORD ) );
@@ -463,7 +461,7 @@ void CGen8OpenCLStateProcessor::CreateKernelDebugData(
     // VISA -> Gen ISA debug info
     if( kernelGenIsaDbg.Write( rawDebugDataGenISA, rawDebugDataGenISASize ) == false )
     {
-        ICBE_ASSERT( 0 );
+        IGC_ASSERT(0);
         retValue.Success = false;
     }
     kernelGenIsaDbg.Align( sizeof( DWORD ) );
@@ -486,7 +484,7 @@ void CGen8OpenCLStateProcessor::CreateKernelDebugData(
         kernelDebugData.Write( kernelVisaDbg );
         kernelDebugData.Write( kernelGenIsaDbg );
 
-        ICBE_ASSERT( IsAligned( kernelDebugData.Size(),  sizeof( DWORD ) ) );
+        IGC_ASSERT(IsAligned(kernelDebugData.Size(), sizeof(DWORD)));
     }
 }
 
@@ -515,7 +513,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSystemKernel(
 {
     RETVAL retValue = g_cInitRetValue;
 
-    assert(context.Kernel.SystemKernelPresent == false);
+    IGC_ASSERT(context.Kernel.SystemKernelPresent == false);
 
     context.Kernel.SystemKernelPresent = true;
     context.Kernel.SystemKernelOffset = (DWORD)membuf.Size();
@@ -528,7 +526,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSystemKernel(
 
         if (membuf.Write(static_cast<const char*>(pKernel), size) == false)
         {
-            ICBE_ASSERT(0);
+            IGC_ASSERT(0);
             retValue.Success = false;
         }
 
@@ -569,7 +567,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateKernelHeap(
     {
         if (membuf.Write(kernelBinary, kernelBinarySize) == false)
         {
-            ICBE_ASSERT(0);
+            IGC_ASSERT(0);
             retValue.Success = false;
         }
 
@@ -719,7 +717,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
                 break;
             default:
                 // unknown image annotation type
-                ICBE_ASSERT( 0 );
+                IGC_ASSERT(0);
                 retValue.Success = false;
                 isMultiSampleImage =  false;
             }
@@ -739,7 +737,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
         else
         {
             retValue.Success = false;
-            ICBE_ASSERT( 0 );
+            IGC_ASSERT(0);
         }
     }
 
@@ -777,7 +775,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
     if (gtpinEnabled)
     {
         const unsigned numGTPinSurfaces = 2;
-        assert(GTPIN_IGC_OCL_NumberOfSurfaces() == numGTPinSurfaces);
+        IGC_ASSERT(GTPIN_IGC_OCL_NumberOfSurfaces() == numGTPinSurfaces);
         unsigned btiAssigned[numGTPinSurfaces];
 
         for ( unsigned i = 0; i < numGTPinSurfaces; i++ )
@@ -803,18 +801,11 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
                 }
             }
 
-            if (! found)
-            {
-                printf("GTPIN_IGC_OCL Error: Fail to find a free BTI for GT-Pin surface %d\n", i);
-                assert(0);
-            }
+            IGC_ASSERT(found && "GTPIN_IGC_OCL Error: Fail to find a free BTI for GT-Pin surface (i)");
         }
         const int res = GTPIN_IGC_OCL_UpdateKernelInfo(0, btiAssigned[0], btiAssigned[1]);
-        if (res)
-        {
-            printf("GTPIN_IGC_OCL Error: Failed to call GTPIN_IGC_OCL_UpdateKernelInfo\n");
-        }
-        assert(res == 0);
+
+        IGC_ASSERT((0 == res) && ("GTPIN_IGC_OCL Error: Failed to call GTPIN_IGC_OCL_UpdateKernelInfo"));
     }
 
     // Fill up the SSH with BTI offsets increasing.  The runtime currently
@@ -965,7 +956,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
                 bool    normalizedCoords = true;
                 bool    enable = true;
 
-                assert((m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == 0);
+                IGC_ASSERT((m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == 0);
 
                 retValue = AddSamplerState(
                     enable,
@@ -982,11 +973,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
                 if( !retValue.Success )
                 {
-                    ICBE_DPF( GFXDBG_CRITICAL,
-                        "Error during adding sampler state for sampler argument (index: %d, type: %d).\n",
-                        samplerAnnotation->SamplerTableIndex,
-                        samplerAnnotation->SamplerType );
-                    ICBE_ASSERT( 0 );
+                    IGC_ASSERT(0 && "Error during adding sampler state for sampler argument (index: samplerAnnotation->SamplerTableIndex, type: samplerAnnotation->SamplerType)");
                     break;
                 }
             }
@@ -1009,7 +996,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
         if( retValue.Success )
         {
-            assert(!(m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == numArgumentSamplers);
+            IGC_ASSERT(!(m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == numArgumentSamplers);
 
             // And then the inline samplers
             for (auto i = annotations.m_samplerInput.begin();
@@ -1020,11 +1007,11 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
                 context.Dynamic.SamplerOffset[samplerAnnotation->SamplerTableIndex] = (DWORD)membuf.Size( );
 
-                ICBE_ASSERT( samplerAnnotation->SamplerType == SAMPLER_OBJECT_TEXTURE );
+                IGC_ASSERT(samplerAnnotation->SamplerType == SAMPLER_OBJECT_TEXTURE);
 
                 bool enable = true;
 
-                assert((m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == 0);
+                IGC_ASSERT((m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == 0);
 
                 retValue = AddSamplerState(
                     enable,
@@ -1041,11 +1028,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
                 if( !retValue.Success )
                 {
-                    ICBE_DPF( GFXDBG_CRITICAL,
-                        "Error during adding sampler state for inline sampler (index: %d, type: %d).\n",
-                        samplerAnnotation->SamplerTableIndex,
-                        samplerAnnotation->SamplerType );
-                    ICBE_ASSERT( 0 );
+                    IGC_ASSERT(0 && "Error during adding sampler state for inline sampler (index: samplerAnnotation->SamplerTableIndex, type: samplerAnnotation->SamplerType)");
                     break;
                 }
             }
@@ -1139,7 +1122,7 @@ DWORD CGen8OpenCLStateProcessor::AllocateSamplerIndirectState(
 
     if (membuf.Write(borderColor) == false)
     {
-        ICBE_ASSERT(0);
+        IGC_ASSERT(0);
     }
 
 #if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
@@ -1638,7 +1621,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 else
                 {
                     retValue.Success = false;
-                    assert(0);
+                    IGC_ASSERT(0);
                 }
             }
             else
@@ -2518,13 +2501,13 @@ RETVAL CGen8OpenCLStateProcessor::CombineKernelBinary(
     kernelBinary.Write( surfaceStateHeap );
     kernelBinary.Write( patchList );
 
-    ICBE_ASSERT( IsAligned( kernelBinary.Size(), sizeof(DWORD) ) );
+    IGC_ASSERT( IsAligned( kernelBinary.Size(), sizeof(DWORD) ) );
 
     const char* pBuffer = kernelBinary.GetLinearPointer() + sizeof( iOpenCL::SKernelBinaryHeaderGen7 );
 
     DWORD checkSumSize = (DWORD)kernelBinary.Size() - sizeof( iOpenCL::SKernelBinaryHeaderGen7 );
 
-    ICBE_ASSERT( IsAligned( checkSumSize, sizeof(DWORD) ) );
+    IGC_ASSERT( IsAligned( checkSumSize, sizeof(DWORD) ) );
 
     QWORD hash = Hash( (const DWORD*) pBuffer, checkSumSize / sizeof(DWORD) );
 
@@ -2541,12 +2524,12 @@ RETVAL CGen8OpenCLStateProcessor::CombineKernelBinary(
         header.SurfaceStateHeapSize +
         header.PatchListSize;
 
-    ICBE_ASSERT( combinedBinarySize == checkSumSize );
+    IGC_ASSERT( combinedBinarySize == checkSumSize );
 
     const iOpenCL::SKernelBinaryHeaderGen7* pHeaderCheck =
         (const iOpenCL::SKernelBinaryHeaderGen7*)kernelBinary.GetLinearPointer();
 
-    ICBE_ASSERT( pHeaderCheck->CheckSum == ( hash & 0xFFFFFFFF ) );
+    IGC_ASSERT( pHeaderCheck->CheckSum == ( hash & 0xFFFFFFFF ) );
 
 #endif
 
@@ -2584,7 +2567,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSamplerState(
             addressModeY >= NUM_SAMPLER_TEXTURE_ADDRESS_MODES ||
             addressModeZ >= NUM_SAMPLER_TEXTURE_ADDRESS_MODES)
         {
-            ICBE_ASSERT( 0 );
+            IGC_ASSERT(0);
             retValue.Success = false;
         }
     }
@@ -2646,7 +2629,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSamplerState(
         if( membuf.Write( samplerState ) == false )
         {
             retValue.Success = false;
-            ICBE_ASSERT( 0 );
+            IGC_ASSERT(0);
         }
 
 #if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
@@ -2726,7 +2709,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSurfaceState(
 
         if( membuf.Write( surf ) == false )
         {
-            ICBE_ASSERT( 0 );
+            IGC_ASSERT(0);
             retValue.Success = false;
         }
     }
