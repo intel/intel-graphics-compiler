@@ -527,59 +527,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
-    {
-        Module* pModule = F.getParent();
-        SmallSet<Function*, 8> funcAddrSymbols;
-        for (auto& FI : pModule->getFunctionList())
-        {
-            // Create a relocation instruction for every "IndirectlyCalled" function being used in the current function
-            if (FI.hasFnAttribute("IndirectlyCalled") && FI.getNumUses() > 0)
-            {
-                for (auto it = FI.user_begin(), ie = FI.user_end(); it != ie; it++)
-                {
-                    Instruction* inst = dyn_cast<Instruction>(*it);
-                    if (inst && inst->getParent()->getParent() == &F)
-                    {
-                        funcAddrSymbols.insert(&FI);
-                        break;
-                    }
-                }
-            }
-        }
-        for (auto pFunc : funcAddrSymbols)
-        {
-            m_currShader->CreateFunctionSymbol(pFunc);
-        }
-
-        if (F.hasFnAttribute("EnableGlobalRelocation"))
-        {
-            SmallSet<GlobalVariable*, 8> globalAddrSymbols;
-            for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
-            {
-                // Create relocation instruction for global variables
-                GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
-                if (pGlobal &&
-                    pGlobal->getNumUses() > 0 &&
-                    m_moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0)
-                {
-                    for (auto it = pGlobal->user_begin(), ie = pGlobal->user_end(); it != ie; it++)
-                    {
-                        Instruction* inst = dyn_cast<Instruction>(*it);
-                        if (inst && inst->getParent()->getParent() == &F)
-                        {
-                            globalAddrSymbols.insert(pGlobal);
-                            break;
-                        }
-                    }
-                }
-            }
-            for (auto pGlobal : globalAddrSymbols)
-            {
-                m_currShader->CreateGlobalSymbol(pGlobal);
-            }
-        }
-    }
+    // Create a symbol relocation entry for each symbol used by F
+    emitSymbolRelocation(F);
 
     m_VRA->BeginFunction(&F, numLanes(m_SimdMode));
     if (!m_FGA || m_FGA->isGroupHead(&F))
@@ -9351,7 +9300,6 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
 {
     llvm::Function* F = inst->getCalledFunction();
 
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     bool isIndirectFCall = !F || F->hasFnAttribute("IndirectlyCalled");
     CVariable* ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
@@ -9378,19 +9326,21 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             Src = GetSymbol(inst->getArgOperand(i));
             argType = Arg->getType();
         }
-        else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+        else
         {
             // Indirect function call
             Value* operand = inst->getArgOperand(i);
             argType = operand->getType();
             Src = GetSymbol(operand);
-            ArgCV = m_currShader->getOrCreateArgSymbolForIndirectCall(inst, i, ctx->m_numIndirectImplicitArgs);
-        }
-        else
-        {
-            assert(0 && "Indirect Call not supported");
-        }
 
+            uint16_t nElts = numLanes(m_currShader->m_SIMDSize);
+            if (argType->isVectorTy())
+            {
+                assert(argType->getVectorElementType()->isIntegerTy() || argType->getVectorElementType()->isFloatingPointTy());
+                nElts *= (uint16_t)argType->getVectorNumElements();
+            }
+            ArgCV = m_currShader->GetNewVariable(nElts, m_currShader->GetType(argType), m_currShader->getGRFAlignment(), false, 1);
+        }
         if (Src->GetType() == ISA_TYPE_BOOL)
         {
             assert(ArgCV->GetType() == ISA_TYPE_BOOL);
@@ -9527,7 +9477,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         m_encoder->StackCall(nullptr, F, argSizeInGRF, retSizeInGRF);
         m_encoder->Push();
     }
-    else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+    else
     {
         CVariable* funcAddr = GetSymbol(inst->getCalledValue());
 
@@ -9584,10 +9534,6 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             m_encoder->Jump(loopPred, label);
             m_encoder->Push();
         }
-    }
-    else
-    {
-        assert(0 && "Indirect call not supported");
     }
 
     // Emit the return value if used.
@@ -10022,6 +9968,61 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
     // emit return
     m_encoder->StackRet(nullptr);
     m_encoder->Push();
+}
+
+void EmitPass::emitSymbolRelocation(Function& F)
+{
+    Module* pModule = F.getParent();
+
+    SmallSet<Function*, 16> funcAddrSymbols;
+    for (auto& FI : pModule->getFunctionList())
+    {
+        // Create a relocation instruction for every "IndirectlyCalled" function being used in the current function
+        if (FI.hasFnAttribute("IndirectlyCalled") && FI.getNumUses() > 0)
+        {
+            for (auto it = FI.user_begin(), ie = FI.user_end(); it != ie; it++)
+            {
+                Instruction* inst = dyn_cast<Instruction>(*it);
+                if (inst && inst->getParent()->getParent() == &F)
+                {
+                    funcAddrSymbols.insert(&FI);
+                    break;
+                }
+            }
+        }
+    }
+    for (auto pFunc : funcAddrSymbols)
+    {
+        m_currShader->CreateFunctionSymbol(pFunc);
+    }
+
+    if (F.hasFnAttribute("EnableGlobalRelocation"))
+    {
+        SmallSet<GlobalVariable*, 16> globalAddrSymbols;
+        for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
+        {
+            // Create relocation instruction for global variables
+            GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
+            if (pGlobal &&
+                pGlobal->getNumUses() > 0 &&
+                m_moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0)
+            {
+                for (auto it = pGlobal->user_begin(), ie = pGlobal->user_end(); it != ie; it++)
+                {
+                    Instruction* inst = dyn_cast<Instruction>(*it);
+                    if (inst && inst->getParent()->getParent() == &F)
+                    {
+                        globalAddrSymbols.insert(pGlobal);
+                        break;
+                    }
+                }
+            }
+        }
+        for (auto pGlobal : globalAddrSymbols)
+        {
+            m_currShader->CreateGlobalSymbol(pGlobal);
+        }
+    }
 }
 
 void EmitPass::emitStoreRawIndexed(GenIntrinsicInst* inst)

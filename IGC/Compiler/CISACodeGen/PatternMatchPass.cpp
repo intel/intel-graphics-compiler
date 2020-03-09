@@ -3082,7 +3082,7 @@ namespace IGC
         if (CallInst * callinst = dyn_cast<CallInst>(&I))
         {
             // Mark the function pointer in indirect calls as a source
-            if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) && !callinst->getCalledFunction())
+            if (!callinst->getCalledFunction())
             {
                 MarkAsSource(callinst->getCalledValue());
             }

@@ -144,6 +144,9 @@ namespace IGC
         void emitStackFuncExit(llvm::ReturnInst* inst);
         uint stackCallArgumentAlignment(CVariable* argv);
 
+        // emits the visa relocation instructions for function/global symbols
+        void emitSymbolRelocation(llvm::Function& F);
+
         void emitOutput(llvm::GenIntrinsicInst* inst);
         void emitGS_SGV(llvm::SGVIntrinsic* inst);
         void emitSampleOffset(llvm::GenIntrinsicInst* inst);

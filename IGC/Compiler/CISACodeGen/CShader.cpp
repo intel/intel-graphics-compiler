@@ -2233,63 +2233,6 @@ CVariable* CShader::getOrCreateArgumentSymbol(
     return var;
 }
 
-CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx, unsigned numImplicitArgs)
-{
-    assert(argIdx < cInst->getNumArgOperands());
-
-    CVariable* var = nullptr;
-    Value* Arg = cInst->getArgOperand(argIdx);
-
-    llvm::DenseMap<llvm::Value*, CVariable*>* pSymMap = &globalSymbolMapping;
-    auto it = pSymMap->find(Arg);
-    if (it != pSymMap->end())
-    {
-        return it->second;
-    }
-
-    unsigned numExplicitArgs = cInst->getNumArgOperands() - numImplicitArgs;
-    if (argIdx < numExplicitArgs)
-    {
-        // GetPreferredAlignment treats all arguments as kernel ones, which have
-        // predefined alignments; but this is not true for subroutines.
-        // Conservatively use GRF aligned.
-        e_alignment align = getGRFAlignment();
-        VISA_Type type = GetType(Arg->getType());
-        uint16_t nElts = numLanes(m_SIMDSize);
-        if (Arg->getType()->isVectorTy())
-        {
-            assert(Arg->getType()->getVectorElementType()->isIntegerTy() ||
-                Arg->getType()->getVectorElementType()->isFloatingPointTy());
-            nElts *= (uint16_t)Arg->getType()->getVectorNumElements();
-        }
-        var = GetNewVariable(nElts, type, align, /*isUniform*/ false, m_numberInstance);
-    }
-    else
-    {
-        // Can be mapped to the parent's implicit arg
-        Function* parentFunc = cInst->getParent()->getParent();
-        ImplicitArgs implicitArgs(*parentFunc, m_pMdUtils);
-        for (unsigned i = 0; i < implicitArgs.size(); i++)
-        {
-            ImplicitArg implictArg = implicitArgs[i];
-            auto argType = implictArg.getArgType();
-            Argument* implicitArgInFunc = implicitArgs.getImplicitArg(*parentFunc, argType);
-            if (Arg == implicitArgInFunc)
-            {
-                bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
-                var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
-                    implictArg.getVISAType(*m_DL),
-                    implictArg.getAlignType(*m_DL), isUniform,
-                    isUniform ? 1 : m_numberInstance);
-                break;
-            }
-        }
-    }
-    assert(var && "Argument not matched!");
-    pSymMap->insert(std::make_pair(Arg, var));
-    return var;
-}
-
 // Reuse a varable in the following case
 // %x = op1...
 // %y = op2 (%x, ...)
@@ -2504,12 +2447,10 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         if (isa<GlobalValue>(value))
         {
             // Function Pointer
-            bool isFunction = IGC_IS_FLAG_ENABLED(EnableFunctionPointer) &&
-                value->getType()->isPointerTy() &&
+            bool isFunction = value->getType()->isPointerTy() &&
                 value->getType()->getPointerElementType()->isFunctionTy();
             // Global Relocation
-            bool isGlobalVar = IGC_IS_FLAG_ENABLED(EnableFunctionPointer) &&
-                isa<GlobalVariable>(value) &&
+            bool isGlobalVar = isa<GlobalVariable>(value) &&
                 m_ModuleMetadata->inlineProgramScopeOffsets.count(cast<GlobalVariable>(value)) > 0;
 
             if (isFunction || isGlobalVar)

@@ -5118,24 +5118,21 @@ namespace IGC
 
         pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
-        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+        if (hasSymbolTable)
         {
-            if (hasSymbolTable)
-            {
-                CreateSymbolTable(pOutput->m_funcSymbolTable,
-                    pOutput->m_funcSymbolTableSize,
-                    pOutput->m_funcSymbolTableEntries);
-            }
-            CreateRelocationTable(pOutput->m_funcRelocationTable,
-                pOutput->m_funcRelocationTableSize,
-                pOutput->m_funcRelocationTableEntries);
+            CreateSymbolTable(pOutput->m_funcSymbolTable,
+                pOutput->m_funcSymbolTableSize,
+                pOutput->m_funcSymbolTableEntries);
+        }
+        CreateRelocationTable(pOutput->m_funcRelocationTable,
+            pOutput->m_funcRelocationTableSize,
+            pOutput->m_funcRelocationTableEntries);
 
-            if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
-            {
-                CreateFuncAttributeTable(pOutput->m_funcAttributeTable,
-                    pOutput->m_funcAttributeTableSize,
-                    pOutput->m_funcAttributeTableEntries);
-            }
+        if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
+        {
+            CreateFuncAttributeTable(pOutput->m_funcAttributeTable,
+                pOutput->m_funcAttributeTableSize,
+                pOutput->m_funcAttributeTableEntries);
         }
 
         if (jitInfo->isSpill == true)
