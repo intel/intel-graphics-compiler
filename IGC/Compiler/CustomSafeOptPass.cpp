@@ -2145,6 +2145,75 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
 }
 #endif
 
+llvm::Constant* IGC::IGCConstantFolder::CreateFAdd(llvm::Constant* C0, llvm::Constant* C1, llvm::APFloatBase::roundingMode roundingMode) const
+{
+    assert(llvm::isa<ConstantFP>(C0) && llvm::isa<ConstantFP>(C1));
+    llvm::ConstantFP* CFP0 = llvm::cast<ConstantFP>(C0);
+    llvm::ConstantFP* CFP1 = llvm::cast<ConstantFP>(C1);
+    APFloat firstOperand = CFP0->getValueAPF();
+    APFloat secondOperand = CFP1->getValueAPF();
+    APFloat::opStatus status = firstOperand.add(secondOperand, roundingMode);
+    if (status != APFloat::opInvalidOp)
+    {
+        return llvm::ConstantFP::get(C0->getContext(), firstOperand);
+    }
+    else
+    {
+        assert(0);
+        return nullptr;
+    }
+}
+
+llvm::Constant* IGC::IGCConstantFolder::CreateFMul(llvm::Constant* C0, llvm::Constant* C1, llvm::APFloatBase::roundingMode roundingMode) const
+{
+    assert(llvm::isa<ConstantFP>(C0) && llvm::isa<ConstantFP>(C1));
+    llvm::ConstantFP* CFP0 = llvm::cast<ConstantFP>(C0);
+    llvm::ConstantFP* CFP1 = llvm::cast<ConstantFP>(C1);
+    APFloat firstOperand = CFP0->getValueAPF();
+    APFloat secondOperand = CFP1->getValueAPF();
+    APFloat::opStatus status = firstOperand.multiply(secondOperand, roundingMode);
+    if (status != APFloat::opInvalidOp)
+    {
+        return llvm::ConstantFP::get(C0->getContext(), firstOperand);
+    }
+    else
+    {
+        assert(0);
+        return nullptr;
+    }
+}
+
+llvm::Constant* IGC::IGCConstantFolder::CreateFPTrunc(llvm::Constant* C0, llvm::Type* dstType, llvm::APFloatBase::roundingMode roundingMode) const
+{
+    assert(llvm::isa<ConstantFP>(C0));
+    APFloat APF = llvm::cast<ConstantFP>(C0)->getValueAPF();
+    const fltSemantics& outputSemantics = dstType->isHalfTy() ? APFloatBase::IEEEhalf() :
+        dstType->isFloatTy() ? APFloatBase::IEEEsingle() :
+        APFloatBase::IEEEdouble();
+    bool losesInfo = false;
+    APFloat::opStatus status = APF.convert(outputSemantics, roundingMode, &losesInfo);
+    if (status != APFloat::opInvalidOp)
+    {
+        return llvm::ConstantFP::get(C0->getContext(), APF);
+    }
+    else
+    {
+        assert(0);
+        return nullptr;
+    }
+}
+
+llvm::Constant* IGC::IGCConstantFolder::CreateCanonicalize(llvm::Constant* C0, bool flushDenorms /*= true*/) const
+{
+    assert(llvm::isa<ConstantFP>(C0));
+    auto APF = llvm::cast<ConstantFP>(C0)->getValueAPF();
+    if (flushDenorms && APF.isDenormal())
+    {
+        APF = APFloat::getZero(APF.getSemantics(), APF.isNegative());
+    }
+    return ConstantFP::get(C0->getContext(), APF);
+}
+
 // Register pass to igc-opt
 #define PASS_FLAG3 "igc-const-prop"
 #define PASS_DESCRIPTION3 "Custom Const-prop Pass"
@@ -2351,17 +2420,6 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
     return nullptr;
 }
 
-llvm::Constant* IGC::IGCConstantFolder::CreateCanonicalize(llvm::Constant* C0, bool flushDenorms /*= true*/) const
-{
-    assert(llvm::isa<ConstantFP>(C0));
-    auto APF = llvm::cast<ConstantFP>(C0)->getValueAPF();
-    if (flushDenorms && APF.isDenormal())
-    {
-        APF = APFloat::getZero(APF.getSemantics(), APF.isNegative());
-    }
-    return ConstantFP::get(C0->getContext(), APF);
-}
-
 Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
 {
     Constant* C = nullptr;
@@ -2371,6 +2429,7 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
         // used for GenISA_sqrt, GenISA_rsq and GenISA_ROUNDNE
         ConstantFP* C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
         EOPCODE igcop = GetOpCode(inst);
+        IGCConstantFolder folder;
 
         // special case of gen-intrinsic
         switch (igcop)
@@ -2465,18 +2524,67 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             }
         }
         break;
+        case llvm_fptrunc_rte:
+        {
+            if (C0)
+            {
+                C = folder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmNearestTiesToEven);
+            }
+        }
+        break;
+        case llvm_fptrunc_rtz:
+        {
+            if (C0)
+            {
+                C = folder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardZero);
+            }
+        }
+        break;
+        case llvm_fptrunc_rtp:
+        {
+            if (C0)
+            {
+                C = folder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardPositive);
+            }
+        }
+        break;
+        case llvm_fptrunc_rtn:
+        {
+            if (C0)
+            {
+                C = folder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardNegative);
+            }
+        }
+        break;
+        case llvm_fadd_rtz:
+        {
+            Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
+            if (C0 && C1)
+            {
+                C = folder.CreateFAdd(C0, C1, llvm::APFloatBase::rmTowardZero);
+            }
+        }
+        break;
+        case llvm_fmul_rtz:
+        {
+            Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
+            if (C0 && C1)
+            {
+                C = folder.CreateFMul(C0, C1, llvm::APFloatBase::rmTowardZero);
+            }
+        }
+        break;
         case llvm_canonicalize:
         {
             // If the instruction should be emitted anyway, then remove the condition.
             // Please, be aware of the fact that clients can understand the term canonical FP value in other way.
             if (C0)
             {
-                IGCConstantFolder constantFolder;
                 CodeGenContext* pCodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
                 bool flushVal = pCodeGenContext->m_floatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
                 flushVal = flushVal || (pCodeGenContext->m_floatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
                 flushVal = flushVal || (pCodeGenContext->m_floatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
-                C = constantFolder.CreateCanonicalize(C0, flushVal);
+                C = folder.CreateCanonicalize(C0, flushVal);
             }
         }
         break;
