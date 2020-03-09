@@ -39,12 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-    struct ConstInstrCBLoads
-    {
-        bool isConst;
-        std::map<llvm::Value*, IGC::ConstantAddress> CBloads;
-    };
-
     class FindInterestingConstants : public llvm::FunctionPass, public llvm::InstVisitor<FindInterestingConstants>
     {
     public:
