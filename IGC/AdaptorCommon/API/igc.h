@@ -43,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include <string>
+#include "../IGC/Compiler/CodeGenPublicEnums.h"
 // TODO: add all external declarations so that external projects only need
 // to include this file only.
 
@@ -72,11 +73,14 @@ typedef unsigned short CG_CTX_STATS_t;
 
 // shader stat for opt customization
 typedef struct {
-    uint32_t        m_tempCount;
-    uint32_t        m_sampler;
-    uint32_t        m_inputCount;
-    uint32_t        m_dxbcCount;
-    uint32_t        m_ConstantBufferCount;
+    uint32_t         m_tempCount;
+    uint32_t         m_sampler;
+    uint32_t         m_inputCount;
+    uint32_t         m_dxbcCount;
+    uint32_t         m_ConstantBufferCount;
+    IGC::Float_DenormMode m_floatDenormMode16;
+    IGC::Float_DenormMode m_floatDenormMode32;
+    IGC::Float_DenormMode m_floatDenormMode64;
 } SHADER_STATS_t;
 
 typedef struct {
