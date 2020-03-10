@@ -878,10 +878,10 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, V
     unsigned madmInstOpt = 0;
     uint8_t instExecSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     uint8_t element_size = 8; // element_size is changed according to insstExecSize
-    uint8_t exsize = 8; // exsize is a constant and never changed
+    uint8_t exsize = getNativeExecSize(); // exsize is a constant and never changed
     unsigned int loopCount = 1;
-    instOpt |= Get_Gen4_Emask(emask, 8); // for those execution size: element_size before the loop
-    madmInstOpt |= Get_Gen4_Emask(emask, 8); // only used in the loop
+    instOpt |= Get_Gen4_Emask(emask, exsize); // for those execution size: element_size before the loop
+    madmInstOpt |= Get_Gen4_Emask(emask, exsize); // only used in the loop
     const RegionDesc *srcRegionDesc = getRegionStride1();
 
     G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
@@ -889,16 +889,16 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, V
     int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_1 = createImm(float(1.0));
-    if ( instExecSize <= 8 )
+    if (instExecSize <= exsize)
     {
-        element_size = 8;
+        element_size = exsize;
         loopCount = 1;
     }
     else
     {
         element_size = instExecSize;
         instOpt = Get_Gen4_Emask(emask, instExecSize);
-        loopCount = instExecSize / 8;
+        loopCount = instExecSize / exsize;
     }
 
     // pred and conModifier
@@ -918,8 +918,8 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, V
     G4_Declare *regCR0  = createTempVarWithNoSpill( 1, Type_UD, Any );
 
     // 0.0:f and 1.0:f constants
-    G4_Declare *t2 = getImmDcl(flt_constant_0, 8);
-    G4_Declare *t5 = getImmDcl(flt_constant_1, 8);
+    G4_Declare *t2 = getImmDcl(flt_constant_0, exsize);
+    G4_Declare *t5 = getImmDcl(flt_constant_1, exsize);
 
     inst = createPseudoKills({ t1, t4, t6, t8, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
 
@@ -1070,7 +1070,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, V
 
         // (-f0.1) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
         G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-        inst = createIf(predicateFlagReg, 8, instOpt);
+        inst = createIf(predicateFlagReg, exsize, instOpt);
 
         // madm (8) r9.acc3 r2.noacc r6.noacc r8.acc2 {Align16, Q1/Q2}
         G4_SrcRegRegion *t2SrcOpnd = createSrcRegRegion(tsrc2);
@@ -1143,7 +1143,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, V
         if (!hasDefaultRoundDenorm)
         {
             // else (8) k0__AUTO_GENERATED_ELSE_LABEL__1 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
-            inst = createElse(8, instOpt);
+            inst = createElse(exsize, instOpt);
 
             // restore cr0.0: mov (1) cr0.0<1>:ud r116.2<0;1,0>:ud {NoMask}
             inst = createMov(1, createDstRegRegion(regDstCR0),
@@ -1151,7 +1151,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, V
         }
 
         // endif (8) {Q1/Q2}
-        inst = createEndif(8, instOpt);
+        inst = createEndif(exsize, instOpt);
     };
 
     // make final copy to dst
@@ -1179,25 +1179,25 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, VIS
     unsigned madmInstOpt = 0;
     uint8_t instExecSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     uint8_t element_size = 8; // element_size is dynamic, changed according to instExecSize
-    const uint8_t exsize = 8; // // exsize is a constant and never changed
+    const uint8_t exsize = getNativeExecSize(); // // exsize is a constant and never changed
     unsigned int loopCount = 1;
-    instOpt |= Get_Gen4_Emask(emask, 8); // for those insts of execution size of element_size
+    instOpt |= Get_Gen4_Emask(emask, exsize); // for those insts of execution size of element_size
     const RegionDesc *srcRegionDesc = getRegionStride1();
     G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
 
     int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_05 = createImm(float(0.5));
-    if (instExecSize <= 8)
+    if (instExecSize <= exsize)
     {
-        element_size = 8;
+        element_size = exsize;
         loopCount = 1;
     }
     else
     {
         element_size = instExecSize;
         instOpt = Get_Gen4_Emask(emask, instExecSize);
-        loopCount = instExecSize / 8;
+        loopCount = instExecSize / exsize;
     }
 
     // pred and conModifier
@@ -1215,8 +1215,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, VIS
     G4_Declare *regCR0  = createTempVarWithNoSpill( 1, Type_UD, Any );
 
     // 0.0:f and 0.5:f constants
-    G4_Declare* t0 = getImmDcl(flt_constant_0, 8);
-    G4_Declare *t8 = getImmDcl(flt_constant_05, 8);
+    G4_Declare* t0 = getImmDcl(flt_constant_0, exsize);
+    G4_Declare *t8 = getImmDcl(flt_constant_05, exsize);
 
     inst = createPseudoKills ({ t6, t7, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
 
@@ -1334,7 +1334,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, VIS
 
         // (-f1.0) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_IF_LABEL__0 {Q1/Q2}
         G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-        inst = createIf(predicateFlagReg, 8, instOpt);
+        inst = createIf(predicateFlagReg, exsize, instOpt);
 
 
         //madm (8) r9.acc3 r0.noacc r8.noacc r7.acc2 {Aligned16, Q1/Q2}
@@ -1429,16 +1429,16 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, VIS
 
         if (!hasDefaultRoundDenorm)
         {
-            // else (8) k0__AUTO_GENERATED_ELSE_LABEL__1 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
-            inst = createElse(8, instOpt);
+            // else (exsize) k0__AUTO_GENERATED_ELSE_LABEL__1 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
+            inst = createElse(exsize, instOpt);
 
             // restore cr0.0: mov (1) cr0.0<1>:ud r116.2<0;1,0>:ud {NoMask}
             inst = createMov(1, createDstRegRegion(regDstCR0),
                 Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar()), InstOpt_WriteEnable, true);
         }
 
-        // endif (8) {Q1/Q2}
-        inst = createEndif(8, instOpt);
+        // endif (exsize) {Q1/Q2}
+        inst = createEndif(exsize, instOpt);
     };
 
     // make final copy to dst
