@@ -2703,6 +2703,27 @@ namespace IGC
 
     void CEncoder::AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1)
     {
+        if (IGC_IS_FLAG_ENABLED(InitializeAddressRegistersBeforeUse) &&
+            !dst->IsUniform() &&
+            !m_encoderState.m_noMask)
+        {
+            m_encoderState.m_noMask = true;
+            VISA_VectorOpnd* srcOpnd = nullptr;
+            VISA_VectorOpnd* dstOpnd = nullptr;
+            const DWORD zero = 0;
+            V(vKernel->CreateVISAImmediate(srcOpnd, &zero, ISA_TYPE_UW));
+            V(vKernel->CreateVISAAddressDstOperand(dstOpnd, dst->visaAddrVariable, 0));
+            V(vKernel->AppendVISADataMovementInst(
+                ISA_MOV,
+                nullptr,
+                false,
+                GetAluEMask(dst),
+                visaExecSize(m_encoderState.m_simdSize),
+                dstOpnd,
+                srcOpnd));
+            m_encoderState.m_noMask = false;
+        }
+
         if (dst->IsUniform())
         {
             m_encoderState.m_simdSize = SIMDMode::SIMD1;
