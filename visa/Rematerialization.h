@@ -302,11 +302,6 @@ namespace vISA
             {
                 dcl->resetSpillFlag();
             }
-
-            if (kernel.fg.removeEmptyBlocks())
-            {
-                kernel.fg.reassignBlockIDs();
-            }
         }
 
         bool getChangesMade() { return IRChanged; }

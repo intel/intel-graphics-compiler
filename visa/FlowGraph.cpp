@@ -2312,10 +2312,9 @@ void FlowGraph::removeRedundMov()
 //
 // Remove any placeholder empty blocks that could have been inserted to aid analysis
 //
-bool FlowGraph::removeEmptyBlocks()
+void FlowGraph::removeEmptyBlocks()
 {
     bool changed = true;
-    auto oldBBSize = BBs.size();
 
     while (changed)
     {
@@ -2328,22 +2327,19 @@ bool FlowGraph::removeEmptyBlocks()
             // The removal candidates will have a unique successor and a single label
             // starting with LABEL__EMPTYBB as the only instruction besides a JMP.
             //
-            if (bb->size() >= 0 && bb->size() < 3)
+            if (bb->size() > 0 && bb->size() < 3)
             {
                 INST_LIST::iterator removedBlockInst = bb->begin();
 
-                if (removedBlockInst != bb->end())
+                if ((*removedBlockInst)->isLabel() == false ||
+                    strncmp((*removedBlockInst)->getLabelStr(),
+                        "LABEL__EMPTYBB", 14) != 0)
                 {
-                    if ((*removedBlockInst)->isLabel() == false ||
-                        strncmp((*removedBlockInst)->getLabelStr(),
-                            "LABEL__EMPTYBB", 14) != 0)
-                    {
-                        ++it;
-                        continue;
-                    }
-
-                    ++removedBlockInst;
+                    ++it;
+                    continue;
                 }
+
+                ++removedBlockInst;
 
                 if (removedBlockInst != bb->end())
                 {
@@ -2440,7 +2436,6 @@ bool FlowGraph::removeEmptyBlocks()
             }
         }
     }
-    return oldBBSize != BBs.size();
 }
 
 //
