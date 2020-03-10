@@ -30,6 +30,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "utility.h"
 #include <string.h>
 #include "CpuUtil.h"
+
+#if !defined ( _MSC_VER )
+#include "inc/common/secure_mem.h"
+#endif
+
 #if defined(_WIN32)
     #include <basetsd.h>
     #if defined ( _WIN64 ) && defined ( _In_ )
@@ -246,9 +251,9 @@ Description:
 inline void MemCopy( void* dst, const void* src, const size_t bytes )
 {
 #if defined ( _MSC_VER )
-    UINT8*          pDst8 = reinterpret_cast<UINT8*>( dst );
+    UINT8*            pDst8 = reinterpret_cast<UINT8*>( dst );
     const UINT8*    pSrc8 = reinterpret_cast<const UINT8*>( src );
-    size_t          bytesRemaining = bytes;
+    size_t            bytesRemaining = bytes;
 
     // handle invalid cases
     if( bytesRemaining == 0 )
@@ -282,9 +287,9 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
         *reinterpret_cast<UINT32*>( pDst8 ) = *reinterpret_cast<const UINT32*>( pSrc8 );
         return;
     }
-    
+
     // align destination to 4 byte boundary if size is > 8 bytes
-    if( bytesRemaining > 8 && 
+    if( bytesRemaining > 8 &&
         reinterpret_cast<UINT_PTR>( pDst8 ) & 0x3 )
     {
         // check for shift by 1
@@ -311,7 +316,7 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
     // handle sizes <= 64 bytes as series of 4 byte moves
     if( bytesRemaining <= CACHE_LINE_SIZE )
     {
-        const size_t ptrAdvance = bytesRemaining & ~0x3; // TODO: Need to see if we can mimic the jump table 
+        const size_t ptrAdvance = bytesRemaining & ~0x3; // TODO: Need to see if we can mimic the jump table
 
         pDst8 += ptrAdvance;
         pSrc8 += ptrAdvance;
@@ -400,7 +405,7 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
             bytesRemaining -= alignSize;
         }
 
-        // if the size is greater than 1/2 largest cache 
+        // if the size is greater than 1/2 largest cache
         if( bytesRemaining > MIN_STREAM_SIZE )
         {
             while( bytesRemaining >= 128 )
@@ -462,7 +467,7 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
             bytesRemaining -= ptrAdvance;
         }
 
-        // size is less than 1/2 the largest cache, copy either fully aligned or partially aligned 
+        // size is less than 1/2 the largest cache, copy either fully aligned or partially aligned
         else
         {
             const size_t alignSrc16 = reinterpret_cast<UINT_PTR>( pSrc8 ) & 0xF;
@@ -633,7 +638,7 @@ inline void MemCopy( void* dst, const void* src, const size_t bytes )
     }
 #else // #if defined ( _MSC_VER )
     // Linux projects do not support standard types or memcpy_s
-    ::memcpy(dst, src, bytes);
+    ::memcpy_s(dst, bytes, src, bytes);
 #endif
 }
 
@@ -797,7 +802,7 @@ inline void MemCopyWC( void* dst, const void* src, const size_t bytes )
     }
 #else // #if defined ( _MSC_VER )
     // Linux projects do not support standard types or memcpy_s
-    ::memcpy(dst, src, bytes);
+    ::memcpy_s(dst, bytes, src, bytes);
 #endif
 }
 
@@ -857,11 +862,7 @@ inline void ScalarSwapBytes(
         BYTE*               bDst = reinterpret_cast<BYTE*>(*dst);
         const BYTE*         bSrc = reinterpret_cast<const BYTE*>(*src);
 
-#if defined ( _MSC_VER )
         ::memcpy_s(bDst, byteCount, bSrc, byteCount);
-#else
-        ::memcpy(bDst, bSrc, byteCount);
-#endif
 
         *src = reinterpret_cast<const __m128i*>(bSrc + byteCount);
         *dst = reinterpret_cast<__m128i*>(bDst + byteCount);

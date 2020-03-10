@@ -33,6 +33,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #   include <intrin.h>
 #endif
 
+#if !defined(_WIN32)
+#   include "../../inc/common/secure_mem.h"
+#   include "../../inc/common/secure_string.h"
+#endif
+
 namespace iSTD
 {
 
@@ -285,7 +290,7 @@ MACRO: MEMCPY
 #define  MEMCPY( dst, size, src, args ) memcpy( (dst), (src), (args) )
 #elif defined(ISTDLIB_KMD) || !defined(_MSC_VER)
 #define MEMCPY( dst, size, src, args ) memcpy( (dst), (src), (args) )
-#else 
+#else
 #define MEMCPY( dst, size, src, args ) memcpy_s( (dst), (size), (src), (args) )
 #endif
 #endif
@@ -704,7 +709,7 @@ Description:
 inline DWORD Log2( const DWORD value )
 {
     ASSERT( IsPowerOfTwo(value) );
-    
+
     DWORD power2 = 0;
     while( value && value != (DWORD)BIT(power2) )
     {
@@ -911,7 +916,7 @@ inline bool MemCompare( const void* dst, const void* src )
             }
 
             pSrc    = reinterpret_cast<const UINT64*>(bSrc);
-            pDst    = reinterpret_cast<const UINT64*>(bDst);     
+            pDst    = reinterpret_cast<const UINT64*>(bDst);
         }
     }
 #endif
@@ -1049,8 +1054,8 @@ Description:
     Jenkins 96-bit mixing function with 32-bit feedback-loop and 64-bit state.
 
     All magic values are DWORDs of SHA2-256 mixing data:
-    0x428a2f98 0x71374491 0xb5c0fbcf 0xe9b5dba5 
-    0x3956c25b 0x59f111f1 0x923f82a4 0xab1c5ed5 
+    0x428a2f98 0x71374491 0xb5c0fbcf 0xe9b5dba5
+    0x3956c25b 0x59f111f1 0x923f82a4 0xab1c5ed5
 
     Could be speed-up by processing 2 or 3 DWORDs at time.
 
@@ -1070,7 +1075,7 @@ Description:
 
 inline QWORD Hash( const DWORD *data, DWORD count )
 {
-    DWORD   a = 0x428a2f98, hi = 0x71374491, lo = 0xb5c0fbcf; 
+    DWORD   a = 0x428a2f98, hi = 0x71374491, lo = 0xb5c0fbcf;
     while( count-- )
     {
         a ^= *(data++);
