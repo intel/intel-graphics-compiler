@@ -381,7 +381,7 @@
 
     bool needResetA0forVxHA0() const
     {
-        return getGenxPlatform() >= GENX_TGLLP;
+        return getGenxPlatform() >= GENX_ICLLP;
     }
 
     unsigned getCoIssueUints() const

@@ -6923,7 +6923,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         if (builder.needResetA0forVxHA0())
         {
-            // reset a0 to 0 at the beginning of a shader. TGL WA
+            // reset a0 to 0 at the beginning of a shader.
             resetA0();
         }
 
