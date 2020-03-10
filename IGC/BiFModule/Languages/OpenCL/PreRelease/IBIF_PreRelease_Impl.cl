@@ -44,4 +44,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //*****************************************************************************/
 //#include "IBiF_Image_Atomics.cl"
 
+//*****************************************************************************/
+// Bit Instructions - Extension
+//*****************************************************************************/
+#include "IBiF_Bit_Instructions.cl"
+
 
