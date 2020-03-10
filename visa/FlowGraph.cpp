@@ -822,10 +822,10 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         pKernel->dumpDotFile("afterRemoveRedundantLabels");
     }
 
-    // Ensure each block other than entry starts with a label.
+    // Ensure each block starts with a label.
     for (auto bb : BBs)
     {
-        if (bb != getEntryBB() && !bb->empty())
+        if (!bb->empty())
         {
             G4_INST *inst = bb->front();
             if (inst->isLabel())
