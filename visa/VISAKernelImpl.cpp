@@ -221,7 +221,6 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     {
         bb->removeIntrinsics(Intrinsic::MemFence);
     }
-
     if (m_builder->hasSWSB())
     {
         if (!getOptions()->getOption(vISA_forceDebugSWSB))
@@ -1151,7 +1150,12 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             std::string str((const char *)valueBuffer);
             if (m_options->getOption(vISA_dumpToCurrentDir))
             {
-                auto found = str.find_last_of(DIR_SEPARATOR);
+                auto found = str.find_last_of(DIR_WIN32_SEPARATOR);
+                if (found == string::npos)
+                {
+                    found = str.find_last_of(DIR_UNIX_SEPARATOR);
+                }
+
                 if (found != string::npos)
                 {
                     str = str.substr(found + 1);

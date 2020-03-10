@@ -44,11 +44,8 @@ extern "C"
 #include <string.h>
 #endif
 
-#ifdef _WIN32
-#define DIR_SEPARATOR   "\\"
-#else
-#define DIR_SEPARATOR   "/"
-#endif
+#define DIR_WIN32_SEPARATOR   "\\"
+#define DIR_UNIX_SEPARATOR   "/"
 
 /* declspecs */
 #ifdef _WIN32
