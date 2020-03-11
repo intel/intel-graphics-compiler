@@ -7825,7 +7825,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_uitof_rtn:
     case GenISAIntrinsic::GenISA_uitof_rtp:
     case GenISAIntrinsic::GenISA_uitof_rtz:
-    case GenISAIntrinsic::GenISA_ftof_rte:
     case GenISAIntrinsic::GenISA_ftof_rtn:
     case GenISAIntrinsic::GenISA_ftof_rtp:
     case GenISAIntrinsic::GenISA_ftof_rtz:
@@ -13913,9 +13912,6 @@ ERoundingMode EmitPass::GetRoundingMode_FP(Instruction* inst)
         case GenISAIntrinsic::GenISA_itof_rtp:
         case GenISAIntrinsic::GenISA_uitof_rtp:
             RM = ERoundingMode::ROUND_TO_POSITIVE;
-            break;
-        case GenISAIntrinsic::GenISA_ftof_rte:
-            RM = ERoundingMode::ROUND_TO_NEAREST_EVEN;
             break;
         default:
             break;
