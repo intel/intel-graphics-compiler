@@ -143,7 +143,7 @@ SPIRVErrorLog::checkError(bool Cond, SPIRVErrorCode ErrCode,
   if (SPIRVDbgAssertOnError) {
     bildbgs() << SS.str() << '\n';
     bildbgs().flush();
-    IGC_ASSERT(0);
+    IGC_ASSERT_EXIT(0);
   }
   return Cond;
 }

@@ -82,7 +82,7 @@ SPIRVEntry::create(Op OpCode) {
 #include "SPIRVOpCodeEnum.h"
 #undef _SPIRV_OP
   default:
-    IGC_ASSERT(0 && "No factory the OpCode ");
+    IGC_ASSERT_EXIT(0 && "No factory the OpCode ");
     break;
   }
   return 0;
@@ -147,7 +147,7 @@ SPIRVEntry::setModule(SPIRVModule *TheModule) {
 // contains the remaining part of the words for the SPIRVEntry.
 void
 SPIRVEntry::decode(std::istream &I) {
-  IGC_ASSERT (0 && "Not implemented");
+  IGC_ASSERT_EXIT(0 && "Not implemented");
 }
 
 std::vector<SPIRVValue *>

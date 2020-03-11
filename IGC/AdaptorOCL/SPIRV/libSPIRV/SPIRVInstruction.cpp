@@ -150,10 +150,10 @@ void SPIRVFunctionPointerINTEL::validate() const {
 }
 
 //Each instruction should implement this function
-std::vector<SPIRVValue *>
+std::vector<SPIRVValue*>
 SPIRVInstruction::getOperands() {
-  std::vector<SPIRVValue *> Empty;
-  IGC_ASSERT(0 && "not supported");
+  std::vector<SPIRVValue*> Empty;
+  IGC_ASSERT_EXIT(0 && "not supported");
   return Empty;
 }
 

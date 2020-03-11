@@ -116,7 +116,7 @@ SPIRVFunction::decode(std::istream &I) {
           continue;
       }
       else{
-          IGC_ASSERT(0);
+          IGC_ASSERT_EXIT(0);
       }
       break;
     }
@@ -125,7 +125,7 @@ SPIRVFunction::decode(std::istream &I) {
       break;
     }
     default:
-      IGC_ASSERT(0 && "Invalid SPIRV format");
+      IGC_ASSERT_EXIT(0 && "Invalid SPIRV format");
       break;
     }
   }
@@ -189,7 +189,7 @@ SPIRVFunction::decodeBB(SPIRVDecoder &Decoder) {
       Decoder.setScope(this);
   }
   else{
-      IGC_ASSERT(0);
+      IGC_ASSERT_EXIT(0);
   }
 }
 

@@ -441,7 +441,7 @@ public:
   SPIRVValue *getInitializer() const {
     if (Initializer.empty())
       return nullptr;
-    IGC_ASSERT(Initializer.size() == 1);
+    IGC_ASSERT_EXIT(Initializer.size() == 1);
     return getValue(Initializer[0]);
   }
   bool isConstant() const {
@@ -609,7 +609,7 @@ protected:
       IGC_ASSERT((op1Ty->getIntegerBitWidth() == op2Ty->getIntegerBitWidth()) &&
           "Inconsistent BitWidth");
     } else {
-      IGC_ASSERT(0 && "Invalid op code!");
+      IGC_ASSERT_EXIT(0 && "Invalid op code!");
     }
   }
 };
@@ -1231,7 +1231,7 @@ public:
         getDecoder(I) >> ExtOpDbgInfo;
         break;
     default:
-      IGC_ASSERT(0 && "not supported");
+      IGC_ASSERT_EXIT(0 && "not supported");
       getDecoder(I) >> ExtOp;
       break;
     }

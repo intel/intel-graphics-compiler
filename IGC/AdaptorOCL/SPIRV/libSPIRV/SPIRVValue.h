@@ -386,7 +386,7 @@ public:
       setType(TheTy);
   }
   SPIRVForward():SPIRVValue(OC) {
-    IGC_ASSERT(0 && "should never be called");
+    IGC_ASSERT_EXIT(0 && "should never be called");
   }
   _SPIRV_DEF_DEC1(Id)
   friend class SPIRVFunction;

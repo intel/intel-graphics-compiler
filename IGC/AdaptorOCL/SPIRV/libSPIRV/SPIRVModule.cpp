@@ -63,10 +63,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 //===----------------------------------------------------------------------===//
 
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/Support/ErrorHandling.h>
-#include "common/LLVMWarningsPop.hpp"
-
 #include "SPIRVModule.h"
 #include "SPIRVDebug.h"
 #include "SPIRVDecorate.h"
@@ -126,7 +122,7 @@ public:
       return false;
   }
   uint64_t getSpecConstant(SPIRVWord spec_id) override {
-    IGC_ASSERT(isSpecConstant(spec_id) && "Specialization constant was not specialized!");
+    IGC_ASSERT_EXIT(isSpecConstant(spec_id) && "Specialization constant was not specialized!");
     return SCMap->at(spec_id);
   }
   void setSpecConstantMap(SPIRVSpecConstantMap *specConstants) override { SCMap = specConstants; }
@@ -152,7 +148,7 @@ public:
     auto Loc = EntryPointVec.find(EM);
     if (Loc == EntryPointVec.end())
       return nullptr;
-    IGC_ASSERT(I < Loc->second.size());
+    IGC_ASSERT_EXIT(I < Loc->second.size());
     return get<SPIRVFunction>(Loc->second[I]);
   }
   unsigned getNumFunctions() const override { return FuncVec.size();}
@@ -495,7 +491,7 @@ SPIRVEntry *
 SPIRVModuleImpl::getEntry(SPIRVId Id) const {
   IGC_ASSERT(Id != SPIRVID_INVALID && "Invalid Id");
   SPIRVIdToEntryMap::const_iterator Loc = IdEntryMap.find(Id);
-  IGC_ASSERT(Loc != IdEntryMap.end() && "Id is not in map");
+  IGC_ASSERT_EXIT(Loc != IdEntryMap.end() && "Id is not in map");
   return Loc->second;
 }
 
@@ -527,7 +523,7 @@ void SPIRVModuleImpl::resolveUnknownStructFields()
 SPIRVExtInstSetKind
 SPIRVModuleImpl::getBuiltinSet(SPIRVId SetId) const {
   auto Loc = IdBuiltinMap.find(SetId);
-  IGC_ASSERT(Loc != IdBuiltinMap.end() && "Invalid builtin set id");
+  IGC_ASSERT_EXIT(Loc != IdBuiltinMap.end() && "Invalid builtin set id");
   return Loc->second;
 }
 
@@ -650,7 +646,7 @@ SPIRVModuleImpl::replaceForward(SPIRVForward *Forward, SPIRVEntry *Entry) {
     IdEntryMap[Id] = Entry;
   else {
     auto Loc = IdEntryMap.find(Id);
-    IGC_ASSERT(Loc != IdEntryMap.end());
+    IGC_ASSERT_EXIT(Loc != IdEntryMap.end());
     IdEntryMap.erase(Loc);
     Entry->setId(ForwardId);
     IdEntryMap[ForwardId] = Entry;
@@ -767,22 +763,14 @@ operator>> (std::istream &I, SPIRVModule &M) {
   SPIRVWord Magic;
   Decoder >> Magic;
 
-  if (Magic != MagicNumber)
-  {
-      IGC_ASSERT(0);
-      llvm::report_fatal_error("Invalid magic number");
-  }
+  IGC_ASSERT_EXIT((MagicNumber == Magic) && "Invalid magic number");
 
   Decoder >> MI.SPIRVVersion;
 
   bool supportVersion =
       MI.SPIRVVersion <= SPIRVVersionSupported::fullyCompliant;
 
-  if (!supportVersion)
-  {
-      IGC_ASSERT(0);
-      llvm::report_fatal_error("Unsupported SPIRV version number");
-  }
+  IGC_ASSERT_EXIT(supportVersion && "Unsupported SPIRV version number");
 
   Decoder >> MI.SPIRVGenerator;
 

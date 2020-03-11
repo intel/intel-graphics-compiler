@@ -1154,7 +1154,7 @@ private:
         return V;
       auto LD = dyn_cast<LoadInst>(Loc->second);
       auto Placeholder = dyn_cast<GlobalVariable>(LD->getPointerOperand());
-      IGC_ASSERT(LD && Placeholder &&
+      IGC_ASSERT_EXIT(LD && Placeholder &&
           Placeholder->getName().startswith(kPlaceholderPrefix) &&
           "A value is translated twice");
       // Replaces placeholders for PHI nodes
@@ -1788,7 +1788,7 @@ SPIRVToLLVM::transValue(SPIRVValue *BV, Function *F, BasicBlock *BB,
   }
   V->setName(BV->getName());
   if (!transDecoration(BV, V)) {
-    IGC_ASSERT(0 && "trans decoration fail");
+    IGC_ASSERT_EXIT(0 && "trans decoration fail");
     return nullptr;
   }
 
@@ -2166,7 +2166,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     Type *LT = transType(BT);
     uint64_t V = BConst->getZExtIntValue();
     if(BV->hasDecorate(DecorationSpecId)) {
-      IGC_ASSERT(OC == OpSpecConstant && "Only SpecConstants can be specialized!");
+      IGC_ASSERT_EXIT(OC == OpSpecConstant && "Only SpecConstants can be specialized!");
       SPIRVWord specid = *BV->getDecorate(DecorationSpecId).begin();
       V = BM->getSpecConstant(specid);
     }
@@ -2188,7 +2188,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         FS = &APFloat::IEEEdouble();
         break;
       default:
-        IGC_ASSERT(0 && "invalid float type");
+        IGC_ASSERT_EXIT(0 && "invalid float type");
         break;
       }
       return mapValue(BV, ConstantFP::get(*Context, APFloat(*FS,
@@ -2417,7 +2417,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       if (ArgNo == BA->getArgNo())
         return mapValue(BV, &(*I));
     }
-    IGC_ASSERT(0 && "Invalid argument");
+    IGC_ASSERT_EXIT(0 && "Invalid argument");
     return NULL;
   }
   break;
@@ -2979,8 +2979,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       static_cast<SPIRVInstruction *>(BV), BB));
   }
 
-  IGC_ASSERT(0 && "Cannot translate");
-  llvm_unreachable("Translation of SPIRV instruction not implemented");
+  IGC_ASSERT_EXIT(0 && "Translation of SPIRV instruction not implemented");
   return NULL;
   }
 }

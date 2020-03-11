@@ -85,11 +85,7 @@ void
 saveLLVMModule(Module *M, const std::string &OutputFile) {
   std::error_code EC;
   IGCLLVM::tool_output_file Out(OutputFile.c_str(), EC, sys::fs::F_None);
-  if (EC) {
-    IGC_ASSERT(0 && "Failed to open file");
-    return;
-  }
-
+  IGC_ASSERT_EXIT((!EC) && "Failed to open file");
   IGCLLVM::WriteBitcodeToFile(M, Out.os());
   Out.keep();
 }
@@ -196,7 +192,7 @@ std::string recursive_mangle(const Type* pType)
             return "a" + utostr(numElems) + recursive_mangle(elemType);
         }
         default:
-            IGC_ASSERT(0 && "unhandled type to mangle!");
+            IGC_ASSERT_EXIT(0 && "unhandled type to mangle!");
             return "";
     }
 }
@@ -300,7 +296,7 @@ getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, st
   }
   else
   {
-    IGC_ASSERT(0 && "Couldn't find opcode in map!");
+    IGC_ASSERT_EXIT(0 && "Couldn't find opcode in map!");
   }
   return name;
 }
