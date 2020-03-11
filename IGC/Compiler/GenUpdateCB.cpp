@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/Bitcode/BitcodeReader.h>
+#include "llvm/IR/DebugInfo.h"
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -100,6 +101,17 @@ bool GenUpdateCB::isConstantBufferLoad(LoadInst* inst, unsigned& bufId)
             {
                 return true;
             }
+        }
+        else if (ConstantExpr* cExpr = dyn_cast<ConstantExpr>(inst->getOperand(0)))
+        {
+            if (cExpr->getOpcode() == Instruction::IntToPtr && isa<Constant>(cExpr->getOperand(0)))
+            {
+                return true;
+            }
+        }
+        else if (ConstantPointerNull* constNullptr = dyn_cast<ConstantPointerNull>(inst->getOperand(0)))
+        {
+            return true;
         }
     }
     return false;
@@ -492,6 +504,7 @@ bool GenUpdateCB::runOnFunction(Function& F)
                 AllocaInst* storeAlloca = cb_builder.CreateAlloca(inst->getType());
                 StoreInst* store = cb_builder.CreateStore(inst, storeAlloca);
                 InsertInstTree(inst, store);
+                StripDebugInfo(*m_ConstantBufferReplaceShaderPatterns);
                 store->setOperand(0, vmap[inst]);
 
                 // replace original shader with read from runtime
