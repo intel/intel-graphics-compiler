@@ -51,13 +51,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FENCE_PRE_OP(Scope, Semantics) \
   if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                     \
   {                                                                               \
-      __builtin_spirv_OpMemoryBarrier_i32_i32( (Scope), (Semantics) );            \
+      __builtin_IB_memfence(true, false, false, false, false, true, false);            \
   }
 
 #define FENCE_POST_OP(Scope, Semantics) \
   if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                   \
   {                                                                               \
-      __builtin_spirv_OpMemoryBarrier_i32_i32( (Scope), (Semantics) );            \
+      __builtin_IB_memfence(true, false, false, false, false, true, false);            \
   }
 
 // This fencing scheme allows us to obey the memory model when coherency is
