@@ -9597,7 +9597,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
                 CVariable* pStackOffset = m_currShader->ImmToVariable(RdBytes, ISA_TYPE_UD);
                 emitAddSP(pTempVar, pSP, pStackOffset);
 
-                bool needRmCopy = RdSize == SIZE_OWORD && RmnBytes < SIZE_OWORD;
+                bool needRmCopy = RdSize == SIZE_OWORD && RmnBytes > 0 && RmnBytes < SIZE_OWORD;
                 if (!needRmCopy)
                 {
                     if (is64BitSP)
@@ -9619,9 +9619,9 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
                         if (is64BitSP)
                             m_encoder->OWLoadA64(pTempDst, pTempVar, SIZE_OWORD);
                         else
-                            m_encoder->OWLoad(pTempDst, resource, pTempVar, false, RdSize);
+                            m_encoder->OWLoad(pTempDst, resource, pTempVar, false, SIZE_OWORD);
                         m_encoder->Push();
-                        emitVectorCopy(Dst, pTempDst, RdSize / elemSize, RdBytes, 0);
+                        emitVectorCopy(Dst, pTempDst, RmnBytes / elemSize, RdBytes, 0);
                     }
                 }
                 RdBytes += RdSize;
@@ -9770,7 +9770,8 @@ void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
                     EALIGN_HWORD, false, 1);
             }
 
-            bool needRmCopy = RdSize == SIZE_OWORD && LdDst->GetSize() < (DstOffset + RdSize);
+            int RmnBytes = LdDst->GetSize() - DstOffset;
+            bool needRmCopy = RdSize == SIZE_OWORD && RmnBytes > 0 && RmnBytes < SIZE_OWORD;
             if (!needRmCopy)
             {
                 if (is64bitSP)
@@ -9793,9 +9794,9 @@ void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
                     if (is64bitSP)
                         m_encoder->OWLoadA64(pTempDst, pTempVar, SIZE_OWORD);
                     else
-                        m_encoder->OWLoad(pTempDst, resource, pTempVar, false, RdSize);
+                        m_encoder->OWLoad(pTempDst, resource, pTempVar, false, SIZE_OWORD);
                     m_encoder->Push();
-                    emitVectorCopy(LdDst, pTempDst, RdSize / ldDstElemSize, DstOffset, 0);
+                    emitVectorCopy(LdDst, pTempDst, RmnBytes / ldDstElemSize, DstOffset, 0);
                 }
             }
             if (LdDst != Dst)
