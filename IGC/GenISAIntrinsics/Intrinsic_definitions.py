@@ -66,6 +66,7 @@ Imported_Intrinsics = \
     "GenISA_ftoui_rte": ["anyint",["anyfloat"],"NoMem"],
     "GenISA_ftoui_rtp": ["anyint",["anyfloat"],"NoMem"],
     "GenISA_ftoui_rtn": ["anyint",["anyfloat"],"NoMem"],
+    "GenISA_ftof_rte": ["anyfloat",["anyfloat"],"NoMem"],
     "GenISA_ftof_rtn": ["anyfloat",["anyfloat"],"NoMem"],
     "GenISA_ftof_rtp": ["anyfloat",["anyfloat"],"NoMem"],
     "GenISA_ftof_rtz": ["anyfloat",["anyfloat"],"NoMem"],
