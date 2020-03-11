@@ -3408,8 +3408,6 @@ add_subdirectory(common)
 igc_sg_define(IGC__common)
 igc_sg_define(IGC__Common_CLElfLib)
 
-add_subdirectory(GenISAIntrinsics)
-
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)
 endif()
@@ -3423,6 +3421,8 @@ if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASEINTERNAL IGC_SPIRV_TOOLS_ENABLED)
     igc_sg_define(IGC__SPIRV-Tools)
 endif()
+
+add_subdirectory(GenISAIntrinsics)
 
 if(LLVM_ON_WIN32
         )
