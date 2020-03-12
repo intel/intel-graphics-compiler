@@ -1126,6 +1126,12 @@ namespace IGC
                 match = MatchURBRead(*CI) ||
                     MatchSingleInstruction(*CI);
                 break;
+            case GenISAIntrinsic::GenISA_UnmaskedRegionBegin:
+                match = MatchUnmaskedRegionBoundary(I, true);
+                break;
+            case GenISAIntrinsic::GenISA_UnmaskedRegionEnd:
+                match = MatchUnmaskedRegionBoundary(I, false);
+                break;
             default:
                 match = MatchSingleInstruction(I);
                 // no pattern for the rest of the intrinsics
@@ -3721,6 +3727,24 @@ namespace IGC
         pattern->sources[1] = GetSource(Amt, true, false);
         pattern->rotateOPCode = isROL ? EOPCODE_ROL : EOPCODE_ROR;
 
+        AddPattern(pattern);
+        return true;
+    }
+
+    bool CodeGenPatternMatch::MatchUnmaskedRegionBoundary(Instruction &I, bool start)
+    {
+        struct UnmaskedBoundaryPattern : public Pattern
+        {
+            bool start;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                (void) modifier;
+                pass->emitUnmaskedRegionBoundary(start);
+            }
+        };
+
+        UnmaskedBoundaryPattern* pattern = new (m_allocator) UnmaskedBoundaryPattern();
+        pattern->start = start;
         AddPattern(pattern);
         return true;
     }

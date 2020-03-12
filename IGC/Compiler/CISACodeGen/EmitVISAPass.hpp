@@ -428,6 +428,7 @@ namespace IGC
 
         void emitLLVMbswap(llvm::IntrinsicInst* inst);
         void emitDP4A(llvm::GenIntrinsicInst* GII);
+        void emitUnmaskedRegionBoundary(bool start);
         // Debug Built-Ins
         void emitStateRegID(uint64_t and_imm, uint64_t shr_imm);
         void emitThreadPause(llvm::GenIntrinsicInst* inst);
