@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <iomanip>
 #include <fstream>
+#include "Probe.h"
 
 namespace iOpenCL
 {
@@ -220,7 +221,7 @@ void overrideOCLKernelBinary(
     std::unique_ptr<char[]> Buf(new char[newBinarySize]);
     f.read(Buf.get(), newBinarySize);
 
-    assert(f && "Not fully read!");
+    IGC_ASSERT(f && "Not fully read!");
 
     KernBin->Write(Buf.get(), newBinarySize);
 }
@@ -284,7 +285,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
             if (IGC_IS_FLAG_ENABLED(ShaderOverride))
                 overrideOCLKernelBinary(kernel, data);
 
-            assert(data.kernelBinary && data.kernelBinary->Size() > 0);
+            IGC_ASSERT(data.kernelBinary && data.kernelBinary->Size() > 0);
 
             // Create the debug data binary streams
             if (pOutput->m_debugDataVISASize > 0 || pOutput->m_debugDataGenISASize > 0)

@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/ValueHandle.h"
 
 #include <vector>
+#include "Probe.h"
 
 namespace llvm {
 class Constant;
@@ -62,7 +63,7 @@ class BitcodeReaderValueList {
 public:
   BitcodeReaderValueList(LLVMContext &C) : Context(C) {}
   ~BitcodeReaderValueList() {
-    assert(ResolveConstants.empty() && "Constants not resolved?");
+    IGC_ASSERT(ResolveConstants.empty() && "Constants not resolved?");
   }
 
   // vector compatibility methods
@@ -71,12 +72,12 @@ public:
   void push_back(Value *V) { ValuePtrs.emplace_back(V); }
 
   void clear() {
-    assert(ResolveConstants.empty() && "Constants not resolved?");
+    IGC_ASSERT(ResolveConstants.empty() && "Constants not resolved?");
     ValuePtrs.clear();
   }
 
   Value *operator[](unsigned i) const {
-    assert(i < ValuePtrs.size());
+    IGC_ASSERT(i < ValuePtrs.size());
     return ValuePtrs[i];
   }
 
@@ -85,7 +86,7 @@ public:
   bool empty() const { return ValuePtrs.empty(); }
 
   void shrinkTo(unsigned N) {
-    assert(N <= size() && "Invalid shrinkTo request!");
+    IGC_ASSERT(N <= size() && "Invalid shrinkTo request!");
     ValuePtrs.resize(N);
   }
 

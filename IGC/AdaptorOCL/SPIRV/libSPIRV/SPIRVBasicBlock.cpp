@@ -66,6 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVBasicBlock.h"
 #include "SPIRVInstruction.h"
 #include "SPIRVFunction.h"
+#include "Probe.h"
 
 using namespace spv;
 
@@ -84,7 +85,7 @@ SPIRVBasicBlock::getDecoder(std::istream &IS){
 SPIRVInstruction *
 SPIRVBasicBlock::addInstruction(SPIRVInstruction *I,
                                 const SPIRVInstruction *InsertBefore) {
-  assert(I && "Invalid instruction");
+  IGC_ASSERT(I && "Invalid instruction");
   Module->add(I);
   I->setParent(this);
   if (InsertBefore) {
@@ -104,6 +105,6 @@ _SPIRV_IMP_DEC1(SPIRVBasicBlock, Id)
 
 void
 SPIRVBasicBlock::setScope(SPIRVEntry *Scope) {
-  assert(Scope && Scope->getOpCode() == OpFunction && "Invalid scope");
+  IGC_ASSERT(Scope && Scope->getOpCode() == OpFunction && "Invalid scope");
   setParent(static_cast<SPIRVFunction*>(Scope));
 }

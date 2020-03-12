@@ -66,7 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPIRVFUNCTION_HPP_
 #include "SPIRVValue.h"
 #include "SPIRVBasicBlock.h"
-
+#include "Probe.h"
 
 namespace spv{
 
@@ -102,7 +102,7 @@ public:
 protected:
   void validate()const {
     SPIRVValue::validate();
-    assert(ParentFunc && "Invalid parent function");
+    IGC_ASSERT(ParentFunc && "Invalid parent function");
   }
   _SPIRV_DEF_DEC2(Type, Id)
 private:
@@ -162,7 +162,7 @@ public:
   _SPIRV_DCL_DEC
   void validate()const {
     SPIRVValue::validate();
-    assert(FuncType && "Invalid func type");
+    IGC_ASSERT(FuncType && "Invalid func type");
   }
 
 private:

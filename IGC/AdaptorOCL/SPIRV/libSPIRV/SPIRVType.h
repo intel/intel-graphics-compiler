@@ -73,11 +73,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVEntry.h"
 #include "SPIRVStream.h"
 
-#include <cassert>
 #include <tuple>
 #include <vector>
 #include <map>
 #include <iostream>
+#include "Probe.h"
 
 namespace spv{
 
@@ -232,7 +232,7 @@ protected:
   void validate()const {
     SPIRVEntry::validate();
     ElemType->validate();
-    assert(isValid(StorageClass));
+    IGC_ASSERT(isValid(StorageClass));
   }
 private:
   SPIRVStorageClassKind StorageClass;     // Storage Class
@@ -266,7 +266,7 @@ protected:
   void validate()const {
     SPIRVEntry::validate();
     CompType->validate();
-    assert(CompCount == 2 || CompCount == 3 || CompCount == 4 ||
+    IGC_ASSERT(CompCount == 2 || CompCount == 3 || CompCount == 4 ||
         CompCount == 8 || CompCount == 16);
   }
 private:
@@ -408,15 +408,15 @@ protected:
       Desc.Arrayed, Desc.MS, Desc.Sampled, Desc.Format, Acc)
   // The validation assumes OpenCL image or sampler type.
   void validate()const {
-    assert(OpCode == OC);
-    assert(WordCount == FixedWC + Acc.size());
-    assert(Desc.Dim <= 5);
-    assert(Desc.Depth <= 1);
-    assert(Desc.Arrayed <= 1);
-    assert(Desc.MS <= 1);
-    assert(Desc.Sampled == 0); // For OCL only
-    assert(Desc.Format == ImageFormatUnknown);  // For OCL only
-    assert(Acc.size() <= 1);
+    IGC_ASSERT(OpCode == OC);
+    IGC_ASSERT(WordCount == FixedWC + Acc.size());
+    IGC_ASSERT(Desc.Dim <= 5);
+    IGC_ASSERT(Desc.Depth <= 1);
+    IGC_ASSERT(Desc.Arrayed <= 1);
+    IGC_ASSERT(Desc.MS <= 1);
+    IGC_ASSERT(Desc.Sampled == 0); // For OCL only
+    IGC_ASSERT(Desc.Format == ImageFormatUnknown);  // For OCL only
+    IGC_ASSERT(Acc.size() <= 1);
   }
   void setWordCount(SPIRVWord TheWC) {
     WordCount = TheWC;
@@ -441,8 +441,8 @@ public:
 protected:
   _SPIRV_DEF_DEC1(Id)
   void validate()const {
-    assert(OpCode == OC);
-    assert(WordCount == FixedWC);
+    IGC_ASSERT(OpCode == OC);
+    IGC_ASSERT(WordCount == FixedWC);
   }
 };
 
@@ -469,9 +469,9 @@ protected:
   SPIRVTypeImage *ImgTy;
   _SPIRV_DEF_DEC2(Id, ImgTy)
   void validate()const {
-    assert(OpCode == OC);
-    assert(WordCount == FixedWC);
-    assert(ImgTy && ImgTy->isTypeImage());
+    IGC_ASSERT(OpCode == OC);
+    IGC_ASSERT(WordCount == FixedWC);
+    IGC_ASSERT(ImgTy && ImgTy->isTypeImage());
   }
 };
 
@@ -596,7 +596,7 @@ public:
   }
   void setPipeAcessQualifier(SPIRVAccessQualifierKind AccessQual) {
     AccessQualifier = AccessQual;
-    assert(isValid(AccessQualifier));
+    IGC_ASSERT(isValid(AccessQualifier));
   }
   CapVec getRequiredCapability() const {
      return getVec(SPIRVCapabilityKind::CapabilityPipes);
@@ -679,9 +679,9 @@ protected:
     _SPIRV_DEF_DEC2(Id, ImgTy)
 
         void validate()const {
-        assert(OpCode == OC);
-        assert(WordCount == FixedWC);
-        assert(ImgTy && ImgTy->isTypeImage());
+        IGC_ASSERT(OpCode == OC);
+        IGC_ASSERT(WordCount == FixedWC);
+        IGC_ASSERT(ImgTy && ImgTy->isTypeImage());
     }
 };
 

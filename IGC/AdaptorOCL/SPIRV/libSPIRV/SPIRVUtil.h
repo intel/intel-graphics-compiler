@@ -41,7 +41,6 @@
 #define SPIRVUTIL_H_
 
 #include <algorithm>
-#include <cassert>
 #include <functional>
 #include <limits>
 #include <map>
@@ -50,6 +49,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "Probe.h"
 
 namespace spv{
 
@@ -69,14 +69,14 @@ public:
   static Ty2 map(Ty1 Key) {
     Ty2 Val;
     bool Found = find(Key, &Val);
-    assert (Found && "Invalid key");
+    IGC_ASSERT(Found && "Invalid key");
     return Val;
   }
 
   static Ty1 rmap(Ty2 Key) {
     Ty1 Val;
     bool Found = rfind(Key, &Val);
-    assert (Found && "Invalid key");
+    IGC_ASSERT(Found && "Invalid key");
     return Val;
   }
 
@@ -306,7 +306,7 @@ unsigned rmapBitMask(unsigned BM) {
 // Get the number of words used for encoding a string literal in SPIRV
 inline unsigned
 getSizeInWords(const std::string& Str) {
-  assert(Str.length()/4 + 1 <= std::numeric_limits<unsigned>::max());
+  IGC_ASSERT(Str.length()/4 + 1 <= std::numeric_limits<unsigned>::max());
   return static_cast<unsigned>(Str.length()/4 + 1);
 }
 

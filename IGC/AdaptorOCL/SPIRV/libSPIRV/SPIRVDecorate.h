@@ -67,6 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPIRVDECORATE_HPP_
 
 #include "SPIRVEntry.h"
+#include "Probe.h"
 
 namespace spv{
 class SPIRVDecorationGroup;
@@ -195,8 +196,8 @@ public:
 protected:
   SPIRVDecorateSet Decorations;
   void validate()const {
-    assert(OpCode == OC);
-    assert(WordCount == WC);
+    IGC_ASSERT(OpCode == OC);
+    IGC_ASSERT(WordCount == WC);
   }
 };
 

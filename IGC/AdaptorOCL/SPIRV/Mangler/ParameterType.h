@@ -16,6 +16,7 @@
 #include "Refcount.h"
 #include <string>
 #include <vector>
+#include "Probe.h"
 
 // The Type class hierarchy models the different types in OCL.
 
@@ -375,7 +376,7 @@ namespace SPIR {
     // @param index the sequential number of the queried parameter
     ///@return parameter type
     const RefParamType& getParam(unsigned int index) const {
-      assert(m_params.size() > index && "index is OOB");
+      IGC_ASSERT(m_params.size() > index && "index is OOB");
       return m_params[index];
     }
 
@@ -390,7 +391,7 @@ namespace SPIR {
         m_params.push_back(type);
       }
       else {
-        assert(false && "index is OOB");
+        IGC_ASSERT(false && "index is OOB");
       }
     }
 
@@ -449,7 +450,7 @@ namespace SPIR {
   //          that type, NULL otherwise.
   template <typename T>
   T* dyn_cast(ParamType* pType) {
-    assert(pType && "dyn_cast does not support casting of NULL");
+    IGC_ASSERT(pType && "dyn_cast does not support casting of NULL");
     return (T::enumTy == pType->getTypeId()) ? (T*)pType : NULL;
   }
 
@@ -460,7 +461,7 @@ namespace SPIR {
   //          that type, NULL otherwise.
   template <typename T>
   const T* dyn_cast(const ParamType* pType) {
-    assert(pType && "dyn_cast does not support casting of NULL");
+    IGC_ASSERT(pType && "dyn_cast does not support casting of NULL");
     return (T::enumTy == pType->getTypeId()) ? (const T*)pType : NULL;
   }
 

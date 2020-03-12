@@ -130,7 +130,7 @@ void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,
     else if (dim == 3)
         imageInput->ImageType = iOpenCL::IMAGE_MEMORY_OBJECT_3D;
     else
-        assert(false && "unsupported image dimension");
+        IGC_ASSERT(false && "unsupported image dimension");
     imageInput->LocationIndex = 0;
     imageInput->LocationCount = 0;
     imageInput->IsEmulationArgument = false;
@@ -324,7 +324,7 @@ const char* cmc::getPlatformStr(PLATFORM platform)
             return "ICLLP";
         return "ICL";
     default:
-        assert(0 && "unsupported platform");
+        IGC_ASSERT(0 && "unsupported platform");
         break;
     }
     return "SKL";
@@ -354,7 +354,7 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
     kernel.m_kernelInfo.m_argIndexMap.clear();
 
     for (unsigned i = 0; i < info->num_args; ++i) {
-        assert(info->arg_descs);
+        IGC_ASSERT(info->arg_descs);
         cmc_arg_info& AI = info->arg_descs[i];
         if (AI.offset > 0)
             maxArgEnd = std::max(AI.offset + AI.sizeInBytes, maxArgEnd);
@@ -483,7 +483,7 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     // set >4GB to true by default, to false if we see any resource-type
     kInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = true;
     for (unsigned i = 0; i < info->num_args; ++i) {
-        assert(info->arg_descs);
+        IGC_ASSERT(info->arg_descs);
         cmc_arg_info& AI = info->arg_descs[i];
         if (isResource(AI.kind)) {
             if (AI.kind == cmc_arg_kind::Buffer || AI.kind == cmc_arg_kind::SVM)
@@ -511,7 +511,7 @@ int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgra
     const char* platformStr = getPlatformStr(CMProgram.getPlatform());
 
     // JIT compile kernels in vISA
-    assert(output->kernel_info && "null kernel info");
+    IGC_ASSERT(output->kernel_info && "null kernel info");
     for (unsigned i = 0; i < output->num_kernels; ++i) {
         cmc_kernel_info* info = output->kernel_info + i;
         void* genBinary = nullptr;

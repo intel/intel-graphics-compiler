@@ -67,6 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVFunction.h"
 #include "SPIRVInstruction.h"
 #include "SPIRVDebugInfoExt.h"
+#include "Probe.h"
 
 namespace spv{
 
@@ -80,7 +81,7 @@ SPIRVDecoder::SPIRVDecoder(std::istream &InputStream, SPIRVBasicBlock &BB)
 
 void
 SPIRVDecoder::setScope(SPIRVEntry *TheScope) {
-  assert(TheScope && (TheScope->getOpCode() == OpFunction ||
+  IGC_ASSERT(TheScope && (TheScope->getOpCode() == OpFunction ||
       TheScope->getOpCode() == OpLabel));
   Scope = TheScope;
 }
@@ -161,7 +162,7 @@ operator>>(const SPIRVDecoder&I, std::string& Str) {
   Count = Count ? 4 - Count : 0;
   for (;Count; --Count) {
     (!I.IS.eof() && I.IS.get(Ch));
-    assert(Ch == '\0' && "Invalid string in SPIRV");
+    IGC_ASSERT(Ch == '\0' && "Invalid string in SPIRV");
   }
   return I;
 }
@@ -179,7 +180,7 @@ SPIRVDecoder::getWordCountAndOpCode() {
   WordCount = WordCountAndOpCode >> 16;
   OpCode = static_cast<Op>(WordCountAndOpCode & 0xFFFF);
 
-  assert(!IS.bad() && "SPIRV stream is bad");
+  IGC_ASSERT(!IS.bad() && "SPIRV stream is bad");
   if (IS.fail()) {
     WordCount = 0;
     OpCode = OpNop;
@@ -204,16 +205,16 @@ SPIRVDecoder::getEntry() {
   else
       Entry->setScope(Scope);
 
-  assert(!IS.bad() && !IS.fail() && "SPIRV stream fails");
+  IGC_ASSERT(!IS.bad() && !IS.fail() && "SPIRV stream fails");
   M.add(Entry);
   return Entry;
 }
 
 void
 SPIRVDecoder::validate()const {
-  assert(OpCode != OpNop && "Invalid op code");
-  assert(WordCount && "Invalid word count");
-  assert(!IS.bad() && "Bad iInput stream");
+  IGC_ASSERT(OpCode != OpNop && "Invalid op code");
+  IGC_ASSERT(WordCount && "Invalid word count");
+  IGC_ASSERT(!IS.bad() && "Bad iInput stream");
 }
 
 }

@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
 
-#include <assert.h>
 #include <cstring>
 #include <string>
 #include <stdexcept>
@@ -79,7 +78,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <sstream>
 #include <iomanip>
-
+#include "Probe.h"
 
 //In case of use GT_SYSTEM_INFO in GlobalData.h from inc/umKmInc/sharedata.h
 //We have to do this temporary defines
@@ -294,7 +293,7 @@ bool CIGCTranslationBlock::Translate(
     }
     else
     {
-        assert(0 && "Unsupported input format");
+        IGC_ASSERT(0 && "Unsupported input format");
         return false;
     }
     return false;
@@ -353,7 +352,7 @@ bool ProcessElfInput(
       for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
       {
         const CLElfLib::SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
-        assert(pSectionHeader != NULL);
+        IGC_ASSERT(pSectionHeader != NULL);
 
         char* pData = NULL;
         size_t dataSize = 0;
@@ -421,7 +420,7 @@ bool ProcessElfInput(
                       llvm::SMDiagnostic(pInputBuffer->getBufferIdentifier(), llvm::SourceMgr::DK_Error,
                           EIB.message());
                   });
-                  assert(errMsg.empty() && "parsing bitcode failed");
+                  IGC_ASSERT(errMsg.empty() && "parsing bitcode failed");
               }
 
               InputModule = std::move(errorOrModule.get());
@@ -476,7 +475,7 @@ bool ProcessElfInput(
           }
           else
           {
-            assert(0 && "Unrecognized output format when processing ELF input");
+            IGC_ASSERT(0 && "Unrecognized output format when processing ELF input");
             success = false;
           }
         }
@@ -611,14 +610,14 @@ bool ParseInput(
 #endif
         if (!success)
         {
-            assert(false && stringErrMsg.c_str());
+            IGC_ASSERT(false && stringErrMsg.c_str());
         }
     }
     else
     {
         // NOTE:
         //  llvm::parseIR routine expects input buffer to be zero-terminated,
-        //  otherwise we trigger an assert during parseAssemblyInto (from MemoryBuffer::init)
+        //  otherwise we trigger an assertion fail during parseAssemblyInto (from MemoryBuffer::init)
         //  (see llvm/src/lib/Support/MemoryBuffer.cpp).
         pKernelModule = llvm::parseIR({ std::string(strInput.begin(), strInput.size()), "" },
                                       err, oclContext).release();
@@ -626,7 +625,7 @@ bool ParseInput(
     if (pKernelModule == nullptr)
     {
         err.print(nullptr, llvm::errs(), false);
-        assert(false && "Parsing module failed!");
+        IGC_ASSERT(false && "Parsing module failed!");
     }
     if (pKernelModule == nullptr)
     {
@@ -664,7 +663,7 @@ bool ReadSpecConstantsFromSPIRV(std::istream &IS, std::vector<std::pair<uint32_t
             }
             else
             {
-                assert("Wrong instruction opcode, shouldn't be here!");
+                IGC_ASSERT(0 && "Wrong instruction opcode, shouldn't be here!");
                 return false;
             }
         }
@@ -695,7 +694,7 @@ void overrideOCLProgramBinary(OpenCLProgramContext &Ctx, char *&binaryOutput, in
     char *newBinaryOutput = new char[newBinarySize];
     f.read(newBinaryOutput, newBinarySize);
 
-    assert(f && "Not fully read!");
+    IGC_ASSERT(f && "Not fully read!");
 
     delete[] binaryOutput;
     binaryOutput = newBinaryOutput;
@@ -932,7 +931,7 @@ bool TranslateBuild(
             // name for that type.  For example, clk_event_t,  M0 will have clk_event_t, while M1 will
             // have clk_event_t.2 (number is arbitary). After linking, those two named types should be
             // mapped to the same type, otherwise, we could have type-mismatch (for example, OCL GAS
-            // builtin_functions tests will assert during inlining due to type-mismatch).  Furthermore,
+            // builtin_functions tests will assertion fail during inlining due to type-mismatch).  Furthermore,
             // when linking M1 into M0 (M0 : dstModule, M1 : srcModule), the final type is the type
             // used in M0.
 
@@ -987,21 +986,21 @@ bool TranslateBuild(
                     _snprintf(ResNumber, sizeof(ResNumber), "#%d", OCL_BC_64);
                     break;
                 default:
-                    assert(0 && "Unknown bitness of compiled module");
+                    IGC_ASSERT(0 && "Unknown bitness of compiled module");
                 }
 
                 // the MemoryBuffer becomes owned by the module and does not need to be managed
                 pSizeTBuffer.reset(llvm::LoadBufferFromResource(ResNumber, "BC"));
-                assert(pSizeTBuffer && "Error loading builtin resource");
+                IGC_ASSERT(pSizeTBuffer && "Error loading builtin resource");
 
                 llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
                     getLazyBitcodeModule(pSizeTBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
                 if (llvm::Error EC = ModuleOrErr.takeError())
-                    assert(0 && "Error lazily loading bitcode for size_t builtins");
+                    IGC_ASSERT(0 && "Error lazily loading bitcode for size_t builtins");
                 else
                     BuiltinSizeModule = std::move(*ModuleOrErr);
 
-                assert(BuiltinSizeModule
+                IGC_ASSERT(BuiltinSizeModule
                     && "Error loading builtin module from buffer");
             }
 
@@ -1182,7 +1181,7 @@ bool CIGCTranslationBlock::Initialize(
         (m_DataFormatInput == TB_DATA_FORMAT_SPIR_V) &&
         isDeviceBinaryFormat(m_DataFormatOutput);
 
-    assert(validTBChain && "Invalid TB Chain");
+    IGC_ASSERT(validTBChain && "Invalid TB Chain");
 
     return validTBChain;
 }

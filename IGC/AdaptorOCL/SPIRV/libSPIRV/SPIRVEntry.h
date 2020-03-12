@@ -68,13 +68,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SPIRVEnum.h"
 #include "SPIRVError.h"
-#include <cassert>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
+#include "Probe.h"
 
 namespace spv{
 
@@ -228,7 +228,7 @@ public:
 
   virtual SPIRVDecoder getDecoder(std::istream &);
   SPIRVErrorLog &getErrorLog()const;
-  SPIRVId getId() const { assert(hasId()); return Id;}
+  SPIRVId getId() const { IGC_ASSERT(hasId()); return Id;}
   SPIRVLine *getLine() const { return Line;}
   SPIRVLinkageTypeKind getLinkageType() const;
   Op getOpCode() const { return OpCode;}
@@ -294,9 +294,9 @@ public:
 
   /// Checks the integrity of the object.
   virtual void validate()const {
-    assert(Module && "Invalid module");
-    assert(OpCode != OpNop && "Invalid op code");
-    assert((!hasId() || isValid(Id)) && "Invalid Id");
+    IGC_ASSERT(Module && "Invalid module");
+    IGC_ASSERT(OpCode != OpNop && "Invalid op code");
+    IGC_ASSERT((!hasId() || isValid(Id)) && "Invalid Id");
   }
   void validateFunctionControlMask(SPIRVWord FCtlMask)const;
   void validateValues(const std::vector<SPIRVId> &)const;
@@ -322,7 +322,7 @@ protected:
         OpCode == OpForward;
   }
   MemberDecorateMapType& getMemberDecorates() {
-    assert(canHaveMemberDecorates());
+    IGC_ASSERT(canHaveMemberDecorates());
     return MemberDecorates;
   }
 
@@ -372,7 +372,7 @@ public:
 protected:
   _SPIRV_DEF_DEC0
   void validate()const {
-    assert(isValid(SPIRVEntry::OpCode));
+    IGC_ASSERT(isValid(SPIRVEntry::OpCode));
   }
 };
 

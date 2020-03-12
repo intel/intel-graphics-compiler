@@ -106,7 +106,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -121,6 +120,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPop.hpp"
 #include "BitcodeReader.h"
+#include "Probe.h"
 
 using namespace llvm;
 
@@ -924,7 +924,7 @@ Error BitcodeReader::materializeForwardReferencedFunctions() {
   while (!BasicBlockFwdRefQueue.empty()) {
     Function *F = BasicBlockFwdRefQueue.front();
     BasicBlockFwdRefQueue.pop_front();
-    assert(F && "Expected valid function");
+    IGC_ASSERT(F && "Expected valid function");
     if (!BasicBlockFwdRefs.count(F))
       // Already materialized.
       continue;
@@ -940,7 +940,7 @@ Error BitcodeReader::materializeForwardReferencedFunctions() {
     if (Error Err = materialize(F))
       return Err;
   }
-  assert(BasicBlockFwdRefs.empty() && "Function missing from queue");
+  IGC_ASSERT(BasicBlockFwdRefs.empty() && "Function missing from queue");
 
   // Reset state.
   WillMaterializeAllForwardRefs = false;
@@ -1391,7 +1391,7 @@ static void decodeLLVMAttributesForBitcode(AttrBuilder &B,
   // The alignment is stored as a 16-bit raw value from bits 31--16.  We shift
   // the bits above 31 down by 11 bits.
   unsigned Alignment = (EncodedAttrs & (0xffffULL << 16)) >> 16;
-  assert((!Alignment || isPowerOf2_32(Alignment)) &&
+  IGC_ASSERT((!Alignment || isPowerOf2_32(Alignment)) &&
          "Alignment must be a power of two.");
 
   if (Alignment)
@@ -1692,19 +1692,19 @@ Error BitcodeReader::parseAttributeGroupBlock() {
 
           while (Record[i] != 0 && i != e)
             KindStr += Record[i++];
-          assert(Record[i] == 0 && "Kind string not null terminated");
+          IGC_ASSERT(Record[i] == 0 && "Kind string not null terminated");
 
           if (HasValue) {
             // Has a value associated with it.
             ++i; // Skip the '0' that terminates the "kind" string.
             while (Record[i] != 0 && i != e)
               ValStr += Record[i++];
-            assert(Record[i] == 0 && "Value string not null terminated");
+            IGC_ASSERT(Record[i] == 0 && "Value string not null terminated");
           }
 
           B.addAttribute(KindStr.str(), ValStr.str());
         } else {
-          assert((Record[i] == 5 || Record[i] == 6) &&
+          IGC_ASSERT((Record[i] == 5 || Record[i] == 6) &&
                  "Invalid attribute group entry");
           bool HasType = Record[i] == 6;
           Attribute::AttrKind Kind;
@@ -1969,7 +1969,7 @@ Error BitcodeReader::parseTypeTableBody() {
     if (TypeList[NumRecords])
       return error(
           "Invalid TYPE table: Only named structs can be forward referenced");
-    assert(ResultTy && "Didn't read a type?");
+    IGC_ASSERT(ResultTy && "Didn't read a type?");
     TypeList[NumRecords++] = ResultTy;
   }
 }
@@ -2100,8 +2100,8 @@ static Expected<uint64_t> jumpToValueSymbolTable(uint64_t Offset,
   Expected<BitstreamEntry> MaybeEntry = Stream.advance();
   if (!MaybeEntry)
     return MaybeEntry.takeError();
-  assert(MaybeEntry.get().Kind == BitstreamEntry::SubBlock);
-  assert(MaybeEntry.get().ID == bitc::VALUE_SYMTAB_BLOCK_ID);
+  IGC_ASSERT(MaybeEntry.get().Kind == BitstreamEntry::SubBlock);
+  IGC_ASSERT(MaybeEntry.get().ID == bitc::VALUE_SYMTAB_BLOCK_ID);
   return CurrentBit;
 }
 
@@ -2875,7 +2875,7 @@ Error BitcodeReader::parseConstants() {
     }
     }
 
-    assert(V->getType() == flattenPointerTypes(CurFullTy) &&
+    IGC_ASSERT(V->getType() == flattenPointerTypes(CurFullTy) &&
            "Incorrect fully structured type provided for Constant");
     ValueList.assignValue(V, NextCstNo, CurFullTy);
     ++NextCstNo;
@@ -2928,7 +2928,7 @@ Error BitcodeReader::parseUseLists() {
 
       Value *V;
       if (IsBB) {
-        assert(ID < FunctionBBs.size() && "Basic block not found");
+        IGC_ASSERT(ID < FunctionBBs.size() && "Basic block not found");
         V = FunctionBBs[ID];
       } else
         V = ValueList[ID];
@@ -3002,7 +3002,7 @@ Error BitcodeReader::rememberAndSkipFunctionBody() {
 
   // Save the current stream state.
   uint64_t CurBit = Stream.GetCurrentBitNo();
-  assert(
+  IGC_ASSERT(
       (DeferredFunctionInfo[Fn] == 0 || DeferredFunctionInfo[Fn] == CurBit) &&
       "Mismatch between VST and scanned function offsets");
   DeferredFunctionInfo[Fn] = CurBit;
@@ -3067,7 +3067,7 @@ Error BitcodeReader::rememberAndSkipFunctionBodies() {
 
   // An old bitcode file with the symbol table at the end would have
   // finished the parse greedily.
-  assert(SeenValueSymbolTable);
+  IGC_ASSERT(SeenValueSymbolTable);
 
   SmallVector<uint64_t, 64> Record;
 
@@ -3210,7 +3210,7 @@ Error BitcodeReader::parseGlobalVarRecord(ArrayRef<uint64_t> Record) {
     upgradeDLLImportExportLinkage(NewGV, RawLinkage);
 
   FullTy = PointerType::get(FullTy, AddressSpace);
-  assert(NewGV->getType() == flattenPointerTypes(FullTy) &&
+  IGC_ASSERT(NewGV->getType() == flattenPointerTypes(FullTy) &&
          "Incorrect fully specified type for GlobalVariable");
   ValueList.push_back(NewGV, FullTy);
 
@@ -3276,7 +3276,7 @@ Error BitcodeReader::parseFunctionRecord(ArrayRef<uint64_t> Record) {
       Function::Create(cast<FunctionType>(FTy), GlobalValue::ExternalLinkage,
                        AddrSpace, Name, TheModule);
 
-  assert(Func->getFunctionType() == flattenPointerTypes(FullFTy) &&
+  IGC_ASSERT(Func->getFunctionType() == flattenPointerTypes(FullFTy) &&
          "Incorrect fully specified type provided for function");
   FunctionTypes[Func] = cast<FunctionType>(FullFTy);
 
@@ -3357,7 +3357,7 @@ Error BitcodeReader::parseFunctionRecord(ArrayRef<uint64_t> Record) {
     Func->setPartition(StringRef(Strtab.data() + Record[17], Record[18]));
 
   Type *FullTy = PointerType::get(FullFTy, AddrSpace);
-  assert(Func->getType() == flattenPointerTypes(FullTy) &&
+  IGC_ASSERT(Func->getType() == flattenPointerTypes(FullTy) &&
          "Incorrect fully specified type provided for Function");
   ValueList.push_back(Func, FullTy);
 
@@ -3415,7 +3415,7 @@ Error BitcodeReader::parseGlobalIndirectSymbolRecord(
     NewGA = GlobalIFunc::create(Ty, AddrSpace, getDecodedLinkage(Linkage), Name,
                                 nullptr, TheModule);
 
-  assert(NewGA->getValueType() == flattenPointerTypes(FullTy) &&
+  IGC_ASSERT(NewGA->getValueType() == flattenPointerTypes(FullTy) &&
          "Incorrect fully structured type provided for GlobalIndirectSymbol");
   // Old bitcode files didn't have visibility field.
   // Local linkage must have default visibility.
@@ -3448,7 +3448,7 @@ Error BitcodeReader::parseGlobalIndirectSymbolRecord(
   }
 
   FullTy = PointerType::get(FullTy, AddrSpace);
-  assert(NewGA->getType() == flattenPointerTypes(FullTy) &&
+  IGC_ASSERT(NewGA->getType() == flattenPointerTypes(FullTy) &&
          "Incorrect fully structured type provided for GlobalIndirectSymbol");
   ValueList.push_back(NewGA, FullTy);
   IndirectSymbolInits.push_back(std::make_pair(NewGA, Val));
@@ -3507,14 +3507,14 @@ Error BitcodeReader::parseModule(uint64_t ResumeBit,
           // the VST to be jumped to and parsed before it was encountered
           // normally in the stream), or there were no function blocks to
           // trigger an earlier parsing of the VST.
-          assert(VSTOffset == 0 || FunctionsWithBodies.empty());
+          IGC_ASSERT(VSTOffset == 0 || FunctionsWithBodies.empty());
           if (Error Err = parseValueSymbolTable())
             return Err;
           SeenValueSymbolTable = true;
         } else {
           // We must have had a VST forward declaration record, which caused
           // the parser to jump to and parse the VST earlier.
-          assert(VSTOffset > 0);
+          IGC_ASSERT(VSTOffset > 0);
           if (Error Err = Stream.SkipBlock())
             return Err;
         }
@@ -3531,7 +3531,7 @@ Error BitcodeReader::parseModule(uint64_t ResumeBit,
             return Err;
           break;
         }
-        assert(DeferredMetadataInfo.empty() && "Unexpected deferred metadata");
+        IGC_ASSERT(DeferredMetadataInfo.empty() && "Unexpected deferred metadata");
         if (Error Err = MDLoader->parseModuleMetadata())
           return Err;
         break;
@@ -3766,7 +3766,7 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
   unsigned ArgNo = 0;
   FunctionType *FullFTy = FunctionTypes[F];
   for (Argument &I : F->args()) {
-    assert(I.getType() == flattenPointerTypes(FullFTy->getParamType(ArgNo)) &&
+    IGC_ASSERT(I.getType() == flattenPointerTypes(FullFTy->getParamType(ArgNo)) &&
            "Incorrect fully specified type for Function Argument");
     ValueList.push_back(&I, FullFTy->getParamType(ArgNo++));
   }
@@ -3821,7 +3821,7 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
           return Err;
         break;
       case bitc::METADATA_BLOCK_ID:
-        assert(DeferredMetadataInfo.empty() &&
+        IGC_ASSERT(DeferredMetadataInfo.empty() &&
                "Must read all module-level metadata before function-level");
         if (Error Err = MDLoader->parseFunctionMetadata())
           return Err;
@@ -3864,8 +3864,8 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
         // Check for invalid basic block references.
         if (BBRefs.size() > FunctionBBs.size())
           return error("Invalid ID");
-        assert(!BBRefs.empty() && "Unexpected empty array");
-        assert(!BBRefs.front() && "Invalid reference to entry block");
+        IGC_ASSERT(!BBRefs.empty() && "Unexpected empty array");
+        IGC_ASSERT(!BBRefs.front() && "Invalid reference to entry block");
         for (unsigned I = 0, E = FunctionBBs.size(), RE = BBRefs.size(); I != E;
              ++I)
           if (I < RE && BBRefs[I]) {
@@ -3995,7 +3995,7 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
       if ((I = UpgradeBitCastInst(Opc, Op, ResTy, Temp))) {
         if (Temp) {
           InstructionList.push_back(Temp);
-          assert(CurBB && "No current BB?");
+          IGC_ASSERT(CurBB && "No current BB?");
           CurBB->getInstList().push_back(Temp);
         }
       } else {
@@ -4724,7 +4724,7 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
 
       // If there are an even number of records, the final record must be FMF.
       if (Record.size() % 2 == 0) {
-        assert(isa<FPMathOperator>(I) && "Unexpected phi type");
+        IGC_ASSERT(isa<FPMathOperator>(I) && "Unexpected phi type");
         FastMathFlags FMF = getDecodedFastMathFlags(Record[Record.size() - 1]);
         if (FMF.any())
           I->setFastMathFlags(FMF);
@@ -4741,7 +4741,7 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
         if (Record.size() < 3)
           return error("Invalid record");
       } else {
-        assert(BitCode == bitc::FUNC_CODE_INST_LANDINGPAD_OLD);
+        IGC_ASSERT(BitCode == bitc::FUNC_CODE_INST_LANDINGPAD_OLD);
         if (Record.size() < 4)
           return error("Invalid record");
       }
@@ -4774,10 +4774,10 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
           return error("Invalid record");
         }
 
-        assert((CT != LandingPadInst::Catch ||
+        IGC_ASSERT((CT != LandingPadInst::Catch ||
                 !isa<ArrayType>(Val->getType())) &&
                "Catch clause has a invalid type!");
-        assert((CT != LandingPadInst::Filter ||
+        IGC_ASSERT((CT != LandingPadInst::Filter ||
                 isa<ArrayType>(Val->getType())) &&
                "Filter clause has invalid type!");
         LP->addClause(cast<Constant>(Val));
@@ -5214,7 +5214,7 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
     if (!I->getType()->isVoidTy()) {
       if (!FullTy) {
         FullTy = I->getType();
-        assert(
+        IGC_ASSERT(
             !FullTy->isPointerTy() && !isa<StructType>(FullTy) &&
             !isa<ArrayType>(FullTy) &&
             (!isa<VectorType>(FullTy) ||
@@ -5224,7 +5224,7 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
             "pointer type");
       }
 
-      assert(I->getType() == flattenPointerTypes(FullTy) &&
+      IGC_ASSERT(I->getType() == flattenPointerTypes(FullTy) &&
              "Incorrect fully structured type provided for Instruction");
       ValueList.assignValue(I, NextValueNo++, FullTy);
     }
@@ -5269,7 +5269,7 @@ Error BitcodeReader::findFunctionInStream(
     // didn't contain the function index in the VST, or when we have
     // an anonymous function which would not have a VST entry.
     // Assert that we have one of those two cases.
-    assert(VSTOffset == 0 || !F->hasName());
+    IGC_ASSERT(VSTOffset == 0 || !F->hasName());
     // Parse the next body in the stream and set its position in the
     // DeferredFunctionInfo map.
     if (Error Err = rememberAndSkipFunctionBodies())
@@ -5297,7 +5297,7 @@ Error BitcodeReader::materialize(GlobalValue *GV) {
     return Error::success();
 
   DenseMap<Function*, uint64_t>::iterator DFII = DeferredFunctionInfo.find(F);
-  assert(DFII != DeferredFunctionInfo.end() && "Deferred function not found!");
+  IGC_ASSERT(DFII != DeferredFunctionInfo.end() && "Deferred function not found!");
   // If its position is recorded as 0, its body is somewhere in the stream
   // but we haven't seen it yet.
   if (DFII->second == 0)
@@ -5435,7 +5435,7 @@ ModuleSummaryIndexBitcodeReader::getThisModule() {
 std::pair<ValueInfo, GlobalValue::GUID>
 ModuleSummaryIndexBitcodeReader::getValueInfoFromValueId(unsigned ValueId) {
   auto VGI = ValueIdToValueInfoMap[ValueId];
-  assert(VGI.first);
+  IGC_ASSERT(VGI.first);
   return VGI;
 }
 
@@ -5468,7 +5468,7 @@ Error ModuleSummaryIndexBitcodeReader::parseValueSymbolTable(
   if (UseStrtab)
     return Error::success();
 
-  assert(Offset > 0 && "Expected non-zero VST offset");
+  IGC_ASSERT(Offset > 0 && "Expected non-zero VST offset");
   Expected<uint64_t> MaybeCurrentBit = jumpToValueSymbolTable(Offset, Stream);
   if (!MaybeCurrentBit)
     return MaybeCurrentBit.takeError();
@@ -5514,9 +5514,9 @@ Error ModuleSummaryIndexBitcodeReader::parseValueSymbolTable(
       if (convertToString(Record, 1, ValueName))
         return error("Invalid record");
       unsigned ValueID = Record[0];
-      assert(!SourceFileName.empty());
+      IGC_ASSERT(!SourceFileName.empty());
       auto VLI = ValueIdToLinkageMap.find(ValueID);
-      assert(VLI != ValueIdToLinkageMap.end() &&
+      IGC_ASSERT(VLI != ValueIdToLinkageMap.end() &&
              "No linkage found for VST entry?");
       auto Linkage = VLI->second;
       setValueGUID(ValueID, ValueName, Linkage, SourceFileName);
@@ -5528,9 +5528,9 @@ Error ModuleSummaryIndexBitcodeReader::parseValueSymbolTable(
       if (convertToString(Record, 2, ValueName))
         return error("Invalid record");
       unsigned ValueID = Record[0];
-      assert(!SourceFileName.empty());
+      IGC_ASSERT(!SourceFileName.empty());
       auto VLI = ValueIdToLinkageMap.find(ValueID);
-      assert(VLI != ValueIdToLinkageMap.end() &&
+      IGC_ASSERT(VLI != ValueIdToLinkageMap.end() &&
              "No linkage found for VST entry?");
       auto Linkage = VLI->second;
       setValueGUID(ValueID, ValueName, Linkage, SourceFileName);
@@ -5589,7 +5589,7 @@ Error ModuleSummaryIndexBitcodeReader::parseModule() {
       case bitc::VALUE_SYMTAB_BLOCK_ID:
         // Should have been parsed earlier via VSTOffset, unless there
         // is no summary section.
-        assert(((SeenValueSymbolTable && VSTOffset > 0) ||
+        IGC_ASSERT(((SeenValueSymbolTable && VSTOffset > 0) ||
                 !SeenGlobalValSummary) &&
                "Expected early VST parse via VSTOffset record");
         if (Error Err = Stream.SkipBlock())
@@ -5600,7 +5600,7 @@ Error ModuleSummaryIndexBitcodeReader::parseModule() {
         // Add the module if it is a per-module index (has a source file name).
         if (!SourceFileName.empty())
           addThisModule();
-        assert(!SeenValueSymbolTable &&
+        IGC_ASSERT(!SeenValueSymbolTable &&
                "Already read VST when parsing summary block?");
         // We might not have a VST if there were no values in the
         // summary. An empty summary block generated when we are
@@ -5650,7 +5650,7 @@ Error ModuleSummaryIndexBitcodeReader::parseModule() {
           auto &Hash = getThisModule()->second.second;
           int Pos = 0;
           for (auto &Val : Record) {
-            assert(!(Val >> 32) && "Unexpected high bits set");
+            IGC_ASSERT(!(Val >> 32) && "Unexpected high bits set");
             Hash[Pos++] = Val;
           }
           break;
@@ -5799,7 +5799,7 @@ void ModuleSummaryIndexBitcodeReader::parseTypeIdCompatibleVtableSummaryRecord(
 static void setSpecialRefs(std::vector<ValueInfo> &Refs, unsigned ROCnt,
                            unsigned WOCnt) {
   // Readonly and writeonly refs are in the end of the refs list.
-  assert(ROCnt + WOCnt <= Refs.size());
+  IGC_ASSERT(ROCnt + WOCnt <= Refs.size());
   unsigned FirstWORef = Refs.size() - WOCnt;
   unsigned RefNo = FirstWORef - ROCnt;
   for (; RefNo < FirstWORef; ++RefNo)
@@ -5891,7 +5891,7 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
     case bitc::FS_FLAGS: {  // [flags]
       uint64_t Flags = Record[0];
       // Scan flags.
-      assert(Flags <= 0x3f && "Unexpected bits in flag");
+      IGC_ASSERT(Flags <= 0x3f && "Unexpected bits in flag");
 
       // 1 bit: WithGlobalValueDeadStripping flag.
       // Set on combined index only.
@@ -5966,7 +5966,7 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
       // module path string table entry with an empty (0) ID to take
       // ownership.
       int CallGraphEdgeStartIndex = RefListStartIndex + NumRefs;
-      assert(Record.size() >= RefListStartIndex + NumRefs &&
+      IGC_ASSERT(Record.size() >= RefListStartIndex + NumRefs &&
              "Record size inconsistent with number of references");
       std::vector<ValueInfo> Refs = makeRefList(
           ArrayRef<uint64_t>(Record).slice(RefListStartIndex, NumRefs));
@@ -6106,7 +6106,7 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
 
       auto Flags = getDecodedGVSummaryFlags(RawFlags, Version);
       int CallGraphEdgeStartIndex = RefListStartIndex + NumRefs;
-      assert(Record.size() >= RefListStartIndex + NumRefs &&
+      IGC_ASSERT(Record.size() >= RefListStartIndex + NumRefs &&
              "Record size inconsistent with number of references");
       std::vector<ValueInfo> Refs = makeRefList(
           ArrayRef<uint64_t>(Record).slice(RefListStartIndex, NumRefs));
@@ -6188,19 +6188,19 @@ Error ModuleSummaryIndexBitcodeReader::parseEntireSummary(unsigned ID) {
       break;
     }
     case bitc::FS_TYPE_TESTS:
-      assert(PendingTypeTests.empty());
+      IGC_ASSERT(PendingTypeTests.empty());
       PendingTypeTests.insert(PendingTypeTests.end(), Record.begin(),
                               Record.end());
       break;
 
     case bitc::FS_TYPE_TEST_ASSUME_VCALLS:
-      assert(PendingTypeTestAssumeVCalls.empty());
+      IGC_ASSERT(PendingTypeTestAssumeVCalls.empty());
       for (unsigned I = 0; I != Record.size(); I += 2)
         PendingTypeTestAssumeVCalls.push_back({Record[I], Record[I+1]});
       break;
 
     case bitc::FS_TYPE_CHECKED_LOAD_VCALLS:
-      assert(PendingTypeCheckedLoadVCalls.empty());
+      IGC_ASSERT(PendingTypeCheckedLoadVCalls.empty());
       for (unsigned I = 0; I != Record.size(); I += 2)
         PendingTypeCheckedLoadVCalls.push_back({Record[I], Record[I+1]});
       break;
@@ -6299,7 +6299,7 @@ Error ModuleSummaryIndexBitcodeReader::parseModuleStringTable() {
         return error("Invalid hash that does not follow a module path");
       int Pos = 0;
       for (auto &Val : Record) {
-        assert(!(Val >> 32) && "Unexpected high bits set");
+        IGC_ASSERT(!(Val >> 32) && "Unexpected high bits set");
         LastSeenModule->second.second[Pos++] = Val;
       }
       // Reset LastSeenModule to avoid overriding the hash unexpectedly.
@@ -6621,7 +6621,7 @@ static Expected<bool> getEnableSplitLTOUnitFlag(BitstreamCursor &Stream,
     case bitc::FS_FLAGS: { // [flags]
       uint64_t Flags = Record[0];
       // Scan flags.
-      assert(Flags <= 0x3f && "Unexpected bits in flag");
+      IGC_ASSERT(Flags <= 0x3f && "Unexpected bits in flag");
 
       return Flags & 0x8;
     }

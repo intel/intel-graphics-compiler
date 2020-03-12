@@ -29,6 +29,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _strdup strdup
 #endif
 
+#include "Probe.h"
+
 //
 // We need to make the following functions that will be replaced by GT-Pin at runtime
 // a little more complex to prevent the compiler from optimizing them (apparently,
@@ -51,7 +53,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_NumberOfSurfaces()
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
     if (GTPIN_IGC_OCL_IsEnabled())
     {
-        assert(0);
+        IGC_ASSERT(0);
         return 1;
     }
     else
@@ -67,7 +69,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_UpdateKernelInfo(const 
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
     if (GTPIN_IGC_OCL_IsEnabled())
     {
-        assert(0);
+        IGC_ASSERT(0);
         return 2;
     }
     else
@@ -81,7 +83,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_GetSurfaceBTI( const in
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
     if (GTPIN_IGC_OCL_IsEnabled())
     {
-        assert(0);
+        IGC_ASSERT(0);
         return 3;
     }
     else
@@ -95,7 +97,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_GetEnqueueInstanceKerne
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
     if (GTPIN_IGC_OCL_IsEnabled())
     {
-        assert(0);
+        IGC_ASSERT(0);
         return 4;
     }
     else
@@ -109,7 +111,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_GetSurfaceKernelArgNo( 
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
     if (GTPIN_IGC_OCL_IsEnabled())
     {
-        assert(0);
+        IGC_ASSERT(0);
         return 5;
     }
     else
@@ -123,7 +125,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_CompilerReservedRegs( c
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
     if (GTPIN_IGC_OCL_IsEnabled())
     {
-        assert(0);
+        IGC_ASSERT(0);
         return 6;
     }
     else
@@ -137,7 +139,7 @@ MY_EXTERN_C MY_DLLEXPORT char*  MY_CALLINGSTD GTPIN_IGC_OCL_GetCommandLine()
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
     if (GTPIN_IGC_OCL_IsEnabled())
     {
-        assert(0);
+        IGC_ASSERT(0);
         return (char*)7;
     }
     else
@@ -151,7 +153,7 @@ MY_EXTERN_C MY_DLLEXPORT GTPIN_INVOKE_STRUCT* MY_CALLINGSTD GTPIN_IGC_OCL_GetInv
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
     if (GTPIN_IGC_OCL_IsEnabled())
     {
-        assert(0);
+        IGC_ASSERT(0);
         return (GTPIN_INVOKE_STRUCT*)8;
     }
     else
@@ -165,7 +167,7 @@ MY_EXTERN_C MY_DLLEXPORT int MY_CALLINGSTD GTPIN_IGC_OCL_FillAllKernelsInfo()
     // This function body will be replaced by Pin at runtime if GT-Pin is used.
     if (GTPIN_IGC_OCL_IsEnabled())
     {
-        assert(0);
+        IGC_ASSERT(0);
         return 9;
     }
     else
@@ -191,7 +193,7 @@ MY_EXTERN_C MY_DLLEXPORT GEN_ISA_TYPE MY_CALLINGSTD GTPIN_IGC_OCL_GetGenIsaFromP
     case IGFX_GEN10_CORE:
         return GEN_ISA_TYPE_GEN10;
     default:
-        assert(0);
+        IGC_ASSERT(0);
         return GEN_ISA_TYPE_INVALID;
     }
 }

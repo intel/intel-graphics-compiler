@@ -40,7 +40,6 @@
 #ifndef SPIRVDEBUG_HPP_
 #define SPIRVDEBUG_HPP_
 
-#include <cassert>
 #include <iostream>
 
 namespace spv{
@@ -56,7 +55,7 @@ extern bool SPIRVDbgEnable;
 // Include source file and line number in error message.
 extern bool SPIRVDbgErrorMsgIncludesSourceInfo;
 
-// Enable assert on error
+// Enable assertion on error
 extern bool SPIRVDbgAssertOnError;
 
 // Output stream for SPIRV debug information.

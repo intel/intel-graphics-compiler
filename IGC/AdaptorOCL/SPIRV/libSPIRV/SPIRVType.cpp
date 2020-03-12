@@ -66,18 +66,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVType.h"
 #include "SPIRVDecorate.h"
 #include "SPIRVValue.h"
+#include "Probe.h"
 
 namespace spv{
 
 SPIRVType*
 SPIRVType::getArrayElementType() const {
-  assert(OpCode == OpTypeArray && "Not array type");
+  IGC_ASSERT(OpCode == OpTypeArray && "Not array type");
   return static_cast<const SPIRVTypeArray *const>(this)->getElementType();
 }
 
 uint64_t
 SPIRVType::getArrayLength() const {
-  assert(OpCode == OpTypeArray && "Not array type");
+  IGC_ASSERT(OpCode == OpTypeArray && "Not array type");
   return static_cast<const SPIRVTypeArray *const>(this)->getLength()->
       getZExtIntValue();
 }
@@ -93,13 +94,13 @@ SPIRVType::getBitWidth() const {
 
 SPIRVWord
 SPIRVType::getFloatBitWidth()const {
-  assert(OpCode == OpTypeFloat && "Not an integer type");
+  IGC_ASSERT(OpCode == OpTypeFloat && "Not an integer type");
   return static_cast<const SPIRVTypeFloat *const>(this)->getBitWidth();
 }
 
 SPIRVWord
 SPIRVType::getIntegerBitWidth()const {
-  assert((OpCode == OpTypeInt || OpCode == OpTypeBool) &&
+  IGC_ASSERT((OpCode == OpTypeInt || OpCode == OpTypeBool) &&
       "Not an integer type");
   if (isTypeBool())
     return 1;
@@ -108,43 +109,43 @@ SPIRVType::getIntegerBitWidth()const {
 
 SPIRVType *
 SPIRVType::getFunctionReturnType() const {
-  assert(OpCode == OpTypeFunction);
+  IGC_ASSERT(OpCode == OpTypeFunction);
   return static_cast<const SPIRVTypeFunction *const>(this)->getReturnType();
 }
 
 SPIRVType *
 SPIRVType::getPointerElementType()const {
-  assert(OpCode == OpTypePointer && "Not a pointer type");
+  IGC_ASSERT(OpCode == OpTypePointer && "Not a pointer type");
   return static_cast<const SPIRVTypePointer *const>(this)->getElementType();
 }
 
 SPIRVStorageClassKind
 SPIRVType::getPointerStorageClass() const {
-  assert(OpCode == OpTypePointer && "Not a pointer type");
+  IGC_ASSERT(OpCode == OpTypePointer && "Not a pointer type");
   return static_cast<const SPIRVTypePointer *const>(this)->getStorageClass();
 }
 
 SPIRVType*
 SPIRVType::getStructMemberType(size_t Index) const {
-  assert(OpCode == OpTypeStruct && "Not struct type");
+  IGC_ASSERT(OpCode == OpTypeStruct && "Not struct type");
   return static_cast<const SPIRVTypeStruct *const>(this)->getMemberType(Index);
 }
 
 SPIRVWord
 SPIRVType::getStructMemberCount() const {
-  assert(OpCode == OpTypeStruct && "Not struct type");
+  IGC_ASSERT(OpCode == OpTypeStruct && "Not struct type");
   return static_cast<const SPIRVTypeStruct *const>(this)->getMemberCount();
 }
 
 SPIRVWord
 SPIRVType::getVectorComponentCount() const {
-  assert(OpCode == OpTypeVector && "Not vector type");
+  IGC_ASSERT(OpCode == OpTypeVector && "Not vector type");
   return static_cast<const SPIRVTypeVector *const>(this)->getComponentCount();
 }
 
 SPIRVType*
 SPIRVType::getVectorComponentType() const {
-  assert(OpCode == OpTypeVector && "Not vector type");
+  IGC_ASSERT(OpCode == OpTypeVector && "Not vector type");
   return static_cast<const SPIRVTypeVector *const>(this)->getComponentType();
 }
 
@@ -334,7 +335,7 @@ void
 SPIRVTypeArray::validate()const {
   SPIRVEntry::validate();
   ElemType->validate();
-  assert(getValue(Length)->getType()->isTypeInt() &&
+  IGC_ASSERT(getValue(Length)->getType()->isTypeInt() &&
       get<SPIRVConstant>(Length)->getZExtIntValue() > 0);
 }
 
