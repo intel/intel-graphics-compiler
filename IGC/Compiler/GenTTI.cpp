@@ -225,6 +225,54 @@ namespace llvm {
                     }
                     return Total - PHIs;
                 };
+                // countCycle's purpose is to count how many integer instructions to get back to the original instruction
+                auto countCycle = [&](BinaryOperator* InstOrig, Instruction* Inst, unsigned count) {
+                    while (InstOrig != Inst)
+                    {
+                        Value* Op0 = NULL;
+                        if (Inst == NULL || isa<PHINode>(Inst)) {
+                            count = 0;
+                            break;
+                        }
+                        if (Inst->getNumOperands() > 0)
+                            Op0 = Inst->getOperand(0);
+                        if (!(Op0 && isa<Instruction>(Op0) && isa<IntegerType>(Op0->getType()))) {
+                            count = 0;
+                            break;
+                        }
+                        Inst = cast<Instruction>(Op0);
+                        count++;
+                    }
+                    return count;
+                };
+                //This functions purpose is to ensure we do not get stack overflows when simplifying the loop in
+                //SCEV. We specifically look at the Loop header for integer ops that use a PHI Node value that
+                //loop back to the loop latch. In these cases the call stack can become giant expecially when
+                //we have wrapping flags (NSW or NUW)
+                auto countPhiAddWithWrappingFlag = [&](BasicBlock* BB, BasicBlock* LatchBB){
+                    for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
+                    {
+                        if (isa<BinaryOperator>(&*BI))
+                        {
+                            auto BOp = cast<BinaryOperator>(&*BI);
+                            for (unsigned int i = 0; i < BOp->getNumOperands(); i++)
+                                if (auto PHI = dyn_cast<PHINode>(BOp->getOperand(i)))
+                                {
+                                    Instruction* startInst = NULL;
+                                    for (unsigned int j = 0; j < PHI->getNumOperands(); j++)
+                                        if (PHI->getIncomingBlock(j) == LatchBB &&
+                                            isa<Instruction>(PHI->getOperand(j)))
+                                            startInst = cast<Instruction>(PHI->getOperand(j));
+                                    unsigned totalCount = countCycle(BOp, startInst, 0);
+                                    if (isa<OverflowingBinaryOperator>(BOp) &&
+                                        (BOp->hasNoSignedWrap() || BOp->hasNoUnsignedWrap()))
+                                        totalCount *= 2;
+                                    return totalCount;
+                                }
+                        }
+                    }
+                    return (unsigned)0;
+                };
                 auto hasLoad = [](BasicBlock* BB) {
                     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
                         if (isa<LoadInst>(&*BI))
@@ -246,6 +294,7 @@ namespace llvm {
                 };
                 // For innermost loop, allow certain patterns.
                 unsigned Count = 0;
+                unsigned CountPhiAddWithWrappingFlag = 0;
                 bool HasCall = false;
                 bool HasStore = false;
                 bool MayHasLoadInHeaderOnly = true;
@@ -255,7 +304,10 @@ namespace llvm {
                     HasStore |= hasStore(*BI);
                     if (L->getHeader() != *BI)
                         MayHasLoadInHeaderOnly &= !hasLoad(*BI);
+                    else
+                        CountPhiAddWithWrappingFlag = countPhiAddWithWrappingFlag(*BI, L->getLoopLatch());
                 }
+                unsigned SingleLoopCount = Count;
                 // Runtime unroll it.
                 if (!HasCall && !HasStore && MayHasLoadInHeaderOnly && Count < 100) {
                     unsigned C = IGC_GET_FLAG_VALUE(AdvRuntimeUnrollCount);
@@ -265,6 +317,21 @@ namespace llvm {
                     UP.MaxCount = UP.Count;
                     // The following is only available and required from LLVM 3.7+.
                     UP.AllowExpensiveTripCount = true;
+                }
+
+                if (CountPhiAddWithWrappingFlag != 0)
+                {
+                    unsigned upper_bound = 400 / CountPhiAddWithWrappingFlag;
+                    if (CountPhiAddWithWrappingFlag > 400) //No unrolling stack size will be too large
+                    {
+                        UP.Threshold = 0;
+                        UP.PartialThreshold = 0;
+                    }
+                    else if (upper_bound < TripCount)
+                    {
+                        UP.Threshold = upper_bound * SingleLoopCount;
+                        UP.PartialThreshold = upper_bound * SingleLoopCount;
+                    }
                 }
 
             }
