@@ -3669,6 +3669,14 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         if (isIntrinsic())
         {
             output << "." << asIntrinsicInst()->getName();
+            if (isSpillIntrinsic())
+            {
+                output << "." << asSpillIntrinsic()->getNumRows();
+            }
+            else if (isFillIntrinsic())
+            {
+                output << "." << asFillIntrinsic()->getNumRows();
+            }
         }
 
         if (mod)
@@ -3685,7 +3693,12 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         {// no need to emit size for nop, wait
             output << '(' << static_cast<int>(execSize) << ") ";
         }
-        if (dst)
+
+        if (isSpillIntrinsic())
+        {
+            output << "Scratch[" << asSpillIntrinsic()->getOffset() << "] ";
+        }
+        else if (dst)
         {
             dst->emit(output, symbol_dst);  // emit symbolic/physical register depends on the flag
             output << ' ';
@@ -3706,6 +3719,10 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
                 }
                 output << ' ';
             }
+        }
+        if (isFillIntrinsic())
+        {
+            output << "Scratch[" << asFillIntrinsic()->getOffset() << "] ";
         }
 
         if( isMath() && asMathInst()->getMathCtrl() != MATH_RESERVED )
