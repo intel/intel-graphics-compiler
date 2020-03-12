@@ -209,11 +209,7 @@ MACRO: CEIL_DIV
 MACRO: STRCAT
 \*****************************************************************************/
 #ifndef STRCAT
-#if defined(ISTDLIB_KMD) || !defined(_WIN32)
-#define STRCAT( dst, size, src ) strcat( (dst), (src) )
-#else
 #define STRCAT( dst, size, src ) strcat_s( (dst), (size), (src) )
-#endif
 #endif
 
 /*****************************************************************************\
@@ -242,11 +238,7 @@ MACRO: WCSNCAT
 MACRO: STRCPY
 \*****************************************************************************/
 #ifndef STRCPY
-#if defined(ISTDLIB_KMD) || !defined(_WIN32)
-#define STRCPY( dst, size, src ) strcpy( (dst), (src) )
-#else
 #define STRCPY( dst, size, src ) strcpy_s( (dst), (size), (src) )
-#endif
 #endif
 
 /*****************************************************************************\
