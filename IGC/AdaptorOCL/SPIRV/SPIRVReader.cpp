@@ -75,6 +75,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "libSPIRV/SPIRVDebugInfoExt.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "libSPIRV/SPIRVAsm.h"
+#include "llvm/IR/InlineAsm.h"
 
 #include "libSPIRV/SPIRVFunction.h"
 #include "libSPIRV/SPIRVInstruction.h"
@@ -1086,6 +1088,10 @@ public:
   bool transKernelMetadata();
   bool transSourceLanguage();
   bool transSourceExtension();
+  /*InlineAsm*/ Value *transAsmINTEL(SPIRVAsmINTEL *BA, Function *F,
+                                     BasicBlock *BB);
+  CallInst *transAsmCallINTEL(SPIRVAsmCallINTEL *BI, Function *F,
+                              BasicBlock *BB);
 
   Type* m_NamedBarrierType = nullptr;
   Type* getNamedBarrierType();
@@ -2425,6 +2431,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpFunction:
     return mapValue(BV, transFunction(static_cast<SPIRVFunction *>(BV)));
 
+  case OpAsmINTEL:
+    return mapValue(BV, transAsmINTEL(static_cast<SPIRVAsmINTEL *>(BV), F, BB));
+
   case OpLabel:
     return mapValue(BV, BasicBlock::Create(*Context, BV->getName(), F));
     break;
@@ -2806,6 +2815,10 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     }
     break;
 
+  case OpAsmCallINTEL:
+    return mapValue(
+        BV, transAsmCallINTEL(static_cast<SPIRVAsmCallINTEL *>(BV), F, BB));
+
   case OpFunctionPointerCallINTEL: {
     SPIRVFunctionPointerCallINTEL *BC =
       static_cast<SPIRVFunctionPointerCallINTEL*>(BV);
@@ -3055,6 +3068,21 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
     }
   }
   return F;
+}
+
+Value *SPIRVToLLVM::transAsmINTEL(SPIRVAsmINTEL *BA, Function *F, BasicBlock *BB) {
+  bool HasSideEffect = BA->hasDecorate(DecorationSideEffectsINTEL);
+  return InlineAsm::get(
+      dyn_cast<FunctionType>(transType(BA->getFunctionType())),
+      BA->getInstructions(), BA->getConstraints(), HasSideEffect,
+      /* IsAlignStack */ false, InlineAsm::AsmDialect::AD_ATT);
+}
+
+CallInst *SPIRVToLLVM::transAsmCallINTEL(SPIRVAsmCallINTEL *BI, Function *F,
+                                         BasicBlock *BB) {
+  auto *IA = cast<InlineAsm>(transValue(BI->getAsm(), F, BB));
+  auto Args = transValue(BM->getValues(BI->getArguments()), F, BB);
+  return CallInst::Create(IA, Args, BI->getName(), BB);
 }
 
 uint64_t SPIRVToLLVM::calcImageType(const SPIRVValue *ImageVal)

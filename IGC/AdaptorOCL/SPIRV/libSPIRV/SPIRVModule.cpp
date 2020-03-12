@@ -70,6 +70,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVValue.h"
 #include "SPIRVFunction.h"
 #include "SPIRVInstruction.h"
+#include "SPIRVAsm.h"
 #include "Probe.h"
 
 namespace spv{
@@ -128,6 +129,7 @@ public:
   void setSpecConstantMap(SPIRVSpecConstantMap *specConstants) override { SCMap = specConstants; }
   std::set<std::string> &getExtension() override { return SPIRVExt;}
   SPIRVFunction *getFunction(unsigned I) const override { return FuncVec[I];}
+  SPIRVAsmINTEL *getAsm(unsigned I) const override { return AsmVec[I]; }
   SPIRVVariable *getVariable(unsigned I) const override { return VariableVec[I];}
   virtual SPIRVValue *getValue(SPIRVId TheId) const override;
   virtual std::vector<SPIRVValue *> getValues(const std::vector<SPIRVId>&)const override;
@@ -223,6 +225,11 @@ public:
   virtual SPIRVInstruction *
   addInstruction(SPIRVInstruction *Inst, SPIRVBasicBlock *BB,
                  SPIRVInstruction *InsertBefore = nullptr);
+  SPIRVEntry *addAsmTargetINTEL(const std::string &) override;
+  SPIRVValue *addAsmINTEL(SPIRVTypeFunction *, SPIRVAsmTargetINTEL *,
+                          const std::string &, const std::string &) override;
+  SPIRVInstruction *addAsmCallINTELInst(SPIRVAsmINTEL *, const std::vector<SPIRVWord> &,
+                                   SPIRVBasicBlock *) override;
 
   virtual SPIRVExtInst* getCompilationUnit() const override
   {
@@ -310,7 +317,9 @@ private:
   typedef std::map<SPIRVExecutionModelKind, SPIRVIdSet> SPIRVExecModelIdSetMap;
   typedef std::map<SPIRVExecutionModelKind, SPIRVIdVec> SPIRVExecModelIdVecMap;
   typedef std::unordered_map<std::string, SPIRVString*> SPIRVStringMap;
+  typedef std::vector<SPIRVAsmINTEL *> SPIRVAsmVector;
 
+  SPIRVAsmVector AsmVec;
   SPIRVIdToEntryMap IdEntryMap;
   SPIRVUnknownStructFieldMap UnknownStructFieldMap;
   SPIRVFunctionVector FuncVec;
@@ -683,6 +692,29 @@ SPIRVModuleImpl::addInstruction(SPIRVInstruction *Inst, SPIRVBasicBlock *BB,
   if (Inst->getOpCode() != OpSpecConstantOp)
     Inst = createSpecConstantOpInst(Inst);
   return static_cast<SPIRVInstruction *>(addConstant(Inst));
+}
+
+SPIRVEntry *SPIRVModuleImpl::addAsmTargetINTEL(const std::string &TheTarget) {
+  auto Asm = new SPIRVAsmTargetINTEL(this, getId(), TheTarget);
+  return add(Asm);
+}
+
+SPIRVValue *SPIRVModuleImpl::addAsmINTEL(SPIRVTypeFunction *TheType,
+                                         SPIRVAsmTargetINTEL *TheTarget,
+                                         const std::string &TheInstructions,
+                                         const std::string &TheConstraints) {
+  auto Asm = new SPIRVAsmINTEL(this, TheType, getId(), TheTarget,
+                               TheInstructions, TheConstraints);
+  AsmVec.push_back(Asm);
+  return add(Asm);
+}
+
+SPIRVInstruction *
+SPIRVModuleImpl::addAsmCallINTELInst(SPIRVAsmINTEL *TheAsm,
+                                     const std::vector<SPIRVWord> &TheArguments,
+                                     SPIRVBasicBlock *BB) {
+  return addInstruction(
+      new SPIRVAsmCallINTEL(getId(), TheAsm, TheArguments, BB), BB);
 }
 
 SPIRVInstruction *SPIRVModuleImpl::addLoopMergeInst(

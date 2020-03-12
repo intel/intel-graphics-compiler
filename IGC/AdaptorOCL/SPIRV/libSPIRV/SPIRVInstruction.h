@@ -193,6 +193,10 @@ public:
       setModule(TheBB->getModule());
   }
 
+  virtual bool isOperandLiteral(unsigned Index) const {
+    IGC_ASSERT(0 && "not implemented");
+    return false;
+  }
 protected:
   void validate()const {
     SPIRVValue::validate();
@@ -262,7 +266,7 @@ public:
     addLit(Lit2);
     addLit(Lit3);
   }
-  virtual bool isOperandLiteral(unsigned I) const {
+  bool isOperandLiteral(unsigned I) const override {
     return (Lit.count(I) > 0);
   }
   void addLit(unsigned L) {

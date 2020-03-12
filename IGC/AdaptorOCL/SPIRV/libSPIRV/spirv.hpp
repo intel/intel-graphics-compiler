@@ -403,6 +403,7 @@ enum Decoration {
     DecorationNoSignedWrap = 4469,
     DecorationNoUnsignedWrap = 4470,
     DecorationReferencedIndirectlyINTEL = 5602,
+    DecorationSideEffectsINTEL = 5608,
     DecorationUserSemantic = 5635,
 };
 
@@ -598,6 +599,7 @@ enum Capability {
     CapabilitySubgroupImageMediaBlockIOINTEL = 5579,
     CapabilityFunctionPointersINTEL = 5603,
     CapabilityIndirectReferencesINTEL = 5604,
+    CapabilityAsmINTEL = 5606,
     CapabilitySubgroupAvcMotionEstimationINTEL = 5696,
     CapabilitySubgroupAvcMotionEstimationIntraINTEL = 5697,
     CapabilitySubgroupAvcMotionEstimationChromaINTEL = 5698,
