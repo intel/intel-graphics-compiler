@@ -345,7 +345,5 @@ Imported_Intrinsics = \
     "GenISA_dp4a_su": ["int",["int","int","int"],"NoMem"],
     "GenISA_dp4a_us": ["int",["int","int","int"],"NoMem"],
     "GenISA_is_uniform": ["bool",["any"],"NoMem"],
-    "GenISA_CatchAllDebugLine": ["void", [], "None"],
-    "GenISA_UnmaskedRegionBegin" : ["void", [], "None"],
-    "GenISA_UnmaskedRegionEnd" : ["void", [], "None"]
+    "GenISA_CatchAllDebugLine": ["void", [], "None"]
 }

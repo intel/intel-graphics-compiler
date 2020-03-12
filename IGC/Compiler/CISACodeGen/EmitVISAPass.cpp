@@ -16850,15 +16850,6 @@ void EmitPass::emitDP4A(GenIntrinsicInst* GII) {
     m_encoder->Push();
 }
 
-void EmitPass::emitUnmaskedRegionBoundary(bool start)
-{
-    if (start) {
-      m_encoder->BeginForcedNoMaskRegion();
-    } else {
-      m_encoder->EndForcedNoMaskRegion();
-    }
-}
-
 void EmitPass::emitDebugPlaceholder(llvm::GenIntrinsicInst* I)
 {
     m_encoder->Loc(I->getDebugLoc().getLine());

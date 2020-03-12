@@ -242,8 +242,6 @@ namespace IGC
         bool MatchCopyToStruct(llvm::InsertValueInst*);
         bool MatchCopyFromStruct(llvm::ExtractValueInst*);
 
-        bool MatchUnmaskedRegionBoundary(llvm::Instruction& I, bool start);
-
         void AddPattern(Pattern* P)
         {
             m_currentPattern = P;

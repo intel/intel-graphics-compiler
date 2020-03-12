@@ -349,9 +349,6 @@ namespace IGC
         inline void SetSecondHalf(bool secondHalf);
         inline bool IsSecondHalf();
 
-        inline void BeginForcedNoMaskRegion();
-        inline void EndForcedNoMaskRegion();
-
         void Wait();
 
         VISAKernel* GetVISAKernel() { return vKernel; }
@@ -567,8 +564,6 @@ namespace IGC
         VISAKernel* vMainKernel;
         VISABuilder* vbuilder;
         VISABuilder* vAsmTextBuilder;
-
-        bool m_insideForcedNoMaskRegion;
 
         bool m_enableVISAdump;
         bool m_hasInlineAsm;
@@ -880,17 +875,6 @@ namespace IGC
 
     inline void CEncoder::dp4a(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2) {
         Arithmetic(ISA_DP4A, dst, src0, src1, src2);
-    }
-
-    inline void CEncoder::BeginForcedNoMaskRegion()
-    {
-        m_insideForcedNoMaskRegion = true;
-        m_encoderState.m_noMask = true;
-    }
-
-    inline void CEncoder::EndForcedNoMaskRegion()
-    {
-        m_insideForcedNoMaskRegion = false;
     }
 
     inline void CEncoder::SetNoMask()

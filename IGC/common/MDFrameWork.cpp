@@ -348,9 +348,3 @@ void IGC::serialize(const IGC::ModuleMetaData &moduleMD, Module* module)
     LLVMMetadata->addOperand(node);
 }
 
-bool IGC::isUnmaskedFunction(const IGC::FunctionMetaData &funcMD)
-{
-    const std::vector<std::string>& annotations = funcMD.UserAnnotations;
-    return std::find(annotations.cbegin(), annotations.cend(), "unmasked") != annotations.cend();
-}
-

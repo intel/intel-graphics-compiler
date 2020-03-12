@@ -364,6 +364,4 @@ namespace IGC
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);
     void deserialize(IGC::ModuleMetaData &deserializedMD, const llvm::Module* module);
 
-    // SYCL unmasked feature:
-    bool isUnmaskedFunction(const IGC::FunctionMetaData &funcMD);
 }

@@ -97,7 +97,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/SubGroupFuncs/SubGroupFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BIFTransforms/BIFTransforms.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BreakdownIntrinsic.h"
-#include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelFunctionCloning.h"
 #include "Compiler/Legalizer/TypeLegalizerPass.h"
@@ -279,8 +278,6 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
-
-    mpm.add(new TransformUnmaskedFunctionsPass());
 
     mpm.add(new ClampLoopUnroll(256));
 
