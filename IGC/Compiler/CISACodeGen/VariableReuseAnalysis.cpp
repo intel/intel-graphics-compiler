@@ -46,6 +46,12 @@ namespace
         VectorType* VTy = dyn_cast<VectorType>(V->getType());
         return VTy ? (int)VTy->getNumElements() : 1;
     }
+
+    inline int getTypeSizeInBits(Type* Ty) {
+        int scalarBits = Ty->getScalarSizeInBits();
+        VectorType* VTy = dyn_cast<VectorType>(Ty);
+        return scalarBits * (VTy ? (int)VTy->getNumElements() : 1);
+    }
 }
 
 char VariableReuseAnalysis::ID = 0;
