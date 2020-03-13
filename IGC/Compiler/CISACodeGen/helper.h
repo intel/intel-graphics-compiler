@@ -234,6 +234,45 @@ namespace IGC
         return false;
     }
 
+    inline bool isCoarsePhaseFunction(const llvm::Function* CF) {
+        const llvm::Module * M = CF->getParent();
+        if (auto MD = M->getNamedMetadata(NAMED_METADATA_COARSE_PHASE)) {
+            if (MD->getOperand(0) && MD->getOperand(0)->getOperand(0)) {
+                auto Func = llvm::mdconst::dyn_extract<llvm::Function>(
+                    MD->getOperand(0)->getOperand(0));
+                return Func == CF;
+            }
+        }
+        return false;
+    }
+
+    inline bool isPixelPhaseFunction(const llvm::Function* CF) {
+        const llvm::Module* M = CF->getParent();
+        if (auto MD = M->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE)) {
+            if (MD->getOperand(0) && MD->getOperand(0)->getOperand(0)) {
+                auto Func = llvm::mdconst::dyn_extract<llvm::Function>(
+                    MD->getOperand(0)->getOperand(0));
+                return Func == CF;
+            }
+        }
+        return false;
+    }
+
+    inline bool isNonEntryMultirateShader(const llvm::Function* CF) {
+        if (isPixelPhaseFunction(CF))
+        {
+            const llvm::Module* CM = CF->getParent();
+            if (auto MD = CM->getNamedMetadata(NAMED_METADATA_COARSE_PHASE)) {
+                if (MD->getOperand(0) && MD->getOperand(0)->getOperand(0)) {
+                    auto Func = llvm::mdconst::dyn_extract<llvm::Function>(
+                        MD->getOperand(0)->getOperand(0));
+                    return Func != nullptr;
+                }
+            }
+        }
+        return  false;
+    }
+
     // Return a unique entry function.
     // If more than one entry exists, return the first and and set it as unique.
     // All subsequent calls to this function will get the entry set by the first call.

@@ -4074,7 +4074,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDeriveRTX_Fine(llv
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Function* floor =
-        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_GradientXfine);
+        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_GradientXfine, V->getType());
     return this->CreateCall(floor, V);
 }
 
@@ -4095,7 +4095,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDeriveRTY_Fine(llv
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Function* floor =
-        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_GradientYfine);
+        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_GradientYfine, V->getType());
     return this->CreateCall(floor, V);
 }
 

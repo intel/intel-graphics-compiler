@@ -39,10 +39,12 @@ namespace IGC
             unsigned int              pixelOffset;
             unsigned int              ZWDelta;
             unsigned int              oMaskOffset;
+            unsigned int              r1;
             bool                      CoarseMask;
             DispatchSignature() : CoarseMask(false) {}
         };
         DispatchSignature dispatchSign[3];
+        std::map<unsigned int, uint64_t> PSConstantOutput;
     };
 
 
@@ -52,6 +54,7 @@ namespace IGC
         CPixelShader(llvm::Function* pFunc, CShaderProgram* pProgram);
         ~CPixelShader();
         CVariable* GetR1();
+        CVariable* GetCoarseR1();
         CVariable* GetBaryReg(e_interpolation mode);
         CVariable* GetBaryRegLowered(e_interpolation mode);
         CVariable* GetInputDelta(uint index, bool loweredInput = false);
@@ -91,7 +94,7 @@ namespace IGC
         void        PullPixelPhasePayload();
 
         void        AddCoarseOutput(CVariable* var, unsigned int index);
-        CVariable* GetCoarseInput(unsigned int index);
+        CVariable* GetCoarseInput(unsigned int index, uint16_t vectorSize, VISA_Type type);
         void        SetCoarseoMask(CVariable* var);
         CVariable* GetCoarseMask();
         void        OutputDepth() { m_HasoDepth = true; };
@@ -128,6 +131,7 @@ namespace IGC
 
         PSSignature::DispatchSignature& GetDispatchSignature();
         CVariable* m_R1;
+        CVariable* m_CoarseR1;
         CVariable* m_PerspectivePixel;
         CVariable* m_PerspectiveCentroid;
         CVariable* m_PerspectiveSample;

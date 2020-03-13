@@ -7074,7 +7074,8 @@ void EmitPass::getCoarsePixelSize(CVariable* destination, const uint component)
     assert(component < 2);
 
     CPixelShader* const psProgram = static_cast<CPixelShader*>(m_currShader);
-    CVariable* const coarsePixelSize = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UB);
+    CVariable* r1 = psProgram->GetPhase() == PSPHASE_PIXEL ? psProgram->GetCoarseR1() : psProgram->GetR1();
+    CVariable* const coarsePixelSize = m_currShader->BitCast(r1, ISA_TYPE_UB);
     m_encoder->SetSrcRegion(0, 0, 1, 0);
     m_encoder->SetSrcSubReg(0, (component == 0) ? 0 : 1);
     m_encoder->Cast(destination, coarsePixelSize);
@@ -7839,9 +7840,11 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitMemoryFence();
         break;
     case GenISAIntrinsic::GenISA_PHASE_OUTPUT:
+    case GenISAIntrinsic::GenISA_PHASE_OUTPUTVEC:
         emitPhaseOutput(inst);
         break;
     case GenISAIntrinsic::GenISA_PHASE_INPUT:
+    case GenISAIntrinsic::GenISA_PHASE_INPUTVEC:
         emitPhaseInput(inst);
         break;
     case GenISAIntrinsic::GenISA_ldrawvector_indexed:
@@ -13410,10 +13413,13 @@ void EmitPass::emitPhaseOutput(llvm::GenIntrinsicInst* inst)
 
     unsigned int outputIndex = (unsigned int)cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
     CVariable* output = GetSymbol(inst->getOperand(0));
-    CVariable* temp =
-        m_currShader->GetNewVariable(numLanes(m_SimdMode), output->GetType(), EALIGN_GRF);
-    m_encoder->Copy(temp, output);
-    output = temp;
+    if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_PHASE_OUTPUT)
+    {
+        CVariable* temp =
+            m_currShader->GetNewVariable(numLanes(m_SimdMode), output->GetType(), EALIGN_GRF);
+        m_encoder->Copy(temp, output);
+        output = temp;
+    }
 
     psProgram->AddCoarseOutput(output, outputIndex);
 }
@@ -13425,7 +13431,10 @@ void EmitPass::emitPhaseInput(llvm::GenIntrinsicInst* inst)
     assert(psProgram->GetPhase() == PSPHASE_PIXEL);
 
     unsigned int inputIndex = (unsigned int)cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
-    CVariable* input = psProgram->GetCoarseInput(inputIndex);
+    bool isVectorInput = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_PHASE_INPUTVEC;
+    uint16_t vectorSize = isVectorInput ?
+        int_cast<uint16_t>(cast<ConstantInt>(inst->getArgOperand(2))->getZExtValue()) : (uint16_t)1;
+    CVariable* input = psProgram->GetCoarseInput(inputIndex, vectorSize, m_destination->GetType());
 
     // address variable represents register a0
     CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
@@ -13437,8 +13446,21 @@ void EmitPass::emitPhaseInput(llvm::GenIntrinsicInst* inst)
     // we add offsets to the base that is the beginning of the vector variable
     CVariable* index = psProgram->GetCoarseParentIndex();
     CVariable* byteAddress = psProgram->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_UW, EALIGN_OWORD);
-    m_encoder->Shl(byteAddress, index, psProgram->ImmToVariable(2, ISA_TYPE_UW));
+    DWORD shiftAmount = iSTD::Log2(CEncoder::GetCISADataTypeSize(input->GetType()));
+    m_encoder->Shl(byteAddress, index, psProgram->ImmToVariable(shiftAmount, ISA_TYPE_UW));
     m_encoder->Push();
+
+    if (isVectorInput)
+    {
+        CVariable* elementOffset = psProgram->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_UW, EALIGN_OWORD);
+        uint elementSize = numLanes(m_SimdMode) * CEncoder::GetCISADataTypeSize(input->GetType());
+        m_encoder->Mul(elementOffset, GetSymbol(inst->getArgOperand(1)), psProgram->ImmToVariable(elementSize, ISA_TYPE_UW));
+        m_encoder->Push();
+        CVariable* adjustedByteAddress = psProgram->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_UW, EALIGN_OWORD);
+        m_encoder->Add(adjustedByteAddress, byteAddress, elementOffset);
+        m_encoder->Push();
+        byteAddress = adjustedByteAddress;
+    }
 
     m_encoder->AddrAdd(pDstArrElm, input, byteAddress);
     m_encoder->Push();

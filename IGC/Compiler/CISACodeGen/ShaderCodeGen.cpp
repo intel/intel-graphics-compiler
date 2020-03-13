@@ -73,6 +73,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderLowering.hpp"
+#include "Compiler/CISACodeGen/CrossPhaseConstProp.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
@@ -326,7 +327,7 @@ namespace IGC
     // forward declaration
     llvm::ModulePass* createPruneUnusedArgumentsPass();
 
-    static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm)
+    static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature* pSignature=nullptr)
     {
         COMPILER_TIME_START(&ctx, TIME_CG_Add_Legalization_Passes);
 
@@ -366,6 +367,10 @@ namespace IGC
             mpm.add(createPromoteMemoryToRegisterPass());
             if (!isOptDisabled)
             {
+                if (pSignature)
+                {
+                    mpm.add(createCrossPhaseConstPropPass(pSignature));
+                }
                 mpm.add(llvm::createCFGSimplificationPass());
                 mpm.add(llvm::createLowerSwitchPass());
             }
@@ -785,7 +790,7 @@ namespace IGC
         IGCPassManager PassMgr(ctx, "CG");
 
         COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
-        AddLegalizationPasses(*ctx, PassMgr);
+        AddLegalizationPasses(*ctx, PassMgr, pSignature);
         AddAnalysisPasses(*ctx, PassMgr);
 
         const PixelShaderInfo& psInfo = ctx->getModuleMetaData()->psInfo;
