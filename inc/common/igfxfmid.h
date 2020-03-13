@@ -536,6 +536,7 @@ typedef enum __NATIVEGTTYPE
 #define ICFL_GT3_ULT_28W_DEVICE_F0_ID           0x3EA8
 #define ICFL_GT3_ULT_DEVICE_F0_ID               0x3EA5
 #define ICFL_HALO_DEVICE_F0_ID                  0x3E95
+#define ICFL_GT2_WKS_DEVICE_P0_ID               0x9BC6
 
 //GLV
 #define IGLV_GT1_MOB_SIM_DEVICE_F0_ID           0xFF10
