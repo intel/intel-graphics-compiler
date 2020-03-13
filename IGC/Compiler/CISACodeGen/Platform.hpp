@@ -415,6 +415,12 @@ namespace IGC
         return getMaxNumberThreadPerSubslice();
     }
 
+    // max block size for legacy OWord block messages
+    uint32_t getMaxBlockMsgSize(bool isSLM) const
+    {
+        return 128;
+    }
+
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const

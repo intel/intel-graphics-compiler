@@ -4950,33 +4950,34 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
     m_encoder->Push();
 }
 
-static uint32_t getBlockMsgSize(uint32_t bytesRemaining, bool do256Byte)
+static uint32_t getBlockMsgSize(uint32_t bytesRemaining, uint32_t maxSize)
 {
-    if (do256Byte && bytesRemaining >= 256)
+    uint32_t size = 0;
+    if (bytesRemaining >= 256)
     {
-        return 256;
+        size = 256;
     }
     else if (bytesRemaining >= 128)
     {
-        return 128;
+        size = 128;
     }
     else if (bytesRemaining >= 64)
     {
-        return 64;
+        size = 64;
     }
     else if (bytesRemaining >= 32)
     {
-        return 32;
+        size = 32;
     }
-    else  if (bytesRemaining >= 16)
+    else if (bytesRemaining >= 16)
     {
-        return 16;
+        size = 16;
     }
     else
     {
         assert(0);
-        return 0;
     }
+    return std::min(size, maxSize);
 }
 
 
@@ -5104,7 +5105,7 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
 
         while (bytesRemaining)
         {
-            bytesToRead = getBlockMsgSize(bytesRemaining, false);
+            bytesToRead = getBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxBlockMsgSize(false));
             bytesRemaining -= bytesToRead;
             m_encoder->OWStoreA64(data, pTempVar, bytesToRead, srcOffset);
 
@@ -5157,9 +5158,8 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
         uint32_t bytesToRead = 0;
         while (bytesRemaining)
         {
-            bool canDo256Byte = false;
-
-            bytesToRead = getBlockMsgSize(bytesRemaining, canDo256Byte);
+            bool isToSLM = ptrType->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL;
+            bytesToRead = getBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxBlockMsgSize(isToSLM));
             bytesRemaining -= bytesToRead;
 
             m_encoder->OWStore(data, resource.m_surfaceType, resource.m_resource, src0shifted, bytesToRead, srcOffset);
@@ -5289,7 +5289,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
 
         while (bytesRemaining)
         {
-            bytesToRead = getBlockMsgSize(bytesRemaining, false);
+            bytesToRead = getBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxBlockMsgSize(false));
             bytesRemaining -= bytesToRead;
             m_encoder->OWLoadA64(m_destination, pTempVar, bytesToRead, dstOffset);
             m_encoder->Push();
@@ -5342,9 +5342,8 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
         bool isFirstIter = true;
         while (bytesRemaining)
         {
-            bool canDo256Byte = false;
 
-            bytesToRead = getBlockMsgSize(bytesRemaining, canDo256Byte);
+            bytesToRead = getBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxBlockMsgSize(isToSLM));
             bytesRemaining -= bytesToRead;
 
             bool useSrc = isFirstIter && !isToSLM;
