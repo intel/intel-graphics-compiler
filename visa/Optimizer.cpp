@@ -6458,7 +6458,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         const RegionDesc* rd = NULL;
         uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
-        if (!src->getRegion()->isRegionWH())
+        // even if src has VxH region, it could have a width that is equal to exec_size,
+        // meaning that it's really just a 1x1 region.
+        auto isVxHRegion = src->getRegion()->isRegionWH() && start >= wd;
+        if (!isVxHRegion)
         {
             // r[a0.0,0]<4;2,1> and size is 4 or 1
             if (size < newWd)
@@ -6472,22 +6475,20 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         if (src->getRegAccess() != Direct)
         {
-            if (src->getRegion()->isRegionWH())
+            if (isVxHRegion)
             {
                 // just handle <1,0>
                 if (start > 0)
                 {
-                    // just change immediate offset
-                    assert((start % src->getRegion()->width == 0) && "illegal starting offset and width combination");
-                    uint16_t subRegOff = src->getSubRegOff() + start / src->getRegion()->width;
-                    auto newSrc = createIndirectSrc(src->getModifier(), src->getBase(), src->getRegOff(), subRegOff, src->getRegion(),
-                        src->getType(), src->getAddrImm());
-                    return newSrc;
+                    // Change a0.N to a0.(N+start)
+                    assert((start % wd == 0) && "illegal starting offset and width combination");
+                    uint16_t subRegOff = src->getSubRegOff() + start / wd;
+                    return createIndirectSrc(src->getModifier(), src->getBase(), src->getRegOff(), subRegOff,
+                        src->getRegion(), src->getType(), src->getAddrImm());
                 }
                 else
                 {
-                    G4_SrcRegRegion* newSrc = duplicateOperand(src);
-                    return newSrc;
+                    return duplicateOperand(src);
                 }
             }
 
@@ -6499,7 +6500,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 auto newSrc = createIndirectSrc(src->getModifier(), src->getBase(), src->getRegOff(), src->getSubRegOff(), rd,
                     src->getType(), src->getAddrImm() + newOff);
                 return newSrc;
-
             }
             else
             {
