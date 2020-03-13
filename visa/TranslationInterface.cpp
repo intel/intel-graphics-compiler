@@ -9676,6 +9676,9 @@ int IR_Builder::translateVISASVMScatterReadInst(
     VISA_Exec_Size instExecSize = execSize;
     execSize = roundUpExecSize(execSize);
 
+    bool is8ByteMsg = blockSize == SVM_BLOCK_TYPE_BYTE && numBlocks == SVM_BLOCK_NUM_8;
+    assert((!is8ByteMsg || has8ByteA64Gather()) && "A64 8-byte scatter not supported on this platform");
+
     unsigned exSize = Get_VISA_Exec_Size(execSize);
     unsigned instExSize = Get_VISA_Exec_Size(instExecSize);
     unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize);
@@ -9749,6 +9752,8 @@ int IR_Builder::translateVISASVMScatterWriteInst(
                 execSize == EXEC_SIZE_16,
                 "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
 
+    bool is8ByteMsg = blockSize == SVM_BLOCK_TYPE_BYTE && numBlocks == SVM_BLOCK_NUM_8;
+    assert((!is8ByteMsg || has8ByteA64Gather()) && "A64 8-byte scatter not supported on this platform");
     VISA_Exec_Size instExecSize = execSize;
     execSize = roundUpExecSize(execSize);
 

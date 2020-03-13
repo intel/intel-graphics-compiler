@@ -426,6 +426,11 @@
         return getGenxPlatform() >= GENX_TGLLP;
     }
 
+    bool has8ByteA64Gather() const
+    {
+        return getGenxPlatform() != GENX_TGLLP;
+    }
+
     bool no64bitType() const
     {
         return getGenxPlatform() == GENX_ICLLP || isGen12LP();
