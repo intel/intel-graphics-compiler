@@ -175,7 +175,7 @@ protected:
   _SPIRV_DEF_DEC3(Id, BitWidth, IsSigned)
   void validate()const {
     SPIRVEntry::validate();
-    assert(BitWidth > 1 && BitWidth <= 64 && "Invalid bit width");
+    IGC_ASSERT_EXIT(BitWidth > 1 && BitWidth <= 64 && "Invalid bit width");
   }
 private:
   unsigned BitWidth;    // Bit width
@@ -197,7 +197,7 @@ protected:
   _SPIRV_DEF_DEC2(Id, BitWidth)
   void validate()const {
     SPIRVEntry::validate();
-    assert(BitWidth >= 16 && BitWidth <= 64 && "Invalid bit width");
+    IGC_ASSERT_EXIT(BitWidth >= 16 && BitWidth <= 64 && "Invalid bit width");
   }
 private:
   unsigned BitWidth;    // Bit width

@@ -203,7 +203,7 @@ protected:
   }
   void validate() const {
     SPIRVValue::validate();
-    IGC_ASSERT(NumWords >= 1 && NumWords <= 2 && "Invalid constant size");
+    IGC_ASSERT_EXIT(NumWords >= 1 && NumWords <= 2 && "Invalid constant size");
   }
   void setWordCount(SPIRVWord WordCount) {
     SPIRVValue::setWordCount(WordCount);
@@ -211,6 +211,7 @@ protected:
   }
   void decode(std::istream &I) {
     getDecoder(I) >> Type >> Id;
+    validate();
     for (unsigned i = 0; i < NumWords; ++i)
       getDecoder(I) >> Union.Words[i];
   }
