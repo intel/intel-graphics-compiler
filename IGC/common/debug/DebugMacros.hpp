@@ -33,50 +33,6 @@ Use for code changes that need to happen, but are not in place now.
 
 
 /*****************************************************************************\
-MACRO: USC_NOT_IMPLEMENTED
-Use for function stubs which are yet to be implemented.
-\*****************************************************************************/
-#ifdef _WIN32
-#   if defined( _DEBUG ) || defined( _INTERNAL )
-#       define IGC_NOT_IMPLEMENTED(DESCRIPTION)                               \
-    do {                                                                      \
-         assert(0 && DESCRIPTION );                                           \
-            } while (0)
-#   else
-#       define IGC_NOT_IMPLEMENTED(DESCRIPTION)
-#   endif
-#else
-#   define IGC_NOT_IMPLEMENTED(DESCRIPTION)                                   \
-    do {                                                                      \
-    assert(0 && DESCRIPTION);                                                                      \
-            } while (0)
-#endif
-
-
-/*****************************************************************************\
-MACRO: IGC_WARN_ON_CONDITION
-Use for warnings about the input to different phases of the compiler.
-
-The idea here is to use this to provide useful messages where an assertion
-would be too strict.
-\*****************************************************************************/
-#ifdef _DEBUG
-#   define IGC_WARN_ON_CONDITION( expr, message )                             \
-    do {                                                                      \
-        if ( (expr) )                                                         \
-                        {                                                     \
-            IGC::Debug::Warning( (#expr), (__LINE__), (__FILE__), (message) );\
-                        }                                                     \
-            } while (0)
-#else
-#   define IGC_WARN_ON_CONDITION( expr, message )                             \
-    do {                                                                      \
-        (void) sizeof(expr);                                                  \
-            } while (0)
-#endif
-
-
-/*****************************************************************************\
 MACRO: VALUE_NAME
 Wrapper for LLVM twine names.
 
@@ -90,23 +46,3 @@ have to pay the cost of it in the release build.
 #   define VALUE_NAME(STR) ("")
 #endif
 
-
-#if defined _MSC_VER
-#   if _MSC_VER>=1300
-#       if !defined BUILD_MESSAGE
-#           define BUILD_MESSAGE_stringlize(x) #x
-#           define BUILD_MESSAGE_quote(x) BUILD_MESSAGE_stringlize(x)
-#           define BUILD_MESSAGE(x) __pragma(message(__FILE__ "(" BUILD_MESSAGE_quote(__LINE__) ") : " x))
-#       endif
-#   else
-#       define BUILD_MESSAGE(x)
-#   endif
-#else
-#   define BUILD_MESSAGE(x)
-#endif
-
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 5
-#define IF_LLVM_3_5(X) X
-#else
-#define IF_LLVM_3_5(X)
-#endif

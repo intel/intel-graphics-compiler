@@ -9,7 +9,6 @@
 #include "common/LLVMWarningsPop.hpp"
 
 #include <iostream>
-#include <assert.h>
 
 using namespace llvm;
 

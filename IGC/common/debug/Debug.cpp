@@ -54,6 +54,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <exception>
 #include <stdexcept>
 #include <mutex>
+#include "Probe.h"
+
 using namespace llvm;
 
 #if defined _WIN32 || _WIN64
@@ -61,6 +63,7 @@ using namespace llvm;
 #include "psapi.h"
 int CatchAssert( int reportType, char *userMessage, int *retVal )
 {
+    IGC_ASSERT(0);
     if(IsDebuggerPresent())
     {
         *retVal = 1; // Break into the debugger or print a stack

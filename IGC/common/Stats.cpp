@@ -43,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iomanip>
 #include <sstream>
 #include <iostream>
+#include "Probe.h"
 
 #if GET_TIME_STATS
 // Functions exposed by VISA lib API
@@ -68,7 +69,7 @@ const char* g_cShaderStatItems[STATS_MAX_SHADER_STATS_ITEMS+1] =
 
 int ShaderStats::getShaderStats( SHADER_STATS_ITEMS compileInterval )
 {
-    assert( compileInterval >= 0 && compileInterval < STATS_MAX_SHADER_STATS_ITEMS );
+    IGC_ASSERT(compileInterval >= 0 && compileInterval < STATS_MAX_SHADER_STATS_ITEMS);
     return m_CompileShaderStats[compileInterval];
 }
 
@@ -386,7 +387,7 @@ void ShaderStats::parseIsaShader( ShaderHash hash, ShaderType shaderType, SIMDMo
         }
         else
         {
-            assert(0);
+            IGC_ASSERT(0);
         }
     }
 
@@ -418,7 +419,7 @@ void ShaderStats::parseIsaShader( ShaderHash hash, ShaderType shaderType, SIMDMo
 
 void ShaderStats::sumShaderStat( SHADER_STATS_ITEMS compileInterval, int count )
 {
-    assert( compileInterval >= 0 && compileInterval < STATS_MAX_SHADER_STATS_ITEMS );
+    IGC_ASSERT(compileInterval >= 0 && compileInterval < STATS_MAX_SHADER_STATS_ITEMS);
     m_CompileShaderStats[ compileInterval ] += count;
 };
 
@@ -455,7 +456,7 @@ std::string str(COMPILE_TIME_INTERVALS cti)
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return #enumName;
 #include "timeStats.def"
 #undef DEFINE_TIME_STAT
-    default: assert( 0 && "unreachable" ); break;
+    default: IGC_ASSERT(0 && "unreachable"); break;
     }
 
     return "";
@@ -471,7 +472,7 @@ COMPILE_TIME_INTERVALS interval( std::string const& str )
 #include "timeStats.def"
 #undef DEFINE_TIME_STAT
     //llvm::errs() << str;
-    assert( 0 && "unreachable" && "unknown COMPILE_TIME_INTERVALS name" );
+    IGC_ASSERT(0 && "unreachable" && "unknown COMPILE_TIME_INTERVALS name");
     return MAX_COMPILE_TIME_INTERVALS;
 }
 
@@ -482,7 +483,7 @@ bool isVISATimer( COMPILE_TIME_INTERVALS cti )
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isVISA;
 #include "timeStats.def"
 #undef DEFINE_TIME_STAT
-    default: assert( 0 && "unreachable" ); break;
+    default: IGC_ASSERT(0 && "unreachable"); break;
     }
     return false;
 }
@@ -494,7 +495,7 @@ bool isUnaccounted( COMPILE_TIME_INTERVALS cti )
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isUnacc;
 #include "timeStats.def"
 #undef DEFINE_TIME_STAT
-    default: assert( 0 && "unreachable" ); break;
+    default: IGC_ASSERT(0 && "unreachable"); break;
     }
     return false;
 }
@@ -506,7 +507,7 @@ bool isCoarseTimer( COMPILE_TIME_INTERVALS cti )
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isCoarseTimer;
 #include "timeStats.def"
 #undef DEFINE_TIME_STAT
-default: assert(0 && "unreachable"); break;
+default: IGC_ASSERT(0 && "unreachable"); break;
     }
     return true;
 }
@@ -518,7 +519,7 @@ bool isDashboardTimer( COMPILE_TIME_INTERVALS cti )
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isDashBoardTimer;
 #include "timeStats.def"
 #undef DEFINE_TIME_STAT
-    default: assert( 0 && "unreachable" ); break;
+    default: IGC_ASSERT(0 && "unreachable"); break;
     }
 
     return true;
@@ -531,7 +532,7 @@ COMPILE_TIME_INTERVALS parentInterval( COMPILE_TIME_INTERVALS cti )
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return parentEnum;
 #include "timeStats.def"
 #undef DEFINE_TIME_STAT
-    default: assert( 0 && "unreachable" ); break;
+    default: IGC_ASSERT(0 && "unreachable"); break;
     }
     return MAX_COMPILE_TIME_INTERVALS;
 }
@@ -580,26 +581,26 @@ void TimeStats::recordVISATimers()
 
 void TimeStats::recordTimerStart( COMPILE_TIME_INTERVALS compileInterval )
 {
-    assert( compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS );
+    IGC_ASSERT(compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS);
     m_wallclockStart[ compileInterval ] = iSTD::GetTimestampCounter();
 }
 
 void TimeStats::recordTimerEnd( COMPILE_TIME_INTERVALS compileInterval )
 {
-    assert( compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS );
+    IGC_ASSERT(compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS);
     m_elapsedTime[ compileInterval ] += iSTD::GetTimestampCounter() - m_wallclockStart[ compileInterval ];
     m_hitCount[ compileInterval ]++;
 }
 
 uint64_t TimeStats::getCompileTime( COMPILE_TIME_INTERVALS compileInterval ) const
 {
-    assert( compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS );
+    IGC_ASSERT(compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS);
     return m_elapsedTime[ compileInterval ];
 }
 
 uint64_t TimeStats::getCompileHit( COMPILE_TIME_INTERVALS compileInterval ) const
 {
-    assert( compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS );
+    IGC_ASSERT(compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS);
     return m_hitCount[ compileInterval ];
 }
 
@@ -711,7 +712,7 @@ bool TimeStats::skipTimer( int i ) const
 }
 void TimeStats::printSumTimeCSV(const char* outputFile) const
 {
-    assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
+    IGC_ASSERT(m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object");
 
     bool fileExist = false;
 
@@ -785,7 +786,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
 
 void TimeStats::printPerPassSumTimeCSV(const char* outputFile) const
 {
-    assert(m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object");
+    IGC_ASSERT(m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object");
 
     if (m_PassTimeStatsMap.empty())
     {
@@ -832,7 +833,7 @@ void TimeStats::printPerPassSumTimeCSV(const char* outputFile) const
 
 void TimeStats::recordPerPassTimerStart(std::string PassName)
 {
-    assert(!PassName.empty());
+    IGC_ASSERT(!PassName.empty());
 
     std::map<std::string, PerPassTimeStat>::iterator iter = m_PassTimeStatsMap.find(PassName);
     if (iter == m_PassTimeStatsMap.end())
@@ -852,7 +853,7 @@ void TimeStats::recordPerPassTimerStart(std::string PassName)
 
 void TimeStats::recordPerPassTimerEnd(std::string PassName)
 {
-    assert(!PassName.empty());
+    IGC_ASSERT(!PassName.empty());
 
     std::map<std::string, PerPassTimeStat>::iterator iter = m_PassTimeStatsMap.find(PassName);
 
@@ -897,7 +898,7 @@ namespace {
 
 void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
 {
-    assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
+    IGC_ASSERT(m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object");
 
     llvm::formatted_raw_ostream FS(OS);
 
@@ -1040,7 +1041,7 @@ void TimeStats::printPerPassSumTime(llvm::raw_ostream& OS) const
 
 void TimeStats::printTimeCSV( std::string const& corpusName ) const
 {
-    assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
+    IGC_ASSERT(m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object");
 
     const std::string outputFilePath = std::string("c:\\Intel\\") + "TimeStat_" + IGC::Debug::GetShaderCorpusName() + ".csv";
     const char *outputFile = outputFilePath.c_str();
@@ -1089,7 +1090,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
 
 void TimeStats::printPerPassTimeCSV(std::string const& corpusName) const
 {
-    assert(m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object");
+    IGC_ASSERT(m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object");
 
     if (m_PassTimeStatsMap.empty())
     {

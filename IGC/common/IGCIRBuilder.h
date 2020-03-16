@@ -1,8 +1,7 @@
+#pragma once
 
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/IRBuilder.h"
-
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
@@ -15,7 +14,6 @@
 #include "llvm/IR/InstrTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 
-#pragma once
 //This Builder class provides definitions for functions calls that were once available till LLVM version 3.6.0
 //===--------------------------------------------------------------------===
 // CreateCall Variations which are removed in 3.8 for API Simplification, which IGC still finds convenient to use
@@ -79,28 +77,11 @@ namespace llvm {
             return ne0;
         }
 
-        inline Value* CreateAllValuesAreConstF(Value** values,
-            unsigned nvalues, Value* constVal)
-        {
-            if (nvalues)
-            {
-                assert(isa<ConstantFP>(constVal));
-                Value* aeq = this->CreateFCmpOEQ(values[0], constVal);
-                for (unsigned i = 1; i < nvalues; i++)
-                {
-                    aeq = this->CreateAnd(aeq,
-                        this->CreateFCmpOEQ(values[i], constVal));
-                }
-                return aeq;
-            }
-            return nullptr;
-        }
-
         inline Value* CreateAllValuesAreZeroF(Value** values, unsigned nvalues)
         {
             if (nvalues)
             {
-                return CreateAllValuesAreConstF(values, nvalues,
+                return CreateAllValuesAreConstantFP(values, nvalues,
                     ConstantFP::get(values[0]->getType(), 0.0));
             }
             return nullptr;
@@ -110,7 +91,7 @@ namespace llvm {
         {
             if (nvalues)
             {
-                return CreateAllValuesAreConstF(values, nvalues,
+                return CreateAllValuesAreConstantFP(values, nvalues,
                     ConstantFP::get(values[0]->getType(), 1.0));
             }
             return nullptr;
@@ -158,6 +139,24 @@ namespace llvm {
         inline Value* CreateExtractElementOrPropagate(Value* vec, uint64_t idx, const Twine& name = "")
         {
             return CreateExtractElementOrPropagate(vec, this->getInt64(idx), name);
+        }
+
+    private:
+
+        inline Value* CreateAllValuesAreConstantFP(Value** values,
+            unsigned nvalues, Value* constVal)
+        {
+            if (nvalues)
+            {
+                Value* aeq = this->CreateFCmpOEQ(values[0], constVal);
+                for (unsigned i = 1; i < nvalues; i++)
+                {
+                    aeq = this->CreateAnd(aeq,
+                        this->CreateFCmpOEQ(values[i], constVal));
+                }
+                return aeq;
+            }
+            return nullptr;
         }
     };
 
