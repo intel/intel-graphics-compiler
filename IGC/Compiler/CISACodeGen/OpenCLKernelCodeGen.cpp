@@ -1569,6 +1569,10 @@ namespace IGC
             if (loadThreadPayload)
             {
                 uint perThreadInputSize = SIZE_WORD * 3 * (m_dispatchSize == SIMDMode::SIMD32 ? 32 : 16);
+                if (m_dispatchSize == SIMDMode::SIMD16 && getGRFSize() == 64)
+                {
+                    perThreadInputSize *= 2;
+                }
                 encoder.GetVISAKernel()->AddKernelAttribute("perThreadInputSize", sizeof(uint16_t), &perThreadInputSize);
             }
         }
