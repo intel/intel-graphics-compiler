@@ -804,7 +804,7 @@ public:
 
     bool IsValid( void ) const;
 
-    // Throwing assertion failure and returning error, since we have to declare interface manually from CShader
+    // Throwing assert and returning error, since we have to declare interface manually from CShader
     template<typename TOpType>
     ErrorCode  Process( const CShaderDecl& src, unsigned char*& pStream, unsigned int& size );
 
@@ -859,7 +859,7 @@ public:
 
     bool IsValid( void ) const;
 
-    // Throwing assertion failure and returning error, since we have to declare interface manually from CShader
+    // Throwing assert and returning error, since we have to declare interface manually from CShader
     template<typename TOpType>
     ErrorCode  Process( const CShaderDecl& src, unsigned char*& pStream, unsigned int& size );
 

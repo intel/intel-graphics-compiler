@@ -47,11 +47,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <list>
 #include <vector>
 #include <string>
+#include <cassert>
 #include <utility>
 #include <fstream>
 #include <sstream>
 #include <mutex>
-#include "Probe.h"
 
 // path for IGC registry keys
 #define IGC_REGISTRY_KEY "SOFTWARE\\INTEL\\IGFX\\IGC"
@@ -59,82 +59,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SRegKeysList g_RegKeyList;
 
 #if defined(_WIN64) || defined(_WIN32)
-
-DEVICE_INFO::DEVICE_INFO(DEVINST deviceInstance)
-{
-    deviceID = 0;
-    revisionID = 0;
-    pciBus = 0;
-    pciDevice = 0;
-    pciFunction = 0;
-    get_device_property(deviceInstance, CM_DRP_DEVICEDESC);
-    get_device_property(deviceInstance, CM_DRP_COMPATIBLEIDS);
-    get_device_property(deviceInstance, CM_DRP_DRIVER);
-    get_device_property(deviceInstance, CM_DRP_LOCATION_INFORMATION);
-}
-
-void DEVICE_INFO::get_device_property(DEVINST deviceInstace, DWORD property)
-{
-    wchar_t propertyData[MAX_PATH];
-    DWORD   propertyDataLength = 0;
-
-    // First get the size of the data
-    CONFIGRET status = CM_Get_DevNode_Registry_PropertyW(
-        deviceInstace,
-        property,
-        NULL,
-        NULL,
-        &propertyDataLength,
-        0);
-
-    // Then fetch the actual property data
-    if(CR_BUFFER_SMALL == status)
-    {
-        status = CM_Get_DevNode_Registry_PropertyW(
-            deviceInstace,
-            property,
-            NULL,
-            &propertyData[0],
-            &propertyDataLength,
-            0);
+#if _DEBUG
+#define DBGOUT stdout  // change to stderr if debugger output is preferred
+#define DBG(fmt, ...) { \
+    fprintf_s(DBGOUT, fmt, __VA_ARGS__); \
     }
-
-    if(CR_SUCCESS == status)
-    {
-        // Convert from UTF-16 (wide char) to UTF-8
-        DWORD convertedStringSize = WideCharToMultiByte(CP_UTF8, 0, &propertyData[0], sizeof(propertyData), NULL, 0, NULL, NULL);
-        std::string propertyString(convertedStringSize, 0);
-        WideCharToMultiByte(CP_UTF8, 0, &propertyData[0], sizeof(propertyData), &propertyString[0], convertedStringSize, NULL, NULL);
-
-        switch(property)
-        {
-        case CM_DRP_COMPATIBLEIDS:
-            // PCI\VEN_8086&DEV_1912&REV_06
-            sscanf_s(propertyString.c_str(), "PCI\\VEN_8086&DEV_%x&REV_%x", &deviceID, &revisionID);
-            break;
-        case CM_DRP_DEVICEDESC:
-            // Intel(R) HD Graphics 530
-            description = propertyString.c_str();
-            break;
-        case CM_DRP_DRIVER:
-            // {4d36e968-e325-11ce-bfc1-08002be10318}\0001
-            driverRegistryPath = propertyString.c_str();
-            break;
-        case CM_DRP_LOCATION_INFORMATION:
-            // PCI bus 0, device 2, function 0
-            sscanf_s(propertyString.c_str(), "PCI bus %u, device %u, function %u", &pciBus, &pciDevice, &pciFunction);
-            break;
-        }
+#define DBGERR(fmt, ...) { \
+    fprintf_s(DBGOUT, "%s [%d] --> ", __FUNCTION__, __LINE__); \
+    fprintf_s(DBGOUT, fmt, __VA_ARGS__); \
     }
-    else if(CR_NO_SUCH_VALUE == status)
-    {
-        IGC_ASSERT(0 && "No such property value");
-    }
-    else
-    {
-        IGC_ASSERT(0 && "Failed to get DevNode property");
-    }
-}
+#else
+#define DBG(fmt, ...)
+#define DBGERR(fmt, ...)
+#endif
 
 /********************************************************************************************/
 /* Function: ConvertDoubleNullTermStringToVector                                            */
@@ -188,7 +125,7 @@ static bool GetPropertyFromDevice(
     CONFIGRET status = CM_Get_DevNode_PropertyW(devInst, &PropertyKey, &propertyType, NULL, &propertySize, 0);
     if (status != CR_BUFFER_SMALL)
     {
-        IGC_ASSERT(0 && "CM_Get_DevNode_PropertyW() failed, status indicates error code");
+        DBGERR("CM_Get_DevNode_PropertyW() failed with the error code 0x%02x\n", status);
         return false;
     }
 
@@ -200,7 +137,7 @@ static bool GetPropertyFromDevice(
     status = CM_Get_DevNode_PropertyW(devInst, &PropertyKey, &propertyType, &PropertyData[0], &propertySize, 0);
     if (status != CR_SUCCESS)
     {
-        IGC_ASSERT(0 && "CM_Get_DevNode_PropertyW() failed, status indicates error code");
+        DBGERR("CM_Get_DevNode_PropertyW() failed with the error code 0x%02x\n", status);
         PropertyData.clear();
         return false;
     }
@@ -315,7 +252,7 @@ static size_t GetIntelDriverPaths(std::vector<DEVINST>& drivers)
     HRESULT hr = ObtainDeviceInstances(&drivers);
     if (FAILED(hr))
     {
-        IGC_ASSERT(0 && "Failed to find any graphics device instances");
+        DBGERR("Failed to find any graphics device instances\n");
         return 0;
     }
     return drivers.size();
@@ -502,7 +439,7 @@ void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned lon
 
     if (driverRegistryPath.empty())
     {
-        IGC_ASSERT(0 && "Failed to find the driver registry path, cannot create the debug variable XML file.");
+        assert(!"Failed to find the driver registry path, cannot create the debug variable XML file.");
         return;
     }
 

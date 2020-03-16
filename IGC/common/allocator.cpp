@@ -42,9 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace std;
 
-#endif // _WIN32
-
-#include "Probe.h"
+#endif
 
 #if ( defined ( _DEBUG ) || defined ( _INTERNAL ) )
 /*****************************************************************************\
@@ -356,13 +354,13 @@ inline void* operator new(size_t size)
 #endif
 {
     void* storage = CAllocator::Allocate(size);
-    IGC_ASSERT(storage && "Could not allocate the required memory to storage");
+    assert(storage && "Could not allocate the required memory to storage");
     return storage;
 }
 
 inline void operator delete(void* ptr)
 {
-    IGC_ASSERT(ptr && "ptr cannot be null");
+    assert( ptr && "ptr cannot be null");
     CAllocator::Deallocate(ptr);
 }
 
@@ -378,7 +376,7 @@ inline void* operator new[](size_t size)
 
 inline void operator delete[](void* ptr)
 {
-    IGC_ASSERT(ptr && "ptr cannot be null");
+    assert( ptr && "ptr cannot be null");
     CAllocator::Deallocate(ptr);
 }
 #endif // !defined __clang__
@@ -396,7 +394,9 @@ inline void operator delete[](void* ptr)
 void* __cdecl operator new( size_t size )
 {
     void* storage = CAllocator::Allocate(size);
-    IGC_ASSERT(storage && "Could not allocate the required memory to storage");
+#if defined ( _DEBUG ) || defined ( _INTERNAL )
+    assert(storage && "Could not allocate the required memory to storage");
+#endif
     return storage;
 }
 

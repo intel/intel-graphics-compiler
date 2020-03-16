@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visaBuilder_interface.h"
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
-#include "Probe.h"
 #if defined(WIN32)
 #include "WinDef.h"
 #include "Windows.h"
@@ -146,7 +145,7 @@ iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
             return IGA_GEN12p1;
         }
     default:
-        IGC_ASSERT(0 && "unsupported platform");
+        assert(0 && "unsupported platform");
         break;
     }
     return IGA_GEN9;

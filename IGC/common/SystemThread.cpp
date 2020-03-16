@@ -89,7 +89,7 @@ bool CSystemThread::CreateSystemThreadKernel(
         // Allocate memory for SSystemThreadKernelOutput.
         if( success )
         {
-            IGC_ASSERT(pSystemThreadKernelOutput == nullptr);
+            IGC_ASSERT( pSystemThreadKernelOutput == nullptr );
             pSystemThreadKernelOutput = new SSystemThreadKernelOutput;
 
             success = ( pSystemThreadKernelOutput != nullptr );
