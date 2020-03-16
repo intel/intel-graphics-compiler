@@ -53,10 +53,11 @@ const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BARRIER = "__builtin_IB
 const llvm::StringRef SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE = "__builtin_IB_get_simd_size";
 const llvm::StringRef SubGroupFuncsResolution::GET_SUB_GROUP_LOCAL_ID = "__builtin_IB_get_simd_id";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE = "__builtin_IB_simd_shuffle";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B = "__builtin_IB_simd_shuffle_b";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_C = "__builtin_IB_simd_shuffle_c";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US = "__builtin_IB_simd_shuffle_us";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F = "__builtin_IB_simd_shuffle_f";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H = "__builtin_IB_simd_shuffle_h";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B = "__builtin_IB_simd_shuffle_b";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF = "__builtin_IB_simd_shuffle_df";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN = "__builtin_IB_simd_shuffle_down";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US = "__builtin_IB_simd_shuffle_down_us";
@@ -187,22 +188,30 @@ const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_WRITE = "__builtin_IB
 
 const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_RECTANGLE_READ = "__builtin_IB_media_block_rectangle_read";
 const llvm::StringRef SubGroupFuncsResolution::GET_IMAGE_BTI = "__builtin_IB_get_image_bti";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_ADD = "__builtin_IB_sub_group_reduce_OpGroupIAdd";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_IMAX = "__builtin_IB_sub_group_reduce_OpGroupSMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_UMAX = "__builtin_IB_sub_group_reduce_OpGroupUMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_IMIN = "__builtin_IB_sub_group_reduce_OpGroupSMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_UMIN = "__builtin_IB_sub_group_reduce_OpGroupUMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_FADD = "__builtin_IB_sub_group_reduce_OpGroupFAdd";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_FMAX = "__builtin_IB_sub_group_reduce_OpGroupFMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE_FMIN = "__builtin_IB_sub_group_reduce_OpGroupFMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_ADD = "__builtin_IB_sub_group_scan_OpGroupIAdd";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_IMAX = "__builtin_IB_sub_group_scan_OpGroupSMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_UMAX = "__builtin_IB_sub_group_scan_OpGroupUMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_IMIN = "__builtin_IB_sub_group_scan_OpGroupSMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_UMIN = "__builtin_IB_sub_group_scan_OpGroupUMin";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_FADD = "__builtin_IB_sub_group_scan_OpGroupFAdd";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_FMAX = "__builtin_IB_sub_group_scan_OpGroupFMax";
-const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN_FMIN = "__builtin_IB_sub_group_scan_OpGroupFMin";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE = "__builtin_IB_sub_group_reduce";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN = "__builtin_IB_sub_group_scan";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_REDUCE = "__builtin_IB_sub_group_clustered_reduce";
+
+const std::array<std::pair<std::string, WaveOps>, 13> SubGroupFuncsResolution::m_spvOpToWaveOpMap =
+{
+    {
+        {"IAdd", WaveOps::SUM},
+        {"FAdd", WaveOps::FSUM},
+        {"SMax", WaveOps::IMAX},
+        {"UMax", WaveOps::UMAX},
+        {"FMax", WaveOps::FMAX},
+        {"SMin", WaveOps::IMIN},
+        {"UMin", WaveOps::UMIN},
+        {"FMin", WaveOps::FMIN},
+        {"IMul", WaveOps::PROD},
+        {"FMul", WaveOps::FPROD},
+        {"And", WaveOps::AND},
+        {"Or", WaveOps::OR},
+        {"Xor", WaveOps::XOR}
+    }
+};
+
+
 
 SubGroupFuncsResolution::SubGroupFuncsResolution(void) : FunctionPass(ID)
 {
@@ -272,6 +281,19 @@ void SubGroupFuncsResolution::CheckSIMDSize(Instruction& I, StringRef msg)
     {
         m_pCtx->EmitError(std::string(msg).c_str());
     }
+}
+
+WaveOps SubGroupFuncsResolution::GetWaveOp(StringRef funcName)
+{
+    for (auto op : SubGroupFuncsResolution::m_spvOpToWaveOpMap)
+    {
+        if (funcName.contains(op.first))
+        {
+            return op.second;
+        }
+    }
+    assert(!"Function name does not contain spir-v operation type");
+    return WaveOps::UNDEF;
 }
 
 void SubGroupFuncsResolution::mediaBlockRead(llvm::CallInst& CI)
@@ -500,6 +522,21 @@ void SubGroupFuncsResolution::subGroupReduce(WaveOps op, CallInst& CI)
     CI.eraseFromParent();
 }
 
+void SubGroupFuncsResolution::subGroupClusteredReduce(WaveOps op, CallInst& CI)
+{
+    IRBuilder<> IRB(&CI);
+    Value* arg = CI.getArgOperand(0);
+    Value* opVal = IRB.getInt8((uint8_t)op);
+    Value* clusterSize = CI.getOperand(1);
+    Value* args[3] = { arg, opVal, clusterSize };
+    Function* waveClustered = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+        GenISAIntrinsic::GenISA_WaveClustered,
+        arg->getType());
+    Instruction* waveClusteredCall = IRB.CreateCall(waveClustered, args);
+    CI.replaceAllUsesWith(waveClusteredCall);
+    CI.eraseFromParent();
+}
+
 void SubGroupFuncsResolution::subGroupScan(WaveOps op, CallInst& CI)
 {
     IRBuilder<> IRB(&CI);
@@ -555,6 +592,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US) ||
         funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F) ||
         funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_C) ||
         funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B) ||
         funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF)
         )
@@ -841,69 +879,17 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         CI.replaceAllUsesWith(imageIndex);
         CI.eraseFromParent();
     }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE_ADD))
+    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE))
     {
-        return subGroupReduce(WaveOps::SUM, CI);
+        return subGroupReduce(GetWaveOp(funcName), CI);
     }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE_IMAX))
+    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN))
     {
-        return subGroupReduce(WaveOps::IMAX, CI);
+        return subGroupScan(GetWaveOp(funcName), CI);
     }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE_IMIN))
+    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_REDUCE))
     {
-        return subGroupReduce(WaveOps::IMIN, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE_UMAX))
-    {
-        return subGroupReduce(WaveOps::UMAX, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE_UMIN))
-    {
-        return subGroupReduce(WaveOps::UMIN, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE_FADD))
-    {
-        return subGroupReduce(WaveOps::FSUM, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE_FMAX))
-    {
-        return subGroupReduce(WaveOps::FMAX, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE_FMIN))
-    {
-        return subGroupReduce(WaveOps::FMIN, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN_ADD))
-    {
-        return subGroupScan(WaveOps::SUM, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN_IMAX))
-    {
-        return subGroupScan(WaveOps::IMAX, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN_IMIN))
-    {
-        return subGroupScan(WaveOps::IMIN, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN_UMAX))
-    {
-        return subGroupScan(WaveOps::UMAX, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN_UMIN))
-    {
-        return subGroupScan(WaveOps::UMIN, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN_FADD))
-    {
-        return subGroupScan(WaveOps::FSUM, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN_FMAX))
-    {
-        return subGroupScan(WaveOps::FMAX, CI);
-    }
-    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN_FMIN))
-    {
-        return subGroupScan(WaveOps::FMIN, CI);
+        return subGroupClusteredReduce(GetWaveOp(funcName), CI);
     }
     else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_BARRIER))
     {

@@ -5767,6 +5767,71 @@ void    __attribute__((overloadable)) sub_group_barrier( cl_mem_fence_flags flag
 int     __attribute__((overloadable)) sub_group_all( int predicate );
 int     __attribute__((overloadable)) sub_group_any( int predicate );
 
+#if defined(cl_khr_subgroup_non_uniform_vote)
+int     __attribute__((overloadable)) sub_group_elect(void);
+int     __attribute__((overloadable)) sub_group_non_uniform_all(int predicate);
+int     __attribute__((overloadable)) sub_group_non_uniform_any(int predicate);
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(char value);
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(uchar value);
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(short value);
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(ushort value);
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(int value);
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(uint value);
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(long value);
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(ulong value);
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(float value);
+#if defined(cl_khr_fp64)
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(double value);
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(half value);
+#endif // defined(cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_non_uniform_vote)
+
+#if defined(cl_khr_subgroup_ballot)
+#define DECL_NON_UNIFORM_BROADCAST_BASE(GENTYPE)                                                          \
+    GENTYPE __attribute__((overloadable)) sub_group_non_uniform_broadcast(GENTYPE value, uint index);     \
+    GENTYPE __attribute__((overloadable)) sub_group_non_uniform_broadcast_first(GENTYPE value);
+
+#define DECL_NON_UNIFORM_BROADCAST(TYPE)        \
+    DECL_NON_UNIFORM_BROADCAST_BASE(TYPE)       \
+    DECL_NON_UNIFORM_BROADCAST_BASE(TYPE##2)    \
+    DECL_NON_UNIFORM_BROADCAST_BASE(TYPE##3)    \
+    DECL_NON_UNIFORM_BROADCAST_BASE(TYPE##4)    \
+    DECL_NON_UNIFORM_BROADCAST_BASE(TYPE##8)    \
+    DECL_NON_UNIFORM_BROADCAST_BASE(TYPE##16)
+
+DECL_NON_UNIFORM_BROADCAST(char)
+DECL_NON_UNIFORM_BROADCAST(uchar)
+DECL_NON_UNIFORM_BROADCAST(short)
+DECL_NON_UNIFORM_BROADCAST(ushort)
+DECL_NON_UNIFORM_BROADCAST(int)
+DECL_NON_UNIFORM_BROADCAST(uint)
+DECL_NON_UNIFORM_BROADCAST(long)
+DECL_NON_UNIFORM_BROADCAST(ulong)
+DECL_NON_UNIFORM_BROADCAST(float)
+#if defined(cl_khr_fp64)
+DECL_NON_UNIFORM_BROADCAST(double)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DECL_NON_UNIFORM_BROADCAST(half)
+#endif // defined(cl_khr_fp16)
+
+uint4  __attribute__((overloadable)) sub_group_ballot(int predicate);
+int    __attribute__((overloadable)) sub_group_inverse_ballot(uint4 value);
+int    __attribute__((overloadable)) sub_group_ballot_bit_extract(uint4 value, uint index);
+uint   __attribute__((overloadable)) sub_group_ballot_bit_count(uint4 value);
+uint   __attribute__((overloadable)) sub_group_ballot_inclusive_scan(uint4 value);
+uint   __attribute__((overloadable)) sub_group_ballot_exclusive_scan(uint4 value);
+uint   __attribute__((overloadable)) sub_group_ballot_find_lsb(uint4 value);
+uint   __attribute__((overloadable)) sub_group_ballot_find_msb(uint4 value);
+uint4  __attribute__((overloadable)) get_sub_group_eq_mask(void);
+uint4  __attribute__((overloadable)) get_sub_group_ge_mask(void);
+uint4  __attribute__((overloadable)) get_sub_group_gt_mask(void);
+uint4  __attribute__((overloadable)) get_sub_group_le_mask(void);
+uint4  __attribute__((overloadable)) get_sub_group_lt_mask(void);
+#endif // defined(cl_khr_subgroup_ballot)
+
 int     __attribute__((overloadable)) sub_group_broadcast( int   x, uint sub_group_local_id );
 uint    __attribute__((overloadable)) sub_group_broadcast( uint  x, uint sub_group_local_id );
 long    __attribute__((overloadable)) sub_group_broadcast( long  x, uint sub_group_local_id );
@@ -6324,6 +6389,84 @@ void    __attribute__((overloadable)) intel_sub_group_block_write_ul8(__local ul
 
 #endif // cl_intel_subgroup_local_block_io
 
+#if defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
+#define DECL_SUB_GROUP_NON_UNIFORM_OPERATION(TYPE, GROUP_TYPE, OPERATION)
+#define DECL_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(TYPE, GROUP_TYPE, OPERATION)
+
+#if defined(cl_khr_subgroup_non_uniform_arithmetic)
+#define DECL_SUB_GROUP_NON_UNIFORM_OPERATION(TYPE, GROUP_TYPE, OPERATION) \
+TYPE    __attribute__((overloadable)) sub_group_non_uniform_##GROUP_TYPE##_##OPERATION(TYPE value);
+#endif // defined(cl_khr_subgroup_non_uniform_arithmetic)
+
+#if defined(cl_khr_subgroup_clustered_reduce)
+#define DECL_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(TYPE, GROUP_TYPE, OPERATION) \
+TYPE    __attribute__((overloadable)) sub_group_non_uniform_##GROUP_TYPE##_##OPERATION(TYPE value, uint clustersize);
+#endif // defined(cl_khr_subgroup_clustered_reduce)
+
+#define DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, OPERATION)           \
+DECL_SUB_GROUP_NON_UNIFORM_OPERATION(TYPE, reduce, OPERATION)            \
+DECL_SUB_GROUP_NON_UNIFORM_OPERATION(TYPE, scan_inclusive, OPERATION)    \
+DECL_SUB_GROUP_NON_UNIFORM_OPERATION(TYPE, scan_exclusive, OPERATION)    \
+DECL_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(TYPE, reduce, OPERATION)
+
+// ARITHMETIC OPERATIONS
+// gentype sub_group_non_uniform_GROUP_TYPE_add(gentype value)
+// gentype sub_group_non_uniform_GROUP_TYPE_min(gentype value)
+// gentype sub_group_non_uniform_GROUP_TYPE_max(gentype value)
+// gentype sub_group_non_uniform_GROUP_TYPE_mul(gentype value)
+#define DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(TYPE)   \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, add)     \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, min)     \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, max)     \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, mul)
+
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(char)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(uchar)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(short)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(ushort)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(int)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(uint)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(long)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(ulong)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(float)
+#if defined(cl_khr_fp64)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(double)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DECL_SUB_GROUP_ARITHMETIC_OPERATIONS(half)
+#endif // defined(cl_khr_fp16)
+
+// BITWISE OPERATIONS
+// gentype sub_group_non_uniform_GROUP_TYPE_and(gentype value)
+// gentype sub_group_non_uniform_GROUP_TYPE_or(gentype value)
+// gentype sub_group_non_uniform_GROUP_TYPE_xor(gentype value)
+#define DECL_SUB_GROUP_BITWISE_OPERATIONS(TYPE)    \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, and)   \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, or)    \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, xor)
+
+DECL_SUB_GROUP_BITWISE_OPERATIONS(char)
+DECL_SUB_GROUP_BITWISE_OPERATIONS(uchar)
+DECL_SUB_GROUP_BITWISE_OPERATIONS(short)
+DECL_SUB_GROUP_BITWISE_OPERATIONS(ushort)
+DECL_SUB_GROUP_BITWISE_OPERATIONS(int)
+DECL_SUB_GROUP_BITWISE_OPERATIONS(uint)
+DECL_SUB_GROUP_BITWISE_OPERATIONS(long)
+DECL_SUB_GROUP_BITWISE_OPERATIONS(ulong)
+
+// LOGICAL OPERATIONS
+// int sub_group_non_uniform_GROUP_TYPE_logical_and(int predicate)
+// int sub_group_non_uniform_GROUP_TYPE_logical_or(int predicate)
+// int sub_group_non_uniform_GROUP_TYPE_logical_xor(int predicate)
+#define DECL_SUB_GROUP_BITWISE_OPERATIONS(TYPE)             \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, logical_and)    \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, logical_or)     \
+DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, logical_xor)
+
+DECL_SUB_GROUP_BITWISE_OPERATIONS(int)
+
+#endif // defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
+
 #ifdef cl_intel_media_block_io
 
 // Media Block read/write extension
@@ -6421,6 +6564,46 @@ double  __attribute__((overloadable)) intel_sub_group_shuffle_xor( double x, uin
 #endif
 
 #endif // defined(cl_intel_simd_operations_placeholder) || defined(cl_intel_subgroups) || defined(cl_khr_subgroups)
+
+#if defined(cl_khr_subgroup_shuffle)
+#define DECL_SUB_GROUP_SHUFFLE(TYPE)                                                  \
+TYPE    __attribute__((overloadable)) sub_group_shuffle(TYPE value, uint index);      \
+TYPE    __attribute__((overloadable)) sub_group_shuffle_xor(TYPE value, uint mask);
+
+DECL_SUB_GROUP_SHUFFLE(char)
+DECL_SUB_GROUP_SHUFFLE(uchar)
+DECL_SUB_GROUP_SHUFFLE(int)
+DECL_SUB_GROUP_SHUFFLE(uint)
+DECL_SUB_GROUP_SHUFFLE(long)
+DECL_SUB_GROUP_SHUFFLE(ulong)
+DECL_SUB_GROUP_SHUFFLE(float)
+#if defined(cl_khr_fp64)
+DECL_SUB_GROUP_SHUFFLE(double)
+#endif // defined(cl_khr_fp64)
+#if defined (cl_khr_fp16)
+DECL_SUB_GROUP_SHUFFLE(half)
+#endif // defined (cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_shuffle)
+
+#ifdef defined(cl_khr_subgroup_relative)
+#define DECL_SUB_GROUP_SHUFFLE_RELATIVE(TYPE)                                          \
+TYPE    __attribute__((overloadable)) sub_group_shuffle_up(TYPE value, uint delta);    \
+TYPE    __attribute__((overloadable)) sub_group_shuffle_down(TYPE value, uint delta);
+
+DECL_SUB_GROUP_SHUFFLE_RELATIVE(char)
+DECL_SUB_GROUP_SHUFFLE_RELATIVE(uchar)
+DECL_SUB_GROUP_SHUFFLE_RELATIVE(int)
+DECL_SUB_GROUP_SHUFFLE_RELATIVE(uint)
+DECL_SUB_GROUP_SHUFFLE_RELATIVE(long)
+DECL_SUB_GROUP_SHUFFLE_RELATIVE(ulong)
+DECL_SUB_GROUP_SHUFFLE_RELATIVE(float)
+#if defined(cl_khr_fp64)
+DECL_SUB_GROUP_SHUFFLE_RELATIVE(double)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DECL_SUB_GROUP_SHUFFLE_RELATIVE(half)
+#endif // defined (cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_relative)
 
 #if defined(cl_intel_simd_operations_placeholder)
 // SIMD Operations

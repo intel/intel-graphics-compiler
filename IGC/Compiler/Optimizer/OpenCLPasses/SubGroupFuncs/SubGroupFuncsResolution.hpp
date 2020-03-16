@@ -85,6 +85,7 @@ namespace IGC
         void CheckMediaBlockInstError(llvm::GenIntrinsicInst* inst, bool isRead);
 
         void subGroupReduce(WaveOps op, llvm::CallInst& CI);
+        void subGroupClusteredReduce(WaveOps op, llvm::CallInst& CI);
         void subGroupScan(WaveOps op, llvm::CallInst& CI);
 
         static const llvm::StringRef SUB_GROUP_BARRIER;
@@ -94,6 +95,7 @@ namespace IGC
         static const llvm::StringRef SUB_GROUP_SHUFFLE_US;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_F;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_H;
+        static const llvm::StringRef SUB_GROUP_SHUFFLE_C;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_B;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DF;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN;
@@ -220,23 +222,10 @@ namespace IGC
 
         static const llvm::StringRef GET_IMAGE_BTI;
 
-        static const llvm::StringRef SUB_GROUP_REDUCE_ADD;
-        static const llvm::StringRef SUB_GROUP_REDUCE_IMIN;
-        static const llvm::StringRef SUB_GROUP_REDUCE_UMIN;
-        static const llvm::StringRef SUB_GROUP_REDUCE_IMAX;
-        static const llvm::StringRef SUB_GROUP_REDUCE_UMAX;
-        static const llvm::StringRef SUB_GROUP_REDUCE_FADD;
-        static const llvm::StringRef SUB_GROUP_REDUCE_FMAX;
-        static const llvm::StringRef SUB_GROUP_REDUCE_FMIN;
+        static const llvm::StringRef SUB_GROUP_REDUCE;
+        static const llvm::StringRef SUB_GROUP_SCAN;
+        static const llvm::StringRef SUB_GROUP_CLUSTERED_REDUCE;
 
-        static const llvm::StringRef SUB_GROUP_SCAN_ADD;
-        static const llvm::StringRef SUB_GROUP_SCAN_IMIN;
-        static const llvm::StringRef SUB_GROUP_SCAN_UMIN;
-        static const llvm::StringRef SUB_GROUP_SCAN_IMAX;
-        static const llvm::StringRef SUB_GROUP_SCAN_UMAX;
-        static const llvm::StringRef SUB_GROUP_SCAN_FADD;
-        static const llvm::StringRef SUB_GROUP_SCAN_FMAX;
-        static const llvm::StringRef SUB_GROUP_SCAN_FMIN;
 
 
     private:
@@ -245,6 +234,9 @@ namespace IGC
 
         /// @brief - maps image and sampler kernel parameters to BTIs
         CImagesBI::ParamMap m_argIndexMap;
+
+        // @brief - maps SPIR-V operation to vISA operation type
+        static const std::array<std::pair<std::string, WaveOps>, 13> m_spvOpToWaveOpMap;
 
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
@@ -257,6 +249,10 @@ namespace IGC
         /// @brief emits the given error message in SIMD32.  Used on subgroup functions
         // that aren't currently supported in SIMD32.
         void CheckSIMDSize(llvm::Instruction& I, llvm::StringRef msg);
+
+        // @brief parse function name to extract spir-v operation type
+        //        and map it to vISA operation type
+        WaveOps GetWaveOp(llvm::StringRef funcName);
     };
 
 } // namespace IGC

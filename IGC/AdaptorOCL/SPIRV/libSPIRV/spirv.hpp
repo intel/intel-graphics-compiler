@@ -515,6 +515,7 @@ enum GroupOperation {
     GroupOperationReduce = 0,
     GroupOperationInclusiveScan = 1,
     GroupOperationExclusiveScan = 2,
+    GroupOperationClusteredReduce = 3,
     GroupOperationCount /* internal use only */
 };
 
@@ -588,9 +589,16 @@ enum Capability {
     CapabilityDerivativeControl = 51,
     CapabilityInterpolationFunction = 52,
     CapabilityTransformFeedback = 53,
+    CapabilityNamedBarrier = 54,
     CapabilitySubgroupDispatch = 58,
     CapabilityPipeStorage = 60,
-    CapabilityNamedBarrier = 54,
+    CapabilityNonUniform = 61,
+    CapabilityNonUniformVote = 62,
+    CapabilityNonUniformArithmetic = 63,
+    CapabilityNonUniformBallot = 64,
+    CapabilityNonUniformShuffle = 65,
+    CapabilityNonUniformShuffleRelative = 66,
+    CapabilityNonUniformClustered = 67,
     CapabilityNone = 1024, /* internal use only */
     CapabilitySubgroupBallotKHR = 4423,
     CapabilitySubgroupShuffleINTEL = 5568,

@@ -1021,6 +1021,75 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
     }
 }
 
+#if defined(cl_khr_subgroup_non_uniform_vote)
+bool __builtin_spirv_OpGroupNonUniformElect_i32(uint Execution)
+{
+    if (Execution == Subgroup)
+    {
+        uint activeChannels = __builtin_IB_WaveBallot(true);
+        uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);
+        if (__builtin_IB_get_simd_id() == firstActive)
+            return true;
+        else
+            return false;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool __builtin_spirv_OpGroupNonUniformAll_i32_i1(uint Execution, bool Predicate)
+{
+    if(Execution == Subgroup)
+        return __builtin_spirv_OpGroupAll_i32_i1(Execution, Predicate);
+    else
+        return false;
+}
+
+bool __builtin_spirv_OpGroupNonUniformAny_i32_i1(uint Execution, bool Predicate)
+{
+    if (Execution == Subgroup)
+        return __builtin_spirv_OpGroupAny_i32_i1(Execution, Predicate);
+    else
+        return false;
+}
+
+#define DEFN_NON_UNIFORM_ALL_EQUAL(TYPE, TYPE_ABBR)                                                                         \
+bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_##TYPE_ABBR(uint Execution, TYPE Value)                                  \
+{                                                                                                                           \
+    if (Execution == Subgroup)                                                                                              \
+    {                                                                                                                       \
+        uint activeChannels = __builtin_IB_WaveBallot(true);                                                                \
+        uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                                  \
+                                                                                                                            \
+        uint firstLaneValue = __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(Execution, Value, firstActive);        \
+        bool isSame = firstLaneValue == Value;                                                                              \
+                                                                                                                            \
+        uint4 equalChannels = __builtin_spirv_OpGroupNonUniformBallot_i32_i1(Execution, isSame);                            \
+                                                                                                                            \
+        if (equalChannels.x == activeChannels)                                                                              \
+            return true;                                                                                                    \
+        else                                                                                                                \
+            return false;                                                                                                   \
+    }                                                                                                                       \
+    else                                                                                                                    \
+        return false;                                                                                                       \
+}
+
+DEFN_NON_UNIFORM_ALL_EQUAL(uchar,  i8)
+DEFN_NON_UNIFORM_ALL_EQUAL(ushort, i16)
+DEFN_NON_UNIFORM_ALL_EQUAL(uint,   i32)
+DEFN_NON_UNIFORM_ALL_EQUAL(ulong,  i64)
+DEFN_NON_UNIFORM_ALL_EQUAL(float,  f32)
+#if defined(cl_khr_fp64)
+DEFN_NON_UNIFORM_ALL_EQUAL(double, f64)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_NON_UNIFORM_ALL_EQUAL(half,   f16)
+#endif // defined(cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_non_uniform_vote)
+
 //Broadcast Functions
 
 // ***Note that technically the spec allows for 64 bit local Id's but currently our hardware cannot support
@@ -1050,6 +1119,38 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype
 GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, uint, i32, __abbrvargtype, i32)       \
 GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, ulong, i32, __abbrvargtype, i64)
 
+bool __builtin_spirv_OpGroupBroadcast_i32_i1_v3i32(uint Execution, bool Value, uint3 LocalId)
+{
+    if (Execution == Workgroup)
+    {
+        BROADCAST_WORKGROUP(bool)
+    }
+    else if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_b(Value, LocalId.s0);
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool __builtin_spirv_OpGroupBroadcast_i32_i1_v3i64(uint Execution, bool Value, ulong3 LocalId)
+{
+    if (Execution == Workgroup)
+    {
+        BROADCAST_WORKGROUP(bool)
+    }
+    else if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_b(Value, (uint)LocalId.s0);
+    }
+    else
+    {
+        return false;
+    }
+}
+
 uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v3i32(uint Execution, uchar Value, uint3 LocalId)
 {
     if (Execution == Workgroup)
@@ -1058,7 +1159,7 @@ uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v3i32(uint Execution, uchar Value,
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_b(Value, LocalId.s0);
+        return __builtin_IB_simd_shuffle_c(Value, LocalId.s0);
     }
     else
     {
@@ -1074,7 +1175,7 @@ uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v3i64(uint Execution, uchar Value,
     }
     else if (Execution == Subgroup)
     {
-        return __builtin_IB_simd_shuffle_b(Value, (uint)LocalId.s0);
+        return __builtin_IB_simd_shuffle_c(Value, (uint)LocalId.s0);
     }
     else
     {
@@ -1279,6 +1380,16 @@ double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i64(uint Execution, double Val
 
 #endif // defined(cl_khr_fp64)
 
+bool __builtin_spirv_OpGroupBroadcast_i32_i1_v2i32(uint Execution, bool Value, uint2 LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i1_v3i32(Execution, Value, (uint3)(LocalId.s0, LocalId.s1, 0));
+}
+
+bool __builtin_spirv_OpGroupBroadcast_i32_i1_v2i64(uint Execution, bool Value, ulong2 LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i1_v3i64(Execution, Value, (ulong3)(LocalId.s0, LocalId.s1, 0));
+}
+
 uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v2i32(uint Execution, uchar Value, uint2 LocalId)
 {
     return __builtin_spirv_OpGroupBroadcast_i32_i8_v3i32(Execution,Value,(uint3)(LocalId.s0,LocalId.s1,0));
@@ -1352,6 +1463,16 @@ double __builtin_spirv_OpGroupBroadcast_i32_f64_v2i64(uint Execution, double Val
 }
 
 #endif
+
+bool __builtin_spirv_OpGroupBroadcast_i32_i1_i32(uint Execution, bool Value, uint LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i1_v3i32(Execution, Value, (uint3)(LocalId, 0, 0));
+}
+
+bool __builtin_spirv_OpGroupBroadcast_i32_i1_i64(uint Execution, bool Value, ulong LocalId)
+{
+    return __builtin_spirv_OpGroupBroadcast_i32_i1_v3i64(Execution, Value, (ulong3)(LocalId, 0, 0));
+}
 
 uchar __builtin_spirv_OpGroupBroadcast_i32_i8_i32(uint Execution, uchar Value, uint LocalId)
 {
@@ -1439,15 +1560,231 @@ DEFN_SUB_GROUP_BROADCAST_VEC(half, f16)
 DEFN_SUB_GROUP_BROADCAST_VEC(double, f64)
 #endif // defined(cl_khr_fp64)
 
-static uchar    OVERLOADABLE __intel_add(uchar lhs, uchar rhs)  { return lhs + rhs; }
-static ushort   OVERLOADABLE __intel_add(ushort lhs, ushort rhs){ return lhs + rhs; }
-static uint     OVERLOADABLE __intel_add(uint lhs, uint rhs)    { return lhs + rhs; }
-static ulong    OVERLOADABLE __intel_add(ulong lhs, ulong rhs)  { return lhs + rhs; }
-static float    OVERLOADABLE __intel_add(float lhs, float rhs)  { return lhs + rhs; }
-static half     OVERLOADABLE __intel_add(half lhs, half rhs)    { return lhs + rhs; }
+// Ballot Functions
+
+uint intel_sub_group_ballot(bool p)
+{
+    return __builtin_IB_WaveBallot(p);
+}
+
+uint4 __builtin_spirv_BuiltInSubgroupEqMaskKHR()
+{
+    uint id = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+    uint4 v = 0;
+
+    v.x = 1 << id;
+
+    return v;
+}
+
+uint4 __builtin_spirv_BuiltInSubgroupGeMaskKHR()
+{
+    uint id = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+    uint4 v = 0;
+
+    v.x = as_uint(as_int(1 << 31) >> (31 - id));
+
+    return v;
+}
+
+uint4 __builtin_spirv_BuiltInSubgroupLeMaskKHR()
+{
+    uint id = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+    uint4 v = 0;
+
+    uint bitIdx = 1 << id;
+
+    v.x = (bitIdx - 1) | bitIdx;
+
+    return v;
+}
+
+uint4 __builtin_spirv_BuiltInSubgroupGtMaskKHR()
+{
+    uint4 v = 0;
+
+    v.x = ~__builtin_spirv_BuiltInSubgroupLeMaskKHR().x;
+
+    return v;
+}
+
+uint4 __builtin_spirv_BuiltInSubgroupLtMaskKHR()
+{
+    uint id = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+    uint4 v = 0;
+
+    v.x = (1 << id) - 1;
+
+    return v;
+}
+
+uint4 __builtin_spirv_OpSubgroupBallotKHR_i1(bool Predicate)
+{
+    uint4 v = 0;
+    v.x = __builtin_IB_WaveBallot(Predicate);
+    return v;
+}
+
+uint __builtin_spirv_OpSubgroupFirstInvocationKHR_i32(uint Value)
+{
+    uint chanEnable = __builtin_IB_WaveBallot(true);
+    uint firstActive = __builtin_spirv_OpenCL_ctz_i32(chanEnable);
+    uint3 id = (uint3)(firstActive, 0, 0);
+    return __builtin_spirv_OpGroupBroadcast_i32_i32_v3i32(Subgroup, Value, id);
+}
+
+float __builtin_spirv_OpSubgroupFirstInvocationKHR_f32(float Value)
+{
+    return as_float(__builtin_spirv_OpSubgroupFirstInvocationKHR_i32(as_uint(Value)));
+}
+
+#if defined(cl_khr_subgroup_ballot)
+#define DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE, TYPE_ABBR)                                                             \
+TYPE __builtin_spirv_OpGroupNonUniformBroadcast_i32_##TYPE_ABBR##_i32(uint Execution, TYPE Value, uint Id)           \
+{                                                                                                                    \
+    return __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(Execution, Value, Id);                             \
+}                                                                                                                    \
+TYPE __builtin_spirv_OpGroupNonUniformBroadcastFirst_i32_##TYPE_ABBR(uint Execution, TYPE Value)                     \
+{                                                                                                                    \
+    uint activeChannels = __builtin_IB_WaveBallot(true);                                                             \
+    uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                               \
+    return __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(Execution, Value, firstActive);                    \
+}
+
+#define DEFN_NON_UNIFORM_BROADCAST(TYPE, TYPE_ABBR)             \
+    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE, TYPE_ABBR)            \
+    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##2, v2##TYPE_ABBR)     \
+    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##3, v3##TYPE_ABBR)     \
+    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##4, v4##TYPE_ABBR)     \
+    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##8, v8##TYPE_ABBR)     \
+    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##16, v16##TYPE_ABBR)
+
+DEFN_NON_UNIFORM_BROADCAST(uchar,  i8)
+DEFN_NON_UNIFORM_BROADCAST(ushort, i16)
+DEFN_NON_UNIFORM_BROADCAST(uint,   i32)
+DEFN_NON_UNIFORM_BROADCAST(ulong,  i64)
+DEFN_NON_UNIFORM_BROADCAST(float,  f32)
 #if defined(cl_khr_fp64)
-static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + rhs; }
-#endif
+DEFN_NON_UNIFORM_BROADCAST(double, f64)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_NON_UNIFORM_BROADCAST(half,   f16)
+#endif // defined(cl_khr_fp16)
+
+uint4 __builtin_spirv_OpGroupNonUniformBallot_i32_i1(uint Execution, bool Predicate)
+{
+    uint4 v = 0;
+    if (Execution == Subgroup)
+    {
+        v.x = __builtin_IB_WaveBallot(Predicate);
+    }
+    return v;
+}
+
+bool __builtin_spirv_OpGroupNonUniformInverseBallot_i32_v4i32(uint Execution, uint4 Value)
+{
+    if (Execution == Subgroup)
+    {
+        return (Value.x & (1 << __builtin_IB_get_simd_id())) ? true : false;
+    }
+    return false;
+}
+
+bool __builtin_spirv_OpGroupNonUniformBallotBitExtract_i32_v4i32_i32(uint Execution, uint4 Value, uint Index)
+{
+    if (Execution == Subgroup)
+    {
+        return (Value.x & (1 << Index)) ? true : false;
+    }
+    return false;
+}
+
+uint __builtin_spirv_OpGroupNonUniformBallotBitCount_i32_i32_v4i32(uint Execution, uint Operation, uint4 Value)
+{
+    uint Counter = 0;
+    if (Execution == Subgroup)
+    {
+        if (__builtin_spirv_OpGroupNonUniformInverseBallot_i32_v4i32(Execution, Value))
+        {
+            Counter = __builtin_spirv_OpGroupIAdd_i32_i32_i32(Subgroup, Operation, as_uint(1));
+        }
+    }
+    return Counter;
+}
+
+uint __builtin_spirv_OpGroupNonUniformBallotFindLSB_i32_v4i32(uint Execution, uint4 Value)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_spirv_OpenCL_ctz_i32(Value.x);
+    }
+    return 0;
+}
+
+uint __builtin_spirv_OpGroupNonUniformBallotFindMSB_i32_v4i32(uint Execution, uint4 Value)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_spirv_OpenCL_clz_i32(Value.x);
+    }
+    return 0;
+}
+
+uint4 __builtin_spirv_BuiltInSubgroupEqMask()
+{
+    return __builtin_spirv_BuiltInSubgroupEqMaskKHR();
+}
+
+uint4 __builtin_spirv_BuiltInSubgroupGeMask()
+{
+    return __builtin_spirv_BuiltInSubgroupGeMaskKHR();
+}
+
+uint4 __builtin_spirv_BuiltInSubgroupGtMask()
+{
+    return __builtin_spirv_BuiltInSubgroupGtMaskKHR();
+}
+
+uint4 __builtin_spirv_BuiltInSubgroupLeMask()
+{
+    return __builtin_spirv_BuiltInSubgroupLeMaskKHR();
+}
+
+uint4 __builtin_spirv_BuiltinSubgroupLtMask()
+{
+    return __builtin_spirv_BuiltInSubgroupLtMaskKHR();
+}
+#endif // defined(cl_khr_subgroup_ballot)
+
+#define DEFN_SUPPORTED_OPERATION(op_name, op, type) \
+static type    OVERLOADABLE __intel_##op_name(type lhs, type rhs) { return lhs op rhs; }
+
+#define DEFN_BINARY_OPERATIONS(type)    \
+DEFN_SUPPORTED_OPERATION(and, &, type)  \
+DEFN_SUPPORTED_OPERATION(or,  |, type)  \
+DEFN_SUPPORTED_OPERATION(xor, ^, type)
+
+DEFN_BINARY_OPERATIONS(bool)
+DEFN_BINARY_OPERATIONS(uchar)
+DEFN_BINARY_OPERATIONS(ushort)
+DEFN_BINARY_OPERATIONS(uint)
+DEFN_BINARY_OPERATIONS(ulong)
+
+#define DEFN_ARITH_OPERATIONS(type)    \
+DEFN_SUPPORTED_OPERATION(mul, *, type) \
+DEFN_SUPPORTED_OPERATION(add, +, type)
+
+DEFN_ARITH_OPERATIONS(uchar)
+DEFN_ARITH_OPERATIONS(ushort)
+DEFN_ARITH_OPERATIONS(uint)
+DEFN_ARITH_OPERATIONS(ulong)
+DEFN_ARITH_OPERATIONS(float)
+#if defined(cl_khr_fp64)
+DEFN_ARITH_OPERATIONS(double)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_ARITH_OPERATIONS(half)
+#endif // defined(cl_khr_fp16)
 
 #define DEFN_WORK_GROUP_REDUCE(type, op, identity, X)                                       \
 {                                                                                          \
@@ -1671,8 +2008,8 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
     }                                                                                     \
 }
 
-#define DEFN_BUILTIN_SPIRV_FUNC(func, type, type_abbr, op, identity)                             \
-type  __builtin_spirv_##func##_i32_i32_##type_abbr(uint Execution, uint Operation, type X)       \
+#define DEFN_UNIFORM_GROUP_FUNC(func, type, type_abbr, op, identity)                             \
+type  __builtin_spirv_OpGroup##func##_i32_i32_##type_abbr(uint Execution, uint Operation, type X)       \
 {                                                                                                \
     if (Execution == Workgroup)                                                                  \
     {                                                                                            \
@@ -1707,40 +2044,342 @@ type  __builtin_spirv_##func##_i32_i32_##type_abbr(uint Execution, uint Operatio
 }
 
 // ---- Add ----
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupIAdd, uchar,  i8,  __intel_add, 0)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupIAdd, ushort, i16, __intel_add, 0)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupIAdd, uint,   i32, __intel_add, 0)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupIAdd, ulong,  i64, __intel_add, 0)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupFAdd, half,   f16, __intel_add, 0)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupFAdd, float,  f32, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(IAdd, uchar,  i8,  __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(IAdd, ushort, i16, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(IAdd, uint,   i32, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(IAdd, ulong,  i64, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(FAdd, half,   f16, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(FAdd, float,  f32, __intel_add, 0)
 #if defined(cl_khr_fp64)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupFAdd, double, f64, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(FAdd, double, f64, __intel_add, 0)
 #endif
 // ---- Min ----
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMin, half,   f16, __builtin_spirv_OpenCL_fmin_f16_f16, INFINITY)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMin, float,  f32, __builtin_spirv_OpenCL_fmin_f32_f32, INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMin, half,   f16, __builtin_spirv_OpenCL_fmin_f16_f16, INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMin, float,  f32, __builtin_spirv_OpenCL_fmin_f32_f32, INFINITY)
 #if defined(cl_khr_fp64)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMin, double, f64, __builtin_spirv_OpenCL_fmin_f64_f64, INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMin, double, f64, __builtin_spirv_OpenCL_fmin_f64_f64, INFINITY)
 #endif
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMin, uchar,  i8,  __builtin_spirv_OpenCL_u_min_i8_i8,   UCHAR_MAX)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMin, ushort, i16, __builtin_spirv_OpenCL_u_min_i16_i16, USHRT_MAX)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMin, uint,   i32, __builtin_spirv_OpenCL_u_min_i32_i32, UINT_MAX)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMin, ulong,  i64, __builtin_spirv_OpenCL_u_min_i64_i64, ULONG_MAX)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMin, char,   i8,  __builtin_spirv_OpenCL_s_min_i8_i8,   CHAR_MAX)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMin, short,  i16, __builtin_spirv_OpenCL_s_min_i16_i16, SHRT_MAX)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMin, int,    i32, __builtin_spirv_OpenCL_s_min_i32_i32, INT_MAX)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMin, long,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
+DEFN_UNIFORM_GROUP_FUNC(UMin, uchar,  i8,  __builtin_spirv_OpenCL_u_min_i8_i8,   UCHAR_MAX)
+DEFN_UNIFORM_GROUP_FUNC(UMin, ushort, i16, __builtin_spirv_OpenCL_u_min_i16_i16, USHRT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(UMin, uint,   i32, __builtin_spirv_OpenCL_u_min_i32_i32, UINT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(UMin, ulong,  i64, __builtin_spirv_OpenCL_u_min_i64_i64, ULONG_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, char,   i8,  __builtin_spirv_OpenCL_s_min_i8_i8,   CHAR_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, short,  i16, __builtin_spirv_OpenCL_s_min_i16_i16, SHRT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, int,    i32, __builtin_spirv_OpenCL_s_min_i32_i32, INT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, long,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
 // ---- Max ----
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMax, half,   f16, __builtin_spirv_OpenCL_fmax_f16_f16, -INFINITY)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMax, float,  f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMax, half,   f16, __builtin_spirv_OpenCL_fmax_f16_f16, -INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMax, float,  f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
 #if defined(cl_khr_fp64)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupFMax, double, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMax, double, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
 #endif
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMax, uchar,  i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMax, ushort, i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMax, uint,   i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupUMax, ulong,  i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMax, char,   i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMax, short,  i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMax, int,    i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
-DEFN_BUILTIN_SPIRV_FUNC(OpGroupSMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
+DEFN_UNIFORM_GROUP_FUNC(UMax, uchar,  i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
+DEFN_UNIFORM_GROUP_FUNC(UMax, ushort, i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
+DEFN_UNIFORM_GROUP_FUNC(UMax, uint,   i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
+DEFN_UNIFORM_GROUP_FUNC(UMax, ulong,  i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
+DEFN_UNIFORM_GROUP_FUNC(SMax, char,   i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, short,  i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, int,    i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
+
+#if defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
+// ClusterSize is an optional parameter
+#define DEFN_NON_UNIFORM_GROUP_FUNC(func, type, type_abbr, op, identity)                                                             \
+type  __builtin_spirv_OpGroupNonUniform##func##_i32_i32_##type_abbr##_i32(uint Execution, uint Operation, type X, uint ClusterSize)  \
+{                                                                                                                                    \
+    if (Execution == Subgroup)                                                                                                       \
+    {                                                                                                                                \
+        if (sizeof(X) < 8 || __UseNative64BitSubgroupBuiltin)                                                                        \
+        {                                                                                                                            \
+            if (Operation == GroupOperationReduce)                                                                                   \
+            {                                                                                                                        \
+                return __builtin_IB_sub_group_reduce_##func##_##type_abbr(X);                                                        \
+            }                                                                                                                        \
+            else if (Operation == GroupOperationInclusiveScan)                                                                       \
+            {                                                                                                                        \
+                return op(X, __builtin_IB_sub_group_scan_##func##_##type_abbr(X));                                                   \
+            }                                                                                                                        \
+            else if (Operation == GroupOperationExclusiveScan)                                                                       \
+            {                                                                                                                        \
+                return __builtin_IB_sub_group_scan_##func##_##type_abbr(X);                                                          \
+            }                                                                                                                        \
+            else if (Operation == GroupOperationClusteredReduce)                                                                     \
+            {                                                                                                                        \
+                return __builtin_IB_sub_group_clustered_reduce_##func##_##type_abbr(X, ClusterSize);                                 \
+            }                                                                                                                        \
+        }                                                                                                                            \
+        else {                                                                                                                       \
+            SUB_GROUP_SWITCH(type, type_abbr, op, identity, X, Operation)                                                            \
+        }                                                                                                                            \
+        return 0;                                                                                                                    \
+    }                                                                                                                                \
+    else                                                                                                                             \
+    {                                                                                                                                \
+        return 0;                                                                                                                    \
+    }                                                                                                                                \
+}                                                                                                                                    \
+type  __builtin_spirv_OpGroupNonUniform##func##_i32_i32_##type_abbr(uint Execution, uint Operation, type X)                          \
+{                                                                                                                                    \
+    return __builtin_spirv_OpGroupNonUniform##func##_i32_i32_##type_abbr##_i32(Execution, Operation, X, 0);                          \
+}
+
+// OpGroupNonUniformIAdd, OpGroupNonUniformFAdd
+DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, uchar,  i8,  __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, ushort, i16, __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, uint,   i32, __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, ulong,  i64, __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, float,  f32, __intel_add, 0)
+#if defined(cl_khr_fp64)
+DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, double, f64, __intel_add, 0)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, half,   f16, __intel_add, 0)
+#endif // defined(cl_khr_fp16)
+
+// OpGroupNonUniformSMin, OpGroupNonUniformUMin, OpGroupNonUniformFMin
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, char,   i8,  __builtin_spirv_OpenCL_s_min_i8_i8,   CHAR_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMin, uchar,  i8,  __builtin_spirv_OpenCL_u_min_i8_i8,   UCHAR_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, short,  i16, __builtin_spirv_OpenCL_s_min_i16_i16, SHRT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMin, ushort, i16, __builtin_spirv_OpenCL_u_min_i16_i16, USHRT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, int,    i32, __builtin_spirv_OpenCL_s_min_i32_i32, INT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMin, uint,   i32, __builtin_spirv_OpenCL_u_min_i32_i32, UINT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, long,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMin, ulong,  i64, __builtin_spirv_OpenCL_u_min_i64_i64, ULONG_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMin, float,  f32, __builtin_spirv_OpenCL_fmin_f32_f32,  INFINITY)
+#if defined(cl_khr_fp64)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMin, double, f64, __builtin_spirv_OpenCL_fmin_f64_f64,  INFINITY)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMin, half,   f16, __builtin_spirv_OpenCL_fmin_f16_f16,  INFINITY)
+#endif // defined(cl_khr_fp16)
+
+// OpGroupNonUniformSMax, OpGroupNonUniformUMax, OpGroupNonUniformFMax
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, char,   i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMax, uchar,  i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, short,  i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMax, ushort, i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, int,    i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMax, uint,   i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMax, ulong,  i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMax, float,  f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
+#if defined(cl_khr_fp64)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMax, double, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMax, half,   f16, __builtin_spirv_OpenCL_fmax_f16_f16, -INFINITY)
+#endif // defined(cl_khr_fp16)
+
+// OpGroupNonUniformIMul, OpGroupNonUniformFMul
+DEFN_NON_UNIFORM_GROUP_FUNC(IMul, uchar,  i8,  __intel_mul, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IMul, ushort, i16, __intel_mul, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IMul, uint,   i32, __intel_mul, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IMul, ulong,  i64, __intel_mul, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMul, float,  f32, __intel_mul, 0)
+#if defined(cl_khr_fp64)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMul, double, f64, __intel_mul, 0)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMul, half,   f16, __intel_mul, 0)
+#endif // defined(cl_khr_fp16)
+
+// OpGroupNonUniformBitwiseAnd, OpGroupNonUniformBitwiseOr, OpGroupNonUniformBitwiseXor
+#define DEFN_NON_UNIFORM_BITWISE_OPERATION(func, op)                \
+DEFN_NON_UNIFORM_GROUP_FUNC(func, uchar,  i8,  __intel_##op, 0)     \
+DEFN_NON_UNIFORM_GROUP_FUNC(func, ushort, i16, __intel_##op, 0)     \
+DEFN_NON_UNIFORM_GROUP_FUNC(func, uint,   i32, __intel_##op, 0)     \
+DEFN_NON_UNIFORM_GROUP_FUNC(func, ulong,  i64, __intel_##op, 0)
+
+DEFN_NON_UNIFORM_BITWISE_OPERATION(BitwiseAnd, and)
+DEFN_NON_UNIFORM_BITWISE_OPERATION(BitwiseOr, or)
+DEFN_NON_UNIFORM_BITWISE_OPERATION(BitwiseXor, xor)
+
+// OpGroupNonUniformLogicalAnd, OpGroupNonUniformLogicalOr, OpGroupNonUniformLogicalXor
+DEFN_NON_UNIFORM_GROUP_FUNC(LogicalAnd, bool, i1, __intel_and, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(LogicalOr,  bool, i1, __intel_or,  0)
+DEFN_NON_UNIFORM_GROUP_FUNC(LogicalXor, bool, i1, __intel_xor, 0)
+#endif // defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
+
+#if defined(cl_khr_subgroup_shuffle)
+uchar __builtin_spirv_OpGroupNonUniformShuffle_i32_i8_i32(uint Execution, uchar x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return as_uchar(__builtin_IB_simd_shuffle_c(as_char(x), c));
+    }
+    return 0;
+}
+
+ushort __builtin_spirv_OpGroupNonUniformShuffle_i32_i16_i32(uint Execution, ushort x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_us(x, c);
+    }
+    return 0;
+}
+
+uint __builtin_spirv_OpGroupNonUniformShuffle_i32_i32_i32(uint Execution, uint x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle(x, c);
+    }
+    return 0;
+}
+
+ulong __builtin_spirv_OpGroupNonUniformShuffle_i32_i64_i32(uint Execution, ulong x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return as_ulong(__builtin_IB_simd_shuffle_df(as_ulong(x), c));
+    }
+    return 0;
+}
+
+float __builtin_spirv_OpGroupNonUniformShuffle_i32_f32_i32(uint Execution, float x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_f(x, c);
+    }
+    return 0;
+}
+
+#if defined(cl_khr_fp64)
+double __builtin_spirv_OpGroupNonUniformShuffle_i32_f64_i32(uint Execution, double x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_df(x, c);
+    }
+    return 0;
+}
+#endif // defined(cl_khr_fp64)
+
+#if defined(cl_khr_fp16)
+half __builtin_spirv_OpGroupNonUniformShuffle_i32_f16_i32(uint Execution, half x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_h(x, c);
+    }
+    return 0;
+}
+#endif // defined(cl_khr_fp16)
+
+#define DEFN_SUB_GROUP_SHUFFLE_XOR(TYPE, TYPE_ABBR)                                                             \
+TYPE __builtin_spirv_OpGroupNonUniformShuffleXor_i32_##TYPE_ABBR##_i32(uint Execution, TYPE x, uint c)          \
+{                                                                                                               \
+    c = get_sub_group_local_id() ^ c;                                                                           \
+    return __builtin_spirv_OpGroupNonUniformShuffle_i32_##TYPE_ABBR##_i32(Execution, x, c);                     \
+}
+
+DEFN_SUB_GROUP_SHUFFLE_XOR(uchar, i8)
+DEFN_SUB_GROUP_SHUFFLE_XOR(ushort, i16)
+DEFN_SUB_GROUP_SHUFFLE_XOR(uint, i32)
+DEFN_SUB_GROUP_SHUFFLE_XOR(ulong, i64)
+DEFN_SUB_GROUP_SHUFFLE_XOR(float, f32)
+#if defined(cl_khr_fp64)
+DEFN_SUB_GROUP_SHUFFLE_XOR(double, f64)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_SUB_GROUP_SHUFFLE_XOR(half, f16)
+#endif // defined(cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_shuffle)
+
+#if defined(cl_khr_subgroup_shuffle_relative)
+// Shuffle down functions
+uchar __builtin_spirv_OpGroupNonUniformShuffleDown_i32_i8_i32(uint Execution, uchar x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_down_uc(x, 0, c);
+    }
+    return 0;
+}
+
+ushort __builtin_spirv_OpGroupNonUniformShuffleDown_i32_i16_i32(uint Execution, ushort x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_down_us(x, 0, c);
+    }
+    return 0;
+}
+
+uint __builtin_spirv_OpGroupNonUniformShuffleDown_i32_i32_i32(uint Execution, uint x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return __builtin_IB_simd_shuffle_down(x, 0, c);
+    }
+    return 0;
+}
+
+ulong __builtin_spirv_OpGroupNonUniformShuffleDown_i32_i64_i32(uint Execution, ulong x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        uint2 X = as_uint2(x);
+        uint2 result = (uint2)(__builtin_spirv_OpGroupNonUniformShuffleDown_i32_i32_i32(X.s0, 0, c),
+            __builtin_spirv_OpGroupNonUniformShuffleDown_i32_i32_i32(X.s1, 0, c));
+        return as_ulong(result);
+    }
+    return 0;
+}
+
+float __builtin_spirv_OpGroupNonUniformShuffleDown_i32_f32_i32(uint Execution, float x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return as_float(__builtin_IB_simd_shuffle_down(as_uint(x), 0, c));
+    }
+    return 0;
+}
+
+#if defined(cl_khr_fp64)
+double __builtin_spirv_OpGroupNonUniformShuffleDown_i32_f64_i32(uint Execution, double x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        uint2 X = as_uint2(x);
+        uint2 result = (uint2)(__builtin_spirv_OpGroupNonUniformShuffleDown_i32_i32_i32(X.s0, 0, c),
+            __builtin_spirv_OpGroupNonUniformShuffleDown_i32_i32_i32(X.s1, 0, c));
+        return as_double(result);
+    }
+    return 0;
+}
+#endif // defined(cl_khr_fp64)
+
+#if defined(cl_khr_fp16)
+half __builtin_spirv_OpGroupNonUniformShuffleDown_i32_f16_i32(uint Execution, half x, uint c)
+{
+    if (Execution == Subgroup)
+    {
+        return as_half(__builtin_IB_simd_shuffle_down_us(as_ushort(x), 0, c));
+    }
+    return 0;
+}
+#endif // defined(cl_khr_fp16)
+
+// Shuffle up functions
+#define DEFN_NON_UNIFORM_SHUFFLE_UP(TYPE, TYPE_ABBR)                                                                        \
+TYPE __builtin_spirv_OpGroupNonUniformShuffleUp_i32_##TYPE_ABBR##_i32(uint Execution, TYPE x, uint c)                       \
+{                                                                                                                           \
+    c = get_max_sub_group_size() - c;                                                                                       \
+    return __builtin_spirv_OpGroupNonUniformShuffleDown_i32_##TYPE_ABBR##_i32(Execution, x, c);                             \
+}
+
+DEFN_NON_UNIFORM_SHUFFLE_UP(uchar, i8)
+DEFN_NON_UNIFORM_SHUFFLE_UP(ushort, i16)
+DEFN_NON_UNIFORM_SHUFFLE_UP(uint, i32)
+DEFN_NON_UNIFORM_SHUFFLE_UP(ulong, i64)
+DEFN_NON_UNIFORM_SHUFFLE_UP(float, f32)
+#if defined(cl_khr_fp64)
+DEFN_NON_UNIFORM_SHUFFLE_UP(double, f64)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_NON_UNIFORM_SHUFFLE_UP(half, f16)
+#endif // defined(cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_shuffle_relative)

@@ -1705,6 +1705,116 @@ _SPIRV_OP(GroupCommitReadPipe, false, 6)
 _SPIRV_OP(GroupCommitWritePipe, false, 6)
 #undef _SPIRV_OP
 
+class SPIRVGroupNonUniformInstBase :public SPIRVInstTemplateBase {
+public:
+    CapVec getRequiriedCapability() const {
+        return getVec(SPIRVCapabilityKind::CapabilityNonUniform);
+    }
+};
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVGroupNonUniformInstBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// Non uniform group instructions
+_SPIRV_OP(GroupNonUniformElect, true, 4)
+#undef _SPIRV_OP
+
+class SPIRVGroupNonUniformVoteInstBase :public SPIRVInstTemplateBase {
+public:
+    CapVec getRequiriedCapability() const {
+        return getVec(SPIRVCapabilityKind::CapabilityNonUniformVote);
+    }
+};
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVGroupNonUniformVoteInstBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// Non uniform vote group instructions
+_SPIRV_OP(GroupNonUniformAll, true, 5)
+_SPIRV_OP(GroupNonUniformAny, true, 5)
+_SPIRV_OP(GroupNonUniformAllEqual, true, 5)
+#undef _SPIRV_OP
+
+class SPIRVGroupNonUniformBallotInstBase :public SPIRVInstTemplateBase {
+public:
+    CapVec getRequiriedCapability() const {
+        return getVec(SPIRVCapabilityKind::CapabilityNonUniformBallot);
+    }
+};
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVGroupNonUniformBallotInstBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// Non uniform ballot group instructions
+_SPIRV_OP(GroupNonUniformBroadcast, true, 6)
+_SPIRV_OP(GroupNonUniformBroadcastFirst, true, 5)
+_SPIRV_OP(GroupNonUniformBallot, true, 5)
+_SPIRV_OP(GroupNonUniformInverseBallot, true, 5)
+_SPIRV_OP(GroupNonUniformBallotBitExtract, true, 6)
+_SPIRV_OP(GroupNonUniformBallotBitCount, true, 6)
+_SPIRV_OP(GroupNonUniformBallotFindLSB, true, 5)
+_SPIRV_OP(GroupNonUniformBallotFindMSB, true, 5)
+#undef _SPIRV_OP
+
+class SPIRVGroupNonUniformArithmeticInstBase :public SPIRVInstTemplateBase {
+public:
+    CapVec getRequiriedCapability() const {
+        return getVec(SPIRVCapabilityKind::CapabilityNonUniformArithmetic);
+    }
+};
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVGroupNonUniformArithmeticInstBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// Non uniform ballot group instructions
+_SPIRV_OP(GroupNonUniformIAdd, true, 6, true, 1)  // TODO: handle optional ClusterSize
+_SPIRV_OP(GroupNonUniformFAdd, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformIMul, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformFMul, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformSMin, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformUMin, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformFMin, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformSMax, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformUMax, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformFMax, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformBitwiseAnd, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformBitwiseOr, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformBitwiseXor, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformLogicalAnd, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformLogicalOr, true, 6, true, 1)
+_SPIRV_OP(GroupNonUniformLogicalXor, true, 6, true, 1)
+#undef _SPIRV_OP
+
+class SPIRVGroupNonUniformShuffleInstBase :public SPIRVInstTemplateBase {
+public:
+    CapVec getRequiriedCapability() const {
+        return getVec(SPIRVCapabilityKind::CapabilityNonUniformShuffle);
+    }
+};
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVGroupNonUniformVoteInstBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// Non uniform shuffle group instructions
+_SPIRV_OP(GroupNonUniformShuffle, true, 6)
+_SPIRV_OP(GroupNonUniformShuffleXor, true, 6)
+#undef _SPIRV_OP
+
+class SPIRVGroupNonUniformShuffleRelativeInstBase :public SPIRVInstTemplateBase {
+public:
+    CapVec getRequiriedCapability() const {
+        return getVec(SPIRVCapabilityKind::CapabilityNonUniformShuffle);
+    }
+};
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVGroupNonUniformShuffleRelativeInstBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// Non uniform shuffle relative group instructions
+_SPIRV_OP(GroupNonUniformShuffleUp, true, 6)
+_SPIRV_OP(GroupNonUniformShuffleDown, true, 6)
+#undef _SPIRV_OP
+
 class SPIRVAtomicInstBase:public SPIRVInstTemplateBase {
 public:
   CapVec getRequiriedCapability() const {

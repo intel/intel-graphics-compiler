@@ -539,10 +539,11 @@ __private void* __builtin_IB_to_private(void*);
 int     __builtin_IB_get_simd_size( void );
 int     __builtin_IB_get_simd_id( void );
 uint     __builtin_IB_simd_shuffle( uint, uint );
+bool    __builtin_IB_simd_shuffle_b(bool, uint);
+uchar    __builtin_IB_simd_shuffle_c( uchar, uint );
 ushort  __builtin_IB_simd_shuffle_us( ushort, uint );
 float     __builtin_IB_simd_shuffle_f( float, uint );
 half     __builtin_IB_simd_shuffle_h( half, uint );
-uchar    __builtin_IB_simd_shuffle_b( uchar, uint );
 double  __builtin_IB_simd_shuffle_df(double, uint);
 uint    __builtin_IB_simd_shuffle_down( uint, uint, uint );
 ushort  __builtin_IB_simd_shuffle_down_us( ushort, ushort, uint );
@@ -732,66 +733,89 @@ int __builtin_IB_dp4a_uu(int c, int a, int b) __attribute__((const));
 int __builtin_IB_dp4a_su(int c, int a, int b) __attribute__((const));
 int __builtin_IB_dp4a_us(int c, int a, int b) __attribute__((const));
 
-char __builtin_IB_sub_group_reduce_OpGroupIAdd_i8(char x) __attribute__((const));
-char __builtin_IB_sub_group_reduce_OpGroupSMax_i8(char x) __attribute__((const));
-uchar __builtin_IB_sub_group_reduce_OpGroupUMax_i8(uchar x) __attribute__((const));
-char __builtin_IB_sub_group_reduce_OpGroupSMin_i8(char x) __attribute__((const));
-uchar __builtin_IB_sub_group_reduce_OpGroupUMin_i8(uchar x) __attribute__((const));
-short __builtin_IB_sub_group_reduce_OpGroupIAdd_i16(short x) __attribute__((const));
-short __builtin_IB_sub_group_reduce_OpGroupSMax_i16(short x) __attribute__((const));
-ushort __builtin_IB_sub_group_reduce_OpGroupUMax_i16(ushort x) __attribute__((const));
-short __builtin_IB_sub_group_reduce_OpGroupSMin_i16(short x) __attribute__((const));
-ushort __builtin_IB_sub_group_reduce_OpGroupUMin_i16(ushort x) __attribute__((const));
-int __builtin_IB_sub_group_reduce_OpGroupIAdd_i32(int x) __attribute__((const));
-int __builtin_IB_sub_group_reduce_OpGroupSMax_i32(int x) __attribute__((const));
-uint __builtin_IB_sub_group_reduce_OpGroupUMax_i32(uint x) __attribute__((const));
-int __builtin_IB_sub_group_reduce_OpGroupSMin_i32(int x) __attribute__((const));
-uint __builtin_IB_sub_group_reduce_OpGroupUMin_i32(uint x) __attribute__((const));
-long __builtin_IB_sub_group_reduce_OpGroupIAdd_i64(long x) __attribute__((const));
-long __builtin_IB_sub_group_reduce_OpGroupSMax_i64(long x) __attribute__((const));
-ulong __builtin_IB_sub_group_reduce_OpGroupUMax_i64(ulong x) __attribute__((const));
-long __builtin_IB_sub_group_reduce_OpGroupSMin_i64(long x) __attribute__((const));
-ulong __builtin_IB_sub_group_reduce_OpGroupUMin_i64(ulong x) __attribute__((const));
-half __builtin_IB_sub_group_reduce_OpGroupFAdd_f16(half x) __attribute__((const));
-half __builtin_IB_sub_group_reduce_OpGroupFMax_f16(half x) __attribute__((const));
-half __builtin_IB_sub_group_reduce_OpGroupFMin_f16(half x) __attribute__((const));
-float __builtin_IB_sub_group_reduce_OpGroupFAdd_f32(float x) __attribute__((const));
-float __builtin_IB_sub_group_reduce_OpGroupFMax_f32(float x) __attribute__((const));
-float __builtin_IB_sub_group_reduce_OpGroupFMin_f32(float x) __attribute__((const));
-double __builtin_IB_sub_group_reduce_OpGroupFAdd_f64(double x) __attribute__((const));
-double __builtin_IB_sub_group_reduce_OpGroupFMax_f64(double x) __attribute__((const));
-double __builtin_IB_sub_group_reduce_OpGroupFMin_f64(double x) __attribute__((const));
+#define DECL_SUB_GROUP_OPERATION(type, type_abbr, operation, group_type)  \
+type   __builtin_IB_sub_group_##group_type##_##operation##_##type_abbr(type x) __attribute__((const));
 
-// inclusive scan
-char __builtin_IB_sub_group_scan_OpGroupIAdd_i8(char x) __attribute__((const));
-char __builtin_IB_sub_group_scan_OpGroupSMax_i8(char x) __attribute__((const));
-uchar __builtin_IB_sub_group_scan_OpGroupUMax_i8(uchar x) __attribute__((const));
-char __builtin_IB_sub_group_scan_OpGroupSMin_i8(char x) __attribute__((const));
-uchar __builtin_IB_sub_group_scan_OpGroupUMin_i8(uchar x) __attribute__((const));
-short __builtin_IB_sub_group_scan_OpGroupIAdd_i16(short x) __attribute__((const));
-short __builtin_IB_sub_group_scan_OpGroupSMax_i16(short x) __attribute__((const));
-ushort __builtin_IB_sub_group_scan_OpGroupUMax_i16(ushort x) __attribute__((const));
-short __builtin_IB_sub_group_scan_OpGroupSMin_i16(short x) __attribute__((const));
-ushort __builtin_IB_sub_group_scan_OpGroupUMin_i16(ushort x) __attribute__((const));
-int __builtin_IB_sub_group_scan_OpGroupIAdd_i32(int x) __attribute__((const));
-int __builtin_IB_sub_group_scan_OpGroupSMax_i32(int x) __attribute__((const));
-uint __builtin_IB_sub_group_scan_OpGroupUMax_i32(uint x) __attribute__((const));
-int __builtin_IB_sub_group_scan_OpGroupSMin_i32(int x) __attribute__((const));
-uint __builtin_IB_sub_group_scan_OpGroupUMin_i32(uint x) __attribute__((const));
-long __builtin_IB_sub_group_scan_OpGroupIAdd_i64(long x) __attribute__((const));
-long __builtin_IB_sub_group_scan_OpGroupSMax_i64(long x) __attribute__((const));
-ulong __builtin_IB_sub_group_scan_OpGroupUMax_i64(ulong x) __attribute__((const));
-long __builtin_IB_sub_group_scan_OpGroupSMin_i64(long x) __attribute__((const));
-ulong __builtin_IB_sub_group_scan_OpGroupUMin_i64(ulong x) __attribute__((const));
-half __builtin_IB_sub_group_scan_OpGroupFAdd_f16(half x) __attribute__((const));
-half __builtin_IB_sub_group_scan_OpGroupFMax_f16(half x) __attribute__((const));
-half __builtin_IB_sub_group_scan_OpGroupFMin_f16(half x) __attribute__((const));
-float __builtin_IB_sub_group_scan_OpGroupFAdd_f32(float x) __attribute__((const));
-float __builtin_IB_sub_group_scan_OpGroupFMax_f32(float x) __attribute__((const));
-float __builtin_IB_sub_group_scan_OpGroupFMin_f32(float x) __attribute__((const));
-double __builtin_IB_sub_group_scan_OpGroupFAdd_f64(double x) __attribute__((const));
-double __builtin_IB_sub_group_scan_OpGroupFMax_f64(double x) __attribute__((const));
-double __builtin_IB_sub_group_scan_OpGroupFMin_f64(double x) __attribute__((const));
+#define DECL_SUB_GROUP_CLUSTERED_OPERATION(type, type_abbr, operation, group_type)  \
+type   __builtin_IB_sub_group_clustered_##group_type##_##operation##_##type_abbr(type x, int cluster_size) __attribute__((const));
+
+#define DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, operation)  \
+DECL_SUB_GROUP_OPERATION(type, type_abbr, operation, reduce)   \
+DECL_SUB_GROUP_OPERATION(type, type_abbr, operation, scan)     \
+DECL_SUB_GROUP_CLUSTERED_OPERATION(type, type_abbr, operation, reduce)
+
+// ARITHMETIC OPERATIONS
+// __builtin_IB_sub_group_reduce_IAdd/FAdd
+// __builtin_IB_sub_group_scan_IAdd/FAdd
+// __builtin_IB_sub_group_clustered_reduce_IAdd/FAdd
+// __builtin_IB_sub_group_reduce_IMul/FMul
+// __builtin_IB_sub_group_scan_IMul/FMul
+// __builtin_IB_sub_group_clustered_reduce_IMul/FMul
+#define DECL_SUB_GROUP_ADD_MUL(type, type_abbr, type_sign)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Add)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Mul)
+
+DECL_SUB_GROUP_ADD_MUL(char,   i8,  I)
+DECL_SUB_GROUP_ADD_MUL(short,  i16, I)
+DECL_SUB_GROUP_ADD_MUL(int,    i32, I)
+DECL_SUB_GROUP_ADD_MUL(long,   i64, I)
+DECL_SUB_GROUP_ADD_MUL(float,  f32, F)
+#if defined(cl_khr_fp64)
+DECL_SUB_GROUP_ADD_MUL(double, f64, F)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DECL_SUB_GROUP_ADD_MUL(half,   f16, F)
+#endif // defined(cl_khr_fp16)
+
+// __builtin_IB_sub_group_reduce_SMin/UMin/FMin
+// __builtin_IB_sub_group_scan_SMin/UMin/FMin
+// __builtin_IB_sub_group_clustered_reduce_SMin/UMin/FMin
+// __builtin_IB_sub_group_reduce_SMax/UMax/FMax
+// __builtin_IB_sub_group_scan_SMax/UMax/FMax
+// __builtin_IB_sub_group_clustered_reduce_SMax/UMax/FMax
+#define DECL_SUB_GROUP_MIN_MAX(type, type_abbr, type_sign)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Min)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Max)
+
+DECL_SUB_GROUP_MIN_MAX(char,   i8, S)
+DECL_SUB_GROUP_MIN_MAX(uchar,  i8, U)
+DECL_SUB_GROUP_MIN_MAX(short,  i16, S)
+DECL_SUB_GROUP_MIN_MAX(ushort, i16, U)
+DECL_SUB_GROUP_MIN_MAX(int,    i32, S)
+DECL_SUB_GROUP_MIN_MAX(uint,   i32, U)
+DECL_SUB_GROUP_MIN_MAX(long,   i64, S)
+DECL_SUB_GROUP_MIN_MAX(ulong,  i64, U)
+DECL_SUB_GROUP_MIN_MAX(float,  f32, F)
+#if defined(cl_khr_fp64)
+DECL_SUB_GROUP_MIN_MAX(double, f64, F)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DECL_SUB_GROUP_MIN_MAX(half,   f16, F)
+#endif // defined(cl_khr_fp16)
+
+// BITWISE OPERATIONS
+// __builtin_IB_sub_group_reduce_BitwiseAnd/Or/Xor
+// __builtin_IB_sub_group_scan_BitwiseAnd/Or/Xor
+// __builtin_IB_sub_group_clustered_reduce_BitwiseAnd/Or/Xor
+#define DECL_BITWISE_OPERATIONS(type, type_abbr)        \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseAnd)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseOr)   \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseXor)
+
+DECL_BITWISE_OPERATIONS(char,  i8)
+DECL_BITWISE_OPERATIONS(short, i16)
+DECL_BITWISE_OPERATIONS(int,   i32)
+DECL_BITWISE_OPERATIONS(long,  i64)
+
+// LOGICAL OPERATIONS
+// __builtin_IB_sub_group_reduce_LogicalAnd/Or/Xor
+// __builtin_IB_sub_group_scan_LogicalAnd/Or/Xor
+// __builtin_IB_sub_group_clustered_reduce_LogicalAnd/Or/Xor
+#define DECL_LOGICAL_OPERATIONS(type, type_abbr)        \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalAnd)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalOr)   \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalXor)
+DECL_LOGICAL_OPERATIONS(bool, i1)
 
 // The following mul/fma with rtz is used internally for int div/rem emulation
 // x * y, using round-to-zero
