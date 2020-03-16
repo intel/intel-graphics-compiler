@@ -7312,14 +7312,18 @@ unsigned G4_INST::getExecLaneMask() const
     return (maskbits << chanOffset);
 }
 
-void G4_INST::dump() const
+void G4_INST::print(std::ostream& OS) const
 {
-
     G4_INST& inst = const_cast<G4_INST&>(*this);
     if (!inst.isLabel())
-        std::cerr << "\t";
-    inst.emit(std::cerr, false, false);
-    std::cerr << "\n";
+        OS << "\t";
+    inst.emit(OS, false, false);
+    OS << "\n";
+}
+
+void G4_INST::dump() const
+{
+    print(std::cerr);
 }
 
 bool G4_INST::canSupportSaturate() const

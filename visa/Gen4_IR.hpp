@@ -889,6 +889,7 @@ public:
     void emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs);
     void emit(std::ostream& output, bool symbolreg = false, bool dotStyle = false);
     void emitDefUse(std::ostream& output);
+    void print(std::ostream& OS) const;
     void dump() const;
     bool isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const;
     const char *getLabelStr() const;
@@ -1255,6 +1256,8 @@ public:
         G4_INST(builder, prd, o, m, sat, size, d, s0, nullptr, opt),
         jip(NULL), uip(NULL), isBackwardBr(false), isUniformBr(false)
     {
+        isUniformBr = (op == G4_jmpi ||
+            (op == G4_goto && (size == 1 || prd == nullptr)));
     }
 
     bool isCFInst() const override { return true; }

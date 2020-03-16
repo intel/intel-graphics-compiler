@@ -429,7 +429,7 @@ public:
     unsigned char getNestLevel()              {return loopNestLevel;}
     void     resetNestLevel()                 { loopNestLevel = 0; }
     void     setInSimdFlow(bool val)          {inSimdFlow = val;}
-    bool     isInSimdFlow()                   {return inSimdFlow;}
+    bool     isInSimdFlow() const             {return inSimdFlow;}
     void     setDivergent(bool val) { divergent = val; }
     bool     isDivergent() const    { return divergent; }
     unsigned getScopeID() { return scopeID; }
@@ -493,7 +493,8 @@ public:
 
     /// Dump instructions into the standard error.
     const char* getBBTypeStr() const;
-    void dump(bool printCFG) const;
+    void print(std::ostream& OS) const;
+    void dump() const;
     void dumpDefUse() const;
 
     // reset this BB's instruction's local id so they are [0,..#BBInst-1]
@@ -1240,7 +1241,8 @@ public:
     // This is for TGL WA
     void findNestedDivergentBBs();
 
-    void dump(bool printCFG) const;
+    void print(std::ostream& OS) const;
+    void dump() const;
 private:
     //
     // Flow group traversal routines
@@ -1670,7 +1672,10 @@ public:
         return major_version * 100 + minor_version;
     }
 
-    /// Dump this kernel into the standard error.
+    /// Dump this kernel to an ostream
+    void print(std::ostream& OS) const;
+
+    /// Dump this kernel to the standard error, often used in a debuger.
     void dump() const;
 
     void setRAType(RA_Type type) { RAType = type; }

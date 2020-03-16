@@ -933,7 +933,10 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         kernelInfo->updateExitBB(BBs.back());
     }
 
-    markDivergentBBs();
+    if ((hasSIMDCF || hasGoto) && builder->getOption(vISA_divergentBB))
+    {
+        markDivergentBBs();
+    }
 
     builder->materializeGlobalImm(getEntryBB());
     normalizeRegionDescriptors();
@@ -2789,7 +2792,6 @@ void FlowGraph::markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfo
 // Note: this will be used to replace inSIMDCF gradually.
 void FlowGraph::markDivergentBBs()
 {
-    return;
     // Assumption:
     //       1.  For each function, it has a single return (for function)
     //           or exit (for entry function). And that return/exit is the
@@ -3013,7 +3015,8 @@ void FlowGraph::markDivergentBBs()
                     }
                 }
 
-                if (!bInst->asCFInst()->isUniform())
+                if (!bInst->asCFInst()->isUniform() &&
+                    bInst->opcode() != G4_jmpi)
                 {
                     pushJoin(joinBB);
                 }
@@ -5835,30 +5838,36 @@ const char* G4_BB::getBBTypeStr() const
     return " ";
 }
 
-void G4_BB::dump(bool printCFG = false) const
+void G4_BB::print(std::ostream& OS) const
 {
-    std::cerr << "BB" << getId();
-    if (printCFG)
+    OS << "BB" << getId() << ":";
+    if (getBBType())
     {
-        if (getBBType())
-        {
-            std::cerr << " [" << getBBTypeStr() << "]; ";
-        }
-        std::cerr << "        Pred: ";
-        for (auto pred : Preds)
-        {
-            std::cerr << pred->getId() << " ";
-        }
-        std::cerr << "  Succ: ";
-        for (auto succ : Succs)
-        {
-            std::cerr << succ->getId() << " ";
-        }
+        OS << " [" << getBBTypeStr() << "], ";
     }
-    std::cerr << "\n";
+    if (isInSimdFlow())
+    {
+        OS << " [inSimdFlow],";
+    }
+    OS << "        Pred: ";
+    for (auto pred : Preds)
+    {
+        OS << pred->getId() << " ";
+    }
+    OS << "  Succ: ";
+    for (auto succ : Succs)
+    {
+        OS << succ->getId() << " ";
+    }
+    OS << "\n";
     for (auto& x : instList)
-        x->dump();
-    std::cerr << "\n";
+        x->print(OS);
+    OS << "\n";
+}
+
+void G4_BB::dump() const
+{
+    print(std::cerr);
 }
 
 void G4_BB::dumpDefUse() const
@@ -6092,16 +6101,15 @@ void G4_Kernel::calculateSimdSize()
         computeChannelSlicing();
 }
 
-void G4_Kernel::dump() const
+void G4_Kernel::print(std::ostream& OS) const
 {
-    std::cerr << "G4_Kernel: " << this->name << "\n";
-    for (auto I = fg.cbegin(), E = fg.cend(); I != E; ++I)
-    {
-        auto& B = *I;
-        B->dump();
-    }
+    fg.print(OS);
 }
 
+void G4_Kernel::dump() const
+{
+    print(std::cerr);
+}
 //
 // Perform DFS traversal on the flow graph (do not enter subroutine, but mark subroutine blocks
 // so that they will be processed independently later)
@@ -6825,17 +6833,22 @@ bool FlowGraph::convertJmpiToGoto()
     return Changed;
 }
 
-void FlowGraph::dump(bool printCFG) const
+void FlowGraph::print(std::ostream& OS) const
 {
     const char* kname = nullptr;
     if (getKernel()) {
         kname = getKernel()->getName();
     }
     kname = kname ? kname : "unnamed";
-    std::cerr << "\n\nCFG: " << kname << "\n\n";
+    OS << "\n\nCFG: " << kname << "\n\n";
     for (auto BB : BBs) {
-        BB->dump(printCFG);
+        BB->print(OS);
     }
+}
+
+void FlowGraph::dump() const
+{
+    print(std::cerr);
 }
 
 FlowGraph::~FlowGraph()
