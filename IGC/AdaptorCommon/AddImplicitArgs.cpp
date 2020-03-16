@@ -272,11 +272,12 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
 
             llvm::DIBuilder Builder(*pNewFunc->getParent());
             IF_DEBUG_INFO(auto DIVar = d->getVariable();)
+            IF_DEBUG_INFO(auto DIExpr = d->getExpression();)
 
-                Value* v = dyn_cast_or_null<Value>(&(*pNewFuncArg));
+            Value* v = dyn_cast_or_null<Value>(&(*pNewFuncArg));
             if (v)
             {
-                IF_DEBUG_INFO(Builder.insertDeclare(v, DIVar, nullptr, d->getDebugLoc().get(), d);)
+                IF_DEBUG_INFO(Builder.insertDeclare(v, DIVar, DIExpr, d->getDebugLoc().get(), d);)
                 IF_DEBUG_INFO(auto oldInst = d;)
                 IF_DEBUG_INFO(oldInst->eraseFromParent();)
             }
