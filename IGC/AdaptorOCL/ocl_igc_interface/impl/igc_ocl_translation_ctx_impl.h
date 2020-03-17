@@ -222,7 +222,9 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
                 }
             }
         }
-        LoadRegistryKeys(RegKeysFlagsFromOptions);
+        bool RegFlagNameError = 0;
+        LoadRegistryKeys(RegKeysFlagsFromOptions, &RegFlagNameError);
+        if(RegFlagNameError) outputInterface->GetImpl()->SetError(TranslationErrorType::Unused, "Invalid registry flag name in -igc_opts, at least one flag has been ignored");
 
         bool success = false;
         if (this->inType == CodeType::elf)

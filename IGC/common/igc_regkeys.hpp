@@ -217,12 +217,12 @@ struct DEVICE_INFO
 
 void DumpIGCRegistryKeyDefinitions();
 void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction);
-void LoadRegistryKeys(const std::string& options = "");
+void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError = nullptr);
 void SetCurrentDebugHash(unsigned long long hash);
 #undef LINUX_RELEASE_MODE
 #else
 static inline void SetCurrentDebugHash(unsigned long long hash) {}
-static inline void LoadRegistryKeys(const std::string& options = "") {}
+static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError=nullptr) {}
 #define IGC_SET_FLAG_VALUE( name, regkeyValue ) ;
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
     static const unsigned int regkeyName##default = (unsigned int)defaultValue;
