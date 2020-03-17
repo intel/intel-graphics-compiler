@@ -4,6 +4,32 @@
 
 set (CMAKE_CXX_STANDARD 14)
 
+##############################################
+# compute the version string from the git repo
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    OUTPUT_VARIABLE GIT_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+execute_process(
+    COMMAND git diff-index --quiet HEAD --
+    OUTPUT_VARIABLE GIT_DIRTY
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+set(IGA_VERSION_SUFFIX "")
+if(GIT_COMMIT)
+    set(IGA_VERSION_DIRTY_TAG "")
+    if (NOT GIT_DIRTY EQUAL 0)
+        set(IGA_VERSION_DIRTY_TAG "+")
+    endif()
+    set(IGA_VERSION_SUFFIX "${IGA_VERSION_SUFFIX}-${GIT_COMMIT}${IGA_VERSION_DIRTY_TAG}")
+endif()
+
+add_definitions(-DIGA_VERSION_SUFFIX="${IGA_VERSION_SUFFIX}")
+message("--  - IGA_VERSION_SUFFIX:    ${IGA_VERSION_SUFFIX}")
+
+##############################################
 # add GED libraries and includes
 if (CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(GED_INCLUDE "../GEDLibrary/${GED_BRANCH}/build/autogen-ia32")
@@ -12,10 +38,11 @@ else()
 endif()
 include_directories(${GED_INCLUDE} "../GEDLibrary/${GED_BRANCH}/Source/common")
 
-if(NOT IGC_BUILD)
+if (NOT IGC_BUILD)
     include_directories("../../../inc")
-endif(NOT IGC_BUILD)
+endif()
 
+##############################################
 # Add subdirectories with all the various IGA sources
 add_subdirectory(api)
 add_subdirectory(Backend)
@@ -27,19 +54,21 @@ add_subdirectory(Timer)
 
 if (LINK_AS_STATIC_LIB)
   win_static_runtime()
-else (LINK_AS_STATIC_LIB)
+else ()
   win_dynamic_runtime()
-endif (LINK_AS_STATIC_LIB)
+endif()
 
 # Mimick IGC/MDF warnings within IGA library on our side to ensure we don't
 # break the build.
-if(MSVC_GENERATOR)
+if (MSVC)
   add_compile_options(/w14189)
   add_compile_options(/w14062)
   add_compile_options(/WX)
 endif()
 
-if(IGC_BUILD)
+##############################################
+# disable exception on IGC builds
+if (IGC_BUILD)
     get_property(TEST_POP DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY COMPILE_DEFINITIONS)
 
     foreach(arg ${TEST_POP})
@@ -65,7 +94,9 @@ endif(IGC_BUILD)
 
 if (MSVC)
   add_compile_options($<$<CONFIG:Release>:/Ox> /Gy)
-endif (MSVC)
+  # parallel build
+  add_compile_options(/MP)
+endif()
 
 ##############################################################################
 # IGA (dll and lib) sources
@@ -108,7 +139,7 @@ set(IGA_SOURCES
   ${IGA_Backend}
   ${IGA_Backend_GED}
   ${IGA_Backend_Native}
-  ${IGA_Backend_Native_PstG12}
+  ${IGA_Backend_Native_Gen12}
   ${IGA_Frontend}
   ${IGA_IR}
   ${IGA_MemManager}
@@ -128,13 +159,13 @@ if (MSVC)
     set(IGA_LINK_FLAGS "/OPT:REF /OPT:ICF /INCREMENTAL:NO")
   endif()
     set(IGA_COMPILER_FLAGS "/GL")
-else(MSVC)
+else ()
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    add_definitions ("-Wno-logical-op-parentheses")
+    add_definitions("-Wno-logical-op-parentheses")
   endif()
   set(IGA_LINK_FLAGS "")
   set(IGA_COMPILER_FLAGS "")
-endif(MSVC)
+endif()
 
 if(UNIX)
   set(FPIC_FLAG "-fPIC")

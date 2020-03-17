@@ -42,6 +42,8 @@ set(IGA_Backend_GED_Decoder
 # native encoder
 set(IGA_Backend_Native
   ${CMAKE_CURRENT_SOURCE_DIR}/Native/Field.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Native/InstCompactor.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Native/InstCompactor.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Native/InstDecoder.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Native/InstEncoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Native/InstEncoder.hpp

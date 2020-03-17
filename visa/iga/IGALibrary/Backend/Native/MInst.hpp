@@ -36,7 +36,7 @@ namespace iga
     // machine instruction
     struct MInst {
         MInst() {
-            dw0 = dw1 = dw2 = dw3 = 0;
+            qw0 = qw1 = 0;
         }
 
         union {
@@ -47,36 +47,67 @@ namespace iga
         };
 
         bool testBit(int off) const {
-            return getField(off,1) != 0;
+            return getBits(off, 1) != 0;
         }
-        uint64_t getField(int off, int len) const {
-            return getBits(&qws[0], off, len);
+
+        uint64_t getBits(int off, int len) const {
+            return iga::getBits<uint64_t,2>(qws, off, len);
         }
-        uint64_t getField(const Field &f) const {
-            return getField(f.offset, f.length);
+
+        uint64_t getFragment(const Fragment &f) const {
+            switch (f.kind) {
+            case Fragment::Kind::ZERO_FILL:
+            case Fragment::Kind::ZERO_WIRES:
+                return 0;
+            case Fragment::Kind::ENCODED:
+                return getBits(f.offset, f.length);
+            default:
+                IGA_ASSERT_FALSE("unreachable");
+                return (uint64_t)-1;
+            }
         }
+
         // gets a fragmented field
-        uint64_t getField(const Field &fLo, const Field &fHi) const {
-            uint64_t lo = getField(fLo.offset, fLo.length);
-            uint64_t hi = getField(fHi.offset, fHi.length);
-            return ((hi<<fLo.length) | lo);
+        uint64_t getBits(const Fragment &fLo, const Fragment &fHi) const {
+            uint64_t lo = getBits(fLo.offset, fLo.length);
+            uint64_t hi = getBits(fHi.offset, fHi.length);
+            return ((hi << fLo.length) | lo);
         }
+
+        uint64_t getField(const Field &f) const {
+            uint64_t bits = 0;
+            //
+            int off = 0;
+            for (const Fragment &fr : f.fragments) {
+                if (fr.kind == Fragment::Kind::INVALID)
+                    break;
+                auto frag = fr.isZeroFill() ?
+                    0 : getBits(fr.offset, fr.length);
+                bits |= frag << off;
+                off += fr.length;
+            }
+            //
+            return bits;
+        }
+
         // gets a fragmented field from an array of fields
         // the fields are ordered low bit to high bit
         // we stop when we find a field with length 0
         template <int N>
-        uint64_t getFields(const Field ff[N]) const
-        {
+        uint64_t getBits(const Fragment ff[N]) const {
             uint64_t bits = 0;
 
             int off = 0;
-            for (int i = 0; i < N; i++) {
-                if (ff[i].length == 0) {
+            for (const Fragment &fr : ff) {
+                if (fr.isInvalid()) {
                     break;
                 }
-                auto frag = getBits(qws, ff[i].offset, ff[i].length);
+                auto frag =
+                    fr.isZeroFill() ?
+                        0 :
+                        iga::getBits<uint64_t,N>(qws, fr.offset, fr.length);
                 bits |= frag << off;
-                off += ff[i].length;
+                off += fr.length;
             }
 
             return bits;
@@ -84,8 +115,46 @@ namespace iga
 
         // returns false if field is too small to hold the value
         bool setField(const Field &f, uint64_t val) {
-            return setBits(qws, f.offset, f.length, val);
+            for (const auto &fr : f.fragments) {
+                if (fr.kind == Fragment::Kind::INVALID)
+                    break;
+                const auto fragValue = val & fr.getMask();
+                switch (fr.kind) {
+                case Fragment::Kind::ENCODED:
+                    if (!setBits(fr.offset, fr.length, fragValue)) {
+                        // this overflows the fragment
+                        return false;
+                    }
+                    break;
+                case Fragment::Kind::ZERO_WIRES:
+                case Fragment::Kind::ZERO_FILL:
+                    if (fragValue != 0) {
+                        // an intrinsic fragment has non-zero bits
+                        // e.g. ternary Dst.Subreg[3:0] is non-zero
+                        return false;
+                    }
+                    break;
+                default:
+                    IGA_ASSERT_FALSE("unreachable");
+                }
+                val >>= fr.length;
+            }
+            return val == 0; // ensure no high bits left over
         }
+
+        bool setFragment(const Fragment &fr, uint64_t val) {
+            if (fr.isEncoded())
+                return iga::setBits<uint64_t,2>(qws, fr.offset, fr.length, val);
+            else
+                return (fr.isZeroFill() && val == 0);
+        }
+
+        bool setBits(int off, int len, uint64_t val) {
+            return iga::setBits<uint64_t,2>(qws, off, len, val);
+        }
+
+        // checks if a machine instruction is compacted
+        // if compacted, the high 64b are undefined
         bool isCompact() const {return testBit(29);}
     };
     static_assert(sizeof(MInst) == 16, "MInst must be 16 bytes");

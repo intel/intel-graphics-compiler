@@ -276,7 +276,6 @@ namespace iga
             case Op::SYNC_ALLRD:
             case Op::SYNC_ALLWR:
             case Op::SYNC_BAR:
-            case Op::SYNC_FENCE:
             case Op::SYNC_HOST:
                 op = GED_OPCODE_sync;
                 break;

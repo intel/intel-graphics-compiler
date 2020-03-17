@@ -257,7 +257,7 @@ bool decodeSendDescriptor(const Opts &opts)
             const auto &meaning = std::get<2>(df);
             int off = f.offset;
             ss << "  ";
-            if (off > 32) {
+            if (off >= 32) {
                 off -= 32;
                 ss << "ExDesc";
             } else {

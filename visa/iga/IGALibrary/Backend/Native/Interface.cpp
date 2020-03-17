@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "Interface.hpp"
 #include "InstEncoder.hpp"
+#include "InstCompactor.hpp"
 #include "../BitProcessor.hpp"
 #include "../../strings.hpp"
 
@@ -69,7 +70,6 @@ using namespace iga;
 // located (e.g. see Native/PreG12 for older encodings).
 //
 ///////////////////////////////////////////////////////////////////////////
-template <Platform P>
 static size_t encodeInst(
     InstEncoder &enc,
     const EncoderOpts &opts,
@@ -89,12 +89,12 @@ static size_t encodeInst(
     }
 
     // encode native
-    enc.encodeInstruction<P>(ix, *inst, bits);
+    enc.encodeInstruction(ix, *inst, bits);
 
     if (mustCompact || opts.autoCompact && !mustntCompact) {
         // attempt compaction
-        InstCompactor ic(enc);
-        auto cr = ic.tryToCompact<P>(&inst->getOpSpec(), *bits, bits, cbdi);
+        InstCompactor ic(enc, enc.getModel());
+        auto cr = ic.tryToCompact(&inst->getOpSpec(), *bits, bits, cbdi);
         switch (cr) {
         case CompactionResult::CR_MISS:
         case CompactionResult::CR_NO_FORMAT:
@@ -108,7 +108,7 @@ static size_t encodeInst(
                 // "foo and bar miss"
                 size_t len = cbdi->fieldMisses.size();
                 for (size_t i = 0; i < len; i++) {
-                    const CompactedField *cIx = cbdi->fieldMisses[i];
+                    const CompactionMapping *cIx = cbdi->fieldMisses[i];
                     if (i > 0) {
                         ss << ",";
                     }
@@ -129,8 +129,8 @@ static size_t encodeInst(
                     {
                         const Field *f = cIx->mappings[fIx];
                         auto mVal = getBits(
-                            mappedValue, bIx - f->length, f->length);
-                        fmtBinaryDigits(ss, mVal, f->length);
+                            mappedValue, bIx - f->length(), f->length());
+                        fmtBinaryDigits(ss, mVal, f->length());
                         if (fIx > 0) {
                             ss << "`";
                         }
@@ -172,10 +172,10 @@ static size_t encodeInst(
     }
 }
 
-template <Platform P>
 struct SerialEncoder : BitProcessor
 {
-    const EncoderOpts     &opts;
+    const EncoderOpts    &opts;
+    const Model          &model;
     uint8_t              *instBufBase = nullptr;
     int                   instBufTotalBytes = 0; // valid number of bytes in the buffer to be returned
 
@@ -184,9 +184,10 @@ struct SerialEncoder : BitProcessor
 
     SerialEncoder(
         ErrorHandler &errHandler,
-        const EncoderOpts &_opts)
-        : BitProcessor(errHandler), opts(_opts)
-        , instEncoder(_opts, *this)
+        const EncoderOpts &_opts,
+        const Model &_model)
+        : BitProcessor(errHandler), opts(_opts), model(_model)
+        , instEncoder(_opts, *this, _model)
     {
     }
 
@@ -225,7 +226,7 @@ struct SerialEncoder : BitProcessor
                 for (auto i : blk->getInstList()) {
                     encodedInsts.push_back((MInst *)instBufCurr);
                     i->setPC((PC)(instBufCurr - instBufBase));
-                    size_t iLen = encodeInst<P>(
+                    size_t iLen = encodeInst(
                         instEncoder,
                         opts,
                         instIx++,
@@ -246,15 +247,15 @@ struct SerialEncoder : BitProcessor
 };
 
 
-template <Platform P>
 static void EncodeSerial(
+    const Model &model,
     const EncoderOpts &opts,
     ErrorHandler &eh,
     Kernel &k,
     void *&bits,
     size_t &bitsLen)
 {
-    SerialEncoder<P> se(eh, opts);
+    SerialEncoder se(eh, opts, model);
     se.encodeKernel(k);
     if (!eh.hasErrors()) {
         bits = se.instBufBase;
@@ -367,7 +368,7 @@ bool iga::native::IsEncodeSupported(
 {
     switch (m.platform)
     {
-    case Platform::GEN10:
+    case Platform::GENNEXT:
     default:
         break;
     }
@@ -384,7 +385,7 @@ void iga::native::Encode(
 {
     switch (model.platform)
     {
-    case Platform::GEN10:
+    case Platform::GENNEXT:
     default:
         IGA_ASSERT_FALSE("platform not supported; "
             "caller should have checked via iga::native::IsEncodeSupported");
@@ -399,7 +400,7 @@ bool iga::native::IsDecodeSupported(
 {
     switch (m.platform)
     {
-    case Platform::GEN10: break;
+    case Platform::GENNEXT: break;
     default: break;
     }
     return false;
@@ -415,35 +416,11 @@ Kernel *iga::native::Decode(
     Kernel *k = nullptr;
     switch (m.platform)
     {
-    case Platform::GEN10:
+    case Platform::GENNEXT:
     default:
         IGA_ASSERT_FALSE("invalid platform for decode; "
             "caller should have checked via iga::native::IsDecodeSupported");
     }
-
-/*
-    // if valid, the kernel k contains all the instructions in a single block
-    // if we are asked for symbolic labels, we do that here
-    if (k && !dopts.useNumericLabels) {
-        const BlockList &bl = k->getBlockList();
-        if (bl.empty()) {
-            return k; // empty kernel
-        }
-        IGA_ASSERT(bl.size() == 1, "expected only one block");
-
-        auto blockStarts = Block::inferBlocks(
-            eh,
-            bitsLen,
-            k->getMemManager(),
-            insts);
-        for (auto bitr : blockStarts) {
-            k->appendBlock(bitr.second);
-        }
-
-        delete k;
-        k = copy;
-    }
-*/
 
     return k;
 }
@@ -453,12 +430,12 @@ void iga::native::DecodeFields(
     Loc loc,
     const Model &m,
     const void *bits,
-    FieldList &fields,
+    FragmentList &fields,
     ErrorHandler &eh)
 {
     switch (m.platform)
     {
-    case Platform::GEN10:
+    case Platform::GENNEXT:
     default:
         IGA_ASSERT_FALSE("invalid platform for decode; "
             "caller should have checked via iga::native::IsDecodeSupported");
@@ -489,7 +466,7 @@ CompactionResult iga::native::DebugCompaction(
 
     switch (m.platform)
     {
-    case Platform::GEN10:
+    case Platform::GENNEXT:
     default:
         IGA_ASSERT_FALSE("invalid platform for decode; "
             "caller should have checked via iga::native::IsDecodeSupported");

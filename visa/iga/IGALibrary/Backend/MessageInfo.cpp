@@ -294,7 +294,7 @@ struct DescDecoder {
         uint32_t val,
         std::string meaning)
     {
-        Field f {fieldName, off, len};
+        Fragment f(fieldName, off, len);
         for (const auto &fvs : fields) {
             auto f1 = std::get<0>(fvs);
             if (f1.overlaps(f)) {
@@ -329,7 +329,7 @@ struct DescDecoder {
         // DataElements:MDC_DB_HW for A32 uses 3 bits (starting at bit 8)
         // the A64 version is always [10:8]
         auto bits = getDescBits(off,len);
-        // 0 -> 1 block, 1 -> 2 blocks, 2 -> 4 blocks, ...
+        // 0 -> 1 block, 1 -> 2 blocks, 2 -> 4 blocks, 3 -> 8 blocks
         int val = (int)(1 << bits);
         std::stringstream ss;
         ss << val << " 256b blocks";
@@ -369,12 +369,12 @@ struct DescDecoder {
 
     int decodeMDC_DS(int off) {
         auto bits = getDescBits(off,2);
-        addField("DataElements:MDC_DS",off,2,bits,MDC_DS_MEANINGS[bits]);
+        addField("DataElements:MDC_DS", off, 2, bits, MDC_DS_MEANINGS[bits]);
         return (1 << (int)bits);
     }
     int MDC_A64_DS(int off) {
         auto bits = getDescBits(off,2);
-        addField("DataElements:MDC_A64_DS",off,2,bits,MDC_DS_MEANINGS[bits]);
+        addField("DataElements:MDC_A64_DS", off, 2, bits, MDC_DS_MEANINGS[bits]);
         return (1 << (int)bits);
     }
     int decodeMDC_DWS_DS(int off) {
@@ -385,16 +385,16 @@ struct DescDecoder {
             "Fill all 4 bytes per DW",
             "???"
         };
-        addField("DataElements:MDC_DWS_DS",off,2,bits,meanings[bits]);
+        addField("DataElements:MDC_DWS_DS", off, 2, bits, meanings[bits]);
         return (1 << (int)bits);
     }
     int decodeMDC_SM2(int off) {
         // yeah SM2 is really 1 bit (2 means two values)
-        int bits = getDescBitField("SimdMode:MDC_SM2",off,"SIMD8","SIMD16");
+        int bits = getDescBitField("SimdMode:MDC_SM2", off, "SIMD8", "SIMD16");
         return bits ? 16 : 8;
     }
     int decodeMDC_SM2R(int off) {
-        int bits = getDescBitField("SimdMode:MDC_SM2R",off,"SIMD16","SIMD8");
+        int bits = getDescBitField("SimdMode:MDC_SM2R", off, "SIMD16", "SIMD8");
         return bits ? 8 : 16;
     }
     int decodeMDC_SM3(int off) {
@@ -406,7 +406,7 @@ struct DescDecoder {
         case 2: simd = 8;  simdStr = "SIMD8"; break;
         default: error(off,2,"invalid MDC_SM3"); break;
         }
-        addField("SimdMode:MDC_SM3",off,2,bits,simdStr);
+        addField("SimdMode:MDC_SM3", off, 2, bits, simdStr);
         return simd;
     }
     int decodeMDC_CMASK() {
@@ -414,7 +414,7 @@ struct DescDecoder {
         std::stringstream ss;
         int vecLen = 0;
         if (bits == 0xF) {
-            error(8,4,"channel mask must have one element not disabled");
+            error(8, 4, "channel mask must have one element not disabled");
         }
         for (int i = 0; i < 4; i++) {
             if (((1<<i)&bits) == 0) {
@@ -428,7 +428,7 @@ struct DescDecoder {
             ss << "no channels enabled";
         else
             ss << " enabled";
-        addField("ChannelDisableMask:MDC_CMASK",8,4,bits,ss.str());
+        addField("ChannelDisableMask:MDC_CMASK", 8, 4, bits, ss.str());
         return vecLen;
     }
 
@@ -493,9 +493,9 @@ struct DescDecoder {
             ss << " (SLM)";
         } else if (bti == COHERENT_BTI) {
             if (addrBits == 64)
-                ss << "A64 ";
+                ss << " A64 ";
             else
-                ss << "A32 ";
+                ss << " A32 ";
             ss << " (coherent stateless)";
         } else if (bti == NONCOHERENT_BTI) {
             if (addrBits == 64)
@@ -506,12 +506,12 @@ struct DescDecoder {
         } else if (bti == 0xFC) {
             ss << " (SSO)";
         }
-        addField("BTI",0,8,bti,ss.str());
+        addField("BTI", 0, 8, bti, ss.str());
         return bti;
     }
 
     CacheOpt decodeMDC_IAR() {
-        int bits = getDescBitField("MDC_IAR",13,"disabled","enabled");
+        int bits = getDescBitField("MDC_IAR", 13, "disabled", "enabled");
         return bits ? CacheOpt::READINVALIDATE : CacheOpt::DEFAULT;
     }
 
@@ -604,7 +604,7 @@ struct DescDecoder {
         if (addrSizeBits == 32) {
             if (extraAttrs & MessageInfo::SCRATCH) {
                 ss << "scratch";
-                ss << "+" << 32*getDescBits(0,12);
+                ss << "+" << 32*getDescBits(0, 12);
             } else if (bti == SLM_BTI) {
                 ss << "slm";
                 addrType = AddrType::FLAT;
@@ -726,6 +726,8 @@ struct DescDecoder {
             decodeMDC_DB_OW(8);
         std::stringstream ss;
         ss << msgDesc << " x" << elems;
+        if (owBits == 1)
+            ss << "H";
         msgDesc = ss.str();
 
         setHdcMessageX(
@@ -744,7 +746,7 @@ struct DescDecoder {
         std::string msgDesc,
         SendOp op,
         int addrSize,
-        int blocksCountOffset,
+        int blockCountOffset,
         int blockCountLen,
         int extraAttrs)
     {
@@ -752,8 +754,8 @@ struct DescDecoder {
 
         int elems =
             addrSize == 64 ?
-                decodeMDC_A64_DB_HW(blocksCountOffset) :
-                decodeMDC_DB_HW(blocksCountOffset, blockCountLen);
+                decodeMDC_A64_DB_HW(blockCountOffset) :
+                decodeMDC_DB_HW(blockCountOffset, blockCountLen);
         std::stringstream ss;
         ss << msgDesc << " x" << elems;
         msgDesc = ss.str();
@@ -777,6 +779,9 @@ struct DescDecoder {
     {
         std::string msgSym = isRead ? "untyped_load" : "untyped_store";
         extraAttrs |= MessageInfo::HAS_CHMASK;
+        //
+        appendCMask(msgDesc);
+        //
         setHdcMessage(
             msgSym,
             msgDesc,
@@ -786,6 +791,18 @@ struct DescDecoder {
             decodeMDC_CMASK(),
             decodeMDC_SM3(12),
             extraAttrs);
+    }
+
+    void appendCMask(std::string &msgDesc) {
+        auto cMaskBits = getDescBits(8, 4);
+        msgDesc += " with ";
+        for (int i = 0; i < 4; i++) {
+            if ((cMaskBits & (i << 1)) == 0) {
+                // NOTE: legacy untyped message channel masks are a
+                // disable bit
+                msgDesc += "xyzw"[i];
+            }
+        }
     }
 
     void setHdcTypedSurfaceMessage(
@@ -806,7 +823,9 @@ struct DescDecoder {
           msgDesc = " returning status";
           msgSym += "_wstatus";
         }
-
+        //
+        appendCMask(msgDesc);
+        //
         setHdcMessage(
             msgSym,
             msgDesc,
@@ -895,7 +914,7 @@ struct DescDecoder {
 
         std::string mOpName;
         SendOp op = SendOp::INVALID;
-        auto aopBits = getDescBits(8,4);
+        auto aopBits = getDescBits(8, 4);
         std::string opDesc;
         switch (aopBits) {
         // again with case 0x0 they wedged in a 64b CAS as part of the
@@ -1074,6 +1093,9 @@ struct DescDecoder {
     void tryDecode();
     void tryDecodeDCRO();
     void tryDecodeDC0();
+    void tryDecodeDC0AlignedBlock();
+    void tryDecodeDC0Memfence();
+    void tryDecodeDC0ScratchBlock();
     void tryDecodeDC1();
     void tryDecodeURB();
     void tryDecodeGTWY();
@@ -1194,10 +1216,10 @@ void DescDecoder::tryDecodeDCRO() {
 
 void DescDecoder::tryDecodeDC0()
 {
-    const int msgType = getDescBits(14,5);
+    const int msgType = getDescBits(14, 5);
     switch (msgType) {
-    case 0x00: // oword block read
-        addField("MessageType",14,5,msgType,"oword block read");
+    case 0x00: // oword block read (unaligned)
+        addField("MessageType", 14, 5, msgType, "oword block read");
         setHdcOwBlock(
             "load_block",
             "oword block read",
@@ -1208,18 +1230,10 @@ void DescDecoder::tryDecodeDC0()
         decodeMDC_HR();
         break;
     case 0x01: // aligned hword/oword block read
-        addField("MessageType",14,5,msgType,"aligned oword block read");
-        setHdcOwBlock(
-            "aligned_load_block",
-            "aligned oword block read",
-            SendOp::LOAD,
-            32, // all 32b addresses
-            0);
-        setDoc("7030");
-        decodeMDC_HR();
+        tryDecodeDC0AlignedBlock();
         break;
     case 0x08: // hword/oword block write
-        addField("MessageType",14,5,msgType,"oword block write");
+        addField("MessageType", 14, 5, msgType, "oword block write");
         setHdcOwBlock(
             "store_block",
             "oword block write",
@@ -1230,7 +1244,7 @@ void DescDecoder::tryDecodeDC0()
         decodeMDC_HR();
         break;
     case 0x09: // hword aligned block write
-        addField("MessageType",14,5,msgType,"hword aligned block write");
+        addField("MessageType", 14, 5, msgType, "hword aligned block write");
         setHdcOwBlock(
             "aligned_store_block",
             "aligned oword block write",
@@ -1242,14 +1256,14 @@ void DescDecoder::tryDecodeDC0()
         break;
     //
     case 0x02: // oword dual block read
-        addField("MessageType",14,5,msgType,"oword dual block read");
+        addField("MessageType", 14, 5, msgType, "oword dual block read");
         mi.description = "oword dual block read";
         setDoc("7029");
         decodeMDC_HR();
         error(14,5, "oword dual block read decode not supported");
         return;
     case 0x0A: // oword dual block write
-        addField("MessageType",14,5,msgType,"oword dual block write");
+        addField("MessageType", 14, 5, msgType, "oword dual block write");
         mi.description = "oword dual block write";
         setDoc("7033");
         decodeMDC_HR();
@@ -1261,15 +1275,15 @@ void DescDecoder::tryDecodeDC0()
     {
         const char *msgName = msgType == 0x04 ?
             "byte gathering read" : "byte scattering write";
-        addField("MessageType",14,5,msgType,msgName);
+        addField("MessageType", 14, 5, msgType, msgName);
         //
         // "byte" scattered always consumes a DW of GRF per channel,
         // but DWS_DS controls how many bytes are loaded per address
         // that might be 1, 2, 4 all packed into one DW.
         // So think of:
-        //     DWS_DS == 0 (byte) as u8 zext to u32
-        //     DWS_DS == 1 (word) as u16 zext to u32
-        //     DWS_DS == 2 (dword) as u32 zext to u32
+        //     DWS_DS == 0 (byte) as u8 aligned to u32 (upper bits undefined)
+        //     DWS_DS == 1 (word) as u16 aligned to u32 (upper bits undefined)
+        //     DWS_DS == 2 (dword) as u32
         setHdcMessageX(
             msgType == 0x04 ? "load" : "store",
             msgType == 0x04 ?
@@ -1310,113 +1324,12 @@ void DescDecoder::tryDecodeDC0()
         decodeMDC_H();
         break;
     }
-    case 0x07: {
-        // memory fence
-        addField("MessageType", 14, 5, msgType, "fence");
-        //
-        std::stringstream sym, desc;
-        uint32_t surfId = getDescBits(0,8);
-        int extraAttrs = 0;
-        if (getDescBitField("Commit",13,
-            "off (return immediately)",
-            "on (wait for fence commit)"))
-        {
-            sym << "sync_";
-            desc << "synchronized ";
-        }
-        if (surfId == SLM_BTI) {
-            (void)decodeBTI(32); // add the field
-            sym << "slm_fence";
-            desc << "SLM fence";
-            extraAttrs |= MessageInfo::SLM;
-        } else if (surfId == 0) {
-            sym << "global_fence";
-            desc << "global fence";
-            if (getDescBits(9,4) && getDescBit(8)) {
-                error(8,1,"L3 implies L1 flush");
-            }
-            desc << " flushing";
-            if (getDescBitField("L1Flush",8,"Flush L3","FLush L1") != 0) {
-                sym << ".l1";
-                desc << " L1";
-            }
-            if (getDescBitsField("L3 Flush Targets",9,4)) {
-                if (getDescBits(9,4) == 0xF) {
-                    desc << " all L3 data";
-                    sym << ".dcti";
-                } else {
-                    int n = 0;
-                    desc << " L3";
-                    sym << ".";
-                    if (getDescBit(12)) {
-                        sym << "d";
-                        desc << " r/w data";
-                    }
-                    if (getDescBit(11)) {
-                        if (n++ > 0)
-                            desc << ",";
-                        sym << "c";
-                        desc << " constant data";
-                    }
-                    if (getDescBit(10)) {
-                        if (n++ > 0)
-                            desc << ",";
-                        sym << "t";
-                        desc << " texture data";
-                    }
-                    if (getDescBit(9)) {
-                        if (n++ > 0)
-                            desc << ",";
-                        sym << "i";
-                        desc << " instruction data";
-                    }
-                }
-            }
-        } else {
-            error(0, 8, "invalid BTI for fence (must be 0x0 or 0xFE)");
-        }
-        setSpecialOp(
-            sym.str(),
-            desc.str(),
-            SendOp::FENCE,
-            AddrType::FLAT,
-            surfId,
-            extraAttrs);
-        setDoc("7049");
-        decodeMDC_HR();
+    case 0x07:
+        tryDecodeDC0Memfence();
         break;
-    }
     default:
         if (getDescBit(18) == 1) {
-            // scratch read
-            // scratch write
-            //
-            // scratch block is a muddy situation
-            // they used to have ChannelMode at 16, so we want to ignore that
-            // and only use bits
-            bool isRead = getDescBit(17) == 0;
-            const char *msgName = isRead ?
-                "hword scratch block read" :  "hword scratch block write";
-            addField("MessageType", 14, 5, msgType, msgName);
-            //
-            setHdcHwBlock(
-                isRead ? "load_block" : "store_block",
-                msgName,
-                isRead ? SendOp::LOAD : SendOp::STORE,
-                32, // r0.5
-                12, 2, // [13:12] num HWs
-                MessageInfo::SCRATCH);
-            // scratch offset [11:0] (reg aligned)
-            mi.immediateOffset = 32*
-                getDescBitsField("HWordOffset", 0, 12,
-                    [&](std::stringstream &ss, uint32_t val) {
-                        ss << val << " HWords from scratch base";
-                    });
-            if (platform < Platform::GEN10) {
-                getDescBitField("ChannelMode", 16, "OWord", "DWord");
-            }
-            setDoc(isRead ? "7027" : "7031");
-            decodeMDC_HR();
+            tryDecodeDC0ScratchBlock();
         } else {
            addField("MessageType", 14, 5, msgType, "???");
            error(14, 5, "unsupported dc0 op");
@@ -1425,8 +1338,150 @@ void DescDecoder::tryDecodeDC0()
     } // end switch legacy DC0
 }
 
+void DescDecoder::tryDecodeDC0AlignedBlock()
+{
+    const int msgType = getDescBits(14, 5);
+    const char *desc ="aligned block read";
+    const char *doc = "7030";
+    bool isHw = false;
+    addField("MessageType", 14, 5, msgType, desc);
+    if (isHw) {
+        setHdcHwBlock(
+            "aligned_load_block256",
+            "hword aligned block read",
+            SendOp::LOAD,
+            32, // all 32b addresses
+            8, 3, // [10:8]
+            0);
+    } else {
+        setHdcOwBlock(
+            "aligned_load_block128",
+            "oword aligned block read",
+            SendOp::LOAD,
+            32, // all 32b addresses
+            0);
+    }
+    setDoc(doc);
+    decodeMDC_HR();
+}
+
+void DescDecoder::tryDecodeDC0Memfence()
+{
+    const int msgType = getDescBits(14, 5);
+    // memory fence
+    addField("MessageType", 14, 5, msgType, "fence");
+    //
+    std::stringstream sym, desc;
+    uint32_t surfId = getDescBits(0,8);
+    int extraAttrs = 0;
+    if (getDescBitField("Commit",13,
+        "off (return immediately)",
+        "on (wait for fence commit)"))
+    {
+        sym << "sync_";
+        desc << "synchronized ";
+    }
+    if (surfId == SLM_BTI) {
+        (void)decodeBTI(32); // add the field
+        sym << "slm_fence";
+        desc << "SLM fence";
+        extraAttrs |= MessageInfo::SLM;
+    } else if (surfId == 0) {
+        sym << "global_fence";
+        desc << "global fence";
+        if (getDescBits(9, 4) && getDescBit(8)) {
+            error(8, 1, "L3 implies L1 flush");
+        }
+        desc << " flushing";
+        if (getDescBitField("L1Flush",8,"Flush L3","FLush L1") != 0) {
+            sym << ".l1";
+            desc << " L1";
+        }
+        if (getDescBitsField("L3 Flush Targets",9,4)) {
+            if (getDescBits(9, 4) == 0xF) {
+                desc << " all L3 data";
+                sym << ".dcti";// data, const?, text, inst
+            } else {
+                int n = 0;
+                desc << " L3";
+                sym << ".";
+                if (getDescBit(12)) {
+                    sym << "d";
+                    desc << " r/w data";
+                }
+                if (getDescBit(11)) {
+                    if (n++ > 0)
+                        desc << ",";
+                    sym << "c";
+                    desc << " constant data";
+                }
+                if (getDescBit(10)) {
+                    if (n++ > 0)
+                        desc << ",";
+                    sym << "t";
+                    desc << " texture data";
+                }
+                if (getDescBit(9)) {
+                    if (n++ > 0)
+                        desc << ",";
+                    sym << "i";
+                    desc << " instruction data";
+                }
+            }
+        }
+    } else {
+        error(0, 8, "invalid BTI for fence (must be 0x0 or 0xFE)");
+    }
+    setSpecialOp(
+        sym.str(),
+        desc.str(),
+        SendOp::FENCE,
+        AddrType::FLAT,
+        surfId,
+        extraAttrs);
+    setDoc("7049");
+    decodeMDC_HR();
+}
+
+void DescDecoder::tryDecodeDC0ScratchBlock()
+{
+    const int msgType = getDescBits(14, 5);
+    // scratch read
+    // scratch write
+    //
+    // scratch block is a muddy situation
+    // they used to have ChannelMode at 16, so we want to ignore that
+    // and only use bits
+    bool isRead = getDescBit(17) == 0;
+    const char *msgName = isRead ?
+        "hword scratch block read" :  "hword scratch block write";
+    addField("MessageType", 14, 5, msgType, msgName);
+    //
+    setHdcHwBlock(
+        isRead ? "load_block" : "store_block",
+        msgName,
+        isRead ? SendOp::LOAD : SendOp::STORE,
+        32, // r0.5
+        12, 2, // [13:12] num HWs
+        MessageInfo::SCRATCH);
+    // scratch offset [11:0] (reg aligned)
+    mi.immediateOffset = 32*
+        getDescBitsField("HWordOffset", 0, 12,
+            [&] (std::stringstream &ss, uint32_t val) {
+                ss << val << " HWords from scratch base";
+            });
+    if (platform < Platform::GEN10) {
+        getDescBitField("ChannelMode", 16, "OWord", "DWord");
+    }
+    setDoc(isRead ? "7027" : "7031");
+
+    decodeMDC_HR();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
 void DescDecoder::tryDecodeDC1() {
-    const int msgType = getDescBits(14,5);
+    const int msgType = getDescBits(14, 5);
     switch (msgType)
     {
     case 0x01: // untyped surface read
@@ -1450,7 +1505,7 @@ void DescDecoder::tryDecodeDC1() {
     {
         const char *msgName = msgType == 0x1 ?
                 "a64 untyped surface read" : "a64 untyped surface write";
-        addField("MessageType",14,5,msgType,msgName);
+        addField("MessageType", 14, 5, msgType, msgName);
         //
         setHdcUntypedSurfaceMessage(
             msgName,
@@ -1470,12 +1525,12 @@ void DescDecoder::tryDecodeDC1() {
             // c.f. handling above with non-A64 version of BSR
             const char *msgName = msgType == 0x10 ?
                 "a64 byte gathering read" : "a64 byte scattering write";
-            addField("MessageType",14,5,msgType,msgName);
+            addField("MessageType", 14, 5, msgType, msgName);
             if (subType == 0x0) {
-                addField("SubType",8,2,subType,"Byte");
+                addField("SubType", 8, 2, subType, "Byte");
                 setDoc(msgType == 0x10 ? "7070" : "7073");
             } else { // subType == 0x3
-                addField("SubType",8,2,subType,"Byte with Status Return");
+                addField("SubType", 8, 2, subType, "Byte with Status Return");
                 setDoc(msgType == 0x10 ? "19316" : nullptr);
                 if (msgType == 0x1A)
                     error(14,5,
@@ -1498,7 +1553,7 @@ void DescDecoder::tryDecodeDC1() {
             // vector length
             const char *msgTypeName = msgType == 0x10 ?
               "a64 gathering read" : "a64 scattering write";
-             addField("MessageType",14,5,msgType,msgTypeName);
+             addField("MessageType", 14, 5, msgType, msgTypeName);
             //
             const char *msgName =
                 subType == 1 ?
@@ -1509,7 +1564,8 @@ void DescDecoder::tryDecodeDC1() {
                         "a64 qword gathering read" :
                         "a64 qword scattering write";
             //
-            addField("SubType",8,2,subType,subType == 1 ? "DWord" : "QWord");
+            addField(
+                "SubType", 8, 2, subType, subType == 1 ? "DWord" : "QWord");
             //
             setHdcMessage(
                 msgType == 0x10 ? "load" : "store",
@@ -1537,7 +1593,7 @@ void DescDecoder::tryDecodeDC1() {
             msgType == 0x14 ? "a64 block read" :"a64 block write");
         bool isHword = false;
         bool isUnaligned = false;
-        auto subType = getDescBitsField("SubType",11,2,
+        auto subType = getDescBitsField("SubType", 11, 2,
             [&] (std::stringstream &ss, uint32_t val) {
                 switch (val) {
                 case 0x0:
@@ -2335,10 +2391,10 @@ void DescDecoder::tryDecodeSampler()
 
 
 void DescDecoder::tryDecode() {
-    getDescBitsField("Mlen",25,4, [](std::stringstream &ss, uint32_t val) {
+    getDescBitsField("Mlen", 25,4, [](std::stringstream &ss, uint32_t val) {
         ss << val << " address registers written";
     });
-    getDescBitsField("Rlen",20,5, [](std::stringstream &ss, uint32_t val) {
+    getDescBitsField("Rlen", 20,5, [](std::stringstream &ss, uint32_t val) {
         ss << val << " registers read back";
     });
 

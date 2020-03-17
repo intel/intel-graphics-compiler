@@ -52,10 +52,10 @@ namespace iga
         NOP    =   0,
         ALLRD  =   2,
         ALLWR  =   3,
-        FENCE  =  13,
         BAR    =  14,
         HOST   =  15,
     };
+
 
 }
 #endif // _IGA_BXML_TYPES_HPP

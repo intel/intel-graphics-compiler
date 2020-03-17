@@ -4,6 +4,8 @@ set(IGA_Frontend_Formatter
   ${CMAKE_CURRENT_SOURCE_DIR}/Formatter.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Formatter.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IRToString.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/SendDescriptorDecoding.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/SendDescriptorDecoding.hpp
   PARENT_SCOPE
 )
 set(IGA_Frontend_Formatter_LdStSyntax

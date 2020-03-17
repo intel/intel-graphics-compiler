@@ -261,7 +261,11 @@ typedef bool(CDECLATTRIBUTE *pIGAKVHasInstOpt)(const kv_t *kv, int32_t pc, uint3
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetExecutionSize)(const kv_t *kv, int32_t pc);
 
 #define IGA_KV_GET_SWSB_INFO "kv_get_swsb_info"
-typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSWSBInfo)(const kv_t *kv, int32_t pc);
+typedef bool(CDECLATTRIBUTE *pIGAKVGetSWSBInfo)(
+    const kv_t *kv,
+    int32_t pc,
+    iga::SWSB_ENCODE_MODE encdoe_mode,
+    iga::SWSB &swsb);
 
 #define IGA_KV_GET_NUMBER_SOURCES_STR "kv_get_number_sources"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetNumberSources)(const kv_t *kv, int32_t pc);

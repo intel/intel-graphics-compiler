@@ -925,14 +925,9 @@ public:
     void InstSwsb(Loc loc, SWSB swsb) {
         m_depInfo = SWSBInfo(); // clobber old value
         // verify the given swsb
-        SWSB::InstType inst_type = SWSB::InstType::OTHERS;
-        if (m_opSpec->isSendOrSendsFamily())
-            inst_type = SWSB::InstType::SEND;
-        else if (m_opSpec->isMathSubFunc())
-            inst_type = SWSB::InstType::MATH;
+        SWSB::InstType inst_type = m_opSpec->getSWSBInstType();
         if (!swsb.verify(m_model.getSWSBEncodeMode(), inst_type))
             m_errorHandler.reportError(loc, "invalid SWSB bits");
-
 
         switch(swsb.tokenType) {
         case SWSB::TokenType::NOTOKEN:

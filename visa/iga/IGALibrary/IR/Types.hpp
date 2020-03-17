@@ -274,6 +274,7 @@ struct Region {
     static const Region SRC8X1;  // <8;1> (ternary align1 src0 and src1)
     static const Region SRCXX0;  // <0>   (ternary align1 src2)
     static const Region SRCXX1;  // <1>   (ternary align1 src2)
+    static const Region SRCXX2;  // <2>   (ternary align1 src2)
 };
 
 // A set of instruction options

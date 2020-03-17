@@ -40,15 +40,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 
 namespace iga {
-    typedef std::pair<Field,std::string>         FieldListElem;
-    typedef std::vector<FieldListElem>           FieldList;
+    typedef std::pair<Fragment,std::string>         FragmentListElem;
+    typedef std::vector<FragmentListElem>           FragmentList;
     struct FieldPtrCmp
     {
-        bool operator() (const Field *f1, const Field *f2) const {
+        bool operator() (const Fragment *f1, const Fragment *f2) const {
             return *f1 < *f2;
         }
     };
-    typedef std::set<const Field *,FieldPtrCmp>   FieldSet;
+    typedef std::set<const Fragment *,FieldPtrCmp>   FieldSet;
 }
 
 namespace iga {namespace native
@@ -79,7 +79,7 @@ namespace iga {namespace native
         Loc loc,
         const Model &model,
         const void *bits,
-        FieldList &fields,
+        FragmentList &fields,
         ErrorHandler &errHandler);
     CompactionResult DebugCompaction(
         const Model &m,

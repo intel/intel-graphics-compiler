@@ -88,11 +88,11 @@ static std::string fmtBitRange(size_t off, size_t len)
     }
     return ssOff.str();
 }
-static std::string fmtBitRange(const Field &f)
+static std::string fmtBitRange(const Fragment &f)
 {
     return fmtBitRange(f.offset, f.length);
 }
-static std::string fmtSize(const Field &f)
+static std::string fmtSize(const Fragment &f)
 {
     std::stringstream ssSize;
     ssSize << "(" << f.length << ")";
@@ -107,7 +107,7 @@ static const size_t FIELD_SIZE_WIDTH = 5; // (32)
 static const size_t FIELD_VALUE_INT_WIDTH = 14; // 0x1232
 static const size_t FIELD_VALUE_STR_WIDTH = 20; // :d
 
-static FieldList decodeFieldsWithWarnings(
+static FragmentList decodeFieldsWithWarnings(
     const Model &model,
     std::ostream &os,
     Loc loc,
@@ -115,7 +115,7 @@ static FieldList decodeFieldsWithWarnings(
     bool &success,
     const char *leftOrRight = nullptr)
 {
-    FieldList fields;
+    FragmentList fields;
     ErrorHandler errHandler;
     native::DecodeFields(loc, model, (const void *)mi, fields, errHandler);
     for (auto &e : errHandler.getErrors()) {
@@ -127,7 +127,7 @@ static FieldList decodeFieldsWithWarnings(
     auto findFieldsContaining =
         [&] (size_t bit_ix)
     {
-        std::vector<Field*> matching;
+        std::vector<Fragment*> matching;
         for (auto &fi : fields) {
             if (bit_ix >= (size_t)fi.first.offset &&
                 bit_ix < (size_t)fi.first.offset + (size_t)fi.first.length)
@@ -170,11 +170,14 @@ static FieldList decodeFieldsWithWarnings(
                 success = false;
             } else {
                 // insert an ERROR field here since nothing maps there
-                Field errorField{UNMAPPED_FIELD_NAME, (int)bitIx, (int)(endIx - bitIx)};
-                FieldList::iterator itr = fields.begin();
+                Fragment errorField = Fragment(
+                    UNMAPPED_FIELD_NAME,
+                    (int)bitIx,
+                    (int)(endIx - bitIx));
+                FragmentList::iterator itr = fields.begin();
                 for (; itr != fields.end() && itr->first.offset < errorField.offset; itr++)
                     ;
-                fields.insert(itr,std::pair<Field,std::string>(errorField,""));
+                fields.insert(itr,std::pair<Fragment,std::string>(errorField,""));
                 success = false;
             }
             bitIx = endIx; // sanity restarts (or some new error)
@@ -216,13 +219,13 @@ static bool decodeFieldsForInst(
     os << fmtPc(mi, pc) << " " <<  syntax << "\n";
     os.flush();
     bool success = true;
-    FieldList fields = decodeFieldsWithWarnings(
+    FragmentList fields = decodeFieldsWithWarnings(
         model, os, Loc((uint32_t)pc), mi, success);
 
     auto fieldOverlaps =
-        [&] (const Field &f) {
+        [&] (const Fragment &f) {
             for (const auto &fv : fields) {
-                const Field *fp = &fv.first;
+                const Fragment *fp = &fv.first;
                 if (fp != &f && f.overlaps(*fp))
                     return true;
             }
@@ -231,7 +234,7 @@ static bool decodeFieldsForInst(
 
     for (const auto &fv : fields) {
         const auto &f = fv.first;
-        uint64_t val = mi->getField(f);
+        uint64_t val = mi->getFragment(f);
         std::stringstream ss;
         ss << std::setw(FIELD_PC_WIDTH) << std::left << " ";
         ss << " ";
@@ -307,7 +310,7 @@ iga_status_t iga::DecodeFields(
         pc += iLen;
     }
 
-    return IGA_SUCCESS;
+    return success ? IGA_SUCCESS : IGA_ERROR;
 }
 
 
@@ -327,6 +330,7 @@ iga_status_t iga::DiffFields(
         source1, 0, bits1, bitsLen1,
         source2, 0, bits2, bitsLen2);
 }
+
 iga_status_t iga::DiffFieldsFromPCs(
     Platform p,
     bool useNativeDecoder,
@@ -387,8 +391,10 @@ iga_status_t iga::DiffFieldsFromPCs(
             }
             return mi;
         };
-        const iga::MInst *mi1 = getPc("kernel 1", bits1, bitsLen1, pc1 - startPc1),
-                         *mi2 = getPc("kernel 2", bits2, bitsLen2, pc2 - startPc2);
+
+        const iga::MInst
+            *mi1 = getPc("kernel 1", bits1, bitsLen1, pc1 - startPc1),
+            *mi2 = getPc("kernel 2", bits2, bitsLen2, pc2 - startPc2);
 
         // TODO: do a colored diff here (words with given separators)
         // lex with BufferedLexer and do an LCS
@@ -397,15 +403,17 @@ iga_status_t iga::DiffFieldsFromPCs(
         os << fmtPc(mi2, pc2) << " " <<
             disassembleInst(p, useNativeDecoder, pc2, (const void *)mi2) << "\n";
 
-        FieldList fields1;
+        FragmentList fields1;
         bool successLeft = true;
         if (mi1) {
-            fields1 = decodeFieldsWithWarnings(*model, os, Loc((uint32_t)pc1), mi1, successLeft, "left");
+            fields1 = decodeFieldsWithWarnings(
+                *model, os, Loc((uint32_t)pc1), mi1, successLeft, "left");
         }
         bool successRight = true;
-        FieldList fields2;
+        FragmentList fields2;
         if (mi2) {
-            fields2 = decodeFieldsWithWarnings(*model, os, Loc((uint32_t)pc2), mi2, successRight, "right");
+            fields2 = decodeFieldsWithWarnings(
+                *model, os, Loc((uint32_t)pc2), mi2, successRight, "right");
         }
         success &= successLeft & successRight;
 
@@ -414,14 +422,15 @@ iga_status_t iga::DiffFieldsFromPCs(
         for (const auto &f : fields1) {allFields.insert(&f.first);}
         for (const auto &f : fields2) {allFields.insert(&f.first);}
 
-        for (const Field *f : allFields) {
-            auto inList = [&] (const FieldList &flist) {
-                auto fieldEq = [&](const FieldListElem &p) {
+        for (const Fragment *f : allFields) {
+            auto inList = [&] (const FragmentList &flist) {
+                auto fieldEq = [&](const FragmentListElem &p) {
                     return p.first == *f;
                 };
-                return std::find_if(flist.begin(), flist.end(), fieldEq) != flist.end();
+                return std::find_if(flist.begin(), flist.end(), fieldEq) !=
+                    flist.end();
             };
-            auto findStr = [&](const FieldList &flist) {
+            auto findStr = [&](const FragmentList &flist) {
                 for (const auto &fp : flist) {
                     if (fp.first == *f) {
                         return std::string(fp.second);
@@ -431,24 +440,27 @@ iga_status_t iga::DiffFieldsFromPCs(
             };
 
             bool inList1 = mi1 != nullptr && inList(fields1);
-            uint64_t val1 = mi1 ? mi1->getField(*f) : 0;
+            uint64_t val1 = mi1 ? mi1->getFragment(*f) : 0;
             std::string valStr1 = findStr(fields1);
 
             bool inList2 = mi2 != nullptr && inList(fields2);
-            uint64_t val2 = mi2 ? mi2->getField(*f) : 0;
+            uint64_t val2 = mi2 ? mi2->getFragment(*f) : 0;
             std::string valStr2 = findStr(fields2);
 
             std::string diffToken = "  ";
             if (inList1 && inList2) {
                 if (val1 != val2) {
                     diffToken = "~~"; // changed
+                    success = false;
                 } else {
                     diffToken = "  ";
                 }
             } else if (inList1) {
                 diffToken = "--"; // removed
+                success = false;
             } else if (inList2) {
                 diffToken = "++"; // added
+                success = false;
             } else {
                 diffToken = "  ";
             }
@@ -502,14 +514,14 @@ iga_status_t iga::DiffFieldsFromPCs(
         }
     } // for all instructions in both streams (in parallel)
 
-    return IGA_SUCCESS;
+    return success ? IGA_SUCCESS : IGA_ERROR;
 }
 
 // emits output such as  "0`001`1`0`001"
 // for SrcImm compacted fields it just emits the value
 static void formatCompactionFieldValue(
     std::ostream &os,
-    const CompactedField &cf,
+    const CompactionMapping &cf,
     uint64_t val)
 {
     if (cf.mappings == nullptr) {
@@ -522,9 +534,9 @@ static void formatCompactionFieldValue(
                 os << "`";
             }
             const Field *mf = cf.mappings[mIx];
-            bitOff -= mf->length;
-            auto bs = iga::getBits(val, bitOff, mf->length);
-            fmtBinary(os, bs, mf->length);
+            bitOff -= mf->length();
+            auto bs = iga::getBits(val, bitOff, mf->length());
+            fmtBinary(os, bs, mf->length());
         }
     }
 }
@@ -557,7 +569,7 @@ struct CompactionStats
     //   each value that missed maps to:
     //       - # of times it missed
     //       - # of times this miss was the unique
-    std::map<const CompactedField *,std::map<Mapping,MappingStats>> fieldMisses;
+    std::map<const CompactionMapping *,std::map<Mapping,MappingStats>> fieldMisses;
 };
 
 static bool listInstructionCompaction(
@@ -589,13 +601,13 @@ static bool listInstructionCompaction(
             "=> compaction miss " << Reset::RESET << "\n";
 
         bool missesImm = false;
-        for (const CompactedField *cf : cdi.fieldMisses) {
+        for (const CompactionMapping *cf : cdi.fieldMisses) {
             missesImm |= cf->isSrcImmField();
         }
 
         for (size_t i = 0, len = cdi.fieldMisses.size(); i < len; i++) {
             Op op = cdi.fieldOps[i];
-            const CompactedField &cf = *cdi.fieldMisses[i];
+            const CompactionMapping &cf = *cdi.fieldMisses[i];
             uint64_t missedMapping = cdi.fieldMapping[i];
 
             auto &mms = cmpStats.fieldMisses[&cf];
@@ -667,16 +679,18 @@ static bool listInstructionCompaction(
                             os << "`";
                         }
                         const Field *mf = cf.mappings[mIx];
-                        bitOff -= mf->length;
-                        auto missedVal = iga::getBits(missedMapping, bitOff, mf->length);
-                        auto closeVal = iga::getBits(closeMapping, bitOff, mf->length);
+                        bitOff -= mf->length();
+                        auto missedVal =
+                            iga::getBits(missedMapping, bitOff, mf->length());
+                        auto closeVal =
+                            iga::getBits(closeMapping, bitOff, mf->length());
                         if (missedVal != closeVal) {
                             os << Color::RED << Intensity::BRIGHT;
-                            fmtBinaryDigits(os, closeVal, mf->length);
+                            fmtBinaryDigits(os, closeVal, mf->length());
                             os << Reset::RESET;
                             missingFields.push_back(mf);
                         } else {
-                            fmtBinaryDigits(os, closeVal, mf->length);
+                            fmtBinaryDigits(os, closeVal, mf->length());
                         }
                     }
                     os << ": ";
@@ -778,7 +792,7 @@ iga_status_t iga::DebugCompaction(
     // show the various indices that missed
     int64_t totalMisses = 0;
     for (const auto &missEntry : cs.fieldMisses) {
-        const CompactedField *cf = missEntry.first;
+        const CompactionMapping *cf = missEntry.first;
         os << std::setw(24) << cf->index.name;
         int64_t misses = 0;
         for (const auto ms : missEntry.second) {
@@ -794,7 +808,7 @@ iga_status_t iga::DebugCompaction(
     // now list the actual misses
     os << "***************************************************************\n";
     for (const auto &missEntry : cs.fieldMisses) {
-        const CompactedField *cf = missEntry.first;
+        const CompactionMapping *cf = missEntry.first;
         os << cf->index.name << "\n";
 
         // order the misses by the total number

@@ -196,7 +196,11 @@ void DepSet::setInputsSrcDep()
     // It's requested that the instruction following the one having architecture register (CR/CE/SR) access,
     // It must mark to sync with all pipes, even if it's a nop.
     // nop has no src and dst so we mark it here to force setting swsb if required
-    if (m_instruction->getSourceCount() == 0) {
+    //
+    // For sync instructions we do not need to consider its dependency. Though it may still apply the above
+    // case so still set ARF_CR to it.
+    if (m_instruction->getSourceCount() == 0 ||
+        m_instruction->getOpSpec().isSyncSubFunc()) {
         m_bucketList.push_back(m_DB.getBucketStart(RegName::ARF_CR));
         return;
     }

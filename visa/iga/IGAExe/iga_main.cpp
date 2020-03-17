@@ -323,8 +323,8 @@ extern "C" int iga_main(int argc, const char **argv)
     xGrp.defineFlag(
         "ifs",
         nullptr,
-        "dump instruction fields",
-        "This mode decodes instructions.\n"
+        "decode instruction fields",
+        "This mode decodes instruction field\n"
         "\n"
         "EXAMPLES:\n"
         "  % iga -Xifs foo.krn9\n"
@@ -332,7 +332,9 @@ extern "C" int iga_main(int argc, const char **argv)
         "  % iga -p=9 -Xifs \"64 00 43 00  a0 0a 05 00   24 01 00 80  00 00 00 00\"\n"
         "    decodes the hex bits above into ISA\n"
         "  % iga -p=9 -Xifs foo.krn9 \"64 00 43 00  a0 0a 05 00   24 01 00 80  00 00 00 00\"\n"
-        "    decodes and compares the fields\n",
+        "    decodes and compares the fields\n"
+        " The diff version exits non-zero if a difference is encountered or "
+          "there is some decoding error.\n",
         opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.mode = Opts::Mode::XIFS;
@@ -340,7 +342,8 @@ extern "C" int iga_main(int argc, const char **argv)
     xGrp.defineFlag(
         "ldst-syntax",
         nullptr,
-        "displays all ops for the given platform",
+        "emits an experimental load/store syntax; "
+            "WARNING: this will likely be removed at some point",
         nullptr,
         opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {

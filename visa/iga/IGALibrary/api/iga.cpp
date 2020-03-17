@@ -629,7 +629,7 @@ public:
 
 const char *iga_version_string()
 {
-    return IGA_VERSION_STRING;
+    return IGA_VERSION_PREFIX_STRING IGA_VERSION_SUFFIX;
 }
 
 
@@ -639,7 +639,6 @@ iga_status_t  iga_context_create(
 {
     RETURN_INVALID_ARG_ON_NULL(ctx);
     RETURN_INVALID_ARG_ON_NULL(opts);
-
 
     iga_context_options_t coptsInternal =
         IGA_CONTEXT_OPTIONS_INIT(IGA_GEN_INVALID);

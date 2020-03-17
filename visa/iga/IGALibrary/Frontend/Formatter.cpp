@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Floats.hpp"
 #include "Formatter.hpp"
 #include "IRToString.hpp"
+#include "SendDescriptorDecoding.hpp"
 #include "LdStSyntax/MessageFormatting.hpp"
 #include "../ErrorHandler.hpp"
 #include "../IR/Instruction.hpp"
@@ -52,12 +53,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
-    static void EmitSendDescriptorInfoDSD(
-        Platform p,
-        const OpSpec &os,
-        const SendDescArg &exDesc0,
-        uint32_t desc,
-        std::stringstream &ss);
+
 
 
 class Formatter : public BasicFormatter
@@ -576,21 +572,6 @@ private:
     }
 
 
-    void EmitSendDescriptorInfo(
-        Platform p,
-        const OpSpec &i,
-        const SendDescArg& exDesc,
-        uint32_t desc,
-        std::stringstream &ss);
-
-
-    void EmitSendDescriptorInfoGED(
-        Platform p,
-        const OpSpec &i,
-        const SendDescArg& ex_desc,
-        uint32_t desc,
-        std::stringstream &ss);
-
     // e.g. op (8) ... {Compacted}
     //                 ^^^^^^^^^^^
     void formatInstOpts(const Instruction &i, const std::vector<const char *> &instOpts);
@@ -668,44 +649,21 @@ private:
                 } else {
                     // ld/st syntax not enabled
                     //
-                    // use GED accessors to determine descriptor info
-                    EmitSendDescriptorInfoGED(
+                    iga::EmitSendDescriptorInfo(
                         model->platform,
                         i.getOpSpec(),
                         exDesc,
                         desc.imm,
                         ss);
-                    //
-                    // manual descriptor decoding
-                    // EmitSendDescriptorInfo(
-                    //     model->platform,
-                    //     i.getOpSpec(),
-                    //     exDesc,
-                    //     desc.imm,
-                    //     ss);
-                    //
-                    // Using the Xdsd framework only
-                    // EmitSendDescriptorInfoDSD(
-                    //     model->platform, i.getOpSpec(), exDesc, desc.imm, ss);
                 }
             } else if (desc.type == SendDescArg::IMM) {
                 // try to get the imm send desc info via GED
-                EmitSendDescriptorInfoGED(
+                iga::EmitSendDescriptorInfo(
                     model->platform,
                     i.getOpSpec(),
                     exDesc,
                     desc.imm,
                     ss);
-                //
-                // EmitSendDescriptorInfo(
-                //     model->platform,
-                //     i.getOpSpec(),
-                //     exDesc,
-                //     desc.imm,
-                //     ss);
-                //
-                // EmitSendDescriptorInfoDSD(
-                //     model->platform, i.getOpSpec(), exDesc, desc.imm, ss);
             }
         }
 
@@ -716,18 +674,21 @@ private:
         }
     }
 
+
     void formatRegIndRef(const Operand& op) {
         emit("r[a");
         formatRegRef(op.getIndAddrReg());
         if (op.getIndImmAddr() != 0) {
+            int16_t val = op.getIndImmAddr();
             if (!opts.syntaxExtensions) {
                 emit(',');
             } else if (op.getIndImmAddr() > 0) {
                 emit(" + ");
             } else {
                 emit(" - ");
+                val = -val;
             }
-            emit(op.getIndImmAddr());
+            emit(val);
         }
         emit(']');
     }
@@ -792,6 +753,8 @@ void Formatter::formatDstType(const OpSpec &os, Type type)
         emit(ToSyntax(type));
     }
 }
+
+
 
 
 void Formatter::formatRegister(
@@ -924,7 +887,6 @@ void Formatter::formatSrcOp(
         case Type::UQ:
             emitHex(src.getImmediateValue().u64);
             break;
-
         case Type::HF:
             if (opts.hexFloats) {
                 emitHex(src.getImmediateValue().u16);
@@ -978,6 +940,7 @@ void Formatter::formatSrcOp(
     }
     finishColumn();
 } // end formatSrcOp()
+
 
 void Formatter::formatInstOpts(
     const Instruction &i,
@@ -1043,6 +1006,7 @@ void Formatter::formatInstOpts(
     }
     emit('}');
 } // end formatInstOpts
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -1133,21 +1097,6 @@ void GetDefaultLabelName(
 }
 
 
-// TODO: remove
-// void FormatProgramSegment(
-//    ErrorHandler &e,
-//    std::ostream &o,
-//    const Kernel &k,
-//    uint32_t segStartPc,
-//    uint32_t segNumInstructions,
-//    LabelerFunction labeler,
-//    void *labelerEnv)
-//{
-//    Formatter f(e, o, k.getPlatform(), labeler, labelerEnv);
-//    f.formatKernelSegment(k, segStartPc, segNumInstructions);
-//}
-
-
 ///////////////////////////////////////////////////////////////////////////////
 // Following functions generally used for testing, debugging, or
 // producing friendly diagnostics
@@ -1196,745 +1145,6 @@ std::string FormatOpBits(const iga::Model &model, const void *bitsV)
         }
     }
     return ss.str();
-}
-
-
-
-
-static uint32_t getBitField(uint32_t value, int ix, int len) {
-    // shift is only well-defined for values <32, use 0xFFFFFFFF
-    uint32_t mask = len >= 32 ? 0xFFFFFFFF : (1<<(uint32_t)len) - 1;
-    return (value >> (ix % 32)) & mask;
-}
-
-static uint32_t getMsgLength(uint32_t desc)                     { return getBitField(desc, 25, 4); }
-static uint32_t getHeaderBit(uint32_t desc)                     { return getBitField(desc, 19, 1); }
-static uint32_t getRespLength(uint32_t desc)                    { return getBitField(desc, 20, 5); }
-static uint32_t getFC(uint32_t desc)                            { return getBitField(desc, 0, 18); }
-static uint32_t getMessageTypeDC0(uint32_t desc)                { return getBitField(desc, 14, 4); }
-static uint32_t getMessageTypeCC(uint32_t desc)                 { return getBitField(desc, 14, 4); }
-static uint32_t getMessageTypeDC1(uint32_t desc)                { return getBitField(desc, 14, 4); }
-static uint32_t getScratchSpaceGRFsSize(uint32_t desc)          { return getBitField(desc, 12, 2); }
-static uint32_t getScratchSpaceAddressOffset(uint32_t desc)     { return getBitField(desc, 0, 12); }
-static uint32_t getMiscMsgDescBits(uint32_t desc)               { return getBitField(desc, 8, 6); }
-
-static uint32_t getSFID(uint32_t exDesc)                        { return getBitField(exDesc, 0, 4); }
-static uint32_t getSplitSendMsgLength(uint32_t exDesc)          { return getBitField(exDesc, 6, 4); }
-static uint32_t getSrc1LengthFromExDesc(uint32_t exDesc)        { return getBitField(exDesc, 6, 5); }
-static uint32_t getStatelessAddress(uint32_t exDesc)            { return getBitField(exDesc, 16, 16); }
-static uint32_t getBindlessSurfaceBaseAddress(uint32_t exDesc)  { return getBitField(exDesc, 12, 19); }
-
-static void formatMessageInfoDescription(
-    Platform p,
-    SFID sfid,
-    const OpSpec &os,
-    const SendDescArg &exDesc0,
-    uint32_t desc,
-    std::stringstream &ss)
-{
-    DiagnosticList ws, es;
-    auto exDesc =
-        exDesc0.type == SendDescArg::REG32A ? 0xFFFFFFFF : exDesc0.imm;
-    auto mi =
-        MessageInfo::tryDecode(p, sfid, exDesc, desc, ws, es, nullptr);
-    if (!mi.description.empty()) {
-            // other stuff is hairier; the description will have better info
-            ss << " " << mi.description;
-    } else {
-        ss << "?";
-    }
-}
-static void EmitSendDescriptorInfoDSD(
-    Platform p,
-    const OpSpec &os,
-    const SendDescArg &exDesc0,
-    uint32_t desc,
-    std::stringstream &ss)
-{
-    uint32_t exDesc = exDesc0.type == SendDescArg::IMM ? exDesc0.imm : 0;
-    SFID sfid = MessageInfo::sfidFromOp(p, os.op, exDesc);
-
-    //////////////////////////////////////
-    // emit the: "wr:3h+2, rd:4" part
-    ss << "wr:" << getMsgLength(desc);
-    bool hasHeaderBit = true;
-    if (hasHeaderBit && getHeaderBit(desc)) {
-        ss << "h";
-    }
-    int src1Len = 0;
-    if (exDesc0.type == SendDescArg::IMM) {
-        src1Len = getSrc1LengthFromExDesc(exDesc);
-    }
-    if (src1Len) {
-        ss << "+" << src1Len;
-    } else if (exDesc0.type == SendDescArg::REG32A) {
-        ss << "+?";
-    }
-    ss << ", rd:" << getRespLength(desc) << ";";
-    //
-    /////////////////////////
-    // now the message description
-    formatMessageInfoDescription(p, sfid, os, exDesc0, desc, ss);
-}
-
-static const char *getSFIDString(Platform p, uint32_t sfid)
-{
-    static const char *HSWBDW_SFIDS[] = {
-        "null",     // 0000b the null function
-        nullptr,    // 0001b
-        "sampler",  // 0010b new sampler
-        "gateway",  // 0011b gateway
-
-        "sampler",  // 0100b (old sampler encoding)
-        "hdc.rc",   // 0101b render cache
-        "hdc.urb",  // 0110b unified return buffer
-        "spawner",  // 0111b thread spawner
-
-        "vme",      // 1000b video motion estimation
-        "hdc.ccdp", // 1001b constant cache
-        "hdc.dc0",  // 1010b
-        "pi",       // 1011b pixel interpolator
-
-        "hdc.dc1",  // 1100b data-cache 1
-        "cre",      // 1101b check and refinement
-        nullptr,
-        nullptr,
-    };
-    static const char *SKL_SFIDS[] = {
-        HSWBDW_SFIDS[0],
-        nullptr,
-        HSWBDW_SFIDS[2],
-        HSWBDW_SFIDS[3],
-
-        "hdc.dc2",
-        HSWBDW_SFIDS[5],
-        HSWBDW_SFIDS[6],
-        HSWBDW_SFIDS[7],
-
-        HSWBDW_SFIDS[8],
-        "hdc.dcro0", // 1001b data cache read only
-        HSWBDW_SFIDS[10],
-        HSWBDW_SFIDS[11],
-
-        HSWBDW_SFIDS[12],
-        HSWBDW_SFIDS[13],
-        HSWBDW_SFIDS[14],
-        HSWBDW_SFIDS[15],
-    };
-    const char **sfidTable = p < Platform::GEN9 ? HSWBDW_SFIDS : SKL_SFIDS;
-
-    if (!sfidTable)
-    {
-        return nullptr;
-    }
-
-    return sfidTable[sfid];
-}
-
-static const char* MessageTypeEnumerationDisassembly[64] =
-{
-    "Scratch Block Read", // 0
-    "Scratch Block Write", // 1
-    "OWord Block Read", // 2
-    "Unaligned OWord Block Read", // 3
-    "OWord Dual Block Read", // 4
-    "DWord Scattered Read", // 5
-    "Byte Scattered Read", // 6
-    "Memory Fence", // 7
-    "OWord Block Write", // 8
-    "OWord Dual Block Write", // 9
-    "DWord Scattered Write", // 10
-    "Byte Scattered Write", // 11
-    "Transpose Read", // 12
-    "Untyped Surface Read", // 13
-    "Untyped Atomic Integer Operation", // 14
-    "Untyped Atomic Integer Operation SIMD4x2", // 15
-    "Media Block Read", // 16
-    "Typed Surface Read", // 17
-    "Typed Atomic Integer Operation", // 18
-    "Typed Atomic Integer Operation SIMD4x2", // 19
-    "Untyped Surface Write", // 20
-    "Media Block Write", // 21
-    "Typed Atomic Counter Operation", // 22
-    "Typed Atomic Counter Operation SIMD4x2", // 23
-    "Typed Surface Write", // 24
-    "A64 Scattered Read", // 25
-    "A64 Untyped Surface Read", // 26
-    "A64 Untyped Atomic Integer Operation", // 27
-    "A64 Untyped Atomic Integer Operation SIMD4x2", // 28
-    "A64 Block Read", // 29
-    "A64 Block Write", // 30
-    "A64 Untyped Surface Write", // 31
-    "A64 Scattered Write", // 32
-    "Untyped Surface Read", // 33
-    "A64 Scattered Read", // 34
-    "A64 Untyped Surface Read", // 35
-    "Byte Scattered Read", // 36
-    "Untyped Surface Write", // 37
-    "A64 Untyped Surface Write", // 38
-    "A64 Scattered Write", // 39
-    "Byte Scattered Write", // 40
-    "Oword Block Read Constant Cache", // 41
-    "Unaligned Oword Block Read Constant Cache", // 42
-    "Oword Dual Block Read Constant Cache", // 43
-    "Dword Scattered Read Constant Cache", // 44
-    "Unaligned Oword Block Read Sampler Cache", // 45
-    "Media Block Read Sampler Cache", // 46
-    "Read Surface Info", // 47
-    "Render Target Write", // 48
-    "Render Target Read", // 49
-    "Media Block Read", // 50
-    "Typed Surface Read", // 51
-    "Typed Atomic Operation", // 52
-    "Memory Fence", // 53
-    "Media Block Write", // 54
-    "Typed Surface Write", // 55
-    "Untyped Surface Read", // 56
-    "Untyped Atomic Operation", // 57
-    "Untyped Surface Write", // 58
-    "A64 Untyped Atomic Float Add", // 59
-    "Untyped Atomic Float Operation", // 60
-    "A64 Untyped Atomic Float Operation", // 61
-    "A64 Untyped Atomic Float Operation SIMD4x2", // 62
-    NULL // 63
-}; // MessageTypeEnumerationDisassembly[]
-static const char* msgTypeExpandedString(GED_MESSAGE_TYPE msgType)
-{
-    const char * msgTypeString = nullptr;
-    if (msgType >= 63)
-    {
-        msgTypeString = GED_GetMessageTypeString(msgType);
-    }
-    else
-    {
-        msgTypeString = MessageTypeEnumerationDisassembly[msgType];
-    }
-    return msgTypeString;
-}
-
-static const GED_RETURN_VALUE constructPartialGEDSendInstruction(
-    ged_ins_t* ins, GED_MODEL gedP, GED_OPCODE op,
-    bool supportsExMsgDesc, uint32_t exMsgDesc, uint32_t msgDesc)
-{
-    GED_RETURN_VALUE status = GED_InitEmptyIns(gedP, ins, op);
-
-    status = GED_SetExecSize(ins, 16);
-
-    if (supportsExMsgDesc && status == GED_RETURN_VALUE_SUCCESS) {
-        status = GED_SetExDescRegFile(ins, GED_REG_FILE_IMM);
-    }
-
-    if (status == GED_RETURN_VALUE_SUCCESS) {
-        status = GED_SetExMsgDesc(ins, exMsgDesc);
-    }
-
-    if (status == GED_RETURN_VALUE_SUCCESS) {
-        status = GED_SetDescRegFile(ins, GED_REG_FILE_IMM);
-    }
-
-    if (status == GED_RETURN_VALUE_SUCCESS) {
-        status = GED_SetMsgDesc(ins, msgDesc);
-    }
-    return status;
-}
-
-static const GED_RETURN_VALUE constructPartialGEDSendInstructionGen12(
-    ged_ins_t* ins, GED_MODEL gedP, GED_OPCODE op,
-    bool supportsExMsgDesc, uint32_t exMsgDesc, uint32_t msgDesc, GED_SFID sfid)
-{
-    GED_RETURN_VALUE status = GED_InitEmptyIns(gedP, ins, op);
-
-    status = GED_SetExecSize(ins, 16);
-
-    if (supportsExMsgDesc && status == GED_RETURN_VALUE_SUCCESS) {
-            status = GED_SetExDescRegFile(ins, GED_REG_FILE_IMM);
-    }
-
-    if (status == GED_RETURN_VALUE_SUCCESS) {
-        status = GED_SetSFID(ins, sfid);
-    }
-
-    if (status == GED_RETURN_VALUE_SUCCESS) {
-        status = GED_SetExMsgDesc(ins, exMsgDesc);
-    }
-
-    if (status == GED_RETURN_VALUE_SUCCESS) {
-        status = GED_SetDescRegFile(ins, GED_REG_FILE_IMM);
-    }
-
-    if (status == GED_RETURN_VALUE_SUCCESS) {
-        status = GED_SetMsgDesc(ins, msgDesc);
-    }
-    return status;
-}
-
-
-
-static const uint32_t SAMPLER_ENGINE            = 2;
-static const uint32_t SFID_DP_DC2               = 4; //SKL+
-static const uint32_t SFID_SAMPLER_CACHE        = 4; //[SNB,BDW]
-static const uint32_t SFID_DP_RC                = 5;
-static const uint32_t SFID_SPAWNER              = 7;
-static const uint32_t SFID_DP_CC                = 9; //[SNB,BDW]
-static const uint32_t SFID_DP_DCRO              = 9; //SKL+
-static const uint32_t SFID_DP_DC0               = 10;
-static const uint32_t SFID_DP_DC1               = 12;
-
-/*
-extern uint32_t GED_CALLCONV GED_GetMessageLength(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern uint32_t GED_CALLCONV GED_GetResponseLength(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern uint32_t GED_CALLCONV GED_GetExMesgLength(ged_ins_t* ins, GED_RETURN_VALUE* result);
-extern GED_HEADER_PRESENT GED_CALLCONV GED_GetHeaderPresent(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-
-extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_SAMPLER(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_RC(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DCRO(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_CC(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-
-extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC2(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC1(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-
-extern uint32_t GED_CALLCONV GED_GetMessageTypeDP0Category(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC0ScratchBlock(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC0Legacy(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC0(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-
-
-const char* GED_GetMessageTypeString(GED_MESSAGE_TYPE MessageTypeValue)
-
-extern uint32_t GED_CALLCONV GED_GetMessageTypeDP0Category(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-
-extern uint32_t GED_CALLCONV GED_GetFuncControl(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern GED_SUB_FUNC_ID GED_CALLCONV GED_GetSubFuncID(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-extern uint32_t GED_CALLCONV GED_GetBindingTableIndex(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-
-extern GED_BLOCK_SIZE GED_CALLCONV GED_GetBlockSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-
-extern GED_SFID GED_CALLCONV GED_GetSFID(ged_ins_t* ins, GED_RETURN_VALUE* result);
-const char* SFIDEnumeration[16]
-extern const char* GED_CALLCONV GED_GetSFIDString(GED_SFID SFIDValue);
-*/
-void Formatter::EmitSendDescriptorInfoGED(
-    Platform p,
-    const OpSpec &os,
-    const SendDescArg& ex_desc,
-    uint32_t desc,
-    std::stringstream &ss)
-{
-    if (!os.isSendOrSendsFamily()) {
-        return;
-    }
-    GED_RETURN_VALUE getRetVal = GED_RETURN_VALUE_INVALID_FIELD;
-    GED_MODEL gedP = IGAToGEDTranslation::lowerPlatform(p);
-
-    GED_OPCODE gedOP = GED_OPCODE_INVALID;
-    if (os.isSendFamily()) {
-        gedOP = GED_OPCODE_send;
-    } else {
-        gedOP = GED_OPCODE_sends;
-    }
-
-    ged_ins_t gedInst;
-    bool has_ged_inst = false;
-    GED_SFID gedSFID = GED_SFID_INVALID;
-    bool sfidSupportsHeader = true;
-
-
-    // For GEN12, extract sfid from subfunction, and construct the ged instruction
-    // with the given sfid. Otherwise (for platform < GEN12), SFID is part of exDesc.
-    if (p >= Platform::GEN12P1) {
-        // construct the entire GED inst, if failed, only get the SFID
-        if (ex_desc.type == SendDescArg::IMM) {
-            getRetVal = constructPartialGEDSendInstructionGen12(
-                &gedInst, gedP, gedOP, os.isSendsFamily(), ex_desc.imm, desc,
-                IGAToGEDTranslation::lowerSFID(os.op));
-            if (getRetVal == GED_RETURN_VALUE_SUCCESS)
-                has_ged_inst = true;
-        }
-        if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
-            gedSFID = IGAToGEDTranslation::lowerSFID(os.op);
-        }
-    }
-    if (p <= Platform::GEN11) {
-        // if ex_desc is imm, construct the entire GED inst
-        if (ex_desc.type == SendDescArg::IMM)
-            getRetVal = constructPartialGEDSendInstruction(
-                &gedInst, gedP, gedOP, os.isSendsFamily(), ex_desc.imm, desc);
-        if (getRetVal == GED_RETURN_VALUE_SUCCESS)
-            has_ged_inst = true;
-    }
-
-    // try to get sfid from gedInst
-    if (has_ged_inst && gedSFID != GED_SFID_INVALID) {
-        gedSFID = GED_GetSFID(&gedInst, &getRetVal);
-    }
-
-    // try to get sfid string
-    const char *gedsfidString = nullptr;
-    if (gedSFID != GED_SFID_INVALID) {
-        gedsfidString = GED_GetSFIDString(gedSFID);
-    }
-
-    // emit sfid string
-    // Note that <=GEN11 if the exmsg is not imm, we're not able to
-    // extract the sfid
-    if (gedsfidString && gedSFID != GED_SFID_INVALID && p <= Platform::GEN11) {
-        ss << " " << gedsfidString;
-    }
-
-    // emit desc message
-    uint32_t msgLength = GED_GetMessageLength(desc, gedP, &getRetVal);
-    if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
-        ss << " wr:" << "INVALID";
-    } else {
-        ss << " wr:" << msgLength;
-    }
-
-    if (sfidSupportsHeader) {
-        GED_HEADER_PRESENT headerPresent = GED_GetHeaderPresent(desc, gedP, &getRetVal);
-        if (headerPresent == GED_HEADER_PRESENT_INVALID ||
-            getRetVal != GED_RETURN_VALUE_SUCCESS)
-        {
-            ss << "h:INVALID";
-        } else if (headerPresent == GED_HEADER_PRESENT_yes) {
-            ss << "h";
-        }
-    }
-
-    // emit src1 length
-    uint32_t src1Len = 0;
-    bool hasSrc1Len = false;
-    if (os.isSendsFamily() && has_ged_inst) {
-        src1Len = GED_GetExMsgLength(&gedInst, &getRetVal);
-        if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
-            // in the case that we're able to construct ged inst, the
-            // ex_desc must be imm
-            src1Len = getSplitSendMsgLength(ex_desc.imm);
-        }
-        hasSrc1Len = true;
-    }
-
-    // get src1 length if ex_desc is imm
-    // (at this case we must have ged instruction being constructed)
-    if (p >= Platform::GEN12P1 && has_ged_inst) {
-        getRetVal = GED_RETURN_VALUE_INVALID_MODEL;
-        hasSrc1Len = true;
-        if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
-            if (ex_desc.type == SendDescArg::IMM) {
-                src1Len = getSrc1LengthFromExDesc(ex_desc.imm);
-            } else {
-                // otherwise we're not able to get the src1 length
-                hasSrc1Len = false;
-            }
-        }
-    }
-
-    if (hasSrc1Len)
-        ss << "+" << src1Len;
-    else
-        ss << "+?";
-
-    uint32_t respLength = GED_GetResponseLength(desc, gedP, &getRetVal);
-    if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
-        ss << ", rd:" << "INVALID";
-    } else {
-        ss << ", rd:" << respLength;
-    }
-
-
-    ss << ", ";
-    bool foundMessage = true;
-    bool isScratch = false;
-    GED_MESSAGE_TYPE msgType = GED_MESSAGE_TYPE_INVALID;
-
-    if (gedSFID != GED_SFID_INVALID && gedSFID != GED_SFID_NULL) {
-        switch (gedSFID)
-        {
-        case GED_SFID_SAMPLER:    ///< all
-            break;
-        case GED_SFID_GATEWAY:    ///< all
-            break;
-            /// includes: GEN11
-        case GED_SFID_DP_DC2:     ///< GEN10, GEN9
-            msgType = GED_GetMessageTypeDP_DC2(desc, gedP, &getRetVal);
-            break;
-        case GED_SFID_DP_RC:      ///< all
-            msgType = GED_GetMessageTypeDP_RC(desc, gedP, &getRetVal);
-            break;
-        case GED_SFID_URB:        ///< all
-            break;
-        case GED_SFID_SPAWNER:    ///< all
-            break;
-        case GED_SFID_VME:        ///< all
-            break;
-            /// includes: GEN11
-        case GED_SFID_DP_DCRO:    ///< GEN10, GEN9
-            msgType = GED_GetMessageTypeDP_DCRO(desc, gedP, &getRetVal);
-            break;
-        case GED_SFID_DP_DC0:     ///< all
-            if (p <= iga::Platform::GEN7P5) {
-                //IVB,HSW
-                msgType = GED_GetMessageTypeDP_DC0(desc, gedP, &getRetVal);
-            } else {
-                //Starting with BDW
-                if (GED_GetMessageTypeDP0Category(desc, gedP, &getRetVal) == 0) {
-                    msgType = GED_GetMessageTypeDP_DC0Legacy(desc, gedP, &getRetVal);
-                }
-                else {
-                    msgType = GED_GetMessageTypeDP_DC0ScratchBlock(desc, gedP, &getRetVal);
-                    isScratch = true;
-                }
-            }
-            break;
-        case GED_SFID_PI:         ///< all
-            break;
-        /// includes: GEN11
-        case GED_SFID_DP_DC1:     ///< GEN7.5, GEN8, GEN8.1, GEN9, GEN10
-            msgType = GED_GetMessageTypeDP_DC1(desc, gedP, &getRetVal);
-            break;
-            /// includes: GEN11
-        case GED_SFID_CRE:        ///< GEN7.5, GEN8, GEN8.1, GEN9, GEN10
-            break;
-        case GED_SFID_DP_SAMPLER: ///< GEN7, GEN7.5, GEN8, GEN8.1
-            msgType = GED_GetMessageTypeDP_SAMPLER(desc, gedP, &getRetVal);
-            break;
-        case GED_SFID_DP_CC:      ///< GEN7, GEN7.5, GEN8, GEN8.1
-            msgType = GED_GetMessageTypeDP_CC(desc, gedP, &getRetVal);
-            break;
-        default:
-            break;
-        }
-    } else if (ex_desc.type == SendDescArg::IMM) {
-        // Fail to get GED SFID, try to extract from the ex message
-        uint32_t sfid = getSFID(ex_desc.imm);
-        if (p >= Platform::GEN12P1)
-            sfid = os.functionControlValue;
-
-        if (sfid == SFID_SAMPLER_CACHE && p < iga::Platform::GEN9) {
-            msgType = GED_GetMessageTypeDP_SAMPLER(desc, gedP, &getRetVal);
-        } else if (sfid == SFID_DP_RC) {
-            msgType = GED_GetMessageTypeDP_RC(desc, gedP, &getRetVal);
-        } else if (sfid == SFID_DP_CC) {
-            // SFID_DP_DCRO and SFID_DP_CC have the same value: Constant Cache Data Port
-            if (p < iga::Platform::GEN9) {
-                msgType = GED_GetMessageTypeDP_CC(desc, gedP, &getRetVal);
-            }
-            else {
-                msgType = GED_GetMessageTypeDP_DCRO(desc, gedP, &getRetVal);
-            }
-        } else if (sfid == SFID_DP_DC0) { // dp0 SFID_DP_DC0 Data Cache Data Port
-            if (p <= iga::Platform::GEN7P5) {
-                //IVB,HSW
-                msgType = GED_GetMessageTypeDP_DC0(desc, gedP, &getRetVal);
-            } else {
-                // Starting with BDW
-                // Starting with BDW
-                if (GED_GetMessageTypeDP0Category(desc, gedP, &getRetVal) == 0) {
-                    msgType = GED_GetMessageTypeDP_DC0Legacy(desc, gedP, &getRetVal);
-                } else {
-                    msgType = GED_GetMessageTypeDP_DC0ScratchBlock(desc, gedP, &getRetVal);
-                    isScratch = true;
-                }
-            }
-        } else if (sfid == SFID_DP_DC1) { // dp1 SFID_DP_DC1 Data Cache Data Port 1
-            msgType = GED_GetMessageTypeDP_DC1(desc, gedP, &getRetVal);
-        } else if (sfid == SFID_DP_DC2) { // dp1 SFID_DP_DC1 Data Cache Data Port 1
-            msgType = GED_GetMessageTypeDP_DC2(desc, gedP, &getRetVal);
-        } else {
-            foundMessage = false;
-        }
-    } // end exDesc is imm
-
-    if (msgType == GED_MESSAGE_TYPE_INVALID ||
-        getRetVal != GED_RETURN_VALUE_SUCCESS)
-    {
-        foundMessage = false;
-    }
-
-    if (foundMessage) {
-        const char * msgTypeString = msgTypeExpandedString(msgType);
-        if (msgTypeString) {
-            ss << msgTypeString;
-        } else {
-            ss << msgType;
-        }
-    }
-
-    if (!foundMessage) {
-        //
-        // uint32_t fc = GED_GetFuncControl(desc, gedP, &getRetVal);
-        // if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
-        //     ss << "fc: INVALID";
-        // } else {
-        //     ss << "fc: 0x" << std::hex << fc;
-        // }
-        //
-        // Fallback to new MessageInfo decoder interface
-        auto sfid = MessageInfo::sfidFromOp(p, os.op, ex_desc.imm);
-        formatMessageInfoDescription(p, sfid, os, ex_desc, desc, ss);
-    } else if (isScratch) {
-        uint32_t off = 32*getScratchSpaceAddressOffset(desc);
-        ss << " from scratch offset 0x" << std::hex << off;
-    } else {
-        ss << " msc:" << getMiscMsgDescBits(desc);
-        ss << ", to ";
-        uint32_t surf = GED_GetBindingTableIndex(desc, gedP, &getRetVal);
-        if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
-            ss << "INVALID BTI";
-        } else {
-            if (surf == 254)
-                ss << "SLM";
-            // 255 - A32_A64 Specifies a A32 or A64 Stateless access that is locally coherent (coherent within a thread group)
-            // 253 - A32_A64_NC Specifies a A32 or A64 Stateless access that is non-coherent (coherent within a thread).
-            else if ((surf == 255 || surf == 253) && ex_desc.type == SendDescArg::IMM)
-                ss << "global memory";
-            // Bindless Surface Base address bits 25:6 in extMsgDes[12:31]
-            else if (surf == 252 && ex_desc.type == SendDescArg::IMM)
-                fmtHex(ss, getBindlessSurfaceBaseAddress(ex_desc.imm));
-            else
-                ss << "bti " << std::dec << surf;
-        }
-    }
-    return;
-}
-
-void Formatter::EmitSendDescriptorInfo(
-    Platform p,
-    const OpSpec &i,
-    const SendDescArg& exDesc0,
-    uint32_t desc,
-    std::stringstream &ss)
-{
-    auto exDesc = exDesc0.imm;
-    if (!i.isSendOrSendsFamily()) {
-        return;
-    }
-
-    uint32_t sfid = getSFID(exDesc);
-    ss << " ";
-    const char * sfidString = getSFIDString(p, exDesc);
-    if (sfidString) {
-        ss << sfidString;
-    } else {
-        ss << "sf:" << sfid;
-    }
-
-    ss << "  wr:" << getMsgLength(desc);
-    if (getHeaderBit(desc)) {
-        ss << "h";
-    }
-    if (i.isSendsFamily()) {
-        ss << "+" << getSplitSendMsgLength(exDesc);
-    }
-    ss << ", rd:" << getRespLength(desc);
-
-    uint32_t fc = getFC(desc);
-    ss << ", ";
-    bool foundMessage = false;
-    bool isScratch = false;
-    if (p < Platform::GEN9) {
-        if (sfid == SFID_DP_CC) { // ccdp SFID_DP_CC Constant Cache Data Port
-            foundMessage = true;
-            switch (getMessageTypeCC(desc)) {
-            case 0: ss << "rd.blk.ow (constant)"; break;
-            case 1: ss << "rd.blk.ow (constant unaligned)"; break;
-            case 2: ss << "rd.blk.ow (constant dual)"; break;
-            case 3: ss << "rd.sca.dw (constant)"; break;
-            default:
-                foundMessage = false;
-            }
-        } else if (sfid == SFID_DP_DC0) { // dp0 SFID_DP_DC0 Data Cache Data Port
-            uint32_t message = getMessageTypeDC0(desc); // [17:14]
-            if (getBitField(desc, 18, 1) == 0) {
-                static const char *legacy_table[] = {
-                    // 0XXXX (legacy messages)
-                    // 00XXX (reads + fences)
-                    "rd.bkl.ow",
-                    "rd.bkl.ow (unaligned)",
-                    "rd.blk.ow (dual)",
-                    "rd.sca.dw",  // 0 011b
-
-                    "rd.sca.b",   // 0 100b
-                    nullptr,
-                    nullptr,
-                    "memfence", // 0 111b
-
-                    // 00XXX (writes + fences)
-                    "wr.blk.ow",   // 1 000b
-                    nullptr,
-                    "wr.bkl.ow (dual)", // 1 010b
-                    "wr.sca.dw",
-
-                    "wr.sca.b", // 1 100b
-                    nullptr,
-                    nullptr,
-                    nullptr,
-                };
-                if (legacy_table[message]) {
-                    ss << legacy_table[message];
-                    foundMessage = true;
-                }
-            } else {
-                // 1XXXX (scratch messages)
-                // 10XXX (scratch reads)
-                // [R/W] [OW/DW] [INV] [RESV] [BLKSZ]
-                auto rw = getBitField(desc, 17, 1) ? "wr" : "rd";
-                auto ty = getBitField(desc, 16, 1) ? "dw" : "ow";
-                ss << rw << "." << "scr" << ty;
-                if (getBitField(desc, 15, 1)) {
-                    ss << " (invalidate after read)";
-                }
-                isScratch = true;
-            }
-        } else if (sfid == SFID_DP_DC1) { // dp1 SFID_DP_DC1 Data Cache Data Port 1
-            const char *msg = nullptr;
-            switch (getMessageTypeDC1(desc)) {
-            case 0:  msg = "rd.trans"; break;
-            case 1:  msg = "rd.usurf"; break;
-            case 2:  msg = "at.usurf"; break;
-            case 3:  msg = "at.usurf (simd4x2)"; break;
-            case 4:  msg = "rd.bkl.media"; break;
-            case 5:  msg = "rd.tsurf"; break;
-            case 6:  msg = "at.tsurf"; break;
-            case 7:  msg = "at.tsurf (simd4x2)"; break;
-            // case 8:  reserved?
-            case 9:  msg = "wr.usurf"; break;
-            case 10: msg = "wr.bkl.media"; break;
-            case 11: msg = "at.cnt"; break;
-            case 12: msg = "at.cnt (simd4x2)"; break;
-            case 13: msg = "wr.tsurf"; break;
-            // everything else reserved
-            default: break;
-            }
-            if (msg) {
-                ss << msg;
-                foundMessage = true;
-            }
-        }
-    }
-    if (!foundMessage) {
-        ss << "fc: 0x" << std::hex << fc;
-    } else if (isScratch) {
-        ss << " (";
-        switch (getBitField(desc, 12, 2)) {
-        case 0: ss << "1grf"; break;
-        case 1: ss << "2grfs"; break;
-        case 2: ss << "4grfs"; break;
-        case 3: ss << "8grfs"; break;
-        }
-        uint32_t off = getBitField(desc, 0, 12);
-        ss << " from 0x" << std::hex << off << ")";
-    } else {
-        ss << " msc:" << getBitField(desc, 8, 6);
-        ss << ", to ";
-        uint32_t surf = getBitField(desc, 0, 8);
-        if (surf == 254)
-            ss << "SLM";
-        else if (surf == 255 || surf == 253)
-            fmtHex(ss, getBitField(exDesc, 16, 16));
-        else
-            ss << "#" << surf;
-    }
 }
 
 } // end: namespace *iga

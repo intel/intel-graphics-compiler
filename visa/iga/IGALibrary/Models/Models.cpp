@@ -235,7 +235,7 @@ const OpSpec& Model::lookupOpSpecByCode(unsigned opcode) const
 }
 
 template <int N>
-static unsigned getBitsFromFragments(const uint64_t *qws, const Field ff[N])
+static unsigned getBitsFromFragments(const uint64_t *qws, const Fragment ff[N])
 {
     unsigned bits = 0;
 
@@ -279,7 +279,7 @@ const OpSpec& LookupOpSpecByBitsNative(
     const OpSpec *parentOp)
 {
     while (parentOp->isGroup()) {
-        auto sfBits = mi->getFields<2>(parentOp->functionControlFields);
+        auto sfBits = mi->getField(parentOp->functionControlField);
         const OpSpec &subOp = model.lookupGroupSubOp(parentOp->op, (int)sfBits);
         if (!subOp.isValid()) {
             missInfo.parent = parentOp;
@@ -295,7 +295,7 @@ const OpSpec& LookupOpSpecSubfunctionByBitsCompacted(
     const Model &model,
     const MInst *miCmp,
     OpSpecMissInfo &missInfo,
-    const CompactedField **compactedFields,
+    const CompactionMapping **compactedFields,
     size_t numCompactedFields,
     const OpSpec *parentOp)
 {
@@ -304,21 +304,21 @@ const OpSpec& LookupOpSpecSubfunctionByBitsCompacted(
     // resolve this to Op::MATH_INV.  But we need to get the
     // subfunction (MathFC) from the FlagMod bits.
     //
-    // The generalized form is a a bit harder and we describe it in
+    // The generalized form is a bit harder and we describe it in
     // detail.
     //
-    // NOTE: below {X,Y} means simple bit concatenation
+    // NOTE: below {X,Y} means simple bitwise concatenation
     //       (X<<(8*sizeof(Y)) | Y)
     // NOTE: native means an uncompacted 128b encoding
     //
-    // However, the OpSpec::functionControlFields, which tells us where
-    // the native encoding we can find subfunction field fragments
+    // However, the OpSpec::functionControlField, which tells us where
+    // the native encoding can find subfunction field fragments
     // may contain multiple fragments.  Moreover, they don't have to map
     // exactly onto existing native fields.  For instance, they might be
     // a subset or even superset of native fields.  The spec just lists
     // the pieces that exist. E.g.
     //    <Property Name="Subfunctions" Value="MathFC[27:24]" ... />
-    //                                       ^^^^ native field
+    //                                         ^^^^ native field
     // Moreover, this can be multiple fragments (made up example)
     //    <Property Name="Subfunctions" Value="Foo[102,89:86,77:74]" ... />
     // would mean fragments {102,89:64,27:24}
@@ -341,13 +341,10 @@ const OpSpec& LookupOpSpecSubfunctionByBitsCompacted(
     partialUncompact.qw0 = partialUncompact.qw1 = 0;
 
     // checks if a native field is used by our subfunction bits
-    auto fieldOverlapsSubfunction = [&] (const Field &nf)
-    {
-        for (size_t sfFragIx = 0;
-            sfFragIx < sizeof(parentOp->functionControlFields)/sizeof(parentOp->functionControlFields[0]);
-            sfFragIx++)
+    auto fragmentOverlapsSubfunction = [&] (const Fragment &nf) {
+        for (const Fragment &sfFrag :
+            parentOp->functionControlField.fragments)
         {
-            const Field &sfFrag = parentOp->functionControlFields[sfFragIx];
             if (sfFrag.length == 0) // end of the subfunction fragments
                 break;
             if (sfFrag.overlaps(nf))
@@ -356,12 +353,12 @@ const OpSpec& LookupOpSpecSubfunctionByBitsCompacted(
         return false;
     };
     for (size_t cfIx = 0; cfIx < numCompactedFields; cfIx++ ) {
-        const auto *cf = compactedFields[cfIx];
-        uint64_t cmpIndex = miCmp->getField(cf->index);
-        uint64_t mappedValue = cf->values[cmpIndex];
+        const CompactionMapping &cf = *compactedFields[cfIx];
+        uint64_t cmpIndex = miCmp->getField(cf.index);
+        uint64_t mappedValue = cf.values[cmpIndex];
 
         int offsetWithinCompactedValue = 0;
-        for (int k = (int)cf->numMappings - 1; k >= 0; --k) {
+        for (int k = (int)cf.numMappings - 1; k >= 0; --k) {
             // iterate all the packed native fields within compacted value
             // starting from low bits in the mapping and iterate on up to
             // the higher ones
@@ -370,13 +367,17 @@ const OpSpec& LookupOpSpecSubfunctionByBitsCompacted(
             // { Src2.SubRegNum[4:0], Src1.SubRegNum[4:0],
             //   Src0.SubRegNum[4:0], Dst.SubRegNum[4:0] }
             // we go fro Dst.SubReg[4:0] upwards
-            const Field *nf = cf->mappings[k];
-            if (fieldOverlapsSubfunction(*nf)) {
-                uint64_t nativeVal = getBits(mappedValue, offsetWithinCompactedValue, nf->length);
-                partialUncompact.setField(*nf, nativeVal);
+            const Fragment &nativeFrag = *cf.mappings[k];
+            if (fragmentOverlapsSubfunction(nativeFrag)) {
+                uint64_t nativeVal =
+                    getBits(
+                        mappedValue,
+                        offsetWithinCompactedValue,
+                        nativeFrag.length);
+                partialUncompact.setFragment(nativeFrag, nativeVal);
             }
 
-            offsetWithinCompactedValue += nf->length;
+            offsetWithinCompactedValue += nativeFrag.length;
         }
     }
 
@@ -387,7 +388,7 @@ const OpSpec& LookupOpSpecSubfunctionByBitsCompacted(
     // I.e. subfunction bits may not come from unpacked fields (e.g. Src0.Reg)
     // since we won't look there (you could enable this if needed with
     // modifications)
-    auto sfBits = partialUncompact.getFields<2>(parentOp->functionControlFields);
+    auto sfBits = partialUncompact.getField(parentOp->functionControlField);
 
     // lookup the subfunction bits
     const OpSpec *subOp = &model.lookupGroupSubOp(parentOp->op, (unsigned)sfBits);
@@ -414,9 +415,10 @@ const OpSpec& Model::lookupOpSpecFromBits(
     const void *bits,
     OpSpecMissInfo &missInfo) const
 {
-    const static Field FOPCODE{nullptr,0,7};
+    constexpr static Fragment F_OPCODE("Opcode", 0, 7);
+    //
     const MInst *mi = (const MInst *)bits;
-    auto opc = mi->getField(FOPCODE);
+    auto opc = mi->getFragment(F_OPCODE);
     missInfo.parent = nullptr;
     missInfo.opcode = opc;
     const OpSpec *os = &lookupOpSpecByCode((unsigned)opc);
@@ -424,17 +426,15 @@ const OpSpec& Model::lookupOpSpecFromBits(
         if (!os->isGroup()) {
             return *os;
         } else {
-            const CompactedField **compactedFields = nullptr;
+            const CompactionMapping **compactedFields = nullptr;
             size_t numCompactedFields = 0;
-            (void)compactedFields;
-            (void)numCompactedFields;
             if (compactedFields)
               return LookupOpSpecSubfunctionByBitsCompacted(
                   *this, mi, missInfo, compactedFields, numCompactedFields, os);
 
             compactedFields = nullptr;
-                  IGA_ASSERT_FALSE("no compaction tables on this platform (yet)");
-                  return *os;
+            IGA_ASSERT_FALSE("no compaction tables on this platform (yet)");
+            return *os;
         } // else(!os->isGroup())
     } else {
         return LookupOpSpecByBitsNative(*this, mi, missInfo, os);
@@ -566,6 +566,7 @@ bool RegInfo::encode(int reg, uint8_t &regNumBits) const
     }
     return true;
 }
+
 
 bool RegInfo::decode(uint8_t regNumBits, int &reg) const
 {

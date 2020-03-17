@@ -23,8 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef MESSAGE_INFO_HPP
-#define MESSAGE_INFO_HPP
+#ifndef IGA_MESSAGE_INFO_HPP
+#define IGA_MESSAGE_INFO_HPP
 
 #include "../api/iga_bxml_enums.hpp"
 #include "../Backend/Native/Field.hpp"
@@ -44,7 +44,7 @@ namespace iga
 
     using DiagnosticList = std::vector<std::pair<DescField,std::string>>;
     using DecodedDescFields =
-        std::vector<std::tuple<Field,uint32_t,std::string>>;
+        std::vector<std::tuple<Fragment,uint32_t,std::string>>;
 
     // This is generic list of send operations.  One or more messages may map
     // to the same element (hence why "generic").
@@ -238,6 +238,8 @@ namespace iga
         int32_t   immediateOffset;
         //
         // A symbol value for this message (syntax).
+        // The syntax is not complete and IGA will not consume it directly
+        // (since some information isn't in necessarily in the descriptors).
         std::string symbol;
         //
         //

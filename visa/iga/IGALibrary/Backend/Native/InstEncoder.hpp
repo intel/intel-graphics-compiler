@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //
 #ifdef _DEBUG
-// IGA_VALIDATE_BITS adds extra structures and code to ensure that each bit
+// IGA_IGA_VALIDATE_BITS adds extra structures and code to ensure that each bit
 // the instruction encoded gets written at most once.  This can catch
 // accidental field overlaps quite effectively.
 //
@@ -72,21 +72,21 @@ namespace iga
         // This contains a list of all the fields we set during an instruction
         // encoding so we can run through the list and determine which fields
         // overlapped.
-        std::vector<const Field *>    fieldsSet;
+        std::vector<const Fragment *>    fragmentsSet;
 #endif
         InstEncoderState(
               int _instIndex
             , const Instruction *_inst
 #ifdef IGA_VALIDATE_BITS
             , const MInst &_dirty
-            , const std::vector<const Field*> &_fieldsSet
+            , const std::vector<const Fragment*> &_fieldsSet
 #endif
             )
             : instIndex(_instIndex)
             , inst(_inst)
 #ifdef IGA_VALIDATE_BITS
             , dirty(_dirty)
-            , fieldsSet(_fieldsSet)
+            , fragmentsSet(_fieldsSet)
 #endif
         {
         }
@@ -97,7 +97,7 @@ namespace iga
     {
         InstEncoderState               state;
         const Block                   *target;
-        const Field                   &field;
+        const Field                   &fragment;
         enum Type {REL, ABS}           type;
 
         Backpatch(
@@ -107,7 +107,7 @@ namespace iga
             Type _type = REL)
             : state(_state)
             , target(_target)
-            , field(_field)
+            , fragment(_field)
             , type(_type) { }
         // TODO: determine where copy construction used to eliminate
         // Backpatch(const Backpatch&) = delete;
@@ -116,11 +116,11 @@ namespace iga
 
     // can be passed into the encoding if we want to know the result
     struct CompactionDebugInfo {
-        std::vector<Op>                      fieldOps; // the op we were trying to compact
-        std::vector<const CompactedField *>  fieldMisses; // which indices missed
-        std::vector<uint64_t>                fieldMapping; // what we tried to match (parallel)
+        std::vector<Op>                        fieldOps; // the op we were trying to compact
+        std::vector<const CompactionMapping *> fieldMisses; // which indices missed
+        std::vector<uint64_t>                  fieldMapping; // what we tried to match (parallel)
     };
-    enum CompactionResult {
+    enum class CompactionResult {
         CR_SUCCESS,
         CR_NO_COMPACT,     // {NoCompact} (or -Xnoautocompact and {}
         CR_NO_FORMAT,      // e.g. send or jump
@@ -135,25 +135,37 @@ namespace iga
     {
         // the encoder options (e.g. for auto-compaction)
         EncoderOpts                    opts;
+        //
+        // the platform we're encoding for
+        const Model                   &model;
+        //
         // The target bits to encode to
         MInst                         *bits = nullptr;
+        //
         // A backpatch list that we can add to.  A parent encoder is permitted
         // to copy or shadow this list.  Hence, this class may not assume the
         // state is preserved between the calls of encodeInstruction and
         // resolveBackpatch.
         BackpatchList                  backpatches;
+        //
         // state used by the encoder (can be saved for backpatches)
         InstEncoderState               state;
     public:
         InstEncoder(
             const EncoderOpts &_opts,
-            BitProcessor &_parent)
+            BitProcessor &_parent,
+            const Model &_model)
             : BitProcessor(_parent)
-            , opts(_opts) { }
+            , opts(_opts)
+            , model(_model) { }
         InstEncoder(const InstEncoder&) = delete;
 
         BackpatchList &getBackpatches() {return backpatches;}
+
         const OpSpec &getOpSpec() const {return state.inst->getOpSpec();}
+
+        const Model &getModel() const {return model;}
+        Platform platform() const {return model.platform;}
 
 //        void setBits(MInst mi) {*bits = mi;}
 //        MInst getBits() const {return *bits;}
@@ -165,7 +177,6 @@ namespace iga
         // Called externally by our parent encoder algorithm to start the encoding
         // of an instruction.  The instruction size is determined by the compaction
         // bit in the target instruction.
-        template <Platform P>
         void encodeInstruction(
             int ix,
             const Instruction &i,
@@ -175,23 +186,24 @@ namespace iga
 
             state.instIndex = ix;
             state.inst = &i;
-#ifdef VALIDATE_BITS
+#ifdef IGA_VALIDATE_BITS
             state.dirty.qw0 = 0;
             state.dirty.qw1 = 0;
-            state.fieldsSet.clear();
+            state.fragmentsSet.clear();
 #endif
             memset(_bits, 0, sizeof(*_bits));
             bits = _bits;
-            encodeForPlatform(P,i);
+            encodeForPlatform(i);
         }
+
         void resolveBackpatch(Backpatch &bp, MInst *_bits) {
             bits = _bits;
             state = bp.state;
             setCurrInst(bp.state.inst);
             if (bp.type == Backpatch::ABS) {
-                encode(bp.field, bp.target->getPC());
+                encode(bp.fragment, bp.target->getPC());
             } else {
-                encode(bp.field, bp.target->getPC() - bp.state.inst->getPC());
+                encode(bp.fragment, bp.target->getPC() - bp.state.inst->getPC());
             }
         }
 
@@ -207,11 +219,11 @@ namespace iga
             backpatches.emplace_back(state, b, f, t);
         }
 
-        void encode(const Field &f, int32_t val) { encodeFieldBits(f, (uint32_t)val); }
-        void encode(const Field &f, int64_t val) { encodeFieldBits(f, (uint64_t)val); }
-        void encode(const Field &f, uint32_t val) { encodeFieldBits(f, (uint64_t)val); }
-        void encode(const Field &f, uint64_t val) { encodeFieldBits(f, val); }
-        void encode(const Field &f, bool val) { encodeFieldBits(f, val ? 1 : 0); }
+        void encode(const Field &f, int32_t val) {encodeFieldBits(f, (uint32_t)val);}
+        void encode(const Field &f, int64_t val) {encodeFieldBits(f, (uint64_t)val);}
+        void encode(const Field &f, uint32_t val) {encodeFieldBits(f, (uint64_t)val);}
+        void encode(const Field &f, uint64_t val) {encodeFieldBits(f, val);}
+        void encode(const Field &f, bool val) {encodeFieldBits(f, val ? 1 : 0);}
         void encode(const Field &f, const Model &model, const OpSpec &os);
         void encode(const Field &f, ExecSize es);
         void encode(const Field &f, MathMacroExt acc);
@@ -234,39 +246,7 @@ namespace iga
         //////////////////////////////////////////////////////
         // Helper Functions
         //////////////////////////////////////////////////////
-        void encodeFieldBits(const Field &f, uint64_t val) {
-            checkFieldOverlaps(f);
-#ifndef _DEBUG
-            // short circuit since we start with zeros
-            // debug build can do the additional mask sanity check below
-            if (val == 0) {
-                return;
-            }
-#endif
-            uint64_t shiftedVal = val << f.offset % 64; // shift into position
-            uint64_t mask = getFieldMask(f);
-            if (shiftedVal & ~mask) {
-                // either val has bits greater than what this field represents
-                // or below the shift (e.g. smaller value than we accept)
-                // e.g. Dst.Subreg[4:3] just has the high two bits of
-                // the subregister and can't represent small values.
-                //
-                // Generally, this indicates an internal IGA problem:
-                //  e.g. something we need to catch during parse, IR check, or
-                //       some other higher level (i.e. we're looking at bad IR)
-                error("0x%x: value too large or too small for %s",
-                    val, f.name);
-                return;
-            }
-            bits->qws[f.offset / 64] |= shiftedVal;
-        }
-
-        uint64_t getFieldMask(const Field &f) const {
-            return iga::getFieldMask<uint64_t>(f.offset, f.length);
-        }
-        uint64_t getFieldMaskUnshifted(const Field &f) const {
-            return iga::getFieldMaskUnshifted<uint64_t>(f.length);
-        }
+        void encodeFieldBits(const Field &f, uint64_t val0);
 
         void encodingError(const std::string &msg) {
             encodingError("", msg);
@@ -292,10 +272,15 @@ namespace iga
         void internalErrorBadIR(const char *what) {
             error("INTERNAL ERROR: malformed IR: %s", what);
         }
-        void internalErrorBadIR(const Field &f) {
-            internalErrorBadIR(f.name);
+        void internalErrorBadIR(const Field &f, const char *msg = nullptr) {
+            if (msg) {
+                std::stringstream ss;
+                ss << f.name << ": " << msg;
+                internalErrorBadIR(ss.str().c_str());
+            } else {
+                internalErrorBadIR(f.name);
+            }
         }
-
 
         template <typename T>
         void encodeEnum(const Field &f, T lo, T hi, T x) {
@@ -305,17 +290,18 @@ namespace iga
             encodeFieldBits(f, static_cast<uint64_t>(x));
         }
     private:
-#ifdef VALIDATE_BITS
-        void checkFieldOverlaps(const Field &f); // real work
-#else
-        void checkFieldOverlaps(const Field &) { } // nop
+#ifdef IGA_VALIDATE_BITS
+        void reportFieldOverlap(const Fragment &fr);
 #endif
     private:
-        void encodeForPlatform(Platform p, const Instruction &i);
+        void encodeForPlatform(const Instruction &i);
+        void encodeForPlatformFamilyGEN12(const Instruction &i);
     }; // end class InstEncoder
 
     ///////////////////////////////////////////////////////////////////////////
-    // longer method implementations
+    // longer method implementations (declared above)
+    ///////////////////////////////////////////////////////////////////////////
+
     inline void InstEncoder::encode(
         const Field &f, const Model &model, const OpSpec &os)
     {
@@ -327,19 +313,9 @@ namespace iga
             int fcValue = os.functionControlValue;
             const OpSpec *parOp = model.lookupSubOpParent(os);
             IGA_ASSERT(parOp != nullptr, "cannot find SubOpParent");
-            IGA_ASSERT(parOp->functionControlFields[0].length >= 0,
+            IGA_ASSERT(parOp->functionControlField.name != nullptr,
                 "cannot find subop fields");
-            for (int i = 0;
-                i < sizeof(parOp->functionControlFields)/sizeof(parOp->functionControlFields[0]);
-                i++)
-            {
-                if (parOp->functionControlFields[i].length == 0) {
-                    break; // previous fragment was last
-                }
-                uint64_t fragMask = getFieldMaskUnshifted(parOp->functionControlFields[i]);
-                encode(parOp->functionControlFields[i], fcValue & fragMask);
-                fcValue >>= parOp->functionControlFields[i].length;
-            }
+            encode(parOp->functionControlField, fcValue);
         }
     }
 
@@ -378,17 +354,20 @@ namespace iga
         encodeFieldBits(f, val);
     }
 
-    inline void InstEncoder::encode(const Field &f, Region::Vert vt) {
+    inline void InstEncoder::encode(const Field &f, Region::Vert vt)
+    {
         uint64_t val = 0;
         switch (vt) {
-        ENCODING_CASE(Region::Vert::VT_0, 0);
-        ENCODING_CASE(Region::Vert::VT_1, 1);
-        ENCODING_CASE(Region::Vert::VT_2, 2);
-        ENCODING_CASE(Region::Vert::VT_4, 3);
-        ENCODING_CASE(Region::Vert::VT_8, 4);
-        ENCODING_CASE(Region::Vert::VT_16, 5);
-        ENCODING_CASE(Region::Vert::VT_32, 6);
-        ENCODING_CASE(Region::Vert::VT_VxH, 0xF);
+        ENCODING_CASE(Region::Vert::VT_0,  0x0);
+        ENCODING_CASE(Region::Vert::VT_1,  0x1);
+        ENCODING_CASE(Region::Vert::VT_2,  0x2);
+        ENCODING_CASE(Region::Vert::VT_4,  0x3);
+        ENCODING_CASE(Region::Vert::VT_8,  0x4);
+        ENCODING_CASE(Region::Vert::VT_16, 0x5);
+        ENCODING_CASE(Region::Vert::VT_32, 0x6);
+        case Region::Vert::VT_VxH:
+            val = 0xF;
+            break;
         default: internalErrorBadIR(f);
         }
         encodeFieldBits(f, val);
@@ -397,11 +376,11 @@ namespace iga
     inline void InstEncoder::encode(const Field &f, Region::Width wi) {
         uint64_t val = 0;
         switch (wi) {
-        ENCODING_CASE(Region::Width::WI_1, 0);
-        ENCODING_CASE(Region::Width::WI_2, 1);
-        ENCODING_CASE(Region::Width::WI_4, 2);
-        ENCODING_CASE(Region::Width::WI_8, 3);
-        ENCODING_CASE(Region::Width::WI_16, 4);
+        ENCODING_CASE(Region::Width::WI_1,  0x0);
+        ENCODING_CASE(Region::Width::WI_2,  0x1);
+        ENCODING_CASE(Region::Width::WI_4,  0x2);
+        ENCODING_CASE(Region::Width::WI_8,  0x3);
+        ENCODING_CASE(Region::Width::WI_16, 0x4);
         default: internalErrorBadIR(f);
         }
         encodeFieldBits(f, val);
@@ -422,14 +401,15 @@ namespace iga
     inline void InstEncoder::encode(const Field &f, SrcModifier mods) {
         uint64_t val = 0;
         switch (mods) {
-        ENCODING_CASE(SrcModifier::NONE, 0);
-        ENCODING_CASE(SrcModifier::ABS, 1);
-        ENCODING_CASE(SrcModifier::NEG, 2);
-        ENCODING_CASE(SrcModifier::NEG_ABS, 3);
+        ENCODING_CASE(SrcModifier::NONE, 0x0);
+        ENCODING_CASE(SrcModifier::ABS, 0x1);
+        ENCODING_CASE(SrcModifier::NEG, 0x2);
+        ENCODING_CASE(SrcModifier::NEG_ABS, 0x3);
         default: internalErrorBadIR(f);
         }
         encodeFieldBits(f, val);
     }
+#undef ENCODING_CASE
 
     inline void InstEncoder::encodeReg(
         const Field &fREGFILE,
@@ -437,39 +417,19 @@ namespace iga
         RegName reg,
         int regNum)
     {
-        uint64_t regFileVal = 0, val = 0; // regVal (ENCODING_CASE assumes "val")
-        switch (reg) {
-        ENCODING_CASE(RegName::ARF_NULL, 0);
-        ENCODING_CASE(RegName::ARF_A,    1);
-        ENCODING_CASE(RegName::ARF_ACC,  2);
-        ENCODING_CASE(RegName::ARF_MME,  2);
-        ENCODING_CASE(RegName::ARF_F,    3);
-        ENCODING_CASE(RegName::ARF_CE,   4);
-        ENCODING_CASE(RegName::ARF_MSG,  5);
-        ENCODING_CASE(RegName::ARF_SP,   6);
-        ENCODING_CASE(RegName::ARF_SR,   7);
-        ENCODING_CASE(RegName::ARF_CR,   8);
-        ENCODING_CASE(RegName::ARF_N,    9);
-        ENCODING_CASE(RegName::ARF_IP,  10);
-        ENCODING_CASE(RegName::ARF_TDR, 11);
-        ENCODING_CASE(RegName::ARF_TM,  12);
-        ENCODING_CASE(RegName::ARF_FC,  13);
-        ENCODING_CASE(RegName::ARF_DBG, 15);
-        case RegName::GRF_R:
-            val = regNum;
-            regFileVal = 1;
-            break;
-        default: internalErrorBadIR(fREG);
+        const RegInfo *ri = model.lookupRegInfoByRegName(reg);
+        if (ri == nullptr) {
+            internalErrorBadIR(fREG, "unsupported register for platform");
+            return;
         }
-        if (reg != RegName::GRF_R) {
-            val = val << 4;
-            val |= (regNum & 0xF);
+        uint8_t regNumBits = 0;
+        if (!ri->encode(regNum, regNumBits)) {
+            internalErrorBadIR(fREG, "invalid register");
+            return;
         }
-        encodeFieldBits(fREGFILE, regFileVal);
-        encodeFieldBits(fREG, val);
+        encodeFieldBits(fREGFILE, reg == RegName::GRF_R ? 1 : 0);
+        encodeFieldBits(fREG, regNumBits);
     }
-
-#undef ENCODING_CASE
 
     template <OpIx IX>
     inline void InstEncoder::encodeSubreg(
@@ -479,149 +439,16 @@ namespace iga
         // branches have implicit :d
         val = ty == Type::INVALID ? 4*val :
             SubRegToBytesOffset((int)val, reg, ty);
-        if (IX == OpIx::TER_DST) {
-            if (val & 0x7) {
-                // Dst.SubReg[4:3]
-                encodingError(f,
-                    "field lacks the bits to encode this "
-                    "subregister (low bits are implicitly 0)");
-            }
-            val >>= 3; // unscale
-        }
         encodeFieldBits(f, val);
     }
 
 
-    class InstCompactor : public BitProcessor {
-        const OpSpec *os = nullptr;
-
-        MInst compactedBits;
-        MInst uncompactedBits;
-        CompactionDebugInfo *compactionDebugInfo = nullptr;
-        bool compactionMissed = false;
-
-        // the compaction result (if compaction enabled)
-        CompactionResult compactionResult = CompactionResult::CR_NO_COMPACT;
-
-        // various platforms define this
-        CompactionResult tryToCompactImpl(Platform p);
-    public:
-        InstCompactor(BitProcessor &_parent)
-            : BitProcessor(_parent)
-        {
-        }
-
-        template <Platform P> CompactionResult tryToCompact(
-            const OpSpec *_os,
-            MInst _uncompactedBits, // copy-in
-            MInst *compactedBitsOutput, // output
-            CompactionDebugInfo *cdbi)
-        {
-            os = _os;
-            uncompactedBits = _uncompactedBits;
-            compactedBits.qw0 = compactedBits.qw1 = 0;
-            compactionDebugInfo = cdbi;
-
-            auto cr = tryToCompactImpl(P);
-            if (cr == CompactionResult::CR_SUCCESS) { // only clobber their memory if we succeed
-                *compactedBitsOutput = compactedBits;
-            }
-            return cr;
-        }
-
-        ///////////////////////////////////////////////////////////////////////
-        // used by child implementations
-        const OpSpec &getOpSpec() const {return *os;}
-        uint64_t getUncompactedField(const Field &f) const {return uncompactedBits.getField(f);}
-        void setCompactedField(const Field &f, uint64_t val) {
-            compactedBits.setField(f, val);
-        }
-        bool getCompactionMissed() const {return compactionMissed;}
-        void setCompactionResult(CompactionResult cr) {compactionResult = cr;}
-
-        void transferField(const Field &compactedField, const Field &nativeField) {
-            IGA_ASSERT(compactedField.length == nativeField.length,
-                "native and compaction field length mismatch");
-            compactedBits.setField(compactedField, uncompactedBits.getField(nativeField));
-        }
-
-        // returns false upon failure (so we can exit compaction early)
-        //
-        // the immLo and immHi values tells us the range of bits that hold
-        // immediate value bits; the bounds are [lo,hi): inclusive/exclusive
-        bool compactIndex(const CompactedField &ci, int immLo, int immHi) {
-            // fragments are ordered from high bit down to 0
-            // hence, we have to walk them in reverse order to build the
-            // word in reverse order
-            //
-            // we build up the don't-care mask as we assemble the
-            // desired mapping
-            uint64_t relevantBits = 0xFFFFFFFFFFFFFFFFull;
-            int indexOffset = 0; // offset into the compaction index value
-            uint64_t mappedValue = 0;
-            for (int i = (int)ci.numMappings - 1; i >= 0; i--) {
-                const Field *mappedField = ci.mappings[i];
-                if (rangeContains(immLo, immHi, mappedField->offset) ||
-                    rangeContains(immLo, immHi, mappedField->offset + mappedField->length - 1))
-                {
-                    // this is a don't-care field since the imm value expands
-                    // into this field; strip those bits out
-                    relevantBits &= ~getFieldMask<uint64_t>(indexOffset,mappedField->length);
-                } else {
-                    // we omit the random bits in don't care fields to give us
-                    // a normalized lookup value (for debugging)
-                    // technically we can match any table entry for don't-care
-                    // bits
-                    uint64_t uncompactedValue = uncompactedBits.getField(*mappedField);
-                    setBits(&mappedValue, indexOffset, mappedField->length, uncompactedValue);
-                }
-                indexOffset += mappedField->length;
-            }
-
-            // TODO: make lookup constant (could use a prefix tree or just a simple hash)
-            for (size_t i = 0; i < ci.numValues; i++) {
-                if ((ci.values[i] & relevantBits) == mappedValue) {
-                    if (!compactedBits.setField(ci.index, (uint64_t)i)) {
-                        IGA_ASSERT_FALSE("compaction index overruns field");
-                    }
-                    return true; // hit
-                }
-            }
-            // compaction miss
-            fail(ci, mappedValue);
-            return compactionDebugInfo != nullptr;
-        }
-        bool compactIndex(const CompactedField &ci) {
-            return compactIndex(ci, 0, 0);
-        }
-
-        void fail(const CompactedField &ci, uint64_t mappedValue) {
-            if (compactionDebugInfo) {
-                compactionDebugInfo->fieldOps.push_back(os->op);
-                compactionDebugInfo->fieldMisses.push_back(&ci);
-                compactionDebugInfo->fieldMapping.push_back(mappedValue);
-            }
-            compactionMissed = true;
-        }
-    }; // InstCompactor
-
-    inline void InstEncoder::encodeForPlatform(
-        Platform p, const Instruction &i)
+    inline void InstEncoder::encodeForPlatform(const Instruction &i)
     {
-        switch (p) {
+        switch (platform()) {
         case Platform::GENNEXT:
         default:
             encodingError("unsupported platform for native encoder");
-        }
-    }
-
-    inline CompactionResult InstCompactor::tryToCompactImpl(Platform p) {
-        switch (p) {
-        case Platform::GENNEXT:
-        default:
-            compactionMissed = true;
-            IGA_ASSERT_FALSE("compaction not supported on this platform");
-            return CompactionResult::CR_NO_COMPACT;
         }
     }
 } // end iga::*

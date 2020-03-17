@@ -26,25 +26,63 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGA_BACKEND_NATIVE_FIELD_HPP
 #define IGA_BACKEND_NATIVE_FIELD_HPP
 
-#define FIELD(NM,OFF,LEN) {NM, OFF, LEN}
-
-#include "../../asserts.hpp"
 #include "../../api/iga_bxml_ops.hpp"
+#include "../../asserts.hpp"
+#include "../../bits.hpp"
 
 #include <cstdint>
 #include <cstring>
 #include <string>
 
+#if (__cplusplus >= 201402L) || (defined(_MSC_VER) && (_MSVC_LANG >= 201402L))
+// We assume we are at least C++11, but here we're trying to ensure we
+// are C++14 or better.  Various constexpr functions below will then be able
+// to opt-in based if our compiler is C++14 or better.  C++11 allows us to
+// return constexpr expressions only, but C++14 allows more statements.
+//
+// MSVS defines __cplusplus as 199711L, but they do use _MSVC_LANG
+// Maybe there's a better way.
+#define CONSTEXPR_IF_CPP14 constexpr
+#else
+#define CONSTEXPR_IF_CPP14
+#endif
+
 namespace iga
 {
-    // a field in the binary format that gets encoded or decoded
-    struct Field
-    {
-        const char *name;
-        int offset;
-        int length;
+#define INVALID_FIELD Field()
 
-        bool overlaps(const Field &f) const {
+    // Defines a fragment of a field.  A field consists of one or
+    // more fragments.  See the struct below for more definition.
+    struct Fragment
+    {
+        static const int NO_OFFSET = -1;
+
+        enum class Kind {
+            INVALID = 0,
+            ENCODED,
+            ZERO_FILL, // takes no space in encodings
+            ZERO_WIRES, // takes up encoding space, but must be zero
+            // ONES_FILL (only enable if needed)
+            // other more complicated functions (e.g. clone)
+        } kind = Kind::ENCODED;
+        const char *name; // e.g. "Dst.Subreg[4:3]"
+        int         offset; // offset in the instruction
+        int         length; // number of bits in this fragment
+
+        constexpr Fragment(
+            const char *_name,
+            int         _offset,
+            int         _length,
+            Kind        _kind = Kind::ENCODED)
+            : name(_name), offset(_offset), length(_length), kind(_kind)
+        {
+        }
+        constexpr Fragment() :
+            Fragment(nullptr, NO_OFFSET, 0, Kind::INVALID) { }
+
+        bool overlaps(const Fragment &f) const {
+            if (!isEncoded() || !f.isEncoded())
+                return false;
             if (length < f.length)
                 return f.overlaps(*this);
             // test the end points of the smaller interval within the larger
@@ -52,32 +90,211 @@ namespace iga
                 ((offset + length - 1) >= f.offset &&
                  (offset + length - 1) < (f.offset + f.length));
         }
+
+        constexpr bool isEncoded() const {return kind == Kind::ENCODED;}
+        constexpr bool isZeroFill() const {return kind == Kind::ZERO_FILL;}
+        constexpr bool isZeroWires() const {return kind == Kind::ZERO_WIRES;}
+        constexpr bool isInvalid() const {return kind == Kind::INVALID;}
+
+        uint64_t getMask() const {
+            return getFieldMaskUnshifted<uint64_t>(length);
+        }
     };
 
-    static bool operator== (const Field &f1, const Field &f2)
+
+    // A field represents a set of bits encoded in an instruction that a
+    // processor uses. E.g. the opcode, a register number, ....
+    //
+    // Typically, fields are contiguous, but some are fragmented in
+    // non-contiguous parts in the instruction.  Moreover, some of these
+    // fragments aren't even encoded, but are intrinically defined
+    // (implicitly defined).
+    //
+    // One example of a fragmented field is ExDesc in the send instruction.
+    // which has fragments scattered all over the 128b encoding.
+    //
+    // Another pattern is intrinsic fragments.  That is, a field has bits
+    // that are not encoding in the instruction, but are implicitly some
+    // value (usually 0).  The .kind field will be set to KIND::ZERO_FILL,
+    // for example.
+    //
+    // E.g. in TGL a ternary dst register encodes Dst.Subreg[4:3].
+    //      Dst.Subreg[2:0] don't get encoded in the instruction and are
+    //      implicitly defined as zeros.  This is logically the same as
+    //      decoding the two bits containing Dst.Subreg[4:3] and
+    //      shifting it left 3 bits.  In this scheme we'd define this as
+    //      A field consistening of an ENCODED fragment for [4:3] and a
+    //
+    //
+    struct Field {
+        static const int MAX_FRAGMENTS_PER_FIELD = 4;
+
+        // the field name; e.g. "Dst.Reg"
+        const char *name;
+
+        // in order of low to high
+        Fragment fragments[MAX_FRAGMENTS_PER_FIELD];
+
+        // an undefined field (zero fragments)
+        constexpr Field()
+            : name(nullptr)
+        {
+        }
+        // a simple encoded field (single contiguous)
+        constexpr Field(const char *_name, int offset, int length)
+            : name(_name)
+            , fragments{Fragment(_name, offset, length)}
+        {
+        }
+        // a zero fill field or must-be-zero field
+        constexpr Field(const char *_name,             int length,
+            Fragment::Kind kind = Fragment::Kind::ZERO_FILL)
+            : name(_name)
+            , fragments{Fragment(_name, Fragment::NO_OFFSET, length, kind)}
+        {
+
+        }
+        // a field with two fragments
+        constexpr Field(
+            const char *_name,
+            const char *name0, int offset0, int length0, Fragment::Kind kind0,
+            const char *name1, int offset1, int length1, Fragment::Kind kind1)
+            : name(_name)
+            , fragments{
+                    Fragment(name0, offset0, length0, kind0),
+                    Fragment(name1, offset1, length1, kind1)
+                }
+        {
+        }
+        // a field with three fragments
+        constexpr Field(
+            const char *_name,
+            const char *name0, int offset0, int length0, Fragment::Kind kind0,
+            const char *name1, int offset1, int length1, Fragment::Kind kind1,
+            const char *name2, int offset2, int length2, Fragment::Kind kind2)
+            : name(_name)
+            , fragments {
+                    Fragment(name0, offset0, length0, kind0),
+                    Fragment(name1, offset1, length1, kind1),
+                    Fragment(name2, offset2, length2, kind2),
+                }
+        {
+        }
+        // a field with two encoded fragments
+        constexpr Field(
+            const char *_name,
+            const char *name0, int offset0, int length0,
+            const char *name1, int offset1, int length1)
+            : Field(_name,
+                name0, offset0, length0, Fragment::Kind::ENCODED,
+                name1, offset1, length1, Fragment::Kind::ENCODED)
+        {
+        }
+        // a field with three encoded fragments
+        constexpr Field(
+            const char *_name,
+            const char *name0, int offset0, int length0,
+            const char *name1, int offset1, int length1,
+            const char *name2, int offset2, int length2)
+            : Field(_name,
+                name0, offset0, length0, Fragment::Kind::ENCODED,
+                name0, offset0, length0, Fragment::Kind::ENCODED,
+                name0, offset0, length0, Fragment::Kind::ENCODED)
+        {
+        }
+        // a field a fragment of intrinsically defined 0's and top bits encoded
+        constexpr Field(
+            const char *_name,
+            const char *name0,              int shift,
+            const char *name1, int offset1, int length1)
+            : Field(_name,
+                name0, Fragment::NO_OFFSET, shift,   Fragment::Kind::ZERO_FILL,
+                name1, offset1,             length1, Fragment::Kind::ENCODED)
+        {
+        }
+
+        // returns the field length
+        CONSTEXPR_IF_CPP14 int length() const {
+            return decodedLength();
+        }
+
+        // returns the decoded length of the entire field
+        CONSTEXPR_IF_CPP14 int decodedLength() const {
+            int len = 0;
+            for (const auto &fr : fragments) {
+                if (fr.isInvalid())
+                    break;
+                len += fr.length;
+            }
+            return len;
+        }
+
+        // returns the decoded length of the entire field
+        CONSTEXPR_IF_CPP14 int encodedLength() const {
+            int len = 0;
+            for (const auto &fr : fragments) {
+                if (fr.isInvalid())
+                    break;
+                else if (fr.isEncoded() || fr.isZeroWires())
+                    len += fr.length;
+            }
+            return len;
+        }
+
+        constexpr bool isAtomic() const {
+            return
+                fragments[1].isInvalid() &&
+                // if this is MBZ field
+                (fragments[0].isEncoded() ||
+                 fragments[0].isZeroFill() ||
+                    fragments[0].isZeroWires());
+        }
+
+        // returns a reference the first fragment
+        // asserts that the fragment is atomic
+        const Fragment &atomFragment() const {
+            IGA_ASSERT(isAtomic(), "fragment is not atomic");
+            return fragments[0];
+        }
+
+        // implicit conversion to fragment
+        operator const Fragment &() const {
+            return atomFragment();
+        }
+
+        constexpr Field fragmentToField(int ix) const {
+            return Field(
+                fragments[ix].name,
+                fragments[ix].offset,
+                fragments[ix].length);
+        }
+    }; // Field
+
+    static bool operator== (const Fragment &f1, const Fragment &f2)
     {
-        return f1.offset == f2.offset &&
+        return
+            f1.kind == f2.kind &&
+            f1.offset == f2.offset &&
             f1.length == f2.length &&
             strcmp(f1.name, f2.name) == 0;
     }
-    static bool operator< (const Field &f1, const Field &f2)
+    static bool operator< (const Fragment &f1, const Fragment &f2)
     {
-        if (f1.offset < f2.offset) {
-            return true;
-        } else if (f1.offset > f2.offset) {
-            return false;
+        if (f1.kind != f2.kind) {
+            return f1.kind < f2.kind;
+        } else if (f1.offset != f2.offset) {
+            return f1.offset < f2.offset;
+        } else if (f1.length != f2.length) {
+            return f1.length < f2.length;
         } else {
-            if (f1.length < f2.length) {
-                return true;
-            } else if (f1.length > f2.length) {
-                return false;
-            } else {
-                return strcmp(f1.name, f2.name) < 0;
-            }
+            return strcmp(f1.name, f2.name) < 0;
         }
     }
 
+    //////////////////////////////////////////////////////////////////////////
+    // enables us to group various operands together
     struct OperandFields {
+        const char *name;
         const Field &fTYPE;
         const Field *pfSRCMODS;
         const Field &fREGFILE;
@@ -86,8 +303,7 @@ namespace iga
         const Field &fSUBREG;
         const Field &fSPCACC;
 
-        const Field *pfRGNVT0;
-        const Field *pfRGNVT1;
+        const Field *pfRGNVT;
         const Field *pfRGNWI;
         const Field &fRGNHZ;
 
@@ -120,8 +336,8 @@ namespace iga
         TER_SRC1 = TER | IX_SRC1 | 5,
         TER_SRC2 = TER | IX_SRC2 | 6
     };
-    static inline bool IsTernary(OpIx IX) { return (IX & OpIx::TER) == OpIx::TER; }
-    static inline bool IsDst(OpIx IX) { return (IX & OpIx::IX_DST) == OpIx::IX_DST; }
+    static inline bool IsTernary(OpIx IX) {return (IX & OpIx::TER) == OpIx::TER;}
+    static inline bool IsDst(OpIx IX) {return (IX & OpIx::IX_DST) == OpIx::IX_DST;}
     static inline int ToSrcIndex(OpIx IX) {
         IGA_ASSERT(!IsDst(IX),"ToSrcIndex(OpIx) on dst index");
         return ((IX & 0xF0)>>4) - 1;
@@ -129,9 +345,7 @@ namespace iga
     static inline int ToFieldOperandArrayIndex(OpIx IX) {
         return (IX & OpIx::OP_IX_MASK);
     }
-
-    static ::std::string ToStringOpIx(OpIx ix)
-    {
+    static ::std::string ToStringOpIx(OpIx ix) {
         switch (ix & OpIx::OP_IX_TYPE_MASK) {
         case OpIx::IX_DST:  return "dst";
         case OpIx::IX_SRC0: return "src0";
@@ -143,7 +357,7 @@ namespace iga
 
 
     // a grouping of compaction information
-    struct CompactedField {
+    struct CompactionMapping {
         const Field       &index;
         const uint64_t    *values;
         size_t             numValues;
@@ -157,28 +371,56 @@ namespace iga
         size_t countNumBitsMapped() const {
             size_t entrySizeBits = 0;
             for (size_t k = 0; k < numMappings; k++)
-                entrySizeBits += mappings[k]->length;
+                entrySizeBits += mappings[k]->length();
             return entrySizeBits;
         }
         bool isSrcImmField() const {return mappings == nullptr;}
     };
 
+    // groups all CompactionMappings for a given platform
+    struct CompactionScheme {
+        const CompactionMapping &CTRLIX_2SRC;
+        const CompactionMapping &DTIX_2SRC;
+        const CompactionMapping &SRIX_2SRC;
+        const CompactionMapping &SRC0IX_2SRC;
+        const CompactionMapping &SRC1IX_2SRC;
+        //
+        const CompactionMapping &CTRLIX_3SRC;
+        const CompactionMapping &SRCIX_3SRC;
+        const CompactionMapping &SRIX_3SRC;
+    };
+
 // Assumes existence of:
-//   std::string [namespace::]Format_##SYM (uint64_t val)
-// E.g. SYM=CMP_CTRLIX_2SRC references
-//   std::string iga::pstg12::Format_CMP_CTRLIX_2SRC(uint64_t val);
-#define MAKE_COMPACTED_FIELD(SYM)\
-    extern std::string Format_##SYM (Op, uint64_t val);\
+//   constexpr static Field CMP_ ## SYM ## _ ## PLATFORM = ...
+//   std::string [namespace::]Format_ ## SYM ## _ ## PLATFORM (Op, uint64_t)
+//   const const Field         SYM ## _MAPPINGS_ ## PLATFORM  [M] {...}
+//   const const uint64_t      SYM ## _VALUES_   ## PLATFORM  [N] {...}
+//   const const const char *  SYM ## _MEANINGS_ ## PLATFORM  [N] {...}
+//
+// For example:
+//     MAKE_COMPACTION_MAPPING(CTRLIX_2SRC, TGL);
+//
+// utilizes all of the following:
+//
+//   constexpr static Field    iga::g12::CMP_CTRLIX_2SRC_TGL {...}
+//   std::string               iga::g12::Format_CTRLIX_2SRC_TGL (Op, uint64_t)
+//   const const Field         iga::g12::CTRLIX_2SRC_MAPPINGS_TGL  [M] {...}
+//   const const uint64_t      iga::g12::CTRLIX_2SRC_VALUES_TGL    [N] {...}
+//   const const const char *  iga::g12::CTRLIX_2SRC_MEANINGS_TGL  [N] {...}
+#define MAKE_COMPACTION_MAPPING(SYM, PLATFORM)\
+    extern std::string Format_ ## SYM ## _ ## PLATFORM (Op, uint64_t);\
     \
-    static_assert(sizeof(SYM ## _VALUES)/sizeof(SYM ## _VALUES[0]) == \
-        sizeof(SYM ## _MEANINGS)/sizeof(SYM ## _MEANINGS[0]), \
+    static_assert(sizeof(SYM ## _VALUES_ ## PLATFORM)/sizeof(SYM ## _VALUES_ ## PLATFORM [0]) == \
+        sizeof(SYM ## _MEANINGS_ ## PLATFORM)/sizeof(SYM ## _MEANINGS_ ## PLATFORM [0]), \
         "mismatch in table sizes");\
-    static const CompactedField CIX_ ## SYM {\
-        SYM, \
-        SYM ## _VALUES, sizeof(SYM ## _VALUES)/sizeof(SYM ## _VALUES[0]),\
-        SYM ## _MAPPINGS, sizeof(SYM ## _MAPPINGS)/sizeof(SYM ## _MAPPINGS[0]),\
-        SYM ## _MEANINGS,\
-        &(Format_ ## SYM),\
+    static const CompactionMapping CM_ ## SYM ## _ ## PLATFORM {\
+        CMP_ ## SYM ## _ ## PLATFORM, \
+        SYM ## _VALUES_ ## PLATFORM, \
+            sizeof(SYM ## _VALUES_ ## PLATFORM)/sizeof(SYM ## _VALUES_ ## PLATFORM [0]),\
+        SYM ## _MAPPINGS_ ## PLATFORM, \
+            sizeof(SYM ## _MAPPINGS_ ## PLATFORM)/sizeof(SYM ## _MAPPINGS_ ## PLATFORM [0]),\
+        SYM ## _MEANINGS_ ## PLATFORM,\
+        &(Format_ ## SYM ## _ ## PLATFORM),\
     }
 } // namespace
 

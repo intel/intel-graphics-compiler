@@ -27,6 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGA_BITS_HPP
 #define IGA_BITS_HPP
 
+#include "asserts.hpp"
+
 #include <cstdint>
 
 namespace iga
@@ -41,12 +43,12 @@ namespace iga
     (BITFIELD_MASK32_UNSHIFTED(OFF,LEN) << (OFF))
 
     template <typename T>
-    static T getFieldMaskUnshifted(int len)
+    static constexpr T getFieldMaskUnshifted(int len)
     {
         return len == 8*sizeof(T) ? ((T)-1) : ((T)1 << len) - 1;
     }
     template <typename T>
-    static T getFieldMask(int off, int len)
+    static constexpr T getFieldMask(int off, int len)
     {
         return getFieldMaskUnshifted<T>(len) << (off % (8*sizeof(T)));
     }
@@ -58,15 +60,22 @@ namespace iga
     // }
     template <typename T>
     static T getBits(T bits, int off, int len) {
+        IGA_ASSERT(
+            off >= 0 && len > 0 && off + len - 1 < 8*sizeof(T),
+            "getBits: out of bounds");
         T mask = len == 8*sizeof(T) ? ((T)-1) : (1ull << len) - 1;
         return ((bits >> off) & mask);
     }
     template <typename T>
     static bool testBit(T bits, int off) {
+        IGA_ASSERT(off < 8*sizeof(T), "testBit: out of bounds");
         return getBits<T>(bits, off, 1) != 0;
     }
     template <typename T>
     static T getSignedBits(T bits, int off, int len) {
+        IGA_ASSERT(
+            off >= 0 && len > 0 && off + len - 1 < 8*sizeof(T),
+            "getBits: out of bounds");
         T mask = len == 8*sizeof(T) ? ((T)-1) : (1ull << len) - 1;
         T val = ((bits >> off) & mask);
         if (val & ((T)1 << (len - 1))) {
@@ -75,29 +84,40 @@ namespace iga
         }
         return val;
     }
-    template <typename T>
-    static T getBits(const T *bits, int off, int len)
+    template <typename T, int N>
+    static T getBits(const T bits[N], int off, int len)
     {
-        T w = (off < 8*sizeof(T)) ? *bits : *(bits+1);
-        return getBits<T>(w, off % (8*sizeof(T)), len);
+        IGA_ASSERT(
+            off >= 0 && len > 0 && off + len - 1 < N*8*sizeof(T),
+            "getBits: out of bounds");
+        int wIx = off / (8*sizeof(T)), wOff = off % (8*sizeof(T));
+        return getBits<T>(bits[wIx], wOff, len);
     }
-    template <typename T>
-    static T getSignedBits(const T *bits, int off, int len)
+    template <typename T, int N>
+    static T getSignedBits(const T bits[N], int off, int len)
     {
-        T w = (off < 8*sizeof(T)) ? *bits : *(bits+1);
-        return getSignedBits<T>(w, off % (8*sizeof(T)), len);
+        IGA_ASSERT(
+            off >= 0 && len > 0 && off + len - 1 < N*8*sizeof(T),
+            "getSignedBits: out of bounds");
+        int wIx = off / (8*sizeof(T)), wOff = off % (8*sizeof(T));
+        return getSignedBits<T>(bits[wIx], wOff, len);
     }
-    static uint64_t getBits(const void *bits, int off, int len)
-    {
-        return getBits((const uint64_t *)bits, off, len);
-    }
-    static int64_t getSignedBits(const void *bits, int off, int len)
-    {
-        return getSignedBits((const uint64_t *)bits, off, len);
-    }
-    static bool setBits(uint64_t *qws, int off, int len, uint64_t val) {
-        uint64_t shiftedVal = val << off % 64; // shift into position
-        uint64_t mask = getFieldMask<uint64_t>(off, len);
+
+    template <typename T, int N>
+    static bool setBits(T qws[N], int off, int len, T val) {
+        IGA_ASSERT(
+            off >= 0 && len > 0 && off + len - 1 < N*8*sizeof(T),
+            "setBits: out of bounds");
+        //
+        const auto wIx = off/(8*sizeof(T)),
+                   wOff = off%(8*sizeof(T));
+        //
+        IGA_ASSERT(
+            wIx == ((off + len - 1)/(8*sizeof(T))),
+            "setBits: field spans word boundary");
+        //
+        T shiftedVal = val << wOff; // shift into position
+        T mask = getFieldMask<T>(off, len);
         if (shiftedVal & ~mask) {
             // either val has bits greater than what this field represents
             // or below the shift (e.g. smaller value than we accept)
@@ -109,16 +129,20 @@ namespace iga
             //       some other higher level (i.e. we're looking at bad IR)
             return false;
         }
-        qws[off / 64] |= shiftedVal;
+        qws[wIx] |= shiftedVal;
         return true;
     }
 
     template <typename T>
     static bool setBits(T &bits, int off, int len, T val) {
+        IGA_ASSERT(
+            off >= 0 && len > 0 && off + len - 1 < 8*sizeof(T),
+            "setBits: out of bounds");
+        //
         T mask = getFieldMaskUnshifted<T>(len);
         if (val > mask)
             return false;
-        bits = (bits & ~(mask<<off)) | (val << off);
+        bits = (bits & ~(mask << off)) | (val << off);
         return true;
     }
 

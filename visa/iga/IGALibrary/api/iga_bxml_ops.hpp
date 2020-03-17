@@ -151,7 +151,6 @@ namespace iga
         SYNC_ALLRD   = FIRST_OP + 449,
         SYNC_ALLWR   = FIRST_OP + 450,
         SYNC_BAR     = FIRST_OP + 451,
-        SYNC_FENCE   = FIRST_OP + 452,
         SYNC_HOST    = FIRST_OP + 453,
         SYNC_NOP     = FIRST_OP + 454,
         WAIT         = FIRST_OP + 455,

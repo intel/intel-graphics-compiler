@@ -55,4 +55,5 @@ const Region Region::SRC8X1 = REGION_VWH(VT_8,WI_INVALID,HZ_1);
 // ternary align src2
 const Region Region::SRCXX0 = REGION_VWH(VT_INVALID,WI_INVALID,HZ_0);
 const Region Region::SRCXX1 = REGION_VWH(VT_INVALID,WI_INVALID,HZ_1);
+const Region Region::SRCXX2 = REGION_VWH(VT_INVALID,WI_INVALID,HZ_2);
 

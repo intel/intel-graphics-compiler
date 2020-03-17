@@ -271,12 +271,16 @@ static std::string ToSymbol(Region x) {
         return "Region::SRC0X0";
     else if (x == Region::SRC2X1)
         return "Region::SRC2X1";
+    else if (x == Region::SRC4X1)
+        return "Region::SRC4X1";
     else if (x == Region::SRC8X1)
         return "Region::SRC8X1";
     else if (x == Region::SRCXX0)
         return "Region::SRCXX0";
     else if (x == Region::SRCXX1)
         return "Region::SRCXX1";
+    else if (x == Region::SRCXX2)
+        return "Region::SRCXX2";
     else {
         std::stringstream ss;
         ss << "{";

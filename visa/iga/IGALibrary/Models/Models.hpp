@@ -142,7 +142,7 @@ namespace iga
         }
     }
 
-    static uint8_t IsRegisterScaled(RegName regName)
+    static bool IsRegisterScaled(RegName regName)
     {
         switch (regName)
         {

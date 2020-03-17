@@ -198,8 +198,7 @@ namespace iga
             //   sync.<syctrl> (..)  reg
             SYNC_UNARY = (SPECIAL|UNARY) + 2,
         };
-
-
+        //
         // various miscellaneous attributes about the operation
         enum Attr {
             NONE = 0,
@@ -213,40 +212,51 @@ namespace iga
             SUPPORTS_SRCMODS = SUPPORTS_SATURATION << 1,
             // aliases for combinations of predication, flag modifier, ...
         };
-
+        //
         // for various type mappings
         struct TypeMapping {
             uint32_t dsts; // convert to BitSet<Type,uint32_t>
             uint32_t srcs; // convert to BitSet<Type,uint32_t>
         };
-
+        //
         // virtual opcode / opcode enum value (not the machine-encoded value):
         // will be the same value on all platforms
         Op             op;
-        // the operation mnemonic
-        const char    *mnemonic; // e.g. "addc"
+        //
+        // the operation mnemonic; e.g. "addc"
+        const char    *mnemonic;
+        //
         // the qualified mnmeonic name
-        const char    *fullMnemonic; // e.g. "math.inv" or "addc"
+        // e.g. "math.inv" or "addc"
+        const char    *fullMnemonic;
         // the physical opcode value encoded
         int            code; // e.g. 0x1 for mov, 0x7E for nop
+        //
         // a high-level name for the operation (Name attr from BXML)
-        const char    *name; // e.g. "Add With Carry"
+        // e.g. "Add With Carry"
+        const char    *name;
+        //
         // a concatenation of the <Description> elements in BXML as
         // well as uncategorized <ProgrammingNote> elements
         const char    *description; // e.g. description from BXML
+        //
         // describes both the syntax and the encoding format for this
         // operation
         Format         format;
+        //
         // <EUOperandTypeMapping> from BXML.
-        // (I think mov has the most ~22)
+        // (I think mov has the most ~22; expand if needed)
         TypeMapping    typeMappings[24];
+        //
         // Wrap in an EnumBitset<OpAttr,uint32_t> to extract OpAttr's
         int            attrs;
-
+        //
         // The parent op of pseudo op (grouped op); Op::INVALID otherwise
         Op             groupOp;
+        //
         // The first subop
         Op             subopStart;
+        //
         // The number of pseudoops under this op starting after this op
         // in the Model::ops table.  E.g. we'll have:
         // {Op::MATH, ...}
@@ -254,10 +264,12 @@ namespace iga
         // {...
         // next op
         int            subopsLength;
+        //
         // For pseudo-ops this is the enum ordinal value for the function
         // control.  E.g. static_cast<MathFC>(...)
         // For regular ops it's -1
         int            functionControlValue;
+        //
         // For both the grouping op and it's children
         //
         // some ops have fragmented subfunction offset; we store these
@@ -269,7 +281,7 @@ namespace iga
         //
         // should some op come along with more fragments change the size
         // to a larger value; everything should just work.
-         Field         functionControlFields[2];
+        Field          functionControlField;
 
         // returns false for reserved opcodes
         bool isValid() const {
@@ -464,7 +476,6 @@ namespace iga
                     case Op::SYNC_ALLRD:
                     case Op::SYNC_ALLWR:
                     case Op::SYNC_BAR:
-                    case Op::SYNC_FENCE:
                     case Op::SYNC_HOST:
                     case Op::SYNC:
                         return Region::SRC010;
@@ -739,6 +750,15 @@ namespace iga
                 pltf < Platform::GEN12P1 &&
                 op != Op::NOP &&
                 op != Op::ILLEGAL;
+        }
+
+        SWSB::InstType getSWSBInstType() const {
+            SWSB::InstType instType = SWSB::InstType::OTHERS;
+            if (isSendOrSendsFamily())
+                instType = SWSB::InstType::SEND;
+            else if (isMathSubFunc())
+                instType = SWSB::InstType::MATH;
+            return instType;
         }
     }; // struct OpSpec
 } // namespace iga::*
