@@ -990,18 +990,28 @@ bool KernelArgsOrder::operator()(const KernelArg::ArgType& lhs, const KernelArg:
     return m_position[static_cast<int32_t>(lhs)] < m_position[static_cast<int32_t>(rhs)];
 }
 
-KernelArgs::const_iterator::const_iterator(
-    AllocationArgs::const_iterator major,
-    AllocationArgs::const_iterator majorEnd,
-    std::vector<KernelArg>::const_iterator minor)
-    : m_major(major),
-    m_majorEnd(majorEnd),
-    m_minor(minor)
+KernelArgs::const_iterator::const_iterator(AllocationArgs& args, IterPos pos)
 {
+    m_empty = args.empty();
+    if (pos == IterPos::BEGIN)
+    {
+        m_major = args.begin();
+        m_majorEnd = args.end();
+        if (!m_empty)
+            m_minor = (*args.begin()).second.begin();
+    }
+    else if (pos == IterPos::END)
+    {
+        m_major = args.end();
+        m_majorEnd = args.end();
+        if (!m_empty)
+            m_minor = (*(--args.end())).second.end();
+    }
 }
 
 KernelArgs::const_iterator& KernelArgs::const_iterator::operator++()
 {
+    assert(!m_empty);
     ++m_minor;
 
     if (m_minor == (*m_major).second.end())
@@ -1018,17 +1028,24 @@ KernelArgs::const_iterator& KernelArgs::const_iterator::operator++()
 
 const KernelArg& KernelArgs::const_iterator::operator*()
 {
+    assert(!m_empty);
     return *m_minor;
 }
 
 bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator)
 {
-    return (m_major != iterator.m_major) || (m_minor != iterator.m_minor);
+    if (m_empty)
+        return (m_major != iterator.m_major);
+    else
+        return (m_major != iterator.m_major) || (m_minor != iterator.m_minor);
 }
 
 bool KernelArgs::const_iterator::operator==(const const_iterator& iterator)
 {
-    return (m_major == iterator.m_major) && (m_minor == iterator.m_minor);
+    if (m_empty)
+        return (m_major == iterator.m_major);
+    else
+        return (m_major == iterator.m_major) && (m_minor == iterator.m_minor);
 }
 
 KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, unsigned int GRFSize, KernelArgsOrder::InputType layout)
@@ -1150,14 +1167,12 @@ void KernelArgs::addAllocationArg(KernelArg& kernelArg)
 
 KernelArgs::const_iterator KernelArgs::begin()
 {
-    auto iter = m_args.empty() ? std::vector<KernelArg>().end() : (*m_args.begin()).second.begin();
-    return const_iterator(m_args.begin(), m_args.end(), iter);
+    return const_iterator(m_args, KernelArgs::const_iterator::IterPos::BEGIN);
 }
 
 KernelArgs::const_iterator KernelArgs::end()
 {
-    auto iter = m_args.empty() ? std::vector<KernelArg>().end() : (*(--m_args.end())).second.end();
-    return const_iterator(m_args.end(), m_args.end(), iter);
+    return const_iterator(m_args, KernelArgs::const_iterator::IterPos::END);
 }
 
 void KernelArgs::checkForZeroPerThreadData()

@@ -419,14 +419,16 @@ namespace IGC
         ///         This enables iteration over a container of containers
         class const_iterator {
         public:
+            enum IterPos
+            {
+                BEGIN,
+                END,
+            };
+
             /// Constructor
-            /// @param  major       An iterator to the initial position in the external container
-            /// @param  majorEnd    An iterator to the end of the external container
-            /// @param  minor       An iterator to the initial position in the internal container
-            const_iterator(
-                AllocationArgs::const_iterator major,
-                AllocationArgs::const_iterator majorEnd,
-                std::vector<KernelArg>::const_iterator minor);
+            /// @param  args       The allocation args structure
+            /// @param  pos        ENUM of initial iterator position: BEGIN or END
+            const_iterator(AllocationArgs& args, IterPos pos);
 
             /// @brief  Advances the iterator to the next element
             /// @return The iterator, pointing to the next element
@@ -452,6 +454,7 @@ namespace IGC
             AllocationArgs::const_iterator          m_major;
             AllocationArgs::const_iterator          m_majorEnd;
             std::vector<KernelArg>::const_iterator  m_minor;
+            bool                                    m_empty;
         };
 
         // Member functions
