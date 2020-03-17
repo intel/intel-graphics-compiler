@@ -1048,6 +1048,7 @@ namespace IGC
 
         SIMDMode mode;
         if (ctx->m_enableFunctionPointer
+            && ctx->platform.getMinDispatchMode() == SIMDMode::SIMD8
             && ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)
         {
             // In order to support compiling multiple SIMD modes for function pointer calls,

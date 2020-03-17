@@ -15531,9 +15531,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
 
         if (useA32)
         {
-            {
-                m_encoder->ByteScatter(storedVar, resource, eOffset, blkBits, nBlks);
-            }
+            m_encoder->ByteScatter(storedVar, resource, eOffset, blkBits, nBlks);
         }
         else
         {
