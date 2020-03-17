@@ -356,16 +356,22 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
 }
 
 G4_INST* IR_Builder::createMov(uint8_t execSize, G4_DstRegRegion* dst,
-    G4_Operand* src0, uint32_t option, bool appendToInstList)
+    G4_Operand* src0, uint32_t option, bool appendToInstList,
+    int lineno, int CISAoff, const char* srcFilename)
 {
+    G4_INST* newInst = nullptr;
     if (appendToInstList)
     {
-        return createInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
+        newInst = createInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
     }
     else
     {
-        return createInternalInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
+        newInst = createInternalInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
     }
+    newInst->setLineNo(lineno);
+    newInst->setCISAOff(CISAoff);
+    newInst->setSrcFilename(srcFilename);
+    return newInst;
 }
 
 G4_INST* IR_Builder::createBinOp(G4_opcode op, uint8_t execSize, G4_DstRegRegion* dst,

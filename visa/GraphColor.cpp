@@ -8214,7 +8214,8 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
                     kernel.fg.builder->getRegionStride1(),
                     oldSrc->getType());
                 G4_INST* movInst = kernel.fg.builder->createMov(
-                    (unsigned char)subDcl->getTotalElems(), dst, src, InstOpt_WriteEnable, false);
+                    (unsigned char)subDcl->getTotalElems(), dst, src, InstOpt_WriteEnable, false,
+                    inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
                 bb->insert(instIter, movInst);
             }
         }

@@ -1814,7 +1814,8 @@ public:
         const char* srcFilename = NULL);
 
     G4_INST* createMov(uint8_t execSize, G4_DstRegRegion* dst,
-        G4_Operand* src0, uint32_t option, bool appendToInstList);
+        G4_Operand* src0, uint32_t option, bool appendToInstList,
+        int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr);
 
     G4_INST* createBinOp(G4_opcode op, uint8_t execSize, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, uint32_t option, bool appendToInstList);

@@ -3494,7 +3494,8 @@ void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinB
             G4_INST *predInst = CFG->builder->createMov(1,
                 newPredDef,
                 CFG->builder->createImm(0, Type_UW),
-                InstOpt_WriteEnable, false);
+                InstOpt_WriteEnable, false, gotoInst->getLineNo(),
+                gotoInst->getCISAOff(), gotoInst->getSrcFilename());
             INST_LIST_ITER iter = gotoBB->end();
             iter--;
             gotoBB->insert(iter, predInst);

@@ -3350,7 +3350,8 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), (short)i, 0, 1, Type_F);
 
-                        inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false);
+                        inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
+                            curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 
                         bb->insert( inst_it, inst );
 
@@ -3361,8 +3362,8 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                             G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getVar(), (short)i, 0, 1, Type_F);
 
-                            inst = kernel->fg.builder->createMov(curExSize,
-                                    dstRex, srcRex, InstOpt_WriteEnable, false);
+                            inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
+                                curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 
                             bb->insert( next_inst_it, inst );
                         }
@@ -3421,8 +3422,8 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                     G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), 0, off, 1, type);
 
-                    inst = kernel->fg.builder->createMov( curExSize,
-                            dstRex, srcRex, InstOpt_WriteEnable, false );
+                    inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
+                        curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 
                     bb->insert( inst_it, inst );
 
@@ -3433,8 +3434,8 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getVar(), 0, off, 1, type);
 
-                        inst = kernel->fg.builder->createMov( curExSize,
-                                dstRex, srcRex, InstOpt_WriteEnable, false );
+                        inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
+                            curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 
                         bb->insert( next_inst_it, inst );
                     }
