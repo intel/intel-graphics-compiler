@@ -1770,7 +1770,6 @@ bool InstExpander::visitPHI(PHINode& PN) {
 }
 
 bool InstExpander::visitCall(CallInst& Call) {
-    const Function* F = Call.getCalledFunction();
 
     // lambdas for splitting and combining i64 to <2 x i32>
     auto Combine2xi32Toi64 = [this](Value* val)->Value *
@@ -1793,6 +1792,7 @@ bool InstExpander::visitCall(CallInst& Call) {
         OutputHi = IRB->CreateExtractElement(V, IRB->getInt32(1));
     };
 
+    const Function* F = Call.getCalledFunction();
     if (F && F->isDeclaration()) {
         switch (F->getIntrinsicID()) {
         default:

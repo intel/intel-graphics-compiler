@@ -176,6 +176,12 @@ void UpgradeResourceAccess::visitCallInst(CallInst& C)
         return;
     }
 
+    //Check in place for Indirect Calls
+    if(!C.getCalledFunction())
+    {
+        return;
+    }
+
     //Note : This upgrader pass is handling legacy intrinsics as well,
     // hence we might be dealing with intrinsics starting with @genx.
     if(C.getCalledFunction()->getName().contains("genx.GenISA.sample."))

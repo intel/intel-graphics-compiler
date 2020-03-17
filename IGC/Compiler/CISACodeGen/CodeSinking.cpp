@@ -745,7 +745,9 @@ namespace IGC {
         {
             CallInst* call1 = dyn_cast<CallInst>(src1);
             assert(call1 != nullptr);
-            if (call0->getCalledFunction() != call1->getCalledFunction() ||
+
+            if (!call0->getCalledFunction() ||
+                call0->getCalledFunction() != call1->getCalledFunction() ||
                 !call0->getCalledFunction()->doesNotReadMemory() ||
                 call0->isConvergent())
             {

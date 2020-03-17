@@ -106,7 +106,11 @@ void CodeAssumption::uniformHelper(Module* M)
                 CallInst* CallI = dyn_cast<CallInst>(II);
                 if (!CallI)
                     continue;
+
                 Function* callee = CallI->getCalledFunction();
+                if(!callee)
+                    continue;
+
                 StringRef FN = callee->getName();
 
                 // sub_group_id
