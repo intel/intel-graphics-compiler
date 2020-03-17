@@ -116,14 +116,14 @@ public:
   SPIRVAddressingModelKind getAddressingModel() override { return AddrModel;}
   SPIRVExtInstSetKind getBuiltinSet(SPIRVId SetId) const override;
   const SPIRVCapSet &getCapability() const override { return CapSet;}
-  bool isSpecConstant(SPIRVWord spec_id) const override {
+  bool isSpecConstantSpecialized(SPIRVWord spec_id) const override {
     if(SCMap)
       return SCMap->find(spec_id) != SCMap->end();
     else
       return false;
   }
   uint64_t getSpecConstant(SPIRVWord spec_id) override {
-    IGC_ASSERT_EXIT(isSpecConstant(spec_id) && "Specialization constant was not specialized!");
+    IGC_ASSERT_EXIT(isSpecConstantSpecialized(spec_id) && "Specialization constant was not specialized!");
     return SCMap->at(spec_id);
   }
   void setSpecConstantMap(SPIRVSpecConstantMap *specConstants) override { SCMap = specConstants; }

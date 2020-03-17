@@ -2174,7 +2174,8 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     if(BV->hasDecorate(DecorationSpecId)) {
       IGC_ASSERT_EXIT(OC == OpSpecConstant && "Only SpecConstants can be specialized!");
       SPIRVWord specid = *BV->getDecorate(DecorationSpecId).begin();
-      V = BM->getSpecConstant(specid);
+      if(BM->isSpecConstantSpecialized(specid))
+        V = BM->getSpecConstant(specid);
     }
     switch(BT->getOpCode()) {
     case OpTypeBool:
