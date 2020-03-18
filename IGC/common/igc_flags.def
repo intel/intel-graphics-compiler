@@ -162,6 +162,8 @@ DECLARE_IGC_REGKEY(DWORD,FoldsToConstPropThreshold,     1,     "Set the threshol
 DECLARE_IGC_REGKEY(DWORD,FoldsToSourceThreshold,        1,     "Set the threshold for finding interesting constant. This is for the number of instructions that translate to a mov. i.e., Multiplication or Division by 1", false)
 DECLARE_IGC_REGKEY(DWORD, ConstantLoadTypeCheck,        0,     "Checks the type of the load instruction for finding interesting constant; 0 for skip type check, 1 for Integer and 2 for Float", false)
 DECLARE_IGC_REGKEY(bool, DisableDynamicConstantFolding, false,  "Disable Dynamic Constant Folding", false)
+DECLARE_IGC_REGKEY(bool, EnableLimitForConstantFolding, false,  "Enable limit for constant folding", false)
+DECLARE_IGC_REGKEY(DWORD, LimitNumberOfConstantsToFold, 0,     "Set the limit for number of constants to fold", false)
 DECLARE_IGC_REGKEY(bool, DisableDynamicTextureFolding,  false,  "Disable Dynamic Texture Folding", false)
 DECLARE_IGC_REGKEY(bool, DisableRectListOpt,            false, "Disable Rect List optimization", false)
 
