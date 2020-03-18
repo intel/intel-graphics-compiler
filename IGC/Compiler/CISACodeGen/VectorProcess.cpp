@@ -313,6 +313,8 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
         bool useQW = useA64 && ((TBytes % 8) == 0) &&
             ((has_8Byte_A64_BS && align < 4) || (eTyBytes == 8U && align >= 8U));
+
+
         const uint32_t new_eTyBytes = useQW ? 8 : 4;
         if (eTyBytes == new_eTyBytes)
         {
