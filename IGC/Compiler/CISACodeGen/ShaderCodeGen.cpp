@@ -670,6 +670,10 @@ namespace IGC
             {
                 mpm.add(createGEPLoweringPass());
             }
+            // Run dead code elimination pass right before Emu64OpsPass,
+            // as legalization passes do not always clear unused (operating
+            // on illegal types) instructions.
+            mpm.add(llvm::createDeadCodeEliminationPass());
             mpm.add(createEmu64OpsPass());
             ctx.m_hasEmu64BitInsts = true;
         }
