@@ -641,10 +641,10 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         // For example, we could have a packed struct <{i64, i32, i64}> that
         // would compute a size of 20 but, without this guard, would set
         // 'NumElts' to 2 as if the i32 wasn't present.
-        if (unsigned(newHighestOffset - newLowestOffset) % LdScalarSize != 0)
+        if (uint64_t(newHighestOffset - newLowestOffset) % LdScalarSize != 0)
             continue;
 
-        unsigned newNumElts = unsigned((newHighestOffset - newLowestOffset) /
+        uint64_t newNumElts = uint64_t((newHighestOffset - newLowestOffset) /
             LdScalarSize);
 
         // Bail out if the resulting vector load is already not profitable.
@@ -653,7 +653,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
         HighestOffset = newHighestOffset;
         LowestOffset = newLowestOffset;
-        NumElts = newNumElts;
+        NumElts = static_cast<unsigned>(newNumElts);
 
         // This load is to be merged. Remove it from check list.
         CheckList.pop_back();
