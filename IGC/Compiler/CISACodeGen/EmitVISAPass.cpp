@@ -244,62 +244,6 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
     return numInstance;
 }
 
-bool EmitPass::canCompileCurrentShader(llvm::Function& F)
-{
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
-    // If uses subroutines/stackcall, we can only compile a single SIMD mode
-    if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
-    {
-        // Check if a specific SIMD size is enforced
-        if (ctx->type == ShaderType::OPENCL_SHADER)
-        {
-            if (m_moduleMD->csInfo.forcedSIMDSize != 0)
-            {
-                return m_SimdMode == lanesToSIMDMode((unsigned)m_moduleMD->csInfo.forcedSIMDSize);
-            }
-
-            if (ctx->m_DriverInfo.sendMultipleSIMDModes() && m_moduleMD->csInfo.maxWorkGroupSize != 0)
-            {
-                return m_SimdMode == getLeastSIMDAllowed(m_moduleMD->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
-            }
-        }
-
-        if (ctx->m_enableFunctionPointer)
-        {
-            // Can compile both SIMD8 and SIMD16 for function pointers
-            return (m_SimdMode == SIMDMode::SIMD8 || m_SimdMode == SIMDMode::SIMD16);
-        }
-        else
-        {
-            // Check if there is a required sub group size specified
-            MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-            FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-            int simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
-
-            // Finds the kernel and get the group simd size from the kernel
-            if (m_FGA)
-            {
-                llvm::Function* Kernel = &F;
-                auto FG = m_FGA->getGroup(&F);
-                Kernel = FG->getHead();
-                funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
-                simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
-            }
-
-            if (simd_size)
-            {
-                // Can't support SIMD32 due to slicing
-                return m_SimdMode != SIMDMode::SIMD32;
-            }
-            // If no sub group size is specified, only allow SIMD8
-            return m_SimdMode == SIMDMode::SIMD8;
-        }
-    }
-
-    return true;
-}
-
 bool EmitPass::setCurrentShader(llvm::Function* F)
 {
     llvm::Function* Kernel = F;
@@ -321,9 +265,6 @@ bool EmitPass::setCurrentShader(llvm::Function* F)
         // no analysis result avaliable.
         m_FGA = nullptr;
     }
-
-    if (!canCompileCurrentShader(*F))
-        return false;
 
     auto Iter = m_shaders.find(Kernel);
     if (Iter == m_shaders.end())

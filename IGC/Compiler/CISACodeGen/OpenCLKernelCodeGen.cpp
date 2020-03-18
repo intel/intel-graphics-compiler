@@ -2138,6 +2138,23 @@ namespace IGC
             simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
         }
 
+        // Cannot compile simd32 for function calls due to slicing
+        if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
+        {
+            if (pCtx->m_enableFunctionPointer || simd_size)
+            {
+                if (simdMode == SIMDMode::SIMD32)
+                {
+                    return SIMDStatus::SIMD_FUNC_FAIL;
+                }
+            }
+            else if (simdMode != SIMDMode::SIMD8)
+            {
+                // default simd8
+                return SIMDStatus::SIMD_FUNC_FAIL;
+            }
+        }
+
         uint32_t groupSize = 0;
         if (modMD->csInfo.maxWorkGroupSize)
         {
