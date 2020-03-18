@@ -285,7 +285,8 @@ namespace IGC
         {
             bufPtr,
             offsetVal,
-            builder.getInt32(alignment)
+            builder.getInt32(alignment),
+            builder.getInt1(inst->isVolatile()) // volatile
         };
         Value* ld = builder.CreateCall(func, attr);
         assert(ld->getType() == inst->getType());
@@ -322,7 +323,8 @@ namespace IGC
             bufPtr,
             offsetVal,
             storeVal,
-            builder.getInt32(storeVal->getType()->getScalarSizeInBits() / 8)
+            builder.getInt32(storeVal->getType()->getScalarSizeInBits() / 8),
+            builder.getInt1(inst->isVolatile()) // volatile
         };
         Value* st = builder.CreateCall(func, attr);
         return st;

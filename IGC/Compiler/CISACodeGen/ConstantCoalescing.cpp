@@ -1388,6 +1388,8 @@ Instruction* ConstantCoalescing::CreateChunkLoad(Instruction* seedi, BufChunk* c
     irBuilder->SetInsertPoint(seedi);
     if (LoadInst * load = dyn_cast<LoadInst>(seedi))
     {
+        assert(!load->isVolatile()); // no constant buffer volatile loads
+
         LoadInst* chunkLoad;
         Value* cb_ptr = load->getPointerOperand();
 
@@ -1436,6 +1438,7 @@ Instruction* ConstantCoalescing::CreateChunkLoad(Instruction* seedi, BufChunk* c
     {
         // bindless case
         LdRawIntrinsic* ldRaw = cast<LdRawIntrinsic>(seedi);
+        assert(!ldRaw->isVolatile()); // no constant buffer volatile loads
         Value* eac = irBuilder->getInt32(chunk->chunkStart * chunk->elementSize);
         if (chunk->baseIdxV)
         {
@@ -1459,7 +1462,8 @@ Instruction* ConstantCoalescing::CreateChunkLoad(Instruction* seedi, BufChunk* c
         {
             ldRaw->getResourceValue(),
             eac,
-            irBuilder->getInt32(alignment)
+            irBuilder->getInt32(alignment),
+            irBuilder->getFalse()
         };
         Function* ldRawFn = GenISAIntrinsic::getDeclaration(
             curFunc->getParent(),

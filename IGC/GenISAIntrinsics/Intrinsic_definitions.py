@@ -86,10 +86,40 @@ Imported_Intrinsics = \
     "GenISA_storestructured4": ["void",["anyptr","int","int","float","float","float","float"],"None"],
     "GenISA_typedread": ["float4",["anyptr","int","int","int", "int"],"ReadArgMem"],
     "GenISA_typedwrite": ["void",["anyptr","int","int","int","int","float","float","float","float"],"None"],
-    "GenISA_ldraw_indexed": ["any:float",["anyptr","int", "int"],"ReadArgMem"],
-    "GenISA_ldrawvector_indexed": ["anyvector",["anyptr","int", "int"],"ReadArgMem"],
-    "GenISA_storeraw_indexed": ["void",["anyptr","int","any:float", "int"],"None"],
-    "GenISA_storerawvector_indexed": ["void",["anyptr","int","anyvector", "int"],"None"],
+    # Read a scalar value from a buffer pointer at byte offset
+    "GenISA_ldraw_indexed":
+    ["any:float",
+     ["anyptr", # buffer pointer, result of GetBufferPtr
+      "int",    # offset from the base pointer, in bytes
+      "int",    # aligment in bytes
+      "bool"],  # volatile, must be an immediate
+     "ReadArgMem"],
+    # Read a vector from a buffer pointer at byte offset
+    "GenISA_ldrawvector_indexed":
+    ["anyvector",
+     ["anyptr", # buffer pointer, result of GetBufferPtr
+      "int",    # offset from the base pointer, in bytes
+      "int",    # aligment in bytes
+      "bool"],  # volatile, must be an immediate
+     "ReadArgMem"],
+    # Write a scalar value to a buffer pointer at byte offset
+    "GenISA_storeraw_indexed":
+    ["void",
+     ["anyptr",    # buffer pointer, result of GetBufferPtr
+      "int",       # offset from the base pointer, in bytes
+      "any:float", # value to store
+      "int",       # aligment in bytes
+      "bool"],  # volatile, must be an immediate
+     "None"],
+    # Write a vector to a buffer pointer at byte offset
+    "GenISA_storerawvector_indexed":
+    ["void",
+     ["anyptr",    # buffer pointer, result of GetBufferPtr
+      "int",       # offset from the base pointer, in bytes
+      "anyvector", # value to store
+      "int",       # aligment in bytes
+      "bool"],     # volatile, must be an immediate
+     "None"],
     "GenISA_intatomicraw": ["anyint",["anyptr","int",0,"int"],"ReadWriteArgMem"],
     "GenISA_floatatomicraw": ["anyfloat",["anyptr","int",0,"int"],"ReadWriteArgMem"],
     "GenISA_intatomicrawA64": ["anyint",["anyptr","anyptr",0,"int"],"ReadWriteArgMem"],

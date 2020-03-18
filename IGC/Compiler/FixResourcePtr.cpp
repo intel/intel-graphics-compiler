@@ -303,7 +303,8 @@ Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst* inst, Instruction* bufPtr, 
     {
         bufPtr,
         offsetVal,
-        builder->getInt32(alignment)
+        builder->getInt32(alignment),
+        builder->getInt1(inst->isVolatile())
     };
     Value* ld = builder->CreateCall(l, attr);
     if (!inst->getType()->isVectorTy())
@@ -358,7 +359,8 @@ Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst* inst, Instruction* bufPtr
         bufPtr,
         offsetVal,
         storeVal,
-        builder->getInt32(storeVal->getType()->getScalarSizeInBits() / 8)
+        builder->getInt32(storeVal->getType()->getScalarSizeInBits() / 8),
+        builder->getInt1(inst->isVolatile())
     };
     Value* st = builder->CreateCall(l, attr);
     return st;

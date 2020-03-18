@@ -107,6 +107,10 @@ namespace IGC
                 return IGCIRBuilder<>::getInt32(C);
             }
 
+            ConstantInt* getFalse() {
+                return IGCIRBuilder<>::getFalse();
+            }
+
             using IGCIRBuilder<>::getCurrentDebugLocation;
             using IGCIRBuilder<>::getInt32Ty;
             using IGCIRBuilder<>::getFloatTy;

@@ -57,7 +57,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublicEnums.h"
-
+#include "common/Types.hpp"
 #include "GenIntrinsics.h"
 
 namespace llvm {
@@ -486,6 +486,13 @@ public:
     inline unsigned int getAlignment() const {
         return static_cast<unsigned int>(cast<ConstantInt>(getAlignmentValue())->getZExtValue());
     }
+    inline bool isVolatile() const {
+        assert(isa<ConstantInt>(getOperand(3)));
+        ConstantInt* val = dyn_cast<ConstantInt>(getOperand(3));
+        const bool isVolatile = val ? val->getZExtValue() : false;
+        return isVolatile;
+    }
+
 
     inline void setAlignment(unsigned int alignment)
     {
@@ -514,7 +521,7 @@ public:
     static inline bool classof(const Value *V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
-    inline Value* AlignmentValue() const {
+    inline Value* getAlignmentValue() const {
         return getOperand(3);
     }
     inline Value* getOffsetValue() const
@@ -523,6 +530,18 @@ public:
     }
     inline Value* getResourceValue() const {
         return getOperand(0);
+    }
+    inline unsigned int getAlignment() const {
+        assert(isa<ConstantInt>(getAlignmentValue()));
+        ConstantInt* val = dyn_cast<ConstantInt>(getAlignmentValue());
+        const unsigned int alignment = val ? int_cast<unsigned int>(val->getZExtValue()) : 1;
+        return alignment;
+    }
+    inline bool isVolatile() const {
+        assert(isa<ConstantInt>(getOperand(4)));
+        ConstantInt* val = dyn_cast<ConstantInt>(getOperand(4));
+        const bool isVolatile = val ? val->getZExtValue() : false;
+        return isVolatile;
     }
 
     inline void setOffsetValue(Value* V) {

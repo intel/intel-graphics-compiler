@@ -624,10 +624,13 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
             PointerType* ptrType = PointerType::get(pBufferType, directAS);
             pBuffer = builder.CreateIntToPtr(offsetVal, ptrType);
 
-            unsigned alignment = cast<LdRawIntrinsic>(pIntr)->getAlignment();
+            const LdRawIntrinsic* const ldRawIntr = cast<LdRawIntrinsic>(pIntr);
 
             // Promote ldraw back to load
-            pNewBufferAccessInst = builder.CreateAlignedLoad(pBuffer, alignment);
+            pNewBufferAccessInst = builder.CreateAlignedLoad(
+                pBuffer,
+                ldRawIntr->getAlignment(),
+                ldRawIntr->isVolatile());
             break;
         }
         case GenISAIntrinsic::GenISA_storeraw_indexed:
@@ -637,11 +640,15 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
             PointerType* ptrType = PointerType::get(pBufferType, directAS);
             pBuffer = builder.CreateIntToPtr(offsetVal, ptrType);
 
-            unsigned alignment = (unsigned)llvm::cast<llvm::ConstantInt>(pIntr->getOperand(3))->getZExtValue();
+            const StoreRawIntrinsic* const storeRawIntr = cast<StoreRawIntrinsic>(pIntr);
 
             // Promote storeraw back to store
             Value* storeVal = pIntr->getOperand(2);
-            pNewBufferAccessInst = builder.CreateAlignedStore(storeVal, pBuffer, alignment);
+            pNewBufferAccessInst = builder.CreateAlignedStore(
+                storeVal,
+                pBuffer,
+                storeRawIntr->getAlignment(),
+                storeRawIntr->isVolatile());
             break;
         }
         default:

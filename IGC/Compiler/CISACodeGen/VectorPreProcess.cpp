@@ -141,7 +141,7 @@ namespace
         }
         bool getIsVolatile() const
         {
-            return isa<LoadInst>(m_inst) ? getLoad()->isVolatile() : false;
+            return isa<LoadInst>(m_inst) ? getLoad()->isVolatile() : getLdRaw()->isVolatile();
         }
         Instruction* Create(Type* returnType)
         {
@@ -162,7 +162,7 @@ namespace
                 Value* offsetVal = hasComputedOffset ? ptr : ldraw->getOffsetValue();
                 ptr = ldraw->getResourceValue();
                 Type* types[2] = { returnType , ptr->getType() };
-                Value* args[3] = { ptr, offsetVal, m_builder.getInt32(alignment) };
+                Value* args[4] = { ptr, offsetVal, m_builder.getInt32(alignment), m_builder.getInt1(isVolatile) };
                 Function* newLdRawFunction =
                     GenISAIntrinsic::getDeclaration(ldraw->getModule(), ldraw->getIntrinsicID(), types);
                 return m_builder.CreateCall(newLdRawFunction, args);
@@ -209,15 +209,15 @@ namespace
         Instruction* const m_inst;
         IRBuilder<> m_builder;
         AbstractStoreInst(StoreInst* SI) : m_inst(SI), m_builder(SI) {}
-        AbstractStoreInst(GenIntrinsicInst* SRI) : m_inst(SRI), m_builder(SRI) {}
+        AbstractStoreInst(StoreRawIntrinsic* SRI) : m_inst(SRI), m_builder(SRI) {}
 
         StoreInst* getStore() const
         {
             return cast<StoreInst>(m_inst);
         }
-        GenIntrinsicInst* getStoreRaw() const
+        StoreRawIntrinsic* getStoreRaw() const
         {
-            return cast<GenIntrinsicInst>(m_inst);
+            return cast<StoreRawIntrinsic>(m_inst);
         }
     public:
         Instruction* getInst() const
@@ -226,7 +226,7 @@ namespace
         }
         unsigned int getAlignment() const
         {
-            return isa<StoreInst>(m_inst) ? getStore()->getAlignment() : (unsigned int)llvm::cast<ConstantInt>(getStoreRaw()->getArgOperand(3))->getZExtValue();
+            return isa<StoreInst>(m_inst) ? getStore()->getAlignment() : getStoreRaw()->getAlignment();
         }
         void setAlignment(unsigned int alignment)
         {
@@ -262,7 +262,7 @@ namespace
                 Value* offset = hasComputedOffset ? ptr : getStoreRaw()->getArgOperand(1);
                 ptr = getPointerOperand();
                 Type* types[2] = { ptr->getType(), newType };
-                Value* args[4] = { ptr, offset, storedValue, m_builder.getInt32(alignment) };
+                Value* args[5] = { ptr, offset, storedValue, m_builder.getInt32(alignment), m_builder.getInt1(isVolatile) };
                 Function* newStoreRawFunction =
                     GenISAIntrinsic::getDeclaration(getStoreRaw()->getModule(), getStoreRaw()->getIntrinsicID(), types);
                 return m_builder.CreateCall(newStoreRawFunction, args);
@@ -293,13 +293,9 @@ namespace
             {
                 return Optional<AbstractStoreInst>(SI);
             }
-            else if (GenIntrinsicInst * II = dyn_cast<GenIntrinsicInst>(value))
+            else if (StoreRawIntrinsic* SRI = dyn_cast<StoreRawIntrinsic>(value))
             {
-                if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed ||
-                    II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)
-                {
-                    return Optional<AbstractStoreInst>(II);
-                }
+                return Optional<AbstractStoreInst>(SRI);
             }
             return Optional<AbstractStoreInst>();
         }
