@@ -2789,6 +2789,14 @@ void FlowGraph::markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfo
 //    If all active simd lanes on entry to shader/kernel are
 //    active in a BB,  that BB is NOT divergent;  otherwise,
 //    it is divergent.
+//
+//    Note that this does not require the number of all the
+//    active simd lanes equals to the simd dispatch width!
+//    For example,  simd8 kernel might have 4 active lanes
+//    on entry to the kernel, thus if any BB of the kernel
+//    has less than 4 active lanes,  it is divergent! As
+//    matter of fact, the entry BB must not be divergent.
+//
 // Note: this will be used to replace inSIMDCF gradually.
 void FlowGraph::markDivergentBBs()
 {
@@ -2847,6 +2855,9 @@ void FlowGraph::markDivergentBBs()
             LastJoinBBId = -1;
         }
     };
+    auto isPriorToLastJoin = [&](G4_BB* aBB) ->bool {
+        return (int)aBB->getId() < LastJoinBBId;
+    };
 
     if (BBs.empty())
     {
@@ -2899,12 +2910,76 @@ void FlowGraph::markDivergentBBs()
         }
     }
 
+    // Check if the BB referred to by CurrIT needs to update lastJoin and do
+    // updating if so.  The IterEnd is the end iterator of current function
+    // that CurrIT refers to.
+    //
+    //    1. update lastJoinBB if needed
+    //    2. set up divergence for entry of subroutines if divergent
+    //
+    auto updateLastJoinForBB = [&](BB_LIST_ITER& CurrIT, BB_LIST_ITER& IterEnd) ->bool
+    {
+        G4_BB* aBB = *CurrIT;
+        if (aBB->size() == 0)
+        {
+            return false;
+        }
+
+        int old_lastJoinBBId = LastJoinBBId;
+
+        G4_INST* lastInst = aBB->back();
+        if ((lastInst->opcode() == G4_while ||
+             (lastInst->opcode() == G4_goto && lastInst->asCFInst()->isBackward())) &&
+            (!lastInst->asCFInst()->isUniform() || aBB->isDivergent()))
+        {
+            if (CurrIT != IterEnd) {
+                auto NI = CurrIT;
+                ++NI;
+                G4_BB* joinBB = *NI;
+                pushJoin(joinBB);
+            }
+        }
+        else if (((lastInst->opcode() == G4_goto && !lastInst->asCFInst()->isBackward()) ||
+             lastInst->opcode() == G4_break) &&
+            (!lastInst->asCFInst()->isUniform() || aBB->isDivergent()))
+        {
+            // forward goto/break : the last Succ BB is our target BB
+            // For break, it should be the BB right after while inst.
+            G4_BB* joinBB = aBB->Succs.back();
+            pushJoin(joinBB);
+        }
+        else if (lastInst->opcode() == G4_if &&
+            (!lastInst->asCFInst()->isUniform() || aBB->isDivergent()))
+        {
+            G4_Label* labelInst = lastInst->asCFInst()->getUip();
+            G4_BB* joinBB = findLabelBB(CurrIT, IterEnd, labelInst->getLabel());
+            assert(joinBB && "ICE(vISA) : missing endif label!");
+            pushJoin(joinBB);
+        }
+        else if (lastInst->opcode() == G4_call || lastInst->opcode() == G4_pseudo_fcall)
+        {
+            // If this function is already in divergent branch, the callee
+            // must be in a divergent branch!.
+            if (aBB->isDivergent() || lastInst->getPredicate() != nullptr)
+            {
+                FuncInfo* calleeFunc = aBB->getCalleeInfo();
+                if (funcInfoIndex.count(calleeFunc))
+                {
+                    int ix = funcInfoIndex[calleeFunc];
+                    allFuncs[ix].InvokedFromDivergentBB = true;
+                }
+            }
+        }
+
+        return old_lastJoinBBId != LastJoinBBId;
+    };
+
     for (int i = 0; i < numFuncs; ++i)
     {
         // each function: [IT, IE)
-        BB_LIST_ITER& IT = allFuncs[i].StartI;
+        BB_LIST_ITER& IS = allFuncs[i].StartI;
         BB_LIST_ITER& IE = allFuncs[i].EndI;
-        if (IT == IE)
+        if (IS == IE)
         {
             // sanity check
             continue;
@@ -2913,7 +2988,7 @@ void FlowGraph::markDivergentBBs()
         if (allFuncs[i].InvokedFromDivergentBB)
         {
             // subroutine's divergent on entry. Mark every BB as divergent
-            for (; IT != IE; ++IT)
+            for (auto IT = IS; IT != IE; ++IT)
             {
                 G4_BB* BB = *IT;
 
@@ -2941,15 +3016,32 @@ void FlowGraph::markDivergentBBs()
         }
 
         LastJoinBBId = -1;
-        for (; IT != IE; ++IT)
+        for (auto IT = IS; IT != IE; ++IT)
         {
             G4_BB* BB = *IT;
 
-            // This handles cases in which BB has endif/while/join as well as others
-            // so we don't need to explicitly check whether BB has endif/while/join, etc.
+            // join could be: explicit (join inst) or implicit (endif/while)
             popJoinIfMatch(BB);
 
             // Handle loop
+            //    Loop needs to be scanned twice in order to get an accurate marking.
+            //    For example,
+            //         L:
+            //    B1:
+            //            if (p0) goto B2
+            //               ...
+            //            else
+            //               if (p1) goto OUT
+            //            endif
+            //    B2:
+            //            (p2) goto L
+            //    B3:
+            //    OUT:
+            //
+            // We don't know whether B1 is divergent until the entire loop body has been
+            // scanned, so that we know any out-of-loop gotos (goto out and goto L in this
+            // case). This require scanning the loop twice.
+            //
             for (auto iter = BB->Preds.begin(), iterEnd = BB->Preds.end(); iter != iterEnd; ++iter)
             {
                 G4_BB* predBB = *iter;
@@ -2965,9 +3057,17 @@ void FlowGraph::markDivergentBBs()
                     // not loop
                     continue;
                 }
+
+                // If lastJoin is already after loop end, no need to scan loop twice
+                // as all BBs in the loop must be divergent
+                if (isPriorToLastJoin(predBB))
+                {
+                    continue;
+                }
+
                 BB_LIST_ITER LoopIterEnd = std::find(BBs.begin(), BBs.end(), predBB);
 
-                // joinBB is the BB right after backward-goto/while
+                // joinBB of a loop is the BB right after backward-goto/while
                 BB_LIST_ITER loopJoinIter = LoopIterEnd;
                 ++loopJoinIter;
                 if (loopJoinIter == BBs.end())
@@ -2983,87 +3083,37 @@ void FlowGraph::markDivergentBBs()
                     }
                     continue;
                 }
+
+                // If backward goto/while is divergent, update lastJoin with
+                // loop's join BB.  No need to pre-scan loop!
                 G4_BB* joinBB = *loopJoinIter;
-
-                // Scan loop to find any out-of-loop branch, set join if found
-                for (auto LoopIter = IT; LoopIter != LoopIterEnd; ++LoopIter)
-                {
-                    G4_BB* BB1 = *LoopIter;
-                    if (BB1->size() == 0)
-                    {
-                        continue;
-                    }
-                    G4_INST* tmpInst = BB1->back();
-                    if (tmpInst->opcode() == G4_break || tmpInst->opcode() == G4_goto)
-                    {   // Assume divergent. todo: going over loop twice to find if it's divergent.
-                        G4_BB* newJoinBB = joinBB;
-                        if (tmpInst->opcode() == G4_goto)
-                        {
-                            G4_BB* targetBB = BB1->Succs.back();
-                            if (targetBB->getId() <= predBB->getId())
-                            {
-                                continue;
-                            }
-                            newJoinBB = targetBB;
-                        }
-
-                        // Need to find a 1st join, the other joins will
-                        // be examined within the outer loop.
-                        pushJoin(newJoinBB);
-                        break;
-                    }
-                }
-
                 if (!bInst->asCFInst()->isUniform() &&
                     bInst->opcode() != G4_jmpi)
                 {
                     pushJoin(joinBB);
+                    continue;
+                }
+
+                // pre-scan loop to find any out-of-loop branch, set join if found
+                for (auto LoopIter = IT; LoopIter != LoopIterEnd; ++LoopIter)
+                {
+                    if (updateLastJoinForBB(LoopIter, IE))
+                    {
+                        if (isPriorToLastJoin(predBB))
+                        {
+                            continue;
+                        }
+                    }
                 }
             }
 
-            if ((int)BB->getId() < LastJoinBBId) {
+            if (isPriorToLastJoin(BB)) {
                 BB->setDivergent(true);
                 // set InSIMDFlow as well, will merge these two fields gradually
                 BB->setInSimdFlow(true);
             }
 
-            if (BB->size() == 0)
-            {
-                continue;
-            }
-
-            G4_INST* lastInst = BB->back();
-            if (((lastInst->opcode() == G4_goto && !lastInst->asCFInst()->isBackward()) ||
-                 lastInst->opcode() == G4_break) &&
-                (!lastInst->asCFInst()->isUniform() || BB->isDivergent()))
-            {
-                // forward goto/break : the last Succ BB is our target BB
-                // For break, it should be the BB right after while inst.
-                G4_BB* joinBB = BB->Succs.back();
-                pushJoin(joinBB);
-            }
-            else if (lastInst->opcode() == G4_if &&
-                (!lastInst->asCFInst()->isUniform() || BB->isDivergent()))
-            {
-                G4_Label* labelInst = lastInst->asCFInst()->getUip();
-                G4_BB* joinBB = findLabelBB(IT, IE, labelInst->getLabel());
-                assert(joinBB && "ICE(vISA) : missing endif label!");
-                pushJoin(joinBB);
-            }
-            else if (lastInst->opcode() == G4_call || lastInst->opcode() == G4_pseudo_fcall)
-            {
-                // If this function is already in divergent branch, the callee
-                // must be in a divergent branch!.
-                if (BB->isDivergent() || lastInst->getPredicate() != nullptr)
-                {
-                    FuncInfo* calleeFunc = BB->getCalleeInfo();
-                    if (funcInfoIndex.count(calleeFunc))
-                    {
-                        int ix = funcInfoIndex[calleeFunc];
-                        allFuncs[ix].InvokedFromDivergentBB = true;
-                    }
-                }
-            }
+            (void)updateLastJoinForBB(IT, IE);
         }
     }
     return;

@@ -290,8 +290,8 @@ class G4_BB
     bool inSimdFlow;
 
     // If a BB is divergent, this field is set to true. By divergent, it means
-    // that among all active lanes on entry to shader/kernel, some lanes are not
-    // (potentially) active in this BB.
+    // that among all active lanes on entry to shader/kernel, not all lanes may
+    // be active in this BB.
     // Note : this field will be used to replace inSimdFlow.
     bool divergent;
 

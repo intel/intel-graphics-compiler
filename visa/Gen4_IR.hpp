@@ -1219,8 +1219,10 @@ class G4_InstCF : public G4_INST
     // True if this is a backward branch.
     bool isBackwardBr;
 
-    // True if this branch is a uniform (all active lanes goes to the same target)
-    // Valid for if/while/break/goto/jmpi only. This could be encoded in instOpt
+    // True if this branch is a uniform. By uniform, it means that all active lanes
+    // at the branch goes to the same target (Valid for if/while/break/goto/jmpi only.
+    // This info could be encoded in instOpt.).  Note that all active lanes at the
+    // branch could be subset of all active lanes on entry to shader/kernel.
     bool isUniformBr;
 
 public:
