@@ -77,8 +77,7 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use,
                 if (selInst->getOperand(0) == inst)
                     return true;
             }
-            else
-                return false;
+            return false;
         }
     }
     propagate = true;
