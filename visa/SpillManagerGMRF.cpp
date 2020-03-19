@@ -2180,24 +2180,25 @@ unsigned int SpillManagerGRF::createSpillSendMsgDescOWord(unsigned int height, u
     return message;
 }
 
+// Create the message descriptor for a spill send instruction for spilled
+// post destinations of send instructions.
 
-// BDW only
 G4_Imm *
 SpillManagerGRF::createSpillSendMsgDesc (
     unsigned    regOff,
     unsigned    height,
     unsigned &  execSize,
-    G4_RegVar*  base
+    G4_RegVar* base
 )
 {
     unsigned message = 0;
 
-    if (useScratchMsg_)
+    if( useScratchMsg_)
     {
         unsigned headerPresent = 0x80000;
         message = headerPresent;
         unsigned msgLength = useSplitSend() ? SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT : SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT + height;
-        message |= (msgLength << getSendMsgLengthBitOffset());
+        message |= (msgLength << getSendMsgLengthBitOffset() );
         message |= (1 << SCRATCH_MSG_DESC_CATEORY);
         message |= (1 << SCRATCH_MSG_DESC_CHANNEL_MODE);
         message |= (1 << SCRATCH_MSG_DESC_OPERATION_MODE);
@@ -2213,7 +2214,7 @@ SpillManagerGRF::createSpillSendMsgDesc (
     {
         message = createSpillSendMsgDescOWord(height, execSize);
     }
-    return builder_->createImm(message, Type_UD);
+    return builder_->createImm (message, Type_UD);
 }
 
 // Create the message descriptor for a spill send instruction for spilled
@@ -2227,7 +2228,7 @@ SpillManagerGRF::createSpillSendMsgDesc (
 {
     unsigned message = 0;
 
-    if (useScratchMsg_)
+    if( useScratchMsg_)
     {
         /*
         bits    description
@@ -2246,8 +2247,8 @@ SpillManagerGRF::createSpillSendMsgDesc (
         17    Operation type (0 - read, 1 - write)
         18    Category (1 - scratch block read/write)
         */
-        unsigned segmentByteSize = getSegmentByteSize(spilledRangeRegion, execSize);
-        unsigned writePayloadCount = cdiv(segmentByteSize, REG_BYTE_SIZE);
+        unsigned segmentByteSize = getSegmentByteSize (spilledRangeRegion, execSize);
+        unsigned writePayloadCount = cdiv (segmentByteSize, REG_BYTE_SIZE);
         unsigned headerPresent = 0x80000;
         message |= headerPresent;
 
@@ -2255,7 +2256,7 @@ SpillManagerGRF::createSpillSendMsgDesc (
         // message length = 1 if we are using sends, 1 + payload otherwise
         unsigned messageLength = useSplitSend() ? payloadHeaderCount :
             writePayloadCount + payloadHeaderCount;
-        message |= (messageLength << getSendMsgLengthBitOffset());
+        message |= (messageLength << getSendMsgLengthBitOffset() );
         message |= (1 << SCRATCH_MSG_DESC_CATEORY); // category
         message |= (1 << SCRATCH_MSG_DESC_CHANNEL_MODE); // channel mode
         message |= (1 << SCRATCH_MSG_DESC_OPERATION_MODE); // write operation
@@ -2286,21 +2287,77 @@ SpillManagerGRF::createSpillSendMsgDesc (
     else
     {
         unsigned segmentByteSize =
-            getSegmentByteSize(spilledRangeRegion, execSize);
-        unsigned writePayloadCount = cdiv(segmentByteSize, REG_BYTE_SIZE);
+            getSegmentByteSize (spilledRangeRegion, execSize);
+        unsigned writePayloadCount = cdiv (segmentByteSize, REG_BYTE_SIZE);
         unsigned statelessSurfaceIndex = 0xFF;
         message = statelessSurfaceIndex;
 
         unsigned headerPresent = 0x80000;
         message |= headerPresent;
         unsigned messageType = getSendOwordWriteType();
-        message |= messageType << getSendWriteTypeBitOffset();
+        message |= messageType << getSendWriteTypeBitOffset ();
         unsigned payloadHeaderCount = OWORD_PAYLOAD_HEADER_MAX_HEIGHT;
         unsigned messageLength = useSplitSend() ? payloadHeaderCount : writePayloadCount + payloadHeaderCount;
-        message |= messageLength << getSendMsgLengthBitOffset();
+        message |= messageLength << getSendMsgLengthBitOffset ();
         unsigned segmentOwordSize = cdiv(segmentByteSize, OWORD_BYTE_SIZE);
-        message |= blockSendBlockSizeCode(segmentOwordSize);
-        execSize = LIMIT_SEND_EXEC_SIZE(segmentOwordSize * DWORD_BYTE_SIZE);
+        message |= blockSendBlockSizeCode (segmentOwordSize);
+        execSize = LIMIT_SEND_EXEC_SIZE (segmentOwordSize * DWORD_BYTE_SIZE);
+    }
+    return builder_->createImm (message, Type_UD);
+}
+
+
+// Create the message descriptor for a spill send instruction for spilled
+// destination regions.
+G4_Imm *
+SpillManagerGRF::createSpillSendMsgDesc(
+    int size,
+    int offset
+)
+{
+    unsigned message = 0;
+
+    if (useScratchMsg_)
+    {
+        /*
+        bits    description
+        18:0    function control
+        19    Header present
+        24:20    Response length
+        28:25    Message length
+        31:29    MBZ
+
+        18:0
+        11:0    Offset (12b hword offset)
+        13:12    Block size (00 - 1 register, 01 - 2 regs, 10 - reserved, 11 - 4 regs)
+        14    MBZ
+        15    Invalidate after read (0 - no invalidate, 1 - invalidate)
+        16    Channel mode (0 - oword, 1 - dword)
+        17    Operation type (0 - read, 1 - write)
+        18    Category (1 - scratch block read/write)
+        */
+        unsigned writePayloadCount = size;
+        unsigned headerPresent = 0x80000;
+        message |= headerPresent;
+
+        unsigned payloadHeaderCount = SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT;
+        // message length = 1 if we are using sends, 1 + payload otherwise
+        unsigned messageLength = useSplitSend() ? payloadHeaderCount :
+            writePayloadCount + payloadHeaderCount;
+        message |= (messageLength << getSendMsgLengthBitOffset());
+        message |= (1 << SCRATCH_MSG_DESC_CATEORY); // category
+        message |= (1 << SCRATCH_MSG_DESC_CHANNEL_MODE); // channel mode
+        message |= (1 << SCRATCH_MSG_DESC_OPERATION_MODE); // write operation
+        unsigned numGRFs = size;
+
+        unsigned blocksize_encoding = getScratchBlocksizeEncoding(numGRFs);
+
+        message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
+        message |= (offset >> SCRATCH_SPACE_ADDRESS_UNIT); // displacement
+    }
+    else
+    {
+        MUST_BE_TRUE(false, "should not reach here");
     }
     return builder_->createImm(message, Type_UD);
 }
@@ -2455,6 +2512,37 @@ SpillManagerGRF::sendInSpilledRegVarPortions (
     }
 }
 
+// Copy out the source regvar to the destination regvar starting at the dstOff
+// row. The regvars have to be 256 bit wide.
+
+void
+SpillManagerGRF::copyOut256BitWideRegVar (
+    G4_Declare * dstRegDcl,
+    G4_Declare * srcRegDcl,
+    unsigned     dstOff
+)
+{
+    assert (srcRegDcl->getNumElems () * srcRegDcl->getElemSize () ==
+            REG_BYTE_SIZE &&
+            dstRegDcl->getNumElems () * dstRegDcl->getElemSize () ==
+            REG_BYTE_SIZE );
+    int numCopies = dstRegDcl->getNumRows () - dstOff;
+
+    for (int i = 0; i < numCopies; i++) {
+        const RegionDesc * rDesc =
+            builder_->rgnpool.createRegion (REG_DWORD_SIZE, REG_DWORD_SIZE, 1);
+        G4_SrcRegRegion * srcRegRegion =
+            builder_->createSrcRegRegion(
+            Mod_src_undef, Direct, srcRegDcl->getRegVar (),
+            (short) i, SUBREG_ORIGIN, rDesc, Type_UD);
+        G4_DstRegRegion * dstRegRegion = builder_->createDst(
+            dstRegDcl->getRegVar (), dstOff + i, SUBREG_ORIGIN,
+            DEF_HORIZ_STRIDE, Type_UD);
+        createMovInst (REG_DWORD_SIZE, dstRegRegion, srcRegRegion);
+        numGRFMove ++;
+    }
+}
+
 // Check if we need to perform the pre-load of the spilled region's
 // segment from spill memory. A pre-load is required under the following
 // circumstances:
@@ -2550,16 +2638,13 @@ void SpillManagerGRF::preloadSpillRange (
 
         numGRFFill++;
         createFillInstr(
-                spillRangeDcl, mRangeDcl, preloadRegion, execSize);
+                spillRangeDcl, mRangeDcl, preloadRegion, execSize, 0);
     }
 }
 
-// Create a spill for a send destination
-// spillRangeDcl -- the temp source for our spill
-// mRangeDcl -- the spill message header. This is a don't care if scratch message is used
-// regOff -- GRF offset into spillRangeDcl. This can be non-zero if <height> exceeeds the max spill message size
-// height -- size (in GRF) of the spilled operand (thus also the message size)
-// srcRegOff -- GRF offset into the original send dst being spilled.
+// Create the send instruction to perform the spill of the spilled regvars's
+// segment into spill memory.
+
 G4_INST *
 SpillManagerGRF::createSpillSendInstr (
     G4_Declare *      spillRangeDcl,
@@ -2569,55 +2654,66 @@ SpillManagerGRF::createSpillSendInstr (
     unsigned          srcRegOff
 )
 {
+    unsigned execSize (0);
 
-    G4_INST* sendInst = nullptr;
+    G4_Imm * messageDescImm = NULL;
+
+    if( useScratchMsg_)
+    {
+        G4_RegVar* r = spillRangeDcl->getRegVar();
+        G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
+        messageDescImm =
+            createSpillSendMsgDesc (srcRegOff, height, execSize, rvar->getBaseRegVar());
+#ifdef _DEBUG
+        int offset = (messageDescImm->getInt() & 0xFFF) * GENX_GRF_REG_SIZ;
+        MUST_BE_TRUE(offset >= globalScratchOffset, "incorrect offset");
+#endif
+    }
+    else
+    {
+        messageDescImm =
+            createSpillSendMsgDesc (regOff, height, execSize);
+    }
+
+    G4_DstRegRegion * postDst = builder_->createNullDst(execSize > 8 ? Type_UW : Type_UD);
+
+    G4_INST* sendInst = NULL;
     if (useSplitSend())
     {
         const RegionDesc* region = builder_->getRegionStride1();
         G4_SrcRegRegion* headerOpnd = builder_->Create_Src_Opnd_From_Dcl(mRangeDcl, region);
         G4_SrcRegRegion* srcOpnd = createBlockSpillRangeSrcRegion(spillRangeDcl->getRegVar (), regOff);
 
-        G4_RegVar* r = spillRangeDcl->getRegVar();
-        G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
-        int offset = getDisp(rvar->getBaseRegVar());
-        getSpillOffset(offset);
-        auto off = (offset + srcRegOff * getGRFSize()) / HWORD_BYTE_SIZE;
-        G4_Declare* fp = builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls() ?
-            builder_->kernel.fg.getFramePtrDcl() : nullptr;
-
-        // FIXME: we should not pass in the header here, build it in expand spill instead
-        sendInst = builder_->createSpill(builder_->createNullDst(Type_UW), headerOpnd, srcOpnd, 16,
-            height, off, fp,
+        auto off = G4_SpillIntrinsic::InvalidOffset;
+        G4_Declare* fp = nullptr;
+        if (useScratchMsg_)
+            off = (messageDescImm->getInt() & 0xfff);
+        else
+        {
+            if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+            {
+                G4_RegVar* r = spillRangeDcl->getRegVar();
+                G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
+                int offset = getDisp(rvar->getBaseRegVar());
+                getSpillOffset(offset);
+                // message expects offsets to be in HWord
+                off = (offset + regOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
+                fp = builder_->kernel.fg.getFramePtrDcl();
+            }
+        }
+        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, fp,
             InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
     }
     else
     {
-        // BDW legacy path
-        unsigned execSize(0);
-
-        G4_Imm* messageDescImm = NULL;
-
-        if (useScratchMsg_)
-        {
-            G4_RegVar* r = spillRangeDcl->getRegVar();
-            G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
-            messageDescImm =
-                createSpillSendMsgDesc(srcRegOff, height, execSize, rvar->getBaseRegVar());
-        }
-        else
-        {
-            messageDescImm =
-                createSpillSendMsgDesc(regOff, height, execSize, nullptr);
-        }
-
         G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
             mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
-        auto postDst = builder_->createNullDst(execSize > 8 ? Type_UW : Type_UD);
         sendInst = createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID::DP_DC, true, InstOpt_WriteEnable);
     }
 
     return sendInst;
 }
+
 
 // Create the send instruction to perform the spill of the spilled region's
 // segment into spill memory.
@@ -2631,6 +2727,20 @@ SpillManagerGRF::createSpillSendInstr (
     unsigned          option
 )
 {
+    G4_Imm * messageDescImm =
+        createSpillSendMsgDesc (spilledRangeRegion, execSize);
+
+#ifdef _DEBUG
+    if (useScratchMsg_)
+    {
+        int offset = (messageDescImm->getInt() & 0xFFF) * GENX_GRF_REG_SIZ;
+        MUST_BE_TRUE(offset >= globalScratchOffset, "incorrect offset");
+    }
+#endif
+
+    G4_DstRegRegion * postDst = builder_->createNullDst(execSize > 8 ? Type_UW : Type_UD);
+
+    G4_INST* sendInst = NULL;
     if (useSplitSend())
     {
         unsigned extMsgLength = spillRangeDcl->getNumRows();
@@ -2641,11 +2751,7 @@ SpillManagerGRF::createSpillSendInstr (
         auto off = G4_SpillIntrinsic::InvalidOffset;
         G4_Declare* fp = nullptr;
         if (useScratchMsg_)
-        {
-            int offset = getRegionDisp(spilledRangeRegion);
-            getSpillOffset(offset);
-            off = offset / HWORD_BYTE_SIZE;
-        }
+            off = (messageDescImm->getInt() & 0xfff);
         else
         {
             if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
@@ -2660,23 +2766,182 @@ SpillManagerGRF::createSpillSendInstr (
                 fp = builder_->kernel.fg.getFramePtrDcl();
             }
         }
-        execSize = extMsgLength > 1 ? 16 : 8;
-        G4_DstRegRegion* postDst = builder_->createNullDst(execSize > 8 ? Type_UW : Type_UD);
-        return builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize,
-            (uint16_t)extMsgLength, off, fp, static_cast<G4_InstOption>(option), curInst->getLineNo(),
+        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, (uint16_t)extMsgLength,
+            off, fp, static_cast<G4_InstOption>(option), curInst->getLineNo(),
             curInst->getCISAOff(), curInst->getSrcFilename());
     }
     else
     {
-        // legacy BDW path
-        G4_Imm* messageDescImm =
-            createSpillSendMsgDesc(spilledRangeRegion, execSize);
-        G4_DstRegRegion* postDst = builder_->createNullDst(execSize > 8 ? Type_UW : Type_UD);
-
         G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
             mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
-        return createSendInst((unsigned char)execSize, postDst, payload, messageDescImm, SFID::DP_DC, true, static_cast<G4_InstOption>(option));
+        sendInst = createSendInst((unsigned char)execSize, postDst, payload, messageDescImm, SFID::DP_DC, true, static_cast<G4_InstOption>(option));
     }
+
+    return sendInst;
+}
+
+// Create the message description for a fill send instruction for filled
+// regvars.
+
+G4_Imm *
+SpillManagerGRF::createFillSendMsgDesc (
+    unsigned          regOff,
+    unsigned          height,
+    unsigned &        execSize,
+    G4_RegVar* base
+)
+{
+    unsigned message = 0;
+
+    if( useScratchMsg_)
+    {
+        unsigned segmentByteSize = height * REG_BYTE_SIZE;
+        unsigned responseLength = cdiv (segmentByteSize, REG_BYTE_SIZE);
+        message = responseLength << getSendRspLengthBitOffset ();
+        unsigned headerPresent = 0x80000;
+        message |= SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT << getSendMsgLengthBitOffset ();
+        message |= headerPresent;
+
+        message |= (1 << SCRATCH_MSG_DESC_CATEORY);
+        message |= (0 << SCRATCH_MSG_INVALIDATE_AFTER_READ);
+        unsigned blocksize_encoding = getScratchBlocksizeEncoding(height);
+
+        message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
+
+        int offset = getDisp(base);
+        getSpillOffset(offset);
+        // message expects offsets to be in HWord
+        message |= (offset + regOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
+
+        execSize = 16;
+    }
+    else
+    {
+        unsigned segmentByteSize = height * REG_BYTE_SIZE;
+        unsigned statelessSurfaceIndex = 0xFF;
+        unsigned responseLength = cdiv (segmentByteSize, REG_BYTE_SIZE);
+        responseLength = responseLength << getSendRspLengthBitOffset ();
+        message = statelessSurfaceIndex | responseLength;
+
+        unsigned headerPresent = 0x80000;
+        message |= headerPresent;
+        unsigned messageType = getSendOwordReadType ();
+        message |= messageType << getSendReadTypeBitOffset ();
+        unsigned messageLength = OWORD_PAYLOAD_HEADER_MIN_HEIGHT;
+        message |= messageLength << getSendMsgLengthBitOffset ();
+        unsigned segmentOwordSize =
+            cdiv (segmentByteSize, OWORD_BYTE_SIZE);
+        assert (segmentOwordSize <= 8);
+        message |= blockSendBlockSizeCode (segmentOwordSize);
+        execSize = LIMIT_SEND_EXEC_SIZE (segmentOwordSize * DWORD_BYTE_SIZE);
+    }
+    return builder_->createImm (message, Type_UD);
+}
+
+// Create the message description for a fill send instruction for filled
+// source regions.
+
+template <class REGION_TYPE>
+G4_Imm *
+SpillManagerGRF::createFillSendMsgDesc (
+    REGION_TYPE * filledRangeRegion,
+    unsigned &    execSize
+)
+{
+    unsigned message = 0;
+
+    if( useScratchMsg_)
+    {
+        unsigned segmentByteSize =
+            getSegmentByteSize (filledRangeRegion, execSize);
+        if (filledRangeRegion->crossGRF()) {
+            segmentByteSize = 2 * REG_BYTE_SIZE;
+        }
+
+        unsigned responseLength = cdiv (segmentByteSize, REG_BYTE_SIZE);
+        message = responseLength << getSendRspLengthBitOffset ();
+
+        unsigned headerPresent = 0x80000;
+        message |= headerPresent;
+
+        message |= (SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT << getSendMsgLengthBitOffset());
+        message |= (1 << SCRATCH_MSG_DESC_CATEORY);
+        message |= (0 << SCRATCH_MSG_INVALIDATE_AFTER_READ);
+        // Scratch msg descriptor requires a special encoding for block size
+        /*
+        00 - 1 GRF
+        01 - 2 GRFs
+        10 - reserved
+        11 - 4 GRFs
+        */
+        unsigned blocksize_encoding = getScratchBlocksizeEncoding(responseLength);
+
+        message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
+        int offset = getRegionDisp(filledRangeRegion);
+        getSpillOffset(offset);
+        message |= offset >> SCRATCH_SPACE_ADDRESS_UNIT;
+
+        execSize = 16;
+    }
+    else
+    {
+        unsigned segmentByteSize =
+            getSegmentByteSize (filledRangeRegion, execSize);
+        unsigned statelessSurfaceIndex = 0xFF;
+        unsigned responseLength = cdiv (segmentByteSize, REG_BYTE_SIZE);
+        responseLength = responseLength << getSendRspLengthBitOffset ();
+        message = statelessSurfaceIndex | responseLength;
+
+        unsigned headerPresent = 0x80000;
+        message |= headerPresent;
+        unsigned messageType = getSendOwordReadType ();
+        message |= messageType << getSendReadTypeBitOffset ();
+        unsigned messageLength = OWORD_PAYLOAD_HEADER_MIN_HEIGHT;
+        message |= messageLength << getSendMsgLengthBitOffset ();
+        unsigned segmentOwordSize =
+            cdiv (segmentByteSize, OWORD_BYTE_SIZE);
+        message |= blockSendBlockSizeCode (segmentOwordSize);
+        execSize = LIMIT_SEND_EXEC_SIZE (segmentOwordSize * DWORD_BYTE_SIZE);
+    }
+    return builder_->createImm (message, Type_UD);
+}
+
+
+// size -- number of GRFs to read
+// offset -- in bytes
+G4_Imm* SpillManagerGRF::createFillSendMsgDesc(
+    int size,
+    int offset)
+{
+    uint32_t message = 0;
+    if (useScratchMsg_)
+    {
+        unsigned responseLength = size;
+        message = responseLength << getSendRspLengthBitOffset();
+
+        unsigned headerPresent = 0x80000;
+        message |= headerPresent;
+
+        message |= (SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT << getSendMsgLengthBitOffset());
+        message |= (1 << SCRATCH_MSG_DESC_CATEORY);
+        message |= (0 << SCRATCH_MSG_INVALIDATE_AFTER_READ);
+        // Scratch msg descriptor requires a special encoding for block size
+        /*
+        00 - 1 GRF
+        01 - 2 GRFs
+        10 - reserved
+        11 - 4 GRFs
+        */
+        unsigned blocksize_encoding = getScratchBlocksizeEncoding(responseLength);
+
+        message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
+        message |= (offset >> SCRATCH_SPACE_ADDRESS_UNIT);
+    }
+    else
+    {
+        MUST_BE_TRUE(false, "should not reach here");
+    }
+    return builder_->createImm(message, Type_UD);
 }
 
 G4_INST*
@@ -2688,15 +2953,14 @@ SpillManagerGRF::createFillInstr(
     unsigned          srcRegOff
 )
 {
-    return createFillSendInstr(fillRangeDcl, mRangeDcl, regOff, height, srcRegOff);
+    {
+        return createFillSendInstr(fillRangeDcl, mRangeDcl, regOff, height, srcRegOff);
+    }
 }
 
-// Create a fill for a send source
-// fillRangeDcl -- the temp dst for our fill
-// mRangeDcl -- the spill message header. This is a don't care if scratch message is used
-// regOff -- GRF offset into fillRangeDcl
-// height -- size (in GRF) of the spilled operand (thus also message size)
-// srcRegOff -- GRF offset into the original send src being filled. This determines the offset in scratch space.
+// Create the send instruction to perform the fill of the spilled regvars's
+// segment from spill memory.
+
 G4_INST *
 SpillManagerGRF::createFillSendInstr (
     G4_Declare *      fillRangeDcl,
@@ -2706,38 +2970,69 @@ SpillManagerGRF::createFillSendInstr (
     unsigned          srcRegOff
 )
 {
-    G4_RegVar* r = fillRangeDcl->getRegVar();
-    G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
-    int offset = getDisp(rvar->getBaseRegVar());
-    getSpillOffset(offset);
-    uint32_t off = (offset + srcRegOff * getGRFSize()) / HWORD_BYTE_SIZE;
+    unsigned execSize (0);
+
+    G4_Imm * messageDescImm = NULL;
+
+    if( useScratchMsg_)
+    {
+        G4_RegVar* r = fillRangeDcl->getRegVar();
+        G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
+        messageDescImm =
+            createFillSendMsgDesc (srcRegOff, height, execSize, rvar->getBaseRegVar());
+#ifdef _DEBUG
+        int offset = (messageDescImm->getInt() & 0xFFF) * GENX_GRF_REG_SIZ;
+        MUST_BE_TRUE(offset >= globalScratchOffset, "incorrect offset");
+#endif
+    }
+    else
+    {
+        messageDescImm =
+            createFillSendMsgDesc (regOff, height, execSize);
+    }
 
     G4_DstRegRegion * postDst = builder_->createDst(
         fillRangeDcl->getRegVar (), (short) regOff, SUBREG_ORIGIN,
-        DEF_HORIZ_STRIDE, Type_UW);
+        DEF_HORIZ_STRIDE, (execSize > 8)? Type_UW: Type_UD);
 
     G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
         mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
 
+    unsigned int off = G4_FillIntrinsic::InvalidOffset;
     G4_Declare* fp = nullptr;
-
-    if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+    if (useScratchMsg_)
+        off = (messageDescImm->getInt() & 0xfff);
+    else
     {
-        fp = builder_->kernel.fg.getFramePtrDcl();
+        if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+        {
+            // compute hword offset to emit later when expanding spill/fill intrinsic
+            G4_RegVar* r = fillRangeDcl->getRegVar();
+            G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
+            int offset = getDisp(rvar->getBaseRegVar());
+            getSpillOffset(offset);
+            // message expects offsets to be in HWord
+            off = (offset + regOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
+            fp = builder_->kernel.fg.getFramePtrDcl();
+        }
     }
-    return builder_->createFill(payload, postDst, 16, height, off, fp, InstOpt_WriteEnable,
+    return builder_->createFill(payload, postDst, execSize, height, off, fp, InstOpt_WriteEnable,
         curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 }
+
 
 G4_INST*
 SpillManagerGRF::createFillInstr(
     G4_Declare* fillRangeDcl,
     G4_Declare* mRangeDcl,
     G4_SrcRegRegion* filledRangeRegion,
-    unsigned          execSize
+    unsigned          execSize,
+    unsigned          regOff
 )
 {
-    return createFillSendInstr(fillRangeDcl, mRangeDcl, filledRangeRegion, execSize);
+    {
+        return createFillSendInstr(fillRangeDcl, mRangeDcl, filledRangeRegion, execSize);
+    }
 }
 
 // Create the send instruction to perform the fill of the filled region's
@@ -2753,15 +3048,13 @@ SpillManagerGRF::createFillSendInstr (
 )
 {
     auto oldExecSize = execSize;
+    G4_Imm * messageDescImm =
+        createFillSendMsgDesc (filledRangeRegion, execSize);
 
     if( useScratchMsg_)
     {
         execSize = 16;
     }
-
-    int offset = getRegionDisp(filledRangeRegion);
-    getSpillOffset(offset);
-    uint32_t off = offset / HWORD_BYTE_SIZE;
 
     G4_DstRegRegion * postDst = builder_->createDst(
         fillRangeDcl->getRegVar (), (short) regOff, SUBREG_ORIGIN,
@@ -2770,10 +3063,12 @@ SpillManagerGRF::createFillSendInstr (
     G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
         mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
 
+    unsigned int off = G4_FillIntrinsic::InvalidOffset;
     unsigned segmentByteSize = getSegmentByteSize(filledRangeRegion, oldExecSize);
     G4_Declare* fp = nullptr;
     if (useScratchMsg_)
     {
+        off = (messageDescImm->getInt() & 0xfff);
         if (filledRangeRegion->crossGRF())
         {
             segmentByteSize = 2 * REG_BYTE_SIZE;
@@ -2783,6 +3078,10 @@ SpillManagerGRF::createFillSendInstr (
     {
         if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
         {
+            // compute hword offset to emit later when expanding spill/fill intrinsic
+            int offset = getRegionDisp(filledRangeRegion);
+            getSpillOffset(offset);
+            off = offset >> SCRATCH_SPACE_ADDRESS_UNIT;
             fp = builder_->kernel.fg.getFramePtrDcl();
         }
     }
@@ -2888,8 +3187,9 @@ SpillManagerGRF::sendOutSpilledRegVarPortions (
     if (currentStride)
     {
         initMWritePayload (spillRangeDcl, mRangeDcl, regOff, currentStride);
-
-        createSpillSendInstr(spillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
+        {
+            createSpillSendInstr(spillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
+        }
 
 
         numGRFSpill++;
@@ -3050,9 +3350,10 @@ SpillManagerGRF::insertSpillRangeCode (
         {
             initMWritePayload(
                 spillRangeDcl, mRangeDcl, spilledRegion, execSize);
-            spillSendInst = createSpillSendInstr(
-                spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
-
+            {
+                spillSendInst = createSpillSendInstr(
+                    spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
+            }
             numGRFSpill++;
         }
         if (failSafeSpill_)
