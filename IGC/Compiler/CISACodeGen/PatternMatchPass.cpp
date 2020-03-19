@@ -1349,18 +1349,20 @@ namespace IGC
         bool Match = false;
 
         // Ignore the extract value instruction. Handled in the call inst.
-        bool isExtractFromInlineAsm = false;
         if (CallInst * call = dyn_cast<CallInst>(I.getOperand(0)))
         {
-            isExtractFromInlineAsm = call->isInlineAsm() && call->getType()->isStructTy();
+            if (call->isInlineAsm() && call->getType()->isStructTy())
+            {
+                MarkAsSource(call);
+                return;
+            }
         }
 
-        Match = isExtractFromInlineAsm ||
-            MatchCopyFromStruct(&I) ||
-            matchAddPair(&I) ||
+        Match = matchAddPair(&I) ||
             matchSubPair(&I) ||
             matchMulPair(&I) ||
-            matchPtrToPair(&I);
+            matchPtrToPair(&I) ||
+            MatchCopyFromStruct(&I);
 
         assert(Match && "Unknown `extractvalue` instruction!");
     }
