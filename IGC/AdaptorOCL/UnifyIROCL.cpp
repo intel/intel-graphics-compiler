@@ -433,6 +433,7 @@ static void CommonOCLBasedPasses(
     mpm.add(createDeadCodeEliminationPass());
 
     mpm.add(createBuiltinsConverterPass());
+    mpm.add(new ErrorCheck());
     mpm.add(new ImageFuncResolution());
     mpm.add(new Image3dToImage2darray());
 
