@@ -2994,9 +2994,8 @@ void FlowGraph::markDivergentBBs()
                         continue;
                     }
                     G4_INST* tmpInst = BB1->back();
-                    if ((tmpInst->opcode() == G4_break || tmpInst->opcode() == G4_goto) &&
-                        !tmpInst->asCFInst()->isUniform())
-                    {
+                    if (tmpInst->opcode() == G4_break || tmpInst->opcode() == G4_goto)
+                    {   // Assume divergent. todo: going over loop twice to find if it's divergent.
                         G4_BB* newJoinBB = joinBB;
                         if (tmpInst->opcode() == G4_goto)
                         {
@@ -3035,14 +3034,16 @@ void FlowGraph::markDivergentBBs()
 
             G4_INST* lastInst = BB->back();
             if (((lastInst->opcode() == G4_goto && !lastInst->asCFInst()->isBackward()) ||
-                 lastInst->opcode() == G4_break) && !lastInst->asCFInst()->isUniform())
+                 lastInst->opcode() == G4_break) &&
+                (!lastInst->asCFInst()->isUniform() || BB->isDivergent()))
             {
                 // forward goto/break : the last Succ BB is our target BB
                 // For break, it should be the BB right after while inst.
                 G4_BB* joinBB = BB->Succs.back();
                 pushJoin(joinBB);
             }
-            else if (lastInst->opcode() == G4_if && !lastInst->asCFInst()->isUniform())
+            else if (lastInst->opcode() == G4_if &&
+                (!lastInst->asCFInst()->isUniform() || BB->isDivergent()))
             {
                 G4_Label* labelInst = lastInst->asCFInst()->getUip();
                 G4_BB* joinBB = findLabelBB(IT, IE, labelInst->getLabel());
