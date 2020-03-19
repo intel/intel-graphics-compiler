@@ -320,6 +320,7 @@ namespace IGC
     bool hasCorrectlyRoundedMacros() const {
         return m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
             m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
+            m_platformInfo.eProductFamily != IGFX_JASPERLAKE &&
             m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP;
     }
 
