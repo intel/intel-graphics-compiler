@@ -2302,7 +2302,24 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
 
     IRBuilder<> builder(&I);
 
-    Value* fsub = builder.CreateFSub(ConstantFP::get(I.getType(), 0.0f), I.getOperand(0));
+    Value* fsub = nullptr;
+
+    if (!I.getType()->isVectorTy())
+    {
+        fsub = builder.CreateFSub(ConstantFP::get(I.getType(), 0.0f), I.getOperand(0));
+    }
+    else
+    {
+        uint32_t vectorSize = I.getType()->getVectorNumElements();
+        fsub = llvm::UndefValue::get(I.getType());
+
+        for (int i = 0; i < vectorSize; ++i)
+        {
+            Value* extract = builder.CreateExtractElement(I.getOperand(0), i);
+            Value* extract_fsub = builder.CreateFSub(ConstantFP::get(extract->getType(), 0.0f), extract);
+            fsub = builder.CreateInsertElement(fsub, extract_fsub, i);
+        }
+    }
 
     I.replaceAllUsesWith(fsub);
 }
