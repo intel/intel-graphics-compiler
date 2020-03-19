@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "FunctionUpgrader.h"
 #include "IGCIRBuilder.h"
+#include "Probe.h"
 
 using namespace llvm;
 
@@ -82,13 +83,13 @@ Argument* FunctionUpgrader::GetArgumentFromRebuild(llvm::LoadInst* pPlaceHolderA
         }
         else
         {
-            assert(false && "There is no created new argument, did you call RebuildFunction?");
+            IGC_ASSERT(false && "There is no created new argument, did you call RebuildFunction?");
             return nullptr;
         }
     }
     else
     {
-        assert(false && "Didn't found new argument!");
+        IGC_ASSERT(false && "Didn't found new argument!");
         return nullptr;
     }
 }

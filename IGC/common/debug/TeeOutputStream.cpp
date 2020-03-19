@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "common/debug/TeeOutputStream.hpp"
-
 #include "common/debug/Debug.hpp"
+#include "Probe.h"
 
 namespace IGC
 {
@@ -53,8 +53,8 @@ TeeOutputStream::TeeOutputStream(
     , m_deleteLHS(shouldDeleteLHS)
     , m_deleteRHS(shouldDeleteRHS)
 {
-    assert( nullptr != pLHS && "LHS must not be null" );
-    assert( nullptr != pRHS && "RHS must not be null" );
+    IGC_ASSERT((nullptr != pLHS) && "LHS must not be null");
+    IGC_ASSERT((nullptr != pRHS) && "RHS must not be null");
 }
 
 TeeOutputStream::~TeeOutputStream()

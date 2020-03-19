@@ -33,7 +33,6 @@ PURPOSE: Defines meta data for holding/defining regkey variables
 #include "IGC/common/igc_flags.hpp"
 #include "common/SysUtils.hpp"
 #include <string>
-#include <cassert>
 
 typedef char debugString[256];
 
@@ -137,81 +136,9 @@ struct DEVICE_INFO
         DWORD pciFunction;
         std::string driverRegistryPath;
 
-        DEVICE_INFO::DEVICE_INFO(DEVINST deviceInstance)
-        {
-            deviceID = 0;
-            revisionID = 0;
-            pciBus = 0;
-            pciDevice = 0;
-            pciFunction = 0;
-            get_device_property(deviceInstance, CM_DRP_DEVICEDESC);
-            get_device_property(deviceInstance, CM_DRP_COMPATIBLEIDS);
-            get_device_property(deviceInstance, CM_DRP_DRIVER);
-            get_device_property(deviceInstance, CM_DRP_LOCATION_INFORMATION);
-        }
+        DEVICE_INFO(DEVINST deviceInstance);
 
-        void get_device_property(DEVINST deviceInstace, DWORD property)
-        {
-            wchar_t propertyData[MAX_PATH];
-            DWORD   propertyDataLength = 0;
-
-            // First get the size of the data
-            CONFIGRET status = CM_Get_DevNode_Registry_PropertyW(
-                deviceInstace,
-                property,
-                NULL,
-                NULL,
-                &propertyDataLength,
-                0);
-            // Then fetch the actual property data
-            if (status == CR_BUFFER_SMALL)
-            {
-                status = CM_Get_DevNode_Registry_PropertyW(
-                    deviceInstace,
-                    property,
-                    NULL,
-                    &propertyData[0],
-                    &propertyDataLength,
-                    0);
-            }
-
-            if (status == CR_SUCCESS)
-            {
-                // Convert from UTF-16 (wide char) to UTF-8
-                DWORD convertedStringSize = WideCharToMultiByte(CP_UTF8, 0, &propertyData[0], sizeof(propertyData), NULL, 0, NULL, NULL);
-                std::string propertyString(convertedStringSize, 0);
-                WideCharToMultiByte(CP_UTF8, 0, &propertyData[0], sizeof(propertyData), &propertyString[0], convertedStringSize, NULL, NULL);
-
-                switch (property)
-                {
-                case CM_DRP_COMPATIBLEIDS:
-                    // PCI\VEN_8086&DEV_1912&REV_06
-                    sscanf_s(propertyString.c_str(), "PCI\\VEN_8086&DEV_%x&REV_%x", &deviceID, &revisionID);
-                    break;
-                case CM_DRP_DEVICEDESC:
-                    // Intel(R) HD Graphics 530
-                    description = propertyString.c_str();
-                    break;
-                case CM_DRP_DRIVER:
-                    // {4d36e968-e325-11ce-bfc1-08002be10318}\0001
-                    driverRegistryPath = propertyString.c_str();
-                    break;
-                case CM_DRP_LOCATION_INFORMATION:
-                    // PCI bus 0, device 2, function 0
-                    sscanf_s(propertyString.c_str(), "PCI bus %u, device %u, function %u", &pciBus, &pciDevice, &pciFunction);
-                    break;
-                }
-            }
-            else if (status == CR_NO_SUCH_VALUE)
-            {
-                assert(!"No such property value");
-            }
-            else
-            {
-                assert(!"Failed to get DevNode property");
-            }
-
-        }
+        void get_device_property(DEVINST deviceInstace, DWORD property);
     };
 #endif
 
