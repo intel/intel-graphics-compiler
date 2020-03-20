@@ -675,12 +675,14 @@ public:
         llvm::Value* srcBuffer,
         llvm::Value* offset,
         llvm::Value* alignment,
-        llvm::Type* returnType);
+        llvm::Type* returnType,
+        bool isVolatile = false);
 
     llvm::Value* create_indirectStore(
         llvm::Value* srcBuffer,
         llvm::Value* offset,
-        llvm::Value* data);
+        llvm::Value* data,
+        bool isVolatile = false);
 
     llvm::Value* create_atomicCounterIncrement(llvm::Value* srcBuffer);
     llvm::Value* create_atomicCounterDecrement(llvm::Value* srcBuffer);

@@ -3460,7 +3460,8 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_indirectLo
     llvm::Value* srcBuffer,
     llvm::Value* offset,
     llvm::Value* alignment,
-    llvm::Type* returnType)
+    llvm::Type* returnType,
+    bool isVolatile /* false */)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     llvm::Type* types[] = {
@@ -3471,14 +3472,15 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_indirectLo
         module,
         llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed,
         types);
-    return this->CreateCall3(pfuncLdPtr, srcBuffer, offset, alignment);
+    return this->CreateCall4(pfuncLdPtr, srcBuffer, offset, alignment, this->getInt1(isVolatile));
 }
 
 template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_indirectStore(
     llvm::Value* srcBuffer,
     llvm::Value* offset,
-    llvm::Value* data)
+    llvm::Value* data,
+    bool isVolatile /* false */ )
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     llvm::Type* types[] = {
@@ -3490,7 +3492,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_indirectSt
         llvm::GenISAIntrinsic::GenISA_storerawvector_indexed,
         types);
     llvm::Value* alignment = this->getInt32(data->getType()->getScalarSizeInBits() / 8);
-    return this->CreateCall4(pFunc, srcBuffer, offset, data, alignment);
+    return this->CreateCall5(pFunc, srcBuffer, offset, data, alignment, this->getInt1(isVolatile));
 }
 
 template<bool preserveNames, typename T, typename Inserter>
