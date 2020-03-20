@@ -2106,7 +2106,8 @@ void EmitPass::EmitPtrToPair(GenIntrinsicInst* GII, const SSource Sources[1], co
             m_encoder->Push();
         }
         else {
-            m_encoder->SetSrcRegion(0, 2, 1, 0);
+            if (!Src->IsUniform())
+                m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->SetSrcSubReg(0, 0);
             m_encoder->Copy(Lo, Src);
             m_encoder->Push();
@@ -2120,7 +2121,8 @@ void EmitPass::EmitPtrToPair(GenIntrinsicInst* GII, const SSource Sources[1], co
             m_encoder->Push();
         }
         else {
-            m_encoder->SetSrcRegion(0, 2, 1, 0);
+            if (!Src->IsUniform())
+                m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->SetSrcSubReg(0, 1);
             m_encoder->Copy(Hi, Src);
             m_encoder->Push();

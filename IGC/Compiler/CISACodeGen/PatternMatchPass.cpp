@@ -4044,9 +4044,9 @@ namespace IGC
                     //Check to make sure we dont end up with an invalid Vertical Stride.
                     //Only 1, 2, 4, 8, 16 are supported.
                     if (shiftFactor <= 4)
-                    {
-                        verticalStride = (int)pow(2, shiftFactor);
-                    }
+                        verticalStride = (1U << shiftFactor);
+                    else
+                        return false;
                 }
             }
         }
