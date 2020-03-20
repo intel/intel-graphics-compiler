@@ -495,9 +495,8 @@ namespace IGC
             mpm.add(createLoopSimplifyPass());
         }
 
-        if (ctx.m_enableSubroutine ||
-            ctx.m_enableFunctionPointer ||
-            IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL)
+        if  (ctx.enableFunctionCall()
+            )
         {
             // Sort functions if subroutine/indirect fcall is enabled.
             mpm.add(llvm::createGlobalDCEPass());
