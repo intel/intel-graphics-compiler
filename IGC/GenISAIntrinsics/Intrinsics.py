@@ -90,13 +90,18 @@ attribute_map = {
     "InaccessibleMemOnly": set(["NoUnwind","InaccessibleMemOnly"]),
 }
 
+# order taken from IntrinsicEmitter::EmitAttributes to match attribute order used for llvm intrinsics
+attribute_order = ("NoUnwind", "NoReturn", "NoDuplicate", "Convergent", "ReadNone", "ReadOnly", "ArgMemOnly", "InaccessibleMemOnly")
+
 def getAttributeList(Attrs):
     """
     Takes a list of attribute names, calculates the union,
     and returns a list of the the given attributes
     """
     s = reduce(lambda acc, v: attribute_map[v] | acc, Attrs, set())
-    return ['Attribute::'+x for x in s]
+    # sort attributes to generate the same code each time
+    l = sorted(list(s), key=attribute_order.index)
+    return ['Attribute::'+x for x in l]
 
 Intrinsics = dict()
 parse = sys.argv
