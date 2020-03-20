@@ -1032,77 +1032,80 @@ namespace IGC
                 if (pInputArgs->pInternalOptions == nullptr)
                     return;
 
+                // Build options are of the form -cl-xxxx and -ze-xxxx
+                // So we skip these prefixes when reading the options to be agnostic of their source
+
                 const char* options = pInputArgs->pInternalOptions;
-                if (strstr(options, "-cl-replace-global-offsets-by-zero"))
+                if (strstr(options, "-replace-global-offsets-by-zero"))
                 {
                     replaceGlobalOffsetsByZero = true;
                 }
-                if (strstr(options, "-cl-kernel-debug-enable"))
+                if (strstr(options, "-kernel-debug-enable"))
                 {
                     KernelDebugEnable = true;
                 }
 
-                if (strstr(options, "-cl-include-sip-csr"))
+                if (strstr(options, "-include-sip-csr"))
                 {
                     IncludeSIPCSR = true;
                 }
 
-                if (strstr(options, "-cl-include-sip-kernel-debug"))
+                if (strstr(options, "-include-sip-kernel-debug"))
                 {
                     IncludeSIPKernelDebug = true;
                 }
-                else if (strstr(options, "-cl-include-sip-kernel-local-debug"))
+                else if (strstr(options, "-include-sip-kernel-local-debug"))
                 {
                     IncludeSIPKernelDebugWithLocalMemory = true;
                 }
 
-                if (strstr(options, "-cl-intel-use-32bit-ptr-arith"))
+                if (strstr(options, "-intel-use-32bit-ptr-arith"))
                 {
                     Use32BitPtrArith = true;
                 }
 
-                if (strstr(options, "-cl-intel-greater-than-4GB-buffer-required"))
+                if (strstr(options, "-intel-greater-than-4GB-buffer-required"))
                 {
                     IntelGreaterThan4GBBufferRequired = true;
                 }
-                else if (strstr(options, "-cl-intel-has-buffer-offset-arg"))
+                else if (strstr(options, "-intel-has-buffer-offset-arg"))
                 {
                     IntelHasBufferOffsetArg = true;
                 }
 
-                if (strstr(options, "-cl-intel-disable-a64WA"))
+                if (strstr(options, "-intel-disable-a64WA"))
                 {
                     IntelDisableA64WA = true;
                 }
 
-                if (strstr(options, "-cl-intel-gtpin-rera"))
+                if (strstr(options, "-intel-gtpin-rera"))
                 {
                     DoReRA = true;
                 }
-                if (strstr(options, "-cl-intel-no-prera-scheduling"))
+                if (strstr(options, "-intel-no-prera-scheduling"))
                 {
                     IntelEnablePreRAScheduling = false;
                 }
-                if (strstr(options, "-cl-intel-use-bindless-buffers"))
+                if (strstr(options, "-intel-use-bindless-buffers"))
                 {
                     PromoteStatelessToBindless = true;
                 }
-                if (strstr(options, "-cl-intel-use-bindless-images"))
+                if (strstr(options, "-intel-use-bindless-images"))
                 {
                     PreferBindlessImages = true;
                 }
-                if (strstr(options, "-cl-intel-force-global-mem-allocation"))
+                if (strstr(options, "-intel-force-global-mem-allocation"))
                 {
                     IntelForceGlobalMemoryAllocation = true;
                 }
-                if (strstr(options, "-cl-intel-no-local-to-generic"))
+                if (strstr(options, "-intel-no-local-to-generic"))
                 {
                     hasNoLocalToGeneric = true;
                 }
-                if (const char* O = strstr(options, "-cl-intel-vector-coalesing"))
+                if (const char* O = strstr(options, "-intel-vector-coalesing"))
                 {
                     // -cl-intel-vector-coalescing=<0-5>.
-                    const char* optionVal = O + strlen("-cl-intel-vector-coalesing");
+                    const char* optionVal = O + strlen("-intel-vector-coalesing");
                     if (*optionVal != 0 && *optionVal == '=' && isdigit(*(optionVal+1)))
                     {
                         ++optionVal;
@@ -1152,25 +1155,28 @@ namespace IGC
                 if (pInputArgs->pOptions == nullptr)
                     return;
 
+                // Build options are of the form -cl-xxxx and -ze-xxxx
+                // So we skip these prefixes when reading the options to be agnostic of their source
+
                 const char* options = pInputArgs->pOptions;
-                if (strstr(options, "-cl-fp32-correctly-rounded-divide-sqrt"))
+                if (strstr(options, "-fp32-correctly-rounded-divide-sqrt"))
                 {
                     CorrectlyRoundedSqrt = true;
                 }
 
-                if (strstr(options, "-cl-no-subgroup-ifp"))
+                if (strstr(options, "-no-subgroup-ifp"))
                 {
                     NoSubgroupIFP = true;
                 }
 
-                if (strstr(options, "-cl-uniform-work-group-size"))
+                if (strstr(options, "-uniform-work-group-size"))
                 {
                     // Note that this is only available for -cl-std >= 2.0.
                     // This will be checked before we place this into the
                     // the module metadata.
                     UniformWGS = true;
                 }
-                if (strstr(options, "-cl-take-global-address"))
+                if (strstr(options, "-take-global-address"))
                 {
                     EnableTakeGlobalAddress = true;
                 }
