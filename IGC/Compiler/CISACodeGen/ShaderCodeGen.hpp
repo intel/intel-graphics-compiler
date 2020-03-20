@@ -207,8 +207,6 @@ namespace IGC
         ShaderType  GetShaderType() const { return GetContext()->type; }
         bool        IsValueCoalesced(llvm::Value* v);
 
-        void        SampleHeader(CVariable* payload, uint offset, uint writeMask, uint rti);
-
         bool        GetHasBarrier() const { return m_HasBarrier; }
         void        SetHasBarrier() { m_HasBarrier = true; }
 

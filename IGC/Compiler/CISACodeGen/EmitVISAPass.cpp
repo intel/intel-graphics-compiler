@@ -89,11 +89,11 @@ EmitPass::~EmitPass()
 {
 }
 
-static bool isSIMD8_16bitReturn(CVariable* dst, SIMDMode simdMode)
+bool EmitPass::isHalfGRFReturn(CVariable* dst, SIMDMode simdMode)
 {
-    return simdMode == SIMDMode::SIMD8 &&
-        CEncoder::GetCISADataTypeSize(dst->GetType()) == 2 &&
-        !dst->isUnpacked();
+    auto typeSize = CEncoder::GetCISADataTypeSize(dst->GetType());
+    return simdMode == m_currShader->m_Platform->getMinDispatchMode() &&
+        typeSize == 2 && !dst->isUnpacked();
 }
 
 static bool DefReachUseWithinLevel(llvm::Value* def, const llvm::Instruction* use, uint level)
@@ -3856,10 +3856,11 @@ CVariable* EmitPass::IndexableResourceIndex(CVariable* indexVar, uint btiIndex)
 void EmitPass::PackSIMD8HFRet(CVariable* dst)
 {
     // the extra moves will be cleaned up by vISA
-    for (uint16_t n = 0; n < m_destination->GetNumberElement() / 8; n++)
+    auto numLanePerChannel = numLanes(m_currShader->m_Platform->getMinDispatchMode());
+    for (uint16_t n = 0; n < m_destination->GetNumberElement() / numLanePerChannel; n++)
     {
-        m_encoder->SetDstSubReg(n * 8);
-        m_encoder->SetSrcSubReg(0, n * 16);
+        m_encoder->SetDstSubReg(n * numLanePerChannel);
+        m_encoder->SetSrcSubReg(0, n * numLanePerChannel * 2);
         m_encoder->Copy(m_destination, dst);
         m_encoder->Push();
     }
@@ -3929,13 +3930,15 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         CVariable* src = GetSymbol(inst->getOperand(index));
         if (src->IsUniform())
         {
-            uint16_t size = m_destination->IsUniform() ? 8 : numLanes(m_currShader->m_SIMDSize);
+            auto uniformSIMDMode = m_currShader->m_Platform->getMinDispatchMode();
+            uint16_t size = m_destination->IsUniform() ? numLanes(uniformSIMDMode) :
+                numLanes(m_currShader->m_SIMDSize);
             CVariable* newSource = m_currShader->GetNewVariable(
                 size,
                 src->GetType(),
                 EALIGN_GRF,
                 m_destination->IsUniform());
-            m_encoder->SetUniformSIMDSize(SIMDMode::SIMD8);
+            m_encoder->SetUniformSIMDSize(uniformSIMDMode);
             m_encoder->Copy(newSource, src);
             m_encoder->Push();
             src = newSource;
@@ -3952,14 +3955,14 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     {
         if (dst->IsUniform())
         {
-            simdSize = SIMDMode::SIMD8;
-            unsigned short numberOfElement = dst->GetNumberElement() * 8;
+            simdSize = m_currShader->m_Platform->getMinDispatchMode();
+            unsigned short numberOfElement = dst->GetNumberElement() * numLanes(simdSize);
             numberOfElement = CEncoder::GetCISADataTypeSize(dst->GetType()) == 2 ? numberOfElement * 2 : numberOfElement;
             dst = m_currShader->GetNewVariable(numberOfElement, dst->GetType(), EALIGN_GRF, dst->IsUniform());
         }
         else
         {
-            needPacking = isSIMD8_16bitReturn(m_destination, m_SimdMode);
+            needPacking = isHalfGRFReturn(m_destination, m_SimdMode);
             if (needPacking)
             {
                 dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, m_destination->GetType(), EALIGN_GRF, dst->IsUniform());
@@ -3974,7 +3977,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     m_encoder->SetPredicate(flag);
     if (m_destination->IsUniform())
     {
-        m_encoder->SetUniformSIMDSize(SIMDMode::SIMD8);
+        m_encoder->SetUniformSIMDSize(m_currShader->m_Platform->getMinDispatchMode());
     }
     m_encoder->Load(opCode, writeMask, offset, resource, numSources, dst, payload, zeroLOD, feedbackEnable);
     m_encoder->Push();
@@ -4721,84 +4724,82 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         m_encoder->Push();
 
         CVariable* src = data;
+
+        if (isSimd32)
         {
-            if (isSimd32)
-            {
-                CVariable* contiguousData = nullptr;
-                CVariable* upperHalfOfContiguousData = nullptr;
+            CVariable* contiguousData = nullptr;
+            CVariable* upperHalfOfContiguousData = nullptr;
 
-                const uint16_t numElements = data->GetNumberElement();
-                const VISA_Type dataType = data->GetType();
+            const uint16_t numElements = data->GetNumberElement();
+            const VISA_Type dataType = data->GetType();
 
-                assert(numElements == 16);
-                assert(!m_encoder->IsSecondHalf() && "This emitter must be called only once for simd32!");
+            assert(numElements == 16);
+            assert(!m_encoder->IsSecondHalf() && "This emitter must be called only once for simd32!");
 
-                // Create a 32 element variable and copy both instances of data into it.
-                contiguousData = m_currShader->GetNewVariable(
-                    numElements * 2,
-                    dataType,
-                    data->GetAlign(),
-                    false, // isUniform
-                    1); // numberInstance
+            // Create a 32 element variable and copy both instances of data into it.
+            contiguousData = m_currShader->GetNewVariable(
+                numElements * 2,
+                dataType,
+                data->GetAlign(),
+                false, // isUniform
+                1); // numberInstance
 
-                upperHalfOfContiguousData = m_currShader->GetNewAlias(
-                    contiguousData,
-                    dataType,
-                    numElements * m_encoder->GetCISADataTypeSize(dataType),
-                    numElements);
+            upperHalfOfContiguousData = m_currShader->GetNewAlias(
+                contiguousData,
+                dataType,
+                numElements * m_encoder->GetCISADataTypeSize(dataType),
+                numElements);
 
-                assert(contiguousData && upperHalfOfContiguousData);
+            assert(contiguousData && upperHalfOfContiguousData);
 
-                m_encoder->SetSecondHalf(false);
-                m_encoder->Copy(contiguousData, data);
-                m_encoder->Push();
-
-                m_encoder->SetSecondHalf(true);
-                m_encoder->Copy(upperHalfOfContiguousData, data);
-                m_encoder->Push();
-
-                if (!channelUniform)
-                {
-                    // also calculate the second half of address
-                    m_encoder->SetSrcRegion(0, 16, 8, 2);
-                    m_encoder->Shl(pSrcElm, simdChannelUW,
-                        m_currShader->ImmToVariable(shtAmt, ISA_TYPE_UW));
-                    m_encoder->Push();
-                }
-
-                m_encoder->SetSecondHalf(false);
-
-                src = contiguousData;
-            }
-
-            uint16_t addrSize = channelUniform ? 1 :
-                (m_SimdMode == SIMDMode::SIMD32 ? numLanes(SIMDMode::SIMD16) : numLanes(m_SimdMode));
-
-            // VectorUniform for shuffle is true as all simd lanes will
-            // take the same data as the lane 0 !
-            CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
-                addrSize,
-                m_destination->GetType(),
-                channelUniform,
-                true);
-
-            m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+            m_encoder->SetSecondHalf(false);
+            m_encoder->Copy(contiguousData, data);
             m_encoder->Push();
 
-            m_encoder->Copy(m_destination, pDstArrElm);
+            m_encoder->SetSecondHalf(true);
+            m_encoder->Copy(upperHalfOfContiguousData, data);
             m_encoder->Push();
 
-            if (isSimd32)
+            if (!channelUniform)
             {
-                m_encoder->SetSecondHalf(true);
-                m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+                // also calculate the second half of address
+                m_encoder->SetSrcRegion(0, 16, 8, 2);
+                m_encoder->Shl(pSrcElm, simdChannelUW,
+                    m_currShader->ImmToVariable(shtAmt, ISA_TYPE_UW));
                 m_encoder->Push();
-                m_encoder->Copy(m_destination, pDstArrElm);
-                m_encoder->Push();
-                m_encoder->SetSecondHalf(false);
             }
+
+            m_encoder->SetSecondHalf(false);
+
+            src = contiguousData;
         }
 
+        uint16_t addrSize = channelUniform ? 1 :
+            (m_SimdMode == SIMDMode::SIMD32 ? numLanes(SIMDMode::SIMD16) : numLanes(m_SimdMode));
+
+        // VectorUniform for shuffle is true as all simd lanes will
+        // take the same data as the lane 0 !
+        CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
+            addrSize,
+            m_destination->GetType(),
+            channelUniform,
+            true);
+
+        m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+        m_encoder->Push();
+
+        m_encoder->Copy(m_destination, pDstArrElm);
+        m_encoder->Push();
+
+        if (isSimd32)
+        {
+            m_encoder->SetSecondHalf(true);
+            m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+            m_encoder->Push();
+            m_encoder->Copy(m_destination, pDstArrElm);
+            m_encoder->Push();
+            m_encoder->SetSecondHalf(false);
+        }
     }
 }
 
@@ -6546,7 +6547,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     CVariable* dst = m_destination;
     //When sampler output is 16 bit float, hardware doesnt pack the output in SIMD8 mode.
     //Hence the movs to handle this layout in SIMD8 mode
-    bool simd8HFRet = isSIMD8_16bitReturn(m_destination, m_SimdMode);
+    bool simd8HFRet = isHalfGRFReturn(m_destination, m_SimdMode);
 
         if (simd8HFRet)
         {
@@ -6695,12 +6696,13 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
     }
     if (lod && lod->IsUniform())
     {
+        auto uniformSIMDMode = m_currShader->m_Platform->getMinDispatchMode();
         CVariable* srcReg = m_currShader->GetNewVariable(
-            m_destination->IsUniform() ? 8 : numLanes(m_currShader->m_SIMDSize),
+            m_destination->IsUniform() ? numLanes(uniformSIMDMode) : numLanes(m_currShader->m_SIMDSize),
             ISA_TYPE_F,
             EALIGN_GRF,
             m_destination->IsUniform());
-        m_encoder->SetUniformSIMDSize(SIMDMode::SIMD8);
+        m_encoder->SetUniformSIMDSize(uniformSIMDMode);
         m_encoder->Copy(srcReg, lod);
         m_encoder->Push();
         lod = srcReg;
@@ -6709,8 +6711,10 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
     CVariable* tempDest = m_destination;
     if (m_destination->IsUniform())
     {
-        tempDest = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 8, ISA_TYPE_UD, EALIGN_GRF, true);
-        m_encoder->SetUniformSIMDSize(SIMDMode::SIMD8);
+        auto uniformSIMDMode = m_currShader->m_Platform->getMinDispatchMode();
+        tempDest = m_currShader->GetNewVariable(m_destination->GetNumberElement() * numLanes(uniformSIMDMode),
+            ISA_TYPE_UD, EALIGN_GRF, true);
+        m_encoder->SetUniformSIMDSize(uniformSIMDMode);
     }
 
     uint label = 0;
@@ -6886,7 +6890,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     CVariable* dst = m_destination;
     //When sampler output is 16 bit float, hardware doesnt pack the output in SIMD8 mode.
     //Hence the movs to handle this layout in SIMD8 mode
-    bool simd8HFRet = isSIMD8_16bitReturn(m_destination, m_SimdMode);
+    bool simd8HFRet = isHalfGRFReturn(m_destination, m_SimdMode);
         if (simd8HFRet)
         {
             dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false);
@@ -6964,7 +6968,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     CVariable* dst = m_destination;
     //When sampler output is 16 bit float, hardware doesnt pack the output in SIMD8 mode.
     //Hence the movs to handle this layout in SIMD8 mode
-    bool simd8HFRet = isSIMD8_16bitReturn(m_destination, m_SimdMode);
+    bool simd8HFRet = isHalfGRFReturn(m_destination, m_SimdMode);
     if (simd8HFRet)
     {
         dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false);

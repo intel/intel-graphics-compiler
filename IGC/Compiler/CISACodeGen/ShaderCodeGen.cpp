@@ -755,11 +755,11 @@ namespace IGC
 
         AddAnalysisPasses(*ctx, Passes);
 
-        AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false, ShaderDispatchMode::SINGLE_PATCH);
+        AddCodeGenPasses(*ctx, shaders, Passes, ctx->platform.getMinDispatchMode(), false, ShaderDispatchMode::SINGLE_PATCH);
 
         if (DSDualPatchEnabled(ctx))
         {
-            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false, ShaderDispatchMode::DUAL_PATCH);
+            AddCodeGenPasses(*ctx, shaders, Passes, ctx->platform.getMinDispatchMode(), false, ShaderDispatchMode::DUAL_PATCH);
         }
 
         COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
@@ -896,6 +896,7 @@ namespace IGC
         SIMDMode simdModeAllowed = ctx->GetLeastSIMDModeAllowed();
         SIMDMode maxSimdMode = ctx->GetMaxSIMDMode();
         unsigned int waveSize = ctx->getModuleMetaData()->csInfo.waveSize;
+
 
         if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) || waveSize == 32 || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
         {

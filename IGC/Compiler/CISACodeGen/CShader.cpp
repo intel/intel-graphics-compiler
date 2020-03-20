@@ -3130,31 +3130,6 @@ void CShader::Destroy()
 {
 }
 
-void CShader::SampleHeader(CVariable* payload, uint offset, uint writeMask, uint rti)
-{
-    uint dword2 = offset | ((~writeMask & 0xF) << 12);
-    if (rti)
-    {
-        //For sampler to RT write, set the Render target binding table index
-        dword2 = dword2 | (rti << 24);
-    }
-    CVariable* temp = ImmToVariable(dword2, ISA_TYPE_D);
-
-    encoder.SetNoMask();
-    encoder.SetSimdSize(SIMDMode::SIMD8);
-    encoder.Copy(payload, m_R0);
-    encoder.Push();
-
-    encoder.SetNoMask();
-    encoder.SetSimdSize(SIMDMode::SIMD1);
-    encoder.SetDstSubReg(2);
-    encoder.SetSrcRegion(0, 0, 1, 0);
-    //TODO : Should be or. But having some issue
-    //encoder.or(immoffset, immoffset, temp);
-    encoder.Copy(payload, temp);
-    encoder.Push();
-}
-
 // Helper function to copy raw register
 void CShader::CopyVariable(
     CVariable* dst,

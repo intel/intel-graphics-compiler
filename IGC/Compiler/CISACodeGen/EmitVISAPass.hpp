@@ -665,6 +665,8 @@ namespace IGC
         // Helper function to check if A64 WA is required
         bool hasA64WAEnable() const;
 
+        bool isHalfGRFReturn(CVariable* dst, SIMDMode simdMode);
+
         void emitFeedbackEnable();
     };
 
