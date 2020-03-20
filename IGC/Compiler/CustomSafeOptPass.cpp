@@ -2565,7 +2565,7 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
     if (modMD && ((directBuf && (bufType == CONSTANT_BUFFER)) || statelessBuf))
     {
         Value* ptrVal = inst->getPointerOperand();
-        unsigned eltId = 0;
+        int eltId = 0;
         size_in_bytes = (unsigned int)inst->getType()->getPrimitiveSizeInBits() / 8;
         if (!EvalConstantAddress(ptrVal, eltId, m_TD, pointerSrc))
         {
@@ -2586,18 +2586,36 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
                     uint32_t eltSize_in_bytes = (unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8;
                     IRBuilder<> builder(inst);
                     Value* vectorValue = UndefValue::get(inst->getType());
+                    char* pEltValue;        // Pointer to element value
                     for (uint i = 0; i < srcNElts; i++)
                     {
+                        if (eltId < 0 || eltId >= (int)modMD->immConstant.data.size())
+                        {
+                            int OOBvalue = 0;       // OOB access to immediate constant buffer should return 0
+                            char* pOOBvalue = (char*)& OOBvalue;    // Pointer to value 0 which is a OOB access value
+                            pEltValue = pOOBvalue;
+                        }
+                        else
+                            pEltValue = offset + eltId + (i * eltSize_in_bytes);
                         vectorValue = builder.CreateInsertElement(
                             vectorValue,
-                            GetConstantValue(srcEltTy, offset + eltId + (i * eltSize_in_bytes)),
+                            GetConstantValue(srcEltTy, pEltValue),
                             builder.getInt32(i));
                     }
                     return dyn_cast<Constant>(vectorValue);
                 }
                 else
                 {
-                    return GetConstantValue(inst->getType(), offset + eltId);
+                    char* pEltValue;        // Pointer to element value
+                    if (eltId < 0 || eltId >= (int)modMD->immConstant.data.size())
+                    {
+                        int OOBvalue = 0;       // OOB access to immediate constant buffer should return 0
+                        char* pOOBvalue = (char*)& OOBvalue;    // Pointer to value 0 which is a OOB access value
+                        pEltValue = pOOBvalue;
+                    }
+                    else
+                        pEltValue = offset + eltId;
+                    return GetConstantValue(inst->getType(), pEltValue);
                 }
             }
             else if ((!IGC_IS_FLAG_ENABLED(DisableDynamicConstantFolding)) && (modMD->inlineDynConstants.size() > 0))

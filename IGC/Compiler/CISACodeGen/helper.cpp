@@ -599,7 +599,7 @@ namespace IGC
         return false;
     }
 
-    bool EvalConstantAddress(Value* address, unsigned int& offset, const llvm::DataLayout* pDL, Value* ptrSrc)
+    bool EvalConstantAddress(Value* address, int& offset, const llvm::DataLayout* pDL, Value* ptrSrc)
     {
 
         if ((ptrSrc == nullptr && isa<ConstantPointerNull>(address)) ||
@@ -616,7 +616,7 @@ namespace IGC
                 ConstantInt* eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
                 if (!eltIdx)
                     return false;
-                offset = int_cast<unsigned>(eltIdx->getZExtValue());
+                offset = int_cast<int>(eltIdx->getZExtValue());
                 return true;
             }
         }
@@ -633,7 +633,7 @@ namespace IGC
                 ConstantInt * eltIdx = dyn_cast<ConstantInt>(eltIdxVal);
                 if (!eltIdx)
                     return false;
-                offset = int_cast<unsigned>(eltIdx->getZExtValue());
+                offset = int_cast<int>(eltIdx->getZExtValue());
                 return true;
             }
             else if (ptrExpr->getOpcode() == Instruction::GetElementPtr)
@@ -650,14 +650,14 @@ namespace IGC
                     if (StructType * StTy = GTI.getStructTypeOrNull()) {
                         unsigned Field = int_cast<unsigned>(cast<ConstantInt>(Idx)->getZExtValue());
                         if (Field) {
-                            offset += int_cast<unsigned int>(pDL->getStructLayout(StTy)->getElementOffset(Field));
+                            offset += int_cast<int>(pDL->getStructLayout(StTy)->getElementOffset(Field));
                         }
                         Ty = StTy->getElementType(Field);
                     }
                     else {
                         Ty = GTI.getIndexedType();
                         if (const ConstantInt * CI = dyn_cast<ConstantInt>(Idx)) {
-                            offset += int_cast<unsigned int>(
+                            offset += int_cast<int>(
                             pDL->getTypeAllocSize(Ty) * CI->getSExtValue());
 
                         }

@@ -70,7 +70,7 @@ namespace IGC
         const llvm::DataLayout* m_DL;
 
         // Helper functions
-        bool getConstantAddress(llvm::LoadInst& I, unsigned& bufIdOrGRFOffset, unsigned& eltId, int& size_in_bytes);
+        bool getConstantAddress(llvm::LoadInst& I, unsigned& bufIdOrGRFOffset, int& eltId, int& size_in_bytes);
         bool FoldsToConst(llvm::Instruction* inst, llvm::Instruction* use, bool& propagate);
         bool FoldsToZero(llvm::Instruction* inst, llvm::Instruction* use);
         bool FoldsToSource(llvm::Instruction* inst, llvm::Instruction* use);

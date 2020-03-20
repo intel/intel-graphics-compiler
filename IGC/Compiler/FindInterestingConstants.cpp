@@ -192,7 +192,7 @@ void FindInterestingConstants::FoldsToSourcePropagate(llvm::Instruction* I)
 }
 
 // Get constant address from load instruction
-bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& bufIdOrGRFOffset, unsigned& eltId, int& size_in_bytes)
+bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& bufIdOrGRFOffset, int& eltId, int& size_in_bytes)
 {
     // Check if the load instruction is with constant buffer address
     unsigned as = I.getPointerAddressSpace();
@@ -306,7 +306,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
     }
 
     unsigned bufIdOrGRFOffset;
-    unsigned eltId;
+    int eltId;
     int size_in_bytes;
 
     m_foldsToZero = 0;
