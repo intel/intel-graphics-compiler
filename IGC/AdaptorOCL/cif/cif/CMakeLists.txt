@@ -85,12 +85,10 @@ SET(CIF_SOURCES_EXPORT "${CIF_BUILTINS_SOURCES}"
                        cif/builtins/builtins_registry.cpp
                        cif/export/cif_main.cpp
                        cif/export/registry.cpp
-                       cif/helpers/error.cpp
     )
 
 SET(CIF_SOURCES_IMPORT cif/import/cif_main.cpp
                        cif/os/${OS}/${OS}_library_handle.cpp
-                       cif/helpers/error.cpp
     )
 
 SET(CIF_SOURCES "${CIF_SOURCES_IMPORT};${CIF_SOURCES_EXPORT}")

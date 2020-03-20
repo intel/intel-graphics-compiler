@@ -30,13 +30,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace CIF {
 
-#ifdef CIF_HEADERS_ONLY_BUILD
 inline void AbortImpl(){
     std::abort();
 }
-#else
-void AbortImpl();
-#endif
 
 template<typename T = void>
 inline T Abort();

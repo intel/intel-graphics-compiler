@@ -3527,8 +3527,6 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
 
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}" opencl-clang-lib)
 
-add_dependencies("${IGC_BUILD__PROJ__igc_dll}" "${IGC_BUILD__PROJ_NAME_PREFIX}ElfPackager")
-
 
 target_include_directories(${IGC_BUILD__PROJ__igc_dll} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared"
