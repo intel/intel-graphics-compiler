@@ -933,7 +933,10 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         kernelInfo->updateExitBB(BBs.back());
     }
 
-    if ((hasSIMDCF || hasGoto) && builder->getOption(vISA_divergentBB))
+    // For non-kernel function, always invoke markDivergentBBs to
+    // conservatively assume divergence.
+    if ((hasSIMDCF || hasGoto || !builder->getIsKernel()) &&
+        builder->getOption(vISA_divergentBB))
     {
         markDivergentBBs();
     }
@@ -2800,14 +2803,33 @@ void FlowGraph::markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfo
 // Note: this will be used to replace inSIMDCF gradually.
 void FlowGraph::markDivergentBBs()
 {
-    // Assumption:
-    //       1.  For each function, it has a single return (for function)
-    //           or exit (for entry function). And that return/exit is the
-    //           last BB of that function.
-    //       2.  The entry function will appear first in the BB list, and
-    //           if there is a call from A to B,  A shall appear prior to B
-    //           in BB list.
-    //       3.  There is no indirect call, and no recursive call.
+    if (BBs.empty())
+    {
+        // Sanity check
+        return;
+    }
+
+    // fcall'ed Function:  to be conservative and assume that any function
+    // that is fcall'ed is divergent on entry
+    // (Note that each function has its own CFG)
+    if (!builder->getIsKernel())
+    {
+        for (auto IT = BBs.begin(), IE = BBs.end(); IT != IE; ++IT)
+        {
+            G4_BB* BB = *IT;
+            BB->setInSimdFlow(true);
+            BB->setDivergent(true);
+        }
+        return;
+    }
+
+    //  Now, handle kernel function.
+    //       1.  It would be perfered to have a single return/exit for kernel and
+    //           and all its subroutines in the last BB (IGC does, cm does not),
+    //           although the code  can handle return in the middle of kernel.
+    //       2.  The entry function will appear first in the BB list, and if there
+    //           is a call from A to B,   subroutine A shall appear prior to
+    //           subroutine B in BB list.
     //
     // Required:  need to set BB id.
     //
@@ -2858,12 +2880,6 @@ void FlowGraph::markDivergentBBs()
     auto isPriorToLastJoin = [&](G4_BB* aBB) ->bool {
         return (int)aBB->getId() < LastJoinBBId;
     };
-
-    if (BBs.empty())
-    {
-        // Sanity check
-        return;
-    }
 
     reassignBlockIDs();
 
@@ -2956,7 +2972,7 @@ void FlowGraph::markDivergentBBs()
             assert(joinBB && "ICE(vISA) : missing endif label!");
             pushJoin(joinBB);
         }
-        else if (lastInst->opcode() == G4_call || lastInst->opcode() == G4_pseudo_fcall)
+        else if (lastInst->opcode() == G4_call)
         {
             // If this function is already in divergent branch, the callee
             // must be in a divergent branch!.
@@ -6891,7 +6907,10 @@ void FlowGraph::print(std::ostream& OS) const
         kname = getKernel()->getName();
     }
     kname = kname ? kname : "unnamed";
-    OS << "\n\nCFG: " << kname << "\n\n";
+    OS  << "\n\nCFG: "
+        << kname
+        << (builder->getIsKernel() ? " [kernel]" : " [non-kernel function]")
+        << "\n\n";
     for (auto BB : BBs) {
         BB->print(OS);
     }
