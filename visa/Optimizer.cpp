@@ -6458,9 +6458,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         const RegionDesc* rd = NULL;
         uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
-        // even if src has VxH region, it could have a width that is equal to exec_size,
+        // even if src has VxH region, it could have a width that is equal to the new exec_size,
         // meaning that it's really just a 1x1 region.
-        auto isVxHRegion = src->getRegion()->isRegionWH() && start >= wd;
+        auto isVxHRegion = src->getRegion()->isRegionWH() && wd < size;
         if (!isVxHRegion)
         {
             // r[a0.0,0]<4;2,1> and size is 4 or 1
