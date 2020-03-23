@@ -5791,7 +5791,7 @@ int     __attribute__((overloadable)) sub_group_non_uniform_all_equal(half value
 #if defined(cl_khr_subgroup_ballot)
 #define DECL_NON_UNIFORM_BROADCAST_BASE(GENTYPE)                                                          \
     GENTYPE __attribute__((overloadable)) sub_group_non_uniform_broadcast(GENTYPE value, uint index);     \
-    GENTYPE __attribute__((overloadable)) sub_group_non_uniform_broadcast_first(GENTYPE value);
+    GENTYPE __attribute__((overloadable)) sub_group_broadcast_first(GENTYPE value);
 
 #define DECL_NON_UNIFORM_BROADCAST(TYPE)        \
     DECL_NON_UNIFORM_BROADCAST_BASE(TYPE)       \
