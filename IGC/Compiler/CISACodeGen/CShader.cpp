@@ -314,8 +314,13 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize,
         }
     }
 
-    // modify private-memory size to a large setting
-    m_ModuleMetadata->FuncMD[entry].privateMemoryPerWI = 8192;
+    if (!IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
+    {
+        // If we don't return per-function private memory size,
+        // modify private-memory size to a large setting.
+        // This will be reported through patch-tokens as per-kernel requirement.
+        m_ModuleMetadata->FuncMD[entry].privateMemoryPerWI = 8192;
+    }
 
     stackBase = GetSymbol(kerArg);
     stackAllocSize = pTemp;
