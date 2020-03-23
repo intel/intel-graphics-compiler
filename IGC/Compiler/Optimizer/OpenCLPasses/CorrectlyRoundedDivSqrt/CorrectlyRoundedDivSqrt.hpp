@@ -72,7 +72,7 @@ namespace IGC
         /// @return true if the function was changed.
         static bool processDeclaration(llvm::Function& F);
 
-        static llvm::Value* emitIEEEDivide(llvm::BinaryOperator* I, llvm::Value* Op0, llvm::Value* Op1);
+        llvm::Value* emitIEEEDivide(llvm::BinaryOperator* I, llvm::Value* Op0, llvm::Value* Op1);
 
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
@@ -84,6 +84,9 @@ namespace IGC
         bool m_hasHalfTy;
 
         bool m_IsCorrectlyRounded;
+
+        llvm::Module* m_module = nullptr;
+
     };
 
 } // namespace IGC

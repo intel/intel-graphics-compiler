@@ -76,6 +76,7 @@ bool CorrectlyRoundedDivSqrt::runOnModule(Module& M)
     }
 
     m_changed = false;
+    m_module = &M;
 
     for (Function& F : M)
     {
@@ -89,6 +90,7 @@ bool CorrectlyRoundedDivSqrt::runOnModule(Module& M)
             visit(F);
         }
     }
+    m_module = nullptr;
     return m_changed;
 }
 
@@ -121,10 +123,10 @@ Value* CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator* I, Value* Op0, Va
     Type* Ty = Op0->getType();
     IRBuilder<> IRB(I);
 
-    auto* IEEEDivide = GenISAIntrinsic::getDeclaration(
-        I->getModule(),
-        GenISAIntrinsic::GenISA_IEEE_Divide,
-        Ty->getScalarType());
+    std::string FuncName = "__builtin_spirv_divide_cr_f32_f32";
+    SmallVector<Type*, 2> ArgsTypes{ Ty, Ty };
+    auto FT = FunctionType::get(Ty, ArgsTypes, false);
+    auto IEEEDivide = m_module->getOrInsertFunction(FuncName, FT);
 
     Value* Divide = nullptr;
     if (!isa<VectorType>(Ty))
