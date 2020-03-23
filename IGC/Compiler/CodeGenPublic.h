@@ -383,7 +383,7 @@ namespace IGC
 
         DWORD        m_AccessedBySampleC[4];
         bool         HasClipCullAsOutput;
-        bool         EnableVertexReordering;
+
 
         unsigned int BindingTableEntryBitmap;
         unsigned int m_SamplerCount;
