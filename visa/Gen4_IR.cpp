@@ -7974,6 +7974,20 @@ bool G4_INST::canDstBeAcc() const
             return false;
         }
     }
+
+    if (builder.relaxedACCRestrictions())
+    {
+        for (int i = 0, numSrc = getNumSrc(); i < numSrc; ++i)
+        {
+            bool indirectSrc = getSrc(i) && getSrc(i)->isSrcRegRegion() &&
+                getSrc(i)->asSrcRegRegion()->getRegAccess() != Direct;
+            if (indirectSrc)
+            {
+                return false;
+            }
+        }
+    }
+
     switch (opcode())
     {
     case G4_add:
