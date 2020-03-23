@@ -6585,7 +6585,7 @@ DECL_SUB_GROUP_SHUFFLE(half)
 #endif // defined (cl_khr_fp16)
 #endif // defined(cl_khr_subgroup_shuffle)
 
-#ifdef defined(cl_khr_subgroup_relative)
+#ifdef defined(cl_khr_subgroup_shuffle_relative)
 #define DECL_SUB_GROUP_SHUFFLE_RELATIVE(TYPE)                                          \
 TYPE    __attribute__((overloadable)) sub_group_shuffle_up(TYPE value, uint delta);    \
 TYPE    __attribute__((overloadable)) sub_group_shuffle_down(TYPE value, uint delta);
@@ -6603,7 +6603,7 @@ DECL_SUB_GROUP_SHUFFLE_RELATIVE(double)
 #if defined(cl_khr_fp16)
 DECL_SUB_GROUP_SHUFFLE_RELATIVE(half)
 #endif // defined (cl_khr_fp16)
-#endif // defined(cl_khr_subgroup_relative)
+#endif // defined(cl_khr_subgroup_shuffle_relative)
 
 #if defined(cl_intel_simd_operations_placeholder)
 // SIMD Operations
