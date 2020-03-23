@@ -410,7 +410,7 @@ INLINE type OVERLOADABLE sub_group_non_uniform_##group_type##_##operation(type x
 
 #if defined(cl_khr_subgroup_clustered_reduce)
 #define DEFN_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(type, operation, spv_operation, abbr_type, group_type, spv_group_type)       \
-INLINE type OVERLOADABLE sub_group_##group_type##__clustered_##operation(type x, uint clustersize)                                  \
+INLINE type OVERLOADABLE sub_group_##group_type##_clustered_##operation(type x, uint clustersize)                                   \
 {                                                                                                                                   \
     return __builtin_spirv_OpGroupNonUniform##spv_operation##_i32_i32_##abbr_type##_i32(Subgroup, spv_group_type, x, clustersize);  \
 }
