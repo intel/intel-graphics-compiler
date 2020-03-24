@@ -2211,10 +2211,12 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpSpecConstantTrue:
     if (BV->hasDecorate(DecorationSpecId)) {
       SPIRVWord specid = *BV->getDecorate(DecorationSpecId).begin();
-      if(BM->getSpecConstant(specid))
-        return mapValue(BV, ConstantInt::getTrue(*Context));
-      else
-        return mapValue(BV, ConstantInt::getFalse(*Context));
+      if (BM->isSpecConstantSpecialized(specid)) {
+        if (BM->getSpecConstant(specid))
+          return mapValue(BV, ConstantInt::getTrue(*Context));
+        else
+          return mapValue(BV, ConstantInt::getFalse(*Context));
+      }
     }
   // intentional fall-through: if decoration was not specified, treat this
   // as a OpConstantTrue (default spec constant value)
@@ -2224,10 +2226,12 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpSpecConstantFalse:
     if (BV->hasDecorate(DecorationSpecId)) {
       SPIRVWord specid = *BV->getDecorate(DecorationSpecId).begin();
-      if (BM->getSpecConstant(specid))
-        return mapValue(BV, ConstantInt::getTrue(*Context));
-      else
-        return mapValue(BV, ConstantInt::getFalse(*Context));
+      if (BM->isSpecConstantSpecialized(specid)) {
+        if (BM->getSpecConstant(specid))
+          return mapValue(BV, ConstantInt::getTrue(*Context));
+        else
+          return mapValue(BV, ConstantInt::getFalse(*Context));
+      }
     }
   // intentional fall-through: if decoration was not specified, treat this
   // as a OpConstantFalse (default spec constant value)
