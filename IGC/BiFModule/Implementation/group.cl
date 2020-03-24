@@ -2349,7 +2349,10 @@ ulong __builtin_spirv_OpGroupNonUniformShuffle_i32_i64_i32(uint Execution, ulong
 {
     if (Execution == Subgroup)
     {
-        return as_ulong(__builtin_IB_simd_shuffle_df(as_ulong(x), c));
+        uint2 X = as_uint2(x);
+        uint2 result = (uint2)(__builtin_IB_simd_shuffle(X.s0, c),
+                               __builtin_IB_simd_shuffle(X.s1, c));
+        return as_ulong(result);
     }
     return 0;
 }
