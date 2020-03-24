@@ -8343,3 +8343,33 @@ G4_INST* G4_InstMath::cloneInst()
         src0, src1, getMathCtrl(), option, getLineNo(), getCISAOff(), getSrcFilename());
 }
 
+
+bool G4_INST::isRMWCombinCandidate(G4_INST *next)
+{
+    if (isSend() || next->isSend())
+    {
+        return false;
+    }
+
+    G4_Operand* dst = getDst();
+    G4_Operand* nextDst = next->getDst();
+    //The current instruction must has Integer macro dst as well
+    if (nextDst &&
+        nextDst->isGen12IntegerMacroDst())
+    {
+
+        unsigned short lastLB = (unsigned short)dst->getLinearizedStart();
+        unsigned short lastRB = (unsigned short)dst->getLinearizedEnd();
+        unsigned short nextLB = (unsigned short)nextDst->getLinearizedStart();
+        unsigned short nextRB = (unsigned short)nextDst->getLinearizedEnd();
+
+        if (lastLB / G4_GRF_REG_NBYTES == nextLB / G4_GRF_REG_NBYTES &&
+            lastRB / G4_GRF_REG_NBYTES == nextRB / G4_GRF_REG_NBYTES &&
+            dst->compareOperand(nextDst) == Rel_disjoint)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
