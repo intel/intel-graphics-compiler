@@ -58,6 +58,8 @@ namespace IGC
 
         void visitInstruction(llvm::Instruction& I);
 
+        void visitCallInst(llvm::CallInst& CI);
+
     private:
         bool m_hasError = false;
 
