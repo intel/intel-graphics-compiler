@@ -123,8 +123,7 @@ uint32_t BinaryEncodingBase::getEUOpcode(G4_opcode g4opc)
     case G4_illegal: euopcode = G9HDL::EU_OPCODE_ILLEGAL; break;
     case G4_smov: euopcode = G9HDL::EU_OPCODE_SMOV; break;
 
-    default: break;
-        assert(false && "Invalid G4 opcode!");
+    default: assert(false && "Invalid G4 opcode!"); break;
     }
     return (uint32_t)euopcode;
 }

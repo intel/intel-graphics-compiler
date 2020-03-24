@@ -135,7 +135,7 @@ HANDLE_INST( addc, 2, 1, InstTypeArith, GENX_BDW, \
 HANDLE_INST( subb, 2, 1, InstTypeArith, GENX_BDW, \
              ATTR_NONE )
 
-HANDLE_INST( dp4a, 3, 1, InstTypeArith, GENX_ICLLP, ATTR_NONE )
+HANDLE_INST( dp4a, 3, 1, InstTypeArith, GENX_TGLLP, ATTR_NONE )
 
 HANDLE_INST( madm , 3, 1, InstTypeArith, GENX_BDW, \
              ATTR_NONE )
