@@ -275,11 +275,12 @@ void VarSplitPass::split()
         {
             for (auto& item : splitDcls)
             {
-                if (std::get<0>(item) == lb &&
-                    std::get<1>(item) == rb)
-                    return std::get<2>(item);
+                if (std::get<0>(item) <= lb &&
+                    std::get<1>(item) >= rb)
+                    return std::tuple(std::get<0>(item),
+                        std::get<1>(item), std::get<2>(item));
             }
-            return (G4_Declare*)nullptr;
+            return std::tuple(0u,0u,(G4_Declare*)nullptr);
         };
 
         auto getOpndNum = [](G4_SrcRegRegion* src)
@@ -302,10 +303,14 @@ void VarSplitPass::split()
             auto lb = srcRgn->getLeftBound();
             auto rb = srcRgn->getRightBound();
 
-            auto dcl = getSplitDcl(lb, rb);
+            auto item = getSplitDcl(lb, rb);
+            auto item_lb = std::get<0>(item);
+            auto dcl = std::get<2>(item);
             MUST_BE_TRUE(dcl, "Didnt find split dcl");
 
-            auto newSrc = kernel.fg.builder->createSrcRegRegion(srcRgn->getModifier(), srcRgn->getRegAccess(), dcl->getRegVar(), 0, srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
+            unsigned int regNum = (lb - item_lb)/G4_GRF_REG_NBYTES;
+
+            auto newSrc = kernel.fg.builder->createSrcRegRegion(srcRgn->getModifier(), srcRgn->getRegAccess(), dcl->getRegVar(), regNum, srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
             auto opndNum = getOpndNum(srcRgn);
             auto tup = std::make_tuple(srcRgn->getInst(), srcRgn, opndNum);
             preSplit.insert(std::make_pair(newSrc, tup));
