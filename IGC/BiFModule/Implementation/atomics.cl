@@ -48,16 +48,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             atomic_store(__builtin_IB_get_local_lock(), 0); \
   }}}
 
-#define FENCE_PRE_OP(Scope, Semantics) \
+#define FENCE_PRE_OP(Scope, Semantics, isGlobal)                                  \
   if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                     \
   {                                                                               \
-      __builtin_IB_memfence(true, false, false, false, false, true, false);            \
+      __builtin_IB_memfence(true, false, false, false, false, isGlobal, false);   \
   }
 
-#define FENCE_POST_OP(Scope, Semantics) \
+#define FENCE_POST_OP(Scope, Semantics, isGlobal)                                 \
   if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                   \
   {                                                                               \
-      __builtin_IB_memfence(true, false, false, false, false, true, false);            \
+      __builtin_IB_memfence(true, false, false, false, false, isGlobal, false);   \
   }
 
 // This fencing scheme allows us to obey the memory model when coherency is
@@ -70,44 +70,44 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // being enabled or disbled so we asume the worst case.
 
 
-#define atomic_operation_1op( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value )   \
-{                                                                                   \
-    FENCE_PRE_OP((Scope), (Semantics))                                              \
-    TYPE result = INTRINSIC( (Pointer), (Value) );                                  \
-    FENCE_POST_OP((Scope), (Semantics))                                             \
-    return result;                                                                  \
+#define atomic_operation_1op( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, isGlobal )   \
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = INTRINSIC( (Pointer), (Value) );                                            \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
 }
 
-#define atomic_operation_1op_as_float( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value )\
-{                                                                                   \
-    FENCE_PRE_OP((Scope), (Semantics))                                              \
-    TYPE result = as_float(INTRINSIC( (Pointer), (Value) ));                        \
-    FENCE_POST_OP((Scope), (Semantics))                                             \
-    return result;                                                                  \
+#define atomic_operation_1op_as_float( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, isGlobal )\
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = as_float(INTRINSIC( (Pointer), (Value) ));                                  \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
 }
 
-#define atomic_operation_0op( INTRINSIC, TYPE, Pointer, Scope, Semantics )          \
-{                                                                                   \
-    FENCE_PRE_OP((Scope), (Semantics))                                              \
-    TYPE result = INTRINSIC( (Pointer) );                                           \
-    FENCE_POST_OP((Scope), (Semantics))                                             \
-    return result;                                                                  \
+#define atomic_operation_0op( INTRINSIC, TYPE, Pointer, Scope, Semantics, isGlobal )          \
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = INTRINSIC( (Pointer) );                                                     \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
 }
 
-#define atomic_cmpxhg( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, Comp )\
-{                                                                               \
-    FENCE_PRE_OP((Scope), (Semantics))                                          \
-    TYPE result = INTRINSIC( (Pointer), (Comp), (Value) );                      \
-    FENCE_POST_OP((Scope), (Semantics))                                         \
-    return result;                                                              \
+#define atomic_cmpxhg( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, Comp, isGlobal )\
+{                                                                                         \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                          \
+    TYPE result = INTRINSIC( (Pointer), (Comp), (Value) );                                \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                         \
+    return result;                                                                        \
 }
 
-#define atomic_cmpxhg_as_float( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, Comp )\
-{                                                                               \
-    FENCE_PRE_OP((Scope), (Semantics))                                          \
-    TYPE result = as_float(INTRINSIC( (Pointer), (Comp), (Value) ));            \
-    FENCE_POST_OP((Scope), (Semantics))                                         \
-    return result;                                                              \
+#define atomic_cmpxhg_as_float( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, Comp, isGlobal )\
+{                                                                                         \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                          \
+    TYPE result = as_float(INTRINSIC( (Pointer), (Comp), (Value) ));                      \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                         \
+    return result;                                                                        \
 }
 
 
@@ -361,13 +361,13 @@ uint __builtin_spirv_OpAtomicExchange_p0i32_i32_i32_i32( volatile __private uint
 
 uint __builtin_spirv_OpAtomicExchange_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_xchg_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_xchg_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
 
 uint __builtin_spirv_OpAtomicExchange_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_xchg_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_xchg_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -376,11 +376,11 @@ uint __builtin_spirv_OpAtomicExchange_p4i32_i32_i32_i32( volatile __generic uint
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_xchg_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_xchg_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_xchg_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_xchg_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
     }
 
 }
@@ -398,19 +398,19 @@ ulong __builtin_spirv_OpAtomicExchange_p0i64_i32_i32_i64( volatile __private ulo
 
 ulong __builtin_spirv_OpAtomicExchange_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_xchg_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_xchg_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
 
 ulong __builtin_spirv_OpAtomicExchange_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer = Value;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -444,13 +444,13 @@ float __builtin_spirv_OpAtomicExchange_p0f32_i32_i32_f32( volatile __private flo
 
 float __builtin_spirv_OpAtomicExchange_p1f32_i32_i32_f32( volatile __global float *Pointer, uint Scope, uint Semantics, float Value)
 {
-    atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_global_i32, float, (global int*)Pointer, Scope, Semantics, as_int(Value) );
+    atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_global_i32, float, (global int*)Pointer, Scope, Semantics, as_int(Value), true );
 }
 
 
 float __builtin_spirv_OpAtomicExchange_p3f32_i32_i32_f32( volatile __local float *Pointer, uint Scope, uint Semantics, float Value)
 {
-    atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_local_i32, float, (local int*)Pointer, Scope, Semantics, as_int(Value) );
+    atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_local_i32, float, (local int*)Pointer, Scope, Semantics, as_int(Value), false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -459,11 +459,11 @@ float __builtin_spirv_OpAtomicExchange_p4f32_i32_i32_f32( volatile __generic flo
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_local_i32, float, (local int*)Pointer, Scope, Semantics, as_int(Value) );
+        atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_local_i32, float, (local int*)Pointer, Scope, Semantics, as_int(Value), false );
     }
     else
     {
-        atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_global_i32, float, (global int*)Pointer, Scope, Semantics, as_int(Value) );
+        atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_global_i32, float, (global int*)Pointer, Scope, Semantics, as_int(Value), true );
     }
 }
 
@@ -524,13 +524,13 @@ uint __builtin_spirv_OpAtomicCompareExchange_p0i32_i32_i32_i32_i32_i32( volatile
 
 uint __builtin_spirv_OpAtomicCompareExchange_p1i32_i32_i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator)
 {
-    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i32, uint, (global int*)Pointer, Scope, Equal, Value, Comparator );
+    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i32, uint, (global int*)Pointer, Scope, Equal, Value, Comparator, true );
 }
 
 
 uint __builtin_spirv_OpAtomicCompareExchange_p3i32_i32_i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator)
 {
-    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_i32, uint, (local int*)Pointer, Scope, Equal, Value, Comparator );
+    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_i32, uint, (local int*)Pointer, Scope, Equal, Value, Comparator, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -539,11 +539,11 @@ uint __builtin_spirv_OpAtomicCompareExchange_p4i32_i32_i32_i32_i32_i32( volatile
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_i32, uint, (__local int*)Pointer, Scope, Equal, Value, Comparator );
+        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_i32, uint, (__local int*)Pointer, Scope, Equal, Value, Comparator, false );
     }
     else
     {
-        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i32, uint, (__global int*)Pointer, Scope, Equal, Value, Comparator );
+        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i32, uint, (__global int*)Pointer, Scope, Equal, Value, Comparator, true );
     }
 }
 
@@ -564,14 +564,14 @@ ulong __builtin_spirv_OpAtomicCompareExchange_p0i64_i32_i32_i32_i64_i64( volatil
 
 ulong __builtin_spirv_OpAtomicCompareExchange_p1i64_i32_i32_i32_i64_i64( volatile __global ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator)
 {
-    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i64, ulong, (global long*)Pointer, Scope, Equal, Value, Comparator );
+    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_i64, ulong, (global long*)Pointer, Scope, Equal, Value, Comparator, true );
 }
 
 
 ulong __builtin_spirv_OpAtomicCompareExchange_p3i64_i32_i32_i32_i64_i64( volatile __local ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator)
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Equal)
+    FENCE_PRE_OP(Scope, Equal, false)
     SPINLOCK_START
     orig = *Pointer;
     if( orig == Comparator )
@@ -579,7 +579,7 @@ ulong __builtin_spirv_OpAtomicCompareExchange_p3i64_i32_i32_i32_i64_i64( volatil
         *Pointer = Value;
     }
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Equal)
+    FENCE_POST_OP(Scope, Equal, false)
     return orig;
 }
 
@@ -618,13 +618,13 @@ float __builtin_spirv_OpAtomicCompareExchange_p0f32_i32_i32_i32_f32_f32( volatil
 
 float __builtin_spirv_OpAtomicCompareExchange_p1f32_i32_i32_i32_f32_f32( volatile __global float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator)
 {
-    atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_global_i32, float, (global int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator) );
+    atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_global_i32, float, (global int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), true );
 }
 
 
 float __builtin_spirv_OpAtomicCompareExchange_p3f32_i32_i32_i32_f32_f32( volatile __local float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator)
 {
-    atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator) );
+    atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -633,11 +633,11 @@ float __builtin_spirv_OpAtomicCompareExchange_p4f32_i32_i32_i32_f32_f32( volatil
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (__local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator) );
+        atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (__local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), false );
     }
     else
     {
-        atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_global_i32, float, (__global int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator) );
+        atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_global_i32, float, (__global int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), true );
     }
 }
 
@@ -710,13 +710,13 @@ uint __builtin_spirv_OpAtomicIIncrement_p0i32_i32_i32( volatile __private uint *
 
 uint __builtin_spirv_OpAtomicIIncrement_p1i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics )
 {
-    atomic_operation_0op( __builtin_IB_atomic_inc_global_i32, uint, (global int*)Pointer, Scope, Semantics );
+    atomic_operation_0op( __builtin_IB_atomic_inc_global_i32, uint, (global int*)Pointer, Scope, Semantics, true );
 }
 
 
 uint __builtin_spirv_OpAtomicIIncrement_p3i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics )
 {
-    atomic_operation_0op( __builtin_IB_atomic_inc_local_i32, uint, (local int*)Pointer, Scope, Semantics );
+    atomic_operation_0op( __builtin_IB_atomic_inc_local_i32, uint, (local int*)Pointer, Scope, Semantics, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -725,11 +725,11 @@ uint __builtin_spirv_OpAtomicIIncrement_p4i32_i32_i32( volatile __generic uint *
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_0op( __builtin_IB_atomic_inc_local_i32, uint, (__local int*)Pointer, Scope, Semantics );
+        atomic_operation_0op( __builtin_IB_atomic_inc_local_i32, uint, (__local int*)Pointer, Scope, Semantics, false );
     }
     else
     {
-        atomic_operation_0op( __builtin_IB_atomic_inc_global_i32, uint, (__global int*)Pointer, Scope, Semantics );
+        atomic_operation_0op( __builtin_IB_atomic_inc_global_i32, uint, (__global int*)Pointer, Scope, Semantics, true );
     }
 }
 
@@ -746,19 +746,19 @@ ulong __builtin_spirv_OpAtomicIIncrement_p0i64_i32_i32( volatile __private ulong
 
 ulong __builtin_spirv_OpAtomicIIncrement_p1i64_i32_i32( volatile __global ulong *Pointer, uint Scope, uint Semantics )
 {
-    atomic_operation_0op( __builtin_IB_atomic_inc_global_i64, ulong, (global int*)Pointer, Scope, Semantics );
+    atomic_operation_0op( __builtin_IB_atomic_inc_global_i64, ulong, (global int*)Pointer, Scope, Semantics, true );
 }
 
 
 ulong __builtin_spirv_OpAtomicIIncrement_p3i64_i32_i32( volatile __local ulong *Pointer, uint Scope, uint Semantics )
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer += 1;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -793,12 +793,12 @@ uint __builtin_spirv_OpAtomicIDecrement_p0i32_i32_i32( volatile __private uint *
 
 uint __builtin_spirv_OpAtomicIDecrement_p1i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics )
 {
-    atomic_operation_0op( __builtin_IB_atomic_dec_global_i32, uint, (global int*)Pointer, Scope, Semantics );
+    atomic_operation_0op( __builtin_IB_atomic_dec_global_i32, uint, (global int*)Pointer, Scope, Semantics, true );
 }
 
 uint __builtin_spirv_OpAtomicIDecrement_p3i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics )
 {
-    atomic_operation_0op( __builtin_IB_atomic_dec_local_i32, uint, (local int*)Pointer, Scope, Semantics );
+    atomic_operation_0op( __builtin_IB_atomic_dec_local_i32, uint, (local int*)Pointer, Scope, Semantics, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -807,11 +807,11 @@ uint __builtin_spirv_OpAtomicIDecrement_p4i32_i32_i32( volatile __generic uint *
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_0op( __builtin_IB_atomic_dec_local_i32, uint, (__local int*)Pointer, Scope, Semantics );
+        atomic_operation_0op( __builtin_IB_atomic_dec_local_i32, uint, (__local int*)Pointer, Scope, Semantics, false );
     }
     else
     {
-        atomic_operation_0op( __builtin_IB_atomic_dec_global_i32, uint, (__global int*)Pointer, Scope, Semantics );
+        atomic_operation_0op( __builtin_IB_atomic_dec_global_i32, uint, (__global int*)Pointer, Scope, Semantics, true );
     }
 }
 
@@ -827,18 +827,18 @@ ulong __builtin_spirv_OpAtomicIDecrement_p0i64_i32_i32( volatile __private ulong
 
 ulong __builtin_spirv_OpAtomicIDecrement_p1i64_i32_i32( volatile __global ulong *Pointer, uint Scope, uint Semantics )
 {
-    atomic_operation_0op( __builtin_IB_atomic_dec_global_i64, ulong, (global long*)Pointer, Scope, Semantics );
+    atomic_operation_0op( __builtin_IB_atomic_dec_global_i64, ulong, (global long*)Pointer, Scope, Semantics, true );
 }
 
 ulong __builtin_spirv_OpAtomicIDecrement_p3i64_i32_i32( volatile __local ulong *Pointer, uint Scope, uint Semantics )
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer -= 1;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -875,12 +875,12 @@ uint __builtin_spirv_OpAtomicIAdd_p0i32_i32_i32_i32( volatile __private uint *Po
 
 uint __builtin_spirv_OpAtomicIAdd_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_add_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_add_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
 uint __builtin_spirv_OpAtomicIAdd_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -889,11 +889,11 @@ uint __builtin_spirv_OpAtomicIAdd_p4i32_i32_i32_i32( volatile __generic uint *Po
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_add_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_add_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
     }
 }
 
@@ -907,18 +907,18 @@ ulong __builtin_spirv_OpAtomicIAdd_p0i64_i32_i32_i64( volatile __private ulong *
 
 ulong __builtin_spirv_OpAtomicIAdd_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_add_global_i64, ulong, (__global ulong*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_add_global_i64, ulong, (__global ulong*)Pointer, Scope, Semantics, Value, true );
 }
 
 ulong __builtin_spirv_OpAtomicIAdd_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer += Value;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -952,13 +952,13 @@ uint __builtin_spirv_OpAtomicISub_p0i32_i32_i32_i32( volatile __private uint *Po
 
 uint __builtin_spirv_OpAtomicISub_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_sub_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_sub_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
 
 uint __builtin_spirv_OpAtomicISub_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -967,11 +967,11 @@ uint __builtin_spirv_OpAtomicISub_p4i32_i32_i32_i32( volatile __generic uint *Po
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_sub_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_sub_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
     }
 }
 
@@ -988,19 +988,19 @@ ulong __builtin_spirv_OpAtomicISub_p0i64_i32_i32_i64( volatile __private ulong *
 
 ulong __builtin_spirv_OpAtomicISub_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_sub_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_sub_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
 
 ulong __builtin_spirv_OpAtomicISub_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer -= Value;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -1035,12 +1035,12 @@ int __builtin_spirv_OpAtomicSMin_p0i32_i32_i32_i32( volatile __private uint *Poi
 
 int __builtin_spirv_OpAtomicSMin_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, int Value)
 {
-    atomic_operation_1op( __builtin_IB_atomic_min_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_min_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
 }
 
 int __builtin_spirv_OpAtomicSMin_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, int Value)
 {
-    atomic_operation_1op( __builtin_IB_atomic_min_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_min_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1049,11 +1049,11 @@ int __builtin_spirv_OpAtomicSMin_p4i32_i32_i32_i32( volatile __generic uint *Poi
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_min_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_min_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_min_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_min_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
     }
 }
 
@@ -1070,18 +1070,18 @@ long __builtin_spirv_OpAtomicSMin_p0i64_i32_i32_i64( volatile __private ulong *P
 
 long __builtin_spirv_OpAtomicSMin_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
-    atomic_operation_1op( __builtin_IB_atomic_min_global_i64, ulong, (__global long*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_min_global_i64, ulong, (__global long*)Pointer, Scope, Semantics, Value, true );
 }
 
 long __builtin_spirv_OpAtomicSMin_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
     long orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer = ( orig < Value ) ? orig : Value;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -1114,12 +1114,12 @@ uint __builtin_spirv_OpAtomicUMin_p0i32_i32_i32_i32( volatile __private uint *Po
 
 uint __builtin_spirv_OpAtomicUMin_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_min_global_u32, uint, Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_min_global_u32, uint, Pointer, Scope, Semantics, Value, true );
 }
 
 uint __builtin_spirv_OpAtomicUMin_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_min_local_u32, uint, Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_min_local_u32, uint, Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1128,11 +1128,11 @@ uint __builtin_spirv_OpAtomicUMin_p4i32_i32_i32_i32( volatile __generic uint *Po
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_min_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_min_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_min_global_u32, uint, (__global uint*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_min_global_u32, uint, (__global uint*)Pointer, Scope, Semantics, Value, true );
     }
 }
 
@@ -1149,18 +1149,18 @@ ulong __builtin_spirv_OpAtomicUMin_p0i64_i32_i32_i64( volatile __private ulong *
 
 ulong __builtin_spirv_OpAtomicUMin_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_min_global_u64, ulong, Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_min_global_u64, ulong, Pointer, Scope, Semantics, Value, true );
 }
 
 ulong __builtin_spirv_OpAtomicUMin_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer = ( orig < Value ) ? orig : Value;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -1194,12 +1194,12 @@ int __builtin_spirv_OpAtomicSMax_p0i32_i32_i32_i32( volatile __private uint *Poi
 
 int __builtin_spirv_OpAtomicSMax_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, int Value)
 {
-    atomic_operation_1op( __builtin_IB_atomic_max_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_max_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
 int __builtin_spirv_OpAtomicSMax_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, int Value)
 {
-    atomic_operation_1op( __builtin_IB_atomic_max_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_max_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1208,11 +1208,11 @@ int __builtin_spirv_OpAtomicSMax_p4i32_i32_i32_i32( volatile __generic uint *Poi
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_max_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_max_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_max_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_max_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
     }
 }
 
@@ -1229,18 +1229,18 @@ long __builtin_spirv_OpAtomicSMax_p0i64_i32_i32_i64( volatile __private ulong *P
 
 long __builtin_spirv_OpAtomicSMax_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
-    atomic_operation_1op( __builtin_IB_atomic_max_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_max_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
 long __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
     long orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer = ( orig > Value ) ? orig : Value;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -1276,12 +1276,12 @@ uint __builtin_spirv_OpAtomicUMax_p0i32_i32_i32_i32( volatile __private uint *Po
 
 uint __builtin_spirv_OpAtomicUMax_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_max_global_u32, uint, Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_max_global_u32, uint, Pointer, Scope, Semantics, Value, true );
 }
 
 uint __builtin_spirv_OpAtomicUMax_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_max_local_u32, uint, Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_max_local_u32, uint, Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1290,11 +1290,11 @@ uint __builtin_spirv_OpAtomicUMax_p4i32_i32_i32_i32( volatile __generic uint *Po
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_max_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_max_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_max_global_u32, uint, (__global uint*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_max_global_u32, uint, (__global uint*)Pointer, Scope, Semantics, Value, true );
     }
 }
 
@@ -1311,18 +1311,18 @@ ulong __builtin_spirv_OpAtomicUMax_p0i64_i32_i32_i64( volatile __private ulong *
 
 ulong __builtin_spirv_OpAtomicUMax_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_max_global_u64, ulong, Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_max_global_u64, ulong, Pointer, Scope, Semantics, Value, true );
 }
 
 ulong __builtin_spirv_OpAtomicUMax_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer = ( orig > Value ) ? orig : Value;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -1356,12 +1356,12 @@ uint __builtin_spirv_OpAtomicAnd_p0i32_i32_i32_i32( volatile __private uint *Poi
 
 uint __builtin_spirv_OpAtomicAnd_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_and_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_and_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
 uint __builtin_spirv_OpAtomicAnd_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_and_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_and_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1370,11 +1370,11 @@ uint __builtin_spirv_OpAtomicAnd_p4i32_i32_i32_i32( volatile __generic uint *Poi
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_and_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_and_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_and_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_and_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
     }
 }
 
@@ -1391,18 +1391,18 @@ ulong __builtin_spirv_OpAtomicAnd_p0i64_i32_i32_i64( volatile __private ulong *P
 
 ulong __builtin_spirv_OpAtomicAnd_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_and_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_and_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
 ulong __builtin_spirv_OpAtomicAnd_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer &= Value;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
@@ -1436,12 +1436,12 @@ uint __builtin_spirv_OpAtomicOr_p0i32_i32_i32_i32( volatile __private uint *Poin
 
 uint __builtin_spirv_OpAtomicOr_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_or_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_or_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
 uint __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_or_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_or_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1450,11 +1450,11 @@ uint __builtin_spirv_OpAtomicOr_p4i32_i32_i32_i32( volatile __generic uint *Poin
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_or_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_or_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_or_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_or_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
     }
 }
 
@@ -1471,18 +1471,18 @@ ulong __builtin_spirv_OpAtomicOr_p0i64_i32_i32_i64( volatile __private ulong *Po
 
 ulong __builtin_spirv_OpAtomicOr_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_or_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_or_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
 ulong __builtin_spirv_OpAtomicOr_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
       ulong orig;
-      FENCE_PRE_OP(Scope, Semantics)
+      FENCE_PRE_OP(Scope, Semantics, false)
       SPINLOCK_START
       orig = *Pointer;
       *Pointer |= Value;
       SPINLOCK_END
-      FENCE_POST_OP(Scope, Semantics)
+      FENCE_POST_OP(Scope, Semantics, false)
       return orig;
 }
 
@@ -1517,12 +1517,12 @@ uint __builtin_spirv_OpAtomicXor_p0i32_i32_i32_i32( volatile __private uint *Poi
 
 uint __builtin_spirv_OpAtomicXor_p1i32_i32_i32_i32( volatile __global uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_xor_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_xor_global_i32, uint, (global int*)Pointer, Scope, Semantics, Value, true );
 }
 
 uint __builtin_spirv_OpAtomicXor_p3i32_i32_i32_i32( volatile __local uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_xor_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_xor_local_i32, uint, (local int*)Pointer, Scope, Semantics, Value, false );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1531,11 +1531,11 @@ uint __builtin_spirv_OpAtomicXor_p4i32_i32_i32_i32( volatile __generic uint *Poi
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_operation_1op( __builtin_IB_atomic_xor_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_xor_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
     else
     {
-        atomic_operation_1op( __builtin_IB_atomic_xor_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value );
+        atomic_operation_1op( __builtin_IB_atomic_xor_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
     }
 }
 
@@ -1552,18 +1552,18 @@ ulong __builtin_spirv_OpAtomicXor_p0i64_i32_i32_i64( volatile __private ulong *P
 
 ulong __builtin_spirv_OpAtomicXor_p1i64_i32_i32_i64( volatile __global ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    atomic_operation_1op( __builtin_IB_atomic_xor_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value );
+    atomic_operation_1op( __builtin_IB_atomic_xor_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
 ulong __builtin_spirv_OpAtomicXor_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
     ulong orig;
-    FENCE_PRE_OP(Scope, Semantics)
+    FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
     *Pointer ^= Value;
     SPINLOCK_END
-    FENCE_POST_OP(Scope, Semantics)
+    FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
 
