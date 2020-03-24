@@ -8085,6 +8085,8 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         opnds.push_back(cv);
     }
 
+    assert(opnds.size() == constraints.size());
+
     // Check for read/write registers
     if (!inst->getType()->isVoidTy())
     {
@@ -8102,6 +8104,20 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
                     m_encoder->Push();
                 }
             }
+        }
+    }
+
+    // Special handling if LLVM replaces a variable with an immediate, we need to insert an extra move
+    for (unsigned i = 0; i < opnds.size(); i++)
+    {
+        CVariable* opVar = opnds[i];
+        StringRef constraint = constraints[i];
+        if (opVar->IsImmediate() && !constraint.equals("i"))
+        {
+            CVariable* tempMov = m_currShader->GetNewVariable(1, opVar->GetType(), EALIGN_GRF, true);
+            m_encoder->Copy(tempMov, opVar);
+            m_encoder->Push();
+            opnds[i] = tempMov;
         }
     }
 
