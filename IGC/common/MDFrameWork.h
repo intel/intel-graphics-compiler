@@ -230,6 +230,10 @@ namespace IGC
         bool forcedVISAPreRAScheduler = false;
     };
 
+    struct VertexShaderInfo
+    {
+        int DrawIndirectBufferIndex = -1;
+    };
 
     struct PixelShaderInfo
     {
@@ -338,6 +342,7 @@ namespace IGC
         CompOptions compOpt;
         std::map<llvm::Function*, IGC::FunctionMetaData>   FuncMD;
         PushInfo pushInfo;
+        VertexShaderInfo vsInfo;
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
         std::map<ConstantAddress, uint32_t>   inlineDynConstants;

@@ -192,6 +192,8 @@ namespace IGC
         pKernelProgram->isMessageTargetDataCacheDataPort = isMessageTargetDataCacheDataPort;
         pKernelProgram->singleInstanceVertexShader =
             ((entry->getParent())->getNamedMetadata("ConstantBufferIndexedWithInstanceId") != nullptr) ? true : false;
+        pKernelProgram->EnableVertexReordering =
+            (GetContext()->getModuleMetaData()->vsInfo.DrawIndirectBufferIndex != -1);
 
         CreateGatherMap();
         CreateConstantBufferOutput(pKernelProgram);
