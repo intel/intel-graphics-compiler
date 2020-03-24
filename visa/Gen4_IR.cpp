@@ -7991,7 +7991,7 @@ bool G4_INST::canDstBeAcc() const
         }
     }
 
-    if (builder.relaxedACCRestrictions())
+    if (builder.avoidAccDstWithIndirectSource())
     {
         for (int i = 0, numSrc = getNumSrc(); i < numSrc; ++i)
         {

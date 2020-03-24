@@ -364,6 +364,11 @@
         return getGenxPlatform() < GENX_CNL;
     }
 
+    bool avoidAccDstWithIndirectSource() const
+    {
+        return getGenxPlatform() >= GENX_TGLLP;
+    }
+
     bool hasReadSuppression() const
     {
         return getGenxPlatform() >= GENX_TGLLP;
