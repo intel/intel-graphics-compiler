@@ -1750,7 +1750,7 @@ uint4 __builtin_spirv_BuiltInSubgroupLeMask()
     return __builtin_spirv_BuiltInSubgroupLeMaskKHR();
 }
 
-uint4 __builtin_spirv_BuiltinSubgroupLtMask()
+uint4 __builtin_spirv_BuiltInSubgroupLtMask()
 {
     return __builtin_spirv_BuiltInSubgroupLtMaskKHR();
 }
