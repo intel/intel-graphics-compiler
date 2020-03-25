@@ -857,7 +857,7 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
     auto extractElementOrderOpt = [&](std::array<Value*, NUM_DP4A_COMPONENTS> & Arr) {
       bool CanOptOrder = true;
       llvm::SmallPtrSet<Value*, NUM_DP4A_COMPONENTS> OriginValues;
-      std::map<int, Value*> IndexMap;
+      std::map<int64_t, Value*> IndexMap;
       for (int i = 0; i < NUM_DP4A_COMPONENTS; ++i) {
         ConstantInt* IndexVal = nullptr;
         Value* OriginVal = nullptr;
@@ -2313,7 +2313,7 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
         uint32_t vectorSize = I.getType()->getVectorNumElements();
         fsub = llvm::UndefValue::get(I.getType());
 
-        for (int i = 0; i < vectorSize; ++i)
+        for (uint32_t i = 0; i < vectorSize; ++i)
         {
             Value* extract = builder.CreateExtractElement(I.getOperand(0), i);
             Value* extract_fsub = builder.CreateFSub(ConstantFP::get(extract->getType(), 0.0f), extract);

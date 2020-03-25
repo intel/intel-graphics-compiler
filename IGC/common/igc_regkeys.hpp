@@ -153,15 +153,18 @@ static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFl
 #define IGC_SET_FLAG_VALUE( name, regkeyValue ) ;
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
     static const unsigned int regkeyName##default = (unsigned int)defaultValue;
-class DebugVariable
+namespace IGC
 {
-public:
+    class DebugVariable
+    {
+    public:
 #include "igc_regkeys.def"
+    };
 };
 #undef DECLARE_IGC_REGKEY
 
-#define IGC_IS_FLAG_ENABLED( name )     (DebugVariable::name##default != 0)
-#define IGC_IS_FLAG_DISABLED( name )    (DebugVariable::name##default == 0)
-#define IGC_GET_FLAG_VALUE( name )      (DebugVariable::name##default)
+#define IGC_IS_FLAG_ENABLED( name )     (IGC::DebugVariable::name##default != 0)
+#define IGC_IS_FLAG_DISABLED( name )    (IGC::DebugVariable::name##default == 0)
+#define IGC_GET_FLAG_VALUE( name )      (IGC::DebugVariable::name##default)
 #define IGC_GET_REGKEYSTRING( name )    ("")
 #endif
