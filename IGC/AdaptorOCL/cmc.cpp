@@ -293,6 +293,8 @@ CMCLibraryLoader::CMCLibraryLoader()
     if (Dylib.isValid()) {
         compileFn = getFunctionType<compileFnTy>(Dylib.getAddressOfSymbol("cmc_load_and_compile"));
         freeFn = getFunctionType<freeFnTy>(Dylib.getAddressOfSymbol("cmc_free_compile_info"));
+        compileFn_v2 = getFunctionType<compileFnTy_v2>(Dylib.getAddressOfSymbol("cmc_load_and_compile_v2"));
+        freeFn_v2 = getFunctionType<freeFnTy_v2>(Dylib.getAddressOfSymbol("cmc_free_compile_info_v2"));
     }
 }
 
@@ -362,6 +364,7 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
 
         switch (AI.kind) {
         default:
+            assert(0 && "unsupported arg type");
             break;
         case cmc_arg_kind::General:
             kernel.createConstArgumentAnnotation(AI.index, AI.sizeInBytes, AI.offset - constantPayloadStart);
@@ -396,6 +399,101 @@ static void generatePatchTokens(const cmc_kernel_info *info, CMKernel& kernel)
         case cmc_arg_kind::Image3d:
             kernel.createImageAnnotation(AI.index, AI.BTI, 3, isWriteable);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            break;
+        }
+    }
+
+    int32_t ConstantBufferLength = maxArgEnd - constantPayloadStart;
+    ConstantBufferLength = iSTD::Align(ConstantBufferLength, info->GRFByteSize) / info->GRFByteSize;
+    kernel.m_kernelInfo.m_kernelProgram.ConstantBufferLength = ConstantBufferLength;
+}
+
+static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& kernel)
+{
+    // This is the starting constant thread payload
+    // r0-r3 are reserved for SIMD8 dispatch.
+    unsigned constantPayloadStart = info->GRFByteSize * 4;
+    // r0-r1 are reserved for SIMD1 dispatch
+    if (info->CompiledSIMDSize == 1)
+        constantPayloadStart = info->GRFByteSize * 2;
+
+    unsigned payloadPos = constantPayloadStart;
+
+    // Allocate GLOBAL_WORK_OFFSET and LOCAL_WORK_SIZE, SIMD8 dispatch only.
+    if (info->CompiledSIMDSize == 8) {
+        kernel.createImplicitArgumentsAnnotation(0);
+        payloadPos += info->GRFByteSize;
+    }
+
+    // Now all arguments from cmc. We keep track of the maximal offset.
+    int32_t maxArgEnd = payloadPos;
+
+    // Setup argument to BTI mapping.
+    kernel.m_kernelInfo.m_argIndexMap.clear();
+
+    for (unsigned i = 0; i < info->num_print_strings; i++) {
+        assert(info->print_string_descs);
+        cmc_ocl_print_string& SI = info->print_string_descs[i];
+
+        iOpenCL::PrintfStringAnnotation* stringAnnotation = new iOpenCL::PrintfStringAnnotation;
+        stringAnnotation->Index = i;
+        stringAnnotation->StringSize = cmc_ocl_print_string::max_width;
+        stringAnnotation->StringData = new char[cmc_ocl_print_string::max_width];
+        std::copy(SI.s, SI.s + cmc_ocl_print_string::max_width, stringAnnotation->StringData);
+        kernel.m_kernelInfo.m_printfStringAnnotations.push_back(stringAnnotation);
+    }
+
+    for (unsigned i = 0; i < info->num_args; ++i) {
+        IGC_ASSERT(info->arg_descs);
+        cmc_arg_info& AI = info->arg_descs[i];
+        if (AI.offset > 0)
+            maxArgEnd = std::max(AI.offset + AI.sizeInBytes, maxArgEnd);
+        bool isWriteable = AI.access != cmc_access_kind::read_only;
+
+        switch (AI.kind) {
+        default:
+            break;
+        case cmc_arg_kind::General:
+            kernel.createConstArgumentAnnotation(AI.index, AI.sizeInBytes, AI.offset - constantPayloadStart);
+            break;
+        case cmc_arg_kind::LocalSize:
+            kernel.createSizeAnnotation(AI.offset - constantPayloadStart, iOpenCL::DATA_PARAMETER_ENQUEUED_LOCAL_WORK_SIZE);
+            break;
+        case cmc_arg_kind::GroupCount:
+            kernel.createSizeAnnotation(AI.offset - constantPayloadStart, iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS);
+            break;
+        case cmc_arg_kind::Buffer:
+            kernel.createPointerGlobalAnnotation(AI.index, AI.sizeInBytes, AI.offset - constantPayloadStart, AI.BTI);
+            kernel.createBufferStatefulAnnotation(AI.index);
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            break;
+        case cmc_arg_kind::SVM:
+            kernel.createPointerGlobalAnnotation(AI.index, AI.sizeInBytes, AI.offset - constantPayloadStart, AI.BTI);
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            break;
+        case cmc_arg_kind::Sampler:
+            kernel.createSamplerAnnotation(AI.index);
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            break;
+        case cmc_arg_kind::Image1d:
+            kernel.createImageAnnotation(AI.index, AI.BTI, 1, isWriteable);
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            break;
+        case cmc_arg_kind::Image2d:
+            kernel.createImageAnnotation(AI.index, AI.BTI, 2, isWriteable);
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            break;
+        case cmc_arg_kind::Image3d:
+            kernel.createImageAnnotation(AI.index, AI.BTI, 3, isWriteable);
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            break;
+        case cmc_arg_kind::PrintBuffer:
+            kernel.m_kernelInfo.m_printfBufferAnnotation = new iOpenCL::PrintfBufferAnnotation();
+            kernel.m_kernelInfo.m_printfBufferAnnotation->AnnotationSize = sizeof(kernel.m_kernelInfo.m_printfBufferAnnotation);
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = 255;
+            kernel.m_kernelInfo.m_printfBufferAnnotation->PayloadPosition = AI.offset - constantPayloadStart;
+            kernel.m_kernelInfo.m_printfBufferAnnotation->Index = 0;
+            kernel.m_kernelInfo.m_printfBufferAnnotation->DataSize = 8;
             break;
         }
     }
@@ -504,6 +602,105 @@ static void populateKernelInfo(const cmc_kernel_info* info,
     generatePatchTokens(info, kernel);
 }
 
+// Combine cmc compiler metadata with jitter info.
+static void populateKernelInfo_v2(const cmc_kernel_info_v2* info,
+                                  FINALIZER_INFO& JITInfo,
+                                  llvm::ArrayRef<uint8_t> genBin,
+                                  CMKernel& kernel)
+{
+    // ExecutionEnivronment:
+    //
+    auto& kInfo = kernel.m_kernelInfo;
+    kInfo.m_kernelName = info->name;
+    // Fixed SIMD8.
+    kInfo.m_executionEnivronment.CompiledSIMDSize = info->CompiledSIMDSize;
+    // SLM size in bytes, align to 1KB.
+    kInfo.m_executionEnivronment.SumFixedTGSMSizes = iSTD::Align(info->SLMSize, 1024);
+    kInfo.m_executionEnivronment.HasBarriers = info->HasBarriers;
+    kInfo.m_executionEnivronment.HasReadWriteImages = info->HasReadWriteImages;
+    kInfo.m_executionEnivronment.SubgroupIndependentForwardProgressRequired = true;
+    kInfo.m_executionEnivronment.NumGRFRequired = info->NumGRFRequired;
+
+    // Allocate spill-fill buffer
+    if (JITInfo.isSpill || JITInfo.hasStackcalls) {
+        kInfo.m_executionEnivronment.PerThreadScratchSpace += JITInfo.spillMemUsed;
+    }
+    if (!JITInfo.hasStackcalls && info->ThreadPrivateMemSize) {
+        // CM stack calls and thread-private memory use the same value to control
+        // scratch space. Consequently, if we have stack calls, there is no need
+        // to add this value for thread-private memory. It should be fixed if
+        // these features begin to calculate the required space separately.
+        kInfo.m_executionEnivronment.PerThreadScratchSpace +=
+            info->ThreadPrivateMemSize;
+    }
+
+    // ThreadPayload
+    kInfo.m_threadPayload.HasLocalIDx = info->HasLocalIDx;
+    kInfo.m_threadPayload.HasLocalIDy = info->HasLocalIDy;
+    kInfo.m_threadPayload.HasLocalIDz = info->HasLocalIDz;
+    kInfo.m_threadPayload.HasGroupID = info->HasGroupID;
+    kInfo.m_threadPayload.HasLocalID = info->HasLocalIDx || info->HasLocalIDy || info->HasLocalIDz;
+    kInfo.m_threadPayload.CompiledForIndirectPayloadStorage = true;
+    kInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = JITInfo.offsetToSkipPerThreadDataLoad;
+
+    // Kernel binary, padding is hard-coded.
+    size_t size = genBin.size();
+    size_t padding = iSTD::GetAlignmentOffset(size, 64);
+    void* kernelBin = IGC::aligned_malloc(size + padding, 16);
+    memcpy_s(kernelBin, size + padding, genBin.data(), size);
+    // pad out the rest with 0s
+    std::memset(static_cast<char*>(kernelBin) + size, 0, padding);
+
+    // Update program info.
+    std::memset(&kernel.m_prog, 0, sizeof(IGC::SProgramOutput));
+    kernel.m_prog.m_programBin = kernelBin;
+    kernel.m_prog.m_programSize = size + padding;
+    kernel.m_prog.m_unpaddedProgramSize = size;
+    kernel.m_prog.m_InstructionCount = JITInfo.numAsmCount;
+
+    // Iterate kernel arguments (This should stay in sync with cmc on resource type.)
+    int numUAVs = 0;
+    int numResources = 0;
+
+    auto isResource = [](cmc_arg_kind kind) {
+        switch (kind) {
+        case cmc_arg_kind::Buffer:
+        case cmc_arg_kind::Image1d:
+        case cmc_arg_kind::Image2d:
+        case cmc_arg_kind::Image3d:
+        case cmc_arg_kind::SVM:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    };
+
+    // cmc does not do stateless-to-stateful optimization, therefore
+    // set >4GB to true by default, to false if we see any resource-type
+    kInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = true;
+    for (unsigned i = 0; i < info->num_args; ++i) {
+        IGC_ASSERT(info->arg_descs);
+        cmc_arg_info& AI = info->arg_descs[i];
+        if (isResource(AI.kind)) {
+            if (AI.kind == cmc_arg_kind::Buffer || AI.kind == cmc_arg_kind::SVM)
+                numUAVs++;
+            else if (AI.access == cmc_access_kind::write_only ||
+                     AI.access == cmc_access_kind::read_write)
+                numUAVs++;
+            else
+                numResources++;
+            kInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = false;
+        }
+    }
+
+    // update BTI layout.
+    kernel.RecomputeBTLayout(numUAVs, numResources);
+
+    // Generate OCL patch tokens.
+    generatePatchTokens_v2(info, kernel);
+}
+
 int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgram,
                      std::vector<const char*> &opts)
 {
@@ -530,6 +727,40 @@ int cmc::vISACompile(cmc_compile_info* output, iOpenCL::CGen8CMProgram& CMProgra
         CMProgram.m_kernels.push_back(K);
         llvm::ArrayRef<uint8_t> genBin(static_cast<uint8_t*>(genBinary), genBinarySize);
         populateKernelInfo(info, JITInfo, genBin, *K);
+        freeBlock(genBinary);
+    }
+
+    // build binary.
+    CMProgram.CreateKernelBinaries();
+    return status;
+}
+
+int cmc::vISACompile_v2(cmc_compile_info_v2* output, iOpenCL::CGen8CMProgram& CMProgram,
+                        std::vector<const char*> &opts)
+{
+    int status = 0;
+    const char* platformStr = getPlatformStr(CMProgram.getPlatform());
+
+    // JIT compile kernels in vISA
+    IGC_ASSERT(output->kernel_info && "null kernel info");
+    for (unsigned i = 0; i < output->num_kernels; ++i) {
+        cmc_kernel_info_v2* info = output->kernel_info_v2 + i;
+        void* genBinary = nullptr;
+        unsigned genBinarySize = 0;
+        FINALIZER_INFO JITInfo;
+        status = JITCompile(
+            info->name, output->binary, (unsigned)output->binary_size,
+            genBinary, genBinarySize, platformStr, output->visa_major_version,
+            output->visa_minor_version, (unsigned)opts.size(), opts.data(),
+            nullptr, &JITInfo);
+        if (status != 0)
+            return status;
+
+        // Populate kernel info.
+        CMKernel* K = new CMKernel(CMProgram.getPlatform());
+        CMProgram.m_kernels.push_back(K);
+        llvm::ArrayRef<uint8_t> genBin(static_cast<uint8_t*>(genBinary), genBinarySize);
+        populateKernelInfo_v2(info, JITInfo, genBin, *K);
         freeBlock(genBinary);
     }
 

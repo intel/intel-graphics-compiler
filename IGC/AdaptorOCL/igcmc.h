@@ -43,7 +43,13 @@ enum class cmc_arg_kind : int32_t {
     Sampler,
     Image1d,
     Image2d,
-    Image3d
+    Image3d,
+    PrintBuffer
+};
+
+struct cmc_ocl_print_string {
+    static constexpr unsigned max_width = 256;
+    char s[max_width];
 };
 
 struct cmc_arg_info {
@@ -119,11 +125,55 @@ struct cmc_compile_info {
     void* context;
 };
 
+// compilation interface bewteen cmc and igc
+struct cmc_kernel_info_v2 {
+    /// The kernel name.
+    const char *name;
+
+    /// The number of kernel arguments
+    unsigned num_args;
+
+    /// The kernel argument info.
+    cmc_arg_info *arg_descs;
+
+    // ThreadPayload
+    bool HasLocalIDx = false;
+    bool HasLocalIDy = false;
+    bool HasLocalIDz = false;
+    bool HasGroupID = false;
+
+    // ExecutionEnivronment
+    uint32_t CompiledSIMDSize = 8;
+    uint32_t SLMSize = 0;
+    uint32_t NumGRFRequired = 128;
+    uint32_t GRFByteSize = 32;
+    uint32_t HasBarriers = 0;
+    bool HasReadWriteImages = false;
+    uint32_t ThreadPrivateMemSize = 0;
+
+    /// number of format strings in the kernel
+    unsigned num_print_strings;
+    /// The kernel format string storage
+    cmc_ocl_print_string *print_string_descs;
+};
+
+struct cmc_compile_info_v2 : cmc_compile_info{
+    /// The kernel infomation.
+    cmc_kernel_info_v2 *kernel_info_v2;
+};
+
 extern "C" __EXPORT__ int32_t cmc_load_and_compile(const char* input,
                                                    size_t input_size,
                                                    const char* const options,
                                                    cmc_compile_info** output);
 
 extern "C" __EXPORT__ int32_t cmc_free_compile_info(cmc_compile_info* output);
+
+extern "C" __EXPORT__ int32_t cmc_load_and_compile_v2(const char* input,
+                                                      size_t input_size,
+                                                      const char* const options,
+                                                      cmc_compile_info_v2** output_v2);
+
+extern "C" __EXPORT__ int32_t cmc_free_compile_info_v2(cmc_compile_info_v2* output_v2);
 
 #endif // _IGCMC_H_

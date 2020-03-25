@@ -1353,18 +1353,30 @@ static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
     }
 
     cmc_compile_info* output = nullptr;
+    cmc_compile_info_v2* output_v2 = nullptr;
+    int32_t status = -1;
     const std::string cmd = getCommandLine(pInputArgs, inputDataFormatTemp, IGCPlatform);
-    int32_t status = Loader.compileFn(pInputArgs->pInput, pInputArgs->InputSize, cmd.c_str(), &output);
-    if (status == 0 && output) {
+    if (Loader.compileFn_v2) {
+        status = Loader.compileFn_v2(pInputArgs->pInput, pInputArgs->InputSize, cmd.c_str(), &output_v2);
+    } else {
+        status = Loader.compileFn(pInputArgs->pInput, pInputArgs->InputSize, cmd.c_str(), &output);
+    }
+    if (status == 0 && (output || output_v2)) {
         iOpenCL::CGen8CMProgram CMProgram(IGCPlatform.getPlatformInfo());
         std::vector<std::string> optstrings;
         std::vector<const char*> opts;
         getvISACompileOpts(pInputArgs, optstrings, opts);
-        cmc::vISACompile(output, CMProgram, opts);
-
-        // Prepare and set program binary
         Util::BinaryStream programBinary;
-        CMProgram.GetProgramBinary(programBinary, output->pointer_size_in_bytes);
+        if (Loader.compileFn_v2 && Loader.freeFn_v2 && output_v2) {
+            cmc::vISACompile_v2(output_v2, CMProgram, opts);
+            // Prepare and set program binary
+            CMProgram.GetProgramBinary(programBinary, output_v2->pointer_size_in_bytes);
+        } else {
+            cmc::vISACompile(output, CMProgram, opts);
+            // Prepare and set program binary
+            CMProgram.GetProgramBinary(programBinary, output->pointer_size_in_bytes);
+        }
+
         size_t binarySize = static_cast<size_t>(programBinary.Size());
         char* binaryOutput = new char[binarySize];
         memcpy_s(binaryOutput, binarySize, (char*)programBinary.GetLinearPointer(), binarySize);
@@ -1372,7 +1384,11 @@ static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
         pOutputArgs->pOutput = binaryOutput;
 
         // Free the resource allocated in the dll side.
-        Loader.freeFn(output);
+        if (Loader.freeFn_v2) {
+            Loader.freeFn_v2(output_v2);
+        } else { 
+            Loader.freeFn(output);
+        }
         return true;
     }
 
