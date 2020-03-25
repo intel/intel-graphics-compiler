@@ -410,7 +410,7 @@ INLINE type OVERLOADABLE sub_group_non_uniform_##group_type##_##operation(type x
 
 #if defined(cl_khr_subgroup_clustered_reduce)
 #define DEFN_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(type, operation, spv_operation, abbr_type, group_type, spv_group_type)       \
-INLINE type OVERLOADABLE sub_group_##group_type##_clustered_##operation(type x, uint clustersize)                                   \
+INLINE type OVERLOADABLE sub_group_clustered_##group_type##_##operation(type x, uint clustersize)                                   \
 {                                                                                                                                   \
     return __builtin_spirv_OpGroupNonUniform##spv_operation##_i32_i32_##abbr_type##_i32(Subgroup, spv_group_type, x, clustersize);  \
 }
@@ -432,8 +432,8 @@ DEFN_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(type, op_name, new_name, abbr_typ
 // gentype sub_group_non_uniform_scan_exclusive_add( gentype value )
 // gentype sub_group_non_uniform_scan_exclusive_mul( gentype value )
 // cl_khr_subgroup_clustered_reduce:
-// gentype sub_group_reduce_clustered_add( gentype value, uint clustersize )
-// gentype sub_group_reduce_clustered_mul( gentype value, uint clustersize )
+// gentype sub_group_clustered_reduce_add( gentype value, uint clustersize )
+// gentype sub_group_clustered_reduce_mul( gentype value, uint clustersize )
 #define DEFN_SUB_GROUP_NON_UNIFORM_ADD_MUL(type, type_sign, abbr_type)       \
 DEFN_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(type, add, type_sign##Add, abbr_type)  \
 DEFN_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(type, mul, type_sign##Mul, abbr_type)
@@ -462,8 +462,8 @@ DEFN_SUB_GROUP_NON_UNIFORM_ADD_MUL(half,   F, f16)
 // gentype sub_group_non_uniform_scan_exclusive_min( gentype value )
 // gentype sub_group_non_uniform_scan_exclusive_max( gentype value )
 // cl_khr_subgroup_clustered_reduce:
-// gentype sub_group_reduce_clustered_min( gentype value, uint clustersize )
-// gentype sub_group_reduce_clustered_max( gentype value, uint clustersize )
+// gentype sub_group_clustered_reduce_min( gentype value, uint clustersize )
+// gentype sub_group_clustered_reduce_max( gentype value, uint clustersize )
 
 #define DEFN_SUB_GROUP_NON_UNIFORM_MIN_MAX(type, type_sign, abbr_type)       \
 DEFN_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(type, min, type_sign##Min, abbr_type)  \

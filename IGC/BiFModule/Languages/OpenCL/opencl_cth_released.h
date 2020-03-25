@@ -6400,7 +6400,7 @@ TYPE    __attribute__((overloadable)) sub_group_non_uniform_##GROUP_TYPE##_##OPE
 
 #if defined(cl_khr_subgroup_clustered_reduce)
 #define DECL_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(TYPE, GROUP_TYPE, OPERATION) \
-TYPE    __attribute__((overloadable)) sub_group_##GROUP_TYPE##_clustered_##OPERATION(TYPE value, uint clustersize);
+TYPE    __attribute__((overloadable)) sub_group_clustered_##GROUP_TYPE##_##OPERATION(TYPE value, uint clustersize);
 #endif // defined(cl_khr_subgroup_clustered_reduce)
 
 #define DECL_SUB_GROUP_NON_UNIFORM_ALL_GROUPS(TYPE, OPERATION)           \
