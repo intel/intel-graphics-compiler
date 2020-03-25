@@ -310,8 +310,8 @@ namespace {
     };
 
     struct SymbolicPointer {
-        const Value* BasePtr;
-        int64_t Offset;
+        const Value* BasePtr = nullptr;
+        int64_t Offset = 0;
         SmallVector<Term, 8> Terms;
 
         // getConstantOffset - Return the constant offset between two memory
@@ -1417,6 +1417,10 @@ SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
                     break;
                 // FALL THROUGH.
             case Instruction::Add:
+                //This add can come from a ealier opt of a sub
+                //X - C =  X + (-C) ->  make sure C is positive
+                if(isKnownNegative(RHSC, *DL))
+                    break;
                 V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
                     Depth + 1, DL);
                 Offset += RHSC->getValue();
