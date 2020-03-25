@@ -84,9 +84,7 @@ namespace IGC
 
         void CheckMediaBlockInstError(llvm::GenIntrinsicInst* inst, bool isRead);
 
-        void subGroupReduce(WaveOps op, llvm::CallInst& CI);
-        void subGroupClusteredReduce(WaveOps op, llvm::CallInst& CI);
-        void subGroupScan(WaveOps op, llvm::CallInst& CI);
+        void subGroupArithmetic(llvm::CallInst& CI, WaveOps op, GroupOpType groupType);
 
         static const llvm::StringRef SUB_GROUP_BARRIER;
         static const llvm::StringRef GET_MAX_SUB_GROUP_SIZE;

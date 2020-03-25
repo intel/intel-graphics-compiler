@@ -189,6 +189,13 @@ namespace IGC
         UNDEF
     };
 
+    enum GroupOpType
+    {
+        GroupOperationScan,
+        GroupOperationReduce,
+        GroupOperationClusteredReduce
+    };
+
     enum SGVUsage
     {
         POSITION_X,

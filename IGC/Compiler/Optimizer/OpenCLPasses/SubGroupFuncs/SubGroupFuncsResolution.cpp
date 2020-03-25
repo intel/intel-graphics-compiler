@@ -508,46 +508,53 @@ void SubGroupFuncsResolution::pushMediaBlockArgs(llvm::SmallVector<llvm::Value*,
     args.push_back(isImageTypeUAV);
 }
 
-void SubGroupFuncsResolution::subGroupReduce(WaveOps op, CallInst& CI)
+void SubGroupFuncsResolution::subGroupArithmetic(CallInst& CI, WaveOps op, GroupOpType groupType)
 {
     IRBuilder<> IRB(&CI);
     Value* arg = CI.getArgOperand(0);
+    // GenISA_Wave* instrinsics do not support i1 type. Handle this with i8 version of instrinsic.
+    bool isBoolean = (arg->getType() == IRB.getInt1Ty());
+    if (isBoolean)
+    {
+        arg = IRB.CreateZExt(arg, IRB.getInt8Ty());
+    }
     Value* opVal = IRB.getInt8((uint8_t)op);
-    Value* args[2] = { arg, opVal };
-    Function* waveAll = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
-        GenISAIntrinsic::GenISA_WaveAll,
-        arg->getType());
-    Instruction* waveAllCall = IRB.CreateCall(waveAll, args);
-    CI.replaceAllUsesWith(waveAllCall);
-    CI.eraseFromParent();
-}
+    Value* waveCall = nullptr;
+    if (groupType == GroupOperationReduce)
+    {
+        Value* args[2] = { arg, opVal };
+        Function* waveAll = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_WaveAll,
+            arg->getType());
+        waveCall = IRB.CreateCall(waveAll, args);
+    }
+    else if (groupType == GroupOperationScan)
+    {
+        Value* args[4] = { arg, opVal, IRB.getInt1(false), IRB.getInt1(true) };
+        Function* waveScan = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_WavePrefix,
+            arg->getType());
+        waveCall = IRB.CreateCall(waveScan, args);
+    }
+    else if (groupType == GroupOperationClusteredReduce)
+    {
+        Value* clusterSize = CI.getOperand(1);
+        Value* args[3] = { arg, opVal, clusterSize };
+        Function* waveClustered = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_WaveClustered,
+            arg->getType());
+        waveCall = IRB.CreateCall(waveClustered, args);
+    }
+    else
+    {
+        assert(0 && "Unsupported group operation type!");
+    }
 
-void SubGroupFuncsResolution::subGroupClusteredReduce(WaveOps op, CallInst& CI)
-{
-    IRBuilder<> IRB(&CI);
-    Value* arg = CI.getArgOperand(0);
-    Value* opVal = IRB.getInt8((uint8_t)op);
-    Value* clusterSize = CI.getOperand(1);
-    Value* args[3] = { arg, opVal, clusterSize };
-    Function* waveClustered = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
-        GenISAIntrinsic::GenISA_WaveClustered,
-        arg->getType());
-    Instruction* waveClusteredCall = IRB.CreateCall(waveClustered, args);
-    CI.replaceAllUsesWith(waveClusteredCall);
-    CI.eraseFromParent();
-}
-
-void SubGroupFuncsResolution::subGroupScan(WaveOps op, CallInst& CI)
-{
-    IRBuilder<> IRB(&CI);
-    Value* arg = CI.getArgOperand(0);
-    Value* opVal = IRB.getInt8((uint8_t)op);
-    Value* args[] = { arg, opVal, IRB.getInt1(false), IRB.getInt1(true) };
-    Function* waveScan = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
-        GenISAIntrinsic::GenISA_WavePrefix,
-        arg->getType());
-    Instruction* waveScanCall = IRB.CreateCall(waveScan, args);
-    CI.replaceAllUsesWith(waveScanCall);
+    if (isBoolean)
+    {
+        waveCall = IRB.CreateTrunc(waveCall, IRB.getInt1Ty());
+    }
+    CI.replaceAllUsesWith(waveCall);
     CI.eraseFromParent();
 }
 
@@ -881,15 +888,15 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
     }
     else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_REDUCE))
     {
-        return subGroupReduce(GetWaveOp(funcName), CI);
+        return subGroupArithmetic( CI, GetWaveOp(funcName), GroupOperationReduce);
     }
     else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN))
     {
-        return subGroupScan(GetWaveOp(funcName), CI);
+        return subGroupArithmetic( CI, GetWaveOp(funcName), GroupOperationScan);
     }
     else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_REDUCE))
     {
-        return subGroupClusteredReduce(GetWaveOp(funcName), CI);
+        return subGroupArithmetic( CI, GetWaveOp(funcName), GroupOperationClusteredReduce);
     }
     else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_BARRIER))
     {
