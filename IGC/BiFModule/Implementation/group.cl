@@ -2442,8 +2442,8 @@ ulong __builtin_spirv_OpGroupNonUniformShuffleDown_i32_i64_i32(uint Execution, u
     if (Execution == Subgroup)
     {
         uint2 X = as_uint2(x);
-        uint2 result = (uint2)(__builtin_spirv_OpGroupNonUniformShuffleDown_i32_i32_i32(X.s0, 0, c),
-            __builtin_spirv_OpGroupNonUniformShuffleDown_i32_i32_i32(X.s1, 0, c));
+        uint2 result = (uint2)(__builtin_IB_simd_shuffle_down(X.s0, 0, c),
+            __builtin_IB_simd_shuffle_down(X.s1, 0, c));
         return as_ulong(result);
     }
     return 0;
@@ -2464,8 +2464,8 @@ double __builtin_spirv_OpGroupNonUniformShuffleDown_i32_f64_i32(uint Execution, 
     if (Execution == Subgroup)
     {
         uint2 X = as_uint2(x);
-        uint2 result = (uint2)(__builtin_spirv_OpGroupNonUniformShuffleDown_i32_i32_i32(X.s0, 0, c),
-            __builtin_spirv_OpGroupNonUniformShuffleDown_i32_i32_i32(X.s1, 0, c));
+        uint2 result = (uint2)(__builtin_IB_simd_shuffle_down(X.s0, 0, c),
+            __builtin_IB_simd_shuffle_down(X.s1, 0, c));
         return as_double(result);
     }
     return 0;
