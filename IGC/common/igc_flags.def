@@ -46,11 +46,10 @@ DECLARE_IGC_REGKEY(bool, EnableVISADotAll,              false, "Enable VISA DotA
 DECLARE_IGC_REGKEY(bool, EnableVISADebug,               false, "Runs VISA in debug mode, all optimizations disabled", false)
 DECLARE_IGC_REGKEY(DWORD, EnableVISAStructurizer,       1,     "Enable/Disable VISA structurizer. See value defs in igc_flags.hpp.", false)
 DECLARE_IGC_REGKEY(bool, EnableVISAJmpi,                true,  "Enable/Disable VISA generating jmpi (scalar jump).", false)
-DECLARE_IGC_REGKEY(DWORD, NoMaskWA,                     31,    "Add NoMask WA using software-computed emask flag. Valid value: (three groups) \
+DECLARE_IGC_REGKEY(DWORD, NoMaskWA,                     2,     "Add NoMask WA using software-computed emask flag. Valid value: (two groups) \
                                                                    valid value:  bit[1:0] : which BB to insert - 0(off), 1(divergent BB), \
                                                                                             2 (nested divergent BB), 3 (=2). \
-                                                                                 bit[2]   : how to add WA - 0 (simple) | 1 (optim). \
-                                                                                 bit[3]   : Use cmp to generate emask instead of ce and dmask/vmask.", false)
+                                                                                 bit[2]   : how to add WA - 0 (optim, per-BB) | 1 (simple, ie, per-inst)", false)
 DECLARE_IGC_REGKEY(bool, ForceNoMaskWA,                 false, "[tmp, testing] Force NoMaskWA on any platforms", false)
 DECLARE_IGC_REGKEY(DWORD,UnifiedSendCycle,              0,     "Using unified send cycle.", false)
 DECLARE_IGC_REGKEY(DWORD,DisableMixMode,                0,     "Disables mix mode in vISA BE.", false)

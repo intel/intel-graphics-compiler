@@ -618,12 +618,6 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
             subroutineStartBB.push_back(curr_BB);
         }
 
-        G4_DstRegRegion* dst = i->getDst();
-        if (dst && dst->isAreg() && dst->isSrReg())
-        {
-            setSR0Modified(true);
-        }
-
         //
         // do and endif do not have predicate and jump-to label,so we treated them as non-control instruction
         // the labels around them will decides the beginning of a new BB
@@ -3495,7 +3489,12 @@ void FlowGraph::processGoto(bool HasSIMDCF)
 }
 
 // TGL NoMask WA : to identify which BB needs WA
-void FlowGraph::findNestedDivergentBBs()
+//
+// nestedDivergentBBs[BB] = 2;
+//      BB is in a nested divergent branch
+// nestedDivergentBBs[BB] = 1;
+//      BB is not in a nested divergent branch, but in a divergent branch.
+void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDivergentBBs)
 {
     // Control-Flow state
     //    Used for keeping the current state of control flow during
@@ -3601,13 +3600,13 @@ void FlowGraph::findNestedDivergentBBs()
         return;
     }
 
-    // Analyze function in topological order. As there is no recursion
-    // and no indirect call,  a function will be analyzed only if all
+    // Analyze subroutines in topological order. As there is no recursion
+    // and no indirect call,  a subroutine will be analyzed only if all
     // its callers have been analyzed.
     //
-    // If no subroutine, sortedFuncTable is empty. Here keep all functions
-    // in a vector first (it works with and without subroutines), then scan
-    // functions in topological order.
+    // If no subroutine, sortedFuncTable is empty. Here keep the entry and
+    // subroutines in a vector first (it works with and without subroutines),
+    // then scan subroutines in topological order.
     struct StartEndIter {
         BB_LIST_ITER StartI;
         BB_LIST_ITER EndI;
@@ -3702,19 +3701,13 @@ void FlowGraph::findNestedDivergentBBs()
                 }
             }
 
-            if ((builder->getuint32Option(vISA_noMaskWA) & 0x3) > 1)
+            if (cfs.isInNestedDivergentBranch())
             {
-                if (cfs.isInNestedDivergentBranch())
-                {
-                    setInNestedDivergentBranch(BB);
-                }
+                nestedDivergentBBs[BB] = 2;
             }
-            else if ((builder->getuint32Option(vISA_noMaskWA) & 0x3) > 0)
+            else if (cfs.isInDivergentBranch())
             {
-                if (cfs.isInDivergentBranch())
-                {
-                    setInNestedDivergentBranch(BB);
-                }
+                nestedDivergentBBs[BB] = 1;
             }
 
             G4_INST* lastInst = BB->back();

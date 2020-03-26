@@ -250,7 +250,7 @@ private:
     void resetA0();
     void setA0toTdrForSendc();
     void replaceRetWithJmpi();
-    void replaceNoMaskWithAnyhWA();
+    void doNoMaskWA();
     void insertFenceAtEntry();
 
     typedef std::vector<vISA::G4_INST*> InstListType;

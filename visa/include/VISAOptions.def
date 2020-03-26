@@ -219,7 +219,7 @@ DEF_VISA_OPTION(vISA_addFFIDProlog,                 ET_BOOL,  "-noFFIDProlog",  
 DEF_VISA_OPTION(vISA_setFFID,                       ET_INT32, "-setFFID", "USAGE: -setFFID <ffid>\n", FFID_INVALID)
 DEF_VISA_OPTION(vISA_clearAccBeforeEOT,             ET_BOOL,  "-clearAccBeforeEOT",            UNUSED, false)
 DEF_VISA_OPTION(vISA_replaceIndirectCallWithJmpi,   ET_BOOL,  "-replaceIndirectCallWithJmpi",  UNUSED, false)
-DEF_VISA_OPTION(vISA_noMaskWA,                      ET_INT32, "-noMaskWA",  "USAGE: -noMaskWA <[0:1]=0 (off)|1|2|3(3=2), [2:3]=any>\n", 0)
+DEF_VISA_OPTION(vISA_noMaskWA,                      ET_INT32, "-noMaskWA",  "USAGE: -noMaskWA <[0:1]=0 (off)|1|2|3(3=2), [2:2]=0|1>\n", 0)
 DEF_VISA_OPTION(vISA_forceNoMaskWA,                 ET_BOOL,  "-forceNoMaskWA",  UNUSED, false)
 DEF_VISA_OPTION(vISA_DstSrcOverlapWA,               ET_BOOL,  "-dstSrcOverlapWA",  UNUSED, true)
 

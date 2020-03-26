@@ -6684,23 +6684,20 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     void Optimizer::preRA_HWWorkaround()
     {
         // -forceNoMaskWA : to force running this WA pass on platform other than TGLLP.
-        // By default, it is only on for TGL
-        // noMaskWA:
+        // noMaskWA:  only apply on TGLLP
         //   bit[1:0]:  0 - off
         //              1 - on, replacing nomask in any divergent BB (conservative)
-        //              2 - on, replacing nomask in nested divergent BB(aggressive)
+        //              2 - on, replacing nomask in nested divergent BB (aggressive)
         //              3 - not used, will behave the same as 2
-        //     bit[2]:  0 - simple insertion of flag. A new flag is added
-        //                  each time it is needed by "emask flag".
-        //              1 - optimized. "emask flag" is created once per ech BB
-        //     bit[3]:  0 - "emask flag" is created using ce and dmask/vmask
-        //              1 - "emask flag" is created using cmp instructions.
-        //
+        //     bit[2]:  0 - optimized. "emask flag" is created once per each BB
+        //              1 - simple insertion of "emask flag". A new flag is created
+        //                  each time it is needed, that is, created per each inst.
+        //  (See comments for more details at doNoMaskWA().
         if (builder.kernel.getOptions()->getTarget() != VISA_CM &&
             ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
              builder.getOption(vISA_forceNoMaskWA)))
         {
-            replaceNoMaskWithAnyhWA();
+            doNoMaskWA();
         }
 
         insertFenceAtEntry();
@@ -11882,15 +11879,49 @@ assert(LiveSends.size() < MAX_SENDS);
     }
 }
 
-void Optimizer::replaceNoMaskWithAnyhWA()
+// [HW WA]
+// Fused Mask cannot change from 01 to 00, therefore, EU will go through
+// insts that it should skip, causing incorrect result if NoMask instructions
+// that has side-effect (send, or modifying globals, etc) are executed.
+// A WA is to change any NoMask instruction by adding a predicate to it.
+// And the predicated is equivalent to NoMask. For example, the following
+// instruction
+//
+//    (W) add (8|M0)  r10.0<1>:d  r11.0<1;1,0>:d  r12.0<1;1,0>:d
+//
+//  will be changed to
+//
+//    (W)  mov (1|M0) f0.0<1>:w  0
+//         cmp (8|M0) (eq)f0.0 r0:uw  r0:uw
+//    (W&f0.0.any8h) add (8|M0)  r10.0<1>:d  r11.0<1;1,0>:d  r12.0<1;1,0>:d
+//
+//  Note that f0.0 is called "emask flag".
+//
+// Even with this HW bug, the HW still have the correct CE mask so that the
+// above mov&cmp sequence still works, that is, f0.0 will be all zero if no
+// active lanes and will not be zero if there is at least one active lane.
+//
+// Nested Divergence
+//   For a fused mask to be 01,  the control-flow must be divergent
+//   at that point. Furthermore, changing 01 to 00 happens only if a further
+//   divergence happens within a already-divergent path. This further
+//   divergence is called nested divergence here.
+//
+//   As changing from 01 to 00 never happens with backward goto, backward
+//   goto is treated as divergent, but not nested divergent for the purpose
+//   of this WA.
+//
+// This function first finds out which BB are in nested divergent branch and
+// then add predicates to those NoMask instructions.
+//
+void Optimizer::doNoMaskWA()
 {
+    std::unordered_map<G4_BB*, int> nestedDivergentBBs;
+
     // Identify BBs that need WA
     fg.reassignBlockIDs();
-    fg.findNestedDivergentBBs();
+    fg.findNestedDivergentBBs(nestedDivergentBBs);
 
-    // Save dmask for the shader. Need to read them again
-    // whenever sr0.2 is modified in the shader.
-    G4_RegVar* dmaskVarUD = nullptr;
     std::vector<INST_LIST_ITER> NoMaskCandidates;
     uint32_t simdsize = fg.getKernel()->getSimdSize();
 
@@ -11901,19 +11932,8 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     // so that we save 1 insts for each BB. The condition that anyh
     // can be used is that M0 is used for all NoMask insts that needs
     // WA and all its execsize is no larger than simdsize.
-    bool enableAnyh = false;
-    bool  useAnyh = false;  // default use all-one flag.
-    if ((builder.getuint32Option(vISA_noMaskWA) & 0x10) != 0)
-    {
-        enableAnyh = true;
-    }
-    if ((builder.getuint32Option(vISA_noMaskWA) & 0x8) == 0 ||
-        (builder.getuint32Option(vISA_noMaskWA) & 0x4) == 0)
-    {
-        // When reading ce or doing WA per inst, do not use anyh
-        enableAnyh = false;
-    }
-
+    bool enableAnyh = true; // try to use anyh if possible
+    bool  useAnyh = enableAnyh;  // Set for each BB/inst.
 
     auto getPredCtrl = [&](bool isUseAnyh) -> G4_Predicate_Control
     {
@@ -11949,12 +11969,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         G4_CondMod* condmod = getFlagModifier(Inst);
         bool dstGlb = (dst && !dst->isNullReg() && cfg.globalOpndHT.isOpndGlobal(dst));
         bool condmodGlb = (condmod && cfg.globalOpndHT.isOpndGlobal(condmod));
-#if 0
-        if (Inst->isSend() || dstGlb || condmodGlb ||
-            (dst && !dst->isNullReg() && dst->isAreg()))
-#else
         if (Inst->isSend() || dstGlb || condmodGlb)
-#endif
         {
             if (Inst->isSend() && Inst->getPredicate() &&
                 Inst->getExecSize() > simdsize)
@@ -11967,14 +11982,13 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         return false;
     };
 
-    // Use cmp to calculate emask flag. This is an alternative to
-    // createFlagFromCE0().
+    // Use cmp to calculate "emask flag(or flag)" (see comment at entry of this function)
     auto createFlagFromCmp = [&](G4_INST*& flagDefInst,
         uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II)->G4_RegVar*
     {
         //  Ty  (for flag):  big enough to hold flag for either anyh or all one flag.
         //                   if useAnyh
-        //                      Ty = (simdsize > 16> ? UD : UW
+        //                      Ty = (simdsize > 16 ? UD : UW
         //                   else
         //                      Ty = max(simdsize, flagBits) > 16 ? UD : UW
         //
@@ -12034,102 +12048,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         return flagVar;
     };
 
-    // For a BB, calculating its emask and storing the emask in a flag.
-    //
-    // flagDefInst: created to define an emask flag using 'ce0 AND dmask'.
-    //
-    // The function returns that emask flag's G4_RegVar (refer to as flagVar).
-    // Note that flagDefInst will be inserted a few insts before II in BB,
-    // not right before II if possible.
-    auto createFlagFromCE0 = [&](G4_INST*& flagDefInst,
-        uint32_t flagBits, G4_BB* BB, INST_LIST_ITER& II) -> G4_RegVar*
-    {
-        if ((builder.getuint32Option(vISA_noMaskWA) & 0x8) != 0)
-        {
-            return createFlagFromCmp(flagDefInst, flagBits, BB, II);
-        }
-
-        //
-        // This create an inst definging flag:
-        //    (w) and  flag:Ty  ce0.0<0;1,0>:Ty  dmaskVar:Ty
-        //
-        // Note that dmaskVar shall be inserted at the end of
-        // entry BB.
-        //
-        // If sr0.2 (dmask) is modified in other BBs instead of entry BB,
-        // dmaskVar must be updated right after the place where sr0.2 is
-        // set. This is done at the end of replaceNoMaskWithAnyhWA().
-        //
-        if (dmaskVarUD == nullptr)
-        {
-            // Using dmask:
-            //     (W) mov (1|M0) r10.0<1>:ud sr0.2<0;1,0>:ud
-            // or using vmaks
-            //     (W) mov (1|M0) r10.0<1>:ud sr0.3<0;1,0>:ud
-            bool useVMask = builder.getOption(vISA_VME);
-
-            G4_Declare* dmaskDecl = builder.createTempVar(1, Type_UD, Any, "DMaskUD");
-            dmaskVarUD = dmaskDecl->getRegVar();
-            G4_SrcRegRegion* Src = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(),
-                0, (useVMask ? 3 : 2), builder.getRegionScalar(), Type_UD);
-            G4_DstRegRegion* Dst = builder.createDst(
-                dmaskVarUD, 0, 0, 1, Type_UD);
-            G4_INST* dmaskInst = builder.createMov(1, Dst, Src, InstOpt_WriteEnable, false);
-
-            G4_BB* entryBB = fg.getEntryBB();
-            assert(!fg.isInNestedDivergentBranch(entryBB) &&
-                "ICE: Entry BB should not be marked as divergent!");
-
-            INST_LIST_ITER beforePos = entryBB->end();
-            if (!entryBB->empty()) {
-                INST_LIST_ITER tII = beforePos;
-                --tII;
-                if ((*tII)->isCFInst()) {
-                    beforePos = tII;
-                }
-            }
-            entryBB->insert(beforePos, dmaskInst);
-
-            fg.globalOpndHT.addGlobalOpnd(Dst);
-        }
-
-        G4_Type Ty = (flagBits > 16) ? Type_UD : Type_UW;
-        G4_Declare* flagDecl = builder.createTempFlag(
-            (Ty == Type_UD) ? 2 : 1, "newFlag");
-        G4_RegVar* flagVar = flagDecl->getRegVar();
-        G4_SrcRegRegion* ceSrc0 = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, builder.phyregpool.getMask0Reg(), 0, 0,
-            builder.getRegionScalar(), Type_UD);
-        G4_SrcRegRegion* dmaskSrc1 = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, dmaskVarUD, 0, 0,
-            builder.getRegionScalar(), Type_UD);
-        G4_DstRegRegion* tDst = builder.createNullDst(Type_UD);
-        G4_CondMod* condMod = builder.createCondMod(Mod_nz, flagVar, 0);
-        flagDefInst = builder.createInternalInst(
-            nullptr, G4_and, condMod, false,
-            (flagBits > 16 ? 16 : flagBits), tDst, ceSrc0, dmaskSrc1,
-            InstOpt_WriteEnable);
-        BB->insert(II, flagDefInst);
-
-        if (flagBits == 32)
-        {
-            G4_SrcRegRegion* flagSrc = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, flagVar, 0, 0,
-                builder.getRegionScalar(), Type_UW);
-            G4_DstRegRegion* flagDst = builder.createDst(
-                flagVar, 0, 0, 1, Type_UW);
-            G4_INST* tInst = builder.createMov(2, flagDst, flagSrc, InstOpt_WriteEnable, false);
-            BB->insert(II, tInst);
-
-            // update defuse
-            tInst->addDefUse(flagDefInst, Opnd_src0);
-            flagDefInst = tInst;
-        }
-        return flagVar;
-    };
-
-    // flagVar : emask for this BB:
+    // flagVar : emask flag for this BB:
     // currII:  iter to I
     //   positive predicate:
     //        I :  (W&P) <inst> (8|M0) ...
@@ -12202,7 +12121,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     //     I:  (W) sel.ge.f0.0  (1|M0)   r10.0<1>:f  r20.0<0;1,0>:f  0:f
     // After
     //     I:  (W) sel.ge.f0.0  (1|M0)  t:f  r20.0<0;1,0>:f   0:f
-    //     I0: (W%flagVar) mov (1|M0)  r10.0<1>:f t:f
+    //     I0: (W&flagVar) mov (1|M0)  r10.0<1>:f t:f
     //
     auto doFlagModifierSelInstWA = [&](
         G4_INST* flagVarDefInst,  // inst that defines flagVar
@@ -12529,11 +12448,17 @@ void Optimizer::replaceNoMaskWithAnyhWA()
     for (auto BI : fg)
     {
         G4_BB* BB = BI;
-        if (!fg.isInNestedDivergentBranch(BB)) {
+        if (nestedDivergentBBs.count(BB) == 0)
+        {
+            continue;
+        }
+        if (((builder.getuint32Option(vISA_noMaskWA) & 0x3) >= 2) &&
+            nestedDivergentBBs[BB] < 2)
+        {
             continue;
         }
 
-        if ((builder.getuint32Option(vISA_noMaskWA) & 0x4) == 0)
+        if ((builder.getuint32Option(vISA_noMaskWA) & 0x4) != 0)
         {
             // simple flag insertion: every time a flag is needed, calcalate it.
             for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
@@ -12549,9 +12474,17 @@ void Optimizer::replaceNoMaskWithAnyhWA()
                 {
                     flagbits = 32;
                 }
+                useAnyh = enableAnyh;
+                if (enableAnyh)
+                {
+                    if (I->getExecSize() > simdsize || I->getMaskOffset() != 0)
+                    {
+                        useAnyh = false;
+                    }
+                }
 
                 G4_INST* flagDefInst = nullptr;
-                G4_RegVar* flagVar = createFlagFromCE0(flagDefInst, flagbits, BB, II);
+                G4_RegVar* flagVar = createFlagFromCmp(flagDefInst, flagbits, BB, II);
 
                 G4_Predicate* pred = I->getPredicate();
                 G4_CondMod* condmod = I->getCondMod();
@@ -12586,30 +12519,28 @@ void Optimizer::replaceNoMaskWithAnyhWA()
             continue;
         }
 
-        // Now, builder.getuint32Option(vISA_noMaskWA) & 0x4) != 0
-        // (optimized version)
-        //
         // For each BB that needs to modify NoMask, create a flag once right
         // prior to the first NoMask inst to be modified like the following:
         //
         //    BB:
-        //       ......
-        //       if (using ce0)
-        //         (W) and (16|M0) (nz)f0.0  null<1>:ud  ce0.0:ud   dmask:ud
-        //         ** If any nomask inst uses bits beyond 16, need the following too **
-        //         (W)  mov (2|M0)  f0.0<1>:uw   f0.0<0;1,0>:uw
-        //       else // using cmp
+        //      Before:
+        //             (W&f0.0) inst0 (16|M0) ...
+        //             ......
+        //             (W&f0.0) inst0 (16|M0) ...
+        //      After:
         //         (W) mov (1|M0)           f0.0:uw   0:uw  // or ud
         //             cmp (16|M0) (eq)f0.0 null:uw  r0.0<0;1,0::uw  r0.0<0;1,0>:uw
-        //           if (!useAnyh)
+        //         if (!useAnyh)
         //             (W&f0.0.any16h)  mov (1|M0) f0.0  0xFFFF:uw
         //
-        //       (W&f0.0) inst0
-        //       ......
-        //       (W&f0.0) inst1
+        //             (W&f0.0) inst0 (16|M0) ...
+        //             ......
+        //             (W&f0.0) inst0 (16|M0) ...
+        //         else
+        //             (W&f0.0.any16h) inst0 (16|M0) ...
+        //             ......
+        //             (W&f0.0.any16h) inst0 (16|M0) ...
         //
-        //  If useAnyh,  the predicate would be (W & f0.0.any16h). The new flag,
-        //  either f0.0 (all-one) or f0.0.any16h (useAnyh) is equivalent to noMask.
 
         //  1. Collect all candidates and check if 32 bit flag is needed
         //     and if useAnyh can be set to true.
@@ -12644,7 +12575,7 @@ void Optimizer::replaceNoMaskWithAnyhWA()
 
         G4_INST* flagDefInst = nullptr;
         uint32_t flagBits = need32BitFlag ? 32 : 16;
-        G4_RegVar* flagVarForBB = createFlagFromCE0(flagDefInst, flagBits, BB, II0);
+        G4_RegVar* flagVarForBB = createFlagFromCmp(flagDefInst, flagBits, BB, II0);
 
         // 3. Do WA by adding predicate to each candidate
         for (int i = 0, sz = (int)NoMaskCandidates.size(); i < sz; ++i)
@@ -12684,41 +12615,5 @@ void Optimizer::replaceNoMaskWithAnyhWA()
         }
         // Clear it to prepare for the next BB
         NoMaskCandidates.clear();
-    }
-
-    if (dmaskVarUD && fg.getSR0Modified())
-    {
-        // modification made. Make sure that if sr0.2 is updated, reread dmask/vmask
-        // Note that vmask is updated automatically when sr0.2 is set.
-        bool useVMask = builder.getOption(vISA_VME);
-        auto BI = fg.begin();
-        auto BE = fg.end();
-        ++BI; // skip entryBB
-        for (; BI != BE; ++BI)
-        {
-            G4_BB* BB = *BI;
-            auto NextI = BB->begin();
-            auto IE = BB->end();
-            for (auto II = NextI; II != IE; II = NextI)
-            {
-                ++NextI;
-                G4_INST* inst = *II;
-                G4_DstRegRegion* dst = inst->getDst();
-                // Check if sr0.2 (DW) is modified.
-                if (dst && dst->isAreg() && dst->isSrReg() &&
-                    ((dst->getLeftBound() <= 8 && dst->getRightBound() >= 8) ||
-                    (dst->getLeftBound() <= 11 && dst->getRightBound() >= 11)))
-                {
-                    G4_SrcRegRegion* Src = builder.createSrcRegRegion(
-                        Mod_src_undef, Direct, builder.phyregpool.getSr0Reg(),
-                        0, (useVMask ? 3 : 2), builder.getRegionScalar(), Type_UD);
-                    G4_DstRegRegion* Dst = builder.createDst(
-                        dmaskVarUD, 0, 0, 1, Type_UD);
-                    G4_INST* dmaskI = builder.createMov(1, Dst, Src, InstOpt_WriteEnable, false);
-
-                    BB->insert(NextI, dmaskI);
-                }
-            }
-        }
     }
 }
