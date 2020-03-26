@@ -322,6 +322,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
                 FAST_RELAXED_MATH,
                 DASH_G,
                 RELAXED_BUILTINS,
+                MATCH_SINCOSPI,
                 NONE,
             };
             int igc_compiler_option = llvm::StringSwitch<OCL_OPTIONS>(co)
@@ -335,6 +336,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
                 .Case("-fast-relaxed-math", FAST_RELAXED_MATH)
                 .Case("-g", DASH_G)
                 .Case("-relaxed-builtins", RELAXED_BUILTINS)
+                .Case("-match-sincospi", MATCH_SINCOSPI)
                 .Default(NONE);
 
 
@@ -361,6 +363,8 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
                 break;
             case DASH_G: modMD->compOpt.DashGSpecified = true;
                 break;
+            case MATCH_SINCOSPI: modMD->compOpt.MatchSinCosPi = true;
+              break;
             default:
                 break;
             }

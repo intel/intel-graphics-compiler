@@ -219,6 +219,7 @@ namespace IGC
         bool EnableTakeGlobalAddress                    = false;
         bool IsLibraryCompilation                       = false;
         bool FastVISACompile                            = false;
+        bool MatchSinCosPi                              = false;
     };
 
     struct ComputeShaderInfo

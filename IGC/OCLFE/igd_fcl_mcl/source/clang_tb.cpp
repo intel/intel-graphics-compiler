@@ -1329,6 +1329,7 @@ namespace TC
                             (strcmp(pParam, "-cl-unsafe-math-optimizations") == 0) ||
                             (strcmp(pParam, "-cl-finite-math-only") == 0) ||
                             (strcmp(pParam, "-cl-fast-relaxed-math") == 0) ||
+                            (strcmp(pParam, "-cl-match-sincospi") == 0) ||
                             (strcmp(pParam, "-w") == 0) ||
                             (strcmp(pParam, "-Werror") == 0) ||
                             (strcmp(pParam, "-cl-std=CL1.1") == 0) ||
