@@ -2487,8 +2487,11 @@ half __builtin_spirv_OpGroupNonUniformShuffleDown_i32_f16_i32(uint Execution, ha
 #define DEFN_NON_UNIFORM_SHUFFLE_UP(TYPE, TYPE_ABBR)                                                                        \
 TYPE __builtin_spirv_OpGroupNonUniformShuffleUp_i32_##TYPE_ABBR##_i32(uint Execution, TYPE x, uint c)                       \
 {                                                                                                                           \
-    c = get_max_sub_group_size() - c;                                                                                       \
-    return __builtin_spirv_OpGroupNonUniformShuffleDown_i32_##TYPE_ABBR##_i32(Execution, x, c);                             \
+    if (Execution == Subgroup)                                                                                              \
+    {                                                                                                                       \
+        return intel_sub_group_shuffle_up((TYPE) 0, x, c);                                                                  \
+    }                                                                                                                       \
+    return 0;                                                                                                               \
 }
 
 DEFN_NON_UNIFORM_SHUFFLE_UP(uchar, i8)
