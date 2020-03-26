@@ -649,7 +649,7 @@ bool ReadSpecConstantsFromSPIRV(std::istream &IS, std::vector<std::pair<uint32_t
     for (auto& SC : SPV)
     {
         SPIRVType *type = SC->getType();
-        uint32_t spec_size = type->getBitWidth() / 8;
+        uint32_t spec_size = type->isTypeBool() ? 1 : type->getBitWidth() / 8;
 
         if (SC->hasDecorate(DecorationSpecId))
         {
