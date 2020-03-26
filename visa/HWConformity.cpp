@@ -6733,41 +6733,55 @@ void HWConformity::fixSrcRegion( G4_INST *inst )
     {
         if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion() && !inst->getSrc(i)->isNullReg())
         {
-            G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
+            G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
             const RegionDesc* srcRegion = src->getRegion();
-            if (srcRegion->isRegionWH() || srcRegion->isRegionV() || srcRegion->isRegionSW() )
+            if (srcRegion->isRegionWH() || srcRegion->isRegionV() || srcRegion->isRegionSW())
+            {
+                // normalize VxH regions if possible
+                if (srcRegion->isRegionWH() && srcRegion->width == inst->getExecSize())
+                {
+                    // r[a0.0]<E, S> -> r[a0.0]<S;1,0>
+                    src->setRegion(builder.createRegionDesc(srcRegion->horzStride, 1, 0));
+                }
+                // ToDo: add other legalization
                 continue;
+            }
+
+            //ToDo: most of these checks should be obsolete at this point
             uint16_t vs = srcRegion->vertStride, wd = srcRegion->width, hs = srcRegion->horzStride;
             uint8_t exSize = inst->getExecSize();
-            MUST_BE_TRUE( inst->isSend() || exSize >= wd, " Bad source region: Width is greater than execution size." );
-            if ( comprInst )
+            MUST_BE_TRUE(inst->isSend() || exSize >= wd, " Bad source region: Width is greater than execution size.");
+            if (comprInst)
             {
-                if (G4_Type_Table[inst->getSrc(i)->getType()].byteSize > G4_WSIZE &&
+                if (G4_Type_Table[inst->getSrc(i)->getType()].byteSize > G4_WSIZE&&
                     wd == exSize &&
                     vs == wd && hs == 1)
                 {
                     vs = wd = exSize / 2;
                 }
             }
-            if( wd == exSize && hs != 0 && vs != wd * hs )
+            if (wd == exSize && hs != 0 && vs != wd * hs)
             {
+                // <V;E,H> --> <V*H;E,H>
                 vs = wd * hs;
             }
-            if( wd == 1 )
+            if (wd == 1)
             {
+                // <V;1,H> -> <V;1,0> or <0;1,0>
                 hs = 0;
-                if( 1 == exSize )
+                if (1 == exSize)
                     vs = 0;
             }
-            if( vs == 0 && hs == 0 )
+            if (vs == 0 && hs == 0)
             {
+                // <0;N,0> -> <0;1,0>
                 wd = 1;
             }
-            if( hs == 0 &&
+            if (hs == 0 &&
                 ((G4_Type_Table[inst->getSrc(i)->getType()].byteSize == G4_WSIZE &&
-                  exSize == 32 && vs == 32 && wd == 32) ||
-                 (G4_Type_Table[inst->getSrc(i)->getType()].byteSize == G4_DSIZE &&
-                  exSize == 16 && vs == 16 && wd == 16)) )
+                    exSize == 32 && vs == 32 && wd == 32) ||
+                    (G4_Type_Table[inst->getSrc(i)->getType()].byteSize == G4_DSIZE &&
+                        exSize == 16 && vs == 16 && wd == 16)))
             {
                 vs = 0;
                 wd = 1;
@@ -6777,36 +6791,36 @@ void HWConformity::fixSrcRegion( G4_INST *inst )
             // TODO! for the following two cases, split the instruction:
             // source region is like<8;4,1>
             // source region is like<2;4,1>
-            if( src->getRegAccess() == Direct && src->crossGRF() && hs != 0)
+            if (src->getRegAccess() == Direct && src->crossGRF() && hs != 0)
             {
                 // TODO: this is a temp fix
-                if( (getGenxPlatform() == GENX_BDW || getGenxPlatform() == GENX_CHV) && vs < wd * hs )
+                if ((getGenxPlatform() == GENX_BDW || getGenxPlatform() == GENX_CHV) && vs < wd * hs)
                     continue;
                 // check number of elements in first GRF.
                 uint16_t execTypeSize = hs * src->getElemSize();
                 uint16_t sizeInFirstGRF = GENX_GRF_REG_SIZ - src->getLeftBound() % GENX_GRF_REG_SIZ;
                 uint16_t vertSize = vs * G4_Type_Table[src->getType()].byteSize;
-                uint16_t numEle = ( sizeInFirstGRF + execTypeSize - 1 ) / execTypeSize;
+                uint16_t numEle = (sizeInFirstGRF + execTypeSize - 1) / execTypeSize;
                 uint16_t rowSize = wd * execTypeSize;
 
-                if( sizeInFirstGRF <= vertSize )
+                if (sizeInFirstGRF <= vertSize)
                 {
-                    if( numEle >= wd )
+                    if (numEle >= wd)
                     {
                         numEle = wd;
                     }
                 }
-                else if( vs > wd )
+                else if (vs > wd)
                 {
-                    numEle = sizeInFirstGRF/vertSize * wd +
-                        (( sizeInFirstGRF%vertSize > rowSize ) ? wd : ( sizeInFirstGRF%vertSize + execTypeSize - 1 ) / execTypeSize );
+                    numEle = sizeInFirstGRF / vertSize * wd +
+                        ((sizeInFirstGRF % vertSize > rowSize) ? wd : (sizeInFirstGRF % vertSize + execTypeSize - 1) / execTypeSize);
                 }
                 // wd is used to cross GRF, change to <vs;1,0>
-                if( numEle < wd || ( wd >= vs && numEle % wd != 0 ) )
+                if (numEle < wd || (wd >= vs && numEle % wd != 0))
                 {
 
                     wd = 1;
-                    if( hs == 0 )
+                    if (hs == 0)
                     {
                         vs = 1;
                     }
@@ -6818,17 +6832,17 @@ void HWConformity::fixSrcRegion( G4_INST *inst )
                 }
             }
 
-            if( vs != srcRegion->vertStride || wd != srcRegion->width || hs != srcRegion->horzStride )
+            if (vs != srcRegion->vertStride || wd != srcRegion->width || hs != srcRegion->horzStride)
             {
-                G4_SrcRegRegion *origSrc = inst->getSrc(i)->asSrcRegRegion();
-                origSrc->setRegion( builder.createRegionDesc( vs, wd, hs ) );
+                G4_SrcRegRegion* origSrc = inst->getSrc(i)->asSrcRegRegion();
+                origSrc->setRegion(builder.createRegionDesc(vs, wd, hs));
             }
         }
     }
-    if( inst->getDst() && !inst->hasNULLDst() )
+    if (inst->getDst() && !inst->hasNULLDst())
     {
-        MUST_BE_TRUE( inst->getDst()->getHorzStride() != 0,
-            "Bad source region: Width is greater than execution size." );
+        MUST_BE_TRUE(inst->getDst()->getHorzStride() != 0,
+            "Bad source region: Width is greater than execution size.");
     }
 }
 
