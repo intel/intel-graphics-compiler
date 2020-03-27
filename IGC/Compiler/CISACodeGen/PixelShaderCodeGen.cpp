@@ -1311,6 +1311,9 @@ namespace IGC
 
         if (coarsePhase && pixelPhase)
         {
+            // Cancelling staged compilation for multi stage PS.
+            ctx->m_CgFlag = FLAG_CG_ALL_SIMDS;
+
             //Multi stage PS, need to do separate compiler and link them
             unsigned int numStage = 2;
             PSSignature signature;
