@@ -128,6 +128,12 @@ void VarSplitPass::findSplitCandidates()
                     break;
                 }
             }
+            else if (numRows > 2)
+            {
+                // use as send src
+                item.second.legitCandidate = false;
+                break;
+            }
         }
     }
 
