@@ -420,7 +420,7 @@ INLINE type OVERLOADABLE sub_group_clustered_##group_type##_##operation(type x, 
 DEFN_SUB_GROUP_NON_UNIFORM_OPERATION(type, op_name, new_name, abbr_type, reduce, GroupOperationReduce)                     \
 DEFN_SUB_GROUP_NON_UNIFORM_OPERATION(type, op_name, new_name, abbr_type, scan_inclusive, GroupOperationInclusiveScan)      \
 DEFN_SUB_GROUP_NON_UNIFORM_OPERATION(type, op_name, new_name, abbr_type, scan_exclusive, GroupOperationExclusiveScan)      \
-DEFN_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(type, op_name, new_name, abbr_type, reduce, GroupOperationReduce)
+DEFN_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(type, op_name, new_name, abbr_type, reduce, GroupOperationClusteredReduce)
 
 // ARITHMETIC OPERATIONS
 
