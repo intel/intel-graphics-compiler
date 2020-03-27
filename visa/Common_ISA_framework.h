@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA.h"
 #include "visa_igc_common_header.h"
 #include "IsaDescription.h"
+#include "Mem_Manager.h"
 
 #define CISA_INVALID_ADDR_ID     -1
 #define CISA_INVALID_PRED_ID     -1

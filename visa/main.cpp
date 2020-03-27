@@ -27,20 +27,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <fstream>
 
-#include "BuildIR.h"
+
 #include "visa_igc_common_header.h"
 #include "Common_ISA_framework.h"
 #include "VISAKernel.h"
-#include "BuildCISAIR.h"
-#include "FlowGraph.h"
-#include "Optimizer.h"
+#include "BuildIR.h"
 #include "Option.h"
-#include "GTGPU_RT_ASM_Interface.h"
 #include "Common_ISA.h"
 #include "BinaryCISAEmission.h"
 #include "Timer.h"
-#include "BinaryEncoding.h"
 #include "JitterDataStruct.h"
+
+#include "DebugInfo.h"
+
 #ifndef DLL_MODE
 #include "EnumFiles.hpp"
 #endif

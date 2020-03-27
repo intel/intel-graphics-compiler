@@ -27,8 +27,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef VISA_KERNEL_H
 #define VISA_KERNEL_H
 #include "VISABuilderAPIDefinition.h"
-#include "DebugInfo.h"
+#include "Common_ISA_util.h"
+#include "BuildCISAIR.h"
 #include "visa_wa.h"
+#include "Mem_Manager.h"
+#include "JitterDataStruct.h"
+//#include "Gen4_IR.hpp"  // for PhyRegPool
 
 #include "CompilerStats.h"
 
@@ -38,15 +42,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //forward declaration
 namespace vISA
 {
-class G4_Declare;
-class G4_Inst;
 class G4_Kernel;
-class IR_Builder;
 class DebugInfoFormat;
-class BinaryEncoding;
 class BinaryEncodingBase;
 }
-class CISA_IR_Builder;
 
 // Class hierarchy is as follows:
 // VISAKernel -> Abstract class that declares virtual functions to build a kernel object
@@ -101,7 +100,7 @@ public:
         m_kernel = NULL;
         m_builder = NULL;
         m_globalMem = NULL;
-        m_phyRegPool = NULL;
+
         m_kernelID = 0;
         m_inputSize = 0;
         m_opndCounter = 0;
@@ -853,7 +852,6 @@ private:
     int calculateTotalInputSize();
     int compileTillOptimize();
 
-    void getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
     CisaFramework::CisaInst* AppendVISASvmGeneralScatterInst(VISA_PredOpnd* pred,
         VISA_EMask_Ctrl emask, VISA_Exec_Size execSize, unsigned char blockSize,
         unsigned char numBlocks, VISA_RawOpnd* address, VISA_RawOpnd *srcDst, bool isRead);
@@ -975,7 +973,6 @@ private:
     vISA::IR_Builder* m_builder;
     vISA::Mem_Manager *m_globalMem;
     vISA::Mem_Manager *m_kernelMem;
-    vISA::PhyRegPool *m_phyRegPool;
     //customized allocator for allocating
     //It is very important that the same allocator is used by all instruction lists
     //that might be joined/spliced.

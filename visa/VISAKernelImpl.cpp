@@ -36,7 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 #include "FlowGraph.h"
 #include "BuildIR.h"
-#include "BuildCISAIR.h"
 #include "Optimizer.h"
 #include "BinaryEncoding.h"
 #include "BinaryEncodingCNL.h"
@@ -100,6 +99,27 @@ static void GET_NUM_PRED_DESC_OPNDS(int &predOpnd, VISA_INST_Desc *inst_desc_tem
             predOpnd++;
     }
 }
+
+static void getHeightWidth(G4_Type type, unsigned int numberElements,
+    unsigned short& dclWidth, unsigned short& dclHeight, int& totalByteSize)
+{
+    dclWidth = 1, dclHeight = 1;
+    totalByteSize = numberElements * G4_Type_Table[type].byteSize;
+    if (totalByteSize <= G4_GRF_REG_NBYTES)
+    {
+        dclWidth = (uint16_t)numberElements;
+    }
+    else {
+        // here we assume that the start point of the var is the beginning of a GRF?
+        // so subregister must be 0?
+        dclWidth = G4_GRF_REG_NBYTES / G4_Type_Table[type].byteSize;
+        dclHeight = totalByteSize / G4_GRF_REG_NBYTES;
+        if (totalByteSize % G4_GRF_REG_NBYTES != 0) {
+            dclHeight++;
+        }
+    }
+}
+
 
 #if defined(_DEBUG) || defined(_INTERNAL)
     #define START_ASSERT_CHECK 1
@@ -436,13 +456,9 @@ int VISAKernelImpl::InitializeFastPath()
 {
 
     m_kernelMem = new vISA::Mem_Manager(4096);
-    m_globalMem = new vISA::Mem_Manager(4096);
-
-    void *frpPnt = m_mem.alloc(sizeof(PhyRegPool));
 
     m_kernel = new (m_mem) G4_Kernel(m_instListNodeAllocator, *m_kernelMem, m_options, m_major_version, m_minor_version);
     m_kernel->setName(m_name.c_str());
-    m_phyRegPool = new (frpPnt) PhyRegPool(*m_globalMem, m_kernel->getNumRegTotal());
 
     if (getOptions()->getOption(vISA_GenerateDebugInfo))
     {
@@ -457,10 +473,10 @@ int VISAKernelImpl::InitializeFastPath()
 
     void* addr = m_kernelMem->alloc(sizeof(class IR_Builder));
     m_builder = new(addr)IR_Builder(m_instListNodeAllocator,
-        *m_phyRegPool,
         *m_kernel,
         *m_kernelMem,
         m_options,
+        getCISABuilder(),
         m_jitInfo,
         m_pWaTable
         );
@@ -1494,15 +1510,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
 
         if (status == VISA_SUCCESS)
         {
-            // decide the physical register number and sub register number
-            unsigned int regNum = offset / GENX_GRF_REG_SIZ;
-            unsigned int subRegNum = ( offset % GENX_GRF_REG_SIZ ) / dcl->getElemSize();
-            dcl->getRegVar()->setPhyReg(m_phyRegPool->getGreg(regNum), subRegNum);
-            dcl->setRegFile( G4_INPUT );
-            unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
-            if (regNum + dcl->getNumRows() > m_kernel->getNumRegTotal() - reservedGRFNum) {
-                MUST_BE_TRUE(false, "INPUT payload execeeds the regsiter number");
-            }
+            m_builder->bindInputDecl(dcl, offset);
         }
         input->dcl = dcl;
         //used in asm generation
@@ -7808,7 +7816,6 @@ VISAKernelImpl::~VISAKernelImpl()
         //so that internal data structures get cleared.
         m_kernel->~G4_Kernel();
         m_builder->~IR_Builder();
-        delete m_globalMem;
         delete m_kernelMem;
     }
 }
@@ -8055,25 +8062,6 @@ G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(
 
     m_builder->preDefVars.setHasPredefined(internalIndex, true);
     return tmpsrc;
-}
-
-void VISAKernelImpl::getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize)
-{
-    dclWidth = 1, dclHeight = 1;
-    totalByteSize = numberElements * G4_Type_Table[type].byteSize;
-    if( totalByteSize <= G4_GRF_REG_NBYTES )
-    {
-        dclWidth = (uint16_t)numberElements;
-    }
-    else{
-        // here we assume that the start point of the var is the beginning of a GRF?
-        // so subregister must be 0?
-        dclWidth = G4_GRF_REG_NBYTES / G4_Type_Table[type].byteSize;
-        dclHeight = totalByteSize / G4_GRF_REG_NBYTES;
-        if( totalByteSize % G4_GRF_REG_NBYTES != 0 ){
-            dclHeight++;
-        }
-    }
 }
 
 void VISAKernelImpl::setName(const char* n)

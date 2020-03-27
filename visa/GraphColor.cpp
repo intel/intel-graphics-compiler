@@ -1120,6 +1120,66 @@ bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSo
     return true;
 }
 
+bool GlobalRA::areAllDefsNoMask(G4_Declare* dcl)
+{
+    bool retval = true;
+    auto maskUsed = getMask(dcl);
+    if (maskUsed != NULL &&
+        getAugmentationMask(dcl) != AugmentationMasks::NonDefault)
+    {
+        auto byteSize = dcl->getByteSize();
+        for (unsigned int i = 0; i < byteSize; i++)
+        {
+            if (maskUsed[i] != NOMASK_BYTE)
+            {
+                retval = false;
+                break;
+            }
+        }
+    }
+    else
+    {
+        if (getAugmentationMask(dcl) == AugmentationMasks::NonDefault)
+            retval = true;
+        else
+            retval = false;
+    }
+    return retval;
+}
+
+BankAlign GlobalRA::getBankAlign(G4_Declare* dcl)
+{
+    IR_Builder* builder = kernel.fg.builder;
+    switch (getBankConflict(dcl))
+    {
+    case BANK_CONFLICT_FIRST_HALF_EVEN:
+    case BANK_CONFLICT_SECOND_HALF_EVEN:
+        if (builder->oneGRFBankDivision())
+        {
+            return BankAlign::Even;
+        }
+        else
+        {
+            return BankAlign::Even2GRF;
+        }
+        break;
+    case BANK_CONFLICT_FIRST_HALF_ODD:
+    case BANK_CONFLICT_SECOND_HALF_ODD:
+        if (builder->oneGRFBankDivision())
+        {
+            return BankAlign::Odd;
+        }
+        else
+        {
+            return BankAlign::Odd2GRF;
+        }
+        break;
+    default: break;
+    }
+
+    return BankAlign::Either;
+}
+
 void GlobalRA::emitFGWithLiveness(LivenessAnalysis& liveAnalysis)
 {
     for (BB_LIST_ITER it = kernel.fg.begin();

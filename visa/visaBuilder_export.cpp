@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA_framework.h"
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
-#include "BuildCISAIR.h"
 #include "VISADefines.h"
 #include "visa_wa.h"
 

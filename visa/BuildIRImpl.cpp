@@ -35,13 +35,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA_util.h"
 #include "Common_ISA_framework.h"
 #include "JitterDataStruct.h"
-#include "VISAKernel.h"
-#include "BuildCISAIR.h"
 #include "BuildIR.h"
-#include "FlowGraph.h"
 #include "common.h"
 #include "Timer.h"
-#include "PhyRegUsage.h"
 
 using namespace vISA;
 //
@@ -1959,4 +1955,18 @@ G4_Predicate_Control IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTR
         return PRED_DEFAULT;
     }
 }
+
+// bind a vISA input variable <dcl> to the GRF byte offset <offset>
+void IR_Builder::bindInputDecl(G4_Declare* dcl, int offset)
+{    // decide the physical register number and sub register number
+    unsigned int regNum = offset / getGRFSize();
+    unsigned int subRegNum = (offset % getGRFSize()) / dcl->getElemSize();
+    dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
+    dcl->setRegFile(G4_INPUT);
+    unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
+    if (regNum + dcl->getNumRows() > kernel.getNumRegTotal() - reservedGRFNum) {
+        MUST_BE_TRUE(false, "INPUT payload execeeds the regsiter number");
+    }
+}
+
 

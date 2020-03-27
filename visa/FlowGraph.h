@@ -47,7 +47,6 @@ namespace vISA
 {
 class IR_Builder;
 class PhyRegSummary;
-class KernelDebugInfo;
 
 //
 // Forward definitions
@@ -55,6 +54,7 @@ class KernelDebugInfo;
 
 class G4_BB;
 class FlowGraph;
+class KernelDebugInfo;
 
 //
 // FuncInfo - Function CFG information

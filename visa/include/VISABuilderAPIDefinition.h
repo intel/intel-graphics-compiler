@@ -30,12 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "VISADefines.h"
 #include "VISAOptions.h"
 #include "CompilerStats.h"
-
-typedef enum
-{
-    LIFETIME_START = 0,
-    LIFETIME_END = 1
-} VISAVarLifetime;
+#include "JitterDataStruct.h"
 
 class VISAKernel
 {

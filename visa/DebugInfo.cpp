@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BuildIR.h"
 #include <map>
 #include "Common_ISA_framework.h"
-#include "BuildCISAIR.h"
 #include "VISAKernel.h"
 #include "BitSet.h"
 using namespace vISA;

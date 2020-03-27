@@ -58,10 +58,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IsaDisassembly.h"
 
 #include "VISAKernel.h"
-#include "BuildCISAIR.h"
-
-#include "Gen4_IR.hpp"
-#include "BuildIR.h"
 
 using namespace std;
 
@@ -2506,27 +2502,10 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
     unsigned kernelEnd   = kernelEntry + header.size;
 
     bytePos = kernelEntry;
-    unsigned int startBytePos = bytePos;
-    bool updateDebugInfo = false;
-    if( kernelBuilderImpl->getIsGenBothPath() && kernelBuilderImpl->getOptions()->getOption(vISA_GenerateDebugInfo))
-    {
-        updateDebugInfo = true;
-    }
 
     for (unsigned i = 0; bytePos < kernelEnd; i++)
     {
-        VISAKernel*     kernelBuilder     = container.kernelBuilder;
-        VISAKernelImpl* kernelBuilderImpl = ((VISAKernelImpl*)kernelBuilder);
-        uint32_t cisaByteOffset;
-        if(updateDebugInfo == true)
-        {
-            cisaByteOffset = bytePos - startBytePos;
-        }
         readInstructionNG(bytePos, buf, container, i);
-        if(updateDebugInfo == true)
-        {
-            kernelBuilderImpl->getKernel()->getKernelDebugInfo()->mapCISAOffsetInsert(kernelBuilderImpl->getVISAOffset(), cisaByteOffset);
-        }
     }
 }
 

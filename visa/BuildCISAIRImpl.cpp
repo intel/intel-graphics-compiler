@@ -40,7 +40,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "JitterDataStruct.h"
 #endif
 #include "VISAKernel.h"
-#include "BuildCISAIR.h"
 #include "BinaryCISAEmission.h"
 #include "Timer.h"
 #include "BinaryEncoding.h"
@@ -48,7 +47,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gen4_IR.hpp"
 #include "FlowGraph.h"
-#include "BuildIR.h"
 #include "DebugInfo.h"
 
 using namespace std;

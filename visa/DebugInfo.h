@@ -33,12 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RegAlloc.h"
 #include "GraphColor.h"
 
-// G4IR instructions added by JIT that do not result from lowering
-// any CISA bytecode will be assigned CISA offset = 0xffffffff.
-// This includes pseudo nodes, G4_labels, mov introduced for copying
-// r0 for pre-emption support.
-constexpr int UNMAPPABLE_VISA_INDEX = IR_Builder::OrphanVISAIndex;
-
 #define CALLER_SAVE_START 1
 #define CALLEE_SAVE_START 60
 namespace vISA

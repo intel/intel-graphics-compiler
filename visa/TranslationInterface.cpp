@@ -32,7 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA_util.h"
 #include "Common_ISA_framework.h"
 #include "JitterDataStruct.h"
-#include "VISAKernel.h"
 #include "BuildIR.h"
 #include "FlowGraph.h"
 #include "common.h"

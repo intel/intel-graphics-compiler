@@ -676,8 +676,6 @@ public:
 
     void CISA_post_file_parse();
 
-    unsigned short CISA_create_pred_id(vISA::G4_Predicate *pred);
-
     VISA_opnd * CISA_create_gen_src_operand(char* var_name, short v_stride, short width, short h_stride,
         unsigned char row_offset, unsigned char col_offset, VISA_Modifier mod, int line_no);
     VISA_opnd * CISA_dst_general_operand(char * var_name,

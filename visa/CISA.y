@@ -36,7 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA_framework.h"
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
-#include "BuildCISAIR.h"
 
 
 //VISA_Type variable_declaration_and_type_check(char *var, Common_ISA_Var_Class type);
@@ -2028,15 +2027,6 @@ ATOMIC_BITWIDTH: { $$ = 32; } |DOT NUMBER
         };
 
 %%
-/*
-VISA_Type variable_declaration_and_type_check(char *var, Common_ISA_Var_Class type)
-{
-    string_pool_entry * se = pCisaBuilder->string_pool_lookup(pCisaBuilder->string_pool, var);
-    MUST_BE_TRUE1((se != NULL), CISAlineno, "Undeclared variable." );
-    MUST_BE_TRUE1((se->type == type), CISAlineno, "Wrong variable type." );
-    return se->data_type;
-}
-*/
 
 void yyerror(char const *s)
 {

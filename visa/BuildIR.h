@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CompilerStats.h"
 #include "BinaryEncodingIGA.h"
 
+
 #define MAX_DWORD_VALUE  0x7fffffff
 #define MIN_DWORD_VALUE  0x80000000
 #define MAX_UDWORD_VALUE 0xffffffff
@@ -75,6 +76,10 @@ enum DeclareType
     CoalescedFill = 5,
     CoalescedSpill = 6
 };
+
+// forward declaration
+// FIXME: our #include is a mess, need to clean it up
+class CISA_IR_Builder;
 
 namespace vISA
 {
@@ -331,6 +336,7 @@ public:
     std::vector<G4_Declare*>& getDeclareList() {return dcllist;}
 };
 
+
 //
 // interface for creating operands and instructions
 //
@@ -520,10 +526,12 @@ private:
 
     const iga::Model* igaModel;
 
+    const CISA_IR_Builder* parentBuilder = nullptr;
+
 public:
     PreDefinedVars preDefVars;
     Mem_Manager&        mem;        // memory for all operands and insts
-    PhyRegPool&         phyregpool; // all physical regs
+    PhyRegPool         phyregpool; // all physical regs
     OperandHashTable    hashtable;  // all created region operands
     RegionPool          rgnpool;    // all region description
     DeclarePool         dclpool;    // all created decalres
@@ -619,6 +627,8 @@ public:
     {
         return dcl == getFE_SP() || dcl == getFE_FP();
     }
+
+    void bindInputDecl(G4_Declare* dcl, int grfOffset);
 
     const iga::Model* getIGAModel() const { return igaModel; }
 
@@ -874,14 +884,14 @@ public:
 
     void initBuiltinSLMSpillAddr(int perThreadSLMSize);
 
-    IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, PhyRegPool &pregs, G4_Kernel &k,
-        Mem_Manager &m, Options *options,
-        FINALIZER_INFO *jitInfo = NULL, PVISA_WA_TABLE pWaTable = NULL)
+    IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
+        Mem_Manager &m, Options *options, CISA_IR_Builder* parent,
+        FINALIZER_INFO *jitInfo, PVISA_WA_TABLE pWaTable = NULL)
         : curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), func_id(-1), metaData(jitInfo),
-        isKernel(false), cunit(0),
+        isKernel(false), cunit(0), parentBuilder(parent),
         builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
-        use64BitFEStackVars(false), mem(m), phyregpool(pregs), hashtable(m), rgnpool(m), dclpool(m),
+        use64BitFEStackVars(false), mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m),
         instList(alloc), kernel(k)
     {
         num_general_dcl = 0;
@@ -2804,5 +2814,11 @@ private:
 
 };
 }
+
+// G4IR instructions added by JIT that do not result from lowering
+// any CISA bytecode will be assigned CISA offset = 0xffffffff.
+// This includes pseudo nodes, G4_labels, mov introduced for copying
+// r0 for pre-emption support.
+constexpr int UNMAPPABLE_VISA_INDEX = IR_Builder::OrphanVISAIndex;
 
 #endif

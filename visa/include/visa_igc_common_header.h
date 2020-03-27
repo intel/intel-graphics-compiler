@@ -623,6 +623,12 @@ typedef struct _vISA_RT_CONTROLS
     unsigned isHeaderMaskfromCe0 : 1;
 } vISA_RT_CONTROLS;
 
+typedef enum
+{
+    LIFETIME_START = 0,
+    LIFETIME_END = 1
+} VISAVarLifetime;
+
 
 // FixedFunctionID: these are hardware FFID values
 enum FFID

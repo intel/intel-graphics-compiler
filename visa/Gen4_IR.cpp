@@ -30,8 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA_framework.h"
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
-#include "BuildCISAIR.h"
 #include "Gen4_IR.hpp"
+#include "BuildIR.h"
 
 using namespace std;
 using namespace vISA;
@@ -3588,30 +3588,7 @@ void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_
 
 void G4_InstSend::emit_send(std::ostream& output, bool dotStyle)
 {
-
-    if (pCisaBuilder->m_options.getOption(vISA_SymbolReg))
-    {
-        //
-        // Emit as comment if there is invalid operand, then emit instruction based on the situation of operand
-        //
-        bool dst_valid = true;
-        bool srcs_valid[G4_MAX_SRCS];
-        if (!isValidSymbolOperand(dst_valid, srcs_valid))
-        {
-            if (!dotStyle)
-            {
-                bool srcs_valid1[G4_MAX_SRCS];
-                for (unsigned i=0; i<G4_MAX_SRCS; i++)
-                    srcs_valid1[i] = true;
-                output << "//";
-                emit_send(output, true, srcs_valid1);       // emit comments
-                output << std::endl;
-            }
-        }
-        emit_send(output, dst_valid, srcs_valid);
-    }
-    else
-        emit_send(output, false, NULL);
+    emit_send(output, false, NULL);
 }
 
 void G4_InstSend::emit_send_desc(std::ostream& output)
@@ -4354,18 +4331,7 @@ void printRegVarOff(std::ostream&  output,
                     // No matter the type of register and if the allocation successed, we output format <symbol>(RegOff, SubRegOff)
                     // Note: we have check if the register allocation  successed when emit the declare!
                     //
-                    if (pCisaBuilder->m_options.getOption(vISA_UniqueLabels))
-                    {
-                        const char *labelStr = nullptr;
-                        pCisaBuilder->m_options.getOption(vISA_LabelStr, labelStr);
-                        if (labelStr != nullptr)
-                        {
-                        output << labelStr << "_" << base->asRegVar()->getName() << "(" << regOff << "," << subRegOff << ")";
-                        }
-                    } else
-                    {
-                        output << base->asRegVar()->getName() << "(" << regOff << "," << subRegOff << ")";
-                    }
+                    output << base->asRegVar()->getName() << "(" << regOff << "," << subRegOff << ")";
                     return;
                 }
 
@@ -4464,14 +4430,6 @@ void printRegVarOff(std::ostream&  output,
 
                 if (symbolreg)
                 {
-                    if (pCisaBuilder->m_options.getOption(vISA_UniqueLabels)) {
-                        const char* labelStr = nullptr;
-                        pCisaBuilder->m_options.getOption(vISA_LabelStr, labelStr);
-                        if (labelStr != nullptr)
-                        {
-                        output << labelStr << "_";
-                    }
-                    }
                     output << baseVar->getName();
                     output << '(' << regOff << ',' << subRegOffset << ")," << immAddrOff << ']';
                 }
@@ -5541,71 +5499,10 @@ PhyRegPool::PhyRegPool(Mem_Manager& m, unsigned int maxRegisterNumber)
     ARF_Table[AREG_SP]       = new (m)G4_Areg(AREG_SP);
 }
 
-bool GlobalRA::areAllDefsNoMask(G4_Declare* dcl)
-{
-    bool retval = true;
-    auto maskUsed = getMask(dcl);
-    if (maskUsed != NULL &&
-        getAugmentationMask(dcl) != AugmentationMasks::NonDefault)
-    {
-        auto byteSize = dcl->getByteSize();
-        for (unsigned int i = 0; i < byteSize; i++)
-        {
-            if (maskUsed[i] != NOMASK_BYTE)
-            {
-                retval = false;
-                break;
-            }
-        }
-    }
-    else
-    {
-        if (getAugmentationMask(dcl) == AugmentationMasks::NonDefault)
-            retval = true;
-        else
-            retval = false;
-    }
-    return retval;
-}
-
 void G4_Declare::setEvenAlign()
 {
     regVar->setEvenAlign();
 }
-
-BankAlign GlobalRA::getBankAlign(G4_Declare* dcl)
-{
-    IR_Builder* builder = kernel.fg.builder;
-    switch (getBankConflict(dcl))
-    {
-    case BANK_CONFLICT_FIRST_HALF_EVEN:
-    case BANK_CONFLICT_SECOND_HALF_EVEN:
-        if (builder->oneGRFBankDivision())
-        {
-            return BankAlign::Even;
-        }
-        else
-        {
-            return BankAlign::Even2GRF;
-        }
-        break;
-    case BANK_CONFLICT_FIRST_HALF_ODD:
-    case BANK_CONFLICT_SECOND_HALF_ODD:
-        if (builder->oneGRFBankDivision())
-        {
-            return BankAlign::Odd;
-        }
-        else
-        {
-            return BankAlign::Odd2GRF;
-        }
-        break;
-    default: break;
-    }
-
-    return BankAlign::Either;
-}
-
 
 void G4_Declare::setSubRegAlign(G4_SubReg_Align subAl)
 {
@@ -5679,19 +5576,7 @@ void G4_Declare::emit(
         }
         else
         {
-            if (pCisaBuilder->m_options.getOption(vISA_UniqueLabels))
-            {
-                const char * labelStr = nullptr;
-                pCisaBuilder->m_options.getOption(vISA_LabelStr, labelStr);
-                if (labelStr != nullptr)
-                {
-                output << ".declare " << labelStr << "_" << name;
-            }
-            }
-            else
-            {
-                output << ".declare " << name;
-            }
+            output << ".declare " << name;
 
             // Base field
             if (useGRF())
@@ -6856,20 +6741,7 @@ void RegionDesc::emit(std::ostream& output) const
 
 void G4_Label::emit(std::ostream& output, bool symbolreg)
 {
-    if (pCisaBuilder->m_options.getOption(vISA_UniqueLabels))
-    {
-        const char* labelStr = nullptr;
-        pCisaBuilder->m_options.getOption(vISA_LabelStr, labelStr);
-        if (labelStr != nullptr)
-        {
-        output << (pCisaBuilder != NULL ? pCisaBuilder->getCurrentKernel()->getName() : "") << "_" <<
-            labelStr << "_" << label;
-    }
-    }
-    else
-    {
-        output << label;
-    }
+    output << label;
 }
 
 unsigned G4_RegVar::getByteAddr() const

@@ -35,9 +35,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "visa_igc_common_header.h"
-#include "BuildIR.h"
-#include "G4_Opcode.h"
-#include "Gen4_IR.hpp"
 #include "Common_ISA_framework.h"
 #include "VISAKernel.h"
 
