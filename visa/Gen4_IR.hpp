@@ -2334,10 +2334,7 @@ public:
         if (type == Type_UW ||
             type == Type_W ||
             type == Type_B ||
-            type == Type_UB ||
-            type == Type_D ||
-            type == Type_UD
-            )
+            type == Type_UB)
         {
             return true;
         }

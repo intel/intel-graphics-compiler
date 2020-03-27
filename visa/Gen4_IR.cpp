@@ -8355,8 +8355,7 @@ bool G4_INST::isRMWCombinCandidate(G4_INST *next)
     G4_Operand* nextDst = next->getDst();
     //The current instruction must has Integer macro dst as well
     if (nextDst &&
-        nextDst->isGen12IntegerMacroDst() &&
-        dst->getType() == nextDst->getType())
+        nextDst->isGen12IntegerMacroDst())
     {
 
         unsigned short lastLB = (unsigned short)dst->getLinearizedStart();
