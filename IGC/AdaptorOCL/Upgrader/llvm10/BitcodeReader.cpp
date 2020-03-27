@@ -5435,7 +5435,7 @@ ModuleSummaryIndexBitcodeReader::getThisModule() {
 std::pair<ValueInfo, GlobalValue::GUID>
 ModuleSummaryIndexBitcodeReader::getValueInfoFromValueId(unsigned ValueId) {
   auto VGI = ValueIdToValueInfoMap[ValueId];
-  IGC_ASSERT(VGI.first);
+  assert(VGI.first);
   return VGI;
 }
 
