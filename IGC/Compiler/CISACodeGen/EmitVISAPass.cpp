@@ -4772,35 +4772,24 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
     m_encoder->Push();
 
     // Emit mov with direct addressing when delta is a compile-time constant.
-    const bool useDirectAddressng = pDelta->IsImmediate()
+    const bool useDirectAddressing = pDelta->IsImmediate()
         && m_currShader->m_Platform->GetPlatformFamily() != IGFX_GEN8_CORE;
-    if (useDirectAddressng && m_SimdMode == SIMDMode::SIMD8)
+
+    auto nativeExecSize = numLanes(m_currShader->m_Platform->getMinDispatchMode());
+    auto width = numLanes(m_SimdMode);
+    if (useDirectAddressing && nativeExecSize * 2 >= width)
     {
         const uint dataIndex = pDelta->GetImmediateValue() % nbElements;
-
-        m_encoder->SetSrcRegion(0, 1, 1, 0);
-        m_encoder->SetSrcSubReg(0, dataIndex);
-        m_encoder->Copy(m_destination, pCombinedData);
-        m_encoder->Push();
-        return;
-    }
-    if (useDirectAddressng && m_SimdMode == SIMDMode::SIMD16)
-    {
-        const uint dataIndex = pDelta->GetImmediateValue() % nbElements;
-
-        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-        m_encoder->SetSrcRegion(0, 1, 1, 0);
-        m_encoder->SetSrcSubReg(0, dataIndex);
-        m_encoder->Copy(m_destination, pCombinedData);
-        m_encoder->Push();
-
-        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-        m_encoder->SetSrcRegion(0, 1, 1, 0);
-        m_encoder->SetSrcSubReg(0, dataIndex + 8);
-        m_encoder->SetDstSubReg(8);
-        m_encoder->Copy(m_destination, pCombinedData);
-        m_encoder->Push();
-
+        int tripCount = width <= nativeExecSize ? 1 : 2;
+        for (int i = 0; i < tripCount; ++i)
+        {
+            m_encoder->SetSimdSize(m_currShader->m_Platform->getMinDispatchMode());
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+            m_encoder->SetSrcSubReg(0, dataIndex + nativeExecSize * i);
+            m_encoder->SetDstSubReg(nativeExecSize * i);
+            m_encoder->Copy(m_destination, pCombinedData);
+            m_encoder->Push();
+        }
         return;
     }
 
@@ -4844,18 +4833,10 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
         m_encoder->Add(pLaneId, pLaneId, imm1);
         m_encoder->Push();
 
-        m_encoder->SetDstSubVar(1);
-        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+        m_encoder->SetDstSubReg(16);
         m_encoder->SetNoMask();
         imm1 = m_currShader->ImmToVariable(0x10, ISA_TYPE_UD);
-        m_encoder->Add(pLaneId, pLaneId, imm1);
-        m_encoder->Push();
-
-        m_encoder->SetDstSubVar(1);
-        m_encoder->SetDstSubReg(8);
-        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-        m_encoder->SetNoMask();
-        imm1 = m_currShader->ImmToVariable(0x18, ISA_TYPE_UD);
         m_encoder->Add(pLaneId, pLaneId, imm1);
         m_encoder->Push();
     }
