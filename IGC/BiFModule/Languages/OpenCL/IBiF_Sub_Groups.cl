@@ -927,20 +927,20 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_ul8, ulong8,
 //
 // SLM simd block read/write
 //
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read,  uint,  uint, i32,   __builtin_IB_simd_block_read_1_local)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read2, uint2, uint, v2i32, __builtin_IB_simd_block_read_2_local)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read4, uint4, uint, v4i32, __builtin_IB_simd_block_read_4_local)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read8, uint8, uint, v8i32, __builtin_IB_simd_block_read_8_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read,  uint,  uint, i32, __builtin_IB_simd_block_read_1_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read2, uint2, uint, i32, __builtin_IB_simd_block_read_2_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read4, uint4, uint, i32, __builtin_IB_simd_block_read_4_local)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read8, uint8, uint, i32, __builtin_IB_simd_block_read_8_local)
 
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write,  uint,  uint, i32, i32,   __builtin_IB_simd_block_write_1_local)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write2, uint2, uint, i32, v2i32, __builtin_IB_simd_block_write_2_local)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write4, uint4, uint, i32, v4i32, __builtin_IB_simd_block_write_4_local)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write8, uint8, uint, i32, v8i32, __builtin_IB_simd_block_write_8_local)
 
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us,  ushort,  ushort, i16,   __builtin_IB_simd_block_read_1_local_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us2, ushort2, ushort, v2i16, __builtin_IB_simd_block_read_2_local_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us4, ushort4, ushort, v4i16, __builtin_IB_simd_block_read_4_local_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us8, ushort8, ushort, v8i16, __builtin_IB_simd_block_read_8_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us,  ushort,  ushort, i16, __builtin_IB_simd_block_read_1_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us2, ushort2, ushort, i16, __builtin_IB_simd_block_read_2_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us4, ushort4, ushort, i16, __builtin_IB_simd_block_read_4_local_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_us8, ushort8, ushort, i16, __builtin_IB_simd_block_read_8_local_h)
 
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_us,  ushort,  ushort, i16, i16,   __builtin_IB_simd_block_write_1_local_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_us2, ushort2, ushort, i16, v2i16, __builtin_IB_simd_block_write_2_local_h)
@@ -948,11 +948,11 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_us4, ushort4,
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_us8, ushort8, ushort, i16, v8i16, __builtin_IB_simd_block_write_8_local_h)
 
 #ifdef cl_intel_subgroups_char
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc,   uchar,   uchar, i8,    __builtin_IB_simd_block_read_1_local_b)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc2,  uchar2,  uchar, v2i8,  __builtin_IB_simd_block_read_2_local_b)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc4,  uchar4,  uchar, v4i8,  __builtin_IB_simd_block_read_4_local_b)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc8,  uchar8,  uchar, v8i8,  __builtin_IB_simd_block_read_8_local_b)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc16, uchar16, uchar, v16i8, __builtin_IB_simd_block_read_16_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc,   uchar,   uchar, i8, __builtin_IB_simd_block_read_1_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc2,  uchar2,  uchar, i8, __builtin_IB_simd_block_read_2_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc4,  uchar4,  uchar, i8, __builtin_IB_simd_block_read_4_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc8,  uchar8,  uchar, i8, __builtin_IB_simd_block_read_8_local_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(intel_sub_group_block_read_uc16, uchar16, uchar, i8, __builtin_IB_simd_block_read_16_local_b)
 
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_uc,   uchar,   uchar, i8, i8,    __builtin_IB_simd_block_write_1_local_b)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(intel_sub_group_block_write_uc2,  uchar2,  uchar, i8, v2i8,  __builtin_IB_simd_block_write_2_local_b)
