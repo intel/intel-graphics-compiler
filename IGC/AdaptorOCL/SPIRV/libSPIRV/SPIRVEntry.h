@@ -127,6 +127,8 @@ class SPIRVExtInst;
     void decode(std::istream &I) { getDecoder(I) >> x;}
 #define _SPIRV_DEF_DEC2(x,y)                                                             \
     void decode(std::istream &I) { getDecoder(I) >> x >> y;}
+#define _SPIRV_DEF_DEC2_OVERRIDE(x,y)                                                    \
+    void decode(std::istream &I) override { getDecoder(I) >> x >> y;}
 #define _SPIRV_DEF_DEC3(x,y,z)                                                           \
     void decode(std::istream &I) { getDecoder(I) >> x >> y >> z;}
 #define _SPIRV_DEF_DEC3_OVERRIDE(x,y,z)                                                  \
@@ -139,6 +141,8 @@ class SPIRVExtInst;
     void decode(std::istream &I) { getDecoder(I) >> x >> y >> z >> u >> v;}
 #define _SPIRV_DEF_DEC6(x,y,z,u,v,w)                                                     \
     void decode(std::istream &I) { getDecoder(I) >> x >> y >> z >> u >> v >> w;}
+#define _SPIRV_DEF_DEC6_OVERRIDE(x,y,z,u,v,w)                                            \
+    void decode(std::istream &I) override { getDecoder(I) >> x >> y >> z >> u >> v >> w;}
 #define _SPIRV_DEF_DEC7(x,y,z,u,v,w,r)                                                   \
     void decode(std::istream &I) { getDecoder(I) >> x >> y >> z >> u >> v >> w >> r;}
 #define _SPIRV_DEF_DEC8(x,y,z,u,v,w,r,s)                                                 \

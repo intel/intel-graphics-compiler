@@ -305,7 +305,7 @@ public:
       SPIRVEntry::setWordCount(WC);
     Ops = TheOps;
   }
-  virtual void setWordCount(SPIRVWord TheWordCount) {
+  virtual void setWordCount(SPIRVWord TheWordCount) override {
     SPIRVEntry::setWordCount(TheWordCount);
     auto NumOps = WordCount - 1;
     if (hasId())
@@ -330,7 +330,7 @@ public:
   // Get operands which are values.
   // Drop execution scope and group operation literals.
   // Return other literals as uint32 constants.
-  virtual std::vector<SPIRVValue *> getOperands() {
+  virtual std::vector<SPIRVValue *> getOperands() override {
     std::vector<SPIRVValue*> VOps;
     for (size_t I = 0, E = Ops.size(); I != E; ++I)
       VOps.push_back(getOperand(I));
@@ -372,7 +372,7 @@ public:
   }
 
 protected:
-  virtual void decode(std::istream &I) {
+  virtual void decode(std::istream &I) override {
     auto D = getDecoder(I);
     if (hasType())
       D >> Type;
@@ -1176,7 +1176,7 @@ public:
   SPIRVValue* getCalledValue() const { return SPIRVEntry::get<SPIRVValue>(CalledValueId); }
   _SPIRV_DEF_DEC4_OVERRIDE(Type, Id, CalledValueId, Args)
   void validate() const override;
-  bool isOperandLiteral(unsigned Index) const { return false; }
+  bool isOperandLiteral(unsigned Index) const override { return false; }
   CapVec getRequiredCapability() const override {
     return getVec(CapabilityFunctionPointersINTEL);
   }
@@ -1195,7 +1195,7 @@ public:
   SPIRVFunction* getFunction() const { return SPIRVEntry::get<SPIRVFunction>(TheFunction); }
   _SPIRV_DEF_DEC3_OVERRIDE(Type, Id, TheFunction)
   void validate() const override;
-  bool isOperandLiteral(unsigned Index) const { return false; }
+  bool isOperandLiteral(unsigned Index) const override { return false; }
   CapVec getRequiredCapability() const override {
     return getVec(CapabilityFunctionPointersINTEL);
   }
