@@ -136,6 +136,23 @@ namespace vISA
 
         void setOffset(unsigned short o) { offset = o; }
 
+        bool hasOverlap(SBFootprint* liveFootprint) const
+        {
+            SBFootprint* curFootprint2Ptr = liveFootprint;
+            while (curFootprint2Ptr)
+            {
+                // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB < curFootprint2Ptr->LeftB)
+                if (fType == curFootprint2Ptr->fType &&
+                    LeftB <= curFootprint2Ptr->RightB && RightB >= curFootprint2Ptr->LeftB)
+                {
+                    return true;
+                }
+                curFootprint2Ptr = curFootprint2Ptr->next;
+            }
+
+            return false;
+        }
+
         bool hasOverlap(SBFootprint *liveFootprint, unsigned short &internalOffset) const
         {
             SBFootprint *curFootprint2Ptr = liveFootprint;

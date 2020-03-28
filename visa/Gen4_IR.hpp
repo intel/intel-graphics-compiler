@@ -954,6 +954,7 @@ public:
     }
 
     bool mayExpandToAccMacro() const;
+    bool isRMWCombinCandidate(G4_INST* next);
 
     Gen4_Operand_Number getSrcOperandNum(int srcPos) const
     {
@@ -2322,6 +2323,25 @@ public:
             default:
                 return type;
         }
+    }
+    bool isGen12IntegerMacroDst()
+    {
+        if (isNullReg())
+        {
+            return false;
+        }
+
+        if (type == Type_UW ||
+            type == Type_W ||
+            type == Type_B ||
+            type == Type_UB ||
+            type == Type_D ||
+            type == Type_UD)
+        {
+            return true;
+        }
+
+        return false;
     }
 };
 
