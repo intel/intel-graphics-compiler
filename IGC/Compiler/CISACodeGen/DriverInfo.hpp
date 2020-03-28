@@ -267,6 +267,9 @@ namespace IGC
         /// Check for flush to zero for DP emulated function
         virtual bool DPEmulationFlushToZero() const { return false; }
 
+        // Maximum id that can be used by simple push constant buffers. The default is maximum unsigned int (no restriction)
+        virtual unsigned int MaximumSimplePushBufferID() const { return std::numeric_limits<unsigned int>::max(); }
+
 
 
     };

@@ -673,6 +673,10 @@ namespace IGC
     unsigned int PushAnalysis::AllocatePushedConstant(
         Instruction* load, unsigned int cbIdxOrGRFOffset, unsigned int offset, unsigned int maxSizeAllowed, bool isStateless)
     {
+        if (cbIdxOrGRFOffset > m_context->m_DriverInfo.MaximumSimplePushBufferID())
+        {
+            return 0;
+        }
         unsigned int size = (unsigned int)load->getType()->getPrimitiveSizeInBits() / 8;
         assert(isa<LoadInst>(load) && "Expected a load instruction");
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
