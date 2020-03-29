@@ -736,6 +736,14 @@ bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator& I)
         return false;
     }
 
+    // If C0/C1 is INF then return false, to avoid the following case for example
+    //      INF*(a-1)
+    //      Before transformation the above expression would result in INF, but after transformation it will be 0
+    if (C0->isInfinity() || C1->isInfinity())
+    {
+            return false;
+    }
+
     Value* op0 = copyIRFlags(BinaryOperator::CreateFMul(addInst->getOperand(0), C1, "", &I), &I);
 
     APFloat C0Float = C0->getValueAPF();
