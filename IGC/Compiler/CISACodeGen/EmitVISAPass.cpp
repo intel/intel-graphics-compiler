@@ -4978,7 +4978,7 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
 
             CVariable* immVar = m_currShader->ImmToVariable(0x40, ISA_TYPE_UV);
             if (useA64 && m_currShader->m_Platform->hasNo64BitInst()) {
-                emitAddPairWithImm(ScatterOff, eOffset, immVar);
+                emitAddPair(ScatterOff, eOffset, immVar);
             }
             else {
                 m_encoder->SetNoMask();
@@ -5041,7 +5041,7 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
             {
                 if (m_currShader->m_Platform->hasNo64BitInst()) {
                     CVariable* ImmVar = m_currShader->ImmToVariable(bytesToRead, ISA_TYPE_UD);
-                    emitAddPairWithImm(pTempVar, pTempVar, ImmVar);
+                    emitAddPair(pTempVar, pTempVar, ImmVar);
                 }
                 else {
                     m_encoder->SetSimdSize(SIMDMode::SIMD1);
@@ -5163,7 +5163,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
 
             CVariable* immVar = m_currShader->ImmToVariable(0x40, ISA_TYPE_UV);
             if (useA64 && m_currShader->m_Platform->hasNo64BitInst()) {
-                emitAddPairWithImm(gatherOff, eOffset, immVar);
+                emitAddPair(gatherOff, eOffset, immVar);
             }
             else {
                 m_encoder->SetNoMask();
@@ -5224,7 +5224,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
             {
                 if (m_currShader->m_Platform->hasNo64BitInst()) {
                     CVariable* ImmVar = m_currShader->ImmToVariable(bytesToRead, ISA_TYPE_UD);
-                    emitAddPairWithImm(pTempVar, pTempVar, ImmVar);
+                    emitAddPair(pTempVar, pTempVar, ImmVar);
                 }
                 else {
                     m_encoder->SetSimdSize(SIMDMode::SIMD1);
@@ -15047,7 +15047,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
 
             CVariable* immVar = m_currShader->ImmToVariable(incImm, ISA_TYPE_UV);
             if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
-                emitAddPairWithImm(gatherOff, eOffset, immVar);
+                emitAddPair(gatherOff, eOffset, immVar);
             }
             else {
                 m_encoder->SetNoMask();
@@ -15126,7 +15126,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
                 rawAddrVar = m_currShader->GetNewVariable(eOffset);
                 CVariable* ImmVar = m_currShader->ImmToVariable(eltOffBytes, ISA_TYPE_UD);
                 if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
-                    emitAddPairWithImm(rawAddrVar, eOffset, ImmVar);
+                    emitAddPair(rawAddrVar, eOffset, ImmVar);
                 }
                 else {
                     m_encoder->SetNoMask();
@@ -15197,7 +15197,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             rawAddrVar = m_currShader->GetNewVariable(eOffset);
             CVariable* ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
             if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
-                emitAddPairWithImm(rawAddrVar, eOffset, ImmVar);
+                emitAddPair(rawAddrVar, eOffset, ImmVar);
             }
             else {
                 m_encoder->Add(rawAddrVar, eOffset, ImmVar);
@@ -15359,7 +15359,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                 // in which all upper four channels are zero, meaning eOffset[0], Later, stored value
                 // must use storvedVar[0] for those extra lanes.
                 if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
-                    emitAddPairWithImm(NewOff, eOffset, immVar);
+                    emitAddPair(NewOff, eOffset, immVar);
                 }
                 else {
                     m_encoder->SetNoMask();
@@ -15518,7 +15518,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                 rawAddrVar = m_currShader->GetNewVariable(eOffset);
                 CVariable* ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
                 if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
-                    emitAddPairWithImm(rawAddrVar, eOffset, ImmVar);
+                    emitAddPair(rawAddrVar, eOffset, ImmVar);
                 }
                 else {
                     m_encoder->Add(rawAddrVar, eOffset, ImmVar);
@@ -15700,7 +15700,7 @@ void EmitPass::emitAddSP(CVariable* Dst, CVariable* Src, CVariable* offset)
         (Dst->GetType() == ISA_TYPE_Q || Dst->GetType() == ISA_TYPE_UQ) &&
         (Src->GetType() == ISA_TYPE_Q || Src->GetType() == ISA_TYPE_UQ))
     {
-        emitAddPairWithImm(Dst, Src, offset);
+        emitAddPair(Dst, Src, offset);
     }
     else
     {
@@ -15709,30 +15709,29 @@ void EmitPass::emitAddSP(CVariable* Dst, CVariable* Src, CVariable* offset)
     }
 }
 
-/// \brief Emulate the 64-bit addition of uniform `Src` with vector immediate
-/// value `Imm`. `Imm` should be in type of Type_UV.
-void EmitPass::emitAddPairWithImm(CVariable* Dst, CVariable* Src,
-    CVariable* Imm) {
+void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
     assert(Dst->GetType() == ISA_TYPE_Q || Dst->GetType() == ISA_TYPE_UQ);
-    assert(Src->GetType() == ISA_TYPE_Q || Src->GetType() == ISA_TYPE_UQ);
+    assert(Src0->GetType() == ISA_TYPE_Q || Src0->GetType() == ISA_TYPE_UQ);
+    assert(Src1->GetType() == ISA_TYPE_UV || Src1->GetType() == ISA_TYPE_UD ||
+           Src1->GetType() == ISA_TYPE_D);
 
-    bool IsUniformSrc = Src->IsUniform();
     bool IsUniformDst = Dst->IsUniform();
 
     unsigned short NumElts = Dst->GetNumberElement();
     SIMDMode Mode = lanesToSIMDMode(NumElts);
 
     VISA_Type NewType = ISA_TYPE_UD;
-    CVariable* SrcAlias = m_currShader->GetNewAlias(Src, NewType, 0, 0);
+    CVariable* SrcAlias = m_currShader->GetNewAlias(Src0, NewType, 0, 0);
     CVariable* L0 = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst);
     CVariable* H0 = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst);
 
+    // Split Src0 into L0 and H0
     // L0 := Offset[0];
     if (IsUniformDst) {
         m_encoder->SetNoMask();
         m_encoder->SetUniformSIMDSize(Mode);
     }
-    if (IsUniformSrc)
+    if (Src0->IsUniform())
         m_encoder->SetSrcRegion(0, 0, 1, 0);
     else
         m_encoder->SetSrcRegion(0, 2, 1, 0);
@@ -15744,12 +15743,44 @@ void EmitPass::emitAddPairWithImm(CVariable* Dst, CVariable* Src,
         m_encoder->SetUniformSIMDSize(Mode);
     }
     m_encoder->SetSrcSubReg(0, 1);
-    if (IsUniformSrc)
+    if (Src0->IsUniform())
         m_encoder->SetSrcRegion(0, 0, 1, 0);
     else
         m_encoder->SetSrcRegion(0, 2, 1, 0);
     m_encoder->Copy(H0, SrcAlias);
     m_encoder->Push();
+
+    // If rc1 is a signed type value, signed extend it to L1 and H1. Otherwise we can
+    // ignore its high-32 bit part, which will be all zeros.
+    CVariable* L1 = nullptr;
+    CVariable* H1 = nullptr;
+    if (Src1->GetType() == ISA_TYPE_D) {
+         L1 = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst);
+         H1 = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst);
+
+         // L1 := Offset[0];
+         if (IsUniformDst) {
+             m_encoder->SetNoMask();
+             m_encoder->SetUniformSIMDSize(Mode);
+         }
+         if (Src1->IsUniform())
+             m_encoder->SetSrcRegion(0, 0, 1, 0);
+         else
+             m_encoder->SetSrcRegion(0, 1, 1, 0);
+         m_encoder->Copy(L1, Src1);
+         m_encoder->Push();
+         // H1 := Offset[1];
+         if (IsUniformDst) {
+             m_encoder->SetNoMask();
+             m_encoder->SetUniformSIMDSize(Mode);
+         }
+         if (Src1->IsUniform())
+             m_encoder->SetSrcRegion(0, 0, 1, 0);
+         else
+             m_encoder->SetSrcRegion(0, 1, 1, 0);
+         m_encoder->IShr(H1, Src1, m_currShader->ImmToVariable(32, ISA_TYPE_UD));
+         m_encoder->Push();
+     }
 
     CVariable* Lo = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst);
     CVariable* Hi = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst);
@@ -15760,7 +15791,10 @@ void EmitPass::emitAddPairWithImm(CVariable* Dst, CVariable* Src,
         m_encoder->SetSrcRegion(0, 1, 1, 0);
         m_encoder->SetSrcRegion(1, 1, 1, 0);
     }
-    m_encoder->AddPair(Lo, Hi, L0, H0, Imm);
+    if (L1 != nullptr)
+        m_encoder->AddPair(Lo, Hi, L0, H0, L1, H1);
+    else
+        m_encoder->AddPair(Lo, Hi, L0, H0, Src1);
     m_encoder->Push();
 
     CVariable* DstAlias = m_currShader->GetNewAlias(Dst, NewType, 0, 0);

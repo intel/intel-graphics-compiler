@@ -417,7 +417,10 @@ namespace IGC
         void emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty);
 
         void emitAddSP(CVariable* Dst, CVariable* Src, CVariable* offset);
-        void emitAddPairWithImm(CVariable* Dst, CVariable* Src, CVariable* Imm);
+        // emitAddPair - emulate 64bit addtition by 32-bit operations.
+        // Dst and Src0 must be a 64-bit type variable.
+        // Src1 mist be in 32-bit type variable/immediate
+        void emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1);
 
         void emitSqrt(llvm::Instruction* inst);
         void emitCanonicalize(llvm::Instruction* inst);
