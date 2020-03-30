@@ -2109,17 +2109,15 @@ DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64,
 {                                                                                                   \
     uint sglid = __builtin_spirv_BuiltInSubgroupLocalInvocationId();                                \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                            \
-                                                                                                    \
+    uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                 \
+    activeChannels ^= 1 << activeId;                                                                \
     while (activeChannels)                                                                          \
     {                                                                                               \
-        uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                             \
-                                                                                                    \
         type value = intel_sub_group_shuffle(X, activeId);                                          \
-        if (sglid > activeId)                                                                       \
+        activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                  \
+        if (sglid == activeId)                                                                      \
             X = op(value, X);                                                                       \
-                                                                                                    \
-        uint disable = 1 << activeId;                                                               \
-        activeChannels ^= disable;                                                                  \
+        activeChannels ^= 1 << activeId;                                                            \
     }                                                                                               \
 }
 
@@ -2127,22 +2125,18 @@ DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64,
 {                                                                                                    \
     uint sglid = __builtin_spirv_BuiltInSubgroupLocalInvocationId();                                 \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                             \
-                                                                                                     \
-    uint mask = (1 << sglid) - 1;                                                                    \
-    uint sglidPrev = (sizeof(uint) * 8 - __builtin_spirv_OpenCL_clz_i32(activeChannels & mask)) - 1; \
-    uint offsetToPrevActive = sglid - sglidPrev;                                                     \
-    X = intel_sub_group_shuffle_up((type)identity, X, offsetToPrevActive);                           \
-                                                                                                     \
+    type result = identity;                                                                          \
     while (activeChannels)                                                                           \
     {                                                                                                \
         uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                              \
-                                                                                                     \
-        type value = intel_sub_group_shuffle(X, activeId);                                           \
-        if (sglid > activeId)                                                                        \
-            X = op(value, X);                                                                        \
-                                                                                                     \
-        uint disable = 1 << activeId;                                                                \
-        activeChannels ^= disable;                                                                   \
+        if (sglid == activeId)                                                                       \
+        {                                                                                            \
+            type value = X;                                                                          \
+            X = result;                                                                              \
+            result = op(result, value);                                                              \
+        }                                                                                            \
+        result = sub_group_shuffle(result, activeId);                                                \
+        activeChannels ^= 1 << activeId;                                                             \
     }                                                                                                \
 }
 
