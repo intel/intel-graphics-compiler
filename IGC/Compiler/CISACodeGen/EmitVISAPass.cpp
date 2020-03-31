@@ -9579,15 +9579,18 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     }
 
     // Set the max stack sized pushed in the parent function for this call's args
+    unsigned totalStackSize = offsetS + (retOnStack ? retSize : 0);
+    if (totalStackSize)
+    {
+        m_encoder->SetFunctionMaxArgumentStackSize(inst->getParent()->getParent(), totalStackSize);
+    }
     if (offsetS > 0)
     {
-        m_encoder->SetFunctionMaxArgumentStackSize(inst->getParent()->getParent(), offsetS);
+        //  update stack pointer after the call
+        CVariable* pSP = m_currShader->GetSP();
+        CVariable* pPopSize = m_currShader->ImmToVariable((uint64_t)(~offsetS + 1), ISA_TYPE_D);
+        emitAddSP(pSP, pSP, pPopSize);
     }
-
-    //  update stack pointer after the call
-    CVariable* pSP = m_currShader->GetSP();
-    CVariable* pPopSize = m_currShader->ImmToVariable((uint64_t)(~offsetS + 1), ISA_TYPE_D);
-    emitAddSP(pSP, pSP, pPopSize);
 }
 
 void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
