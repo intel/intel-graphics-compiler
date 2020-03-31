@@ -33,7 +33,19 @@ using namespace llvm;
 #endif
 
 #if LLVM_VERSION_MAJOR < 10
+#include <cstdint>
 #define MaybeAlign(n) (n)
 #endif
+
+namespace IGCLLVM {
+#if LLVM_VERSION_MAJOR < 10
+    inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
+    inline uint64_t getAlign(uint64_t Val) { return Val; }
+#else
+    inline uint64_t getAlignmentValue(llvm::Align A) { return A.value(); }
+    inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
+    inline llvm::Align getAlign(uint64_t Val) { return llvm::Align{Val}; }
+#endif
+} // namespace IGCLLVM
 
 #endif
