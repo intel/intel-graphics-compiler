@@ -270,6 +270,8 @@ namespace IGC
         // Maximum id that can be used by simple push constant buffers. The default is maximum unsigned int (no restriction)
         virtual unsigned int MaximumSimplePushBufferID() const { return std::numeric_limits<unsigned int>::max(); }
 
+        /// Check if integer mad is enabled
+        virtual bool EnableIntegerMad() const { return false; }
 
 
     };

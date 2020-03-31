@@ -2081,7 +2081,7 @@ namespace IGC
         {
             return false;
         }
-        if (!isFpMad(I) && !m_Platform.doIntegerMad())
+        if (!isFpMad(I) && !(m_Platform.doIntegerMad() && m_ctx->m_DriverInfo.EnableIntegerMad()))
         {
             return false;
         }

@@ -78,6 +78,8 @@ namespace TC
 #endif
             return false;
         }
+
+        bool EnableIntegerMad() const override { return true; }
     };
 
     // In case some cpas are specific to NEO
