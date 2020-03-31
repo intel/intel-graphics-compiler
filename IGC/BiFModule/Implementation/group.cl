@@ -1063,7 +1063,7 @@ bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_##TYPE_ABBR(uint Execution, T
         uint activeChannels = __builtin_IB_WaveBallot(true);                                                                \
         uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                                  \
                                                                                                                             \
-        uint firstLaneValue = __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(Execution, Value, firstActive);        \
+        TYPE firstLaneValue = __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(Execution, Value, firstActive);        \
         bool isSame = firstLaneValue == Value;                                                                              \
                                                                                                                             \
         uint4 equalChannels = __builtin_spirv_OpGroupNonUniformBallot_i32_i1(Execution, isSame);                            \
