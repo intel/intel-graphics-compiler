@@ -1606,7 +1606,6 @@ public:
 
     void setName(const char* n) { name = n; }
     const char* getName() { return name; }
-    const char* getOrigCMName() { return name + 2; }
     void emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize);
     void emit_dep(std::ostream& output);
 

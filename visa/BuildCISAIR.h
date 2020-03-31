@@ -27,6 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _BUILDCISAIR_H_
 #define _BUILDCISAIR_H_
 
+#include <sstream>
+
 namespace vISA
 {
     class Mem_Manager;
@@ -124,6 +126,16 @@ public:
     VISAKernelImpl *m_kernel;
     CisaFramework::CisaBinary *m_cisaBinary;
     VISAKernelImpl * get_kernel() { return m_kernel; }
+
+    std::stringstream& criticalMsgStream()
+    {
+        return criticalMsg;
+    }
+
+    std::string GetCriticalMsg()
+    {
+        return criticalMsg.str();
+    }
 
     void CISA_IR_setVersion(unsigned char major_ver, unsigned char minor_ver)
     {
@@ -749,6 +761,10 @@ private:
     PVISA_WA_TABLE m_pWaTable;
 
     void* gtpin_init = nullptr;
+
+    // important messages that we should relay to the user
+    // (things like if RA is spilling, etc.)
+    std::stringstream criticalMsg;
 };
 extern _THREAD CISA_IR_Builder * pCisaBuilder;
 

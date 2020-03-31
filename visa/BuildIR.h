@@ -557,6 +557,9 @@ public:
     unsigned int getInputCount();
     input_info_t *getRetIPArg();
 
+    const CISA_IR_Builder* getParent() const { return parentBuilder; }
+    std::stringstream& criticalMsgStream();
+
     // all vISA functions directly called by this kernel
     // this will be resolved later in Stitch_Compiler_Unit
     std::set<std::string> funcCallees;

@@ -1031,7 +1031,6 @@ void BinaryEncodingIGA::DoAll()
         m_kernelBuffer = nullptr;
     }
 
-    //std::cout << "USING IGA ENCODER. " << std::endl;
     //Will compact only if Compaction flag is present
     startTimer(TIMER_IGA_ENCODER);
     bool autoCompact = true;

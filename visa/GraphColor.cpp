@@ -9564,9 +9564,9 @@ int GlobalRA::coloringRegAlloc()
     //
     if (spillMemUsed)
     {
-        RELEASE_MSG("Spill memory used = " << spillMemUsed << " bytes for kernel " <<
-            kernel.getName() << std::endl << " Compiling kernel with spill code may degrade performance." <<
-            " Please consider rewriting the kernel to use less registers." << std::endl);
+        builder.criticalMsgStream() << "Spill memory used = " << spillMemUsed << " bytes for kernel " <<
+            kernel.getName() << "\n Compiling kernel with spill code may degrade performance." <<
+            " Please consider rewriting the kernel to use less registers.\n";
     }
 
     // update jit metadata information for spill
@@ -11188,7 +11188,6 @@ bool VerifyAugmentation::interfereBetween(G4_Declare* dcl1, G4_Declare* dcl2)
                 {
                     if (!intf->interfereBetween(var, v2))
                     {
-                        std::cerr << dcl1->getName() << "'s LRA assignment " << grf << " doesnt interfere with " << dcl2->getName() << std::endl;
                         interferes = false;
                     }
                 }

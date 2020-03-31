@@ -7728,7 +7728,8 @@ public:
             }
         }
         fg.builder->getJitInfo()->numGRFUsed = count;
-        RELEASE_MSG("\tKernel " << kernel.getOrigCMName() << " : " << count << " registers\n");
+        fg.builder->criticalMsgStream() << "\tKernel " << kernel.getName() << " : " <<
+            count << " registers\n";
     }
 
     //

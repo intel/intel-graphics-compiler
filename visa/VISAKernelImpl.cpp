@@ -414,7 +414,8 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
     if (m_options->getOption(vISA_PrintASMCount))
     {
-        RELEASE_MSG("\tKernel " << m_asmName << " : " << m_kernel->getAsmCount() << " asm_count" << std::endl);
+        m_builder->criticalMsgStream() << "\tKernel " << m_kernel->getName() << " : " <<
+            m_kernel->getAsmCount() << " asm instructions\n";
     }
     stopTimer(TIMER_ENCODE_AND_EMIT);
 

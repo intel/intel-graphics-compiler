@@ -175,7 +175,6 @@ namespace vISA
                 newArena->_nextArena = _arenas;
             }
 
-            //std::cout << "Create new Buffer: " << (arenaDataSize / 1024) << " KB" << std::endl;
             _arenas = newArena;
 
 #ifdef COLLECT_ALLOCATION_STATS

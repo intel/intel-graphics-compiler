@@ -2036,7 +2036,6 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
             break;
         }
     default:
-        RELEASE_MSG( "Unsupported ISA opcode");
         return VISA_FAILURE;
     }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)

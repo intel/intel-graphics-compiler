@@ -144,18 +144,6 @@ extern std::stringstream errorMsgs;
 
 #endif  // #ifdef _DEBUG
 
-#if !defined(DLL_MODE)
-//important messages that we should relay to the user
-//(things like if RA is spilling, etc.)
-// this is only enabled in offline vISA executable
-#define RELEASE_MSG(msg) { \
-    std::cerr << msg; \
-}
-#else
-// do nothing for driver build
-#define RELEASE_MSG(msg)
-#endif
-
 // disable asserts only for release DLL
 #if defined(_DEBUG) || !defined(DLL_MODE) || !defined(NDEBUG)
 #define ASSERT_USER(x, errormsg) {  if (!(x))   \

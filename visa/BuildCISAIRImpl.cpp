@@ -1034,6 +1034,13 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         dumpAllTimers(asmName, true);
     }
 
+#ifndef DLL_MODE
+    if (criticalMsg.str().length() > 0)
+    {
+        std::cerr << "[vISA Finalizer Messsages]\n" << criticalMsg.str();
+    }
+#endif
+
     return status;
 }
 
@@ -2936,20 +2943,12 @@ Common_ISA_Input_Class CISA_IR_Builder::get_input_class(Common_ISA_Var_Class var
 }
 void CISA_IR_Builder::CISA_post_file_parse()
 {
-    //Checking if target labels have been declared
-    /*
-    for (int i = 0; i < HASH_TABLE_SIZE; i++) {
-    if (branch_targets[i]) {
-    string_pool_entry * l = branch_targets[i];
-    while(l != NULL) {
-    string_pool_entry * se = string_pool_lookup((const char*)l->value);
-    MUST_BE_TRUE(se, "Not defined target label");
-    MUST_BE_TRUE(se->type == LABEL_VAR, "Not defined target label");
-    l = l->next;
-    }
-    }
-    }
-    */
     return;
+}
+
+// place it here so that internal Gen_IR files don't have to include VISAKernel.h
+std::stringstream& IR_Builder::criticalMsgStream()
+{
+    return const_cast<CISA_IR_Builder*>(parentBuilder)->criticalMsgStream();
 }
 
