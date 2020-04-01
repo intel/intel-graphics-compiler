@@ -27,10 +27,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGC_PROBE_H
 #define IGC_PROBE_H
 
+
 #include <cassert>
 #include <cstdlib>
 
 #define IGC_ASSERT assert
 #define IGC_ASSERT_EXIT(x) do { if(0 == (x)) { assert(0); exit(EXIT_FAILURE); } } while(0)
+
 
 #endif // IGC_PROBE_H
