@@ -260,8 +260,6 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
     }
 }
 
-// note that this will break if we have more than one builder active,
-// since we rely on the pCisaBuilder to point to the current builder
 int CISA_IR_Builder::CreateBuilder(
     CISA_IR_Builder *&builder,
     vISABuilderMode mode,
@@ -290,7 +288,6 @@ int CISA_IR_Builder::CreateBuilder(
     InitStepping();
 
     builder = new CISA_IR_Builder(buildOption, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER, pWaTable);
-    pCisaBuilder = builder;
 
     if (!builder->m_options.parseOptions(numArgs, flags))
     {
@@ -390,7 +387,6 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
         assert( 0 );
         return VISA_FAILURE;
     }
-    m_executionSatarted = true;
 
     VISAKernelImpl * kerneltemp = new (m_mem) VISAKernelImpl(this, mBuildOption, &m_options);
     kernel = static_cast<VISAKernel *>(kerneltemp);
@@ -676,7 +672,7 @@ int CISA_IR_Builder::WriteVISAHeader()
 }
 
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
-extern int CISAparse();
+extern int CISAparse(CISA_IR_Builder *builder);
 extern YY_BUFFER_STATE CISA_scan_string(const char* yy_str);
 extern void CISA_delete_buffer(YY_BUFFER_STATE buf);
 
@@ -718,7 +714,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
     if (!visaHeader.empty())
     {
         YY_BUFFER_STATE headerBuf = CISA_scan_string(visaHeader.c_str());
-        if (CISAparse() != 0)
+        if (CISAparse(this) != 0)
         {
             assert(0 && "Parsing header message failed");
             return VISA_FAILURE;
@@ -730,7 +726,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
     if (!visaText.empty())
     {
         YY_BUFFER_STATE visaBuf = CISA_scan_string(visaText.c_str());
-        if (CISAparse() != 0)
+        if (CISAparse(this) != 0)
         {
             assert(0 && "Parsing visa text failed");
             return VISA_FAILURE;
@@ -767,7 +763,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaFile)
         return VISA_FAILURE;
     }
 
-    if (CISAparse() != 0)
+    if (CISAparse(this) != 0)
     {
         assert(0 && "Parsing visa text failed");
         return VISA_FAILURE;
@@ -912,8 +908,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 kernels.push_back(kernel);
             }
 
-            m_currentKernel = kernel;
-
             int status =  kernel->compileFastPath();
             if (status != VISA_SUCCESS)
             {
@@ -958,7 +952,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         for (auto kernel_it = kernels.begin(); kernel_it != kernels.end(); kernel_it++ )
         {
             VISAKernelImpl* kernel = (*kernel_it);
-            m_currentKernel = kernel;
 
             unsigned int genxBufferSize = 0;
 

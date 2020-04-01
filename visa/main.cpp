@@ -31,12 +31,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visa_igc_common_header.h"
 #include "Common_ISA_framework.h"
 #include "VISAKernel.h"
-#include "BuildIR.h"
 #include "Option.h"
 #include "Common_ISA.h"
 #include "BinaryCISAEmission.h"
 #include "Timer.h"
-#include "JitterDataStruct.h"
 
 #include "DebugInfo.h"
 
@@ -69,16 +67,9 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
 #define JIT_CISA_ERROR                  3
 #define JIT_INVALID_PLATFORM            5
 
-// create a parser interface for lex and yacc.
-// Note that for thread safety this should only be used in CISA.y
-_THREAD CISA_IR_Builder * pCisaBuilder = NULL;
-
 #ifndef DLL_MODE
 void parse(const char *fileName, std::string testName, int argc, const char *argv[], Options &opt)
 {
-    vISA::Mem_Manager phyRegMem(PHY_REG_MEM_SIZE);
-    vISA::PhyRegPool phyRegPool(phyRegMem, opt.getuInt32Option(vISA_TotalGRFNum));
-
     // read in common isa binary file
     int c;
     char *buf;
@@ -150,10 +141,6 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
         cisa_builder->m_options.getOption(vISA_GetvISABinaryName, cisaBinaryName);
         binFileName = cisaBinaryName;
     }
-
-    // Pass testname to CISA IR Builder instance so that
-    // it can use it to create filename for FC patch
-    cisa_builder->setTestName(testName);
 
     int result = cisa_builder->Compile((char*)binFileName.c_str());
     CISA_IR_Builder::DestroyBuilder(cisa_builder);
@@ -453,13 +440,10 @@ void* allocCodeBlock(size_t sz)
 
 #ifndef DLL_MODE
 
-extern int CISAparse();
+extern int CISAparse(CISA_IR_Builder* builder);
 
 void parseWrapper(const char *fileName, int argc, const char *argv[], Options &opt)
 {
-    vISA::Mem_Manager cisaBinaryMem(4194304);
-    vISA::Mem_Manager phyRegMem(PHY_REG_MEM_SIZE);
-    vISA::PhyRegPool phyRegPool(phyRegMem, opt.getuInt32Option(vISA_TotalGRFNum));
     int num_kernels = 0;
     std::string testName;
 
@@ -486,27 +470,25 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
         os.close();
     }
     else {
-        num_kernels = 0;
+        num_kernels = 1;
         file_names.push_back(fileName);
-        num_kernels++;
     }
 
     //used to ignore duplicate file names
     std::map<std::string, bool> files_parsed;
 
-    // isaasm path is vISA path only; input: .isaasm, output: .isa
     TARGET_PLATFORM platform = getGenxPlatform();
     VISA_BUILDER_OPTION builderOption =
         (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
-    CISA_IR_Builder *cisa_builder = NULL;
+    CISA_IR_Builder *cisa_builder = nullptr;
     VISA_WA_TABLE visaWaTable;
 
-    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_PARSER, builderOption, getGenxPlatform(), argc, argv, &visaWaTable, true);
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_PARSER, builderOption, getGenxPlatform(),
+        argc, argv, &visaWaTable, true);
 
-    for(int i = 0; i < num_kernels; i++)
+    for (int i = 0; i < num_kernels; i++)
     {
-
-        if(files_parsed.find(file_names.front()) != files_parsed.end())
+        if (files_parsed.find(file_names.front()) != files_parsed.end())
         {
             file_names.pop_front();
             continue;
@@ -515,17 +497,17 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
         {
             files_parsed[file_names.front()] = true;
         }
-        //
-        // parser takes pBuilder to create G4_INST inst list
-        //
-        if (!cisa_builder->openCISAParsingFile( file_names.front().c_str(),"r"))
+
+        auto vISAFileName = file_names.front();
+        CISAin = fopen(vISAFileName.c_str(), "r");
+        if (!CISAin)
         {
-            printf("ERROR: Can not open file %s!\n", file_names.front().c_str());
-            exit(1);                        // make the tool quit in error case
+            std::cerr <<  "Cannot open vISA assembly file: " << vISAFileName;
+            exit(1);
         }
 
-        std::string::size_type testNameEnd = file_names.front().find_last_of(".");
-        std::string::size_type testNameStart = file_names.front().find_last_of("\\");
+        std::string::size_type testNameEnd = vISAFileName.find_last_of(".");
+        std::string::size_type testNameStart = vISAFileName.find_last_of("\\");
 
         if (testNameStart != std::string::npos)
             testNameStart++;
@@ -533,19 +515,16 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
             testNameStart = 0;
 
         if (testNameEnd != std::string::npos)
-            testName = file_names.front().substr(testNameStart, testNameEnd);
+            testName = vISAFileName.substr(testNameStart, testNameEnd);
         else
-            testName = file_names.front();
+            testName = vISAFileName;
 
         CISAdebug = 0;
-        int fail;
-        // remove new programming rule option
-
-        fail = CISAparse();
-        cisa_builder->closeCISAParsingFile();
+        int fail = CISAparse(cisa_builder);
+        fclose(CISAin);
         if (fail)
         {
-            printf("Error during parsing: CISAparse() exited with exit code %d\n", fail);
+            fprintf(stderr, "Error during parsing: VISAParse() exited with exit code %d\n", fail);
             exit(1);
         }
 
@@ -557,14 +536,14 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
 
     bool outputCISABinaryName = false;
     opt.getOption(vISA_OutputvISABinaryName, outputCISABinaryName);
-    if(outputCISABinaryName)
+    if (outputCISABinaryName)
     {
-        char const *cisaBinaryName;
+        char const* cisaBinaryName;
         opt.getOption(vISA_GetvISABinaryName, cisaBinaryName);
         binFileName = cisaBinaryName;
     }
 
-    cisa_builder->Compile((char *)binFileName.c_str());
+    cisa_builder->Compile(binFileName.c_str());
     CISA_IR_Builder::DestroyBuilder(cisa_builder);
 }
 #endif

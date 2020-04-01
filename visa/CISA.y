@@ -39,7 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 //VISA_Type variable_declaration_and_type_check(char *var, Common_ISA_Var_Class type);
-void yyerror(char const* msg);
+void CISAerror(CISA_IR_Builder* builder, char const* msg);
 int  yylex();
 extern int CISAlineno;
 
@@ -79,6 +79,8 @@ VISA_RawOpnd* rawOperandArray[16];
 #endif
 
 %}
+
+%parse-param {CISA_IR_Builder* pCisaBuilder}
 
 %error-verbose
 
@@ -1768,7 +1770,7 @@ AddrVar :  VAR
               TRACE("\n** Address operand");
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  yyerror("unbound variable");
+                  CISAerror(pCisaBuilder, "unbound variable");
               $$.row = 0;
               $$.elem = 0;
           }
@@ -1778,7 +1780,7 @@ AddrVar :  VAR
 
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  yyerror("unbound variable");
+                  CISAerror(pCisaBuilder, "unbound variable");
               $$.row = 1;
               $$.elem = (int)$3;
           }
@@ -1789,7 +1791,7 @@ AddrVar :  VAR
 
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  yyerror("unbound variable");
+                  CISAerror(pCisaBuilder, "unbound variable");
               $$.row = (int)$6;
               $$.elem = (int)$3;
           }
@@ -1798,7 +1800,7 @@ AddrVar :  VAR
               TRACE("\n** Address operand");
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  yyerror("unbound variable");
+                  CISAerror(pCisaBuilder, "unbound variable");
               $$.row = (int)$3;
               $$.elem = (int)$5;
           };
@@ -1808,7 +1810,7 @@ AddressableVar : VAR {
               //$$.opnd = pBuilder->getRegVar($1);
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  yyerror("unbound variable");
+                  CISAerror(pCisaBuilder, "unbound variable");
               $$.row = 0;
               $$.elem = 0;
           };
@@ -1882,20 +1884,13 @@ Imm : Exp DataType
 #endif
       };
 
-// Exp32: Exp {
-//        if ((int64_t)((int32_t)$1) != $1) {
-//            yyerror("immediate value overflows 32b");
-//        }
-//        $$ = $1;
-//     }
-
 Exp : AbstractNum   { $$ = $1; }
     | Exp PLUS  Exp { $$ = $1 + $3; }
     | Exp MINUS Exp { $$ = $1 - $3; }
     | Exp TIMES Exp { $$ = $1 * $3; }
     | Exp SLASH Exp {
             if ($3 == 0)
-                yyerror("division by 0");
+                CISAerror(pCisaBuilder, "division by 0");
             $$ = $1 / $3;
         }
     | MINUS Exp %prec NEG  { $$ = -$2; }
@@ -2028,7 +2023,7 @@ ATOMIC_BITWIDTH: { $$ = 32; } |DOT NUMBER
 
 %%
 
-void yyerror(char const *s)
+void CISAerror(CISA_IR_Builder* builder, char const *s)
 {
 
     int yytype = YYTRANSLATE (yychar);

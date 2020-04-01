@@ -56,7 +56,6 @@ public:
         memset(&m_header, 0, sizeof(m_header));
 
         mBuildOption = buildOption;
-        m_executionSatarted = false;
         m_kernel_count = 0;
         m_function_count = 0;
 
@@ -65,30 +64,10 @@ public:
         m_header.magic_number = COMMON_ISA_MAGIC_NUM;
 
         m_cisaBinary = new (m_mem) CisaFramework::CisaBinary(&m_options);
-        m_currentKernel = NULL;
         m_pWaTable = pWaTable;
     }
 
     virtual ~CISA_IR_Builder();
-
-    #ifndef DLL_MODE
-    //
-    // routines for initializing and ending CISA parser
-    //
-    // to make the tool quit when there is incorrect input file
-    bool openCISAParsingFile(const char* fileName, char* mode)
-    {
-        if( (CISAin = fopen(fileName, mode)) == NULL)
-        {
-            fprintf(stderr,"Cannot open file %s\n", fileName);
-            return false;
-        }
-        return true;
-    }
-
-    void closeCISAParsingFile() { fclose(CISAin); }
-
-    #endif
 
     /**************START VISA BUILDER API*****************************/
 
@@ -723,12 +702,9 @@ public:
                                                Common_ISA_Var_Class type,
                                                VISA_Type data_type);
 
-    VISAKernelImpl* getCurrentKernel() const { return m_currentKernel; }
     std::list<VISAKernelImpl*>& getKernels() { return m_kernels; }
 
     void InitVisaWaTable(TARGET_PLATFORM platform, Stepping step);
-
-    void setTestName(std::string name) { testName = name; }
 
     Options m_options;
     std::stringstream m_ssIsaAsm;
@@ -742,7 +718,6 @@ private:
 
     vISA::Mem_Manager m_mem;
     VISA_BUILDER_OPTION mBuildOption;
-    bool m_executionSatarted;
 
     unsigned int m_kernel_count;
     unsigned int m_function_count;
@@ -751,12 +726,7 @@ private:
     //keeps track of functions for stitching purposes, after compilation.
     std::vector<VISAFunction *> m_functionsVector;
 
-    // the current kernel being compiled.  It is updated in the ::compile() function
-    VISAKernelImpl* m_currentKernel;
-
     void emitFCPatchFile();
-
-    std::string testName;
 
     PVISA_WA_TABLE m_pWaTable;
 
@@ -766,6 +736,5 @@ private:
     // (things like if RA is spilling, etc.)
     std::stringstream criticalMsg;
 };
-extern _THREAD CISA_IR_Builder * pCisaBuilder;
 
 #endif
