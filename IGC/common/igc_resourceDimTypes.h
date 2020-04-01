@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "Probe.h"
 
 namespace IGC
 {
@@ -62,7 +61,7 @@ namespace IGC
 
     inline llvm::Type* GetResourceDimensionType(llvm::Module& module, RESOURCE_DIMENSION_TYPE resourceDimTypeId)
     {
-        IGC_ASSERT((resourceDimTypeId == DIM_TYPED_BUFFER_TYPE ||
+        assert((resourceDimTypeId == DIM_TYPED_BUFFER_TYPE ||
             resourceDimTypeId == DIM_1D_TYPE || resourceDimTypeId == DIM_1D_ARRAY_TYPE ||
             resourceDimTypeId == DIM_2D_TYPE || resourceDimTypeId == DIM_2D_ARRAY_TYPE ||
             resourceDimTypeId == DIM_3D_TYPE || resourceDimTypeId == DIM_CUBE_TYPE || resourceDimTypeId == DIM_CUBE_ARRAY_TYPE));
