@@ -2153,6 +2153,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
         return false;
     }
 
+
     // skip the instruction has no dst. e.g. G4_pseudo_fcall
     if (useInst->getDst() == nullptr)
         return false;
