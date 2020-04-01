@@ -31,19 +31,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
 #include "VISADefines.h"
-#include "visa_wa.h"
+#include "inc/common/sku_wa.h"
 
 
 extern "C"
-VISA_BUILDER_API int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode, VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform, int numArgs, const char* flags[], PVISA_WA_TABLE pWaTable)
+VISA_BUILDER_API int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode,
+    VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform, int numArgs,
+    const char* flags[], const PWA_TABLE pWaTable)
 {
-    if( builder != NULL )
+    if (builder)
     {
         return VISA_FAILURE;
     }
-    CISA_IR_Builder *cisa_builder = NULL;
-    int status = CISA_IR_Builder::CreateBuilder(cisa_builder, mode, builderOption, platform, numArgs, flags, pWaTable);
-    builder = static_cast< VISABuilder* >(cisa_builder);
+    CISA_IR_Builder* cisa_builder = NULL;
+    int status = CISA_IR_Builder::CreateBuilder(cisa_builder, mode, builderOption, platform,
+        numArgs, flags, pWaTable);
+    builder = static_cast<VISABuilder*>(cisa_builder);
 
     return status;
 }

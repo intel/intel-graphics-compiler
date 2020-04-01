@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/helper.h"
 
 #include "visa_wa.h"
+#include "inc/common/sku_wa.h"
 
 namespace IGC
 {
@@ -529,7 +530,9 @@ namespace IGC
 
         llvm::DenseMap<SAlias, CVariable*, SAliasMapInfo> m_aliasesMap;
 
-        VISA_WA_TABLE m_WaTable;
+        // vISA needs its own Wa-table as some of the W/A are applicable
+        // only to certain APIs/shader types/reg key settings/etc.
+        WA_TABLE m_vISAWaTable;
 
         enum OpType
         {

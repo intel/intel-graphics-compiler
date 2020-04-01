@@ -72,10 +72,20 @@ CISA_IR_Builder::~CISA_IR_Builder()
         // don't call delete since vISAKernelImpl is allocated in memory pool
         kernel->~VISAKernelImpl();
     }
+
+    if (needsToFreeWATable)
+    {
+        delete m_pWaTable;
+    }
 }
 
 void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
 {
+    assert(!m_pWaTable && "WA_Table must be nullptr for this function to be called");
+
+    m_pWaTable = new WA_TABLE;
+    memset(m_pWaTable, 0, sizeof(WA_TABLE));
+    needsToFreeWATable = true;
 
     if ((platform == GENX_SKL && (step == Step_A || step == Step_B)) ||
         (platform == GENX_BXT && step == Step_A))
@@ -104,24 +114,6 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
     else
     {
         VISA_WA_DISABLE(m_pWaTable, WaDisallow64BitImmMov);
-    }
-
-    if (platform == GENX_BDW && step == Step_A)
-    {
-        VISA_WA_ENABLE(m_pWaTable, WaByteDstAlignRelaxedRule);
-    }
-    else
-    {
-        VISA_WA_DISABLE(m_pWaTable, WaByteDstAlignRelaxedRule);
-    }
-
-    if (platform == GENX_SKL && step == Step_A)
-    {
-        VISA_WA_ENABLE(m_pWaTable, WaSIMD16SIMD32CallDstAlign);
-    }
-    else
-    {
-        VISA_WA_DISABLE(m_pWaTable, WaSIMD16SIMD32CallDstAlign);
     }
 
     if (platform == GENX_BDW || platform == GENX_CHV ||
@@ -210,11 +202,6 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
         VISA_WA_ENABLE(m_pWaTable, WaMixModeSelInstDstNotPacked);
     }
 
-    if (m_options.getTarget() == VISA_CM && platform >= GENX_SKL)
-    {
-        VISA_WA_ENABLE(m_pWaTable, WaDisableSendSrcDstOverlap);
-    }
-
     if (platform == GENX_SKL || platform == GENX_BXT)
     {
         VISA_WA_ENABLE(m_pWaTable, WaResetN0BeforeGatewayMessage);
@@ -225,10 +212,6 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
         VISA_WA_ENABLE(m_pWaTable, WaClearTDRRegBeforeEOTForNonPS);
     }
 
-    if (platform >= GENX_CNL)
-    {
-        VISA_WA_ENABLE(m_pWaTable, WaDisableSendSrcDstOverlap);
-    }
     if (platform == GENX_CNL && step == Step_A)
     {
         VISA_WA_ENABLE(m_pWaTable, WaDisableSendsPreemption);
@@ -267,8 +250,7 @@ int CISA_IR_Builder::CreateBuilder(
     TARGET_PLATFORM platform,
     int numArgs,
     const char* flags[],
-    PVISA_WA_TABLE pWaTable,
-    bool initWA)
+    PWA_TABLE pWaTable)
 {
 
     initTimer();
@@ -327,9 +309,9 @@ int CISA_IR_Builder::CreateBuilder(
         builder->m_options.setOptionInternally(vISA_EmitLocation, true);
     }
 
-    // we must wait till after the options are processed,
-    // so that stepping is set and init will work properly
-    if (initWA)
+    // driver WaTable is not available in offline vISA executable mode
+    // We instead create and initialize some of the known ones here
+    if (!pWaTable)
     {
         builder->InitVisaWaTable(platform, GetStepping());
     }
@@ -395,7 +377,6 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     m_kernel->setIsKernel(true);
     m_kernels.push_back(kerneltemp);
     m_kernel->setVersion((unsigned char)this->m_header.major_version, (unsigned char)this->m_header.minor_version);
-    m_kernel->setPWaTable(m_pWaTable);
     m_kernel->InitializeKernel(kernelName);
     m_kernel->SetGTPinInit(getGtpinInit());
     this->m_kernel_count++;

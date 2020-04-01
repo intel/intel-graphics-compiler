@@ -1585,10 +1585,9 @@ bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype,
         !(builder.hasMixMode() && dstHFMixModeInst);
     unsigned short dst_byte_offset;
     builder.isOpndAligned(dst, dst_byte_offset, extypesize);
-    if (!((dst_byte_offset % extypesize == 0)  ||
+    if (!((dst_byte_offset % extypesize == 0) ||
         (byteDst &&
-            !VISA_WA_CHECK(builder.getPWaTable(), WaByteDstAlignRelaxedRule) &&
-            (dst_byte_offset % extypesize == 1))
+        (dst_byte_offset % extypesize == 1))
         ) ||
         /*
          * Dynamic offset can be odd for serialized instructions
@@ -1644,12 +1643,10 @@ bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype,
              }
          }
 
-         if( !VISA_WA_CHECK(builder.getPWaTable(), WaByteDstAlignRelaxedRule) )
+
+         if (splitInstListForByteDst(i, bb, (uint16_t)extypesize))
          {
-             if( splitInstListForByteDst( i, bb, (uint16_t) extypesize ) )
-             {
-                 return true;
-             }
+             return true;
          }
 
          inst->setDest(insertMovAfter(i, dst, dst->getType(), bb));
@@ -5754,7 +5751,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
                 {
                     doEvenAlign(inst->getSrc(1)->getTopDcl());
                 }
-                if (VISA_WA_CHECK(builder.getPWaTable(), WaDisableSendSrcDstOverlap))
+                if (builder.WaDisableSendSrcDstOverlap())
                 {
                     doEvenAlign(inst->getDst()->getTopDcl());
                 }
@@ -5862,7 +5859,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
             }
         }
 
-        if (VISA_WA_CHECK(builder.getPWaTable(), WaDisableSendSrcDstOverlap))
+        if (builder.WaDisableSendSrcDstOverlap())
         {
             // create copy if dst and src0/src1 overlap due to being the same variable
             bool src0Overlap = inst->getDst()->compareOperand(inst->getSrc(0)) != Rel_disjoint;

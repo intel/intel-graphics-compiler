@@ -337,7 +337,7 @@ void G4Verifier::verifySend(G4_INST* inst)
             }
         }
 
-        if (VISA_WA_CHECK(kernel.fg.builder->getPWaTable(), WaDisableSendSrcDstOverlap))
+        if (kernel.fg.builder->WaDisableSendSrcDstOverlap())
         {
             if (!dst->isNullReg())
             {

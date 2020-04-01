@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PreDefinedVars.h"
 #include "CompilerStats.h"
 #include "BinaryEncodingIGA.h"
+#include "inc/common/sku_wa.h"
 
 
 #define MAX_DWORD_VALUE  0x7fffffff
@@ -467,7 +468,7 @@ private:
     // information.
     FCPatchingInfo* fcPatchInfo;
 
-    const PVISA_WA_TABLE m_pWaTable;
+    const PWA_TABLE m_pWaTable;
     Options *m_options;
 
     std::map<G4_INST*, G4_FCALL*> m_fcallInfo;
@@ -684,7 +685,7 @@ public:
 
     void setFCPatchInfo(FCPatchingInfo* instance) { fcPatchInfo = instance; }
 
-    PVISA_WA_TABLE getPWaTable() { return m_pWaTable; }
+    const PWA_TABLE getPWaTable() { return m_pWaTable; }
 
     const char* getNameString(Mem_Manager& mem, size_t size, const char* format, ...)
     {
@@ -889,7 +890,7 @@ public:
 
     IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
         Mem_Manager &m, Options *options, CISA_IR_Builder* parent,
-        FINALIZER_INFO *jitInfo, PVISA_WA_TABLE pWaTable = NULL)
+        FINALIZER_INFO *jitInfo, PWA_TABLE pWaTable)
         : curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), func_id(-1), metaData(jitInfo),
         isKernel(false), cunit(0), parentBuilder(parent),
         builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),

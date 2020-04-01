@@ -2261,7 +2261,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
         }
 
         if ((inst->isSend() || inst->isFillIntrinsic()) && !dst->isNullReg() &&
-            VISA_WA_CHECK(kernel.fg.builder->getPWaTable(), WaDisableSendSrcDstOverlap))
+            kernel.fg.builder->WaDisableSendSrcDstOverlap())
         {
             markInterferenceForSend(bb, inst, dst);
         }
@@ -9700,7 +9700,7 @@ bool FlagSpillCleanup::replaceWithPreDcl(IR_Builder&     builder,
     }
     G4_Declare *dcl = reuseOpnd->getBase()->asRegVar()->getDeclare();
 
-    if (VISA_WA_CHECK(builder.getPWaTable(), WaDisableSendSrcDstOverlap))
+    if (builder.WaDisableSendSrcDstOverlap())
     {
         for (auto &renameOpnd : scratchAccess->renameOperandVec)
         {

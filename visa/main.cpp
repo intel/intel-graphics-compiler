@@ -126,9 +126,8 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
     VISA_BUILDER_OPTION builderOption =
         (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
     CISA_IR_Builder* cisa_builder = NULL;
-    VISA_WA_TABLE visaWaTable;
 
-    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_MEDIA, builderOption, platform, argc, argv, &visaWaTable, true);
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_MEDIA, builderOption, platform, argc, argv);
     MUST_BE_TRUE(cisa_builder, "cisa_builder is NULL.");
 
     vector<VISAKernel*> kernels;
@@ -185,9 +184,7 @@ int JITCompileAllOptions(const char* kernelName,
     // HW mode: default: GEN path; if dump/verify: Both path
     VISA_BUILDER_OPTION builderOption = VISA_BUILDER_GEN;
 
-    VISA_WA_TABLE visaWaTable;
-
-    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_MEDIA, builderOption, getGenxPlatform(), numArgs, args, &visaWaTable, true);
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_MEDIA, builderOption, getGenxPlatform(), numArgs, args);
     cisa_builder->setGtpinInit(gtpin_init);
 
     if (!cisa_builder)
@@ -480,11 +477,10 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
     TARGET_PLATFORM platform = getGenxPlatform();
     VISA_BUILDER_OPTION builderOption =
         (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
-    CISA_IR_Builder *cisa_builder = nullptr;
-    VISA_WA_TABLE visaWaTable;
 
-    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_PARSER, builderOption, getGenxPlatform(),
-        argc, argv, &visaWaTable, true);
+    CISA_IR_Builder *cisa_builder = nullptr;
+
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_PARSER, builderOption, getGenxPlatform(), argc, argv);
 
     for (int i = 0; i < num_kernels; i++)
     {

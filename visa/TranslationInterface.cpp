@@ -9684,7 +9684,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
     uint32_t numDWperLane = 0;
 
     // ToDo: remove this as it should be done in HWConformity
-    if (instExSize < 8 && VISA_WA_CHECK(getPWaTable(), WaDisableSendSrcDstOverlap))
+    if (instExSize < 8 && WaDisableSendSrcDstOverlap())
     {
         // as message length is set to 2 (HW requirements),
         // we have to even align both src/dst to satisfy the WA

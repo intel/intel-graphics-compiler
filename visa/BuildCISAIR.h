@@ -43,7 +43,7 @@ extern FILE *CISAout;
 extern int CISAdebug;
 
 #include "VISABuilderAPIDefinition.h"
-#include "visa_wa.h"
+#include "inc/common/sku_wa.h"
 
 class Options;
 
@@ -51,7 +51,8 @@ class CISA_IR_Builder : public VISABuilder
 {
 public:
 
-    CISA_IR_Builder(VISA_BUILDER_OPTION buildOption, int majorVersion, int minorVersion, PVISA_WA_TABLE pWaTable) : m_mem(4096)
+    CISA_IR_Builder(VISA_BUILDER_OPTION buildOption, int majorVersion, int minorVersion,
+        const PWA_TABLE pWaTable) : m_mem(4096), m_pWaTable(pWaTable)
     {
         memset(&m_header, 0, sizeof(m_header));
 
@@ -64,7 +65,6 @@ public:
         m_header.magic_number = COMMON_ISA_MAGIC_NUM;
 
         m_cisaBinary = new (m_mem) CisaFramework::CisaBinary(&m_options);
-        m_pWaTable = pWaTable;
     }
 
     virtual ~CISA_IR_Builder();
@@ -77,8 +77,7 @@ public:
         TARGET_PLATFORM platform,
         int numArgs,
         const char* flags[],
-        PVISA_WA_TABLE pWaTable,
-        bool initializeWA = false);
+        const PWA_TABLE pWaTable = nullptr);
     static int DestroyBuilder(CISA_IR_Builder *builder);
     VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName);
     VISA_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName);
@@ -115,6 +114,8 @@ public:
     {
         return criticalMsg.str();
     }
+
+    const PWA_TABLE getWATable() { return m_pWaTable; }
 
     void CISA_IR_setVersion(unsigned char major_ver, unsigned char minor_ver)
     {
@@ -728,7 +729,8 @@ private:
 
     void emitFCPatchFile();
 
-    PVISA_WA_TABLE m_pWaTable;
+    PWA_TABLE m_pWaTable;
+    bool needsToFreeWATable = false;
 
     void* gtpin_init = nullptr;
 

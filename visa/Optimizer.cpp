@@ -6758,11 +6758,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     }
                 }
 
-                if (getGenxPlatform() == GENX_TGLLP && VISA_WA_CHECK(builder.getPWaTable(), WaSwapForSrc1Replicate))
-                {
-                    swapSrc1(inst);
-                }
-
                 if (inst->isCall() || inst->isFCall())
                 {
                     if (VISA_WA_CHECK(builder.getPWaTable(), WaThreadSwitchAfterCall))

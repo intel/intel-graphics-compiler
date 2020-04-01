@@ -45,8 +45,11 @@ typedef struct _VISA_StateOpndHandle  VISA_StateOpndHandle;
 #include "VISABuilderAPIDefinition.h"
 #include "visa_wa.h"
 #include "RelocationInfo.h"
+#include "inc/common/sku_wa.h"
 
-extern "C" int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode, VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform, int numArgs, const char* flags[], PVISA_WA_TABLE pWaTable);
+extern "C" int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode,
+    VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform, int numArgs, const char* flags[],
+    PWA_TABLE pWaTable);
 extern "C" int DestroyVISABuilder(VISABuilder *&builder);
 
 /**

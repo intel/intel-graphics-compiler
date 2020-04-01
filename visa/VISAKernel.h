@@ -141,10 +141,6 @@ public:
         m_minor_version = minor_ver;
     }
 
-    void setPWaTable(PVISA_WA_TABLE pWaTable){
-        m_pWaTable = pWaTable;
-    }
-
     void finalizeKernel();
     unsigned long writeInToCisaBinaryBuffer(const void * value, int size);
     unsigned long getBytesWritten() { return m_bytes_written_cisa_buffer; }
@@ -747,8 +743,6 @@ public:
     unsigned int m_magic_number;
     unsigned char m_major_version;
     unsigned char m_minor_version;
-
-    PVISA_WA_TABLE m_pWaTable;
 
     void* compilePostOptimize(unsigned int& binarySize);
 

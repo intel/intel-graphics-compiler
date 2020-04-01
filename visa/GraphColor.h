@@ -811,17 +811,10 @@ namespace vISA
             const char* name = builder.getNameString(kernel.fg.mem, 24, "RET__loc%d", retLoc);
             G4_Declare* dcl = builder.createDeclareNoLookup(name, G4_GRF, 2, 1, Type_UD);
 
-            if (VISA_WA_CHECK(builder.getPWaTable(), WaSIMD16SIMD32CallDstAlign))
-            {
-                dcl->setSubRegAlign(Sixteen_Word);
-                setSubRegAlign(dcl, Sixteen_Word);
-            }
-            else
-            {
-                // call destination must still be QWord aligned
-                dcl->setSubRegAlign(Four_Word);
-                setSubRegAlign(dcl, Four_Word);
-            }
+
+            // call destination must still be QWord aligned
+            dcl->setSubRegAlign(Four_Word);
+            setSubRegAlign(dcl, Four_Word);
 
             retDecls[retLoc] = dcl;
             return dcl;

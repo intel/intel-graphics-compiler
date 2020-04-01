@@ -479,8 +479,8 @@ int VISAKernelImpl::InitializeFastPath()
         m_options,
         getCISABuilder(),
         m_jitInfo,
-        m_pWaTable
-        );
+        getCISABuilder()->getWATable()
+    );
 
     m_builder->setIsKernel(m_isKernel);
     m_builder->setCUnitId(m_kernelID);

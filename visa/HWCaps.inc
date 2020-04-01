@@ -436,6 +436,13 @@
         return getGenxPlatform() != GENX_TGLLP;
     }
 
+    bool WaDisableSendSrcDstOverlap() const
+    {
+        return getOption(vISA_noSendSrcDstOverlap) ||
+        (m_options->getTarget() == VISA_CM && getGenxPlatform() >= GENX_SKL) ||
+        getGenxPlatform() == GENX_ICLLP;
+    }
+
     bool no64bitType() const
     {
         return getGenxPlatform() == GENX_ICLLP || isGen12LP();

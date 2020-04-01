@@ -4317,6 +4317,11 @@ namespace IGC
         {
             SaveOption(vISA_clearAccBeforeEOT, true);
         }
+
+        if (m_program->m_Platform->WaDisableSendSrcDstOverlap())
+        {
+            SaveOption(vISA_noSendSrcDstOverlap, true);
+        }
     }
 
     void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall)
@@ -4353,7 +4358,8 @@ namespace IGC
         bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
         auto builderMode = m_hasInlineAsm ? vISA_ASM_WRITER : vISA_3D;
         auto builderOpt = (enableVISADump || m_hasInlineAsm) ? VISA_BUILDER_BOTH : VISA_BUILDER_GEN;
-        V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(), &m_WaTable));
+        V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
+            &m_vISAWaTable));
 
         InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall, builderOpt == VISA_BUILDER_BOTH);
 
@@ -4892,7 +4898,8 @@ namespace IGC
 
             // Create a new builder for parsing the visaasm
             TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
-            V(CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, VISA_BUILDER_BOTH, VISAPlatform, params.size(), params.data(), &m_WaTable));
+            V(CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, VISA_BUILDER_BOTH, VISAPlatform,
+                params.size(), params.data(), &m_vISAWaTable));
             // Use the same build options as before
             SetBuilderOptions(vAsmTextBuilder);
 
@@ -6001,60 +6008,50 @@ namespace IGC
 
     void CEncoder::SetVISAWaTable(WA_TABLE const& waTable)
     {
-        //Copy from driver WA table to VISA WA table
-
-        m_WaTable.WaHeaderRequiredOnSimd16Sample16bit = waTable.WaHeaderRequiredOnSimd16Sample16bit;
-        m_WaTable.WaSendsSrc1SizeLimitWhenEOT = waTable.WaSendsSrc1SizeLimitWhenEOT;
-        m_WaTable.WaDisallow64BitImmMov = waTable.WaDisallow64BitImmMov;
-        m_WaTable.WaThreadSwitchAfterCall = waTable.WaThreadSwitchAfterCall;
-        m_WaTable.WaSrc1ImmHfNotAllowed = waTable.WaSrc1ImmHfNotAllowed;
-        m_WaTable.WaDstSubRegNumNotAllowedWithLowPrecPacked = waTable.WaDstSubRegNumNotAllowedWithLowPrecPacked;
-        m_WaTable.WaDisableMixedModeLog = waTable.WaDisableMixedModeLog;
-        m_WaTable.WaDisableMixedModeFdiv = waTable.WaDisableMixedModeFdiv;
-        m_WaTable.WaDisableMixedModePow = waTable.WaDisableMixedModePow;
-        m_WaTable.WaFloatMixedModeSelNotAllowedWithPackedDestination = waTable.WaFloatMixedModeSelNotAllowedWithPackedDestination;
-        m_WaTable.WADisableWriteCommitForPageFault = waTable.WADisableWriteCommitForPageFault;
-        //To be enabled after VISA changes the name for this to be consistent
-        //m_WaTable.WAInsertNOPBetweenMathPOWDIVAnd2RegInstr  = waTable.WAInsertNOPBetweenMathPOWDIVAnd2RegInstr;
-        m_WaTable.WaClearArfDependenciesBeforeEot = waTable.WaClearArfDependenciesBeforeEot;
-        m_WaTable.WaMixModeSelInstDstNotPacked = waTable.WaMixModeSelInstDstNotPacked;
-        m_WaTable.WaDisableSendsPreemption = waTable.WaDisableSendsPreemption;
-        m_WaTable.WaResetN0BeforeGatewayMessage = waTable.WaResetN0BeforeGatewayMessage;
+        // Copy from driver WA table to VISA WA table,
+        // then update the conditional W/A
+        m_vISAWaTable = waTable;
 
         if (m_program->GetShaderType() != ShaderType::PIXEL_SHADER &&
             m_program->GetShaderType() != ShaderType::COMPUTE_SHADER &&
             m_program->GetShaderType() != ShaderType::OPENCL_SHADER)
         {
-            m_WaTable.WaClearTDRRegBeforeEOTForNonPS = waTable.WaClearTDRRegBeforeEOTForNonPS;
+            m_vISAWaTable.WaClearTDRRegBeforeEOTForNonPS = waTable.WaClearTDRRegBeforeEOTForNonPS;
+        }
+        else
+        {
+            m_vISAWaTable.WaClearTDRRegBeforeEOTForNonPS = false;
         }
 
         if (IGC_IS_FLAG_DISABLED(ForceSendsSupportOnSKLA0))
         {
-            m_WaTable.WaDisableSendsSrc0DstOverlap = waTable.WaDisableSendsSrc0DstOverlap;
+            m_vISAWaTable.WaDisableSendsSrc0DstOverlap = waTable.WaDisableSendsSrc0DstOverlap;
+        }
+        else
+        {
+            m_vISAWaTable.WaDisableSendsSrc0DstOverlap = false;
         }
 
-
-        TODO("Limit this C0 WA as required to only Compute , as it causes hangs in some  3D Workloads");
-        if (m_program->GetShaderType() == ShaderType::COMPUTE_SHADER || m_program->GetShaderType() == ShaderType::OPENCL_SHADER)
+        TODO("Limit this C0 WA as required to only Compute , as it causes hangs in some 3D Workloads");
+        if (IGC_IS_FLAG_DISABLED(DisableWaSendSEnableIndirectMsgDesc) &&
+            (m_program->GetShaderType() == ShaderType::COMPUTE_SHADER ||
+                m_program->GetShaderType() == ShaderType::OPENCL_SHADER))
         {
-            if (IGC_IS_FLAG_DISABLED(DisableWaSendSEnableIndirectMsgDesc))
-            {
-                m_WaTable.WaSendSEnableIndirectMsgDesc = waTable.WaSendSEnableIndirectMsgDesc;
-            }
+            m_vISAWaTable.WaSendSEnableIndirectMsgDesc = waTable.WaSendSEnableIndirectMsgDesc;
+        }
+        else
+        {
+            m_vISAWaTable.WaSendSEnableIndirectMsgDesc = false;
         }
 
         if (IGC_IS_FLAG_DISABLED(DisableWaDisableSIMD16On3SrcInstr))
         {
-            m_WaTable.WaDisableSIMD16On3SrcInstr = waTable.WaDisableSIMD16On3SrcInstr;
+            m_vISAWaTable.WaDisableSIMD16On3SrcInstr = waTable.WaDisableSIMD16On3SrcInstr;
         }
-
-        // no send src/dst overlap when page fault is enabled
-        m_WaTable.WaDisableSendSrcDstOverlap = m_program->m_Platform->WaDisableSendSrcDstOverlap();
-
-        m_WaTable.WaNoSimd16TernarySrc0Imm = waTable.WaNoSimd16TernarySrc0Imm;
-        m_WaTable.Wa_1406306137 = waTable.Wa_1406306137;
-        m_WaTable.Wa_2201674230 = waTable.Wa_2201674230;
-        m_WaTable.Wa_1406950495 = waTable.Wa_1406950495;
+        else
+        {
+            m_vISAWaTable.WaDisableSIMD16On3SrcInstr = false;
+        }
     }
 
     void CEncoder::GetRowAndColOffset(CVariable* var, unsigned int subVar, unsigned int subReg, unsigned char& rowOff, unsigned char& colOff)
