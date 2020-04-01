@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe.h"
 
 using namespace llvm;
 
@@ -159,7 +160,7 @@ void UpgradeResourceAccess::ChangeIntrinsic(CallInst& C, GenISAIntrinsic::ID ID)
     }
         break;
     default:
-        assert("unhandled intrinsic upgrade" && 0);
+        IGC_ASSERT(false && "unhandled intrinsic upgrade");
         break;
     }
     Function* f = GenISAIntrinsic::getDeclaration(m, ID, types);

@@ -29,9 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
-
 #include "LLVM3DBuilder/MetadataBuilder.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SCCIterator.h"
 #include <llvm/IR/Module.h>
@@ -41,12 +39,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/DerivedTypes.h>
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "common/debug/Debug.hpp"
-
 #include <map>
 #include <utility>
+#include "Probe.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -162,7 +159,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
     {
         Function* pFunc = I->first;
 
-        assert(pFunc->use_empty() && "Assume all user function are inlined at this point");
+        IGC_ASSERT(pFunc->use_empty() && "Assume all user function are inlined at this point");
 
         // Now, after changing funciton signature,
         // and validate there are no calls to the old function we can erase it.
@@ -308,12 +305,12 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
             // struct, image
             FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(pFunc);
             ArgInfoMetaDataHandle argInfo = funcInfo->getImplicitArgInfoListItem(i);
-            assert(argInfo->isExplicitArgNumHasValue() && "wrong data in MetaData");
+            IGC_ASSERT(argInfo->isExplicitArgNumHasValue() && "wrong data in MetaData");
 
             info.DW0.All.argExplictNum = argInfo->getExplicitArgNum();
             if (argId <= ImplicitArg::ArgType::STRUCT_END)
             {
-                assert(argInfo->isStructArgOffsetHasValue() && "wrong data in MetaData");
+                IGC_ASSERT(argInfo->isStructArgOffsetHasValue() && "wrong data in MetaData");
                 info.DW0.All.argOffset = argInfo->getStructArgOffset();
             }
             infoToArg[info.DW0.Value] = &(*currArg);
@@ -328,7 +325,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
 
 void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ctx, llvm::Function* old_func, llvm::Function* new_func)
 {
-    assert(!old_func->use_empty());
+    IGC_ASSERT(!old_func->use_empty());
 
     FunctionInfoMetaDataHandle subFuncInfo = m_pMdUtils->getFunctionsInfoItem(old_func);
 
@@ -371,7 +368,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
 
         if (!cInst)
         {
-            assert(0 && "Unknown function usage");
+            IGC_ASSERT(false && "Unknown function usage");
             getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ");
             return;
         }
@@ -389,7 +386,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
         llvm::Function::arg_iterator new_arg_iter = new_func->arg_begin();
         llvm::Function::arg_iterator new_arg_end = new_func->arg_end();
 
-        assert(IGCLLVM::GetFuncArgSize(new_func) >= numArgOperands);
+        IGC_ASSERT(IGCLLVM::GetFuncArgSize(new_func) >= numArgOperands);
 
         // basic arguments
         for (unsigned int i = 0; i < numArgOperands; ++i, ++new_arg_iter)
@@ -423,39 +420,39 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
 
             if (argId < ImplicitArg::ArgType::STRUCT_START)
             {
-                assert(infoToArg.find(info.DW0.Value) != infoToArg.end() &&
+                IGC_ASSERT(infoToArg.find(info.DW0.Value) != infoToArg.end() &&
                     "Can't find the implicit argument on parent function");
                 new_args.push_back(infoToArg[info.DW0.Value]);
             }
             else if (argId <= ImplicitArg::ArgType::STRUCT_END)
             {
-                assert(0 && "wrong argument type in user function");
+                IGC_ASSERT(false && "wrong argument type in user function");
             }
             else if (argId <= ImplicitArg::IMAGES_END || argId == ImplicitArg::ArgType::GET_OBJECT_ID || argId == ImplicitArg::ArgType::GET_BLOCK_SIMD_SIZE)
             {
                 // special handling for image info types, such as ImageWidth, ImageHeight, ...
                 // and struct type
 
-                assert(argImpToExpNum.find(&(*new_arg_iter)) != argImpToExpNum.end() &&
+                IGC_ASSERT(argImpToExpNum.find(&(*new_arg_iter)) != argImpToExpNum.end() &&
                     "Can't find explicit argument number");
 
                 // tracing it on parent function argument list
                 Value* callArg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(cInst, argImpToExpNum[&(*new_arg_iter)]);
                 Argument* arg = dyn_cast<Argument>(callArg);
 
-                assert(arg && " Not supported");
+                IGC_ASSERT(arg && "Not supported");
 
                 // build info
 
                 info.DW0.All.argExplictNum = arg->getArgNo();
-                assert(infoToArg.find(info.DW0.Value) != infoToArg.end() &&
+                IGC_ASSERT(infoToArg.find(info.DW0.Value) != infoToArg.end() &&
                     "Can't find the implicit argument on parent function");
 
                 new_args.push_back(infoToArg[info.DW0.Value]);
             }
             else
             {
-                assert(infoToArg.find(info.DW0.Value) != infoToArg.end() &&
+                IGC_ASSERT(infoToArg.find(info.DW0.Value) != infoToArg.end() &&
                     "Can't find the implicit argument on parent function");
                 new_args.push_back(infoToArg[info.DW0.Value]);
             }
@@ -543,7 +540,7 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
         !ctx->m_DriverInfo.AllowRecursion() &&
         hasRecursion(CG))
     {
-        assert(0 && "Recursion detected!");
+        IGC_ASSERT(false && "Recursion detected!");
         ctx->EmitError(" undefined reference to `jmp()' ");
         return false;
     }
@@ -588,7 +585,7 @@ void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNo
 
         // calculate args from sub-routine.
         // This function have not beeen processed yet, therefore no map-entry for it yet
-        assert(argMap.count(f) == 0);
+        IGC_ASSERT(argMap.count(f) == 0);
         for (auto N : (*CGN))
         {
             Function *sub = N.second->getFunction();
@@ -597,7 +594,7 @@ void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNo
             // if we have processed the arguments for callee
             if (argMapIter != argMap.end())
             {
-                assert(argMapIter->second);
+                IGC_ASSERT(nullptr != argMapIter->second);
                 combineTwoArgDetail(*argData, *(argMapIter->second), N.first);
             }
         }
@@ -685,7 +682,7 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
         {
             // aggregate implicity argument
 
-            assert(0 && "wrong location for this kind of argument type");
+            IGC_ASSERT(false && "wrong location for this kind of argument type");
 
         }
         else if (argId <= ImplicitArg::ArgType::IMAGES_END || argId == ImplicitArg::ArgType::GET_OBJECT_ID || argId == ImplicitArg::ArgType::GET_BLOCK_SIMD_SIZE)
@@ -695,7 +692,7 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
             CallInst *cInst = dyn_cast<CallInst>(v);
             if (!cInst)
             {
-                assert(0 && " Not supported");
+                IGC_ASSERT(false && " Not supported");
                 getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ");
                 return;
             }
@@ -711,7 +708,7 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
                 Argument* arg = dyn_cast<Argument>(callArg);
                 if (!arg)
                 {
-                    assert(0 && " Not supported");
+                    IGC_ASSERT(false && "Not supported");
                 }
                 setx->insert(arg->getArgNo());
             }
@@ -729,7 +726,7 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
     // aggregate structure
     for (unsigned i = 0; i < argD.StructArgSet.size(); i++)
     {
-        assert(0 && "wrong argument type in user function");
+        IGC_ASSERT(false && "wrong argument type in user function");
     }
 #endif
 }
@@ -754,7 +751,7 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(ImplicitArgmentDetail& d
         {
             // aggregate implicity argument
 
-            assert(0 && "wrong location for this kind of argument type");
+            IGC_ASSERT(false && "wrong location for this kind of argument type");
 
         }
         else if (argId <= ImplicitArg::ArgType::IMAGES_END || argId == ImplicitArg::ArgType::GET_OBJECT_ID || argId == ImplicitArg::ArgType::GET_BLOCK_SIMD_SIZE)

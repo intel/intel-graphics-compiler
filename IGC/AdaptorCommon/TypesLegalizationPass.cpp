@@ -25,6 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "TypesLegalizationPass.hpp"
 #include "../Compiler/IGCPassSupport.h"
+#include "Probe.h"
+
 using namespace llvm;
 
 // Register pass to igc-opt
@@ -210,7 +212,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
     dyn_cast<InsertElementInst>(val))
   {
     IRBuilder<> builder( ie );
-    assert( indices.size() == 1 );
+    IGC_ASSERT(indices.size() == 1);
     return builder.CreateExtractElement( ie,builder.getInt32( indices[0] ) );
   }
   else if(LoadInst* ld = dyn_cast<LoadInst>(val))
@@ -270,7 +272,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
   }
   else if (SelectInst* select = dyn_cast<SelectInst>(val))
   {
-    assert(3 == select->getNumOperands());
+    IGC_ASSERT(3 == select->getNumOperands());
 
     Value* condition = select->getOperand(0);
     Value* whenTrue = select->getOperand(1);
@@ -284,7 +286,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
   }
 
   // What other kind of instruction can we have here?
-  assert( !"Unresolved instruction!" );
+  IGC_ASSERT(false && "Unresolved instruction!");
 
   // Fallback by creating an ExtractValueInstr.
   IRBuilder<> builder( ip );
