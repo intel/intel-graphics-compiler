@@ -361,6 +361,7 @@ bool ProcessElfInput(
         {
             pElfReader->GetSectionData(i, pData, dataSize);
             InputArgs.pSpecConstantsIds = reinterpret_cast<const uint32_t*>(pData);
+            InputArgs.SpecConstantsSize = static_cast<uint32_t>(dataSize / sizeof(uint32_t));
         }
 
         if (pSectionHeader->Type == CLElfLib::SH_TYPE_SPIRV_SC_VALUES)
