@@ -75,6 +75,7 @@ namespace vISA
         GlobalRA& gra;
         bool doBCR = false;
         bool highInternalConflict = false;
+        bool hasSplitInsts = false;
 
         BankAlign getBankAlignForUniqueAssign(G4_Declare *dcl);
         bool hasBackEdge();

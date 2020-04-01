@@ -458,7 +458,8 @@ bool LocalRA::localRA()
         reduceBCInRR = bc.setupBankConflictsForKernel(doRoundRobin, reduceBCInTAandFF, numRegLRA, highInternalConflict);
     }
 
-    if (!kernel.fg.getHasStackCalls() && !kernel.fg.getIsStackCallFunc())
+    if (!kernel.fg.getHasStackCalls() && !kernel.fg.getIsStackCallFunc() &&
+        !hasSplitInsts)
     {
         trivialAssignRA(needGlobalRA, reduceBCInTAandFF);
         if (!needGlobalRA)
@@ -1261,6 +1262,9 @@ void LocalRA::markReferences(unsigned int& numRowsEOT,
                 }
                 continue;
             }
+
+            if (curInst->isSplitIntrinsic())
+                hasSplitInsts = true;
 
             // set lexical ID
             curInst->setLexicalId(id++);
