@@ -4378,7 +4378,7 @@ bool __builtin_spirv_OpGroupNonUniformInverseBallot_i32_v4i32(uint Execution, ui
 bool __builtin_spirv_OpGroupNonUniformBallotBitExtract_i32_v4i32_i32(uint Execution, uint4 Value, uint Index);
 uint __builtin_spirv_OpGroupNonUniformBallotBitCount_i32_i32_v4i32(uint Execution, uint Operation, uint4 Value);
 uint __builtin_spirv_OpGroupNonUniformBallotFindLSB_i32_v4i32(uint Execution, uint4 Value);
-uint __builtin_spirv_OpGroupNonUniformBallotFindLSB_i32_v4i32(uint Execution, uint4 Value);
+uint __builtin_spirv_OpGroupNonUniformBallotFindMSB_i32_v4i32(uint Execution, uint4 Value);
 uint4 __builtin_spirv_BuiltInSubgroupEqMask();
 uint4 __builtin_spirv_BuiltInSubgroupGeMask();
 uint4 __builtin_spirv_BuiltInSubgroupGtMask();

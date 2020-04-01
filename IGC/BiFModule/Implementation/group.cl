@@ -1701,15 +1701,25 @@ bool __builtin_spirv_OpGroupNonUniformBallotBitExtract_i32_v4i32_i32(uint Execut
 
 uint __builtin_spirv_OpGroupNonUniformBallotBitCount_i32_i32_v4i32(uint Execution, uint Operation, uint4 Value)
 {
-    uint Counter = 0;
+    uint result = 0;
     if (Execution == Subgroup)
     {
-        if (__builtin_spirv_OpGroupNonUniformInverseBallot_i32_v4i32(Execution, Value))
+        uint sgsize = __builtin_spirv_BuiltInSubgroupSize();
+        uint sglid = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+        uint consideredBits = Value.x << (32 - sgsize);
+        // intended fallthrough in the switch statement
+        switch (Operation)
         {
-            Counter = __builtin_spirv_OpGroupIAdd_i32_i32_i32(Subgroup, Operation, as_uint(1));
+            case GroupOperationExclusiveScan:
+                consideredBits <<= 1;
+            case GroupOperationInclusiveScan:
+                consideredBits <<= ((sgsize - 1) - sglid);
+            case GroupOperationReduce:
+                result = __builtin_spirv_OpenCL_popcount_i32(consideredBits);
+                break;
         }
     }
-    return Counter;
+    return result;
 }
 
 uint __builtin_spirv_OpGroupNonUniformBallotFindLSB_i32_v4i32(uint Execution, uint4 Value)
@@ -1725,7 +1735,9 @@ uint __builtin_spirv_OpGroupNonUniformBallotFindMSB_i32_v4i32(uint Execution, ui
 {
     if (Execution == Subgroup)
     {
-        return (sizeof(uint) * 8) -__builtin_spirv_OpenCL_clz_i32(Value.x);
+        uint sgsize = __builtin_spirv_BuiltInSubgroupSize();
+        uint consideredBits = Value.x << (32 - sgsize);
+        return (sgsize - 1) - __builtin_spirv_OpenCL_clz_i32(consideredBits);
     }
     return 0;
 }

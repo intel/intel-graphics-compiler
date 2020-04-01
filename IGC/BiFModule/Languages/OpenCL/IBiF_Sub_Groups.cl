@@ -561,7 +561,7 @@ INLINE uint OVERLOADABLE sub_group_ballot_find_lsb(uint4 value)
 
 INLINE uint OVERLOADABLE sub_group_ballot_find_msb(uint4 value)
 {
-    return __builtin_spirv_OpGroupNonUniformBallotFindLSB_i32_v4i32(Subgroup, value);
+    return __builtin_spirv_OpGroupNonUniformBallotFindMSB_i32_v4i32(Subgroup, value);
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_eq_mask()
