@@ -4451,7 +4451,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             getGRFBucketDescrs(node, liveBDvec, false);
         }
 
-
         // For ALU instructions without GRF usage
         if (distanceHonourInstruction(curInst))
         {
