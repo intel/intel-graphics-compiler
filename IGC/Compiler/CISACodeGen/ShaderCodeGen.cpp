@@ -91,7 +91,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
-#include "Compiler/Optimizer/IndirectCallOptimization.hpp"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/Optimizer/IntDivRemCombine.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
@@ -1528,14 +1527,6 @@ namespace IGC
                             mpm.add(createSROAPass());
                         }
                     }
-                }
-
-                if (pContext->m_enableFunctionPointer &&
-                    IGC_IS_FLAG_ENABLED(EnableIndirectCallOptimization) &&
-                    IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INDIRECTCALL)
-                {
-                    mpm.add(new IndirectCallOptimization());
-                    mpm.add(createAlwaysInlinerLegacyPass());
                 }
 
                 // Note: call reassociation pass before IGCConstProp(EnableSimplifyGEP) to preserve the

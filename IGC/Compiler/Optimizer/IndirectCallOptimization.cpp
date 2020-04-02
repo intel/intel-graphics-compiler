@@ -113,65 +113,24 @@ namespace IGC
 
         Function* currFunc = CI.getParent()->getParent();
         Module* pModule = currFunc->getParent();
-        SmallVector<Function*, 8> CallableFuncs;
-        bool needFallbackToIndirect = false;
+        SmallSet<Function*, 8> CallableFuncs;
 
-        // Compiler provides a hint for which group of functions can be called by this instruction,
-        // stored as a string of function names separated by "," in the "function_groups" metadata.
-        if (MDNode * funcgroups = CI.getMetadata("function_group"))
+        // function groups are stored in the !callees metadata
+        if (MDNode* callmd = CI.getMetadata("callees"))
         {
-            StringRef funcStr = cast<MDString>(funcgroups->getOperand(0))->getString();
-            SmallVector<StringRef, 8> funcNames;
-            funcStr.split(funcNames, ',');
-
-            if (funcNames.size() == 0)
+            for (auto& op : callmd->operands())
             {
-                return false;
-            }
-            else if (funcNames.size() == 1)
-            {
-                // Trivial case, replace with the direct call
-                Function* F = pModule->getFunction(funcNames.front());
-                if (F && F->hasFnAttribute("IndirectlyCalled") && CompareCallFuncSignature(&CI, F))
+                if (Function* F = mdconst::dyn_extract<Function>(op))
                 {
-                    SmallVector<Value*, 8> callArgs(CI.arg_begin(), CI.arg_end());
-                    IGCIRBuilder<> IRB(pModule->getContext());
-                    IRB.SetInsertPoint(&CI);
-                    CallInst* dirCall = IRB.CreateCall(F, callArgs);
-                    CI.replaceAllUsesWith(dirCall);
-                    return true;
-                }
-                return false;
-            }
-            else
-            {
-                for (auto fName : funcNames)
-                {
-                    Function* F = pModule->getFunction(fName);
-                    if (F && F->hasFnAttribute("IndirectlyCalled") && CompareCallFuncSignature(&CI, F))
+                    if (F->hasFnAttribute("IndirectlyCalled") && CompareCallFuncSignature(&CI, F))
                     {
-                        CallableFuncs.push_back(F);
-                    }
-                    else
-                    {
-                        // If hint has a function not in current module, we should still fall back to indirect case
-                        needFallbackToIndirect = true;
+                        CallableFuncs.insert(F);
+                        continue;
                     }
                 }
+                assert(0 && "Invalid function in function group!");
+                return false;
             }
-        }
-        else
-        {
-            // Find all functions in module that match the call signature
-            for (auto& FI : *pModule)
-            {
-                if (FI.hasFnAttribute("IndirectlyCalled") && CompareCallFuncSignature(&CI, &FI))
-                {
-                    CallableFuncs.push_back(&FI);
-                }
-            }
-            // Always provide fallback option if hint not provided
-            needFallbackToIndirect = true;
         }
 
         if (CallableFuncs.empty())
@@ -179,6 +138,18 @@ namespace IGC
             // Nothing to do
             return false;
         }
+        else if (CallableFuncs.size() == 1)
+        {
+            // Trivial case, replace with the direct call
+            Function* F = *CallableFuncs.begin();
+            SmallVector<Value*, 8> callArgs(CI.arg_begin(), CI.arg_end());
+            IGCIRBuilder<> IRB(pModule->getContext());
+            IRB.SetInsertPoint(&CI);
+            CallInst* dirCall = IRB.CreateCall(F, callArgs);
+            CI.replaceAllUsesWith(dirCall);
+            return true;
+        }
+
 
         // Add some checks to determine if inlining is profitable
 
@@ -198,7 +169,7 @@ namespace IGC
             }
         }
 
-        SmallVector<Instruction*, 8> expandedCalls;
+        SmallVector<std::pair<Value*, BasicBlock*>, 8> callToBBPair;
         SmallVector<Value*, 8> callArgs(CI.arg_begin(), CI.arg_end());
         IGCIRBuilder<> IRB(pModule->getContext());
         IRB.SetInsertPoint(&CI);
@@ -220,10 +191,9 @@ namespace IGC
         }
 
         IRB.SetInsertPoint(beginBlock);
-        unsigned numFuncs = CallableFuncs.size();
-        for (unsigned i = 0; i < numFuncs; i++)
+        for (auto it = CallableFuncs.begin(), ie = CallableFuncs.end(); it != ie; it++)
         {
-            Function* pFunc = CallableFuncs[i];
+            Function* pFunc = *it;
             Value* funcAddr = IRB.CreatePtrToInt(pFunc, IRB.getInt64Ty());
             Value* cnd = IRB.CreateICmpEQ(calledAddr, funcAddr);
             auto brPair = funcToBBPairMap[pFunc];
@@ -231,35 +201,26 @@ namespace IGC
 
             IRB.SetInsertPoint(brPair.first);
             CallInst* directCall = IRB.CreateCall(pFunc, callArgs);
-            expandedCalls.push_back(directCall);
+            callToBBPair.push_back(std::make_pair(directCall, brPair.first));
             IRB.CreateBr(endBlock);
             IRB.SetInsertPoint(brPair.second);
 
-            if (i == (numFuncs - 1))
+            if (std::distance(it, ie) == 1)
             {
-                if (!needFallbackToIndirect)
-                {
-                    // Should never reach this block. Dummy branch for code correctness
-                    IRB.CreateBr(endBlock);
-                }
-                else
-                {
-                    // In the final "else" block, if none of the function address match, then we have to fallback to the indirect call
-                    CallInst* indCall = IRB.CreateCall(CI.getCalledValue(), callArgs);
-                    expandedCalls.push_back(indCall);
-                    IRB.CreateBr(endBlock);
-                }
+                // In the final "else" block, if none of the addresses match, do nothing and create undef value
+                callToBBPair.push_back(std::make_pair(UndefValue::get(CI.getType()), brPair.second));
+                IRB.CreateBr(endBlock);
             }
         }
 
         // Return values have to be selected based on which block the function was called
-        if (expandedCalls.size() > 1 && CI.getType() != IRB.getVoidTy())
+        if (callToBBPair.size() > 0 && CI.getType() != IRB.getVoidTy())
         {
             IRB.SetInsertPoint(&*(endBlock->begin()));
-            PHINode* phi = IRB.CreatePHI(CI.getType(), expandedCalls.size());
-            for (auto call : expandedCalls)
+            PHINode* phi = IRB.CreatePHI(CI.getType(), callToBBPair.size());
+            for (auto it : callToBBPair)
             {
-                phi->addIncoming(call, call->getParent());
+                phi->addIncoming(it.first, it.second);
             }
             CI.replaceAllUsesWith(phi);
         }
