@@ -42,15 +42,15 @@ namespace IGC
     ///
     struct SPrintfArgDescriptor
     {
-        USC::SHADER_PRINTF_TYPE  argType;
+        IGC::SHADER_PRINTF_TYPE  argType;
         uint                vecSize;
         llvm::Value* value;
 
-        SPrintfArgDescriptor(USC::SHADER_PRINTF_TYPE _argType, llvm::Value* _value, uint _vecSize = 0) :
+        SPrintfArgDescriptor(IGC::SHADER_PRINTF_TYPE _argType, llvm::Value* _value, uint _vecSize = 0) :
             argType(_argType), vecSize(_vecSize), value(_value) {};
 
         SPrintfArgDescriptor() :
-            argType(USC::SHADER_PRINTF_INVALID), value(nullptr) {};
+            argType(IGC::SHADER_PRINTF_INVALID), value(nullptr) {};
     };
 
 
@@ -113,9 +113,9 @@ namespace IGC
         // If an argument is a double, convert it into a float, since Gen
         // doesn't support doubles.
         // Returns the fixed version of the argument.
-        llvm::Value* fixupPrintfArg(llvm::CallInst& printfCall, llvm::Value* arg, USC::SHADER_PRINTF_TYPE& argDataType);
+        llvm::Value* fixupPrintfArg(llvm::CallInst& printfCall, llvm::Value* arg, IGC::SHADER_PRINTF_TYPE& argDataType);
 
-        //        llvm::Value* fixupVectorPrintfArg(llvm::CallInst &printfCall, llvm::Value* arg, USC::SHADER_PRINTF_TYPE argDataType);
+        //        llvm::Value* fixupVectorPrintfArg(llvm::CallInst &printfCall, llvm::Value* arg, IGC::SHADER_PRINTF_TYPE argDataType);
 
                 // Returns true if a printf argument is string.
         bool argIsString(llvm::Value* printfArg);
@@ -131,10 +131,10 @@ namespace IGC
         unsigned int getTotalDataSize();
 
         // Returns the size (in bytes) of printf argument type.
-        unsigned int getArgTypeSize(USC::SHADER_PRINTF_TYPE argType, uint vecSize);
+        unsigned int getArgTypeSize(IGC::SHADER_PRINTF_TYPE argType, uint vecSize);
 
-        // Returns the USC::SHADER_PRINTF_TYPE type of printf argument.
-        USC::SHADER_PRINTF_TYPE getPrintfArgDataType(llvm::Value* printfArg);
+        // Returns the IGC::SHADER_PRINTF_TYPE type of printf argument.
+        IGC::SHADER_PRINTF_TYPE getPrintfArgDataType(llvm::Value* printfArg);
 
         // Creates Cast instruction that converts writeOffset to a pointer type
         // corresponding to the arg type.

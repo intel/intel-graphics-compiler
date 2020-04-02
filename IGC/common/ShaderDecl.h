@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "usc_config.h"
 #include "usc.h"
+#include "ShaderTypesEnum.h"
 #include "ShaderToken.h"
 #include "ShaderTypes.h"
 #include "SurfaceFormats.h"
@@ -172,9 +173,9 @@ public:
 
     void                SetSamplerType(
                             const unsigned int number,
-                            USC::SHADER_SAMPLER_TYPE type );
+                            IGC::SHADER_SAMPLER_TYPE type );
 
-    SHADER_SAMPLER_TYPE GetSamplerType(
+    IGC::SHADER_SAMPLER_TYPE GetSamplerType(
                             const unsigned int number ) const;
 
 protected:
@@ -207,7 +208,7 @@ public:
 
     void    SetResourceType(
                 const unsigned int number,
-                const SHADER_RESOURCE_TYPE type );
+                const IGC::SHADER_RESOURCE_TYPE type );
 
     void    SetSurfaceFormat(
                 const unsigned int number,
@@ -215,11 +216,11 @@ public:
 
     void    SetUAVAccessMode(
                 const unsigned int number,
-                const SHADER_UAV_ACCESS_MODE accessMode );
+                const IGC::SHADER_UAV_ACCESS_MODE accessMode );
 
     void    SetReturnType(
                 const unsigned int number,
-                const SHADER_RESOURCE_RETURN_TYPE type );
+                const IGC::SHADER_RESOURCE_RETURN_TYPE type );
 
     void    SetStride(
                 const unsigned int number,
@@ -248,7 +249,7 @@ public:
             GetSurfaceFormat(
                 const unsigned int number ) const;
 
-    SHADER_RESOURCE_TYPE
+    IGC::SHADER_RESOURCE_TYPE
             GetResourceType(
                 const unsigned int number ) const;
 
@@ -267,7 +268,7 @@ public:
     unsigned int   GetAlignment(
                 const unsigned int number ) const;
 
-    SHADER_RESOURCE_RETURN_TYPE
+    IGC::SHADER_RESOURCE_RETURN_TYPE
             GetReturnType(
                 const unsigned int number ) const;
 
@@ -323,38 +324,38 @@ public:
 
     void    SetMask(
                 const unsigned int number,
-                const SHADER_MASK mask );
+                const IGC::SHADER_MASK mask );
 
     void    SetUsage(
                 const unsigned int number,
-                const SHADER_CHANNEL channel,
-                const SHADER_USAGE usage );
+                const IGC::SHADER_CHANNEL channel,
+                const IGC::SHADER_USAGE usage );
 
     void    SetUsageIndex(
                 const unsigned int number,
-                const SHADER_CHANNEL channel,
+                const IGC::SHADER_CHANNEL channel,
                 const unsigned int usageIndex );
 
     void    SetInterpolationMode(
                 const unsigned int number,
-                const SHADER_INTERPOLATION_MODE mode );
+                const IGC::SHADER_INTERPOLATION_MODE mode );
 
     void    SetIndexed(
                 const unsigned int number,
                 const bool indexed );
 
-    SHADER_MASK     GetMask(
+    IGC::SHADER_MASK     GetMask(
                         const unsigned int number ) const;
 
-    SHADER_USAGE    GetUsage(
+    IGC::SHADER_USAGE    GetUsage(
                         const unsigned int number,
-                        const SHADER_CHANNEL channel ) const;
+                        const IGC::SHADER_CHANNEL channel ) const;
 
     unsigned int           GetUsageIndex(
                         const unsigned int number,
-                        const SHADER_CHANNEL channel ) const;
+                        const IGC::SHADER_CHANNEL channel ) const;
 
-    SHADER_INTERPOLATION_MODE   GetInterpolationMode(
+    IGC::SHADER_INTERPOLATION_MODE   GetInterpolationMode(
                                     const unsigned int number ) const;
 
     bool            IsIndexed(
@@ -439,7 +440,7 @@ Function:
     CShaderInputDecl::GetInstanceIDRegisterNum
 
 Description:
-    Returns the register index which has usage SHADER_USAGE_INSTANCE_ID or
+    Returns the register index which has usage IGC::SHADER_USAGE_INSTANCE_ID or
     SHADER_REGISTER_INDEX_NONE if no such register exist.
 
 Input:
@@ -460,7 +461,7 @@ Function:
     CShaderInputDecl::GetVertexIDRegisterNum
 
 Description:
-    Returns the register index which has usage SHADER_USAGE_VERTEX_ID or
+    Returns the register index which has usage IGC::SHADER_USAGE_VERTEX_ID or
     SHADER_REGISTER_INDEX_NONE if no such register exist.
 
 Input:
@@ -494,28 +495,28 @@ public:
 
     void    SetMask(
                 const unsigned int number,
-                const SHADER_MASK mask );
+                const IGC::SHADER_MASK mask );
 
     void    SetUsage(
                 const unsigned int number,
-                const SHADER_CHANNEL channel,
-                const SHADER_USAGE usage,
+                const IGC::SHADER_CHANNEL channel,
+                const IGC::SHADER_USAGE usage,
                 const unsigned int usageIndex );
 
     void    SetIndexed(
                 const unsigned int number,
                 const bool indexed );
 
-    SHADER_MASK     GetMask(
+    IGC::SHADER_MASK     GetMask(
                         const unsigned int number ) const;
 
-    SHADER_USAGE    GetUsage(
+    IGC::SHADER_USAGE    GetUsage(
                         const unsigned int number,
-                        const SHADER_CHANNEL channel ) const;
+                        const IGC::SHADER_CHANNEL channel ) const;
 
     unsigned int           GetUsageIndex(
                         const unsigned int number,
-                        const SHADER_CHANNEL channel ) const;
+                        const IGC::SHADER_CHANNEL channel ) const;
 
     bool            IsIndexed(
                         const unsigned int number ) const;
@@ -734,7 +735,7 @@ public:
                          const unsigned int number ) const;
     unsigned int     GetNumReadChannels(
                          const unsigned int number ) const;
-    SHADER_CHANNEL   GetFirstReadChannel(
+    IGC::SHADER_CHANNEL   GetFirstReadChannel(
                          const unsigned int number ) const;
     bool             HasIndirectRegisterWrites(
                          const unsigned int number ) const;

@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _GEOMETRYSHADERPROPERTIES_H_
 #define _GEOMETRYSHADERPROPERTIES_H_
 
+#include "ShaderTypesEnum.h"
 #include "usc_gen7_types.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/ShaderUnits.hpp"
@@ -94,14 +95,14 @@ namespace IGC
             InputProperties(
                 bool hasPrimID,
                 bool hasInstanceID,
-                USC::GSHADER_INPUT_PRIMITIVE_TYPE inputPrimitiveType,
+                IGC::GSHADER_INPUT_PRIMITIVE_TYPE inputPrimitiveType,
                 const VertexProperties& perVertex);
 
             // ---- setters
             void HasPrimitiveID(bool hasPrimID);
             void HasInstanceID(bool hasInstanceID);
             void InstanceCount(unsigned int instanceCount);
-            void InputPrimitiveType(USC::GSHADER_INPUT_PRIMITIVE_TYPE inputPrimitiveType);
+            void InputPrimitiveType(IGC::GSHADER_INPUT_PRIMITIVE_TYPE inputPrimitiveType);
 
             // ---- getters
             /// True when the shader has declaration with semantics PrimitiveID
@@ -115,7 +116,7 @@ namespace IGC
             /// Returns the number of vertices in the input primitive.
             unsigned int VertexCount() const;
             /// Returns the kind of the input primitive (e.g. point, line with adj, etc).
-            USC::GSHADER_INPUT_PRIMITIVE_TYPE InputPrimitiveType() const;
+            IGC::GSHADER_INPUT_PRIMITIVE_TYPE InputPrimitiveType() const;
             /// Returns the reference to per-vertex properties object.
             const VertexProperties& PerVertex() const { return m_perVertex; }
             VertexProperties& PerVertex() { return m_perVertex; }
@@ -123,7 +124,7 @@ namespace IGC
             bool m_hasPrimitiveID;
             bool m_hasInstanceID;
             unsigned int m_instanceCount;
-            USC::GSHADER_INPUT_PRIMITIVE_TYPE m_inputPrimitiveType;
+            IGC::GSHADER_INPUT_PRIMITIVE_TYPE m_inputPrimitiveType;
             VertexProperties m_perVertex;
         };
 

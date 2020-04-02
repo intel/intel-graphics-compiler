@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
+#include "inc/common/Compiler/API/ShaderTypesEnum.h"
 #include "inc/common/Compiler/API/SurfaceFormats.h"
 #include "../Platform/cmd_media_enum_g8.h"
 #include "../Platform/cmd_shared_enum_g8.h"
@@ -347,20 +348,20 @@ CONST: g_cConvertResourceType
 \*****************************************************************************/
 static const iOpenCL::IMAGE_MEMORY_OBJECT_TYPE g_cConvertResourceType[] =
 {
-    iOpenCL::IMAGE_MEMORY_OBJECT_INVALID,   // SHADER_RESOURCE_INVALID
-    iOpenCL::IMAGE_MEMORY_OBJECT_BUFFER,    // SHADER_RESOURCE_BUFFER
-    iOpenCL::IMAGE_MEMORY_OBJECT_1D,        // SHADER_RESOURCE_1D
-    iOpenCL::IMAGE_MEMORY_OBJECT_1D_ARRAY,  // SHADER_RESOURCE_1D_ARRAY
-    iOpenCL::IMAGE_MEMORY_OBJECT_2D,        // SHADER_RESOURCE_2D
-    iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY,  // SHADER_RESOURCE_2D_ARRAY
-    iOpenCL::IMAGE_MEMORY_OBJECT_3D,        // SHADER_RESOURCE_3D
-    iOpenCL::IMAGE_MEMORY_OBJECT_CUBE,      // SHADER_RESOURCE_CUBE
-    iOpenCL::IMAGE_MEMORY_OBJECT_CUBE_ARRAY,// SHADER_RESOURCE_CUBE_ARRAY
-    iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA,  // SHADER_RESOURCE_2D_MEDIA
+    iOpenCL::IMAGE_MEMORY_OBJECT_INVALID,   // IGC::SHADER_RESOURCE_INVALID
+    iOpenCL::IMAGE_MEMORY_OBJECT_BUFFER,    // IGC::SHADER_RESOURCE_BUFFER
+    iOpenCL::IMAGE_MEMORY_OBJECT_1D,        // IGC::SHADER_RESOURCE_1D
+    iOpenCL::IMAGE_MEMORY_OBJECT_1D_ARRAY,  // IGC::SHADER_RESOURCE_1D_ARRAY
+    iOpenCL::IMAGE_MEMORY_OBJECT_2D,        // IGC::SHADER_RESOURCE_2D
+    iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY,  // IGC::SHADER_RESOURCE_2D_ARRAY
+    iOpenCL::IMAGE_MEMORY_OBJECT_3D,        // IGC::SHADER_RESOURCE_3D
+    iOpenCL::IMAGE_MEMORY_OBJECT_CUBE,      // IGC::SHADER_RESOURCE_CUBE
+    iOpenCL::IMAGE_MEMORY_OBJECT_CUBE_ARRAY,// IGC::SHADER_RESOURCE_CUBE_ARRAY
+    iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA,  // IGC::SHADER_RESOURCE_2D_MEDIA
 };
 
 static_assert(sizeof(g_cConvertResourceType) ==
-    sizeof(iOpenCL::IMAGE_MEMORY_OBJECT_TYPE) * USC::NUM_SHADER_RESOURCE_TYPES);
+    sizeof(iOpenCL::IMAGE_MEMORY_OBJECT_TYPE) * IGC::NUM_SHADER_RESOURCE_TYPES);
 #endif
 
 } // namespace iOpenCL

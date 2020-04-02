@@ -316,7 +316,7 @@ void RectListOptimizationPass::analyzeForRectList(Function& F, GeometryShaderCon
                 m_rectListPerAttrib.insert(std::make_pair(it->first, rectList));
                 arit = m_rectListPerAttrib.find(it->first);
             }
-            for (unsigned int ch_id = 0; ch_id < USC::NUM_SHADER_CHANNELS; ch_id++) {
+            for (unsigned int ch_id = 0; ch_id < IGC::NUM_SHADER_CHANNELS; ch_id++) {
                 Value* channelV = inst->getOperand(ch_id);
                 channelToCoordMap::iterator chtocoordit = arit->second.channelToCoordM.find(ch_id);
                 if (chtocoordit != arit->second.channelToCoordM.end()) {
@@ -349,10 +349,10 @@ void RectListOptimizationPass::analyzeForRectList(Function& F, GeometryShaderCon
     assert(m_rectListPerAttrib.size() != 0 && "Empty attribute list, should not happen\n");
     for (atrribRectListMap::iterator it = m_rectListPerAttrib.begin(); it != m_rectListPerAttrib.end(); it++) {
         ATTRIB_SOURCELIST_ST* pAttrSrcList = &it->second;
-        channelToCoordMap::iterator ctCitXit = pAttrSrcList->channelToCoordM.find(USC::SHADER_CHANNEL_X);
-        channelToCoordMap::iterator ctCitYit = pAttrSrcList->channelToCoordM.find(USC::SHADER_CHANNEL_Y);
-        channelToCoordMap::iterator ctCitZit = pAttrSrcList->channelToCoordM.find(USC::SHADER_CHANNEL_Z);
-        channelToCoordMap::iterator ctCitWit = pAttrSrcList->channelToCoordM.find(USC::SHADER_CHANNEL_W);
+        channelToCoordMap::iterator ctCitXit = pAttrSrcList->channelToCoordM.find(IGC::SHADER_CHANNEL_X);
+        channelToCoordMap::iterator ctCitYit = pAttrSrcList->channelToCoordM.find(IGC::SHADER_CHANNEL_Y);
+        channelToCoordMap::iterator ctCitZit = pAttrSrcList->channelToCoordM.find(IGC::SHADER_CHANNEL_Z);
+        channelToCoordMap::iterator ctCitWit = pAttrSrcList->channelToCoordM.find(IGC::SHADER_CHANNEL_W);
         //reset the rectList to false for each iteration
         isRectList = false;
 
