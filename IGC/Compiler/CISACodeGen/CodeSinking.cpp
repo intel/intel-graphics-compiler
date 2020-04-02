@@ -432,6 +432,9 @@ namespace IGC {
                 }
             }
         }
+        if (madeChange) {
+            ProcessDbgValueInst(blk);
+        }
 
         return madeChange;
     }
@@ -720,6 +723,9 @@ namespace IGC {
                     localInstSet.erase(def);
                 }
             }
+        }
+        if (madeChange) {
+            ProcessDbgValueInst(*blk);
         }
         return madeChange;
     }
@@ -1104,6 +1110,10 @@ namespace IGC {
 
             bool t = LoopSinkInstructions(sinkCandidates, L);
             changed |= t;
+
+            if (changed) {
+                ProcessDbgValueInst(*Preheader);
+            }
         }
 
         // Invoke LocalSink() to move def to its first use
@@ -1296,6 +1306,41 @@ namespace IGC {
         delete[] allGroups;
 
         return changed;
+    }
+
+    // Move referenced DbgValueInst intrinsics calls after defining instructions
+    // it is requared for correct work of LiveVariables analysis and other
+    void CodeSinking::ProcessDbgValueInst(BasicBlock& blk)
+    {
+        if (!CTX->m_instrTypes.hasDebugInfo)
+        {
+            return;
+        }
+
+        BasicBlock::iterator I = blk.end();
+        --I;
+        bool processedBegin = false;
+        do {
+            Instruction* inst = cast<Instruction>(I);
+            processedBegin = (I == blk.begin());
+            if (!processedBegin)
+                --I;
+
+            if (auto* DVI = dyn_cast<DbgValueInst>(inst))
+            {
+                if (auto* def = dyn_cast<Instruction>(DVI->getValue()))
+                {
+                    if (!DT->dominates(def, inst))
+                    {
+                        auto* instClone = inst->clone();
+                        instClone->insertAfter(def);
+                        Value* undef = UndefValue::get(def->getType());
+                        MetadataAsValue* MAV = MetadataAsValue::get(inst->getContext(), ValueAsMetadata::get(undef));
+                        cast<CallInst>(inst)->setArgOperand(0, MAV);
+                    }
+                }
+            }
+        } while (!processedBegin);
     }
 
     char CodeSinking::ID = 0;

@@ -151,6 +151,10 @@ namespace IGC {
         bool canLoopSink(llvm::Instruction* I, llvm::Loop* L, llvm::BasicBlock* BB);
         bool LoopSinkInstructions(
             llvm::SmallVector<llvm::Instruction*, 64> sinkCandidates, llvm::Loop* L);
+
+        // Move referencing DbgValueInst intrinsics calls after defining instructions
+        void ProcessDbgValueInst(llvm::BasicBlock& blk);
+
     };
 
 }
