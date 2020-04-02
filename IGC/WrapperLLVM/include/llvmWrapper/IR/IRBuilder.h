@@ -65,6 +65,8 @@ namespace IGCLLVM
             llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
             : llvm::IRBuilder<T, Inserter>(TheBB, IP, FPMathTag, OpBundles) {}
 
+        using llvm::IRBuilder<T, Inserter>::CreateMemCpy;
+
         inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, uint64_t Size, unsigned Align,
             bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
             llvm::MDNode *TBAAStructTag = nullptr,
@@ -99,11 +101,11 @@ namespace IGCLLVM
 #endif
         }
 
-        inline llvm::CallInst* CreateMemCpy(llvm::Value* Dst, unsigned DstAlign, llvm::Value* Src, unsigned SrcAlign,
-            llvm::Value* Size, bool isVolatile = false, llvm::MDNode* TBAATag = nullptr,
-            llvm::MDNode* TBAAStructTag = nullptr,
-            llvm::MDNode* ScopeTag = nullptr,
-            llvm::MDNode* NoAliasTag = nullptr)
+        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, unsigned DstAlign, llvm::Value *Src, unsigned SrcAlign,
+            llvm::Value *Size, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
+            llvm::MDNode *TBAAStructTag = nullptr,
+            llvm::MDNode *ScopeTag = nullptr,
+            llvm::MDNode *NoAliasTag = nullptr)
         {
 #if LLVM_VERSION_MAJOR < 10
             return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, DstAlign, Src, SrcAlign, Size,
@@ -116,17 +118,86 @@ namespace IGCLLVM
 #endif
         }
 
-         inline llvm::CallInst* CreateMemCpy(llvm::Value* Dst, unsigned DstAlign, llvm::Value* Src, unsigned SrcAlign,
-            uint64_t Size, bool isVolatile = false, llvm::MDNode* TBAATag = nullptr,
-            llvm::MDNode* TBAAStructTag = nullptr,
-            llvm::MDNode* ScopeTag = nullptr,
-            llvm::MDNode* NoAliasTag = nullptr)
+        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, unsigned DstAlign, llvm::Value *Src, unsigned SrcAlign,
+            uint64_t Size, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
+            llvm::MDNode *TBAAStructTag = nullptr,
+            llvm::MDNode *ScopeTag = nullptr,
+            llvm::MDNode *NoAliasTag = nullptr)
         {
-            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(Dst, DstAlign, Src, SrcAlign, Size,
-                isVolatile, TBAATag, TBAAStructTag, ScopeTag,
-                NoAliasTag);
+#if LLVM_VERSION_MAJOR < 10
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(
+                Dst, DstAlign, Src, SrcAlign, Size, isVolatile, TBAATag,
+                TBAAStructTag, ScopeTag, NoAliasTag);
+#else
+            return llvm::IRBuilder<T, Inserter>::CreateMemCpy(
+                Dst, llvm::Align(DstAlign), Src, llvm::Align(SrcAlign), Size,
+                isVolatile, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+#endif
         }
 
+        using llvm::IRBuilder<T, Inserter>::CreateMemSet;
+
+        inline llvm::CallInst *CreateMemSet(llvm::Value *Ptr, llvm::Value *Val, uint64_t Size,
+            unsigned Alignment, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
+            llvm::MDNode *ScopeTag = nullptr, llvm::MDNode *NoAliasTag = nullptr)
+        {
+#if LLVM_VERSION_MAJOR < 10
+            return llvm::IRBuilder<T, Inserter>::CreateMemSet(
+                Ptr, Val, Size, Alignment, isVolatile, TBAATag, ScopeTag,
+                NoAliasTag);
+#else
+            return llvm::IRBuilder<T, Inserter>::CreateMemSet(
+                Ptr, Val, Size, llvm::Align(Alignment), isVolatile, TBAATag,
+                ScopeTag, NoAliasTag);
+#endif
+        }
+
+        inline llvm::CallInst *CreateMemSet(llvm::Value *Ptr, llvm::Value *Val, llvm::Value *Size,
+            unsigned Alignment, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
+            llvm::MDNode *ScopeTag = nullptr, llvm::MDNode *NoAliasTag = nullptr)
+        {
+#if LLVM_VERSION_MAJOR < 10
+            return llvm::IRBuilder<T, Inserter>::CreateMemSet(
+                Ptr, Val, Size, Alignment, isVolatile, TBAATag, ScopeTag,
+                NoAliasTag);
+#else
+            return llvm::IRBuilder<T, Inserter>::CreateMemSet(
+                Ptr, Val, Size, llvm::Align(Alignment), isVolatile, TBAATag,
+                ScopeTag, NoAliasTag);
+#endif
+        }
+
+        using llvm::IRBuilder<T, Inserter>::CreateMemMove;
+
+        inline llvm::CallInst *CreateMemMove(llvm::Value *Dst, unsigned DstAlign, llvm::Value *Src,
+            unsigned SrcAlign, uint64_t Size, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
+            llvm::MDNode *ScopeTag = nullptr, llvm::MDNode *NoAliasTag = nullptr)
+        {
+#if LLVM_VERSION_MAJOR < 10
+            return llvm::IRBuilder<T, Inserter>::CreateMemMove(
+                Dst, DstAlign, Src, SrcAlign, Size, isVolatile, TBAATag,
+                ScopeTag, NoAliasTag);
+#else
+            return llvm::IRBuilder<T, Inserter>::CreateMemMove(
+                Dst, llvm::Align(DstAlign), Src, llvm::Align(SrcAlign), Size,
+                isVolatile, TBAATag, ScopeTag, NoAliasTag);
+#endif
+        }
+
+        inline llvm::CallInst *CreateMemMove(llvm::Value *Dst, unsigned DstAlign, llvm::Value *Src,
+            unsigned SrcAlign, llvm::Value *Size, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
+            llvm::MDNode *ScopeTag = nullptr, llvm::MDNode *NoAliasTag = nullptr)
+        {
+#if LLVM_VERSION_MAJOR < 10
+            return llvm::IRBuilder<T, Inserter>::CreateMemMove(
+                Dst, DstAlign, Src, SrcAlign, Size, isVolatile, TBAATag,
+                ScopeTag, NoAliasTag);
+#else
+            return llvm::IRBuilder<T, Inserter>::CreateMemMove(
+                Dst, llvm::Align(DstAlign), Src, llvm::Align(SrcAlign), Size,
+                isVolatile, TBAATag, ScopeTag, NoAliasTag);
+#endif
+        }
 
         inline llvm::AllocaInst *CreateAlloca(llvm::Type *Ty, llvm::Value *ArraySize = nullptr, const llvm::Twine &Name = "", unsigned AddrSpace = 0)
         {
