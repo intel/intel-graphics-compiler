@@ -15778,7 +15778,7 @@ void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
              m_encoder->SetSrcRegion(0, 0, 1, 0);
          else
              m_encoder->SetSrcRegion(0, 1, 1, 0);
-         m_encoder->IShr(H1, Src1, m_currShader->ImmToVariable(32, ISA_TYPE_UD));
+         m_encoder->IShr(H1, Src1, m_currShader->ImmToVariable(31, ISA_TYPE_UD));
          m_encoder->Push();
      }
 
