@@ -9925,20 +9925,34 @@ void EmitPass::emitSymbolRelocation(Function& F)
 {
     Module* pModule = F.getParent();
 
+    // Check if a value is used inside a function
+    std::function<bool(Value*, Function*)> ValueUsedInFunction =
+        [&ValueUsedInFunction](Value* v, Function* currFunc)->bool
+    {
+        for (auto it = v->user_begin(), ie = v->user_end(); it != ie; it++)
+        {
+            if (Instruction* inst = dyn_cast<Instruction>(*it))
+            {
+                if (inst->getParent()->getParent() == currFunc)
+                    return true;
+            }
+            else if (Constant* C = dyn_cast<Constant>(*it))
+            {
+                return ValueUsedInFunction(C, currFunc);
+            }
+        }
+        return false;
+    };
+
     SmallSet<Function*, 16> funcAddrSymbols;
     for (auto& FI : pModule->getFunctionList())
     {
         // Create a relocation instruction for every "IndirectlyCalled" function being used in the current function
         if (FI.hasFnAttribute("IndirectlyCalled") && FI.getNumUses() > 0)
         {
-            for (auto it = FI.user_begin(), ie = FI.user_end(); it != ie; it++)
+            if (ValueUsedInFunction(&FI, &F))
             {
-                Instruction* inst = dyn_cast<Instruction>(*it);
-                if (inst && inst->getParent()->getParent() == &F)
-                {
-                    funcAddrSymbols.insert(&FI);
-                    break;
-                }
+                funcAddrSymbols.insert(&FI);
             }
         }
     }
@@ -9956,17 +9970,10 @@ void EmitPass::emitSymbolRelocation(Function& F)
             GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
             if (pGlobal &&
                 pGlobal->getNumUses() > 0 &&
-                m_moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0)
+                m_moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0 &&
+                ValueUsedInFunction(pGlobal, &F))
             {
-                for (auto it = pGlobal->user_begin(), ie = pGlobal->user_end(); it != ie; it++)
-                {
-                    Instruction* inst = dyn_cast<Instruction>(*it);
-                    if (inst && inst->getParent()->getParent() == &F)
-                    {
-                        globalAddrSymbols.insert(pGlobal);
-                        break;
-                    }
-                }
+                globalAddrSymbols.insert(pGlobal);
             }
         }
         for (auto pGlobal : globalAddrSymbols)

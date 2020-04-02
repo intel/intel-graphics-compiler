@@ -2449,14 +2449,42 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
 
     if (Constant * C = llvm::dyn_cast<llvm::Constant>(value))
     {
-        if (isa<GlobalValue>(value))
+        // Check for function and global symbols
         {
             // Function Pointer
-            bool isFunction = value->getType()->isPointerTy() &&
-                value->getType()->getPointerElementType()->isFunctionTy();
-            // Global Relocation
-            bool isGlobalVar = isa<GlobalVariable>(value) &&
-                m_ModuleMetadata->inlineProgramScopeOffsets.count(cast<GlobalVariable>(value)) > 0;
+            auto isFunctionType = [this](Value* value)->bool
+            {
+                return isa<GlobalValue>(value) &&
+                    value->getType()->isPointerTy() &&
+                    value->getType()->getPointerElementType()->isFunctionTy();
+            };
+            // Global Variable/Constant
+            auto isGlobalVarType = [this](Value* value)->bool
+            {
+                return isa<GlobalVariable>(value) &&
+                    m_ModuleMetadata->inlineProgramScopeOffsets.count(cast<GlobalVariable>(value)) > 0;
+            };
+
+            bool isVecType = value->getType()->isVectorTy();
+            bool isFunction = false;
+            bool isGlobalVar = false;
+
+            if (isVecType)
+            {
+                Value* element = C->getAggregateElement((unsigned)0);
+                if (isFunctionType(element))
+                    isFunction = true;
+                else if (isGlobalVarType(element))
+                    isGlobalVar = true;
+            }
+            else if (isFunctionType(value))
+            {
+                isFunction = true;
+            }
+            else if (isGlobalVarType(value))
+            {
+                isGlobalVar = true;
+            }
 
             if (isFunction || isGlobalVar)
             {
@@ -2465,9 +2493,30 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
                 {
                     return it->second;
                 }
-                var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1);
-                symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
-                return var;
+                if (isVecType)
+                {
+                    // Map the entire vector value to the CVar
+                    unsigned numElements = value->getType()->getVectorNumElements();
+                    var = GetNewVariable(numElements, ISA_TYPE_UQ, EALIGN_GRF, true, 1);
+                    symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
+
+                    // Copy over each element
+                    for (unsigned i = 0; i < numElements; i++)
+                    {
+                        Value* element = C->getAggregateElement(i);
+                        CVariable* elementV = GetSymbol(element);
+                        CVariable* offsetV = GetNewAlias(var, ISA_TYPE_UQ, i * var->GetElemSize(), 1);
+                        encoder.Copy(offsetV, elementV);
+                        encoder.Push();
+                    }
+                    return var;
+                }
+                else
+                {
+                    var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1);
+                    symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
+                    return var;
+                }
             }
         }
 
