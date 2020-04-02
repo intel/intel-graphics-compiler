@@ -2359,7 +2359,7 @@ int PhyRegsManager::findFreeRegs(int size, BankAlign align, G4_SubReg_Align suba
     int lastRowSize = 0;
     LocalRA::getRowInfo(size, nrows, lastRowSize);
 
-    bool forward = hintSet ? startRegNum : (startRegNum <= endRegNum ? true : false);
+    bool forward = hintSet ? true : (startRegNum <= endRegNum ? true : false);
     int startReg = forward ? startRegNum : startRegNum - nrows + 1;
     int endReg = forward ? endRegNum - nrows + 1 : endRegNum;
 
@@ -2793,6 +2793,11 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     }
 
     *startGRFReg = lr->hasHint() ? lr->getHint() : *startGRFReg;
+    if (lr->hasHint() && gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl()))
+    {
+        // Special alignment is not needed for var split intrinsic
+        bankAlign = BankAlign::Either;
+    }
     if (useRoundRobin)
     {
         nrows = pregManager.findFreeRegs(size,
