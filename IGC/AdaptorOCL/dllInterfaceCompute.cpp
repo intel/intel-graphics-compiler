@@ -402,6 +402,11 @@ bool ProcessElfInput(
               std::string stringErrMsg{ "SPIRV consumption not enabled for the TARGET." };
               bool success = false;
 #endif
+              // unset specialization constants, to avoid using them by subsequent SPIR-V modules
+              InputArgs.pSpecConstantsIds = nullptr;
+              InputArgs.pSpecConstantsValues = nullptr;
+              InputArgs.SpecConstantsSize = 0;
+
               if (success)
               {
                   InputModule.reset(pKernelModule);
