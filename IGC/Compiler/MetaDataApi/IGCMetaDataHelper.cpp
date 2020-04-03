@@ -58,7 +58,26 @@ void IGCMetaDataHelper::moveFunction(
         FuncMD.erase(OldFunc);
         FuncMD[NewFunc] = funcInfo;
     }
+}
 
+void IGCMetaDataHelper::removeFunction(
+    MetaDataUtils& mdUtils,
+    ModuleMetaData& MD,
+    llvm::Function* Func)
+{
+    auto oldFuncIter = mdUtils.findFunctionsInfoItem(Func);
+    if (oldFuncIter != mdUtils.end_FunctionsInfo())
+    {
+        mdUtils.eraseFunctionsInfoItem(oldFuncIter);
+    }
+
+    auto& FuncMD = MD.FuncMD;
+    auto loc = FuncMD.find(Func);
+    if (loc != FuncMD.end())
+    {
+        auto funcInfo = loc->second;
+        FuncMD.erase(Func);
+    }
 }
 
 uint32_t IGCMetaDataHelper::getThreadGroupSizeHint(MetaDataUtils& mdUtils, llvm::Function* pKernelFunc)
