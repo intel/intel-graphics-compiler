@@ -59,7 +59,7 @@ void HWConformity::fixOpndTypeAlign( G4_BB* bb )
     {
         G4_INST *inst = *i;
         G4_opcode opcode = inst->opcode();
-        if (opcode == G4_nop || opcode == G4_label || inst->isSend()) {
+        if (opcode == G4_nop || opcode == G4_label || inst->mayExceedTwoGRF()) {
             next_iter++;
         } else if (fixInstOpndTypeAlign(i, bb)) {
             next_iter = i;
@@ -310,7 +310,7 @@ void HWConformity::fixInstExecSize( G4_BB* bb )
         next_iter++;
         G4_INST *inst = *i;
         G4_opcode opcode = inst->opcode();
-        if (opcode == G4_nop || opcode == G4_label || inst->isSend())
+        if (opcode == G4_nop || opcode == G4_label || inst->mayExceedTwoGRF())
         {
             continue;
         }

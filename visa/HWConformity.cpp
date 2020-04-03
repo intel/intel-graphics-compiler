@@ -5910,7 +5910,7 @@ void HWConformity::fixOverlapInst(G4_BB* bb)
     {
         G4_INST* inst = *i;
 
-        if (inst->isSend() || inst->opcode() == G4_madm)
+        if (inst->mayExceedTwoGRF() || inst->opcode() == G4_madm)
         {
             continue;
         }
@@ -5980,7 +5980,9 @@ void HWConformity::conformBB(G4_BB* bb)
         ++next_iter;
         G4_INST *inst = *i;
         G4_opcode opcode = inst->opcode();
-        if (opcode == G4_nop || opcode == G4_label)
+
+        if ((inst->mayExceedTwoGRF() && !inst->isSend()) ||
+            opcode == G4_nop || opcode == G4_label)
         {
             continue;
         }
