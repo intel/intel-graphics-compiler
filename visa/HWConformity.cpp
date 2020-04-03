@@ -5981,8 +5981,8 @@ void HWConformity::conformBB(G4_BB* bb)
         G4_INST *inst = *i;
         G4_opcode opcode = inst->opcode();
 
-        if ((inst->mayExceedTwoGRF() && !inst->isSend()) ||
-            opcode == G4_nop || opcode == G4_label)
+        if (opcode == G4_nop ||
+            opcode == G4_label)
         {
             continue;
         }
