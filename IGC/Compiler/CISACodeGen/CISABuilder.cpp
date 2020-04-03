@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/shaderOverride.hpp"
 #include "common/CompilerStatsUtils.hpp"
 #include "inc/common/sku_wa.h"
+#include <llvm/ADT/Statistic.h>
 #include <iStdLib/utility.h>
 #include <iostream>
 #include <fstream>
@@ -58,6 +59,12 @@ This file defines the CEncoder class which is used to generate CISA instructions
 
 static const unsigned  int g_cScratchSpaceMsglimit = (128 * 1024);
 using namespace llvm;
+
+#define DEBUG_TYPE "cisa-builder"
+
+STATISTIC(SimdSize8, "Number of shader(s) with SIMD8");
+STATISTIC(SimdSize16, "Number of shader(s) with SIMD16");
+STATISTIC(SimdSize32, "Number of shader(s) with SIMD32");
 
 namespace IGC
 {
@@ -5032,14 +5039,17 @@ namespace IGC
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
         {
             MEM_SNAPSHOT(IGC::SMS_AFTER_vISACompile_SIMD8);
+            SimdSize8++;
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
         {
             MEM_SNAPSHOT(IGC::SMS_AFTER_vISACompile_SIMD16);
+            SimdSize16++;
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
         {
             MEM_SNAPSHOT(IGC::SMS_AFTER_vISACompile_SIMD32);
+            SimdSize32++;
         }
 
         if (m_program->m_dispatchSize == SIMDMode::SIMD16)
