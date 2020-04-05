@@ -8383,6 +8383,12 @@ void VISAKernelImpl::computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functio
 #endif
 }
 
+int VISAKernelImpl::AppendVISALLVMInst(void *inst)
+{
+    m_builder->SetCurrentInst(inst);
+    return VISA_SUCCESS;
+}
+
 extern "C" void freeBlock(void* ptr);
 
 bool VISAKernelImpl::getIntKernelAttributeValue(const char* attrName, int& value)

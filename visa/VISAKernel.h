@@ -476,6 +476,8 @@ public:
 
     VISA_BUILDER_API int AppendVISADebugLinePlaceholder();
 
+    VISA_BUILDER_API int AppendVISALLVMInst(void *inst);
+
     VISA_BUILDER_API int AppendVISAMiscRawSend(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, unsigned char modifiers,
         unsigned int exMsgDesc, unsigned char srcSize, unsigned char dstSize, VISA_VectorOpnd *desc,
         VISA_RawOpnd *src, VISA_RawOpnd *dst);

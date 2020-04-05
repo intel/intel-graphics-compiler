@@ -442,13 +442,13 @@ void Optimizer::insertHashMovs()
                         16,
                         kernel.fg.builder->createNullDst(Type_UD),
                         kernel.fg.builder->createImm((unsigned int)(hashVal & 0xffffffff), Type_UD),
-                        InstOpt_WriteEnable, false);
+                        InstOpt_WriteEnable, false)->InheritLLVMInst(inst);
 
                     hi = kernel.fg.builder->createMov(
                         16,
                         kernel.fg.builder->createNullDst(Type_UD),
                         kernel.fg.builder->createImm((unsigned int)((hashVal >> 32) & 0xffffffff), Type_UD),
-                        InstOpt_WriteEnable, false);
+                        InstOpt_WriteEnable, false)->InheritLLVMInst(inst);
 
                     bb->push_back(lo);
                     bb->push_back(hi);
@@ -6874,7 +6874,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     // insert "(W) mov(16) acc0.0:f 0x0:f" before EOT
                     G4_INST* movInst = builder.createMov(16,
                         builder.createDst(builder.phyregpool.getAcc0Reg(),0, 0, 1, Type_F),
-                        builder.createImm(0, Type_F), InstOpt_WriteEnable, false);
+                        builder.createImm(0, Type_F), InstOpt_WriteEnable, false)->InheritLLVMInst(inst);
                     // insert mov before contiguous send, in case that there are instruction combined set on continuous
                     // two send
                     INST_LIST_ITER insert_point = ii;

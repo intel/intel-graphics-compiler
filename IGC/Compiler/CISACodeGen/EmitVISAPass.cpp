@@ -628,6 +628,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction(llvmInst);)
             }
         }
+
+        m_encoder->SetCurrentInst(nullptr);
+
         if (llvmtoVISADump)
         {
             if (block.bb->hasName())
@@ -9015,6 +9018,8 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
     {
         return;
     }
+
+    m_encoder->SetCurrentInst(inst);
 
     switch (inst->getOpcode())
     {

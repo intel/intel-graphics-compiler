@@ -233,6 +233,7 @@ namespace IGC
         void File(std::string& s);
         void PredAdd(CVariable* flag, CVariable* dst, CVariable* src0, CVariable* src1);
         void DebugLinePlaceholder();
+        void SetCurrentInst(llvm::Instruction *inst);
 
         inline void Jump(uint label);
         inline void Cast(CVariable* dst, CVariable* src);

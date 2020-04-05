@@ -494,6 +494,8 @@ public:
 
     VISA_BUILDER_API virtual int AppendVISADebugLinePlaceholder() = 0;
 
+    VISA_BUILDER_API virtual int AppendVISALLVMInst(void *inst) = 0;
+
     /// AppendVISAMiscRawSend -- create a GEN send instruction
     /// [pred] send/sendc (esize) <dst> <src> <exMsgDesc> <desc> {emask}
     /// bit 0 of modifiers controls whether it's send (0) or sendc (1)

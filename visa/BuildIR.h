@@ -557,6 +557,8 @@ public:
     input_info_t * getInputArg(unsigned int index);
     unsigned int getInputCount();
     input_info_t *getRetIPArg();
+    const void* GetCurrentInst() const { return m_inst; };
+    void SetCurrentInst(const void* inst) { m_inst = inst; };
 
     const CISA_IR_Builder* getParent() const { return parentBuilder; }
     std::stringstream& criticalMsgStream();
@@ -898,6 +900,7 @@ public:
         use64BitFEStackVars(false), mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m),
         instList(alloc), kernel(k)
     {
+        m_inst = nullptr;
         num_general_dcl = 0;
         num_temp_dcl = 0;
         kernel.setBuilder(this); // kernel needs pointer to the builder
@@ -2756,6 +2759,7 @@ public:
 #include "HWCaps.inc"
 
 private:
+    const void* m_inst;
     G4_SrcRegRegion* createBindlessExDesc(uint32_t exdesc);
 
     int translateVISASLMByteScaledInst(

@@ -3729,6 +3729,7 @@ namespace IGC
         {
             params.push_back(param_uptr("-debug", literal_deleter));
         }
+
         if (context->getModuleMetaData()->compOpt.FastVISACompile)
         {
             params.push_back(param_uptr("-fasterRA", literal_deleter));
@@ -6085,6 +6086,11 @@ namespace IGC
     void CEncoder::DebugLinePlaceholder()
     {
         V(vKernel->AppendVISADebugLinePlaceholder());
+    }
+
+    void CEncoder::SetCurrentInst(llvm::Instruction *inst)
+    {
+        V(vKernel->AppendVISALLVMInst(inst));
     }
 
 
