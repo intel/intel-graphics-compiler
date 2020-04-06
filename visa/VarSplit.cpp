@@ -328,10 +328,10 @@ void VarSplitPass::findSplitCandidates()
                 }
             }
 
-            // split if def-first use distance > 8
-            if (!split &&
-                (instId[item.second.srcs.front().first->getInst()] - instId[item.second.def.first->getInst()]) > 8)
-                split = true;
+            // dont split if def-last first use distance <= 8
+            if (split &&
+                (instId[item.second.srcs.back().first->getInst()] - instId[item.second.def.first->getInst()]) <= 8)
+                split = false;
 
             if (!split)
             {
@@ -361,8 +361,14 @@ void VarSplitPass::split()
     unsigned int numIntrinsicsInserted = 0;
 #endif
     // Do actual splitting
-    for (auto& item : splitVars)
+    for(auto curDcl : kernel.Declares)
     {
+        auto isCandidate = splitVars.find(curDcl);
+        if (isCandidate == splitVars.end())
+            continue;
+
+        auto item = *isCandidate;
+
         MUST_BE_TRUE(item.second.legitCandidate, "Cannot split non-candidate");
 
         // Insert intrinsics
@@ -406,6 +412,7 @@ void VarSplitPass::split()
             unsigned int esize = (getGRFSize() / G4_Type_Table[Type_UD].byteSize) * numRows;
             auto intrin = kernel.fg.builder->createIntrinsicInst(nullptr, Intrinsic::Split, esize, dstRgn, srcRgn, nullptr, nullptr,
                 item.second.def.first->getInst()->getOption() | G4_InstOption::InstOpt_WriteEnable, item.second.def.first->getInst()->getLineNo());
+            intrin->setCISAOff(item.second.def.first->getInst()->getCISAOff());
             item.second.def.second->insert(it, intrin);
             splitDcls.push_back(std::make_tuple(lb, rb, splitDcl));
 #ifdef DEBUG_VERBOSE_ON

@@ -83,6 +83,7 @@ class LiveRange
     G4_RegFileKind regKind;
     bool* forbidden = nullptr;
     int numForbidden = -1;
+    bool spilled = false;
 
     GlobalRA& gra;
     unsigned numRegNeeded;
@@ -244,6 +245,9 @@ public:
 
         void setRetIp() { retIp = true; }
         bool isRetIp() const { return retIp; }
+
+        bool isSpilled() const { return spilled; }
+        void setSpilled(bool v) { spilled = v; }
 
 private:
     //const Options *m_options;

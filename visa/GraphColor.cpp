@@ -5745,7 +5745,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
     auto& varSplitPass = *gra.getVarSplitPass();
 
-    auto assignColor = [&](LiveRange* lr, bool ignoreChildrenIntf = false)
+    auto assignColor = [&](LiveRange* lr, bool ignoreChildrenIntf = false, bool spillAllowed = true)
     {
         auto lrVar = lr->getVar();
 
@@ -5925,7 +5925,13 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 else
                 {
                     // for first-fit register assignment track spilled live ranges
-                    spilledLRs.push_back(lr);
+                    if (spillAllowed)
+                    {
+                        // When retrying a coalesceable assignment, dont spill
+                        // if there is no GRF available.
+                        spilledLRs.push_back(lr);
+                        lr->setSpilled(true);
+                    }
                 }
             }
             else
@@ -5949,6 +5955,11 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     for (auto iter = colorOrder.rbegin(), iterEnd = colorOrder.rend(); iter != iterEnd; ++iter)
     {
         auto lr = (*iter);
+
+        // in case child/parent was already spilled earlier, dont recolor
+        if(lr->isSpilled())
+            continue;
+
         bool ret = assignColor(lr);
 
         // early exit
@@ -5969,7 +5980,8 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                         auto childLR = lrs[child->getRegVar()->getId()];
                         if (!childLR->getPhyReg())
                         {
-                            assignColor(childLR);
+                            auto isChildSpilled = childLR->isSpilled();
+                            assignColor(childLR, false, !isChildSpilled);
                         }
                         else
                         {
@@ -5980,7 +5992,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                             if (oldPhyReg->asGreg()->getRegNum() == hint)
                                 continue;
                             childLR->resetPhyReg();
-                            bool success = assignColor(childLR);
+                            bool success = assignColor(childLR, false, false);
                             if (!success || childLR->getPhyReg()->asGreg()->getRegNum() != hint)
                                 childLR->setPhyReg(oldPhyReg, oldPhySubReg);
                         }
@@ -5997,9 +6009,10 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 auto parentLR = getLiveRanges()[parentDcl->getRegVar()->getId()];
                 auto oldPhyReg = parentLR->getPhyReg();
                 auto oldPhySubReg = parentLR->getPhyRegOff();
+                bool isParentSpilled = parentLR->isSpilled();
                 parentLR->resetPhyReg();
                 varSplitPass.writeHints(lr->getDcl(), getLiveRanges());
-                assignColor(parentLR, true);
+                assignColor(parentLR, true, !isParentSpilled);
                 // If parent's assigned GRF is non-coalesceable assignment then
                 // undo it as it is risky to keep this because parent's intf
                 // doesnt include children.
@@ -6007,6 +6020,13 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 if ((newParentAssignment && newParentAssignment->asGreg()->getRegNum() != parentLR->getAllocHint()) ||
                     !newParentAssignment)
                     parentLR->setPhyReg(oldPhyReg, oldPhySubReg);
+
+                if (isParentSpilled && parentLR->getPhyReg())
+                {
+                    // remove parent from spill list since it got an allocation this time
+                    spilledLRs.remove(parentLR);
+                    parentLR->setSpilled(false);
+                }
             }
         }
     }
@@ -6023,6 +6043,34 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             kernel.setRAType(doBankConflict ? RA_Type::GRAPH_COLORING_FF_BC_RA : RA_Type::GRAPH_COLORING_FF_RA);
         }
     }
+
+#ifdef _DEBUG
+    // Verify that spilledLRs has no duplicate
+    for (auto item : spilledLRs)
+    {
+        unsigned int count = 0;
+        for (auto checkItem : spilledLRs)
+        {
+            if (checkItem == item)
+            {
+                MUST_BE_TRUE(count == 0, "Duplicate entry found in spilledLRs");
+                count++;
+            }
+        }
+    }
+
+    // Verify that none of spilledLRs have an allocation
+    for (auto lr : spilledLRs)
+    {
+        MUST_BE_TRUE(lr->getPhyReg() == nullptr, "Spilled LR contains valid allocation");
+    }
+
+    // Verify that all spilled LRs are synced
+    for (auto lr : spilledLRs)
+    {
+        MUST_BE_TRUE(lr->isSpilled(), "LR not marked as spilled, but inserted in spilledLRs list");
+    }
+#endif
 
     return true;
 }
