@@ -505,7 +505,7 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& ker
 
 // Combine cmc compiler metadata with jitter info.
 static void populateKernelInfo(const cmc_kernel_info* info,
-                               FINALIZER_INFO& JITInfo,
+                               const FINALIZER_INFO& JITInfo,
                                llvm::ArrayRef<uint8_t> genBin,
                                CMKernel& kernel)
 {
