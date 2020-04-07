@@ -100,6 +100,7 @@ private:
 
     void verifyDstSrcOverlap(G4_INST* inst);
 
+
 };
 }
 /// Interface.

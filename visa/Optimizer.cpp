@@ -7640,7 +7640,8 @@ public:
         {
             for (auto inst : *bb)
             {
-                if (inst->isCall() || inst->isReturn())
+                if (inst->isCall() ||
+                    inst->isReturn())
                 {
                     // Do not rewrite region for call or return,
                     // as the effective execution size is 2.
