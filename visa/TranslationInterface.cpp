@@ -10515,17 +10515,18 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
                   unsigned MAX_SIMD = 32;
                   for (unsigned i = 0; i < totalElemsToCopy/MAX_SIMD; i++) {
                       // full registers to copy
+                      auto rowOffset = i * ((MAX_SIMD * typeSize) / getGRFSize());
                       unsigned int instOpt =
                           Get_Gen4_Emask(vISA_EMASK_M1_NM, MAX_SIMD);
                       G4_DstRegRegion *dstRegion =
                           createDst(
                               payloadDeclUD->getRegVar(),
-                              row, offset/typeSize,
+                              row + rowOffset, offset/typeSize,
                               1, type);
                       G4_SrcRegRegion *srcRegion =
                           createSrcRegRegion(
                               Mod_src_undef, Direct,
-                              srcDcl->getRegVar(), 0, 0,
+                              srcDcl->getRegVar(), rowOffset, 0,
                               rd110,
                               type);
                       createMov(MAX_SIMD,
