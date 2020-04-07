@@ -500,15 +500,6 @@ namespace vISA
         if (!inSameSubroutine(bb, uniqueDefBB))
             return false;
 
-#if 0
-        // idom currently not computed
-
-        // Def must be in a dominating BB
-        auto defDomsUse = doms.dominates(uniqueDefBB, bb);
-        if (!defDomsUse)
-            return false;
-#endif
-
         // If uniqueDefBB is not under SIMD CF, current BB is under SIMD CF
         // then we can remat only if def has NoMask option set.
         if (!uniqueDefBB->isInSimdFlow() &&
@@ -1180,47 +1171,5 @@ namespace vISA
         }
 
         //unsigned int after = getNumSamplers(kernel);
-    }
-
-    void Dominators::computeDominators()
-    {
-        // Compute all doms for given bb.
-        // Flowgraph already has idoms for each bb.
-        for (auto&& bb : fg)
-        {
-            std::pair<G4_BB*, std::set<G4_BB*>> domBB;
-            domBB.first = bb;
-            auto idom = bb->getIDom();
-            while (idom)
-            {
-                domBB.second.insert(bb->getIDom());
-                idom = idom->getIDom();
-            }
-        }
-    }
-    bool Dominators::dominates(G4_BB* def, G4_BB* use)
-    {
-        auto dIt = dom.find(use);
-        if (dIt == dom.end())
-            return false;
-
-        auto bbIt = dIt->second.find(def);
-        if (bbIt == dIt->second.end())
-            return false;
-
-        return true;
-    }
-
-    void Dominators::dump()
-    {
-        for (auto&& bb : dom)
-        {
-            printf("BB%d:", bb.first->getId());
-            for (auto&& d : bb.second)
-            {
-                printf("BB%d, ", d->getId());
-            }
-            printf("\n\n");
-        }
     }
 }

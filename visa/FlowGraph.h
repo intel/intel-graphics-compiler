@@ -246,10 +246,6 @@ class G4_BB
     //
     unsigned traversal;
     //
-    // its immediate dominator
-    //
-    G4_BB* idom;
-    //
     // if the current BB is the return block after a CALL subroutine, then beforeCall points
     // to the BB before the subroutine call.
     //
@@ -377,7 +373,7 @@ public:
 
     G4_BB(INST_LIST_NODE_ALLOCATOR& alloc, unsigned i, FlowGraph* fg) :
         id(i), preId(0), rpostId(0),
-        traversal(0), idom(NULL), beforeCall(NULL),
+        traversal(0), beforeCall(NULL),
         afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), hasSendInBB(false), loopNestLevel(0), scopeID(0),
         inSimdFlow(false), divergent(false), physicalPred(NULL), physicalSucc(NULL),
@@ -407,8 +403,6 @@ public:
     void     removePredEdge(G4_BB* pred);
     void     writeBBId(std::ostream& cout)    {cout << "BB" << id;}
     G4_BB*   fallThroughBB();
-    G4_BB*   getIDom()                        {return idom;}
-    void     setIDom(G4_BB* dom)              {idom = dom;}
     G4_BB*   BBBeforeCall()                   {return beforeCall;}
     G4_BB*   BBAfterCall()                    {return afterCall;}
     void     setBBBeforeCall(G4_BB* before)   {beforeCall = before;}
