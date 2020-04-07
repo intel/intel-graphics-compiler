@@ -878,7 +878,7 @@ static void updateRegAccess(FCPatchingInfo* FCPI, SBNode* Node,
 static void insertSyncBarrier(FCPatchingInfo* FCPI, SBNode* Node,
     unsigned NumRegs) {
     // Skip if sync barrier is already inserted.
-    if (FCPI->RegFirstAccessList.back().RegNo == unsigned(-1))
+    if (FCPI->RegFirstAccessList.size() == 0 || FCPI->RegFirstAccessList.back().RegNo == unsigned(-1))
         return;
 
     // Sync barrier is a special relocation where all registers are forced to be
