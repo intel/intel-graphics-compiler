@@ -2013,7 +2013,9 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
         return;
     }
 
-    m_encoder->MulH(Hi, L0, L1);
+    CVariable* THi = m_currShader->GetNewVariable(Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform());
+
+    m_encoder->MulH(THi, L0, L1);
     m_encoder->Push();
 
     CVariable* T0 = m_currShader->GetNewVariable(Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform());
@@ -2021,13 +2023,13 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     m_encoder->Mul(T0, L0, H1);
     m_encoder->Push();
 
-    m_encoder->Add(Hi, Hi, T0);
+    m_encoder->Add(THi, THi, T0);
     m_encoder->Push();
 
     m_encoder->Mul(T0, L1, H0);
     m_encoder->Push();
 
-    m_encoder->Add(Hi, Hi, T0);
+    m_encoder->Add(Hi, THi, T0);
     m_encoder->Push();
 }
 
