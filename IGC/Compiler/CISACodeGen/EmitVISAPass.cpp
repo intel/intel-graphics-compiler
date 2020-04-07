@@ -4610,7 +4610,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         if (isSimd32)
         {
             const bool isSrcInSecondHalf = dataIndex >= 16;
-            dataIndex = dataIndex % 16;
+            dataIndex = dataIndex % numLanes(m_encoder->GetSimdSize());
 
             if (m_destination->IsUniform())
             {
