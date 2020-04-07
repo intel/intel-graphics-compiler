@@ -1,0 +1,96 @@
+ 
+
+## Opcode
+
+  SVM = 0x4e
+
+  GATHER4_SCALED = 0x06
+
+## Format
+
+| | | | | | | |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0x4e(SVM) | 0x06(GATHER4_SCALED) | Exec_size | Pred | Channels | Scale | Address | Element_offset |
+|           |                      | Dst       |      |          |       |         |                |
+
+
+## Semantics
+
+
+
+
+                    UD ch_pos = 0;
+                    for (c = 0; c < 4; ++c) {
+                        if (ch_mask[c] == 1) {
+                            for (i = 0; i < exec_size; ++i) {
+                                if (ChEn[i]) {
+                                    UD ch_start = ch_pos * max(exec_size, GRF_SIZE / 4);  // GRF_SIZE is the register size in byte
+                                    dst[ch_start+i] = *(address + element_offset[i] + (c * 4)); //4 byte
+                                }
+                            }
+                            ch_pos++;
+                        }
+                    }
+
+## Description
+
+
+
+    Performs <exec_size>*<num_enabled_channels> element scattered read
+    from virtual addresses and stores the results into <dst>. The address to
+    be read is determined by the offset, scaling pitch, and each element
+    offset, and the final address must be dword-aligned.
+
+- **Exec_size(ub):** Execution size
+ 
+  - Bit[2..0]: size of the region for source and destination operands
+ 
+    - 0b011:  8 elements 
+    - 0b100:  16 elements 
+  - Bit[7..4]: execution mask (explicit control over the enabled channels)
+ 
+    - 0b0000:  M1 
+    - 0b0001:  M2 
+    - 0b0010:  M3 
+    - 0b0011:  M4 
+    - 0b0100:  M5 
+    - 0b0101:  M6 
+    - 0b0110:  M7 
+    - 0b0111:  M8 
+    - 0b1000:  M1_NM 
+    - 0b1001:  M2_NM 
+    - 0b1010:  M3_NM 
+    - 0b1011:  M4_NM 
+    - 0b1100:  M5_NM 
+    - 0b1101:  M6_NM 
+    - 0b1110:  M7_NM 
+    - 0b1111:  M8_NM
+- **Pred(uw):** Predication control
+
+- **Channels(ub):** 
+ 
+  - Bit[3..0]: determines the write masks for the RGBA channel, with R being bit 0 and A bit 3. At least one channel must be enabled (i.e., "0000" is not allowed)
+
+- **Scale(uw):** This field is ingored and scale is always zero
+
+- **Address(scalar):** The global byte offset. Must have type UQ
+
+- **Element_offset(raw_operand):** The first Exec_size elements of the operand will be used as the byte offsets for the corresponding channel. Must have type UQ
+
+- **Dst(raw_operand):** The variable storing the results of the read. For each enabled channel in RGBA order, exec_size elements will be returned to dst subject to predication. The next enabled channel will have its return data starting at the next register. If a channel's return data do not occupy the entire register, the remaining part of the register has undefined values. Must have type UD,D,F
+
+#### Properties
+
+
+## Text
+```
+    
+
+		[(<P>)] SVM_GATHER4_SCALED.<channels> (<exec_size>) <address> <element_offset> <dst>
+```
+
+
+
+## Notes
+
+
