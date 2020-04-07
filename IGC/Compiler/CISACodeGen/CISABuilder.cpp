@@ -3733,7 +3733,6 @@ namespace IGC
         {
             params.push_back(param_uptr("-debug", literal_deleter));
         }
-
         if (context->getModuleMetaData()->compOpt.FastVISACompile)
         {
             params.push_back(param_uptr("-fasterRA", literal_deleter));
@@ -3794,7 +3793,7 @@ namespace IGC
             }
         }
     }
-    void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR)
+    void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR, CODE_PATCH_T mode)
     {
         CodeGenContext* context = m_program->GetContext();
         bool KernelDebugEnable = false;
@@ -3835,6 +3834,7 @@ namespace IGC
         {
             SaveOption(vISA_DumpCompilerStats, true);
         }
+
 
         if (IGC_IS_FLAG_ENABLED(ForceFFIDOverwrite)/*|| m_program->m_Platform->WaOverwriteFFID()*/)
         {
@@ -4329,7 +4329,7 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall)
+    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, VISAKernel* prevKernel, CODE_PATCH_T mode)
     {
         m_aliasesMap.clear();
         m_encoderState.m_SubSpanDestination = false;
@@ -4367,7 +4367,7 @@ namespace IGC
         V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
             &m_vISAWaTable));
 
-        InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall, builderOpt == VISA_BUILDER_BOTH);
+        InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall, builderOpt == VISA_BUILDER_BOTH, mode);
 
         // Pass all build options to builder
         SetBuilderOptions(vbuilder);
@@ -4429,7 +4429,7 @@ namespace IGC
             asmName = "kernel.asm";
         }
 
-        V(vbuilder->AddKernel(vKernel, kernelName.c_str()));
+        V(vbuilder->AddKernel(vKernel, kernelName.c_str(), prevKernel));
         V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
 
         vMainKernel = vKernel;

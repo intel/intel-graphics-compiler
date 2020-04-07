@@ -806,7 +806,6 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 
     if (builder->getOption(vISA_DumpDotAll))
     {
-        pKernel->dumpDotFile("beforeRemoveRedundantLabels");
     }
 
     removeRedundantLabels();

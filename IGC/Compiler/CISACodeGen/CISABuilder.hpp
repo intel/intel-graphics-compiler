@@ -130,9 +130,9 @@ namespace IGC
     class CEncoder
     {
     public:
-        void InitEncoder(bool canAbortOnSpill, bool hasStackCall);
+        void InitEncoder(bool canAbortOnSpill, bool hasStackCall, VISAKernel* prevkernel, CODE_PATCH_T mode);
         void InitBuildParams(llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10> & params);
-        void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR);
+        void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR, CODE_PATCH_T mode = CodePatch_NOT_HANDLED);
         SEncoderState CopyEncoderState();
         void SetEncoderState(SEncoderState& newState);
 
@@ -233,6 +233,7 @@ namespace IGC
         void File(std::string& s);
         void PredAdd(CVariable* flag, CVariable* dst, CVariable* src0, CVariable* src1);
         void DebugLinePlaceholder();
+        void SetPrevKernel(VISAKernel* kernel);
         void SetCurrentInst(llvm::Instruction *inst);
 
         inline void Jump(uint label);
@@ -531,6 +532,9 @@ namespace IGC
     protected:
         // encoder states
         SEncoderState m_encoderState;
+
+        // directly patch code from the recorded simd
+        CODE_PATCH_T m_codePatch;
 
         llvm::DenseMap<SAlias, CVariable*, SAliasMapInfo> m_aliasesMap;
 

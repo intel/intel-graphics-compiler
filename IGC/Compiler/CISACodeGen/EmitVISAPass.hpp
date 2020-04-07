@@ -77,6 +77,10 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& F) override;
         virtual llvm::StringRef getPassName() const  override { return "EmitPass"; }
 
+        CODE_PATCH_T GetCodePatchMode(
+                SIMDMode fromSimd, ShaderDispatchMode fromDispatch,
+                SIMDMode toSimd,   ShaderDispatchMode toDispatch);
+
         void CreateKernelShaderMap(CodeGenContext* ctx, IGC::IGCMD::MetaDataUtils* pMdUtils, llvm::Function& F);
 
         void Frc(const SSource& source, const DstModifier& modifier);
@@ -534,6 +538,7 @@ namespace IGC
         ShaderDispatchMode m_ShaderMode;
         CShaderProgram::KernelShaderMap& m_shaders;
         CShader* m_currShader;
+        CShader* m_prevShader;
         CEncoder* m_encoder;
         const llvm::DataLayout* m_DL;
         CoalescingEngine* m_CE;

@@ -97,6 +97,7 @@ public:
         m_forward_label_count = 0;
         m_jitInfo = NULL;
         errorMessage[0] = '\0';
+        m_prevKernel = NULL;
         m_kernel = NULL;
         m_builder = NULL;
         m_globalMem = NULL;
@@ -134,7 +135,7 @@ public:
     virtual ~VISAKernelImpl();
 
     void *operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); };
-    int InitializeKernel(const char *kernel_name);
+    int InitializeKernel(const char *kernel_name, VISAKernel* prevKernel = nullptr);
     int CISABuildPreDefinedDecls();
     void setVersion(unsigned char major_ver, unsigned char minor_ver){
         m_major_version = major_ver;
@@ -838,6 +839,8 @@ public:
 
     void computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions);
 
+    vISA::G4_Kernel* GetVISAPrevKernel() { return m_prevKernel; }
+
 private:
     void setDefaultVariableName(Common_ISA_Var_Class Ty, const char *&varName);
     void dumpDebugFormatFile(std::vector<vISA::DebugInfoFormat>& debugSymbols, std::string filename);
@@ -964,6 +967,7 @@ private:
     char errorMessage[MAX_ERROR_MSG_LEN];
 
     VISA_BUILDER_OPTION mBuildOption;
+    vISA::G4_Kernel* m_prevKernel;
     vISA::G4_Kernel* m_kernel;
     CISA_IR_Builder* m_CISABuilder;
     vISA::IR_Builder* m_builder;

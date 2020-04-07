@@ -675,6 +675,7 @@ private:
     bool     isStackCallFunc;                    // indicates the function itself is a STACK_CALL function
     unsigned int autoLabelId;
     G4_Kernel* pKernel;                         // back pointer to the kernel object
+    G4_Kernel* m_prevKernel;                    // back pointer to the previous kernel object
 
     // map each BB to its local RA GRF usage summary, populated in local RA
     std::map<G4_BB*, PhyRegSummary*> bbLocalRAMap;
@@ -852,6 +853,11 @@ public:
         return pKernel;
     }
 
+    G4_Kernel* getPrevKernel()
+    {
+        return m_prevKernel;
+    }
+
     void mergeFReturns();
 
     G4_Declare*& getFramePtrDcl()                   {return framePtrDcl;}
@@ -926,6 +932,7 @@ public:
 
     // functions for structure analysis
     G4_Kernel *getKernel() const { return pKernel; }
+    G4_Kernel* getPrevKernel() const { return m_prevKernel; }
     G4_Label* insertEndif( G4_BB* bb, unsigned char execSize, bool createLabel );
     void setJIPForEndif( G4_INST* endif, G4_INST* target, G4_BB* targetBB);
     void convertGotoToJmpi(G4_INST *gotoInst)
@@ -963,10 +970,10 @@ public:
     FlowGraph(const FlowGraph&) = delete;
     FlowGraph& operator=(const FlowGraph&) = delete;
 
-    FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m) :
+    FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, G4_Kernel* prevKernel, Mem_Manager& m) :
       traversalNum(0), numBBId(0), reducible(true),
       doIPA(false), hasStackCalls(false), isStackCallFunc(false), autoLabelId(0),
-      pKernel(kernel), mem(m), instListAlloc(alloc),
+      pKernel(kernel), m_prevKernel(prevKernel), mem(m), instListAlloc(alloc),
       kernelInfo(NULL), builder(NULL), globalOpndHT(m), framePtrDcl(NULL),
       stackPtrDcl(NULL), scratchRegDcl(NULL), pseudoVCEDcl(NULL) {}
 
@@ -1461,7 +1468,7 @@ public:
     unsigned char minor_version;
 
     G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
-              Mem_Manager &m, Options *options, unsigned char major, unsigned char minor)
+              Mem_Manager &m, Options *options, unsigned char major, unsigned char minor, G4_Kernel *prevKernel)
               : m_options(options), RAType(RA_Type::UNKNOWN_RA),
               asmInstCount(0), kernelID(0), tokenInstructionCount(0), tokenReuseCount(0),
               AWTokenReuseCount(0), ARTokenReuseCount(0), AATokenReuseCount(0),
@@ -1469,7 +1476,7 @@ public:
               ARSyncInstCount(0), AWSyncInstCount(0), ARSyncAllCount(0), AWSyncAllCount(0),
               prunedDepEdges(0), prunedGlobalEdgeNum(0), prunedDiffBBEdgeNum(0), prunedDiffBBSameTokenEdgeNum(0),
               bank_good_num(0), bank_ok_num(0),
-              bank_bad_num(0), fg(alloc, this, m), major_version(major), minor_version(minor)
+              bank_bad_num(0), fg(alloc, this, prevKernel, m), major_version(major), minor_version(minor)
     {
         ASSERT_USER(
             major < COMMON_ISA_MAJOR_VER ||

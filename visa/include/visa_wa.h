@@ -56,4 +56,8 @@ enum VISA_WA_BUG_TYPE
     VISA_WA_BUG_TYPE_FAIL       = 32
 };
 
+typedef enum {
+    CodePatch_NOT_HANDLED = 0,
+} CODE_PATCH_T;
+
 #endif
