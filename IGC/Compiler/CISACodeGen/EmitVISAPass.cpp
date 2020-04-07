@@ -9977,7 +9977,8 @@ void EmitPass::emitSymbolRelocation(Function& F)
             }
             else if (Constant* C = dyn_cast<Constant>(*it))
             {
-                return ValueUsedInFunction(C, currFunc);
+                if (C->isConstantUsed())
+                    return ValueUsedInFunction(C, currFunc);
             }
         }
         return false;
