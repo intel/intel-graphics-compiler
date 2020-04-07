@@ -105,6 +105,17 @@ namespace IGC
         return temp.u32Val;
     }
 
+    bool isDummyBasicBlock(llvm::BasicBlock* BB)
+    {
+        if (BB->size() != 1)
+            return false;
+        if ((++pred_begin(BB)) != pred_end(BB))
+            return false;
+        if ((++succ_begin(BB)) != succ_end(BB))
+            return false;
+        return true;
+    }
+
     unsigned SetBufferAsBindless(unsigned addressSpaceOfPtr, BufferType bufferType)
     {
         GFXResourceAddrSpace temp = {};

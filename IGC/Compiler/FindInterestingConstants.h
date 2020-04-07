@@ -36,9 +36,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/InstrTypes.h>
 #include <llvm/IR/Dominators.h>
 #include "common/LLVMWarningsPop.hpp"
-
+#include "llvm/Analysis/LoopInfo.h"
 namespace IGC
 {
+    struct InstructionStats
+    {
+        uint32_t instCount = 0;
+        uint32_t branchCount = 0;
+        uint32_t loopCount = 0;
+        uint32_t samplerCount = 0;
+        uint32_t weight = 0;
+    };
     class FindInterestingConstants : public llvm::FunctionPass, public llvm::InstVisitor<FindInterestingConstants>
     {
     public:
@@ -54,6 +62,7 @@ namespace IGC
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<llvm::LoopInfoWrapperPass>();
         }
 
         virtual bool runOnFunction(llvm::Function& F) override;
@@ -62,13 +71,18 @@ namespace IGC
 
     private:
         CodeGenContext* m_context;
+        llvm::LoopInfo* m_LI;
         unsigned int m_foldsToZero;
         unsigned int m_foldsToConst;
         unsigned int m_foldsToSource;
-        bool m_constFoldBranch;
+        unsigned int m_constFoldBranch;
+        unsigned int m_constFoldLoopBranch;
+        unsigned int m_samplerCount;
+        unsigned int m_branchsize;
+        unsigned int m_loopSize;
         std::unordered_map<unsigned int, std::vector<SConstantAddrValue>> m_InterestingConstants;
         const llvm::DataLayout* m_DL;
-
+        std::unordered_set<llvm::Instruction*> visitedForFolding;
         // Helper functions
         bool getConstantAddress(llvm::LoadInst& I, unsigned& bufIdOrGRFOffset, int& eltId, int& size_in_bytes);
         bool FoldsToConst(llvm::Instruction* inst, llvm::Instruction* use, bool& propagate);
@@ -77,7 +91,11 @@ namespace IGC
         void FoldsToConstPropagate(llvm::Instruction* I);
         void FoldsToZeroPropagate(llvm::Instruction* I);
         void FoldsToSourcePropagate(llvm::Instruction* I);
-        void addInterestingConstant(llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value);
+        bool allUsersVisitedForFolding(llvm::Instruction* binOperand, llvm::Instruction* binInst);
+        void CheckIfSampleBecomesDeadCode(llvm::Instruction* inst, llvm::Instruction* use);
+        unsigned int BranchSize(llvm::Instruction* I, llvm::BranchInst* Br, bool& isLoop);
+        void ResetStatCounters();
+        void addInterestingConstant(llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t constValue, InstructionStats stats);
         template<typename ContextT>
         void copyInterestingConstants(ContextT* pShaderCtx);
     };

@@ -38,6 +38,7 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Find interesting constants"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
+
 IGC_INITIALIZE_PASS_BEGIN(FindInterestingConstants, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_END(FindInterestingConstants, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
@@ -56,12 +57,37 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use,
 
     // "use" instruction should have some operand(s)
     assert(use->getNumOperands() != 0);
-    if (dyn_cast<BranchInst>(use))
+    if (BranchInst* Br = dyn_cast<BranchInst>(use))
     {
-        m_constFoldBranch = true;
+        bool isLoop;
+        unsigned int brSize;
+        brSize = BranchSize(inst, Br, isLoop);
+        if (isLoop)
+        {
+            m_loopSize += brSize;
+            m_constFoldLoopBranch++;
+        }
+        else
+        {
+            m_branchsize += brSize;
+            m_constFoldBranch++;
+        }
+        visitedForFolding.insert(Br);
         return false;
     }
-
+    if (llvm::GenIntrinsicInst* pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(use))
+    {
+        // Figure out the intrinsic operands for texture & sampler
+        Value* pTextureValue = nullptr, * pSamplerValue = nullptr;
+        IGC::getTextureAndSamplerOperands(pIntr, pTextureValue, pSamplerValue);
+        if (pSamplerValue && pSamplerValue == inst)
+        {
+            m_samplerCount++;
+            visitedForFolding.insert(pIntr);
+            return false;
+        }
+        return false;
+    }
     for (auto& U : use->operands())
     {
         Value* V = U.get();
@@ -71,11 +97,32 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use,
             continue;
         else
         {
-            // For select instruction all operands need not be constants to simplify the instruction
-            if (SelectInst * selInst = dyn_cast<SelectInst>(use))
+            if (SelectInst* selInst = dyn_cast<SelectInst>(use))
             {
+                // For select instruction all operands need not be constants to simplify the instruction
                 if (selInst->getOperand(0) == inst)
                     return true;
+            }
+            else if (CmpInst* Cmp = dyn_cast<CmpInst>(use))
+            {
+                // For Cmp instruction we dont need the other operand to be a constant if it is leading to a loop terminating condition
+                // If any of the uses of cmp instruction are loop terminating conditions, update the loop stats accordingly,
+                //      as this constant buffer access in compare instruction can help loop unroll
+                for (auto UI = Cmp->user_begin(), UE = Cmp->user_end(); (UI != UE); ++UI)
+                {
+                    if (BranchInst* Br = dyn_cast<BranchInst>(*UI))
+                    {
+                        bool isLoop;
+                        unsigned int brSize;
+                        brSize = BranchSize(inst, Br, isLoop);
+                        if (isLoop)
+                        {
+                            visitedForFolding.insert(Br);
+                            m_loopSize += brSize;
+                            m_constFoldLoopBranch++;
+                        }
+                    }
+                }
             }
             return false;
         }
@@ -87,22 +134,80 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use,
 void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
 {
     bool propagate = false;
-    // if instruction count that can be folded to zero reached threshold, dont loop through
+    // Look for all instructions that can be folded to constant if the value of I is known
+    //      Also look for branches/loops in that path
     for (auto UI = I->user_begin(), UE = I->user_end(); (UI != UE); ++UI)
     {
-        if ((m_constFoldBranch) ||
-            (m_foldsToConst >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
-            break;
-
         if (Instruction * useInst = dyn_cast<Instruction>(*UI))
         {
-            if (useInst->getParent() == I->getParent())    // TBD Do we need this
+            if (visitedForFolding.find(useInst) == visitedForFolding.end())
             {
-                if (FoldsToConst(I, useInst, propagate))
+                if (useInst->getParent() == I->getParent())    // TBD Do we need this
                 {
-                    m_foldsToConst++;
-                    if (propagate)
-                        FoldsToConstPropagate(useInst);
+                    if (FoldsToConst(I, useInst, propagate))
+                    {
+                        m_foldsToConst++;
+                        if (propagate)
+                            FoldsToConstPropagate(useInst);
+                    }
+                }
+            }
+        }
+    }
+}
+
+bool FindInterestingConstants::allUsersVisitedForFolding(Instruction* inst, Instruction* use)
+{
+    if (visitedForFolding.find(use) != visitedForFolding.end())
+        return false;
+    for (auto UI = inst->user_begin(), UE = inst->user_end(); (UI != UE); ++UI)
+    {
+        Value* anotherUse = *UI;
+        if (Instruction* anotherUseInst = dyn_cast<Instruction>(anotherUse))
+        {
+            if ((anotherUseInst != use) && (visitedForFolding.find(anotherUseInst) == visitedForFolding.end()))
+            {
+                return false;
+            }
+            // If the use instruction is selectInst/GenISA instruction then dont count as visited for folding
+            //      as such instructions are currently added to visitedForFolding to avoid double counting in stats
+            llvm::GenIntrinsicInst* pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(anotherUse);
+            SelectInst* selInst = dyn_cast<SelectInst>(anotherUse);
+            if (pIntr || selInst)
+            {
+                return false;
+            }
+        }
+        else
+            return false;
+    }
+    return true;    // All other uses other than use are part of visitedForFolding, use must not be part of visitedForFolding already
+}
+
+void FindInterestingConstants::CheckIfSampleBecomesDeadCode(Instruction* inst, Instruction* use)
+{
+    if (ExtractElementInst* ee = llvm::dyn_cast<llvm::ExtractElementInst> (inst))
+    {
+        llvm::GenIntrinsicInst* pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(ee->getOperand(0));
+        // Figure out if inst is smaple instruction, update m_samplerCount/m_foldsToZero/visitedForFolding accordingly
+        if (pIntr)
+        {
+            Value* pTextureValue = nullptr, * pSamplerValue = nullptr;
+            IGC::getTextureAndSamplerOperands(pIntr, pTextureValue, pSamplerValue);
+            if (pSamplerValue)
+            {
+                if (allUsersVisitedForFolding(inst, use))
+                {
+                    m_foldsToZero++;
+                    if (allUsersVisitedForFolding(pIntr, inst))
+                    {
+                        m_samplerCount++;
+                        m_foldsToZero++;
+                        assert(visitedForFolding.find(pIntr) == visitedForFolding.end());
+                        visitedForFolding.insert(pIntr);
+                    }
+                    assert(visitedForFolding.find(inst) == visitedForFolding.end());
+                    visitedForFolding.insert(inst);
                 }
             }
         }
@@ -112,26 +217,39 @@ void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
 bool FindInterestingConstants::FoldsToZero(Instruction* inst, Instruction* use)
 {
     bool propagate = false;
-    if (dyn_cast<BranchInst>(use))
-    {
-        m_constFoldBranch = true;
-        return false;
-    }
     if (BinaryOperator * binInst = dyn_cast<BinaryOperator>(use))
     {
         if (binInst->getOpcode() == Instruction::FMul)
         {
+            Value* binOperand = nullptr;
+            if (binInst->getOperand(0) == inst)
+            {
+                binOperand = binInst->getOperand(1);
+            }
+            else
+            {
+                binOperand = binInst->getOperand(0);
+            }
+            if (Instruction* binOperandDef = dyn_cast<Instruction>(binOperand))
+                CheckIfSampleBecomesDeadCode(binOperandDef, binInst);
             return true;
         }
         else if (binInst->getOpcode() == Instruction::FDiv &&
             inst == binInst->getOperand(0) && inst != binInst->getOperand(1))
         {
+            Value* binOperand = binInst->getOperand(1);
+            // Figure out if binOperand is smaple instruction, update m_samplerCount accordingly
+            if (Instruction* binOperandDef = dyn_cast<Instruction>(binOperand))
+                CheckIfSampleBecomesDeadCode(binOperandDef, binInst);
+
             return true;
         }
     }
+    // We can keep looking for FoldsToConst case when FoldsToZero cannot be propagated further
     if (FoldsToConst(inst, use, propagate))
     {
         m_foldsToConst++;
+        visitedForFolding.insert(use);
         if (propagate)
             FoldsToConstPropagate(use);
     }
@@ -142,16 +260,18 @@ void FindInterestingConstants::FoldsToZeroPropagate(llvm::Instruction* I)
 {
     for (auto UI = I->user_begin(), UE = I->user_end(); (UI != UE); ++UI)
     {
-        if ((m_constFoldBranch) ||
-            (m_foldsToZero >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold)))
-            break;
         if (Instruction * useInst = dyn_cast<Instruction>(*UI))
         {
-            if (FoldsToZero(I, useInst))
+            if (visitedForFolding.find(useInst) == visitedForFolding.end())
             {
-                m_foldsToZero++;
-                FoldsToZeroPropagate(useInst);
+                if (FoldsToZero(I, useInst))
+                {
+                    m_foldsToZero++;
+                    visitedForFolding.insert(useInst);
+                    FoldsToZeroPropagate(useInst);
+                }
             }
+
         }
     }
 }
@@ -179,16 +299,62 @@ void FindInterestingConstants::FoldsToSourcePropagate(llvm::Instruction* I)
     {
         if (Instruction * useInst = dyn_cast<Instruction>(*UI))
         {
-            if (FoldsToSource(I, useInst))
+            if (visitedForFolding.find(useInst) == visitedForFolding.end())
             {
-                m_foldsToSource++;
-                if (m_foldsToSource >= IGC_GET_FLAG_VALUE(FoldsToSourceThreshold))
+                if (FoldsToSource(I, useInst))
                 {
-                    break;
+                    m_foldsToSource++;
+                    visitedForFolding.insert(useInst);
                 }
             }
         }
     }
+}
+
+unsigned int FindInterestingConstants::BranchSize(llvm::Instruction* I, llvm::BranchInst* Br, bool& isLoop)
+{
+    std::vector<int> BasicBlock_size;
+    unsigned int size = 0;
+    bool isDummyBB;
+    //For loop instruction
+    for (auto& LI : *m_LI)
+    {
+        Loop* L = &(*LI);
+        BasicBlock* body = L->getLoopLatch();
+        BranchInst* br = cast<BranchInst>(body->getTerminator());
+        if (br == dyn_cast<BranchInst>(Br))
+        {
+            for (BasicBlock* BB : L->getBlocks())
+            {
+                size += BB->size();
+            }
+            isLoop = true;
+            return size;
+        }
+    }
+    for (auto& U : Br->operands())
+    {
+        Value* V = U.get();
+        if (V == I)
+            continue;
+        // For If/else condition
+        else if (BasicBlock* BB = dyn_cast<BasicBlock>(V))
+        {
+            isDummyBB = IGC::isDummyBasicBlock(BB);
+            if (isDummyBB)
+            {
+                BasicBlock_size.push_back(succ_begin(BB)->size());
+            }
+            else
+                BasicBlock_size.push_back(BB->size());
+        }
+        else
+            break;
+    }
+    if (BasicBlock_size.size())
+        size += *std::max_element(BasicBlock_size.begin(), BasicBlock_size.end());
+    isLoop = false;
+    return size;
 }
 
 // Get constant address from load instruction
@@ -248,30 +414,43 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst& I, unsigned& b
     return true;
 }
 
-void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value = 0)
+void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsigned bufIdOrGRFOffset, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t constValue, InstructionStats stats)
 {
+    SConstantAddrValue interestingConst;
+    interestingConst.ca.bufId = bufIdOrGRFOffset;
+    interestingConst.ca.eltId = eltId;
+    interestingConst.anyValue = anyValue;
+    interestingConst.value = constValue;
+    interestingConst.ca.size = size_in_bytes;
+    interestingConst.instCount = stats.instCount;
+    interestingConst.branchCount = stats.branchCount;
+    interestingConst.loopCount = stats.loopCount;
+    interestingConst.samplerCount = stats.samplerCount;
+    interestingConst.weight = stats.weight;
     // For constant buffer accesses of size <= 32bit.
     if (!loadTy->isVectorTy())
     {
         if (size_in_bytes <= 4)
         {
-            SConstantAddrValue cl;
-            cl.ca.bufId = bufIdOrGRFOffset;
-            cl.ca.eltId = eltId;
-            cl.ca.size = size_in_bytes;
-            cl.anyValue = anyValue;
-            cl.value = value;
 
-            std::vector<SConstantAddrValue>& interestingConstantVector = m_InterestingConstants[cl.ca.bufId];
+            std::vector<SConstantAddrValue>& interestingConstantVector = m_InterestingConstants[interestingConst.ca.bufId];
             for (unsigned i = 0; i < interestingConstantVector.size(); i++)
             {
-                if ((interestingConstantVector[i].ca.eltId == cl.ca.eltId) &&
-                    (interestingConstantVector[i].ca.size == cl.ca.size) &&
-                    (interestingConstantVector[i].anyValue == cl.anyValue) &&
-                    (interestingConstantVector[i].value == cl.value))
+                if ((interestingConstantVector[i].ca.eltId == interestingConst.ca.eltId) &&
+                    (interestingConstantVector[i].ca.size == interestingConst.ca.size) &&
+                    (interestingConstantVector[i].anyValue == interestingConst.anyValue) &&
+                    (interestingConstantVector[i].value == interestingConst.value))
+                {
+
+                    interestingConstantVector[i].instCount += interestingConst.instCount;
+                    interestingConstantVector[i].branchCount += interestingConst.branchCount;
+                    interestingConstantVector[i].loopCount += interestingConst.loopCount;
+                    interestingConstantVector[i].samplerCount += interestingConst.samplerCount;
+                    interestingConstantVector[i].weight += interestingConst.weight;
                     return;
+                }
             }
-            interestingConstantVector.push_back(cl);
+            interestingConstantVector.push_back(interestingConst);
         }
     }
     else
@@ -283,28 +462,44 @@ void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsign
             Type * srcEltTy = loadTy->getVectorElementType();
             unsigned srcNElts = loadTy->getVectorNumElements();
             unsigned eltSize_in_bytes = (unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8;
+            interestingConst.ca.size = eltSize_in_bytes;
             for (unsigned i = 0; i < srcNElts; i++)
             {
-                SConstantAddrValue cl;
-                cl.ca.bufId = bufIdOrGRFOffset;
-                cl.ca.eltId = eltId + (i * eltSize_in_bytes);
-                cl.ca.size = eltSize_in_bytes;
-                cl.anyValue = anyValue;
-                cl.value = value;
-
-                std::vector<SConstantAddrValue>& interestingConstantVector = m_InterestingConstants[cl.ca.bufId];
+                interestingConst.ca.eltId = eltId + (i * eltSize_in_bytes);
+                std::vector<SConstantAddrValue>& interestingConstantVector = m_InterestingConstants[interestingConst.ca.bufId];
                 for (unsigned j = 0; j < interestingConstantVector.size(); j++)
                 {
-                    if ((interestingConstantVector[j].ca.eltId == cl.ca.eltId) &&
-                        (interestingConstantVector[j].ca.size == cl.ca.size) &&
-                        (interestingConstantVector[j].anyValue == cl.anyValue) &&
-                        (interestingConstantVector[j].value == cl.value))
+                    if ((interestingConstantVector[j].ca.eltId == interestingConst.ca.eltId) &&
+                        (interestingConstantVector[j].ca.size == interestingConst.ca.size) &&
+                        (interestingConstantVector[j].anyValue == interestingConst.anyValue) &&
+                        (interestingConstantVector[j].value == interestingConst.value))
+                    {
+
+                        interestingConstantVector[i].instCount += interestingConst.instCount;
+                        interestingConstantVector[i].branchCount += interestingConst.branchCount;
+                        interestingConstantVector[i].loopCount += interestingConst.loopCount;
+                        interestingConstantVector[i].samplerCount += interestingConst.samplerCount;
+                        interestingConstantVector[i].weight += interestingConst.weight;
                         return;
+                    }
                 }
-                interestingConstantVector.push_back(cl);
+                interestingConstantVector.push_back(interestingConst);
             }
         }
     }
+}
+
+void FindInterestingConstants::ResetStatCounters()
+{
+    m_foldsToZero = 0;
+    m_foldsToConst = 0;
+    m_foldsToSource = 0;
+    m_constFoldBranch = 0;
+    m_constFoldLoopBranch = 0;
+    m_samplerCount = 0;
+    m_branchsize = 0;
+    m_loopSize = 0;
+    visitedForFolding.clear();
 }
 
 void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
@@ -326,11 +521,10 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
     unsigned bufIdOrGRFOffset;
     int eltId;
     int size_in_bytes;
+    uint32_t constValue;
+    constValue = 0;
+    ResetStatCounters();
 
-    m_foldsToZero = 0;
-    m_foldsToConst = 0;
-    m_foldsToSource = 0;
-    m_constFoldBranch = false;
     if (getConstantAddress(I, bufIdOrGRFOffset, eltId, size_in_bytes))
     {
         /*
@@ -342,39 +536,63 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
         */
         FoldsToConstPropagate(&I);
         // If m_foldsToConst is greater than threshold or some branch instruction gets simplified because of this constant
-        if ((m_constFoldBranch) || (m_foldsToConst >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
+        if (m_foldsToConst || m_constFoldBranch || m_constFoldLoopBranch || m_samplerCount)
         {
+            InstructionStats stats;
+            stats.instCount = m_foldsToConst;
+            stats.branchCount = m_constFoldBranch;
+            stats.loopCount = m_constFoldLoopBranch;
+            stats.samplerCount = m_samplerCount;
+            stats.weight = (m_foldsToConst * IGC_GET_FLAG_VALUE(WeightConstant)) + std::max(m_constFoldBranch * IGC_GET_FLAG_VALUE(BaseWeightBranch), m_branchsize * IGC_GET_FLAG_VALUE(WeightBranch)) +
+                std::max(m_constFoldLoopBranch * IGC_GET_FLAG_VALUE(BaseWeightLoop), m_loopSize * IGC_GET_FLAG_VALUE(WeightLoop)) + (m_samplerCount * IGC_GET_FLAG_VALUE(WeightSampler));
+            constValue = 0;
             // Get the ConstantAddress from LoadInst and log it in interesting constants
-            addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, true);
+            addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, true, constValue, stats);
         }
-        m_foldsToConst = 0;     // Reset FoldsToConst count to zero. We can keep looking for this case when FoldsToZero cannot be propagated further
-        m_constFoldBranch = 0;
+        ResetStatCounters();
         FoldsToZeroPropagate(&I);
         // If m_foldsToZero is greater than threshold or some branch instruction gets simplified because of this constant
-        if ((m_constFoldBranch) ||
-            ((m_foldsToZero + m_foldsToConst) >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold)))
+        if (m_constFoldBranch || m_constFoldLoopBranch || (m_foldsToZero + m_foldsToConst) || m_samplerCount)
         {
+            InstructionStats stats;
+            stats.instCount = m_foldsToZero + m_foldsToConst;
+            stats.branchCount = m_constFoldBranch;
+            stats.loopCount = m_constFoldLoopBranch;
+            stats.samplerCount = m_samplerCount;
+            stats.weight = (m_foldsToConst * IGC_GET_FLAG_VALUE(WeightConstant)) + std::max(m_constFoldBranch * IGC_GET_FLAG_VALUE(BaseWeightBranch), m_branchsize * IGC_GET_FLAG_VALUE(WeightBranch)) +
+                std::max(m_constFoldLoopBranch * IGC_GET_FLAG_VALUE(BaseWeightLoop), m_loopSize * IGC_GET_FLAG_VALUE(WeightLoop)) + (m_samplerCount * IGC_GET_FLAG_VALUE(WeightSampler)) + (m_foldsToZero * IGC_GET_FLAG_VALUE(WeightZeroProp));
+            constValue = 0;
             // Zero value for this constant is interesting
             // Get the ConstantAddress from LoadInst and log it in interesting constants
-            addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, 0);
+            addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, constValue, stats);
             // Continue finding if ONE_VALUE is beneficial for this constant
         }
 
-        FoldsToSourcePropagate(&I);
-        if (m_foldsToSource >= IGC_GET_FLAG_VALUE(FoldsToSourceThreshold))
+        if (IGC_IS_FLAG_ENABLED(EnableFoldsToSourceCheck))
         {
-            // One value for this constant is interesting
-            // Get the ConstantAddress from LoadInst and log it in interesting constants
-            if (I.getType()->isIntegerTy())
+            //visitedForFolding.insert(&I); // TBD: No need to insert load instruction
+            ResetStatCounters();
+            FoldsToSourcePropagate(&I);
+            if (m_foldsToSource)
             {
-                addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, 1);
-            }
-            else if (I.getType()->isFloatTy())
-            {
-                uint32_t value;
-                float floatValue = 1.0;
-                memcpy_s(&value, sizeof(uint32_t), &floatValue, sizeof(float));
-                addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, value);
+                InstructionStats stats;
+                stats.instCount = m_foldsToSource;
+                stats.weight = m_foldsToSource * IGC_GET_FLAG_VALUE(WeightSource);
+                // One value for this constant is interesting
+                // Get the ConstantAddress from LoadInst and log it in interesting constants
+                if (I.getType()->isIntegerTy())
+                {
+                    constValue = 1;
+                    addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, constValue, stats);
+                }
+                else if (I.getType()->isFloatTy())
+                {
+                    uint32_t val;
+                    float floatValue = 1.0;
+                    memcpy_s(&val, sizeof(uint32_t), &floatValue, sizeof(float));
+                    constValue = val;
+                    addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, false, constValue, stats);
+                }
             }
         }
     }
@@ -462,6 +680,7 @@ bool FindInterestingConstants::runOnFunction(Function& F)
 {
     m_DL = &F.getParent()->getDataLayout();
     m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     visit(F);
     return false;
 }

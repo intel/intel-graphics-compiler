@@ -273,16 +273,6 @@ static bool hasMemoryWrite(BasicBlock* BB) {
     return false;
 }
 
-static bool isDummyBasicBlock(BasicBlock* BB) {
-    if (BB->size() != 1)
-        return false;
-    if ((++pred_begin(BB)) != pred_end(BB))
-        return false;
-    if ((++succ_begin(BB)) != succ_end(BB))
-        return false;
-    return true;
-}
-
 static BasicBlock* getJointBasicBlock(PostDominatorTree* PDT, BasicBlock* BB,
     BasicBlock* IfBB) {
     if (isDummyBasicBlock(BB))

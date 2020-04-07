@@ -184,6 +184,8 @@ namespace IGC
     BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIdx, unsigned& bufId);
     int getConstantBufferLoadOffset(llvm::LoadInst* ld);
 
+    bool isDummyBasicBlock(llvm::BasicBlock* BB);
+
     bool IsDirectIdx(unsigned addrSpace);
     bool isNaNCheck(llvm::FCmpInst& FC);
 

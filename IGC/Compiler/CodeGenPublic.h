@@ -255,6 +255,11 @@ namespace IGC
         ConstantAddress ca;
         bool anyValue;
         uint32_t value;
+        uint32_t instCount = 0;
+        uint32_t branchCount = 0;
+        uint32_t loopCount = 0;
+        uint32_t samplerCount = 0;
+        uint32_t weight = 0;
     };
 
     struct SKernelProgram
