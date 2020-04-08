@@ -2926,15 +2926,13 @@ void FlowGraph::markDivergentBBs()
     //    1. update lastJoinBB if needed
     //    2. set up divergence for entry of subroutines if divergent
     //
-    auto updateLastJoinForBB = [&](BB_LIST_ITER& CurrIT, BB_LIST_ITER& IterEnd) ->bool
+    auto updateLastJoinForBB = [&](BB_LIST_ITER& CurrIT, BB_LIST_ITER& IterEnd)
     {
         G4_BB* aBB = *CurrIT;
         if (aBB->size() == 0)
         {
-            return false;
+            return;
         }
-
-        int old_lastJoinBBId = LastJoinBBId;
 
         G4_INST* lastInst = aBB->back();
         if ((lastInst->opcode() == G4_while ||
@@ -2979,8 +2977,7 @@ void FlowGraph::markDivergentBBs()
                 }
             }
         }
-
-        return old_lastJoinBBId != LastJoinBBId;
+        return;
     };
 
     for (int i = 0; i < numFuncs; ++i)
@@ -3104,15 +3101,42 @@ void FlowGraph::markDivergentBBs()
                 }
 
                 // pre-scan loop to find any out-of-loop branch, set join if found
+                //
+                // LastJoinBBId will be updated iff there is a branch out of loop.
+                // For example,
+                //
+                //      L :
+                //           B0
+                //           (p) goto OUT;   // uniform
+                //           if   // divergent
+                //              B1
+                //           else
+                //              B2
+                //           B3
+                //           (p) jmpi L
+                //      OUT:
+                //  Assume LastJoinBBId = -1 (no join) right before this loop, pre-scanning
+                //  loop will set LastJoinBBId = B3, since it is not out of the loop, we will
+                //  need to reset it to -1. Otherwise,  normal scan of loop will make B0 as
+                //  divergent due to LastJoinBBId = B3.
+                //
+                //  The reason for updating LastJoinBBId during pre-scanning is to check if
+                //  out-of-loop goto is uniform or not. The above "goto OUT" is uniform, thus
+                //  it does not make B0 divergent. Without updating LastJoinBBId, this goto
+                //  will be conservatively treated as divergent goto.
+                int orig_LastJoinBBId = LastJoinBBId;
                 for (auto LoopIter = IT; LoopIter != LoopIterEnd; ++LoopIter)
                 {
-                    if (updateLastJoinForBB(LoopIter, IE))
-                    {
-                        if (isPriorToLastJoin(predBB))
-                        {
-                            continue;
-                        }
+                    updateLastJoinForBB(LoopIter, IE);
+                    if (isPriorToLastJoin(predBB))
+                    {  // Once found, no need to pre-scan anymore.
+                        break;
                     }
+                }
+                // If no branch out of loop, restore the original LastJoinBBId
+                if (!isPriorToLastJoin(predBB))
+                {
+                    LastJoinBBId = orig_LastJoinBBId;
                 }
             }
 
@@ -3122,7 +3146,7 @@ void FlowGraph::markDivergentBBs()
                 BB->setInSimdFlow(true);
             }
 
-            (void)updateLastJoinForBB(IT, IE);
+            updateLastJoinForBB(IT, IE);
         }
     }
     return;
