@@ -492,16 +492,19 @@ inline iga::Op OpSpec::op() const
 }
 
 
-#define IGA_OPSPEC_STRING_GETTER(API, INITSIZE) { \
-        char _staticBuf[INITSIZE]; \
-        char *strPtr = &_staticBuf[0]; \
-        size_t strCap = sizeof(_staticBuf); \
-        IGA_CHECKED_CALL(API, m_op, strPtr, &strCap); \
-        if (strCap > sizeof(_staticBuf)) { \
-            strPtr = (char *)alloca(strCap); \
+#define IGA_OPSPEC_STRING_GETTER(API, INITSIZE) {         \
+        char _staticBuf[INITSIZE];                        \
+        char *strPtr = &_staticBuf[0];                    \
+        size_t strCap = sizeof(_staticBuf);               \
+        IGA_CHECKED_CALL(API, m_op, strPtr, &strCap);     \
+        if (strCap > sizeof(_staticBuf)) {                \
+            strPtr = (char *)malloc(strCap);              \
             IGA_CHECKED_CALL(API, m_op, strPtr, &strCap); \
-        } \
-        return std::string(strPtr); \
+            std::string res(strPtr);                      \
+            free(strPtr);                                 \
+            return res;                                   \
+        }                                                 \
+        return std::string(strPtr);                       \
     }
 inline std::string OpSpec::menmonic() const
 IGA_OPSPEC_STRING_GETTER(iga_opspec_mnemonic, 16);
