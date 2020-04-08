@@ -1107,11 +1107,13 @@ namespace vISA
                 {
                     unsigned int reg = bDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
                     unsigned int bundle = get_bundle(reg, offset);
+                    unsigned int bundle1 = get_bundle(reg, offset + 1);
                     if (!(occupiedBundles & ((unsigned short)1 << bundle)))
                     {
                         bundleNum++;
                     }
                     occupiedBundles |= (unsigned short)1 << bundle;
+                    occupiedBundles |= (unsigned short)1 << bundle1;
                 }
             }
             if (bundleNum > 12)

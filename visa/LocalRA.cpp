@@ -640,7 +640,8 @@ int LocalRA::findBundleConflictFreeRegister(int curReg,
                                             bool evenAlign)
 {
     int i = curReg;
-    while (occupiedBundles & (1 << get_bundle(i, 0)))
+    while (occupiedBundles & (1 << get_bundle(i, 0)) ||
+           occupiedBundles & (1 << get_bundle(i, 1)))
     {
         i++;
         findRegisterCandiateWithAlignForward(i, align, evenAlign);
@@ -2755,6 +2756,41 @@ void LinearScan::expireInputRanges(unsigned int global_idx, unsigned int local_i
     }
 }
 
+unsigned short LinearScan::getOccupiedBundle(G4_Declare* dcl)
+{
+    unsigned short occupiedBundles = 0;
+    unsigned bundleNum = 0;
+
+
+    for (size_t i = 0, dclConflictSize = gra.getBundleConflictDclSize(dcl); i < dclConflictSize; i++)
+    {
+        int offset = 0;
+        G4_Declare* bDcl = gra.getBundleConflictDcl(dcl, i, offset);
+        LocalLiveRange* lr = gra.getLocalLR(bDcl);
+        G4_VarBase* preg;
+        int  subregnum;
+        preg = lr->getPhyReg(subregnum);
+
+        if (preg != NULL)
+        {
+            unsigned int reg = preg->asGreg()->getRegNum();
+            unsigned int bundle = gra.get_bundle(reg, offset);
+            unsigned int bundle1 = gra.get_bundle(reg, offset + 1);
+            if (!(occupiedBundles & ((unsigned short)1 << bundle)))
+            {
+                bundleNum++;
+            }
+            occupiedBundles |= (unsigned short)1 << bundle;
+            occupiedBundles |= (unsigned short)1 << bundle1;
+        }
+    }
+    if (bundleNum > 12)
+    {
+        occupiedBundles = 0;
+    }
+
+    return occupiedBundles;
+}
 
 // Allocate registers to live range. It makes a decision whether to spill
 // a currently active range or the range passed as parameter. The range
@@ -2776,8 +2812,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     int size = lr->getSizeInWords();
     G4_Declare *dcl = lr->getTopDcl();
     G4_SubReg_Align subalign = gra.getSubRegAlign(dcl);
-    unsigned short occupiedBundles = gra.getOccupiedBundle(dcl);
-
+    unsigned short occupiedBundles = getOccupiedBundle(dcl);
     localRABound = numRegLRA - globalLRSize - 1;  //-1, localRABound will be counted in findFreeRegs()
 
     BankAlign bankAlign = BankAlign::Either;

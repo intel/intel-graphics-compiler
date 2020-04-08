@@ -482,6 +482,7 @@ private:
 
     void expireRanges(unsigned int);
     void expireInputRanges(unsigned int, unsigned int, unsigned int);
+    unsigned short getOccupiedBundle(G4_Declare* dcl);
     void expireAllActive();
     void expireSplitParent(LocalLiveRange*);
     bool allocateRegsFromBanks(LocalLiveRange*);

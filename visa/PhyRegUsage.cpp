@@ -531,7 +531,8 @@ bool PhyRegUsage::findContiguousNoWrapGRF(bool availRegs[],
             {
                 i++;
             }
-            else if (occupiedBundles & (1 << gra.get_bundle(i, 0)))
+            else if (occupiedBundles & (1 << gra.get_bundle(i, 0)) ||
+                     occupiedBundles & (1 << gra.get_bundle(i, 1)) )
             {
                 i++;
             }
