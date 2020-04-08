@@ -358,18 +358,6 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext* ctx, MetaDataUtils* pMdUtil
     }
 }
 
-CODE_PATCH_T EmitPass::GetCodePatchMode(
-    SIMDMode fromSimd, ShaderDispatchMode fromDispatch,
-    SIMDMode toSimd,   ShaderDispatchMode toDispatch)
-{
-    switch (fromSimd)
-    {
-    default:
-        return CodePatch_NOT_HANDLED;
-    }
-    return CodePatch_NOT_HANDLED;
-}
-
 bool EmitPass::runOnFunction(llvm::Function& F)
 {
     m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -452,27 +440,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             return false;
         }
-
-        m_prevShader = m_pCtx->m_prevShader;
-        VISAKernel* prevKernel = nullptr;
-        CODE_PATCH_T mode = CodePatch_NOT_HANDLED;
-        if (m_prevShader)
-        {
-            mode = GetCodePatchMode(
-                m_prevShader->m_SIMDSize,
-                m_prevShader->m_ShaderDispatchMode,
-                m_currShader->m_SIMDSize,
-                m_currShader->m_ShaderDispatchMode
-                );
-            if (mode != CodePatch_NOT_HANDLED)
-            {
-                prevKernel = m_prevShader->GetEncoder().GetVISAKernel();
-            }
-        }
-
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
-        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, prevKernel, mode);
-
+        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall);
         initDefaultRoundingMode();
         m_currShader->PreCompile();
         if (hasStackCall)
@@ -718,7 +687,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         Function* currHead = m_FGA ? m_FGA->getGroupHead(&F) : &F;
         bool compileWithSymbolTable = (currHead == uniqueEntry);
         m_encoder->Compile(compileWithSymbolTable);
-        m_pCtx->m_prevShader = m_currShader;
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa
         if (hasStackCall)

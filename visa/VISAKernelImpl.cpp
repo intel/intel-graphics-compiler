@@ -458,7 +458,7 @@ int VISAKernelImpl::InitializeFastPath()
 
     m_kernelMem = new vISA::Mem_Manager(4096);
 
-    m_kernel = new (m_mem) G4_Kernel(m_instListNodeAllocator, *m_kernelMem, m_options, m_major_version, m_minor_version, m_prevKernel);
+    m_kernel = new (m_mem) G4_Kernel(m_instListNodeAllocator, *m_kernelMem, m_options, m_major_version, m_minor_version);
     m_kernel->setName(m_name.c_str());
 
     if (getOptions()->getOption(vISA_GenerateDebugInfo))
@@ -491,12 +491,9 @@ int VISAKernelImpl::InitializeFastPath()
     return VISA_SUCCESS;
 }
 
-int VISAKernelImpl::InitializeKernel(const char *kernel_name, VISAKernel* prevKernel)
+int VISAKernelImpl::InitializeKernel(const char *kernel_name)
 {
-    if (prevKernel)
-    {
-        m_prevKernel = ((VISAKernelImpl*)prevKernel)->m_kernel;
-    }
+
     int status = VISA_SUCCESS;
     m_num_pred_vars = Get_CISA_PreDefined_Var_Count();
     setName(kernel_name);

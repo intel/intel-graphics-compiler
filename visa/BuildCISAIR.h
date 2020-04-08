@@ -79,7 +79,7 @@ public:
         const char* flags[],
         const PWA_TABLE pWaTable = nullptr);
     static int DestroyBuilder(CISA_IR_Builder *builder);
-    VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName, VISAKernel* prevKernel = nullptr);
+    VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName);
     VISA_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName);
     VISA_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream * os = nullptr, bool emit_visa_only = false);
 

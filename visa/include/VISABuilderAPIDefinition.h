@@ -813,8 +813,7 @@ typedef enum
 class VISABuilder
 {
 public:
-    VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName, VISAKernel * prevKernel = nullptr) = 0;
-
+    VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName) = 0;
     VISA_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName) = 0;
     VISA_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream* os = nullptr, bool emit_visa_only = false) = 0;
 

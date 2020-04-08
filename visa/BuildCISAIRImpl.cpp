@@ -361,7 +361,7 @@ int CISA_IR_Builder::ClearAsmTextStreams()
     return VISA_FAILURE;
 }
 
-int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName, VISAKernel* prevKernel)
+int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 {
 
     if( kernel != NULL )
@@ -377,7 +377,7 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName, VIS
     m_kernel->setIsKernel(true);
     m_kernels.push_back(kerneltemp);
     m_kernel->setVersion((unsigned char)this->m_header.major_version, (unsigned char)this->m_header.minor_version);
-    m_kernel->InitializeKernel(kernelName, prevKernel);
+    m_kernel->InitializeKernel(kernelName);
     m_kernel->SetGTPinInit(getGtpinInit());
     this->m_kernel_count++;
 
