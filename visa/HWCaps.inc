@@ -374,6 +374,11 @@
         return getGenxPlatform() >= GENX_TGLLP;
     }
 
+    bool hasScalarReadSuppression() const
+    {
+        return getGenxPlatform() > GENX_TGLLP;
+    }
+
     bool alignBindlessSampler() const
     {
         return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN9 && getOption(vISA_alignBindlessSampler);
