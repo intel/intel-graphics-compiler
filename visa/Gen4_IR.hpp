@@ -3945,6 +3945,7 @@ public:
     uint32_t getNumRows() const { return numRows; }
     uint32_t getOffset() const { return offset; }
     G4_Declare* getFP() const { return fp; }
+    G4_SrcRegRegion* getHeader() const { return getSrc(0)->asSrcRegRegion(); }
 
     void setNumRows(uint32_t r) { numRows = r; }
     void setOffset(uint32_t o) { offset = o; }
@@ -3997,10 +3998,13 @@ public:
     uint32_t getNumRows() const { return numRows; }
     uint32_t getOffset() const { return offset; }
     G4_Declare* getFP() const { return fp; }
+    G4_SrcRegRegion* getHeader() const { return getSrc(0)->asSrcRegRegion(); }
 
     void setNumRows(uint32_t r) { numRows = r; }
     void setOffset(uint32_t o) { offset = o; }
     void setFP(G4_Declare* f) { fp = f; }
+
+
 
     bool isOffsetValid() { return offset != InvalidOffset; }
 

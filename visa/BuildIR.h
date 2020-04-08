@@ -447,6 +447,11 @@ private:
     // like builinImmVector4, only initialized if kernel uses SLM untyped r/w (ok, may need it for blocked SLM message as well)
     G4_Declare* builtinSLMSpillAddr;
 
+    // common message header for spill/fill intrinsics
+    // We put them here instead of spillManager since there may be multiple rounds of spill,
+    // and we want to use a common header
+    G4_Declare* spillFillHeader = nullptr;
+
 
     // Indicates that sampler header cache (builtinSamplerHeader) is correctly
     // initialized with r0 contents.
@@ -887,6 +892,14 @@ public:
 
     G4_Declare* getBuiltinSLMSpillAddr() const { return builtinSLMSpillAddr; }
     G4_Declare* getBuiltinImmVector4() const { return builtinImmVector4; }
+    G4_Declare* getSpillFillHeader()
+    {
+        if (!spillFillHeader)
+        {
+            spillFillHeader = createDeclareNoLookup("spillHeader", G4_GRF, getGRFSize() / sizeof(int), 1, Type_UD);
+        }
+        return spillFillHeader;
+    }
 
     void initBuiltinSLMSpillAddr(int perThreadSLMSize);
 
