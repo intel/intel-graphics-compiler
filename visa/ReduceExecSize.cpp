@@ -29,8 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace vISA;
 
-using std::printf;
-
 uint8_t HWConformity::checkMinExecSize( G4_opcode op )
 {
     if( op == G4_dp2 ||
@@ -520,12 +518,6 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
         {
             if( forceEvenSplit )
             {
-                if( builder.getOption(vISA_OptReport) )
-                {
-                    printf( "\nFix Inst Size for:\n" );
-                    inst->emit( std::cout );
-                    printf( "\nsplit into: \n" );
-                }
                 splitSIMD32Inst( iter, bb );
                 return insertMOV;
             }
@@ -664,16 +656,10 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
         if( !splitOp && execSize == 32 &&
              (packedByteDst || ( inst->getPredicate() || inst->getCondMod() )) )
         {
-            if( forceEvenSplit )
+            if (forceEvenSplit)
             {
-                if( builder.getOption(vISA_OptReport) )
-                {
-                    printf( "\nFix Inst Size for:\n" );
-                    inst->emit( std::cout );
-                    printf( "\nsplit into: \n" );
-                }
                 // FIXME: try to use evenlySplitInst() instead.
-                splitSIMD32Inst( iter, bb );
+                splitSIMD32Inst(iter, bb);
                 return insertMOV;
             }
         }
@@ -692,13 +678,6 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
     if( !splitOp )
     {
         return insertMOV;
-    }
-
-    if( builder.getOption(vISA_OptReport) )
-    {
-        printf( "\nFix Inst Size for:\n" );
-        inst->emit( std::cout );
-        printf( "\nsplit into: \n" );
     }
 
     MUST_BE_TRUE( (inst->opcode() != G4_smov), "Error in splitting smov instruction" );

@@ -1271,16 +1271,6 @@ public:
     unsigned int getFreeGlobalReg(unsigned int n) { return globalFreeRegs[n]; }
     void addFreeGlobalReg(unsigned int n) { globalFreeRegs.push_back(n); }
 
-    void dumpGlobalFreeGRFs()
-    {
-        printf("Global free regs:");
-        for (unsigned int i = 0; i < globalFreeRegs.size(); i++)
-        {
-            printf("r%d.%d:b, ", globalFreeRegs[i]/G4_GRF_REG_NBYTES, globalFreeRegs[i]%G4_GRF_REG_NBYTES);
-        }
-        printf("\n");
-    }
-
     // This function internally mallocs memory to hold buffer
     // of free GRFs. It is meant to be freed by caller after
     // last use of the buffer.

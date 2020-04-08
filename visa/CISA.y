@@ -1175,7 +1175,6 @@ SVM_OP ExecSize VecSrcOperand_G_I_IMM RawOperand
 //          2              3   4      5   6      7        8          9
 | Predicate SVM_SCATTER_OP DOT NUMBER DOT NUMBER ExecSize RawOperand RawOperand
 {
-    /// printf("Exec size: %d\n", $8.exec_size);
     pCisaBuilder->CISA_create_svm_scatter_instruction($1.cisa_gen_opnd, (SVMSubOpcode)$2, $7.emask, $7.exec_size, (unsigned int)$4, (unsigned int)$6, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
 }
 //          2             3             4               5        6          7          8          9

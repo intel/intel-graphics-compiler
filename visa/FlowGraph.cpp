@@ -1314,39 +1314,6 @@ void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHa
     }
 }
 
-#ifdef _DEBUG
-void dump(FlowGraph* fg)
-{
-    for (auto bbIt = fg->begin(); bbIt != fg->end(); bbIt++)
-    {
-        auto bb = (*bbIt);
-
-        printf("BB%d\n", bb->getId());
-        printf("Pred: ");
-        for (auto p : bb->Preds)
-        {
-            printf("%d, ", p->getId());
-        }
-        printf("\nSucc: ");
-        for (auto s : bb->Succs)
-        {
-            printf("%d, ", s->getId());
-        }
-        printf("\n");
-
-        if (bb->getInstList().size() > 0 &&
-            bb->front()->isLabel())
-            bb->front()->dump();
-
-        printf("\n...\n");
-        if (bb->getInstList().size() > 0)
-            bb->getInstList().back()->dump();
-
-        printf("\n-----\n");
-    }
-}
-#endif
-
 void FlowGraph::linkReturnAddr(G4_BB* entryBB, G4_BB* returnAddr)
 {
 
@@ -4302,9 +4269,7 @@ split(const string & str, const char * delimiter) {
         v.emplace_back(str, start, str.length() - start);
     return v;
 }
-#ifdef DEBUG_VERBOSE_ON
-static int noBankCount = 0;
-#endif
+
 void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize)
 {
     //
@@ -4639,9 +4604,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
 
         }
     }
-#ifdef DEBUG_VERBOSE_ON
-    printf("noBankCount: %d\n", noBankCount);
-#endif
+
     if (!newAsm)
     {
         //Step4: emit clean-up.
@@ -4916,15 +4879,6 @@ void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
                 maxGRFNum = ((execSize[i] + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ) > maxGRFNum ?
                     ((execSize[i] + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ) : maxGRFNum;
             }
-
-#ifdef DEBUG_VERBOSE_ON
-            if (((regNum[0][1] & 0x02) == (regNum[0][2] & 0x02)) &&
-                ((regNum[0][1] >= SECOND_HALF_BANK_START_GRF && regNum[0][2] < SECOND_HALF_BANK_START_GRF) ||
-                (regNum[0][1] < SECOND_HALF_BANK_START_GRF && regNum[0][2] >= SECOND_HALF_BANK_START_GRF)))
-            {
-                noBankCount++;
-            }
-#endif
         }
         output << "BC=";
         if (!parent->builder->twoSourcesCollision())
