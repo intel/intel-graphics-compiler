@@ -4200,12 +4200,18 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
 void G4_BB_SB::getGRFBuckets(SBNode* node,
     SBFootprint* footprint,
     Gen4_Operand_Number opndNum,
-    std::vector<SBBucketDescr>& BDvec)
+    std::vector<SBBucketDescr>& BDvec,
+    bool GRFOnly)
 {
     SBFootprint* curFootprint = footprint;
 
     while (curFootprint != nullptr)
     {
+        if (GRFOnly && (curFootprint->fType != GRF_T))
+        {
+            continue;
+        }
+
         int aregOffset = totalGRFNum;
         int startingBucket = curFootprint->LeftB / G4_GRF_REG_NBYTES;
         int endingBucket = curFootprint->RightB / G4_GRF_REG_NBYTES;
@@ -4274,7 +4280,7 @@ void G4_BB_SB::getGRFBucketsForOperands(SBNode* node,
         {
             continue;
         }
-        getGRFBuckets(node, footprint, opndNum, BDvec);
+        getGRFBuckets(node, footprint, opndNum, BDvec, GRFOnly);
     }
 
     return;
@@ -4451,7 +4457,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         {
             getGRFBucketDescrs(node, liveBDvec, false);
         }
-
 
         // For ALU instructions without GRF usage
         if (distanceHonourInstruction(curInst))
