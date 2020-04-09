@@ -762,6 +762,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     addGlobalDependence(globalSendNum, &globalSendOpndList, &SBNodes, p, false);
 
     //SWSB token alloation with linear scan algorithm.
+    tokenProfile = new (mem)SWSB_TOKEN_PROFILE();
     if (fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation))
     {
         tokenAllocationGlobal();
@@ -2176,7 +2177,7 @@ void SWSB::tokenAllocation()
     }
     topIndex = 0;
 
-    kernel.setTokenInstructionCount((int)SBSendNodes.size());
+    tokenProfile->setTokenInstructionCount((int)SBSendNodes.size());
     uint32_t AWTokenReuseCount = 0;
     uint32_t ARTokenReuseCount = 0;
     uint32_t AATokenReuseCount = 0;
@@ -2245,10 +2246,10 @@ void SWSB::tokenAllocation()
         unsigned prunedDiffBBEdgeNum = 0;
         unsigned prunedDiffBBSameTokenEdgeNum = 0;
         tokenEdgePrune(prunedEdgeNum, prunedGlobalEdgeNum, prunedDiffBBEdgeNum, prunedDiffBBSameTokenEdgeNum);
-        kernel.setPrunedEdgeNum(prunedEdgeNum);
-        kernel.setPrunedGlobalEdgeNum(prunedGlobalEdgeNum);
-        kernel.setPrunedDiffBBEdgeNum(prunedDiffBBEdgeNum);
-        kernel.setPrunedDiffBBSameTokenEdgeNum(prunedDiffBBSameTokenEdgeNum);
+        tokenProfile->setPrunedEdgeNum(prunedEdgeNum);
+        tokenProfile->setPrunedGlobalEdgeNum(prunedGlobalEdgeNum);
+        tokenProfile->setPrunedDiffBBEdgeNum(prunedDiffBBEdgeNum);
+        tokenProfile->setPrunedDiffBBSameTokenEdgeNum(prunedDiffBBSameTokenEdgeNum);
     }
 
     for (auto node_it = SBSendNodes.begin();
@@ -2270,10 +2271,10 @@ void SWSB::tokenAllocation()
         }
     }
 
-    kernel.setAWTokenReuseCount(AWTokenReuseCount);
-    kernel.setARTokenReuseCount(ARTokenReuseCount);
-    kernel.setAATokenReuseCount(AATokenReuseCount);
-    kernel.setMathInstCount(mathInstCount);
+    tokenProfile->setAWTokenReuseCount(AWTokenReuseCount);
+    tokenProfile->setARTokenReuseCount(ARTokenReuseCount);
+    tokenProfile->setAATokenReuseCount(AATokenReuseCount);
+    tokenProfile->setMathInstCount(mathInstCount);
 }
 
 unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*& candidateNode, bool& fromSibling)
@@ -2896,10 +2897,10 @@ void SWSB::tokenAllocationGlobalWithPropogation()
         unsigned prunedDiffBBEdgeNum = 0;
         unsigned prunedDiffBBSameTokenEdgeNum = 0;
         tokenEdgePrune(prunedEdgeNum, prunedGlobalEdgeNum, prunedDiffBBEdgeNum, prunedDiffBBSameTokenEdgeNum);
-        kernel.setPrunedEdgeNum(prunedEdgeNum);
-        kernel.setPrunedGlobalEdgeNum(prunedGlobalEdgeNum);
-        kernel.setPrunedDiffBBEdgeNum(prunedDiffBBEdgeNum);
-        kernel.setPrunedDiffBBSameTokenEdgeNum(prunedDiffBBSameTokenEdgeNum);
+        tokenProfile->setPrunedEdgeNum(prunedEdgeNum);
+        tokenProfile->setPrunedGlobalEdgeNum(prunedGlobalEdgeNum);
+        tokenProfile->setPrunedDiffBBEdgeNum(prunedDiffBBEdgeNum);
+        tokenProfile->setPrunedDiffBBSameTokenEdgeNum(prunedDiffBBSameTokenEdgeNum);
     }
 
     for (auto node_it = SBSendNodes.begin();
@@ -2972,10 +2973,10 @@ void SWSB::tokenAllocationGlobal()
         unsigned prunedDiffBBEdgeNum = 0;
         unsigned prunedDiffBBSameTokenEdgeNum = 0;
         tokenEdgePrune(prunedEdgeNum, prunedGlobalEdgeNum, prunedDiffBBEdgeNum, prunedDiffBBSameTokenEdgeNum);
-        kernel.setPrunedEdgeNum(prunedEdgeNum);
-        kernel.setPrunedGlobalEdgeNum(prunedGlobalEdgeNum);
-        kernel.setPrunedDiffBBEdgeNum(prunedDiffBBEdgeNum);
-        kernel.setPrunedDiffBBSameTokenEdgeNum(prunedDiffBBSameTokenEdgeNum);
+        tokenProfile->setPrunedEdgeNum(prunedEdgeNum);
+        tokenProfile->setPrunedGlobalEdgeNum(prunedGlobalEdgeNum);
+        tokenProfile->setPrunedDiffBBEdgeNum(prunedDiffBBEdgeNum);
+        tokenProfile->setPrunedDiffBBSameTokenEdgeNum(prunedDiffBBSameTokenEdgeNum);
     }
 
     for (auto node_it = SBSendNodes.begin();
@@ -3435,13 +3436,13 @@ void SWSB::insertTest()
         }
     }
 
-    kernel.setSyncInstCount(syncInstCount);
-    kernel.setMathReuseCount(mathReuseCount);
-    kernel.setAWSyncInstCount(AWSyncInstCount);
-    kernel.setARSyncInstCount(ARSyncInstCount);
-    kernel.setAWSyncAllCount(AWSyncAllCount);
-    kernel.setARSyncAllCount(ARSyncAllCount);
-    kernel.setTokenReuseCount(tokenReuseCount);
+    tokenProfile->setSyncInstCount(syncInstCount);
+    tokenProfile->setMathReuseCount(mathReuseCount);
+    tokenProfile->setAWSyncInstCount(AWSyncInstCount);
+    tokenProfile->setARSyncInstCount(ARSyncInstCount);
+    tokenProfile->setAWSyncAllCount(AWSyncAllCount);
+    tokenProfile->setARSyncAllCount(ARSyncAllCount);
+    tokenProfile->setTokenReuseCount(tokenReuseCount);
 }
 
 void SWSB::dumpDepInfo()
@@ -5792,16 +5793,6 @@ void G4_Kernel::emit_dep(std::ostream& output)
     output << "\n" << "//.CISA version " << (unsigned int)major_version
         << "." << (unsigned int)minor_version;
     output << "\n" << "//.kernel ID 0x" << hex << getKernelID() << "\n";
-    output << "\n" << "//.Token_Instruction_Count " << dec << getTokenInstructionCount() << "\n";
-    output << "\n" << "//.Token_Reuse_Count " << dec << getTokenReuseCount() << "\n";
-    output << "\n" << "//.Math_Token_Reuse_Count " << dec << getMathReuseCount() << "\n";
-    output << "\n" << "//.AW_Token_Reuse_Count " << dec << getAWTokenReuseCount() << "\n";
-    output << "\n" << "//.AR_Token_Reuse_Count " << dec << getARTokenReuseCount() << "\n";
-    output << "\n" << "//.AA_Token_Reuse_Count " << dec << getAATokenReuseCount() << "\n";
-    output << "\n" << "//.Math_Inst_Count " << dec << getMathInstCount() << "\n";
-    output << "\n" << "//.Sync_Inst_Count " << dec << getSyncInstCount() << "\n";
-    output << "\n" << "//.AW_Sync_Inst_Count " << dec << getAWSyncInstCount() << "\n";
-    output << "\n" << "//.AR_Sync_Inst_Count " << dec << getARSyncInstCount() << "\n";
     output << "\n" << "//.Bank_Good_Count " << dec << getBankGoodNum() << "\n";
     output << "\n" << "//.Bank_Ok_Count " << dec << getBankOkNum() << "\n";
     output << "\n" << "//.Bank_Bad_Count " << dec << getBankBadNum() << "\n";

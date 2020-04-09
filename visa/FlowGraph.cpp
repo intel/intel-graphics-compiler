@@ -4623,16 +4623,6 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             output << "//.twoSrcBankConflicts: " <<  fg.G12BCStats.twoSrcBC << "\n";
             output << "//.SIMD8s: " <<  fg.G12BCStats.simd8 << "\n//\n";
             output << "//.RMWs: " << fg.numRMWs << "\n//\n";
-            output << "//.sync.nop number: " << syncInstCount << "\n";
-            output << "//.sync.allwr number: " << AWSyncInstCount << "\n";
-            output << "//.sync.allrd number: " << ARSyncInstCount << "\n";
-            output << "//.sync.all wr number: " << AWSyncAllCount << "\n";
-            output << "//.sync.all rd number: " << ARSyncAllCount << "\n";
-            output << "//.Token reuse times: " << tokenReuseCount << "\n";
-            output << "//.Pruned edge number: " << prunedDepEdges << "\n";
-            output << "//.Pruned global edge number: " << prunedGlobalEdgeNum << "\n";
-            output << "//.Pruned Diff BB edge number: " << prunedDiffBBEdgeNum << "\n";
-            output << "//.Pruned Diff BB Same token edge number: " << prunedDiffBBSameTokenEdgeNum << "\n";
         }
         else
         {

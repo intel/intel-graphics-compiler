@@ -1407,22 +1407,6 @@ class G4_Kernel
 
     uint32_t asmInstCount;
     uint64_t kernelID;
-    uint32_t tokenInstructionCount;
-    uint32_t tokenReuseCount;
-    uint32_t AWTokenReuseCount;
-    uint32_t ARTokenReuseCount;
-    uint32_t AATokenReuseCount;
-    uint32_t mathInstCount;
-    uint32_t syncInstCount;
-    uint32_t mathReuseCount;
-    uint32_t ARSyncInstCount;
-    uint32_t AWSyncInstCount;
-    uint32_t ARSyncAllCount;
-    uint32_t AWSyncAllCount;
-    uint32_t prunedDepEdges;
-    uint32_t prunedGlobalEdgeNum;
-    uint32_t prunedDiffBBEdgeNum;
-    uint32_t prunedDiffBBSameTokenEdgeNum;
 
     uint32_t bank_good_num;
     uint32_t bank_ok_num;
@@ -1453,11 +1437,7 @@ public:
     G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
               Mem_Manager &m, Options *options, unsigned char major, unsigned char minor)
               : m_options(options), RAType(RA_Type::UNKNOWN_RA),
-              asmInstCount(0), kernelID(0), tokenInstructionCount(0), tokenReuseCount(0),
-              AWTokenReuseCount(0), ARTokenReuseCount(0), AATokenReuseCount(0),
-              mathInstCount(0), syncInstCount(0),mathReuseCount(0),
-              ARSyncInstCount(0), AWSyncInstCount(0), ARSyncAllCount(0), AWSyncAllCount(0),
-              prunedDepEdges(0), prunedGlobalEdgeNum(0), prunedDiffBBEdgeNum(0), prunedDiffBBSameTokenEdgeNum(0),
+              asmInstCount(0), kernelID(0),
               bank_good_num(0), bank_ok_num(0),
               bank_bad_num(0), fg(alloc, this, m), major_version(major), minor_version(minor)
     {
@@ -1513,54 +1493,6 @@ public:
 
     void setAsmCount(int count) { asmInstCount = count; }
     uint32_t getAsmCount() const { return asmInstCount; }
-
-    void setTokenInstructionCount(int count) {tokenInstructionCount = count; }
-    uint32_t getTokenInstructionCount() {return tokenInstructionCount; }
-
-    void setTokenReuseCount(int count) {tokenReuseCount= count; }
-    uint32_t getTokenReuseCount() {return tokenReuseCount; }
-
-    void setAWTokenReuseCount(int count) {AWTokenReuseCount= count; }
-    uint32_t getAWTokenReuseCount() {return AWTokenReuseCount; }
-
-    void setARTokenReuseCount(int count) {ARTokenReuseCount= count; }
-    uint32_t getARTokenReuseCount() {return ARTokenReuseCount; }
-
-    void setAATokenReuseCount(int count) {AATokenReuseCount= count; }
-    uint32_t getAATokenReuseCount() {return AATokenReuseCount; }
-
-    void setMathInstCount(int count) {mathInstCount= count; }
-    uint32_t getMathInstCount() {return mathInstCount; }
-
-    void setSyncInstCount(int count) {syncInstCount= count; }
-    uint32_t getSyncInstCount() {return syncInstCount; }
-
-    void setMathReuseCount(int count) {mathReuseCount= count; }
-    uint32_t getMathReuseCount() {return mathReuseCount; }
-
-    void setARSyncInstCount(int count) {ARSyncInstCount= count; }
-    uint32_t getARSyncInstCount() {return ARSyncInstCount; }
-
-    void setAWSyncInstCount(int count) {AWSyncInstCount= count; }
-    uint32_t getAWSyncInstCount() {return AWSyncInstCount; }
-
-    void setARSyncAllCount(int count) { ARSyncAllCount = count; }
-    uint32_t getARSyncAllCount() { return ARSyncAllCount; }
-
-    void setAWSyncAllCount(int count) { AWSyncAllCount = count; }
-    uint32_t getAWSyncAllCount() { return AWSyncAllCount; }
-
-    void setPrunedEdgeNum(int num) { prunedDepEdges = num; }
-    uint32_t getPrunedEdgeNum() { return prunedDepEdges; }
-
-    void setPrunedGlobalEdgeNum(int num) { prunedGlobalEdgeNum = num; }
-    uint32_t getPrunedGlobalEdgeNum() { return prunedGlobalEdgeNum; }
-
-    void setPrunedDiffBBEdgeNum(int num) { prunedDiffBBEdgeNum = num; }
-    uint32_t getPrunedDiffBBEdgeNum() { return prunedDiffBBEdgeNum; }
-
-    void setPrunedDiffBBSameTokenEdgeNum(int num) { prunedDiffBBSameTokenEdgeNum = num; }
-    uint32_t getPrunedDiffBBSameTokenEdgeNum() { return prunedDiffBBSameTokenEdgeNum; }
 
     void setBankGoodNum(int num) {bank_good_num = num; }
     uint32_t getBankGoodNum() {return bank_good_num; }
