@@ -426,15 +426,38 @@ int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, VISA_Exec_Size ex
 // convert src into a direct packed region
 //
 static G4_SrcRegRegion* operandToDirectSrcRegRegion(
-    IR_Builder& builder, G4_Operand* src, uint8_t exsize)
+    IR_Builder& builder, G4_Operand* src, uint8_t newSize, uint8_t oldSize)
 {
     if (src->isSrcRegRegion())
     {
         G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
         if (srcRegion->getRegAccess() == IndirGRF)
         {
-            G4_Declare* dcl = builder.createTempVarWithNoSpill(exsize, src->getType(), Any);
-            builder.Create_MOV_Inst(dcl, 0, 0, exsize, nullptr, nullptr, src, true);
+            G4_Declare* dcl = builder.createTempVarWithNoSpill(newSize, src->getType(), Any);
+            if (srcRegion->getRegion()->isRegionWH() && newSize > oldSize)
+            {
+                // for VxH regions we can't directly broadcast if new exec size is wider
+                if (oldSize == 1)
+                {
+                    srcRegion->setRegion(builder.getRegionScalar());
+                    builder.createMov(newSize, builder.Create_Dst_Opnd_From_Dcl(dcl, 1), srcRegion,
+                        InstOpt_WriteEnable, true);
+                }
+                else
+                {
+                    // ToDo: i think this is needed for all regions
+                    auto tmpDst = builder.Create_Dst_Opnd_From_Dcl(dcl, 1);
+                    builder.createMov(oldSize, tmpDst, src, InstOpt_WriteEnable, true);
+                    auto tmpSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 0,
+                        builder.createRegionDesc(0, oldSize, 1), src->getType());
+                    builder.createMov(newSize, builder.Create_Dst_Opnd_From_Dcl(dcl, 1), tmpSrc,
+                        InstOpt_WriteEnable, true);
+                }
+            }
+            else
+            {
+                builder.Create_MOV_Inst(dcl, 0, 0, newSize, nullptr, nullptr, src, true);
+            }
             return builder.Create_Src_Opnd_From_Dcl(dcl, builder.getRegionStride1());
         }
         return src->asSrcRegRegion();
@@ -443,8 +466,8 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
     {
         //src is an immediate
         MUST_BE_TRUE(src->isImm(), "expect immediate operand");
-        G4_Declare *tmpSrc = builder.createTempVarWithNoSpill(exsize, G4_Operand::GetNonVectorImmType(src->getType()), Any);
-        builder.Create_MOV_Inst(tmpSrc, 0, 0, exsize, nullptr, nullptr, src, true);
+        G4_Declare *tmpSrc = builder.createTempVarWithNoSpill(newSize, G4_Operand::GetNonVectorImmType(src->getType()), Any);
+        builder.Create_MOV_Inst(tmpSrc, 0, 0, newSize, nullptr, nullptr, src, true);
         return builder.Create_Src_Opnd_From_Dcl(tmpSrc, builder.getRegionStride1());
     }
 }
@@ -539,8 +562,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, VISA_Exec_S
         src0Opnd = valueOneOpnd;
     }
 
-    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
-    G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, element_size);
+    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
+    G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, element_size, instExecSize);
 
     // src operand registers
     G4_DstRegRegion tdst_src0(Direct, t6->getRegVar(), 0, 0, 1, Type_DF );
@@ -931,8 +954,8 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, V
         src0Opnd = valueOneOpnd;
     }
 
-    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
-    G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, element_size);
+    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
+    G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, element_size, instExecSize);
 
     if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef)
     {
@@ -1219,7 +1242,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, VIS
 
     inst = createPseudoKills ({ t6, t7, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
 
-    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
+    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
 
     if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef)
     {
@@ -1516,7 +1539,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
     inst = createPseudoKills({t6, t7, t8, t9, t10, t11, flagReg }, PseudoKillType::Src);
 
-    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
+    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
 
     bool IsSrc0Moved = src0RR->getRegion()->isScalar() || src0RR->getModifier() != Mod_src_undef;
     if (IsSrc0Moved)
