@@ -269,21 +269,24 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
 
 
     // Private branch
-    privateBlock = BasicBlock::Create(I.getContext(), "PrivateBlock", convergeBlock->getParent(), convergeBlock);
+    if (!m_ctx->forceGlobalMemoryAllocation())
     {
-        IRBuilder<> privateBuilder(privateBlock);
-        PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_PRIVATE);
-        Value* privatePtr = privateBuilder.CreateAddrSpaceCast(pointerOperand, ptrType);
+        privateBlock = BasicBlock::Create(I.getContext(), "PrivateBlock", convergeBlock->getParent(), convergeBlock);
+        {
+            IRBuilder<> privateBuilder(privateBlock);
+            PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_PRIVATE);
+            Value* privatePtr = privateBuilder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
-        if (LoadInst* LI = dyn_cast<LoadInst>(&I))
-        {
-            privateLoad = privateBuilder.CreateAlignedLoad(privatePtr, LI->getAlignment(), LI->isVolatile(), "privateLoad");
+            if (LoadInst* LI = dyn_cast<LoadInst>(&I))
+            {
+                privateLoad = privateBuilder.CreateAlignedLoad(privatePtr, LI->getAlignment(), LI->isVolatile(), "privateLoad");
+            }
+            else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
+            {
+                privateBuilder.CreateAlignedStore(I.getOperand(0), privatePtr, SI->getAlignment(), SI->isVolatile());
+            }
+            privateBuilder.CreateBr(convergeBlock);
         }
-        else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
-        {
-            privateBuilder.CreateAlignedStore(I.getOperand(0), privatePtr, SI->getAlignment(), SI->isVolatile());
-        }
-        privateBuilder.CreateBr(convergeBlock);
     }
 
     // Local Branch
@@ -311,12 +314,14 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     globalBlock = BasicBlock::Create(I.getContext(), "GlobalBlock", convergeBlock->getParent(), convergeBlock);
     {
         IRBuilder<> globalBuilder(globalBlock);
-        PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL);
+        PointerType* ptrType = pointerType->getElementType()->getPointerTo(
+            m_ctx->forceGlobalMemoryAllocation() ? ADDRESS_SPACE_GLOBAL_OR_PRIVATE : ADDRESS_SPACE_GLOBAL);
         Value* globalPtr = globalBuilder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
         if (LoadInst* LI = dyn_cast<LoadInst>(&I))
         {
-            globalLoad = globalBuilder.CreateAlignedLoad(globalPtr, LI->getAlignment(), LI->isVolatile(), "globalLoad");
+            globalLoad = globalBuilder.CreateAlignedLoad(globalPtr, LI->getAlignment(), LI->isVolatile(),
+                m_ctx->forceGlobalMemoryAllocation() ? "privateOrGlobalLoad" : "globalLoad");
         }
         else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
         {
@@ -328,9 +333,26 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     currentBlock->getTerminator()->eraseFromParent();
     builder.SetInsertPoint(currentBlock);
 
-    // Local branch can be saved if there are no local to generic casts
-    if (m_ctx->hasNoLocalToGenericCast())
+
+    // Private branch can be saved if private mem is allocated in global stateless
+    if (m_ctx->forceGlobalMemoryAllocation())
     {
+        SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, 1);
+        // Based on tag there are two cases 010: local, 000/111: global
+        switchTag->addCase(localTag, localBlock);
+
+        if ((localLoad != nullptr) && (globalLoad != nullptr))
+        {
+            IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
+            PHINode* phi = phiBuilder.CreatePHI(I.getType(), 2, I.getName());
+            phi->addIncoming(localLoad, localBlock);
+            phi->addIncoming(globalLoad, globalBlock);
+            I.replaceAllUsesWith(phi);
+        }
+    }
+    else if (m_ctx->hasNoLocalToGenericCast())
+    {
+        // Local branch can be saved if there are no local to generic casts
         SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, 1);
         // Based on tag there are two cases 001: private, 000/111: global
         switchTag->addCase(privateTag, privateBlock);
@@ -347,7 +369,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     else
     {
         SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, 2);
-        // Based on tag there are two cases 001: private, 010: local, 000/111: global
+        // Based on tag there are three cases 001: private, 010: local, 000/111: global
         switchTag->addCase(privateTag, privateBlock);
         switchTag->addCase(localTag, localBlock);
 
@@ -372,7 +394,7 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, 
 
     Value* nonLocalLoad = nullptr;
 
-    PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL);
+    PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL_OR_PRIVATE);
     Value* globalPtr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
     if (LoadInst* LI = dyn_cast<LoadInst>(&I))
