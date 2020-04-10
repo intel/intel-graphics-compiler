@@ -874,10 +874,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 {
                     kernel->getIRBuilder()->setRetVarSize(kernel->getKernelFormat()->return_value_size);
                 }
-                if (kernel->getIRBuilder()->getIsExtern())
-                {
-                    kernel->getKernel()->setIsExternFunc();
-                }
                 kernel->getIRBuilder()->setFuncId(k);
 
                 strcpy_s((char*)&pseudoHeader.functions[k].name, COMMON_ISA_MAX_FILENAME_LENGTH, (*iter)->getKernel()->getName());
