@@ -2857,8 +2857,7 @@ G4_BB *CFGStructurizer::createBBWithLabel()
     std::string str("label_cf_");
     str += std::to_string(newBB->getId());
     G4_Label* lab = CFG->builder->createLabel(str, LABEL_BLOCK);
-    G4_INST *labelInst = CFG->builder->createInternalInst(
-        NULL, G4_label, NULL, false, UNDEFINED_EXEC_SIZE, NULL, lab, NULL, 0);
+    G4_INST *labelInst = CFG->builder->createLabelInst(lab, false);
     newBB->push_front(labelInst);
     return newBB;
 }

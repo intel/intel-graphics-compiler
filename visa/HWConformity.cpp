@@ -7823,9 +7823,9 @@ void HWConformity::fixPredCtrl(INST_LIST_ITER it, G4_BB* bb)
             if (flagDcl->getNumberFlagElements() < 16)
             {
                 // clear the upper bit of the flag
-                auto andInst = builder.createInst(nullptr, G4_and, nullptr, false, 1, builder.Create_Dst_Opnd_From_Dcl(tmpFlag, 1),
+                auto andInst = builder.createBinOp(G4_and, 1, builder.Create_Dst_Opnd_From_Dcl(tmpFlag, 1),
                     builder.Create_Src_Opnd_From_Dcl(flagDcl, builder.getRegionScalar()),
-                    builder.createImm(allOneMask, Type_UW), InstOpt_WriteEnable);
+                    builder.createImm(allOneMask, Type_UW), InstOpt_WriteEnable, false);
                 bb->insert(it, andInst);
                 cmpSrc0Flag = tmpFlag;
             }
@@ -7834,7 +7834,7 @@ void HWConformity::fixPredCtrl(INST_LIST_ITER it, G4_BB* bb)
 
             G4_Imm* immVal = builder.createImm(pred->getControl() == PRED_ANY_WHOLE ? 0 : allOneMask, flagType);
             // cmp needs to be as wide as the original inst but is uniform and NoMask otherwise
-            auto cmpInst = builder.createInst(nullptr, G4_cmp, condMod, false, inst->getExecSize(), builder.createNullDst(flagType),
+            auto cmpInst = builder.createInternalInst(nullptr, G4_cmp, condMod, false, inst->getExecSize(), builder.createNullDst(flagType),
                 builder.createSrcRegRegion(Mod_src_undef, Direct, cmpSrc0Flag->getRegVar(), 0, 0, builder.getRegionScalar(), flagType),
                 immVal, InstOpt_WriteEnable);
             bb->insert(it, cmpInst);

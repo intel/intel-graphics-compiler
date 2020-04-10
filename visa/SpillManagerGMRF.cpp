@@ -2369,17 +2369,14 @@ inline G4_INST *
 SpillManagerGRF::createAddFPInst (
     unsigned char      execSize,
     G4_DstRegRegion *      dst,
-    G4_Operand *      src,
-    G4_Predicate *    predicate
+    G4_Operand *      src
 )
 {
     const RegionDesc* rDesc = builder_->getRegionScalar();
     G4_Operand* fp = builder_->createSrcRegRegion(
         Mod_src_undef, Direct, builder_->kernel.fg.framePtrDcl->getRegVar(),
         0, 0, rDesc, Type_UD);
-    auto newInst = builder_->createInst (
-        predicate, G4_add, NULL, false, execSize, dst,
-        fp, src, InstOpt_WriteEnable);
+    auto newInst = builder_->createBinOp(G4_add, execSize, dst, fp, src, InstOpt_WriteEnable, true);
     newInst->setCISAOff(curInst->getCISAOff());
 
     return newInst;
@@ -2398,10 +2395,12 @@ SpillManagerGRF::createMovInst (
     unsigned int      options
 )
 {
-    auto newInst = builder_->createInst (
-        predicate, G4_mov, NULL, false, execSize, dst,
-        src, NULL, options);
-    newInst->setCISAOff(curInst->getCISAOff());
+    auto newInst = builder_->createMov(execSize, dst, src, options, true);
+
+    if (predicate)
+    {
+        newInst->setPredicate(predicate);
+    }
 
     return newInst;
 }

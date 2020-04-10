@@ -401,6 +401,31 @@ G4_INST* IR_Builder::createEndif(uint8_t size, uint32_t option)
     return inst;
 }
 
+G4_INST* IR_Builder::createLabelInst(G4_Label* label, bool appendToInstList)
+{
+    if (appendToInstList)
+    {
+        return createInst(nullptr, G4_label, nullptr, false, UNDEFINED_EXEC_SIZE, nullptr, label, nullptr, 0, 0);
+    }
+    else
+    {
+        return createInternalInst(nullptr, G4_label, nullptr, false, UNDEFINED_EXEC_SIZE, nullptr, label, nullptr, 0, 0);
+    }
+}
+
+// jmpTarget may be either a label (direct jmp) or scalar operand (indirect jmp)
+G4_INST* IR_Builder::createJmp(G4_Predicate* pred, G4_Operand* jmpTarget, uint32_t option, bool appendToInstList)
+{
+    if (appendToInstList)
+    {
+        return createInst(pred, G4_jmpi, nullptr, false, 1, nullptr, jmpTarget, nullptr, option);
+    }
+    else
+    {
+        return createInternalInst(pred, G4_jmpi, nullptr, false, 1, nullptr, jmpTarget, nullptr, option);
+    }
+}
+
 G4_INST* IR_Builder::createInternalCFInst(
     G4_Predicate* prd,
     G4_opcode op,

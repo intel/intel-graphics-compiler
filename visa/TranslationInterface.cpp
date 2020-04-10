@@ -2219,9 +2219,7 @@ int IR_Builder::translateVISACFSwitchInst(G4_Operand *indexOpnd, uint8_t numLabe
             createImm(4, Type_UW), InstOpt_NoOpt, true );
         indexOpnd = Create_Src_Opnd_From_Dcl( tmpVar, getRegionScalar() );
     }
-    G4_INST* indirectJmp = NULL;
-    // indirect jmp
-    indirectJmp = createInst( NULL, G4_jmpi, NULL, false, 1, NULL, indexOpnd, NULL, 0, 0);
+    G4_INST* indirectJmp = createJmp( nullptr, indexOpnd, InstOpt_NoOpt, true);
 
     for( int i = 0; i < numLabels; i++ )
     {
@@ -2238,7 +2236,7 @@ int IR_Builder::translateVISACFLabelInst(G4_Label* lab)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    createInst(NULL, G4_label, NULL, false, UNDEFINED_EXEC_SIZE, NULL, lab, NULL, 0, 0);
+    createLabelInst(lab, true);
 
     if( lab->isFuncLabel() )
     {

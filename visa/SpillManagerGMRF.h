@@ -613,8 +613,7 @@ private:
     createAddFPInst (
         unsigned char      execSize,
         G4_DstRegRegion *      dst,
-        G4_Operand *      src,
-        G4_Predicate *    predicate = NULL
+        G4_Operand *      src
     );
 
     G4_INST *

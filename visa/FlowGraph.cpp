@@ -654,7 +654,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                         const std::list<G4_Label*>& jmpTargets = i->asCFInst()->getIndirectJmpLabels();
                         for (std::list<G4_Label*>::const_iterator it = jmpTargets.begin(), jmpTrgEnd = jmpTargets.end(); it != jmpTrgEnd; ++it)
                         {
-                            G4_INST* jmpInst = builder->createInst(NULL, G4_jmpi, NULL, false, 1, NULL, *it, NULL, 0);
+                            G4_INST* jmpInst = builder->createJmp(nullptr, *it, InstOpt_NoOpt, true);
                             indirectJmpTarget.emplace(jmpInst);
                             INST_LIST_ITER jmpInstIter = builder->instList.end();
                             curr_BB->splice(curr_BB->end(), builder->instList, --jmpInstIter);
@@ -827,9 +827,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 
             std::string name = "_AUTO_LABEL_" + std::to_string(autoLabelId++);
             G4_Label *label = builder->createLabel(name, LABEL_BLOCK);
-            G4_INST *labelInst = builder->createInst(
-                nullptr, G4_label, nullptr, false, UNDEFINED_EXEC_SIZE, nullptr,
-                label, nullptr, 0);
+            auto labelInst = createNewLabelInst(label);
             bb->push_front(labelInst);
         }
     }
@@ -1198,8 +1196,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
 
             if (retInst->getExecSize() == 1)
             {
-                G4_INST* jmpInst = builder->createInternalInst(retInst->getPredicate(), G4_jmpi,
-                    NULL, false, 1, NULL, exitLabel, NULL, InstOpt_NoOpt);
+                G4_INST* jmpInst = builder->createJmp(retInst->getPredicate(), exitLabel, InstOpt_NoOpt, false);
                 retBB->push_back(jmpInst);
             }
             else
@@ -2445,7 +2442,7 @@ void FlowGraph::mergeFReturns()
             dumLabel = builder->createLabel(str, LABEL_BLOCK);
             G4_INST* label = createNewLabelInst(dumLabel);
             newExit->push_back(label);
-            G4_INST* fret = builder->createInst(NULL, G4_pseudo_fret, NULL, false, 1, NULL, NULL, NULL, 0);
+            G4_INST* fret = builder->createInternalCFInst(nullptr, G4_pseudo_fret, 1, nullptr, nullptr, InstOpt_NoOpt);
             newExit->push_back(fret);
             BBs.push_back(newExit);
             candidateFretBB = newExit;

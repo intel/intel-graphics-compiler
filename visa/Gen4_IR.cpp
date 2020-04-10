@@ -3538,10 +3538,8 @@ void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_
         output << ".sat";
     }
     output << ' ';
-    if (UNDEFINED_EXEC_SIZE != sendInst->execSize)
-    {
-        output << '(' << static_cast<int>(sendInst->execSize) << ") ";
-    }
+
+    output << '(' << static_cast<int>(sendInst->execSize) << ") ";
 
     sendInst->dst->emit(output, symbol_dst);
     output << ' ';

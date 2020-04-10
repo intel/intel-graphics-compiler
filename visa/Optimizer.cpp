@@ -5698,41 +5698,16 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             g4Imm = builder.createImm( 0x8F000000, Type_UD );
         }
 
-        // create inst
-        G4_INST *andInst =
-            builder.createInst(     NULL,
-                G4_and,
-                NULL,
-                false,
-                8,
-                dst1_opnd,
-                r0_src_opnd,
-                g4Imm,
-                InstOpt_WriteEnable,
-                0 );
-
-        // add "and" to the instruction list
-        BB_LIST_ITER ib = fg.begin();
-        G4_INST *inst = NULL;
-        BB_LIST_ITER bend(fg.end());
-        INST_LIST_ITER ii;
-        // skip all the labels, find 1st inst and insert the barrier header
-        for(ib = fg.begin(); ib != bend; ++ib)
+        G4_INST *andInst = builder.createBinOp(G4_and, 8, dst1_opnd, r0_src_opnd, g4Imm, InstOpt_WriteEnable, false);
+        for (auto bb : fg)
         {
-            G4_BB* bb = (*ib);
-            ii = bb->begin();
-            INST_LIST_ITER iend = bb->end();
-            for (; ii != iend;ii++ )
+            auto iter = std::find_if(bb->begin(), bb->end(), [](G4_INST* inst) { return !inst->isLabel();});
+            if (iter != bb->end())
             {
-                inst = *ii;
-                if (inst->opcode() != G4_label)
-                {
-                    bb->insert( ii, andInst );
-                    return;
-                }
+                bb->insert(iter, andInst);
+                return;
             }
         }
-
     }
 
     /*
@@ -8383,9 +8358,7 @@ public:
         G4_SrcRegRegion* jump_target = builder.Create_Src_Opnd_From_Dcl(
             new_target_decl, builder.getRegionScalar());
         jump_target->setType(Type_D);
-        insts.push_back(builder.createInternalInst(
-            nullptr, G4_jmpi, nullptr, false, 1, nullptr, jump_target,
-            nullptr, InstOpt_NoCompact));
+        insts.push_back(builder.createJmp(nullptr, jump_target, InstOpt_NoCompact, false));
     }
 
     void Optimizer::expandIndirectCallWithRegTarget()
@@ -8499,9 +8472,7 @@ public:
                 G4_SrcRegRegion* jmpi_target = builder.Create_Src_Opnd_From_Dcl(
                     r_1_0, builder.getRegionScalar());
                 jmpi_target->setType(Type_D);
-                G4_INST* jmpi = builder.createInternalInst(
-                    nullptr, G4_jmpi, nullptr, false, 1, nullptr, jmpi_target,
-                    nullptr, InstOpt_NoCompact);
+                G4_INST* jmpi = builder.createJmp(nullptr, jmpi_target, InstOpt_NoCompact, false);
 
                 // remove the ret
                 bb->pop_back();

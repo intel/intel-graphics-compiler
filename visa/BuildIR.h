@@ -1677,9 +1677,8 @@ public:
         return new (mem) G4_AddrExp(reg, offset, ty);
     }
 
-    //
-    // create instructions
-    //
+ private:
+    // please leave all createInst() as private and use the public wrappers below
     G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
                         G4_CondMod* mod, bool sat,
                         unsigned char size, G4_DstRegRegion* dst,
@@ -1710,18 +1709,6 @@ public:
         unsigned char sz = static_cast<unsigned char>(size);
         return createInst(prd, op, mod, sat, sz, dst, src0, src1, option);
     }
-
-    G4_INST* createInternalInst(G4_Predicate* prd, G4_opcode op,
-        G4_CondMod* mod, bool sat,
-        unsigned char size, G4_DstRegRegion* dst,
-        G4_Operand* src0, G4_Operand* src1,
-        unsigned int option);
-    G4_INST* createInternalInst(G4_Predicate* prd, G4_opcode op,
-        G4_CondMod* mod, bool sat,
-        unsigned char size, G4_DstRegRegion* dst,
-        G4_Operand* src0, G4_Operand* src1,
-        unsigned int option, int lineno, int CISAoff,
-        const char* srcFilename);
 
     G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
         G4_CondMod* mod, bool sat,
@@ -1755,9 +1742,26 @@ public:
         return createInst(prd, op, mod, sat, sz, dst, src0, src1, src2, option, lineno);
     }
 
+public:
+
     G4_INST* createIf(G4_Predicate* prd, uint8_t size, uint32_t option);
     G4_INST* createElse(uint8_t size, uint32_t option);
     G4_INST* createEndif(uint8_t size, uint32_t option);
+    G4_INST* createLabelInst(G4_Label* label, bool appendToInstList);
+    G4_INST* createJmp(G4_Predicate* pred, G4_Operand* jmpTarget, uint32_t option, bool appendToInstList);
+
+    // ToDo: make createInternalInst() private as well and add wraper for them
+    G4_INST* createInternalInst(G4_Predicate* prd, G4_opcode op,
+        G4_CondMod* mod, bool sat,
+        unsigned char size, G4_DstRegRegion* dst,
+        G4_Operand* src0, G4_Operand* src1,
+        unsigned int option);
+    G4_INST* createInternalInst(G4_Predicate* prd, G4_opcode op,
+        G4_CondMod* mod, bool sat,
+        unsigned char size, G4_DstRegRegion* dst,
+        G4_Operand* src0, G4_Operand* src1,
+        unsigned int option, int lineno, int CISAoff,
+        const char* srcFilename);
 
     G4_INST* createInternalInst(G4_Predicate* prd, G4_opcode op,
         G4_CondMod* mod, bool sat,
@@ -1784,7 +1788,6 @@ public:
         unsigned char size, G4_Label* jip, G4_Label* uip,
         unsigned int option, int lineno = 0, int CISAoff = -1,
         const char* srcFilename = NULL);
-
 
     G4_InstSend* createSendInst(G4_Predicate* prd, G4_opcode op,
                             unsigned char size, G4_DstRegRegion* postDst,
@@ -1850,7 +1853,7 @@ public:
     G4_INST* createBinOp(G4_opcode op, uint8_t execSize, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, uint32_t option, bool appendToInstList);
 
-    G4_MathOp Get_MathFuncCtrl(ISA_Opcode op, G4_Type type);
+    static G4_MathOp Get_MathFuncCtrl(ISA_Opcode op, G4_Type type);
     void resizePredefinedStackVars();
 
     G4_Operand* duplicateOpndImpl( G4_Operand* opnd );
