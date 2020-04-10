@@ -412,12 +412,10 @@ private:
     //allocator pools
     USE_DEF_ALLOCATOR useDefAllocator;
 
-    int                 func_id;
     FINALIZER_INFO*        metaData;
     CompilerStats       compilerStats;
 
     bool isKernel;
-    int cunit;
 
     bool isExternFunc = false;
 
@@ -440,12 +438,6 @@ private:
     G4_Declare* builtinBindlessSampler;
     // pre-defined sampler header
     G4_Declare* builtinSamplerHeader;
-    //pre-defined vector of stride 4 (16 W of [0, 4, 8, 12, ..., 60])
-    //only intialized if the kernel uses SLM untyped r/w for spill
-    G4_Declare* builtinImmVector4;
-    // pre-defined SLM scatter spill address: SLMStart(tid) + builtinImmVector4, 16 DW
-    // like builinImmVector4, only initialized if kernel uses SLM untyped r/w (ok, may need it for blocked SLM message as well)
-    G4_Declare* builtinSLMSpillAddr;
 
     // common message header for spill/fill intrinsics
     // We put them here instead of spillManager since there may be multiple rounds of spill,
@@ -548,7 +540,6 @@ public:
     G4_Kernel&          kernel;
     // the following fileds are used for dcl name when a new dcl is created.
     // number of predefined variables are included.
-    int                 num_general_dcl;
     unsigned            num_temp_dcl;
     // number of temp GRF vars created to hold spilled addr/flag
     uint32_t            numAddrFlagSpillLoc = 0;
@@ -568,10 +559,6 @@ public:
     const CISA_IR_Builder* getParent() const { return parentBuilder; }
     std::stringstream& criticalMsgStream();
 
-    // all vISA functions directly called by this kernel
-    // this will be resolved later in Stitch_Compiler_Unit
-    std::set<std::string> funcCallees;
-
     const USE_DEF_ALLOCATOR& getAllocator() const { return useDefAllocator; }
 
     enum SubRegs_SP_FP
@@ -585,7 +572,7 @@ public:
     // Getter/setter for be_sp and be_fp
     G4_Declare* getBESP()
     {
-        if( be_sp == NULL )
+        if (be_sp == NULL)
         {
             be_sp = createDeclareNoLookup("be_sp", G4_GRF, 1, 1, Type_UD);
             be_sp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getStackCallStartReg()), SubRegs_SP_FP::BE_SP);
@@ -596,9 +583,9 @@ public:
 
     G4_Declare* getBEFP()
     {
-        if( be_fp == NULL )
+        if (be_fp == NULL)
         {
-            be_fp = createDeclareNoLookup("be_fp", G4_GRF, 1, 1, Type_UD );
+            be_fp = createDeclareNoLookup("be_fp", G4_GRF, 1, 1, Type_UD);
             be_fp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getStackCallStartReg()), SubRegs_SP_FP::BE_FP);
         }
 
@@ -662,10 +649,6 @@ public:
         return isOpndAligned(opnd, offset, alignByte);
     }
 
-    void setFuncId( int id ) { func_id = id; }
-    int getFuncId() { return func_id; }
-    void setCUnitId( int id ) { cunit = id; }
-    int getCUnitId() { return cunit; }
     void setIsKernel( bool value ) { isKernel = value; }
     bool getIsKernel() { return isKernel; }
     void predefinedVarRegAssignment(uint8_t inputSize);
@@ -885,13 +868,8 @@ public:
 
         builtinSamplerHeader = createDeclareNoLookup("samplerHeader", G4_GRF, NUM_DWORDS_PER_GRF, 1, Type_UD);
 
-        builtinSLMSpillAddr = nullptr;
-        builtinImmVector4 = nullptr;
-
     }
 
-    G4_Declare* getBuiltinSLMSpillAddr() const { return builtinSLMSpillAddr; }
-    G4_Declare* getBuiltinImmVector4() const { return builtinImmVector4; }
     G4_Declare* getSpillFillHeader()
     {
         if (!spillFillHeader)
@@ -901,20 +879,17 @@ public:
         return spillFillHeader;
     }
 
-    void initBuiltinSLMSpillAddr(int perThreadSLMSize);
-
     IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
         Mem_Manager &m, Options *options, CISA_IR_Builder* parent,
         FINALIZER_INFO *jitInfo, PWA_TABLE pWaTable)
-        : curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), func_id(-1), metaData(jitInfo),
-        isKernel(false), cunit(0), parentBuilder(parent),
+        : curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), metaData(jitInfo),
+        isKernel(false), parentBuilder(parent),
         builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
         use64BitFEStackVars(false), mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m),
         instList(alloc), kernel(k)
     {
         m_inst = nullptr;
-        num_general_dcl = 0;
         num_temp_dcl = 0;
         kernel.setBuilder(this); // kernel needs pointer to the builder
         createBuiltinDecls();
@@ -978,7 +953,6 @@ public:
 
         kernel.Declares.push_back(dcl);
 
-        ++num_general_dcl;
         return dcl;
     }
 

@@ -483,8 +483,6 @@ int VISAKernelImpl::InitializeFastPath()
     );
 
     m_builder->setIsKernel(m_isKernel);
-    m_builder->setCUnitId(m_kernelID);
-    m_builder->num_general_dcl = this->m_num_pred_vars;
     m_builder->getcompilerStats().Link(m_compilerStats);
     initCompilerStats();
 

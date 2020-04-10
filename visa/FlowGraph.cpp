@@ -316,9 +316,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
         assert(inst->asCFInst()->getJip() == nullptr && "IF should not have a label at this point");
 
         // create if_label
-        std::string createdLabel = (builder->getIsKernel() ? "k" : "f") +
-            std::to_string(builder->getCUnitId()) + "_AUTO_GENERATED_IF_LABEL_" +
-            std::to_string(sn);
+        std::string createdLabel = "_AUTO_GENERATED_IF_LABEL_" + std::to_string(sn);
         sn++;
         if_label = builder->createLabel(createdLabel, LABEL_BLOCK);
         inst->asCFInst()->setJip(if_label);
@@ -347,9 +345,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
                 it1++;
 
                 // add endif label to "else"
-                std::string createdLabel = (builder->getIsKernel() ? "k" : "f") +
-                    std::to_string(builder->getCUnitId()) + "__AUTO_GENERATED_ELSE_LABEL__" +
-                    std::to_string(sn);
+                std::string createdLabel = "__AUTO_GENERATED_ELSE_LABEL__" + std::to_string(sn);
                 sn++;
                 else_label = builder->createLabel(createdLabel, LABEL_BLOCK);
                 inst->asCFInst()->setJip(else_label);
@@ -530,8 +526,7 @@ void FlowGraph::NormalizeFlowGraph()
                 addPredSuccEdges(newNode, retBB);
 
                 // Create and insert label inst
-                std::string name = (builder->getIsKernel() ? "L_AUTO_k" : "L_AUTO_f") +
-                    std::to_string(builder->getCUnitId()) + "_" + std::to_string(newNode->getId());
+                std::string name = "L_AUTO_" + std::to_string(newNode->getId());
                 G4_Label* lbl = builder->createLabel(name, LABEL_BLOCK);
                 G4_INST* inst = createNewLabelInst(lbl, lInst->getLineNo(), lInst->getCISAOff());
                 newNode->push_back(inst);
@@ -2438,7 +2433,7 @@ void FlowGraph::mergeFReturns()
         {
             G4_BB* newExit = createNewBB();
             assert(!builder->getIsKernel() && "Not expecting fret in kernel");
-            std::string str = "__MERGED_FRET_EXIT_BLOCK_f" + std::to_string(builder->getCUnitId());
+            std::string str = "__MERGED_FRET_EXIT_BLOCK";
             dumLabel = builder->createLabel(str, LABEL_BLOCK);
             G4_INST* label = createNewLabelInst(dumLabel);
             newExit->push_back(label);
@@ -3911,9 +3906,9 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
         const int maxIdLen = 3;
         const char* name = builder.getNameString(mem, strlen(nameBase) + maxIdLen + 1, "%s_%d", nameBase, i);
         G4_Declare* VCA = builder.createDeclareNoLookup(name, G4_GRF, 8, 59, Type_UD);
-        name = builder.getNameString(mem, 50, builder.getIsKernel() ? "k%d_SA0_%d" : "f%d_SA0_%d", builder.getCUnitId(), i);
+        name = builder.getNameString(mem, 50, "SA0_%d", i);
         G4_Declare* saveA0 = builder.createDeclareNoLookup(name, G4_ADDRESS, (uint16_t)getNumAddrRegisters(), 1, Type_UW);
-        name = builder.getNameString(mem, 64, builder.getIsKernel() ? "k%d_SFLAG_%d" : "f%d_SFLAG_%d", builder.getCUnitId(), i);
+        name = builder.getNameString(mem, 64, "SFLAG_%d", i);
         G4_Declare* saveFLAG = builder.createDeclareNoLookup(name, G4_FLAG, (uint16_t) builder.getNumFlagRegisters(), 1, Type_UW);
         fcallToPseudoDclMap[callSite->asCFInst()] = { VCA, saveA0, saveFLAG };
         i++;

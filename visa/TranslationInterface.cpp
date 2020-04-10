@@ -2238,10 +2238,6 @@ int IR_Builder::translateVISACFLabelInst(G4_Label* lab)
 #endif
     createLabelInst(lab, true);
 
-    if( lab->isFuncLabel() )
-    {
-        func_id++;
-    }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -2346,7 +2342,6 @@ int IR_Builder::translateVISACFFCallInst(VISA_Exec_Size execsize, VISA_EMask_Ctr
 
     m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
 
-    funcCallees.emplace(funcName);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -2516,36 +2511,12 @@ int IR_Builder::translateVISACFRetInst(VISA_Exec_Size executionSize, VISA_EMask_
             instOpt,
             0);
     }
-    else if( func_id == 0 )
-    {
-        // this will be lowered during CFG construction
-        createInst(
-            predOpnd,
-            G4_pseudo_exit,
-            NULL,
-            false,
-            exsize,
-            NULL,
-            NULL,
-            NULL,
-            instOpt,
-            0);
-    }
     else
     {
-        // subroutine return
-        createInst(
-            predOpnd,
-            GetGenOpcodeFromVISAOpcode(ISA_RET),
-            NULL,
-            false,
-            exsize,
-            NULL,
-            NULL,
-            NULL,
-            instOpt,
-            0);
+        createCFInst(predOpnd, getIsKernel() ? G4_pseudo_exit : GetGenOpcodeFromVISAOpcode(ISA_RET), exsize,
+            nullptr, nullptr, instOpt);
     }
+
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif

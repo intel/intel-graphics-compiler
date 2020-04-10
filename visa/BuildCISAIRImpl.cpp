@@ -863,7 +863,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             VISAKernelImpl* kernel = (*iter);
             kernel->processAttributes();
             kernel->getIRBuilder()->setIsKernel(kernel->getIsKernel());
-            kernel->getIRBuilder()->setCUnitId(i);
             if( kernel->getIsKernel() == false )
             {
                 if (kernel->getIRBuilder()->getArgSize() < kernel->getKernelFormat()->input_size)
@@ -878,7 +877,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 {
                     kernel->getKernel()->setIsExternFunc();
                 }
-                kernel->getIRBuilder()->setFuncId(k);
 
                 strcpy_s((char*)&pseudoHeader.functions[k].name, COMMON_ISA_MAX_FILENAME_LENGTH, (*iter)->getKernel()->getName());
                 k++;

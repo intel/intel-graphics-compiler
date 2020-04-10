@@ -7470,7 +7470,7 @@ void GraphColor::addA0SaveRestoreCode()
             if (!assocPseudoA0->getPhyReg())
             {
                 // Insert save/restore code because the pseudo node did not get an allocation
-                const char* name = builder.getNameString(builder.mem, 20, builder.getIsKernel() ? "SA0_k%d_%d" : "SA0_f%d_%d", builder.getCUnitId(), count++);
+                const char* name = builder.getNameString(builder.mem, 20, "SA0_%d", count++);
                 G4_Declare* savedDcl = builder.createDeclareNoLookup(name, G4_GRF, numA0Elements, 1, Type_UW);
 
                 {
@@ -7534,7 +7534,7 @@ void GraphColor::addFlagSaveRestoreCode()
             if (!assocPseudoFlag->getPhyReg())
             {
                 // Insert save/restore code because the pseudo node did not get an allocation
-                const char* name = builder.getNameString(builder.mem, 32, builder.getIsKernel() ? "SFLAG_k%d_%d" : "SFLAG_f%d_%d", builder.getCUnitId(), count++);
+                const char* name = builder.getNameString(builder.mem, 32, "SFLAG_%d", count++);
                 G4_Declare* savedDcl1 = builder.createDeclareNoLookup(name, G4_GRF, num32BitFlags, 1, Type_UD);
                 {
                     //
