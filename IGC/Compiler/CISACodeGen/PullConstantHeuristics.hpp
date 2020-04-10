@@ -62,6 +62,7 @@ namespace IGC
         {
             if (thresholdMap.find(F) == thresholdMap.end())
             {//pass must have been disabled so Map is not populated. Return default 31.
+                const unsigned pushConstantGRFThreshold = IGC_GET_FLAG_VALUE(BlockPushConstantGRFThreshold);
                 return pushConstantGRFThreshold;
             }
             else
@@ -72,7 +73,6 @@ namespace IGC
         }
         static char ID;
     private:
-        const unsigned pushConstantGRFThreshold = 31; //GRF threshold for non-PS or large shaderS
         std::map<llvm::Function*, unsigned> thresholdMap;
     };
 
