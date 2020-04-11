@@ -266,8 +266,13 @@ protected:
   void validate()const {
     SPIRVEntry::validate();
     CompType->validate();
+#if 1
+    // Allow any vector from 1 to 16 for testing.
+    IGC_ASSERT(CompCount >= 1 && CompCount <= 16);
+#else
     IGC_ASSERT(CompCount == 2 || CompCount == 3 || CompCount == 4 ||
         CompCount == 8 || CompCount == 16);
+#endif
   }
 private:
   SPIRVType *CompType;                // Component Type

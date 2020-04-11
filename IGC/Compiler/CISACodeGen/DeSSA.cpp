@@ -909,20 +909,6 @@ DeSSA::SplitInterferencesForBasicBlock(
             }
 
             // check live-out interference
-#if 0
-            Value * RootV = getRegRoot(PHI);
-            for (unsigned i = 0; !RootV && i < PHI->getNumOperands(); i++) {
-                Value* SrcVal = PHI->getOperand(i);
-                if (!isa<Constant>(SrcVal)) {
-                    Value* SrcRootV = getRegRoot(SrcVal);
-                    if (SrcRootV && SrcRootV == OrigRootV) {
-                        RootV = SrcRootV;
-                        printf("JGU_DEBUG: enter this code!\n");
-                    }
-                }
-            }
-#endif
-
             // Pop registers from the stack represented by ImmediateDominatingParent
             // until we find a parent that dominates the current instruction.
             Value* NewParent = CurrentDominatingParent[RootC];
