@@ -242,7 +242,7 @@ public:
   // Incomplete constructor
   SPIRVConstantEmpty():SPIRVValue(OC){}
 protected:
-  void validate() const {
+  void validate() const override {
     SPIRVValue::validate();
   }
   _SPIRV_DEF_DEC2(Type, Id)

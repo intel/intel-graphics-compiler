@@ -23,6 +23,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
+#ifndef ALLOCATOR_H
+#define ALLOCATOR_H
+
 #pragma once
 #include <stdlib.h>
 #include <stdint.h>
@@ -52,3 +56,5 @@ inline void aligned_free(void *ptr)
 }
 
 }
+
+#endif //ALLOCATOR_H

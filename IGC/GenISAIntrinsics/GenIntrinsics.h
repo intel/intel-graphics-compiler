@@ -24,6 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#ifndef GENINTRINSICS_H
+#define GENINTRINSICS_H
+
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
@@ -86,3 +89,4 @@ namespace GenISAIntrinsic {
 
 } // namespace llvm
 
+#endif //GENINTRINSICS_H

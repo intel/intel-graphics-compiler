@@ -1392,7 +1392,7 @@ static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
         // Free the resource allocated in the dll side.
         if (Loader.freeFn_v2) {
             Loader.freeFn_v2(output_v2);
-        } else { 
+        } else {
             Loader.freeFn(output);
         }
         return true;

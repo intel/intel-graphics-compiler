@@ -126,7 +126,7 @@ public:
   SPIRVAsmINTEL *getAsm() const { return Asm; }
 
 protected:
-  _SPIRV_DEF_DEC4(Type, Id, Asm, Args)
+  _SPIRV_DEF_DEC4_OVERRIDE(Type, Id, Asm, Args)
   void validate() const override {
     SPIRVInstruction::validate();
     IGC_ASSERT(WordCount >= FixedWC);

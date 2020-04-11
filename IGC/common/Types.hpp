@@ -23,6 +23,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
+#ifndef IGC_COMMON_TYPES_H
+#define IGC_COMMON_TYPES_H
+
 #pragma once
 
 #include "3d/common/iStdLib/types.h"
@@ -346,3 +350,5 @@ inline typename std::enable_if<
 }
 
 #endif
+
+#endif //IGC_COMMON_TYPES_H

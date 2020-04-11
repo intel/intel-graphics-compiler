@@ -1708,7 +1708,6 @@ function(igc_target_exclude_from_symbol_export targetName)
       set(_excludedExportTargets)
       foreach(_excludedExportTarget ${ARGN})
         string(REPLACE ";" "\;" _excludedExportTarget "${_excludedExportTarget}") # [WA#1] Must escape ; again if occurred in item.
-
         if(TARGET "${_excludedExportTarget}")
           get_property(_locationSet TARGET "${_excludedExportTarget}" PROPERTY "${_locPropName}" SET)
           if(_locationSet)
@@ -2194,6 +2193,7 @@ set(IGC_BUILD__PROJ_NAME_PREFIX "")
 #SPIRV consumption variable
 
   set(IGC_BUILD__SPIRV_ENABLED ON)
+
 
 
 # ======================================== Path helper variables =======================================
@@ -2781,6 +2781,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           -Wno-enum-compare
           -Wno-type-limits
           -Wno-ignored-qualifiers
+          -Wno-shadow
           -Wformat
           -Wformat-security
           -Wno-extra
@@ -3274,8 +3275,8 @@ endif()
 if(LLVM_LINK_LLVM_DYLIB)
     # LLVM was built and configured in a way that tools (in our case IGC) should be linked
     # against single LLVM dynamic library.
-    message(STATUS "[IGC] Link against LLVM dylib")
-    set(IGC_BUILD__LLVM_LIBS_TO_LINK "LLVM")
+    set(IGC_BUILD__LLVM_LIBS_TO_LINK "/usr/local/lib/libLLVM-${LLVM_VERSION_MAJOR}.so")
+    message(STATUS "[IGC] Link against LLVM dylib ${IGC_BUILD__LLVM_LIBS_TO_LINK}")
 else()
     # LLVM was built into multiple libraries (static or shared).
     message(STATUS "[IGC] Link against LLVM static or shared component libs")
@@ -3442,7 +3443,9 @@ igc_sg_define(IGC__DriverInterface)
 # Built-in Functions (and resources).
 if(IGC_OPTION__BIF_LINK_BC)
   add_subdirectory(BiFModule)
+if(NOT CMAKE_WDDM_LINUX)
   add_subdirectory(ElfPackager)
+endif()
 endif()
 
     add_subdirectory(OCLFE)
@@ -3654,7 +3657,9 @@ endforeach()
 
 #FCL
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFModule_OCL}")
+if (NOT CMAKE_WDDM_LINUX)
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__ElfPackager}")
+endif()
 
 if(LLVM_ON_WIN32)
   if(IGC_OPTION__USCLAUNCHER_TOOL)
@@ -3747,11 +3752,20 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
         ${_targetLinkLineDebugAndReleaseInternalOnly}
       )
   else()
+    if(CMAKE_WDDM_LINUX)
+    target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE
+        "${}"
+        "${_targetLinkLineCommon}"
+        "${CMAKE_DL_LIBS}"
+      )
+    target_include_directories("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE ${LLVM_INCLUDE_DIRS})
+    else()
     target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE
         "${_targetLinkLineCommon}"
         "$<$<NOT:$<CONFIG:Release>>:${_targetLinkLineDebugAndReleaseInternalOnly}>"
         "${CMAKE_DL_LIBS}"
       )
+    endif()
     # Link line for shared / dynamic library requires only library project (all static libs are linked inside).
     set_property(TARGET "${IGC_BUILD__PROJ${_libBuildSuffix}}" PROPERTY LINK_INTERFACE_LIBRARIES "")
     set("IGC_BUILD__LINK_LINE${_libBuildSuffix}"

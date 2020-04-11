@@ -94,13 +94,13 @@ public:
   {
       return hasDecorate(DecorationMaxByteOffset, 0, &offset);
   }
-  CapVec getRequiredCapability() const {
+  CapVec getRequiredCapability() const override {
      if (hasLinkageType() && getLinkageType() == SPIRVLinkageTypeKind::LinkageTypeImport)
         return getVec(SPIRVCapabilityKind::CapabilityLinkage);
     return CapVec();
   }
 protected:
-  void validate()const {
+  void validate()const override {
     SPIRVValue::validate();
     IGC_ASSERT(ParentFunc && "Invalid parent function");
   }

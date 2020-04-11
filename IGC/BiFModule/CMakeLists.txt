@@ -72,7 +72,6 @@ if(NOT CCLANG_FROM_SYSTEM)
     endif()
   endif()
   set(CCLANG_BUILD_INTREE_LLVM_DIR ${LLVM_SOURCE_DIR}/projects/opencl-clang)
-
   ### Check if user by choosing some way of linking with opencl-clang provided required folders
   if(${CCLANG_BUILD_PREBUILDS})
     if(NOT EXISTS ${CCLANG_BUILD_PREBUILDS_DIR})
@@ -85,7 +84,6 @@ if(NOT CCLANG_FROM_SYSTEM)
       set(CCLANG_BUILD_INTREE_LLVM FALSE)
     endif()
   ###
-
   ### User didn't define nothing, then pick the method 2 or 3.
   elseif(EXISTS ${CCLANG_BUILD_PREBUILDS_DIR})
     set(CCLANG_BUILD_PREBUILDS TRUE)
@@ -731,10 +729,15 @@ function(igc_bif_build_bc)
 
     # LLVM linking is triggered by host LLVM package change (where tools are), change of intermediate .bc files or change of additional dependencies.
     # Makes sure that LLVM is unzipped before.
+    if(CMAKE_WDDM_LINUX)
+      find_program(link_command "llvm-link")
+    else()
+      set(link_command "llvm-link")
+    endif()
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND llvm-link -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
+        COMMAND ${link_command} -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
         DEPENDS ${_bcFiles} ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Linking intermediate .bc into output .bc."
       )

@@ -24,6 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#ifndef SPP_G8_H
+#define SPP_G8_H
+
 #pragma once
 
 #include <memory>
@@ -113,3 +116,5 @@ public:
     std::unique_ptr<IGC::SOpenCLProgramInfo> m_programInfo;
 };
 }
+
+#endif //SPP_G8_H
