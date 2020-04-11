@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cassert>
 #include <iostream>
 
-#include "visa_igc_common_header.h"
 #include "VISADefines.h"
 
 #ifndef _WIN32
@@ -259,15 +258,5 @@ extern "C" const char * GetSteppingString( void );
 #define GENX_GRF_REG_SIZ   getGRFSize()
 #define NUM_WORDS_PER_GRF  (getGRFSize() / 2)
 #define NUM_DWORDS_PER_GRF (getGRFSize() / 4u)
-
-
-// Target should be specified as follows
-// - VISA builder mode in CreateBuilder API through fast-path
-// - Kernel target attribute in VISA binarary or ISAASM
-typedef enum {
-    VISA_CM = 0,
-    VISA_3D = 1,
-    VISA_CS = 2,
-} VISATarget;
 
 #endif //_COMMON_H_

@@ -54,7 +54,7 @@ protected:
     IGC_ASSERT(WordCount > FixedWC);
     IGC_ASSERT(OpCode == OC);
   }
-  _SPIRV_DEF_DEC2(Id, Target)
+  _SPIRV_DEF_DEC2_OVERRIDE(Id, Target)
   std::string Target;
 };
 
@@ -85,7 +85,7 @@ public:
   SPIRVTypeFunction *getFunctionType() const { return FunctionType; }
 
 protected:
-  _SPIRV_DEF_DEC6(Type, Id, FunctionType, Target, Instructions, Constraints)
+  _SPIRV_DEF_DEC6_OVERRIDE(Type, Id, FunctionType, Target, Instructions, Constraints)
   void validate() const override {
     SPIRVValue::validate();
     IGC_ASSERT(WordCount > FixedWC);
@@ -126,7 +126,7 @@ public:
   SPIRVAsmINTEL *getAsm() const { return Asm; }
 
 protected:
-  _SPIRV_DEF_DEC4(Type, Id, Asm, Args)
+  _SPIRV_DEF_DEC4_OVERRIDE(Type, Id, Asm, Args)
   void validate() const override {
     SPIRVInstruction::validate();
     IGC_ASSERT(WordCount >= FixedWC);

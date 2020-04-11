@@ -33,7 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mem_Manager.h"
 #include "JitterDataStruct.h"
 //#include "Gen4_IR.hpp"  // for PhyRegPool
-#include "Attributes.hpp"
 
 #include "CompilerStats.h"
 
@@ -128,8 +127,6 @@ public:
 
         // Initialize first level scope of the map
         m_GenNamedVarMap.push_back(GenDeclNameToVarMap());
-
-        createKernelAttributes();
     }
 
     void* alloc(size_t sz) { return m_mem.alloc(sz); }
@@ -144,7 +141,6 @@ public:
         m_minor_version = minor_ver;
     }
 
-    vISA::Attributes* getKernelAttributes() { return m_kernelAttrs; }
     void finalizeKernel();
     unsigned long writeInToCisaBinaryBuffer(const void * value, int size);
     unsigned long getBytesWritten() { return m_bytes_written_cisa_buffer; }
@@ -1001,13 +997,6 @@ private:
     Options *m_options;
 
     bool getIntKernelAttributeValue(const char* attrName, int& value);
-    void createKernelAttributes() {
-        void* pmem = m_mem.alloc(sizeof(vISA::Attributes));
-        m_kernelAttrs = new (pmem) vISA::Attributes();
-    }
-
-    // Shared with G4_kernel
-    vISA::Attributes* m_kernelAttrs;
 };
 
 class VISAKernel_format_provider : public print_format_provider_t

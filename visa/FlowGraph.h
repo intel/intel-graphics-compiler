@@ -1397,7 +1397,6 @@ class G4_Kernel
     bool hasAddrTaken;
     bool sharedRegisters;
     Options *m_options;
-    const Attributes* m_kernelAttrs;
 
     RA_Type RAType;
     KernelDebugInfo* kernelDbgInfo;
@@ -1416,6 +1415,7 @@ class G4_Kernel
     unsigned int callerSaveLastGRF;
 
     bool m_hasIndirectCall = false;
+    bool m_isExternFunction = false;
 
     // store the actual sourfce line stream for each source file referenced by this kernel.
     std::map<std::string, std::vector<std::string> > debugSrcLineMap;
@@ -1435,12 +1435,11 @@ public:
     unsigned char minor_version;
 
     G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
-        Mem_Manager& m, Options* options, Attributes* anAttr,
-        unsigned char major, unsigned char minor)
-        : m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
-        asmInstCount(0), kernelID(0),
-        bank_good_num(0), bank_ok_num(0),
-        bank_bad_num(0), fg(alloc, this, m), major_version(major), minor_version(minor)
+              Mem_Manager &m, Options *options, unsigned char major, unsigned char minor)
+              : m_options(options), RAType(RA_Type::UNKNOWN_RA),
+              asmInstCount(0), kernelID(0),
+              bank_good_num(0), bank_ok_num(0),
+              bank_bad_num(0), fg(alloc, this, m), major_version(major), minor_version(minor)
     {
         ASSERT_USER(
             major < COMMON_ISA_MAJOR_VER ||
@@ -1508,7 +1507,6 @@ public:
     uint64_t getKernelID() const { return kernelID; }
 
     Options *getOptions(){ return m_options; }
-    const Attributes* getKernelAttrs() const { return m_kernelAttrs; }
     bool getOption(vISAOptions opt) const { return m_options->getOption(opt); }
     void computeChannelSlicing();
     void calculateSimdSize();
@@ -1590,6 +1588,14 @@ public:
     void setHasIndirectCall()
     {
         m_hasIndirectCall = true;
+    }
+    bool getIsExternFunc() const
+    {
+        return m_isExternFunction;
+    }
+    void setIsExternFunc()
+    {
+        m_isExternFunction = true;
     }
 
     void addRelocation(RelocationEntry& entry)

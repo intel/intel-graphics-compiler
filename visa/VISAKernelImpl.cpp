@@ -33,7 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA_framework.h"
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
-#include "Attributes.hpp"
 #include "Timer.h"
 #include "FlowGraph.h"
 #include "BuildIR.h"
@@ -459,13 +458,7 @@ int VISAKernelImpl::InitializeFastPath()
 
     m_kernelMem = new vISA::Mem_Manager(4096);
 
-    m_kernel = new (m_mem) G4_Kernel(
-        m_instListNodeAllocator,
-        *m_kernelMem,
-        m_options,
-        m_kernelAttrs,
-        m_major_version,
-        m_minor_version);
+    m_kernel = new (m_mem) G4_Kernel(m_instListNodeAllocator, *m_kernelMem, m_options, m_major_version, m_minor_version);
     m_kernel->setName(m_name.c_str());
 
     if (getOptions()->getOption(vISA_GenerateDebugInfo))
@@ -1149,13 +1142,12 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
 
     attribute_info_t* attr = (attribute_info_t*)m_mem.alloc(sizeof(attribute_info_t));
 
-    Attributes::ID attrID = Attributes::getAttributeID(attrName);
-
     /*
     if set through NG path it stores wrong name .isa file
     so in CMRT in simulation mode it fails to look up the name
     */
-    if (!m_kernelAttrs->getStringKernelAttribute(Attributes::ATTR_OutputAsmPath))
+    if(strcmp(attrName, "AsmName") == 0 ||
+        strcmp(attrName, "OutputAsmPath") == 0)
     {
         if (m_options->getOption(VISA_AsmFileNameUser))
         {
@@ -1198,7 +1190,17 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     }
 
     attr->size  = (uint8_t)size;
-    attr->isInt = size != 0 && Attributes::isIntKernelAttribute(attrID);
+    attr->isInt = size != 0 && (!strcmp(attrName, "SLMSize") ||
+        !strcmp(attrName, "SurfaceUsage") ||
+        !strcmp(attrName, "SpillMemOffset") ||
+        !strcmp(attrName, "Scope") ||
+        !strcmp(attrName, "Target") ||
+        !strcmp(attrName, "ArgSize") ||
+        !strcmp(attrName, "RetValSize") ||
+        !strcmp(attrName, "FESPSize") ||
+        !strcmp(attrName, "perThreadInputSize") ||
+        !strcmp(attrName, "Extern"));
+
     if (attr->isInt)
     {
         switch (attr->size)
@@ -1210,8 +1212,6 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             ASSERT_USER(false, "Unsupported attribute size");
             break;
         }
-
-        m_kernelAttrs->setIntKernelAttribute(attrID, attr->value.intVal);
     }
     else
     {
@@ -1224,10 +1224,9 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         {
             attr->value.stringVal = (char*) "";
         }
-        m_kernelAttrs->setStringKernelAttribute(attrID, attr->value.stringVal);
     }
 
-    if (attrID == Attributes::ATTR_Target)
+    if (strcmp(attrName, "Target" ) == 0)
     {
         if (attr->value.intVal == 0)
         {
@@ -1248,15 +1247,15 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         mTargetAttributeSet = true;
     }
 
-    if(attrID == Attributes::ATTR_Callable)
+    if(strcmp(attrName, "Callable") == 0)
     {
         setFCCallableKernel(true);
     }
-    else if(attrID == Attributes::ATTR_Caller)
+    else if(strcmp(attrName, "Caller") == 0)
     {
         setFCCallerKernel(true);
     }
-    else if(attrID == Attributes::ATTR_Composable)
+    else if(strcmp(attrName, "Composable") == 0)
     {
         setFCComposableKernel(true);
         if (IS_GEN_BOTH_PATH)
@@ -1265,10 +1264,14 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         }
         m_options->setOption(vISA_loadThreadPayload, false);
     }
-    else if (attrID == Attributes::ATTR_Entry)
+    else if (strcmp(attrName, "Entry") == 0)
     {
         m_builder->getFCPatchInfo()->setIsEntryKernel(true);
         m_options->setOption(vISA_loadThreadPayload, true);
+    }
+    else if (strcmp(attrName, "Extern") == 0)
+    {
+        m_builder->setIsExtern((bool)(attr->value.intVal != 0));
     }
     else if (strcmp(attrName, "RetValSize") == 0)
     {
@@ -1288,6 +1291,13 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             {
                 m_builder->setArgSize((unsigned short)(attr->value.intVal));
             }
+        }
+    }
+    else if (strcmp(attrName, "perThreadInputSize") == 0)
+    {
+        if (IS_GEN_BOTH_PATH)
+        {
+            m_builder->setPerThreadInputSize(attr->value.intVal);
         }
     }
 
