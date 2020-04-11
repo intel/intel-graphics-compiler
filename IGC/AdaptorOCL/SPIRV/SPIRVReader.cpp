@@ -2120,7 +2120,11 @@ Value *SPIRVToLLVM::truncBool(Value *pVal, BasicBlock *BB)
         else
         {
             auto IP = entry.begin();
-            while (isa<AllocaInst>(IP)) ++IP;
+            while (isa<AllocaInst>(IP))
+            {
+                if (++IP == BB->end())
+                    break;
+            }
             if (IP == BB->end())
                 Cast = CastInst::CreateTruncOrBitCast(Arg, TruncType, "i1trunc", BB);
             else
