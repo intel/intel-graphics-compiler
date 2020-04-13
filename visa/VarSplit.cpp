@@ -65,6 +65,7 @@ void VarSplitPass::verify()
     // parent, <child, <lb, rb>>
     std::unordered_map<G4_Declare*, std::unordered_map<G4_Declare*, std::pair<unsigned int, unsigned int>>> parentSplit;
     std::unordered_set<G4_Declare*> splitDcls;
+    unsigned int numSplitIntrinsics = 0;
 
     auto getChildData = [&](G4_Declare* child)
     {
@@ -107,6 +108,8 @@ void VarSplitPass::verify()
                 auto origRb = origSrc0->getRightBound();
                 auto itemToInsert = std::make_pair(inst->getDst()->getTopDcl(), std::make_pair((unsigned int)origLb, (unsigned int)origRb));
                 parentSplit[origSrc0->getTopDcl()].insert(itemToInsert);
+
+                numSplitIntrinsics++;
             }
         }
     }
@@ -137,6 +140,11 @@ void VarSplitPass::verify()
                 if (!src || !src->asSrcRegRegion())
                     continue;
 
+                if (parentSplit.find(src->asSrcRegRegion()->getTopDcl()) != parentSplit.end())
+                {
+                    MUST_BE_TRUE(inst->isSplitIntrinsic(), "Found src opnd using pre-split parent");
+                }
+
                 if (splitDcls.find(src->asSrcRegRegion()->getTopDcl()) == splitDcls.end())
                     continue; // not a split dcl
 
@@ -161,7 +169,7 @@ void VarSplitPass::verify()
         }
     }
 
-    printf("Split verification passed successfully!\n");
+    printf("Split verification passed successfully - %d split!\n", numSplitIntrinsics);
 }
 
 void VarSplitPass::run()

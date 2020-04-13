@@ -788,6 +788,7 @@ public:
     }
     void setSrc(G4_Operand* opnd, unsigned i);
     int getNumSrc() const;
+    int getNumDst() const;
 
     // this assume we don't have to recompute bound for the swapped source
     // Note that def-use chain is not maintained after this; call swapDefUse
@@ -3846,6 +3847,12 @@ inline int G4_INST::getNumSrc() const
 {
     return isIntrinsic() ? asIntrinsicInst()->getNumSrc()
                          : G4_Inst_Table[op].n_srcs;
+}
+
+inline int G4_INST::getNumDst() const
+{
+    return isIntrinsic() ? asIntrinsicInst()->getNumDst()
+        : G4_Inst_Table[op].n_dst;
 }
 
 inline bool G4_INST::isPseudoUse() const

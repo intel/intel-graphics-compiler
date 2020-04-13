@@ -1196,7 +1196,7 @@ void LocalRA::markReferencesInInst(INST_LIST_ITER inst_it)
 {
     auto inst = (*inst_it);
 
-    if (G4_Inst_Table[inst->opcode()].n_dst == 1)
+    if (inst->getNumDst() > 0)
     {
         // Scan dst
         G4_Operand* dst = inst->getDst();
