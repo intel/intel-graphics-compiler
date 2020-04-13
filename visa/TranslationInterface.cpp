@@ -10413,6 +10413,8 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2],
 G4_SrcRegRegion *IR_Builder::coalescePayload(
     unsigned sourceAlignment,
     unsigned payloadAlignment,
+    uint32_t payloadWidth,   // number of elements for one payload in the send.
+    uint32_t srcSize,       // number of elements provided by src
     std::initializer_list<G4_SrcRegRegion *> srcs)
 {
     MUST_BE_TRUE(sourceAlignment != 0 && payloadAlignment != 0,
@@ -10455,124 +10457,63 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
         return (n + a - 1) - ((n + a - 1)%a);
     };
 
+    int numPayloadGRF =  0;
     // precompute the necessary region size
-    // bool allConsecutive = true;
-    // G4_SrcRegRegion *lastNonNullSrc = nullptr;
-    size_t totalRegionSize = 0;
     for (G4_SrcRegRegion *src : srcs) {
-        if (src && !src->isNullReg()) {
-            const G4_Declare *srcDcl = getDeclare(src);
-            MUST_BE_TRUE(srcDcl, "declaration missing");
-            // if (lastNonNullSrc) {
-            //     allConsecutive &=
-            //         checkIfRegionsAreConsecutive(
-            //             lastNonNullSrc, src, srcDcl->getTotalElems());
-            // }
-            size_t regionSize = srcDcl->getTotalElems()*srcDcl->getElemSize();
-            size_t alignedRegionSize = alignTo(sourceAlignment, regionSize);
-            totalRegionSize += alignedRegionSize;
-            // allConsecutive &= regionSize == alignedRegionSize; // no padding
-            // lastNonNullSrc = srcs[i];
+        if (src && !src->isNullReg())
+        {
+            // ToDo: add D16 support later
+            auto laneSize = getTypeSize(src->getType()) == 8 ? 8 : 4;
+            numPayloadGRF += std::max(1u, (payloadWidth * laneSize) / getGRFSize());
         }
     }
-    // allConsecutive &= totalRegionSize % payloadAlignment == 0; // no padding
-    // if (allConsecutive) {
-    //    return ???;
-    // }
-    totalRegionSize = alignTo(payloadAlignment, totalRegionSize);
 
-    G4_Declare *payloadDeclUB = createSendPayloadDcl(totalRegionSize, Type_UB);
-    G4_Declare *payloadDeclUD = createSendPayloadDcl(totalRegionSize/4, Type_UD);
-    payloadDeclUD->setAliasDeclare(payloadDeclUB,0);
+    G4_Declare *payloadDeclUD = createSendPayloadDcl(numPayloadGRF * getGRFSize() / 4, Type_UD);
+    payloadDeclUD->setEvenAlign();
 
-    const RegionDesc *rd110 = createRegionDesc(1, 1, 0);
-    unsigned row = 0, offset = 0;
+    unsigned row = 0;
     for (G4_SrcRegRegion *src : srcs) {
         if (src && !src->isNullReg()) {
-            G4_Declare *srcDcl = getDeclare(src);
-            size_t regionSize = srcDcl->getTotalElems()*srcDcl->getElemSize();
-            size_t regionSizeAligned = alignTo(sourceAlignment, regionSize);
+
+            // ToDo: add D16 support later
+            auto laneSize = getTypeSize(src->getType()) == 8 ? 8 : 4;
+            auto totalSize = srcSize * laneSize;
+
+            // for each payload we copy <srcSize> lanes to its corresponding location in payload
+            // src must be GRF-aligned per vISA spec requirement
+            // Two moves may be necessary for 64-bit types
             auto copyRegion =
-              [&] (G4_Type type, unsigned typeSize) {
-                  unsigned totalElemsToCopy = regionSize/typeSize;
-                  unsigned MAX_SIMD = 32;
-                  for (unsigned i = 0; i < totalElemsToCopy/MAX_SIMD; i++) {
-                      // full registers to copy
-                      auto rowOffset = i * ((MAX_SIMD * typeSize) / getGRFSize());
+              [&] (G4_Type type) {
+                  uint32_t numMoves = std::max(1u, totalSize / (2 * getGRFSize()));
+                  unsigned MAX_SIMD = std::min(srcSize, getNativeExecSize() * (laneSize == 8 ? 1 : 2));
+                  for (unsigned i = 0; i < numMoves; i++) {
+                      auto rowOffset = i * 2;
                       unsigned int instOpt =
                           Get_Gen4_Emask(vISA_EMASK_M1_NM, MAX_SIMD);
-                      G4_DstRegRegion *dstRegion =
+                      G4_DstRegRegion* dstRegion =
                           createDst(
                               payloadDeclUD->getRegVar(),
-                              row + rowOffset, offset/typeSize,
+                              row + rowOffset, 0,
                               1, type);
-                      G4_SrcRegRegion *srcRegion =
+                      G4_SrcRegRegion* srcRegion =
                           createSrcRegRegion(
                               Mod_src_undef, Direct,
-                              srcDcl->getRegVar(), rowOffset, 0,
-                              rd110,
+                              src->getTopDcl()->getRegVar(), src->getRegOff() + rowOffset, 0,
+                              getRegionStride1(),
                               type);
                       createMov(MAX_SIMD,
                           dstRegion, srcRegion, instOpt, true);
                   }
-
-                  // copy the tail (not a multiple of MAX_SIMD)
-                  unsigned tailElements = totalElemsToCopy % MAX_SIMD;
-                  while (tailElements > 0) {
-                      unsigned execSize = 16;
-                      G4_Type copyType = type;
-                      if (tailElements % 16 == 0) {
-                          execSize = 16;
-                      } else if (tailElements % 8 == 0) {
-                          execSize = 8;
-                      } else if (tailElements % 4 == 0 && typeSize == 1) {
-                          copyType = Type_UD;
-                          execSize = 1;
-                      } else if (tailElements % 2 == 0) {
-                          copyType = typeSize == 4 ? Type_UQ : Type_UW;
-                          execSize = 1;
-                      } else if (tailElements % 1 == 0) {
-                          execSize = 1;
-                      }
-
-                      unsigned int instOpt =
-                          Get_Gen4_Emask(vISA_EMASK_M1_NM, execSize);
-                      G4_DstRegRegion *dstRegion =
-                          createDst(
-                              payloadDeclUD->getRegVar(),
-                              row, offset/typeSize,
-                              1, copyType);
-                      G4_SrcRegRegion *srcRegion =
-                          createSrcRegRegion(
-                              Mod_src_undef, Direct,
-                              srcDcl->getRegVar(), 0, 0,
-                              rd110,
-                              copyType);
-                      createMov(MAX_SIMD,
-                          dstRegion, srcRegion, instOpt, true);
-
-                      tailElements -= execSize;
-                  }
             };
 
-            if (offset == 0 && regionSize % 4 == 0) {
-                // do a more efficient UD copy
-              copyRegion(Type_UD, 4);
-            } else {
-                // do a less efficient UB copy
-              copyRegion(Type_UB, 1);
-            }
+            copyRegion(src->getType());
 
-            // advance the payload offset
-            offset += regionSizeAligned;
-            if (offset / COMMON_ISA_GRF_REG_SIZE > 0) {
-                row += offset / COMMON_ISA_GRF_REG_SIZE;
-                offset %= COMMON_ISA_GRF_REG_SIZE;
-            }
+            // advance the payload offset by <payloadWidth> elements
+            row += std::max(1u, (payloadWidth * laneSize) / getGRFSize());
         }
     }
 
-    return Create_Src_Opnd_From_Dcl(payloadDeclUB,getRegionStride1());
+    return Create_Src_Opnd_From_Dcl(payloadDeclUD, getRegionStride1());
 }
 
 

@@ -2704,6 +2704,8 @@ public:
     G4_SrcRegRegion *coalescePayload(
         unsigned alignSourcesTo,
         unsigned alignPayloadTo,
+        uint32_t payloadSize,
+        uint32_t srcSize,
         std::initializer_list<G4_SrcRegRegion *> srcs);
 
     // struct PayloadElem {
