@@ -1924,8 +1924,8 @@ Emu64BitCall:
             break;
         }
     }
-    // Support for subroutine calls
-    else if (F->hasFnAttribute("UserSubroutine"))
+    // Support for stack/indirect/subroutine calls
+    else if (!F || F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("UserSubroutine"))
     {
         auto* CallCopy = Call.clone();
         CallCopy->insertBefore(&Call);
