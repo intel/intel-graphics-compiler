@@ -1278,6 +1278,7 @@ namespace vISA
         G4_INST *insertSyncAllWRInstruction(G4_BB *bb, unsigned int SBIDs, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
 
         void SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets &LB, LiveGRFBuckets &globalSendsLB);
+        void handleIndirectCall();
         void SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets &LB, LiveGRFBuckets &globalSendsLB);
         void SWSBBuildSIMDCFG();
         void addSIMDEdge(G4_BB_SB *pred, G4_BB_SB* succ);
