@@ -1149,7 +1149,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
         if (currInstRegs[0][0] == nextInstRegs[0][0] && currInstRegs[0][0] != -1 && curInstSimd8 && nextInstSimd8)
         {
             //No scalar supperssion
-            if (!isCurrScalar[0] && !isNextScalar[0])
+            if (!((!kernel->fg.builder->hasScalarReadSuppression()) && (isCurrScalar[0] || isNextScalar[0])))
             {
                 return true;
             }
@@ -1162,7 +1162,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
         ((curInstSimd8 && nextInstSimd8) || (!curInstSimd8 && !nextInstSimd8)))
     {
         //No scalar supperssion
-        if ((!kernel->fg.builder->hasScalarReadSuppression()) || (!isCurrScalar[1] && !isNextScalar[1]))
+        if (!((!kernel->fg.builder->hasScalarReadSuppression()) && (isCurrScalar[1] || isNextScalar[1])))
         {
             return true;
         }
@@ -1171,7 +1171,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
     if (currInstRegs[0][2] == nextInstRegs[0][2] && currInstRegs[0][2] != -1 && curInstSimd8 && nextInstSimd8)
     {
         //No scalar supperssion
-        if ((!kernel->fg.builder->hasScalarReadSuppression()) || (!isCurrScalar[2] && !isNextScalar[2]))
+        if (!((!kernel->fg.builder->hasScalarReadSuppression()) && (isCurrScalar[2] || isNextScalar[2])))
         {
             return true;
         }
