@@ -54,7 +54,7 @@ static const uint8_t mapExecSizeToNumElts[6] = {1, 2, 4, 8, 16, 32};
 
 static uint32_t createSamplerMsgDesc(
     VISASampler3DSubOpCode samplerOp,
-    uint8_t execSize,
+    bool isNativeSIMDSize,
     bool isFP16Return,
     bool isFP16Input)
 {
@@ -75,11 +75,11 @@ static uint32_t createSamplerMsgDesc(
 
     fc |= ((uint32_t)samplerOp & 0x1f) << 12;
 
-    if (execSize == 8)
+    if (isNativeSIMDSize)
     {
         fc |= (1 << 17);
     }
-    else if (execSize == 16)
+    else
     {
         fc |= (2 << 17);
     }
@@ -8555,6 +8555,7 @@ const char* getNameString(Mem_Manager& mem, size_t size, const char* format, ...
 #endif
 }
 
+// split simd32/16 sampler messages into simd16/8 messages due to HW limitation.
 int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
     bool pixelNullMask,
     bool cpsEnable,
@@ -8580,8 +8581,8 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
 
     // Now, depending on message type emit out parms to payload
     unsigned regOff = ( useHeader ? 1 : 0 );
-    G4_SrcRegRegion* temp = NULL;
-    uint8_t execSize = 8;
+    G4_SrcRegRegion* temp = nullptr;
+    uint8_t execSize = getNativeExecSize();
     uint16_t numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
     G4_Declare* payloadF = createSendPayloadDcl( numElts, Type_F );
     G4_Declare* payloadUD = createTempVar( numElts, Type_UD, GRFALIGN );
@@ -8659,10 +8660,10 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
         }
     }
 
-    uint32_t responseLength = getSamplerResponseLength(numChannels, isHalfReturn, 8,
+    uint32_t responseLength = getSamplerResponseLength(numChannels, isHalfReturn, execSize,
         pixelNullMaskEnable, dst->isNullReg());
 
-    uint32_t fc = createSamplerMsgDesc(actualop, execSize, isHalfReturn, halfInput);
+    uint32_t fc = createSamplerMsgDesc(actualop, execSize == getNativeExecSize(), isHalfReturn, halfInput);
     uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, numRows, responseLength);
 
     if (cpsEnable)
@@ -8719,7 +8720,7 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
             (uint16_t)tmpDstRows,
             originalDstDcl->getElemType());
 
-        if(pixelNullMaskEnable)
+        if (pixelNullMaskEnable)
         {
             unsigned int numElts = tempDstDcl->getNumElems() * tempDstDcl->getNumRows();
             tempDstUD = createTempVar(numElts, Type_UD, GRFALIGN);
@@ -8740,7 +8741,6 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
             0,
             1,
             dst->getType());
-
     }
     // update emask
     emask = Get_Next_EMask(emask, execSize);
@@ -8784,21 +8784,15 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
             {
                 secondHalf[i] = params[i];
             }
-            else if (G4_Type_Table[params[i]->getType()].byteSize == 2)
+            else if (getTypeSize(params[i]->getType()) == 2)
             {
                 // V1(0,8)<8;8,1>
-                secondHalf[i] = createSrcWithNewSubRegOff(params[i], 8);
+                secondHalf[i] = createSrcWithNewSubRegOff(params[i], execSize);
             }
             else
             {
                 // V1(1,0)<8;8,1>
-                secondHalf[i] = createSrcRegRegion(Mod_src_undef,
-                    params[i]->getRegAccess(),
-                    params[i]->getBase(),
-                    params[i]->getRegOff() + 1,
-                    params[i]->getSubRegOff(),
-                    params[i]->getRegion(),
-                    params[i]->getType());
+                secondHalf[i] = createSrcWithNewRegOff(params[i], params[i]->getRegOff() + 1);
             }
         }
 
@@ -8890,12 +8884,12 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
         regOff = isHalfReturn ? 0 : 1;
         for (unsigned i = 0; i < tmpDstRows; i++, regOff += 1)
         {
-            // If Pixel Null Mask is enabled, write the 8 bits to bits 8-15 in the originai dst
+            // If Pixel Null Mask is enabled, copy the second half to the originai dst
             if (pixelNullMaskEnable && i == tmpDstRows - 1) {
-                G4_DstRegRegion *origDstPtr = createDst(origDstUD->getRegVar(), regOff - 1, 1, 1, Type_UB);
-                G4_SrcRegRegion *src0Ptr = createSrcRegRegion(Mod_src_undef, Direct, tempDst2UD->getRegVar(),
-                    short(i), 0, getRegionScalar(),
-                    Type_UB);
+                G4_Type secondHalfType = execSize == 8 ? Type_UB : Type_UW;
+                G4_DstRegRegion* origDstPtr = createDst(origDstUD->getRegVar(), regOff - 1, 1, 1, secondHalfType);
+                G4_SrcRegRegion* src0Ptr = createSrcRegRegion(Mod_src_undef, Direct, tempDst2UD->getRegVar(),
+                    short(i), 0, getRegionScalar(), secondHalfType);
 
                 G4_Predicate* pred2 = dupPredicate(pred);
                 // write to dst.0[8:15]
@@ -8913,7 +8907,7 @@ int IR_Builder::splitSampleInst(VISASampler3DSubOpCode actualop,
             {
                 // mov (8) dst(0,8)<1>:hf tmp(0,0)<8;8,1>:hf {Q2}
                 G4_DstRegRegion* dst = createDst(
-                    originalDstDcl->getRegVar(), (short)regOff, 8, 1, originalDstDcl->getElemType());
+                    originalDstDcl->getRegVar(), (short)regOff, execSize, 1, originalDstDcl->getElemType());
                 createMov(execSize, dst, tmpSrcPnt, MovInstOpt, true);
             }
             else
@@ -9050,10 +9044,7 @@ int IR_Builder::translateVISASampler3DInst(
     unsigned int numParms,
     G4_SrcRegRegion ** params)
 {
-    /*
-    in vISA      1 means channel will be written, 0 means channel will not be written
-    in GEN ISA   0 means channel will be written, 1 means channel will not be written
-    */
+
     uint8_t execSize = (uint8_t) Get_VISA_Exec_Size( executionSize );
     uint32_t instOpt = Get_Gen4_Emask( emask, execSize );
 
@@ -9084,7 +9075,7 @@ int IR_Builder::translateVISASampler3DInst(
 
     int numChannels = chMask.getNumEnabledChannels();
 
-    if (execSize == 16 &&
+    if (execSize > getNativeExecSize() &&
         (numRows > 11 || actualop == VISA_3D_SAMPLE_D || actualop == VISA_3D_SAMPLE_D_C || actualop == VISA_3D_SAMPLE_KILLPIX))
     {
         // decrementing since we will produce SIMD8 code.
@@ -9148,7 +9139,7 @@ int IR_Builder::translateVISASampler3DInst(
         checkCPSEnable(actualop, responseLength, execSize);
     }
 
-    uint32_t fc = createSamplerMsgDesc(actualop, execSize, FP16Return, FP16Input);
+    uint32_t fc = createSamplerMsgDesc(actualop, execSize == getNativeExecSize(), FP16Return, FP16Input);
     uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, sizes[0], responseLength);
 
     G4_InstSend* sendInst = nullptr;
@@ -9209,7 +9200,7 @@ int IR_Builder::translateVISALoad3DInst(
     }
 
     int numChannels = channelMask.getNumEnabledChannels();
-    if (execSize == 16 && numRows > 11)
+    if (execSize > getNativeExecSize() && numRows > 11)
     {
         // decrementing since we will produce SIMD8 code.
         // don't do this for SIMD16H since its message length is the same as SIMD8H
@@ -9225,7 +9216,7 @@ int IR_Builder::translateVISALoad3DInst(
 
     bool useSplitSend = useSends();
 
-    G4_SrcRegRegion *header = 0;
+    G4_SrcRegRegion *header = nullptr;
     if (useHeader)
     {
         G4_Declare *dcl = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
@@ -9260,7 +9251,7 @@ int IR_Builder::translateVISALoad3DInst(
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, execSize, useSplitSend, sources.data(), len);
 
-    uint32_t fc = createSamplerMsgDesc(actualop, execSize, halfReturn, halfInput);
+    uint32_t fc = createSamplerMsgDesc(actualop, execSize == getNativeExecSize(), halfReturn, halfInput);
 
     uint32_t responseLength = getSamplerResponseLength(numChannels, halfReturn, execSize,
         hasPixelNullMask() && pixelNullMask, dst->isNullReg());
@@ -9327,24 +9318,24 @@ int IR_Builder::translateVISAGather3dInst(
         ++numRows;
     }
 
-    if (execSize == 16 && numRows > 11)
+    if (execSize > getNativeExecSize() && numRows > 11)
     {
         // decrementing since we will produce SIMD8 code.
         // don't do this for SIMD16H since its message length is the same as SIMD8H
         if (!FP16Input)
         {
-            numRows-= numOpnds;
+            numRows -= numOpnds;
         }
 
         return splitSampleInst(actualop, pixelNullMask, /*cpsEnable*/false,
-                               pred, channelMask, 4, aoffimmi, sampler,
-                               surface, dst, em, useHeader, numRows,
-                               numOpnds, opndArray);
+            pred, channelMask, 4, aoffimmi, sampler,
+            surface, dst, em, useHeader, numRows,
+            numOpnds, opndArray);
     }
 
     bool useSplitSend = useSends();
 
-    G4_SrcRegRegion *header = 0;
+    G4_SrcRegRegion *header = nullptr;
     G4_Operand* samplerIdx = sampler;
 
     if (useHeader)
@@ -9382,7 +9373,7 @@ int IR_Builder::translateVISAGather3dInst(
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, execSize, useSplitSend, sources.data(), len);
 
-    uint32_t fc = createSamplerMsgDesc(actualop, execSize, FP16Return, FP16Input);
+    uint32_t fc = createSamplerMsgDesc(actualop, execSize == getNativeExecSize(), FP16Return, FP16Input);
     uint32_t responseLength = getSamplerResponseLength(4, FP16Return, execSize,
         hasPixelNullMask() && pixelNullMask, dst->isNullReg());
 
