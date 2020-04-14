@@ -662,9 +662,9 @@ void SWSB::handleIndirectCall()
             node->GetInstruction()->isReturn())
         {
             LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal(), *fg.getKernel());
-            for (size_t j = 0; j < globalSendOpndList.size(); j++)
+            for (size_t i = 0; i < globalSendOpndList.size(); i++)
             {
-                SBBucketNode* sBucketNode = globalSendOpndList[j];
+                SBBucketNode* sBucketNode = globalSendOpndList[i];
                 SBNode* sNode = sBucketNode->node;
                 if (BBVector[i]->send_live_out->isSrcSet(sNode->globalID) &&
                     (sBucketNode->opndNum == Opnd_src0 ||
