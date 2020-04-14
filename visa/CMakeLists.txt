@@ -189,6 +189,7 @@ set(GenX_Common_Sources_External
   Rematerialization.cpp
   RPE.cpp
   VarSplit.cpp
+  Attributes.cpp
   ${LocalScheduler_SOURCES}
 )
 
@@ -266,6 +267,7 @@ set(GenX_Common_Headers
   RPE.h
   include/gtpin_IGC_interface.h
   VarSplit.h
+  Attributes.hpp
   ${LocalScheduler_HEADERS}
 )
 set(GenX_CISA_dis_Common_Headers

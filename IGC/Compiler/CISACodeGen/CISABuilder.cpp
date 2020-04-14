@@ -4425,7 +4425,7 @@ namespace IGC
         }
 
         V(vbuilder->AddKernel(vKernel, kernelName.c_str()));
-        V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
+        V(vKernel->AddKernelAttribute("AsmName", asmName.length(), asmName.c_str()));
 
         vMainKernel = vKernel;
 

@@ -39,16 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MAX_OPTION_STR_LENGTH 256
 #define MAX_LABEL_STR_LENGTH 256
 
-// This option should be specified as follows
-// - VISA builder mode in CreateBuilder API through fast-path
-// - Kernel target attribute in VISA binarary or ISAASM
-typedef enum {
-    VISA_CM = 0,
-    VISA_3D = 1,
-    VISA_CS = 2,
-} VISATarget;
-
-
 enum EntryType {
     ET_UNINIT = 0,
     ET_BOOL,

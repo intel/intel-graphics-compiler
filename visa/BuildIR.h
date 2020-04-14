@@ -417,8 +417,6 @@ private:
 
     bool isKernel;
 
-    bool isExternFunc = false;
-
     // pre-defined declare that binds to R0 (the entire GRF)
     // when pre-emption is enabled, builtinR0 is replaced by a temp,
     // and a move is inserted at kernel entry
@@ -517,7 +515,6 @@ private:
     bool use64BitFEStackVars;
     bool hasNullReturnSampler = false;
 
-    int perThreadInputSize = 0;
     bool hasPerThreadProlog = false;
     // Have inserted two entires prolog for setting FFID for compute shaders
     bool hasComputeFFIDProlog = false;
@@ -629,9 +626,11 @@ public:
     void bindInputDecl(G4_Declare* dcl, int grfOffset);
 
     const iga::Model* getIGAModel() const { return igaModel; }
+    uint32_t getPerThreadInputSize() const
+    {
+        return kernel.getKernelAttrs()->getIntKernelAttribute(Attributes::ATTR_PerThreadInputSize);
+    }
 
-    uint32_t getPerThreadInputSize() const { return perThreadInputSize; }
-    void setPerThreadInputSize(uint32_t val) { perThreadInputSize = val; }
     bool getHasPerThreadProlog() const { return hasPerThreadProlog; }
     void setHasPerThreadProlog() { hasPerThreadProlog = true; }
 
@@ -657,8 +656,6 @@ public:
     unsigned short getArgSize() { return arg_size; }
     void setRetVarSize( unsigned short size ) { return_var_size = size; }
     unsigned short getRetVarSize() { return return_var_size; }
-    bool getIsExtern() { return isExternFunc; }
-    void setIsExtern(bool val) { isExternFunc = val; }
     FCPatchingInfo* getFCPatchInfo()
     {
         // Create new instance of FC patching class if one is not

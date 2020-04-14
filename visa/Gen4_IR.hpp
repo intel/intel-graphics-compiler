@@ -48,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visa_igc_common_header.h"
 #include "Common_ISA.h"
 #include "Common_GEN.h"
+#include "Attributes.hpp"
 #include "JitterDataStruct.h"
 #include "Metadata.h"
 #include "BitSet.h"
@@ -158,7 +159,6 @@ class G4_Declare;
 class G4_Operand;
 class G4_CondMod;
 class G4_Predicate;
-class G4_Attribute;
 class GlobalRA;
 
 class G4_Imm;
