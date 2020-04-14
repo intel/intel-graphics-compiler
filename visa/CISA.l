@@ -876,7 +876,7 @@ V0 {
         return NULL_VAR;
     }
 
-[a-zA-Z][a-zA-Z0-9_]* {
+[a-zA-Z_][a-zA-Z0-9_]* {
         TRACE("\n** VAR ");
         CISAlval.string = strdup(yytext);
         return VAR;

@@ -2238,6 +2238,11 @@ int IR_Builder::translateVISACFLabelInst(G4_Label* lab)
 #endif
     createLabelInst(lab, true);
 
+    if (lab->isFuncLabel())
+    {
+        subroutineId++;
+    }
+
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -2513,7 +2518,7 @@ int IR_Builder::translateVISACFRetInst(VISA_Exec_Size executionSize, VISA_EMask_
     }
     else
     {
-        createCFInst(predOpnd, getIsKernel() ? G4_pseudo_exit : GetGenOpcodeFromVISAOpcode(ISA_RET), exsize,
+        createCFInst(predOpnd, subroutineId == 0 ? G4_pseudo_exit : GetGenOpcodeFromVISAOpcode(ISA_RET), exsize,
             nullptr, nullptr, instOpt);
     }
 

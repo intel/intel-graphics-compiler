@@ -415,6 +415,7 @@ private:
     FINALIZER_INFO*        metaData;
     CompilerStats       compilerStats;
 
+    int subroutineId = -1;   // the kernel itself has id 0, as we always emit a subroutine label for kernel too
     bool isKernel;
 
     // pre-defined declare that binds to R0 (the entire GRF)
