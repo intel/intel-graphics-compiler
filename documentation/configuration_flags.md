@@ -29,7 +29,6 @@ $ export IGC_ShaderDumpEnable=1
 - **DumpToCurrentDir** - Dump shaders to the current directory
 - **DumpToCustomDir** - Dump shaders to custom directory. Parent directory must exist
 - **DumpVariableAlias** - Dump variable alias info, valid if EnableVariableAlias is on
-- **EnableBCR** - Enable bank conflict reduction
 - **EnableCapsDump** - Enable hardware caps dump
 - **EnableCosDump** - Enable cos dump
 - **EnableLivenessDump** - Enable dumping out liveness info on stderr
@@ -48,8 +47,7 @@ $ export IGC_ShaderDumpEnable=1
 - **InterleaveSourceShader** - Interleave the source shader in asm dump
 - **OGLMinimumDump** - Minimum dump for testing - first and last .ll, .cos and compiler output
 - **PrintToConsole** - Dump to console
-- **QualityMetricsEnable** - Enable Quality Metrics for IGC
 - **ShaderDumpEnable** - Dump LLVM IR, visaasm, and GenISA
 - **ShaderDumpEnableAll** - Dump all LLVM IR passes, visaasm, and GenISA
 - **ShaderDumpPidDisable** - Disabled adding PID to the name of shader dump directory
-- **VISAOptions** - Options to vISA. Space-separated options
+- **QualityMetricsEnable** - Enable Quality Metrics for IGC
