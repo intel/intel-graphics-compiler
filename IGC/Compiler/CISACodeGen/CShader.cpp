@@ -131,9 +131,9 @@ void CShader::PreAnalysisPass()
             if (GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory)
             {
                 m_ScratchSpaceSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
-                // Round up to GENX_GRF_REG_SIZ-byte aligned.
+                // Round up to GRF-byte aligned.
                 m_ScratchSpaceSize =
-                    ((GENX_GRF_REG_SIZ + m_ScratchSpaceSize - 1) / GENX_GRF_REG_SIZ) * GENX_GRF_REG_SIZ;
+                    ((getGRFSize() + m_ScratchSpaceSize - 1) / getGRFSize()) * getGRFSize();
 
             }
         }
@@ -1998,10 +1998,10 @@ CVariable* CShader::LazyCreateCCTupleBackingVariable(
         var = ccTupleMapping[ccTuple];
     }
     else {
-        auto mult = (m_SIMDSize == SIMDMode::SIMD8) ? 1 : 2;
+        auto mult = (m_SIMDSize == m_Platform->getMinDispatchMode()) ? 1 : 2;
         mult = (baseVisaType == ISA_TYPE_HF) ? 1 : mult;
         unsigned int numRows = ccTuple->GetNumElements() * mult;
-        unsigned int numElts = numRows * GENX_GRF_REG_SIZ / CEncoder::GetCISADataTypeSize(ISA_TYPE_F);
+        unsigned int numElts = numRows * getGRFSize() / CEncoder::GetCISADataTypeSize(ISA_TYPE_F);
 
         //int size = numLanes(m_SIMDSize) * ccTuple->GetNumElements();
         if (ccTuple->HasNonHomogeneousElements())
@@ -3008,7 +3008,7 @@ bool CShader::VMECoalescePattern(GenIntrinsicInst* genInst)
 bool CShader::isUnpacked(llvm::Value* value)
 {
     bool isUnpacked = false;
-    if (m_SIMDSize == SIMDMode::SIMD8)
+    if (m_SIMDSize == m_Platform->getMinDispatchMode())
     {
         if (isa<SampleIntrinsic>(value) || isa<LdmcsInstrinsic>(value))
         {

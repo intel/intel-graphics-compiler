@@ -45,8 +45,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/Types.hpp"
 
-#define  GENX_GRF_REG_SIZ          32  // # of bytes in a GRF register
-
 namespace IGC
 {
 
