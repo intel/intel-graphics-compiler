@@ -865,7 +865,6 @@ namespace IGC
         virtual uint32_t getNumThreadsPerEU() const;
         virtual uint32_t getNumGRFPerThread() const;
         virtual bool forceGlobalMemoryAllocation() const;
-        virtual void setForceGlobalMemoryAllocation(bool value) {};
         virtual bool hasNoLocalToGenericCast() const;
         virtual int16_t getVectorCoalescingControl() const;
         bool isPOSH() const;
@@ -1197,7 +1196,7 @@ namespace IGC
         // output: shader information
         iOpenCL::CGen8OpenCLProgram m_programOutput;
         SOpenCLProgramInfo m_programInfo;
-        InternalOptions m_InternalOptions;
+        const InternalOptions m_InternalOptions;
         const Options m_Options;
         bool isSpirV;
         float m_ProfilingTimerResolution;
@@ -1226,7 +1225,6 @@ namespace IGC
         uint32_t getNumGRFPerThread() const override;
         uint32_t getNumThreadsPerEU() const override;
         bool forceGlobalMemoryAllocation() const override;
-        void setForceGlobalMemoryAllocation(bool value) override;
         bool hasNoLocalToGenericCast() const override;
         int16_t getVectorCoalescingControl() const override;
     private:

@@ -526,13 +526,6 @@ namespace IGC
         return m_InternalOptions.IntelForceGlobalMemoryAllocation;
     }
 
-    void OpenCLProgramContext::setForceGlobalMemoryAllocation(bool value)
-    {
-        // This flag can be updated by other conditions apart from user input
-        // e.g. presence of stack calls
-        m_InternalOptions.IntelForceGlobalMemoryAllocation |= value;
-    }
-
     bool OpenCLProgramContext::hasNoLocalToGenericCast() const
     {
         return m_InternalOptions.hasNoLocalToGeneric;

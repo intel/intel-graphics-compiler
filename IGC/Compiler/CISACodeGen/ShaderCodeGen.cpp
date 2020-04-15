@@ -321,9 +321,6 @@ namespace IGC
         ctx.m_instrTypes.numSample = numSample;
         ctx.m_instrTypes.numInsts = numInsts;
         ctx.m_instrTypes.hasLoadStore = true;
-
-        // Always allocate private as global stateless when there are calls
-        ctx.setForceGlobalMemoryAllocation(ctx.m_instrTypes.hasCall);
     }
 
     // forward declaration
