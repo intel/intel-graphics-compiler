@@ -133,24 +133,13 @@ namespace vISA
                 aID < ATTR_TOTAL_NUM;
         }
 
-        // So far, only kernel attr can be of int type
-        static bool isIntAttr(ID aID)
+        static bool isIntAttribute(ID aID)
         {
             return isIntKernelAttribute(aID) || isIntNonKernelAttribute(aID);
         }
-        static bool isIntAttr(const char* AttrName)
+        static bool isStringAttribute(ID aID)
         {
-            ID aID = getAttributeID(AttrName);
-            return isIntAttr(aID);
-        }
-        static bool isStringAttr(ID aID)
-        {
-            return aID != ATTR_INVALID && !isIntAttr(aID);
-        }
-        static bool isStringAttr(const char* AttrName)
-        {
-            ID aID = getAttributeID(AttrName);
-            return isStringAttr(aID);
+            return aID != ATTR_INVALID && !isIntAttribute(aID);
         }
 
         Attributes();

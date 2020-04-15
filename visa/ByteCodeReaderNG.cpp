@@ -2092,7 +2092,7 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned& bytePos, co
         memcpy_s(valueBuffer, attributes[i].size, &buf[bytePos], attributes[i].size);
         bytePos += attributes[i].size;
         vISA::Attributes::ID attrID = vISA::Attributes::getAttributeID(attrName);
-        if (vISA::Attributes::isIntAttr(attrID))
+        if (vISA::Attributes::isIntAttribute(attrID))
         {
             attributes[i].isInt = true;
             switch (attributes[i].size)
@@ -2115,7 +2115,7 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned& bytePos, co
                 break;
             }
         }
-        else if (vISA::Attributes::isStringAttr(attrID))
+        else if (vISA::Attributes::isStringAttribute(attrID))
         {
             attributes[i].isInt = false;    //by default assume attributes have string value
             attributes[i].value.stringVal = valueBuffer;

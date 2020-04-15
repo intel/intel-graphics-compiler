@@ -308,6 +308,7 @@ void CBinaryCISAEmitter::emitAttributeInfo(VISAKernelImpl *cisa_kernel, attribut
     {
         switch (attr->size)
         {
+            case 0: break;  // Attribute without Value
             case sizeof(int8_t ): cisa_kernel->writeInToCisaBinaryBuffer((int8_t *)(&attr->value.intVal), attr->size); break;
             case sizeof(int16_t): cisa_kernel->writeInToCisaBinaryBuffer((int16_t*)(&attr->value.intVal), attr->size); break;
             case sizeof(int32_t): cisa_kernel->writeInToCisaBinaryBuffer((int32_t*)(&attr->value.intVal), attr->size); break;

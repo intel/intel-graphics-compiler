@@ -146,6 +146,14 @@ int VISAKernelImpl::calculateTotalInputSize()
 int VISAKernelImpl::compileFastPath()
 {
     int status = VISA_SUCCESS;
+
+    // make sure attributes for kernel/function are correct
+    assert(
+        (getIsKernel() ||
+         (m_kernelAttrs->isSet(Attributes::ATTR_ArgSize) &&
+          m_kernelAttrs->isSet(Attributes::ATTR_RetValSize))) &&
+        "vISA: input for function must have attributes ArgSize and RetValSize!");
+
     if (getIsKernel())
     {
         status = calculateTotalInputSize();
@@ -1153,7 +1161,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     if set through NG path it stores wrong name .isa file
     so in CMRT in simulation mode it fails to look up the name
     */
-    if (!m_kernelAttrs->getStringKernelAttribute(Attributes::ATTR_AsmName))
+    if (attrID == Attributes::ATTR_AsmName)
     {
         if (m_options->getOption(VISA_AsmFileNameUser))
         {
@@ -1196,11 +1204,12 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     }
 
     attr->size  = (uint8_t)size;
-    attr->isInt = size != 0 && Attributes::isIntKernelAttribute(attrID);
+    attr->isInt = Attributes::isIntAttribute(attrID);
     if (attr->isInt)
     {
         switch (attr->size)
         {
+        case 0: attr->value.intVal = 1; break;
         case 1: attr->value.intVal = *((int8_t *) valueBuffer); break;
         case 2: attr->value.intVal = *((int16_t*) valueBuffer); break;
         case 4: attr->value.intVal = *((int32_t*) valueBuffer); break;
@@ -1209,10 +1218,14 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             break;
         }
 
-        m_kernelAttrs->setIntKernelAttribute(attrID, attr->value.intVal);
+        if (Attributes::isIntKernelAttribute(attrID))
+        {
+            m_kernelAttrs->setIntKernelAttribute(attrID, attr->value.intVal);
+        }
     }
     else
     {
+        // Should be valid attribute of string type!
         if (size > 0)
         {
             attr->value.stringVal = (char*)m_mem.alloc(size + 1);
@@ -1222,7 +1235,12 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         {
             attr->value.stringVal = (char*) "";
         }
-        m_kernelAttrs->setStringKernelAttribute(attrID, attr->value.stringVal);
+        if (Attributes::isStringKernelAttribute(attrID))
+        {
+            m_kernelAttrs->setStringKernelAttribute(attrID, attr->value.stringVal);
+        }
+
+        MUST_BE_TRUE(Attributes::isStringAttribute(attrID), "Unsupported attribute!");
     }
 
     if (attrID == Attributes::ATTR_Target)

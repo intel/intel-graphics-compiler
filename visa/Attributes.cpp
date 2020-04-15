@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace vISA;
 
+// The entry of this array must match to its corresponding Attributes::ID
 Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
 {
   /* Attribute Enum */             /* Attribute Name */       /* Default value */
@@ -79,22 +80,22 @@ Attributes::Attributes()
 
 Attributes::ID Attributes::getAttributeID(const char* AttrName)
 {
-    for (int i = 0; i < ATTR_NUM_KERNEL_ATTRS; ++i)
+    uint32_t AttrLen = strlen(AttrName);
+    for (int i = 0; i < ATTR_TOTAL_NUM; ++i)
     {
-        if (!strcmp(AttrName, AttrsInfo[i].m_attrName))
+        if (!strcmp(AttrName, AttrsInfo[i].m_attrName) &&
+            AttrLen == strlen(AttrsInfo[i].m_attrName))
         {
             return (ID)i;
         }
     }
 
-#if 0
     // temporary. Once upstread change them, remove this code.
-    if (!strcmp(AttrName, "OutputAsmPath"))
+    if (AttrLen == 13 && !strcmp(AttrName, "OutputAsmPath"))
     {
         return ATTR_AsmName;
     }
-#endif
-    if (!strcmp(AttrName, "perThreadInputSize"))
+    if (AttrLen == 18 && !strcmp(AttrName, "perThreadInputSize"))
     {   // start with a lower case 'p'
         return ATTR_PerThreadInputSize;
     }
@@ -112,4 +113,3 @@ void Attributes::setStringKernelAttribute(Attributes::ID kID, const char* val)
     m_kernelAttrs[kID].m_val.m_stringVal = val;
     m_kernelAttrs[kID].m_isSet = true;
 }
-
