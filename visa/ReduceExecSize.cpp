@@ -355,7 +355,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
     bool specialCondForComprInst = ( execSize < 8 && dst && dst->getHorzStride() != 1 &&
         inst->getCondMod() && inst->opcode() != G4_sel );
 
-    TARGET_PLATFORM genX = getGenxPlatform();
+    TARGET_PLATFORM genX = builder.getPlatform();
 
     // rules specific to math instructions
     // INT DIV function does not support SIMD16

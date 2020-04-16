@@ -6,7 +6,7 @@ using namespace vISA;
 
 uint16_t LatencyTable::getLatency(G4_INST* Inst) const
 {
-    auto GEN = getPlatformGeneration(getGenxPlatform());
+    auto GEN = getPlatformGeneration(m_builder->getPlatform());
     if (GEN >= PlatformGen::GEN12)
         return getLatencyG12(Inst);
 
@@ -16,7 +16,7 @@ uint16_t LatencyTable::getLatency(G4_INST* Inst) const
 // This calculates the node's pipeline occupancy (node delay)
 uint16_t LatencyTable::getOccupancy(G4_INST* Inst) const
 {
-    auto GEN = getPlatformGeneration(getGenxPlatform());
+    auto GEN = getPlatformGeneration(m_builder->getPlatform());
     if (GEN >= PlatformGen::GEN12)
         return getOccupancyG12(Inst);
 

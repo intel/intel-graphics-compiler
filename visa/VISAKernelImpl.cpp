@@ -488,7 +488,7 @@ int VISAKernelImpl::InitializeFastPath()
     m_jitInfo = (FINALIZER_INFO*)m_mem.alloc(sizeof(FINALIZER_INFO));
 
     void* addr = m_kernelMem->alloc(sizeof(class IR_Builder));
-    m_builder = new(addr)IR_Builder(m_instListNodeAllocator,
+    m_builder = new(addr)IR_Builder(getGenxPlatform(), m_instListNodeAllocator,
         *m_kernel,
         *m_kernelMem,
         m_options,

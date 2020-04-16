@@ -3817,6 +3817,8 @@ void G4_Kernel::setKernelParameters()
 {
     unsigned overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
 
+    TARGET_PLATFORM platform = getGenxPlatform();
+
 
     // Set the number of GRFs
     if (overrideGRFNum > 0)
@@ -3852,7 +3854,7 @@ void G4_Kernel::setKernelParameters()
     else
     {
         // Default value based on platform
-        switch (getGenxPlatform())
+        switch (platform)
         {
         default:
             numSWSBTokens = 16;
@@ -3870,7 +3872,7 @@ void G4_Kernel::setKernelParameters()
     else
     {
         // Default value based on platform
-        switch (getGenxPlatform())
+        switch (platform)
         {
         default:
             numAcc = 2;
@@ -3880,7 +3882,7 @@ void G4_Kernel::setKernelParameters()
     // Set number of threads if it was not defined before
     if (numThreads == 0)
     {
-        switch (getGenxPlatform())
+        switch (platform)
         {
         default:
             numThreads = 7;
@@ -5788,13 +5790,15 @@ void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST
 {
     G4_INST* inst = *it;
 
+    auto platform = inst->getPlatform();
+
     output << instSyntax;
     if (!inst->isLabel() && inst->opcode() < G4_NUM_OPCODE)
     {
         output << " //";
         emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getLexicalId(), inst->getGenOffset());
 
-        if (getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12)
+        if (getPlatformGeneration(platform) < PlatformGen::GEN12)
         {
             emitBankConflict(output, inst);
         }
@@ -5804,7 +5808,7 @@ void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST
             int twoSrcConflicts = 0;
             int simd16SuppressionConflicts = 0;
             unsigned BCNum = 0;
-            if (getGenxPlatform() == GENX_TGLLP && GetStepping() == Step_A)
+            if (platform == GENX_TGLLP && GetStepping() == Step_A)
             {
                 BCNum = emitBankConflictGen12lp(output, inst, suppressRegs, lastRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts);
             }

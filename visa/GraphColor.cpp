@@ -5889,7 +5889,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 {
 
                     if (!isHybrid && oneGRFBankDivision &&
-                        (!evenAlignNeeded || getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN9))
+                        (!evenAlignNeeded || getPlatformGeneration(builder.getPlatform()) == PlatformGen::GEN9))
                     {
                         gra.getBankAlignment(lr, align);
                     }
@@ -6760,7 +6760,7 @@ void GraphColor::saveRegs(
     unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt)
 {
 
-    assert(getGenxPlatform() >= GENX_SKL && "stack call only supported on SKL+");
+    assert(builder.getPlatform() >= GENX_SKL && "stack call only supported on SKL+");
 
     if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
@@ -11034,7 +11034,7 @@ void GlobalRA::fixAlignment()
         }
     }
 
-    if (getGenxPlatform() == GENX_BDW)
+    if (builder.getPlatform() == GENX_BDW)
     {
         // BDW requires even_word alignment for scalar HF variables
         for (auto dcl : kernel.Declares)

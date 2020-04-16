@@ -153,7 +153,7 @@ bool Is_Type_Included(G4_Type type1, G4_Type type2, const IR_Builder& builder)
         return false;
     }
     if (type1 == Type_F && type2 == builder.getMixModeType() &&
-        getGenxPlatform() > GENX_BDW && builder.getOption(vISA_enableUnsafeCP_DF))
+        builder.getPlatform() > GENX_BDW && builder.getOption(vISA_enableUnsafeCP_DF))
     {
         return true;
     }
@@ -732,8 +732,10 @@ const char* G4_SendMsgDescriptor::getDescType() const
     return NULL;
 }
 
-
-
+TARGET_PLATFORM G4_INST::getPlatform() const
+{
+    return builder.getPlatform();
+}
 
 G4_INST::G4_INST(const IR_Builder& irb,
     G4_Predicate* prd,
@@ -4471,7 +4473,7 @@ void G4_SrcRegRegion::emit(std::ostream& output, bool symbolreg)
     // do not emit region for macro madm
     if (desc && !base->isNullReg() && !base->isNReg() && !isAccRegValid())// rgn == NULL, the default region is used
     {
-        bool align1ternary = getGenxPlatform() >= GENX_CNL && inst != NULL && inst->getNumSrc() == 3 &&
+        bool align1ternary = inst && inst->getNumSrc() == 3 && inst->getPlatform() >= GENX_CNL &&
             !inst->isSend() && inst->isAligned1Inst();
 
         // RegionV is invalid for SRC operands

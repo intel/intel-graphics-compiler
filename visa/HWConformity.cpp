@@ -162,7 +162,7 @@ G4_DstRegRegion* HWConformity::insertMovAfter( INST_LIST_ITER& it, G4_DstRegRegi
         mad (8) r56.0.xyzw:hf -r37.0.xyzw:f r59.0.xyzw:hf r58.0.xyzw:hf {Align16, NoMask}
         mov (16) r44.0<2>:hf r56.0<16;8,2>:hf {Align1, H1} // #??:$39:%66
     */
-    if (scale == 0 || (getGenxPlatform() >= GENX_CHV && execType == Type_F && type == builder.getMixModeType()))
+    if (scale == 0 || (builder.getPlatform() >= GENX_CHV && execType == Type_F && type == builder.getMixModeType()))
     {
         scale = 1;
     }
@@ -397,7 +397,7 @@ G4_Operand* HWConformity::insertMovBefore(
     uint32_t newInstEMask = newExecSize == 1 ? InstOpt_WriteEnable : inst->getMaskOption();
 
     // due to old BDW regioning rule we need NoMask inst here so they can be split
-    if (builder.getOptions()->isTargetCM() && getGenxPlatform() == GENX_BDW)
+    if (builder.getOptions()->isTargetCM() && builder.getPlatform() == GENX_BDW)
     {
         if (bb->isInSimdFlow())
         {
@@ -535,7 +535,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
             }
         }
         else if ((src->getType() != Type_F && src->getType() != Type_VF) &&
-                 (getGenxPlatform() == GENX_BDW || src->getType() != Type_HF))
+                 (builder.getPlatform() == GENX_BDW || src->getType() != Type_HF))
         {
             // CHV+ supports F/HF math, while BDW only supports F math
             // mix mode math is handled in fixMixedHFInst()
@@ -1151,7 +1151,7 @@ void HWConformity::fixOpnds( INST_LIST_ITER it, G4_BB *bb, G4_Type& exType )
 
     // at this point only src0 may be VxH
     // VxH regioning and conditional modifiers may not co-exist
-    if (getGenxPlatform() >= GENX_CNL)
+    if (builder.getPlatform() >= GENX_CNL)
     {
         src0 = inst->getSrc(0);
         if (src0 && src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegion()->isRegionWH())
@@ -1637,7 +1637,7 @@ bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype,
                  intHFConversion = true;
              }
              // we allow packed destination for F to HF.
-             if (getGenxPlatform() >= GENX_CHV && !intHFConversion && inst->isMixedMode())
+             if (builder.getPlatform() >= GENX_CHV && !intHFConversion && inst->isMixedMode())
              {
                  return insertMOV;
              }
@@ -2112,7 +2112,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
     }
     else
     {
-        if ((getGenxPlatform() == GENX_CHV || getGenxPlatform() == GENX_BXT))
+        if ((builder.getPlatform() == GENX_CHV || builder.getPlatform() == GENX_BXT))
         {
             if (inst->getExecSize() == 1)
             {
@@ -3610,7 +3610,7 @@ bool HWConformity::isGoodAlign16Src(G4_INST* inst, int srcPos)
 
         if (region->isContiguous(execSize))
         {
-            if (getGenxPlatform() == GENX_BDW && getTypeSize(opnd_type) < 4)
+            if (builder.getPlatform() == GENX_BDW && getTypeSize(opnd_type) < 4)
             {
                 // BDW HF has to be 32-byte aligned
                 if (!builder.isOpndAligned(src, 32))
@@ -3647,7 +3647,7 @@ bool HWConformity::isGoodAlign16Src(G4_INST* inst, int srcPos)
                 return false;
             }
 
-            if (opnd_type == Type_HF && getGenxPlatform() == GENX_BDW)
+            if (opnd_type == Type_HF && builder.getPlatform() == GENX_BDW)
             {
                 return false;
             }
@@ -3966,7 +3966,7 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
                     (src->asSrcRegRegion()->getRegion()->horzStride == 0) &&
                     (src->asSrcRegRegion()->getRegion()->vertStride == 2);
                 if ((type == Type_DF ||
-                     (type == Type_HF && getGenxPlatform() == GENX_BDW)) &&
+                     (type == Type_HF && builder.getPlatform() == GENX_BDW)) &&
                     execSize > 1 &&
                     (src->isImm() || src->asSrcRegRegion()->isScalar()))
                 {
@@ -6152,7 +6152,7 @@ void HWConformity::conformBB(G4_BB* bb)
 
 
         // FIXME: may be better to call fixDstAlign instead
-        if (getGenxPlatform() == GENX_BDW)
+        if (builder.getPlatform() == GENX_BDW)
         {
             fixPackedHFConversions(i, bb);
         }
@@ -6786,7 +6786,7 @@ void HWConformity::fixSrcRegion( G4_INST *inst )
             if (src->getRegAccess() == Direct && src->crossGRF() && hs != 0)
             {
                 // TODO: this is a temp fix
-                if ((getGenxPlatform() == GENX_BDW || getGenxPlatform() == GENX_CHV) && vs < wd * hs)
+                if ((builder.getPlatform() == GENX_BDW || builder.getPlatform() == GENX_CHV) && vs < wd * hs)
                     continue;
                 // check number of elements in first GRF.
                 uint16_t execTypeSize = hs * src->getElemSize();
@@ -6893,7 +6893,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
             unsigned int rightBound = opnd->asDstRegRegion()->getRightBound();
 
             if (((rightBound*2/G4_GRF_REG_NBYTES - leftBound*2/G4_GRF_REG_NBYTES) > 1) ||
-                (getGenxPlatform() == GENX_BDW &&
+                (builder.getPlatform() == GENX_BDW &&
                  (rightBound*2/G4_GRF_REG_NBYTES != leftBound*2/G4_GRF_REG_NBYTES)))
             {
                 setAccessPattern(topdcl, ACCESS_PATTERN_INVALID);
@@ -6918,7 +6918,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
             unsigned int rightBound = opnd->asSrcRegRegion()->getRightBound();
 
             if (((rightBound*2/G4_GRF_REG_NBYTES - leftBound*2/G4_GRF_REG_NBYTES) > 1) ||
-                (getGenxPlatform() == GENX_BDW &&
+                (builder.getPlatform() == GENX_BDW &&
                  (rightBound*2/G4_GRF_REG_NBYTES != leftBound*2/G4_GRF_REG_NBYTES)))
             {
                 setAccessPattern(topdcl, ACCESS_PATTERN_INVALID);
@@ -7614,7 +7614,7 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
         if (!inst->isMixedMode())
             continue;
 
-        if (getGenxPlatform() >= GENX_CHV)
+        if (builder.getPlatform() >= GENX_CHV)
         {
             // no SIMD16 mix mode instruction
             if (inst->getExecSize() > builder.getNativeExecSize() && inst->isMixedMode())
@@ -7630,7 +7630,7 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
         /*
             12: [DevCHV, DevSKL]: Indirect Addressing on source is not supported when source and destination data types are mixed float.
         */
-        if (getGenxPlatform() == GENX_CHV || getGenxPlatform() == GENX_SKL)
+        if (builder.getPlatform() == GENX_CHV || builder.getPlatform() == GENX_SKL)
         {
             for (uint8_t i = 0; i < inst->getNumSrc(); ++i)
             {

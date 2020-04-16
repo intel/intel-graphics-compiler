@@ -838,7 +838,7 @@ private:
     {
         bool needed = true;
 
-        if (useScratchMsg_ && getGenxPlatform() >= GENX_SKL)
+        if (useScratchMsg_ && builder_->getPlatform() >= GENX_SKL)
             needed = false;
 
         if (builder_->kernel.fg.getHasStackCalls() ||

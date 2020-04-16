@@ -310,7 +310,7 @@ public:
         G4_DstRegRegion* dst = inst->getDst();
         G4_Type regType = dst->asDstRegRegion()->getType();
 
-        if (getGenxPlatform() == GENX_CNL)
+        if (inst->getPlatform() == GENX_CNL)
         {
             switch (regType)
             {    //BXML bug Line 851: bitrange 5-8, should be: 37-40
@@ -998,7 +998,7 @@ public:
         bool ChanSelectValid = false;
 
         // encode acc2~acc9 if it is valid
-        if ( src0->isAccRegValid() && getGenxPlatform() <= GENX_CNL)
+        if ( src0->isAccRegValid() && inst->getPlatform() <= GENX_CNL)
         {
             if ( inst->opcode() == G4_madm ||
                 (inst->isMath() && (inst->asMathInst()->getMathCtrl() == MATH_INVM || inst->asMathInst()->getMathCtrl() == MATH_RSQRTM)))
@@ -1338,7 +1338,7 @@ public:
                 // regn|subre
 
                 SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, byteAddress >> 5);
-                if (getGenxPlatform() > GENX_CNL && src0->isAccRegValid())
+                if (inst->getPlatform() > GENX_CNL && src0->isAccRegValid())
                 {
                     MUST_BE_TRUE((byteAddress & 0x1F) == 0, "subreg must be 0 for source with special accumulator");
                     SrcOperandEncoder<T, SrcNum>::SetSourceSpecialAcc(&sourcesReg, src0->getAccRegSel());

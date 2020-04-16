@@ -409,6 +409,8 @@ private:
 
     GlobalImmPool immPool;
 
+    const TARGET_PLATFORM platform;
+
     //allocator pools
     USE_DEF_ALLOCATOR useDefAllocator;
 
@@ -877,10 +879,10 @@ public:
         return spillFillHeader;
     }
 
-    IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
+    IR_Builder(TARGET_PLATFORM genPlatform, INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
         Mem_Manager &m, Options *options, CISA_IR_Builder* parent,
         FINALIZER_INFO *jitInfo, PWA_TABLE pWaTable)
-        : curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), metaData(jitInfo),
+        : platform(genPlatform), curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), metaData(jitInfo),
         isKernel(false), parentBuilder(parent),
         builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
@@ -909,7 +911,7 @@ public:
         createPreDefinedVars();
 
         igaModel = iga::Model::LookupModel(
-            BinaryEncodingIGA::getIGAInternalPlatform(getGenxPlatform()));
+            BinaryEncodingIGA::getIGAInternalPlatform(getPlatform()));
     }
 
     ~IR_Builder()
@@ -930,6 +932,8 @@ public:
             fcPatchInfo->~FCPatchingInfo();
         }
     }
+
+    TARGET_PLATFORM getPlatform() const { return platform; }
 
     G4_Declare* createDeclareNoLookup(const char*    name,
         G4_RegFileKind regFile,
@@ -1477,7 +1481,7 @@ public:
     {
         uint32_t imm = *((uint32_t*) &fp);
         G4_Type immType = Type_F;
-        if (getGenxPlatform() >= GENX_CHV && m_options->getOption(vISA_FImmToHFImm) &&
+        if (getPlatform() >= GENX_CHV && m_options->getOption(vISA_FImmToHFImm) &&
             !VISA_WA_CHECK(getPWaTable(), WaSrc1ImmHfNotAllowed))
         {
             // we may be able to lower it to HF
@@ -1826,6 +1830,7 @@ public:
         G4_Operand* src0, G4_Operand* src1, uint32_t option, bool appendToInstList);
 
     static G4_MathOp Get_MathFuncCtrl(ISA_Opcode op, G4_Type type);
+
     void resizePredefinedStackVars();
 
     G4_Operand* duplicateOpndImpl( G4_Operand* opnd );
@@ -2722,7 +2727,7 @@ public:
 
     bool useSends() const
     {
-        return getGenxPlatform() >= GENX_SKL && m_options->getOption(vISA_UseSends) &&
+        return getPlatform() >= GENX_SKL && m_options->getOption(vISA_UseSends) &&
             !(VISA_WA_CHECK(m_pWaTable, WaDisableSendsSrc0DstOverlap));
     }
 
@@ -2809,6 +2814,8 @@ private:
         uint16_t exSize,
         G4_Predicate* pred,
         uint32_t mask);
+
+    VISA_Exec_Size roundUpExecSize(VISA_Exec_Size execSize);
 
 };
 }

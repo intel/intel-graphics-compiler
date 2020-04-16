@@ -13,39 +13,39 @@
             return false;
         }
 
-        return getGenxPlatform() > GENX_BDW &&
-            getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN11;
+        return getPlatform() > GENX_BDW &&
+            getPlatformGeneration(getPlatform()) != PlatformGen::GEN11;
     }
 
     bool forceSamplerHeader() const
     {
         return m_options->getOption(vISA_forceSamplerHeader) ||
-            (getGenxPlatform() < GENX_ICLLP && m_options->getOption(vISA_enablePreemption));
+            (getPlatform() < GENX_ICLLP && m_options->getOption(vISA_enablePreemption));
     }
 
     bool needsNoPreemptR2ForSend() const
     {
-        return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11;
+        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN11;
     }
 
     bool noDDAllowedPlatform() const
     {
-        return getGenxPlatform() >= GENX_SKL;
+        return getPlatform() >= GENX_SKL;
     }
 
     bool noSrcDepSetAllowedPlatform() const
     {
-        return getGenxPlatform() >= GENX_SKL;
+        return getPlatform() >= GENX_SKL;
     }
 
     bool doPlane() const
     {
-        return getGenxPlatform() < GENX_ICLLP && !getOption(vISA_expandPlane);
+        return getPlatform() < GENX_ICLLP && !getOption(vISA_expandPlane);
     }
 
     bool favorFloatMov() const
     {
-        return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11 || isGen12LP();
+        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN11 || isGen12LP();
     }
 
     bool noScalarJmp() const
@@ -55,84 +55,84 @@
 
     bool hasAlign1Ternary() const
     {
-        return getGenxPlatform() >= GENX_CNL && getOption(vISA_doAlign1Ternary);
+        return getPlatform() >= GENX_CNL && getOption(vISA_doAlign1Ternary);
     }
 
     bool encodeUnitStrideTernary() const
     {
-        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
     }
 
     bool hasMacl() const
     {
-        return getGenxPlatform() >= GENX_CNL;
+        return getPlatform() >= GENX_CNL;
     }
 
     bool hasCPS() const
     {
-        return getGenxPlatform() >= GENX_CNL;
+        return getPlatform() >= GENX_CNL;
     }
 
     bool hasBindlessSampler() const
     {
-        return getGenxPlatform() >= GENX_CNL;
+        return getPlatform() >= GENX_CNL;
     }
 
     bool noSrc2Regioning() const
     {
-        return getGenxPlatform() >= GENX_ICLLP;
+        return getPlatform() >= GENX_ICLLP;
     }
 
     bool noSrc1Byte() const
     {
-        return getOption(vISA_noSrc1Byte) || getGenxPlatform() >= GENX_ICLLP;
+        return getOption(vISA_noSrc1Byte) || getPlatform() >= GENX_ICLLP;
     }
 
     bool needsFenceCommitEnable() const
     {
         if (m_options->getTarget() == VISA_CM)
         {
-            return getGenxPlatform() >= GENX_SKL;
+            return getPlatform() >= GENX_SKL;
         }
         else
         {
-            return getGenxPlatform() >= GENX_CNL;
+            return getPlatform() >= GENX_CNL;
         }
     }
 
     bool hasIEEEDivSqrt() const
     {
-        return getGenxPlatform() < GENX_ICLLP;
+        return getPlatform() < GENX_ICLLP;
     }
 
     bool gotoJumpOnTrue() const
     {
-        return getGenxPlatform() >= GENX_CNL;
+        return getPlatform() >= GENX_CNL;
     }
 
     bool needsToReserveR127() const
     {
-        return getGenxPlatform() < GENX_CNL;
+        return getPlatform() < GENX_CNL;
     }
 
     bool hasSLMFence() const
     {
-        return getGenxPlatform() >= GENX_ICLLP;
+        return getPlatform() >= GENX_ICLLP;
     }
 
     bool GRFAlign() const
     {
-        return getGenxPlatform() < GENX_SKL;
+        return getPlatform() < GENX_SKL;
     }
 
     bool twoSourcesCollision() const
     {
-        return getGenxPlatform() < GENX_CNL;
+        return getPlatform() < GENX_CNL;
     }
 
     bool lowHighBundle() const
     {
-        return getPlatformGeneration(getGenxPlatform()) <= PlatformGen::GEN11;
+        return getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11;
     }
 
     bool hasCrossInstructionConflict() const
@@ -142,57 +142,57 @@
 
     bool hasBankCollision() const
     {
-        return getPlatformGeneration(getGenxPlatform()) <= PlatformGen::GEN11 || (getOption(vISA_enableBCR) && !(getGenxPlatform() == GENX_TGLLP && GetStepping() == Step_A));
+        return getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11 || (getOption(vISA_enableBCR) && !(getPlatform() == GENX_TGLLP && GetStepping() == Step_A));
     }
 
     bool hasSendShootdown() const
     {
-        return getGenxPlatform() >= GENX_CNL;
+        return getPlatform() >= GENX_CNL;
     }
 
     bool useNewR0Format() const
     {
-        return getGenxPlatform() >= GENX_ICLLP;
+        return getPlatform() >= GENX_ICLLP;
     }
 
     int getPredMaskEnableBit() const
     {
-        return getGenxPlatform() < GENX_ICLLP ? 30 : 23;
+        return getPlatform() < GENX_ICLLP ? 30 : 23;
     }
 
     int getBarrierIDMask() const
     {
-        return getGenxPlatform() < GENX_ICLLP ? 0x8F000000 : 0x7F000000;
+        return getPlatform() < GENX_ICLLP ? 0x8F000000 : 0x7F000000;
     }
 
     uint32_t getMaxSendMessageLength() const
     {
-        return getGenxPlatform() < GENX_CNL ? 16 : 32;
+        return getPlatform() < GENX_CNL ? 16 : 32;
     }
 
     bool hasPixelNullMask() const
     {
-        return getGenxPlatform() >= GENX_SKL;
+        return getPlatform() >= GENX_SKL;
     }
 
     bool noSLMMsgHeader() const
     {
-        return getGenxPlatform() >= GENX_SKL;
+        return getPlatform() >= GENX_SKL;
     }
 
     bool needsA32MsgHeader() const
     {
-        return getGenxPlatform() < GENX_SKL;
+        return getPlatform() < GENX_SKL;
     }
 
     int getThreadIDMask() const
     {
-        return getGenxPlatform() >= GENX_SKL ? 0x7FF : 0x1FF;
+        return getPlatform() >= GENX_SKL ? 0x7FF : 0x1FF;
     }
 
     bool hasFloatAtomics() const
     {
-        return getGenxPlatform() >= GENX_SKL;
+        return getPlatform() >= GENX_SKL;
     }
 
     bool hasBlockedSLMMessage() const
@@ -202,27 +202,27 @@
 
     bool hasHeaderlessMRTWrite() const
     {
-        return getGenxPlatform() >= GENX_ICLLP;
+        return getPlatform() >= GENX_ICLLP;
     }
 
     bool hasDotProductInst() const
     {
-        return getGenxPlatform() < GENX_CNL;
+        return getPlatform() < GENX_CNL;
     }
 
     bool hasLRP() const
     {
-        return getGenxPlatform() < GENX_ICLLP;
+        return getPlatform() < GENX_ICLLP;
     }
 
     int getBarrierMask(bool enableBarrierInstCounterBits) const
     {
-        if (getGenxPlatform() < GENX_SKL)
+        if (getPlatform() < GENX_SKL)
         {
             //pre-SKL: and (8) H0.0:ud r0.2:ud 0x0F000000 (r0.2, bit 24-27)
             return enableBarrierInstCounterBits ? 0x0F00FE00 : 0x0F000000;
         }
-        else if (getGenxPlatform() < GENX_ICLLP)
+        else if (getPlatform() < GENX_ICLLP)
         {
             //SKL+: and (8) H0.0:ud r0.2:ud 0x8F000000 (r0.2, bit24-27, bit31)
             return enableBarrierInstCounterBits ? 0x8F00FE00 : 0x8F000000;
@@ -236,32 +236,32 @@
 
     bool canMadHaveAcc() const
     {
-        return getGenxPlatform() >= GENX_CNL;
+        return getPlatform() >= GENX_CNL;
     }
 
     bool hasFdivPow() const
     {
-        return getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) < PlatformGen::GEN12;
     }
 
     bool hasFdivPowWA() const
     {
-        return getGenxPlatform() < GENX_ICLLP;
+        return getPlatform() < GENX_ICLLP;
     }
 
     bool hasCondModForTernary() const
     {
-        return getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) < PlatformGen::GEN12;
     }
 
     bool hasSWSB() const
     {
-        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
     }
 
     bool hasPartialMixMode() const
     {
-        return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN12;
     }
 
     // whether EOT sources need to be assigned r112-r127
@@ -272,28 +272,28 @@
 
     bool hasSmov() const
     {
-        return getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) < PlatformGen::GEN12;
     }
 
     bool doAccSub() const
     {
-        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN11;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN11;
     }
 
     bool hasNFType() const
     {
-        return getGenxPlatform() >= GENX_ICLLP &&
-               getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN12;
+        return getPlatform() >= GENX_ICLLP &&
+               getPlatformGeneration(getPlatform()) != PlatformGen::GEN12;
     }
 
     void getSSIDBits(uint32_t& width, uint32_t& start) const
     {
-        if (getGenxPlatform() < GENX_CNL)
+        if (getPlatform() < GENX_CNL)
         {
             width = 2;
             start = 12; //[12:13]
         }
-        else if (getGenxPlatform() == GENX_CNL)
+        else if (getPlatform() == GENX_CNL)
         {
             width = 2;
             start = 8; //[8:9]
@@ -307,7 +307,7 @@
 
     bool encodeAccRegSelAsAlign1() const
     {
-        return getGenxPlatform() >= GENX_ICLLP;
+        return getPlatform() >= GENX_ICLLP;
     }
 
     bool fuseTypedWrites() const
@@ -317,13 +317,13 @@
 
     bool avoidWAWSubRegHazard() const
     {
-        return getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12 &&
+        return getPlatformGeneration(getPlatform()) < PlatformGen::GEN12 &&
                getOption(vISA_WAWSubregHazardAvoidance);
     }
 
     bool newTernaryStride() const
     {
-        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
     }
 
     // acc restrictions that are relaxed for gen12
@@ -331,7 +331,7 @@
     // -- the same acc may be used in both src0 and src1 of a three-source inst
     bool relaxedACCRestrictions2() const
     {
-        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
     }
 
     bool fuseURBMessage() const
@@ -341,63 +341,63 @@
 
     bool supportSrcModforMul() const
     {
-        return getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) != PlatformGen::GEN12;
     }
 
     bool doMultiAccSub() const
     {
-        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
     }
 
     bool canMadHaveSrc0Acc() const
     {
-        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
     }
 
     bool accDstforIndirectSrc() const
     {
-        return getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) != PlatformGen::GEN12;
     }
 
     bool favorFpMad() const
     {
-        return getGenxPlatform() < GENX_CNL;
+        return getPlatform() < GENX_CNL;
     }
 
     bool avoidAccDstWithIndirectSource() const
     {
-        return getGenxPlatform() >= GENX_TGLLP;
+        return getPlatform() >= GENX_TGLLP;
     }
 
     bool hasReadSuppression() const
     {
-        return getGenxPlatform() >= GENX_TGLLP;
+        return getPlatform() >= GENX_TGLLP;
     }
 
     bool hasScalarReadSuppression() const
     {
-        return getGenxPlatform() > GENX_TGLLP;
+        return getPlatform() > GENX_TGLLP;
     }
 
     bool alignBindlessSampler() const
     {
-        return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN9 && getOption(vISA_alignBindlessSampler);
+        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN9 && getOption(vISA_alignBindlessSampler);
     }
 
     bool noL3Flush() const
     {
-        return getGenxPlatform() == GENX_TGLLP;
+        return getPlatform() == GENX_TGLLP;
     }
 
     bool needResetA0forVxHA0() const
     {
-        return getGenxPlatform() >= GENX_ICLLP;
+        return getPlatform() >= GENX_ICLLP;
     }
 
     unsigned getCoIssueUints() const
     {
 #if 0
-        auto GEN = getPlatformGeneration(getGenxPlatform());
+        auto GEN = getPlatformGeneration(getPlatform());
         return (GEN >= PlatformGen::GEN12) ? 1 : 2;
 #else
         return 2;
@@ -407,7 +407,7 @@
     bool useMultiThreadLatency() const
     {
 #if 0
-        auto GEN = getPlatformGeneration(getGenxPlatform());
+        auto GEN = getPlatformGeneration(getPlatform());
         if (GEN >= PlatformGen::GEN12)
             return false;
 #endif
@@ -417,46 +417,46 @@
 
     bool useIGAEncoder() const
     {
-        return getOption(vISA_IGAEncoder) || getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12;
+        return getOption(vISA_IGAEncoder) || getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
     }
 
     bool needReplaceIndirectCallWithJmpi() const
     {
-        return getGenxPlatform() <= GENX_ICLLP ||
+        return getPlatform() <= GENX_ICLLP ||
                getOption(vISA_replaceIndirectCallWithJmpi);
     }
 
     bool canEncodeFullExtDesc() const
     {
-        return getGenxPlatform() >= GENX_TGLLP;
+        return getPlatform() >= GENX_TGLLP;
     }
 
     bool needSwap64ImmLoHi() const
     {
-        return getGenxPlatform() >= GENX_TGLLP;
+        return getPlatform() >= GENX_TGLLP;
     }
 
     bool has8ByteA64Gather() const
     {
-        return getGenxPlatform() != GENX_TGLLP;
+        return getPlatform() != GENX_TGLLP;
     }
 
     bool WaDisableSendSrcDstOverlap() const
     {
         return getOption(vISA_noSendSrcDstOverlap) ||
-        (m_options->getTarget() == VISA_CM && getGenxPlatform() >= GENX_SKL) ||
-        getGenxPlatform() == GENX_ICLLP;
+        (m_options->getTarget() == VISA_CM && getPlatform() >= GENX_SKL) ||
+        getPlatform() == GENX_ICLLP;
     }
 
     bool no64bitType() const
     {
-        return getGenxPlatform() == GENX_ICLLP || isGen12LP();
+        return getPlatform() == GENX_ICLLP || isGen12LP();
     }
 
     bool no64bitRegioning() const
     {
-        return getGenxPlatform() == GENX_CHV || getGenxPlatform() == GENX_BXT ||
-               getGenxPlatform() == GENX_ICLLP || isGen12LP();
+        return getPlatform() == GENX_CHV || getPlatform() == GENX_BXT ||
+               getPlatform() == GENX_ICLLP || isGen12LP();
     }
 
     bool oneGRFBankDivision() const
@@ -466,7 +466,7 @@
 
     bool hasMadm() const
     {
-        return getGenxPlatform() != GENX_ICLLP && !isGen12LP();
+        return getPlatform() != GENX_ICLLP && !isGen12LP();
     }
 
     bool hasSIMD16TypedRW() const
@@ -592,7 +592,7 @@
 
     bool isGen12LP() const
     {
-        return getGenxPlatform() == GENX_TGLLP;
+        return getPlatform() == GENX_TGLLP;
     }
 
     bool predCtrlHasWidth() const

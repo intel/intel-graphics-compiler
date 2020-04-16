@@ -157,7 +157,7 @@ static uint32_t buildDescForScatter(uint32_t msgType, VISA_SVM_Block_Num numBloc
 
 // vector scatter messages are either SIMD8/16, so we have to round up
 // the exec size
-static VISA_Exec_Size roundUpExecSize(VISA_Exec_Size execSize)
+VISA_Exec_Size IR_Builder::roundUpExecSize(VISA_Exec_Size execSize)
 {
     if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 || execSize == EXEC_SIZE_4)
     {
@@ -1949,7 +1949,7 @@ void IR_Builder::generateBarrierWait()
     G4_Operand* waitSrc = nullptr;
     if (!hasUnifiedBarrier()) {
 
-        if (getGenxPlatform() < GENX_TGLLP) {
+        if (getPlatform() < GENX_TGLLP) {
             // before gen12: wait n0.0<0;1,0>:ud
             waitSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getN0Reg(),
                 0, 0, getRegionScalar(), Type_UD);
@@ -4409,7 +4409,7 @@ int IR_Builder::translateVISAGather4TypedInst(G4_Predicate           *pred,
 
     bool useSplitSend = useSends();
 
-    bool hasHeader = getGenxPlatform() == GENX_BDW;
+    bool hasHeader = getPlatform() == GENX_BDW;
 
     payloadSource sources[5]; // (maybe header) + maximal 4 addresses
     unsigned len = 0;
@@ -4500,7 +4500,7 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
 
     bool useSplitSend = useSends();
 
-    bool hasHeader = getGenxPlatform() == GENX_BDW;
+    bool hasHeader = getPlatform() == GENX_BDW;
 
     payloadSource sources[6]; // (maybe header) + maximal 4 addresses + source
     unsigned len = 0;
@@ -6662,7 +6662,7 @@ int IR_Builder::translateVISASamplerInst(
     if( sampler == NULL )
     {
         // ld
-        if (getGenxPlatform() < GENX_SKL)
+        if (getPlatform() < GENX_SKL)
         {
             // the order of paramters is
             // u    lod        v    r
@@ -7304,7 +7304,7 @@ int IR_Builder::translateVISASampleInfoInst(
     uint8_t execSize = (uint8_t) Get_VISA_Exec_Size( executionSize );
     uint32_t instOpt = Get_Gen4_Emask( emask, execSize );
     VISAChannelMask channels = chMask.getAPI();
-    bool useFakeHeader = (getGenxPlatform() < GENX_SKL) ? false :
+    bool useFakeHeader = (getPlatform() < GENX_SKL) ? false :
         (channels == CHANNEL_MASK_R);
     bool preEmption = forceSamplerHeader();
     bool forceSplitSend = ForceSplitSend(*this, surface);
@@ -7397,7 +7397,7 @@ int IR_Builder::translateVISAResInfoInst(
 
     VISAChannelMask channels = chMask.getAPI();
     bool preEmption = forceSamplerHeader();
-    bool useHeader = preEmption || (getGenxPlatform() < GENX_SKL) ? channels != CHANNEL_MASK_RGBA :
+    bool useHeader = preEmption || (getPlatform() < GENX_SKL) ? channels != CHANNEL_MASK_RGBA :
         (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG && channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
 
     // Setup number of rows = ( header + lod ) by default
@@ -9066,7 +9066,7 @@ int IR_Builder::translateVISASampler3DInst(
 
     VISAChannelMask channels = chMask.getAPI();
     // For SKL+ channel mask R, RG, RGB, and RGBA may be derived from response length
-    bool needHeaderForChannels = (getGenxPlatform() < GENX_SKL) ? channels != CHANNEL_MASK_RGBA :
+    bool needHeaderForChannels = (getPlatform() < GENX_SKL) ? channels != CHANNEL_MASK_RGBA :
         (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG && channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
 
     bool nonZeroAoffImmi = !(aoffimmi->isImm() && aoffimmi->asImm()->getInt() == 0);
@@ -9192,7 +9192,7 @@ int IR_Builder::translateVISALoad3DInst(
 
     VISAChannelMask channels = channelMask.getAPI();
     // For SKL+ channel mask R, RG, RGB, and RGBA may be derived from response length
-    bool needHeaderForChannels = (getGenxPlatform() < GENX_SKL) ? channels != CHANNEL_MASK_RGBA :
+    bool needHeaderForChannels = (getPlatform() < GENX_SKL) ? channels != CHANNEL_MASK_RGBA :
         (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG && channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
 
     bool nonZeroAoffImmi = !(aoffimmi->isImm() && aoffimmi->asImm()->getInt() == 0);

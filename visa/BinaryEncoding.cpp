@@ -354,7 +354,6 @@ inline void BinaryEncoding::EncodeInstOptionsString(G4_INST* inst)
 
     if (inst->isNoSrcDepSet())
     {
-        MUST_BE_TRUE(getGenxPlatform() >= GENX_SKL, "NoSrcDepSet is for SKL+");
         mybin->SetBits(bitsNoSrcDepSet_0, bitsNoSrcDepSet_1, 1);
     }
 
@@ -1009,7 +1008,7 @@ inline void EncodeSrc0Type(G4_INST *inst, BinInst *mybin, G4_Operand *src0)
         //So that through binary to binary path I can figure out
         //whether I need to set bits 29/30 in msgDescriptor
         //due to HW Bug on SKL.
-        if (getGenxPlatform() >= GENX_CHV)
+        if (inst->getPlatform() >= GENX_CHV)
         {
             SetSrc0Type(mybin, GetOperandSrcType(src0));
         }
@@ -1445,7 +1444,7 @@ inline void Set3SrcSrcType(BinInst *mybin, G4_INST *inst)
             break;
     }
      mybin->SetBits(bits3SrcSrcType[0], bits3SrcSrcType[1], (uint32_t)sType);
-     if ( getGenxPlatform() >= GENX_CHV )
+     if (inst->getPlatform() >= GENX_CHV )
      {
          if ( inst->getSrc(1)->getType() == Type_HF )
          {
@@ -2601,7 +2600,7 @@ void SetExtMsgDescr(G4_INST *inst, BinInst *mybin, uint32_t value)
         mybin->SetBits(bitsExMsgLength_0, bitsExMsgLength_1, emd.ExtMsgDescriptor.ExtMessageLength);
         mybin->SetBits(bitsSendsExDescFuncCtrl_0, bitsSendsExDescFuncCtrl_1, emd.ExtMsgDescriptor.ExtFunctionControl);
     }
-    else if (getGenxPlatform() >= GENX_SKL)
+    else if (inst->getPlatform() >= GENX_SKL)
     {
         // needs to encode extended message desc function control as well for SKL+
         uint32_t val = emd.ExtMsgDescriptor.ExtFunctionControl & 0xF;

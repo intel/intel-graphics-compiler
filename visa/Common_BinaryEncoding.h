@@ -2439,11 +2439,11 @@ namespace vISA
 
         if (mybin->GetIs3Src())
         {
-            if (getGenxPlatform() == GENX_BDW)
+            if (inst->getPlatform() == GENX_BDW)
             {
                 return BDWcompactOneInstruction3Src(inst);
             }
-            else if (getGenxPlatform() >= GENX_CHV)
+            else if (inst->getPlatform() >= GENX_CHV)
             {
                 // CHV and SKL are using the same compaction table for 3src
                 return CHVcompactOneInstruction3Src(inst);
@@ -2455,7 +2455,7 @@ namespace vISA
             }
         }
 
-        if (getGenxPlatform() >= GENX_CHV && inst->isSend())
+        if (inst->getPlatform() >= GENX_CHV && inst->isSend())
         {
             return false;
         }

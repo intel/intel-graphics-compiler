@@ -618,16 +618,8 @@ public:
         return depTokens[i].token;
     }
 
-    bool distanceHonourInstruction() const
-    {
-        if (isSend() || op == G4_nop || isWait() || isMath())
-        {
-            return false;
-        }
-        return true;
-    }
-
-    bool tokenHonourInstruction() const { return isSend() || isMath(); }
+    bool distanceHonourInstruction() const;
+    bool tokenHonourInstruction() const;
 
     void setALUID(int i) { ALUID = i; }
     int getALUID() const { return ALUID; }
@@ -1149,6 +1141,8 @@ public:
     bool canExecSizeBeAcc(Gen4_Operand_Number opndNum) const;
     bool canDstBeAcc() const;
     bool canSrcBeAcc(Gen4_Operand_Number opndNum) const;
+
+    TARGET_PLATFORM getPlatform() const;
 
 private:
     bool detectComprInst() const;

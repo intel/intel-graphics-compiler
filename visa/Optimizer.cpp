@@ -229,7 +229,6 @@ void Optimizer::countBankConflicts()
 {
     std::list<G4_INST*> conflicts;
     unsigned int numLocals = 0, numGlobals = 0;
-    bool isSKLPlus = ( getGenxPlatform() >= GENX_SKL ? true : false );
 
     for (auto curBB : kernel.fg)
     {
@@ -242,13 +241,13 @@ void Optimizer::countBankConflicts()
             G4_Operand* src1 = curInst->getSrc(1);
             G4_Operand* src2 = curInst->getSrc(2);
 
-            if( ( isSKLPlus && src0 == NULL ) || src1 == NULL || src2 == NULL)
+            if (src0 == NULL || src1 == NULL || src2 == NULL)
                 continue;
 
-            if( ( isSKLPlus && !src0->isSrcRegRegion() ) || !src1->isSrcRegRegion() || !src2->isSrcRegRegion())
+            if (!src0->isSrcRegRegion() || !src1->isSrcRegRegion() || !src2->isSrcRegRegion())
                 continue;
 
-            if( (isSKLPlus && !src0->asSrcRegRegion()->getBase()->asRegVar()->getPhyReg()->isGreg()) ||
+            if (!src0->asSrcRegRegion()->getBase()->asRegVar()->getPhyReg()->isGreg() ||
                 !src1->asSrcRegRegion()->getBase()->asRegVar()->getPhyReg()->isGreg() ||
                 !src1->asSrcRegRegion()->getBase()->asRegVar()->getPhyReg()->isGreg())
                 continue;
@@ -256,11 +255,8 @@ void Optimizer::countBankConflicts()
             // We have a 3 src instruction with each src operand a GRF register region
             unsigned int src0grf = 0, src1grf = 0, src2grf = 0;
 
-            if( isSKLPlus )
-            {
-                src0grf = src0->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() +
-                    src0->asSrcRegRegion()->getRegOff();
-            }
+            src0grf = src0->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() +
+                src0->asSrcRegRegion()->getRegOff();
             src1grf = src1->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() +
                 src1->asSrcRegRegion()->getRegOff();
             src2grf = src2->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() +
@@ -270,55 +266,52 @@ void Optimizer::countBankConflicts()
 
             unsigned int src0partition = 0, src1partition = 0, src2partition = 0;
 
-            if( isSKLPlus )
+            if (src0grf < 64)
             {
-                if(src0grf < 64)
-                {
-                    src0partition = 1;
-                    if(src0grf%2 == 0)
-                        src0partition = 0;
-                }
-                else
-                {
-                    src0partition = 3;
-                    if(src0grf%2 == 0)
-                        src0partition = 2;
-                }
+                src0partition = 1;
+                if (src0grf % 2 == 0)
+                    src0partition = 0;
+            }
+            else
+            {
+                src0partition = 3;
+                if (src0grf % 2 == 0)
+                    src0partition = 2;
             }
 
-            if(src1grf < 64)
+            if (src1grf < 64)
             {
                 src1partition = 1;
-                if(src1grf%2 == 0)
+                if (src1grf % 2 == 0)
                     src1partition = 0;
             }
             else
             {
                 src1partition = 3;
-                if(src1grf%2 == 0)
+                if (src1grf % 2 == 0)
                     src1partition = 2;
             }
 
-            if(src2grf < 64)
+            if (src2grf < 64)
             {
                 src2partition = 1;
-                if(src2grf%2 == 0)
+                if (src2grf % 2 == 0)
                     src2partition = 0;
             }
             else
             {
                 src2partition = 3;
-                if(src2grf%2 == 0)
+                if (src2grf % 2 == 0)
                     src2partition = 2;
             }
 
-            if( ( !isSKLPlus || src0partition == src1partition ) && src1partition == src2partition)
+            if (src0partition == src1partition && src1partition == src2partition)
                 isConflict = true;
 
-            if(curInst->getExecSize() == 16)
+            if (curInst->getExecSize() == 16)
                 isConflict = true;
 
-            if(isConflict == true)
+            if (isConflict == true)
             {
                 conflicts.push_back(curInst);
                 numBankConflicts++;
@@ -330,22 +323,19 @@ void Optimizer::countBankConflicts()
                     return false;
                 };
 
-                if( isSKLPlus )
-                {
-                    if(!isGlobal(curInst->getSrc(0), kernel.fg) &&
-                        curInst->getSrc(0)->getTopDcl()->getRegVar()->getPhyReg())
-                        numLocals++;
-                    else
-                        numGlobals++;
-                }
+                if (!isGlobal(curInst->getSrc(0), kernel.fg) &&
+                    curInst->getSrc(0)->getTopDcl()->getRegVar()->getPhyReg())
+                    numLocals++;
+                else
+                    numGlobals++;
 
-                if(!isGlobal(curInst->getSrc(1), kernel.fg) &&
+                if (!isGlobal(curInst->getSrc(1), kernel.fg) &&
                     curInst->getSrc(1)->getTopDcl()->getRegVar()->getPhyReg())
                     numLocals++;
                 else
                     numGlobals++;
 
-                if(!isGlobal(curInst->getSrc(2), kernel.fg) &&
+                if (!isGlobal(curInst->getSrc(2), kernel.fg) &&
                     curInst->getSrc(2)->getTopDcl()->getRegVar()->getPhyReg())
                     numLocals++;
                 else
@@ -354,34 +344,34 @@ void Optimizer::countBankConflicts()
         }
     }
 
-    if(numBankConflicts > 0)
+    if (numBankConflicts > 0)
     {
         std::ofstream optreport;
-        getOptReportStream( optreport, builder.getOptions() );
+        getOptReportStream(optreport, builder.getOptions());
 
         optreport << std::endl << std::endl;
 
         optreport << "===== Bank conflicts =====" << std::endl;
-        optreport <<  "Found " << numBankConflicts << " conflicts (" << numLocals << " locals, " << numGlobals << " globals) in kernel: " << kernel.getName() << std::endl;
-        for(std::list<G4_INST*>::iterator it = conflicts.begin();
+        optreport << "Found " << numBankConflicts << " conflicts (" << numLocals << " locals, " << numGlobals << " globals) in kernel: " << kernel.getName() << std::endl;
+        for (std::list<G4_INST*>::iterator it = conflicts.begin();
             it != conflicts.end();
             it++)
         {
             G4_INST* i = (*it);
-            i->emit( optreport );
+            i->emit(optreport);
             optreport << " // $" << i->getCISAOff() << ":#" << i->getLineNo() << std::endl;
         }
 
         optreport << std::endl << std::endl;
 
-        closeOptReportStream( optreport );
+        closeOptReportStream(optreport);
     }
 }
 
 void Optimizer::insertDummyCompactInst()
 {
     // Only for SKL+ and compaction is enabled.
-    if (getGenxPlatform() < GENX_SKL || !builder.getOption(vISA_Compaction))
+    if (builder.getPlatform() < GENX_SKL || !builder.getOption(vISA_Compaction))
         return;
 
     // Insert mov (1) r0 r0 at the beginning of this kernel.
@@ -3632,7 +3622,7 @@ bool Optimizer::createSmov(G4_BB *bb, G4_INST* flagMove, G4_INST* next_inst)
         next_inst->getDst()->getRegAccess() == Direct ||
         getTypeSize(next_inst->getDst()->getType()) == 1 ||
         getTypeSize(next_inst->getSrc(0)->getType()) == 1 ||
-        (getGenxPlatform() < GENX_SKL && getGenxPlatform() != GENX_BDW) ||
+        (builder.getPlatform() < GENX_SKL && builder.getPlatform() != GENX_BDW) ||
         getTypeSize(next_inst->getDst()->getType()) < getTypeSize(next_inst->getSrc(0)->getType()))
     {
         return false;
@@ -5640,11 +5630,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                      (src0->asSrcRegRegion()->getRegOff() == 0) &&
                      (src0->asSrcRegRegion()->getSubRegOff() == 2)); // r0.2
 
-                bool isSrc1 = ((src1->isImm() && !src1->isRelocImm()) &&
-                               (((src1->asImm()->getInt() == 0x0F000000) &&
-                                 (getGenxPlatform() < GENX_SKL)) ||
-                                ((src1->asImm()->getInt() == 0x8F000000) &&
-                                 (getGenxPlatform() >= GENX_SKL))));
+                bool isSrc1 = src1->isImm() && !src1->isRelocImm() &&
+                    (src1->asImm()->getInt() == builder.getPlatform() >= GENX_SKL ? 0x8F000000 : 0x0F000000);
 
                 if (isSrc0 && isSrc1 && sendInst->getSrc(0) &&
                     sendInst->getSrc(0)->isSrcRegRegion())
@@ -5689,13 +5676,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         //for SKL+ there are 5 bits for barrierID
         //5th bit is stored in bit 31 of second dword
-        if(getGenxPlatform() < GENX_SKL)
+        if (builder.getPlatform() < GENX_SKL)
         {
-            g4Imm = builder.createImm( 0x0F000000, Type_UD );
+            g4Imm = builder.createImm(0x0F000000, Type_UD);
         }
         else
         {
-            g4Imm = builder.createImm( 0x8F000000, Type_UD );
+            g4Imm = builder.createImm(0x8F000000, Type_UD);
         }
 
         G4_INST *andInst = builder.createBinOp(G4_and, 8, dst1_opnd, r0_src_opnd, g4Imm, InstOpt_WriteEnable, false);
@@ -8212,7 +8199,7 @@ public:
             if (bb->isLastInstEOT())
             {
                 auto iter = std::prev(bb->end());
-                if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN10)
+                if (getPlatformGeneration(builder.getPlatform()) >= PlatformGen::GEN10)
                 {
                     // an HDC fence is more efficient in this case
                     // fence with commit enable

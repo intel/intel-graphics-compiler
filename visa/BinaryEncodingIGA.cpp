@@ -638,6 +638,8 @@ void BinaryEncodingIGA::DoAll()
         return false;
     };
 
+    auto platform = kernel.fg.builder->getPlatform();
+
     // Make the size of the first BB be multiple of 4 instructions, and do not compact
     // any instructions in it, so that the size of the first BB is multiple of 64 bytes
     if (kernel.fg.builder->getHasPerThreadProlog() ||
@@ -772,8 +774,8 @@ void BinaryEncodingIGA::DoAll()
                 //work around for SKL bug
                 //not all bits are copied from immediate descriptor
                 if (inst->isSend()                  &&
-                    getGenxPlatform() >= GENX_SKL   &&
-                    getGenxPlatform() < GENX_CNL)
+                    platform >= GENX_SKL   &&
+                    platform < GENX_CNL)
                 {
                     G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
                     G4_Operand* descOpnd = inst->isSplitSend() ? inst->getSrc(2) : inst->getSrc(1);
@@ -875,7 +877,7 @@ void BinaryEncodingIGA::DoAll()
                             Type::INVALID);
                     }
                 }
-                if (getGenxPlatform() >= GENX_CNL
+                if (platform >= GENX_CNL
                     && inst->opcode() == G4_movi && numSrcToEncode == 1)
                 {
                     // From CNL, 'movi' becomes a binary instruction with an
@@ -913,8 +915,8 @@ void BinaryEncodingIGA::DoAll()
                             type = getIGAType(src->getType());
                         }
                         else if (i == 0 &&
-                            getGenxPlatform() >= GENX_SKL   &&
-                            getGenxPlatform() < GENX_CNL)
+                            platform >= GENX_SKL   &&
+                            platform < GENX_CNL)
                         {
                             //work around for SKL bug
                             //not all bits are copied from immediate descriptor
@@ -983,7 +985,7 @@ void BinaryEncodingIGA::DoAll()
             }
             igaInst->addInstOpts(getIGAInstOptSet(inst));
 
-            if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12) {
+            if (getPlatformGeneration(platform) >= PlatformGen::GEN12) {
                 iga::SWSB sw;
                 SetSWSB(inst, sw);
 
@@ -1084,7 +1086,7 @@ void BinaryEncodingIGA::DoAll()
 }
 
 SWSB_ENCODE_MODE BinaryEncodingIGA::getIGASWSBEncodeMode(const IR_Builder& builder) {
-    if (getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12)
+    if (getPlatformGeneration(builder.getPlatform()) < PlatformGen::GEN12)
         return SWSB_ENCODE_MODE::SWSBInvalidMode;
 
 
@@ -1137,7 +1139,7 @@ iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
             //    uint32_t unnamed2 : 5;     // bit 11:15
             //    uint32_t extFuncCtrl : 16; // bit 16:31
             //};
-            if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+            if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::GEN12)
             {
                 tVal &= 0xFFFFFFC0;
             }
@@ -1162,7 +1164,7 @@ iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
         uint32_t tVal = sendDesc->getExtendedDesc();
 
         //We must clear the funcID in the extended message
-        if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+        if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::GEN12)
         {
             tVal = tVal & 0xFFFFFFF0;
         }

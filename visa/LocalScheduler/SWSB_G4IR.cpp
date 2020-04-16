@@ -5851,7 +5851,7 @@ void G4_BB_SB::createAddGRFEdge(SBNode* pred, SBNode* succ, DepType d, SBDepende
 
 void G4_Kernel::emit_dep(std::ostream& output)
 {
-    output << "//.platform " << platformString[getGenxPlatform()];
+    output << "//.platform " << platformString[fg.builder->getPlatform()];
     output << "\n" << "//.stepping " << GetSteppingString();
     output << "\n" << "//.CISA version " << (unsigned int)major_version
         << "." << (unsigned int)minor_version;
@@ -6515,4 +6515,18 @@ G4_BB* Dom::getCommonImmDom(std::unordered_set<G4_BB*>& bbs)
     }
 
     return entryBB;
+}
+
+bool G4_INST::distanceHonourInstruction() const
+{
+    if (isSend() || op == G4_nop || isWait() || isMath())
+    {
+        return false;
+    }
+    return true;
+}
+
+bool G4_INST::tokenHonourInstruction() const
+{
+    return isSend() || isMath();
 }
