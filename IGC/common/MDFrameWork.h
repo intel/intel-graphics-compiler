@@ -214,6 +214,7 @@ namespace IGC
         bool pixelShaderDoNotAbortOnSpill               = false;
         bool UniformWGS                                 = false;
         bool disableVertexComponentPacking              = false;
+        bool disablePartialVertexComponentPacking       = false;
         bool PreferBindlessImages                       = false;
         bool disableMathRefactoring                     = false;
         bool EnableTakeGlobalAddress                    = false;
