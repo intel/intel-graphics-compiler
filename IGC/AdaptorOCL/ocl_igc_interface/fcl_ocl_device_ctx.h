@@ -86,7 +86,7 @@ protected:
 
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(FclOclDeviceCtx, IGC::FclOclTranslationCtx);
 CIF_MARK_LATEST_VERSION(FclOclDeviceCtxLatest, FclOclDeviceCtx);
-using FclOclDeviceCtxTagOCL = FclOclDeviceCtx<2>; // Note : can tag with different version for
+using FclOclDeviceCtxTagOCL = FclOclDeviceCtxLatest; // Note : can tag with different version for
                                                      //        transition periods
 }
 
