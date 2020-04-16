@@ -827,7 +827,7 @@ public:
     VISA_BUILDER_API virtual int WriteVISAHeader() = 0;
     VISA_BUILDER_API virtual std::stringstream& GetAsmTextStream() = 0;
     VISA_BUILDER_API virtual std::stringstream& GetAsmTextHeaderStream() = 0;
-    VISA_BUILDER_API virtual VISAKernel* GetVISAKernel() = 0;
+    VISA_BUILDER_API virtual VISAKernel* GetVISAKernel(const std::string& kernelName = "") = 0;
     VISA_BUILDER_API virtual int ClearAsmTextStreams() = 0;
     VISA_BUILDER_API virtual std::string GetCriticalMsg() = 0;
 };

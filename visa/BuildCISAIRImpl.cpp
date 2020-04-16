@@ -340,9 +340,11 @@ bool CISA_IR_Builder::CISA_IR_initialization(char *kernel_name,
     return true;
 }
 
-VISAKernel* CISA_IR_Builder::GetVISAKernel()
+VISAKernel* CISA_IR_Builder::GetVISAKernel(const std::string& kernelName)
 {
-    return static_cast<VISAKernel*>(m_kernel);
+    if (kernelName.empty())
+        return static_cast<VISAKernel*>(m_kernel);
+    return static_cast<VISAKernel*>(m_nameToKernel.at(kernelName));
 }
 
 int CISA_IR_Builder::ClearAsmTextStreams()
@@ -380,6 +382,7 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     m_kernel->InitializeKernel(kernelName);
     m_kernel->SetGTPinInit(getGtpinInit());
     this->m_kernel_count++;
+    this->m_nameToKernel[kernelName] = m_kernel;
 
     if (m_options.getOption(vISA_IsaAssembly))
     {

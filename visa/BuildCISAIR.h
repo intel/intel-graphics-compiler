@@ -93,7 +93,7 @@ public:
     VISA_BUILDER_API virtual int WriteVISAHeader();
     VISA_BUILDER_API std::stringstream& GetAsmTextStream() { return m_ssIsaAsm; }
     VISA_BUILDER_API std::stringstream& GetAsmTextHeaderStream() { return m_ssIsaAsmHeader; }
-    VISA_BUILDER_API virtual VISAKernel* GetVISAKernel();
+    VISA_BUILDER_API virtual VISAKernel* GetVISAKernel(const std::string& kernelName);
     VISA_BUILDER_API virtual int ClearAsmTextStreams();
 
     /**************END VISA BUILDER API*************************/
@@ -726,6 +726,10 @@ private:
     std::list<VISAKernelImpl *> m_kernels;
     //keeps track of functions for stitching purposes, after compilation.
     std::vector<VISAFunction *> m_functionsVector;
+    // for cases of several kernels/functions in one CisaBuilder
+    // we need to keep a mapping of kernels to names
+    // to make GetVISAKernel() work
+    std::map<std::string, VISAKernelImpl *> m_nameToKernel;
 
     void emitFCPatchFile();
 
