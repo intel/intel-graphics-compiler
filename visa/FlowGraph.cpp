@@ -4371,7 +4371,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
 
         for (auto dcl : Declares)
         {
-            dcl->emit(output, false, m_options->getOption(vISA_SymbolReg));
+            dcl->emit(output);
         }
         output << std::endl;
 
@@ -6005,7 +6005,7 @@ void GlobalOpndHashTable::dump()
     for (auto&& entry : globalOperands)
     {
         G4_Declare* dcl = entry.first;
-        dcl->emit(std::cerr, false, false);
+        dcl->dump();
         if ((dcl->getRegFile() & G4_FLAG) == 0)
         {
             std::vector<bool> globalElt;

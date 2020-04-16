@@ -2511,37 +2511,6 @@ SpillManagerGRF::sendInSpilledRegVarPortions (
     }
 }
 
-// Copy out the source regvar to the destination regvar starting at the dstOff
-// row. The regvars have to be 256 bit wide.
-
-void
-SpillManagerGRF::copyOut256BitWideRegVar (
-    G4_Declare * dstRegDcl,
-    G4_Declare * srcRegDcl,
-    unsigned     dstOff
-)
-{
-    assert (srcRegDcl->getNumElems () * srcRegDcl->getElemSize () ==
-            REG_BYTE_SIZE &&
-            dstRegDcl->getNumElems () * dstRegDcl->getElemSize () ==
-            REG_BYTE_SIZE );
-    int numCopies = dstRegDcl->getNumRows () - dstOff;
-
-    for (int i = 0; i < numCopies; i++) {
-        const RegionDesc * rDesc =
-            builder_->rgnpool.createRegion (REG_DWORD_SIZE, REG_DWORD_SIZE, 1);
-        G4_SrcRegRegion * srcRegRegion =
-            builder_->createSrcRegRegion(
-            Mod_src_undef, Direct, srcRegDcl->getRegVar (),
-            (short) i, SUBREG_ORIGIN, rDesc, Type_UD);
-        G4_DstRegRegion * dstRegRegion = builder_->createDst(
-            dstRegDcl->getRegVar (), dstOff + i, SUBREG_ORIGIN,
-            DEF_HORIZ_STRIDE, Type_UD);
-        createMovInst (REG_DWORD_SIZE, dstRegRegion, srcRegRegion);
-        numGRFMove ++;
-    }
-}
-
 // Check if we need to perform the pre-load of the spilled region's
 // segment from spill memory. A pre-load is required under the following
 // circumstances:

@@ -636,13 +636,6 @@ private:
         unsigned          option
         );
 
-    void
-    copyOut256BitWideRegVar (
-        G4_Declare *      dstRegDcl,
-        G4_Declare *      srcRegDcl,
-        unsigned          dstOff = 0
-    );
-
     bool
     shouldPreloadSpillRange (
         G4_INST *         instContext

@@ -5512,164 +5512,64 @@ void G4_Declare::copyAlign(G4_Declare* dcl)
     regVar->setSubRegAlignment(dcl->getSubRegAlign());
 }
 
-void G4_Declare::emit(
-    std::ostream &output, bool isDumpDot,  bool isSymbolReg) const
+void G4_Declare::emit(std::ostream &output) const
 {
 
-    //
-    // .declare <symbol>    Base=RegFile RegBase {.SubRegBase}
-    //                              ElementSize=ElementSize
-    //                              {SrcRegion=DefaultSrcRegion}
-    //                              {DstRegion=DefaultDstRegion}
-    //                              {Type=DefaultType}
-    //
-    if (isSymbolReg)
+    output << "//.declare " << name;
+    output << " rf=";
+    if (useGRF())
     {
-        //
-        // check if the register allocation is success
-        //
-        if (isSpilled())        // FIXME: check the "spill code" mark instead here!
-        {
-            //
-            // spill code: do not emit declare
-            //
-            output << "//.declare " << name;
-            // Base field
-            output << "\tBase=";
-            if (useGRF())
-            {
-                output << "r (spilled)";                        // currently will not happen
-            }
-            else if (regFile == G4_ADDRESS)
-            {
-                output << "a (spilled)";
-            }
-            else if (regFile == G4_FLAG)
-            {
-                output << "f (spilled)";
-            }
-            else
-            {
-                MUST_BE_TRUE(false, ERROR_UNKNOWN); //unhandled case
-            }
-            return;
-        }
-        else if (regVar->isFlag() )
-        {
-            return;
-        }
-        else
-        {
-            output << ".declare " << name;
-
-            // Base field
-            if (useGRF())
-            {
-                if( regVar->isGreg() )
-                {
-                    output << "\tBase=r";
-                    G4_Greg * GrfReg = (G4_Greg *) regVar->getPhyReg();
-                    int reg = GrfReg->getRegNum();
-                    int off = regVar->getPhyRegOff();
-                    output<<reg<<"."<<off;
-                }
-            }
-            else if (regFile == G4_ADDRESS)
-            {
-                output << "\tBase=a";
-                if (regVar->isA0())
-                {
-                    int off = regVar->getPhyRegOff();
-                    output<<"0."<<off;
-                }
-            }
-            else
-            {
-                MUST_BE_TRUE(false, ERROR_UNKNOWN); //unhandled case
-            }
-        }
-
-        int elemSize = G4_Type_Table[elemType].byteSize;
-        output << " ElementSize="<<elemSize;
+        output << 'r';
     }
-    //
-    // .declare Var_Name reg_file = r|a
-    //          width = (# of elements)
-    //          height = (# of rows)
-    //          elem_type=UD|W|...
-    //          srcRegion=<vertStride;width,horzStride>  --- default src region
-    //          dstRegion=<horzStride>      --- default dst region
-    //
+    else if (regFile == G4_ADDRESS)
+    {
+        output << 'a';
+    }
+    else if (regFile == G4_FLAG)
+    {
+        output << 'f';
+    }
     else
     {
-        output << "//.declare " << name;
-        output << " rf=";
-        if (useGRF())
+        MUST_BE_TRUE(false, ERROR_UNKNOWN); //unhandled case
+    }
+
+    output << " size=" << getByteSize();
+    if (Type_UNDEF != elemType)
+    {
+        output << " type=" << G4_Type_Table[elemType].str;
+    }
+    if (AliasDCL)
+    {
+        output << " alias=" << AliasDCL->getName() << "+" << getAliasOffset();
+    }
+    output << " align=" << getSubRegAlign() << " words";
+    if (regVar->isPhyRegAssigned())
+    {
+        G4_VarBase* phyreg = regVar->getPhyReg();
+        if (phyreg->isGreg())
         {
-            output << 'r';
+            output << " (r" << phyreg->asGreg()->getRegNum() << "." << regVar->getPhyRegOff() << ")";
         }
-        else if (regFile == G4_ADDRESS)
+        else if (phyreg->isAddress())
         {
-            output << 'a';
+            output << " (a0." << regVar->getPhyRegOff() << ")";
         }
-        else if (regFile == G4_FLAG)
+        else if (phyreg->isFlag())
         {
-            output << 'f';
+            bool valid = false;
+            output << " (f" << phyreg->asAreg()->ExRegNum(valid) << "." << regVar->getPhyRegOff() << ")";
+        }
+    }
+    else if (isSpilled())
+    {
+        if (spillDCL != nullptr)
+        {
+            output << " (spilled -> " << spillDCL->getName() << ")";
         }
         else
         {
-            MUST_BE_TRUE(false, ERROR_UNKNOWN); //unhandled case
-        }
-
-        output << " size=" << getByteSize();
-        if (Type_UNDEF != elemType)
-        {
-            output << " type=" << G4_Type_Table[elemType].str;
-        }
-        if (AliasDCL)
-        {
-            output << " alias=" << AliasDCL->getName() << "+" << getAliasOffset();
-        }
-        output << " align=" << getSubRegAlign() << " words";
-        if (regVar->isPhyRegAssigned())
-        {
-            G4_VarBase* phyreg = regVar->getPhyReg();
-            if (phyreg->isGreg())
-            {
-                output << " (r" << phyreg->asGreg()->getRegNum() << "." << regVar->getPhyRegOff() << ")";
-            }
-            else if (phyreg->isAddress())
-            {
-                output << " (a0." << regVar->getPhyRegOff() << ")";
-            }
-            else if (phyreg->isFlag())
-            {
-                bool valid = false;
-                output << " (f" << phyreg->asAreg()->ExRegNum(valid) << "." << regVar->getPhyRegOff() << ")";
-            }
-        }
-        else if (isSpilled())
-        {
-            if (spillDCL != nullptr)
-            {
-                output << " (spilled -> " << spillDCL->getName() << ")";
-            }
-            else
-            {
-                output << " (spilled)";
-            }
-        }
-    }
-
-    //
-    // emit data type in symbolic register case
-    //
-    if (isSymbolReg)
-    {
-        // Type=
-        if (Type_UNDEF != elemType)
-        {
-            output << " Type=" << G4_Type_Table[elemType].str;
+            output << " (spilled)";
         }
     }
 
@@ -5686,7 +5586,7 @@ void G4_Declare::emit(
         output << " Output";
     }
 
-    output << std::endl;
+    output << "\n";
 }
 
 void

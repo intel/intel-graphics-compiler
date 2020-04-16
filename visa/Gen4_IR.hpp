@@ -1732,8 +1732,6 @@ class G4_Declare
         numFlagElements = numEl;
     }
 
-#define NOMASK_BYTE 0x80
-
 public:
     G4_Declare(const char*    n,
                G4_RegFileKind k,
@@ -2007,7 +2005,9 @@ public:
         }
     }
 
-    void emit(std::ostream& output, bool isDumpDot, bool isSymbolReg) const;
+    void emit(std::ostream& output) const;
+
+    void dump() const { emit(std::cerr); }
 
     void prepareForRealloc(G4_Kernel*);
 };

@@ -1666,83 +1666,75 @@ bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype,
 
 bool HWConformity::fixIndirectOpnd( INST_LIST_ITER i, G4_BB *bb )
 {
-    G4_INST *inst = *i;
+    G4_INST* inst = *i;
 
-    G4_Operand *src0 = inst->getSrc(0), *src1 = inst->getSrc(1);
-    G4_DstRegRegion *dst = inst->getDst();
-    bool null_dst = ( !dst || inst->hasNULLDst() );
+    G4_Operand* src0 = inst->getSrc(0), * src1 = inst->getSrc(1);
+    G4_DstRegRegion* dst = inst->getDst();
+    bool null_dst = (!dst || inst->hasNULLDst());
 
     bool null_src0 = !src0;
-    bool null_src1 = !src1 || ( inst->isMath() && src1->isNullReg() );
+    bool null_src1 = !src1 || (inst->isMath() && src1->isNullReg());
 
     const int addr_reg_max_count = 16;
-    const int addr_reg_size      = G4_Type_Table[Type_UW].byteSize;
-    int src_uniq_count           = 0;
-    int src1_count               = 0;
-    int src0_count               = 0;
-    int dst_uniq_count           = 0;
-    int dst_count                = 0;
-    bool nospill_src1            = false;
-    bool nospill_src0            = false;
-    bool nospill_dst             = false;
-    bool spill_src1              = false;
-    bool spill_src0              = false;
-    bool spill_dst               = false;
-    G4_Declare *addr_dcl0 = NULL, *addr_dcl1 = NULL, *addr_dcl2 = NULL;
-    if( !null_src0 && src0->isSrcRegRegion() &&
-        src0->getRegAccess() != Direct && src0->asSrcRegRegion()->getBase()->isRegVar() ){
-            addr_dcl0 = src0->asSrcRegRegion()->getBase()->asRegVar()->getDeclare();
-            while( addr_dcl0->getAliasDeclare() != NULL ){
-                addr_dcl0 = addr_dcl0->getAliasDeclare();
-            }
-            // is the following precise?
-            src0_count = addr_dcl0->getNumElems() * addr_dcl0->getNumRows() * addr_dcl0->getElemSize() / addr_reg_size;
-            MUST_BE_TRUE( src0_count <= addr_reg_max_count, "More than 8 address subregisters required for one oerand." );
-            src_uniq_count += src0_count;
+    const int addr_reg_size = G4_Type_Table[Type_UW].byteSize;
+    int src_uniq_count = 0;
+    int src1_count = 0;
+    int src0_count = 0;
+    int dst_uniq_count = 0;
+    int dst_count = 0;
+    bool nospill_src1 = false;
+    bool nospill_src0 = false;
+    bool nospill_dst = false;
+    bool spill_src1 = false;
+    bool spill_src0 = false;
+    bool spill_dst = false;
+    G4_Declare* addr_dcl0 = NULL, * addr_dcl1 = NULL, * addr_dcl2 = NULL;
+    if (!null_src0 && src0->isSrcRegRegion() &&
+        src0->getRegAccess() != Direct && src0->asSrcRegRegion()->getBase()->isRegVar()) {
+        addr_dcl0 = src0->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare();
+        // is the following precise?
+        src0_count = addr_dcl0->getTotalElems();
+        MUST_BE_TRUE(src0_count <= addr_reg_max_count, "More than 8 address subregisters required for one oerand.");
+        src_uniq_count += src0_count;
     }
 
-    if( !null_src1 && src1->isSrcRegRegion() &&
-        src1->getRegAccess() != Direct && src1->asSrcRegRegion()->getBase()->isRegVar() ){
-            addr_dcl1 = src1->asSrcRegRegion()->getBase()->asRegVar()->getDeclare();
-            while( addr_dcl1->getAliasDeclare() != NULL ){
-                addr_dcl1 = addr_dcl1->getAliasDeclare();
-            }
-            src1_count = addr_dcl1->getNumElems() * addr_dcl1->getNumRows() * addr_dcl1->getElemSize() / addr_reg_size;
-            MUST_BE_TRUE( src1_count <= addr_reg_max_count, "More than 8 address subregisters required for one oerand." );
-            if (addr_dcl1 != addr_dcl0) {
-                // should we use top level dcl here?
-                src_uniq_count += src1_count;
-            }
-            else {
-                nospill_src1 = true;
-                nospill_src0 = true;
-            }
+    if (!null_src1 && src1->isSrcRegRegion() &&
+        src1->getRegAccess() != Direct && src1->asSrcRegRegion()->getBase()->isRegVar()) {
+        addr_dcl1 = src1->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare();
+        src1_count = addr_dcl1->getTotalElems();
+        MUST_BE_TRUE(src1_count <= addr_reg_max_count, "More than 8 address subregisters required for one oerand.");
+        if (addr_dcl1 != addr_dcl0) {
+            // should we use top level dcl here?
+            src_uniq_count += src1_count;
+        }
+        else {
+            nospill_src1 = true;
+            nospill_src0 = true;
+        }
     }
 
-    if( !null_dst &&
-        dst->getRegAccess() != Direct && dst->getBase()->isRegVar() )
+    if (!null_dst &&
+        dst->getRegAccess() != Direct && dst->getBase()->isRegVar())
     {
-            addr_dcl2 = dst->getBase()->asRegVar()->getDeclare();
-            while( addr_dcl2->getAliasDeclare() != NULL ){
-                addr_dcl2 = addr_dcl2->getAliasDeclare();
-            }
-            dst_count = addr_dcl2->getNumElems() * addr_dcl2->getNumRows() * addr_dcl2->getElemSize() / addr_reg_size;
-            MUST_BE_TRUE( dst_count <= addr_reg_max_count, "More than 8 address subregisters required for one oerand." );
-            if (addr_dcl2 != addr_dcl0 && addr_dcl2 != addr_dcl1) {
-                dst_uniq_count += dst_count;
-            }
-            else if( addr_dcl2 != addr_dcl0 ){
-                nospill_dst = true;
-                nospill_src0 = true;
-            }else{
-                nospill_dst = true;
-                nospill_src1 = true;
-            }
+        addr_dcl2 = dst->getBase()->asRegVar()->getDeclare()->getRootDeclare();
+        dst_count = addr_dcl2->getTotalElems();
+        MUST_BE_TRUE(dst_count <= addr_reg_max_count, "More than 8 address subregisters required for one oerand.");
+        if (addr_dcl2 != addr_dcl0 && addr_dcl2 != addr_dcl1) {
+            dst_uniq_count += dst_count;
+        }
+        else if (addr_dcl2 != addr_dcl0) {
+            nospill_dst = true;
+            nospill_src0 = true;
+        }
+        else {
+            nospill_dst = true;
+            nospill_src1 = true;
+        }
     }
 
     if (src_uniq_count > addr_reg_max_count) {
         if (src0_count > src1_count || nospill_src1) {
-            MUST_BE_TRUE(nospill_src0 == false, "Address of source0 should be spilled." );
+            MUST_BE_TRUE(nospill_src0 == false, "Address of source0 should be spilled.");
             spill_src0 = true;
             src_uniq_count -= src0_count;
         }
@@ -1754,21 +1746,21 @@ bool HWConformity::fixIndirectOpnd( INST_LIST_ITER i, G4_BB *bb )
     }
 
     if (src_uniq_count + dst_uniq_count > addr_reg_max_count) {
-        MUST_BE_TRUE(nospill_dst == false, "Address of dst should be spilled." );
+        MUST_BE_TRUE(nospill_dst == false, "Address of dst should be spilled.");
 
         if (nospill_src1 && nospill_src0) {
             spill_dst = true;
             dst_uniq_count = 0;
         }
-        else if (dst_uniq_count > src0_count && dst_uniq_count > src1_count) {
+        else if (dst_uniq_count > src0_count&& dst_uniq_count > src1_count) {
             spill_dst = true;
             dst_uniq_count = 0;
         }
-        else if (spill_src0 ) {
+        else if (spill_src0) {
             spill_src1 = true;
             src_uniq_count -= src1_count;
         }
-        else if (spill_src1 ) {
+        else if (spill_src1) {
             spill_src0 = true;
             src_uniq_count -= src0_count;
         }
@@ -1782,29 +1774,29 @@ bool HWConformity::fixIndirectOpnd( INST_LIST_ITER i, G4_BB *bb )
         }
     }
 
-    MUST_BE_TRUE (src_uniq_count + dst_uniq_count <= addr_reg_max_count,
+    MUST_BE_TRUE(src_uniq_count + dst_uniq_count <= addr_reg_max_count,
         "Remianed number of address registers should be no more than 8 after spill.");
 
     // Is this only for iselect?
     // What if a scalar with indirect addressing is used?
     if (spill_src0) {
-        G4_Operand *new_src0 = insertMovBefore(i, 0, src0->getType(), bb);
-        inst->setSrc( new_src0, 0 );
+        G4_Operand* new_src0 = insertMovBefore(i, 0, src0->getType(), bb);
+        inst->setSrc(new_src0, 0);
     }
 
     if (spill_src1 && src1) {
-        G4_Operand *new_src1 = insertMovBefore(i, 1, src1->getType(), bb);
-        inst->setSrc( new_src1, 1 );
+        G4_Operand* new_src1 = insertMovBefore(i, 1, src1->getType(), bb);
+        inst->setSrc(new_src1, 1);
     }
 
     if (spill_dst && dst)
     {
-        G4_DstRegRegion *new_dst = insertMovAfter( i, dst, dst->getType(), bb );
-        inst->setDest( new_dst );
-        if( dst != new_dst &&
-            ( IS_FTYPE(dst->getType()) || IS_DFTYPE(dst->getType()) ) )
+        G4_DstRegRegion* new_dst = insertMovAfter(i, dst, dst->getType(), bb);
+        inst->setDest(new_dst);
+        if (dst != new_dst &&
+            (IS_FTYPE(dst->getType()) || IS_DFTYPE(dst->getType())))
         {
-            inst->setSaturate( false );
+            inst->setSaturate(false);
         }
     }
     return spill_dst;
@@ -2573,7 +2565,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
             dstType = Type_Q;
         G4_Declare *dstDcl = dst->getBase()->asRegVar()->getDeclare();
         G4_Declare *tmpDcl = builder.createTempVar(
-                                        dstDcl->getNumElems(),
+                                        exec_size,
                                         dstType,
                                         Any,
                                         "TV");

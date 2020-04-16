@@ -98,6 +98,8 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 #define BANK_CONFLICT_SIMD16_OVERHEAD_CYCLE    2
 #define INTERNAL_CONFLICT_RATIO_HEURISTIC 0.25
 
+#define NOMASK_BYTE 0x80
+
 
 Interference::Interference(LivenessAnalysis* l, LiveRange**& lr, unsigned n, unsigned ns, unsigned nm,
     GlobalRA& g) : gra(g), kernel(g.kernel), lrs(lr),
@@ -1314,8 +1316,7 @@ void GlobalRA::reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring)
         if ((*it)->getRegKind() == G4_GRF) {
             G4_RegVar* spillVar = (*it)->getVar();
             optreport << "Spill candidate " << spillVar->getName() << " intf:";
-            optreport << "\t(" << spillVar->getDeclare()->getNumRows() << "x" <<
-                spillVar->getDeclare()->getNumElems() << "):" <<
+            optreport << "\t(" << spillVar->getDeclare()->getTotalElems() << "):" <<
                 G4_Type_Table[spillVar->getDeclare()->getElemType()].str << std::endl;
 
             if (getLocalLR(spillVar->getDeclare()) != NULL)
@@ -1342,8 +1343,7 @@ void GlobalRA::reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring)
                     G4_RegVar* intfRangeVar = lrs[i]->getVar();
 
                     optreport << "\t" << intfRangeVar->getName() << "(" <<
-                        intfRangeVar->getDeclare()->getNumRows() << "x" <<
-                        intfRangeVar->getDeclare()->getNumElems() << "):" <<
+                        intfRangeVar->getDeclare()->getTotalElems() << "):" <<
                         G4_Type_Table[intfRangeVar->getDeclare()->getElemType()].str;
 
                     if (lrs[i]->getPhyReg() == NULL)
@@ -12271,7 +12271,7 @@ bool dump(const char* s, G4_Kernel* kernel)
     {
         if (name.compare(dcl->getName()) == 0)
         {
-            dcl->emit(std::cerr, false, false);
+            dcl->dump();
             return true;
         }
     }
