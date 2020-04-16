@@ -1769,6 +1769,23 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
     case Intrinsic::assume:
         m_instructionsToRemove.push_back(&I);
         break;
+    case Intrinsic::floor:
+    case Intrinsic::ceil:
+    case Intrinsic::trunc:
+    {
+        if (!m_ctx->platform.supportFP16Rounding() && I.getType()->isHalfTy())
+        {
+            // On platform lacking of FP16 rounding, promote them to FP32 and
+            // demote back.
+            Value* Val = Builder.CreateFPExt(I.getOperand(0), Builder.getFloatTy());
+            Value* Callee = Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), intrinsicID, Builder.getFloatTy());
+            Val = Builder.CreateCall(Callee, Val);
+            Val = Builder.CreateFPTrunc(Val, I.getType());
+            I.replaceAllUsesWith(Val);
+            I.eraseFromParent();
+        }
+    }
+    break;
     case Intrinsic::umul_with_overflow:
     case Intrinsic::smul_with_overflow:
         TODO("Handle the other with_overflow intrinsics");
@@ -1776,26 +1793,6 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         break;
     default:
         break;
-    }
-    if (!m_ctx->platform.supportFP16Rounding() && I.getType()->isHalfTy()) {
-        // On platform lacking of FP16 rounding, promote them to FP32 and
-        // demote back.
-        Intrinsic::ID IID = I.getIntrinsicID();
-        switch (IID) {
-        default:
-            break;
-        case llvm::Intrinsic::floor:
-        case llvm::Intrinsic::ceil:
-        case llvm::Intrinsic::trunc: {
-            Value* Val = Builder.CreateFPExt(I.getOperand(0), Builder.getFloatTy());
-            Value* Callee = Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), IID, Builder.getFloatTy());
-            Val = Builder.CreateCall(Callee, Val);
-            Val = Builder.CreateFPTrunc(Val, I.getType());
-            I.replaceAllUsesWith(Val);
-            I.eraseFromParent();
-            break;
-        }
-        }
     }
 }
 
