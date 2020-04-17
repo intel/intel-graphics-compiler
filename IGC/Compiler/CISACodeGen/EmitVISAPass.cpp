@@ -11073,8 +11073,8 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
     const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
     const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
         CEncoder::GetCISADataTypeSize(type) == 8);
-    // The 2 grf boundary is crossed for SIMD16 (before reduction) and 64-bit type
-    const uint numInst = is64bitType && simd == SIMDMode::SIMD8 ? 2 : 1;
+    // The 32-byte grf boundary is crossed for SIMD16 (before reduction) and 64-bit type
+    const uint numInst = is64bitType && simd == SIMDMode::SIMD8 && getGRFSize() == 32 ? 2 : 1;
 
     assert(simd == SIMDMode::SIMD2 || simd == SIMDMode::SIMD4 || simd == SIMDMode::SIMD8);
 
@@ -11142,8 +11142,8 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
     const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
     const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
         CEncoder::GetCISADataTypeSize(type) == 8);
-    // The grf boundary is crossed in final reduction and expansion for SIMD16 and 64-bit type.
-    const uint numInst = is64bitType && simd == SIMDMode::SIMD16 ? 2 : 1;
+    // The 32-byte grf boundary is crossed in final reduction and expansion for SIMD16 and 64-bit type.
+    const uint numInst = is64bitType && simd == SIMDMode::SIMD16 && getGRFSize() == 32 ? 2 : 1;
     assert(clusterSize == 2 || clusterSize == 4 || clusterSize == 8 || (clusterSize == 16 && !is64bitType));
 
     // For information on rearrangement see EmitPass::ReductionClusteredReduceHelper()
