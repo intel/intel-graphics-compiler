@@ -176,14 +176,16 @@ namespace {
         }
 
         bool doInitialization(Module& M) override {
-            Result.reset(new AddressSpaceAAResult(
-            getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(
+            if(M.size() > 0)
+            {
+                Result.reset(new AddressSpaceAAResult(
+                getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(
 #if LLVM_VERSION_MAJOR >= 10
-                // LLVM_UPGRADE_TODO - check how to feed this place with correct Function ref
-                *M.begin()
+                    *M.begin()
 #endif
-                ),
-                *getAnalysis<CodeGenContextWrapper>().getCodeGenContext()));
+                    ),
+                    *getAnalysis<CodeGenContextWrapper>().getCodeGenContext()));
+            }
             return false;
         }
 
