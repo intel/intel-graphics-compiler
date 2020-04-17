@@ -5283,7 +5283,7 @@ uint32_t G4_BB::emitBankConflictGen12(std::ostream& os_output, G4_INST *inst, in
         dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
         dstRegs[0] = byteAddress / GENX_GRF_REG_SIZ;
-        if (dstExecSize > 32)
+        if (dstExecSize > getGRFSize())
         {
             dstRegs[1] = dstRegs[0] + (dstExecSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
             instSplit = true;
@@ -5308,7 +5308,7 @@ uint32_t G4_BB::emitBankConflictGen12(std::ostream& os_output, G4_INST *inst, in
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     currInstRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
 
-                    if (currInstExecSize[i] > 32)
+                    if (currInstExecSize[i] > getGRFSize())
                     {
                         currInstRegs[1][i] = currInstRegs[0][i] + 1;// (currInstExecSize[i] + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
                         instSplit = true;
@@ -5542,7 +5542,7 @@ uint32_t G4_BB::emitBankConflictGen12lp(std::ostream& os_output, G4_INST *inst, 
         dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
         dstRegs[0] = byteAddress / GENX_GRF_REG_SIZ;
-        if (dstExecSize > 32)
+        if (dstExecSize > getGRFSize())
         {
             dstRegs[1] = dstRegs[0] + (dstExecSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
             instSplit = true;
@@ -5567,7 +5567,7 @@ uint32_t G4_BB::emitBankConflictGen12lp(std::ostream& os_output, G4_INST *inst, 
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     currInstRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
 
-                    if (currInstExecSize[i] > 32)
+                    if (currInstExecSize[i] > getGRFSize())
                     {
                         currInstRegs[1][i] = currInstRegs[0][i] + (currInstExecSize[i] + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
                         instSplit = true;
