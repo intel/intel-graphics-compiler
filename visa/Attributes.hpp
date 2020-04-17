@@ -70,6 +70,7 @@ namespace vISA
             ATTR_PerThreadInputSize,
             ATTR_Extern,
             ATTR_NoBarrier,
+            ATTR_SimdSize,
 
 
             /********************************************/

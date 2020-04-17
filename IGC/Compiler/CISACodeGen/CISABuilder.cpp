@@ -4427,6 +4427,8 @@ namespace IGC
         V(vbuilder->AddKernel(vKernel, kernelName.c_str()));
         V(vKernel->AddKernelAttribute("AsmName", asmName.length(), asmName.c_str()));
 
+        SetDispatchSimdSize();
+
         vMainKernel = vKernel;
 
         auto gtpin_init = context->gtpin_init;
@@ -4448,30 +4450,39 @@ namespace IGC
         initCR(vKernel);
     }
 
+    void CEncoder::SetDispatchSimdSize()
+    {
+        assert(vKernel);
+        uint8_t dispatchSIMD = (uint8_t)numLanes(m_program->m_dispatchSize);
+        V(vKernel->AddKernelAttribute("SimdSize", 1, &dispatchSIMD));
+    }
+
     void CEncoder::SetKernelStackPointer64()
     {
         assert(vKernel);
-        int spSize = 64;
-        V(vKernel->AddKernelAttribute("FESPSize", sizeof(spSize), &spSize));
+        uint8_t spSize = 64;
+        V(vKernel->AddKernelAttribute("FESPSize", 1, &spSize));
     }
 
     void CEncoder::SetStackFunctionArgSize(uint size)
     {
+        uint8_t sz = (uint8_t)size;
         assert(vKernel);
-        V(vKernel->AddKernelAttribute("ArgSize", sizeof(size), &size));
+        V(vKernel->AddKernelAttribute("ArgSize", 1, &sz));
     }
 
     void CEncoder::SetStackFunctionRetSize(uint size)
     {
+        uint8_t sz = (uint8_t)size;
         assert(vKernel);
-        V(vKernel->AddKernelAttribute("RetValSize", sizeof(size), &size));
+        V(vKernel->AddKernelAttribute("RetValSize", 1, &sz));
     }
 
     void CEncoder::SetExternFunctionFlag()
     {
         assert(vKernel);
-        int flag = 1;
-        V(vKernel->AddKernelAttribute("Extern", sizeof(flag), &flag));
+        uint8_t flag = 1;
+        V(vKernel->AddKernelAttribute("Extern", 1, &flag));
     }
 
     SEncoderState CEncoder::CopyEncoderState()

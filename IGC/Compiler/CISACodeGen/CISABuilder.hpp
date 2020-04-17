@@ -136,6 +136,7 @@ namespace IGC
         SEncoderState CopyEncoderState();
         void SetEncoderState(SEncoderState& newState);
 
+        void SetDispatchSimdSize();
         void SetKernelStackPointer64();
         void SetStackFunctionArgSize(uint size);  // size in GRFs
         void SetStackFunctionRetSize(uint size);  // size in GRFs

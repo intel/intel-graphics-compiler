@@ -9602,6 +9602,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
 
 void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
 {
+    m_encoder->SetDispatchSimdSize();
     m_currShader->CreateSP(ptr64bits);
 
     if (F->hasFnAttribute("IndirectlyCalled"))

@@ -49,6 +49,7 @@ Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
   /* ATTR_PerThreadInputSize */    { "PerThreadInputSize",    0 },
   /* ATTR_Extern */                { "Extern",                0 },
   /* ATTR_NoBarrier */             { "NoBarrier",             0 },
+  /* ATTR_SIMDSIZE */              { "SimdSize",              0 },
   /* ATTR_AsmName */               { "AsmName",               (const char*)0 },
   /* ATTR_Entry */                 { "Entry",                 (const char*)0 },
   /* ATTR_Callable */              { "Callable",              (const char*)0 },
