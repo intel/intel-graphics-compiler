@@ -4425,7 +4425,7 @@ namespace IGC
         }
 
         V(vbuilder->AddKernel(vKernel, kernelName.c_str()));
-        V(vKernel->AddKernelAttribute("AsmName", asmName.length(), asmName.c_str()));
+        V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
 
         SetDispatchSimdSize();
 
@@ -4481,8 +4481,7 @@ namespace IGC
     void CEncoder::SetExternFunctionFlag()
     {
         assert(vKernel);
-        uint8_t flag = 1;
-        V(vKernel->AddKernelAttribute("Extern", 1, &flag));
+        V(vKernel->AddKernelAttribute("Extern", 0, nullptr));
     }
 
     SEncoderState CEncoder::CopyEncoderState()

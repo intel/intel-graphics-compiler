@@ -77,7 +77,8 @@ const char *printAsmName(const print_format_provider_t* header)
 {
     for (unsigned i = 0; i < header->getAttrCount(); i++)
     {
-        if (!strcmp(header->getString(header->getAttr(i)->nameIndex), "OutputAsmPath"))
+        const char* attrName = header->getString(header->getAttr(i)->nameIndex);
+        if (Attributes::isAttribute(Attributes::ATTR_OutputAsmPath, attrName))
             return header->getAttr(i)->value.stringVal;
     }
 
@@ -408,11 +409,10 @@ std::string printAttribute(
         return sstr.str();
     }
 
-    std::string attrName = kernel->getString(attr->nameIndex);
+    const char* attrName = kernel->getString(attr->nameIndex);
     sstr << "." << (isKernelAttr ? "kernel_" : "") << "attr " << attrName << "=";
-
     if (attr->isInt) {
-        if (isKernelAttr && attrName == "Target") {
+        if (isKernelAttr && Attributes::isAttribute(Attributes::ATTR_Target, attrName)) {
             switch (attr->value.intVal) {
             case VISA_CM: sstr << "\"cm\""; break;
             case VISA_3D: sstr << "\"3d\""; break;
@@ -2568,14 +2568,16 @@ std::string printKernelHeader(
     for (unsigned i = 0; i < header->getAttrCount(); i++)
     {
         sstr << "\n" << printAttribute(header->getAttr(i), header, true);
-        if (strcmp(header->getString(header->getAttr(i)->nameIndex), "Target") == 0)
+        const char* attrName = header->getString(header->getAttr(i)->nameIndex);
+        if (Attributes::isAttribute(Attributes::ATTR_Target, attrName))
         {
             isTargetSet = true;
         }
     }
     if (isTargetSet == false)
     {
-        sstr << "\n" << ".kernel_attr Target=";
+        const char* attrName = Attributes::getAttributeName(Attributes::ATTR_Target);
+        sstr << "\n" << ".kernel_attr " << attrName << "=";
         switch (options->getTarget()) {
         case VISA_CM: sstr << "\"cm\""; break;
         case VISA_3D: sstr << "\"3d\""; break;

@@ -77,7 +77,7 @@ namespace vISA
             /*      string-typed kernel attributes      */
             /********************************************/
             ATTR_START_STRING_KERNEL_ATTR,
-            ATTR_AsmName = ATTR_START_STRING_KERNEL_ATTR,
+            ATTR_OutputAsmPath = ATTR_START_STRING_KERNEL_ATTR,
             ATTR_Entry,
             ATTR_Callable,
             ATTR_Caller,
@@ -110,7 +110,15 @@ namespace vISA
             bool     m_isSet;
         };
 
+        /// Given an attribute name, return its ID
         static ID getAttributeID(const char* AttrName);
+
+        /// Given an attribute ID, return its name
+        static const char* getAttributeName(ID aID);
+
+        /// Return true if the given AttrName's ID == aID
+        static bool isAttribute(ID aID, const char* AttrName);
+
         static bool isIntKernelAttribute(ID aID)
         {
             return aID >= ATTR_START_INT_KERNEL_ATTR &&

@@ -1161,7 +1161,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     if set through NG path it stores wrong name .isa file
     so in CMRT in simulation mode it fails to look up the name
     */
-    if (attrID == Attributes::ATTR_AsmName)
+    if (attrID == Attributes::ATTR_OutputAsmPath)
     {
         if (m_options->getOption(VISA_AsmFileNameUser))
         {

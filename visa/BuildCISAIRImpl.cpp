@@ -1142,10 +1142,9 @@ bool CISA_IR_Builder::CISA_input_directive(char* var_name, short offset, unsigne
 bool CISA_IR_Builder::CISA_attr_directive(
     const char* input_name, const char* input_var, int line_no)
 {
-
+    Attributes::ID attrID = Attributes::getAttributeID(input_name);
     if (!m_options.getOption(VISA_AsmFileNameUser) &&
-        (strcmp(input_name, "AsmName") == 0 ||
-         strcmp(input_name, "OutputAsmPath") == 0))
+        attrID == Attributes::ATTR_OutputAsmPath)
     {
         if (strcmp(input_name, "AsmName") == 0) {
             std::cerr << "WARNING: AsmName deprecated "
@@ -1164,7 +1163,7 @@ bool CISA_IR_Builder::CISA_attr_directive(
         m_options.setOptionInternally(VISA_AsmFileName, asmFileName);
     }
 
-    if (strcmp(input_name, "Target") == 0) {
+    if (attrID == Attributes::ATTR_Target) {
         unsigned char visa_target;
         MUST_BE_TRUE(input_var,
             ".kernel_attr Target=.. must be \"cm\", \"3d\", or \"cs\"");

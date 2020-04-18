@@ -50,7 +50,7 @@ Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
   /* ATTR_Extern */                { "Extern",                0 },
   /* ATTR_NoBarrier */             { "NoBarrier",             0 },
   /* ATTR_SIMDSIZE */              { "SimdSize",              0 },
-  /* ATTR_AsmName */               { "AsmName",               (const char*)0 },
+  /* ATTR_OuputAsmPath */          { "OutputAsmPath",         (const char*)0 },
   /* ATTR_Entry */                 { "Entry",                 (const char*)0 },
   /* ATTR_Callable */              { "Callable",              (const char*)0 },
   /* ATTR_Caller */                { "Caller",                (const char*)0 },
@@ -92,15 +92,26 @@ Attributes::ID Attributes::getAttributeID(const char* AttrName)
     }
 
     // temporary. Once upstread change them, remove this code.
-    if (AttrLen == 13 && !strcmp(AttrName, "OutputAsmPath"))
-    {
-        return ATTR_AsmName;
+    if (AttrLen == 7 && !strcmp(AttrName, "AsmName"))
+    {   // "AsmName" deprecated
+        return ATTR_OutputAsmPath;
     }
     if (AttrLen == 18 && !strcmp(AttrName, "perThreadInputSize"))
     {   // start with a lower case 'p'
         return ATTR_PerThreadInputSize;
     }
     return ATTR_INVALID;
+}
+
+const char* Attributes::getAttributeName(Attributes::ID aID)
+{
+    return AttrsInfo[(int)aID].m_attrName;
+}
+
+bool Attributes::isAttribute(ID aID, const char* AttrName)
+{
+    const char* aIDName = getAttributeName(aID);
+    return strcmp(AttrName, aIDName) == 0 && strlen(AttrName) == strlen(aIDName);
 }
 
 void Attributes::setIntKernelAttribute(Attributes::ID kID, int val)
