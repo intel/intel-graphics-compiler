@@ -5631,7 +5631,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                      (src0->asSrcRegRegion()->getSubRegOff() == 2)); // r0.2
 
                 bool isSrc1 = src1->isImm() && !src1->isRelocImm() &&
-                    (src1->asImm()->getInt() == builder.getPlatform() >= GENX_SKL ? 0x8F000000 : 0x0F000000);
+                    src1->asImm()->getInt() == (builder.getPlatform() >= GENX_SKL ? 0x8F000000 : 0x0F000000);
 
                 if (isSrc0 && isSrc1 && sendInst->getSrc(0) &&
                     sendInst->getSrc(0)->isSrcRegRegion())
