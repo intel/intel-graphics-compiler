@@ -3679,8 +3679,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
 
   # list of libraries linked in all configurations
   set(_targetLinkLineCommon)
-  # list of libraries additionally linked in Debug and ReleaseInternal configurations
-  set(_targetLinkLineDebugAndReleaseInternalOnly)
 
   # Generated link line for IGC static library allows to properly use it in other projects.
   if(_targetIsStatic)
@@ -3705,14 +3703,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   list(APPEND _targetLinkLineCommon
       "${IGC_BUILD__PROJ__AdaptorOGL}"
   )
-
-
-  if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
-    list(APPEND _targetLinkLineDebugAndReleaseInternalOnly
-        "${IGC_BUILD__PROJ__SPIRV-Tools}"
-    )
-  endif()
-
 
 
   list(APPEND _targetLinkLineCommon
@@ -3747,10 +3737,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
     set("IGC_BUILD__LINK_LINE_RELEASE${_libBuildSuffix}"
         ${_targetLinkLineCommon}
       )
-    set("IGC_BUILD__LINK_LINE_RELEASEINTERNAL_AND_DEBUG${_libBuildSuffix}"
-        ${_targetLinkLineCommon}
-        ${_targetLinkLineDebugAndReleaseInternalOnly}
-      )
   else()
     if(CMAKE_WDDM_LINUX)
     target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE
@@ -3762,7 +3748,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
     else()
     target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE
         "${_targetLinkLineCommon}"
-        "$<$<NOT:$<CONFIG:Release>>:${_targetLinkLineDebugAndReleaseInternalOnly}>"
         "${CMAKE_DL_LIBS}"
       )
     endif()
