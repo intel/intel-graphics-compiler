@@ -6140,15 +6140,6 @@ void G4_Kernel::calculateSimdSize()
         return;
     }
 
-    // First, get simdsize from attribute (0 : not given)
-    simdSize = m_kernelAttrs->getIntKernelAttribute(Attributes::ATTR_SimdSize);
-    if (simdSize == 8 || simdSize == 16 || simdSize == 32)
-    {   // got it from attribute, done.
-        return;
-    }
-    // If not 0|8|16|32, wrong value from attribute.
-    assert(simdSize == 0 && "vISA: wrong value for SimdSize attribute");
-
     simdSize = 8;
 
     for (auto bb : fg)
