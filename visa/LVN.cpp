@@ -151,7 +151,7 @@ bool LVN::getDstData(int64_t srcImm, G4_Type srcType, int64_t& dstImm, G4_Type d
             dstImmValid = true;
         }
     }
-    else if (IS_VINTTYPE(srcType))
+    else if (IS_VTYPE(srcType))
     {
         dstImm = srcImm;
         dstImmValid = true;
@@ -582,10 +582,9 @@ void LVN::removeVirtualVarRedefs(G4_DstRegRegion* dst)
     if (!dstTopDcl)
         return;
 
-    auto dclId = dstTopDcl->getDeclId();
-    auto it = lvnTable.find(dclId);
+    auto it = dclValueTable.find(dstTopDcl);
 
-    if (it != lvnTable.end())
+    if (it != dclValueTable.end())
     {
         for (auto second = it->second.begin(), end = it->second.end();
             second != end;
@@ -596,7 +595,9 @@ void LVN::removeVirtualVarRedefs(G4_DstRegRegion* dst)
     (((origopnd->getLeftBound() <= opnd->getLeftBound() && origopnd->getRightBound() >= opnd->getLeftBound()) || \
     (opnd->getLeftBound() <= origopnd->getLeftBound() && opnd->getRightBound() >= origopnd->getLeftBound())))
 
-            if (potentialRedef->dstTopDcl == dstTopDcl &&
+            if (potentialRedef->inst &&
+                potentialRedef->inst->getDst() &&
+                potentialRedef->inst->getDst()->getTopDcl() == dstTopDcl &&
                 IS_VAR_REDEFINED(dst, potentialRedef->inst->getDst()))
             {
                 potentialRedef->active = false;
@@ -605,18 +606,14 @@ void LVN::removeVirtualVarRedefs(G4_DstRegRegion* dst)
             {
                 for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
                 {
-                    if (potentialRedef->srcTopDcls[i] == dstTopDcl &&
+                    if (potentialRedef->inst &&
+                        potentialRedef->inst->getSrc(i) &&
+                        potentialRedef->inst->getSrc(i)->getTopDcl() == dstTopDcl &&
                         IS_VAR_REDEFINED(dst, potentialRedef->inst->getSrc(i)))
                     {
                         potentialRedef->active = false;
                     }
                 }
-            }
-
-            if (!potentialRedef->active)
-            {
-                second = it->second.erase(second);
-                continue;
             }
 
             second++;
@@ -639,14 +636,16 @@ void LVN::removeVirtualVarRedefs(G4_DstRegRegion* dst)
                 )
             {
                 auto lvnItems = (*second);
+                auto lvnItemsInst = lvnItems->inst;
 
                 for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
                 {
-                    if (lvnItems->srcTopDcls[i] &&
-                        lvnItems->inst->getSrc(i)->isSrcRegRegion() &&
-                        lvnItems->inst->getSrc(i)->asSrcRegRegion()->isIndirect())
+                    if (lvnItemsInst &&
+                        lvnItemsInst->getSrc(i) &&
+                        lvnItemsInst->getSrc(i)->isSrcRegRegion() &&
+                        lvnItemsInst->getSrc(i)->asSrcRegRegion()->isIndirect())
                     {
-                        if (p2a.isPresentInPointsTo(lvnItems->srcTopDcls[i]->getRegVar(), dst->getTopDcl()->getRegVar()))
+                        if (p2a.isPresentInPointsTo(lvnItemsInst->getSrc(i)->asSrcRegRegion()->getTopDcl()->getRegVar(), dst->getTopDcl()->getRegVar()))
                         {
                             lvnItems->active = false;
                             second = dcls.second.erase(second);
@@ -699,22 +698,24 @@ void LVN::removePhysicalVarRedefs(G4_DstRegRegion* dst)
             auto item = (*it);
             bool erase = false;
 
-            if (item->dstTopDcl->getRegVar()->isGreg())
+            auto dstTopDcl = item->inst->getDst() ? item->inst->getDst()->getTopDcl() : nullptr;
+            if (dstTopDcl->getRegVar()->isGreg())
             {
-                if (sameGRFRef(topdcl, item->dstTopDcl))
+                if (sameGRFRef(topdcl, dstTopDcl))
                 {
                     item->active = false;
                     erase = true;
                 }
             }
 
-            for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
+            for (auto i = 0; i < item->inst->getNumSrc(); i++)
             {
-                if (item->srcTopDcls[i] &&
-                    item->srcTopDcls[i]->getRegVar()->isGreg())
+                auto srcTopDcl = item->inst->getSrc(i)->getTopDcl();
+                if (srcTopDcl &&
+                    srcTopDcl->getRegVar()->isGreg())
                 {
                     // Check if both physical registers have an overlap
-                    if (sameGRFRef(topdcl, item->srcTopDcls[i]))
+                    if (sameGRFRef(topdcl, srcTopDcl))
                     {
                         item->active = false;
                         erase = true;
@@ -767,25 +768,22 @@ void LVN::removeAliases(G4_INST* inst)
 
     for (auto item : dstPointsTo)
     {
-        auto dclId = item->getDeclare()->getRootDeclare()->getDeclId();
+        auto dcl = item->getDeclare()->getRootDeclare();
+        auto it = dclValueTable.find(dcl);
+        if (it == dclValueTable.end())
+            continue;
 
-        auto it = lvnTable.find(dclId);
-
-        if (it != lvnTable.end())
+        for (auto d : (*it).second)
         {
-            for (auto conflict : it->second)
-            {
-                conflict->active = false;
+            d->active = false;
 #ifdef DEBUG_VERBOSE_ON
-                DEBUG_VERBOSE("Removing inst from LVN table for indirect dst conflict:");
-                conflict->inst->emit(std::cerr);
-                DEBUG_VERBOSE(" #" << conflict->inst->getLineNo() << ":$" << conflict->inst->getCISAOff() << std::endl);
-                DEBUG_VERBOSE("Due to indirect dst in:" << std::endl);
-                inst->emit(std::cerr);
-                DEBUG_VERBOSE(" #" << inst->getLineNo() << ":$" << inst->getCISAOff() << std::endl << std::endl);
+            DEBUG_VERBOSE("Removing inst from LVN table for indirect dst conflict:");
+            d->inst->emit(std::cerr);
+            DEBUG_VERBOSE(" #" << d->inst->getLineNo() << ":$" << d->inst->getCISAOff() << std::endl);
+            DEBUG_VERBOSE("Due to indirect dst in:" << std::endl);
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(" #" << inst->getLineNo() << ":$" << inst->getCISAOff() << std::endl << std::endl);
 #endif
-            }
-            it->second.clear();
         }
     }
 }
@@ -888,21 +886,156 @@ const char* LVN::getModifierStr(G4_SrcModifier srcMod)
 void LVN::getValue(int64_t imm, G4_Operand* opnd, Value& value)
 {
     value.hash = imm;
-    value.opnd = opnd;
+    value.inst = nullptr;
+}
+
+LVNItemInfo* LVN::getOpndValue(G4_Operand* opnd, bool create)
+{
+    auto topdcl = opnd->getTopDcl();
+    if (!topdcl)
+        return nullptr;
+
+    auto lb = opnd->getLeftBound();
+    auto rb = opnd->getRightBound();
+    uint16_t hs = 0;
+    bool isScalar = false;
+    bool isSingleStride = false;
+    if (opnd->isSrcRegRegion())
+    {
+        isScalar = opnd->asSrcRegRegion()->getRegion()->isScalar();
+        if (!isScalar)
+        {
+            isSingleStride = opnd->asSrcRegRegion()->getRegion()->isSingleStride(opnd->getInst()->getExecSize(), hs);
+            if (!isSingleStride)
+                hs = 0;
+        }
+    }
+    else if(opnd->isDstRegRegion())
+    {
+        isScalar = (opnd->getInst()->getExecSize() == 1);
+        if (!isScalar)
+        {
+            hs = opnd->asDstRegRegion()->getHorzStride();
+            isSingleStride = true;
+        }
+    }
+
+    auto it = dclValueTable.find(topdcl);
+    if (it == dclValueTable.end())
+    {
+        if(!create)
+        {
+            return nullptr;
+        }
+    }
+
+    if (it != dclValueTable.end())
+    {
+        for (auto& item : (*it).second)
+        {
+            if (!item->active)
+                continue;
+
+            if (item->lb == lb && item->rb == rb && item->isScalar == isScalar &&
+                item->constHStride == isSingleStride && item->hstride == hs)
+                return item;
+        }
+    }
+
+    if (create)
+    {
+        // create instance of LVNItemInfo since it doesnt exist
+        LVNItemInfo* item = new (mem.alloc(sizeof(LVNItemInfo))) LVNItemInfo;
+        item->constHStride = isSingleStride;
+        item->hstride = hs;
+        item->inst = opnd->getInst();
+        item->opnd = opnd;
+        item->isScalar = isScalar;
+        item->lb = lb;
+        item->rb = rb;
+
+        return item;
+    }
+
+    return nullptr;
 }
 
 void LVN::getValue(G4_SrcRegRegion* src, G4_INST* inst, Value& value)
 {
     G4_Declare* topdcl = src->getTopDcl();
-    value.hash = topdcl->getDeclId() + src->getLeftBound() + src->getRightBound() + getActualHStride(src);
-    value.opnd = src;
+
+    // check whether operand is present in value table
+    auto lvnItemInfo = getOpndValue(src);
+    if (lvnItemInfo->value.isValueEmpty())
+    {
+        lvnItemInfo->value.hash = topdcl->getDeclId() + src->getLeftBound() + src->getRightBound() + getActualHStride(src) + dclValueTable.size();
+        lvnItemInfo->value.inst = inst;
+        perInstValueCache.push_back(std::make_pair(topdcl, lvnItemInfo));
+    }
+    value = lvnItemInfo->value;
 }
 
 void LVN::getValue(G4_DstRegRegion* dst, G4_INST* inst, Value& value)
 {
     G4_Declare* topdcl = dst->getTopDcl();
-    value.hash = topdcl->getDeclId() + dst->getLeftBound() + dst->getRightBound() + dst->getHorzStride();
-    value.opnd = dst;
+
+    auto lvnItemInfo = getOpndValue(dst);
+    if(lvnItemInfo->value.isValueEmpty())
+    {
+        lvnItemInfo->value.hash = topdcl->getDeclId() + dst->getLeftBound() + dst->getRightBound() + dst->getHorzStride() + dclValueTable.size();
+        lvnItemInfo->value.inst = inst;
+        perInstValueCache.push_back(std::make_pair(topdcl, lvnItemInfo));
+    }
+    value = lvnItemInfo->value;
+}
+
+void LVN::invalidateOldDstValue(G4_INST* inst)
+{
+    // invalidate old values
+    if (!inst->getDst())
+        return;
+    auto topdcl = inst->getDst()->getTopDcl();
+    if (!topdcl)
+        return;
+    auto it = dclValueTable.find(topdcl);
+    if (it == dclValueTable.end())
+        return;
+
+    auto lb = inst->getDst()->getLeftBound();
+    auto rb = inst->getDst()->getRightBound();
+    for (auto& item : (*it).second)
+    {
+        if (!item->active)
+            continue;
+
+        if (item->lb < rb && item->rb >= rb)
+            item->active = false;
+
+        if (lb < item->rb && rb >= item->rb)
+            item->active = false;
+    }
+}
+
+void LVN::getValue(G4_INST* inst, Value& value)
+{
+    value.inst = inst;
+    value.hash = (unsigned int)inst->opcode();
+    for (unsigned int i = 0; i != inst->getNumSrc(); i++)
+    {
+        auto opnd = inst->getSrc(i);
+
+        Value v;
+        if (opnd->isSrcRegRegion())
+        {
+            getValue(opnd->asSrcRegRegion(), inst, v);
+            value.hash += v.hash;
+        }
+        else if (opnd->isImm())
+        {
+            getValue(opnd->asImm()->getInt(), opnd, v);
+            value.hash += v.hash;
+        }
+    }
 }
 
 template<class T, class K>
@@ -1067,7 +1200,16 @@ bool isNonUniformSrcRegion(G4_SrcRegRegion* srcRgn)
 
 bool LVN::addValue(G4_INST* inst)
 {
-    if (inst->opcode() != G4_mov ||
+    auto isAllowedOpcode = [](G4_INST* inst)
+    {
+        if (inst->opcode() == G4_mov ||
+            inst->opcode() == G4_shl ||
+            inst->opcode() == G4_shr)
+            return true;
+        return false;
+    };
+
+    if (!isAllowedOpcode(inst) ||
         inst->getSaturate() ||
         inst->getDst()->isIndirect() ||
         inst->getPredicate() != NULL ||
@@ -1079,7 +1221,8 @@ bool LVN::addValue(G4_INST* inst)
     G4_Operand* dst = inst->getDst();
     if (!dst->getBase() ||
         !dst->getBase()->isRegVar() ||
-        dst->getBase()->asRegVar()->getDeclare()->getRegFile() != G4_GRF)
+        dst->getBase()->asRegVar()->getDeclare()->getRegFile() != G4_GRF ||
+        dst->getTopDcl()->getAddressed())
     {
         return false;
     }
@@ -1090,36 +1233,51 @@ bool LVN::addValue(G4_INST* inst)
         return false;
     }
 
-    G4_Operand* src = inst->getSrc(0);
-    if (src->isImm())
+    auto srcValid = [](G4_Operand* src)
     {
-        if (src->isRelocImm())
+        if (src->isImm())
         {
-            return false;
+            if (src->isRelocImm())
+            {
+                return false;
+            }
+            return true;
         }
+
+        if (src->isSrcRegRegion())
+        {
+            G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
+            if (!srcRgn->getBase() ||
+                !srcRgn->getBase()->isRegVar() ||
+                (!srcRgn->getBase()->asRegVar()->getDeclare()->useGRF() && !srcRgn->isIndirect()))
+            {
+                return false;
+            }
+
+            if (srcRgn->isIndirect())
+            {
+                return false;
+            }
+
+            if (srcRgn->getBase() &&
+                srcRgn->getTopDcl()->isOutput())
+            {
+                return false;
+            }
+            return true;
+        }
+
         return true;
+    };
+
+    bool allSrcsValid = true;
+    for (unsigned int i = 0; i != inst->getNumSrc(); i++)
+    {
+        auto src = inst->getSrc(i);
+        allSrcsValid &= srcValid(src);
     }
 
-    if (src->isSrcRegRegion())
-    {
-        G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
-        if (!srcRgn->getBase() ||
-            !srcRgn->getBase()->isRegVar() ||
-            (!srcRgn->getBase()->asRegVar()->getDeclare()->useGRF() && !srcRgn->isIndirect()))
-        {
-            return false;
-        }
-
-        if (srcRgn->getBase() &&
-            srcRgn->getTopDcl()->isOutput())
-        {
-            return false;
-        }
-        return true;
-    }
-
-    // false for addrExp
-    return false;
+    return allSrcsValid;
 
 }
 
@@ -1130,8 +1288,9 @@ void LVN::computeValue(G4_INST* inst, bool negate, bool& canNegate, bool& isGlob
     value.initializeEmptyValue();
 
     G4_Operand* src = inst->getSrc(0);
+    LVNItemInfo* item = nullptr;
 
-    if (inst->opcode() == G4_mov)
+    if (inst->opcode() == G4_mov && src->isImm())
     {
         if (src->isImm())
         {
@@ -1163,33 +1322,42 @@ void LVN::computeValue(G4_INST* inst, bool negate, bool& canNegate, bool& isGlob
             }
 
             getValue(dstImm, src, value);
-        }
-        else
-        {
-            MUST_BE_TRUE(src->isSrcRegRegion(), "expect srcRegRegion");
-            if (negate == false)
+            if (!negate)
             {
-                G4_SrcRegRegion* src0 = inst->getSrc(0)->asSrcRegRegion();
-                bool valid = true;
-                if (src0->isIndirect())
-                {
-                    if (!p2a.getAllInPointsTo(src0->getBase()->asRegVar()))
-                    {
-                        valid = false;
-                    }
-                }
-                // Can also set canNegate here but not sure if we really want to
-                // spend that much compile time per instruction then.
-                if (valid)
-                {
-                    getValue(src->asSrcRegRegion(), inst, value);
-                }
+                value.inst = inst;
+
+                // Substituting negative imm values is an optimization case
+                item = new (mem.alloc(sizeof(LVNItemInfo))) LVNItemInfo;
+                item->isImm = true;
+                item->constHStride = true;
+                item->hstride = inst->getDst()->getHorzStride();
+                item->inst = inst;
+                item->opnd = inst->getDst();
+                item->isScalar = (inst->getExecSize() == 1);
+                item->lb = inst->getDst()->getLeftBound();
+                item->rb = inst->getDst()->getRightBound();
+                item->value = value;
             }
         }
     }
     else
     {
-        // Other patterns to detect using LVN can be added here
+        getValue(inst, value);
+        item = new (mem.alloc(sizeof(LVNItemInfo))) LVNItemInfo;
+        item->constHStride = true;
+        item->hstride = inst->getDst()->getHorzStride();
+        item->inst = inst;
+        item->opnd = inst->getDst();
+        item->isScalar = (inst->getExecSize() == 1);
+        item->lb = inst->getDst()->getLeftBound();
+        item->rb = inst->getDst()->getRightBound();
+        item->value = value;
+    }
+
+    if (item &&
+        inst->getDst() && inst->getDst()->getTopDcl())
+    {
+        perInstValueCache.push_back(std::make_pair(inst->getDst()->getTopDcl(), item));
     }
 
     // Compute value for globals so we can insert it in LVN table.
@@ -1204,72 +1372,103 @@ void LVN::computeValue(G4_INST* inst, bool negate, bool& canNegate, bool& isGlob
 // Ordering is important because we allow optimization when
 // val2 instruction uses NoMask and val1 instruction uses
 // a subset.
-bool LVN::valuesMatch(Value& val1, Value& val2)
+bool LVN::valuesMatch(Value& val1, Value& val2, bool checkNegImm)
 {
-    G4_Operand* opnd1 = val1.opnd;
-    G4_Operand* opnd2 = val2.opnd;
+    auto inst1 = val1.inst;
+    auto inst2 = val2.inst;
+
+    if (inst1->opcode() != inst2->opcode())
+        return false;
+
     bool match = false;
 
-    if (opnd1->isImm() &&
-        opnd2->isImm())
+    for (unsigned int i = 0; i != G4_MAX_SRCS; i++)
     {
-        match = true;
-        G4_Type type1 = opnd1->getType();
-        G4_Type type2 = opnd2->getType();
+        G4_Operand* opnd1 = inst1->getSrc(i);
+        G4_Operand* opnd2 = inst2->getSrc(i);
 
-        if ((type1 == Type_UV && type2 != Type_UV) || (type1 != Type_UV && type2 == Type_UV))
-        {
-            match = false;
-        }
-        else if ((type1 == Type_V && type2 != Type_V) || (type1 != Type_V && type2 == Type_V))
-        {
-            match = false;
-        }
+        if ((!opnd1 && opnd2) || (opnd1 && !opnd2))
+            return false;
 
-        if (match && bb->isInSimdFlow())
-        {
-            G4_INST* val1Inst = val1.getInst();
-            G4_INST* val2Inst = val2.getInst();
+        if (!opnd1 && !opnd2)
+            continue;
 
-            if (val1Inst->isWriteEnableInst() != val2Inst->isWriteEnableInst() ||
-                val1Inst->getMaskOption() != val2Inst->getMaskOption())
+        if (opnd1->isImm() &&
+            opnd2->isImm())
+        {
+            match = true;
+            G4_Type type1 = opnd1->getType();
+            G4_Type type2 = opnd2->getType();
+
+            if ((type1 == Type_UV && type2 != Type_UV) || (type1 != Type_UV && type2 == Type_UV))
             {
-                match = false;
+                return false;
+            }
+            else if ((type1 == Type_V && type2 != Type_V) || (type1 != Type_V && type2 == Type_V))
+            {
+                return false;
+            }
+            else if ((type1 == Type_VF && type2 != Type_VF) || (type1 != Type_VF && type2 == Type_VF))
+            {
+                return false;
+            }
+
+            if (match && bb->isInSimdFlow())
+            {
+                G4_INST* val1Inst = val1.inst;
+                G4_INST* val2Inst = val2.inst;
+
+                if (val1Inst->isWriteEnableInst() != val2Inst->isWriteEnableInst() ||
+                    val1Inst->getMaskOption() != val2Inst->getMaskOption())
+                {
+                    return false;
+                }
+            }
+
+            if (!checkNegImm)
+            {
+                if (!opnd1->asImm()->isEqualTo(opnd2->asImm()))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                auto imm1 = opnd1->asImm()->getImm();
+                auto imm2 = opnd2->asImm()->getImm();
+                auto bitSize = G4_Type_Table[type1].bitSize;
+                // Check all bits except for sign-bit.
+                // Assume sign-bit is always the MSB of type.
+                for (unsigned int i = 0; i != bitSize-1; i++)
+                {
+                    if (((imm1 >> i) & 0x1) != ((imm2 >> i) & 0x1))
+                    {
+                        return false;
+                    }
+                }
             }
         }
-    }
-    else if (opnd1->isSrcRegRegion())
-    {
-        if (opnd2->isSrcRegRegion())
+        else if (opnd1->isSrcRegRegion())
         {
-            match = opndsMatch(opnd1->asSrcRegRegion(), opnd2->asSrcRegRegion());
+            if (opnd2->isSrcRegRegion())
+            {
+                match = opndsMatch(opnd1->asSrcRegRegion(), opnd2->asSrcRegRegion());
+            }
         }
-        else if (opnd2->isDstRegRegion())
-        {
-            match = opndsMatch(opnd1->asSrcRegRegion(), opnd2->asDstRegRegion());
-        }
-    }
-    else if (opnd1->isDstRegRegion())
-    {
-        if (opnd2->isDstRegRegion())
-        {
-            match = opndsMatch(opnd1->asDstRegRegion(), opnd2->asDstRegRegion());
-        }
-        else if (opnd2->isSrcRegRegion())
-        {
-            match = opndsMatch(opnd1->asDstRegRegion(), opnd2->asSrcRegRegion());
-        }
+
+        if (!match)
+            return false;
     }
 
     return match;
 }
 
-bool LVN::isSameValue(Value& val1, Value& val2)
+bool LVN::isSameValue(Value& val1, Value& val2, bool negImmVal)
 {
     if (val1.isEqualValueHash(val2))
     {
         // Do a detailed check whether values really match
-        if (valuesMatch(val1, val2))
+        if (valuesMatch(val1, val2, negImmVal))
         {
             return true;
         }
@@ -1278,49 +1477,9 @@ bool LVN::isSameValue(Value& val1, Value& val2)
     return false;
 }
 
-LVNItemInfo* LVN::isValueInTable(Value& value)
+LVNItemInfo* LVN::isValueInTable(Value& value, bool negate)
 {
-    int64_t hash = 0;
-    if (value.opnd->isImm())
-    {
-        hash = value.hash;
-    }
-    else if (value.opnd->isSrcRegRegion())
-    {
-        hash = value.opnd->asSrcRegRegion()->getTopDcl()->getDeclId();
-    }
-    else if (value.opnd->isDstRegRegion())
-    {
-        hash = value.opnd->asDstRegRegion()->getTopDcl()->getDeclId();
-    }
-    else
-    {
-        for (auto&& table : lvnTable)
-        {
-            for (auto it = table.second.begin();
-                it != table.second.end();
-                )
-            {
-                auto lvnItem = (*it);
-
-                if (!lvnItem->active)
-                {
-                    it = table.second.erase(it);
-                    continue;
-                }
-
-                if (isSameValue(value, lvnItem->value) ||
-                    isSameValue(value, lvnItem->variable))
-                {
-                    return lvnItem;
-                }
-
-                it++;
-            }
-        }
-
-        return nullptr;
-    }
+    int64_t hash = value.hash;
 
     auto bucket = lvnTable.find(hash);
     if (bucket != lvnTable.end())
@@ -1332,8 +1491,7 @@ LVNItemInfo* LVN::isValueInTable(Value& value)
             auto lvnItem = (*it);
 
             if (lvnItem->active &&
-                (isSameValue(value, lvnItem->value) ||
-                isSameValue(value, lvnItem->variable)))
+                isSameValue(value, lvnItem->value, negate))
             {
                 return lvnItem;
             }
@@ -1347,118 +1505,51 @@ LVNItemInfo* LVN::isValueInTable(Value& value)
 
 void LVN::addValueToTable(G4_INST* inst, Value& oldValue)
 {
-    Value varValue;
-    varValue.initializeEmptyValue();
-    LVNItemInfo* item = (LVNItemInfo*)mem.alloc(sizeof(LVNItemInfo));
-    getValue(inst->getDst(), inst, varValue);
-    item->inst = inst;
-    item->value.copyValue(oldValue);
-    item->variable.copyValue(varValue);
-    item->dstTopDcl = inst->getDst()->getTopDcl();
-    item->active = true;
-    for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
+    auto findLVNItemInfo = [this](G4_INST* inst, G4_Operand* opnd)
     {
-        G4_Operand* src = inst->getSrc(i);
-
-        item->srcTopDcls[i] = nullptr;
-        if (src != NULL)
+        auto it = dclValueTable.find(opnd->getTopDcl());
+        MUST_BE_TRUE(it != dclValueTable.end(), "Value not added");
+        LVNItemInfo* lvnItem = nullptr;
+        for (auto item : (*it).second)
         {
-            if (src->isSrcRegRegion())
+            if (item->inst == inst &&
+                opnd->getInst() == item->inst)
             {
-                item->srcTopDcls[i] = src->getTopDcl();
-                auto it = lvnTable.find(src->getTopDcl()->getDeclId());
-                if (it != lvnTable.end())
-                {
-                    it->second.push_back(item);
-                }
-                else
-                {
-                    std::list<vISA::LVNItemInfo*> second;
-                    second.push_back(item);
-                    lvnTable.insert(make_pair(src->getTopDcl()->getDeclId(), second));
-                }
-
-                if (src->asSrcRegRegion()->isIndirect())
-                {
-                    auto points2set = p2a.getAllInPointsTo(src->getTopDcl()->getRegVar());
-                    if (points2set)
-                    {
-                        for (auto rvar : *points2set)
-                        {
-                            auto dcl = rvar->getDeclare()->getRootDeclare();
-                            auto p2aDclId = dcl->getDeclId();
-
-                            auto it = lvnTable.find(p2aDclId);
-                            if (it != lvnTable.end())
-                            {
-                                it->second.push_back(item);
-                            }
-                            else
-                            {
-                                std::list<vISA::LVNItemInfo*> second;
-                                second.push_back(item);
-                                lvnTable.insert(make_pair(p2aDclId, second));
-                            }
-                        }
-                    }
-                }
-            }
-            else if (src->isImm())
-            {
-                auto imm = oldValue.hash;
-                auto it = lvnTable.find(imm);
-                if (it != lvnTable.end())
-                {
-                    it->second.push_back(item);
-                }
-                else
-                {
-                    std::list<vISA::LVNItemInfo*> second;
-                    second.push_back(item);
-                    lvnTable.insert(make_pair(imm, second));
-                }
+                return item;
             }
         }
-    }
+        MUST_BE_TRUE(lvnItem != nullptr, "Not expecting nullptr");
 
-    auto dstDclId = item->dstTopDcl->getDeclId();
-    auto it = lvnTable.find(dstDclId);
-    if (it != lvnTable.end())
-    {
-        it->second.push_back(item);
-    }
-    else
-    {
-        std::list<vISA::LVNItemInfo*> second;
-        second.push_back(item);
-        lvnTable.insert(make_pair(dstDclId, second));
-    }
+        return lvnItem;
+    };
 
-    auto dst = inst->getDst();
-    if (dst->isIndirect())
+    auto insertInLvnTable = [this](int64_t key, LVNItemInfo* itemToIns)
     {
-        auto points2set = p2a.getAllInPointsTo(dst->getTopDcl()->getRegVar());
-        if (points2set)
+        auto it = lvnTable.find(key);
+        if (it != lvnTable.end())
         {
-            for (auto rvar : *points2set)
-            {
-                auto dcl = rvar->getDeclare()->getRootDeclare();
-                auto p2aDclId = dcl->getDeclId();
-
-                auto it = lvnTable.find(p2aDclId);
-                if (it != lvnTable.end())
-                {
-                    it->second.push_back(item);
-                }
-                else
-                {
-                    std::list<vISA::LVNItemInfo*> second;
-                    second.push_back(item);
-                    lvnTable.insert(make_pair(p2aDclId, second));
-                }
-            }
+            it->second.push_back(itemToIns);
         }
+        else
+        {
+            std::list<vISA::LVNItemInfo*> second;
+            second.push_back(itemToIns);
+            lvnTable.insert(make_pair(key, second));
+        }
+        itemToIns->active = true;
+    };
+
+    for (auto& item : perInstValueCache)
+    {
+        auto it = dclValueTable.find(item.first);
+        item.second->active = true;
+        dclValueTable[item.first].push_back(item.second);
     }
+
+    auto lvnItem = findLVNItemInfo(inst, inst->getDst());
+    insertInLvnTable(oldValue.hash, lvnItem);
+
+    MUST_BE_TRUE(lvnItem->inst == lvnItem->value.inst, "Missing inst ptr in value");
 }
 
 void LVN::addUse(G4_DstRegRegion* dst, G4_INST* use, unsigned int srcIndex)
@@ -1700,46 +1791,6 @@ void LVN::populateDuTable(INST_LIST_ITER inst_it)
     }
 }
 
-// Return true for following pattern:
-// mov (8) V1(0,0)<1>:d    r0.0<8;8,1>:d <-- lvnItem->inst
-// mov (1) V1(0,2)<1>:d    0xsomeconst1:d
-// send (16) null<1>:d     V1 ...
-// ...
-// mov (1) V1(0,2)<1>:d    0xsomeconst1:d <-- inst
-// send (16) null<1>:d     V1 ...
-//
-// inst is redundant and this function returns true. Caller will
-// eliminate inst.
-//
-// This pattern is a special case because V1(0,0) at inst is a
-// partial write and will not be caught by regular value
-// numbering code.
-bool LVN::isRedundantMovToSelf(LVNItemInfo* lvnItem, G4_INST* inst)
-{
-    bool isRedundant = false;
-    G4_INST* lvnInst = lvnItem->inst;
-
-    if (lvnInst->getDst()->getTopDcl() == inst->getDst()->getTopDcl() &&
-        lvnInst->getExecSize() == inst->getExecSize() &&
-        lvnInst->getDst()->getLeftBound() == inst->getDst()->getLeftBound() &&
-        lvnInst->getDst()->getRightBound() == inst->getDst()->getRightBound() &&
-        lvnInst->getSrc(0)->isImm() &&
-        inst->getSrc(0)->isImm())
-    {
-        Value instValue;
-        bool uselessRef;
-        int64_t imm = 0;
-        computeValue(inst, false, uselessRef, uselessRef, imm, false, instValue);
-        instValue.setInst(inst);
-        if (isSameValue(instValue, lvnItem->value))
-        {
-            isRedundant = true;
-        }
-    }
-
-    return isRedundant;
-}
-
 void LVN::doLVN()
 {
     bb->resetLocalId();
@@ -1755,7 +1806,6 @@ void LVN::doLVN()
             continue;
         }
 
-        bool canAdd = addValue(inst);
         Value value, oldValue;
         bool canNegate = false, isGlobal = false;
         G4_INST* lvnInst = NULL;
@@ -1763,14 +1813,15 @@ void LVN::doLVN()
         int64_t posVal = 0;
         bool addGlobalValueToTable = false;
 
-        value.initializeEmptyValue();
-        oldValue.initializeEmptyValue();
+        bool canAdd = addValue(inst);
         if (canAdd)
         {
+            perInstValueCache.clear();
+
             // Compute value of current instruction
             computeValue(inst, false, canNegate, isGlobal, posVal, false, value);
-            value.setInst(inst);
-            oldValue.copyValue(value);
+            value.inst = inst;
+            oldValue = value;
 
             if (isGlobal || value.isValueEmpty())
             {
@@ -1790,7 +1841,7 @@ void LVN::doLVN()
             if (canAdd)
             {
                 // Check if value exists in table
-                lvnItem = isValueInTable(value);
+                lvnItem = isValueInTable(value, false);
 
                 // If value doesnt exist, search for value's
                 // negative representation (only for imm).
@@ -1799,10 +1850,10 @@ void LVN::doLVN()
                     lvnItem == NULL)
                 {
                     computeValue(inst, true, canNegate, isGlobal, posVal, true, value);
-                    value.setInst(inst);
+                    value.inst = inst;
                     negMatch = true;
 
-                    lvnItem = isValueInTable(value);
+                    lvnItem = isValueInTable(value, true);
                 }
 
                 if (lvnItem != NULL)
@@ -1846,11 +1897,6 @@ void LVN::doLVN()
                             }
                         }
 
-                        if (!removeInst)
-                        {
-                            removeInst = isRedundantMovToSelf(lvnItem, inst);
-                        }
-
                         if (removeInst)
                         {
                             INST_LIST_ITER prev_it = inst_it;
@@ -1861,37 +1907,6 @@ void LVN::doLVN()
                             continue;
                         }
                     }
-                }
-            }
-        }
-
-        if (addGlobalValueToTable)
-        {
-            // We are here because current instruction's dst
-            // is a global but not empty. Even though current
-            // inst's dst is a global we can eliminate current
-            // instruction if data being written to dst is
-            // same as what an earlier inst in current BB
-            // wrote. This happens in case of samplerHeader
-            // variables when only rx.2 is updated per BB
-            // and rx.0<8;8,1>:d is copied from r0 in entry BB.
-            lvnItem = isValueInTable(value);
-            if (lvnItem)
-            {
-                // ToDo: can we move this to a separate pass or at least not nested with rest of LVN?
-                // it'll make the code easier to read.
-                // Also don't we have other passes (cleanMessageHeader, cleanupBindless) doing
-                // essentially the same thing?
-                bool removeInst = isRedundantMovToSelf(lvnItem, inst);
-
-                if (removeInst)
-                {
-                    INST_LIST_ITER prev_it = inst_it;
-                    inst_it--;
-                    bb->erase(prev_it);
-
-                    numInstsRemoved++;
-                    continue;
                 }
             }
         }
