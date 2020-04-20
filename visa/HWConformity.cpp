@@ -4392,7 +4392,10 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
         }
         else if (opndNum != Opnd_src0)
         {
-            return false;
+            if (!useInst->canSwapSource())
+            {
+                return false;
+            }
         }
 
         if (useInst->getSingleDef(opndNum) == nullptr)
@@ -4501,6 +4504,22 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
                 // this can happen if we have to convert mad into mac (some platforms don't allow
                 // src0 acc for mad), and the mad's src1 is also an acc candidate.
                 return false;
+            }
+        }
+
+        if (useInst->getNumSrc() == 2)
+        {
+            if (use.second != Opnd_src0)
+            {
+                if (useInst->canSwapSource() && !useInst->getSrc(0)->isAccReg())
+                {
+                    useInst->swapSrc(0, 1);
+                    use.second = Opnd_src0;
+                }
+                else
+                {
+                    return false;
+                }
             }
         }
     }
