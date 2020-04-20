@@ -378,7 +378,18 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     m_kernels.push_back(kerneltemp);
     m_kernel->setVersion((unsigned char)this->m_header.major_version, (unsigned char)this->m_header.minor_version);
     m_kernel->InitializeKernel(kernelName);
-    m_kernel->SetGTPinInit(getGtpinInit());
+
+    if (m_options.getOption(vISA_ReRAPostSchedule) || m_options.getOption(vISA_GetFreeGRFInfo)
+        || m_options.getuInt32Option(vISA_GTPinScratchAreaSize) > 0)
+    {
+        // GTPin init set by L0 driver through flags
+        m_kernel->SetGTPinInit(nullptr);
+    }
+    else
+    {
+        // GTPin init set by buffer from IGC
+        m_kernel->SetGTPinInit(getGtpinInit());
+    }
     this->m_kernel_count++;
 
     if (m_options.getOption(vISA_IsaAssembly))

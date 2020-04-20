@@ -3807,6 +3807,14 @@ namespace IGC
             {
                 SaveOption(vISA_ReRAPostSchedule, true);
             }
+            if (ClContext->m_InternalOptions.GTPinGRFInfo)
+            {
+                SaveOption(vISA_GetFreeGRFInfo, true);
+            }
+            if (ClContext->m_InternalOptions.GTPinScratchAreaSize)
+            {
+                SaveOption(vISA_GTPinScratchAreaSize, ClContext->m_InternalOptions.GTPinScratchAreaSizeValue);
+            }
         }
 
         bool EnableBarrierInstCounterBits = false;
