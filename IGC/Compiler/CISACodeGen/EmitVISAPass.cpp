@@ -4818,9 +4818,10 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
     m_encoder->Cast(pLaneId, imm0);
     m_encoder->Push();
 
-    if (m_SimdMode == SIMDMode::SIMD16)
+    if (m_SimdMode == SIMDMode::SIMD16 || m_SimdMode == SIMDMode::SIMD32)
     {
-        m_encoder->SetDstSubVar(1);
+        m_encoder->SetDstSubVar(0);
+        m_encoder->SetDstSubReg(8);
         m_encoder->SetSimdSize(SIMDMode::SIMD8);
         m_encoder->SetNoMask();
         CVariable* imm1 = m_currShader->ImmToVariable(0x8, ISA_TYPE_UD);
@@ -4830,18 +4831,10 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
 
     if (m_SimdMode == SIMDMode::SIMD32)
     {
-        m_encoder->SetDstSubVar(0);
-        m_encoder->SetDstSubReg(8);
-        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-        m_encoder->SetNoMask();
-        CVariable* imm1 = m_currShader->ImmToVariable(0x8, ISA_TYPE_UD);
-        m_encoder->Add(pLaneId, pLaneId, imm1);
-        m_encoder->Push();
-
         m_encoder->SetSimdSize(SIMDMode::SIMD16);
         m_encoder->SetDstSubReg(16);
         m_encoder->SetNoMask();
-        imm1 = m_currShader->ImmToVariable(0x10, ISA_TYPE_UD);
+        CVariable* imm1 = m_currShader->ImmToVariable(0x10, ISA_TYPE_UD);
         m_encoder->Add(pLaneId, pLaneId, imm1);
         m_encoder->Push();
     }

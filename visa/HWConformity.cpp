@@ -1694,7 +1694,7 @@ bool HWConformity::fixIndirectOpnd( INST_LIST_ITER i, G4_BB *bb )
         addr_dcl0 = src0->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare();
         // is the following precise?
         src0_count = addr_dcl0->getTotalElems();
-        MUST_BE_TRUE(src0_count <= addr_reg_max_count, "More than 8 address subregisters required for one oerand.");
+        MUST_BE_TRUE(src0_count <= addr_reg_max_count, "More than 8 address subregisters required for one operand.");
         src_uniq_count += src0_count;
     }
 
@@ -1702,7 +1702,7 @@ bool HWConformity::fixIndirectOpnd( INST_LIST_ITER i, G4_BB *bb )
         src1->getRegAccess() != Direct && src1->asSrcRegRegion()->getBase()->isRegVar()) {
         addr_dcl1 = src1->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare();
         src1_count = addr_dcl1->getTotalElems();
-        MUST_BE_TRUE(src1_count <= addr_reg_max_count, "More than 8 address subregisters required for one oerand.");
+        MUST_BE_TRUE(src1_count <= addr_reg_max_count, "More than 8 address subregisters required for one operand.");
         if (addr_dcl1 != addr_dcl0) {
             // should we use top level dcl here?
             src_uniq_count += src1_count;
@@ -1718,7 +1718,7 @@ bool HWConformity::fixIndirectOpnd( INST_LIST_ITER i, G4_BB *bb )
     {
         addr_dcl2 = dst->getBase()->asRegVar()->getDeclare()->getRootDeclare();
         dst_count = addr_dcl2->getTotalElems();
-        MUST_BE_TRUE(dst_count <= addr_reg_max_count, "More than 8 address subregisters required for one oerand.");
+        MUST_BE_TRUE(dst_count <= addr_reg_max_count, "More than 8 address subregisters required for one operand.");
         if (addr_dcl2 != addr_dcl0 && addr_dcl2 != addr_dcl1) {
             dst_uniq_count += dst_count;
         }
