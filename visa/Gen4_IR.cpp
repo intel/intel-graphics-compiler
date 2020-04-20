@@ -7822,6 +7822,11 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     }
 
     G4_SrcRegRegion* src = getSrc(srcId)->asSrcRegRegion();
+    if (srcId == 1 && src->getModifier() != Mod_src_undef)
+    {
+        // src1 acc does not support modifiers
+        return false;
+    }
     if (!src->getRegion()->isContiguous(getExecSize()))
     {
         return false;
@@ -7912,7 +7917,7 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     case G4_mad:
         // no int acc if it's used as mul operand
         return builder.canMadHaveAcc() &&
-            (IS_FTYPE(src->getType()) || (src->getType() == Type_DF));
+            ((srcId == 1 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) || (srcId == 0 && src->getModifier() == Mod_src_undef));
     case G4_csel:
         return builder.canMadHaveAcc();
     case G4_mul:
