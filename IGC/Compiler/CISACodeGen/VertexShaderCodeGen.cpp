@@ -120,7 +120,8 @@ namespace IGC
 
     void CVertexShader::PackVFInput(unsigned int index, unsigned int& offset)
     {
-        bool dontPackPartialElement = IGC_IS_FLAG_ENABLED(VFPackingDisablePartialElements);
+        bool dontPackPartialElement = m_ModuleMetadata->compOpt.disablePartialVertexComponentPacking ||
+            IGC_IS_FLAG_ENABLED(VFPackingDisablePartialElements);
         if (dontPackPartialElement)
         {
             if (m_ElementComponentEnableMask[index / 4] == 0)
