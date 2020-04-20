@@ -41,43 +41,50 @@ class LVNItemInfo;
 class Value
 {
 public:
-    Value_Hash hash = 0;
-    G4_INST* inst = nullptr;
+    Value_Hash hash;
+    G4_Operand* opnd;
 
-    void initializeEmptyValue() { hash = 0; inst = nullptr; }
+    void initializeEmptyValue() { hash = 0; opnd = NULL; inst = NULL; }
+    void copyValue(Value& src) { hash = src.hash; opnd = src.opnd; inst = src.inst; }
     bool isValueEmpty()
     {
-        return !inst;
+        bool retval = false;
+        if (opnd == NULL)
+        {
+            retval = true;
+        }
+        return retval;
     }
     bool isEqualValueHash(Value& val2)
     {
-        return (hash == val2.hash);
+        bool retval = false;
+        if (hash == val2.hash)
+        {
+            retval = true;
+        }
+        return retval;
     }
-    bool operator==(const Value& other) const
-    {
-        if (other.hash == hash &&
-            other.inst == inst)
-            return true;
-        return false;
-    }
+
+    void setInst(G4_INST* i) { inst = i; }
+    G4_INST* getInst() { return inst; }
+
+private:
+
+    G4_INST* inst;
 };
 }
+#define VALUELENMAX 50
 
 namespace vISA
 {
 class LVNItemInfo
 {
 public:
+    Value variable;
     Value value;
-    G4_INST* inst = nullptr;
-    G4_Operand* opnd = nullptr;
-    // if isImm is true then value.hash is immediate value
-    bool isImm = false;
-    unsigned int lb = 0;
-    unsigned int rb = 0;
-    bool isScalar = false;
-    bool constHStride = false;
-    unsigned int hstride = 0;
+    G4_INST* inst;
+    G4_Declare* dstTopDcl;
+    G4_Declare* srcTopDcls[G4_MAX_SRCS];
     // active field below determines whether value pointed to
     // by this instance is live. When a redef is seen for dst of an
     // LVN candidate we set active to false so the value is no longer
@@ -85,7 +92,7 @@ public:
     // instruction such as mov with dst and 1 src, we insert instance
     // of this class in 2 buckets - dst dcl id, src0 dcl id. Doing so
     // helps to easily invalidate values due to redefs.
-    bool active = false;
+    bool active;
 };
 }
 
@@ -94,7 +101,7 @@ public:
 // in case of immediates the key maps to respective operands. Having
 // a map allows faster lookups and lesser number of comparisons than a
 // running list of all instructions seen so far.
-typedef std::unordered_map<int64_t, std::list<vISA::LVNItemInfo*>> LvnTable;
+typedef std::map<int64_t, std::list<vISA::LVNItemInfo*>> LvnTable;
 typedef struct UseInfo
 {
     vISA::G4_INST* first;
@@ -124,7 +131,6 @@ class LVN
 private:
     std::map<G4_INST*, UseList> defUse;
     std::map<G4_Operand*, DefList> useDef;
-    std::unordered_map<G4_Declare*, std::list<LVNItemInfo*>> dclValueTable;
     G4_BB* bb;
     FlowGraph& fg;
     LvnTable lvnTable;
@@ -135,22 +141,19 @@ private:
     bool duTablePopulated;
     PointsToAnalysis& p2a;
 
-    std::vector<std::pair<G4_Declare*, LVNItemInfo*>> perInstValueCache;
-
     static const int MaxLVNDistance = 250;
 
     void populateDuTable(INST_LIST_ITER inst_it);
     void removeAddrTaken(G4_AddrExp* opnd);
     void addUse(G4_DstRegRegion* dst, G4_INST* use, unsigned int srcIndex);
     void addValueToTable(G4_INST* inst, Value& oldValue);
-    LVNItemInfo* isValueInTable(Value& value, bool negate);
-    bool isSameValue(Value& val1, Value& val2, bool negImmVal);
+    LVNItemInfo* isValueInTable(Value& value);
+    bool isSameValue(Value& val1, Value& val2);
     void computeValue(G4_INST* inst, bool negate, bool& canNegate, bool& isGlobal, int64_t& tmpPosImm, bool posValValid, Value& valueStr);
     bool addValue(G4_INST* inst);
     void getValue(G4_DstRegRegion* dst, G4_INST* inst, Value& value);
     void getValue(G4_SrcRegRegion* src, G4_INST* inst, Value& value);
     void getValue(int64_t imm, G4_Operand* opnd, Value& value);
-    void getValue(G4_INST* inst, Value& value);
     const char* getModifierStr(G4_SrcModifier srcMod);
     int64_t getNegativeRepresentation(int64_t imm, G4_Type type);
     bool sameGRFRef(G4_Declare* dcl1, G4_Declare* dcl2);
@@ -162,13 +165,12 @@ private:
     bool canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst, bool negMatch, bool noPartialUse);
     bool getAllUses(G4_INST* def, UseList& uses);
     bool getDstData(int64_t srcImm, G4_Type srcType, int64_t& dstImm, G4_Type dstType, bool& canNegate);
-    bool valuesMatch(Value& val1, Value& val2, bool checkNegImm);
+    bool valuesMatch(Value& val1, Value& val2);
     void removeAliases(G4_INST* inst);
     bool checkIfInPointsTo(G4_RegVar* addr, G4_RegVar* var);
+    bool isRedundantMovToSelf(LVNItemInfo* lvnItem, G4_INST* inst);
     template<class T, class K>
     bool opndsMatch(T*, K*);
-    LVNItemInfo* getOpndValue(G4_Operand* opnd, bool create = true);
-    void invalidateOldDstValue(G4_INST*);
 
 public:
     LVN(FlowGraph& flowGraph, G4_BB* curBB, vISA::Mem_Manager& mmgr, IR_Builder& irBuilder, PointsToAnalysis& p) :
