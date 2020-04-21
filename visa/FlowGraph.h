@@ -1521,6 +1521,10 @@ public:
 
     Options *getOptions(){ return m_options; }
     const Attributes* getKernelAttrs() const { return m_kernelAttrs; }
+    int getIntKernelAttribute(Attributes::ID aID) const
+    {
+        return getKernelAttrs()->getIntKernelAttribute(aID);
+    }
     bool getOption(vISAOptions opt) const { return m_options->getOption(opt); }
     void computeChannelSlicing();
     void calculateSimdSize();

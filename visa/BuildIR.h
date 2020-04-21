@@ -631,7 +631,7 @@ public:
     const iga::Model* getIGAModel() const { return igaModel; }
     uint32_t getPerThreadInputSize() const
     {
-        return kernel.getKernelAttrs()->getIntKernelAttribute(Attributes::ATTR_PerThreadInputSize);
+        return kernel.getIntKernelAttribute(Attributes::ATTR_PerThreadInputSize);
     }
 
     bool getHasPerThreadProlog() const { return hasPerThreadProlog; }

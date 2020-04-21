@@ -116,6 +116,25 @@ bool Attributes::isAttribute(ID aID, const char* AttrName)
 
 void Attributes::setIntKernelAttribute(Attributes::ID kID, int val)
 {
+    // Verify kernel attribute
+    switch (kID) {
+    case ATTR_SpillMemOffset :
+    {
+        assert((val & (GENX_GRF_REG_SIZ - 1)) == 0  &&
+            "Kernel attribute: SpillMemOffset is mis-aligned!");
+        break;
+    }
+    case ATTR_SimdSize :
+    {
+        // allow 0
+        assert((val == 0 || val == 8 || val == 16 || val == 32) &&
+            "Kernel attribute: SimdSize must be 0|8|16|32!");
+        break;
+    }
+    default:
+        break;
+    }
+
     m_kernelAttrs[kID].m_val.m_intVal = val;
     m_kernelAttrs[kID].m_isSet = true;
 }

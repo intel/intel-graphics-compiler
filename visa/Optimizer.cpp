@@ -6888,7 +6888,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
 
         if (builder.needReplaceIndirectCallWithJmpi() &&
-            kernel.getKernelAttrs()->getIntKernelAttribute(Attributes::ATTR_Extern) != 0)
+            kernel.getIntKernelAttribute(Attributes::ATTR_Extern) != 0)
         {
             // replace ret in the external functions with jmpi. That we will
             // also return the call with jmpi in VISAKernelImpl::compilePostOptimize
