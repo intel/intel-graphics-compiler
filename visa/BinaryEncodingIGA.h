@@ -334,8 +334,9 @@ private:
     }
     iga::InstOptSet getIGAInstOptSet(G4_INST* inst) const;
 
-    iga::SendDescArg getIGASendDescArg(G4_INST* sendInst) const;
-    iga::SendDescArg getIGASendExDescArg(G4_INST* sendInst) const;
+    iga::SendDesc getIGASendDesc(G4_INST* sendInst) const;
+    iga::SendDesc getIGASendExDesc(
+        G4_INST* sendInst, int& xlen, iga::InstOptSet& extraOpts) const;
     iga::RegName getIGARegName(G4_Operand* opnd) const
     {
         G4_VarBase *base = opnd->getBase();

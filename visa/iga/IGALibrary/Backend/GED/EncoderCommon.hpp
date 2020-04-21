@@ -78,7 +78,7 @@ static GED_RETURN_VALUE GED_PrintFieldBitLocation(
 #define GED_ENCODE_TO(FUNC, ARG, GED) \
     do { \
         GED_RETURN_VALUE _status; \
-        if(print_ged_debug) { \
+        if (print_ged_debug) { \
           std::cout << "FIELD: " << #FUNC << std::endl; \
           GED_PrintFieldBitLocation(GED, GED_INS_FIELD_ ## FUNC); \
         } \

@@ -104,6 +104,6 @@ void InstEncoder::encodeFieldBits(const Field &f, uint64_t val0)
     if (val != 0) {
         // value overflows the virtual encoding
         errorAt(state.inst->getLoc(),
-            "%s: 0x%X: value is too large for field", f.name, val);
+            "%s: 0x%X: value is too large for field", f.name, val0);
     }
 }

@@ -409,6 +409,20 @@ IGA_API int32_t kv_get_source_immediate(
     const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm);
 
 /*
+ * This function exposes indirect source's immediate offset.
+   Return -1 if given source is not indirect srouce
+ */
+IGA_API int32_t kv_get_source_indirect_imm_off(
+    const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *immoff);
+
+/*
+ * This function exposes indirect destination's immediate offset.
+   Return -1 if given destination is not indirect srouce
+ */
+IGA_API int32_t kv_get_destination_indirect_imm_off(
+    const kv_t *kv, int32_t pc, int16_t *immoff);
+
+/*
  * This function return flag modifier
  */
 IGA_API uint32_t kv_get_flag_modifier(const kv_t *kv, int32_t pc);

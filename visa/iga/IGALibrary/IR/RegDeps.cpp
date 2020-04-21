@@ -163,11 +163,11 @@ void DepSet::setInputsFlagDep()
     // immediate send descriptors
     if (m_instruction->getOpSpec().isSendOrSendsFamily()) {
         auto desc = m_instruction->getMsgDescriptor();
-        if (desc.type == SendDescArg::REG32A) {
+        if (desc.isReg()) {
             addA_D(desc.reg); // e.g. a0.0
         }
         auto exDesc = m_instruction->getExtMsgDescriptor();
-        if (exDesc.type == SendDescArg::REG32A) {
+        if (exDesc.isReg()) {
             addA_D(exDesc.reg); // e.g. a0.0
         }
     }
@@ -182,7 +182,7 @@ void DepSet::setInputsSrcDep()
         ) {
         setSrcRegion(
             RegName::ARF_ACC,
-            MakeRegRef(0, 0),
+            RegRef(0, 0),
             Region::SRC110,
             execSize,
             16); // assume it's :w, though for acc access it actually does not matter,
@@ -274,29 +274,18 @@ void DepSet::setInputsSrcDep()
             if (m_instruction->getOpSpec().isSendOrSendsFamily()) {
                 if (op.getDirRegName() == RegName::GRF_R) {
                     // send source GRF (not null reg)
-                    uint32_t nregs = 1;
-
-                    if (srcIx == 0) {
-                        // src0 length, get from Desc
-                        auto desc = m_instruction->getMsgDescriptor();
-                        if (desc.type == SendDescArg::IMM) {
-                            nregs = (desc.imm >> 25) & 0xF; // desc[28:25]
-                        } else {
-                            nregs = 31; //since we don't know the length must be conservative
-                        }
-                    } else {
-                        // src1 legnth, get from exDesc
-                        auto ex_desc = m_instruction->getExtMsgDescriptor();
-                        if (ex_desc.type == SendDescArg::IMM) {
-                            nregs = ((ex_desc.imm >> 6) & 0xF);
-                        } else {
-                                nregs = op.getDirRegName() == RegName::GRF_R ? 31 : 0;
-                        }
-                    }
+                    int nregs =
+                        (srcIx == 0) ?
+                            m_instruction->getSrc0Length() :
+                            m_instruction->getSrc1Length();
+                    // if we can't tell the number of registers
+                    // (e.g. the descriptor is in a register),
+                    // then we must conservatively assume the worst (31)
+                    if (nregs < 0)
+                        nregs = 31;
                     uint32_t regNum = op.getDirRegRef().regNum;
-                    for (uint32_t i = 0; i < nregs; i++) {
-                        if ((regNum + i) >= m_DB.getGRF_REGS())
-                        {
+                    for (uint32_t i = 0; i < (uint32_t)nregs; i++) {
+                        if ((regNum + i) >= m_DB.getGRF_REGS()) {
                             break;
                         }
                         addGrf((size_t)regNum + i);
@@ -305,7 +294,6 @@ void DepSet::setInputsSrcDep()
                     addToBucket(m_DB.getBucketStart(RegName::ARF_CR));
                 }
             } else {
-
                 if (m_instruction->getOp() == Op::BRC) {
                     rgn = Region::SRC221;
                 }
@@ -331,7 +319,7 @@ void DepSet::setInputsSrcDep()
                     static_cast<int>(MathMacroExt::MME0);
                 setSrcRegion(
                     RegName::ARF_ACC,
-                    MakeRegRef(mmeNum,0),
+                    RegRef(mmeNum, 0),
                     Region::SRC110,
                     execSize,
                     typeSizeInBits);
@@ -435,16 +423,10 @@ void DepSet::setOutputsDstcDep()
         if (m_instruction->getOpSpec().isSendOrSendsFamily() &&
             op.getDirRegName() == RegName::GRF_R)
         {
-            uint32_t nregs = 1;
-
-            auto desc = m_instruction->getMsgDescriptor();
-            if (desc.type == SendDescArg::IMM) {
-                nregs = (desc.imm >> 20) & 0x1F; // desc[24:20] => rlen
-            }
-            else {
-                nregs = 31; // have to be pessimistic
-            }
-            for (uint32_t i = 0; i < nregs; i++) {
+            int nregs = m_instruction->getSrc0Length();
+            if (nregs < 0) // have to be conservative and use the max
+                nregs = 31;
+            for (uint32_t i = 0; i < (uint32_t)nregs; i++) {
                 uint32_t regNum = op.getDirRegRef().regNum;
                 if ((regNum + i) >= m_DB.getGRF_REGS()) {
                     break;

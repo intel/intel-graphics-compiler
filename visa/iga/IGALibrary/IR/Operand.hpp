@@ -45,7 +45,9 @@ public:
     };
 
     Operand()
-        : m_kind(Kind::INVALID), m_lblBlock(nullptr), m_type(Type::INVALID) {}
+        : m_kind(Kind::INVALID)
+        , m_lblBlock(nullptr)
+        , m_type(Type::INVALID) {}
 
     // direct destination constructor (for constants etc)
     Operand(

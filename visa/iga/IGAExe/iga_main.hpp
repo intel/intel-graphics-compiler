@@ -33,8 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "api/igax.hpp"
 
 #include <algorithm>
-#include <cstdio>
+#include <cctype>
 #include <cstdint>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <locale>
@@ -197,6 +198,17 @@ static void emitErrorToStderr(
     e.emitContext(std::cerr, "", inp.data(), inp.size());
 }
 
+static std::string normalizePlatformName(std::string inp) {
+    std::string norm;
+    for (size_t i = 0; i < inp.size(); i++) {
+        if (inp[i] == '.')
+            norm += 'p'; // 12.1 ==> 12p1
+        else
+            norm += std::tolower(inp[i]);
+    }
+    return norm;
+}
+
 static void inferPlatformAndMode(
     const std::string &file, Opts &os)
 {
@@ -218,20 +230,19 @@ static void inferPlatformAndMode(
 
     // try and infer the project (-p) if needed
     if (os.platform == IGA_GEN_INVALID && ext.size() >= 3) {
-        std::string prj = ext.substr(3);
-        std::transform(prj.begin(), prj.end(), prj.begin(), ::toupper);
-        if (prj == "7P5") {
-            os.platform = IGA_GEN7p5;
-        } else if (prj == "8") {
-            os.platform = IGA_GEN8;
-        } else if (prj == "9") {
-            os.platform = IGA_GEN9;
-        } else if (prj == "10") {
-            os.platform = IGA_GEN10;
-        } else if (prj == "11") {
-            os.platform = IGA_GEN11;
-        } else if (prj == "12P1") {
-            os.platform = IGA_GEN12p1;
+        // we have a file extension like "asm12p1" or "krn11"
+        std::string prj = ext.substr(3); // skip "krn" or "asm" part of ext
+        prj = normalizePlatformName(prj);
+        try {
+            const auto pis = igax::QueryPlatforms();
+            for (const auto &pi : pis) {
+                if (prj == pi.suffix) {
+                    os.platform = pi.toGen();
+                    break;
+                }
+            }
+        } catch (...) {
+            // drop exception
         }
     }
 }
@@ -245,7 +256,8 @@ static void ensurePlatformIsSet(const Opts &opts)
           opts.mode == Opts::Mode::XDSD ? "dsd" :
             "???";
 
-        fatalExitWithMessage("-X%s: unable to infer platform (use -p)", tool);
+        fatalExitWithMessage(
+            "-X%s: unable to infer platform (use -p=...)", tool);
     }
 }
 

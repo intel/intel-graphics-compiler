@@ -356,12 +356,12 @@ static std::string ToSymbol(const RegRef& x) {
 }
 
 
-static std::string ToSymbol(const SendDescArg& x) {
+static std::string ToSymbol(const SendDesc& x) {
     std::stringstream ss;
     ss << "{";
-    ss << (x.type == SendDescArg::IMM ? "IMM" : "REG32A");
+    ss << (x.isImm() ? "IMM" : "REG32A");
     ss << ",";
-    if (x.type == SendDescArg::IMM) {
+    if (x.isImm()) {
         ss << ToSymbol(x.reg);
     } else {
         fmtHex(ss, x.imm);
@@ -606,7 +606,7 @@ static void ToSyntaxNoBraces(
     std::ostream &os,
     const InstOptSet &instOpts)
 {
-    static const InstOpt ALL_INST_OPTS[] = {
+    static const InstOpt ALL_INST_OPTS[] {
         InstOpt::ACCWREN,
         InstOpt::ATOMIC,
         InstOpt::BREAKPOINT,
@@ -618,7 +618,7 @@ static void ToSyntaxNoBraces(
         InstOpt::NOPREEMPT,
         InstOpt::NOSRCDEPSET,
         InstOpt::SWITCH,
-        InstOpt::SERIALIZE
+        InstOpt::SERIALIZE,
       };
 
 

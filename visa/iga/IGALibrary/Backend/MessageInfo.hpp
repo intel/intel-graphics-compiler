@@ -50,7 +50,7 @@ namespace iga
     // to the same element (hence why "generic").
     enum class SendOp {
         INVALID,
-        ////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////
         // load ops
         IS_LOAD_OP = 0x1000, // group can be tested via this bit
         LOAD,
@@ -60,14 +60,14 @@ namespace iga
         LOAD_STATUS,
         LOAD_SURFACE_INFO,
         //
-        ////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////
         // store ops
         IS_STORE_OP = 0x2000, // group can be tested via this bit
         STORE,
         STORE_QUAD,
         STORE_STRIDED,
         //
-        ///////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////
         // atomic ops
         ///////////////////////////////////
         // atomic bitwise
@@ -85,6 +85,8 @@ namespace iga
         ATOMIC_FMIN, ATOMIC_FMAX,
         ATOMIC_FCAS,
         //
+        ///////////////////////////////////////////////////////////////////////
+        IS_OTHER_OP = 0x8000, // group can be tested via this bit
         //
         READ_STATE, // e.g. surface info (NMS_RSI)
         //
@@ -95,14 +97,16 @@ namespace iga
         MONITOR,
         UNMONITOR,
         WAIT,
-        SIGNAL,
+        SIGNAL_EVENT,
         EOT,
         //
         // TODO: a domain expert should break this into better ops
+        // TODO: all sampler loads should go into the load category
         SAMPLER_LOAD,
         SAMPLER_FLUSH,
         //
         // TODO: a domain expert should break this into better ops
+        // TODO: all loads should be moved up to IS_LOAD and reads IS_STORE
         RENDER_WRITE,
         RENDER_READ,
     };
@@ -276,6 +280,9 @@ namespace iga
         //
         // An atomic that returns a value
         bool isAtomicLoad() const {return hasAttr(ATOMIC_RETURNS);}
+        //
+        // A transpose data layout
+        bool isTransposed() const {return hasAttr(TRANSPOSED);}
 
         // Enables the operation to be used within a predicate assignment.
         operator bool() const {return hasAttr(VALID);}
@@ -296,6 +303,12 @@ namespace iga
             DiagnosticList &warnings,
             DiagnosticList &errors,
             DecodedDescFields *descDecodedField);
+        static int tryDecodeDstLength(
+            Platform p,
+            SFID sfid,
+            uint32_t desc,
+            ExecSize execSize,
+            bool dstNonNull);
 
         static SFID sfidFromEncoding(Platform p, uint32_t sfidBits);
         static SFID sfidFromOp(Platform p, Op op, uint32_t exDesc);

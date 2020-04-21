@@ -43,8 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
-    enum SourceIndex
-    {
+    enum class SourceIndex {
         SRC0,
         SRC1,
         SRC2,
@@ -59,7 +58,8 @@ namespace iga
             PC pc,
             Loc loc,
             const OpSpec &os)
-            : Instruction(os, ExecSize::INVALID, ChannelOffset::M0, MaskCtrl::NORMAL)
+            : Instruction(
+                os, ExecSize::INVALID, ChannelOffset::M0, MaskCtrl::NORMAL)
         {
             setID(id);
             setLoc(loc);
@@ -79,30 +79,34 @@ namespace iga
             , m_execSize(execSize)
             , m_chOff(chOff)
             , m_flagModifier(FlagModifier::NONE)
+            , m_brnch(BranchCtrl::OFF)
             , m_instId(0xFFFFFFFF)
             , m_pc(0)
             , m_instLoc(Loc::INVALID)
+            , m_sendDstLength(-1)
+            , m_sendSrc0Length(-1)
+            , m_sendSrc1Length(-1)
         {
         }
 
 
         // for placement allocation
         void operator delete(void *foo, MemManager* m) { }
-        void *operator new(size_t sz, MemManager* m) { return m->alloc(sz); }
+        void *operator new(size_t sz, MemManager* m) {return m->alloc(sz);}
 
         ///////////////////////////////////////////////////////////////////////
         // operations that set instruction state
         //
-        void setLoc(const Loc &loc) { m_instLoc = loc; }
-        void setPC(int32_t pc) { m_pc = pc; }
-        void setID(int id) { m_instId = id; }
-        void setMaskCtrl(MaskCtrl mc) { m_maskCtrl = mc; }
-        void setExecSize(ExecSize es) { m_execSize = es; }
-        void setChannelOffset(ChannelOffset co) { m_chOff = co; }
-        void setBranchCtrl(BranchCntrl bc) { m_brnch = bc; }
-        void setFlagModifier(FlagModifier flagModifier) { m_flagModifier = flagModifier; }
-        void setFlagReg(RegRef reg) { m_flagReg = reg; }
-        void setPredication(const Predication &predOpnd) { m_pred = predOpnd; }
+        void setLoc(const Loc &loc) {m_instLoc = loc;}
+        void setPC(int32_t pc) {m_pc = pc;}
+        void setID(int id) {m_instId = id;}
+        void setMaskCtrl(MaskCtrl mc) {m_maskCtrl = mc;}
+        void setExecSize(ExecSize es) {m_execSize = es;}
+        void setChannelOffset(ChannelOffset co) {m_chOff = co;}
+        void setBranchCtrl(BranchCntrl bc) {m_brnch = bc;}
+        void setFlagModifier(FlagModifier flagModifier) {m_flagModifier = flagModifier;}
+        void setFlagReg(RegRef reg) {m_flagReg = reg;}
+        void setPredication(const Predication &predOpnd) {m_pred = predOpnd;}
 
         void setDirectDestination(
             DstModifier dstMod,
@@ -161,82 +165,89 @@ namespace iga
             SourceIndex srcIx,
             const Operand &op); // e.g. pass Operand::NULL_UD_SRC
 
-        void setMsgDesc(const SendDescArg &msg) { m_desc = msg; }
-        void setExtMsgDesc(const SendDescArg &msg) { m_exDesc = msg; }
-        void setSWSB(SWSB swsb) { m_depInfo = swsb; }
-        void addInstOpt(const InstOpt &opt) { m_instOpts.add(opt); }
-        void addInstOpts(const InstOptSet &opts) { m_instOpts.add(opts); }
+        void setMsgDesc(const SendDesc &msg) {m_desc = msg;}
+        void setExtMsgDesc(const SendDesc &msg) {m_exDesc = msg;}
+        void setDstLength(int dstLength) {m_sendDstLength = dstLength;}
+        void setSrc0Length(int src0Length) {m_sendSrc0Length = src0Length;}
+        void setSrc1Length(int src1Length) {m_sendSrc1Length = src1Length;}
+
+        void setSWSB(SWSB swsb) {m_depInfo = swsb;}
+
+        void addInstOpt(const InstOpt &opt) {m_instOpts.add(opt);}
+        void addInstOpts(const InstOptSet &opts) {m_instOpts.add(opts);}
 
         // associates an optional comment with instruction
-        void setComment(std::string comment) { m_comment = comment; }
+        void setComment(std::string comment) {m_comment = comment;}
 
         ///////////////////////////////////////////////////////////////////////
         // operations that get instruction state
         //
         // the source or binary location
-        const Loc        &getLoc() const { return m_instLoc; }
-        int               getID() const { return m_instId; }
-        PC                getPC() const { return m_pc; }
+        const Loc        &getLoc() const {return m_instLoc;}
+        int               getID() const {return m_instId;}
+        PC                getPC() const {return m_pc;}
 
         // returns the instruction op specification
-        const OpSpec      &getOpSpec()         const { return m_opSpec; }
+        const OpSpec      &getOpSpec()         const {return m_opSpec;}
 
         // WrEn (NoMask)
-        MaskCtrl           getMaskCtrl()       const { return m_maskCtrl; }
+        MaskCtrl           getMaskCtrl()       const {return m_maskCtrl;}
         // predication
-        bool               hasPredication() const { return m_pred.function != PredCtrl::NONE; }
-        const Predication& getPredication()    const { return m_pred; }
+        bool               hasPredication()    const {return m_pred.function != PredCtrl::NONE;}
+        const Predication& getPredication()    const {return m_pred;}
 
         // opcode, math function control, and branch control
-        Op                 getOp()             const { return m_opSpec.op; }
-        Op                 getGroupOp()        const { return m_opSpec.groupOp; }
-        BranchCntrl        getBranchCtrl()     const { return m_brnch; }
+        Op                 getOp()             const {return m_opSpec.op;}
+        Op                 getGroupOp()        const {return m_opSpec.groupOp;}
+        BranchCntrl        getBranchCtrl()     const {return m_brnch;}
         // true for madm or math.invm and math.rsqrtm
-        bool               isMacro()           const{ return getOpSpec().isMacro(); }
+        bool               isMacro()           const {return getOpSpec().isMacro();}
         // execution width info
-        ExecSize           getExecSize()       const { return m_execSize; }
-        ChannelOffset      getChannelOffset() const { return m_chOff; }
+        ExecSize           getExecSize()       const {return m_execSize;}
+        ChannelOffset      getChannelOffset()  const {return m_chOff;}
 
         // returns if the instruction has a flag (condition) modifier
-        bool               hasFlagModifier()   const { return m_flagModifier != FlagModifier::NONE; }
-        FlagModifier       getFlagModifier()   const { return m_flagModifier; }
+        bool               hasFlagModifier()   const {return m_flagModifier != FlagModifier::NONE;}
+        FlagModifier       getFlagModifier()   const {return m_flagModifier;}
 
         // flag register is shared by predication and flag modfier
-        const RegRef&      getFlagReg()        const { return m_flagReg; }
+        const RegRef&      getFlagReg()        const {return m_flagReg;}
 
-        const Operand&     getDestination()    const { return m_dst; }
-              Operand&     getDestination()          { return m_dst; }
-        const Operand&     getSource(size_t srcNum) const { return m_srcs[srcNum]; }
-              Operand&     getSource(size_t srcNum)       { return m_srcs[srcNum]; }
-        const Operand&     getSource(SourceIndex srcNum) const { return m_srcs[(int)srcNum]; }
-              Operand&     getSource(SourceIndex srcNum)       { return m_srcs[(int)srcNum]; }
+        const Operand&     getDestination()    const {return m_dst;}
+              Operand&     getDestination()          {return m_dst;}
+        const Operand&     getSource(size_t srcNum) const {return m_srcs[srcNum];}
+              Operand&     getSource(size_t srcNum)       {return m_srcs[srcNum];}
+        const Operand&     getSource(SourceIndex srcNum) const {return m_srcs[(int)srcNum];}
+              Operand&     getSource(SourceIndex srcNum)       {return m_srcs[(int)srcNum];}
 
-        unsigned           getSourceCount() const{ // BRC is a weird duck, everyone else is cool
-            return getOp() != Op::BRC ? getOpSpec().getSourceCount() : getSourceCountBrc();
+        unsigned           getSourceCount() const{
+            // BRC can have 1 or 2 operands, everyone else is simple
+            return getOp() != Op::BRC ?
+                getOpSpec().getSourceCount() : getSourceCountBrc();
         }
 
-        SendDescArg        getExtMsgDescriptor() const { return m_exDesc; }
-        SendDescArg        getMsgDescriptor() const { return m_desc; }
+        SendDesc           getExtMsgDescriptor() const {return m_exDesc;}
+        SendDesc           getMsgDescriptor()    const {return m_desc;}
+        int                getDstLength() const {return m_sendDstLength;}
+        int                getSrc0Length() const {return m_sendSrc0Length;}
+        int                getSrc1Length() const {return m_sendSrc1Length;}
 
-        const InstOptSet&  getInstOpts() const { return m_instOpts; }
-        bool               hasInstOpt(InstOpt opt) const { return m_instOpts.contains(opt); }
-        void               removeInstOpt(InstOpt opt) { m_instOpts.remove(opt); }
+        const InstOptSet&  getInstOpts() const {return m_instOpts;}
+        bool               hasInstOpt(InstOpt opt) const {return m_instOpts.contains(opt);}
+        void               removeInstOpt(InstOpt opt) {m_instOpts.remove(opt);}
 
-        const Block       *getJIP() const { return m_srcs[0].getTargetBlock(); }
-        const Block       *getUIP() const { return m_srcs[1].getTargetBlock(); }
-        const std::string  &getComment() const { return m_comment; }
-        SWSB             getSWSB() const { return m_depInfo; }
-        bool             isBranching() const { return getOpSpec().isBranching(); }
+        const Block       *getJIP() const {return m_srcs[0].getTargetBlock();}
+        const Block       *getUIP() const {return m_srcs[1].getTargetBlock();}
+        const std::string &getComment() const {return m_comment;}
+        SWSB               getSWSB() const {return m_depInfo;}
+        bool               isBranching() const {return getOpSpec().isBranching();}
 
-        bool             isMovWithLabel() const
-        {
-            return (getOp() == Op::MOV && getSource(0).getKind() == Operand::Kind::LABEL);
-        }
+        bool               isMovWithLabel() const;
 
-        void             validate() const; // asserts on malformed IR
-        std::string      str(Platform pltfm) const; // returns syntax of this instruction
+        void               validate() const; // asserts on malformed IR
+        std::string        str(Platform p) const; // returns syntax of this instruction
     private:
-        unsigned         getSourceCountBrc() const;
+        unsigned           getSourceCountBrc() const;
 
         const OpSpec&    m_opSpec; // information about the specific inst op
         MaskCtrl         m_maskCtrl; // (W) WrEn (write enable / NoMask)
@@ -249,10 +260,13 @@ namespace iga
         Operand          m_srcs[3];
 
         FlagModifier     m_flagModifier; // conditional-modifier function
-        BranchCntrl      m_brnch;        // for certain branching instructions
+        BranchCtrl       m_brnch;        // for certain branching instructions
 
-        SendDescArg  m_exDesc;
-        SendDescArg  m_desc;
+        SendDesc         m_exDesc;
+        SendDesc         m_desc;
+        int              m_sendDstLength; // -1 if unknown
+        int              m_sendSrc0Length; // -1 if unknown
+        int              m_sendSrc1Length; // -1 if unknown
 
         InstOptSet       m_instOpts; // miscellaneous instruction attributes
         SWSB             m_depInfo;
@@ -267,6 +281,7 @@ namespace iga
         // e.g. for illegal instruction extended info (e.g. decode errors)
         // enables us to emit things like
         //        illegal {Compacted} // failed to uncompact ....
+        //                               ^^^^^^^^^^^^^^^^^^^
         std::string      m_comment;
     }; // class Instruction
 } // namespace iga

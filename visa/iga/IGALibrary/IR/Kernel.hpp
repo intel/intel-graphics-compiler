@@ -95,8 +95,9 @@ namespace iga {
             ExecSize execSize,
             ChannelOffset choff,
             MaskCtrl ectr,
-            const SendDescArg &extDesc,
-            const SendDescArg &msgDesc);
+            const SendDesc &extDesc,
+            const SendDesc &msgDesc
+        );
 
         Instruction *createNopInstruction();
         Instruction *createIllegalInstruction();

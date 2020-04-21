@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 
-
 /*******************************************************
  * This performs a basic liveness/DU analysis (reverse) of the register files
  * (GRF and ARF).  The RegSet abstraction tracks bytes and words touched

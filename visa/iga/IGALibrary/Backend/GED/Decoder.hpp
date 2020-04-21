@@ -170,7 +170,6 @@ namespace iga
         GED_ADDR_MODE decodeSendSource0AddressMode();
         void decodeSendSource0(Instruction *inst);
         void decodeSendSource1(Instruction *inst);
-        void decodeSendInstructionOptions(Instruction *inst);
 
         ///////////////////////////////////////////////////////////////////////
         // BRANCH INSTRUCTIONS

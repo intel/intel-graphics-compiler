@@ -111,6 +111,10 @@ typedef enum {
 } iga_gen_t;
 
 
+/*****************************************************************************/
+/*                     Platform Query Functions                              */
+/*****************************************************************************/
+
 /*
  * Returns a list of the platforms enumeration values supported by this
  * implementation of IGA into a user-provided buffer.  The buffer parameter
@@ -149,7 +153,33 @@ IGA_API iga_status_t iga_platforms_list(
 IGA_API iga_status_t iga_platform_symbol_suffix(
     iga_gen_t gen,
     const char **suffix);
+/*
+ * Returns the names for a given platform.  E.g. IGA_GEN9 returns "skl".
+ *
+ * PARAMETERS:
+ *  gen                   the platform to query
+ *  names_bytes           the length in bytes of the names array passed in
+ *                        0 iff 'names' is nullptr
+ *  names                 the array to return the platform names in
+ *  names_bytes_needed    the required length of 'names' in bytes
+ *
+ * RETURNS:
+ *   IGA_INVALID_ARGUMENT  if gen is an invalid platform
+ *                         supported by this platform
+ *   IGA_INVALID_ARGUMENT  if names_bytes != 0 && names == nullptr
+ *   IGA_SUCCESS           otherwise
+ */
+IGA_API iga_status_t iga_platform_names(
+    iga_gen_t gen,
+    size_t names_bytes,
+    const char **names,
+    size_t *names_bytes_needed);
 
+
+
+/*****************************************************************************/
+/*                  Context Creation Functions                               */
+/*****************************************************************************/
 
 /*
  * Context options
@@ -205,6 +235,11 @@ IGA_API iga_status_t  iga_create_context(
 IGA_API iga_status_t  iga_context_release(iga_context_t ctx);
 /* deprecated: covers to iga_context_release */
 IGA_API iga_status_t  iga_release_context(iga_context_t ctx);
+
+
+/*****************************************************************************/
+/*                  Assembly Functions                                       */
+/*****************************************************************************/
 
 /*
  * This structure contains options to the 'iga_assemble' call.
@@ -329,6 +364,10 @@ IGA_API iga_status_t  iga_assemble(
     void **output,
     uint32_t *output_size);
 
+
+/*****************************************************************************/
+/*                  Disassembly Functions                                    */
+/*****************************************************************************/
 
 /*
  * This structure contains options to the 'iga_disassemble' call.
@@ -501,6 +540,11 @@ IGA_API  iga_status_t  iga_disassemble_instruction(
     void *fmt_label_ctx,
     char **kernel_text);
 
+
+/*****************************************************************************/
+/*             Diagnostic Processing Functions                               */
+/*****************************************************************************/
+
 /*
  * A diagnostic message (e.g. error or warning)
  *
@@ -667,6 +711,10 @@ IGA_API iga_status_t iga_diagnostic_get_text_extent(
     uint32_t *extent);
 
 
+
+/*****************************************************************************/
+/*             Operation Enumeration Functions                               */
+/*****************************************************************************/
 /*
  * An opaque type representing an operation (instruction) type.
  * Can be efficiently copied and passed by value.

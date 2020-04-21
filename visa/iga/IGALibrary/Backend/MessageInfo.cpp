@@ -84,7 +84,7 @@ std::string iga::format(SendOp op)
     MK_CASE(MONITOR);
     MK_CASE(UNMONITOR);
     MK_CASE(WAIT);
-    MK_CASE(SIGNAL);
+    MK_CASE(SIGNAL_EVENT);
     MK_CASE(EOT);
     //
     //
@@ -222,7 +222,7 @@ struct DescDecoder {
         addDiag(errors, off, len, t1, t2, t3);
     }
 
-    bool hasExDesc() const {
+    bool hasImmExDesc() const {
         return exDesc != 0xFFFFFFFF;
     }
 
@@ -1141,7 +1141,7 @@ iga::MessageInfo iga::MessageInfo::tryDecode(
             }
             return false;
         };
-        int len = dd.hasExDesc() ? 64 : 32; // 32 if a0
+        int len = dd.hasImmExDesc() ? 64 : 32; // 32 if a0
         for (int i = 0; i < len;) {
             if (bitIsSet(i) && !fieldOwnsBit(i)) {
                 // beginning of an undefined field
@@ -1586,10 +1586,10 @@ void DescDecoder::tryDecodeDC1() {
         decodeMDC_HF();
         break;
     }
-    case 0x14: // a64 (unaligned,hword|oword) block read
-    case 0x15: // a64 (unaligned,hword|oword) block write
+    case 0x14: // a64 [un]aligned (hword|oword) block read
+    case 0x15: // a64 [un]aligned (hword|oword) block write
     {
-        addField("MessageType",14,5,msgType,
+        addField("MessageType", 14, 5, msgType,
             msgType == 0x14 ? "a64 block read" :"a64 block write");
         bool isHword = false;
         bool isUnaligned = false;
@@ -1754,7 +1754,7 @@ void DescDecoder::tryDecodeDC1() {
                 bytesTransmitted = 2*DEFAULT_EXEC_SIZE*(mlen - 1);
             }
         }
-        int vlso = getDescBits(8,3); // [10:8] is vert. line stride overr.
+        int vlso = getDescBits(8, 3); // [10:8] is vert. line stride overr.
         if (vlso) {
             desc << " with vertical line stride ";
             int n = 0;
@@ -1870,7 +1870,8 @@ void DescDecoder::tryDecodeURB() {
         desc << "write";
         if (decodePSO())
             desc << " with per-slot offset enabled";
-        elemsPerAddr = xlen != 0 ? xlen : 1; // "SIMD8 URB Dword Read message. Reads 1..8 Dwords, based on RLEN."
+        // "SIMD8 URB Dword Read message. Reads 1..8 Dwords, based on RLEN."
+        elemsPerAddr = xlen != 0 ? xlen : 1;
         setDoc(chMaskPresent ? "44779" : "44778");
         decodeMDC_HR();
         break;
@@ -1906,44 +1907,54 @@ void DescDecoder::tryDecodeURB() {
         mi.immediateOffset = off;
 }
 
+
 void DescDecoder::tryDecodeGTWY() {
+    auto choosePage = [&](const char *gen12, const char *genX = nullptr) {
+        return gen12 ? gen12 : genX;
+    };
     std::stringstream sym, desc;
-    int opBits = getDescBits(0,3); // [2:0]
+    int opBits = getDescBits(0, 3); // [2:0]
     int expectMlen = 0;
+    const char *doc = nullptr;
     SendOp sendOp = SendOp::INVALID;
     switch (opBits) {
     case 1:
-        sym << "signal";
+        sym << "signal_event";
         desc << "signal event";
         expectMlen = 1; //
-        sendOp = SendOp::SIGNAL;
+        sendOp = SendOp::SIGNAL_EVENT;
+        doc = choosePage(nullptr, "57494");
         break;
     case 2:
         sym << "monitor";
         desc << "monitor event";
         expectMlen = 1; // C.f. MDP_EVENT
         sendOp = SendOp::MONITOR;
+        doc = choosePage("47925", "57490");
         break;
     case 3:
         sym << "unmonitor";
         desc << "unmonitor event";
         expectMlen = 1; // C.f. MDP_NO_EVENT
         sendOp = SendOp::UNMONITOR;
+        doc = choosePage("47926", "57491");
         break;
     case 4:
         sym << "barrier";
         desc << "barrier";
         expectMlen = 1; // C.f. MDP_Barrier
         sendOp = SendOp::BARRIER;
+        doc = choosePage("47924", "57489");
         break;
     case 6:
         sym << "wait";
         desc << "wait for event";
         sendOp = SendOp::WAIT;
         expectMlen = 1; // C.f. MDP_Timeout
+        doc = choosePage("47928", "57493");
         break;
     default:
-        error(0,2,"unsupported GTWY op");
+        error(0, 2, "unsupported GTWY op");
     }
     addField("GatewayOpcode", 0, 3, opBits, desc.str());
     setSpecialOp(
@@ -1953,6 +1964,7 @@ void DescDecoder::tryDecodeGTWY() {
         0, // rlen
         0);
     decodeMDC_HF(); // all gateway messages forbid a header
+    setDoc(doc);
 }
 
 
@@ -2167,7 +2179,7 @@ void DescDecoder::tryDecodeSampler()
     } // switch
     addField("SIMD[1:0]",17,2,simd01,desc.str());
 
-    bool is16bData = getDescBitField("ReturnFormat",30,"32b","16b") != 0;
+    bool is16bData = getDescBitField("ReturnFormat", 30, "32b", "16b") != 0;
     if (is16bData) {
         sym << "_16";
         desc << " 16b";
@@ -2391,22 +2403,26 @@ void DescDecoder::tryDecodeSampler()
 
 
 void DescDecoder::tryDecode() {
-    getDescBitsField("Mlen", 25,4, [](std::stringstream &ss, uint32_t val) {
-        ss << val << " address registers written";
-    });
-    getDescBitsField("Rlen", 20,5, [](std::stringstream &ss, uint32_t val) {
-        ss << val << " registers read back";
-    });
-
-    bool showXlen = true;
-    if (showXlen) {
-        getDescBitsField("Xlen", 32+6, 5,
+    bool hasMLenRLenInDesc = true;
+    bool hasXLenInExDesc = true;
+    if (hasMLenRLenInDesc) {
+        getDescBitsField("Mlen", 25, 4,
+            [] (std::stringstream &ss, uint32_t val) {
+                ss << val << " address registers written";
+            });
+        getDescBitsField("Rlen", 20, 5,
+            [] (std::stringstream &ss, uint32_t val) {
+                ss << val << " registers read back";
+            });
+    }
+    if (hasXLenInExDesc) {
+        getDescBitsField("Xlen", 32 + 6, 5,
             [] (std::stringstream &ss, uint32_t val) {
                 ss << val << " data registers written";
             });
     }
     if (platform <= Platform::GEN11) {
-        getDescBitsField("SFID", 32+0, 4,
+        getDescBitsField("SFID", 32 + 0, 4,
             [] (std::stringstream &ss, uint32_t val) {
                 ss << val << " shared function ID";
             });
@@ -2422,7 +2438,7 @@ void DescDecoder::tryDecode() {
     case SFID::DC2: error(0, 32, "unsupported DC2 op"); break;
     case SFID::GTWY: tryDecodeGTWY();  break;
     case SFID::TS:
-        if (getDescBits(0,3) == 0) {
+        if (getDescBits(0, 3) == 0) {
             setSpecialOp(
                 "eot", "end of thread", SendOp::EOT,
                 AddrType::FLAT, 0,
@@ -2430,7 +2446,7 @@ void DescDecoder::tryDecode() {
                 0, // rlen
                 0);
         } else {
-            error(0,32,"unsupported TS op");
+            error(0, 32, "unsupported TS op");
         }
         break;
     case SFID::RC:
@@ -2443,6 +2459,87 @@ void DescDecoder::tryDecode() {
         error(0, 0, "unsupported sfid");
         return;
     }
+}
+
+int MessageInfo::tryDecodeDstLength(
+    Platform p, SFID sfid, uint32_t desc, ExecSize execSize, bool dstNonNull)
+{
+    DiagnosticList ws, es;
+    const auto mi = MessageInfo::tryDecode(
+        p, sfid, 0, desc, ws, es, nullptr);
+    if (mi) {
+        int execElems = static_cast<int>(execSize);
+        const int regFileBits =
+                256;
+        const int FULL_EXEC_SIZE =
+                16;
+        auto opIsGroup = [&] (SendOp opGroup) {
+            return static_cast<int>(mi.op) & static_cast<int>(opGroup);
+        };
+        auto handleVectorMessage = [&]() {
+            int vlen = mi.elemsPerAddr;
+            if (mi.isTransposed()) {
+                int rlen = mi.elemSizeBitsRegFile * vlen / regFileBits;
+                if (rlen == 0)
+                    rlen++;
+                return rlen;
+            } else {
+                if (execElems < FULL_EXEC_SIZE/2) {
+                    execElems = FULL_EXEC_SIZE/2;
+                }
+                int rlen = execElems * mi.elemSizeBitsRegFile / regFileBits;
+                if ((execElems * mi.elemSizeBitsRegFile) % regFileBits != 0) {
+                    rlen++;
+                }
+                return rlen*vlen;
+            }
+        };
+        if (opIsGroup(SendOp::IS_LOAD_OP)) {
+            switch (mi.op) {
+            case SendOp::LOAD:
+            case SendOp::LOAD_STRIDED:
+            case SendOp::LOAD_QUAD:
+                // normal vector message
+                return handleVectorMessage();
+            case SendOp::LOAD_STATUS:
+            case SendOp::LOAD_SURFACE_INFO:
+                // returns one status register only
+                return 1;
+            default:
+                break;
+            }
+            return -1;
+        } else if (opIsGroup(SendOp::IS_STORE_OP)) {
+            return 0;
+        } else if (opIsGroup(SendOp::IS_ATOMIC_OP)) {
+            if (dstNonNull) {
+                // normal vector message
+                return handleVectorMessage();
+            } else {
+                // atomic without return
+                return 0;
+            }
+        } else { // assume it's other
+            // TODO: need to deal with sampler and render
+            switch (mi.op) {
+            ///////////////////////////////////////////////////////////////////
+            // These messages have rlen = 0
+            case SendOp::BARRIER:
+            case SendOp::MONITOR:
+            case SendOp::UNMONITOR:
+            case SendOp::SIGNAL_EVENT:
+            case SendOp::EOT:
+                return 0;
+            ///////////////////////////////////////////////////////////////////
+            // These messages have rlen > 0
+            case SendOp::READ_STATE:
+                return 1;
+            default: break;
+            }
+            return dstNonNull ? 1 : 0; // guess
+        }
+    }
+    return -1;
 }
 
 SFID iga::MessageInfo::sfidFromEncoding(Platform p, uint32_t sfidBits)

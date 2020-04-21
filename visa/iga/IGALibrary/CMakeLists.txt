@@ -149,7 +149,7 @@ set(IGA_SOURCES
   ${GED_INCLUDE}/ged.h
 )
 
-set(FLAG "")
+set(BUILD_EXPOSURE_FLAG "")
 
 set(IGA_DEFINITIONS _CONSOLE _LIB ${VSVERSION} ${GED_BRANCH})
 if (MSVC)
@@ -335,19 +335,19 @@ source_group("API" FILES ${IGA_API_Headers} ${IGA_API_EncoderInterface} ${IGA_AP
 source_group("Backend" FILES ${IGA_Backend})
 
 if(WIN32)
-source_group("Backend\\GED" FILES ${IGA_Backend_GED})
-source_group("Backend\\Native" FILES ${IGA_Backend_Native})
+  source_group("Backend\\GED" FILES ${IGA_Backend_GED})
+  source_group("Backend\\Native" FILES ${IGA_Backend_Native})
 else()
-source_group("Backend/GED" FILES ${IGA_Backend_GED})
-source_group("Backend/Native" FILES ${IGA_Backend_Native})
+  source_group("Backend/GED" FILES ${IGA_Backend_GED})
+  source_group("Backend/Native" FILES ${IGA_Backend_Native})
 endif()
 
 
 source_group("Frontend" FILES ${IGA_Frontend_Formatter} ${IGA_Frontend_Parser})
 if(WIN32)
-source_group("Frontend\\LdStSyntax" FILES ${IGA_Frontend_Formatter_LdStSyntax} ${IGA_Frontend_Parser_LdStSyntax})
+  source_group("Frontend\\LdStSyntax" FILES ${IGA_Frontend_Formatter_LdStSyntax} ${IGA_Frontend_Parser_LdStSyntax})
 else()
-source_group("Frontend/LdStSyntax" FILES ${IGA_Frontend_Formatter_LdStSyntax} ${IGA_Frontend_Parser_LdStSyntax})
+  source_group("Frontend/LdStSyntax" FILES ${IGA_Frontend_Formatter_LdStSyntax} ${IGA_Frontend_Parser_LdStSyntax})
 endif()
 
 source_group("IR" FILES ${IGA_IR})

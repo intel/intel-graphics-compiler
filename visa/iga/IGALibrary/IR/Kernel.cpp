@@ -37,9 +37,12 @@ Kernel::Kernel(const Model &model)
 Kernel::~Kernel()
 {
     // Since in a kernel blocks are allocated using the memory pool,
-    // when the Kernel was freed, the memory pool was deleted and destructors
-    // for Blocks are never called.  This means the InstList's memory pool
+    // when the Kernel is freed, the memory pool is deleted and destructors
+    // for Blocks are never called.  This means the InstList's memory pools
     // was never deleted and we need to do it here.
+    //
+    // Also, Instruction's fields with destructors need running
+    // (e.g. m_comment)
     for (Block *bb : m_blocks) {
         bb->~Block();
     }
@@ -119,8 +122,9 @@ Instruction *Kernel::createSendInstruction(
     ExecSize execSize,
     ChannelOffset chOff,
     MaskCtrl ectr,
-    const SendDescArg &extDesc,
-    const SendDescArg &msgDesc)
+    const SendDesc &extDesc,
+    const SendDesc &msgDesc
+    )
 {
     Instruction *inst = new(&m_mem)Instruction(
         op,

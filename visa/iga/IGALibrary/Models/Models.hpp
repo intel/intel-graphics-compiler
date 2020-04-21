@@ -77,9 +77,11 @@ namespace iga
             // wonky because null and sp have "0" registers (meaning 1 implied)
             // so reg==0 is alway valid for everyone
             return reg == 0 ||
-                          (reg >= 0 && reg < numRegs); // otherwise: one of several registers
+                (reg >= 0 && reg < numRegs); // otherwise: one of several registers
         }
-        bool isSubRegByteOffsetValid(int regNum, int subregByte, int grfSize) const {
+        bool isSubRegByteOffsetValid(
+            int regNum, int subregByte, int grfSize) const
+        {
             int regBytes = regName == RegName::GRF_R ? grfSize :
                 numBytesPerReg[regNum];
             return subregByte < regBytes;
@@ -378,7 +380,6 @@ namespace iga
 
         // Get the max number of swsb id
         uint32_t getSWSBTokenNum() const {
-
             switch(getSWSBEncodeMode()) {
             case SWSB_ENCODE_MODE::SingleDistPipe:
                 return 16;
@@ -393,8 +394,21 @@ namespace iga
             return 7;
         }
 
+    }; // class Model
 
-    }; // class model
+    ///////////////////////////////////////////////////////////////////////////
+    // Functions to enumerate information about platforms such as names
+    // extensions and whatnot.
+    //
+    static size_t const MAX_PLATFORM_NAMES = 3;
+    struct PlatformEntry {
+        iga::Platform    platform;
+        const char      *suffix; // platform file suffix; e.g. "12p1"
+        const char      *names[MAX_PLATFORM_NAMES]; // various platform names
+    };
+    //
+    extern const PlatformEntry ALL_PLATFORMS[];
+    extern size_t ALL_PLATFORMS_LEN;
 } // namespace iga::*
 
-#endif // MODELS_HPP
+#endif // IGA_MODELS_HPP

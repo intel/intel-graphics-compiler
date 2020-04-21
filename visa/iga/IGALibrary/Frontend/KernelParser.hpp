@@ -73,7 +73,7 @@ namespace iga {
     struct GenParser : public Parser
     {
         const Model&                   m_model;
-        InstBuilder&                   m_handler;
+        InstBuilder&                   m_builder;
         const ParseOpts                m_parseOpts;
 
         // TODO: sink to KernelParser
@@ -86,6 +86,8 @@ namespace iga {
             const std::string &inp,
             ErrorHandler &eh,
             const ParseOpts &pots);
+
+        Platform platform() const {return m_model.platform;}
 
         void ParseExecInfo(
             ExecSize dftExecSize,

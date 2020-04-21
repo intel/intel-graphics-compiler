@@ -23,7 +23,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-
 #ifndef _IGA_IR_DUANALYSIS_HPP
 #define _IGA_IR_DUANALYSIS_HPP
 

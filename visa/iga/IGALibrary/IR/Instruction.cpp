@@ -23,7 +23,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-
 #include "Instruction.hpp"
 #include "Types.hpp"
 #include "../Frontend/Formatter.hpp"
@@ -134,6 +133,12 @@ void Instruction::setLabelSource(SourceIndex srcIx, Block *block, Type type)
 }
 
 
+
+bool Instruction::isMovWithLabel() const {
+    return (getOp() == Op::MOV &&
+        getSource(0).getKind() == Operand::Kind::LABEL);
+}
+
 void Instruction::validate() const
 {
     iga::SanityCheckIR(*this);
@@ -147,7 +152,7 @@ std::string Instruction::str(Platform pltfm) const
     // TODO: see if we can wrestle the Platform out of this interface
     //  (or pass it as an argument to str())
     FormatOpts fopt(pltfm);
-    fopt.setSWSBEncodingMode(iga::Model::LookupModel(pltfm)->getSWSBEncodeMode());
+    fopt.setSWSBEncodingMode(Model::LookupModel(pltfm)->getSWSBEncodeMode());
     FormatInstruction(eh, ss, fopt, *this);
     return ss.str();
 }

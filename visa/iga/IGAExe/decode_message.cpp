@@ -146,7 +146,7 @@ bool decodeSendDescriptor(const Opts &opts)
     ensurePlatformIsSet(opts);
 
     if (opts.inputFiles.size() != 3 && opts.inputFiles.size() != 2) {
-        fatalExitWithMessage("-Xdsd: expects: ex_desc desc");
+        fatalExitWithMessage("-Xdsd: expects: SFID ex_desc desc");
     }
     auto parseInt32 =
         [&] (const char *which, std::string inp) {
@@ -168,8 +168,8 @@ bool decodeSendDescriptor(const Opts &opts)
             return val;
         };
     int descArgOff = opts.inputFiles.size() == 2 ? 0 : 1;
-    uint32_t ex_desc = parseInt32("ex_desc",opts.inputFiles[descArgOff]);
-    uint32_t desc = parseInt32("desc",opts.inputFiles[descArgOff+1]);
+    uint32_t exDesc = parseInt32("ex_desc", opts.inputFiles[descArgOff]);
+    uint32_t desc = parseInt32("desc", opts.inputFiles[descArgOff+1]);
 
     iga::SFID sfid = iga::SFID::INVALID;
     if (opts.inputFiles.size() == 3) {
@@ -204,44 +204,45 @@ bool decodeSendDescriptor(const Opts &opts)
     } else {
         // decode it from ex_desc[3:0]
         sfid = iga::MessageInfo::sfidFromEncoding(
-            static_cast<iga::Platform>(opts.platform), ex_desc & 0xF);
+            static_cast<iga::Platform>(opts.platform), exDesc & 0xF);
         if (sfid == iga::SFID::INVALID) {
             fatalExitWithMessage(
               "-Xdsd: 0x%x: invalid or unsupported SFID for this platform",
-              ex_desc);
+              exDesc);
         }
     }
 
     iga::DiagnosticList es, ws;
-    auto emitDiagnostics = [&](const iga::DiagnosticList &ds) {
-        for (const auto &d : ds) {
-            std::stringstream ss;
-            if (d.first.len != 0) {
-                int off = d.first.off;
-                const char *which = "Desc";
-                if (off >= 32) {
-                    off -= 32;
-                    which = "ExDesc";
+    auto emitDiagnostics =
+        [&](const iga::DiagnosticList &ds) {
+            for (const auto &d : ds) {
+                std::stringstream ss;
+                if (d.first.len != 0) {
+                    int off = d.first.off;
+                    const char *which = "Desc";
+                    if (off >= 32) {
+                        off -= 32;
+                        which = "ExDesc";
+                    }
+                    ss << which << "[";
+                    if (d.first.len > 1) {
+                        ss << off + d.first.len - 1 << ":";
+                    }
+                    ss << off << "]: ";
                 }
-                ss << which << "[";
-                if (d.first.len > 1) {
-                    ss << off + d.first.len - 1 << ":";
-                }
-                ss << off << "]: ";
+                ss << d.second << "\n";
+                if (&ds == &es)
+                  emitRedText(std::cerr,ss.str());
+                else
+                  emitYellowText(std::cerr,ss.str());
             }
-            ss << d.second << "\n";
-            if (&ds == &es)
-              emitRedText(std::cerr,ss.str());
-            else
-              emitYellowText(std::cerr,ss.str());
-        }
-    };
+        };
 
     iga::DecodedDescFields decodedFields;
     auto mi = iga::MessageInfo::tryDecode(
         static_cast<iga::Platform>(opts.platform),
         sfid,
-        ex_desc,
+        exDesc,
         desc,
         es,
         ws,

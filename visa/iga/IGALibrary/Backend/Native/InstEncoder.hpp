@@ -165,7 +165,7 @@ namespace iga
         const OpSpec &getOpSpec() const {return state.inst->getOpSpec();}
 
         const Model &getModel() const {return model;}
-        Platform platform() const {return model.platform;}
+        Platform platform() const {return getModel().platform;}
 
 //        void setBits(MInst mi) {*bits = mi;}
 //        MInst getBits() const {return *bits;}
@@ -448,7 +448,8 @@ namespace iga
         switch (platform()) {
         case Platform::GENNEXT:
         default:
-            encodingError("unsupported platform for native encoder");
+            // caller checks this and gives a soft error
+            IGA_ASSERT_FALSE("unsupported platform for native encoder");
         }
     }
 } // end iga::*

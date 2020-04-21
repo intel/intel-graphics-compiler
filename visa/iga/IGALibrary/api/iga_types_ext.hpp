@@ -248,7 +248,7 @@ namespace iga
         ANY16H,
         ALL16H,
         ANY32H,
-        ALL32H
+        ALL32H,
     };
 
     // instruction options
@@ -264,7 +264,7 @@ namespace iga
         NOPREEMPT,
         NOSRCDEPSET,
         SWITCH,
-        SERIALIZE
+        SERIALIZE,
     };
 } // namespace iga
 #endif

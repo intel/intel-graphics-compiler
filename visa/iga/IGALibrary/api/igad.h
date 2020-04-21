@@ -325,8 +325,10 @@ typedef int32_t(CDECLATTRIBUTE *pIGAKVGetFlagSubReg)(const kv_t *kv, int32_t pc)
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetPredicate)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_IS_INVERSE_PREDICATE "kv_get_is_inverse_predicate"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetIsInversePred)(const kv_t *kv, int32_t pc);
-
-
+#define IGA_KV_GET_SOURCE_INDIRECT_IMM_OFF_STR "kv_get_source_indirect_imm_off"
+typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSrcIndirectImmOff)(const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *immoff);
+#define IGA_KV_GET_DESTINATION_INDIRECT_IMM_OFF_STR "kv_get_destination_indirect_imm_off"
+typedef int32_t(CDECLATTRIBUTE *pIGAKVGetDstIndirectImmOff)(const kv_t *kv, int32_t pc, int16_t *immoff);
 /*
  * A table of IGA functions
  */
@@ -419,4 +421,6 @@ typedef struct
     pIGAKVGetIsInversePred     kv_get_inverse_predicate;
     pIGAKVGetSWSBInfo          kv_get_swsb_info;
     pIGAKVHasInstOpt           kv_has_inst_opt;
+    pIGAKVGetSrcIndirectImmOff kv_get_source_indirect_imm_off;
+    pIGAKVGetDstIndirectImmOff kv_get_destination_indirect_imm_off;
 } kv_functions_t;

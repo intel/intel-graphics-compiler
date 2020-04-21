@@ -700,50 +700,64 @@ namespace iga
         {
             bool isGrf = decodeBoolField(fREGFILE, "ARF", "GRF");
             std::stringstream ss;
-            auto val = bits.getField(fREG);
+            auto regVal = bits.getField(fREG);
             if (isGrf) {
                 opInfo.regOpName = RegName::GRF_R;
-                opInfo.regOpReg.regNum = (uint8_t)val;
-                ss << "r" << val;
+                opInfo.regOpReg.regNum = (uint8_t)regVal;
+                ss << "r" << regVal;
             } else {
-                const RegInfo *regInfo =
-                    model.lookupArfRegInfoByRegNum((uint8_t)val);
-                if (regInfo == nullptr) {
-                    ss << "ARF?";
-                    std::stringstream ssErr;
-                    ssErr << "invalid ARF Reg (" << fmtHex(val,2) << ")";
-                    reportFieldError(fREG,  ssErr.str().c_str());
-                } else {
-                    opInfo.regOpName = regInfo->regName;
-                    ss << regInfo->syntax;
-                    int arfReg = 0;
-                    if(val > 0xFF || !regInfo->decode((uint8_t)val, arfReg)) {
-                        ss << arfReg << "?";
-                        std::stringstream ss;
-                        ss << regInfo->syntax << arfReg << " is out of bounds";
-                        reportFieldError(fREG, ss.str().c_str());
-                    } else {
-                        if (regInfo->hasRegNum()) {
-                            ss << arfReg;
-                        }
-                        opInfo.regOpReg.regNum = (int)arfReg;
-                        if (regInfo->regNumBase > 0) {
-                            // if the register covers to another, let's tell
-                            // them which
-                            uint8_t coverRegBits = (uint8_t)val & 0xF0;
-                            const RegInfo *coverRegInfo =
-                                model.lookupArfRegInfoByRegNum(coverRegBits);
-                            if (coverRegInfo) {
-                                // e.g. GEN12 acc10 is mme2
-                                ss << " (" <<
-                                    coverRegInfo->syntax << (val & 0xF) << ")";
-                            }
-                        }
-                    }
-                }
+                readArfRegisterInfo(opInfo, fREG, ss);
             }
             addDecodedField(fREG, ss.str());
         }
+
+        // factored out so decodeInstSendDstOperand can share it
+        void readArfRegisterInfo(
+            OperandInfo &opInfo,
+            const Field &fREG,
+            std::stringstream &ssDesc)
+        {
+            auto regVal = bits.getField(fREG);
+            const RegInfo *regInfo =
+                model.lookupArfRegInfoByRegNum((uint8_t)regVal);
+            if (regInfo == nullptr) {
+                opInfo.regOpName = RegName::INVALID;
+                ssDesc << "invalid ARF";
+                std::stringstream ssErr;
+                ssErr << "invalid ARF Reg (" << fmtHex(regVal, 2) << ")";
+                reportFieldError(fREG, ssErr.str().c_str());
+                return;
+            }
+            //
+            opInfo.regOpName = regInfo->regName;
+            ssDesc << regInfo->syntax;
+            int arfReg = 0;
+            if (regVal > 0xFF || !regInfo->decode((uint8_t)regVal, arfReg)) {
+                ssDesc << arfReg << "?";
+                std::stringstream ss;
+                ss << regInfo->syntax << arfReg << " is out of bounds";
+                reportFieldError(fREG, ss.str().c_str());
+            } else {
+                if (regInfo->hasRegNum()) {
+                    ssDesc << arfReg;
+                }
+                opInfo.regOpReg.regNum = (int)arfReg;
+                if (regInfo->regNumBase > 0) {
+                    // if the register covers to another, let's tell
+                    // them which
+                    uint8_t coverRegBits = (uint8_t)regVal & 0xF0;
+                    const RegInfo *coverRegInfo =
+                        model.lookupArfRegInfoByRegNum(coverRegBits);
+                    if (coverRegInfo) {
+                        // e.g. GEN12+ acc10 is mme2
+                        ssDesc << " (" <<
+                            coverRegInfo->syntax << (regVal & 0xF) << ")";
+                    }
+                }
+            }
+            return;
+        }
+
 
         MathMacroExt decodeMathMacroRegField(const Field &fSPCACC) {
             return decodeField<MathMacroExt>(

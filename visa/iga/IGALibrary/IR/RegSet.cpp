@@ -158,11 +158,11 @@ bool RegSet::addSourceInputs(const Instruction &i, RegSet &rs)
     if (i.getOpSpec().isSendOrSendsFamily()) {
         // send register descriptors touch a0.#
         auto desc = i.getMsgDescriptor();
-        if (desc.type == SendDescArg::REG32A) {
+        if (desc.isReg()) {
             added |= rs.add(RS_ARF_A, desc.reg.subRegNum, 4);
         }
         auto exDesc = i.getExtMsgDescriptor();
-        if (exDesc.type == SendDescArg::REG32A) {
+        if (exDesc.isReg()) {
             added |= rs.add(RS_ARF_A, desc.reg.subRegNum, 4);
         }
     }
@@ -235,25 +235,16 @@ bool RegSet::addSourceInputs(const Instruction &i, RegSet &rs)
             if (i.getOpSpec().isSendOrSendsFamily()) {
                 if (op.getDirRegName() == RegName::GRF_R) {
                     // send source GRF (not null reg)
-                    int nregs = 1;
-
+                    int nregs = 0;
                     if (srcIx == 0) {
-                        // wlen
-                        auto desc = i.getMsgDescriptor();
-                        if (desc.type == SendDescArg::IMM) {
-                            nregs = (desc.imm >> 25) & 0xF; // desc[28:25]
-                        } else {
-                            // since we don't know the length must be conservative
-                            nregs = op.getDirRegName() == RegName::GRF_R ? 31 : 0;
-                        }
+                        // mlen
+                        nregs = i.getSrc0Length();
+                        if (nregs < 0)
+                            nregs = 31;
                     } else {
-                        auto ex_desc = i.getExtMsgDescriptor();
-                        if (ex_desc.type == SendDescArg::IMM) {
-                            nregs = ((ex_desc.imm >> 6) & 0xF);
-                        } else {
-                            // indirect register usage, assume worst if not the null reg
-                            nregs = op.getDirRegName() == RegName::GRF_R ? 31 : 0;
-                        }
+                        nregs = i.getSrc1Length();
+                        if (nregs < 0)
+                            nregs = 8;
                     }
                     uint8_t regNum = op.getDirRegRef().regNum;
                     for (int i = 0; i < nregs; i++) {
@@ -377,14 +368,9 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
         if (i.getOpSpec().isSendOrSendsFamily() &&
             op.getDirRegName() == RegName::GRF_R)
         {
-            int nregs = 1;
-
-            auto desc = i.getMsgDescriptor();
-            if (desc.type == SendDescArg::IMM) {
-                nregs = (desc.imm >> 20) & 0x1F; // desc[24:20] => rlen
-            } else {
+            int nregs = i.getDstLength();
+            if (nregs < 0)
                 nregs = 31;
-            }
             for (int i = 0; i < nregs; i++) {
                 uint8_t regNum = op.getDirRegRef().regNum;
                 if ((regNum + i) >= RS_GRF_R.numRegisters) {

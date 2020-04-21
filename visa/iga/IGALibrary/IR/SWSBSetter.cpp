@@ -42,7 +42,7 @@ using namespace iga;
  *
  * add (8) r10 r20 r30
  * add (8) r11 r21 r22
- * if(..)
+ * if (..)
  *   // if instruction doesn't count in if calculations, but it takes about 6 cycles to resolve for fall through
  *   // can treat it as continue BB. Only when this BB has one predecessor
  *   add r40 r10 r50 {@2}
@@ -257,12 +257,13 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                 DEP_PIPE prevDepPipe = dep->getDepPipe();
                 DEP_CLASS prevDepClass = dep->getDepClass();
 
-                bool differentSFIDs = false;
+                // Send instructions could write to different pipes (e.g. SLM)
+                // which should be considered as different pipes
+                bool isSend = false;
                 if (dep->getInstruction()->getOpSpec().isSendFamily() &&
                     currDep.getInstruction()->getOpSpec().isSendFamily())
                 {
-                    differentSFIDs = (dep->getInstruction()->getOpSpec().op !=
-                        currDep.getInstruction()->getOpSpec().op);
+                    isSend = true;
                 }
 
                 bool isRAW = currDepType == DEP_TYPE::READ &&
@@ -270,11 +271,11 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                 //WAW: different pipelines W2 kill W1  W2-->live      explict dependence
                 bool isWAW = (currDepType == DEP_TYPE::WRITE &&
                               prevDepType == DEP_TYPE::WRITE &&
-                              (currDepPipe != prevDepPipe || differentSFIDs));
+                     (currDepPipe != prevDepPipe || isSend));
                 //WAR: different pipelines W kill R    W-->live       explict dependence
                 bool isWAR = currDepType == DEP_TYPE::WRITE &&
                              prevDepType == DEP_TYPE::READ  &&
-                             (currDepPipe != prevDepPipe || differentSFIDs);
+                             (currDepPipe != prevDepPipe || isSend);
                 bool isWAW_out_of_order
                            = (currDepType == DEP_TYPE::WRITE &&
                               prevDepType == DEP_TYPE::WRITE &&

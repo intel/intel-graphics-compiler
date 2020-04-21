@@ -635,6 +635,7 @@ namespace iga
                 return 0;
         }
 
+
         bool isSyncSubFunc() const { return groupOp == Op::SYNC; }
 
         bool isVariableLatency() const {

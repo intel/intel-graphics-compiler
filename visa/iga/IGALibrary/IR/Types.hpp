@@ -58,7 +58,7 @@ enum class Platform
     GEN10       = IGA_GEN_VER_ORDINAL(10, 0 ),
     GEN11       = IGA_GEN_VER_ORDINAL(11, 0 ),
     GEN12P1     = IGA_GEN_VER_ORDINAL(12, 1 ), // TGL
-    GENNEXT     = IGA_GEN_VER_ORDINAL(13, 0)
+    GENNEXT     = IGA_GEN_VER_ORDINAL(14, 0)
 #undef IGA_GEN_VER_ORDINAL
 };
 
@@ -232,9 +232,9 @@ struct Region {
         set(Vert::VT_INVALID, Width::WI_INVALID, hz);
     }
 
-    Horz    getHz() const { return static_cast<Horz>(h); }
-    Vert    getVt() const { return static_cast<Vert>(v); }
-    Width   getWi() const { return static_cast<Width>(w); }
+    Horz    getHz() const {return static_cast<Horz>(h);}
+    Vert    getVt() const {return static_cast<Vert>(v);}
+    Width   getWi() const {return static_cast<Width>(w);}
 
     // checks if a region is invalid (assembler will program it to correct bits)
     bool isInvalid() const {
@@ -285,9 +285,9 @@ struct RegRef {
     uint8_t  regNum    = 0;
     uint8_t  subRegNum = 0;
 
-    RegRef(uint8_t reg_num, uint8_t sub_reg_num)
+    constexpr RegRef() { }
+    constexpr RegRef(uint8_t reg_num, uint8_t sub_reg_num)
         : regNum(reg_num), subRegNum(sub_reg_num) {}
-    RegRef() {}
 
     bool operator==(const RegRef &rr) const {
         return regNum == rr.regNum && subRegNum == rr.subRegNum;
@@ -297,27 +297,26 @@ struct RegRef {
     }
 };
 
-static inline RegRef MakeRegRef(int r, int sr = 0) {
-    RegRef ref;
-    ref.regNum = r;
-    ref.subRegNum = sr;
-    return ref;
-}
+static constexpr RegRef REGREF_INVALID {0xFF, 0xFF};
+static constexpr RegRef REGREF_ZERO_ZERO {0, 0};
 
-static const RegRef REGREF_INVALID = MakeRegRef(0xFF,0xFF);
-static const RegRef REGREF_ZERO_ZERO = MakeRegRef(0,0);
+struct SendDesc {
+    enum class Kind {IMM, REG32A};
+    Kind type;
 
-struct SendDescArg {
-    enum {IMM, REG32A}  type;
     union {
         RegRef         reg;
         uint32_t       imm;
     };
 
-    SendDescArg() {
-        type = IMM;
-        imm = 0;
+    constexpr SendDesc()
+        : type(Kind::IMM)
+        , imm(0)
+    {
     }
+
+    bool isReg() const {return type == Kind::REG32A;}
+    bool isImm() const {return type == Kind::IMM;}
 };
 } // namespace
 #endif

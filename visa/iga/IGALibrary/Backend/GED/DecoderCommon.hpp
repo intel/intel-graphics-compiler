@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GED_DECODE_TO(FIELD, TRANS, DST) \
     do { \
       GED_RETURN_VALUE _status; \
-      if(print_ged_debug) { \
+      if (print_ged_debug) { \
           std::cout << "FIELD: " << #FIELD << std::endl; \
           GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
       } \
@@ -44,7 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GED_DECODE_RAW_TO(FIELD, DST) \
     do { \
       GED_RETURN_VALUE _status; \
-      if(print_ged_debug) { \
+      if (print_ged_debug) { \
           std::cout << "FIELD: " << #FIELD << std::endl; \
           GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
       } \
@@ -66,7 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GED_DECODE_RAW_TO_SRC(DST, TYPE, FIELD) \
     do { \
       GED_RETURN_VALUE _STATUS; \
-      if(print_ged_debug) { \
+      if (print_ged_debug) { \
           std::cout << "FIELD: " << #FIELD << std::endl; \
           GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
       } \

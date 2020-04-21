@@ -74,7 +74,7 @@ fi
 
 
 if [ $TARGET_DIR_SPECIFIED -eq 0 ]; then
-  TARGET_DIR="builds/${PLATFORM}_exteranl/${BUILD_TYPE}"
+  TARGET_DIR="builds/${PLATFORM}_external/${BUILD_TYPE}"
   REL_PATH="../../.."
 fi
 

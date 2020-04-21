@@ -306,7 +306,7 @@ static void parseInstOpts(
         p.ConsumeOrFail(RBRACE,"expected }");
     }
 
-    p.m_handler.InstOpts(instOpts);
+    p.m_builder.InstOpts(instOpts);
 }
 
 
@@ -355,7 +355,7 @@ static void encodeDescriptors(
     bool unary)
 {
     const Model &model = p.m_model;
-    auto &handler = p.m_handler;
+    auto &handler = p.m_builder;
 
     uint32_t desc = format->opcodeValue; // starts with hardcoded things (e.g. MT)
     uint32_t exDesc = 0;
@@ -590,12 +590,14 @@ static void encodeDescriptors(
     setBits<uint32_t>(exDesc, 16, 16, opnds.addr.addrOff);
 
     // set the descriptors!
-    SendDescArg exDescArg;
-    exDescArg.type = SendDescArg::IMM;
+    SendDesc exDescArg {};
+    exDescArg.type = SendDesc::Kind::IMM;
     exDescArg.imm = exDesc;
-    SendDescArg descArg;
-    descArg.type = SendDescArg::IMM;
+    //
+    SendDesc descArg {};
+    descArg.type = SendDesc::Kind::IMM;
     descArg.imm = desc;
+    //
     handler.InstSendDescs(
         opLoc, exDescArg,
         opLoc, descArg);

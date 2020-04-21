@@ -1295,7 +1295,9 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::371 */ {Op::MATH, "math", "math", 0x38, "Extended Math Function",
+        /* Op::371 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::372 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::373 */ {Op::MATH, "math", "math", 0x38, "Extended Math Function",
             "The math instruction performs extended math function on the components in src0, or src0 and src1, and write the output to the channels of dst. The type of extended math function are based on the FC[3:0] encoding in the table below.\n"
             "\n"
             "\n"
@@ -1314,10 +1316,10 @@ namespace iga {
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
             Op::INVALID /* groupOp */,
             Op::MATH_COS /* subopsStart */,
-            14 /*subopsLength */,
+            16 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             Field("MathFC", 24, 4)},
-        /* Op::372 */ {Op::MATH_COS, "cos", "math.cos", 0x38, "COS",
+        /* Op::374 */ {Op::MATH_COS, "cos", "math.cos", 0x38, "COS",
             "Cosine function. cos(src0)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1333,9 +1335,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            7 /* functionControlValue = MathFC::COS */,
+            7 /* functionControlValue = encoding_of(MathFC::COS) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::373 */ {Op::MATH_EXP, "exp", "math.exp", 0x38, "EXP",
+        /* Op::375 */ {Op::MATH_EXP, "exp", "math.exp", 0x38, "EXP",
             "Exponential (E^src0)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1351,9 +1353,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            3 /* functionControlValue = MathFC::EXP */,
+            3 /* functionControlValue = encoding_of(MathFC::EXP) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::374 */ {Op::MATH_FDIV, "fdiv", "math.fdiv", 0x38, "FDIV",
+        /* Op::376 */ {Op::MATH_FDIV, "fdiv", "math.fdiv", 0x38, "FDIV",
             "Floating-Point Divide function. src0/src1\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1369,9 +1371,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            9 /* functionControlValue = MathFC::FDIV */,
+            9 /* functionControlValue = encoding_of(MathFC::FDIV) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::375 */ {Op::MATH_IDIV, "idiv", "math.idiv", 0x38, "IDIV",
+        /* Op::377 */ {Op::MATH_IDIV, "idiv", "math.idiv", 0x38, "IDIV",
             "Integer Divide with Quotient and Remainder. The quotient goes in the destination register; the remainder goes in the following register.\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1387,9 +1389,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            11 /* functionControlValue = MathFC::IDIV */,
+            11 /* functionControlValue = encoding_of(MathFC::IDIV) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::376 */ {Op::MATH_INV, "inv", "math.inv", 0x38, "INV",
+        /* Op::378 */ {Op::MATH_INV, "inv", "math.inv", 0x38, "INV",
             "Reciprocal (Multiplicative Inverse): 1/src0\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1405,9 +1407,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            1 /* functionControlValue = MathFC::INV */,
+            1 /* functionControlValue = encoding_of(MathFC::INV) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::377 */ {Op::MATH_INVM, "invm", "math.invm", 0x38, "INVM",
+        /* Op::379 */ {Op::MATH_INVM, "invm", "math.invm", 0x38, "INVM",
             "Reciprocal Macro for IEEE754-compliant fdiv\n",
             OpSpec::Format::MATH_MACRO_BINARY_REG_REG, {
                 // F <- F
@@ -1423,9 +1425,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            14 /* functionControlValue = MathFC::INVM */,
+            14 /* functionControlValue = encoding_of(MathFC::INVM) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::378 */ {Op::MATH_IQOT, "iqot", "math.iqot", 0x38, "IQOT",
+        /* Op::380 */ {Op::MATH_IQOT, "iqot", "math.iqot", 0x38, "IQOT",
             "Integer Quotient only\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1441,9 +1443,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            12 /* functionControlValue = MathFC::IQOT */,
+            12 /* functionControlValue = encoding_of(MathFC::IQOT) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::379 */ {Op::MATH_IREM, "irem", "math.irem", 0x38, "IREM",
+        /* Op::381 */ {Op::MATH_IREM, "irem", "math.irem", 0x38, "IREM",
             "Integer Remainder only\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1459,9 +1461,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            13 /* functionControlValue = MathFC::IREM */,
+            13 /* functionControlValue = encoding_of(MathFC::IREM) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::380 */ {Op::MATH_LOG, "log", "math.log", 0x38, "LOG",
+        /* Op::382 */ {Op::MATH_LOG, "log", "math.log", 0x38, "LOG",
             "Natural log: ln(src0)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1477,9 +1479,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            2 /* functionControlValue = MathFC::LOG */,
+            2 /* functionControlValue = encoding_of(MathFC::LOG) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::381 */ {Op::MATH_POW, "pow", "math.pow", 0x38, "POW",
+        /* Op::383 */ {Op::MATH_POW, "pow", "math.pow", 0x38, "POW",
             "src0^src1\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1495,9 +1497,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            10 /* functionControlValue = MathFC::POW */,
+            10 /* functionControlValue = encoding_of(MathFC::POW) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::382 */ {Op::MATH_RSQT, "rsqt", "math.rsqt", 0x38, "RSQT",
+        /* Op::384 */ {Op::MATH_RSQT, "rsqt", "math.rsqt", 0x38, "RSQT",
             "Reciprocal Square Root: 1/sqt(src)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1513,9 +1515,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            5 /* functionControlValue = MathFC::RSQT */,
+            5 /* functionControlValue = encoding_of(MathFC::RSQT) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::383 */ {Op::MATH_RSQTM, "rsqtm", "math.rsqtm", 0x38, "RSQTM",
+        /* Op::385 */ {Op::MATH_RSQTM, "rsqtm", "math.rsqtm", 0x38, "RSQTM",
             "Reciprocal Square Root Macro for IEEE754-compliant rsqt\n",
             OpSpec::Format::MATH_MACRO_UNARY_REG, {
                 // F <- F
@@ -1531,9 +1533,10 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            15 /* functionControlValue = MathFC::RSQTM */,
+            15 /* functionControlValue = encoding_of(MathFC::RSQTM) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::384 */ {Op::MATH_SIN, "sin", "math.sin", 0x38, "SIN",
+        /* Op::386 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::387 */ {Op::MATH_SIN, "sin", "math.sin", 0x38, "SIN",
             "Sine function. sin(src0)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1549,9 +1552,9 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            6 /* functionControlValue = MathFC::SIN */,
+            6 /* functionControlValue = encoding_of(MathFC::SIN) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::385 */ {Op::MATH_SQT, "sqt", "math.sqt", 0x38, "SQT",
+        /* Op::388 */ {Op::MATH_SQT, "sqt", "math.sqt", 0x38, "SQT",
             "Square Root\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1567,9 +1570,10 @@ namespace iga {
             Op::MATH /* groupOp */,
             Op::INVALID /* subopsStart */,
             0 /*subopsLength */,
-            4 /* functionControlValue = MathFC::SQT */,
+            4 /* functionControlValue = encoding_of(MathFC::SQT) */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::386 */ {Op::MOV, "mov", "mov", 0x1, "Move",
+        /* Op::389 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::390 */ {Op::MOV, "mov", "mov", 0x1, "Move",
             "The mov instruction moves the components in src0 into the channels of dst. If src0 and dst are of different types, format conversion is performed. If src0 is a scalar immediate, the immediate value is loaded into enabled channels of dst.\n"
             "\n"
             "A mov with the same source and destination type, no source modifier, and no saturation is a raw move. A packed byte destination region (B or UB type with HorzStride == 1 and ExecSize > 1) can only be written using raw move.\n"
@@ -1647,7 +1651,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::387 */ {Op::MOVI, "movi", "movi", 0x3, "Move Indexed",
+        /* Op::391 */ {Op::MOVI, "movi", "movi", 0x3, "Move Indexed",
             "The movi instruction performs a fast component-wise indexed move for subfields from src0 to dst. The source\n"
             "operand must be an indirectly-addressed register. All channels of the source operand share the same register\n"
             "number, which is provided by the register field of the first address subregister, with a possible immediate\n"
@@ -1718,7 +1722,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::388 */ {Op::MUL, "mul", "mul", 0x41, "Multiply",
+        /* Op::392 */ {Op::MUL, "mul", "mul", 0x41, "Multiply",
             "The mul instruction performs component-wise multiplication of src0 and src1 and stores the results in dst. When multiplying integer datatypes, if src0 is DW and src1 is W, irrespective of the destination datatype, the accumulator maintains full 48-bit precision. This is required to handle the macro for 32x32 multiplication. The macro described in the mach instruction should be used to obtain the full precision 64-bit multiplication results.\n"
             "\n"
             "\n"
@@ -1760,7 +1764,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::389 */ {Op::NOP, "nop", "nop", 0x7e, "No Operation",
+        /* Op::393 */ {Op::NOP, "nop", "nop", 0x7e, "No Operation",
             "Do nothing. The nop instruction takes an instruction dispatch but performs no operation. It can be used for assembly patching in memory, or to insert a delay in the program sequence.\n"
             "\n"
             "\n"
@@ -1773,7 +1777,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::390 */ {Op::NOT, "not", "not", 0x4, "Logic Not",
+        /* Op::394 */ {Op::NOT, "not", "not", 0x4, "Logic Not",
             "The not instruction performs logical NOT operation (or one\'s complement) of src0 and storing the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
@@ -1803,7 +1807,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::391 */ {Op::OR, "or", "or", 0x6, "Logic Or",
+        /* Op::395 */ {Op::OR, "or", "or", 0x6, "Logic Or",
             "The or instruction performs component-wise logic OR operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
@@ -1833,8 +1837,8 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::392 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::393 */ {Op::RET, "ret", "ret", 0x2d, "Return",
+        /* Op::396 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::397 */ {Op::RET, "ret", "ret", 0x2d, "Return",
             "Return execution to the code sequence that called a subroutine.\n"
             "\n"
             "The ret instruction can be predicated or non-predicated. If non-predicated, all channels jump to the return IP in the first channel of src0 and restore CallMask from the second channel of src0. If predicated, the enabled channels jump to the return IP from the first channel of src0 and the corresponding bits in the CallMask are cleared to zero; if all CallMask bits are zero after the ret instruction, then execution jumps to the return IP from the first channel of src0.\n"
@@ -1854,7 +1858,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::394 */ {Op::RNDD, "rndd", "rndd", 0x45, "Round Down",
+        /* Op::398 */ {Op::RNDD, "rndd", "rndd", 0x45, "Round Down",
             "The rndd instruction takes component-wise floating point downward rounding (to the integral float number closer to negative infinity) of src0 and storing the rounded integral float results in dst. This is commonly referred to as the floor() function.\n"
             "\n"
             "Each result follows the rules in the following tables based on the floating-point mode.\n"
@@ -1872,7 +1876,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::395 */ {Op::RNDE, "rnde", "rnde", 0x46, "Round to Nearest or Even",
+        /* Op::399 */ {Op::RNDE, "rnde", "rnde", 0x46, "Round to Nearest or Even",
             "The rnde instruction takes component-wise floating point round-to-even operation of src0 with results in two pieces - a downward rounded integral float results stored in dst and the round-to-even increments stored in the rounding increment bits. The round-to-even increment must be added to the results in dst to create the final round-to-even values to emulate the round-to-even operation, commonly known as the round() function. The final results are the one of the two integral float values that is nearer to the input values. If the neither possibility is nearer, the even alternative is chosen.\n"
             "\n"
             "Each result follows the rules in the following tables based on the floating-point mode.\n"
@@ -1890,7 +1894,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::396 */ {Op::RNDU, "rndu", "rndu", 0x44, "Round Up",
+        /* Op::400 */ {Op::RNDU, "rndu", "rndu", 0x44, "Round Up",
             "The rndu instruction takes component-wise floating point upward rounding (to the integral float number closer to positive infinity) of src0, commonly known as the ceiling() function.\n"
             "\n"
             "Each result follows the rules in the following tables based on the floating-point mode.\n"
@@ -1908,7 +1912,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::397 */ {Op::RNDZ, "rndz", "rndz", 0x47, "Round to Zero",
+        /* Op::401 */ {Op::RNDZ, "rndz", "rndz", 0x47, "Round to Zero",
             "The rndz instruction takes component-wise floating point round-to-zero operation of src0 with results in two pieces - a downward rounded integral float results stored in dst and the round-to-zero increments stored in the rounding increment bits. The round-to-zero increment must be added to the results in dst to create the final round-to-zero values to emulate the round-to-zero operation, commonly known as the truncate() function. The final results are the one of the two closest integral float values to the input values that is nearer to zero.\n"
             "\n"
             "\n"
@@ -1924,7 +1928,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::398 */ {Op::ROL, "rol", "rol", 0xf, "Rotate Left",
+        /* Op::402 */ {Op::ROL, "rol", "rol", 0xf, "Rotate Left",
             "Perform component-wise logical rotate left operation of the bits in src0 by the rotate count indicated in src1, storing the result in dst. src0 and src1 are treated as unsigned numbers with only the bits within the specified datatype used during this operation. This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers are supported. Extra precision bits available in accumulator are ignored during this operation and only the bits within the specified datatype are used.\n"
             "\n"
             "\n"
@@ -1942,7 +1946,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::399 */ {Op::ROR, "ror", "ror", 0xe, "Rotate Right",
+        /* Op::403 */ {Op::ROR, "ror", "ror", 0xe, "Rotate Right",
             "Perform component-wise logical rotate right operation of the bits in src0 by the rotate count indicated in src1, storing the result in dst. src0 and src1 are treated as unsigned numbers with only the bits within the specified datatype used during this operation. This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers are supported. Extra precision bits available in accumulator are ignored during this operation and only the bits within the specified datatype are used.\n"
             "\n"
             "\n"
@@ -1960,7 +1964,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::400 */ {Op::SAD2, "sad2", "sad2", 0x50, "Sum of Absolute Difference 2",
+        /* Op::404 */ {Op::SAD2, "sad2", "sad2", 0x50, "Sum of Absolute Difference 2",
             "The sad2 instruction takes source data channels from src0 and src1 in groups of 2-tuples. For each 2-tuple, it computes the sum-of-absolute-difference (SAD) between src0 and src1 and stores the scalar result in the first channel of the 2-tuple in dst.\n"
             "\n"
             "The results are also stored in the accumulator register. The destination operand and the accumulator maintain 16 bits per channel precision.\n"
@@ -1980,7 +1984,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::401 */ {Op::SADA2, "sada2", "sada2", 0x51, "Sum of Absolute Difference Accumulate 2",
+        /* Op::405 */ {Op::SADA2, "sada2", "sada2", 0x51, "Sum of Absolute Difference Accumulate 2",
             "The sada2 instruction takes source data channels from src0 and src1 in groups of 2-tuples. For each 2-tuple, it computes the sum-of-absolute-difference (SAD) between src0 and src1, adds the intermediate result with the accumulator value corresponding to the first channel, and stores the scalar result in the first channel of the 2-tuple in dst.\n"
             "\n"
             "The destination operand and the accumulator maintain 16 bits per channel precision. Higher precision (guide bits) stored in the accumulator allows up to 64 rounds of sada2 instructions to be issued back to back without overflowing the accumulator.\n"
@@ -2000,7 +2004,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::402 */ {Op::SEL, "sel", "sel", 0x2, "Select",
+        /* Op::406 */ {Op::SEL, "sel", "sel", 0x2, "Select",
             "The sel instruction selectively moves the components in src0 or src1 into the channels of dst based on the predication. On a channel by channel basis, if the channel condition is true, data in src0 is moved into dst. Otherwise, data in src1 is moved into dst.\n"
             "\n"
             "\n"
@@ -2056,7 +2060,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::403 */ {Op::SEND, "send", "send", 0x31, "Send Message",
+        /* Op::407 */ {Op::SEND, "send", "send", 0x31, "Send Message",
             "Send a message stored in GRF starting at <src> to a shared function identified by <ex_desc> along with control from <desc> with a GRF writeback location at <dest>.\n"
             "\n"
             "\n"
@@ -2087,7 +2091,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::404 */ {Op::SENDC, "sendc", "sendc", 0x32, "Conditional Send Message",
+        /* Op::408 */ {Op::SENDC, "sendc", "sendc", 0x32, "Conditional Send Message",
             "The sendc instruction has the same behavior as the send instruction except the following.\n"
             "sendc first checks the dependent threads inside the Thread Dependency Register. There are up to 8 dependent threads in the TDR register. The sendc instruction executes only when all the dependent threads in the TDR register are retired.\n"
             "Wait for dependencies in the TDR Register to clear, then send a message stored in registers starting at src to a shared function identified by exdesc along with control from desc with a general register writeback location at dst.\n"
@@ -2102,10 +2106,6 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::405 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::406 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::407 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::408 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::409 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::410 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::411 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
@@ -2121,7 +2121,11 @@ namespace iga {
         /* Op::421 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::422 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::423 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::424 */ {Op::SENDS, "sends", "sends", 0x33, "Split Send Message",
+        /* Op::424 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::425 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::426 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::427 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::428 */ {Op::SENDS, "sends", "sends", 0x33, "Split Send Message",
             "The sends instruction performs data communication between a thread and external function units, including shared functions (Sampler, Data Port Read, Data Port Write, URB, and Message Gateway) and some fixed functions (e.g. Thread Spawner, who also have an unique Shared Function ID). The sends instruction adds an entry to the EU\'s message request queue. The request message is stored in a block of contiguous GRF registers. The response message, if present, will be returned to a block of contiguous GRF registers. The return GRF writes may be in any order depending on the external function units. <src0> and <src1> are the lead GRF registers for the first and second block of the request respectively. <dest> is the lead GRF register for response. The message descriptor field <desc> contains the Message Length (the number of consecutive GRF registers corresponding to src0) and the Response Length (the number of consecutive GRF registers). It also contains the header present bit, and the function control signals. The extend message descriptor field <ex_desc> contains the target function ID, the Extended Message Length (the number of consecutive GRF registers corresponding to src1) and the extended function control signals. WrEn is forwarded to the target function in the message sideband.\n"
             "The sends instruction is the only way to terminate a thread. When the EOT (End of Thread) bit of <ex_desc> is set, it indicates the end of thread to the EU, the Thread Dispatcher and, in most cases, the parent fixed function.\n"
             "\n"
@@ -2189,7 +2193,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::425 */ {Op::SENDSC, "sendsc", "sendsc", 0x34, "Conditional Split Send Message",
+        /* Op::429 */ {Op::SENDSC, "sendsc", "sendsc", 0x34, "Conditional Split Send Message",
             "The sendsc instruction has the same behavior as the sends instruction except the following.\n"
             "sendsc first checks the dependent threads inside the Thread Dependency Register. There are up to 8 dependent threads in the TDR register. The sendsc instruction executes only when all the dependent threads in the TDR register are retired.\n"
             "\n"
@@ -2206,10 +2210,6 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::426 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::427 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::428 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::429 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::430 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::431 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::432 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
@@ -2225,7 +2225,11 @@ namespace iga {
         /* Op::442 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::443 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::444 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::445 */ {Op::SHL, "shl", "shl", 0x9, "Shift Left",
+        /* Op::445 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::446 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::447 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::448 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::449 */ {Op::SHL, "shl", "shl", 0x9, "Shift Left",
             "Perform component-wise logical left shift of the bits in src0 by the shift count indicated in src1, storing the results in dst, inserting zero bits in the number of LSBs indicated by the shift count.\n"
             "\n"
             "Hardware detects overflow properly and uses it to perform any saturation operation on the result, as long as the shifted result is within 33 bits. Otherwise, the result is undefined.\n"
@@ -2256,7 +2260,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::446 */ {Op::SHR, "shr", "shr", 0x8, "Shift Right",
+        /* Op::450 */ {Op::SHR, "shr", "shr", 0x8, "Shift Right",
             "Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count.\n"
             "\n"
             "src0 and dst can have different types and can be signed or unsigned.\n"
@@ -2289,7 +2293,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::447 */ {Op::SMOV, "smov", "smov", 0xa, "Scattered Move",
+        /* Op::451 */ {Op::SMOV, "smov", "smov", 0xa, "Scattered Move",
             "The smov instruction moves the components in src0 into dst.\n"
             "\n"
             "For each enabled channel, copy src0 to dst. The immediate is used to selectively enable channels without using flags.\n"
@@ -2323,7 +2327,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::448 */ {Op::SUBB, "subb", "subb", 0x4f, "Integer Subtraction with Borrow",
+        /* Op::452 */ {Op::SUBB, "subb", "subb", 0x4f, "Integer Subtraction with Borrow",
             "The subb instruction performs component-wise subtraction of src0 and src1 and stores the results in dst, it also stores the borrow into acc.\n"
             "\n"
             "If the operation produces a borrow (src0 < src1), write 0x00000001 to acc, else write 0x00000000 to acc.\n"
@@ -2341,14 +2345,14 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::449 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::450 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::451 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::452 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::453 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::454 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
         /* Op::455 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::456 */ {Op::WAIT, "wait", "wait", 0x30, "Wait Notification",
+        /* Op::456 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::457 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::458 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::459 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
+        /* Op::460 */ {Op::WAIT, "wait", "wait", 0x30, "Wait Notification",
             "The wait instruction evaluates the value of the notification count register nreg. If nreg is zero, thread execution is suspended and the thread is put in \'wait_for_notification\' state. If nreg is not zero (i.e., one or more notifications have been received), nreg is decremented by one and the thread continues executing on the next instruction. If a thread is in the \'wait_for_notification\' state, when a notification arrives, the notification count register is incremented by one. As the notification count register becomes nonzero, the thread wakes up to continue execution and at the same time the notification register is decremented by one. If only one notification arrived, the notification register value becomes zero. However, during the above mentioned time period, it is possible that more notifications may arrive, making the notification register nonzero again.\n"
             "\n"
             "When multiple notifications are received, software must use wait instructions to decrement notification count registers for each notification.\n"
@@ -2368,7 +2372,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::457 */ {Op::WHILE, "while", "while", 0x27, "While",
+        /* Op::461 */ {Op::WHILE, "while", "while", 0x27, "While",
             "The while instruction marks the end of a do-while block. The instruction first evaluates the loop termination condition for each channel based on the current channel enables and the predication flags specified in the instruction. If any channel has not terminated, a branch is taken to a destination address specified in the instruction, and the loop continues for those channels. Otherwise, execution continues to the next instruction.ld point to the first instruction with the do label of the do-while block of code. It should be a negative number for the backward referencing.\n"
             "\n"
             "If SPF is ON, none of the PcIP are updated.\n"
@@ -2383,7 +2387,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             INVALID_FIELD /* functionControlField */},
-        /* Op::458 */ {Op::XOR, "xor", "xor", 0x7, "Logic Xor",
+        /* Op::462 */ {Op::XOR, "xor", "xor", 0x7, "Logic Xor",
             "The xor instruction performs component-wise logic XOR operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"

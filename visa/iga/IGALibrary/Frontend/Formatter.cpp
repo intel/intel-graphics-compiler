@@ -76,10 +76,9 @@ protected:
 
     void formatDstOp(const OpSpec &os, const Operand &dst);
     void formatSrcOp(
-        int srcIx,
+        SourceIndex ix,
         const OpSpec &os,
-        const Instruction &inst,
-        SourceIndex ix);
+        const Instruction &inst);
     void formatRegister(
         RegName rnm,
         RegRef reg,
@@ -98,9 +97,15 @@ public:
         , cols(colPrefs)
         , currInst(nullptr)
     {
-        model = Model::LookupModel(opts.platform);
+        model = Model::LookupModel(platform());
         IGA_ASSERT(model, "invalid model");
     }
+
+
+    Platform platform() const {
+        return opts.platform;
+    }
+
 
     // labels are of the form "L" + off, but we prefix a
     // "_N" for negative.
@@ -115,6 +120,7 @@ public:
         }
         o << pc;
     }
+
 
     void formatLabel(int32_t pc) {
         bool labeled = false;
@@ -168,6 +174,7 @@ public:
         }
     }
 
+
     void formatInstructionBits(const Instruction& i, const void *vbits) {
         const uint32_t *bits = (const uint32_t *)vbits;
         o << std::hex;
@@ -193,11 +200,13 @@ public:
         o << std::dec;
     }
 
+
     // for single instruction
     void formatInstruction(const Instruction& i, const void *vbits) {
         bits = (const uint8_t *)vbits;
         formatInstruction(i);
     }
+
 
     void formatInstruction(const Instruction& i) {
         currInst = &i;
@@ -208,22 +217,19 @@ public:
 
         if (opts.printLdSt && i.getOpSpec().isSendOrSendsFamily()) {
             // try new LD/ST format
-            formatWithExperimentalSendSyntax(i, bits);
+            formatWithExperimentalSendSyntax(i);
         } else {
-            formatNormalInstructionBody(i, "", bits);
+            formatNormalInstructionBody(i, "");
         }
 
         currInst = nullptr;
     }
 
-    // returns tue if we were able to format the instruction
-    void formatWithExperimentalSendSyntax(
-        const Instruction& i,
-        const void *bits)
-    {
+
+    void formatWithExperimentalSendSyntax(const Instruction& i) {
         auto fr = FormatLdStInstruction(*model, i);
         if (!fr.success()) {
-            formatNormalInstructionBody(i, fr.errMessage, bits);
+            formatNormalInstructionBody(i, fr.errMessage);
             return;
         }
         formatMaskAndPredication(
@@ -252,23 +258,16 @@ public:
         formatEolComments(i, "");
     }
 
+
     void formatNormalInstructionBody(
         const Instruction& i,
-        const std::string &debugSendDecode,
-        const void *bits)
+        const std::string& debugSendDecode)
     {
-        const OpSpec &os = i.getOpSpec();
-        formatMaskAndPredication(
-            i.getMaskCtrl(),
-            i.getPredication(),
-            i.getFlagReg());
-        emit(' ');
-        formatOpMnemonicExecInfo(i);
-        emit(' ');
-        formatFlagModifier(i);
+        formatInstructionPrefix(i);
 
         int nSrcs = i.getSourceCount();
         bool hasNonEmptyInstOpts = hasInstOptTokens(i);
+        const OpSpec &os = i.getOpSpec();
 
         if (os.supportsDestination()) {
             // destination ops
@@ -292,11 +291,11 @@ public:
         } else {
             if (nSrcs >= 1) {
                 emit("  ");
-                formatSrcOp(0, os, i, SourceIndex::SRC0);
+                formatSrcOp(SourceIndex::SRC0, os, i);
             }
             if (nSrcs >= 2) {
                 emit("  ");
-                formatSrcOp(1, os, i, SourceIndex::SRC1);
+                formatSrcOp(SourceIndex::SRC1, os, i);
             } else if (!os.isSendFamily()) {
                 // ensure at least two columns worth of sources, with
                 // an exception for send.  We poach those spaces for the
@@ -306,7 +305,7 @@ public:
             }
             if (nSrcs >= 3) {
                 emit("  ");
-                formatSrcOp(2, os, i, SourceIndex::SRC2);
+                formatSrcOp(SourceIndex::SRC2, os, i);
             }
         }
 
@@ -326,6 +325,20 @@ public:
         formatEolComments(i, debugSendDecode);
     }
 private:
+
+
+    void formatInstructionPrefix(const Instruction& i) {
+        formatMaskAndPredication(
+            i.getMaskCtrl(),
+            i.getPredication(),
+            i.getFlagReg());
+        emit(' ');
+        formatOpMnemonicExecInfo(i);
+        emit(' ');
+        formatFlagModifier(i);
+    }
+
+
     void formatMaskAndPredication(
         const MaskCtrl& mc,
         const Predication& p,
@@ -468,7 +481,7 @@ private:
         // }
 
         const Region &rgn = src.getRegion();
-        if (os.hasImplicitSrcRegionEq(srcIx, model->platform, execSize, rgn) || os.isBranching()) {
+        if (os.hasImplicitSrcRegionEq(srcIx, platform(), execSize, rgn) || os.isBranching()) {
             // e.g. on some platforms certain branches have an implicit <0;1,0>
             // meaning we can omit it if the IR matches
             return;
@@ -506,8 +519,8 @@ private:
         bool lblArg =
                 op.getKind() == Operand::Kind::LABEL ||
                 op.getKind() == Operand::Kind::IMMEDIATE;
-        if (os.hasImplicitSrcType(srcIx, lblArg, model->platform)) {
-            auto expectedType = os.implicitSrcType(srcIx, lblArg, model->platform);
+        if (os.hasImplicitSrcType(srcIx, lblArg, platform())) {
+            auto expectedType = os.implicitSrcType(srcIx, lblArg, platform());
             if (expectedType == type) {
                 return;
             }
@@ -559,9 +572,9 @@ private:
     }
 
 
-    void formatSendDesc(const SendDescArg& sd, int cw = 0) {
+    void formatSendDesc(const SendDesc& sd, int cw = 0) {
         startColumn(cols.sendDesc);
-        if (sd.type == SendDescArg::IMM) {
+        if (sd.isImm()) {
             emitHex(sd.imm, cw);
         } else {
             emit('a');
@@ -574,11 +587,12 @@ private:
 
     // e.g. op (8) ... {Compacted}
     //                 ^^^^^^^^^^^
-    void formatInstOpts(const Instruction &i, const std::vector<const char *> &instOpts);
+    void formatInstOpts(
+        const Instruction &i, const std::vector<const char *> &instOpts);
+
     bool hasInstOptTokens(const Instruction &i) const {
         bool hasDepInfo =
-            opts.platform >= Platform::GEN12P1 &&
-            i.getSWSB().hasSWSB();
+            platform() >= Platform::GEN12P1 && i.getSWSB().hasSWSB();
         return !i.getInstOpts().empty() || hasDepInfo;
     }
 
@@ -607,17 +621,17 @@ private:
             // emit all live ranges where this instruction is the use
             // this will indicate the source instruction
             intercalate(ss, ",", opts.liveAnalysis->deps,
-                [&](const Dep &d) { return d.use == &i; },
+                [&](const Dep &d) {return d.use == &i;},
                 [&](const Dep &d) {
-                if (d.useType == Dep::READ) {
-                    ss << "RAW";
-                } else {
-                    ss << "WAW";
-                }
-                ss << " from #" << d.def->getID() << " ";
-                d.live.str(ss);
-                ss << " @" << d.minInOrderDist;
-            });
+                    if (d.useType == Dep::READ) {
+                        ss << "RAW";
+                    } else {
+                        ss << "WAW";
+                    }
+                    ss << " from #" << d.def->getID() << " ";
+                    d.live.str(ss);
+                    ss << " @" << d.minInOrderDist;
+                });
         }
 
         const std::string &comment = i.getComment();
@@ -628,41 +642,34 @@ private:
         }
 
         if (i.getOpSpec().isSendOrSendsFamily()) {
-            SendDescArg exDesc = i.getExtMsgDescriptor();
-            SendDescArg desc = i.getMsgDescriptor();
-            if (exDesc.type == SendDescArg::IMM &&
-                desc.type == SendDescArg::IMM)
-            {
-                // send with immediate descriptors, we can decode this to
-                // something more sane in comments
-                if (opts.printLdSt) {
-                    // tried to format with ld/st syntax and ...
-                    semiColon.insert();
-                    // success, show the descriptors for debugging
-                    if (debugSendDecode.empty()) {
+            // send with immediate descriptors, we can decode this to
+            // something more sane in comments
+            const SendDesc exDesc = i.getExtMsgDescriptor(),
+                              desc = i.getMsgDescriptor();
+            //
+            if (opts.printLdSt) {
+                // tried to format with ld/st syntax and ...
+                semiColon.insert();
+                // success, show the descriptors for debugging
+                if (debugSendDecode.empty()) {
+                    if (exDesc.isImm())
                         fmtHex(ss, exDesc.imm);
-                        ss << "  ";
+                    else
+                        ss << "???";
+                    ss << "  ";
+                    if (desc.isImm())
                         fmtHex(ss, desc.imm);
-                    } else {
-                        ss << debugSendDecode;
-                    }
+                    else
+                        ss << "???";
                 } else {
-                    // ld/st syntax not enabled
-                    //
-                    iga::EmitSendDescriptorInfo(
-                        model->platform,
-                        i.getOpSpec(),
-                        exDesc,
-                        desc.imm,
-                        ss);
+                    ss << debugSendDecode;
                 }
-            } else if (desc.type == SendDescArg::IMM) {
-                // try to get the imm send desc info via GED
+            } else {
+                // ld/st syntax not enabled
                 iga::EmitSendDescriptorInfo(
-                    model->platform,
-                    i.getOpSpec(),
-                    exDesc,
-                    desc.imm,
+                    platform(), i.getOpSpec(),
+                    i.getDstLength(), i.getSrc0Length(), i.getSrc1Length(),
+                    exDesc, desc,
                     ss);
             }
         }
@@ -744,8 +751,8 @@ void Formatter::formatDstType(const OpSpec &os, Type type)
     if (os.isBranching() && model->supportsSimplifiedBranches()) {
         return; // doesn't support types
     }
-    if (os.hasImplicitDstType(opts.platform)) {
-        if (os.implicitDstType(opts.platform) != type) {
+    if (os.hasImplicitDstType(platform())) {
+        if (os.implicitDstType(platform()) != type) {
             emit(ToSyntax(type));
         } // else: it's already in in binary normal form
     } else {
@@ -762,7 +769,7 @@ void Formatter::formatRegister(
     RegRef reg,
     bool emitSubReg)
 {
-    const Model *m = Model::LookupModel(opts.platform);
+    const Model *m = Model::LookupModel(platform());
     const RegInfo *ri = m->lookupRegInfoByRegName(rnm);
     if (ri == nullptr) {
         emit("INVALID");
@@ -802,7 +809,7 @@ void Formatter::formatDstOp(const OpSpec &os, const Operand &dst) {
         formatRegister(
             dst.getDirRegName(),
             dst.getDirRegRef(),
-            os.hasDstSubregister(opts.platform));
+            os.hasDstSubregister(platform()));
         if (dst.getKind() == Operand::Kind::MACRO) {
             emit(ToSyntax(dst.getMathMacroExt()));
         }
@@ -827,12 +834,11 @@ void Formatter::formatDstOp(const OpSpec &os, const Operand &dst) {
 }
 
 void Formatter::formatSrcOp(
-    int srcIx,
+    SourceIndex srcIx,
     const OpSpec &os,
-    const Instruction &inst,
-    SourceIndex ix)
+    const Instruction &inst)
 {
-    const Operand &src = inst.getSource(ix);
+    const Operand &src = inst.getSource(srcIx);
 
     startColumn(os.isSendOrSendsFamily() ? cols.sendSrcOp : cols.srcOp);
 
@@ -842,8 +848,9 @@ void Formatter::formatSrcOp(
         formatRegister(
             src.getDirRegName(),
             src.getDirRegRef(),
-            os.hasSrcSubregister(srcIx, opts.platform));
-        formatSourceRegion(srcIx, os, inst.getExecSize(), src);
+            os.hasSrcSubregister(static_cast<int>(srcIx), platform()));
+        formatSourceRegion(
+            static_cast<int>(srcIx), os, inst.getExecSize(), src);
         break;
     }
     case Operand::Kind::MACRO: {
@@ -853,13 +860,15 @@ void Formatter::formatSrcOp(
             src.getDirRegRef(),
             false);
         emit(ToSyntax(src.getMathMacroExt()));
-        formatSourceRegion(srcIx, os, inst.getExecSize(), src);
+        formatSourceRegion(
+            static_cast<int>(srcIx), os, inst.getExecSize(), src);
         break;
     }
     case Operand::Kind::INDIRECT:
         formatSourceModifier(os, src.getSrcModifier());
         formatRegIndRef(src);
-        formatSourceRegion(srcIx, os, inst.getExecSize(), src);
+        formatSourceRegion(
+            static_cast<int>(srcIx), os, inst.getExecSize(), src);
         break;
     case Operand::Kind::IMMEDIATE:
         switch (src.getType()) {
@@ -914,10 +923,11 @@ void Formatter::formatSrcOp(
         case Type::UV:
             emitHex(src.getImmediateValue().u32);
             break;
-            // packed float format
-            //    each of four 8 - bit immediate vector elements has 1 sign bit,
-            //        3 bits for the biased exponent(bias of 3), and 4 bits for the significand :
         case Type::VF:
+            // packed float format
+            //  each of four 8 - bit immediate vector elements has 1 sign bit,
+            //  3 bits for the biased exponent (bias of 3), and 4 bits
+            //  for the significand
             emitHex(src.getImmediateValue().u32);
             break;
         default:
@@ -936,7 +946,7 @@ void Formatter::formatSrcOp(
     if (!model->supportsSimplifiedBranches() ||
         src.getKind() != Operand::Kind::LABEL)
     {
-        formatSourceType(srcIx, os, src);
+        formatSourceType(static_cast<int>(srcIx), os, src);
     }
     finishColumn();
 } // end formatSrcOp()
@@ -953,8 +963,10 @@ void Formatter::formatInstOpts(
 
     const auto &di = i.getSWSB();
     hasDepInfo =
-        (opts.platform >= Platform::GEN12P1) && di.hasSWSB();
-    if (iopts.empty() && !hasDepInfo && !hasSendInfo && extraInstOpts.empty()) {
+        (platform() >= Platform::GEN12P1) && di.hasSWSB();
+    if (iopts.empty() &&
+        !hasDepInfo &&
+        !hasSendInfo && extraInstOpts.empty()) {
         return; // early out (no braces)
     }
 
@@ -967,7 +979,9 @@ void Formatter::formatInstOpts(
         }
         emit(extraInstOpts[opIx]);
     }
-    if ((!iopts.empty() || hasSendInfo) && (hasDepInfo || !extraInstOpts.empty())) {
+    if ((!iopts.empty() || hasSendInfo) &&
+        (hasDepInfo || !extraInstOpts.empty()))
+    {
         // something was output, prepend a , for the depinfo
         emit(", ");
     }
@@ -1055,8 +1069,7 @@ void FormatInstruction(
     const void *bits,
     bool useNativeDecoder)
 {
-    const iga::Model *model =
-        iga::Model::LookupModel(static_cast<iga::Platform>(opts.platform));
+    const iga::Model *model = iga::Model::LookupModel(opts.platform);
 
     size_t instLen = ((const MInst *)bits)->isCompact() ? 8 : 16;
 

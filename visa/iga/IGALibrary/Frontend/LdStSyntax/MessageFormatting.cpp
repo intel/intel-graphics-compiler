@@ -83,9 +83,7 @@ FormatResult iga::FormatLdStInstruction(
 
     auto exDescT = i.getExtMsgDescriptor();
     auto descT = i.getMsgDescriptor();
-    if (exDescT.type == SendDescArg::REG32A ||
-        descT.type == SendDescArg::REG32A)
-    {
+    if (exDescT.isReg() || descT.isReg()) {
         return r.error("has reg descs");
     }
     if (i.getSource(0).getDirRegName() != RegName::GRF_R) {

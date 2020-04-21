@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "Decoder.hpp"
+#include "../MessageInfo.hpp"
 #include "../../MemManager/MemManager.hpp"
 #include "IGAToGEDTranslation.hpp"
 #include "GEDToIGATranslation.hpp"
@@ -32,7 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IR/IRChecker.hpp"
 #include "../../asserts.hpp"
 #include "../../IR/SWSBSetter.hpp"
-
 #include <sstream>
 #include <cstring>
 
@@ -118,7 +118,7 @@ DecoderBase::DecoderBase(const Model &model, ErrorHandler &errHandler) :
 
 void DecoderBase::decodeSWSB(Instruction* inst)
 {
-    if (m_model.platform >= Platform::GEN12P1) {
+    if (platform() >= Platform::GEN12P1) {
         uint32_t swsbBits = 0;
         if (inst->getOp() != Op::INVALID &&
             inst->getOp() != Op::ILLEGAL)
@@ -312,7 +312,7 @@ void DecoderBase::decodeInstructions(
                     ss << "unsupported pseudo op (sub function of " <<
                         os.mnemonic << ")";
                 } else {
-                    ss << std::hex << "0x" << (unsigned)op <<
+                    ss << "0x" << std::hex << (unsigned)op <<
                         ": unsupported opcode on this platform";
                 }
                 std::string str = ss.str();
@@ -408,7 +408,7 @@ Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
         inst = decodeSendInstruction(kernel);
         break;
     case OpSpec::SYNC_UNARY:
-        if (m_model.platform < Platform::GEN12P1) {
+        if (platform() < Platform::GEN12P1) {
             inst = decodeWaitInstruction(kernel);
         } else {
             inst = decodeSyncInstruction(kernel);
@@ -432,7 +432,7 @@ Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
 
 bool DecoderBase::hasImm64Src0Overlap()
 {
-    if (m_model.platform < Platform::GEN12P1)
+    if (platform() < Platform::GEN12P1)
         return false;
 
     // SWSB overlaps the flag modifier with src0
@@ -493,7 +493,7 @@ Instruction *DecoderBase::decodeBasicInstruction(Kernel &kernel)
 void DecoderBase::decodeBasicUnaryInstruction(Instruction *inst, GED_ACCESS_MODE accessMode)
 {
     decodeSourceBasic<SourceIndex::SRC0>(inst, accessMode);
-    if (m_opSpec->op == Op::MOVI && m_model.platform >= Platform::GEN10) {
+    if (m_opSpec->op == Op::MOVI && platform() >= Platform::GEN10) {
         // movi can takes two parameters on on this platform
         // movi (..) reg  reg  (imm|null)
         decodeSourceBasic<SourceIndex::SRC1>(inst, accessMode);
@@ -657,7 +657,7 @@ void DecoderBase::decodeTernaryInstructionOperands(
         decodeTernarySourceAlign16<SourceIndex::SRC1>(inst);
         decodeTernarySourceAlign16<SourceIndex::SRC2>(inst);
     } else {
-        if (m_model.platform >= Platform::GEN10) {
+        if (platform() >= Platform::GEN10) {
             if (m_opSpec->supportsDestination()) {
                 decodeTernaryDestinationAlign1(inst);
             }
@@ -817,7 +817,7 @@ void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
     // swizzling / region
     GED_DATA_TYPE gedType;
     GED_DECODE_RAW_TO(SrcDataType, gedType);
-    if (m_model.platform >= Platform::GEN8LP &&
+    if (platform() >= Platform::GEN8LP &&
         (gedType == GED_DATA_TYPE_f || gedType == GED_DATA_TYPE_hf) &&
         S > SourceIndex::SRC0)
     {
@@ -830,7 +830,7 @@ void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
         MathMacroExt MathMacroReg = decodeSrcMathMacroReg<S>();
         RegRef rr = RegRef((uint8_t)regNum, 0);
         Region macroDftSrcRgn = macroDefaultSourceRegion(
-            (int)S, inst->getOpSpec(), m_model.platform, inst->getExecSize());
+            (int)S, inst->getOpSpec(), platform(), inst->getExecSize());
         inst->setMacroSource(
             S,
             srcMod,
@@ -962,7 +962,7 @@ Region DecoderBase::decodeSrcRegionTernaryAlign1()
 template <SourceIndex S>
 void DecoderBase::decodeTernarySourceAlign1(Instruction *inst)
 {
-    if (m_model.platform < Platform::GEN10) {
+    if (platform() < Platform::GEN10) {
         fatal("Align1 not available on this platform");
     }
 
@@ -973,7 +973,7 @@ void DecoderBase::decodeTernarySourceAlign1(Instruction *inst)
         Type type = decodeSrcType<S>();
 
         ImmVal val;
-        if (m_model.platform < Platform::GEN10) {
+        if (platform() < Platform::GEN10) {
             val = decodeSrcImmVal(type);
         } else {
             val = decodeTernarySrcImmVal<S>(type);
@@ -989,7 +989,7 @@ void DecoderBase::decodeTernarySourceAlign1(Instruction *inst)
             RegRef regRef;
             RegName regName = decodeSourceReg<S>(regRef);
             Region macroDftSrcRgn = macroDefaultSourceRegion(
-                (int)S, inst->getOpSpec(), m_model.platform, inst->getExecSize());
+                (int)S, inst->getOpSpec(), platform(), inst->getExecSize());
             inst->setMacroSource(
                 S,
                 decodeSrcModifier<S>(),
@@ -1022,15 +1022,24 @@ void DecoderBase::decodeTernarySourceAlign1(Instruction *inst)
 ///////////////////////////////////////////////////////////////////////
 Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
 {
+    int dstLen = -1, src0Len = -1, src1Len = -1;
+
     // desc
-    GED_DECODE_RAW(GED_REG_FILE, descRegFile, DescRegFile);
-    SendDescArg msgDesc {};
+    bool descIsAlwaysImm = false;
+    GED_REG_FILE descRegFile = GED_REG_FILE_IMM;
+    if (!descIsAlwaysImm)
+        GED_DECODE_RAW_TO(DescRegFile, descRegFile);
+    SendDesc msgDesc {};
     if (descRegFile == GED_REG_FILE_IMM) {
-        msgDesc.type = SendDescArg::IMM;
+        msgDesc.type = SendDesc::Kind::IMM;
         GED_DECODE_RAW_TO(MsgDesc, msgDesc.imm);
+        if (!descIsAlwaysImm) {
+            dstLen = (msgDesc.imm >> 20) & 0x1F;
+            src0Len = (msgDesc.imm >> 25) & 0xF;
+        } // else this comes from another field
     } else {
         // desc register is hardwired to a0.0 (ex-desc below can vary)
-        msgDesc.type = SendDescArg::REG32A;
+        msgDesc.type = SendDesc::Kind::REG32A;
         msgDesc.reg.regNum = 0;
         msgDesc.reg.subRegNum = 0;
     }
@@ -1042,18 +1051,22 @@ Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
         GED_DECODE_RAW_TO(ExDescRegFile, exDescRegFile);
     }
 
-    SendDescArg extMsgDesc {};
+
+
+    SendDesc extMsgDesc {};
     if (exDescRegFile == GED_REG_FILE_IMM) {
-        extMsgDesc.type = SendDescArg::IMM;
+        extMsgDesc.type = SendDesc::Kind::IMM;
         GED_DECODE_RAW_TO(ExMsgDesc, extMsgDesc.imm);
+        src1Len = (extMsgDesc.imm >> 6) & 0x1F;
     } else {
         // For sends GED interprets SelReg32ExDesc and returns default values
-
-        extMsgDesc.type = SendDescArg::REG32A;
+        extMsgDesc.type = SendDesc::Kind::REG32A;
         extMsgDesc.reg.regNum = 0; // a0 is implied
         GED_DECODE_RAW(uint32_t, subRegNum, ExDescAddrSubRegNum);
         extMsgDesc.reg.subRegNum = subRegNum / 2;
+        //
     }
+
 
     FlagRegInfo fri = decodeFlagRegInfo();
     Instruction *inst = kernel.createSendInstruction(
@@ -1064,7 +1077,9 @@ Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
         decodeChannelOffset(),
         decodeMaskCtrl(),
         extMsgDesc,
-        msgDesc);
+        msgDesc
+    );
+
     if ((m_opSpec->format & OpSpec::Format::SEND_BINARY) == OpSpec::Format::SEND_BINARY) { // send is binary
         decodeSendDestination(inst);
         decodeSendSource0(inst);
@@ -1074,7 +1089,19 @@ Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
         decodeSendSource0(inst);
     }
 
-    decodeSendInstructionOptions(inst);
+    bool hasFusionCtrl = platform() >= Platform::GEN12P1;
+    if (hasFusionCtrl) {
+        GED_FUSION_CTRL fusionCtrl = GED_FUSION_CTRL_Normal;
+        GED_DECODE_RAW_TO(FusionCtrl, fusionCtrl);
+        if (fusionCtrl == GED_FUSION_CTRL_Serialized) {
+            inst->addInstOpt(InstOpt::SERIALIZE);
+        }
+    }
+
+
+    inst->setSrc0Length(src0Len);
+    inst->setSrc1Length(src1Len);
+    inst->setDstLength(dstLen);
 
     return inst;
 }
@@ -1085,12 +1112,12 @@ void DecoderBase::decodeSendDestination(Instruction *inst)
     GED_DECODE_RAW(GED_REG_FILE, regFile, DstRegFile);
     GED_ADDR_MODE addrMode = GED_ADDR_MODE_Direct;
 
-    if (m_model.platform <= Platform::GEN11) {
+    if (platform() <= Platform::GEN11) {
         GED_DECODE_RAW_TO(DstAddrMode, addrMode);
     }
 
     if (addrMode == GED_ADDR_MODE_Indirect) {
-        if( regFile == GED_REG_FILE_GRF ) {
+        if (regFile == GED_REG_FILE_GRF) {
             decodeBasicDestination(inst, accessMode);
         } else {
             error("error decoding instruction: SEND dst ARF");
@@ -1115,7 +1142,7 @@ void DecoderBase::decodeSendDestination(Instruction *inst)
 GED_ADDR_MODE DecoderBase::decodeSendSource0AddressMode()
 {
     GED_ADDR_MODE addrMode = GED_ADDR_MODE_Direct;
-    if (m_model.platform <= Platform::GEN11) {
+    if (platform() <= Platform::GEN11) {
         addrMode = decodeSrcAddrMode<SourceIndex::SRC0>();
     }
     return addrMode;
@@ -1128,19 +1155,19 @@ void DecoderBase::decodeSendSource0(Instruction *inst)
 
     GED_ADDR_MODE addrMode = decodeSendSource0AddressMode();
 
-    if( regFile == GED_REG_FILE_GRF && addrMode == GED_ADDR_MODE_Indirect) {
+    if (regFile == GED_REG_FILE_GRF && addrMode == GED_ADDR_MODE_Indirect) {
         decodeSourceBasic<SourceIndex::SRC0>(inst, accessMode);
     } else {
         DirRegOpInfo dri = decodeSrcDirRegOpInfo<SourceIndex::SRC0>();
 
         Region rgn = inst->getOpSpec().implicitSrcRegion(
             0,
-            m_model.platform,
+            platform(),
             inst->getExecSize());
         bool hasSrcRgnEncoding = inst->getOpSpec().isSendFamily()
-            && m_model.platform < Platform::GEN9;
+            && platform() < Platform::GEN9;
 
-        hasSrcRgnEncoding &= m_model.platform <= Platform::GEN11;
+        hasSrcRgnEncoding &= platform() <= Platform::GEN11;
 
         if (hasSrcRgnEncoding) {
             // these bits are implicitly set by GED on SKL, and they disallow access
@@ -1163,8 +1190,8 @@ void DecoderBase::decodeSendSource1(Instruction *inst)
     RegRef regRef;
     RegName regName = decodeSourceReg<SourceIndex::SRC1>(regRef);
     const OpSpec &os = inst->getOpSpec();
-    Region rgn = os.implicitSrcRegion(1, m_model.platform, inst->getExecSize());
-    Type implSrcType = os.implicitSrcType(1, false, m_model.platform);
+    Region rgn = os.implicitSrcRegion(1, platform(), inst->getExecSize());
+    Type implSrcType = os.implicitSrcType(1, false, platform());
     inst->setDirectSource(
         SourceIndex::SRC1,
         SrcModifier::NONE,
@@ -1174,17 +1201,6 @@ void DecoderBase::decodeSendSource1(Instruction *inst)
         implSrcType);
 }
 
-void DecoderBase::decodeSendInstructionOptions(Instruction *inst)
-{
-
-    if (m_model.platform >= Platform::GEN12P1) {
-        GED_FUSION_CTRL fusionCtrl = GED_FUSION_CTRL_Normal;
-        GED_DECODE_RAW_TO(FusionCtrl, fusionCtrl);
-        if (fusionCtrl == GED_FUSION_CTRL_Serialized) {
-            inst->addInstOpt(InstOpt::SERIALIZE);
-        }
-    }
-}
 
 ///////////////////////////////////////////////////////////////////////
 // BRANCH INSTRUCTIONS
@@ -1245,7 +1261,7 @@ Instruction *DecoderBase::decodeBranchInstruction(Kernel& kernel)
                 jip,
                 dataType);
         }
-    } else if(m_opSpec->op == Op::RET) {
+    } else if (m_opSpec->op == Op::RET) {
         // ret encodes as:
         //   ret (..) null src0
         // we leave then null implicit
@@ -1340,7 +1356,7 @@ Instruction *DecoderBase::decodeBranchSimplifiedInstruction(Kernel& kernel)
     GED_DECODE_RAW(GED_REG_FILE, regFile, Src0RegFile);
     if (regFile != GED_REG_FILE_IMM) {
         Region rgn =
-            m_opSpec->implicitSrcRegion(0, m_model.platform, inst->getExecSize());
+            m_opSpec->implicitSrcRegion(0, platform(), inst->getExecSize());
         DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<SourceIndex::SRC0>();
         inst->setDirectSource(
             SourceIndex::SRC0,
@@ -1352,7 +1368,8 @@ Instruction *DecoderBase::decodeBranchSimplifiedInstruction(Kernel& kernel)
     } else {
         decodeJipToSrc(inst,
             SourceIndex::SRC0,
-            m_opSpec->implicitSrcType(SourceIndex::SRC0, false, m_model.platform));
+            m_opSpec->implicitSrcType(
+                static_cast<int>(SourceIndex::SRC0), false, platform()));
     }
     // brc/brd read both UIP and JIP from one register (64-bits)
     bool isReg64 = ((m_opSpec->op == Op::BRC || m_opSpec->op == Op::BRD) &&
@@ -1510,7 +1527,7 @@ void DecoderBase::decodeUipToSrc1(Instruction *inst, Type type) {
 // PreBDW JIP and UIP are in QWORDS in <GEN8 except for a few
 // exceptions for the above instructions
 #define PC_SCALE \
-        ((m_model.platform < Platform::GEN8 && \
+        ((platform() < Platform::GEN8 && \
         m_opSpec->op != Op::CALL && \
         m_opSpec->op != Op::CALLA && \
         m_opSpec->op != Op::JMPI) ? 8 : 1)
@@ -1628,9 +1645,9 @@ void DecoderBase::decodeReg(
 
 DirRegOpInfo DecoderBase::decodeDstDirRegInfo() {
     DirRegOpInfo dri;
-    dri.type = m_opSpec->implicitDstType(m_model.platform);
+    dri.type = m_opSpec->implicitDstType(platform());
     bool hasDstType = true;
-    if (m_model.platform >= Platform::GEN12P1) {
+    if (platform() >= Platform::GEN12P1) {
         hasDstType &= !m_opSpec->isSendOrSendsFamily();
         hasDstType &= !m_opSpec->isBranching();
     }
@@ -1654,10 +1671,11 @@ Type DecoderBase::decodeDstType() {
 bool DecoderBase::hasImplicitScalingType(Type& type, DirRegOpInfo& dri)
 {
     // FIXME: when entering this function, assuming it MUST NOT be imm or label src
-    if (m_model.platform >= Platform::GEN12P1 &&
+    if (platform() >= Platform::GEN12P1 &&
         (m_opSpec->isSendFamily() || m_opSpec->isBranching()))
     {
-        dri.type = m_opSpec->implicitSrcType(SourceIndex::SRC0, false, m_model.platform);
+        dri.type = m_opSpec->implicitSrcType(
+            static_cast<int>(SourceIndex::SRC0), false, platform());
         type = Type::D;
         return true;
     }
@@ -1675,13 +1693,14 @@ ImmVal DecoderBase::decodeSrcImmVal(Type t) {
 }
 
 template <SourceIndex S>
-void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx)
+void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIxE)
 {
+    const int toSrcIx = static_cast<int>(toSrcIxE);
     GED_REG_FILE regFile = decodeSrcRegFile<S>();
     if (regFile == GED_REG_FILE_IMM) {
         // immediate operand
         Type type = decodeSrcType<S>();
-        inst->setImmediateSource(toSrcIx, decodeSrcImmVal(type), type);
+        inst->setImmediateSource(toSrcIxE, decodeSrcImmVal(type), type);
     } else if (regFile == GED_REG_FILE_ARF || regFile == GED_REG_FILE_GRF) {
         // register operand
         GED_ADDR_MODE addrMode = GED_ADDR_MODE_Direct;
@@ -1691,10 +1710,10 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
         // region (implicit accumulator if Align16 and <GEN11)
         Region implRgn = Region::INVALID;
         if (inst->getOpSpec().hasImplicitSrcRegion(
-                toSrcIx, m_model.platform, inst->getExecSize()))
+                toSrcIx, platform(), inst->getExecSize()))
         {
             implRgn = inst->getOpSpec().implicitSrcRegion(
-                toSrcIx, m_model.platform, inst->getExecSize());
+                toSrcIx, platform(), inst->getExecSize());
         }
         Region decRgn = Region::INVALID;
         if (!m_opSpec->isSendOrSendsFamily()) {
@@ -1705,7 +1724,7 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
         // ensure the region matches any implicit region rules
         if (!m_opSpec->isSendOrSendsFamily() &&
             inst->getOpSpec().hasImplicitSrcRegion(
-                toSrcIx, m_model.platform, inst->getExecSize()))
+                toSrcIx, platform(), inst->getExecSize()))
         {
             if (implRgn != decRgn) {
                 warning("src%d.Rgn should have %s for binary normal form" ,
@@ -1718,18 +1737,19 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
             if (inst->isMacro()) {
                 // GEN11 macros are stored in the subregister
                 if (m_model.supportsAlign16()) {
-                    fatal("src%d: macro instructions must be Align16 for this platform.", (int)S);
+                    fatal("src%d: macro instructions must be Align16 "
+                        "for this platform.", (int)S);
                 }
                 MathMacroExt mme = decodeSrcMathMacroReg<S>();
                 RegRef regRef{0,0};
                 RegName regName = decodeSourceReg<S>(regRef);
                 inst->setMacroSource(
-                    toSrcIx, srcMod, regName, regRef, mme, decRgn, decodeSrcType<S>());
+                    toSrcIxE, srcMod, regName, regRef, mme, decRgn, decodeSrcType<S>());
             } else {
                 // normal access
                 DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<S>();
                 inst->setDirectSource(
-                    toSrcIx,
+                    toSrcIxE,
                     srcMod,
                     opInfo.regName,
                     opInfo.regRef,
@@ -1740,7 +1760,7 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
             RegRef a0 = {0, (uint8_t)decodeSrcAddrSubRegNum<S>()};
             int16_t addr_imm = decodeSrcAddrImm<S>();
             inst->setInidirectSource(
-                toSrcIx,
+                toSrcIxE,
                 srcMod,
                 a0,
                 addr_imm,
@@ -1787,7 +1807,7 @@ void DecoderBase::decodeSourceBasicAlign16(
                 Region macroDftSrcRgn = macroDefaultSourceRegion(
                     (int)S,
                     inst->getOpSpec(),
-                    m_model.platform,
+                    platform(),
                     inst->getExecSize());
                 inst->setMacroSource(
                     toSrcIx,
@@ -1934,7 +1954,7 @@ uint32_t DecoderBase::binNumToSubRegNum(
 void DecoderBase::decodeOptions(Instruction *inst)
 {
     const OpSpec &os = inst->getOpSpec();
-    if (os.supportsAccWrEn(m_model.platform)) {
+    if (os.supportsAccWrEn(platform())) {
         // * GED doesn't allow AccWrEn on send's
         // * BrnchCtrl overlaps AccWrEn, so anything using that is out
         GED_ACC_WR_CTRL accWrEn = GED_ACC_WR_CTRL_Normal;
@@ -1960,7 +1980,7 @@ void DecoderBase::decodeOptions(Instruction *inst)
         }
     }
 
-    if (os.supportsDepCtrl(m_model.platform)) {
+    if (os.supportsDepCtrl(platform())) {
         GED_DEP_CTRL dpCtrl = GED_DEP_CTRL_Normal;
         GED_DECODE_RAW_TO(DepCtrl, dpCtrl);
         if (dpCtrl == GED_DEP_CTRL_NoDDClr) {
@@ -1976,7 +1996,7 @@ void DecoderBase::decodeOptions(Instruction *inst)
     if (GED_WORKAROUND(
         /* really need to get GED to support ThrCtrl on GEN7-8 send's */
             (!os.isSendOrSendsFamily() && os.supportsThreadCtrl()) ||
-            (os.isSendOrSendsFamily() && m_model.platform >= Platform::GEN9)))
+            (os.isSendOrSendsFamily() && platform() >= Platform::GEN9)))
     {
         GED_THREAD_CTRL trdCntrl = GED_THREAD_CTRL_Normal;
         GED_DECODE_RAW_TO(ThreadCtrl, trdCntrl);

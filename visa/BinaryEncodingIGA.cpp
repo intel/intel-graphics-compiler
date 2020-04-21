@@ -723,23 +723,22 @@ void BinaryEncodingIGA::DoAll()
             }
             else if (opSpec->isSendOrSendsFamily())
             {
-                SendDescArg desc = getIGASendDescArg(inst);
-                SendDescArg exDesc = getIGASendExDescArg(inst);
+                SendDesc desc = getIGASendDesc(inst);
+                InstOptSet extraOpts; // empty set
+                int xlen = -1;
+                SendDesc exDesc = getIGASendExDesc(inst, xlen, extraOpts);
                 igaInst =
                     IGAKernel->createSendInstruction(
-                    *opSpec,
-                    pred,
-                    flagReg,
-                    execSize,
-                    chOff,
-                    maskCtrl,
-                    exDesc,
-                    desc);
-                if (inst->isEOT())
-                {
-                    igaInst->addInstOpt(InstOpt::EOT);
-                }
-
+                        *opSpec,
+                        pred,
+                        flagReg,
+                        execSize,
+                        chOff,
+                        maskCtrl,
+                        exDesc,
+                        desc);
+                igaInst->setSrc1Length(xlen);
+                igaInst->addInstOpts(extraOpts);
             }
             else if (opSpec->op == Op::NOP)
             {
@@ -1093,19 +1092,19 @@ SWSB_ENCODE_MODE BinaryEncodingIGA::getIGASWSBEncodeMode(const IR_Builder& build
     return SWSB_ENCODE_MODE::SingleDistPipe;
 }
 
-SendDescArg BinaryEncodingIGA::getIGASendDescArg(G4_INST* sendInst) const
+SendDesc BinaryEncodingIGA::getIGASendDesc(G4_INST* sendInst) const
 {
-    SendDescArg desc;
+    SendDesc desc;
     assert(sendInst->isSend() && "expect send inst");
     G4_Operand* msgDesc = sendInst->isSplitSend() ? sendInst->getSrc(2) : sendInst->getSrc(1);
     if (msgDesc->isImm())
     {
-        desc.type = SendDescArg::IMM;
-        desc.imm = (uint32_t) msgDesc->asImm()->getImm();
+        desc.type = SendDesc::Kind::IMM;
+        desc.imm = (uint32_t)msgDesc->asImm()->getImm();
     }
     else
     {
-        desc.type = SendDescArg::REG32A;
+        desc.type = SendDesc::Kind::REG32A;
         desc.reg.regNum = 0; // must be a0
         bool valid = false;
         desc.reg.subRegNum = (uint8_t) msgDesc->asSrcRegRegion()->ExSubRegNum(valid);
@@ -1115,9 +1114,15 @@ SendDescArg BinaryEncodingIGA::getIGASendDescArg(G4_INST* sendInst) const
     return desc;
 }
 
-iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
+SendDesc BinaryEncodingIGA::getIGASendExDesc(
+    G4_INST* sendInst, int& xlen, iga::InstOptSet& extraOpts) const
 {
-    iga::SendDescArg exDescArg;
+    SendDesc exDescArg;
+
+    if (sendInst->isEOT())
+        extraOpts.add(InstOpt::EOT);
+
+    xlen = -1;
 
     assert(sendInst->isSend() && "expect send inst");
     if (sendInst->isSplitSend())
@@ -1125,7 +1130,10 @@ iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
         G4_Operand* exDesc = sendInst->getSrc(3);
         if (exDesc->isImm())
         {
-            exDescArg.type = SendDescArg::IMM;
+            G4_SendMsgDescriptor* g4SendMsg = sendInst->getMsgDesc();
+            xlen = (int)g4SendMsg->extMessageLength();
+            //
+            exDescArg.type = SendDesc::Kind::IMM;
             uint32_t tVal = (uint32_t)exDesc->asImm()->getImm();
             //We must clear the funcID in the extended message for Gen12+
             //It's because the explicit encoding is applied, no mapping anymore.
@@ -1147,7 +1155,7 @@ iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
         }
         else
         {
-            exDescArg.type = SendDescArg::REG32A;
+            exDescArg.type = SendDesc::Kind::REG32A;
             exDescArg.reg.regNum = 0; // must be a0
             bool valid = false;
             exDescArg.reg.subRegNum =
@@ -1160,10 +1168,10 @@ iga::SendDescArg BinaryEncodingIGA::getIGASendExDescArg(G4_INST* sendInst) const
         // exDesc is stored in SendMsgDesc and must be IMM
         G4_SendMsgDescriptor* sendDesc = sendInst->getMsgDesc();
         assert(sendDesc != nullptr && "null msg desc");
-        exDescArg.type = SendDescArg::IMM;
+        exDescArg.type = SendDesc::Kind::IMM;
         uint32_t tVal = sendDesc->getExtendedDesc();
 
-        //We must clear the funcID in the extended message
+        // We must clear the funcID in the extended message
         if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::GEN12)
         {
             tVal = tVal & 0xFFFFFFF0;

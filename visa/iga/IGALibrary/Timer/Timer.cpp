@@ -135,10 +135,10 @@ int createIGANewTimer( const char* name )
 void startIGATimer( int timer )
 {
 #ifdef MEASURE_COMPILATION_TIME
-    if( timer < TIMER_NUM_TIMERS )
+    if (timer < TIMER_NUM_TIMERS)
     {
 #if defined(_DEBUG) && defined(CHECK_TIMER)
-        if(timers[timer].started)
+        if (timers[timer].started)
         {
             std::cerr << "***********************************************\n";
             std::cerr << "Timer already started.\n";
@@ -163,7 +163,7 @@ void startIGATimer( int timer )
 void stopIGATimer( int timer )
 {
 #ifdef MEASURE_COMPILATION_TIME
-    if(timer < TIMER_NUM_TIMERS)
+    if (timer < TIMER_NUM_TIMERS)
     {
         int64_t stop = CurrTicks();
         timers[timer].time += (double)((stop - timers[timer].currentStart) / (double)proc_freq);
@@ -223,7 +223,7 @@ void dumpAllIGATimers(bool outputTime)
 
     for (unsigned int i = 0; i < getIGATotalTimers(); i++)
     {
-        if(outputTime)
+        if (outputTime)
         {
             krnlOutput << timers[i].time << "\t";
         }

@@ -344,7 +344,8 @@ int32_t kv_get_opgroup(const kv_t *kv, int32_t pc)
 
 
 uint32_t kv_get_send_descs(
-    const kv_t *kv, int32_t pc, uint32_t *ex_desc, uint32_t *desc)
+    const kv_t *kv, int32_t pc,
+    uint32_t *ex_desc, uint32_t *desc)
 {
     if (!kv || !ex_desc || !desc)
         return 0;
@@ -355,13 +356,13 @@ uint32_t kv_get_send_descs(
     }
 
     uint32_t n = 0;
-    if (inst->getExtMsgDescriptor().type == SendDescArg::IMM) {
+    if (inst->getExtMsgDescriptor().isImm()) {
         n++;
         *ex_desc = inst->getExtMsgDescriptor().imm;
     } else {
         *ex_desc = KV_INVALID_SEND_DESC;
     }
-    if (inst->getMsgDescriptor().type == SendDescArg::IMM) {
+    if (inst->getMsgDescriptor().isImm()) {
         n++;
         *desc = inst->getMsgDescriptor().imm;
     } else {
@@ -371,7 +372,8 @@ uint32_t kv_get_send_descs(
 }
 
 void kv_get_send_indirect_descs(
-    const kv_t *kv, int32_t pc, uint8_t *ex_desc_reg, uint8_t *ex_desc_subreg,
+    const kv_t *kv, int32_t pc,
+    uint8_t *ex_desc_reg, uint8_t *ex_desc_subreg,
     uint8_t *desc_reg, uint8_t *desc_subreg)
 {
     if (!kv || !ex_desc_reg || !ex_desc_subreg || !desc_reg || !desc_subreg)
@@ -383,7 +385,7 @@ void kv_get_send_indirect_descs(
         return;
     }
 
-    if (inst->getExtMsgDescriptor().type == SendDescArg::REG32A) {
+    if (inst->getExtMsgDescriptor().isReg()) {
         *ex_desc_reg = inst->getExtMsgDescriptor().reg.regNum;
         *ex_desc_subreg = inst->getExtMsgDescriptor().reg.subRegNum;
     }
@@ -391,7 +393,7 @@ void kv_get_send_indirect_descs(
         *ex_desc_reg = *ex_desc_subreg = KV_INVALID_REG;
     }
 
-    if (inst->getMsgDescriptor().type == SendDescArg::REG32A) {
+    if (inst->getMsgDescriptor().isReg()) {
         *desc_reg = inst->getMsgDescriptor().reg.regNum;
         *desc_subreg = inst->getMsgDescriptor().reg.subRegNum;
     }
@@ -428,7 +430,7 @@ kv_status_t kv_get_message_type(
     auto desc = inst->getMsgDescriptor();
 
     // NOTE: we could probably get the message just from desc
-    if (desc.type != SendDescArg::IMM)
+    if (desc.isReg())
         return kv_status_t::KV_DESCRIPTOR_INDIRECT;
 
     Platform p = ((KernelViewImpl *)kv)->m_model.platform;
@@ -459,7 +461,7 @@ kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc, int32_t *sfid_enum)
     auto exDesc = inst->getExtMsgDescriptor();
     bool isTrue = false;
 
-    if (exDesc.type != SendDescArg::IMM && isTrue)
+    if (exDesc.isReg() && isTrue)
         return kv_status_t::KV_DESCRIPTOR_INDIRECT;
 
     SFID sfid = getSFID(p, inst->getOpSpec(), exDesc.imm, 0);
@@ -483,25 +485,18 @@ uint32_t kv_get_message_len(
     else if (!inst->getOpSpec().isSendOrSendsFamily())
         return 0;
 
-    auto exDesc = inst->getExtMsgDescriptor();
-    auto desc = inst->getMsgDescriptor();
-
+    // set the values and count how many are valid
     uint32_t numSet = 0;
-    if (desc.type == SendDescArg::IMM) {
-        *rLen = (desc.imm >> 20) & 0x1F; // Desc[24:20]
-        *mLen = (desc.imm >> 25) & 0x1F; // Desc[29:25]
-        numSet += 2;
-    } else {
-        *rLen = KV_INVALID_LEN;
-        *mLen = KV_INVALID_LEN;
-    }
-
-    if (exDesc.type == SendDescArg::IMM) {
-        *emLen = (exDesc.imm >> 6) & 0x3F; // ExDesc[10:6]
+    //
+    auto setOne = [&numSet](int n) {
+        if (n < 0)
+            return KV_INVALID_LEN;
         numSet++;
-    } else {
-        *emLen = KV_INVALID_LEN;
-    }
+        return (uint32_t)n;
+    };
+    *rLen = setOne(inst->getDstLength());
+    *mLen = setOne(inst->getSrc0Length());
+    *emLen = setOne(inst->getSrc1Length());
 
     return numSet;
 }
@@ -833,7 +828,7 @@ int32_t kv_get_source_region(const kv_t *kv, int32_t pc, uint32_t src_op, uint32
         return -1;
     }
     const Operand &src = inst->getSource(src_op);
-    if(!(src.getKind() == Operand::Kind::DIRECT || src.getKind() == Operand::Kind::INDIRECT) ||
+    if (!(src.getKind() == Operand::Kind::DIRECT || src.getKind() == Operand::Kind::INDIRECT) ||
         !(src.getDirRegName() == RegName::GRF_R || src.getDirRegName() == RegName::ARF_SR ||
             src.getDirRegName() == RegName::ARF_ACC))
     {
@@ -853,18 +848,56 @@ int32_t kv_get_source_region(const kv_t *kv, int32_t pc, uint32_t src_op, uint32
 
 int32_t kv_get_source_immediate(const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm)
 {
-    if(!kv) {
+    if (!kv) {
         return -1;
     }
     const Instruction *inst = getInstruction(kv, pc);
-    if(!inst || src_op >= inst->getSourceCount()) {
+    if (!inst || src_op >= inst->getSourceCount()) {
         return -1;
     }
     const auto &src = inst->getSource((size_t)src_op);
-    if(src.getKind() != Operand::Kind::IMMEDIATE) {
+    if (src.getKind() != Operand::Kind::IMMEDIATE) {
         return -1;
     }
     *imm = src.getImmediateValue().u64;
+    return 0;
+}
+
+int32_t kv_get_source_indirect_imm_off(
+    const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *immoff) {
+    if (!kv) {
+        return -1;
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst || src_op >= inst->getSourceCount()) {
+        return -1;
+    }
+    const auto &src = inst->getSource((size_t)src_op);
+    if (src.getKind() != Operand::Kind::INDIRECT) {
+        return -1;
+    }
+    *immoff = src.getIndImmAddr();
+    return 0;
+}
+
+int32_t kv_get_destination_indirect_imm_off(
+    const kv_t *kv, int32_t pc, int16_t *immoff) {
+    if (!kv) {
+        return -1;
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst)
+        return -1;
+
+    if (!inst->getOpSpec().supportsDestination()) {
+        return -1;
+    }
+    const Operand &dst = inst->getDestination();
+    if (dst.getKind() != Operand::Kind::INDIRECT) {
+        return -1;
+    }
+
+    *immoff = dst.getIndImmAddr();
     return 0;
 }
 
@@ -874,11 +907,11 @@ int32_t kv_get_source_immediate(const kv_t *kv, int32_t pc, uint32_t src_op, uin
 */
 uint32_t kv_get_flag_modifier(const kv_t *kv, int32_t pc)
 {
-    if(!kv) {
+    if (!kv) {
         return static_cast<uint32_t>(FlagModifier::NONE);
     }
     const Instruction *inst = getInstruction(kv, pc);
-    if(!inst || inst->getOp() == Op::ILLEGAL) {
+    if (!inst || inst->getOp() == Op::ILLEGAL) {
         return static_cast<uint32_t>(FlagModifier::NONE);
     }
     return (uint32_t)inst->getFlagModifier();
@@ -890,19 +923,19 @@ uint32_t kv_get_flag_modifier(const kv_t *kv, int32_t pc)
 */
 uint32_t kv_get_source_modifier(const kv_t *kv, int32_t pc, uint32_t src_op)
 {
-    if(!kv) {
+    if (!kv) {
         return static_cast<uint32_t>(SrcModifier::NONE);
     }
     const Instruction *inst = getInstruction(kv, pc);
 
-    if(!inst || inst->getOp() == Op::ILLEGAL) {
+    if (!inst || inst->getOp() == Op::ILLEGAL) {
         return static_cast<uint32_t>(SrcModifier::NONE);
     }
-    if(!inst || src_op >= inst->getSourceCount()) {
+    if (!inst || src_op >= inst->getSourceCount()) {
         return static_cast<uint32_t>(SrcModifier::NONE);
     }
     const auto &src = inst->getSource((size_t)src_op);
-    if(src.getKind() == Operand::Kind::IMMEDIATE){
+    if (src.getKind() == Operand::Kind::IMMEDIATE){
         return static_cast<uint32_t>(SrcModifier::NONE);
     }
 
@@ -915,12 +948,12 @@ uint32_t kv_get_source_modifier(const kv_t *kv, int32_t pc, uint32_t src_op)
 */
 uint32_t kv_get_destination_modifier(const kv_t *kv, int32_t pc)
 {
-    if(!kv) {
+    if (!kv) {
         return static_cast<uint32_t>(DstModifier::NONE);
     }
     const Instruction *inst = getInstruction(kv, pc);
 
-    if(!inst || inst->getOp() == Op::ILLEGAL) {
+    if (!inst || inst->getOp() == Op::ILLEGAL) {
         return static_cast<uint32_t>(DstModifier::NONE);
     }
 
@@ -934,12 +967,12 @@ uint32_t kv_get_destination_modifier(const kv_t *kv, int32_t pc)
 */
 int32_t kv_get_flag_register(const kv_t *kv, int32_t pc)
 {
-    if(!kv) {
+    if (!kv) {
         return -1;
     }
     const Instruction *inst = getInstruction(kv, pc);
 
-    if(!inst || inst->getOp() == Op::ILLEGAL) {
+    if (!inst || inst->getOp() == Op::ILLEGAL) {
         return -1;
     }
 
@@ -951,11 +984,11 @@ int32_t kv_get_flag_register(const kv_t *kv, int32_t pc)
 */
 int32_t kv_get_flag_sub_register(const kv_t *kv, int32_t pc)
 {
-    if(!kv) {
+    if (!kv) {
         return -1;
     }
     const Instruction *inst = getInstruction(kv, pc);
-    if(!inst || inst->getOp() == Op::ILLEGAL)
+    if (!inst || inst->getOp() == Op::ILLEGAL)
     {
         return -1;
     }
@@ -968,11 +1001,11 @@ int32_t kv_get_flag_sub_register(const kv_t *kv, int32_t pc)
 */
 uint32_t kv_get_predicate(const kv_t *kv, int32_t pc)
 {
-    if(!kv) {
+    if (!kv) {
         return static_cast<uint32_t>(PredCtrl::NONE);
     }
     const Instruction *inst = getInstruction(kv, pc);
-    if(!inst || inst->getOp() == Op::ILLEGAL)
+    if (!inst || inst->getOp() == Op::ILLEGAL)
     {
         return static_cast<uint32_t>(PredCtrl::NONE);
     }
@@ -984,11 +1017,11 @@ uint32_t kv_get_predicate(const kv_t *kv, int32_t pc)
 */
 uint32_t kv_get_is_inverse_predicate(const kv_t *kv, int32_t pc)
 {
-    if(!kv) {
+    if (!kv) {
         return 0;
     }
     const Instruction *inst = getInstruction(kv, pc);
-    if(!inst || inst->getOp() == Op::ILLEGAL)
+    if (!inst || inst->getOp() == Op::ILLEGAL)
     {
         return 0;
     }

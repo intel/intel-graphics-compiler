@@ -44,6 +44,8 @@ namespace iga
     protected:
         const Model &m_model;
 
+        Platform platform() const {return m_model.platform;}
+
     public:
         GEDBitProcessor(const Model& model,ErrorHandler& errHandler);
 

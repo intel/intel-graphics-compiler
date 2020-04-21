@@ -30,36 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
-static uint32_t getMsgLength(uint32_t desc) {return getBits(desc, 25, 4);}
-static uint32_t getHeaderBit(uint32_t desc) {return getBits(desc, 19, 1);}
-static uint32_t getRespLength(uint32_t desc) {return getBits(desc, 20, 5);}
-static uint32_t getSrc1LengthFromExDesc(uint32_t exDesc) {
-    return getBits(exDesc, 6, 5);
-}
-static uint32_t getMiscMsgDescBits(uint32_t desc) {return getBits(desc, 8, 6);}
-
-static void formatMessageInfoDescription(
-    Platform p,
-    SFID sfid,
-    const OpSpec &os,
-    const SendDescArg &exDesc,
-    uint32_t desc,
-    std::stringstream &ss)
-{
-    DiagnosticList ws, es;
-    auto exDescImm =
-        exDesc.type == SendDescArg::REG32A ? 0xFFFFFFFF : exDesc.imm;
-    auto mi =
-        MessageInfo::tryDecode(p, sfid, exDescImm, desc, ws, es, nullptr);
-    if (!mi.description.empty()) {
-            ss << " " << mi.description;
-    } else {
-        if (!es.empty())
-            ss << es.back().second;
-        ss << "?";
-    }
-}
-
 
 static const char *getSFIDString(Platform p, uint32_t sfid)
 {
@@ -96,7 +66,7 @@ static const char *getSFIDString(Platform p, uint32_t sfid)
         "spawner",  // 0111b thread spawner
 
         "vme",      // 1000b video motion estimation
-        "hdc.dcro0", // 1001b data cache read only (renaming)
+        "hdc.dcro", // 1001b data cache read only (renaming)
         "hdc.dc0",  // 1010b
         "pi",       // 1011b pixel interpolator
 
@@ -115,56 +85,94 @@ static const char *getSFIDString(Platform p, uint32_t sfid)
 }
 
 
+static uint32_t getHeaderBit(uint32_t desc) {return getBits(desc, 19, 1);}
+
+
 void iga::EmitSendDescriptorInfo(
     Platform p,
     const OpSpec &os,
-    const SendDescArg &exDesc,
-    uint32_t desc,
+    int dstLen, int src0Len, int src1Len,
+    const SendDesc &exDesc, const SendDesc &desc,
     std::stringstream &ss)
 {
-    uint32_t exDescImm = exDesc.type == SendDescArg::IMM ? exDesc.imm : 0;
+    DiagnosticList ws, es;
+    auto exDescImm =
+        exDesc.isReg() ? 0xFFFFFFFF : exDesc.imm;
     SFID sfid =
-        p < Platform::GEN12P1 && exDesc.type == SendDescArg::REG32A ?
-            SFID::INVALID : MessageInfo::sfidFromOp(p, os.op, exDescImm);
-    bool exDescHasA0 = exDesc.type == SendDescArg::REG32A;
-    bool src1LenIsInA0 = exDesc.type == SendDescArg::REG32A;
+        p < Platform::GEN12P1 && exDesc.isReg() ?
+        SFID::INVALID : MessageInfo::sfidFromOp(p, os.op, exDescImm);
 
     //////////////////////////////////////
-    // emit the: "wr:3h+2, rd:4" part
-    ss << "wr:" << getMsgLength(desc);
+    // emit the: "wr:1h+2, rd:4" part
+    if (src0Len >= 0) {
+        ss << "wr:" << src0Len;
+    } else if (desc.isReg()) {
+        ss << "wr:" << "a0." << (int)desc.reg.subRegNum << "[28:25]";
+    } else {
+        ss << "wr:?";
+    }
     bool hasHeaderBit = true;
-    if (hasHeaderBit && getHeaderBit(desc)) {
+    bool hasExactDstLen = true;
+    if (hasHeaderBit && desc.isImm() && getHeaderBit(desc.imm)) {
         ss << "h";
     }
-    int src1Len = 0;
-    if (exDesc.type == SendDescArg::IMM) {
-        src1Len = getSrc1LengthFromExDesc(exDescImm);
+    //
+    ss << "+";
+    if (src1Len >= 0) {
+        ss << src1Len;
+    } else if (exDesc.isReg()) {
+        ss << "a0." << (int)exDesc.reg.subRegNum << "[10:6]";
+    } else {
+        ss << "?";
     }
-    if (src1Len) {
-        ss << "+" << src1Len;
-    } else if (exDescHasA0) {
-        if (src1LenIsInA0) {
-            ss << "+a0.#[10:6]";
+    ss << ", rd:";
+    if (dstLen < 0) {
+        if (desc.isReg()) {
+            ss << "a0." << (int)desc.reg.subRegNum << "[24:20]";
         } else {
-            ss << "+?";
+            ss << "?";
+        }
+    } else if (hasExactDstLen) {
+        ss << dstLen;
+    } else {
+        if (dstLen == 0) {
+            ss << "0";
+        } else {
+            // TODO: we should look up this when possible
+            // (use MessageInfo::tryDecode)
+            ss << "non-zero";
         }
     }
-    ss << ", rd:" << getRespLength(desc);
-    ss << ";";
     //
     ////////////////////////////////
     // now the message description
     if (p < Platform::GEN12P1) {
         // pre-GEN12, emit the SFID first since it's not part of the op yet
-        if (exDescHasA0) {
-            ss << " sfid is in a0.#[3:0]:";
+        if (exDesc.isReg()) {
+            ss << "; sfid a0." << (int)exDesc.reg.subRegNum << "[3:0]";
         } else { // no a0.0
-            ss << " " << getSFIDString(p, exDescImm & 0xF) << ":";
+            ss << "; " << getSFIDString(p, exDescImm & 0xF) << ": ";
         }
     }
-    if (sfid != SFID::INVALID) {
-        formatMessageInfoDescription(p, sfid, os, exDesc, desc, ss);
-    } else {
-        ss << "cannot determine SFID";
+
+    if (desc.isImm()) {
+        const MessageInfo mi =
+            MessageInfo::tryDecode(
+                p, sfid, exDescImm, desc.imm, ws, es, nullptr);
+        //
+        if (!mi.description.empty()) {
+            bool useSymbol = false;
+            if (useSymbol)
+                ss << "; " << mi.symbol;
+            else
+                ss << "; " << mi.description;
+        } else {
+            if (!es.empty() &&
+                es.back().second.find("unsupported sfid") == std::string::npos)
+            {
+                ss << "; " << es.back().second << "?";
+            }
+            // skip unsupported SFIDs
+        }
     }
 }

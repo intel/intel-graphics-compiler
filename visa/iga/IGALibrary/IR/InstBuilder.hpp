@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ErrorHandler.hpp"
 #include "../Frontend/IRToString.hpp"
 #include "../Models/Models.hpp"
+#include "../Backend/MessageInfo.hpp"
 
 #include <map>
 #include <sstream>
@@ -145,8 +146,12 @@ class InstBuilder {
     OperandInfo                 m_srcs[3];
     int                         m_nSrcs = 0;
 
-    SendDescArg                 m_exDesc;
-    SendDescArg                 m_desc;
+    SendDesc                    m_exDesc;
+    SendDesc                    m_desc;
+    // int                         m_sendDst;  // (extracted later)
+    int                         m_sendSrc0;
+    int                         m_sendSrc1;
+
     InstOptSet                  m_instOpts;
 
     std::string                 m_comment;
@@ -202,6 +207,8 @@ public:
 private:
     SWSBInfo                    m_depInfo;
 
+    Platform platform() const {return m_model.platform;}
+
     void clearInstState() {
         m_predication.function = PredCtrl::NONE;
         m_predication.inverse = false;
@@ -228,6 +235,8 @@ private:
         m_exDesc.imm = 0;
         m_desc.imm = 0;
 
+        m_sendSrc0 = m_sendSrc1 = -1;
+
         m_instOpts.clear();
         m_depInfo = SWSBInfo();
 
@@ -251,6 +260,7 @@ public:
     {
         m_swsbEncodeMode = mode;
     }
+
 
     // Called at the beginning of the program
     void ProgramStart() {
@@ -353,7 +363,40 @@ public:
                     m_chOff,
                     m_maskCtrl,
                     m_exDesc,
-                    m_desc);
+                    m_desc
+                );
+
+            //
+            // copy Src0.Length if no one else set it
+            // (Dst.Length is handled elsewhere)
+            bool descsHaveLens = true;
+            if (descsHaveLens && m_desc.isImm() && m_sendSrc0 < 0) {
+                m_sendSrc0 = (m_desc.imm >> 25) & 0xF;
+            }
+            inst->setSrc0Length(m_sendSrc0);
+            //
+            if (m_sendSrc1 < 0) {
+                // copy Src1.Length if no one else set it
+                if (m_exDesc.isImm())
+                    m_sendSrc1 = (m_exDesc.imm >> 6) & 0x1F;
+            }
+            inst->setSrc1Length(m_sendSrc1);
+            //
+            bool hasDstLenInDesc = m_desc.isImm();
+            int dstLen = -1;
+            if (hasDstLenInDesc) {
+                dstLen = (0x1F & (m_desc.imm >> 20));
+            } else if (m_desc.isImm()) {
+                // try and determine it from descriptor details
+                SFID sfid = MessageInfo::sfidFromOp(platform(), m_opSpec->op, 0);
+                dstLen = MessageInfo::tryDecodeDstLength(
+                    platform(),
+                    sfid,
+                    m_desc.imm,
+                    inst->getExecSize(),
+                    m_dst.regOpName == RegName::GRF_R);
+            }
+            inst->setDstLength(dstLen);
         } else if (m_opSpec->op == Op::NOP) {
             inst = m_kernel->createNopInstruction();
         } else if (m_opSpec->op == Op::ILLEGAL) {
@@ -868,23 +911,26 @@ public:
     // (we translate  this to:  a0.0<0;1,0>:ud)
     void InstSendDescs(
         const Loc &locExDesc,
-        const SendDescArg &exDesc,
+        const SendDesc &exDesc,
         const Loc &locDesc,
-        const SendDescArg &desc)
+        const SendDesc &desc)
     {
         m_exDesc = exDesc;
         m_desc = desc;
     }
 
 
-    /////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
     // instruction option callbacks
     void InstOpts(const InstOptSet &instOpts) {
-        m_instOpts = instOpts;
+        m_instOpts.add(instOpts);
     }
 
+    void InstOpt(InstOpt instOpt) {
+        m_instOpts.add(instOpt);
+    }
 
-    void setDepInfoSBidSrc(Loc loc, int32_t sbid) {
+    void InstDepInfoSBidSrc(Loc loc, int32_t sbid) {
         if (sbid > (int32_t)m_model.getSWSBTokenNum())
             m_errorHandler.reportError(loc, "Invalid SWSB ID number");
         if (m_depInfo.anyBarrierSet())
@@ -893,7 +939,7 @@ public:
         m_depInfo.memSBidSrc = sbid;
     }
 
-    void setDepInfoSBidDst(Loc loc, int32_t sbid) {
+    void InstDepInfoSBidDst(Loc loc, int32_t sbid) {
         if (sbid > (int32_t)m_model.getSWSBTokenNum())
             m_errorHandler.reportError(loc, "Invalid SWSB ID number");
         if (m_depInfo.anyBarrierSet())
@@ -902,7 +948,7 @@ public:
         m_depInfo.memSBidDst = sbid;
     }
 
-    void setDepInfoSBidAlloc(Loc loc, int32_t sbid) {
+    void InstDepInfoSBidAlloc(Loc loc, int32_t sbid) {
         if (sbid > (int32_t)m_model.getSWSBTokenNum())
             m_errorHandler.reportError(loc, "Invalid SWSB ID number");
         if (m_depInfo.anyBarrierSet())
@@ -911,7 +957,7 @@ public:
         m_depInfo.memSBidAlloc = sbid;
     }
 
-    void setDepInfoDist(Loc loc, SWSBInfo::DIST_TYPE type, uint32_t dist) {
+    void InstDepInfoDist(Loc loc, SWSBInfo::DIST_TYPE type, uint32_t dist) {
         if (dist > m_model.getSWSBMaxValidDistance())
             m_errorHandler.reportError(loc, "Invalid SWSB distance number");
         if (m_depInfo.distType != SWSBInfo::DIST_TYPE::NONE)

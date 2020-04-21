@@ -56,7 +56,8 @@ static std::string disassembleInst(
     fopts.numericLabels = true;
     // fopts.hexFloats = opts.printHexFloats;
     fopts.hexFloats = false;
-    fopts.setSWSBEncodingMode(iga::Model::LookupModel(platform)->getSWSBEncodeMode());
+    fopts.setSWSBEncodingMode(
+        iga::Model::LookupModel(platform)->getSWSBEncodeMode());
     FormatInstruction(eh, ss, fopts, fromPc, bits, useNativeDecoder);
 
     return ss.str();
@@ -175,9 +176,13 @@ static FragmentList decodeFieldsWithWarnings(
                     (int)bitIx,
                     (int)(endIx - bitIx));
                 FragmentList::iterator itr = fields.begin();
-                for (; itr != fields.end() && itr->first.offset < errorField.offset; itr++)
+                for (;
+                    itr != fields.end() &&
+                        itr->first.offset < errorField.offset;
+                    itr++)
                     ;
-                fields.insert(itr,std::pair<Fragment,std::string>(errorField,""));
+                fields.insert(itr,
+                    std::pair<Fragment,std::string>(errorField,""));
                 success = false;
             }
             bitIx = endIx; // sanity restarts (or some new error)
@@ -215,12 +220,15 @@ static bool decodeFieldsForInst(
     const Model &model,
     const MInst *mi)
 {
-    auto syntax = disassembleInst(model.platform, useNativeDecoder, pc, (const void *)mi);
+    bool success = true;
+
+    auto syntax = disassembleInst(
+        model.platform, useNativeDecoder, pc, (const void *)mi);
     os << fmtPc(mi, pc) << " " <<  syntax << "\n";
     os.flush();
-    bool success = true;
-    FragmentList fields = decodeFieldsWithWarnings(
-        model, os, Loc((uint32_t)pc), mi, success);
+
+    FragmentList fields =
+        decodeFieldsWithWarnings(model, os, Loc((uint32_t)pc), mi, success);
 
     auto fieldOverlaps =
         [&] (const Fragment &f) {
@@ -232,8 +240,8 @@ static bool decodeFieldsForInst(
             return false;
         };
 
-    for (const auto &fv : fields) {
-        const auto &f = fv.first;
+    for (const FragmentListElem &fv : fields) {
+        const Fragment &f = fv.first;
         uint64_t val = mi->getFragment(f);
         std::stringstream ss;
         ss << std::setw(FIELD_PC_WIDTH) << std::left << " ";
@@ -250,7 +258,8 @@ static bool decodeFieldsForInst(
         ss << " ";
 
         // 0x1234
-        ss << std::right << std::setw(FIELD_VALUE_INT_WIDTH) << fmtHexValue(val);
+        ss << std::right <<
+            std::setw(FIELD_VALUE_INT_WIDTH) << fmtHexValue(val);
         ss << " ";
 
         // :q
@@ -366,9 +375,11 @@ iga_status_t iga::DiffFieldsFromPCs(
     os << " ";
     os << std::setw(FIELD_SIZE_WIDTH) << " "; // (..)
     os << " ";
-    os << std::setw(FIELD_VALUE_INT_WIDTH + 1 + FIELD_VALUE_STR_WIDTH) << std::right << source1;
+    os << std::setw(FIELD_VALUE_INT_WIDTH + 1 + FIELD_VALUE_STR_WIDTH) <<
+        std::right << source1;
     os << " ";
-    os << std::setw(FIELD_VALUE_INT_WIDTH + 1 + FIELD_VALUE_STR_WIDTH) << std::right << source2;
+    os << std::setw(FIELD_VALUE_INT_WIDTH + 1 + FIELD_VALUE_STR_WIDTH) <<
+        std::right << source2;
     os << "\n";
 
     bool success = true;
@@ -479,15 +490,17 @@ iga_status_t iga::DiffFieldsFromPCs(
             os << " ";
 
             // bit value
-            auto fmtElem = [&](bool inList, uint64_t val, const std::string &str) {
-                if (inList) {
-                    os << std::right << std::setw(FIELD_VALUE_INT_WIDTH) <<
-                        fmtHex(val);
-                } else {
-                    os << std::right << std::setw(FIELD_VALUE_INT_WIDTH) << " ";
-                }
-                os << " " << std::setw(FIELD_VALUE_STR_WIDTH) << str;
-            };
+            auto fmtElem =
+                [&] (bool inList, uint64_t val, const std::string &str) {
+                    if (inList) {
+                        os << std::right << std::setw(FIELD_VALUE_INT_WIDTH) <<
+                            fmtHex(val);
+                    } else {
+                        os << std::right << std::setw(FIELD_VALUE_INT_WIDTH) <<
+                            " ";
+                    }
+                    os << " " << std::setw(FIELD_VALUE_STR_WIDTH) << str;
+                };
             if (inList1 && val1 != val2) {
                 os << Intensity::BRIGHT << Color::GREEN;
             }
@@ -560,6 +573,8 @@ struct MappingStats
 };
 struct CompactionStats
 {
+    using CompactionMisses = std::map<Mapping,MappingStats>;
+
     int64_t hits = 0;
     int64_t misses = 0;
     int64_t noCompactSet = 0;
@@ -569,7 +584,7 @@ struct CompactionStats
     //   each value that missed maps to:
     //       - # of times it missed
     //       - # of times this miss was the unique
-    std::map<const CompactionMapping *,std::map<Mapping,MappingStats>> fieldMisses;
+    std::map<const CompactionMapping *,CompactionMisses> fieldMisses;
 };
 
 static bool listInstructionCompaction(
@@ -585,7 +600,8 @@ static bool listInstructionCompaction(
 
     MInst compactedInst;
     CompactionDebugInfo cdi;
-    CompactionResult cr = iga::native::DebugCompaction(m, bits, &compactedInst, cdi);
+    CompactionResult cr =
+        iga::native::DebugCompaction(m, bits, &compactedInst, cdi);
 
     bool success = true;
     switch (cr) {
@@ -593,7 +609,8 @@ static bool listInstructionCompaction(
         cmpStats.hits++;
         os << Color::GREEN << Intensity::BRIGHT <<
             "=> compaction hit " << Reset::RESET << "\n";
-        success &= decodeFieldsForInst(useNativeDecoder, os, pc, m, &compactedInst);
+        success &=
+            decodeFieldsForInst(useNativeDecoder, os, pc, m, &compactedInst);
         break;
     case CompactionResult::CR_MISS: {
         cmpStats.misses++;
@@ -648,7 +665,8 @@ static bool listInstructionCompaction(
             // find the closest hits
             std::vector<size_t> closestIndices;
             for (size_t dist = 1;
-                dist < MAX_HAMMING_DIST && closestIndices.size() < MAX_CLOSE_MAPPINGS;
+                dist < MAX_HAMMING_DIST &&
+                    closestIndices.size() < MAX_CLOSE_MAPPINGS;
                 dist++)
             {
                 // closest hits of distance `dist`
@@ -672,7 +690,8 @@ static bool listInstructionCompaction(
                     os << "  #" << std::setw(2) << std::left << cIx;
                     os << "  " << fmtHex(cf.values[cIx], hexDigits) << ": ";
                     int bitOff = (int)cf.countNumBitsMapped();
-                    // walk through the fields listing who misses (from high to low bits)
+                    // walk through the fields listing who misses
+                    // (from high to low bits)
                     std::vector<const Field *> missingFields;
                     for (int mIx = 0; mIx < (int)cf.numMappings; ++mIx) {
                         if (mIx != 0) {
@@ -715,7 +734,8 @@ static bool listInstructionCompaction(
     }
     case CompactionResult::CR_NO_COMPACT:
         cmpStats.noCompactSet++;
-        os << Color::WHITE << "{NoCompact/Uncompacted} set" << Reset::RESET << "\n";
+        os << Color::WHITE << "{NoCompact/Uncompacted} set" <<
+            Reset::RESET << "\n";
         break;
     case CompactionResult::CR_NO_FORMAT:
         cmpStats.noCompactForm++;
@@ -759,7 +779,8 @@ iga_status_t iga::DebugCompaction(
         }
 
         os << "============================================================\n";
-        auto syntax = disassembleInst(p, useNativeDecoder, pc, (const void *)mi);
+        auto syntax =
+            disassembleInst(p, useNativeDecoder, pc, (const void *)mi);
         os << fmtPc(mi, pc) << " " <<  syntax << "\n";
         os.flush();
         success &= listInstructionCompaction(
@@ -844,12 +865,15 @@ iga_status_t iga::DebugCompaction(
                     misses3plus++;
                 }
             }
-            os << "  1m:" << misses1 << "  2m:" << misses2 << "  3+m:" << misses3plus;
+            os << "  1m:" << misses1 <<
+                "  2m:" << misses2 <<
+                "  3+m:" << misses3plus;
 
             if (cf->format) {
                 os << "  ";
-                Op HACK = Op::ADD; // gives - instead of ~ for bitwise, but it's the best I can do
-                os << cf->format(HACK,mVal);
+                Op HACK = Op::ADD; // gives - instead of ~ for bitwise,
+                                   // but it's the best I can do
+                os << cf->format(HACK, mVal);
             }
             os << "\n";
 

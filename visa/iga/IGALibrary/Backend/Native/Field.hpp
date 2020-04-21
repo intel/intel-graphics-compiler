@@ -40,8 +40,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // to opt-in based if our compiler is C++14 or better.  C++11 allows us to
 // return constexpr expressions only, but C++14 allows more statements.
 //
-// MSVS defines __cplusplus as 199711L, but they do use _MSVC_LANG
-// Maybe there's a better way.
+// MSVS defines __cplusplus as 199711L, but they do use _MSVC_LANG in those
+// release.  Maybe there's a better way.
 #define CONSTEXPR_IF_CPP14 constexpr
 #else
 #define CONSTEXPR_IF_CPP14
@@ -80,15 +80,22 @@ namespace iga
         constexpr Fragment() :
             Fragment(nullptr, NO_OFFSET, 0, Kind::INVALID) { }
 
-        bool overlaps(const Fragment &f) const {
+        // We could lower this to C++11 if we really tried.
+        //        (it's a pure boolean expression underneath)
+        CONSTEXPR_IF_CPP14 bool overlaps(const Fragment &f) const {
             if (!isEncoded() || !f.isEncoded())
-                return false;
-            if (length < f.length)
-                return f.overlaps(*this);
-            // test the end points of the smaller interval within the larger
-            return (offset >= f.offset && offset < (f.offset + f.length)) ||
-                ((offset + length - 1) >= f.offset &&
-                 (offset + length - 1) < (f.offset + f.length));
+                return false; // pseudo-fragments (unmapped) don't collide
+
+            // arrange intervals as: smaller or equal, and larger
+            const Fragment &smaller = length <= f.length ? *this : f;
+            const Fragment &larger  = length <= f.length ? f : *this;
+            int sLo = smaller.offset,
+                sHi = smaller.offset + smaller.length - 1;
+            int lLo = larger.offset,
+                lHi = larger.offset + larger.length - 1;
+            // determine if the ends of smaller fit in larger
+            return (sLo >= lLo && sLo <= lHi) ||
+                (sHi >= lLo && sHi <= lHi);
         }
 
         constexpr bool isEncoded() const {return kind == Kind::ENCODED;}
@@ -96,7 +103,7 @@ namespace iga
         constexpr bool isZeroWires() const {return kind == Kind::ZERO_WIRES;}
         constexpr bool isInvalid() const {return kind == Kind::INVALID;}
 
-        uint64_t getMask() const {
+        constexpr uint64_t getMask() const {
             return getFieldMaskUnshifted<uint64_t>(length);
         }
     };

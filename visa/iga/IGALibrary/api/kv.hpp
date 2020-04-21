@@ -416,6 +416,20 @@ public:
         return static_cast<iga::Kind>(kv_get_source_register_kind(m_kv, pc, sourceNumber));
     }
 
+    // Returns source Indirect Immediate Offset
+    int16_t getSrcRegIndirectImmOff(int32_t pc, uint32_t sourceNumber) const {
+        int16_t result = 0;
+        kv_get_source_indirect_imm_off(m_kv, pc, sourceNumber, &result);
+        return result;
+    }
+
+    // Returns destination Indirect Immediate Offset
+    int16_t getDstRegIndirectImmOff(int32_t pc) const {
+        int16_t result = 0;
+        kv_get_destination_indirect_imm_off(m_kv, pc, &result);
+        return result;
+    }
+
     // Returns if source is a vector
     // -1 - ERROR
     // 0  - FALSE

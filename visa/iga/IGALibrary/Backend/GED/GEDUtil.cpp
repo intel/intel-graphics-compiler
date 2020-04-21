@@ -67,7 +67,7 @@ iga::SFID iga::getSFID(
     if (os.isSendFamily()) {
         gedOp = GED_OPCODE_send;
     }
-    else if(os.isSendsFamily()){
+    else if (os.isSendsFamily()) {
         gedOp = GED_OPCODE_sends;
     }
 
@@ -80,7 +80,7 @@ iga::SFID iga::getSFID(
 
     GED_SFID gedSFID = GED_SFID_INVALID;
 
-    if(getRetVal == GED_RETURN_VALUE_SUCCESS)
+    if (getRetVal == GED_RETURN_VALUE_SUCCESS)
         gedSFID = GED_GetSFID(&gedInst, &getRetVal);
 
     // FIXME: duplicate code in Formatter::EmitSendDescriptorInfoGED

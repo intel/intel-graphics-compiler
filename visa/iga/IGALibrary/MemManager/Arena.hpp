@@ -161,7 +161,7 @@ private:
             new unsigned char [ArenaHeader::GetArenaSize(arenaDataSize)];
         ArenaHeader *newArena = new (arena)ArenaHeader(arenaDataSize, _arenas);
         // Add new arena to the head of queue
-        if( _arenas != NULL )
+        if (_arenas != NULL)
         {
             newArena->_nextArena = _arenas;
         }
