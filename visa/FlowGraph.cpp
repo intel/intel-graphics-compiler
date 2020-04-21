@@ -7014,7 +7014,6 @@ void gtPinData::setGTPinInit(void* buffer)
 {
     MUST_BE_TRUE(sizeof(gtpin::igc::igc_init_t) <= 200, "Check size of igc_init_t");
     gtpin_init = (gtpin::igc::igc_init_t*)buffer;
-    gtpinInitFromL0 = false;
 
     if (gtpin_init->re_ra)
         kernel.getOptions()->setOption(vISA_ReRAPostSchedule, true);
@@ -7068,11 +7067,6 @@ unsigned int gtPinData::getPerThreadNextOff()
 
 void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
 {
-    if (!gtpinInitFromL0 && !kernel.hasGTPinInit())
-    {
-        return nullptr;
-    }
-
     gtpin::igc::igc_init_t t;
     std::vector<unsigned char> buffer;
     unsigned int numTokens = 0;
@@ -7082,53 +7076,26 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     memset(&t, 0, sizeof(t));
 
     t.version = gtpin::igc::GTPIN_IGC_INTERFACE_VERSION;
-    if (gtpinInitFromL0)
+    if (gtpin_init->grf_info)
     {
-        if (kernel.getOption(vISA_GetFreeGRFInfo))
-        {
-            if (!stackABI)
-                t.grf_info = 1;
-            numTokens++;
-        }
-
-        if (kernel.getOption(vISA_ReRAPostSchedule))
-        {
-            if (!stackABI)
-                t.re_ra = 1;
-        }
-
-        if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
-            t.srcline_mapping = 1;
-
-        if (kernel.getOptions()->getuInt32Option(vISA_GTPinScratchAreaSize) > 0)
-        {
-            t.scratch_area_size = kernel.getOptions()->getuInt32Option(vISA_GTPinScratchAreaSize);
-            numTokens++;
-        }
+        if (!stackABI)
+            t.grf_info = 1;
+        numTokens++;
     }
-    else
+
+    if (gtpin_init->re_ra)
     {
-        if (gtpin_init->grf_info)
-        {
-            if (!stackABI)
-                t.grf_info = 1;
-            numTokens++;
-        }
+        if(!stackABI)
+            t.re_ra = 1;
+    }
 
-        if (gtpin_init->re_ra)
-        {
-            if (!stackABI)
-                t.re_ra = 1;
-        }
+    if (gtpin_init->srcline_mapping && kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
+        t.srcline_mapping = 1;
 
-        if (gtpin_init->srcline_mapping && kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
-            t.srcline_mapping = 1;
-
-        if (gtpin_init->scratch_area_size > 0)
-        {
-            t.scratch_area_size = gtpin_init->scratch_area_size;
-            numTokens++;
-        }
+    if (gtpin_init->scratch_area_size > 0)
+    {
+        t.scratch_area_size = gtpin_init->scratch_area_size;
+        numTokens++;
     }
 
     // For payload offsets

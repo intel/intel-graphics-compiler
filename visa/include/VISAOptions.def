@@ -210,7 +210,6 @@ DEF_VISA_OPTION(vISA_isParseMode,         ET_BOOL,  NULLSTR,              UNUSED
 //   rerun RA post scheduling for gtpin
 DEF_VISA_OPTION(vISA_ReRAPostSchedule,    ET_BOOL,  "-rerapostschedule",  UNUSED, false)
 DEF_VISA_OPTION(vISA_GetFreeGRFInfo,      ET_BOOL,  "-getfreegrfinfo",    UNUSED, false)
-DEF_VISA_OPTION(vISA_GTPinScratchAreaSize,ET_INT32, "-GTPinScratchAreaSize", "USAGE: -GTPinScratchAreaSize <size>\n", 0)
 
 //=== HW Workarounds ===
 DEF_VISA_OPTION(vISA_clearScratchWritesBeforeEOT,   ET_BOOL,  NULLSTR, UNUSED, false)

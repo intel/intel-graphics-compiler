@@ -7921,14 +7921,6 @@ int VISAKernelImpl::SetGTPinInit(void* buffer)
             gtpin->setGTPinInit(buffer);
         }
     }
-    else
-    {
-        auto gtpin = m_kernel->getGTPinData();
-        if (gtpin)
-        {
-            gtpin->setGTPinInitFromL0(true);
-        }
-    }
 
     return VISA_SUCCESS;
 }
@@ -7938,10 +7930,13 @@ int VISAKernelImpl::GetGTPinBuffer(void*& buffer, unsigned int& size)
     buffer = nullptr;
     size = 0;
 
-    auto gtpin = m_kernel->getGTPinData();
-    if (gtpin)
+    if (m_kernel->hasGTPinInit())
     {
-       buffer = gtpin->getGTPinInfoBuffer(size);
+        auto gtpin = m_kernel->getGTPinData();
+        if (gtpin)
+        {
+            buffer = gtpin->getGTPinInfoBuffer(size);
+        }
     }
 
     return VISA_SUCCESS;
