@@ -6140,30 +6140,37 @@ void G4_Kernel::calculateSimdSize()
         return;
     }
 
-    simdSize = 8;
-
-    for (auto bb : fg)
+    // First, get simdsize from attribute (0 : not given)
+    // If not 0|8|16|32, wrong value from attribute.
+    simdSize = m_kernelAttrs->getIntKernelAttribute(Attributes::ATTR_SimdSize);
+    if (simdSize != 8 && simdSize != 16 && simdSize != 32)
     {
-        for (auto inst : *bb)
+        assert(simdSize == 0 && "vISA: wrong value for SimdSize attribute");
+        simdSize = 8;
+
+        for (auto bb : fg)
         {
-            // do not consider send since for certain messages we have to set its execution size
-            // to 16 even in simd8 shaders
-            if (!inst->isLabel() && !inst->isSend())
+            for (auto inst : *bb)
             {
-                uint32_t size = inst->getMaskOffset() + inst->getExecSize();
-                if (size > 16)
+                // do not consider send since for certain messages we have to set its execution size
+                // to 16 even in simd8 shaders
+                if (!inst->isLabel() && !inst->isSend())
                 {
-                    simdSize = 32;
-                    break;
-                }
-                else if (size > 8)
-                {
-                    simdSize = 16;
+                    uint32_t size = inst->getMaskOffset() + inst->getExecSize();
+                    if (size > 16)
+                    {
+                        simdSize = 32;
+                        break;
+                    }
+                    else if (size > 8)
+                    {
+                        simdSize = 16;
+                    }
                 }
             }
+            if (simdSize == 32)
+                break;
         }
-        if (simdSize == 32)
-            break;
     }
 
     if(GlobalRA::useGenericAugAlign())
