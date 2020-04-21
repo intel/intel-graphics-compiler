@@ -846,7 +846,7 @@ const llvm::StringRef PreBIImportAnalysis::OCL_GET_GLOBAL_OFFSET = "_Z17get_glob
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_LOCAL_ID = "_Z12get_local_idj";
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_GROUP_ID = "_Z12get_group_idj";
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID_SPIRV = "__builtin_spirv_BuiltInSubgroupId";
-const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID = "get_sub_group_id";
+const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID = "_Z16get_sub_group_idv";
 
 PreBIImportAnalysis::PreBIImportAnalysis() : ModulePass(ID)
 {
