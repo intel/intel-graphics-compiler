@@ -3056,18 +3056,11 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
         DirectOutputPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x10) != 0;
     }
 
-    Instruction* nextII = nullptr;
     while (BBSplit)
     {
         BBSplit = false;
-        for (auto iter = BB->begin();iter != BB->end() ;iter++)
+        for (auto& II : *BB)
         {
-            if (nextII && iter != nextII->getIterator())
-            {
-                iter = nextII->getIterator();
-            }
-            Instruction& II = *iter;
-            nextII = II.getNextNode();
             SmallVector<Instruction*, 4> Values;
             bool OptCandidate = false;
             Instruction* Root = &II;
@@ -3142,9 +3135,9 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
 
             if (OptCandidate)
             {
-                BasicBlock* BB1 = tryFoldAndSplit(Values, Root,
+                BB = tryFoldAndSplit(Values, Root,
                     FoldThreshold, FoldThresholdMultiChannel, RatioNeeded);
-                BBSplit = (BB1 != nullptr);
+                BBSplit = (BB != nullptr);
 
                 if (BBSplit)
                     break;
