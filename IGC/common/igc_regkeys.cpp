@@ -444,12 +444,12 @@ static const char* ConvertType(const char* flagType)
     }
     return flagType;
 }
+
 #define DECLARE_IGC_REGKEY( dataType, regkeyName, defaultValue, descriptionText, releaseMode ) \
-    fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\\%s\" description=\"%s\" />\n", \
-        #regkeyName,                                                                             \
-        ConvertType(#dataType),                                                                               \
-        "HKLM\\" IGC_REGISTRY_KEY,                                                              \
-        "",                                                                                     \
+    fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\" description=\"%s\" />\n",    \
+        #regkeyName,                                                                           \
+        ConvertType(#dataType),                                                                \
+        "HKLM\\" IGC_REGISTRY_KEY,                                                             \
         descriptionText);
 #define DECLARE_IGC_GROUP( groupName ) \
     if(!firstGroup)                    \
@@ -509,11 +509,10 @@ void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned lon
     std::string registryKeyPath = "HKLM\\SYSTEM\\ControlSet001\\Control\\Class\\" + driverRegistryPath + "\\IGC";
 
 #define DECLARE_IGC_REGKEY( dataType, regkeyName, defaultValue, descriptionText, releaseMode ) \
-    fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\\%s\" description=\"%s\" />\n", \
-        #regkeyName,                                                                             \
-        ConvertType(#dataType),                                                                               \
-        registryKeyPath.c_str(),                                                              \
-        "",                                                                                     \
+    fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\" description=\"%s\" />\n",    \
+        #regkeyName,                                                                           \
+        ConvertType(#dataType),                                                                \
+        registryKeyPath.c_str(),                                                               \
         descriptionText);
 
 #define DECLARE_IGC_GROUP( groupName ) \
