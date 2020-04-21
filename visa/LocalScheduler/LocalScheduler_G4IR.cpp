@@ -219,8 +219,14 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager& m, G4_BB* block,
     {
         ddd.pairTypedWriteOrURBWriteNodes(bb);
     }
-
-    lastCycle = ddd.listSchedule(this);
+    if (getOptions()->getOption(vISA_ScheduleForReadSuppression) && ddd.getIsThreeSourceBlock())
+    {
+        lastCycle = ddd.listScheduleForSuppression(this);
+    }
+    else
+    {
+        lastCycle = ddd.listSchedule(this);
+    }
 
     if (getOptions()->getOption(vISA_DumpSchedule))
     {
@@ -784,7 +790,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
     int nextInstRegs[2][G4_MAX_SRCS];
     bool isCurrScalar[G4_MAX_SRCS] = { false, false, false, false };
     bool isNextScalar[G4_MAX_SRCS] = { false, false, false, false };
-    int execSize = 0;
+    int opndSize = 0;
 
     //Get the sources of previous instruction
     for (unsigned i = 0; i < 3; i++)
@@ -800,14 +806,14 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
                 srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
             {
                 G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
-                execSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
+                opndSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     currInstRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
 
-                    if (execSize > 32)
+                    if (opndSize > getGRFSize())
                     {
-                        currInstRegs[1][i] = currInstRegs[0][i] + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+                        currInstRegs[1][i] = currInstRegs[0][i] + (opndSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
                     }
                     else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
                     {
@@ -833,16 +839,16 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
                 srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
             {
                 G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
-                execSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
+                opndSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     nextInstRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
 
                     liveSrc.set(nextInstRegs[0][i], true);  //Set live
 
-                    if (execSize > 32)
+                    if (opndSize > getGRFSize())
                     {
-                        int reg = nextInstRegs[0][i] + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+                        int reg = nextInstRegs[0][i] + (opndSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
                         nextInstRegs[1][i] =  reg;
                         liveSrc.set(reg, true);  //Set live
                     }
@@ -869,17 +875,17 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
         !nextDstOpnd->isIndirect() &&
         nextDstOpnd->isGreg())
     {
-        execSize = nextDstOpnd->getLinearizedEnd() - nextDstOpnd->getLinearizedStart() + 1;
+        opndSize = nextDstOpnd->getLinearizedEnd() - nextDstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = nextDstOpnd->getLinearizedStart();
         dstReg0 = byteAddress / GENX_GRF_REG_SIZ;
         liveDst.set(dstReg0, true);
-        if (execSize <= 32)
+        if (opndSize <= getGRFSize())
         {
             nextInstSimd8 = true;
         }
         else
         {
-            dstReg1 = dstReg0 + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+            dstReg1 = dstReg0 + (opndSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
             liveDst.set(dstReg1, true);
         }
     }
@@ -893,7 +899,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
         !dstOpnd->isIndirect() &&
         dstOpnd->isGreg())
     {
-        execSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
+        opndSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
         dstReg0 = byteAddress / GENX_GRF_REG_SIZ;
         //If there is RAW and WAW dependence
@@ -902,13 +908,13 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
             return false;
         }
 
-        if (execSize <= 32)
+        if (opndSize <= getGRFSize())
         {
             curInstSimd8 = true;
         }
         else
         {
-            dstReg1 = dstReg0 + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+            dstReg1 = dstReg0 + (opndSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
 
             //If there is RAW and WAW dependence
             if (liveSrc.isSet(dstReg1) || liveDst.isSet(dstReg1))
@@ -968,7 +974,7 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst, BitSet &liveD
     return false;
 }
 
-bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
+bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSuppression)
 {
     //Not three source
     if (nextInst->getNumSrc() != 3 || nextInst->isSend())
@@ -1012,7 +1018,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
     int nextInstRegs[2][G4_MAX_SRCS];
     bool isCurrScalar[G4_MAX_SRCS] = { false, false, false, false };
     bool isNextScalar[G4_MAX_SRCS] = { false, false, false, false };
-    int execSize = 0;
+    int opndSize = 0;
 
     //Get the sources of previous instruction
     for (unsigned i = 0; i < 3; i++)
@@ -1028,14 +1034,14 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
                 srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
             {
                 G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
-                execSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
+                opndSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     currInstRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
 
-                    if (execSize > 32)
+                    if (opndSize > getGRFSize())
                     {
-                        currInstRegs[1][i] = currInstRegs[0][i] + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+                        currInstRegs[1][i] = currInstRegs[0][i] + (opndSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
                     }
                     else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
                     {
@@ -1061,14 +1067,14 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
                 srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
             {
                 G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
-                execSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
+                opndSize = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
                     nextInstRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
 
-                    if (execSize > 32)
+                    if (opndSize > getGRFSize())
                     {
-                        int reg = nextInstRegs[0][i] + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+                        int reg = nextInstRegs[0][i] + (opndSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
                         nextInstRegs[1][i] = reg;
                     }
                     if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
@@ -1094,16 +1100,16 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
         !nextDstOpnd->isIndirect() &&
         nextDstOpnd->isGreg())
     {
-        execSize = nextDstOpnd->getLinearizedEnd() - nextDstOpnd->getLinearizedStart() + 1;
+        opndSize = nextDstOpnd->getLinearizedEnd() - nextDstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = nextDstOpnd->getLinearizedStart();
         dstReg0 = byteAddress / GENX_GRF_REG_SIZ;
-        if (execSize <= 32)
+        if (opndSize <= getGRFSize())
         {
             nextInstSimd8 = true;
         }
         else
         {
-            dstReg1 = dstReg0 + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+            dstReg1 = dstReg0 + (opndSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
         }
     }
 
@@ -1116,17 +1122,17 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
         !dstOpnd->isIndirect() &&
         dstOpnd->isGreg())
     {
-        execSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
+        opndSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
         dstReg0 = byteAddress / GENX_GRF_REG_SIZ;
 
-        if (execSize <= 32)
+        if (opndSize <= getGRFSize())
         {
             curInstSimd8 = true;
         }
         else
         {
-            dstReg1 = dstReg0 + (execSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+            dstReg1 = dstReg0 + (opndSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
         }
     }
 
@@ -1143,6 +1149,7 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
         }
     }
 
+    int  suppressionSrcs = 0;
     //For TGL, src0 support read suppresion as well
     if (kernel->fg.builder->hasSrc0ReadSuppression())
     {
@@ -1151,7 +1158,11 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
             //No scalar supperssion
             if (!((!kernel->fg.builder->hasScalarReadSuppression()) && (isCurrScalar[0] || isNextScalar[0])))
             {
-                return true;
+                if (!multiSuppression)
+                {
+                    return true;
+                }
+                suppressionSrcs++;
             }
         }
     }
@@ -1164,7 +1175,11 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
         //No scalar supperssion
         if (!((!kernel->fg.builder->hasScalarReadSuppression()) && (isCurrScalar[1] || isNextScalar[1])))
         {
-            return true;
+            if (!multiSuppression)
+            {
+                return true;
+            }
+            suppressionSrcs++;
         }
     }
 
@@ -1173,11 +1188,15 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst)
         //No scalar supperssion
         if (!((!kernel->fg.builder->hasScalarReadSuppression()) && (isCurrScalar[2] || isNextScalar[2])))
         {
-            return true;
+            if (!multiSuppression)
+            {
+                return true;
+            }
+            suppressionSrcs++;
         }
     }
 
-    return false;
+    return suppressionSrcs > 1;
 }
 
 
@@ -1198,6 +1217,7 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
     HWthreadsPerEU = k->getNumThreads();
     useMTLatencies = getBuilder()->useMultiThreadLatency();
     totalGRFNum = kernel->getNumRegTotal();
+    isThreeSouceBlock = false;
     bool BTIIsRestrict = getOptions()->getOption(vISA_ReorderDPSendToDifferentBti);
 
     GRF_BUCKET = 0;
@@ -1217,6 +1237,7 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
     std::list<G4_INST*>::reverse_iterator iInst(bb->rbegin()), iInstEnd(bb->rend());
     std::vector<BucketDescr> BDvec;
 
+    int threeSrcInstNUm = 0;
     for (int nodeId = (int)(bb->size() - 1); iInst != iInstEnd; ++iInst, nodeId--)
     {
         Node *node = nullptr;
@@ -1227,6 +1248,10 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
         bool hasIndir = false;
         BDvec.clear();
 
+        if (curInst->getNumSrc() == 3)
+        {
+            threeSrcInstNUm ++;
+        }
         if (getBuilder()->hasReadSuppression() &&
             getOptions()->getOption(vISA_EnableGroupScheduleForBC))
         {
@@ -1386,6 +1411,11 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
 
         // Insert this node into the graph.
         InsertNode(node);
+    }
+
+    if (Nodes.size())
+    {
+        isThreeSouceBlock = ((float)threeSrcInstNUm / Nodes.size()) > THREE_SOURCE_BLOCK_HERISTIC;
     }
 }
 
@@ -1923,11 +1953,138 @@ struct criticalCmp
             else
             {
                 return (*n1->getInstructions()).front()->getLocalId()
-                     > (*n2->getInstructions()).front()->getLocalId();
+            > (*n2->getInstructions()).front()->getLocalId();
             }
         }
     }
 };
+
+struct criticalCmpForMad
+{
+    criticalCmpForMad() = default;
+    bool operator()(const Node* n1, const Node* n2)
+    {
+        return (n1->getInstructions()->front()->getCISAOff() > n2->getInstructions()->front()->getCISAOff());
+    }
+};
+
+// 1).The priority queue is ordered as original sequence order.
+// 2).If there is a mad instruction be scheduled, trying to search the candidate which has read suppression in src1and src2.
+// 3).The scheduling is only applied to the BB whose instructions are mostly mad.
+// 4).This scheduling is not for general instruction scheduling, it's controlled by option vISA_ScheduleForReadSuppression
+uint32_t DDD::listScheduleForSuppression(G4_BB_Schedule* schedule)
+{
+    if (getOptions()->getOption(vISA_DumpDagDot))
+    {
+        dumpDagDot(schedule->getBB());
+        dumpNodes(schedule->getBB());
+    }
+
+    // All nodes in root set have no dependency
+    // so they can be immediately scheduled,
+    // and hence are added to readyList.
+    std::priority_queue<Node*, std::vector<Node*>, criticalCmpForMad> readyList;
+
+    // Nodes with their predecessors scheduled are pushed into the preReadyQueue
+    // They only get pushed into the real readyList if they are ready to issue,
+    // that is their earliest cycle is >= than the current schedule cycle.
+    std::priority_queue<Node*, std::vector<Node*>, earlyCmp> preReadyQueue;
+
+    collectRoots();
+    for (auto N : Roots) {
+        preReadyQueue.push(N);
+    }
+
+    // The scheduler's clock.
+    // This counter is updated in each loop iteration and its
+    // final value represents number of cycles the kernel would
+    // take to execute on the GPU as per the model.
+    uint32_t currCycle = 0;
+
+    // Used to avoid WAW subreg hazards
+    Node* lastScheduled = nullptr;
+
+    // Keep scheduling until both readyList or preReadyQueue contain instrs.
+    while (!(readyList.empty() && preReadyQueue.empty()))
+    {
+        Node* readyCandidate = preReadyQueue.empty() ? nullptr : preReadyQueue.top();
+        // While non empty, move nodes from preReadyQueue to readyList
+        while (readyCandidate)
+        {
+            readyList.push(readyCandidate);
+            preReadyQueue.pop();
+            readyCandidate = preReadyQueue.empty() ? nullptr : preReadyQueue.top();
+        }
+        // Nothing to issue at this cycle, increment scheduler clock
+        if (readyList.empty())
+        {
+            // readyCandidate is not nullptr. Proof: If it was nullptr, then both
+            // preReadyQueue and readyList would be empty. But this cannot
+            // happen because the while() loop will only enter if at least
+            // one of them is non-empty.
+            assert(readyCandidate && "Both readyList and preReadyQ empty!");
+            currCycle = readyCandidate->earliest;
+            continue;
+        }
+
+        // Pointer to node to be scheduled.
+        Node* scheduled = readyList.top();
+        readyList.pop();
+
+        assert(scheduled && "Must have found an instruction to schedule by now");
+
+        // Append the scheduled node to the end of the schedule.
+        schedule->scheduledNodes.push_back(scheduled);
+        lastScheduled = scheduled;
+
+        // Set the cycle at which this node is scheduled.
+        scheduled->schedTime = currCycle;
+
+        for (auto& curSucc : scheduled->succs)
+        {
+            Node* succ = curSucc.getNode();
+            // Recompute the earliest time for each successor.
+            if (scheduled->isLabel())
+            {
+                succ->earliest = 0;
+            }
+            else
+            {
+                // Update the earliest time of the successor and set its last scheduled
+                // predecessor with the largest latency to the currently scheduled node
+                // if the latency incurred by scheduling the successor right after the
+                // "scheduled" node is larger than successor's earliest time.
+                uint32_t latencyToAdd = 0;
+                uint32_t earliestNew = 0;
+                latencyToAdd = curSucc.getLatency() > scheduled->getOccupancy() ? curSucc.getLatency() : scheduled->getOccupancy();
+                earliestNew = scheduled->schedTime + latencyToAdd;
+
+                if (succ->earliest <= earliestNew || !succ->lastSchedPred)
+                {
+                    succ->lastSchedPred = scheduled;
+                }
+                succ->earliest = (succ->earliest > earliestNew) ? succ->earliest : earliestNew;
+            }
+            // Decrease the number of predecessors not scheduled for the successor node.
+            if ((--(succ->predsNotScheduled)) == 0)
+            {
+                preReadyQueue.push(succ);
+            }
+        }
+
+        // Increment the scheduler's clock after each scheduled node
+        currCycle += scheduled->getOccupancy();
+    }
+
+    // Sanity check: Make sure all nodes are scheduled
+#if defined(_DEBUG)
+    for (auto node : allNodes)
+    {
+        assert(node->schedTime != UINT_MAX && "Node not scheduled!");
+    }
+#endif
+    return currCycle;
+}
 
 // Perform local list scheduling
 uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)

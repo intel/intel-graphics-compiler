@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define EDGE_LATENCY_MATH_TYPE2 30
 #define EDGE_LATENCY_SEND_WAR 36
 
+#define THREE_SOURCE_BLOCK_HERISTIC 0.5
 namespace vISA {
 
 class Node;
@@ -249,6 +250,7 @@ class DDD {
     Edge_Allocator depEdgeAllocator;
     int HWthreadsPerEU;
     bool useMTLatencies;
+    bool isThreeSouceBlock;
     const LatencyTable LT;
 
     int GRF_BUCKET;
@@ -274,7 +276,7 @@ public:
     void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
 
     bool hasReadSuppression(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst, BitSet &liveSrc);
-    bool hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst);
+    bool hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multipSuppression);
 
     DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k);
     ~DDD()
@@ -293,6 +295,7 @@ public:
     void InsertNode(Node *node) { Nodes.push_back(node); }
     void dumpNodes(G4_BB *bb);
     void dumpDagDot(G4_BB *bb);
+    uint32_t listScheduleForSuppression(G4_BB_Schedule* schedule);
     uint32_t listSchedule(G4_BB_Schedule*);
     void setPriority(Node *pred, const Edge &edge);
     void createAddEdge(Node* pred, Node* succ, DepType d);
@@ -310,6 +313,7 @@ public:
     Mem_Manager* get_mem() { return &mem; }
     IR_Builder* getBuilder() const { return kernel->fg.builder; }
     const Options* getOptions() const { return kernel->getOptions(); }
+    bool getIsThreeSourceBlock() { return isThreeSouceBlock; }
 };
 
 class G4_BB_Schedule {
