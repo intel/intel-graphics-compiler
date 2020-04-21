@@ -131,7 +131,7 @@ namespace IGC
         uint offset = 0;
         //R0 is always allocated as a predefined variable. Increase offset for R0
         assert(m_R0);
-        offset += getGRFSize();
+        offset += 32;   //R0 is always 32 byte regardless of register size
 
         assert(m_R1);
         if (m_Signature)
@@ -141,7 +141,7 @@ namespace IGC
         for (uint i = 0; i < m_R1->GetNumberInstance(); i++)
         {
             AllocateInput(m_R1, offset, i);
-            offset += getGRFSize();
+            offset += (i == 0 && m_R1->GetNumberInstance() > 1) ? getGRFSize() : 32;
         }
 
         for (uint i = 0; i < m_numberInstance; i++)
@@ -814,7 +814,7 @@ namespace IGC
     void CPixelShader::PreCompile()
     {
         CreateImplicitArgs();
-        m_R1 = GetNewVariable((getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF, false, m_numberInstance);
+        m_R1 = GetNewVariable(8, ISA_TYPE_D, EALIGN_HWORD, false, m_numberInstance);
         CodeGenContext* ctx = GetContext();
 
         // make sure the return block is properly set

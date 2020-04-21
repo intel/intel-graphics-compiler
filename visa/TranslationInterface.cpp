@@ -7780,7 +7780,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                         "R,G,B,A for RT write must have the same type");
     }
 
-    auto mult = (execSize == 8)? 1 : 2;
+    auto mult = (execSize == getNativeExecSize() ? 1 : 2);
     mult = (FP16Data)? 1 : mult;
 
     //RGBA sr0Alpha take up one GRF in SIMD8 and SIMD16 modes.
@@ -7795,29 +7795,23 @@ int IR_Builder::translateVISARTWrite3DInst(
         ++numRows;
     }
 
-    if( cntrls.oMPresent && mult == 2 )
+    if (cntrls.oMPresent && mult == 2)
     {
         // oM is always 1 row irrespective of execSize
         numRows--;
     }
 
     //although for now HW only supports stencil in SIMD8 mode
-    if ( cntrls.isStencil  && mult == 2 )
+    if (cntrls.isStencil && mult == 2)
     {
         // stencil is always 1 row irrespective of execSize
         numRows--;
     }
 
-#define HEADER_OFFSET       GENX_GRF_REG_SIZ * 2
-#define HEADER_SIZE         GENX_SAMPLER_IO_SZ * 2
-#define RT_HEADER_SIZE      2
-    uint8_t headerSizeInDwords = HEADER_SIZE;
-    if (emask == vISA_EMASK_M5_NM || emask == vISA_EMASK_M5)
-    {
-        //For SIMD32 case when RT Write is split in to two SIMD16
-        //header information is expected in R0/R2 registers
-        headerSizeInDwords += GENX_SAMPLER_IO_SZ;
-    }
+    // header is always 64 byte
+    const int numDWInHeader = 16;
+    const int headerBytes = numDWInHeader * sizeof(int);
+    const int numHeaderGRF = numDWInHeader / getNativeExecSize();
 
     /*
         All other values should be set by default.
@@ -7830,7 +7824,7 @@ int IR_Builder::translateVISARTWrite3DInst(
     if (needsHeaderForMRT || cntrls.isSampleIndex)
     {
         useHeader = true;
-        numRows += RT_HEADER_SIZE;
+        numRows += numHeaderGRF;
     }
 
     bool useSplitSend = useSends();
@@ -7850,10 +7844,10 @@ int IR_Builder::translateVISARTWrite3DInst(
         if (useHeader)
         {
             //subtracting Header
-            numRows -= RT_HEADER_SIZE;
+            numRows -= numHeaderGRF;
             //creating header
-            msg = createSendPayloadDcl(GENX_SAMPLER_IO_SZ * RT_HEADER_SIZE, Type_UD);
-            msgF = createSendPayloadDcl(GENX_SAMPLER_IO_SZ * RT_HEADER_SIZE, Type_F);
+            msg = createSendPayloadDcl(numDWInHeader, Type_UD);
+            msgF = createSendPayloadDcl(numDWInHeader, Type_F);
             msgF->setAliasDeclare(msg, 0);
         }
         //creating payload
@@ -7876,19 +7870,19 @@ int IR_Builder::translateVISARTWrite3DInst(
         msgF->setAliasDeclare(msg, 0);
 
         //creating payload declarations.
-        payloadUD = createSendPayloadDcl(numElts - (useHeader ? HEADER_SIZE : 0), Type_UD);
-        payloadFOrHF = createSendPayloadDcl(numElts - (useHeader ? HEADER_SIZE : 0), FP16Data ? Type_HF : Type_F);
-        payloadUW = createSendPayloadDcl(numElts - (useHeader ? HEADER_SIZE : 0), Type_UW);
+        payloadUD = createSendPayloadDcl(numElts - (useHeader ? numDWInHeader : 0), Type_UD);
+        payloadFOrHF = createSendPayloadDcl(numElts - (useHeader ? numDWInHeader : 0), FP16Data ? Type_HF : Type_F);
+        payloadUW = createSendPayloadDcl(numElts - (useHeader ? numDWInHeader : 0), Type_UW);
         payloadF = createSendPayloadDcl(numElts, Type_F);
 
         //setting them to alias a top level decl with offset past the header
-        payloadUD->setAliasDeclare(msg, useHeader ? HEADER_OFFSET : 0);
-        payloadFOrHF->setAliasDeclare(msg, useHeader ? HEADER_OFFSET : 0);
-        payloadUW->setAliasDeclare(msg, useHeader ? HEADER_OFFSET : 0);
+        payloadUD->setAliasDeclare(msg, useHeader ? headerBytes : 0);
+        payloadFOrHF->setAliasDeclare(msg, useHeader ? headerBytes : 0);
+        payloadUW->setAliasDeclare(msg, useHeader ? headerBytes : 0);
         payloadF->setAliasDeclare(payloadUD, 0);
     }
 
-    if( useHeader )
+    if (useHeader)
     {
         ASSERT_USER(r1HeaderOpnd, "Second GRF for header that was passed in is NULL.");
         G4_DstRegRegion* payloadRegRgn = createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
@@ -7908,14 +7902,14 @@ int IR_Builder::translateVISARTWrite3DInst(
 #define SAMPLE_INDEX_OFFSET 6
         if (cntrls.isSampleIndex)
         {
-            G4_Declare *tmpDcl = createTempVar(2, Type_UD, Any);
-            G4_DstRegRegion *tmpDst = createDst(tmpDcl->getRegVar(), 0, 0, 1, Type_UD);
+            G4_Declare* tmpDcl = createTempVar(2, Type_UD, Any);
+            G4_DstRegRegion* tmpDst = createDst(tmpDcl->getRegVar(), 0, 0, 1, Type_UD);
 
             createBinOp(G4_shl, 1, tmpDst, sampleIndexOpnd, createImm(SAMPLE_INDEX_OFFSET, Type_UD), InstOpt_WriteEnable, true);
 
             G4_DstRegRegion* payloadUDRegRgn = createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
-            G4_SrcRegRegion *tmpSrc = createSrcRegRegion(Mod_src_undef, Direct, tmpDcl->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
-            G4_SrcRegRegion *payloadSrc = createSrcRegRegion(Mod_src_undef, Direct, msg->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+            G4_SrcRegRegion* tmpSrc = createSrcRegRegion(Mod_src_undef, Direct, tmpDcl->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+            G4_SrcRegRegion* payloadSrc = createSrcRegRegion(Mod_src_undef, Direct, msg->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
             createBinOp(G4_or, 1, payloadUDRegRgn, payloadSrc, tmpSrc, InstOpt_WriteEnable, true);
         }
 
@@ -7924,12 +7918,12 @@ int IR_Builder::translateVISARTWrite3DInst(
             G4_DstRegRegion* dstRTIRgn = createDst(msg->getRegVar(), 0, 2, 1, Type_UD);
 
             G4_INST* rtiMovInst = createMov(1, dstRTIRgn, rtIndex, InstOpt_NoOpt, true);
-            rtiMovInst->setOptionOn( InstOpt_WriteEnable );
+            rtiMovInst->setOptionOn(InstOpt_WriteEnable);
         }
 
         //if header is used, then predication value will need to be stored
         //in the header
-        if(useHeader && (pred || cntrls.isHeaderMaskfromCe0))
+        if (useHeader && (pred || cntrls.isHeaderMaskfromCe0))
         {
             //moving pixelMask in to payload
             G4_DstRegRegion* dstPixelMaskRgn = createDst(
@@ -7952,20 +7946,20 @@ int IR_Builder::translateVISARTWrite3DInst(
                 //         M0 : WAce0.0; M16 : WAce0.1
                 createMov(1, flag, createImm(0, Type_UW), InstOpt_WriteEnable, true);
 
-                G4_SrcRegRegion *r0_0 = createSrcRegRegion(
+                G4_SrcRegRegion* r0_0 = createSrcRegRegion(
                     Mod_src_undef, Direct,
                     getRealR0()->getRegVar(), 0, 0,
                     getRegionStride1(), Type_UW);
-                G4_SrcRegRegion *r0_1 = createSrcRegRegion(
+                G4_SrcRegRegion* r0_1 = createSrcRegRegion(
                     Mod_src_undef, Direct,
                     getRealR0()->getRegVar(), 0, 0,
                     getRegionStride1(), Type_UW);
-                G4_DstRegRegion *nullDst = createNullDst(Type_UW);
+                G4_DstRegRegion* nullDst = createNullDst(Type_UW);
                 G4_CondMod* flagCM = createCondMod(Mod_e, flagVar, 0);
                 createInst(NULL, G4_cmp, flagCM, false, 16, nullDst,
                     r0_0, r0_1, Option);
 
-                G4_SrcRegRegion *flagSrc = createSrcRegRegion(
+                G4_SrcRegRegion* flagSrc = createSrcRegRegion(
                     Mod_src_undef, Direct,
                     flagVar, 0,
                     Option == InstOpt_M16 ? 1 : 0,
@@ -7975,7 +7969,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                 createMov(1, dstPixelMaskRgn, flagSrc, InstOpt_WriteEnable, true);
             };
 
-            G4_SrcRegRegion *pixelMask = NULL;
+            G4_SrcRegRegion* pixelMask = NULL;
             if (emask == vISA_EMASK_M5_NM || emask == vISA_EMASK_M5)
             {
                 if (pred)
@@ -7983,12 +7977,12 @@ int IR_Builder::translateVISARTWrite3DInst(
                     //this is a Second half of a SIMD32 RT write. We need to get second half of flag register.
                     //mov whole register in to GRF, move second word of it in to payload.
 
-                    G4_SrcRegRegion *pixelMaskTmp = createSrcRegRegion(
-                            Mod_src_undef, Direct,
-                            pred->getBase()->asRegVar(), 0, 0,
-                            getRegionScalar(), Type_UD);
-                    G4_Declare *tmpDcl = createTempVar(1, Type_UD, Any);
-                    G4_DstRegRegion *tmpDst = createDst(tmpDcl->getRegVar(), 0, 0, 1, Type_UD);
+                    G4_SrcRegRegion* pixelMaskTmp = createSrcRegRegion(
+                        Mod_src_undef, Direct,
+                        pred->getBase()->asRegVar(), 0, 0,
+                        getRegionScalar(), Type_UD);
+                    G4_Declare* tmpDcl = createTempVar(1, Type_UD, Any);
+                    G4_DstRegRegion* tmpDst = createDst(tmpDcl->getRegVar(), 0, 0, 1, Type_UD);
                     createMov(1, tmpDst, pixelMaskTmp, InstOpt_WriteEnable, true);
 
                     pixelMask = createSrcRegRegion(Mod_src_undef, Direct,
@@ -8005,7 +7999,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                     }
                     else
                     {
-                        G4_SrcRegRegion *ce0 = createSrcRegRegion(
+                        G4_SrcRegRegion* ce0 = createSrcRegRegion(
                             Mod_src_undef, Direct,
                             phyregpool.getMask0Reg(), 0, 0,
                             getRegionScalar(), Type_UD);
@@ -8035,7 +8029,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                     }
                     else
                     {
-                        G4_SrcRegRegion *ce0 = createSrcRegRegion(
+                        G4_SrcRegRegion* ce0 = createSrcRegRegion(
                             Mod_src_undef, Direct,
                             phyregpool.getMask0Reg(), 0, 0,
                             getRegionScalar(), Type_UD);
@@ -8053,34 +8047,34 @@ int IR_Builder::translateVISARTWrite3DInst(
 
         //setting first DWORD of MHC_RT_C0 - Render Target Message Header Control
 
-        if( cntrls.isStencil )
+        if (cntrls.isStencil)
         {
-            orImmVal = ( 0x1 << 14 );
+            orImmVal = (0x1 << 14);
         }
 
-        if( cntrls.zPresent )
+        if (cntrls.zPresent)
         {
-            orImmVal = ( 0x1 << 13 );
+            orImmVal = (0x1 << 13);
         }
 
-        if( cntrls.oMPresent )
+        if (cntrls.oMPresent)
         {
-            orImmVal |= ( 0x1 << 12 );
+            orImmVal |= (0x1 << 12);
         }
 
-        if( cntrls.s0aPresent )
+        if (cntrls.s0aPresent)
         {
-            orImmVal |= ( 0x1 << 11 );
+            orImmVal |= (0x1 << 11);
         }
 
-        if( orImmVal != 0 )
+        if (orImmVal != 0)
         {
             G4_SrcRegRegion* immSrcRegRgn = createSrcRegRegion(Mod_src_undef, Direct, msg->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
 
             G4_DstRegRegion* immDstRegRgn = createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
 
-            G4_INST* immOrInst = createBinOp(G4_or, 1, immDstRegRgn, immSrcRegRgn, createImm( orImmVal, Type_UD ), InstOpt_WriteEnable, true );
-            immOrInst->setOptionOn( InstOpt_WriteEnable );
+            G4_INST* immOrInst = createBinOp(G4_or, 1, immDstRegRgn, immSrcRegRgn, createImm(orImmVal, Type_UD), InstOpt_WriteEnable, true);
+            immOrInst->setOptionOn(InstOpt_WriteEnable);
         }
     }
 
@@ -8100,44 +8094,44 @@ int IR_Builder::translateVISARTWrite3DInst(
         A->isNullReg())
         canCoalesce = false;
 
-    if( canCoalesce && cntrls.s0aPresent)
+    if (canCoalesce && cntrls.s0aPresent)
     {
         prevRawOpnd = s0a;
         offset = getByteOffsetSrcRegion(s0a);
     }
 
-    if( canCoalesce && cntrls.oMPresent )
+    if (canCoalesce && cntrls.oMPresent)
     {
         //by default it will check based on first opnd type, but that can be HF, F, we need second operand type
         //according to spec oM is UW
-        canCoalesce = checkIfRegionsAreConsecutive( prevRawOpnd, oM, execSize, oM->getType() );
+        canCoalesce = checkIfRegionsAreConsecutive(prevRawOpnd, oM, execSize, oM->getType());
         prevRawOpnd = oM;
-        if( offset == UNINITIALIZED_DWORD )
+        if (offset == UNINITIALIZED_DWORD)
         {
             offset = getByteOffsetSrcRegion(oM);
         }
     }
 
-    if( canCoalesce )
+    if (canCoalesce)
     {
-        if( execSize == 16 && cntrls.oMPresent )
+        if (execSize == 16 && cntrls.oMPresent)
         {
             // oM is 1 GRF for SIMD16 since it is UW type
-            canCoalesce = checkIfRegionsAreConsecutive( oM, R, execSize, Type_UW );
+            canCoalesce = checkIfRegionsAreConsecutive(oM, R, execSize, Type_UW);
             prevRawOpnd = R;
         }
         else
         {
-            canCoalesce = checkIfRegionsAreConsecutive( prevRawOpnd, R, execSize );
+            canCoalesce = checkIfRegionsAreConsecutive(prevRawOpnd, R, execSize);
             prevRawOpnd = R;
         }
 
-        if( offset == UNINITIALIZED_DWORD )
+        if (offset == UNINITIALIZED_DWORD)
         {
             offset = getByteOffsetSrcRegion(prevRawOpnd);
         }
 
-        if( canCoalesce )
+        if (canCoalesce)
         {
             auto tempExecSize = execSize;
             if (FP16Data && execSize == 8)
@@ -8146,7 +8140,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                 checkIfRegionsAreConsecutive(G, B, tempExecSize) &&
                 checkIfRegionsAreConsecutive(B, A, tempExecSize);
             prevRawOpnd = A;
-            if( offset == UNINITIALIZED_DWORD )
+            if (offset == UNINITIALIZED_DWORD)
             {
                 offset = getByteOffsetSrcRegion(A);
                 if (FP16Data && execSize == 8)
@@ -8155,15 +8149,15 @@ int IR_Builder::translateVISARTWrite3DInst(
         }
     }
 
-    if( canCoalesce && cntrls.zPresent )
+    if (canCoalesce && cntrls.zPresent)
     {
-        canCoalesce = checkIfRegionsAreConsecutive( prevRawOpnd, Z, execSize );
+        canCoalesce = checkIfRegionsAreConsecutive(prevRawOpnd, Z, execSize);
         prevRawOpnd = Z;
     }
 
-    if( canCoalesce && cntrls.isStencil )
+    if (canCoalesce && cntrls.isStencil)
     {
-        canCoalesce = checkIfRegionsAreConsecutive( prevRawOpnd, S, execSize );
+        canCoalesce = checkIfRegionsAreConsecutive(prevRawOpnd, S, execSize);
         prevRawOpnd = S;
     }
 
@@ -8299,7 +8293,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         if (useHeader)
         {
             m0 = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
-            msgDesc = createSendMsgDesc(fc, 0, RT_HEADER_SIZE, SFID::DP_WRITE, numRows,
+            msgDesc = createSendMsgDesc(fc, 0, numHeaderGRF, SFID::DP_WRITE, numRows,
                 0, SendAccess::WRITE_ONLY, surface);
             msgDesc->setHeaderPresent(useHeader);
         }
