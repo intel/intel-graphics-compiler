@@ -2222,6 +2222,7 @@ namespace IGC
             vertexData));
     }
 
+
     VISA_RawOpnd* CEncoder::GetRawSource(CVariable* var, uint offset)
     {
         VISA_RawOpnd* srcOpnd = nullptr;

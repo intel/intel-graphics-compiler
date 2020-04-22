@@ -387,6 +387,8 @@ namespace IGC
         std::string GetVariableName(CVariable* var);
         std::string GetDumpFileName(std::string extension);
 
+
+
     private:
         // helper functions
         VISA_VectorOpnd* GetSourceOperand(CVariable* var, const SModifier& mod);

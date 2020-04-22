@@ -1025,7 +1025,7 @@ namespace IGC
 
         AddAnalysisPasses(*ctx, PassMgr);
 
-        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false);
+        AddCodeGenPasses(*ctx, shaders, PassMgr, ctx->platform.getMinDispatchMode(), false);
 
         COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
 

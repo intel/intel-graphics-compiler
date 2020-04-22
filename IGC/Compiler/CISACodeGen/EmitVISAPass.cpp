@@ -6245,6 +6245,7 @@ void EmitPass::emitURBWrite(llvm::GenIntrinsicInst* inst)
             m_DL,
             inst,
             payloadElementOffset);
+
         m_encoder->URBWrite(payload, payloadElementOffset, offset, URBHandle, channelMask);
         m_encoder->Push();
     }

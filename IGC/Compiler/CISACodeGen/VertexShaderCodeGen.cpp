@@ -154,7 +154,7 @@ namespace IGC
 
     void CShaderProgram::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     {
-        CVertexShader* pShader = static_cast<CVertexShader*>(GetShader(SIMDMode::SIMD8));
+        CVertexShader* pShader = static_cast<CVertexShader*>(GetShader(m_context->platform.getMinDispatchMode()));
         pShader->FillProgram(pKernelProgram);
     }
 
@@ -226,7 +226,7 @@ namespace IGC
     void CVertexShader::PreCompile()
     {
         CreateImplicitArgs();
-        m_R1 = GetNewVariable(8, ISA_TYPE_D, EALIGN_GRF);
+        m_R1 = GetNewVariable(numLanes(m_Platform->getMinDispatchMode()), ISA_TYPE_D, EALIGN_GRF);
     }
 
     void CVertexShader::AddPrologue()
