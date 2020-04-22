@@ -3059,8 +3059,15 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
     while (BBSplit)
     {
         BBSplit = false;
-        for (auto& II : *BB)
+        Instruction* nextII = nullptr;
+        for (auto iter = BB->begin();iter != BB->end() ;iter++)
         {
+            if (nextII && iter != nextII->getIterator())
+            {
+                iter = nextII->getIterator();
+            }
+            Instruction& II = *iter;
+            nextII = II.getNextNode();
             SmallVector<Instruction*, 4> Values;
             bool OptCandidate = false;
             Instruction* Root = &II;
@@ -3135,12 +3142,15 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
 
             if (OptCandidate)
             {
-                BB = tryFoldAndSplit(Values, Root,
+                BasicBlock* BB1 = tryFoldAndSplit(Values, Root,
                     FoldThreshold, FoldThresholdMultiChannel, RatioNeeded);
-                BBSplit = (BB != nullptr);
+                BBSplit = (BB1 != nullptr);
 
                 if (BBSplit)
+                {
+                    BB = BB1;
                     break;
+                }
             }
         }
 
