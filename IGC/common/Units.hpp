@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Debug.hpp"
 #include <limits>
 #include <type_traits>
+#include "Probe.h"
 
 template<typename T, typename TUnder = unsigned int, int TRatio = T::ratio>
 class Unit
@@ -68,8 +69,8 @@ public:
     template<typename R>
     Unit<T, TUnder> operator =(Unit<R, TUnder> other)
     {
-        assert( other.m_value % T::ratio == 0 &&
-                "Invalid assignment: resulting count is not a whole number" );
+        IGC_ASSERT(other.m_value % T::ratio == 0 &&
+                "Invalid assignment: resulting count is not a whole number");
         this->m_value = other.m_value;
         return *this;
     }
@@ -146,7 +147,7 @@ public:
         }
         else
         {
-            assert( 0 && "Corrupted value of a unit, should be a multiple of the ratio." );
+            IGC_ASSERT(0 && "Corrupted value of a unit, should be a multiple of the ratio.");
             return 0;
         }
     }
@@ -219,8 +220,8 @@ private:
             "Size of the unit on the right hand side of operator + must be equal to"
             "or a multiple of the left-hand unit size.");
 
-        assert( (other.m_value % T::ratio == 0) &&
-            "Invalid addition: resulting count is not a whole number" );
+        IGC_ASSERT((other.m_value % T::ratio == 0) &&
+            "Invalid addition: resulting count is not a whole number");
         Unit<T, TUnder> res;
         res.m_value = this->m_value + other.m_value;
         return res;
@@ -236,8 +237,8 @@ private:
             "Size of the unit on the right hand side of operator- must be equal to"
             "or a multiple of the left-hand unit size.");
 
-        assert( (other.m_value % T::ratio == 0) &&
-            "Invalid subtraction: resulting count is not a whole number" );
+        IGC_ASSERT((other.m_value % T::ratio == 0) &&
+            "Invalid subtraction: resulting count is not a whole number");
         Unit<T, TUnder> res;
         res.m_value = this->m_value - other.m_value;
         return res;
@@ -253,8 +254,8 @@ private:
             "Size of the unit on the right hand side of operator- must be equal to"
             "or a multiple of the left-hand unit size.");
 
-        assert( (other.m_value % T::ratio == 0) &&
-            "Invalid subtraction: resulting count is not a whole number" );
+        IGC_ASSERT((other.m_value % T::ratio == 0) &&
+            "Invalid subtraction: resulting count is not a whole number");
         Unit<T, TUnder> res;
         res.m_value = other.m_value - this->m_value;
         return res;
