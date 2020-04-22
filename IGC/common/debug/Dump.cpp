@@ -258,14 +258,16 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
                << "_";
         }
 
-        ss << (underscore ? "_" : "")
-            << "asm"
-            << std::hex
-            << std::setfill('0')
-            << std::setw(sizeof(m_hash->asmHash) * CHAR_BIT / 4)
-            << m_hash->asmHash
-            << std::dec
-            << std::setfill(' ');
+        if (m_hash->asmHash != 0) {
+            ss << (underscore ? "_" : "")
+                << "asm"
+                << std::hex
+                << std::setfill('0')
+                << std::setw(sizeof(m_hash->asmHash) * CHAR_BIT / 4)
+                << m_hash->asmHash
+                << std::dec
+                << std::setfill(' ');
+        }
 
         if (m_hash->nosHash != 0)
         {
@@ -302,6 +304,7 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
                 << std::dec
                 << std::setfill(' ');
         }
+
         underscore = true;
     }
     if(m_pass.hasValue())

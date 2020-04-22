@@ -40,34 +40,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #include "IGC/common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
-
-class ShaderHash;
+#include "IGC/common/shaderHash.hpp"
 namespace USC
 {
     struct ShaderD3D;
 }
 
-
-
-class ShaderHash
-{
-public:
-    ShaderHash()
-        : asmHash(0)
-        , nosHash(0)
-        , psoHash(0)
-        , perShaderPsoHash(0)
-    {}
-    QWORD getAsmHash() const { return asmHash; }
-    QWORD getNosHash() const { return nosHash; }
-    QWORD getPsoHash() const { return psoHash; }
-    QWORD getPerShaderPsoHash() const { return perShaderPsoHash; }
-
-    QWORD asmHash;
-    QWORD nosHash;
-    QWORD psoHash;
-    QWORD perShaderPsoHash;
-};
 
 enum class SIMDMode : unsigned char
 {
