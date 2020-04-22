@@ -261,6 +261,10 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         {
             forceDebugSWSB(m_kernel);
         }
+        if (getOptions()->getOption(vISA_DumpDotAll))
+        {
+            m_kernel->dumpDotFile("SWSB");
+        }
     }
 
     if (getOptions()->getuInt32Option(vISA_SWSBTokenBarrier) != 0)
