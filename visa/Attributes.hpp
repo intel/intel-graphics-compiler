@@ -45,6 +45,7 @@ namespace vISA
         struct SAttrInfo
         {
             const char* m_attrName;
+            const uint32_t m_attrNameBytes;  // strlen(m_attrName)
             SAttrVal   m_defaultVal;
         };
 
@@ -63,7 +64,7 @@ namespace vISA
             ATTR_Target = ATTR_START_INT_KERNEL_ATTR,
             ATTR_SLMSize,
             ATTR_SurfaceUsage,
-            ATTR_SpillMemOffset,
+            ATTR_SpillMemOffset,       // Offset at which spill/fill starts
             ATTR_ArgSize,
             ATTR_RetValSize,
             ATTR_FESPSize,

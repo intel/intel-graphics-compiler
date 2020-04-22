@@ -7308,7 +7308,7 @@ void GraphColor::addCalleeSaveRestoreCode()
 //
 void GraphColor::addGenxMainStackSetupCode()
 {
-    uint32_t fpInitVal = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
+    uint32_t fpInitVal = (uint32_t)kernel.getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
     // FIXME: a potential failure here is that paramOverflowAreaOffset is already the offset based on
     // GlobalSratchOffset, which is the value of fpInitVal. So below we generate code to do
     // SP = fpInitVal + frameSize, which does not make sense. It is correct now since when there's stack call,
@@ -9221,7 +9221,7 @@ int GlobalRA::coloringRegAlloc()
 
     std::vector<SpillManagerGRF::EDGE> prevIntfEdges;
 
-    int globalScratchOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
+    int globalScratchOffset = kernel.getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
     bool useScratchMsgForSpill = globalScratchOffset < (int) (SCRATCH_MSG_LIMIT * 0.6) && !hasStackCall;
     bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
 

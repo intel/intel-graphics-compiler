@@ -202,11 +202,6 @@ bool Options::parseOptions(int argc, const char* argv[])
         target = VISA_3D;
     }
 
-    if (m_vISAOptions.isArgSetByUser(vISA_SpillMemOffset)) {
-        assert((m_vISAOptions.getUint32(vISA_SpillMemOffset)
-                & (GENX_GRF_REG_SIZ - 1)) == 0
-               && "-spilloffset is mis-aligned");
-    }
     if (m_vISAOptions.isArgSetByUser(vISA_ReservedGRFNum)) {
         if (m_vISAOptions.getUint32(vISA_ReservedGRFNum)) {
             m_vISAOptions.setBool(vISA_LocalBankConflictReduction, false);

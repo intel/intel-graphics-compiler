@@ -8136,14 +8136,6 @@ void VISAKernelImpl::processAttributes()
   {
     m_builder->set64BitFEStackVars();
   }
-  int spillMemOffset = 0;
-  if (getIntKernelAttributeValue("SpillMemOffset", spillMemOffset))
-  {
-    if (spillMemOffset > 0)
-    {
-      getOptions()->setOption(vISA_SpillMemOffset, (uint32_t)spillMemOffset);
-    }
-  }
 }
 
 void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)

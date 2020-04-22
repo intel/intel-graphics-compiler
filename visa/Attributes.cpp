@@ -31,44 +31,48 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace vISA;
 
-// The entry of this array must match to its corresponding Attributes::ID
+#define  ATTR_ENTRY(S, default)  { S, sizeof(S) - 1, default }
+
+// The entry of this array must match to its corresponding attribute enum !
 Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
 {
-  /* Attribute Enum */             /* Attribute Name */       /* Default value */
+  /* ATTR_ENTRY(AttrName, DefaultValue) */       /* Attribute Enum */
 
   /////////////////////////////////////
   /////      Kernel Attributes     ////
   /////////////////////////////////////
-  /* ATTR_Target */                { "Target",                VISA_CM },
-  /* ATTR_SLMSize */               { "SLMSIZE",               0 },
-  /* ATTR_SurfaceUsage */          { "SurfaceUsage",          0 },
-  /* ATTR_SpillMemOffset */        { "SpillMemOffset",        0 },
-  /* ATTR_ArgSize */               { "ArgSize",               0 },
-  /* ATTR_RetValSize */            { "RetValSize",            0 },
-  /* ATTR_FESPSize */              { "FESPSize",              0 },
-  /* ATTR_PerThreadInputSize */    { "PerThreadInputSize",    0 },
-  /* ATTR_Extern */                { "Extern",                0 },
-  /* ATTR_NoBarrier */             { "NoBarrier",             0 },
-  /* ATTR_SIMDSIZE */              { "SimdSize",              0 },
-  /* ATTR_OuputAsmPath */          { "OutputAsmPath",         (const char*)0 },
-  /* ATTR_Entry */                 { "Entry",                 (const char*)0 },
-  /* ATTR_Callable */              { "Callable",              (const char*)0 },
-  /* ATTR_Caller */                { "Caller",                (const char*)0 },
-  /* ATTR_Composable */            { "Composable",            (const char*)0 },
+  ATTR_ENTRY("Target",  VISA_CM) ,               /* ATTR_Target */
+  ATTR_ENTRY("SLMSIZE", 0 ) ,                    /* ATTR_SLMSize */
+  ATTR_ENTRY("SurfaceUsage", 0) ,                /* ATTR_SurfaceUsage */
+  ATTR_ENTRY("SpillMemOffset",  0) ,             /* ATTR_SpillMemOffset */
+  ATTR_ENTRY("ArgSize", 0) ,                     /* ATTR_ArgSize */
+  ATTR_ENTRY("RetValSize", 0) ,                  /* ATTR_RetValSize */
+  ATTR_ENTRY("FESPSize", 0) ,                    /* ATTR_FESPSize */
+  ATTR_ENTRY("PerThreadInputSize", 0) ,          /* ATTR_PerThreadInputSize */
+  ATTR_ENTRY("Extern", 0) ,                      /* ATTR_Extern */
+  ATTR_ENTRY("NoBarrier", 0) ,                   /* ATTR_NoBarrier */
+  ATTR_ENTRY("SimdSize", 0) ,                    /* ATTR_SimdSize */
+  ATTR_ENTRY("OutputAsmPath", nullptr) ,         /* ATTR_OuputAsmPath */
+  ATTR_ENTRY("Entry", nullptr) ,                 /* ATTR_Entry */
+  ATTR_ENTRY("Callable", nullptr) ,              /* ATTR_Callable */
+  ATTR_ENTRY("Caller", nullptr) ,                /* ATTR_Caller */
+  ATTR_ENTRY("Composable", nullptr) ,            /* ATTR_Composable */
 
   /////////////////////////////////////////
   /////    int non-Kernel Attributes   ////
   /////////////////////////////////////////
-  /* ATTR_Input */                 { "Input",                 -1 },
-  /* ATTR_Output */                { "Output",                -1 },
-  /* ATTR_Scope */                 { "Scope",                 -1 },
-  /* ATTR_Input_Output */          { "Input_Output",          -1 },
-  /* ATTR_NoWidening */            { "NoWidening",            -1 },
+  ATTR_ENTRY("Input", -1) ,                      /* ATTR_Input */
+  ATTR_ENTRY("Output", -1) ,                     /* ATTR_Output */
+  ATTR_ENTRY("Scope", -1) ,                      /* ATTR_Scope */
+  ATTR_ENTRY("Input_Output", -1) ,               /* ATTR_Input_Output */
+  ATTR_ENTRY("NoWidening", -1) ,                 /* ATTR_NoWidening */
 
   ////////////////////////////////////////////
   /////    string non-Kernel Attributes   ////
   ////////////////////////////////////////////
 };
+
+#undef ATTR_ENTRY
 
 Attributes::Attributes()
 {
@@ -84,14 +88,14 @@ Attributes::ID Attributes::getAttributeID(const char* AttrName)
     uint32_t AttrLen = strlen(AttrName);
     for (int i = 0; i < ATTR_TOTAL_NUM; ++i)
     {
-        if (!strcmp(AttrName, AttrsInfo[i].m_attrName) &&
-            AttrLen == strlen(AttrsInfo[i].m_attrName))
+        if (AttrLen == AttrsInfo[i].m_attrNameBytes &&
+            strcmp(AttrName, AttrsInfo[i].m_attrName) == 0)
         {
             return (ID)i;
         }
     }
 
-    // temporary. Once upstread change them, remove this code.
+    // temporary. Once upstream components change them, remove the code.
     if (AttrLen == 7 && !strcmp(AttrName, "AsmName"))
     {   // "AsmName" deprecated
         return ATTR_OutputAsmPath;
@@ -105,13 +109,18 @@ Attributes::ID Attributes::getAttributeID(const char* AttrName)
 
 const char* Attributes::getAttributeName(Attributes::ID aID)
 {
+    assert(aID >= ATTR_START_INT_KERNEL_ATTR && aID < ATTR_TOTAL_NUM &&
+        "vISA: Invalid attribute ID!");
     return AttrsInfo[(int)aID].m_attrName;
 }
 
 bool Attributes::isAttribute(ID aID, const char* AttrName)
 {
+    assert(aID >= ATTR_START_INT_KERNEL_ATTR && aID < ATTR_TOTAL_NUM &&
+        "vISA: Invalid attribute ID!");
     const char* aIDName = getAttributeName(aID);
-    return strcmp(AttrName, aIDName) == 0 && strlen(AttrName) == strlen(aIDName);
+    uint32_t bytes = AttrsInfo[(int)aID].m_attrNameBytes;
+    return strcmp(AttrName, aIDName) == 0 && strlen(AttrName) == bytes;
 }
 
 void Attributes::setIntKernelAttribute(Attributes::ID kID, int val)

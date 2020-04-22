@@ -8162,8 +8162,7 @@ public:
     // ensure that all outstanding scratch writes are globally observed
     void Optimizer::insertScratchReadBeforeEOT()
     {
-
-        int globalScratchOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
+        int globalScratchOffset = kernel.getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
         if (builder.needFenceBeforeEOT() ||
             (globalScratchOffset == 0 && builder.getJitInfo()->spillMemUsed == 0))
         {

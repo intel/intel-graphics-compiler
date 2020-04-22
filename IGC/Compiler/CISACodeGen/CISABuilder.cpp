@@ -3979,10 +3979,6 @@ namespace IGC
             SaveOption(vISA_enablePreemption, true);
         }
 
-        uint scratchSpaceSizeTemp = m_program->m_ScratchSpaceSize;
-
-        SaveOption(vISA_SpillMemOffset, scratchSpaceSizeTemp);
-
         if (IGC_IS_FLAG_ENABLED(forceGlobalRA))
         {
             SaveOption(vISA_LocalRA, false);
@@ -4429,6 +4425,7 @@ namespace IGC
         V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
 
         SetDispatchSimdSize();
+        SetSpillMemOffset();
 
         vMainKernel = vKernel;
 
@@ -4456,6 +4453,15 @@ namespace IGC
         assert(vKernel);
         uint8_t dispatchSIMD = (uint8_t)numLanes(m_program->m_dispatchSize);
         V(vKernel->AddKernelAttribute("SimdSize", 1, &dispatchSIMD));
+    }
+
+    void CEncoder::SetSpillMemOffset()
+    {
+        assert(vKernel);
+        uint scratchSpaceSizeTemp = m_program->m_ScratchSpaceSize;
+        if (scratchSpaceSizeTemp > 0) {
+            V(vKernel->AddKernelAttribute("SpillMemOffset", 4, &scratchSpaceSizeTemp));
+        }
     }
 
     void CEncoder::SetKernelStackPointer64()
