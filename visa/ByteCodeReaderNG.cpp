@@ -61,6 +61,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "VISAKernel.h"
 
 using namespace std;
+using namespace vISA;
 
 struct RoutineContainer
 {
@@ -2413,13 +2414,14 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
             attribute_info_t* attribute = &var->attributes[ai];
 
             /// TODO: Does this code even make sense anymore???
-            if (!strcmp(header.strings[attribute->nameIndex], "SurfaceUsage"))
+            const char* attrName = header.strings[attribute->nameIndex];
+            if (Attributes::isAttribute(Attributes::ATTR_SurfaceUsage, attrName))
             {
                 header.surface_attrs[i] = (attribute->value.intVal == 2);
                 break;
             }
 
-            kernelBuilderImpl->AddAttributeToVar(decl, header.strings[attribute->nameIndex], attribute->size, attribute->value.stringVal);
+            kernelBuilderImpl->AddAttributeToVar(decl, attrName, attribute->size, attribute->value.stringVal);
         }
 
         container.surfaceVarDecls[i] = decl;

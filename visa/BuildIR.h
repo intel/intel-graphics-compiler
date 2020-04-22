@@ -515,7 +515,6 @@ private:
         G4_Declare* predefinedVars[static_cast<int>(PreDefinedVarsInternal::VAR_LAST)];
     };
 
-    bool use64BitFEStackVars;
     bool hasNullReturnSampler = false;
 
     bool hasPerThreadProlog = false;
@@ -886,7 +885,7 @@ public:
         isKernel(false), parentBuilder(parent),
         builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
-        use64BitFEStackVars(false), mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m),
+        mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m),
         instList(alloc), kernel(k)
     {
         m_inst = nullptr;
@@ -2733,9 +2732,10 @@ public:
 
     void doSamplerHeaderMove(G4_Declare* header, G4_Operand* sampler);
 
-    void set64BitFEStackVars() { use64BitFEStackVars = true; }
-    void set32BitFEStackVars() { use64BitFEStackVars = false; }
-    bool is64BitFEStackVars() { return use64BitFEStackVars; }
+    bool is64BitFEStackVars()
+    {
+        return kernel.getIntKernelAttribute(Attributes::ATTR_FESPSize) == 64;
+    }
 
     void expandFdiv(uint8_t exsize, G4_Predicate *predOpnd, bool saturate,
         G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd, uint32_t instOpt);

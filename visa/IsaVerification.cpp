@@ -40,6 +40,7 @@ using namespace std;
 
 #include "IsaDisassembly.h"
 #include "PreDefinedVars.h"
+#include "Attributes.hpp"
 
 #include "Gen4_IR.hpp"
 /* stdio.h portability code start */
@@ -49,7 +50,7 @@ using namespace std;
     snprintf(NULL, 0, __VA_ARGS__)
 #endif
 
-
+using namespace vISA;
 
 #define REPORT_HEADER(opt, cond, ...)          \
 do if (!(cond)) {                              \
@@ -2916,14 +2917,15 @@ static void verifyKernelAttributes(
     {
         auto attr = header->getAttr(i);
         const char* attrName = header->getString(attr->nameIndex);
-        if (strcmp(attrName, "SLMSize") == 0)
+        if (Attributes::isAttribute(Attributes::ATTR_SLMSize, attrName))
         {
             numSLMSize++;
         }
     }
 
     REPORT_HEADER(options, numSLMSize <= 1,
-        "More than 1 kernel attribute defined SLMSize");
+        "More than 1 kernel attribute defined %s",
+        Attributes::getAttributeName(Attributes::ATTR_SLMSize));
 
 }
 

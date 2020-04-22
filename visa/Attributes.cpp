@@ -43,7 +43,6 @@ Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
   /////////////////////////////////////
   ATTR_ENTRY("Target",  VISA_CM) ,               /* ATTR_Target */
   ATTR_ENTRY("SLMSIZE", 0 ) ,                    /* ATTR_SLMSize */
-  ATTR_ENTRY("SurfaceUsage", 0) ,                /* ATTR_SurfaceUsage */
   ATTR_ENTRY("SpillMemOffset",  0) ,             /* ATTR_SpillMemOffset */
   ATTR_ENTRY("ArgSize", 0) ,                     /* ATTR_ArgSize */
   ATTR_ENTRY("RetValSize", 0) ,                  /* ATTR_RetValSize */
@@ -66,6 +65,7 @@ Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
   ATTR_ENTRY("Scope", -1) ,                      /* ATTR_Scope */
   ATTR_ENTRY("Input_Output", -1) ,               /* ATTR_Input_Output */
   ATTR_ENTRY("NoWidening", -1) ,                 /* ATTR_NoWidening */
+  ATTR_ENTRY("SurfaceUsage", 0) ,                /* ATTR_SurfaceUsage */
 
   ////////////////////////////////////////////
   /////    string non-Kernel Attributes   ////

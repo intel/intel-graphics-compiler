@@ -1290,7 +1290,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         m_builder->getFCPatchInfo()->setIsEntryKernel(true);
         m_options->setOption(vISA_loadThreadPayload, true);
     }
-    else if (strcmp(attrName, "RetValSize") == 0)
+    else if (attrID == Attributes::ATTR_RetValSize)
     {
         if (IS_GEN_BOTH_PATH)
         {
@@ -1300,7 +1300,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             }
         }
     }
-    else if (strcmp(attrName, "ArgSize") == 0)
+    else if (attrID == Attributes::ATTR_ArgSize)
     {
         if (IS_GEN_BOTH_PATH)
         {
@@ -1341,18 +1341,17 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* var
             //this->m_var_info_size += Get_Size_Attribute_Info(attr);
             if(IS_GEN_BOTH_PATH)
             {
-                if (strcmp(varName, "Input") == 0 ||
-                    strcmp(varName, "Input_Output") == 0)
+                if (Attributes::isAttribute(Attributes::ATTR_Input, varName) ||
+                    Attributes::isAttribute(Attributes::ATTR_Input_Output, varName))
                 {
                     decl->genVar.dcl->getRootDeclare()->setLiveIn();
-
                 }
-                if (strcmp(varName, "Output") == 0 ||
-                    strcmp(varName, "Input_Output") == 0)
+                if (Attributes::isAttribute(Attributes::ATTR_Output, varName) ||
+                    Attributes::isAttribute(Attributes::ATTR_Input_Output, varName))
                 {
                     decl->genVar.dcl->getRootDeclare()->setLiveOut();
                 }
-                if (strcmp(varName, "NoWidening") == 0)
+                if (Attributes::isAttribute(Attributes::ATTR_NoWidening, varName))
                 {
                     decl->genVar.dcl->getRootDeclare()->setDoNotWiden();
                 }
@@ -8127,15 +8126,6 @@ int VISAKernelImpl::getVISAOffset() const
     }
     // ToDo: we should probably move vISA offset in VISKernelImpl so that we have it in vISA path too
     return -1;
-}
-
-void VISAKernelImpl::processAttributes()
-{
-  int feSPSize = 32;
-  if (getIntKernelAttributeValue("FESPSize", feSPSize) && feSPSize == 64)
-  {
-    m_builder->set64BitFEStackVars();
-  }
 }
 
 void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)

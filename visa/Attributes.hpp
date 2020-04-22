@@ -63,7 +63,6 @@ namespace vISA
             ATTR_START_INT_KERNEL_ATTR,
             ATTR_Target = ATTR_START_INT_KERNEL_ATTR,
             ATTR_SLMSize,
-            ATTR_SurfaceUsage,
             ATTR_SpillMemOffset,       // Offset at which spill/fill starts
             ATTR_ArgSize,
             ATTR_RetValSize,
@@ -93,6 +92,7 @@ namespace vISA
             ATTR_Scope,
             ATTR_Input_Output,
             ATTR_NoWidening,
+            ATTR_SurfaceUsage,
 
             /********************************************************/
             /*    string non-kernel attributes, such as variables'  */
