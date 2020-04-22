@@ -9609,19 +9609,16 @@ void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
     }
 
     CVariable* ArgBlkVar = m_currShader->GetARGV();
-    uint32_t i = 0;
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
     SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t>, 8> owordReads;
     for (auto& Arg : F->args())
     {
-        // For indirect calls we can't skip args since we won't know at compile time if it will be used
         if (!F->hasFnAttribute("IndirectlyCalled"))
         {
             // Skip unused arguments if any.
             if (Arg.use_empty())
             {
-                ++i;
                 continue;
             }
         }
@@ -9639,24 +9636,26 @@ void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
         bool overflow = ((offsetA + argSize) > ArgBlkVar->GetSize());
         if (!overflow)
         {
-            CVariable* Src = ArgBlkVar;
-            if (Dst->GetType() == ISA_TYPE_BOOL)
+            if (!Arg.use_empty())
             {
-                Src = m_currShader->GetNewAlias(ArgBlkVar, ISA_TYPE_W, (uint16_t)offsetA, numLanes(m_currShader->m_dispatchSize), false);
-                m_encoder->Cmp(EPREDICATE_NE, Dst, Src, m_currShader->ImmToVariable(0, ISA_TYPE_W));
-                offsetA += argSize;
-            }
-            else
-            {
-                if (Src->GetType() != Dst->GetType() ||
-                    offsetA != 0 ||
-                    Src->IsUniform() != Dst->IsUniform())
+                CVariable* Src = ArgBlkVar;
+                if (Dst->GetType() == ISA_TYPE_BOOL)
                 {
-                    Src = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
+                    Src = m_currShader->GetNewAlias(ArgBlkVar, ISA_TYPE_W, (uint16_t)offsetA, numLanes(m_currShader->m_dispatchSize), false);
+                    m_encoder->Cmp(EPREDICATE_NE, Dst, Src, m_currShader->ImmToVariable(0, ISA_TYPE_W));
                 }
-                emitCopyAll(Dst, Src, Arg.getType());
-                offsetA += Dst->GetSize();
+                else
+                {
+                    if (Src->GetType() != Dst->GetType() ||
+                        offsetA != 0 ||
+                        Src->IsUniform() != Dst->IsUniform())
+                    {
+                        Src = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
+                    }
+                    emitCopyAll(Dst, Src, Arg.getType());
+                }
             }
+            offsetA += argSize;
         }
         else
         {
@@ -9688,7 +9687,10 @@ void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
                 {
                     RdSize = SIZE_OWORD;
                 }
-                owordReads.push_back(std::make_tuple(Dst, offsetS, RdSize, RdBytes));
+                if (!Arg.use_empty())
+                {
+                    owordReads.push_back(std::make_tuple(Dst, offsetS, RdSize, RdBytes));
+                }
                 offsetS += RdSize;
                 RdBytes += RdSize;
                 RmnBytes -= RdSize;
