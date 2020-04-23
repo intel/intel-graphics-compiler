@@ -624,6 +624,7 @@ bool SConstantAddrValue_LessThanOp(const SConstantAddrValue& left, const SConsta
 template<typename ContextT>
 void FindInterestingConstants::copyInterestingConstants(ContextT* pShaderCtx)
 {
+    pShaderCtx->programOutput.m_pInterestingConstants.clear();
     for (auto I = m_InterestingConstants.begin(), E = m_InterestingConstants.end(); I != E; I++)
     {
         if (I->second.size())
@@ -641,7 +642,6 @@ bool FindInterestingConstants::doFinalization(llvm::Module& M)
 {
     if (m_InterestingConstants.size() != 0)
     {
-
         if (m_context->type == ShaderType::PIXEL_SHADER)
         {
             PixelShaderContext* pShaderCtx = static_cast <PixelShaderContext*>(m_context);
