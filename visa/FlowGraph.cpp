@@ -7067,6 +7067,11 @@ unsigned int gtPinData::getPerThreadNextOff()
 
 void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
 {
+    if (!gtpin_init && !gtpinInitFromL0)
+    {
+        bufferSize = 0;
+        return nullptr;
+    }
     gtpin::igc::igc_init_t t;
     std::vector<unsigned char> buffer;
     unsigned int numTokens = 0;
@@ -7076,26 +7081,53 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     memset(&t, 0, sizeof(t));
 
     t.version = gtpin::igc::GTPIN_IGC_INTERFACE_VERSION;
-    if (gtpin_init->grf_info)
+    if (gtpinInitFromL0)
     {
-        if (!stackABI)
-            t.grf_info = 1;
-        numTokens++;
+        if (kernel.getOption(vISA_GetFreeGRFInfo))
+        {
+            if (!stackABI)
+                t.grf_info = 1;
+            numTokens++;
+        }
+
+        if (kernel.getOption(vISA_GTPinReRA))
+        {
+            if (!stackABI)
+                t.re_ra = 1;
+        }
+
+        if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
+            t.srcline_mapping = 1;
+
+        if (kernel.getOptions()->getOption(vISA_GTPinScratchAreaSize))
+        {
+            t.scratch_area_size = kernel.getKernelAttrs()->getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
+            numTokens++;
+        }
     }
-
-    if (gtpin_init->re_ra)
+    else
     {
-        if(!stackABI)
-            t.re_ra = 1;
-    }
+        if (gtpin_init->grf_info)
+        {
+            if (!stackABI)
+                t.grf_info = 1;
+            numTokens++;
+        }
 
-    if (gtpin_init->srcline_mapping && kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
-        t.srcline_mapping = 1;
+        if (gtpin_init->re_ra)
+        {
+            if (!stackABI)
+                t.re_ra = 1;
+        }
 
-    if (gtpin_init->scratch_area_size > 0)
-    {
-        t.scratch_area_size = gtpin_init->scratch_area_size;
-        numTokens++;
+        if (gtpin_init->srcline_mapping && kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
+            t.srcline_mapping = 1;
+
+        if (gtpin_init->scratch_area_size > 0)
+        {
+            t.scratch_area_size = gtpin_init->scratch_area_size;
+            numTokens++;
+        }
     }
 
     // For payload offsets

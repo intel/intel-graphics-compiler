@@ -191,6 +191,7 @@ namespace IGC
         void        SetFunctionGroupAnalysis(GenXFunctionGroupAnalysis* FGA) { m_FGA = FGA; }
         void        SetVariableReuseAnalysis(VariableReuseAnalysis* VRA) { m_VRA = VRA; }
         void        SetMetaDataUtils(IGC::IGCMD::MetaDataUtils* pMdUtils) { m_pMdUtils = pMdUtils; }
+        void        SetScratchSpaceSize(uint size) { m_ScratchSpaceSize = size; }
         IGCMD::MetaDataUtils* GetMetaDataUtils() { return m_pMdUtils; }
 
         virtual  void SetShaderSpecificHelper(EmitPass* emitPass) {}

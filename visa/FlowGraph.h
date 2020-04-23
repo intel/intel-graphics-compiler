@@ -1312,6 +1312,9 @@ public:
     unsigned int getCrossThreadNextOff();
     unsigned int getPerThreadNextOff();
 
+    void setGTPinInitFromL0(bool val) { gtpinInitFromL0 = val; }
+    bool isGTPinInitFromL0() { return gtpinInitFromL0; }
+
 private:
     G4_Kernel& kernel;
     std::set<G4_INST*> markedInsts;
@@ -1323,6 +1326,7 @@ private:
     // Member stores next free scratch slot
     unsigned int nextScratchFree = 0;
 
+    bool gtpinInitFromL0 = false;
     gtpin::igc::igc_init_t* gtpin_init = nullptr;
 
     G4_BB* perThreadPayloadBB = nullptr;
@@ -1466,7 +1470,8 @@ public:
         hasAddrTaken = false;
         kernelDbgInfo = nullptr;
         if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
-            options->getOption(vISAOptions::vISA_GetFreeGRFInfo))
+            options->getOption(vISAOptions::vISA_GetFreeGRFInfo) ||
+            options->getOption(vISAOptions::vISA_GTPinScratchAreaSize))
         {
             allocGTPinData();
         }

@@ -3810,6 +3810,20 @@ namespace IGC
             {
                 SaveOption(vISA_ReRAPostSchedule, true);
             }
+            if (ClContext->m_InternalOptions.GTPinReRA)
+            {
+                SaveOption(vISA_GTPinReRA, true);
+                SaveOption(vISA_ReRAPostSchedule, true);
+            }
+            if (ClContext->m_InternalOptions.GTPinGRFInfo)
+            {
+                SaveOption(vISA_GetFreeGRFInfo, true);
+            }
+            if (ClContext->m_InternalOptions.GTPinScratchAreaSize)
+            {
+                SaveOption(vISA_GTPinScratchAreaSize, true);
+                m_program->SetScratchSpaceSize(ClContext->m_InternalOptions.GTPinScratchAreaSizeValue * getGRFSize());
+            }
         }
 
         bool EnableBarrierInstCounterBits = false;

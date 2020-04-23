@@ -1118,6 +1118,26 @@ namespace IGC
                         }
                     }
                 }
+
+                // GTPin flags used by L0 driver runtime
+                if (strstr(options, "-gtpin-rera"))
+                {
+                    GTPinReRA = true;
+                }
+                if (strstr(options, "-gtpin-grf-info"))
+                {
+                    GTPinGRFInfo = true;
+                }
+                if (const char* op = strstr(options, "-gtpin-scratch-area-size"))
+                {
+                    GTPinScratchAreaSize = true;
+                    const char* optionVal = op + strlen("-gtpin-scratch-area-size");
+                    if ((*optionVal == '=' || *optionVal == ' ') && isdigit(*(optionVal + 1)))
+                    {
+                        ++optionVal;
+                        GTPinScratchAreaSizeValue = atoi(optionVal);
+                    }
+                }
             }
 
 
@@ -1136,6 +1156,10 @@ namespace IGC
             bool PreferBindlessImages = false;
             bool IntelForceGlobalMemoryAllocation = false;
             bool hasNoLocalToGeneric = false;
+            bool GTPinReRA = false;
+            bool GTPinGRFInfo = false;
+            bool GTPinScratchAreaSize = false;
+            uint32_t GTPinScratchAreaSizeValue = 0;
 
             // -1 : initial value that means it is not set from cmdline
             // 0-5: valid values set from the cmdline

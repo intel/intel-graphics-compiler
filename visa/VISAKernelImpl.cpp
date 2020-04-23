@@ -7916,10 +7916,16 @@ int VISAKernelImpl::GetFunctionId(unsigned int& id) const
 
 int VISAKernelImpl::SetGTPinInit(void* buffer)
 {
-    if (buffer)
+    auto gtpin = m_kernel->getGTPinData();
+    if (gtpin)
     {
-        auto gtpin = m_kernel->getGTPinData();
-        if (gtpin)
+        if (getOptions()->getOption(vISA_GTPinReRA) || getOptions()->getOption(vISA_GetFreeGRFInfo)
+            || getOptions()->getOption(vISA_GTPinScratchAreaSize))
+        {
+            // GTPin init set by L0 driver through flags
+            gtpin->setGTPinInitFromL0(true);
+        }
+        if (buffer)
         {
             gtpin->setGTPinInit(buffer);
         }
@@ -7933,13 +7939,10 @@ int VISAKernelImpl::GetGTPinBuffer(void*& buffer, unsigned int& size)
     buffer = nullptr;
     size = 0;
 
-    if (m_kernel->hasGTPinInit())
+    auto gtpin = m_kernel->getGTPinData();
+    if (gtpin)
     {
-        auto gtpin = m_kernel->getGTPinData();
-        if (gtpin)
-        {
-            buffer = gtpin->getGTPinInfoBuffer(size);
-        }
+        buffer = gtpin->getGTPinInfoBuffer(size);
     }
 
     return VISA_SUCCESS;
