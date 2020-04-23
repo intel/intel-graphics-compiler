@@ -774,7 +774,7 @@ namespace IGC
     {
         if (ctx->m_sampler < 11 || ctx->m_inputCount < 16 || ctx->m_tempCount < 40 || ctx->m_dxbcCount < 280 || ctx->m_ConstantBufferCount < 500)
         {
-            if (ctx->m_tempCount < 90 && ctx->m_ConstantBufferCount < 10000)
+            if (ctx->m_tempCount < 90 && ctx->m_ConstantBufferCount < 300)
             {
                 return true;
             }
@@ -1296,9 +1296,6 @@ namespace IGC
     {
         MetaDataUtils* pMdUtils = pContext->getMetaDataUtils();
         bool NoOpt = pContext->getModuleMetaData()->compOpt.OptDisable;
-        pContext->m_highPsRegisterPressure =
-            (pContext->type == ShaderType::PIXEL_SHADER &&
-            ((pContext->m_inputCount + pContext->m_ConstantBufferCount/8 + pContext->m_tempCount) > 60));
 
         // Remove inline attribute if subroutine is enabled.
         purgeInlineAttribute(pContext, NoOpt);
