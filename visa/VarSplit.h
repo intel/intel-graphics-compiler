@@ -49,6 +49,18 @@ public:
     std::vector<std::pair<G4_SrcRegRegion*, G4_BB*>> srcs;
     bool legitCandidate = true;
 
+    // API to check whether variable is local or global
+    bool isDefUsesInSameBB()
+    {
+        auto defBB = def.second;
+        for (auto src : srcs)
+        {
+            if (src.second != defBB)
+                return false;
+        }
+        return true;
+    }
+
     bool isPartDclUsed(unsigned int lb, unsigned int rb)
     {
         // Return true if lb/rb is part of any src regions
@@ -81,6 +93,7 @@ public:
     void undo(G4_Declare*);
     bool reallocParent(G4_Declare*, LiveRange**);
     bool isParentChildRelation(G4_Declare*, G4_Declare*);
+    bool isSplitVarLocal(G4_Declare*);
 
 private:
     G4_Kernel& kernel;

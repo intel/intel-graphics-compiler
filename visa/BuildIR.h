@@ -842,6 +842,7 @@ public:
         {
             G4_Declare *R0CopyDcl = createTempVar(8, Type_UD, GRFALIGN);
             builtinR0 = R0CopyDcl;
+            R0CopyDcl->setDoNotSpill();
         }
 
 

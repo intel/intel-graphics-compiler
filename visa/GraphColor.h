@@ -528,6 +528,20 @@ namespace vISA
         bool isStrongEdgeBetween(G4_Declare*, G4_Declare*);
     };
 
+    // Class to compute reg chart dump and dump it to ostream.
+    // Used only when -dumpregchart is passed.
+    class RegChartDump
+    {
+    public:
+        GlobalRA& gra;
+        std::vector<G4_Declare*> sortedLiveIntervals;
+        std::unordered_map<G4_Declare*, std::pair<G4_INST*, G4_INST*>> startEnd;
+        void recordLiveIntervals(std::vector<G4_Declare*>& dcls);
+        void dumpRegChart(std::ostream&, LiveRange** lrs = nullptr, unsigned int numLRs = 0);
+
+        RegChartDump(GlobalRA& g) : gra(g) {}
+    };
+
     class GraphColor
     {
         GlobalRA& gra;
@@ -573,7 +587,7 @@ namespace vISA
         void removeConstrained();
         void relaxNeighborDegreeGRF(LiveRange* lr);
         void relaxNeighborDegreeARF(LiveRange* lr);
-        bool assignColors(ColorHeuristic heuristicGRF, bool doBankConflict, bool highInternalConflict);
+        bool assignColors(ColorHeuristic heuristicGRF, bool doBankConflict, bool highInternalConflict, bool honorHints = true);
 
         void clearSpillAddrLocSignature()
         {
@@ -708,6 +722,7 @@ namespace vISA
     {
     public:
         VerifyAugmentation *verifyAugmentation = nullptr;
+        RegChartDump* regChart = nullptr;
         static bool useGenericAugAlign()
         {
             auto gen = getPlatformGeneration(getGenxPlatform());
@@ -1241,6 +1256,9 @@ namespace vISA
         {
             if (verifyAugmentation)
                 delete verifyAugmentation;
+
+            if (regChart)
+                delete regChart;
         }
 
         void emitFGWithLiveness(LivenessAnalysis& liveAnalysis);

@@ -394,7 +394,8 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR)
     }
 
     if (needGlobalRA == true &&
-        !(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc()))
+        !(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc()) &&
+        !hasSplitInsts)
     {
         // Check whether unique physical registers can be assigned
         // to global ranges.
@@ -1521,6 +1522,18 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
 {
     int idx = 0;
     bool brk = false;
+    auto splitPass = gra.getVarSplitPass();
+
+    auto isSplitVarGlobal = [splitPass](G4_Declare* dcl)
+    {
+        if (!splitPass)
+            return false;
+
+        if (splitPass->isSplitDcl(dcl))
+            return !splitPass->isSplitVarLocal(dcl);
+
+        return false;
+    };
 
     for (INST_LIST_ITER inst_it = bb->begin(), bbend = bb->end();
         inst_it != bbend && !brk;
@@ -1603,7 +1616,8 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
                 {
                     // Check whether local LR is a candidate
                     if (lr->isLiveRangeLocal() &&
-                        lr->isGRFRegAssigned() == false)
+                        lr->isGRFRegAssigned() == false &&
+                        !isSplitVarGlobal(topdcl))
                     {
                         unsigned int startIdx;
 

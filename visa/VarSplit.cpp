@@ -841,5 +841,12 @@ bool VarSplitPass::isParentChildRelation(G4_Declare* parent, G4_Declare* child)
 
     return false;
 }
+bool VarSplitPass::isSplitVarLocal(G4_Declare* dcl)
+{
+    auto it = splitVars.find(dcl);
+    MUST_BE_TRUE(it != splitVars.end(), "Not a split dcl");
+
+    return (*it).second.isDefUsesInSameBB();
+}
 
 };

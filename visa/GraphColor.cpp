@@ -4793,7 +4793,10 @@ void Augmentation::augmentIntfGraph()
             !liveAnalysis.livenessClass(G4_ADDRESS) &&
             kernel.fg.size() > 2))
         {
-            return;
+            if (!kernel.getOption(vISA_DumpRegChart))
+            {
+                return;
+            }
         }
     }
 
@@ -4812,6 +4815,12 @@ void Augmentation::augmentIntfGraph()
 
         // Sort live-intervals based on their start
         sortLiveIntervals();
+
+        if (kernel.getOption(vISA_DumpRegChart))
+        {
+            gra.regChart = new RegChartDump(gra);
+            gra.regChart->recordLiveIntervals(sortedIntervals);
+        }
 
         if (gra.verifyAugmentation)
         {
@@ -5690,7 +5699,7 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr)
     }
 }
 
-bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConflict, bool highInternalConflict)
+bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConflict, bool highInternalConflict, bool honorHints)
 {
     if (builder.getOption(vISA_RATrace))
     {
@@ -5758,7 +5767,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             bool skipParentIntf = false;
             if (lr->hasAllocHint())
             {
-                parms.startGRFReg = lr->getAllocHint();
+                parms.startGRFReg = (lr->getAllocHint() >= maxGRFCanBeUsed ? 0 : lr->getAllocHint());
                 if (varSplitPass.isPartialDcl(lr->getDcl()))
                 {
                     parentDcl = varSplitPass.getParentDcl(lr->getDcl());
@@ -5966,7 +5975,19 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         if (!ret)
             return false;
 
-        if (gra.getIterNo() < 3)
+        if (lr->getSpillCost() == MAXSPILLCOST &&
+            !lr->getPhyReg() &&
+            honorHints)
+        {
+            // infinite spill cost range spilled
+            // undo all allocations done to split vars
+            // and skip adhering to hints for preserving
+            // correctness.
+            resetTemporaryRegisterAssignments();
+            return assignColors(colorHeuristicGRF, doBankConflict, highInternalConflict, false);
+        }
+
+        if (honorHints && gra.getIterNo() < 3)
         {
             if (varSplitPass.isSplitDcl(lr->getDcl()))
             {
@@ -5982,6 +6003,25 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                         {
                             auto isChildSpilled = childLR->isSpilled();
                             assignColor(childLR, false, !isChildSpilled);
+                            // if allocated GRF is different than hint, then
+                            // undo allocation and let coloring take its course.
+                            // this can be done only if the childLR wasnt
+                            // already processed in colorOrder.
+                            if (!isChildSpilled && childLR->getPhyReg())
+                            {
+                                auto hint = childLR->getAllocHint();
+                                if (childLR->getPhyReg()->asGreg()->getRegNum() != hint)
+                                {
+                                    // this is executed only if childLR is guaranteed to be
+                                    // processed later on in colorOrder.
+                                    childLR->resetPhyReg();
+                                }
+                            }
+                            else if (isChildSpilled && childLR->getPhyReg())
+                            {
+                                // was spilled earlier, got allocation now
+                                spilledLRs.remove(childLR);
+                            }
                         }
                         else
                         {
@@ -6069,6 +6109,12 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     for (auto lr : spilledLRs)
     {
         MUST_BE_TRUE(lr->isSpilled(), "LR not marked as spilled, but inserted in spilledLRs list");
+    }
+
+    // Verify if all LRs have either an allocation or are spilled
+    for (auto lr : colorOrder)
+    {
+        MUST_BE_TRUE(lr->isSpilled() || lr->getPhyReg() || lr->getDcl()->isSpilled(), "Range without allocation and not spilled");
     }
 #endif
 
@@ -6522,8 +6568,10 @@ void GraphColor::resetTemporaryRegisterAssignments()
         if (lrs[i]->getVar()->getPhyReg() == NULL) {
             lrs[i]->resetPhyReg();
             lrs[i]->resetAllocHint();
+            lrs[i]->setSpilled(false);
         }
     }
+    spilledLRs.clear();
 }
 
 void GraphColor::cleanupRedundantARFFillCode()
@@ -9524,6 +9572,15 @@ int GlobalRA::coloringRegAlloc()
                     coloring.addSaveRestoreCode(localSpillAreaOwordSize);
                 }
 
+                if (kernel.getOption(vISA_DumpRegChart))
+                {
+                    assignRegForAliasDcl();
+                    computePhyReg();
+                    // invoke before expanding spill/fill since
+                    // it modifies IR
+                    regChart->dumpRegChart(std::cerr);
+                }
+
                 expandSpillFillIntrinsics();
 
                 if (builder.getOption(vISA_OptReport))
@@ -12310,4 +12367,159 @@ void LiveRange::setAllocHint(unsigned int h)
 {
     if((h + dcl->getNumRows()) <= gra.kernel.getNumRegTotal())
         allocHint = h;
+}
+
+// sortedIntervals comes from augmentation.
+// This can be invoked either post RA where phy regs are assigned to dcls,
+// or after assignColors with lrs and numLRs passed which makes this function
+// use temp allocations from lrs. Doesnt handle sub-routines yet.
+void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int numLRs)
+{
+    constexpr unsigned int N = 128;
+    std::unordered_map<G4_INST*, std::bitset<N>> busyGRFPerInst;
+    bool dumpHex = false;
+
+    auto getPhyReg = [&](G4_Declare* dcl)
+    {
+        auto preg = dcl->getRegVar()->getPhyReg();
+        if (preg)
+            return preg;
+
+        for (unsigned int i = 0; i != numLRs; i++)
+        {
+            LiveRange* lr = lrs[i];
+            if (lr->getDcl() == dcl)
+            {
+                preg = lr->getPhyReg();
+                break;
+            }
+        }
+
+        return preg;
+    };
+
+    for (auto dcl : sortedLiveIntervals)
+    {
+        if (dcl->getRegFile() != G4_RegFileKind::G4_GRF &&
+            dcl->getRegFile() != G4_RegFileKind::G4_INPUT)
+            continue;
+
+        auto phyReg = getPhyReg(dcl);
+        if (!phyReg)
+            continue;
+
+        if (!phyReg->isGreg())
+            continue;
+
+        auto GRFStart = phyReg->asGreg()->getRegNum();
+        auto numRows = dcl->getNumRows();
+
+        auto startInst = startEnd[dcl].first;
+        auto endInst = startEnd[dcl].second;
+
+        bool start = (dcl->getRegFile() == G4_RegFileKind::G4_INPUT);
+        bool done = false;
+        for (auto bb : gra.kernel.fg.getBBList())
+        {
+            for (auto inst : bb->getInstList())
+            {
+                if (inst == startInst)
+                {
+                    start = true;
+                    continue;
+                }
+
+                if (!start)
+                    continue;
+
+                for (unsigned int i = GRFStart; i != (GRFStart + numRows); i++)
+                {
+                    busyGRFPerInst[inst].set(i, true);
+                }
+
+                if (inst == endInst)
+                {
+                    done = true;
+                    break;
+                }
+            }
+
+            if (done)
+                break;
+        }
+    }
+
+    // Now emit instructions with GRFs
+    for (auto bb : gra.kernel.fg.getBBList())
+    {
+        for (auto inst : bb->getInstList())
+        {
+            constexpr unsigned int maxInstLen = 80;
+            auto item = busyGRFPerInst[inst];
+            std::stringstream ss;
+            inst->emit(ss);
+            auto len = ss.str().length();
+
+            if (len <= maxInstLen)
+            {
+                os << ss.str();
+                for (unsigned int i = 0; i != maxInstLen - ss.str().length(); i++)
+                    os << " ";
+            }
+            else
+            {
+                auto tmpStr = ss.str();
+                auto limitedStr = tmpStr.substr(0, maxInstLen);
+                os << std::string(limitedStr);
+            }
+
+            os << "        ";
+
+            if (!dumpHex)
+            {
+                // dump GRFs | - busy, * - free
+                for (unsigned int i = 0; i != N; i++)
+                {
+                    // emit in groups of 10 GRFs
+                    if (i > 0 && (i % 10) == 0)
+                        os << "  ";
+
+                    if (item[i] == true)
+                        os << "|"; // busy
+                    else
+                        os << "*"; // free
+                }
+            }
+            else
+            {
+                for (unsigned int i = 0; i != N; i+=sizeof(unsigned short)*8)
+                {
+                    unsigned short busyGRFs = 0;
+                    for (unsigned int j = 0; j != sizeof(unsigned short)*8; j++)
+                    {
+                        auto offset = i + j;
+                        if (offset < N)
+                        {
+                            if (item[offset])
+                                busyGRFs |= (1 << j);
+                        }
+                    }
+                    printf("r%d:%4x      ", i, busyGRFs);
+                }
+            }
+            os << std::endl;
+        }
+        os << std::endl;
+    }
+}
+
+void RegChartDump::recordLiveIntervals(std::vector<G4_Declare*>& dcls)
+{
+    sortedLiveIntervals = dcls;
+    for (auto dcl : dcls)
+    {
+        auto start = gra.getStartInterval(dcl);
+        auto end = gra.getEndInterval(dcl);
+        startEnd.insert(std::make_pair(dcl, std::make_pair(start, end)));
+    }
 }
