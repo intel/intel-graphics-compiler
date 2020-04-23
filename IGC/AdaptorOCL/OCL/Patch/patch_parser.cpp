@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "patch_g9.h"
 #include "visa/include/RelocationInfo.h"
 #include "../sp/sp_debug.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace iOpenCL
 {

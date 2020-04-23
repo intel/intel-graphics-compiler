@@ -68,7 +68,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SPIRVValue.h"
 #include <algorithm>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace spv{
 class SPIRVFunction;

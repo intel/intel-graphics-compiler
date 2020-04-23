@@ -16,7 +16,7 @@
 #include "Refcount.h"
 #include <string>
 #include <vector>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 // The Type class hierarchy models the different types in OCL.
 

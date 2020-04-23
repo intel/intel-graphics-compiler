@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <iomanip>
 #include <fstream>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace iOpenCL
 {

@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ocl_igc_interface/impl/igc_features_and_workarounds_impl.h"
 
 #include "cif/macros/enable.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace IGC {
 

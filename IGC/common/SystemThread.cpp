@@ -47,7 +47,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/SIPKernels/Gen11LKFSIPCSR.h"
 #include "common/SIPKernels/Gen12LPSIPCSR.h"
 #include "common/SIPKernels/Gen12LPSIPCSRDebug.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace USC;

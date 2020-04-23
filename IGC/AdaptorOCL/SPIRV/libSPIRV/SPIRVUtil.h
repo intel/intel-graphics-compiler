@@ -49,7 +49,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace spv{
 

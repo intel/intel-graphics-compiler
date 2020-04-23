@@ -44,7 +44,7 @@ using namespace std;
 
 #endif // _WIN32
 
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 #if ( defined ( _DEBUG ) || defined ( _INTERNAL ) )
 /*****************************************************************************\

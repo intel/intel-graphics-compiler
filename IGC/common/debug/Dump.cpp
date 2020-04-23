@@ -49,7 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iomanip>
 #include <mutex>
 #include <algorithm>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace IGC;
 using namespace IGC::Debug;

@@ -16,7 +16,7 @@
 #include "llvm/IR/ValueHandle.h"
 #include <utility>
 #include <vector>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace llvm {
 

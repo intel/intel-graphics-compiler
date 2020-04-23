@@ -3405,7 +3405,6 @@ add_subdirectory(common)
 igc_sg_define(IGC__common)
 igc_sg_define(IGC__Common_CLElfLib)
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/Probe")
 
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(IGC_BUILD__SPIRV_TOOLS_ENABLED ON)

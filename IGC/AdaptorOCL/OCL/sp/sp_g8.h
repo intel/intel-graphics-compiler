@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "inc/common/Compiler/API/SurfaceFormats.h"
 #include "usc.h"
 #include "sp_debug.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {

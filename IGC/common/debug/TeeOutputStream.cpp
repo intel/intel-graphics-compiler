@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/debug/TeeOutputStream.hpp"
 #include "common/debug/Debug.hpp"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {

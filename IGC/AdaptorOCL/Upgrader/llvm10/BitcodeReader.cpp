@@ -120,7 +120,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPop.hpp"
 #include "BitcodeReader.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 

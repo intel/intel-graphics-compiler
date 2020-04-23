@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "TypesLegalizationPass.hpp"
 #include "../Compiler/IGCPassSupport.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 

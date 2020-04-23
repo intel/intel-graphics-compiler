@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <fstream>
 #include <sys/stat.h>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace std;
 

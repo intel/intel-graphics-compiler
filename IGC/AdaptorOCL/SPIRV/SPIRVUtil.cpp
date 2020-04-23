@@ -77,7 +77,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "libSPIRV/SPIRVInstruction.h"
 #include "SPIRVInternal.h"
 #include "Mangler/ParameterType.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace spv{
 

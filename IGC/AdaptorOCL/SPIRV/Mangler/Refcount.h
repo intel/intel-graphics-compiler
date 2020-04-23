@@ -13,7 +13,7 @@
 #ifndef __REF_COUNT_H__
 #define __REF_COUNT_H__
 
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace SPIR {
 

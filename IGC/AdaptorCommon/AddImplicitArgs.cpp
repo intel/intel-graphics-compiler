@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Debug.hpp"
 #include <map>
 #include <utility>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;

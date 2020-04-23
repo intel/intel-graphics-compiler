@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _strdup strdup
 #endif
 
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 //
 // We need to make the following functions that will be replaced by GT-Pin at runtime

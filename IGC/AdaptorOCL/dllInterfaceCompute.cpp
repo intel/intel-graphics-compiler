@@ -78,7 +78,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <sstream>
 #include <iomanip>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 //In case of use GT_SYSTEM_INFO in GlobalData.h from inc/umKmInc/sharedata.h
 //We have to do this temporary defines

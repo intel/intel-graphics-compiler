@@ -69,7 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVUtil.h"
 #include "spirv.hpp"
 #include <string>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace spv{
 

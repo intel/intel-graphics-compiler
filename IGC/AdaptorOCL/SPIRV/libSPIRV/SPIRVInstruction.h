@@ -71,7 +71,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVValue.h"
 #include "SPIRVBasicBlock.h"
 #include "SPIRVFunction.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 #include <cstdint>
 #include <functional>

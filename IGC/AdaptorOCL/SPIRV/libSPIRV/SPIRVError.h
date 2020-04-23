@@ -67,7 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SPIRVUtil.h"
 #include "SPIRVDebug.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 #include <string>
 #include <sstream>
 

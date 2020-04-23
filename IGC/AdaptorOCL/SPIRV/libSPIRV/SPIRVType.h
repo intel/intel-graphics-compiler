@@ -77,7 +77,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <map>
 #include <iostream>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace spv{
 

@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "cmd_media_init_g8.h"
 
 #include "IGC/common/igc_regkeys.hpp"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace G6HWC
 {

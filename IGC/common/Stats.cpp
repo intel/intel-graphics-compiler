@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iomanip>
 #include <sstream>
 #include <iostream>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 #if GET_TIME_STATS
 // Functions exposed by VISA lib API

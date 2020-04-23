@@ -1,7 +1,7 @@
 
 include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${IGC_BUILD__IGC_SRC_DIR}/Probe")
+    "${IGC_BUILD__IGC_SRC_DIR}")
 
 set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/AddImplicitArgs.cpp"

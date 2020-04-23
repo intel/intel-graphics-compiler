@@ -39,7 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/TypeSize.h"
 #endif
 #include "IGC/common/LLVMWarningsPop.hpp"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 class ShaderHash;
 namespace USC

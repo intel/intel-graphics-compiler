@@ -66,7 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPIRVFUNCTION_HPP_
 #include "SPIRVValue.h"
 #include "SPIRVBasicBlock.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace spv{
 

@@ -48,7 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../AdaptorOCL/OCL/LoadBuffer.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/debug/Debug.hpp"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 namespace SIP
 {

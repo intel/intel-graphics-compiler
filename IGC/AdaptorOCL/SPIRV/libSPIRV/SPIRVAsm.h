@@ -21,7 +21,7 @@
 #include "SPIRVEntry.h"
 #include "SPIRVValue.h"
 #include "SPIRVInstruction.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 #include <iostream>
 #include <map>

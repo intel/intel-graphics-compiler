@@ -120,7 +120,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <tuple>
 #include <utility>
 #include <vector>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 

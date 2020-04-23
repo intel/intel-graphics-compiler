@@ -89,7 +89,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <fstream>
 
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 

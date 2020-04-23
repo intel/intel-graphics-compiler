@@ -63,7 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <algorithm>
 #include <cstring>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace IGC;
 using namespace IGC::IGCMD;

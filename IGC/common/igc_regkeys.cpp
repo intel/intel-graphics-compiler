@@ -51,7 +51,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <sstream>
 #include <mutex>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 // path for IGC registry keys
 #define IGC_REGISTRY_KEY "SOFTWARE\\INTEL\\IGFX\\IGC"

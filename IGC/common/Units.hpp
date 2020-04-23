@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Debug.hpp"
 #include <limits>
 #include <type_traits>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 template<typename T, typename TUnder = unsigned int, int TRatio = T::ratio>
 class Unit

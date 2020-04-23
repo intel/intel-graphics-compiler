@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visaBuilder_interface.h"
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 #if defined(WIN32)
 #include "WinDef.h"
 #include "Windows.h"

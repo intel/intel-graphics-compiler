@@ -72,7 +72,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVEntry.h"
 #include "SPIRVType.h"
 #include "SPIRVDecorate.h"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 #include <iostream>
 #include <map>

@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;

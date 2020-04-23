@@ -54,7 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <exception>
 #include <stdexcept>
 #include <mutex>
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 

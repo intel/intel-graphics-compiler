@@ -38,7 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/igc_regkeys.hpp"
 #include "common/SysUtils.hpp"
 #include "common/secure_string.h" // strcpy_s()
-#include "Probe.h"
+#include "Probe/Assertion.h"
 
 #if defined(IGC_DEBUG_VARIABLES)
 #include "3d/common/iStdLib/File.h"
