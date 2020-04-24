@@ -491,6 +491,10 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* 
 
     IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
+    // StatelessToStatefull optimization is not applied on non-kernel functions.
+    if (!isEntryFunc(pMdUtils, &F))
+        return;
+
     FunctionMetaData* funcMD = &modMD->FuncMD.find(&F)->second;
     for (auto& Arg : F.args() )
     {
