@@ -36,7 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "Compiler/CISACodeGen/helper.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
@@ -44,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/BasicBlock.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -56,17 +56,17 @@ const Instruction* PayloadMapping::GetSupremumOfNonHomogeneousPart(
     const GenIntrinsicInst* intrinsicInst1 = dyn_cast<GenIntrinsicInst>(inst1);
     const GenIntrinsicInst* intrinsicInst2 = dyn_cast<GenIntrinsicInst>(inst2);
 
-    assert(intrinsicInst1);
-    assert(intrinsicInst2);
-    assert(intrinsicInst1->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite);
-    assert(intrinsicInst2->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite);
+    IGC_ASSERT(intrinsicInst1);
+    IGC_ASSERT(intrinsicInst2);
+    IGC_ASSERT(intrinsicInst1->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite);
+    IGC_ASSERT(intrinsicInst2->getIntrinsicID() == GenISAIntrinsic::GenISA_RTWrite);
 
     switch (intrinsicInst1->getIntrinsicID())
     {
     case GenISAIntrinsic::GenISA_RTWrite:
         return GetSupremumOfNonHomogeneousPart_RTWrite(inst1, inst2);
     default:
-        assert(0); //should not be called at all for other intrinsics
+        IGC_ASSERT(0); //should not be called at all for other intrinsics
         return nullptr;
     }
 }
@@ -106,8 +106,8 @@ const Instruction* PayloadMapping::GetSupremumOfNonHomogeneousPart_RTWrite(
     const Instruction* inst1,
     const Instruction* inst2)
 {
-    assert(llvm::isa<llvm::RTWritIntrinsic>(inst1));
-    assert(llvm::isa<llvm::RTWritIntrinsic>(inst2));
+    IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst1));
+    IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst2));
     ModuleMetaData* modMD = m_CodeGenContext->getModuleMetaData();
     const RTWritIntrinsic* rtwi1 = cast<RTWritIntrinsic>(inst1);
     const RTWritIntrinsic* rtwi2 = cast<RTWritIntrinsic>(inst2);
@@ -140,7 +140,7 @@ const Instruction* PayloadMapping::GetSupremumOfNonHomogeneousPart_RTWrite(
 int PayloadMapping::GetLeftReservedOffset(const Instruction* inst, SIMDMode simdMode)
 {
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
-    assert(intrinsicInst);
+    IGC_ASSERT(intrinsicInst);
 
     switch (intrinsicInst->getIntrinsicID())
     {
@@ -154,7 +154,7 @@ int PayloadMapping::GetLeftReservedOffset(const Instruction* inst, SIMDMode simd
 ///
 int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction* inst, SIMDMode simdMode)
 {
-    assert(llvm::isa<llvm::RTWritIntrinsic>(inst));
+    IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst));
     const RTWritIntrinsic* rtwi = cast<RTWritIntrinsic>(inst);
 
     int offset = 0;
@@ -167,7 +167,7 @@ int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction* inst, SIMDM
 
     if (RTWriteHasSource0Alpha(rtwi, m_CodeGenContext->getModuleMetaData()))
     {
-        assert(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
+        IGC_ASSERT(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
         int multiplier = rtwi->getSource0Alpha()->getType()->isHalfTy() ? 1 : 2;
         if (simdMode == SIMDMode::SIMD8)
         {
@@ -186,7 +186,7 @@ int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction* inst, SIMDM
 int PayloadMapping::GetRightReservedOffset(const Instruction* inst, SIMDMode simdMode)
 {
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
-    assert(intrinsicInst);
+    IGC_ASSERT(intrinsicInst);
 
     switch (intrinsicInst->getIntrinsicID())
     {
@@ -199,7 +199,7 @@ int PayloadMapping::GetRightReservedOffset(const Instruction* inst, SIMDMode sim
 
 int PayloadMapping::GetRightReservedOffset_RTWrite(const Instruction* inst, SIMDMode simdMode)
 {
-    assert(llvm::isa<llvm::RTWritIntrinsic>(inst));
+    IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst));
     const RTWritIntrinsic* rtwi = cast<RTWritIntrinsic>(inst);
 
     int offset = 0;
@@ -207,13 +207,13 @@ int PayloadMapping::GetRightReservedOffset_RTWrite(const Instruction* inst, SIMD
     if (rtwi->hasStencil())
     {
         //Must not be set in simd16 mode.
-        assert(simdMode == SIMDMode::SIMD8);
+        IGC_ASSERT(simdMode == SIMDMode::SIMD8);
         offset += 32; //256bits=1grf
     }
 
     if (rtwi->hasDepth())
     {
-        assert(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
+        IGC_ASSERT(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
 
         //Depth always has normal precision, regardless of the rest of the fields.
         if (simdMode == SIMDMode::SIMD8)
@@ -235,7 +235,7 @@ int PayloadMapping::GetRightReservedOffset_RTWrite(const Instruction* inst, SIMD
 bool PayloadMapping::HasNonHomogeneousPayloadElements(const Instruction* inst)
 {
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
-    assert(intrinsicInst);
+    IGC_ASSERT(intrinsicInst);
 
     switch (intrinsicInst->getIntrinsicID())
     {
@@ -250,7 +250,7 @@ bool PayloadMapping::HasNonHomogeneousPayloadElements(const Instruction* inst)
 ///
 bool PayloadMapping::HasNonHomogeneousPayloadElements_RTWrite(const Instruction* inst)
 {
-    assert(llvm::isa<llvm::RTWritIntrinsic>(inst));
+    IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst));
     const RTWritIntrinsic* rtwi = cast<RTWritIntrinsic>(inst);
 
     if (rtwi->hasMask())
@@ -303,7 +303,7 @@ bool PayloadMapping::IsUndefOrZeroImmediate(const Value* value)
 uint PayloadMapping::GetNumPayloadElements(const Instruction* inst)
 {
     const GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
-    assert(intrinsicInst);
+    IGC_ASSERT(intrinsicInst);
     if (const SampleIntrinsic * sampleInst = dyn_cast<SampleIntrinsic>(inst))
     {
         return GetNumPayloadElements_Sample(sampleInst);
@@ -323,7 +323,7 @@ uint PayloadMapping::GetNumPayloadElements(const Instruction* inst)
         break;
     }
 
-    assert(0);
+    IGC_ASSERT(0);
     return 0;
 }
 
@@ -567,8 +567,8 @@ Value* PayloadMapping::GetPayloadElementToValueMapping_sample(const SampleIntrin
 Value* PayloadMapping::GetPayloadElementToValueMapping_RTWrite(const GenIntrinsicInst* inst, const uint index)
 {
     //s0Alpha oM[R G B A] sZ oS
-    assert(index < GetNumPayloadElements(inst));
-    assert(llvm::isa<llvm::RTWritIntrinsic>(inst));
+    IGC_ASSERT(index < GetNumPayloadElements(inst));
+    IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(inst));
     const RTWritIntrinsic* rtwi = cast<RTWritIntrinsic>(inst);
 
     if (index < 4)
@@ -595,10 +595,10 @@ Value* PayloadMapping::GetPayloadElementToValueMapping_LDMS(const SamplerLoadInt
 
 Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction* inst, uint index)
 {
-    assert(index < GetNumPayloadElements(inst));
+    IGC_ASSERT(index < GetNumPayloadElements(inst));
 
     const llvm::GenIntrinsicInst* intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
-    assert(intrinsicInst);
+    IGC_ASSERT(intrinsicInst);
 
     std::pair<const llvm::Instruction*, uint> instIndexPair(inst, index);
 
@@ -613,14 +613,14 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction* inst, 
     if (const SampleIntrinsic * sampleInst = dyn_cast<SampleIntrinsic>(inst))
     {
         payloadValue = GetPayloadElementToValueMapping_sample(sampleInst, index);
-        assert(payloadValue != nullptr);
+        IGC_ASSERT(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
     }
     else if (const SamplerLoadIntrinsic * sampleInst = dyn_cast<SamplerLoadIntrinsic>(inst))
     {
         payloadValue = GetPayloadElementToValueMapping_LDMS(sampleInst, index);
-        assert(payloadValue != nullptr);
+        IGC_ASSERT(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
     }
@@ -630,19 +630,19 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction* inst, 
     {
     case GenISAIntrinsic::GenISA_URBWrite:
         payloadValue = GetPayloadElementToValueMapping_URBWrite(intrinsicInst, index);
-        assert(payloadValue != nullptr);
+        IGC_ASSERT(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
     case GenISAIntrinsic::GenISA_RTWrite:
         payloadValue = GetPayloadElementToValueMapping_RTWrite(intrinsicInst, index);
-        assert(payloadValue != nullptr);
+        IGC_ASSERT(payloadValue != nullptr);
         m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
         return payloadValue;
     default:
         break;
     }
 
-    assert(0);
+    IGC_ASSERT(0);
     return NULL;
 }
 

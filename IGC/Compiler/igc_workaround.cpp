@@ -23,10 +23,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "igc_workaround.h"
-#include "assert.h"
 #include <string.h>
 #include <stdlib.h>
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -89,7 +90,7 @@ namespace IGC
             InitJslHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
         default:
-            assert(false);
+            IGC_ASSERT(false);
             break;
         }
 

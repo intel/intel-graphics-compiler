@@ -24,18 +24,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-// vim:ts=2:sw=2:et:
-
 #define DEBUG_TYPE "type-legalizer"
 #include "TypeLegalizer.h"
 #include "InstPromoter.h"
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/Support/Debug.h"
-
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
+
 using namespace llvm;
 using namespace IGC::Legalizer;
 
@@ -81,14 +79,14 @@ bool InstPromoter::visitSelectInst(SelectInst& I) {
 
     ValueSeq* Ops0, * Ops1;
     std::tie(Ops0, std::ignore) = TL->getLegalizedValues(I.getOperand(1), true);
-    assert(Ops0->size() == 1);
+    IGC_ASSERT(Ops0->size() == 1);
     // we should get value from Ops0 here, as next getLegalizedValues call may grow ValueMap object
     // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128)
     // and previously received ValueSeq objects will become invalid.
     Value* LHS = Ops0->front();
 
     std::tie(Ops1, std::ignore) = TL->getLegalizedValues(I.getOperand(2), true);
-    assert(Ops1->size() == 1);
+    IGC_ASSERT(Ops1->size() == 1);
     Value* RHS = Ops1->front();
 
     Promoted = IRB->CreateSelect(I.getOperand(0), LHS, RHS,
@@ -103,14 +101,14 @@ bool InstPromoter::visitICmpInst(ICmpInst& I)
 
     ValueSeq* Ops0, * Ops1;
     std::tie(Ops0, std::ignore) = TL->getLegalizedValues(I.getOperand(0), isSigned);
-    assert(Ops0->size() == 1);
+    IGC_ASSERT(Ops0->size() == 1);
     // we should get value from Ops0 here, as next getLegalizedValues call may grow ValueMap object
     // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128)
     // and previously received ValueSeq objects will become invalid.
     Value* LHS = Ops0->front();
 
     std::tie(Ops1, std::ignore) = TL->getLegalizedValues(I.getOperand(1), isSigned);
-    assert(Ops1->size() == 1);
+    IGC_ASSERT(Ops1->size() == 1);
     Value* RHS = Ops1->front();
 
     unsigned initialWidth = I.getOperand(0)->getType()->getIntegerBitWidth();
@@ -123,7 +121,7 @@ bool InstPromoter::visitICmpInst(ICmpInst& I)
     }
     else
     {
-        assert(finalWidth >= initialWidth);
+        IGC_ASSERT(finalWidth >= initialWidth);
 
         unsigned shiftAmt = finalWidth - initialWidth;
 
@@ -145,14 +143,14 @@ bool InstPromoter::visitICmpInst(ICmpInst& I)
 bool InstPromoter::visitBinaryOperator(BinaryOperator& I) {
     ValueSeq* Ops0, * Ops1;
     std::tie(Ops0, std::ignore) = TL->getLegalizedValues(I.getOperand(0));
-    assert(Ops0->size() == 1);
+    IGC_ASSERT(Ops0->size() == 1);
     // we should get value from Ops0 here, as next getLegalizedValues call may grow ValueMap object
     // when inserting new pair with ValueMap.insert(e.g.when ValueMap.NumBuckets grows from 64 to 128)
     // and previously received ValueSeq objects will become invalid.
     Value* LHS = Ops0->front();
 
     std::tie(Ops1, std::ignore) = TL->getLegalizedValues(I.getOperand(1));
-    assert(Ops1->size() == 1);
+    IGC_ASSERT(Ops1->size() == 1);
     Value* RHS = Ops1->front();
 
     switch (I.getOpcode()) {
@@ -199,7 +197,7 @@ bool InstPromoter::visitLoadInst(LoadInst& I) {
 
     TypeSeq* TySeq;
     std::tie(TySeq, std::ignore) = TL->getLegalizedTypes(OrigTy);
-    assert(TySeq->size() == 1);
+    IGC_ASSERT(TySeq->size() == 1);
 
     unsigned AS = I.getPointerAddressSpace();
 
@@ -242,7 +240,7 @@ bool InstPromoter::visitLoadInst(LoadInst& I) {
         PromotedVal =
             IRB->CreateOr(PromotedVal, NewVal, Twine(NewVal->getName(), ".concat"));
 
-        assert((ActualLoadBits & 0x7) == 0 &&
+        IGC_ASSERT((ActualLoadBits & 0x7) == 0 &&
             "LEGAL INTEGER TYPE IS NOT BYTE ADDRESSABLE!");
         Off += ActualLoadBits >> 3;
         ++Part;
@@ -258,7 +256,7 @@ bool InstPromoter::visitStoreInst(StoreInst& I) {
 
     ValueSeq* ValSeq;
     std::tie(ValSeq, std::ignore) = TL->getLegalizedValues(OrigVal);
-    assert(ValSeq->size() == 1);
+    IGC_ASSERT(ValSeq->size() == 1);
 
     unsigned AS = I.getPointerAddressSpace();
 
@@ -291,7 +289,7 @@ bool InstPromoter::visitStoreInst(StoreInst& I) {
         StoreInst* NewSt = IRB->CreateStore(NewVal, NewPtr);
         TL->dupMemoryAttribute(NewSt, &I, Off);
 
-        assert((ActualStoreBits & 0x7) == 0 &&
+        IGC_ASSERT((ActualStoreBits & 0x7) == 0 &&
             "LEGAL INTEGER TYPE IS NOT BYTE ADDRESSABLE!");
         Off += ActualStoreBits >> 3;
     }
@@ -311,7 +309,7 @@ bool InstPromoter::visitTruncInst(TruncInst& I) {
 
     TypeSeq* TySeq; LegalizeAction Act;
     std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
-    assert(Act == Legal || Act == Promote);
+    IGC_ASSERT(Act == Legal || Act == Promote);
 
     if (Act == Legal) {
         if (Val->getType() == I.getType())
@@ -322,11 +320,11 @@ bool InstPromoter::visitTruncInst(TruncInst& I) {
         return true;
     }
 
-    assert(TySeq->size() == 1);
+    IGC_ASSERT(TySeq->size() == 1);
 
     Type* PromotedTy = TySeq->front();
 
-    assert(cast<IntegerType>(PromotedTy)->getBitWidth() <=
+    IGC_ASSERT(cast<IntegerType>(PromotedTy)->getBitWidth() <=
         cast<IntegerType>(Val->getType())->getBitWidth());
 
     Promoted =
@@ -345,7 +343,7 @@ bool InstPromoter::visitZExtInst(ZExtInst& I) {
 
     TypeSeq* TySeq; LegalizeAction Act;
     std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
-    assert(Act == Legal || Act == Promote);
+    IGC_ASSERT(Act == Legal || Act == Promote);
 
     if (Act == Legal) {
         // Reset insert position as we don't create a new instruction from the
@@ -363,11 +361,11 @@ bool InstPromoter::visitZExtInst(ZExtInst& I) {
         return true;
     }
 
-    assert(TySeq->size() == 1);
+    IGC_ASSERT(TySeq->size() == 1);
 
     Type* PromotedTy = TySeq->front();
 
-    assert(cast<IntegerType>(PromotedTy)->getBitWidth() >=
+    IGC_ASSERT(cast<IntegerType>(PromotedTy)->getBitWidth() >=
         cast<IntegerType>(Val->getType())->getBitWidth());
 
     if (ValAct != Legal)
@@ -390,7 +388,7 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
     TypeSeq* TySeq;
     LegalizeAction Act;
     std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
-    assert(TySeq->size() == 1);
+    IGC_ASSERT(TySeq->size() == 1);
 
     // Promote bitcast <3 x i8> %0 to i24
     // %1 = shufflevector <3 x i8> %0, <3 x i8> zeroinitializer, <i32 0, i32

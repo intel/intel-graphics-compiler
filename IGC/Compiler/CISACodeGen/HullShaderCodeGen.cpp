@@ -23,19 +23,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/CISACodeGen/HullShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
-
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/secure_mem.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <iStdLib/utility.h>
+#include "Probe/Assertion.h"
 
 /***********************************************************************************
 This file contains the code specific to hull shader
@@ -139,7 +138,7 @@ namespace IGC
             m_pNumURBReadHandleGRF = m_properties.m_pInputControlPointCount;
             break;
         default:
-            assert(0 && "Dispatch mode does not exist");
+            IGC_ASSERT(false && "Dispatch mode does not exist");
             break;
         }
     }
@@ -155,7 +154,7 @@ namespace IGC
             AllocateEightPatchPayload();
             break;
         default:
-            assert(false && "dispatch mode does not exist");
+            IGC_ASSERT(false && "dispatch mode does not exist");
             break;
         }
     }
@@ -165,16 +164,16 @@ namespace IGC
         uint offset = 0;
 
         //R0 is always allocated as a predefined variable. Increase offset for R0
-        assert(m_R0);
+        IGC_ASSERT(m_R0);
         offset += getGRFSize();
 
-        assert(m_R1);
+        IGC_ASSERT(m_R1);
         AllocateInput(m_R1, offset);
         offset += getGRFSize();
 
         if (m_HasPrimitiveIDInstruction)
         {
-            assert(m_R2);
+            IGC_ASSERT(m_R2);
             AllocateInput(m_R2, offset);
             offset += getGRFSize();
         }
@@ -190,13 +189,13 @@ namespace IGC
             offset += (m_properties.m_pInputControlPointCount) * getGRFSize();
         }
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
         ProgramOutput()->m_startReg = offset / getGRFSize();
 
         // allocate space for NOS constants and pushed constants
         AllocateConstants3DShader(offset);;
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
 
         // Allocate space for vertex element data
         for (uint i = 0; i < setup.size(); ++i)
@@ -214,7 +213,7 @@ namespace IGC
         uint offset = 0;
 
         //R0 is always allocated as a predefined variable. Increase offset for R0
-        assert(m_R0);
+        IGC_ASSERT(m_R0);
         offset += getGRFSize();
 
         // if m_pURBReadHandlesReg != nullptr, then we need to allocate ( (m_pOutputControlPointCount - 1)/8 + 1 ) registers for input handles
@@ -228,13 +227,13 @@ namespace IGC
             offset += ((m_properties.m_pInputControlPointCount - 1) / 8 + 1) * getGRFSize();
         }
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
         ProgramOutput()->m_startReg = offset / getGRFSize();
 
         // allocate space for NOS constants and pushed constants
         AllocateConstants3DShader(offset);
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
 
         // Allocate space for vertex element data
         for (uint i = 0; i < setup.size(); ++i)

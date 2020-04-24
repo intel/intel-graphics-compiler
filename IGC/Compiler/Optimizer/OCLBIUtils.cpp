@@ -28,15 +28,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Instructions.h"
-
 #include "common/LLVMWarningsPop.hpp"
-
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -208,7 +205,7 @@ Argument* CImagesBI::CImagesUtils::findImageFromBufferPtr(const MetaDataUtils& M
     {
         FunctionMetaData funcMD = modMD->FuncMD.find(F)->second;
         ResourceAllocMD resAllocMD = funcMD.resAllocMD;
-        assert(resAllocMD.argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+        IGC_ASSERT(resAllocMD.argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
         for (auto& arg : F->args())
         {
             unsigned argNo = arg.getArgNo();
@@ -360,8 +357,8 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             GenIntrinsicInst* gbpInst = cast<GenIntrinsicInst>(baseValue);
             Value* bufIdV = gbpInst->getOperand(0);
             Value* bufTyV = gbpInst->getOperand(1);
-            assert(isa<ConstantInt>(bufIdV));
-            assert(isa<ConstantInt>(bufTyV));
+            IGC_ASSERT(isa<ConstantInt>(bufIdV));
+            IGC_ASSERT(isa<ConstantInt>(bufTyV));
             IGC::BufferType bufType = (IGC::BufferType)(cast<ConstantInt>(bufTyV)->getZExtValue());
             unsigned as = IGC::EncodeAS4GFXResource(*bufIdV, bufType, 0);
 
@@ -390,7 +387,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     modMD);
             }
 
-            assert(0 && "Found GetBufferPtr but cannot match it with an argument!");
+            IGC_ASSERT(false && "Found GetBufferPtr but cannot match it with an argument!");
             return nullptr;
         }
         else if (CastInst * inst = dyn_cast<CastInst>(baseValue))
@@ -409,7 +406,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             }
             else
             {
-                assert(0 && "dynamic index");
+                IGC_ASSERT(false && "dynamic index");
                 return nullptr;
             }
 
@@ -433,7 +430,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     }
                     else
                     {
-                        assert(0 && "dynamic index");
+                        IGC_ASSERT(false && "dynamic index");
                         return nullptr;
                     }
                 }
@@ -446,7 +443,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                 }
                 else
                 {
-                    assert(0 && "unknown construct!");
+                    IGC_ASSERT(false && "unknown construct!");
                     return nullptr;
                 }
             }
@@ -509,7 +506,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             }
             else
             {
-                assert(getElementPtr && "Expected GEP instruction.");
+                IGC_ASSERT(getElementPtr && "Expected GEP instruction.");
                 return nullptr;
             }
         }
@@ -757,7 +754,7 @@ public:
         }
 
         // The sampler is not an argument, make sure it's a constant
-        assert(isa<ConstantInt>(samplerParam) && "Sampler must be a global variable or a constant");
+        IGC_ASSERT(isa<ConstantInt>(samplerParam) && "Sampler must be a global variable or a constant");
         ConstantInt* constSampler = cast<ConstantInt>(samplerParam);
         int samplerValue = int_cast<int>(constSampler->getZExtValue());
 
@@ -827,7 +824,7 @@ public:
 #endif // RELEASE INTERNAL||DEBUG
 
             default:
-                assert(0 && "Invalid sampler type");
+                IGC_ASSERT(false && "Invalid sampler type");
                 break;
             }
 
@@ -844,7 +841,7 @@ public:
                 inlineSamplerMD.MinFilterType = (iOpenCL::SAMPLER_MAPFILTER_LINEAR);
                 break;
             default:
-                assert(0 && "Filter Type must have value");
+                IGC_ASSERT(false && "Filter Type must have value");
                 break;
             }
 
@@ -897,7 +894,7 @@ public:
 #endif // RELEASE INTERNAL||DEBUG
 
             default:
-                assert(0 && "Invalid sampler type");
+                IGC_ASSERT(false && "Invalid sampler type");
                 break;
             }
 
@@ -910,7 +907,7 @@ public:
                 inlineSamplerMD.NormalizedCoords = (LEGACY_CLK_NORMALIZED_COORDS_FALSE);
                 break;
             default:
-                assert(0 && "Invalid normalized coords");
+                IGC_ASSERT(false && "Invalid normalized coords");
                 break;
             }
 
@@ -926,7 +923,7 @@ public:
                 inlineSamplerMD.MinFilterType = (iOpenCL::SAMPLER_MAPFILTER_LINEAR);
                 break;
             default:
-                assert(0 && "Filter Type must have value");
+                IGC_ASSERT(false && "Filter Type must have value");
                 break;
             }
 
@@ -938,7 +935,7 @@ public:
         }
         else
         {
-            assert(0 && "Input IR version must be OCL or SPIR");
+            IGC_ASSERT(false && "Input IR version must be OCL or SPIR");
         }
     }
 
@@ -1234,7 +1231,7 @@ protected:
     void createIntrinsicType(const CallInst* pCI, ArrayRef<Type*> overloadTypes)
     {
         m_args.append(pCI->op_begin(), pCI->op_begin() + pCI->getNumArgOperands());
-        assert(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
+        IGC_ASSERT(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
             "Both intrinsic id's cannot be valid at the same time");
 
         // GenISA intrinsics ID start after llvm intrinsics
@@ -1267,7 +1264,7 @@ public:
 
     void createIntrinsic()
     {
-        assert(!(this->isOverloadable && m_pCallInst->getNumArgOperands() == 0) && "Cannot create an overloadable with no args");
+        IGC_ASSERT(!(this->isOverloadable && m_pCallInst->getNumArgOperands() == 0) && "Cannot create an overloadable with no args");
         llvm::Type* tys[2];
         switch (isaId)
         {
@@ -1289,7 +1286,7 @@ public:
             tys[0] = m_pCallInst->getCalledFunction()->getReturnType();
             tys[1] = m_pCallInst->getArgOperand(0)->getType();
             m_args.append(m_pCallInst->op_begin(), m_pCallInst->op_begin() + m_pCallInst->getNumArgOperands());
-            assert(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
+            IGC_ASSERT(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
                 "Both intrinsic id's cannot be valid at the same time");
             replaceGenISACallInst(isaId, llvm::ArrayRef<llvm::Type*>(tys));
             break;
@@ -1403,7 +1400,7 @@ public:
         m_args.append(m_pCallInst->op_begin(), m_pCallInst->op_begin() + 3);
 
         // Push images like src image, fwd ref image, and bwd ref image.
-        assert((num_images >= 2) && (num_images <= 3));
+        IGC_ASSERT((num_images >= 2) && (num_images <= 3));
         for (uint i = 0; i < num_images; i++) {
             Argument* pImg = nullptr;
             m_args.push_back(CImagesBI::CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, i + 3, pImg));

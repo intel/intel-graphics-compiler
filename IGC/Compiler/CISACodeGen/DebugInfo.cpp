@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DebugInfo.hpp"
 #include "GenCodeGenModule.h"
 #include "common/Types.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -184,7 +185,7 @@ void DebugInfoPass::EmitDebugInfo(bool finalize)
 
         if (dbgSize != 0)
         {
-            assert(buffer != nullptr && "Failed to generate VISA debug info");
+            IGC_ASSERT(buffer != nullptr && "Failed to generate VISA debug info");
 
             dbgInfo = IGC::aligned_malloc(dbgSize, sizeof(void*));
 

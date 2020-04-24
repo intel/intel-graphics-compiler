@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
 
 #include "MetaDataTraits.h"
@@ -30,10 +31,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Metadata.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
-    ///
     // Represents the meta data value stored using the positional schema
     // The root node is actuall storing the value
     template<class T, class Traits = MDValueTraits<T> >
@@ -118,7 +119,7 @@ namespace IGC
 #if 0
             pNode->replaceAllUsesWith(generateNode(context));
 #else
-            assert(false);
+            IGC_ASSERT(false);
 #endif
         }
 
@@ -228,14 +229,14 @@ namespace IGC
             }
 
             llvm::MDNode* pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
-            assert(pMDNode && "Named value parent node is not of MDNode type");
+            IGC_ASSERT(pMDNode && "Named value parent node is not of MDNode type");
 
             if (pMDNode->getNumOperands() != 2)
             {
 #if 0
                 pMDNode->replaceAllUsesWith(generateNode(context));
 #else
-                assert(false);
+                IGC_ASSERT(false);
 #endif
                 return;
             }
@@ -289,17 +290,17 @@ namespace IGC
 
             const llvm::MDNode* pMDNode = llvm::dyn_cast<const llvm::MDNode>(pNode);
 
-            assert(pMDNode && "Named value parent node is not of MDNode type");
+            IGC_ASSERT(pMDNode && "Named value parent node is not of MDNode type");
 
             if (pMDNode->getNumOperands() < 1)
             {
-                assert(0 && "Named value doesn't have a name node");
+                IGC_ASSERT(false && "Named value doesn't have a name node");
             }
 
             llvm::MDString* pIdNode =
                 llvm::dyn_cast<llvm::MDString>(pMDNode->getOperand(0));
 
-            assert(pIdNode && "Named list id node is not a string");
+            IGC_ASSERT(pIdNode && "Named list id node is not a string");
 
             return pIdNode;
         }
@@ -313,12 +314,12 @@ namespace IGC
 
             const llvm::MDNode* pMDNode = llvm::dyn_cast<const llvm::MDNode>(pNode);
 
-            assert(pMDNode && "Named value parent node is not of MDNode type");
+            IGC_ASSERT(pMDNode && "Named value parent node is not of MDNode type");
 
 
             if (pMDNode->getNumOperands() < 2)
             {
-                assert(0 && "Named value doesn't have a value node");
+                IGC_ASSERT(false && "Named value doesn't have a value node");
             }
 
             return pMDNode->getOperand(1).get();

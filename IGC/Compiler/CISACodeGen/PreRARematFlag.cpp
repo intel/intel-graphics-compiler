@@ -1,4 +1,3 @@
-// vim:ts=2:sw=2:et:
 /*===================== begin_copyright_notice ==================================
 
 Copyright (c) 2017 Intel Corporation
@@ -27,13 +26,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DEBUG_TYPE "pre-ra-remat-flag"
 #include "common/LLVMUtils.h"
-
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/Analysis/LoopInfo.h>
@@ -41,8 +38,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/Transforms/Scalar.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "GenISAIntrinsics/GenIntrinsics.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -303,7 +300,7 @@ bool PreRARematFlag::reMaterialize(Instruction* I, User* LocalUser) const {
     else if (!isa<CmpInst>(I))
         return false;
 
-    assert(I->getNumOperands() == 2);
+    IGC_ASSERT(I->getNumOperands() == 2);
 
     Instruction* Op0 = dyn_cast<Instruction>(I->getOperand(0));
     Instruction* Op1 = dyn_cast<Instruction>(I->getOperand(1));
@@ -323,7 +320,7 @@ bool PreRARematFlag::reMaterialize(Instruction* I, User* LocalUser) const {
         Instruction* InsertPt = cast<Instruction>(U.getUser());
         if (PHINode * PN = dyn_cast<PHINode>(InsertPt)) {
             BasicBlock* PredBB = PN->getIncomingBlock(U);
-            assert(U != PredBB->getTerminator());
+            IGC_ASSERT(U != PredBB->getTerminator());
             InsertPt = PredBB->getTerminator();
         }
         Instruction* Clone = I->clone();

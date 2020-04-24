@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
 #include "common/secure_mem.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -234,7 +235,7 @@ bool SampleMultiversioning::runOnFunction(Function& F) {
         {
             Instruction* Sample = SI.Sample;
             BasicBlock* Parent = Sample->getParent();
-            assert(SI.MulVals.size());
+            IGC_ASSERT(SI.MulVals.size());
 
             BasicBlock* BB1 = Parent->splitBasicBlock(Sample);
             Parent->getTerminator()->eraseFromParent();

@@ -27,14 +27,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/layout.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/MemStats.h"
 #include "common/LLVMUtils.h"
-
 #include <vector>
 #include <set>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -278,7 +277,7 @@ void Layout::LayoutBlocks(Function& func, LoopInfo& LI)
                 {
                     // move the block to the beginning of the loop
                     auto insp = InsPos[hd];
-                    assert(insp);
+                    IGC_ASSERT(insp);
                     if (blk != insp)
                     {
                         blk->moveBefore(insp);
@@ -290,7 +289,7 @@ void Layout::LayoutBlocks(Function& func, LoopInfo& LI)
                     // move the entire loop to the beginning of
                     // the parent loop
                     auto LoopStart = InsPos[hd];
-                    assert(LoopStart);
+                    IGC_ASSERT(LoopStart);
                     auto PaLoop = curLoop->getParentLoop();
                     auto PaHd = PaLoop ? PaLoop->getHeader() : entry;
                     auto insp = InsPos[PaHd];
@@ -326,7 +325,7 @@ void Layout::LayoutBlocks(Function& func, LoopInfo& LI)
 
     // if function has a single exit, then the last block must be an exit
     // comment this out due to infinite loop example in OCL
-    // assert(PDT.getRootNode()->getBlock() == 0x0 ||
+    // IGC_ASSERT(PDT.getRootNode()->getBlock() == 0x0 ||
     //       PDT.getRootNode()->getBlock() == &(func.getBasicBlockList().back()));
     // fix the loop-exit pattern, put break-blocks into the loop
     for (llvm::Function::iterator blkIter = func.begin(), blkEnd = func.end();

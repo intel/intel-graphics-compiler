@@ -23,19 +23,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/CISACodeGen/EstimateFunctionSize.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/igc_regkeys.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -142,12 +143,12 @@ namespace {
 
         /// \brief Add a caller or callee.
         void addCallee(Function* G) {
-            assert(!G->empty());
+            IGC_ASSERT(!G->empty());
             CalleeList.push_back(G);
             CallingSubroutine = true;
         }
         void addCaller(Function* G) {
-            assert(!G->empty());
+            IGC_ASSERT(!G->empty());
             CallerList.push_back(G);
         }
 
@@ -241,7 +242,7 @@ void EstimateFunctionSize::analyze() {
 
         // Expand leaf nodes one by one.
         for (auto Node : LeafNodes) {
-            assert(Node->CalleeList.empty());
+            IGC_ASSERT(Node->CalleeList.empty());
             // Populate to its Callers.
             for (auto Caller : Node->CallerList)
                 get<FunctionNode>(Caller)->expand(Node);
@@ -334,7 +335,7 @@ void EstimateFunctionSize::checkSubroutine() {
         pContext->m_retryManager.Disable();
     }
 
-    assert(!HasRecursion || EnableSubroutine);
+    IGC_ASSERT(!HasRecursion || EnableSubroutine);
     // Store result into the context (this decision should be immutable).
     pContext->m_enableSubroutine = EnableSubroutine;
 }
@@ -343,7 +344,7 @@ std::size_t EstimateFunctionSize::getExpandedSize(const Function* F) const {
     auto I = ECG.find((Function*)F);
     if (I != ECG.end()) {
         FunctionNode* Node = (FunctionNode*)I->second;
-        assert(F == Node->F);
+        IGC_ASSERT(F == Node->F);
         return Node->Size;
     }
 
@@ -355,7 +356,7 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function* F) {
     auto I = ECG.find((Function*)F);
     if (I != ECG.end()) {
         FunctionNode* Node = (FunctionNode*)I->second;
-        assert(F == Node->F);
+        IGC_ASSERT(F == Node->F);
         // one call-site and not a recursion
         if (Node->CallerList.size() == 1 &&
             Node->CallerList.front() != F) {

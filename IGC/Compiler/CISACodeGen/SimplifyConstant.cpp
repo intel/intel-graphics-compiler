@@ -23,11 +23,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/CISACodeGen/SimplifyConstant.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "common/igc_regkeys.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/LoopInfo.h>
 #include "llvm/IR/Constants.h"
@@ -35,11 +35,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
-
 #include "llvmWrapper/IR/Value.h"
-
 #include "common/LLVMWarningsPop.hpp"
 #include "common/Types.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -195,7 +194,7 @@ void ConstantLoader::simplify() {
             LoadInst* LI = dyn_cast<LoadInst>(*I++);
             if (!LI)
                 continue;
-            assert(GEP->getNumIndices() == 2);
+            IGC_ASSERT(GEP->getNumIndices() == 2);
             Value* Index = GEP->getOperand(2);
             Value* Val = V0;
             IRBuilder<> Builder(LI);
@@ -357,7 +356,7 @@ static unsigned getLegalVectorSize(unsigned N) {
 static bool checkSize(GlobalVariable* GV, VectorType*& DataType,
     bool& IsSigned) {
     Constant* Init = GV->getInitializer();
-    assert(isa<ArrayType>(Init->getType()));
+    IGC_ASSERT(isa<ArrayType>(Init->getType()));
     ArrayType* ArrayTy = cast<ArrayType>(Init->getType());
     unsigned N = (unsigned)ArrayTy->getArrayNumElements();
     Type* BaseTy = ArrayTy->getArrayElementType();
@@ -404,7 +403,7 @@ static bool checkSize(GlobalVariable* GV, VectorType*& DataType,
         }
 
         unsigned BaseSzInBits = (unsigned int)BaseTy->getPrimitiveSizeInBits();
-        assert(BaseSzInBits >= 8);
+        IGC_ASSERT(BaseSzInBits >= 8);
         if (BaseSzInBits > 8 && Min >= 0 && Max <= UINT8_MAX) {
             BaseTy = Int8Ty;
             IsSigned = false;
@@ -480,7 +479,7 @@ static Value* extractNElts(unsigned N, Value* VectorData, Value* Offset,
 static Constant* getConstantVal(Type* VEltTy, Constant* V, bool IsSigned) {
     if (V->getType() == VEltTy)
         return V;
-    assert(VEltTy->isIntegerTy());
+    IGC_ASSERT(VEltTy->isIntegerTy());
     int64_t IVal = cast<ConstantInt>(V)->getSExtValue();
     return ConstantInt::get(VEltTy, IVal, IsSigned);
 }
@@ -497,12 +496,12 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
         unsigned NElts = CDA->getNumElements();
         for (unsigned i = 0; i < NElts; ++i) {
             Constant* Elt = CDA->getAggregateElement(i);
-            assert(Elt && "Null AggregateElement");
+            IGC_ASSERT(Elt && "Null AggregateElement");
             Vals[i] = getConstantVal(VEltTy, Elt, IsSigned);
         }
     }
     else {
-        assert(isa<ConstantArray>(Init) && "out of sync");
+        IGC_ASSERT(isa<ConstantArray>(Init) && "out of sync");
         ConstantArray* CA = cast<ConstantArray>(Init);
         unsigned NElts = CA->getNumOperands();
         for (unsigned i = 0; i < NElts; ++i) {
@@ -511,7 +510,7 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
                 unsigned VectorSize = EltTy->getVectorNumElements();
                 for (unsigned j = 0; j < VectorSize; ++j) {
                     Constant* V = Elt->getAggregateElement(j);
-                    assert(Elt && "Null AggregateElement");
+                    IGC_ASSERT(Elt && "Null AggregateElement");
                     Vals[i * VectorSize + j] = getConstantVal(VEltTy, V, IsSigned);
                 }
             }
@@ -533,7 +532,7 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
         // might be Constant user in llvm.used
         if (!GEP || GEP->getParent()->getParent() != F)
             continue;
-        assert(GEP->getNumIndices() == 2);
+        IGC_ASSERT(GEP->getNumIndices() == 2);
         // This is the index to address the array, and the first index is to address
         // the global variable itself.
         Value* Index = GEP->getOperand(2);
@@ -545,7 +544,7 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
         }
         for (auto I = GEP->user_begin(); I != GEP->user_end(); /*empty*/) {
             auto LI = dyn_cast<LoadInst>(*I++);
-            assert(LI && "nullptr");
+            IGC_ASSERT(LI && "nullptr");
             IRBuilder<> Builder(LI);
             Type* Ty = LI->getType();
             unsigned N = 1;
@@ -556,7 +555,7 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
             }
             Value* Val = extractNElts(N, VectorData, Offset, Builder);
             if (Val->getType() != LI->getType()) {
-                assert(Val->getType()->isIntOrIntVectorTy());
+                IGC_ASSERT(Val->getType()->isIntOrIntVectorTy());
                 Val = Builder.CreateIntCast(Val, LI->getType(), IsSigned);
             }
             LI->replaceAllUsesWith(Val);
@@ -575,7 +574,7 @@ static Constant* getElt(Constant* Init, int k) {
 // Recursively emit cmp+sel tree.
 static Value* getVal(IRBuilder<>& Builder, Constant* Init, Value* Index,
     int Low, int Hi) {
-    assert(Hi > Low);
+    IGC_ASSERT(Hi > Low);
     Type* IdxTy = Index->getType();
     // base case.
     if (Hi == 1 + Low) {
@@ -595,7 +594,7 @@ static bool rewriteAsCmpSel(GlobalVariable* GV, Function& F) {
     bool Changed = false;
 
     Type* Ty = GV->getInitializer()->getType();
-    assert(Ty->isArrayTy());
+    IGC_ASSERT(Ty->isArrayTy());
     unsigned NElts = (unsigned)Ty->getArrayNumElements();
 
     for (auto UI = GV->user_begin(); UI != GV->user_end(); /*empty*/) {
@@ -606,7 +605,7 @@ static bool rewriteAsCmpSel(GlobalVariable* GV, Function& F) {
 
         // This is the index to address the array, and the first index is to
         // address the global variable itself.
-        assert(GEP->getNumIndices() == 2);
+        IGC_ASSERT(GEP->getNumIndices() == 2);
         Value* Index = GEP->getOperand(2);
         if (Index->getType()->getPrimitiveSizeInBits() > 32) {
             IRBuilder<> Builder(GEP);
@@ -614,7 +613,7 @@ static bool rewriteAsCmpSel(GlobalVariable* GV, Function& F) {
         }
         for (auto I = GEP->user_begin(); I != GEP->user_end(); /*empty*/) {
             auto LI = dyn_cast<LoadInst>(*I++);
-            assert(LI && "nullptr");
+            IGC_ASSERT(LI && "nullptr");
             IRBuilder<> Builder(LI);
 
             int n = (int)NextPowerOf2(NElts - 1);
@@ -691,7 +690,7 @@ bool PromoteConstant::runOnFunction(Function& F) {
         if (!checkSize(GV, AllocaType, IsSigned))
             continue;
 
-        assert(AllocaType);
+        IGC_ASSERT(AllocaType);
         promote(GV, AllocaType, IsSigned, &F);
         Changed = true;
     }

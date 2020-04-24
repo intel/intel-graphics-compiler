@@ -29,20 +29,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "common/LLVMUtils.h"
-
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/IRBuilder.h"
-
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 #define MAX_ALLOCA_PROMOTE_GRF_NUM      48
 #define MAX_PRESSURE_GRF_NUM            64
@@ -147,7 +145,10 @@ llvm::AllocaInst* LowerGEPForPrivMem::createVectorForAlloca(
 {
     IGCLLVM::IRBuilder<> IRB(pAlloca);
 
-    unsigned int totalSize = extractAllocaSize(pAlloca) / int_cast<unsigned int>(m_pDL->getTypeAllocSize(pBaseType));
+    IGC_ASSERT(nullptr != m_pDL);
+    const unsigned int denominator = int_cast<unsigned int>(m_pDL->getTypeAllocSize(pBaseType));
+    IGC_ASSERT(0 < denominator);
+    const unsigned int totalSize = extractAllocaSize(pAlloca) / denominator;
 
     llvm::VectorType* pVecType = llvm::VectorType::get(pBaseType, totalSize);
 
@@ -159,16 +160,20 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function& F)
 {
     m_pFunc = &F;
     CodeGenContextWrapper* pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
+    IGC_ASSERT(nullptr != pCtxWrapper);
     m_ctx = pCtxWrapper->getCodeGenContext();
     m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    IGC_ASSERT(nullptr != pMdUtils);
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
     {
         return false;
     }
+    IGC_ASSERT(nullptr != F.getParent());
     m_pDL = &F.getParent()->getDataLayout();
     m_pRegisterPressureEstimate = &getAnalysis<RegisterPressureEstimate>();
+    IGC_ASSERT(nullptr != m_pRegisterPressureEstimate);
     m_pRegisterPressureEstimate->buildRPMapPerInstruction();
     m_allocasToPrivMem.clear();
 
@@ -199,13 +204,17 @@ void TransposeHelper::EraseDeadCode()
 {
     for (auto pInst = m_toBeRemovedGEP.rbegin(); pInst != m_toBeRemovedGEP.rend(); ++pInst)
     {
-        assert((*pInst)->use_empty() && "Instruction still has usage");
+        IGC_ASSERT((*pInst)->use_empty() && "Instruction still has usage");
         (*pInst)->eraseFromParent();
     }
 }
 
 unsigned int LowerGEPForPrivMem::extractAllocaSize(llvm::AllocaInst* pAlloca)
 {
+    IGC_ASSERT(nullptr != m_pDL);
+    IGC_ASSERT(nullptr != pAlloca);
+    IGC_ASSERT(nullptr != pAlloca->getArraySize());
+    IGC_ASSERT(nullptr != pAlloca->getAllocatedType());
     unsigned int arraySize = int_cast<unsigned int>(cast<ConstantInt>(pAlloca->getArraySize())->getZExtValue());
     unsigned int totalArrayStructureSize = int_cast<unsigned int>(m_pDL->getTypeAllocSize(pAlloca->getAllocatedType()) * arraySize);
 
@@ -214,6 +223,8 @@ unsigned int LowerGEPForPrivMem::extractAllocaSize(llvm::AllocaInst* pAlloca)
 
 static void GetAllocaLiverange(Instruction* I, unsigned int& liverangeStart, unsigned int& liverangeEnd, RegisterPressureEstimate* rpe)
 {
+    IGC_ASSERT(nullptr != I);
+
     for (Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
         if (isa<GetElementPtrInst>(*use_it) || isa<BitCastInst>(*use_it))
@@ -461,7 +472,8 @@ bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base)
 void LowerGEPForPrivMem::visitAllocaInst(AllocaInst& I)
 {
     // Alloca should always be private memory
-    assert(I.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE);
+    IGC_ASSERT(nullptr != I.getType());
+    IGC_ASSERT(I.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE);
     if (!CheckIfAllocaPromotable(&I))
     {
         // alloca size extends remain per-lane-reg space
@@ -523,7 +535,7 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     // Extract the Alloca size and the base Type
     Type* pType = pAlloca->getType()->getPointerElementType();
     Type* pBaseType = GetBaseType(pType)->getScalarType();
-    assert(pBaseType);
+    IGC_ASSERT(pBaseType);
     llvm::AllocaInst* pVecAlloca = createVectorForAlloca(pAlloca, pBaseType);
     if (!pVecAlloca)
     {
@@ -535,16 +547,18 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     TransposeHelperPromote helper(pVecAlloca);
     helper.HandleAllocaSources(pAlloca, idx);
     helper.EraseDeadCode();
+    IGC_ASSERT(nullptr != pAlloca);
     if (pAlloca->use_empty()) {
-      assert(m_DT);
+      IGC_ASSERT(m_DT);
       replaceAllDbgUsesWith(*pAlloca, *pVecAlloca, *pVecAlloca, *m_DT);
     }
 }
 
 void TransposeHelper::handleLifetimeMark(IntrinsicInst* inst)
 {
-    assert(inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start ||
-        inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end);
+    IGC_ASSERT(nullptr != inst);
+    IGC_ASSERT((inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start) ||
+        (inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end));
     inst->eraseFromParent();
 }
 
@@ -552,7 +566,8 @@ void TransposeHelper::handleGEPInst(
     llvm::GetElementPtrInst* pGEP,
     llvm::Value* idx)
 {
-    assert(static_cast<ADDRESS_SPACE>(pGEP->getPointerAddressSpace()) == ADDRESS_SPACE_PRIVATE);
+    IGC_ASSERT(nullptr != pGEP);
+    IGC_ASSERT(static_cast<ADDRESS_SPACE>(pGEP->getPointerAddressSpace()) == ADDRESS_SPACE_PRIVATE);
     // Add GEP instruction to remove list
     m_toBeRemovedGEP.push_back(pGEP);
     if (pGEP->use_empty())
@@ -627,7 +642,7 @@ static Value* loadEltsFromVecAlloca(
     // %v0 = extractelement <32 x float> %w, i32 %idx
     // %v1 = extractelement <32 x float> %w, i32 %idx+1
     // replace all uses of %v with <%v0, %v1>
-    assert(N > 1 && "out of sync");
+    IGC_ASSERT((N > 1) && "out of sync");
     Type* Ty = VectorType::get(scalarType, N);
     Value* Result = UndefValue::get(Ty);
 
@@ -646,8 +661,10 @@ void TransposeHelperPromote::handleLoadInst(
     LoadInst* pLoad,
     Value* pScalarizedIdx)
 {
-    assert(pLoad->isSimple());
+    IGC_ASSERT(nullptr != pLoad);
+    IGC_ASSERT(pLoad->isSimple());
     IRBuilder<> IRB(pLoad);
+    IGC_ASSERT(nullptr != pLoad->getType());
     unsigned N = pLoad->getType()->isVectorTy()
         ? pLoad->getType()->getVectorNumElements()
         : 1;
@@ -661,12 +678,15 @@ void TransposeHelperPromote::handleStoreInst(
     llvm::Value* pScalarizedIdx)
 {
     // Add Store instruction to remove list
-    assert(pStore->isSimple());
+    IGC_ASSERT(nullptr != pStore);
+    IGC_ASSERT(pStore->isSimple());
 
     IRBuilder<> IRB(pStore);
     llvm::Value* pStoreVal = pStore->getValueOperand();
     llvm::Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
     llvm::Value* pIns = pLoadVecAlloca;
+    IGC_ASSERT(nullptr != pStoreVal);
+    IGC_ASSERT(nullptr != pStoreVal->getType());
     if (pStoreVal->getType()->isVectorTy())
     {
         // A vector store

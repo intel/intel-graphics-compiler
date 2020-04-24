@@ -30,12 +30,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DataLayout.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -406,7 +406,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
     if ((funcName == "__builtin_IB_to_private") || (funcName == "__builtin_IB_to_local")
         || (funcName == "__builtin_IB_to_global"))
     {
-        assert(I.getNumArgOperands() == 1);
+        IGC_ASSERT(I.getNumArgOperands() == 1);
         Value* arg = I.getArgOperand(0);
         PointerType* dstType = dyn_cast<PointerType>(I.getType());
         const unsigned targetAS = cast<PointerType>(I.getType())->getAddressSpace();

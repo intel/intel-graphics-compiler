@@ -23,12 +23,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/InstIterator.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "VertexShaderLowering.hpp"
 #include <array>
+#include "Probe/Assertion.h"
 
 using namespace IGC::IGCMD;
 using namespace llvm;
@@ -134,7 +136,7 @@ namespace IGC
                 return i;
             }
         }
-        assert(0 && "All input slots are already used, cannot find an empty one");
+        IGC_ASSERT(false && "All input slots are already used, cannot find an empty one");
         return 32 * 4 - 1;
     }
 
@@ -149,7 +151,7 @@ namespace IGC
             }
         }
 
-        assert(idx < ARRAY_COUNT(m_inputUsed) && "All input slots are already used, cannot find an empty one");
+        IGC_ASSERT(idx < ARRAY_COUNT(m_inputUsed) && "All input slots are already used, cannot find an empty one");
         return idx;
     }
 
@@ -324,7 +326,7 @@ namespace IGC
                         case XP0:
                         case XP1:
                         case XP2:
-                            assert(m_context->platform.supportsDrawParametersSGVs());
+                            IGC_ASSERT(m_context->platform.supportsDrawParametersSGVs());
                             vertexFetchSGVExtendedParameters.at(usage - XP0) = inst;
                             break;
 
@@ -426,7 +428,7 @@ namespace IGC
             }
             else
             {
-                assert(0 && "This case of indirect accessing of attribute  shouldn't be hit");
+                IGC_ASSERT(false && "This case of indirect accessing of attribute  shouldn't be hit");
             }
         }
         case SHADER_OUTPUT_TYPE_POINTWIDTH:
@@ -438,7 +440,7 @@ namespace IGC
             m_vsPropsPass->DeclareRTAI();
             return 0;
         default:
-            assert(!"unknown VS output type");
+            IGC_ASSERT(false && "unknown VS output type");
             break;
         }
         return 0;
@@ -495,7 +497,7 @@ namespace IGC
             offset
         };
         unsigned int inIndex = int_cast<unsigned int>(cast<ConstantInt>(offset)->getZExtValue());
-        assert(inIndex < MaxNumOfUserInputs);
+        IGC_ASSERT(inIndex < MaxNumOfUserInputs);
 
         Instruction* urbRead = GenIntrinsicInst::Create(
             GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead),
@@ -558,7 +560,7 @@ namespace IGC
             m_isHeaderPresent = true;
             AddInitializedHeader(prev);
         }
-        assert(mask < 256 && "mask is an 8-bit bitmask and has to be in range 0..255");
+        IGC_ASSERT(mask < 256 && "mask is an 8-bit bitmask and has to be in range 0..255");
         Value* arguments[] =
         {
             offset,
@@ -667,7 +669,7 @@ namespace IGC
 
     void CollectVertexShaderProperties::SetShaderDrawParameter(size_t paramIndex, unsigned int slot)
     {
-        assert(paramIndex < ARRAY_COUNT(m_vsProps.m_VertexFetchSGVExtendedParameters.extendedParameters));
+        IGC_ASSERT(paramIndex < ARRAY_COUNT(m_vsProps.m_VertexFetchSGVExtendedParameters.extendedParameters));
         auto& parameter = m_vsProps.m_VertexFetchSGVExtendedParameters.extendedParameters[paramIndex];
         parameter.enabled = true;
         parameter.location = slot;

@@ -12,12 +12,12 @@
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
-
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/AdvCodeMotion.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -514,7 +514,7 @@ bool AdvCodeMotion::runOnFunction(Function& F) {
     if (!WIS.hasOneDim())
         return false;
 
-    assert(WIS.LocalSize.X && WIS.EnqueuedLocalSize.X && WIS.GlobalSize.X &&
+    IGC_ASSERT(WIS.LocalSize.X && WIS.EnqueuedLocalSize.X && WIS.GlobalSize.X &&
         WIS.GroupId.X && WIS.GlobalOffset.X && WIS.LocalId.X &&
         WIS.GlobalId.X && "Missing necessary work-item settings");
 

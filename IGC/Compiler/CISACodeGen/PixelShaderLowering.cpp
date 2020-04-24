@@ -23,11 +23,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMUtils.h"
 #include "common/IGCIRBuilder.h"
 #include "PixelShaderLowering.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -120,7 +122,7 @@ namespace IGC
                 {
                     if ((rtw = dyn_cast<RTWritIntrinsic>(II)))
                     {
-                        assert(isa<ConstantInt>(rtw->getPMask()));
+                        IGC_ASSERT(isa<ConstantInt>(rtw->getPMask()));
                         if (!mask)
                         {
                             mask = BinaryOperator::CreateNot(discardCond, "", rtw);
@@ -131,7 +133,7 @@ namespace IGC
                     else
                         if ((drt = dyn_cast<RTDualBlendSourceIntrinsic>(II)))
                         {
-                            assert(isa<ConstantInt>(rtw->getPMask()));
+                            IGC_ASSERT(isa<ConstantInt>(rtw->getPMask()));
                             if (!mask)
                             {
                                 mask = BinaryOperator::CreateNot(discardCond, "", drt);
@@ -166,7 +168,7 @@ namespace IGC
                         {
                             mask = CallInst::Create(getMaskF, { globalMask }, "", rtw);
                         }
-                        assert(isa<ConstantInt>(rtw->getPMask()));
+                        IGC_ASSERT(isa<ConstantInt>(rtw->getPMask()));
                         rtw->setPMask(mask);
                     }
                     else
@@ -176,7 +178,7 @@ namespace IGC
                             {
                                 mask = CallInst::Create(getMaskF, { globalMask }, "", drt);
                             }
-                            assert(isa<ConstantInt>(drt->getPMask()));
+                            IGC_ASSERT(isa<ConstantInt>(drt->getPMask()));
                             drt->setPMask(mask);
                         }
                 }
@@ -334,7 +336,7 @@ namespace IGC
                         m_outputBlock = inst->getParent();
 
                         uint outputType = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(4))->getZExtValue();
-                        assert(outputType == SHADER_OUTPUT_TYPE_DEFAULT ||
+                        IGC_ASSERT(outputType == SHADER_OUTPUT_TYPE_DEFAULT ||
                             outputType == SHADER_OUTPUT_TYPE_DEPTHOUT ||
                             outputType == SHADER_OUTPUT_TYPE_STENCIL ||
                             outputType == SHADER_OUTPUT_TYPE_OMASK);
@@ -424,7 +426,7 @@ namespace IGC
                         uint setupIndex =
                             (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
 
-                        assert(setupIndex < MAX_INPUTS && "Max inputs cannot be greater than 32 x 4");
+                        IGC_ASSERT(setupIndex < MAX_INPUTS && "Max inputs cannot be greater than 32 x 4");
                         inputUsed[setupIndex] = true;
 
                         e_interpolation mode = (e_interpolation)
@@ -686,7 +688,7 @@ namespace IGC
         if (!m_hasDiscard)
         {
             // no discard found
-            //assert(m_module->getNamedMetadata("KillPixel") == nullptr);
+            //IGC_ASSERT(m_module->getNamedMetadata("KillPixel") == nullptr);
 
             // check blend to discard optimization and generate mask for each
             // render target output
@@ -827,7 +829,7 @@ namespace IGC
         Value* b1 = color1.color[2];
         Value* a1 = color1.color[3];
 
-        assert(color0.mask == color1.mask);
+        IGC_ASSERT(color0.mask == color1.mask);
 
         //assuming types are consistent
         if (r0->getType()->isHalfTy() ||
@@ -1246,7 +1248,7 @@ namespace IGC
     {
         if (colors.size())
         {
-            assert(colors[0].inst != nullptr);
+            IGC_ASSERT(colors[0].inst != nullptr);
             SmallVector<BasicBlock*, 8> predBB;
             DenseMap<Value*, PHINode*> valueToPhiMap;
             for (auto PI = pred_begin(m_ReturnBlock), PE = pred_end(m_ReturnBlock);
@@ -1266,8 +1268,8 @@ namespace IGC
                 CallInst* const singleSourceRTW =
                     isa<RTDualBlendSourceIntrinsic>(colors[0].inst) ? colors[1].inst : colors[0].inst;
 
-                assert(isa<RTWritIntrinsic>(singleSourceRTW));
-                assert(isa<RTDualBlendSourceIntrinsic>(dualSourceRTW));
+                IGC_ASSERT(isa<RTWritIntrinsic>(singleSourceRTW));
+                IGC_ASSERT(isa<RTDualBlendSourceIntrinsic>(dualSourceRTW));
 
                 moveRTWriteToBlock(dualSourceRTW, predBB, m_ReturnBlock, valueToPhiMap);
                 moveRTWriteToBlock(singleSourceRTW, predBB, m_ReturnBlock, valueToPhiMap);
@@ -1411,7 +1413,7 @@ namespace IGC
 
         for (auto discard : m_discards)
         {
-            assert(discard->isGenIntrinsic(GenISAIntrinsic::GenISA_discard));
+            IGC_ASSERT(discard->isGenIntrinsic(GenISAIntrinsic::GenISA_discard));
             killsPixels = true;
 
             BasicBlock* bbDiscard;
@@ -1527,7 +1529,7 @@ namespace IGC
                             // know it when creating null surface write.
                             uint outputType = (uint)llvm::cast<llvm::ConstantInt>(
                                 inst->getOperand(4))->getZExtValue();
-                            assert(outputType == SHADER_OUTPUT_TYPE_DEFAULT ||
+                            IGC_ASSERT(outputType == SHADER_OUTPUT_TYPE_DEFAULT ||
                                 outputType == SHADER_OUTPUT_TYPE_DEPTHOUT ||
                                 outputType == SHADER_OUTPUT_TYPE_STENCIL ||
                                 outputType == SHADER_OUTPUT_TYPE_OMASK);

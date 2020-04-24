@@ -28,19 +28,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/Alignment.h"
-
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "ShaderTypesEnum.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -355,7 +353,7 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F
 
         if (nullptr == formatStringConst)
         {
-            assert(0 && "Unexpected printf argument (expected string literal)");
+            IGC_ASSERT(false && "Unexpected printf argument (expected string literal)");
             return 0;
         }
 
@@ -403,7 +401,7 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F
         }
         else
         {
-            assert(0 && "Instructions in the vector are not supported!");
+            IGC_ASSERT(false && "Instructions in the vector are not supported!");
         }
     }
     return ConstantInt::get(m_int32Type, m_stringIndex - 1);
@@ -820,7 +818,7 @@ unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argT
 
 unsigned int OpenCLPrintfResolution::getTotalDataSize()
 {
-    assert(m_argDescriptors.size() > 0 && "Empty printf arguments list.");
+    IGC_ASSERT(m_argDescriptors.size() > 0 && "Empty printf arguments list.");
     unsigned int dataSize = 0;
     // Add size of the format string index.
     dataSize += 4;
@@ -941,7 +939,7 @@ Instruction* OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor* arg
         break;
 
     default:
-        assert(0 && "Unexpected printf argument type");
+        IGC_ASSERT(false && "Unexpected printf argument type");
     }
 
     return CastInst::Create(Instruction::CastOps::IntToPtr,

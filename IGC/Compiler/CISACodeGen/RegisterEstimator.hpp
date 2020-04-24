@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/LivenessAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SetVector.h"
@@ -38,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Value.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -298,7 +298,7 @@ namespace IGC
             ValueToIntMap::iterator II = m_LVA->ValueIds.find(V);
             if (II == m_LVA->ValueIds.end())
             {
-                assert(false && "Value is not part of LivenessAnalysis");
+                IGC_ASSERT(false && "Value is not part of LivenessAnalysis");
                 return nullptr;
             }
             uint32_t valId = II->second;

@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Support/KnownBits.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -346,7 +347,7 @@ static bool canAlwaysEvaluateInType(Value* V, Type* Ty) {
 /// Filter out values that we can not evaluate in the destination type for free.
 /// This is a helper for canEvaluate*.
 static bool canNotEvaluateInType(Value* V, Type* Ty) {
-    assert(!isa<Constant>(V) && "Constant should already be handled.");
+    IGC_ASSERT(!isa<Constant>(V) && "Constant should already be handled.");
     if (!isa<Instruction>(V))
         return true;
     // We don't extend or shrink something that has multiple uses --  doing so
@@ -393,7 +394,7 @@ static bool canEvaluateTruncated(Value* V, Type* Ty, InstCombiner& IC,
         // UDiv and URem can be truncated if all the truncated bits are zero.
         uint32_t OrigBitWidth = OrigTy->getScalarSizeInBits();
         uint32_t BitWidth = Ty->getScalarSizeInBits();
-        assert(BitWidth < OrigBitWidth && "Unexpected bitwidths!");
+        IGC_ASSERT(BitWidth < OrigBitWidth && "Unexpected bitwidths!");
         APInt Mask = APInt::getBitsSetFrom(OrigBitWidth, BitWidth);
         if (IC.MaskedValueIsZero(I->getOperand(0), Mask, 0, CxtI) &&
             IC.MaskedValueIsZero(I->getOperand(1), Mask, 0, CxtI)) {
@@ -523,7 +524,7 @@ static Instruction* foldVecTruncToExtElt(TruncInst& Trunc, InstCombiner& IC) {
 /// Rotate left/right may occur in a wider type than necessary because of type
 /// promotion rules. Try to narrow all of the component instructions.
 Instruction* InstCombiner::narrowRotate(TruncInst& Trunc) {
-    assert((isa<VectorType>(Trunc.getSrcTy()) ||
+    IGC_ASSERT((isa<VectorType>(Trunc.getSrcTy()) ||
         shouldChangeType(Trunc.getSrcTy(), Trunc.getType())) &&
         "Don't narrow to an illegal scalar type");
 
@@ -674,7 +675,7 @@ static Instruction* shrinkSplatShuffle(TruncInst& Trunc,
 static Instruction* shrinkInsertElt(CastInst& Trunc,
     InstCombiner::BuilderTy& Builder) {
     Instruction::CastOps Opcode = Trunc.getOpcode();
-    assert((Opcode == Instruction::Trunc || Opcode == Instruction::FPTrunc) &&
+    IGC_ASSERT((Opcode == Instruction::Trunc || Opcode == Instruction::FPTrunc) &&
         "Unexpected instruction for shrinking");
 
     auto* InsElt = dyn_cast<InsertElementInst>(Trunc.getOperand(0));
@@ -719,7 +720,7 @@ Instruction* InstCombiner::visitTrunc(TruncInst& CI) {
             " to avoid cast: "
             << CI << '\n');
         Value* Res = EvaluateInDifferentType(Src, DestTy, false);
-        assert(Res->getType() == DestTy);
+        IGC_ASSERT(Res->getType() == DestTy);
         return replaceInstUsesWith(CI, Res);
     }
 
@@ -1099,7 +1100,7 @@ Instruction* InstCombiner::visitZExt(ZExtInst& CI) {
     unsigned BitsToClear;
     if ((DestTy->isVectorTy() || shouldChangeType(SrcTy, DestTy)) &&
         canEvaluateZExtd(Src, DestTy, BitsToClear, *this, &CI)) {
-        assert(BitsToClear <= SrcTy->getScalarSizeInBits() &&
+        IGC_ASSERT(BitsToClear <= SrcTy->getScalarSizeInBits() &&
             "Can't clear more bits than in SrcTy");
 
         // Okay, we can transform this!  Insert the new expression now.
@@ -1108,7 +1109,7 @@ Instruction* InstCombiner::visitZExt(ZExtInst& CI) {
             " to avoid zero extend: "
             << CI << '\n');
         Value* Res = EvaluateInDifferentType(Src, DestTy, false);
-        assert(Res->getType() == DestTy);
+        IGC_ASSERT(Res->getType() == DestTy);
 
         // Preserve debug values referring to Src if the zext is its last use.
         if (auto * SrcOp = dyn_cast<Instruction>(Src))
@@ -1308,7 +1309,7 @@ Instruction* InstCombiner::transformSExtICmp(ICmpInst* ICI, Instruction& CI) {
 /// This function works on both vectors and scalars.
 ///
 static bool canEvaluateSExtd(Value* V, Type* Ty) {
-    assert(V->getType()->getScalarSizeInBits() < Ty->getScalarSizeInBits() &&
+    IGC_ASSERT(V->getType()->getScalarSizeInBits() < Ty->getScalarSizeInBits() &&
         "Can't sign extend type to a smaller type");
     if (canAlwaysEvaluateInType(V, Ty))
         return true;
@@ -1387,7 +1388,7 @@ Instruction* InstCombiner::visitSExt(SExtInst& CI) {
             " to avoid sign extend: "
             << CI << '\n');
         Value* Res = EvaluateInDifferentType(Src, DestTy, true);
-        assert(Res->getType() == DestTy);
+        IGC_ASSERT(Res->getType() == DestTy);
 
         uint32_t SrcBitSize = SrcTy->getScalarSizeInBits();
         uint32_t DestBitSize = DestTy->getScalarSizeInBits();
@@ -1894,7 +1895,7 @@ static unsigned getTypeSizeIndex(unsigned Value, Type* Ty) {
 static bool collectInsertionElements(Value* V, unsigned Shift,
     SmallVectorImpl<Value*>& Elements,
     Type* VecEltTy, bool isBigEndian) {
-    assert(isMultipleOfTypeSize(Shift, VecEltTy) &&
+    IGC_ASSERT(isMultipleOfTypeSize(Shift, VecEltTy) &&
         "Shift should be a multiple of the element type size");
 
     // Undef values never contribute useful bits to the result.
@@ -2248,7 +2249,7 @@ Instruction* InstCombiner::optimizeBitCastFromPhi(CastInst& CI, PHINode* PN) {
             else if (auto * PrevPN = dyn_cast<PHINode>(V)) {
                 NewV = NewPNodes[PrevPN];
             }
-            assert(NewV);
+            IGC_ASSERT(NewV);
             NewPN->addIncoming(NewV, OldPN->getIncomingBlock(j));
         }
     }
@@ -2262,7 +2263,7 @@ Instruction* InstCombiner::optimizeBitCastFromPhi(CastInst& CI, PHINode* PN) {
                 cast<BitCastInst>(Builder.CreateBitCast(NewPNodes[PN], SrcTy));
             SI->setOperand(0, NewBC);
             Worklist.Add(SI);
-            assert(hasStoreUsersOnly(*NewBC));
+            IGC_ASSERT(hasStoreUsersOnly(*NewBC));
         }
     }
 

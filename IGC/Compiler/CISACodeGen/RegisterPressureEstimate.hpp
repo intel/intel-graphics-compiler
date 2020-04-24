@@ -5,7 +5,7 @@
 // This file is distributed under the University of Illinois Open Source
 // License. See LRCENSE.TXT for details.
 //
-//  Copyright  (C) 2014 Intel Corporation. All rights reserved.
+//  Copyright  (C) 2014-2020 Intel Corporation. All rights reserved.
 //
 // The information and source code contained herein is the exclusive
 // property of Intel Corporation and may not be disclosed, examined
@@ -28,6 +28,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -145,7 +146,7 @@ namespace IGC
 
         void createLiveRange(llvm::Value* V)
         {
-            assert(!m_pLiveRanges.count(V));
+            IGC_ASSERT(!m_pLiveRanges.count(V));
             m_pLiveRanges[V] = createLiveRange();
         }
 

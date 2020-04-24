@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Debug.hpp"
 #include "common/secure_mem.h"
 #include <iStdLib/utility.h>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -94,7 +95,7 @@ namespace IGC
             break;
         default:
             // !! unsupported input primitive type
-            assert(0 && "Unimplemented Primitive type");
+            IGC_ASSERT(false && "Unimplemented Primitive type");
             break;
         }
 
@@ -145,7 +146,7 @@ namespace IGC
         case IGC::GSHADER_INPUT_PATCHLIST_32: return 32;
 
         default:
-            assert(0 && "Input primitive type not implemented");
+            IGC_ASSERT(false && "Input primitive type not implemented");
             return 0;
         }
     }
@@ -287,11 +288,11 @@ namespace IGC
         // R1 in our case is known as the URB Handle register to make it explicit
         // as to what it contains.
         //R0 is allocated as a predefined variable. Increase offset for R0
-        assert(m_R0);
+        IGC_ASSERT(m_R0);
         offset += getGRFSize();
 
         // allocate input for URB return handles
-        assert(m_pURBWriteHandleReg);
+        IGC_ASSERT(m_pURBWriteHandleReg);
         AllocateInput(m_pURBWriteHandleReg, offset);
         offset += getGRFSize();
 
@@ -310,13 +311,13 @@ namespace IGC
             offset += m_pURBReadHandlesReg->GetSize();
             offset = iSTD::Align(offset, getGRFSize());
         }
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
         ProgramOutput()->m_startReg = offset / getGRFSize();
 
         // allocate space for NOS constants and pushed constants
         AllocateConstants3DShader(offset);;
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
 
         // when instancing mode is on, there is only one set of inputs and it's
         // laid out like in constant buffers, i.e. one attribute takes four subregisters
@@ -470,7 +471,7 @@ namespace IGC
             return Unit<Element>(3);
 
         default:
-            assert(0 && "Gs SGV Local offset not yet defined");
+            IGC_ASSERT(false && "Gs SGV Local offset not yet defined");
         }
 
         return Unit<Element>(0);

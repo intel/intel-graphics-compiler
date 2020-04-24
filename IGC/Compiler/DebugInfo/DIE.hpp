@@ -37,9 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
 #include "llvm/Config/llvm-config.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallVector.h"
@@ -47,8 +45,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/BinaryFormat/Dwarf.h"
 #include "llvm/ADT/StringRef.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include <vector>
+#include "Probe/Assertion.h"
 
 namespace llvm
 {
@@ -205,7 +203,7 @@ namespace IGC
         ///
         void addChild(DIE* Child)
         {
-            assert(!Child->getParent());
+            IGC_ASSERT(!Child->getParent());
             Abbrev.setChildrenFlag(llvm::dwarf::DW_CHILDREN_yes);
             Children.push_back(Child);
             Child->Parent = this;
@@ -471,7 +469,7 @@ namespace IGC
     public:
         explicit DIEEntry(DIE* E, unsigned Version) : DIEValue(isEntry), Entry(E), DwarfVersion(Version)
         {
-            assert(E && "Cannot construct a DIEEntry with a null DIE");
+            IGC_ASSERT(E && "Cannot construct a DIEEntry with a null DIE");
         }
 
         DIE* getEntry() const { return Entry; }

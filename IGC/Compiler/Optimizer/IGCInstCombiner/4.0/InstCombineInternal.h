@@ -53,6 +53,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/InstCombine/InstCombineWorklist.h"
+#include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "instcombine"
 
@@ -428,7 +429,7 @@ public:
   /// Also adds the new instruction to the worklist and returns \p New so that
   /// it is suitable for use as the return from the visitation patterns.
   Instruction *InsertNewInstBefore(Instruction *New, Instruction &Old) {
-    assert(New && !New->getParent() &&
+    IGC_ASSERT(New && !New->getParent() &&
            "New instruction already inserted into a basic block!");
     BasicBlock *BB = Old.getParent();
     BB->getInstList().insert(Old.getIterator(), New); // Insert inst
@@ -485,7 +486,7 @@ public:
   Instruction *eraseInstFromFunction(Instruction &I) {
     DEBUG(dbgs() << "IC: ERASE " << I << '\n');
 
-    assert(I.use_empty() && "Cannot erase instruction that is used!");
+    IGC_ASSERT(I.use_empty() && "Cannot erase instruction that is used!");
     // Make sure that we reprocess all operands now that we reduced their
     // use counts.
     if (I.getNumOperands() < 8) {

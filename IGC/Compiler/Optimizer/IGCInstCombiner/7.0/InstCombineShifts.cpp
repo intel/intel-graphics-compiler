@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PatternMatch.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -51,7 +52,7 @@ using namespace IGCombiner;
 
 Instruction* InstCombiner::commonShiftTransforms(BinaryOperator& I) {
     Value* Op0 = I.getOperand(0), * Op1 = I.getOperand(1);
-    assert(Op0->getType() == Op1->getType());
+    IGC_ASSERT(Op0->getType() == Op1->getType());
 
     // See if we can fold away this shift.
     if (SimplifyDemandedInstructionBits(I))
@@ -98,7 +99,7 @@ Instruction* InstCombiner::commonShiftTransforms(BinaryOperator& I) {
 static bool canEvaluateShiftedShift(unsigned OuterShAmt, bool IsOuterShl,
     Instruction* InnerShift, InstCombiner& IC,
     Instruction* CxtI) {
-    assert(InnerShift->isLogicalShift() && "Unexpected instruction type");
+    IGC_ASSERT(InnerShift->isLogicalShift() && "Unexpected instruction type");
 
     // We need constant scalar or constant splat shifts.
     const APInt* InnerShiftConst;
@@ -272,7 +273,7 @@ static Value* foldShiftedShift(BinaryOperator* InnerShift, unsigned OuterShAmt,
         return And;
     }
 
-    assert(InnerShAmt > OuterShAmt &&
+    IGC_ASSERT(InnerShAmt > OuterShAmt &&
         "Unexpected opposite direction logical shift pair");
 
     // In general, we would need an 'and' for this transform, but
@@ -398,7 +399,7 @@ Instruction* InstCombiner::FoldShiftByConstant(Value* Op0, Constant* Op1,
     // purpose is to compute bits we don't care about.
     unsigned TypeBits = Op0->getType()->getScalarSizeInBits();
 
-    assert(!Op1C->uge(TypeBits) &&
+    IGC_ASSERT(!Op1C->uge(TypeBits) &&
         "Shift over the type width should have been removed already");
 
     if (Instruction * FoldedShift = foldBinOpIntoSelectOrPhi(I))
@@ -435,7 +436,7 @@ Instruction* InstCombiner::FoldShiftByConstant(Value* Op0, Constant* Op1,
             if (I.getOpcode() == Instruction::Shl)
                 MaskV <<= Op1C->getZExtValue();
             else {
-                assert(I.getOpcode() == Instruction::LShr && "Unknown logical shift");
+                IGC_ASSERT(I.getOpcode() == Instruction::LShr && "Unknown logical shift");
                 MaskV.lshrInPlace(Op1C->getZExtValue());
             }
 
@@ -782,7 +783,7 @@ Instruction* InstCombiner::visitLShr(BinaryOperator& I) {
                 APInt Mask(APInt::getLowBitsSet(BitWidth, BitWidth - ShAmt));
                 return BinaryOperator::CreateAnd(NewShl, ConstantInt::get(Ty, Mask));
             }
-            assert(ShlAmt == ShAmt);
+            IGC_ASSERT(ShlAmt == ShAmt);
             // (X << C) >>u C --> X & (-1 >>u C)
             APInt Mask(APInt::getLowBitsSet(BitWidth, BitWidth - ShAmt));
             return BinaryOperator::CreateAnd(X, ConstantInt::get(Ty, Mask));
@@ -790,7 +791,7 @@ Instruction* InstCombiner::visitLShr(BinaryOperator& I) {
 
         if (match(Op0, m_OneUse(m_ZExt(m_Value(X)))) &&
             (!Ty->isIntegerTy() || shouldChangeType(Ty, X->getType()))) {
-            assert(ShAmt < X->getType()->getScalarSizeInBits() &&
+            IGC_ASSERT(ShAmt < X->getType()->getScalarSizeInBits() &&
                 "Big shift not simplified to zero?");
             // lshr (zext iM X to iN), C --> zext (lshr X, C) to iN
             Value* NewLShr = Builder.CreateLShr(X, ShAmt);

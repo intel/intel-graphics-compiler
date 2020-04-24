@@ -57,7 +57,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Dump.hpp"
 #include "common/Stats.hpp"
 #include "common/LLVMUtils.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -65,12 +64,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/CFG.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC::Debug;
@@ -421,7 +420,7 @@ namespace IGC {
                     for (int i = 0; i < numChanges; ++i)
                     {
                         Instruction* undoLoca = undoLocas[i];
-                        assert(undoLoca);
+                        IGC_ASSERT(undoLoca);
                         movedInsts[i]->moveBefore(undoLoca);
                     }
                     madeChange = false;
@@ -750,7 +749,7 @@ namespace IGC {
         if (CallInst * call0 = dyn_cast<CallInst>(src0))
         {
             CallInst* call1 = dyn_cast<CallInst>(src1);
-            assert(call1 != nullptr);
+            IGC_ASSERT(call1 != nullptr);
 
             if (!call0->getCalledFunction() ||
                 call0->getCalledFunction() != call1->getCalledFunction() ||
@@ -764,7 +763,7 @@ namespace IGC {
             if (LoadInst * ld0 = dyn_cast<LoadInst>(src0))
             {
                 LoadInst* ld1 = dyn_cast<LoadInst>(src1);
-                assert(ld1 != nullptr);
+                IGC_ASSERT(ld1 != nullptr);
                 if (ld0->getPointerAddressSpace() != ld1->getPointerAddressSpace())
                 {
                     return false;

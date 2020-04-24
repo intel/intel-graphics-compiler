@@ -25,16 +25,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/Bitcode/BitcodeWriter.h"
-
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include "llvm/IR/DebugInfo.h"
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "common/debug/Dump.hpp"
 #include "common/secure_mem.h"
 #include "Compiler/GenUpdateCB.h"
@@ -45,8 +42,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include <iStdLib/MemCopy.h>
-
 #include "common/LLVMUtils.h"
+#include "Probe/Assertion.h"
 
 char IGC::GenUpdateCB::ID = 0;
 
@@ -321,7 +318,7 @@ void GenUpdateCB::InsertInstTree(Instruction* inst, Instruction* pos)
                 llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
             break;
         default:
-            assert(0 && "Intrinsic not supported");
+            IGC_ASSERT(false && "Intrinsic not supported");
         }
         callI->setCalledFunction(pfunc);
     }
@@ -580,7 +577,7 @@ namespace IGC
         {
             if (CalculatedValue.find(op) == CalculatedValue.end())
             {
-                assert(0 && "can't find matching cb value");
+                IGC_ASSERT(false && "can't find matching cb value");
             }
             return CalculatedValue[op];
         }
@@ -642,7 +639,7 @@ namespace IGC
 
             if (llvm::Error EC = ModuleOrErr.takeError())
             {
-                assert(0 && "parsing bitcode failed");
+                IGC_ASSERT(false && "parsing bitcode failed");
             }
             else
             {
@@ -651,7 +648,7 @@ namespace IGC
         }
         else
         {
-            assert(0 && "parsing bitcode failed");
+            IGC_ASSERT(false && "parsing bitcode failed");
         }
 
         // start constant folding
@@ -761,7 +758,7 @@ namespace IGC
                         ftodTemp.f = fminf(1.0f, fmaxf(0.0f, ftod0.f));
                         break;
                     default:
-                        assert(0);
+                        IGC_ASSERT(0);
                         break;
                     }
                 }
@@ -832,7 +829,7 @@ namespace IGC
                         ftodTemp.u = ftod0.u ^ ftod1.u;
                         break;
                     default:
-                        assert(0);
+                        IGC_ASSERT(0);
                         break;
                     }
                 }

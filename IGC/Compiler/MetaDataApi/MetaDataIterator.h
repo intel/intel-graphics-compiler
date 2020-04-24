@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
@@ -34,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/Atomic.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "MetaDataTraits.h"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -41,7 +43,7 @@ namespace IGC
     template<class MDorNamedMD>
     inline llvm::Metadata* getMDOpnd(MDorNamedMD* MD, unsigned idx)
     {
-        assert(false);
+        IGC_ASSERT(false);
         return nullptr;
     }
 
@@ -104,7 +106,7 @@ namespace IGC
             m_pNode(pNode),
             m_index(index)
         {
-            assert(index <= pNode->getNumOperands());
+            IGC_ASSERT(index <= pNode->getNumOperands());
         }
 
 
@@ -112,7 +114,7 @@ namespace IGC
         {
             if (isNil())
             {
-                assert(0 && "m_Index has to be 0");
+                IGC_ASSERT(false && "m_Index has to be 0");
             }
             return getMDOpnd(m_pNode, m_index);
         }
@@ -122,7 +124,7 @@ namespace IGC
         {
             if (isNil())
             {
-                assert(0 && "m_Index has to be 0");
+                IGC_ASSERT(false && "m_Index has to be 0");
             }
             return C::load(getMDOpnd(m_pNode, m_index));
         }

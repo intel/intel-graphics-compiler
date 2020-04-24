@@ -4,7 +4,6 @@
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/DepthFirstIterator.h>
 #include <llvm/Analysis/InstructionSimplify.h>
@@ -17,8 +16,8 @@
 #include <llvm/Pass.h>
 #include <llvm/Support/raw_ostream.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "GenISAIntrinsics/GenIntrinsics.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -271,7 +270,7 @@ bool DeadPHINodeElimination::runOnFunction(Function& F)
 
             for (auto U : P->users()) {
                 PHINode* phiUser = dyn_cast<PHINode>(U);
-                assert(phiUser && "ICE: all candidates should have phi as its users!");
+                IGC_ASSERT(phiUser && "ICE: all candidates should have phi as its users!");
                 auto iter = candidates.find(phiUser);
                 if (iter == candidates.end())
                 {

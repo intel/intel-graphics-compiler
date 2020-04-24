@@ -23,9 +23,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "MergeURBWrites.hpp"
 #include "Compiler/CodeGenPublic.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/BasicBlock.h>
@@ -33,13 +33,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Constants.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "Probe/Assertion.h"
 
 namespace
 {
-
     using namespace llvm;
     using namespace IGC;
 
@@ -302,7 +301,7 @@ void MergeURBWrites::MergeInstructions()
         // merge per-channel write masks
         auto lowWriteMask = GetChannelMask(ii->second.GetInst());
         auto highWriteMask = GetChannelMask(next->second.GetInst());
-        assert(lowWriteMask <= 0x0F && highWriteMask <= 0x0F);
+        IGC_ASSERT(lowWriteMask <= 0x0F && highWriteMask <= 0x0F);
         auto mergedMask = lowWriteMask | (highWriteMask << 4);
 
         // Move the data operands from the earlier instruction to the later instruction.
@@ -347,7 +346,7 @@ std::pair<Value*, unsigned int> MergeURBWrites::GetBaseAndOffset(Value* pUrbOffs
 
     auto GetConstant = [](Value* pVal)->unsigned int
     {
-        assert(isa<ConstantInt>(pVal));
+        IGC_ASSERT(isa<ConstantInt>(pVal));
         ConstantInt* pConst = cast<ConstantInt>(pVal);
         return int_cast<unsigned int>(pConst->getZExtValue());
     };

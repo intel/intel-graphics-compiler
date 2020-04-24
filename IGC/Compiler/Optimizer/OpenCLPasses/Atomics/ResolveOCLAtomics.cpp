@@ -26,15 +26,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/Optimizer/OpenCLPasses/Atomics/ResolveOCLAtomics.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/ADT/StringExtras.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "GenISAIntrinsics/GenIntrinsics.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -102,7 +101,7 @@ bool ResolveOCLAtomics::runOnModule(Module& M)
     m_builder = &builder;
 
     int pointerSize = M.getDataLayout().getPointerSizeInBits();
-    assert(pointerSize == 64 || pointerSize == 32);
+    IGC_ASSERT(pointerSize == 64 || pointerSize == 32);
 
     if (pointerSize == 64)
     {
@@ -139,7 +138,7 @@ void ResolveOCLAtomics::visitCallInst(CallInst& callInst)
 
     if (funcName.startswith("__builtin_IB_atomic"))
     {
-        assert(m_AtomicDescMap.count(funcName) && "Unexpected IGC atomic function name.");
+        IGC_ASSERT(m_AtomicDescMap.count(funcName) && "Unexpected IGC atomic function name.");
         processOCLAtomic(callInst, getAtomicOp(funcName), getBufType(funcName));
         m_changed = true;
     }
@@ -284,7 +283,7 @@ CallInst* ResolveOCLAtomics::genGetBufferPtr(CallInst& callInst, BufferType bufT
 // local variables in program scope.
 void ResolveOCLAtomics::processGetLocalLock(CallInst& callInst)
 {
-    assert(callInst.getCalledFunction()->getName() == BUILTIN_GET_LOCAL_LOCK);
+    IGC_ASSERT(callInst.getCalledFunction()->getName() == BUILTIN_GET_LOCAL_LOCK);
     if (m_localLock == nullptr) {
         auto& C = m_pModule->getContext();
 
@@ -346,8 +345,8 @@ void ResolveOCLAtomics::findLockUsers(Value* V)
 //     call void @llvm.genx.GenISA.threadgroupbarrier()
 void ResolveOCLAtomics::generateLockInitilization(Function* F)
 {
-    assert(m_localLock && "Local lock is not created!");
-    assert(F->getCallingConv() == CallingConv::SPIR_KERNEL && "SLM should be initialized only on the beginning of kernel function!");
+    IGC_ASSERT(m_localLock && "Local lock is not created!");
+    IGC_ASSERT(F->getCallingConv() == CallingConv::SPIR_KERNEL && "SLM should be initialized only on the beginning of kernel function!");
 
     auto& C = m_pModule->getContext();
 

@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/Legalizer/PeepholeTypeLegalizer.hpp"
@@ -35,7 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/HullShaderLowering.hpp"
 #include "Compiler/CISACodeGen/HullShaderClearTessFactors.hpp"
 #include "Compiler/CISACodeGen/DomainShaderLowering.hpp"
-
 #include "Compiler/CISACodeGen/AdvCodeMotion.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/Emu64OpsPass.h"
@@ -74,7 +74,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderLowering.hpp"
 #include "Compiler/CISACodeGen/CrossPhaseConstProp.hpp"
-
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
@@ -94,7 +93,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/Optimizer/IntDivRemCombine.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
-
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
 #include "Compiler/CustomUnsafeOptPass.hpp"
@@ -108,7 +106,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/LegalizationPass.hpp"
 #include "Compiler/LowPrecisionOptPass.hpp"
 #include "Compiler/WorkaroundAnalysisPass.h"
-
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
@@ -119,14 +116,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/ThreadCombining.hpp"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/Optimizer/Scalarizer.h"
-
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/MemStats.h"
-
 #include <iStdLib/utility.h>
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/LLVMContext.h>
@@ -150,29 +144,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/ErrorHandling.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Transforms/IPO/FunctionAttrs.h>
-
 #include <llvmWrapper/Transforms/Utils.h>
 #include <llvmWrapper/Transforms/Scalar/InstSimplifyPass.h>
 #include <llvmWrapper/Transforms/Scalar.h>
 #include <llvmWrapper/Bitcode/BitcodeWriter.h>
-
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <sstream>
-
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
 #include "Compiler/GenTTI.h"
-
 #include "Compiler/Optimizer/SetMathPrecisionForPositionOutput.hpp"
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Compiler/SampleCmpToDiscard.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
-
 #include "DebugInfo.hpp"
-
 #include "Compiler/CISACodeGen/HalfPromotion.h"
+#include "Probe/Assertion.h"
 
 /***********************************************************************************
 This file contains the generic code generation functions for all the shaders
@@ -997,7 +986,7 @@ namespace IGC
             }
 
             default:
-                assert(false && "Unexpected SIMD mode");
+                IGC_ASSERT(false && "Unexpected SIMD mode");
             }
         }
 
@@ -1087,7 +1076,9 @@ namespace IGC
                 leastSIMD = numLanes(leastSIMDMode);
             }
             if (ctx->getModuleMetaData()->csInfo.forcedSIMDSize)
-                assert((ctx->getModuleMetaData()->csInfo.forcedSIMDSize >= leastSIMD) && "Incorrect SIMD forced");
+            {
+                IGC_ASSERT((ctx->getModuleMetaData()->csInfo.forcedSIMDSize >= leastSIMD) && "Incorrect SIMD forced");
+            }
             if (leastSIMD <= 8)
             {
                 AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);

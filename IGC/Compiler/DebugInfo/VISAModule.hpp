@@ -26,11 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "llvm/Config/llvm-config.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/DataTypes.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include <vector>
 #include <map>
 #include <string>
@@ -39,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/DebugInfo/VISAIDebugEmitter.hpp"
 #include "Compiler/DebugInfo/LexicalScopes.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Probe/Assertion.h"
 
 namespace llvm
 {
@@ -270,21 +269,21 @@ namespace IGC
             SetSpace(Space space)
         {
             GfxAddress s = static_cast<GfxAddress>(space);
-            assert(s == (s & c_space_mask));
+            IGC_ASSERT(s == (s & c_space_mask));
             m_addr = (m_addr & ~(c_space_mask << c_space_shift)) | ((s & c_space_mask) << c_space_shift);
         }
 
         void
             SetIndex(uint32_t index)
         {
-            assert(index == (index & c_index_mask));
+            IGC_ASSERT(index == (index & c_index_mask));
             m_addr = (m_addr & ~(c_index_mask << c_index_shift)) | ((index & c_index_mask) << c_index_shift);
         }
 
         void
             SetOffset(uint64_t offset)
         {
-            assert(offset == (offset & c_offset_mask));
+            IGC_ASSERT(offset == (offset & c_offset_mask));
             m_addr = (m_addr & ~(c_offset_mask << c_offset_shift)) | ((offset & c_offset_mask) << c_offset_shift);
         }
 

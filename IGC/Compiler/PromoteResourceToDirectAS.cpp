@@ -26,18 +26,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "PromoteResourceToDirectAS.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/IGCIRBuilder.h"
-
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublicEnums.h"
-
 #include "common/igc_regkeys.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -104,7 +102,7 @@ Type* GetBufferAccessType(Instruction* inst)
         }
     }
 
-    assert(0 && "Unsupported buffer access intrinsic");
+    IGC_ASSERT(false && "Unsupported buffer access intrinsic");
     return inst->getType();
 }
 
@@ -242,14 +240,14 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
             Function* function = argPtr->getParent();
             if (isEntryFunc(m_pMdUtils, function))
             {
-                assert(m_pCodeGenContext->type == ShaderType::OPENCL_SHADER);
+                IGC_ASSERT(m_pCodeGenContext->type == ShaderType::OPENCL_SHADER);
                 ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
                 if (modMD->FuncMD.find(function) != modMD->FuncMD.end())
                 {
                     FunctionMetaData* funcMD = &modMD->FuncMD[function];
                     ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
                     ArgAllocMD* argInfo = &resAllocMD->argAllocMDList[argPtr->getArgNo()];
-                    assert((size_t)argPtr->getArgNo() < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds Error");
+                    IGC_ASSERT((size_t)argPtr->getArgNo() < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds Error");
 
                     if (argInfo->type == ResourceTypeEnum::BindlessUAVResourceType)
                     {
@@ -379,7 +377,7 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
         }
         else
         {
-            assert(0 && "Can not patch unsupported instruction!");
+            IGC_ASSERT(false && "Can not patch unsupported instruction!");
             return false;
         }
     }
@@ -434,7 +432,7 @@ bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dst
         if (IGC::TracePointerSource(selectInst->getOperand(1), true, false, true, tempList0) &&
             IGC::TracePointerSource(selectInst->getOperand(2), true, false, true, tempList1))
         {
-            assert(selectInst->getOperand(1)->getType()->isPointerTy() && selectInst->getOperand(2)->getType()->isPointerTy());
+            IGC_ASSERT(selectInst->getOperand(1)->getType()->isPointerTy() && selectInst->getOperand(2)->getType()->isPointerTy());
             Type* srcType0 = selectInst->getOperand(1)->getType()->getPointerElementType();
             Type* srcType1 = selectInst->getOperand(1)->getType()->getPointerElementType();
 
@@ -458,14 +456,14 @@ bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dst
         for (unsigned int i = 0; i < phiNode->getNumIncomingValues(); ++i)
         {
             Value* incomingVal = phiNode->getIncomingValue(i);
-            assert(incomingVal->getType()->isPointerTy());
+            IGC_ASSERT(incomingVal->getType()->isPointerTy());
 
             std::vector<Value*> tempList;
             Value* srcPtr = IGC::TracePointerSource(incomingVal, true, false, true, tempList);
 
             // We know srcPtr is trace-able, since it's been traced already, we just need to get the
             // list of instructions we need to patch
-            assert(srcPtr);
+            IGC_ASSERT(srcPtr);
 
             // Patch the GEPs for each phi node path
             Value* bufferPtr = nullptr;
@@ -502,7 +500,7 @@ Value* PromoteResourceToDirectAS::getOffsetValue(Value* srcPtr, int& bufferOffse
     if (offsetEntry != m_SrcPtrToBufferOffsetMap.end())
     {
         GenIntrinsicInst* runtimevalue = dyn_cast<GenIntrinsicInst>(offsetEntry->second);
-        assert(runtimevalue && "Buffer offset must be a runtime value");
+        IGC_ASSERT(runtimevalue && "Buffer offset must be a runtime value");
         bufferOffsetHandle = (int)llvm::cast<llvm::ConstantInt>(runtimevalue->getOperand(0))->getZExtValue();
         return offsetEntry->second;
     }
@@ -510,7 +508,7 @@ Value* PromoteResourceToDirectAS::getOffsetValue(Value* srcPtr, int& bufferOffse
     {
         Instruction* srcPtrInst;
         srcPtrInst = dyn_cast<Instruction>(srcPtr);
-        assert(srcPtrInst && "source pointer must have been an instruction");
+        IGC_ASSERT(srcPtrInst && "source pointer must have been an instruction");
         IGCIRBuilder<> builder(srcPtrInst);
 
         Instruction* bufferOffset;
@@ -701,8 +699,8 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
                 bufferAddress = pIntr->getArgOperand(1);
                 if (!isa<ConstantPointerNull>(pBuffer))
                 {
-                    assert(isa<ConstantInt>(bufferAddress) && cast<ConstantInt>(bufferAddress)->getZExtValue() == 0);
-                    assert(pIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_intatomictyped &&
+                    IGC_ASSERT(isa<ConstantInt>(bufferAddress) && cast<ConstantInt>(bufferAddress)->getZExtValue() == 0);
+                    IGC_ASSERT(pIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_intatomictyped &&
                         pIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_icmpxchgatomictyped);
                     bufferAddress = builder.CreatePtrToInt(pBuffer, builder.getInt32Ty());
                 }
@@ -749,7 +747,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
         }
         else
         {
-            assert((m_pCodeGenContext->m_buffersPromotedToDirectAS[bufferID] == handle));
+            IGC_ASSERT((m_pCodeGenContext->m_buffersPromotedToDirectAS[bufferID] == handle));
         }
     }
 }

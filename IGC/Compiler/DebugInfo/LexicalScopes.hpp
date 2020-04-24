@@ -38,7 +38,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "llvm/Config/llvm-config.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
@@ -48,9 +47,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include <utility>
 #include <unordered_map>
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -72,8 +71,8 @@ namespace IGC
             bool A)
             : Parent(P), Desc(D), InlinedAtLocation(I), AbstractScope(A),
             LastInsn(nullptr), FirstInsn(nullptr), DFSIn(0), DFSOut(0) {
-            assert((!D || D->isResolved()) && "Expected resolved node");
-            assert((!I || I->isResolved()) && "Expected resolved node");
+            IGC_ASSERT((!D || D->isResolved()) && "Expected resolved node");
+            IGC_ASSERT((!I || I->isResolved()) && "Expected resolved node");
             if (Parent)
                 Parent->addChild(this);
         }
@@ -106,7 +105,7 @@ namespace IGC
         /// this scope.
         void extendInsnRange(const llvm::Instruction* MI)
         {
-            assert(FirstInsn && "MI Range is not open!");
+            IGC_ASSERT(FirstInsn && "MI Range is not open!");
             LastInsn = MI;
             if (Parent)
                 Parent->extendInsnRange(MI);
@@ -117,7 +116,7 @@ namespace IGC
         /// machine instructions.
         void closeInsnRange(LexicalScope* NewScope = NULL)
         {
-            assert(LastInsn && "Last insn missing!");
+            IGC_ASSERT(LastInsn && "Last insn missing!");
             Ranges.push_back(InsnRange(FirstInsn, LastInsn));
             FirstInsn = NULL;
             LastInsn = NULL;

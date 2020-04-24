@@ -31,12 +31,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Dominators.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -208,7 +208,7 @@ namespace IGC {
 
 void ModuleAllocaInfo::analyze() {
     if (FGA && FGA->getModule()) {
-        assert(FGA->getModule() == M);
+        IGC_ASSERT(FGA->getModule() == M);
         for (auto FG : *FGA)
             analyze(FG);
     }
@@ -298,7 +298,7 @@ void ModuleAllocaInfo::analyze(Function* F, unsigned& Offset,
             MaxAlignment = Alignment;
 
         // Compute alloca size.
-        assert(isa<ConstantInt>(AI->getArraySize()));
+        IGC_ASSERT(isa<ConstantInt>(AI->getArraySize()));
         ConstantInt* SizeVal = cast<ConstantInt>(AI->getArraySize());
         unsigned CurSize = (unsigned)(SizeVal->getZExtValue() *
             DL->getTypeAllocSize(AI->getAllocatedType()));
@@ -539,7 +539,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
 // [7] bar(j)
 //
 static void sinkAllocas(SmallVectorImpl<AllocaInst*>& Allocas) {
-    assert(!Allocas.empty());
+    IGC_ASSERT(!Allocas.empty());
     DominatorTree DT;
     bool Calcuated = false;
 
@@ -615,7 +615,7 @@ public:
     }
     void handleLoadInst(LoadInst* pLoad, Value* pScalarizedIdx)
     {
-        assert(pLoad->isSimple());
+        IGC_ASSERT(pLoad->isSimple());
         IRBuilder<> IRB(pLoad);
         if (isa<Instruction>(pLoad->getPointerOperand()))
         {
@@ -630,7 +630,7 @@ public:
         {
             Type* scalarType = pLoad->getPointerOperand()->getType()->getPointerElementType()->getScalarType();
             Type* scalarptrTy = PointerType::get(scalarType, pLoad->getPointerAddressSpace());
-            assert(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
+            IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
             Value* vec = UndefValue::get(pLoad->getType());
             for (unsigned i = 0, e = pLoad->getType()->getVectorNumElements(); i < e; ++i)
             {
@@ -650,7 +650,7 @@ public:
     }
     void handleStoreInst(StoreInst* pStore, Value* pScalarizedIdx)
     {
-        assert(pStore->isSimple());
+        IGC_ASSERT(pStore->isSimple());
         IRBuilder<> IRB(pStore);
         if (isa<Instruction>(pStore->getPointerOperand()))
         {
@@ -665,7 +665,7 @@ public:
         {
             Type* scalarType = pStore->getPointerOperand()->getType()->getPointerElementType()->getScalarType();
             Type* scalarptrTy = PointerType::get(scalarType, pStore->getPointerAddressSpace());
-            assert(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
+            IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
             Value* vec = pStore->getValueOperand();
             for (unsigned i = 0, e = pStore->getValueOperand()->getType()->getVectorNumElements(); i < e; ++i)
             {
@@ -692,7 +692,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool stackCall)
 
     // This change is only till the FuncMD is ported to new MD framework
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    assert(modMD && "Invalid metadata utils wrapper");
+    IGC_ASSERT(modMD && "Invalid metadata utils wrapper");
     modMD->FuncMD[m_currFunction].privateMemoryPerWI = totalPrivateMemPerWI;
     modMD->privateMemoryPerWI = totalPrivateMemPerWI;//redundant ?
 
@@ -856,11 +856,11 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool stackCall)
                         }
                         else
                         {
-                            assert(!"Unsupported type for memory transposition.");
+                            IGC_ASSERT(false && "Unsupported type for memory transposition.");
                             break;
                         }
                     }
-                    assert(tmpAllocaSize <= m_ModAllocaInfo->getBufferSize(pAI));
+                    IGC_ASSERT(tmpAllocaSize <= m_ModAllocaInfo->getBufferSize(pAI));
                 }
 #endif
             }

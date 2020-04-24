@@ -25,12 +25,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #pragma once
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Pass.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <cstddef>
+#include "Probe/Assertion.h"
 
 namespace IGC {
 
@@ -70,7 +70,7 @@ namespace IGC {
 
         /// \brief Return the associated opaque data.
         template <typename T> T* get(llvm::Function* F) {
-            assert(ECG.count(F));
+            IGC_ASSERT(ECG.count(F));
             return static_cast<T*>(ECG[F]);
         }
 

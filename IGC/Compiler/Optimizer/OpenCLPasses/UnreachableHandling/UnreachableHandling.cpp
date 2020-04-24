@@ -28,17 +28,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/igc_regkeys.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/Instructions.h"
-
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <map>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -66,7 +63,7 @@ void UnreachableHandling::visitUnreachableInst(UnreachableInst& I) {
 
 void IGC::UnreachableHandling::replaceUnreachable(llvm::UnreachableInst* I)
 {
-    assert(I);
+    IGC_ASSERT(I);
     IRBuilder<> builder(I->getContext());
     Function* F = I->getFunction();
 

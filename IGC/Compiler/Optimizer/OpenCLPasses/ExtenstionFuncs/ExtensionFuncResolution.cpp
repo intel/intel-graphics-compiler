@@ -27,11 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/ExtenstionFuncs/ExtensionFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ExtenstionFuncs/ExtensionFuncsAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -90,10 +90,10 @@ void ExtensionFuncsResolution::visitCallInst(CallInst& CI)
     }
     else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE)) {
         // Load from the opaque vme pointer and return the a vector with values.
-        assert(CI.getNumArgOperands() == 1);
+        IGC_ASSERT(CI.getNumArgOperands() == 1);
         IRBuilder<> builder(&CI);
         Type* retType = CI.getType();
-        assert(retType->isVectorTy() || retType->isIntegerTy());
+        IGC_ASSERT(retType->isVectorTy() || retType->isIntegerTy());
         PointerType* ptrType = PointerType::get(retType, 0);
         auto bitcastInst = builder.CreateBitCast(CI.getArgOperand(0), ptrType);
         auto ret = builder.CreateLoad(bitcastInst);
@@ -103,11 +103,11 @@ void ExtensionFuncsResolution::visitCallInst(CallInst& CI)
     }
     else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_AS)) {
         // Store the VME values and return an opaque vme pointer.
-        assert(CI.getNumArgOperands() == 1);
+        IGC_ASSERT(CI.getNumArgOperands() == 1);
         IRBuilder<> builder(&*CI.getParent()->getParent()->begin()->getFirstInsertionPt());
         Type* retType = CI.getType();
         Value* arg = CI.getArgOperand(0);
-        assert(arg->getType()->isVectorTy() || arg->getType()->isIntegerTy());
+        IGC_ASSERT(arg->getType()->isVectorTy() || arg->getType()->isIntegerTy());
         AllocaInst* allocaInst = builder.CreateAlloca(arg->getType());
         builder.SetInsertPoint(&CI);
         builder.CreateStore(arg, allocaInst);

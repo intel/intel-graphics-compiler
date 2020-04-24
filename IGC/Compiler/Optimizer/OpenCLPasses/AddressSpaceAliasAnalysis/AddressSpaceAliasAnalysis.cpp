@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -98,7 +99,7 @@ namespace {
             /// For some client APIs (e.g. vulkan) compiler is free to assume that
             /// resources bound to two different bindings points never alias unless a
             /// resource is explicitly marked as being aliased.
-            assert(CGC.getModuleMetaData());
+            IGC_ASSERT(CGC.getModuleMetaData());
             if (AS1 > ADDRESS_SPACE_NUM_ADDRESSES &&
                 AS2 > ADDRESS_SPACE_NUM_ADDRESSES &&
                 CGC.getModuleMetaData()->statefullResourcesNotAliased)

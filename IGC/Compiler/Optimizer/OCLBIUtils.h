@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
 
 #include "Compiler/CodeGenPublic.h"
@@ -33,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include <map>
+#include "Probe/Assertion.h"
 
 namespace llvm
 {
@@ -133,7 +135,7 @@ namespace IGC
         case IGC::OtherResourceType:
             return BUFFER_TYPE_UNKNOWN;
         default:
-            assert(0 && "unknown type!");
+            IGC_ASSERT(false && "unknown type!");
             return BUFFER_TYPE_UNKNOWN;
         }
     };

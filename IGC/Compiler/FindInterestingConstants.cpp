@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "common/secure_mem.h"
 #include "FindInterestingConstants.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -56,7 +57,7 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use,
     propagate = false;
 
     // "use" instruction should have some operand(s)
-    assert(use->getNumOperands() != 0);
+    IGC_ASSERT(use->getNumOperands() != 0);
     if (BranchInst* Br = dyn_cast<BranchInst>(use))
     {
         bool isLoop;
@@ -206,10 +207,10 @@ void FindInterestingConstants::CheckIfSampleBecomesDeadCode(Instruction* inst, I
                     {
                         m_samplerCount++;
                         m_foldsToZero++;
-                        assert(visitedForFolding.find(pIntr) == visitedForFolding.end());
+                        IGC_ASSERT(visitedForFolding.find(pIntr) == visitedForFolding.end());
                         visitedForFolding.insert(pIntr);
                     }
-                    assert(visitedForFolding.find(inst) == visitedForFolding.end());
+                    IGC_ASSERT(visitedForFolding.find(inst) == visitedForFolding.end());
                     visitedForFolding.insert(inst);
                 }
             }

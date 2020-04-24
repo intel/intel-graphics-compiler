@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/IGCIRBuilder.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
@@ -37,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/MathExtras.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -199,7 +199,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     StoreInst* SI = dyn_cast<StoreInst>(Inst);
     GenIntrinsicInst* II = dyn_cast<GenIntrinsicInst>(Inst);
 
-    assert(
+    IGC_ASSERT(
         (LI || SI ||
         (II &&
             (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
@@ -246,7 +246,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     Type* eTy = VTy ? VTy->getElementType() : Ty;
     uint32_t eTyBits = int_cast<unsigned int>(m_DL->getTypeSizeInBits(eTy));
 
-    assert((eTyBits == 8 || eTyBits == 16 || eTyBits == 32 || eTyBits == 64) &&
+    IGC_ASSERT((eTyBits == 8 || eTyBits == 16 || eTyBits == 32 || eTyBits == 64) &&
         "the Size of Vector element must be 8/16/32/64 bits.");
 
     uint32_t eTyBytes = (eTyBits >> 3);
@@ -277,7 +277,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
     if (TBytes == 1)
     {
-        assert(nelts == 1 && "Internal Error: something wrong");
+        IGC_ASSERT(nelts == 1 && "Internal Error: something wrong");
         return false;
     }
     else if (TBytes == 2 || TBytes == 4)
@@ -322,7 +322,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             return false;
         }
         new_eTy = useQW ? Type::getInt64Ty(*m_C) : Type::getInt32Ty(*m_C);
-        assert((TBytes % new_eTyBytes) == 0 && "Wrong new vector size");
+        IGC_ASSERT((TBytes % new_eTyBytes) == 0 && "Wrong new vector size");
         new_nelts = TBytes / new_eTyBytes;
     }
 
@@ -675,7 +675,7 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
     {
         if (forceByteScatteredRW)
         {
-            assert(useA32);
+            IGC_ASSERT(useA32);
         }
         defaultKind = useA32
             ? MESSAGE_A32_BYTE_SCATTERED_RW
@@ -688,7 +688,7 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
         defaultDataType = ISA_TYPE_UB;
 
         // To make sure that vector and message match.
-        assert((MB == eltSize || (MB > eltSize && nElts == 1)) &&
+        IGC_ASSERT((MB == eltSize || (MB > eltSize && nElts == 1)) &&
             "Internal Error: mismatch layout for vector");
     }
     else
@@ -707,7 +707,7 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
 
         defaultDataType = (eltSize == 8) ? ISA_TYPE_UQ : ISA_TYPE_UD;
         //To make sure that send returns the correct layout for vector.
-        assert((eltSize == 4 ||                              // common
+        IGC_ASSERT((eltSize == 4 ||                              // common
             allowQWMessage) && // A64, QW
             "Internal Error: mismatch layout for vector");
     }
@@ -763,7 +763,7 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
     }
 
     numInsts = i;
-    assert(numInsts <= VECMESSAGEINFO_MAX_LEN &&
+    IGC_ASSERT(numInsts <= VECMESSAGEINFO_MAX_LEN &&
         "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
 }
 

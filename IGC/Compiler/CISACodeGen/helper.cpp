@@ -28,23 +28,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Analysis/ValueTracking.h>
-
 #include <llvmWrapper/Support/KnownBits.h>
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvmWrapper/Support/Alignment.h>
-
 #include "common/LLVMWarningsPop.hpp"
-
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-
 #include "common/secure_mem.h"
-
 #include <stack>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace GenISAIntrinsic;
@@ -77,7 +72,7 @@ namespace IGC
     {
         GFXResourceAddrSpace temp;
         temp.u32Val = 0;
-        assert((bufType + 1) < 16);
+        IGC_ASSERT((bufType + 1) < 16);
         temp.bits.bufType = bufType + 1;
         if (bufType == SLM)
         {
@@ -94,7 +89,7 @@ namespace IGC
         else if (llvm::isa<llvm::ConstantInt>(&bufIdx))
         {
             unsigned int bufId = (unsigned int)(llvm::cast<llvm::ConstantInt>(&bufIdx)->getZExtValue());
-            assert(bufId < (1 << 31));
+            IGC_ASSERT(bufId < (1 << 31));
             temp.bits.bufId = bufId;
             return temp.u32Val;
         }
@@ -135,7 +130,7 @@ namespace IGC
         else
         {
             // other types of buffers shouldn't reach this part.
-            assert(0);
+            IGC_ASSERT(0);
         }
 
         return temp.u32Val;
@@ -300,7 +295,7 @@ namespace IGC
             builder.getInt1(inst->isVolatile()) // volatile
         };
         Value* ld = builder.CreateCall(func, attr);
-        assert(ld->getType() == inst->getType());
+        IGC_ASSERT(ld->getType() == inst->getType());
         return ld;
     }
 
@@ -321,7 +316,7 @@ namespace IGC
         else
         {
             llvm::Type* dataType = storeVal->getType();
-            assert(dataType->getPrimitiveSizeInBits() == 16 || dataType->getPrimitiveSizeInBits() == 32);
+            IGC_ASSERT(dataType->getPrimitiveSizeInBits() == 16 || dataType->getPrimitiveSizeInBits() == 32);
 
             llvm::Type* types[2] = {
                 bufPtr->getType(),
@@ -516,7 +511,7 @@ namespace IGC
             return BufferAccessType::ACCESS_WRITE;
 
         default:
-            assert(false && "Invalid buffer type");
+            IGC_ASSERT(false && "Invalid buffer type");
             return BufferAccessType::ACCESS_READWRITE;
         }
     }
@@ -830,7 +825,7 @@ namespace IGC
             overloadedTys.push_back(args[2]->getType());
             break;
         default:
-            assert(0 && "Unknown intrinsic encountered while changing pointer types");
+            IGC_ASSERT(false && "Unknown intrinsic encountered while changing pointer types");
             break;
         }
 
@@ -1300,7 +1295,7 @@ namespace IGC
     uint getImmValueU32(const llvm::Value* value)
     {
         const llvm::ConstantInt* cval = llvm::cast<llvm::ConstantInt>(value);
-        assert(cval->getBitWidth() == 32);
+        IGC_ASSERT(cval->getBitWidth() == 32);
 
         uint ival = int_cast<uint>(cval->getZExtValue());
         return ival;
@@ -1317,7 +1312,7 @@ namespace IGC
         llvm::InsertElementInst* ie = llvm::dyn_cast<llvm::InsertElementInst>(inst);
         while (ie != NULL) {
             int64_t iOffset = llvm::dyn_cast<llvm::ConstantInt>(ie->getOperand(2))->getSExtValue();
-            assert(iOffset >= 0);
+            IGC_ASSERT(iOffset >= 0);
             if (iOffset == pos) {
                 return ie->getOperand(1);
             }
@@ -1331,7 +1326,7 @@ namespace IGC
     {
         llvm::ConstantDataVector* cstV = llvm::dyn_cast<llvm::ConstantDataVector>(inst);
         if (cstV != NULL) {
-            assert(cstV->getNumElements() == 4);
+            IGC_ASSERT(cstV->getNumElements() == 4);
             for (int i = 0; i < 4; i++) {
                 elem[i] = cstV->getElementAsConstant(i);
             }
@@ -1346,7 +1341,7 @@ namespace IGC
         llvm::InsertElementInst* ie = llvm::dyn_cast<llvm::InsertElementInst>(inst);
         while (ie != NULL) {
             int64_t iOffset = llvm::dyn_cast<llvm::ConstantInt>(ie->getOperand(2))->getSExtValue();
-            assert(iOffset >= 0);
+            IGC_ASSERT(iOffset >= 0);
             if (elem[iOffset] == NULL) {
                 elem[iOffset] = ie->getOperand(1);
                 count++;
@@ -1388,8 +1383,8 @@ namespace IGC
     {
         llvm::Value* ret = val;
         llvm::Type* type = val->getType();
-        assert(type->isSingleValueType() && !type->isVectorTy() && "Only scalar data is supported here!");
-        assert(type->getTypeID() == Type::FloatTyID ||
+        IGC_ASSERT(type->isSingleValueType() && !type->isVectorTy() && "Only scalar data is supported here!");
+        IGC_ASSERT(type->getTypeID() == Type::FloatTyID ||
             type->getTypeID() == Type::HalfTyID ||
             type->getTypeID() == Type::IntegerTyID ||
             type->getTypeID() == Type::DoubleTyID);
@@ -1584,7 +1579,7 @@ namespace IGC
         {
             if (ConstantExpr * cexpr = dyn_cast<ConstantExpr>(ptrv))
             {
-                assert(cexpr->getOpcode() == Instruction::IntToPtr);
+                IGC_ASSERT(cexpr->getOpcode() == Instruction::IntToPtr);
                 Value* offset = cexpr->getOperand(0);
                 ptrv = builder.CreateIntToPtr(offset, newType);
             }
@@ -1675,7 +1670,7 @@ namespace IGC
                 pHeader = CRastHeader_SIMD32;
                 break;
 
-            default: assert("Invalid SIMD Mode for Conservative Raster WA");
+            default: IGC_ASSERT(false && "Invalid SIMD Mode for Conservative Raster WA");
                 break;
             }
 
@@ -1722,9 +1717,9 @@ namespace IGC
                 return F;
             }
         }
-        assert(entryFunc && "No entry func!");
+        IGC_ASSERT(entryFunc && "No entry func!");
         auto ei = FuncMD.find(entryFunc);
-        assert(ei != FuncMD.end());
+        IGC_ASSERT(ei != FuncMD.end());
         ei->second.isUniqueEntry = true;
         return entryFunc;
     }

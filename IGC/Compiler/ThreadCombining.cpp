@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "ThreadCombining.hpp"
 #include "Compiler/IGCPassSupport.h"
@@ -30,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/LLVMUtils.h"
+#include "Probe/Assertion.h"
 
 char IGC::ThreadCombining::ID = 0;
 
@@ -111,7 +113,7 @@ unsigned int ThreadCombining::GetthreadGroupSize(llvm::Module& M, dim dimension)
             (llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue()));
         break;
     default:
-        assert(0);
+        IGC_ASSERT(0);
         break;
     }
     return threadGroupSize;
@@ -132,7 +134,7 @@ void ThreadCombining::SetthreadGroupSize(llvm::Module& M, llvm::Constant* size, 
         pGlobal = M.getGlobalVariable("ThreadGroupSize_Z");
         break;
     default:
-        assert(0);
+        IGC_ASSERT(0);
         break;
     }
     pGlobal->setInitializer(size);
@@ -336,7 +338,7 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
                                     llvm::IRBuilder<>  builder(M.getContext());
                                     builder.SetInsertPoint(instToCheck->getNextNode());
                                     llvm::Value* I_i8 = builder.CreateZExt(instToCheck, builder.getInt8Ty());
-                                    assert(isa<Instruction>(I_i8));
+                                    IGC_ASSERT(isa<Instruction>(I_i8));
                                     instToCheck = cast<Instruction>(I_i8);
 
                                     builder.SetInsertPoint(inst);
@@ -703,8 +705,8 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
         return false;
     }
 
-    assert(newSizeX <= threadGroupSize_X);
-    assert(newSizeY <= threadGroupSize_Y);
+    IGC_ASSERT(newSizeX <= threadGroupSize_X);
+    IGC_ASSERT(newSizeY <= threadGroupSize_Y);
 
     SetthreadGroupSize(M, builder.getInt32(newSizeX), ThreadGroupSize_X);
     SetthreadGroupSize(M, builder.getInt32(newSizeY), ThreadGroupSize_Y);

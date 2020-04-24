@@ -28,15 +28,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <vector>
 #include <map>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -110,7 +109,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
     {
         GlobalVariable* pGlobalVar = &(*I);
         PointerType* ptrType = cast<PointerType>(pGlobalVar->getType());
-        assert(ptrType && "The type of a global variable must be a pointer type");
+        IGC_ASSERT(ptrType && "The type of a global variable must be a pointer type");
 
         // Pointer's address space should be either constant or global
         const unsigned AS = ptrType->getAddressSpace();
@@ -127,12 +126,12 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             // This is a workaround for clang bug, clang creates string constants with private address sapce!
             AS != ADDRESS_SPACE_PRIVATE)
         {
-            assert(0 && "program scope variable with unexpected address space");
+            IGC_ASSERT(false && "program scope variable with unexpected address space");
             continue;
         }
 
         Constant* initializer = pGlobalVar->getInitializer();
-        assert(initializer && "Constant must be initialized");
+        IGC_ASSERT(initializer && "Constant must be initialized");
         if (!initializer)
         {
             continue;
@@ -179,7 +178,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             // Skip unused internal functions.
             if (mdUtils->findFunctionsInfoItem(userFunc) == mdUtils->end_FunctionsInfo())
             {
-                assert(userFunc->use_empty() && Function::isDiscardableIfUnused(userFunc->getLinkage()));
+                IGC_ASSERT(userFunc->use_empty() && Function::isDiscardableIfUnused(userFunc->getLinkage()));
                 continue;
             }
 
@@ -206,7 +205,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             }
 
             Value* bc = funcToVarSet[userFunc][pGlobalVar];
-            assert(bc != nullptr && "Program Scope buffer handling is broken!");
+            IGC_ASSERT(bc != nullptr && "Program Scope buffer handling is broken!");
 
             // And actually use the bitcast.
             user->replaceUsesOfWith(pGlobalVar, bc);

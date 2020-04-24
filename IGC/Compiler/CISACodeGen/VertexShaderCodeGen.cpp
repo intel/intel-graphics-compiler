@@ -23,19 +23,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/CISACodeGen/VertexShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
-
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/secure_mem.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <iStdLib/utility.h>
+#include "Probe/Assertion.h"
 
 /***********************************************************************************
 This file contains the code specific to vertex shader
@@ -67,20 +66,20 @@ namespace IGC
         //R0 and R1 are always allocated
 
         //R0 is always allocated as a predefined variable. Increase offset for R0
-        assert(m_R0);
+        IGC_ASSERT(m_R0);
         offset += getGRFSize();
 
-        assert(m_R1);
+        IGC_ASSERT(m_R1);
         AllocateInput(m_R1, offset);
         offset += getGRFSize();
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
         ProgramOutput()->m_startReg = offset / getGRFSize();
 
         // allocate space for NOS constants and pushed constants
         AllocateConstants3DShader(offset);
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
 
         // TODO: handle packed vertex attribute even if we pull
         bool packedInput = m_Platform->hasPackedVertexAttr() &&
@@ -160,7 +159,7 @@ namespace IGC
 
     void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     {
-        assert(entry && entry->getParent());
+        IGC_ASSERT(entry && entry->getParent());
         const bool isPositionOnlyShader = (entry->getParent()->getModuleFlag("IGC::PositionOnlyVertexShader") != nullptr);
 
         pKernelProgram->simd8 = *ProgramOutput();

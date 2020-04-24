@@ -24,19 +24,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-// vim:ts=2:sw=2:et:
-
 #define DEBUG_TYPE "type-legalizer"
 #include "TypeLegalizer.h"
 #include "InstScalarizer.h"
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/Support/Debug.h"
-
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "common/Types.hpp"
+#include "Probe/Assertion.h"
+
 using namespace llvm;
 using namespace IGC::Legalizer;
 
@@ -81,7 +78,7 @@ bool InstScalarizer::visitBinaryOperator(BinaryOperator& I) {
     ValueSeq Ops0Copy(*Ops0);
 
     std::tie(Ops1, std::ignore) = TL->getLegalizedValues(I.getOperand(1));
-    assert(Ops0Copy.size() == Ops1->size());
+    IGC_ASSERT(Ops0Copy.size() == Ops1->size());
 
     for (unsigned i = 0, e = Ops0Copy.size(); i != e; ++i) {
         Value* LHS = (Ops0Copy)[i];
@@ -132,7 +129,7 @@ bool InstScalarizer::visitLoadInst(LoadInst& I) {
 
         // NOTE: It's assumed the element in this case is byte-addressable;
         // otherwise, it's broken.
-        assert(TL->getTypeSizeInBits(EltTy) ==
+        IGC_ASSERT(TL->getTypeSizeInBits(EltTy) ==
             TL->getTypeStoreSizeInBits(EltTy));
 
         unsigned NumElts = OrigTy->getVectorNumElements();
@@ -149,7 +146,7 @@ bool InstScalarizer::visitLoadInst(LoadInst& I) {
         for (auto PLI = ProfitLengths.rbegin(),
             PLE = ProfitLengths.rend(); PLI != PLE; ++PLI) {
             unsigned PL = *PLI;
-            assert(PL > 0);
+            IGC_ASSERT(PL > 0);
 
             for (; NumElts >= PL; NumElts -= PL) {
                 Value* NewPtr =
@@ -235,7 +232,7 @@ bool InstScalarizer::visitStoreInst(StoreInst& I) {
 
     ValueSeq* ValSeq;
     std::tie(ValSeq, std::ignore) = TL->getLegalizedValues(OrigVal);
-    assert(ValSeq->size() == OrigTy->getVectorNumElements());
+    IGC_ASSERT(ValSeq->size() == OrigTy->getVectorNumElements());
 
     StringRef Name = OrigVal->getName();
 
@@ -271,7 +268,7 @@ bool InstScalarizer::visitStoreInst(StoreInst& I) {
 
         // NOTE: It's assumed the element in this case is byte-addressable;
         // otherwise, it's broken.
-        assert(TL->getTypeSizeInBits(EltTy) ==
+        IGC_ASSERT(TL->getTypeSizeInBits(EltTy) ==
             TL->getTypeStoreSizeInBits(EltTy));
 
         unsigned NumElts = OrigTy->getVectorNumElements();
@@ -288,7 +285,7 @@ bool InstScalarizer::visitStoreInst(StoreInst& I) {
         for (auto PLI = ProfitLengths.rbegin(),
             PLE = ProfitLengths.rend(); PLI != PLE; ++PLI) {
             unsigned PL = *PLI;
-            assert(PL > 0);
+            IGC_ASSERT(PL > 0);
 
             for (; NumElts >= PL; NumElts -= PL) {
                 Value* NewPtr =
@@ -401,7 +398,7 @@ bool InstScalarizer::visitBitCastInst(BitCastInst& I) {
     TL->repack(&Repacked, *TySeq, *ValSeq, I.getName() + getSuffix());
 
     if (Act == Legal) {
-        assert(Repacked.size() == 1);
+        IGC_ASSERT(Repacked.size() == 1);
 
         I.replaceAllUsesWith(Repacked.front());
         return true;
@@ -501,7 +498,7 @@ bool InstScalarizer::visitInsertElementInst(InsertElementInst& I) {
         EltSeq = &LegalVal;
     }
 
-    assert(VecSeqCopy.size() % EltSeq->size() == 0);
+    IGC_ASSERT(VecSeqCopy.size() % EltSeq->size() == 0);
 
     unsigned NumElts = I.getOperand(0)->getType()->getVectorNumElements();
     unsigned i = 0;

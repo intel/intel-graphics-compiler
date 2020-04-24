@@ -27,24 +27,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/Optimizer/CodeAssumption.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
-
 #include "common/Stats.hpp"
 #include "common/secure_string.h"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
-
 #include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <string>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -215,7 +210,7 @@ Argument* StatelessToStatefull::getBufferOffsetArg(Function* F, uint32_t ArgNumb
     for (; AI != AE && AI->getArgNo() != arg_ix; ++AI);
     if (AI == AE)
     {
-        assert(false && "Implicit arg for BUFFER_OFFSET is out of range!");
+        IGC_ASSERT(false && "Implicit arg for BUFFER_OFFSET is out of range!");
         return nullptr;
     }
     Argument* arg = &*AI;
@@ -277,7 +272,7 @@ bool StatelessToStatefull::getOffsetFromGEP(
         Value* PtrOp = GEP->getPointerOperand();
         PointerType* PtrTy = dyn_cast<PointerType>(PtrOp->getType());
 
-        assert(PtrTy && "Only accept scalar pointer!");
+        IGC_ASSERT(PtrTy && "Only accept scalar pointer!");
 
         Type* Ty = PtrTy;
         gep_type_iterator GTI = gep_type_begin(GEP);
@@ -355,7 +350,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
     AssumptionCache* AC = getAC(F);
 
     PointerType* ptrType = dyn_cast<PointerType>(V->getType());
-    assert(ptrType && "Expected scalar Pointer (No support to vector of pointers");
+    IGC_ASSERT(ptrType && "Expected scalar Pointer (No support to vector of pointers");
     if (!ptrType || (ptrType->getAddressSpace() != ADDRESS_SPACE_GLOBAL &&
         ptrType->getAddressSpace() != ADDRESS_SPACE_CONSTANT))
     {
@@ -478,7 +473,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                 ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
                 FunctionMetaData* funcMD = &modMD->FuncMD[F];
                 ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-                assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+                IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
                 ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
 
                 Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
@@ -537,7 +532,7 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
         ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         FunctionMetaData* funcMD = &modMD->FuncMD[F];
         ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-        assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+        IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
         ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
 
         Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
@@ -588,7 +583,7 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
             ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
             FunctionMetaData* funcMD = &modMD->FuncMD[F];
             ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-            assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+            IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
             ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
             Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
 
@@ -707,7 +702,7 @@ void StatelessToStatefull::finalizeArgInitialValue(Function* F)
         if (allOffsetPositive)
         {
             const KernelArg* offsetArg = getBufferOffsetKernelArg(kernelArg);
-            assert(offsetArg && "Missing BufferOffset arg!");
+            IGC_ASSERT(offsetArg && "Missing BufferOffset arg!");
             Value* BufferOffsetArg = const_cast<Argument*>(offsetArg->getArg());
             BufferOffsetArg->replaceAllUsesWith(ZeroValue);
         }

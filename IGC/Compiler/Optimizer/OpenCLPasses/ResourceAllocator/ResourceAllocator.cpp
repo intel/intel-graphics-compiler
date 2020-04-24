@@ -23,16 +23,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/Optimizer/OpenCLPasses/ResourceAllocator/ResourceAllocator.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <vector>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -187,7 +187,7 @@ static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllo
 
 static int decodeBufferId(const llvm::Argument* arg)
 {
-    assert(arg->getType()->isPointerTy()
+    IGC_ASSERT(arg->getType()->isPointerTy()
         && "Expected a pointer type for address space decoded samplers");
     unsigned int addressSpace = arg->getType()->getPointerAddressSpace();
 
@@ -195,14 +195,14 @@ static int decodeBufferId(const llvm::Argument* arg)
     bool directIdx = false;
     unsigned int bufId = 0;
     DecodeAS4GFXResource(addressSpace, directIdx, bufId);
-    assert(directIdx == true && "Expected a direct index for address space decoded images");
+    IGC_ASSERT(directIdx == true && "Expected a direct index for address space decoded images");
 
     return bufId;
 }
 
 static int getImageExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument* arg)
 {
-    assert(!EAA.isMediaArg(arg) || !EAA.isVaArg(arg));
+    IGC_ASSERT(!EAA.isMediaArg(arg) || !EAA.isVaArg(arg));
 
     if (EAA.isMediaArg(arg) || EAA.isVaArg(arg))
     {
@@ -217,7 +217,7 @@ static int getImageExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument
 
 static int getSamplerExtensionType(ExtensionArgAnalysis& EAA, const llvm::Argument* arg)
 {
-    assert(!EAA.isMediaSamplerArg(arg) || !EAA.isVaArg(arg));
+    IGC_ASSERT(!EAA.isMediaSamplerArg(arg) || !EAA.isVaArg(arg));
 
     if (EAA.isMediaSamplerArg(arg))
     {
@@ -238,7 +238,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
     // This is then written to the metadata.
 
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    assert(ctx);
+    IGC_ASSERT(ctx);
 
     MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* MMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -248,7 +248,9 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
 
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     if (modMD->FuncMD.find(&F) == modMD->FuncMD.end())
-        assert("Function was not found.");
+    {
+        IGC_ASSERT(false && "Function was not found.");
+    }
     FunctionMetaData* funcMD = &modMD->FuncMD[&F];
     ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
 

@@ -45,23 +45,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Pass.h"
 #include "llvm/PassAnalysisSupport.h"
 #include "llvm/Analysis/TargetFolder.h"
-
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/Alignment.h"
-
 #include "common/LLVMWarningsPop.hpp"
-
 #include "common/LLVMUtils.h"
-
 #include "common/IGCIRBuilder.h"
-
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
-
 #include "Compiler/CISACodeGen/Emu64OpsPass.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -299,14 +294,14 @@ namespace {
                         UE = II->user_end(); UI != UE; /*EMPTY*/) {
                         User* U = *UI++;
                         ExtractValueInst* Ex = cast<ExtractValueInst>(U);
-                        assert(Ex->getNumIndices() == 1);
+                        IGC_ASSERT(Ex->getNumIndices() == 1);
 
                         unsigned Idx = *Ex->idx_begin();
-                        assert(Idx == 0 || Idx == 1);
+                        IGC_ASSERT(Idx == 0 || Idx == 1);
                         Ex->replaceAllUsesWith((Idx == 0) ? Res : Overflow);
                         Ex->eraseFromParent();
                     }
-                    assert(II->user_empty());
+                    IGC_ASSERT(II->user_empty());
                     ++BI;
                     II->eraseFromParent();
                     Changed = true;
@@ -846,7 +841,7 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         H = IRB->CreateOr(H, T0);
 
         if (InnerTBB) {
-            assert(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerTBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerTBB);
         }
@@ -865,7 +860,7 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         Value* H = IRB->CreateShl(Lo, Amt);
 
         if (InnerFBB) {
-            assert(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerFBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerFBB);
         }
@@ -963,7 +958,7 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         L = IRB->CreateOr(L, T0);
 
         if (InnerTBB) {
-            assert(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerTBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerTBB);
         }
@@ -982,7 +977,7 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         Value* L = IRB->CreateLShr(Hi, Amt);
 
         if (InnerFBB) {
-            assert(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerFBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerFBB);
         }
@@ -1080,7 +1075,7 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         L = IRB->CreateOr(L, T0);
 
         if (InnerTBB) {
-            assert(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerTBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerTBB);
         }
@@ -1099,7 +1094,7 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         Value* L = IRB->CreateAShr(Hi, Amt);
 
         if (InnerFBB) {
-            assert(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerFBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerFBB);
         }
@@ -1227,7 +1222,7 @@ bool InstExpander::visitTrunc(TruncInst& TI) {
 
     Value* Lo = nullptr;
     std::tie(Lo, std::ignore) = Emu->getExpandedValues(Src);
-    assert(Lo->getType()->getScalarSizeInBits() >=
+    IGC_ASSERT(Lo->getType()->getScalarSizeInBits() >=
         TI.getType()->getScalarSizeInBits());
 
     if (Lo->getType()->getScalarSizeInBits() !=
@@ -1245,7 +1240,7 @@ bool InstExpander::visitSExt(SExtInst& SEI) {
     Value* Src = SEI.getOperand(0);
     Type* SrcTy = SEI.getSrcTy();
     unsigned SrcWidth = SrcTy->getIntegerBitWidth();
-    assert(SrcWidth <= 32);
+    IGC_ASSERT(SrcWidth <= 32);
 
     Value* Lo = Src;
     if (SrcWidth < 32)
@@ -1263,7 +1258,7 @@ bool InstExpander::visitZExt(ZExtInst& ZEI) {
     Value* Src = ZEI.getOperand(0);
     Type* SrcTy = ZEI.getSrcTy();
     unsigned SrcWidth = SrcTy->getIntegerBitWidth();
-    assert(SrcWidth <= 32);
+    IGC_ASSERT(SrcWidth <= 32);
 
     Value* Lo = Src;
     if (SrcWidth < 32)
@@ -1362,7 +1357,7 @@ bool InstExpander::visitFPToSI(FPToSIInst& F2S) {
         Sign = IRB->CreateExtractElement(Sign, IRB->getInt32(1));
     }
     else {
-        assert(SrcTy->isFloatTy() && "Unknown float type!");
+        IGC_ASSERT(SrcTy->isFloatTy() && "Unknown float type!");
         Sign = IRB->CreateBitCast(Src, IRB->getInt32Ty());
     }
     Sign = IRB->CreateAShr(Sign, 31);
@@ -1653,7 +1648,7 @@ bool InstExpander::visitBitCast(BitCastInst& BC) {
         return true;
     }
 
-    assert(Emu->isInt64(Src));
+    IGC_ASSERT(Emu->isInt64(Src));
 
     // Skip argument which is already prepared specially.
     if (Emu->isArg64Cast(&BC))
@@ -1754,7 +1749,7 @@ bool InstExpander::visitICmp(ICmpInst& Cmp) {
         Res = IRB->CreateOr(T2, T3);
         break;
     }
-    assert(Res != nullptr);
+    IGC_ASSERT(Res != nullptr);
 
     Cmp.replaceAllUsesWith(Res);
     return true;
@@ -1765,7 +1760,7 @@ bool InstExpander::visitPHI(PHINode& PN) {
         return false;
     Value* Lo = nullptr, * Hi = nullptr;
     std::tie(Lo, Hi) = Emu->getExpandedValues(&PN);
-    assert(Lo != nullptr && Hi != nullptr);
+    IGC_ASSERT(Lo != nullptr && Hi != nullptr);
     return false;
 }
 
@@ -1774,7 +1769,7 @@ bool InstExpander::visitCall(CallInst& Call) {
     // lambdas for splitting and combining i64 to <2 x i32>
     auto Combine2xi32Toi64 = [this](Value* val)->Value *
     {
-        assert(Emu->isInt64(val));
+        IGC_ASSERT(Emu->isInt64(val));
         Value* InputLo = nullptr, * InputHi = nullptr;
         std::tie(InputLo, InputHi) = Emu->getExpandedValues(val);
         Type* V2I32Ty = Emu->getV2Int32Ty();
@@ -1786,7 +1781,7 @@ bool InstExpander::visitCall(CallInst& Call) {
     };
     auto Spliti64To2xi32 = [this](Value* retVal, Value*& OutputLo, Value*& OutputHi)->void
     {
-        assert(Emu->isInt64(retVal));
+        IGC_ASSERT(Emu->isInt64(retVal));
         Value* V = IRB->CreateBitCast(retVal, Emu->getV2Int32Ty());
         OutputLo = IRB->CreateExtractElement(V, IRB->getInt32(0));
         OutputHi = IRB->CreateExtractElement(V, IRB->getInt32(1));

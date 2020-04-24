@@ -5,7 +5,7 @@
 // This file is distributed under the University of Illinois Open Source
 // License. See LRCENSE.TXT for details.
 //
-//  Copyright  (C) 2014 Intel Corporation. All rights reserved.
+//  Copyright  (C) 2014-2020 Intel Corporation. All rights reserved.
 //
 // The information and source code contained herein is the exclusive
 // property of Intel Corporation and may not be disclosed, examined
@@ -20,16 +20,15 @@
 #include "RegisterPressureEstimate.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include <set>
-
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/igc_regkeys.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC::Debug;
@@ -309,7 +308,7 @@ namespace IGC
         {
             BasicBlock* BB = &*BI;
             auto Result = BlockLiveMap.insert(std::make_pair(BB, std::set<Value*>()));
-            assert(Result.second && "must not be processed yet");
+            IGC_ASSERT(Result.second && "must not be processed yet");
             std::set<Value*>& Live = Result.first->second;
 
             // live = union of successor.livein for each successor of b

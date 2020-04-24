@@ -23,11 +23,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "HullShaderLowering.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/HullShaderCodeGen.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -449,7 +451,7 @@ namespace IGC
                         }
 
                         // Compute additional offset coming from attribute index
-                        assert(urbOffset);
+                        IGC_ASSERT(urbOffset);
                         if (llvm::isa<llvm::ConstantInt>(urbOffset) && llvm::isa<llvm::ConstantInt>(attributeIndex))
                         {
                             urbOffset = builder.getInt32(int_cast<unsigned int>(

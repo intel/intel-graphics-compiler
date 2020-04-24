@@ -26,14 +26,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "PromoteStatelessToBindless.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CISACodeGen/helper.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -94,7 +93,7 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
             case GenISAIntrinsic::GenISA_simdBlockWrite:
                 break;
             default:
-                assert(0 && "Unsupported Instruction");
+                IGC_ASSERT(false && "Unsupported Instruction");
                 return;
             }
         }
@@ -109,7 +108,7 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
         !isa<Argument>(srcPtr))
     {
         // Cannot trace the resource pointer back to it's source, cannot promote
-        assert(0 && "Stateless buffer pointer not traceable, cannot promote stateless to bindless");
+        IGC_ASSERT(false && "Stateless buffer pointer not traceable, cannot promote stateless to bindless");
         return;
     }
 
@@ -131,7 +130,7 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
                 FunctionMetaData* funcMD = &modMD->FuncMD[&F];
                 ResourceAllocMD* resourceAlloc = &funcMD->resAllocMD;
                 ArgAllocMD* argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
-                assert((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+                IGC_ASSERT((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
                 if (argInfo->type == ResourceTypeEnum::UAVResourceType)
                 {
                     // Update metadata to show bindless resource type

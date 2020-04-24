@@ -27,7 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/BreakConstantExpr/BreakConstantExpr.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -36,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -128,7 +128,7 @@ void BreakConstantExpr::replaceConstantWith(llvm::Constant* exprOrVec, llvm::Ins
         // llvm 3.6.0 transition
         user->setOperand(operandIndex, newInst);
 #else
-        assert(false);
+        IGC_ASSERT(false);
 #endif
     }
     else

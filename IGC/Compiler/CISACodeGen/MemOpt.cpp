@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/STLExtras.h>
 #include <llvmWrapper/Analysis/MemoryLocation.h>
@@ -42,12 +43,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/MemOpt.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -673,7 +674,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
     // Start to merge loads.
 
-    assert(NumElts > 1
+    IGC_ASSERT(NumElts > 1
         && "It's expected to merge into at least 2-element vector!");
 
     // Try to find the profitable vector length first.
@@ -710,7 +711,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     // new pointer.
     LoadInst* FirstLoad = std::get<0>(LoadsToMerge.front());
     int64_t FirstOffset = std::get<1>(LoadsToMerge.front());
-    assert(FirstOffset <= 0 &&
+    IGC_ASSERT(FirstOffset <= 0 &&
         "The 1st load should be either the leading load or "
         "load with smaller offset!");
 
@@ -730,7 +731,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     if (FirstOffset < 0) {
         // If the first load is not the leading load, re-calculate the pointer
         // from the pointer of the leading load.
-        assert(FirstOffset % LdScalarSize == 0 && "Remainder is expected to be 0!");
+        IGC_ASSERT(FirstOffset % LdScalarSize == 0 && "Remainder is expected to be 0!");
 
         Value* Idx = Builder.getInt64(FirstOffset / LdScalarSize);
         Type* Ty =
@@ -763,7 +764,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     for (auto& I : LoadsToMerge) {
         Type* Ty = std::get<0>(I)->getType();
         Type* ScalarTy = Ty->getScalarType();
-        assert(hasSameSize(ScalarTy, LeadingLoadScalarType));
+        IGC_ASSERT(hasSameSize(ScalarTy, LeadingLoadScalarType));
 
         mdLoadInv = std::get<0>(I)->getMetadata(LLVMContext::MD_invariant_load);
         if (!mdLoadInv)
@@ -779,7 +780,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
                 // with an index > the size of the new load.  This shouldn't happen,
                 // but we'll generate correct code if it does since we don't remove the
                 // original load for this element.
-                assert(0 && "Trying to merge a load with an offset bigger than the load");
+                IGC_ASSERT(false && "Trying to merge a load with an offset bigger than the load");
                 continue;
             }
             Value* Val = UndefValue::get(Ty);
@@ -792,7 +793,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         }
         else {
             if (Pos > NumElts) {
-                assert(0 && "Trying to merge a load with an offset bigger than the load");
+                IGC_ASSERT(false && "Trying to merge a load with an offset bigger than the load");
                 continue;
             }
             Value* Val = Builder.CreateExtractElement(NewLoad,
@@ -1014,7 +1015,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         NumElts += getNumElements(Ty);
     }
 
-    assert(NumElts > 1 &&
+    IGC_ASSERT(NumElts > 1 &&
         "It's expected to merge into at least 2-element vector!");
 
     // Try to find the profitable vector length first.
@@ -1051,7 +1052,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         Value* Val = std::get<0>(I)->getValueOperand();
         Type* Ty = Val->getType();
         Type* ScalarTy = Ty->getScalarType();
-        assert(hasSameSize(ScalarTy, LeadingStoreScalarType));
+        IGC_ASSERT(hasSameSize(ScalarTy, LeadingStoreScalarType));
 
         if (Ty->isVectorTy()) {
             for (unsigned i = 0, e = Ty->getVectorNumElements(); i != e; ++i) {
@@ -1397,7 +1398,7 @@ Value*
 SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
     ExtensionKind& Extension, unsigned Depth,
     const DataLayout* DL) {
-    assert(V->getType()->isIntegerTy() && "Not an integer value");
+    IGC_ASSERT(V->getType()->isIntegerTy() && "Not an integer value");
 
     // Limit our recursion depth.
     if (Depth == 16) {

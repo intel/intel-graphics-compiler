@@ -27,8 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ImageFuncsAnalysis.hpp"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include <set>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -177,7 +177,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     }
 
     // Extract the arg num and add it to the appropriate data structure
-    assert(CI.getNumArgOperands() == 1 && "Supported image/sampler functions are expected\
+    IGC_ASSERT(CI.getNumArgOperands() == 1 && "Supported image/sampler functions are expected\
                                            to have only one argument");
 
     // We only care about image and sampler arguments here, inline samplers
@@ -197,6 +197,6 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     else
     {
         // Only these args should be hit by the indirect case
-        assert(funcName == GET_SAMPLER_NORMALIZED_COORDS || funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
+        IGC_ASSERT(funcName == GET_SAMPLER_NORMALIZED_COORDS || funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
     }
 }

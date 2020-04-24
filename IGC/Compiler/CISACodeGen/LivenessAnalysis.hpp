@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/LiveVars.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SetVector.h"
@@ -39,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Value.h"
 #include <llvm/Support/Allocator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -110,7 +110,7 @@ namespace IGC
             {
                 V = IdValues[BitId];
             }
-            assert(V && "Invalid bit id found!");
+            IGC_ASSERT(V && "Invalid bit id found!");
             return V;
         }
 

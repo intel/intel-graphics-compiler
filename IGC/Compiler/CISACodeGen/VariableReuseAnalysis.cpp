@@ -28,12 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <algorithm>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -209,7 +208,7 @@ bool VariableReuseAnalysis::checkUseInst(Instruction* UseInst, LiveVars* LV) {
 
 bool VariableReuseAnalysis::checkDefInst(Instruction* DefInst,
     Instruction* UseInst, LiveVars* LV) {
-    assert(DefInst && UseInst);
+    IGC_ASSERT(DefInst && UseInst);
     if (isa<PHINode>(DefInst))
         return false;
 
@@ -712,7 +711,7 @@ bool VariableReuseAnalysis::hasAnyOfDCCAsAliaser(Value* V) const
         if (II != m_root2AliasMap.end()) {
             Value* aV = II->second;
             auto MI = m_aliasMap.find(aV);
-            assert(MI != m_aliasMap.end());
+            IGC_ASSERT(MI != m_aliasMap.end());
             SSubVecDesc* SV = MI->second;
             return (SV->Aliaser != SV->BaseVector);
         }
@@ -731,7 +730,7 @@ bool VariableReuseAnalysis::hasAnotherInDCCAsAliasee(Value* V) const
         if (II != m_root2AliasMap.end()) {
             Value* aV = II->second;
             auto MI = m_aliasMap.find(aV);
-            assert(MI != m_aliasMap.end());
+            IGC_ASSERT(MI != m_aliasMap.end());
             SSubVecDesc* SV = MI->second;
             const Value* tV = SV->Aliaser;
             return (tV == SV->BaseVector && tV != V);
@@ -780,7 +779,7 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
             return false;
         }
 
-        assert(IEI_ix < nelts && "ICE: IEI's index out of bound!");
+        IGC_ASSERT(IEI_ix < nelts && "ICE: IEI's index out of bound!");
         SVecInsEltInfo& InsEltInfo = AllIEIs[IEI_ix];
         if (InsEltInfo.IEI) {
             // One element is inserted more than once, skip.
@@ -1027,7 +1026,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
         m_HasBecomeNoopInsts[IEI] = 1;
 
         ExtractElementInst* EEI = AllIEIs[i].EEI;
-        assert(EEI);
+        IGC_ASSERT(EEI);
         if (m_DeSSA->isNoopAliaser(EEI))
             continue;
         m_HasBecomeNoopInsts[EEI] = 1;
@@ -1149,7 +1148,7 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
                 m_HasBecomeNoopInsts[IEI] = 1;
 
                 ExtractElementInst* EEI = AllIEIs[j].EEI;
-                assert(EEI);
+                IGC_ASSERT(EEI);
                 // Sub-vector
                 if (m_DeSSA->isNoopAliaser(EEI))
                     continue;

@@ -33,7 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/CFG.h>
@@ -42,10 +41,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Constants.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
-
 #include <string>
 #include <stack>
 #include <sstream>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -456,7 +455,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
     //    add all subroutine function args as random
     for (unsigned i = 0; i < implicitArgStart; ++i, ++ai)
     {
-        assert(ai != ae);
+        IGC_ASSERT(ai != ae);
         incUpdateDepend(&(*ai), IsSubroutine ? WIAnalysis::RANDOM : WIAnalysis::UNIFORM);
     }
 
@@ -474,7 +473,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
 
     for (unsigned i = 0; i < implicitArgs.size(); ++i, ++ai)
     {
-        assert(ai != ae);
+        IGC_ASSERT(ai != ae);
         const ImplicitArg& iArg = implicitArgs[ai->getArgNo() - implicitArgStart];
         WIAnalysis::WIDependancy dependency = iArg.getDependency();
         if ((localX_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_X) ||
@@ -491,7 +490,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
     {
         for (unsigned i = 0; i < m_ModMD->pushInfo.pushAnalysisWIInfos.size(); ++i, ++ai)
         {
-            assert(ai != ae);
+            IGC_ASSERT(ai != ae);
             WIAnalysis::WIDependancy dependency =
                 static_cast<WIAnalysis::WIDependancy>(m_ModMD->pushInfo.pushAnalysisWIInfos[i].argDependency);
             incUpdateDepend(&(*ai), dependency);
@@ -532,8 +531,8 @@ bool WIAnalysis::insideDivergentCF(const llvm::Value* val)
 
 WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val)
 {
-    assert(m_pChangedNew->empty() && "set should be empty before query");
-    assert(val && "Bad value");
+    IGC_ASSERT(m_pChangedNew->empty() && "set should be empty before query");
+    IGC_ASSERT(val && "Bad value");
     if (isa<Constant>(val))
     {
         return WIAnalysis::UNIFORM;
@@ -546,7 +545,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val)
             return WIAnalysis::RANDOM;
         }
     }
-    assert(EL != m_depMap.end());
+    IGC_ASSERT(EL != m_depMap.end());
     return EL;
 }
 
@@ -567,10 +566,10 @@ WIAnalysis::WIDependancy WIAnalysisRunner::getDependency(const Value* val)
         {
             return WIAnalysis::UNIFORM;
         }
-        // Don't expect this happens, let's assert in debug build!
-        assert(false && "Dependence for 'val' should bave been set already!");
+        // Don't expect this happens, let's assertion fail
+        IGC_ASSERT(false && "Dependence for 'val' should bave been set already!");
     }
-    assert(m_depMap.GetAttributeWithoutCreating(val) != m_depMap.end());
+    IGC_ASSERT(m_depMap.GetAttributeWithoutCreating(val) != m_depMap.end());
     return m_depMap.GetAttributeWithoutCreating(val);
 }
 
@@ -598,15 +597,15 @@ static bool HasPhiUse(const llvm::Value* inst)
 
 void WIAnalysisRunner::calculate_dep(const Value* val)
 {
-    assert(val && "Bad value");
+    IGC_ASSERT(val && "Bad value");
 
     // Not an instruction, must be a constant or an argument
     // Could this vector type be of a constant which
     // is not uniform ?
-    assert(isa<Instruction>(val) && "Could we reach here with non instruction value?");
+    IGC_ASSERT(isa<Instruction>(val) && "Could we reach here with non instruction value?");
 
     const Instruction* inst = dyn_cast<Instruction>(val);
-    assert(inst && "This Value is not an Instruction");
+    IGC_ASSERT(inst && "This Value is not an Instruction");
 
     bool hasOriginal = hasDependency(inst);
     WIAnalysis::WIDependancy orig;
@@ -806,7 +805,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
             for (; use_it != use_e; ++use_it)
             {
                 Instruction* user = dyn_cast<Instruction>((*use_it).getUser());
-                assert(user);
+                IGC_ASSERT(user);
                 BasicBlock* user_blk = user->getParent();
                 PHINode* phi = dyn_cast<PHINode>(user);
                 if (phi)
@@ -1258,7 +1257,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const PHINode* inst)
         }
     }
 
-    assert(foundFirst && "We should not reach here with All incoming values are unset");
+    IGC_ASSERT(foundFirst && "We should not reach here with All incoming values are unset");
 
     return totalDep;
 }
@@ -1467,7 +1466,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst* inst)
         return WIAnalysis::RANDOM;
     }
     default:
-        assert(false && "no such opcode");
+        IGC_ASSERT(false && "no such opcode");
         // never get here
         return WIAnalysis::RANDOM;
     }
@@ -1475,7 +1474,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst* inst)
 
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const VAArgInst* inst)
 {
-    assert(false && "Are we supporting this ??");
+    IGC_ASSERT(false && "Are we supporting this ??");
     return WIAnalysis::RANDOM;
 }
 
@@ -1582,7 +1581,7 @@ BranchInfo::BranchInfo(const IGCLLVM::TerminatorInst* inst, const BasicBlock* ip
     full_join(ipd)
 {
     const BasicBlock* fork_blk = inst->getParent();
-    assert(cbr == fork_blk->getTerminator() && "block terminator mismatch");
+    IGC_ASSERT(cbr == fork_blk->getTerminator() && "block terminator mismatch");
 
     if (cbr->getNumSuccessors() != 2) {
         std::set<const BasicBlock*> Reached;

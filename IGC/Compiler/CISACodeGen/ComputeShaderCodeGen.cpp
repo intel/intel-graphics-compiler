@@ -26,15 +26,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/ComputeShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "common/allocator.h"
 #include "common/secure_mem.h"
 #include <iStdLib/utility.h>
 #include <iStdLib/FloatUtil.h>
-
 #include <algorithm>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -191,7 +190,7 @@ namespace IGC
 
         // R0 is used as a Predefined variable so that vISA doesn't free it later. In CS, we expect the
         // thread group id's in R0.
-        assert(GetR0());
+        IGC_ASSERT(GetR0());
 
         // We use predefined variables so offset has to be added for R0.
         offset += getGRFSize();
@@ -238,7 +237,7 @@ namespace IGC
                 else
                 {
                     // should not compile again if already got a non spill kernel
-                    assert(false);
+                    IGC_ASSERT(false);
                 }
             }
         }
@@ -257,7 +256,7 @@ namespace IGC
                 else
                 {
                     // should not compile again if already got a non spill kernel
-                    assert(false);
+                    IGC_ASSERT(false);
                 }
             }
         }
@@ -276,7 +275,7 @@ namespace IGC
                 else
                 {
                     // should not compile again if already got a non spill kernel
-                    assert(false);
+                    IGC_ASSERT(false);
                 }
             }
         }

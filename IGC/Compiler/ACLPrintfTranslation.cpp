@@ -43,11 +43,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -100,7 +100,7 @@ void ACLPrintfTranslation::visitCallInst(llvm::CallInst& CI)
                     else if (isa<Instruction>(V))
                     {
                         Instruction* I = (Instruction*)V;
-                        assert(I->getNumOperands() == 1);
+                        IGC_ASSERT(I->getNumOperands() == 1);
                         CI.setOperand(1, I->getOperand(0));
                     }
                 }

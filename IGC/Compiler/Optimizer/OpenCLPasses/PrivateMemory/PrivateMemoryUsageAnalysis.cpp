@@ -25,9 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
-
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -159,7 +159,7 @@ void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst& CI)
 
 void PrivateMemoryUsageAnalysis::visitAllocaInst(llvm::AllocaInst& AI)
 {
-    assert(AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");
+    IGC_ASSERT(AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");
 
     // If we encountered Alloca, then the function uses private memory
     m_hasPrivateMem = true;

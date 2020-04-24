@@ -33,9 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMUtils.h"
 #include "common/IGCIRBuilder.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -132,7 +132,7 @@ bool BlendToDiscard::runOnFunction(Function& F)
     m_modMD = m_cgCtx->getModuleMetaData();
     m_module = F.getParent();
 
-    assert(m_cgCtx->type == ShaderType::PIXEL_SHADER);
+    IGC_ASSERT(m_cgCtx->type == ShaderType::PIXEL_SHADER);
 
     std::vector<int>& blendOpt = m_modMD->psInfo.blendOptimizationMode;
     if (!blendOpt.size() || m_cgCtx->m_instrTypes.hasDiscard)
@@ -152,7 +152,7 @@ bool BlendToDiscard::runOnFunction(Function& F)
 
             if (out)
             {
-                assert(isa<ConstantInt>(out->getOperand(4)) &&
+                IGC_ASSERT(isa<ConstantInt>(out->getOperand(4)) &&
                     isa<ConstantInt>(out->getOperand(5)));
 
                 ShaderOutputType oType = static_cast<ShaderOutputType>(
@@ -401,7 +401,7 @@ bool BlendToDiscard::blendToDiscardMRT(
         }
 
         default:
-            assert(false && "Need to handle more cases");
+            IGC_ASSERT(false && "Need to handle more cases");
         }
 
         if (discardCond)

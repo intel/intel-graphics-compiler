@@ -29,8 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/DeSSA.hpp"
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
 #include "Compiler/CISACodeGen/BlockCoalescing.hpp"
-
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/IR/Dominators.h"
@@ -42,12 +40,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
-
 #include <list>
 #include <map>
-#include <algorithm>    // std::find
+#include <algorithm>
+#include "Probe/Assertion.h"
 
 namespace IGC {
 
@@ -386,7 +383,7 @@ namespace IGC {
         // Initialize per-block states. In particular, check if the entire block has a
         // low pressure.
         void BeginBlock(llvm::BasicBlock* BB) {
-            assert(m_SimdSize != 0);
+            IGC_ASSERT(m_SimdSize != 0);
             if (m_RPE) {
                 CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
                 uint32_t BBPresure = m_RPE->getMaxLiveGRFAtBB(BB, m_SimdSize);

@@ -37,7 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "llvm/Config/llvm-config.h"
-
 #define DEBUG_TYPE "dwarfdebug"
 #include "Compiler/DebugInfo/DwarfDebug.hpp"
 #include "Compiler/DebugInfo/DIE.hpp"
@@ -45,13 +44,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/DebugInfo/StreamEmitter.hpp"
 #include "Compiler/DebugInfo/VISAModule.hpp"
 #include "Compiler/DebugInfo/Version.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/Support/Debug.h"
 #include <llvmWrapper/IR/Function.h>
 #include "llvmWrapper/BinaryFormat/Dwarf.h"
-
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/DIBuilder.h"
@@ -69,9 +65,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/LEB128.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/MC/MCDwarf.h"
-
 #include "common/LLVMWarningsPop.hpp"
-
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -87,7 +82,7 @@ const char* endSymbol = ".end";
 
 bool DbgVariable::isBlockByrefVariable() const {
 #if LLVM_VERSION_MAJOR < 10
-    assert(Var && "Invalid complex DbgVariable!");
+    IGC_ASSERT(Var && "Invalid complex DbgVariable!");
     return Var->getType()
 #if LLVM_VERSION_MAJOR <= 8
         .resolve()
@@ -109,8 +104,8 @@ DIType* DbgVariable::getType() const
         ;
  #if LLVM_VERSION_MAJOR < 10
     // isBlockByrefStruct is no more support by LLVM10 IR - more info in this commit below:
- 	// https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
- 
+    // https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
+
     // FIXME: isBlockByrefVariable should be reformulated in terms of complex
     // addresses instead.
     if (Ty->isBlockByrefStruct()) {
@@ -250,7 +245,7 @@ DIE* DwarfDebug::updateSubprogramScopeDIE(CompileUnit* SPCU, DISubprogram* SP)
 {
     DIE* SPDie = SPCU->getDIE(SP);
 
-    assert(SPDie && "Unable to find subprogram DIE!");
+    IGC_ASSERT(SPDie && "Unable to find subprogram DIE!");
 
     // If we're updating an abstract DIE, then we will be adding the children and
     // object pointer later on. But what we don't want to do is process the
@@ -368,7 +363,7 @@ DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
         return ScopeDIE;
 
     const SmallVectorImpl<InsnRange>& Ranges = Scope->getRanges();
-    assert(Ranges.empty() == false && "LexicalScope does not have instruction markers!");
+    IGC_ASSERT(Ranges.empty() == false && "LexicalScope does not have instruction markers!");
 
     if (m_pModule->isDirectElfInput)
     {
@@ -474,7 +469,7 @@ DIE* DwarfDebug::constructInlinedScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
         return NULL;
 
     const SmallVectorImpl<InsnRange>& Ranges = Scope->getRanges();
-    assert(Ranges.empty() == false && "LexicalScope does not have instruction markers!");
+    IGC_ASSERT(Ranges.empty() == false && "LexicalScope does not have instruction markers!");
 
     const MDNode* DS = Scope->getScopeNode();
     DISubprogram* InlinedSP = getDISubprogram(DS);
@@ -637,12 +632,12 @@ DIE* DwarfDebug::constructScopeDIE(CompileUnit* TheCU, LexicalScope* Scope)
         if (Children.empty())
             return NULL;
         ScopeDIE = constructLexicalScopeDIE(TheCU, Scope);
-        assert(ScopeDIE && "Scope DIE should not be null.");
+        IGC_ASSERT(ScopeDIE && "Scope DIE should not be null.");
     }
 
     if (!ScopeDIE)
     {
-        assert(Children.empty() && "We create children only when the scope DIE is not null.");
+        IGC_ASSERT(Children.empty() && "We create children only when the scope DIE is not null.");
         return NULL;
     }
     if (!ChildrenCreated)
@@ -948,7 +943,7 @@ void DwarfDebug::collectDeadVariables()
 
             // Construct subprogram DIE and add variables DIEs.
             CompileUnit* SPCU = CUMap.lookup(TheCU);
-            assert(SPCU && "Unable to find Compile Unit!");
+            IGC_ASSERT(SPCU && "Unable to find Compile Unit!");
             // FIXME: See the comment in constructSubprogramDIE about duplicate
             // subprogram DIEs.
             constructSubprogramDIE(SPCU, SP);
@@ -1239,7 +1234,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             Processed.insert(DV);
             const Instruction* pInst = H; // History.front();
 
-            assert(m_pModule->IsDebugValue(pInst) && "History must begin with debug value");
+            IGC_ASSERT(m_pModule->IsDebugValue(pInst) && "History must begin with debug value");
             DbgVariable* AbsVar = findAbstractVariable(DV, pInst->getDebugLoc());
             DbgVariable* RegVar = nullptr;
 
@@ -1466,7 +1461,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             HI = History.begin(), HE = History.end(); HI != HE; ++HI)
         {
             const Instruction* Begin = *HI;
-            assert(m_pModule->IsDebugValue(Begin) && "Invalid History entry");
+            IGC_ASSERT(m_pModule->IsDebugValue(Begin) && "Invalid History entry");
 
             // Compute the range for a register location.
             const MCSymbol* FLabel = getLabelBeforeInsn(Begin);
@@ -1490,7 +1485,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 {
                     // End is a normal instruction clobbering the range.
                     SLabel = getLabelAfterInsn(End);
-                    assert(SLabel && "Forgot label after clobber instruction");
+                    IGC_ASSERT(SLabel && "Forgot label after clobber instruction");
                     ++HI;
                 }
             }
@@ -1695,8 +1690,8 @@ void DwarfDebug::identifyScopeMarkers()
         for (SmallVectorImpl<InsnRange>::const_iterator RI = Ranges.begin(),
             RE = Ranges.end(); RI != RE; ++RI)
         {
-            assert(RI->first && "InsnRange does not have first instruction!");
-            assert(RI->second && "InsnRange does not have second instruction!");
+            IGC_ASSERT(RI->first && "InsnRange does not have first instruction!");
+            IGC_ASSERT(RI->second && "InsnRange does not have second instruction!");
             requestLabelBeforeInsn(RI->first);
             requestLabelAfterInsn(RI->second);
         }
@@ -1740,7 +1735,7 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
     if (LScopes.empty())
         return;
 
-    assert(UserVariables.empty() && DbgValues.empty() && "Maps weren't cleaned");
+    IGC_ASSERT(UserVariables.empty() && DbgValues.empty() && "Maps weren't cleaned");
 
     // Make sure that each lexical scope will have a begin/end label.
     identifyScopeMarkers();
@@ -1750,7 +1745,7 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
     // non-asm case.
     LexicalScope* FnScope = LScopes.getCurrentFunctionScope();
     CompileUnit* TheCU = SPMap.lookup(FnScope->getScopeNode());
-    assert(TheCU && "Unable to find compile unit!");
+    IGC_ASSERT(TheCU && "Unable to find compile unit!");
     Asm->SetDwarfCompileUnitID(TheCU->getUniqueID());
 
     // Emit a label for the function so that we have a beginning address.
@@ -1773,7 +1768,7 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
 
         if (m_pModule->IsDebugValue(MI))
         {
-            assert(MI->getNumOperands() > 1 && "Invalid machine instruction!");
+            IGC_ASSERT(MI->getNumOperands() > 1 && "Invalid machine instruction!");
 
             // Keep track of user variables.
             const MDNode* Var = m_pModule->GetDebugVariable(MI);
@@ -1909,7 +1904,7 @@ void DwarfDebug::endFunction(const Function* MF)
 
     LexicalScope* FnScope = LScopes.getCurrentFunctionScope();
     CompileUnit* TheCU = SPMap.lookup(FnScope->getScopeNode());
-    assert(TheCU && "Unable to find compile unit!");
+    IGC_ASSERT(TheCU && "Unable to find compile unit!");
 
     // Construct abstract scopes.
     ArrayRef<LexicalScope*> AList = LScopes.getAbstractScopesList();
@@ -2052,7 +2047,7 @@ unsigned DwarfDebug::computeSizeAndOffset(DIE* Die, unsigned Offset)
     // Size the DIE children if any.
     if (!Children.empty())
     {
-        assert(Abbrev->getChildrenFlag() == dwarf::DW_CHILDREN_yes &&
+        IGC_ASSERT(Abbrev->getChildrenFlag() == dwarf::DW_CHILDREN_yes &&
             "Children flag not set");
 
         for (unsigned j = 0, M = Children.size(); j < M; ++j)
@@ -2183,7 +2178,7 @@ void DwarfDebug::emitDIE(DIE* Die)
     {
         dwarf::Attribute Attr = AbbrevData[i].getAttribute();
         dwarf::Form Form = AbbrevData[i].getForm();
-        assert(Form && "Too many attributes for DIE (check abbreviation)");
+        IGC_ASSERT(Form && "Too many attributes for DIE (check abbreviation)");
 
         switch (Attr)
         {
@@ -2202,7 +2197,7 @@ void DwarfDebug::emitDIE(DIE* Die)
                 // section. Origin->getOffset() returns the offset from start of the
                 // compile unit.
                 CompileUnit* CU = CUDieMap.lookup(Origin->getCompileUnit());
-                assert(CU && "CUDie should belong to a CU.");
+                IGC_ASSERT(CU && "CUDie should belong to a CU.");
                 Addr += CU->getDebugInfoOffset();
                 Asm->EmitLabelPlusOffset(DwarfInfoSectionSym, Addr,
                     DIEEntry::getRefAddrSize(Asm, getDwarfVersion()));
@@ -2210,7 +2205,7 @@ void DwarfDebug::emitDIE(DIE* Die)
             else
             {
                 // Make sure Origin belong to the same CU.
-                assert(Die->getCompileUnit() == Origin->getCompileUnit() &&
+                IGC_ASSERT(Die->getCompileUnit() == Origin->getCompileUnit() &&
                     "The referenced DIE should belong to the same CU in ref4");
                 Asm->EmitInt32(Addr);
             }
@@ -2412,11 +2407,11 @@ void DwarfDebug::emitDebugLoc()
             else
             {
                 // Variable which is not immediate can have location or nothing.
-                assert(!Loc.HasSurface() && "Variable with surface should not change location");
+                IGC_ASSERT(!Loc.HasSurface() && "Variable with surface should not change location");
 
                 if (Loc.HasLocation())
                 {
-                    assert(Loc.IsRegister() && "Changable location can be an offset! Handle this case");
+                    IGC_ASSERT(Loc.IsRegister() && "Changable location can be an offset! Handle this case");
                     // InstCombine optimization may produce case where In Memory variable changes location
                     // Thus, In Memory variable indecator is passed as indirect location flag.
                     Asm->EmitDwarfRegOp(Loc.GetRegister(), Loc.GetOffset(), Loc.IsInMemory());
@@ -2570,7 +2565,7 @@ void DwarfDebug::writeFDE(DbgDecoder::SubroutineInfo& sub)
     auto genOffStart = getGenISAOffset(sub.startVISAIndex);
     auto genOffEnd = getGenISAOffset(sub.endVISAIndex);
     auto& retvarLR = sub.retval;
-    assert(retvarLR.size() > 0 && retvarLR[0].var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF &&
+    IGC_ASSERT(retvarLR.size() > 0 && retvarLR[0].var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF &&
         "expecting GRF for return");
 
     // assume ret var is live throughout sub-routine and it is contained

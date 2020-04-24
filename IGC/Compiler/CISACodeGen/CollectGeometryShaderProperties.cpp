@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/InitializePasses.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -216,7 +217,7 @@ void CollectGeometryShaderProperties::HandleOutputWrite(llvm::GenIntrinsicInst& 
         // shader has output clip or cull distances
         // this should have been recognized already by global variable extraction
         // that deals with clip or cull distance masks
-        assert(m_gsProps.Output().PerVertex().HasClipDistances() ||
+        IGC_ASSERT(m_gsProps.Output().PerVertex().HasClipDistances() ||
             m_gsProps.Output().PerVertex().HasCullDistances());
         break;
     case SHADER_OUTPUT_TYPE_VIEWPORT_ARRAY_INDEX:

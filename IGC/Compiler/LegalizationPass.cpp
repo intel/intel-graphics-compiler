@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Instructions.h>
@@ -38,8 +37,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvmWrapper/IR/InstrTypes.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -97,7 +96,7 @@ bool Legalization::runOnFunction(Function& F)
     {
         for (auto OI = I->op_begin(), OE = I->op_end(); OI != OE; ++OI)
         {
-            assert(!isa<ConstantExpr>(OI) && "Function must not contain constant expressions");
+            IGC_ASSERT(!isa<ConstantExpr>(OI) && "Function must not contain constant expressions");
         }
     }
 
@@ -256,7 +255,7 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
                     }
                     else if (BranchInst * br = dyn_cast<BranchInst>(*U))
                     {
-                        assert(br->isConditional());
+                        IGC_ASSERT(br->isConditional());
                         br->swapSuccessors();
                         br->setCondition(invert);
                     }
@@ -508,7 +507,7 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
 
             if (BI)
             {
-                assert(BI->getType() == EltTy);
+                IGC_ASSERT(BI->getType() == EltTy);
 
                 // BO, TI, and BI are dead.
                 BI->replaceAllUsesWith(V);
@@ -525,7 +524,7 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
             }
             else
             {
-                assert(TI->getType()->getPrimitiveSizeInBits() ==
+                IGC_ASSERT(TI->getType()->getPrimitiveSizeInBits() ==
                     EltTy->getPrimitiveSizeInBits());
                 if (V->getType() != TI->getType())
                     V = Builder->CreateBitCast(V, TI->getType());
@@ -578,7 +577,7 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
             int dstSize = int_cast<int>(castType->getPrimitiveSizeInBits());
 
             // vecSize is 128/8 = 16 in above example
-            assert(srcSize % dstSize == 0);
+            IGC_ASSERT(srcSize % dstSize == 0);
             uint vecSize = srcSize / dstSize;
 
             Builder->SetInsertPoint(TI);
@@ -813,7 +812,7 @@ static Value* GetMaskedValue(IRBuilder<>* IRB, bool Signed, Value* Src, Type* Ty
     IntegerType* SrcITy = dyn_cast<IntegerType>(Src->getType());
     IntegerType* ITy = dyn_cast<IntegerType>(Ty);
 
-    assert(SrcITy && ITy && SrcITy->getBitWidth() > ITy->getBitWidth() &&
+    IGC_ASSERT(SrcITy && ITy && SrcITy->getBitWidth() > ITy->getBitWidth() &&
         "The source integer must be wider than the target integer.");
 
     if (!Signed) // For unsigned value, just mask off non-significant bits.
@@ -1009,7 +1008,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst& FC)
             }
             else if (BranchInst * br = dyn_cast<BranchInst>(*I))
             {
-                assert(br->isConditional());
+                IGC_ASSERT(br->isConditional());
                 br->swapSuccessors();
                 br->setCondition(invertedOrderedInst);
             }
@@ -1075,7 +1074,7 @@ CmpInst::Predicate getOrderedPredicate(CmpInst::Predicate pred)
     case CmpInst::FCMP_UGE: return CmpInst::FCMP_OGE;
     case CmpInst::FCMP_ULE: return CmpInst::FCMP_OLE;
     default:
-        assert(0 && "wrong predicate");
+        IGC_ASSERT(false && "wrong predicate");
         break;
     }
     return pred;
@@ -1241,7 +1240,7 @@ void Legalization::visitStoreInst(StoreInst& I)
         Value* storeVal = BitCastInst::Create(Instruction::BitCast, I.getOperand(0), legalTy, "", &I);
         Value* storePtr = I.getPointerOperand();
 
-        assert(storePtr->getType()->getPointerElementType()->isIntegerTy(srcWidth));
+        IGC_ASSERT(storePtr->getType()->getPointerElementType()->isIntegerTy(srcWidth));
 
         PointerType* ptrTy = PointerType::get(legalTy, storePtr->getType()->getPointerAddressSpace());
         IntToPtrInst* intToPtr = dyn_cast<IntToPtrInst>(storePtr);
@@ -1510,7 +1509,7 @@ Value* Cast(Value* val, Type* type, Instruction* insertBefore)
     }
     else
     {
-        assert(0 && "unexpected type");
+        IGC_ASSERT(false && "unexpected type");
     }
     return newVal;
 }
@@ -1596,7 +1595,7 @@ Type* Legalization::LegalAllocaType(Type* type) const
     case Type::PointerTyID:
         break;
     default:
-        assert(0 && "Alloca of unsupported type");
+        IGC_ASSERT(false && "Alloca of unsupported type");
         break;
     }
     return legalType;
@@ -1641,7 +1640,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         case Intrinsic::uadd_sat: OverflowIntrinID = Intrinsic::uadd_with_overflow; break;
         case Intrinsic::sadd_sat: OverflowIntrinID = Intrinsic::sadd_with_overflow; break;
 #endif
-        default: assert(0 && "Incorrect intrinsic"); break;
+        default: IGC_ASSERT(false && "Incorrect intrinsic"); break;
         }
 
         int BitWidth = I.getType()->getIntegerBitWidth();
@@ -1676,7 +1675,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         }
             break;
 #endif
-        default: assert(0 && "Incorrect intrinsic"); break;
+        default: IGC_ASSERT(false && "Incorrect intrinsic"); break;
         }
 
         Value* Saturated = Builder.CreateSelect(Overflow, Boundary, Result);
@@ -1731,7 +1730,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                 isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_SLT, andOpt, zero, "", &I);
             }
             break;
-            default: assert(0 && "Incorrect intrinsic"); break;
+            default: IGC_ASSERT(false && "Incorrect intrinsic"); break;
         }
 
         // llvm.x.with.overflow returns a struct, where the first element is the operation result,
@@ -1742,7 +1741,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
             ExtractValueInst* extract = dyn_cast<ExtractValueInst>(*U);
             if (!extract)
             {
-                assert(0 && "Did not expect anything but an extract after uadd_with_overflow");
+                IGC_ASSERT(false && "Did not expect anything but an extract after uadd_with_overflow");
                 continue;
             }
 
@@ -1757,7 +1756,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
             }
             else
             {
-                assert(0 && "Unexpected index when handling uadd_with_overflow");
+                IGC_ASSERT(false && "Unexpected index when handling uadd_with_overflow");
             }
 
             m_instructionsToRemove.push_back(extract);
@@ -1789,7 +1788,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
     case Intrinsic::umul_with_overflow:
     case Intrinsic::smul_with_overflow:
         TODO("Handle the other with_overflow intrinsics");
-        assert(0 && "Unhandled llvm.x.with.overflow intrinsic");
+        IGC_ASSERT(false && "Unhandled llvm.x.with.overflow intrinsic");
         break;
     default:
         break;
@@ -1921,7 +1920,7 @@ void Legalization::visitTruncInst(llvm::TruncInst& I) {
 
     m_builder->SetInsertPoint(&I);
 
-    assert(Idx < 3 && "The initial index is out of range!");
+    IGC_ASSERT(Idx < 3 && "The initial index is out of range!");
 
     Value* NewVal =
         m_builder->CreateZExt(

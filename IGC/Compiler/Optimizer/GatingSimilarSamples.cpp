@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/igc_regkeys.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "IGC/LLVM3DBuilder/BuiltinsFrontend.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/BasicBlock.h>
@@ -41,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/ADT/ilist.h>
 #include <llvmWrapper/IR/InstrTypes.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -101,7 +101,7 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
             }
             instItr++;
         }
-        assert(texels.size() == 0 && " All texels.x/y/z were not multiplied by same float");
+        IGC_ASSERT(texels.size() == 0 && " All texels.x/y/z were not multiplied by same float");
         texels.clear();
     }
     return true;
@@ -272,7 +272,7 @@ bool GatingSimilarSamples::setOrCmpGatingValue(Value*& gatingValueToCmp1, Instru
     if (!gatingValueToCmp1)
     {
         //This is the first texel sample inst from the loop after unrolled
-        assert(texelSampleInst == similarSampleInsts[0] && "incorrect inst sequence while extracting the loop gating value");
+        IGC_ASSERT(texelSampleInst == similarSampleInsts[0] && "incorrect inst sequence while extracting the loop gating value");
         gatingValueToCmp1 = mulInst;
         return true;
     }
@@ -382,7 +382,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
 bool GatingSimilarSamples::areSampleInstructionsSimilar(Instruction* firstSampleInst, Instruction* secondSampleInst)
 {
     if (!firstSampleInst || !secondSampleInst) return false;
-    assert(isSampleInstruction(firstSampleInst) && isSampleInstruction(secondSampleInst));
+    IGC_ASSERT(isSampleInstruction(firstSampleInst) && isSampleInstruction(secondSampleInst));
     if (firstSampleInst->getNumOperands() != secondSampleInst->getNumOperands())
         return false;
 

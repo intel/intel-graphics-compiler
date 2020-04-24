@@ -36,12 +36,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //===----------------------------------------------------------------------===//
 #include "common/LLVMWarningsPush.hpp"
-
 #include "InstCombineInternal.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PatternMatch.h"
+#include "Probe/Assertion.h"
+
 using namespace llvm;
 using namespace PatternMatch;
 using namespace IGCombiner;
@@ -49,7 +50,7 @@ using namespace IGCombiner;
 #define DEBUG_TYPE "instcombine"
 
 Instruction *InstCombiner::commonShiftTransforms(BinaryOperator &I) {
-  assert(I.getOperand(1)->getType() == I.getOperand(0)->getType());
+  IGC_ASSERT(I.getOperand(1)->getType() == I.getOperand(0)->getType());
   Value *Op0 = I.getOperand(0), *Op1 = I.getOperand(1);
 
   // See if we can fold away this shift.
@@ -97,7 +98,7 @@ static bool canEvaluateShiftedShift(unsigned FirstShiftAmt,
                                     bool IsFirstShiftLeft,
                                     Instruction *SecondShift, InstCombiner &IC,
                                     Instruction *CxtI) {
-  assert(SecondShift->isLogicalShift() && "Unexpected instruction type");
+  IGC_ASSERT(SecondShift->isLogicalShift() && "Unexpected instruction type");
 
   // We need constant shifts.
   auto *SecondShiftConst = dyn_cast<ConstantInt>(SecondShift->getOperand(1));
@@ -287,7 +288,7 @@ static Value *GetShiftedValue(Value *V, unsigned NumBits, bool isLeftShift,
 
     // We turn shl(c1)+shr(c2) -> shl(c3)+and(c4), but only when we know that
     // the and won't be needed.
-    assert(CI->getZExtValue() > NumBits);
+    IGC_ASSERT(CI->getZExtValue() > NumBits);
     BO->setOperand(1, ConstantInt::get(BO->getType(),
                                        CI->getZExtValue() - NumBits));
     BO->setHasNoUnsignedWrap(false);
@@ -329,7 +330,7 @@ static Value *GetShiftedValue(Value *V, unsigned NumBits, bool isLeftShift,
 
     // We turn lshr(c1)+shl(c2) -> lshr(c3)+and(c4), but only when we know that
     // the and won't be needed.
-    assert(CI->getZExtValue() > NumBits);
+    IGC_ASSERT(CI->getZExtValue() > NumBits);
     BO->setOperand(1, ConstantInt::get(BO->getType(),
                                        CI->getZExtValue() - NumBits));
     BO->setIsExact(false);
@@ -385,7 +386,7 @@ foldShiftByConstOfShiftByConst(BinaryOperator &I, ConstantInt *COp1,
     ConstantInt *ShiftAmt1C = cast<ConstantInt>(ShiftOp->getOperand(1));
     uint32_t ShiftAmt1 = ShiftAmt1C->getLimitedValue(TypeBits);
     uint32_t ShiftAmt2 = COp1->getLimitedValue(TypeBits);
-    assert(ShiftAmt2 != 0 && "Should have been simplified earlier");
+    IGC_ASSERT(ShiftAmt2 != 0 && "Should have been simplified earlier");
     if (ShiftAmt1 == 0)
       return nullptr; // Will be simplified in the future.
     Value *X = ShiftOp->getOperand(0);
@@ -423,7 +424,7 @@ foldShiftByConstOfShiftByConst(BinaryOperator &I, ConstantInt *COp1,
       // behind a bit mask.
       if (I.getOpcode() == Instruction::Shl &&
           ShiftOp->getOpcode() != Instruction::Shl && ShiftOp->isExact()) {
-        assert(ShiftOp->getOpcode() == Instruction::LShr ||
+        IGC_ASSERT(ShiftOp->getOpcode() == Instruction::LShr ||
                ShiftOp->getOpcode() == Instruction::AShr);
         ConstantInt *ShiftDiffCst = ConstantInt::get(Ty, ShiftDiff);
         BinaryOperator *NewShl =
@@ -465,7 +466,7 @@ foldShiftByConstOfShiftByConst(BinaryOperator &I, ConstantInt *COp1,
         }
       }
     } else {
-      assert(ShiftAmt2 < ShiftAmt1);
+      IGC_ASSERT(ShiftAmt2 < ShiftAmt1);
       uint32_t ShiftDiff = ShiftAmt1 - ShiftAmt2;
 
       // (X >>?exact C1) << C2 --> X >>?exact (C1-C2)
@@ -547,7 +548,7 @@ Instruction *InstCombiner::FoldShiftByConstant(Value *Op0, Constant *Op1,
   // purpose is to compute bits we don't care about.
   uint32_t TypeBits = Op0->getType()->getScalarSizeInBits();
 
-  assert(!COp1->uge(TypeBits) &&
+  IGC_ASSERT(!COp1->uge(TypeBits) &&
          "Shift over the type width should have been removed already");
 
   // ((X*C1) << C2) == (X * (C1 << C2))
@@ -590,7 +591,7 @@ Instruction *InstCombiner::FoldShiftByConstant(Value *Op0, Constant *Op1,
       if (I.getOpcode() == Instruction::Shl)
         MaskV <<= COp1->getZExtValue();
       else {
-        assert(I.getOpcode() == Instruction::LShr && "Unknown logical shift");
+        IGC_ASSERT(I.getOpcode() == Instruction::LShr && "Unknown logical shift");
         MaskV = MaskV.lshr(COp1->getZExtValue());
       }
 

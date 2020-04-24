@@ -23,8 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#include "common/LLVMUtils.h"
 
+#include "common/LLVMUtils.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/ADT/PriorityQueue.h>
@@ -32,12 +32,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/PreRAScheduler.hpp"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include "Compiler/CISACodeGen/LivenessAnalysis.hpp"
 #include "common/debug/Debug.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -446,7 +446,7 @@ PreRAScheduler::Node* PreRAScheduler::FindFirstUnscheduledNodeInLatencyQueueFrom
         }
     }
 
-    assert(0 && "We should never reach here");
+    IGC_ASSERT(false && "We should never reach here");
     return scheduled;
 }
 
@@ -468,7 +468,7 @@ PreRAScheduler::Node* PreRAScheduler::FindReadyListWinnerCandidate(unsigned curr
             return scheduled;
         }
 
-        assert(0 && "We should never reach here");
+        IGC_ASSERT(false && "We should never reach here");
         return scheduled;
     }
     else
@@ -485,7 +485,7 @@ PreRAScheduler::Node* PreRAScheduler::FindReadyListWinnerCandidate(unsigned curr
             return scheduled;
         }
 
-        assert(0 && "We should never reach here");
+        IGC_ASSERT(false && "We should never reach here");
         return scheduled;
     }
 }
@@ -652,8 +652,8 @@ void PreRAScheduler::buildBasicBlockDDG(
                     auto useInstFound = m_pInstToNodeMap.find(m_pLVA->ValueIds[useInst]);
                     if (useInstFound == m_pInstToNodeMap.end())
                     {
-                        // successors or uses are processed before the def. Hence assert if a node is not found
-                        assert(0 && "user node not found");
+                        // successors or uses are processed before the def. Hence assertion fails if a node is not found
+                        IGC_ASSERT(false && "user node not found");
                     }
                     else
                     {
@@ -722,7 +722,7 @@ bool PreRAScheduler::ScheduleReadyNodes(
             RPTracker.getCurrNumGRF((uint16_t)m_pSIMDSize), current_cycle, prevScheduledNode)) == nullptr)
         {
             // we have scheduled all the nodes or its an error
-            assert(0 && "should not reach here");
+            IGC_ASSERT(false && "should not reach here");
             break;
         }
 

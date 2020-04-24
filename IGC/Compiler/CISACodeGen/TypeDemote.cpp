@@ -1,4 +1,3 @@
-// vim:ts=2:sw=2:et:
 /*===================== begin_copyright_notice ==================================
 
 Copyright (c) 2017 Intel Corporation
@@ -31,14 +30,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "GenISAIntrinsics/GenIntrinsics.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -310,13 +308,13 @@ bool TypeDemote::demoteOnBasicBlock(BasicBlock* BB) const {
 }
 
 Value* TypeDemote::getDemotedValue(Value* V, Type* DemotedTy, bool Unsigned) const {
-    assert(DemotedTy->isIntegerTy(8) && Unsigned && "Only support demotion to i8!");
+    IGC_ASSERT(DemotedTy->isIntegerTy(8) && Unsigned && "Only support demotion to i8!");
 
     if (ConstantInt * CI = dyn_cast<ConstantInt>(V)) {
         if (!CI->getValue().isIntN(8))
             return nullptr;
         V = IRB->CreateTrunc(V, DemotedTy);
-        assert(isa<ConstantInt>(V) && "Constant folding is failed!");
+        IGC_ASSERT(isa<ConstantInt>(V) && "Constant folding is failed!");
         return V;
     }
 

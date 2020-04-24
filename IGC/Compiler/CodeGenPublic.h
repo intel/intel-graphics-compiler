@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
 
 #include "usc.h"
@@ -44,11 +45,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
-
 #include "../AdaptorOCL/OCL/sp/spp_g8.h"
 #include "../GenISAIntrinsics/GenIntrinsics.h"
 #include "../GenISAIntrinsics/GenIntrinsicInst.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/ADT/DenseMap.h>
@@ -58,14 +57,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/ValueMap.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "CodeGenPublicEnums.h"
 #include "AdaptorOCL/TranslationBlock.h"
-
 #include "common/MDFrameWork.h"
-
 #include "CompilerStats.h"
 #include <unordered_set>
+#include "Probe/Assertion.h"
 
 /************************************************************************
 This file contains the interface structure and functions to communicate

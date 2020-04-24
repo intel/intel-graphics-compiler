@@ -26,11 +26,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/Optimizer/OCLBIConverter.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Intrinsics.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -61,7 +61,7 @@ bool BuiltinsConverter::fillIndexMap(Function& F)
     for (Function::arg_iterator arg = F.arg_begin(), e = F.arg_end(); arg != e; ++arg)
     {
         int argNo = (*arg).getArgNo();
-        assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+        IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
         ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
         if (argAlloc->type == OtherResourceType)
         {

@@ -53,7 +53,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 =============================================================================*/
 
-
 #include "Compiler/CustomUnsafeOptPass.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
@@ -62,7 +61,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMUtils.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
-
 #include <llvm/ADT/Statistic.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
@@ -75,8 +73,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/LoopPass.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <set>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -327,7 +325,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator&
     llvm::Instruction::BinaryOps opcode = I.getOpcode();
 
     // only fmul or fadd can call into this function
-    assert(opcode == Instruction::FMul || opcode == Instruction::FAdd);
+    IGC_ASSERT(opcode == Instruction::FMul || opcode == Instruction::FAdd);
 
     llvm::Instruction* instBase[4];
     llvm::Instruction* instSrc1[4];
@@ -718,7 +716,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator& I)
     fmul+fadd can be replaced with fmad later in matchMad()
     */
 
-    assert(I.getOpcode() == Instruction::FMul);
+    IGC_ASSERT(I.getOpcode() == Instruction::FMul);
 
     Instruction* mulInst = (Instruction*)(&I);
     Instruction* addInst = dyn_cast<Instruction>(I.getOperand(0));
@@ -785,7 +783,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator& I)
         %7 = fsub float %res_s2, %6
     */
 
-    assert(I.getOpcode() == Instruction::FMul);
+    IGC_ASSERT(I.getOpcode() == Instruction::FMul);
 
     // check for x*(1 +/- a), (1 +/- a)*x, x*(a +/- 1), (a +/- 1)*x
     // also checks if x is a constant. 1 can be any other constant in this case.
@@ -985,7 +983,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator& I)
     // d = a - x
     //    =>
     // d = b
-    assert(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
+    IGC_ASSERT(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
 
     Value* op[2];
     op[0] = I.getOperand(0);
@@ -1086,7 +1084,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorPropNegate(BinaryOperator& I)
     // c = a + d
     //    =>
     // c = d - b
-    assert(I.getOpcode() == Instruction::FAdd);
+    IGC_ASSERT(I.getOpcode() == Instruction::FAdd);
 
     for (int i = 0; i < 2; i++)
     {
@@ -1116,7 +1114,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator& I)
     // d = 0 - a
     //    =>
     // d = (-b) * c
-    assert(I.getOpcode() == Instruction::FSub);
+    IGC_ASSERT(I.getOpcode() == Instruction::FSub);
     bool patternFound = false;
     bool replaced = false;
 
@@ -1173,10 +1171,10 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator& I)
 
     // this optimization works on fadd, fsub, and fmul
 
-    assert(dyn_cast<ConstantFP>(I.getOperand(0)) || dyn_cast<ConstantFP>(I.getOperand(1)));
+    IGC_ASSERT(dyn_cast<ConstantFP>(I.getOperand(0)) || dyn_cast<ConstantFP>(I.getOperand(1)));
 
     llvm::Instruction::BinaryOps opcode = I.getOpcode();
-    assert(opcode == Instruction::FAdd || opcode == Instruction::FSub || opcode == Instruction::FMul);
+    IGC_ASSERT(opcode == Instruction::FAdd || opcode == Instruction::FSub || opcode == Instruction::FMul);
 
     int regSrcNum = (dyn_cast<ConstantFP>(I.getOperand(0))) ? 1 : 0;
     Value* Iop = I.getOperand(regSrcNum);
@@ -1215,7 +1213,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator& I)
         ConstantFP* C0 = dyn_cast<ConstantFP>(prevInst->getOperand(1 - prevInstRegSrcNum));
         ConstantFP* C1 = dyn_cast<ConstantFP>(I.getOperand(1 - regSrcNum));
 
-        assert(C0 && C1);
+        IGC_ASSERT(C0 && C1);
 
         APFloat newConstantFloat(0.0);
         bool orderConstantFirst = false;

@@ -70,9 +70,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
-//#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "InstCombineInternal.h"
 #include "llvm-c/Initialization.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -103,11 +101,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "Compiler/InitializePasses.h"
-
 #include "../IGCInstructionCombining.hpp"
-
 #include <algorithm>
 #include <climits>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -154,7 +151,7 @@ bool InstCombiner::ShouldChangeType(unsigned FromWidth,
 /// We don't want to convert from a legal to an illegal type for example or from
 /// a smaller to a larger illegal type.
 bool InstCombiner::ShouldChangeType(Type *From, Type *To) const {
-  assert(From->isIntegerTy() && To->isIntegerTy());
+  IGC_ASSERT(From->isIntegerTy() && To->isIntegerTy());
 
   unsigned FromWidth = From->getPrimitiveSizeInBits();
   unsigned ToWidth = To->getPrimitiveSizeInBits();
@@ -787,7 +784,7 @@ static Value *foldOperationIntoSelectOperand(Instruction &I, Value *SO,
   if (auto *Cast = dyn_cast<CastInst>(&I))
     return IC->Builder->CreateCast(Cast->getOpcode(), SO, I.getType());
 
-  assert(I.isBinaryOp() && "Unexpected opcode for select folding");
+  IGC_ASSERT(I.isBinaryOp() && "Unexpected opcode for select folding");
 
   // Figure out if the constant is the left or the right argument.
   bool ConstIsRHS = isa<Constant>(I.getOperand(1));
@@ -1000,7 +997,7 @@ Instruction *InstCombiner::FoldOpIntoPhi(Instruction &I) {
 }
 
 Instruction *InstCombiner::foldOpWithConstantIntoOperand(Instruction &I) {
-  assert(isa<Constant>(I.getOperand(1)) && "Unexpected operand type");
+  IGC_ASSERT(isa<Constant>(I.getOperand(1)) && "Unexpected operand type");
 
   if (auto *Sel = dyn_cast<SelectInst>(I.getOperand(0))) {
     if (Instruction *NewSel = FoldOpIntoSelect(I, Sel))
@@ -1035,9 +1032,9 @@ Type *InstCombiner::FindElementAtOffset(PointerType *PtrTy, int64_t Offset,
     if (Offset < 0) {
       --FirstIdx;
       Offset += TySize;
-      assert(Offset >= 0);
+      IGC_ASSERT(Offset >= 0);
     }
-    assert((uint64_t)Offset < (uint64_t)TySize && "Out of range offset");
+    IGC_ASSERT((uint64_t)Offset < (uint64_t)TySize && "Out of range offset");
   }
 
   NewIndices.push_back(ConstantInt::get(IntPtrTy, FirstIdx));
@@ -1050,7 +1047,7 @@ Type *InstCombiner::FindElementAtOffset(PointerType *PtrTy, int64_t Offset,
 
     if (StructType *STy = dyn_cast<StructType>(Ty)) {
       const StructLayout *SL = DL.getStructLayout(STy);
-      assert(Offset < (int64_t)SL->getSizeInBytes() &&
+      IGC_ASSERT(Offset < (int64_t)SL->getSizeInBytes() &&
              "Offset must stay within the indexed type");
 
       unsigned Elt = SL->getElementContainingOffset(Offset);
@@ -1061,7 +1058,7 @@ Type *InstCombiner::FindElementAtOffset(PointerType *PtrTy, int64_t Offset,
       Ty = STy->getElementType(Elt);
     } else if (ArrayType *AT = dyn_cast<ArrayType>(Ty)) {
       uint64_t EltSize = DL.getTypeAllocSize(AT->getElementType());
-      assert(EltSize && "Cannot index into a zero-sized array");
+      IGC_ASSERT(EltSize && "Cannot index into a zero-sized array");
       NewIndices.push_back(ConstantInt::get(IntPtrTy,Offset/EltSize));
       Offset %= EltSize;
       Ty = AT->getElementType();
@@ -1087,8 +1084,8 @@ static bool shouldMergeGEPs(GEPOperator &GEP, GEPOperator &Src) {
 /// Return a value X such that Val = X * Scale, or null if none.
 /// If the multiplication is known not to overflow, then NoSignedWrap is set.
 Value *InstCombiner::Descale(Value *Val, APInt Scale, bool &NoSignedWrap) {
-  assert(isa<IntegerType>(Val->getType()) && "Can only descale integers!");
-  assert(cast<IntegerType>(Val->getType())->getBitWidth() ==
+  IGC_ASSERT(isa<IntegerType>(Val->getType()) && "Can only descale integers!");
+  IGC_ASSERT(cast<IntegerType>(Val->getType())->getBitWidth() ==
          Scale.getBitWidth() && "Scale not compatible with value!");
 
   // If Val is zero or Scale is one then Val = Val * Scale.
@@ -1234,7 +1231,7 @@ Value *InstCombiner::Descale(Value *Val, APInt Scale, bool &NoSignedWrap) {
         if (SmallScale.sext(Scale.getBitWidth()) != Scale)
           // SmallScale does not sign-extend to Scale.
           return nullptr;
-        assert(SmallScale.exactLogBase2() == logScale);
+        IGC_ASSERT(SmallScale.exactLogBase2() == logScale);
         // Require that Y * SmallScale must not overflow.
         RequireNoSignedWrap = true;
 
@@ -1260,7 +1257,7 @@ Value *InstCombiner::Descale(Value *Val, APInt Scale, bool &NoSignedWrap) {
         Scale = Scale.sext(LargeSize);
         if (logScale + 1 == (int32_t)Cast->getType()->getPrimitiveSizeInBits())
           logScale = -1;
-        assert(Scale.exactLogBase2() == logScale);
+        IGC_ASSERT(Scale.exactLogBase2() == logScale);
         continue;
       }
     }
@@ -1285,8 +1282,8 @@ Value *InstCombiner::Descale(Value *Val, APInt Scale, bool &NoSignedWrap) {
     return Op;
 
   // Rewrite the parent using the descaled version of its operand.
-  assert(Parent.first->hasOneUse() && "Drilled down when more than one use!");
-  assert(Op != Parent.first->getOperand(Parent.second) &&
+  IGC_ASSERT(Parent.first->hasOneUse() && "Drilled down when more than one use!");
+  IGC_ASSERT(Op != Parent.first->getOperand(Parent.second) &&
          "Descaling was a no-op?");
   Parent.first->setOperand(Parent.second, Op);
   Worklist.Add(Parent.first);
@@ -1315,7 +1312,7 @@ Value *InstCombiner::Descale(Value *Val, APInt Scale, bool &NoSignedWrap) {
       // the absolute values of the truncations.
       NoSignedWrap = false;
     }
-    assert((Ancestor->getOpcode() != Instruction::SExt || NoSignedWrap) &&
+    IGC_ASSERT((Ancestor->getOpcode() != Instruction::SExt || NoSignedWrap) &&
            "Failed to keep proper track of nsw flags while drilling down?");
 
     if (Ancestor == Val)
@@ -1323,7 +1320,7 @@ Value *InstCombiner::Descale(Value *Val, APInt Scale, bool &NoSignedWrap) {
       return Val;
 
     // Move up one level in the expression.
-    assert(Ancestor->hasOneUse() && "Drilled down when more than one use!");
+    IGC_ASSERT(Ancestor->hasOneUse() && "Drilled down when more than one use!");
     Ancestor = Ancestor->user_back();
   } while (1);
 }
@@ -1354,8 +1351,8 @@ Value *InstCombiner::SimplifyVectorOp(BinaryOperator &Inst) {
 
   unsigned VWidth = cast<VectorType>(Inst.getType())->getNumElements();
   Value *LHS = Inst.getOperand(0), *RHS = Inst.getOperand(1);
-  assert(cast<VectorType>(LHS->getType())->getNumElements() == VWidth);
-  assert(cast<VectorType>(RHS->getType())->getNumElements() == VWidth);
+  IGC_ASSERT(cast<VectorType>(LHS->getType())->getNumElements() == VWidth);
+  IGC_ASSERT(cast<VectorType>(RHS->getType())->getNumElements() == VWidth);
 
   // If both arguments of binary operation are shuffles, which use the same
   // mask and shuffle within a single vector, it is worthwhile to move the
@@ -1397,7 +1394,7 @@ Value *InstCombiner::SimplifyVectorOp(BinaryOperator &Inst) {
     bool MayChange = true;
     for (unsigned I = 0; I < VWidth; ++I) {
       if (ShMask[I] >= 0) {
-        assert(ShMask[I] < (int)VWidth);
+        IGC_ASSERT(ShMask[I] < (int)VWidth);
         if (!isa<UndefValue>(C2M[ShMask[I]])) {
           MayChange = false;
           break;
@@ -1810,7 +1807,7 @@ Instruction *InstCombiner::visitGetElementPtrInst(GetElementPtrInst &GEP) {
 
           // Earlier transforms ensure that the index has type IntPtrType, which
           // considerably simplifies the logic by eliminating implicit casts.
-          assert(Idx->getType() == DL.getIntPtrType(GEP.getType()) &&
+          IGC_ASSERT(Idx->getType() == DL.getIntPtrType(GEP.getType()) &&
                  "Index not cast to pointer width?");
 
           bool NSW;
@@ -1849,7 +1846,7 @@ Instruction *InstCombiner::visitGetElementPtrInst(GetElementPtrInst &GEP) {
 
           // Earlier transforms ensure that the index has type IntPtrType, which
           // considerably simplifies the logic by eliminating implicit casts.
-          assert(Idx->getType() == DL.getIntPtrType(GEP.getType()) &&
+          IGC_ASSERT(Idx->getType() == DL.getIntPtrType(GEP.getType()) &&
                  "Index not cast to pointer width?");
 
           bool NSW;
@@ -2163,7 +2160,7 @@ tryToMoveFreeBeforeNullTest(CallInst &FI) {
   // Validate constraint #3: Ensure the null case just falls through.
   if (SuccBB != (Pred == ICmpInst::ICMP_EQ ? TrueBB : FalseBB))
     return nullptr;
-  assert(FreeInstrBB == (Pred == ICmpInst::ICMP_EQ ? FalseBB : TrueBB) &&
+  IGC_ASSERT(FreeInstrBB == (Pred == ICmpInst::ICMP_EQ ? FalseBB : TrueBB) &&
          "Broken CFG: missing edge from predecessor to successor");
 
   FI.moveBefore(TI);
@@ -2285,7 +2282,7 @@ Instruction *InstCombiner::visitSwitchInst(SwitchInst &SI) {
     // Change 'switch (X+4) case 1:' into 'switch (X) case -3'.
     for (SwitchInst::CaseIt CaseIter : SI.cases()) {
       Constant *NewCase = ConstantExpr::getSub(CaseIter.getCaseValue(), AddRHS);
-      assert(isa<ConstantInt>(NewCase) &&
+      IGC_ASSERT(isa<ConstantInt>(NewCase) &&
              "Result of expression should be constant");
       CaseIter.setValue(cast<ConstantInt>(NewCase));
     }
@@ -2555,7 +2552,7 @@ Instruction *InstCombiner::visitLandingPadInst(LandingPadInst &LI) {
       // However this would be wrong, since typeinfos can match without being
       // equal (for example if one represents a C++ class, and the other some
       // class derived from it).
-      assert(LI.isFilter(i) && "Unsupported landingpad clause!");
+      IGC_ASSERT(LI.isFilter(i) && "Unsupported landingpad clause!");
       Constant *FilterClause = LI.getClause(i);
       ArrayType *FilterType = cast<ArrayType>(FilterClause->getType());
       unsigned NumTypeInfos = FilterType->getNumElements();
@@ -2575,7 +2572,7 @@ Instruction *InstCombiner::visitLandingPadInst(LandingPadInst &LI) {
       SmallVector<Constant *, 16> NewFilterElts; // New elements.
       if (isa<ConstantAggregateZero>(FilterClause)) {
         // Not an empty filter - it contains at least one null typeinfo.
-        assert(NumTypeInfos > 0 && "Should have handled empty filter already!");
+        IGC_ASSERT(NumTypeInfos > 0 && "Should have handled empty filter already!");
         Constant *TypeInfo =
           Constant::getNullValue(FilterType->getElementType());
         // If this typeinfo is a catch-all then the filter can never match.
@@ -2655,7 +2652,7 @@ Instruction *InstCombiner::visitLandingPadInst(LandingPadInst &LI) {
       // as having a cleanup.  The case of the original filter being empty was
       // already handled above.
       if (MakeNewFilter && !NewFilterElts.size()) {
-        assert(MakeNewInstruction && "New filter but not a new instruction!");
+        IGC_ASSERT(MakeNewInstruction && "New filter but not a new instruction!");
         CleanupFlag = false;
         break;
       }
@@ -2739,7 +2736,7 @@ Instruction *InstCombiner::visitLandingPadInst(LandingPadInst &LI) {
         // Filter is a subset of LFilter iff Filter contains only zeros (as we
         // already know that Filter is not longer than LFilter).
         if (isa<ConstantAggregateZero>(Filter)) {
-          assert(FElts <= LElts && "Should have handled this case earlier!");
+          IGC_ASSERT(FElts <= LElts && "Should have handled this case earlier!");
           // Discard LFilter.
           NewClauses.erase(J);
           MakeNewInstruction = true;
@@ -2751,7 +2748,7 @@ Instruction *InstCombiner::visitLandingPadInst(LandingPadInst &LI) {
       if (isa<ConstantAggregateZero>(Filter)) { // Filter only contains zeros.
         // Since Filter is non-empty and contains only zeros, it is a subset of
         // LFilter iff LFilter contains a zero.
-        assert(FElts > 0 && "Should have eliminated the empty filter earlier!");
+        IGC_ASSERT(FElts > 0 && "Should have eliminated the empty filter earlier!");
         for (unsigned l = 0; l != LElts; ++l)
           if (LArray->getOperand(l)->isNullValue()) {
             // LFilter contains a zero - discard it.
@@ -2809,7 +2806,7 @@ Instruction *InstCombiner::visitLandingPadInst(LandingPadInst &LI) {
   // Even if none of the clauses changed, we may nonetheless have understood
   // that the cleanup flag is pointless.  Clear it if so.
   if (LI.isCleanup() != CleanupFlag) {
-    assert(!CleanupFlag && "Adding a cleanup, not removing one?!");
+    IGC_ASSERT(!CleanupFlag && "Adding a cleanup, not removing one?!");
     LI.setCleanup(CleanupFlag);
     return &LI;
   }
@@ -2822,7 +2819,7 @@ Instruction *InstCombiner::visitLandingPadInst(LandingPadInst &LI) {
 /// instruction past all of the instructions between it and the end of its
 /// block.
 static bool TryToSinkInstruction(Instruction *I, BasicBlock *DestBlock) {
-  assert(I->hasOneUse() && "Invariants didn't hold!");
+  IGC_ASSERT(I->hasOneUse() && "Invariants didn't hold!");
 
   // Cannot move control-flow-involving, volatile loads, vaarg, etc.
   if (isa<PHINode>(I) || I->isEHPad() || I->mayHaveSideEffects() ||

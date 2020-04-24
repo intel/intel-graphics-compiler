@@ -29,16 +29,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/debug/Dump.hpp"
 #include "common/LLVMUtils.h"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include <llvmWrapper/IR/Module.h>
-
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Verifier.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/InitializePasses.h"
+#include "Probe/Assertion.h"
 
 /***********************************************************************************
 This file will lower GS input intrinsics to URBRead instructions.
@@ -288,7 +286,7 @@ Value* GeometryShaderLowering::GetAttributeOffsetWithinVertex(
 
 void GeometryShaderLowering::lowerInputGS(llvm::Instruction* pInst)
 {
-    assert(GetOpCode(pInst) == llvm_gs_input);
+    IGC_ASSERT(GetOpCode(pInst) == llvm_gs_input);
     // We lower input read instruction to URBRead.
     Value* pVtxIdx = pInst->getOperand(0);
     Value* pAtrIdx = pInst->getOperand(1);
@@ -300,7 +298,7 @@ void GeometryShaderLowering::lowerInputGS(llvm::Instruction* pInst)
 
 void GeometryShaderLowering::lowerSGVInputGS(llvm::Instruction* pInst)
 {
-    assert(GetOpCode(pInst) == llvm_gs_sgv);
+    IGC_ASSERT(GetOpCode(pInst) == llvm_gs_sgv);
     const SGVUsage usage = static_cast<SGVUsage>
         (llvm::cast<llvm::ConstantInt>(pInst->getOperand(1))->getZExtValue());
     // PrimitiveID and InstanceID are not per input vertex basis.
@@ -327,7 +325,7 @@ void GeometryShaderLowering::lowerOutputGS(
     std::vector<llvm::Instruction*>& offsetInst,
     bool& immediateAccess)
 {
-    assert(GetOpCode(inst) == llvm_output_gs || GetOpCode(inst) == llvm_output);
+    IGC_ASSERT(GetOpCode(inst) == llvm_output_gs || GetOpCode(inst) == llvm_output);
     // argument positions in the argument list
     const int lastDataArgIndex = 3;
     const uint usageArgPos = 4;
@@ -419,7 +417,7 @@ void GeometryShaderLowering::lowerOutputGS(
 
             // Attribute index is a runtime value due to output indexing via register.
             // We can only index on normal output not on SGV
-            assert(usage == SHADER_OUTPUT_TYPE_DEFAULT);
+            IGC_ASSERT(usage == SHADER_OUTPUT_TYPE_DEFAULT);
 
             Value* staticOffsetVal = ConstantInt::get(
                 Type::getInt32Ty(m_pModule->getContext()), globalOffset.Count());
@@ -462,7 +460,7 @@ void GeometryShaderLowering::AddURBWrite(
     llvm::Value* data[8],
     llvm::Instruction* prev)
 {
-    assert(mask < 256 && "mask is an 8-bit bitmask and has to be in range 0..255");
+    IGC_ASSERT(mask < 256 && "mask is an 8-bit bitmask and has to be in range 0..255");
     Value* arguments[] =
     {
         offset,
@@ -565,7 +563,7 @@ QuadEltUnit GeometryShaderLowering::GetURBReadOffset(SGVUsage usage)
         return QuadEltUnit(2);
 
     default:
-        assert(0 && "Other URB offsets for GS not yet defined");
+        IGC_ASSERT(false && "Other URB offsets for GS not yet defined");
     }
 
     return QuadEltUnit(0);
@@ -594,7 +592,7 @@ Unit<Element> GeometryShaderLowering::GetChannel(SGVUsage usage)
     case CLIP_DISTANCE_W:
         return Unit<Element>(3);
     default:
-        assert(0 && "Gs SGV Local offset not yet defined");
+        IGC_ASSERT(false && "Gs SGV Local offset not yet defined");
     }
 
     return Unit<Element>(0);
@@ -625,7 +623,7 @@ QuadEltUnit GeometryShaderLowering::GetURBWriteOffset(
             m_gsProps->GetProperties().Output().PerVertex().HeaderSize());
     }
     default:
-        assert(0 && "Unknown GS output type");
+        IGC_ASSERT(false && "Unknown GS output type");
         break;
     }
 
@@ -677,7 +675,7 @@ void GeometryShaderLowering::SetMaskAndData(
         break;
     default:
         const uint numDataArgs = inst->getNumOperands() - 4;
-        assert(numDataArgs == 4 || numDataArgs == 8);
+        IGC_ASSERT(numDataArgs == 4 || numDataArgs == 8);
         mask = (1u << numDataArgs) - 1u; // bit mask of 4 or 8 consecutive ones
         for (unsigned int i = 0; i < numDataArgs; ++i)
         {
@@ -697,7 +695,7 @@ void GeometryShaderLowering::LowerControlHeader(llvm::Instruction* inst)
     Value* undef = llvm::UndefValue::get(Type::getFloatTy(m_pModule->getContext()));
     if (pConstVertexIndex == nullptr)
     {
-        assert(m_gsProps->GetProperties().Output().HasNonstaticVertexCount());
+        IGC_ASSERT(m_gsProps->GetProperties().Output().HasNonstaticVertexCount());
         // bitcast since data arguments of urbWrite are floats - ugly
         Value* fpEmitCount = irb.CreateBitCast(inst->getOperand(emitCountPos), irb.getFloatTy());
         llvm::Value* data[8] = {

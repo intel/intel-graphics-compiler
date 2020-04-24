@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/PatternMatch.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -55,7 +56,7 @@ using namespace IGCombiner;
 /// Similar to getICmpCode but for FCmpInst. This encodes a fcmp predicate into
 /// a four bit mask.
 static unsigned getFCmpCode(FCmpInst::Predicate CC) {
-    assert(FCmpInst::FCMP_FALSE <= CC && CC <= FCmpInst::FCMP_TRUE &&
+    IGC_ASSERT(FCmpInst::FCMP_FALSE <= CC && CC <= FCmpInst::FCMP_TRUE &&
         "Unexpected FCmp predicate!");
     // Take advantage of the bit pattern of FCmpInst::Predicate here.
     //                                                 U L G E
@@ -95,7 +96,7 @@ static Value* getNewICmpValue(bool Sign, unsigned Code, Value* LHS, Value* RHS,
 static Value* getFCmpValue(unsigned Code, Value* LHS, Value* RHS,
     InstCombiner::BuilderTy& Builder) {
     const auto Pred = static_cast<FCmpInst::Predicate>(Code);
-    assert(FCmpInst::FCMP_FALSE <= Pred && Pred <= FCmpInst::FCMP_TRUE &&
+    IGC_ASSERT(FCmpInst::FCMP_FALSE <= Pred && Pred <= FCmpInst::FCMP_TRUE &&
         "Unexpected FCmp predicate!");
     if (Pred == FCmpInst::FCMP_FALSE)
         return ConstantInt::get(CmpInst::makeCmpResultType(LHS->getType()), 0);
@@ -111,7 +112,7 @@ static Value* getFCmpValue(unsigned Code, Value* LHS, Value* RHS,
 ///         null pointer if no transformation was made.
 static Value* SimplifyBSwap(BinaryOperator& I,
     InstCombiner::BuilderTy& Builder) {
-    assert(I.isBitwiseLogicOp() && "Unexpected opcode for bswap simplifying");
+    IGC_ASSERT(I.isBitwiseLogicOp() && "Unexpected opcode for bswap simplifying");
 
     Value* OldLHS = I.getOperand(0);
     Value* OldRHS = I.getOperand(1);
@@ -197,7 +198,7 @@ Instruction* InstCombiner::OptAndOp(BinaryOperator* Op,
 /// whether to treat V, Lo, and Hi as signed or not.
 Value* InstCombiner::insertRangeTest(Value* V, const APInt& Lo, const APInt& Hi,
     bool isSigned, bool Inside) {
-    assert((isSigned ? Lo.sle(Hi) : Lo.ule(Hi)) &&
+    IGC_ASSERT((isSigned ? Lo.sle(Hi) : Lo.ule(Hi)) &&
         "Lo is not <= Hi in range emission code!");
 
     Type* Ty = V->getType();
@@ -602,7 +603,7 @@ static Value* foldLogOpOfMaskedICmps_NotAllZeros_BMask_Mixed(
     // Otherwise, B is a subset of D. If B and E have a common bit set,
     // ie. (B & E) != 0, then LHS is subsumed by RHS. For example.
     // (icmp ne (A & 12), 0) & (icmp eq (A & 15), 8) -> (icmp eq (A & 15), 8).
-    assert(IsSubSetOrEqual(BCst, DCst) && "Precondition due to above code");
+    IGC_ASSERT(IsSubSetOrEqual(BCst, DCst) && "Precondition due to above code");
     if ((BCst->getValue() & ECst->getValue()) != 0)
         return RHS;
     // Otherwise, LHS and RHS contradict and the whole expression becomes false
@@ -621,7 +622,7 @@ static Value* foldLogOpOfMaskedICmpsAsymmetric(
     ICmpInst::Predicate PredL, ICmpInst::Predicate PredR,
     unsigned LHSMask, unsigned RHSMask,
     InstCombiner::BuilderTy& Builder) {
-    assert(ICmpInst::isEquality(PredL) && ICmpInst::isEquality(PredR) &&
+    IGC_ASSERT(ICmpInst::isEquality(PredL) && ICmpInst::isEquality(PredR) &&
         "Expected equality predicates for masked type of icmps.");
     // Handle Mask_NotAllZeros-BMask_Mixed cases.
     // (icmp ne/eq (A & B), C) &/| (icmp eq/ne (A & D), E), or
@@ -659,7 +660,7 @@ static Value* foldLogOpOfMaskedICmps(ICmpInst* LHS, ICmpInst* RHS, bool IsAnd,
         getMaskedTypeForICmpPair(A, B, C, D, E, LHS, RHS, PredL, PredR);
     if (!MaskPair)
         return nullptr;
-    assert(ICmpInst::isEquality(PredL) && ICmpInst::isEquality(PredR) &&
+    IGC_ASSERT(ICmpInst::isEquality(PredL) && ICmpInst::isEquality(PredR) &&
         "Expected equality predicates for masked type of icmps.");
     unsigned LHSMask = MaskPair->first;
     unsigned RHSMask = MaskPair->second;
@@ -1075,7 +1076,7 @@ Value* InstCombiner::foldAndOfICmps(ICmpInst* LHS, ICmpInst* RHS,
     // icmp eq, icmp ne, icmp [su]lt, and icmp [SU]gt here. We also know
     // (from the icmp folding check above), that the two constants
     // are not equal and that the larger constant is on the RHS
-    assert(LHSC != RHSC && "Compares not folded above?");
+    IGC_ASSERT(LHSC != RHSC && "Compares not folded above?");
 
     switch (PredL) {
     default:
@@ -1186,7 +1187,7 @@ Value* InstCombiner::foldLogicOfFCmps(FCmpInst* LHS, FCmpInst* RHS, bool IsAnd) 
 static Instruction* matchDeMorgansLaws(BinaryOperator& I,
     InstCombiner::BuilderTy& Builder) {
     auto Opcode = I.getOpcode();
-    assert((Opcode == Instruction::And || Opcode == Instruction::Or) &&
+    IGC_ASSERT((Opcode == Instruction::And || Opcode == Instruction::Or) &&
         "Trying to match De Morgan's Laws with something other than and/or");
 
     // Flip the logic operation.
@@ -1262,7 +1263,7 @@ static Instruction* foldLogicCastConstant(BinaryOperator& Logic, CastInst* Cast,
 /// Fold {and,or,xor} (cast X), Y.
 Instruction* InstCombiner::foldCastedBitwiseLogic(BinaryOperator& I) {
     auto LogicOpc = I.getOpcode();
-    assert(I.isBitwiseLogicOp() && "Unexpected opcode for bitwise logic folding");
+    IGC_ASSERT(I.isBitwiseLogicOp() && "Unexpected opcode for bitwise logic folding");
 
     Value* Op0 = I.getOperand(0), * Op1 = I.getOperand(1);
     CastInst* Cast0 = dyn_cast<CastInst>(Op0);
@@ -1328,7 +1329,7 @@ Instruction* InstCombiner::foldCastedBitwiseLogic(BinaryOperator& I) {
 
 static Instruction* foldAndToXor(BinaryOperator& I,
     InstCombiner::BuilderTy& Builder) {
-    assert(I.getOpcode() == Instruction::And);
+    IGC_ASSERT(I.getOpcode() == Instruction::And);
     Value* Op0 = I.getOperand(0);
     Value* Op1 = I.getOperand(1);
     Value* A, * B;
@@ -1354,7 +1355,7 @@ static Instruction* foldAndToXor(BinaryOperator& I,
 
 static Instruction* foldOrToXor(BinaryOperator& I,
     InstCombiner::BuilderTy& Builder) {
-    assert(I.getOpcode() == Instruction::Or);
+    IGC_ASSERT(I.getOpcode() == Instruction::Or);
     Value* Op0 = I.getOperand(0);
     Value* Op1 = I.getOperand(1);
     Value* A, * B;
@@ -1431,7 +1432,7 @@ Instruction* InstCombiner::narrowMaskedBinOp(BinaryOperator& And) {
 
     // If we're narrowing a shift, the shift amount must be safe (less than the
     // width) in the narrower type. If the shift amount is greater, instsimplify
-    // usually handles that case, but we can't guarantee/assert it.
+    // usually handles that case, but we can't guarantee assertion test it.
     Instruction::BinaryOps Opc = cast<BinaryOperator>(Op0)->getOpcode();
     if (Opc == Instruction::LShr || Opc == Instruction::Shl)
         if (!canNarrowShiftAmt(C, X->getType()->getScalarSizeInBits()))
@@ -1999,7 +2000,7 @@ Value* InstCombiner::foldOrOfICmps(ICmpInst* LHS, ICmpInst* RHS,
     // ICMP_EQ, ICMP_NE, ICMP_LT, and ICMP_GT here. We also know (from the
     // icmp folding check above), that the two constants are not
     // equal.
-    assert(LHSC != RHSC && "Compares not folded above?");
+    IGC_ASSERT(LHSC != RHSC && "Compares not folded above?");
 
     switch (PredL) {
     default:
@@ -2023,7 +2024,7 @@ Value* InstCombiner::foldOrOfICmps(ICmpInst* LHS, ICmpInst* RHS,
         case ICmpInst::ICMP_EQ: // (X u< 13 | X == 14) -> no change
             break;
         case ICmpInst::ICMP_UGT: // (X u< 13 | X u> 15) -> (X-13) u> 2
-            assert(!RHSC->isMaxValue(false) && "Missed icmp simplification");
+            IGC_ASSERT(!RHSC->isMaxValue(false) && "Missed icmp simplification");
             return insertRangeTest(LHS0, LHSC->getValue(), RHSC->getValue() + 1,
                 false, false);
         }
@@ -2035,7 +2036,7 @@ Value* InstCombiner::foldOrOfICmps(ICmpInst* LHS, ICmpInst* RHS,
         case ICmpInst::ICMP_EQ: // (X s< 13 | X == 14) -> no change
             break;
         case ICmpInst::ICMP_SGT: // (X s< 13 | X s> 15) -> (X-13) s> 2
-            assert(!RHSC->isMaxValue(true) && "Missed icmp simplification");
+            IGC_ASSERT(!RHSC->isMaxValue(true) && "Missed icmp simplification");
             return insertRangeTest(LHS0, LHSC->getValue(), RHSC->getValue() + 1, true,
                 false);
         }
@@ -2328,7 +2329,7 @@ Instruction* InstCombiner::visitOr(BinaryOperator& I) {
 /// can fold these early and efficiently by morphing an existing instruction.
 static Instruction* foldXorToXor(BinaryOperator& I,
     InstCombiner::BuilderTy& Builder) {
-    assert(I.getOpcode() == Instruction::Xor);
+    IGC_ASSERT(I.getOpcode() == Instruction::Xor);
     Value* Op0 = I.getOperand(0);
     Value* Op1 = I.getOperand(1);
     Value* A, * B;

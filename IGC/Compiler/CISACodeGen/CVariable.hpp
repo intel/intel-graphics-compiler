@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/CISABuilder.hpp"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include <cstdint>
+#include "Probe/Assertion.h"
 
 namespace IGC {
 
@@ -72,7 +73,7 @@ namespace IGC {
 
         e_alignment GetAlign() const
         {
-            assert(!m_isImmediate && "Calling GetAlign() on an immediate returns undefined result");
+            IGC_ASSERT(!m_isImmediate && "Calling GetAlign() on an immediate returns undefined result");
             return m_align;
         }
         void SetAlign(e_alignment thisAlign) { m_align = thisAlign; }
@@ -89,12 +90,12 @@ namespace IGC {
         e_varType GetVarType() const { return m_varType; }
         uint64_t GetImmediateValue() const
         {
-            assert(IsImmediate());
+            IGC_ASSERT(IsImmediate());
             return m_immediateValue;
         }
         bool IsImmediate() const
         {
-            assert((!m_isImmediate || (m_isImmediate && m_uniform)) && "IsImmediate => IsUniform invariant broken");
+            IGC_ASSERT((!m_isImmediate || (m_isImmediate && m_uniform)) && "IsImmediate => IsUniform invariant broken");
             return m_isImmediate;
         }
         bool IsVectorUniform() const { return m_uniformVector; }

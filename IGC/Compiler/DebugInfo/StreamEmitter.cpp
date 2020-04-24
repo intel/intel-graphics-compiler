@@ -32,18 +32,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
 #include "llvm/Config/llvm-config.h"
-
 #include "Compiler/DebugInfo/StreamEmitter.hpp"
 #include "Compiler/DebugInfo/Version.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvmWrapper/MC/MCAsmBackend.h"
 #include "llvmWrapper/ADT/STLExtras.h"
-
 #include "llvm/MC/MCAsmInfoELF.h"
-
 #include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCExpr.h"
@@ -58,13 +54,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/SourceMgr.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
-
-
-
-
 
 namespace IGC
 {
@@ -145,7 +138,7 @@ namespace IGC
                     case FK_Data_2: type = ELF::R_X86_64_PC16; break;
 
                     case FK_PCRel_8:
-                        assert(modifier == MCSymbolRefExpr::VK_None);
+                        IGC_ASSERT(modifier == MCSymbolRefExpr::VK_None);
                         type = ELF::R_X86_64_PC64;
                         break;
                     case FK_PCRel_4:
@@ -174,11 +167,11 @@ namespace IGC
                         }
                         break;
                     case FK_PCRel_2:
-                        assert(modifier == MCSymbolRefExpr::VK_None);
+                        IGC_ASSERT(modifier == MCSymbolRefExpr::VK_None);
                         type = ELF::R_X86_64_PC16;
                         break;
                     case FK_PCRel_1:
-                        assert(modifier == MCSymbolRefExpr::VK_None);
+                        IGC_ASSERT(modifier == MCSymbolRefExpr::VK_None);
                         type = ELF::R_X86_64_PC8;
                         break;
                     }
@@ -342,14 +335,14 @@ namespace IGC
         {
             unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
-            assert(fixup.getOffset() + size <= dataSize &&
+            IGC_ASSERT(fixup.getOffset() + size <= dataSize &&
                 "Invalid fixup offset!");
 
             // Check that uppper bits are either all zeros or all ones.
             // Specifically ignore overflow/underflow as long as the leakage is
             // limited to the lower bits. This is to remain compatible with
             // other assemblers.
-            assert(isIntN(size * 8 + 1, value) &&
+            IGC_ASSERT(isIntN(size * 8 + 1, value) &&
                 "value does not fit in the fixup field");
 
             for (unsigned i = 0; i != size; ++i)
@@ -365,14 +358,14 @@ namespace IGC
         {
             unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
-            assert(fixup.getOffset() + size <= Data.size() &&
+            IGC_ASSERT(fixup.getOffset() + size <= Data.size() &&
                 "Invalid fixup offset!");
 
             // Check that uppper bits are either all zeros or all ones.
             // Specifically ignore overflow/underflow as long as the leakage is
             // limited to the lower bits. This is to remain compatible with
             // other assemblers.
-            assert(isIntN(size * 8 + 1, value) &&
+            IGC_ASSERT(isIntN(size * 8 + 1, value) &&
                 "value does not fit in the fixup field");
 
             for (unsigned i = 0; i != size; ++i)
@@ -388,7 +381,7 @@ namespace IGC
         bool mayNeedRelaxation(const MCInst & inst, const MCSubtargetInfo & STI) const override
 #endif
         {
-            assert(false && "TODO: implement this");
+            IGC_ASSERT(false && "TODO: implement this");
             llvm_unreachable("Unimplemented");
             return false;
         }
@@ -398,7 +391,7 @@ namespace IGC
             const MCRelaxableFragment* pDF,
             const MCAsmLayout& layout) const override
         {
-            assert(false && "TODO: implement this");
+            IGC_ASSERT(false && "TODO: implement this");
             llvm_unreachable("Unimplemented");
             return false;
         }
@@ -406,7 +399,7 @@ namespace IGC
         void relaxInstruction(const MCInst& inst, const MCSubtargetInfo& STI,
             MCInst& res) const override
         {
-            assert(false && "TODO: implement this");
+            IGC_ASSERT(false && "TODO: implement this");
             llvm_unreachable("Unimplemented");
         }
 
@@ -461,7 +454,7 @@ namespace IGC
 #if LLVM_VERSION_MAJOR >= 7
         std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
         {
-            assert(false && "TODO: implement this");
+            IGC_ASSERT(false && "TODO: implement this");
             llvm_unreachable("Unimplemented");
         }
 #endif
@@ -474,13 +467,13 @@ namespace IGC
         virtual void encodeInstruction(const MCInst& inst, raw_ostream& os, SmallVectorImpl<MCFixup>& fixups,
             const MCSubtargetInfo& m) const
         {
-            assert(false && "TODO: implement this");
+            IGC_ASSERT(false && "TODO: implement this");
             llvm_unreachable("Unimplemented");
         }
 
         void operator=(const VISAMCCodeEmitter&)
         {
-            assert(false && "TODO: implement this");
+            IGC_ASSERT(false && "TODO: implement this");
             llvm_unreachable("Unimplemented");
         }
 
@@ -646,7 +639,7 @@ MCSymbol* StreamEmitter::GetSymbol(const GlobalValue* pGV) const
     M.getNameWithPrefix(NameStr, pGV, false);
     return m_pContext->GetOrCreateSymbol(NameStr.str());
     */
-    assert(pGV->hasName() && "TODO: fix this case");
+    IGC_ASSERT(pGV->hasName() && "TODO: fix this case");
     return m_pContext->getOrCreateSymbol(Twine(m_pAsmInfo->getPrivateGlobalPrefix()) + pGV->getName());
 }
 
@@ -807,7 +800,7 @@ void StreamEmitter::EmitSectionOffset(const MCSymbol* pLabel, const MCSymbol* pS
 
     // If pLabel has already been emitted, verify that it is in the same section as
     // section label for sanity.
-    assert((!pLabel->isInSection() || &pLabel->getSection() == &section) &&
+    IGC_ASSERT((!pLabel->isInSection() || &pLabel->getSection() == &section) &&
         "section offset using wrong section base for label");
 
     // If the section in question will end up with an address of 0 anyway, we can
@@ -885,7 +878,7 @@ void StreamEmitter::Finalize() const
 
 const MCObjectFileInfo& StreamEmitter::GetObjFileLowering() const
 {
-    assert(m_pObjFileInfo && "Object File Lowering was not initialized");
+    IGC_ASSERT(m_pObjFileInfo && "Object File Lowering was not initialized");
     return *m_pObjFileInfo;
 }
 

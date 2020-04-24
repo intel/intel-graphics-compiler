@@ -28,11 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ImageFuncsAnalysis.hpp"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -205,7 +205,7 @@ Value* ImageFuncResolution::getSamplerAddressMode(CallInst& CI)
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     Value* sampler = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, pMdUtils, modMD);
-    assert(sampler != nullptr && "Sampler untraceable for ImplicitArg::SAMPLER_ADDRESS");
+    IGC_ASSERT(sampler != nullptr && "Sampler untraceable for ImplicitArg::SAMPLER_ADDRESS");
     if (isa<Argument>(sampler))
     {
         Argument* arg = getImplicitImageArg(CI, ImplicitArg::SAMPLER_ADDRESS);
@@ -215,7 +215,7 @@ Value* ImageFuncResolution::getSamplerAddressMode(CallInst& CI)
     {
         llvm::Function* pFunc = CI.getParent()->getParent();
 
-        assert(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
+        IGC_ASSERT(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
         InlineSamplerState samplerStateAddressMode{ cast<ConstantInt>(sampler)->getZExtValue() };
         uint64_t samplerVal = 0;
         uint samplerValue = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
@@ -256,7 +256,7 @@ Value* ImageFuncResolution::getSamplerNormalizedCoords(CallInst& CI)
     else
     {
         llvm::Function* pFunc = CI.getParent()->getParent();
-        assert(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
+        IGC_ASSERT(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
 
         uint64_t samplerVal = 0;
         uint samplerValue = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
@@ -297,7 +297,7 @@ Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst& CI)
     }
     else
     {
-        assert(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
+        IGC_ASSERT(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
 
         llvm::Function* pFunc = CI.getParent()->getParent();
 

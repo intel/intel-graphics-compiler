@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/CmpInstAnalysis.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -69,7 +70,7 @@ static inline Value *dyn_castNotVal(Value *V) {
 /// Similar to getICmpCode but for FCmpInst. This encodes a fcmp predicate into
 /// a four bit mask.
 static unsigned getFCmpCode(FCmpInst::Predicate CC) {
-  assert(FCmpInst::FCMP_FALSE <= CC && CC <= FCmpInst::FCMP_TRUE &&
+  IGC_ASSERT(FCmpInst::FCMP_FALSE <= CC && CC <= FCmpInst::FCMP_TRUE &&
          "Unexpected FCmp predicate!");
   // Take advantage of the bit pattern of FCmpInst::Predicate here.
   //                                                 U L G E
@@ -109,7 +110,7 @@ static Value *getNewICmpValue(bool Sign, unsigned Code, Value *LHS, Value *RHS,
 static Value *getFCmpValue(unsigned Code, Value *LHS, Value *RHS,
                            InstCombiner::BuilderTy *Builder) {
   const auto Pred = static_cast<FCmpInst::Predicate>(Code);
-  assert(FCmpInst::FCMP_FALSE <= Pred && Pred <= FCmpInst::FCMP_TRUE &&
+  IGC_ASSERT(FCmpInst::FCMP_FALSE <= Pred && Pred <= FCmpInst::FCMP_TRUE &&
          "Unexpected FCmp predicate!");
   if (Pred == FCmpInst::FCMP_FALSE)
     return ConstantInt::get(CmpInst::makeCmpResultType(LHS->getType()), 0);
@@ -307,7 +308,7 @@ Instruction *InstCombiner::OptAndOp(Instruction *Op,
 /// whether to treat V, Lo, and Hi as signed or not.
 Value *InstCombiner::insertRangeTest(Value *V, const APInt &Lo, const APInt &Hi,
                                      bool isSigned, bool Inside) {
-  assert((isSigned ? Lo.sle(Hi) : Lo.ule(Hi)) &&
+  IGC_ASSERT((isSigned ? Lo.sle(Hi) : Lo.ule(Hi)) &&
          "Lo is not <= Hi in range emission code!");
 
   Type *Ty = V->getType();
@@ -648,7 +649,7 @@ static Value *foldLogOpOfMaskedICmps(ICmpInst *LHS, ICmpInst *RHS, bool IsAnd,
   unsigned Mask = foldLogOpOfMaskedICmpsHelper(A, B, C, D, E, LHS, RHS,
                                                LHSCC, RHSCC);
   if (Mask == 0) return nullptr;
-  assert(ICmpInst::isEquality(LHSCC) && ICmpInst::isEquality(RHSCC) &&
+  IGC_ASSERT(ICmpInst::isEquality(LHSCC) && ICmpInst::isEquality(RHSCC) &&
          "foldLogOpOfMaskedICmpsHelper must return an equality predicate.");
 
   // In full generality:
@@ -935,7 +936,7 @@ Value *InstCombiner::FoldAndOfICmps(ICmpInst *LHS, ICmpInst *RHS) {
   // icmp eq, icmp ne, icmp [su]lt, and icmp [SU]gt here. We also know
   // (from the icmp folding check above), that the two constants
   // are not equal and that the larger constant is on the RHS
-  assert(LHSCst != RHSCst && "Compares not folded above?");
+  IGC_ASSERT(LHSCst != RHSCst && "Compares not folded above?");
 
   switch (LHSCC) {
   default: llvm_unreachable("Unknown integer condition code!");
@@ -1107,7 +1108,7 @@ Value *InstCombiner::FoldAndOfFCmps(FCmpInst *LHS, FCmpInst *RHS) {
 static Instruction *matchDeMorgansLaws(BinaryOperator &I,
                                        InstCombiner::BuilderTy *Builder) {
   auto Opcode = I.getOpcode();
-  assert((Opcode == Instruction::And || Opcode == Instruction::Or) &&
+  IGC_ASSERT((Opcode == Instruction::And || Opcode == Instruction::Or) &&
          "Trying to match De Morgan's Laws with something other than and/or");
   // Flip the logic operation.
   if (Opcode == Instruction::And)
@@ -1192,7 +1193,7 @@ static Instruction *foldLogicCastConstant(BinaryOperator &Logic, CastInst *Cast,
 /// Fold {and,or,xor} (cast X), Y.
 Instruction *InstCombiner::foldCastedBitwiseLogic(BinaryOperator &I) {
   auto LogicOpc = I.getOpcode();
-  assert(I.isBitwiseLogicOp() && "Unexpected opcode for bitwise logic folding");
+  IGC_ASSERT(I.isBitwiseLogicOp() && "Unexpected opcode for bitwise logic folding");
 
   Value *Op0 = I.getOperand(0), *Op1 = I.getOperand(1);
   CastInst *Cast0 = dyn_cast<CastInst>(Op0);
@@ -1862,7 +1863,7 @@ Value *InstCombiner::FoldOrOfICmps(ICmpInst *LHS, ICmpInst *RHS,
   // ICMP_EQ, ICMP_NE, ICMP_LT, and ICMP_GT here. We also know (from the
   // icmp folding check above), that the two constants are not
   // equal.
-  assert(LHSCst != RHSCst && "Compares not folded above?");
+  IGC_ASSERT(LHSCst != RHSCst && "Compares not folded above?");
 
   switch (LHSCC) {
   default: llvm_unreachable("Unknown integer condition code!");
@@ -1873,7 +1874,7 @@ Value *InstCombiner::FoldOrOfICmps(ICmpInst *LHS, ICmpInst *RHS,
       if (LHS->getOperand(0) == RHS->getOperand(0)) {
         // if LHSCst and RHSCst differ only by one bit:
         // (A == C1 || A == C2) -> (A | (C1 ^ C2)) == C2
-        assert(LHSCst->getValue().ule(LHSCst->getValue()));
+        IGC_ASSERT(LHSCst->getValue().ule(LHSCst->getValue()));
 
         APInt Xor = LHSCst->getValue() ^ RHSCst->getValue();
         if (Xor.isPowerOf2()) {

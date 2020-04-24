@@ -26,14 +26,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // vim:ts=2:sw=2:et:
 #include "common/LLVMUtils.h"
-
 #include "Compiler/CISACodeGen/GenIRLowering.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
@@ -42,12 +40,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/PatternMatch.h>
 #include <llvm/Analysis/TargetFolder.h>
 #include "llvm/IR/GetElementPtrTypeIterator.h"
-
 #include "llvmWrapper/IR/Intrinsics.h"
-
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "common/IGCIRBuilder.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -580,7 +577,7 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP) const
     Value* PtrOp = GEP->getPointerOperand();
     PointerType* PtrTy = dyn_cast<PointerType>(PtrOp->getType());
 
-    assert(PtrTy && "Only accept scalar pointer!");
+    IGC_ASSERT(PtrTy && "Only accept scalar pointer!");
 
     unsigned pointerSizeInBits = m_ctx->getRegisterPointerSizeInBits(PtrTy->getAddressSpace());
     unsigned pointerMathSizeInBits = pointerSizeInBits;
@@ -809,7 +806,7 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP) const
 
     if (reducePointerArith)
     {
-        assert(GEP->isInBounds() && "we can only do a zext if the GEP is inbound");
+        IGC_ASSERT(GEP->isInBounds() && "we can only do a zext if the GEP is inbound");
         if (!canReduceNegativeOffset)
         {
             PointerValue = Builder->CreateZExt(PointerValue, BasePointer->getType());

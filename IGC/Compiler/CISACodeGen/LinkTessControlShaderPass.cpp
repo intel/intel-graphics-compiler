@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/CISACodeGen/LinkTessControlShaderPass.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -32,9 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -322,7 +323,7 @@ namespace IGC
             break;
 
         default:
-            assert(0 && "should not reach here");
+            IGC_ASSERT(false && "should not reach here");
             break;
         }
 
@@ -408,7 +409,7 @@ namespace IGC
                 break;
 
             default:
-                assert(false && "should not reach here");
+                IGC_ASSERT(false && "should not reach here");
                 break;
             }
 

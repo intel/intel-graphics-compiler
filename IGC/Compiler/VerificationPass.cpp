@@ -24,21 +24,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-///=======================================================================================
-/// This file contains the implementation of the IGC IR Verification Pass.
-
 #include "Compiler/VerificationPass.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "common/igc_regkeys.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/InstIterator.h>
-
 #include <llvmWrapper/IR/Intrinsics.h>
-
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -131,7 +126,7 @@ bool VerificationPass::runOnModule(Module& M)
         {
             printf("\nIGC IR verification failed:\n\n");
             errs() << m_messagesToDump.str();
-            assert(false && "IGC IR Verification failed");
+            IGC_ASSERT(false && "IGC IR Verification failed");
         }
     }
 
@@ -223,7 +218,7 @@ bool VerificationPass::verifyInstCommon(Instruction& inst)
 bool VerificationPass::verifyInstCall(Instruction& inst)
 {
     CallInst* instCall = dyn_cast<CallInst>(&inst);
-    assert(instCall && "Unexpected instruction");
+    IGC_ASSERT(instCall && "Unexpected instruction");
 
     if (GenIntrinsicInst::classof(instCall))
     {

@@ -23,17 +23,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "ConvertMSAAPayloadTo16Bit.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMUtils.h"
 #include "Compiler/CodeGenPublic.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -80,7 +81,7 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
             ldmcs = dyn_cast<GenIntrinsicInst>(mcsData);
 
 
-            assert(ldmcs != NULL);
+            IGC_ASSERT(ldmcs != NULL);
             Type* coordType = m_builder->getInt32Ty();
             Type* types_ldmcs[] = {
                 VectorType::get(m_builder->getInt16Ty(), 4),

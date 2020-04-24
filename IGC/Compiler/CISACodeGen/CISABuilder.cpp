@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iStdLib/utility.h>
 #include <iostream>
 #include <fstream>
+#include "Probe/Assertion.h"
 
 #if !defined(_WIN32)
 #   define _strdup strdup
@@ -52,7 +53,7 @@ This file defines the CEncoder class which is used to generate CISA instructions
 ************************************************************************************/
 
 // macro to check the result of VISA API calls
-#define V(x) { int result = x; assert(result==0 && "call to VISA API failed"); }
+#define V(x) do { int result = x; IGC_ASSERT((0 == result) && "call to VISA API failed"); } while(0)
 
 static const unsigned  int g_cScratchSpaceMsglimit = (128 * 1024);
 using namespace llvm;
@@ -70,7 +71,7 @@ namespace IGC
         case SIMDMode::SIMD16: return EXEC_SIZE_16;
         case SIMDMode::SIMD32: return EXEC_SIZE_32;
         case SIMDMode::UNKNOWN:
-        default: assert(0 && "unreachable"); break;
+        default: IGC_ASSERT(false && "unreachable"); break;
         }
         return EXEC_SIZE_ILLEGAL;
     }
@@ -134,7 +135,7 @@ namespace IGC
         case EATOMIC_FCMPWR:
             return ATOMIC_FCMPWR;
         default:
-            assert(0 && "Atomic Op not implemented");
+            IGC_ASSERT(false && "Atomic Op not implemented");
         }
 
         return ATOMIC_AND;
@@ -157,7 +158,7 @@ namespace IGC
         }
         else
         {
-            assert(0 && "unreachable");
+            IGC_ASSERT(false && "unreachable");
         }
         return elementSize;
     }
@@ -170,7 +171,7 @@ namespace IGC
         case 64: return SVM_BLOCK_TYPE_QWORD;
         }
 
-        assert(false && "Unknown block/element size. Expect 8-/32-/64-bit only!");
+        IGC_ASSERT(false && "Unknown block/element size. Expect 8-/32-/64-bit only!");
         return static_cast<VISA_SVM_Block_Type>(~0U);
     }
 
@@ -183,8 +184,7 @@ namespace IGC
         case 8: return SVM_BLOCK_NUM_8;
         }
 
-        assert(false &&
-            "Unknown number of blocks/elements. Expect 1, 2, 4, or 8 only!");
+        IGC_ASSERT(false && "Unknown number of blocks/elements. Expect 1, 2, 4, or 8 only!");
         return static_cast<VISA_SVM_Block_Num>(~0U);
     }
 
@@ -199,7 +199,7 @@ namespace IGC
         case EXEC_SIZE_8:  lanes = 8; break;
         case EXEC_SIZE_16: lanes = 16; break;
         case EXEC_SIZE_32: lanes = 32; break;
-        default: assert(false);
+        default: IGC_ASSERT(false);
         }
         return lanes;
     }
@@ -224,9 +224,15 @@ namespace IGC
             const unsigned vstride = mod.specialRegion ? mod.region[0] : 1;
             const unsigned width = mod.specialRegion ? mod.region[1] : 1;
             const unsigned hstride = mod.specialRegion ? mod.region[2] : 0;
-            assert(width != 0);
+            if(0 == width)
+            {
+                return unsigned(-1);
+            }
             const unsigned height = visaNumLanes(execSize) / width;
-            assert(height != 0);
+            if(0 == height)
+            {
+                return unsigned(-1);
+            }
             lastInRegion += (height - 1) * vstride * elementSize +
                 (width - 1) * hstride * elementSize;
         }
@@ -293,11 +299,8 @@ namespace IGC
         if (!var || var->IsUniform())
             return 0;
 
-        assert(fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8 &&
-            "Only support splitting from exec-size 16 to exec-size 8!");
-        assert((thePart == 0 || thePart == 1) &&
-            "Splitting from exec-size-16 to exec-size-8 only breaks into 2 "
-            "parts!");
+        IGC_ASSERT((fromExecSize == EXEC_SIZE_16) && (toExecSize == EXEC_SIZE_8) && "Only support splitting from exec-size 16 to exec-size 8!");
+        IGC_ASSERT((thePart == 0 || thePart == 1) && "Splitting from exec-size-16 to exec-size-8 only breaks into 2 parts!");
 
         unsigned elemSize = var->GetElemSize();
 
@@ -309,7 +312,7 @@ namespace IGC
             return thePart * getGRFSize() * 2;
         }
 
-        assert(false && "Unknown data type to split!");
+        IGC_ASSERT(false && "Unknown data type to split!");
         return ~0U;
     }
 
@@ -494,7 +497,7 @@ namespace IGC
         if (elem_offset->GetType() != ISA_TYPE_UD)
             elem_offset = m_program->BitCast(elem_offset, ISA_TYPE_UD);
 
-        assert(m_encoderState.m_flag.var == nullptr && "predicate not supported");
+        IGC_ASSERT((m_encoderState.m_flag.var == nullptr) && "predicate not supported");
         VISA_StateOpndHandle* pSurfStateOpndHandle = GetVISASurfaceOpnd(resource);
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         VISA_RawOpnd* pDst = GetRawDestination(dst);
@@ -680,32 +683,32 @@ namespace IGC
 
     void CEncoder::SetSrcSubVar(uint srcNum, uint subVar)
     {
-        assert(srcNum < 4);
+        IGC_ASSERT(srcNum < 4);
         m_encoderState.m_srcOperand[srcNum].subVar = int_cast<uint8_t>(subVar);
     }
 
     void CEncoder::SetSrcSubReg(uint srcNum, uint subReg)
     {
-        assert(srcNum < 4);
+        IGC_ASSERT(srcNum < 4);
         m_encoderState.m_srcOperand[srcNum].subReg = int_cast<uint16_t>(subReg);
     }
 
     void CEncoder::SetDstModifier(e_modifier mod)
     {
-        assert(mod == EMOD_SAT || mod == EMOD_NONE);
+        IGC_ASSERT(mod == EMOD_SAT || mod == EMOD_NONE);
         m_encoderState.m_dstOperand.mod = mod;
     }
 
     void CEncoder::SetSrcModifier(uint srcNum, e_modifier mod)
     {
-        assert(mod != EMOD_SAT);
-        assert(srcNum < 3);
+        IGC_ASSERT(mod != EMOD_SAT);
+        IGC_ASSERT(srcNum < 3);
         m_encoderState.m_srcOperand[srcNum].mod = mod;
     }
 
     void CEncoder::SetPredicate(CVariable* flag)
     {
-        assert(flag == NULL || flag->GetVarType() == EVARTYPE_PREDICATE);
+        IGC_ASSERT(flag == NULL || flag->GetVarType() == EVARTYPE_PREDICATE);
         m_encoderState.m_flag.var = flag;
     }
 
@@ -763,7 +766,7 @@ namespace IGC
         case ISA_TYPE_B:
             return 7;
         default:
-            assert(0 && "type doesn't support modifier");
+            IGC_ASSERT(false && "type doesn't support modifier");
             break;
         }
         return 63;
@@ -777,7 +780,7 @@ namespace IGC
     uint64_t CalculateImmediateValue(CVariable* var, e_modifier mod)
     {
         uint64_t immediate = var->GetImmediateValue();
-        assert(mod == EMOD_ABS || mod == EMOD_NEG || mod == EMOD_NEGABS || mod == EMOD_NONE);
+        IGC_ASSERT(mod == EMOD_ABS || mod == EMOD_NEG || mod == EMOD_NEGABS || mod == EMOD_NONE);
         // handle modifiers for immediates.
         // Change the sign bit for floats and do logic operations for integers
         if (IsFloat(var->GetType()))
@@ -1046,7 +1049,7 @@ namespace IGC
 
     void CEncoder::MinMax(CISA_MIN_MAX_SUB_OPCODE subopcode, CVariable* dst, CVariable* src0, CVariable* src1)
     {
-        assert(m_encoderState.m_flag.var == nullptr && "min/max doesn't support predication");
+        IGC_ASSERT((m_encoderState.m_flag.var == nullptr) && "min/max doesn't support predication");
 
         unsigned numParts = 0;
         if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
@@ -1121,7 +1124,7 @@ namespace IGC
             unsigned maxBlockSize = getGRFSize() * 2; // size of 2 GRFs in bytes
             // For uniform variables (which implies simdSize==1) the emitter may set regions with width>1.
             // As it may happen in various places, we detect it here.
-            assert(var->IsUniform() || GrfRegionSize(simdSize, elemSize, mod, isSource) <= maxBlockSize);
+            IGC_ASSERT(var->IsUniform() || GrfRegionSize(simdSize, elemSize, mod, isSource) <= maxBlockSize);
             return false;
         }
         }
@@ -1150,10 +1153,9 @@ namespace IGC
         // 2+ GRFs by itself. There's no need to check further.
         if (elemSize > 4)
         {
-            assert(elemSize == 8 && "Only QWORD is supported so far!");
-            assert((isSource || !mod.specialRegion) &&
-                "It's expected that there's no special region associated with "
-                "QWORD type destination!");
+            IGC_ASSERT((elemSize == 8) && "Only QWORD is supported so far!");
+            IGC_ASSERT((isSource || !mod.specialRegion) &&
+                "It's expected that there's no special region associated with QWORD type destination!");
             if (isSource && mod.specialRegion)
             {
                 if (mod.region[1] == 1 && mod.region[0] == 0)
@@ -1161,7 +1163,7 @@ namespace IGC
                     // src region is <0;1,x>, can't cross 2 GRF.  No need to split.
                     return false;
                 }
-                assert(false && "Unhandled special source region on QWORD type!");
+                IGC_ASSERT(false && "Unhandled special source region on QWORD type!");
             }
 
             numParts = std::max(numParts, 2U);
@@ -1219,12 +1221,11 @@ namespace IGC
                 mod.region[1] == 1 && mod.region[0] == 0 && mod.region[2] == 0))
             return mod;
 
-        assert(((fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8) ||
+        IGC_ASSERT(((fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8) ||
             (fromExecSize == EXEC_SIZE_32 && toExecSize == EXEC_SIZE_16)) &&
             "Only support splitting from exec-size 16 to exec-size 8, or 32 to 16!");
-        assert((thePart == 0 || thePart == 1) &&
-            "Splitting from exec-size-16 to exec-size-8 only breaks into 2 "
-            "parts!");
+        IGC_ASSERT((thePart == 0 || thePart == 1) &&
+            "Splitting from exec-size-16 to exec-size-8 only breaks into 2 parts!");
 
         // Copy the original modifier first.
         SModifier newMod = mod;
@@ -1245,7 +1246,7 @@ namespace IGC
             // Without special regioning, split the given variable based on type.
             switch (elemSize) {
             default:
-                assert(false && "Unknown data type to split!");
+                IGC_ASSERT(false && "Unknown data type to split!");
                 break;
             case 1:
             case 2:
@@ -1263,7 +1264,7 @@ namespace IGC
 
         unsigned theStride = 0;
         if (isSource) {
-            assert(mod.region[1] == 1 &&
+            IGC_ASSERT((mod.region[1] == 1) &&
                 "Don't know how to split region with non-1 width!");
             theStride = mod.region[0];
         }
@@ -1273,7 +1274,7 @@ namespace IGC
 
         switch (elemSize) {
         default:
-            assert(false && "Unknown data type to split!");
+            IGC_ASSERT(false && "Unknown data type to split!");
             break;
         case 1:
         case 2:
@@ -1292,7 +1293,7 @@ namespace IGC
 
     VISA_Exec_Size  CEncoder::SplitExecSize(VISA_Exec_Size fromExecSize, unsigned numParts) const
     {
-        assert(numParts == 2 && "Only know splitting SIMD16 into SIMD8!");
+        IGC_ASSERT((numParts == 2) && "Only know splitting SIMD16 into SIMD8!");
 
         switch (fromExecSize) {
         default:
@@ -1302,7 +1303,7 @@ namespace IGC
         case EXEC_SIZE_16:
             return EXEC_SIZE_8;
         }
-        assert(false && "Unknown execution size to be split!");
+        IGC_ASSERT(false && "Unknown execution size to be split!");
         return static_cast<VISA_Exec_Size>(~0);
     }
 
@@ -1310,11 +1311,10 @@ namespace IGC
         CEncoder::SplitEMask(VISA_Exec_Size fromExecSize,
             VISA_Exec_Size toExecSize,
             unsigned thePart, VISA_EMask_Ctrl execMask) const {
-        assert(((fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8) || (fromExecSize == EXEC_SIZE_32 && toExecSize == EXEC_SIZE_16)) &&
+        IGC_ASSERT(((fromExecSize == EXEC_SIZE_16 && toExecSize == EXEC_SIZE_8) || (fromExecSize == EXEC_SIZE_32 && toExecSize == EXEC_SIZE_16)) &&
             "Only support splitting from exec-size 16 to exec-size 8, or from 32 to 16!");
-        assert((thePart == 0 || thePart == 1) &&
-            "Splitting from exec-size-16 to exec-size-8 only breaks into 2 "
-            "parts!");
+        IGC_ASSERT((thePart == 0 || thePart == 1) &&
+            "Splitting from exec-size-16 to exec-size-8 only breaks into 2 parts!");
 
         // FIXME: Better to generate a table!
 
@@ -1359,7 +1359,7 @@ namespace IGC
             }
             break;
         }
-        assert(false && "Unknown execution mask to be split into low part!");
+        IGC_ASSERT(false && "Unknown execution mask to be split into low part!");
         return static_cast<VISA_EMask_Ctrl>(~0);
     }
 
@@ -1377,7 +1377,7 @@ namespace IGC
         const VISA_Exec_Size fromESize = visaExecSize(lanesToSIMDMode(fromSize));
         const VISA_Exec_Size toESize = visaExecSize(lanesToSIMDMode(toSize));
         const uint32_t eltBytes = MDP->GetElemSize();
-        assert(eltBytes == V0->GetElemSize() && eltBytes == V1->GetElemSize() &&
+        IGC_ASSERT((eltBytes == V0->GetElemSize()) && (eltBytes == V1->GetElemSize()) &&
             "Element size should be the same among SIMD16 MDP and SIMD8 MDP!");
         // Number of elements per GRF
 
@@ -1430,7 +1430,7 @@ namespace IGC
         const VISA_Exec_Size fromESize = visaExecSize(lanesToSIMDMode(toSize));
         const VISA_Exec_Size toESize = visaExecSize(lanesToSIMDMode(fromSize));
         const uint32_t eltBytes = MDP->GetElemSize();
-        assert(eltBytes == V0->GetElemSize() && eltBytes == V1->GetElemSize() &&
+        IGC_ASSERT((eltBytes == V0->GetElemSize()) && (eltBytes == V1->GetElemSize()) &&
             "Element size should be the same among SIMD16 MDP and SIMD8 MDP!");
 
         if (eltBytes > 0)
@@ -1502,7 +1502,7 @@ namespace IGC
     {
         if (opcode == ISA_SETP)
         {
-            assert(dst->GetVarType() == EVARTYPE_PREDICATE);
+            IGC_ASSERT(dst->GetVarType() == EVARTYPE_PREDICATE);
             V(vKernel->AppendVISASetP(
                 GetAluEMask(dst),
                 IsSecondHalf() ? GetAluExecSize(dst) : visaExecSize(m_program->m_dispatchSize),
@@ -1537,7 +1537,7 @@ namespace IGC
                 else
                 {
                     // No Double type expected here.
-                    assert((dstT != ISA_TYPE_DF && srcT != ISA_TYPE_DF) &&
+                    IGC_ASSERT((dstT != ISA_TYPE_DF && srcT != ISA_TYPE_DF) &&
                         "Double type unexpected here!");
                 }
             }
@@ -1600,7 +1600,7 @@ namespace IGC
                                 dstOpnd, srcOpnd));
                         }
                         else if (Is64BitSrc) {
-                            assert(!Is64BitDst && "Expect non 64-bit dst!");
+                            IGC_ASSERT(!Is64BitDst && "Expect non 64-bit dst!");
                             // Generate data movement on Lo part only.
                             SModifier LoSrcMod = EmulateVariable(src, newSrcMod, false, true);
                             VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dstAlias, newDstMod);
@@ -1612,7 +1612,7 @@ namespace IGC
                                 dstOpnd, srcOpnd));
                         }
                         else {
-                            assert(Is64BitDst && !Is64BitSrc && "Expect non 64-bit src and 64-bit dst!");
+                            IGC_ASSERT(Is64BitDst && !Is64BitSrc && "Expect non 64-bit src and 64-bit dst!");
                             // Generate data movement on Lo part.
                             SModifier LoDstMod = EmulateVariable(dst, newDstMod, false, false);
                             VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dstAlias, LoDstMod);
@@ -1671,7 +1671,7 @@ namespace IGC
                             dstOpnd, srcOpnd));
                     }
                     else if (Is64BitSrc) {
-                        assert(!Is64BitDst && "Expect non 64-bit dst!");
+                        IGC_ASSERT(!Is64BitDst && "Expect non 64-bit dst!");
                         // Generate data movement on Lo part only.
                         SModifier LoSrcMod = EmulateVariable(src, m_encoderState.m_srcOperand[0], false, true);
                         VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dstAlias, m_encoderState.m_dstOperand);
@@ -1683,7 +1683,7 @@ namespace IGC
                             dstOpnd, srcOpnd));
                     }
                     else {
-                        assert(Is64BitDst && !Is64BitSrc && "Expect non 64-bit src and 64-bit dst!");
+                        IGC_ASSERT(Is64BitDst && !Is64BitSrc && "Expect non 64-bit src and 64-bit dst!");
                         // Generate data movement on Lo part.
                         SModifier LoDstMod = EmulateVariable(dst, m_encoderState.m_dstOperand, false, false);
                         VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dstAlias, LoDstMod);
@@ -1856,7 +1856,7 @@ namespace IGC
 
     // We allow H1 to be nullptr for the common case of adding 64-bit variable with 32-bit imm
     void CEncoder::AddPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1) {
-        assert(m_encoderState.m_dstOperand.mod == EMOD_NONE && "addPair doesn't support saturate");
+        IGC_ASSERT((m_encoderState.m_dstOperand.mod == EMOD_NONE) && "addPair doesn't support saturate");
 
         if (Hi == nullptr) {
             // When Hi part is ignored, reduce 64-bit subtraction into 32-bit.
@@ -1878,9 +1878,12 @@ namespace IGC
         if (H1 && H1->GetType() != ISA_TYPE_UD && H1->GetType() != ISA_TYPE_UV) H1 = m_program->BitCast(H1, ISA_TYPE_UD);
 
         VISA_Exec_Size ExecSize = GetAluExecSize(Lo);
-        assert(ExecSize == EXEC_SIZE_32 || ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 ||
-            ExecSize == EXEC_SIZE_4 || ExecSize == EXEC_SIZE_2 ||
-            ExecSize == EXEC_SIZE_1);
+        IGC_ASSERT((ExecSize == EXEC_SIZE_32) ||
+            (ExecSize == EXEC_SIZE_16) ||
+            (ExecSize == EXEC_SIZE_8) ||
+            (ExecSize == EXEC_SIZE_4) ||
+            (ExecSize == EXEC_SIZE_2) ||
+            (ExecSize == EXEC_SIZE_1));
 
         if (needsSplitting(ExecSize))
         {
@@ -1986,10 +1989,10 @@ namespace IGC
     }
 
     void CEncoder::SubPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1) {
-    assert(m_encoderState.m_dstOperand.mod == EMOD_NONE && "subPair doesn't support saturate");
+    IGC_ASSERT((m_encoderState.m_dstOperand.mod == EMOD_NONE) && "subPair doesn't support saturate");
 
     VISA_Exec_Size ExecSize = GetAluExecSize(Lo);
-    assert(ExecSize == EXEC_SIZE_32 || ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 || ExecSize == EXEC_SIZE_1);
+    IGC_ASSERT((ExecSize == EXEC_SIZE_32) || (ExecSize == EXEC_SIZE_16) || (ExecSize == EXEC_SIZE_8) || (ExecSize == EXEC_SIZE_1));
 
     if (Hi == nullptr) {
         // When Hi part is ignored, reduce 64-bit subtraction into 32-bit.
@@ -2022,7 +2025,7 @@ namespace IGC
 
         // Negative `S1H`
         SModifier S1HMod = m_encoderState.m_srcOperand[1];
-        assert(S1HMod.mod == EMOD_NONE);
+        IGC_ASSERT(S1HMod.mod == EMOD_NONE);
         S1HMod.mod = EMOD_NEG;
             VISA_PredOpnd* Pred = GetFlagOperand(m_encoderState.m_flag);
         for (unsigned ThePart = 0; ThePart != NumParts; ++ThePart) {
@@ -2044,7 +2047,7 @@ namespace IGC
                 VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
             // Negative `Acc0`
             SModifier AccMod = m_encoderState.m_dstOperand;
-            assert(AccMod.mod == EMOD_NONE);
+            IGC_ASSERT(AccMod.mod == EMOD_NONE);
             AccMod.mod = EMOD_NEG;
                 VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, AccMod);
 
@@ -2067,7 +2070,7 @@ namespace IGC
             VISA_VectorOpnd* S1L = GetSourceOperand(L1, m_encoderState.m_srcOperand[2]);
         // Negative `S0H`
         SModifier S1HMod = m_encoderState.m_srcOperand[1];
-        assert(S1HMod.mod == EMOD_NONE);
+        IGC_ASSERT(S1HMod.mod == EMOD_NONE);
         S1HMod.mod = EMOD_NEG;
             VISA_VectorOpnd* S1H = GetSourceOperand(H1, S1HMod);
             VISA_VectorOpnd* L = GetDestinationOperand(Lo, m_encoderState.m_dstOperand);
@@ -2088,7 +2091,7 @@ namespace IGC
             VISA_VectorOpnd* HIn = GetSourceOperand(Hi, MidMod);
         // Negative `Acc0`
         SModifier AccMod = MidMod;
-        assert(AccMod.mod == EMOD_NONE);
+        IGC_ASSERT(AccMod.mod == EMOD_NONE);
         AccMod.mod = EMOD_NEG;
             VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, AccMod);
 
@@ -2117,7 +2120,7 @@ namespace IGC
 
     switch (execSize) {
     default:
-        assert(false && "Unknown execution size on carry-borrow-arith!");
+        IGC_ASSERT(false && "Unknown execution size on carry-borrow-arith!");
         break;
     case EXEC_SIZE_1:
         carryOperand.subReg += 1;
@@ -2130,7 +2133,7 @@ namespace IGC
         break;
     }
     VISA_VectorOpnd* carryBorrowOpnd = GetDestinationOperand(dst, carryOperand);
-    assert(m_encoderState.m_dstOperand.mod == EMOD_NONE && "addc/subb doesn't support saturate");
+    IGC_ASSERT((m_encoderState.m_dstOperand.mod == EMOD_NONE) && "addc/subb doesn't support saturate");
 
     V(vKernel->AppendVISAArithmeticInst(
         opcode,
@@ -2166,7 +2169,7 @@ namespace IGC
         {
             // per-slot offset cannot be a uniform variable even if the value is since
             // we need the data in each lane
-            assert(!offset->IsUniform() && "Per slot offset cannot be a uniform variable");
+            IGC_ASSERT(!offset->IsUniform() && "Per slot offset cannot be a uniform variable");
             perSlotOffset = GetRawSource(offset);
         }
 
@@ -2376,7 +2379,7 @@ namespace IGC
         cntrls.isPerSample = perSample;
         cntrls.isCoarseMode = coarseMode;
         cntrls.isHeaderMaskfromCe0 = headerMaskFromCe0;
-        assert(!(predOpnd != nullptr && cntrls.isHeaderMaskfromCe0));
+        IGC_ASSERT(!((predOpnd != nullptr) && cntrls.isHeaderMaskfromCe0));
 
         if (source0Alpha)
         {
@@ -2525,7 +2528,7 @@ namespace IGC
         V(vKernel->CreateVISAStateOperand(dstOpnd, samplerVar, 0, true));
 
         VISA_VectorOpnd* sourecOpnd = nullptr;
-        assert(sampler.m_sampler->IsUniform());
+        IGC_ASSERT(sampler.m_sampler->IsUniform());
         sourecOpnd = GetUniformSource(sampler.m_sampler);
 
         //Add the mov special instruction for sampler
@@ -2769,10 +2772,10 @@ namespace IGC
         bool SWFence) // if true no ISA is emitted and the instruction is a pure code barrier
     {
         // Only a single bit set here is a valid configuration
-        assert(L3_Flush_Instructions +
+        IGC_ASSERT((L3_Flush_Instructions +
             L3_Flush_Texture_Data +
             L3_Flush_Constant_Data +
-            L3_Flush_RW_Data <= 1);
+            L3_Flush_RW_Data) <= 1);
 
         uint fenceFlags = (L3_Flush_Instructions << 1) |
             (L3_Flush_Texture_Data << 2) |
@@ -2828,7 +2831,7 @@ namespace IGC
             RM_bits = getEncoderRoundingMode_FPCvtInt(RM_FPCvtInt);
         }
         else {
-            assert(false && "Unsupport combination of default rounding mode (FP and FPCvtInt)!");
+            IGC_ASSERT(false && "Unsupport combination of default rounding mode (FP and FPCvtInt)!");
         }
         imm_data |= RM_bits;
 
@@ -2879,7 +2882,7 @@ namespace IGC
 
     void CEncoder::SetRoundingMode_FP(ERoundingMode actualRM, ERoundingMode newRM)
     {
-        assert(newRM != ERoundingMode::ROUND_TO_ANY && "Invalid rounding mode");
+        IGC_ASSERT((newRM != ERoundingMode::ROUND_TO_ANY) && "Invalid rounding mode");
         if (actualRM != newRM)
         {
             RMEncoding actualRM_en = getEncoderRoundingMode_FP(actualRM);
@@ -2890,7 +2893,7 @@ namespace IGC
 
     void CEncoder::SetRoundingMode_FPCvtInt(ERoundingMode actualRM, ERoundingMode newRM)
     {
-        assert(newRM != ERoundingMode::ROUND_TO_ANY && "Invalid rounding mode");
+        IGC_ASSERT((newRM != ERoundingMode::ROUND_TO_ANY) && "Invalid rounding mode");
         if (actualRM != newRM)
         {
             RMEncoding actualRM_en = getEncoderRoundingMode_FPCvtInt(actualRM);
@@ -2902,7 +2905,7 @@ namespace IGC
     // Set rounding mode based on given encoding.
     void CEncoder::SetRoundingMode(RMEncoding actualRM, RMEncoding newRM)
     {
-        assert(actualRM != newRM &&
+        IGC_ASSERT((actualRM != newRM) &&
             "Only setting RM if the new RM is different from the current RM!");
 
         VISA_VectorOpnd* src0_Opnd = nullptr;
@@ -3062,7 +3065,7 @@ namespace IGC
                 return GENX_TGLLP;
             }
         default:
-            assert(0 && "unsupported platform");
+            IGC_ASSERT(false && "unsupported platform");
             break;
         }
         return GENX_SKL;
@@ -3190,7 +3193,7 @@ namespace IGC
         VISA_RawOpnd* pROffset = GetRawSource(pR, m_encoderState.m_srcOperand[2].subVar * getGRFSize());
         VISA_RawOpnd* pLODOffset = GetRawSource(pLOD, m_encoderState.m_srcOperand[3].subVar * getGRFSize());
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        assert(m_encoderState.m_dstOperand.subVar == 0);
+        IGC_ASSERT(m_encoderState.m_dstOperand.subVar == 0);
 
         VISA_RawOpnd* pDstVar = nullptr;
         VISA_EMask_Ctrl mask;
@@ -3340,7 +3343,7 @@ namespace IGC
                 V(vKernel->GetPredefinedSurface(surfacevar, PREDEFINED_SURFACE_T255));
                 break;
             default:
-                assert("Invalid surface" && 0);
+                IGC_ASSERT(false && "Invalid surface");
                 break;
             }
             V(vKernel->CreateVISAStateOperandHandle(surfOpnd, surfacevar));
@@ -3379,7 +3382,7 @@ namespace IGC
         case EMASK_H2:
             return noMask ? vISA_EMASK_M5_NM : vISA_EMASK_M5;
         default:
-            assert(0 && "unreachable");
+            IGC_ASSERT(false && "unreachable");
             return vISA_EMASK_M1_NM;
         }
     }
@@ -3401,7 +3404,7 @@ namespace IGC
         case EMOD_NOT:
             return MODIFIER_NOT;
         default:
-            assert(0 && "unreachable");
+            IGC_ASSERT(false && "unreachable");
             return MODIFIER_NONE;
         }
     }
@@ -3423,7 +3426,7 @@ namespace IGC
         case EPREDICATE_LE:
             return ISA_CMP_LE;
         default:
-            assert(0 && "unreachable");
+            IGC_ASSERT(false && "unreachable");
             return ISA_CMP_UNDEF;
         }
     }
@@ -3443,7 +3446,7 @@ namespace IGC
         case 16:
             return OWORD_NUM_16;
         default:
-            assert(0 && "unreachable");
+            IGC_ASSERT(false && "unreachable");
             return OWORD_NUM_ILLEGAL;
         }
     }
@@ -3469,7 +3472,7 @@ namespace IGC
         case 0xf: return CHANNEL_MASK_RGBA;
         default:
         {
-            assert(0 && "Wrong mask");
+            IGC_ASSERT(false && "Wrong mask");
             return CHANNEL_MASK_NOMASK;
         }
         }
@@ -3510,7 +3513,7 @@ namespace IGC
         case ISA_TYPE_HF:
             return 2;
         default:
-            assert(0 && "Unimplemented CISA Data Type");
+            IGC_ASSERT(false && "Unimplemented CISA Data Type");
             break;
         }
 
@@ -3552,7 +3555,7 @@ namespace IGC
         case ISA_TYPE_HF:
             return EALIGN_WORD;
         default:
-            assert(0 && "Unimplemented CISA Data Type");
+            IGC_ASSERT(false && "Unimplemented CISA Data Type");
             break;
         }
 
@@ -3603,7 +3606,7 @@ namespace IGC
         case llvm_sample_killpix:
             return VISA_3D_SAMPLE_KILLPIX;
         default:
-            assert(0 && "wrong sampler subopcode");
+            IGC_ASSERT(false && "wrong sampler subopcode");
             return VISA_3D_SAMPLE;
         }
     }
@@ -3641,7 +3644,7 @@ namespace IGC
         case 3:
             return VISA_3D_GATHER4_CHANNEL_A;
         }
-        assert(0 && "Wrong channel");
+        IGC_ASSERT(false && "Wrong channel");
         return VISA_3D_GATHER4_CHANNEL_R;
     }
 
@@ -3708,7 +3711,7 @@ namespace IGC
                 pbuilder->SetOption(OP.first, OP.second.vCstr);
                 break;
             default:
-                assert(0 && "Undefined user option type");
+                IGC_ASSERT(false && "Undefined user option type");
                 break;
             }
         }
@@ -4116,7 +4119,7 @@ namespace IGC
 
         if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0 && (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0))
         {
-            assert(0 && "ReservedRegisterNum and TotalGRFNum registry keys cannot be used at the same time");
+            IGC_ASSERT(false && "ReservedRegisterNum and TotalGRFNum registry keys cannot be used at the same time");
         }
 
         if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0)
@@ -4237,7 +4240,7 @@ namespace IGC
         {
             SaveOption(vISA_accSubstitution, true);
             uint32_t numAcc = IGC_GET_FLAG_VALUE(NumGeneralAcc);
-            assert(numAcc >= 0 && numAcc <= 8 && "number of general acc should be [1-8] if set");
+            IGC_ASSERT((numAcc >= 0) && (numAcc <= 8) && "number of general acc should be [1-8] if set");
             if (numAcc > 0)
             {
                 SaveOption(vISA_numGeneralAcc, numAcc);
@@ -4450,14 +4453,14 @@ namespace IGC
 
     void CEncoder::SetDispatchSimdSize()
     {
-        assert(vKernel);
+        IGC_ASSERT(vKernel);
         uint8_t dispatchSIMD = (uint8_t)numLanes(m_program->m_dispatchSize);
         V(vKernel->AddKernelAttribute("SimdSize", 1, &dispatchSIMD));
     }
 
     void CEncoder::SetSpillMemOffset()
     {
-        assert(vKernel);
+        IGC_ASSERT(vKernel);
         uint scratchSpaceSizeTemp = m_program->m_ScratchSpaceSize;
         if (scratchSpaceSizeTemp > 0) {
             V(vKernel->AddKernelAttribute("SpillMemOffset", 4, &scratchSpaceSizeTemp));
@@ -4466,7 +4469,7 @@ namespace IGC
 
     void CEncoder::SetKernelStackPointer64()
     {
-        assert(vKernel);
+        IGC_ASSERT(vKernel);
         uint8_t spSize = 64;
         V(vKernel->AddKernelAttribute("FESPSize", 1, &spSize));
     }
@@ -4474,20 +4477,20 @@ namespace IGC
     void CEncoder::SetStackFunctionArgSize(uint size)
     {
         uint8_t sz = (uint8_t)size;
-        assert(vKernel);
+        IGC_ASSERT(vKernel);
         V(vKernel->AddKernelAttribute("ArgSize", 1, &sz));
     }
 
     void CEncoder::SetStackFunctionRetSize(uint size)
     {
         uint8_t sz = (uint8_t)size;
-        assert(vKernel);
+        IGC_ASSERT(vKernel);
         V(vKernel->AddKernelAttribute("RetValSize", 1, &sz));
     }
 
     void CEncoder::SetExternFunctionFlag()
     {
-        assert(vKernel);
+        IGC_ASSERT(vKernel);
         V(vKernel->AddKernelAttribute("Extern", 0, nullptr));
     }
 
@@ -4522,7 +4525,7 @@ namespace IGC
             break;
         default:
             align = ALIGN_UNDEF;
-            assert(0);
+            IGC_ASSERT(0);
         }
         return align;
     }
@@ -4615,7 +4618,7 @@ namespace IGC
                 }
                 else
                 {
-                    assert(var->GetType() != ISA_TYPE_BOOL && "boolean cannot have alias");
+                    IGC_ASSERT((var->GetType() != ISA_TYPE_BOOL) && "boolean cannot have alias");
                     for (uint i = 0; i < var->GetNumberInstance(); i++)
                     {
                         // Since we no longer use the built-in alias offset mechanism,
@@ -4651,7 +4654,7 @@ namespace IGC
             {
                 var->visaGenVariable[0] = nullptr;
                 var->visaGenVariable[1] = nullptr;
-                assert(var->GetType() != ISA_TYPE_BOOL && "boolean cannot be general var");
+                IGC_ASSERT((var->GetType() != ISA_TYPE_BOOL) && "boolean cannot be general var");
                 for (uint i = 0; i < var->GetNumberInstance(); i++)
                 {
                     V(vKernel->CreateVISAGenVar(
@@ -4720,7 +4723,7 @@ namespace IGC
             if (F.hasFnAttribute("IndirectlyCalled") && (!F.isDeclaration() || F.getNumUses() > 0))
             {
                 vISA::GenSymEntry fEntry;
-                assert(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+                IGC_ASSERT(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
                 strcpy_s(fEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, F.getName().str().c_str());
 
                 bool isTrue = false;
@@ -4734,7 +4737,7 @@ namespace IGC
                 else
                 {
                     auto Iter = stackFuncMap.find(&F);
-                    assert(Iter != stackFuncMap.end() && "vISA function not found");
+                    IGC_ASSERT((Iter != stackFuncMap.end()) && "vISA function not found");
 
                     // Query vISA for the function's byte offset within the compiled module
                     VISAFunction* visaFunc = Iter->second;
@@ -4772,7 +4775,7 @@ namespace IGC
             {
                 StringRef name = pGlobal->getName();
                 unsigned addrSpace = pGlobal->getType()->getAddressSpace();
-                assert(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+                IGC_ASSERT(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
 
                 vISA::GenSymEntry sEntry;
                 strcpy_s(sEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, name.str().c_str());
@@ -4799,7 +4802,7 @@ namespace IGC
             tableEntries = symbolTable.size();
             bufferSize = tableEntries * sizeof(vISA::GenSymEntry);
             buffer = (void*)malloc(bufferSize);
-            assert(buffer && "Symbol table cannot be allocated");
+            IGC_ASSERT(buffer && "Symbol table cannot be allocated");
             memcpy_s(buffer, bufferSize, symbolTable.data(), bufferSize);
         }
     }
@@ -4812,7 +4815,7 @@ namespace IGC
 
         // vISA will directly return the buffer with GenRelocEntry layout
         V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
-        assert(sizeof(vISA::GenRelocEntry) * tableEntries == bufferSize);
+        IGC_ASSERT((sizeof(vISA::GenRelocEntry) * tableEntries) == bufferSize);
     }
 
     void CEncoder::CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
@@ -4827,7 +4830,7 @@ namespace IGC
             vISA::GenFuncAttribEntry entry;
             Function* F = it.first;
 
-            assert(F->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+            IGC_ASSERT(F->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
             strcpy_s(entry.f_name, vISA::MAX_SYMBOL_NAME_LENGTH, F->getName().str().c_str());
             entry.f_isKernel = it.second.isKernel ? 1 : 0;
             entry.f_hasBarrier = it.second.hasBarrier ? 1 : 0;
@@ -4842,7 +4845,7 @@ namespace IGC
             else
             {
                 auto Iter = stackFuncMap.find(F);
-                assert(Iter != stackFuncMap.end() && "vISA function not found");
+                IGC_ASSERT((Iter != stackFuncMap.end()) && "vISA function not found");
                 visaFunc = Iter->second;
             }
             FINALIZER_INFO* jitInfo;
@@ -4857,7 +4860,7 @@ namespace IGC
             tableEntries = attribTable.size();
             bufferSize = tableEntries * sizeof(vISA::GenFuncAttribEntry);
             buffer = (void*)malloc(bufferSize);
-            assert(buffer && "Table cannot be allocated");
+            IGC_ASSERT(buffer && "Table cannot be allocated");
             memcpy_s(buffer, bufferSize, attribTable.data(), bufferSize);
         }
     }
@@ -4979,11 +4982,11 @@ namespace IGC
 
         if (vIsaCompile == -1)
         {
-            assert(0 && "CM failure in vbuilder->Compile()");
+            IGC_ASSERT(false && "CM failure in vbuilder->Compile()");
         }
         else if (vIsaCompile == -2)
         {
-            assert(0 && "CM user error in vbuilder->Compile()");
+            IGC_ASSERT(false && "CM user error in vbuilder->Compile()");
         }
         else if (vIsaCompile == -3) // CM early terminates on spill
         {
@@ -5074,7 +5077,7 @@ namespace IGC
 
         }
 
-        assert(genxbin != nullptr);
+        IGC_ASSERT(genxbin != nullptr);
         size = binSize;
 
         // the kernel has to be padded to have a size aligned on 64 bytes
@@ -5190,7 +5193,7 @@ namespace IGC
         if (!src->IsUndef() || IGC_IS_FLAG_ENABLED(InitializeUndefValueEnable))
         {
             CVariable* rawDst = dst;
-            assert(GetCISADataTypeSize(src->GetType()) == GetCISADataTypeSize(dst->GetType()));
+            IGC_ASSERT(GetCISADataTypeSize(src->GetType()) == GetCISADataTypeSize(dst->GetType()));
             bool isVecImm = src->IsImmediate() && (src->GetType() == ISA_TYPE_UV ||
                 src->GetType() == ISA_TYPE_V ||
                 src->GetType() == ISA_TYPE_VF);
@@ -5204,10 +5207,10 @@ namespace IGC
 
     void CEncoder::BoolToInt(CVariable* dst, CVariable* src)
     {
-        assert(src->GetType() == ISA_TYPE_BOOL);
+        IGC_ASSERT(src->GetType() == ISA_TYPE_BOOL);
 
         VISA_Type dstType = dst->GetType();
-        assert((dstType == ISA_TYPE_UD) || (dstType == ISA_TYPE_D) ||
+        IGC_ASSERT((dstType == ISA_TYPE_UD) || (dstType == ISA_TYPE_D) ||
             (dstType == ISA_TYPE_UB) || (dstType == ISA_TYPE_B) ||
             (dstType == ISA_TYPE_UW) || (dstType == ISA_TYPE_W));
 
@@ -5222,9 +5225,9 @@ namespace IGC
         CVariable* offset,
         unsigned elemSize,
         unsigned numElems) {
-        assert((elemSize == 8 || elemSize == 32 || elemSize == 64) &&
+        IGC_ASSERT((elemSize == 8 || elemSize == 32 || elemSize == 64) &&
             "Only B/DW/QW-sized elements are supported!");
-        assert((numElems == 1 || numElems == 2 || numElems == 4 ||
+        IGC_ASSERT((numElems == 1 || numElems == 2 || numElems == 4 ||
             (numElems == 8 && (elemSize == 32 || m_program->m_Platform->has8ByteA64ByteScatteredMessage()))) &&
             "Only 1/2/4/8 elements are supported!");
 
@@ -5302,9 +5305,9 @@ namespace IGC
         CVariable* offset,
         unsigned elemSize,
         unsigned numElems) {
-        assert((elemSize == 8 || elemSize == 32 || elemSize == 64) &&
+        IGC_ASSERT((elemSize == 8 || elemSize == 32 || elemSize == 64) &&
             "Only B/DW/QW-sized elements are supported!");
-        assert((numElems == 1 || numElems == 2 || numElems == 4 ||
+        IGC_ASSERT((numElems == 1 || numElems == 2 || numElems == 4 ||
             (numElems == 8 && (elemSize == 32 || m_program->m_Platform->has8ByteA64ByteScatteredMessage()))) &&
             "Only 1/2/4/8 elements are supported!");
 
@@ -5382,8 +5385,8 @@ namespace IGC
         CVariable* offset,
         unsigned elemSize,
         unsigned numElems) {
-        assert(elemSize == 8 && "Only BYTE element is supported!");
-        assert((numElems == 1 || numElems == 2 || numElems == 4) &&
+        IGC_ASSERT((elemSize == 8) && "Only BYTE element is supported!");
+        IGC_ASSERT((numElems == 1 || numElems == 2 || numElems == 4) &&
             "Only 1/2/4 elements are supported!");
 
         // Extend the offset to 64bits and use the A64 gather message if needed
@@ -5444,8 +5447,8 @@ namespace IGC
         CVariable* offset,
         unsigned elemSize,
         unsigned numElems) {
-        assert(elemSize == 8 && "Only BYTE element is supported!");
-        assert((numElems == 1 || numElems == 2 || numElems == 4) &&
+        IGC_ASSERT((elemSize == 8) && "Only BYTE element is supported!");
+        IGC_ASSERT((numElems == 1 || numElems == 2 || numElems == 4) &&
             "Only 1/2/4 elements are supported!");
 
         // Extend the offset to 64bits and use the A64 gather message if needed
@@ -5534,7 +5537,7 @@ namespace IGC
         {
             if (nd > getGRFSize())
             {
-                assert(false && "Unknown Variable Size!");
+                IGC_ASSERT(false && "Unknown Variable Size!");
             }
             return 1;
         }
@@ -5542,7 +5545,7 @@ namespace IGC
         {
             switch (m_encoderState.m_simdSize)
             {
-            default: assert(false && "Unknown SIMD size!"); return 1;
+            default: IGC_ASSERT(false && "Unknown SIMD size!"); return 1;
             case SIMDMode::SIMD8:
                 return nd / (8 * SIZE_DWORD);
             case SIMDMode::SIMD16:
@@ -5590,12 +5593,12 @@ namespace IGC
     }
 
     void CEncoder::Gather4A64(CVariable* dst, CVariable* offset) {
-        assert(dst->GetElemSize() == 4 && "Gather4 must have 4-byte element");
+        IGC_ASSERT((dst->GetElemSize() == 4) && "Gather4 must have 4-byte element");
 
         uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + dst->GetAliasOffset();
         unsigned nd = dst->GetSize();
         switch (m_encoderState.m_simdSize) {
-        default: assert(false && "Unknown SIMD size!"); return;
+        default: IGC_ASSERT(false && "Unknown SIMD size!"); return;
         case SIMDMode::SIMD8:
             nd = nd / (8 * SIZE_DWORD);
             break;
@@ -5683,12 +5686,12 @@ namespace IGC
     }
 
     void CEncoder::Scatter4A64(CVariable* src, CVariable* offset) {
-        assert(src->GetElemSize() == 4 && "scatter4 must have 4-byte element");
+        IGC_ASSERT((src->GetElemSize() == 4) && "scatter4 must have 4-byte element");
 
         uint32_t srcOfstBytes = src->GetAliasOffset();
         unsigned nd = src->GetSize();
         switch (m_encoderState.m_simdSize) {
-        default: assert(false && "Unknown SIMD size!"); return;
+        default: IGC_ASSERT(false && "Unknown SIMD size!"); return;
         case SIMDMode::SIMD8:
             nd = nd / (8 * SIZE_DWORD);
             break;
@@ -6019,7 +6022,7 @@ namespace IGC
             V(vKernel->AppendVISAVABooleanCentroid(surfaceOpnd, uOffset, vOffset, wSize, hSize, vaOutput));
             break;
         default:
-            assert(0 && "Trying to emit unrecognized video analytic instruction (listed above)");
+            IGC_ASSERT(false && "Trying to emit unrecognized video analytic instruction (listed above)");
             break;
         };
     }
@@ -6076,9 +6079,9 @@ namespace IGC
     {
         unsigned int varTypeSize = GetCISADataTypeSize(var->GetType());
         unsigned int offset = var->GetAliasOffset() + subVar * getGRFSize() + subReg * varTypeSize;
-        assert((offset % getGRFSize()) % varTypeSize == 0 && "offset has to be aligned on element size");
+        IGC_ASSERT(((offset % getGRFSize()) % varTypeSize == 0) && "offset has to be aligned on element size");
         rowOff = int_cast<unsigned char>(offset / getGRFSize());
-        assert(varTypeSize != 0);
+        IGC_ASSERT(varTypeSize != 0);
         colOff = int_cast<unsigned char>((offset % getGRFSize()) / varTypeSize);
     }
 
@@ -6132,7 +6135,7 @@ namespace IGC
         case EVARTYPE_SAMPLER:
             return vKernel->getVarName(var->visaSamplerVariable);
         default:
-            assert(false && "Unknown var type");
+            IGC_ASSERT(false && "Unknown var type");
             return "";
         }
     }

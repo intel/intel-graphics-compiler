@@ -32,13 +32,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenCodeGenModule.h"
 #include "VariableReuseAnalysis.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/InlineAsm.h>
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 namespace llvm
 {
@@ -613,7 +613,7 @@ namespace IGC
             {
                 if (Item.first == TypeSizeInBytes)
                 {
-                    assert(Item.second && "null variable");
+                    IGC_ASSERT(Item.second && "null variable");
                     return Item.second;
                 }
             }

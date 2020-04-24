@@ -23,12 +23,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
 #include "inc/common/igfxfmid.h"
 #include "Compiler/compiler_caps.h"
 #include "Compiler/igc_workaround.h"
 #include "common/igc_regkeys.hpp"
 #include "common/Types.hpp"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {

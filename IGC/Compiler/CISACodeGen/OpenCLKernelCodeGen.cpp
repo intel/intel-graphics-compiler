@@ -23,12 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
 #include "llvm/IR/DataLayout.h"
 #include "llvm/ADT/StringExtras.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
@@ -46,10 +46,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/SystemThread.h"
 #include "common/secure_mem.h"
 #include "common/MDFrameWork.h"
-
 #include <iStdLib/utility.h>
-
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
+#include "Probe/Assertion.h"
 
 /***********************************************************************************
 This file contains the code specific to opencl kernels
@@ -255,7 +254,7 @@ namespace IGC
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
         FunctionMetaData* funcMD = &modMD->FuncMD[entry];
         ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-        assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
+        IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
         ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
 
         SOpenCLKernelInfo::SResourceInfo resInfo;
@@ -284,7 +283,7 @@ namespace IGC
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
         FunctionMetaData* funcMD = &modMD->FuncMD[entry];
         ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-        assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
+        IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
         ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
         return (ResourceExtensionTypeEnum)argAlloc->extensionType;
     }
@@ -374,7 +373,7 @@ namespace IGC
                 kernelArgInfo->AddressQualifier = "__private";
                 break;
             default:
-                assert(0 && "Unexpected address space");
+                IGC_ASSERT(false && "Unexpected address space");
                 break;
             }
 
@@ -550,7 +549,7 @@ namespace IGC
                 vecTypeString += "long";
                 break;
             default:
-                assert(0 && "Unexpected data type in vec_type_hint");
+                IGC_ASSERT(false && "Unexpected data type in vec_type_hint");
                 break;
             }
             break;
@@ -564,7 +563,7 @@ namespace IGC
             vecTypeString += "half";
             break;
         default:
-            assert(0 && "Unexpected data type in vec_type_hint");
+            IGC_ASSERT(false && "Unexpected data type in vec_type_hint");
             break;
         }
 
@@ -711,7 +710,7 @@ namespace IGC
                 addressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_CONSTANT;
             }
             // may reach here from PTR_GLOBAL, PTR_CONSTANT
-            assert(addressSpace != iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_INVALID);
+            IGC_ASSERT(addressSpace != iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_INVALID);
 
             {
                 int argNo = kernelArg->getAssociatedArgNo();
@@ -721,7 +720,7 @@ namespace IGC
                 ModuleMetaData* modMD = pCtx->getModuleMetaData();
                 FunctionMetaData* funcMD = &modMD->FuncMD[entry];
                 ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-                assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+                IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
                 ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
 
                 iOpenCL::PointerArgumentAnnotation* ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
@@ -875,7 +874,7 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE:
 
             constantType = kernelArg->getDataParamToken();
-            assert(constantType != iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN);
+            IGC_ASSERT(constantType != iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN);
 
             for (int i = 0; i < 3; ++i)
             {
@@ -921,7 +920,7 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DISPATCHER_SIMD_SIZE:
         case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET:
             constantType = kernelArg->getDataParamToken();
-            assert(constantType != iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN);
+            IGC_ASSERT(constantType != iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN);
             {
                 iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
 
@@ -1041,7 +1040,7 @@ namespace IGC
                 imageType = iOpenCL::IMAGE_MEMORY_OBJECT_CUBE_ARRAY;
             }
             // may reach here from IMAGE_1D, IMAGE_2D, IMAGE_3D, MSAA, DEPTH, and IMAGE ARRAYS
-            assert(imageType != iOpenCL::IMAGE_MEMORY_OBJECT_INVALID);
+            IGC_ASSERT(imageType != iOpenCL::IMAGE_MEMORY_OBJECT_INVALID);
             {
                 int argNo = kernelArg->getAssociatedArgNo();
                 SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
@@ -1075,7 +1074,7 @@ namespace IGC
                     imageInput->Writeable = false;
                     break;
                 default:
-                    assert(0 && "Unknown resource type");
+                    IGC_ASSERT(false && "Unknown resource type");
                 }
                 m_kernelInfo.m_imageInputAnnotations.push_back(imageInput);
 
@@ -1409,7 +1408,7 @@ namespace IGC
 
     void COpenCLKernel::AllocatePayload()
     {
-        assert(m_Context);
+        IGC_ASSERT(m_Context);
 
         bool loadThreadPayload = false;
 
@@ -1495,7 +1494,7 @@ namespace IGC
             }
 
             if (!nosBufferAllocated && isRuntimeValue) {
-                assert(arg.isConstantBuf() && "RuntimeValues must be marked as isConstantBuf");
+                IGC_ASSERT(arg.isConstantBuf() && "RuntimeValues must be marked as isConstantBuf");
                 AllocateNOSConstants(offset);
                 nosBufferAllocated = true;
             }
@@ -1603,7 +1602,7 @@ namespace IGC
         }
         else
         {
-            assert(0 && "Trying to access a GlobalVariable not in locals map");
+            IGC_ASSERT(false && "Trying to access a GlobalVariable not in locals map");
         }
         return val;
     }
@@ -1644,7 +1643,7 @@ namespace IGC
             m_Context->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired;
         m_kernelInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers =
             m_Context->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired;
-        assert(gatherMap.size() == 0);
+        IGC_ASSERT(gatherMap.size() == 0);
         m_kernelInfo.m_kernelProgram.gatherMapSize = 0;
         m_kernelInfo.m_kernelProgram.bindingTableEntryCount = 0;
 
@@ -1886,7 +1885,7 @@ namespace IGC
 
     void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CShaderProgram* pKernel, Function* pFunc, MetaDataUtils* pMdUtils)
     {
-        assert(pShader != nullptr);
+        IGC_ASSERT(pShader != nullptr);
         pShader->FillKernel();
         SProgramOutput* pOutput = pShader->ProgramOutput();
 
@@ -2093,7 +2092,7 @@ namespace IGC
         if (simdStatus == SIMDStatus::SIMD_FUNC_FAIL)
             return false;
 
-        assert(simdStatus == SIMDStatus::SIMD_PERF_FAIL);
+        IGC_ASSERT(simdStatus == SIMDStatus::SIMD_PERF_FAIL);
         //not profitable
         if (m_Context->m_DriverInfo.sendMultipleSIMDModes())
         {
@@ -2195,7 +2194,7 @@ namespace IGC
                 EP.m_canAbortOnSpill = false;
                 break;
             default:
-                assert(0 && "Unsupported required sub group size");
+                IGC_ASSERT(false && "Unsupported required sub group size");
             }
         }
         else

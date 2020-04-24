@@ -23,13 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
 #include "llvm/ADT/StringSwitch.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
-
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "common/allocator.h"
 #include <iStdLib/utility.h>
@@ -37,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Simd32Profitability.hpp"
 #include "EmitVISAPass.hpp"
 #include "AdaptorCommon/API/igc.h"
+#include "Probe/Assertion.h"
 
 /***********************************************************************************
 This file contains the code specific to pixel shader
@@ -54,7 +54,7 @@ namespace IGC
 
     CVariable* CPixelShader::GetCoarseR1()
     {
-        assert(m_phase == PSPHASE_PIXEL);
+        IGC_ASSERT(m_phase == PSPHASE_PIXEL);
         return m_CoarseR1;
     }
 
@@ -74,7 +74,7 @@ namespace IGC
             AllocatePixelPhasePayload();
             break;
         default:
-            assert(0 && "unknown phase");
+            IGC_ASSERT(false && "unknown phase");
         }
     }
 
@@ -92,7 +92,7 @@ namespace IGC
                 {
                     subRegOffset = 3 * SIZE_DWORD;
                 }
-                assert(m_Signature != nullptr);
+                IGC_ASSERT(m_Signature != nullptr);
                 uint offset = GetDispatchSignature().inputOffset[i];
                 AllocateInput(setup[i], offset + subRegOffset);
             }
@@ -130,10 +130,10 @@ namespace IGC
     {
         uint offset = 0;
         //R0 is always allocated as a predefined variable. Increase offset for R0
-        assert(m_R0);
+        IGC_ASSERT(m_R0);
         offset += 32;   //R0 is always 32 byte regardless of register size
 
-        assert(m_R1);
+        IGC_ASSERT(m_R1);
         if (m_Signature)
         {
             GetDispatchSignature().r1 = offset;
@@ -245,7 +245,7 @@ namespace IGC
             }
         }
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
         // need to return the starting grf for constant to client
         ProgramOutput()->m_startReg = offset / getGRFSize();
 
@@ -253,7 +253,7 @@ namespace IGC
         AllocateConstants3DShader(offset);
 
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(offset % getGRFSize() == 0);
         unsigned int payloadEnd = offset;
         //Allocate size for values coming from VS
         for (uint i = 0; i < setup.size(); i++)
@@ -317,7 +317,7 @@ namespace IGC
         case SIMDMode::SIMD32:
             return m_Signature->dispatchSign[2];
         default:
-            assert(0 && "bad dispatch size");
+            IGC_ASSERT(false && "bad dispatch size");
             break;
         }
         return m_Signature->dispatchSign[0];
@@ -371,7 +371,7 @@ namespace IGC
             baryReg = m_NoPerspectiveSample;
             break;
         default:
-            assert(0);
+            IGC_ASSERT(0);
         }
         return baryReg;
     }
@@ -424,7 +424,7 @@ namespace IGC
             baryReg = m_NoPerspectiveSampleLowered;
             break;
         default:
-            assert(0);
+            IGC_ASSERT(0);
         }
         return baryReg;
     }
@@ -461,7 +461,7 @@ namespace IGC
         CVariable* inputVar = setupLowered[index];
         if (inputVar == nullptr)
         {
-            assert(LowerPSInput());
+            IGC_ASSERT(LowerPSInput());
             if (index % 2 == 0)
             {
                 inputVar = GetNewVariable(8, ISA_TYPE_HF, EALIGN_OWORD, true);
@@ -1054,7 +1054,7 @@ namespace IGC
 
     void CPixelShader::AddCoarseOutput(CVariable* output, unsigned int index)
     {
-        assert(m_CoarseOutput.find(index) == m_CoarseOutput.end());
+        IGC_ASSERT(m_CoarseOutput.find(index) == m_CoarseOutput.end());
         m_CoarseOutput[index] = output;
     }
 
@@ -1283,7 +1283,7 @@ namespace IGC
         linkProgram(CoarsePhaseOutput.simd8, PixelPhaseOutput.simd8, linked.simd8);
         linked.hasPullBary = true;
         linked.renderTargetMask = (CoarsePhaseOutput.renderTargetMask || PixelPhaseOutput.renderTargetMask);
-        assert(numberPhases == 2 && "maximum number of phases is 2");
+        IGC_ASSERT(numberPhases == 2 && "maximum number of phases is 2");
     }
 
     void CodeGen(PixelShaderContext* ctx)

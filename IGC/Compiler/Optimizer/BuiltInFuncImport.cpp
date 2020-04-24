@@ -23,15 +23,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/Optimizer/BuiltInFuncImport.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/Attributes.h"
 #include <llvmWrapper/IR/Function.h>
-
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/InstIterator.h>
@@ -45,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include <unordered_set>
 #include <unordered_map>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -376,7 +376,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
                         getOwningLazyBitcodeModule(std::move(OutputBuffer), M.getContext());
                     if (llvm::Error EC = ModuleOrErr.takeError())
                     {
-                        assert(0 && "Error linking generic builtin module");
+                        IGC_ASSERT(false && "Error linking generic builtin module");
                     }
                     elf_index[SectionIndex] = (std::move(*ModuleOrErr));
                 }
@@ -397,7 +397,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
                     handleAllErrors(std::move(Err), [&](ErrorInfoBase& EIB) {
                         errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
                     });
-                    assert(0 && "Failed to materialize Global Variables");
+                    IGC_ASSERT(false && "Failed to materialize Global Variables");
                 }
                 else {
                     pFunc->addAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::Builtin);
@@ -443,12 +443,12 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
 
         if (Error err = setIterator->materializeAll())
         {
-            assert(0 && "materializeAll failed for size_t builtin module");
+            IGC_ASSERT(false && "materializeAll failed for size_t builtin module");
         }
 
         if (ld.linkInModule(std::move(setIterator), Linker::OverrideFromSrc))
         {
-            assert(0 && "Error linking generic builtin module");
+            IGC_ASSERT(false && "Error linking generic builtin module");
         }
     }
 
@@ -473,11 +473,11 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
                 getOwningLazyBitcodeModule(std::move(OutputBuffer), M.getContext());
             if (llvm::Error EC = ModuleOrErr.takeError())
             {
-                assert(0 && "Error when LazyLoading global module");
+                IGC_ASSERT(false && "Error when LazyLoading global module");
             }
             if (ld.linkInModule(std::move(*ModuleOrErr)))
             {
-                assert(0 && "Error linking generic builtin module");
+                IGC_ASSERT(false && "Error linking generic builtin module");
             }
         }
     }
@@ -554,7 +554,7 @@ bool BIImport::runOnModule(Module& M)
                     handleAllErrors(std::move(Err), [&](ErrorInfoBase& EIB) {
                         errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
                     });
-                    assert(0 && "Failed to materialize Global Variables");
+                    IGC_ASSERT(false && "Failed to materialize Global Variables");
                 }
                 else {
                     pFunc->addAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::Builtin);
@@ -595,12 +595,12 @@ bool BIImport::runOnModule(Module& M)
     Linker ld(M);
 
     if (Error err = m_GenericModule->materializeAll()) {
-        assert(0 && "materializeAll failed for generic builtin module");
+        IGC_ASSERT(false && "materializeAll failed for generic builtin module");
     }
 
     if (ld.linkInModule(std::move(m_GenericModule)))
     {
-        assert(0 && "Error linking generic builtin module");
+        IGC_ASSERT(false && "Error linking generic builtin module");
     }
 
     if (m_SizeModule)
@@ -608,12 +608,12 @@ bool BIImport::runOnModule(Module& M)
         CleanUnused(m_SizeModule.get());
         if (Error err = m_SizeModule->materializeAll())
         {
-            assert(0 && "materializeAll failed for size_t builtin module");
+            IGC_ASSERT(false && "materializeAll failed for size_t builtin module");
         }
 
         if (ld.linkInModule(std::move(m_SizeModule)))
         {
-            assert(0 && "Error linking size_t builtin module");
+            IGC_ASSERT(false && "Error linking size_t builtin module");
         }
     }
 

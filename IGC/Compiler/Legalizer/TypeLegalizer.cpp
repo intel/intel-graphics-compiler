@@ -24,8 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-// vim:ts=2:sw=2:fdm=marker:et:
-
 #define DEBUG_TYPE "type-legalizer"
 #include "TypeLegalizerPass.h"
 #include "TypeLegalizer.h"
@@ -41,8 +39,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
+
 using namespace llvm;
 using namespace IGC::Legalizer;
 
@@ -75,7 +74,7 @@ IGC_INITIALIZE_PASS_END(TypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS
 bool TypeLegalizer::runOnFunction(Function & F) {
     DL = &F.getParent()->getDataLayout();
 
-    assert(DL->isLittleEndian() && "ONLY SUPPORT LITTLE ENDIANNESS!");
+    IGC_ASSERT(DL->isLittleEndian() && "ONLY SUPPORT LITTLE ENDIANNESS!");
 
     BuilderType TheBuilder(F.getContext(), TargetFolder(*DL));
     IRB = &TheBuilder;
@@ -215,13 +214,13 @@ TypeLegalizer::getLegalizedTypes(Type* Ty) {
 }
 
 TypeSeq* TypeLegalizer::getPromotedTypeSeq(Type* Ty) {
-    assert(Ty->isIntegerTy());
-    assert(getTypeLegalizeAction(Ty) == Promote);
+    IGC_ASSERT(Ty->isIntegerTy());
+    IGC_ASSERT(getTypeLegalizeAction(Ty) == Promote);
 
     TypeMapTy::iterator TMI; bool New;
     std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New) {
-        assert(TMI->second.size() == 1);
+        IGC_ASSERT(TMI->second.size() == 1);
         return &TMI->second;
     }
 
@@ -233,8 +232,8 @@ TypeSeq* TypeLegalizer::getPromotedTypeSeq(Type* Ty) {
 }
 
 TypeSeq* TypeLegalizer::getExpandedTypeSeq(Type* Ty) {
-    assert(Ty->isIntegerTy());
-    assert(getTypeLegalizeAction(Ty) == Expand);
+    IGC_ASSERT(Ty->isIntegerTy());
+    IGC_ASSERT(getTypeLegalizeAction(Ty) == Expand);
 
     TypeMapTy::iterator TMI; bool New;
     std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
@@ -245,7 +244,7 @@ TypeSeq* TypeLegalizer::getExpandedTypeSeq(Type* Ty) {
     // coding.
     unsigned MaxLegalWidth = 64;
     unsigned Width = getTypeSizeInBits(Ty);
-    assert(MaxLegalWidth < Width);
+    IGC_ASSERT(MaxLegalWidth < Width);
 
     for (; MaxLegalWidth < Width; Width -= MaxLegalWidth)
         TMI->second.push_back(Type::getIntNTy(Ty->getContext(), MaxLegalWidth));
@@ -255,13 +254,13 @@ TypeSeq* TypeLegalizer::getExpandedTypeSeq(Type* Ty) {
 }
 
 TypeSeq* TypeLegalizer::getSoftenedTypeSeq(Type* Ty) {
-    assert(Ty->isFloatingPointTy());
-    assert(getTypeLegalizeAction(Ty) == SoftenFloat);
+    IGC_ASSERT(Ty->isFloatingPointTy());
+    IGC_ASSERT(getTypeLegalizeAction(Ty) == SoftenFloat);
 
     TypeMapTy::iterator TMI; bool New;
     std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New) {
-        assert(TMI->second.size() == 1);
+        IGC_ASSERT(TMI->second.size() == 1);
         return &TMI->second;
     }
 
@@ -283,13 +282,13 @@ TypeSeq* TypeLegalizer::getSoftenedTypeSeq(Type* Ty) {
 }
 
 TypeSeq* TypeLegalizer::getScalarizedTypeSeq(Type* Ty) {
-    assert(Ty->isVectorTy());
-    assert(getTypeLegalizeAction(Ty) == Scalarize);
+    IGC_ASSERT(Ty->isVectorTy());
+    IGC_ASSERT(getTypeLegalizeAction(Ty) == Scalarize);
 
     TypeMapTy::iterator TMI; bool New;
     std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New) {
-        assert(TMI->second.size() == Ty->getVectorNumElements());
+        IGC_ASSERT(TMI->second.size() == Ty->getVectorNumElements());
         return &TMI->second;
     }
 
@@ -301,8 +300,8 @@ TypeSeq* TypeLegalizer::getScalarizedTypeSeq(Type* Ty) {
 }
 
 TypeSeq* TypeLegalizer::getElementizedTypeSeq(Type* Ty) {
-    assert(Ty->isAggregateType());
-    assert(getTypeLegalizeAction(Ty) == Elementize);
+    IGC_ASSERT(Ty->isAggregateType());
+    IGC_ASSERT(getTypeLegalizeAction(Ty) == Elementize);
 
     TypeMapTy::iterator TMI; bool New;
     std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
@@ -328,7 +327,7 @@ TypeSeq* TypeLegalizer::getElementizedTypeSeq(Type* Ty) {
 
 std::pair<ValueSeq*, LegalizeAction>
 TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
-    assert(!V->getType()->isVoidTy());
+    IGC_ASSERT(!V->getType()->isVoidTy());
 
     LegalizeAction Act = getTypeLegalizeAction(V->getType());
 
@@ -355,7 +354,7 @@ TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
 
     switch (Act) {
     case Legal:
-        assert(false && "LEGAL CONSTANT IS BEING LEGALIZED!");
+        IGC_ASSERT(false && "LEGAL CONSTANT IS BEING LEGALIZED!");
         break;
     case Promote:
         promoteConstant(&VMI->second, TySeq, C, isSigned);
@@ -380,11 +379,11 @@ TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
 void
 TypeLegalizer::setLegalizedValues(Value* OVal,
     ArrayRef<Value*> LegalizedVals) {
-    assert(!OVal->getType()->isVoidTy());
+    IGC_ASSERT(!OVal->getType()->isVoidTy());
 
     ValueMapTy::iterator VMI; bool New;
     std::tie(VMI, New) = ValueMap.insert(std::make_pair(OVal, ValueSeq()));
-    assert(New);
+    IGC_ASSERT(New);
 
     for (auto* V : LegalizedVals)
         VMI->second.push_back(V);
@@ -392,7 +391,7 @@ TypeLegalizer::setLegalizedValues(Value* OVal,
 
 bool
 TypeLegalizer::hasLegalizedValues(Value* V) const {
-    assert(!V->getType()->isVoidTy());
+    IGC_ASSERT(!V->getType()->isVoidTy());
 
     LegalizeAction Act = getTypeLegalizeAction(V->getType());
 
@@ -404,7 +403,7 @@ TypeLegalizer::hasLegalizedValues(Value* V) const {
 
 void TypeLegalizer::promoteConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
     Constant* C, bool isSigned) {
-    assert(TySeq->size() == 1);
+    IGC_ASSERT(TySeq->size() == 1);
 
     Type* PromotedTy = TySeq->front();
 
@@ -474,7 +473,7 @@ Value* TypeLegalizer::scalarizeArgument(Argument* Arg,
     Value* RetVal =
         IRB->CreateExtractElement(Arg, IRB->getInt32(Part),
             Twine(Arg->getName(), getSuffix(Scalarize)) + Twine(Part));
-    assert(RetVal->getType() == ScalarizedTy);
+    IGC_ASSERT(RetVal->getType() == ScalarizedTy);
     return RetVal;
 }
 
@@ -483,7 +482,7 @@ Value* TypeLegalizer::elementizeArgument(Argument* Arg,
     Value* RetVal =
         IRB->CreateExtractValue(Arg, Part,
             Twine(Arg->getName(), getSuffix(Elementize)) + Twine(Part));
-    assert(RetVal->getType() == ElementizedTy);
+    IGC_ASSERT(RetVal->getType() == ElementizedTy);
     return RetVal;
 }
 
@@ -508,7 +507,7 @@ bool TypeLegalizer::legalizeArguments(Function& F) {
         case Legal:
             continue;
         case Promote: {
-            assert(TySeq->size() == 1);
+            IGC_ASSERT(TySeq->size() == 1);
             Type* PromotedTy = TySeq->front();
             setLegalizedValues(Arg, promoteArgument(Arg, PromotedTy));
             break;
@@ -522,7 +521,7 @@ bool TypeLegalizer::legalizeArguments(Function& F) {
             break;
         }
         case SoftenFloat: {
-            assert(TySeq->size() == 1);
+            IGC_ASSERT(TySeq->size() == 1);
             Type* SoftenedTy = TySeq->front();
             setLegalizedValues(Arg, softenArgument(Arg, SoftenedTy));
             break;
@@ -567,7 +566,7 @@ bool TypeLegalizer::preparePHIs(Function& F) {
                 continue;
             case Promote:
             case SoftenFloat: {
-                assert(TySeq->size() == 1);
+                IGC_ASSERT(TySeq->size() == 1);
                 Type* PromotedTy = TySeq->front();
                 StringRef Name = PN->getName();
                 PHINode* Promoted =
@@ -609,16 +608,16 @@ bool TypeLegalizer::preparePHIs(Function& F) {
 bool TypeLegalizer::populatePromotedPHI(PHINode* PN) {
     ValueSeq* ValSeq;
     std::tie(ValSeq, std::ignore) = getLegalizedValues(PN);
-    assert(ValSeq->size() == 1);
-    assert(isa<PHINode>(ValSeq->front()));
+    IGC_ASSERT(ValSeq->size() == 1);
+    IGC_ASSERT(isa<PHINode>(ValSeq->front()));
 
     PHINode* Promoted = cast<PHINode>(ValSeq->front());
-    assert(Promoted->getNumIncomingValues() == 0);
+    IGC_ASSERT(Promoted->getNumIncomingValues() == 0);
 
     for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
         std::tie(ValSeq, std::ignore) =
             getLegalizedValues(PN->getIncomingValue(i));
-        assert(ValSeq->size() == 1);
+        IGC_ASSERT(ValSeq->size() == 1);
 
         Promoted->addIncoming(ValSeq->front(), PN->getIncomingBlock(i));
     }
@@ -638,13 +637,13 @@ bool TypeLegalizer::populateExpandedPHI(PHINode* PN) {
         Value* O = OI->get();
         ValueSeq* ValSeq;
         std::tie(ValSeq, std::ignore) = getLegalizedValues(O);
-        assert(ValSeq->size() == ExpandedCopy.size());
+        IGC_ASSERT(ValSeq->size() == ExpandedCopy.size());
 
         BasicBlock* BB = PN->getIncomingBlock(*OI);
 
         for (unsigned i = 0, e = ExpandedCopy.size(); i != e; ++i) {
             PHINode* ExpandedPN = cast<PHINode>((ExpandedCopy)[i]);
-            assert(ExpandedPN->getNumIncomingValues() < PN->getNumIncomingValues());
+            IGC_ASSERT(ExpandedPN->getNumIncomingValues() < PN->getNumIncomingValues());
             ExpandedPN->addIncoming((*ValSeq)[i], BB);
         }
     }
@@ -760,7 +759,7 @@ bool TypeLegalizer::legalizeTerminators(Function& F) {
 
     for (auto& BB : F) {
         IGCLLVM::TerminatorInst* TI = BB.getTerminator();
-        assert(TI);
+        IGC_ASSERT(TI);
 
         ReturnInst* RI = dyn_cast<ReturnInst>(TI);
         if (!RI)

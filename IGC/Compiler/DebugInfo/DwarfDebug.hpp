@@ -38,11 +38,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "llvm/Config/llvm-config.h"
-
 #include "Compiler/DebugInfo/DIE.hpp"
 #include "Compiler/DebugInfo/LexicalScopes.hpp"
 #include "Compiler/DebugInfo/Version.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Instruction.h"
 #include "llvm/ADT/DenseMap.h"
@@ -53,11 +51,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Allocator.h"
 #include "llvmWrapper/IR/DebugInfoMetadata.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/DebugInfo/VISAModule.hpp"
 #include "Compiler/DebugInfo/LexicalScopes.hpp"
-
 #include <set>
+#include "Probe/Assertion.h"
 
 namespace llvm
 {
@@ -196,7 +193,7 @@ namespace IGC
 #if LLVM_3_5
         bool variableHasComplexAddress()   const
         {
-            assert(Var.isVariable() && "Invalid complex DbgVariable!");
+            IGC_ASSERT(Var.isVariable() && "Invalid complex DbgVariable!");
             return Var.hasComplexAddress();
         }
 #endif
@@ -204,7 +201,7 @@ namespace IGC
 #if LLVM_3_5
         unsigned getNumAddrElements()      const
         {
-            assert(Var.isVariable() && "Invalid complex DbgVariable!");
+            IGC_ASSERT(Var.isVariable() && "Invalid complex DbgVariable!");
             return Var.getNumAddrElements();
         }
         uint64_t getAddrElement(unsigned i) const
@@ -496,7 +493,7 @@ namespace IGC
         llvm::MCSymbol* getLabelBeforeInsn(const llvm::Instruction* MI)
         {
             llvm::MCSymbol* Label = LabelsBeforeInsn.lookup(MI);
-            assert(Label && "Didn't insert label before instruction");
+            IGC_ASSERT(Label && "Didn't insert label before instruction");
             return Label;
         }
 

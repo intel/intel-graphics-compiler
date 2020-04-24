@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
@@ -36,10 +35,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Transforms/Utils/Local.h>
-
 #include <llvmWrapper/Support/Alignment.h>
-
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -547,7 +545,7 @@ void VectorPreProcess::createSplitVectorTypes(
         }
     }
 
-    assert((SplitSize % ebytes) == 0 &&
+    IGC_ASSERT((SplitSize % ebytes) == 0 &&
         "Internal Error: Wrong split size!");
 
     // the number of elements of a new vector
@@ -604,7 +602,7 @@ bool VectorPreProcess::splitStore(
     Type* ETy = VTy->getElementType();
     uint32_t nelts = int_cast<uint32_t>(VTy->getNumElements());
 
-    assert(nelts <= VP_MAX_VECTOR_SIZE && "Vector length is too big!");
+    IGC_ASSERT(nelts <= VP_MAX_VECTOR_SIZE && "Vector length is too big!");
 
     Type* tys[6];
     uint32_t tycnts[6];
@@ -665,7 +663,7 @@ bool VectorPreProcess::splitStore(
                         splitScalars.push_back(aBuilder.CreateExtractElement(splitInst, j));
                     }
                 }
-                assert(splitScalars.size() < VP_MAX_VECTOR_SIZE);
+                IGC_ASSERT(splitScalars.size() < VP_MAX_VECTOR_SIZE);
                 for (uint32_t i = 0; i < splitScalars.size(); i++)
                 {
                     scalars[i] = splitScalars[i];
@@ -820,7 +818,7 @@ bool VectorPreProcess::splitLoad(
         if (svals[0]->getType()->getPrimitiveSizeInBits() < ETy->getPrimitiveSizeInBits())
         {
             uint32_t scalarsPerElement = (unsigned int)ETy->getPrimitiveSizeInBits() / (unsigned int)svals[0]->getType()->getPrimitiveSizeInBits();
-            assert(svals.size() % scalarsPerElement == 0 && scalarsPerElement > 1);
+            IGC_ASSERT(svals.size() % scalarsPerElement == 0 && scalarsPerElement > 1);
             ValVector mergedScalars;
             IRBuilder<> builder(LI->getParent());
             Instruction* nextInst = LI->getNextNode();
@@ -858,7 +856,7 @@ bool VectorPreProcess::splitLoadStore(
 {
     Optional<AbstractLoadInst> ALI = AbstractLoadInst::get(Inst);
     Optional<AbstractStoreInst> ASI = AbstractStoreInst::get(Inst);
-    assert((ALI || ASI) && "Inst should be either load or store");
+    IGC_ASSERT((ALI || ASI) && "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
     VectorType* VTy = dyn_cast<VectorType>(Ty);
     if (!VTy)
@@ -916,10 +914,10 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
     AbstractLoadInst* ALI = optionalALI ? optionalALI.getPointer() : nullptr;
     Optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst);
     AbstractStoreInst* ASI = optionalASI ? optionalASI.getPointer() : nullptr;
-    assert((optionalALI || optionalASI) && "Inst should be either load or store");
+    IGC_ASSERT((optionalALI || optionalASI) && "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
     VectorType* VTy = dyn_cast<VectorType>(Ty);
-    assert(VTy && VTy->getNumElements() == 3 &&
+    IGC_ASSERT(VTy && VTy->getNumElements() == 3 &&
         "Inst should be a 3-element vector load/store!");
 
     Type* eTy = VTy->getElementType();
@@ -1230,7 +1228,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         }
 
         // All uses are constant EEI.
-        assert(ConstEEIUses.size() == Inst->getNumUses() && "out of sync");
+        IGC_ASSERT(ConstEEIUses.size() == Inst->getNumUses() && "out of sync");
 
         // FIXME: this is to WA an issue that splitLoadStore does not split
         // vectors of size 5, 6, 7.
@@ -1264,7 +1262,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
             EEI->replaceAllUsesWith(NewEEI[Idx]);
             EEI->eraseFromParent();
         }
-        assert(Inst->use_empty() && "out of sync");
+        IGC_ASSERT(Inst->use_empty() && "out of sync");
         Inst->eraseFromParent();
         return NewLI;
     }
@@ -1282,7 +1280,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
     // %8 = insertelement <3 x float> %3, float 1.000000e+00, i32 2
     // store <3 x float> %8, <3 x float>* %5, align 16
     //
-    assert(isAbstractStoreInst(Inst));
+    IGC_ASSERT(isAbstractStoreInst(Inst));
     Optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst);
     AbstractStoreInst& ASI = optionalASI.getValue();
     Value* Val = ASI.getValueOperand();

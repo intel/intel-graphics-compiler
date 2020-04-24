@@ -35,7 +35,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "Compiler/CodeGenPublic.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
@@ -44,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/helper.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/Types.hpp"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -101,7 +101,7 @@ namespace IGC
         bool DoesAllowSplit(const llvm::Instruction* inst)
         {
             const llvm::GenIntrinsicInst* intrinsicInst = llvm::dyn_cast<llvm::GenIntrinsicInst>(inst);
-            assert(intrinsicInst);
+            IGC_ASSERT(intrinsicInst);
             if (llvm::dyn_cast<llvm::SampleIntrinsic>(inst))
             {
                 return true;

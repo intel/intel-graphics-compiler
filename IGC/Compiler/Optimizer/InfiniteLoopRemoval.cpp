@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "Compiler/IGCPassSupport.h"
-
 #include "Compiler/Optimizer/InfiniteLoopRemoval.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -76,11 +76,11 @@ namespace IGC
                 {
                     llvm::BasicBlock* predBB;
                     predBB = loop->getLoopPredecessor();
-                    assert(predBB != nullptr);
+                    IGC_ASSERT(predBB != nullptr);
 
                     BranchInst* branch;
                     branch = llvm::cast<BranchInst>(predBB->getTerminator());
-                    assert(branch != nullptr);
+                    IGC_ASSERT(branch != nullptr);
 
                     for (unsigned i = 0; i < branch->getNumSuccessors(); i++)
                     {

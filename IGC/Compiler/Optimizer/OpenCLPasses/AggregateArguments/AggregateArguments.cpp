@@ -26,10 +26,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/Optimizer/OpenCLPasses/AggregateArguments/AggregateArguments.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -110,7 +110,7 @@ bool AggregateArgumentsAnalysis::runOnFunction(Function& F)
         m_argList.clear();
 
         Type* type = arg->getType()->getPointerElementType();
-        assert(m_pDL->getStructLayout(cast<StructType>(type))->getSizeInBytes() < UINT_MAX);
+        IGC_ASSERT(m_pDL->getStructLayout(cast<StructType>(type))->getSizeInBytes() < UINT_MAX);
         addImplictArgs(type, 0);
         ImplicitArgs::addStructArgs(F, arg, m_argList, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
         changed = true;
@@ -129,13 +129,13 @@ static uint64_t getNumElements(SequentialType* type)
     {
         return vectorType->getNumElements();
     }
-    assert(false && "expected array or vector");
+    IGC_ASSERT(false && "expected array or vector");
     return 0;
 }
 
 void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaOffset)
 {
-    assert(baseAllocaOffset < UINT_MAX);
+    IGC_ASSERT(baseAllocaOffset < UINT_MAX);
     // Structs and Unions are StructTypes
     if (StructType * structType = dyn_cast<StructType>(type))
     {
@@ -157,7 +157,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
     {
         SequentialType* seqType = cast<SequentialType>(type);
         uint64_t numElements = getNumElements(seqType);
-        assert(numElements < UINT_MAX);
+        IGC_ASSERT(numElements < UINT_MAX);
 
         Type* elementType = seqType->getElementType();
         uint64_t elementSize = m_pDL->getTypeStoreSize(elementType);
@@ -203,7 +203,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
             implicitArgType = ImplicitArg::CONSTANT_REG_QWORD;
             break;
         default:
-            assert(0 && "unknown primitve type");
+            IGC_ASSERT(false && "unknown primitve type");
             break;
         };
 

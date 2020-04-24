@@ -36,11 +36,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "llvm/Config/llvm-config.h"
-
 #define DEBUG_TYPE "lexicalscopes"
 #include "Compiler/DebugInfo/LexicalScopes.hpp"
 #include "Compiler/DebugInfo/VISAModule.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/DebugInfo.h"
@@ -51,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -203,8 +202,8 @@ LexicalScopes::getOrCreateRegularScope(const DILocalScope* Scope) {
             false)).first;
 
     if (!Parent) {
-        //assert(cast<DISubprogram>(Scope)->describes(VisaM->GetEntryFunction()));
-        //assert(!CurrentFnLexicalScope);
+        //IGC_ASSERT(cast<DISubprogram>(Scope)->describes(VisaM->GetEntryFunction()));
+        //IGC_ASSERT(!CurrentFnLexicalScope);
         CurrentFnLexicalScope = &I->second;
     }
 
@@ -237,7 +236,7 @@ LexicalScopes::getOrCreateInlinedScope(const DILocalScope* Scope,
 /// getOrCreateAbstractScope - Find or create an abstract lexical scope.
 LexicalScope*
 LexicalScopes::getOrCreateAbstractScope(const DILocalScope* Scope) {
-    assert(Scope && "Invalid Scope encoding!");
+    IGC_ASSERT(Scope && "Invalid Scope encoding!");
 
     if (auto * File = dyn_cast<DILexicalBlockFile>(Scope))
         Scope = File->getScope();
@@ -261,7 +260,7 @@ LexicalScopes::getOrCreateAbstractScope(const DILocalScope* Scope) {
 
 /// constructScopeNest
 void LexicalScopes::constructScopeNest(LexicalScope* Scope) {
-    assert(Scope && "Unable to calculate scope dominance graph!");
+    IGC_ASSERT(Scope && "Unable to calculate scope dominance graph!");
     SmallVector<LexicalScope*, 4> WorkStack;
     WorkStack.push_back(Scope);
     unsigned Counter = 0;
@@ -300,7 +299,7 @@ assignInstructionRanges(SmallVectorImpl<InsnRange>& MIRanges,
     {
         const InsnRange& R = *RI;
         LexicalScope* S = MI2ScopeMap.lookup(R.first);
-        assert(S && "Lost LexicalScope for a machine instruction!");
+        IGC_ASSERT(S && "Lost LexicalScope for a machine instruction!");
         if (PrevLexicalScope && !PrevLexicalScope->dominates(S))
             PrevLexicalScope->closeInsnRange(S);
         S->openInsnRange(R.first);

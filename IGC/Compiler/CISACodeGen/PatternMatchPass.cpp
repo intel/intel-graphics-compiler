@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/DeSSA.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "common/igc_regkeys.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/Dominators.h>
@@ -40,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -256,7 +256,7 @@ namespace IGC
         // Find the common dominator as CSE.
         if (BasicBlock * BB = ConstantPlacement.lookup(C))
             LCA = DT->findNearestCommonDominator(LCA, BB);
-        assert(LCA && "LCA always exists for reachable BBs within a function!");
+        IGC_ASSERT(LCA && "LCA always exists for reachable BBs within a function!");
         ConstantPlacement[C] = LCA;
     }
 
@@ -285,7 +285,7 @@ namespace IGC
             while (!ValList.empty()) {
                 Value* V = ValList.back();
                 ValList.pop_back();
-                assert(isUniform(V) && V->getType()->isIntegerTy(1));
+                IGC_ASSERT(isUniform(V) && V->getType()->isIntegerTy(1));
 
                 // Check uses.
                 for (auto UI = V->user_begin(), UE = V->user_end(); UI != UE; ++UI) {
@@ -297,15 +297,15 @@ namespace IGC
                 // Check defs.
                 Vals.insert(V);
                 if (auto CI = dyn_cast<CmpInst>(V)) {
-                    assert(isUniform(CI->getOperand(0)));
-                    assert(isUniform(CI->getOperand(1)));
+                    IGC_ASSERT(isUniform(CI->getOperand(0)));
+                    IGC_ASSERT(isUniform(CI->getOperand(1)));
                     if (CI->getOperand(0)->getType()->getScalarSizeInBits() == 1)
                         goto FAIL;
                     continue;
                 }
                 else if (auto BI = dyn_cast<BinaryOperator>(V)) {
-                    assert(isUniform(BI->getOperand(0)));
-                    assert(isUniform(BI->getOperand(1)));
+                    IGC_ASSERT(isUniform(BI->getOperand(0)));
+                    IGC_ASSERT(isUniform(BI->getOperand(1)));
                     if (isa<Instruction>(BI->getOperand(0)))
                         ValList.push_back(BI->getOperand(0));
                     if (isa<Instruction>(BI->getOperand(1)))
@@ -333,7 +333,7 @@ namespace IGC
         llvm::BasicBlock::InstListType& instructionList = bb->getInstList();
         llvm::BasicBlock::InstListType::reverse_iterator I, E;
         auto it = m_blockMap.find(bb);
-        assert(it != m_blockMap.end());
+        IGC_ASSERT(it != m_blockMap.end());
         SBasicBlock* block = it->second;
 
         // loop through instructions bottom up
@@ -483,7 +483,7 @@ namespace IGC
         using namespace llvm::PatternMatch; // Scoped using declaration.
 
         unsigned Opcode = I->getOpcode();
-        assert(Opcode == Instruction::FPToSI || Opcode == Instruction::FPToUI);
+        IGC_ASSERT(Opcode == Instruction::FPToSI || Opcode == Instruction::FPToUI);
 
         unsigned BitWidth = I->getDestTy()->getIntegerBitWidth();
         APFloat FMin(I->getSrcTy()->getFltSemantics());
@@ -671,7 +671,7 @@ namespace IGC
         }
 
         // Match!
-        assert(Opcode == Instruction::FPToSI || Opcode == Instruction::FPToUI);
+        IGC_ASSERT(Opcode == Instruction::FPToSI || Opcode == Instruction::FPToUI);
 
         struct FPToIntegerWithSaturationPattern : public Pattern {
             bool isUnsigned, needBitCast;
@@ -799,12 +799,12 @@ namespace IGC
 
     void CodeGenPatternMatch::visitFPToSIInst(llvm::FPToSIInst& I) {
         bool match = MatchFPToIntegerWithSaturation(I) || MatchModifier(I);
-        assert(match && "Pattern match Failed\n");
+        IGC_ASSERT(match && "Pattern match Failed\n");
     }
 
     void CodeGenPatternMatch::visitFPToUIInst(llvm::FPToUIInst& I) {
         bool match = MatchFPToIntegerWithSaturation(I) || MatchModifier(I);
-        assert(match && "Pattern match Failed\n");
+        IGC_ASSERT(match && "Pattern match Failed\n");
     }
 
     bool CodeGenPatternMatch::MatchSIToFPZExt(llvm::SIToFPInst* S2FI) {
@@ -876,7 +876,7 @@ namespace IGC
 
     void CodeGenPatternMatch::HandleSubspanUse(llvm::Value* v)
     {
-        assert(m_root != nullptr);
+        IGC_ASSERT(m_root != nullptr);
         if (m_ctx->type != ShaderType::PIXEL_SHADER)
         {
             return;
@@ -952,7 +952,7 @@ namespace IGC
             MatchMinMax(I) ||
             /*MatchPredicate(I)   ||*/
             MatchSelectModifier(I);
-        assert(match && "Pattern Match failed\n");
+        IGC_ASSERT(match && "Pattern Match failed\n");
     }
 
     void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator& I)
@@ -1027,17 +1027,17 @@ namespace IGC
                 MatchLogicAlu(I);
             break;
         default:
-            assert(0 && "unknown binary instruction");
+            IGC_ASSERT(false && "unknown binary instruction");
             break;
         }
-        assert(match == true);
+        IGC_ASSERT(match == true);
     }
 
     void CodeGenPatternMatch::visitCmpInst(llvm::CmpInst& I)
     {
         bool match = MatchCondModifier(I) ||
             MatchModifier(I);
-        assert(match);
+        IGC_ASSERT(match);
     }
 
     void CodeGenPatternMatch::visitBranchInst(llvm::BranchInst& I)
@@ -1131,7 +1131,7 @@ namespace IGC
                 // no pattern for the rest of the intrinsics
                 break;
             }
-            assert(match && "no pattern found for GenISA intrinsic");
+            IGC_ASSERT(match && "no pattern found for GenISA intrinsic");
         }
         else
         {
@@ -1156,7 +1156,7 @@ namespace IGC
                 match = MatchSingleInstruction(I);
             }
         }
-        assert(match && "no match for this call");
+        IGC_ASSERT(match && "no match for this call");
     }
 
     void CodeGenPatternMatch::visitUnaryInstruction(llvm::UnaryInstruction& I)
@@ -1170,7 +1170,7 @@ namespace IGC
             match = MatchSingleInstruction(I);
             break;
         }
-        assert(match);
+        IGC_ASSERT(match);
     }
 
     void CodeGenPatternMatch::visitIntrinsicInst(llvm::IntrinsicInst& I)
@@ -1211,7 +1211,7 @@ namespace IGC
             // no pattern for the rest of the intrinsics
             break;
         }
-        assert(match && "no pattern found");
+        IGC_ASSERT(match && "no pattern found");
     }
 
     void CodeGenPatternMatch::visitStoreInst(StoreInst& I)
@@ -1227,7 +1227,7 @@ namespace IGC
             match = MatchLoadStorePointer(I, *(I.getPointerOperand())) ||
                 MatchSingleInstruction(I);
         }
-        assert(match);
+        IGC_ASSERT(match);
     }
 
     void CodeGenPatternMatch::visitLoadInst(LoadInst& I)
@@ -1243,7 +1243,7 @@ namespace IGC
             match = MatchLoadStorePointer(I, *(I.getPointerOperand())) ||
                 MatchSingleInstruction(I);
         }
-        assert(match);
+        IGC_ASSERT(match);
     }
 
     void CodeGenPatternMatch::visitInstruction(llvm::Instruction& I)
@@ -1341,7 +1341,7 @@ namespace IGC
     {
         if (!MatchCopyToStruct(&I))
         {
-            assert(0 && "Unknown `insertvalue` instruction!");
+            IGC_ASSERT(false && "Unknown `insertvalue` instruction!");
         }
     }
 
@@ -1364,7 +1364,7 @@ namespace IGC
             matchPtrToPair(&I) ||
             MatchCopyFromStruct(&I);
 
-        assert(Match && "Unknown `extractvalue` instruction!");
+        IGC_ASSERT(Match && "Unknown `extractvalue` instruction!");
     }
 
     bool CodeGenPatternMatch::MatchCopyToStruct(InsertValueInst* II)
@@ -1389,7 +1389,7 @@ namespace IGC
             else
                 break;
         }
-        assert(baseInst);
+        IGC_ASSERT(baseInst);
 
         auto Iter = StructValueInsertMap.find(baseInst);
         if (Iter != StructValueInsertMap.end())
@@ -1690,7 +1690,7 @@ namespace IGC
                 pass->Frc(source, modifier);
             }
         };
-        assert(I.getOpcode() == Instruction::FSub);
+        IGC_ASSERT(I.getOpcode() == Instruction::FSub);
         llvm::Value* source0 = I.getOperand(0);
         llvm::IntrinsicInst* source1 = llvm::dyn_cast<llvm::IntrinsicInst>(I.getOperand(1));
         bool found = false;
@@ -1838,7 +1838,7 @@ namespace IGC
             }
         }
 
-        assert(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
+        IGC_ASSERT(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
         for (uint iAdd = 0; iAdd < 2 && !found; iAdd++)
         {
             Value* src = I.getOperand(iAdd);
@@ -1962,7 +1962,7 @@ namespace IGC
             }
         };
 
-        assert(I.getOpcode() == Instruction::FAdd);
+        IGC_ASSERT(I.getOpcode() == Instruction::FAdd);
 
         if (IGC_IS_FLAG_ENABLED(DisableMatchSimpleAdd))
         {
@@ -2090,7 +2090,7 @@ namespace IGC
         llvm::Value* sources[3];
         e_modifier src_mod[3];
 
-        assert(I.getOpcode() == Instruction::FAdd ||
+        IGC_ASSERT(I.getOpcode() == Instruction::FAdd ||
             I.getOpcode() == Instruction::FSub ||
             I.getOpcode() == Instruction::Add ||
             I.getOpcode() == Instruction::Sub);
@@ -2223,7 +2223,7 @@ namespace IGC
                     pass->emitSimdBlockWrite(inst, offset);
                     break;
                 default:
-                    assert(false && "unexpected intrinsic");
+                    IGC_ASSERT(false && "unexpected intrinsic");
                 }
             }
         };
@@ -2269,7 +2269,7 @@ namespace IGC
 
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                assert(m_inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBRead ||
+                IGC_ASSERT(m_inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBRead ||
                     m_inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBReadOutput);
                 pass->emitURBReadCommon(m_inst, m_globalOffset, m_perSlotOffset);
             }
@@ -2307,7 +2307,7 @@ namespace IGC
                 const bool isConstant1 = llvm::isa<llvm::ConstantInt>(inst->getOperand(1));
                 if (isConstant0 || isConstant1)
                 {
-                    assert(!(isConstant0 && isConstant1) &&
+                    IGC_ASSERT(!(isConstant0 && isConstant1) &&
                         "Both operands are immediate - constants should be folded elsewhere.");
 
                     if (hasVertexIndexAsArg0)
@@ -2414,7 +2414,7 @@ namespace IGC
             return false;
         }
 
-        assert(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
+        IGC_ASSERT(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
 
         bool startPatternIsAdd = false;
         if (I.getOpcode() == Instruction::FAdd)
@@ -2720,7 +2720,7 @@ namespace IGC
             }
         };
 
-        assert(I.getOpcode() == llvm::Instruction::Mul && "Mul instruction is expected!");
+        IGC_ASSERT(I.getOpcode() == llvm::Instruction::Mul && "Mul instruction is expected!");
 
         if (!I.getType()->isIntegerTy(64))
             return false;
@@ -2751,7 +2751,7 @@ namespace IGC
         else {
             // Bailout if it's unknown that LHS have less significant bits than the
             // product.
-            // NOTE we don't assert the case where LHS is an constant to prevent
+            // NOTE we don't assertion fail the case where LHS is an constant to prevent
             // the assertion in O0 mode. Otherwise, we expect there's at most 1
             // constant operand.
             return false;
@@ -2841,7 +2841,7 @@ namespace IGC
         }
 
         unsigned opc = I.getOpcode();
-        assert((opc == Instruction::Mul ||
+        IGC_ASSERT((opc == Instruction::Mul ||
             opc == Instruction::Add ||
             opc == Instruction::Sub) &&
             "Mul instruction is expected!");
@@ -3069,7 +3069,7 @@ namespace IGC
             llvm::Instruction* inst;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                assert(modifier.sat == false && modifier.flag == nullptr);
+                IGC_ASSERT(modifier.sat == false && modifier.flag == nullptr);
                 pass->EmitNoModifier(inst);
             }
         };
@@ -3104,7 +3104,7 @@ namespace IGC
 
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                assert(modifier.sat == false && modifier.flag == nullptr);
+                IGC_ASSERT(modifier.sat == false && modifier.flag == nullptr);
                 if (m_IsNeeded)
                 {
                     pass->emitCanonicalize(m_pInst);
@@ -3112,7 +3112,7 @@ namespace IGC
             }
         };
 
-        assert(I.getNumOperands() == 1);
+        IGC_ASSERT(I.getNumOperands() == 1);
         bool isNeeded = true;
 
         // FAdd, FSub, FMul, FDiv instructions flush subnormals to zero.
@@ -3209,7 +3209,7 @@ namespace IGC
                 if (inst->hasOneUse() && SupportsSaturate(inst))
                 {
                     satPattern->pattern = Match(*inst);
-                    assert(satPattern->pattern && "Failed to match pattern");
+                    IGC_ASSERT(satPattern->pattern && "Failed to match pattern");
                     match = true;
                 }
             }
@@ -3276,7 +3276,7 @@ namespace IGC
             pattern->invertFlag = invertFlag;
             pattern->patternNotPredicated = Match(*source1);
             pattern->patternPredicated = Match(*source0);
-            assert(pattern->patternNotPredicated &&
+            IGC_ASSERT(pattern->patternNotPredicated &&
                 pattern->patternPredicated && "Failed to match pattern");
             AddPattern(pattern);
         }
@@ -3430,7 +3430,7 @@ namespace IGC
             CmpInst* cmp;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                assert(modifier.flag == nullptr && modifier.sat == false);
+                IGC_ASSERT(modifier.flag == nullptr && modifier.sat == false);
                 pass->emitAluConditionMod(pattern, alu, cmp);
             }
         };
@@ -3444,7 +3444,7 @@ namespace IGC
                 {
                     CondModifierPattern* pattern = new (m_allocator) CondModifierPattern();
                     pattern->pattern = Match(*alu);
-                    assert(pattern->pattern && "Failed to match pattern");
+                    IGC_ASSERT(pattern->pattern && "Failed to match pattern");
                     pattern->alu = alu;
                     pattern->cmp = &I;
                     AddPattern(pattern);
@@ -3473,7 +3473,7 @@ namespace IGC
             }
         };
 
-        assert(I.getOpcode() == Instruction::Or || I.getOpcode() == Instruction::And);
+        IGC_ASSERT(I.getOpcode() == Instruction::Or || I.getOpcode() == Instruction::And);
         bool found = false;
         if (I.getType()->isIntegerTy(1))
         {
@@ -3551,7 +3551,7 @@ namespace IGC
 
         // Sanity check:
         //   make sure that rotate is supported and "I" is a scalar "or" instruction
-        assert(!I.getType()->isVectorTy() && "Vector type not expected here");
+        IGC_ASSERT(!I.getType()->isVectorTy() && "Vector type not expected here");
 
         uint64_t typeWidth = I.getType()->getScalarSizeInBits();
         Instruction* OrInst = nullptr;
@@ -3576,7 +3576,7 @@ namespace IGC
         }
         else
         {
-            assert(false && "Should be invoked with Or/Trunc instruction");
+            IGC_ASSERT(false && "Should be invoked with Or/Trunc instruction");
         }
 
         // Do rotate only if
@@ -3863,7 +3863,7 @@ namespace IGC
         }
         else
         {
-            assert(false && "Unhandled Dbg intrinsic");
+            IGC_ASSERT(false && "Unhandled Dbg intrinsic");
         }
         AddPattern(pattern);
         return true;
@@ -3892,7 +3892,7 @@ namespace IGC
         llvm::Value* sources[2];
         e_modifier   src_mod[2];
 
-        assert(I.getOpcode() == Instruction::SDiv || I.getOpcode() == Instruction::UDiv || I.getOpcode() == Instruction::AShr);
+        IGC_ASSERT(I.getOpcode() == Instruction::SDiv || I.getOpcode() == Instruction::UDiv || I.getOpcode() == Instruction::AShr);
 
         // We expect 2 for "div" and 1 for "right shift".
         int  expectedVal = (I.getOpcode() == Instruction::SDiv ? 2 : 1);
@@ -3973,7 +3973,7 @@ namespace IGC
     bool CodeGenPatternMatch::MatchWaveShuffleIndex(llvm::GenIntrinsicInst& I)
     {
         llvm::Value* helperLaneMode = I.getOperand(2);
-        assert(helperLaneMode);
+        IGC_ASSERT(helperLaneMode);
         if (int_cast<int>(cast<ConstantInt>(helperLaneMode)->getSExtValue()) == 1)
         {
             //only if helperLaneMode==1, we enable helper lane under some shuffleindex cases (not for all cases).
@@ -4575,7 +4575,7 @@ namespace IGC
     uint CodeGenPatternMatch::GetBlockId(llvm::BasicBlock* block)
     {
         auto it = m_blockMap.find(block);
-        assert(it != m_blockMap.end());
+        IGC_ASSERT(it != m_blockMap.end());
 
         uint blockID = it->second->id;
         return blockID;

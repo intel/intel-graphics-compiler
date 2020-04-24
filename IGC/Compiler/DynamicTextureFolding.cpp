@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "common/secure_mem.h"
 #include "DynamicTextureFolding.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -62,7 +63,7 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
     }
 
     llvm::Value* textureArgValue = cast<SampleIntrinsic>(&I)->getTextureValue();
-    assert(textureArgValue);
+    IGC_ASSERT(textureArgValue);
 
     uint addrSpace = textureArgValue->getType()->getPointerAddressSpace();
     bool directIdx = false;

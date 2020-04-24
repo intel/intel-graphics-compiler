@@ -23,17 +23,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -92,7 +93,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
             {
                 if (ConstantExpr * ptrExpr = dyn_cast<ConstantExpr>(ptrv))
                 {
-                    assert(ptrExpr->getOpcode() == Instruction::IntToPtr);
+                    IGC_ASSERT(ptrExpr->getOpcode() == Instruction::IntToPtr);
                     byteOffset = ptrExpr->getOperand(0);
                 }
                 else if (IntToPtrInst * i2p = dyn_cast<IntToPtrInst>(ptrv))

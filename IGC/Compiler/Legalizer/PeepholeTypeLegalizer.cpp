@@ -33,15 +33,13 @@ FIXME? ::
 4. StoreInst : Need to consider illegal type being stored directly without being cast back to a legal.
 */
 
-
-// vim:ts=2:sw=2:fdm=marker:et:
-
 #define DEBUG_TYPE "type-legalizer"
 #include "PeepholeTypeLegalizer.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
+
 using namespace llvm;
 using namespace IGC::Legalizer;
 
@@ -71,7 +69,7 @@ FunctionPass* createPeepholeTypeLegalizerPass() { return new PeepholeTypeLegaliz
 
 bool PeepholeTypeLegalizer::runOnFunction(Function& F) {
     DL = &F.getParent()->getDataLayout();
-    assert(DL->isLittleEndian() && "ONLY SUPPORT LITTLE ENDIANNESS!");
+    IGC_ASSERT(DL->isLittleEndian() && "ONLY SUPPORT LITTLE ENDIANNESS!");
 
     llvm::IRBuilder<> builder(F.getContext());
     m_builder = &builder;
@@ -145,7 +143,7 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction& I) {
 
 void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction& I)
 {
-    assert(isa<PHINode>(&I));
+    IGC_ASSERT(isa<PHINode>(&I));
 
     unsigned srcWidth = I.getType()->getScalarSizeInBits();
     if (!I.getType()->isIntOrIntVectorTy() || isLegalInteger(srcWidth) || srcWidth == 1) // nothing to legalize
@@ -197,7 +195,7 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction& I)
 
 void PeepholeTypeLegalizer::legalizeExtractElement(Instruction& I)
 {
-    assert(isa<ExtractElementInst>(&I));
+    IGC_ASSERT(isa<ExtractElementInst>(&I));
 
     // Handles ExtractElement from illegal vector types
 
@@ -236,7 +234,7 @@ void PeepholeTypeLegalizer::legalizeExtractElement(Instruction& I)
         for (unsigned i = 0; i < quotient; i++)
         {
             unsigned index = extractIndex * quotient + i;
-            assert(index < quotient * numElements);
+            IGC_ASSERT(index < quotient * numElements);
             Value* extractedVal = m_builder->CreateExtractElement(legalVector, m_builder->getInt32(index));
             extractedVec = m_builder->CreateInsertElement(extractedVec, extractedVal, m_builder->getInt32(i));
         }
@@ -366,25 +364,25 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
                 }
                 else {
                     instSupported = false;
-                    assert(false && "Shift by amount is not a constant.");
+                    IGC_ASSERT(false && "Shift by amount is not a constant.");
                 }
                 break;
             }
             case Instruction::Add:
                 instSupported = false;
-                assert(false && "Add Instruction seen with 'large' illegal int type. Legalization support missing.");
+                IGC_ASSERT(false && "Add Instruction seen with 'large' illegal int type. Legalization support missing.");
                 break;
             case Instruction::ICmp:
                 instSupported = false;
-                assert(false && "ICmp Instruction seen with 'large' illegal int type. Legalization support missing.");
+                IGC_ASSERT(false && "ICmp Instruction seen with 'large' illegal int type. Legalization support missing.");
                 break;
             case Instruction::Select:
                 instSupported = false;
-                assert(false && "Select Instruction seen with 'large' illegal int type. Legalization support missing.");
+                IGC_ASSERT(false && "Select Instruction seen with 'large' illegal int type. Legalization support missing.");
                 break;
             default:
                 printf("Binary Instruction seen with illegal int type. Legalization support missing. Inst opcode:%d", I.getOpcode());
-                assert(false);
+                IGC_ASSERT(false);
             }
             if (instSupported)
                 NewLargeResVecForm = m_builder->CreateInsertElement(NewLargeResVecForm, NewInst, Idx);
@@ -426,7 +424,7 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
             {
                 // Must use sext [note that NewLargeSrc1/2 are zext]
                 int shiftAmt = promoteToInt - Src1width;
-                assert(shiftAmt > 0 && "Should not happen, something wrong!");
+                IGC_ASSERT(shiftAmt > 0 && "Should not happen, something wrong!");
                 Value* V1 = m_builder->CreateShl(NewLargeSrc1, shiftAmt);
                 Value* PromotedSrc1 = m_builder->CreateAShr(V1, shiftAmt);
                 Value* V2 = m_builder->CreateShl(NewLargeSrc2, shiftAmt);
@@ -450,7 +448,7 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
             NewLargeRes = m_builder->CreateLShr(NewLargeSrc1, NewLargeSrc2);
         default:
             printf("Binary Instruction seen with illegal int type. Legalization support missing. Inst opcode:%d", I.getOpcode());
-            assert(false);
+            IGC_ASSERT(false);
         }
 
         if (!NewIllegal)
@@ -624,7 +622,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
         }
         else
         {
-            assert(false && "SExt Instruction seen with illegal int type and BitWidth > 1. Legalization support missing.");
+            IGC_ASSERT(false && "SExt Instruction seen with illegal int type and BitWidth > 1. Legalization support missing.");
         }
     }
     break;
@@ -687,7 +685,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
         // 3. zext the incoming ILLEGAL to byte padded value
         // 4. OR the zext'ed value and masked load.
         // 5. store the OR'ed value into byte padded size pointer
-        assert(false && "Store Instruction seen with illegal int type. Legalization support missing.");
+        IGC_ASSERT(false && "Store Instruction seen with illegal int type. Legalization support missing.");
         break;
     }
 }
@@ -828,7 +826,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         promoteInt(srcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
         if (quotient * promoteToInt != I.getType()->getScalarSizeInBits()) {
-            assert(false && "Target size of zext is also illegal and needs promotion to a legal int or vec of largest legal int. Support for this extra legalization is not implemented yet.");
+            IGC_ASSERT(false && "Target size of zext is also illegal and needs promotion to a legal int or vec of largest legal int. Support for this extra legalization is not implemented yet.");
             return;
         }
 
@@ -869,7 +867,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
     break;
     //default:
     //    printf("Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing. Source Inst opcode:%d", prevInst->getOpcode());
-    //    assert(false);
+    //    IGC_ASSERT(false);
     }
 }
 
@@ -945,6 +943,6 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {
         break;
     }
     /*default:
-        assert(false && "Unhandled source to BitCast Instruction seen with illegal int type. Legalization support missing.");*/
+        IGC_ASSERT(false && "Unhandled source to BitCast Instruction seen with illegal int type. Legalization support missing.");*/
     }
 }

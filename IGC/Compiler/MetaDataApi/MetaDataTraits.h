@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
@@ -36,10 +37,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/DataTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "MetaDataApiUtils.h"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
-    ///
     // Generic template for the traits types.
     // Assumes the the T type is inherited from the llvm::Value
     template< class T, typename C = void >
@@ -60,7 +61,7 @@ namespace IGC
 
             llvm::ValueAsMetadata* val = llvm::dyn_cast<llvm::ValueAsMetadata>(pMD);
             value_type pT = llvm::dyn_cast<T>(val->getValue());
-            assert(pT && "can't load value, wrong node type");
+            IGC_ASSERT(pT && "can't load value, wrong node type");
             return pT;
         }
 
@@ -107,7 +108,7 @@ namespace IGC
             }
 
             llvm::MDString* mdStr = llvm::dyn_cast<llvm::MDString>(pNode);
-            assert(mdStr && "can't load string, wrong node type");
+            IGC_ASSERT(mdStr && "can't load string, wrong node type");
             return mdStr->getString();
         }
 
@@ -146,7 +147,7 @@ namespace IGC
 
             llvm::ValueAsMetadata* val = llvm::dyn_cast<llvm::ValueAsMetadata>(pNode);
             llvm::ConstantInt* pval = llvm::dyn_cast<llvm::ConstantInt>(val->getValue());
-            assert(pval && "can't load bool value, wrong node type");
+            IGC_ASSERT(pval && "can't load bool value, wrong node type");
             return pval->isOne();
         }
 
@@ -280,7 +281,7 @@ namespace IGC
 
             llvm::ValueAsMetadata* val = llvm::dyn_cast<llvm::ValueAsMetadata>(pNode);
             llvm::ConstantInt* pval = llvm::dyn_cast<llvm::ConstantInt>(val->getValue());
-            assert(pval && "can't load int value, wrong node type");
+            IGC_ASSERT(pval && "can't load int value, wrong node type");
             return (int8_t)pval->getValue().getSExtValue();
         }
 
@@ -367,7 +368,7 @@ namespace IGC
             llvm::ValueAsMetadata* val = llvm::dyn_cast<llvm::ValueAsMetadata>(pNode);
             value_type pT = llvm::dyn_cast<llvm::Function>(
                 val->getValue()->stripPointerCasts());
-            assert(pT && "can't load value, wrong node type");
+            IGC_ASSERT(pT && "can't load value, wrong node type");
             return pT;
         }
 
@@ -405,7 +406,7 @@ namespace IGC
             }
 
             value_type pNode = llvm::dyn_cast<llvm::MDNode>(pMD);
-            assert(pNode && "can't load value, wrong node type");
+            IGC_ASSERT(pNode && "can't load value, wrong node type");
             return pNode;
         }
 

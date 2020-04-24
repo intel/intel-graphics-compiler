@@ -26,10 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "llvm/Config/llvm-config.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/DebugInfo/VISAModule.hpp"
 #include "ShaderCodeGen.hpp"
@@ -46,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Types.hpp"
 #include "ShaderCodeGen.hpp"
 #include "llvm/IR/DIBuilder.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -68,7 +67,9 @@ namespace IGC
         {
             auto it = m_VISAModules.find(F);
             if (it != m_VISAModules.end())
-                assert(false && "Reinserting VISA module for function");
+            {
+                IGC_ASSERT(false && "Reinserting VISA module for function");
+            }
 
             m_VISAModules.insert(std::make_pair(F, m));
         }

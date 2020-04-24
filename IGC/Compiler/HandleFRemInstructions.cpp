@@ -24,18 +24,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-
 #include "Compiler/HandleFRemInstructions.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/IGCPassSupport.h"
-
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -64,8 +61,8 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
     auto ScalarType = ValType->getScalarType();
     SmallVector<Type*, 2> ArgsTypes{ ValType, ValType };
 
-    assert(Val1->getType() == Val2->getType() && "Operands of frem instruction must have same type");
-    assert(ScalarType->isFloatingPointTy() && "Operands of frem instruction must have floating point type");
+    IGC_ASSERT(Val1->getType() == Val2->getType() && "Operands of frem instruction must have same type");
+    IGC_ASSERT(ScalarType->isFloatingPointTy() && "Operands of frem instruction must have floating point type");
 
     std::string VecStr = "";
     std::string FpTypeStr;
@@ -77,7 +74,7 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
     }
     else
     {
-        assert(0 && "Unsupported type");
+        IGC_ASSERT(false && "Unsupported type");
     }
 
     if (ValType->isVectorTy())
@@ -89,7 +86,7 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
         }
         else
         {
-            assert(0 && "Unsupported vector size");
+            IGC_ASSERT(false && "Unsupported vector size");
         }
     }
     std::string TypeStr = "_" + VecStr + FpTypeStr;

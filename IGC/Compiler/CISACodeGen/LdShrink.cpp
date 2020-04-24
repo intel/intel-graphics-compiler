@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
@@ -31,11 +32,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Support/raw_ostream.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "Compiler/CISACodeGen/LdShrink.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -106,7 +106,7 @@ unsigned LdShrink::getExtractIndexMask(LoadInst* LI) const {
         auto Idx = dyn_cast<ConstantInt>(EEI->getIndexOperand());
         if (!Idx)
             return 0;
-        assert(Idx->getZExtValue() < 32 && "Index is out of range!");
+        IGC_ASSERT(Idx->getZExtValue() < 32 && "Index is out of range!");
         Mask |= (1 << Idx->getZExtValue());
     }
 

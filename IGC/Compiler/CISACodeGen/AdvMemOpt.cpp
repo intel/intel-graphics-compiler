@@ -11,12 +11,12 @@
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
-
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -192,7 +192,7 @@ bool AdvMemOpt::hasMemoryWrite(BasicBlock* BB) const {
 
 bool AdvMemOpt::hasMemoryWrite(BasicBlock* Entry, BasicBlock* Exit) const {
     // Entry and Exit must be on line of code.
-    assert(DT->dominates(Entry, Exit) && PDT->dominates(Exit, Entry));
+    IGC_ASSERT(DT->dominates(Entry, Exit) && PDT->dominates(Exit, Entry));
     RegionSubgraph RSG(Exit);
     for (auto SI = po_ext_begin(Entry, RSG),
         SE = po_ext_end(Entry, RSG); SI != SE; ++SI)

@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/PatternMatch.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -71,7 +72,7 @@ namespace {
     ~FAddendCoef();
 
     void set(short C) {
-      assert(!insaneIntVal(C) && "Insane coefficient");
+      IGC_ASSERT(!insaneIntVal(C) && "Insane coefficient");
       IsFp = false; IntVal = C;
     }
 
@@ -101,12 +102,12 @@ namespace {
       { return reinterpret_cast<const APFloat*>(&FpValBuf.buffer[0]); }
 
     const APFloat &getFpVal() const {
-      assert(IsFp && BufHasFpVal && "Incorret state");
+      IGC_ASSERT(IsFp && BufHasFpVal && "Incorret state");
       return *getFpValPtr();
     }
 
     APFloat &getFpVal() {
-      assert(IsFp && BufHasFpVal && "Incorret state");
+      IGC_ASSERT(IsFp && BufHasFpVal && "Incorret state");
       return *getFpValPtr();
     }
 
@@ -174,7 +175,7 @@ namespace {
     unsigned drillAddendDownOneStep(FAddend &Addend0, FAddend &Addend1) const;
 
     void operator+=(const FAddend &T) {
-      assert((Val == T.Val) && "Symbolic-values disagree");
+      IGC_ASSERT((Val == T.Val) && "Symbolic-values disagree");
       Coeff += T.Coeff;
     }
 
@@ -217,15 +218,7 @@ namespace {
     InstCombiner::BuilderTy *Builder;
     Instruction *Instr;
 
-     // Debugging stuff are clustered here.
-    #ifndef NDEBUG
-      unsigned CreateInstrNum;
-      void initCreateInstNum() { CreateInstrNum = 0; }
-      void incCreateInstNum() { CreateInstrNum++; }
-    #else
-      void initCreateInstNum() {}
-      void incCreateInstNum() {}
-    #endif
+    unsigned InstructionCounter;
   };
 
 } // anonymous namespace
@@ -317,7 +310,7 @@ void FAddendCoef::operator*=(const FAddendCoef &That) {
 
   if (isInt() && That.isInt()) {
     int Res = IntVal * (int)That.IntVal;
-    assert(!insaneIntVal(Res) && "Insane int value");
+    IGC_ASSERT(!insaneIntVal(Res) && "Insane int value");
     IntVal = Res;
     return;
   }
@@ -450,7 +443,7 @@ unsigned FAddend::drillAddendDownOneStep
 //   (y / x) +/- (z / x)               (y +/- z) / x
 //
 Value *FAddCombine::performFactorization(Instruction *I) {
-  assert((I->getOpcode() == Instruction::FAdd ||
+  IGC_ASSERT((I->getOpcode() == Instruction::FAdd ||
           I->getOpcode() == Instruction::FSub) && "Expect add/sub");
 
   Instruction *I0 = dyn_cast<Instruction>(I->getOperand(0));
@@ -527,13 +520,13 @@ Value *FAddCombine::performFactorization(Instruction *I) {
 }
 
 Value *FAddCombine::simplify(Instruction *I) {
-  assert(I->isFast() && "Expected 'fast' instruction");
+  IGC_ASSERT(I->isFast() && "Expected 'fast' instruction");
 
   // Currently we are not able to handle vector type.
   if (I->getType()->isVectorTy())
     return nullptr;
 
-  assert((I->getOpcode() == Instruction::FAdd ||
+  IGC_ASSERT((I->getOpcode() == Instruction::FAdd ||
           I->getOpcode() == Instruction::FSub) && "Expect add/sub");
 
   // Save the instruction before calling other member-functions.
@@ -615,7 +608,7 @@ Value *FAddCombine::simplify(Instruction *I) {
 
 Value *FAddCombine::simplifyFAdd(AddendVect& Addends, unsigned InstrQuota) {
   unsigned AddendNum = Addends.size();
-  assert(AddendNum <= 4 && "Too many addends");
+  IGC_ASSERT(AddendNum <= 4 && "Too many addends");
 
   // For saving intermediate results;
   unsigned NextTmpIdx = 0;
@@ -686,7 +679,7 @@ Value *FAddCombine::simplifyFAdd(AddendVect& Addends, unsigned InstrQuota) {
     }
   }
 
-  assert((NextTmpIdx <= array_lengthof(TmpResult) + 1) &&
+  IGC_ASSERT((NextTmpIdx <= array_lengthof(TmpResult) + 1) &&
          "out-of-bound access");
 
   if (ConstAdd)
@@ -705,7 +698,7 @@ Value *FAddCombine::simplifyFAdd(AddendVect& Addends, unsigned InstrQuota) {
 
 Value *FAddCombine::createNaryFAdd
   (const AddendVect &Opnds, unsigned InstrQuota) {
-  assert(!Opnds.empty() && "Expect at least one addend");
+  IGC_ASSERT(!Opnds.empty() && "Expect at least one addend");
 
   // Step 1: Check if the # of instructions needed exceeds the quota.
   //
@@ -713,7 +706,7 @@ Value *FAddCombine::createNaryFAdd
   if (InstrNeeded > InstrQuota)
     return nullptr;
 
-  initCreateInstNum();
+  InstructionCounter = 0;
 
   // step 2: Emit the N-ary addition.
   // Note that at most three instructions are involved in Fadd-InstCombine: the
@@ -753,10 +746,7 @@ Value *FAddCombine::createNaryFAdd
     LastVal = createFNeg(LastVal);
   }
 
-  #ifndef NDEBUG
-    assert(CreateInstrNum == InstrNeeded &&
-           "Inconsistent in instruction numbers");
-  #endif
+  IGC_ASSERT((InstructionCounter == InstrNeeded) && "Inconsistent in instruction numbers");
 
   return LastVal;
 }
@@ -802,7 +792,7 @@ void FAddCombine::createInstPostProc(Instruction *NewInstr, bool NoNumber) {
 
   // Keep track of the number of instruction created.
   if (!NoNumber)
-    incCreateInstNum();
+    ++InstructionCounter;
 
   // Propagate fast-math flags
   NewInstr->setFastMathFlags(Instr->getFastMathFlags());
@@ -887,7 +877,7 @@ static bool checkRippleForAdd(const APInt &Op0KnownZero,
   int Op0ZeroPosition = BitWidth - Op0KnownZeroTemp.countLeadingZeros() - 1;
 
   int Op1OnePosition = BitWidth - Op1MaybeOne.countLeadingZeros() - 1;
-  assert(Op1OnePosition >= 0);
+  IGC_ASSERT(Op1OnePosition >= 0);
 
   // This also covers the case of no known zero, since in that case
   // Op0ZeroPosition is -1.
@@ -1580,7 +1570,7 @@ Instruction *InstCombiner::visitSub(BinaryOperator &I) {
     BinaryOperator *Res = BinaryOperator::CreateAdd(Op0, V);
 
     if (const auto *BO = dyn_cast<BinaryOperator>(Op1)) {
-      assert(BO->getOpcode() == Instruction::Sub &&
+      IGC_ASSERT(BO->getOpcode() == Instruction::Sub &&
              "Expected a subtraction operator!");
       if (BO->hasNoSignedWrap() && I.hasNoSignedWrap())
         Res->setHasNoSignedWrap(true);

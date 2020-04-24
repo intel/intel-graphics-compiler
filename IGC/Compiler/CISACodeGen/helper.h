@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/AssumptionCache.h>
 #include <llvm/IR/Instruction.h>
@@ -50,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/MDFrameWork.h"
 #include "common/Types.hpp"
+#include "Probe/Assertion.h"
 
 typedef unsigned int uint;
 
@@ -215,7 +215,7 @@ namespace IGC
             return false;
 
         IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
-        assert(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
+        IGC_ASSERT(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
         return Info->getType() == FunctionTypeMD::KernelFunction;
     }
 
@@ -356,7 +356,7 @@ namespace IGC
         const llvm::Instruction* pos)
     {
         // must within same basic block
-        assert(inst->getParent() == pos->getParent());
+        IGC_ASSERT(inst->getParent() == pos->getParent());
         if (inst == pos)
         {
             return true;
@@ -390,7 +390,7 @@ namespace IGC
         case SIMDMode::SIMD16:  simdWidth = 16; break;
         case SIMDMode::SIMD32:  simdWidth = 32; break;
         default:
-            assert(false && "Invalid SIMD mode");
+            IGC_ASSERT(false && "Invalid SIMD mode");
         }
         unsigned nThreadsPerTG = (threadGroupSize + simdWidth - 1) / simdWidth;
 

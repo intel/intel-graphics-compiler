@@ -23,19 +23,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "common/LLVMUtils.h"
-
 #include "LLVMWarningsPush.hpp"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Function.h"
 #include "LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -46,10 +44,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "LLVM3DBuilder/MetadataBuilder.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
-
 #include "common/debug/Debug.hpp"
-
 #include <list>
+#include "Probe/Assertion.h"
 
 /***********************************************************************************
 This File contains the logic to decide for each inputs and constant if the data
@@ -287,7 +284,7 @@ namespace IGC
         if (!retBB)
         {
             auto& roots = m_PDT->getRoots();
-            assert(roots.size() == 1 && "Unexpected multiple roots");
+            IGC_ASSERT(roots.size() == 1 && "Unexpected multiple roots");
             retBB = roots[0];
         }
 
@@ -678,7 +675,7 @@ namespace IGC
             return 0;
         }
         unsigned int size = (unsigned int)load->getType()->getPrimitiveSizeInBits() / 8;
-        assert(isa<LoadInst>(load) && "Expected a load instruction");
+        IGC_ASSERT(isa<LoadInst>(load) && "Expected a load instruction");
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
         bool canPromote = false;
@@ -775,7 +772,7 @@ namespace IGC
             if (it != info.simplePushLoads.end())
             {
                 // Value is already getting pushed
-                assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                IGC_ASSERT((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
                 value = m_argList[it->second];
                 if (pTypeToPush != value->getType())
                     value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
@@ -940,7 +937,7 @@ namespace IGC
                 }
                 else
                 {
-                    assert((it->second <= m_argIndex) &&
+                    IGC_ASSERT((it->second <= m_argIndex) &&
                         "Function arguments list and metadata are out of sync!");
                     value = m_argList[it->second];
                     if (pTypeToPush != value->getType())
@@ -1001,7 +998,7 @@ namespace IGC
                 auto it = pushInfo.inputs.find(input.index);
                 if (it == pushInfo.inputs.end())
                 {
-                    assert(inst->getType()->isHalfTy() || inst->getType()->isFloatTy());
+                    IGC_ASSERT(inst->getType()->isHalfTy() || inst->getType()->isFloatTy());
                     llvm::Type* floatTy = Type::getFloatTy(m_pFunction->getContext());
                     addArgumentAndMetadata(floatTy, VALUE_NAME(std::string("input_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
                     input.argIndex = m_argIndex;
@@ -1009,7 +1006,7 @@ namespace IGC
                 }
                 else
                 {
-                    assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                    IGC_ASSERT((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
                     input.argIndex = it->second.argIndex;
                 }
                 llvm::Value* replacementValue = m_argList[input.argIndex];
@@ -1061,7 +1058,7 @@ namespace IGC
                             }
                             else
                             {
-                                assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                                IGC_ASSERT((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
                                 input.argIndex = it->second.argIndex;
                             }
 
@@ -1074,7 +1071,7 @@ namespace IGC
             {
                 // This should never happen for geometry shader since we leave GS specific
                 // intrinsic if we want pull model earlier in GS lowering.
-                assert(m_context->type != ShaderType::GEOMETRY_SHADER);
+                IGC_ASSERT(m_context->type != ShaderType::GEOMETRY_SHADER);
             }
         }
     }
@@ -1140,7 +1137,7 @@ namespace IGC
                             }
                             else
                             {
-                                assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                                IGC_ASSERT((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
                                 input.argIndex = it->second.argIndex;
                             }
                             extract->replaceAllUsesWith(m_argList[input.argIndex]);
@@ -1176,7 +1173,7 @@ namespace IGC
         }
         else
         {
-            assert((it->second <= m_argIndex) &&
+            IGC_ASSERT((it->second <= m_argIndex) &&
                 "Function arguments list and metadata are out of sync!");
             arg = m_argList[it->second];
             while (arg->getType() != runtimeValue->getType() &&
@@ -1411,7 +1408,7 @@ namespace IGC
                 funcsMapping[pFunc] = pNewFunc;
 
                 // This is a kernel function, so there should not be any call site
-                assert(pFunc->use_empty());
+                IGC_ASSERT(pFunc->use_empty());
             }
             m_pFuncUpgrade.Clean();
         }
@@ -1444,7 +1441,7 @@ namespace IGC
         {
             Function* pFunc = I->first;
 
-            assert(pFunc->use_empty() && "Assume all user function are inlined at this point");
+            IGC_ASSERT(pFunc->use_empty() && "Assume all user function are inlined at this point");
 
             if (FGA) {
                 FGA->replaceEntryFunc(pFunc, I->second);

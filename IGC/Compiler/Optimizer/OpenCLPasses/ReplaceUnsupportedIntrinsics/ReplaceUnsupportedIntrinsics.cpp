@@ -28,11 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/igc_regkeys.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/Instructions.h"
-
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -40,8 +37,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <map>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -194,7 +191,7 @@ namespace {
         Type* ETy = VTy ? VTy->getElementType() : Ty;
         uint32_t sBits = (unsigned int)ScalarVal->getType()->getPrimitiveSizeInBits();
         uint32_t nBits = (unsigned int)ETy->getPrimitiveSizeInBits();
-        assert((nBits % sBits) == 0 && nBits <= 64 && "Type mismatch in replicateScalar!");
+        IGC_ASSERT((nBits % sBits) == 0 && nBits <= 64 && "Type mismatch in replicateScalar!");
         uint32_t ratio = nBits / sBits;
 
         IRBuilder<> Builder(InsertBefore);
@@ -313,7 +310,7 @@ namespace {
             Vecs[n++] = TyI32;
             CntI32 -= 1;
         }
-        assert(CntI32 == 0 && "Did not handle all types of i32");
+        IGC_ASSERT(CntI32 == 0 && "Did not handle all types of i32");
 
         // CntI8 range [0, 3]
         if (CntI8 >= 2)
@@ -326,7 +323,7 @@ namespace {
             Vecs[n++] = TyI8;
             CntI8 -= 1;
         }
-        assert(CntI8 == 0 && "Did not handle all types of i8");
+        IGC_ASSERT(CntI8 == 0 && "Did not handle all types of i8");
 
         L = n;
     }
@@ -786,7 +783,7 @@ namespace {
         %r = or i8 %shlRes, %shrRes    // compose the final result
     */
     void replaceFunnelShift(IntrinsicInst * I) {
-        assert(I->getIntrinsicID() == Intrinsic::fshl ||
+        IGC_ASSERT(I->getIntrinsicID() == Intrinsic::fshl ||
             I->getIntrinsicID() == Intrinsic::fshr);
         IRBuilder<> Builder(I);
         unsigned sizeInBits = I->getArgOperand(0)->getType()->getScalarSizeInBits();

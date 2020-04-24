@@ -32,13 +32,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/igc_regkeys.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/Analysis/InlineCost.h"
-
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -54,9 +51,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
-
 #include <numeric>
 #include <utility>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -178,7 +175,7 @@ inline Function* getCallerFunc(Value* user)
     {
         caller = CI->getParent()->getParent();
     }
-    assert(caller && "cannot be indirect call");
+    IGC_ASSERT(caller && "cannot be indirect call");
     return caller;
 }
 
@@ -210,7 +207,7 @@ void GenXCodeGenModule::processFunction(Function& F)
         CallerFGs.insert(std::make_pair(FG, SubGrpH));
     }
 
-    assert(CallerFGs.size() >= 1);
+    IGC_ASSERT(CallerFGs.size() >= 1);
     bool FirstPair = true;
     for (auto FGPair : CallerFGs)
     {
@@ -266,7 +263,7 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
             CallerFGs.insert(FG);
         }
     }
-    assert(CallerFGs.size() >= 1);
+    IGC_ASSERT(CallerFGs.size() >= 1);
     bool FirstPair = true;
     for (auto FG : CallerFGs)
     {
@@ -436,7 +433,7 @@ bool GenXCodeGenModule::runOnModule(Module& M)
     //  Input L1 = [A, B, C, D, E]       // Functions in groups
     //  Input L2 = [A, C, G, B, D, E, F] // Functions in the module
     // Output L2 = [A, B, C, D, E, G, F] // Ordered functions in the module
-    assert(OrderedList.size() <= M.size() && "out of sync");
+    IGC_ASSERT(OrderedList.size() <= M.size() && "out of sync");
     Function* CurF = &(*M.begin());
     for (auto I = OrderedList.begin(), E = OrderedList.end(); I != E; ++I)
     {
@@ -453,7 +450,7 @@ bool GenXCodeGenModule::runOnModule(Module& M)
     }
 
 #if defined(_DEBUG)
-    assert(FGA->verify());
+    IGC_ASSERT(FGA->verify());
 #endif
 
     FGA->setModule(&M);
@@ -537,10 +534,10 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
     auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     Function* defaultKernel = getUniqueEntryFunc(pMdUtils, modMD);
-    assert(defaultKernel && "kernel does not exist in this group");
+    IGC_ASSERT(defaultKernel && "kernel does not exist in this group");
 
     FunctionGroup* defaultFG = getGroupForHead(defaultKernel);
-    assert(defaultFG && "default kernel group does not exist");
+    IGC_ASSERT(defaultFG && "default kernel group does not exist");
 
     // Add all externally linked functions into the default kernel group
     for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
@@ -701,7 +698,7 @@ void GenXFunctionGroupAnalysis::addToFunctionGroup(Function* F,
     FunctionGroup* FG,
     Function* SubGrpH)
 {
-    assert(!GroupMap[F] && "Function already attached to FunctionGroup");
+    IGC_ASSERT(!GroupMap[F] && "Function already attached to FunctionGroup");
     GroupMap[F] = FG;
     setSubGroupMap(F, SubGrpH);
     if (F == SubGrpH)
@@ -721,7 +718,7 @@ void GenXFunctionGroupAnalysis::addToFunctionGroup(Function* F,
                 return;
             }
         }
-        assert(false);
+        IGC_ASSERT(false);
     }
 }
 

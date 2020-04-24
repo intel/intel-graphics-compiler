@@ -42,7 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
-
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -525,7 +525,7 @@ Instruction *InstCombiner::visitTrunc(TruncInst &CI) {
     DEBUG(dbgs() << "ICE: EvaluateInDifferentType converting expression type"
           " to avoid cast: " << CI << '\n');
     Value *Res = EvaluateInDifferentType(Src, DestTy, false);
-    assert(Res->getType() == DestTy);
+    IGC_ASSERT(Res->getType() == DestTy);
     return replaceInstUsesWith(CI, Res);
   }
 
@@ -882,14 +882,14 @@ Instruction *InstCombiner::visitZExt(ZExtInst &CI) {
   unsigned BitsToClear = 0;
   if ((DestTy->isVectorTy() || ShouldChangeType(SrcTy, DestTy)) &&
       canEvaluateZExtd(Src, DestTy, BitsToClear, *this, &CI)) {
-    assert(BitsToClear < SrcTy->getScalarSizeInBits() &&
+    IGC_ASSERT(BitsToClear < SrcTy->getScalarSizeInBits() &&
            "Unreasonable BitsToClear");
 
     // Okay, we can transform this!  Insert the new expression now.
     DEBUG(dbgs() << "ICE: EvaluateInDifferentType converting expression type"
           " to avoid zero extend: " << CI << '\n');
     Value *Res = EvaluateInDifferentType(Src, DestTy, false);
-    assert(Res->getType() == DestTy);
+    IGC_ASSERT(Res->getType() == DestTy);
 
     uint32_t SrcBitsKept = SrcTy->getScalarSizeInBits()-BitsToClear;
     uint32_t DestBitSize = DestTy->getScalarSizeInBits();
@@ -1088,7 +1088,7 @@ Instruction *InstCombiner::transformSExtICmp(ICmpInst *ICI, Instruction &CI) {
 /// This function works on both vectors and scalars.
 ///
 static bool canEvaluateSExtd(Value *V, Type *Ty) {
-  assert(V->getType()->getScalarSizeInBits() < Ty->getScalarSizeInBits() &&
+  IGC_ASSERT(V->getType()->getScalarSizeInBits() < Ty->getScalarSizeInBits() &&
          "Can't sign extend type to a smaller type");
   // If this is a constant, it can be trivially promoted.
   if (isa<Constant>(V))
@@ -1180,7 +1180,7 @@ Instruction *InstCombiner::visitSExt(SExtInst &CI) {
     DEBUG(dbgs() << "ICE: EvaluateInDifferentType converting expression type"
           " to avoid sign extend: " << CI << '\n');
     Value *Res = EvaluateInDifferentType(Src, DestTy, true);
-    assert(Res->getType() == DestTy);
+    IGC_ASSERT(Res->getType() == DestTy);
 
     uint32_t SrcBitSize = SrcTy->getScalarSizeInBits();
     uint32_t DestBitSize = DestTy->getScalarSizeInBits();
@@ -1663,7 +1663,7 @@ static unsigned getTypeSizeIndex(unsigned Value, Type *Ty) {
 static bool collectInsertionElements(Value *V, unsigned Shift,
                                      SmallVectorImpl<Value *> &Elements,
                                      Type *VecEltTy, bool isBigEndian) {
-  assert(isMultipleOfTypeSize(Shift, VecEltTy) &&
+  IGC_ASSERT(isMultipleOfTypeSize(Shift, VecEltTy) &&
          "Shift should be a multiple of the element type size");
 
   // Undef values never contribute useful bits to the result.
@@ -2006,7 +2006,7 @@ Instruction *InstCombiner::optimizeBitCastFromPhi(CastInst &CI, PHINode *PN) {
       } else if (auto *PrevPN = dyn_cast<PHINode>(V)) {
         NewV = NewPNodes[PrevPN];
       }
-      assert(NewV);
+      IGC_ASSERT(NewV);
       NewPN->addIncoming(NewV, OldPN->getIncomingBlock(j));
     }
   }
@@ -2020,7 +2020,7 @@ Instruction *InstCombiner::optimizeBitCastFromPhi(CastInst &CI, PHINode *PN) {
           cast<BitCastInst>(Builder->CreateBitCast(NewPNodes[PN], SrcTy));
       SI->setOperand(0, NewBC);
       Worklist.Add(SI);
-      assert(hasStoreUsersOnly(*NewBC));
+      IGC_ASSERT(hasStoreUsersOnly(*NewBC));
     }
   }
 

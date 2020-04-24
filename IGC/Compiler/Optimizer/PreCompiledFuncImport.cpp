@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
 #include "llvm/ADT/SmallSet.h"
@@ -37,11 +38,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/IRReader/IRReader.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncLibrary.cpp"
-
+#include "Probe/Assertion.h"
 // No Support to double emulation.
 const unsigned char igcbuiltin_emu_dp_add_sub[] = { 0 };
 const unsigned char igcbuiltin_emu_dp_fma_mul[] = { 0 };
@@ -400,10 +400,10 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                     llvm::parseBitcodeFile(MemoryBufferRef(BitRef.str(), ""), M.getContext());
                 if (llvm::Error EC = ModuleOrErr.takeError())
                 {
-                    assert(0 && "llvm getLazyBitcodeModule - FAILED to parse bitcode");
+                    IGC_ASSERT(false && "llvm getLazyBitcodeModule - FAILED to parse bitcode");
                 }
                 std::unique_ptr<llvm::Module> m_pBuiltinModule = std::move(*ModuleOrErr);
-                assert(m_pBuiltinModule && "llvm version mismatch - could not load llvm module");
+                IGC_ASSERT(m_pBuiltinModule && "llvm version mismatch - could not load llvm module");
 
                 // Set target triple and datalayout to the original module (emulation func
                 // works for both 64 & 32 bit applications).
@@ -415,7 +415,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
 
                 if (ld.linkInModule(std::move(m_pBuiltinModule)))
                 {
-                    assert(0 && "Error linking the two modules");
+                    IGC_ASSERT(false && "Error linking the two modules");
                 }
                 m_libModuleAlreadyImported[i] = true;
                 m_pBuiltinModule = nullptr;
@@ -655,7 +655,7 @@ void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunction
         elementIndex = 5;
         break;
     default:
-        assert(0 && "Unexpected vector size");
+        IGC_ASSERT(false && "Unexpected vector size");
         return;
     }
 
@@ -706,7 +706,7 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
     {
         if (inst.getDestTy()->isVectorTy())
         {
-            assert(0 && "Unexpected vector size");
+            IGC_ASSERT(false && "Unexpected vector size");
             return;
         }
 
@@ -1571,7 +1571,7 @@ void PreCompiledFuncImport::replaceFunc(Function* old_func, Function* new_func)
         llvm::Function::arg_iterator new_arg_iter = new_func->arg_begin();
         llvm::Function::arg_iterator new_arg_end = new_func->arg_end();
 
-        assert(IGCLLVM::GetFuncArgSize(new_func) >= numArgOperands);
+        IGC_ASSERT(IGCLLVM::GetFuncArgSize(new_func) >= numArgOperands);
 
         // basic arguments
         for (unsigned int i = 0; i < numArgOperands; ++i, ++new_arg_iter)
@@ -1615,7 +1615,7 @@ void PreCompiledFuncImport::replaceFunc(Function* old_func, Function* new_func)
         i->eraseFromParent();
     }
 
-    assert(old_func->use_empty() && "old_func should have no use at this point!");
+    IGC_ASSERT(old_func->use_empty() && "old_func should have no use at this point!");
     // Now, after changing funciton signature,
     // and validate there are no calls to the old function we can erase it.
     //

@@ -79,16 +79,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <algorithm>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -300,8 +298,7 @@ void DeSSA::print(raw_ostream& OS, const Module*) const
 
         Value* VL;
         if (isIsolated(Leader)) {
-            assert(allNodes.size() == 0 &&
-                "ICE: isolated node still in multi-value CC!");
+            IGC_ASSERT((allNodes.size() == 0) && "ICE: isolated node still in multi-value CC!");
             VL = Leader->value;
             OS << "\nVar isolated : ";
             VL->print(OS);
@@ -492,7 +489,7 @@ bool DeSSA::runOnFunction(Function& MF)
             }
 
             e_alignment DefAlign = GetPreferredAlignment(PHI, WIA, CTX);
-            assert(PHI == getNodeValue(PHI));
+            IGC_ASSERT(PHI == getNodeValue(PHI));
 
             addReg(PHI, DefAlign);
             PHISrcDefs[&(*I)].push_back(PHI);
@@ -661,7 +658,7 @@ void DeSSA::unionRegs(Node* Nd1, Node* Nd2)
         NewLeader->rank++;
     }
 
-    assert(NewLeader && Leadee &&
+    IGC_ASSERT(NewLeader && Leadee &&
         "ICE: both leader and leadee shall not be null!");
     Leadee->parent = NewLeader;
 
@@ -892,7 +889,7 @@ DeSSA::SplitInterferencesForBasicBlock(
                 if (PHI->getIncomingBlock(PredIndex) == MBB)
                     break;
             }
-            assert(PredIndex < PHI->getNumOperands());
+            IGC_ASSERT(PredIndex < PHI->getNumOperands());
             Value* PredValue = PHI->getOperand(PredIndex);
             PredValue = getNodeValue(PredValue);
             std::pair<Instruction*, Value*>& CurrentPHI = CurrentPHIForColor[RootC];
@@ -1001,7 +998,8 @@ void DeSSA::SplitInterferencesForAlignment()
             N = N->next;
             if (Curr->alignment != EALIGN_AUTO && Curr->alignment != EALIGN_GRF)
             {
-                assert(Curr != Head && "Head Node cannot be isolated, something wrong!");
+                IGC_ASSERT(nullptr != Curr);
+                IGC_ASSERT((Curr != Head) && "Head Node cannot be isolated, something wrong!");
                 isolateReg(Curr->value);
             }
         } while (N != Head);
@@ -1171,7 +1169,7 @@ void DeSSA::getAllValuesInCongruentClass(
     Value* RootV = nullptr;
     RootV = getNodeValue(V);
 
-    assert(RootV && "ICE: Node value should not be nullptr!");
+    IGC_ASSERT(RootV && "ICE: Node value should not be nullptr!");
     ValsInCC.push_back(RootV);
     auto RI = RegNodeMap.find(RootV);
     if (RI != RegNodeMap.end()) {
@@ -1264,7 +1262,7 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
                     // Only src operands of a phi can be visited before
                     // operands' definition. For other instructions such
                     // as castInst, this shall never happen
-                    assert(false && "ICE: Use visited before definition!");
+                    IGC_ASSERT(false && "ICE: Use visited before definition!");
                 }
             }
         }
@@ -1274,7 +1272,8 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
 int DeSSA::checkInsertElementAlias(
     InsertElementInst* IEI, SmallVector<Value*, 16> & AllIEIs)
 {
-    assert(isa<UndefValue>(IEI->getOperand(0)) &&
+    IGC_ASSERT(nullptr != IEI);
+    IGC_ASSERT(isa<UndefValue>(IEI->getOperand(0)) &&
         "ICE: need to pass first IEI as the argument");
 
     // Find the the alias pattern:
@@ -1288,9 +1287,11 @@ int DeSSA::checkInsertElementAlias(
     // If found, return the actual vector size;
     // otherwise, return 0.
     VectorType* VTy = cast<VectorType>(IEI->getType());
+    IGC_ASSERT(nullptr != VTy);
     int nelts = (int)VTy->getNumElements();
     AllIEIs.resize(nelts, nullptr);
     InsertElementInst* Inst = IEI;
+    IGC_ASSERT(nullptr != WIA);
     WIAnalysis::WIDependancy Dep = WIA->whichDepend(Inst);
     while (Inst)
     {

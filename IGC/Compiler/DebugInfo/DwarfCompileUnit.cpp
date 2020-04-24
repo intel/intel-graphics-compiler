@@ -37,7 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "llvm/Config/llvm-config.h"
-
 #define DEBUG_TYPE "dwarfdebug"
 #include "Compiler/DebugInfo/DwarfCompileUnit.hpp"
 #include "Compiler/DebugInfo/DIE.hpp"
@@ -45,11 +44,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/DebugInfo/StreamEmitter.hpp"
 #include "Compiler/DebugInfo/VISAModule.hpp"
 #include "Compiler/DebugInfo/Version.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/GlobalValue.h"
-
 #include "llvm/ADT/APFloat.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Constants.h"
@@ -59,9 +55,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublicEnums.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace ::IGC;
@@ -356,7 +352,7 @@ void CompileUnit::addSourceLine(DIE* Die, DIScope* S, unsigned Line)
     if (Line == 0) return;
 
     unsigned FileID = DD->getOrCreateSourceID(S->getFilename(), S->getDirectory(), getUniqueID());
-    assert(FileID && "Invalid file id");
+    IGC_ASSERT(FileID && "Invalid file id");
     addUInt(Die, dwarf::DW_AT_decl_file, None, FileID);
     addUInt(Die, dwarf::DW_AT_decl_line, None, Line);
 }
@@ -629,7 +625,9 @@ DIE* CompileUnit::getOrCreateContextDIE(DIScope* Context)
     if (auto * SP = dyn_cast<DISubprogram>(Context))
         return getOrCreateSubprogramDIE(SP);
     if (dyn_cast<DIModule>(Context))
-        assert("Missing implementation for DIModule!");
+    {
+        IGC_ASSERT(false && "Missing implementation for DIModule!");
+    }
     return getDIE(Context);
 
 }
@@ -642,12 +640,12 @@ DIE* CompileUnit::getOrCreateTypeDIE(const MDNode* TyNode)
         return NULL;
 
     DIType* Ty = cast_or_null<DIType>(const_cast<MDNode*>(TyNode));
-    assert(Ty);
+    IGC_ASSERT(Ty);
 
     // Construct the context before querying for the existence of the DIE in case
     // such construction creates the DIE.
     DIE* ContextDIE = getOrCreateContextDIE(resolve(Ty->getScope()));
-    assert(ContextDIE);
+    IGC_ASSERT(ContextDIE);
 
     DIE* TyDIE = getDIE(Ty);
     if (TyDIE)
@@ -664,7 +662,7 @@ DIE* CompileUnit::getOrCreateTypeDIE(const MDNode* TyNode)
         constructTypeDIE(*TyDIE, cast<DISubroutineType>(Ty));
     else
     {
-        assert(isa<DIDerivedType>(Ty) && "Unknown kind of DIType");
+        IGC_ASSERT(isa<DIDerivedType>(Ty) && "Unknown kind of DIType");
         constructTypeDIE(*TyDIE, cast<DIDerivedType>(Ty));
     }
 
@@ -674,7 +672,7 @@ DIE* CompileUnit::getOrCreateTypeDIE(const MDNode* TyNode)
 /// addType - Add a new type attribute to the specified entity.
 void CompileUnit::addType(DIE* Entity, DIType* Ty, dwarf::Attribute Attribute)
 {
-    assert(Ty && "Trying to add a type that doesn't exist?");
+    IGC_ASSERT(Ty && "Trying to add a type that doesn't exist?");
 
     // Check for pre-existence.
     DIEEntry* Entry = getDIEEntry(Ty);
@@ -1082,12 +1080,12 @@ void CompileUnit::constructTemplateValueParameterDIE(
         }
         else if (VP->getTag() == dwarf::DW_TAG_GNU_template_template_param)
         {
-            assert(isa<MDString>(Val));
+            IGC_ASSERT(isa<MDString>(Val));
             addString(ParamDIE, dwarf::DW_AT_GNU_template_name, cast<MDString>(Val)->getString());
         }
         else if (VP->getTag() == dwarf::DW_TAG_GNU_template_parameter_pack)
         {
-            assert(isa<MDNode>(Val));
+            IGC_ASSERT(isa<MDNode>(Val));
             //DIArray A(cast<MDNode>(Val));
             //addTemplateParams(*ParamDIE, A);
         }
@@ -1196,7 +1194,7 @@ DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
         return SPDie;
     }
 
-    assert(SPTy->getTag() == dwarf::DW_TAG_subroutine_type &&
+    IGC_ASSERT(SPTy->getTag() == dwarf::DW_TAG_subroutine_type &&
         "the type of a subprogram should be a subroutine");
 
     DITypeRefArray Args = SPTy->getTypeArray();
@@ -1513,7 +1511,7 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
             numOperands here indicates complex addressing is used. But for complex addressing,
             9th operand should be a metadata node whereas here integer nodes are added.
             */
-            assert(!(DV.variableHasComplexAddress() || DV.isBlockByrefVariable()) &&
+            IGC_ASSERT(!(DV.variableHasComplexAddress() || DV.isBlockByrefVariable()) &&
                 "Should handle complex address");
 #endif
 
@@ -1521,7 +1519,7 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
 
             if (!Loc.IsInMemory())
             {
-                assert(Loc.IsRegister() && "Direct location must be register");
+                IGC_ASSERT(Loc.IsRegister() && "Direct location must be register");
                 addRegisterOp(Block, Loc.GetRegister());
             }
             else
@@ -1801,7 +1799,7 @@ DIE* CompileUnit::getOrCreateStaticMemberDIE(DIDerivedType* DT)
     // Construct the context before querying for the existence of the DIE in case
     // such construction creates the DIE.
     DIE* ContextDIE = getOrCreateContextDIE(resolve(DT->getScope()));
-    assert(dwarf::isType(ContextDIE->getTag()) &&
+    IGC_ASSERT(dwarf::isType(ContextDIE->getTag()) &&
         "Static member should belong to a type.");
 
     DIE* StaticMemberDIE = getDIE(DT);

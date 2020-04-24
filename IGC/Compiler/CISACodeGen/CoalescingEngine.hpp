@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/PayloadMapping.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/ADT/DenseSet.h>
@@ -40,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/Allocator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "Probe/Assertion.h"
 
 namespace IGC {
 
@@ -203,7 +203,7 @@ namespace IGC {
 
             inline void SetHasNonHomogeneousElements(llvm::Instruction* _rootInst)
             {
-                assert(rootInst == nullptr);
+                IGC_ASSERT(rootInst == nullptr);
                 rootInst = _rootInst;
                 hasNonHomogeneousElements = true;
             }
@@ -216,13 +216,13 @@ namespace IGC {
 
             inline uint GetNumElements() const
             {
-                assert(rightBound >= leftBound);
+                IGC_ASSERT(rightBound >= leftBound);
                 return rightBound - leftBound + 1;
             }
 
             inline void InitializeIndexWithCCRoot(int index, ElementNode* elNode)
             {
-                //            assert( OffsetToCCMap.count(index) == 0 );
+                //            IGC_ASSERT(OffsetToCCMap.count(index) == 0);
                 OffsetToCCMap[index] = elNode;
 
                 ResizeBounds(index);
@@ -259,7 +259,7 @@ namespace IGC {
             {
                 if (OffsetToCCMap.count(index) == 0 || OffsetToCCMap[index] == NULL)
                 {
-                    assert(node->value == CE.getRegRoot(node->value));
+                    IGC_ASSERT(node->value == CE.getRegRoot(node->value));
 
                     CE.NodeCCTupleMap[node] = this;
                     CE.NodeOffsetMap[node] = index;
@@ -277,7 +277,7 @@ namespace IGC {
                     else
                     {
                         //Here comes a logic that will attach a new node to CC.
-                        assert(OffsetToCCMap.count(index) && OffsetToCCMap[index]);
+                        IGC_ASSERT(OffsetToCCMap.count(index) && OffsetToCCMap[index]);
 
                         llvm::Value* ccRootValue = OffsetToCCMap[index]->value;
 
@@ -576,7 +576,7 @@ namespace IGC {
                 return NULL;
             }
 
-            assert(ValueNodeMap.count(RootV));
+            IGC_ASSERT(ValueNodeMap.count(RootV));
             auto RI = ValueNodeMap.find(RootV);
             ElementNode* Node = RI->second;
 
@@ -594,16 +594,14 @@ namespace IGC {
         inline int GetValueOffsetInCCTuple(llvm::Value* val)
         {
             llvm::Value* RootV = getRegRoot(val);
-            if (!RootV) {
-                assert(0);
-            }
+            IGC_ASSERT(nullptr != RootV);
+            IGC_ASSERT(ValueNodeMap.count(RootV));
 
-            assert(ValueNodeMap.count(RootV));
             auto RI = ValueNodeMap.find(RootV);
             ElementNode* Node = RI->second;
 
             auto CCI = NodeOffsetMap.find(Node);
-            assert(CCI != NodeOffsetMap.end());
+            IGC_ASSERT(CCI != NodeOffsetMap.end());
             return CCI->second;
         }
 
@@ -867,16 +865,16 @@ namespace IGC {
                 }
                 else
                 {
-                    assert((*iter).second > 0);
+                    IGC_ASSERT((*iter).second > 0);
                     return (*iter).second;
                 }
                 //return splitPoint_
             }
             else
             {
-                assert(currentPart_ == 1);
+                IGC_ASSERT(currentPart_ == 1);
                 auto iter = splitPoint_.find(inst);
-                assert(iter != splitPoint_.end());
+                IGC_ASSERT(iter != splitPoint_.end());
                 return m_PayloadMapping.GetNumPayloadElements(inst) - (*iter).second;
             }
         }
@@ -949,9 +947,9 @@ namespace IGC {
             }
             else
             {
-                assert(partNum == 1);
+                IGC_ASSERT(partNum == 1);
                 currentLowBound_ = splitPoint_[inst];
-                assert(currentLowBound_ > 0);
+                IGC_ASSERT(currentLowBound_ > 0);
                 currentPart_ = partNum;
             }
         }

@@ -73,10 +73,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/SimplifyLibCalls.h"
 #include <algorithm>
-#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <vector>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -124,7 +124,7 @@ static Constant *getNegativeIsTrueBoolVec(ConstantDataVector *V) {
   IntegerType *BoolTy = Type::getInt1Ty(V->getContext());
   for (unsigned I = 0, E = V->getNumElements(); I != E; ++I) {
     Constant *Elt = V->getElementAsConstant(I);
-    assert((isa<ConstantInt>(Elt) || isa<ConstantFP>(Elt)) &&
+    IGC_ASSERT((isa<ConstantInt>(Elt) || isa<ConstantFP>(Elt)) &&
            "Unexpected constant data vector element type");
     bool Sign = V->getElementType()->isIntegerTy()
                     ? cast<ConstantInt>(Elt)->isNegative()
@@ -155,7 +155,7 @@ Instruction *InstCombiner::SimplifyMemTransfer(MemIntrinsic *MI) {
   // A single load+store correctly handles overlapping memory in the memmove
   // case.
   uint64_t Size = MemOpLength->getLimitedValue();
-  assert(Size && "0-sized memory transferring should be removed already.");
+  IGC_ASSERT(Size && "0-sized memory transferring should be removed already.");
 
   if (Size > 8 || (Size&(Size-1)))
     return nullptr;  // If not 1/2/4/8 bytes, exit.
@@ -250,7 +250,7 @@ Instruction *InstCombiner::SimplifyMemSet(MemSetInst *MI) {
     return nullptr;
   uint64_t Len = LenC->getLimitedValue();
   Alignment = MI->getAlignment();
-  assert(Len && "0-sized memory setting should be removed already.");
+  IGC_ASSERT(Len && "0-sized memory setting should be removed already.");
 
   // memset(s,c,n) -> store s, c (for n=1,2,4,8)
   if (Len <= 8 && isPowerOf2_32((uint32_t)Len)) {
@@ -346,7 +346,7 @@ static Value *simplifyX86immShift(const IntrinsicInst &II,
     LogicalShift = true; ShiftLeft = true;
     break;
   }
-  assert((LogicalShift || !ShiftLeft) && "Only logical shifts can shift left");
+  IGC_ASSERT((LogicalShift || !ShiftLeft) && "Only logical shifts can shift left");
 
   // Simplify if count is constant.
   auto Arg1 = II.getArgOperand(1);
@@ -362,7 +362,7 @@ static Value *simplifyX86immShift(const IntrinsicInst &II,
     // operand to compute the shift amount.
     auto VT = cast<VectorType>(CDV->getType());
     unsigned BitWidth = VT->getElementType()->getPrimitiveSizeInBits();
-    assert((64 % BitWidth) == 0 && "Unexpected packed shift size");
+    IGC_ASSERT((64 % BitWidth) == 0 && "Unexpected packed shift size");
     unsigned NumSubElts = 64 / BitWidth;
 
     // Concatenate the sub-elements to create the 64-bit value.
@@ -456,7 +456,7 @@ static Value *simplifyX86varShift(const IntrinsicInst &II,
     ShiftLeft = true;
     break;
   }
-  assert((LogicalShift || !ShiftLeft) && "Only logical shifts can shift left");
+  IGC_ASSERT((LogicalShift || !ShiftLeft) && "Only logical shifts can shift left");
 
   // Simplify if all shift amounts are constant/undef.
   auto *CShift = dyn_cast<Constant>(II.getArgOperand(1));
@@ -506,7 +506,7 @@ static Value *simplifyX86varShift(const IntrinsicInst &II,
       if (Idx < 0) {
         ConstantVec.push_back(UndefValue::get(SVT));
       } else {
-        assert(LogicalShift && "Logical shift expected");
+        IGC_ASSERT(LogicalShift && "Logical shift expected");
         ConstantVec.push_back(ConstantInt::getNullValue(SVT));
       }
     }
@@ -582,7 +582,7 @@ static Value *simplifyX86insertps(const IntrinsicInst &II,
     return nullptr;
 
   VectorType *VecTy = cast<VectorType>(II.getType());
-  assert(VecTy->getNumElements() == 4 && "insertps with wrong vector type");
+  IGC_ASSERT(VecTy->getNumElements() == 4 && "insertps with wrong vector type");
 
   // The immediate permute control byte looks like this:
   //    [3:0] - zero mask for each 32-bit lane
@@ -831,7 +831,7 @@ static Value *simplifyX86pshufb(const IntrinsicInst &II,
   auto *VecTy = cast<VectorType>(II.getType());
   auto *MaskEltTy = Type::getInt32Ty(II.getContext());
   unsigned NumElts = VecTy->getNumElements();
-  assert((NumElts == 16 || NumElts == 32 || NumElts == 64) &&
+  IGC_ASSERT((NumElts == 16 || NumElts == 32 || NumElts == 64) &&
          "Unexpected number of elements in shuffle mask!");
 
   // Construct a shuffle mask from constant integers or UNDEFs.
@@ -880,7 +880,7 @@ static Value *simplifyX86vpermilvar(const IntrinsicInst &II,
   unsigned NumElts = VecTy->getVectorNumElements();
   bool IsPD = VecTy->getScalarType()->isDoubleTy();
   unsigned NumLaneElts = IsPD ? 2 : 4;
-  assert(NumElts == 16 || NumElts == 8 || NumElts == 4 || NumElts == 2);
+  IGC_ASSERT(NumElts == 16 || NumElts == 8 || NumElts == 4 || NumElts == 2);
 
   // Construct a shuffle mask from constant integers or UNDEFs.
   Constant *Indexes[16] = {nullptr};
@@ -928,7 +928,7 @@ static Value *simplifyX86vpermv(const IntrinsicInst &II,
   auto *VecTy = cast<VectorType>(II.getType());
   auto *MaskEltTy = Type::getInt32Ty(II.getContext());
   unsigned Size = VecTy->getNumElements();
-  assert((Size == 4 || Size == 8 || Size == 16 || Size == 32 || Size == 64) &&
+  IGC_ASSERT((Size == 4 || Size == 8 || Size == 16 || Size == 32 || Size == 64) &&
          "Unexpected shuffle mask size");
 
   // Construct a shuffle mask from constant integers or UNDEFs.
@@ -1140,7 +1140,7 @@ static Value *simplifyMinnumMaxnum(const IntrinsicInst &II) {
         return Arg1;
     }
   } else {
-    assert(II.getIntrinsicID() == Intrinsic::maxnum);
+    IGC_ASSERT(II.getIntrinsicID() == Intrinsic::maxnum);
     // fmax(x, fmax(x, y)) -> fmax(x, y)
     // fmax(y, fmax(x, y)) -> fmax(x, y)
     if (match(Arg1, m_FMax(m_Value(X), m_Value(Y)))) {
@@ -1233,7 +1233,7 @@ static Instruction *simplifyMaskedScatter(IntrinsicInst &II, InstCombiner &IC) {
 }
 
 static Instruction *foldCttzCtlz(IntrinsicInst &II, InstCombiner &IC) {
-  assert((II.getIntrinsicID() == Intrinsic::cttz ||
+  IGC_ASSERT((II.getIntrinsicID() == Intrinsic::cttz ||
           II.getIntrinsicID() == Intrinsic::ctlz) &&
          "Expected cttz or ctlz intrinsic");
   Value *Op0 = II.getArgOperand(0);
@@ -1360,8 +1360,8 @@ static bool simplifyX86MaskedStore(IntrinsicInst &II, InstCombiner &IC) {
 // comparison to the first NumOperands.
 static bool haveSameOperands(const IntrinsicInst &I, const IntrinsicInst &E,
                              unsigned NumOperands) {
-  assert(I.getNumArgOperands() >= NumOperands && "Not enough operands");
-  assert(E.getNumArgOperands() >= NumOperands && "Not enough operands");
+  IGC_ASSERT(I.getNumArgOperands() >= NumOperands && "Not enough operands");
+  IGC_ASSERT(E.getNumArgOperands() >= NumOperands && "Not enough operands");
   for (unsigned i = 0; i < NumOperands; i++)
     if (I.getArgOperand(i) != E.getArgOperand(i))
       return false;
@@ -1379,7 +1379,7 @@ static bool haveSameOperands(const IntrinsicInst &I, const IntrinsicInst &E,
 //   call @llvm.foo.end(i1 0)
 static bool removeTriviallyEmptyRange(IntrinsicInst &I, unsigned StartID,
                                       unsigned EndID, InstCombiner &IC) {
-  assert(I.getIntrinsicID() == StartID &&
+  IGC_ASSERT(I.getIntrinsicID() == StartID &&
          "Start intrinsic does not have expected ID");
   BasicBlock::iterator BI(I), BE(I.getParent()->end());
   for (++BI; BI != BE; ++BI) {
@@ -1582,7 +1582,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
   case Intrinsic::ssub_with_overflow: {
     OverflowCheckFlavor OCF =
         IntrinsicIDToOverflowCheckFlavor(II->getIntrinsicID());
-    assert(OCF != OCF_INVALID && "unexpected!");
+    IGC_ASSERT(OCF != OCF_INVALID && "unexpected!");
 
     Value *OperationResult = nullptr;
     Constant *OverflowResult = nullptr;
@@ -1759,11 +1759,11 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
     auto RetType = cast<VectorType>(II->getType());
     unsigned ArgWidth = ArgType->getNumElements();
     unsigned RetWidth = RetType->getNumElements();
-    assert(RetWidth <= ArgWidth && "Unexpected input/return vector widths");
-    assert(ArgType->isIntOrIntVectorTy() &&
+    IGC_ASSERT(RetWidth <= ArgWidth && "Unexpected input/return vector widths");
+    IGC_ASSERT(ArgType->isIntOrIntVectorTy() &&
            ArgType->getScalarSizeInBits() == 16 &&
            "CVTPH2PS input type should be 16-bit integer vector");
-    assert(RetType->getScalarType()->isFloatTy() &&
+    IGC_ASSERT(RetType->getScalarType()->isFloatTy() &&
            "CVTPH2PS output type should be 32-bit float vector");
 
     // Constant folding: Convert to generic half to single conversion.
@@ -2108,7 +2108,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
     // SSE2/AVX2 uses only the first 64-bits of the 128-bit vector
     // operand to compute the shift amount.
     Value *Arg1 = II->getArgOperand(1);
-    assert(Arg1->getType()->getPrimitiveSizeInBits() == 128 &&
+    IGC_ASSERT(Arg1->getType()->getPrimitiveSizeInBits() == 128 &&
            "Unexpected packed shift size");
     unsigned VWidth = Arg1->getType()->getVectorNumElements();
 
@@ -2177,7 +2177,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
     Value *Op1 = II->getArgOperand(1);
     unsigned VWidth0 = Op0->getType()->getVectorNumElements();
     unsigned VWidth1 = Op1->getType()->getVectorNumElements();
-    assert(Op0->getType()->getPrimitiveSizeInBits() == 128 &&
+    IGC_ASSERT(Op0->getType()->getPrimitiveSizeInBits() == 128 &&
            Op1->getType()->getPrimitiveSizeInBits() == 128 && VWidth0 == 2 &&
            VWidth1 == 16 && "Unexpected operand sizes");
 
@@ -2215,7 +2215,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
     // bits of the lower 64-bits. The upper 64-bits are undefined.
     Value *Op0 = II->getArgOperand(0);
     unsigned VWidth = Op0->getType()->getVectorNumElements();
-    assert(Op0->getType()->getPrimitiveSizeInBits() == 128 && VWidth == 2 &&
+    IGC_ASSERT(Op0->getType()->getPrimitiveSizeInBits() == 128 && VWidth == 2 &&
            "Unexpected operand size");
 
     // See if we're dealing with constant values.
@@ -2239,7 +2239,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
     Value *Op0 = II->getArgOperand(0);
     Value *Op1 = II->getArgOperand(1);
     unsigned VWidth = Op0->getType()->getVectorNumElements();
-    assert(Op0->getType()->getPrimitiveSizeInBits() == 128 &&
+    IGC_ASSERT(Op0->getType()->getPrimitiveSizeInBits() == 128 &&
            Op1->getType()->getPrimitiveSizeInBits() == 128 && VWidth == 2 &&
            Op1->getType()->getVectorNumElements() == 2 &&
            "Unexpected operand size");
@@ -2276,7 +2276,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
     Value *Op1 = II->getArgOperand(1);
     unsigned VWidth0 = Op0->getType()->getVectorNumElements();
     unsigned VWidth1 = Op1->getType()->getVectorNumElements();
-    assert(Op0->getType()->getPrimitiveSizeInBits() == 128 &&
+    IGC_ASSERT(Op0->getType()->getPrimitiveSizeInBits() == 128 &&
            Op1->getType()->getPrimitiveSizeInBits() == 128 && VWidth0 == 2 &&
            VWidth1 == 2 && "Unexpected operand sizes");
 
@@ -2441,7 +2441,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
     // the permutation mask with respect to 31 and reverse the order of
     // V1 and V2.
     if (Constant *Mask = dyn_cast<Constant>(II->getArgOperand(2))) {
-      assert(Mask->getType()->getVectorNumElements() == 16 &&
+      IGC_ASSERT(Mask->getType()->getVectorNumElements() == 16 &&
              "Bad type for intrinsic!");
 
       // Check that all of the elements are integer constants or undefs.
@@ -2982,7 +2982,7 @@ Instruction *InstCombiner::visitCallSite(CallSite CS) {
     ArgNo++;
   }
 
-  assert(ArgNo == CS.arg_size() && "sanity check");
+  IGC_ASSERT(ArgNo == CS.arg_size() && "sanity check");
 
   if (!Indices.empty()) {
     AttributeSet AS = CS.getAttributes();
@@ -3384,7 +3384,7 @@ InstCombiner::transformCallThroughTrampoline(CallSite CS,
   if (Attrs.hasAttrSomewhere(Attribute::Nest))
     return nullptr;
 
-  assert(Tramp &&
+  IGC_ASSERT(Tramp &&
          "transformCallThroughTrampoline called with incorrect CallSite.");
 
   Function *NestF =cast<Function>(Tramp->getArgOperand(1)->stripPointerCasts());

@@ -36,7 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Dump.hpp"
 #include "common/Stats.hpp"
 #include "common/LLVMUtils.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/IntrinsicInst.h>
@@ -45,13 +44,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/ADT/PostOrderIterator.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/CodeHoisting.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
-
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC::Debug;
@@ -250,7 +248,7 @@ namespace IGC {
                         }
                 }
             }
-            assert(tgtInst != nullptr);
+            IGC_ASSERT(tgtInst != nullptr);
             return true;
         }
 
@@ -295,10 +293,9 @@ namespace IGC {
                     {
                         // candidate position not the same BB as current arg def
                         // find the common post dominator
-                        BasicBlock* cmnDom = PDT->findNearestCommonDominator(
-                            tgtInst->getParent(), defBB);
-                        assert(cmnDom == tgtInst->getParent() ||
-                            cmnDom == defBB);
+                        BasicBlock* cmnDom = PDT->findNearestCommonDominator(tgtInst->getParent(), defBB);
+                        IGC_ASSERT(nullptr != cmnDom);
+                        IGC_ASSERT((cmnDom == tgtInst->getParent()) || (cmnDom == defBB));
 
                         if (cmnDom == defBB)
                         {
@@ -326,7 +323,7 @@ namespace IGC {
             tgtInst = &(*uwBB->getFirstInsertionPt());
         }
 
-        assert(tgtInst != nullptr);
+        IGC_ASSERT(tgtInst != nullptr);
         return true;
     }
 

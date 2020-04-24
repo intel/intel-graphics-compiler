@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryBufferAnalysis.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -87,7 +88,7 @@ void PrivateMemoryBufferAnalysis::runOnFunction(llvm::Function& F)
 
 void PrivateMemoryBufferAnalysis::visitAllocaInst(AllocaInst& AI)
 {
-    assert(AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");
+    IGC_ASSERT(AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");
 
     // If private memory has no users, no point of analysing it.
     if (AI.use_empty()) return;
@@ -112,7 +113,7 @@ void PrivateMemoryBufferAnalysis::visitAllocaInst(AllocaInst& AI)
     m_privateInfoMap[pFunc].m_bufferOffsets[&AI] = m_currentOffset;
 
     // Determine buffer size
-    assert(isa<ConstantInt>(AI.getArraySize()) && "Private memory array size is expected to be constant int!");
+    IGC_ASSERT(isa<ConstantInt>(AI.getArraySize()) && "Private memory array size is expected to be constant int!");
     unsigned int bufferSize = static_cast<unsigned int>(cast<ConstantInt>(AI.getArraySize())->getZExtValue() * m_DL->getTypeAllocSize(AI.getAllocatedType()));
     m_privateInfoMap[pFunc].m_bufferSizes[&AI] = bufferSize;
 

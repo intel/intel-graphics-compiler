@@ -28,19 +28,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
-
 #include <llvmWrapper/IR/Intrinsics.h>
-
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -287,7 +284,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
             uint bufferIndex = GetSampleCResourceIdx(I);
             if (bufferIndex == -1) break;
 
-            assert(bufferIndex < 256);
+            IGC_ASSERT(bufferIndex < 256);
 
             if (pCodeGenCtx->type == ShaderType::PIXEL_SHADER)
             {

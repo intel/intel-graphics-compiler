@@ -3,9 +3,8 @@
 #include "Compiler/IGCPassSupport.h"
 #include "common/IGCIRBuilder.h"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
-
 #include "UniformAssumptions.hpp"
-
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -32,7 +31,7 @@ namespace IGC {
         m_WIAnalysis = &getAnalysis<WIAnalysis>();
         if (m_WIAnalysis == nullptr || m_pCodeGenContext == nullptr)
         {
-            assert(0);
+            IGC_ASSERT(0);
             return false;
         }
 
@@ -88,7 +87,7 @@ namespace IGC {
 
     void UniformAssumptions::OptimizeResourceAccesses(llvm::Function& F)
     {
-        assert(m_collectingAssumptions == false);
+        IGC_ASSERT(m_collectingAssumptions == false);
         visit(F);
     }
 

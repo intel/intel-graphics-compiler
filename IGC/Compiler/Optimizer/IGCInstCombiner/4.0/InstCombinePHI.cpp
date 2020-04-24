@@ -46,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/IR/DebugInfo.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace IGCombiner;
 using namespace llvm;
@@ -72,7 +73,7 @@ DebugLoc InstCombiner::PHIArgMergedDebugLoc(PHINode &PN) {
 /// adds all have a single use, turn this into a phi and a single binop.
 Instruction *InstCombiner::FoldPHIArgBinOpIntoPHI(PHINode &PN) {
   Instruction *FirstInst = cast<Instruction>(PN.getIncomingValue(0));
-  assert(isa<BinaryOperator>(FirstInst) || isa<CmpInst>(FirstInst));
+  IGC_ASSERT(isa<BinaryOperator>(FirstInst) || isa<CmpInst>(FirstInst));
   unsigned Opc = FirstInst->getOpcode();
   Value *LHSVal = FirstInst->getOperand(0);
   Value *RHSVal = FirstInst->getOperand(1);
@@ -665,7 +666,7 @@ static bool PHIsEqualValue(PHINode *PN, Value *NonPhiInVal,
 /// Return an existing non-zero constant if this phi node has one, otherwise
 /// return constant 1.
 static ConstantInt *GetAnyNonZeroConstInt(PHINode &PN) {
-  assert(isa<IntegerType>(PN.getType()) && "Expect only intger type phi");
+  IGC_ASSERT(isa<IntegerType>(PN.getType()) && "Expect only intger type phi");
   for (Value *V : PN.operands())
     if (auto *ConstVA = dyn_cast<ConstantInt>(V))
       if (!ConstVA->isZeroValue())
@@ -833,7 +834,7 @@ Instruction *InstCombiner::SliceUpIllegalIntegerPHI(PHINode &FirstPhi) {
       // Otherwise, Create the new PHI node for this user.
       EltPHI = PHINode::Create(Ty, PN->getNumIncomingValues(),
                                PN->getName()+".off"+Twine(Offset), PN);
-      assert(EltPHI->getType() != PN->getType() &&
+      IGC_ASSERT(EltPHI->getType() != PN->getType() &&
              "Truncate didn't shrink phi?");
 
       for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {

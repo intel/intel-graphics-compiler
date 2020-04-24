@@ -26,14 +26,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/ComputeShaderBase.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "common/allocator.h"
 #include "common/secure_mem.h"
 #include <iStdLib/utility.h>
-
 #include <algorithm>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -67,12 +66,12 @@ namespace IGC
         // m_NOSBufferSize is the additional space for cross-thread constant data (constants set by driver).
         curbeTotalDataLength = iSTD::Align(dimX_aligned * dimY * sizeof(ThreadPayloadEntry) + m_NOSBufferSize, alignedVal);
 
-        assert(pThreadPayload == nullptr && "Thread payload should be a null variable");
+        IGC_ASSERT((pThreadPayload == nullptr) && "Thread payload should be a null variable");
 
         unsigned threadPayloadEntries = curbeTotalDataLength / sizeof(ThreadPayloadEntry);
 
-        ThreadPayloadEntry* pThreadPayloadMem =
-            (ThreadPayloadEntry*)IGC::aligned_malloc(threadPayloadEntries * sizeof(ThreadPayloadEntry), 16);
+        ThreadPayloadEntry* pThreadPayloadMem = (ThreadPayloadEntry*)IGC::aligned_malloc(threadPayloadEntries * sizeof(ThreadPayloadEntry), 16);
+        IGC_ASSERT(nullptr != pThreadPayloadMem);
         std::fill(pThreadPayloadMem, pThreadPayloadMem + threadPayloadEntries, 0);
 
         pThreadPayload = pThreadPayloadMem;
@@ -164,7 +163,7 @@ namespace IGC
 
     CVariable* CComputeShaderBase::CreateThreadIDinGroup(SGVUsage channelNum)
     {
-        assert(channelNum <= THREAD_ID_IN_GROUP_Z && channelNum >= THREAD_ID_IN_GROUP_X && "Thread id's are in 3 dimensions only");
+        IGC_ASSERT((channelNum <= THREAD_ID_IN_GROUP_Z) && (channelNum >= THREAD_ID_IN_GROUP_X) && "Thread id's are in 3 dimensions only");
         switch(channelNum)
         {
         case THREAD_ID_IN_GROUP_X:
@@ -186,7 +185,7 @@ namespace IGC
             }
             return m_pThread_ID_in_Group_Z;
         default:
-            assert(0 && "Invalid channel number");
+            IGC_ASSERT(false && "Invalid channel number");
         }
 
         return nullptr;

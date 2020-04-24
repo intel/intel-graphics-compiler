@@ -50,6 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -146,7 +147,7 @@ isOnlyCopiedFromConstantGlobal(Value* V, MemTransferInst*& TheCopy,
             if (IntrinsicInst * II = dyn_cast<IntrinsicInst>(I)) {
                 if (II->getIntrinsicID() == Intrinsic::lifetime_start ||
                     II->getIntrinsicID() == Intrinsic::lifetime_end) {
-                    assert(II->use_empty() && "Lifetime markers have no result to use!");
+                    IGC_ASSERT(II->use_empty() && "Lifetime markers have no result to use!");
                     ToDelete.push_back(II);
                     continue;
                 }
@@ -328,7 +329,7 @@ void PointerReplacer::replace(Instruction* I) {
 
     if (auto * LT = dyn_cast<LoadInst>(I)) {
         auto* V = getReplacement(LT->getPointerOperand());
-        assert(V && "Operand not replaced");
+        IGC_ASSERT(V && "Operand not replaced");
         auto* NewI = new LoadInst(V);
         NewI->takeName(LT);
         IC.InsertNewInstWith(NewI, *LT);
@@ -337,7 +338,7 @@ void PointerReplacer::replace(Instruction* I) {
     }
     else if (auto * GEP = dyn_cast<GetElementPtrInst>(I)) {
         auto* V = getReplacement(GEP->getPointerOperand());
-        assert(V && "Operand not replaced");
+        IGC_ASSERT(V && "Operand not replaced");
         SmallVector<Value*, 8> Indices;
         Indices.append(GEP->idx_begin(), GEP->idx_end());
         auto* NewI = GetElementPtrInst::Create(
@@ -348,7 +349,7 @@ void PointerReplacer::replace(Instruction* I) {
     }
     else if (auto * BC = dyn_cast<BitCastInst>(I)) {
         auto* V = getReplacement(BC->getOperand(0));
-        assert(V && "Operand not replaced");
+        IGC_ASSERT(V && "Operand not replaced");
         auto* NewT = PointerType::get(BC->getType()->getPointerElementType(),
             V->getType()->getPointerAddressSpace());
         auto* NewI = new BitCastInst(V, NewT);
@@ -362,12 +363,11 @@ void PointerReplacer::replace(Instruction* I) {
 }
 
 void PointerReplacer::replacePointer(Instruction& I, Value* V) {
-#ifndef NDEBUG
-    auto* PT = cast<PointerType>(I.getType());
-    auto* NT = cast<PointerType>(V->getType());
-    assert(PT != NT && PT->getElementType() == NT->getElementType() &&
-        "Invalid usage");
-#endif
+    IGC_ASSERT(nullptr != V);
+    IGC_ASSERT(nullptr != cast<PointerType>(I.getType()));
+    IGC_ASSERT(nullptr != cast<PointerType>(V->getType()));
+    IGC_ASSERT(cast<PointerType>(I.getType()) != cast<PointerType>(V->getType()));
+    IGC_ASSERT(cast<PointerType>(I.getType())->getElementType() == cast<PointerType>(V->getType())->getElementType());
     WorkMap[&I] = V;
     findLoadAndReplace(I);
 }
@@ -485,7 +485,7 @@ static bool isSupportedAtomicType(Type* Ty) {
 /// point the \c InstCombiner currently is using.
 static LoadInst* combineLoadToNewType(InstCombiner& IC, LoadInst& LI, Type* NewTy,
     const Twine& Suffix = "") {
-    assert((!LI.isAtomic() || isSupportedAtomicType(NewTy)) &&
+    IGC_ASSERT((!LI.isAtomic() || isSupportedAtomicType(NewTy)) &&
         "can't fold an atomic load to requested type");
 
     Value* Ptr = LI.getPointerOperand();
@@ -550,7 +550,7 @@ static LoadInst* combineLoadToNewType(InstCombiner& IC, LoadInst& LI, Type* NewT
 ///
 /// Returns the newly created store instruction.
 static StoreInst* combineStoreToNewValue(InstCombiner& IC, StoreInst& SI, Value* V) {
-    assert((!SI.isAtomic() || isSupportedAtomicType(V->getType())) &&
+    IGC_ASSERT((!SI.isAtomic() || isSupportedAtomicType(V->getType())) &&
         "can't fold an atomic store of requested type");
 
     Value* Ptr = SI.getPointerOperand();
@@ -604,7 +604,7 @@ static StoreInst* combineStoreToNewValue(InstCombiner& IC, StoreInst& SI, Value*
 /// Returns true if instruction represent minmax pattern like:
 ///   select ((cmp load V1, load V2), V1, V2).
 static bool isMinMaxWithLoads(Value* V) {
-    assert(V->getType()->isPointerTy() && "Expected pointer type.");
+    IGC_ASSERT(V->getType()->isPointerTy() && "Expected pointer type.");
     // Ignore possible ty* to ixx* bitcast.
     V = peekThroughBitcast(V);
     // Check that select is select ((cmp load V1, load V2), V1, V2) - minmax
@@ -683,7 +683,7 @@ static Instruction* combineLoadToOperationType(InstCombiner& IC, LoadInst& LI) {
                 combineStoreToNewValue(IC, *SI, NewLoad);
                 IC.eraseInstFromFunction(*SI);
             }
-            assert(LI.use_empty() && "Failed to remove all users of the load!");
+            IGC_ASSERT(LI.use_empty() && "Failed to remove all users of the load!");
             // Return the old load so the combiner can delete it safely.
             return &LI;
         }
@@ -719,7 +719,7 @@ static Instruction* unpackLoadToAggregate(InstCombiner& IC, LoadInst& LI) {
         return nullptr;
 
     StringRef Name = LI.getName();
-    assert(LI.getAlignment() && "Alignment must be set at this point");
+    IGC_ASSERT(LI.getAlignment() && "Alignment must be set at this point");
 
     if (auto * ST = dyn_cast<StructType>(T)) {
         // If the struct only have one element, we unpack.
@@ -1103,7 +1103,7 @@ Instruction* InstCombiner::visitLoadInst(LoadInst& LI) {
                     SI->getOperand(1)->getName() + ".val");
                 LoadInst* V2 = Builder.CreateLoad(SI->getOperand(2),
                     SI->getOperand(2)->getName() + ".val");
-                assert(LI.isUnordered() && "implied by above");
+                IGC_ASSERT(LI.isUnordered() && "implied by above");
                 V1->setAlignment(Align);
                 V1->setAtomic(LI.getOrdering(), LI.getSyncScopeID());
                 V2->setAlignment(Align);
@@ -1502,7 +1502,7 @@ Instruction* InstCombiner::visitStoreInst(StoreInst& SI) {
         // then *this* store is dead (X = load P; store X -> P).
         if (LoadInst * LI = dyn_cast<LoadInst>(BBI)) {
             if (LI == Val && equivalentAddressValues(LI->getOperand(0), Ptr)) {
-                assert(SI.isUnordered() && "can't eliminate ordering operation");
+                IGC_ASSERT(SI.isUnordered() && "can't eliminate ordering operation");
                 return eraseInstFromFunction(SI);
             }
 
@@ -1556,7 +1556,7 @@ Instruction* InstCombiner::visitStoreInst(StoreInst& SI) {
 /// into a phi node with a store in the successor.
 ///
 bool InstCombiner::SimplifyStoreAtEndOfBlock(StoreInst& SI) {
-    assert(SI.isUnordered() &&
+    IGC_ASSERT(SI.isUnordered() &&
         "this code has not been auditted for volatile or ordered store case");
 
     BasicBlock* StoreBB = SI.getParent();

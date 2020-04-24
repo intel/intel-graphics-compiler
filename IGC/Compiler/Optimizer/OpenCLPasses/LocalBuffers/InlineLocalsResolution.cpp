@@ -30,14 +30,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
-
 #include <llvmWrapper/Support/Alignment.h>
-
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -65,7 +63,7 @@ InlineLocalsResolution::InlineLocalsResolution() :
 const unsigned int InlineLocalsResolution::VALID_LOCAL_HIGH_BITS = 0x10000000;
 
 static bool useAsPointerOnly(Value* V) {
-    assert(V->getType()->isPointerTy() && "Expect the input value is a pointer!");
+    IGC_ASSERT(V->getType()->isPointerTy() && "Expect the input value is a pointer!");
 
     SmallSet<PHINode*, 8> VisitedPHIs;
     SmallVector<Value*, 16> WorkList;
@@ -269,9 +267,9 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
                     if (pFunc && pFunc->getName().equals(BUILTIN_MEMPOOL))
                     {
                         // should always be called with constant operands
-                        assert(isa<ConstantInt>(CI->getArgOperand(0)));
-                        assert(isa<ConstantInt>(CI->getArgOperand(1)));
-                        assert(isa<ConstantInt>(CI->getArgOperand(2)));
+                        IGC_ASSERT(isa<ConstantInt>(CI->getArgOperand(0)));
+                        IGC_ASSERT(isa<ConstantInt>(CI->getArgOperand(1)));
+                        IGC_ASSERT(isa<ConstantInt>(CI->getArgOperand(2)));
 
                         const unsigned int allocAllWorkgroups = unsigned(cast<ConstantInt>(CI->getArgOperand(0))->getZExtValue());
                         const unsigned int numAdditionalElements = unsigned(cast<ConstantInt>(CI->getArgOperand(1))->getZExtValue());
@@ -341,7 +339,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
         }
 
         PointerType* ptrType = dyn_cast<PointerType>(globalVar->getType());
-        assert(ptrType && "The type of a global variable must be a pointer type");
+        IGC_ASSERT(ptrType && "The type of a global variable must be a pointer type");
         if (!ptrType)
         {
             continue;

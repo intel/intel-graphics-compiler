@@ -23,12 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "common/igc_regkeys.hpp"
-
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/Function.h>
@@ -38,10 +38,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <cmath>
 #include <limits>
 #include <type_traits>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -547,8 +547,8 @@ struct IntDivConstantReduction : public FunctionPass
             unsigned s = divisor.countTrailingZeros();
             shiftedDividend = B.CreateLShr(shiftedDividend, s);
             appxRecip = divisor.lshr(s).magicu(s);
-            assert(!appxRecip.a && "expected to subtract now");
-            assert(appxRecip.s < divisor.getBitWidth() && "undefined shift");
+            IGC_ASSERT(!appxRecip.a && "expected to subtract now");
+            IGC_ASSERT(appxRecip.s < divisor.getBitWidth() && "undefined shift");
         }
         //
         ConstantInt *appxRcp = getConstantUInt(
@@ -664,7 +664,7 @@ struct IntDivConstantReduction : public FunctionPass
                 return CreateMulhU64(B, u, v);
             }
         } else {
-            assert(0 && "CreateMulH must be 32 or 64");
+            IGC_ASSERT(false && "CreateMulH must be 32 or 64");
             return nullptr;
         }
     }
@@ -749,7 +749,7 @@ struct IntDivConstantReduction : public FunctionPass
         case 32: return Builder.getInt32((uint32_t)val);
         case 64: return Builder.getInt64((uint64_t)val);
         default:
-            assert(false && "invalid bitsize");
+            IGC_ASSERT(false && "invalid bitsize");
             return nullptr;
         }
     }
@@ -762,7 +762,7 @@ struct IntDivConstantReduction : public FunctionPass
         case 32: return Builder.getInt32((uint32_t)val);
         case 64: return Builder.getInt64(val);
         default:
-            assert(false && "invalid bitsize");
+            IGC_ASSERT(false && "invalid bitsize");
             return nullptr;
         }
     }

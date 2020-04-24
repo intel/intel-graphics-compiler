@@ -23,10 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "common/Types.hpp"
+#include "Probe/Assertion.h"
 
 /***********************************************************************************
 This File contains all the helper functions to generate the message descriptor for the different
@@ -48,7 +50,7 @@ namespace IGC
         {
             return EU_SAMPLER_SIMD_SIMD16;
         }
-        assert(0);
+        IGC_ASSERT(0);
         return EU_SAMPLER_SIMD_SIMD8;
     }
 
@@ -64,15 +66,15 @@ namespace IGC
         bool FP16Input,
         bool FP16Return)
     {
-        assert(resourceIndex < 256);
-        assert(samplerIndex < 16);
-        assert(messageType >= 0 && int(messageType) < 32);
-        assert(executionMode >= 0 && int(executionMode) < 4);
-        assert(responseLength < 9);
-        assert(messageLength > 0 && messageLength < 16);
+        IGC_ASSERT(resourceIndex < 256);
+        IGC_ASSERT(samplerIndex < 16);
+        IGC_ASSERT(messageType >= 0 && int(messageType) < 32);
+        IGC_ASSERT(executionMode >= 0 && int(executionMode) < 4);
+        IGC_ASSERT(responseLength < 9);
+        IGC_ASSERT(messageLength > 0 && messageLength < 16);
 
         // if endOfThread == true, responseLength needs to be 0
-        assert(!endOfThread || responseLength == 0);
+        IGC_ASSERT(!endOfThread || responseLength == 0);
 
         SEUSamplerMessageDescriptorGen7 messageDescriptor;
         memset(&messageDescriptor, 0, sizeof(messageDescriptor));
@@ -163,7 +165,7 @@ namespace IGC
         case EATOMIC_PREDEC64:
             return EU_DATA_PORT_A64_ATOMIC_OPERATION_PREDEC;
         default:
-            assert(0 && "Other atomic operations not implemented");
+            IGC_ASSERT(false && "Other atomic operations not implemented");
         }
 
         return EU_DATA_PORT_ATOMIC_OPERATION_AND;
@@ -261,7 +263,7 @@ namespace IGC
                 messageSpecificControl |= (1 << 4);
                 break;
             default:
-                assert(0 && "Other SIMD modes are not allowed");
+                IGC_ASSERT(false && "Other SIMD modes are not allowed");
             }
         }
 
@@ -292,12 +294,12 @@ namespace IGC
                 messageSpecificControl |= (1 << 4);
                 break;
             default:
-                assert(0 && "Other SIMD modes are not allowed");
+                IGC_ASSERT(false && "Other SIMD modes are not allowed");
             }
         }
         else
         {
-            assert(0 && "Other message types haven't been implemented yet.");
+            IGC_ASSERT(false && "Other message types haven't been implemented yet.");
         }
 
         return messageSpecificControl;
@@ -318,7 +320,7 @@ namespace IGC
         static_assert(2 == DATA_PORT_TARGET_SAMPLER_CACHE, "Table index order");
         static_assert(3 == DATA_PORT_TARGET_CONSTANT_CACHE, "Table index order");
         static_assert(4 == DATA_PORT_TARGET_DATA_CACHE_1, "Table index order");
-        assert(0 <= targetCache && targetCache <= 4 && "Table index bounds check");
+        IGC_ASSERT(0 <= targetCache && targetCache <= 4 && "Table index bounds check");
         static const uint cConvertMessageType[][NUM_EU_DATA_PORT_READ_MESSAGE_TYPES] =
         {
             // DATA_PORT_TARGET_DATA_CACHE
@@ -445,8 +447,8 @@ namespace IGC
         const bool   invalidateAfterReadEnable,
         const uint   bindingTableIndex)
     {
-        assert((messageLength > 0) && (messageLength < 16));
-        assert(responseLength < 9);
+        IGC_ASSERT((messageLength > 0) && (messageLength < 16));
+        IGC_ASSERT(responseLength < 9);
 
         SEUDataPortMessageDescriptorGen8_0 messageDescriptor;
         memset(&messageDescriptor, 0, sizeof(messageDescriptor));
@@ -474,8 +476,8 @@ namespace IGC
         const EU_GEN6_DATA_PORT_RENDER_TARGET_WRITE_CONTROL messageSubType,
         const uint   bindingTableIndex)
     {
-        assert((messageLength > 0) && (messageLength < 16));
-        assert(responseLength < 9);
+        IGC_ASSERT((messageLength > 0) && (messageLength < 16));
+        IGC_ASSERT(responseLength < 9);
 
         SEUPixelDataPortMessageDescriptorGen8_0 messageDescriptor;
         memset(&messageDescriptor, 0, sizeof(messageDescriptor));
@@ -549,7 +551,7 @@ namespace IGC
     {
         uint idx = m_pLayout->minColorBufferIdx + index;
 
-        assert(m_ColorBufferMappings.size() == 0 || idx < m_ColorBufferMappings.size());
+        IGC_ASSERT(m_ColorBufferMappings.size() == 0 || idx < m_ColorBufferMappings.size());
         if (idx < m_ColorBufferMappings.size())
         {
             idx = m_ColorBufferMappings[idx];
@@ -571,25 +573,25 @@ namespace IGC
 
     uint CBTILayout::GetScratchSurfaceBindingTableIndex() const
     {
-        assert(m_pLayout != NULL);
+        IGC_ASSERT(m_pLayout != NULL);
         return SCRATCH_SPACE_BTI;
     }
 
     uint CBTILayout::GetStatelessBindingTableIndex() const
     {
-        assert(m_pLayout != NULL);
+        IGC_ASSERT(m_pLayout != NULL);
         return STATELESS_BTI;
     }
 
     uint CBTILayout::GetImmediateConstantBufferOffset() const
     {
-        assert(m_pLayout != NULL);
+        IGC_ASSERT(m_pLayout != NULL);
         return m_pLayout->immediateConstantBufferOffset;
     }
 
     uint CBTILayout::GetDrawIndirectBufferIndex() const
     {
-        assert(m_pLayout != NULL);
+        IGC_ASSERT(m_pLayout != NULL);
         return m_pLayout->indirectBufferOffset;
     }
 
@@ -608,7 +610,7 @@ namespace IGC
         {
             return EU_PI_MESSAGE_SIMD16;
         }
-        assert(0);
+        IGC_ASSERT(0);
         return EU_PI_MESSAGE_SIMD8;
     }
 
@@ -621,8 +623,8 @@ namespace IGC
         EU_PIXEL_INTERPOLATOR_INTERPOLATION_MODE interpolationMode,
         const unsigned int sampleindex)
     {
-        assert(messageType >= 0 && int(messageType) < 4);
-        assert(executionMode >= 0 && int(executionMode) < 4);
+        IGC_ASSERT(messageType >= 0 && int(messageType) < 4);
+        IGC_ASSERT(executionMode >= 0 && int(executionMode) < 4);
 
         SEUPixelInterpolatorSampleIndexMessageDescriptorGen7_0 messageDescriptor;
         memset(&messageDescriptor, 0, sizeof(messageDescriptor));
@@ -650,8 +652,8 @@ namespace IGC
         unsigned int perMessageXOffset,
         unsigned int perMessageYOffset)
     {
-        assert(messageType >= 0 && int(messageType) < 4);
-        assert(executionMode >= 0 && int(executionMode) < 4);
+        IGC_ASSERT(messageType >= 0 && int(messageType) < 4);
+        IGC_ASSERT(executionMode >= 0 && int(executionMode) < 4);
 
         SEUPixelInterpolatorOffsetMessageDescriptorGen7_0 messageDescriptor;
         memset(&messageDescriptor, 0, sizeof(messageDescriptor));

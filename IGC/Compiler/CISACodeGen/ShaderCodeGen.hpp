@@ -35,21 +35,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-
 // Needed for SConstantGatherEntry
 #include "usc_gen7.h"
-
 #include "common/Types.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "common/debug/Dump.hpp"
-
 #include <map>
 #include <vector>
+#include "Probe/Assertion.h"
 
 namespace llvm
 {
@@ -98,12 +94,12 @@ namespace IGC
 
         virtual CVariable* GetURBOutputHandle()
         {
-            assert(!"Should be overridden in a derived class!");
+            IGC_ASSERT(false && "Should be overridden in a derived class!");
             return nullptr;
         }
         virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex)
         {
-            assert(!"Should be overridden in a derived class!");
+            IGC_ASSERT(false && "Should be overridden in a derived class!");
             return nullptr;
         }
         virtual bool hasReadWriteImage(llvm::Function& F) { return false; }
@@ -400,7 +396,7 @@ namespace IGC
         std::vector<std::pair<unsigned int, unsigned int>> m_VISAIndexToGenISAOff;
         void addCVarsForVectorBC(llvm::BitCastInst* BCI, llvm::SmallVector<CVariable*, 8> CVars)
         {
-            assert(m_VectorBCItoCVars.find(BCI) == std::end(m_VectorBCItoCVars) &&
+            IGC_ASSERT(m_VectorBCItoCVars.find(BCI) == std::end(m_VectorBCItoCVars) &&
                 "a variable already exists for this vector bitcast");
             m_VectorBCItoCVars.try_emplace(BCI, CVars);
         }

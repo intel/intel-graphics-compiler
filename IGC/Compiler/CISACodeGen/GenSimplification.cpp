@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/ADT/APInt.h>
@@ -39,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Instruction.h>
 #include <llvm/Support/raw_ostream.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -105,7 +105,7 @@ bool GenSimplification::runOnFunction(Function& F) {
 }
 
 bool GenSimplification::simplifyVectorPHINodeCase1(PHINode& PN) const {
-    assert(isa<VectorType>(PN.getType()));
+    IGC_ASSERT(isa<VectorType>(PN.getType()));
 
     // Check all users are 'bitcast'.
     Type* Ty = nullptr;
@@ -138,7 +138,7 @@ bool GenSimplification::simplifyVectorPHINodeCase1(PHINode& PN) const {
             V = BC->getOperand(0);
         }
         else {
-            assert(isa<Constant>(V));
+            IGC_ASSERT(isa<Constant>(V));
             V = IRB.CreateBitCast(V, Ty);
         }
         NewPN->addIncoming(V, PN.getIncomingBlock(i));
@@ -152,7 +152,7 @@ bool GenSimplification::simplifyVectorPHINodeCase1(PHINode& PN) const {
 }
 
 bool GenSimplification::simplifyVectorPHINodeCase2(PHINode& PN) const {
-    assert(isa<VectorType>(PN.getType()));
+    IGC_ASSERT(isa<VectorType>(PN.getType()));
 
     // Check all users are 'extractelement' with constant indices.
     for (auto* U : PN.users()) {

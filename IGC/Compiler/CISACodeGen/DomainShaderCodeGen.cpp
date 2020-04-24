@@ -23,20 +23,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/CISACodeGen/DomainShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
-
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/secure_mem.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <iStdLib/utility.h>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -191,7 +190,7 @@ namespace IGC
         uint offset = 0;
 
         //R0 is always allocated as a predefined variable. Increase offset for R0
-        assert(m_R0);
+        IGC_ASSERT(m_R0);
         offset += getGRFSize();
 
         if (m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH)
@@ -213,17 +212,18 @@ namespace IGC
         offset += getGRFSize();
 
         // allocate input for URB return handles
-        assert(m_pURBWriteHandleReg);
+        IGC_ASSERT(m_pURBWriteHandleReg);
         AllocateInput(m_pURBWriteHandleReg, offset);
         offset += getGRFSize();
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT(0 < getGRFSize());
+        IGC_ASSERT((offset % getGRFSize()) == 0);
         ProgramOutput()->m_startReg = offset / getGRFSize();
 
         // allocate space for NOS constants and pushed constants
         AllocateConstants3DShader(offset);
 
-        assert(offset % getGRFSize() == 0);
+        IGC_ASSERT((offset % getGRFSize()) == 0);
         // Allocate space for vertex element data
         for (uint i = 0; i < setup.size(); ++i)
         {

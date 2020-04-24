@@ -27,16 +27,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvmWrapper/Support/Alignment.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <deque>
 #include <set>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -438,7 +437,7 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst& I)
 
     if (ID == Intrinsic::memcpy) {
         MemCpyInst* memCpy = dyn_cast<MemCpyInst>(&I);
-        assert(memCpy);
+        IGC_ASSERT(memCpy);
         if (memCpy) {
             alignment = std::min(memCpy->getDestAlignment(), memCpy->getSourceAlignment());
         }

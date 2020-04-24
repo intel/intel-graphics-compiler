@@ -32,7 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
 #include "llvm/Config/llvm-config.h"
-
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Compiler/DebugInfo/DwarfDebug.hpp"
 #include "Compiler/DebugInfo/StreamEmitter.hpp"
@@ -49,10 +48,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/BinaryFormat/ELF.h"
 #endif
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 #include "common/secure_mem.h"
 #include "Compiler/CISACodeGen/DriverInfo.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -163,13 +162,13 @@ void IGC::insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
 
 void DebugEmitter::Initialize(CShader* pShader, bool debugEnabled)
 {
-    assert(!m_initialized && "DebugEmitter is already initialized!");
+    IGC_ASSERT(!m_initialized && "DebugEmitter is already initialized!");
     m_initialized = true;
 
     m_debugEnabled = debugEnabled;
     // VISA module will be initialized even when debugger is disabled.
     // Its overhead is minimum and it will be used in debug mode to
-    // assert on calling DebugEmitter in the right order.
+    // assertion test on calling DebugEmitter in the right order.
     m_pVISAModule = VISAModule::BuildNew(pShader);
     toFree.push_back(m_pVISAModule);
 

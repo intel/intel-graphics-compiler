@@ -23,18 +23,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/Analysis/AssumptionCache.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -84,7 +85,7 @@ namespace IGC
 
         const KernelArg* getKernelArg(llvm::Value* Arg)
         {
-            assert(m_pKernelArgs && "Should initialize it before use!");
+            IGC_ASSERT(m_pKernelArgs && "Should initialize it before use!");
             for (const KernelArg& arg : *m_pKernelArgs) {
                 if (arg.getArg() == Arg) {
                     return &arg;
@@ -95,7 +96,7 @@ namespace IGC
 
         const KernelArg* getBufferOffsetKernelArg(const KernelArg* KA)
         {
-            assert(m_pKernelArgs && "KernelArgs: should initialize it before use!");
+            IGC_ASSERT(m_pKernelArgs && "KernelArgs: should initialize it before use!");
             int argno = KA->getAssociatedArgNo();
             for (const KernelArg& arg : *m_pKernelArgs) {
                 if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET &&

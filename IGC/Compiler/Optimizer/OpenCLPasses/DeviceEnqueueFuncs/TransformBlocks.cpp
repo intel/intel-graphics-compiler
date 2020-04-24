@@ -39,9 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublic.h"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -50,7 +48,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/ValueHandle.h"
 #include "llvmWrapper/Transforms/Utils.h"
 #include "llvmWrapper/Support/Alignment.h"
-
 #include "llvm/Pass.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/IRBuilder.h"
@@ -64,10 +61,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
-
 #include <algorithm>
 #include <map>
 #include <unordered_set>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -191,8 +188,8 @@ namespace //Anonymous
         std::string getKernelArgTypeName(const llvm::Function* func, unsigned argNum)
         {
             auto funcInfoMD = getOrEmitKernelMetadata(const_cast<llvm::Function*>(func));
-            assert((funcInfoMD != nullptr) && "cannot get or emit for kernel metadata");
-            assert(funcInfoMD->m_OpenCLArgBaseTypes.size() > (unsigned)argNum);
+            IGC_ASSERT((funcInfoMD != nullptr) && "cannot get or emit for kernel metadata");
+            IGC_ASSERT(funcInfoMD->m_OpenCLArgBaseTypes.size() > (unsigned)argNum);
             return funcInfoMD->m_OpenCLArgBaseTypes[argNum];
         }
 
@@ -357,7 +354,7 @@ namespace //Anonymous
         llvm::StructType* _structType;
         explicit StructValue(llvm::Value* value) : _structValue(value)
         {
-            assert(value);
+            IGC_ASSERT(value);
             llvm::Type* valType = value->getType();
             while (valType->isPointerTy())
             {
@@ -417,8 +414,8 @@ namespace //Anonymous
 
         llvm::Value* getValueStoredTo(llvm::Value* ptrVal)
         {
-            assert(ptrVal);
-            assert(ptrVal->getType()->isPointerTy());
+            IGC_ASSERT(ptrVal);
+            IGC_ASSERT(ptrVal->getType()->isPointerTy());
             for (auto ptrUser : ptrVal->users())
             {
                 if (auto storeInst = dyn_cast<llvm::StoreInst>(ptrUser))
@@ -456,7 +453,7 @@ namespace //Anonymous
                         {
                             size_t index = (size_t)indexValue->getSExtValue();
                             _storedValues[index] = getValueStoredTo(elem_ptr_inst);
-                            assert(_storedValues[index] != nullptr);
+                            IGC_ASSERT(_storedValues[index] != nullptr);
                         }
                     }
                 }
@@ -487,7 +484,7 @@ namespace //Anonymous
 
         virtual llvm::Value* getValueStoredAtIndex(GEPIndex index)
         {
-            assert("Should not be here");
+            IGC_ASSERT(false && "Should not be here");
             return nullptr;
         }
     };
@@ -514,7 +511,7 @@ namespace //Anonymous
 
         uint64_t CreateMemCpy(llvm::Value* dest, llvm::Value* source, unsigned align) const
         {
-            assert(source->getType()->isPointerTy());
+            IGC_ASSERT(source->getType()->isPointerTy());
 
             auto size = _DL->getTypeAllocSize(source->getType()->getPointerElementType());
             _builder.CreateMemCpy(dest, source, size, align);
@@ -524,7 +521,7 @@ namespace //Anonymous
     public:
         StoreInstBuilder(IGCLLVM::IRBuilder<>& builder) : _builder(builder), _DL(&(builder.GetInsertBlock()->getParent()->getParent()->getDataLayout()))
         {
-            assert(_DL != nullptr);
+            IGC_ASSERT(_DL != nullptr);
         }
 
         /// Create instructions to store source value to the ptr at specified index
@@ -656,7 +653,7 @@ namespace //Anonymous
         /// Populate captures list ordered by capture indicies
         bool populateCapturedValues(llvm::ArrayRef<GEPIndex> captureIndicies)
         {
-            assert(captureIndicies.size() == 0 || *std::max_element(captureIndicies.begin(), captureIndicies.end()) < _paramStruct->getNumElements());
+            IGC_ASSERT(captureIndicies.size() == 0 || *std::max_element(captureIndicies.begin(), captureIndicies.end()) < _paramStruct->getNumElements());
 
             for (auto captureIndex : captureIndicies)
             {
@@ -676,7 +673,7 @@ namespace //Anonymous
                 _capturedValues.clear();
                 gotCapturedValues = populateCapturedValues(captureIndicies);
             }
-            assert(captureIndicies.size() == _capturedValues.size());
+            IGC_ASSERT(captureIndicies.size() == _capturedValues.size());
             return _capturedValues;
         }
 
@@ -968,9 +965,9 @@ namespace //Anonymous
         {
             auto expectedNdrangeTy = getNDRangeType();
 
-            assert(nDRange->getType()->isPointerTy());
+            IGC_ASSERT(nDRange->getType()->isPointerTy());
             auto actualNDRangeTy = KindQuery::toStructType(nDRange->getType());
-            assert(actualNDRangeTy);
+            IGC_ASSERT(actualNDRangeTy);
             if (actualNDRangeTy == nullptr) report_fatal_error("NDRange type mismatch");
 
             if (actualNDRangeTy->isLayoutIdentical(expectedNdrangeTy))
@@ -991,7 +988,7 @@ namespace //Anonymous
     public:
         explicit CallHandler(DeviceExecCallArgs* call)
         {
-            assert(call != nullptr);
+            IGC_ASSERT(call != nullptr);
             _deviceExecCall.reset(call);
         }
 
@@ -1053,8 +1050,8 @@ namespace //Anonymous
             llvm::Value* block_simd_size = KernelSubGroupSizeCall::getNewValue(dispatcher);
             block_simd_size->setName("block_simd_size");
             llvm::Value* range = AdjustNDRangeType(_deviceExecCall->getNDRange());
-            assert(range != nullptr);
-            assert(KindQuery::isNDRangeType(range->getType()));
+            IGC_ASSERT(range != nullptr);
+            IGC_ASSERT(KindQuery::isNDRangeType(range->getType()));
 
             llvm::Value* args[] = { range, block_simd_size };
 
@@ -1079,7 +1076,7 @@ namespace //Anonymous
             llvm::Value* block_simd_size = KernelSubGroupSizeCall::getNewValue(dispatcher);
             block_simd_size->setName("block_simd_size");
             llvm::Value* subgroupCount = _deviceExecCall->getSubgroupCount();
-            assert(subgroupCount != nullptr);
+            IGC_ASSERT(subgroupCount != nullptr);
 
             llvm::Value* args[] = { subgroupCount, block_simd_size };
 
@@ -1218,7 +1215,7 @@ namespace //Anonymous
         /// Remove the function from registered block_invoke functions
         void removeInvocation(const llvm::Function* func)
         {
-            assert(_invocations.find(func) != _invocations.end());
+            IGC_ASSERT(_invocations.find(func) != _invocations.end());
             _invocations.erase(func);
         }
 
@@ -1428,7 +1425,7 @@ namespace //Anonymous
         }
 
         Function* getInvokeFunctionFromKernelWrapper(const Function* invokeFunc, DataContext& dataContext) {
-            assert(isInvokeFunctionKernelWrapper(invokeFunc, dataContext));
+            IGC_ASSERT(isInvokeFunctionKernelWrapper(invokeFunc, dataContext));
             const CallInst* inst = dyn_cast<CallInst>(&*(invokeFunc->begin()->begin()));
             if (inst) {
                 return inst->getCalledFunction();
@@ -1574,7 +1571,7 @@ namespace //Anonymous
                                             changed = true;
                                             llvm::InlineFunctionInfo IFI;
                                             inlined = llvm::InlineFunction(callInst, IFI, nullptr, false);
-                                            assert(inlined && "failed inlining block invoke function");
+                                            IGC_ASSERT(inlined && "failed inlining block invoke function");
                                         }
                                     }
                                 }
@@ -1696,7 +1693,7 @@ namespace //Anonymous
                     // there are no compound vectors in OpenCL.
                     return BaseTypeName(type->getVectorElementType(), os) << type->getVectorNumElements();
                 default:
-                    assert(false && "Unknown basic type found");
+                    IGC_ASSERT(false && "Unknown basic type found");
                     return os << "unknown_type";
                 }
             }
@@ -2039,9 +2036,9 @@ namespace //Anonymous
         if (auto allocaInst = dyn_cast<llvm::AllocaInst>(value))
         {
             auto currBB = allocaInst->getParent();
-            assert(currBB);
+            IGC_ASSERT(currBB);
             auto currFunc = currBB->getParent();
-            assert(currFunc);
+            IGC_ASSERT(currFunc);
 
             llvm::StoreInst* foundStore = nullptr;
 
@@ -2113,7 +2110,7 @@ namespace //Anonymous
 
     std::unique_ptr<StructValue> StructValue::get(llvm::Value* value)
     {
-        assert(value != nullptr);
+        IGC_ASSERT(value != nullptr);
 
         if (value == nullptr)
             return nullptr;
@@ -2149,7 +2146,7 @@ namespace //Anonymous
         {
             return std::unique_ptr<StructValue>(new NullStructValue(sourceValue));
         }
-        assert(false && "should not be here");
+        IGC_ASSERT(false && "should not be here");
         return nullptr;
     }
 
@@ -2159,11 +2156,11 @@ namespace //Anonymous
 
     uint64_t StoreInstBuilder::Store(llvm::Value* dest, llvm::Value* source, uint64_t destIndex /*= UINT64_MAX*/, bool byVal /*= true*/)
     {
-        assert(dest != nullptr);
-        assert(source != nullptr);
+        IGC_ASSERT(dest != nullptr);
+        IGC_ASSERT(source != nullptr);
 
         auto ptrType = dest->getType();
-        assert(ptrType->isPointerTy());
+        IGC_ASSERT(ptrType->isPointerTy());
 
         auto destPtr = dest;
         auto typeToSelect = source->getType();
@@ -2255,7 +2252,7 @@ namespace //Anonymous
                 }
                 else
                 {
-                    assert(0 && "Unacceptable block_invoke() argument");
+                    IGC_ASSERT(false && "Unacceptable block_invoke() argument");
                 }
             }
 
@@ -2446,7 +2443,7 @@ namespace //Anonymous
             // On SPIR-V path it can be null - invoke function is taken from call arguments.
             _block_invokeFunction = dyn_cast_or_null<llvm::Function>(_paramStruct->getValueStoredAtIndex(BLOCK_INDEX_INVOKE_FUNC));
 
-            assert(_block_invokeFunction == nullptr || _block_invokeFunction->getName().find("block_invoke") != llvm::StringRef::npos);
+            IGC_ASSERT(_block_invokeFunction == nullptr || _block_invokeFunction->getName().find("block_invoke") != llvm::StringRef::npos);
         }
     }
 
@@ -2479,7 +2476,7 @@ namespace //Anonymous
             /*Params=*/argTypes,
             /*isVarArg=*/isVarArg);
         auto func = cast<llvm::Function>(_deviceExecCall->getModule()->getOrInsertFunction(name, funcType));
-        assert(func != nullptr);
+        IGC_ASSERT(func != nullptr);
         func->setCallingConv(llvm::CallingConv::C);
 
         return func;
@@ -2489,7 +2486,7 @@ namespace //Anonymous
     {
         auto call = _deviceExecCall->getCall();
         llvm::Function* oldFunc = call->getCalledFunction();
-        assert(oldFunc != NULL);
+        IGC_ASSERT(oldFunc != NULL);
 
         std::vector<llvm::Type*> argTypes;
         for (auto arg : args)
@@ -2501,7 +2498,7 @@ namespace //Anonymous
         newFunc->copyAttributesFrom(oldFunc);
 
         llvm::CallInst* newCall = llvm::CallInst::Create(newFunc, args, "", call);
-        assert(newCall != NULL);
+        IGC_ASSERT(newCall != NULL);
         newCall->setCallingConv(call->getCallingConv());
         newCall->setAttributes(call->getAttributes());
         if (call->isTailCall())
@@ -2629,10 +2626,10 @@ namespace //Anonymous
             dispatcherArgIdx++;
         }
 
-        assert(scalarsBufSize == scalarsBufOffset);
-        assert(pointersNum == pointersBufOffset);
-        assert(pointersNum == ptrMapBufOffset);
-        assert(objectsNum == objectMapBufOffset);
+        IGC_ASSERT(scalarsBufSize == scalarsBufOffset);
+        IGC_ASSERT(pointersNum == pointersBufOffset);
+        IGC_ASSERT(pointersNum == ptrMapBufOffset);
+        IGC_ASSERT(objectsNum == objectMapBufOffset);
 
         llvm::Value* localSizesBuf = nullptr;
         llvm::Value* localSizesNumValue = nullptr;
@@ -2646,7 +2643,7 @@ namespace //Anonymous
                 auto storedSize = storeBuilder.Store(localsBuf, localSizeValue, localSizeOffset);
                 localSizeOffset += sizeInBlocks(storedSize, int32ty);
             }
-            assert(_deviceExecCall->getLocalSizes().size() == localSizeOffset);
+            IGC_ASSERT(_deviceExecCall->getLocalSizes().size() == localSizeOffset);
 
             localSizesBuf = builder.CreatePointerCast(localsBuf, int32ptrty);
             localSizesNumValue = llvm::ConstantInt::get(int32ty, localSizeOffset);
@@ -2722,8 +2719,8 @@ namespace //Anonymous
         //..._locals...(..., int* local_size_buf, uint sizeof_local_size_buf,...
         if (_deviceExecCall->hasLocals())
         {
-            assert(buffers.local_size_buf != nullptr);
-            assert(buffers.sizeof_local_size_buf != nullptr);
+            IGC_ASSERT(buffers.local_size_buf != nullptr);
+            IGC_ASSERT(buffers.sizeof_local_size_buf != nullptr);
             args.push_back(buffers.local_size_buf);
             args.push_back(buffers.sizeof_local_size_buf);
         }

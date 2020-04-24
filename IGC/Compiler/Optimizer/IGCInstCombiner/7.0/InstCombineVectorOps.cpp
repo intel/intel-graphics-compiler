@@ -61,11 +61,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Transforms/InstCombine/InstCombineWorklist.h"
-
-#include <cassert>
 #include <cstdint>
 #include <iterator>
 #include <utility>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace PatternMatch;
@@ -324,7 +323,7 @@ Instruction* InstCombiner::visitExtractElementInst(ExtractElementInst& EI) {
 /// RHS, return the shuffle mask and true. Otherwise, return false.
 static bool collectSingleShuffleElements(Value* V, Value* LHS, Value* RHS,
     SmallVectorImpl<Constant*>& Mask) {
-    assert(LHS->getType() == RHS->getType() &&
+    IGC_ASSERT(LHS->getType() == RHS->getType() &&
         "Invalid CollectSingleShuffleElements");
     unsigned NumElts = V->getType()->getVectorNumElements();
 
@@ -383,7 +382,7 @@ static bool collectSingleShuffleElements(Value* V, Value* LHS, Value* RHS,
                                     ExtractedIdx);
                         }
                         else {
-                            assert(EI->getOperand(0) == RHS);
+                            IGC_ASSERT(EI->getOperand(0) == RHS);
                             Mask[InsertedIdx % NumElts] =
                                 ConstantInt::get(Type::getInt32Ty(V->getContext()),
                                     ExtractedIdx + NumLHSElts);
@@ -489,7 +488,7 @@ static ShuffleOps collectShuffleElements(Value* V,
     SmallVectorImpl<Constant*>& Mask,
     Value* PermittedRHS,
     InstCombiner& IC) {
-    assert(V->getType()->isVectorTy() && "Invalid shuffle!");
+    IGC_ASSERT(V->getType()->isVectorTy() && "Invalid shuffle!");
     unsigned NumElts = V->getType()->getVectorNumElements();
 
     if (isa<UndefValue>(V)) {
@@ -520,7 +519,7 @@ static ShuffleOps collectShuffleElements(Value* V,
                 if (EI->getOperand(0) == PermittedRHS || PermittedRHS == nullptr) {
                     Value* RHS = EI->getOperand(0);
                     ShuffleOps LR = collectShuffleElements(VecOp, Mask, RHS, IC);
-                    assert(LR.second == nullptr || LR.second == RHS);
+                    IGC_ASSERT(LR.second == nullptr || LR.second == RHS);
 
                     if (LR.first->getType() != RHS->getType()) {
                         // Although we are giving up for now, see if we can create extracts
@@ -793,7 +792,7 @@ static Instruction* foldConstantInsEltIntoShuffle(InsertElementInst& InsElt) {
         // into new value/mask vectors.
         for (uint64_t I : InsertIdx) {
             if (!Values[I]) {
-                assert(!Mask[I]);
+                IGC_ASSERT(!Mask[I]);
                 Values[I] = *ValI;
                 Mask[I] = ConstantInt::get(Type::getInt32Ty(InsElt.getContext()),
                     NumElts + I);
@@ -803,7 +802,7 @@ static Instruction* foldConstantInsEltIntoShuffle(InsertElementInst& InsElt) {
         // Remaining values are filled with 'undef' values.
         for (unsigned I = 0; I < NumElts; ++I) {
             if (!Values[I]) {
-                assert(!Mask[I]);
+                IGC_ASSERT(!Mask[I]);
                 Values[I] = UndefValue::get(InsElt.getType()->getElementType());
                 Mask[I] = ConstantInt::get(Type::getInt32Ty(InsElt.getContext()), I);
             }
@@ -995,7 +994,7 @@ static Value* buildNew(Instruction* I, ArrayRef<Value*> NewOps) {
     case Instruction::Or:
     case Instruction::Xor: {
         BinaryOperator* BO = cast<BinaryOperator>(I);
-        assert(NewOps.size() == 2 && "binary operator with #ops != 2");
+        IGC_ASSERT(NewOps.size() == 2 && "binary operator with #ops != 2");
         BinaryOperator* New =
             BinaryOperator::Create(cast<BinaryOperator>(I)->getOpcode(),
                 NewOps[0], NewOps[1], "", BO);
@@ -1011,11 +1010,11 @@ static Value* buildNew(Instruction* I, ArrayRef<Value*> NewOps) {
         return New;
     }
     case Instruction::ICmp:
-        assert(NewOps.size() == 2 && "icmp with #ops != 2");
+        IGC_ASSERT(NewOps.size() == 2 && "icmp with #ops != 2");
         return new ICmpInst(I, cast<ICmpInst>(I)->getPredicate(),
             NewOps[0], NewOps[1]);
     case Instruction::FCmp:
-        assert(NewOps.size() == 2 && "fcmp with #ops != 2");
+        IGC_ASSERT(NewOps.size() == 2 && "fcmp with #ops != 2");
         return new FCmpInst(I, cast<FCmpInst>(I)->getPredicate(),
             NewOps[0], NewOps[1]);
     case Instruction::Trunc:
@@ -1032,7 +1031,7 @@ static Value* buildNew(Instruction* I, ArrayRef<Value*> NewOps) {
         Type* DestTy =
             VectorType::get(I->getType()->getScalarType(),
                 NewOps[0]->getType()->getVectorNumElements());
-        assert(NewOps.size() == 1 && "cast with #ops != 1");
+        IGC_ASSERT(NewOps.size() == 1 && "cast with #ops != 1");
         return CastInst::Create(cast<CastInst>(I)->getOpcode(), NewOps[0], DestTy,
             "", I);
     }
@@ -1052,7 +1051,7 @@ Value*
 InstCombiner::EvaluateInDifferentElementOrder(Value* V, ArrayRef<int> Mask) {
     // Mask.size() does not need to be equal to the number of vector elements.
 
-    assert(V->getType()->isVectorTy() && "can't reorder non-vector elements");
+    IGC_ASSERT(V->getType()->isVectorTy() && "can't reorder non-vector elements");
     Type* EltTy = V->getType()->getScalarType();
     if (isa<UndefValue>(V))
         return UndefValue::get(VectorType::get(EltTy, Mask.size()));
@@ -1222,7 +1221,7 @@ static BinopElts getAlternateBinop(BinaryOperator* BO, const DataLayout& DL) {
 }
 
 static Instruction* foldSelectShuffleWith1Binop(ShuffleVectorInst& Shuf) {
-    assert(Shuf.isSelect() && "Must have select-equivalent shuffle");
+    IGC_ASSERT(Shuf.isSelect() && "Must have select-equivalent shuffle");
 
     // Are we shuffling together some value and that same value after it has been
     // modified by a binop with a constant?
@@ -1311,12 +1310,12 @@ static Instruction* foldSelectShuffle(ShuffleVectorInst& Shuf,
         if (Opc0 == Instruction::Shl || Opc1 == Instruction::Shl)
             DropNSW = true;
         if (BinopElts AltB0 = getAlternateBinop(B0, DL)) {
-            assert(isa<Constant>(AltB0.Op1) && "Expecting constant with alt binop");
+            IGC_ASSERT(isa<Constant>(AltB0.Op1) && "Expecting constant with alt binop");
             Opc0 = AltB0.Opcode;
             C0 = cast<Constant>(AltB0.Op1);
         }
         else if (BinopElts AltB1 = getAlternateBinop(B1, DL)) {
-            assert(isa<Constant>(AltB1.Op1) && "Expecting constant with alt binop");
+            IGC_ASSERT(isa<Constant>(AltB1.Op1) && "Expecting constant with alt binop");
             Opc1 = AltB1.Opcode;
             C1 = cast<Constant>(AltB1.Op1);
         }
@@ -1503,7 +1502,7 @@ Instruction* InstCombiner::visitShuffleVectorInst(ShuffleVectorInst& SVI) {
         VectorType* SrcTy = cast<VectorType>(V->getType());
         unsigned VecBitWidth = SrcTy->getBitWidth();
         unsigned SrcElemBitWidth = DL.getTypeSizeInBits(SrcTy->getElementType());
-        assert(SrcElemBitWidth && "vector elements must have a bitwidth");
+        IGC_ASSERT(SrcElemBitWidth && "vector elements must have a bitwidth");
         unsigned SrcNumElems = SrcTy->getNumElements();
         SmallVector<BitCastInst*, 8> BCs;
         DenseMap<Type*, Value*> NewBCs;
@@ -1539,7 +1538,7 @@ Instruction* InstCombiner::visitShuffleVectorInst(ShuffleVectorInst& SVI) {
                 BegIdx = 0;
             }
             unsigned SrcElemsPerTgtElem = TgtElemBitWidth / SrcElemBitWidth;
-            assert(SrcElemsPerTgtElem);
+            IGC_ASSERT(SrcElemsPerTgtElem);
             BegIdx /= SrcElemsPerTgtElem;
             bool BCAlreadyExists = NewBCs.find(CastSrcTy) != NewBCs.end();
             auto* NewBC =
@@ -1699,7 +1698,7 @@ Instruction* InstCombiner::visitShuffleVectorInst(ShuffleVectorInst& SVI) {
                 // If the value selected is an undef value, explicitly specify it
                 // with a -1 mask value.
                 if (eltMask >= (int)RHSOp0Width) {
-                    assert(isa<UndefValue>(RHSShuffle->getOperand(1))
+                    IGC_ASSERT(isa<UndefValue>(RHSShuffle->getOperand(1))
                         && "should have been check above");
                     eltMask = -1;
                 }

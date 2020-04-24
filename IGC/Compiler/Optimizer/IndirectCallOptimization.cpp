@@ -28,14 +28,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/IndirectCallOptimization.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "common/IGCIRBuilder.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <map>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -128,7 +127,7 @@ namespace IGC
                         continue;
                     }
                 }
-                assert(0 && "Invalid function in function group!");
+                IGC_ASSERT(false && "Invalid function in function group!");
                 return false;
             }
         }

@@ -23,13 +23,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/CISACodeGen/ComputeShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -54,7 +55,7 @@ namespace IGC
         memset(m_simdEntries, 0, sizeof(m_simdEntries));
         firstStateId = IGC_GET_FLAG_VALUE(RetryManagerFirstStateId);
         stateId = firstStateId;
-        assert(stateId < getStateCnt());
+        IGC_ASSERT(stateId < getStateCnt());
     }
 
     bool RetryManager::AdvanceState() {
@@ -62,32 +63,32 @@ namespace IGC
         {
             return false;
         }
-        assert(stateId < getStateCnt());
+        IGC_ASSERT(stateId < getStateCnt());
         stateId = RetryTable[stateId].nextState;
         return (stateId < getStateCnt());
     }
     bool RetryManager::AllowLICM() {
-        assert(stateId < getStateCnt());
+        IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowLICM;
     }
     bool RetryManager::AllowPromotePrivateMemory() {
-        assert(stateId < getStateCnt());
+        IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowPromotePrivateMemory;
     }
     bool RetryManager::AllowPreRAScheduler() {
-        assert(stateId < getStateCnt());
+        IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowPreRAScheduler;
     }
     bool RetryManager::AllowCodeSinking() {
-        assert(stateId < getStateCnt());
+        IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowCodeSinking;
     }
     bool RetryManager::AllowSimd32Slicing() {
-        assert(stateId < getStateCnt());
+        IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowSimd32Slicing;
     }
     bool RetryManager::AllowLargeURBWrite() {
-        assert(stateId < getStateCnt());
+        IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowLargeURBWrite;
     }
     bool RetryManager::IsFirstTry() {
@@ -121,7 +122,7 @@ namespace IGC
         case SIMDMode::SIMD16:  m_simdEntries[1] = shader;  break;
         case SIMDMode::SIMD32:  m_simdEntries[2] = shader;  break;
         default:
-            assert(false);
+            IGC_ASSERT(false);
         }
     }
 
@@ -133,7 +134,7 @@ namespace IGC
         case SIMDMode::SIMD16:  return m_simdEntries[1];
         case SIMDMode::SIMD32:  return m_simdEntries[2];
         default:
-            assert(false);
+            IGC_ASSERT(false);
             return nullptr;
         }
     }
@@ -168,7 +169,7 @@ namespace IGC
         }
         else
         {
-            assert(false && "TODO for other shader types");
+            IGC_ASSERT(false && "TODO for other shader types");
             return true;
         }
     }
@@ -282,8 +283,8 @@ namespace IGC
                     return m_simdEntries[2];
                 }
                 // If SIMD32 doesn't spill, SIMD16 and SIMD8 shouldn't, if they exist
-                assert((m_simdEntries[0] == NULL) || simd8NoSpill == true);
-                assert((m_simdEntries[1] == NULL) || simd16NoSpill == true);
+                IGC_ASSERT((m_simdEntries[0] == NULL) || simd8NoSpill == true);
+                IGC_ASSERT((m_simdEntries[1] == NULL) || simd16NoSpill == true);
             }
 
             if (simd16NoSpill)
@@ -293,7 +294,7 @@ namespace IGC
                     simdMode = SIMDMode::SIMD16;
                     return m_simdEntries[1];
                 }
-                assert((m_simdEntries[0] == NULL) || simd8NoSpill == true); // If SIMD16 doesn't spill, SIMD8 shouldn't, if it exists
+                IGC_ASSERT((m_simdEntries[0] == NULL) || simd8NoSpill == true); // If SIMD16 doesn't spill, SIMD8 shouldn't, if it exists
             }
         }
 
@@ -382,7 +383,7 @@ namespace IGC
         {
             shader = static_cast<CComputeShader*>(
                 PickCSEntryFinally(simdMode));
-            assert(shader != nullptr);
+            IGC_ASSERT(shader != nullptr);
         }
         if (shader)
         {
@@ -404,7 +405,7 @@ namespace IGC
                 break;
 
             default:
-                assert(false && "Invalie SIMDMode");
+                IGC_ASSERT(false && "Invalie SIMDMode");
             }
             shader->FillProgram(pKernelProgram);
 
@@ -555,7 +556,7 @@ namespace IGC
 
     IGC::IGCMD::MetaDataUtils* CodeGenContext::getMetaDataUtils()
     {
-        assert(m_pMdUtils && "Metadata Utils is not initialized");
+        IGC_ASSERT(m_pMdUtils && "Metadata Utils is not initialized");
         return m_pMdUtils;
     }
 
@@ -597,7 +598,7 @@ namespace IGC
 
     IGC::ModuleMetaData* CodeGenContext::getModuleMetaData() const
     {
-        assert(modMD && "Module Metadata is not initialized");
+        IGC_ASSERT(modMD && "Module Metadata is not initialized");
         return modMD;
     }
 

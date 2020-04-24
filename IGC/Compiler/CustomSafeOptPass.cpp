@@ -73,13 +73,10 @@ instead if the structure is small.
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
-
 #include "common/LLVMWarningsPush.hpp"
-
 #include "WrapperLLVM/Utils.h"
 #include <llvmWrapper/IR/IRBuilder.h>
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
-
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
@@ -93,9 +90,9 @@ instead if the structure is small.
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include "common/LLVMWarningsPop.hpp"
-
 #include <set>
 #include "../inc/common/secure_mem.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -564,7 +561,7 @@ void CustomSafeOptPass::visitf32tof16(llvm::CallInst* inst)
 
 void CustomSafeOptPass::visitBfi(llvm::CallInst* inst)
 {
-    assert(inst->getType()->isIntegerTy(32));
+    IGC_ASSERT(inst->getType()->isIntegerTy(32));
     ConstantInt* widthV = dyn_cast<ConstantInt>(inst->getOperand(0));
     ConstantInt* offsetV = dyn_cast<ConstantInt>(inst->getOperand(1));
     if (widthV && offsetV)
@@ -594,7 +591,7 @@ void CustomSafeOptPass::visitMulH(CallInst* inst, bool isSigned)
     if (src0 && src1)
     {
         unsigned nbits = inst->getType()->getIntegerBitWidth();
-        assert(nbits < 64);
+        IGC_ASSERT(nbits < 64);
 
         if (isSigned)
         {
@@ -816,7 +813,7 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
     // Check if values in A and B all have the same extension type (sext/zext) and that they come from i8 type.
     // A and B extension types can be different.
     auto checkExt = [](auto &range) {
-      assert((range.begin() != range.end()) &&
+      IGC_ASSERT((range.begin() != range.end()) &&
              "Cannot check empty collection.");
       const unsigned OP = range[0]->getOpcode();
       return (OP == Instruction::SExt || OP == Instruction::ZExt) &&
@@ -1089,7 +1086,7 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
     // FIXME: is it better to make typedRead return ty a anyvector?
     if (inst->getType() != pNewCallInst->getType())
     {
-        assert(inst->getType()->isVectorTy() && inst->getType()->getVectorElementType()->isIntegerTy(32) &&
+        IGC_ASSERT(inst->getType()->isVectorTy() && inst->getType()->getVectorElementType()->isIntegerTy(32) &&
             inst->getType()->getVectorNumElements() == 4 && "expect int4 here");
         auto bitCastInst = builder.CreateBitCast(pNewCallInst, inst->getType());
         inst->replaceAllUsesWith(bitCastInst);
@@ -1432,7 +1429,7 @@ template <typename MaskType>
 void GenSpecificPattern::matchReverse(BinaryOperator& I)
 {
     using namespace llvm::PatternMatch;
-    assert(I.getType()->isIntegerTy());
+    IGC_ASSERT(I.getType()->isIntegerTy());
     Value* nextOrShl = nullptr, * nextOrShr = nullptr;
     uint64_t currentShiftShl = 0, currentShiftShr = 0;
     uint64_t currentMaskShl = 0, currentMaskShr = 0;
@@ -1451,7 +1448,7 @@ void GenSpecificPattern::matchReverse(BinaryOperator& I)
                 m_ConstantInt(currentMaskShr)));
 
     unsigned int bitWidth = std::numeric_limits<MaskType>::digits;
-    assert(bitWidth == 16 || bitWidth == 32 || bitWidth == 64);
+    IGC_ASSERT(bitWidth == 16 || bitWidth == 32 || bitWidth == 64);
 
     unsigned int currentShift = bitWidth / 2;
     // First mask is a value with all upper half bits present.
@@ -1678,8 +1675,8 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
                     {
                         // if the constant bit width is larger than 64, we cannot store ShlIntValue and OrIntValue rawdata as uint64_t.
                         // will need a fix then
-                        assert(ShlConstant->getBitWidth() <= 64);
-                        assert(OrConstant->getBitWidth() <= 64);
+                        IGC_ASSERT(ShlConstant->getBitWidth() <= 64);
+                        IGC_ASSERT(OrConstant->getBitWidth() <= 64);
 
                         uint64_t ShlIntValue = *(ShlConstant->getValue()).getRawData();
                         uint64_t OrIntValue = *(OrConstant->getValue()).getRawData();
@@ -1921,7 +1918,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
         %48 = bitcast i32 %47 to float
     */
 
-    assert(I.getOpcode() == Instruction::Select);
+    IGC_ASSERT(I.getOpcode() == Instruction::Select);
 
     bool skipOpt = false;
 
@@ -2112,7 +2109,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
                 (cast<llvm::ConstantInt>(selOp1)->getZExtValue() ==
                     cast<llvm::ConstantInt>(cmpOp0)->getZExtValue()))
             {
-                assert(newSelOp1 == NULL);
+                IGC_ASSERT(newSelOp1 == NULL);
                 newSelOp1 = cmpOp0;
             }
 
@@ -2121,7 +2118,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
                 (cast<llvm::ConstantInt>(selOp1)->getZExtValue() ==
                     cast<llvm::ConstantInt>(cmpOp1)->getZExtValue()))
             {
-                assert(newSelOp1 == NULL);
+                IGC_ASSERT(newSelOp1 == NULL);
                 newSelOp1 = cmpOp1;
             }
 
@@ -2130,7 +2127,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
                 (cast<llvm::ConstantInt>(selOp2)->getZExtValue() ==
                     cast<llvm::ConstantInt>(cmpOp0)->getZExtValue()))
             {
-                assert(newSelOp2 == NULL);
+                IGC_ASSERT(newSelOp2 == NULL);
                 newSelOp2 = cmpOp0;
             }
 
@@ -2139,7 +2136,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
                 (cast<llvm::ConstantInt>(selOp2)->getZExtValue() ==
                     cast<llvm::ConstantInt>(cmpOp1)->getZExtValue()))
             {
-                assert(newSelOp2 == NULL);
+                IGC_ASSERT(newSelOp2 == NULL);
                 newSelOp2 = cmpOp1;
             }
 
@@ -2884,7 +2881,7 @@ Constant* IGCConstProp::ConstantFoldCmpInst(CmpInst* CI)
         for (unsigned i = 0; i < N; ++i)
         {
             Constant* Opnd = VecOpnd->getAggregateElement(i);
-            assert(Opnd && "null entry");
+            IGC_ASSERT(Opnd && "null entry");
             if (isa<UndefValue>(Opnd))
                 continue;
             Constant* Result = ConstantFoldCompareInstOperands(
@@ -2959,7 +2956,7 @@ Constant* IGCConstProp::ConstantFoldExtractElement(ExtractElementInst* EEI)
             Value* vec0 = sel->getOperand(1);
             Value* vec1 = sel->getOperand(2);
 
-            assert(vec0->getType() == vec1->getType());
+            IGC_ASSERT(vec0->getType() == vec1->getType());
 
             if (isa<ConstantDataVector>(vec0) && isa<ConstantDataVector>(vec1))
             {
@@ -3552,7 +3549,7 @@ void NanHandling::swapBranch(llvm::Instruction* inst, llvm::BranchInst& BI)
     else
     {
         // inst not expected
-        assert(0);
+        IGC_ASSERT(0);
     }
 }
 

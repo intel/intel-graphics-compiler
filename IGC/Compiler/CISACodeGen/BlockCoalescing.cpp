@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/igc_regkeys.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -78,7 +79,7 @@ namespace IGC
                     if (br->isUnconditional())
                     {
                         BasicBlock* succ = br->getSuccessor(0);
-                        assert(succ && "Branch must have a successor!");
+                        IGC_ASSERT(succ && "Branch must have a successor!");
                         if (block.id >= patternMatch->GetBlockId(succ))
                         {
                             if (block.bb->getSinglePredecessor() == nullptr)
@@ -172,7 +173,7 @@ namespace IGC
         BasicBlock* block = bb;
         while (IsEmptyBlock(block))
         {
-            assert(block->getTerminator()->getNumSuccessors() == 1);
+            IGC_ASSERT(block->getTerminator()->getNumSuccessors() == 1);
             block = block->getTerminator()->getSuccessor(0);
         }
         return block;
@@ -183,7 +184,7 @@ namespace IGC
         BasicBlock* block = bb;
         while (IsEmptyBlock(block))
         {
-            assert(block->getTerminator()->getNumSuccessors() == 1);
+            IGC_ASSERT(block->getTerminator()->getNumSuccessors() == 1);
             block = block->getNextNode();
         }
         return block;

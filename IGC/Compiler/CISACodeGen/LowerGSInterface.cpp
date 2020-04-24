@@ -23,23 +23,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "common/LLVMUtils.h"
-
 #include "Compiler/CISACodeGen/LowerGSInterface.h"
-
 #include "common/debug/Debug.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/IGCIRBuilder.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC::IGCMD;
@@ -108,7 +107,7 @@ namespace IGC
         llvm::IRBuilder<> builder(&F.getEntryBlock(), F.getEntryBlock().begin());
 
         auto pMaxOutputVertices = F.getParent()->getGlobalVariable("GsMaxOutputVertices");
-        assert(pMaxOutputVertices != nullptr && "GsMaxOutputVertices must be defined");
+        IGC_ASSERT(pMaxOutputVertices != nullptr && "GsMaxOutputVertices must be defined");
         const unsigned int maxOutputVertices = static_cast<unsigned int>(
             (llvm::cast<llvm::ConstantInt>(pMaxOutputVertices->getInitializer())->getZExtValue()));
 
@@ -122,7 +121,7 @@ namespace IGC
 
         // find out if we have default streamID defined by looking up the value of a global var
         auto pDefaultStreamID = F.getParent()->getGlobalVariable("DefaultStreamID");
-        assert(pDefaultStreamID != nullptr && "DefaultStreamID needs to be defined");
+        IGC_ASSERT(pDefaultStreamID != nullptr && "DefaultStreamID needs to be defined");
         const int defaultStreamId = static_cast<int>(llvm::cast<llvm::ConstantInt>(pDefaultStreamID->getInitializer())->getSExtValue());
         m_hasDefaultStreamId = defaultStreamId != -1;
         setCutBitsRequired(F);
@@ -183,7 +182,7 @@ namespace IGC
                         llvm::cast<llvm::ConstantInt>(pDefaultStreamID->getInitializer())->getSExtValue());
                     const int streamID = static_cast<int>(
                         llvm::cast<llvm::ConstantInt>(I.getArgOperand(0))->getSExtValue());
-                    assert(defaultStreamId == streamID &&
+                    IGC_ASSERT(defaultStreamId == streamID &&
                         "When default streamID is set, all SetStream() calls"
                         "need to set setreamID to the default value");
                 }
@@ -341,7 +340,7 @@ namespace IGC
     void LowerGSInterface::updateStreamVariables(llvm::GenIntrinsicInst& I)
     {
         //setting of streamID bits makes sense only when having many streams
-        assert(!m_hasDefaultStreamId);
+        IGC_ASSERT(!m_hasDefaultStreamId);
 
         Value* streamID = I.getArgOperand(0);
         Value* emitCount = I.getArgOperand(1);
@@ -424,7 +423,7 @@ namespace IGC
         llvm::IRBuilder<> builder(&I);
         Module* M = I.getParent()->getParent()->getParent();
         Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(M, llvm::GenISAIntrinsic::GenISA_GsCutControlHeader);
-        assert(pFunc);
+        IGC_ASSERT(pFunc);
 
         std::vector<llvm::Value*> params;
         // if we didn't need to keep cut bits, we generate cut header with all zeros
@@ -445,7 +444,7 @@ namespace IGC
         auto one = builder.getInt32(1);
         auto vidxLoaded = builder.CreateLoad(m_EmitCounter, VALUE_NAME("vertexIndexLoaded"));
         params.emplace_back(builder.CreateAdd(vidxLoaded, one));
-        assert(params.size() == 17);
+        IGC_ASSERT(params.size() == 17);
         builder.CreateCall(pFunc, params);
     }
 
@@ -455,7 +454,7 @@ namespace IGC
         llvm::IRBuilder<> builder(&I);
         Module* M = I.getParent()->getParent()->getParent();
         Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(M, llvm::GenISAIntrinsic::GenISA_GsStreamHeader);
-        assert(pFunc);
+        IGC_ASSERT(pFunc);
 
         std::vector<llvm::Value*> params;
         for (unsigned int i = 0; i < m_maxControlHeaderIndex; ++i)
@@ -471,7 +470,7 @@ namespace IGC
         auto one = builder.getInt32(1);
         auto vIdxLoaded = builder.CreateLoad(m_EmitCounter, VALUE_NAME("vertexIndexLoaded"));
         params.emplace_back(builder.CreateAdd(vIdxLoaded, one));
-        assert(params.size() == 65);
+        IGC_ASSERT(params.size() == 65);
         builder.CreateCall(pFunc, params);
     }
 

@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SparseBitVector.h"
 #include <llvm/IR/CFG.h>
@@ -45,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/MathExtras.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -179,7 +179,7 @@ bool LivenessAnalysis::isInstLastUseOfValue(Value* V, Instruction* I)
 
 bool LivenessAnalysis::isBefore(Instruction* A, Instruction* B)
 {
-    assert(A->getParent() == B->getParent() &&
+    IGC_ASSERT(A->getParent() == B->getParent() &&
         "A and B must be within the same BB!");
 
     int nA = (int)getDistance(A);
@@ -287,7 +287,7 @@ void LivenessAnalysis::print_livein(raw_ostream& OS, BasicBlock* BB)
     {
         int id = *I;
         Value* V = IdValues[id];
-        assert(V && "Value should be in Value Map!");
+        IGC_ASSERT(V && "Value should be in Value Map!");
         if (nVals == 0) {
             OS << "      ";
         }

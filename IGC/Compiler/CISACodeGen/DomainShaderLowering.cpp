@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/ShaderUnits.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -30,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DomainShaderLowering.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/IGCIRBuilder.h"
+#include "Probe/Assertion.h"
 
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -527,7 +529,8 @@ namespace IGC
 
         // Compute the offset for the given attribute and usage.
         QuadEltUnit offset = GetURBOffset(usage, attributeIndex);
-        assert(offset.Count() < (m_maxNumOfOutput + m_headerSize.Count()) && "Index is out of bound");
+        IGC_ASSERT(offset.Count() < offsetInst.size());
+        IGC_ASSERT(offset.Count() < (m_maxNumOfOutput + m_headerSize.Count()));
         offsetInst[offset.Count()] = inst;
 
         uint offsetWritten = int_cast<unsigned int>(offset.Count() + (mask <= 0xF ? 1 : 2));
@@ -568,7 +571,7 @@ namespace IGC
             return QuadEltUnit(0);
             break;
         default:
-            assert(!"unknown DS output type");
+            IGC_ASSERT(false && "unknown DS output type");
             break;
         }
         return QuadEltUnit(0);
@@ -583,7 +586,7 @@ namespace IGC
         llvm::Value* data[8],
         llvm::Instruction* prev)
     {
-        assert(mask < 256 && "mask is an 8-bit bitmask and has to be in range 0..255");
+        IGC_ASSERT((mask < 256) && "mask is an 8-bit bitmask and has to be in range 0..255");
         Value* arguments[] =
         {
             offset,

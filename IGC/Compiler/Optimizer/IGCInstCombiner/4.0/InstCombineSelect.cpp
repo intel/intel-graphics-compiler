@@ -36,13 +36,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //===----------------------------------------------------------------------===//
 #include "common/LLVMWarningsPush.hpp"
-
 #include "InstCombineInternal.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/PatternMatch.h"
+#include "Probe/Assertion.h"
+
 using namespace llvm;
 using namespace PatternMatch;
 using namespace IGCombiner;
@@ -91,7 +92,7 @@ static Value *generateMinMaxSelectPattern(InstCombiner::BuilderTy *Builder,
                                           SelectPatternFlavor SPF, Value *A,
                                           Value *B) {
   CmpInst::Predicate Pred = getCmpPredicateForMinMax(SPF);
-  assert(CmpInst::isIntPredicate(Pred));
+  IGC_ASSERT(CmpInst::isIntPredicate(Pred));
   return Builder->CreateSelect(Builder->CreateICmp(Pred, A, B), A, B);
 }
 
