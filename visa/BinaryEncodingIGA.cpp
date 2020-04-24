@@ -692,7 +692,7 @@ void BinaryEncodingIGA::DoAll()
             Instruction  *igaInst = nullptr;
             auto igaOpcode = getIGAOp(inst->opcode(), inst, platformModel->platform);
             // common fields: op, predicate, flag reg, exec size, exec mask offset, mask ctrl, conditional modifier
-            const OpSpec* opSpec = &(platformModel->lookupOpSpec(igaOpcode));
+            const OpSpec* opSpec = &platformModel->lookupOpSpec(igaOpcode);
 
             if (opSpec->op == Op::INVALID)
             {
@@ -701,10 +701,10 @@ void BinaryEncodingIGA::DoAll()
                 continue;
             }
             Predication pred;
-            RegRef flagReg = { 0, 0 };
+            RegRef flagReg {0, 0};
             ExecSize execSize = getIGAExecSize(inst->getExecSize());
             ChannelOffset chOff = getIGAChannelOffset(inst->getMaskOffset());
-            MaskCtrl maskCtrl = getIGAMaskCtrl(inst->opcode() == G4_jmpi ? true : inst->isWriteEnableInst());
+            MaskCtrl maskCtrl = getIGAMaskCtrl(inst->opcode() == G4_jmpi || inst->isWriteEnableInst());
             FlagModifier condModifier = FlagModifier::NONE;
 
             getIGAFlagInfo(inst, opSpec, pred, condModifier, flagReg);
@@ -752,16 +752,18 @@ void BinaryEncodingIGA::DoAll()
             {
                 igaInst =
                     IGAKernel->createBasicInstruction(
-                    *opSpec,
-                    pred,
-                    flagReg,
-                    execSize,
-                    chOff,
-                    maskCtrl,
-                    condModifier);
+                        *opSpec,
+                        pred,
+                        flagReg,
+                        execSize,
+                        chOff,
+                        maskCtrl,
+                        condModifier);
             }
 
             igaInst->setID(IGAInstId++);
+            igaInst->setLoc(inst->getCISAOff()); // make IGA src off track CISA id
+
             if (opSpec->supportsDestination())
             {
                 assert(inst->getDst() && "dst must not be null");
@@ -770,10 +772,10 @@ void BinaryEncodingIGA::DoAll()
                 Region::Horz hstride = getIGAHorz(dst->getHorzStride());
                 Type type = getIGAType(dst->getType());
 
-                //work around for SKL bug
-                //not all bits are copied from immediate descriptor
-                if (inst->isSend()                  &&
-                    platform >= GENX_SKL   &&
+                // workaround for SKL bug
+                // not all bits are copied from immediate descriptor
+                if (inst->isSend() &&
+                    platform >= GENX_SKL &&
                     platform < GENX_CNL)
                 {
                     G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
@@ -808,7 +810,7 @@ void BinaryEncodingIGA::DoAll()
                 }
                 else
                 { // Operand::Kind::INDIRECT
-                    RegRef regRef = { 0, 0};
+                    RegRef regRef {0, 0};
                     bool valid;
                     regRef.subRegNum = (uint8_t) dst->ExIndSubRegNum(valid);
                     igaInst->setInidirectDestination(
@@ -952,7 +954,7 @@ void BinaryEncodingIGA::DoAll()
                         }
                         else
                         {
-                            RegRef regRef = { 0, 0 };
+                            RegRef regRef {0, 0};
                             bool valid;
                             regRef.subRegNum = (uint8_t)srcRegion->ExIndSubRegNum(valid);
                             igaInst->setInidirectSource(
@@ -1009,9 +1011,9 @@ void BinaryEncodingIGA::DoAll()
 
             if (bbNew)
             {
-                //Fall through block is created.
-                //So the new block needs to become current block
-                //so that jump offsets can be calculated correctly
+                // Fall through block is created.
+                // So the new block needs to become current block
+                // so that jump offsets can be calculated correctly
                 currBB = bbNew;
             }
             // If, in future, we generate multiple binary inst
@@ -1163,7 +1165,7 @@ SendDesc BinaryEncodingIGA::getIGASendExDesc(
             assert(valid && "invalid subreg");
         }
     }
-    else
+    else // old unary packed send
     {
         // exDesc is stored in SendMsgDesc and must be IMM
         G4_SendMsgDescriptor* sendDesc = sendInst->getMsgDesc();
@@ -1177,6 +1179,8 @@ SendDesc BinaryEncodingIGA::getIGASendExDesc(
             tVal = tVal & 0xFFFFFFF0;
         }
         exDescArg.imm = tVal;
+        // non-split send implies Src1.Length == 0
+        xlen = 0;
     }
 
     return exDescArg;
