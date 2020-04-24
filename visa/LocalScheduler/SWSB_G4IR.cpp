@@ -647,50 +647,8 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     return;
 }
 
-void SWSB::handleIndirectCall()
-{
-    for (size_t i = 0; i < BBVector.size(); i++)
-    {
-        if (BBVector[i]->last_node == -1)
-        {
-            continue;
-        }
-
-        SBNode* node = SBNodes[BBVector[i]->last_node];
-
-        if ((node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel()) ||
-            node->GetInstruction()->isReturn())
-        {
-            LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal(), *fg.getKernel());
-            for (size_t i = 0; i < globalSendOpndList.size(); i++)
-            {
-                SBBucketNode* sBucketNode = globalSendOpndList[i];
-                SBNode* sNode = sBucketNode->node;
-                if (BBVector[i]->send_live_out->isSrcSet(sNode->globalID) &&
-                    (sBucketNode->opndNum == Opnd_src0 ||
-                    sBucketNode->opndNum == Opnd_src1 ||
-                    sBucketNode->opndNum == Opnd_src2 ||
-                    sBucketNode->opndNum == Opnd_src3))
-                {
-                    BBVector[i]->createAddGRFEdge(sNode, node, WAR, DEP_EXPLICT);
-                }
-                if (BBVector[i]->send_live_out->isDstSet(sNode->globalID) && (sBucketNode->opndNum == Opnd_dst))
-                {
-                    BBVector[i]->createAddGRFEdge(sNode, node, RAW, DEP_EXPLICT);
-                }
-            }
-        }
-        if (node->GetInstruction()->isReturn())
-        {
-            node->GetInstruction()->setDistance(1);
-        }
-    }
-
-    return;
-}
 void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, LiveGRFBuckets& globalSendsLB)
 {
-    bool hasIndirectCall = false;
     allTokenNodesMap = (BitSet * *)mem.alloc(sizeof(BitSet*) * totalTokenNum);
     for (size_t i = 0; i < totalTokenNum; i++)
     {
@@ -700,16 +658,6 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     // Get the live out, may kill bit sets
     for (size_t i = 0; i < BBVector.size(); i++)
     {
-        if (BBVector[i]->last_node != -1)
-        {
-            SBNode* node = SBNodes[BBVector[i]->last_node];
-
-            if (node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel())
-            {
-                hasIndirectCall = true;
-            }
-        }
-
         BBVector[i]->send_live_in = new (mem)SBBitSets(mem, globalSendNum);
         BBVector[i]->send_live_out = new (mem)SBBitSets(mem, globalSendNum);
         BBVector[i]->send_def_out = new (mem)SBBitSets(mem, globalSendNum);
@@ -798,11 +746,6 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     else
     {
         addGlobalDependence(globalSendNum, &globalSendOpndList, &SBNodes, p, true);
-    }
-
-    if (hasIndirectCall)
-    {
-        handleIndirectCall();
     }
 
     for (size_t i = 0; i < BBVector.size(); i++)
@@ -4765,8 +4708,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         }
 
 
-        if ((builder.getOption(vISA_EnableSwitch) && node->GetInstruction()->isYieldInst()) ||
-            (node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel()))
+        if (builder.getOption(vISA_EnableSwitch) && node->GetInstruction()->isYieldInst())
         {
             node->setDistance(1);
         }
