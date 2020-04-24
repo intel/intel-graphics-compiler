@@ -86,7 +86,10 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use,
             visitedForFolding.insert(pIntr);
             return false;
         }
-        return false;
+        if (!IsMathIntrinsic(GetOpCode(use)))
+        {
+            return false;
+        }
     }
     for (auto& U : use->operands())
     {
