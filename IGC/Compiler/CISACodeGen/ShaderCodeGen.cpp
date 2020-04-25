@@ -763,7 +763,7 @@ namespace IGC
     {
         if (ctx->m_sampler < 11 || ctx->m_inputCount < 16 || ctx->m_tempCount < 40 || ctx->m_dxbcCount < 280 || ctx->m_ConstantBufferCount < 500)
         {
-            if (ctx->m_tempCount < 90 && ctx->m_ConstantBufferCount < 300)
+            if (ctx->m_tempCount < 90 && ctx->m_ConstantBufferCount < 200)
             {
                 return true;
             }
