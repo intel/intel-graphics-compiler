@@ -10726,29 +10726,29 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload( G4_Declare* payload, unsigned int
     G4_SrcRegRegion* srcRgn = createSrcRegRegion( *src );
     srcRgn->setType( payload->getElemType() );
     createMov(exec_size, payloadDstRgn, srcRgn, emask, true );
-    if (G4_Type_Table[payload->getElemType()].byteSize == 2)
+    if (getTypeSize(payload->getElemType()) == 2)
     {
         // for half float each source occupies 1 GRF regardless of execution size
         regOff++;
     }
     else
     {
-        regOff += (exec_size/8);
+        regOff += exec_size / getNativeExecSize();
     }
 }
 
 unsigned int IR_Builder::getByteOffsetSrcRegion( G4_SrcRegRegion* srcRegion )
 {
-    unsigned int offset = ( srcRegion->getRegOff() * G4_GRF_REG_NBYTES ) + ( srcRegion->getSubRegOff() * G4_Type_Table[srcRegion->getType()].byteSize );
+    unsigned int offset = (srcRegion->getRegOff() * G4_GRF_REG_NBYTES) + (srcRegion->getSubRegOff() * G4_Type_Table[srcRegion->getType()].byteSize);
 
-    if( srcRegion->getBase() &&
-        srcRegion->getBase()->isRegVar() )
+    if (srcRegion->getBase() &&
+        srcRegion->getBase()->isRegVar())
     {
         G4_Declare* dcl = srcRegion->getBase()->asRegVar()->getDeclare();
 
-        if( dcl != NULL )
+        if (dcl != NULL)
         {
-            while( dcl->getAliasDeclare() != NULL )
+            while (dcl->getAliasDeclare() != NULL)
             {
                 offset += dcl->getAliasOffset();
                 dcl = dcl->getAliasDeclare();
@@ -10759,39 +10759,21 @@ unsigned int IR_Builder::getByteOffsetSrcRegion( G4_SrcRegRegion* srcRegion )
     return offset;
 }
 
-bool IR_Builder::checkIfRegionsAreConsecutive( G4_SrcRegRegion* first, G4_SrcRegRegion* second, unsigned int exec_size )
+bool IR_Builder::checkIfRegionsAreConsecutive(G4_SrcRegRegion* first, G4_SrcRegRegion* second, unsigned int exec_size)
 {
-    bool isConsecutive = false;
-
-    if( first == NULL || second == NULL )
+    if (first == NULL || second == NULL)
     {
-        isConsecutive = true;
-    }
-    else
-    {
-        G4_Declare* firstDcl = getDeclare(first);
-        G4_Declare* secondDcl = getDeclare(second);
-
-        unsigned int firstOff = getByteOffsetSrcRegion( first );
-        unsigned int secondOff = getByteOffsetSrcRegion( second );
-
-        if( firstDcl == secondDcl )
-        {
-            if( ( firstOff + ( exec_size * G4_Type_Table[first->getType()].byteSize ) ) == secondOff )
-            {
-                isConsecutive = true;
-            }
-        }
+        return true;
     }
 
-    return isConsecutive;
+    return checkIfRegionsAreConsecutive(first, second, exec_size, first->getType());
 }
 
-bool IR_Builder::checkIfRegionsAreConsecutive( G4_SrcRegRegion* first, G4_SrcRegRegion* second, unsigned int exec_size, G4_Type type )
+bool IR_Builder::checkIfRegionsAreConsecutive(G4_SrcRegRegion* first, G4_SrcRegRegion* second, unsigned int exec_size, G4_Type type)
 {
     bool isConsecutive = false;
 
-    if( first == NULL || second == NULL )
+    if (first == NULL || second == NULL)
     {
         isConsecutive = true;
     }
@@ -10800,12 +10782,12 @@ bool IR_Builder::checkIfRegionsAreConsecutive( G4_SrcRegRegion* first, G4_SrcReg
         G4_Declare* firstDcl = getDeclare(first);
         G4_Declare* secondDcl = getDeclare(second);
 
-        unsigned int firstOff = getByteOffsetSrcRegion( first );
-        unsigned int secondOff = getByteOffsetSrcRegion( second );
+        unsigned int firstOff = getByteOffsetSrcRegion(first);
+        unsigned int secondOff = getByteOffsetSrcRegion(second);
 
-        if( firstDcl == secondDcl )
+        if (firstDcl == secondDcl)
         {
-            if( ( firstOff + ( exec_size * G4_Type_Table[type].byteSize ) ) == secondOff )
+            if ((firstOff + (exec_size * G4_Type_Table[type].byteSize)) == secondOff)
             {
                 isConsecutive = true;
             }

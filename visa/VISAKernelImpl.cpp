@@ -5518,7 +5518,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
         G4_SrcRegRegion *cPSCounterOpnd = (cPSCounter) ? cPSCounter->g4opnd->asSrcRegRegion(): NULL;
         G4_SrcRegRegion *sampleIndexOpnd = (cntrls.isSampleIndex) ? sampleIndex->g4opnd->asSrcRegRegion() : NULL;
         G4_Operand *renderTargetIndexOpnd = (cntrls.RTIndexPresent) ? renderTargetIndex->g4opnd : NULL;
-        G4_SrcRegRegion *r1HeaderOpnd = NULL;
+        G4_SrcRegRegion *r1HeaderOpnd = nullptr;
 
         if (r1Header)
         {
@@ -5526,9 +5526,12 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
             r1HeaderOpnd = r1Header->g4opnd->asSrcRegRegion();
         }
 
-        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
-        status = m_builder->translateVISARTWrite3DInst(g4Pred, executionSize, emask,
-            surface->g4opnd, r1HeaderOpnd, renderTargetIndexOpnd, cntrls, sampleIndexOpnd, cPSCounterOpnd, numMsgSpecificOpnds, g4params);
+        G4_Predicate * g4Pred = pred ? pred->g4opnd->asPredicate() : nullptr;
+
+        {
+            status = m_builder->translateVISARTWrite3DInst(g4Pred, executionSize, emask,
+                surface->g4opnd, r1HeaderOpnd, renderTargetIndexOpnd, cntrls, sampleIndexOpnd, cPSCounterOpnd, numMsgSpecificOpnds, g4params);
+        }
     }
     if(IS_VISA_BOTH_PATH)
     {
