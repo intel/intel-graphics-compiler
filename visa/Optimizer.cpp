@@ -10674,7 +10674,7 @@ enum SplitBounds : unsigned {
     HiRBound = 127
 };
 
-bool isCandidateDecl(G4_Declare *Dcl)
+static bool isCandidateDecl(G4_Declare *Dcl, const IR_Builder& builder)
 {
     G4_Declare *RootDcl = Dcl->getRootDeclare();
     if (RootDcl->getRegFile() != G4_GRF)
@@ -10687,6 +10687,13 @@ bool isCandidateDecl(G4_Declare *Dcl)
 
     if (RootDcl->getAddressed())
         return false;
+
+    if (builder.isPreDefArg(RootDcl) || builder.isPreDefRet(RootDcl))
+    {
+        return false;
+    }
+
+    // ToDo: add more special declares to exclude list
 
     return true;
 }
@@ -10791,7 +10798,7 @@ void Optimizer::splitVariables()
                 fg.globalOpndHT.isOpndGlobal(Dst))
                 continue;
             auto Dcl = Dst->getTopDcl();
-            if (!Dcl || !isCandidateDecl(Dcl))
+            if (!Dcl || !isCandidateDecl(Dcl, builder))
                 continue;
 
             unsigned LBound = Dst->getLeftBound();
@@ -10942,7 +10949,7 @@ void Optimizer::split4GRFVars()
     {
         if (dcl->getAliasDeclare() == nullptr)
         {
-            if (isCandidateDecl(dcl))
+            if (isCandidateDecl(dcl, builder))
             {
                 if (varToSplit.find(dcl) == varToSplit.end())
                 {
@@ -10960,7 +10967,7 @@ void Optimizer::split4GRFVars()
             // must appear before its alias decls
             uint32_t offset = 0;
             G4_Declare* rootDcl = dcl->getRootDeclare(offset);
-            if (offset != 0 && isCandidateDecl(rootDcl))
+            if (offset != 0 && isCandidateDecl(rootDcl, builder))
             {
                 varToSplit.erase(rootDcl);
             }
