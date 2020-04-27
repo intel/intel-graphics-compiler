@@ -11078,10 +11078,9 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
     const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
     const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
         CEncoder::GetCISADataTypeSize(type) == 8);
-    // The 32-byte grf boundary is crossed for SIMD16 (before reduction) and 64-bit type
-    const uint numInst = is64bitType && simd == SIMDMode::SIMD8 && getGRFSize() == 32 ? 2 : 1;
+    const uint numInst = is64bitType && simd == (getGRFSize() > 32 ? SIMDMode::SIMD16 : SIMDMode::SIMD8) ? 2 : 1;
 
-    IGC_ASSERT(simd == SIMDMode::SIMD2 || simd == SIMDMode::SIMD4 || simd == SIMDMode::SIMD8);
+    IGC_ASSERT(simd == SIMDMode::SIMD2 || simd == SIMDMode::SIMD4 || simd == SIMDMode::SIMD8 || (simd == SIMDMode::SIMD16 && getGRFSize() > 32));
 
     // The op is performed on pairs of adjacent src data elements.
     // In certain cases it is mandatory or might be beneficial for performance reasons
@@ -11138,7 +11137,7 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
 // and broadcast it to the whole cluster.
 // For certain opcodes the src must be rearranged, to keep operation's arguments in the same subreg of different regs.
 // Notes:
-// * simd is shader's SIMD size (i.e. <= SIMD16)
+// * simd is shader's SIMD size
 // * second half setting is not preserved by this function
 // * src and dst may be the same variable
 void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDMode simd, const uint clusterSize,
@@ -11147,8 +11146,7 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
     const bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
     const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
         CEncoder::GetCISADataTypeSize(type) == 8);
-    // The 32-byte grf boundary is crossed in final reduction and expansion for SIMD16 and 64-bit type.
-    const uint numInst = is64bitType && simd == SIMDMode::SIMD16 && getGRFSize() == 32 ? 2 : 1;
+    const uint numInst = is64bitType && simd == (getGRFSize() > 32 ? SIMDMode::SIMD32 : SIMDMode::SIMD16) ? 2 : 1;
     IGC_ASSERT(clusterSize == 2 || clusterSize == 4 || clusterSize == 8 || (clusterSize == 16 && !is64bitType));
 
     // For information on rearrangement see EmitPass::ReductionClusteredReduceHelper()
@@ -11194,37 +11192,23 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
         m_encoder->SetSecondHalf(secondHalf);
         for (uint i = numInst; i-- != 0;)
         {
-            const uint numMovPerElement = int_cast<uint>(use32BitMov ? 2 : 1);
+            const uint numMovPerElement = use32BitMov ? 2u : 1u;
             for (uint j = 0; j < numMovPerElement; ++j)
             {
                 // Outer loop is for 64-bit types in SIMD16 only (cluster size is always <= 8)
                 // to broadcast data to upper dst's half which crosses 2-grf boundary.
                 // The inner is for movement splitting: one 64-bit to a pair of 32-bit.
-                uint srcSubVar = 0;
-                uint srcSubReg = 0;
-                switch (clusterSize)
-                {
-                case 2:
-                    srcSubVar = i;
-                    srcSubReg = j;
-                    break;
-                case 4:
-                    srcSubVar = 0;
-                    srcSubReg = 2 * i * numMovPerElement + j;
-                    break;
-                case 8:
-                    srcSubVar = 0;
-                    srcSubReg = i * numMovPerElement + j;
-                    break;
-                };
+                uint lanes = numLanes(simd) / numInst;
+                uint clustersPerInst = lanes / clusterSize;
+                uint srcSubReg = i * clustersPerInst * numMovPerElement + j;
+                const e_mask mask = simd == SIMDMode::SIMD32 ? (i == 1 ? EMASK_H2 : EMASK_H1) :
+                                    secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) : (i == 1 ? EMASK_Q2 : EMASK_Q1);
 
-                const e_mask mask = (secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) : (i == 1 ? EMASK_Q2 : EMASK_Q1));
-
-                m_encoder->SetSimdSize(lanesToSIMDMode(numLanes(simd) / numInst));
+                m_encoder->SetSimdSize(lanesToSIMDMode(lanes));
                 m_encoder->SetMask(mask);
                 m_encoder->SetSrcRegion(0, numMovPerElement, clusterSize, 0);
                 m_encoder->SetSrcSubReg(0, srcSubReg);
-                m_encoder->SetSrcSubVar(0, srcSubVar);
+                m_encoder->SetSrcSubVar(0, 0);
                 m_encoder->SetDstRegion(numMovPerElement);
                 m_encoder->SetDstSubReg(j);
                 m_encoder->SetDstSubVar(2 * i);
@@ -11330,8 +11314,7 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
     // Dst uniformness depends on actual support in WIAnalysis, so far implemented for 32-clusters only.
     IGC_ASSERT(!dst->IsUniform() || clusterSize == 32);
 
-    const auto dispatchSize = static_cast<decltype(clusterSize)>(
-        numLanes(m_currShader->m_dispatchSize));
+    const unsigned int dispatchSize = numLanes(m_currShader->m_dispatchSize);
     const bool isSimd32 = m_currShader->m_numberInstance == 2;
     const bool useReduceAll = clusterSize >= dispatchSize;
 
@@ -11426,10 +11409,7 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
                 for (uint32_t reducedClusterSize = clusterSize;
                     reducedClusterSize > 2; reducedClusterSize /= 2)
                 {
-                    simd = (simd == SIMDMode::SIMD16) ? SIMDMode::SIMD8 :
-                        (simd == SIMDMode::SIMD8) ? SIMDMode::SIMD4 :
-                        (simd == SIMDMode::SIMD4) ? SIMDMode::SIMD2 : SIMDMode::SIMD1;
-
+                    simd = lanesToSIMDMode(numLanes(simd) / 2);
                     ReductionClusteredReduceHelper(op, tmpType, simd, secondHalf, temp, temp);
                 }
 
