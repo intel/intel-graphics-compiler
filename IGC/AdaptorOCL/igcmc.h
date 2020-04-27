@@ -73,59 +73,6 @@ struct cmc_arg_info {
 };
 
 // compilation interface bewteen cmc and igc
-struct cmc_kernel_info {
-    /// The kernel name.
-    const char *name;
-
-    /// The number of kernel arguments
-    unsigned num_args;
-
-    /// The kernel argument info.
-    cmc_arg_info *arg_descs;
-
-    // ThreadPayload
-    bool HasLocalIDx = false;
-    bool HasLocalIDy = false;
-    bool HasLocalIDz = false;
-    bool HasGroupID = false;
-
-    // ExecutionEnivronment
-    uint32_t CompiledSIMDSize = 8;
-    uint32_t SLMSize = 0;
-    uint32_t NumGRFRequired = 128;
-    uint32_t GRFByteSize = 32;
-    uint32_t HasBarriers = 0;
-    bool HasReadWriteImages = false;
-    uint32_t ThreadPrivateMemSize = 0;
-};
-
-struct cmc_compile_info {
-    /// The vISA binary size in bytes.
-    uint64_t binary_size;
-
-    /// The vISA binary data.
-    void* binary;
-
-    uint32_t pointer_size_in_bytes;
-
-    /// The vISA major version.
-    uint32_t visa_major_version;
-
-    /// The vISA minor version.
-    uint32_t visa_minor_version;
-
-    /// The number of kernel.
-    unsigned num_kernels;
-
-    /// The kernel infomation.
-    cmc_kernel_info *kernel_info;
-
-    /// The context for this compilation. This opaque data holds all memory
-    /// allocations that will be freed in the end.
-    void* context;
-};
-
-// compilation interface bewteen cmc and igc
 struct cmc_kernel_info_v2 {
     /// The kernel name.
     const char *name;
@@ -157,17 +104,34 @@ struct cmc_kernel_info_v2 {
     cmc_ocl_print_string *print_string_descs;
 };
 
-struct cmc_compile_info_v2 : cmc_compile_info{
+struct cmc_compile_info_v2 {
+    /// The vISA binary size in bytes.
+    uint64_t binary_size;
+
+    /// The vISA binary data.
+    void* binary;
+
+    uint32_t pointer_size_in_bytes;
+
+    /// The vISA major version.
+    uint32_t visa_major_version;
+
+    /// The vISA minor version.
+    uint32_t visa_minor_version;
+
+    /// The number of kernel.
+    unsigned num_kernels;
+
+    /// Ugly stub for compatibility with cmc
+    void *compatibility_stub;
+
+    /// The context for this compilation. This opaque data holds all memory
+    /// allocations that will be freed in the end.
+    void* context;
+
     /// The kernel infomation.
     cmc_kernel_info_v2 *kernel_info_v2;
 };
-
-extern "C" __EXPORT__ int32_t cmc_load_and_compile(const char* input,
-                                                   size_t input_size,
-                                                   const char* const options,
-                                                   cmc_compile_info** output);
-
-extern "C" __EXPORT__ int32_t cmc_free_compile_info(cmc_compile_info* output);
 
 extern "C" __EXPORT__ int32_t cmc_load_and_compile_v2(const char* input,
                                                       size_t input_size,
