@@ -33,6 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef RELOCATION_INFO_H
 #define RELOCATION_INFO_H
 
+#include <string>
+
 namespace vISA {
 
 static const uint32_t MAX_SYMBOL_NAME_LENGTH = 256;
@@ -79,6 +81,54 @@ typedef struct {
     char       f_name[MAX_SYMBOL_NAME_LENGTH]; // The function's name
 } GenFuncAttribEntry;
 
-}
+/// FIXME: ZE*Entry information should be moved to upper level (e.g. IGC or runtime interface)
 
+/// ZESymEntry - An symbol entry that will later be transformed to ZE binary format
+/// It contains the same information as GenSymEntry, and has the full symbol name with
+/// no length limitation
+/// FIXME: s_type should be standard ELF symbol type instead of GenSymType
+struct ZESymEntry {
+    GenSymType    s_type;            // The symbol's type
+    uint32_t      s_offset;          // The binary offset of this symbol. This field is ignored if s_type is S_UNDEF
+    uint32_t      s_size;            // The size in bytes of the function binary
+    std::string   s_name;            // The symbol's name
+
+    ZESymEntry(GenSymType type, uint32_t offset, uint32_t size, std::string name)
+        : s_type(type), s_offset(offset), s_size(size), s_name(name)
+    {}
+};
+
+/// ZERelocEntry - A relocation entry that will later be transformed to ZE binary format
+/// It contains the same information as GenRelocEntry, and has the full symbol name with
+/// no length limitation
+/// FIXME: r_type should be standard ELF symbol type instead of GenRelocType
+struct ZERelocEntry {
+    GenRelocType  r_type;        // The relocation's type
+    uint32_t      r_offset;      // The binary offset of the relocated target
+    std::string   r_symbol;      // The relocation target symbol's name
+
+    ZERelocEntry(GenRelocType type, uint32_t offset, std::string targetSymName)
+        : r_type(type), r_offset(offset), r_symbol(targetSymName)
+    {}
+};
+
+/// ZEFuncAttribEntry - A function attribute entry that will later be transformed to ZE binary format
+struct ZEFuncAttribEntry {
+    uint8_t     f_isKernel;      // Is the function a kernel
+    uint8_t     f_hasBarrier;    // Does the function use barriers
+    uint32_t    f_privateMemPerThread; // Total private memory (in bytes) used by this function per thread
+    uint32_t    f_spillMemPerThread;  // Spill mem used (in bytes) in scratch space for this function
+    std::string f_name; // The function's name
+
+    ZEFuncAttribEntry(uint8_t isKernel, uint8_t hasBarrier, uint32_t privateMemPerThread,
+        uint32_t spillMemPerThread, std::string funcName)
+        : f_isKernel(isKernel),
+          f_hasBarrier(hasBarrier),
+          f_privateMemPerThread(privateMemPerThread),
+          f_spillMemPerThread(spillMemPerThread),
+          f_name(funcName)
+    {}
+};
+
+} //namespace vISA
 #endif

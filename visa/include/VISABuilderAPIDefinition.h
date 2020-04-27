@@ -32,6 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CompilerStats.h"
 #include "JitterDataStruct.h"
 
+#include "visa/include/RelocationInfo.h"
+
 class VISAKernel
 {
 public:
@@ -735,6 +737,11 @@ public:
 
     /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
     VISA_BUILDER_API virtual int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries) = 0;
+
+    /// GetRelocations -- add vISA created relocations into given relocation list
+    /// This get the same information as GetGenRelocEntryBuffer, but in different foramt
+    typedef std::vector<vISA::ZERelocEntry> RelocListType;
+    VISA_BUILDER_API virtual int GetRelocations(RelocListType &relocs) = 0;
 
     /// SetGTPinInit -- pass igc_init_t struct instance
     /// VISA decodes this struct and enables options accordingly

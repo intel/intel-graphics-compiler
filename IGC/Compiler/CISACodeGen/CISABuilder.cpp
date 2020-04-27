@@ -4720,7 +4720,7 @@ namespace IGC
             context->m_retryManager.IsFirstTry();
     }
 
-    void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
+    void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::SymbolLists& symbols)
     {
         buffer = nullptr;
         bufferSize = 0;
@@ -4759,6 +4759,8 @@ namespace IGC
                     fEntry.s_offset = (uint32_t)visaFunc->getGenOffset();
                     fEntry.s_size = (uint32_t)visaFunc->getGenSize();
                 }
+                symbols.function.emplace_back((vISA::GenSymType)fEntry.s_type,
+                    fEntry.s_offset, fEntry.s_size, F.getName().str());
                 symbolTable.push_back(fEntry);
             }
         }
@@ -4800,12 +4802,20 @@ namespace IGC
                     sEntry.s_type = vISA::GenSymType::S_CONST_SAMPLER;
                     sEntry.s_size = 0;
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    symbols.sampler.emplace_back((vISA::GenSymType)sEntry.s_type,
+                        sEntry.s_offset, sEntry.s_size, name.str());
                 }
                 else
                 {
                     sEntry.s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
                     sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    if (sEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR)
+                        symbols.global.emplace_back((vISA::GenSymType)sEntry.s_type,
+                            sEntry.s_offset, sEntry.s_size, name.str());
+                    else
+                        symbols.globalConst.emplace_back((vISA::GenSymType)sEntry.s_type,
+                            sEntry.s_offset, sEntry.s_size, name.str());
                 }
                 symbolTable.push_back(sEntry);
             }
@@ -4821,7 +4831,9 @@ namespace IGC
         }
     }
 
-    void CEncoder::CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
+    void CEncoder::CreateRelocationTable(
+        void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
+        SProgramOutput::RelocListTy& relocations)
     {
         buffer = nullptr;
         bufferSize = 0;
@@ -4830,9 +4842,13 @@ namespace IGC
         // vISA will directly return the buffer with GenRelocEntry layout
         V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
         IGC_ASSERT((sizeof(vISA::GenRelocEntry) * tableEntries) == bufferSize);
+        // get relocations
+        V(vMainKernel->GetRelocations(relocations));
+        assert(sizeof(vISA::GenRelocEntry) * tableEntries == bufferSize);
     }
 
-    void CEncoder::CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
+    void CEncoder::CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize,
+        unsigned& tableEntries, SProgramOutput::FuncAttrListTy& attrs)
     {
         buffer = nullptr;
         bufferSize = 0;
@@ -4866,6 +4882,8 @@ namespace IGC
             visaFunc->GetJitInfo(jitInfo);
             entry.f_spillMemPerThread = jitInfo->spillMemUsed;
 
+            attrs.emplace_back(entry.f_isKernel, entry.f_hasBarrier, entry.f_privateMemPerThread,
+                entry.f_spillMemPerThread, F->getName().str());
             attribTable.push_back(entry);
         }
 
@@ -5163,17 +5181,20 @@ namespace IGC
         {
             CreateSymbolTable(pOutput->m_funcSymbolTable,
                 pOutput->m_funcSymbolTableSize,
-                pOutput->m_funcSymbolTableEntries);
+                pOutput->m_funcSymbolTableEntries,
+                pOutput->m_symbols);
         }
         CreateRelocationTable(pOutput->m_funcRelocationTable,
             pOutput->m_funcRelocationTableSize,
-            pOutput->m_funcRelocationTableEntries);
+            pOutput->m_funcRelocationTableEntries,
+            pOutput->m_relocs);
 
         if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
         {
             CreateFuncAttributeTable(pOutput->m_funcAttributeTable,
                 pOutput->m_funcAttributeTableSize,
-                pOutput->m_funcAttributeTableEntries);
+                pOutput->m_funcAttributeTableEntries,
+                pOutput->m_funcAttrs);
         }
 
         if (jitInfo->isSpill == true)

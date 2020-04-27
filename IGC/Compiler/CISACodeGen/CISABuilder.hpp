@@ -478,9 +478,12 @@ namespace IGC
         // save compile time by avoiding retry if the amount of spill is (very) small
         bool AvoidRetryOnSmallSpill() const;
 
-        void CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
-        void CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
-        void CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
+        // CreateSymbolTable, CreateRelocationTable and CreateFuncAttributeTable will create symbols, relococations and FuncAttributes in
+        // two format. One in given buffer that will be later parsed as patch token based format, another as struct type that will be parsed
+        // as ZE binary format
+        void CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::SymbolLists& symbols);
+        void CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::RelocListTy& relocations);
+        void CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::FuncAttrListTy& attrs);
 
         uint32_t getGRFSize() const;
 

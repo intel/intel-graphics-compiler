@@ -45,6 +45,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
+#include "visa/include/RelocationInfo.h"
+
 #include "../AdaptorOCL/OCL/sp/spp_g8.h"
 #include "../GenISAIntrinsics/GenIntrinsics.h"
 #include "../GenISAIntrinsics/GenIntrinsicInst.h"
@@ -86,6 +88,18 @@ namespace IGC
 
     struct SProgramOutput
     {
+    public:
+        typedef std::vector<vISA::ZESymEntry> SymbolListTy;
+        typedef std::vector<vISA::ZERelocEntry> RelocListTy;
+        typedef std::vector<vISA::ZEFuncAttribEntry> FuncAttrListTy;
+        struct SymbolLists {
+            SymbolListTy function;    // function symbols
+            SymbolListTy global;      // global symbols
+            SymbolListTy globalConst; // global constant symbols
+            SymbolListTy sampler;     // sampler symbols
+        };
+
+    public:
         void* m_programBin;     //<! Must be 16 byte aligned, and padded to a 64 byte boundary
         unsigned int    m_programSize;    //<! Number of bytes of program data (including padding)
         unsigned int    m_unpaddedProgramSize;      //<! program size without padding used for binary linking
@@ -104,12 +118,15 @@ namespace IGC
         void* m_funcSymbolTable = nullptr;
         unsigned int    m_funcSymbolTableSize = 0;
         unsigned int    m_funcSymbolTableEntries = 0;
+        SymbolLists     m_symbols;                 // duplicated information of m_funcSymbolTable
         void* m_funcRelocationTable = nullptr;
         unsigned int    m_funcRelocationTableSize = 0;
         unsigned int    m_funcRelocationTableEntries = 0;
+        RelocListTy     m_relocs;                  // duplicated information of m_funcRelocationTable
         void* m_funcAttributeTable = nullptr;
         unsigned int    m_funcAttributeTableSize = 0;
         unsigned int    m_funcAttributeTableEntries = 0;
+        FuncAttrListTy  m_funcAttrs;               // duplicated information of m_funcAttributeTable
         unsigned int    m_offsetToSkipPerThreadDataLoad = 0;
         uint32_t        m_offsetToSkipSetFFIDGP = 0;
         //true means we separate pvtmem and spillfill. pvtmem could go into stateless.

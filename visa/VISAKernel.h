@@ -650,6 +650,9 @@ public:
     VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&);
     /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
     VISA_BUILDER_API int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries);
+    /// GetRelocations -- add vISA created relocations into given relocation list
+    /// This get the same information as GetGenRelocEntryBuffer, but in different foramt
+    VISA_BUILDER_API int GetRelocations(RelocListType &relocs);
     VISA_BUILDER_API int GetGTPinBuffer(void*& buffer, unsigned int& size);
     VISA_BUILDER_API int SetGTPinInit(void* buffer);
     VISA_BUILDER_API int GetFreeGRFInfo(void*& buffer, unsigned int& size);

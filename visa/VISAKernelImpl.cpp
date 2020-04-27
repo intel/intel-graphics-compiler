@@ -46,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BinaryEncodingIGA.h"
 #include "IsaDisassembly.h"
 #include "LocalScheduler/SWSB_G4IR.h"
+#include "visa/include/RelocationInfo.h"
 
 #if defined( _DEBUG ) && ( defined( _WIN32 ) || defined( _WIN64 ) )
 #include <windows.h>
@@ -7837,6 +7838,19 @@ int VISAKernelImpl::GetGenxBinary(void *&buffer, int &size)
 {
     buffer = this->m_genx_binary_buffer;
     size = this->m_genx_binary_size;
+    return VISA_SUCCESS;
+}
+
+int VISAKernelImpl::GetRelocations(RelocListType &relocs)
+{
+    G4_Kernel::RelocationTableTy& reloc_table = m_kernel->getRelocationTable();
+    for (RelocationEntry& reloc : reloc_table)
+    {
+        G4_INST* inst = reloc.getInst();
+        uint32_t offset = static_cast<uint32_t>(inst->getGenOffset()) + reloc.getTargetOffset(*m_builder);
+        relocs.emplace_back(reloc.getType(), offset, reloc.getSymbolName());
+        assert((offset > inst->getGenOffset()) && (offset < inst->getGenOffset() + BYTES_PER_INST));
+    }
     return VISA_SUCCESS;
 }
 
