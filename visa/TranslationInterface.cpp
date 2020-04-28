@@ -2428,10 +2428,12 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
         auto* funcAddrHigh = createRelocImm(Type_UD);
 
         dst->setType(Type_UD);
+        // change type from uq to ud, adjust the subRegOff
+        dst->setSubRegOff(dst->getSubRegOff() * 2);
         G4_INST* movLo = createMov(1, dst, funcAddrLow, InstOpt_WriteEnable, true);
         G4_DstRegRegion* tempDst = createDstRegRegion(*dst);
-
-        tempDst->setSubRegOff(1);
+        // subRegOff will be right following dst's sub-reg
+        tempDst->setSubRegOff(dst->getSubRegOff() + 1);
         tempDst->setType(Type_UD);
         G4_INST* movHi = createMov(1, tempDst, funcAddrHigh, InstOpt_WriteEnable, true);
 
