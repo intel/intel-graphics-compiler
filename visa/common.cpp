@@ -78,11 +78,6 @@ int SetPlatform( const char * str ) {
         visaPlatform = GENX_BXT;
         retVal = VISA_SUCCESS;
     }
-    else if (platform == "CNL" || platform == "gen10")
-    {
-        visaPlatform = GENX_CNL;
-        retVal = VISA_SUCCESS;
-    }
     else if (platform == "ICL" || platform == "gen11" || platform == "ICLLP" || platform == "gen11lp")
     {
         visaPlatform = GENX_ICLLP;
@@ -121,8 +116,6 @@ PlatformGen getPlatformGeneration(TARGET_PLATFORM platform)
     case GENX_SKL:
     case GENX_BXT:
         return PlatformGen::GEN9;
-    case GENX_CNL:
-        return PlatformGen::GEN10;
     case GENX_ICLLP:
         return PlatformGen::GEN11;
     case GENX_TGLLP:
@@ -162,8 +155,6 @@ int getGenxPlatformEncoding()
         return 5;
     case GENX_BXT:
         return 6;
-    case GENX_CNL:
-        return 7;
     case GENX_ICLLP:
         return 10;
     case GENX_TGLLP:

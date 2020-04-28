@@ -334,7 +334,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     {
         BinaryEncodingBase* pBinaryEncoding = NULL;
 
-        if (getGenxPlatform() >= GENX_CNL && m_options->getOption(vISA_BXMLEncoder))
+        if (getGenxPlatform() >= GENX_ICLLP && m_options->getOption(vISA_BXMLEncoder))
         {
             pBinaryEncoding = new BinaryEncodingCNL(*m_kernelMem, *m_kernel, std::string(m_asmName));
         }

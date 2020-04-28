@@ -1151,7 +1151,7 @@ void HWConformity::fixOpnds( INST_LIST_ITER it, G4_BB *bb, G4_Type& exType )
 
     // at this point only src0 may be VxH
     // VxH regioning and conditional modifiers may not co-exist
-    if (builder.getPlatform() >= GENX_CNL)
+    if (builder.getPlatform() >= GENX_ICLLP)
     {
         src0 = inst->getSrc(0);
         if (src0 && src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegion()->isRegionWH())

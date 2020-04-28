@@ -132,42 +132,22 @@ uint32_t BinaryEncodingBase::getEUOpcode(G4_opcode g4opc)
 ///
 static inline int GetOperandSrcHDLImmType(G4_Type srcType)
 {
-    int type = G9HDL::SRCIMMTYPE_UD;
-    if (getGenxPlatform() == GENX_CNL)
-    {
-        switch (srcType) {
-        case Type_UD: type = G9HDL::SRCIMMTYPE_UD; break;
-        case Type_D:  type = G9HDL::SRCIMMTYPE_D;  break;
-        case Type_UW: type = G9HDL::SRCIMMTYPE_UW; break;
-        case Type_W:  type = G9HDL::SRCIMMTYPE_W;  break;
-        case Type_UV: type = G9HDL::SRCIMMTYPE_UV; break;
-        case Type_VF: type = G9HDL::SRCIMMTYPE_VF; break;
-        case Type_V:  type = G9HDL::SRCIMMTYPE_V;  break;
-        case Type_F:  type = G9HDL::SRCIMMTYPE_F;  break;
-        case Type_UQ: type = G9HDL::SRCIMMTYPE_UQ; break;
-        case Type_Q:  type = G9HDL::SRCIMMTYPE_Q;  break;
-        case Type_DF: type = G9HDL::SRCIMMTYPE_DF;  break;
-        case Type_HF: type = G9HDL::SRCIMMTYPE_HF;  break;
-        default: MUST_BE_TRUE(false, "invalid type"); break;
-        }
-    }
-    else
-    {
-        switch (srcType) {
-        case Type_UD: type = G11HDL::SRCIMMTYPE_UD; break;
-        case Type_D:  type = G11HDL::SRCIMMTYPE_D;  break;
-        case Type_UW: type = G11HDL::SRCIMMTYPE_UW; break;
-        case Type_W:  type = G11HDL::SRCIMMTYPE_W;  break;
-        case Type_UV: type = G11HDL::SRCIMMTYPE_UV; break;
-        case Type_VF: type = G11HDL::SRCIMMTYPE_VF; break;
-        case Type_V:  type = G11HDL::SRCIMMTYPE_V;  break;
-        case Type_F:  type = G11HDL::SRCIMMTYPE_F;  break;
-        case Type_UQ: type = G11HDL::SRCIMMTYPE_UQ; break;
-        case Type_Q:  type = G11HDL::SRCIMMTYPE_Q;  break;
-        case Type_DF: type = G11HDL::SRCIMMTYPE_DF;  break;
-        case Type_HF: type = G11HDL::SRCIMMTYPE_HF;  break;
-        default: MUST_BE_TRUE(false, "invalid type"); break;
-        }
+    int type = G11HDL::SRCIMMTYPE_UD;
+
+    switch (srcType) {
+    case Type_UD: type = G11HDL::SRCIMMTYPE_UD; break;
+    case Type_D:  type = G11HDL::SRCIMMTYPE_D;  break;
+    case Type_UW: type = G11HDL::SRCIMMTYPE_UW; break;
+    case Type_W:  type = G11HDL::SRCIMMTYPE_W;  break;
+    case Type_UV: type = G11HDL::SRCIMMTYPE_UV; break;
+    case Type_VF: type = G11HDL::SRCIMMTYPE_VF; break;
+    case Type_V:  type = G11HDL::SRCIMMTYPE_V;  break;
+    case Type_F:  type = G11HDL::SRCIMMTYPE_F;  break;
+    case Type_UQ: type = G11HDL::SRCIMMTYPE_UQ; break;
+    case Type_Q:  type = G11HDL::SRCIMMTYPE_Q;  break;
+    case Type_DF: type = G11HDL::SRCIMMTYPE_DF;  break;
+    case Type_HF: type = G11HDL::SRCIMMTYPE_HF;  break;
+    default: MUST_BE_TRUE(false, "invalid type"); break;
     }
     return type;
 }
@@ -176,44 +156,24 @@ static inline int GetOperandSrcHDLImmType(G4_Type srcType)
 ///
 static inline int GetOperandSrcHDLType(G4_Type regType)
 {
-    int type = G9HDL::SRCTYPE_UD;
+    int type = G11HDL::SRCTYPE_UD;
 
-    if (getGenxPlatform() == GENX_CNL)
+    switch (regType)
     {
-        switch (regType)
-        {
-        case Type_UD: type = G9HDL::SRCTYPE_UD; break;
-        case Type_D:  type = G9HDL::SRCTYPE_D;  break;
-        case Type_UW: type = G9HDL::SRCTYPE_UW; break;
-        case Type_W:  type = G9HDL::SRCTYPE_W;  break;
-        case Type_UB: type = G9HDL::SRCTYPE_UB; break;
-        case Type_B:  type = G9HDL::SRCTYPE_B;  break;
-        case Type_DF: type = G9HDL::SRCTYPE_DF; break;
-        case Type_F:  type = G9HDL::SRCTYPE_F;  break;
-        case Type_UQ: type = G9HDL::SRCTYPE_UQ; break;
-        case Type_Q:  type = G9HDL::SRCTYPE_Q;  break;
-        case Type_HF: type = G9HDL::SRCTYPE_HF; break;
-        default: MUST_BE_TRUE(false, "invalid type"); break;
-        }
+    case Type_UD: type = G11HDL::SRCTYPE_UD; break;
+    case Type_D:  type = G11HDL::SRCTYPE_D;  break;
+    case Type_UW: type = G11HDL::SRCTYPE_UW; break;
+    case Type_W:  type = G11HDL::SRCTYPE_W;  break;
+    case Type_UB: type = G11HDL::SRCTYPE_UB; break;
+    case Type_B:  type = G11HDL::SRCTYPE_B;  break;
+    case Type_DF: type = G11HDL::SRCTYPE_DF; break;
+    case Type_F:  type = G11HDL::SRCTYPE_F;  break;
+    case Type_UQ: type = G11HDL::SRCTYPE_UQ; break;
+    case Type_Q:  type = G11HDL::SRCTYPE_Q;  break;
+    case Type_HF: type = G11HDL::SRCTYPE_HF; break;
+    default: MUST_BE_TRUE(false, "invalid type"); break;
     }
-    else
-    {
-        switch(regType)
-        {
-        case Type_UD: type = G11HDL::SRCTYPE_UD; break;
-        case Type_D:  type = G11HDL::SRCTYPE_D;  break;
-        case Type_UW: type = G11HDL::SRCTYPE_UW; break;
-        case Type_W:  type = G11HDL::SRCTYPE_W;  break;
-        case Type_UB: type = G11HDL::SRCTYPE_UB; break;
-        case Type_B:  type = G11HDL::SRCTYPE_B;  break;
-        case Type_DF: type = G11HDL::SRCTYPE_DF; break;
-        case Type_F:  type = G11HDL::SRCTYPE_F;  break;
-        case Type_UQ: type = G11HDL::SRCTYPE_UQ; break;
-        case Type_Q:  type = G11HDL::SRCTYPE_Q;  break;
-        case Type_HF: type = G11HDL::SRCTYPE_HF; break;
-        default: MUST_BE_TRUE(false, "invalid type"); break;
-        }
-    }
+
     return type;
 }
 
@@ -2121,7 +2081,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingJMPI(G4_INST* inst)
 
     //hardcode:
     brOneSrc.GetOperandControl().SetDestinationRegisterFile(G9HDL::REGFILE_ARF);
-    brOneSrc.GetOperandControl().SetDestinationDataType(getGenxPlatform() == GENX_CNL ? G9HDL::DSTTYPE_UD : G11HDL::DSTTYPE_UD);
+    brOneSrc.GetOperandControl().SetDestinationDataType(G11HDL::DSTTYPE_UD);
     brOneSrc.GetOperandControl().SetDestinationAddressingMode(G9HDL::ADDRMODE_DIRECT);
 
     //FIXME: bxml does not have arch reg file enumerations
@@ -2481,7 +2441,7 @@ void BinaryEncodingCNL::DoAll()
         BDWCompactSubRegTable.AddIndex(IVBCompactSubRegTable[i], i);
         BDWCompactSubRegTable.AddIndex1(IVBCompactSubRegTable[i] & 0x1F, i);
         BDWCompactSubRegTable.AddIndex2(IVBCompactSubRegTable[i] & 0x3FF, i);
-        if (getGenxPlatform() > GENX_CNL)
+        if (getGenxPlatform() >= GENX_ICLLP)
         {
             BDWCompactDataTypeTableStr.AddIndex(ICLCompactDataTypeTable[i], i);
         }

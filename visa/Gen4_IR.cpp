@@ -4473,7 +4473,7 @@ void G4_SrcRegRegion::emit(std::ostream& output, bool symbolreg)
     // do not emit region for macro madm
     if (desc && !base->isNullReg() && !base->isNReg() && !isAccRegValid())// rgn == NULL, the default region is used
     {
-        bool align1ternary = inst && inst->getNumSrc() == 3 && inst->getPlatform() >= GENX_CNL &&
+        bool align1ternary = inst && inst->getNumSrc() == 3 && inst->getPlatform() >= GENX_ICLLP &&
             !inst->isSend() && inst->isAligned1Inst();
 
         // RegionV is invalid for SRC operands

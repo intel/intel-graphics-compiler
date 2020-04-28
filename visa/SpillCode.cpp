@@ -420,7 +420,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                 genRegMov(bb, it,
                     spDcl->getRegVar(), ss->getSubRegOff(),
                     tmpDcl->getRegVar(),
-                    tmpDcl->getNumElems(), builder.getPlatform() >= GENX_CNL ? false : true);
+                    tmpDcl->getNumElems(), builder.getPlatform() >= GENX_ICLLP ? false : true);
             }
 
             // create new src from the temp address variable, with offset 0

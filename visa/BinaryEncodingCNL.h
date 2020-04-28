@@ -310,89 +310,44 @@ public:
         G4_DstRegRegion* dst = inst->getDst();
         G4_Type regType = dst->asDstRegRegion()->getType();
 
-        if (inst->getPlatform() == GENX_CNL)
-        {
-            switch (regType)
-            {    //BXML bug Line 851: bitrange 5-8, should be: 37-40
-            case Type_UD:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_UD);
-                break;
-            case Type_D:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_D);
-                break;
-            case Type_UW:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_UW);
-                break;
-            case Type_W:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_W);
-                break;
-            case Type_UB:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_UB);
-                break;
-            case Type_B:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_B);
-                break;
-            case Type_DF:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_DF);
-                break;
-            case Type_F:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_F);
-                break;
-            case Type_UQ:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_UQ);
-                break;
-            case Type_Q:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_Q);
-                break;
-            case Type_HF:
-                opnds.SetDestinationDataType(G9HDL::DSTTYPE_HF);
-                break;
-            default:
-                MUST_BE_TRUE(false, "Encoding error: destination type unknown");
-                break;
-            }
-        }
-        else
-        {
-            switch (regType)
-            {    //BXML bug Line 851: bitrange 5-8, should be: 37-40
-            case Type_UD:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_UD);
-                break;
-            case Type_D:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_D);
-                break;
-            case Type_UW:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_UW);
-                break;
-            case Type_W:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_W);
-                break;
-            case Type_UB:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_UB);
-                break;
-            case Type_B:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_B);
-                break;
-            case Type_DF:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_DF);
-                break;
-            case Type_F:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_F);
-                break;
-            case Type_UQ:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_UQ);
-                break;
-            case Type_Q:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_Q);
-                break;
-            case Type_HF:
-                opnds.SetDestinationDataType(G11HDL::DSTTYPE_HF);
-                break;
-            default:
-                MUST_BE_TRUE(false, "Encoding error: destination type unknown");
-                break;
-            }
+        switch (regType)
+        {    //BXML bug Line 851: bitrange 5-8, should be: 37-40
+        case Type_UD:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_UD);
+            break;
+        case Type_D:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_D);
+            break;
+        case Type_UW:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_UW);
+            break;
+        case Type_W:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_W);
+            break;
+        case Type_UB:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_UB);
+            break;
+        case Type_B:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_B);
+            break;
+        case Type_DF:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_DF);
+            break;
+        case Type_F:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_F);
+            break;
+        case Type_UQ:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_UQ);
+            break;
+        case Type_Q:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_Q);
+            break;
+        case Type_HF:
+            opnds.SetDestinationDataType(G11HDL::DSTTYPE_HF);
+            break;
+        default:
+            MUST_BE_TRUE(false, "Encoding error: destination type unknown");
+            break;
         }
     }
 
@@ -998,13 +953,13 @@ public:
         bool ChanSelectValid = false;
 
         // encode acc2~acc9 if it is valid
-        if ( src0->isAccRegValid() && inst->getPlatform() <= GENX_CNL)
+        if (src0->isAccRegValid() && inst->getPlatform() < GENX_ICLLP)
         {
-            if ( inst->opcode() == G4_madm ||
+            if (inst->opcode() == G4_madm ||
                 (inst->isMath() && (inst->asMathInst()->getMathCtrl() == MATH_INVM || inst->asMathInst()->getMathCtrl() == MATH_RSQRTM)))
             {
                 uint32_t value = src0->getAccRegSel();
-                SrcOperandEncoder<T, SrcNum>::SetSrcChanSel(myBin, value );
+                SrcOperandEncoder<T, SrcNum>::SetSrcChanSel(myBin, value);
                 return;
             }
             ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
@@ -1338,7 +1293,7 @@ public:
                 // regn|subre
 
                 SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, byteAddress >> 5);
-                if (inst->getPlatform() > GENX_CNL && src0->isAccRegValid())
+                if (inst->getPlatform() >= GENX_ICLLP && src0->isAccRegValid())
                 {
                     MUST_BE_TRUE((byteAddress & 0x1F) == 0, "subreg must be 0 for source with special accumulator");
                     SrcOperandEncoder<T, SrcNum>::SetSourceSpecialAcc(&sourcesReg, src0->getAccRegSel());

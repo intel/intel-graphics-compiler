@@ -49,9 +49,6 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
     case GENX_BXT:
         platform = Platform::GEN9;
         break;
-    case GENX_CNL:
-        platform = Platform::GEN10;
-        break;
     case GENX_ICLLP:
         platform = Platform::GEN11;
         break;
@@ -776,7 +773,7 @@ void BinaryEncodingIGA::DoAll()
                 // not all bits are copied from immediate descriptor
                 if (inst->isSend() &&
                     platform >= GENX_SKL &&
-                    platform < GENX_CNL)
+                    platform < GENX_ICLLP)
                 {
                     G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
                     G4_Operand* descOpnd = inst->isSplitSend() ? inst->getSrc(2) : inst->getSrc(1);
@@ -878,10 +875,10 @@ void BinaryEncodingIGA::DoAll()
                             Type::INVALID);
                     }
                 }
-                if (platform >= GENX_CNL
+                if (platform >= GENX_ICLLP
                     && inst->opcode() == G4_movi && numSrcToEncode == 1)
                 {
-                    // From CNL, 'movi' becomes a binary instruction with an
+                    // From ICL, 'movi' becomes a binary instruction with an
                     // optional immediate operand, which needs encoding as null
                     // or imm32. So far, within vISA jitter, 'movi' is still
                     // modeled as unary instruction, setting src1 to null for
@@ -917,7 +914,7 @@ void BinaryEncodingIGA::DoAll()
                         }
                         else if (i == 0 &&
                             platform >= GENX_SKL   &&
-                            platform < GENX_CNL)
+                            platform < GENX_ICLLP)
                         {
                             //work around for SKL bug
                             //not all bits are copied from immediate descriptor

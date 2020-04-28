@@ -203,7 +203,6 @@ extern const char* steppingNames[];
 // -- "CHV" --> GENX_CHV
 // -- "SKL" --> GENX_SKL
 // -- "BXT" --> GENX_BXT
-// -- "CNL" --> GENX_CNL
 // -- "ICLLP" --> GENX_ICLLP
 // -- "TGLLP" --> GENX_TGLLP
 extern "C" int SetPlatform(const char* s);

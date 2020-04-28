@@ -3053,8 +3053,6 @@ namespace IGC
             {
                 return GENX_SKL;
             }
-        case IGFX_GEN10_CORE:
-            return GENX_CNL;
         case IGFX_GEN11_CORE:
             return GENX_ICLLP;
         case IGFX_GEN12_CORE:

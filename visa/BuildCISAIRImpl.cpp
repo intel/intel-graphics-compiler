@@ -207,20 +207,6 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
         VISA_WA_ENABLE(m_pWaTable, WaResetN0BeforeGatewayMessage);
     }
 
-    if (platform == GENX_CNL)
-    {
-        VISA_WA_ENABLE(m_pWaTable, WaClearTDRRegBeforeEOTForNonPS);
-    }
-
-    if (platform == GENX_CNL && step == Step_A)
-    {
-        VISA_WA_ENABLE(m_pWaTable, WaDisableSendsPreemption);
-    }
-    if (platform == GENX_CNL)
-    {
-        VISA_WA_ENABLE(m_pWaTable, WaNoSimd16TernarySrc0Imm);
-    }
-
     // WA for future platforms
     if (platform == GENX_ICLLP)
     {
