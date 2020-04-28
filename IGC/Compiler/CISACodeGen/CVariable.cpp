@@ -100,11 +100,13 @@ CVariable::CVariable(CVariable* var, VISA_Type type, uint16_t offset,
     m_immediateValue(0),
     m_alias(var),
     m_aliasOffset(offset),
-    m_numberOfInstance(1),
+    m_numberOfInstance(var->m_numberOfInstance),
     m_type(type),
+    m_varType(EVARTYPE_GENERAL),
+    m_align(updateAlign(var->m_align, offset)),
     m_uniform(uniform),
     m_isImmediate(false),
-    m_subspanUse(false),
+    m_subspanUse(var->m_subspanUse),
     m_uniformVector(false),
     m_undef(false),
     m_isUnpacked(false)
@@ -117,11 +119,7 @@ CVariable::CVariable(CVariable* var, VISA_Type type, uint16_t offset,
     {
         m_nbElement = var->m_nbElement * CEncoder::GetCISADataTypeSize(var->m_type) / CEncoder::GetCISADataTypeSize(m_type);
     }
-    m_align = updateAlign(var->m_align, offset);
-    m_subspanUse = var->m_subspanUse;
-    m_numberOfInstance = var->m_numberOfInstance;
     IGC_ASSERT(var->m_varType == EVARTYPE_GENERAL && "only general variable can have alias");
-    m_varType = EVARTYPE_GENERAL;
 }
 
 /// CVariable constructor, for immediate

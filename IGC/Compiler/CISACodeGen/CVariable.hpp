@@ -53,22 +53,22 @@ namespace IGC {
         CVariable(VISA_Type type);
 
         // Copy Ctor
-        CVariable(const CVariable& V)
+        CVariable(const CVariable& V) :
+            m_immediateValue(V.m_immediateValue),
+            m_alias(nullptr),
+            m_nbElement(V.m_nbElement),
+            m_aliasOffset(0),
+            m_numberOfInstance(V.m_numberOfInstance),
+            m_type(V.m_type),
+            m_varType(V.m_varType),
+            m_align(V.m_align),
+            m_uniform(V.m_uniform),
+            m_isImmediate(V.m_isImmediate),
+            m_subspanUse(V.m_subspanUse),
+            m_uniformVector(V.m_uniformVector),
+            m_undef(V.m_undef),
+            m_isUnpacked(V.m_isUnpacked)
         {
-            m_immediateValue = V.m_immediateValue;
-            m_alias = nullptr;
-            m_nbElement = V.m_nbElement;
-            m_aliasOffset = 0;
-            m_numberOfInstance = V.m_numberOfInstance;
-            m_type = V.m_type;
-            m_varType = V.m_varType;
-            m_align = V.m_align;
-            m_uniform = V.m_uniform;
-            m_isImmediate = V.m_isImmediate;
-            m_subspanUse = V.m_subspanUse;
-            m_uniformVector = V.m_uniformVector;
-            m_undef = V.m_undef;
-            m_isUnpacked = V.m_isUnpacked;
         }
 
         e_alignment GetAlign() const
@@ -145,7 +145,7 @@ namespace IGC {
         // packing of structure fields so they better fit the alignment
 
         // 8 bytes
-        uint64_t m_immediateValue;
+        const uint64_t m_immediateValue;
 
         // 4 bytes - pointer
         CVariable* m_alias;
@@ -155,16 +155,16 @@ namespace IGC {
         uint16_t m_aliasOffset;
 
         // 1 byte types
-        uint8_t m_numberOfInstance;
-        VISA_Type m_type;
-        e_varType m_varType;
+        const uint8_t m_numberOfInstance;
+        const VISA_Type m_type;
+        const e_varType m_varType;
         e_alignment m_align;
 
-        unsigned char m_uniform : 1;
-        unsigned char m_isImmediate : 1;
-        unsigned char m_subspanUse : 1;
-        unsigned char m_uniformVector : 1;
-        unsigned char m_undef : 1;
+        const unsigned char m_uniform : 1;
+        const unsigned char m_isImmediate : 1;
+        const unsigned char m_subspanUse : 1;
+        const unsigned char m_uniformVector : 1;
+        const unsigned char m_undef : 1;
 
         // unpacked means the layout of the vector is stored as unpacked half
         unsigned char m_isUnpacked : 1;
