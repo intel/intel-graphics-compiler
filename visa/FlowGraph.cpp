@@ -5890,6 +5890,17 @@ void G4_BB::resetLocalId()
     }
 }
 
+bool G4_BB::isAllLaneActive() const
+{
+    G4_Kernel* pK = parent->getKernel();
+    if (pK->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM && !isDivergent())
+    {
+        // For CM, if BB is not divergent, all lanes (32) must be active.
+        return true;
+    }
+    return false;
+}
+
 const char* G4_BB::getBBTypeStr() const
 {
     switch (getBBType()) {
