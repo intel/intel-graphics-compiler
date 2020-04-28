@@ -87,6 +87,9 @@ public:
 
 // Utility class to load and compile a cmc program.
 struct CMCLibraryLoader {
+    using compileFnTy = std::add_pointer<decltype(cmc_load_and_compile)>::type;
+    using freeFnTy = std::add_pointer<decltype(cmc_free_compile_info)>::type;
+    
     using compileFnTy_v2 = std::add_pointer<decltype(cmc_load_and_compile_v2)>::type;
     using freeFnTy_v2 = std::add_pointer<decltype(cmc_free_compile_info_v2)>::type;
 
@@ -94,11 +97,17 @@ struct CMCLibraryLoader {
     DL Dylib;
     std::string ErrMsg;
 
+    compileFnTy compileFn = nullptr;
+    freeFnTy freeFn = nullptr;
     compileFnTy_v2 compileFn_v2 = nullptr;
     freeFnTy_v2 freeFn_v2 = nullptr;
     CMCLibraryLoader();
     bool isValid();
 };
+
+extern int vISACompile(cmc_compile_info *output,
+                       iOpenCL::CGen8CMProgram &CMProgram,
+                       std::vector<const char*> &opts);
 
 extern int vISACompile_v2(cmc_compile_info_v2 *output,
                           iOpenCL::CGen8CMProgram &CMProgram,
