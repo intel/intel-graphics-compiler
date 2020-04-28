@@ -74,12 +74,15 @@ namespace IGC
             break;
         case IGFX_ICELAKE:
             InitIclHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitIclSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
         case IGFX_ICELAKE_LP:
             InitIclLpHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitIclLpSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
         case IGFX_LAKEFIELD:
             InitLkfHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitLkfSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
         case IGFX_TIGERLAKE_LP:
             {
