@@ -1941,9 +1941,8 @@ void EmitPass::EmitCopyFromStruct(Value* value, unsigned idx, const DstModifier&
     // For extract value, src and dest should share uniformity
     IGC_ASSERT(m_destination && m_destination->IsUniform() == SrcV->IsUniform());
     bool isUniform = SrcV->IsUniform();
-    unsigned nLanes = SrcV->IsUniform() ? 1 : numLanes(m_currShader->m_dispatchSize);
+    unsigned nLanes = isUniform ? 1 : numLanes(m_currShader->m_dispatchSize);
     unsigned elementOffset = (unsigned)SL->getElementOffset(idx) * nLanes;
-    //unsigned elementSize = (unsigned)DL.getTypeAllocSize(sTy->getStructElementType(idx)) * nLanes;
     SrcV = m_currShader->GetNewAlias(SrcV, m_destination->GetType(), elementOffset, m_destination->GetNumberElement(), isUniform);
 
     // Copy from struct to dest
@@ -9816,32 +9815,11 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
                 RetOnStack = true;
                 Dst = m_currShader->GetNewVariable(Src->GetNumberElement() * nLanes, Src->GetType(), Src->GetAlign(), false);
             }
-            if (RetTy->isStructTy())
+            if (Dst->GetType() != Src->GetType())
             {
-                // For struct uniform to non-uniform copy, we need to expand each element separately
-                // since we use the SoA (struct of arrays) layout
-                StructType* STy = dyn_cast<StructType>(RetTy);
-                auto& DL = inst->getParent()->getParent()->getParent()->getDataLayout();
-                const StructLayout* SL = DL.getStructLayout(STy);
-
-                // Do uniform to non-uniform copy for each struct element
-                for (unsigned i = 0; i < STy->getNumElements(); i++)
-                {
-                    unsigned elementOffset = (unsigned)SL->getElementOffset(i);
-                    unsigned elementSize = (unsigned)DL.getTypeAllocSize(STy->getElementType(i));
-                    CVariable* srcElement = m_currShader->GetNewAlias(Src, ISA_TYPE_B, elementOffset, elementSize, true);
-                    CVariable* dstElement = m_currShader->GetNewAlias(Dst, ISA_TYPE_B, elementOffset * nLanes, elementSize * nLanes, false);
-                    emitCopyAll(dstElement, srcElement, STy->getElementType(i));
-                }
+                Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, Src->GetNumberElement() * nLanes, false);
             }
-            else
-            {
-                if (Dst->GetType() != Src->GetType())
-                {
-                    Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, Src->GetNumberElement() * nLanes, false);
-                }
-                emitCopyAll(Dst, Src, RetTy);
-            }
+            emitCopyAll(Dst, Src, RetTy);
 
             if (RetOnStack)
             {
@@ -15840,10 +15818,34 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
     }
     else if (Ty->isStructTy())
     {
-        IGC_ASSERT(Src->IsUniform() == Dst->IsUniform());
-        IGC_ASSERT(Dst->GetNumberElement() == Src->GetNumberElement());
         IGC_ASSERT(Dst->GetType() == ISA_TYPE_B && Src->GetType() == ISA_TYPE_B);
-        emitVectorCopy(Dst, Src, Src->GetNumberElement());
+        if (Src->IsUniform() == Dst->IsUniform())
+        {
+            IGC_ASSERT(Dst->GetNumberElement() == Src->GetNumberElement());
+            emitVectorCopy(Dst, Src, Src->GetNumberElement());
+        }
+        else if (Src->IsUniform() && !Dst->IsUniform())
+        {
+            // Copy from uniform src to non-uniform dst
+            // We need to expand each element separately since we use the SoA (struct of arrays) layout
+            StructType* STy = dyn_cast<StructType>(Ty);
+            const StructLayout* SL = m_DL->getStructLayout(STy);
+            unsigned nLanes = numLanes(m_currShader->m_dispatchSize);
+            for (unsigned i = 0; i < STy->getNumElements(); i++)
+            {
+                unsigned elementOffset = (unsigned)SL->getElementOffset(i);
+                Type* elementType = STy->getElementType(i);
+                unsigned numElements = elementType->isVectorTy() ? elementType->getVectorNumElements() : 1;
+                VISA_Type visaTy = m_currShader->GetType(elementType);
+                CVariable* srcElement = m_currShader->GetNewAlias(Src, visaTy, elementOffset, numElements, true);
+                CVariable* dstElement = m_currShader->GetNewAlias(Dst, visaTy, elementOffset * nLanes, numElements * nLanes, false);
+                emitCopyAll(dstElement, srcElement, elementType);
+            }
+        }
+        else
+        {
+            IGC_ASSERT(0 && "Does not support non-uniform to uniform struct copy");
+        }
     }
     else
     {

@@ -1581,11 +1581,14 @@ CVariable* CShader::GetStructVariable(llvm::Value* value, llvm::Constant* initVa
     {
         for (unsigned i = 0; i < sTy->getNumElements(); i++)
         {
-            unsigned elementOffset = (unsigned)SL->getElementOffset(i);
             CVariable* elementSrc = GetSymbol(initValue->getAggregateElement(i));
-            CVariable* elementDst = GetNewAlias(cVar, elementSrc->GetType(), elementOffset * lanes, elementSrc->GetNumberElement() * lanes);
-            GetEncoder().Copy(elementDst, elementSrc);
-            GetEncoder().Push();
+            if (!elementSrc->IsUndef())
+            {
+                unsigned elementOffset = (unsigned)SL->getElementOffset(i);
+                CVariable* elementDst = GetNewAlias(cVar, elementSrc->GetType(), elementOffset * lanes, elementSrc->GetNumberElement() * lanes);
+                GetEncoder().Copy(elementDst, elementSrc);
+                GetEncoder().Push();
+            }
         }
     }
 
