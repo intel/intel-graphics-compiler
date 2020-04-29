@@ -87,10 +87,12 @@ namespace IGC
         case IGFX_TIGERLAKE_LP:
             {
                 InitTglLpHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                InitTglLpSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             }
             break;
         case IGFX_JASPERLAKE:
             InitJslHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitJslSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
         default:
             IGC_ASSERT(false);
