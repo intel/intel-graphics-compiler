@@ -43,6 +43,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //forward declaration
 namespace vISA
 {
+class G4_Declare;
+class G4_INST;
 class G4_Kernel;
 class DebugInfoFormat;
 class BinaryEncodingBase;
@@ -852,6 +854,15 @@ private:
     int predefinedVarRegAssignment();
     int calculateTotalInputSize();
     int compileTillOptimize();
+
+    // Expand indirect call
+    typedef std::vector<vISA::G4_INST*> InstListType;
+    void expandIndirectCallWithRegTarget();
+    void createInstForJmpiSequence(InstListType& insts, vISA::G4_INST* fcall);
+    // create the instructions to calculate the jump target offset, return G4_Declare of the
+    // new created jmp target
+    vISA::G4_Declare* createInstsForCallTargetOffset(
+        InstListType& insts, vISA::G4_INST* fcall, int64_t adjust_off);
 
     CisaFramework::CisaInst* AppendVISASvmGeneralScatterInst(VISA_PredOpnd* pred,
         VISA_EMask_Ctrl emask, VISA_Exec_Size execSize, unsigned char blockSize,

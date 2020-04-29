@@ -217,6 +217,156 @@ static void setDeclAlignment(G4_Declare* dcl, VISA_Align align)
     }
 }
 
+G4_Declare* VISAKernelImpl::createInstsForCallTargetOffset(
+    InstListType& insts, G4_INST* fcall, int64_t adjust_off)
+{
+    // create instruction sequence:
+    //       add  r2.0  -IP   call_target
+    //       add  r2.0  r2.0  adjust_off
+
+    // call's dst must be r1.0, which is reserved at
+    // GlobalRA::setABIForStackCallFunctionCalls. It must not be overlapped with
+    // r2.0, that is hardcoded as the new jump target
+    assert(fcall->getDst()->isGreg());
+    assert((fcall->getDst()->getLinearizedStart() / GENX_GRF_REG_SIZ) != 2);
+
+    // hardcoded add's dst to r2.0
+    G4_Declare* add_dst_decl =
+        m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), 2, 0);
+
+    // create the first add instruction
+    // add  r2.0  -IP   call_target
+    G4_INST* add_inst = m_builder->createInternalInst(
+        nullptr, G4_add, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
+        m_builder->createSrcRegRegion(
+            Mod_Minus, Direct, m_builder->phyregpool.getIpReg(), 0, 0,
+            m_builder->getRegionScalar(), Type_UD),
+        fcall->getSrc(0), InstOpt_WriteEnable | InstOpt_NoCompact);
+
+    // create the second add to add the -ip to adjust_off, adjust_off dependes
+    // on how many instructions from the fist add to the jmp instruction, and
+    // if it's post-increment (jmpi) or pre-increment (call)
+    // add  r2.0  r2.0  adjust_off
+    G4_INST* add_inst2 = m_builder->createInternalInst(
+        nullptr, G4_add, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
+        m_builder->Create_Src_Opnd_From_Dcl(
+            add_dst_decl, m_builder->getRegionScalar()),
+        m_builder->createImm(adjust_off, Type_D),
+        InstOpt_WriteEnable | InstOpt_NoCompact);
+
+    // Set both instruction to have @1 swsb
+    // This pass is done after swsb set, so we need to set swsb
+    add_inst->setDistance(1);
+    add_inst2->setDistance(1);
+    insts.push_back(add_inst);
+    insts.push_back(add_inst2);
+
+    return add_dst_decl;
+}
+
+void VISAKernelImpl::createInstForJmpiSequence(VISAKernelImpl::InstListType& insts, G4_INST* fcall)
+{
+    // SKL workaround for indirect call
+    // r1.0 is the return IP (the instruction right after jmpi)
+    // r1.1 is the return mask. While we'll replace the ret in calee to jmpi as well,
+    // we do not need to consider the return mask here.
+
+    // Do not allow predicate call on jmpi WA
+    assert(fcall->getPredicate() == nullptr);
+
+    // calculate the reserved register's num from fcall's dst register (shoud be r1)
+    assert(fcall->getDst()->isGreg());
+    uint32_t reg_num = fcall->getDst()->getLinearizedStart() / GENX_GRF_REG_SIZ;
+
+    G4_Declare* new_target_decl = createInstsForCallTargetOffset(insts, fcall, -64);
+
+    // add  r1.0   IP   32
+    G4_Declare* r1_0_decl =
+        m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 0);
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_add, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(r1_0_decl, 1),
+        m_builder->createSrcRegRegion(
+            Mod_src_undef, Direct, m_builder->phyregpool.getIpReg(), 0, 0,
+            m_builder->getRegionScalar(), Type_UD),
+        m_builder->createImm(32, Type_UD),
+        InstOpt_WriteEnable | InstOpt_NoCompact));
+
+    // jmpi r2.0
+    // update jump target (src0) to add's dst
+    G4_SrcRegRegion* jump_target = m_builder->Create_Src_Opnd_From_Dcl(
+        new_target_decl, m_builder->getRegionScalar());
+    jump_target->setType(Type_D);
+    insts.push_back(m_builder->createJmp(nullptr, jump_target, InstOpt_NoCompact, false));
+}
+
+void VISAKernelImpl::expandIndirectCallWithRegTarget()
+{
+    // check every fcall
+    for (auto bb : m_kernel->fg)
+    {
+        // At this point G4_pseudo_fcall may be converted to G4_call,
+        // check all call
+        if (bb->back()->isFCall() || bb->back()->isCall())
+        {
+            G4_INST* fcall = bb->back();
+            if (fcall->getSrc(0)->isGreg() || fcall->getSrc(0)->isA0()) {
+                // at this point the call instruction's src0 has the target_address
+                // and the call dst is the reserved register for ret
+                // All the caller save register should be saved. We usd r2.0 directly
+                // here to calculate the new call's target. We picked r2.0 due to the
+                // HW's limitation that call/calla's src and dst offset (the subreg num)
+                // must be 0.
+                //
+                // expand call
+                // From:
+                //       call r1.0 call_target
+                // To:
+                //       add  r2.0  -IP   call_target
+                //       add  r2.0  r2.0  -32
+                //       call r1.0  r2.0
+
+                // For SKL workaround, expand call
+                // From:
+                //       call r1.0 call_target
+                // To:
+                //       add  r2.0   -IP    call_target
+                //       add  r2.0   r2.0   -64
+                //       add  r1.0   IP   32              // set the return IP
+                //       jmpi r2.0
+
+                InstListType expanded_insts;
+                if (m_builder->needReplaceIndirectCallWithJmpi()) {
+                    createInstForJmpiSequence(expanded_insts, fcall);
+                }
+                else {
+                    G4_Declare* jmp_target_decl =
+                        createInstsForCallTargetOffset(expanded_insts, fcall, -32);
+                    // Updated call's target to the new target
+                    G4_SrcRegRegion* jump_target = m_builder->Create_Src_Opnd_From_Dcl(
+                        jmp_target_decl, m_builder->getRegionScalar());
+                    fcall->setSrc(jump_target, 0);
+                    fcall->setNoCompacted();
+                }
+                // then insert the expaneded instructions right before the call
+                INST_LIST_ITER insert_point = bb->end();
+                --insert_point;
+                for (auto inst_to_add : expanded_insts) {
+                    bb->getInstList().insert(insert_point, inst_to_add);
+                    inst_to_add->setCISAOff(fcall->getCISAOff());
+                }
+
+                // remove call from the instlist for Jmpi WA
+                if (m_builder->needReplaceIndirectCallWithJmpi())
+                    bb->getInstList().erase(--bb->end());
+            }
+        }
+    }
+
+}
+
 int VISAKernelImpl::compileTillOptimize()
 {
     // For separate compilation run compilation till RA then return
@@ -278,6 +428,22 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         singleInstStallSWSB(m_kernel, getOptions()->getuInt32Option(vISA_SWSBInstStall), getOptions()->getuInt32Option(vISA_SWSBInstStallEnd), false);
     }
 
+
+    if (m_kernel->hasIndirectCall())
+    {
+        // If the indirect call has regiser src0, the register must be a
+        // ip-based address of the call target. Insert a add before call to
+        // calculate the relative offset from call to the target
+        // This pass has to be done after swsb set to avoid call target offst
+        // corrupted that swsb generator may insert additional sync between
+        // call and add instructions that calculating the call target offset.
+        // If inserted, the adjusted offset will be wrong.
+        expandIndirectCallWithRegTarget();
+        if (getOptions()->getOption(vISA_DumpDotAll))
+        {
+            m_kernel->dumpDotFile("ExpandIndirectCall");
+        }
+    }
 
     m_kernel->evalAddrExp();
 
