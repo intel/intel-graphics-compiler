@@ -209,13 +209,12 @@ struct SPatchExecutionEnvironment :
     uint32_t    NumGRFRequired;
     uint32_t    WorkgroupWalkOrderDims; // dim0 : [0 : 1]; dim1 : [2 : 3]; dim2 : [4 : 5]
     uint32_t    HasGlobalAtomics;
-    uint32_t    reserved1;
-    uint32_t    reserved2;
+    uint32_t    reserved;
     uint32_t    StatelessWritesCount;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchExecutionEnvironment) == (104 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
+static_assert(sizeof(SPatchExecutionEnvironment) == (100 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchString
