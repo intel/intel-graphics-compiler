@@ -758,6 +758,12 @@ void BinaryEncodingIGA::DoAll()
                         condModifier);
             }
 
+            if (igaInst == nullptr)
+            {
+                ASSERT_USER(false, "Instruction is NULL");
+                continue;
+            }
+
             igaInst->setID(IGAInstId++);
             igaInst->setLoc(inst->getCISAOff()); // make IGA src off track CISA id
 

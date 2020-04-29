@@ -699,7 +699,9 @@ void LVN::removePhysicalVarRedefs(G4_DstRegRegion* dst)
             auto item = (*it);
             bool erase = false;
 
-            if (item->dstTopDcl->getRegVar()->isGreg())
+            if (item->dstTopDcl &&
+                item->dstTopDcl->getRegVar() &&
+                item->dstTopDcl->getRegVar()->isGreg())
             {
                 if (sameGRFRef(topdcl, item->dstTopDcl))
                 {
@@ -894,14 +896,16 @@ void LVN::getValue(int64_t imm, G4_Operand* opnd, Value& value)
 void LVN::getValue(G4_SrcRegRegion* src, G4_INST* inst, Value& value)
 {
     G4_Declare* topdcl = src->getTopDcl();
-    value.hash = topdcl->getDeclId() + src->getLeftBound() + src->getRightBound() + getActualHStride(src);
+    if (topdcl != nullptr)
+        value.hash = topdcl->getDeclId() + src->getLeftBound() + src->getRightBound() + getActualHStride(src);
     value.opnd = src;
 }
 
 void LVN::getValue(G4_DstRegRegion* dst, G4_INST* inst, Value& value)
 {
     G4_Declare* topdcl = dst->getTopDcl();
-    value.hash = topdcl->getDeclId() + dst->getLeftBound() + dst->getRightBound() + dst->getHorzStride();
+    if (topdcl != nullptr)
+        value.hash = topdcl->getDeclId() + dst->getLeftBound() + dst->getRightBound() + dst->getHorzStride();
     value.opnd = dst;
 }
 
@@ -1192,10 +1196,13 @@ void LVN::computeValue(G4_INST* inst, bool negate, bool& canNegate, bool& isGlob
         // Other patterns to detect using LVN can be added here
     }
 
-    // Compute value for globals so we can insert it in LVN table.
-    // But we dont want to apply optimization on such instructions.
-    isGlobal = fg.globalOpndHT.isOpndGlobal(inst->getDst());
-    isGlobal |= inst->getDst()->getTopDcl()->isOutput();
+    if (inst->getDst() && inst->getDst()->getTopDcl())
+    {
+        // Compute value for globals so we can insert it in LVN table.
+        // But we dont want to apply optimization on such instructions.
+        isGlobal = fg.globalOpndHT.isOpndGlobal(inst->getDst());
+        isGlobal |= inst->getDst()->getTopDcl()->isOutput();
+    }
 }
 
 // Ordering of val1 and val2 parameters is important.

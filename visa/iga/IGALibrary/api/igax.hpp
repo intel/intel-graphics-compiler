@@ -265,8 +265,10 @@ static inline std::vector<PlatformInfo> QueryPlatforms()
     //
     std::vector<PlatformInfo> pis;
     pis.reserve(gens.size());
+    const char *suffix = nullptr;
+    std::vector<std::string> names = {};
     for (size_t piIx = 0; piIx < gens.size(); piIx++) {
-        const char *suffix = nullptr;
+        names.clear();
         IGA_CHECKED_CALL(iga_platform_symbol_suffix, gens[piIx], &suffix);
         size_t names_bytes_needed = 0;
         IGA_CHECKED_CALL(
@@ -278,7 +280,6 @@ static inline std::vector<PlatformInfo> QueryPlatforms()
             names_cstr.size()*sizeof(const char *),
             names_cstr.data(),
             nullptr);
-        std::vector<std::string> names;
         names.reserve(names_cstr.size());
         for (const char *nm : names_cstr)
             names.push_back(nm);

@@ -412,6 +412,10 @@ public:
                     m_maskCtrl,
                     m_flagModifier);
         }
+
+        if (inst == nullptr)
+            return;
+
         inst->setLoc(m_loc);
         m_insts.emplace_back(inst);
 
@@ -492,6 +496,7 @@ public:
                 IGA_ASSERT_FALSE("unexpected src kind");
             }
         } // for
+
         inst->addInstOpts(m_instOpts);
         inst->setID(m_nextId++);
         inst->setPC(m_pc);

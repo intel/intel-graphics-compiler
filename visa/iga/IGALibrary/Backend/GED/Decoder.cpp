@@ -1080,6 +1080,11 @@ Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
         msgDesc
     );
 
+    if (inst == nullptr) {
+        error("Instruction is NULL after calling createSendInstruction");
+        return nullptr;
+    }
+
     if ((m_opSpec->format & OpSpec::Format::SEND_BINARY) == OpSpec::Format::SEND_BINARY) { // send is binary
         decodeSendDestination(inst);
         decodeSendSource0(inst);
