@@ -730,7 +730,7 @@ namespace IGC {
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    bool CodeSinking::checkCongruent(const InstPair& values, InstVec& leaves, unsigned depth)
+    bool CodeSinking::checkCongruent(std::vector<InstPair> &instMap, const InstPair& values, InstVec& leaves, unsigned depth)
     {
         Instruction* src0 = values.first;
         Instruction* src1 = values.second;
@@ -829,7 +829,7 @@ namespace IGC {
             if (iv0 && iv0->getParent() == src0->getParent() &&
                 iv1 && iv1->getParent() == src1->getParent())
             {
-                if (!checkCongruent(std::make_pair(iv0, iv1), tmpVec, depth + 1))
+                if (!checkCongruent(instMap, std::make_pair(iv0, iv1), tmpVec, depth + 1))
                 {
                     equals = false;
                     break;
@@ -843,7 +843,7 @@ namespace IGC {
         }
         if (equals)
         {
-            appendIfNotExist(std::make_pair(src0, src1));
+            appendIfNotExist(std::make_pair(src0, src1), instMap);
             appendIfNotExist(leaves, tmpVec);
             return equals;
         }
@@ -889,7 +889,7 @@ namespace IGC {
             if (iv0 && iv0->getParent() == src0->getParent() &&
                 iv1 && iv1->getParent() == src1->getParent())
             {
-                if (!checkCongruent(std::make_pair(iv0, iv1), leaves, depth + 1))
+                if (!checkCongruent(instMap, std::make_pair(iv0, iv1), leaves, depth + 1))
                 {
                     equals = false;
                     break;
@@ -903,7 +903,7 @@ namespace IGC {
         }
         if (equals)
         {
-            appendIfNotExist(std::make_pair(src0, src1));
+            appendIfNotExist(std::make_pair(src0, src1), instMap);
             appendIfNotExist(leaves, tmpVec);
         }
         return equals;
@@ -922,7 +922,11 @@ namespace IGC {
         src1 = dyn_cast<Instruction>(phi->getIncomingValue(1));
         if (src0 && src1 && src0 != src1)
         {
-            if (checkCongruent(std::make_pair(src0, src1), leaves, 0))
+            // this vector maps all instructions leading to source0 of phi instruction to
+            // the corresponding instructions of source1
+            std::vector<InstPair> instMap;
+
+            if (checkCongruent(instMap, std::make_pair(src0, src1), leaves, 0))
             {
                 BasicBlock* predBB = nullptr;
                 Instruction* insertPos = nullptr;
@@ -1008,7 +1012,6 @@ namespace IGC {
                 }
             }
         }
-        instMap.clear();
         return changed;
     }
 
