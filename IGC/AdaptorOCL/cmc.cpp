@@ -412,7 +412,8 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& ker
         case cmc_arg_kind::PrintBuffer:
             kernel.m_kernelInfo.m_printfBufferAnnotation = new iOpenCL::PrintfBufferAnnotation();
             kernel.m_kernelInfo.m_printfBufferAnnotation->AnnotationSize = sizeof(kernel.m_kernelInfo.m_printfBufferAnnotation);
-            kernel.m_kernelInfo.m_argIndexMap[AI.index] = 255;
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            kernel.m_kernelInfo.m_printfBufferAnnotation->ArgumentNumber = AI.index;
             kernel.m_kernelInfo.m_printfBufferAnnotation->PayloadPosition = AI.offset - constantPayloadStart;
             kernel.m_kernelInfo.m_printfBufferAnnotation->Index = 0;
             kernel.m_kernelInfo.m_printfBufferAnnotation->DataSize = 8;
