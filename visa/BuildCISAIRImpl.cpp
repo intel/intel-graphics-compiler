@@ -786,6 +786,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         for( ; iter != end; iter++, kernelIndex++ )
         {
             VISAKernelImpl * kTemp = *iter;
+            kTemp->finalizeAttributes();
             unsigned int binarySize = 0;
             status = cisaBinaryEmitter.Emit(kTemp, binarySize);
             m_cisaBinary->initKernel(kernelIndex, kTemp);
@@ -850,6 +851,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         for( iter = m_kernels.begin(), i = 0; iter != end; iter++, i++ )
         {
             VISAKernelImpl* kernel = (*iter);
+            kernel->finalizeAttributes();
             kernel->getIRBuilder()->setIsKernel(kernel->getIsKernel());
             if( kernel->getIsKernel() == false )
             {

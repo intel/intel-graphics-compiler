@@ -1432,7 +1432,6 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         {
             ASSERT_USER( false, "Invalid kernel target attribute." );
         }
-        mTargetAttributeSet = true;
     }
 
     if(attrID == Attributes::ATTR_Callable)
@@ -7566,18 +7565,30 @@ void VISAKernelImpl::patchLabels()
 
     return;
 }
+
+/**
+*  finalizeAttributes() sets attributes based on options, etc.
+*     This is a temporary solution to move some options to attributes.
+*     Once clients set attributes directily without using options, this
+*     function shall be removed.
+*/
+void VISAKernelImpl::finalizeAttributes()
+{
+    if (!m_kernelAttrs->isSet(Attributes::ATTR_Target))
+    {
+        VISATarget target = m_options->getTarget();
+        uint8_t val = (uint8_t)target;
+        AddKernelAttribute("Target", 1, &val);
+    }
+}
+
 /**
 * This function is called right before the kernel instructions are outputed in to a buffer.
 * It assumes that all the VISA instructions have already been generated.
 */
 void VISAKernelImpl::finalizeKernel()
 {
-    if(!mTargetAttributeSet)
-    {
-        VISATarget target = m_options->getTarget();
-        AddKernelAttribute("Target", 1, &target);
-    }
-
+    finalizeAttributes();
     patchLabels();
     m_cisa_kernel.string_count = (uint32_t)m_string_pool.size();
     m_cisa_kernel.strings = (const char **) m_mem.alloc(m_cisa_kernel.string_count * sizeof(char *));

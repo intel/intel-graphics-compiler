@@ -119,8 +119,6 @@ public:
         predicateNameCount = COMMON_ISA_NUM_PREDEFINED_PRED;
         surfaceNameCount = COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1;
         samplerNameCount = 0;
-        mTargetAttributeSet = false;
-
         m_functionId = 0;
         m_vISAInstCount = -1;
 
@@ -147,6 +145,8 @@ public:
     }
 
     vISA::Attributes* getKernelAttributes() { return m_kernelAttrs; }
+    // Temporary function to move options to attributes!
+    void finalizeAttributes();
     void finalizeKernel();
     unsigned long writeInToCisaBinaryBuffer(const void * value, int size);
     unsigned long getBytesWritten() { return m_bytes_written_cisa_buffer; }
@@ -886,8 +886,6 @@ private:
 
     kernel_format_t m_cisa_kernel;
 
-
-    bool mTargetAttributeSet;
     unsigned int m_num_pred_vars;
     //size of various arrays in kernel header.
     //used for buffer size allocation.
