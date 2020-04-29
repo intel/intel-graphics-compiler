@@ -1162,7 +1162,7 @@ namespace IGC
                 return true;
             }
             CShader* simd8Program = m_parent->GetShader(SIMDMode::SIMD8);
-            if (simd8Program == nullptr || simd8Program->ProgramOutput()->m_scratchSpaceUsedBySpills > 0)
+            if (simd8Program != nullptr && simd8Program->ProgramOutput()->m_scratchSpaceUsedBySpills > 0)
             {
                 return false;
             }
