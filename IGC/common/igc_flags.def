@@ -410,3 +410,4 @@ DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true, "Apply WaConservat
 
 DECLARE_IGC_GROUP("OGL Frontend")
     DECLARE_IGC_REGKEY(bool, OGLMinimumDump, false, "Minimum dump for testing - first and last .ll, .cos and compiler output", true)
+    
