@@ -31,14 +31,6 @@ INLINE float __builtin_spirv_OpenCL_fclamp_f32_f32_f32(float x, float minval, fl
     return __builtin_spirv_OpenCL_fmin_f32_f32(__builtin_spirv_OpenCL_fmax_f32_f32(x, minval), maxval);
 }
 
-INLINE float __builtin_spirv_OpenCL_fmax_common_f32_f32(float x, float y ){
-    return __builtin_IB_fmax(x, y);
-}
-
-INLINE float __builtin_spirv_OpenCL_fmin_common_f32_f32(float x, float y ){
-    return __builtin_IB_fmin(x, y);
-}
-
 INLINE
 uchar __builtin_spirv_OpenCL_s_abs_i8(char x ){
     return x > 0 ? x : -x;
@@ -623,14 +615,6 @@ INLINE half __builtin_spirv_OpenCL_fclamp_f16_f16_f16(half x, half minval, half 
     return __builtin_spirv_OpenCL_fmin_f32_f32(__builtin_spirv_OpenCL_fmax_f32_f32(x, minval), maxval);
 }
 
-INLINE half __builtin_spirv_OpenCL_fmax_common_f16_f16(half x, half y ){
-    return __builtin_IB_HMAX(x, y);
-}
-
-INLINE half __builtin_spirv_OpenCL_fmin_common_f16_f16(half x, half y ){
-    return __builtin_IB_HMIN(x, y);
-}
-
 INLINE
 half __builtin_spirv_OpenCL_acos_f16(half x ){
     return (half)__builtin_spirv_OpenCL_acos_f32((float)x);
@@ -811,15 +795,6 @@ double __builtin_spirv_OpenCL_floor_f64(double x ){
     ulong signAdjustedVal = (orDst == 0) ? 0 : (expBias);
     double output = as_double( signAdjustedVal << 32 ) + as_double( roundedToZeroVal );
     return output;
-}
-
-INLINE double __builtin_spirv_OpenCL_fmax_common_f64_f64(double x, double y ){
-    return __builtin_IB_dmax(x, y);
-}
-
-INLINE double __builtin_spirv_OpenCL_fmin_common_f64_f64(double x, double y ){
-    //return __builtin_IB_minf(x, y);
-    return (x <= y) ? x : y;
 }
 
 INLINE double __builtin_spirv_OpenCL_native_sqrt_f64(double x ){
