@@ -161,6 +161,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 #include "DebugInfo.hpp"
 #include "Compiler/CISACodeGen/HalfPromotion.h"
+#include "Compiler/CISACodeGen/AnnotateUniformAllocas.h"
 #include "Probe/Assertion.h"
 
 /***********************************************************************************
@@ -456,6 +457,8 @@ namespace IGC
             }
             mpm.add(createGenericAddressDynamicResolutionPass());
         }
+
+        mpm.add(createAnnotateUniformAllocasPass());
 
         // Resolve the Private memory to register pass
         if (!isOptDisabled)
