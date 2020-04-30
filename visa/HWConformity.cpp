@@ -399,7 +399,7 @@ G4_Operand* HWConformity::insertMovBefore(
     // due to old BDW regioning rule we need NoMask inst here so they can be split
     if (builder.getOptions()->isTargetCM() && builder.getPlatform() == GENX_BDW)
     {
-        if (bb->isInSimdFlow())
+        if (!bb->isAllLaneActive())
         {
             newInstEMask = InstOpt_WriteEnable;
         }
@@ -1530,7 +1530,7 @@ bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype,
 
     // optimize initialization instructions
     if( inst->opcode() == G4_mov && src0->isImm() &&
-        ( !bb->isInSimdFlow() || inst->isWriteEnableInst() ) &&
+        ( bb->isAllLaneActive() || inst->isWriteEnableInst() ) &&
         !inst->getPredicate() &&
         dst->getRegAccess() == Direct &&
         dst->getHorzStride() == 1 &&
@@ -2252,7 +2252,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             if (next_dst != NULL &&
                 (next_inst->getSaturate() ||
                 next_dst->getByteOffset() % GENX_GRF_REG_SIZ != 0 ||
-                (bb->isInSimdFlow() && next_inst->isWriteEnableInst() == false) ||
+                (!bb->isAllLaneActive() && next_inst->isWriteEnableInst() == false) ||
                 (next_dst &&
                 ((next_dst->getExecTypeSize() > G4_Type_Table[Type_D].byteSize) ||
                 isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(next_dst)))))
@@ -5463,7 +5463,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
         G4_INST* src2Dst = NULL;
 
         int emask = inst->getMaskOption();
-        if (bb->isInSimdFlow() &&
+        if (!bb->isAllLaneActive() &&
             emask != InstOpt_WriteEnable &&
             inst->getMaskOffset() != 0)
         {
@@ -6443,7 +6443,7 @@ bool HWConformity::splitInstListForByteDst( INST_LIST_ITER it, G4_BB *bb, uint16
     // check if we can split the inst
     if( !canSplitByteDst( inst_op ) ||
          inst->getExecSize() == 1 ||
-        ( bb->isInSimdFlow() && !inst->isWriteEnableInst() ) ||
+        ( !bb->isAllLaneActive() && !inst->isWriteEnableInst() ) ||
         dst->getByteOffset() % extypesize != 0 ||
         dst->getHorzStride() != 1 ||
         extypesize != G4_Type_Table[Type_W].byteSize)
@@ -6487,7 +6487,7 @@ bool HWConformity::splitInstListForByteDst( INST_LIST_ITER it, G4_BB *bb, uint16
         }
         if( canSplit )
         {
-            if( bb->isInSimdFlow() && !defInst->isWriteEnableInst() )
+            if( !bb->isAllLaneActive() && !defInst->isWriteEnableInst() )
             {
                 canSplit = false;
             }
@@ -7807,7 +7807,7 @@ void HWConformity::fixPredCtrl(INST_LIST_ITER it, G4_BB* bb)
             //
             // if f0 happens to be < 16 elements we have to clear upper bits as well in case it has garbage values
             assert(!inst->getCondMod() && "currently don't handle an instruction with conditional modifier");
-            assert((inst->isWriteEnableInst() || !bb->isInSimdFlow()) && "don't handle instruction in SIMD CF for now");
+            assert((inst->isWriteEnableInst() || bb->isAllLaneActive()) && "don't handle instruction in SIMD CF for now");
             G4_Declare* tmpFlag = builder.createTempFlag(1);
             G4_Type flagType = flagDcl->getNumberFlagElements() == 32 ? Type_UD : Type_UW;
             uint32_t allOneMask = (uint32_t) ((1ULL << flagDcl->getNumberFlagElements()) - 1);
