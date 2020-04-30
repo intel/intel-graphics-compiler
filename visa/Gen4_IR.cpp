@@ -4323,19 +4323,19 @@ void printRegVarOff(std::ostream&  output,
 
                 if (baseVar->getPhyReg()->isGreg())
                 {
-                     uint32_t byteAddress = opnd->getLinearizedStart();
-                     int regNum = 0, subRegNum = 0;
-                     if (byteAddress != 0)
-                     {
-                         regNum = byteAddress / GENX_GRF_REG_SIZ;
-                         subRegNum = ( byteAddress % GENX_GRF_REG_SIZ ) / G4_Type_Table[type].byteSize;
-                     }
-                     else
-                     {
-                         // before RA, use the value in Greg directly
-                         regNum = baseVar->getPhyReg()->asGreg()->getRegNum();
-                         subRegNum = baseVar->getPhyRegOff();
-                     }
+                    int regNum = 0, subRegNum = 0;
+                    uint32_t byteAddress = opnd->getLinearizedStart();
+
+                    if (baseVar->getDeclare()->getGRFBaseOffset() == 0)
+                    {
+                        // This is before RA and getLineariedStart() only contains the left bound
+                        // we have to add the declare's phyreg
+                        byteAddress += baseVar->getPhyReg()->asGreg()->getRegNum() * getGRFSize() + baseVar->getPhyRegOff() * getTypeSize(type);
+                    }
+
+                    regNum = byteAddress / getGRFSize();
+                    subRegNum = (byteAddress % getGRFSize()) / G4_Type_Table[type].byteSize;
+
 
                      output << "r" << regNum;
                      if (printSubReg)
@@ -4603,7 +4603,7 @@ bool G4_SrcRegRegion::obeySymbolRegRule() const
 void G4_SrcRegRegion::emitRegVarOff(std::ostream& output, bool symbolreg)
 {
     bool printSubReg = true;
-    if (inst != NULL && inst->isSend())
+    if (inst && inst->isSend())
     {
         printSubReg = false;
     }
