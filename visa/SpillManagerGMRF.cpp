@@ -4129,12 +4129,12 @@ void SpillManagerGRF::saveRestoreA0(G4_BB* bb)
 
             auto dstSave = builder_->Create_Dst_Opnd_From_Dcl(tmp, 1);
             auto srcSave = builder_->createSrcRegRegion(Mod_src_undef, Direct, saveA0->getRegVar(), 0, 0, builder_->getRegionScalar(), Type_UD);
-            auto saveInst = builder_->createInternalInst(nullptr, G4_mov, nullptr, false, 1, dstSave, srcSave, nullptr, InstOpt_WriteEnable);
+            auto saveInst = builder_->createMov(1, dstSave, srcSave, InstOpt_WriteEnable, false);
             bb->getInstList().insert(instIt, saveInst);
 
             auto dstRestore = builder_->Create_Dst_Opnd_From_Dcl(saveA0, 1);
             auto srcRestore = builder_->createSrcRegRegion(Mod_src_undef, Direct, tmp->getRegVar(), 0, 0, builder_->getRegionScalar(), Type_UD);
-            auto restoreInst = builder_->createInternalInst(nullptr, G4_mov, nullptr, false, 1, dstRestore, srcRestore, nullptr, InstOpt_WriteEnable);
+            auto restoreInst = builder_->createMov(1, dstRestore, srcRestore, InstOpt_WriteEnable, false);
             auto nextIt = instIt;
             bb->getInstList().insert(++nextIt, restoreInst);
         }
@@ -4306,7 +4306,6 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
     // (W)      sends(8 | M0)         null : ud       r126              payload - src2                0x4A      0x20A02FF
     G4_Operand* src0 = nullptr;
     G4_Imm* src1 = nullptr;
-    G4_opcode op = G4_mov;
     G4_Declare* scratchRegDcl = builder->kernel.fg.scratchRegDcl;
     G4_Declare* framePtr = inst->asSpillIntrinsic()->getFP();
 
@@ -4345,22 +4344,20 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
 
         if (inst->asSpillIntrinsic()->isOffsetValid())
         {
+            G4_INST* hdrSetInst = nullptr;
             // Skip header if spill module emits its own header
             if (framePtr)
             {
                 src0 = builder->createSrcRegRegion(
                     Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, builder->getRegionScalar(), Type_UD);
                 src1 = builder->createImm(offsetOword, Type_UD);
-                op = G4_add;
+                hdrSetInst = builder->createBinOp(G4_add, 1, dst, src0, src1, InstOpt_WriteEnable, false);
             }
             else
             {
                 src0 = builder->createImm(offsetOword, Type_UD);
-                op = G4_mov;
+                hdrSetInst = builder->createMov(1, dst, src0, InstOpt_WriteEnable, false);
             }
-
-            auto hdrSetInst = builder->createInternalInst(NULL, op, NULL, false, 1,
-                dst, src0, src1, InstOpt_WriteEnable);
 
             bb->insert(spillIt, hdrSetInst);
         }
@@ -4484,7 +4481,6 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
     //  send (16) r[startReg]<1>:uw r126 0xa desc:ud
     G4_Operand* src0 = nullptr;
     G4_Imm* src1 = nullptr;
-    G4_opcode op = G4_mov;
     G4_Declare* scratchRegDcl = builder->kernel.fg.scratchRegDcl;
     G4_Declare* framePtr = inst->asFillIntrinsic()->getFP();
 
@@ -4520,22 +4516,20 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
 
         if (inst->asFillIntrinsic()->isOffsetValid())
         {
+            G4_INST* hdrSetInst = nullptr;
             // Skip header if spill module emits its own header
             if (framePtr)
             {
                 src0 = builder->createSrcRegRegion(
                     Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, builder->getRegionScalar(), Type_UD);
                 src1 = builder->createImm(offsetOword, Type_UD);
-                op = G4_add;
+                hdrSetInst = builder->createBinOp(G4_add, 1, dst, src0, src1, InstOpt_WriteEnable, false);
             }
             else
             {
                 src0 = builder->createImm(offsetOword, Type_UD);
-                op = G4_mov;
+                hdrSetInst = builder->createMov(1, dst, src0, InstOpt_WriteEnable, false);
             }
-
-            auto hdrSetInst = builder->createInternalInst(NULL, op, NULL, false, 1,
-                dst, src0, src1, InstOpt_WriteEnable);
 
             bb->insert(fillIt, hdrSetInst);
         }

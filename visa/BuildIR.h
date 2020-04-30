@@ -1822,6 +1822,9 @@ public:
         unsigned int option, int lineno = 0, int CISAoff = -1,
         const char* srcFilename = NULL);
 
+    G4_INST* createNop(uint32_t option);
+    G4_INST* createSync(G4_opcode syncOp, G4_Operand* src);
+
     G4_INST* createMov(uint8_t execSize, G4_DstRegRegion* dst,
         G4_Operand* src0, uint32_t option, bool appendToInstList,
         int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr);

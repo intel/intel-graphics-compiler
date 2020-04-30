@@ -653,8 +653,7 @@ void BinaryEncodingIGA::DoAll()
             size_t num_nop = 4 - (num_inst % 4);
             for (size_t i = 0; i < num_nop; ++i)
                 first_bb->getInstList().push_back(
-                    kernel.fg.builder->createInternalInst(
-                        nullptr, G4_nop, nullptr, false, 1, nullptr, nullptr, nullptr, InstOpt_NoCompact));
+                    kernel.fg.builder->createNop(InstOpt_NoCompact));
         }
         // set all instruction to be NoCompact
         for (auto inst : *first_bb)

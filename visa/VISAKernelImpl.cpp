@@ -236,25 +236,25 @@ G4_Declare* VISAKernelImpl::createInstsForCallTargetOffset(
 
     // create the first add instruction
     // add  r2.0  -IP   call_target
-    G4_INST* add_inst = m_builder->createInternalInst(
-        nullptr, G4_add, nullptr, false, 1,
+    G4_INST* add_inst = m_builder->createBinOp(
+        G4_add, 1,
         m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
         m_builder->createSrcRegRegion(
             Mod_Minus, Direct, m_builder->phyregpool.getIpReg(), 0, 0,
             m_builder->getRegionScalar(), Type_UD),
-        fcall->getSrc(0), InstOpt_WriteEnable | InstOpt_NoCompact);
+        fcall->getSrc(0), InstOpt_WriteEnable | InstOpt_NoCompact, false);
 
     // create the second add to add the -ip to adjust_off, adjust_off dependes
     // on how many instructions from the fist add to the jmp instruction, and
     // if it's post-increment (jmpi) or pre-increment (call)
     // add  r2.0  r2.0  adjust_off
-    G4_INST* add_inst2 = m_builder->createInternalInst(
-        nullptr, G4_add, nullptr, false, 1,
+    G4_INST* add_inst2 = m_builder->createBinOp(
+        G4_add, 1,
         m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
         m_builder->Create_Src_Opnd_From_Dcl(
             add_dst_decl, m_builder->getRegionScalar()),
         m_builder->createImm(adjust_off, Type_D),
-        InstOpt_WriteEnable | InstOpt_NoCompact);
+        InstOpt_WriteEnable | InstOpt_NoCompact, false);
 
     // Set both instruction to have @1 swsb
     // This pass is done after swsb set, so we need to set swsb
@@ -285,14 +285,14 @@ void VISAKernelImpl::createInstForJmpiSequence(VISAKernelImpl::InstListType& ins
     // add  r1.0   IP   32
     G4_Declare* r1_0_decl =
         m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 0);
-    insts.push_back(m_builder->createInternalInst(
-        nullptr, G4_add, nullptr, false, 1,
+    insts.push_back(m_builder->createBinOp(
+        G4_add, 1,
         m_builder->Create_Dst_Opnd_From_Dcl(r1_0_decl, 1),
         m_builder->createSrcRegRegion(
             Mod_src_undef, Direct, m_builder->phyregpool.getIpReg(), 0, 0,
             m_builder->getRegionScalar(), Type_UD),
         m_builder->createImm(32, Type_UD),
-        InstOpt_WriteEnable | InstOpt_NoCompact));
+        InstOpt_WriteEnable | InstOpt_NoCompact, false));
 
     // jmpi r2.0
     // update jump target (src0) to add's dst

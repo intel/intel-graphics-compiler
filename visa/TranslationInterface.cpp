@@ -8951,8 +8951,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
                 // and (1) M0.6<1>:uw M0.6<1>:uw 0xFFFE
                 G4_DstRegRegion* dst = createDst(dcl->getRegVar(), 0, 6, 1, Type_UW);
                 G4_SrcRegRegion* src0 = createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 6, getRegionScalar(), Type_UW);
-                G4_INST* SSPMove = createInternalInst(nullptr, G4_and, nullptr, false, 1, dst, src0,
-                    createImm(0xFFFE, Type_UW), InstOpt_WriteEnable);
+                G4_INST* SSPMove = createBinOp(G4_and, 1, dst, src0, createImm(0xFFFE, Type_UW), InstOpt_WriteEnable, false);
                 instList.push_front(SSPMove);
             }
             G4_INST* r0Move = createMov(8,
@@ -10627,8 +10626,7 @@ void IR_Builder::expandPredefinedVars()
             0, 5, getRegionScalar(), Type_UD);
         G4_Imm* mask1 = this->createImm(0x3ff, Type_UD);
         G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinHWTID, 1);
-        G4_INST* inst = this->createInternalInst(NULL, G4_and, NULL, false, 1, dst, src, mask1,
-            InstOpt_WriteEnable, 0, UNMAPPABLE_VISA_INDEX, NULL);
+        G4_INST* inst = this->createBinOp(G4_and, 1, dst, src, mask1, InstOpt_WriteEnable, false);
         instList.insert(iter, inst);
     }
 
@@ -10640,8 +10638,8 @@ void IR_Builder::expandPredefinedVars()
             G4_SrcRegRegion* r0Dot1UD = createSrcRegRegion(Mod_src_undef, Direct,
                 realR0->getRegVar(), 0, 1, getRegionScalar(), Type_UD);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::X), 1);
-            G4_INST* inst = createInternalInst(nullptr, G4_and, nullptr, false, 1, dst, r0Dot1UD,
-                createImm(0xFFF, Type_UW), InstOpt_WriteEnable);
+            G4_INST* inst = createBinOp(G4_and, 1, dst, r0Dot1UD,
+                createImm(0xFFF, Type_UW), InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
         else
@@ -10653,7 +10651,7 @@ void IR_Builder::expandPredefinedVars()
             int64_t mask = getThreadIDMask();
             G4_Imm* src1 = createImm(mask, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::X), 1);
-            G4_INST* inst = createInternalInst(nullptr, G4_and, nullptr, false, 1, dst, r0Dot2UW, src1, InstOpt_WriteEnable);
+            G4_INST* inst = createBinOp(G4_and, 1, dst, r0Dot2UW, src1, InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
     }
@@ -10668,13 +10666,13 @@ void IR_Builder::expandPredefinedVars()
                 realR0->getRegVar(), 0, 1, getRegionScalar(), Type_UD);
 
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
-            G4_INST* inst1 = createInternalInst(nullptr, G4_shr, nullptr, false, 1, dst, r0Dot1UD,
-                createImm(12, Type_UW), InstOpt_WriteEnable);
+            G4_INST* inst1 = createBinOp(G4_shr, 1, dst, r0Dot1UD,
+                createImm(12, Type_UW), InstOpt_WriteEnable, false);
             instList.insert(iter, inst1);
             dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
-            G4_INST* inst2 = createInternalInst(nullptr, G4_and, nullptr, false, 1, dst,
+            G4_INST* inst2 = createBinOp(G4_and, 1, dst,
                 Create_Src_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), getRegionScalar()),
-                createImm(0xFFF, Type_UW), InstOpt_WriteEnable);
+                createImm(0xFFF, Type_UW), InstOpt_WriteEnable, false);
             instList.insert(iter, inst2);
         }
         else
@@ -10686,7 +10684,7 @@ void IR_Builder::expandPredefinedVars()
             int64_t mask = getThreadIDMask();
             G4_Imm* src1 = createImmWithLowerType(mask, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
-            G4_INST* inst = createInternalInst(nullptr, G4_and, nullptr, false, 1, dst, r0Dot3UW, src1, InstOpt_WriteEnable);
+            G4_INST* inst = createBinOp(G4_and, 1, dst, r0Dot3UW, src1, InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
     }
@@ -10702,8 +10700,8 @@ void IR_Builder::expandPredefinedVars()
                 0, 1, getRegionScalar(), Type_UD);
             G4_Imm* shift = createImm(24, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::COLOR), 2);
-            G4_INST* inst = createInternalInst(nullptr, G4_shr, nullptr, false, 1, dst, src, shift,
-                InstOpt_WriteEnable, 0, UNMAPPABLE_VISA_INDEX, nullptr);
+            G4_INST* inst = createBinOp(G4_shr, 1, dst, src, shift,
+                InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
         else
@@ -10714,8 +10712,8 @@ void IR_Builder::expandPredefinedVars()
                 0, 2, getRegionScalar(), Type_UD);
             G4_Imm* mask = createImm(0xF, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::COLOR), 2);
-            G4_INST* inst = createInternalInst(nullptr, G4_and, nullptr, false, 1, dst, src, mask,
-                InstOpt_WriteEnable, 0, UNMAPPABLE_VISA_INDEX, nullptr);
+            G4_INST* inst = createBinOp(G4_and, 1, dst, src, mask,
+                InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
     }

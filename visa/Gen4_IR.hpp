@@ -719,9 +719,10 @@ public:
     virtual void computeRightBound(G4_Operand* opnd);
 
     bool isWait() const { return op == G4_wait; }
+    static bool isSyncOpcode(G4_opcode opcode) { return opcode == G4_sync_nop || opcode == G4_sync_allrd || opcode == G4_sync_allwr; }
     bool isSWSBSync() const
     {
-        return op == G4_sync_nop || op == G4_sync_allrd || op == G4_sync_allwr;
+        return G4_INST::isSyncOpcode(op);
     }
 
     bool isPseudoLogic() const

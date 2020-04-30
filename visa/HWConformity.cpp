@@ -2640,9 +2640,8 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         0,
         1,
         tmp_type);
-    G4_INST* newMul = builder.createInternalInst(nullptr, G4_mul, NULL, false, exec_size,
-        acc_dst_opnd, builder.duplicateOperand(src0), builder.duplicateOperand(src1), inst_opt,
-        inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+    G4_INST* newMul = builder.createBinOp(G4_mul, exec_size,
+        acc_dst_opnd, builder.duplicateOperand(src0), builder.duplicateOperand(src1), inst_opt, false);
 
     bb->insert(iter, newMul);
     inst->copyDefsTo(newMul, false);

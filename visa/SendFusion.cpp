@@ -1262,8 +1262,8 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
             Mod_src_undef, Direct, DMaskUD, 0, 0, scalar, Type_UD);
         G4_DstRegRegion* tmpDst = Builder->createDst(
             tmpDecl->getRegVar(), 0, 0, 1, Type_UD);
-        Inst0 = Builder->createInternalInst(
-            NULL, G4_and, NULL, false, 1, tmpDst, ce0Src, dmaskSrc, InstOpt_WriteEnable);
+        Inst0 = Builder->createBinOp(
+            G4_and, 1, tmpDst, ce0Src, dmaskSrc, InstOpt_WriteEnable, false);
         bb->insert(InsertBeforePos, Inst0);
     }
 

@@ -6865,9 +6865,9 @@ bool FlowGraph::convertJmpiToGoto()
                     {
                         // P = P & 1
                         auto pSrc1 = builder->createImm(1, Type_UW);
-                        auto pInst = builder->createInternalInst(
-                            nullptr, G4_and, nullptr, false, 1, pDst, pSrc0, pSrc1,
-                            InstOpt_M0 | InstOpt_WriteEnable);
+                        auto pInst = builder->createBinOp(
+                            G4_and, 1, pDst, pSrc0, pSrc1,
+                            InstOpt_M0 | InstOpt_WriteEnable, false);
                         bb->insert(I, pInst);
                     }
                     else if (G4_Predicate::isAnyH(pCtrl))
@@ -6875,9 +6875,9 @@ bool FlowGraph::convertJmpiToGoto()
                         // P = P & mask
                         uint32_t mask = getFlagMask(pCtrl);
                         auto pSrc1 = builder->createImm(truncMask(mask, DstTy), DstTy);
-                        auto pInst = builder->createInternalInst(
-                            nullptr, G4_and, nullptr, false, 1, pDst, pSrc0, pSrc1,
-                            InstOpt_M0 | InstOpt_WriteEnable);
+                        auto pInst = builder->createBinOp(
+                            G4_and, 1, pDst, pSrc0, pSrc1,
+                            InstOpt_M0 | InstOpt_WriteEnable, false);
                         bb->insert(I, pInst);
                     }
                     else
@@ -6886,9 +6886,9 @@ bool FlowGraph::convertJmpiToGoto()
                         // P = P | mask
                         uint32_t mask = getFlagMask(pCtrl);
                         auto pSrc1 = builder->createImm(truncMask(mask, DstTy), DstTy);
-                        auto pInst = builder->createInternalInst(
-                            nullptr, G4_or, nullptr, false, 1, pDst, pSrc0, pSrc1,
-                            InstOpt_M0 | InstOpt_WriteEnable);
+                        auto pInst = builder->createBinOp(
+                            G4_or, 1, pDst, pSrc0, pSrc1,
+                            InstOpt_M0 | InstOpt_WriteEnable, false);
                         bb->insert(I, pInst);
                     }
 

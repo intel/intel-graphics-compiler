@@ -6782,7 +6782,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     if (!nextInst->isSend() && nextInst->getDst() && !nextInst->hasNULLDst() && nextInst->getDst()->crossGRF())
                     {
                         // insert a nop
-                        G4_INST *nopInst = builder.createInternalInst(NULL, G4_nop, NULL, false, 1, NULL, NULL, NULL, inst->getOption());
+                        G4_INST *nopInst = builder.createNop(inst->getOption());
                         bb->insert(nextIter, nopInst);
                     }
                 }
@@ -7959,8 +7959,8 @@ public:
             auto src1 = builder.createImm(0xF0FFFFFF, Type_UD);
             auto dst = builder.createDst(rtail->getRegVar(), 0, 0, 1, Type_UD);
 
-            return builder.createInternalInst(nullptr, G4_and, nullptr, false, 1,
-                dst, src0, src1, InstOpt_WriteEnable);
+            return builder.createBinOp(G4_and, 1,
+                dst, src0, src1, InstOpt_WriteEnable, false);
         };
 
         // (W) or  (1|M0)  sr0.0<1>:ud   127.0<0;1,0>:ud    imm:ud
@@ -7973,8 +7973,8 @@ public:
             auto dst = builder.createDst(
                 builder.phyregpool.getSr0Reg(), 0, 0, 1, Type_UD);
 
-            return builder.createInternalInst(nullptr, G4_or, nullptr, false, 1,
-                dst, src0, src1, InstOpt_WriteEnable);
+            return builder.createBinOp(G4_or, 1,
+                dst, src0, src1, InstOpt_WriteEnable, false);
         };
 
         // (W) jmpi (1|M0) label
@@ -8285,21 +8285,21 @@ public:
                 //     jmpi  r1.0
 
                 // add   r1.0  -ip   r1.0
-                G4_INST* add0 = builder.createInternalInst(
-                    nullptr, G4_add, nullptr, false, 1,
+                G4_INST* add0 = builder.createBinOp(
+                    G4_add, 1,
                     builder.Create_Dst_Opnd_From_Dcl(r_1_0, 1),
                     builder.createSrcRegRegion(
                         Mod_Minus, Direct, builder.phyregpool.getIpReg(), 0, 0,
                         builder.getRegionScalar(), Type_UD),
                     builder.Create_Src_Opnd_From_Dcl(r_1_0, builder.getRegionScalar()),
-                    InstOpt_WriteEnable | InstOpt_NoCompact);
+                    InstOpt_WriteEnable | InstOpt_NoCompact, false);
 
                 // add   r1.0  r1.0  -48
-                G4_INST* add1 = builder.createInternalInst(
-                    nullptr, G4_add, nullptr, false, 1,
+                G4_INST* add1 = builder.createBinOp(
+                    G4_add, 1,
                     builder.Create_Dst_Opnd_From_Dcl(r_1_0, 1),
                     builder.Create_Src_Opnd_From_Dcl(r_1_0, builder.getRegionScalar()),
-                    builder.createImm(-48, Type_D), InstOpt_WriteEnable | InstOpt_NoCompact);
+                    builder.createImm(-48, Type_D), InstOpt_WriteEnable | InstOpt_NoCompact, false);
 
                 // jmpi r1.0
                 G4_SrcRegRegion* jmpi_target = builder.Create_Src_Opnd_From_Dcl(

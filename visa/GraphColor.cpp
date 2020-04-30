@@ -7445,8 +7445,8 @@ void GraphColor::addCalleeStackSetupCode()
         G4_Operand* sp_src = builder.createSrcRegRegion(Mod_src_undef, Direct, stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_Imm * src1 = builder.createImm(frameSize, Type_UD);
         auto createBEFP = builder.createMov(1, fp_dst, sp_src, InstOpt_WriteEnable, false);
-        auto addInst = builder.createInternalInst(NULL, G4_add, NULL, false, 1,
-            dst, src0, src1, InstOpt_WriteEnable);
+        auto addInst = builder.createBinOp(G4_add, 1,
+            dst, src0, src1, InstOpt_WriteEnable, false);
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
         auto insertIt = std::find_if(entryBB->begin(), entryBB->end(),
             [](G4_INST* inst) { return inst->opcode() == G4_pseudo_store_be_fp; });

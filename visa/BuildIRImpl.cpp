@@ -351,6 +351,18 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
     return ii;
 }
 
+G4_INST* IR_Builder::createNop(uint32_t instOpt)
+{
+    return createInternalInst(nullptr, G4_nop, nullptr, false, 1, nullptr, nullptr, nullptr, instOpt);
+}
+
+// sync inst are always internal, so no option to append it to instList. Also currently don't take any InstOpt
+G4_INST* IR_Builder::createSync(G4_opcode syncOp, G4_Operand* src)
+{
+    assert(G4_INST::isSyncOpcode(syncOp) && "expect a sync op");
+    return createInternalInst(nullptr, syncOp, nullptr, false, 1, nullptr, src, nullptr, InstOpt_NoOpt);
+}
+
 G4_INST* IR_Builder::createMov(uint8_t execSize, G4_DstRegRegion* dst,
     G4_Operand* src0, uint32_t option, bool appendToInstList,
     int lineno, int CISAoff, const char* srcFilename)

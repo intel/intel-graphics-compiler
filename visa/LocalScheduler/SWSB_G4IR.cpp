@@ -3061,7 +3061,7 @@ void SWSB::tokenAllocationGlobal()
 G4_INST* SWSB::insertSyncInstruction(G4_BB* bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo)
 {
     G4_SrcRegRegion* src0 = fg.builder->createNullSrc(Type_UD);
-    G4_INST* syncInst = fg.builder->createInternalInst(NULL, G4_sync_nop, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+    G4_INST* syncInst = fg.builder->createSync(G4_sync_nop, src0);
     bb->insert(nextIter, syncInst);
     syncInstCount++;
 
@@ -3073,7 +3073,7 @@ G4_INST* SWSB::insertSyncInstructionAfter(G4_BB* bb, INST_LIST_ITER iter, int CI
     INST_LIST_ITER nextIter = iter;
     nextIter++;
     G4_SrcRegRegion* src0 = fg.builder->createNullSrc(Type_UD);
-    G4_INST* syncInst = fg.builder->createInternalInst(NULL, G4_sync_nop, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+    G4_INST* syncInst = fg.builder->createSync(G4_sync_nop, src0);
     bb->insert(nextIter, syncInst);
     syncInstCount++;
 
@@ -3082,7 +3082,7 @@ G4_INST* SWSB::insertSyncInstructionAfter(G4_BB* bb, INST_LIST_ITER iter, int CI
 
 G4_INST* SWSB::insertTestInstruction(G4_BB* bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo, bool countSync)
 {
-    G4_INST* nopInst = fg.builder->createInternalInst(NULL, G4_nop, NULL, false, 1, NULL, NULL, NULL, 0, lineNo, CISAOff, NULL);
+    G4_INST* nopInst = fg.builder->createNop(InstOpt_NoOpt);
     bb->insert(nextIter, nopInst);
     if (countSync)
     {
@@ -3098,13 +3098,13 @@ G4_INST* SWSB::insertSyncAllRDInstruction(G4_BB* bb, unsigned int SBIDs, INST_LI
     if (SBIDs)
     {
         G4_Imm* src0 = fg.builder->createImm(SBIDs, Type_UD);
-        syncInst = fg.builder->createInternalInst(NULL, G4_sync_allrd, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+        syncInst = fg.builder->createSync(G4_sync_allrd, src0);
         ARSyncInstCount++;
     }
     else
     {
         G4_SrcRegRegion* src0 = fg.builder->createNullSrc(Type_UD);
-        syncInst = fg.builder->createInternalInst(NULL, G4_sync_allrd, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+        syncInst = fg.builder->createSync(G4_sync_allrd, src0);
         ARSyncAllCount++;
     }
     bb->insert(nextIter, syncInst);
@@ -3118,13 +3118,13 @@ G4_INST* SWSB::insertSyncAllWRInstruction(G4_BB* bb, unsigned int SBIDs, INST_LI
     if (SBIDs)
     {
         G4_Imm* src0 = fg.builder->createImm(SBIDs, Type_UD);
-        syncInst = fg.builder->createInternalInst(NULL, G4_sync_allwr, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+        syncInst = fg.builder->createSync(G4_sync_allwr, src0);
         AWSyncInstCount++;
     }
     else
     {
         G4_SrcRegRegion* src0 = fg.builder->createNullSrc(Type_UD);
-        syncInst = fg.builder->createInternalInst(NULL, G4_sync_allwr, NULL, false, 1, NULL, src0, NULL, 0, lineNo, CISAOff, NULL);
+        syncInst = fg.builder->createSync(G4_sync_allwr, src0);
         AWSyncAllCount++;
     }
     bb->insert(nextIter, syncInst);
@@ -5994,7 +5994,7 @@ static G4_INST* setForceDebugSWSB(IR_Builder* builder, G4_BB* bb, G4_INST* inst)
         inst->setToken(0);
 
         G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
-        syncInst = builder->createInternalInst(NULL, G4_sync_nop, NULL, false, 1, NULL, src0, NULL, 0, inst->getLineNo(), inst->getCISAOff(), NULL);
+        syncInst = builder->createSync(G4_sync_nop, src0);
         G4_Operand* opnd = inst->getOperand(Opnd_dst);
         SWSBTokenType tokenType = SWSBTokenType::TOKEN_NONE;
         if (!opnd || !opnd->getBase() || opnd->isNullReg())
@@ -6073,7 +6073,7 @@ static void setInstructionStallSWSB(IR_Builder* builder,
 
         G4_INST* syncInst = nullptr;
         G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
-        syncInst = builder->createInternalInst(NULL, G4_sync_nop, NULL, false, 1, NULL, src0, NULL, 0, inst->getLineNo(), inst->getCISAOff(), NULL);
+        syncInst = builder->createSync(G4_sync_nop, src0);
 
         unsigned short token = inst->getToken();
         SWSBTokenType tokenType = SWSBTokenType::TOKEN_NONE;
@@ -6097,11 +6097,10 @@ static void setInstructionBarrierSWSB(IR_Builder* builder,
     G4_BB* bb,
     INST_LIST_ITER& inst_it)
 {
-    G4_INST* inst = *inst_it;
 
     G4_INST* syncAllRdInst = nullptr;
     G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
-    syncAllRdInst = builder->createInternalInst(NULL, G4_sync_allrd, NULL, false, 1, NULL, src0, NULL, 0, inst->getLineNo(), inst->getCISAOff(), NULL);
+    syncAllRdInst = builder->createSync(G4_sync_allrd, src0);
     syncAllRdInst->setDistance(1);
     INST_LIST_ITER next_it = inst_it;
     next_it++;
@@ -6109,7 +6108,7 @@ static void setInstructionBarrierSWSB(IR_Builder* builder,
 
     G4_INST* syncAllWrInst = nullptr;
     src0 = builder->createNullSrc(Type_UD);
-    syncAllWrInst = builder->createInternalInst(NULL, G4_sync_allwr, NULL, false, 1, NULL, src0, NULL, 0, inst->getLineNo(), inst->getCISAOff(), NULL);
+    syncAllWrInst = builder->createSync(G4_sync_allwr, src0);
 
     next_it = inst_it;
     next_it++;
