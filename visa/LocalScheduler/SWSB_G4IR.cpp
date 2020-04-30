@@ -789,7 +789,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     //Global analysis until no live in change
     SWSBGlobalScalarCFGReachAnalysis();
 
-    //Add dependence according to analysis result
+    //Add dependence according ot analysis result
     if (fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation) ||
         fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation))
     {
@@ -5461,12 +5461,11 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
     {
         //Get global send operands killed by current BB
         SBBitSets send_kill(mem, globalSendNum);
-        //send_live records the live ones from out side of BB, but kill by BB
+        //send_live record the live ones from out side of BB, but kill by BB
         SBBitSets send_live(mem, SBSendNodes.size());
 
-        //send_live_through records all the global livs live through the BB
         SBBitSets send_live_through(mem, globalSendNum);
-        //send_reach_all records all the global livs live through the BB, copy of send_live_through
+        //send_reach_all record all the global livs live through the BB
         SBBitSets send_reach_all(mem, SBSendNodes.size());
 
         send_kill |= *(BBVector[i]->send_live_in);
@@ -5574,15 +5573,13 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                 *node->reachingSends |= send_reach_all;
 
                 expireLocalIntervals(node->getNodeID(), i);
+                if (node->GetInstruction()->getDst() != nullptr)
                 {
-                    if (node->GetInstruction()->getDst() != nullptr)
-                    {
-                        BBVector[i]->localReachingSends->setDst(node->sendID, true);
-                    }
-                    else
-                    {
-                        BBVector[i]->localReachingSends->setSrc(node->sendID, true);
-                    }
+                    BBVector[i]->localReachingSends->setDst(node->sendID, true);
+                }
+                else
+                {
+                    BBVector[i]->localReachingSends->setSrc(node->sendID, true);
                 }
                 localTokenUsage.push_back(node); //Add to the live node
             }
