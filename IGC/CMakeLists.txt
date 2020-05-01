@@ -3271,8 +3271,12 @@ endif()
 if(LLVM_LINK_LLVM_DYLIB)
     # LLVM was built and configured in a way that tools (in our case IGC) should be linked
     # against single LLVM dynamic library.
-    set(IGC_BUILD__LLVM_LIBS_TO_LINK "/usr/local/lib/libLLVM-${LLVM_VERSION_MAJOR}.so")
-    message(STATUS "[IGC] Link against LLVM dylib ${IGC_BUILD__LLVM_LIBS_TO_LINK}")
+    find_library(IGC_BUILD__LLVM_LIBS_TO_LINK "libLLVM-${LLVM_VERSION_MAJOR}.so")
+    if(IGC_BUILD__LLVM_LIBS_TO_LINK)
+      message(STATUS "[IGC] Link against LLVM dylib ${IGC_BUILD__LLVM_LIBS_TO_LINK}")
+    else()
+      message(FATAL_ERROR "[IGC] Could not find the LLVM dylib. Aborting.")
+    endif()
 else()
     # LLVM was built into multiple libraries (static or shared).
     message(STATUS "[IGC] Link against LLVM static or shared component libs")
