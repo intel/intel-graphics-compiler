@@ -5922,9 +5922,9 @@ void G4_BB::print(std::ostream& OS) const
     {
         OS << " [" << getBBTypeStr() << "], ";
     }
-    if (isInSimdFlow())
+    if (isDivergent())
     {
-        OS << " [inSimdFlow],";
+        OS << " [inDivergent],";
     }
     OS << "        Pred: ";
     for (auto pred : Preds)

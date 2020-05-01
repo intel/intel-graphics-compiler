@@ -3893,7 +3893,7 @@ SpillManagerGRF::insertSpillFillCode (
 
     for (BB_LIST_ITER it = fg.begin(); it != fg.end(); it++)
     {
-        inSIMDCFContext_ = (*it)->isInSimdFlow();
+        inSIMDCFContext_ = !((*it)->isAllLaneActive());
         bbId_ = (*it)->getId();
         INST_LIST::iterator jt = (*it)->begin();
 
