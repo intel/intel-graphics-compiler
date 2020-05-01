@@ -8782,8 +8782,9 @@ void EmitPass::emitLoadRawIndexed(GenIntrinsicInst* inst)
     Value* elem_idxv = inst->getOperand(1);
 
     ResourceDescriptor resource = GetResourceVariable(buf_ptrv);
-    emitLoad3DInner(cast<LdRawIntrinsic>(inst), resource, elem_idxv);
     m_currShader->isMessageTargetDataCacheDataPort = true;
+    emitLoad3DInner(cast<LdRawIntrinsic>(inst), resource, elem_idxv);
+
 }
 
 void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resource, Value* elem_idxv)
@@ -9976,9 +9977,10 @@ void EmitPass::emitStoreRawIndexed(GenIntrinsicInst* inst)
     Value* pElmIdx = inst->getOperand(1);
     Value* pValToStore = inst->getOperand(2);
 
+    m_currShader->isMessageTargetDataCacheDataPort = true;
+
     emitStore3DInner(pValToStore, pBufPtr, pElmIdx);
 
-    m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
 void EmitPass::emitStore3D(StoreInst* inst, Value* elmIdxV)
@@ -10001,6 +10003,7 @@ void EmitPass::emitStore3D(StoreInst* inst, Value* elmIdxV)
     // Only support for scratch space added currently during emitStore
     Value* pllValToStore = inst->getValueOperand();
     Value* pllDstPtr = inst->getPointerOperand();
+
 
     emitStore3DInner(pllValToStore, pllDstPtr, pllElmIdx);
 }
