@@ -3086,7 +3086,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 
         unsigned short remained_ele = obj_size / G4_Type_Table[original_dst->getType()].byteSize;
         // max execution size is 32
-        unsigned char curr_exec_size = 16;
+        unsigned char curr_exec_size = getNativeExecSize() * 2;
         unsigned char curr_offset = 0;
 
         G4_Type dstType = original_dst->getType();

@@ -448,6 +448,11 @@
         getPlatform() == GENX_ICLLP;
     }
 
+    bool isGen12LP() const
+    {
+        return getPlatform() == GENX_TGLLP;
+    }
+
     bool no64bitType() const
     {
         return getPlatform() == GENX_ICLLP || isGen12LP();
@@ -588,11 +593,6 @@
     bool hasUnifiedBarrier() const
     {
         return false;
-    }
-
-    bool isGen12LP() const
-    {
-        return getPlatform() == GENX_TGLLP;
     }
 
     bool predCtrlHasWidth() const

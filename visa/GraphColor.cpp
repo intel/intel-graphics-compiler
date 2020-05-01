@@ -1007,7 +1007,7 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
             }
             else
             {
-                    setupBankConflictsforTwoGRFs(inst);
+                setupBankConflictsforTwoGRFs(inst);
             }
 
         }
