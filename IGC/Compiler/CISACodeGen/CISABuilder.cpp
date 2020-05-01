@@ -4792,6 +4792,7 @@ namespace IGC
                 IGC_ASSERT(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
 
                 vISA::GenSymEntry sEntry;
+                memset(sEntry.s_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
                 strcpy_s(sEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, name.str().c_str());
                 MDNode* md = pGlobal->getMetadata("ConstSampler");
                 if (md)
