@@ -502,8 +502,8 @@ namespace vISA
 
         // If uniqueDefBB is not under SIMD CF, current BB is under SIMD CF
         // then we can remat only if def has NoMask option set.
-        if (uniqueDefBB->isAllLaneActive() &&
-            !bb->isAllLaneActive() &&
+        if (!uniqueDefBB->isInSimdFlow() &&
+            bb->isInSimdFlow() &&
             !uniqueDefInst->isWriteEnableInst())
         {
             return false;

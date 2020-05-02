@@ -500,7 +500,7 @@ void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
             // Need to pre-load the spill GRF if the inst isn't going to write the full
             // spilled GRF variable.
             if (flagDcl->getNumberFlagElements() > inst->getExecSize() ||
-                (!bb->isAllLaneActive() && !inst->isWriteEnableInst()))
+                (bb->isInSimdFlow() && !inst->isWriteEnableInst()))
             {
                 genRegMov(bb, it,
                     spDcl->getRegVar(), 0,

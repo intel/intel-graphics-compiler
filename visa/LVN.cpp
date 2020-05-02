@@ -221,7 +221,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
             break;
         }
 
-        if (!bb->isAllLaneActive())
+        if (bb->isInSimdFlow())
         {
             auto defCoversUseEmask = defInst->getMaskOffset() <= useInst->getMaskOffset() &&
                 (defInst->getMaskOffset() + defInst->getExecSize() >= useInst->getMaskOffset() + useInst->getExecSize());
@@ -921,7 +921,7 @@ bool LVN::opndsMatch(T* opnd1, K* opnd2)
     G4_INST* inst1 = opnd1->getInst();
     G4_INST* inst2 = opnd2->getInst();
     // Compare emask for opnd1, opnd2 instructions
-    if (!bb->isAllLaneActive())
+    if (bb->isInSimdFlow())
     {
         if (inst1->isWriteEnableInst() != inst2->isWriteEnableInst())
         {
@@ -1233,7 +1233,7 @@ bool LVN::valuesMatch(Value& val1, Value& val2)
             match = false;
         }
 
-        if (match && !bb->isAllLaneActive())
+        if (match && bb->isInSimdFlow())
         {
             G4_INST* val1Inst = val1.getInst();
             G4_INST* val2Inst = val2.getInst();

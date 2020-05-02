@@ -6195,7 +6195,7 @@ bool GlobalRA::shouldPreloadDst(
 
     if (isPartialRegion(spilledRangeRegion, execSize) ||
         isUnalignedRegion(spilledRangeRegion, execSize) ||
-        instContext->isPartialWriteForSpill(!curBB->isAllLaneActive())) {
+        instContext->isPartialWriteForSpill(curBB->isInSimdFlow())) {
         return true;
     }
     // No pre-load for whole and aligned region writes
