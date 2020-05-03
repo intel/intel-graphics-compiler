@@ -3808,19 +3808,19 @@ namespace IGC
             {
                 SaveOption(vISA_ReRAPostSchedule, true);
             }
-            if (ClContext->m_InternalOptions.GTPinReRA)
+            if (ClContext->m_Options.GTPinReRA)
             {
                 SaveOption(vISA_GTPinReRA, true);
                 SaveOption(vISA_ReRAPostSchedule, true);
             }
-            if (ClContext->m_InternalOptions.GTPinGRFInfo)
+            if (ClContext->m_Options.GTPinGRFInfo)
             {
                 SaveOption(vISA_GetFreeGRFInfo, true);
             }
-            if (ClContext->m_InternalOptions.GTPinScratchAreaSize)
+            if (ClContext->m_Options.GTPinScratchAreaSize)
             {
                 SaveOption(vISA_GTPinScratchAreaSize, true);
-                m_program->SetScratchSpaceSize(ClContext->m_InternalOptions.GTPinScratchAreaSizeValue * getGRFSize());
+                m_program->SetScratchSpaceSize(ClContext->m_Options.GTPinScratchAreaSizeValue * getGRFSize());
             }
         }
 

@@ -1350,7 +1350,10 @@ namespace TC
                             (strcmp(pParam, "-cl-intel-debug-info") == 0) ||
                             (strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
                             (strcmp(pParam, "-cl-no-subgroup-ifp") == 0) ||
-                            (strcmp(pParam, "-cl-intel-disable-a64WA") == 0); //temporary options;
+                            (strcmp(pParam, "-cl-intel-disable-a64WA") == 0) || //temporary options
+                            (strcmp(pParam, "-ze-gtpin-rera") == 0) || //used by GTPin
+                            (strcmp(pParam, "-ze-gtpin-grf-info") == 0) || //used by GTPin
+                            (strcmp(pParam, "-ze-gtpin-scratch-area-size") == 0);  //used by GTPin
 
 
 
@@ -1377,6 +1380,11 @@ namespace TC
                                 checkBinaryType = true;
                             }
                             else if (strcmp(pParam, "-cl-intel-num-thread-per-eu") == 0)
+                            {
+                                // Next token is N, so ignore it
+                                ignoreNextToken = true;
+                            }
+                            else if (strcmp(pParam, "-ze-gtpin-scratch-area-size") == 0)
                             {
                                 // Next token is N, so ignore it
                                 ignoreNextToken = true;
