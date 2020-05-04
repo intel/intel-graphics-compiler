@@ -106,6 +106,7 @@ namespace IGC
     bool IsMathIntrinsic(EOPCODE opcode);
     bool IsAtomicIntrinsic(EOPCODE opcode);
     bool IsGradientIntrinsic(EOPCODE opcode);
+    bool IsExtendedMathInstruction(llvm::Instruction* Inst);
     bool IsSubGroupIntrinsicWithSimd32Implementation(EOPCODE opcode);
     bool UsesTypedConstantBuffer(CodeGenContext* pContext);
 

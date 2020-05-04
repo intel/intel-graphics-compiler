@@ -39,7 +39,7 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Find interesting constants"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-
+#define UpdateInstCount(INST) IsExtendedMathInstruction(INST)? m_extendedMath++ : m_instCount++
 IGC_INITIALIZE_PASS_BEGIN(FindInterestingConstants, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_END(FindInterestingConstants, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
@@ -150,7 +150,8 @@ void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
                 {
                     if (FoldsToConst(I, useInst, propagate))
                     {
-                        m_foldsToConst++;
+                        UpdateInstCount(useInst);
+                        visitedForFolding.insert(useInst);
                         if (propagate)
                             FoldsToConstPropagate(useInst);
                     }
@@ -202,11 +203,10 @@ void FindInterestingConstants::CheckIfSampleBecomesDeadCode(Instruction* inst, I
             {
                 if (allUsersVisitedForFolding(inst, use))
                 {
-                    m_foldsToZero++;
+                    m_instCount++;
                     if (allUsersVisitedForFolding(pIntr, inst))
                     {
                         m_samplerCount++;
-                        m_foldsToZero++;
                         IGC_ASSERT(visitedForFolding.find(pIntr) == visitedForFolding.end());
                         visitedForFolding.insert(pIntr);
                     }
@@ -252,7 +252,7 @@ bool FindInterestingConstants::FoldsToZero(Instruction* inst, Instruction* use)
     // We can keep looking for FoldsToConst case when FoldsToZero cannot be propagated further
     if (FoldsToConst(inst, use, propagate))
     {
-        m_foldsToConst++;
+        UpdateInstCount(use);
         visitedForFolding.insert(use);
         if (propagate)
             FoldsToConstPropagate(use);
@@ -270,8 +270,8 @@ void FindInterestingConstants::FoldsToZeroPropagate(llvm::Instruction* I)
             {
                 if (FoldsToZero(I, useInst))
                 {
-                    m_foldsToZero++;
                     visitedForFolding.insert(useInst);
+                    UpdateInstCount(useInst);
                     FoldsToZeroPropagate(useInst);
                 }
             }
@@ -307,7 +307,7 @@ void FindInterestingConstants::FoldsToSourcePropagate(llvm::Instruction* I)
             {
                 if (FoldsToSource(I, useInst))
                 {
-                    m_foldsToSource++;
+                    UpdateInstCount(useInst);
                     visitedForFolding.insert(useInst);
                 }
             }
@@ -430,6 +430,7 @@ void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsign
     interestingConst.branchCount = stats.branchCount;
     interestingConst.loopCount = stats.loopCount;
     interestingConst.samplerCount = stats.samplerCount;
+    interestingConst.extendedMath = stats.extendedMath;
     interestingConst.weight = stats.weight;
     // For constant buffer accesses of size <= 32bit.
     if (!loadTy->isVectorTy())
@@ -450,6 +451,7 @@ void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsign
                     interestingConstantVector[i].branchCount += interestingConst.branchCount;
                     interestingConstantVector[i].loopCount += interestingConst.loopCount;
                     interestingConstantVector[i].samplerCount += interestingConst.samplerCount;
+                    interestingConstantVector[i].extendedMath += interestingConst.extendedMath;
                     interestingConstantVector[i].weight += interestingConst.weight;
                     return;
                 }
@@ -483,6 +485,7 @@ void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsign
                         interestingConstantVector[i].branchCount += interestingConst.branchCount;
                         interestingConstantVector[i].loopCount += interestingConst.loopCount;
                         interestingConstantVector[i].samplerCount += interestingConst.samplerCount;
+                        interestingConstantVector[i].extendedMath += interestingConst.extendedMath;
                         interestingConstantVector[i].weight += interestingConst.weight;
                         return;
                     }
@@ -495,12 +498,11 @@ void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsign
 
 void FindInterestingConstants::ResetStatCounters()
 {
-    m_foldsToZero = 0;
-    m_foldsToConst = 0;
-    m_foldsToSource = 0;
+    m_instCount = 0;
     m_constFoldBranch = 0;
     m_constFoldLoopBranch = 0;
     m_samplerCount = 0;
+    m_extendedMath = 0;
     m_branchsize = 0;
     m_loopSize = 0;
     visitedForFolding.clear();
@@ -540,15 +542,17 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
         */
         FoldsToConstPropagate(&I);
         // If m_foldsToConst is greater than threshold or some branch instruction gets simplified because of this constant
-        if (m_foldsToConst || m_constFoldBranch || m_constFoldLoopBranch || m_samplerCount)
+        if (m_instCount || m_constFoldBranch || m_constFoldLoopBranch || m_samplerCount || m_extendedMath)
         {
             InstructionStats stats;
-            stats.instCount = m_foldsToConst;
+            stats.instCount = m_instCount;
             stats.branchCount = m_constFoldBranch;
             stats.loopCount = m_constFoldLoopBranch;
             stats.samplerCount = m_samplerCount;
-            stats.weight = (m_foldsToConst * IGC_GET_FLAG_VALUE(WeightConstant)) + std::max(m_constFoldBranch * IGC_GET_FLAG_VALUE(BaseWeightBranch), m_branchsize * IGC_GET_FLAG_VALUE(WeightBranch)) +
-                std::max(m_constFoldLoopBranch * IGC_GET_FLAG_VALUE(BaseWeightLoop), m_loopSize * IGC_GET_FLAG_VALUE(WeightLoop)) + (m_samplerCount * IGC_GET_FLAG_VALUE(WeightSampler));
+            stats.extendedMath = m_extendedMath;
+            stats.weight = (m_instCount * IGC_GET_FLAG_VALUE(WeightOtherInstruction)) + std::max(m_constFoldBranch * IGC_GET_FLAG_VALUE(BaseWeightBranch), m_branchsize * IGC_GET_FLAG_VALUE(WeightBranch)) +
+                std::max(m_constFoldLoopBranch * IGC_GET_FLAG_VALUE(BaseWeightLoop), m_loopSize * IGC_GET_FLAG_VALUE(WeightLoop)) + (m_samplerCount * IGC_GET_FLAG_VALUE(WeightSampler)) +
+                m_extendedMath *IGC_GET_FLAG_VALUE(WeightExtendedMath);
             constValue = 0;
             // Get the ConstantAddress from LoadInst and log it in interesting constants
             addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, true, constValue, stats);
@@ -556,15 +560,16 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
         ResetStatCounters();
         FoldsToZeroPropagate(&I);
         // If m_foldsToZero is greater than threshold or some branch instruction gets simplified because of this constant
-        if (m_constFoldBranch || m_constFoldLoopBranch || (m_foldsToZero + m_foldsToConst) || m_samplerCount)
+        if (m_constFoldBranch || m_constFoldLoopBranch || m_instCount || m_samplerCount || m_extendedMath)
         {
             InstructionStats stats;
-            stats.instCount = m_foldsToZero + m_foldsToConst;
+            stats.instCount = m_instCount;
             stats.branchCount = m_constFoldBranch;
             stats.loopCount = m_constFoldLoopBranch;
             stats.samplerCount = m_samplerCount;
-            stats.weight = (m_foldsToConst * IGC_GET_FLAG_VALUE(WeightConstant)) + std::max(m_constFoldBranch * IGC_GET_FLAG_VALUE(BaseWeightBranch), m_branchsize * IGC_GET_FLAG_VALUE(WeightBranch)) +
-                std::max(m_constFoldLoopBranch * IGC_GET_FLAG_VALUE(BaseWeightLoop), m_loopSize * IGC_GET_FLAG_VALUE(WeightLoop)) + (m_samplerCount * IGC_GET_FLAG_VALUE(WeightSampler)) + (m_foldsToZero * IGC_GET_FLAG_VALUE(WeightZeroProp));
+            stats.extendedMath = m_extendedMath;
+            stats.weight = (m_instCount * IGC_GET_FLAG_VALUE(WeightOtherInstruction)) + std::max(m_constFoldBranch * IGC_GET_FLAG_VALUE(BaseWeightBranch), m_branchsize * IGC_GET_FLAG_VALUE(WeightBranch)) +
+                std::max(m_constFoldLoopBranch * IGC_GET_FLAG_VALUE(BaseWeightLoop), m_loopSize * IGC_GET_FLAG_VALUE(WeightLoop)) + (m_samplerCount * IGC_GET_FLAG_VALUE(WeightSampler)) + m_extendedMath * IGC_GET_FLAG_VALUE(WeightExtendedMath);
             constValue = 0;
             // Zero value for this constant is interesting
             // Get the ConstantAddress from LoadInst and log it in interesting constants
@@ -577,11 +582,11 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
             //visitedForFolding.insert(&I); // TBD: No need to insert load instruction
             ResetStatCounters();
             FoldsToSourcePropagate(&I);
-            if (m_foldsToSource)
+            if (m_instCount)
             {
                 InstructionStats stats;
-                stats.instCount = m_foldsToSource;
-                stats.weight = m_foldsToSource * IGC_GET_FLAG_VALUE(WeightSource);
+                stats.instCount = m_instCount;
+                stats.weight = m_instCount * IGC_GET_FLAG_VALUE(WeightOtherInstruction);
                 // One value for this constant is interesting
                 // Get the ConstantAddress from LoadInst and log it in interesting constants
                 if (I.getType()->isIntegerTy())

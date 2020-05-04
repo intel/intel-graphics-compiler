@@ -161,12 +161,11 @@ DECLARE_IGC_REGKEY(bool, EnableGenUpdateCBResInfo,      false, "Enable derived c
 DECLARE_IGC_REGKEY(bool, EnableHighestSIMDForNoSpill,   false,   "When there is no spill choose highest SIMD (compute shader only).", false)
 DECLARE_IGC_REGKEY(bool, EnableFoldsToSourceCheck,      true,  "Enable the check for Folds To Source Propagate for finding interesting constant. This is for the number of instructions that translate to a mov. i.e., Multiplication or Division by 1", false)
 DECLARE_IGC_REGKEY(DWORD, WeightSampler,                10,     "Set the weight for Sampler instruction for finding interesting constant", false)
-DECLARE_IGC_REGKEY(DWORD, WeightConstant,               1,      "Set the weight for instruction folded by constant propogation in finding interesting constant", false)
-DECLARE_IGC_REGKEY(DWORD, WeightZeroProp,               2,      "Set the weight for instruction folded by Zero propogation in finding interesting constant", false)
-DECLARE_IGC_REGKEY(DWORD, WeightSource,                 1,      "Set the weight for instruction folded by Source propogation in finding interesting constant", false)
-DECLARE_IGC_REGKEY(DWORD, BaseWeightBranch,             200,      "Set the Base weight for Branch instruction found in finding interesting constant", false)
+DECLARE_IGC_REGKEY(DWORD, WeightOtherInstruction,       1,      "Set the weight for instruction for finding interesting constant", false)
+DECLARE_IGC_REGKEY(DWORD, WeightExtendedMath,           5,      "Set the weight for Extended math instruction for finding interesting constant ", false)
+DECLARE_IGC_REGKEY(DWORD, BaseWeightBranch,             200,     "Set the Base weight for Branch instruction found in finding interesting constant", false)
 DECLARE_IGC_REGKEY(DWORD, WeightBranch,                 20,      "Set the weight for Branch instruction found in finding interesting constant", false)
-DECLARE_IGC_REGKEY(DWORD, BaseWeightLoop,               300,      "Set the Base weight for Loop instruction found in finding interesting constant", false)
+DECLARE_IGC_REGKEY(DWORD, BaseWeightLoop,               300,     "Set the Base weight for Loop instruction found in finding interesting constant", false)
 DECLARE_IGC_REGKEY(DWORD, WeightLoop,                   30,      "Set the weight for Loop instruction found in finding interesting constant", false)
 
 

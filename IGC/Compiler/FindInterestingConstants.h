@@ -45,6 +45,7 @@ namespace IGC
         uint32_t branchCount = 0;
         uint32_t loopCount = 0;
         uint32_t samplerCount = 0;
+        uint32_t extendedMath = 0;
         uint32_t weight = 0;
     };
     class FindInterestingConstants : public llvm::FunctionPass, public llvm::InstVisitor<FindInterestingConstants>
@@ -54,7 +55,6 @@ namespace IGC
 
         FindInterestingConstants();
         ~FindInterestingConstants() {}
-
         virtual llvm::StringRef getPassName() const override
         {
             return "Find Interesting Constants";
@@ -72,12 +72,11 @@ namespace IGC
     private:
         CodeGenContext* m_context;
         llvm::LoopInfo* m_LI;
-        unsigned int m_foldsToZero;
-        unsigned int m_foldsToConst;
-        unsigned int m_foldsToSource;
+        unsigned int m_instCount;
         unsigned int m_constFoldBranch;
         unsigned int m_constFoldLoopBranch;
         unsigned int m_samplerCount;
+        unsigned int m_extendedMath;
         unsigned int m_branchsize;
         unsigned int m_loopSize;
         std::unordered_map<unsigned int, std::vector<SConstantAddrValue>> m_InterestingConstants;

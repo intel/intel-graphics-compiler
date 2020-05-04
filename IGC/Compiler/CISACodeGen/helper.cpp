@@ -1259,6 +1259,26 @@ namespace IGC
     }
 #undef DECLARE_OPCODE
 
+    bool IsExtendedMathInstruction(llvm::Instruction* Inst)
+    {
+        EOPCODE opcode = GetOpCode(Inst);
+        switch (opcode)
+        {
+        case llvm_fdiv:
+        case llvm_sdiv:
+        case llvm_udiv:
+        case llvm_log:
+        case llvm_exp:
+        case llvm_sqrt:
+        case llvm_sin:
+        case llvm_cos:
+        case llvm_pow:
+            return true;
+        default:
+            return false;
+        }
+        return false;
+    }
     // for now just include shuffle, reduce and scan,
     // which have simd32 implementations and should not be split into two instances
     bool IsSubGroupIntrinsicWithSimd32Implementation(EOPCODE opcode)
