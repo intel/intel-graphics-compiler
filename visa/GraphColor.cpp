@@ -6114,8 +6114,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     // Verify if all LRs have either an allocation or are spilled
     for (auto lr : colorOrder)
     {
-        // ToDo: apply to more pseudo dcls?
-        if (!kernel.fg.isPseudoVCADcl(lr->getDcl()) && !kernel.fg.isPseudoVCEDcl(lr->getDcl()))
+        if (!kernel.fg.isPseudoDcl(lr->getDcl()))
         {
             MUST_BE_TRUE(lr->isSpilled() || lr->getPhyReg() || lr->getDcl()->isSpilled(), "Range without allocation and not spilled");
         }
