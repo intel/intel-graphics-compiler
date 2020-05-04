@@ -161,6 +161,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 #include "DebugInfo.hpp"
 #include "Compiler/CISACodeGen/HalfPromotion.h"
+#include "Compiler/CISACodeGen/AnnotateUniformAllocas.h"
 #include "Probe/Assertion.h"
 
 /***********************************************************************************
@@ -460,14 +461,17 @@ namespace IGC
         // Resolve the Private memory to register pass
         if (!isOptDisabled)
         {
+            mpm.add(createBreakCriticalEdgesPass());
+            mpm.add(createAnnotateUniformAllocasPass());
+
             if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
                 ctx.m_instrTypes.hasNonPrimitiveAlloca &&
                 ctx.m_retryManager.AllowPromotePrivateMemory())
             {
-                mpm.add(createBreakCriticalEdgesPass());
                 mpm.add(createPromotePrivateArrayToReg());
-                mpm.add(createCFGSimplificationPass());
             }
+
+            mpm.add(createCFGSimplificationPass());
             mpm.add(createPromoteMemoryToRegisterPass());
         }
         else

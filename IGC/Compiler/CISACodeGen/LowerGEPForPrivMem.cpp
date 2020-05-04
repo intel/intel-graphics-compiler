@@ -27,7 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
-#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CodeGenPublic.h"
@@ -70,7 +69,6 @@ namespace IGC {
             AU.addRequired<RegisterPressureEstimate>();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
-            AU.addRequired<WIAnalysis>();
             AU.addRequired<DominatorTreeWrapperPass>();
             AU.setPreservesCFG();
         }
@@ -252,14 +250,7 @@ bool LowerGEPForPrivMem::IsNativeType(Type* type)
 
 bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 {
-    auto WI = &getAnalysis<WIAnalysis>();
-    bool isUniformAlloca = WI->whichDepend(pAlloca) == WIAnalysis::UNIFORM;
-    if (isUniformAlloca)
-    {
-        IRBuilder<> builder(pAlloca);
-        MDNode* node = MDNode::get(pAlloca->getContext(), ConstantAsMetadata::get(builder.getInt1(true)));
-        pAlloca->setMetadata("uniform", node);
-    }
+    bool isUniformAlloca = pAlloca->getMetadata("uniform") != nullptr;
     unsigned int allocaSize = extractAllocaSize(pAlloca);
     unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 4;
 

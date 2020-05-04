@@ -32,6 +32,7 @@ namespace llvm {
 // The following declarations are placed according to alphabetic order for simplicity
 void initializeAddImplicitArgsPass(llvm::PassRegistry&);
 void initializeAddressSpaceAliasAnalysisPass(llvm::PassRegistry&);
+void initializeAnnotateUniformAllocasPass(llvm::PassRegistry&);
 void initializeAggregateArgumentsAnalysisPass(llvm::PassRegistry&);
 void initializeAlignmentAnalysisPass(llvm::PassRegistry&);
 void initializePreBIImportAnalysisPass(llvm::PassRegistry&);
