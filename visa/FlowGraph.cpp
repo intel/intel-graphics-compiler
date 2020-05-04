@@ -903,7 +903,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     reassignBlockIDs();
     findBackEdges();
 
-    if (hasSIMDCF && builder->getOptions()->getTarget() == VISA_CM)
+    if (hasSIMDCF && pKernel->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
     {
         markSimdBlocks(labelMap, funcInfoHashTable);
         addSIMDEdges();

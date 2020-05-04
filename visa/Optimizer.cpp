@@ -1185,7 +1185,7 @@ int Optimizer::optimization()
 
     runPass(PI_insertHashMovs);
 
-    if (builder.getOptions()->getTarget() == VISA_CM)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
     {
         runPass(PI_checkBarrierUsage);
     }
@@ -6655,7 +6655,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //              1 - simple insertion of "emask flag". A new flag is created
         //                  each time it is needed, that is, created per each inst.
         //  (See comments for more details at doNoMaskWA().
-        if (builder.kernel.getOptions()->getTarget() != VISA_CM &&
+        if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_CM &&
             ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
              builder.getOption(vISA_forceNoMaskWA)))
         {
@@ -9836,7 +9836,7 @@ void Optimizer::mergeScalarInst()
 {
 
     int bundleSizeLimit = MAX_BUNDLE_SIZE;
-    if (builder.getOptions()->getTarget() == VISA_3D)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D)
     {
         bundleSizeLimit = 4;
     }
@@ -10634,7 +10634,7 @@ void Optimizer::lowerMadSequence()
 {
 
     // Only enable CM for now.
-    if (builder.getOptions()->getTarget() != VISA_CM)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_CM)
         return;
 
     for (G4_BB *bb : fg)
@@ -10768,7 +10768,7 @@ private:
 //
 void Optimizer::splitVariables()
 {
-    if (builder.getOptions()->getTarget() != VISA_3D)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D)
     {
         return;
     }
@@ -10935,7 +10935,7 @@ void Optimizer::split4GRFVars()
     // map each split candidate to their replacement split variables
     std::unordered_map<const G4_Declare *, DclMapInfo *> DclMap;
 
-    if (builder.getOptions()->getTarget() != VISA_3D)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D)
     {
         return;
     }

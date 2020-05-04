@@ -615,7 +615,7 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     BBVector.resize(numBBId);
 
     //Set distance 1 at the first instruction in case there are runtime inserted instructions at prolog
-    if (kernel.getOptions()->getTarget() != VISA_3D)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D)
     {
         setDefaultDistanceAtFirstInstruction();
     }
@@ -1148,7 +1148,7 @@ void SWSB::SWSBGenerator()
     PointsToAnalysis p(kernel.Declares, kernel.fg.getNumBB());
     p.doPointsToAnalysis(kernel.fg);
 
-    if (kernel.getOptions()->getTarget() != VISA_3D)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D)
     {
         kernel.fg.findNaturalLoops();
     }

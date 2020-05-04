@@ -523,7 +523,7 @@ preRA_Scheduler::~preRA_Scheduler() {}
 
 bool preRA_Scheduler::run()
 {
-    if (m_options->getTarget() != VISA_3D)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D)
     {
         // Do not run pre-RA scheduler for CM unless user forces it.
         if (!m_options->getOption(vISA_preRA_ScheduleForce))

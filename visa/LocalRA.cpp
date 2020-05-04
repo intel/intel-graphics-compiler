@@ -126,7 +126,8 @@ void LocalRA::getRowInfo(int size, int& nrows, int& lastRowSize)
 
 void LocalRA::evenAlign()
 {
-    if (kernel.getOptions()->getTarget() == VISA_3D && kernel.fg.size() > 2)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
+        kernel.fg.size() > 2)
     {
         if ((GlobalRA::useGenericAugAlign() && kernel.getSimdSize() >= NUM_DWORDS_PER_GRF) ||
             (!GlobalRA::useGenericAugAlign() && kernel.getSimdSize() > NUM_DWORDS_PER_GRF))
@@ -276,7 +277,7 @@ void LocalRA::preLocalRAAnalysis()
     {
         pregs->setSimpleGRFAvailable(true);
         const Options *opt = builder.getOptions();
-        if (opt->getTarget() != VISA_3D ||
+        if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D ||
             opt->getOption(vISA_enablePreemption) ||
             stackCallRegSize > 0 ||
             opt->getOption(vISA_ReserveR0))
@@ -448,7 +449,7 @@ bool LocalRA::localRA()
 
     doSplitLLR = (builder.getOption(vISA_SpiltLLR) &&
         kernel.fg.size() == 1 &&
-        kernel.getOptions()->getTarget() == VISA_3D);
+        kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D);
 
     preLocalRAAnalysis();
 
@@ -1151,7 +1152,7 @@ void LocalRA::markReferencesInOpnd(G4_Operand* opnd, bool isEOT, INST_LIST_ITER 
 
             gra.recordRef(topdcl);
 
-            if (kernel.getOptions()->getTarget() == VISA_3D &&
+            if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
                 opnd->isDstRegRegion() &&
                 !topdcl->getAddressed())
             {

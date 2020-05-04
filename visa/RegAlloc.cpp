@@ -888,7 +888,7 @@ void LivenessAnalysis::computeLiveness()
     BitSet* subEntryKill = NULL;
     BitSet* subEntryGen = NULL;
 
-    if (fg.builder->getOptions()->getTarget() == VISA_CM)
+    if (fg.getKernel()->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
     {
         //
         // Top-down order of BB list iteration guarantees that
@@ -1120,7 +1120,7 @@ void LivenessAnalysis::computeLiveness()
             while(rit != fg.begin());
         }
 
-        if (fg.builder->getOptions()->getTarget() == VISA_CM)
+        if (fg.getKernel()->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
         {
             for (unsigned i = 0; i < numFnId; i++)
             {
@@ -1229,7 +1229,7 @@ void LivenessAnalysis::computeLiveness()
     dump_fn_vector("MAYDEF", fns, maydef);
 #endif
 
-        if (fg.builder->getOptions()->getTarget() == VISA_CM)
+        if (fg.getKernel()->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
         {
             for (unsigned i = 0; i < numFnId; i++)
             {
@@ -1282,7 +1282,7 @@ void LivenessAnalysis::computeLiveness()
     //
     else {
 
-        if (fg.builder->getOptions()->getTarget() == VISA_3D &&
+        if (fg.getKernel()->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
             (selectedRF & G4_GRF || selectedRF & G4_FLAG) &&
             (numFnId > 0))
         {
@@ -1828,7 +1828,8 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
     unsigned execSize = inst->getExecSize();
     MUST_BE_TRUE(dst->getBase()->isRegVar(), ERROR_REGALLOC);
 
-    if( bb->isInSimdFlow() && !inst->isWriteEnableInst() && opt->getTarget() != VISA_3D )
+    if( bb->isInSimdFlow() && !inst->isWriteEnableInst() &&
+        fg.getKernel()->getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D )
     {
         // conservatively assume non-nomask instructions in simd control flow
         // may not write the whole region
@@ -1939,7 +1940,7 @@ void LivenessAnalysis::footprintDst(G4_BB* bb,
         ((isLocal ||
             bb->isInSimdFlow() == false ||
             i->isWriteEnableInst() == true) ||
-            gra.kernel.getOptions()->getTarget() == VISA_3D))
+            gra.kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D))
     {
         // Bitwise OR left-bound/right-bound with dst footprint to indicate
         // bytes that are written in to
@@ -3728,9 +3729,8 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 
     kernel.fg.reassignBlockIDs();
 
-    if (kernel.getOptions()->getTarget() == VISA_3D)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D)
     {
-
         kernel.fg.findNaturalLoops();
 
 #ifdef DEBUG_VERBOSE_ON
@@ -3768,7 +3768,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 
     //FIXME: here is a temp WA
     if (kernel.fg.funcInfoTable.size() > 0 &&
-        kernel.fg.builder->getOptions()->getTarget() == VISA_3D)
+        kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D)
     {
         kernel.getOptions()->setOption(vISAOptions::vISA_LocalRA, false);
     }
@@ -3783,7 +3783,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     //Remove the un-referenced declares
     gra.removeUnreferencedDcls();
 
-    if (kernel.fg.builder->getOptions()->getTarget() == VISA_CM)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
     {
         kernel.fg.markScope();
     }

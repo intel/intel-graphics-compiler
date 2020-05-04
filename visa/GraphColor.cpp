@@ -2457,7 +2457,7 @@ void Interference::computeInterference()
         buildInterferenceWithinBB((*it), live);
     }
 
-    if (kernel.getOptions()->getTarget() != VISA_3D ||
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D ||
         kernel.fg.builder->getOption(vISA_enablePreemption) ||
         kernel.fg.getHasStackCalls() ||
         kernel.fg.getIsStackCallFunc())
@@ -4789,7 +4789,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
 void Augmentation::augmentIntfGraph()
 {
     {
-        if (!(kernel.getOptions()->getTarget() == VISA_3D &&
+        if (!(kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
             !liveAnalysis.livenessClass(G4_ADDRESS) &&
             kernel.fg.size() > 2))
         {
@@ -5372,7 +5372,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
         {
             float spillCost;
             // NOTE: Add 1 to degree to avoid divide-by-0.
-            if (m_options->getTarget() == VISA_3D)
+            if (builder.kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D)
             {
                 if (useSplitLLRHeuristic)
                 {
@@ -6480,7 +6480,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     {
         bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
-        bool willSpill = kernel.getOptions()->getTarget() == VISA_3D &&
+        bool willSpill = kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
             rpe->getMaxRP() >= kernel.getNumRegTotal() + 24;
         if (willSpill)
         {
@@ -8396,7 +8396,7 @@ bool VarSplit::canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t
     }
 
     if (!builder.getOption(vISA_Debug) &&               //Not work in debug mode
-        kernel.getOptions()->getTarget() == VISA_3D &&      //Only works for 3D/OCL/OGL
+        kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&   //Only works for 3D/OCL/OGL
         sendSpillRefCount)
     {
         return true;
@@ -9111,7 +9111,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
         RPE rpe(*this, &liveAnalysis);
         rpe.run();
 
-        bool spillLikely = kernel.getOptions()->getTarget() == VISA_3D &&
+        bool spillLikely = kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
             rpe.getMaxRP() >= kernel.getNumRegTotal() - 16;
         if (spillLikely)
         {
@@ -9318,7 +9318,7 @@ int GlobalRA::coloringRegAlloc()
             !kernel.getHasAddrTaken();
         bool reserveSpillReg = false;
         if (builder.getOption(vISA_FailSafeRA) &&
-            kernel.getOptions()->getTarget() == VISA_3D &&
+            kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
             !hasStackCall &&
             allowAddrTaken &&
             iterationNo == failSafeRAIteration)
@@ -9368,8 +9368,8 @@ int GlobalRA::coloringRegAlloc()
                     return VISA_SPILL;
                 }
 
-                bool runRemat = kernel.getOptions()->getTarget() == VISA_CM ? true :
-                    kernel.getSimdSize() < G4_GRF_REG_NBYTES;
+                bool runRemat = kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM
+                    ? true :  kernel.getSimdSize() < G4_GRF_REG_NBYTES;
                 // -noremat takes precedence over -forceremat
                 bool rematOff = !kernel.getOption(vISA_Debug) &&
                     (!kernel.getOption(vISA_NoRemat) || kernel.getOption(vISA_FastSpill)) &&
@@ -9469,7 +9469,7 @@ int GlobalRA::coloringRegAlloc()
 
                 if (iterationNo == 0 &&
                     enableSpillSpaceCompression &&
-                    kernel.getOptions()->getTarget() == VISA_3D &&
+                    kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
                     !hasStackCall)
                 {
                     unsigned int spillSize = 0;
