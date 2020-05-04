@@ -426,6 +426,7 @@ public:
     bool     isInSimdFlow() const             {return inSimdFlow;}
     void     setDivergent(bool val) { divergent = val; }
     bool     isDivergent() const    { return divergent; }
+    bool     isAllLaneActive() const;
     unsigned getScopeID() { return scopeID; }
     void setScopeID(unsigned id) { scopeID = id; }
 
