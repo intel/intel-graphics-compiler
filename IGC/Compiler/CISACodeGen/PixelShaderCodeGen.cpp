@@ -131,7 +131,7 @@ namespace IGC
         uint offset = 0;
         //R0 is always allocated as a predefined variable. Increase offset for R0
         IGC_ASSERT(m_R0);
-        offset += 32;   //R0 is always 32 byte regardless of register size
+        offset += getGRFSize();
 
         IGC_ASSERT(m_R1);
         if (m_Signature)
@@ -141,7 +141,7 @@ namespace IGC
         for (uint i = 0; i < m_R1->GetNumberInstance(); i++)
         {
             AllocateInput(m_R1, offset, i);
-            offset += (i == 0 && m_R1->GetNumberInstance() > 1) ? getGRFSize() : 32;
+            offset += getGRFSize();
         }
 
         for (uint i = 0; i < m_numberInstance; i++)
@@ -814,7 +814,7 @@ namespace IGC
     void CPixelShader::PreCompile()
     {
         CreateImplicitArgs();
-        m_R1 = GetNewVariable(8, ISA_TYPE_D, EALIGN_HWORD, false, m_numberInstance);
+        m_R1 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_HWORD, false, m_numberInstance);
         CodeGenContext* ctx = GetContext();
 
         // make sure the return block is properly set
@@ -998,7 +998,7 @@ namespace IGC
             m_PixelPhasePayload = GetNewVariable(responseLength * (getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
             m_PixelPhaseCounter = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, 0, 1);
             m_CoarseParentIndex = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, getGRFSize(), numLanes(m_SIMDSize));
-            m_R1 = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_D, 0, 8);
+            m_R1 = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_D, 0, getGRFSize() / SIZE_DWORD);
             encoder.SetNoMask();
             encoder.SetSimdSize(SIMDMode::SIMD1);
             encoder.Copy(m_PixelPhaseCounter, ImmToVariable(0, ISA_TYPE_UW));

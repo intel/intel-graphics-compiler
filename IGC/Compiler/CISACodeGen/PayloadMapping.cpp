@@ -161,8 +161,8 @@ int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction* inst, SIMDM
 
     if (rtwi->hasMask())
     {
-        //Output mask is always fixed size (32 bytes, UW)
-        offset += 32; //256bits=1grf
+        //Output mask is always fixed size regardless of SIMD mode.
+        offset += m_CodeGenContext->platform.getGRFSize();
     }
 
     if (RTWriteHasSource0Alpha(rtwi, m_CodeGenContext->getModuleMetaData()))
