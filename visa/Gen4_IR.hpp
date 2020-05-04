@@ -1215,7 +1215,7 @@ class G4_InstCF : public G4_INST
     // list of labels that this instruction could jump to.  Only used for switch jmps
     std::list<G4_Label*> indirectJmpTarget;
 
-    // True if this is a backward branch.
+    // True if this is a backward branch (including while)
     bool isBackwardBr;
 
     // True if this branch is a uniform. By uniform, it means that all active lanes
@@ -1237,7 +1237,7 @@ public:
         G4_Label* uipLabel,
         uint32_t instOpt) :
         G4_INST(builder, prd, op, nullptr, false, size, nullptr, nullptr, nullptr, instOpt),
-        jip(jipLabel), uip(uipLabel), isBackwardBr(false), isUniformBr(false)
+        jip(jipLabel), uip(uipLabel), isBackwardBr(op == G4_while), isUniformBr(false)
     {
         isUniformBr = (op == G4_jmpi ||
                        (op == G4_goto && (size == 1 || prd == nullptr)));
@@ -1255,7 +1255,7 @@ public:
         G4_Operand* s0,
         unsigned int opt) :
         G4_INST(builder, prd, o, m, sat, size, d, s0, nullptr, opt),
-        jip(NULL), uip(NULL), isBackwardBr(false), isUniformBr(false)
+        jip(NULL), uip(NULL), isBackwardBr(o == G4_while), isUniformBr(false)
     {
         isUniformBr = (op == G4_jmpi ||
             (op == G4_goto && (size == 1 || prd == nullptr)));

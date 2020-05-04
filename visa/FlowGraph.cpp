@@ -3056,6 +3056,7 @@ void FlowGraph::markDivergentBBs()
             {
                 G4_BB* predBB = *PI0;
                 if (!isBackwardBranch(predBB, BB)) {
+                    assert(BB->getId() > predBB->getId() && "backward Branch did not set correctly!");
                     continue;
                 }
                 assert(BB->getId() <= predBB->getId() && "Branch incorrectly set to be backward!");
@@ -3149,7 +3150,12 @@ void FlowGraph::markDivergentBBs()
                 // set InSIMDFlow as well, will merge these two fields gradually
                 BB->setInSimdFlow(true);
             }
-
+            // Temporary for debugging, toBeDelete!
+            // if (pKernel->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
+            // {
+            //    assert((BB->isDivergent() && BB->isInSimdFlow() ||
+            //        (!BB->isDivergent() && !BB->isInSimdFlow())) && " isDivergent != isInSimdFlow!");
+            // }
             updateLastJoinForFwdBrInBB(IT, false);
         }
     }

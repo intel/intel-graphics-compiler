@@ -1189,10 +1189,10 @@ public:
         if (PredBB->size() == 0) return false;
         G4_INST* bInst = PredBB->back();
         G4_BB* targetBB = PredBB->Succs.size() > 0 ? PredBB->Succs.back() : nullptr;
-        return (bInst->opcode() == G4_goto || bInst->opcode() == G4_while ||
-            bInst->opcode() == G4_jmpi) &&
-            targetBB == SuccBB &&
-            bInst->asCFInst()->isBackward();
+        bool isBr = (bInst->opcode() == G4_goto || bInst->opcode() == G4_jmpi);
+        // Note that isBackward() should return true for while as well.
+        return targetBB == SuccBB &&
+            ((isBr && bInst->asCFInst()->isBackward()) || bInst->opcode() == G4_while);
     }
 
     void setABIForStackCallFunctionCalls();
