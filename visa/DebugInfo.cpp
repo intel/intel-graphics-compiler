@@ -1971,7 +1971,7 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
                         (uint32_t)insts->getGenOffset() : reloc_offset;
                 }
 
-                if (insts->isReturn() &&
+                if ((insts->isReturn() || insts->opcode() == G4_jmpi) &&
                     insts->getSrc(0)->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare()
                     == fretVar)
                 {
@@ -1985,6 +1985,7 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
             }
         }
 
+        MUST_BE_TRUE(end >= reloc_offset, "Failed to update live-interval for retval");
         for (uint32_t i = 0; i <= end - reloc_offset; i++)
         {
             updateDebugInfo(*kernel, fretVar, i);

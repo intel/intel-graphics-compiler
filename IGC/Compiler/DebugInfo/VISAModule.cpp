@@ -450,23 +450,27 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
 
     if (pArgument)
     {
-        IGC_ASSERT(pArgument->getParent() == m_pEntryFunc && "Argument does not belong to current processed function");
+        IGC_ASSERT((pArgument->getParent() == m_pEntryFunc
+            || pArgument->getParent()->hasFnAttribute("IndirectlyCalled"))
+            && "Argument does not belong to current processed function");
+        const Function* curFunc = pArgument->getParent()->hasFnAttribute("IndirectlyCalled")
+            ? pArgument->getParent() : m_pEntryFunc;
         // Check if it is argument of image or sampler
         IGC::IGCMD::MetaDataUtils::FunctionsInfoMap::iterator itr =
-            m_pShader->GetMetaDataUtils()->findFunctionsInfoItem(const_cast<Function*>(m_pEntryFunc));
+            m_pShader->GetMetaDataUtils()->findFunctionsInfoItem(const_cast<Function*>(curFunc));
         CodeGenContext* pCtx = m_pShader->GetContext();
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
         if (itr != m_pShader->GetMetaDataUtils()->end_FunctionsInfo()
-            && modMD->FuncMD.find(const_cast<Function*>(m_pEntryFunc)) != modMD->FuncMD.end())
+            && modMD->FuncMD.find(const_cast<Function*>(curFunc)) != modMD->FuncMD.end())
         {
-            unsigned int explicitArgsNum = IGCLLVM::GetFuncArgSize(m_pEntryFunc) - itr->second->size_ImplicitArgInfoList();
+            unsigned int explicitArgsNum = IGCLLVM::GetFuncArgSize(curFunc) - itr->second->size_ImplicitArgInfoList();
             if (pArgument->getArgNo() < explicitArgsNum)
             {
-                const std::string typeStr = modMD->FuncMD[const_cast<Function*>(m_pEntryFunc)].m_OpenCLArgBaseTypes[pArgument->getArgNo()];
+                const std::string typeStr = modMD->FuncMD[const_cast<Function*>(curFunc)].m_OpenCLArgBaseTypes[pArgument->getArgNo()];
                 KernelArg::ArgType argType = KernelArg::calcArgType(pArgument, typeStr);
-                FunctionMetaData* funcMD = &modMD->FuncMD[const_cast<Function*>(m_pEntryFunc)];
+                FunctionMetaData* funcMD = &modMD->FuncMD[const_cast<Function*>(curFunc)];
                 ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-                IGC_ASSERT(resAllocMD->argAllocMDList.size() == IGCLLVM::GetFuncArgSize(m_pEntryFunc) && "Invalid ArgAllocMDList");
+                IGC_ASSERT(resAllocMD->argAllocMDList.size() == IGCLLVM::GetFuncArgSize(curFunc) && "Invalid ArgAllocMDList");
                 ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[pArgument->getArgNo()];
                 unsigned int index = argAlloc->indexType;
 
