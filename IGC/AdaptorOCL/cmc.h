@@ -62,8 +62,7 @@ public:
     void  createImageAnnotation(unsigned argNo,
                                 unsigned BTI,
                                 unsigned dim,
-                                bool isWriteable,
-                                unsigned payloadPosition);
+                                bool isWriteable);
 
     // add a pointer patch token.
     void createPointerGlobalAnnotation(unsigned argNo,
