@@ -1406,6 +1406,31 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     patch,
                     membuf );
             }
+
+            iOpenCL::SPatchDataParameterBuffer  patch_1;
+
+            memset( &patch_1, 0, sizeof( patch_1 ) );
+
+            patch_1.Token = iOpenCL::PATCH_TOKEN_DATA_PARAMETER_BUFFER;
+            patch_1.Size = sizeof( patch_1 );
+            patch_1.ArgumentNumber = imageInput->ArgumentNumber;
+            patch_1.DataSize = 8;
+            patch_1.SourceOffset = 0; // ??
+            patch_1.Offset = imageInput->PayloadPosition;
+            patch_1.LocationIndex = imageInput->LocationIndex;
+            patch_1.LocationIndex2 = imageInput->LocationCount;
+            patch_1.Type =  iOpenCL::DATA_PARAMETER_FLAT_IMAGE_BASEOFFSET;
+
+            dataParameterStreamSize = std::max(
+                    dataParameterStreamSize,
+                    imageInput->PayloadPosition + 8 );
+
+            if( retValue.Success )
+            {
+                retValue = AddPatchItem(
+                        patch_1,
+                        membuf );
+            }
         }
     }
 
