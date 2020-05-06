@@ -4180,7 +4180,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
     //Stencil is only supported in SIMD8 mode
     if (inst->hasStencil())
     {
-        IGC_ASSERT(m_currShader->m_SIMDSize == SIMDMode::SIMD8);
+        IGC_ASSERT(m_currShader->m_Platform->supportsStencil(m_currShader->m_SIMDSize));
         IGC_ASSERT(vStencilOpnd == nullptr);
 
         CVariable* temp = m_currShader->GetNewAlias(rootPayloadVar, ISA_TYPE_UB, (uint16_t)offset, 0);
@@ -4194,6 +4194,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
             m_encoder->SetSrcRegion(0, 32, 8, 4);
         }
         m_currShader->CopyVariable(temp, ubSrc, 0);
+
         vStencilOpnd = temp;
     }
     return true;
@@ -4300,7 +4301,6 @@ void EmitPass::prepareRenderTargetWritePayload(
         }
     }
 
-    //Stencil is only supported in SIMD8 mode
     if (inst->hasStencil())
     {
         varStencilOpnd = GetSymbol(inst->getStencil());

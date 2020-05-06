@@ -294,6 +294,11 @@ namespace IGC
         return m_platformInfo.eRenderCoreFamily <= IGFX_GEN11_CORE;
     }
 
+    bool supportsStencil(SIMDMode simdMode) const
+    {
+        return getMinDispatchMode() == SIMDMode::SIMD16 ? true : simdMode == SIMDMode::SIMD8;
+    }
+
     bool supportsSIMD16TypedRW() const
     {
         return false;

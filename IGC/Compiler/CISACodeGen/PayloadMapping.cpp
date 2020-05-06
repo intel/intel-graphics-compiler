@@ -206,9 +206,8 @@ int PayloadMapping::GetRightReservedOffset_RTWrite(const Instruction* inst, SIMD
 
     if (rtwi->hasStencil())
     {
-        //Must not be set in simd16 mode.
-        IGC_ASSERT(simdMode == SIMDMode::SIMD8);
-        offset += 32; //256bits=1grf
+        IGC_ASSERT(m_CodeGenContext->platform.supportsStencil(simdMode));
+        offset += m_CodeGenContext->platform.getGRFSize();
     }
 
     if (rtwi->hasDepth())

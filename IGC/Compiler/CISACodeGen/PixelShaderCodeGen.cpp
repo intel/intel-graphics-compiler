@@ -1118,7 +1118,7 @@ namespace IGC
             return false;
         }
 
-        if (m_HasoStencil && simdMode != SIMDMode::SIMD8)
+        if (m_HasoStencil && !ctx->platform.supportsStencil(simdMode))
         {
             return false;
         }
