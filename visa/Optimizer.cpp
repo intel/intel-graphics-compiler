@@ -6747,13 +6747,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     }
                 }
 
-                if (VISA_WA_CHECK(builder.getPWaTable(), WaDisableSendsPreemption) &&
-                    inst->isSplitSend() &&
-                    !(inst->getSrc(1)->isNullReg()))
-                {
-                    inst->setOptionOn(InstOpt_NoPreempt);
-                }
-
                 if (inst->isSend() && !inst->isNoPreemptInst() && builder.needsNoPreemptR2ForSend())
                 {
                     G4_Operand *Src0 = inst->getSrc(0);
