@@ -1820,6 +1820,7 @@ namespace IGC
             memcpy_s(initConstant->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
             ctx->m_programInfo.m_initConstantAnnotation.push_back(std::move(initConstant));
+            ctx->m_programInfo.m_initConstantBufferAllocaSize = modMD->inlineConstantBufferSize;
         }
 
         if (!modMD->inlineGlobalBuffers.empty())
@@ -1834,6 +1835,7 @@ namespace IGC
             memcpy_s(initGlobal->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
             ctx->m_programInfo.m_initGlobalAnnotation.push_back(std::move(initGlobal));
+            ctx->m_programInfo.m_initGlobalBufferAllocaSize = modMD->inlineGlobalBufferSize;
         }
 
         {

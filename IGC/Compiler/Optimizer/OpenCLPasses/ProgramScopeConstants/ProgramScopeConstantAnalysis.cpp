@@ -59,9 +59,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     bool hasInlineConstantBuffer = false;
     bool hasInlineGlobalBuffer = false;
 
-    unsigned globalBufferAlignment = 0;
-    unsigned constantBufferAlignment = 0;
-
     BufferOffsetMap inlineProgramScopeOffsets;
 
     // maintains pointer information so we can patch in
@@ -73,6 +70,9 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 
     MetaDataUtils* mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+    SmallVector<GlobalVariable*, 16> zeroInitializedGlobals;
+    SmallVector<GlobalVariable*, 16> zeroInitializedConstants;
 
     for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
     {
@@ -122,13 +122,12 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         }
 
         DataVector* inlineProgramScopeBuffer = nullptr;
-        unsigned& bufferAlignment = (AS == ADDRESS_SPACE_GLOBAL) ? globalBufferAlignment : constantBufferAlignment;
         if (AS == ADDRESS_SPACE_GLOBAL)
         {
             if (!hasInlineGlobalBuffer)
             {
                 InlineProgramScopeBuffer ilpsb;
-                ilpsb.alignment = bufferAlignment;
+                ilpsb.alignment = 0;
                 modMd->inlineGlobalBuffers.push_back(ilpsb);
                 hasInlineGlobalBuffer = true;
             }
@@ -139,20 +138,25 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             if (!hasInlineConstantBuffer)
             {
                 InlineProgramScopeBuffer ilpsb;
-                ilpsb.alignment = bufferAlignment;
+                ilpsb.alignment = 0;
                 modMd->inlineConstantBuffers.push_back(ilpsb);
                 hasInlineConstantBuffer = true;
             }
             inlineProgramScopeBuffer = &modMd->inlineConstantBuffers.back().Buffer;
         }
 
-        // Align the buffer.
-        // If this is the first constant, set the initial alignment, otherwise add padding.
-        if (!bufferAlignment)
+        // For zero initialized values, we dont need to copy the data, just tell driver how much to allocate
+        if (initializer->isZeroValue())
         {
-            bufferAlignment = m_DL->getPreferredAlignment(globalVar);
+            if (AS == ADDRESS_SPACE_GLOBAL)
+                zeroInitializedGlobals.push_back(globalVar);
+            else
+                zeroInitializedConstants.push_back(globalVar);
+            continue;
         }
-        else
+
+        // Align the buffer.
+        if (inlineProgramScopeBuffer->size() != 0)
         {
             alignBuffer(*inlineProgramScopeBuffer, m_DL->getPreferredAlignment(globalVar));
         }
@@ -162,6 +166,38 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 
         // Add the data to the buffer
         addData(initializer, *inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, AS);
+    }
+
+    modMd->inlineGlobalBufferSize = hasInlineGlobalBuffer ? modMd->inlineGlobalBuffers.back().Buffer.size() : 0;
+    modMd->inlineConstantBufferSize = hasInlineConstantBuffer ? modMd->inlineConstantBuffers.back().Buffer.size() : 0;
+
+    // Calculate the correct offsets for zero-initialized globals/constants
+    // Total allocation size in runtime needs to include zero-init values, but data copied to compiler output can ignore them
+    if (!zeroInitializedGlobals.empty())
+    {
+        assert(hasInlineGlobalBuffer);
+        unsigned offset = modMd->inlineGlobalBufferSize;
+
+        for (auto globalVar : zeroInitializedGlobals)
+        {
+            offset = iSTD::Align(offset, m_DL->getPreferredAlignment(globalVar));
+            inlineProgramScopeOffsets[globalVar] = offset;
+            offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getType()->getPointerElementType()));;
+        }
+        modMd->inlineGlobalBufferSize = offset;
+    }
+    if (!zeroInitializedConstants.empty())
+    {
+        assert(hasInlineConstantBuffer);
+        unsigned offset = modMd->inlineConstantBufferSize;
+
+        for (auto globalVar : zeroInitializedConstants)
+        {
+            offset = iSTD::Align(offset, m_DL->getPreferredAlignment(globalVar));
+            inlineProgramScopeOffsets[globalVar] = offset;
+            offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getType()->getPointerElementType()));;
+        }
+        modMd->inlineConstantBufferSize = offset;
     }
 
     if (inlineProgramScopeOffsets.size())

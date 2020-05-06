@@ -350,6 +350,8 @@ namespace IGC
         std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;
         std::vector<PointerProgramBinaryInfo> GlobalPointerProgramBinaryInfos;
         std::vector<PointerProgramBinaryInfo> ConstantPointerProgramBinaryInfos;
+        unsigned int inlineConstantBufferSize = 0;
+        unsigned int inlineGlobalBufferSize = 0;
         unsigned int MinNOSPushConstantSize = 0;
         std::map<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
         ShaderData shaderData;
