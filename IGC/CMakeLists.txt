@@ -2101,7 +2101,7 @@ if(NOT DEFINED IGC_OPTION__OUTPUT_DIR)
 set(IGC_OPTION__OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "Output directory path where the final libraries will be stored.")
 endif()
 get_filename_component(IGC_OPTION__OUTPUT_DIR ${IGC_OPTION__OUTPUT_DIR} ABSOLUTE)
-set(USC_OPTION__OUTPUT_DIR "${IGC_SOURCE_DIR}/../../dump${_cpuSuffix}/usc" CACHE PATH "Output directory path where the final USC libraries will be stored.")
+set(USC_OPTION__OUTPUT_DIR "${IGC_SOURCE_DIR}/../../../output/dump${_cpuSuffix}/usc" CACHE PATH "Output directory path where the final USC libraries will be stored.")
 unset(_cpuSuffix)
 
 if(NOT DEFINED IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
