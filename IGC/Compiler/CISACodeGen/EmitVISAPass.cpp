@@ -3487,6 +3487,10 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
     uint exDesc = EU_GEN7_MESSAGE_TARGET_PIXEL_INTERPOLATOR;
     EU_PIXEL_INTERPOLATOR_SIMD_MODE executionMode = pixelInterpolatorSimDMode(m_currShader->m_SIMDSize);
     uint responseLength = executionMode ? 4 : 2;
+    if (getGRFSize() != 32)
+    {
+        responseLength /= 2;
+    }
     uint messageLength = 1;
     CVariable* payload = nullptr;
     uint desc = 0;
@@ -3550,6 +3554,7 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
         uint offsetY = 0;
         bool offsetIsConst = true;
         auto messageType = EU_PI_MESSAGE_EVAL_CENTROID_POSITION;
+        auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
         if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_PullSnappedBarys)
         {
             offsetIsConst = false;
@@ -3568,7 +3573,7 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
         }
         if (offsetIsConst && psProgram->GetPhase() != PSPHASE_COARSE)
         {
-            payload = m_currShader->GetNewVariable(messageLength * (getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
+            payload = m_currShader->GetNewVariable(messageLength * numDWPerGRF, ISA_TYPE_D, EALIGN_GRF);
             desc = PixelInterpolator(
                 messageLength,
                 responseLength,
@@ -3583,7 +3588,7 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
         {
             IGC_ASSERT(messageType != EU_PI_MESSAGE_EVAL_CENTROID_POSITION);
 
-            messageLength = 2 * numLanes(m_currShader->m_SIMDSize) / 8;
+            messageLength = 2 * numLanes(m_currShader->m_SIMDSize) / numDWPerGRF;
             payload = m_currShader->GetNewVariable(messageLength * (getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
             desc = PixelInterpolator(
                 messageLength,
@@ -3598,7 +3603,7 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
             m_encoder->Copy(payload, XOffset);
             m_encoder->Push();
 
-            m_encoder->SetDstSubVar(numLanes(m_currShader->m_SIMDSize) / 8);
+            m_encoder->SetDstSubVar(numLanes(m_currShader->m_SIMDSize) / numDWPerGRF);
             m_encoder->Copy(payload, YOffset);
             m_encoder->Push();
         }
@@ -16374,10 +16379,13 @@ bool EmitPass::ResourceLoopHeader(
     {
         flag = resourceFlag != nullptr ? resourceFlag : samplerFlag;
     }
-    if (m_SimdMode == SIMDMode::SIMD32)
+    if (m_SimdMode == SIMDMode::SIMD32 && m_currShader->m_numberInstance == 2)
     {
         // For SIMD32 need to initialize to 1 the other half of the flag
+        // ToDo: check if this is actually necessary, as the other half should not get used
         m_encoder->SetSecondHalf(!m_encoder->IsSecondHalf());
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcRegion(1, 0, 1, 0);
         m_encoder->Cmp(EPREDICATE_EQ, flag, m_currShader->GetR0(), m_currShader->GetR0());
         m_encoder->Push();
         m_encoder->SetSecondHalf(!m_encoder->IsSecondHalf());
