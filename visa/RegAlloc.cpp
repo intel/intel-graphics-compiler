@@ -3710,6 +3710,22 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         }
     }
 
+    if (builder.getOption(vISA_DumpDotAll))
+    {
+        kernel.dumpDotFile("PreRegAlloc");
+    }
+
+    kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.paramOverflowAreaOffset =
+        kernel.fg.paramOverflowAreaSize = 0;
+
+    // This must be done before Points-to analysis as it may modify CFG and add new BB!
+    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
+    {
+        kernel.fg.setABIForStackCallFunctionCalls();
+        kernel.fg.addFrameSetupDeclares(builder, regPool);
+        kernel.fg.NormalizeFlowGraph();
+    }
+
     kernel.fg.reassignBlockIDs();
 
     if (kernel.getOptions()->getTarget() == VISA_3D)
@@ -3728,23 +3744,6 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
             DEBUG_VERBOSE(std::endl);
         }
 #endif
-
-    }
-
-    if (builder.getOption(vISA_DumpDotAll))
-    {
-        kernel.dumpDotFile("PreRegAlloc");
-    }
-
-    kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.paramOverflowAreaOffset =
-        kernel.fg.paramOverflowAreaSize = 0;
-
-    // This must be done before Points-to analysis as it may modify CFG and add new BB!
-    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
-    {
-        kernel.fg.setABIForStackCallFunctionCalls();
-        kernel.fg.addFrameSetupDeclares(builder, regPool);
-        kernel.fg.NormalizeFlowGraph();
     }
 
     //
