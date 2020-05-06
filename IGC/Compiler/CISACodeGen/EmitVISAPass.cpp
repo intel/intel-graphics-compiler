@@ -732,6 +732,14 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
+    // Temp WA to disable MTP when stack calls are present
+    // TODO: Remove when VISA is fixed to copy R0 to dedicated register, so R0 contents won't be corrupted by MTP
+    if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER && hasStackCall)
+    {
+        COpenCLKernel* kernel = static_cast<COpenCLKernel*>(m_currShader);
+        kernel->SetDisableMidthreadPreemption();
+    }
+
     if (m_SimdMode == SIMDMode::SIMD16 &&
         this->m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE &&
         IsStage1BestPerf(m_pCtx->m_CgFlag, m_pCtx->m_StagingCtx))
