@@ -8060,11 +8060,30 @@ public:
             return;
         }
 
+        if (!kernel.fg.builder->getIsKernel())
+        {
+            // we dont allow a function to exit
+            return;
+        }
+
         bool hasUAVWrites = false;
         bool hasSLMWrites = false;
-        std::list<SFID> funcIDs;
+        bool hasTypedWrites = false;
+
+
         for (auto bb : kernel.fg)
         {
+            if (bb->isEndWithFCall())
+            {
+                // conservatively assume we need a fence
+                // ToDo: we don't need a SLM fence if kernel doesnt use SLM, since function can't allocate SLM on its own
+                // We can move this W/A to IGC for more precise analysis
+                hasUAVWrites = true;
+                hasSLMWrites = true;
+                hasTypedWrites = true;
+                break;
+            }
+
             for (auto inst : *bb)
             {
                 if (inst->isSend())
@@ -8078,6 +8097,10 @@ public:
                             {
                                 hasSLMWrites = true;
                             }
+                            else if (msgDesc->isHdcTypedSurfaceWrite())
+                            {
+                                hasTypedWrites = true;
+                            }
                             else
                             {
                                 hasUAVWrites = true;
@@ -8086,23 +8109,14 @@ public:
 
                     }
                 }
-                if (hasUAVWrites && hasSLMWrites)
-                {
-                    break;
-                }
-            }
-            if (hasUAVWrites && hasSLMWrites)
-            {
-                break;
             }
         }
 
-        if ((!hasUAVWrites) && (!hasSLMWrites) && funcIDs.empty())
+        if (!hasUAVWrites && !hasSLMWrites && !hasTypedWrites)
         {
             return;
         }
 
-        funcIDs.unique();
         for (auto bb : kernel.fg)
         {
             if (bb->isLastInstEOT())
