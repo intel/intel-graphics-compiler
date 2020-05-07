@@ -4380,16 +4380,43 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         }
         output << std::endl;
 
+        auto fmtHex = [](int i) {
+            std::stringstream ss;
+            ss << "0x" << std::hex << std::uppercase << i;
+            return ss.str();
+        };
+
         // emit input location and size
         output << "//.kernel_reordering_info_start" << std::endl;
+        static const int COLW_ID = 8;
+        static const int COLW_TYPE = 8;
+        static const int COLW_SIZE = 6;
+        static const int COLW_AT = 8;
+        static const int COLW_CLASS = 10;
+        static const int COLW_KIND = 12;
+
+        std::stringstream bordss;
+        bordss << "// ";
+        bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_ID + 2) << "";
+        bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_TYPE + 2) << "";
+        bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_SIZE + 2) << "";
+        bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_AT + 2) << "";
+        bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_CLASS + 2) << "";
+        bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_KIND + 2) << "";
+        bordss << '+' << std::endl;
+        std::string border = bordss.str();
+
+        output << border;
         output <<
             "//" <<
-            "  " << std::setw(12) << "id" <<
-            "  " << std::setw(12) << "location" <<
-            "  " << std::setw(12) << "bytes" <<
-            "  " << std::setw(12) << "class" <<
-            "  " << std::setw(12) << "kind" <<
-            std::endl;
+            " | " << std::left << std::setw(COLW_ID) << "id" <<
+            " | " << std::left << std::setw(COLW_TYPE) << "type" <<
+            " | " << std::right << std::setw(COLW_SIZE) << "bytes" <<
+            " | " << std::left << std::setw(COLW_AT) << "at" <<
+            " | " << std::left << std::setw(COLW_CLASS) << "class" <<
+            " | " << std::left << std::setw(COLW_KIND) << "kind" <<
+            " |" << std::endl;
+        output << border;
 
         const unsigned grfSize = getGRFSize();
         unsigned int inputCount = fg.builder->getInputCount();
@@ -4400,44 +4427,79 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             output << "//";
             //
             // id
-            std::stringstream ss;
-            ss << ".arg_" << (id + 1);
+            std::stringstream ssid;
+            ssid << ".arg_" << (id + 1);
             output <<
-                "   " << std::setw(12) << ss.str();
+                " | " << std::left << std::setw(COLW_ID) << ssid.str();
+            //
+            // type and length
+            //   e.g. :uq x 16
+            const G4_Declare *dcl = input_info->dcl;
+            std::stringstream sstype;
+            if (dcl) {
+                switch (dcl->getElemType()) {
+                case Type_B: sstype << ":b"; break;
+                case Type_W: sstype << ":w"; break;
+                case Type_D: sstype << ":d"; break;
+                case Type_Q: sstype << ":q"; break;
+                case Type_V: sstype << ":v"; break;
+                case Type_UB: sstype << ":ub"; break;
+                case Type_UW: sstype << ":uw"; break;
+                case Type_UD: sstype << ":ud"; break;
+                case Type_UQ: sstype << ":uq"; break;
+                case Type_UV: sstype << ":uv"; break;
+                    //
+                case Type_F:  sstype << ":f"; break;
+                case Type_HF: sstype << ":hf"; break;
+                case Type_DF: sstype << ":df"; break;
+                case Type_NF: sstype << ":nf"; break;
+                default:
+                    sstype << fmtHex((int)dcl->getElemType()) << "?";
+                    break;
+                }
+                if (dcl->getTotalElems() != 1)
+                    sstype << " x " << dcl->getTotalElems();
+            } else {
+                sstype << "?";
+            }
+            output << " | " << std::left << std::setw(COLW_TYPE) << sstype.str();
+            //
+            // size
+            output << " | " << std::right << std::setw(COLW_SIZE) << std::dec << input_info->size;
 
             // location
             unsigned reg = input_info->offset / grfSize,
                      subRegBytes = input_info->offset % grfSize;
-            std::stringstream ss2;
-            ss2 << "r" << reg;
+            std::stringstream ssloc;
+            ssloc << "r" << reg;
             if (subRegBytes != 0)
-                ss2 << "+" << subRegBytes;
-            //
-            // offset and size
-            output <<
-                "  " << std::setw(12) << ss2.str() <<
-                "  " << std::setw(12) << input_info->size;
+                ssloc << "+" << subRegBytes;
+            output << " | " << std::left << std::setw(COLW_AT) << ssloc.str();
 
             // class and kind
-            output << "  ";
+            std::string inpcls;
             switch (input_info->getInputClass()) {
-            case INPUT_GENERAL: output << std::setw(12) << "general"; break;
-            case INPUT_SAMPLER: output << std::setw(12) << "sampler"; break;
-            case INPUT_SURFACE: output << std::setw(12) << "surface"; break;
-            default: output << std::setw(12) << (int)input_info->getInputClass(); break;
+            case INPUT_GENERAL: inpcls = "general"; break;
+            case INPUT_SAMPLER: inpcls = "sampler"; break;
+            case INPUT_SURFACE: inpcls = "surface"; break;
+            default: inpcls = fmtHex((int)input_info->getInputClass()); break;
             }
+            output << " | " << std::left << std::setw(COLW_CLASS) << inpcls;
             //
-            output << "  ";
+            std::string kind;
             switch ((int)input_info->getImplicitKind()) {
-            case 0x00: output << std::setw(12) << "explicit"; break;
-            case 0x01: output << std::setw(12) << "local_size"; break;
-            case 0x02: output << std::setw(12) << "group_count"; break;
-            case 0x03: output << std::setw(12) << "local_id"; break;
-            case 0x10: output << std::setw(12) << "pseudo_input"; break;
-            default: output << std::setw(12) << (int)input_info->getImplicitKind(); break;
+            case 0x00: kind = "explicit"; break;
+            case 0x01: kind = "local_size"; break;
+            case 0x02: kind = "group_count"; break;
+            case 0x03: kind = "local_id"; break;
+            case 0x10: kind = "pseudo_input"; break;
+            default: kind = fmtHex((int)input_info->getImplicitKind()); break;
             }
-            output << std::endl;
+            output << " | " << std::left << std::setw(COLW_KIND) << kind;
+
+            output << " |" << std::endl;
         }
+        output << border;
 
         output << "//.kernel_reordering_info_end" << std::endl;
         if (getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12)
@@ -4626,8 +4688,10 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
                     output << "// " << errString->second.c_str() << std::endl;
                     output << "// Text representation might not be correct" << std::endl;
                 }
-
-                kView.getInstSyntax(pc, stringBuffer, 512, labelerLambda, (void*)&lambdaArg);
+                kView.getInstSyntax(
+                    pc,
+                    stringBuffer, 512,
+                    labelerLambda, (void*)&lambdaArg);
                 pc += kView.getInstSize(pc);
 
                 (*itBB)->emitBasicInstructionIga(stringBuffer, output, itInst, suppressRegs, lastRegs);
@@ -4754,7 +4818,7 @@ void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
 
     if (emitFile)
     {
-        output << "// File: " << curFilename << "\n";
+        output << "\n// File: " << curFilename << "\n";
     }
 
     if (emitLineNo)
