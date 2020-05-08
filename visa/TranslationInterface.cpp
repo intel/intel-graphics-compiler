@@ -9495,7 +9495,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
     G4_SrcRegRegion* src = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
 
     DATA_CACHE1_MESSAGES msgSubOpcode = DC1_A64_BLOCK_READ;
-    unsigned rspLength = ((numOword - 1) / 2 + 1);
+    unsigned rspLength = ((numOword * 16 - 1) / getGRFSize() + 1);
 
     unsigned desc = getA64BTI() |
         (unaligned ? A64_BLOCK_MSG_OWORD_UNALIGNED_READ : A64_BLOCK_MSG_OWORD_RW) << A64_BLOCK_MSG_SUBTYPE_OFFSET |
