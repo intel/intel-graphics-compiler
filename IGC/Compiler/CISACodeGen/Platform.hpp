@@ -299,6 +299,12 @@ namespace IGC
         return getMinDispatchMode() == SIMDMode::SIMD16 ? true : simdMode == SIMDMode::SIMD8;
     }
 
+    bool hasFDIV() const {
+      if (IGC_IS_FLAG_ENABLED(DisableFDIV))
+        return false;
+      return (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE);
+    }
+
     bool supportsSIMD16TypedRW() const
     {
         return false;
@@ -361,7 +367,6 @@ namespace IGC
     bool useOnlyEightPatchDispatchHS() const { return false; }
     bool hasFusedEU() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
     bool supports256GRFPerThread() const { return false; }
-    bool hasFDIV() const { return true; }
     bool supportMixMode() const {
         return IGC_IS_FLAG_ENABLED(ForceMixMode) ||
             (IGC_IS_FLAG_DISABLED(DisableMixMode) &&
