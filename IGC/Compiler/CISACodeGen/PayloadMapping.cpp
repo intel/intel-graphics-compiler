@@ -171,11 +171,11 @@ int PayloadMapping::GetLeftReservedOffset_RTWrite(const Instruction* inst, SIMDM
         int multiplier = rtwi->getSource0Alpha()->getType()->isHalfTy() ? 1 : 2;
         if (simdMode == SIMDMode::SIMD8)
         {
-            offset += 32; //always 1GRF, regardless of HF
+            offset += m_CodeGenContext->platform.getGRFSize(); //always 1GRF, regardless of HF
         }
         else if (simdMode == SIMDMode::SIMD16)
         {
-            offset += 32 * multiplier; // 2GRFs normal precision, 1GRF HF precision
+            offset += m_CodeGenContext->platform.getGRFSize() * multiplier; // 2GRFs normal precision, 1GRF HF precision
         }
     }
 
@@ -212,16 +212,17 @@ int PayloadMapping::GetRightReservedOffset_RTWrite(const Instruction* inst, SIMD
 
     if (rtwi->hasDepth())
     {
+
         IGC_ASSERT(simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16);
 
         //Depth always has normal precision, regardless of the rest of the fields.
         if (simdMode == SIMDMode::SIMD8)
         {
-            offset += 32; //always 1GRF, 256 bytes
+            offset += m_CodeGenContext->platform.getGRFSize(); //always 1GRF, 32 bytes
         }
         else if (simdMode == SIMDMode::SIMD16)
         {
-            offset += 64; // 2GRFs normal precision
+            offset += m_CodeGenContext->platform.getGRFSize() * 2; // 2GRFs normal precision, 64 bytes
         }
     }
 
