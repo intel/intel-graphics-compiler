@@ -13,6 +13,7 @@ namespace llvm
     class Function;
     class Value;
     class GlobalVariable;
+    class StructType;
 }
 
 const unsigned int INPUT_RESOURCE_SLOT_COUNT = 128;

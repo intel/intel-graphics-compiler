@@ -24,6 +24,7 @@ MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name);
 template<typename val, size_t s>
 MDNode* CreateNode(const std::array<val, s> &arr, Module* module, StringRef name);
 MDNode* CreateNode(Value* val, Module* module, StringRef name);
+MDNode* CreateNode(StructType* Ty, Module* module, StringRef name);
 template<typename Key, typename Value>
 MDNode* CreateNode(const std::map < Key, Value> &FuncMD, Module* module, StringRef name);
 MDNode* CreateNode(const std::string &s, Module* module, StringRef name);
@@ -44,6 +45,7 @@ template<typename T, size_t s>
 void readNode(std::array<T, s> &arr, MDNode* node);
 void readNode(Function* &funcPtr, MDNode* node);
 void readNode(GlobalVariable* &globalVar, MDNode* node);
+void readNode(StructType* &Ty, MDNode* node);
 
 template<typename Key, typename Value>
 void readNode(std::map<Key, Value> &funcMD, MDNode* node);
@@ -184,6 +186,17 @@ MDNode* CreateNode(Value* val, Module* module, StringRef name)
     return node;
 }
 
+MDNode* CreateNode(StructType* Ty, Module* module, StringRef name)
+{
+    Metadata* v[] =
+    {
+        MDString::get(module->getContext(), name),
+        ValueAsMetadata::get(UndefValue::get(Ty))
+    };
+    MDNode* node = MDNode::get(module->getContext(), v);
+    return node;
+}
+
 template<typename Key, typename Value>
 MDNode* CreateNode(const std::map < Key, Value> &FuncMD, Module* module, StringRef name)
 {
@@ -296,6 +309,13 @@ void readNode(GlobalVariable* &globalVar, MDNode* node)
     ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
     Value* v = pVal->getValue();
     globalVar = cast<GlobalVariable>(v);
+}
+
+void readNode(StructType*& Ty, MDNode* node)
+{
+    ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
+    Value* v = pVal->getValue();
+    Ty = cast<StructType>(v->getType());
 }
 
 template<typename Key, typename Value>
