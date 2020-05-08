@@ -25,8 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "Instruction.hpp"
 #include "Types.hpp"
-#include "../Frontend/Formatter.hpp"
 #include "IRChecker.hpp"
+#include "../Frontend/Formatter.hpp"
+
 #include <sstream>
 
 using namespace iga;
@@ -131,7 +132,6 @@ void Instruction::setLabelSource(SourceIndex srcIx, Block *block, Type type)
     unsigned ix = static_cast<unsigned>(srcIx);
     m_srcs[ix].setLabelSource(block, type);
 }
-
 
 
 bool Instruction::isMovWithLabel() const {

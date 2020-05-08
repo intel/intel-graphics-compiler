@@ -89,7 +89,17 @@ public:
         }
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // derived accessors
 
+    // returns true if a direct register reference to the null register
+    bool isNull() const {
+        return getKind() == Kind::DIRECT &&
+            getDirRegName() == RegName::ARF_NULL;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // other accessors
     DstModifier getDstModifier() const { return m_regOpDstMod; }
     SrcModifier getSrcModifier() const { return m_regOpSrcMod; }
 

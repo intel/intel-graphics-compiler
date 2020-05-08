@@ -394,4 +394,3 @@ EXPORTS
   GED_GetOperandWidth
   GED_GetOperandNumericType
   GED_GetNibCtrl
-  GED_DisassembleIns

@@ -4,7 +4,6 @@ set(GED_common_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_compact_mapping_table.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_types_internal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_decoding_table.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_disassembly_table.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_encoding_masks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_position_fragment.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_restrictions.cpp
@@ -24,7 +23,6 @@ set(GED_common_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_types_internal.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_decoding_table.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_disassembly_table.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_encoding_masks.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_position_fragment.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_restrictions.h

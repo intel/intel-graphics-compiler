@@ -13,6 +13,8 @@ set(IGA_IR_Open
   ${CMAKE_CURRENT_SOURCE_DIR}/Kernel.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Kernel.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Loc.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Operand.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Operand.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Traversals.cpp

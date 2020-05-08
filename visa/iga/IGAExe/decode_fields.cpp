@@ -182,7 +182,8 @@ static void parseBitsAsHex(
                 int b = parseByte();
                 if (b < 0) {
                     std::stringstream ss;
-                    ss << "invalid file, syntax, or raw byte sequence (w" << wIx << ")";
+                    ss << "invalid file, syntax, or raw byte sequence "
+                        "(w" << wIx << ")";
                     error(ss.str().c_str());
                 }
                 ws[wIx][i] = (uint8_t)b;

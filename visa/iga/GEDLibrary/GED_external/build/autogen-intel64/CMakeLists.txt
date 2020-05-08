@@ -4,15 +4,11 @@ set(GED_autogenintel64_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_collectors_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_compaction_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_disassembly_next_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_disassembly_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_disassembly_token_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_interpreters.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_fragments.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_generalized_fields_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_fragments.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_tables.cpp
@@ -34,16 +30,12 @@ set(GED_autogenintel64_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_collectors_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_compaction_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_disassembly_next_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_disassembly_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_disassembly_token_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations_internal.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_interpreters.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_fragments.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_generalized_fields_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field_internal.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_fragments.h

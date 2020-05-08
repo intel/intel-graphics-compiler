@@ -201,7 +201,7 @@ struct SerialEncoder : BitProcessor
 
     void encodeKernel(Kernel &k)
     {
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
         try {
 #endif
             instEncoder.getBackpatches().clear();
@@ -238,7 +238,7 @@ struct SerialEncoder : BitProcessor
             instBufTotalBytes = (int)(instBufCurr - instBufBase);
 
             resolveBackpatches();
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
         } catch (const iga::FatalError&) {
             // error is already reported
         }
@@ -345,7 +345,7 @@ static void EncodeParallel(
     volatile bool fatalError;
 
     EncoderWorker worker(model, opts, instQueue, fatalError);
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
     try {
 #endif
         // would start the threads here
@@ -354,7 +354,7 @@ static void EncodeParallel(
                 instQueue.emplace_back(i);
             }
         }
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
     } catch (const iga::FatalError&) {
         // error is already reported
     }

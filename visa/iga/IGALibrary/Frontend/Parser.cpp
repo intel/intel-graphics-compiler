@@ -72,7 +72,7 @@ namespace iga
         va_end(ap);
         Fail(loc, str.c_str());
     }
-    void Parser::FailAtPrev(const char *msg) {
+    void Parser::FailAfterPrev(const char *msg) {
         Token pv = Next(-1);
         if (pv.loc.extent == 0) {
             // previous location is not valid => use the other path
@@ -165,7 +165,7 @@ namespace iga
 
     void Parser::ConsumeOrFailAfterPrev(Lexeme lxm, const char *msg) {
         if (!Consume(lxm)) {
-            FailAtPrev(msg);
+            FailAfterPrev(msg);
         }
     }
 

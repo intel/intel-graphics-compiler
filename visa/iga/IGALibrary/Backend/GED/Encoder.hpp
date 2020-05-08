@@ -101,7 +101,7 @@ namespace iga
         template <SourceIndex S> void encodeSrcReg(RegName regName, uint8_t regNum);
         template <SourceIndex S> void encodeSrcAddrImm(int32_t addrImm);
         template <SourceIndex S> void encodeSrcAddrSubRegNum(uint32_t addrSubReg);
-        template <SourceIndex S> void encodeSrcRegion(const Region& r);
+        template <SourceIndex S> void encodeSrcRegion(const Region& r, bool hasRgnWi = true);
         template <SourceIndex S> void encodeSrcRegionWidth(Region::Width w);
         template <SourceIndex S> void encodeSrcRepCtrl(GED_REP_CTRL rep);
         template <SourceIndex S> void encodeSrcChanSel(
@@ -133,7 +133,7 @@ namespace iga
         void handleGedError(int line, const char *setter, GED_RETURN_VALUE status);
 
         // state that is valid over instance life
-        struct EncoderOpts                        m_opts;
+        EncoderOpts                               m_opts;
 
         // state that is valid over encodeInst()
         ged_ins_t                                 m_gedInst;
@@ -237,30 +237,30 @@ namespace iga
         {
             uint64_t value = 0;
             switch (type) {
-            case iga::Type::UD:
-            case iga::Type::F:
-            case iga::Type::V:
-            case iga::Type::UV:
-            case iga::Type::VF:
+            case Type::UD:
+            case Type::F:
+            case Type::V:
+            case Type::UV:
+            case Type::VF:
                 value = (uint64_t)val.u32;
                 break;
-            case iga::Type::D:
+            case Type::D:
                 value = (uint64_t)val.s32;
                 break;
-            case iga::Type::W:
+            case Type::W:
                 value = (uint64_t)val.s16;
                 break;
-            case iga::Type::UW:
-            case iga::Type::HF:
+            case Type::UW:
+            case Type::HF:
                 value = (uint64_t)val.u16;
                 break;
-            case iga::Type::DF:
-            case iga::Type::UQ:
-            case iga::Type::Q:
+            case Type::DF:
+            case Type::UQ:
+            case Type::Q:
                 value = val.u64;
                 break;
-            case iga::Type::B:
-            case iga::Type::UB:
+            case Type::B:
+            case Type::UB:
                 // technically not reachable since we don't permit byte moves
                 // from immediates
                 value = val.u64;
@@ -408,7 +408,8 @@ namespace iga
             GED_ENCODE(Src1AddrImm, addrImm);
         }
     }
-    template <SourceIndex S> void EncoderBase::encodeSrcAddrSubRegNum(uint32_t addrSubReg) {
+    template <SourceIndex S>
+    void EncoderBase::encodeSrcAddrSubRegNum(uint32_t addrSubReg) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0AddrSubRegNum, addrSubReg);
         } else {
@@ -416,8 +417,7 @@ namespace iga
         }
     }
     template <SourceIndex S>
-    void EncoderBase::encodeSrcRegion(const Region &rgn)
-    {
+    void EncoderBase::encodeSrcRegion(const Region &rgn, bool hasRgnWi) {
         uint32_t v = 0;
         if (rgn.getVt() == Region::Vert::VT_VxH) {
             v = 0x3;
@@ -446,7 +446,16 @@ namespace iga
 
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0VertStride, v);
-            GED_ENCODE(Src0Width, w);
+            if (hasRgnWi) {
+                GED_ENCODE(Src0Width, w);
+            } else {
+                // some ops have an implicit width region
+                // (e.g. some specialized instructions poaches Src0.RgnWi)
+                //
+                // Within the IR we use 1 so logic that depends on regioning
+                // gets the correct behavior (hardware assumes w=1).
+                w = 1;
+            }
             GED_ENCODE(Src0HorzStride, h);
         } else if (S == SourceIndex::SRC1) {
             GED_ENCODE(Src1VertStride, v);
@@ -457,7 +466,8 @@ namespace iga
         }
     }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcRegionWidth(Region::Width w) {
+    template <SourceIndex S>
+    void EncoderBase::encodeSrcRegionWidth(Region::Width w) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0Width, IGAToGEDTranslation::lowerRegionWidth(w));
         } else { // (S == SourceIndex::SRC1)
@@ -476,7 +486,8 @@ namespace iga
         }
     }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcRegionHorz(Region::Horz s) {
+    template <SourceIndex S>
+    void EncoderBase::encodeSrcRegionHorz(Region::Horz s) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0HorzStride, IGAToGEDTranslation::lowerRegionHorz(s));
         } else if (S == SourceIndex::SRC1) {

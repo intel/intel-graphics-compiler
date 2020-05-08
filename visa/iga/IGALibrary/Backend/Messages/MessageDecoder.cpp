@@ -23,9 +23,38 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#include "MessageDecoder.hpp"
 
-#ifndef _IGA_VERSION_HPP_
-#define _IGA_VERSION_HPP_
-#define IGA_VERSION_PREFIX_STRING "0.18"
+#include <tuple>
+#include <utility>
 
-#endif // _IGA_VERSION_HPP_
+
+using namespace iga;
+
+void MessageDecoder::decodePayloadSizes() {
+    bool hasMLenRLenInDesc = true;
+    bool hasXLenInExDesc = true;
+    if (hasMLenRLenInDesc) {
+        decodeDescField("Mlen", 25, 4,
+            [] (std::stringstream &ss, uint32_t val) {
+                ss << val << " address registers written";
+            });
+        decodeDescField("Rlen", 20, 5,
+            [] (std::stringstream &ss, uint32_t val) {
+                ss << val << " registers read back";
+            });
+    }
+    if (hasXLenInExDesc) {
+        decodeDescField("Xlen", 32 + 6, 5,
+            [] (std::stringstream &ss, uint32_t val) {
+                ss << val << " data registers written";
+            });
+    }
+    if (platform() <= Platform::GEN11) {
+        decodeDescField("SFID", 32 + 0, 4,
+            [] (std::stringstream &ss, uint32_t val) {
+                ss << val << " shared function ID";
+            });
+    }
+}
+

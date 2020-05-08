@@ -114,11 +114,11 @@ size_t iga::copyOut(char *buf, size_t bufCap, std::iostream &ios)
 {
     size_t sslen = (size_t)ios.tellp();
     if (!buf || bufCap == 0)
-        return sslen;
+        return sslen + 1;
     ios.read(buf, bufCap);
-    size_t eot = bufCap - 1 < sslen ? bufCap - 1 : sslen;
-    buf[eot] = '\0';
-    return sslen;
+    size_t eos = bufCap - 1 < sslen ? bufCap - 1 : sslen;
+    buf[eos] = '\0';
+    return sslen + 1;
 }
 
 void iga::fmtBinaryDigits(std::ostream &os, uint64_t val, int w)

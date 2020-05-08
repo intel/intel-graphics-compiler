@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../IR/Types.hpp"
 #include "../Models/Models.hpp"
-#include "../strings.hpp"
 
 #include <sstream>
 
@@ -38,11 +37,14 @@ namespace iga
     void EmitSendDescriptorInfo(
         Platform p,
         const OpSpec &os,
+        ExecSize execSize,
+        bool dstNonNull,
         int dstLen,
         int src0Len,
         int src1Len,
         const SendDesc &exDesc,
         const SendDesc &desc,
+        RegRef indDesc,
         std::stringstream &ss);
 } // iga::
 

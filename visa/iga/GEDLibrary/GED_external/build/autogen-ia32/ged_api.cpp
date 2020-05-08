@@ -11,7 +11,7 @@
 #include "ged_enum_interpreters.h"
 #include "common/ged_enum_types_internal.h"
 #include "common/ged_string_utils.h"
-#include "xcoder/ged_disassembler.h"
+#include "xcoder/ged_ins.h"
 #include "xcoder/ged_interpreters.h"
 #include "ged_collectors_tables.h"
 #include "ged_model_gen7.h"
@@ -33,20 +33,6 @@ ModelData ModelsArray[8] =
     { GEN11::Opcodes, "11", 116, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL }, // 6
     { GEN12_1::Opcodes, "12.1", 116, (const ged_field_enum_table_t)OpcodeTable2, 36, PositionInterpreterTable6, 3, EnumInterpretersTable3, 0, NULL } // 7
 }; // ModelsArray[]
-
-#if GED_DISASSEMBLY
-ModelDisassemblyData ModelsDisassemblyArray[8] =
-{
-    { GEN7::GetDisassemblyTable }, // 0
-    { GEN7_5::GetDisassemblyTable }, // 1
-    { GEN8::GetDisassemblyTable }, // 2
-    { GEN8_1::GetDisassemblyTable }, // 3
-    { GEN9::GetDisassemblyTable }, // 4
-    { GEN10::GetDisassemblyTable }, // 5
-    { GEN11::GetDisassemblyTable }, // 6
-    { GEN12_1::GetDisassemblyTable } // 7
-}; // ModelsDisassemblyArray[]
-#endif // GED_DISASSEMBLY
 const unsigned int numOfSupportedModels = 8;
 const char* modelNames[8] = { "gen7", "gen7_5", "gen8", "gen8_1", "gen9", "gen10", "gen11", "gen12_1" };
 
@@ -2136,10 +2122,3 @@ uint32_t GED_GetNibCtrl(const GED_EXEC_MASK_OFFSET_CTRL execmaskoffsetctrl, cons
     }
     return GEDInterpreter::ReinterpretEnum(execmaskoffsetctrl, 2, modelId, *result);
 }
-
-#if GED_DISASSEMBLY
-std::string GED_DisassembleIns(ged_ins_t* ins)
-{
-    return reinterpret_cast<GEDDisassembler*>(ins)->Disassemble();
-}
-#endif // GED_DISASSEMBLY

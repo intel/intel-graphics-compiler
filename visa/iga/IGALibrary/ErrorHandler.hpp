@@ -107,7 +107,7 @@ public:
     // hard stops with an exception a calling frame somewhere up the stack
     // must catch the iga::FatalError.   The ErrorHandler will contain this
     // error message.
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
         NORETURN_DECLSPEC
         void throwFatal(int pc, const char *message)
         NORETURN_ATTRIBUTE
@@ -116,7 +116,7 @@ public:
 #endif
     {
         reportError(pc, message);
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
         throw FatalError(message);
 #else
         m_fatalError = true;
@@ -124,7 +124,7 @@ public:
     }
 
 
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
     NORETURN_DECLSPEC
     void throwFatal(const Loc &loc, const char *message)
     NORETURN_ATTRIBUTE
@@ -134,12 +134,12 @@ public:
     {
         reportError(loc, message);
         m_fatalError = true;
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
         throw FatalError(message);
 #endif
     }
 
-#ifdef DISABLE_ENCODER_EXCEPTIONS
+#ifdef IGA_DISABLE_ENCODER_EXCEPTIONS
     void throwFatal(const Loc &loc, const std::string &message)
 #else
     NORETURN_DECLSPEC
@@ -149,7 +149,7 @@ public:
     {
         reportError(loc, message);
         m_fatalError = true;
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
         throw FatalError(message);
 #endif
     }

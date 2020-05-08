@@ -306,7 +306,7 @@ static void parseInstOpts(
         p.ConsumeOrFail(RBRACE,"expected }");
     }
 
-    p.m_builder.InstOpts(instOpts);
+    p.m_builder.InstOptsAdd(instOpts);
 }
 
 

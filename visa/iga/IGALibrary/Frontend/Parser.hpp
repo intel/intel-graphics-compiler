@@ -45,6 +45,15 @@ namespace iga
 {
     template<typename T> using IdentMap =
         std::initializer_list<std::pair<const char *,T>>;
+    template <typename T>
+    static inline T Lookup(std::string sym, const IdentMap<T> &M, T orElse) {
+        for (const auto &e : M) {
+            if (e.first == sym)
+                return e.second;
+        }
+        return orElse;
+    }
+
 
     // this type is used to bail out of the parsing algorithm upon syntax error
     struct SyntaxError : std::runtime_error {
@@ -97,7 +106,7 @@ namespace iga
         void Fail(const Loc &loc, const char *msg);
         void FailF(const char *pat, ...);
         void FailF(const Loc &loc, const char *pat, ...);
-        void FailAtPrev(const char *msg);
+        void FailAfterPrev(const char *msg);
 
         void Warning(const Loc &loc, const char *msg);
         void Warning(const char *msg);
@@ -148,6 +157,7 @@ namespace iga
         bool LookingAtFrom(int k, Lexeme lxm) const;
 
         bool LookingAtSeq(Lexeme lxm0, Lexeme lxm1) const {return LookingAtSeq({lxm0,lxm1});}
+        bool LookingAtSeq(Lexeme lxm0, Lexeme lxm1, Lexeme lxm2) const {return LookingAtSeq({lxm0,lxm1,lxm2});}
         bool LookingAtSeq(std::initializer_list<Lexeme> lxms) const;
 
         bool LookingAtAnyOf(Lexeme lxm0, Lexeme lxm1) const {return LookingAtAnyOf({lxm0,lxm1}); }

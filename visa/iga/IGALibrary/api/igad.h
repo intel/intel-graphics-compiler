@@ -229,6 +229,7 @@ typedef size_t(CDECLATTRIBUTE *pIGAKVGetDefaultLabelName)(
 typedef size_t(CDECLATTRIBUTE *pIGAKVGetInstSyntax)(
     const kv_t *kv,
     int32_t pc,
+    uint32_t fmt_opts,
     char *sbuf,
     size_t sbuf_cap,
     const char *(*get_label_name)(int32_t, void *),
@@ -329,6 +330,10 @@ typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetIsInversePred)(const kv_t *kv, int32_t
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSrcIndirectImmOff)(const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *immoff);
 #define IGA_KV_GET_DESTINATION_INDIRECT_IMM_OFF_STR "kv_get_destination_indirect_imm_off"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetDstIndirectImmOff)(const kv_t *kv, int32_t pc, int16_t *immoff);
+#define IGA_KV_GET_SOURCE_MME_NUMBER "kv_get_source_mme_number"
+typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSrcMMENumber)(const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *mme);
+#define IGA_KV_GET_DESTINATION_MME_NUMBER "kv_get_destination_mme_number"
+typedef int32_t(CDECLATTRIBUTE *pIGAKVGetDstMMENumber)(const kv_t *kv, int32_t pc, int16_t *mme);
 /*
  * A table of IGA functions
  */
@@ -423,4 +428,6 @@ typedef struct
     pIGAKVHasInstOpt           kv_has_inst_opt;
     pIGAKVGetSrcIndirectImmOff kv_get_source_indirect_imm_off;
     pIGAKVGetDstIndirectImmOff kv_get_destination_indirect_imm_off;
+    pIGAKVGetSrcMMENumber      kv_get_source_mme_number;
+    pIGAKVGetDstMMENumber      kv_get_destination_mme_number;
 } kv_functions_t;

@@ -205,8 +205,8 @@ namespace iga
             const char *name2, int offset2, int length2)
             : Field(_name,
                 name0, offset0, length0, Fragment::Kind::ENCODED,
-                name0, offset0, length0, Fragment::Kind::ENCODED,
-                name0, offset0, length0, Fragment::Kind::ENCODED)
+                name1, offset1, length1, Fragment::Kind::ENCODED,
+                name2, offset2, length2, Fragment::Kind::ENCODED)
         {
         }
         // a field a fragment of intrinsically defined 0's and top bits encoded

@@ -89,6 +89,10 @@ namespace iga
             //
             return bits;
         }
+        int64_t getSignedField(const Field &f) const {
+            auto bits = getField(f);
+            return getSignedBits(bits, 0, f.length());
+        }
 
         // gets a fragmented field from an array of fields
         // the fields are ordered low bit to high bit

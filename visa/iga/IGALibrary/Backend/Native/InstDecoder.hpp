@@ -202,22 +202,21 @@ namespace iga
         // PRIMITIVE FIELD ADDERS
         void addDecodedField(const Field &f, std::string meaning) {
             if (fields) {
-                int nEncoded = 0;
+                int encodedFragments = 0;
                 for (const Fragment &fr : f.fragments) {
                     if (fr.isInvalid())
                         break;
                     else if (fr.isEncoded())
-                        if (++nEncoded >= 2)
-                            break;
+                        encodedFragments++;
                 }
-                bool needsFragmentPrefix = nEncoded >= 2;
+                bool multipleFragments = false;
                 int fragIx = 0;
                 for (const Fragment &fr : f.fragments) {
                     if (fr.isInvalid())
                         break;
                     else if (fr.isEncoded()) {
                         std::string fragMeaning;
-                        if (needsFragmentPrefix) {
+                        if (multipleFragments) {
                             std::stringstream ss;
                             ss << "[frag. " << fragIx << "]: " << meaning;
                             fragMeaning = ss.str();
@@ -235,20 +234,21 @@ namespace iga
                 fields->emplace_back(fr, val);
         }
         uint64_t decodeFragment(const Fragment &f) {
-            if (fields)
-                fields->emplace_back(f, "");
+            addDecodedFragment(f, "");
             return bits.getFragment(f);
         }
         uint64_t decodeFragment(const Fragment &f, FormatFunction fmt) {
             auto val = bits.getFragment(f);
             if (fields) {
                 std::stringstream ss;
-                fmt(val,ss);
-                fields->emplace_back(f, ss.str());
+                fmt(val, ss);
+                addDecodedFragment(f, ss.str());
             }
             return val;
         }
-        uint64_t decodeFieldWithFunction(const Fragment &f, FormatFunction fmt) {
+        uint64_t decodeFieldWithFunction(
+            const Fragment &f, FormatFunction fmt)
+        {
             return decodeFragment(f, fmt);
         }
 
@@ -308,7 +308,8 @@ namespace iga
             const char *falseMeaning,
             const char *trueMeaning)
         {
-            return decodeField<bool>(f, false, falseMeaning, true, trueMeaning);
+            return decodeField<bool>(
+                f, false, falseMeaning, true, trueMeaning);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -324,7 +325,7 @@ namespace iga
         {
             // IGA_ASSERT(f.length == 2, "field is not a two bits");
             // we can have subset fields like Dst.RgnHz[0] in ternary
-            IGA_ASSERT(f.length() <= 2, "field is not a two bits");
+            IGA_ASSERT(f.length() <= 2, "field is <=2 bits");
             T val;
             const char *str = "";
             auto b = bits.getField(f);

@@ -139,11 +139,11 @@ namespace iga
         }
         template <SourceIndex S>
         void decodeSourceBasicAlign1(Instruction *inst) {
-            decodeSourceBasicAlign1<S>(inst,S);
+            decodeSourceBasicAlign1<S>(inst, S);
         }
         template <SourceIndex S>
         void decodeSourceBasicAlign16(Instruction *inst) {
-            decodeSourceBasicAlign16<S>(inst,S);
+            decodeSourceBasicAlign16<S>(inst, S);
         }
         template <SourceIndex S>
         void decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx);
@@ -253,7 +253,7 @@ namespace iga
                 decodeSrcHorzStride<S>());
         }
 
-        template <SourceIndex S> Region decodeSrcRegionTernaryAlign1();
+        template <SourceIndex S> Region decodeSrcRegionTernaryAlign1(const OpSpec &);
 
         template <SourceIndex S> MathMacroExt decodeSrcMathMacroReg() {
             return GEDToIGATranslation::translate(decodeSrcMathMacroExt<S>());

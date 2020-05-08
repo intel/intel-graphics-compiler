@@ -40,234 +40,82 @@ namespace iga
             Op opcode;
             switch (gedOpcode)
             {
-            case GED_OPCODE_illegal:
-                opcode = Op::ILLEGAL;
-                break;
-            case GED_OPCODE_mov:
-                opcode = Op::MOV;
-                break;
-            case GED_OPCODE_sel:
-                opcode = Op::SEL;
-                break;
-            case GED_OPCODE_movi:
-                opcode = Op::MOVI;
-                break;
-            case GED_OPCODE_not:
-                opcode = Op::NOT;
-                break;
-            case GED_OPCODE_and:
-                opcode = Op::AND;
-                break;
-            case GED_OPCODE_or:
-                opcode = Op::OR;
-                break;
-            case GED_OPCODE_xor:
-                opcode = Op::XOR;
-                break;
-            case GED_OPCODE_shr:
-                opcode = Op::SHR;
-                break;
-            case GED_OPCODE_shl:
-                opcode = Op::SHL;
-                break;
-            case GED_OPCODE_smov:
-                opcode = Op::SMOV;
-                break;
-            case GED_OPCODE_asr:
-                opcode = Op::ASR;
-                break;
-            case GED_OPCODE_cmp:
-                opcode = Op::CMP;
-                break;
-            case GED_OPCODE_cmpn:
-                opcode = Op::CMPN;
-                break;
-            case GED_OPCODE_csel:
-                opcode = Op::CSEL;
-                break;
-            case GED_OPCODE_bfrev:
-                opcode = Op::BFREV;
-                break;
-            case GED_OPCODE_bfe:
-                opcode = Op::BFE;
-                break;
-            case GED_OPCODE_bfi1:
-                opcode = Op::BFI1;
-                break;
-            case GED_OPCODE_bfi2:
-                opcode = Op::BFI2;
-                break;
-            case GED_OPCODE_jmpi:
-                opcode = Op::JMPI;
-                break;
-            case GED_OPCODE_brd:
-                opcode = Op::BRD;
-                break;
-            case GED_OPCODE_if:
-                opcode = Op::IF;
-                break;
-            case GED_OPCODE_brc:
-                opcode = Op::BRC;
-                break;
-            case GED_OPCODE_else:
-                opcode = Op::ELSE;
-                break;
-            case GED_OPCODE_endif:
-                opcode = Op::ENDIF;
-                break;
-            case GED_OPCODE_while:
-                opcode = Op::WHILE;
-                break;
-            case GED_OPCODE_break:
-                opcode = Op::BREAK;
-                break;
-            case GED_OPCODE_cont:
-                opcode = Op::CONT;
-                break;
-            case GED_OPCODE_halt:
-                opcode = Op::HALT;
-                break;
-            case GED_OPCODE_calla:
-                opcode = Op::CALLA;
-                break;
-            case GED_OPCODE_call:
-                opcode = Op::CALL;
-                break;
-            case GED_OPCODE_ret:
-                opcode = Op::RET;
-                break;
-            case GED_OPCODE_goto:
-                opcode = Op::GOTO;
-                break;
-            case GED_OPCODE_join:
-                opcode = Op::JOIN;
-                break;
-            case GED_OPCODE_wait:
-                opcode = Op::WAIT;
-                break;
-            case GED_OPCODE_send:
-                opcode = Op::SEND;
-                break;
-            case GED_OPCODE_sendc:
-                opcode = Op::SENDC;
-                break;
-            case GED_OPCODE_sends:
-                opcode = Op::SENDS;
-                break;
-            case GED_OPCODE_sendsc:
-                opcode = Op::SENDSC;
-                break;
-            case GED_OPCODE_math:
-                opcode = Op::MATH;
-                break;
-            case GED_OPCODE_add:
-                opcode = Op::ADD;
-                break;
-            case GED_OPCODE_mul:
-                opcode = Op::MUL;
-                break;
-            case GED_OPCODE_avg:
-                opcode = Op::AVG;
-                break;
-            case GED_OPCODE_frc:
-                opcode = Op::FRC;
-                break;
-            case GED_OPCODE_rndu:
-                opcode = Op::RNDU;
-                break;
-            case GED_OPCODE_rndd:
-                opcode = Op::RNDD;
-                break;
-            case GED_OPCODE_rnde:
-                opcode = Op::RNDE;
-                break;
-            case GED_OPCODE_rndz:
-                opcode = Op::RNDZ;
-                break;
-            case GED_OPCODE_mac:
-                opcode = Op::MAC;
-                break;
-            case GED_OPCODE_mach:
-                opcode = Op::MACH;
-                break;
-            case GED_OPCODE_lzd:
-                opcode = Op::LZD;
-                break;
-            case GED_OPCODE_fbh:
-                opcode = Op::FBH;
-                break;
-            case GED_OPCODE_fbl:
-                opcode = Op::FBL;
-                break;
-            case GED_OPCODE_cbit:
-                opcode = Op::CBIT;
-                break;
-            case GED_OPCODE_addc:
-                opcode = Op::ADDC;
-                break;
-            case GED_OPCODE_subb:
-                opcode = Op::SUBB;
-                break;
-            case GED_OPCODE_sad2:
-                opcode = Op::SAD2;
-                break;
-            case GED_OPCODE_sada2:
-                opcode = Op::SADA2;
-                break;
-            case GED_OPCODE_dp4:
-                opcode = Op::DP4;
-                break;
-            case GED_OPCODE_dph:
-                opcode = Op::DPH;
-                break;
-            case GED_OPCODE_dp3:
-                opcode = Op::DP3;
-                break;
-            case GED_OPCODE_dp2:
-                opcode = Op::DP2;
-                break;
-            case GED_OPCODE_line:
-                opcode = Op::LINE;
-                break;
-            case GED_OPCODE_pln:
-                opcode = Op::PLN;
-                break;
-            case GED_OPCODE_mad:
-                opcode = Op::MAD;
-                break;
-            case GED_OPCODE_lrp:
-                opcode = Op::LRP;
-                break;
-            case GED_OPCODE_madm:
-                opcode = Op::MADM;
-                break;
-            case GED_OPCODE_f32to16:
-                opcode = Op::F32TO16;
-                break;
-            case GED_OPCODE_f16to32:
-                opcode = Op::F16TO32;
-                break;
-            case GED_OPCODE_dim:
-                opcode = Op::DIM;
-                break;
-            case GED_OPCODE_dp4a:
-                opcode = Op::DP4A;
-                break;
-            case GED_OPCODE_ror:
-                opcode = Op::ROR;
-                break;
-            case GED_OPCODE_rol:
-                opcode = Op::ROL;
-                break;
-            case GED_OPCODE_INVALID:
-                opcode = Op::ILLEGAL;
-                break;
-            case GED_OPCODE_nop:
-                opcode = Op::NOP;
-                break;
-            case GED_OPCODE_sync:
-                opcode = Op::SYNC;
-                break;
+            case GED_OPCODE_INVALID: opcode = Op::ILLEGAL; break;
+            case GED_OPCODE_add: opcode = Op::ADD; break;
+            case GED_OPCODE_addc: opcode = Op::ADDC; break;
+            case GED_OPCODE_and: opcode = Op::AND; break;
+            case GED_OPCODE_asr: opcode = Op::ASR; break;
+            case GED_OPCODE_avg: opcode = Op::AVG; break;
+            case GED_OPCODE_bfe: opcode = Op::BFE; break;
+            case GED_OPCODE_bfi1: opcode = Op::BFI1; break;
+            case GED_OPCODE_bfi2: opcode = Op::BFI2; break;
+            case GED_OPCODE_bfrev: opcode = Op::BFREV; break;
+            case GED_OPCODE_brc: opcode = Op::BRC; break;
+            case GED_OPCODE_brd: opcode = Op::BRD; break;
+            case GED_OPCODE_break: opcode = Op::BREAK; break;
+            case GED_OPCODE_call: opcode = Op::CALL; break;
+            case GED_OPCODE_calla: opcode = Op::CALLA; break;
+            case GED_OPCODE_cbit: opcode = Op::CBIT; break;
+            case GED_OPCODE_cmp: opcode = Op::CMP; break;
+            case GED_OPCODE_cmpn: opcode = Op::CMPN; break;
+            case GED_OPCODE_cont: opcode = Op::CONT; break;
+            case GED_OPCODE_csel: opcode = Op::CSEL; break;
+            case GED_OPCODE_dim: opcode = Op::DIM; break;
+            case GED_OPCODE_dp2: opcode = Op::DP2; break;
+            case GED_OPCODE_dp3: opcode = Op::DP3; break;
+            case GED_OPCODE_dp4: opcode = Op::DP4; break;
+            case GED_OPCODE_dp4a: opcode = Op::DP4A; break;
+            case GED_OPCODE_dph: opcode = Op::DPH; break;
+            case GED_OPCODE_else: opcode = Op::ELSE; break;
+            case GED_OPCODE_endif: opcode = Op::ENDIF; break;
+            case GED_OPCODE_f16to32: opcode = Op::F16TO32; break;
+            case GED_OPCODE_f32to16: opcode = Op::F32TO16; break;
+            case GED_OPCODE_fbh: opcode = Op::FBH; break;
+            case GED_OPCODE_fbl: opcode = Op::FBL; break;
+            case GED_OPCODE_frc: opcode = Op::FRC; break;
+            case GED_OPCODE_goto: opcode = Op::GOTO; break;
+            case GED_OPCODE_halt: opcode = Op::HALT; break;
+            case GED_OPCODE_if: opcode = Op::IF; break;
+            case GED_OPCODE_illegal: opcode = Op::ILLEGAL; break;
+            case GED_OPCODE_jmpi: opcode = Op::JMPI; break;
+            case GED_OPCODE_join: opcode = Op::JOIN; break;
+            case GED_OPCODE_line: opcode = Op::LINE; break;
+            case GED_OPCODE_lrp: opcode = Op::LRP; break;
+            case GED_OPCODE_lzd: opcode = Op::LZD; break;
+            case GED_OPCODE_mac: opcode = Op::MAC; break;
+            case GED_OPCODE_mach: opcode = Op::MACH; break;
+            case GED_OPCODE_mad: opcode = Op::MAD; break;
+            case GED_OPCODE_madm: opcode = Op::MADM; break;
+            case GED_OPCODE_math: opcode = Op::MATH; break;
+            case GED_OPCODE_mov: opcode = Op::MOV; break;
+            case GED_OPCODE_movi: opcode = Op::MOVI; break;
+            case GED_OPCODE_mul: opcode = Op::MUL; break;
+            case GED_OPCODE_nop: opcode = Op::NOP; break;
+            case GED_OPCODE_not: opcode = Op::NOT; break;
+            case GED_OPCODE_or: opcode = Op::OR; break;
+            case GED_OPCODE_pln: opcode = Op::PLN; break;
+            case GED_OPCODE_ret: opcode = Op::RET; break;
+            case GED_OPCODE_rndd: opcode = Op::RNDD; break;
+            case GED_OPCODE_rnde: opcode = Op::RNDE; break;
+            case GED_OPCODE_rndu: opcode = Op::RNDU; break;
+            case GED_OPCODE_rndz: opcode = Op::RNDZ; break;
+            case GED_OPCODE_rol: opcode = Op::ROL; break;
+            case GED_OPCODE_ror: opcode = Op::ROR; break;
+            case GED_OPCODE_sad2: opcode = Op::SAD2; break;
+            case GED_OPCODE_sada2: opcode = Op::SADA2; break;
+            case GED_OPCODE_sel: opcode = Op::SEL; break;
+            case GED_OPCODE_send: opcode = Op::SEND; break;
+            case GED_OPCODE_sendc: opcode = Op::SENDC; break;
+            case GED_OPCODE_sends: opcode = Op::SENDS; break;
+            case GED_OPCODE_sendsc: opcode = Op::SENDSC; break;
+            case GED_OPCODE_shl: opcode = Op::SHL; break;
+            case GED_OPCODE_shr: opcode = Op::SHR; break;
+            case GED_OPCODE_smov: opcode = Op::SMOV; break;
+            case GED_OPCODE_subb: opcode = Op::SUBB; break;
+            case GED_OPCODE_sync: opcode = Op::SYNC; break;
+            case GED_OPCODE_wait: opcode = Op::WAIT; break;
+            case GED_OPCODE_while: opcode = Op::WHILE; break;
+            case GED_OPCODE_xor: opcode = Op::XOR; break;
             default:
                 opcode = Op::ILLEGAL;
                 break;
@@ -283,48 +131,20 @@ namespace iga
 
             switch (pred)
             {
-            case GED_PRED_CTRL_Normal:
-                predCtrl = PredCtrl::NONE;
-                break;
-            case GED_PRED_CTRL_Sequential:
-                predCtrl = PredCtrl::SEQ;
-                break;
-            case GED_PRED_CTRL_anyv:
-                predCtrl = PredCtrl::ANYV;
-                break;
-            case GED_PRED_CTRL_allv:
-                predCtrl = PredCtrl::ALLV;
-                break;
-            case GED_PRED_CTRL_any2h:
-                predCtrl = PredCtrl::ANY2H;
-                break;
-            case GED_PRED_CTRL_all2h:
-                predCtrl = PredCtrl::ALL2H;
-                break;
-            case GED_PRED_CTRL_any4h:
-                predCtrl = PredCtrl::ANY4H;
-                break;
-            case GED_PRED_CTRL_all4h:
-                predCtrl = PredCtrl::ALL4H;
-                break;
-            case GED_PRED_CTRL_any8h:
-                predCtrl = PredCtrl::ANY8H;
-                break;
-            case GED_PRED_CTRL_all8h:
-                predCtrl = PredCtrl::ALL8H;
-                break;
-            case GED_PRED_CTRL_any16h:
-                predCtrl = PredCtrl::ANY16H;
-                break;
-            case GED_PRED_CTRL_all16h:
-                predCtrl = PredCtrl::ALL16H;
-                break;
-            case GED_PRED_CTRL_any32h:
-                predCtrl = PredCtrl::ANY32H;
-                break;
-            case GED_PRED_CTRL_all32h:
-                predCtrl = PredCtrl::ALL32H;
-                break;
+            case GED_PRED_CTRL_Normal: predCtrl = PredCtrl::NONE; break;
+            case GED_PRED_CTRL_Sequential: predCtrl = PredCtrl::SEQ; break;
+            case GED_PRED_CTRL_anyv:   predCtrl = PredCtrl::ANYV; break;
+            case GED_PRED_CTRL_allv:   predCtrl = PredCtrl::ALLV; break;
+            case GED_PRED_CTRL_any2h:  predCtrl = PredCtrl::ANY2H; break;
+            case GED_PRED_CTRL_all2h:  predCtrl = PredCtrl::ALL2H; break;
+            case GED_PRED_CTRL_any4h:  predCtrl = PredCtrl::ANY4H; break;
+            case GED_PRED_CTRL_all4h:  predCtrl = PredCtrl::ALL4H; break;
+            case GED_PRED_CTRL_any8h:  predCtrl = PredCtrl::ANY8H; break;
+            case GED_PRED_CTRL_all8h:  predCtrl = PredCtrl::ALL8H; break;
+            case GED_PRED_CTRL_any16h: predCtrl = PredCtrl::ANY16H; break;
+            case GED_PRED_CTRL_all16h: predCtrl = PredCtrl::ALL16H; break;
+            case GED_PRED_CTRL_any32h: predCtrl = PredCtrl::ANY32H; break;
+            case GED_PRED_CTRL_all32h: predCtrl = PredCtrl::ALL32H; break;
             case GED_PRED_CTRL_INVALID:
             default:
                 predCtrl = PredCtrl::NONE;
@@ -368,12 +188,8 @@ namespace iga
 
             switch (mod)
             {
-            case GED_SATURATE_Normal:
-                dstMod = DstModifier::NONE;
-                break;
-            case GED_SATURATE_sat:
-                dstMod = DstModifier::SAT;
-                break;
+            case GED_SATURATE_Normal: dstMod = DstModifier::NONE; break;
+            case GED_SATURATE_sat: dstMod = DstModifier::SAT; break;
             case GED_SATURATE_INVALID:
             default:
                 dstMod = DstModifier::NONE;
@@ -395,7 +211,7 @@ namespace iga
             case GED_MATH_MACRO_EXT_mme5: return MathMacroExt::MME5;
             case GED_MATH_MACRO_EXT_mme6: return MathMacroExt::MME6;
             case GED_MATH_MACRO_EXT_mme7: return MathMacroExt::MME7;
-            case  GED_MATH_MACRO_EXT_nomme: return MathMacroExt::NOMME;
+            case GED_MATH_MACRO_EXT_nomme: return MathMacroExt::NOMME;
             default: return MathMacroExt::INVALID;
             }
         }
@@ -407,51 +223,21 @@ namespace iga
 
             switch (type)
             {
-            case GED_DATA_TYPE_ud:
-                opndType = Type::UD;
-                break;
-            case GED_DATA_TYPE_d:
-                opndType = Type::D;
-                break;
-            case GED_DATA_TYPE_uw:
-                opndType = Type::UW;
-                break;
-            case GED_DATA_TYPE_w:
-                opndType = Type::W;
-                break;
-            case GED_DATA_TYPE_ub:
-                opndType = Type::UB;
-                break;
-            case GED_DATA_TYPE_b:
-                opndType = Type::B;
-                break;
-            case GED_DATA_TYPE_df:
-                opndType = Type::DF;
-                break;
-            case GED_DATA_TYPE_f:
-                opndType = Type::F;
-                break;
-            case GED_DATA_TYPE_uq:
-                opndType = Type::UQ;
-                break;
-            case GED_DATA_TYPE_q:
-                opndType = Type::Q;
-                break;
-            case GED_DATA_TYPE_hf:
-                opndType = Type::HF;
-                break;
-            case GED_DATA_TYPE_uv:
-                opndType = Type::UV;
-                break;
-            case GED_DATA_TYPE_vf:
-                opndType = Type::VF;
-                break;
-            case GED_DATA_TYPE_v:
-                opndType = Type::V;
-                break;
-            case GED_DATA_TYPE_nf:
-                opndType = Type::NF;
-                break;
+            case GED_DATA_TYPE_ud: opndType = Type::UD; break;
+            case GED_DATA_TYPE_d:  opndType = Type::D;  break;
+            case GED_DATA_TYPE_uw: opndType = Type::UW; break;
+            case GED_DATA_TYPE_w:  opndType = Type::W;  break;
+            case GED_DATA_TYPE_ub: opndType = Type::UB; break;
+            case GED_DATA_TYPE_b:  opndType = Type::B;  break;
+            case GED_DATA_TYPE_df: opndType = Type::DF; break;
+            case GED_DATA_TYPE_f:  opndType = Type::F;  break;
+            case GED_DATA_TYPE_uq: opndType = Type::UQ; break;
+            case GED_DATA_TYPE_q:  opndType = Type::Q;  break;
+            case GED_DATA_TYPE_hf: opndType = Type::HF; break;
+            case GED_DATA_TYPE_uv: opndType = Type::UV; break;
+            case GED_DATA_TYPE_vf: opndType = Type::VF; break;
+            case GED_DATA_TYPE_v:  opndType = Type::V;  break;
+            case GED_DATA_TYPE_nf: opndType = Type::NF; break;
 
             case GED_DATA_TYPE_INVALID:
             default:
@@ -467,30 +253,14 @@ namespace iga
 
             switch (ctrl)
             {
-            case GED_CHANNEL_OFFSET_M0:
-                mOffset = ChannelOffset::M0;
-                break;
-            case GED_CHANNEL_OFFSET_M4:
-                mOffset = ChannelOffset::M4;
-                break;
-            case GED_CHANNEL_OFFSET_M8:
-                mOffset = ChannelOffset::M8;
-                break;
-            case GED_CHANNEL_OFFSET_M12:
-                mOffset = ChannelOffset::M12;
-                break;
-            case GED_CHANNEL_OFFSET_M16:
-                mOffset = ChannelOffset::M16;
-                break;
-            case GED_CHANNEL_OFFSET_M20:
-                mOffset = ChannelOffset::M20;
-                break;
-            case GED_CHANNEL_OFFSET_M24:
-                mOffset = ChannelOffset::M24;
-                break;
-            case GED_CHANNEL_OFFSET_M28:
-                mOffset = ChannelOffset::M28;
-                break;
+            case GED_CHANNEL_OFFSET_M0: mOffset = ChannelOffset::M0; break;
+            case GED_CHANNEL_OFFSET_M4: mOffset = ChannelOffset::M4; break;
+            case GED_CHANNEL_OFFSET_M8: mOffset = ChannelOffset::M8; break;
+            case GED_CHANNEL_OFFSET_M12: mOffset = ChannelOffset::M12; break;
+            case GED_CHANNEL_OFFSET_M16: mOffset = ChannelOffset::M16; break;
+            case GED_CHANNEL_OFFSET_M20: mOffset = ChannelOffset::M20; break;
+            case GED_CHANNEL_OFFSET_M24: mOffset = ChannelOffset::M24; break;
+            case GED_CHANNEL_OFFSET_M28: mOffset = ChannelOffset::M28; break;
             default:
                 break;
             }

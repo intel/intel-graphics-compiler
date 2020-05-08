@@ -11,16 +11,18 @@ execute_process(
     OUTPUT_VARIABLE GIT_COMMIT
     OUTPUT_STRIP_TRAILING_WHITESPACE
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-
+#
 execute_process(
     COMMAND git diff-index --quiet HEAD --
-    OUTPUT_VARIABLE GIT_DIRTY
+    RESULT_VARIABLE GIT_DIRTY
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+message("GIT_DIRTY = ${GIT_DIRTY}")
 
 set(IGA_VERSION_SUFFIX "")
 if(GIT_COMMIT)
     set(IGA_VERSION_DIRTY_TAG "")
-    if (NOT GIT_DIRTY EQUAL 0)
+    if (NOT ${GIT_DIRTY} EQUAL 0)
         set(IGA_VERSION_DIRTY_TAG "+")
     endif()
     set(IGA_VERSION_SUFFIX "${IGA_VERSION_SUFFIX}-${GIT_COMMIT}${IGA_VERSION_DIRTY_TAG}")
@@ -138,6 +140,7 @@ set(IGA_SOURCES
   ${IGA_API_Source}
   ${IGA_Backend}
   ${IGA_Backend_GED}
+  ${IGA_Backend_Messages}
   ${IGA_Backend_Native}
   ${IGA_Backend_Native_Gen12}
   ${IGA_Frontend}
@@ -271,12 +274,12 @@ if(IGC_BUILD AND MSVC)
 bs_set_wdk(IGA_ENC_LIB)
 endif()
 
-# DISABLE_ENCODER_EXCEPTIONS: Disabling exceptions for encoder only project.
+# IGA_DISABLE_ENCODER_EXCEPTIONS: Disabling exceptions for encoder-only project.
 # So it can be used in vISA BE, which is used in IGC. (IGC doesn't permit C++
 # exceptions to be used
 # Alex: seems like this is the way to do it so it works in various
 # linux, android builds.
-target_compile_definitions(IGA_ENC_LIB PUBLIC DISABLE_ENCODER_EXCEPTIONS)
+target_compile_definitions(IGA_ENC_LIB PUBLIC IGA_DISABLE_ENCODER_EXCEPTIONS)
 
 ##############################################################################
 # iga##.dll
@@ -336,9 +339,11 @@ source_group("Backend" FILES ${IGA_Backend})
 
 if(WIN32)
   source_group("Backend\\GED" FILES ${IGA_Backend_GED})
+  source_group("Backend\\Messages" FILES ${IGA_Backend_Messages})
   source_group("Backend\\Native" FILES ${IGA_Backend_Native})
 else()
   source_group("Backend/GED" FILES ${IGA_Backend_GED})
+  source_group("Backend/Messages" FILES ${IGA_Backend_Messages})
   source_group("Backend/Native" FILES ${IGA_Backend_Native})
 endif()
 

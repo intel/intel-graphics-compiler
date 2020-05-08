@@ -257,13 +257,14 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                 DEP_PIPE prevDepPipe = dep->getDepPipe();
                 DEP_CLASS prevDepClass = dep->getDepClass();
 
-                // Send instructions could write to different pipes (e.g. SLM)
-                // which should be considered as different pipes
-                bool isSend = false;
+                // Send with different SFID could write to different pipes
+                bool send_in_diff_pipe = false;
                 if (dep->getInstruction()->getOpSpec().isSendFamily() &&
                     currDep.getInstruction()->getOpSpec().isSendFamily())
                 {
-                    isSend = true;
+                    send_in_diff_pipe =
+                        (dep->getInstruction()->getOpSpec().op !=
+                         currDep.getInstruction()->getOpSpec().op);
                 }
 
                 bool isRAW = currDepType == DEP_TYPE::READ &&
@@ -271,11 +272,11 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                 //WAW: different pipelines W2 kill W1  W2-->live      explict dependence
                 bool isWAW = (currDepType == DEP_TYPE::WRITE &&
                               prevDepType == DEP_TYPE::WRITE &&
-                     (currDepPipe != prevDepPipe || isSend));
+                     (currDepPipe != prevDepPipe || send_in_diff_pipe));
                 //WAR: different pipelines W kill R    W-->live       explict dependence
                 bool isWAR = currDepType == DEP_TYPE::WRITE &&
                              prevDepType == DEP_TYPE::READ  &&
-                             (currDepPipe != prevDepPipe || isSend);
+                             (currDepPipe != prevDepPipe || send_in_diff_pipe);
                 bool isWAW_out_of_order
                            = (currDepType == DEP_TYPE::WRITE &&
                               prevDepType == DEP_TYPE::WRITE &&

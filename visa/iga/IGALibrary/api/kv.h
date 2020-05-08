@@ -147,7 +147,8 @@ IGA_API uint32_t kv_get_inst_targets(
 /*
  * This function returns the syntax for a given instruction.
  * The user passes the buffer 'sbuf' (along with its capacity) to hold
- * the output.
+ * the output.  The formatting options are the same as those in
+ * iga_disassemble_options_t::formatting_opts.
  *
  * The optional 'get_label_name' callback converts a PC into a label.
  * The caller can provide NULL and internal label names will be used.
@@ -160,6 +161,7 @@ IGA_API size_t kv_get_inst_syntax(
     int32_t pc,
     char *sbuf,
     size_t sbuf_cap,
+    uint32_t fmt_opts,
     const char *(*get_label_name)(int32_t, void *),
     void *env
 );
@@ -420,6 +422,22 @@ IGA_API int32_t kv_get_source_indirect_imm_off(
    Return -1 if given destination is not indirect srouce
  */
 IGA_API int32_t kv_get_destination_indirect_imm_off(
+    const kv_t *kv, int32_t pc, int16_t *mme);
+
+/*
+ * This function exposes source's MathMacroExt number for
+   math macro instructions.
+   Return -1 if given instruction is not math macro instruction
+ */
+IGA_API int32_t kv_get_source_mme_number(
+    const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *mme);
+
+/*
+ * This function exposes destination's MathMacroExt number for
+   math macro instructions.
+   Return -1 if given instruction is not math macro instruction
+ */
+IGA_API int32_t kv_get_destination_mme_number(
     const kv_t *kv, int32_t pc, int16_t *immoff);
 
 /*

@@ -8,7 +8,6 @@
 #include "common/ged_base.h"
 #include "common/ged_ins_decoding_table.h"
 #include "common/ged_compact_mapping_table.h"
-#include "common/ged_ins_disassembly_table.h"
 # if GED_VALIDATION_API
 #include "common/ged_validation_utils.h"
 # endif // GED_VALIDATION_API
@@ -155,16 +154,6 @@ public:
      * @note        This function is predefined and does not depend on the active model.
      */
     inline uint8_t GetRawOpcode() const { return _opcode; }
-
-
-# if GED_DISASSEMBLY
-    /*!
-    * Get a string representation of the instruction's opcode i.e. its mnemonic.
-    *
-    * @return      The instruction's mnemonic.
-    */
-    inline const char* GetMnemonic() const { return stringGettersByField[opcodeFieldEnumId][GetOpcode()]; }
-# endif // GED_DISASSEMBLY
 
 
     /*!
@@ -733,12 +722,6 @@ NumType GEDIns::GetField(const /* GED_INS_FIELD */ uint32_t field, GED_RETURN_VA
     if (GetCurrentModelData().numberOfInstructionFields <= field)
     {
         return (NumType) - 1;
-    }
-    else
-    {
-# if GED_DISASSEMBLY // TODO: This should be guarded by a different define, probably GED_LOG.
-        GEDASSERT(NULL != GetMnemonic());
-# endif // GED_DISASSEMBLY
     }
 
     // Try to use the native format first. It may not be valid if we are in the middle of encoding a compact instruction, in which

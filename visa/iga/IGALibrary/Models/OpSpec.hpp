@@ -34,30 +34,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
-    // Determines the for a given syntactic construct is explicit, implicit,
-    // or default.  T will be something like a Type or Region or otherwise.
+    // An operation specification (OpSpec).
     //
-    //   EXPLICIT:    means that the type must be given and it's a syntax error
-    //                if the construct is absent; the `value` field is
-    //                undefined; in formatted output, this construct must be
-    //                present
-    //
-    //   DEFAULT:     means that the syntactic construct is optional; if it's
-    //                absent in the syntax, then we silently use `value` in
-    //                the IR; in formatted output this construct will be
-    //                emitted.
-    //
-    //   IMPLICIT:    if present we use the given value with a warning,
-    //                otherwise we use `value`
-    //
-    //
-    // template <typename T>
-    // struct Syntax {
-    //     enum{EXPLICIT, DEFAULT IMPLICIT}  type;
-    //    T                                 value;
-    // };
-
-    // An operation specification
+    // Each model contains an array of these built-in
     struct OpSpec {
         // The various syntaxes and formats that each instruction can support
         // The naming convention groups the instructions logically as
@@ -636,7 +615,7 @@ namespace iga
         }
 
 
-        bool isSyncSubFunc() const { return groupOp == Op::SYNC; }
+        bool isSyncSubFunc() const {return groupOp == Op::SYNC;}
 
         bool isVariableLatency() const {
             return isSendOrSendsFamily() || isMathSubFunc()

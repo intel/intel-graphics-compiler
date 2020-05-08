@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IR/Types.hpp"
 #include "../strings.hpp"
 
+#include <algorithm>
 #include <limits>
 #include <map>
 #include <string>
@@ -166,7 +167,7 @@ void GenParser::ParseExecInfo(
     ExecSize &execSize,
     ChannelOffset &chOff)
 {
-    Loc execSizeLoc = NextLoc(0);
+    Loc execSizeLoc = m_execSizeLoc = NextLoc(0);
     Loc execOffsetLoc = NextLoc(0);
     // we are careful here since we might have things like:
     //    jmpi        (1*16)
@@ -232,8 +233,8 @@ void GenParser::ParseExecInfo(
     m_builder.InstExecInfo(
         execSizeLoc, execSize, execOffsetLoc, chOff);
 }
-Type GenParser::ParseSendOperandTypeWithDefault(int srcIx) {
-    // sends's second parameter doesn't have a valid type
+
+Type GenParser::SendOperandDefaultType(int srcIx) const {
     auto t = srcIx == 1 ? Type::INVALID : Type::UD;
     if (srcIx < 0) {
         if (m_opSpec->hasImplicitDstType(platform()))
@@ -242,6 +243,12 @@ Type GenParser::ParseSendOperandTypeWithDefault(int srcIx) {
         if (m_opSpec->hasImplicitSrcType(srcIx, false, platform()))
             t = m_opSpec->implicitSrcType(srcIx, false, platform());
     }
+    return t;
+}
+
+Type GenParser::ParseSendOperandTypeWithDefault(int srcIx) {
+    // sends's second parameter doesn't have a valid type
+    Type t = Type::INVALID;
     if (Consume(COLON)) {
         if (!LookingAt(IDENT)) {
             Fail("expected a send operand type");
@@ -250,6 +257,8 @@ Type GenParser::ParseSendOperandTypeWithDefault(int srcIx) {
             Fail("unexpected operand type for send");
         }
         Skip();
+    } else {
+        t = SendOperandDefaultType(srcIx);
     }
     return t;
 }
@@ -304,8 +313,11 @@ bool GenParser::PeekReg(const RegInfo*& regInfo, int& regNum) {
         // helpful translation that permits acc2-acc9 and translates them
         // to mme0-7 with a warning (or whatever they map to on the given
         // platform
-        if (regInfo->regName == RegName::ARF_ACC && regNum >= regInfo->numRegs) {
-            const RegInfo *mme = m_model.lookupRegInfoByRegName(RegName::ARF_MME);
+        if (regInfo->regName == RegName::ARF_ACC &&
+            regNum >= regInfo->numRegs)
+        {
+            const RegInfo *mme =
+                m_model.lookupRegInfoByRegName(RegName::ARF_MME);
             IGA_ASSERT(mme != nullptr, "unable to find MMR on this platform");
             if (mme) {
                 // switch acc to mme
@@ -383,7 +395,7 @@ static bool isIntegral(const ImmVal &v) {
 // +,-
 // *,/,%
 // -(unary neg)
-bool GenParser::TryParseConstExpr(ImmVal &v,int srcOpIx) {
+bool GenParser::TryParseConstExpr(ImmVal &v, int srcOpIx) {
     if (parseBitwiseExpr(false, v)) {
         if (srcOpIx >= 0) {
             m_srcKinds[srcOpIx] = Operand::Kind::IMMEDIATE;
@@ -392,15 +404,15 @@ bool GenParser::TryParseConstExpr(ImmVal &v,int srcOpIx) {
     }
     return false;
 }
-bool GenParser::TryParseIntConstExpr(ImmVal &v, const char *for_what) {
+bool GenParser::TryParseIntConstExpr(ImmVal &v, const char *forWhat) {
     Loc loc = NextLoc();
     bool z = TryParseConstExpr(v);
     if (!z) {
         return false;
     } else if (!isIntegral(v)) {
         std::stringstream ss;
-        if (for_what) {
-            ss << for_what << " must be a constant integer expression";
+        if (forWhat) {
+            ss << forWhat << " must be a constant integer expression";
         } else {
             ss << "expected constant integer expression";
         }
@@ -414,7 +426,9 @@ void GenParser::ensureIntegral(const Token &t, const ImmVal &v) {
         Fail(t.loc, "argument to operator must be integral");
     }
 }
-void GenParser::checkNumTypes(const ImmVal &v1, const Token &op, const ImmVal &v2) {
+void GenParser::checkNumTypes(
+    const ImmVal &v1, const Token &op, const ImmVal &v2)
+{
     if (isFloating(v1) && !isFloating(v2)) {
         Fail(op.lexeme, "right operand to operator must be floating point"
             " (append a .0 to force floating point)");
@@ -424,7 +438,9 @@ void GenParser::checkNumTypes(const ImmVal &v1, const Token &op, const ImmVal &v
     }
 }
 // target must be float
-void GenParser::checkIntTypes(const ImmVal &v1, const Token &op, const ImmVal &v2) {
+void GenParser::checkIntTypes(
+    const ImmVal &v1, const Token &op, const ImmVal &v2)
+{
     if (isFloating(v1)) {
         Fail(op.lexeme, "left operand to operator must be integral");
     } else if (isFloating(v2)) {
@@ -432,7 +448,9 @@ void GenParser::checkIntTypes(const ImmVal &v1, const Token &op, const ImmVal &v
     }
 }
 
-ImmVal GenParser::evalBinExpr(const ImmVal &v1, const Token &op, const ImmVal &v2) {
+ImmVal GenParser::evalBinExpr(
+    const ImmVal &v1, const Token &op, const ImmVal &v2)
+{
     bool isF = isFloating(v1) || isFloating(v2);
     bool isU = isUnsignedInt(v1) || isUnsignedInt(v2);
     ImmVal result = v1;
@@ -1008,6 +1026,7 @@ private:
     ExecSize              m_execSize;
     ChannelOffset         m_chOff;
 
+    Loc                   m_mnemonicLoc;
     Loc                   m_srcLocs[3];
 
     void initSymbolMaps() {
@@ -1204,8 +1223,11 @@ private:
         m_opSpec = nullptr;
         m_unifType = Type::INVALID;
         m_unifTypeTk = nullptr;
-        for (size_t i = 0; i < sizeof(m_srcKinds)/sizeof(m_srcKinds[0]); i++)
+        m_mnemonicLoc = Loc::INVALID;
+        for (size_t i = 0; i < sizeof(m_srcKinds)/sizeof(m_srcKinds[0]); i++) {
+            m_srcLocs[i] = Loc::INVALID;
             m_srcKinds[i] = Operand::Kind::INVALID;
+        }
 
         // (W&~f0) mov (8|M0) r1 r2
         // ^
@@ -1219,17 +1241,31 @@ private:
         //
         // (f0.0)  ld.sc8.x4 (8) ... surf[4][...]
         //         ^
-        const Loc mnemonicLoc = NextLoc();
+        const Loc mnemonicLoc = m_mnemonicLoc = NextLoc();
         m_opSpec = ParseMnemonic();
         if (m_opSpec) {
             // looking at a regular instruction (non special-ld-st inst)
             m_builder.InstOp(m_opSpec);
             FinishNonLdStInstBody();
-        } else if (!ParseLdStInst(m_defaultExecutionSize, *this)) {
+        } else if (
+            !ParseLdStInst(m_defaultExecutionSize, *this))
+        {
             Fail(mnemonicLoc, "invalid mnemonic");
         }
+
+        // .... {...}
+        ParseInstOpts();
+
+        if (!LookingAt(Lexeme::NEWLINE) &&
+            !LookingAt(Lexeme::SEMI) &&
+            !LookingAt(Lexeme::END_OF_FILE))
+        {
+            FailAfterPrev("expected '\\n', ';', or EOF");
+        }
+
         m_builder.InstEnd(ExtentToPrevEnd(startLoc));
     }
+
 
     // e.g.  add (8|M8) ...
     //           ^
@@ -1370,14 +1406,6 @@ private:
             break;
         default:
             IGA_ASSERT_FALSE("unhandled syntax class in parser");
-        }
-        ParseInstOpts();
-
-        if (!LookingAt(Lexeme::NEWLINE) &&
-            !LookingAt(Lexeme::SEMI) &&
-            !LookingAt(Lexeme::END_OF_FILE))
-        {
-            FailAtPrev("expected '\\n', ';', or EOF");
         }
     }
 
@@ -1636,7 +1664,9 @@ private:
     const OpSpec* ParseSubOp(const OpSpec *pParent)
     {
         const OpSpec *pOp = nullptr;
-        ConsumeOrFail(DOT, "expected operation subfunction");
+        if (!Consume(DOT)) {
+            FailAfterPrev("expected operation subfunction");
+        }
 
         auto sfLoc = NextLoc();
         if (LookingAt(IDENT)) {
@@ -1912,18 +1942,22 @@ private:
         // ensure the subregister is not out of bounds
         if (dty != Type::INVALID) {
             int typeSize = TypeSizeInBits(dty)/8;
-            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize())) {
+            if (!ri.isSubRegByteOffsetValid(
+                regNum, subregNum * typeSize, m_model.getGRFByteSize()))
+            {
                 if (ri.regName == RegName::GRF_R) {
                     Error(subregLoc,
-                        "subregister out of bounds for data type", ToSyntax(dty));
+                        "subregister out of bounds for data type",
+                        ToSyntax(dty));
                 } else {
-                    // Print warning for non-GRF register, in case for those valid but strange case
-                    // e.g. null0.20:f
+                    // Print warning for non-GRF register, in case for those
+                    // valid but strange case e.g. null0.20:f
                     Warning(subregLoc,
                         "subregister out of bounds for data type");
                 }
             } else if (typeSize < ri.accGran) {
-                Warning(regnameLoc, "access granularity too small for data type");
+                Warning(regnameLoc,
+                    "access granularity too small for data type");
             }
         }
 
@@ -1961,13 +1995,15 @@ private:
         }
 
         // check if the imm offset out of bound
-        int addroff_up_bound = 511;
-        int addroff_low_bound = -512;
-        if (addrOff < addroff_low_bound || addrOff > addroff_up_bound)
+        int addroffMax = 511;
+        int addroffMin = -512;
+        if (addrOff < addroffMin || addrOff > addroffMax)
         {
-            std::string err_str = "immediate offset is out of range; must be in [" +
-                std::to_string(addroff_low_bound) + "," + std::to_string(addroff_up_bound) + "]";
-            Fail(addrOffLoc, err_str);
+            std::string err =
+                "immediate offset is out of range; must be in [" +
+                std::to_string(addroffMin) + "," +
+                std::to_string(addroffMax) + "]";
+            Fail(addrOffLoc, err);
         }
 
         ConsumeOrFail(RBRACK, "expected ]");
@@ -1982,10 +2018,10 @@ private:
         RegRef addrRegRef;
         ParseIndOpArgs(addrRegRef, addrOff);
         addrOff += baseAddr;
-
+        //
         // <1>
         Region::Horz rgnHz = ParseDstOpRegion();
-
+        //
         // :t
         Type dty = ParseDstOpTypeWithDefault();
         m_builder.InstDstOpRegIndirect(
@@ -2314,6 +2350,8 @@ private:
             ConsumeOrFailAfterPrev(COMMA, "expected ,");
             rgn.set(ParseRegionHorz());
             ConsumeOrFailAfterPrev(RANGLE, "expected >");
+        } else if (m_opSpec->isSendOrSendsFamily()) {
+            rgn = defaultSendOperandRegion(ri.regName, srcOpIx);
         } else if (ri.supportsRegioning()) {
             // N.B. <1;1,0> won't coissue on PreGEN11
             rgn = hasExplicitSubreg || m_execSize == ExecSize::SIMD1 ?
@@ -2387,6 +2425,23 @@ private:
         return rgn;
     }
 
+    Region defaultSendOperandRegion(RegName rn, int opIx) const {
+        Region r = Region::INVALID;
+        if (opIx < 0) {
+            if (m_opSpec->hasImplicitDstRegion()) {
+                r = m_opSpec->implicitDstRegion();
+            }
+        } else {
+            if (m_opSpec->hasImplicitSrcRegion(opIx, platform(), m_execSize)) {
+                r =  m_opSpec->implicitSrcRegion(0, platform(), m_execSize);
+            } else if (rn == RegName::ARF_NULL) {
+                r = Region::SRC010;
+            } else {
+                r = Region::SRC110;
+            }
+        }
+        return r;
+    }
 
     // '<' INT ',' INT '>'             (VxH mode)
     // '<' INT ';' INT ',' INT '>'
@@ -3007,7 +3062,8 @@ private:
             ConsumeOrFail(RBRACE,"expected }");
         }
 
-        m_builder.InstOpts(instOpts);
+
+        m_builder.InstOptsAdd(instOpts);
     }
 
     void ParseInstOptOrFail(InstOptSet &instOpts) {
@@ -3101,6 +3157,31 @@ private:
     }
 
 }; // class KernelParser
+
+
+///////////////////////////////////////////////////////////////////////////////
+struct ParsedPayloadInfo {
+    Loc regLoc = Loc::INVALID;
+    int regNum = -1;
+    RegName regName = RegName::INVALID;
+    Loc regLenLoc = Loc::INVALID;
+    int regLen = 0;
+    bool regLenWasImplicit = false;
+};
+struct ParsedAddrOperand {
+    Loc surfArgLoc = Loc::INVALID;
+    SendDesc surfArg; // won't be set for flat
+                         //
+    Loc scaleLoc = Loc::INVALID;
+    int scale = 1;
+    //
+    ParsedPayloadInfo payload;
+    //
+    Loc immOffsetLoc = Loc::INVALID;
+    int immOffset = 0;
+};
+
+
 
 
 Kernel *iga::ParseGenKernel(

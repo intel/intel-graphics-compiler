@@ -77,12 +77,6 @@ const char* BranchCtrlEnumeration[3] =
     "Branch", // 1
     NULL // 2
 }; // BranchCtrlEnumeration[]
-const char* BranchCtrlEnumerationDisassembly[3] =
-{
-    "0", // 0
-    "1", // 1
-    NULL // 2
-}; // BranchCtrlEnumerationDisassembly[]
 const char* ChannelMaskEnumeration[6] =
 {
     "R", // 0
@@ -322,73 +316,6 @@ const char* MessageTypeEnumeration[64] =
     "MT1A_A64_UF4x2", // 62
     NULL // 63
 }; // MessageTypeEnumeration[]
-const char* MessageTypeEnumerationDisassembly[64] =
-{
-    "Scratch Block Read", // 0
-    "Scratch Block Write", // 1
-    "OWord Block Read", // 2
-    "Unaligned OWord Block Read", // 3
-    "OWord Dual Block Read", // 4
-    "DWord Scattered Read", // 5
-    "Byte Scattered Read", // 6
-    "Memory Fence", // 7
-    "OWord Block Write", // 8
-    "OWord Dual Block Write", // 9
-    "DWord Scattered Write", // 10
-    "Byte Scattered Write", // 11
-    "Transpose Read", // 12
-    "Untyped Surface Read", // 13
-    "Untyped Atomic Integer Operation", // 14
-    "Untyped Atomic Integer Operation SIMD4x2", // 15
-    "Media Block Read", // 16
-    "Typed Surface Read", // 17
-    "Typed Atomic Integer Operation", // 18
-    "Typed Atomic Integer Operation SIMD4x2", // 19
-    "Untyped Surface Write", // 20
-    "Media Block Write", // 21
-    "Typed Atomic Counter Operation", // 22
-    "Typed Atomic Counter Operation SIMD4x2", // 23
-    "Typed Surface Write", // 24
-    "A64 Scattered Read", // 25
-    "A64 Untyped Surface Read", // 26
-    "A64 Untyped Atomic Integer Operation", // 27
-    "A64 Untyped Atomic Integer Operation SIMD4x2", // 28
-    "A64 Block Read", // 29
-    "A64 Block Write", // 30
-    "A64 Untyped Surface Write", // 31
-    "A64 Scattered Write", // 32
-    "Untyped Surface Read", // 33
-    "A64 Scattered Read", // 34
-    "A64 Untyped Surface Read", // 35
-    "Byte Scattered Read", // 36
-    "Untyped Surface Write", // 37
-    "A64 Untyped Surface Write", // 38
-    "A64 Scattered Write", // 39
-    "Byte Scattered Write", // 40
-    "Oword Block Read Constant Cache", // 41
-    "Unaligned Oword Block Read Constant Cache", // 42
-    "Oword Dual Block Read Constant Cache", // 43
-    "Dword Scattered Read Constant Cache", // 44
-    "Unaligned Oword Block Read Sampler Cache", // 45
-    "Media Block Read Sampler Cache", // 46
-    "Read Surface Info", // 47
-    "Render Target Write", // 48
-    "Render Target Read", // 49
-    "Media Block Read", // 50
-    "Typed Surface Read", // 51
-    "Typed Atomic Operation", // 52
-    "Memory Fence", // 53
-    "Media Block Write", // 54
-    "Typed Surface Write", // 55
-    "Untyped Surface Read", // 56
-    "Untyped Atomic Operation", // 57
-    "Untyped Surface Write", // 58
-    "A64 Untyped Atomic Float Add", // 59
-    "Untyped Atomic Float Operation", // 60
-    "A64 Untyped Atomic Float Operation", // 61
-    "A64 Untyped Atomic Float Operation SIMD4x2", // 62
-    NULL // 63
-}; // MessageTypeEnumerationDisassembly[]
 const char* NoSrcDepSetEnumeration[3] =
 {
     "", // 0
@@ -509,37 +436,18 @@ const char* RegFileEnumeration[4] =
     "IMM", // 2
     NULL // 3
 }; // RegFileEnumeration[]
-const char* RegFileEnumerationDisassembly[4] =
-{
-    "", // 0
-    "r", // 1
-    "", // 2
-    NULL // 3
-}; // RegFileEnumerationDisassembly[]
 const char* RepCtrlEnumeration[3] =
 {
     "", // 0
     "", // 1
     NULL // 2
 }; // RepCtrlEnumeration[]
-const char* RepCtrlEnumerationDisassembly[3] =
-{
-    "", // 0
-    "r", // 1
-    NULL // 2
-}; // RepCtrlEnumerationDisassembly[]
 const char* ReturnDataControlEnumeration[3] =
 {
     "", // 0
     "", // 1
     NULL // 2
 }; // ReturnDataControlEnumeration[]
-const char* ReturnDataControlEnumerationDisassembly[3] =
-{
-    "no", // 0
-    "yes", // 1
-    NULL // 2
-}; // ReturnDataControlEnumerationDisassembly[]
 const char* SaturateEnumeration[3] =
 {
     "", // 0
@@ -565,25 +473,6 @@ const char* SFIDEnumeration[16] =
     "DP_CC", // 14
     NULL // 15
 }; // SFIDEnumeration[]
-const char* SFIDEnumerationDisassembly[16] =
-{
-    "Null", // 0
-    "Sampler", // 1
-    "Message Gateway", // 2
-    "Data Cache Data Port 2", // 3
-    "Render Cache Data Port", // 4
-    "URB", // 5
-    "Thread Spawner", // 6
-    "Video Motion Estimation", // 7
-    "Data Cache Read Only Data Port", // 8
-    "Data Cache Data Port 0", // 9
-    "Pixel Interpolator", // 10
-    "Data Cache Data Port 1", // 11
-    "Check and Refinement Engine", // 12
-    "Sampler Cache Data Port", // 13
-    "Constant Cache Data Port", // 14
-    NULL // 15
-}; // SFIDEnumerationDisassembly[]
 const char* SIMDModeEnumeration[4] =
 {
     "SIMD4x2", // 0

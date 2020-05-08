@@ -24,15 +24,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "Decoder.hpp"
-#include "../MessageInfo.hpp"
-#include "../../MemManager/MemManager.hpp"
 #include "IGAToGEDTranslation.hpp"
 #include "GEDToIGATranslation.hpp"
+#include "../../asserts.hpp"
 #include "../../Frontend/Formatter.hpp"
 #include "../../Frontend/IRToString.hpp"
 #include "../../IR/IRChecker.hpp"
-#include "../../asserts.hpp"
+#include "../../IR/Messages.hpp"
 #include "../../IR/SWSBSetter.hpp"
+#include "../../MemManager/MemManager.hpp"
+
 #include <sstream>
 #include <cstring>
 
@@ -301,16 +302,18 @@ void DecoderBase::decodeInstructions(
                 binary,
                 iLen);
         } else {
-            Op op = GEDToIGATranslation::translate(GED_GetOpcode(&m_currGedInst));
+            const auto gedOp = GED_GetOpcode(&m_currGedInst);
+            const Op op = GEDToIGATranslation::translate(gedOp);
             m_opSpec = decodeOpSpec(op);
-            if (m_opSpec->op == Op::INVALID) {
+            if (!m_opSpec->isValid()) {
                 // figure out if we failed to resolve the primary op
                 // or if it's an unmapped subfunction (e.g. math function)
                 auto os = m_model.lookupOpSpec(op);
                 std::stringstream ss;
+                ss << "0x" << std::uppercase << std::hex << (unsigned)op;
                 if (os.format == OpSpec::GROUP) {
-                    ss << "unsupported pseudo op (sub function of " <<
-                        os.mnemonic << ")";
+                    ss << ": unsupported pseudo op "
+                        "(sub function of " << os.mnemonic << ")";
                 } else {
                     ss << "0x" << std::hex << (unsigned)op <<
                         ": unsupported opcode on this platform";
@@ -337,8 +340,8 @@ void DecoderBase::decodeInstructions(
         }
         inst->setPC(currentPc());
         inst->setID(nextId++);
-        insts.emplace_back(inst);
         inst->setLoc(currentPc());
+        insts.emplace_back(inst);
 #if _DEBUG
         if (!errorHandler().hasErrors()) {
             // only validate if there weren't errors
@@ -349,7 +352,6 @@ void DecoderBase::decodeInstructions(
         binary += iLen;
         bytesLeft -= iLen;
     }
-
 }
 
 void DecoderBase::decodeNextInstructionEpilog(Instruction *inst)
@@ -490,7 +492,8 @@ Instruction *DecoderBase::decodeBasicInstruction(Kernel &kernel)
     return inst;
 }
 
-void DecoderBase::decodeBasicUnaryInstruction(Instruction *inst, GED_ACCESS_MODE accessMode)
+void DecoderBase::decodeBasicUnaryInstruction(
+    Instruction *inst, GED_ACCESS_MODE accessMode)
 {
     decodeSourceBasic<SourceIndex::SRC0>(inst, accessMode);
     if (m_opSpec->op == Op::MOVI && platform() >= Platform::GEN10) {
@@ -921,9 +924,6 @@ void DecoderBase::decodeTernaryDestinationAlign1(Instruction *inst)
             dstMod, dri.regName, dri.regRef, mme, Region::Horz::HZ_1, dri.type);
     } else {
         if (ternaryDstOmitsHzStride(inst->getOpSpec())) {
-            if (dri.regRef.subRegNum != 0) {
-                error("Invalid subreg number (expected 0)");
-            }
             Region::Horz dftRgnHz = os.hasImplicitDstRegion() ?
                 os.implicitDstRegion().getHz() : Region::Horz::HZ_1;
             inst->setDirectDestination(dstMod,
@@ -944,19 +944,18 @@ void DecoderBase::decodeTernaryDestinationAlign1(Instruction *inst)
 }
 
 template <SourceIndex S>
-Region DecoderBase::decodeSrcRegionTernaryAlign1()
+Region DecoderBase::decodeSrcRegionTernaryAlign1(const OpSpec &os)
 {
-    if (S == SourceIndex::SRC2) {
-        return GEDToIGATranslation::transateGEDtoIGARegion(
-            static_cast<uint32_t>(Region::Vert::VT_INVALID),
-            static_cast<uint32_t>(Region::Width::WI_INVALID),
-            decodeSrcHorzStride<S>());
-    } else {
-        return GEDToIGATranslation::transateGEDtoIGARegion(
-            decodeSrcVertStride<S>(),
-            static_cast<uint32_t>(Region::Width::WI_INVALID),
-            decodeSrcHorzStride<S>());
+    uint32_t rgnVt = static_cast<uint32_t>(Region::Vert::VT_INVALID);
+    bool hasRgnVt = S != SourceIndex::SRC2;
+    if (hasRgnVt) {
+        rgnVt = decodeSrcVertStride<S>();
     }
+    //
+    uint32_t rgnHz = decodeSrcHorzStride<S>();
+    //
+    return GEDToIGATranslation::transateGEDtoIGARegion(
+        rgnVt, static_cast<uint32_t>(Region::Width::WI_INVALID), rgnHz);
 }
 
 template <SourceIndex S>
@@ -1000,7 +999,7 @@ void DecoderBase::decodeTernarySourceAlign1(Instruction *inst)
                 decodeSrcType<S>());
         } else {
             // normal access
-            Region rgn = decodeSrcRegionTernaryAlign1<S>();
+            Region rgn = decodeSrcRegionTernaryAlign1<S>(inst->getOpSpec());
             DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<S>();
 
             inst->setDirectSource(
@@ -1080,15 +1079,15 @@ Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
         msgDesc
     );
 
-    if (inst == nullptr) {
-        error("Instruction is NULL after calling createSendInstruction");
-        return nullptr;
-    }
-
     if ((m_opSpec->format & OpSpec::Format::SEND_BINARY) == OpSpec::Format::SEND_BINARY) { // send is binary
         decodeSendDestination(inst);
         decodeSendSource0(inst);
         decodeSendSource1(inst);
+        if (src1Len < 0 && inst->getSource(SourceIndex::SRC1).isNull()) {
+            // if src1Len comes from a0.#[24:20], but src1 is null, then
+            // we can still assume it's 0.
+            src1Len = 0;
+        }
     } else { // if (m_opSpec->isSendFamily()) {
         decodeSendDestination(inst);
         decodeSendSource0(inst);
@@ -1104,9 +1103,24 @@ Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
     }
 
 
-    inst->setSrc0Length(src0Len);
-    inst->setSrc1Length(src1Len);
+
+    // if a payload length is unknown (i.e. -1), but an operand is null, we
+    // can conclude that it's really 0.
+    auto updateLengthForNull = [](int &len, const Operand &op) {
+        // check for DIRECT because some older platforms permit indirect
+        if (len < 0 && op.isNull()) {
+            len = 0;
+        }
+    };
+
+    updateLengthForNull(dstLen, inst->getDestination());
     inst->setDstLength(dstLen);
+
+    updateLengthForNull(src0Len, inst->getSource(SourceIndex::SRC0));
+    inst->setSrc0Length(src0Len);
+
+    updateLengthForNull(src1Len, inst->getSource(SourceIndex::SRC1));
+    inst->setSrc1Length(src1Len);
 
     return inst;
 }
@@ -1698,7 +1712,8 @@ ImmVal DecoderBase::decodeSrcImmVal(Type t) {
 }
 
 template <SourceIndex S>
-void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIxE)
+void DecoderBase::decodeSourceBasicAlign1(
+    Instruction *inst, SourceIndex toSrcIxE)
 {
     const int toSrcIx = static_cast<int>(toSrcIxE);
     GED_REG_FILE regFile = decodeSrcRegFile<S>();
@@ -1715,16 +1730,16 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
         // region (implicit accumulator if Align16 and <GEN11)
         Region implRgn = Region::INVALID;
         if (inst->getOpSpec().hasImplicitSrcRegion(
-                toSrcIx, platform(), inst->getExecSize()))
+            toSrcIx, platform(), inst->getExecSize()))
         {
             implRgn = inst->getOpSpec().implicitSrcRegion(
                 toSrcIx, platform(), inst->getExecSize());
         }
         Region decRgn = Region::INVALID;
-        if (!m_opSpec->isSendOrSendsFamily()) {
-            decRgn = decodeSrcRegionVWH<S>();
-        } else {
+        if (m_opSpec->isSendOrSendsFamily()) {
             decRgn = implRgn;
+        } else {
+            decRgn = decodeSrcRegionVWH<S>();
         }
         // ensure the region matches any implicit region rules
         if (!m_opSpec->isSendOrSendsFamily() &&
@@ -1732,7 +1747,7 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
                 toSrcIx, platform(), inst->getExecSize()))
         {
             if (implRgn != decRgn) {
-                warning("src%d.Rgn should have %s for binary normal form" ,
+                warning("src%d.Rgn should have %s for binary normal form",
                     (int)S,
                     ToSyntax(implRgn).c_str());
             }
@@ -1746,7 +1761,7 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
                         "for this platform.", (int)S);
                 }
                 MathMacroExt mme = decodeSrcMathMacroReg<S>();
-                RegRef regRef{0,0};
+                RegRef regRef {0,0};
                 RegName regName = decodeSourceReg<S>(regRef);
                 inst->setMacroSource(
                     toSrcIxE, srcMod, regName, regRef, mme, decRgn, decodeSrcType<S>());
@@ -1762,7 +1777,7 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
                     opInfo.type);
             }
         } else if (addrMode == GED_ADDR_MODE_Indirect) {
-            RegRef a0 = {0, (uint8_t)decodeSrcAddrSubRegNum<S>()};
+            RegRef a0 {0, (uint8_t)decodeSrcAddrSubRegNum<S>()};
             int16_t addr_imm = decodeSrcAddrImm<S>();
             inst->setInidirectSource(
                 toSrcIxE,
@@ -1914,18 +1929,18 @@ bool DecoderBase::isChanSelPacked()
 void DecoderBase::decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntrl)
 {
     switch (trdCntrl) {
-        case GED_THREAD_CTRL_Atomic:
-            inst->addInstOpt(InstOpt::ATOMIC);
-            break;
-        case GED_THREAD_CTRL_Switch:
-            inst->addInstOpt(InstOpt::SWITCH);
-            break;
-        case GED_THREAD_CTRL_NoPreempt:
-            inst->addInstOpt(InstOpt::NOPREEMPT);
-            break;
-        case GED_THREAD_CTRL_INVALID:
-        default:
-            break;
+    case GED_THREAD_CTRL_Atomic:
+        inst->addInstOpt(InstOpt::ATOMIC);
+        break;
+    case GED_THREAD_CTRL_Switch:
+        inst->addInstOpt(InstOpt::SWITCH);
+        break;
+    case GED_THREAD_CTRL_NoPreempt:
+        inst->addInstOpt(InstOpt::NOPREEMPT);
+        break;
+    case GED_THREAD_CTRL_INVALID:
+    default:
+        break;
     }
 }
 
@@ -2066,25 +2081,26 @@ void DecoderBase::handleGedDecoderError(
     GED_RETURN_VALUE status)
 {
       std::stringstream ss;
+      ss << "GED reports ";
       if (status == GED_RETURN_VALUE_INVALID_VALUE) {
           // bad user bits -> report a warning
-          ss << "GED reports invalid value for " << field;
+          ss << "invalid value";
       } else if (status == GED_RETURN_VALUE_INVALID_FIELD) {
           // our bad -> take it seriously
-          ss << "GED reports invalid field for " << field << "(line " << line << ")";
+          ss << "invalid field";
       } else if (status != GED_RETURN_VALUE_SUCCESS) {
           // some other error -> our bad -> take it seriously and assert!
-          ss << "GED reports invalid field for " << field << "(line " << line << ")";
-          ss << "GED reports error (" << (int)status << ") accessing GED_" <<
-              field << " (line " << line << ")";
+          ss << "error (" << (int)status << ")";
       }
-      ss << "\n";
+      ss << " for field " << field << " (line " << line << ")\n";
       ss << FormatOpBits(m_model, (const char *)m_binary + currentPc());
-
-      //std::cout << "pc[" << currentPc() << "] " << ss.str() << std::endl;
+      // std::cout << "pc[" << currentPc() << "] " << ss.str() << std::endl;
       if (status == GED_RETURN_VALUE_INVALID_VALUE) {
+          // indicates something wrong with the bits given, but we can
+          // continue trying to decode things
           error("%s", ss.str().c_str());
       } else {
+          // indicates IGA is totally wrong and we should probably bail out
           fatal("%s", ss.str().c_str());
       }
 }
@@ -2094,10 +2110,14 @@ void DecoderBase::handleGedDecoderError(
 // .cpp.  We need to explicitly instantiate those template functions so
 // the other .cpp can reference them.
 template
-void DecoderBase::decodeSourceBasicAlign16<SourceIndex::SRC0>(Instruction *inst, SourceIndex toSrcIx);
+void DecoderBase::decodeSourceBasicAlign16<SourceIndex::SRC0>(
+    Instruction *inst, SourceIndex toSrcIx);
 template
-void DecoderBase::decodeSourceBasicAlign16<SourceIndex::SRC1>(Instruction *inst, SourceIndex toSrcIx);
+void DecoderBase::decodeSourceBasicAlign16<SourceIndex::SRC1>(
+    Instruction *inst, SourceIndex toSrcIx);
 template
-void DecoderBase::decodeSourceBasicAlign1<SourceIndex::SRC0>(Instruction *inst, SourceIndex toSrcIx);
+void DecoderBase::decodeSourceBasicAlign1<SourceIndex::SRC0>(
+    Instruction *inst, SourceIndex toSrcIx);
 template
-void DecoderBase::decodeSourceBasicAlign1<SourceIndex::SRC1>(Instruction *inst, SourceIndex toSrcIx);
+void DecoderBase::decodeSourceBasicAlign1<SourceIndex::SRC1>(
+    Instruction *inst, SourceIndex toSrcIx);

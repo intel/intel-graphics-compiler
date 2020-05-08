@@ -236,7 +236,8 @@ public:
     DepSetBuilder(const Model& model)
         : GRF_REGS(model.getNumGRF()),
           GRF_BYTES_PER_REG(model.getGRFByteSize()),
-          ARF_F_REGS(model.getNumFlagReg())
+          ARF_F_REGS(model.getNumFlagReg()),
+          mPlatformModel(model)
     {}
 
     ~DepSetBuilder()
@@ -347,6 +348,8 @@ private:
 private:
     // Track all the created DepSet for deletion
     std::vector<DepSet*> mAllDepSet;
+
+    const Model &mPlatformModel;
 };
 
 }

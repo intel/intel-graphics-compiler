@@ -79,6 +79,7 @@ namespace iga {
         // TODO: sink to KernelParser
         const OpSpec                  *m_opSpec;
         Operand::Kind                  m_srcKinds[3];
+        Loc                            m_execSizeLoc;
 
         GenParser(
             const Model &model,
@@ -93,6 +94,7 @@ namespace iga {
             ExecSize dftExecSize,
             ExecSize &execSize,
             ChannelOffset &chOff);
+        Type SendOperandDefaultType(int srcIx) const;
         Type ParseSendOperandTypeWithDefault(int srcIx);
 
         bool LookupReg(

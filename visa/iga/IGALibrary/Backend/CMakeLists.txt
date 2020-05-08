@@ -5,8 +5,13 @@ set(IGA_Backend
   ${CMAKE_CURRENT_SOURCE_DIR}/BitProcessor.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/DecoderOpts.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/EncoderOpts.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/MessageInfo.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/MessageInfo.hpp
+  PARENT_SCOPE
+)
+set(IGA_Backend_Messages
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoder.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderHDC.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderOther.cpp
   PARENT_SCOPE
 )
 

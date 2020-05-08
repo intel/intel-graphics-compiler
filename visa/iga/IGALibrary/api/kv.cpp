@@ -263,6 +263,7 @@ size_t kv_get_inst_syntax(
     int32_t pc,
     char *sbuf,
     size_t sbuf_cap,
+    uint32_t fmt_opts,
     const char *(*labeler)(int32_t, void *),
     void *labeler_env)
 {
@@ -282,6 +283,20 @@ size_t kv_get_inst_syntax(
 
     std::stringstream ss;
     FormatOpts fopts(kvImpl->m_model.platform, labeler, labeler_env);
+    fopts.numericLabels =
+        (fmt_opts & IGA_FORMATTING_OPT_NUMERIC_LABELS) != 0;
+    fopts.syntaxExtensions =
+        (fmt_opts & IGA_FORMATTING_OPT_SYNTAX_EXTS) != 0;
+    fopts.hexFloats =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_HEX_FLOATS) != 0;
+    fopts.printInstPc =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_PC) != 0;
+    fopts.printInstBits =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_BITS) != 0;
+    fopts.printInstDeps =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_DEPS) != 0;
+    fopts.printLdSt =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_LDST) != 0;
     fopts.setSWSBEncodingMode(kvImpl->m_model.getSWSBEncodeMode());
     FormatInstruction(
         kvImpl->m_errHandler,
@@ -898,6 +913,72 @@ int32_t kv_get_destination_indirect_imm_off(
     }
 
     *immoff = dst.getIndImmAddr();
+    return 0;
+}
+
+static int16_t getMathMacroNum(MathMacroExt mme)
+{
+    switch (mme) {
+        case MathMacroExt::MME0:
+            return 0;
+        case MathMacroExt::MME1:
+            return 1;
+        case MathMacroExt::MME2:
+            return 2;
+        case MathMacroExt::MME3:
+            return 3;
+        case MathMacroExt::MME4:
+            return 4;
+        case MathMacroExt::MME5:
+            return 5;
+        case MathMacroExt::MME6:
+            return 6;
+        case MathMacroExt::MME7:
+            return 7;
+        case MathMacroExt::INVALID:
+        case MathMacroExt::NOMME:
+            break;
+    }
+    return -1;
+}
+
+int32_t kv_get_source_mme_number(
+    const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *mme)
+{
+    *mme = -1;
+    if (!kv) {
+        return -1;
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst || src_op >= inst->getSourceCount()) {
+        return -1;
+    }
+    const auto &src = inst->getSource((size_t)src_op);
+
+    *mme = getMathMacroNum(src.getMathMacroExt());
+    if (*mme == -1)
+        return -1;
+    return 0;
+}
+
+int32_t kv_get_destination_mme_number(
+    const kv_t *kv, int32_t pc, int16_t *mme)
+{
+    *mme = -1;
+    if (!kv)
+        return -1;
+
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst)
+        return -1;
+
+    if (!inst->getOpSpec().supportsDestination()) {
+        return -1;
+    }
+    const Operand &dst = inst->getDestination();
+    *mme = getMathMacroNum(dst.getMathMacroExt());
+    if (*mme == -1)
+        return -1;
     return 0;
 }
 

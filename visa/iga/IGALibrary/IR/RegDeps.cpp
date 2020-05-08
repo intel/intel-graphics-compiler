@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "RegDeps.hpp"
 #include "../asserts.hpp"
+#include "../bits.hpp"
 
 #include <sstream>
 #include <cstring>
@@ -88,7 +89,8 @@ static void setDEPPipeClass_SingleDistPipe(DepSet &dep, const Instruction &inst)
 }
 
 
-static void setDEPPipeClass(SWSB_ENCODE_MODE enc_mode, DepSet &dep, const Instruction &inst)
+static void setDEPPipeClass(
+    SWSB_ENCODE_MODE enc_mode, DepSet &dep, const Instruction &inst, const Model& model)
 {
     if (enc_mode == SingleDistPipe)
         setDEPPipeClass_SingleDistPipe(dep, inst);
@@ -121,7 +123,7 @@ DepSet* DepSetBuilder::createSrcDepSet(const Instruction &i,
     inps->m_instruction = &i;
     inps->setDepType(DEP_TYPE::READ);
 
-    setDEPPipeClass(enc_mode, *inps, i);
+    setDEPPipeClass(enc_mode, *inps, i, mPlatformModel);
 
     inps->setInputsFlagDep();
     inps->setInputsSrcDep();
@@ -423,8 +425,10 @@ void DepSet::setOutputsDstcDep()
         if (m_instruction->getOpSpec().isSendOrSendsFamily() &&
             op.getDirRegName() == RegName::GRF_R)
         {
-            int nregs = m_instruction->getSrc0Length();
-            if (nregs < 0) // have to be conservative and use the max
+            int nregs = m_instruction->getDstLength();
+            // getDstLength return -1 when it's not able to deduce the length
+            // we have to be conservative and use the max
+            if (nregs < 0)
                 nregs = 31;
             for (uint32_t i = 0; i < (uint32_t)nregs; i++) {
                 uint32_t regNum = op.getDirRegRef().regNum;
@@ -512,7 +516,7 @@ DepSet* DepSetBuilder::createDstDepSet(
     mAllDepSet.push_back(oups);
 
     oups->m_instruction = &i;
-    setDEPPipeClass(enc_mode, *oups, i);
+    setDEPPipeClass(enc_mode, *oups, i, mPlatformModel);
 
     oups->setDepType(DEP_TYPE::WRITE);
 
@@ -529,7 +533,7 @@ DepSet* DepSetBuilder::createMathDstWADepSet(
     mAllDepSet.push_back(oups);
 
     oups->m_instruction = &i;
-    setDEPPipeClass(enc_mode, *oups, i);
+    setDEPPipeClass(enc_mode, *oups, i, mPlatformModel);
 
     oups->setDepType(DEP_TYPE::WRITE);
     oups->setMathWAOutputsDstcDep();

@@ -27,20 +27,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Floats.hpp"
 #include "Formatter.hpp"
 #include "IRToString.hpp"
-#include "SendDescriptorDecoding.hpp"
 #include "LdStSyntax/MessageFormatting.hpp"
+#include "SendDescriptorDecoding.hpp"
 #include "../ErrorHandler.hpp"
 #include "../IR/Instruction.hpp"
+#include "../IR/Messages.hpp"
 #include "../IR/Types.hpp"
 #include "../Models/Models.hpp"
 #include "../strings.hpp"
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
 #include "../Backend/GED/Interface.hpp"
 #include "../Backend/Native/Interface.hpp"
 #endif
 #include "../Backend/GED/IGAToGEDTranslation.hpp"
 #include "../Backend/Native/MInst.hpp"
-#include "../Backend/MessageInfo.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -48,13 +48,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <vector>
 
-// shows formatting output in realtime to stderr (for stepping through code)
-// #define TRACE_EMIT
 
 namespace iga
 {
-
-
 
 class Formatter : public BasicFormatter
 {
@@ -215,9 +211,20 @@ public:
             formatInstructionBits(i, bits);
         }
 
-        if (opts.printLdSt && i.getOpSpec().isSendOrSendsFamily()) {
-            // try new LD/ST format
-            formatWithExperimentalSendSyntax(i);
+        const bool isSend = i.getOpSpec().isSendOrSendsFamily();
+        if (isSend) {
+            bool sendPrinted = false;
+            if (!sendPrinted) {
+                // TODO: after new ldst accepted, rip out formatWithExperimentalSendSyntax
+                if (false) // retain symbol so we don't orphan this comment.
+                    formatWithExperimentalSendSyntax(i);
+                // if (opts.printLdSt) {
+                //     formatWithExperimentalSendSyntax(i);
+                // } else {
+                //     formatNormalInstructionBody(i, "");
+                // }
+                formatNormalInstructionBody(i, "");
+            }
         } else {
             formatNormalInstructionBody(i, "");
         }
@@ -227,15 +234,14 @@ public:
 
 
     void formatWithExperimentalSendSyntax(const Instruction& i) {
+        // TODO: phase this out
         auto fr = FormatLdStInstruction(*model, i);
         if (!fr.success()) {
+            // failed to emit as LD/ST, bail
             formatNormalInstructionBody(i, fr.errMessage);
             return;
         }
-        formatMaskAndPredication(
-            i.getMaskCtrl(),
-            i.getPredication(),
-            i.getFlagReg());
+        formatMaskAndPredication(i);
 
         startColumn(cols.opCodeExecInfo + 12);
         emit(' ');
@@ -263,6 +269,7 @@ public:
         const Instruction& i,
         const std::string& debugSendDecode)
     {
+
         formatInstructionPrefix(i);
 
         int nSrcs = i.getSourceCount();
@@ -328,16 +335,19 @@ private:
 
 
     void formatInstructionPrefix(const Instruction& i) {
-        formatMaskAndPredication(
-            i.getMaskCtrl(),
-            i.getPredication(),
-            i.getFlagReg());
+        formatMaskAndPredication(i);
         emit(' ');
         formatOpMnemonicExecInfo(i);
         emit(' ');
         formatFlagModifier(i);
     }
 
+    void formatMaskAndPredication(const Instruction &i) {
+        formatMaskAndPredication(
+            i.getMaskCtrl(),
+            i.getPredication(),
+            i.getFlagReg());
+    }
 
     void formatMaskAndPredication(
         const MaskCtrl& mc,
@@ -481,7 +491,9 @@ private:
         // }
 
         const Region &rgn = src.getRegion();
-        if (os.hasImplicitSrcRegionEq(srcIx, platform(), execSize, rgn) || os.isBranching()) {
+        if (os.hasImplicitSrcRegionEq(srcIx, platform(), execSize, rgn) ||
+            os.isBranching())
+        {
             // e.g. on some platforms certain branches have an implicit <0;1,0>
             // meaning we can omit it if the IR matches
             return;
@@ -513,7 +525,7 @@ private:
             // doesn't support types
             return;
         }
-        if (os.isSyncSubFunc() && op.getDirRegName() == RegName::ARF_NULL)
+        if (os.isSyncSubFunc() && op.isNull())
             return;
         const Type& type = op.getType();
         bool lblArg =
@@ -589,6 +601,11 @@ private:
     //                 ^^^^^^^^^^^
     void formatInstOpts(
         const Instruction &i, const std::vector<const char *> &instOpts);
+    void formatInstOpts(const Instruction &i) {
+        std::vector<const char *> emptyExtraOpts;
+        formatInstOpts(i, emptyExtraOpts);
+    }
+
 
     bool hasInstOptTokens(const Instruction &i) const {
         bool hasDepInfo =
@@ -596,11 +613,10 @@ private:
         return !i.getInstOpts().empty() || hasDepInfo;
     }
 
-    virtual bool shouldPrintSFID(Platform p) const { return true; };
-
     void formatEolComments(
         const Instruction &i,
-        const std::string &debugSendDecode)
+        const std::string &debugSendDecode = "",
+        bool decodeSendDesc = true)
     {
         std::stringstream ss;
 
@@ -647,9 +663,21 @@ private:
             const SendDesc exDesc = i.getExtMsgDescriptor(),
                               desc = i.getMsgDescriptor();
             //
-            if (opts.printLdSt) {
+            if (decodeSendDesc) {
+                // ld/st syntax not enabled
+                RegRef indDesc {0, 0};
+                EmitSendDescriptorInfo(
+                    platform(), i.getOpSpec(),
+                    i.getExecSize(),
+                    i.getDestination().isNull(),
+                    i.getDstLength(), i.getSrc0Length(), i.getSrc1Length(),
+                    exDesc, desc, indDesc,
+                    ss);
+            } else if (opts.printLdSt) {
                 // tried to format with ld/st syntax and ...
-                semiColon.insert();
+                if (ss.tellp() != 0) {
+                    semiColon.insert();
+                }
                 // success, show the descriptors for debugging
                 if (debugSendDecode.empty()) {
                     if (exDesc.isImm())
@@ -661,16 +689,11 @@ private:
                         fmtHex(ss, desc.imm);
                     else
                         ss << "???";
-                } else {
-                    ss << debugSendDecode;
                 }
-            } else {
-                // ld/st syntax not enabled
-                iga::EmitSendDescriptorInfo(
-                    platform(), i.getOpSpec(),
-                    i.getDstLength(), i.getSrc0Length(), i.getSrc1Length(),
-                    exDesc, desc,
-                    ss);
+            }
+            if (!debugSendDecode.empty()) {
+                semiColon.insert();
+                ss << debugSendDecode;
             }
         }
 
@@ -796,8 +819,7 @@ void Formatter::formatRegister(
 }
 
 void Formatter::formatDstOp(const OpSpec &os, const Operand &dst) {
-    startColumn(os.isSendOrSendsFamily() ?
-        cols.sendDstOp : cols.dstOp);
+    startColumn(os.isSendOrSendsFamily() ? cols.sendDstOp : cols.dstOp);
 
     if (dst.getDstModifier() == DstModifier::SAT) {
         emit("(sat)");
@@ -836,9 +858,9 @@ void Formatter::formatDstOp(const OpSpec &os, const Operand &dst) {
 void Formatter::formatSrcOp(
     SourceIndex srcIx,
     const OpSpec &os,
-    const Instruction &inst)
+    const Instruction &i)
 {
-    const Operand &src = inst.getSource(srcIx);
+    const Operand &src = i.getSource(srcIx);
 
     startColumn(os.isSendOrSendsFamily() ? cols.sendSrcOp : cols.srcOp);
 
@@ -850,7 +872,7 @@ void Formatter::formatSrcOp(
             src.getDirRegRef(),
             os.hasSrcSubregister(static_cast<int>(srcIx), platform()));
         formatSourceRegion(
-            static_cast<int>(srcIx), os, inst.getExecSize(), src);
+            static_cast<int>(srcIx), os, i.getExecSize(), src);
         break;
     }
     case Operand::Kind::MACRO: {
@@ -861,14 +883,14 @@ void Formatter::formatSrcOp(
             false);
         emit(ToSyntax(src.getMathMacroExt()));
         formatSourceRegion(
-            static_cast<int>(srcIx), os, inst.getExecSize(), src);
+            static_cast<int>(srcIx), os, i.getExecSize(), src);
         break;
     }
     case Operand::Kind::INDIRECT:
         formatSourceModifier(os, src.getSrcModifier());
         formatRegIndRef(src);
         formatSourceRegion(
-            static_cast<int>(srcIx), os, inst.getExecSize(), src);
+            static_cast<int>(srcIx), os, i.getExecSize(), src);
         break;
     case Operand::Kind::IMMEDIATE:
         switch (src.getType()) {
@@ -959,14 +981,13 @@ void Formatter::formatInstOpts(
     const auto &iopts = i.getInstOpts();
 
     bool hasDepInfo = false;
-    bool hasSendInfo = false;
 
     const auto &di = i.getSWSB();
     hasDepInfo =
         (platform() >= Platform::GEN12P1) && di.hasSWSB();
     if (iopts.empty() &&
         !hasDepInfo &&
-        !hasSendInfo && extraInstOpts.empty()) {
+        extraInstOpts.empty()) {
         return; // early out (no braces)
     }
 
@@ -979,9 +1000,7 @@ void Formatter::formatInstOpts(
         }
         emit(extraInstOpts[opIx]);
     }
-    if ((!iopts.empty() || hasSendInfo) &&
-        (hasDepInfo || !extraInstOpts.empty()))
-    {
+    if (!iopts.empty() && (hasDepInfo || !extraInstOpts.empty())) {
         // something was output, prepend a , for the depinfo
         emit(", ");
     }
@@ -1022,6 +1041,8 @@ void Formatter::formatInstOpts(
 } // end formatInstOpts
 
 
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // Public interfaces into the kernel
@@ -1052,7 +1073,7 @@ void FormatInstruction(
 }
 
 
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
 void FormatInstruction(
     ErrorHandler &e,
     std::ostream &o,

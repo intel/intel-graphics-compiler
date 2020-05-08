@@ -198,7 +198,11 @@ namespace iga
 
         // opcode, math function control, and branch control
         Op                 getOp()             const {return m_opSpec.op;}
+        // for sub-ops such as Op::MATH_SQT or Op::SENT_GTWY this returns
+        // the *parent* op (i.e. Op::MATH or Op::SEND)
         Op                 getGroupOp()        const {return m_opSpec.groupOp;}
+
+
         BranchCntrl        getBranchCtrl()     const {return m_brnch;}
         // true for madm or math.invm and math.rsqrtm
         bool               isMacro()           const {return getOpSpec().isMacro();}

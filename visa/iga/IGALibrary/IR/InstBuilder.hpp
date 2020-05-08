@@ -27,11 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _IGA_INST_BUILDER_HPP_
 
 #include "Kernel.hpp"
+#include "Messages.hpp"
 #include "../asserts.hpp"
 #include "../ErrorHandler.hpp"
 #include "../Frontend/IRToString.hpp"
 #include "../Models/Models.hpp"
-#include "../Backend/MessageInfo.hpp"
 
 #include <map>
 #include <sstream>
@@ -256,10 +256,15 @@ public:
 
     ErrorHandler &errorHandler() {return m_errorHandler;}
 
-    void setSWSBEncodingMode(SWSB_ENCODE_MODE mode)
-    {
+    ///////////////////////////////////////////////////////////////////////////
+    // specific IR setters
+    void setSWSBEncodingMode(SWSB_ENCODE_MODE mode) {
         m_swsbEncodeMode = mode;
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // specific IR accessors
+    SendDesc getExDesc() const {return m_exDesc;}
 
 
     // Called at the beginning of the program
@@ -321,6 +326,7 @@ public:
         // set the full instruction length in chars (for text)
         // or bytes (for decoding bits)
         m_loc.extent = extent;
+        IGA_ASSERT(m_opSpec != nullptr, "OpSpec never set");
 
         Instruction *inst = nullptr;
         if (m_opSpec->isMathSubFunc()) {
@@ -366,37 +372,48 @@ public:
                     m_desc
                 );
 
-            //
             // copy Src0.Length if no one else set it
             // (Dst.Length is handled elsewhere)
-            bool descsHaveLens = true;
-            if (descsHaveLens && m_desc.isImm() && m_sendSrc0 < 0) {
+            bool immDescsHaveLens = m_desc.isImm();
+            //
+            int dstLen = -1;
+            if (immDescsHaveLens) {
+                dstLen = (0x1F & (m_desc.imm >> 20));
+            } else if (m_dst.regOpName == RegName::ARF_NULL) {
+                // assume it's 0 based on dst == null
+                dstLen = 0;
+            } else if (m_desc.isImm()) {
+                // try and deduce it from descriptor details we make a
+                // best-effort for exDesc, but may not need it specifically
+                uint32_t exDesc = m_exDesc.isImm() ? m_exDesc.imm : 0;
+                PayloadLengths lens(
+                    platform(),
+                    m_opSpec->op,
+                    inst->getExecSize(),
+                    m_desc.imm,
+                    exDesc);
+                dstLen = lens.dstLen;
+            }
+            inst->setDstLength(dstLen);
+            //
+            if (m_sendSrc0 < 0 && immDescsHaveLens) {
                 m_sendSrc0 = (m_desc.imm >> 25) & 0xF;
+            } else if (m_srcs[0].regOpName == RegName::ARF_NULL) {
+                // can src0 ever be null (currently)
+                m_sendSrc0 = 0;
             }
             inst->setSrc0Length(m_sendSrc0);
             //
             if (m_sendSrc1 < 0) {
                 // copy Src1.Length if no one else set it
-                if (m_exDesc.isImm())
+                bool immExDescHasSrc1Len = m_exDesc.isImm();
+                if (immExDescHasSrc1Len) {
                     m_sendSrc1 = (m_exDesc.imm >> 6) & 0x1F;
+                } else if (m_srcs[1].regOpName == RegName::ARF_NULL) {
+                    m_sendSrc1 = 0;
+                }
             }
             inst->setSrc1Length(m_sendSrc1);
-            //
-            bool hasDstLenInDesc = m_desc.isImm();
-            int dstLen = -1;
-            if (hasDstLenInDesc) {
-                dstLen = (0x1F & (m_desc.imm >> 20));
-            } else if (m_desc.isImm()) {
-                // try and determine it from descriptor details
-                SFID sfid = MessageInfo::sfidFromOp(platform(), m_opSpec->op, 0);
-                dstLen = MessageInfo::tryDecodeDstLength(
-                    platform(),
-                    sfid,
-                    m_desc.imm,
-                    inst->getExecSize(),
-                    m_dst.regOpName == RegName::GRF_R);
-            }
-            inst->setDstLength(dstLen);
         } else if (m_opSpec->op == Op::NOP) {
             inst = m_kernel->createNopInstruction();
         } else if (m_opSpec->op == Op::ILLEGAL) {
@@ -412,14 +429,12 @@ public:
                     m_maskCtrl,
                     m_flagModifier);
         }
-
-        if (inst == nullptr)
-            return;
-
         inst->setLoc(m_loc);
         m_insts.emplace_back(inst);
 
         if (m_opSpec->supportsDestination()) {
+            IGA_ASSERT(m_dst.kind != Operand::Kind::INVALID,
+                "destination never set");
             if (m_dst.kind == Operand::Kind::DIRECT) {
                 inst->setDirectDestination(
                     m_dstModifier,
@@ -448,6 +463,8 @@ public:
         // set source operands
         for (int i = 0; i < m_nSrcs; i++) {
             const OperandInfo &src = m_srcs[i];
+            IGA_ASSERT(src.kind != Operand::Kind::INVALID, "source never set");
+
             SourceIndex opIx = (SourceIndex)((int)SourceIndex::SRC0 + i);
             if (src.kind == Operand::Kind::DIRECT) {
                 inst->setDirectSource(
@@ -496,7 +513,6 @@ public:
                 IGA_ASSERT_FALSE("unexpected src kind");
             }
         } // for
-
         inst->addInstOpts(m_instOpts);
         inst->setID(m_nextId++);
         inst->setPC(m_pc);
@@ -729,8 +745,7 @@ public:
         Region rgn, // region parameters
         Type ty)
     {
-        RegRef rr;
-        rr.regNum = (uint8_t)reg;
+        RegRef rr((uint8_t)reg, 0);
         InstSrcOpRegDirect(srcOpIx, loc, SrcModifier::NONE, rnm, rr, rgn, ty);
     }
     void InstSrcOpRegDirect(
@@ -896,11 +911,8 @@ public:
         // some sanity validation
         switch (opInfo.kind) {
         case Operand::Kind::DIRECT:
-            break;
         case Operand::Kind::MACRO:
-            break;
         case Operand::Kind::INDIRECT:
-            break;
         case Operand::Kind::IMMEDIATE:
         case Operand::Kind::LABEL:
             break;
@@ -927,11 +939,11 @@ public:
 
     ///////////////////////////////////////////////////////////////////////////
     // instruction option callbacks
-    void InstOpts(const InstOptSet &instOpts) {
+    void InstOptsAdd(const InstOptSet &instOpts) {
         m_instOpts.add(instOpts);
     }
 
-    void InstOpt(InstOpt instOpt) {
+    void InstOptAdd(InstOpt instOpt) {
         m_instOpts.add(instOpt);
     }
 

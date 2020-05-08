@@ -4688,9 +4688,15 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
                     output << "// " << errString->second.c_str() << std::endl;
                     output << "// Text representation might not be correct" << std::endl;
                 }
+
+                static const uint32_t IGA_FMT_OPTS =
+                    IGA_FORMATTING_OPT_PRINT_LDST
+                    // | IGA_FORMATTING_OPT_SYNTAX_EXTS
+                    ;
                 kView.getInstSyntax(
                     pc,
                     stringBuffer, 512,
+                    IGA_FMT_OPTS,
                     labelerLambda, (void*)&lambdaArg);
                 pc += kView.getInstSize(pc);
 

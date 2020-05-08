@@ -11,7 +11,6 @@
 #include "bxml/Model11.hpp"
 #include "bxml/Model12P1.hpp"
 #include "../bits.hpp"
-#include "../bits.hpp"
 #include "../Backend/Native/MInst.hpp"
 
 #include <sstream>

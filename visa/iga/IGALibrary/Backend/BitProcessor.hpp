@@ -100,7 +100,7 @@ namespace iga {
         void fatal(const char *patt, ...);
         void fatalAt(const Loc& loc, const char *patt, ...);
         void fatalAt(const Loc& loc, const char *patt, va_list& va);
-        bool hasFatalError() { return m_errorHandler.hasFatalError(); }
+        bool hasFatalError() const {return m_errorHandler.hasFatalError();}
     };
 
     //can be intialized in .h, but this is a work around for

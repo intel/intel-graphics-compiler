@@ -62,7 +62,7 @@ GED_FIELD_TYPE fieldTypesByField[116] =
     0x102, // 50
     0x102, // 51
     0x102, // 52
-    0x124, // 53
+    0x104, // 53
     0x103, // 54
     0x103, // 55
     0x103, // 56
@@ -82,8 +82,8 @@ GED_FIELD_TYPE fieldTypesByField[116] =
     0x102, // 70
     0x102, // 71
     0x102, // 72
-    0x120, // 73
-    0x120, // 74
+    0x100, // 73
+    0x100, // 74
     0x103, // 75
     0x103, // 76
     0x108, // 77
@@ -114,8 +114,8 @@ GED_FIELD_TYPE fieldTypesByField[116] =
     0x103, // 102
     0x103, // 103
     0x103, // 104
-    0x124, // 105
-    0x124, // 106
+    0x104, // 105
+    0x104, // 106
     0x102, // 107
     0x100, // 108
     0x100, // 109
@@ -126,125 +126,6 @@ GED_FIELD_TYPE fieldTypesByField[116] =
     0x100, // 114
     0x100 // 115
 }; // fieldTypesByField[]
-const char** stringGettersByField[116] =
-{
-    OpcodeEnumeration, // 0
-    NULL, // 1
-    NULL, // 2
-    NULL, // 3
-    NULL, // 4
-    AccessModeEnumeration, // 5
-    MaskCtrlEnumeration, // 6
-    DepCtrlEnumeration, // 7
-    ExecMaskOffsetCtrlEnumeration, // 8
-    ChannelOffsetEnumeration, // 9
-    ThreadCtrlEnumeration, // 10
-    PredCtrlEnumeration, // 11
-    PredInvEnumeration, // 12
-    NULL, // 13
-    CondModifierEnumeration, // 14
-    AccWrCtrlEnumeration, // 15
-    DebugCtrlEnumeration, // 16
-    SaturateEnumeration, // 17
-    RegFileEnumerationDisassembly, // 18
-    DataTypeEnumeration, // 19
-    RegFileEnumerationDisassembly, // 20
-    DataTypeEnumeration, // 21
-    RegFileEnumerationDisassembly, // 22
-    DataTypeEnumeration, // 23
-    DstChanEnEnumeration, // 24
-    NULL, // 25
-    NULL, // 26
-    NULL, // 27
-    NULL, // 28
-    NULL, // 29
-    AddrModeEnumeration, // 30
-    NULL, // 31
-    NULL, // 32
-    NULL, // 33
-    NULL, // 34
-    NULL, // 35
-    SrcModEnumeration, // 36
-    AddrModeEnumeration, // 37
-    NULL, // 38
-    NULL, // 39
-    NULL, // 40
-    NULL, // 41
-    NULL, // 42
-    NULL, // 43
-    NULL, // 44
-    NULL, // 45
-    NULL, // 46
-    NULL, // 47
-    SrcModEnumeration, // 48
-    AddrModeEnumeration, // 49
-    NULL, // 50
-    NULL, // 51
-    NULL, // 52
-    NULL, // 53
-    SrcModEnumeration, // 54
-    DataTypeEnumeration, // 55
-    RepCtrlEnumerationDisassembly, // 56
-    RepCtrlEnumerationDisassembly, // 57
-    RepCtrlEnumerationDisassembly, // 58
-    NULL, // 59
-    NULL, // 60
-    NULL, // 61
-    RegFileEnumerationDisassembly, // 62
-    AddrModeEnumeration, // 63
-    NULL, // 64
-    SFIDEnumerationDisassembly, // 65
-    RegFileEnumerationDisassembly, // 66
-    DataTypeEnumeration, // 67
-    NULL, // 68
-    NULL, // 69
-    NULL, // 70
-    NULL, // 71
-    NULL, // 72
-    NULL, // 73
-    NULL, // 74
-    EOTEnumeration, // 75
-    MathFCEnumeration, // 76
-    NULL, // 77
-    NULL, // 78
-    NULL, // 79
-    NULL, // 80
-    NULL, // 81
-    NULL, // 82
-    NULL, // 83
-    NULL, // 84
-    RegFileEnumerationDisassembly, // 85
-    MathMacroExtEnumeration, // 86
-    MathMacroExtEnumeration, // 87
-    MathMacroExtEnumeration, // 88
-    MathMacroExtEnumeration, // 89
-    BranchCtrlEnumerationDisassembly, // 90
-    NULL, // 91
-    DataTypeEnumeration, // 92
-    NoSrcDepSetEnumeration, // 93
-    NULL, // 94
-    NULL, // 95
-    NULL, // 96
-    NULL, // 97
-    NULL, // 98
-    NULL, // 99
-    NULL, // 100
-    NULL, // 101
-    ChannelModeEnumeration, // 102
-    MessageTypeEnumerationDisassembly, // 103
-    ExecutionDataTypeEnumeration, // 104
-    NULL, // 105
-    NULL, // 106
-    NULL, // 107
-    NULL, // 108
-    NULL, // 109
-    NULL, // 110
-    NULL, // 111
-    SyncFCEnumeration, // 112
-    FusionCtrlEnumeration, // 113
-    NULL, // 114
-    NULL // 115
-}; // stringGettersByField[]
 const char* fieldNameByField[116] =
 {
     "Opcode", // 0
@@ -394,7 +275,7 @@ GED_FIELD_TYPE pseudoFieldTypesByField[36] =
     0x103, // 25
     0x103, // 26
     0x100, // 27
-    0x120, // 28
+    0x100, // 28
     0x103, // 29
     0x100, // 30
     0x103, // 31
@@ -403,45 +284,6 @@ GED_FIELD_TYPE pseudoFieldTypesByField[36] =
     0x103, // 34
     0x100 // 35
 }; // pseudoFieldTypesByField[]
-const char** stringGettersByPseudoField[36] =
-{
-    ArchRegEnumeration, // 0
-    NULL, // 1
-    SwizzleEnumeration, // 2
-    SwizzleEnumeration, // 3
-    SwizzleEnumeration, // 4
-    SwizzleEnumeration, // 5
-    NULL, // 6
-    NULL, // 7
-    HeaderPresentEnumeration, // 8
-    MessageTypeEnumerationDisassembly, // 9
-    MessageTypeEnumerationDisassembly, // 10
-    MessageTypeEnumerationDisassembly, // 11
-    MessageTypeEnumerationDisassembly, // 12
-    SlotGroupEnumeration, // 13
-    SlotGroupEnumeration, // 14
-    SIMDModeEnumeration, // 15
-    SIMDModeEnumeration, // 16
-    NULL, // 17
-    BlockSizeEnumeration, // 18
-    ChannelMaskEnumeration, // 19
-    ChannelMaskEnumeration, // 20
-    ChannelMaskEnumeration, // 21
-    ChannelMaskEnumeration, // 22
-    ReturnDataControlEnumerationDisassembly, // 23
-    AtomicOperationTypeEnumeration, // 24
-    AtomicOperationTypeEnumeration, // 25
-    SubFuncIDEnumeration, // 26
-    NULL, // 27
-    NULL, // 28
-    MessageTypeEnumerationDisassembly, // 29
-    NULL, // 30
-    MessageTypeEnumerationDisassembly, // 31
-    MessageTypeEnumerationDisassembly, // 32
-    MessageTypeEnumerationDisassembly, // 33
-    MessageTypeEnumerationDisassembly, // 34
-    NULL // 35
-}; // stringGettersByPseudoField[]
 const char* fieldNameByPseudoField[36] =
 {
     "ArchReg", // 0

@@ -110,7 +110,8 @@ enum class MathMacroExt
 // to subregister offset
 //   I.e. subReg = (byteOff << left) >> right;
 // this allows us to scale a subregister byte offset up OR down
-static inline std::tuple<uint32_t, uint32_t> TypeSizeShiftsOffsetToSubreg(Type type)
+static inline std::tuple<uint32_t, uint32_t>
+    TypeSizeShiftsOffsetToSubreg(Type type)
 {
     uint32_t shl = 0, shr = 0; // by default no scaling
 
@@ -309,14 +310,20 @@ struct SendDesc {
         uint32_t       imm;
     };
 
-    constexpr SendDesc()
-        : type(Kind::IMM)
-        , imm(0)
-    {
-    }
+    constexpr SendDesc() : SendDesc(0) { }
+    constexpr SendDesc(uint32_t desc) : type(Kind::IMM), imm(desc) { }
+    constexpr SendDesc(RegRef a0r) : type(Kind::REG32A), reg(a0r) { }
 
     bool isReg() const {return type == Kind::REG32A;}
     bool isImm() const {return type == Kind::IMM;}
 };
+
+
+// Converts a send subop to SFID
+SFID OpToSFID(Op op);
+
+// Converts an SFID to send subop (note: send, not sendc)
+Op SFIDToOp(SFID sfid);
+
 } // namespace
 #endif

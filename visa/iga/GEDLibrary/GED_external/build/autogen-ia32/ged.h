@@ -13,10 +13,6 @@
 #define GED_VALIDATION_API 0
 #endif // GED_VALIDATION_API
 
-#ifndef GED_DISASSEMBLY
-#define GED_DISASSEMBLY 1
-#endif // GED_DISASSEMBLY
-
 #ifndef GED_EXPERIMENTAL
 #define GED_EXPERIMENTAL 0
 #endif // GED_EXPERIMENTAL
@@ -24,10 +20,6 @@
 #ifndef GED_CALLCONV
 #define GED_CALLCONV
 #endif // GED_CALLCONV
-
-#if GED_DISASSEMBLY
-#include <string>
-#endif // GED_DISASSEMBLY
 #include "ged_basic_types.h"
 #include "ged_enum_types.h"
 #include "ged_ins_field.h"
@@ -4967,16 +4959,4 @@ extern uint32_t GED_CALLCONV GED_GetNibCtrl(const GED_EXEC_MASK_OFFSET_CTRL exec
 #ifdef __cplusplus
 }// extern "C"
 #endif // __cplusplus
-
-#if GED_DISASSEMBLY
-
-/*!
- * Get the instruction's disassembly.
- *
- * @param[in]       ins    Pointer to the instruction object.
- *
- * @return      The instruction's disassembly.
- */
-extern std::string GED_CALLCONV GED_DisassembleIns(ged_ins_t* ins);
-#endif // GED_DISASSEMBLY
 #endif // GED_H

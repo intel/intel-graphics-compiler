@@ -109,7 +109,7 @@ namespace iga {
         const void *bits = nullptr);
 
 
-#ifndef DISABLE_ENCODER_EXCEPTIONS
+#ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
     // this uses the decoder, which uses exceptions
     void FormatInstruction(
         ErrorHandler &e,
@@ -159,19 +159,25 @@ namespace iga {
         std::ostream&    o;
         BasicFormatter(std::ostream &out) :
             currColLen(0),
-            currColStart(0),
+            currColStart((size_t)-1),
             currColDebt(0),
             o(out)
         {
         }
-    public:
 
+    public:
         // start or finish a padded column
         void startColumn(int len) {
+            IGA_ASSERT(currColStart == (size_t)-1,
+                "startColumn() called from with-in column "
+                "(missing finishColumn())");
             currColLen = len;
             currColStart = (size_t)o.tellp();
         }
         void finishColumn() {
+            IGA_ASSERT(currColStart != (size_t)-1,
+                "finishColumn() called with no active column "
+                "(missing startColumn(...))");
             size_t end = (size_t)o.tellp();
             size_t actualWidth = end - currColStart;
             if (actualWidth <= currColLen) {
@@ -188,6 +194,7 @@ namespace iga {
                 // we overflowed accummulate debt
                 currColDebt += actualWidth - currColLen;
             }
+            currColStart = (size_t)-1;
         }
 
 

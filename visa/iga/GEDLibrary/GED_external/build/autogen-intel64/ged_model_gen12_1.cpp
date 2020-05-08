@@ -8,7 +8,6 @@
 #include "ged_decoding_tables.h"
 #include "ged_mapping_tables.h"
 #include "ged_encoding_masks_tables.h"
-#include "ged_disassembly_tables.h"
 #include "ged_model_gen12_1.h"
 
 namespace GEN12_1
@@ -18,7 +17,7 @@ namespace GEN12_1
  * Top level decoding table in the decoding chain for the format flowControl.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t flowControlDecoding = DecodingTable427;
+static ged_ins_decoding_table_t flowControlDecoding = DecodingTable428;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format flowControl.
@@ -26,20 +25,11 @@ static ged_ins_decoding_table_t flowControlDecoding = DecodingTable427;
  */
 static ged_instruction_masks_table_t flowControlEncodingMasks = EncodingMasksTable129;
 
-#if GED_DISASSEMBLY
-
-/*!
- * Top level disassembly table in the disassembly chain for the format flowControl.
- * The table is a list of disassembly table pointers, terminated by a NULL.
- */
-static ged_disassembly_table_t flowControlDisassembly = DisassemblyBlockTable255;
-#endif // GED_DISASSEMBLY
-
 /*!
  * Top level decoding table in the decoding chain for the format illegal.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t illegalDecoding = DecodingTable428;
+static ged_ins_decoding_table_t illegalDecoding = DecodingTable429;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format illegal.
@@ -47,20 +37,11 @@ static ged_ins_decoding_table_t illegalDecoding = DecodingTable428;
  */
 static ged_instruction_masks_table_t illegalEncodingMasks = EncodingMasksTable10;
 
-#if GED_DISASSEMBLY
-
-/*!
- * Top level disassembly table in the disassembly chain for the format illegal.
- * The table is a list of disassembly table pointers, terminated by a NULL.
- */
-static ged_disassembly_table_t illegalDisassembly = DisassemblyBlockTable48;
-#endif // GED_DISASSEMBLY
-
 /*!
  * Top level decoding table in the decoding chain for the format math.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t mathDecoding = DecodingTable429;
+static ged_ins_decoding_table_t mathDecoding = DecodingTable430;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format math.
@@ -68,20 +49,11 @@ static ged_ins_decoding_table_t mathDecoding = DecodingTable429;
  */
 static ged_instruction_masks_table_t mathEncodingMasks = EncodingMasksTable126;
 
-#if GED_DISASSEMBLY
-
-/*!
- * Top level disassembly table in the disassembly chain for the format math.
- * The table is a list of disassembly table pointers, terminated by a NULL.
- */
-static ged_disassembly_table_t mathDisassembly = DisassemblyBlockTable255;
-#endif // GED_DISASSEMBLY
-
 /*!
  * Top level decoding table in the decoding chain for the format nop.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t nopDecoding = DecodingTable430;
+static ged_ins_decoding_table_t nopDecoding = DecodingTable431;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format nop.
@@ -89,20 +61,11 @@ static ged_ins_decoding_table_t nopDecoding = DecodingTable430;
  */
 static ged_instruction_masks_table_t nopEncodingMasks = EncodingMasksTable119;
 
-#if GED_DISASSEMBLY
-
-/*!
- * Top level disassembly table in the disassembly chain for the format nop.
- * The table is a list of disassembly table pointers, terminated by a NULL.
- */
-static ged_disassembly_table_t nopDisassembly = DisassemblyBlockTable50;
-#endif // GED_DISASSEMBLY
-
 /*!
  * Top level decoding table in the decoding chain for the format oneSourceCommon.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t oneSourceCommonDecoding = DecodingTable431;
+static ged_ins_decoding_table_t oneSourceCommonDecoding = DecodingTable432;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format oneSourceCommon.
@@ -110,20 +73,11 @@ static ged_ins_decoding_table_t oneSourceCommonDecoding = DecodingTable431;
  */
 static ged_instruction_masks_table_t oneSourceCommonEncodingMasks = EncodingMasksTable117;
 
-#if GED_DISASSEMBLY
-
-/*!
- * Top level disassembly table in the disassembly chain for the format oneSourceCommon.
- * The table is a list of disassembly table pointers, terminated by a NULL.
- */
-static ged_disassembly_table_t oneSourceCommonDisassembly = DisassemblyBlockTable255;
-#endif // GED_DISASSEMBLY
-
 /*!
  * Top level decoding table in the decoding chain for the format oneSourceCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t oneSourceCompactDecoding = DecodingTable432;
+static ged_ins_decoding_table_t oneSourceCompactDecoding = DecodingTable433;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format oneSourceCompact.
@@ -141,7 +95,7 @@ static ged_compact_mapping_table_t oneSourceCompactMapping = MappingTable39;
  * Top level decoding table in the decoding chain for the format send.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t sendDecoding = DecodingTable433;
+static ged_ins_decoding_table_t sendDecoding = DecodingTable434;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format send.
@@ -149,20 +103,11 @@ static ged_ins_decoding_table_t sendDecoding = DecodingTable433;
  */
 static ged_instruction_masks_table_t sendEncodingMasks = EncodingMasksTable124;
 
-#if GED_DISASSEMBLY
-
-/*!
- * Top level disassembly table in the disassembly chain for the format send.
- * The table is a list of disassembly table pointers, terminated by a NULL.
- */
-static ged_disassembly_table_t sendDisassembly = DisassemblyBlockTable257;
-#endif // GED_DISASSEMBLY
-
 /*!
  * Top level decoding table in the decoding chain for the format sync.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t syncDecoding = DecodingTable434;
+static ged_ins_decoding_table_t syncDecoding = DecodingTable435;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format sync.
@@ -170,20 +115,11 @@ static ged_ins_decoding_table_t syncDecoding = DecodingTable434;
  */
 static ged_instruction_masks_table_t syncEncodingMasks = EncodingMasksTable118;
 
-#if GED_DISASSEMBLY
-
-/*!
- * Top level disassembly table in the disassembly chain for the format sync.
- * The table is a list of disassembly table pointers, terminated by a NULL.
- */
-static ged_disassembly_table_t syncDisassembly = DisassemblyBlockTable255;
-#endif // GED_DISASSEMBLY
-
 /*!
  * Top level decoding table in the decoding chain for the format threeSource.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t threeSourceDecoding = DecodingTable435;
+static ged_ins_decoding_table_t threeSourceDecoding = DecodingTable436;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format threeSource.
@@ -191,20 +127,11 @@ static ged_ins_decoding_table_t threeSourceDecoding = DecodingTable435;
  */
 static ged_instruction_masks_table_t threeSourceEncodingMasks = EncodingMasksTable121;
 
-#if GED_DISASSEMBLY
-
-/*!
- * Top level disassembly table in the disassembly chain for the format threeSource.
- * The table is a list of disassembly table pointers, terminated by a NULL.
- */
-static ged_disassembly_table_t threeSourceDisassembly = DisassemblyBlockTable256;
-#endif // GED_DISASSEMBLY
-
 /*!
  * Top level decoding table in the decoding chain for the format threeSourceCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t threeSourceCompactDecoding = DecodingTable436;
+static ged_ins_decoding_table_t threeSourceCompactDecoding = DecodingTable437;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format threeSourceCompact.
@@ -222,7 +149,7 @@ static ged_compact_mapping_table_t threeSourceCompactMapping = MappingTable40;
  * Top level decoding table in the decoding chain for the format twoSourceCommon.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t twoSourceCommonDecoding = DecodingTable437;
+static ged_ins_decoding_table_t twoSourceCommonDecoding = DecodingTable438;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format twoSourceCommon.
@@ -230,20 +157,11 @@ static ged_ins_decoding_table_t twoSourceCommonDecoding = DecodingTable437;
  */
 static ged_instruction_masks_table_t twoSourceCommonEncodingMasks = EncodingMasksTable114;
 
-#if GED_DISASSEMBLY
-
-/*!
- * Top level disassembly table in the disassembly chain for the format twoSourceCommon.
- * The table is a list of disassembly table pointers, terminated by a NULL.
- */
-static ged_disassembly_table_t twoSourceCommonDisassembly = DisassemblyBlockTable255;
-#endif // GED_DISASSEMBLY
-
 /*!
  * Top level decoding table in the decoding chain for the format twoSourceCompact.
  * The indices for the table are the GED_INS_FIELD enumerator values.
  */
-static ged_ins_decoding_table_t twoSourceCompactDecoding = DecodingTable438;
+static ged_ins_decoding_table_t twoSourceCompactDecoding = DecodingTable439;
 
 /*!
  * Top level encoding masks table in the encoding chain for the format twoSourceCompact.
@@ -387,150 +305,4 @@ OpcodeTables Opcodes[128] =
     NULL, NULL, NULL, NULL, NULL, // 126
     NULL, NULL, NULL, NULL, NULL // 127
 }; // Opcodes[]
-
-#if GED_DISASSEMBLY
-
-/*!
- * This table maps every possible opcode value (even for non-existing opcodes) to its respective top level disassembly table. Opcodes
- * that are not supported in this model are mapped to a NULL pointer.
- */
-static ged_disassembly_table_t DisassemblyTopLevel[128] =
-{
-    illegalDisassembly, // 0
-    syncDisassembly, // 1
-    NULL, // 2
-    NULL, // 3
-    NULL, // 4
-    NULL, // 5
-    NULL, // 6
-    NULL, // 7
-    NULL, // 8
-    NULL, // 9
-    NULL, // 10
-    NULL, // 11
-    NULL, // 12
-    NULL, // 13
-    NULL, // 14
-    NULL, // 15
-    NULL, // 16
-    NULL, // 17
-    NULL, // 18
-    NULL, // 19
-    NULL, // 20
-    NULL, // 21
-    NULL, // 22
-    NULL, // 23
-    NULL, // 24
-    NULL, // 25
-    NULL, // 26
-    NULL, // 27
-    NULL, // 28
-    NULL, // 29
-    NULL, // 30
-    NULL, // 31
-    flowControlDisassembly, // 32
-    flowControlDisassembly, // 33
-    flowControlDisassembly, // 34
-    flowControlDisassembly, // 35
-    flowControlDisassembly, // 36
-    flowControlDisassembly, // 37
-    NULL, // 38
-    flowControlDisassembly, // 39
-    flowControlDisassembly, // 40
-    flowControlDisassembly, // 41
-    flowControlDisassembly, // 42
-    flowControlDisassembly, // 43
-    flowControlDisassembly, // 44
-    flowControlDisassembly, // 45
-    flowControlDisassembly, // 46
-    flowControlDisassembly, // 47
-    NULL, // 48
-    sendDisassembly, // 49
-    sendDisassembly, // 50
-    NULL, // 51
-    NULL, // 52
-    NULL, // 53
-    NULL, // 54
-    NULL, // 55
-    mathDisassembly, // 56
-    NULL, // 57
-    NULL, // 58
-    NULL, // 59
-    NULL, // 60
-    NULL, // 61
-    NULL, // 62
-    NULL, // 63
-    twoSourceCommonDisassembly, // 64
-    twoSourceCommonDisassembly, // 65
-    twoSourceCommonDisassembly, // 66
-    oneSourceCommonDisassembly, // 67
-    oneSourceCommonDisassembly, // 68
-    oneSourceCommonDisassembly, // 69
-    oneSourceCommonDisassembly, // 70
-    oneSourceCommonDisassembly, // 71
-    twoSourceCommonDisassembly, // 72
-    twoSourceCommonDisassembly, // 73
-    oneSourceCommonDisassembly, // 74
-    oneSourceCommonDisassembly, // 75
-    oneSourceCommonDisassembly, // 76
-    oneSourceCommonDisassembly, // 77
-    twoSourceCommonDisassembly, // 78
-    twoSourceCommonDisassembly, // 79
-    twoSourceCommonDisassembly, // 80
-    twoSourceCommonDisassembly, // 81
-    NULL, // 82
-    NULL, // 83
-    NULL, // 84
-    NULL, // 85
-    NULL, // 86
-    NULL, // 87
-    threeSourceDisassembly, // 88
-    NULL, // 89
-    NULL, // 90
-    threeSourceDisassembly, // 91
-    NULL, // 92
-    NULL, // 93
-    NULL, // 94
-    NULL, // 95
-    nopDisassembly, // 96
-    oneSourceCommonDisassembly, // 97
-    twoSourceCommonDisassembly, // 98
-    twoSourceCommonDisassembly, // 99
-    oneSourceCommonDisassembly, // 100
-    twoSourceCommonDisassembly, // 101
-    twoSourceCommonDisassembly, // 102
-    twoSourceCommonDisassembly, // 103
-    twoSourceCommonDisassembly, // 104
-    twoSourceCommonDisassembly, // 105
-    NULL, // 106
-    NULL, // 107
-    twoSourceCommonDisassembly, // 108
-    NULL, // 109
-    twoSourceCommonDisassembly, // 110
-    twoSourceCommonDisassembly, // 111
-    twoSourceCommonDisassembly, // 112
-    twoSourceCommonDisassembly, // 113
-    threeSourceDisassembly, // 114
-    NULL, // 115
-    NULL, // 116
-    NULL, // 117
-    NULL, // 118
-    oneSourceCommonDisassembly, // 119
-    threeSourceDisassembly, // 120
-    twoSourceCommonDisassembly, // 121
-    threeSourceDisassembly, // 122
-    NULL, // 123
-    NULL, // 124
-    NULL, // 125
-    NULL, // 126
-    NULL // 127
-}; // DisassemblyTopLevel[]
-#endif // GED_DISASSEMBLY
-
-#if GED_DISASSEMBLY
-const ged_disassembly_table_t GetDisassemblyTable(/* GED_OPCODE */ uint32_t opcode)
-{
-    return DisassemblyTopLevel[opcode];
-}
-#endif // GED_DISASSEMBLY
 } // namespace GEN12_1

@@ -140,7 +140,7 @@ iga_status_t iga_platform_names(
         if (p.platform == static_cast<iga::Platform>(gen)) {
             int p_names = 0;
             for (p_names = 0;
-                p_names < MAX_PLATFORM_NAMES && p.names[p_names];
+                p.names[p_names] && p_names < MAX_PLATFORM_NAMES;
                 p_names++)
                 ;
             if (names_bytes_needed)

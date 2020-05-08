@@ -26,7 +26,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SendDescriptorDecoding.hpp"
 #include "../bits.hpp"
-#include "../Backend/MessageInfo.hpp"
+#include "../IR/Messages.hpp"
+#include "../strings.hpp"
+
+#include <algorithm>
+
 
 using namespace iga;
 
@@ -91,25 +95,28 @@ static uint32_t getHeaderBit(uint32_t desc) {return getBits(desc, 19, 1);}
 void iga::EmitSendDescriptorInfo(
     Platform p,
     const OpSpec &os,
+    ExecSize execSize,
+    bool dstNonNull,
     int dstLen, int src0Len, int src1Len,
     const SendDesc &exDesc, const SendDesc &desc,
+    RegRef indDesc,
     std::stringstream &ss)
 {
     DiagnosticList ws, es;
-    auto exDescImm =
-        exDesc.isReg() ? 0xFFFFFFFF : exDesc.imm;
     SFID sfid =
         p < Platform::GEN12P1 && exDesc.isReg() ?
-        SFID::INVALID : MessageInfo::sfidFromOp(p, os.op, exDescImm);
+            SFID::INVALID :
+            MessageInfo::sfidFromOp(p, os.op, exDesc.imm);
 
     //////////////////////////////////////
     // emit the: "wr:1h+2, rd:4" part
+    ss << "wr:";
     if (src0Len >= 0) {
-        ss << "wr:" << src0Len;
+        ss << src0Len;
     } else if (desc.isReg()) {
-        ss << "wr:" << "a0." << (int)desc.reg.subRegNum << "[28:25]";
+        ss << "a0." << (int)desc.reg.subRegNum << "[28:25]";
     } else {
-        ss << "wr:?";
+        ss << "?";
     }
     bool hasHeaderBit = true;
     bool hasExactDstLen = true;
@@ -126,21 +133,25 @@ void iga::EmitSendDescriptorInfo(
         ss << "?";
     }
     ss << ", rd:";
-    if (dstLen < 0) {
-        if (desc.isReg()) {
-            ss << "a0." << (int)desc.reg.subRegNum << "[24:20]";
-        } else {
-            ss << "?";
-        }
+    if (desc.isReg()) {
+        ss << "a0." << (int)desc.reg.subRegNum << "[24:20]";
     } else if (hasExactDstLen) {
         ss << dstLen;
     } else {
-        if (dstLen == 0) {
-            ss << "0";
+        if (dstNonNull) {
+            if (dstLen < 0) {
+                PayloadLengths lens(p, sfid, execSize, desc.imm);
+                dstLen = lens.dstLen;
+            }
+            if (dstLen >= 0) {
+                ss << dstLen;
+            } else {
+                // we cannot decode this message and thus cannot infer the
+                // destination length; so we just say so
+                ss << "non-zero";
+            }
         } else {
-            // TODO: we should look up this when possible
-            // (use MessageInfo::tryDecode)
-            ss << "non-zero";
+            ss << "0";
         }
     }
     //
@@ -151,21 +162,17 @@ void iga::EmitSendDescriptorInfo(
         if (exDesc.isReg()) {
             ss << "; sfid a0." << (int)exDesc.reg.subRegNum << "[3:0]";
         } else { // no a0.0
-            ss << "; " << getSFIDString(p, exDescImm & 0xF) << ": ";
+            ss << "; " << getSFIDString(p, exDesc.imm & 0xF);
         }
     }
 
     if (desc.isImm()) {
-        const MessageInfo mi =
-            MessageInfo::tryDecode(
-                p, sfid, exDescImm, desc.imm, ws, es, nullptr);
-        //
-        if (!mi.description.empty()) {
-            bool useSymbol = false;
-            if (useSymbol)
-                ss << "; " << mi.symbol;
-            else
-                ss << "; " << mi.description;
+        const DecodeResult dr =
+            tryDecode(p, sfid, exDesc, desc, indDesc, nullptr);
+        if (dr.syntax.isValid()) {
+            ss << "; " << dr.syntax.sym();
+        } else if (!dr.info.description.empty()) {
+            ss << "; " << dr.info.description;
         } else {
             if (!es.empty() &&
                 es.back().second.find("unsupported sfid") == std::string::npos)
@@ -174,5 +181,20 @@ void iga::EmitSendDescriptorInfo(
             }
             // skip unsupported SFIDs
         }
+
+        if (dr.info.hasAttr(MessageInfo::HAS_UVRLOD) && src0Len > 0) {
+            const int REG_FILE_BITS =
+                    256;
+            const int QUARTER_EXEC_BITS = REG_FILE_BITS/32/2/2;
+            int elems = std::max<int>(QUARTER_EXEC_BITS, dr.info.execWidth);
+            int regsForU =
+                std::max<int>(1, elems*dr.info.addrSizeBits/REG_FILE_BITS);
+            switch (src0Len/regsForU) {
+            case 1: ss << "; u"; break;
+            case 2: ss << "; u,v"; break;
+            case 3: ss << "; u,v,r"; break;
+            case 4: ss << "; u,v,r,lod"; break;
+            }
+        } // U,V,R,LOD
     }
-}
+} // iga::EmitSendDescriptorInfo
