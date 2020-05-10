@@ -140,11 +140,6 @@
         return isGen12LP();
     }
 
-    bool hasBankCollision() const
-    {
-        return getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11 || (getOption(vISA_enableBCR) && !(getPlatform() == GENX_TGLLP && GetStepping() == Step_A));
-    }
-
     bool hasSendShootdown() const
     {
         return getPlatform() >= GENX_CNL;
@@ -462,6 +457,12 @@
     {
         return getPlatform() == GENX_CHV || getPlatform() == GENX_BXT ||
                getPlatform() == GENX_ICLLP || isGen12LP();
+    }
+
+    bool hasBankCollision() const
+    {
+        return (getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11) ||
+        (getOption(vISA_enableBCR) && !(getPlatform() == GENX_TGLLP && GetStepping() == Step_A));
     }
 
     bool oneGRFBankDivision() const
