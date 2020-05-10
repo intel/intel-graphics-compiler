@@ -9437,6 +9437,8 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     unsigned char argSizeInGRF = (offsetA + getGRFSize() - 1) / getGRFSize();
     unsigned char retSizeInGRF = retOnStack ? 0 : (retSize + getGRFSize() - 1) / getGRFSize();
 
+    CVariable* funcAddr = GetSymbol(inst->getCalledValue());
+
     if (!isIndirectFCall)
     {
         m_encoder->StackCall(nullptr, F, argSizeInGRF, retSizeInGRF);
@@ -9444,8 +9446,6 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     }
     else
     {
-        CVariable* funcAddr = GetSymbol(inst->getCalledValue());
-
         if (funcAddr->IsUniform())
         {
             funcAddr = TruncatePointer(funcAddr);
@@ -9495,6 +9495,29 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             m_encoder->SetP(loopPred, eMask);
             m_encoder->Push();
 
+            if (!inst->use_empty() && !retOnStack)
+            {
+                // Emit the return value if used: copy the reserved RET register to call's dst
+                // For non-uniform call, copy the ret inside this loop so that it'll honor
+                // the loop mask
+                CVariable* Dst = GetSymbol(inst);
+                CVariable* Src = m_currShader->GetRETV();
+                if (Dst->GetType() == ISA_TYPE_BOOL)
+                {
+                    CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
+                    m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
+                }
+                else
+                {
+                    IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
+                    if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
+                    {
+                        Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
+                    }
+                    emitCopyAll(Dst, Src, inst->getType());
+                }
+            }
+
             // Loop while there are bits still left in the mask
             m_encoder->Jump(loopPred, label);
             m_encoder->Push();
@@ -9507,20 +9530,23 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         CVariable* Dst = GetSymbol(inst);
         if (!retOnStack)
         {
-            CVariable* Src = m_currShader->GetRETV();
-            if (Dst->GetType() == ISA_TYPE_BOOL)
-            {
-                CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
-                m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
-            }
-            else
-            {
-                IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
-                if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
+            // non-unifrm funcAddr case has been handled in above loop expansion
+            if (funcAddr->IsUniform()) {
+                CVariable* Src = m_currShader->GetRETV();
+                if (Dst->GetType() == ISA_TYPE_BOOL)
                 {
-                    Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
+                    CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
+                    m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
                 }
-                emitCopyAll(Dst, Src, inst->getType());
+                else
+                {
+                    IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
+                    if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
+                    {
+                        Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
+                    }
+                    emitCopyAll(Dst, Src, inst->getType());
+                }
             }
         }
         else
