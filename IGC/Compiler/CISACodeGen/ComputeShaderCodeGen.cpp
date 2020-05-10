@@ -443,7 +443,7 @@ namespace IGC
                 float occu16 = ctx->GetThreadOccupancy(SIMDMode::SIMD16);
                 float occu32 = ctx->GetThreadOccupancy(SIMDMode::SIMD32);
                 if (!ctx->isSecondCompile &&
-                    (occu32 > occu16 ||
+                    (occu32 >= occu16 ||
                     (occu32 == occu16 && ctx->m_instrTypes.hasBarrier)))
                 {
                     return true;
