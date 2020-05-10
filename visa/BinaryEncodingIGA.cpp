@@ -459,12 +459,6 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, const G4_INST *inst, Platform 
         break;
     case G4_label:
         break;
-    case G4_pseudo_store_be_fp:
-        ASSERT_USER(false, "G4_pseudo_store_be_fp is not GEN ISA OPCODE");
-        break;
-    case G4_pseudo_restore_be_fp:
-        ASSERT_USER(false, "G4_pseudo_restore_be_fp is not GEN ISA OPCODE");
-        break;
     case G4_pseudo_mad:
         igaOp = iga::Op::MAD;
         break;
@@ -492,18 +486,6 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, const G4_INST *inst, Platform 
     case G4_pseudo_fret:
         igaOp = iga::Op::RET;
         break;
-    case G4_pseudo_caller_save:
-        ASSERT_USER(false, "G4_pseudo_caller_save not GEN ISA OPCODE.");
-        break;
-    case G4_pseudo_caller_restore:
-        ASSERT_USER(false, "G4_pseudo_caller_restore not GEN ISA OPCODE.");
-        break;
-    case G4_pseudo_callee_save:
-        ASSERT_USER(false, "G4_pseudo_callee_save not GEN ISA OPCODE.");
-        break;
-    case G4_pseudo_callee_restore:
-        ASSERT_USER(false, "G4_pseudo_callee_restore not GEN ISA OPCODE.");
-        break;
     case G4_pseudo_sada2:
         igaOp = iga::Op::SADA2;
         break;
@@ -515,9 +497,6 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, const G4_INST *inst, Platform 
         break;
     case G4_pseudo_fc_ret:
         igaOp = iga::Op::RET;
-        break;
-    case G4_pseudo_lifetime_end:
-        ASSERT_USER(false, "G4_pseudo_lifetime_end not GEN ISA OPCODE.");
         break;
     case G4_intrinsic:
         ASSERT_USER(false, "G4_intrinsic not GEN ISA OPCODE.");

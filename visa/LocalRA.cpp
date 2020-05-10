@@ -561,7 +561,7 @@ public:
     bool operator()(G4_INST* inst)
     {
         if (inst->isPseudoKill() ||
-            inst->opcode() == G4_pseudo_lifetime_end)
+            inst->isLifeTimeEnd())
         {
             G4_Declare* topdcl;
 
@@ -1228,7 +1228,7 @@ void LocalRA::setLexicalID(bool includePseudo)
         for (auto curInst : *bb)
         {
             if ((!includePseudo) && (curInst->isPseudoKill() ||
-                curInst->opcode() == G4_pseudo_lifetime_end))
+                curInst->isLifeTimeEnd()))
             {
                 curInst->setLexicalId(id);
             }
@@ -1254,11 +1254,11 @@ void LocalRA::markReferences(unsigned int& numRowsEOT,
             G4_INST* curInst = (*inst_it);
 
             if (curInst->isPseudoKill() ||
-                curInst->opcode() == G4_pseudo_lifetime_end)
+                curInst->isLifeTimeEnd())
             {
                 curInst->setLexicalId(id);
                 lifetimeOpFound = true;
-                if (curInst->opcode() == G4_pseudo_lifetime_end)
+                if (curInst->isLifeTimeEnd())
                 {
                     markReferencesInInst(inst_it);
                 }

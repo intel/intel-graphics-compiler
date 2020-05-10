@@ -1729,7 +1729,7 @@ G4_SrcModifier Optimizer::mergeModifier( G4_Operand *src, G4_Operand *use )
 static bool checkLifetime(G4_INST *defInst, G4_INST *inst)
 {
     // Check whether current instruction ends any src opnd of op
-    if (inst->opcode() != G4_pseudo_lifetime_end)
+    if (!inst->isLifeTimeEnd())
         return true;
 
     G4_RegVar *Var = GetTopDclFromRegRegion(inst->getSrc(0))->getRegVar();

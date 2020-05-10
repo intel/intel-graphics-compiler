@@ -673,12 +673,16 @@ public:
     bool supportsNullDst() const;
 
     bool isPseudoKill() const;
+    bool isLifeTimeEnd() const;
     bool isSpillIntrinsic() const;
     G4_SpillIntrinsic* asSpillIntrinsic() const;
     bool isFillIntrinsic() const;
     G4_FillIntrinsic* asFillIntrinsic() const;
     bool isSplitIntrinsic() const;
-    bool isLifeTimeEnd() const { return op == G4_pseudo_lifetime_end; }
+    bool isCallerSave() const;
+    bool isCallerRestore() const;
+    bool isCalleeSave() const;
+    bool isCalleeRestore() const;
     bool isMov() const { return G4_Inst_Table[op].instType == InstTypeMov; }
     bool isLogic() const { return G4_Inst_Table[op].instType == InstTypeLogic; }
     bool isCompare() const
@@ -1442,15 +1446,21 @@ enum PseudoKillType
 // -- it must be lowered/deleted before certain phases in the finalizer (no later than binary encoding)
 
 // all intrinsic opcode go here
+// order must match that of the G4_Intrinsics table
 enum class Intrinsic
 {
     Wait,
     Use,
     MemFence,
     PseudoKill,
+    PseudoUse,  // ToDo: can we merge Use and PseudoUse? former is from input while latter is internally generated.
     Spill,
     Fill,
     Split,
+    CallerSave,
+    CallerRestore,
+    CalleeSave,
+    CalleeRestore,
     NumIntrinsics
 };
 
@@ -1482,14 +1492,19 @@ struct IntrinsicInfo
 
 static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] =
 {
-    //  id                  name            numDst  numSrc  loweredBy               temp
-    {Intrinsic::Wait,       "wait",         0,      0,      Phase::Optimizer,       { 0, 0, 0, false, false } },
-    {Intrinsic::Use,        "use",          0,      1,      Phase::Scheduler,       { 0, 0, 0, false, false } },
-    {Intrinsic::MemFence,   "mem_fence",    0,      0,      Phase::BinaryEncoding,  { 0, 0, 0, false, false } },
-    {Intrinsic::PseudoKill, "pseudo_kill",  1,      1,      Phase::RA,              { 0, 0, 0, false, false} },
-    {Intrinsic::Spill,      "spill",        1,      2,      Phase::RA,              { 0, 0, 0, false, false } },
-    {Intrinsic::Fill,       "fill",         1,      1,      Phase::RA,              { 0, 0, 0, false, false } },
-    {Intrinsic::Split,      "split",        1,      1,      Phase::RA,              { 0, 0, 0, false, false } },
+    //  id                      name            numDst  numSrc  loweredBy               temp
+    {Intrinsic::Wait,           "wait",         0,      0,      Phase::Optimizer,       { 0, 0, 0, false, false } },
+    {Intrinsic::Use,            "use",          0,      1,      Phase::Scheduler,       { 0, 0, 0, false, false } },
+    {Intrinsic::MemFence,       "mem_fence",    0,      0,      Phase::BinaryEncoding,  { 0, 0, 0, false, false } },
+    {Intrinsic::PseudoKill,     "pseudo_kill",  1,      1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::PseudoUse,      "pseudo_use",   0,      1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::Spill,          "spill",        1,      2,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::Fill,           "fill",         1,      1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::Split,          "split",        1,      1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::CallerSave,     "caller_save",  1,      0,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::CallerRestore,  "caller_restore", 0,    1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::CalleeSave,     "callee_save",  1,      0,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::CalleeRestore,  "callee_restore", 0,    1,      Phase::RA,              { 0, 0, 0, false, false } },
 };
 
 namespace vISA
@@ -3840,6 +3855,11 @@ inline bool G4_INST::isPseudoKill() const
     return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::PseudoKill;
 }
 
+inline bool G4_INST::isLifeTimeEnd() const
+{
+    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::PseudoUse;
+}
+
 inline bool G4_INST::isSpillIntrinsic() const
 {
     return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::Spill;
@@ -3865,6 +3885,26 @@ inline G4_FillIntrinsic* G4_INST::asFillIntrinsic() const
 inline bool G4_INST::isSplitIntrinsic() const
 {
     return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::Split;
+}
+
+inline bool G4_INST::isCallerSave() const
+{
+    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::CallerSave;
+}
+
+inline bool G4_INST::isCallerRestore() const
+{
+    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::CallerRestore;
+}
+
+inline bool G4_INST::isCalleeSave() const
+{
+    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::CalleeSave;
+}
+
+inline bool G4_INST::isCalleeRestore() const
+{
+    return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::CalleeRestore;
 }
 
 inline const char* G4_INST::getLabelStr() const

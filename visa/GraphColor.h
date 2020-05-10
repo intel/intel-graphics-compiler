@@ -778,6 +778,10 @@ namespace vISA
         // created in addStoreRestoreForFP
         G4_Declare* oldFPDcl = nullptr;
 
+        // instruction to save/restore vISA FP, only present in functions
+        G4_INST* saveBE_FPInst = nullptr;
+        G4_INST* restoreBE_FPInst = nullptr;
+
         // new temps for each reference of spilled address/flag decls
         std::unordered_set<G4_Declare*> addrFlagSpillDcls;
 
@@ -838,6 +842,9 @@ namespace vISA
             retDecls[retLoc] = dcl;
             return dcl;
         }
+
+        G4_INST* getSaveBE_FPInst() const { return saveBE_FPInst; };
+        G4_INST* getRestoreBE_FPInst() const { return restoreBE_FPInst; };
 
         static unsigned int owordToGRFSize(unsigned int numOwords);
         static unsigned int hwordToGRFSize(unsigned int numHwords);

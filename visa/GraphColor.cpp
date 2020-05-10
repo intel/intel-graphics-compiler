@@ -2322,7 +2322,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
                     unsigned id = ((G4_RegVar*)(srcRegion)->getBase())->getId();
                     lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount); // update reference count
 
-                    if (inst->opcode() != G4_pseudo_lifetime_end)
+                    if (!inst->isLifeTimeEnd())
                     {
                         updateLiveness(live, id, true);
                         if (lrs[id]->getIsSplittedDcl())
@@ -3319,7 +3319,7 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
     }
 
     // Handle dst
-    if (inst->isCall() || inst->opcode() == G4_pseudo_caller_save)
+    if (inst->isCall() || inst->isCallerSave())
     {
         G4_Declare* dcl = dst->getBase()->asRegVar()->getDeclare();
         if (dcl && liveAnalysis.livenessClass(dcl->getRegFile()))
@@ -6217,7 +6217,7 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
             G4_INST* curInst = (*inst_it);
 
             if (curInst->isPseudoKill() ||
-                curInst->opcode() == G4_pseudo_lifetime_end ||
+                curInst->isLifeTimeEnd() ||
                 curInst->opcode() == G4_pseudo_fcall ||
                 curInst->opcode() == G4_pseudo_fret)
             {
@@ -7141,7 +7141,7 @@ void GraphColor::addCallerSaveRestoreCode()
             {
                 --insertSaveIt;
             }
-            MUST_BE_TRUE((*insertSaveIt)->opcode() == G4_pseudo_caller_save, ERROR_REGALLOC);
+            MUST_BE_TRUE((*insertSaveIt)->isCallerSave(), ERROR_REGALLOC);
             INST_LIST_ITER rmIt = insertSaveIt;
             if (insertSaveIt == (*it)->begin())
             {
@@ -7181,7 +7181,7 @@ void GraphColor::addCallerSaveRestoreCode()
             }
             (*it)->erase(rmIt);
             INST_LIST_ITER insertRestIt = afterFCallBB->begin();
-            for (; (*insertRestIt)->opcode() != G4_pseudo_caller_restore; ++insertRestIt);
+            for (; !(*insertRestIt)->isCallerRestore(); ++insertRestIt);
             if (callerSaveRegCount > 0)
             {
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
@@ -7279,7 +7279,7 @@ void GraphColor::addCalleeSaveRestoreCode()
         calleeSaveRegsWritten += ((*vit) ? 1 : 0);
 
     INST_LIST_ITER insertSaveIt = builder.kernel.fg.getEntryBB()->end();
-    for (--insertSaveIt; (*insertSaveIt)->opcode() != G4_pseudo_callee_save; --insertSaveIt);
+    for (--insertSaveIt; !(*insertSaveIt)->isCalleeSave(); --insertSaveIt);
     if (calleeSaveRegCount > 0)
     {
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
@@ -7307,7 +7307,7 @@ void GraphColor::addCalleeSaveRestoreCode()
     }
     builder.kernel.fg.getEntryBB()->erase(insertSaveIt);
     INST_LIST_ITER insertRestIt = builder.kernel.fg.getUniqueReturnBlock()->end();
-    for (--insertRestIt; (*insertRestIt)->opcode() != G4_pseudo_callee_restore; --insertRestIt);
+    for (--insertRestIt; !(*insertRestIt)->isCalleeRestore(); --insertRestIt);
     INST_LIST_ITER eraseIt = insertRestIt++;
     if (calleeSaveRegCount > 0)
     {
@@ -7415,16 +7415,13 @@ void GraphColor::addCalleeStackSetupCode()
 
     if (frameSize == 0)
     {
-        // Remove pseudo_store/restore_be_fp because a new frame is not needed
-        INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
-        for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->opcode() != G4_pseudo_store_be_fp;
-            ++insertIt)
-        {   /* void */
-        };
+        // Remove store/restore_be_fp because a new frame is not needed
+        G4_BB* entryBB = builder.kernel.fg.getEntryBB();
+        auto insertIt = std::find(entryBB->begin(), entryBB->end(), gra.getSaveBE_FPInst());
         builder.kernel.fg.getEntryBB()->erase(insertIt);
 
         insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
-        for (--insertIt; (*insertIt)->opcode() != G4_pseudo_restore_be_fp; --insertIt)
+        for (--insertIt; (*insertIt) != gra.getRestoreBE_FPInst(); --insertIt)
         {   /* void */
         };
         builder.kernel.fg.getUniqueReturnBlock()->erase(insertIt);
@@ -7447,13 +7444,8 @@ void GraphColor::addCalleeStackSetupCode()
         auto addInst = builder.createBinOp(G4_add, 1,
             dst, src0, src1, InstOpt_WriteEnable, false);
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
-        auto insertIt = std::find_if(entryBB->begin(), entryBB->end(),
-            [](G4_INST* inst) { return inst->opcode() == G4_pseudo_store_be_fp; });
-
-        MUST_BE_TRUE(insertIt != entryBB->end(), "Can't find pseudo_store_be_fp");
-        // Convert pseudo_store_be_fp to mov
-        (*insertIt)->setOpcode(G4_mov);
-        (*insertIt)->setOptionOn(InstOpt_WriteEnable);
+        auto insertIt = std::find(entryBB->begin(), entryBB->end(), gra.getSaveBE_FPInst());
+        MUST_BE_TRUE(insertIt != entryBB->end(), "Can't find BE_FP store inst");
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
@@ -7478,10 +7470,8 @@ void GraphColor::addCalleeStackSetupCode()
             Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_INST* spRestore = builder.createMov(1, sp_dst, fp_src, InstOpt_WriteEnable, false);
         INST_LIST_ITER insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
-        for (--insertIt; (*insertIt)->opcode() != G4_pseudo_restore_be_fp; --insertIt);
-        // Convert pseudo_restore_be_fp to mov
-        (*insertIt)->setOpcode(G4_mov);
-        (*insertIt)->setOptionOn(InstOpt_WriteEnable);
+        for (--insertIt; (*insertIt) != gra.getRestoreBE_FPInst(); --insertIt);
+
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
             G4_INST* callerFPRestore = (*insertIt);
@@ -7693,9 +7683,7 @@ void GlobalRA::addCallerSavePseudoCode()
             auto fcallInst = bb->back()->asCFInst();
             G4_Declare* pseudoVCADcl = bb->getParent().fcallToPseudoDclMap[fcallInst].VCA;
             G4_DstRegRegion* dst = builder.createDst(pseudoVCADcl->getRegVar(), 0, 0, 1, Type_UD);
-            G4_INST* saveInst = builder.createInternalInst(
-                NULL, G4_pseudo_caller_save, NULL, false, 1,
-                dst, NULL, NULL, InstOpt_WriteEnable);
+            G4_INST* saveInst = builder.createInternalIntrinsicInst(nullptr, Intrinsic::CallerSave, 1, dst, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
             INST_LIST_ITER callBBIt = bb->end();
             bb->insert(--callBBIt, saveInst);
 
@@ -7718,9 +7706,7 @@ void GlobalRA::addCallerSavePseudoCode()
             INST_LIST_ITER retBBIt = retBB->begin();
             for (; retBBIt != retBB->end() && (*retBBIt)->isLabel(); ++retBBIt);
             G4_INST* restoreInst =
-                builder.createInternalInst(
-                    NULL, G4_pseudo_caller_restore, NULL, false, 1,
-                    NULL, src, NULL, InstOpt_WriteEnable);
+                builder.createInternalIntrinsicInst(nullptr, Intrinsic::CallerRestore, 1, nullptr, src, nullptr, nullptr, InstOpt_WriteEnable);
             retBB->insert(retBBIt, restoreInst);
         }
     }
@@ -7737,9 +7723,7 @@ void GlobalRA::addCalleeSavePseudoCode()
     G4_Declare* pseudoVCEDcl = builder.kernel.fg.pseudoVCEDcl;
 
     G4_DstRegRegion* dst = builder.createDst(pseudoVCEDcl->getRegVar(), 0, 0, 1, Type_UD);
-    G4_INST* saveInst = builder.createInternalInst(
-        NULL, G4_pseudo_callee_save, NULL, false, 1, dst,
-        NULL, NULL, InstOpt_WriteEnable);
+    auto saveInst = builder.createInternalIntrinsicInst(nullptr, Intrinsic::CalleeSave, 1, dst, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
     INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
     for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
         ++insertIt)
@@ -7752,9 +7736,7 @@ void GlobalRA::addCalleeSavePseudoCode()
     G4_Operand* src = builder.createSrcRegRegion(
         Mod_src_undef, Direct, pseudoVCEDcl->getRegVar(), 0, 0, rDesc, Type_UD);
     G4_INST* restoreInst =
-        builder.createInternalInst(
-            NULL, G4_pseudo_callee_restore, NULL, false, 1, NULL,
-            src, NULL, InstOpt_WriteEnable);
+        builder.createInternalIntrinsicInst(nullptr, Intrinsic::CalleeRestore, 1, nullptr, src, nullptr, nullptr, InstOpt_WriteEnable);
     INST_LIST_ITER exitBBIt = exitBB->end();
     --exitBBIt;
     MUST_BE_TRUE((*exitBBIt)->isFReturn(), ERROR_REGALLOC);
@@ -7778,31 +7760,28 @@ void GlobalRA::addStoreRestoreForFP()
     rd = builder.getRegionScalar();
     G4_Operand* FPsrc = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.kernel.fg.framePtrDcl->getRegVar(), 0, 0, rd, Type_UD);
 
-    G4_INST* storeInst = builder.createInternalInst(NULL, G4_pseudo_store_be_fp, NULL, false, 1,
-        oldFPDst, FPsrc, NULL, 0);
-    G4_INST* restoreInst = builder.createInternalInst(NULL, G4_pseudo_restore_be_fp, NULL, false, 1,
-        FPdst, oldFPSrc, NULL, 0);
-
-    auto gtpin = builder.kernel.getGTPinData();
-    if (gtpin &&
-        gtpin->isFirstRAPass())
-    {
-        gtpin->markInst(storeInst);
-        gtpin->markInst(restoreInst);
-    }
-
+    saveBE_FPInst = builder.createMov(1, oldFPDst, FPsrc, InstOpt_WriteEnable, false);
     INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
     for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
         ++insertIt)
     {   /*  void */
     };
-    builder.kernel.fg.getEntryBB()->insert(insertIt, storeInst);
+    builder.kernel.fg.getEntryBB()->insert(insertIt, saveBE_FPInst);
 
+    restoreBE_FPInst = builder.createMov(1, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
     insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
     for (--insertIt; (*insertIt)->isFReturn() == false; --insertIt)
     {   /*  void */
     };
-    builder.kernel.fg.getUniqueReturnBlock()->insert(insertIt, restoreInst);
+    builder.kernel.fg.getUniqueReturnBlock()->insert(insertIt, restoreBE_FPInst);
+
+    auto gtpin = builder.kernel.getGTPinData();
+    if (gtpin &&
+        gtpin->isFirstRAPass())
+    {
+        gtpin->markInst(saveBE_FPInst);
+        gtpin->markInst(restoreBE_FPInst);
+    }
 }
 
 void GlobalRA::reportUndefinedUses(LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl, std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum)
@@ -8443,7 +8422,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
             G4_INST* inst = (*it);
             G4_DstRegRegion* dst = inst->getDst();
 
-            if (inst->opcode() == G4_pseudo_lifetime_end || inst->isPseudoKill())
+            if (inst->isLifeTimeEnd() || inst->isPseudoKill())
             {
                 continue;
             }
@@ -8481,7 +8460,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
 
             G4_INST* inst = (*it);
 
-            if (inst->opcode() == G4_pseudo_lifetime_end || inst->isPseudoKill())
+            if (inst->isLifeTimeEnd() || inst->isPseudoKill())
             {
                 continue;
             }
@@ -8636,7 +8615,7 @@ void VarSplit::localSplit(IR_Builder& builder,
         G4_INST* i = (*rit);
         G4_DstRegRegion* dst = i->getDst();
 
-        if (i->opcode() == G4_pseudo_lifetime_end || i->isPseudoKill())
+        if (i->isLifeTimeEnd() || i->isPseudoKill())
         {
             continue;
         }

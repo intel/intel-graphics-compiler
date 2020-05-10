@@ -2003,7 +2003,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         G4_INST* i = (*rit);
         G4_DstRegRegion* dst = i->getDst();
 
-        if (i->opcode() == G4_pseudo_lifetime_end)
+        if (i->isLifeTimeEnd())
         {
             continue;
         }
@@ -3490,7 +3490,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     MUST_BE_TRUE(var->getId() == varID, "RA verification error: Invalid regVar ID!");
                     MUST_BE_TRUE(var->getPhyReg()->isGreg(), "RA verification error: Invalid dst reg!");
 
-                    if (inst->opcode() != G4_pseudo_lifetime_end)
+                    if (!inst->isLifeTimeEnd())
                     {
                         uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                         uint32_t regOff = var->getPhyRegOff();

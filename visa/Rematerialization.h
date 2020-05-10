@@ -178,10 +178,10 @@ namespace vISA
                 return false;
             }
 
-            auto op = inst->opcode();
-            if (op == G4_pseudo_callee_restore || op == G4_pseudo_callee_save ||
-                op == G4_pseudo_caller_restore || op == G4_pseudo_caller_save)
+            if (inst->isCallerRestore() || inst->isCallerSave() || inst->isCalleeRestore() || inst->isCalleeSave())
+            {
                 return false;
+            }
 
             G4_Declare* dcl = nullptr;
             if (inst->getDst() && inst->getDst()->getTopDcl())

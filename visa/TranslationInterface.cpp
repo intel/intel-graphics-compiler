@@ -10174,8 +10174,8 @@ int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand* var)
     else
     {
         G4_SrcRegRegion* varSrcRgn = createSrcRegRegion(Mod_src_undef, Direct, var->getBase(), 0, 0, getRegionScalar(), Type_UD);
-
-        createInst(NULL, G4_pseudo_lifetime_end, NULL, false, 1, NULL, varSrcRgn, NULL, 0, 0);
+        createIntrinsicInst(nullptr, Intrinsic::PseudoUse, 1, nullptr, varSrcRgn,
+            nullptr, nullptr, InstOpt_WriteEnable);
     }
 
     // We dont treat lifetime.end specially for now because lifetime.start
