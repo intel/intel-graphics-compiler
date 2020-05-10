@@ -38,13 +38,15 @@ namespace iga
         // Specify the swsb encoding mode. If not specified, the encoding mode will
         // be derived from platform by SWSB::getEncodeMode
         SWSB_ENCODE_MODE swsbEncodeMode = SWSB_ENCODE_MODE::SWSBInvalidMode;
+        // Specify number of sbid that can be used
+        uint32_t sbidCount = 16;
 
         EncoderOpts(
             bool _autoCompact = false,
             bool _explicitCompactMissIsWarning = false
             )
-        : autoCompact(_autoCompact)
-        , explicitCompactMissIsWarning(_explicitCompactMissIsWarning)
+        : autoCompact(_autoCompact),
+          explicitCompactMissIsWarning(_explicitCompactMissIsWarning)
         { }
     };
 }

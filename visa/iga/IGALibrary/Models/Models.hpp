@@ -374,12 +374,12 @@ namespace iga
         /// getSWSBEncodeMode - get the default swsb encoding mode derived from platform
         SWSB_ENCODE_MODE getSWSBEncodeMode() const {
             if (platform == Platform::GEN12P1)
-                return SingleDistPipe;
-            return SWSBInvalidMode;
+                return SWSB_ENCODE_MODE::SingleDistPipe;
+            return SWSB_ENCODE_MODE::SWSBInvalidMode;
         }
 
         // Get the max number of swsb id
-        uint32_t getSWSBTokenNum() const {
+        uint32_t getMaxSWSBTokenNum() const {
             switch(getSWSBEncodeMode()) {
             case SWSB_ENCODE_MODE::SingleDistPipe:
                 return 16;

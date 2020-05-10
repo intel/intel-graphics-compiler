@@ -91,7 +91,7 @@ void EncoderBase::encodeKernelPreProcess(Kernel &k)
 void EncoderBase::doEncodeKernelPreProcess(Kernel &k)
 {
     if (m_opts.autoDepSet && platform() >= Platform::GEN12P1) {
-        SWSBAnalyzer swsb_analyzer(k, errorHandler(), m_opts.swsbEncodeMode);
+        SWSBAnalyzer swsb_analyzer(k, errorHandler(), m_opts.swsbEncodeMode, m_opts.sbidCount);
         swsb_analyzer.run();
     }
 }

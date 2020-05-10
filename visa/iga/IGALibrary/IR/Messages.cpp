@@ -96,7 +96,7 @@ static void deducePayloadSizes(
             dlen = execElems*mi.elemSizeBitsRegFile/REG_SIZE_BITS;
             if ((execElems*mi.elemSizeBitsRegFile) % REG_SIZE_BITS != 0)
                 dlen++;
-            dlen *= dlen*mi.elemsPerAddr;
+            dlen *= mi.elemsPerAddr;
         }
         //
         lens.src0Len = numAddrRegsForVector();

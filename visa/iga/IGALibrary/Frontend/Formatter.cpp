@@ -669,7 +669,7 @@ private:
                 EmitSendDescriptorInfo(
                     platform(), i.getOpSpec(),
                     i.getExecSize(),
-                    i.getDestination().isNull(),
+                    !i.getDestination().isNull(),
                     i.getDstLength(), i.getSrc0Length(), i.getSrc1Length(),
                     exDesc, desc, indDesc,
                     ss);

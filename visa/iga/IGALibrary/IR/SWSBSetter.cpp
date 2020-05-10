@@ -465,7 +465,7 @@ Right now mov will have false dependense on the first send.
 void SWSBAnalyzer::clearSBIDDependence(InstList::iterator insertPoint, Instruction *lastInst, Block *bb)
 {
     bool sbidInUse = false;
-    for (uint32_t i = 0; i < MAX_SBID; ++i)
+    for (uint32_t i = 0; i < m_SBIDCount; ++i)
     {
         //there are still dependencies that might be used outside of this basic block
         if (!m_freeSBIDList[i].isFree)
@@ -517,26 +517,38 @@ void SWSBAnalyzer::clearBuckets(DepSet* input, DepSet* output) {
     else {
         // add DepSet to m_distanceTracker
         m_distanceTracker.emplace_back(input, output);
-            // check the distance
-            // DepSet::m_depID is the unique id assigned to in-order instructions
-            size_t new_id = input->getInstIDs().inOrder;
 
-            // Remove nodes from the Tracker if the latency is already satified
-            m_distanceTracker.remove_if(
-                [=](const distanceTrackerNode& node) {
-                // get the latency: the latency of a instructions depends on its dis type size
-                size_t max_dis = DISTANCE_FOR_OTHER_INST;
+        auto get_depset_id = [&](DEP_PIPE pipe_type, DepSet& dep_set) {
+            if (getNumOfDistPipe() == 1)
+                return dep_set.getInstIDs().inOrder;
+            return (uint32_t)0;
+        };
 
-                // if the distance >= latency, clear buckets for corresponding input and
-                // output Dependency
-                if ((new_id - node.input->getInstIDs().inOrder) >= (size_t)max_dis) {
+        auto get_latency = [&](DEP_PIPE pipe_type) {
+            return m_LatencyInOrderPipe;
+        };
+
+        DEP_PIPE new_pipe = input->getDepPipe();
+        // max B2B latency of thie pipe
+        size_t max_dis = get_latency(new_pipe);
+        // Remove nodes from the Tracker if the latency is already satified
+        m_distanceTracker.remove_if(
+            [=](const distanceTrackerNode& node) {
+                // bypass nodes those are not belong to the same pipe
+                if (node.input->getDepPipe() != new_pipe)
+                    return false;
+
+                // if the distance >= max_latency, clear buckets for corresponding
+                // input and output Dependency
+                size_t new_id = get_depset_id(new_pipe, *input);
+                if ((new_id - get_depset_id(new_pipe, *node.input)) >= max_dis) {
                     clearDepBuckets(*node.input);
                     clearDepBuckets(*node.output);
                     return true;
                 }
                 return false;
             }
-            );
+        );
     }
 }
 
@@ -829,7 +841,7 @@ void SWSBAnalyzer::run()
             {
                 bool foundFree = false;
                 SBID *sbidFree = nullptr;
-                for (uint32_t i = 0; i < MAX_SBID; ++i)
+                for (uint32_t i = 0; i < m_SBIDCount; ++i)
                 {
                     if (m_freeSBIDList[i].isFree)
                     {
@@ -842,7 +854,7 @@ void SWSBAnalyzer::run()
                 // no free SBID.
                 if (!foundFree)
                 {
-                    unsigned int index = (m_SBIDRRCounter++) % MAX_SBID;
+                    unsigned int index = (m_SBIDRRCounter++) % m_SBIDCount;
 
                     // While swsb id being reuse, the dependency will automatically resolved by hardware,
                     // so cleanup the dependency bucket for instruction that previously used this id

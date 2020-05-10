@@ -119,7 +119,7 @@ void iga::EmitSendDescriptorInfo(
         ss << "?";
     }
     bool hasHeaderBit = true;
-    bool hasExactDstLen = true;
+    bool hasEncodedDstLen = true;
     if (hasHeaderBit && desc.isImm() && getHeaderBit(desc.imm)) {
         ss << "h";
     }
@@ -135,7 +135,7 @@ void iga::EmitSendDescriptorInfo(
     ss << ", rd:";
     if (desc.isReg()) {
         ss << "a0." << (int)desc.reg.subRegNum << "[24:20]";
-    } else if (hasExactDstLen) {
+    } else if (hasEncodedDstLen) {
         ss << dstLen;
     } else {
         if (dstNonNull) {

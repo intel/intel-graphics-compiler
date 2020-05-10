@@ -92,7 +92,7 @@ static void setDEPPipeClass_SingleDistPipe(DepSet &dep, const Instruction &inst)
 static void setDEPPipeClass(
     SWSB_ENCODE_MODE enc_mode, DepSet &dep, const Instruction &inst, const Model& model)
 {
-    if (enc_mode == SingleDistPipe)
+    if (enc_mode == SWSB_ENCODE_MODE::SingleDistPipe)
         setDEPPipeClass_SingleDistPipe(dep, inst);
 }
 

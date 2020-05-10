@@ -337,6 +337,8 @@ public:
               (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_COMPACT) != 0,
               (aopts.encoder_opts & IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL) == 0);
         eopts.autoDepSet = (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_DEPENDENCIES) != 0;
+        eopts.sbidCount = aopts.sbid_count;
+        eopts.swsbEncodeMode = aopts.swsb_encode_mode;
 
         if ((aopts.encoder_opts & IGA_ENCODER_OPT_USE_NATIVE) == 0) {
             if (!iga::ged::IsEncodeSupported(m_model, eopts)) {

@@ -41,10 +41,10 @@ namespace iga
         NONE
     };
 
-    enum SWSB_ENCODE_MODE : uint8_t
+    enum class SWSB_ENCODE_MODE : uint32_t
     {
         SWSBInvalidMode = 0,
-        SingleDistPipe  = 1,     // 1 distance pipe  : TGL
+        SingleDistPipe  = 1,      // TGL: 1 distance pipe
     };
 
     struct SWSB

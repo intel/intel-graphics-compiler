@@ -948,7 +948,7 @@ public:
     }
 
     void InstDepInfoSBidSrc(Loc loc, int32_t sbid) {
-        if (sbid > (int32_t)m_model.getSWSBTokenNum())
+        if (sbid > (int32_t)m_model.getMaxSWSBTokenNum())
             m_errorHandler.reportError(loc, "Invalid SWSB ID number");
         if (m_depInfo.anyBarrierSet())
             m_errorHandler.reportError(loc, "More than one SWSB barrier set");
@@ -957,7 +957,7 @@ public:
     }
 
     void InstDepInfoSBidDst(Loc loc, int32_t sbid) {
-        if (sbid > (int32_t)m_model.getSWSBTokenNum())
+        if (sbid > (int32_t)m_model.getMaxSWSBTokenNum())
             m_errorHandler.reportError(loc, "Invalid SWSB ID number");
         if (m_depInfo.anyBarrierSet())
             m_errorHandler.reportError(loc, "More than one SWSB barrier set");
@@ -966,7 +966,7 @@ public:
     }
 
     void InstDepInfoSBidAlloc(Loc loc, int32_t sbid) {
-        if (sbid > (int32_t)m_model.getSWSBTokenNum())
+        if (sbid > (int32_t)m_model.getMaxSWSBTokenNum())
             m_errorHandler.reportError(loc, "Invalid SWSB ID number");
         if (m_depInfo.anyBarrierSet())
             m_errorHandler.reportError(loc, "More than one SWSB barrier set");

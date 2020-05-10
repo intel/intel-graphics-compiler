@@ -29,6 +29,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGA_H
 #define IGA_H
 
+#include "iga_types_swsb.hpp"
+
 #include <stdint.h>
 #include <stddef.h>
 #ifdef _WIN32
@@ -258,11 +260,18 @@ typedef struct {
      * do not reuse _reserved0 and _reserved1 since those were
      * historically something else
      */
+
+    // number of sbid used for auto dependency setting. This value is effective
+    // only when IGA_ENCODER_OPT_AUTO_DEPENDENCIES is given
+    uint32_t sbid_count;
+    // force the swsb_encode_mode. If not given, the encode mode will be
+    // derived from platform
+    iga::SWSB_ENCODE_MODE swsb_encode_mode;
 } iga_assemble_options_t;
 
 /* detects screwups where someone adds a field and the compiler pads
  * the structure out implicitly */
-static_assert(sizeof(iga_assemble_options_t) == 6*4,
+static_assert(sizeof(iga_assemble_options_t) == 8*4,
     "wrong size for iga_assemble_options");
 
 
@@ -321,10 +330,11 @@ static_assert(sizeof(iga_assemble_options_t) == 6*4,
       IGA_WARNINGS_DEFAULT, \
       (IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL), \
       0, /* syntax_opts = NONE */ \
-      0, /* reserved */ \
-      0  /* reserved */ \
+      0, /* reserved */  \
+      0, /* reserved */  \
+      16, /* sbid_count */ \
+      iga::SWSB_ENCODE_MODE::SWSBInvalidMode \
     }
-
 
 /*
  * Assembles some text into bits.
