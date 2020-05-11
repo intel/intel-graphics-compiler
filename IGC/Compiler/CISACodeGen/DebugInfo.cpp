@@ -63,9 +63,9 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
     auto moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     bool isOneStepElf = false;
 
-    auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m)
+    auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE)
     {
-        auto currShader = shaderProgram->GetShader(m);
+        auto currShader = shaderProgram->GetShader(m, mode);
         if (!currShader || !currShader->diData)
             return (CShader*)nullptr;
 
