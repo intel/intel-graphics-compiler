@@ -16462,6 +16462,7 @@ CVariable* EmitPass::GetDispatchMask()
 void EmitPass::emitThreadPause(llvm::GenIntrinsicInst* inst)
 {
     CVariable* TSC_reg = m_currShader->GetTSC();
+    CVariable* TSC_pause = m_currShader->GetNewAlias(TSC_reg, ISA_TYPE_UD, 16, 1);
     uint64_t var = GetImmediateVal(inst->getOperand(0));
     if (var >= 32)
         var = 0x03E0;
@@ -16469,8 +16470,7 @@ void EmitPass::emitThreadPause(llvm::GenIntrinsicInst* inst)
         var = 0x0080;
     else
         var = var << 5;
-    m_encoder->Or(m_destination, TSC_reg, m_currShader->ImmToVariable(var, ISA_TYPE_UD));
-    m_encoder->Copy(TSC_reg, m_destination);
+    m_encoder->Copy(TSC_pause, m_currShader->ImmToVariable(var, ISA_TYPE_UD));
     m_encoder->Push();
 }
 
