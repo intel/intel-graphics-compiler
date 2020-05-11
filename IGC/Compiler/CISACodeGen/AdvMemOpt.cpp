@@ -55,7 +55,7 @@ namespace {
         }
 
         bool collectOperandInst(SmallPtrSetImpl<Instruction*>&,
-            Instruction*) const;
+            Instruction*, BasicBlock*) const;
         bool collectTrivialUser(SmallPtrSetImpl<Instruction*>&,
             Instruction*) const;
         bool hoistUniformLoad(LoadInst*, BasicBlock*) const;
@@ -202,12 +202,23 @@ bool AdvMemOpt::hasMemoryWrite(BasicBlock* Entry, BasicBlock* Exit) const {
 }
 
 bool AdvMemOpt::collectOperandInst(SmallPtrSetImpl<Instruction*>& Set,
-    Instruction* Inst) const {
+    Instruction* Inst, BasicBlock* LeadingBlock) const {
     for (Value* V : Inst->operands()) {
         Instruction* I = dyn_cast<Instruction>(V);
-        if (!I || I->getParent() != Inst->getParent())
+        if (!I)
             continue;
-        if (isa<PHINode>(I) || collectOperandInst(Set, I))
+        else if (I->getParent() != Inst->getParent())
+        {
+            // moving load instruction can be done only if operands
+            // comes from the same basic block or a dominator of
+            // the destination basic block. The condition is required
+            // to counteract using uninitialized or wrong filled registers
+            if (DT->dominates(I->getParent(), LeadingBlock))
+                continue;
+            else
+                return true;
+        }
+        if (isa<PHINode>(I) || collectOperandInst(Set, I, LeadingBlock))
             return true;
     }
     Set.insert(Inst);
@@ -231,7 +242,7 @@ bool AdvMemOpt::collectTrivialUser(SmallPtrSetImpl<Instruction*>& Set,
 
 bool AdvMemOpt::hoistUniformLoad(LoadInst* LD, BasicBlock* BB) const {
     SmallPtrSet<Instruction*, 32> ToHoist;
-    if (collectOperandInst(ToHoist, LD))
+    if (collectOperandInst(ToHoist, LD, BB))
         return false;
     if (collectTrivialUser(ToHoist, LD))
         return false;
