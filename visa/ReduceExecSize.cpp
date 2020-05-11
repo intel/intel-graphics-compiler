@@ -246,7 +246,7 @@ bool HWConformity::checkSrcCrossGRF( INST_LIST_ITER& iter, G4_BB* bb )
             }
 
             auto doSplit = [&](bool canCrossGRF) -> void {
-                if (inst->usesFlag() || (bb->isInSimdFlow() && !inst->isWriteEnableInst()))
+                if (inst->usesFlag() || (!bb->isAllLaneActive() && !inst->isWriteEnableInst()))
                 {
                     // splitting may be unsafe, insert a move then split the move
                     G4_Operand* newSrc = insertMovBefore(iter, i, inst->getSrc(i)->getType(), bb);
@@ -384,7 +384,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
     bool compOpt = false,
         forceEvenSplit = ( execSize == 32 && inst->opcode() == G4_sel && inst->getCondMod() ) || packedByteDst;
     uint8_t numInFirstMov = 0;
-    bool useFlag = inst->getPredicate() || inst->getCondMod() || ( bb->isInSimdFlow() && !inst->isWriteEnableInst() );
+    bool useFlag = inst->getPredicate() || inst->getCondMod() || ( !bb->isAllLaneActive() && !inst->isWriteEnableInst() );
     bool evenSplitDst = false;
 
     // separate the checks for BDW to make it more maintainable
@@ -667,7 +667,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
         // You will need to do this ONLY when destination spans 2 registers, src1 is a word or byte and you expect channels to be turned off !!
         // currrently for instruction with pred or emask on pre-BDW
         bool specialCondForShootDown = ( dst && goodTwoGRFDst &&
-            ( inst->getPredicate() || ( bb->isInSimdFlow() && !inst->isWriteEnableInst() ) ) &&
+            ( inst->getPredicate() || ( !bb->isAllLaneActive() && !inst->isWriteEnableInst() ) ) &&
             oneGRFSrc[1] && ( IS_BTYPE( srcs[1]->getType() ) || IS_WTYPE( srcs[1]->getType() ) ) );
         if( specialCondForShootDown )
         {
@@ -764,7 +764,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
 
             // can't split if inst is in SIMD flow and is not NoMask, or the inst has predicate
             // Have to introduce a temp that supports splitting instead
-            if ((bb->isInSimdFlow() && !inst->isWriteEnableInst()) || inst->getPredicate())
+            if ((!bb->isAllLaneActive() && !inst->isWriteEnableInst()) || inst->getPredicate())
             {
                 saveDst( iter, scale, bb );
                 INST_LIST_ITER tmpIter = iter;
@@ -993,7 +993,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
     // mov (16) r2.0<1>:uw 0:uw {Align1, NoMask}   // 0:uw
     // mov (16) r2.0<1>:uw 0x1:uw {Align1}   // 1:uw
     // this part is currently not used since we do not split inst with predicate or emask
-    bool isSIMDCFInst = bb->isInSimdFlow() && !inst->isWriteEnableInst();
+    bool isSIMDCFInst = !bb->isAllLaneActive() && !inst->isWriteEnableInst();
     G4_Declare *maskDcl = NULL;
     if (instPred || isSIMDCFInst)
     {
@@ -1387,7 +1387,7 @@ bool HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
         }
 
         // set mask
-        bool needsMaskOffset = useARF || (bb->isInSimdFlow() && !inst->isWriteEnableInst());
+        bool needsMaskOffset = useARF || (!bb->isAllLaneActive() && !inst->isWriteEnableInst());
         if (needsMaskOffset)
         {
             int newMaskOffset = origMaskOffset + (i == 0 ? 0 : currExSize);
@@ -1397,7 +1397,7 @@ bool HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
             if (newMask == InstOpt_NoOpt)
             {
                 bool useMask = inst->getPredicate() || inst->getCondModBase() ||
-                    (bb->isInSimdFlow() && !inst->isWriteEnableInst());
+                    (!bb->isAllLaneActive() && !inst->isWriteEnableInst());
                 MUST_BE_TRUE(!useMask, "no legal emask found for the split instruction");
             }
             else
@@ -1516,7 +1516,7 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
         ( def_inst->getExecSize() == execSize ) &&
         def_inst->getDst()->coverGRF( numGRF, execSize ) &&
         def_inst->getDst()->checkGRFAlign() &&
-        ( !bb->isInSimdFlow() || def_inst->isWriteEnableInst() ) )
+        ( bb->isAllLaneActive() || def_inst->isWriteEnableInst() ) )
     {
 
         //inst->removeDefUse( Gen4_Operand_Number(srcNum + 1) );
@@ -1543,7 +1543,7 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
                         hs,
                         dcl->getElemType());
     G4_INST* newInst = builder.createMov(
-        execSize, dstRegion, src, (bb->isInSimdFlow() ? InstOpt_WriteEnable : InstOpt_NoOpt), false);
+        execSize, dstRegion, src, (!bb->isAllLaneActive() ? InstOpt_WriteEnable : InstOpt_NoOpt), false);
 
     // insert instruction and maintain def-use chain
     bb->insert( it, newInst );

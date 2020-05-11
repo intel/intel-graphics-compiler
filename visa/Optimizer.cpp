@@ -1844,7 +1844,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
     // Cannot hoist if this is not a move, or it is a global operand.
     if  (inst->opcode() != G4_mov ||
          fg.globalOpndHT.isOpndGlobal(inst->getSrc(0)) ||
-         !inst->canHoist(bb->isInSimdFlow(), fg.builder->getOptions()))
+         !inst->canHoist(!bb->isAllLaneActive(), fg.builder->getOptions()))
     {
          return false;
     }
@@ -1864,7 +1864,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
     for (auto I = inst->def_begin(), E = inst->def_end(); I != E; ++I)
     {
         ASSERT_USER(I->second == Opnd_src0, "invalid use-def chain");
-        if (!inst->canHoistTo(I->first, bb->isInSimdFlow()))
+        if (!inst->canHoistTo(I->first, !bb->isAllLaneActive()))
             return false;
 
         auto defInst = I->first;
@@ -2152,7 +2152,7 @@ static void doHoisting(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
             defInst->setExecSize(defInst->getExecSize() * inst->getExecSize());
         }
         defInst->setSaturate(inst->getSaturate() || defInst->getSaturate());
-        if (bb->isInSimdFlow())
+        if (!bb->isAllLaneActive())
         {
             // set writeEnable of dstInst to be off
             defInst->setOptions((defInst->getOption() & ~0xFFF000C) |
@@ -2832,7 +2832,7 @@ void Optimizer::newLocalCopyPropagation()
                     break;
                 }
 
-                if (!inst->canPropagateTo(useInst, opndNum, MT, bb->isInSimdFlow()))
+                if (!inst->canPropagateTo(useInst, opndNum, MT, !bb->isAllLaneActive()))
                 {
                     canRemove = false;
                     break;
@@ -3645,7 +3645,7 @@ bool Optimizer::createSmov(G4_BB *bb, G4_INST* flagMove, G4_INST* next_inst)
         return false;
     }
 
-    if (builder.getOptions()->getTarget() == VISA_3D || bb->isInSimdFlow())
+    if (builder.getOptions()->getTarget() == VISA_3D || !bb->isAllLaneActive())
     {
         if (!flagMove->isWriteEnableInst())
         {
@@ -3733,7 +3733,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
         return false;
     }
 
-    if (builder.getOptions()->getTarget() == VISA_3D || bb->isInSimdFlow())
+    if (builder.getOptions()->getTarget() == VISA_3D || !bb->isAllLaneActive())
     {
         // Make sure masks of both instructions are same
         if (inst->getMaskOption() != cmpInst->getMaskOption())
@@ -8697,7 +8697,7 @@ public:
                     inst->getPredicate() ||
                     Seen.count(inst) > 0 ||
                     inst->def_size() != 1 ||
-                    !inst->canHoist(bb->isInSimdFlow(), fg.builder->getOptions()) )
+                    !inst->canHoist(!bb->isAllLaneActive(), fg.builder->getOptions()) )
                 {
                     ii++;
                     continue;
@@ -8788,7 +8788,7 @@ public:
                         (!(inst->isWriteEnableInst()) &&
                         useInst->getMaskOption() != instMaskOption) ||
                         //fix described above
-                        (bb->isInSimdFlow() &&
+                        (!bb->isAllLaneActive() &&
                         !inst->isWriteEnableInst() &&
                         !(inst->getExecSize() == defInst->getExecSize() &&
                                 inst->getExecSize() == useInst->getExecSize())
@@ -9859,10 +9859,10 @@ void Optimizer::mergeScalarInst()
             G4_INST *inst = *ii;
             auto nextIter = ii;
             ++nextIter;
-            if (nextIter != iiEnd && isMergeCandidate(inst, builder, bb->isInSimdFlow()))
+            if (nextIter != iiEnd && isMergeCandidate(inst, builder, !bb->isAllLaneActive()))
             {
                 BUNDLE_INFO* bundle = new (mergeManager) BUNDLE_INFO(bb, ii, bundleSizeLimit);
-                findInstructionToMerge(bundle, nextIter, bb->end(), builder, bb->isInSimdFlow());
+                findInstructionToMerge(bundle, nextIter, bb->end(), builder, !bb->isAllLaneActive());
                 if (bundle->size > 1)
                 {
                     bundles.push_back(bundle);

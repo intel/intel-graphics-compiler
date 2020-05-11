@@ -472,7 +472,7 @@ static void processWriteOpnds(G4_BB *BB, G4_INST *Inst, LocalLivenessInfo &LLI)
 void FlowGraph::localDataFlowAnalysis()
 {
     for (auto BB : BBs) {
-        LocalLivenessInfo LLI(BB->isInSimdFlow());
+        LocalLivenessInfo LLI(!BB->isAllLaneActive());
         for (auto I = BB->rbegin(), E = BB->rend(); I != E; ++I) {
             G4_INST* Inst = *I;
             G4_opcode Op = Inst->opcode();

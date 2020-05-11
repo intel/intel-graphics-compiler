@@ -1828,7 +1828,7 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
     unsigned execSize = inst->getExecSize();
     MUST_BE_TRUE(dst->getBase()->isRegVar(), ERROR_REGALLOC);
 
-    if( bb->isInSimdFlow() && !inst->isWriteEnableInst() &&
+    if( !bb->isAllLaneActive() && !inst->isWriteEnableInst() &&
         fg.getKernel()->getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D )
     {
         // conservatively assume non-nomask instructions in simd control flow
@@ -1912,7 +1912,7 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
                                         G4_VarBase* flagReg,
                                         const Options *opt)
 {
-    if( bb->isInSimdFlow() && !inst->isWriteEnableInst() && opt->getTarget() != VISA_3D )
+    if( !bb->isAllLaneActive() && !inst->isWriteEnableInst() && opt->getTarget() != VISA_3D )
     {
         // conservatively assume non-nomask instructions in simd control flow
         // may not write the whole region
@@ -1938,7 +1938,7 @@ void LivenessAnalysis::footprintDst(G4_BB* bb,
     if (dstfootprint &&
         !(i->isPartialWrite()) &&
         ((isLocal ||
-            bb->isInSimdFlow() == false ||
+            bb->isAllLaneActive() ||
             i->isWriteEnableInst() == true) ||
             gra.kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D))
     {
