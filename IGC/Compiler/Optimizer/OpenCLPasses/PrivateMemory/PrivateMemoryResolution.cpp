@@ -91,6 +91,8 @@ namespace IGC {
             unsigned int operandIndex;
         };
 
+        static bool testTransposedMemory(const Type* pTmpType, const Type* const pTypeOfAccessedObject, uint64_t tmpAllocaSize, const uint64_t bufferSizeLimit);
+
         /// @brief  The module level alloca information
         ModuleAllocaInfo* m_ModAllocaInfo;
 
@@ -299,7 +301,8 @@ void ModuleAllocaInfo::analyze(Function* F, unsigned& Offset,
 
         // Compute alloca size.
         IGC_ASSERT(isa<ConstantInt>(AI->getArraySize()));
-        ConstantInt* SizeVal = cast<ConstantInt>(AI->getArraySize());
+        ConstantInt* const SizeVal = cast<ConstantInt>(AI->getArraySize());
+        IGC_ASSERT(nullptr != SizeVal);
         unsigned CurSize = (unsigned)(SizeVal->getZExtValue() *
             DL->getTypeAllocSize(AI->getAllocatedType()));
         AllocaInfo->setAllocaDesc(AI, Offset, CurSize);
@@ -539,7 +542,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
 // [7] bar(j)
 //
 static void sinkAllocas(SmallVectorImpl<AllocaInst*>& Allocas) {
-    IGC_ASSERT(!Allocas.empty());
+    IGC_ASSERT(false == Allocas.empty());
     DominatorTree DT;
     bool Calcuated = false;
 
@@ -615,6 +618,7 @@ public:
     }
     void handleLoadInst(LoadInst* pLoad, Value* pScalarizedIdx)
     {
+        IGC_ASSERT(nullptr != pLoad);
         IGC_ASSERT(pLoad->isSimple());
         IRBuilder<> IRB(pLoad);
         if (isa<Instruction>(pLoad->getPointerOperand()))
@@ -629,6 +633,7 @@ public:
         if (!vectorIO && pLoad->getType()->isVectorTy())
         {
             Type* scalarType = pLoad->getPointerOperand()->getType()->getPointerElementType()->getScalarType();
+            IGC_ASSERT(nullptr != scalarType);
             Type* scalarptrTy = PointerType::get(scalarType, pLoad->getPointerAddressSpace());
             IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
             Value* vec = UndefValue::get(pLoad->getType());
@@ -650,6 +655,7 @@ public:
     }
     void handleStoreInst(StoreInst* pStore, Value* pScalarizedIdx)
     {
+        IGC_ASSERT(nullptr != pStore);
         IGC_ASSERT(pStore->isSimple());
         IRBuilder<> IRB(pStore);
         if (isa<Instruction>(pStore->getPointerOperand()))
@@ -664,6 +670,7 @@ public:
         if (!vectorIO && pStore->getValueOperand()->getType()->isVectorTy())
         {
             Type* scalarType = pStore->getPointerOperand()->getType()->getPointerElementType()->getScalarType();
+            IGC_ASSERT(nullptr != scalarType);
             Type* scalarptrTy = PointerType::get(scalarType, pStore->getPointerAddressSpace());
             IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
             Value* vec = pStore->getValueOperand();
@@ -684,6 +691,81 @@ public:
 };
 
 
+bool PrivateMemoryResolution::testTransposedMemory(const Type* pTmpType, const Type* const pTypeOfAccessedObject, uint64_t tmpAllocaSize, const uint64_t bufferSizeLimit)
+{
+    // verify that the size of transposed memory fits into the allocated scratch region
+
+    bool ok = true;
+
+    if(ok)
+    {
+        ok = (nullptr != pTmpType);
+        IGC_ASSERT(ok);
+    }
+
+    if(ok)
+    {
+        ok = (nullptr != pTypeOfAccessedObject);
+        IGC_ASSERT(ok);
+    }
+
+    if(ok)
+    {
+        ok = (0 < tmpAllocaSize);
+        IGC_ASSERT(ok);
+    }
+
+    if(ok)
+    {
+        ok = (tmpAllocaSize <= bufferSizeLimit);
+        IGC_ASSERT(ok);
+    }
+
+    while(ok && (pTypeOfAccessedObject != pTmpType))
+    {
+        if(pTmpType->isStructTy() && (pTmpType->getStructNumElements() == 1))
+        {
+            pTmpType = pTmpType->getStructElementType(0);
+            ok = (nullptr != pTmpType);
+            IGC_ASSERT(ok);
+        }
+        else if(pTmpType->isArrayTy())
+        {
+            tmpAllocaSize *= pTmpType->getArrayNumElements();
+            pTmpType = pTmpType->getSequentialElementType();
+            ok = (nullptr != pTmpType);
+            IGC_ASSERT(ok);
+        }
+        else if(pTmpType->isVectorTy())
+        {
+            tmpAllocaSize *= pTmpType->getVectorNumElements();
+            pTmpType = pTmpType->getSequentialElementType();
+            ok = (nullptr != pTmpType);
+            IGC_ASSERT(ok);
+        }
+        else
+        {
+            // unsupported type for memory transposition
+            ok = false;
+            IGC_ASSERT(ok);
+        }
+    }
+
+    if(ok)
+    {
+        ok = (0 < tmpAllocaSize);
+        IGC_ASSERT(ok);
+    }
+
+    if(ok)
+    {
+        ok = (tmpAllocaSize <= bufferSizeLimit);
+        IGC_ASSERT(ok);
+    }
+
+    return ok;
+}
+
 bool PrivateMemoryResolution::resolveAllocaInstructions(bool stackCall)
 {
     // It is possible that there is no alloca instruction in the caller but there
@@ -691,8 +773,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool stackCall)
     unsigned int totalPrivateMemPerWI = m_ModAllocaInfo->getTotalPrivateMemPerWI(m_currFunction);
 
     // This change is only till the FuncMD is ported to new MD framework
-    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    IGC_ASSERT(modMD && "Invalid metadata utils wrapper");
+    ModuleMetaData* const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    IGC_ASSERT(nullptr != modMD);
     modMD->FuncMD[m_currFunction].privateMemoryPerWI = totalPrivateMemPerWI;
     modMD->privateMemoryPerWI = totalPrivateMemPerWI;//redundant ?
 
@@ -831,38 +913,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool stackCall)
             {
                 auto DL = &m_currFunction->getParent()->getDataLayout();
                 bufferSize = (unsigned)DL->getTypeAllocSize(pTypeOfAccessedObject);
-
-#if defined(_DEBUG)
-                {
-                    // Debug code to verify that the size of transposed memory
-                    // fits into the allocated scratch region.
-                    Type* pTmpType = pAI->getType()->getPointerElementType();
-                    uint64_t tmpAllocaSize = bufferSize;
-                    while (pTmpType != pTypeOfAccessedObject)
-                    {
-                        if (pTmpType->isStructTy() && pTmpType->getStructNumElements() == 1)
-                        {
-                            pTmpType = pTmpType->getStructElementType(0);
-                        }
-                        else if (pTmpType->isArrayTy())
-                        {
-                            tmpAllocaSize *= pTmpType->getArrayNumElements();
-                            pTmpType = pTmpType->getSequentialElementType();
-                        }
-                        else if (pTmpType->isVectorTy())
-                        {
-                            tmpAllocaSize *= pTmpType->getVectorNumElements();
-                            pTmpType = pTmpType->getSequentialElementType();
-                        }
-                        else
-                        {
-                            IGC_ASSERT(false && "Unsupported type for memory transposition.");
-                            break;
-                        }
-                    }
-                    IGC_ASSERT(tmpAllocaSize <= m_ModAllocaInfo->getBufferSize(pAI));
-                }
-#endif
+                IGC_ASSERT(testTransposedMemory((pAI->getType()->getPointerElementType()), pTypeOfAccessedObject, bufferSize, (m_ModAllocaInfo->getBufferSize(pAI))));
             }
             else
             {
