@@ -6984,7 +6984,7 @@ void G4_Operand::dump() const
 
 void G4_INST::setPredicate(G4_Predicate* p)
 {
-    if( predicate != NULL && predicate->getInst() == this )
+    if (predicate && predicate->getInst() == this)
     {
         predicate->setInst(NULL);
     }
@@ -7040,7 +7040,7 @@ void G4_INST::setDest(G4_DstRegRegion* opnd)
 
 void G4_INST::setCondMod(G4_CondMod* m)
 {
-    if (mod != NULL && mod->getInst() == this)
+    if (mod && mod->getInst() == this)
     {
         mod->setInst(NULL);
     }
@@ -7385,7 +7385,7 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
 
 void resetRightBound( G4_Operand* opnd )
 {
-    if( opnd != NULL )
+    if (opnd)
     {
         opnd->unsetRightBound();
     }
@@ -7393,7 +7393,7 @@ void resetRightBound( G4_Operand* opnd )
 
 void associateOpndWithInst(G4_Operand* opnd, G4_INST* inst)
 {
-    if( opnd != NULL )
+    if (opnd)
     {
         opnd->setInst(inst);
     }

@@ -1004,9 +1004,8 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             tmpMaskOpnd, builder.createImm(0, Type_UW), inst->getOption(), false);
 
         G4_Predicate* pred = builder.duplicateOperand(inst->getPredicate());
-        builder.createInternalInst(pred, G4_mov, NULL, false, instExSize,
-            tmpMaskOpnd, builder.createImm(1, Type_UW), NULL, inst->getOption(), inst->getLineNo(),
-            inst->getCISAOff(), inst->getSrcFilename());
+        auto movInst = builder.createMov(instExSize, tmpMaskOpnd, builder.createImm(1, Type_UW), inst->getOption(), false);
+        movInst->setPredicate(pred);
 
         if (isSIMDCFInst)
         {
@@ -1654,9 +1653,8 @@ void HWConformity::insertMovAfter( INST_LIST_ITER& it, uint16_t stride, G4_BB* b
     }
     unsigned int new_option = inst->getOption();
 
-    G4_INST* newInst = builder.createInternalInst( pred, G4_mov, NULL, false,
-        execSize, dst, srcRegion, NULL, new_option, inst->getLineNo(), inst->getCISAOff(),
-        inst->getSrcFilename() );
+    G4_INST* newInst = builder.createMov(execSize, dst, srcRegion, new_option, false);
+    newInst->setPredicate(pred);
 
     INST_LIST_ITER iter = it;
     iter++;
