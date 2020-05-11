@@ -8001,6 +8001,9 @@ int VISAKernelImpl::GetFunctionId(unsigned int& id) const
 
 int VISAKernelImpl::SetGTPinInit(void* buffer)
 {
+    if (!m_kernel)
+        return VISA_FAILURE;
+
     auto gtpin = m_kernel->getGTPinData();
     if (gtpin)
     {
@@ -8024,6 +8027,9 @@ int VISAKernelImpl::GetGTPinBuffer(void*& buffer, unsigned int& size)
     buffer = nullptr;
     size = 0;
 
+    if (!m_kernel)
+        return VISA_FAILURE;
+
     auto gtpin = m_kernel->getGTPinData();
     if (gtpin)
     {
@@ -8040,6 +8046,7 @@ int VISAKernelImpl::GetFreeGRFInfo(void*& buffer, unsigned int& size)
 
     if (getOptions()->getOption(vISA_GetFreeGRFInfo))
     {
+        assert(m_kernel);
         auto gtpin = m_kernel->getGTPinData();
         if (gtpin)
         {
