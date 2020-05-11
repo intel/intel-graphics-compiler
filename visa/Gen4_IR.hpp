@@ -3793,6 +3793,7 @@ class PhyRegPool
     G4_Areg* ARF_Table[AREG_LAST];
 public:
     PhyRegPool(Mem_Manager&m, unsigned int maxRegisterNumber); // create all physical register operands
+    void rebuildRegPool(Mem_Manager& m, unsigned int numRegisters);
     G4_Greg* getGreg(unsigned i)
     {
         MUST_BE_TRUE(i < maxGRFNum, "invalid GRF");

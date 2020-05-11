@@ -5485,6 +5485,16 @@ PhyRegPool::PhyRegPool(Mem_Manager& m, unsigned int maxRegisterNumber)
     ARF_Table[AREG_SP]       = new (m)G4_Areg(AREG_SP);
 }
 
+void PhyRegPool::rebuildRegPool(Mem_Manager& m, unsigned int numRegisters)
+{
+    maxGRFNum = numRegisters;
+
+    GRF_Table = (G4_Greg**)m.alloc(sizeof(G4_Greg*) * maxGRFNum);
+    // create General Registers
+    for (unsigned int i = 0; i < maxGRFNum; i++)
+        GRF_Table[i] = new (m) G4_Greg(i);
+}
+
 void G4_Declare::setEvenAlign()
 {
     regVar->setEvenAlign();

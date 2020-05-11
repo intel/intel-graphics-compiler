@@ -933,6 +933,11 @@ public:
         }
     }
 
+    void rebuildPhyRegPool(unsigned int numRegisters)
+    {
+        phyregpool.rebuildRegPool(mem, numRegisters);
+    }
+
     TARGET_PLATFORM getPlatform() const { return platform; }
 
     G4_Declare* createDeclareNoLookup(const char*    name,

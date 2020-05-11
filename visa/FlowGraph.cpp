@@ -3821,9 +3821,11 @@ void G4_Kernel::evalAddrExp()
 
 void G4_Kernel::setKernelParameters()
 {
-    unsigned overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
+    unsigned overrideGRFNum = 0;
+    unsigned overrideNumThreads = 0;
 
     TARGET_PLATFORM platform = getGenxPlatform();
+    overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
 
 
     // Set the number of GRFs
@@ -3888,10 +3890,17 @@ void G4_Kernel::setKernelParameters()
     // Set number of threads if it was not defined before
     if (numThreads == 0)
     {
-        switch (platform)
+        if (overrideNumThreads > 0)
         {
-        default:
-            numThreads = 7;
+            numThreads = overrideNumThreads;
+        }
+        else
+        {
+            switch (platform)
+            {
+            default:
+                numThreads = 7;
+            }
         }
     }
 }

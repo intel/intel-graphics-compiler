@@ -1498,13 +1498,6 @@ public:
     void setNumThreads(int nThreads) { numThreads = nThreads; }
     uint32_t getNumThreads() const { return numThreads; }
 
-    void updateKernelByNumThreads(int nThreads)
-    {
-        numThreads = nThreads;
-        m_options->setOption(vISA_TotalGRFNum, (uint32_t)0);
-        setKernelParameters();
-    }
-
     void setNumSWSBTokens(int nSWSBs) { numSWSBTokens = nSWSBs; }
     uint32_t getNumSWSBTokens() const { return numSWSBTokens; }
 
@@ -1550,6 +1543,7 @@ public:
     void emit_dep(std::ostream& output);
 
     void setKernelParameters(void);
+
     void evalAddrExp(void);
     void dumpDotFile(const char* appendix);
 
