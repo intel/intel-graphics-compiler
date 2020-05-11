@@ -5867,14 +5867,14 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     {
                         G4_Declare* copyDst = builder.createTempVar(src0Size * 8, Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(0)->getBase()->asRegVar()->getDeclare(),
-                            inst->getSrc(0)->asSrcRegRegion()->getRegOff() * 32, src0Size, bb, i);
+                            inst->getSrc(0)->asSrcRegRegion()->getRegOff() * getGRFSize(), src0Size, bb, i);
                         inst->setSrc(builder.Create_Src_Opnd_From_Dcl(copyDst, builder.getRegionStride1()), 0);
                     }
                     if (src1Overlap)
                     {
                         G4_Declare* copyDst = builder.createTempVar(src1Size * 8, Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(1)->getBase()->asRegVar()->getDeclare(),
-                            inst->getSrc(1)->asSrcRegRegion()->getRegOff() * 32, src1Size, bb, i);
+                            inst->getSrc(1)->asSrcRegRegion()->getRegOff() * getGRFSize(), src1Size, bb, i);
                         inst->setSrc(builder.Create_Src_Opnd_From_Dcl(copyDst, builder.getRegionStride1()), 1);
                     }
                 }
@@ -5884,7 +5884,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     auto copyIter = i;
                     ++copyIter;
                     G4_Declare* copySrc = builder.createTempVar(dstSize * 8, Type_UD, Any);
-                    copyRegs(inst->getDst()->getBase()->asRegVar()->getDeclare(), inst->getDst()->getRegOff() * 32,
+                    copyRegs(inst->getDst()->getBase()->asRegVar()->getDeclare(), inst->getDst()->getRegOff() * getGRFSize(),
                         copySrc, 0, dstSize, bb, copyIter);
                     inst->setDest(builder.Create_Dst_Opnd_From_Dcl(copySrc, 1));
                 }
@@ -6687,23 +6687,6 @@ G4_INST* HWConformity::splitInstWithByteDst( G4_INST *expand_op )
     }
     return expand_sec_half_op;
 }
-
-
-// Fix up src regions in instructions:
-//    In the component uncompressed instruction uop,
-//       if exec size(uop) == width(src(uop)) && hstride(src(uop)) != 0
-//          vstride(src(uop)) = width(src(uop)) * hstride(src(uop))
-//    In the compressed instruction op,
-//       if exec size(op) == width(src(op)) == vstride(src(op)) &&
-//          hstride(src(op)) == 1
-//          width(src(op)) = vstride(src(op)) = 8
-// e.g.
-//     mul (32) r60.0<1>:uw r76.0<32;16,1>:ub r78.0<0;1,0>:ub
-//     =>
-//     mul (32) r60.0<1>:uw r76.0<16;16,1>:ub r78.0<0;1,0>:ub
-//     add (16) r60.0<1>:d r76.0<16;16,1>:d r78.0<0;1,0>:d
-//     =>
-//     add (16) r60.0<1>:d r76.0<8;8,1>:d r78.0<0;1,0>:d
 
 //  in addition, fix the source region to follow the region restriction:
 //  1. ExecSize must be greater than or equal to Width.  -- no check for this one
