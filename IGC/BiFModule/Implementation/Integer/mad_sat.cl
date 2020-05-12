@@ -508,10 +508,10 @@ long __builtin_spirv_OpenCL_s_mad_sat_i64_i64_i64( long a,
                                             long b,
                                             long c )
 {
-    ulong lo;
+    long lo;
     long hi;
     hi = __builtin_spirv___intc_mul_hilo_i64_i64_p0i64(a, b, &lo);
-    ulong result_lo = lo + (ulong)c;
+    long result_lo = lo + c;
     if (c >= 0)
     {
         if (result_lo < lo)
