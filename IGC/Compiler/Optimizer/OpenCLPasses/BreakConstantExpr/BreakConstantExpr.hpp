@@ -37,6 +37,7 @@ namespace llvm
     class ConstantExpr;
     class ConstantVector;
     class Instruction;
+    class ConstantStruct;
 }
 
 namespace IGC
@@ -88,6 +89,12 @@ namespace IGC
         /// @param  user          The original user of the expression.
         bool breakExpressionsInVector(llvm::ConstantVector* cvec, int operandIndex, llvm::Instruction* user);
 
+        /// @brief  Break up constant structure by creating a non constant
+        ///         structure and replacing all its constant operands by instructions.
+        /// @param  cs            Constant structure to break up
+        /// @param  operandIndex  Index of the constant vector operand in the parent instruction
+        /// @param  user          The original user of the expression.
+        void breakConstantStruct(llvm::ConstantStruct* cs, int operandIndex, llvm::Instruction* user);
 
         /// @brief  Replaces input constant expression or constant vector with a new instruction.
         /// @param  exprOrVec     Constant vector or expressions to replace.
