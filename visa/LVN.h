@@ -191,6 +191,8 @@ namespace vISA
         void doLVN();
         unsigned int getNumInstsRemoved() { return numInstsRemoved; }
 
+        static unsigned int removeRedundantSamplerMovs(G4_Kernel&, G4_BB*);
+
         ~LVN();
     };
 }

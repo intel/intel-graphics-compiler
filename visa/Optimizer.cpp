@@ -62,10 +62,11 @@ void Optimizer::LVN()
     for (auto bb : kernel.fg)
     {
         ::LVN lvn(fg, bb, mem, *fg.builder, p);
-
         lvn.doLVN();
 
         numInstsRemoved += lvn.getNumInstsRemoved();
+
+        numInstsRemoved += ::LVN::removeRedundantSamplerMovs(kernel, bb);
     }
 
     if(kernel.getOption(vISA_OptReport))

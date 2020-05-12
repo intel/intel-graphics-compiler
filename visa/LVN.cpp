@@ -1987,6 +1987,55 @@ void LVN::doLVN()
     }
 }
 
+// This is a static method. It can be called to cleanup after any optimization.
+unsigned int LVN::removeRedundantSamplerMovs(G4_Kernel& kernel, G4_BB* bb)
+{
+    // Remove all redundant writes to rx.2 where x is samplerHeader dcl
+    auto samplerDcl = kernel.fg.builder->getBuiltinSamplerHeader();
+    if (!samplerDcl)
+        return 0;
+
+    G4_INST* lastSamplerDclDef = nullptr;
+    unsigned int numInstsRemoved = 0;
+
+    for (auto instIt = bb->getInstList().begin(); instIt != bb->getInstList().end();)
+    {
+        auto inst = (*instIt);
+        auto dst = inst->getDst();
+        if (dst && dst->getTopDcl() == samplerDcl)
+        {
+            if (!lastSamplerDclDef)
+            {
+                // Seeing def for first time in BB
+                lastSamplerDclDef = inst;
+                ++instIt;
+                continue;
+            }
+            else if (lastSamplerDclDef->opcode() == G4_mov &&
+                inst->opcode() == G4_mov &&
+                lastSamplerDclDef->getDst()->getType() == dst->getType() &&
+                lastSamplerDclDef->getDst()->getLeftBound() == dst->getLeftBound() &&
+                lastSamplerDclDef->getDst()->getRightBound() == dst->getRightBound() &&
+                lastSamplerDclDef->getSrc(0)->isImm() &&
+                inst->getSrc(0)->isImm() &&
+                lastSamplerDclDef->getSrc(0)->asImm()->isEqualTo(inst->getSrc(0)->asImm()))
+            {
+                // Redundant mov found, erase it
+                instIt = bb->getInstList().erase(instIt);
+                numInstsRemoved++;
+                continue;
+            }
+            else
+            {
+                lastSamplerDclDef = inst;
+            }
+        }
+        ++instIt;
+    }
+
+    return numInstsRemoved;
+}
+
 LVN::~LVN()
 {
     for (auto d : toDtor)
