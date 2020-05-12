@@ -83,6 +83,7 @@ attribute_map = {
     "NoMem":               set(["NoUnwind","ReadNone"]),
     "ReadMem":             set(["NoUnwind","ReadOnly"]),
     "ReadArgMem":          set(["NoUnwind","ReadOnly","ArgMemOnly"]),
+    "WriteMem":            set(["NoUnwind","WriteOnly"]),
     "ReadWriteArgMem":     set(["NoUnwind","ArgMemOnly"]),
     "NoReturn":            set(["NoUnwind","NoReturn"]),
     "NoDuplicate":         set(["NoUnwind","NoDuplicate"]),
@@ -91,7 +92,7 @@ attribute_map = {
 }
 
 # order taken from IntrinsicEmitter::EmitAttributes to match attribute order used for llvm intrinsics
-attribute_order = ("NoUnwind", "NoReturn", "NoDuplicate", "Convergent", "ReadNone", "ReadOnly", "ArgMemOnly", "InaccessibleMemOnly")
+attribute_order = ("NoUnwind", "NoReturn", "NoDuplicate", "Convergent", "ReadNone", "WriteOnly", "ReadOnly", "ArgMemOnly", "InaccessibleMemOnly")
 
 def getAttributeList(Attrs):
     """
