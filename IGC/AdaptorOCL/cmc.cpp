@@ -115,7 +115,7 @@ void CMKernel::createSamplerAnnotation(unsigned argNo)
     m_kernelInfo.m_samplerArgument.push_back(samplerArg);
 }
 
-void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim, bool isWriteable)
+void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim, bool isWriteable, unsigned payloadPosition)
 {
     iOpenCL::ImageArgumentAnnotation* imageInput = new iOpenCL::ImageArgumentAnnotation;
 
@@ -137,7 +137,7 @@ void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,
     imageInput->AccessedByFloatCoords = false;
     imageInput->AccessedByIntCoords = false;
     imageInput->IsBindlessAccess = false;
-    imageInput->PayloadPosition = 0;
+    imageInput->PayloadPosition = payloadPosition;
     imageInput->Writeable = isWriteable;
     m_kernelInfo.m_imageInputAnnotations.push_back(imageInput);
 }
@@ -398,15 +398,15 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& ker
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         case cmc_arg_kind::Image1d:
-            kernel.createImageAnnotation(AI.index, AI.BTI, 1, isWriteable);
+            kernel.createImageAnnotation(AI.index, AI.BTI, 1, isWriteable, AI.offset - constantPayloadStart);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         case cmc_arg_kind::Image2d:
-            kernel.createImageAnnotation(AI.index, AI.BTI, 2, isWriteable);
+            kernel.createImageAnnotation(AI.index, AI.BTI, 2, isWriteable, AI.offset - constantPayloadStart);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         case cmc_arg_kind::Image3d:
-            kernel.createImageAnnotation(AI.index, AI.BTI, 3, isWriteable);
+            kernel.createImageAnnotation(AI.index, AI.BTI, 3, isWriteable, AI.offset - constantPayloadStart);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         case cmc_arg_kind::PrintBuffer:
