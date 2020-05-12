@@ -100,19 +100,19 @@ namespace IGC
         };
 
     public:
-        void* m_programBin;     //<! Must be 16 byte aligned, and padded to a 64 byte boundary
-        unsigned int    m_programSize;    //<! Number of bytes of program data (including padding)
-        unsigned int    m_unpaddedProgramSize;      //<! program size without padding used for binary linking
-        unsigned int    m_startReg;                 //<! Which GRF to start with
-        unsigned int    m_scratchSpaceUsedBySpills; //<! amount of scratch space needed for shader spilling
-        unsigned int    m_scratchSpaceUsedByShader; //<! amount of scratch space needed by shader
-        unsigned int    m_scratchSpaceUsedByGtpin; //<! amount of scratch space used by gtpin
-        void* m_debugDataVISA;            //<! VISA debug data (source -> VISA)
-        unsigned int    m_debugDataVISASize;        //<! Number of bytes of VISA debug data
-        void* m_debugDataGenISA;          //<! GenISA debug data (VISA -> GenISA)
-        unsigned int    m_debugDataGenISASize;      //<! Number of bytes of GenISA debug data
-        unsigned int    m_InstructionCount;
-        unsigned int    m_BasicBlockCount;
+        void* m_programBin = nullptr;     //<! Must be 16 byte aligned, and padded to a 64 byte boundary
+        unsigned int    m_programSize = 0;    //<! Number of bytes of program data (including padding)
+        unsigned int    m_unpaddedProgramSize = 0;      //<! program size without padding used for binary linking
+        unsigned int    m_startReg = 0;                 //<! Which GRF to start with
+        unsigned int    m_scratchSpaceUsedBySpills = 0; //<! amount of scratch space needed for shader spilling
+        unsigned int    m_scratchSpaceUsedByShader = 0; //<! amount of scratch space needed by shader
+        unsigned int    m_scratchSpaceUsedByGtpin = 0; //<! amount of scratch space used by gtpin
+        void* m_debugDataVISA = nullptr;            //<! VISA debug data (source -> VISA)
+        unsigned int    m_debugDataVISASize = 0;        //<! Number of bytes of VISA debug data
+        void* m_debugDataGenISA = nullptr;          //<! GenISA debug data (VISA -> GenISA)
+        unsigned int    m_debugDataGenISASize = 0;      //<! Number of bytes of GenISA debug data
+        unsigned int    m_InstructionCount = 0;
+        unsigned int    m_BasicBlockCount = 0;
         void* m_gtpinBuffer = nullptr;              // Will be populated by VISA only when special switch is passed by gtpin
         unsigned int    m_gtpinBufferSize = 0;
         void* m_funcSymbolTable = nullptr;

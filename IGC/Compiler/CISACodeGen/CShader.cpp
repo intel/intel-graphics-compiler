@@ -77,7 +77,6 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     isMessageTargetDataCacheDataPort = false;
     m_BindingTableEntryCount = 0;
     m_BindingTableUsedEntriesBitmap = 0;
-    memset(&m_simdProgram, 0, sizeof(m_simdProgram));
     // [OCL] preAnalysis()/ParseShaderSpecificOpcode() must
     // set this to ture if there is any stateless access.
     m_HasGlobalStatelessMemoryAccess = false;
