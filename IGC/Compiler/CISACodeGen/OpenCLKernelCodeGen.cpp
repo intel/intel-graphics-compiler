@@ -1814,13 +1814,13 @@ namespace IGC
             auto ipsbMDHandle = modMD->inlineConstantBuffers[0];
             std::unique_ptr<iOpenCL::InitConstantAnnotation> initConstant(new iOpenCL::InitConstantAnnotation());
             initConstant->Alignment = ipsbMDHandle.alignment;
+            initConstant->AllocSize = ipsbMDHandle.allocSize;
 
             size_t bufferSize = (ipsbMDHandle.Buffer).size();
             initConstant->InlineData.resize(bufferSize);
             memcpy_s(initConstant->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
             ctx->m_programInfo.m_initConstantAnnotation.push_back(std::move(initConstant));
-            ctx->m_programInfo.m_initConstantBufferAllocaSize = modMD->inlineConstantBufferSize;
         }
 
         if (!modMD->inlineGlobalBuffers.empty())
@@ -1829,13 +1829,13 @@ namespace IGC
 
             std::unique_ptr<iOpenCL::InitGlobalAnnotation> initGlobal(new iOpenCL::InitGlobalAnnotation());
             initGlobal->Alignment = ipsbMDHandle.alignment;
+            initGlobal->AllocSize = ipsbMDHandle.allocSize;
 
             size_t bufferSize = (ipsbMDHandle.Buffer).size();
             initGlobal->InlineData.resize(bufferSize);
             memcpy_s(initGlobal->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
             ctx->m_programInfo.m_initGlobalAnnotation.push_back(std::move(initGlobal));
-            ctx->m_programInfo.m_initGlobalBufferAllocaSize = modMD->inlineGlobalBufferSize;
         }
 
         {

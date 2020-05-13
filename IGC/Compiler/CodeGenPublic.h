@@ -585,8 +585,6 @@ namespace IGC
         std::vector<std::unique_ptr<iOpenCL::ConstantPointerAnnotation> > m_initConstantPointerAnnotation;
         std::vector<std::unique_ptr<iOpenCL::GlobalPointerAnnotation> > m_initGlobalPointerAnnotation;
         std::vector<std::unique_ptr<iOpenCL::KernelTypeProgramBinaryInfo> > m_initKernelTypeAnnotation;
-        unsigned int m_initConstantBufferAllocaSize = 0;
-        unsigned int m_initGlobalBufferAllocaSize = 0;
     };
 
     class CBTILayout

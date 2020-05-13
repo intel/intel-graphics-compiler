@@ -242,12 +242,14 @@ struct InitConstantAnnotation
 {
     std::vector<unsigned char> InlineData;
     int Alignment;
+    unsigned AllocSize;
 };
 
 struct InitGlobalAnnotation
 {
     std::vector<unsigned char> InlineData;
     int Alignment;
+    unsigned AllocSize;
 };
 
 struct ConstantPointerAnnotation
