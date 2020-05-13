@@ -68,6 +68,7 @@ IGC_IR_VECTOR_TYPE(x32, 32)
 //------------------------------------
 IGC_IR_LLVM_INTRINSIC(sqrt)
 IGC_IR_LLVM_INTRINSIC(fabs)
+IGC_IR_LLVM_INTRINSIC(copysign)
 IGC_IR_LLVM_INTRINSIC(ceil)
 IGC_IR_LLVM_INTRINSIC(floor)
 IGC_IR_LLVM_INTRINSIC(trunc)

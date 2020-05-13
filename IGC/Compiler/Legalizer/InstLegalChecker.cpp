@@ -168,7 +168,7 @@ LegalizeAction InstLegalChecker::visitIntrinsicInst(IntrinsicInst& I) {
     case Intrinsic::exp:
     case Intrinsic::exp2:
     case Intrinsic::fabs:
-        // case Intrinsic::copysign:
+    case Intrinsic::copysign:
     case Intrinsic::floor:
     case Intrinsic::ceil:
     case Intrinsic::trunc:

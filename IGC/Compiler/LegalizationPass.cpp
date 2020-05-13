@@ -1785,6 +1785,31 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         }
     }
     break;
+    case Intrinsic::copysign:
+    {
+        Value* src0 = I.getArgOperand(0);
+        Value* src1 = I.getArgOperand(1);
+        auto srcType = src0->getType();
+
+        IGC_ASSERT(!srcType->isVectorTy() && "Vector type not supported!");
+        IGC_ASSERT(srcType->isFloatingPointTy() && "llvm.copysign supports only floating-point type");
+
+        auto srcTypeSize = (unsigned int)srcType->getPrimitiveSizeInBits();
+        uint64_t signMask = (uint64_t)0x1 << (srcTypeSize - 1);
+
+        auto src0Int = Builder.CreateBitCast(src0, Builder.getIntNTy(srcTypeSize));
+        auto src1Int = Builder.CreateBitCast(src1, Builder.getIntNTy(srcTypeSize));
+
+        auto src0NoSign = Builder.CreateAnd(src0Int, Builder.getIntN(srcTypeSize, ~signMask));
+        auto src1Sign = Builder.CreateAnd(src1Int, Builder.getIntN(srcTypeSize, signMask));
+
+        auto newValue = static_cast<Value*>(Builder.CreateOr(src0NoSign, src1Sign));
+        newValue = Builder.CreateBitCast(newValue, srcType);
+
+        I.replaceAllUsesWith(newValue);
+        I.eraseFromParent();
+    }
+    break;
     case Intrinsic::umul_with_overflow:
     case Intrinsic::smul_with_overflow:
         TODO("Handle the other with_overflow intrinsics");
