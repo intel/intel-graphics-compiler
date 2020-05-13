@@ -239,7 +239,7 @@ bool OpenCLPrintfResolution::runOnFunction(Function& F)
 {
     if (m_CGContext == nullptr) {
         m_CGContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        m_fp64Supported = m_CGContext->platform.supportFP64();
+        m_fp64Supported = !m_CGContext->platform.hasNoFP64Inst();
     }
 
     // Gather all found printf calls into the m_printfCalls vector.

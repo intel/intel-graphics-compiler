@@ -399,7 +399,7 @@ namespace IGC
         }
 
         bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-            (ctx.m_DriverInfo.NeedFP64(ctx.platform.getPlatformInfo().eProductFamily) && !ctx.platform.supportFP64()));
+            (ctx.m_DriverInfo.NeedFP64(ctx.platform.getPlatformInfo().eProductFamily) && ctx.platform.hasNoFP64Inst()));
         uint32_t theEmuKind = (needDPEmu ? EmuKind::EMU_DP : 0);
         theEmuKind |= (ctx.m_DriverInfo.NeedI64BitDivRem() ? EmuKind::EMU_I64DIVREM : 0);
         theEmuKind |=

@@ -320,8 +320,8 @@ namespace IGC
         return IGC_IS_FLAG_DISABLED(ForceSWCoalescingOfAtomicCounter);
     }
 
-    //all the platforms which do not support 64 bit operations (int64 and double)
-    bool hasNo64BitInst() const {
+    //all the platforms which DONOT support 64 bit int operations
+    bool hasNoInt64Inst() const {
         return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
             m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
             m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
@@ -329,12 +329,13 @@ namespace IGC
             m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP;
     }
 
-    //all the platforms which have correctly rounded macros (INVM, RSQRTM, MADM)
-    bool hasCorrectlyRoundedMacros() const {
-        return m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
-            m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
-            m_platformInfo.eProductFamily != IGFX_JASPERLAKE &&
-            m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP;
+    //all the platforms which DONOT support 64 bit float operations
+    bool hasNoFP64Inst() const {
+        return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
+            m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
+            m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
+            m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
+            m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP;
     }
 
     //all the platforms which do not support 64 bit operations and
@@ -345,22 +346,18 @@ namespace IGC
     bool need64BitEmulation() const {
         return (m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
             m_platformInfo.eProductFamily == IGFX_BROXTON ||
-            m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
-            m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
-            m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
-            m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
-            m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP);
+            hasNoInt64Inst());
     }
 
-    //all the platforms which do not support 64 bit float operations
-    bool supportFP64() const {
-        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN7_CORE &&
-            m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
+
+    //all the platforms which have correctly rounded macros (INVM, RSQRTM, MADM)
+    bool hasCorrectlyRoundedMacros() const {
+        return m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
             m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
-            m_platformInfo.eProductFamily != IGFX_ELKHARTLAKE &&
             m_platformInfo.eProductFamily != IGFX_JASPERLAKE &&
-            m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP);
+            m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP;
     }
+
     bool hasHWDp4AddSupport() const {
         return m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP;
     }

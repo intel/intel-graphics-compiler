@@ -132,7 +132,7 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
     {
         // This is the condition that double emulation is used.
         if ((IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-            (pCtx->m_DriverInfo.NeedFP64(pCtx->platform.getPlatformInfo().eProductFamily) && !pCtx->platform.supportFP64())))
+            (pCtx->m_DriverInfo.NeedFP64(pCtx->platform.getPlatformInfo().eProductFamily) && pCtx->platform.hasNoFP64Inst())))
         {
             m_hasPrivateMem = true;
         }

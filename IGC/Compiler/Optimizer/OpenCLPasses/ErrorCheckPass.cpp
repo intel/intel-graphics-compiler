@@ -110,7 +110,7 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
 {
     auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    if (!ctx->m_DriverInfo.NeedFP64(ctx->platform.getPlatformInfo().eProductFamily) && !ctx->platform.supportFP64()
+    if (!ctx->m_DriverInfo.NeedFP64(ctx->platform.getPlatformInfo().eProductFamily) && ctx->platform.hasNoFP64Inst()
         && IGC_IS_FLAG_DISABLED(ForceDPEmulation))
     {
         // check that input does not use double

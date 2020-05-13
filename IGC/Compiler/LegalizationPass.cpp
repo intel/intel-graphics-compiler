@@ -731,7 +731,7 @@ void Legalization::visitSelectInst(SelectInst& I)
     }
     else if (I.getType()->isDoubleTy() &&
         (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-            !m_ctx->platform.supportFP64()))
+            m_ctx->platform.hasNoFP64Inst()))
     {
         // Split double select to i32 select.
 
