@@ -3373,6 +3373,9 @@ if(LLVM_ON_WIN32)
     )
 endif()
 
+# ==================================== ZE Binary Writer ================================================
+add_subdirectory(ZEBinWriter/zebin)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ZEBinWriter/zebin/include")
 
 # ===================================== Projects and source groups =====================================
 
@@ -3692,6 +3695,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
 
   endif()
 
+list(APPEND _targetLinkLineCommon zebinlib)
 
   list(APPEND _targetLinkLineCommon
       "${IGC_BUILD__PROJ__AdaptorOGL}"
