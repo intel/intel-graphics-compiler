@@ -608,6 +608,10 @@ int VISAKernelImpl::InitializeKernel(const char *kernel_name)
 // This enables the the statistic to be printed out even If the optimization did not happen.
 void VISAKernelImpl::initCompilerStats()
 {
+    m_compilerStats.Init(CompilerStats::numGRFSpillStr(), CompilerStats::type_int64);
+    m_compilerStats.Init(CompilerStats::numGRFFillStr(), CompilerStats::type_int64);
+    m_compilerStats.Init(CompilerStats::numSendStr(), CompilerStats::type_int64);
+    m_compilerStats.Init(CompilerStats::numCyclesStr(), CompilerStats::type_int64);
 #if COMPILER_STATS_ENABLE
     m_compilerStats.Init("PreRASchedulerForPressure", CompilerStats::type_bool);
     m_compilerStats.Init("PreRASchedulerForLatency", CompilerStats::type_bool);

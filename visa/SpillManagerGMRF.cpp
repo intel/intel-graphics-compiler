@@ -4408,6 +4408,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
                     expandSpillStackcall(numRows, offset, rowOffset, payload, bb, instIt);
                 }
             }
+            numGRFSpill++;
             instIt = bb->erase(spillIt);
             continue;
         }
@@ -4572,8 +4573,8 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
                 {
                     expandFillStackcall(numRows, offset, rowOffset, header, resultRgn, bb, instIt);
                 }
-
             }
+            numGRFFill++;
             instIt = bb->erase(fillIt);
             continue;
         }
@@ -4591,4 +4592,7 @@ void GlobalRA::expandSpillFillIntrinsics()
         expandSpillIntrinsic(bb);
         expandFillIntrinsic(bb);
     }
+    kernel.fg.builder->getcompilerStats().SetI64(CompilerStats::numGRFSpillStr(), numGRFSpill, kernel.getSimdSize());
+    kernel.fg.builder->getcompilerStats().SetI64(CompilerStats::numGRFFillStr(), numGRFFill, kernel.getSimdSize());
+
 }

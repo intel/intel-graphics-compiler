@@ -168,7 +168,7 @@ class Optimizer
     void NoDD();
     void initializePayload();
     void dumpPayload();
-    void checkBarrierUsage();
+    void collectStats();
     void createR0Copy();
 
     void insertInstLabels();
@@ -337,7 +337,7 @@ public:
         PI_ifCvt,
         PI_normalizeRegion,            // always
         PI_dumpPayload,
-        PI_checkBarrierUsage,          // always
+        PI_collectStats,          // always
         PI_createR0Copy,
         PI_initializePayload,
         PI_cleanupBindless,

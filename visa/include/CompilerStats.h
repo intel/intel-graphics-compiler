@@ -105,6 +105,12 @@ public:
     static constexpr Statistic::Type type_int64    = Statistic::Type::type_int64;
     static constexpr Statistic::Type type_double   = Statistic::Type::type_double;
 
+    static constexpr const char* numSendStr() { return "NumSendInst"; };
+    static constexpr const char* numGRFSpillStr() { return "NumGRFSpill"; };
+    static constexpr const char* numGRFFillStr() { return "NumGRFFill"; };
+    static constexpr const char* numCyclesStr() { return "NumCycles"; };
+
+
     // Statistic collection is disabled by default.
     inline void Enable(bool collectOnlyInitialized);
 

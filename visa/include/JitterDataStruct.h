@@ -78,6 +78,7 @@ typedef struct {
     uint32_t offsetToSkipSetFFIDGP = 0;
 
     bool hasStackcalls = false;
+
 } FINALIZER_INFO;
 
 #endif // JITTERDATASTRUCT_

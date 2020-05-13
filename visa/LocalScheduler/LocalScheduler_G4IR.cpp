@@ -51,6 +51,7 @@ void LocalScheduler::localScheduling()
     const Options *m_options = fg.builder->getOptions();
     LatencyTable LT(fg.builder);
 
+    uint32_t totalCycles = 0;
     for (; ib != bend; ++ib)
     {
         unsigned instCountBefore = (uint32_t)(*ib)->size();
@@ -105,6 +106,7 @@ void LocalScheduler::localScheduling()
             bbInfo[i].staticCycle = schedule.sequentialCycle;
             bbInfo[i].sendStallCycle = schedule.sendStallCycle;
             bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
+            totalCycles += schedule.sequentialCycle;
         }
 
         i++;
@@ -112,6 +114,8 @@ void LocalScheduler::localScheduling()
     FINALIZER_INFO* jitInfo = fg.builder->getJitInfo();
     jitInfo->BBInfo = bbInfo;
     jitInfo->BBNum = i;
+
+    fg.builder->getcompilerStats().SetI64(CompilerStats::numCyclesStr(), totalCycles, fg.getKernel()->getSimdSize());
 }
 
 void G4_BB_Schedule::dumpSchedule(G4_BB *bb)

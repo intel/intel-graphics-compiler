@@ -574,7 +574,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(ifCvt,                   vISA_ifCvt,                   TIMER_OPTIMIZER);
     INITIALIZE_PASS(dumpPayload,             vISA_dumpPayload,             TIMER_MISC_OPTS);
     INITIALIZE_PASS(normalizeRegion,         vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(checkBarrierUsage,       vISA_EnableAlways,            TIMER_MISC_OPTS);
+    INITIALIZE_PASS(collectStats,            vISA_EnableAlways,            TIMER_MISC_OPTS);
     INITIALIZE_PASS(createR0Copy,            vISA_enablePreemption,        TIMER_MISC_OPTS);
     INITIALIZE_PASS(initializePayload,       vISA_InitPayload,             TIMER_NUM_TIMERS);
     INITIALIZE_PASS(cleanupBindless,         vISA_enableCleanupBindless,   TIMER_OPTIMIZER);
@@ -1186,10 +1186,7 @@ int Optimizer::optimization()
 
     runPass(PI_insertHashMovs);
 
-    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
-    {
-        runPass(PI_checkBarrierUsage);
-    }
+    runPass(PI_collectStats);
 
     // Create a copy of R0 at the top of kernel.
     // This must be done after all other optimizer
@@ -7756,20 +7753,29 @@ public:
         }
     }
 
-    void Optimizer::checkBarrierUsage()
+    // perform simple stat collection (e.g., numBarriers, numSends)
+    // IR is not modified
+    void Optimizer::collectStats()
     {
         builder.getJitInfo()->usesBarrier = false;
+        uint32_t numSends = 0;
         for (auto bb : fg)
         {
             for (auto inst : *bb)
             {
-                if (inst->isSend() && inst->getMsgDesc()->isBarrierMsg())
+                if (inst->isSend())
                 {
-                    builder.getJitInfo()->usesBarrier = true;
-                    return;
+                    numSends++;
+                    if (inst->asSendInst()->getMsgDesc()->isBarrierMsg())
+                    {
+                        // ToDo: remove this at some point as only legacy CMRT needs this information
+                        builder.getJitInfo()->usesBarrier = true;
+                    }
+
                 }
             }
         }
+        builder.getcompilerStats().SetI64(CompilerStats::numSendStr(), numSends);
     }
 
     // Create a copy of R0 at top of kernel,
