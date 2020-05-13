@@ -169,19 +169,19 @@ namespace IGC
         case THREAD_ID_IN_GROUP_X:
             if(m_pThread_ID_in_Group_X == nullptr)
             {
-                m_pThread_ID_in_Group_X = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, EALIGN_GRF, false, m_numberInstance);
+                m_pThread_ID_in_Group_X = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, getGRFAlignment(), false, m_numberInstance);
             }
             return m_pThread_ID_in_Group_X;
         case THREAD_ID_IN_GROUP_Y:
             if(m_pThread_ID_in_Group_Y == nullptr)
             {
-                m_pThread_ID_in_Group_Y = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, EALIGN_GRF, false, m_numberInstance);
+                m_pThread_ID_in_Group_Y = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, getGRFAlignment(), false, m_numberInstance);
             }
             return m_pThread_ID_in_Group_Y;
         case THREAD_ID_IN_GROUP_Z:
             if(m_pThread_ID_in_Group_Z == nullptr)
             {
-                m_pThread_ID_in_Group_Z = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, EALIGN_GRF, false, m_numberInstance);
+                m_pThread_ID_in_Group_Z = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, getGRFAlignment(), false, m_numberInstance);
             }
             return m_pThread_ID_in_Group_Z;
         default:
