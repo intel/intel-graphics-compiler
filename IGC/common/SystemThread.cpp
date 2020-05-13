@@ -157,12 +157,9 @@ bool CSystemThread::CreateSystemThreadKernel(
 void CSystemThread::DeleteSystemThreadKernel(
     USC::SSystemThreadKernelOutput* &pSystemThreadKernelOutput )
 {
-    if (pSystemThreadKernelOutput->m_pKernelProgram &&
-        (pSystemThreadKernelOutput->m_KernelProgramSize > 0) )
-    {
-        IGC::aligned_free(pSystemThreadKernelOutput->m_pKernelProgram);
-        delete pSystemThreadKernelOutput;
-    }
+    IGC::aligned_free(pSystemThreadKernelOutput->m_pKernelProgram);
+    delete pSystemThreadKernelOutput;
+    pSystemThreadKernelOutput = nullptr;
 }
 
 //populate the SIPKernelInfo map with starting address and size of every SIP kernels

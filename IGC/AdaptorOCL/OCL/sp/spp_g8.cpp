@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../../../Compiler/CodeGenPublic.h"
 #include "program_debug_data.h"
+#include "../../../common/SystemThread.h"
 #include "../../../common/Types.hpp"
 #include "../../../common/shaderOverride.hpp"
 #include "../../../Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
@@ -58,8 +59,10 @@ CGen8OpenCLProgramBase::~CGen8OpenCLProgramBase()
         delete data.kernelDebugData;
     }
 
-    delete m_pSystemThreadKernelOutput;
-    m_pSystemThreadKernelOutput = nullptr;
+    if (m_pSystemThreadKernelOutput)
+    {
+        SIP::CSystemThread::DeleteSystemThreadKernel(m_pSystemThreadKernelOutput);
+    }
 }
 
 RETVAL CGen8OpenCLProgramBase::GetProgramBinary(
