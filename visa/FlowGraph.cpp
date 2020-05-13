@@ -7088,7 +7088,7 @@ void G4_Kernel::renameAliasDeclares()
             {
                 newName += "_" + to_string(offset);
             }
-            dcl->setName(fg.builder->getNameString(fg.mem, 64, newName.c_str()));
+            dcl->setName(fg.builder->getNameString(fg.mem, 64, "%s", newName.c_str()));
         }
     }
 #endif

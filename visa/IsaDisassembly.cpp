@@ -126,7 +126,7 @@ std::string printVariableDeclName(
     std::stringstream sstr;
 
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
-    if (options->getOption(vISA_DumpIsaVarNames))
+    if (options->getOption(vISA_DumpIsaVarNames) && operand_prefix_kind == NOT_A_STATE_OPND)
     {
         sstr << getGenVarName(declID, *header);
     }

@@ -876,7 +876,13 @@ V0 {
         return NULL_VAR;
     }
 
-[a-zA-Z_][a-zA-Z0-9_]* {
+%[[:alpha:]_][[:alnum:]_]* {
+        TRACE("\n** Predefined Var");
+        CISAlval.string = strdup(yytext);
+        return VAR;
+}
+
+[[:alpha:]_][[:alnum:]_]* {
         TRACE("\n** VAR ");
         CISAlval.string = strdup(yytext);
         return VAR;
