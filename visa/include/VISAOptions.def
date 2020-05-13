@@ -64,7 +64,6 @@ DEF_VISA_OPTION(vISA_LVN,                   ET_BOOL, "-nolvn",       UNUSED, tru
 // only affects acc substitution for now
 DEF_VISA_OPTION(vISA_numGeneralAcc,         ET_INT32, "-numGeneralAcc", "USAGE: -numGeneralAcc <accNum>\n", 0)
 DEF_VISA_OPTION(vISA_reassociate,           ET_BOOL, "-noreassoc",   UNUSED, true)
-DEF_VISA_OPTION(vISA_unsafeMath,            ET_BOOL, "-unsafeMath",  UNUSED, false)
 DEF_VISA_OPTION(vISA_split4GRFVar,          ET_BOOL, "-no4GRFSplit", UNUSED, true)
 DEF_VISA_OPTION(vISA_divergentBB,           ET_BOOL, "-divergentBB", UNUSED, true)
 
@@ -88,7 +87,6 @@ DEF_VISA_OPTION(vISA_foldEOTtoPrevSend,     ET_BOOL, "-foldEOT",         UNUSED,
 DEF_VISA_OPTION(vISA_hasRNEandDenorm,       ET_BOOL, "-hasRNEandDenorm", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceNoFP64bRegioning, ET_BOOL, "-noFP64bRegion",   UNUSED, false)
 DEF_VISA_OPTION(vISA_alignBindlessSampler,  ET_BOOL, "-alignBS",         UNUSED, false)
-DEF_VISA_OPTION(vISA_VME,                   ET_BOOL, "-vme",             UNUSED, false)
 
 //=== RA options ===
 DEF_VISA_OPTION(vISA_RoundRobin,            ET_BOOL, "-noroundrobin",    UNUSED, true)
@@ -150,7 +148,6 @@ DEF_VISA_OPTION(vISA_ReorderDPSendToDifferentBti, ET_BOOL, "-nodpsendreorder", U
 DEF_VISA_OPTION(vISA_WAWSubregHazardAvoidance,    ET_BOOL, "-noWAWSubregHazardAvoidance", UNUSED, true)
 DEF_VISA_OPTION(vISA_useMultiThreadedLatencies,   ET_BOOL, "-dontUseMultiThreadedLatencies", UNUSED, true)
 DEF_VISA_OPTION(vISA_SchedulerWindowSize,         ET_INT32, "-schedulerwindow", "USAGE: -schedulerwindow <window-size>\n", 4096)
-DEF_VISA_OPTION(vISA_UnifiedSendCycle,  ET_INT32, "-unifiedSendCycle",      "USAGE: -unifiedSendCycle <cycle>\n", 0)
 DEF_VISA_OPTION(vISA_HWThreadNumberPerEU, ET_INT32, "-HWThreadNumberPerEU", "USAGE: -HWThreadNumberPerEU <num>\n",  0)
 DEF_VISA_OPTION(vISA_NoAtomicSend, ET_BOOL, "-noAtomicSend", UNUSED, false)
 DEF_VISA_OPTION(vISA_ReadSuppressionDepth, ET_INT32, "-readSuppressionDepth", UNUSED, 0)
@@ -221,7 +218,6 @@ DEF_VISA_OPTION(vISA_clearHDCWritesBeforeEOT,       ET_BOOL,  NULLSTR, UNUSED, f
 DEF_VISA_OPTION(vISA_setA0toTdrForSendc,            ET_BOOL,  "-setA0toTdrForSendc", UNUSED, false)
 DEF_VISA_OPTION(vISA_addFFIDProlog,                 ET_BOOL,  "-noFFIDProlog",       UNUSED, true)
 DEF_VISA_OPTION(vISA_setFFID,                       ET_INT32, "-setFFID", "USAGE: -setFFID <ffid>\n", FFID_INVALID)
-DEF_VISA_OPTION(vISA_clearAccBeforeEOT,             ET_BOOL,  "-clearAccBeforeEOT",            UNUSED, false)
 DEF_VISA_OPTION(vISA_replaceIndirectCallWithJmpi,   ET_BOOL,  "-replaceIndirectCallWithJmpi",  UNUSED, false)
 DEF_VISA_OPTION(vISA_noMaskWA,                      ET_INT32, "-noMaskWA",  "USAGE: -noMaskWA <[0:1]=0 (off)|1|2|3(3=2), [2:2]=0|1>\n", 0)
 DEF_VISA_OPTION(vISA_forceNoMaskWA,                 ET_BOOL,  "-forceNoMaskWA",  UNUSED, false)

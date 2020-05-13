@@ -3900,7 +3900,6 @@ namespace IGC
         if (context->type == ShaderType::OPENCL_SHADER)
         {
             if (m_program->m_Platform->singleThreadBasedInstScheduling())
-
             {
                 SaveOption(vISA_useMultiThreadedLatencies, false);
             }
@@ -4124,11 +4123,6 @@ namespace IGC
             SaveOption(vISA_enableUnsafeCP_DF, true);
         }
 
-        if (IGC_GET_FLAG_VALUE(UnifiedSendCycle) != 0)
-        {
-            SaveOption(vISA_UnifiedSendCycle, IGC_GET_FLAG_VALUE(UnifiedSendCycle));
-        }
-
         if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0 && (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0))
         {
             IGC_ASSERT(false && "ReservedRegisterNum and TotalGRFNum registry keys cannot be used at the same time");
@@ -4263,11 +4257,6 @@ namespace IGC
             SaveOption(vISA_accSubstitution, false);
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableNoDD))
-        {
-            SaveOption(vISA_EnableNoDD, true);
-        }
-
         if (IGC_IS_FLAG_ENABLED(GlobalSendVarSplit))
         {
             SaveOption(vISA_GlobalSendVarSplit, true);
@@ -4281,11 +4270,6 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && IGC_IS_FLAG_ENABLED(InterleaveSourceShader))
         {
             SaveOption(vISA_EmitLocation, true);
-        }
-
-        if (context->type == ShaderType::PIXEL_SHADER && static_cast<CPixelShader*>(m_program)->NeedVMask())
-        {
-            SaveOption(vISA_VME, true);
         }
 
         // Enable SendFusion for SIMD8
@@ -4306,12 +4290,6 @@ namespace IGC
             }
         }
 
-        if (context->getModuleMetaData()->compOpt.FastRelaxedMath ||
-            context->getModuleMetaData()->compOpt.UnsafeMathOptimizations)
-        {
-            SaveOption(vISA_unsafeMath, true);
-        }
-
         // With statelessToStatefull on, it is possible that two different BTI messages
         // (two kernel arguments) might refer to the same memory. To be safe, turn off
         // visa DPSend reordering.
@@ -4324,11 +4302,6 @@ namespace IGC
         if (m_program->m_Platform->alignBindlessSampler())
         {
             SaveOption(vISA_alignBindlessSampler, true);
-        }
-
-        if (m_program->m_Platform->getWATable().Wa_14010017096 != 0)
-        {
-            SaveOption(vISA_clearAccBeforeEOT, true);
         }
 
         if (m_program->m_Platform->WaDisableSendSrcDstOverlap())

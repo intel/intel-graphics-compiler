@@ -6822,7 +6822,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     bb->insert(ii, movInst);
                 }
 
-                if (inst->isEOT() && builder.getOption(vISA_clearAccBeforeEOT))
+                if (inst->isEOT() && VISA_WA_CHECK(builder.getPWaTable(), Wa_14010017096))
                 {
                     // insert "(W) mov(16) acc0.0:f 0x0:f" before EOT
                     G4_INST* movInst = builder.createMov(16,

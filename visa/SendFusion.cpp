@@ -272,13 +272,6 @@ bool SendFusion::isAtomicCandidate(G4_SendMsgDescriptor* msgDesc)
     }
     else
     {
-        // For now, comment this out and rely solely on
-        // vISA_EnableAtomicFusion
-        //if (!Builder->getOption(vISA_unsafeMath))
-        //{
-        //    return false;
-        //}
-
         switch (atomicOp)
         {
         default:

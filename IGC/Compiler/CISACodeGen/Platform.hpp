@@ -522,7 +522,7 @@ namespace IGC
 
     bool alignBindlessSampler() const
     {
-            return true;
+        return true;
     }
 
     bool WaDisableSendSrcDstOverlap() const
