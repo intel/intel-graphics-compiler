@@ -36,11 +36,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SEMANTICS_POST_OP_NEEDS_FENCE ( Acquire | AcquireRelease | SequentiallyConsistent)
 
   __local uint* __builtin_IB_get_local_lock();
+  void __builtin_IB_eu_thread_pause(uint value);
 
 #define SPINLOCK_START \
   { \
   volatile bool done = false; \
   while(!done) { \
+       __builtin_IB_eu_thread_pause(32); \
        if(atomic_cmpxchg(__builtin_IB_get_local_lock(), 0, 1) == 0) {
 
 #define SPINLOCK_END \
