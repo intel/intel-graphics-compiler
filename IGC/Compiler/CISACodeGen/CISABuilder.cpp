@@ -1240,7 +1240,7 @@ namespace IGC
             //         subReg * (size of var's type) is a0.0's immOffset;
             //   2. otherwise (using VxH addressing mode),
             //         subReg is indeed an sub register number of a0.
-            newMod.subReg += thePart * 8;
+            newMod.subReg += thePart * visaNumLanes(toExecSize);
             return newMod;
         }
 
