@@ -281,6 +281,11 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize,
     encoder.Push();
 
     CVariable* pSize = nullptr;
+
+    // Maximun private size in byte, per-workitem
+    // When there's stack call, we don't know the actual stack size being used,
+    // so set a conservative max stack size.
+    const uint32_t MaxPrivateSize = 1024;
     if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
     {
         // Experimental: Patch private memory size
@@ -290,8 +295,8 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize,
     }
     else
     {
-        // hard-code per-workitem private-memory size to 8k
-        pSize = ImmToVariable(8 * 1024 * numLanes(m_dispatchSize), ISA_TYPE_UD);
+        // hard-code per-workitem private-memory size to max size
+        pSize = ImmToVariable(MaxPrivateSize * numLanes(m_dispatchSize), ISA_TYPE_UD);
     }
 
     CVariable* pTemp = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1);
@@ -318,7 +323,7 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize,
         // If we don't return per-function private memory size,
         // modify private-memory size to a large setting.
         // This will be reported through patch-tokens as per-kernel requirement.
-        m_ModuleMetadata->FuncMD[entry].privateMemoryPerWI = 1024;
+        m_ModuleMetadata->FuncMD[entry].privateMemoryPerWI = MaxPrivateSize;
     }
 
     stackBase = GetSymbol(kerArg);
