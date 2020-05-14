@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <fstream>
 #include <functional>
+
 #include "visa_igc_common_header.h"
 #include "Common_ISA.h"
 #include "Common_ISA_util.h"
@@ -42,7 +43,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BinaryEncodingCNL.h"
 #include "Common_BinaryEncoding.h"
 #include "DebugInfo.h"
-#include "iga/IGALibrary/IR/Instruction.hpp"
 #include "BinaryEncodingIGA.h"
 #include "IsaDisassembly.h"
 #include "LocalScheduler/SWSB_G4IR.h"
@@ -51,6 +51,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined( _DEBUG ) && ( defined( _WIN32 ) || defined( _WIN64 ) )
 #include <windows.h>
 #endif
+
+#include <cctype>
 
 using namespace std;
 using namespace CisaFramework;
@@ -732,44 +734,89 @@ void VISAKernelImpl::createBindlessSampler()
     }
 }
 
-void VISAKernelImpl::setDefaultVariableName(Common_ISA_Var_Class Ty, const char *&varName)
+void VISAKernelImpl::ensureVariableNameUnique(const char *&varName)
 {
-    // Do not reassign a name if there is one already.
-    if (varName && strlen(varName) > 0)
+    // escape the name to ensure it's a legal vISA identifier
+    std::stringstream escdName;
+    if (isdigit(varName[0]))
+        escdName << '_';
+    for (size_t i = 0, slen = strlen(varName); i < slen; i++) {
+        char c = varName[i];
+        if (!isalnum(c)) {
+            c = '_';
+        }
+        escdName << c;
+    }
+
+    std::string varNameS = escdName.str();
+    if (varNames.find(varNameS) != varNames.end()) {
+        // not unqiue, add a counter until it is unique
+        int instance = 0;
+        do {
+            std::stringstream ss;
+            ss << escdName.str() << '_' << instance++;
+            varNameS = ss.str();
+        } while (varNames.find(varNameS) != varNames.end());
+    }
+
+    varNames.insert(varNameS);
+
+    char *buf = (char*)m_mem.alloc(varNameS.size() + 1);
+    memcpy_s(buf, varNameS.size(), varNameS.c_str(), varNameS.size());
+    buf[varNameS.size()] = 0;
+    varName = buf;
+    varNames.insert(varNameS);
+}
+
+void VISAKernelImpl::generateVariableName(Common_ISA_Var_Class Ty, const char *&varName)
+{
+    if (!m_options->getOption(vISA_GenerateISAASM) &&
+        !m_options->getOption(vISA_IsaAssembly))
         return;
 
-#ifndef _DEBUG
-    // In a debug build, always set a default name. Otherwise, only set default
-    // if emitting visaasm files.
-    if (!m_options->getOption(vISA_GenerateISAASM) && !m_options->getOption(vISA_IsaAssembly))
+    if (varName && *varName) {
+        // if a custom name is given, then ensure it's unique;
+        // if it's not, we will suffix it
+        ensureVariableNameUnique(varName);
         return;
-#endif
-    char* buf = (char*)m_mem.alloc(256);
+    }
+
+    // fall back onto a generic naming scheme
+    // e.g. _V## for generic variables, etc...
+    auto createAnonVarName = [&] (char pfx, unsigned index, int fillW) {
+        std::stringstream ss;
+        ss << pfx << std::setfill('0') << std::setw(fillW) << index;
+        size_t slen = (size_t)ss.tellp();
+        char *buf = (char *)m_mem.alloc(slen + 1);
+        memcpy_s(buf, slen + 1, ss.str().c_str(), slen);
+        buf[slen] = 0;
+        return buf;
+    };
 
     switch (Ty) {
     case Common_ISA_Var_Class::GENERAL_VAR:
-        SNPRINTF(buf, 256, "V%d", varNameCount++);
-        varName = buf;
+        varName = createAnonVarName('V', varNameCount++, 4);
         break;
     case Common_ISA_Var_Class::PREDICATE_VAR:
-        SNPRINTF(buf, 256, "P%d", predicateNameCount++);
-        varName = buf;
+        varName = createAnonVarName('P', predicateNameCount++, 2);
         break;
     case Common_ISA_Var_Class::ADDRESS_VAR:
-        SNPRINTF(buf, 256, "A%d", addressNameCount++);
-        varName = buf;
+        varName = createAnonVarName('A', addressNameCount++, 2);
         break;
     case Common_ISA_Var_Class::SURFACE_VAR:
-        SNPRINTF(buf, 256, "T%d", surfaceNameCount++);
-        varName = buf;
+        varName = createAnonVarName('T', surfaceNameCount++, 3);
         break;
     case Common_ISA_Var_Class::SAMPLER_VAR:
-        SNPRINTF(buf, 256, "S%d", samplerNameCount++);
-        varName = buf;
+        varName = createAnonVarName('S', samplerNameCount++, 3);
         break;
     default:
+        varName = createAnonVarName('X', unknownNameCount++, 2);
         break;
     }
+
+    // ensure that our auto-generated name is unique
+    // i.e. suffix the variable if input already uses this name
+    ensureVariableNameUnique(varName);
 }
 
 std::string VISAKernelImpl::getVarName(VISA_GenVar* decl) const
@@ -820,23 +867,26 @@ std::string VISAKernelImpl::getPredicateOperandName(VISA_PredOpnd* opnd) const
     return printVectorOperand(&fmt, opnd->_opnd.v_opnd, m_options, false);
 }
 
-int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
-                                     VISA_Align varAlign, VISA_GenVar *parentDecl, int aliasOffset)
+int VISAKernelImpl::CreateVISAGenVar(
+    VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
+    VISA_Align varAlign, VISA_GenVar *parentDecl, int aliasOffset)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_VAR);
 #endif
+    if (varName == nullptr)
+        varName = "";
     decl = (VISA_GenVar *)m_mem.alloc(sizeof(VISA_GenVar));
-    ////memset(decl, 0, sizeof(VISA_GenVar));
     decl->type = GENERAL_VAR;
     var_info_t *info = &decl->genVar;
 
-    if(m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
+    generateVariableName(decl->type, varName);
+
+    if (m_options->getOption(vISA_isParseMode) && !setNameIndexMap(varName, decl))
     {
         assert( 0 );
         return VISA_FAILURE;
     }
-    setDefaultVariableName(decl->type, varName);
 
     info->bit_properties = (uint8_t)dataType;
     info->bit_properties += varAlign << 4;
@@ -933,7 +983,7 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName,
     }
 
     addr_info_t * addr = &decl->addrVar;
-    setDefaultVariableName(decl->type, varName);
+    generateVariableName(decl->type, varName);
 
     decl->index = m_addr_info_count++;
     if (IS_GEN_BOTH_PATH)
@@ -987,7 +1037,7 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *& decl, const char* varName,
         assert(0);
         return VISA_FAILURE;
     }
-    setDefaultVariableName(decl->type, varName);
+    generateVariableName(decl->type, varName);
 
     pred_info_t * pred = &decl->predVar;
 
@@ -1033,7 +1083,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
         assert( 0 );
         return VISA_FAILURE;
     }
-    setDefaultVariableName(decl->type, varName);
+    generateVariableName(decl->type, varName);
 
     state_info_t * state = &decl->stateVar;
     state->attribute_count = 0;
@@ -7706,25 +7756,19 @@ unsigned long VISAKernelImpl::writeInToCisaBinaryBuffer(const void * value, int 
 
 VISA_LabelOpnd* VISAKernelImpl::getLabelOperandFromFunctionName(std::string name)
 {
-    std::map<std::string, VISA_LabelOpnd *>::iterator it;
-    it = m_funcName_to_labelID_map.find(name);
-    if(m_funcName_to_labelID_map.end() == it)
-    {
-        return NULL;
-    }else
-    {
+    auto it = m_funcName_to_labelID_map.find(name);
+    if(m_funcName_to_labelID_map.end() == it) {
+        return nullptr;
+    } else {
         return it->second;
     }
 }
 unsigned int VISAKernelImpl::getLabelIdFromFunctionName(std::string name)
 {
-    std::map<std::string, VISA_LabelOpnd *>::iterator it;
-    it = m_funcName_to_labelID_map.find(name);
-    if(m_funcName_to_labelID_map.end() == it)
-    {
+    auto it = m_funcName_to_labelID_map.find(name);
+    if (m_funcName_to_labelID_map.end() == it) {
         return INVALID_LABEL_ID;
-    }else
-    {
+    } else {
         return it->second->_opnd.other_opnd;
     }
 }
@@ -7790,26 +7834,20 @@ void VISAKernelImpl::popIndexMapScopeLevel()
 
 unsigned int VISAKernelImpl::getIndexFromLabelName(const std::string &name)
 {
-    std::map<std::string, VISA_LabelOpnd *>::iterator it;
-    it = m_label_name_to_index_map.find(name);
-    if(m_label_name_to_index_map.end() == it)
-    {
+    auto it = m_label_name_to_index_map.find(name);
+    if (m_label_name_to_index_map.end() == it) {
         return CISA_INVALID_VAR_ID;
-    }else
-    {
+    } else {
         return it->second->_opnd.other_opnd;
     }
 }
 
 VISA_LabelOpnd* VISAKernelImpl::getLabelOpndFromLabelName(const std::string &name)
 {
-    std::map<std::string, VISA_LabelOpnd *>::iterator it;
-    it = m_label_name_to_index_map.find(name);
-    if(m_label_name_to_index_map.end() == it)
-    {
+    auto it = m_label_name_to_index_map.find(name);
+    if (m_label_name_to_index_map.end() == it) {
         return NULL;
-    }else
-    {
+    } else {
         return (VISA_LabelOpnd *)it->second;
     }
 }
@@ -7819,8 +7857,7 @@ bool VISAKernelImpl::setLabelNameIndexMap(const std::string &name, VISA_LabelOpn
     bool succeeded = true;
 
     //make sure mapping doesn't already exist
-    if( getIndexFromLabelName(name) != CISA_INVALID_VAR_ID )
-    {
+    if (getIndexFromLabelName(name) != CISA_INVALID_VAR_ID) {
         return false;
     }
     m_label_name_to_index_map[name] = lbl;

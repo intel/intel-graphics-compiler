@@ -68,14 +68,14 @@ namespace IGC
         CreateImplicitArgs();
 
         // allocate register for urb write handles
-        m_pURBWriteHandleReg = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
-        m_pURBReadHandleReg = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
+        m_pURBWriteHandleReg = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF, "URBWriteHandle");
+        m_pURBReadHandleReg = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF, "URBReadHandle");
 
         if (m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH)
         {
             if (!m_Platform->DSPrimitiveIDPayloadPhaseCanBeSkipped() || m_hasPrimitiveIdInput)
             {
-                m_pPatchPrimitiveId = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
+                m_pPatchPrimitiveId = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF, "PatchPrimId");
             }
         }
     }
@@ -97,7 +97,9 @@ namespace IGC
         {
             if (setup.size() <= index / 4 || setup[index / 4] == nullptr)
             {
-                inputVar = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false);
+                inputVar = GetNewVariable(
+                    numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false,
+                    CName("inputVar", index));
                 AddSetup(index / 4, inputVar);
             }
             else
@@ -109,7 +111,8 @@ namespace IGC
         {
             if (setup.size() <= index || setup[index] == nullptr)
             {
-                inputVar = GetNewVariable(1, ISA_TYPE_F, EALIGN_DWORD, true);
+                inputVar = GetNewVariable(1, ISA_TYPE_F, EALIGN_DWORD, true,
+                    CName("inputVar", index));
                 AddSetup(index, inputVar);
             }
             else
@@ -302,13 +305,13 @@ namespace IGC
             m_ShaderDispatchMode != ShaderDispatchMode::DUAL_PATCH)
         {
             CVariable* channelMask = ImmToVariable(0xFF, ISA_TYPE_D);
-            CVariable* URBHandle = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
+            CVariable* URBHandle = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF, "URBWriteHandle");
             encoder.SetNoMask();
             encoder.SetSrcRegion(0, 0, 1, 0);
             encoder.Or(URBHandle, GetURBOutputHandle(), ImmToVariable(0x0000F000, ISA_TYPE_D));
             encoder.Push();
             CVariable* offset = ImmToVariable(0, ISA_TYPE_D);
-            CVariable* payload = GetNewVariable(8 * numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
+            CVariable* payload = GetNewVariable(8 * numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF, "URBPayload");
             encoder.SetNoMask();
             encoder.URBWrite(payload, 0, offset, URBHandle, channelMask);
             encoder.Push();

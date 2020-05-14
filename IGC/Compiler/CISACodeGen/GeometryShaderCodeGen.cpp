@@ -168,7 +168,8 @@ namespace IGC
     {
         if (m_pPrimitiveID == nullptr)
         {
-            m_pPrimitiveID = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
+            m_pPrimitiveID = GetNewVariable(
+                numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF, "PrimitiveID");
         }
 
         return m_pPrimitiveID;
@@ -193,14 +194,16 @@ namespace IGC
                     (uint16_t)m_properties.Input().VertexCount(),
                     ISA_TYPE_UD,
                     EALIGN_GRF,
-                    true);
+                    true,
+                    "URBReadHandle");
             }
             else
             {
                 m_pURBReadHandlesReg = GetNewVariable(
                     numLanes(m_SIMDSize) * m_properties.Input().VertexCount(),
                     ISA_TYPE_UD,
-                    EALIGN_GRF);
+                    EALIGN_GRF,
+                    "URBReadHandle");
             }
         }
         return m_pURBReadHandlesReg;
@@ -220,7 +223,8 @@ namespace IGC
         if (pVertexIndex->IsImmediate())
         {
             unsigned int vertexIndex = int_cast<unsigned int>(pVertexIndex->GetImmediateValue());
-            pSelectedHandles = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
+            pSelectedHandles = GetNewVariable(
+                numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
 
             if (m_properties.Input().HasInstancing())
             {
@@ -236,7 +240,8 @@ namespace IGC
         }
         else
         {
-            CVariable* pOffset = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF);
+            CVariable* pOffset = GetNewVariable(
+                numLanes(m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
             CVariable* pVertexIndexWord = BitCast(pVertexIndex, ISA_TYPE_UW);
             if (!pVertexIndexWord->IsUniform())
             {
@@ -268,7 +273,8 @@ namespace IGC
                 pOffset->IsUniform() ? 1 : numLanes(m_SIMDSize),
                 ISA_TYPE_UD,
                 pOffset->IsUniform(),
-                URBHandles->IsUniform());
+                URBHandles->IsUniform(),
+                URBHandles->getName());
             encoder.AddrAdd(pSelectedHandles, URBHandles, pOffset);
             encoder.Push();
         }
@@ -420,7 +426,8 @@ namespace IGC
 
     void CGeometryShader::PreCompile()
     {
-        m_pURBWriteHandleReg = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
+        m_pURBWriteHandleReg = GetNewVariable(
+            numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "URBWriteHandle");
 
         CreateImplicitArgs();
     }
@@ -431,7 +438,8 @@ namespace IGC
         if (m_properties.Input().HasInstanceID())
         {
             CEncoder& encoder = GetEncoder();
-            m_pInstanceID = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
+            m_pInstanceID = GetNewVariable(
+                numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "InstanceID");
             encoder.Shr(m_pInstanceID, m_pURBWriteHandleReg, ImmToVariable(27, ISA_TYPE_UD));
             encoder.Push();
         }

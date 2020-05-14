@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "common/debug/Dump.hpp"
 #include <map>
+#include <string>
 #include <vector>
 #include "Probe/Assertion.h"
 
@@ -111,9 +112,49 @@ namespace IGC
         CVariable* GetSymbol(llvm::Value* value, bool fromConstantPool = false);
         void        AddSetup(uint index, CVariable* var);
         void        AddPatchConstantSetup(uint index, CVariable* var);
-        CVariable* GetNewVariable(uint16_t nbElement, VISA_Type type, e_alignment align, bool uniform = false, uint16_t numberInstance = 1);
+
+        // TODO: simplify calls to GetNewVariable to these shorter and more
+        // expressive cases where possible.
+        //
+        // CVariable* GetNewVector(VISA_Type type, const CName &name) {
+        //     return GetNewVariable(numLanes(m_SIMDSize), type, EALIGN_GRF, false, name);
+        // }
+        // CVariable* GetNewUniform(VISA_Type type, const CName &name) {
+        //    grep a GetNewVariable(1, .. true) and see what B and W use
+        //     return GetNewVariable(1, type, alignOf_TODO(type), true, name);
+        // }
+
+        CVariable* GetNewVariable(
+            uint16_t nbElement,
+            VISA_Type type,
+            e_alignment align,
+            const CName &name)
+        {
+            return GetNewVariable(nbElement, type, align, false, 1, name);
+        }
+        CVariable* GetNewVariable(
+            uint16_t nbElement,
+            VISA_Type type,
+            e_alignment align,
+            bool uniform,
+            const CName &name)
+        {
+            return GetNewVariable(nbElement, type, align, uniform, 1, name);
+        }
+        CVariable* GetNewVariable(
+            uint16_t nbElement,
+            VISA_Type type,
+            e_alignment align,
+            bool uniform,
+            uint16_t numberInstance,
+            const CName &name);
         CVariable* GetNewVariable(const CVariable* from);
-        CVariable* GetNewAddressVariable(uint16_t nbElement, VISA_Type type, bool uniform, bool vectorUniform);
+        CVariable* GetNewAddressVariable(
+            uint16_t nbElement,
+            VISA_Type type,
+            bool uniform,
+            bool vectorUniform,
+            const CName &name);
         CVariable* GetNewVector(llvm::Value* val, e_alignment preferredAlign = EALIGN_AUTO);
         CVariable* GetNewAlias(CVariable* var, VISA_Type type, uint16_t offset, uint16_t numElements);
         CVariable* GetNewAlias(CVariable* var, VISA_Type type, uint16_t offset, uint16_t numElements, bool uniform);
@@ -129,7 +170,7 @@ namespace IGC
         void        CopyVariable(CVariable* dst, CVariable* src, uint dstSubVar = 0, uint srcSubVar = 0);
         void        PackAndCopyVariable(CVariable* dst, CVariable* src, uint subVar = 0);
         bool        IsValueUsed(llvm::Value* value);
-        CVariable* GetGlobalCVar(llvm::Value* value);
+        CVariable*  GetGlobalCVar(llvm::Value* value);
         uint        GetNbElementAndMask(llvm::Value* value, uint32_t& mask);
         void        CreatePayload(uint regCount, uint idxOffset, CVariable*& payload, llvm::Instruction* inst, uint paramOffset, uint8_t hfFactor);
         uint        GetNbVectorElementAndMask(llvm::Value* value, uint32_t& mask);

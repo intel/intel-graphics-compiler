@@ -4329,51 +4329,61 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             return ss.str();
         };
 
+        const unsigned inputCount = fg.builder->getInputCount();
+        std::vector<std::string> argNames;
+        size_t maxNameLen = 8;
+        for (unsigned id = 0; id < inputCount; id++)
+        {
+            const input_info_t* ii = fg.builder->getInputArg(id);
+            std::stringstream ss;
+            if (ii->dcl && ii->dcl->getName()) {
+                ss << ii->dcl->getName();
+            } else {
+                ss << "__unnamed" << (id + 1);
+            }
+            argNames.push_back(ss.str());
+            maxNameLen = std::max(maxNameLen, argNames.back().size());
+        }
+
         // emit input location and size
-        output << "//.kernel_reordering_info_start" << std::endl;
-        static const int COLW_ID = 8;
-        static const int COLW_TYPE = 8;
-        static const int COLW_SIZE = 6;
-        static const int COLW_AT = 8;
-        static const int COLW_CLASS = 10;
-        static const int COLW_KIND = 12;
+        output << "// .inputs" << std::endl;
+               const size_t COLW_IDENT = maxNameLen;
+        static const size_t COLW_TYPE = 8;
+        static const size_t COLW_SIZE = 6;
+        static const size_t COLW_AT = 8;
+        static const size_t COLW_CLASS = 10;
 
         std::stringstream bordss;
         bordss << "// ";
-        bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_ID + 2) << "";
+        bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_IDENT + 2) << "";
         bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_TYPE + 2) << "";
         bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_SIZE + 2) << "";
         bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_AT + 2) << "";
         bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_CLASS + 2) << "";
-        bordss << '+'; bordss << std::setfill('-') << std::setw(COLW_KIND + 2) << "";
         bordss << '+' << std::endl;
         std::string border = bordss.str();
 
         output << border;
         output <<
             "//" <<
-            " | " << std::left << std::setw(COLW_ID) << "id" <<
+            " | " << std::left << std::setw(COLW_IDENT) << "id" <<
             " | " << std::left << std::setw(COLW_TYPE) << "type" <<
             " | " << std::right << std::setw(COLW_SIZE) << "bytes" <<
             " | " << std::left << std::setw(COLW_AT) << "at" <<
             " | " << std::left << std::setw(COLW_CLASS) << "class" <<
-            " | " << std::left << std::setw(COLW_KIND) << "kind" <<
             " |" << std::endl;
         output << border;
 
         const unsigned grfSize = getGRFSize();
-        unsigned int inputCount = fg.builder->getInputCount();
-        for (unsigned int id = 0; id < inputCount; id++)
+        for (unsigned id = 0; id < inputCount; id++)
         {
             const input_info_t* input_info = fg.builder->getInputArg(id);
             //
             output << "//";
             //
             // id
-            std::stringstream ssid;
-            ssid << ".arg_" << (id + 1);
             output <<
-                " | " << std::left << std::setw(COLW_ID) << ssid.str();
+                " | " << std::left << std::setw(COLW_IDENT) << argNames[id];
             //
             // type and length
             //   e.g. :uq x 16
@@ -4419,7 +4429,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
                 ssloc << "+" << subRegBytes;
             output << " | " << std::left << std::setw(COLW_AT) << ssloc.str();
 
-            // class and kind
+            // class
             std::string inpcls;
             switch (input_info->getInputClass()) {
             case INPUT_GENERAL: inpcls = "general"; break;
@@ -4429,22 +4439,11 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             }
             output << " | " << std::left << std::setw(COLW_CLASS) << inpcls;
             //
-            std::string kind;
-            switch ((int)input_info->getImplicitKind()) {
-            case 0x00: kind = "explicit"; break;
-            case 0x01: kind = "local_size"; break;
-            case 0x02: kind = "group_count"; break;
-            case 0x03: kind = "local_id"; break;
-            case 0x10: kind = "pseudo_input"; break;
-            default: kind = fmtHex((int)input_info->getImplicitKind()); break;
-            }
-            output << " | " << std::left << std::setw(COLW_KIND) << kind;
-
             output << " |" << std::endl;
         }
         output << border;
+        output << std::endl;
 
-        output << "//.kernel_reordering_info_end" << std::endl;
         if (getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12)
         {
             fg.BCStats.clear();

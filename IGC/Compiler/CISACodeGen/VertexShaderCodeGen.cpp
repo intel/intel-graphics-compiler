@@ -225,7 +225,8 @@ namespace IGC
     void CVertexShader::PreCompile()
     {
         CreateImplicitArgs();
-        m_R1 = GetNewVariable(numLanes(m_Platform->getMinDispatchMode()), ISA_TYPE_D, EALIGN_GRF);
+        m_R1 = GetNewVariable(
+            numLanes(m_Platform->getMinDispatchMode()), ISA_TYPE_D, EALIGN_GRF, "R1");
         m_pURBWriteHandleReg = m_R1;
 
     }
@@ -300,7 +301,8 @@ namespace IGC
 
     void CVertexShader::SetShaderSpecificHelper(EmitPass* emitPass)
     {
-        m_properties = emitPass->getAnalysisIfAvailable<CollectVertexShaderProperties>()->GetProperties();
+        m_properties =
+            emitPass->getAnalysisIfAvailable<CollectVertexShaderProperties>()->GetProperties();
     }
 
     void CVertexShader::AddEpilogue(llvm::ReturnInst* pRet)

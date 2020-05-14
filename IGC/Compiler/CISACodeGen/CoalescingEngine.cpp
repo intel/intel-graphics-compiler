@@ -1208,7 +1208,8 @@ namespace IGC
         }
         else
         {
-            payload = outProgram->GetNewVariable(numOperands * numLanes(simdMode), ISA_TYPE_F, EALIGN_GRF);
+            payload = outProgram->GetNewVariable(
+                numOperands * numLanes(simdMode), ISA_TYPE_F, EALIGN_GRF, CName::NONE);
 
             for (uint i = 0; i < numOperands; i++)
             {

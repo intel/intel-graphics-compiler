@@ -34,8 +34,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "JitterDataStruct.h"
 //#include "Gen4_IR.hpp"  // for PhyRegPool
 #include "Attributes.hpp"
-
 #include "CompilerStats.h"
+
+#include <list>
+#include <map>
+#include <string>
+#include <vector>
+#include <unordered_set>
 
 #define MAX_ERROR_MSG_LEN            511
 #define vISA_NUMBER_OF_OPNDS_IN_POOL 47
@@ -117,6 +122,7 @@ public:
         predicateNameCount = COMMON_ISA_NUM_PREDEFINED_PRED;
         surfaceNameCount = COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1;
         samplerNameCount = 0;
+        unknownNameCount = 0;
         m_functionId = 0;
         m_vISAInstCount = -1;
 
@@ -125,7 +131,8 @@ public:
         mIsFCComposableKernel = false;
 
         // Initialize first level scope of the map
-        m_GenNamedVarMap.push_back(GenDeclNameToVarMap());
+        // m_GenNamedVarMap.push_back(GenDeclNameToVarMap());
+        m_GenNamedVarMap.emplace_back();
 
         createKernelAttributes();
     }
@@ -844,7 +851,9 @@ public:
     void computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions);
 
 private:
-    void setDefaultVariableName(Common_ISA_Var_Class Ty, const char *&varName);
+    void ensureVariableNameUnique(const char *&varName);
+    void generateVariableName(Common_ISA_Var_Class Ty, const char *&varName);
+
     void dumpDebugFormatFile(std::vector<vISA::DebugInfoFormat>& debugSymbols, std::string filename);
     void patchLabels();
     int InitializeFastPath();
@@ -946,7 +955,7 @@ private:
 
     unsigned int m_input_count;
     std::vector<input_info_t *> m_input_info_list;
-    //std::map<unsigned int, unsigned int> m_declID_to_inputID_map;
+    // std::map<unsigned int, unsigned int> m_declID_to_inputID_map;
 
     unsigned int m_attribute_count;
     std::list<attribute_info_t *> m_attribute_info_list;
@@ -954,7 +963,7 @@ private:
     unsigned int m_label_count;
     std::vector<label_info_t *> m_label_info_list;
 
-    //list of cisa operands representing labels that need to be resolved
+    // list of cisa operands representing labels that need to be resolved
     std::list<VISA_opnd *> m_pending_labels;
     std::list<std::string> m_pending_label_names;
 
@@ -964,9 +973,11 @@ private:
     typedef std::map<std::string, CISA_GEN_VAR *> GenDeclNameToVarMap;
     std::vector<GenDeclNameToVarMap> m_GenNamedVarMap;
     GenDeclNameToVarMap m_UniqueNamedVarMap;
+    // std::vector<VISAScope> m_GenNamedVarMap;
+    // VISAScope m_UniqueNamedVarMap;
 
-    std::map<std::string, VISA_LabelOpnd *> m_label_name_to_index_map;
-    std::map<std::string, VISA_LabelOpnd *> m_funcName_to_labelID_map;
+    std::unordered_map<std::string, VISA_LabelOpnd *> m_label_name_to_index_map;
+    std::unordered_map<std::string, VISA_LabelOpnd *> m_funcName_to_labelID_map;
 
     char errorMessage[MAX_ERROR_MSG_LEN];
 
@@ -990,6 +1001,11 @@ private:
     unsigned int predicateNameCount;
     unsigned int surfaceNameCount;
     unsigned int samplerNameCount;
+    unsigned int unknownNameCount;
+
+    // TODO: this should be merged and re-worked to fit into the symbol table
+    // scheme
+    std::unordered_set<std::string> varNames;
 
     int m_vISAInstCount;
     print_decl_index_t m_printDeclIndex;

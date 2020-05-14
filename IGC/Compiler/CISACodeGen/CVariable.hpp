@@ -27,30 +27,126 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CISACodeGen/CISABuilder.hpp"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
-#include <cstdint>
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/StringRef.h>
+#include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
+#include <cstdint>
+#include <string>
+#include <sstream>
+
 namespace IGC {
+    // A data type to track a variable's LLVM symbol name conditionally.
+    // The intent is zero overhead on release builds, but otherwise
+    // enable name tracking in release-internal or debug builds.
+    class CName {
+#if defined(_DEBUG) || defined(_INTERNAL)
+        // NOTE: if CVariable/CName's exist past the length of the underlying
+        //   LLVM, then we should use a std::string or something else.
+        std::string value;
+#else
+        // to give struct non-zero size; use a different name for this
+        // than 'value' so someone doesn't accidentially reference it.
+        char dummy_value;
+#endif
+    public:
+        CName() : CName(nullptr) { }
+
+        CName(const CName &) = default;
+
+        CName(const std::string &arg)
+#if defined(_DEBUG) || defined(_INTERNAL)
+            : value(arg)
+#endif
+        { }
+
+        CName(const llvm::StringRef &arg)
+#if defined(_DEBUG) || defined(_INTERNAL)
+            : value(arg.str())
+#endif
+        { }
+
+        // explicit: some compilers are very liberal about what can be a
+        // const char *; make sure the user really means it
+        CName(int) = delete;
+        CName(bool) = delete;
+
+        CName(const char *arg)
+#if defined(_DEBUG) || defined(_INTERNAL)
+            : value(arg == nullptr ? "" : arg)
+#endif
+        { }
+
+        // For split variables
+        // For example, an LLVM instruction split for 64b into two halves
+        // might use the names:
+        //   ... CName(llvmValue->getName(), "Lo32")
+        //   ... CName(llvmValue->getName(), "Hi32")
+        CName(const CName &prefix, const char *suffix)
+#if defined(_DEBUG) || defined(_INTERNAL)
+            : CName(prefix.value + suffix)
+#endif
+        {
+        }
+
+        // For instance variables:
+        // e.g. for (i = 0; ...) ... CName("inputVar", i)
+        CName(const CName &prefix, int suffix)
+#if defined(_DEBUG) || defined(_INTERNAL)
+        {
+            std::stringstream ss;
+            ss << prefix.value << "_" << suffix;
+            value = ss.str();
+        }
+#else
+        {
+        }
+#endif
+
+        const char *getVisaCString() const {
+#if defined(_DEBUG) || defined(_INTERNAL)
+            return value.empty() ? nullptr : value.c_str();
+#else
+            return nullptr;
+#endif
+        }
+
+        // A constant used to represent a name without a special name
+        // Use this value when you want vISA to allocate an automatic name.
+        static const CName NONE;
+    };
 
     ///-----------------------------------------------------------------------------
     /// CVariable
     ///-----------------------------------------------------------------------------
     class CVariable {
+        // immediate or undef value
+        CVariable(uint64_t immediate, VISA_Type type, uint16_t nbElem, bool undef);
     public:
         // immediate variable
         CVariable(uint64_t immediate, VISA_Type type);
 
-        // alias variable. if numElements is 0, alias to the whole variable, otherwise
-        // only to a part of it.
-        CVariable(CVariable* var, VISA_Type type, uint16_t offset,
+        // undef variable
+        // these are represented as immediate but can considered as trash data
+        CVariable(VISA_Type type);
+
+        // alias variable; if numElements is 0, this is an alias to the whole
+        // variable, otherwise it's only to a part of it.
+        CVariable(
+            CVariable* var, VISA_Type type, uint16_t offset,
             uint16_t numElements, bool uniform);
 
         // general variable
-        CVariable(uint16_t nbElement, bool uniform, VISA_Type type, e_varType varType,
-            e_alignment align, bool vectorUniform, uint16_t numberInstance);
-
-        // undef variable
-        CVariable(VISA_Type type);
+        CVariable(
+            uint16_t nbElement,
+            bool uniform,
+            VISA_Type type,
+            e_varType varType,
+            e_alignment align,
+            bool vectorUniform,
+            uint16_t numberInstance,
+            const CName &name);
 
         // Copy Ctor
         CVariable(const CVariable& V) :
@@ -67,7 +163,8 @@ namespace IGC {
             m_subspanUse(V.m_subspanUse),
             m_uniformVector(V.m_uniformVector),
             m_undef(V.m_undef),
-            m_isUnpacked(V.m_isUnpacked)
+            m_isUnpacked(V.m_isUnpacked),
+            m_llvmName(V.m_llvmName)
         {
         }
 
@@ -111,10 +208,9 @@ namespace IGC {
 
         void setisUnpacked() { m_isUnpacked = true; }
         bool isUnpacked() { return m_isUnpacked; }
-        uint8_t getOffsetMultiplier() { return (m_isUnpacked) ? 2 : 1; }
+        uint8_t getOffsetMultiplier() const { return m_isUnpacked ? 2 : 1; }
         void ResolveAlias();
 
-        // 4 bytes
         union {
             VISA_GenVar* visaGenVariable[2];
             VISA_SurfaceVar* visaSurfVariable;
@@ -141,24 +237,34 @@ namespace IGC {
             return EALIGN_BYTE;
         }
 
+        // Returns a best-effort LLVM name that this variable corresponds to
+        // It is not necessarily unique since LLVM variables may be split
+        // into multiple CVariable (as well as other ambiguities).
+        // Names are only non-empty in non-release builds.
+        //
+        // The vISA backend will suffix variable names to keep them
+        // unique.
+        const CName &getName() const {
+            return m_llvmName;
+        }
+        // This accesses the name via a const char *.  This will return
+        // nullptr if names are not tracked (e.g. release build).
+        const char *getVisaCString() const {
+            return m_llvmName.getVisaCString();
+        }
+
     private:
-        // packing of structure fields so they better fit the alignment
+        const uint64_t      m_immediateValue;
 
-        // 8 bytes
-        const uint64_t m_immediateValue;
+        CVariable*          m_alias;
 
-        // 4 bytes - pointer
-        CVariable* m_alias;
+        uint16_t            m_nbElement;
+        uint16_t            m_aliasOffset;
 
-        // 2 bytes types
-        uint16_t m_nbElement;
-        uint16_t m_aliasOffset;
-
-        // 1 byte types
-        const uint8_t m_numberOfInstance;
-        const VISA_Type m_type;
-        const e_varType m_varType;
-        e_alignment m_align;
+        const uint8_t       m_numberOfInstance;
+        const VISA_Type     m_type;
+        const e_varType     m_varType;
+        e_alignment         m_align;
 
         const unsigned char m_uniform : 1;
         const unsigned char m_isImmediate : 1;
@@ -167,7 +273,9 @@ namespace IGC {
         const unsigned char m_undef : 1;
 
         // unpacked means the layout of the vector is stored as unpacked half
-        unsigned char m_isUnpacked : 1;
+        unsigned char       m_isUnpacked : 1;
+
+        CName       m_llvmName;
     };
 
 } // namespace IGC

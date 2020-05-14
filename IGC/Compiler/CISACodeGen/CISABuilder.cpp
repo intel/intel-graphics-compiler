@@ -275,7 +275,9 @@ namespace IGC
         else
         {
             // create a copy to make the CVariable aligned
-            auto tmpVar = m_program->GetNewVariable(8, var->GetType(), CVariable::getAlignment(getGRFSize()));
+            auto tmpVar = m_program->GetNewVariable(
+                8, var->GetType(), CVariable::getAlignment(getGRFSize()),
+                CName::NONE);
             SModifier mod;
             mod.init();
             auto dstOpnd = GetDestinationOperand(tmpVar, mod);
@@ -1878,7 +1880,8 @@ namespace IGC
 
         if (Lo == nullptr) {
             // We cannot reduce the strength if only Lo is ignored.
-            Lo = m_program->GetNewVariable(Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform());
+            Lo = m_program->GetNewVariable(
+                Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(), Hi->getName());
         }
 
         // Use `UD` only.
@@ -1916,7 +1919,9 @@ namespace IGC
                 VISA_VectorOpnd* HIn = GetSourceOperand(Hi, NewDstMod);
 
                 unsigned NumElems = 8;
-                CVariable* Carry = m_program->GetNewVariable((uint16_t)NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform());
+                CVariable* Carry = m_program->GetNewVariable(
+                    (uint16_t)NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform(),
+                    CName(Lo->getName(), "Carry"));
                 VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
                 VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, m_encoderState.m_dstOperand);
 
@@ -1957,7 +1962,8 @@ namespace IGC
             unsigned short NumElems = (ExecSize == EXEC_SIZE_1) ? 1 :
                 (ExecSize == EXEC_SIZE_2) ? 2 :
                 (ExecSize == EXEC_SIZE_4) ? 4 : 8;
-            CVariable* Carry = m_program->GetNewVariable(NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform());
+            CVariable* Carry = m_program->GetNewVariable(
+                NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform(), CName(Lo->getName(), "Carry"));
             VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
 
             SModifier MidMod = m_encoderState.m_dstOperand;
@@ -2010,7 +2016,8 @@ namespace IGC
 
     if (Lo == nullptr) {
         // We cannot reduce the strength if only Lo is ignored.
-        Lo = m_program->GetNewVariable(Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform());
+        Lo = m_program->GetNewVariable(
+            Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(), CName(Hi->getName(), "Carry"));
     }
 
     // Use `UD` only.
@@ -2050,7 +2057,8 @@ namespace IGC
                 VISA_VectorOpnd* HIn = GetSourceOperand(Hi, NewDstMod);
 
             unsigned short NumElems = 8;
-                CVariable* Carry = m_program->GetNewVariable(NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform());
+                CVariable* Carry =
+                    m_program->GetNewVariable(NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform(), CName(Lo->getName(), "Carry"));
                 VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
             // Negative `Acc0`
             SModifier AccMod = m_encoderState.m_dstOperand;
@@ -2085,7 +2093,8 @@ namespace IGC
             VISA_PredOpnd* Pred = GetFlagOperand(m_encoderState.m_flag);
 
         unsigned short NumElems = (ExecSize == 1) ? 1 : 8;
-            CVariable* Carry = m_program->GetNewVariable(NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform());
+            CVariable* Carry = m_program->GetNewVariable(
+                NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform(), CName(Lo->getName(), "Carry"));
             VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
 
         SModifier MidMod = m_encoderState.m_dstOperand;
@@ -2204,7 +2213,7 @@ namespace IGC
             }
             else
             {
-                CVariable* tmpDst = m_program->GetNewVariable(8, ISA_TYPE_UD, EALIGN_GRF, true);
+                CVariable* tmpDst = m_program->GetNewVariable(8, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE);
                 VISA_VectorOpnd* movDst = nullptr;
                 V(vKernel->CreateVISADstOperand(movDst, GetVISAVariable(tmpDst), 1, 0, 0));
 
@@ -4628,7 +4637,7 @@ namespace IGC
 
                         V(vKernel->CreateVISAGenVar(
                             var->visaGenVariable[i],
-                            "",
+                            var->getVisaCString(),
                             nbElement,
                             var->GetType(),
                             GetVISAAlign(var->GetAlias()), // Use parent's align as we create an alias of the parent.
@@ -4650,7 +4659,7 @@ namespace IGC
                 {
                     V(vKernel->CreateVISAGenVar(
                         var->visaGenVariable[i],
-                        "",
+                        var->getVisaCString(),
                         num_elts,
                         var->GetType(),
                         GetVISAAlign(var)));
@@ -5244,10 +5253,12 @@ namespace IGC
         }
     }
 
-    void CEncoder::GatherA64(CVariable* dst,
+    void CEncoder::GatherA64(
+        CVariable* dst,
         CVariable* offset,
         unsigned elemSize,
-        unsigned numElems) {
+        unsigned numElems)
+    {
         IGC_ASSERT_MESSAGE((elemSize == 8) || (elemSize == 32) || (elemSize == 64),
             "Only B/DW/QW-sized elements are supported!");
         IGC_ASSERT_MESSAGE((numElems == 1) || (numElems == 2) || (numElems == 4) || ((numElems == 8) && ((elemSize == 32) || m_program->m_Platform->has8ByteA64ByteScatteredMessage())),
@@ -5287,14 +5298,18 @@ namespace IGC
                 // to form the single simd16 payload.
                 CVariable* V0, * V1;
                 uint16_t newNumElems = (uint16_t)8 * numElems;
-                V0 = m_program->GetNewVariable(newNumElems,
+                V0 = m_program->GetNewVariable(
+                    newNumElems,
                     dst->GetType(),
                     dst->GetAlign(),
-                    dst->IsUniform());
-                V1 = m_program->GetNewVariable(newNumElems,
+                    dst->IsUniform(),
+                    dst->getName());
+                V1 = m_program->GetNewVariable(
+                    newNumElems,
                     dst->GetType(),
                     dst->GetAlign(),
-                    dst->IsUniform());
+                    dst->IsUniform(),
+                    dst->getName());
 
                 for (unsigned p = 0; p < 2; ++p)
                 {
@@ -5365,14 +5380,18 @@ namespace IGC
                 // data payload by splitting the original simd16 data payload.
                 CVariable* V0, * V1;
                 uint16_t newNumElems = (uint16_t)8 * numElems;
-                V0 = m_program->GetNewVariable(newNumElems,
+                V0 = m_program->GetNewVariable(
+                    newNumElems,
                     src->GetType(),
                     src->GetAlign(),
-                    src->IsUniform());
-                V1 = m_program->GetNewVariable(newNumElems,
+                    src->IsUniform(),
+                    CName::NONE);
+                V1 = m_program->GetNewVariable(
+                    newNumElems,
                     src->GetType(),
                     src->GetAlign(),
-                    src->IsUniform());
+                    src->IsUniform(),
+                    CName::NONE);
                 // Starting offset is calculated from AliasOffset only (subVar not used).
                 uint32_t srcOfstBytes = src->GetAliasOffset();
                 SplitPayloadToLowerSIMD(src, srcOfstBytes, numElems, V0, V1, 16);
@@ -5401,7 +5420,8 @@ namespace IGC
             addressOpnd, srcOpnd));
     }
 
-    void CEncoder::ByteGather(CVariable* dst,
+    void CEncoder::ByteGather(
+        CVariable* dst,
         const ResourceDescriptor& resource,
         CVariable* offset,
         unsigned elemSize,
@@ -5418,11 +5438,13 @@ namespace IGC
             SEncoderState gatherState = CopyEncoderState();
             Push();
 
-            CVariable* offset64 = m_program->GetNewVariable(offset->GetNumberElement(),
+            CVariable* offset64 = m_program->GetNewVariable(
+                offset->GetNumberElement(),
                 ISA_TYPE_UQ,
                 EALIGN_GRF,
                 offset->IsUniform(),
-                offset->GetNumberInstance());
+                offset->GetNumberInstance(),
+                CName(offset->getName(), "_64b"));
 
             CVariable* offset32UD = m_program->BitCast(offset, ISA_TYPE_UD);
 
@@ -5463,11 +5485,13 @@ namespace IGC
             addressOpnd, dstOpnd));
     }
 
-    void CEncoder::ByteScatter(CVariable* src,
+    void CEncoder::ByteScatter(
+        CVariable* src,
         const ResourceDescriptor& resource,
         CVariable* offset,
         unsigned elemSize,
-        unsigned numElems) {
+        unsigned numElems)
+    {
         IGC_ASSERT_MESSAGE(elemSize == 8, "Only BYTE element is supported!");
         IGC_ASSERT_MESSAGE((numElems == 1) || (numElems == 2) || (numElems == 4),
             "Only 1/2/4 elements are supported!");
@@ -5480,11 +5504,13 @@ namespace IGC
             SEncoderState gatherState = CopyEncoderState();
             Push();
 
-            CVariable* offset64 = m_program->GetNewVariable(offset->GetNumberElement(),
+            CVariable* offset64 = m_program->GetNewVariable(
+                offset->GetNumberElement(),
                 ISA_TYPE_UQ,
                 EALIGN_GRF,
                 offset->IsUniform(),
-                offset->GetNumberInstance());
+                offset->GetNumberInstance(),
+                CName(offset->getName(), "_64b"));
 
             CVariable* offset32UD = m_program->BitCast(offset, ISA_TYPE_UD);
 
@@ -5673,14 +5699,18 @@ namespace IGC
                 // by merging the two simd8 data payload.
                 CVariable* V0, * V1;
                 uint16_t newNumElems = (uint16_t)8 * nd;
-                V0 = m_program->GetNewVariable(newNumElems,
+                V0 = m_program->GetNewVariable(
+                    newNumElems,
                     dst->GetType(),
                     dst->GetAlign(),
-                    dst->IsUniform());
-                V1 = m_program->GetNewVariable(newNumElems,
+                    dst->IsUniform(),
+                    CName(dst->getName(),"_M0"));
+                V1 = m_program->GetNewVariable(
+                    newNumElems,
                     dst->GetType(),
                     dst->GetAlign(),
-                    dst->IsUniform());
+                    dst->IsUniform(),
+                    CName(dst->getName(),"_M8"));
 
                 for (unsigned p = 0; p < 2; ++p)
                 {
@@ -5769,14 +5799,18 @@ namespace IGC
                 // two SIMD8 data payload by spliting the original simd16 data payload.
                 CVariable* V0, * V1;
                 uint16_t newNumElems = (uint16_t)8 * nd;
-                V0 = m_program->GetNewVariable(newNumElems,
+                V0 = m_program->GetNewVariable(
+                    newNumElems,
                     src->GetType(),
                     src->GetAlign(),
-                    src->IsUniform());
-                V1 = m_program->GetNewVariable(newNumElems,
+                    src->IsUniform(),
+                    CName(src->getName(),"_M0"));
+                V1 = m_program->GetNewVariable(
+                    newNumElems,
                     src->GetType(),
                     src->GetAlign(),
-                    src->IsUniform());
+                    src->IsUniform(),
+                    CName(src->getName(),"_M8"));
 
                 SplitPayloadToLowerSIMD(src, srcOfstBytes, nd, V0, V1, 16);
 
@@ -5806,7 +5840,8 @@ namespace IGC
             addressOpnd, srcOpnd));
     }
 
-    void CEncoder::AtomicRawA64(AtomicOp atomic_op,
+    void CEncoder::AtomicRawA64(
+        AtomicOp atomic_op,
         const ResourceDescriptor& resource,
         CVariable* dst,
         CVariable* offset,
@@ -5851,7 +5886,11 @@ namespace IGC
                 }
                 else
                 {
-                    rawOpndVar = m_program->GetNewVariable(8, dst->GetType(), CVariable::getAlignment(getGRFSize()));
+                    rawOpndVar = m_program->GetNewVariable(
+                        8,
+                        dst->GetType(),
+                        CVariable::getAlignment(getGRFSize()),
+                        CName(dst->getName(), "_RET"));
                     dstOpnd = GetRawDestination(rawOpndVar, 0);
                 }
 

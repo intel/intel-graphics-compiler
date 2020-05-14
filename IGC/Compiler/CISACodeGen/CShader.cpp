@@ -160,7 +160,10 @@ void CShader::EOTURBWrite()
 
     // Creating a payload of size 3 = header + channelmask + undef data
     // As EOT message cant have message length == 0, setting channel mask = 0 and data = undef.
-    CVariable* pEOTPayload = GetNewVariable(messageLength * numLanes(SIMDMode::SIMD8), ISA_TYPE_D, IGC::EALIGN_GRF);
+    CVariable* pEOTPayload =
+        GetNewVariable(
+            messageLength * numLanes(SIMDMode::SIMD8),
+            ISA_TYPE_D, IGC::EALIGN_GRF, false, 1, "EOTPayload");
 
     CVariable* zero = ImmToVariable(0x0, ISA_TYPE_D);
     // write at handle 0
@@ -217,7 +220,8 @@ void CShader::EOTRenderTarget()
     constexpr uint nullRenderTargetBit = BIT(20);
     constexpr uint exDesc = EU_MESSAGE_TARGET_DATA_PORT_WRITE | cMessageExtendedDescriptorEOTBit | nullRenderTargetBit;
 
-    CVariable* payload = GetNewVariable(4 * numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
+    CVariable* payload = GetNewVariable(
+        4 * numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "EOTPayload");
     encoder.SendC(nullptr, payload, exDesc, ImmToVariable(Desc, ISA_TYPE_UD));
     encoder.Push();
 }
@@ -232,13 +236,13 @@ void CShader::AddEpilogue(llvm::ReturnInst* ret)
 CVariable* CShader::CreateSP()
 {
     // create argument-value register, limited to 12 GRF
-    m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, getGRFAlignment(), false, 1);
+    m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, getGRFAlignment(), false, 1, "ARGV");
     encoder.GetVISAPredefinedVar(m_ARGV, PREDEFINED_ARG);
     // create return-value register, limited to 4 GRF
-    m_RETV = GetNewVariable(getGRFSize(), ISA_TYPE_D, getGRFAlignment(), false, 1);
+    m_RETV = GetNewVariable(getGRFSize(), ISA_TYPE_D, getGRFAlignment(), false, 1, "ReturnValue");
     encoder.GetVISAPredefinedVar(m_RETV, PREDEFINED_RET);
     // create stack-pointer register
-    m_SP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1);
+    m_SP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "SP");
     encoder.GetVISAPredefinedVar(m_SP, PREDEFINED_FE_SP);
 
     return m_SP;
@@ -266,7 +270,7 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize)
     }
     IGC_ASSERT(kerArg);
 
-    CVariable* pHWTID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1);
+    CVariable* pHWTID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
     encoder.SetSrcRegion(0, 0, 1, 0);
     encoder.SetSrcSubReg(0, 5);
     encoder.And(pHWTID, GetR0(), ImmToVariable(0x1ff, ISA_TYPE_UD));
@@ -281,8 +285,8 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize)
     if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
     {
         // Experimental: Patch private memory size
-        pSize = GetNewVariable(1, ISA_TYPE_UD, CVariable::getAlignment(getGRFSize()), true);
         std::string patchName = "INTEL_PATCH_PRIVATE_MEMORY_SIZE";
+        pSize = GetNewVariable(1, ISA_TYPE_UD, CVariable::getAlignment(getGRFSize()), true, CName(patchName));
         encoder.AddVISASymbol(patchName, pSize);
     }
     else
@@ -291,7 +295,7 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize)
         pSize = ImmToVariable(MaxPrivateSize * numLanes(m_dispatchSize), ISA_TYPE_UD);
     }
 
-    CVariable* pTemp = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1);
+    CVariable* pTemp = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, CName::NONE);
     encoder.Mul(pTemp, pHWTID, pSize);
     encoder.Push();
 
@@ -343,7 +347,7 @@ void CShader::RestoreSP()
 void CShader::CreateImplicitArgs()
 {
     m_numBlocks = entry->size();
-    m_R0 = GetNewVariable(getGRFSize() >> 2, ISA_TYPE_D, EALIGN_GRF, false, 1);
+    m_R0 = GetNewVariable(getGRFSize() >> 2, ISA_TYPE_D, EALIGN_GRF, false, 1, CName::NONE);
     encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
 
     // create variables for implicit args
@@ -407,11 +411,13 @@ void CShader::CreateImplicitArgs()
         bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
         uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
 
-        CVariable* var = GetNewVariable(nbElements,
+        CVariable* var = GetNewVariable(
+            nbElements,
             implictArg.getVISAType(*m_DL),
             implictArg.getAlignType(*m_DL),
             isUniform,
-            isUniform ? 1 : m_numberInstance);
+            isUniform ? 1 : m_numberInstance,
+            CName(implictArg.getName()));
 
         if (implictArg.getArgType() == ImplicitArg::R0) {
             encoder.GetVISAPredefinedVar(var, PREDEFINED_R0);
@@ -725,7 +731,7 @@ CVariable* CShader::GetNULL()
 {
     if (!m_NULL)
     {
-        m_NULL = new (Allocator)CVariable(2, true, ISA_TYPE_D, EVARTYPE_GENERAL, EALIGN_DWORD, false, 1);
+        m_NULL = new (Allocator)CVariable(2, true, ISA_TYPE_D, EVARTYPE_GENERAL, EALIGN_DWORD, false, 1, CName::NONE);
         encoder.GetVISAPredefinedVar(m_NULL, PREDEFINED_NULL);
     }
     return m_NULL;
@@ -735,7 +741,7 @@ CVariable* CShader::GetTSC()
 {
     if (!m_TSC)
     {
-        m_TSC = new (Allocator) CVariable(2, true, ISA_TYPE_D, EVARTYPE_GENERAL, EALIGN_DWORD, false, 1);
+        m_TSC = new (Allocator) CVariable(2, true, ISA_TYPE_D, EVARTYPE_GENERAL, EALIGN_DWORD, false, 1, CName::NONE);
         encoder.GetVISAPredefinedVar(m_TSC, PREDEFINED_TSC);
     }
     return m_TSC;
@@ -745,7 +751,8 @@ CVariable* CShader::GetSR0()
 {
     if (!m_SR0)
     {
-        m_SR0 = GetNewVariable(4, ISA_TYPE_UD, EALIGN_DWORD, true);
+        m_SR0 = GetNewVariable(4, ISA_TYPE_UD, EALIGN_DWORD, true, CName::NONE);
+
         encoder.GetVISAPredefinedVar(m_SR0, PREDEFINED_SR0);
     }
     return m_SR0;
@@ -755,7 +762,7 @@ CVariable* CShader::GetCR0()
 {
     if (!m_CR0)
     {
-        m_CR0 = GetNewVariable(3, ISA_TYPE_UD, EALIGN_DWORD, true);
+        m_CR0 = GetNewVariable(3, ISA_TYPE_UD, EALIGN_DWORD, true, CName::NONE);
         encoder.GetVISAPredefinedVar(m_CR0, PREDEFINED_CR0);
     }
     return m_CR0;
@@ -765,7 +772,7 @@ CVariable* CShader::GetCE0()
 {
     if (!m_CE0)
     {
-        m_CE0 = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
+        m_CE0 = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, CName::NONE);
         encoder.GetVISAPredefinedVar(m_CE0, PREDEFINED_CE0);
     }
     return m_CE0;
@@ -775,7 +782,7 @@ CVariable* CShader::GetDBG()
 {
     if (!m_DBG)
     {
-        m_DBG = GetNewVariable(2, ISA_TYPE_D, EALIGN_DWORD, true);
+        m_DBG = GetNewVariable(2, ISA_TYPE_D, EALIGN_DWORD, true, CName::NONE);
         encoder.GetVISAPredefinedVar(m_DBG, PREDEFINED_DBG);
     }
     return m_DBG;
@@ -785,7 +792,7 @@ CVariable* CShader::GetHWTID()
 {
     if (!m_HW_TID)
     {
-        m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1);
+        m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, CName::NONE);
         encoder.GetVISAPredefinedVar(m_HW_TID, PREDEFINED_HW_TID);
     }
     return m_HW_TID;
@@ -865,7 +872,8 @@ CVariable* CShader::ImmToVariable(uint64_t immediate, VISA_Type type)
         CVariable* immVar = new (Allocator)  CVariable(immediateValue, ISA_TYPE_UD);
         // src-variable is no longer a boolean, V-ISA cannot take boolean-src immed.
 
-        CVariable* dst = GetNewVariable(numLanes(m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
+        CVariable* dst = GetNewVariable(
+            numLanes(m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
         // FIXME: We need to pop/push the encoder context
         //encoder.save();
         encoder.SetP(dst, immVar);
@@ -877,7 +885,9 @@ CVariable* CShader::ImmToVariable(uint64_t immediate, VISA_Type type)
     return var;
 }
 
-CVariable* CShader::GetNewVariable(uint16_t nbElement, VISA_Type type, e_alignment align, bool isUniform, uint16_t numberInstance)
+CVariable* CShader::GetNewVariable(
+    uint16_t nbElement, VISA_Type type, e_alignment align,
+    bool isUniform, uint16_t numberInstance, const CName &name)
 {
     e_varType varType;
     if (type == ISA_TYPE_BOOL)
@@ -889,7 +899,8 @@ CVariable* CShader::GetNewVariable(uint16_t nbElement, VISA_Type type, e_alignme
         IGC_ASSERT(align >= CEncoder::GetCISADataTypeAlignment(type));
         varType = EVARTYPE_GENERAL;
     }
-    CVariable* var = new (Allocator) CVariable(nbElement, isUniform, type, varType, align, false, numberInstance);
+    CVariable* var = new (Allocator) CVariable(
+        nbElement, isUniform, type, varType, align, false, numberInstance, name);
     encoder.CreateVISAVar(var);
     return var;
 }
@@ -901,9 +912,15 @@ CVariable* CShader::GetNewVariable(const CVariable* from)
     return var;
 }
 
-CVariable* CShader::GetNewAddressVariable(uint16_t nbElement, VISA_Type type, bool isUniform, bool isVectorUniform)
+CVariable* CShader::GetNewAddressVariable(
+    uint16_t nbElement, VISA_Type type,
+    bool isUniform, bool isVectorUniform,
+    const CName &name)
 {
-    CVariable* var = new (Allocator) CVariable(nbElement, isUniform, type, EVARTYPE_ADDRESS, EALIGN_DWORD, isVectorUniform, 1);
+    CVariable* var = new (Allocator) CVariable(
+        nbElement, isUniform, type,
+        EVARTYPE_ADDRESS, EALIGN_DWORD,
+        isVectorUniform, 1, name);
     encoder.CreateVISAVar(var);
     return var;
 }
@@ -1186,13 +1203,15 @@ void CShader::GetSimdOffsetBase(CVariable*& pVar)
 
 CVariable* CShader::GetPerLaneOffsetsReg(uint typeSizeInBytes)
 {
-    CVariable* pPerLaneOffsetsRaw = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF);
+    CVariable* pPerLaneOffsetsRaw =
+        GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, "PerLaneOffsetsRaw");
     GetSimdOffsetBase(pPerLaneOffsetsRaw);
 
     // per-lane offsets need to be added to address register
     CVariable* pConst2 = ImmToVariable(typeSizeInBytes, ISA_TYPE_UW);
 
-    CVariable* pPerLaneOffsetsReg = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, false);
+    CVariable* pPerLaneOffsetsReg =
+        GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, false, "PerLaneOffsetsRawReg");
 
     // perLaneOffsets = 4 * perLaneOffsetsRaw
     encoder.SetNoMask();
@@ -1331,7 +1350,7 @@ CVariable* CShader::GetUndef(VISA_Type type)
     CVariable* var = nullptr;
     if (type == ISA_TYPE_BOOL)
     {
-        var = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_BOOL, EALIGN_BYTE);
+        var = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_BOOL, EALIGN_BYTE, "undef");
     }
     else
     {
@@ -1567,7 +1586,8 @@ CVariable* CShader::GetStructVariable(llvm::Value* value, llvm::Constant* initVa
     // Represent the struct as a vector of BYTES
     bool isUniform = GetIsUniform(value);
     unsigned lanes = isUniform ? 1 : numLanes(m_dispatchSize);
-    CVariable* cVar = GetNewVariable(structSizeInBytes * lanes, ISA_TYPE_B, EALIGN_GRF, isUniform);
+    CVariable* cVar =
+        GetNewVariable(structSizeInBytes * lanes, ISA_TYPE_B, EALIGN_GRF, isUniform, value->getName());
 
     // Initialize the struct
     if (Constant* C = dyn_cast<Constant>(value))
@@ -1653,7 +1673,8 @@ CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
             return dstVar;
         }
 
-        CVariable* CVar = (dstVar == nullptr) ? GetNewVariable(elts, GetType(eTy), EALIGN_GRF, true) : dstVar;
+        CVariable* CVar = (dstVar == nullptr) ?
+            GetNewVariable(elts, GetType(eTy), EALIGN_GRF, true, C->getName()) : dstVar;
         uint remainElts = elts;
         uint currentEltsOffset = 0;
         uint size = 8;
@@ -2011,13 +2032,14 @@ CVariable* CShader::LazyCreateCCTupleBackingVariable(
 
         IGC_ASSERT((numElts < (UINT16_MAX)) && "tuple byte size higher than 64k");
 
-        //create one
+        // create one
         var = GetNewVariable(
             (uint16_t)numElts,
             ISA_TYPE_F,
             EALIGN_GRF,
             false,
-            m_numberInstance);
+            m_numberInstance,
+            "CCTuple");
         ccTupleMapping.insert(std::pair<CoalescingEngine::CCTuple*, CVariable*>(ccTuple, var));
     }
 
@@ -2124,7 +2146,10 @@ CVariable* CShader::getOrCreateReturnSymbol(llvm::Function* F)
         nElts *= (uint16_t)retType->getVectorNumElements();
     }
     e_alignment align = getGRFAlignment();
-    CVariable* var = GetNewVariable(nElts, type, align, /*uniform*/false, m_numberInstance);
+    static const bool nonUniform = false;
+    CVariable* var = GetNewVariable(
+        nElts, type, align, nonUniform, m_numberInstance,
+        CName(F->getName(), "_RETVAL"));
     globalSymbolMapping.insert(std::make_pair(F, var));
     return var;
 }
@@ -2203,7 +2228,8 @@ CVariable* CShader::getOrCreateArgumentSymbol(
                 var = GetNewVariable(nbElements,
                     implictArg.getVISAType(*m_DL),
                     implictArg.getAlignType(*m_DL), isUniform,
-                    isUniform ? 1 : m_numberInstance);
+                    isUniform ? 1 : m_numberInstance,
+                    argVal->getName());
             }
             break;
         }
@@ -2231,7 +2257,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
                 Arg->getType()->getVectorElementType()->isFloatingPointTy());
             nElts *= (uint16_t)Arg->getType()->getVectorNumElements();
         }
-        var = GetNewVariable(nElts, type, align, isUniform, m_numberInstance);
+        var = GetNewVariable(nElts, type, align, isUniform, m_numberInstance, Arg->getName());
     }
     pSymMap->insert(std::make_pair(Arg, var));
     return var;
@@ -2492,11 +2518,12 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
                 {
                     return it->second;
                 }
+                const auto &valName = value->getName();
                 if (isVecType)
                 {
                     // Map the entire vector value to the CVar
                     unsigned numElements = value->getType()->getVectorNumElements();
-                    var = GetNewVariable(numElements, ISA_TYPE_UQ, EALIGN_GRF, true, 1);
+                    var = GetNewVariable(numElements, ISA_TYPE_UQ, EALIGN_GRF, true, 1, valName);
                     symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
 
                     // Copy over each element
@@ -2512,7 +2539,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
                 }
                 else
                 {
-                    var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1);
+                    var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, valName);
                     symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
                     return var;
                 }
@@ -3069,14 +3096,23 @@ CVariable* CShader::GetNewVector(llvm::Value* value, e_alignment preferredAlign)
     {
         extractMasks[value] = mask;
     }
-    CVariable* var = GetNewVariable(nbElement, type, align, uniform, numberOfInstance);
+    const auto &valueName = value->getName();
+    CVariable* var =
+        GetNewVariable(
+            nbElement,
+            type,
+            align,
+            uniform,
+            numberOfInstance,
+            valueName);
     if (isUnpackedBool)
         var->setisUnpacked();
     return var;
 }
 
 /// GetNewAlias
-CVariable* CShader::GetNewAlias(CVariable* var, VISA_Type type, uint16_t offset, uint16_t numElements)
+CVariable* CShader::GetNewAlias(
+    CVariable* var, VISA_Type type, uint16_t offset, uint16_t numElements)
 {
     IGC_ASSERT(!var->IsImmediate() && "Trying to create an alias of an immediate");
     CVariable* alias = new (Allocator)CVariable(var, type, offset, numElements, var->IsUniform());
@@ -3112,7 +3148,8 @@ CVariable* CShader::createAliasIfNeeded(Value* V, CVariable* BaseVar)
 }
 
 /// GetNewAlias
-CVariable* CShader::GetNewAlias(CVariable* var, VISA_Type type, uint16_t offset, uint16_t numElements, bool uniform)
+CVariable* CShader::GetNewAlias(
+    CVariable* var, VISA_Type type, uint16_t offset, uint16_t numElements, bool uniform)
 {
     IGC_ASSERT(!var->IsImmediate() && "Trying to create an alias of an immediate");
     CVariable* alias = new (Allocator) CVariable(var, type, offset, numElements, uniform);
@@ -3122,6 +3159,7 @@ CVariable* CShader::GetNewAlias(CVariable* var, VISA_Type type, uint16_t offset,
 
 CVariable* CShader::GetVarHalf(CVariable* var, unsigned int half)
 {
+    const char *lowOrHi = half == 0 ? "Lo" : "Hi";
     IGC_ASSERT(!var->IsImmediate() && "Trying to create an alias of an immediate");
     CVariable* alias = new (Allocator) CVariable(
         var->GetNumberElement(),
@@ -3130,7 +3168,8 @@ CVariable* CShader::GetVarHalf(CVariable* var, unsigned int half)
         var->GetVarType(),
         var->GetAlign(),
         var->IsVectorUniform(),
-        1);
+        1,
+        CName(var->getName(), lowOrHi));
     alias->visaGenVariable[0] = var->visaGenVariable[half];
     return alias;
 }
@@ -3311,6 +3350,7 @@ CShader* CShaderProgram::CreateNewShader(SIMDMode simd)
     pShader->m_Platform = &m_context->platform;
     pShader->m_pBtiLayout = &m_context->btiLayout;
     pShader->m_ModuleMetadata = m_context->getModuleMetaData();
+
     return pShader;
 }
 

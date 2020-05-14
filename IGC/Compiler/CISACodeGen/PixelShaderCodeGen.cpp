@@ -331,42 +331,52 @@ namespace IGC
         case EINTERPOLATION_LINEAR:
             if (!m_PerspectivePixel) {
                 m_PerspectivePixel =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "PerspectivePixel");
             }
             baryReg = m_PerspectivePixel;
             break;
         case EINTERPOLATION_LINEARCENTROID:
             if (!m_PerspectiveCentroid) {
                 m_PerspectiveCentroid =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
+                        false, m_numberInstance, "LinearCentroid");
             }
             baryReg = m_PerspectiveCentroid;
             break;
         case EINTERPOLATION_LINEARSAMPLE:
             if (!m_PerspectiveSample) {
                 m_PerspectiveSample =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
+                        false, m_numberInstance, "LinearSample");
             }
             baryReg = m_PerspectiveSample;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVE:
             if (!m_NoPerspectivePixel) {
                 m_NoPerspectivePixel =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
+                        false, m_numberInstance, "LinearNoPerspective");
             }
             baryReg = m_NoPerspectivePixel;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVECENTROID:
             if (!m_NoPerspectiveCentroid) {
                 m_NoPerspectiveCentroid =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
+                        false, m_numberInstance, "NoPerspectiveCentroid");
             }
             baryReg = m_NoPerspectiveCentroid;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE:
             if (!m_NoPerspectiveSample) {
                 m_NoPerspectiveSample =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
+                        false, m_numberInstance, "NoPerspectiveSample");
             }
             baryReg = m_NoPerspectiveSample;
             break;
@@ -384,42 +394,54 @@ namespace IGC
         case EINTERPOLATION_LINEAR:
             if (!m_PerspectivePixelLowered) {
                 m_PerspectivePixelLowered =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
+                        false, m_numberInstance, "PerspectivePixel");
             }
             baryReg = m_PerspectivePixelLowered;
             break;
         case EINTERPOLATION_LINEARCENTROID:
             if (!m_PerspectiveCentroidLowered) {
                 m_PerspectiveCentroidLowered =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
+                        false, m_numberInstance, "PerspectiveCentroid");
             }
             baryReg = m_PerspectiveCentroidLowered;
             break;
         case EINTERPOLATION_LINEARSAMPLE:
             if (!m_PerspectiveSampleLowered) {
                 m_PerspectiveSampleLowered =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
+                        false, m_numberInstance, "PerspectiveSample");
             }
             baryReg = m_PerspectiveSampleLowered;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVE:
             if (!m_NoPerspectivePixelLowered) {
                 m_NoPerspectivePixelLowered =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
+                        false, m_numberInstance, "NoPerspectivePixel");
             }
             baryReg = m_NoPerspectivePixelLowered;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVECENTROID:
             if (!m_NoPerspectiveCentroidLowered) {
                 m_NoPerspectiveCentroidLowered =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
+                        false, m_numberInstance, "NoPerspectiveCentroid");
             }
             baryReg = m_NoPerspectiveCentroidLowered;
             break;
         case EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE:
             if (!m_NoPerspectiveSampleLowered) {
                 m_NoPerspectiveSampleLowered =
-                    GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF, false, m_numberInstance);
+                    GetNewVariable(
+                        2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
+                        false, m_numberInstance, "NoPerspectiveSample");
             }
             baryReg = m_NoPerspectiveSampleLowered;
             break;
@@ -439,7 +461,7 @@ namespace IGC
                 {
                     if (index % 2 == 0)
                     {
-                        inputVar = GetNewVariable(8, ISA_TYPE_F, EALIGN_GRF, true);
+                        inputVar = GetNewVariable(8, ISA_TYPE_F, EALIGN_GRF, true, CName::NONE);
                         setup[index + 1] = GetNewAlias(inputVar, ISA_TYPE_F, 16, 4);
                     }
                     else
@@ -449,7 +471,7 @@ namespace IGC
                 }
                 else
                 {
-                    inputVar = GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, true);
+                    inputVar = GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, true, CName::NONE);
                 }
             setup[index] = inputVar;
         }
@@ -464,7 +486,7 @@ namespace IGC
             IGC_ASSERT(LowerPSInput());
             if (index % 2 == 0)
             {
-                inputVar = GetNewVariable(8, ISA_TYPE_HF, EALIGN_OWORD, true);
+                inputVar = GetNewVariable(8, ISA_TYPE_HF, EALIGN_OWORD, true, CName::NONE);
             }
             else
             {
@@ -474,7 +496,7 @@ namespace IGC
                 }
                 else
                 {
-                    inputVar = GetNewVariable(4, ISA_TYPE_HF, EALIGN_OWORD, true);
+                    inputVar = GetNewVariable(4, ISA_TYPE_HF, EALIGN_OWORD, true, CName::NONE);
                 }
             }
 
@@ -490,7 +512,7 @@ namespace IGC
             uint numLanes = 8; // single GRF
 
             m_ZWDelta =
-                GetNewVariable(numLanes, ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                GetNewVariable(numLanes, ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "ZWDelta");
         }
         return m_ZWDelta;
     }
@@ -501,7 +523,7 @@ namespace IGC
         if (!m_pPositionZPixel)
         {
             m_pPositionZPixel =
-                GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "PosZPixel");
         }
         return m_pPositionZPixel;
     }
@@ -511,7 +533,7 @@ namespace IGC
         if (!m_pPositionWPixel)
         {
             m_pPositionWPixel =
-                GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "PosZPixel");
         }
         return m_pPositionWPixel;
     }
@@ -521,7 +543,7 @@ namespace IGC
         if (!m_pPositionXYOffset)
         {
             m_pPositionXYOffset =
-                GetNewVariable(32, ISA_TYPE_B, EALIGN_GRF, false, m_numberInstance);
+                GetNewVariable(32, ISA_TYPE_B, EALIGN_GRF, false, m_numberInstance, "PosXYOff");
         }
         return m_pPositionXYOffset;
     }
@@ -531,7 +553,9 @@ namespace IGC
         if (!m_pInputCoverageMask)
         {
             m_pInputCoverageMask =
-                GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance);
+                GetNewVariable(
+                    numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false,
+                    m_numberInstance, "InputConvergeMask");
         }
         return m_pInputCoverageMask;
     }
@@ -540,7 +564,7 @@ namespace IGC
     {
         if (!m_SampleOffsetX)
         {
-            m_SampleOffsetX = GetNewVariable(16, ISA_TYPE_UB, EALIGN_OWORD, true);
+            m_SampleOffsetX = GetNewVariable(16, ISA_TYPE_UB, EALIGN_OWORD, true, "SmplOffX");
         }
         return m_SampleOffsetX;
     }
@@ -549,7 +573,7 @@ namespace IGC
     {
         if (!m_SampleOffsetY)
         {
-            m_SampleOffsetY = GetNewVariable(16, ISA_TYPE_UB, EALIGN_OWORD, true);
+            m_SampleOffsetY = GetNewVariable(16, ISA_TYPE_UB, EALIGN_OWORD, true, "SmplOffY");
         }
         return m_SampleOffsetY;
     }
@@ -559,7 +583,9 @@ namespace IGC
         if (!m_pCPSRequestedSizeX)
         {
             m_pCPSRequestedSizeX =
-                GetNewVariable(numLanes(m_SIMDSize) / 4, ISA_TYPE_F, EALIGN_OWORD, false, m_numberInstance);
+                GetNewVariable(
+                    numLanes(m_SIMDSize) / 4, ISA_TYPE_F,
+                    EALIGN_OWORD, false, m_numberInstance, "CPSReqSizeX");
         }
         return m_pCPSRequestedSizeX;
     }
@@ -569,12 +595,15 @@ namespace IGC
         if (!m_pCPSRequestedSizeY)
         {
             m_pCPSRequestedSizeY =
-                GetNewVariable(numLanes(m_SIMDSize) / 4, ISA_TYPE_F, EALIGN_OWORD, false, m_numberInstance);
+                GetNewVariable(
+                    numLanes(m_SIMDSize) / 4, ISA_TYPE_F,
+                    EALIGN_OWORD, false, m_numberInstance, "CPSReqSizeY");
         }
         return m_pCPSRequestedSizeY;
     }
 
-    CPixelShader::CPixelShader(llvm::Function* pFunc, CShaderProgram* pProgram) : CShader(pFunc, pProgram)
+    CPixelShader::CPixelShader(llvm::Function* pFunc, CShaderProgram* pProgram)
+        : CShader(pFunc, pProgram)
     {
         m_RenderTargetMask = 0;
         m_HasoDepth = false;
@@ -814,7 +843,9 @@ namespace IGC
     void CPixelShader::PreCompile()
     {
         CreateImplicitArgs();
-        m_R1 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_HWORD, false, m_numberInstance);
+        m_R1 = GetNewVariable(
+            getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_HWORD, false,
+            m_numberInstance, "R1");
         CodeGenContext* ctx = GetContext();
 
         // make sure the return block is properly set
@@ -943,7 +974,7 @@ namespace IGC
         }
         else
         {
-            payload = GetNewVariable(8, ISA_TYPE_D, EALIGN_GRF);
+            payload = GetNewVariable(8, ISA_TYPE_D, EALIGN_GRF, CName::NONE);
         }
         uint messageDescriptor = PIPullPixelPayload(
             m_SIMDSize == SIMDMode::SIMD8 ? EU_PI_MESSAGE_SIMD8 : EU_PI_MESSAGE_SIMD16,
@@ -958,22 +989,22 @@ namespace IGC
 
         CVariable* desc = ImmToVariable(messageDescriptor, ISA_TYPE_UD);
         // save the current phase counter as it is needed by the RT write
-        m_CurrentPhaseCounter = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
+        m_CurrentPhaseCounter = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "CurrPhaseCounter");
         encoder.SetSrcRegion(0, 0, 1, 0);
         encoder.Shl(m_CurrentPhaseCounter, m_PixelPhaseCounter, ImmToVariable(0x10, ISA_TYPE_UW));
         encoder.Push();
-        CVariable* nextPhase = GetNewVariable(1, ISA_TYPE_UW, EALIGN_DWORD, true);
+        CVariable* nextPhase = GetNewVariable(1, ISA_TYPE_UW, EALIGN_DWORD, true, "NextPhase");
         encoder.SetSrcRegion(0, 0, 1, 0);
         encoder.Shl(nextPhase, m_PixelPhaseCounter, ImmToVariable(8, ISA_TYPE_D));
         encoder.Push();
-        CVariable* a0 = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
+        CVariable* a0 = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, CName::NONE);
         encoder.Or(a0, nextPhase, desc);
         encoder.Push();
         encoder.SetNoMask();
         encoder.Send(m_PixelPhasePayload, payload, EU_GEN7_MESSAGE_TARGET_PIXEL_INTERPOLATOR, a0);
         encoder.Push();
         CVariable* mask = BitCast(m_PixelPhasePayload, ISA_TYPE_UW);
-        CVariable* f0 = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_BOOL, EALIGN_DWORD, true);
+        CVariable* f0 = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_BOOL, EALIGN_DWORD, true, CName::NONE);
         encoder.SetSrcSubReg(0, 14);
         encoder.SetSrcRegion(0, 0, 1, 0);
         encoder.Cmp(EPREDICATE_EQ, f0, mask, ImmToVariable(0, ISA_TYPE_UW));
@@ -995,7 +1026,9 @@ namespace IGC
         {
             uint responseLength = 2;
             m_CoarseR1 = m_R1;
-            m_PixelPhasePayload = GetNewVariable(responseLength * (getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
+            m_PixelPhasePayload =
+                GetNewVariable(responseLength * (getGRFSize() >> 2),
+                    ISA_TYPE_D, EALIGN_GRF, "PixelPhasePayload");
             m_PixelPhaseCounter = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, 0, 1);
             m_CoarseParentIndex = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, getGRFSize(), numLanes(m_SIMDSize));
             m_R1 = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_D, 0, getGRFSize() / SIZE_DWORD);
@@ -1025,7 +1058,8 @@ namespace IGC
         {
             if (!m_CoarseoMask)
             {
-                m_CoarseoMask = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
+                m_CoarseoMask = GetNewVariable(
+                    numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "CoarseOMask");
                 encoder.Copy(m_CoarseoMask, ImmToVariable(0xFFFFFFFF, ISA_TYPE_UD));
                 encoder.Push();
             }
@@ -1038,7 +1072,8 @@ namespace IGC
             encoder.Label(m_epilogueLabel);
             encoder.Push();
             // next phase index is in the first dword of the payload
-            CVariable* flag = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_BOOL, EALIGN_BYTE, true);
+            CVariable* flag = GetNewVariable(
+                numLanes(m_SIMDSize), ISA_TYPE_BOOL, EALIGN_BYTE, true, CName::NONE);
             encoder.SetSrcRegion(0, 0, 1, 0);
             encoder.Cmp(EPREDICATE_NE, flag, m_PixelPhaseCounter, ImmToVariable(0, ISA_TYPE_UW));
             encoder.Push();
@@ -1064,7 +1099,8 @@ namespace IGC
         CVariable* coarseInput = nullptr;
         if (it == m_CoarseInput.end())
         {
-            coarseInput = GetNewVariable(numLanes(m_SIMDSize) * vectorSize, type, EALIGN_GRF);
+            coarseInput = GetNewVariable(
+                numLanes(m_SIMDSize) * vectorSize, type, EALIGN_GRF, "CoarseInput");
             m_CoarseInput[index] = coarseInput;
         }
         else
@@ -1083,7 +1119,8 @@ namespace IGC
     {
         if (m_CoarseMaskInput == nullptr)
         {
-            m_CoarseMaskInput = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF);
+            m_CoarseMaskInput = GetNewVariable(
+                numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, "CoarseMaskInput");
         }
         return m_CoarseMaskInput;
     }
