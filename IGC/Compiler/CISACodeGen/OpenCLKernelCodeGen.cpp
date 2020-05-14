@@ -1284,8 +1284,6 @@ namespace IGC
             break;
         }
 
-        // todo: get it from per-kernel data.
-        m_kernelInfo.m_executionEnivronment.NumGRFRequired = m_Context->getNumGRFPerThread();
 
         // DATA_PARAMETER_BUFFER_STATEFUL
         //   ( SPatchDataParameterBuffer for this token only uses one field: ArgumentNumber )
@@ -1702,6 +1700,8 @@ namespace IGC
         m_kernelInfo.m_executionEnivronment.HasGlobalAtomics = GetHasGlobalAtomics();
         m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = ProgramOutput()->m_offsetToSkipPerThreadDataLoad;
         m_kernelInfo.m_threadPayload.OffsetToSkipSetFFIDGP = ProgramOutput()->m_offsetToSkipSetFFIDGP;
+
+        m_kernelInfo.m_executionEnivronment.NumGRFRequired = ProgramOutput()->m_numGRFTotal;
 
     }
 

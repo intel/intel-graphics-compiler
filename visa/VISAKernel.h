@@ -852,6 +852,7 @@ private:
     int predefinedVarRegAssignment();
     int calculateTotalInputSize();
     int compileTillOptimize();
+    void recordFinalizerInfo();
 
     // Re-adjust indirect call target after swsb
     void adjustIndirectCallOffset();

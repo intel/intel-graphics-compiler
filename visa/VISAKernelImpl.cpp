@@ -518,13 +518,19 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         krnlOutput.close();
     }
 
-    if (m_builder->getJitInfo())
-    {
-        m_builder->getJitInfo()->numAsmCount = m_kernel->getAsmCount();
-    }
+    recordFinalizerInfo();
 
 
     return binary;
+}
+
+void VISAKernelImpl::recordFinalizerInfo()
+{
+    if (m_builder->getJitInfo())
+    {
+        m_builder->getJitInfo()->numAsmCount = m_kernel->getAsmCount();
+        m_builder->getJitInfo()->numGRFTotal = m_kernel->getNumRegTotal();
+    }
 }
 
 int VISAKernelImpl::InitializeFastPath()

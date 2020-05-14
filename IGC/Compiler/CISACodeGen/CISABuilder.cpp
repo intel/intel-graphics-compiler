@@ -5193,6 +5193,8 @@ namespace IGC
         pOutput->m_offsetToSkipPerThreadDataLoad = jitInfo->offsetToSkipPerThreadDataLoad;
 
         pOutput->m_offsetToSkipSetFFIDGP = jitInfo->offsetToSkipSetFFIDGP;
+
+        pOutput->m_numGRFTotal = jitInfo->numGRFTotal;
     }
 
     void CEncoder::DestroyVISABuilder()

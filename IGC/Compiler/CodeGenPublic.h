@@ -134,6 +134,7 @@ namespace IGC
         bool            m_separatePvtSpill = false;
         bool            m_roundPower2KBytes = false;
         unsigned int m_scratchSpaceSizeLimit = 0;
+        unsigned int m_numGRFTotal = 128;
 
         void Destroy()
         {
