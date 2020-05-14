@@ -92,16 +92,41 @@ enum S_TYPE_ELF {
 
 // ELF32_Ehdr::e_flags
 struct TargetFlags {
+
+    // bit[7:0]: dedicated for specific generator (meaning based on generatorId)
+    enum GeneratorSpecificFlags {
+        NONE = 0
+    };
+    // bit[23:21]: generator of this device binary
+    enum GeneratorId {
+        UNREGISTERED = 0,
+        IGC          = 1
+    };
+
     union {
         struct {
-            uint8_t generatorSpecificFlags : 8;   // bit offset : 0, 8 bits dedicated for specific generator (meaning based on generatorId)
-            uint8_t minHwRevisionId : 5;          // bit offset : 8,  values [0-31], min compatbile device revision Id
-            bool disableExtendedValidation : 1;   // bit offset : 13, values {0, 1}, 0 - full validation during decoding (safer decoding), 1 - no validation (faster decoding - recommended for known generators)
-            bool validateRevisionId : 1;          // bit offset : 14, values {0, 1}, 0 - ignore minHwRevisionId and maxHwRevisionId, 1 - underlying device must match specified revisionId info
-            bool machineEntryUsesGfxCoreInsteadOfProductFamily : 1; // bit offset : 15, values {0, 1}, 0 - elfFileHeader::machine is PRODUCT_FAMILY, 1 - elfFileHeader::machine is GFXCORE_FAMILY
-            uint8_t maxHwRevisionId : 5;          // bit offset : 16, values [0-31], max compatbile device revision Id
-            uint8_t generatorId : 3;              // bit offset : 21, values [0-7], generator of this device binary, unregisted = 0, igc = 1, etc.
-            uint8_t reserved : 8;                 // bit offset : 24, 0, for future use
+            // bit[7:0]: dedicated for specific generator (meaning based on generatorId)
+            GeneratorSpecificFlags generatorSpecificFlags : 8;
+            // bit[12:8]: values [0-31], min compatbile device revision Id (stepping)
+            uint8_t minHwRevisionId : 5;
+            // bit[13:13]:
+            // 0 - full validation during decoding (safer decoding)
+            // 1 - no validation (faster decoding - recommended for known generators)
+            bool validateRevisionId : 1;
+            // bit[14:14]:
+            // 0 - ignore minHwRevisionId and maxHwRevisionId
+            // 1 - underlying device must match specified revisionId info
+            bool disableExtendedValidation : 1;
+            // bit[15:15]:
+            // 0 - elfFileHeader::machine is PRODUCT_FAMILY
+            // 1 - elfFileHeader::machine is GFXCORE_FAMILY
+            bool machineEntryUsesGfxCoreInsteadOfProductFamily : 1;
+            // bit[20:16]:  max compatbile device revision Id (stepping)
+            uint8_t maxHwRevisionId : 5;
+            // bit[23:21]: generator of this device binary
+            GeneratorId generatorId : 3;
+            // bit[31:24]: MBZ, reserved for future use
+            uint8_t reserved : 8;
         };
         uint32_t packed = 0U;
     };

@@ -1,6 +1,4 @@
 # ZE Binary Utilitis
-ZE Binary format:
-https://gitlab.devtools.intel.com/wpan11/elf_binary/blob/master/tokens/xebin_spec.md
 
 ### Prerequisite
 Visaul Studio version >= 2019 <br>
