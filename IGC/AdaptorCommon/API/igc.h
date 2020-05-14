@@ -125,8 +125,8 @@ typedef enum {
 
 // We don't need compile continuation if no staged compilation enabled denoted by RegKeys.
 // If the staged compilation enabled, we don't need compile continuation when SIMD8 is spilled.
-#define HasCompileContinuation(flag, prev_ctx_ptr, stats) ( \
-    IGC_IS_FLAG_ENABLED(StagedCompilation) && \
+#define HasCompileContinuation(Ail, flag, prev_ctx_ptr, stats) ( \
+    (IGC_IS_FLAG_ENABLED(StagedCompilation) || Ail) && \
     ((IsStage1FastCompile(flag, prev_ctx_ptr) && \
      !(!IsRetry(stats) && !DoSimd16(stats))) || \
     ((IsStage1BestPerf(flag, prev_ctx_ptr)) && \

@@ -369,7 +369,7 @@ DECLARE_IGC_REGKEY(DWORD, ForcePixelShaderSIMDMode,     0,     "Setting it to va
 DECLARE_IGC_REGKEY(DWORD, StagedCompilationExperiments, 0,     "Experiment with staged compilation when != 0", false)
 DECLARE_IGC_REGKEY(bool, StagedCompilation,             false, "Enable staged compilation", false)
 DECLARE_IGC_REGKEY(bool, ExtraRetrySIMD16,              false,  "Enable extra simd16 with retry for STAGE1_BEST_PREF", false)
-DECLARE_IGC_REGKEY(bool, SaveRestoreIR,                 false,  "Save/Restore IR for staged compilation to avoid duplicated compilations", false)
+DECLARE_IGC_REGKEY(bool, SaveRestoreIR,                 true,  "Save/Restore IR for staged compilation to avoid duplicated compilations", false)
 DECLARE_IGC_REGKEY(bool, StagedBestSIMD, false,  "Force Pixel shader to return the best SIMD, either SIMD16 or SIMD8. When StagedCompilation is on, this only affects to the first stage", false)
 DECLARE_IGC_REGKEY(bool, SkipTREarlyExitCheck, false, "Skip SIMD16 early exit check in ShaderCodeGen", false)
 DECLARE_IGC_REGKEY(bool, EnableTCSHWBarriers, false,  "Enable TCS pass with HW barriers support. Default TCS pass is TCS pass with multiple continuation functions.", false)
