@@ -435,8 +435,16 @@ public:
       auto file = getDIFile(BM->get<SPIRVExtInst>(compositeType.getSource()));
       auto line = compositeType.getLine();
       auto size = compositeType.getSize();
-      auto flagRaw = compositeType.getFlags();
+      auto spirvFlags = compositeType.getFlags();
       auto scope = createScope(BM->get<SPIRVExtInst>(compositeType.getParent()));
+
+      DINode::DIFlags flags = DINode::FlagZero;
+      if (spirvFlags & SPIRVDebug::FlagIsFwdDecl)
+          flags |= DINode::FlagFwdDecl;
+      if (spirvFlags & SPIRVDebug::FlagTypePassByValue)
+          flags |= DINode::FlagTypePassByValue;
+      if (spirvFlags & SPIRVDebug::FlagTypePassByReference)
+          flags |= DINode::FlagTypePassByReference;
 
       if (!scope)
           scope = cu;
@@ -463,19 +471,17 @@ public:
       if (tag == SPIRVDebug::CompositeTypeTag::Structure)
       {
           newNode = addMDNode(inst, Builder.createStructType(scope, name,
-              file, line, size, 0, (llvm::DINode::DIFlags)flagRaw,
-              derivedFrom, DINodeArray()));
+              file, line, size, 0, flags, derivedFrom, DINodeArray()));
       }
       else if (tag == SPIRVDebug::CompositeTypeTag::Union)
       {
-          newNode = addMDNode(inst, Builder.createUnionType(scope, name, file,
-              line, size, 0, (llvm::DINode::DIFlags)flagRaw, DINodeArray()));
+          newNode = addMDNode(inst, Builder.createUnionType(scope, name,
+              file, line, size, 0, flags, DINodeArray()));
       }
       else if (tag == SPIRVDebug::CompositeTypeTag::Class)
       {
           newNode = addMDNode(inst, Builder.createClassType(scope, name,
-              file, line, size, 0, 0, (llvm::DINode::DIFlags)flagRaw,
-              derivedFrom, DINodeArray()));
+              file, line, size, 0, 0, flags, derivedFrom, DINodeArray()));
       }
 
       SmallVector<Metadata*, 6> elements;
@@ -513,9 +519,17 @@ public:
       auto type = createType(BM->get<SPIRVExtInst>(typeInherit.getChild()));
       auto base = createType(BM->get<SPIRVExtInst>(typeInherit.getParent()));
       auto offset = typeInherit.getOffset();
-      auto flagRaw = typeInherit.getFlags();
+      auto spirvFlags = typeInherit.getFlags();
 
-      return addMDNode(inst, Builder.createInheritance(type, base, offset, (llvm::DINode::DIFlags)flagRaw));
+      DINode::DIFlags flags = DINode::FlagZero;
+      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPublic)
+          flags |= llvm::DINode::FlagPublic;
+      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsProtected)
+          flags |= llvm::DINode::FlagProtected;
+      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPrivate)
+          flags |= llvm::DINode::FlagPrivate;
+
+      return addMDNode(inst, Builder.createInheritance(type, base, offset, flags));
   }
 
   DIType* createPtrToMember(SPIRVExtInst* inst)
@@ -754,10 +768,29 @@ public:
       auto& linkageName = sp.getLinkage()->getStr();
       auto file = getDIFile(BM->get<SPIRVExtInst>(sp.getSource()));
       auto spType = createSubroutineType(BM->get<SPIRVExtInst>(sp.getType()));
-      auto flags = (DINode::DIFlags)(sp.getFlags());
-      bool isDefinition = (SPIRVWord)flags & SPIRVDebug::FlagIsDefinition;
-      bool isOptimized = (SPIRVWord)flags & SPIRVDebug::FlagIsOptimized;
-      bool isLocal = (SPIRVWord)flags & SPIRVDebug::FlagIsLocal;
+      auto spirvFlags = sp.getFlags();
+
+      DINode::DIFlags flags = DINode::FlagZero;
+      if (spirvFlags & SPIRVDebug::FlagIsArtificial)
+          flags |= llvm::DINode::FlagArtificial;
+      if (spirvFlags & SPIRVDebug::FlagIsExplicit)
+          flags |= llvm::DINode::FlagExplicit;
+      if (spirvFlags & SPIRVDebug::FlagIsPrototyped)
+          flags |= llvm::DINode::FlagPrototyped;
+      if (spirvFlags & SPIRVDebug::FlagIsLValueReference)
+          flags |= llvm::DINode::FlagLValueReference;
+      if (spirvFlags & SPIRVDebug::FlagIsRValueReference)
+          flags |= llvm::DINode::FlagRValueReference;
+      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPublic)
+          flags |= llvm::DINode::FlagPublic;
+      if (spirvFlags & SPIRVDebug::FlagIsProtected)
+          flags |= llvm::DINode::FlagProtected;
+      if (spirvFlags & SPIRVDebug::FlagIsPrivate)
+          flags |= llvm::DINode::FlagPrivate;
+
+      bool isDefinition = spirvFlags & SPIRVDebug::FlagIsDefinition;
+      bool isOptimized = spirvFlags & SPIRVDebug::FlagIsOptimized;
+      bool isLocal = spirvFlags & SPIRVDebug::FlagIsLocal;
       auto funcSPIRVId = sp.getSPIRVFunction();
 
       SmallVector<llvm::Metadata *, 8> Elts;

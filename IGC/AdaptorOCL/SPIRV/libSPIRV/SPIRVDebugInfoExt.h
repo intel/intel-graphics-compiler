@@ -101,6 +101,9 @@ namespace spv {
             FlagIsLValueReference = 1 << 11,
             FlagIsRValueReference = 1 << 12,
             FlagIsOptimized = 1 << 13,
+            FlagIsEnumClass = 1 << 14,
+            FlagTypePassByValue = 1 << 15,
+            FlagTypePassByReference = 1 << 16,
         };
 
         enum EncodingTag {
