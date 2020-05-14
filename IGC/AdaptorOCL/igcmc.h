@@ -102,6 +102,15 @@ struct cmc_kernel_info_v2 {
     unsigned num_print_strings;
     /// The kernel format string storage
     cmc_ocl_print_string *print_string_descs;
+
+    struct TableInfo {
+        void *Buf = nullptr;
+        uint32_t Size = 0;
+        uint32_t NumEntries = 0;
+    };
+
+    TableInfo RelocationTable;
+    TableInfo SymbolTable;
 };
 
 struct cmc_compile_info_v2 {
