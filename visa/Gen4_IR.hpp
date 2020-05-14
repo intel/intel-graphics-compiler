@@ -618,6 +618,10 @@ public:
         return depTokens[i].token;
     }
 
+    bool isDFInstruction() const;
+
+    bool isMathPipeInst() const;
+
     bool distanceHonourInstruction() const;
     bool tokenHonourInstruction() const;
 

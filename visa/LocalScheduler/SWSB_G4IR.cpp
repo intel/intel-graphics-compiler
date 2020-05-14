@@ -62,11 +62,11 @@ static bool hasSameFunctionID(G4_INST* inst1, G4_INST* inst2)
     {
         return false;
     }
-    else if (inst1->isMath() && inst2->isMath())
+    else if (inst1->isMathPipeInst() && inst2->isMathPipeInst())
     {
         return true;
     }
-    else if (inst1->isMath() || inst2->isMath())
+    else if (inst1->isMathPipeInst() || inst2->isMathPipeInst())
     {
         return false;
     }
@@ -855,7 +855,7 @@ static unsigned getRegAccessPipe(G4_INST* Inst) {
         Pipe = FCPatchingInfo::Pipe_Send;
         SFID = SFIDtoInt(Inst->getMsgDesc()->getFuncId()) & 0xF; // 4-bit SFID
     }
-    else if (Inst->isMath())
+    else if (Inst->isMathPipeInst())
     {
         Pipe = FCPatchingInfo::Pipe_Math;
     }
@@ -1253,7 +1253,7 @@ unsigned SWSB::getDepDelay(SBNode* curNode)
             reuseDelay = TOKEN_AFTER_WRITE_SEND_MEMORY_CYCLE;
         }
     }
-    else if (curNode->GetInstruction()->isMath())
+    else if (curNode->GetInstruction()->isMathPipeInst())
     {
 
         reuseDelay = TOKEN_AFTER_WRITE_MATH_CYCLE;
@@ -1456,7 +1456,7 @@ bool  SWSB::cycleExpired(SBNode* node, int currentID)
             return TOKEN_AFTER_WRITE_SEND_MEMORY_CYCLE <= (currentID - node->getLiveStartID());
         }
     }
-    else if (node->GetInstruction()->isMath())
+    else if (node->GetInstruction()->isMathPipeInst())
     {
         return TOKEN_AFTER_WRITE_MATH_CYCLE <= (currentID - node->getLiveStartID());
     }
@@ -2261,7 +2261,7 @@ void SWSB::tokenAllocation()
         }
 
 
-        if (inst->isMath())
+        if (inst->isMathPipeInst())
         {
             mathInstCount++;
         }
@@ -6509,6 +6509,35 @@ G4_BB* Dom::getCommonImmDom(std::unordered_set<G4_BB*>& bbs)
     }
 
     return entryBB;
+}
+
+bool G4_INST::isDFInstruction() const
+{
+    G4_Operand* dst = getDst();
+    if (dst && (dst->getType() == Type_DF))
+    {
+        return true;
+    }
+    for (int i = 0; i < getNumSrc(); i++)
+    {
+        G4_Operand* src = getSrc(i);
+        if (src && (src->getType() == Type_DF))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool G4_INST::isMathPipeInst() const
+{
+    if (isMath())
+    {
+        return true;
+    }
+
+
+    return false;
 }
 
 bool G4_INST::distanceHonourInstruction() const
