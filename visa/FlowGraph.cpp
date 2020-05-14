@@ -7107,6 +7107,7 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     memset(&t, 0, sizeof(t));
 
     t.version = gtpin::igc::GTPIN_IGC_INTERFACE_VERSION;
+    t.igc_init_size = sizeof(t);
     if (gtpinInitFromL0)
     {
         if (kernel.getOption(vISA_GetFreeGRFInfo))
@@ -7133,6 +7134,7 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     }
     else
     {
+        t.version = std::min(gtpin_init->version, gtpin::igc::GTPIN_IGC_INTERFACE_VERSION);
         if (gtpin_init->grf_info)
         {
             if (!stackABI)
@@ -7205,6 +7207,34 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     void* gtpinBuffer = allocCodeBlock(bufferSize);
 
     memcpy_s(gtpinBuffer, bufferSize, (const void*)(buffer.data()), bufferSize);
+
+    // Dump buffer with shader dumps
+    if (kernel.getOption(vISA_outputToFile))
+    {
+        auto asmName = kernel.getOptions()->getOptionCstr(VISA_AsmFileName);
+        if (asmName)
+        {
+            std::ofstream ofInit;
+            std::stringstream ssInit;
+            ssInit << std::string(asmName) << ".gtpin_igc_init";
+            ofInit.open(ssInit.str(), std::ofstream::binary);
+            if (gtpin_init)
+            {
+                ofInit.write((const char*)gtpin_init, sizeof(*gtpin_init));
+            }
+            ofInit.close();
+
+            std::ofstream ofInfo;
+            std::stringstream ssInfo;
+            ssInfo << std::string(asmName) << ".gtpin_igc_info";
+            ofInfo.open(ssInfo.str(), std::ofstream::binary);
+            if (gtpinBuffer)
+            {
+                ofInfo.write((const char*)gtpinBuffer, bufferSize);
+            }
+            ofInfo.close();
+        }
+    }
 
     return gtpinBuffer;
 }
