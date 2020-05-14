@@ -240,13 +240,6 @@ G4_BB* FlowGraph::createNewBB(bool insertInFG)
     if (insertInFG)
         numBBId++;
 
-    if (builder->getOptions()->getTarget() == VISA_3D)
-    {
-        // all 3D bbs are considered to be in SIMD CF since the dispatch mask may
-        // have some channels off.
-        bb->setInSimdFlow(true);
-    }
-
     BBAllocList.push_back(bb);
     return bb;
 }
@@ -905,7 +898,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 
     if (hasSIMDCF && pKernel->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
     {
-        markSimdBlocks(labelMap, funcInfoHashTable);
+        processSCF(labelMap, funcInfoHashTable);
         addSIMDEdges();
     }
 
@@ -2595,11 +2588,9 @@ G4_BB* FlowGraph::findLabelBB(
 
 
 /*
-*  Mark blocks that are nested in SIMD control flow.
-*  Only structured CF is handled here, SIMD BBs due to goto/join
-*  are marked in processGoto()
+*  This function sets the JIP for Structured CF (SCF) instructions, Unstructured
+*  Control Flow (UCF) instructions (goto) are handled in processGoto().
 *
-*  This function also sets the JIP of the endif to its enclosing endif/while, if it exists
 *  Note: we currently do not consider goto/join when adding the JIP for endif,
 *  since structure analysis should not allow goto into/out of if-endif.  This means
 *  we only need to set the the JIP of the endif to its immediately enclosing endif/while
@@ -2607,7 +2598,7 @@ G4_BB* FlowGraph::findLabelBB(
 *  The simd control flow blocks must be well-structured
 *
 */
-void FlowGraph::markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable &FuncInfoMap)
+void FlowGraph::processSCF(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable &FuncInfoMap)
 {
     std::stack<StructuredCF*> ifAndLoops;
     std::vector<StructuredCF*> structuredSimdCF;
@@ -2659,11 +2650,6 @@ void FlowGraph::markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfo
             }
         }
 
-        if (ifAndLoops.size() > 0)
-        {
-            bb->setInSimdFlow(true);
-        }
-
         if (bb->size() > 0)
         {
             G4_INST* lastInst = bb->back();
@@ -2696,45 +2682,6 @@ void FlowGraph::markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfo
         if (cf->mType == STRUCTURED_CF_IF && cf->enclosingCF != NULL)
         {
             setJIPForEndif(cf->mEndInst, cf->enclosingCF->mEndInst, cf->enclosingCF->mEndBB);
-        }
-    }
-
-    // Visit the call graph, and mark simd blocks in subroutines.
-    std::set<FuncInfo*> Visited;
-    std::queue<FuncInfo*> Funcs;
-
-    // Starting with kernel.
-    Funcs.push(kernelInfo);
-
-    // Now process all subroutines called in a simd-cf block.
-    while (!Funcs.empty())
-    {
-        FuncInfo* CallerInfo = Funcs.front();
-        Funcs.pop();
-
-        // Skip if this is already visited.
-        if (!Visited.insert(CallerInfo).second)
-            continue;
-
-        for (auto BB : CallerInfo->getBBList())
-        {
-            if (BB->isInSimdFlow() && BB->isEndWithCall())
-            {
-                G4_INST *CI = BB->back();
-                if (CI->getSrc(0)->isLabel())
-                {
-                    G4_Label* Callee = CI->getSrc(0)->asLabel();
-                    G4_BB* CalleeEntryBB = labelMap[Callee->getLabel()];
-                    FuncInfo* CalleeInfo = CalleeEntryBB->getFuncInfo();
-                    Funcs.push(CalleeInfo);
-
-                    // Mark all blocks in this subroutine.
-                    for (auto BB1 : CalleeInfo->getBBList())
-                    {
-                        BB1->setInSimdFlow(true);
-                    }
-                }
-            }
         }
     }
 }
@@ -2770,7 +2717,6 @@ void FlowGraph::markDivergentBBs()
         for (auto IT = BBs.begin(), IE = BBs.end(); IT != IE; ++IT)
         {
             G4_BB* BB = *IT;
-            BB->setInSimdFlow(true);
             BB->setDivergent(true);
         }
         return;
@@ -3012,9 +2958,6 @@ void FlowGraph::markDivergentBBs()
                 G4_BB* BB = *IT;
 
                 BB->setDivergent(true);
-                // set InSIMDFlow as well, will merge two gradually
-                BB->setInSimdFlow(true);
-
                 if (BB->size() == 0)
                 {
                     // sanity check
@@ -3147,8 +3090,6 @@ void FlowGraph::markDivergentBBs()
             // normal scan of BB
             if (isPriorToLastJoin(BB)) {
                 BB->setDivergent(true);
-                // set InSIMDFlow as well, will merge these two fields gradually
-                BB->setInSimdFlow(true);
             }
             // Temporary for debugging, toBeDelete!
             // if (pKernel->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
@@ -3450,13 +3391,6 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     }
                 }
             }
-        }
-
-        // at this point if there are active join blocks, we are in SIMD control flow
-        // FIXME: This is over pessimistic for kernels with actual simd cf.
-        if (HasSIMDCF && !activeJoinBlocks.empty())
-        {
-            bb->setInSimdFlow(true);
         }
 
         G4_INST* lastInst = bb->back();

@@ -1433,7 +1433,7 @@ bool LVN::valuesMatch(Value& val1, Value& val2, bool checkNegImm)
                 return false;
             }
 
-            if (match && bb->isInSimdFlow())
+            if (match && !bb->isAllLaneActive())
             {
                 G4_INST* val1Inst = val1.inst;
                 G4_INST* val2Inst = val2.inst;

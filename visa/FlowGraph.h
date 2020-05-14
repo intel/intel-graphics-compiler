@@ -282,13 +282,9 @@ class G4_BB
     // indicates the scoping info in call graph
     unsigned scopeID;
 
-    // if the block is under simd flow control
-    bool inSimdFlow;
-
     // If a BB is divergent, this field is set to true. By divergent, it means
     // that among all active lanes on entry to shader/kernel, not all lanes may
     // be active in this BB.
-    // Note : this field will be used to replace inSimdFlow.
     bool divergent;
 
     // the physical pred/succ for this block (i.e., the pred/succ for this block in the BB list)
@@ -376,7 +372,7 @@ public:
         traversal(0), beforeCall(NULL),
         afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), hasSendInBB(false), loopNestLevel(0), scopeID(0),
-        inSimdFlow(false), divergent(false), physicalPred(NULL), physicalSucc(NULL),
+        divergent(false), physicalPred(NULL), physicalSucc(NULL),
         parent(fg), instList(alloc)
     {
     }
@@ -422,8 +418,6 @@ public:
     void     setNestLevel()                   {loopNestLevel ++;}
     unsigned char getNestLevel()              {return loopNestLevel;}
     void     resetNestLevel()                 { loopNestLevel = 0; }
-    void     setInSimdFlow(bool val)          {inSimdFlow = val;}
-    bool     isInSimdFlow() const             {return inSimdFlow;}
     void     setDivergent(bool val) { divergent = val; }
     bool     isDivergent() const    { return divergent; }
     bool     isAllLaneActive() const;
@@ -923,6 +917,7 @@ public:
     void decoupleExitBlock(G4_BB*);
     void normalizeSubRoutineBB( FuncInfoHashTable& funcInfoTable );
     void processGoto(bool HasSIMDCF);
+    void processSCF(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable& FuncInfoMap);
     void insertJoinToBB( G4_BB* bb, uint8_t execSize, G4_Label* jip );
 
     // functions for structure analysis
@@ -1071,7 +1066,6 @@ public:
 
     void addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool);
     void addSaveRestorePseudoDeclares(IR_Builder& builder);
-    void markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable &FuncInfoMap);
     void markDivergentBBs();
 
     // Used for CISA 3.0
