@@ -39,7 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/OCL/BuiltinResource.h"
 #include "AdaptorOCL/OCL/TB/igc_tb.h"
 
-#include "AdaptorOCL/Upgrader/Upgrader.h"
 #include "AdaptorOCL/UnifyIROCL.hpp"
 #include "AdaptorOCL/DriverInfoOCL.hpp"
 
@@ -574,13 +573,11 @@ bool ParseInput(
         }
     }
 
-    // BEGIN HACK
-    // Upgrade BC to LLVM 3.5.1+ from LLVM 3.4+
     if (inputDataFormatTemp == TB_DATA_FORMAT_LLVM_BINARY) {
         std::unique_ptr<llvm::MemoryBuffer> Buf =
             llvm::MemoryBuffer::getMemBuffer(strInput, "<origin>", false);
         llvm::Expected<std::unique_ptr<llvm::Module>> MOE =
-            upgrader::upgradeAndParseBitcodeFile(Buf->getMemBufferRef(), oclContext);
+            llvm::parseBitcodeFile(Buf->getMemBufferRef(), oclContext);
         if (llvm::Error E = MOE.takeError())
         {
             llvm::handleAllErrors(std::move(E), [&](llvm::ErrorInfoBase &EIB) {
@@ -594,7 +591,6 @@ bool ParseInput(
             pKernelModule = MOE->release();
         }
     }
-    // END HACK
     else if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V) {
 #if defined(IGC_SPIRV_ENABLED)
         //convert SPIR-V binary to LLVM module
