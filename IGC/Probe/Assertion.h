@@ -33,8 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define IGC_ASSERT assert
 
-#define IGC_ASSERT_MESSAGE(x, m) IGC_ASSERT(x)
-
 #define IGC_ASSERT_EXIT(x) \
     do \
     { \
@@ -45,7 +43,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         } \
     } while(0)
 
-#define IGC_ASSERT_EXIT_MESSAGE(x, m) IGC_ASSERT_EXIT(x)
 
+#define IGC_ASSERT_MESSAGE(x, m) IGC_ASSERT((x) && (m))
+
+#define IGC_ASSERT_EXIT_MESSAGE(x, m) IGC_ASSERT_EXIT((x) && (m))
 
 #endif // IGC_PROBE_ASSERTION_H
