@@ -66,7 +66,6 @@ namespace vISA
             ATTR_SpillMemOffset,       // Offset at which spill/fill starts
             ATTR_ArgSize,
             ATTR_RetValSize,
-            ATTR_FESPSize,
             ATTR_PerThreadInputSize,
             ATTR_Extern,
             ATTR_NoBarrier,

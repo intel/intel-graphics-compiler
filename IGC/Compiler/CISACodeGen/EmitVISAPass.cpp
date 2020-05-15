@@ -430,7 +430,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     }
 
     bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
-    bool ptr64bits = (m_DL->getPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64);
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderMode);
@@ -449,7 +448,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_encoder->InitFuncAttribute(&F, true);
             CVariable* pStackBase = nullptr;
             CVariable* pStackSize = nullptr;
-            m_currShader->InitKernelStack(pStackBase, pStackSize, ptr64bits);
+            m_currShader->InitKernelStack(pStackBase, pStackSize);
             emitAddSP(m_currShader->GetSP(), pStackBase, pStackSize);
         }
         m_currShader->AddPrologue();
@@ -464,7 +463,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         if (m_FGA && m_FGA->useStackCall(&F))
         {
             m_encoder->InitFuncAttribute(&F, false);
-            emitStackFuncEntry(&F, ptr64bits);
+            emitStackFuncEntry(&F);
         }
     }
 
@@ -9637,10 +9636,10 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     }
 }
 
-void EmitPass::emitStackFuncEntry(Function* F, bool ptr64bits)
+void EmitPass::emitStackFuncEntry(Function* F)
 {
     m_encoder->SetDispatchSimdSize();
-    m_currShader->CreateSP(ptr64bits);
+    m_currShader->CreateSP();
 
     if (F->hasFnAttribute("IndirectlyCalled"))
     {

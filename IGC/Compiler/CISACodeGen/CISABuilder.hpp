@@ -138,7 +138,6 @@ namespace IGC
 
         void SetDispatchSimdSize();
         void SetSpillMemOffset();
-        void SetKernelStackPointer64();
         void SetStackFunctionArgSize(uint size);  // size in GRFs
         void SetStackFunctionRetSize(uint size);  // size in GRFs
         void SetExternFunctionFlag();

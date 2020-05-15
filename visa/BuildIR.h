@@ -789,7 +789,7 @@ public:
                 case PreDefinedVarsInternal::FE_SP:
                 {
                     unsigned int startReg = kernel.getStackCallStartReg();
-                    dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, is64BitFEStackVars() ? Type_UQ : Type_UD);
+                    dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
                     dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_SP);
                     break;
                 }
@@ -797,7 +797,7 @@ public:
                 {
                     // PREDEFINED_FE_FP
                     unsigned int startReg = kernel.getStackCallStartReg();
-                    dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, is64BitFEStackVars() ? Type_UQ : Type_UD);
+                    dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
                     dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_FP);
                     break;
                 }
@@ -2742,11 +2742,6 @@ public:
     }
 
     void doSamplerHeaderMove(G4_Declare* header, G4_Operand* sampler);
-
-    bool is64BitFEStackVars()
-    {
-        return kernel.getIntKernelAttribute(Attributes::ATTR_FESPSize) == 64;
-    }
 
     void expandFdiv(uint8_t exsize, G4_Predicate *predOpnd, bool saturate,
         G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd, uint32_t instOpt);

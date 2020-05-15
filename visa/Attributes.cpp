@@ -46,7 +46,6 @@ Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
   ATTR_ENTRY("SpillMemOffset",  0) ,             /* ATTR_SpillMemOffset */
   ATTR_ENTRY("ArgSize", 0) ,                     /* ATTR_ArgSize */
   ATTR_ENTRY("RetValSize", 0) ,                  /* ATTR_RetValSize */
-  ATTR_ENTRY("FESPSize", 0) ,                    /* ATTR_FESPSize */
   ATTR_ENTRY("PerThreadInputSize", 0) ,          /* ATTR_PerThreadInputSize */
   ATTR_ENTRY("Extern", 0) ,                      /* ATTR_Extern */
   ATTR_ENTRY("NoBarrier", 0) ,                   /* ATTR_NoBarrier */

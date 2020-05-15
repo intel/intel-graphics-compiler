@@ -140,7 +140,7 @@ namespace IGC
 
         /// stack-call code-gen functions
         void emitStackCall(llvm::CallInst* inst);
-        void emitStackFuncEntry(llvm::Function* F, bool ptr64bits);
+        void emitStackFuncEntry(llvm::Function* F);
         void emitStackFuncExit(llvm::ReturnInst* inst);
         uint stackCallArgumentAlignment(CVariable* argv);
 

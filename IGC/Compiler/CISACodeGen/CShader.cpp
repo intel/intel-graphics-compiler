@@ -229,7 +229,7 @@ void CShader::AddEpilogue(llvm::ReturnInst* ret)
     encoder.Push();
 }
 
-CVariable* CShader::CreateSP(bool ptr64bits)
+CVariable* CShader::CreateSP()
 {
     // create argument-value register, limited to 12 GRF
     m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, getGRFAlignment(), false, 1);
@@ -238,24 +238,16 @@ CVariable* CShader::CreateSP(bool ptr64bits)
     m_RETV = GetNewVariable(getGRFSize(), ISA_TYPE_D, getGRFAlignment(), false, 1);
     encoder.GetVISAPredefinedVar(m_RETV, PREDEFINED_RET);
     // create stack-pointer register
-    if (ptr64bits) {
-        encoder.SetKernelStackPointer64();
-    }
-    if (ptr64bits) {
-        m_SP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1);
-        encoder.GetVISAPredefinedVar(m_SP, PREDEFINED_FE_SP);
-    }
-    else {
-        m_SP = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1);
-        encoder.GetVISAPredefinedVar(m_SP, PREDEFINED_FE_SP);
-    }
+    m_SP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1);
+    encoder.GetVISAPredefinedVar(m_SP, PREDEFINED_FE_SP);
+
     return m_SP;
 }
 
 /// initial stack-pointer at the beginning of the kernel
-void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize, bool ptr64bits)
+void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize)
 {
-    CreateSP(ptr64bits);
+    CreateSP();
     ImplicitArgs implicitArgs(*entry, m_pMdUtils);
     unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
     unsigned numImplicitArgs = implicitArgs.size();

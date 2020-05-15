@@ -4452,13 +4452,6 @@ namespace IGC
         }
     }
 
-    void CEncoder::SetKernelStackPointer64()
-    {
-        IGC_ASSERT(vKernel);
-        uint8_t spSize = 64;
-        V(vKernel->AddKernelAttribute("FESPSize", 1, &spSize));
-    }
-
     void CEncoder::SetStackFunctionArgSize(uint size)
     {
         uint8_t sz = (uint8_t)size;
