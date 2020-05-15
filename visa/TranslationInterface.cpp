@@ -9525,7 +9525,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
 #endif
 
     unsigned numOword = Get_VISA_Oword_Num(size);
-    unsigned srcNumGRF = ((numOword - 1) / 2 + 1);
+    unsigned srcNumGRF = (numOword * 16 + getGRFSize() - 1) / getGRFSize();
     uint8_t sendExecSize = FIX_OWORD_SEND_EXEC_SIZE(numOword);
 
     // FIXME: may want to apply this to FIX_OWORD_SEND_EXEC_SIZE instead
@@ -9572,20 +9572,22 @@ int IR_Builder::translateVISASVMBlockWriteInst(
 
     uint32_t movExecSize = 0;
 
+    auto scale = getGRFSize() / src->getElemSize();
     switch (src->getElemSize())
     {
         case 1:
         case 2:
-            sources[len].execSize = 16 * srcNumGRF;
-            movExecSize = 16;
+            scale = getGRFSize() / G4_Type_Table[Type_UW].byteSize;
+            sources[len].execSize = scale * srcNumGRF;
+            movExecSize = scale;
             break;
         case 4:
-            sources[len].execSize = 8 * srcNumGRF;
-            movExecSize = 8;
+            sources[len].execSize = scale * srcNumGRF;
+            movExecSize = scale;
             break;
         case 8:
-            sources[len].execSize = 4 * srcNumGRF;
-            movExecSize = 4;
+            sources[len].execSize = scale * srcNumGRF;
+            movExecSize = scale;
             break;
     }
 
