@@ -2323,7 +2323,7 @@ void EmitPass::emitVMESendSIC2(GenIntrinsicInst* inst)
     // when either fwdRefImg or bwdRefImg is presented.
     if (srcImgBTI->GetImmediateValue() != fwdRefImgBTI->GetImmediateValue())
     {
-        IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 1 == fwdRefImgBTI->GetImmediateValue(),& "srcImg BTI and refImg BTI are not consecutive!");
+        IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 1 == fwdRefImgBTI->GetImmediateValue(), "srcImg BTI and refImg BTI are not consecutive!");
 
         if (fwdRefImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue())
         {
