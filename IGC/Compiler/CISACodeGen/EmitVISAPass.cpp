@@ -9938,6 +9938,12 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
             // Set the per-function private mem size
             m_encoder->SetFunctionAllocaStackSize(F, totalAllocaSize);
+
+            if ((uint32_t)funcMDItr->second.privateMemoryPerWI > m_currShader->GetMaxPrivateMem())
+            {
+                m_currShader->GetContext()->EmitError("Private memory allocation exceeds max allowed size");
+                IGC_ASSERT(0);
+            }
         }
     }
 }

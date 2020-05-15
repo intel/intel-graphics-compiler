@@ -197,6 +197,8 @@ namespace IGC
         void SaveSP();
         /// restore the stack-pointer when exiting a stack-call function
         void RestoreSP();
+        /// Get the max private mem size based on simd width
+        uint32_t GetMaxPrivateMem();
 
         void        AllocateInput(CVariable* var, uint offset, uint instance = 0);
         void        AllocateOutput(CVariable* var, uint offset, uint instance = 0);

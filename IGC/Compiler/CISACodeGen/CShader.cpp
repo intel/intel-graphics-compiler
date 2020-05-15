@@ -248,6 +248,24 @@ CVariable* CShader::CreateSP()
     return m_SP;
 }
 
+/// get max private mem size, varying by simd width
+uint32_t CShader::GetMaxPrivateMem()
+{
+    uint32_t MaxPrivateSize = 0;
+    switch (m_dispatchSize) {
+    default:
+        MaxPrivateSize = 8 * 1024;
+        break;
+    case SIMDMode::SIMD16:
+        MaxPrivateSize = 4 * 1024;
+        break;
+    case SIMDMode::SIMD32:
+        MaxPrivateSize = 2 * 1024;
+        break;
+    }
+    return MaxPrivateSize;
+}
+
 /// initial stack-pointer at the beginning of the kernel
 void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize)
 {
@@ -281,7 +299,7 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize)
     // Maximun private size in byte, per-workitem
     // When there's stack call, we don't know the actual stack size being used,
     // so set a conservative max stack size.
-    const uint32_t MaxPrivateSize = 1024;
+    uint32_t MaxPrivateSize = GetMaxPrivateMem();
     if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
     {
         // Experimental: Patch private memory size
@@ -311,6 +329,12 @@ void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize)
 
             // Set the total alloca size for the entry function
             encoder.SetFunctionAllocaStackSize(entry, totalAllocaSize);
+
+            if ((uint32_t)funcMDItr->second.privateMemoryPerWI > MaxPrivateSize)
+            {
+                GetContext()->EmitError("Private memory allocation exceeds max allowed size");
+                IGC_ASSERT(0);
+            }
         }
     }
 
