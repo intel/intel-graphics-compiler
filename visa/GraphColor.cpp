@@ -1023,7 +1023,7 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
 
     if ((float)threeSourceInstNum / bb->size() > 0.1)
     {
-        if (!gra.kernel.fg.builder->lowHighBundle() && gra.kernel.fg.builder->hasCrossInstructionConflict() && GetStepping() == Step_A)
+        if (!gra.kernel.fg.builder->lowHighBundle() && gra.kernel.fg.builder->hasEarlyGRFRead())
         {
             for (std::list<G4_INST*>::iterator i = bb->begin(), iend = bb->end();
                 i != iend;

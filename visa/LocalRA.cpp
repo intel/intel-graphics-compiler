@@ -440,7 +440,7 @@ bool LocalRA::localRA()
     bool doRoundRobin = builder.getOption(vISA_LocalRARoundRobin);
 
     int numGRF = kernel.getNumRegTotal();
-    PhyRegsLocalRA phyRegs(numGRF);
+    PhyRegsLocalRA phyRegs(&builder, numGRF);
     pregs = &phyRegs;
 
     globalLRSize = 0;
@@ -604,7 +604,7 @@ void LocalRA::removeUnrequiredLifetimeOps()
     }
 }
 
-void LocalRA::findRegisterCandiateWithAlignForward(int &i, BankAlign align, bool evenAlign)
+void PhyRegsLocalRA::findRegisterCandiateWithAlignForward(int &i, BankAlign align, bool evenAlign)
 {
     if ((align == BankAlign::Even) && (i % 2 != 0))
     {
@@ -630,12 +630,12 @@ void LocalRA::findRegisterCandiateWithAlignForward(int &i, BankAlign align, bool
     }
 }
 
-unsigned int LocalRA::get_bundle(unsigned int baseReg, int offset)
+unsigned int PhyRegsLocalRA::get_bundle(unsigned int baseReg, int offset)
 {
     return (((baseReg + offset) % 64) / 4);
 }
 
-int LocalRA::findBundleConflictFreeRegister(int curReg,
+int PhyRegsLocalRA::findBundleConflictFreeRegister(int curReg,
                                             int endReg,
                                             unsigned short occupiedBundles,
                                             BankAlign align,
@@ -657,7 +657,7 @@ int LocalRA::findBundleConflictFreeRegister(int curReg,
     return i;
 }
 
-void LocalRA::findRegisterCandiateWithAlignBackward(int &i, BankAlign align, bool evenAlign)
+void PhyRegsLocalRA::findRegisterCandiateWithAlignBackward(int &i, BankAlign align, bool evenAlign)
 {
     if ((align == BankAlign::Even) && (i % 2 != 0))
     {
@@ -2055,8 +2055,8 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
         grfRows = nrows - 1;
     }
 
-    LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
-    i = LocalRA::findBundleConflictFreeRegister(i, endReg, occupiedBundles, align, multiSteps);
+    findRegisterCandiateWithAlignForward(i, align, multiSteps);
+    i = findBundleConflictFreeRegister(i, endReg, occupiedBundles, align, multiSteps);
 
     startReg = i;
     while (i <= endReg + nrows - 1)
@@ -2071,8 +2071,8 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
         {
             foundItem = 0;
             i++;
-            LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
-            i = LocalRA::findBundleConflictFreeRegister(i, endReg, occupiedBundles, align, multiSteps);
+            findRegisterCandiateWithAlignForward(i, align, multiSteps);
+            i = findBundleConflictFreeRegister(i, endReg, occupiedBundles, align, multiSteps);
             startReg = i;
             continue;
         }
@@ -2098,8 +2098,8 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
                 {
                     foundItem = 0;
                     i++;
-                    LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
-                    i = LocalRA::findBundleConflictFreeRegister(i, endReg, occupiedBundles, align, multiSteps);
+                    findRegisterCandiateWithAlignForward(i, align, multiSteps);
+                    i = findBundleConflictFreeRegister(i, endReg, occupiedBundles, align, multiSteps);
                     startReg = i;
                     continue;
                 }
@@ -2129,7 +2129,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsBackward(int regIdx, BankAlign align, i
         grfRows = nrows - 1;
     }
 
-    LocalRA::findRegisterCandiateWithAlignBackward(i, align, multiSteps);
+    findRegisterCandiateWithAlignBackward(i, align, multiSteps);
 
     startReg = i;
 
@@ -2145,7 +2145,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsBackward(int regIdx, BankAlign align, i
         {
             foundItem = 0;
             i -= nrows;
-            LocalRA::findRegisterCandiateWithAlignBackward(i, align, multiSteps);
+            findRegisterCandiateWithAlignBackward(i, align, multiSteps);
 
             startReg = i;
             continue;
@@ -2172,7 +2172,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsBackward(int regIdx, BankAlign align, i
                 {
                     foundItem = 0;
                     i -= nrows;
-                    LocalRA::findRegisterCandiateWithAlignBackward(i, align, multiSteps);
+                    findRegisterCandiateWithAlignBackward(i, align, multiSteps);
 
                     startReg = i;
                     continue;

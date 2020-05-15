@@ -5112,7 +5112,7 @@ void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
     }
 }
 
-static bool hasInternalConflict(int reg1, int reg2)
+static bool hasInternalConflict(IR_Builder *builder, int reg1, int reg2)
 {
     int bundleID1 = (reg1 % 16) / 2;
     int bankID1 = reg1 % 2;
@@ -5705,7 +5705,7 @@ uint32_t G4_BB::emitBankConflictGen12lp(std::ostream& os_output, G4_INST *inst, 
     //SWAP: has lower proirity than read suppression
     //For SIMD16, the SWAP is triggered by first register, but the second one will be swapped as well
     if (isValidReg(currInstRegs[0][0]) && isValidReg(currInstRegs[0][1]) && isValidReg(currInstRegs[0][2]) &&
-        hasInternalConflict(currInstRegs[0][1], currInstRegs[0][2]))
+        hasInternalConflict(parent->builder, currInstRegs[0][1], currInstRegs[0][2]))
     {
         int tmpReg = currInstRegs[0][1];
         currInstRegs[0][1] = currInstRegs[0][0];
@@ -5890,7 +5890,7 @@ void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST
             int twoSrcConflicts = 0;
             int simd16SuppressionConflicts = 0;
             unsigned BCNum = 0;
-            if (platform == GENX_TGLLP && GetStepping() == Step_A)
+            if (parent->builder->hasEarlyGRFRead())
             {
                 BCNum = emitBankConflictGen12lp(output, inst, suppressRegs, lastRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts);
             }

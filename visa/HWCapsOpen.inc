@@ -143,11 +143,6 @@
         return getPlatformGeneration(getGenxPlatform()) <= PlatformGen::GEN11;
     }
 
-    bool hasCrossInstructionConflict() const
-    {
-        return isGen12LP();
-    }
-
     bool hasBankCollision() const
     {
         return getPlatformGeneration(getGenxPlatform()) <= PlatformGen::GEN11 || (getOption(vISA_enableBCR) && !(getGenxPlatform() == GENX_TGLLP && GetStepping() == Step_A));

@@ -110,10 +110,6 @@ namespace vISA
 
     public:
         static void getRowInfo(int size, int& nrows, int& lastRowSize);
-        static void findRegisterCandiateWithAlignForward(int &i, BankAlign align, bool evenAlign);
-        static unsigned int get_bundle(unsigned int baseReg, int offset);
-        static int findBundleConflictFreeRegister(int curReg, int endReg, unsigned short occupiedBundles, BankAlign align, bool evenAlign);
-        static void findRegisterCandiateWithAlignBackward(int &i, BankAlign align, bool evenAlign);
         static unsigned int convertSubRegOffFromWords(G4_Declare* dcl, int subregnuminwords);
         static unsigned int convertSubRegOffToWords(G4_Declare* dcl, int subregnum);
         static void countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveIntervals);
@@ -272,6 +268,7 @@ namespace vISA
 class PhyRegsLocalRA
 {
 private:
+    IR_Builder* builder;
     unsigned int numRegs;
     // nth bit represents whether the register's nth word is free/busy
     // 1 - busy, 0 - free
@@ -292,7 +289,7 @@ private:
     bool r1Forbidden;
 
 public:
-    PhyRegsLocalRA(uint32_t nregs) : numRegs(nregs)
+    PhyRegsLocalRA(IR_Builder* _builder, uint32_t nregs) : builder(_builder), numRegs(nregs)
     {
         uint32_t grfFree = 0;
 
@@ -319,6 +316,14 @@ public:
     }
 
     void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
+
+    void findRegisterCandiateWithAlignForward(int& i, BankAlign align, bool evenAlign);
+
+    unsigned int get_bundle(unsigned int baseReg, int offset);
+
+    int findBundleConflictFreeRegister(int curReg, int endReg, unsigned short occupiedBundles, BankAlign align, bool evenAlign);
+
+    void findRegisterCandiateWithAlignBackward(int& i, BankAlign align, bool evenAlign);
 
     void setGRFBusy( int which );
     void setGRFBusy( int which, int howmany );

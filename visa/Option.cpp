@@ -242,6 +242,13 @@ bool Options::parseOptions(int argc, const char* argv[])
             return false;
         }
         m_vISAOptions.setBool(vISA_PlatformIsSet, true);   //platformIsSet = true;
+        if (GetStepping() == Step_A)
+        {
+            if (getGenxPlatform() == GENX_TGLLP)
+            {
+                m_vISAOptions.setBool(vISA_HasEarlyGRFRead, true);
+            }
+        }
     }
 
     if (m_vISAOptions.isArgSetByUser(vISA_GetvISABinaryName)) {

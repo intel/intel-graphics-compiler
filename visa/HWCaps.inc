@@ -135,11 +135,6 @@
         return getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11;
     }
 
-    bool hasCrossInstructionConflict() const
-    {
-        return isGen12LP();
-    }
-
     bool hasSendShootdown() const
     {
         return getPlatform() >= GENX_CNL;
@@ -448,6 +443,12 @@
         return getPlatform() == GENX_TGLLP;
     }
 
+    bool hasEarlyGRFRead() const
+    {
+        return (getPlatform() == GENX_TGLLP) && getOption(vISA_HasEarlyGRFRead);
+    }
+
+
     bool no64bitType() const
     {
         return getPlatform() == GENX_ICLLP || isGen12LP();
@@ -462,7 +463,7 @@
     bool hasBankCollision() const
     {
         return (getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11) ||
-        (getOption(vISA_enableBCR) && !(getPlatform() == GENX_TGLLP && GetStepping() == Step_A));
+        (getOption(vISA_enableBCR) && !hasEarlyGRFRead());
     }
 
     bool oneGRFBankDivision() const
