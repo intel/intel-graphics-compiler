@@ -308,7 +308,7 @@ namespace IGC
         {
             BasicBlock* BB = &*BI;
             auto Result = BlockLiveMap.insert(std::make_pair(BB, std::set<Value*>()));
-            IGC_ASSERT(Result.second && "must not be processed yet");
+            IGC_ASSERT_MESSAGE(Result.second, "must not be processed yet");
             std::set<Value*>& Live = Result.first->second;
 
             // live = union of successor.livein for each successor of b
@@ -451,7 +451,7 @@ namespace IGC
                     // Just set unavailable of live range info for now.
                     clear(RemoveLR);
                     return false;
-                    // llvm_unreachable("Support for unnatural loops, not implemented yet");
+                    // IGC_ASSERT_EXIT_MESSAGE(0, "Support for unnatural loops, not implemented yet");
                 }
             }
         }

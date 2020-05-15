@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "EmitVISAPass.hpp"
 #include "CISABuilder.hpp"
 #include "VertexShaderCodeGen.hpp"
@@ -915,7 +916,8 @@ bool EmitPass::isCandidateIfStmt(
 
     llvm::BasicBlock* S0 = Br->getSuccessor(0), * S1 = Br->getSuccessor(1);
     IGCLLVM::TerminatorInst* T0 = S0->getTerminator(), * T1 = S1->getTerminator();
-    IGC_ASSERT(T1 && T0 && "BB is missing a terminator!");
+    IGC_ASSERT_MESSAGE(nullptr != T1, "BB is missing a terminator!");
+    IGC_ASSERT_MESSAGE(nullptr != T0, "BB is missing a terminator!");
     bool  isMatch =
         S0->getSinglePredecessor() == ifBB && S1->getSinglePredecessor() == ifBB &&
         T0->getNumSuccessors() == 1 && T1->getNumSuccessors() == 1 &&
@@ -954,7 +956,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
     std::map<CVariable*, unsigned int> dstVTyMap;
     llvm::BasicBlock* bb = aBB;
     IGCLLVM::TerminatorInst* TI = aBB->getTerminator();
-    IGC_ASSERT(TI);
+    IGC_ASSERT(nullptr != TI);
 
     // main code to generate phi-mov
     for (unsigned succ = 0, e = TI->getNumSuccessors(); succ != e; ++succ)
@@ -1518,7 +1520,7 @@ static uint64_t getFPOne(VISA_Type Ty)
     case ISA_TYPE_HF:   return 0x3C00;
     default: break;
     }
-    IGC_ASSERT(false && "unknown floating type!");
+    IGC_ASSERT_MESSAGE(0, "unknown floating type!");
     return ~0U;
 }
 
@@ -1806,7 +1808,7 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         // dst += popcnt.32(src >> 32);
         // We could do the same thing here if the original sequence in LLVM IR
         // cannot be translated efficienty.
-        IGC_ASSERT(false && "NOT IMPLEMENTED YET!");
+        IGC_ASSERT_MESSAGE(0, "NOT IMPLEMENTED YET!");
         break;
     }
     case llvm_ieee_sqrt:
@@ -1939,6 +1941,7 @@ void EmitPass::EmitCopyToStruct(InsertValueInst* inst, const DstModifier& DstMod
 
 void EmitPass::EmitCopyFromStruct(Value* value, unsigned idx, const DstModifier& DstMod)
 {
+    IGC_ASSERT(nullptr != value);
     IGC_ASSERT(isa<Instruction>(value));
     CVariable* SrcV = GetSymbol(value);
     StructType* sTy = dyn_cast<StructType>(value->getType());
@@ -1946,7 +1949,10 @@ void EmitPass::EmitCopyFromStruct(Value* value, unsigned idx, const DstModifier&
     const StructLayout* SL = DL.getStructLayout(sTy);
 
     // For extract value, src and dest should share uniformity
-    IGC_ASSERT(m_destination && m_destination->IsUniform() == SrcV->IsUniform());
+    IGC_ASSERT(nullptr != m_destination);
+    IGC_ASSERT(nullptr != SrcV);
+    IGC_ASSERT(m_destination->IsUniform() == SrcV->IsUniform());
+
     bool isUniform = SrcV->IsUniform();
     unsigned nLanes = isUniform ? 1 : numLanes(m_currShader->m_dispatchSize);
     unsigned elementOffset = (unsigned)SL->getElementOffset(idx) * nLanes;
@@ -2115,7 +2121,7 @@ void EmitPass::emitVMESendIME2(GenIntrinsicInst* inst) {
     // If the BTIs aren't consecutive then we can't do VME.
     if (isDualRef)
     {
-        IGC_ASSERT(refImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue() && "refImg BTI and bwdRefImg BTI are not consecutive!");
+        IGC_ASSERT_MESSAGE(refImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue(), "refImg BTI and bwdRefImg BTI are not consecutive!");
     }
 
     uint32_t regs2snd = 4 + 2;
@@ -2165,9 +2171,9 @@ void EmitPass::emitVMESendIME(GenIntrinsicInst* inst) {
     CVariable* refImgBTI = GetSymbol(inst->getArgOperand(4));
     CVariable* bwdRefImgBTI = has_bwd_ref_image ? GetSymbol(inst->getArgOperand(5)) : nullptr;
     // If the BTIs aren't consecutive then we can't do VME.
-    IGC_ASSERT(srcImgBTI->GetImmediateValue() + 1 == refImgBTI->GetImmediateValue() && "srcImg BTI and refImg BTI are not consecutive!");
+    IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 1 == refImgBTI->GetImmediateValue(), "srcImg BTI and refImg BTI are not consecutive!");
     if (bwdRefImgBTI != nullptr) {
-        IGC_ASSERT(srcImgBTI->GetImmediateValue() + 2 == bwdRefImgBTI->GetImmediateValue() && "srcImg BTI and bwdRefImg BTI are not consecutive!");
+        IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 2 == bwdRefImgBTI->GetImmediateValue(), "srcImg BTI and bwdRefImg BTI are not consecutive!");
     }
 
     uint rest_opnd_idx_base = has_bwd_ref_image ? 6 : 5;
@@ -2184,7 +2190,7 @@ void EmitPass::emitVMESendIME(GenIntrinsicInst* inst) {
     if (costCenterVar->IsUniform())
     {
         VISA_Type costVisaTy = costCenterVar->GetType();
-        IGC_ASSERT(SIZE_DWORD == CEncoder::GetCISADataTypeSize(costVisaTy) &&
+        IGC_ASSERT_MESSAGE(SIZE_DWORD == CEncoder::GetCISADataTypeSize(costVisaTy),
             "VME IME's cost center var has wrong type!");
         CVariable* newVar = m_currShader->GetNewVariable(8, ISA_TYPE_UD, EALIGN_GRF);
 
@@ -2234,7 +2240,7 @@ void EmitPass::emitVMESendFBR(GenIntrinsicInst* inst) {
     CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(3));
     CVariable* refImgBTI = GetSymbol(inst->getArgOperand(4));
     // If the BTIs aren't consecutive then we can't do VME.
-    IGC_ASSERT(srcImgBTI->GetImmediateValue() + 1 == refImgBTI->GetImmediateValue() && "srcImg BTI and refImg BTI are not consecutive!");
+    IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 1 == refImgBTI->GetImmediateValue(), "srcImg BTI and refImg BTI are not consecutive!");
 
     const uint rest_opnd_idx_base = 5;
     CVariable* FBRMbModeVar = GetSymbol(inst->getArgOperand(rest_opnd_idx_base));
@@ -2256,7 +2262,7 @@ void EmitPass::emitVMESendFBR2(GenIntrinsicInst* inst) {
     // If the BTIs aren't consecutive then we can't do VME.
     if (isDualRef)
     {
-        IGC_ASSERT(refImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue() && "refImg BTI and bwdRefImg BTI are not consecutive!");
+        IGC_ASSERT_MESSAGE(refImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue(), "refImg BTI and bwdRefImg BTI are not consecutive!");
     }
 
     const uint32_t regs2rcv = (7 + 0), regs2snd = (4 + 4);
@@ -2287,12 +2293,12 @@ void EmitPass::emitVMESendSIC(GenIntrinsicInst* inst)
     CVariable* ref0ImgBTI = GetSymbol(inst->getArgOperand(4));
     CVariable* ref1ImgBTI = GetSymbol(inst->getArgOperand(5));
     // If the BTIs aren't consecutive then we can't do VME.
-    IGC_ASSERT(srcImgBTI->GetImmediateValue() + 1 == ref0ImgBTI->GetImmediateValue() && "srcImg BTI and ref0Img BTI are not consecutive!");
+    IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 1 == ref0ImgBTI->GetImmediateValue(), "srcImg BTI and ref0Img BTI are not consecutive!");
     // In the non-bidirectional case, we just pass the same reference image into the
     // forward and backward slots.
     if (ref0ImgBTI->GetImmediateValue() != ref1ImgBTI->GetImmediateValue())
     {
-        IGC_ASSERT(ref0ImgBTI->GetImmediateValue() + 1 == ref1ImgBTI->GetImmediateValue() && "ref0Img BTI and ref1Img BTI are not consecutive!");
+        IGC_ASSERT_MESSAGE(ref0ImgBTI->GetImmediateValue() + 1 == ref1ImgBTI->GetImmediateValue(), "ref0Img BTI and ref1Img BTI are not consecutive!");
     }
 
     m_encoder->SendVmeSic(srcImgBTI, uniInputVar, sicInputVar, outputVar);
@@ -2310,18 +2316,18 @@ void EmitPass::emitVMESendSIC2(GenIntrinsicInst* inst)
     // If the BTIs aren't consecutive then we can't do VME.
     if (isDualRef)
     {
-        IGC_ASSERT(fwdRefImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue() && "refImg BTI and bwdRefImg BTI are not consecutive!");
+        IGC_ASSERT_MESSAGE(fwdRefImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue(), "refImg BTI and bwdRefImg BTI are not consecutive!");
     }
 
     // If the BTIs aren't consecutive then we can't do VME. And this only applies to case
     // when either fwdRefImg or bwdRefImg is presented.
     if (srcImgBTI->GetImmediateValue() != fwdRefImgBTI->GetImmediateValue())
     {
-        IGC_ASSERT(srcImgBTI->GetImmediateValue() + 1 == fwdRefImgBTI->GetImmediateValue() && "srcImg BTI and refImg BTI are not consecutive!");
+        IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 1 == fwdRefImgBTI->GetImmediateValue(),& "srcImg BTI and refImg BTI are not consecutive!");
 
         if (fwdRefImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue())
         {
-            IGC_ASSERT(srcImgBTI->GetImmediateValue() + 2 == bwdRefImgBTI->GetImmediateValue() && "srcImg BTI and bwdRefImg BTI are not consecutive!");
+            IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 2 == bwdRefImgBTI->GetImmediateValue(), "srcImg BTI and bwdRefImg BTI are not consecutive!");
         }
     }
 
@@ -2345,11 +2351,12 @@ void EmitPass::emitVMESendSIC2(GenIntrinsicInst* inst)
 }
 
 void EmitPass::emitCreateMessagePhases(GenIntrinsicInst* inst) {
-    IGC_ASSERT((m_destination->GetType() == ISA_TYPE_UD || m_destination->GetType() == ISA_TYPE_D) && "Destination type is expected to be UD or D!");
-    IGC_ASSERT(isa<ConstantInt>(inst->getArgOperand(0)) && "Num phases expected to be const!");
+    IGC_ASSERT_MESSAGE((m_destination->GetType() == ISA_TYPE_UD || m_destination->GetType() == ISA_TYPE_D), "Destination type is expected to be UD or D!");
+    IGC_ASSERT_MESSAGE(isa<ConstantInt>(inst->getArgOperand(0)), "Num phases expected to be const!");
     unsigned int numPhases = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(0))->getZExtValue());
 
-    uint16_t     numSimdLanes = numLanes(m_SimdMode);
+    const uint16_t numSimdLanes = numLanes(m_SimdMode);
+    IGC_ASSERT(0 < numSimdLanes);
     unsigned int numWideSimdIters = numPhases * 8 / numSimdLanes;
     unsigned int remSimd8Iters = (numPhases * 8 % numSimdLanes) / 8;
 
@@ -2387,7 +2394,7 @@ static VISA_Type GetTypeFromSize(unsigned size)
     case 8:
         return ISA_TYPE_UQ;
     default:
-        IGC_ASSERT(false && "unknown size");
+        IGC_ASSERT_MESSAGE(0, "unknown size");
         return ISA_TYPE_UD;
     }
 }
@@ -2691,7 +2698,7 @@ void EmitPass::emitSimdGetMessagePhase(llvm::GenIntrinsicInst* inst) {
         simdMode = SIMDMode::SIMD16;
     }
     else {
-        IGC_ASSERT(false && "Unhandled data type");
+        IGC_ASSERT_MESSAGE(0, "Unhandled data type");
     }
 
     for (uint32_t i = 0; i < numPhases; ++i) {
@@ -2713,7 +2720,7 @@ void EmitPass::emitGetMessagePhaseType(llvm::GenIntrinsicInst* inst, VISA_Type t
     unsigned int phaseIndex = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(1))->getZExtValue());
     unsigned int phaseSubindex = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(2))->getZExtValue());
 
-    IGC_ASSERT((phaseIndex * getGRFSize() < messagePhases->GetSize()) && "out of bounds!");
+    IGC_ASSERT_MESSAGE(phaseIndex * getGRFSize() < messagePhases->GetSize(), "out of bounds!");
 
     CVariable* messagePhaseElem = m_currShader->GetNewAlias(messagePhases, type, phaseIndex * getGRFSize(), 1);
 
@@ -2752,7 +2759,7 @@ void EmitPass::emitSetMessagePhaseType(GenIntrinsicInst* inst, VISA_Type type) {
     unsigned int phaseSubindex = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(2))->getZExtValue());
     CVariable* val = GetSymbol(inst->getArgOperand(3));
 
-    IGC_ASSERT((phaseIndex * getGRFSize() < messagePhases->GetSize()) && "out of bounds!");
+    IGC_ASSERT_MESSAGE(phaseIndex * getGRFSize() < messagePhases->GetSize(), "out of bounds!");
 
     if (!SameVar(m_destination, messagePhases))
     {
@@ -2788,7 +2795,7 @@ void EmitPass::emitGetMessagePhase(llvm::GenIntrinsicInst* inst) {
     CVariable* messagePhases = GetSymbol(inst->getArgOperand(0));
     unsigned int phaseIndex = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(1))->getZExtValue());
 
-    IGC_ASSERT((phaseIndex * getGRFSize() < messagePhases->GetSize()) && "out of bounds!");
+    IGC_ASSERT_MESSAGE(phaseIndex * getGRFSize() < messagePhases->GetSize(), "out of bounds!");
 
     CVariable* messagePhase = m_currShader->GetNewAlias(messagePhases, ISA_TYPE_UD, phaseIndex * getGRFSize(), 8);
     m_encoder->SetSimdSize(SIMDMode::SIMD8);
@@ -2815,7 +2822,7 @@ void EmitPass::emitSetMessagePhase(llvm::GenIntrinsicInst* inst) {
     unsigned int phaseIndex = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(1))->getZExtValue());
     CVariable* val = GetSymbol(inst->getArgOperand(2));
 
-    IGC_ASSERT((phaseIndex * getGRFSize() < messagePhases->GetSize()) && "out of bounds!");
+    IGC_ASSERT_MESSAGE(phaseIndex * getGRFSize() < messagePhases->GetSize(), "out of bounds!");
 
     if (!SameVar(m_destination, messagePhases))
     {
@@ -2837,7 +2844,7 @@ void EmitPass::emitVideoAnalyticSLM(llvm::GenIntrinsicInst* inst, const DWORD re
     CVariable* coords = GetSymbol(inst->getArgOperand(argNum++));
     CVariable* size = NULL;
 
-    IGC_ASSERT(!(m_currShader->m_dispatchSize == SIMDMode::SIMD32 && m_encoder->IsSecondHalf()) && "VA Intrinsics are simd independent");
+    IGC_ASSERT_MESSAGE(!(m_currShader->m_dispatchSize == SIMDMode::SIMD32 && m_encoder->IsSecondHalf()), "VA Intrinsics are simd independent");
     GenISAIntrinsic::ID id = inst->getIntrinsicID();
     if (id == GenISAIntrinsic::GenISA_vaCentroid ||
         id == GenISAIntrinsic::GenISA_vaBoolCentroid ||
@@ -3017,8 +3024,8 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
 
     // Mul64 does not write to m_destination!
 
-    IGC_ASSERT((src[1]->GetType() == ISA_TYPE_Q || src[1]->GetType() == ISA_TYPE_UQ)
-        && "Cannot multiply a qword by a non-qword type");
+    IGC_ASSERT_MESSAGE((src[1]->GetType() == ISA_TYPE_Q) || (src[1]->GetType() == ISA_TYPE_UQ),
+        "Cannot multiply a qword by a non-qword type");
 
     // The signedness of the hi-part type should be the same as that
     // of the original destination type.
@@ -3198,7 +3205,10 @@ void EmitPass::Xor(const SSource sources[2], const DstModifier& modifier)
 
 void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier& modifier)
 {
-    IGC_ASSERT(modifier.sat == false && modifier.flag == nullptr);
+    IGC_ASSERT(modifier.sat == false);
+    IGC_ASSERT(modifier.flag == nullptr);
+    IGC_ASSERT(nullptr != m_destination);
+
     e_predicate predicate = GetPredicate(pred);
 
     CVariable* src0 = GetSrcVariable(sources[0]);
@@ -3218,7 +3228,7 @@ void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], cons
     CVariable* dst = m_destination;
     if (m_destination->GetType() != ISA_TYPE_BOOL && dst->GetType() != src0->GetType())
     {
-        IGC_ASSERT(CEncoder::GetCISADataTypeSize(dst->GetType()) == CEncoder::GetCISADataTypeSize(src0->GetType()) &&
+        IGC_ASSERT_MESSAGE(CEncoder::GetCISADataTypeSize(dst->GetType()) == CEncoder::GetCISADataTypeSize(src0->GetType()),
             "Cmp to GRF must have the same size for source and destination");
         dst = m_currShader->BitCast(m_destination, src0->GetType());
     }
@@ -3303,7 +3313,9 @@ void EmitPass::Alu(e_opcode opCode, const SSource sources[N], const DstModifier&
 
 void EmitPass::Select(const SSource sources[3], const DstModifier& modifier)
 {
-    IGC_ASSERT(modifier.flag == nullptr && sources[0].mod == EMOD_NONE);
+    IGC_ASSERT(modifier.flag == nullptr);
+    IGC_ASSERT(sources[0].mod == EMOD_NONE);
+
     CVariable* flag = GetSrcVariable(sources[0]);
 
     bool fromConstantPool = sources[1].fromConstantPool;
@@ -3350,7 +3362,7 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
     if (outputType == SHADER_OUTPUT_TYPE_OMASK)
     {
         CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
-        IGC_ASSERT(psProgram->GetPhase() == PSPHASE_COARSE &&
+        IGC_ASSERT_MESSAGE(psProgram->GetPhase() == PSPHASE_COARSE,
             "oMask intrinsics should be left only for coarse phase");
         if (!psProgram->IsLastPhase())
         {
@@ -3364,7 +3376,7 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
     }
     else
     {
-        IGC_ASSERT(false && "output not supported");
+        IGC_ASSERT_MESSAGE(0, "output not supported");
     }
 }
 
@@ -3594,6 +3606,7 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
         else
         {
             IGC_ASSERT(messageType != EU_PI_MESSAGE_EVAL_CENTROID_POSITION);
+            IGC_ASSERT(numDWPerGRF);
 
             messageLength = 2 * numLanes(m_currShader->m_SIMDSize) / numDWPerGRF;
             payload = m_currShader->GetNewVariable(messageLength * (getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
@@ -3684,7 +3697,7 @@ void EmitPass::emitDSInput(llvm::Instruction* pInst)
     }
     else
     {
-        IGC_ASSERT(false && "Only constant payload input variable index handled");
+        IGC_ASSERT_MESSAGE(0, "Only constant payload input variable index handled");
     }
 }
 
@@ -3722,6 +3735,7 @@ void EmitPass::emitSetDebugReg(llvm::Instruction* inst)
     {
         // write dbg0.0
         CVariable* src = GetSymbol(src0);
+        IGC_ASSERT(nullptr != src);
         IGC_ASSERT(src->IsUniform());
         m_encoder->SetDstSubReg(0);
         m_encoder->Copy(m_currShader->GetDBG(), src);
@@ -3831,10 +3845,11 @@ void EmitPass::PackSIMD8HFRet(CVariable* dst)
 void EmitPass::emitLdInstruction(llvm::Instruction* inst)
 {
     uint numOperands = inst->getNumOperands();
-    IGC_ASSERT(numOperands > 7 && numOperands < 10 && "Wrong number of operands");
+    IGC_ASSERT_MESSAGE(7 < numOperands, "Wrong number of operands");
+    IGC_ASSERT_MESSAGE(numOperands < 10, "Wrong number of operands");
 
     uint writeMask = m_currShader->GetExtractMask(inst);
-    IGC_ASSERT(writeMask != 0 && "Wrong write mask");
+    IGC_ASSERT(writeMask != 0);
 
     EOPCODE opCode = GetOpCode(inst);
     //Subtract the offsets, resource sources to get
@@ -4123,7 +4138,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
     for (uint index = 0; index < numOperands; index++)
     {
         Value* val = m_CE->GetPayloadElementToValueMapping(inst, index);
-        IGC_ASSERT(val && "Val cannot be NULL");
+        IGC_ASSERT_MESSAGE(nullptr != val, "Val cannot be NULL");
         VISA_Type type = m_currShader->GetType(val->getType());
 
         if (touchedValuesSet.count(val)) {
@@ -4655,7 +4670,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
 
         bool channelUniform = simdChannel->IsUniform();
 
-        IGC_ASSERT(m_encoder->GetCISADataTypeSize(simdChannel->GetType()) == 4 &&
+        IGC_ASSERT_MESSAGE(m_encoder->GetCISADataTypeSize(simdChannel->GetType()) == 4,
             "simdChannel size of simdShuffle should be 4 bytes!");
 
         // Choose the shift factor.
@@ -4666,7 +4681,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         case 2:  shtAmt = 1; break;
         case 4:  shtAmt = 2; break;
         case 8:  shtAmt = 3; break;
-        default: IGC_ASSERT(false && "Unexpected data type size.");
+        default: IGC_ASSERT_MESSAGE(0, "Unexpected data type size.");
         }
 
         CVariable* simdChannelUW = m_currShader->BitCast(simdChannel, ISA_TYPE_UW);
@@ -4695,7 +4710,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
             const VISA_Type dataType = data->GetType();
 
             IGC_ASSERT(numElements == 16);
-            IGC_ASSERT(!m_encoder->IsSecondHalf() && "This emitter must be called only once for simd32!");
+            IGC_ASSERT_MESSAGE(!m_encoder->IsSecondHalf(), "This emitter must be called only once for simd32!");
 
             // Create a 32 element variable and copy both instances of data into it.
             contiguousData = m_currShader->GetNewVariable(
@@ -4711,7 +4726,8 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
                 numElements * m_encoder->GetCISADataTypeSize(dataType),
                 numElements);
 
-            IGC_ASSERT(contiguousData && upperHalfOfContiguousData);
+            IGC_ASSERT(contiguousData);
+            IGC_ASSERT(upperHalfOfContiguousData);
 
             m_encoder->SetSecondHalf(false);
             m_encoder->Copy(contiguousData, data);
@@ -4984,7 +5000,7 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
         CVariable* ScatterOff = eOffset;
         if (activelanes > 1)
         {
-            IGC_ASSERT(!useQW && "Only one lane is active when using QW!");
+            IGC_ASSERT_MESSAGE(!useQW, "Only one lane is active when using QW!");
 
             ScatterOff = m_currShader->GetNewVariable(
                 activelanes, eOffset->GetType(), eOffset->GetAlign(), true);
@@ -5169,7 +5185,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
         CVariable* gatherOff = eOffset;
         if (activelanes > 1)
         {
-            IGC_ASSERT(!useQW && "Only one lane is active when using QW!");
+            IGC_ASSERT_MESSAGE(!useQW, "Only one lane is active when using QW!");
 
             gatherOff = m_currShader->GetNewVariable(
                 activelanes, eOffset->GetType(), eOffset->GetAlign(), true);
@@ -5206,7 +5222,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
 
     if (useA64)
     {
-        IGC_ASSERT(!isToSLM && "SLM's ptr size should be 32!");
+        IGC_ASSERT_MESSAGE(!isToSLM, "SLM's ptr size should be 32!");
 
         uint32_t dstOffset = 0;
         uint32_t bytesRemaining = totalBytes;
@@ -5466,7 +5482,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     {
         nbElements = inst->getType()->getVectorNumElements();
     }
-    IGC_ASSERT(nbElements <= 8 && "InValid Vector Size");
+    IGC_ASSERT_MESSAGE(nbElements <= 8, "InValid Vector Size");
 
     int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
     int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
@@ -5506,7 +5522,8 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     }
     else
     {
-        IGC_ASSERT(totalWidth % maxWidth == 0 && "Total width must be divisible by 32!");
+        IGC_ASSERT(maxWidth);
+        IGC_ASSERT_MESSAGE(totalWidth % maxWidth == 0, "Total width must be divisible by 32!");
         numPasses = totalWidth / maxWidth;
         blockWidth = maxWidth;
     }
@@ -5705,7 +5722,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     {
         nbElements = dataPtr->getType()->getVectorNumElements();
     }
-    IGC_ASSERT(nbElements <= 8 && "InValid Vector Size");
+    IGC_ASSERT_MESSAGE(nbElements <= 8, "InValid Vector Size");
 
     CVariable* data = GetSymbol(dataPtr);
     data = BroadcastIfUniform(data);
@@ -5741,7 +5758,8 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     }
     else
     {
-        IGC_ASSERT(totalWidth % maxWidth == 0 && "Total width must be divisible by 32!");
+        IGC_ASSERT(maxWidth);
+        IGC_ASSERT_MESSAGE(totalWidth % maxWidth == 0, "Total width must be divisible by 32!");
         numPasses = totalWidth / maxWidth;
         blockWidth = maxWidth;
     }
@@ -6225,7 +6243,7 @@ void EmitPass::emitURBRead(llvm::GenIntrinsicInst* inst)
     default:
         IGC_ASSERT(0);
     }
-    IGC_ASSERT(!isa<ConstantInt>(offset) && "Constant offsets are expected to be handled elsewhere.");
+    IGC_ASSERT_MESSAGE(!isa<ConstantInt>(offset), "Constant offsets are expected to be handled elsewhere.");
     emitURBReadCommon(inst, QuadEltUnit(0), offset);
 }
 
@@ -6421,7 +6439,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     }
 
     uint writeMask = m_currShader->GetExtractMask(inst);
-    IGC_ASSERT(writeMask != 0 && "Wrong write mask");
+    IGC_ASSERT_MESSAGE(writeMask != 0, "Wrong write mask");
 
     bool derivativeSample = inst->IsDerivative();
 
@@ -6614,7 +6632,7 @@ void EmitPass::emitGetPixelMask(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::emitDiscard(llvm::Instruction* inst)
 {
-    IGC_ASSERT(false && "No codegen for discard intrinsic");
+    IGC_ASSERT_MESSAGE(0, "No codegen for discard intrinsic");
 }
 
 void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
@@ -6883,7 +6901,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
 
     // Figure out the write mask from the size of the destination we want to write
     uint writeMask = m_currShader->GetExtractMask(inst);
-    IGC_ASSERT(writeMask != 0 && "Wrong write mask");
+    IGC_ASSERT_MESSAGE(writeMask != 0, "Wrong write mask");
 
     Value* texOperand = inst->getOperand(textureArgIdx);
     ResourceDescriptor resource = GetResourceVariable(texOperand);
@@ -6986,21 +7004,21 @@ void EmitPass::emitCSSGV(GenIntrinsicInst* inst)
     }
     case THREAD_ID_IN_GROUP_X:
     {
-        IGC_ASSERT(inst->getType() == Type::getInt16Ty(inst->getContext()) && "only 16bit ThreadID is supported now.");
+        IGC_ASSERT_MESSAGE(inst->getType() == Type::getInt16Ty(inst->getContext()), "only 16bit ThreadID is supported now.");
         pThreadIdInGroup = csProgram->CreateThreadIDsinGroup(THREAD_ID_IN_GROUP_X);
         m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
         break;
     }
     case THREAD_ID_IN_GROUP_Y:
     {
-        IGC_ASSERT(inst->getType() == Type::getInt16Ty(inst->getContext()) && "only 16bit ThreadID is supported now.");
+        IGC_ASSERT_MESSAGE(inst->getType() == Type::getInt16Ty(inst->getContext()), "only 16bit ThreadID is supported now.");
         pThreadIdInGroup = csProgram->CreateThreadIDsinGroup(THREAD_ID_IN_GROUP_Y);
         m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
         break;
     }
     case THREAD_ID_IN_GROUP_Z:
     {
-        IGC_ASSERT(inst->getType() == Type::getInt16Ty(inst->getContext()) && "only 16bit ThreadID is supported now.");
+        IGC_ASSERT_MESSAGE(inst->getType() == Type::getInt16Ty(inst->getContext()), "only 16bit ThreadID is supported now.");
         pThreadIdInGroup = csProgram->CreateThreadIDsinGroup(THREAD_ID_IN_GROUP_Z);
         m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
         break;
@@ -7335,7 +7353,7 @@ void EmitPass::emitHSSGV(llvm::GenIntrinsicInst* pInst)
     }
     else
     {
-        IGC_ASSERT(false && "Hull Shader SGV not supported");
+        IGC_ASSERT_MESSAGE(0, "Hull Shader SGV not supported");
     }
 }
 
@@ -7345,7 +7363,9 @@ void EmitPass::emitHSSGV(llvm::GenIntrinsicInst* pInst)
 void EmitPass::getPixelPosition(CVariable* destination, const uint component)
 {
     IGC_ASSERT(component < 2);
-    IGC_ASSERT(destination && m_encoder->IsIntegerType(destination->GetType()));
+    IGC_ASSERT(nullptr != destination);
+    IGC_ASSERT(nullptr != m_encoder);
+    IGC_ASSERT(m_encoder->IsIntegerType(destination->GetType()));
 
     const bool getX = (component == 0);
 
@@ -7403,7 +7423,7 @@ void EmitPass::emitSGV(SGVIntrinsic* inst)
         emitGS_SGV(inst);
         break;
     default:
-        IGC_ASSERT(false && "This shader should not have SGV");
+        IGC_ASSERT_MESSAGE(0, "This shader should not have SGV");
         break;
     }
 }
@@ -7926,7 +7946,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         // - owordPtr
         // let us know if you see a case that hits this assertion by those intrinsics
         inst->print(IGC::Debug::ods());
-        IGC_ASSERT(false && "unknown intrinsic");
+        IGC_ASSERT_MESSAGE(0, "unknown intrinsic");
         break;
     }
 }
@@ -7957,7 +7977,7 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
 
     default:
         inst->print(IGC::Debug::ods());
-        IGC_ASSERT(false && "unknown intrinsic");
+        IGC_ASSERT_MESSAGE(0, "unknown intrinsic");
         break;
     }
 }
@@ -7996,7 +8016,7 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
         }
         else
         {
-            IGC_ASSERT(false && "Unsupported constraint type!");
+            IGC_ASSERT_MESSAGE(0, "Unsupported constraint type!");
             return false;
         }
     };
@@ -8048,7 +8068,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
 
     if (!validateInlineAsmConstraints(inst, constraints))
     {
-        IGC_ASSERT(false && "Constraints for inline assembly cannot be validated");
+        IGC_ASSERT_MESSAGE(0, "Constraints for inline assembly cannot be validated");
         return;
     }
 
@@ -8062,7 +8082,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         for (auto user : inst->users())
         {
             ExtractValueInst* ex = dyn_cast<ExtractValueInst>(user);
-            IGC_ASSERT(ex && "Invalid user of inline asm call");
+            IGC_ASSERT_MESSAGE(nullptr != ex, "Invalid user of inline asm call");
             unsigned id = *ex->idx_begin();
             IGC_ASSERT(id < numOutputs);
             IGC_ASSERT(outputs[id] == nullptr);
@@ -8134,12 +8154,12 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         unsigned val = 0;
         if (StringRef(idStart, idEnd - idStart).getAsInteger(10, val))
         {
-            IGC_ASSERT(false && "Invalid operand format");
+            IGC_ASSERT_MESSAGE(0, "Invalid operand format");
             return;
         }
         if (val >= opnds.size())
         {
-            IGC_ASSERT(false && "Invalid operand index");
+            IGC_ASSERT_MESSAGE(0, "Invalid operand index");
             return;
         }
         string varName = m_encoder->GetVariableName(opnds[val]);
@@ -8344,7 +8364,7 @@ void EmitPass::emitBitCast(llvm::BitCastInst* btCst)
 
     if (srcType->isPointerTy())
     {
-        IGC_ASSERT(dstType->isPointerTy() && "Expected both src and dst have pointer type.");
+        IGC_ASSERT_MESSAGE(dstType->isPointerTy(), "Expected both src and dst have pointer type.");
     }
 
     if (btCst->getOperand(0)->getType()->isVectorTy() ||
@@ -8356,7 +8376,11 @@ void EmitPass::emitBitCast(llvm::BitCastInst* btCst)
 
     CVariable* src = GetSymbol(btCst->getOperand(0));
     CVariable* dst = m_destination;
-    IGC_ASSERT(numSrcElement == 1 && numDstElement == 1 && "vector to vector bitcast not supported");
+    IGC_ASSERT(nullptr != src);
+    IGC_ASSERT(nullptr != dst);
+    IGC_ASSERT_MESSAGE(numSrcElement == 1, "vector to vector bitcast not supported");
+    IGC_ASSERT_MESSAGE(numDstElement == 1, "vector to vector bitcast not supported");
+
     src = m_currShader->BitCast(src, dst->GetType());
     m_encoder->Copy(dst, src);
     m_encoder->Push();
@@ -8645,7 +8669,7 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
         // offsets may be out-of-bound. The alignment information of the base
         // element type should not impact the offset.
         uint eltBytes = GetScalarTypeSizeInRegister(Extract->getType());
-        IGC_ASSERT(eltBytes > 0 && "illegal ExtractElement instruction");
+        IGC_ASSERT_MESSAGE(eltBytes, "illegal ExtractElement instruction");
 
         if (m_currShader->CanTreatAsAlias(Extract))
         {
@@ -8665,9 +8689,8 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
             }
             // the symbol table should have coalesced those two values;
             // TODO: clean up when we get generic coalescing
-            IGC_ASSERT((vector == m_destination->GetAlias() ||
-                vector->GetAlias() == m_destination->GetAlias()) &&
-                m_destination->GetAliasOffset() == (offset + vector->GetAliasOffset()));
+            IGC_ASSERT(vector == m_destination->GetAlias() || vector->GetAlias() == m_destination->GetAlias());
+            IGC_ASSERT(m_destination->GetAliasOffset() == (offset + vector->GetAliasOffset()));
         }
         else
         {
@@ -8952,12 +8975,8 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
         uint sizeInBits = (unsigned int)inst->getType()->getPrimitiveSizeInBits();
-        IGC_ASSERT((sizeInBits == 8 ||
-            sizeInBits == 16 ||
-            sizeInBits == 32 ||
-            sizeInBits == 64 ||
-            sizeInBits == 96 ||
-            sizeInBits == 128) && "load type must be 1/2/4/8/12/16 bytes long");
+        IGC_ASSERT_MESSAGE((sizeInBits == 8) || (sizeInBits == 16) || (sizeInBits == 32) || (sizeInBits == 64) || (sizeInBits == 96) || (sizeInBits == 128),
+            "load type must be 1/2/4/8/12/16 bytes long");
         IGC::CVariable* visaOffset = BroadcastIfUniform(src_offset);
         unsigned int alignment = inst->getAlignment();
         if (sizeInBits == 32 && resource.m_surfaceType == ESURFACE_STATELESS &&
@@ -9086,7 +9105,7 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
     case Instruction::Unreachable:
         break;
     default:
-        IGC_ASSERT(false && "need to add code gen support for this instruction");
+        IGC_ASSERT_MESSAGE(0, "need to add code gen support for this instruction");
     }
 }
 
@@ -9102,8 +9121,8 @@ void EmitPass::emitPairToPtr(GenIntrinsicInst* GII) {
         return;
     }
 
-    IGC_ASSERT(m_currShader->GetContext()->getRegisterPointerSizeInBits(AS) == 64
-        && "Pointer size should be either 32 or 64!");
+    IGC_ASSERT_MESSAGE(m_currShader->GetContext()->getRegisterPointerSizeInBits(AS) == 64,
+        "Pointer size should be either 32 or 64!");
 
     CVariable* Dst32 = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
     // Lo
@@ -9133,7 +9152,7 @@ void EmitPass::emitCall(llvm::CallInst* inst)
         return;
     }
 
-    IGC_ASSERT(!F->empty() && "unexpanded builtin?");
+    IGC_ASSERT_MESSAGE(!F->empty(), "unexpanded builtin?");
 
     unsigned i = 0;
     for (auto& Arg : F->args())
@@ -9217,7 +9236,7 @@ void EmitPass::emitReturn(llvm::ReturnInst* inst)
                 emitDualBlendRT(cast<RTDualBlendSourceIntrinsic>(inst), true);
                 break;
             default:
-                IGC_ASSERT(false && "unknown intrinsic");
+                IGC_ASSERT_MESSAGE(0, "unknown intrinsic");
                 break;
             }
         }
@@ -10063,12 +10082,8 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
         sizeInBits = m_currShader->GetContext()->getRegisterPointerSizeInBits(pllValToStore->getType()->getPointerAddressSpace());
     }
 
-    IGC_ASSERT((sizeInBits == 8 ||
-        sizeInBits == 16 ||
-        sizeInBits == 32 ||
-        sizeInBits == 64 ||
-        sizeInBits == 96 ||
-        sizeInBits == 128) && "Stored type must be 1/2/4/8/12/16 bytes long");
+    IGC_ASSERT_MESSAGE((sizeInBits == 8) || (sizeInBits == 16) || (sizeInBits == 32) || (sizeInBits == 64) || (sizeInBits == 96) || (sizeInBits == 128),
+        "Stored type must be 1/2/4/8/12/16 bytes long");
 
     CVariable* storedVal = GetSymbol(pllValToStore);
 
@@ -10181,7 +10196,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
     // offsets may be out-of-bound. The alignment information of the base
     // element type should not impact the offset.
     uint32_t eBytes = GetScalarTypeSizeInRegister(eTy);
-    IGC_ASSERT(eBytes > 0 && "illegal InsertElementInst instruction");
+    IGC_ASSERT_MESSAGE(eBytes, "illegal InsertElementInst instruction");
 
     llvm::Value* pVec = inst->getOperand(0);
     CVariable* pInstVar = GetSymbol(inst);
@@ -10395,14 +10410,14 @@ void EmitPass::emitBranch(llvm::BranchInst* branch, const SSource& cond, e_predM
         }
         else if (next != succ0)
         {
-            IGC_ASSERT(next == succ1 && "next should be succ1!");
+            IGC_ASSERT_MESSAGE(next == succ1, "next should be succ1!");
 
             m_encoder->Jump(flag, label0);
             m_encoder->Push();
         }
         else
         {
-            IGC_ASSERT(next == succ0 && "next should be succ0");
+            IGC_ASSERT_MESSAGE(next == succ0, "next should be succ0");
 
             m_encoder->SetInversePredicate(!inversePred);
             m_encoder->Jump(flag, label1);
@@ -10480,7 +10495,7 @@ void EmitPass::JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode 
 
 CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar)
 {
-    IGC_ASSERT(pVar && "pVar is null");
+    IGC_ASSERT_MESSAGE(nullptr != pVar, "pVar is null");
     VISA_Type VarT = pVar->GetType();
     bool Need64BitEmu = m_currShader->m_Platform->hasNoInt64Inst() &&
         (VarT == ISA_TYPE_Q || VarT == ISA_TYPE_UQ);
@@ -10626,7 +10641,7 @@ CVariable* EmitPass::UniformCopy(CVariable* var)
 /// This allow avoiding redundant code
 CVariable* EmitPass::UniformCopy(CVariable* var, CVariable*& off, CVariable* eMask, bool doSub)
 {
-    IGC_ASSERT(!var->IsUniform() && "Expect non-uniform source!");
+    IGC_ASSERT_MESSAGE(!var->IsUniform(), "Expect non-uniform source!");
 
     if (eMask == nullptr)
     {
@@ -10665,7 +10680,7 @@ CVariable* EmitPass::UniformCopy(CVariable* var, CVariable*& off, CVariable* eMa
             shAmt = m_currShader->ImmToVariable(3, ISA_TYPE_W);
             break;
         default:
-            IGC_ASSERT(false && "Unsupported element size!");
+            IGC_ASSERT_MESSAGE(0, "Unsupported element size!");
             break;
         }
         if (shAmt) {
@@ -10893,7 +10908,7 @@ void EmitPass::emitGS_SGV(SGVIntrinsic* pInst)
         break;
     }
     default:
-        IGC_ASSERT(false && "This should not happen after lowering to URB reads.");
+        IGC_ASSERT_MESSAGE(0, "This should not happen after lowering to URB reads.");
     }
 }
 
@@ -11059,7 +11074,8 @@ void EmitPass::ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src
         alignment,
         false);
     pSrc[1] = m_currShader->GetNewVariable(pSrc[0]);
-    IGC_ASSERT(pSrc[0] && pSrc[1]);
+    IGC_ASSERT(pSrc[0]);
+    IGC_ASSERT(pSrc[1]);
 
     CVariable* srcTmp = src;
     CVariable* pSrcTmp[2] = { pSrc[0], pSrc[1] };
@@ -11328,11 +11344,11 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
     const bool isInt64Mul = (op == EOPCODE_MUL && CEncoder::IsIntegerType(type) &&
         CEncoder::GetCISADataTypeSize(type) == 8);
 
-    IGC_ASSERT(iSTD::BitCount(clusterSize) == 1 && "Cluster size must be a power of two.");
-    IGC_ASSERT(!is64bitType || CEncoder::GetCISADataTypeSize(type) == 8 && "Unsupported 64-bit type.");
+    IGC_ASSERT_MESSAGE(iSTD::BitCount(clusterSize) == 1, "Cluster size must be a power of two.");
+    IGC_ASSERT_MESSAGE(!is64bitType || CEncoder::GetCISADataTypeSize(type) == 8, "Unsupported 64-bit type.");
 
-    IGC_ASSERT(!isInt64Type || !m_currShader->m_Platform->hasNoInt64Inst() && "Int64 emulation is not supported.");
-    IGC_ASSERT(!isFP64Type || !m_currShader->m_Platform->hasNoFP64Inst() && "FP64 emulation is not supported.");
+    IGC_ASSERT_MESSAGE(!isInt64Type || !m_currShader->m_Platform->hasNoInt64Inst(), "Int64 emulation is not supported.");
+    IGC_ASSERT_MESSAGE(!isFP64Type || !m_currShader->m_Platform->hasNoFP64Inst(), "FP64 emulation is not supported.");
     // Src might be uniform, as its value will be broadcasted during src preparation.
     // Dst uniformness depends on actual support in WIAnalysis, so far implemented for 32-clusters only.
     IGC_ASSERT(!dst->IsUniform() || clusterSize == 32);
@@ -11343,7 +11359,7 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
 
     if(clusterSize == 1)
     {
-        IGC_ASSERT(false && "Simple copy. For performance reasons handle it somehow at earlier stage.");
+        IGC_ASSERT_MESSAGE(0, "Simple copy. For performance reasons handle it somehow at earlier stage.");
         for (uint half = 0; half < uint(isSimd32 ? 2 : 1); ++half)
         {
             const bool secondHalf = half > 0;
@@ -11921,7 +11937,7 @@ void EmitPass::emitScalarAtomics(
         op = EOPCODE_MIN;
         break;
     default:
-        IGC_ASSERT(false && "unsupported scalar atomic type");
+        IGC_ASSERT_MESSAGE(0, "unsupported scalar atomic type");
         break;
     }
 
@@ -11929,7 +11945,7 @@ void EmitPass::emitScalarAtomics(
         bitWidth == 16 ? ISA_TYPE_W :
         bitWidth == 32 ? ISA_TYPE_D :
                          ISA_TYPE_Q;
-    IGC_ASSERT(bitWidth == 16 || bitWidth == 32 || bitWidth == 64 && "invalid bitsize");
+    IGC_ASSERT_MESSAGE((bitWidth == 16) || (bitWidth == 32) || (bitWidth == 64), "invalid bitsize");
     if (atomic_op == EATOMIC_INC || atomic_op == EATOMIC_DEC)
     {
         if (atomic_op == EATOMIC_INC)
@@ -12029,7 +12045,7 @@ void EmitPass::emitScalarAtomics(
     if (returnsImmValue)
     {
         unsigned int counter = m_currShader->m_numberInstance;
-        IGC_ASSERT(op == EOPCODE_ADD && "we can only get the return value for add right now");
+        IGC_ASSERT_MESSAGE(op == EOPCODE_ADD, "we can only get the return value for add right now");
         for (unsigned int i = 0; i < counter; ++i)
         {
             m_encoder->SetNoMask();
@@ -12439,7 +12455,7 @@ void EmitPass::emitAtomicStructured(llvm::Instruction* pInsn)
     uint bufferIndex = 0;
     bool directIdx = false;
     BufferType bufType = DecodeAS4GFXResource(as, directIdx, bufferIndex);
-    IGC_ASSERT(bufType == UAV && "Only UAV's are allowed for Alloc Consume instruction");
+    IGC_ASSERT_MESSAGE(bufType == UAV, "Only UAV's are allowed for Alloc Consume instruction");
 
     CVariable* pArrIdx = GetSymbol(pllArrayIdx);
     CVariable* pByteOffset = GetSymbol(pllByteOffset);
@@ -12453,12 +12469,12 @@ void EmitPass::emitAtomicStructured(llvm::Instruction* pInsn)
     }
     else
     {
-        IGC_ASSERT(false && "Buffer Type not supported by this dword atomic op");
+        IGC_ASSERT_MESSAGE(0, "Buffer Type not supported by this dword atomic op");
     }
 
     if (m_currShader->GetIsUniform(pInsn))
     {
-        IGC_ASSERT(false && "Uniform ld structured not implemented yet");
+        IGC_ASSERT_MESSAGE(0, "Uniform ld structured not implemented yet");
     }
     else
     {
@@ -12585,7 +12601,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
 
     if (m_currShader->GetIsUniform(pInsn))
     {
-        IGC_ASSERT(false && "Uniform DWordAtomicTyped not implemented yet");
+        IGC_ASSERT_MESSAGE(0, "Uniform DWordAtomicTyped not implemented yet");
     }
     else
     {
@@ -12752,17 +12768,17 @@ void EmitPass::emitLdStructured(llvm::Instruction* pInsn)
     }
     else if (bufType == SLM)
     {
-        IGC_ASSERT(false && "SLM should use the llvm load instead of ld structured message");
+        IGC_ASSERT_MESSAGE(0, "SLM should use the llvm load instead of ld structured message");
     }
     else
     {
-        IGC_ASSERT(false && "Resource type isn't implemented");
+        IGC_ASSERT_MESSAGE(0, "Resource type isn't implemented");
     }
     m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bufType, bufferIndex, btiIndex);
 
     if (m_currShader->GetIsUniform(pInsn))
     {
-        IGC_ASSERT(false && "Uniform ld structured not implemented yet");
+        IGC_ASSERT_MESSAGE(0, "Uniform ld structured not implemented yet");
     }
     else
     {
@@ -12878,17 +12894,17 @@ void EmitPass::emitStoreStructured(llvm::Instruction* pInsn)
     }
     else if (bufType == SLM)
     {
-        IGC_ASSERT(false && "SLM should use the llvm store instead of store structured message");
+        IGC_ASSERT_MESSAGE(0, "SLM should use the llvm store instead of store structured message");
     }
     else
     {
-        IGC_ASSERT(false && "Resource type isn't implemented");
+        IGC_ASSERT_MESSAGE(0, "Resource type isn't implemented");
     }
     m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bufType, bufferIndex, btiIndex);
 
     if (m_currShader->GetIsUniform(pInsn))
     {
-        IGC_ASSERT(false && "Uniform ld structured not implemented yet");
+        IGC_ASSERT_MESSAGE(0, "Uniform ld structured not implemented yet");
     }
     else
     {
@@ -13007,7 +13023,7 @@ void setSIMDSizeMask(CEncoder* m_encoder, CShader* m_currShader, int i)
 void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 {
     uint writeMask = m_currShader->GetExtractMask(pInsn);
-    IGC_ASSERT(writeMask != 0 && "Wrong write mask");
+    IGC_ASSERT_MESSAGE(writeMask != 0, "Wrong write mask");
 
     llvm::Value* pllSrcBuffer = pInsn->getOperand(0);
     llvm::Value* pllU = pInsn->getOperand(1);
@@ -13031,7 +13047,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
     if (m_currShader->GetIsUniform(pInsn))
     {
-        IGC_ASSERT(false && "Uniform ld_uav_typed not implemented yet");
+        IGC_ASSERT_MESSAGE(0, "Uniform ld_uav_typed not implemented yet");
     }
     else
     {
@@ -13111,7 +13127,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
 
     if (m_currShader->GetIsUniform(pInsn))
     {
-        IGC_ASSERT(false && "Uniform store_uav_typed not implemented yet");
+        IGC_ASSERT_MESSAGE(0, "Uniform store_uav_typed not implemented yet");
     }
     else
     {
@@ -13995,21 +14011,21 @@ bool EmitPass::ignoreRoundingMode(llvm::Instruction* inst) const
 
 void EmitPass::initDefaultRoundingMode()
 {
-    ERoundingMode defaultRM_FP = static_cast<ERoundingMode>(m_pCtx->getModuleMetaData()->compOpt.FloatRoundingMode);
-    ERoundingMode defaultRM_FPCvtInt = static_cast<ERoundingMode>(m_pCtx->getModuleMetaData()->compOpt.FloatCvtIntRoundingMode);
+    const ERoundingMode defaultRM_FP = static_cast<ERoundingMode>(m_pCtx->getModuleMetaData()->compOpt.FloatRoundingMode);
+    const ERoundingMode defaultRM_FPCvtInt = static_cast<ERoundingMode>(m_pCtx->getModuleMetaData()->compOpt.FloatCvtIntRoundingMode);
 
     // Rounding modes must meet the following restrictions
     // in order to be used as default:
     //   1. if FPCvtInt's RM is rtz, FP's RM can be any;
     //   2. otherwise, FPCvtIn's RM must be the same as FP's RM
-    if (defaultRM_FPCvtInt == ERoundingMode::ROUND_TO_ZERO ||
-        defaultRM_FPCvtInt == defaultRM_FP)
-    {
-        m_roundingMode_FPCvtInt = defaultRM_FPCvtInt;
-        m_roundingMode_FP = defaultRM_FP;
-        return;
-    }
-    llvm_unreachable("Unsupported default rounding modes!");
+    const bool supportedDefaultRoundingModes =
+        ((defaultRM_FPCvtInt == ERoundingMode::ROUND_TO_ZERO) ||
+        (defaultRM_FPCvtInt == defaultRM_FP));
+
+    IGC_ASSERT_EXIT(supportedDefaultRoundingModes);
+
+    m_roundingMode_FPCvtInt = defaultRM_FPCvtInt;
+    m_roundingMode_FP = defaultRM_FP;
 }
 
 void EmitPass::SetRoundingMode_FP(ERoundingMode newRM_FP)
@@ -14197,7 +14213,7 @@ void EmitPass::emitfitof(llvm::GenIntrinsicInst* inst)
 // Emit FP Operations (FPO) using round-to-zero (rtz)
 void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
 {
-    IGC_ASSERT(inst->getNumArgOperands() >= 2 && "ICE: incorrect gen intrinsic");
+    IGC_ASSERT_MESSAGE(inst->getNumArgOperands() >= 2, "ICE: incorrect gen intrinsic");
 
     GenISAIntrinsic::ID GID = inst->getIntrinsicID();
     CVariable* src0 = GetSymbol(inst->getOperand(0));
@@ -14209,7 +14225,7 @@ void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
     switch (GID)
     {
     default:
-        IGC_ASSERT(false && "ICE: unexpected Gen Intrinsic");
+        IGC_ASSERT_MESSAGE(0, "ICE: unexpected Gen Intrinsic");
         break;
     case GenISAIntrinsic::GenISA_mul_rtz:
         m_encoder->Mul(dst, src0, src1);
@@ -14233,11 +14249,11 @@ void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::emitftoi(llvm::GenIntrinsicInst* inst)
 {
-    IGC_ASSERT(inst->getOperand(0)->getType()->isFloatingPointTy() && "Unsupported type");
+    IGC_ASSERT_MESSAGE(inst->getOperand(0)->getType()->isFloatingPointTy(), "Unsupported type");
     CVariable* src = GetSymbol(inst->getOperand(0));
     CVariable* dst = m_destination;
     ERoundingMode RM = GetRoundingMode_FPCvtInt(inst);
-    IGC_ASSERT(RM != ERoundingMode::ROUND_TO_ANY && "Not valid FP->int rounding mode!");
+    IGC_ASSERT_MESSAGE(RM != ERoundingMode::ROUND_TO_ANY, "Not valid FP->int rounding mode!");
 
     GenISAIntrinsic::ID id = inst->getIntrinsicID();
     if (id == GenISAIntrinsic::GenISA_ftoui_rtn ||
@@ -14289,8 +14305,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     llvm::Type* srcEltTy, * dstEltTy;
     uint32_t srcNElts, dstNElts;
 
-    IGC_ASSERT((srcTy->isVectorTy() || dstTy->isVectorTy()) &&
-        "No vector type !");
+    IGC_ASSERT_MESSAGE((srcTy->isVectorTy() || dstTy->isVectorTy()), "No vector type !");
 
     if (srcTy->isVectorTy())
     {
@@ -14387,14 +14402,15 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     }
     else if (dstEltBytes > srcEltBytes)
     {
+        IGC_ASSERT(0 < srcEltBytes);
         CVariable* aliasDst = m_currShader->GetNewAlias(m_destination, src->GetType(), 0, 0);
         uint32_t N = dstEltBytes / srcEltBytes;
-        IGC_ASSERT((dstEltBytes % srcEltBytes) == 0 && "Basic types should be power of 2");
+        IGC_ASSERT_MESSAGE((dstEltBytes % srcEltBytes) == 0, "Basic types should be power of 2");
         // Since srcEltBytes can be the second largest element type (32bit)
         // and region hstride == 1, Src will not need splitting!
         // Only dst might need spliting.
         bool splitDst = (!dstUniform && (dstEltBytes * width > m_currShader->getGRFSize() * 2));
-        IGC_ASSERT((!splitDst || (width == 16) || (width == 32)) &&
+        IGC_ASSERT_MESSAGE((!splitDst || (width == 16) || (width == 32)),
             "Internal Error: Dst needs splitting only under SIMD16!");
         if (N > 4)
         {
@@ -14432,7 +14448,8 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             //   mov (8, Q1) Y_alias.1<2>   V1(0,0)<8;8,1>
             //   mov (8, Q2) Y_alias.17<2>  V1(1,0)<8;8,1>
             //
-            IGC_ASSERT((N == 8) && (srcEltBytes == 1) && "Unexpected N value");
+            IGC_ASSERT(N == 8);
+            IGC_ASSERT(srcEltBytes == 1);
             const uint32_t N2 = N / 2; // 4
             VISA_Type TyD = (src->GetType() == ISA_TYPE_UB) ? ISA_TYPE_UD : ISA_TYPE_D;
             CVariable* V0 = m_currShader->GetNewVariable(dstUniform ? 1 : width, TyD, EALIGN_GRF, dstUniform);
@@ -14554,17 +14571,18 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             }
         }
     }
-    else
-    {   // srcEltBytes > dstEltBytes
+    else // (dstEltBytes < srcEltBytes)
+    {
+        IGC_ASSERT(0 < dstEltBytes);
         // Create an aliase to src and mov the alias to the dst
         CVariable* aliasSrc = m_currShader->GetNewAlias(src, m_destination->GetType(), 0, 0);
         uint32_t N = srcEltBytes / dstEltBytes;
         // Similar to dstEltBytes > srcEltBytes, dstEltBytes can be 32bit
         // at most and dst's stride == 1, so it will not need spliting.
         bool splitSrc = (!srcUniform && (srcEltBytes * width > m_currShader->getGRFSize() * 2));
-        IGC_ASSERT((!splitSrc || (width == 16) || (width == 32)) &&
+        IGC_ASSERT_MESSAGE((!splitSrc || (width == 16) || (width == 32)),
             "Internal Error: Src needs splitting only under SIMD16!");
-        IGC_ASSERT((srcEltBytes % dstEltBytes) == 0 && "Basic types should be power of 2");
+        IGC_ASSERT_MESSAGE((srcEltBytes % dstEltBytes) == 0, "Basic types should be power of 2");
         // avoid coalescing the dst variable if all of its uses are EEI with constant index
         // this give RA more freedom (e.g. for bank conflict assignments)
         auto allUsesAreEEwithImm = [this](BitCastInst* BCI)
@@ -14859,10 +14877,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     VectorType* VTy = dyn_cast<VectorType>(Ty);
     Type* eltTy = VTy ? VTy->getElementType() : Ty;
     uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
-    IGC_ASSERT((eltBytes == 1 ||
-        eltBytes == 2 ||
-        eltBytes == 4 ||
-        eltBytes == 8) &&
+    IGC_ASSERT_MESSAGE((eltBytes == 1) || (eltBytes == 2) || (eltBytes == 4) || (eltBytes == 8),
         "Load's type (element type if vector) must be 1/2/4/8-byte long");
 
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
@@ -14871,7 +14886,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     bool destUniform = m_destination->IsUniform();
     bool srcUniform = eOffset->IsUniform();
     // Not possible to have uniform dest AND non-uniform src.
-    IGC_ASSERT(!(destUniform && !srcUniform) &&
+    IGC_ASSERT_MESSAGE(!(destUniform && !srcUniform),
         "If ld's dest is uniform, ld's src must be uniform");
 
     unsigned align = inst->getAlignment();
@@ -14885,8 +14900,9 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     if (totalBytes < 4)
     {
         // totalBytes is either 1 or 2, and it must be scalar or (1-element vector)
-        IGC_ASSERT((elts == 1) && (totalBytes != 3) &&
-            "Internal Error: do not expect <2 x i8> or <3 x i8>");
+        // do not expect <2 x i8> or <3 x i8>
+        IGC_ASSERT(elts == 1);
+        IGC_ASSERT(totalBytes != 3);
 
         uint16_t nbelts = srcUniform ? 1 : width;
         e_alignment align = EALIGN_GRF;
@@ -14964,7 +14980,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             }
             else
             {
-                IGC_ASSERT(!useOWAligned && "SLM's pointer size must be 32 bit!");
+                IGC_ASSERT_MESSAGE(!useOWAligned, "SLM's pointer size must be 32 bit!");
                 // emit svm block read
                 m_encoder->OWLoadA64(loadDest, eOffset, loadDest->GetSize());
             }
@@ -15051,7 +15067,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             uint32_t incImm1;  // for activelanes=8
             switch (activelanes) {
             default:
-                IGC_ASSERT(false && "ICE: something wrong happened in computing activelanes!");
+                IGC_ASSERT_MESSAGE(0, "ICE: something wrong happened in computing activelanes!");
                 break;
             case 2:
                 // only can have QW in this case
@@ -15187,7 +15203,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
                 emitGatherA64(inst, subLoadDst, addrVarSIMD8, blkBits, numBlks, true);
                 break;
             default:
-                IGC_ASSERT(false && "Somethings wrong!");
+                IGC_ASSERT_MESSAGE(0, "Somethings wrong!");
             }
             m_encoder->Push();
 
@@ -15262,7 +15278,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             emitGatherA64(inst, gatherDst, rawAddrVar, blkBits, numBlks, false);
             break;
         default:
-            IGC_ASSERT(false && "Internal Error: unexpected message kind for load!");
+            IGC_ASSERT_MESSAGE(0, "Internal Error: unexpected message kind for load!");
         }
         m_encoder->Push();
 
@@ -15306,10 +15322,8 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
     Type* eltTy = VTy ? VTy->getElementType() : Ty;
     uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
 
-    IGC_ASSERT((eltBytes == 1 ||
-        eltBytes == 2 ||
-        eltBytes == 4 ||
-        eltBytes == 8) && "Store type must be 1/2/4/8-bytes long");
+    IGC_ASSERT_MESSAGE((eltBytes == 1) || (eltBytes == 2) || (eltBytes == 4) || (eltBytes == 8),
+        "Store type must be 1/2/4/8-bytes long");
 
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
     uint32_t totalBytes = elts * eltBytes;
@@ -15325,9 +15339,8 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
     //   2. destination is scalar and uniform (handle vector if needed)
     if (totalBytes < 4 || isUniformStoreOCL(inst))
     {
-        IGC_ASSERT((totalBytes == 1 || totalBytes == 2 ||
-            totalBytes == 4 || totalBytes == 8 ||
-            totalBytes == 12 || totalBytes == 16) && "Wrong total Bytes!");
+        IGC_ASSERT_MESSAGE((totalBytes == 1) || (totalBytes == 2) || (totalBytes == 4) || (totalBytes == 8) || (totalBytes == 12) || (totalBytes == 16),
+            "Wrong total Bytes!");
 
         SIMDMode simdmode = SIMDMode::SIMD1;
         e_alignment grfAlign = useA32 ? EALIGN_GRF : EALIGN_2GRF;
@@ -15336,9 +15349,9 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
         {
             // Vector uniform store: handle uniform value only.
             // For elts > 1, the eltBytes must be either 4 or 8; only elts = 2|3|4 are handled.
-            IGC_ASSERT((eltBytes == 4 || eltBytes == 8) && "ICE: wrong element bytes!");
-            IGC_ASSERT(dstUniform && srcUniform &&
-                "ICE: for vector uniform store, both dst and src must be uniform!");
+            IGC_ASSERT_MESSAGE((eltBytes == 4) || (eltBytes == 8), "ICE: wrong element bytes!");
+            IGC_ASSERT_MESSAGE(dstUniform, "ICE: for vector uniform store, both dst and src must be uniform!");
+            IGC_ASSERT_MESSAGE(srcUniform, "ICE: for vector uniform store, both dst and src must be uniform!");
 
             // As we use simd8 for vector (SKL HW WA). Converting DW to QW
             // makes sense only if the final is a scalar (a single QW).
@@ -15405,7 +15418,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
 
             // (We could have useQW == true AND eltBytes == 4. Note that if useQW
             // is false, eltBytes must be 4.)
-            IGC_ASSERT((useQW || eltBytes == 4) && "ICE: wrong vector element type!");
+            IGC_ASSERT_MESSAGE(useQW || (eltBytes == 4), "ICE: wrong vector element type!");
 
             // Since we might change element type, need to create copy.
             if (useQW && eltBytes == 4)
@@ -15414,7 +15427,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                     nbeltsWanted, ISA_TYPE_UQ, grfAlign, true /*srcUniform*/);
                 CVariable* tmpAlias = m_currShader->GetNewAlias(tmp,
                     storedVar->GetType(), 0, 2 * nbeltsWanted);
-                IGC_ASSERT((2 * nbeltsWanted) == storedVar->GetNumberElement() &&
+                IGC_ASSERT_MESSAGE((2 * nbeltsWanted) == storedVar->GetNumberElement(),
                     "Mismatch of the number of elements: sth wrong!");
                 emitVectorCopy(tmpAlias, storedVar, 2 * nbeltsWanted);
                 storedVar = tmp;
@@ -15557,8 +15570,8 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
             }
             setPredicateForDiscard();
             VISA_Type storedType = storedVar->GetType();
-            IGC_ASSERT((eltOffBytes < (UINT16_MAX)) && "eltOffBytes > higher than 64k");
-            IGC_ASSERT((nbelts < (UINT16_MAX)) && "nbelts > higher than 64k");
+            IGC_ASSERT_MESSAGE((eltOffBytes < (UINT16_MAX)), "eltOffBytes > higher than 64k");
+            IGC_ASSERT_MESSAGE((nbelts < (UINT16_MAX)), "nbelts > higher than 64k");
             CVariable* subStoredVar = m_currShader->GetNewAlias(storedVar, storedType, (uint16_t)eltOffBytes, (uint16_t)nbelts);
             switch (VecMessInfo.insts[i].kind) {
             case VectorMessage::MESSAGE_A32_BYTE_SCATTERED_RW:
@@ -15574,7 +15587,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                 emitScatterA64(subStoredVar, rawAddrVar, blkBits, numBlks, false);
                 break;
             default:
-                IGC_ASSERT(false && "Internal Error: unexpected Message kind for store");
+                IGC_ASSERT_MESSAGE(0, "Internal Error: unexpected Message kind for store");
             }
             m_encoder->Push();
         }
@@ -15738,8 +15751,7 @@ void EmitPass::emitAddSP(CVariable* Dst, CVariable* Src, CVariable* offset)
 void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
     IGC_ASSERT(Dst->GetType() == ISA_TYPE_Q || Dst->GetType() == ISA_TYPE_UQ);
     IGC_ASSERT(Src0->GetType() == ISA_TYPE_Q || Src0->GetType() == ISA_TYPE_UQ);
-    IGC_ASSERT(Src1->GetType() == ISA_TYPE_UV || Src1->GetType() == ISA_TYPE_UD ||
-           Src1->GetType() == ISA_TYPE_D);
+    IGC_ASSERT(Src1->GetType() == ISA_TYPE_UV || Src1->GetType() == ISA_TYPE_UD || Src1->GetType() == ISA_TYPE_D);
 
     bool IsUniformDst = Dst->IsUniform();
 
@@ -15851,7 +15863,7 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
 {
     if (Src->GetVarType() == EVARTYPE_PREDICATE)
     {
-        IGC_ASSERT(!Ty->isVectorTy() && "vector of predicates?");
+        IGC_ASSERT_MESSAGE(!Ty->isVectorTy(), "vector of predicates?");
         IGC_ASSERT(Dst->GetVarType() == Src->GetVarType());
         CVariable* Zero = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
         m_encoder->Or(Dst, Src, Zero);
@@ -15864,10 +15876,12 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
     }
     else if (Ty->isStructTy())
     {
-        IGC_ASSERT(Dst->GetType() == ISA_TYPE_B && Src->GetType() == ISA_TYPE_B);
+        IGC_ASSERT(Dst->GetType() == ISA_TYPE_B);
+        IGC_ASSERT(Src->GetType() == ISA_TYPE_B);
+
         if (!Src->IsUniform() && Dst->IsUniform())
         {
-            IGC_ASSERT(0 && "Does not support non-uniform to uniform struct copy");
+            IGC_ASSERT_MESSAGE(0, "Does not support non-uniform to uniform struct copy");
         }
 
         StructType* STy = dyn_cast<StructType>(Ty);
@@ -15888,7 +15902,7 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
     }
     else
     {
-        IGC_ASSERT(Ty->isSingleValueType() && "not supported");
+        IGC_ASSERT_MESSAGE(Ty->isSingleValueType(), "not supported");
         m_encoder->Copy(Dst, Src);
         m_encoder->Push();
     }
@@ -15929,7 +15943,8 @@ void EmitPass::emitLLVMbswap(IntrinsicInst* inst)
     Type* Ty = inst->getType();
     Value* Arg = inst->getArgOperand(0);
     uint32_t nBytes = int_cast<uint32_t>(m_DL->getTypeSizeInBits(Ty));
-    IGC_ASSERT(nBytes % 16 == 0 && !Ty->isVectorTy() && "Incorrect llvm.bswap!");
+    IGC_ASSERT_MESSAGE(nBytes % 16 == 0, "Incorrect llvm.bswap");
+    IGC_ASSERT_MESSAGE(!Ty->isVectorTy(), "Incorrect llvm.bswap");
     nBytes >>= 3;  // Now, nBytes are in unit of byte.
 
     CVariable* Src = GetSymbol(Arg);
@@ -16067,7 +16082,7 @@ void EmitPass::emitLLVMbswap(IntrinsicInst* inst)
     }
     else
     {
-        IGC_ASSERT(false && "Unsupported type for llvm.bswap!");
+        IGC_ASSERT_MESSAGE(0, "Unsupported type for llvm.bswap!");
         return;
     }
 }
@@ -16172,7 +16187,7 @@ void EmitPass::emitGetBufferPtr(GenIntrinsicInst* inst)
         bti = 0;
         break;
     default:
-        IGC_ASSERT(false && "unexpect buffer type for GetBufferPtr");
+        IGC_ASSERT_MESSAGE(0, "unexpect buffer type for GetBufferPtr");
         break;
     }
     CVariable* indexCVar = GetSymbol(buf_idxv);
@@ -16474,7 +16489,7 @@ void EmitPass::emitMulAdd16(Instruction* I, const SSource Sources[2], const DstM
         m_encoder->Add(m_destination, LVar, RVar);
     }
     else {
-        IGC_ASSERT(I->getOpcode() == Instruction::Add && "Unknown Opcode.");
+        IGC_ASSERT_MESSAGE(I->getOpcode() == Instruction::Add, "Unknown Opcode.");
         m_encoder->Add(m_destination, LVar, RVar);
     }
     m_encoder->Push();
@@ -16612,7 +16627,7 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
         {
             return ISA_TYPE_DF;
         }
-        IGC_ASSERT(ty->isIntegerTy() && "expect integer type");
+        IGC_ASSERT_MESSAGE(ty->isIntegerTy(), "expect integer type");
         auto width = dyn_cast<IntegerType>(ty)->getBitWidth();
         IGC_ASSERT(width == 8 || width == 16 || width == 32 || width == 64);
         if (isSigned)
@@ -16645,7 +16660,7 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
         case ISA_TYPE_UQ:
             return std::numeric_limits<uint64_t>::max();
         default:
-            IGC_ASSERT(false && "unexpected visa type");
+            IGC_ASSERT_MESSAGE(0, "unexpected visa type");
             return std::numeric_limits<int>::max();
         }
     };
@@ -16670,7 +16685,7 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
         case ISA_TYPE_UQ:
             return std::numeric_limits<uint64_t>::min();
         default:
-            IGC_ASSERT(false && "unexpected visa type");
+            IGC_ASSERT_MESSAGE(0, "unexpected visa type");
             return std::numeric_limits<int>::min();
         }
     };

@@ -146,7 +146,7 @@ namespace
 
 void SymbolicEvaluation::dump_symbols()
 {
-    IGC_ASSERT((int)m_symInfos.size() <= m_nextValueID &&
+    IGC_ASSERT_MESSAGE((int)m_symInfos.size() <= m_nextValueID,
         "ValueInfoMap has the incorrect number of entries!");
 
     // for sorting symbols in increasing ID.
@@ -154,7 +154,8 @@ void SymbolicEvaluation::dump_symbols()
     for (auto II : m_symInfos) {
         Value* V = II.first;
         ValueSymInfo* VSI = II.second;
-        IGC_ASSERT(VSI->ID < m_nextValueID && "Incorrect value ID!");
+        IGC_ASSERT(nullptr != VSI);
+        IGC_ASSERT_MESSAGE(VSI->ID < m_nextValueID, "Incorrect value ID!");
         Vals[VSI->ID] = V;
     }
 
@@ -163,6 +164,7 @@ void SymbolicEvaluation::dump_symbols()
         Value* V = Vals[i];
         // V should not be nullptr, but check it
         // for safety.
+        IGC_ASSERT(nullptr != V);
         if (V) {
             dbgs() << "\n    V"
                 << i
@@ -421,7 +423,7 @@ int SymbolicEvaluation::cmp(const SymProd* T0, const SymProd* T1)
             }
         }
         else {
-            IGC_ASSERT(false && "V0 and/or V1 should be in the map!");
+            IGC_ASSERT_MESSAGE(0, "V0 and/or V1 should be in the map!");
         }
     }
     return 0;
@@ -694,8 +696,7 @@ bool SLMConstProp::find_PATTERN_REPEAT_WITH_STRIDE(PatternInfo& aPattern)
         }
     }
 
-    IGC_ASSERT(ix_1st != -1 &&
-        "Constant store expected, but not found!");
+    IGC_ASSERT_MESSAGE(-1 != ix_1st, "constant store expected but not found");
 
     SymExpr* basePtr = m_storeInfos[0].SE;
     StoreInst* lastSI = m_storeInsts[m_storeInfos[nStores - 1].ix];

@@ -991,7 +991,7 @@ namespace IGC
             }
 
             default:
-                IGC_ASSERT(false && "Unexpected SIMD mode");
+                IGC_ASSERT_MESSAGE(0, "Unexpected SIMD mode");
             }
         }
 
@@ -1082,7 +1082,7 @@ namespace IGC
             }
             if (ctx->getModuleMetaData()->csInfo.forcedSIMDSize)
             {
-                IGC_ASSERT((ctx->getModuleMetaData()->csInfo.forcedSIMDSize >= leastSIMD) && "Incorrect SIMD forced");
+                IGC_ASSERT_MESSAGE((ctx->getModuleMetaData()->csInfo.forcedSIMDSize >= leastSIMD), "Incorrect SIMD forced");
             }
             if (leastSIMD <= 8)
             {
@@ -1288,9 +1288,11 @@ namespace IGC
     }
 
 
-    void OptimizeIR(CodeGenContext* pContext)
+    void OptimizeIR(CodeGenContext* const pContext)
     {
+        IGC_ASSERT(nullptr != pContext);
         MetaDataUtils* pMdUtils = pContext->getMetaDataUtils();
+        IGC_ASSERT(nullptr != pContext->getModuleMetaData());
         bool NoOpt = pContext->getModuleMetaData()->compOpt.OptDisable;
 
         // Remove inline attribute if subroutine is enabled.
@@ -1302,10 +1304,11 @@ namespace IGC
 
         IGCPassManager mpm(pContext, "OPT");
 
-#if defined( _DEBUG )
-        if (!pContext->m_hasLegacyDebugInfo)
-            llvm::verifyModule(*pContext->getModule());
-#endif
+        if (false == pContext->m_hasLegacyDebugInfo)
+        {
+            IGC_ASSERT(nullptr != pContext->getModule());
+            // IGC_ASSERT(false == llvm::verifyModule(*pContext->getModule()));
+        }
 
         COMPILER_TIME_START(pContext, TIME_OptimizationPasses);
         // scope to force destructors before mem usage sampling

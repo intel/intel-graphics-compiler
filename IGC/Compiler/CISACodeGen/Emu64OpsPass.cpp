@@ -24,8 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-// vim:ts=2:sw=2:et:
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
@@ -294,6 +292,7 @@ namespace {
                         UE = II->user_end(); UI != UE; /*EMPTY*/) {
                         User* U = *UI++;
                         ExtractValueInst* Ex = cast<ExtractValueInst>(U);
+                        IGC_ASSERT(nullptr != Ex);
                         IGC_ASSERT(Ex->getNumIndices() == 1);
 
                         unsigned Idx = *Ex->idx_begin();
@@ -308,6 +307,7 @@ namespace {
                 }
             }
             // Preprocess non-LOAD/-STORE pointer usage if there's 64-bit pointer.
+            IGC_ASSERT(nullptr != Emu);
             if (Emu->hasPtr64()) {
                 for (auto& BB : F) {
                     SmallVector<Instruction*, 16> LocalDeadInsts;
@@ -317,6 +317,7 @@ namespace {
                             break;
                         case Instruction::ICmp: {
                             ICmpInst* Cmp = cast<ICmpInst>(BI);
+                            IGC_ASSERT(nullptr != Cmp);
                             PointerType* PtrTy =
                                 dyn_cast<PointerType>(Cmp->getOperand(0)->getType());
                             if (!PtrTy || !Emu->isPtr64(PtrTy))
@@ -470,6 +471,7 @@ IGC_INITIALIZE_PASS_END(Emu64Ops, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANAL
 bool Emu64Ops::runOnFunction(Function& F) {
     // Skip non-kernel function.
     MetaDataUtils* MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    IGC_ASSERT(nullptr != MDU);
     auto FII = MDU->findFunctionsInfoItem(&F);
     if (FII == MDU->end_FunctionsInfo())
         return false;
@@ -540,7 +542,7 @@ ValuePair Emu64Ops::getExpandedValues(Value* V) {
     }
 
     errs() << "V = " << *V << '\n';
-    llvm_unreachable("TODO: NOT IMPLEMENTED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "TODO: NOT IMPLEMENTED!");
 }
 
 void Emu64Ops::setExpandedValues(Value* V, Value* Lo, Value* Hi) {
@@ -659,20 +661,22 @@ bool InstExpander::visitInstruction(Instruction& I) {
 #if 1
     errs() << "I = " << I << '\n';
 #endif
-    llvm_unreachable("UNKNOWN INSTRUCTION is BEING EXPANDED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN INSTRUCTION is BEING EXPANDED!");
     return false;
 }
 
 bool InstExpander::visitRet(ReturnInst& RI) {
-    if (Value * V = RI.getReturnValue())
-        if (Emu->isInt64(V))
-            // TODO: Add 64-bit return value support when function/subroutine call is
-            // supported.
-            llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    if(Value * V = RI.getReturnValue())
+    {
+        // TODO: Add 64-bit return value support when function/subroutine call is supported.
+        IGC_ASSERT(nullptr != Emu);
+        IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(V), "TODO: NOT IMPLEMENTED YET!");
+    }
     return false;
 }
 
 bool InstExpander::visitAdd(BinaryOperator& BinOp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
 
@@ -683,6 +687,7 @@ bool InstExpander::visitAdd(BinaryOperator& BinOp) {
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_add_pair;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
+    IGC_ASSERT(nullptr != IRB);
     Value* V = IRB->CreateCall4(IFunc, L0, H0, L1, H1);
     Value* Lo = IRB->CreateExtractValue(V, 0);
     Value* Hi = IRB->CreateExtractValue(V, 1);
@@ -692,6 +697,7 @@ bool InstExpander::visitAdd(BinaryOperator& BinOp) {
 }
 
 bool InstExpander::visitSub(BinaryOperator& BinOp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
 
@@ -702,6 +708,7 @@ bool InstExpander::visitSub(BinaryOperator& BinOp) {
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_sub_pair;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
+    IGC_ASSERT(nullptr != IRB);
     Value* V = IRB->CreateCall4(IFunc, L0, H0, L1, H1);
     Value* Lo = IRB->CreateExtractValue(V, 0);
     Value* Hi = IRB->CreateExtractValue(V, 1);
@@ -711,6 +718,7 @@ bool InstExpander::visitSub(BinaryOperator& BinOp) {
 }
 
 bool InstExpander::visitMul(BinaryOperator& BinOp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
 
@@ -721,6 +729,7 @@ bool InstExpander::visitMul(BinaryOperator& BinOp) {
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_mul_pair;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
+    IGC_ASSERT(nullptr != IRB);
     Value* V = IRB->CreateCall4(IFunc, L0, H0, L1, H1);
     Value* Lo = IRB->CreateExtractValue(V, 0);
     Value* Hi = IRB->CreateExtractValue(V, 1);
@@ -730,34 +739,31 @@ bool InstExpander::visitMul(BinaryOperator& BinOp) {
 }
 
 bool InstExpander::visitSDiv(BinaryOperator& BinOp) {
-    if (!Emu->isInt64(&BinOp))
-        return false;
-    llvm_unreachable("There should not be `sdiv` which is already emulated by library call.");
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(&BinOp), "There should not be `sdiv` which is already emulated by library call.");
     return false;
 }
 
 bool InstExpander::visitUDiv(BinaryOperator& BinOp) {
-    if (!Emu->isInt64(&BinOp))
-        return false;
-    llvm_unreachable("There should not be `udiv` which is already emulated by library call.");
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(&BinOp), "There should not be `udiv` which is already emulated by library call.");
     return false;
 }
 
 bool InstExpander::visitSRem(BinaryOperator& BinOp) {
-    if (!Emu->isInt64(&BinOp))
-        return false;
-    llvm_unreachable("There should not be `srem` which is already emulated by library call.");
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(&BinOp), "There should not be `srem` which is already emulated by library call.");
     return false;
 }
 
 bool InstExpander::visitURem(BinaryOperator& BinOp) {
-    if (!Emu->isInt64(&BinOp))
-        return false;
-    llvm_unreachable("There should not be `urem` which is already emulated by library call.");
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(&BinOp), "There should not be `urem` which is already emulated by library call.");
     return false;
 }
 
 bool InstExpander::visitShl(BinaryOperator& BinOp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
 
@@ -841,7 +847,8 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         H = IRB->CreateOr(H, T0);
 
         if (InnerTBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo));
+            IGC_ASSERT(isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerTBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerTBB);
         }
@@ -860,7 +867,8 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         Value* H = IRB->CreateShl(Lo, Amt);
 
         if (InnerFBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo));
+            IGC_ASSERT(isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerFBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerFBB);
         }
@@ -875,6 +883,7 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
 }
 
 bool InstExpander::visitLShr(BinaryOperator& BinOp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
 
@@ -958,7 +967,8 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         L = IRB->CreateOr(L, T0);
 
         if (InnerTBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo));
+            IGC_ASSERT(isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerTBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerTBB);
         }
@@ -977,7 +987,8 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         Value* L = IRB->CreateLShr(Hi, Amt);
 
         if (InnerFBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo));
+            IGC_ASSERT(isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerFBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerFBB);
         }
@@ -992,6 +1003,7 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
 }
 
 bool InstExpander::visitAShr(BinaryOperator& BinOp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
 
@@ -1075,7 +1087,8 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         L = IRB->CreateOr(L, T0);
 
         if (InnerTBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo));
+            IGC_ASSERT(isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerTBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerTBB);
         }
@@ -1094,7 +1107,8 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         Value* L = IRB->CreateAShr(Hi, Amt);
 
         if (InnerFBB) {
-            IGC_ASSERT(isa<PHINode>(InnerResLo) && isa<PHINode>(InnerResHi));
+            IGC_ASSERT(isa<PHINode>(InnerResLo));
+            IGC_ASSERT(isa<PHINode>(InnerResHi));
             cast<PHINode>(InnerResLo)->addIncoming(L, InnerFBB);
             cast<PHINode>(InnerResHi)->addIncoming(H, InnerFBB);
         }
@@ -1109,6 +1123,7 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
 }
 
 bool InstExpander::visitAnd(BinaryOperator& BinOp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
 
@@ -1125,6 +1140,7 @@ bool InstExpander::visitAnd(BinaryOperator& BinOp) {
 }
 
 bool InstExpander::visitOr(BinaryOperator& BinOp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
 
@@ -1141,6 +1157,7 @@ bool InstExpander::visitOr(BinaryOperator& BinOp) {
 }
 
 bool InstExpander::visitXor(BinaryOperator& BinOp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
 
@@ -1157,6 +1174,7 @@ bool InstExpander::visitXor(BinaryOperator& BinOp) {
 }
 
 bool InstExpander::visitLoad(LoadInst& LD) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&LD))
         return false;
 
@@ -1178,6 +1196,7 @@ bool InstExpander::visitLoad(LoadInst& LD) {
 
 bool InstExpander::visitStore(StoreInst& ST) {
     Value* V = ST.getValueOperand();
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(V))
         return false;
 
@@ -1202,28 +1221,32 @@ bool InstExpander::visitStore(StoreInst& ST) {
 
 bool InstExpander::visitAtomicCmpXchg(AtomicCmpXchgInst& ACXI) {
     Value* V = ACXI.getCompareOperand();
-    if (!Emu->isInt64(V))
-        return false;
-    llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT(nullptr != V);
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(V), "TODO: NOT IMPLEMENTED YET!");
+
     return false;
 }
 
 bool InstExpander::visitAtomicRMW(AtomicRMWInst& RMW) {
-    if (!Emu->isInt64(&RMW))
-        return false;
-    llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(&RMW), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitTrunc(TruncInst& TI) {
     Value* Src = TI.getOperand(0);
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT(nullptr != Src);
     if (!Emu->isInt64(Src))
         return false;
 
     Value* Lo = nullptr;
     std::tie(Lo, std::ignore) = Emu->getExpandedValues(Src);
-    IGC_ASSERT(Lo->getType()->getScalarSizeInBits() >=
-        TI.getType()->getScalarSizeInBits());
+    IGC_ASSERT(nullptr != Lo);
+    IGC_ASSERT(nullptr != Lo->getType());
+    IGC_ASSERT(nullptr != TI.getType());
+    IGC_ASSERT(Lo->getType()->getScalarSizeInBits() >= TI.getType()->getScalarSizeInBits());
 
     if (Lo->getType()->getScalarSizeInBits() !=
         TI.getType()->getScalarSizeInBits())
@@ -1234,11 +1257,13 @@ bool InstExpander::visitTrunc(TruncInst& TI) {
 }
 
 bool InstExpander::visitSExt(SExtInst& SEI) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&SEI))
         return false;
 
     Value* Src = SEI.getOperand(0);
     Type* SrcTy = SEI.getSrcTy();
+    IGC_ASSERT(nullptr != SrcTy);
     unsigned SrcWidth = SrcTy->getIntegerBitWidth();
     IGC_ASSERT(SrcWidth <= 32);
 
@@ -1252,11 +1277,13 @@ bool InstExpander::visitSExt(SExtInst& SEI) {
 }
 
 bool InstExpander::visitZExt(ZExtInst& ZEI) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&ZEI))
         return false;
 
     Value* Src = ZEI.getOperand(0);
     Type* SrcTy = ZEI.getSrcTy();
+    IGC_ASSERT(nullptr != SrcTy);
     unsigned SrcWidth = SrcTy->getIntegerBitWidth();
     IGC_ASSERT(SrcWidth <= 32);
 
@@ -1270,12 +1297,15 @@ bool InstExpander::visitZExt(ZExtInst& ZEI) {
 }
 
 bool InstExpander::visitFPToUI(FPToUIInst& F2U) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&F2U))
         return false;
 
     IGCLLVM::Intrinsic IID;
     Value* Src = F2U.getOperand(0);
+    IGC_ASSERT(nullptr != Src);
     Type* SrcTy = Src->getType();
+    IGC_ASSERT(nullptr != SrcTy);
 
     if (SrcTy->isHalfTy()) {
         // Convert half directly into 32-bit integer.
@@ -1322,12 +1352,15 @@ bool InstExpander::visitFPToUI(FPToUIInst& F2U) {
 }
 
 bool InstExpander::visitFPToSI(FPToSIInst& F2S) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&F2S))
         return false;
 
     IGCLLVM::Intrinsic IID;
     Value* Src = F2S.getOperand(0);
+    IGC_ASSERT(nullptr != Src);
     Type* SrcTy = Src->getType();
+    IGC_ASSERT(nullptr != SrcTy);
 
     if (SrcTy->isHalfTy()) {
         // Convert half directly into 32-bit integer.
@@ -1409,6 +1442,8 @@ bool InstExpander::visitFPToSI(FPToSIInst& F2S) {
 // method is called.
 //
 Value* InstExpander::convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruction* Pos) {
+    IGC_ASSERT(nullptr != Pos);
+    IGC_ASSERT(nullptr != IRB);
     BuilderType::InsertPointGuard Guard(*IRB);
     IRB->SetInsertPoint(Pos);
 
@@ -1421,6 +1456,7 @@ Value* InstExpander::convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruct
     Value* NE = IRB->CreateICmpNE(ShAmt, IRB->getInt32(32));
 
     BasicBlock* OldBB = Pos->getParent();
+    IGC_ASSERT(nullptr != OldBB);
     BasicBlock* JointBB = OldBB->splitBasicBlock(Pos);
     PHINode* Res = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.outer.merge", Pos);
 
@@ -1500,6 +1536,7 @@ Value* InstExpander::convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruct
 
 bool InstExpander::visitUIToFP(UIToFPInst& U2F) {
     Value* Src = U2F.getOperand(0);
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(Src))
         return false;
 
@@ -1543,6 +1580,7 @@ bool InstExpander::visitUIToFP(UIToFPInst& U2F) {
 
 bool InstExpander::visitSIToFP(SIToFPInst& S2F) {
     Value* Src = S2F.getOperand(0);
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(Src))
         return false;
 
@@ -1602,6 +1640,7 @@ bool InstExpander::visitSIToFP(SIToFPInst& S2F) {
 }
 
 bool InstExpander::visitPtrToInt(PtrToIntInst& P2I) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&P2I))
         return false;
 
@@ -1619,6 +1658,7 @@ bool InstExpander::visitPtrToInt(PtrToIntInst& P2I) {
 
 bool InstExpander::visitIntToPtr(IntToPtrInst& I2P) {
     Value* Src = I2P.getOperand(0);
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(Src))
         return false;
 
@@ -1636,6 +1676,7 @@ bool InstExpander::visitIntToPtr(IntToPtrInst& I2P) {
 
 bool InstExpander::visitBitCast(BitCastInst& BC) {
     Value* Src = BC.getOperand(0);
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BC) && !Emu->isInt64(Src))
         return false;
 
@@ -1668,6 +1709,7 @@ bool InstExpander::visitBitCast(BitCastInst& BC) {
 }
 
 bool InstExpander::visitICmp(ICmpInst& Cmp) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(Cmp.getOperand(0)))
         return false;
 
@@ -1679,9 +1721,6 @@ bool InstExpander::visitICmp(ICmpInst& Cmp) {
 
     Value* T0 = nullptr, * T1 = nullptr, * T2 = nullptr, * T3 = nullptr, * Res = nullptr;
     switch (Pred) {
-    default:
-        llvm_unreachable("Invalid ICmp predicate");
-        break;
     case CmpInst::ICMP_EQ:
         T0 = IRB->CreateICmpEQ(L0, L1);
         T1 = IRB->CreateICmpEQ(H0, H1);
@@ -1748,19 +1787,25 @@ bool InstExpander::visitICmp(ICmpInst& Cmp) {
         T3 = IRB->CreateICmpSLT(H0, H1);
         Res = IRB->CreateOr(T2, T3);
         break;
+    default:
+        IGC_ASSERT_EXIT_MESSAGE(0, "Invalid ICmp predicate");
+        break;
     }
-    IGC_ASSERT(Res != nullptr);
+
+    IGC_ASSERT(nullptr != Res);
 
     Cmp.replaceAllUsesWith(Res);
     return true;
 }
 
 bool InstExpander::visitPHI(PHINode& PN) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&PN))
         return false;
     Value* Lo = nullptr, * Hi = nullptr;
     std::tie(Lo, Hi) = Emu->getExpandedValues(&PN);
-    IGC_ASSERT(Lo != nullptr && Hi != nullptr);
+    IGC_ASSERT(nullptr != Lo);
+    IGC_ASSERT(nullptr != Hi);
     return false;
 }
 
@@ -1769,6 +1814,7 @@ bool InstExpander::visitCall(CallInst& Call) {
     // lambdas for splitting and combining i64 to <2 x i32>
     auto Combine2xi32Toi64 = [this](Value* val)->Value *
     {
+        IGC_ASSERT(nullptr != Emu);
         IGC_ASSERT(Emu->isInt64(val));
         Value* InputLo = nullptr, * InputHi = nullptr;
         std::tie(InputLo, InputHi) = Emu->getExpandedValues(val);
@@ -1781,6 +1827,7 @@ bool InstExpander::visitCall(CallInst& Call) {
     };
     auto Spliti64To2xi32 = [this](Value* retVal, Value*& OutputLo, Value*& OutputHi)->void
     {
+        IGC_ASSERT(nullptr != Emu);
         IGC_ASSERT(Emu->isInt64(retVal));
         Value* V = IRB->CreateBitCast(retVal, Emu->getV2Int32Ty());
         OutputLo = IRB->CreateExtractElement(V, IRB->getInt32(0));
@@ -1807,6 +1854,7 @@ bool InstExpander::visitCall(CallInst& Call) {
             return false;
         }
     }
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&Call)) {
         for (auto& Op : Call.operands()) {
             if (Emu->isInt64(Op.get()))
@@ -1881,6 +1929,7 @@ Emu64BitCall:
         case GenISAIntrinsic::GenISA_simdBlockWrite:
         {
             auto* GenCopy = Call.clone();
+            IGC_ASSERT(nullptr != GenCopy);
             GenCopy->insertBefore(&Call);
             IRB->SetInsertPoint(GenCopy);
             uint opNum = 0;
@@ -1900,6 +1949,7 @@ Emu64BitCall:
         case GenISAIntrinsic::GenISA_WavePrefix:
         {
             auto* GenCopy = Call.clone();
+            IGC_ASSERT(nullptr != GenCopy);
             GenCopy->insertBefore(&Call);
             IRB->SetInsertPoint(GenCopy);
 
@@ -1923,6 +1973,7 @@ Emu64BitCall:
     else if (!F || F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("UserSubroutine"))
     {
         auto* CallCopy = Call.clone();
+        IGC_ASSERT(nullptr != CallCopy);
         CallCopy->insertBefore(&Call);
         IRB->SetInsertPoint(CallCopy);
         unsigned argNo = 0;
@@ -1947,11 +1998,12 @@ Emu64BitCall:
     }
 
     // TODO: Add i64 emulation support.
-    llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitSelect(SelectInst& SI) {
+    IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&SI))
         return false;
 
@@ -1961,6 +2013,7 @@ bool InstExpander::visitSelect(SelectInst& SI) {
     Value* L1 = nullptr, * H1 = nullptr;
     std::tie(L1, H1) = Emu->getExpandedValues(SI.getOperand(2));
 
+    IGC_ASSERT(nullptr != IRB);
     Value* Lo = IRB->CreateSelect(Cond, L0, L1);
     Value* Hi = IRB->CreateSelect(Cond, H0, H1);
 
@@ -1969,15 +2022,15 @@ bool InstExpander::visitSelect(SelectInst& SI) {
 }
 
 bool InstExpander::visitVAArg(VAArgInst& VAAI) {
-    if (!Emu->isInt64(&VAAI))
-        return false;
     // TODO: Add i64 emulation support.
-    llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(&VAAI), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitExtractElement(ExtractElementInst& EEI) {
     // Fix index operand if necessary.
+    IGC_ASSERT(nullptr != Emu);
     if (Emu->isInt64(EEI.getIndexOperand())) {
         Value* L = nullptr;
         std::tie(L, std::ignore) = Emu->getExpandedValues(EEI.getIndexOperand());
@@ -2008,6 +2061,7 @@ bool InstExpander::visitExtractElement(ExtractElementInst& EEI) {
 
 bool InstExpander::visitInsertElement(InsertElementInst& IEI) {
     // Fix index operand if necessary.
+    IGC_ASSERT(nullptr != Emu);
     if (Emu->isInt64(IEI.getOperand(2))) {
         Value* L = nullptr;
         std::tie(L, std::ignore) = Emu->getExpandedValues(IEI.getOperand(2));
@@ -2044,25 +2098,24 @@ bool InstExpander::visitInsertElement(InsertElementInst& IEI) {
 }
 
 bool InstExpander::visitExtractValue(ExtractValueInst& EVI) {
-    if (!Emu->isInt64(&EVI))
-        return false;
     // TODO: Add i64 emulation support.
-    llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(&EVI), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitInsertValue(InsertValueInst& IVI) {
-    if (!Emu->isInt64(IVI.getOperand(1)))
-        return false;
     // TODO: Add i64 emulation support.
-    llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT(0 < IVI.getNumOperands());
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(IVI.getOperand(1)), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitLandingPad(LandingPadInst& LPI) {
-    if (!Emu->isInt64(LPI.getOperand(1)))
-        return false;
     // TODO: Add i64 emulation support.
-    llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT(nullptr != Emu);
+    IGC_ASSERT(0 < LPI.getNumOperands());
+    IGC_ASSERT_EXIT_MESSAGE(false == Emu->isInt64(LPI.getOperand(1)), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }

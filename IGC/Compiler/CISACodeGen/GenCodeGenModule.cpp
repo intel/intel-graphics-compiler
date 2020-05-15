@@ -43,7 +43,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/Support/Debug.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/Inliner.h"
 #include "llvm/Transforms/Utils/Cloning.h"
@@ -170,12 +169,14 @@ Function* GenXCodeGenModule::cloneFunc(Function* F)
 
 inline Function* getCallerFunc(Value* user)
 {
+    IGC_ASSERT(nullptr != user);
     Function* caller = nullptr;
     if (CallInst * CI = dyn_cast<CallInst>(user))
     {
+        IGC_ASSERT(nullptr != CI->getParent());
         caller = CI->getParent()->getParent();
     }
-    IGC_ASSERT(caller && "cannot be indirect call");
+    IGC_ASSERT_MESSAGE(caller, "cannot be indirect call");
     return caller;
 }
 
@@ -433,10 +434,11 @@ bool GenXCodeGenModule::runOnModule(Module& M)
     //  Input L1 = [A, B, C, D, E]       // Functions in groups
     //  Input L2 = [A, C, G, B, D, E, F] // Functions in the module
     // Output L2 = [A, B, C, D, E, G, F] // Ordered functions in the module
-    IGC_ASSERT(OrderedList.size() <= M.size() && "out of sync");
+    IGC_ASSERT_MESSAGE(OrderedList.size() <= M.size(), "out of sync");
     Function* CurF = &(*M.begin());
     for (auto I = OrderedList.begin(), E = OrderedList.end(); I != E; ++I)
     {
+        IGC_ASSERT(nullptr != CurF);
         Function* F = *I;
         if (CurF != F)
             // Move F before CurF. This just works See BasicBlock::moveBefore.
@@ -449,9 +451,7 @@ bool GenXCodeGenModule::runOnModule(Module& M)
         }
     }
 
-#if defined(_DEBUG)
     IGC_ASSERT(FGA->verify());
-#endif
 
     FGA->setModule(&M);
     Modified |= DeduceNonNullAttribute(M);
@@ -534,10 +534,10 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
     auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     Function* defaultKernel = getUniqueEntryFunc(pMdUtils, modMD);
-    IGC_ASSERT(defaultKernel && "kernel does not exist in this group");
+    IGC_ASSERT_MESSAGE(nullptr != defaultKernel, "kernel does not exist in this group");
 
     FunctionGroup* defaultFG = getGroupForHead(defaultKernel);
-    IGC_ASSERT(defaultFG && "default kernel group does not exist");
+    IGC_ASSERT_MESSAGE(nullptr != defaultFG, "default kernel group does not exist");
 
     // Add all externally linked functions into the default kernel group
     for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
@@ -698,7 +698,7 @@ void GenXFunctionGroupAnalysis::addToFunctionGroup(Function* F,
     FunctionGroup* FG,
     Function* SubGrpH)
 {
-    IGC_ASSERT(!GroupMap[F] && "Function already attached to FunctionGroup");
+    IGC_ASSERT_MESSAGE(!GroupMap[F], "Function already attached to FunctionGroup");
     GroupMap[F] = FG;
     setSubGroupMap(F, SubGrpH);
     if (F == SubGrpH)
@@ -712,13 +712,14 @@ void GenXFunctionGroupAnalysis::addToFunctionGroup(Function* F,
         for (auto I = FG->Functions.begin(), E = FG->Functions.end(); I != E; I++)
         {
             auto* SubGrp = (*I);
+            IGC_ASSERT(nullptr != SubGrp);
             if (SubGrp->front() == SubGrpH)
             {
                 SubGrp->push_back(F);
                 return;
             }
         }
-        IGC_ASSERT(false);
+        IGC_ASSERT(0);
     }
 }
 

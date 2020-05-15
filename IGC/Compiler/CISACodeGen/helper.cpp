@@ -129,8 +129,7 @@ namespace IGC
         }
         else
         {
-            // other types of buffers shouldn't reach this part.
-            IGC_ASSERT(0);
+            IGC_ASSERT_MESSAGE(0, "other types of buffers shouldn't reach this part");
         }
 
         return temp.u32Val;
@@ -295,6 +294,7 @@ namespace IGC
             builder.getInt1(inst->isVolatile()) // volatile
         };
         Value* ld = builder.CreateCall(func, attr);
+        IGC_ASSERT(nullptr != ld);
         IGC_ASSERT(ld->getType() == inst->getType());
         return ld;
     }
@@ -316,7 +316,8 @@ namespace IGC
         else
         {
             llvm::Type* dataType = storeVal->getType();
-            IGC_ASSERT(dataType->getPrimitiveSizeInBits() == 16 || dataType->getPrimitiveSizeInBits() == 32);
+            IGC_ASSERT(nullptr != dataType);
+            IGC_ASSERT((dataType->getPrimitiveSizeInBits() == 16) || (dataType->getPrimitiveSizeInBits() == 32));
 
             llvm::Type* types[2] = {
                 bufPtr->getType(),
@@ -511,7 +512,7 @@ namespace IGC
             return BufferAccessType::ACCESS_WRITE;
 
         default:
-            IGC_ASSERT(false && "Invalid buffer type");
+            IGC_ASSERT_MESSAGE(0, "Invalid buffer type");
             return BufferAccessType::ACCESS_READWRITE;
         }
     }
@@ -825,7 +826,7 @@ namespace IGC
             overloadedTys.push_back(args[2]->getType());
             break;
         default:
-            IGC_ASSERT(false && "Unknown intrinsic encountered while changing pointer types");
+            IGC_ASSERT_MESSAGE(0, "Unknown intrinsic encountered while changing pointer types");
             break;
         }
 
@@ -1315,6 +1316,7 @@ namespace IGC
     uint getImmValueU32(const llvm::Value* value)
     {
         const llvm::ConstantInt* cval = llvm::cast<llvm::ConstantInt>(value);
+        IGC_ASSERT(nullptr != cval);
         IGC_ASSERT(cval->getBitWidth() == 32);
 
         uint ival = int_cast<uint>(cval->getZExtValue());
@@ -1403,11 +1405,10 @@ namespace IGC
     {
         llvm::Value* ret = val;
         llvm::Type* type = val->getType();
-        IGC_ASSERT(type->isSingleValueType() && !type->isVectorTy() && "Only scalar data is supported here!");
-        IGC_ASSERT(type->getTypeID() == Type::FloatTyID ||
-            type->getTypeID() == Type::HalfTyID ||
-            type->getTypeID() == Type::IntegerTyID ||
-            type->getTypeID() == Type::DoubleTyID);
+        IGC_ASSERT(nullptr != type);
+        IGC_ASSERT_MESSAGE(type->isSingleValueType(), "Only scalar data is supported here");
+        IGC_ASSERT_MESSAGE(!type->isVectorTy(), "Only scalar data is supported here");
+        IGC_ASSERT((type->getTypeID() == Type::FloatTyID) || (type->getTypeID() == Type::HalfTyID) || (type->getTypeID() == Type::IntegerTyID) || (type->getTypeID() == Type::DoubleTyID));
 
         unsigned dataSize = type->getScalarSizeInBits();
         if (16 == dataSize){
@@ -1418,7 +1419,7 @@ namespace IGC
             llvm::Type* vecType = llvm::VectorType::get(builder.getFloatTy(), 2);
             ret = builder.CreateBitCast(val, vecType);
         }else{
-            llvm_unreachable("Unsupported type in ConvertToFloat of helper.");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported type in ConvertToFloat of helper.");
         }
 
         return ret;
@@ -1480,7 +1481,7 @@ namespace IGC
             }
             break;
         default:
-            llvm_unreachable("Unsupported type in ScalarizeAggregateMembers of helper! Please enhance this function first.");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported type in ScalarizeAggregateMembers of helper! Please enhance this function first.");
             break;
         }
     }
@@ -1525,7 +1526,7 @@ namespace IGC
             }
             break;
         default:
-            llvm_unreachable("Unsupported type in ScalarizeAggregateMemberAddresses of helper! Please enhance this function first.");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported type in ScalarizeAggregateMemberAddresses of helper! Please enhance this function first.");
             break;
         }
     }
@@ -1690,7 +1691,8 @@ namespace IGC
                 pHeader = CRastHeader_SIMD32;
                 break;
 
-            default: IGC_ASSERT(false && "Invalid SIMD Mode for Conservative Raster WA");
+            default:
+                IGC_ASSERT_MESSAGE(0, "Invalid SIMD Mode for Conservative Raster WA");
                 break;
             }
 
@@ -1737,7 +1739,7 @@ namespace IGC
                 return F;
             }
         }
-        IGC_ASSERT(entryFunc && "No entry func!");
+        IGC_ASSERT_MESSAGE(nullptr != entryFunc, "No entry func!");
         auto ei = FuncMD.find(entryFunc);
         IGC_ASSERT(ei != FuncMD.end());
         ei->second.isUniqueEntry = true;
