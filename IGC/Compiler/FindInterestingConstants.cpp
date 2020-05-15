@@ -39,7 +39,6 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Find interesting constants"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-#define UpdateInstCount(INST) IsExtendedMathInstruction(INST)? m_extendedMath++ : m_instCount++
 IGC_INITIALIZE_PASS_BEGIN(FindInterestingConstants, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_END(FindInterestingConstants, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
@@ -50,6 +49,37 @@ char FindInterestingConstants::ID = 0;
 FindInterestingConstants::FindInterestingConstants() : FunctionPass(ID)
 {
     initializeFindInterestingConstantsPass(*PassRegistry::getPassRegistry());
+}
+
+void FindInterestingConstants::UpdateInstCount(Instruction* inst)
+{
+    if (IsExtendedMathInstruction(inst))
+    {
+        m_extendedMath++;
+    }
+    else if (SelectInst * selInst = dyn_cast<SelectInst>(inst))
+    {
+        if (dyn_cast<Constant>(selInst->getOperand(1)) && dyn_cast<Constant>(selInst->getOperand(2)))
+            m_instCount += 5;
+        else
+            m_selectCount++;
+    }
+    else
+        m_instCount++;
+}
+
+
+bool FindInterestingConstants::isReverseOpInstPair(llvm::Intrinsic::ID intr1, llvm::Intrinsic::ID intr2)
+{
+    std::map<llvm::Intrinsic::ID, llvm::Intrinsic::ID> reverseOpInstPair;
+    reverseOpInstPair[llvm::Intrinsic::exp] = llvm::Intrinsic::log;
+    reverseOpInstPair[llvm::Intrinsic::log] = llvm::Intrinsic::exp;
+    reverseOpInstPair[llvm::Intrinsic::exp2] = llvm::Intrinsic::log2;
+    reverseOpInstPair[llvm::Intrinsic::log2] = llvm::Intrinsic::exp2;
+
+    if ((reverseOpInstPair.find(intr1) != reverseOpInstPair.end()) && (reverseOpInstPair[intr1] == intr2))
+        return true;
+    return false;
 }
 
 bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use, bool& propagate)
@@ -178,7 +208,7 @@ bool FindInterestingConstants::allUsersVisitedForFolding(Instruction* inst, Inst
             //      as such instructions are currently added to visitedForFolding to avoid double counting in stats
             llvm::GenIntrinsicInst* pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(anotherUse);
             SelectInst* selInst = dyn_cast<SelectInst>(anotherUse);
-            if (pIntr || selInst)
+            if ((pIntr && !IsMathIntrinsic(GetOpCode(anotherUseInst))) || selInst)
             {
                 return false;
             }
@@ -203,7 +233,7 @@ void FindInterestingConstants::CheckIfSampleBecomesDeadCode(Instruction* inst, I
             {
                 if (allUsersVisitedForFolding(inst, use))
                 {
-                    m_instCount++;
+                    m_instCount += IGC_GET_FLAG_VALUE(WeightSamplerScalarResult);
                     if (allUsersVisitedForFolding(pIntr, inst))
                     {
                         m_samplerCount++;
@@ -282,19 +312,53 @@ void FindInterestingConstants::FoldsToZeroPropagate(llvm::Instruction* I)
 
 bool FindInterestingConstants::FoldsToSource(llvm::Instruction* inst, llvm::Instruction* use)
 {
+    bool foldsToSource = false;
+    llvm::Value* binOperand = nullptr;
+
     if (BinaryOperator * binInst = dyn_cast<BinaryOperator>(use))
     {
         if (binInst->getOpcode() == Instruction::FMul)
         {
-            return true;
+            if (binInst->getOperand(0) == inst)
+            {
+                binOperand = binInst->getOperand(1);
+            }
+            else
+            {
+                binOperand = binInst->getOperand(0);
+            }
+            foldsToSource = true;
         }
         else if (binInst->getOpcode() == Instruction::FDiv &&
             inst == binInst->getOperand(1))
         {
-            return true;
+            binOperand = binInst->getOperand(0);
+            foldsToSource = true;
         }
     }
-    return false;
+
+    // Check for cases where folds to source triggers optimizations like showing up instruction sequence with exp-log/log-exp
+    if (foldsToSource)
+    {
+        // Figure out if binOperand is part of reverseOpInstPair (eg: log-exp/exp-log), update extended math count accordingly
+        if (llvm::IntrinsicInst * intr = dyn_cast<IntrinsicInst>(binOperand))
+        {
+            for (auto UI = use->user_begin(), UE = use->user_end(); UI != UE; ++UI)
+            {
+                if (llvm::IntrinsicInst * useIntr = dyn_cast<IntrinsicInst>(*UI))
+                {
+                    if (isReverseOpInstPair(intr->getIntrinsicID(), useIntr->getIntrinsicID()))
+                    {
+                        // Increment extended math count
+                        m_extendedMath += 2;
+                        visitedForFolding.insert(intr);
+                        visitedForFolding.insert(useIntr);
+                    }
+                }
+            }
+        }
+    }
+    return foldsToSource;
 }
 
 void FindInterestingConstants::FoldsToSourcePropagate(llvm::Instruction* I)
@@ -430,6 +494,7 @@ void FindInterestingConstants::addInterestingConstant(llvm::Type* loadTy, unsign
     interestingConst.branchCount = stats.branchCount;
     interestingConst.loopCount = stats.loopCount;
     interestingConst.samplerCount = stats.samplerCount;
+    interestingConst.selectCount = stats.selectCount;
     interestingConst.extendedMath = stats.extendedMath;
     interestingConst.weight = stats.weight;
     // For constant buffer accesses of size <= 32bit.
@@ -502,6 +567,7 @@ void FindInterestingConstants::ResetStatCounters()
     m_constFoldBranch = 0;
     m_constFoldLoopBranch = 0;
     m_samplerCount = 0;
+    m_selectCount = 0;
     m_extendedMath = 0;
     m_branchsize = 0;
     m_loopSize = 0;
@@ -552,7 +618,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
             stats.extendedMath = m_extendedMath;
             stats.weight = (m_instCount * IGC_GET_FLAG_VALUE(WeightOtherInstruction)) + std::max(m_constFoldBranch * IGC_GET_FLAG_VALUE(BaseWeightBranch), m_branchsize * IGC_GET_FLAG_VALUE(WeightBranch)) +
                 std::max(m_constFoldLoopBranch * IGC_GET_FLAG_VALUE(BaseWeightLoop), m_loopSize * IGC_GET_FLAG_VALUE(WeightLoop)) + (m_samplerCount * IGC_GET_FLAG_VALUE(WeightSampler)) +
-                m_extendedMath *IGC_GET_FLAG_VALUE(WeightExtendedMath);
+                (m_extendedMath * IGC_GET_FLAG_VALUE(WeightExtendedMath)) + (m_selectCount * IGC_GET_FLAG_VALUE(WeightSelect));
             constValue = 0;
             // Get the ConstantAddress from LoadInst and log it in interesting constants
             addInterestingConstant(I.getType(), bufIdOrGRFOffset, eltId, size_in_bytes, true, constValue, stats);
@@ -568,8 +634,10 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
             stats.loopCount = m_constFoldLoopBranch;
             stats.samplerCount = m_samplerCount;
             stats.extendedMath = m_extendedMath;
+            stats.selectCount = m_selectCount;
             stats.weight = (m_instCount * IGC_GET_FLAG_VALUE(WeightOtherInstruction)) + std::max(m_constFoldBranch * IGC_GET_FLAG_VALUE(BaseWeightBranch), m_branchsize * IGC_GET_FLAG_VALUE(WeightBranch)) +
-                std::max(m_constFoldLoopBranch * IGC_GET_FLAG_VALUE(BaseWeightLoop), m_loopSize * IGC_GET_FLAG_VALUE(WeightLoop)) + (m_samplerCount * IGC_GET_FLAG_VALUE(WeightSampler)) + m_extendedMath * IGC_GET_FLAG_VALUE(WeightExtendedMath);
+                std::max(m_constFoldLoopBranch * IGC_GET_FLAG_VALUE(BaseWeightLoop), m_loopSize * IGC_GET_FLAG_VALUE(WeightLoop)) + (m_samplerCount * IGC_GET_FLAG_VALUE(WeightSampler)) +
+                (m_extendedMath * IGC_GET_FLAG_VALUE(WeightExtendedMath)) + (m_selectCount * IGC_GET_FLAG_VALUE(WeightSelect));
             constValue = 0;
             // Zero value for this constant is interesting
             // Get the ConstantAddress from LoadInst and log it in interesting constants
@@ -586,7 +654,8 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst& I)
             {
                 InstructionStats stats;
                 stats.instCount = m_instCount;
-                stats.weight = m_instCount * IGC_GET_FLAG_VALUE(WeightOtherInstruction);
+                stats.extendedMath = m_extendedMath;
+                stats.weight = (m_instCount * IGC_GET_FLAG_VALUE(WeightOtherInstruction)) + (m_extendedMath * IGC_GET_FLAG_VALUE(WeightExtendedMath));
                 // One value for this constant is interesting
                 // Get the ConstantAddress from LoadInst and log it in interesting constants
                 if (I.getType()->isIntegerTy())

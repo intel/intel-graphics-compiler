@@ -46,6 +46,7 @@ namespace IGC
         uint32_t loopCount = 0;
         uint32_t samplerCount = 0;
         uint32_t extendedMath = 0;
+        uint32_t selectCount = 0;
         uint32_t weight = 0;
     };
     class FindInterestingConstants : public llvm::FunctionPass, public llvm::InstVisitor<FindInterestingConstants>
@@ -77,12 +78,15 @@ namespace IGC
         unsigned int m_constFoldLoopBranch;
         unsigned int m_samplerCount;
         unsigned int m_extendedMath;
+        unsigned int m_selectCount;
         unsigned int m_branchsize;
         unsigned int m_loopSize;
         std::unordered_map<unsigned int, std::vector<SConstantAddrValue>> m_InterestingConstants;
         const llvm::DataLayout* m_DL;
         std::unordered_set<llvm::Instruction*> visitedForFolding;
         // Helper functions
+        bool isReverseOpInstPair(llvm::Intrinsic::ID intr1, llvm::Intrinsic::ID intr2);
+        void UpdateInstCount(llvm::Instruction* inst);
         bool getConstantAddress(llvm::LoadInst& I, unsigned& bufIdOrGRFOffset, int& eltId, int& size_in_bytes);
         bool FoldsToConst(llvm::Instruction* inst, llvm::Instruction* use, bool& propagate);
         bool FoldsToZero(llvm::Instruction* inst, llvm::Instruction* use);

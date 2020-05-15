@@ -276,6 +276,7 @@ namespace IGC
         uint32_t loopCount = 0;
         uint32_t samplerCount = 0;
         uint32_t extendedMath = 0;
+        uint32_t selectCount = 0;
         uint32_t weight = 0;
     };
 
