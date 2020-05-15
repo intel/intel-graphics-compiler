@@ -75,17 +75,17 @@ namespace IGC
 #if defined (__linux__)
             ifstream in(MakeStr("/proc/", getpid(), "/cmdline"), ios::in);
             if (!in.is_open())
-                IGC_ASSERT(0 && "Can not open cmdline pseudo file for current process");
+                IGC_ASSERT_MESSAGE(0, "Can not open cmdline pseudo file for current process");
 
             //in cmdline arguments are separated with \0
             getline(in, ret, '\0');
             if (!in.good())
-                IGC_ASSERT(0 && "Error reading from cmdline pseudo file");
+                IGC_ASSERT_MESSAGE(0, "Error reading from cmdline pseudo file");
 
 #elif defined(_WIN64) || defined(_WIN32)
             ret.resize(MAX_PATH);
             DWORD size = ::GetModuleFileNameA(NULL, &ret[0], ret.size());
-            IGC_ASSERT(size < ret.size() && "Windows path can have MAX_PATH characters max");
+            IGC_ASSERT_MESSAGE(size < ret.size(), "Windows path can have MAX_PATH characters max");
             ret.resize(size);
 #endif
 

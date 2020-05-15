@@ -53,8 +53,8 @@ TeeOutputStream::TeeOutputStream(
     , m_deleteLHS(shouldDeleteLHS)
     , m_deleteRHS(shouldDeleteRHS)
 {
-    IGC_ASSERT((nullptr != pLHS) && "LHS must not be null");
-    IGC_ASSERT((nullptr != pRHS) && "RHS must not be null");
+    IGC_ASSERT_MESSAGE((nullptr != pLHS), "LHS must not be null");
+    IGC_ASSERT_MESSAGE((nullptr != pRHS), "RHS must not be null");
 }
 
 TeeOutputStream::~TeeOutputStream()

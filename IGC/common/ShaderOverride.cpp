@@ -146,7 +146,7 @@ iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
             return IGA_GEN12p1;
         }
     default:
-        IGC_ASSERT(0 && "unsupported platform");
+        IGC_ASSERT_MESSAGE(0, "unsupported platform");
         break;
     }
     return IGA_GEN9;

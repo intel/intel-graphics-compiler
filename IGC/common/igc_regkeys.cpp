@@ -128,11 +128,11 @@ void DEVICE_INFO::get_device_property(DEVINST deviceInstace, DWORD property)
     }
     else if(CR_NO_SUCH_VALUE == status)
     {
-        IGC_ASSERT(0 && "No such property value");
+        IGC_ASSERT_MESSAGE(0, "No such property value");
     }
     else
     {
-        IGC_ASSERT(0 && "Failed to get DevNode property");
+        IGC_ASSERT_MESSAGE(0, "Failed to get DevNode property");
     }
 }
 
@@ -188,7 +188,7 @@ static bool GetPropertyFromDevice(
     CONFIGRET status = CM_Get_DevNode_PropertyW(devInst, &PropertyKey, &propertyType, NULL, &propertySize, 0);
     if (status != CR_BUFFER_SMALL)
     {
-        IGC_ASSERT(0 && "CM_Get_DevNode_PropertyW() failed, status indicates error code");
+        IGC_ASSERT_MESSAGE(0, "CM_Get_DevNode_PropertyW() failed, status indicates error code");
         return false;
     }
 
@@ -200,7 +200,7 @@ static bool GetPropertyFromDevice(
     status = CM_Get_DevNode_PropertyW(devInst, &PropertyKey, &propertyType, &PropertyData[0], &propertySize, 0);
     if (status != CR_SUCCESS)
     {
-        IGC_ASSERT(0 && "CM_Get_DevNode_PropertyW() failed, status indicates error code");
+        IGC_ASSERT_MESSAGE(0, "CM_Get_DevNode_PropertyW() failed, status indicates error code");
         PropertyData.clear();
         return false;
     }
@@ -315,7 +315,7 @@ static size_t GetIntelDriverPaths(std::vector<DEVINST>& drivers)
     HRESULT hr = ObtainDeviceInstances(&drivers);
     if (FAILED(hr))
     {
-        IGC_ASSERT(0 && "Failed to find any graphics device instances");
+        IGC_ASSERT_MESSAGE(0, "Failed to find any graphics device instances");
         return 0;
     }
     return drivers.size();
@@ -502,7 +502,7 @@ void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned lon
 
     if (driverRegistryPath.empty())
     {
-        IGC_ASSERT(0 && "Failed to find the driver registry path, cannot create the debug variable XML file.");
+        IGC_ASSERT_MESSAGE(0, "Failed to find the driver registry path, cannot create the debug variable XML file.");
         return;
     }
 

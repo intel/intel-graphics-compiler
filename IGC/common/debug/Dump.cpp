@@ -76,7 +76,7 @@ DumpName::DumpName()
 
 DumpName DumpName::ShaderName(std::string const& name) const
 {
-    IGC_ASSERT(name.find(" ") == std::string::npos && "Shader name must not contain spaces");
+    IGC_ASSERT_MESSAGE(name.find(" ") == std::string::npos, "Shader name must not contain spaces");
     DumpName copy(*this);
     copy.m_shaderName = name;
     return copy;
@@ -105,10 +105,9 @@ DumpName DumpName::Retry(unsigned retryId) const
 
 DumpName DumpName::Extension(std::string const& extension) const
 {
-    IGC_ASSERT(
-        (extension.size() == 0 || extension.at(0) != '.') &&
+    IGC_ASSERT_MESSAGE((extension.size() == 0) || (extension.at(0) != '.'),
         "Extension shouldn't start with a '.', and shouldn't be empty");
-    IGC_ASSERT(extension.find(" ") == std::string::npos && "Extension must not contain spaces");
+    IGC_ASSERT_MESSAGE(extension.find(" ") == std::string::npos, "Extension must not contain spaces");
     DumpName copy(*this);
     copy.m_extension = extension;
     return copy;
@@ -184,7 +183,7 @@ DumpName DumpName::Pass(std::string const& name, llvm::Optional<unsigned int> in
     }),
         newName.end());
 
-    IGC_ASSERT(newName.find(" ") == std::string::npos && "Pass name must not contain spaces");
+    IGC_ASSERT_MESSAGE(newName.find(" ") == std::string::npos, "Pass name must not contain spaces");
     DumpName copy(*this);
     CPassDescriptor pd = { newName, index };
     copy.m_pass = pd;
@@ -228,7 +227,7 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         case ShaderType::GEOMETRY_SHADER: ss << "GS"; break;
         case ShaderType::COMPUTE_SHADER: ss << "CS"; break;
         case ShaderType::UNKNOWN:
-        default: IGC_ASSERT(0 && "Unknown Shader Type"); break;
+        default: IGC_ASSERT_MESSAGE(0, "Unknown Shader Type"); break;
         }
         underscore = true;
     }
@@ -446,13 +445,13 @@ namespace {
         case DumpType::TIME_STATS_TEXT       : return true;
         case DumpType::TIME_STATS_CSV        : return true;
         case DumpType::DBG_MSG_TEXT          : return true;
-        default                              : IGC_ASSERT(0 && "unreachable"); return true;
+        default                              : IGC_ASSERT_MESSAGE(0, "unreachable"); return true;
         }
     }
 
     const char* commentPrefix( DumpType type )
     {
-        IGC_ASSERT(isText(type) && "Only text types supported");
+        IGC_ASSERT_MESSAGE(isText(type), "Only text types are supported");
         switch ( type )
         {
         case DumpType::NOS_TEXT              : return "// ";
@@ -467,8 +466,8 @@ namespace {
         case DumpType::LLVM_OPT_STAT_TEXT    : return "";
         case DumpType::TIME_STATS_TEXT       : return "";
         case DumpType::DBG_MSG_TEXT          : return "";
-        case DumpType::TIME_STATS_CSV        : IGC_ASSERT(0 && "CSV doesn't have comments"); return "";
-        default                              : IGC_ASSERT(0 && "unreachable"); return "#";
+        case DumpType::TIME_STATS_CSV        : IGC_ASSERT_MESSAGE(0, "CSV doesn't have comments"); return "";
+        default                              : IGC_ASSERT_MESSAGE(0, "unreachable"); return "#";
         }
     }
 

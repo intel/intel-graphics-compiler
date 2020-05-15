@@ -102,9 +102,10 @@ inline uint16_t numLanes(SIMDMode width)
     case SIMDMode::SIMD16  : return 16;
     case SIMDMode::SIMD32  : return 32;
     case SIMDMode::UNKNOWN :
-    default                : IGC_ASSERT(0 && "unreachable"); break;
+    default:
+        IGC_ASSERT_MESSAGE(0, "unreachable");
+        return 1;
     }
-    return 1;
 }
 
 inline SIMDMode lanesToSIMDMode(unsigned lanes) {
@@ -116,11 +117,9 @@ inline SIMDMode lanesToSIMDMode(unsigned lanes) {
     case 16: return SIMDMode::SIMD16;
     case 32: return SIMDMode::SIMD32;
     default:
-        break;
+        IGC_ASSERT_MESSAGE(0, "Unexpected number of lanes!");
+        return SIMDMode::UNKNOWN;
     }
-
-    IGC_ASSERT(false && "Unexpected number of lanes!");
-    return SIMDMode::UNKNOWN;
 }
 
 enum class ShaderType
@@ -280,8 +279,9 @@ inline typename std::enable_if<
     static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
         "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(std::numeric_limits<TDst>::min() <= value &&
-        value <= std::numeric_limits<TDst>::max());
+    IGC_ASSERT(std::numeric_limits<TDst>::min() <= value);
+    IGC_ASSERT(value <= std::numeric_limits<TDst>::max());
+
     return static_cast<TDst>(value);
 }
 
@@ -293,8 +293,8 @@ inline typename std::enable_if<
     static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
         "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(value <= static_cast<typename std::make_unsigned<TDst>::type>(
-        std::numeric_limits<TDst>::max()));
+    IGC_ASSERT(value <= static_cast<typename std::make_unsigned<TDst>::type>(std::numeric_limits<TDst>::max()));
+
     return static_cast<TDst>(value);
 }
 
@@ -306,8 +306,9 @@ inline typename std::enable_if<
     static_assert(std::is_integral<TDst>::value && std::is_integral<TSrc>::value,
         "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(0 <= value &&
-        static_cast<typename std::make_unsigned<TSrc>::type>(value) <= std::numeric_limits<TDst>::max());
+    IGC_ASSERT(0 <= value);
+    IGC_ASSERT(static_cast<typename std::make_unsigned<TSrc>::type>(value) <= std::numeric_limits<TDst>::max());
+
     return static_cast<TDst>(value);
 }
 
@@ -344,8 +345,7 @@ inline typename std::enable_if<
     static_assert(std::is_integral<TDst>::value,
         "int_cast<>() should be used only for conversions between integer types.");
 
-    IGC_ASSERT(value.getFixedSize() <= static_cast<typename std::make_unsigned<TDst>::type>(
-        std::numeric_limits<TDst>::max()));
+    IGC_ASSERT(value.getFixedSize() <= static_cast<typename std::make_unsigned<TDst>::type>(std::numeric_limits<TDst>::max()));
     return static_cast<TDst>(value.getFixedSize());
 }
 

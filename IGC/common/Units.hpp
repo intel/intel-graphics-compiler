@@ -34,7 +34,7 @@ template<typename T, typename TUnder = unsigned int, int TRatio = T::ratio>
 class Unit
 {
 private:
-    static_assert( std::is_integral<TUnder>::value, "TUnder must be of integral type" );
+    static_assert(std::is_integral<TUnder>::value, "TUnder must be of integral type");
     static_assert(
         TRatio == T::ratio,
         "Third template parameter gives the ratio information to the vs2012 natvis debugger."
@@ -69,8 +69,9 @@ public:
     template<typename R>
     Unit<T, TUnder> operator =(Unit<R, TUnder> other)
     {
-        IGC_ASSERT(other.m_value % T::ratio == 0 &&
-                "Invalid assignment: resulting count is not a whole number");
+        static_assert(T::ratio);
+        IGC_ASSERT_MESSAGE(other.m_value % T::ratio == 0,
+            "Invalid assignment: resulting count is not a whole number");
         this->m_value = other.m_value;
         return *this;
     }
@@ -141,13 +142,15 @@ public:
     /// Returns the underlying value of the unit.
     TUnder Count() const
     {
+        static_assert(T::ratio);
+
         if ( m_value % T::ratio == 0)
         {
             return m_value / T::ratio;
         }
         else
         {
-            IGC_ASSERT(0 && "Corrupted value of a unit, should be a multiple of the ratio.");
+            IGC_ASSERT_MESSAGE(0, "Corrupted value of a unit, should be a multiple of the ratio.");
             return 0;
         }
     }
@@ -216,11 +219,13 @@ private:
     template<typename R>
     Unit<T, TUnder> add(const Unit<R, TUnder> & other) const
     {
-        static_assert( T::ratio <= R::ratio && (R::ratio % T::ratio == 0),
+        static_assert(T::ratio);
+        static_assert(T::ratio <= R::ratio);
+        static_assert(R::ratio % T::ratio == 0,
             "Size of the unit on the right hand side of operator + must be equal to"
             "or a multiple of the left-hand unit size.");
 
-        IGC_ASSERT((other.m_value % T::ratio == 0) &&
+        IGC_ASSERT_MESSAGE(other.m_value % T::ratio == 0,
             "Invalid addition: resulting count is not a whole number");
         Unit<T, TUnder> res;
         res.m_value = this->m_value + other.m_value;
@@ -233,11 +238,13 @@ private:
     template<typename R>
     Unit<T, TUnder> subtract(const Unit<R, TUnder> & other) const
     {
-        static_assert( T::ratio <= R::ratio && (R::ratio % T::ratio == 0),
+        static_assert(T::ratio);
+        static_assert(T::ratio <= R::ratio);
+        static_assert(R::ratio % T::ratio == 0,
             "Size of the unit on the right hand side of operator- must be equal to"
             "or a multiple of the left-hand unit size.");
 
-        IGC_ASSERT((other.m_value % T::ratio == 0) &&
+        IGC_ASSERT_MESSAGE(other.m_value % T::ratio == 0,
             "Invalid subtraction: resulting count is not a whole number");
         Unit<T, TUnder> res;
         res.m_value = this->m_value - other.m_value;
@@ -250,11 +257,13 @@ private:
     template<typename R>
     Unit<T, TUnder> subtractFrom(const Unit<R, TUnder> & other) const
     {
-        static_assert( T::ratio <= R::ratio && (R::ratio % T::ratio == 0),
+        static_assert(T::ratio);
+        static_assert(T::ratio <= R::ratio);
+        static_assert(R::ratio % T::ratio == 0,
             "Size of the unit on the right hand side of operator- must be equal to"
             "or a multiple of the left-hand unit size.");
 
-        IGC_ASSERT((other.m_value % T::ratio == 0) &&
+        IGC_ASSERT_MESSAGE(other.m_value % T::ratio == 0,
             "Invalid subtraction: resulting count is not a whole number");
         Unit<T, TUnder> res;
         res.m_value = other.m_value - this->m_value;
@@ -284,8 +293,8 @@ private:
 template<typename TDst, typename TSrcUnit>
 Unit<TDst, typename TSrcUnit::myTUnder, TDst::ratio> round_down(TSrcUnit other)
 {
-    static_assert( TDst::ratio >= TSrcUnit::myT::ratio,
-        "Invalid rounding down: destination unit size must be larger than the source unit size." );
+    static_assert(TDst::ratio >= TSrcUnit::myT::ratio,
+        "Invalid rounding down: destination unit size must be larger than the source unit size.");
     Unit<TDst, typename TSrcUnit::myTUnder> res;
     res.m_value = other.m_value - (other.m_value % TDst::ratio);
     return res;
@@ -299,8 +308,8 @@ Unit<TDst, typename TSrcUnit::myTUnder, TDst::ratio> round_down(TSrcUnit other)
 template<typename TDst, typename TSrcUnit>
 Unit<TDst, typename TSrcUnit::myTUnder, TDst::ratio> round_up(TSrcUnit other)
 {
-    static_assert( TDst::ratio >= TSrcUnit::myT::ratio,
-        "Invalid rounding up: destination unit size must be larger than the source unit size." );
+    static_assert(TDst::ratio >= TSrcUnit::myT::ratio,
+        "Invalid rounding up: destination unit size must be larger than the source unit size.");
     Unit<TDst, typename TSrcUnit::myTUnder> res;
     typename TSrcUnit::myTUnder remainder = other.m_value % TDst::ratio;
     res.m_value = (remainder == 0) ? other.m_value : other.m_value - remainder + TDst::ratio;

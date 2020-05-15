@@ -367,7 +367,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     }
     else
     {
-        IGC_ASSERT((SIPIndex < SIPKernelInfo.size()) && ("Invalid SIPIndex while loading"));
+        IGC_ASSERT_MESSAGE((SIPIndex < SIPKernelInfo.size()), "Invalid SIPIndex while loading");
         m_LinearAddress = SIPKernelInfo[SIPIndex].first;
         m_ProgramSize = SIPKernelInfo[SIPIndex].second;
     }
