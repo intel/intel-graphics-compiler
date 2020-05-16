@@ -220,7 +220,7 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
         pointerAddressSpace = store->getPointerAddressSpace();
     }
     else {
-        report_fatal_error("Unable to resolve generic address space pointer");
+        IGC_ASSERT_EXIT_MESSAGE(0, "Unable to resolve generic address space pointer");
     }
 
     if (pointerAddressSpace == ADDRESS_SPACE_GENERIC) {

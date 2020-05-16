@@ -718,7 +718,7 @@ namespace //Anonymous
             , _waitEventsList(nullptr)
             , _retEvent(nullptr)
         {
-            if (_calledFunc == nullptr) report_fatal_error("indirect calls are not supported");
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != _calledFunc, "indirect calls are not supported");
         }
 
     public:
@@ -746,7 +746,7 @@ namespace //Anonymous
         virtual llvm::Function* getEnqueuedFunction()
         {
             auto invokeFunc = dyn_cast<llvm::Function>(getInvokeArg()->stripPointerCasts());
-            if (invokeFunc == nullptr) report_fatal_error("Device enqueue invoke param is not a function");
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != invokeFunc, "Device enqueue invoke param is not a function");
             return invokeFunc;
         }
 
@@ -823,7 +823,7 @@ namespace //Anonymous
                 }
                 else
                 {
-                    report_fatal_error("enqueue_kernel signature does not match");
+                    IGC_ASSERT_EXIT_MESSAGE(0, "enqueue_kernel signature does not match");
                 }
             }
         }
@@ -884,7 +884,7 @@ namespace //Anonymous
         SPIRVOpEnqueueKernelCallArgs(llvm::CallInst& call, DataContext& dataContext)
             : DeviceExecCallArgs(call, dataContext)
         {
-            if (_call.getNumArgOperands() < 8) report_fatal_error("OpEnqueueKernel signature does not match");
+            IGC_ASSERT_EXIT_MESSAGE(8 <= _call.getNumArgOperands(), "OpEnqueueKernel signature does not match");
 
             _queue = _call.getArgOperand(0);
             _flags = _call.getArgOperand(1);
@@ -908,18 +908,22 @@ namespace //Anonymous
             for (unsigned i = localSizesStartArgNum; i < argsNum; i++)
             {
                 auto arg = _call.getArgOperand(i);
+                IGC_ASSERT(nullptr != arg);
+                IGC_ASSERT(nullptr != arg->getType());
+
                 if (arg->getType()->isPointerTy()) {
                     IRBuilder<> builder(&_call);
                     arg = builder.CreateLoad(arg);
                 }
 
-                if (!arg->getType()->isIntegerTy(64) && !arg->getType()->isIntegerTy(32))
-                    report_fatal_error("OpEnqueueKernel signature does not match");
-
                 if (arg->getType()->isIntegerTy(64))
                 {
                     Type* int32Ty = Type::getInt32Ty(_call.getParent()->getContext());
                     arg = CastInst::CreateTruncOrBitCast(arg, int32Ty, "", &_call);
+                }
+                else
+                {
+                    IGC_ASSERT_EXIT_MESSAGE(arg->getType()->isIntegerTy(32), "OpEnqueueKernel signature does not match");
                 }
                 _local_sizes.push_back(arg);
             }
@@ -964,11 +968,11 @@ namespace //Anonymous
         llvm::Value* AdjustNDRangeType(llvm::Value* nDRange)
         {
             auto expectedNdrangeTy = getNDRangeType();
-
+            IGC_ASSERT(nullptr != nDRange);
+            IGC_ASSERT(nullptr != nDRange->getType());
             IGC_ASSERT(nDRange->getType()->isPointerTy());
             auto actualNDRangeTy = KindQuery::toStructType(nDRange->getType());
-            IGC_ASSERT(actualNDRangeTy);
-            if (actualNDRangeTy == nullptr) report_fatal_error("NDRange type mismatch");
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != actualNDRangeTy, "NDRange type mismatch");
 
             if (actualNDRangeTy->isLayoutIdentical(expectedNdrangeTy))
             {
@@ -1016,7 +1020,7 @@ namespace //Anonymous
 
             const auto newName = "__builtin_IB_get_block_simd_size";
             auto calledFunction = _deviceExecCall->getCalledFunction();
-            if (calledFunction == nullptr) report_fatal_error("indirect calls are not supported");
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != calledFunction, "indirect calls are not supported");
             return CreateNewCall(newName, calledFunction->getReturnType(), blockIdValue);
         }
     };
@@ -1031,7 +1035,7 @@ namespace //Anonymous
         {
             const auto newName = "__builtin_IB_get_max_workgroup_size";
             auto calledFunction = _deviceExecCall->getCalledFunction();
-            if (calledFunction == nullptr) report_fatal_error("indirect calls are not supported");
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != calledFunction, "indirect calls are not supported");
             return CreateNewCall(newName, calledFunction->getReturnType(), {});
         }
     };
@@ -1057,7 +1061,7 @@ namespace //Anonymous
 
             const auto newName = "IGIL_calc_sub_group_count_for_ndrange";
             auto calledFunction = _deviceExecCall->getCalledFunction();
-            if (calledFunction == nullptr) report_fatal_error("indirect calls are not supported");
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != calledFunction, "indirect calls are not supported");
             return CreateNewCall(newName, calledFunction->getReturnType(), args);
         }
     };
@@ -1082,7 +1086,7 @@ namespace //Anonymous
 
             const auto newName = "__intel_calc_kernel_local_size_for_sub_group_count";
             auto calledFunction = _deviceExecCall->getCalledFunction();
-            if (calledFunction == nullptr) report_fatal_error("indirect calls are not supported");
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != calledFunction, "indirect calls are not supported");
             return CreateNewCall(newName, calledFunction->getReturnType(), args);
         }
     };
@@ -1105,7 +1109,7 @@ namespace //Anonymous
 
             const auto newName = "__intel_calc_kernel_max_num_subgroups";
             auto calledFunction = _deviceExecCall->getCalledFunction();
-            if (calledFunction == nullptr) report_fatal_error("indirect calls are not supported");
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != calledFunction, "indirect calls are not supported");
             return CreateNewCall(newName, calledFunction->getReturnType(), args);
         }
     };
@@ -1791,7 +1795,7 @@ namespace //Anonymous
 
         // get list of calls which "enqueue" this dispatcher
         auto parentCalls = _dataContext.getCallHandlersFor(invokeFunc);
-        if (parentCalls.size() == 0) report_fatal_error("parent calls for invoke are not set");
+        IGC_ASSERT_EXIT_MESSAGE(parentCalls.size(), "parent calls for invoke are not set");
 
         // lookup for a call which located in a "__kernel"
         // if __kernel call will not found, use the one which is not self
@@ -1810,7 +1814,7 @@ namespace //Anonymous
             }
         }
 
-        if (parentCallHandler == nullptr) report_fatal_error("Fail parent call lookup: possible closed self-enqueue");
+        IGC_ASSERT_EXIT_MESSAGE(nullptr != parentCallHandler, "Fail parent call lookup: possible closed self-enqueue");
 
         auto capturedValues = parentCallHandler->getArgs()->getParamValue()->getCapturedValues(_dataContext.getDispatcherForInvokeFunc(invokeFunc)->getCaptureIndicies());
         auto& capture = capturedValues[captureNum];
@@ -1925,8 +1929,7 @@ namespace //Anonymous
         if (!_invocations[invokeFunc]._dispatcher)
         {
             const Function* parentKernel = getParentKernel(invokeFunc);
-            if (!parentKernel)
-                report_fatal_error("Fail parent kernel lookup: possible closed self-enqueue");
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != parentKernel, "Fail parent kernel lookup: possible closed self-enqueue");
 
             _invocations[invokeFunc]._dispatcher.reset(new Dispatcher(invokeFunc, parentKernel->getName(), _blocksNum++));
         }
@@ -1960,7 +1963,7 @@ namespace //Anonymous
 
     const llvm::Function* DataContext::getParentKernelImpl(const llvm::Function* invokeFunc, std::set<const llvm::Function*>& processedFuncs)
     {
-        if (invokeFunc == nullptr) report_fatal_error("invoke function should not be null");
+        IGC_ASSERT_EXIT_MESSAGE(nullptr != invokeFunc, "invoke function should not be null");
 
         processedFuncs.insert(invokeFunc);
 
@@ -2383,7 +2386,7 @@ namespace //Anonymous
 
     Capture::Capture(llvm::Value* val, DataContext& context)
     {
-        if (val == nullptr) report_fatal_error("captured value is null");
+        IGC_ASSERT_EXIT_MESSAGE(nullptr != val, "captured value is null");
         value = val;
         if (auto arg = context.getArgForValue(value))
         {
@@ -2436,7 +2439,7 @@ namespace //Anonymous
         , _block_invokeFunction(nullptr)
         , _dataContext(dataContext)
     {
-        if (!_paramStruct) report_fatal_error("Enqueue param is not a struct");
+        IGC_ASSERT_EXIT_MESSAGE(nullptr != _paramStruct, "Enqueue param is not a struct");
 
         if (_dataContext.getKindQuery().isBlockStructType(_paramStruct->getType())) {
             /// ObjectiveC block value passed to OCL "device execution" call.
@@ -2455,12 +2458,9 @@ namespace //Anonymous
     {
         if (_paramValue == nullptr)
         {
-            if (auto param = getParamArg()) {
-                _paramValue = _dataContext.getDeviceEnqueueParamValue(param->stripPointerCasts());
-            }
-            else {
-                report_fatal_error("Enqueue param is not set");
-            }
+            auto param = getParamArg();
+            IGC_ASSERT_EXIT_MESSAGE(nullptr != param, "Enqueue param is not set");
+            _paramValue = _dataContext.getDeviceEnqueueParamValue(param->stripPointerCasts());
         }
         return _paramValue;
     }
@@ -2610,7 +2610,7 @@ namespace //Anonymous
             case CaptureKind::IMAGE:
             case CaptureKind::SAMPLER:
             {
-                if (Capture::ARG_NUM_NONE == capturedValue.argNum) report_fatal_error("unknown argument number for an object");
+                IGC_ASSERT_EXIT_MESSAGE(Capture::ARG_NUM_NONE != capturedValue.argNum, "unknown argument number for an object");
                 auto objArgNumValue = llvm::ConstantInt::get(int32ty, capturedValue.argNum);
                 auto getObjIDFunc = getOrCreateFunc("__builtin_IB_get_object_id", int32ty, int32ty);
                 auto objIdValue = builder.CreateCall(getObjIDFunc, objArgNumValue, "obj_id");
