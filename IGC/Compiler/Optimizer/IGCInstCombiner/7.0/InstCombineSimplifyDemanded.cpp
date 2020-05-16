@@ -1399,7 +1399,7 @@ Value* InstCombiner::SimplifyDemandedVectorElts(Value* V, APInt DemandedElts,
             }
         }
         else {
-            llvm_unreachable("Unimp");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unimp");
         }
         break;
     }

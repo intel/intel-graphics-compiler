@@ -60,7 +60,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -2002,7 +2001,7 @@ void DwarfDebug::recordSourceLine(
         }
         else
         {
-            llvm_unreachable("Unexpected scope info");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected scope info");
         }
 
         Src = getOrCreateSourceID(Fn, Dir, Asm->GetDwarfCompileUnitID());

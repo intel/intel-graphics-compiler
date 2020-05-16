@@ -63,7 +63,7 @@ bool InstPromoter::promote(Instruction* I) {
 // By default, capture all missing instructions!
 bool InstPromoter::visitInstruction(Instruction& I) {
     LLVM_DEBUG(dbgs() << "PROMOTE: " << I << '\n');
-    llvm_unreachable("UNKNOWN INSTRUCTION IS BEING PROMOTED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN INSTRUCTION IS BEING PROMOTED!");
     return false;
 }
 
@@ -180,7 +180,7 @@ bool InstPromoter::visitBinaryOperator(BinaryOperator& I) {
         RHS = TL->zext(RHS, I.getType());
         break;
     default:
-        llvm_unreachable("UNKNOWN BINARY OPERATOR IS BEING PROMOTED!");
+        IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN BINARY OPERATOR IS BEING PROMOTED!");
     }
 
     Promoted =
@@ -418,13 +418,13 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
 /// Other operators
 
 bool InstPromoter::visitGenIntrinsicInst(GenIntrinsicInst& I) {
-    llvm_unreachable("UNKNOWN GEN INSTRINSIC INSTRUCTION IS BEING PROMOTED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN GEN INSTRINSIC INSTRUCTION IS BEING PROMOTED!");
     return false;
 }
 
 bool InstPromoter::visitCallInst(CallInst& I) {
     if (isa<GenIntrinsicInst>(&I))
         return visitGenIntrinsicInst(static_cast<GenIntrinsicInst&>(I));
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }

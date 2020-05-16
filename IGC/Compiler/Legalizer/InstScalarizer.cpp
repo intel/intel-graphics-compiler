@@ -54,7 +54,7 @@ bool InstScalarizer::scalarize(Instruction* I) {
 // By default, capture all missing instructions!
 bool InstScalarizer::visitInstruction(Instruction& I) {
     LLVM_DEBUG(dbgs() << "SCALARIZE: " << I << '\n');
-    llvm_unreachable("UNKNOWN INSTRUCTION IS BEING SCALARIZED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN INSTRUCTION IS BEING SCALARIZED!");
     return false;
 }
 
@@ -428,8 +428,7 @@ bool InstScalarizer::visitExtractElementInst(ExtractElementInst& I) {
         // %elt = load eT* %eptr
         //
         // It would be much more complicated if eT is not byte addressable.
-        llvm_unreachable(
-            "NON-CONSTANT IDX IN EXTRACT-ELEMENT IS NOT SUPPORTED YET!");
+        IGC_ASSERT_EXIT_MESSAGE(0, "NON-CONSTANT IDX IN EXTRACT-ELEMENT IS NOT SUPPORTED YET!");
     }
 
     ConstantInt* CI = cast<ConstantInt>(I.getIndexOperand());
@@ -474,8 +473,7 @@ bool InstScalarizer::visitInsertElementInst(InsertElementInst& I) {
         // %vec1 = load <N x eT>* %stk
         //
         // It would be much more complicated if eT is not byte addressable.
-        llvm_unreachable(
-            "NON-CONSTANT IDX IN INSERT-ELEMENT IS NOT SUPPORTED YET!");
+        IGC_ASSERT_EXIT_MESSAGE(0, "NON-CONSTANT IDX IN INSERT-ELEMENT IS NOT SUPPORTED YET!");
     }
 
     ConstantInt* CI = cast<ConstantInt>(I.getOperand(2));

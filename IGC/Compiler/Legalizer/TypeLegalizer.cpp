@@ -156,8 +156,7 @@ TypeLegalizer::getTypeLegalizeAction(Type* Ty) const {
     }
 
     IntegerType* ITy = dyn_cast<IntegerType>(Ty);
-    if (!ITy)
-        llvm_unreachable("DON'T KNOW HOW TO LEGALIZE TYPE!");
+    IGC_ASSERT_EXIT_MESSAGE(nullptr != ITy, "DON'T KNOW HOW TO LEGALIZE TYPE!");
 
     unsigned Width = getTypeSizeInBits(ITy);
 
@@ -272,7 +271,7 @@ TypeSeq* TypeLegalizer::getSoftenedTypeSeq(Type* Ty) {
     case Type::X86_FP80TyID: Width = 80; break;
     case Type::FP128TyID: Width = 128; break;
     case Type::PPC_FP128TyID: Width = 128; break;
-    default: llvm_unreachable("INVALID FLOATING POINT TYPE!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "INVALID FLOATING POINT TYPE!");
     }
 
     Type* SoftenedTy = Type::getIntNTy(Ty->getContext(), Width);
@@ -434,7 +433,7 @@ void TypeLegalizer::expandConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
 
 void TypeLegalizer::softenConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
     Constant* C) {
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
 
 }
 
@@ -448,17 +447,17 @@ void TypeLegalizer::scalarizeConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
 
 void TypeLegalizer::elementizeConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
     Constant* C) {
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
 }
 
 Value* TypeLegalizer::promoteArgument(Argument* Arg, Type* PromotedTy) {
-    llvm_unreachable("ILLEGAL ARGUMENT IS FOUND TO BE PROMOTED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "ILLEGAL ARGUMENT IS FOUND TO BE PROMOTED!");
     return nullptr;
 }
 
 Value* TypeLegalizer::expandArgument(Argument* Arg,
     Type* ExpandedTy, unsigned Part) {
-    llvm_unreachable("ILLEGAL ARGUMENT IS FOUND TO BE EXPANDED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "ILLEGAL ARGUMENT IS FOUND TO BE EXPANDED!");
     return nullptr;
 }
 
@@ -792,27 +791,27 @@ bool TypeLegalizer::legalizeTerminators(Function& F) {
 }
 
 bool TypeLegalizer::promoteRet(ReturnInst* RI) {
-    llvm_unreachable("ILLEGAL RETURN VALUE IS FOUND TO BE PROMOTED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "ILLEGAL RETURN VALUE IS FOUND TO BE PROMOTED!");
     return false;
 }
 
 bool TypeLegalizer::expandRet(ReturnInst* RI) {
-    llvm_unreachable("ILLEGAL RETURN VALUE IS FOUND TO BE EXPANDED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "ILLEGAL RETURN VALUE IS FOUND TO BE EXPANDED!");
     return false;
 }
 
 bool TypeLegalizer::softenRet(ReturnInst* RI) {
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool TypeLegalizer::scalarizeRet(ReturnInst* RI) {
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool TypeLegalizer::elementizeRet(ReturnInst* RI) {
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 

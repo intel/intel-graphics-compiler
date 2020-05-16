@@ -131,7 +131,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/DebugCounter.h"
-#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
@@ -2187,7 +2186,7 @@ static bool isAllocSiteRemovable(Instruction* AI,
                 continue;
             }
             }
-            llvm_unreachable("missing a return?");
+            IGC_ASSERT_EXIT_MESSAGE(0, "missing a return?");
         }
     } while (!Worklist.empty());
     return true;
@@ -2632,7 +2631,7 @@ static bool isCatchAll(EHPersonality Personality, Constant* TypeInfo) {
     case EHPersonality::Wasm_CXX:
         return TypeInfo->isNullValue();
     }
-    llvm_unreachable("invalid enum");
+    IGC_ASSERT_EXIT_MESSAGE(0, "invalid enum");
 }
 
 static bool shorter_filter(const Value* LHS, const Value* RHS) {

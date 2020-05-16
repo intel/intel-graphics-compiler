@@ -131,7 +131,7 @@ namespace IGC
                 {
                     switch ((unsigned)fixup.getKind())
                     {
-                    default: llvm_unreachable("invalid fixup kind!");
+                    default: IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
 
                     case FK_Data_8: type = ELF::R_X86_64_PC64; break;
                     case FK_Data_4: type = ELF::R_X86_64_PC32; break;
@@ -145,7 +145,7 @@ namespace IGC
                         switch (modifier)
                         {
                         default:
-                            llvm_unreachable("Unimplemented");
+                            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
                         case MCSymbolRefExpr::VK_None:
                             type = ELF::R_X86_64_PC32;
                             break;
@@ -180,12 +180,12 @@ namespace IGC
                 {
                     switch ((unsigned)fixup.getKind())
                     {
-                    default: llvm_unreachable("invalid fixup kind!");
+                    default: IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
                     case FK_Data_8:
                         switch (modifier)
                         {
                         default:
-                            llvm_unreachable("Unimplemented");
+                            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
                         case MCSymbolRefExpr::VK_None:
                             type = ELF::R_X86_64_64;
                             break;
@@ -218,14 +218,14 @@ namespace IGC
                 {
                     switch ((unsigned)fixup.getKind())
                     {
-                    default: llvm_unreachable("invalid fixup kind!");
+                    default: IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
 
                     case FK_PCRel_4:
                     case FK_Data_4:
                         switch (modifier)
                         {
                         default:
-                            llvm_unreachable("Unimplemented");
+                            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
                         case MCSymbolRefExpr::VK_None:
                             type = ELF::R_386_PC32;
                             break;
@@ -240,14 +240,14 @@ namespace IGC
                 {
                     switch ((unsigned)fixup.getKind())
                     {
-                    default: llvm_unreachable("invalid fixup kind!");
+                    default: IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
 
                     case FK_PCRel_4:
                     case FK_Data_4:
                         switch (modifier)
                         {
                         default:
-                            llvm_unreachable("Unimplemented");
+                            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
                         case MCSymbolRefExpr::VK_None:
                             type = ELF::R_386_32;
                             break;
@@ -290,7 +290,7 @@ namespace IGC
                 }
             }
             else
-                llvm_unreachable("Unsupported ELF machine type.");
+                IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported ELF machine type.");
 
             return type;
         }
@@ -314,7 +314,7 @@ namespace IGC
         {
             switch (Kind)
             {
-            default: llvm_unreachable("invalid fixup kind!");
+            default: IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
             case FK_PCRel_1:
             case FK_SecRel_1:
             case FK_Data_1: return 0;
@@ -382,7 +382,7 @@ namespace IGC
 #endif
         {
             IGC_ASSERT(false && "TODO: implement this");
-            llvm_unreachable("Unimplemented");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
             return false;
         }
 
@@ -392,7 +392,7 @@ namespace IGC
             const MCAsmLayout& layout) const override
         {
             IGC_ASSERT(false && "TODO: implement this");
-            llvm_unreachable("Unimplemented");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
             return false;
         }
 
@@ -400,7 +400,7 @@ namespace IGC
             MCInst& res) const override
         {
             IGC_ASSERT(false && "TODO: implement this");
-            llvm_unreachable("Unimplemented");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
         }
 
 #if LLVM_VERSION_MAJOR == 4
@@ -455,7 +455,7 @@ namespace IGC
         std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
         {
             IGC_ASSERT(false && "TODO: implement this");
-            llvm_unreachable("Unimplemented");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
         }
 #endif
     };
@@ -468,13 +468,13 @@ namespace IGC
             const MCSubtargetInfo& m) const
         {
             IGC_ASSERT(false && "TODO: implement this");
-            llvm_unreachable("Unimplemented");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
         }
 
         void operator=(const VISAMCCodeEmitter&)
         {
             IGC_ASSERT(false && "TODO: implement this");
-            llvm_unreachable("Unimplemented");
+            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
         }
 
     };

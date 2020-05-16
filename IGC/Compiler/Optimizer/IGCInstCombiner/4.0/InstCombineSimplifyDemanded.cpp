@@ -1248,7 +1248,7 @@ Value *InstCombiner::SimplifyDemandedVectorElts(Value *V, APInt DemandedElts,
           UndefElts.setBit(OutIdx);
       }
     } else {
-      llvm_unreachable("Unimp");
+      IGC_ASSERT_EXIT_MESSAGE(0, "Unimp");
     }
     break;
   }

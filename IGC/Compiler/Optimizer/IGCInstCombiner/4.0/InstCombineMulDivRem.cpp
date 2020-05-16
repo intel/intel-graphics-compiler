@@ -1085,9 +1085,8 @@ static Instruction *foldUDivShl(Value *Op0, Value *Op1, const BinaryOperator &I,
     ShiftLeft = Op1;
 
   const APInt *CI = nullptr;
-  Value *N;
-  if (!match(ShiftLeft, m_Shl(m_APInt(CI), m_Value(N))))
-    llvm_unreachable("match should never fail here!");
+  Value *N = nullptr;
+  IGC_ASSERT_EXIT_MESSAGE(match(ShiftLeft, m_Shl(m_APInt(CI), m_Value(N))), "match should never fail here!");
   if (*CI != 1)
     N = IC.Builder->CreateAdd(N,
                               ConstantInt::get(N->getType(), CI->logBase2()));

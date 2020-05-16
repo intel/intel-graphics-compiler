@@ -62,7 +62,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/User.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/Casting.h"
-#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Transforms/InstCombine/InstCombineWorklist.h"
 #include <utility>
@@ -193,7 +192,7 @@ static Value* foldSelectICmpAnd(SelectInst& Sel, ICmpInst* Cmp,
             Constant* C = ConstantInt::get(SelType, FC);
             return ExtraBitInTC ? Builder.CreateOr(V, C) : Builder.CreateXor(V, C);
         }
-        llvm_unreachable("Only expecting equality predicates");
+        IGC_ASSERT_EXIT_MESSAGE(0, "Only expecting equality predicates");
     }
 
     // Make sure one of the select arms is a power-of-2.
@@ -266,7 +265,7 @@ static unsigned getSelectFoldableOperands(BinaryOperator* I) {
 /// constant that goes into the select.
 static APInt getSelectFoldableConstant(BinaryOperator* I) {
     switch (I->getOpcode()) {
-    default: llvm_unreachable("This cannot happen!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "This cannot happen!");
     case Instruction::Add:
     case Instruction::Sub:
     case Instruction::Or:
@@ -395,7 +394,7 @@ Instruction* InstCombiner::foldSelectOpOp(SelectInst& SI, Instruction* TI,
             ? GetElementPtrInst::CreateInBounds(ElementType, Op0, { Op1 })
             : GetElementPtrInst::Create(ElementType, Op0, { Op1 });
     }
-    llvm_unreachable("Expected BinaryOperator or GEP");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Expected BinaryOperator or GEP");
     return nullptr;
 }
 

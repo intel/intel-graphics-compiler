@@ -358,7 +358,7 @@ void PointerReplacer::replace(Instruction* I) {
         WorkMap[BC] = NewI;
     }
     else {
-        llvm_unreachable("should never reach here");
+        IGC_ASSERT_EXIT_MESSAGE(0, "should never reach here");
     }
 }
 

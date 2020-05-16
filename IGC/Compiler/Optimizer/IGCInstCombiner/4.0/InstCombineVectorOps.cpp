@@ -994,7 +994,7 @@ static Value *buildNew(Instruction *I, ArrayRef<Value*> NewOps) {
       return GEP;
     }
   }
-  llvm_unreachable("failed to rebuild vector instructions");
+  IGC_ASSERT_EXIT_MESSAGE(0, "failed to rebuild vector instructions");
 }
 
 Value *
@@ -1093,7 +1093,7 @@ InstCombiner::EvaluateInDifferentElementOrder(Value *V, ArrayRef<int> Mask) {
                                        Builder->getInt32(Index), "", I);
     }
   }
-  llvm_unreachable("failed to reorder elements of vector instruction!");
+  IGC_ASSERT_EXIT_MESSAGE(0, "failed to reorder elements of vector instruction!");
 }
 
 static void recognizeIdentityMask(const SmallVectorImpl<int> &Mask,

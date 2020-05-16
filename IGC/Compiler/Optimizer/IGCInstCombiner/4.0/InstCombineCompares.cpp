@@ -810,7 +810,7 @@ static Value *rewriteGEPAsOffset(Value *Start, Value *Base,
     if (isa<PHINode>(Val))
       continue;
 
-    llvm_unreachable("Unexpected instruction type");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected instruction type");
   }
 
   // Add the incoming values to the PHI nodes.
@@ -2263,7 +2263,7 @@ Instruction *InstCombiner::foldICmpDivConstant(ICmpInst &Cmp,
 
   Value *X = Div->getOperand(0);
   switch (Pred) {
-    default: llvm_unreachable("Unhandled icmp opcode!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unhandled icmp opcode!");
     case ICmpInst::ICMP_EQ:
       if (LoOverflow && HiOverflow)
         return replaceInstUsesWith(Cmp, Builder->getFalse());
@@ -3434,7 +3434,7 @@ bool InstCombiner::OptimizeOverflowCheck(OverflowCheckFlavor OCF, Value *LHS,
 
   switch (OCF) {
   case OCF_INVALID:
-    llvm_unreachable("bad overflow check kind!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "bad overflow check kind!");
 
   case OCF_UNSIGNED_ADD: {
     OverflowResult OR = computeOverflowForUnsignedAdd(LHS, RHS, &OrigI);
@@ -3708,7 +3708,7 @@ static Instruction *processUMulZExtIdiom(ICmpInst &I, Value *MulVal,
         IC.Worklist.Add(Zext);
         IC.replaceInstUsesWith(*BO, Zext);
       } else {
-        llvm_unreachable("Unexpected Binary operation");
+        IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected Binary operation");
       }
       IC.Worklist.Add(cast<Instruction>(U));
     }
@@ -3738,7 +3738,7 @@ static Instruction *processUMulZExtIdiom(ICmpInst &I, Value *MulVal,
     Inverse = true;
     break;
   default:
-    llvm_unreachable("Unexpected predicate");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected predicate");
   }
   if (Inverse) {
     Value *Res = Builder->CreateExtractValue(Call, 1);
@@ -3999,7 +3999,7 @@ Instruction *InstCombiner::foldICmpUsingKnownBits(ICmpInst &I) {
   // simplify this comparison.  For example, (x&4) < 8 is always true.
   switch (Pred) {
   default:
-    llvm_unreachable("Unknown icmp opcode!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unknown icmp opcode!");
   case ICmpInst::ICMP_EQ:
   case ICmpInst::ICMP_NE: {
     if (Op0Max.ult(Op1Min) || Op0Min.ugt(Op1Max)) {
@@ -4257,7 +4257,7 @@ Instruction *InstCombiner::visitICmpInst(ICmpInst &I) {
   // icmp's with boolean values can always be turned into bitwise operations
   if (Ty->getScalarType()->isIntegerTy(1)) {
     switch (I.getPredicate()) {
-    default: llvm_unreachable("Invalid icmp instruction!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Invalid icmp instruction!");
     case ICmpInst::ICMP_EQ: {                // icmp eq i1 A, B -> ~(A^B)
       Value *Xor = Builder->CreateXor(Op0, Op1, I.getName() + "tmp");
       return BinaryOperator::CreateNot(Xor);
@@ -4560,7 +4560,7 @@ Instruction *InstCombiner::foldFCmpIntToFPConst(FCmpInst &I, Instruction *LHSI,
 
   ICmpInst::Predicate Pred;
   switch (I.getPredicate()) {
-  default: llvm_unreachable("Unexpected predicate!");
+  default: IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected predicate!");
   case FCmpInst::FCMP_UEQ:
   case FCmpInst::FCMP_OEQ:
     Pred = ICmpInst::ICMP_EQ;
@@ -4663,7 +4663,7 @@ Instruction *InstCombiner::foldFCmpIntToFPConst(FCmpInst &I, Instruction *LHSI,
       // the compare predicate and sometimes the value.  RHSC is rounded towards
       // zero at this point.
       switch (Pred) {
-      default: llvm_unreachable("Unexpected integer comparison!");
+      default: IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected integer comparison!");
       case ICmpInst::ICMP_NE:  // (float)int != 4.4   --> true
         return replaceInstUsesWith(I, Builder->getTrue());
       case ICmpInst::ICMP_EQ:  // (float)int == 4.4   --> false
@@ -4747,7 +4747,7 @@ Instruction *InstCombiner::visitFCmpInst(FCmpInst &I) {
   // Simplify 'fcmp pred X, X'
   if (Op0 == Op1) {
     switch (I.getPredicate()) {
-    default: llvm_unreachable("Unknown predicate!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown predicate!");
     case FCmpInst::FCMP_UNO:    // True if unordered: isnan(X) | isnan(Y)
     case FCmpInst::FCMP_ULT:    // True if unordered or less than
     case FCmpInst::FCMP_UGT:    // True if unordered or greater than
@@ -4871,7 +4871,7 @@ Instruction *InstCombiner::visitFCmpInst(FCmpInst &I) {
           break;
         // fabs(x) < 0 --> false
         case FCmpInst::FCMP_OLT:
-          llvm_unreachable("handled by SimplifyFCmpInst");
+          IGC_ASSERT_EXIT_MESSAGE(0, "handled by SimplifyFCmpInst");
         // fabs(x) > 0 --> x != 0
         case FCmpInst::FCMP_OGT:
           return new FCmpInst(FCmpInst::FCMP_ONE, CI->getArgOperand(0), RHSC);

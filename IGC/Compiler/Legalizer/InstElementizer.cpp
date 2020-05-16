@@ -30,14 +30,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TypeLegalizer.h"
 #include "InstElementizer.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC::Legalizer;
 
 bool InstElementizer::elementize(Instruction* I) {
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }

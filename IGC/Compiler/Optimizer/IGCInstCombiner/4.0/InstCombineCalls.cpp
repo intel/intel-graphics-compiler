@@ -284,7 +284,7 @@ static Value *simplifyX86immShift(const IntrinsicInst &II,
   bool ShiftLeft = false;
 
   switch (II.getIntrinsicID()) {
-  default: llvm_unreachable("Unexpected intrinsic!");
+  default: IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected intrinsic!");
   case Intrinsic::x86_sse2_psra_d:
   case Intrinsic::x86_sse2_psra_w:
   case Intrinsic::x86_sse2_psrai_d:
@@ -418,7 +418,7 @@ static Value *simplifyX86varShift(const IntrinsicInst &II,
   bool ShiftLeft = false;
 
   switch (II.getIntrinsicID()) {
-  default: llvm_unreachable("Unexpected intrinsic!");
+  default: IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected intrinsic!");
   case Intrinsic::x86_avx2_psrav_d:
   case Intrinsic::x86_avx2_psrav_d_256:
   case Intrinsic::x86_avx512_psrav_q_128:
@@ -1907,7 +1907,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
 
         Value *V;
         switch (II->getIntrinsicID()) {
-        default: llvm_unreachable("Case stmts out of sync!");
+        default: IGC_ASSERT_EXIT_MESSAGE(0, "Case stmts out of sync!");
         case Intrinsic::x86_avx512_mask_add_ps_512:
         case Intrinsic::x86_avx512_mask_add_pd_512:
           V = Builder->CreateFAdd(Arg0, Arg1);
@@ -1954,7 +1954,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
 
         Value *V;
         switch (II->getIntrinsicID()) {
-        default: llvm_unreachable("Case stmts out of sync!");
+        default: IGC_ASSERT_EXIT_MESSAGE(0, "Case stmts out of sync!");
         case Intrinsic::x86_avx512_mask_add_ss_round:
         case Intrinsic::x86_avx512_mask_add_sd_round:
           V = Builder->CreateFAdd(LHS, RHS);

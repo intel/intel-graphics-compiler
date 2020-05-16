@@ -79,7 +79,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
@@ -277,7 +276,7 @@ static Value* simplifyX86immShift(const IntrinsicInst& II,
     bool ShiftLeft = false;
 
     switch (II.getIntrinsicID()) {
-    default: llvm_unreachable("Unexpected intrinsic!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected intrinsic!");
     case Intrinsic::x86_sse2_psra_d:
     case Intrinsic::x86_sse2_psra_w:
     case Intrinsic::x86_sse2_psrai_d:
@@ -411,7 +410,7 @@ static Value* simplifyX86varShift(const IntrinsicInst& II,
     bool ShiftLeft = false;
 
     switch (II.getIntrinsicID()) {
-    default: llvm_unreachable("Unexpected intrinsic!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected intrinsic!");
     case Intrinsic::x86_avx2_psrav_d:
     case Intrinsic::x86_avx2_psrav_d_256:
     case Intrinsic::x86_avx512_psrav_q_128:
@@ -1325,8 +1324,7 @@ static Instruction* simplifyInvariantGroupIntrinsic(IntrinsicInst& II,
     else if (II.getIntrinsicID() == Intrinsic::strip_invariant_group)
         Result = IC.Builder.CreateStripInvariantGroup(StrippedInvariantGroupsArg);
     else
-        llvm_unreachable(
-            "simplifyInvariantGroupIntrinsic only handles launder and strip");
+        IGC_ASSERT_EXIT_MESSAGE(0, "simplifyInvariantGroupIntrinsic only handles launder and strip");
     if (Result->getType()->getPointerAddressSpace() !=
         II.getType()->getPointerAddressSpace())
         Result = IC.Builder.CreateAddrSpaceCast(Result, II.getType());
@@ -1875,7 +1873,7 @@ static Instruction* SimplifyNVVMIntrinsic(IntrinsicInst* II, InstCombiner& IC) {
             Instruction::FDiv, ConstantFP::get(II->getArgOperand(0)->getType(), 1),
             II->getArgOperand(0), II->getName());
     }
-    llvm_unreachable("All SpecialCase enumerators should be handled in switch.");
+    IGC_ASSERT_EXIT_MESSAGE(0, "All SpecialCase enumerators should be handled in switch.");
 }
 
 Instruction* InstCombiner::visitVAStartInst(VAStartInst& I) {
@@ -2518,7 +2516,7 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
 
                 Value* V;
                 switch (II->getIntrinsicID()) {
-                default: llvm_unreachable("Case stmts out of sync!");
+                default: IGC_ASSERT_EXIT_MESSAGE(0, "Case stmts out of sync!");
                 case Intrinsic::x86_avx512_add_ps_512:
                 case Intrinsic::x86_avx512_add_pd_512:
                     V = Builder.CreateFAdd(Arg0, Arg1);
@@ -2562,7 +2560,7 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
 
                 Value* V;
                 switch (II->getIntrinsicID()) {
-                default: llvm_unreachable("Case stmts out of sync!");
+                default: IGC_ASSERT_EXIT_MESSAGE(0, "Case stmts out of sync!");
                 case Intrinsic::x86_avx512_mask_add_ss_round:
                 case Intrinsic::x86_avx512_mask_add_sd_round:
                     V = Builder.CreateFAdd(LHS, RHS);

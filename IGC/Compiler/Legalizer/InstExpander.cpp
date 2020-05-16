@@ -53,7 +53,7 @@ bool InstExpander::expand(Instruction* I) {
 // By default, capture all missing instructions!
 bool InstExpander::visitInstruction(Instruction& I) {
     LLVM_DEBUG(dbgs() << "EXPAND: " << I << '\n');
-    llvm_unreachable("UNKNOWN INSTRUCTION IS BEING EXPANDED!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN INSTRUCTION IS BEING EXPANDED!");
     return false;
 }
 
@@ -89,43 +89,43 @@ bool InstExpander::visitTerminatorInst(IGCLLVM::TerminatorInst& I) {
 //
 bool InstExpander::visitAdd(BinaryOperator& I) {
     // FIXME:
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitSub(BinaryOperator& I) {
     // FIXME:
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitMul(BinaryOperator& I) {
     // FIXME:
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitUDiv(BinaryOperator& I) {
     // FIXME:
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitSDiv(BinaryOperator& I) {
     // FIXME:
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitURem(BinaryOperator& I) {
     // FIXME:
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
 bool InstExpander::visitSRem(BinaryOperator& I) {
     // FIXME:
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
@@ -358,7 +358,7 @@ bool InstExpander::visitLShr(BinaryOperator& I) {
 
 bool InstExpander::visitAShr(BinaryOperator& I) {
     // FIXME:
-    llvm_unreachable("NOT IMPLEMENTED YET!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
 
@@ -388,7 +388,7 @@ bool InstExpander::visitBinaryOperator(BinaryOperator& I) {
         break;
     }
     default:
-        llvm_unreachable("UNKNOWN BINARY OPERATOR IS BEING EXPANDED!");
+        IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN BINARY OPERATOR IS BEING EXPANDED!");
     }
     return true;
 }

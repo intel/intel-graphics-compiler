@@ -264,7 +264,7 @@ namespace IGCombiner {
                     SafeC = ConstantFP::get(EltTy, 1.0);
                     break;
                 default:
-                    llvm_unreachable("Only rem opcodes have no identity constant for RHS");
+                    IGC_ASSERT_EXIT_MESSAGE(0, "Only rem opcodes have no identity constant for RHS");
                 }
             }
             else {
@@ -283,7 +283,7 @@ namespace IGCombiner {
                     SafeC = Constant::getNullValue(EltTy);
                     break;
                 default:
-                    llvm_unreachable("Expected to find identity constant for opcode");
+                    IGC_ASSERT_EXIT_MESSAGE(0, "Expected to find identity constant for opcode");
                 }
             }
         }

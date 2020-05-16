@@ -54,7 +54,7 @@ static SelectPatternFlavor
 getInverseMinMaxSelectPattern(SelectPatternFlavor SPF) {
   switch (SPF) {
   default:
-    llvm_unreachable("unhandled!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unhandled!");
 
   case SPF_SMIN:
     return SPF_SMAX;
@@ -71,7 +71,7 @@ static CmpInst::Predicate getCmpPredicateForMinMax(SelectPatternFlavor SPF,
                                                    bool Ordered=false) {
   switch (SPF) {
   default:
-    llvm_unreachable("unhandled!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unhandled!");
 
   case SPF_SMIN:
     return ICmpInst::ICMP_SLT;
@@ -129,7 +129,7 @@ static unsigned getSelectFoldableOperands(Instruction *I) {
 /// constant that goes into the select.
 static Constant *getSelectFoldableConstant(Instruction *I) {
   switch (I->getOpcode()) {
-  default: llvm_unreachable("This cannot happen!");
+  default: IGC_ASSERT_EXIT_MESSAGE(0, "This cannot happen!");
   case Instruction::Add:
   case Instruction::Sub:
   case Instruction::Or:

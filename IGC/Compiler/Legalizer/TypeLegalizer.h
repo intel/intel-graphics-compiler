@@ -374,12 +374,12 @@ namespace IGC {
             /// performed.
             template<typename InstTy>
             unsigned getAlignment(InstTy*) const {
-                llvm_unreachable("ALIGNMENT IS CHECKED ON NON MEMORY INSTRUCTION!");
+                IGC_ASSERT_EXIT_MESSAGE(0, "ALIGNMENT IS CHECKED ON NON MEMORY INSTRUCTION!");
             }
 
             template<typename InstTy>
             void dupMemoryAttribute(InstTy*, InstTy*, unsigned) const {
-                llvm_unreachable("ATTRIBUTE IS DUPLICATED ON NON MEMORY INSTRUCTION!");
+                IGC_ASSERT_EXIT_MESSAGE(0, "ATTRIBUTE IS DUPLICATED ON NON MEMORY INSTRUCTION!");
             }
 
             /// createBinOpAsGiven() - Create a binary operator with the same attribute

@@ -939,10 +939,10 @@ Value *InstCombiner::FoldAndOfICmps(ICmpInst *LHS, ICmpInst *RHS) {
   IGC_ASSERT(LHSCst != RHSCst && "Compares not folded above?");
 
   switch (LHSCC) {
-  default: llvm_unreachable("Unknown integer condition code!");
+  default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
   case ICmpInst::ICMP_EQ:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_NE:         // (X == 13 & X != 15) -> X == 13
     case ICmpInst::ICMP_ULT:        // (X == 13 & X <  15) -> X == 13
     case ICmpInst::ICMP_SLT:        // (X == 13 & X <  15) -> X == 13
@@ -950,7 +950,7 @@ Value *InstCombiner::FoldAndOfICmps(ICmpInst *LHS, ICmpInst *RHS) {
     }
   case ICmpInst::ICMP_NE:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_ULT:
       if (LHSCst == SubOne(RHSCst)) // (X != 13 & X u< 14) -> X < 13
         return Builder->CreateICmpULT(Val, LHSCst);
@@ -982,7 +982,7 @@ Value *InstCombiner::FoldAndOfICmps(ICmpInst *LHS, ICmpInst *RHS) {
     break;
   case ICmpInst::ICMP_ULT:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_EQ:         // (X u< 13 & X == 15) -> false
     case ICmpInst::ICMP_UGT:        // (X u< 13 & X u> 15) -> false
       return ConstantInt::get(CmpInst::makeCmpResultType(LHS->getType()), 0);
@@ -997,7 +997,7 @@ Value *InstCombiner::FoldAndOfICmps(ICmpInst *LHS, ICmpInst *RHS) {
     break;
   case ICmpInst::ICMP_SLT:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_UGT:        // (X s< 13 & X u> 15) -> no change
       break;
     case ICmpInst::ICMP_NE:         // (X s< 13 & X != 15) -> X < 13
@@ -1009,7 +1009,7 @@ Value *InstCombiner::FoldAndOfICmps(ICmpInst *LHS, ICmpInst *RHS) {
     break;
   case ICmpInst::ICMP_UGT:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_EQ:         // (X u> 13 & X == 15) -> X == 15
     case ICmpInst::ICMP_UGT:        // (X u> 13 & X u> 15) -> X u> 15
       return RHS;
@@ -1028,7 +1028,7 @@ Value *InstCombiner::FoldAndOfICmps(ICmpInst *LHS, ICmpInst *RHS) {
     break;
   case ICmpInst::ICMP_SGT:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_EQ:         // (X s> 13 & X == 15) -> X == 15
     case ICmpInst::ICMP_SGT:        // (X s> 13 & X s> 15) -> X s> 15
       return RHS;
@@ -1866,10 +1866,10 @@ Value *InstCombiner::FoldOrOfICmps(ICmpInst *LHS, ICmpInst *RHS,
   IGC_ASSERT(LHSCst != RHSCst && "Compares not folded above?");
 
   switch (LHSCC) {
-  default: llvm_unreachable("Unknown integer condition code!");
+  default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
   case ICmpInst::ICMP_EQ:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_EQ:
       if (LHS->getOperand(0) == RHS->getOperand(0)) {
         // if LHSCst and RHSCst differ only by one bit:
@@ -1904,7 +1904,7 @@ Value *InstCombiner::FoldOrOfICmps(ICmpInst *LHS, ICmpInst *RHS,
     break;
   case ICmpInst::ICMP_NE:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_EQ:          // (X != 13 | X == 15) -> X != 13
     case ICmpInst::ICMP_UGT:         // (X != 13 | X u> 15) -> X != 13
     case ICmpInst::ICMP_SGT:         // (X != 13 | X s> 15) -> X != 13
@@ -1916,7 +1916,7 @@ Value *InstCombiner::FoldOrOfICmps(ICmpInst *LHS, ICmpInst *RHS,
     }
   case ICmpInst::ICMP_ULT:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_EQ:         // (X u< 13 | X == 14) -> no change
       break;
     case ICmpInst::ICMP_UGT:        // (X u< 13 | X u> 15) -> (X-13) u> 2
@@ -1937,7 +1937,7 @@ Value *InstCombiner::FoldOrOfICmps(ICmpInst *LHS, ICmpInst *RHS,
     break;
   case ICmpInst::ICMP_SLT:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_EQ:         // (X s< 13 | X == 14) -> no change
       break;
     case ICmpInst::ICMP_SGT:        // (X s< 13 | X s> 15) -> (X-13) s> 2
@@ -1958,7 +1958,7 @@ Value *InstCombiner::FoldOrOfICmps(ICmpInst *LHS, ICmpInst *RHS,
     break;
   case ICmpInst::ICMP_UGT:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_EQ:         // (X u> 13 | X == 15) -> X u> 13
     case ICmpInst::ICMP_UGT:        // (X u> 13 | X u> 15) -> X u> 13
       return LHS;
@@ -1973,7 +1973,7 @@ Value *InstCombiner::FoldOrOfICmps(ICmpInst *LHS, ICmpInst *RHS,
     break;
   case ICmpInst::ICMP_SGT:
     switch (RHSCC) {
-    default: llvm_unreachable("Unknown integer condition code!");
+    default: IGC_ASSERT_EXIT_MESSAGE(0, "Unknown integer condition code!");
     case ICmpInst::ICMP_EQ:         // (X s> 13 | X == 15) -> X > 13
     case ICmpInst::ICMP_SGT:        // (X s> 13 | X s> 15) -> X > 13
       return LHS;

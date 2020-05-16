@@ -974,7 +974,7 @@ Function* PreCompiledFuncImport::getOrCreateFunction(FunctionIDs FID)
         break;
 
     default:
-        llvm_unreachable("Undefined FunctionIDs");
+        IGC_ASSERT_EXIT_MESSAGE(0, "Undefined FunctionIDs");
     }
 
     FunctionType* funcType = FunctionType::get(retTy, argTypes, false);
@@ -1176,7 +1176,7 @@ uint32_t PreCompiledFuncImport::getFCmpMask(CmpInst::Predicate Pred)
         break;
 
     default:
-        llvm_unreachable("Wrong fcmp flag");
+        IGC_ASSERT_EXIT_MESSAGE(0, "Wrong fcmp flag");
     }
 
     switch (Pred) {

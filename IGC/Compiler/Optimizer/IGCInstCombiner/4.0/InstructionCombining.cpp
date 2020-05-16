@@ -2052,7 +2052,7 @@ isAllocSiteRemovable(Instruction *AI, SmallVectorImpl<WeakVH> &Users,
         continue;
       }
       }
-      llvm_unreachable("missing a return?");
+      IGC_ASSERT_EXIT_MESSAGE(0, "missing a return?");
     }
   } while (!Worklist.empty());
   return true;
@@ -2495,7 +2495,7 @@ static bool isCatchAll(EHPersonality Personality, Constant *TypeInfo) {
   case EHPersonality::CoreCLR:
     return TypeInfo->isNullValue();
   }
-  llvm_unreachable("invalid enum");
+  IGC_ASSERT_EXIT_MESSAGE(0, "invalid enum");
 }
 
 static bool shorter_filter(const Value *LHS, const Value *RHS) {

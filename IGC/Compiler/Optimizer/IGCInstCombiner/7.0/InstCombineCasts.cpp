@@ -253,7 +253,7 @@ Value* InstCombiner::EvaluateInDifferentType(Value* V, Type* Ty,
     }
     default:
         // TODO: Can handle more cases here.
-        llvm_unreachable("Unreachable!");
+        IGC_ASSERT_EXIT_MESSAGE(0, "Unreachable!");
     }
 
     Res->takeName(I);

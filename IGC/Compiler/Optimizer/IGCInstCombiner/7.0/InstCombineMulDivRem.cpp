@@ -56,7 +56,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/Casting.h"
-#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Transforms/InstCombine/InstCombineWorklist.h"
 #include "llvm/Transforms/Utils/BuildLibCalls.h"
@@ -854,8 +853,7 @@ namespace {
 static Instruction* foldUDivPow2Cst(Value* Op0, Value* Op1,
     const BinaryOperator& I, InstCombiner& IC) {
     Constant* C1 = getLogBase2(Op0->getType(), cast<Constant>(Op1));
-    if (!C1)
-        llvm_unreachable("Failed to constant fold udiv -> logbase2");
+    IGC_ASSERT_EXIT_MESSAGE(nullptr != C1, "Failed to constant fold udiv -> logbase2");
     BinaryOperator* LShr = BinaryOperator::CreateLShr(Op0, C1);
     if (I.isExact())
         LShr->setIsExact();
@@ -871,12 +869,10 @@ static Instruction* foldUDivShl(Value* Op0, Value* Op1, const BinaryOperator& I,
         ShiftLeft = Op1;
 
     Constant* CI;
-    Value* N;
-    if (!match(ShiftLeft, m_Shl(m_Constant(CI), m_Value(N))))
-        llvm_unreachable("match should never fail here!");
+    Value* N = nullptr;
+    IGC_ASSERT_EXIT_MESSAGE(match(ShiftLeft, m_Shl(m_Constant(CI), m_Value(N))), "match should never fail here!");
     Constant* Log2Base = getLogBase2(N->getType(), CI);
-    if (!Log2Base)
-        llvm_unreachable("getLogBase2 should never fail here!");
+    IGC_ASSERT_EXIT_MESSAGE(nullptr != Log2Base, "getLogBase2 should never fail here!");
     N = IC.Builder.CreateAdd(N, Log2Base);
     if (Op1 != ShiftLeft)
         N = IC.Builder.CreateZExt(N, Op1->getType());
