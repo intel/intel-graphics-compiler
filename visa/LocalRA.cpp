@@ -39,8 +39,6 @@ using namespace vISA;
 
 #define NUM_PREGS_FOR_UNIQUE_ASSIGN 50
 
-#define FF_LRA_WINDOW_SIZE 12
-
 #define SPLIT_REF_CNT_THRESHOLD 3
 #define SPLIT_USE_CNT_THRESHOLD 2
 #define SPLIT_USE_DISTANCE_THRESHOLD 100
@@ -2063,7 +2061,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
     {
         if (isGRFAvailable(i) && forbidden.find(i) == forbidden.end() &&
             regBusyVector[i] == 0 &&
-            (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i] == 0)) || hintSet))
+            (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= LraFFWindowSize) || (regLastUse[i] == 0)) || hintSet))
         {
             foundItem++;
         }
@@ -2089,7 +2087,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align, in
                 if (i + 1 <= endReg + nrows - 1 &&
                     isGRFAvailable(i + 1) && forbidden.find(i+1) == forbidden.end() &&
                     (isWordBusy(i + 1, 0, lastRowSize) == false) &&
-                    (!isHybridAlloc || (((instID - regLastUse[i + 1]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i + 1] == 0))))
+                    (!isHybridAlloc || (((instID - regLastUse[i + 1]) / 2 >= LraFFWindowSize) || (regLastUse[i + 1] == 0))))
                 {
                     regnum = startReg;
                     return true;
@@ -2137,7 +2135,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsBackward(int regIdx, BankAlign align, i
     {
         if (isGRFAvailable(i) && forbidden.find(i) == forbidden.end() &&
             regBusyVector[i] == 0 &&
-            (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i] == 0))))
+            (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= LraFFWindowSize) || (regLastUse[i] == 0))))
         {
             foundItem++;
         }
@@ -2163,7 +2161,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsBackward(int regIdx, BankAlign align, i
                 if (i + 1 <= endReg &&
                     isGRFAvailable(i + 1) && forbidden.find(i+1) ==forbidden.end() &&
                     (isWordBusy(i + 1, 0, lastRowSize) == false) &&
-                    (!isHybridAlloc || (((instID - regLastUse[i + 1]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i + 1] == 0))))
+                    (!isHybridAlloc || (((instID - regLastUse[i + 1]) / 2 >= LraFFWindowSize) || (regLastUse[i + 1] == 0))))
                 {
                     regnum = startReg;
                     return true;
@@ -2227,7 +2225,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, int size, BankAlign align, G4
         }
 
         if (isGRFAvailable(i, 1) && forbidden.find(i) ==forbidden.end() &&
-            (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i] == 0))))
+            (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= LraFFWindowSize) || (regLastUse[i] == 0))))
         {
             found = findFreeSingleReg(i, subalign, regnum, subregnum, size);
             if (found)

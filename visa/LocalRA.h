@@ -288,6 +288,8 @@ private:
     bool r0Forbidden;
     bool r1Forbidden;
 
+    int LraFFWindowSize;
+
 public:
     PhyRegsLocalRA(IR_Builder* _builder, uint32_t nregs) : builder(_builder), numRegs(nregs)
     {
@@ -313,6 +315,7 @@ public:
         simpleGRFAvailable = false;
         r0Forbidden = false;
         r1Forbidden = false;
+       LraFFWindowSize = (int)builder->getOptions()->getuInt32Option(vISA_LraFFWindowSize);
     }
 
     void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
