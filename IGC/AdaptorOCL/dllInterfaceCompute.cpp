@@ -327,6 +327,63 @@ void GenerateCompilerOptionsMD(llvm::LLVMContext &C, llvm::Module &M, llvm::Stri
     NamedMD->addOperand(llvm::MDNode::get(C, ValueVec));
 }
 
+// Dump shader (binary or text), to output directory.
+// Create directory if it doesn't exist.
+// Works for all OSes.
+// ext - file name suffix (optional) and extension.
+void DumpShaderFile(
+    const std::string& dstDir,
+    const char* pBuffer,
+    const UINT bufferSize,
+    const QWORD hash,
+    const std::string& ext)
+{
+    if (pBuffer && bufferSize > 0)
+    {
+        std::ostringstream fullPath(dstDir, std::ostringstream::ate);
+        fullPath << "OCL_asm"
+            << std::hex
+            << std::setfill('0')
+            << std::setw(sizeof(hash) * CHAR_BIT / 4)
+            << hash
+            << std::dec
+            << std::setfill(' ')
+            << ext;
+
+        FILE* pFile = NULL;
+        fopen_s(&pFile, fullPath.str().c_str(), "wb");
+        if (pFile)
+        {
+            fwrite(pBuffer, 1, bufferSize, pFile);
+            fclose(pFile);
+        }
+    }
+}
+
+#if defined(IGC_SPIRV_TOOLS_ENABLED)
+spv_result_t DisassembleSPIRV(const char* pBuffer, UINT bufferSize, spv_text* outSpirvAsm)
+{
+    const spv_target_env target_env = SPV_ENV_UNIVERSAL_1_3;
+    spv_context context = spvContextCreate(target_env);
+    const uint32_t* const binary = reinterpret_cast<const uint32_t*> (pBuffer);
+    const size_t word_count = (bufferSize / sizeof(uint32_t));
+    const uint32_t options = (SPV_BINARY_TO_TEXT_OPTION_FRIENDLY_NAMES | SPV_BINARY_TO_TEXT_OPTION_INDENT | SPV_BINARY_TO_TEXT_OPTION_SHOW_BYTE_OFFSET);
+    spv_diagnostic diagnostic = nullptr;
+
+    const spv_result_t result = spvBinaryToText(
+        context,
+        binary,
+        word_count,
+        options,
+        outSpirvAsm,
+        &diagnostic);
+
+    spvContextDestroy(context);
+    spvDiagnosticDestroy(diagnostic);
+    return result;
+}
+#endif // defined(IGC_SPIRV_TOOLS_ENABLED)
+
 bool ProcessElfInput(
   STB_TranslateInputArgs &InputArgs,
   STB_TranslateOutputArgs &OutputArgs,
@@ -477,6 +534,44 @@ bool ProcessElfInput(
             // destroying it
             OutputArgs.OutputSize = OutputString.size();
             OutputArgs.pOutput = pBufResult;
+
+#if defined(IGC_SPIRV_ENABLED)
+            if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+            {
+                // Dumping SPIRV files needs to be done after linking process, as we need to know
+                // the output parameters to prepare the correct file hash
+                for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
+                {
+                    const CLElfLib::SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
+                    IGC_ASSERT(pSectionHeader != NULL);
+                    if (pSectionHeader->Type == CLElfLib::SH_TYPE_SPIRV)
+                    {
+                        char* pSPIRVBitcode = NULL;
+                        size_t size = 0;
+                        pElfReader->GetSectionData(i, pSPIRVBitcode, size);
+                        QWORD hash = ShaderHashOCL((const UINT*)OutputArgs.pOutput, OutputArgs.OutputSize / 4).getAsmHash();
+
+                        // beyond of general hash, each SPIR-V module needs to have it's own hash
+                        QWORD spvHash = ShaderHashOCL((const UINT*)pSPIRVBitcode, size / 4).getAsmHash();
+                        std::ostringstream spvHashSuffix("_", std::ostringstream::ate);
+                        spvHashSuffix << std::hex << std::setfill('0') << std::setw(sizeof(spvHash)* CHAR_BIT / 4) << spvHash;
+                        const std::string suffix = spvHashSuffix.str();
+
+                        const char* pOutputFolder = IGC::Debug::GetShaderOutputFolder();
+                        DumpShaderFile(pOutputFolder, pSPIRVBitcode, size, hash, suffix + ".spv");
+
+#if defined(IGC_SPIRV_TOOLS_ENABLED)
+                        spv_text spirvAsm = nullptr;
+                        if (DisassembleSPIRV(pSPIRVBitcode, size, &spirvAsm) == SPV_SUCCESS)
+                        {
+                            DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, suffix + ".spvasm");
+                        }
+                        spvTextDestroy(spirvAsm);
+#endif // defined(IGC_SPIRV_TOOLS_ENABLED)
+                    }
+                }
+            }
+#endif // defined(IGC_SPIRV_ENABLED)
           }
           else
           {
@@ -719,39 +814,6 @@ void dumpOCLProgramBinary(OpenCLProgramContext &Ctx, char *binaryOutput, int bin
 #endif
 }
 
-// Dump shader (binary or text), to default directory.
-// Create directory if it doesn't exist.
-// Works for all OSes.
-// pExt - file name suffix (optional) and extenstion.
-void DumpShaderFile(const char *pOutputFolder, const char * pBuffer, UINT bufferSize, QWORD hash, const char * pExt )
-{
-    using namespace std;
-
-    stringstream ss;
-
-    if (pBuffer && bufferSize > 0)
-    {
-        ss << pOutputFolder;
-        ss << "OCL_"
-            << "asm"
-            << std::hex
-            << std::setfill('0')
-            << std::setw(sizeof(hash) * CHAR_BIT / 4)
-            << hash
-            << std::dec
-            << std::setfill(' ')
-            << pExt;
-
-        FILE* pFile = NULL;
-        fopen_s(&pFile, ss.str().c_str(), "wb");
-        if (pFile)
-        {
-            fwrite(pBuffer, 1, bufferSize, pFile);
-            fclose(pFile);
-        }
-    }
-}
-
 static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
     TB_DATA_FORMAT inputDataFormatTemp,
@@ -815,36 +877,14 @@ bool TranslateBuild(
         else if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V)
         {
             DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv");
-
-            #ifdef IGC_SPIRV_TOOLS_ENABLED
-
-            const spv_target_env target_env = SPV_ENV_UNIVERSAL_1_3;
-            spv_context context = spvContextCreate(target_env);
-            const uint32_t* const binary = reinterpret_cast<const uint32_t*> (pInputArgs->pInput);
-            const size_t word_count = (pInputArgs->InputSize / sizeof(uint32_t));
-            const uint32_t options = (SPV_BINARY_TO_TEXT_OPTION_FRIENDLY_NAMES | SPV_BINARY_TO_TEXT_OPTION_INDENT | SPV_BINARY_TO_TEXT_OPTION_SHOW_BYTE_OFFSET);
-            spv_text text = nullptr;
-            spv_diagnostic diagnostic = nullptr;
-
-            const spv_result_t result = spvBinaryToText(
-                context,
-                binary,
-                word_count,
-                options,
-                &text,
-                &diagnostic);
-
-            spvContextDestroy(context);
-
-            if (SPV_SUCCESS == result)
+#if defined(IGC_SPIRV_TOOLS_ENABLED)
+            spv_text spirvAsm = nullptr;
+            if (DisassembleSPIRV(pInputArgs->pInput, pInputArgs->InputSize, &spirvAsm) == SPV_SUCCESS)
             {
-                DumpShaderFile(pOutputFolder, text->str, text->length, hash, ".spvasm");
+                DumpShaderFile(pOutputFolder, spirvAsm->str, spirvAsm->length, hash, ".spvasm");
             }
-
-            spvTextDestroy(text);
-            spvDiagnosticDestroy(diagnostic);
-
-            #endif
+            spvTextDestroy(spirvAsm);
+#endif // defined(IGC_SPIRV_TOOLS_ENABLED)
         }
 
         DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_internal_options.txt");
