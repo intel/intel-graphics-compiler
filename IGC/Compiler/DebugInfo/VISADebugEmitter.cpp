@@ -109,12 +109,8 @@ void IGC::insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
         return;
     }
 
-    for (auto func_it = M->begin();
-        func_it != M->end();
-        func_it++)
+    for (auto& func : *M)
     {
-        auto& func = (*func_it);
-
         if (func.isDeclaration())
             continue;
 
@@ -206,7 +202,6 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
     // Collect debug information for given function.
     m_pStreamEmitter->SwitchSection(m_pStreamEmitter->GetTextSection());
     m_pDwarfDebug->beginFunction(pFunc, m_pVISAModule);
-    unsigned int prevOffset = 0;
 
     if (m_pVISAModule->isDirectElfInput)
     {
@@ -314,13 +309,14 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
                 }
             }
 
-            if (emptyLoc && prevSrcLoc)
+            if (emptyLoc && prevSrcLoc && pFunc->getSubprogram())
             {
-                auto scope = prevSrcLoc->getScope();
+              auto scope = pFunc->getSubprogram();
                 auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
 
-                // Emit 0 as line# for unattributed lines
-                m_pStreamEmitter->EmitDwarfLocDirective(src, 0, 0, 0, 0, 0, scope->getFilename());
+                // TODO It is workaround to not emit empty lines until we figure out a proper solution
+                // Emit func top as line# for unattributed lines
+                m_pStreamEmitter->EmitDwarfLocDirective(src, scope->getLine(), 0, 0, 0, 0, scope->getFilename());
                 prevSrcLoc = DebugLoc();
             }
         }
@@ -338,9 +334,10 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
     }
     else
     {
-        for (VISAModule::const_iterator II = m_pVISAModule->begin(), IE = m_pVISAModule->end(); II != IE; ++II)
+        unsigned int prevOffset = 0;
+        for (const Instruction *pInst : *m_pVISAModule)
         {
-            const Instruction* pInst = *II;
+
             unsigned int currOffset = m_pVISAModule->GetVisaOffset(pInst);
 
             int currSize = (int)m_pVISAModule->GetVisaSize(pInst);
