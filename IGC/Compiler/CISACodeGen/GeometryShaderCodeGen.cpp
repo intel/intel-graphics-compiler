@@ -335,7 +335,7 @@ namespace IGC
 
     void CShaderProgram::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
     {
-        CGeometryShader* pShader = static_cast<CGeometryShader*>(GetShader(SIMDMode::SIMD8));
+        CGeometryShader* pShader = static_cast<CGeometryShader*>(GetShader(m_context->platform.getMinDispatchMode()));
         pShader->FillProgram(pKernelProgram);
     }
 

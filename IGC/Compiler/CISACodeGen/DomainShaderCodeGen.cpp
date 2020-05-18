@@ -170,7 +170,7 @@ namespace IGC
         }
         else if (m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH)
         {
-            encoder.SetSimdSize(SIMDMode::SIMD8);
+            encoder.SetSimdSize(m_Platform->getMinDispatchMode());
             encoder.SetSrcRegion(0, 1, 4, 0);
             encoder.SetSrcSubReg(0, 0);
 
@@ -244,11 +244,15 @@ namespace IGC
 
     void CShaderProgram::FillProgram(SDomainShaderKernelProgram* pKernelProgram)
     {
-        CDomainShader* pShader = static_cast<CDomainShader*>(GetShader(SIMDMode::SIMD8));
+        auto simdMode = m_context->platform.getMinDispatchMode();
+        CDomainShader* pShader = static_cast<CDomainShader*>(GetShader(simdMode));
         pShader->FillProgram(pKernelProgram);
-        pKernelProgram->simd8 = *pShader->ProgramOutput();
 
-        CDomainShader* dualPatchShader = static_cast<CDomainShader*>(GetShader(SIMDMode::SIMD8, ShaderDispatchMode::DUAL_PATCH));
+        SProgramOutput* output  = &pKernelProgram->simd8;
+
+        *output = *pShader->ProgramOutput();
+
+        CDomainShader* dualPatchShader = static_cast<CDomainShader*>(GetShader(simdMode, ShaderDispatchMode::DUAL_PATCH));
         if (dualPatchShader)
         {
             pKernelProgram->simd8DualPatch = *dualPatchShader->ProgramOutput();

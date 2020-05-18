@@ -264,7 +264,7 @@ namespace IGC
 
     void CShaderProgram::FillProgram(SHullShaderKernelProgram* pKernelProgram)
     {
-        CHullShader* pShader = static_cast<CHullShader*>(GetShader(SIMDMode::SIMD8));
+        CHullShader* pShader = static_cast<CHullShader*>(GetShader(m_context->platform.getMinDispatchMode()));
         pShader->FillProgram(pKernelProgram);
     }
 
