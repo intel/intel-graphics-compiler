@@ -33,6 +33,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
+static DEP_CLASS getClassFromPipeType(DEP_PIPE type, const OpSpec& opspec)
+{
+    if (opspec.groupOp == Op::SYNC || opspec.op == Op::ILLEGAL)
+        return DEP_CLASS::OTHER;
+
+    switch(type) {
+        case DEP_PIPE::NONE:
+        case DEP_PIPE::SHORT:
+        case DEP_PIPE::LONG:
+        case DEP_PIPE::CONTROL_FLOW:
+            return DEP_CLASS::IN_ORDER;
+
+        case DEP_PIPE::SEND:
+        case DEP_PIPE::MATH:
+            return DEP_CLASS::OUT_OF_ORDER;
+
+    }
+    return DEP_CLASS::NONE;
+}
+
 static void setDEPPipeClass_SingleDistPipe(DepSet &dep, const Instruction &inst)
 {
     auto opsec = inst.getOpSpec();
@@ -73,19 +93,8 @@ static void setDEPPipeClass_SingleDistPipe(DepSet &dep, const Instruction &inst)
             }
         }
     }
-    if (opsec.isVariableLatency())
-    {
-        dep.setDepClass(DEP_CLASS::OUT_OF_ORDER);
-    }
-    else if (opsec.groupOp == Op::SYNC  ||
-             opsec.op == Op::ILLEGAL)
-    {
-        dep.setDepClass(DEP_CLASS::OTHER);
-    }
-    else
-    {
-        dep.setDepClass(DEP_CLASS::IN_ORDER);
-    }
+
+    dep.setDepClass(getClassFromPipeType(dep.getDepPipe(), opsec));
 }
 
 

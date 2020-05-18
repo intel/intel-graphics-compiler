@@ -420,6 +420,18 @@ extern "C" int iga_main(int argc, const char **argv)
         "Send instructions are emitted as load/store instructions",
         opts::OptAttrs::ALLOW_UNSET,
         baseOpts.printLdSt);
+    xGrp.defineOpt(
+        "sbid-count",
+        "sbid-count",
+        "=VALUE",
+        "number of sbid being used on auto dependency set",
+        "",
+        opts::OptAttrs::ALLOW_UNSET,
+        [] (const char *cinp, const opts::ErrorHandler, Opts &baseOpts) {
+            std::string str = cinp;
+            baseOpts.sbid_count = std::stoi(str);
+        }
+    );
     xGrp.defineFlag(
         "warn-on-compact-fail",
         nullptr,

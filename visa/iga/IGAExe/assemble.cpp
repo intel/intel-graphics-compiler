@@ -68,6 +68,7 @@ bool assemble(
     setOptBit(aopts.syntax_opts,
         IGA_SYNTAX_OPT_EXTENSIONS,
         opts.syntaxExts);
+    aopts.sbid_count = opts.sbid_count;
 
     try {
         auto r = ctx.assembleFromString(inpText, aopts);
