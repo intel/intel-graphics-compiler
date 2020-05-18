@@ -226,6 +226,67 @@ void overrideOCLKernelBinary(
     KernBin->Write(Buf.get(), newBinarySize);
 }
 
+
+void CGen8OpenCLProgram::GetZEBinary(
+    llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes)
+{
+    auto isValidShader = [&](IGC::COpenCLKernel* shader)->bool
+    {
+        return (shader && shader->ProgramOutput()->m_programSize > 0);
+    };
+
+    ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes, m_pContext->m_programInfo);
+
+    for (auto pKernel : m_ShaderProgramList)
+    {
+        IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
+        IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
+        IGC::COpenCLKernel* simd32Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
+
+        // Determine how many simd modes we have per kernel
+        // FIXME: We actually expect only one simd mode per kernel. There should not be multiple SIMD mode available
+        // for one kernel (runtime cannot support that). So these check can be simplified
+        std::vector<IGC::COpenCLKernel*> kernelVec;
+        if (m_pContext->m_DriverInfo.sendMultipleSIMDModes() && (m_pContext->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
+        {
+            // For multiple SIMD modes, send SIMD modes in descending order
+            if (isValidShader(simd32Shader))
+                kernelVec.push_back(simd32Shader);
+            if (isValidShader(simd16Shader))
+                kernelVec.push_back(simd16Shader);
+            if (isValidShader(simd8Shader))
+                kernelVec.push_back(simd8Shader);
+        }
+        else
+        {
+            if (isValidShader(simd32Shader))
+                kernelVec.push_back(simd32Shader);
+            else if (isValidShader(simd16Shader))
+                kernelVec.push_back(simd16Shader);
+            else if (isValidShader(simd8Shader))
+                kernelVec.push_back(simd8Shader);
+        }
+
+        for (auto kernel : kernelVec)
+        {
+            IGC::SProgramOutput* pOutput = kernel->ProgramOutput();
+
+            zebuilder.createKernel(
+                (const char*)pOutput->m_programBin,
+                pOutput->m_programSize,
+                kernel->m_kernelInfo,
+                kernel->getGRFSize());
+
+            // FIXME: Handle IGC_IS_FLAG_ENABLED(ShaderDumpEnable) and
+            // IGC_IS_FLAG_ENABLED(ShaderOverride)
+
+            // ... Create the debug data binary streams
+        }
+    }
+
+    zebuilder.getBinaryObject(programBinary);
+}
+
 void CGen8OpenCLProgram::CreateKernelBinaries()
 {
     auto isValidShader = [&](IGC::COpenCLKernel* shader)->bool

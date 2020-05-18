@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iStdLib/utility.h>
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Probe/Assertion.h"
+#include "ZEBinWriter/zebin/include/ZEELFObjectBuilder.hpp"
 
 /***********************************************************************************
 This file contains the code specific to opencl kernels
@@ -607,6 +608,139 @@ namespace IGC
 
             m_kernelInfo.m_printfStringAnnotations.push_back(printfAnnotation);
         }
+    }
+
+    void COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition)
+    {
+        switch (kernelArg->getArgType()) {
+
+        // Implicit args
+        case KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER:{
+            // PayloadHeader contains global work offset x,y,z and local size x,y,z
+            // global work offset, size is int32x3
+            uint cur_pos = payloadPosition;
+            uint32_t size = iOpenCL::DATA_PARAMETER_DATA_SIZE * 3;
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::global_id_offset, cur_pos, size);
+            cur_pos += size;
+            // local size, size is int32x3, the same as above
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::local_size, cur_pos, size);
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_PRIVATE_BASE:
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
+                payloadPosition, kernelArg->getAllocateSize());
+            break;
+
+        case KernelArg::ArgType::IMPLICIT_NUM_GROUPS:
+            // FIXME: num_groups is group_size?
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::group_size,
+                payloadPosition, iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
+            break;
+
+        case KernelArg::ArgType::IMPLICIT_LOCAL_SIZE:
+            // FIXME: duplicated information as KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER?
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::local_size,
+                payloadPosition, iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
+            break;
+
+        // pointer args
+        case KernelArg::ArgType::PTR_GLOBAL:
+        case KernelArg::ArgType::PTR_CONSTANT: {
+            uint32_t arg_idx = kernelArg->getAssociatedArgNo();
+
+            // Add BTI argument if being promoted
+            // FIXME: do not set bti if the number is 0xffffffff (?)
+            SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
+            uint32_t bti_idx = getBTI(resInfo);
+            if (bti_idx != 0xffffffff) {
+                // add BTI argument with addr_mode set to stateful
+                // promoted arg has 0 offset and 0 size
+                zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+                    0, 0, arg_idx,
+                    zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
+                    (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
+                    zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
+                    zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
+                    (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
+                    zebin::PreDefinedAttrGetter::ArgAccessType::readwrite :
+                    zebin::PreDefinedAttrGetter::ArgAccessType::readonly
+                );
+                // add the corresponding BTI table index
+                zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
+                    bti_idx, arg_idx);
+            }
+            // FIXME: check if all reference are promoted, if it is, we can skip
+            // creating non-bti payload arg
+            /*
+            bool is_bti_only =
+                IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
+                IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
+                m_DriverInfo->SupportStatefulToken() &&
+                kernelArg->getArg() &&
+                ((kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL &&
+                (kernelArg->getArg()->use_empty() || !GetHasGlobalStatelessAccess())) ||
+                    (kernelArg->getArgType() == KernelArg::ArgType::PTR_CONSTANT &&
+                    (kernelArg->getArg()->use_empty() || !GetHasConstantStatelessAccess())));
+            // no need to add normal argument if all use are promoted
+            if (is_bti_only)
+                break;
+             */
+            ResourceAllocMD& resAllocMD = GetContext()->getModuleMetaData()->FuncMD[entry].resAllocMD;
+            IGC_ASSERT(resAllocMD.argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+
+            ArgAllocMD& argAlloc = resAllocMD.argAllocMDList[arg_idx];
+
+            zebin::PreDefinedAttrGetter::ArgAddrMode addr_mode =
+                zebin::PreDefinedAttrGetter::ArgAddrMode::stateless;
+            if (argAlloc.type == ResourceTypeEnum::BindlessUAVResourceType)
+                addr_mode = zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
+
+            zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+                payloadPosition, kernelArg->getAllocateSize(), arg_idx, addr_mode,
+                (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
+                  zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
+                  zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
+                (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
+                  zebin::PreDefinedAttrGetter::ArgAccessType::readwrite :
+                zebin::PreDefinedAttrGetter::ArgAccessType::readonly
+                );
+            break;
+        }
+        case KernelArg::ArgType::PTR_LOCAL:
+            zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+                payloadPosition, kernelArg->getAllocateSize(),
+                kernelArg->getAssociatedArgNo(),
+                zebin::PreDefinedAttrGetter::ArgAddrMode::shared_local_memory,
+                zebin::PreDefinedAttrGetter::ArgAddrSpace::local,
+                zebin::PreDefinedAttrGetter::ArgAccessType::readwrite);
+            break;
+        // by value arguments
+        case KernelArg::ArgType::CONSTANT_REG:
+            zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
+                payloadPosition, kernelArg->getAllocateSize(),
+                kernelArg->getAssociatedArgNo());
+            break;
+        // Local ids are supported in per-thread payload arguments
+        case KernelArg::ArgType::IMPLICIT_LOCAL_IDS:
+            break;
+        // FIXME: Seen this in a simple test case, should be supported?
+        case KernelArg::ArgType::IMPLICIT_R0:
+        case KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE:
+            break;
+        case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
+        case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE:
+        case KernelArg::ArgType::IMPLICIT_GLOBAL_SIZE:
+        case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN:
+        case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE:
+        default:
+            IGC_ASSERT(false && "ZEBin: unsupported KernelArg Type");
+            break;
+        } // end switch (kernelArg->getArgType())
     }
 
     void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition)
@@ -1542,7 +1676,11 @@ namespace IGC
                 // Create annotations for the kernel argument
                 // If an arg is unused, don't generate patch token for it.
                 CreateAnnotations(&arg, offset - constantBufferStart);
-
+                if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+                    // FIXME: once we transit to zebin completely, we don't need to do
+                    // CreateAnnotations. Only CreateZEPayloadArguments is required
+                    CreateZEPayloadArguments(&arg, offset - constantBufferStart);
+                }
                 if (arg.needsAllocation())
                 {
                     for (int i = 0; i < numAllocInstances; ++i)
@@ -1630,6 +1768,7 @@ namespace IGC
     {
         m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace = ProgramOutput()->getScratchSpaceUsageInSlot0();
         m_kernelInfo.m_executionEnivronment.PerThreadScratchSpaceSlot1 = ProgramOutput()->getScratchSpaceUsageInSlot1();
+        m_kernelInfo.m_executionEnivronment.PerThreadPrivateOnStatelessSize = m_perWIStatelessPrivateMemSize;
         m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
         m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_ConstantBufferLength / getGRFSize(); // in 256 bits
         m_kernelInfo.m_kernelProgram.MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads();

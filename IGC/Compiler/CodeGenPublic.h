@@ -46,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "visa/include/RelocationInfo.h"
+#include "ZEBinWriter/zebin/include/ZEInfo.hpp"
 
 #include "../AdaptorOCL/OCL/sp/spp_g8.h"
 #include "../GenISAIntrinsics/GenIntrinsics.h"
@@ -118,15 +119,15 @@ namespace IGC
         void* m_funcSymbolTable = nullptr;
         unsigned int    m_funcSymbolTableSize = 0;
         unsigned int    m_funcSymbolTableEntries = 0;
-        SymbolLists     m_symbols;                 // duplicated information of m_funcSymbolTable
+        SymbolLists     m_symbols;                 // duplicated information of m_funcSymbolTable, for zebin
         void* m_funcRelocationTable = nullptr;
         unsigned int    m_funcRelocationTableSize = 0;
         unsigned int    m_funcRelocationTableEntries = 0;
-        RelocListTy     m_relocs;                  // duplicated information of m_funcRelocationTable
+        RelocListTy     m_relocs;                  // duplicated information of m_funcRelocationTable, for zebin
         void* m_funcAttributeTable = nullptr;
         unsigned int    m_funcAttributeTableSize = 0;
         unsigned int    m_funcAttributeTableEntries = 0;
-        FuncAttrListTy  m_funcAttrs;               // duplicated information of m_funcAttributeTable
+        FuncAttrListTy  m_funcAttrs;               // duplicated information of m_funcAttributeTable, for zebin
         unsigned int    m_offsetToSkipPerThreadDataLoad = 0;
         uint32_t        m_offsetToSkipSetFFIDGP = 0;
         //true means we separate pvtmem and spillfill. pvtmem could go into stateless.
@@ -577,6 +578,12 @@ namespace IGC
         iOpenCL::KernelTypeProgramBinaryInfo m_kernelTypeInfo = {};
 
         SKernelProgram                m_kernelProgram = {};
+
+        // Information for zebin
+        // Cross-thread payload arguments
+        zebin::PayloadArgumentsTy m_zePayloadArgs;
+        // BTI information for payload arguments
+        zebin::BindingTableIndexesTy m_zeBTIArgs;
     };
 
 

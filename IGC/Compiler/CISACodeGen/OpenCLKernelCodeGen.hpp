@@ -84,6 +84,9 @@ namespace IGC
         // Creates appropriate annotation based on the kernel arg
         void CreateAnnotations(IGC::KernelArg* kernelArg, uint payloadPosition);
 
+        // Fill SOpenCLKernelInfo::m_zePayloadArgs
+        void CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition);
+
         // Creates annotations for inline sampler_t objects
         void CreateInlineSamplerAnnotations();
 

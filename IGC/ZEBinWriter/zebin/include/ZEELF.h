@@ -63,33 +63,6 @@ enum R_TYPE_ZEBIN
     R_ZE_SYM_ADDR_32_HI = 3  // higher 32bits of 64-bit address
 };
 
-// Standard ELF Symbol bindings (do not change)
-enum S_BINDING_ELF {
-    STB_LOCAL      = 0,  // Local symbol, not visible outside obj file containing def
-    STB_GLOBAL     = 1,  // Global symbol, visible to all object files being combined
-    STB_WEAK       = 2,  // Weak symbol, like global but lower-precedence
-    STB_LOOS       = 10, // Lowest operating system-specific binding type
-    STB_HIOS       = 12, // Highest operating system-specific binding type
-    STB_LOPROC     = 13, // Lowest processor-specific binding type
-    STB_HIPROC     = 15  // Highest processor-specific binding type
-};
-
-// Standard ELF Symbol types (do not change)
-enum S_TYPE_ELF {
-    STT_NOTYPE = 0,     // Symbol's type is not specified
-    STT_OBJECT = 1,     // Symbol is a data object (variable, array, etc.)
-    STT_FUNC = 2,       // Symbol is executable code (function, etc.)
-    STT_SECTION = 3,    // Symbol refers to a section
-    STT_FILE = 4,       // Local, absolute symbol that refers to a file
-    STT_COMMON = 5,     // An uninitialized common block
-    STT_TLS = 6,        // Thread local data object
-    STT_GNU_IFUNC = 10, // GNU indirect function
-    STT_LOOS = 10,      // Lowest operating system-specific symbol type
-    STT_HIOS = 12,      // Highest operating system-specific symbol type
-    STT_LOPROC = 13,    // Lowest processor-specific symbol type
-    STT_HIPROC = 15,    // Highest processor-specific symbol type
-};
-
 // ELF32_Ehdr::e_flags
 struct TargetFlags {
 

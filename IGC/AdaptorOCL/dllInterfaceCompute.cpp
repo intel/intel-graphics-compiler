@@ -1066,18 +1066,32 @@ bool TranslateBuild(
         }
     } while (retry);
 
-    // Create the binary streams for each compiled kernel
-    oclContext.m_programOutput.CreateKernelBinaries();
-
+    // Prepare and set program binary
     unsigned int pointerSizeInBytes = (PtrSzInBits == 64) ? 8 : 4;
 
-    // Prepare and set program binary
-    Util::BinaryStream programBinary;
-    oclContext.m_programOutput.GetProgramBinary(programBinary, pointerSizeInBytes);
+    // FIXME: zebin currently only support program output itself, will add debug info
+    // into it
+    int binarySize = 0;
+    char* binaryOutput = nullptr;
+    if (!IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+        Util::BinaryStream programBinary;
+        // Patch token based binary format
+        oclContext.m_programOutput.CreateKernelBinaries();
+        oclContext.m_programOutput.GetProgramBinary(programBinary, pointerSizeInBytes);
+        binarySize = static_cast<int>(programBinary.Size());
+        binaryOutput = new char[binarySize];
+        memcpy_s(binaryOutput, binarySize, (char*)programBinary.GetLinearPointer(), binarySize);
+    } else {
+        // ze binary foramt
+        llvm::SmallVector<char, 64> buf;
+        llvm::raw_svector_ostream llvm_os(buf);
+        oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes);
 
-    int binarySize = static_cast<int>(programBinary.Size());
-    char* binaryOutput = new char[binarySize];
-    memcpy_s(binaryOutput, binarySize, (char*)programBinary.GetLinearPointer(), binarySize);
+        // FIXME: try to avoid memory copy here
+        binarySize = buf.size();
+        binaryOutput = new char[binarySize];
+        memcpy_s(binaryOutput, binarySize, buf.data(), buf.size());
+    }
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
         dumpOCLProgramBinary(oclContext, binaryOutput, binarySize);

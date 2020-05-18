@@ -79,6 +79,8 @@ private:
     DisallowCopy& operator=(const DisallowCopy&);
 };
 
+/// CGen8OpenCLStateProcessor - Provides services to create (legacy) patch token
+/// based binary from given SProgramOutput information
 class CGen8OpenCLStateProcessor : DisallowCopy
 {
 

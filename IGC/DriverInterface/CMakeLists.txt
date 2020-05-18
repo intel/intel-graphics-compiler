@@ -23,6 +23,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/UnifyIROCL.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/cmc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.cpp"
   )
 
 
@@ -75,6 +76,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/sp_debug.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/cmc.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/igcmc.h"
