@@ -2211,6 +2211,7 @@ endif()
 set(IGC_BUILD__IGC_SRC_DIR          "${IGC_SOURCE_DIR}")
 set(IGC_BUILD__IGC_COMMON_DIR       "${IGC_BUILD__IGC_SRC_DIR}/common")
 
+
 set(IGC_BUILD__IGC_BIN_DIR          "${IGC_BINARY_DIR}")
 
 set(IGC_BUILD__GFX_DEV_SRC_DIR      "${IGC_SOURCE_DIR}/..")
@@ -2805,37 +2806,37 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           -msse4.2
           -Wno-unknown-pragmas
           -fPIC
-      )
-      igc_config_flag_apply_settings(
+    )
+    igc_config_flag_apply_settings(
         CompilerOptions
         "${_compilerFlagName}"
         PATTERN "${IGC_BUILD__RELEASE_PATTERN}"
         SET_RAW
           -D_FORTIFY_SOURCE=2
           -fstack-protector
+    )
+    if(_igc_compiler_is_gnu OR (_igc_compiler_is_clang AND NOT CMAKE_C_COMPILER_VERSION LESS "4.0"))
+      igc_config_flag_apply_settings(
+          CompilerOptions
+          "${_compilerFlagName}"
+          ALL_PATTERN ""
+          SET_RAW
+            -finline-functions
       )
-      if(_igc_compiler_is_gnu OR (_igc_compiler_is_clang AND NOT CMAKE_C_COMPILER_VERSION LESS "4.0"))
-    igc_config_flag_apply_settings(
-        CompilerOptions
-        "${_compilerFlagName}"
-        ALL_PATTERN ""
-        SET_RAW
-          -finline-functions
-      )
+    endif()
+    if(NOT _igc_compiler_is_clang)
+      set(flags -funswitch-loops -Wno-maybe-uninitialized)
+      if(NOT ANDROID)
+        list(APPEND flags -lrt)
       endif()
-      if(NOT _igc_compiler_is_clang)
-        set(flags -funswitch-loops -Wno-maybe-uninitialized)
-        if(NOT ANDROID)
-          list(APPEND flags -lrt)
-        endif()
-    igc_config_flag_apply_settings(
-        CompilerOptions
-        "${_compilerFlagName}"
-        ALL_PATTERN ""
-        SET_RAW
-          ${flags}
+      igc_config_flag_apply_settings(
+          CompilerOptions
+          "${_compilerFlagName}"
+          ALL_PATTERN ""
+          SET_RAW
+            ${flags}
       )
-      endif()
+    endif()
   elseif(_igc_compiler_is_clang)
     igc_config_flag_apply_settings(
         CompilerOptions
@@ -2851,16 +2852,16 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         -finline
         -fkeep-inline-functions
         -msse4.2
+    )
+    if(NOT CMAKE_C_COMPILER_VERSION LESS "4.0")
+      igc_config_flag_apply_settings(
+          CompilerOptions
+         "${_compilerFlagName}"
+          ALL_PATTERN ""
+          SET_RAW
+            -finline-functions
       )
-      if(NOT CMAKE_C_COMPILER_VERSION LESS "4.0")
-    igc_config_flag_apply_settings(
-        CompilerOptions
-        "${_compilerFlagName}"
-        ALL_PATTERN ""
-        SET_RAW
-          -finline-functions
-      )
-      endif()
+    endif()
   endif()
 endforeach()
 
