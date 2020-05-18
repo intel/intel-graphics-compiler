@@ -247,6 +247,12 @@ void VarSplitPass::findSplitCandidates()
             auto numRows = (src->getRightBound() - src->getLeftBound() + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES;
             auto regOff = src->getRegOff();
 
+            if (item.first->getByteSize() < src->getRightBound())
+            {
+                item.second.legitCandidate = false;
+                break;
+            }
+
             if (numRows == 1)
             {
                 if (item.second.ag == VarProperties::AccessGranularity::Unknown)
