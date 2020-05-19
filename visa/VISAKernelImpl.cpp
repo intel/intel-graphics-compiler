@@ -8055,7 +8055,7 @@ int VISAKernelImpl::SetGTPinInit(void* buffer)
     if (gtpin)
     {
         if (getOptions()->getOption(vISA_GTPinReRA) || getOptions()->getOption(vISA_GetFreeGRFInfo)
-            || getOptions()->getOption(vISA_GTPinScratchAreaSize))
+            || getOptions()->getuInt32Option(vISA_GTPinScratchAreaSize))
         {
             // GTPin init set by L0 driver through flags
             gtpin->setGTPinInitFromL0(true);

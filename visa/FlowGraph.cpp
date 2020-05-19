@@ -7081,6 +7081,19 @@ unsigned int getBinOffsetNextBB(G4_Kernel& kernel, G4_BB* bb)
     return (unsigned int)(*iter)->getGenOffset();
 }
 
+uint8_t gtPinData::getNumBytesScratchUse()
+{
+    if (gtpin_init)
+    {
+        return gtpin_init->scratch_area_size;
+    }
+    else if (isGTPinInitFromL0())
+    {
+        return kernel.getOptions()->getuInt32Option(vISA_GTPinScratchAreaSize);
+    }
+    return 0;
+}
+
 unsigned int gtPinData::getCrossThreadNextOff()
 {
     return getBinOffsetNextBB(kernel, crossThreadPayloadBB);
@@ -7126,9 +7139,9 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
         if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
             t.srcline_mapping = 1;
 
-        if (kernel.getOptions()->getOption(vISA_GTPinScratchAreaSize))
+        if (kernel.getOptions()->getuInt32Option(vISA_GTPinScratchAreaSize) > 0)
         {
-            t.scratch_area_size = kernel.getKernelAttrs()->getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
+            t.scratch_area_size = getNumBytesScratchUse();
             numTokens++;
         }
     }

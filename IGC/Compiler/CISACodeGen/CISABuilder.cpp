@@ -3835,8 +3835,7 @@ namespace IGC
             }
             if (ClContext->m_Options.GTPinScratchAreaSize)
             {
-                SaveOption(vISA_GTPinScratchAreaSize, true);
-                m_program->SetScratchSpaceSize(ClContext->m_Options.GTPinScratchAreaSizeValue * getGRFSize());
+                SaveOption(vISA_GTPinScratchAreaSize, ClContext->m_Options.GTPinScratchAreaSizeValue);
             }
         }
 

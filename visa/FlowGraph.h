@@ -1294,12 +1294,7 @@ public:
     {
         nextScratchFree = ((next + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES) * G4_GRF_REG_NBYTES;
     }
-    uint8_t getNumBytesScratchUse()
-    {
-        if (gtpin_init)
-            return gtpin_init->scratch_area_size;
-        return 0;
-    }
+    uint8_t getNumBytesScratchUse();
 
     void setPerThreadPayloadBB(G4_BB* bb) { perThreadPayloadBB = bb; }
     void setCrossThreadPayloadBB(G4_BB* bb) { crossThreadPayloadBB = bb; }
@@ -1466,7 +1461,7 @@ public:
         kernelDbgInfo = nullptr;
         if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
             options->getOption(vISAOptions::vISA_GetFreeGRFInfo) ||
-            options->getOption(vISAOptions::vISA_GTPinScratchAreaSize))
+            options->getuInt32Option(vISAOptions::vISA_GTPinScratchAreaSize))
         {
             allocGTPinData();
         }

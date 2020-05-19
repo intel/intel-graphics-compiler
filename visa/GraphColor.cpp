@@ -9739,8 +9739,7 @@ int GlobalRA::coloringRegAlloc()
                     builder.kernel.fg.paramOverflowAreaSize) * 16 - globalScratchOffset;
 
             // reserve spillMemUsed #bytes before 8kb boundary
-            kernel.getGTPinData()->setScratchNextFree(8*1024 - (kernel.getGTPinData()->getGTPinInit() ?
-                kernel.getGTPinData()->getGTPinInit()->scratch_area_size : 0));
+            kernel.getGTPinData()->setScratchNextFree(8*1024 - kernel.getGTPinData()->getNumBytesScratchUse());
         } else {
             jitInfo->spillMemUsed = spillMemUsed;
             kernel.getGTPinData()->setScratchNextFree(spillMemUsed);
