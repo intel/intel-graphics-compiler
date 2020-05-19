@@ -74,13 +74,11 @@ namespace IGC
 
 #if defined (__linux__)
             ifstream in(MakeStr("/proc/", getpid(), "/cmdline"), ios::in);
-            if (!in.is_open())
-                IGC_ASSERT_MESSAGE(0, "Can not open cmdline pseudo file for current process");
+            IGC_ASSERT_MESSAGE(in.is_open(), "Can not open cmdline pseudo file for current process");
 
             //in cmdline arguments are separated with \0
             getline(in, ret, '\0');
-            if (!in.good())
-                IGC_ASSERT_MESSAGE(0, "Error reading from cmdline pseudo file");
+            IGC_ASSERT_MESSAGE(in.good(), "Error reading from cmdline pseudo file");
 
 #elif defined(_WIN64) || defined(_WIN32)
             ret.resize(MAX_PATH);
