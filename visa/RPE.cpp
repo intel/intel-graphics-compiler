@@ -194,8 +194,18 @@ namespace vISA
         auto change = before^after;
         if (change)
         {
-            double delta = vars[id]->getDeclare()->getByteSize() < 32 ?
-                vars[id]->getDeclare()->getByteSize() / 32.0 : (double) vars[id]->getDeclare()->getNumRows();
+            // For <1 GRF variable we have to take alignment into consideration as well when computing register pressure.
+            // For now we double each <1GRF variable's size if its alignment also exceeds its size.
+            // Alternative is to simply take the alignment as the size, but it might cause performance regressions
+            // due to being too conservative (i.e., a GRF-aligned variable may share physical GRF with several other
+            auto dclSize = vars[id]->getDeclare()->getByteSize();
+            if (dclSize < getGRFSize() && dclSize < static_cast<uint32_t>(vars[id]->getDeclare()->getSubRegAlign()) * 2)
+            {
+                dclSize *= 2;
+            }
+
+            double delta = dclSize < getGRFSize() ?
+                dclSize / (double) getGRFSize() : (double) vars[id]->getDeclare()->getNumRows();
             if (before & change)
             {
                 if (regPressure < delta)
