@@ -957,6 +957,7 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
 
         auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         if ((modMD->compOpt.MatchSinCosPi) &&
+            !(modMD->compOpt.FastRelaxedMath) &&
             (funcName.startswith("__builtin_spirv_OpenCL_cos_f32") ||
              funcName.startswith("__builtin_spirv_OpenCL_sin_f32"))) {
           for (auto Users : pFunc->users()) {
