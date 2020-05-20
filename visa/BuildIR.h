@@ -625,6 +625,14 @@ public:
         return dcl == getFE_SP() || dcl == getFE_FP();
     }
 
+    // this refers to vISA's internal stack for spill and caller/callee-save
+    // Note that this is only valid after CFG is constructed
+    // ToDo: make this a pass?
+    bool usesStack() const
+    {
+        return kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
+    }
+
     void bindInputDecl(G4_Declare* dcl, int grfOffset);
 
     const iga::Model* getIGAModel() const { return igaModel; }

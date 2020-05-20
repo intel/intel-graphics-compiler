@@ -214,6 +214,26 @@ typedef enum
     MATH_RSQRTM = 0xF
 } G4_MathOp;
 
+inline const char* MathOpNames[16] =
+{
+    "reserved",
+    "inv",
+    "log",
+    "exp",
+    "sqrt",
+    "rsq",
+    "sin",
+    "cos",
+    "undefined",
+    "fdiv",
+    "pow",
+    "intdiv",
+    "quot",
+    "rem",
+    "invm",
+    "rsqrtm"
+};
+
 
 typedef vISA::std_arena_based_allocator<vISA::G4_INST*> INST_LIST_NODE_ALLOCATOR;
 

@@ -3308,8 +3308,10 @@ bool G4_INST::isPartialWriteForSpill(bool inSIMDCF) const
 
     if (inSIMDCF && !isWriteEnableInst())
     {
-        if (!(builder.hasMaskForScratchMsg() && getDst()->getElemSize() == 4))
+        if (builder.usesStack() || !(builder.hasMaskForScratchMsg() && getDst()->getElemSize() == 4))
         {
+            // scratch message only supports DWord mask
+            // also we can't use the scratch message when under stack call
             return true;
         }
     }
@@ -3649,6 +3651,22 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         if (isIntrinsic())
         {
             output << "." << asIntrinsicInst()->getName();
+            if (isSpillIntrinsic())
+            {
+                output << "." << asSpillIntrinsic()->getNumRows();
+            }
+            else if (isFillIntrinsic())
+            {
+                output << "." << asFillIntrinsic()->getNumRows();
+            }
+        }
+        else if (op == G4_goto)
+        {
+            output << (asCFInst()->isBackward() ? ".bwd" : ".fwd");
+        }
+        else if (isMath() && asMathInst()->getMathCtrl() != MATH_RESERVED)
+        {
+            output << "." << MathOpNames[asMathInst()->getMathCtrl()];
         }
 
         if (mod)
@@ -3665,9 +3683,13 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         {// no need to emit size for nop, wait
             output << '(' << static_cast<int>(execSize) << ") ";
         }
-        if (dst)
+        if (isSpillIntrinsic())
         {
-            dst->emit(output, symbol_dst);  // emit symbolic/physical register depends on the flag
+            output << "Scratch[" << asSpillIntrinsic()->getOffset() << "] ";
+        }
+        else if (dst)
+        {
+            dst->emit(output, symbol_dst);
             output << ' ';
         }
 
@@ -3687,49 +3709,27 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
                 output << ' ';
             }
         }
-
-        if( isMath() && asMathInst()->getMathCtrl() != MATH_RESERVED )
+        if (isFillIntrinsic())
         {
-            output << (hex) << "0x" << asMathInst()->getMathCtrl() << (dec) << " ";
+            output << "Scratch[" << asFillIntrinsic()->getOffset() << "] ";
         }
 
-        if( isFlowControl() && asCFInst()->getJip() )
+        if (isFlowControl() && asCFInst()->getJip())
         {
             asCFInst()->getJip()->emit(output);
             output << ' ';
         }
 
-        if( isFlowControl() && asCFInst()->getUip() )
+        if (isFlowControl() && asCFInst()->getUip())
         {
             asCFInst()->getUip()->emit(output);
             output << ' ';
         }
 
-        if( op == G4_goto )
-        {
-            if (asCFInst()->isBackward())
-            {
-                output << 1;
-            }
-            else
-            {
-                output << 0;
-            }
-            output << ' ';
-        }
+
         this->emit_options(output);
         output << "//" << srcCISAoff;
-        //
-        // emit src2 of pln as comments
-        //
-        if (op == G4_pln)
-        {
-            if (srcs[2] != NULL)
-            {
-                output << "\t//";
-                srcs[2]->emit(output, false);
-            }
-        }
+
     }
 }
 
