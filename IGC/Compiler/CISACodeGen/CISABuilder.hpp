@@ -147,6 +147,9 @@ namespace IGC
         void DeclareInput(CVariable* var, uint offset, uint instance);
         void MarkAsOutput(CVariable* var);
         void Compile(bool hasSymbolTable = false);
+        void ReportCompilerStatistics(VISAKernel* pMainKernel, SProgramOutput* pOutput);
+        int GetThreadCount(SIMDMode simdMode);
+
         CEncoder();
         ~CEncoder();
         void SetProgram(CShader* program);

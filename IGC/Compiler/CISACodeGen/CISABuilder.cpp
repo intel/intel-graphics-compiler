@@ -3858,9 +3858,9 @@ namespace IGC
             SaveOption(vISA_forceNoFP64bRegioning, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
+        if (IGC_IS_FLAG_ENABLED(DumpCompilerStats) || context->getModuleMetaData()->compOpt.CaptureCompilerStats)
         {
-            SaveOption(vISA_DumpCompilerStats, true);
+            SaveOption(vISA_EnableCompilerStats, true);
         }
 
         if (IGC_IS_FLAG_ENABLED(ForceFFIDOverwrite)/*|| m_program->m_Platform->WaOverwriteFFID()*/)
@@ -5166,6 +5166,7 @@ namespace IGC
         pOutput->m_debugDataGenISASize = dbgSize;
         pOutput->m_InstructionCount = jitInfo->numAsmCount;
         pOutput->m_BasicBlockCount = jitInfo->BBNum;
+        ReportCompilerStatistics(pMainKernel, pOutput);
 
         pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
@@ -6225,5 +6226,54 @@ namespace IGC
         return filename;
     }
 
+
+    void CEncoder::ReportCompilerStatistics(VISAKernel* pMainKernel, SProgramOutput* pOutput)
+    {
+        CompilerStats compilerStats;
+        pMainKernel->GetCompilerStats(compilerStats);
+        int simdsize = GetThreadCount(m_program->m_dispatchSize);
+
+
+        // set optional statistics
+        if (compilerStats.Find(CompilerStats::numCyclesStr()))
+        {
+            pOutput->m_NumCycles.emplace(compilerStats.GetI64(CompilerStats::numCyclesStr(), simdsize));
+        }
+
+        if (compilerStats.Find(CompilerStats::numGRFFillStr()))
+        {
+            pOutput->m_NumGRFFill.emplace(compilerStats.GetI64(CompilerStats::numGRFFillStr(), simdsize));
+        }
+
+        if (compilerStats.Find(CompilerStats::numGRFSpillStr()))
+        {
+            pOutput->m_NumGRFSpill.emplace(compilerStats.GetI64(CompilerStats::numGRFSpillStr(), simdsize));
+        }
+
+        if (compilerStats.Find(CompilerStats::numSendStr()))
+        {
+            pOutput->m_NumSends.emplace(compilerStats.GetI64(CompilerStats::numSendStr(), simdsize));
+        }
+    }
+
+    int CEncoder::GetThreadCount(SIMDMode simdMode)
+    {
+        int simdsize = 0;
+        switch (m_program->m_dispatchSize)
+        {
+        case SIMDMode::SIMD8:
+            simdsize = 8;
+            break;
+        case SIMDMode::SIMD16:
+            simdsize = 16;
+            break;
+        case SIMDMode::SIMD32:
+            simdsize = 32;
+            break;
+        default:
+            break;
+        }
+        return simdsize;
+    }
 
 }

@@ -7775,7 +7775,7 @@ public:
                 }
             }
         }
-        builder.getcompilerStats().SetI64(CompilerStats::numSendStr(), numSends);
+        builder.getcompilerStats().SetI64(CompilerStats::numSendStr(), numSends, builder.kernel.getSimdSize());
     }
 
     // Create a copy of R0 at top of kernel,

@@ -66,6 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CompilerStats.h"
 #include <unordered_set>
 #include "Probe/Assertion.h"
+#include <optional>
 
 /************************************************************************
 This file contains the interface structure and functions to communicate
@@ -136,6 +137,13 @@ namespace IGC
         bool            m_roundPower2KBytes = false;
         unsigned int m_scratchSpaceSizeLimit = 0;
         unsigned int m_numGRFTotal = 128;
+
+        // Optional statistics
+        std::optional<uint64_t> m_NumGRFSpill;
+        std::optional<uint64_t> m_NumGRFFill;
+        std::optional<uint64_t> m_NumSends;
+        std::optional<uint64_t> m_NumCycles;
+
 
         void Destroy()
         {

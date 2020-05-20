@@ -554,7 +554,7 @@ int VISAKernelImpl::InitializeFastPath()
         m_kernel->getKernelDebugInfo()->setVISAKernel(this);
     }
 
-    if (getOptions()->getOption(vISA_DumpCompilerStats))
+    if (getOptions()->getOption(vISA_EnableCompilerStats))
     {
         m_compilerStats.Enable(false);
     }
