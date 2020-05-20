@@ -611,3 +611,147 @@ int cmc::vISACompile_v2(cmc_compile_info_v2* output, iOpenCL::CGen8CMProgram& CM
     CMProgram.CreateKernelBinaries();
     return status;
 }
+
+static void getCmcArg(cmc_arg_info& CmcArg, const vc::ocl::ArgInfo& Arg)
+{
+    switch (Arg.Kind)
+    {
+    case vc::ocl::ArgKind::General:
+        CmcArg.kind = cmc_arg_kind::General;
+        break;
+    case vc::ocl::ArgKind::LocalSize:
+        CmcArg.kind = cmc_arg_kind::LocalSize;
+        break;
+    case vc::ocl::ArgKind::GroupCount:
+        CmcArg.kind = cmc_arg_kind::GroupCount;
+        break;
+    case vc::ocl::ArgKind::Buffer:
+        CmcArg.kind = cmc_arg_kind::Buffer;
+        break;
+    case vc::ocl::ArgKind::SVM:
+        CmcArg.kind = cmc_arg_kind::SVM;
+        break;
+    case vc::ocl::ArgKind::Sampler:
+        CmcArg.kind = cmc_arg_kind::Sampler;
+        break;
+    case vc::ocl::ArgKind::Image1d:
+        CmcArg.kind = cmc_arg_kind::Image1d;
+        break;
+    case vc::ocl::ArgKind::Image2d:
+        CmcArg.kind = cmc_arg_kind::Image2d;
+        break;
+    case vc::ocl::ArgKind::Image3d:
+        CmcArg.kind = cmc_arg_kind::Image3d;
+        break;
+    case vc::ocl::ArgKind::PrintBuffer:
+        CmcArg.kind = cmc_arg_kind::PrintBuffer;
+        break;
+    case vc::ocl::ArgKind::PrivateBase:
+        CmcArg.kind = cmc_arg_kind::PrivateBase;
+        break;
+    }
+
+    switch (Arg.AccessKind)
+    {
+    case vc::ocl::ArgAccessKind::None:
+        CmcArg.access = cmc_access_kind::undef;
+        break;
+    case vc::ocl::ArgAccessKind::ReadOnly:
+        CmcArg.access = cmc_access_kind::read_only;
+        break;
+    case vc::ocl::ArgAccessKind::WriteOnly:
+        CmcArg.access = cmc_access_kind::write_only;
+        break;
+    case vc::ocl::ArgAccessKind::ReadWrite:
+        CmcArg.access = cmc_access_kind::read_write;
+        break;
+    }
+
+    CmcArg.index = Arg.Index;
+    CmcArg.offset = Arg.Offset;
+    CmcArg.sizeInBytes = Arg.SizeInBytes;
+    CmcArg.BTI = Arg.BTI;
+}
+
+// Returns vector of cmc_arg_info with all fields initialized.
+static std::vector<cmc_arg_info> getCmcArgInfos(const std::vector<vc::ocl::ArgInfo>& Args)
+{
+    std::vector<cmc_arg_info> CmcArgs{Args.size()};
+    for (unsigned i = 0, e = Args.size(); i != e; ++i)
+        getCmcArg(CmcArgs[i], Args[i]);
+    return CmcArgs;
+}
+
+static std::vector<cmc_ocl_print_string> getCmcPrintStrings(
+    const std::vector<std::string>& Original)
+{
+    std::vector<cmc_ocl_print_string> Converted;
+    std::transform(Original.begin(), Original.end(), std::back_inserter(Converted),
+        [](const std::string &str) {
+            IGC_ASSERT_MESSAGE(str.size() < cmc_ocl_print_string::max_width, "illegal string length");
+            cmc_ocl_print_string Tmp;
+            strcpy_s(Tmp.s, cmc_ocl_print_string::max_width, str.c_str());
+            return Tmp;
+        });
+    return Converted;
+}
+
+struct CmcContext
+{
+    std::vector<cmc_arg_info> Args;
+    std::vector<cmc_ocl_print_string> PrintStrings;
+};
+
+// Fills non-owning cmc_kernel_info with all fields initialized.
+static void getCmcKernelInfo(
+    cmc_kernel_info_v2& CmcInfo,
+    const vc::ocl::KernelInfo& Info,
+    const FINALIZER_INFO& JitInfo,
+    CmcContext& CmcCtx)
+{
+    IGC_ASSERT_MESSAGE(CmcCtx.PrintStrings.size() == Info.PrintStrings.size(), "inconsistent arguments");
+    CmcInfo.name = Info.Name.c_str();
+    CmcInfo.num_args = CmcCtx.Args.size();
+    CmcInfo.arg_descs = CmcCtx.Args.data();
+    CmcInfo.HasLocalIDx = true;
+    CmcInfo.HasLocalIDy = true;
+    CmcInfo.HasLocalIDz = true;
+    CmcInfo.HasGroupID = Info.HasGroupID;
+    CmcInfo.CompiledSIMDSize = 1;
+    CmcInfo.SLMSize = Info.SLMSize;
+    CmcInfo.NumGRFRequired = JitInfo.numGRFTotal;
+    CmcInfo.GRFByteSize = Info.GRFSizeInBytes;
+    CmcInfo.HasBarriers = Info.HasBarriers;
+    CmcInfo.StatelessPrivateMemSize = Info.StatelessPrivateMemSize;
+    CmcInfo.HasReadWriteImages = Info.HasReadWriteImages;
+    CmcInfo.num_print_strings = CmcCtx.PrintStrings.size();
+    CmcInfo.print_string_descs = CmcCtx.PrintStrings.data();
+    // std::copy requires either reinteprets or implementation of operator= in
+    // TableInfos from independent headers so memcpy seems to be the best option
+    // for now
+    memcpy_s(&CmcInfo.RelocationTable, sizeof(Info.RelocationTable), &Info.RelocationTable,
+           sizeof(Info.RelocationTable));
+    memcpy_s(&CmcInfo.SymbolTable, sizeof(Info.SymbolTable), &Info.SymbolTable,
+           sizeof(Info.SymbolTable));
+}
+
+void vc::createBinary(
+    iOpenCL::CGen8CMProgram& CMProgram,
+    const std::vector<vc::ocl::CompileInfo>& CompileInfos)
+{
+    cmc_kernel_info_v2 CmcInfo;
+    CmcContext CmcCtx;
+    for (const vc::ocl::CompileInfo& Info : CompileInfos)
+    {
+        CmcCtx.Args = getCmcArgInfos(Info.KernelInfo.Args);
+        CmcCtx.PrintStrings = getCmcPrintStrings(Info.KernelInfo.PrintStrings);
+        getCmcKernelInfo(CmcInfo, Info.KernelInfo, Info.JitInfo, CmcCtx);
+        CMKernel* K = new CMKernel(CMProgram.getPlatform());
+        CMProgram.m_kernels.push_back(K);
+        llvm::ArrayRef<uint8_t> GenBin{
+            reinterpret_cast<const uint8_t*>(Info.GenBinary.data()),
+            Info.GenBinary.size()};
+        populateKernelInfo_v2(&CmcInfo, Info.JitInfo, GenBin, *K);
+    }
+    CMProgram.CreateKernelBinaries();
+}

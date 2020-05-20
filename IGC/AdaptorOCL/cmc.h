@@ -35,6 +35,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "igcmc.h"
 #include "Compiler/CodeGenPublic.h"
+#include "common/LLVMWarningsPush.hpp"
+#include "VectorCompiler/include/vc/GenXCodeGen/GenXWrapper.h"
+#include "common/LLVMWarningsPop.hpp"
 
 namespace iOpenCL {
   class CGen8CMProgram;
@@ -111,3 +114,8 @@ extern int vISACompile_v2(cmc_compile_info_v2 *output,
 extern const char* getPlatformStr(PLATFORM platform);
 
 } // namespace cmc
+
+namespace vc {
+void createBinary(iOpenCL::CGen8CMProgram &CMProgram,
+                  const std::vector<vc::ocl::CompileInfo> &CompileInfos);
+} // namespace vc

@@ -2196,6 +2196,14 @@ set(IGC_BUILD__PROJ_NAME_PREFIX "")
   set(IGC_BUILD__SPIRV_ENABLED ON)
 
 
+# Enable vector compiler for Linux and Windows
+# If user already defined this, honor decision
+if(NOT DEFINED IGC_BUILD__VC_ENABLED)
+  if(LLVM_ON_UNIX OR LLVM_ON_WIN32)
+    set(IGC_BUILD__VC_ENABLED ON)
+  endif()
+endif()
+
 
 # ======================================== Path helper variables =======================================
 
@@ -3078,6 +3086,12 @@ if(IGC_BUILD__SPIRV_ENABLED)
     )
 endif()
 
+#VC OPT switch on/off
+if(NOT IGC_BUILD__VC_ENABLED)
+  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+      IGC_VC_DISABLED
+    )
+endif()
   set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
       _SCL_SECURE_NO_WARNINGS
       _CRT_SECURE_NO_WARNINGS
@@ -3446,6 +3460,10 @@ if(LLVM_ON_WIN32
 endif()
 
 
+if(IGC_BUILD__VC_ENABLED AND NOT CMAKE_WDDM_LINUX)
+  add_subdirectory(VectorCompiler)
+endif()
+
 add_subdirectory(Compiler)
 add_subdirectory(DriverInterface)
 igc_sg_define(IGC__DriverInterface)
@@ -3735,6 +3753,12 @@ list(APPEND _targetLinkLineCommon zebinlib)
     list(APPEND _targetLinkLineCommon
         "${IGC_BUILD__PROJ${_libBuildSuffix}}"
       )
+  endif()
+
+  if(IGC_BUILD__VC_ENABLED)
+    list(APPEND _targetLinkLineCommon
+      ${IGC_BUILD__PROJ_VC_LIBS_TO_LINK}
+    )
   endif()
 
   list(APPEND _targetLinkLineCommon

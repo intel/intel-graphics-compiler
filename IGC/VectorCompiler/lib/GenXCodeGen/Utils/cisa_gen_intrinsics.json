@@ -1,0 +1,3674 @@
+{
+  "DESCRIPTION": "See cisa_gen_intrinsics.py for description of this document",
+  "INTRINSICS": {
+    "genx_fptosi_sat": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ]
+    },
+    "genx_fptoui_sat": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ]
+    },
+    "genx_sat": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ]
+    },
+    "genx_uutrunc_sat": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ]
+    },
+    "genx_ustrunc_sat": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ]
+    },
+    "genx_sutrunc_sat": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ]
+    },
+    "genx_sstrunc_sat": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ]
+    },
+    "genx_thread_x": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_X, 0, 0, 0, 1, 0)"
+    },
+    "genx_thread_y": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_Y, 0, 0, 0, 1, 0)"
+    },
+    "genx_group_id_x": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_GROUP_ID_X, 0, 0, 0, 1, 0)"
+    },
+    "genx_group_id_y": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_GROUP_ID_Y, 0, 0, 0, 1, 0)"
+    },
+    "genx_group_id_z": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_GROUP_ID_Z, 0, 0, 0, 1, 0)"
+    },
+    "genx_timestamp": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_TSC, 0, 0, 1, 1, 0)"
+    },
+    "genx_r0": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_R0, 0, 0, 1, 1, 0)"
+    },
+    "genx_ce0": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE_NOMASK" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_CE0, 0, 0, 0, 1, 0)"
+    },
+    "genx_sr0": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_SR0, 0, 0, 1, 1, 0)"
+    },
+    "genx_set_sr0_2": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE_NOMASK" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": "CreateOpndPredefinedDst(PREDEFINED_SR0, 0, 2, 1)",
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_get_color": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_COLOR, 0, 0, 1, 1, 0)"
+    },
+    "genx_get_hwid": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": "CreateOpndPredefinedSrc(PREDEFINED_HW_TID, 0, 0, 0, 1, 0)"
+    },
+    "genx_set_pause": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": "CreateOpndPredefinedDst(PREDEFINED_TSC, 0, 4, 1)",
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_dummy_mov": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": "CreateOpndPredefinedDst(PREDEFINED_NULL, 0, 0, 1)",
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_constanti": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_constantf": {
+      "opc": "ISA_MOV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_media_ld": {
+      "opc": "ISA_MEDIA_LD",
+      "modifiers": [ "BYTE", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "plane": [ "BYTE", 3 ],
+      "block_width": [ "BYTE", 4 ],
+      "block_height": [ "MEDIAHEIGHT", 4 ],
+      "x_offset": [ "GENERAL", "UNSIGNED", 5 ],
+      "y_offset": [ "GENERAL", "UNSIGNED", 6 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_media_st": {
+      "opc": "ISA_MEDIA_ST",
+      "modifiers": [ "BYTE", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "plane": [ "BYTE", 3 ],
+      "block_width": [ "BYTE", 4 ],
+      "block_height": [ "MEDIAHEIGHT", 4 ],
+      "x_offset": [ "GENERAL", "UNSIGNED", 5 ],
+      "y_offset": [ "GENERAL", "UNSIGNED", 6 ],
+      "src": [ "RAW", 7 ]
+    },
+    "genx_oword_ld": {
+      "opc": "ISA_OWORD_LD",
+      "log2_owords": [ "LOG2OWORDS", 0 ],
+      "is_modified": [ "BYTE", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "GENERAL", "UNSIGNED", 3 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_oword_ld_unaligned": {
+      "opc": "ISA_OWORD_LD_UNALIGNED",
+      "gen_opc": "ISA_OWORD_LD",
+      "log2_owords": [ "LOG2OWORDS", 0 ],
+      "is_modified": [ "BYTE", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "GENERAL", "UNSIGNED", 3 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_oword_st": {
+      "opc": "ISA_OWORD_ST",
+      "log2_owords": [ "LOG2OWORDS", 3 ],
+      "surface": [ "SURFACE", 1 ],
+      "offset": [ "GENERAL", "UNSIGNED", 2 ],
+      "src": [ "RAW", 3 ]
+    },
+    "genx_dword_atomic_add": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_ADD" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_sub": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_SUB" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_inc": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_INC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "NULLRAW" ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_dec": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_DEC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "NULLRAW" ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_min": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_MIN" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_max": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_MAX" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_xchg": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_XCHG" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_cmpxchg": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_CMPXCHG" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "URAW", 5 ],
+      "twoaddr": [ "TWOADDR", 6 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_and": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_AND" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_or": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_OR" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_xor": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_XOR" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "URAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_imin": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_IMIN" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "SRAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "SRAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_imax": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_IMAX" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "SRAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "SRAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_fmax": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_FMAX" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "RAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_fmin": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_FMIN" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "RAW", 4 ],
+      "src1": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 5 ],
+      "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_dword_atomic_fcmpwr": {
+      "opc": "ISA_DWORD_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_FCMPWR" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "offset": [ "URAW", 3 ],
+      "src": [ "RAW", 4 ],
+      "src1": [ "RAW", 5 ],
+      "twoaddr": [ "TWOADDR", 6 ],
+      "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "fma": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "MODIFIER_ARITH", 3 ]
+    },
+    "genx_ssmad": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "SIGNED", "CONTIGUOUS", 3 ]
+    },
+    "genx_sumad": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", "CONTIGUOUS", 3 ]
+    },
+    "genx_usmad": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "SIGNED", "CONTIGUOUS", 3 ]
+    },
+    "genx_uumad": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", "CONTIGUOUS", 3 ]
+    },
+    "genx_ssmad_sat": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "SIGNED", "CONTIGUOUS", 3 ]
+    },
+    "genx_sumad_sat": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", "CONTIGUOUS", 3 ]
+    },
+    "genx_usmad_sat": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "SIGNED", "CONTIGUOUS", 3 ]
+    },
+    "genx_uumad_sat": {
+      "opc": "ISA_MAD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", "CONTIGUOUS", 3 ]
+    },
+    "genx_constantpred": {
+      "opc": "ISA_SETP",
+      "exec_size": [ "EXECSIZE" ],
+      "dst": [ "PREDICATE", 0 ],
+      "src0": [ "CONSTVI1ASI32", 1 ]
+    },
+    "genx_smax": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "flag_for_max": [ "LITERAL", 1 ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_umax": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "flag_for_max": [ "LITERAL", 1 ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_fmax": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "flag_for_max": [ "LITERAL", 1 ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_smin": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "flag_for_max": [ "LITERAL", 0 ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_umin": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "flag_for_max": [ "LITERAL", 0 ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_fmin": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "flag_for_max": [ "LITERAL", 0 ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_pow": {
+      "opc": "ISA_POW",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ],
+      "src1": [ "GENERAL", 2 ]
+    },
+    "genx_add_addr": {
+      "opc": "ISA_ADDR_ADD",
+      "exec_size": [ "EXECSIZE" ],
+      "dst": [ "ADDRESS", 0 ],
+      "src0": [ "ADDRESS", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", 2 ]
+    },
+    "genx_3d_sample": {
+      "opc": "ISA_3D_SAMPLE",
+      "sampling3d_opcode": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
+      "pred": [ "PREDICATION", 2 ],
+      "channel_mask": [ "BYTE", 3 ],
+      "aoffimmi_value": [ "GENERAL", "UNSIGNED", 4 ],
+      "sampler": [ "SAMPLER", 5 ],
+      "surface": [ "SURFACE", 6 ],
+      "dst": [ "RAW", 0 ],
+      "number_of_additional_operands": [ "ARGCOUNT", "ARGCOUNTMIN1", 7 ],
+      "raw_operands": [ "RAW_OPERANDS", "RAW", 7 ]
+    },
+    "genx_sqrt": {
+      "opc": "ISA_SQRT",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_rsqrt": {
+      "opc": "ISA_RSQRT",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_ieee_sqrt": {
+      "opc": "ISA_SQRTM",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_inv": {
+      "opc": "ISA_INV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_log": {
+      "opc": "ISA_LOG",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_exp": {
+      "opc": "ISA_EXP",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_scatter_scaled": {
+      "opc": "ISA_SCATTER_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "1_byte_block_size_MBZ": [ "LITERAL", 0 ],
+      "log2_num_blocks": [ "BYTE", 2 ],
+      "scale": [ "SHORT", 3 ],
+      "surface": [ "SURFACE", 4 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 5 ],
+      "element_offset": [ "URAW", 6 ],
+      "src": [ "RAW", 7 ]
+    },
+    "genx_scatter4_scaled": {
+      "opc": "ISA_SCATTER4_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "channel_mask": [ "BYTE", 2 ],
+      "scale": [ "SHORT", 3 ],
+      "surface": [ "SURFACE", 4 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 5 ],
+      "element_offset": [ "URAW", 6 ],
+      "src": [ "RAW", 7 ]
+    },
+    "genx_scatter4_typed": {
+      "opc": "ISA_SCATTER4_TYPED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
+      "pred": [ "PREDICATION", 2 ],
+      "channel_mask": [ "BYTE", 1 ],
+      "surface": [ "SURFACE", 3 ],
+      "U_pixel_address": [ "URAW", 4 ],
+      "V_pixel_address": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R_pixel_address": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "NULLRAW" ],
+      "src": [ "RAW", 7 ]
+    },
+    "genx_gather_scaled": {
+      "opc": "ISA_GATHER_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "block_size_MBZ": [ "LITERAL", 0 ],
+      "log2_num_blocks": [ "BYTE", 2 ],
+      "scale": [ "SHORT", 3 ],
+      "surface": [ "SURFACE", 4 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 5 ],
+      "element_offset": [ "URAW", 6 ],
+      "skip__": [ "TWOADDR", 7 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_gather_scaled2": {
+      "opc": "ISA_GATHER_SCALED",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "block_size_MBZ": [ "LITERAL", 0 ],
+      "log2_num_blocks": [ "BYTE", 1 ],
+      "scale": [ "SHORT", 2 ],
+      "surface": [ "SURFACE", 3 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 4 ],
+      "element_offset": [ "URAW", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_gather4_scaled": {
+      "opc": "ISA_GATHER4_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "channel_mask": [ "BYTE", 2 ],
+      "scale": [ "SHORT", 3 ],
+      "surface": [ "SURFACE", 4 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 5 ],
+      "element_offset": [ "URAW", 6 ],
+      "skip__": [ "TWOADDR", 7 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_gather4_scaled2": {
+      "opc": "ISA_GATHER4_SCALED",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "channel_mask": [ "BYTE", 1 ],
+      "scale": [ "SHORT", 2 ],
+      "surface": [ "SURFACE", 3 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 4 ],
+      "element_offset": [ "URAW", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_gather4_typed": {
+      "opc": "ISA_GATHER4_TYPED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
+      "pred": [ "PREDICATION", 2 ],
+      "channel_mask": [ "BYTE", 1 ],
+      "surface": [ "SURFACE", 3 ],
+      "U_pixel_address": [ "URAW", 4 ],
+      "V_pixel_address": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R_pixel_address": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 7 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_typed_atomic_add": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_ADD" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_sub": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_SUB" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_inc": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_INC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 3 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 4 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "src0": [ "NULLRAW" ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_dec": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_DEC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 3 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 4 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "src0": [ "NULLRAW" ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_min": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_MIN" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_max": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_MAX" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_xchg": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_XCHG" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_cmpxchg": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_CMPXCHG" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 5 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 8 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "URAW", 4 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_and": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_AND" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_or": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_OR" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_xor": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_XOR" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_imin": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_IMIN" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_imax": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_IMAX" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_fmax": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_FMAX" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_fmin": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_FMIN" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 4 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 5 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_typed_atomic_fcmpwr": {
+      "opc": "ISA_3D_TYPED_ATOMIC",
+      "sub_opc": [ "LITERAL", "ATOMIC_FCMPWR" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U": [ "URAW", 5 ],
+      "V": [ "URAW", "RAW_NULLALLOWED", 6 ],
+      "R": [ "URAW", "RAW_NULLALLOWED", 7 ],
+      "LOD": [ "URAW", "RAW_NULLALLOWED", 8 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "URAW", 4 ],
+      "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
+    },
+    "genx_sssad2add": {
+      "opc": "ISA_SAD2ADD",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", 1 ],
+      "src1": [ "GENERAL", "SIGNED", 2 ],
+      "src2": [ "GENERAL", "SIGNED", 3 ]
+    },
+    "genx_uusad2add": {
+      "opc": "ISA_SAD2ADD",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", 3 ]
+    },
+    "genx_susad2add": {
+      "opc": "ISA_SAD2ADD",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", 2 ],
+      "src2": [ "GENERAL", "SIGNED", 3 ]
+    },
+    "genx_ussad2add": {
+      "opc": "ISA_SAD2ADD",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", 1 ],
+      "src1": [ "GENERAL", "SIGNED", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", 3 ]
+    },
+    "genx_sssad2add_sat": {
+      "opc": "ISA_SAD2ADD",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", 1 ],
+      "src1": [ "GENERAL", "SIGNED", 2 ],
+      "src2": [ "GENERAL", "SIGNED", 3 ]
+    },
+    "genx_uusad2add_sat": {
+      "opc": "ISA_SAD2ADD",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", 3 ]
+    },
+    "genx_susad2add_sat": {
+      "opc": "ISA_SAD2ADD",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", 2 ],
+      "src2": [ "GENERAL", "SIGNED", 3 ]
+    },
+    "genx_ussad2add_sat": {
+      "opc": "ISA_SAD2ADD",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", 1 ],
+      "src1": [ "GENERAL", "SIGNED", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", 3 ]
+    },
+    "genx_ssad2": {
+      "opc": "ISA_SAD2",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", 1 ],
+      "src1": [ "GENERAL", "SIGNED", 2 ]
+    },
+    "genx_usad2": {
+      "opc": "ISA_SAD2",
+      "exec_size": [ "EXECSIZE_GE2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", 2 ]
+    },
+    "genx_wait": {
+      "opc": "ISA_WAIT",
+      "mask": [ "GENERAL", "UNSIGNED", 1 ]
+    },
+    "genx_avs": {
+      "opc": "ISA_AVS",
+      "channel_mask": [ "BYTE", 1 ],
+      "sampler": [ "SAMPLER", 2 ],
+      "surface": [ "SURFACE", 3 ],
+      "U_pixel_address": [ "GENERAL", 4 ],
+      "V_pixel_address": [ "GENERAL", 5 ],
+      "deltaU": [ "GENERAL", 6 ],
+      "deltaV": [ "GENERAL", 7 ],
+      "u2d": [ "GENERAL", 8 ],
+      "groupID": [ "GENERAL", "UNSIGNED", 9 ],
+      "verticalBlockNumber": [ "GENERAL", "UNSIGNED", 10 ],
+      "output_format_control": [ "BYTE", 11 ],
+      "v2d": [ "GENERAL", 12 ],
+      "execMode": [ "BYTE", 13 ],
+      "IEFByPass": [ "GENERAL", "UNSIGNED", 14 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_sample_unorm": {
+      "opc": "ISA_SAMPLE_UNORM",
+      "channel_mask": [ "BYTE", 1 ],
+      "sampler": [ "SAMPLER", 2 ],
+      "surface": [ "SURFACE", 3 ],
+      "U_pixel_address": [ "GENERAL", 4 ],
+      "V_pixel_address": [ "GENERAL", 5 ],
+      "deltaU": [ "GENERAL", 6 ],
+      "deltaV": [ "GENERAL", 7 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_sin": {
+      "opc": "ISA_SIN",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_cos": {
+      "opc": "ISA_COS",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_ssavg": {
+      "opc": "ISA_AVG",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_suavg": {
+      "opc": "ISA_AVG",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_usavg": {
+      "opc": "ISA_AVG",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_uuavg": {
+      "opc": "ISA_AVG",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_ssavg_sat": {
+      "opc": "ISA_AVG",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_suavg_sat": {
+      "opc": "ISA_AVG",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_usavg_sat": {
+      "opc": "ISA_AVG",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_uuavg_sat": {
+      "opc": "ISA_AVG",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_fence": {
+      "opc": "ISA_FENCE",
+      "mask": [ "BYTE", 1 ]
+    },
+    "genx_ssadd_sat": {
+      "opc": "ISA_ADD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_suadd_sat": {
+      "opc": "ISA_ADD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_usadd_sat": {
+      "opc": "ISA_ADD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_uuadd_sat": {
+      "opc": "ISA_ADD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_lzd": {
+      "opc": "ISA_LZD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ]
+    },
+    "genx_raw_send": {
+      "opc": "ISA_RAW_SEND",
+      "modifier_sendc": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
+      "pred": [ "PREDICATION", 2 ],
+      "extended_message_descriptor": [ "INT", 3 ],
+      "numsrc": [ "NUMGRFS", 5 ],
+      "numdst": [ "NUMGRFS", 0 ],
+      "desc": [ "GENERAL", "UNSIGNED", 4 ],
+      "src": [ "RAW", 5 ],
+      "skip__": [ "TWOADDR", 6 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_raw_send_noresult": {
+      "opc": "ISA_RAW_SEND",
+      "modifier_sendc": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
+      "pred": [ "PREDICATION", 2 ],
+      "extended_message_descriptor": [ "INT", 3 ],
+      "numsrc": [ "NUMGRFS", 5 ],
+      "numdst": [ "LITERAL", 0 ],
+      "desc": [ "GENERAL", "UNSIGNED", 4 ],
+      "src": [ "RAW", 5 ],
+      "dst": [ "NULLRAW" ]
+    },
+    "genx_raw_sends": {
+      "opc": "ISA_RAW_SENDS",
+      "modifier_sendc": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
+      "pred": [ "PREDICATION", 2 ],
+      "numsrc": [ "NUMGRFS", 6 ],
+      "numsrc2": [ "NUMGRFS", 7 ],
+      "numdst": [ "NUMGRFS", 0 ],
+      "FFID": [ "BYTE", 3 ],
+      "extended_message_descriptor": [ "GENERAL", "UNSIGNED", 4 ],
+      "desc": [ "GENERAL", "UNSIGNED", 5 ],
+      "src": [ "RAW", 6 ],
+      "src2": [ "RAW", 7 ],
+      "skip__": [ "TWOADDR", 8 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_raw_sends_noresult": {
+      "opc": "ISA_RAW_SENDS",
+      "modifier_sendc": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
+      "pred": [ "PREDICATION", 2 ],
+      "numsrc": [ "NUMGRFS", 6 ],
+      "numsrc2": [ "NUMGRFS", 7 ],
+      "numdst": [ "LITERAL", 0 ],
+      "FFID": [ "BYTE", 3 ],
+      "extended_message_descriptor": [ "GENERAL", "UNSIGNED", 4 ],
+      "desc": [ "GENERAL", "UNSIGNED", 5 ],
+      "src": [ "RAW", 6 ],
+      "src2": [ "RAW", 7 ],
+      "dst": [ "NULLRAW", 8 ]
+    },
+    "genx_raw_send2": {
+      "opc": "ISA_RAW_SENDS",
+      "modifier_sendc": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_BYTE", 2 ],
+      "pred": [ "PREDICATION", 3 ],
+      "numsrc": [ "BYTE", 4 ],
+      "numsrc2": [ "LITERAL", 0 ],
+      "numdst": [ "BYTE", 5 ],
+      "FFID": [ "BYTE", 6 ],
+      "extended_message_descriptor": [ "GENERAL", "UNSIGNED", 7 ],
+      "desc": [ "GENERAL", "UNSIGNED", 8 ],
+      "src": [ "RAW", 9 ],
+      "src2": [ "NULLRAW", 10 ],
+      "skip__": [ "TWOADDR", 10 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_raw_send2_noresult": {
+      "opc": "ISA_RAW_SENDS",
+      "modifier_sendc": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_BYTE", 2 ],
+      "pred": [ "PREDICATION", 3 ],
+      "numsrc": [ "BYTE", 4 ],
+      "numsrc2": [ "LITERAL", 0 ],
+      "numdst": [ "LITERAL", 0 ],
+      "FFID": [ "BYTE", 5 ],
+      "extended_message_descriptor": [ "GENERAL", "UNSIGNED", 6 ],
+      "desc": [ "GENERAL", "UNSIGNED", 7 ],
+      "src": [ "RAW", 8 ],
+      "src2": [ "NULLRAW", 9 ],
+      "dst": [ "NULLRAW", 10 ]
+    },
+    "genx_raw_sends2": {
+      "opc": "ISA_RAW_SENDS",
+      "modifier_sendc": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_BYTE", 2 ],
+      "pred": [ "PREDICATION", 3 ],
+      "numsrc": [ "BYTE", 4 ],
+      "numsrc2": [ "BYTE", 5 ],
+      "numdst": [ "BYTE", 6 ],
+      "FFID": [ "BYTE", 7 ],
+      "extended_message_descriptor": [ "GENERAL", "UNSIGNED", 8 ],
+      "desc": [ "GENERAL", "UNSIGNED", 9 ],
+      "src": [ "RAW", 10 ],
+      "src2": [ "RAW", 11 ],
+      "skip__": [ "TWOADDR", 12 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_raw_sends2_noresult": {
+      "opc": "ISA_RAW_SENDS",
+      "modifier_sendc": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_BYTE", 2 ],
+      "pred": [ "PREDICATION", 3 ],
+      "numsrc": [ "BYTE", 4 ],
+      "numsrc2": [ "BYTE", 5 ],
+      "numdst": [ "LITERAL", 0 ],
+      "FFID": [ "BYTE", 6 ],
+      "extended_message_descriptor": [ "GENERAL", "UNSIGNED", 7 ],
+      "desc": [ "GENERAL", "UNSIGNED", 8 ],
+      "src": [ "RAW", 9 ],
+      "src2": [ "RAW", 10 ],
+      "dst": [ "NULLRAW", 11 ]
+    },
+    "genx_rndd": {
+      "opc": "ISA_RNDD",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_rnde": {
+      "opc": "ISA_RNDE",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_rndu": {
+      "opc": "ISA_RNDU",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_rndz": {
+      "opc": "ISA_RNDZ",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_ssmul": {
+      "opc": "ISA_MUL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_sumul": {
+      "opc": "ISA_MUL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_usmul": {
+      "opc": "ISA_MUL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_uumul": {
+      "opc": "ISA_MUL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_ssmul_sat": {
+      "opc": "ISA_MUL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_sumul_sat": {
+      "opc": "ISA_MUL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_usmul_sat": {
+      "opc": "ISA_MUL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_uumul_sat": {
+      "opc": "ISA_MUL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_smulh": {
+      "opc": "ISA_MULH",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_umulh": {
+      "opc": "ISA_MULH",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_ssshl": {
+      "opc": "ISA_SHL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_sushl": {
+      "opc": "ISA_SHL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_usshl": {
+      "opc": "ISA_SHL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_uushl": {
+      "opc": "ISA_SHL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_ssshl_sat": {
+      "opc": "ISA_SHL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_sushl_sat": {
+      "opc": "ISA_SHL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_usshl_sat": {
+      "opc": "ISA_SHL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_uushl_sat": {
+      "opc": "ISA_SHL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_rol": {
+      "opc": "ISA_ROL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", 2 ]
+    },
+    "genx_ror": {
+      "opc": "ISA_ROR",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", 2 ]
+    },
+    "genx_sbfe": {
+      "opc": "ISA_BFE",
+      "exec_size": [ "EXECSIZE_NOT2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "OWALIGNED", "SIGNED", 0 ],
+      "src0": [ "GENERAL", "OWALIGNED", "SIGNED", 1 ],
+      "src1": [ "GENERAL", "OWALIGNED", "SIGNED", 2 ],
+      "src2": [ "GENERAL", "OWALIGNED", "SIGNED", 3 ]
+    },
+    "genx_ubfe": {
+      "opc": "ISA_BFE",
+      "exec_size": [ "EXECSIZE_NOT2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "OWALIGNED", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "OWALIGNED", "UNSIGNED", 1 ],
+      "src1": [ "GENERAL", "OWALIGNED", "UNSIGNED", 2 ],
+      "src2": [ "GENERAL", "OWALIGNED", "UNSIGNED", 3 ]
+    },
+    "genx_bfi": {
+      "opc": "ISA_BFI",
+      "exec_size": [ "EXECSIZE_NOT2" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "OWALIGNED", 0 ],
+      "src0": [ "GENERAL", "OWALIGNED", "UNSIGNED", 1 ],
+      "src1": [ "GENERAL", "OWALIGNED", "UNSIGNED", 2 ],
+      "src2": [ "GENERAL", "OWALIGNED", "UNSIGNED", 3 ],
+      "src3": [ "GENERAL", "OWALIGNED", "UNSIGNED", 4 ]
+    },
+    "genx_va_minmax": {
+      "opc": "ISA_VA",
+      "gen_opc": "ISA_VA_MINMAX_FOPCODE",
+      "sub_opc": [ "LITERAL", "MINMAX_FOPCODE" ],
+      "surface": [ "SURFACE", 1 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 2 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 3 ],
+      "Min_Max_Enable": [ "GENERAL", 4 ],
+      "Destination": [ "RAW", 0 ]
+    },
+    "genx_va_minmax_filter": {
+      "opc": "ISA_VA",
+      "gen_opc": "ISA_VA_MINMAXFILTER_FOPCODE",
+      "sub_opc": [ "LITERAL", "MINMAXFILTER_FOPCODE" ],
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 4 ],
+      "output_size": [ "BYTE", 5 ],
+      "return_data_format": [ "BYTE", 6 ],
+      "Min_Max_Enable": [ "GENERAL", 7 ],
+      "Destination": [ "RAW", 0 ]
+    },
+    "genx_va_centroid": {
+      "opc": "ISA_VA",
+      "gen_opc": "ISA_VA_Centroid_FOPCODE",
+      "sub_opc": [ "LITERAL", "Centroid_FOPCODE" ],
+      "surface": [ "SURFACE", 1 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 2 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 3 ],
+      "vSize": [ "GENERAL", 4 ],
+      "Destination": [ "RAW", 0 ]
+    },
+    "genx_va_bool_centroid": {
+      "opc": "ISA_VA",
+      "gen_opc": "ISA_VA_BoolCentroid_FOPCODE",
+      "sub_opc": [ "LITERAL", "BoolCentroid_FOPCODE" ],
+      "surface": [ "SURFACE", 1 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 2 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 3 ],
+      "vSize": [ "GENERAL", 4 ],
+      "hSize": [ "GENERAL", 5 ],
+      "Destination": [ "RAW", 0 ]
+    },
+    "genx_va_hdc_1pixel_convolve": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_ISA_HDC_1PIXELCONV",
+      "sub_opc": [ "LITERAL", "ISA_HDC_1PIXELCONV" ],
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 4 ],
+      "pixel_size": [ "BYTE", 5 ],
+      "offsets": [ "RAW", 6 ],
+      "destination_surface": [ "SURFACE", 7 ],
+      "destination_x_offset": [ "GENERAL", 8 ],
+      "destination_y_offset": [ "GENERAL", 9 ]
+    },
+    "genx_va_hdc_convolve2d": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_ISA_HDC_CONV",
+      "sub_opc": [ "LITERAL", "ISA_HDC_CONV" ],
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 4 ],
+      "properties": [ "BYTE", 5 ],
+      "destination_surface": [ "SURFACE", 6 ],
+      "destination_x_offset": [ "GENERAL", 7 ],
+      "destination_y_offset": [ "GENERAL", 8 ]
+    },
+    "genx_va_hdc_lbp_correlation": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_ISA_HDC_LBPCORRELATION",
+      "sub_opc": [ "LITERAL", "ISA_HDC_LBPCORRELATION" ],
+      "surface": [ "SURFACE", 1 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 2 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 3 ],
+      "horizontal_disparity": [ "GENERAL", 4 ],
+      "destination_surface": [ "SURFACE", 5 ],
+      "destination_x_offset": [ "GENERAL", 6 ],
+      "destination_y_offset": [ "GENERAL", 7 ]
+    },
+    "genx_va_hdc_lbp_creation": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_ISA_HDC_LBPCREATION",
+      "sub_opc": [ "LITERAL", "ISA_HDC_LBPCREATION" ],
+      "surface": [ "SURFACE", 1 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 2 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 3 ],
+      "mode": [ "BYTE", 4 ],
+      "destination_surface": [ "SURFACE", 5 ],
+      "destination_x_offset": [ "GENERAL", 6 ],
+      "destination_y_offset": [ "GENERAL", 7 ]
+    },
+    "genx_va_hdc_minmax_filter": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_ISA_HDC_MMF",
+      "sub_opc": [ "LITERAL", "ISA_HDC_MMF" ],
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 4 ],
+      "return_data_format": [ "BYTE", 5 ],
+      "minmax_enable_mode": [ "BYTE", 6 ],
+      "destination_surface": [ "SURFACE", 7 ],
+      "destination_x_offset": [ "GENERAL", 8 ],
+      "destination_y_offset": [ "GENERAL", 9 ]
+    },
+    "genx_va_correlation_search": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_VA_OP_CODE_CORRELATION_SEARCH",
+      "sub_opc": [ "LITERAL", "VA_OP_CODE_CORRELATION_SEARCH" ],
+      "surface": [ "SURFACE", 1 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 2 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_vertical_origin": [ "GENERAL", 4 ],
+      "normalized_horizontal_origin": [ "GENERAL", 5 ],
+      "x_direction_size": [ "GENERAL", 6 ],
+      "y_direction_size": [ "GENERAL", 7 ],
+      "x_direction_search_size": [ "GENERAL", 8 ],
+      "y_direction_search_size": [ "GENERAL", 9 ],
+      "Destination": [ "RAW", 0 ]
+    },
+    "genx_va_flood_fill": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_VA_OP_CODE_FLOOD_FILL",
+      "sub_opc": [ "LITERAL", "VA_OP_CODE_FLOOD_FILL" ],
+      "Is8Connect": [ "BYTE", 1 ],
+      "pixel_mask_horizontal_direction": [ "RAW", 2 ],
+      "pixel_mask_vertical_direction_left": [ "GENERAL", 3 ],
+      "pixel_mask_vertical_direction_right": [ "GENERAL", 4 ],
+      "loop_count": [ "GENERAL", 5 ],
+      "Destination": [ "RAW", 0 ]
+    },
+    "genx_va_lbp_correlation": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_VA_OP_CODE_LBP_CORRELATION",
+      "sub_opc": [ "LITERAL", "VA_OP_CODE_LBP_CORRELATION" ],
+      "surface": [ "SURFACE", 1 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 2 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 3 ],
+      "horizontal_disparity": [ "GENERAL", 4 ],
+      "Destination": [ "RAW", 0 ]
+    },
+    "genx_va_lbp_creation": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_VA_OP_CODE_LBP_CREATION",
+      "sub_opc": [ "LITERAL", "VA_OP_CODE_LBP_CREATION" ],
+      "surface": [ "SURFACE", 1 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 2 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 3 ],
+      "mode": [ "BYTE", 4 ],
+      "Destination": [ "RAW", 0 ]
+    },
+    "genx_3d_load": {
+      "opc": "ISA_3D_LOAD",
+      "sampling3d_opcode": [ "BYTE", 1 ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
+      "pred": [ "PREDICATION", 2 ],
+      "channel_mask": [ "BYTE", 3 ],
+      "aoffimmi_value": [ "GENERAL", "UNSIGNED", 4 ],
+      "surface": [ "SURFACE", 5 ],
+      "dst": [ "RAW", 0 ],
+      "number_of_additional_operands": [ "ARGCOUNT", "ARGCOUNTMIN1", 6 ],
+      "raw_operands": [ "RAW_OPERANDS", "RAW", 6 ]
+    },
+    "genx_frc": {
+      "opc": "ISA_FRC",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SATURATION_NOSAT", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "genx_va_convolve2d": {
+      "opc": "ISA_VA",
+      "gen_opc": "ISA_VA_Convolve_FOPCODE",
+      "sub_opc": "Convolve_FOPCODE",
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 4 ],
+      "properties": [ "BYTE", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_va_erode": {
+      "opc": "ISA_VA",
+      "gen_opc": "ISA_VA_ERODE_FOPCODE",
+      "sub_opc": "ERODE_FOPCODE",
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 4 ],
+      "properties": [ "BYTE", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_va_dilate": {
+      "opc": "ISA_VA",
+      "gen_opc": "ISA_VA_ERODE_FOPCODE",
+      "sub_opc": "Dilate_FOPCODE",
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 4 ],
+      "properties": [ "BYTE", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_va_hdc_erode": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_ISA_HDC_ERODE",
+      "sub_opc": "ISA_HDC_ERODE",
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 4 ],
+      "dstSurface": [ "SURFACE", 5 ],
+      "xOffset": [ "GENERAL", 6 ],
+      "yOffset": [ "GENERAL", 7 ]
+    },
+    "genx_va_hdc_dilate": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS_ISA_HDC_DILATE",
+      "sub_opc": "ISA_HDC_DILATE",
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "normalized_x_co_ordinate": [ "GENERAL", 3 ],
+      "normalized_y_co_ordinate": [ "GENERAL", 4 ],
+      "dstSurface": [ "SURFACE", 5 ],
+      "xOffset": [ "GENERAL", 6 ],
+      "yOffset": [ "GENERAL", 7 ]
+    },
+    "genx_barrier": {
+      "opc": "ISA_BARRIER",
+      "nobarrier": [ "ISBARRIER" ]
+    },
+    "genx_yield": {
+      "opc": "ISA_YIELD"
+    },
+    "genx_cache_flush": {
+      "opc": "ISA_SAMPLR_CACHE_FLUSH"
+    },
+    "genx_sbarrier": {
+      "opc": "ISA_SBARRIER",
+      "signal_flag": [ "BYTE", 1 ]
+    },
+    "genx_bfrev": {
+      "opc": "ISA_BFREV",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ]
+    },
+    "genx_cbit": {
+      "opc": "ISA_CBIT",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ]
+    },
+    "genx_ieee_div": {
+      "opc": "ISA_DIVM",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ],
+      "src1": [ "GENERAL", 2 ]
+    },
+    "genx_dp2": {
+      "opc": "ISA_DP2",
+      "exec_size": [ "EXECSIZE_GE4" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "STRIDE1", "OWALIGNED", 0 ],
+      "src0": [ "GENERAL", "STRIDE1", "OWALIGNED", 1 ],
+      "src1": [ "GENERAL", "STRIDE1", "OWALIGNED", 2 ]
+    },
+    "genx_dp3": {
+      "opc": "ISA_DP3",
+      "exec_size": [ "EXECSIZE_GE4" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "STRIDE1", "OWALIGNED", 0 ],
+      "src0": [ "GENERAL", "STRIDE1", "OWALIGNED", 1 ],
+      "src1": [ "GENERAL", "STRIDE1", "OWALIGNED", 2 ]
+    },
+    "genx_dp4": {
+      "opc": "ISA_DP4",
+      "exec_size": [ "EXECSIZE_GE4" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "STRIDE1", "OWALIGNED", 0 ],
+      "src0": [ "GENERAL", "STRIDE1", "OWALIGNED", 1 ],
+      "src1": [ "GENERAL", "STRIDE1", "OWALIGNED", 2 ]
+    },
+    "genx_dph": {
+      "opc": "ISA_DPH",
+      "exec_size": [ "EXECSIZE_GE4" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "STRIDE1", "OWALIGNED", 0 ],
+      "src0": [ "GENERAL", "STRIDE1", "OWALIGNED", 1 ],
+      "src1": [ "GENERAL", "STRIDE1", "OWALIGNED", 2 ]
+    },
+    "genx_sfbh": {
+      "opc": "ISA_FBH",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", 1 ]
+    },
+    "genx_ufbh": {
+      "opc": "ISA_FBH",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ]
+    },
+    "genx_fbl": {
+      "opc": "ISA_FBL",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ]
+    },
+    "genx_line": {
+      "opc": "ISA_LINE",
+      "exec_size": [ "EXECSIZE_GE4" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", "FIXED4", "NOIMM", 1 ],
+      "src1": [ "GENERAL", 2 ]
+    },
+    "genx_load": {
+      "opc": "ISA_LOAD",
+      "channel_mask": [ "SAMPLECHMASK", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "U_pixel_address": [ "RAW", 3 ],
+      "V_pixel_address": [ "RAW", 4 ],
+      "R_pixel_address": [ "RAW", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_lrp": {
+      "opc": "ISA_LRP",
+      "exec_size": [ "EXECSIZE_GE4" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "OWALIGNED", "CONTIGUOUS", 0 ],
+      "src0": [
+        "GENERAL",
+        "OWALIGNED",
+        "SCALARORCONTIGUOUS",
+        "NOIMM",
+        1
+      ],
+      "src1": [
+        "GENERAL",
+        "OWALIGNED",
+        "SCALARORCONTIGUOUS",
+        "NOIMM",
+        2
+      ],
+      "src2": [
+        "GENERAL",
+        "OWALIGNED",
+        "SCALARORCONTIGUOUS",
+        "NOIMM",
+        3
+      ]
+    },
+    "genx_pln": {
+      "opc": "ISA_PLANE",
+      "exec_size": [ "EXECSIZE_GE8" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", "OWALIGNED", "FIXED4", "NOIMM", 1 ],
+      "src1": [ "GENERAL", "GRFALIGNED", "TWICEWIDTH", "NOIMM", 2 ]
+    },
+    "genx_sample": {
+      "opc": "ISA_SAMPLE",
+      "channel_mask": [ "SAMPLECHMASK", 1 ],
+      "sampler": [ "SAMPLER", 2 ],
+      "surface": [ "SURFACE", 3 ],
+      "U_pixel_address": [ "RAW", 4 ],
+      "V_pixel_address": [ "RAW", 5 ],
+      "R_pixel_address": [ "RAW", 6 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_svm_atomic_add": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_ADD" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_sub": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_SUB" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_min": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_MIN" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_max": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_MAX" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_xchg": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_XCHG" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_and": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_AND" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_or": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_OR" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_xor": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_XOR" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_imin": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_IMIN" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "SRAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "SRAW", 0 ]
+    },
+    "genx_svm_atomic_imax": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_IMAX" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "SRAW", 3 ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 4 ],
+      "dst": [ "SRAW", 0 ]
+    },
+    "genx_svm_atomic_inc": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_INC" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "NULLRAW" ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 3 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_dec": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_DEC" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "NULLRAW" ],
+      "src1": [ "NULLRAW" ],
+      "skip__": [ "TWOADDR", 3 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_atomic_cmpxchg": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_ATOMIC",
+      "skip": [ "LITERAL", "SVM_ATOMIC" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "sub_opc": [ "LITERAL", "ATOMIC_CMPXCHG" ],
+      "address": [ "URAW", 2 ],
+      "src0": [ "URAW", 3 ],
+      "src1": [ "URAW", 4 ],
+      "skip__": [ "TWOADDR", 5 ],
+      "dst": [ "URAW", 0 ]
+    },
+    "genx_svm_block_ld": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_BLOCK_LD",
+      "sub_opc": [ "LITERAL", "SVM_BLOCK_LD" ],
+      "log2_owords": [ "LOG2OWORDS", 0 ],
+      "address": [ "GENERAL", "UNSIGNED", 1 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_svm_block_ld_unaligned": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_BLOCK_LD",
+      "sub_opc": [ "LITERAL", "SVM_BLOCK_LD" ],
+      "log2_owords": [ "LOG2OWORDS_PLUS_8", 0 ],
+      "address": [ "GENERAL", "UNSIGNED", 1 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_svm_block_st": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_BLOCK_ST",
+      "sub_opc": [ "LITERAL", "SVM_BLOCK_ST" ],
+      "log2_owords": [ "LOG2OWORDS", 2 ],
+      "address": [ "GENERAL", "UNSIGNED", 1 ],
+      "src": [ "RAW", 2 ]
+    },
+    "genx_svm_gather": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_GATHER",
+      "sub_opc": [ "LITERAL", "SVM_GATHER" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "block_size_inferred_from_dst": [ "SVMGATHERBLOCKSIZE", 0 ],
+      "log2_num_blocks": [ "BYTE", 2 ],
+      "address": [ "URAW", 3 ],
+      "twoaddr": [ "TWOADDR", 4 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_svm_gather4_scaled": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_GATHER4SCALED",
+      "sub_opc": [ "LITERAL", "SVM_GATHER4SCALED" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "channel_mask": [ "BYTE", 2 ],
+      "scale": [ "SHORT", 3 ],
+      "address": [ "GENERAL", "UNSIGNED", 4 ],
+      "offset": [ "URAW", 5 ],
+      "twoaddr": [ "TWOADDR", 6 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_svm_scatter": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_SCATTER",
+      "sub_opc": [ "LITERAL", "SVM_SCATTER" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "block_size_inferred_from_dst": [ "SVMGATHERBLOCKSIZE", 4 ],
+      "log2_num_blocks": [ "BYTE", 2 ],
+      "address": [ "URAW", 3 ],
+      "src": [ "RAW", 4 ]
+    },
+    "genx_svm_scatter4_scaled": {
+      "opc": "ISA_SVM",
+      "gen_opc": "ISA_SVM_SVM_SCATTER4SCALED",
+      "sub_opc": [ "LITERAL", "SVM_SCATTER4SCALED" ],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": [ "PREDICATION", 1 ],
+      "channel_mask": [ "BYTE", 2 ],
+      "scale": [ "SHORT", 3 ],
+      "address": [ "GENERAL", "UNSIGNED", 4 ],
+      "offset": [ "URAW", 5 ],
+      "src": [ "RAW", 6 ]
+    },
+    "genx_predefined_surface": {
+      "opc": "ISA_MOVS",
+      "exec_size": [ "EXECSIZE" ],
+      "dst": [ "SURFACE", 0 ],
+      "src0": [ "INT", 1 ],
+      "OPTIONS": [ "disable" ]
+    },
+    "genx_va_1pixel_convolve": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS__VA_OP_CODE_1PIXEL_CONVOLVE",
+      "sub_opc": "VA_OP_CODE_1PIXEL_CONVOLVE",
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "uOffset": [ "GENERAL", 3 ],
+      "vOffset": [ "GENERAL", 4 ],
+      "mode": [ "BYTE", 5 ],
+      "offsets": [ "RAW", 6 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_va_1pixel_convolve_1x1mode": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS__VA_OP_CODE_1PIXEL_CONVOLVE",
+      "sub_opc": "VA_OP_CODE_1PIXEL_CONVOLVE",
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "uOffset": [ "GENERAL", 3 ],
+      "vOffset": [ "GENERAL", 4 ],
+      "mode": [ "LITERAL", 3 ],
+      "offsets": [ "NULLRAW" ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_va_1d_convolve_vertical": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS__VA_OP_CODE_1D_CONVOLVE_VH",
+      "sub_opc": "VA_OP_CODE_1D_CONVOLVE_VERTICAL",
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "uOffset": [ "GENERAL", 3 ],
+      "vOffset": [ "GENERAL", 4 ],
+      "mode": [ "BYTE", 5 ],
+      "direction": [ "LITERAL", "VA_V_DIRECTION" ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_va_1d_convolve_horizontal": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS__VA_OP_CODE_1D_CONVOLVE_VH",
+      "sub_opc": "VA_OP_CODE_1D_CONVOLVE_HORIZONTAL",
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "uOffset": [ "GENERAL", 3 ],
+      "vOffset": [ "GENERAL", 4 ],
+      "mode": [ "BYTE", 5 ],
+      "direction": [ "LITERAL", "VA_H_DIRECTION" ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_va_hdc_1d_convolve_horizontal": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS__ISA_HDC_1DCONV_VH",
+      "sub_opc": [ "LITERAL", "ISA_HDC_1DCONV_H" ],
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "uOffset": [ "GENERAL", 3 ],
+      "vOffset": [ "GENERAL", 4 ],
+      "properties": [ "BYTE", 5 ],
+      "direction": [ "LITERAL", "VA_H_DIRECTION" ],
+      "dstSurface": [ "SURFACE", 6 ],
+      "xOffset": [ "GENERAL", 7 ],
+      "yOffset": [ "GENERAL", 8 ]
+    },
+    "genx_va_hdc_1d_convolve_vertical": {
+      "opc": "ISA_VA_SKL_PLUS",
+      "gen_opc": "ISA_VA_SKL_PLUS__ISA_HDC_1DCONV_VH",
+      "sub_opc": [ "LITERAL", "ISA_HDC_1DCONV_H" ],
+      "sampler": [ "SAMPLER", 1 ],
+      "surface": [ "SURFACE", 2 ],
+      "uOffset": [ "GENERAL", 3 ],
+      "vOffset": [ "GENERAL", 4 ],
+      "properties": [ "BYTE", 5 ],
+      "direction": [ "LITERAL", "VA_V_DIRECTION" ],
+      "dstSurface": [ "SURFACE", 6 ],
+      "xOffset": [ "GENERAL", 7 ],
+      "yOffset": [ "GENERAL", 8 ]
+    },
+    "genx_simdcf_get_em":{
+      "opc": "ISA_CMP_E",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1],
+      "src0": "CreateImmOpndFromUInt(ISA_TYPE_UB, 1)",
+      "src1": "CreateImmOpndFromUInt(ISA_TYPE_UB, 1)",
+      "dst" : [ "Z_PREDICATE", 0]
+    }
+  },
+
+  "OPCODE_GEN": {
+    "ISA_VA_SKL_PLUS__ISA_HDC_1DCONV_VH": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAHDCConvolve1D",
+          "sampler",
+          "surface",
+          "uOffset",
+          "vOffset",
+          "(HDCReturnFormat)properties",
+          "direction",
+          "dstSurface",
+          "xOffset",
+          "yOffset"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS__VA_OP_CODE_1D_CONVOLVE_VH": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAConvolve1D",
+          "sampler",
+          "surface",
+          "uOffset",
+          "vOffset",
+          "(CONVExecMode)mode",
+          "direction",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS__VA_OP_CODE_1PIXEL_CONVOLVE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAConvolve1Pixel",
+          "sampler",
+          "surface",
+          "uOffset",
+          "vOffset",
+          "(CONV1PixelExecMode)mode",
+          "offsets",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_MOV": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISADataMovementInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_MOVS": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISADataMovementInst",
+          "opc",
+          "nullptr",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "(VISA_VectorOpnd*)dst",
+          "src0",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_MEDIA_LD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessMediaLoadStoreInst",
+          "opc",
+          "(MEDIA_LD_mod)modifiers",
+          "surface",
+          "block_width",
+          "block_height",
+          "x_offset",
+          "y_offset",
+          "dst",
+          "(CISA_PLANE_ID)plane"
+        ]
+      ]
+    ],
+    "ISA_MEDIA_ST": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessMediaLoadStoreInst",
+          "opc",
+          "(MEDIA_LD_mod)modifiers",
+          "surface",
+          "block_width",
+          "block_height",
+          "x_offset",
+          "y_offset",
+          "src",
+          "(CISA_PLANE_ID)plane"
+        ]
+      ]
+    ],
+    "ISA_OWORD_LD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessOwordLoadStoreInst",
+          "opc",
+          "vISA_EMASK_M1",
+          "surface",
+          "log2_owords",
+          "offset",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_OWORD_ST": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessOwordLoadStoreInst",
+          "opc",
+          "vISA_EMASK_M1",
+          "surface",
+          "log2_owords",
+          "offset",
+          "src"
+        ]
+      ]
+    ],
+    "ISA_DWORD_ATOMIC": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessDwordAtomicInst",
+          "pred",
+          "sub_opc",
+          "false",
+          "exec_mask",
+          "exec_size",
+          "surface",
+          "offset",
+          "src",
+          "src1",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_MAD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "src2"
+        ]
+      ]
+    ],
+    "ISA_SETP": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASetP",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0"
+        ]
+      ]
+    ],
+    "ISA_FMINMAX": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAMinMaxInst",
+          "(CISA_MIN_MAX_SUB_OPCODE)flag_for_max",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1"
+        ]
+      ]
+    ],
+    "ISA_POW": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_ADDR_ADD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAAddrAddInst",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1"
+        ]
+      ]
+    ],
+    "ISA_3D_SAMPLE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISA3dSampler",
+          "(VISASampler3DSubOpCode)sampling3d_opcode",
+          "false",
+          "false",
+          "false",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "static_cast<VISAChannelMask>(channel_mask)",
+          "aoffimmi_value",
+          "sampler",
+          "surface",
+          "dst",
+          "number_of_additional_operands",
+          "raw_operands"
+        ]
+      ]
+    ],
+    "ISA_SQRT": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_RSQRT": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_SQRTM": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_INV": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_LOG": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_EXP": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_SCATTER_SCALED": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessScatterScaledInst",
+          "opc",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "(VISA_SVM_Block_Num)log2_num_blocks",
+          "surface",
+          "global_offset",
+          "element_offset",
+          "src"
+        ]
+      ]
+    ],
+    "ISA_SCATTER4_SCALED": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessGather4Scatter4ScaledInst",
+          "opc",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "convertChannelMaskToVisaType(channel_mask)",
+          "surface",
+          "global_offset",
+          "element_offset",
+          "src"
+        ]
+      ]
+    ],
+    "ISA_SCATTER4_TYPED": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessGather4Scatter4TypedInst",
+          "opc",
+          "pred",
+          "convertChannelMaskToVisaType(channel_mask)",
+          "exec_mask",
+          "exec_size",
+          "surface",
+          "U_pixel_address",
+          "V_pixel_address",
+          "R_pixel_address",
+          "LOD",
+          "src"
+        ]
+      ]
+    ],
+    "ISA_GATHER_SCALED": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessScatterScaledInst",
+          "opc",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "(VISA_SVM_Block_Num)log2_num_blocks",
+          "surface",
+          "global_offset",
+          "element_offset",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_GATHER4_SCALED": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessGather4Scatter4ScaledInst",
+          "opc",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "convertChannelMaskToVisaType(channel_mask)",
+          "surface",
+          "global_offset",
+          "element_offset",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_GATHER4_TYPED": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASurfAccessGather4Scatter4TypedInst",
+          "opc",
+          "pred",
+          "convertChannelMaskToVisaType(channel_mask)",
+          "exec_mask",
+          "exec_size",
+          "surface",
+          "U_pixel_address",
+          "V_pixel_address",
+          "R_pixel_address",
+          "LOD",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_3D_TYPED_ATOMIC": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISA3dTypedAtomic",
+          "sub_opc",
+          "sub_opc & (1<<5)",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "surface",
+          "U",
+          "V",
+          "R",
+          "LOD",
+          "src0",
+          "src1",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_SAD2ADD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "src2"
+        ]
+      ]
+    ],
+    "ISA_SAD2": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_WAIT": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAWaitInst",
+          "mask"
+        ]
+      ]
+    ],
+    "ISA_AVS": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAMEAVS",
+          "surface",
+          "sampler",
+          "(VISAChannelMask)channel_mask",
+          "U_pixel_address",
+          "V_pixel_address",
+          "deltaU",
+          "deltaV",
+          "u2d",
+          "v2d",
+          "groupID",
+          "verticalBlockNumber",
+          "(OutputFormatControl)output_format_control",
+          "(AVSExecMode)execMode",
+          "IEFByPass",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_SAMPLE_UNORM": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASISampleUnorm",
+          "surface",
+          "sampler",
+          "(VISAChannelMask)channel_mask",
+          "U_pixel_address",
+          "V_pixel_address",
+          "deltaU",
+          "deltaV",
+          "dst",
+          "getChannelOutputFormat(channel_mask)"
+        ]
+      ]
+    ],
+    "ISA_SIN": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_COS": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_AVG": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_FENCE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASyncInst",
+          "opc",
+          "mask"
+        ]
+      ]
+    ],
+    "ISA_ADD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_LZD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_RAW_SEND": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAMiscRawSend",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "modifier_sendc",
+          "extended_message_descriptor",
+          "numsrc",
+          "numdst",
+          "desc",
+          "src",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_RAW_SENDS": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAMiscRawSends",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "modifier_sendc",
+          "FFID",
+          "extended_message_descriptor",
+          "numsrc",
+          "numsrc2",
+          "numdst",
+          "desc",
+          "src",
+          "src2",
+          "dst",
+          "false"
+        ]
+      ]
+    ],
+    "ISA_RNDD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_RNDE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_RNDU": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_RNDZ": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_MUL": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_MULH": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_SHL": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_ROL": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_ROR": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_BFE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "src2",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_BFI": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "src2",
+          "src3"
+        ]
+      ]
+    ],
+    "ISA_VA_MINMAX_FOPCODE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAMinMax",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "Min_Max_Enable",
+          "Destination"
+        ]
+      ]
+    ],
+    "ISA_VA_MINMAXFILTER_FOPCODE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAMinMaxFilter",
+          "sampler",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "(OutputFormatControl)output_size",
+          "(MMFExecMode)return_data_format",
+          "Min_Max_Enable",
+          "Destination"
+        ]
+      ]
+    ],
+    "ISA_VA_Centroid_FOPCODE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVACentroid",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "vSize",
+          "Destination"
+        ]
+      ]
+    ],
+    "ISA_VA_BoolCentroid_FOPCODE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVABooleanCentroid",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "vSize",
+          "hSize",
+          "Destination"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_ISA_HDC_1PIXELCONV": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAHDCConvolve1Pixel",
+          "sampler",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "(HDCReturnFormat)pixel_size",
+          "offsets",
+          "destination_surface",
+          "destination_x_offset",
+          "destination_y_offset"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_ISA_HDC_CONV": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAHDCConvolve",
+          "sampler",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "(HDCReturnFormat)(properties & 0xf)",
+          "(CONVHDCRegionSize)(properties >> 4)",
+          "destination_surface",
+          "destination_x_offset",
+          "destination_y_offset"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_ISA_HDC_LBPCORRELATION": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAHDCLBPCorrelation",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "horizontal_disparity",
+          "destination_surface",
+          "destination_x_offset",
+          "destination_y_offset"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_ISA_HDC_LBPCREATION": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAHDCLBPCreation",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "(LBPCreationMode)mode",
+          "destination_surface",
+          "destination_x_offset",
+          "destination_y_offset"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_ISA_HDC_MMF": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAHDCMinMaxFilter",
+          "sampler",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "(HDCReturnFormat)return_data_format",
+          "(MMFEnableMode)minmax_enable_mode",
+          "destination_surface",
+          "destination_x_offset",
+          "destination_y_offset"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_VA_OP_CODE_CORRELATION_SEARCH": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVACorrelationSearch",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "normalized_vertical_origin",
+          "normalized_horizontal_origin",
+          "x_direction_size",
+          "y_direction_size",
+          "x_direction_search_size",
+          "y_direction_search_size",
+          "Destination"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_VA_OP_CODE_FLOOD_FILL": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAFloodFill",
+          "Is8Connect",
+          "pixel_mask_horizontal_direction",
+          "pixel_mask_vertical_direction_left",
+          "pixel_mask_vertical_direction_right",
+          "loop_count",
+          "Destination"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_VA_OP_CODE_LBP_CORRELATION": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVALBPCorrelation",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "horizontal_disparity",
+          "Destination"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_VA_OP_CODE_LBP_CREATION": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVALBPCreation",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "(LBPCreationMode)mode",
+          "Destination"
+        ]
+      ]
+    ],
+    "ISA_3D_LOAD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISA3dLoad",
+          "(VISASampler3DSubOpCode)sampling3d_opcode",
+          "false",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "convertChannelMaskToVisaType(channel_mask)",
+          "aoffimmi_value",
+          "surface",
+          "dst",
+          "number_of_additional_operands",
+          "raw_operands"
+        ]
+      ]
+    ],
+    "ISA_FRC": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_VA_Convolve_FOPCODE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAConvolve",
+          "sampler",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "(CONVExecMode)(properties & 0x3)",
+          "((properties >> 4) & 0x1)",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_VA_ERODE_FOPCODE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAErodeDilate",
+          "VA_DILATE",
+          "sampler",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "(EDExecMode)properties",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_ISA_HDC_ERODE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAHDCErodeDilate",
+          "VA_ERODE",
+          "sampler",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "dstSurface",
+          "xOffset",
+          "yOffset"
+        ]
+      ]
+    ],
+    "ISA_VA_SKL_PLUS_ISA_HDC_DILATE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAVAHDCErodeDilate",
+          "VA_DILATE",
+          "sampler",
+          "surface",
+          "normalized_x_co_ordinate",
+          "normalized_y_co_ordinate",
+          "dstSurface",
+          "xOffset",
+          "yOffset"
+        ]
+      ]
+    ],
+    "ISA_BARRIER": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASyncInst",
+          "opc",
+          "0"
+        ]
+      ]
+    ],
+    "ISA_YIELD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASyncInst",
+          "opc",
+          "0"
+        ]
+      ]
+    ],
+    "ISA_SAMPLR_CACHE_FLUSH": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASyncInst",
+          "opc",
+          "0"
+        ]
+      ]
+    ],
+    "ISA_SBARRIER": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASplitBarrierInst",
+          "signal_flag != 0"
+        ]
+      ]
+    ],
+    "ISA_BF_CVT": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISADataMovementInst",
+          "opc",
+          "nullptr",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_BFREV": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_CBIT": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_DIVM": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_DP2": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_DP3": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_DP4": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_DP4A": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "src2"
+        ]
+      ]
+    ],
+    "ISA_DPH": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_FBH": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_FBL": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALogicOrShiftInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_LINE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_LOAD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASILoad",
+          "surface",
+          "convertChannelMaskToVisaType(channel_mask & 0xf)",
+          "(channel_mask >> 4) & 0x3",
+          "U_pixel_address",
+          "V_pixel_address",
+          "R_pixel_address",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_SAMPLE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASISample",
+          "vISA_EMASK_M1",
+          "surface",
+          "sampler",
+          "convertChannelMaskToVisaType(channel_mask)",
+          "(channel_mask >> 4) & 0x3",
+          "U_pixel_address",
+          "V_pixel_address",
+          "R_pixel_address",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_LRP": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "src2"
+        ]
+      ]
+    ],
+    "ISA_PLANE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_SVM_SVM_ATOMIC": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASvmAtomicInst",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "sub_opc",
+          "32",
+          "address",
+          "src0",
+          "src1",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_SVM_SVM_BLOCK_LD": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASvmBlockLoadInst",
+          "VISA_Oword_Num(log2_owords & 0x7)",
+          "(log2_owords & 8)",
+          "address",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_SVM_SVM_BLOCK_ST": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASvmBlockStoreInst",
+          "VISA_Oword_Num(log2_owords)",
+          "(log2_owords & 8)",
+          "address",
+          "src"
+        ]
+      ]
+    ],
+    "ISA_SVM_SVM_GATHER": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASvmGatherInst",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "(VISA_SVM_Block_Type)block_size_inferred_from_dst",
+          "(VISA_SVM_Block_Num)log2_num_blocks",
+          "address",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_SVM_SVM_GATHER4SCALED": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASvmGather4ScaledInst",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "convertChannelMaskToVisaType(channel_mask)",
+          "address",
+          "offset",
+          "dst"
+        ]
+      ]
+    ],
+    "ISA_SVM_SVM_SCATTER": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASvmScatterInst",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "(VISA_SVM_Block_Type)block_size_inferred_from_dst",
+          "(VISA_SVM_Block_Num)log2_num_blocks",
+          "address",
+          "src"
+        ]
+      ]
+    ],
+    "ISA_SVM_SVM_SCATTER4SCALED": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISASvmScatter4ScaledInst",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "convertChannelMaskToVisaType(channel_mask)",
+          "address",
+          "offset",
+          "src"
+        ]
+      ]
+    ],
+    "ISA_CMP_E": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAComparisonInst",
+          "opc",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "src1"
+        ]
+      ]
+    ]
+  },
+  "ARGUMENTS_GEN": {
+    "EXECSIZE":     "GetExecSize(II::ArgInfo({args}), &exec_mask)",
+    "EXECSIZE_GE2": "GetExecSize(II::ArgInfo({args}), &exec_mask)",
+    "EXECSIZE_GE4": "GetExecSize(II::ArgInfo({args}), &exec_mask)",
+    "EXECSIZE_GE8": "GetExecSize(II::ArgInfo({args}), &exec_mask)",
+    "EXECSIZE_NOT2": "GetExecSize(II::ArgInfo({args}), &exec_mask)",
+    "EXECSIZE_NOMASK": "GetExecSize(II::ArgInfo({args}), &exec_mask)",
+    "EXECSIZE_FROM_ARG": "GetExecSizeFromArg(II::ArgInfo({args}), &exec_mask)",
+    "EXECSIZE_FROM_BYTE": "GetExecSizeFromByte(II::ArgInfo({args}), &exec_mask)",
+    "NULLRAW":      "CreateNullRawOperand(II::ArgInfo({args}))",
+    "MEDIAHEIGHT":  "GetMediaHeght(II::ArgInfo({args}))",
+    "IMPLICITPRED": "CreateImplicitPredication(II::ArgInfo({args}))",
+    "GENERAL":      "CreateOperand(II::ArgInfo({args}))",
+    "ADDRESS":      "CreateAddressOperand(II::ArgInfo({args}))",
+    "RAW":          "CreateRawOperand(II::ArgInfo({args}))",
+    "URAW":         "CreateRawOperand(II::ArgInfo({args} | II::RAW_UNSIGNED))",
+    "SRAW":         "CreateRawOperand(II::ArgInfo({args} | II::RAW_SIGNED))",
+    "SURFACE":      "CreateSurfaceOperand(II::ArgInfo({args}))",
+    "SAMPLER":      "CreateSamplerOperand(II::ArgInfo({args}))",
+    "PREDICATION":  "CreatePredication(II::ArgInfo({args}))",
+    "PREDICATE":    "GetPredicateVar(II::ArgInfo({args}))",
+    "Z_PREDICATE":  "GetZeroedPredicateVar(II::ArgInfo({args}))",
+    "BYTE":         "GetUnsignedValue(II::ArgInfo({args}))",
+    "SHORT":        "GetUnsignedValue(II::ArgInfo({args}))",
+    "INT":          "GetUnsignedValue(II::ArgInfo({args}))",
+    "LOG2OWORDS":   "GetOwords(II::ArgInfo({args}))",
+    "LOG2OWORDS_PLUS_8": "GetOwords(II::ArgInfo({args})) + 8",
+    "SVMGATHERBLOCKSIZE": "GetSvmGatherBlockSize(II::ArgInfo({args}))",
+    "TWOADDR":      "ProcessTwoAddr(II::ArgInfo({args}))",
+    "CONSTVI1ASI32": "ConstVi1Asi32(II::ArgInfo({args}))",
+    "ARGCOUNT":     "GetArgCount(II::ArgInfo({args}))",
+    "NUMGRFS":      "GetNumGrfs(II::ArgInfo({args}))",
+    "SAMPLECHMASK": "GetSampleChMask(II::ArgInfo({args}))",
+    "RAW_OPERANDS": ["VISA_RawOpnd* {dst}[16]", "CreateRawOperands(II::ArgInfo({args}), {dst})"],
+    "LITERAL":      "{value1}",
+    "ISBARRIER":    "HasBarrier = true",
+    "SKIP":         null
+  }
+}
