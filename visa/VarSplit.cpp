@@ -199,14 +199,19 @@ void VarSplitPass::findSplitCandidates()
     {
         for (auto inst : bb->getInstList())
         {
-            if (canSplit(inst))
+            if (inst->getDst() && inst->getDst()->getTopDcl())
             {
                 auto dstDcl = inst->getDst()->getTopDcl();
+
                 if (dstDcl && dstDcl->getRegFile() == G4_RegFileKind::G4_GRF)
                 {
                     auto& prop = splitVars[dstDcl];
                     prop.numDefs++;
                     prop.def = std::make_pair(inst->getDst(), bb);
+                    if (canSplit(inst))
+                    {
+                        prop.candidateDef = true;
+                    }
                 }
             }
 
@@ -234,7 +239,7 @@ void VarSplitPass::findSplitCandidates()
     for (auto itemIt = splitVars.begin(); itemIt != splitVars.end(); itemIt++)
     {
         auto& item = (*itemIt);
-        if (item.second.numDefs != 1)
+        if (item.second.numDefs != 1 || !item.second.candidateDef)
         {
             item.second.legitCandidate = false;
             continue;

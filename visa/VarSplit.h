@@ -47,6 +47,7 @@ public:
     unsigned int numDefs = 0;
     std::pair<G4_DstRegRegion*, G4_BB*> def;
     std::vector<std::pair<G4_SrcRegRegion*, G4_BB*>> srcs;
+    bool candidateDef = false;
     bool legitCandidate = true;
 
     // API to check whether variable is local or global
