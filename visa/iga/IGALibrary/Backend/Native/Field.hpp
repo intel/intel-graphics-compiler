@@ -150,8 +150,8 @@ namespace iga
         // a simple encoded field (single contiguous)
         constexpr Field(const char *_name, int offset, int length)
             : name(_name)
-            , fragments{Fragment(_name, offset, length)}
         {
+            fragments[0] = Fragment(_name, offset, length);
         }
         // a zero fill field or must-be-zero field
         constexpr Field(const char *_name,             int length,
