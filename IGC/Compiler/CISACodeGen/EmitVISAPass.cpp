@@ -50,6 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Support/Path.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
@@ -553,9 +554,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                     curSrcFile = srcFile;
                     curSrcDir = srcDir;
                     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
-                        std::string fileName = std::string(curSrcDir);
-                    fileName += std::string(curSrcFile);
-                    m_encoder->File(fileName);
+                    llvm::SmallVector<char, 1024> fileName;
+                    llvm::sys::path::append(fileName, curSrcDir);
+                    llvm::sys::path::append(fileName, curSrcFile);
+                    std::string fileNameStr(fileName.begin(), fileName.end());
+                    m_encoder->File(fileNameStr);
                     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
                 }
                 if (curLineNumber != lineNo)
