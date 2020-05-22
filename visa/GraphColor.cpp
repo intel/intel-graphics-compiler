@@ -3518,7 +3518,6 @@ bool Augmentation::markNonDefaultMaskDef()
     }
 
     bool isFlagRA = liveAnalysis.livenessClass(G4_FLAG);
-    bool isGRFRA = liveAnalysis.livenessClass(G4_GRF);
 
     for (auto bb : kernel.fg)
     {
@@ -3537,15 +3536,6 @@ bool Augmentation::markNonDefaultMaskDef()
                 inst->getCondMod())
             {
                 markNonDefaultDstRgn(inst, inst->getCondMod());
-            }
-
-            if (!bb->isDivergent())
-            {
-                // Mark variable as NonDefault since no alignment is needed
-                if (isGRFRA && dst && dst->getTopDcl())
-                {
-                    gra.setAugmentationMask(dst->getTopDcl(), AugmentationMasks::NonDefault);
-                }
             }
         }
     }
