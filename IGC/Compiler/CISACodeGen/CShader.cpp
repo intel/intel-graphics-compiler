@@ -3298,10 +3298,14 @@ CShader* CShaderProgram::GetShader(SIMDMode simd, ShaderDispatchMode mode)
 
 CShader*& CShaderProgram::GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode)
 {
-    if (mode == ShaderDispatchMode::DUAL_PATCH)
+    switch (mode)
     {
+    case ShaderDispatchMode::DUAL_PATCH:
         return m_SIMDshaders[3];
+    default:
+        break;
     }
+
     switch (simd)
     {
     case SIMDMode::SIMD8:
@@ -3401,15 +3405,15 @@ CShaderProgram::CShaderProgram(CodeGenContext* ctx, llvm::Function* kernel)
     : m_shaderStats(nullptr)
     , m_context(ctx)
     , m_kernel(kernel)
+    , m_SIMDshaders()
 {
-    memset(m_SIMDshaders, 0, 4 * sizeof(CShader*));
 }
 
 CShaderProgram::~CShaderProgram()
 {
-    for (unsigned int i = 0; i < 4; i++)
+    for (auto& shader : m_SIMDshaders)
     {
-        delete m_SIMDshaders[i];
+        delete shader;
     }
     m_context = nullptr;
 }

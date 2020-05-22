@@ -776,6 +776,7 @@ namespace IGC
         return false;
     }
 
+
     static void PSCodeGen(
         PixelShaderContext* ctx,
         CShaderProgram::KernelShaderMap& shaders,

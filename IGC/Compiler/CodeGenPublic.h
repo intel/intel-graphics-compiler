@@ -327,6 +327,7 @@ namespace IGC
 
     struct SPixelShaderKernelProgram : SKernelProgram
     {
+
         USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT attributeActiveComponent[g_c_Max_PS_attributes];
         DWORD m_AccessedBySampleC[4];
 

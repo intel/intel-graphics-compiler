@@ -615,7 +615,7 @@ namespace IGC
 
         CodeGenContext* m_context;
         llvm::Function* m_kernel;
-        CShader* m_SIMDshaders[4];
+        std::array<CShader*, 8> m_SIMDshaders;
     };
 
     struct SInstContext
