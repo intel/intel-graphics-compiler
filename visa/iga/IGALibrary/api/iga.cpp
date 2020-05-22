@@ -1,28 +1,3 @@
-/*===================== begin_copyright_notice ==================================
-
-Copyright (c) 2017 Intel Corporation
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-======================= end_copyright_notice ==================================*/
 #include "iga.h"
 #include "igad.h"
 #include "iga.hpp"
@@ -99,7 +74,6 @@ const char *iga_status_to_string(iga_status_t st) {
     case IGA_INVALID_OBJECT:       return "invalid object";
     case IGA_INVALID_STATE:        return "invalid state";
     case IGA_UNSUPPORTED_PLATFORM: return "unsupported platform";
-    case IGA_DIFF_FAILURE:         return "differences encountered";
     default:                       return "invalid error code";
     }
 }
@@ -418,7 +392,20 @@ public:
             m_model.platform,
             formatLabel,
             formatLabelEnv);
-        fopts.addApiOpts(dopts.formatting_opts);
+        fopts.numericLabels =
+            (dopts.formatting_opts & IGA_FORMATTING_OPT_NUMERIC_LABELS) != 0;
+        fopts.syntaxExtensions =
+            (dopts.formatting_opts & IGA_FORMATTING_OPT_SYNTAX_EXTS) != 0;
+        fopts.hexFloats =
+            (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_HEX_FLOATS) != 0;
+        fopts.printInstPc =
+            (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_PC) != 0;
+        fopts.printInstBits =
+            (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_BITS) != 0;
+        fopts.printInstDeps =
+            (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_DEPS) != 0;
+        fopts.printLdSt =
+            (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_LDST) != 0;
         if (swsbEnMod == SWSB_ENCODE_MODE::SWSBInvalidMode)
             fopts.setSWSBEncodingMode(m_model.getSWSBEncodeMode());
         else
@@ -634,7 +621,7 @@ public:
         *ds = *ds_len ? &m_warnings[0] : nullptr;
         return IGA_SUCCESS;
     }
-}; // class IGAContext
+};
 
 
 #define RETURN_INVALID_ARG_ON_NULL(X) \
@@ -996,10 +983,10 @@ iga_status_t iga_diagnostic_get_text_extent(
 // relative to something near the instspec....
 // That would translate to fairly small integer that should be in the
 // no access range (near 0)
-static iga_opspec_t opspec_to_handle(const OpSpec *os) {
+static iga_opspec_t opspec_to_handle(const OpSpec *i) {
     const uintptr_t TOP_BIT = (sizeof(void *) == 4) ?
         0xC0000000 : 0x8000000000000000;
-    return (iga_opspec_t)((uintptr_t)os ^ TOP_BIT);
+    return (iga_opspec_t)((uintptr_t)i ^ TOP_BIT);
 }
 static const OpSpec *opspec_from_handle(iga_opspec_t os) {
     const uintptr_t TOP_BIT = (sizeof(void *) == 4) ?
@@ -1104,7 +1091,21 @@ iga_status_t iga_opspec_op_encoding(
     RETURN_INVALID_ARG_ON_NULL(op);
     RETURN_INVALID_ARG_ON_NULL(opcode);
 
-    *opcode = static_cast<uint32_t>(opspec_from_handle(op)->opcode);
+    *opcode = static_cast<uint32_t>(opspec_from_handle(op)->code);
+    return IGA_SUCCESS;
+}
+
+
+iga_status_t iga_opspec_parent_op(
+    iga_opspec_t op,
+    uint32_t *parent_op)
+{
+    RETURN_INVALID_ARG_ON_NULL(op);
+    RETURN_INVALID_ARG_ON_NULL(parent_op);
+
+    const OpSpec *os = opspec_from_handle(op);
+    *parent_op = static_cast<uint32_t>(os->groupOp);
+
     return IGA_SUCCESS;
 }
 
@@ -1141,6 +1142,7 @@ iga_status_t  iga_get_interface(iga_functions_t *funcs)
     funcs->iga_opspec_name = &iga_opspec_name;
     funcs->iga_opspec_description = &iga_opspec_description;
     funcs->iga_opspec_op = &iga_opspec_op;
+    funcs->iga_opspec_parent_op = &iga_opspec_parent_op;
 
     return IGA_SUCCESS;
 }

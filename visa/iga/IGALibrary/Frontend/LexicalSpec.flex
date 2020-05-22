@@ -120,14 +120,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [0-9]+[eE][-+]?[0-9]+  return iga::Lexeme::FLTLIT; /* 3e-9 */
 
 [_a-zA-Z][_a-zA-Z0-9]*  return iga::Lexeme::IDENT;
-
-%{
-/*
- * enables identifier such as "128x16"; this pattern requires a non-zero
- * initial character so that 0x13 will be scanned as a hex int
- */
-%}
-[1-9][0-9]*x[0-9]+     return iga::Lexeme::IDENT;
+[0-9]+[_a-zA-Z]+[_a-zA-Z0-9]     return iga::Lexeme::IDENT; /* enables identifier such as "128x16"; not we treat 0x13 as a hex int */
 
 
 \n                     return iga::Lexeme::NEWLINE; /* newlines are explicitly represented */

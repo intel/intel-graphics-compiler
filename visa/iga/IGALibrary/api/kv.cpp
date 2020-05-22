@@ -283,7 +283,20 @@ size_t kv_get_inst_syntax(
 
     std::stringstream ss;
     FormatOpts fopts(kvImpl->m_model.platform, labeler, labeler_env);
-    fopts.addApiOpts(fmt_opts);
+    fopts.numericLabels =
+        (fmt_opts & IGA_FORMATTING_OPT_NUMERIC_LABELS) != 0;
+    fopts.syntaxExtensions =
+        (fmt_opts & IGA_FORMATTING_OPT_SYNTAX_EXTS) != 0;
+    fopts.hexFloats =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_HEX_FLOATS) != 0;
+    fopts.printInstPc =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_PC) != 0;
+    fopts.printInstBits =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_BITS) != 0;
+    fopts.printInstDeps =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_DEPS) != 0;
+    fopts.printLdSt =
+        (fmt_opts & IGA_FORMATTING_OPT_PRINT_LDST) != 0;
     fopts.setSWSBEncodingMode(kvImpl->m_model.getSWSBEncodeMode());
     FormatInstruction(
         kvImpl->m_errHandler,
@@ -437,7 +450,7 @@ kv_status_t kv_get_message_type(
 
     Platform p = ((KernelViewImpl *)kv)->m_model.platform;
     SFMessageType msgType =
-        getMessageType(p, inst->getSendFc(), exDesc.imm, desc.imm);
+        getMessageType(p, inst->getOpSpec(), exDesc.imm, desc.imm);
     *message_type_enum = static_cast<int32_t>(msgType);
 
     if (msgType == SFMessageType::INVALID)
@@ -459,14 +472,14 @@ kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc, int32_t *sfid_enum)
         return kv_status_t::KV_NON_SEND_INSTRUCTION;
     }
 
-    const auto exDesc = inst->getExtMsgDescriptor();
-
     Platform p = ((KernelViewImpl*)kv)->m_model.platform;
-    // <TGL: SFID is ExDesc[3:0]; if it's in a0, we're sunk
-    if (exDesc.isReg() && p < Platform::GEN12P1)
+    auto exDesc = inst->getExtMsgDescriptor();
+    bool isTrue = false;
+
+    if (exDesc.isReg() && isTrue)
         return kv_status_t::KV_DESCRIPTOR_INDIRECT;
 
-    SFID sfid = inst->getSendFc();
+    SFID sfid = getSFID(p, inst->getOpSpec(), exDesc.imm, 0);
     *sfid_enum = static_cast<int32_t>(sfid);
 
     if (sfid == SFID::INVALID)
@@ -583,8 +596,7 @@ int32_t kv_get_destination_register(const kv_t *kv, int32_t pc)
         return -1;
     }
     const Operand &dst = inst->getDestination();
-    if (dst.getKind() == Operand::Kind::DIRECT ||
-        dst.getKind() == Operand::Kind::MACRO) {
+    if (dst.getKind() == Operand::Kind::DIRECT) {
         return dst.getDirRegRef().regNum;
     }
 
@@ -666,8 +678,7 @@ int32_t kv_get_source_register(const kv_t *kv, int32_t pc, uint32_t sourceNumber
         return -1;
     }
     const auto &src = inst->getSource((size_t)sourceNumber);
-    if (src.getKind() == Operand::Kind::DIRECT ||
-        src.getKind() == Operand::Kind::MACRO) {
+    if (src.getKind() == Operand::Kind::DIRECT) {
         return (int32_t)src.getDirRegRef().regNum;
     }
 
@@ -824,7 +835,8 @@ int32_t kv_get_source_region(const kv_t *kv, int32_t pc, uint32_t src_op, uint32
         return -1;
     }
     const Instruction *inst = getInstruction(kv, pc);
-    if (!inst || inst->getSourceCount() <= src_op) {
+    if (!inst ||
+        !(inst->getOpSpec().getSourceCount() > src_op)) {
         *vt = SrcRgnVt;
         *wi = SrcRgnWi;
         *hz = SrcRgnHz;
@@ -849,8 +861,7 @@ int32_t kv_get_source_region(const kv_t *kv, int32_t pc, uint32_t src_op, uint32
     return 0;
 }
 
-int32_t kv_get_source_immediate(
-    const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm)
+int32_t kv_get_source_immediate(const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm)
 {
     if (!kv) {
         return -1;
@@ -924,9 +935,8 @@ static int16_t getMathMacroNum(MathMacroExt mme)
             return 6;
         case MathMacroExt::MME7:
             return 7;
-        case MathMacroExt::NOMME: // follow the encoding value, set NOMME to 8
-            return 8;
         case MathMacroExt::INVALID:
+        case MathMacroExt::NOMME:
             break;
     }
     return -1;

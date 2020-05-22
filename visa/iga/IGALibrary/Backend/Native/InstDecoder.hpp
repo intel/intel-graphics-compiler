@@ -141,17 +141,17 @@ namespace iga
     //       for GEN-specific stuff use this var; e.g. P.decodeBasicRegType(...)
     struct InstDecoder
     {
-        InstBuilder              &builder;
-        ErrorHandler             &errorHandler;
-        const Model              &model;
-        const OpSpec             &os;
-        MInst                     bits;
-        FragmentList             *fields;
-        Loc                       loc;
+        InstBuilder    &builder;
+        ErrorHandler   &errorHandler;
+        const Model    &model;
+        const OpSpec   &os;
+        MInst           bits;
+        FragmentList   *fields;
+        Loc             loc;
 
         // instruction state
-        ExecSize                  execSize;
-        InstOptSet                instOptSet;
+        ExecSize        execSize;
+        InstOptSet      instOptSet;
 
         InstDecoder(
             InstBuilder &_builder,
@@ -161,7 +161,7 @@ namespace iga
             MInst _bits,
             FragmentList *_fields,
             Loc _loc)
-            : builder(_builder)
+            :  builder(_builder)
             , errorHandler(_errorHandler)
             , model(_model)
             , os(_os)
@@ -252,6 +252,9 @@ namespace iga
             return decodeFragment(f, fmt);
         }
 
+        void addFieldSubfunction(const Field &f, std::string val = "") {
+            addDecodedField(f, val);
+        }
 
         void addReserved(int off, int len, std::string errStr = "?") {
             Fragment fRSVD("Reserved", off, len);
@@ -394,10 +397,6 @@ namespace iga
         ///////////////////////////////////////////////////////////////////////
         // generic GEN helpers
         ///////////////////////////////////////////////////////////////////////
-        bool isMacro() const {
-            return builder.isMacroOp();
-        }
-
         void decodeMaskCtrl(const Field &fMASKCTRL) {
             if (decodeBoolField(fMASKCTRL, "", "WrEn")) {
                 builder.InstNoMask(loc);
@@ -425,8 +424,7 @@ namespace iga
 
         void decodeBrCtl(const Field &fBRCTL) {
             bool brCtl = decodeBoolField(fBRCTL, "", ".b");
-            builder.InstSubfunction(
-                brCtl ? BranchCntrl::ON : BranchCntrl::OFF);
+            builder.InstBrCtl(brCtl ? BranchCntrl::ON : BranchCntrl::OFF);
         }
 
         RegRef peekFlagRegRef(const Field &fFLAGREG) const {
@@ -451,7 +449,7 @@ namespace iga
             FlagModifier invalidModifier = static_cast<FlagModifier>(-1);
             FlagModifier zeroValue = FlagModifier::NONE;
             const char *zeroString = "";
-            if (os.is(Op::MATH) && isMacro()) {
+            if (os.isMathSubFunc() && os.isMacro()) {
                 zeroValue = FlagModifier::EO;
                 zeroString = "(eo) (early out)";
             }
@@ -617,7 +615,7 @@ namespace iga
                 fSRCMODS,
                 SrcModifier::NONE,"",
                 SrcModifier::ABS, "(abs)",
-                SrcModifier::NEG, os.isBitwise() ? "~" : "-",
+                SrcModifier::NEG,  os.isBitwise() ? "~" : "-",
                 SrcModifier::NEG_ABS,"-(abs)");
         }
 
@@ -676,7 +674,7 @@ namespace iga
             const Field &fREG)
         {
             decodeRegFields(opInfo, fREGFILE, fREG);
-            if (isMacro()) {
+            if (os.isMacro()) {
                 opInfo.kind = Operand::Kind::MACRO;
                 opInfo.regOpMathMacroExtReg = decodeMathMacroRegField(fSPCACC);
                 addReserved(

@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // internal headers
 #include "IR/Messages.hpp"
-#include "Frontend/IRToString.hpp"
 #include "ColoredIO.hpp"
 
 #include <algorithm>
@@ -191,7 +190,7 @@ bool decodeSendDescriptor(const Opts &opts)
         std::string sfidSym = opts.inputFiles[0];
         std::transform(
             sfidSym.begin(), sfidSym.end(), sfidSym.begin(), ::tolower);
-        sfid = iga::FromSyntax<iga::SFID>(sfidSym);
+        sfid = iga::lookupSFID(sfidSym);
         if (sfid == iga::SFID::INVALID) {
             fatalExitWithMessage(
                 "-Xdsd: %s: invalid or unsupported SFID for this platform",
@@ -200,7 +199,7 @@ bool decodeSendDescriptor(const Opts &opts)
     } else if (opts.platform <= IGA_GEN11) {
         // decode it from ex_desc[3:0]
         if (exDesc.isImm())
-            sfid = iga::sfidFromEncoding(
+            sfid = iga::MessageInfo::sfidFromEncoding(
                 static_cast<iga::Platform>(opts.platform),
                 exDesc.imm & 0xF);
         if (sfid == iga::SFID::INVALID) {

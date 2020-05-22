@@ -39,9 +39,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // in here as well.
 namespace iga
 {
-//    iga::SFID getSFID(Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc);
-    iga::SFMessageType getMessageType(Platform p, SFID sfid, uint32_t exDesc, uint32_t desc);
-//    uint32_t getMessageLengths(Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
+    iga::SFID getSFID(Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc);
+    iga::SFMessageType getMessageType(Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc);
+    uint32_t getMessageLengths(Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
 
 
 }

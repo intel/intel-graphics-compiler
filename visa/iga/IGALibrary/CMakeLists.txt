@@ -118,14 +118,14 @@ set(IGA_Misc
   ${CMAKE_CURRENT_SOURCE_DIR}/deprecation.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/strings.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/strings.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/system.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/system.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/version.hpp
 )
 
 set(IGA_Frontend
   ${IGA_Frontend_Formatter}
+  ${IGA_Frontend_Formatter_LdStSyntax}
   ${IGA_Frontend_Parser}
+  ${IGA_Frontend_Parser_LdStSyntax}
 )
 
 set(IGA_Backend_GED
@@ -248,6 +248,7 @@ set(IGA_SOURCES_ENCODER_ONLY
   ${IGA_Backend}
   ${IGA_Backend_GED_EncoderOnly}
   ${IGA_Frontend_Formatter}
+  ${IGA_Frontend_Formatter_LdStSyntax}
   ${IGA_IR}
   ${IGA_MemManager}
 #  ${IGA_Misc}
@@ -348,6 +349,11 @@ endif()
 
 
 source_group("Frontend" FILES ${IGA_Frontend_Formatter} ${IGA_Frontend_Parser})
+if(WIN32)
+  source_group("Frontend\\LdStSyntax" FILES ${IGA_Frontend_Formatter_LdStSyntax} ${IGA_Frontend_Parser_LdStSyntax})
+else()
+  source_group("Frontend/LdStSyntax" FILES ${IGA_Frontend_Formatter_LdStSyntax} ${IGA_Frontend_Parser_LdStSyntax})
+endif()
 
 source_group("IR" FILES ${IGA_IR})
 source_group("MemManager" FILES ${IGA_MemManager})

@@ -23,12 +23,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef _IGA_FRONTEND_IRTOSTRING_HPP
-#define _IGA_FRONTEND_IRTOSTRING_HPP
+#ifndef _IGA_IRTYPES_TO_STRING_HPP
+#define _IGA_IRTYPES_TO_STRING_HPP
 
 #include "../IR/Types.hpp"
 #include "../strings.hpp"
-#include "../api/iga_bxml_enums.hpp"
 
 #include <string>
 #include <sstream>
@@ -448,15 +447,15 @@ static std::string ToSyntax(ExecSize es) {
 
 static std::string ToSyntax(ChannelOffset es) {
     switch (es) {
-    case ChannelOffset::M0: return "M0";
-    case ChannelOffset::M4: return "M4";
-    case ChannelOffset::M8: return "M8";
-    case ChannelOffset::M12: return "M12";
-    case ChannelOffset::M16: return "M16";
-    case ChannelOffset::M20: return "M20";
-    case ChannelOffset::M24: return "M24";
-    case ChannelOffset::M28: return "M28";
-    default: return MakeErrorString("ChannelOffset", (int)es);
+    case ChannelOffset::M0: return "|M0";
+    case ChannelOffset::M4: return "|M4";
+    case ChannelOffset::M8: return "|M8";
+    case ChannelOffset::M12: return "|M12";
+    case ChannelOffset::M16: return "|M16";
+    case ChannelOffset::M20: return "|M20";
+    case ChannelOffset::M24: return "|M24";
+    case ChannelOffset::M28: return "|M28";
+    default: return MakeErrorString("|ChannelOffset", (int)es);
     }
 }
 
@@ -639,35 +638,16 @@ static void ToSyntaxNoBraces(
     }
 }
 
-static std::string ToSyntax(const InstOptSet &instOpts) {
+static std::string ToSyntax(const InstOptSet &inst_opts) {
     std::stringstream ss;
 
     ss << "{";
-    ToSyntaxNoBraces(ss, instOpts);
+    ToSyntaxNoBraces(ss, inst_opts);
     ss << "}";
 
     return ss.str();
 }
 
-/////////////////////////////////////////////////////
-// manually defined enumerations from BXML
-template <typename T> T FromSyntax(std::string str);
+} // namespace
 
-
-std::string ToSyntax(MathFC sfc);
-template <> MathFC FromSyntax<MathFC>(std::string str);
-
-
-std::string ToSyntax(SFID sfid);
-template <> SFID FromSyntax<SFID>(std::string str);
-
-
-std::string ToSyntax(SyncFC sfc);
-template <> SyncFC FromSyntax<SyncFC>(std::string str);
-
-
-
-
-} // iga::
-
-#endif // _IGA_FRONTEND_IRTOSTRING_HPP
+#endif // _IGA_IRTYPES_TO_STRING_HPP

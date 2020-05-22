@@ -32,41 +32,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
-void Instruction::setSubfunction(Subfunction sf) {
-    IGA_ASSERT(!getOpSpec().supportsSubfunction() || sf.isValid(),
-        "Instruction requires subfunction (and none set)");
-    IGA_ASSERT(getOpSpec().supportsSubfunction() || !sf.isValid(),
-        "Instruction given subfunction (and forbids one)");
-    m_sf = sf;
-}
-
-
 void Instruction::setDirectDestination(
     DstModifier dstMod,
-    RegName rnm,
+    RegName rType,
     RegRef reg,
     Region::Horz rgnH,
     Type type)
 {
-    if (getOpSpec().isSendOrSendsFamily() &&
-        m_sendDstLength < 0 &&
-        rnm == RegName::ARF_NULL)
-    {
-        m_sendDstLength = 0;
-    }
-    m_dst.setDirectDestination(dstMod, rnm, reg, rgnH, type);
+    m_dst.setDirectDestination(dstMod, rType, reg, rgnH, type);
 }
 
 
 void Instruction::setMacroDestination(
     DstModifier dstMod,
-    RegName rnm,
+    RegName rName,
     RegRef reg,
     MathMacroExt mme,
     Region::Horz rgnHz,
     Type type)
 {
-    m_dst.setMacroDestination(dstMod, rnm, reg, mme, rgnHz, type);
+    m_dst.setMacroDestination(dstMod, rName, reg, mme, rgnHz, type);
 }
 
 
@@ -84,24 +69,13 @@ void Instruction::setInidirectDestination(
 void Instruction::setDirectSource(
     SourceIndex srcIx,
     SrcModifier srcMod,
-    RegName rnm,
+    RegName rType,
     RegRef reg,
     Region rgn,
     Type type)
 {
     unsigned ix = static_cast<unsigned>(srcIx);
-    if (getOpSpec().isSendOrSendsFamily() &&
-        rnm == RegName::ARF_NULL)
-    {
-        // send with a null operand must have a 0 length
-        // we only check this if we didn't get the length via the
-        // descriptor
-        if (ix == 0 && m_sendSrc0Len < 0)
-            m_sendSrc0Len = 0;
-        else if (ix == 1 && m_sendSrc1Length < 0)
-            m_sendSrc1Length = 0;
-    }
-    m_srcs[ix].setDirectSource(srcMod, rnm, reg, rgn, type);
+    m_srcs[ix].setDirectSource(srcMod, rType, reg, rgn, type);
 }
 
 
@@ -110,18 +84,6 @@ void Instruction::setSource(
     const Operand &op)
 {
     unsigned ix = static_cast<unsigned>(srcIx);
-    if (getOpSpec().isSendOrSendsFamily() &&
-        op.getKind() == Operand::Kind::DIRECT &&
-        op.getDirRegName() == RegName::ARF_NULL)
-    {
-        // send with a null operand must have a 0 length
-        // we only check this if we didn't get the length via the
-        // descriptor
-        if (ix == 0 && m_sendSrc0Len < 0)
-            m_sendSrc0Len = 0;
-        else if (ix == 1 && m_sendSrc1Length < 0)
-            m_sendSrc1Length = 0;
-    }
     m_srcs[ix] = op;
 }
 
@@ -172,11 +134,6 @@ void Instruction::setLabelSource(SourceIndex srcIx, Block *block, Type type)
 }
 
 
-bool Instruction::isMacro() const {
-    return is(Op::MADM) || (is(Op::MATH) && IsMacro(m_sf.math));
-}
-
-
 bool Instruction::isMovWithLabel() const {
     return (getOp() == Op::MOV &&
         getSource(0).getKind() == Operand::Kind::LABEL);
@@ -200,25 +157,15 @@ std::string Instruction::str(Platform pltfm) const
     return ss.str();
 }
 
-static unsigned getSourceCountBrc(const Instruction &i)
+unsigned Instruction::getSourceCountBrc() const
 {
     // brc (..) IMM IMM
     // brc (..) REG
-    switch (i.getSource(0).getKind()) {
+    switch (getSource(0).getKind()) {
     case Operand::Kind::DIRECT:
     case Operand::Kind::INDIRECT:
         return 1;
     default:
         return 2;
-    }
-}
-
-unsigned Instruction::getSourceCount() const
-{
-    // BRC can have 1 or 2 operands, everyone else is simple
-    if (is(Op::BRC)) {
-        return getSourceCountBrc(*this);
-    } else {
-        return getOpSpec().getSourceCount(getSubfunction());
     }
 }

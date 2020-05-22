@@ -189,6 +189,11 @@ typedef iga_status_t(CDECLATTRIBUTE * pIGAOpspecDescription)(
 typedef iga_status_t(CDECLATTRIBUTE * pIGAOpspecOp)(
     iga_opspec_t op,
     uint32_t *opcode);
+#define IGA_OPSPEC_PARENT_OP_STR "iga_opspec_parent_op"
+typedef iga_status_t(CDECLATTRIBUTE * pIGAOpspecParentOp)(
+    iga_opspec_t op,
+    uint32_t *parent_op);
+
 
 
 /*************************************************************************
@@ -358,6 +363,7 @@ typedef struct
     pIGAOpspecName                      iga_opspec_name;
     pIGAOpspecDescription               iga_opspec_description;
     pIGAOpspecOp                        iga_opspec_op;
+    pIGAOpspecParentOp                  iga_opspec_parent_op;
 } iga_functions_t;
 
 /*

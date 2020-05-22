@@ -12,10 +12,12 @@ set(IGA_Backend_Messages
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderHDC.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Messages/MessageDecoderOther.cpp
-  PARENT_SCOPE)
+  PARENT_SCOPE
+)
 
 ##################################################################
 # GED encoder
+
 set(IGA_Backend_GED_EncoderOnly
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/Encoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/Encoder.hpp
@@ -28,8 +30,8 @@ set(IGA_Backend_GED_EncoderOnly
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/IGAToGEDTranslation.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/Interface.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/Interface.hpp
-  PARENT_SCOPE)
-
+ PARENT_SCOPE
+)
 
 ##################################################################
 # GED decoder
@@ -37,6 +39,7 @@ set(IGA_Backend_GED_EncoderOnly
 set(IGA_Backend_GED_Decoder
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/Decoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/Decoder.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/GED/DecoderCommon.hpp
   PARENT_SCOPE
 )
 

@@ -44,7 +44,7 @@ iga_status_t KernelEncoder::encode()
 
 bool KernelEncoder::patchImmValue(const Model& model, unsigned char* binary, Type type, const ImmVal &val) {
     // check if the first instruction is compacted and get the instruction length
-    // FIXME: compact bit extract code copy from Decoder::getBitField(COMPACTION_CONTROL, 1)
+    // FIXME: compact bit extract code copy from DecoderBase::getBitField(COMPACTION_CONTROL, 1)
     const uint32_t* inst_start = (const uint32_t*)binary;
     uint32_t mask = (1 << (uint32_t)1) - 1;
     int32_t inst_len = ((inst_start[COMPACTION_CONTROL / 32] >> (COMPACTION_CONTROL % 32)) & mask) != 0 ?
@@ -53,7 +53,7 @@ bool KernelEncoder::patchImmValue(const Model& model, unsigned char* binary, Typ
     // decode the instruction to ged_inst_t
     ged_ins_t ged_inst;
     memset(&ged_inst, 0, sizeof(ged_inst));
-    const GED_MODEL& ged_model = lowerPlatform(model.platform);
+    const GED_MODEL& ged_model = IGAToGEDTranslation::lowerPlatform(model.platform);
     GED_RETURN_VALUE status = GED_DecodeIns(ged_model, binary, (uint32_t)inst_len, &ged_inst);
     assert(status == GED_RETURN_VALUE_SUCCESS);
     if (status != GED_RETURN_VALUE_SUCCESS)

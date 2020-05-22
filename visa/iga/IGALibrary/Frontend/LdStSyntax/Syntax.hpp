@@ -23,60 +23,32 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#include "system.hpp"
+#include "Tables.hpp"
 
-#ifdef _WIN32
-#include <Windows.h>
-#endif
-#include <iostream>
+#include <ostream>
 
-using namespace iga;
+namespace iga {
+    // only the first token, not the full sequence
+    // e.g.s "a64c" or "surf[0x2]"
+    const char *SymbolFor(MAddrModel am);
+    // emits the full syntax
+    void Format(std::ostream &os,MAddrModel am);
+    //
+    // makes a good faith attempt to compute the number of expected data
+    // and address registers per message; headers are not inlcuded
+    //
+    // returns false if we can't figure it out
+    bool ComputeMessageAddressRegisters(
+        const MFormat *f,
+        int simdMode,
+        uint32_t desc,
+        int &addrRegs);
+    bool ComputeMessageDataRegisters(
+        const MFormat *f,
+        int simdMode,
+        uint32_t desc,
+        int &dataRegs);
 
-
-#ifdef _WIN32
-static void EnableColoredIO()
-{
-    static bool enabled = false;
-    if (enabled)
-        return;
-    // TODO: should only need to do this on Windows 10 Threshold 2 (TH2),
-    // "November Update": version 1511 and has the build number 10586
-#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
-#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
-#endif
-    auto enableOnHandle = [] (DWORD H_CODE) {
-        DWORD mode;
-        HANDLE h = GetStdHandle(H_CODE);
-        GetConsoleMode(h, &mode);
-        mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        SetConsoleMode(h, mode);
-    };
-    enableOnHandle(STD_ERROR_HANDLE);
-    enableOnHandle(STD_OUTPUT_HANDLE);
-    enabled = true;
-}
-
-// create a static constructor
-struct dummy
-{
-    dummy() {
-        EnableColoredIO();
-    };
-};
-static dummy _dummy;
-
-#else
-// unix
-//
-// nothing needed here
-#endif
-
-
-bool iga::IsTty(const std::ostream &os)
-{
-    if (&os == &std::cout)
-        return IS_STDOUT_TTY;
-    else if (&os == &std::cerr)
-        return IS_STDERR_TTY;
-    return false;
+    // returns the header included field (bit 19) if it exists in a format
+    const MField *FindHeaderField(const MFormat &mf);
 }

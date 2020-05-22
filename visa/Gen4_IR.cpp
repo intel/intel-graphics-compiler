@@ -7225,14 +7225,14 @@ bool G4_INST::canSupportCondMod() const
 
 bool G4_INST::canSupportSrcModifier() const
 {
-    const iga::Model* igaModel = builder.getIGAModel();
+    const iga::Model* iga_model = builder.getIGAModel();
 
-    assert(igaModel != nullptr);
+    assert(iga_model != nullptr);
 
-    const auto opInfo =
-        BinaryEncodingIGA::getIgaOpInfo(op, this, igaModel->platform);
-    const iga::OpSpec& opSpec = igaModel->lookupOpSpec(opInfo.first);
-    return opSpec.supportsSourceModifiers();
+    const iga::OpSpec& iga_opspec =
+        iga_model->lookupOpSpec(BinaryEncodingIGA::getIGAOp(op, this, iga_model->platform));
+
+    return iga_opspec.supportsSourceModifiers();
 }
 
 // convert (execsize, offset) into emask option

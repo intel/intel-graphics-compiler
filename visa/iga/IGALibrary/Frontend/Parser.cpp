@@ -109,7 +109,7 @@ namespace iga
     //////////////////////////////////////////////////////////////////////
     // BASIC and GENERAL FUNCTIONS
     uint32_t Parser::ExtentToPrevEnd(const Loc &start) const {
-        return ExtentTo(start, NextLoc(-1));
+        return ExtentTo(start,NextLoc(-1));
     }
 
     uint32_t Parser::ExtentTo(const Loc &start, const Loc &end) const {

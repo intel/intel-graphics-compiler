@@ -38,9 +38,7 @@ namespace iga
     // returns true if a warning or error was emitted
     iga_status_t DecodeFields(
         Platform p,
-        int verbosity,
         bool useNativeDecoder,
-        uint32_t fmtOpts,
         std::ostream &os,
         const uint8_t *bits,
         size_t bitsLen);
@@ -48,9 +46,7 @@ namespace iga
     // returns true if a warning or error was emitted
     iga_status_t DiffFields(
         Platform p,
-        int verbosity,
         bool useNativeDecoder,
-        uint32_t fmtOpts,
         std::ostream &os,
         const char *source1,
         const uint8_t *bits1,
@@ -60,9 +56,7 @@ namespace iga
         size_t bitsLen2);
     iga_status_t DiffFieldsFromPCs(
         Platform p,
-        int verbosity,
         bool useNativeDecoder,
-        uint32_t fmtOpts,
         std::ostream &os,
         const char *source1,
         size_t pc1,
@@ -77,9 +71,7 @@ namespace iga
     // returns true if a warning or error was emitted
     iga_status_t DebugCompaction(
         Platform p,
-        int verbosity,
         bool useNativeDecoder,
-        uint32_t fmtOpts,
         std::ostream &os,
         const uint8_t *bits,
         size_t bitsLen);

@@ -18,7 +18,6 @@ set(IGA_API_HeadersOpen
 )
 
 set(IGA_API_Source
-  ${CMAKE_CURRENT_SOURCE_DIR}/iga_bxml_enums.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/iga_types_swsb.cpp
   PARENT_SCOPE
 )

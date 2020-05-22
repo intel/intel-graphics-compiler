@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "Messages.hpp"
 #include "../Backend/Messages/MessageDecoder.hpp"
-#include "../Frontend/IRToString.hpp"
 
 #include <sstream>
 #include <string>
@@ -201,15 +200,14 @@ PayloadLengths::PayloadLengths(
 
 
 PayloadLengths::PayloadLengths(
-    Platform p, ExecSize execSize, uint32_t desc, uint32_t exDesc)
+    Platform p, Op op, ExecSize execSize, uint32_t desc, uint32_t exDesc)
 {
-    IGA_ASSERT(p <= Platform::GEN11, "wrong constructor for platform");
-    SFID sfid = sfidFromEncoding(p, exDesc);
+    SFID sfid = MessageInfo::sfidFromOp(p, op, exDesc);
     deducePayloadSizes(*this, p, sfid, execSize, desc);
 }
 
 
-SFID iga::sfidFromEncoding(Platform p, uint32_t sfidBits)
+SFID MessageInfo::sfidFromEncoding(Platform p, uint32_t sfidBits)
 {
     SFID sfid = SFID::INVALID;
     switch (sfidBits & 0xF) {
@@ -238,6 +236,15 @@ SFID iga::sfidFromEncoding(Platform p, uint32_t sfidBits)
     return sfid;
 }
 
+
+SFID iga::MessageInfo::sfidFromOp(Platform p, Op op, uint32_t exDesc)
+{
+    if (p < Platform::GEN12P1) {
+        return sfidFromEncoding(p, exDesc & 0xF);
+    } else {
+        return OpToSFID(op);
+    }
+}
 
 
 std::string iga::format(SFID sfid)
@@ -718,6 +725,53 @@ bool iga::sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid)
 }
 
 
+SFID iga::lookupSFID(std::string symbol)
+{
+    SFID sfid = SFID::INVALID;
+    if (symbol == "cre") {
+        sfid = SFID::CRE;
+    } else if (symbol == "dc0") {
+        sfid = SFID::DC0;
+    } else if (symbol == "dc1") {
+        sfid = SFID::DC1;
+    } else if (symbol == "dc2") {
+        sfid = SFID::DC2;
+    } else if (symbol == "dcro") {
+        sfid = SFID::DCRO;
+    } else if (symbol == "gtwy") {
+        sfid = SFID::GTWY;
+    } else if (symbol == "rc") {
+        sfid = SFID::RC;
+    } else if (symbol == "smpl") {
+        sfid = SFID::SMPL;
+    } else if (symbol == "ts") {
+        sfid = SFID::TS;
+    } else if (symbol == "urb") {
+        sfid = SFID::URB;
+    } else if (symbol == "vme") {
+        sfid = SFID::VME;
+    }
+    return sfid;
+}
+
+
+Op iga::lookupOpFromSFID(SFID sfid)
+{
+    switch (sfid) {
+    case SFID::CRE:  return Op::SEND_CRE;
+    case SFID::DC0:  return Op::SEND_DC0;
+    case SFID::DC1:  return Op::SEND_DC1;
+    case SFID::DC2:  return Op::SEND_DC2;
+    case SFID::DCRO: return Op::SEND_DCRO;
+    case SFID::GTWY: return Op::SEND_GTWY;
+    case SFID::RC:   return Op::SEND_RC;
+    case SFID::SMPL: return Op::SEND_SMPL;
+    case SFID::TS:   return Op::SEND_TS;
+    case SFID::URB:  return Op::SEND_URB;
+    case SFID::VME:  return Op::SEND_VME;
+    default: return Op::INVALID;
+    }
+}
 
 
 bool iga::encodeDescriptors(

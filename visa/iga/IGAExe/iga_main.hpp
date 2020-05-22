@@ -54,14 +54,12 @@ struct Opts {
     // XIFS = -Xifs (decode fields)
     // XDCMP = -Xdcmp (debug compaction)
     // AUTO = operate based on input (see inferPlatformAndMode below)
-    enum class Mode {ASM, DIS, XLST, XIFS, XDCMP, XDSD, AUTO};
-    enum class Color {NEVER, AUTO, ALWAYS};
+    enum Mode {ASM, DIS, XLST, XIFS, XDCMP, XDSD, AUTO};
 
     std::vector<std::string> inputFiles;             // .empty() means stdin
     std::string outputFile;                          // "" means stdout
     int verbosity            = 0;                    // -q, -v
-    Mode mode                = Mode::AUTO;           // -d, -a
-    Color color              = Color::AUTO;          // --color=...
+    Mode mode                = AUTO;                 // -d, -a
     bool numericLabels       = false;                // -n
     iga_gen_t platform       = IGA_GEN_INVALID;      // -p=...
     uint32_t enabledWarnings = IGA_WARNINGS_DEFAULT; // -W*
@@ -69,7 +67,7 @@ struct Opts {
     bool legacyDirectives    = false;                // -Xlegacy-directives
     bool errorOnCompactFail  = true;                 // -Xwarn-on-compact-fail
     bool autosetDepInfo      = false;                // -Xauto-deps
-    uint32_t sbidCount       = 16;                   // -Xsbid-count
+    uint32_t sbid_count      = 16;                   // -Xsbid-count
     bool syntaxExts          = false;                // -Xsyntax-exts
     bool useNativeEncoder    = false;                // -Xnative
 
@@ -212,15 +210,26 @@ static std::string normalizePlatformName(std::string inp) {
     return norm;
 }
 
-static void inferPlatform(const std::string &file, Opts &os)
+static void inferPlatformAndMode(
+    const std::string &file, Opts &os)
 {
-    // try and infer the project (-p) if needed
     std::string ext = "";
     size_t ix = file.rfind('.');
     if (ix != std::string::npos) {
         ext = file.substr(ix + 1);
     }
 
+    // try and infer assemble/disassemble (-d or -a) if needed
+    std::string extPfx = ext.substr(0, 3); // "krn" of "krn9" or "krn9p5"
+    if (os.mode == Opts::Mode::AUTO) {
+        if (extPfx == "dat" || extPfx == "krn") {
+            os.mode = Opts::Mode::DIS;
+        } else if (extPfx == "isa" || extPfx == "asm") {
+            os.mode = Opts::Mode::ASM;
+        }
+    }
+
+    // try and infer the project (-p) if needed
     if (os.platform == IGA_GEN_INVALID && ext.size() >= 3) {
         // we have a file extension like "asm12p1" or "krn11"
         std::string prj = ext.substr(3); // skip "krn" or "asm" part of ext
@@ -239,26 +248,6 @@ static void inferPlatform(const std::string &file, Opts &os)
     }
 }
 
-static void inferPlatformAndMode(const std::string &file, Opts &os)
-{
-    std::string ext = "";
-    size_t ix = file.rfind('.');
-    if (ix != std::string::npos) {
-        ext = file.substr(ix + 1);
-    }
-
-    // try and infer assemble/disassemble (-d or -a) if needed
-    std::string extPfx = ext.substr(0, 3); // "krn" of "krn9" or "krn9p5"
-    if (os.mode == Opts::Mode::AUTO) {
-        if (extPfx == "dat" || extPfx == "krn") {
-            os.mode = Opts::Mode::DIS;
-        } else if (extPfx == "isa" || extPfx == "asm") {
-            os.mode = Opts::Mode::ASM;
-        }
-    }
-    inferPlatform(file, os);
-}
-
 static void ensurePlatformIsSet(const Opts &opts)
 {
     if (opts.platform == IGA_GEN_INVALID) {
@@ -273,41 +262,5 @@ static void ensurePlatformIsSet(const Opts &opts)
     }
 }
 
-
-static uint32_t makeFormattingOpts(const Opts &opts)
-{
-    uint32_t fmtOpts = 0;
-
-    setOptBit(fmtOpts,
-        IGA_FORMATTING_OPT_NUMERIC_LABELS,
-        opts.numericLabels);
-    setOptBit(fmtOpts,
-        IGA_FORMATTING_OPT_SYNTAX_EXTS,
-        opts.syntaxExts);
-    setOptBit(fmtOpts,
-        IGA_FORMATTING_OPT_PRINT_HEX_FLOATS,
-        opts.printHexFloats);
-    setOptBit(fmtOpts,
-        IGA_FORMATTING_OPT_PRINT_PC,
-        opts.printInstructionPc);
-    setOptBit(fmtOpts,
-        IGA_FORMATTING_OPT_PRINT_BITS,
-        opts.printBits);
-    setOptBit(fmtOpts,
-        IGA_FORMATTING_OPT_PRINT_DEPS,
-        opts.printDeps);
-    setOptBit(fmtOpts,
-        IGA_FORMATTING_OPT_PRINT_LDST,
-        opts.printLdSt);
-    bool useColor =
-        opts.color == Opts::Color::ALWAYS ||
-        (opts.color == Opts::Color::AUTO &&
-            opts.outputFile.empty() && iga::IsTty(std::cout));
-    setOptBit(fmtOpts,
-        IGA_FORMATTING_OPT_PRINT_ANSI,
-        useColor);
-
-    return fmtOpts;
-}
 
 #endif // _IGA_MAIN_HPP_

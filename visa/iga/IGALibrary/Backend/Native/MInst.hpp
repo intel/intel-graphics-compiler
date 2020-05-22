@@ -35,27 +35,16 @@ namespace iga
 {
     // machine instruction
     struct MInst {
+        MInst() {
+            qw0 = qw1 = 0;
+        }
+
         union {
             struct {uint32_t dw0, dw1, dw2, dw3; };
             struct {uint32_t dws[4];};
             struct {uint64_t qw0, qw1;};
             struct {uint64_t qws[2];};
         };
-
-        MInst() {
-            qw0 = qw1 = 0;
-        }
-
-        bool operator==(const MInst &rhs) const {
-            return qw0 == rhs.qw0 && qw1 == rhs.qw1;
-        }
-        bool operator!=(const MInst &rhs) const {
-            return !(*this == rhs);
-        }
-        bool operator<(const MInst &rhs) const {
-            return (qw1 < rhs.qw1) || (qw1 == rhs.qw1 && qw0 < rhs.qw0);
-        }
-
 
         bool testBit(int off) const {
             return getBits(off, 1) != 0;

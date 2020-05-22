@@ -94,7 +94,7 @@ static uint32_t getHeaderBit(uint32_t desc) {return getBits(desc, 19, 1);}
 
 void iga::EmitSendDescriptorInfo(
     Platform p,
-    SFID sfid,
+    const OpSpec &os,
     ExecSize execSize,
     bool dstNonNull,
     int dstLen, int src0Len, int src1Len,
@@ -103,6 +103,10 @@ void iga::EmitSendDescriptorInfo(
     std::stringstream &ss)
 {
     DiagnosticList ws, es;
+    SFID sfid =
+        p < Platform::GEN12P1 && exDesc.isReg() ?
+            SFID::INVALID :
+            MessageInfo::sfidFromOp(p, os.op, exDesc.imm);
 
     //////////////////////////////////////
     // emit the: "wr:1h+2, rd:4" part

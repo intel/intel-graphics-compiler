@@ -233,6 +233,7 @@ public:
     std::string menmonic() const;
     std::string name() const;
     std::string description() const;
+    OpSpec parent() const;
 
     // enumerates all the operations for a given platform
     static std::vector<OpSpec> enumerate(Platform p);
@@ -561,6 +562,18 @@ inline std::string OpSpec::name() const
 IGA_OPSPEC_STRING_GETTER(iga_opspec_name, 32);
 inline std::string OpSpec::description() const
 IGA_OPSPEC_STRING_GETTER(iga_opspec_description, 128);
+
+inline OpSpec OpSpec::parent() const
+{
+    uint32_t op_enum;
+    iga_opspec_t par_op;
+    IGA_CHECKED_CALL(iga_opspec_parent_op, m_op, &op_enum);
+    IGA_CHECKED_CALL(iga_opspec_from_op,
+        static_cast<iga_gen_t>(m_platform),
+        op_enum,
+        &par_op);
+    return OpSpec(m_platform, par_op);
+}
 
 #undef IGA_OPSPEC_STRING_GETTER
 

@@ -76,8 +76,7 @@ typedef enum {
     IGA_INVALID_OBJECT = 8, /* attempt to use an destroyed object
                              * (e.g. iga_context_t) */
     IGA_INVALID_STATE  = 9, /* e.g. call to iga_get_errors before disassembly*/
-    IGA_UNSUPPORTED_PLATFORM = 10, /* platform not supported with this binary */
-    IGA_DIFF_FAILURE = 11 /* used by -Xifs for diffing instructions */
+    IGA_UNSUPPORTED_PLATFORM = 10 /* platform not supported with this binary */
 } iga_status_t;
 
 /*
@@ -429,8 +428,6 @@ static_assert(sizeof(iga_disassemble_options_t) == 5*4,
 #define IGA_FORMATTING_OPT_PRINT_DEPS       0x00000020u
 /* print load/store pseduo instructions where possible */
 #define IGA_FORMATTING_OPT_PRINT_LDST       0x00000040u
-/* use ansi_span escapes when possible */
-#define IGA_FORMATTING_OPT_PRINT_ANSI       0x00000100u
 
 /* just the default formatting opts */
 #define IGA_FORMATTING_OPTS_DEFAULT \
@@ -847,6 +844,23 @@ IGA_API iga_status_t iga_opspec_op(
 IGA_API iga_status_t iga_opspec_op_encoding(
     iga_opspec_t op,
     uint32_t *opcode);
+
+
+/*
+ * Returns the parent operation for a given op.  The value returned is the
+ * op enumerate element, not it's encoding.
+ *
+ * If an operation is root-level (has no parent), this assigns NULL
+ * to the output (but returns IGA_SUCCESS).
+ *
+ * RETURNS:
+ *  IGA_SUCCESS           upon success
+ *  IGA_INVALID_ARG       if a gen argument invalid
+ */
+IGA_API iga_status_t iga_opspec_parent_op(
+    iga_opspec_t op,
+    uint32_t *parent_op);
+
 
 #ifdef __cplusplus
 }
