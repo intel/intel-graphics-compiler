@@ -39,7 +39,7 @@ DEFINE_TIME_STAT(             TIME_VISA_HYBRID_RA,               "VISA Hybrid RA
 DEFINE_TIME_STAT(             TIME_VISA_GRF_GLOBAL_RA,           "VISA GRF Global RA0",                    TIME_VISA_TOTAL_RA,                 true,          false,          false,          true )
 DEFINE_TIME_STAT(               TIME_VISA_INTERFERENCE,          "VISA Interference",                      TIME_VISA_GRF_GLOBAL_RA,            true,          false,          false,          false )
 DEFINE_TIME_STAT(               TIME_VISA_COLORING,              "VISA Coloring",                          TIME_VISA_GRF_GLOBAL_RA,            true,          false,          false,          false )
-DEFINE_TIME_STAT(           TIME_VISA_SPILL,                     "VISA Spill",                             TIME_VISA_TOTAL,                    true,          false,          true,           true )
+DEFINE_TIME_STAT(               TIME_VISA_SPILL,                 "VISA Spill",                             TIME_VISA_GRF_GLOBAL_RA,            true,          false,          false,          true )
 DEFINE_TIME_STAT(           TIME_VISA_PRERA_SCHEDULING,          "VISA PreRA Scheduling",                  TIME_VISA_TOTAL,                    true,          false,          true,           true )
 DEFINE_TIME_STAT(           TIME_VISA_SCHEDULING,                "VISA Scheduling",                        TIME_VISA_TOTAL,                    true,          false,          true,           true )
 DEFINE_TIME_STAT(           TIME_VISA_ENCODE_AND_EMIT,           "VISA Encode and Emit",                   TIME_VISA_TOTAL,                    true,          false,          true,           true )
