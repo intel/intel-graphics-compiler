@@ -42,16 +42,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 
 #include "fatal.hpp"
+#include "system.hpp"
 
-#ifdef _WIN32
-#include <io.h>
-#define IS_STDERR_TTY (_isatty(_fileno(stderr)) != 0)
-#define IS_STDOUT_TTY (_isatty(_fileno(stdout)) != 0)
-#else
-#include <unistd.h>
-#define IS_STDERR_TTY (isatty(STDERR_FILENO) != 0)
-#define IS_STDOUT_TTY (isatty(STDOUT_FILENO) != 0)
-#endif
 
 static void readBinaryStream(
     const char *streamName,

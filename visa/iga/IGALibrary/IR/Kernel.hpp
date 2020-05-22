@@ -72,12 +72,13 @@ namespace iga {
         // to a block or some other storage
         Instruction *createBasicInstruction(
             const OpSpec& op,
-            const Predication& predOpnd,
-            const RegRef& flag,
+            const Predication& pred,
+            const RegRef& freg,
             ExecSize execSize,
             ChannelOffset choff,
-            MaskCtrl ectr,
-            FlagModifier condMod);
+            MaskCtrl mc,
+            FlagModifier fm,
+            Subfunction sf); // InvalidFC::INVALID;
 
         Instruction *createBranchInstruction(
             const OpSpec& op,
@@ -86,10 +87,11 @@ namespace iga {
             ExecSize execSize,
             ChannelOffset choff,
             MaskCtrl ectr,
-            BranchCntrl brnch);
+            Subfunction sf);
 
         Instruction *createSendInstruction(
             const OpSpec& op,
+            SFID sfid,
             const Predication& predOpnd,
             const RegRef& flagReg,
             ExecSize execSize,

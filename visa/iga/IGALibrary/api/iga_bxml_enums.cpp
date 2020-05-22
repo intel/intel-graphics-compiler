@@ -23,23 +23,37 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef IGA_FRONTEND_LDSTSYNTAX_MESSAGEPARSING_HPP
-#define IGA_FRONTEND_LDSTSYNTAX_MESSAGEPARSING_HPP
-#include "../KernelParser.hpp"
+#include "iga_bxml_enums.hpp"
 
-#include <string>
+#include <cassert>
 
-namespace iga
+using namespace iga;
+
+
+unsigned iga::GetSourceCount(MathFC mfc)
 {
-    // returns false only if no input processed; this is a clue that the
-    // calling parser should probably favor a more generic "invalid mnemonic"
-    // message
-    //
-    // will raise a ParseException if the message is not mapped or some other
-    // error
-    //
-    // returns true on succces
-    bool ParseLdStInst(ExecSize dftExecSize, GenParser &kp);
+    switch (mfc) {
+    case MathFC::INV:  return 1;
+    case MathFC::LOG:  return 1;
+    case MathFC::EXP:  return 1;
+    case MathFC::SQT:  return 1;
+    case MathFC::RSQT: return 1;
+    case MathFC::SIN:  return 1;
+    case MathFC::COS:  return 1;
+    case MathFC::FDIV: return 2;
+    case MathFC::POW:  return 2;
+    case MathFC::IDIV: return 2;
+    case MathFC::IQOT: return 2;
+    case MathFC::IREM: return 2;
+    case MathFC::INVM: return 2;
+    case MathFC::RSQTM: return 1;
+    default:
+        assert(0 && "iga_bxml_enums.cpp: iga::GetSourceCount: "
+            "needs to define count of operands for this math subfunction");
+        return (unsigned)-1;
+    }
 }
 
-#endif // IGA_FRONTEND_LDSTSYNTAX_MESSAGPARSING_HPP
+
+
+

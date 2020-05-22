@@ -74,11 +74,11 @@ namespace iga
         // TODO: phase these out
                 void encodeKernelPreProcess(Kernel &k);
         virtual void doEncodeKernelPreProcess(Kernel &k);
-        virtual void encodeFC(const OpSpec &os);
+        virtual void encodeFC(const Instruction &i);
         virtual void encodeTernaryInstruction(const Instruction& inst, GED_ACCESS_MODE accessMode);
                 void encodeTernaryAlign1Instruction(const Instruction& inst);
                 void encodeTernaryAlign16Instruction(const Instruction& inst);
-        virtual void encodeSendInstructionProcessSFID(const OpSpec&);
+        virtual void encodeSendInstructionProcessSFID(const Instruction& inst);
         virtual void encodeSendDirectDestination(const Operand& dst);
         virtual void encodeSendDestinationDataType(const Operand& dst);
                 void encodeOptionsThreadControl(const Instruction& inst);
@@ -320,19 +320,19 @@ namespace iga
 
     template <SourceIndex S> void EncoderBase::encodeSrcRegionVert(Region::Vert v) {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0VertStride, IGAToGEDTranslation::lowerRegionVert(v));
+            GED_ENCODE(Src0VertStride, lowerRegionVert(v));
         } else { // (S == SourceIndex::SRC1)
-            GED_ENCODE(Src1VertStride, IGAToGEDTranslation::lowerRegionVert(v));
+            GED_ENCODE(Src1VertStride, lowerRegionVert(v));
         } // S != SRC2 since ternary Align1 doesn't have bits for that
     }
 
     template <SourceIndex S> void EncoderBase::encodeSrcType(Type t) {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0DataType, IGAToGEDTranslation::lowerDataType(t));
+            GED_ENCODE(Src0DataType, lowerDataType(t));
         } else if (S == SourceIndex::SRC1) {
-            GED_ENCODE(Src1DataType, IGAToGEDTranslation::lowerDataType(t));
+            GED_ENCODE(Src1DataType, lowerDataType(t));
         } else {
-            GED_ENCODE(Src2DataType, IGAToGEDTranslation::lowerDataType(t));
+            GED_ENCODE(Src2DataType, lowerDataType(t));
         }
     }
 
@@ -346,11 +346,11 @@ namespace iga
 
     template <SourceIndex S> void EncoderBase::encodeSrcModifier(SrcModifier x) {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0SrcMod, IGAToGEDTranslation::lowerSrcMod(x));
+            GED_ENCODE(Src0SrcMod, lowerSrcMod(x));
         } else if (S == SourceIndex::SRC1) {
-            GED_ENCODE(Src1SrcMod, IGAToGEDTranslation::lowerSrcMod(x));
+            GED_ENCODE(Src1SrcMod, lowerSrcMod(x));
         } else {
-            GED_ENCODE(Src2SrcMod, IGAToGEDTranslation::lowerSrcMod(x));
+            GED_ENCODE(Src2SrcMod, lowerSrcMod(x));
         }
     }
 
@@ -369,11 +369,11 @@ namespace iga
     void EncoderBase::encodeSrcMathMacroReg(MathMacroExt a)
     {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0MathMacroExt, IGAToGEDTranslation::lowerSpecialAcc(a));
+            GED_ENCODE(Src0MathMacroExt, lowerSpecialAcc(a));
         } else if (S == SourceIndex::SRC1) {
-            GED_ENCODE(Src1MathMacroExt, IGAToGEDTranslation::lowerSpecialAcc(a));
+            GED_ENCODE(Src1MathMacroExt, lowerSpecialAcc(a));
         } else {
-            GED_ENCODE(Src2MathMacroExt, IGAToGEDTranslation::lowerSpecialAcc(a));
+            GED_ENCODE(Src2MathMacroExt, lowerSpecialAcc(a));
         }
     }
     template <SourceIndex S> void EncoderBase::encodeSrcReg(
@@ -469,9 +469,9 @@ namespace iga
     template <SourceIndex S>
     void EncoderBase::encodeSrcRegionWidth(Region::Width w) {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0Width, IGAToGEDTranslation::lowerRegionWidth(w));
+            GED_ENCODE(Src0Width, lowerRegionWidth(w));
         } else { // (S == SourceIndex::SRC1)
-            GED_ENCODE(Src1Width, IGAToGEDTranslation::lowerRegionWidth(w));
+            GED_ENCODE(Src1Width, lowerRegionWidth(w));
         } // S != SRC2 since ternary Align1 doesn't have bits for that
     }
 
@@ -489,11 +489,11 @@ namespace iga
     template <SourceIndex S>
     void EncoderBase::encodeSrcRegionHorz(Region::Horz s) {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0HorzStride, IGAToGEDTranslation::lowerRegionHorz(s));
+            GED_ENCODE(Src0HorzStride, lowerRegionHorz(s));
         } else if (S == SourceIndex::SRC1) {
-            GED_ENCODE(Src1HorzStride, IGAToGEDTranslation::lowerRegionHorz(s));
+            GED_ENCODE(Src1HorzStride, lowerRegionHorz(s));
         } else {
-            GED_ENCODE(Src2HorzStride, IGAToGEDTranslation::lowerRegionHorz(s));
+            GED_ENCODE(Src2HorzStride, lowerRegionHorz(s));
         }
     }
 } // end: namespace iga*

@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../bits.hpp"
 
 using namespace iga;
-
+/*
 static const GED_RETURN_VALUE constructPartialGEDSendInstruction(
     ged_ins_t* ins, GED_MODEL gedP, GED_OPCODE op,
     bool supportsExMsgDesc, uint32_t exMsgDesc, uint32_t msgDesc)
@@ -62,7 +62,7 @@ static const GED_RETURN_VALUE constructPartialGEDSendInstruction(
 iga::SFID iga::getSFID(
     Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc)
 {
-    GED_MODEL gedP = IGAToGEDTranslation::lowerPlatform(p);
+    GED_MODEL gedP = lowerPlatform(p);
     GED_OPCODE gedOp = GED_OPCODE_INVALID;
     if (os.isSendFamily()) {
         gedOp = GED_OPCODE_send;
@@ -72,7 +72,7 @@ iga::SFID iga::getSFID(
     }
 
     if (gedOp == GED_OPCODE_INVALID)
-        return GEDToIGATranslation::translate(GED_SFID_INVALID);
+        return translate(GED_SFID_INVALID);
 
     ged_ins_t gedInst;
     auto getRetVal = constructPartialGEDSendInstruction(
@@ -85,20 +85,20 @@ iga::SFID iga::getSFID(
 
     // FIXME: duplicate code in Formatter::EmitSendDescriptorInfoGED
     if (p >= Platform::GEN12P1)
-        gedSFID = IGAToGEDTranslation::lowerSFID(os.op);
+        gedSFID = lowerSFID(os.???);
 
-    return GEDToIGATranslation::translate(gedSFID);
+    return translate(gedSFID);
 }
+*/
 
 iga::SFMessageType iga::getMessageType(
-    Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc)
+    Platform p, SFID sfid, uint32_t exDesc, uint32_t desc)
 {
-    int sfid = static_cast<int>(getSFID(p, os, exDesc, desc));
-    GED_SFID gedSFID = IGAToGEDTranslation::lowerSendTFID(sfid, p);
+    GED_SFID gedSFID = lowerSFID(sfid);
 
     GED_RETURN_VALUE getRetVal = GED_RETURN_VALUE_INVALID_FIELD;
     GED_MESSAGE_TYPE msgType = GED_MESSAGE_TYPE_INVALID;
-    GED_MODEL gedP = IGAToGEDTranslation::lowerPlatform(p);
+    GED_MODEL gedP = lowerPlatform(p);
 
     if (gedSFID != GED_SFID_INVALID && gedSFID != GED_SFID_NULL) {
         switch (gedSFID)
@@ -166,12 +166,12 @@ iga::SFMessageType iga::getMessageType(
     {
         return SFMessageType::INVALID;
     } else {
-        return GEDToIGATranslation::translate(msgType);
+        return translate(msgType);
     }
 
 }
 
-
+/*
 static uint32_t getSplitSendMsgLength(uint32_t exDesc) {
     return getBits<uint32_t>(exDesc, 6, 4);
 }
@@ -180,7 +180,7 @@ uint32_t iga::getMessageLengths(
     Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc,
     uint32_t* mLen, uint32_t* emLen, uint32_t* rLen)
 {
-    GED_MODEL gedP = IGAToGEDTranslation::lowerPlatform(p);
+    GED_MODEL gedP = lowerPlatform(p);
     GED_OPCODE gedOp = GED_OPCODE_INVALID;
     if (os.isSendFamily()) {
         gedOp = GED_OPCODE_send;
@@ -222,3 +222,4 @@ uint32_t iga::getMessageLengths(
 
     return n;
 }
+*/

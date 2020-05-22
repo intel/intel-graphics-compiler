@@ -327,10 +327,6 @@ namespace iga
 
         // Enables the operation to be used within a predicate assignment.
         operator bool() const {return hasAttr(VALID);}
-
-        static SFID sfidFromEncoding(Platform p, uint32_t sfidBits);
-        static SFID sfidFromOp(Platform p, Op op, uint32_t exDesc);
-
         //
         // Do we enable abstract encoding?
         //
@@ -351,6 +347,7 @@ namespace iga
         //     std::string *err = nullptr);
     }; //class MessageInfo
 
+    SFID sfidFromEncoding(Platform p, uint32_t sfidBits);
 
     // The payload lengths for a given message.
     // Negative values indicate that the value is unknown or could be variable.
@@ -373,7 +370,6 @@ namespace iga
         // For older platforms this will extract the SFID from exDesc
         PayloadLengths(
             Platform p,
-            Op op,
             ExecSize execSize,
             uint32_t desc,
             uint32_t exDesc);
@@ -492,8 +488,6 @@ namespace iga
     // incrementally enable load/store syntax
     bool       sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid);
     //
-    SFID       lookupSFID(std::string sfid);
-    Op         lookupOpFromSFID(SFID sfid);
     //
     struct VectorMessageArgs {
         SFID           sfid = SFID::INVALID;

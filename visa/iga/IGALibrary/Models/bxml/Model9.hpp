@@ -32,8 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga {
     static const iga::OpSpec MODEL_GEN9_OPSPECS[static_cast<unsigned int>(Op::TOTAL_OPS) + 1] {
-        /* Op::0 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::1 */ {Op::ADD, "add", "add", 0x40, "Addition",
+        /* Op::0 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::1 */ {Op::ADD, Platform::GEN9, "add", 0x40, "Addition",
             "The add instruction performs component-wise addition of src0 and src1 and stores the results in dst.\n"
             "Addition of two floating-point numbers follows rules in add (IEEE mode) or add (ALT mode).\n"
             "\n"
@@ -67,14 +67,10 @@ namespace iga {
                 // HF,F <- HF,F
                 {TYPE(Type::HF)|TYPE(Type::F),TYPE(Type::HF)|TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::2 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::3 */ {Op::ADDC, "addc", "addc", 0x4e, "Addition with Carry",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::2 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::3 */ {Op::ADDC, Platform::GEN9, "addc", 0x4e, "Addition with Carry",
             "The addc instruction performs component-wise addition of src0 and src1 and stores the results in dst; it also stores the carry into acc.\n"
             "If the operation produces a carry out, 0x00000001 is stored in acc, else 0x00000000 is stored in acc.\n"
             "\n"
@@ -85,13 +81,9 @@ namespace iga {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::4 */ {Op::AND, "and", "and", 0x5, "Logic And",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER
+        },
+        /* Op::4 */ {Op::AND, Platform::GEN9, "and", 0x5, "Logic And",
             "The and instruction performs component-wise logic AND operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "Register source operands can use source modifiers:\n"
@@ -115,13 +107,9 @@ namespace iga {
                 // UQ,Q <- UQ,Q
                 {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UQ)|TYPE(Type::Q)}
             },
-            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::5 */ {Op::ASR, "asr", "asr", 0xc, "Arithmetic Shift Right",
+            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::5 */ {Op::ASR, Platform::GEN9, "asr", 0xc, "Arithmetic Shift Right",
             "Perform component-wise arithmetic right shift of the bits in src0 by the shift count indicated in src1, storing the results in dst. If src0 has a signed type, insert copies of src0\'s sign bit in the number of MSBs indicated by the shift count. Otherwise insert 0 bits.\n"
             "\n"
             "[Pre-DevBDW]: The shift count is taken from the low five bits of src1, regardless of the src1 type and treated as an unsigned integer in the range 0 to 31.\n"
@@ -151,13 +139,9 @@ namespace iga {
                 // UQ,Q <- UQ,Q
                 {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UQ)|TYPE(Type::Q)}
             },
-            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::6 */ {Op::AVG, "avg", "avg", 0x42, "Average",
+            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::6 */ {Op::AVG, Platform::GEN9, "avg", 0x42, "Average",
             "The avg instruction performs component-wise integer average of src0 and src1 and stores the results in dst. An integer average uses integer upward rounding. It is equivalent to increment one to the addition of src0 and src1 and then apply an arithmetic right shift to this intermediate value.\n"
             "\n"
             "\n"
@@ -167,13 +151,9 @@ namespace iga {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::7 */ {Op::BFE, "bfe", "bfe", 0x18, "Bit Field Extract",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::7 */ {Op::BFE, Platform::GEN9, "bfe", 0x18, "Bit Field Extract",
             "Component-wise extract a bit field from src2 using the bit field width from src0 and the bit field offset from src1. Store the extracted bit field value in the low bits of dst and sign extend (if D type) or zero extend (if UD type).\n"
             "The width and offset values are from the low five bits of src0 and src1 respectively, or src0 & 0x1f and src1 & 0x1f.\n"
             "If width is zero, the result is zero.\n"
@@ -188,13 +168,9 @@ namespace iga {
                 // D <- D
                 {TYPE(Type::D),TYPE(Type::D)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::8 */ {Op::BFI1, "bfi1", "bfi1", 0x19, "Bit Field Insert 1",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::8 */ {Op::BFI1, Platform::GEN9, "bfi1", 0x19, "Bit Field Insert 1",
             "The bfi1 instruction is the first instruction in a two-instruction macro for bfi (Bit Field Insert).\n"
             "\n"
             "The bfi1 instruction component-wise generates mask with control from src0 and src1 and stores the results in dst. The mask is used in the bfi2 instruction to generate the final result of bfi.\n"
@@ -225,13 +201,9 @@ namespace iga {
                 // D <- D
                 {TYPE(Type::D),TYPE(Type::D)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::9 */ {Op::BFI2, "bfi2", "bfi2", 0x1a, "Bit Field Insert 2",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::9 */ {Op::BFI2, Platform::GEN9, "bfi2", 0x1a, "Bit Field Insert 2",
             "The bfi2 instruction is the second instruction in a two-instruction macro for bfi (Bit Field Insert).\n"
             "\n"
             "The bfi2 instruction component-wise performs the bitfield insert operation on src1 and src2 based on the mask in src0.\n"
@@ -255,270 +227,10 @@ namespace iga {
                 // D <- D
                 {TYPE(Type::D),TYPE(Type::D)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::10 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::11 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::12 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::13 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::14 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::15 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::16 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::17 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::18 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::19 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::20 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::21 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::22 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::23 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::24 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::25 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::26 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::27 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::28 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::29 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::30 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::31 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::32 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::33 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::34 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::35 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::36 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::37 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::38 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::39 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::40 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::41 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::42 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::43 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::44 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::45 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::46 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::47 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::48 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::49 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::50 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::51 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::52 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::53 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::54 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::55 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::56 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::57 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::58 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::59 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::60 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::61 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::62 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::63 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::64 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::65 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::66 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::67 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::68 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::69 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::70 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::71 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::72 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::73 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::74 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::75 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::76 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::77 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::78 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::79 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::80 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::81 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::82 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::83 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::84 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::85 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::86 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::87 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::88 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::89 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::90 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::91 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::92 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::93 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::94 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::95 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::96 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::97 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::98 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::99 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::100 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::101 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::102 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::103 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::104 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::105 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::106 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::107 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::108 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::109 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::110 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::111 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::112 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::113 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::114 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::115 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::116 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::117 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::118 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::119 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::120 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::121 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::122 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::123 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::124 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::125 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::126 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::127 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::128 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::129 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::130 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::131 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::132 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::133 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::134 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::135 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::136 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::137 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::138 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::139 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::140 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::141 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::142 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::143 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::144 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::145 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::146 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::147 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::148 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::149 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::150 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::151 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::152 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::153 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::154 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::155 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::156 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::157 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::158 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::159 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::160 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::161 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::162 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::163 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::164 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::165 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::166 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::167 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::168 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::169 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::170 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::171 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::172 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::173 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::174 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::175 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::176 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::177 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::178 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::179 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::180 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::181 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::182 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::183 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::184 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::185 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::186 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::187 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::188 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::189 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::190 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::191 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::192 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::193 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::194 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::195 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::196 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::197 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::198 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::199 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::200 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::201 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::202 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::203 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::204 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::205 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::206 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::207 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::208 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::209 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::210 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::211 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::212 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::213 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::214 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::215 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::216 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::217 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::218 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::219 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::220 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::221 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::222 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::223 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::224 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::225 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::226 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::227 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::228 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::229 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::230 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::231 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::232 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::233 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::234 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::235 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::236 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::237 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::238 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::239 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::240 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::241 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::242 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::243 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::244 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::245 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::246 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::247 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::248 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::249 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::250 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::251 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::252 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::253 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::254 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::255 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::256 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::257 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::258 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::259 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::260 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::261 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::262 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::263 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::264 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::265 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::266 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::267 */ {Op::BFREV, "bfrev", "bfrev", 0x17, "Bit Field Reverse",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::10 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::11 */ {Op::BFREV, Platform::GEN9, "bfrev", 0x17, "Bit Field Reverse",
             "The bfrev instruction component-wise reverses all the bits in src0 and stores the results in dst.\n"
             "\n"
             "\n"
@@ -528,13 +240,9 @@ namespace iga {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::268 */ {Op::BRC, "brc", "brc", 0x23, "Branch Converging",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::12 */ {Op::BRC, Platform::GEN9, "brc", 0x23, "Branch Converging",
             "The brc instruction redirects the execution forward or backward to the instruction pointed by (current IP + offset). The jump will occur if all channels are branched away.\n"
             "\n"
             "UIP should reference the instruction where all channels are expected to come together. JIP should reference the end of the innermost conditional block.\n"
@@ -549,13 +257,9 @@ namespace iga {
                 //  <- D
                 {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::269 */ {Op::BRD, "brd", "brd", 0x21, "Branch Diverging",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::13 */ {Op::BRD, Platform::GEN9, "brd", 0x21, "Branch Diverging",
             "The brd instruction redirects the execution forward or backward to the instruction pointed by (current IP + offset). The jump will occur if any channels are branched away.\n"
             "\n"
             "\n"
@@ -568,13 +272,9 @@ namespace iga {
                 //  <- D
                 {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::270 */ {Op::BREAK, "break", "break", 0x28, "Break",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::14 */ {Op::BREAK, Platform::GEN9, "break", 0x28, "Break",
             "The break instruction is used to early-out from the inner most loop, or early out from the inner most switch block.\n"
             "\n"
             "When used in a loop, upon execution, the break instruction terminates the loop for all execution channels enabled. If all the enabled channels hit the break instruction, jump to the instruction referenced by JIP. JIP should be the offset to the end of the inner most conditional or loop block, UIP should be the offset to the while instruction of the loop block.\n"
@@ -588,13 +288,9 @@ namespace iga {
             "Format:\n"
             "[(pred)] break (exec_size) JIP UIP\n",
             OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::271 */ {Op::CALL, "call", "call", 0x2c, "Call",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::15 */ {Op::CALL, Platform::GEN9, "call", 0x2c, "Call",
             "The call instruction jumps to a subroutine. It can be predicated or non-predicated. If non-predicated, all enabled channels jump to the subroutine. If predicated, only the channels enabled by PMask jump to the subroutine; the rest of the channels move to the next instruction after the call instruction. If none of the channels jump into the subroutine, the call instruction is treated as a nop.\n"
             "\n"
             "In case of a jump, the call instruction stores the return IP onto the first DWord of the destination register and stores the CallMask in the second DWord of the destination register.\n"
@@ -616,13 +312,9 @@ namespace iga {
                 // D,UD <-
                 {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::272 */ {Op::CALLA, "calla", "calla", 0x2b, "Call Absolute",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::16 */ {Op::CALLA, Platform::GEN9, "calla", 0x2b, "Call Absolute",
             "The calla instruction jumps to a subroutine. It can be predicated or non-predicated. If non-predicated, all enabled channels jump to the subroutine. If predicated, only the channels enabled by PMask jump to the subroutine; the rest of the channels move to the next instruction after the calla instruction. If none of the channels jump into the subroutine, the calla instruction is treated as a nop.\n"
             "\n"
             "In case of a jump, the call instruction stores the return IP onto the first DWord of the destination register and stores the CallMask in the second DWord of the destination register.\n"
@@ -639,13 +331,9 @@ namespace iga {
                 // D,UD <-
                 {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::273 */ {Op::CBIT, "cbit", "cbit", 0x4d, "Count Bits Set",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::17 */ {Op::CBIT, Platform::GEN9, "cbit", 0x4d, "Count Bits Set",
             "The cbit instruction counts component-wise the total bits set in src0 and stores the resulting counts in dst.\n"
             "\n"
             "\n"
@@ -655,13 +343,9 @@ namespace iga {
                 // UD <- UB,UW,UD
                 {TYPE(Type::UD),TYPE(Type::UB)|TYPE(Type::UW)|TYPE(Type::UD)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::274 */ {Op::CMP, "cmp", "cmp", 0x10, "Compare",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::18 */ {Op::CMP, Platform::GEN9, "cmp", 0x10, "Compare",
             "The cmp instruction performs component-wise comparison of src0 and src1 and stores the results in the selected flag register and in dst. It takes component-wise subtraction of src0 and src1, evaluating the conditional code (excluding NS signal) based on the conditional modifier, and storing the conditional bits in bit-packed form in the destination flag register and all bits of dst channels. If the dst is not null, for the enabled channels, then all bits of the destination channel will contain the flag value for the channel. When the instruction operates on packed word format, one general register may store up to 16 such comparison results. In DWord format, one general register may store up to 8 results.\n"
             "\n"
             "A conditional modifier must be specified; the conditional modifier field cannot be 0000b. The comparison does not use the NS (NaN source) signals, as described in the Creating Conditional Flags section. Accordingly the conditional modifier should not be .u (unordered).\n"
@@ -697,13 +381,9 @@ namespace iga {
                 // HF,F <- HF,F
                 {TYPE(Type::HF)|TYPE(Type::F),TYPE(Type::HF)|TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::275 */ {Op::CMPN, "cmpn", "cmpn", 0x11, "Compare NaN",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::19 */ {Op::CMPN, Platform::GEN9, "cmpn", 0x11, "Compare NaN",
             "The cmpn instruction performs component-wise special-NaN comparison of src0 and src1 and stores the results in the selected flag register and in dst. It takes component-wise subtraction of src0 and src1, evaluating the conditional signals including NS based on the conditional modifier, and storing the conditional flag bits in bit-packed form in the destination flag register and all bits of dst channels. If the dst is not null, for the enabled channels, then all bits of the destination channel will contain the flag value for the channel. When the instruction operates on packed word format, one general register may store up to 16 such comparison results. In DWord format, one general register may store up to 8 results.\n"
             "\n"
             "A conditional modifier must be specified; the conditional modifier field cannot be 0000b. More information about the conditional signals used is in the Creating Conditional Flags section.\n"
@@ -729,13 +409,9 @@ namespace iga {
                 // F,HF <- F,HF
                 {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::276 */ {Op::CONT, "cont", "cont", 0x29, "Continue",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::20 */ {Op::CONT, Platform::GEN9, "cont", 0x29, "Continue",
             "The cont instruction disables execution for the subset of channels for the remainder of the current loop iteration. Channels remain disabled until right before the while instuction or right before the condition check code block for the while instruction. If all enabled channels hit this instruction, jump to the instruction referenced by JIP where execution continues.\n"
             "\n"
             "UIP should always reference the loop\'s associated while instruction. JIP should point to the last instruction of the inner most conditional block if the cont instruction is inside a conditional block. In case of the break instruction directly under the loop, the JIP and the UIP are the same.\n"
@@ -749,13 +425,9 @@ namespace iga {
             "Format:\n"
             "[(pred)] cont (exec_size) JIP UIP\n",
             OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::277 */ {Op::CSEL, "csel", "csel", 0x12, "Conditional Select",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::21 */ {Op::CSEL, Platform::GEN9, "csel", 0x12, "Conditional Select",
             "The csel instruction selectively moves components in src0 or src1 to the dst based on the result of the compare of src2 with zero. If the channel condition is true, data in src0 is moved into dst. Otherwise, data in src1 is moved into dst. The csel instruction provides the function of a cmp followed by sel. The instruction must not be used if cmpn is required. The instruction does not update the flag register.\n"
             "\n"
             "\n"
@@ -768,14 +440,10 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::278 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::279 */ {Op::DP2, "dp2", "dp2", 0x57, "Dot Product 2",
+            OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::22 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::23 */ {Op::DP2, Platform::GEN9, "dp2", 0x57, "Dot Product 2",
             "The dp2 instruction performs a two-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every third and fourth element of src0 (post-source-swizzle if present) are not involved in the computation.\n"
             "\n"
             "The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n"
@@ -789,13 +457,9 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::280 */ {Op::DP3, "dp3", "dp3", 0x56, "Dot Product 3",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::24 */ {Op::DP3, Platform::GEN9, "dp3", 0x56, "Dot Product 3",
             "The dp3 instruction performs a three-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every fourth element of src0 (post-source-swizzle if present) is not involved in the computation.\n"
             "\n"
             "The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n"
@@ -809,13 +473,9 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::281 */ {Op::DP4, "dp4", "dp4", 0x54, "Dot Product 4",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::25 */ {Op::DP4, Platform::GEN9, "dp4", 0x54, "Dot Product 4",
             "The dp4 instruction performs a four-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst.\n"
             "\n"
             "The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n"
@@ -827,80 +487,12 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::282 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::283 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::284 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::285 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::286 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::287 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::288 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::289 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::290 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::291 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::292 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::293 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::294 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::295 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::296 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::297 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::298 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::299 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::300 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::301 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::302 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::303 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::304 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::305 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::306 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::307 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::308 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::309 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::310 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::311 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::312 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::313 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::314 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::315 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::316 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::317 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::318 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::319 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::320 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::321 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::322 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::323 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::324 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::325 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::326 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::327 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::328 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::329 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::330 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::331 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::332 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::333 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::334 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::335 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::336 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::337 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::338 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::339 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::340 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::341 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::342 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::343 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::344 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::345 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::346 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::347 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::348 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::349 */ {Op::DPH, "dph", "dph", 0x55, "Dot Product Homogeneous",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::26 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::27 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::28 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::29 */ {Op::DPH, Platform::GEN9, "dph", 0x55, "Dot Product Homogeneous",
             "The dph instruction performs a four-wide homogeneous dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every fourth element of src0 (post-source-swizzle if present) is forced to 1.0f.\n"
             "\n"
             "Use the dp4 instruction to do a four-wide dot product that includes all elements of src0 and src1.\n"
@@ -912,13 +504,9 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::350 */ {Op::ELSE, "else", "else", 0x24, "Else",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::30 */ {Op::ELSE, Platform::GEN9, "else", 0x24, "Else",
             "The else instruction is an optional statement within an if/else/endif block of code. It restricts execution within the else/endif portion to the opposite set of channels enabled under the if/else portion. Channels which were inactive prior to entering the if/endif block remain inactive throughout the entire block.\n"
             "\n"
             "All enabled channels upon arriving the else instruction will be redirected to the matching endif. If all channels are redirected (by else or before else), a relative jump is performed to the location specified by  <JIP>. The jump target should be the matching endif instruction for that conditional block.\n"
@@ -937,13 +525,9 @@ namespace iga {
             "\n"
             "If all channels are redirected (by else or before else), relative jump is performed to the location specified by <JIP> + 1.\n",
             OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_BRCTL,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::351 */ {Op::ENDIF, "endif", "endif", 0x25, "End If",
+            OpSpec::Attr::SUPPORTS_BRCTL
+        },
+        /* Op::31 */ {Op::ENDIF, Platform::GEN9, "endif", 0x25, "End If",
             "The endif instruction terminates an if/else/endif block of code. It restores execution to the channels that were active prior to the if/else/endif block.\n"
             "\n"
             "The endif instruction is also used to hop out of nested conditionals by jumping to the end of the next outer conditional block when all channels are disabled.\n"
@@ -955,15 +539,11 @@ namespace iga {
             "Format:\n"
             "endif JIP\n",
             OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
-            OpSpec::Attr::NONE,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::352 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::353 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::354 */ {Op::FBH, "fbh", "fbh", 0x4b, "Find First Bit from MSB Side",
+            OpSpec::Attr::NONE
+        },
+        /* Op::32 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::33 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::34 */ {Op::FBH, Platform::GEN9, "fbh", 0x4b, "Find First Bit from MSB Side",
             "If src0 is unsigned, the fbh instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n"
             "\n"
             "If src0 is signed and positive, the fbh instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n"
@@ -983,13 +563,9 @@ namespace iga {
                 // UD <- D,UD
                 {TYPE(Type::UD),TYPE(Type::D)|TYPE(Type::UD)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::355 */ {Op::FBL, "fbl", "fbl", 0x4c, "Find First Bit from LSB Side",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::35 */ {Op::FBL, Platform::GEN9, "fbl", 0x4c, "Find First Bit from LSB Side",
             "The fbl instruction counts component-wise the number of LSB 0 bits before the first 1 bit in src0, storing that number in dst.\n"
             "\n"
             "\n"
@@ -1002,13 +578,9 @@ namespace iga {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::356 */ {Op::FRC, "frc", "frc", 0x43, "Fraction",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::36 */ {Op::FRC, Platform::GEN9, "frc", 0x43, "Fraction",
             "The frc instruction computes, component-wise, the truncate-to-minus-infinity fractional values of src0 and stores the results in dst. The results, in the range of [0.0, 1.0], are the fractional portion of the source data. The result is in the range [0.0, 1.0] irrespective of the rounding mode. Floating-point fraction computation follows the rules in the following tables, based on the current floating-point mode.\n"
             "\n"
             "\n"
@@ -1018,15 +590,11 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::357 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::358 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::359 */ {Op::GOTO, "goto", "goto", 0x2e, "Goto",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::37 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::38 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::39 */ {Op::GOTO, Platform::GEN9, "goto", 0x2e, "Goto",
             "The goto instruction directs the instruction pointer to the offset specified by the UIP offset or to the next IP based on the BranchCtrl bit in the instruction. The active channels that are predicated on this instruction will take the IP + UIP path when BranchCtrl is set else the channels take IP + 1. The active channels that are not predicated on this instruction will be made inactive and waiting to be joined at the join IP. The join IP is IP + UIP when BranchCtrl is clear else it is the next IP.\n"
             "\n"
             "\n"
@@ -1048,13 +616,9 @@ namespace iga {
             "Format:\n"
             "[(pred)] goto (exec_size) JIP UIP branch_ctrl\n",
             OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_BRCTL|OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::360 */ {Op::HALT, "halt", "halt", 0x2a, "Halt",
+            OpSpec::Attr::SUPPORTS_BRCTL|OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::40 */ {Op::HALT, Platform::GEN9, "halt", 0x2a, "Halt",
             "The halt instruction temporarily suspends execution for all enabled compute channels. Upon execution, the enabled channels are sent to the instruction at (IP + UIP), if all channels are enabled at HALT, jump to the instruction at (IP + JIP).\n"
             "\n"
             "If the halt instruction is not inside any conditional code block, the values of JIP and UIP should be the same. If the halt instruction is inside a conditional code block, the UIP should be the end of the program and the JIP should be the end of the inner most conditional code block.\n"
@@ -1070,13 +634,9 @@ namespace iga {
             "Format:\n"
             "[(pred)] halt (exec_size) JIP UIP\n",
             OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::361 */ {Op::IF, "if", "if", 0x22, "If",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::41 */ {Op::IF, Platform::GEN9, "if", 0x22, "If",
             "An if instruction starts an if/endif or an if/else/endif block of code. It restricts execution within the conditional block to only those channels that were enabled via the predicate control.\n"
             "\n"
             "Each if instruction must have a matching endif instruction and may have up to one matching else instruction before the matching endif.\n"
@@ -1092,13 +652,9 @@ namespace iga {
             "Format:\n"
             "[(pred)] if (exec_size JIP UIP <branch_ctrl>\n",
             OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_BRCTL|OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::362 */ {Op::ILLEGAL, "illegal", "illegal", 0x0, "Illegal",
+            OpSpec::Attr::SUPPORTS_BRCTL|OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::42 */ {Op::ILLEGAL, Platform::GEN9, "illegal", 0x0, "Illegal",
             "The Illegal Opcode Exception Enable flag in cr0.1 is normally set so the normal processing of an illegal opcode is to transfer control to the System Routine.\n"
             "\n"
             "Instruction dispatch treats any unused 8-bit opcode (including bit 7 of the instruction, reserved for future opcode expansion) as if it is the illegal opcode.\n"
@@ -1111,13 +667,9 @@ namespace iga {
             "Format:\n"
             "illegal\n",
             OpSpec::Format::NULLARY, { }, // no type mappings
-            OpSpec::Attr::NONE,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::363 */ {Op::JMPI, "jmpi", "jmpi", 0x20, "Jump Indexed",
+            OpSpec::Attr::NONE
+        },
+        /* Op::43 */ {Op::JMPI, Platform::GEN9, "jmpi", 0x20, "Jump Indexed",
             "The jmpi instruction redirects program execution to an index offset relative to the post-incremented instruction pointer. The index is a signed integer value, with positive or zero integers for forward jumps, and negative integers for backward jumps. In GEN binary, index is at location src1. The ip register must be put (for example, by the assembler) at the dst and src0 locations. Predication is allowed to provide conditional jump with a scalar condition. As the execution size is 1, the first channel of PMASK (flags post prediction control and negate) is used to determine whether the jump is taken or not. If the condition is false, the jump is not taken and execution continues with the next instruction.\n"
             "\n"
             "\n"
@@ -1138,13 +690,9 @@ namespace iga {
                 //  <- D
                 {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::364 */ {Op::JOIN, "join", "join", 0x2f, "Join",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::44 */ {Op::JOIN, Platform::GEN9, "join", 0x2f, "Join",
             "The join instruction makes the inactive channels active at the join IP if those channels are predicated. Any deactivated channels due to a goto instruction match the join IP are activated (qualified with predicates at join). If no IP is matched at this join, the program goes to the next IP with the active channels which followed the program path up to the join instruction. If no active channels are present after executing the join instruction, the program jumps to the offset specified by JIP instead of next IP.\n"
             "\n"
             "The join instruction is used in conjunction with a goto instruction. The join activates channels that are deactivated by the goto instruction. See the goto instruction for the deactivation rules.\n"
@@ -1162,13 +710,9 @@ namespace iga {
             "\n"
             "An index of 0 is an infinite loop.\n",
             OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::365 */ {Op::LINE, "line", "line", 0x59, "Line",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::45 */ {Op::LINE, Platform::GEN9, "line", 0x59, "Line",
             "The line instruction computes a component-wise line equation (v = p * u + q where u, v are vectors and p, q are scalars) of src0 and src1 and stores the results in dst. src1 is the input vector u. src0 provides input scalars p and q, where p is the scalar value based on the region description of src0 and q is the scalar value implied from src0 region. Specifically, q is the fourth component of the 4-tuple (128-bit aligned) that p belongs to.\n"
             "\n"
             "\n"
@@ -1178,13 +722,9 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::366 */ {Op::LRP, "lrp", "lrp", 0x5c, "Linear Interpolation",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::46 */ {Op::LRP, Platform::GEN9, "lrp", 0x5c, "Linear Interpolation",
             "The lrp instruction takes component-wise multiplication of src0 and src1, and adds the result to the component-wise multiplication of src2 and (1 - src0), and then stores the final results in dst.\n"
             "\n"
             "\n"
@@ -1194,13 +734,9 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::367 */ {Op::LZD, "lzd", "lzd", 0x4a, "Leading Zero Detection",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::47 */ {Op::LZD, Platform::GEN9, "lzd", 0x4a, "Leading Zero Detection",
             "The lzd instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n"
             "\n"
             "If src0 is zero, store 32 in dst.\n"
@@ -1212,13 +748,9 @@ namespace iga {
                 // UD <- D,UD
                 {TYPE(Type::UD),TYPE(Type::D)|TYPE(Type::UD)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::368 */ {Op::MAC, "mac", "mac", 0x48, "Multiply Accumulate",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::48 */ {Op::MAC, Platform::GEN9, "mac", 0x48, "Multiply Accumulate",
             "The mac instruction takes component-wise multiplication of src0 and src1, adds the results with the corresponding accumulator values, and then stores the final results in dst.\n"
             "\n"
             "\n"
@@ -1239,13 +771,9 @@ namespace iga {
                 // HF,F <- HF,F
                 {TYPE(Type::HF)|TYPE(Type::F),TYPE(Type::HF)|TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::369 */ {Op::MACH, "mach", "mach", 0x49, "Multiply Accumulate High",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::49 */ {Op::MACH, Platform::GEN9, "mach", 0x49, "Multiply Accumulate High",
             "The mach instruction performs DWord integer multiply-accumulate operation and outputs the high DWord (bits 63:32). For each enabled channel, this instruction multiplies the DWord in src0 with the high word of the DWord in src1, left shifts the result by 16 bits, adds it with the corresponding accumulator values, and keeps the whole 64-bit result in the accumulator. It then stores the high DWord (bits 63:32) of the results in dst. This instruction is intended to be used to emulate 32-bit DWord integer multiplication by using the large number of bits available in the accumulator. For example, the following instructions perform vector multiplication of two 32-bit signed integer sources from r2 and r3 and store the resulting vectors with the high 32 bits in r5 and the low 32 bits in r6.\n"
             "\n"
             "mul (8) acc0:d r2.0<8;8,1>:d r3.0<16;8,2>:uw\n"
@@ -1275,14 +803,10 @@ namespace iga {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::370 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::371 */ {Op::MAD, "mad", "mad", 0x5b, "Multiply Add",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::50 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::51 */ {Op::MAD, Platform::GEN9, "mad", 0x5b, "Multiply Add",
             "The mad instruction takes component-wise multiplication of src1 and src2, adds the results with the corresponding src0 values, and then stores the final results in dst.\n"
             "\n"
             "\n"
@@ -1301,13 +825,9 @@ namespace iga {
                 // HF,F <- HF,F
                 {TYPE(Type::HF)|TYPE(Type::F),TYPE(Type::HF)|TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::372 */ {Op::MADM, "madm", "madm", 0x5d, "Multiply Add for Macro",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::52 */ {Op::MADM, Platform::GEN9, "madm", 0x5d, "Multiply Add for Macro",
             "The madm instruction takes component-wise multiplication of src1 and src2, adds the results with the corresponding src0 values, and then stores the final results in dst.\n"
             "\n"
             "The source and destination operands have a higher precision carried in the exponent for this operation. The madm instruction is used for macro operations, where precision is accumulated over several instructions. This accumulation requires the exponent to increase by 2 extra bits across multiple madm operations.\n"
@@ -1317,96 +837,22 @@ namespace iga {
             "\n"
             "Format:\n"
             "[(pred)] madm[.cmod] (exec_size) dst src0 src1 src2\n",
-            OpSpec::Format::TERNARY_MACRO_REG_REG_REG, {
+            OpSpec::Format::TERNARY_REGIMM_REG_REGIMM, {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)},
                 // DF <- DF
                 {TYPE(Type::DF),TYPE(Type::DF)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::373 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::374 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::375 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::376 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::377 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::378 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::379 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::380 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::381 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::382 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::383 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::384 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::385 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::386 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::387 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::388 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::389 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::390 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::391 */ {Op::MATH, "math", "math", 0x38, "Extended Math Function",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::53 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::54 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::55 */ {Op::MATH, Platform::GEN9, "math", 0x38, "Extended Math Function",
             "The math instruction performs extended math function on the components in src0, or src0 and src1, and write the output to the channels of dst. The type of extended math function are based on the FC[3:0] encoding in the table below.\n"
             "\n"
             "\n"
             "Format:\n"
             "[(pred)] math (exec_size) dst src0 src1 <FC>\n",
-            OpSpec::Format::GROUP, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::MATH_COS /* subopsStart */,
-            16 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            Field("MathFC", 24, 4)},
-        /* Op::392 */ {Op::MATH_COS, "cos", "math.cos", 0x38, "COS",
-            "Cosine function. cos(src0)\n",
-            OpSpec::Format::MATH_UNARY_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            7 /* functionControlValue = encoding_of(MathFC::COS) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::393 */ {Op::MATH_EXP, "exp", "math.exp", 0x38, "EXP",
-            "Exponential (E^src0)\n",
-            OpSpec::Format::MATH_UNARY_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            3 /* functionControlValue = encoding_of(MathFC::EXP) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::394 */ {Op::MATH_FDIV, "fdiv", "math.fdiv", 0x38, "FDIV",
-            "Floating-Point Divide function. src0/src1\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)},
@@ -1417,213 +863,9 @@ namespace iga {
                 // F,HF <- F,HF
                 {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            9 /* functionControlValue = encoding_of(MathFC::FDIV) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::395 */ {Op::MATH_IDIV, "idiv", "math.idiv", 0x38, "IDIV",
-            "Integer Divide with Quotient and Remainder. The quotient goes in the destination register; the remainder goes in the following register.\n",
-            OpSpec::Format::MATH_BINARY_REG_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            11 /* functionControlValue = encoding_of(MathFC::IDIV) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::396 */ {Op::MATH_INV, "inv", "math.inv", 0x38, "INV",
-            "Reciprocal (Multiplicative Inverse): 1/src0\n",
-            OpSpec::Format::MATH_UNARY_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            1 /* functionControlValue = encoding_of(MathFC::INV) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::397 */ {Op::MATH_INVM, "invm", "math.invm", 0x38, "INVM",
-            "Reciprocal Macro for IEEE754-compliant fdiv\n",
-            OpSpec::Format::MATH_MACRO_BINARY_REG_REG, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            14 /* functionControlValue = encoding_of(MathFC::INVM) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::398 */ {Op::MATH_IQOT, "iqot", "math.iqot", 0x38, "IQOT",
-            "Integer Quotient only\n",
-            OpSpec::Format::MATH_BINARY_REG_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            12 /* functionControlValue = encoding_of(MathFC::IQOT) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::399 */ {Op::MATH_IREM, "irem", "math.irem", 0x38, "IREM",
-            "Integer Remainder only\n",
-            OpSpec::Format::MATH_BINARY_REG_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            13 /* functionControlValue = encoding_of(MathFC::IREM) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::400 */ {Op::MATH_LOG, "log", "math.log", 0x38, "LOG",
-            "Natural log: ln(src0)\n",
-            OpSpec::Format::MATH_UNARY_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            2 /* functionControlValue = encoding_of(MathFC::LOG) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::401 */ {Op::MATH_POW, "pow", "math.pow", 0x38, "POW",
-            "src0^src1\n",
-            OpSpec::Format::MATH_BINARY_REG_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            10 /* functionControlValue = encoding_of(MathFC::POW) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::402 */ {Op::MATH_RSQT, "rsqt", "math.rsqt", 0x38, "RSQT",
-            "Reciprocal Square Root: 1/sqt(src)\n",
-            OpSpec::Format::MATH_UNARY_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            5 /* functionControlValue = encoding_of(MathFC::RSQT) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::403 */ {Op::MATH_RSQTM, "rsqtm", "math.rsqtm", 0x38, "RSQTM",
-            "Reciprocal Square Root Macro for IEEE754-compliant rsqt\n",
-            OpSpec::Format::MATH_MACRO_UNARY_REG, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            15 /* functionControlValue = encoding_of(MathFC::RSQTM) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::404 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::405 */ {Op::MATH_SIN, "sin", "math.sin", 0x38, "SIN",
-            "Sine function. sin(src0)\n",
-            OpSpec::Format::MATH_UNARY_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            6 /* functionControlValue = encoding_of(MathFC::SIN) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::406 */ {Op::MATH_SQT, "sqt", "math.sqt", 0x38, "SQT",
-            "Square Root\n",
-            OpSpec::Format::MATH_UNARY_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)},
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::MATH /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            4 /* functionControlValue = encoding_of(MathFC::SQT) */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::407 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::408 */ {Op::MOV, "mov", "mov", 0x1, "Move",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::56 */ {Op::MOV, Platform::GEN9, "mov", 0x1, "Move",
             "The mov instruction moves the components in src0 into the channels of dst. If src0 and dst are of different types, format conversion is performed. If src0 is a scalar immediate, the immediate value is loaded into enabled channels of dst.\n"
             "\n"
             "A mov with the same source and destination type, no source modifier, and no saturation is a raw move. A packed byte destination region (B or UB type with HorzStride == 1 and ExecSize > 1) can only be written using raw move.\n"
@@ -1695,13 +937,9 @@ namespace iga {
                 // HF <- HF
                 {TYPE(Type::HF),TYPE(Type::HF)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::409 */ {Op::MOVI, "movi", "movi", 0x3, "Move Indexed",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::57 */ {Op::MOVI, Platform::GEN9, "movi", 0x3, "Move Indexed",
             "The movi instruction performs a fast component-wise indexed move for subfields from src0 to dst. The source\n"
             "operand must be an indirectly-addressed register. All channels of the source operand share the same register\n"
             "number, which is provided by the register field of the first address subregister, with a possible immediate\n"
@@ -1750,7 +988,7 @@ namespace iga {
             "\n"
             "\n"
             "For all 3 conditions above, a0.n[4:0] = a0.n[4:0] + addr_imm[4:0].\n",
-            OpSpec::Format::BASIC_UNARY_REG, {
+            OpSpec::Format::BASIC_UNARY_REGIMM, {
                 // B <- B
                 {TYPE(Type::B),TYPE(Type::B)},
                 // UB <- UB
@@ -1766,13 +1004,9 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::410 */ {Op::MUL, "mul", "mul", 0x41, "Multiply",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::58 */ {Op::MUL, Platform::GEN9, "mul", 0x41, "Multiply",
             "The mul instruction performs component-wise multiplication of src0 and src1 and stores the results in dst. When multiplying integer datatypes, if src0 is DW and src1 is W, irrespective of the destination datatype, the accumulator maintains full 48-bit precision. This is required to handle the macro for 32x32 multiplication. The macro described in the mach instruction should be used to obtain the full precision 64-bit multiplication results.\n"
             "\n"
             "\n"
@@ -1808,26 +1042,18 @@ namespace iga {
                 // HF,F <- HF,F
                 {TYPE(Type::HF)|TYPE(Type::F),TYPE(Type::HF)|TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::411 */ {Op::NOP, "nop", "nop", 0x7e, "No Operation",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::59 */ {Op::NOP, Platform::GEN9, "nop", 0x7e, "No Operation",
             "Do nothing. The nop instruction takes an instruction dispatch but performs no operation. It can be used for assembly patching in memory, or to insert a delay in the program sequence.\n"
             "\n"
             "\n"
             "Format:\n"
             "nop\n",
             OpSpec::Format::NULLARY, { }, // no type mappings
-            OpSpec::Attr::NONE,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::412 */ {Op::NOT, "not", "not", 0x4, "Logic Not",
+            OpSpec::Attr::NONE
+        },
+        /* Op::60 */ {Op::NOT, Platform::GEN9, "not", 0x4, "Logic Not",
             "The not instruction performs logical NOT operation (or one\'s complement) of src0 and storing the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
@@ -1851,13 +1077,9 @@ namespace iga {
                 // UQ,Q <- UQ,Q
                 {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UQ)|TYPE(Type::Q)}
             },
-            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::413 */ {Op::OR, "or", "or", 0x6, "Logic Or",
+            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::61 */ {Op::OR, Platform::GEN9, "or", 0x6, "Logic Or",
             "The or instruction performs component-wise logic OR operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
@@ -1881,13 +1103,9 @@ namespace iga {
                 // UQ,Q <- UQ,Q
                 {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UQ)|TYPE(Type::Q)}
             },
-            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::414 */ {Op::PLN, "pln", "pln", 0x5a, "Plane",
+            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::62 */ {Op::PLN, Platform::GEN9, "pln", 0x5a, "Plane",
             "The pln instruction computes a component-wise plane equation (w = p*u+q*v+r where u/v/w are vectors and p/q/r are scalars) of src0 and src1 and stores the results in dst. src1 is the input vector u.\n"
             "\n"
             "src0 provides input scalars p, q, and r, where p is the scalar value based on the region description of src0 and q and r are the scalar values implied from the src0 region. Specifically, q is the second component and r is the fourth component of the 4-tuple (128-bit aligned) that p belongs to.\n"
@@ -1895,17 +1113,13 @@ namespace iga {
             "\n"
             "Format:\n"
             "[(pred)] pln[.cmod] (exec_size) dst src0 src1\n",
-            OpSpec::Format::BASIC_BINARY_REG_REG, {
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::415 */ {Op::RET, "ret", "ret", 0x2d, "Return",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
+        },
+        /* Op::63 */ {Op::RET, Platform::GEN9, "ret", 0x2d, "Return",
             "Return execution to the code sequence that called a subroutine.\n"
             "\n"
             "The ret instruction can be predicated or non-predicated. If non-predicated, all channels jump to the return IP in the first channel of src0 and restore CallMask from the second channel of src0. If predicated, the enabled channels jump to the return IP from the first channel of src0 and the corresponding bits in the CallMask are cleared to zero; if all CallMask bits are zero after the ret instruction, then execution jumps to the return IP from the first channel of src0.\n"
@@ -1919,13 +1133,9 @@ namespace iga {
                 //  <- D,UD
                 {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)|TYPE(Type::UD)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::416 */ {Op::RNDD, "rndd", "rndd", 0x45, "Round Down",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::64 */ {Op::RNDD, Platform::GEN9, "rndd", 0x45, "Round Down",
             "The rndd instruction takes component-wise floating point downward rounding (to the integral float number closer to negative infinity) of src0 and storing the rounded integral float results in dst. This is commonly referred to as the floor() function.\n"
             "\n"
             "Each result follows the rules in the following tables based on the floating-point mode.\n"
@@ -1937,13 +1147,9 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::417 */ {Op::RNDE, "rnde", "rnde", 0x46, "Round to Nearest or Even",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::65 */ {Op::RNDE, Platform::GEN9, "rnde", 0x46, "Round to Nearest or Even",
             "The rnde instruction takes component-wise floating point round-to-even operation of src0 with results in two pieces - a downward rounded integral float results stored in dst and the round-to-even increments stored in the rounding increment bits. The round-to-even increment must be added to the results in dst to create the final round-to-even values to emulate the round-to-even operation, commonly known as the round() function. The final results are the one of the two integral float values that is nearer to the input values. If the neither possibility is nearer, the even alternative is chosen.\n"
             "\n"
             "Each result follows the rules in the following tables based on the floating-point mode.\n"
@@ -1955,13 +1161,9 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::418 */ {Op::RNDU, "rndu", "rndu", 0x44, "Round Up",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::66 */ {Op::RNDU, Platform::GEN9, "rndu", 0x44, "Round Up",
             "The rndu instruction takes component-wise floating point upward rounding (to the integral float number closer to positive infinity) of src0, commonly known as the ceiling() function.\n"
             "\n"
             "Each result follows the rules in the following tables based on the floating-point mode.\n"
@@ -1973,13 +1175,9 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::419 */ {Op::RNDZ, "rndz", "rndz", 0x47, "Round to Zero",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::67 */ {Op::RNDZ, Platform::GEN9, "rndz", 0x47, "Round to Zero",
             "The rndz instruction takes component-wise floating point round-to-zero operation of src0 with results in two pieces - a downward rounded integral float results stored in dst and the round-to-zero increments stored in the rounding increment bits. The round-to-zero increment must be added to the results in dst to create the final round-to-zero values to emulate the round-to-zero operation, commonly known as the truncate() function. The final results are the one of the two closest integral float values to the input values that is nearer to zero.\n"
             "\n"
             "\n"
@@ -1989,15 +1187,11 @@ namespace iga {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::420 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::421 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::422 */ {Op::SAD2, "sad2", "sad2", 0x50, "Sum of Absolute Difference 2",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::68 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::69 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::70 */ {Op::SAD2, Platform::GEN9, "sad2", 0x50, "Sum of Absolute Difference 2",
             "The sad2 instruction takes source data channels from src0 and src1 in groups of 2-tuples. For each 2-tuple, it computes the sum-of-absolute-difference (SAD) between src0 and src1 and stores the scalar result in the first channel of the 2-tuple in dst.\n"
             "\n"
             "The results are also stored in the accumulator register. The destination operand and the accumulator maintain 16 bits per channel precision.\n"
@@ -2011,13 +1205,9 @@ namespace iga {
                 // W,UW <- B,UB
                 {TYPE(Type::W)|TYPE(Type::UW),TYPE(Type::B)|TYPE(Type::UB)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::423 */ {Op::SADA2, "sada2", "sada2", 0x51, "Sum of Absolute Difference Accumulate 2",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::71 */ {Op::SADA2, Platform::GEN9, "sada2", 0x51, "Sum of Absolute Difference Accumulate 2",
             "The sada2 instruction takes source data channels from src0 and src1 in groups of 2-tuples. For each 2-tuple, it computes the sum-of-absolute-difference (SAD) between src0 and src1, adds the intermediate result with the accumulator value corresponding to the first channel, and stores the scalar result in the first channel of the 2-tuple in dst.\n"
             "\n"
             "The destination operand and the accumulator maintain 16 bits per channel precision. Higher precision (guide bits) stored in the accumulator allows up to 64 rounds of sada2 instructions to be issued back to back without overflowing the accumulator.\n"
@@ -2031,14 +1221,10 @@ namespace iga {
                 // W,UW <- B,UB
                 {TYPE(Type::W)|TYPE(Type::UW),TYPE(Type::B)|TYPE(Type::UB)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::424 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::425 */ {Op::SEL, "sel", "sel", 0x2, "Select",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::72 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::73 */ {Op::SEL, Platform::GEN9, "sel", 0x2, "Select",
             "The sel instruction selectively moves the components in src0 or src1 into the channels of dst based on the predication. On a channel by channel basis, if the channel condition is true, data in src0 is moved into dst. Otherwise, data in src1 is moved into dst.\n"
             "\n"
             "\n"
@@ -2088,13 +1274,9 @@ namespace iga {
                 // HF,F <- HF,F
                 {TYPE(Type::HF)|TYPE(Type::F),TYPE(Type::HF)|TYPE(Type::F)}
             },
-            OpSpec::Attr::IS_SELECT|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::426 */ {Op::SEND, "send", "send", 0x31, "Send Message",
+            OpSpec::Attr::IS_SELECT|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::74 */ {Op::SEND, Platform::GEN9, "send", 0x31, "Send Message",
             "Send a message stored in GRF starting at <src> to a shared function identified by <ex_desc> along with control from <desc> with a GRF writeback location at <dest>.\n"
             "\n"
             "\n"
@@ -2119,13 +1301,9 @@ namespace iga {
             "\n"
             "<dest> serves for two purposes: to provide the leading GRF register location for the response message if present, and to provide parameters to form the channel enable sideband signals. <dest> signals whether there is a response to the message request. It can be either a null register, a direct-addressed GRF register or a register-indirect GRF register. Otherwise, hardware behavior is undefined. If <dest> is null, there is no response to the request. Meanwhile, the Response Length field in <desc> must be 0. Certain types of message requests, such as memory write (store) through the Data Port, do not want response data from the function unit. If so, the posted destination operand can be null. If <dest> is a GRF register, the register number is forwarded to the shared function. In this case, the target function unit must send one or more response message phases back to the requesting thread. The number of response message phases must match the Response Length field in <desc>, which of course cannot be zero. For some cases, it could be an empty return message. An empty return message is defined as a single phase message with all channel enables turned off. The subregister number, horizontal stride, destination mask and type fields of <dest> are always valid and are used in part to generate on the WrEn. This is true even if <dest> is a null register (this is an exception for null as for most cases these fields are ignored by hardware). The 16-bit channel enables of the message sideband are formed based on the WrEn. Interpretation of the channel enable sideband signals is subject to the target external function. In general for a \'send\' instruction with return messages, they are used as the destination dword write mask for the GRF registers starting at <dest>. For a message that has multiple return phases, the same set of channel enable signals applies to all the return phases. The destination dependency control, {NoDDClr}, can be used in this instruction. This allows software to control the destination dependencies for multiple \'read\'-type messages similar to that for multiple instructions using EU execution pipeline. As send does not check register dependencies for the post destination, {NoDDChk} should not be used for this instruction.\n",
             OpSpec::Format::SEND_UNARY, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::427 */ {Op::SENDC, "sendc", "sendc", 0x32, "Conditional Send Message",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::75 */ {Op::SENDC, Platform::GEN9, "sendc", 0x32, "Conditional Send Message",
             "The sendc instruction has the same behavior as the send instruction except the following.\n"
             "sendc first checks the dependent threads inside the Thread Dependency Register. There are up to 8 dependent threads in the TDR register. The sendc instruction executes only when all the dependent threads in the TDR register are retired.\n"
             "Wait for dependencies in the TDR Register to clear, then send a message stored in registers starting at src to a shared function identified by exdesc along with control from desc with a general register writeback location at dst.\n"
@@ -2134,32 +1312,9 @@ namespace iga {
             "Format:\n"
             "[(pred)] sendc (exec_size) dst src0 exdesc desc\n",
             OpSpec::Format::SEND_UNARY, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::428 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::429 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::430 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::431 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::432 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::433 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::434 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::435 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::436 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::437 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::438 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::439 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::440 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::441 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::442 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::443 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::444 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::445 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::446 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::447 */ {Op::SENDS, "sends", "sends", 0x33, "Split Send Message",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::76 */ {Op::SENDS, Platform::GEN9, "sends", 0x33, "Split Send Message",
             "The sends instruction performs data communication between a thread and external function units, including shared functions (Sampler, Data Port Read, Data Port Write, URB, and Message Gateway) and some fixed functions (e.g. Thread Spawner, who also have an unique Shared Function ID). The sends instruction adds an entry to the EU\'s message request queue. The request message is stored in a block of contiguous GRF registers. The response message, if present, will be returned to a block of contiguous GRF registers. The return GRF writes may be in any order depending on the external function units. <src0> and <src1> are the lead GRF registers for the first and second block of the request respectively. <dest> is the lead GRF register for response. The message descriptor field <desc> contains the Message Length (the number of consecutive GRF registers corresponding to src0) and the Response Length (the number of consecutive GRF registers). It also contains the header present bit, and the function control signals. The extend message descriptor field <ex_desc> contains the target function ID, the Extended Message Length (the number of consecutive GRF registers corresponding to src1) and the extended function control signals. WrEn is forwarded to the target function in the message sideband.\n"
             "The sends instruction is the only way to terminate a thread. When the EOT (End of Thread) bit of <ex_desc> is set, it indicates the end of thread to the EU, the Thread Dispatcher and, in most cases, the parent fixed function.\n"
             "\n"
@@ -2215,13 +1370,9 @@ namespace iga {
             "Format:\n"
             "[(pred)] sends (exec_size) <dest> <src0> <src1> <ex_desc> <desc>\n",
             OpSpec::Format::SEND_BINARY, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::448 */ {Op::SENDSC, "sendsc", "sendsc", 0x34, "Conditional Split Send Message",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::77 */ {Op::SENDSC, Platform::GEN9, "sendsc", 0x34, "Conditional Split Send Message",
             "The sendsc instruction has the same behavior as the sends instruction except the following.\n"
             "sendsc first checks the dependent threads inside the Thread Dependency Register. There are up to 8 dependent threads in the TDR register. The sendsc instruction executes only when all the dependent threads in the TDR register are retired.\n"
             "\n"
@@ -2232,39 +1383,10 @@ namespace iga {
             "Format:\n"
             "[(pred)] sendsc (exec_size) <dest> <src0> <src1> <ex_desc> <desc>\n",
             OpSpec::Format::SEND_BINARY, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::449 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::450 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::451 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::452 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::453 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::454 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::455 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::456 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::457 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::458 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::459 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::460 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::461 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::462 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::463 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::464 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::465 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::466 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::467 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::468 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::469 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::470 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::471 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::472 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::473 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::474 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::475 */ {Op::SHL, "shl", "shl", 0x9, "Shift Left",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::78 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::79 */ {Op::SHL, Platform::GEN9, "shl", 0x9, "Shift Left",
             "Perform component-wise logical left shift of the bits in src0 by the shift count indicated in src1, storing the results in dst, inserting zero bits in the number of LSBs indicated by the shift count.\n"
             "\n"
             "Hardware detects overflow properly and uses it to perform any saturation operation on the result, as long as the shifted result is within 33 bits. Otherwise, the result is undefined.\n"
@@ -2289,13 +1411,9 @@ namespace iga {
                 // UQ,Q <- UQ,Q
                 {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UQ)|TYPE(Type::Q)}
             },
-            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::476 */ {Op::SHR, "shr", "shr", 0x8, "Shift Right",
+            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::80 */ {Op::SHR, Platform::GEN9, "shr", 0x8, "Shift Right",
             "Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count.\n"
             "\n"
             "src0 and dst can have different types and can be signed or unsigned.\n"
@@ -2322,13 +1440,9 @@ namespace iga {
                 // UQ <- UQ
                 {TYPE(Type::UQ),TYPE(Type::UQ)}
             },
-            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::477 */ {Op::SMOV, "smov", "smov", 0xa, "Scattered Move",
+            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+        },
+        /* Op::81 */ {Op::SMOV, Platform::GEN9, "smov", 0xa, "Scattered Move",
             "The smov instruction moves the components in src0 into dst.\n"
             "\n"
             "For each enabled channel, copy src0 to dst. The immediate is used to selectively enable channels without using flags.\n"
@@ -2346,7 +1460,7 @@ namespace iga {
             "\n"
             "\n"
             "When predication is enabled, the usage model provides flexibility to select any bit in the flag registers for predication for execution size of 1.\n",
-            OpSpec::Format::BASIC_BINARY_REG_IMM, {
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
                 // UW,W,UD,D,HF,F <- UW,W,UD,D,HF,F
                 {TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)|TYPE(Type::HF)|TYPE(Type::F),TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)|TYPE(Type::HF)|TYPE(Type::F)},
                 // UQ,Q,DF <- UW,W,UD,D,HF,F
@@ -2356,13 +1470,9 @@ namespace iga {
                 // UQ,Q,DF <- UQ,Q,DF
                 {TYPE(Type::UQ)|TYPE(Type::Q)|TYPE(Type::DF),TYPE(Type::UQ)|TYPE(Type::Q)|TYPE(Type::DF)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::478 */ {Op::SUBB, "subb", "subb", 0x4f, "Integer Subtraction with Borrow",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::82 */ {Op::SUBB, Platform::GEN9, "subb", 0x4f, "Integer Subtraction with Borrow",
             "The subb instruction performs component-wise subtraction of src0 and src1 and stores the results in dst, it also stores the borrow into acc.\n"
             "\n"
             "If the operation produces a borrow (src0 < src1), write 0x00000001 to acc, else write 0x00000000 to acc.\n"
@@ -2374,20 +1484,10 @@ namespace iga {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::479 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::480 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::481 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::482 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::483 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::484 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::485 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, INVALID_FIELD},
-        /* Op::486 */ {Op::WAIT, "wait", "wait", 0x30, "Wait Notification",
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
+        },
+        /* Op::83 */ {Op::INVALID, Platform::GEN9, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::84 */ {Op::WAIT, Platform::GEN9, "wait", 0x30, "Wait Notification",
             "The wait instruction evaluates the value of the notification count register nreg. If nreg is zero, thread execution is suspended and the thread is put in \'wait_for_notification\' state. If nreg is not zero (i.e., one or more notifications have been received), nreg is decremented by one and the thread continues executing on the next instruction. If a thread is in the \'wait_for_notification\' state, when a notification arrives, the notification count register is incremented by one. As the notification count register becomes nonzero, the thread wakes up to continue execution and at the same time the notification register is decremented by one. If only one notification arrived, the notification register value becomes zero. However, during the above mentioned time period, it is possible that more notifications may arrive, making the notification register nonzero again.\n"
             "\n"
             "When multiple notifications are received, software must use wait instructions to decrement notification count registers for each notification.\n"
@@ -2401,13 +1501,9 @@ namespace iga {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
-            OpSpec::Attr::NONE,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::487 */ {Op::WHILE, "while", "while", 0x27, "While",
+            OpSpec::Attr::NONE
+        },
+        /* Op::85 */ {Op::WHILE, Platform::GEN9, "while", 0x27, "While",
             "The while instruction marks the end of a do-while block. The instruction first evaluates the loop termination condition for each channel based on the current channel enables and the predication flags specified in the instruction. If any channel has not terminated, a branch is taken to a destination address specified in the instruction, and the loop continues for those channels. Otherwise, execution continues to the next instruction.ld point to the first instruction with the do label of the do-while block of code. It should be a negative number for the backward referencing.\n"
             "\n"
             "If SPF is ON, none of the PcIP are updated.\n"
@@ -2416,13 +1512,9 @@ namespace iga {
             "Format:\n"
             "[(pred)] while (exec_size) JIP\n",
             OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */},
-        /* Op::488 */ {Op::XOR, "xor", "xor", 0x7, "Logic Xor",
+            OpSpec::Attr::SUPPORTS_PREDICATION
+        },
+        /* Op::86 */ {Op::XOR, Platform::GEN9, "xor", 0x7, "Logic Xor",
             "The xor instruction performs component-wise logic XOR operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
@@ -2446,12 +1538,8 @@ namespace iga {
                 // UQ,Q <- UQ,Q
                 {TYPE(Type::UQ)|TYPE(Type::Q),TYPE(Type::UQ)|TYPE(Type::Q)}
             },
-            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            INVALID_FIELD /* functionControlField */}
+            OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
+        }
     };
 
     static const iga::Model MODEL_GEN9 {

@@ -427,7 +427,9 @@ IGA_API int32_t kv_get_destination_indirect_imm_off(
 /*
  * This function exposes source's MathMacroExt number for
    math macro instructions.
-   Return -1 if given instruction is not math macro instruction
+   mme is the mme numbar, set to 8 if it's nomme.
+   Return 0 if the given instruction is math macro instruction.
+   Return -1 if given instruction is not math macro instruction.
  */
 IGA_API int32_t kv_get_source_mme_number(
     const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *mme);
@@ -435,7 +437,9 @@ IGA_API int32_t kv_get_source_mme_number(
 /*
  * This function exposes destination's MathMacroExt number for
    math macro instructions.
-   Return -1 if given instruction is not math macro instruction
+   mme is the mme numbar, set to 8 if it's nomme.
+   Return 0 if the given instruction is math macro instruction.
+   Return -1 if given instruction is not math macro instruction.
  */
 IGA_API int32_t kv_get_destination_mme_number(
     const kv_t *kv, int32_t pc, int16_t *immoff);

@@ -51,22 +51,66 @@ static bool streq(const char *str1, const char *str2) {
 static bool strpfx(const char *pfx, const char *str) {
     return strncmp(str, pfx, strlen(pfx)) == 0;
 }
+static bool parseInt(const char *inp, int &val)
+{
+    try {
+        int radix = 10;
+        bool negate = false;
+        if (inp[0] == '-') {
+            negate = true;
+            inp++;
+        }
+        if (inp[0] && inp[0] == '0' && inp[1] &&
+            (inp[1] == 'x' || inp[1] == 'X'))
+        {
+            inp += 2;
+        }
+        char *end = nullptr;
+        int pval = (int)std::strtol(inp, &end, radix);
+        if (*end) {
+            // some sort of suffix
+            return false;
+        }
+        if (negate)
+            pval = -pval;
+        val = pval;
+    } catch(...) {
+        return false;
+    }
+    return true;
+}
 
 // takes message and handles the error; second arg is an optional usage message
 // typedef std::function<void(const char *, const char *)> error_handler_t;
 struct ErrorHandler {
     const char *exeName;
+    const char *optName;
 
-    ErrorHandler(const char *exe) : exeName(exe) {}
+    ErrorHandler(const char *exe, const char *opt)
+        : exeName(exe), optName(opt) { }
 
-    void operator()(const std::string &msg) const {
-        fatalMessage(msg.c_str());
+    void fail(const std::string &msg) const {
+        std::string s;
+        if (optName) {
+            s += optName;
+            s += ": ";
+        }
+        s += msg;
+        fatalMessage(s.c_str());
         fatalExit();
     }
-    void operator()(const std::string &msg, const std::string &usage) const {
-        fatalMessage(msg.c_str());
-        std::cerr << usage;
-        fatalExit();
+    void operator()(const std::string &msg) const {
+        fail(msg);
+    }
+
+    int parseInt(const char *inp) const {
+        int x = -1;
+        if (!opts::parseInt(inp, x)) {
+            std::stringstream ss;
+            ss << inp << ": malformed int";
+            fail(ss.str());
+        }
+        return x;
     }
 };
 
@@ -168,9 +212,9 @@ struct Opt {
         {}
 
     DefaultSetter<O> noDefault() const {
-        std::string optStr = optName(), helpStr = makeHelpMessage();
-        return [=](const ErrorHandler &errHandler, O &) {
-            errHandler(concat(optStr, " undefined"), helpStr);
+        std::string optStr = optName();
+        return [=](const ErrorHandler &eh, O &) {
+            eh(concat(optStr, " undefined"));
         };
     }
 
@@ -190,21 +234,12 @@ struct Opt {
         const ErrorHandler &errHandler,
         O &opts)
     {
-        bool optCheck = isOpt();
         std::string msgHelp  = makeHelpMessage();
-        auto raiseMatchError =
-            [&] (const char *msg) {
-                errHandler(
-                    concat(
-                        argv[argIx],
-                        ": invalid ",
-                        optCheck ? "option" : "argument",
-                        ": ",
-                        msg),
-                    msgHelp);
-            };
+
         const char *token = argv[argIx];
         const char *value = nullptr;
+
+        ErrorHandler eh(errHandler.exeName, token);
 
         if (isOpt()) {
             if (token[0] != '-')
@@ -244,7 +279,18 @@ struct Opt {
                     // -flag
                     value = nullptr;
                 } else if (argIx == argc - 1) {
-                    raiseMatchError("unexpected end of command line");
+                    if (hasAttribute(OPT_FLAG_VAL)) {
+                        value = nullptr;
+                    } else {
+                        eh("unexpected end of command line");
+                    }
+                } else if (hasAttribute(OPT_FLAG_VAL) &&
+                    argv[argIx + 1][0] == '-')
+                {
+                    // -v -p=...
+                    //  ^
+                    // since next starts -, we
+                    value = nullptr;
                 } else {
                     // not a flag and we have tokens left
                     // next token is the value for this option
@@ -254,7 +300,7 @@ struct Opt {
             } else if (*value == '=') {
                 // of the form -key=value
                 if (hasAttribute(FLAG) && !hasAttribute(OPT_FLAG_VAL)) {
-                    raiseMatchError("option is a flag");
+                    eh("option is a flag");
                 } else {
                     value++; // step past =
                 }
@@ -267,7 +313,7 @@ struct Opt {
 
             // ensure the option hasn't been specified before
             if (timesMatched > 0 && !hasAttribute(OptAttrs::ALLOW_MULTI)) {
-                raiseMatchError("respecification");
+                eh("respecification");
             }
         } else { // isArg()
             if (timesMatched > 0 && !hasAttribute(OptAttrs::ALLOW_MULTI)) {
@@ -278,8 +324,9 @@ struct Opt {
             value = token;
         } // end isOpt() / isArg()
 
-        // attempt to parse the input
-        setValue(value, errHandler, opts);
+        // attempt to parse the input, specialize the error handler to
+        // this option/argument
+        setValue(value, eh, opts);
         timesMatched++;
 
         // move past key or value to next token
@@ -833,9 +880,8 @@ class CmdlineSpec {
             } else if (inp[0] == '#') {
                 // try as an argument
                 // #1 #2 ... are the args
-                char *end = nullptr;
-                int argIx = (int)strtol(inp + 1, &end, 10);
-                if (*end == 0) {
+                int argIx = -1;
+                if (opts::parseInt(inp + 1, argIx)) {
                     if (argIx - 1 < 0 || argIx - 1 >= (int)args.size()) {
                         err("-h option: invalid argument index");
                     } else {
@@ -843,10 +889,10 @@ class CmdlineSpec {
                             std::cerr, 0, 0, 0, true);
                         exit(EXIT_SUCCESS);
                     }
-                } // else e.g. "$1abc"
+                } // else e.g. "#1abc"
             } else {
-                std::string str = "-h option: unknown option, argument,"
-                    " or group ";
+                std::string str =
+                    "-h=...: passed unknown option, argument, or group ";
                 err(str + inp);
             }
         } // end if *inp != 0
@@ -862,7 +908,7 @@ class CmdlineSpec {
             argv                       = help;
         }
 
-        ErrorHandler errHandler(exeName);
+        ErrorHandler errHandler(exeName, nullptr);
         while (argIx < argc) {
             bool matched = false;
 

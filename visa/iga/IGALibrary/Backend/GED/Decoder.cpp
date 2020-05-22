@@ -87,8 +87,8 @@ static void setImmValKind(Type t, ImmVal &val)
 static Region macroDefaultSourceRegion(
     int srcOpIx, const OpSpec &os, Platform p, ExecSize execSize)
 {
-    if (os.hasImplicitSrcRegion(srcOpIx, p, execSize)) {
-        return os.implicitSrcRegion(srcOpIx, p, execSize);
+    if (os.hasImplicitSrcRegion(srcOpIx, execSize, true)) {
+        return os.implicitSrcRegion(srcOpIx, execSize, true);
     } else if (srcOpIx == 2) {
         return Region::SRCXX1;
     } else {
@@ -104,9 +104,9 @@ static Region macroDefaultSourceRegion(
 }
 
 
-DecoderBase::DecoderBase(const Model &model, ErrorHandler &errHandler) :
+Decoder::Decoder(const Model &model, ErrorHandler &errHandler) :
     GEDBitProcessor(model,errHandler),
-    m_gedModel(IGAToGEDTranslation::lowerPlatform(model.platform)),
+    m_gedModel(lowerPlatform(model.platform)),
     m_kernel(nullptr),
     m_opSpec(nullptr),
     m_binary(nullptr)
@@ -117,7 +117,7 @@ DecoderBase::DecoderBase(const Model &model, ErrorHandler &errHandler) :
     IGA_ASSERT(m_gedModel != GED_MODEL_INVALID, "invalid GED model");
 }
 
-void DecoderBase::decodeSWSB(Instruction* inst)
+void Decoder::decodeSWSB(Instruction* inst)
 {
     if (platform() >= Platform::GEN12P1) {
         uint32_t swsbBits = 0;
@@ -127,13 +127,13 @@ void DecoderBase::decodeSWSB(Instruction* inst)
             GED_DECODE_RAW_TO(SWSB, swsbBits);
         }
         // must convert the raw encoding bits to our SWSB IR
-        SWSB::InstType inst_type = SWSB::InstType::OTHERS;
+        SWSB::InstType instType = SWSB::InstType::OTHERS;
         if (inst->getOpSpec().isSendOrSendsFamily())
-            inst_type = SWSB::InstType::SEND;
-        else if (inst->getOpSpec().isMathSubFunc())
-            inst_type = SWSB::InstType::MATH;
+            instType = SWSB::InstType::SEND;
+        else if (inst->getOpSpec().is(Op::MATH))
+            instType = SWSB::InstType::MATH;
         SWSB sw;
-        SWSB_STATUS status = sw.decode(swsbBits, m_SWSBEncodeMode, inst_type);
+        SWSB_STATUS status = sw.decode(swsbBits, m_SWSBEncodeMode, instType);
 
         switch (status)
         {
@@ -150,7 +150,7 @@ void DecoderBase::decodeSWSB(Instruction* inst)
     }
 }
 
-Kernel *DecoderBase::decodeKernelBlocks(
+Kernel *Decoder::decodeKernelBlocks(
     const void *binary,
     size_t binarySize)
 {
@@ -158,15 +158,20 @@ Kernel *DecoderBase::decodeKernelBlocks(
 }
 
 
-Kernel *DecoderBase::decodeKernelNumeric(
+Kernel *Decoder::decodeKernelNumeric(
     const void *binary,
     size_t binarySize)
 {
     return decodeKernel(binary, binarySize, true);
 }
 
+bool Decoder::isMacro() const {
+    return
+        m_opSpec->is(Op::MADM) ||
+        (m_opSpec->is(Op::MATH) && IsMacro(m_subfunc.math));
+}
 
-Kernel *DecoderBase::decodeKernel(
+Kernel *Decoder::decodeKernel(
     const void *binary,
     size_t binarySize,
     bool numericLabels)
@@ -216,47 +221,64 @@ Kernel *DecoderBase::decodeKernel(
     return kernel;
 }
 
-unsigned DecoderBase::decodeOpGroup(Op op)
+Subfunction Decoder::decodeSubfunction()
 {
-    unsigned fcBits = 0xFFFFFFFF;
-    switch (op) {
-        case Op::MATH: {
-            GED_DECODE(MathFC, GED_MATH_FC, mathFc, MathFC);
-            fcBits = static_cast<unsigned>(mathFc);
-            break;
+    Subfunction sf = InvalidFC::INVALID;
+
+    switch (m_opSpec->op) {
+    case Op::IF:
+    case Op::ELSE:
+    case Op::GOTO:
+    {
+        BranchCntrl bc = BranchCntrl::OFF;
+        if (m_opSpec->supportsBranchCtrl()) {
+            // HSW doesn't support this
+            GED_DECODE_TO(BranchCtrl, translate, bc);
         }
-        case Op::SYNC: {
-            GED_DECODE(SyncFC, GED_SYNC_FC, syncFC, SyncFC);
-            fcBits = static_cast<unsigned>(syncFC);
-            break;
-        }
-        case Op::SENDC:
-        case Op::SEND: {
-            GED_DECODE(SFID, GED_SFID, sfid, SFID);
-            fcBits = static_cast<unsigned>(sfid);
-            break;
-        }
-        default:
-            break; // fallthrough with invalid fc_bits value
+        sf = bc;
+        break;
     }
-    return fcBits;
+    case Op::MATH: {
+        GED_DECODE(MathFC, GED_MATH_FC, mathFc, MathFC);
+        sf = mathFc;
+        if (mathFc == MathFC::INVALID) {
+            error("invalid MathFC");
+        }
+        break;
+    }
+    case Op::SYNC: {
+        GED_DECODE(SyncFC, GED_SYNC_FC, syncFC, SyncFC);
+        sf = syncFC;
+        break;
+    }
+    case Op::SENDSC:
+    case Op::SENDS:
+        // handled in descriptor decoding
+        break;
+    case Op::SENDC:
+    case Op::SEND:
+        if (platform() >= Platform::GEN12P1) {
+            GED_DECODE(SFID, GED_SFID, sfid, SFID);
+            sf = sfid;
+        } // else handled in descriptor decoding
+        break;
+    default:
+        IGA_ASSERT(!m_opSpec->supportsSubfunction(),
+            "we need to decode a subfunction here");
+        sf = InvalidFC::INVALID;
+        break;
+    }
+    return sf;
 }
 
-const OpSpec *DecoderBase::decodeOpSpec(Op op)
+const OpSpec *Decoder::decodeOpSpec(Op op)
 {
     auto os = &m_model.lookupOpSpec(op);
-    if (os->format != OpSpec::GROUP) {
-        // simple op like add, mov, etc..
-        return os;
-    }
-    unsigned fcBits = decodeOpGroup(op);
-
-    // an op group such as math or wdep
-    return &m_model.lookupGroupSubOp(op, fcBits);
+    return os;
 }
 
 // Pass 1. decode all instructions in Instruction*
-void DecoderBase::decodeInstructions(
+void Decoder::decodeInstructions(
     Kernel &kernel,
     const void *binaryStart,
     size_t binarySize,
@@ -303,21 +325,15 @@ void DecoderBase::decodeInstructions(
                 iLen);
         } else {
             const auto gedOp = GED_GetOpcode(&m_currGedInst);
-            const Op op = GEDToIGATranslation::translate(gedOp);
+            const Op op = translate(gedOp);
             m_opSpec = decodeOpSpec(op);
             if (!m_opSpec->isValid()) {
                 // figure out if we failed to resolve the primary op
                 // or if it's an unmapped subfunction (e.g. math function)
                 auto os = m_model.lookupOpSpec(op);
                 std::stringstream ss;
-                ss << "0x" << std::uppercase << std::hex << (unsigned)op;
-                if (os.format == OpSpec::GROUP) {
-                    ss << ": unsupported pseudo op "
-                        "(sub function of " << os.mnemonic << ")";
-                } else {
-                    ss << "0x" << std::hex << (unsigned)op <<
-                        ": unsupported opcode on this platform";
-                }
+                ss << "0x" << std::hex << (unsigned)op <<
+                    ": unsupported opcode on this platform";
                 std::string str = ss.str();
                 error("%s", str.c_str());
                 inst = createErrorInstruction(
@@ -326,6 +342,7 @@ void DecoderBase::decodeInstructions(
                     binary,
                     iLen);
             } else {
+                m_subfunc = decodeSubfunction();
                 try {
                     inst = decodeNextInstruction(kernel);
                 } catch (const FatalError &fe) {
@@ -354,13 +371,13 @@ void DecoderBase::decodeInstructions(
     }
 }
 
-void DecoderBase::decodeNextInstructionEpilog(Instruction *inst)
+void Decoder::decodeNextInstructionEpilog(Instruction *inst)
 {
     decodeSWSB(inst);
 }
 
 // Decodes a GED instruction to IGA IR and appends it to a given block
-Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
+Instruction *Decoder::decodeNextInstruction(Kernel &kernel)
 {
     Instruction *inst = nullptr;
 
@@ -383,10 +400,7 @@ Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
     case OpSpec::BASIC_BINARY_REG_IMM:
     case OpSpec::BASIC_BINARY_REG_REG:
     case OpSpec::BASIC_BINARY_REG_REGIMM:
-    case OpSpec::MATH_UNARY_REGIMM: // math also supported via this path
     case OpSpec::MATH_BINARY_REG_REGIMM:
-    case OpSpec::MATH_MACRO_UNARY_REG:
-    case OpSpec::MATH_MACRO_BINARY_REG_REG:
         inst = decodeBasicInstruction(kernel);
         break;
     case OpSpec::JUMP_UNARY_REG:
@@ -402,7 +416,6 @@ Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
         }
         break;
     case OpSpec::TERNARY_REGIMM_REG_REGIMM:
-    case OpSpec::TERNARY_MACRO_REG_REG_REG:
         inst = decodeTernaryInstruction(kernel);
         break;
     case OpSpec::SEND_UNARY:
@@ -432,7 +445,7 @@ Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
     return inst;
 }
 
-bool DecoderBase::hasImm64Src0Overlap()
+bool Decoder::hasImm64Src0Overlap()
 {
     if (platform() < Platform::GEN12P1)
         return false;
@@ -448,7 +461,7 @@ bool DecoderBase::hasImm64Src0Overlap()
 // BASIC INSTRUCTIONS
 ///////////////////////////////////////////////////////////////////////
 
-Instruction *DecoderBase::decodeBasicInstruction(Kernel &kernel)
+Instruction *Decoder::decodeBasicInstruction(Kernel &kernel)
 {
     FlagRegInfo fri = decodeFlagRegInfo(hasImm64Src0Overlap());
     Instruction *inst = kernel.createBasicInstruction(
@@ -458,7 +471,8 @@ Instruction *DecoderBase::decodeBasicInstruction(Kernel &kernel)
             decodeExecSize(),
             decodeChannelOffset(),
             decodeMaskCtrl(),
-            fri.modifier);
+            fri.modifier,
+            m_subfunc);
 
     GED_ACCESS_MODE accessMode = decodeAccessMode();
     if (m_opSpec->supportsDestination()) {
@@ -467,17 +481,17 @@ Instruction *DecoderBase::decodeBasicInstruction(Kernel &kernel)
     switch (m_opSpec->format) {
     case OpSpec::BASIC_UNARY_REG:
     case OpSpec::BASIC_UNARY_REGIMM:
-    case OpSpec::MATH_UNARY_REGIMM:
-    case OpSpec::MATH_MACRO_UNARY_REG:
         decodeBasicUnaryInstruction(inst, accessMode);
         break;
     case OpSpec::BASIC_BINARY_REG_IMM:
     case OpSpec::BASIC_BINARY_REG_REG:
     case OpSpec::BASIC_BINARY_REG_REGIMM:
     case OpSpec::MATH_BINARY_REG_REGIMM:
-    case OpSpec::MATH_MACRO_BINARY_REG_REG:
         decodeSourceBasic<SourceIndex::SRC0>(inst, accessMode);
-        decodeSourceBasic<SourceIndex::SRC1>(inst, accessMode);
+        if (inst->getSourceCount() > 1) {
+            // math can have one or two ops
+            decodeSourceBasic<SourceIndex::SRC1>(inst, accessMode);
+        }
         break;
     default:
         std::stringstream ss;
@@ -492,7 +506,7 @@ Instruction *DecoderBase::decodeBasicInstruction(Kernel &kernel)
     return inst;
 }
 
-void DecoderBase::decodeBasicUnaryInstruction(
+void Decoder::decodeBasicUnaryInstruction(
     Instruction *inst, GED_ACCESS_MODE accessMode)
 {
     decodeSourceBasic<SourceIndex::SRC0>(inst, accessMode);
@@ -503,14 +517,14 @@ void DecoderBase::decodeBasicUnaryInstruction(
     }
 }
 
-void DecoderBase::decodeBasicDestinationAlign16(Instruction *inst)
+void Decoder::decodeBasicDestinationAlign16(Instruction *inst)
 {
     GED_DECODE_RAW(GED_ADDR_MODE, addrMode, DstAddrMode);
 
     DstModifier dstMod = DstModifier::NONE;
     if (inst->getOpSpec().supportsSaturation()) {
         GED_DECODE_RAW(GED_SATURATE, mod, Saturate);
-        dstMod = GEDToIGATranslation::translate(mod);
+        dstMod = translate(mod);
     }
 
     GED_DECODE(Type, GED_DATA_TYPE, type, DstDataType);
@@ -542,7 +556,7 @@ void DecoderBase::decodeBasicDestinationAlign16(Instruction *inst)
             GED_DECODE_RAW(uint32_t, subRegNum, DstSubRegNum);
             inst->setDirectDestination(
                 dstMod, dri.regName, dri.regRef,
-                GEDToIGATranslation::translateRgnH(hStride), type);
+                translateRgnH(hStride), type);
         }
         break;
     }
@@ -557,7 +571,7 @@ void DecoderBase::decodeBasicDestinationAlign16(Instruction *inst)
         GED_DECODE_RAW(int32_t, addrImm, DstAddrImm);
 
         GED_DECODE_RAW(uint32_t, subRegNum, DstAddrSubRegNum);
-        RegRef a0 = RegRef(0, (uint8_t)subRegNum);
+        RegRef a0(0, (uint8_t)subRegNum);
         inst->setInidirectDestination(
             dstMod, a0, (uint16_t)addrImm, Region::Horz::HZ_1, type);
         break;
@@ -568,7 +582,7 @@ void DecoderBase::decodeBasicDestinationAlign16(Instruction *inst)
     } // switch
 }
 
-void DecoderBase::decodeBasicDestinationAlign1(Instruction *inst) {
+void Decoder::decodeBasicDestinationAlign1(Instruction *inst) {
     GED_ADDR_MODE addrMode = GED_ADDR_MODE_Direct;
     GED_DECODE_RAW(GED_ADDR_MODE, taddrMode, DstAddrMode);
     addrMode = taddrMode;
@@ -576,13 +590,13 @@ void DecoderBase::decodeBasicDestinationAlign1(Instruction *inst) {
     DstModifier dstMod = DstModifier::NONE;
     if (inst->getOpSpec().supportsSaturation()) {
         GED_DECODE_RAW(GED_SATURATE, mod, Saturate);
-        dstMod = GEDToIGATranslation::translate(mod);
+        dstMod = translate(mod);
     }
 
     GED_DECODE_RAW(uint32_t, hStride, DstHorzStride);
-    Region::Horz rgnHzDec = GEDToIGATranslation::translateRgnH(hStride);
-    if (inst->getOpSpec().hasImplicitDstRegion()) {
-        Region::Horz rgnHzImpl = inst->getOpSpec().implicitDstRegion().getHz();
+    Region::Horz rgnHzDec = translateRgnH(hStride);
+    if (inst->getOpSpec().hasImplicitDstRegion(isMacro())) {
+        Region::Horz rgnHzImpl = inst->getOpSpec().implicitDstRegion(isMacro()).getHz();
         if (rgnHzImpl != rgnHzDec) {
             warning("dst has wrong region for binary normal form");
         }
@@ -631,7 +645,7 @@ void DecoderBase::decodeBasicDestinationAlign1(Instruction *inst) {
 ///////////////////////////////////////////////////////////////////////
 // TERNARY INSTRUCTIONS
 ///////////////////////////////////////////////////////////////////////
-Instruction *DecoderBase::decodeTernaryInstruction(Kernel& kernel)
+Instruction *Decoder::decodeTernaryInstruction(Kernel& kernel)
 {
     FlagRegInfo fri = decodeFlagRegInfo();
     Instruction *inst = kernel.createBasicInstruction(
@@ -641,7 +655,8 @@ Instruction *DecoderBase::decodeTernaryInstruction(Kernel& kernel)
         decodeExecSize(),
         decodeChannelOffset(),
         decodeMaskCtrl(),
-        fri.modifier);
+        fri.modifier,
+        m_subfunc);
 
     GED_ACCESS_MODE accessMode = decodeAccessMode();
     decodeTernaryInstructionOperands(kernel, inst, accessMode);
@@ -649,7 +664,7 @@ Instruction *DecoderBase::decodeTernaryInstruction(Kernel& kernel)
     return inst;
 }
 
-void DecoderBase::decodeTernaryInstructionOperands(
+void Decoder::decodeTernaryInstructionOperands(
     Kernel& kernel, Instruction *inst, GED_ACCESS_MODE accessMode)
 {
     if (accessMode == GED_ACCESS_MODE_Align16) {
@@ -674,13 +689,13 @@ void DecoderBase::decodeTernaryInstructionOperands(
     }
 }
 
-void DecoderBase::decodeTernaryDestinationAlign16(Instruction *inst)
+void Decoder::decodeTernaryDestinationAlign16(Instruction *inst)
 {
     GED_DECODE_RAW(uint32_t, regNumBits, DstRegNum);
     DstModifier dstMod = DstModifier::NONE;
     if (m_opSpec->supportsSaturation()) {
         GED_DECODE_RAW(GED_SATURATE, mod, Saturate);
-        dstMod = GEDToIGATranslation::translate(mod);
+        dstMod = translate(mod);
     }
     GED_DECODE(Type, GED_DATA_TYPE, type, DstDataType);
     GED_DECODE_RAW(GED_REG_FILE, regFile, DstRegFile);
@@ -800,7 +815,7 @@ void DecoderBase::decodeTernaryDestinationAlign16(Instruction *inst)
 }
 
 template <SourceIndex S>
-void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
+void Decoder::decodeTernarySourceAlign16(Instruction *inst)
 {
     bool isMacro = inst->isMacro(); // madm or math.invm or math.rsqrt
 
@@ -827,7 +842,7 @@ void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
         // CHV+ mixed mode
         gedType = decodeSrcDataType<S>();
     }
-    Type type = GEDToIGATranslation::translate(gedType);
+    Type type = translate(gedType);
 
     if (isMacro) {
         MathMacroExt MathMacroReg = decodeSrcMathMacroReg<S>();
@@ -906,14 +921,14 @@ static bool ternaryDstOmitsHzStride(const OpSpec &os) {
     return false;
 }
 
-void DecoderBase::decodeTernaryDestinationAlign1(Instruction *inst)
+void Decoder::decodeTernaryDestinationAlign1(Instruction *inst)
 {
     const OpSpec &os = inst->getOpSpec();
 
     DstModifier dstMod = DstModifier::NONE;
     if (os.supportsSaturation()) {
         GED_DECODE_RAW(GED_SATURATE, mod, Saturate);
-        dstMod = GEDToIGATranslation::translate(mod);
+        dstMod = translate(mod);
     }
 
     DirRegOpInfo dri = decodeDstDirRegInfo();
@@ -924,8 +939,8 @@ void DecoderBase::decodeTernaryDestinationAlign1(Instruction *inst)
             dstMod, dri.regName, dri.regRef, mme, Region::Horz::HZ_1, dri.type);
     } else {
         if (ternaryDstOmitsHzStride(inst->getOpSpec())) {
-            Region::Horz dftRgnHz = os.hasImplicitDstRegion() ?
-                os.implicitDstRegion().getHz() : Region::Horz::HZ_1;
+            Region::Horz dftRgnHz = os.hasImplicitDstRegion(isMacro()) ?
+                os.implicitDstRegion(isMacro()).getHz() : Region::Horz::HZ_1;
             inst->setDirectDestination(dstMod,
                 dri.regName,
                 dri.regRef,
@@ -937,14 +952,14 @@ void DecoderBase::decodeTernaryDestinationAlign1(Instruction *inst)
             inst->setDirectDestination(dstMod,
                 dri.regName,
                 dri.regRef,
-                GEDToIGATranslation::translateRgnH(hStride),
+                translateRgnH(hStride),
                 dri.type);
         }
     }
 }
 
 template <SourceIndex S>
-Region DecoderBase::decodeSrcRegionTernaryAlign1(const OpSpec &os)
+Region Decoder::decodeSrcRegionTernaryAlign1(const OpSpec &os)
 {
     uint32_t rgnVt = static_cast<uint32_t>(Region::Vert::VT_INVALID);
     bool hasRgnVt = S != SourceIndex::SRC2;
@@ -954,12 +969,12 @@ Region DecoderBase::decodeSrcRegionTernaryAlign1(const OpSpec &os)
     //
     uint32_t rgnHz = decodeSrcHorzStride<S>();
     //
-    return GEDToIGATranslation::transateGEDtoIGARegion(
+    return transateGEDtoIGARegion(
         rgnVt, static_cast<uint32_t>(Region::Width::WI_INVALID), rgnHz);
 }
 
 template <SourceIndex S>
-void DecoderBase::decodeTernarySourceAlign1(Instruction *inst)
+void Decoder::decodeTernarySourceAlign1(Instruction *inst)
 {
     if (platform() < Platform::GEN10) {
         fatal("Align1 not available on this platform");
@@ -1019,64 +1034,89 @@ void DecoderBase::decodeTernarySourceAlign1(Instruction *inst)
 ///////////////////////////////////////////////////////////////////////
 // SEND INSTRUCTIONS
 ///////////////////////////////////////////////////////////////////////
-Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
+SendDesc Decoder::decodeSendExDesc()
 {
-    int dstLen = -1, src0Len = -1, src1Len = -1;
+    // ex_desc
+    GED_REG_FILE exDescRegFile = GED_REG_FILE_IMM;
+    if (m_opSpec->format & OpSpec::Format::SEND_BINARY) {
+        // only sends/sendsc has ExDescRegFile
+        GED_DECODE_RAW_TO(ExDescRegFile, exDescRegFile);
+    }
 
-    // desc
+    SendDesc exDesc {};
+    if (exDescRegFile == GED_REG_FILE_IMM) {
+        exDesc.type = SendDesc::Kind::IMM;
+        GED_DECODE_RAW_TO(ExMsgDesc, exDesc.imm);
+    } else {
+        // For sends GED interprets SelReg32ExDesc and returns default values
+        GED_DECODE_RAW(uint32_t, subRegNum, ExDescAddrSubRegNum);
+        exDesc.type = SendDesc::Kind::REG32A;
+        exDesc.reg.regNum = 0; // a0 is implied
+        exDesc.reg.subRegNum = subRegNum / 2;
+    }
+    return exDesc;
+}
+
+SendDesc Decoder::decodeSendDesc()
+{
     bool descIsAlwaysImm = false;
     GED_REG_FILE descRegFile = GED_REG_FILE_IMM;
     if (!descIsAlwaysImm)
         GED_DECODE_RAW_TO(DescRegFile, descRegFile);
-    SendDesc msgDesc {};
+    SendDesc desc {};
     if (descRegFile == GED_REG_FILE_IMM) {
-        msgDesc.type = SendDesc::Kind::IMM;
-        GED_DECODE_RAW_TO(MsgDesc, msgDesc.imm);
-        if (!descIsAlwaysImm) {
-            dstLen = (msgDesc.imm >> 20) & 0x1F;
-            src0Len = (msgDesc.imm >> 25) & 0xF;
-        } // else this comes from another field
+        desc.type = SendDesc::Kind::IMM;
+        GED_DECODE_RAW_TO(MsgDesc, desc.imm);
     } else {
         // desc register is hardwired to a0.0 (ex-desc below can vary)
-        msgDesc.type = SendDesc::Kind::REG32A;
-        msgDesc.reg.regNum = 0;
-        msgDesc.reg.subRegNum = 0;
+        desc.type = SendDesc::Kind::REG32A;
+        desc.reg.regNum = 0;
+        desc.reg.subRegNum = 0;
     }
+    return desc;
+}
 
-    // ex_desc
-    GED_REG_FILE exDescRegFile = GED_REG_FILE_IMM;
-    if (m_opSpec->format & OpSpec::Format::SEND_BINARY) {
-        // only sends has ExDescRegFile
-        GED_DECODE_RAW_TO(ExDescRegFile, exDescRegFile);
-    }
+Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
+{
+    // Kernel instruction builder will attempt to set these if we can't
+    // figure them out here
+    int src0Len = -1, src1Len = -1;
 
+    const SendDesc desc = decodeSendDesc();
 
-
-    SendDesc extMsgDesc {};
-    if (exDescRegFile == GED_REG_FILE_IMM) {
-        extMsgDesc.type = SendDesc::Kind::IMM;
-        GED_DECODE_RAW_TO(ExMsgDesc, extMsgDesc.imm);
-        src1Len = (extMsgDesc.imm >> 6) & 0x1F;
+    const SendDesc exDesc = decodeSendExDesc();
+    if (exDesc.isImm()) {
+        src1Len = (int)((exDesc.imm >> 6) & 0x1F);
     } else {
-        // For sends GED interprets SelReg32ExDesc and returns default values
-        extMsgDesc.type = SendDesc::Kind::REG32A;
-        extMsgDesc.reg.regNum = 0; // a0 is implied
-        GED_DECODE_RAW(uint32_t, subRegNum, ExDescAddrSubRegNum);
-        extMsgDesc.reg.subRegNum = subRegNum / 2;
         //
+    }
+
+    SFID sfid = SFID::INVALID;
+    if (platform() >= Platform::GEN12P1) {
+        // dig the SFID out of it's encoding location
+        sfid = m_subfunc.send;
+    } else if (exDesc.isImm()) {
+        // in <=GEN11, it's ExDesc[3:0]
+        // if the extended descriptor is immediate, we can extract it
+        // from that
+        sfid = sfidFromEncoding(platform(), exDesc.imm);
+    } else if (exDesc.isReg()) {
+        // given <=GEN11 and reg exdesc
+        sfid = SFID::A0REG;
     }
 
 
     FlagRegInfo fri = decodeFlagRegInfo();
     Instruction *inst = kernel.createSendInstruction(
         *m_opSpec,
+        sfid,
         fri.pred,
         fri.reg,
         decodeExecSize(),
         decodeChannelOffset(),
         decodeMaskCtrl(),
-        extMsgDesc,
-        msgDesc
+        exDesc,
+        desc
     );
 
     if ((m_opSpec->format & OpSpec::Format::SEND_BINARY) == OpSpec::Format::SEND_BINARY) { // send is binary
@@ -1104,28 +1144,16 @@ Instruction *DecoderBase::decodeSendInstruction(Kernel& kernel)
 
 
 
-    // if a payload length is unknown (i.e. -1), but an operand is null, we
-    // can conclude that it's really 0.
-    auto updateLengthForNull = [](int &len, const Operand &op) {
-        // check for DIRECT because some older platforms permit indirect
-        if (len < 0 && op.isNull()) {
-            len = 0;
-        }
-    };
-
-    updateLengthForNull(dstLen, inst->getDestination());
-    inst->setDstLength(dstLen);
-
-    updateLengthForNull(src0Len, inst->getSource(SourceIndex::SRC0));
-    inst->setSrc0Length(src0Len);
-
-    updateLengthForNull(src1Len, inst->getSource(SourceIndex::SRC1));
-    inst->setSrc1Length(src1Len);
+    // in case the operand lengths come from a seprate source
+    if (inst->getSrc0Length() < 0)
+        inst->setSrc0Length(src0Len);
+    if (inst->getSrc1Length() < 0)
+        inst->setSrc1Length(src1Len);
 
     return inst;
 }
 
-void DecoderBase::decodeSendDestination(Instruction *inst)
+void Decoder::decodeSendDestination(Instruction *inst)
 {
     GED_ACCESS_MODE accessMode = decodeAccessMode();
     GED_DECODE_RAW(GED_REG_FILE, regFile, DstRegFile);
@@ -1145,8 +1173,8 @@ void DecoderBase::decodeSendDestination(Instruction *inst)
         DirRegOpInfo dri = decodeDstDirRegInfo();
 
         Region::Horz rgnHz = Region::Horz::HZ_1;
-        if (m_opSpec->hasImplicitDstRegion()) {
-            rgnHz = m_opSpec->implicitDstRegion().getHz();
+        if (m_opSpec->hasImplicitDstRegion(isMacro())) {
+            rgnHz = m_opSpec->implicitDstRegion(isMacro()).getHz();
         }
 
         inst->setDirectDestination(
@@ -1158,7 +1186,7 @@ void DecoderBase::decodeSendDestination(Instruction *inst)
     }
 }
 
-GED_ADDR_MODE DecoderBase::decodeSendSource0AddressMode()
+GED_ADDR_MODE Decoder::decodeSendSource0AddressMode()
 {
     GED_ADDR_MODE addrMode = GED_ADDR_MODE_Direct;
     if (platform() <= Platform::GEN11) {
@@ -1167,7 +1195,7 @@ GED_ADDR_MODE DecoderBase::decodeSendSource0AddressMode()
     return addrMode;
 }
 
-void DecoderBase::decodeSendSource0(Instruction *inst)
+void Decoder::decodeSendSource0(Instruction *inst)
 {
     GED_ACCESS_MODE accessMode = decodeAccessMode();
     GED_REG_FILE regFile = decodeSrcRegFile<SourceIndex::SRC0>();
@@ -1181,8 +1209,8 @@ void DecoderBase::decodeSendSource0(Instruction *inst)
 
         Region rgn = inst->getOpSpec().implicitSrcRegion(
             0,
-            platform(),
-            inst->getExecSize());
+            inst->getExecSize(),
+            isMacro());
         bool hasSrcRgnEncoding = inst->getOpSpec().isSendFamily()
             && platform() < Platform::GEN9;
 
@@ -1204,13 +1232,13 @@ void DecoderBase::decodeSendSource0(Instruction *inst)
 }
 
 
-void DecoderBase::decodeSendSource1(Instruction *inst)
+void Decoder::decodeSendSource1(Instruction *inst)
 {
     RegRef regRef;
     RegName regName = decodeSourceReg<SourceIndex::SRC1>(regRef);
     const OpSpec &os = inst->getOpSpec();
-    Region rgn = os.implicitSrcRegion(1, platform(), inst->getExecSize());
-    Type implSrcType = os.implicitSrcType(1, false, platform());
+    Region rgn = os.implicitSrcRegion(1, inst->getExecSize(), isMacro());
+    Type implSrcType = os.implicitSrcType(1, false);
     inst->setDirectSource(
         SourceIndex::SRC1,
         SrcModifier::NONE,
@@ -1224,17 +1252,13 @@ void DecoderBase::decodeSendSource1(Instruction *inst)
 ///////////////////////////////////////////////////////////////////////
 // BRANCH INSTRUCTIONS
 ///////////////////////////////////////////////////////////////////////
-Instruction *DecoderBase::decodeBranchInstruction(Kernel& kernel)
+Instruction *Decoder::decodeBranchInstruction(Kernel& kernel)
 {
     if (decodeAccessMode() == GED_ACCESS_MODE_Align16) {
         error("Align16 branches not supported");
         return kernel.createIllegalInstruction();
     }
 
-    BranchCntrl branchCtrl = BranchCntrl::OFF;
-    if (m_opSpec->supportsBranchCtrl()) {
-        GED_DECODE_TO(BranchCtrl, GEDToIGATranslation::translate, branchCtrl);
-    }
     FlagRegInfo fri = decodeFlagRegInfo();
     Instruction *inst = kernel.createBranchInstruction(
         *m_opSpec,
@@ -1243,7 +1267,7 @@ Instruction *DecoderBase::decodeBranchInstruction(Kernel& kernel)
         decodeExecSize(),
         decodeChannelOffset(),
         decodeMaskCtrl(),
-        branchCtrl);
+        m_subfunc);
 
     if (m_opSpec->op == Op::JMPI) {
         //   jmpi (1) JIP
@@ -1308,7 +1332,6 @@ Instruction *DecoderBase::decodeBranchInstruction(Kernel& kernel)
                 srcType);
         } else {
             // call (..)  reg  reg32
-
             decodeSourceBasicAlign1<SourceIndex::SRC1>(
                 inst,
                 SourceIndex::SRC0);
@@ -1352,11 +1375,11 @@ Instruction *DecoderBase::decodeBranchInstruction(Kernel& kernel)
     return inst;
 }
 
-Instruction *DecoderBase::decodeBranchSimplifiedInstruction(Kernel& kernel)
+Instruction *Decoder::decodeBranchSimplifiedInstruction(Kernel& kernel)
 {
     BranchCntrl branchCtrl = BranchCntrl::OFF;
     if (m_opSpec->supportsBranchCtrl()) {
-        GED_DECODE_TO(BranchCtrl, GEDToIGATranslation::translate, branchCtrl);
+        GED_DECODE_TO(BranchCtrl, translate, branchCtrl);
     }
     FlagRegInfo fri = decodeFlagRegInfo();
     Instruction *inst = kernel.createBranchInstruction(
@@ -1375,7 +1398,7 @@ Instruction *DecoderBase::decodeBranchSimplifiedInstruction(Kernel& kernel)
     GED_DECODE_RAW(GED_REG_FILE, regFile, Src0RegFile);
     if (regFile != GED_REG_FILE_IMM) {
         Region rgn =
-            m_opSpec->implicitSrcRegion(0, platform(), inst->getExecSize());
+            m_opSpec->implicitSrcRegion(0, inst->getExecSize(), isMacro());
         DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<SourceIndex::SRC0>();
         inst->setDirectSource(
             SourceIndex::SRC0,
@@ -1388,7 +1411,7 @@ Instruction *DecoderBase::decodeBranchSimplifiedInstruction(Kernel& kernel)
         decodeJipToSrc(inst,
             SourceIndex::SRC0,
             m_opSpec->implicitSrcType(
-                static_cast<int>(SourceIndex::SRC0), false, platform()));
+                static_cast<int>(SourceIndex::SRC0), false));
     }
     // brc/brd read both UIP and JIP from one register (64-bits)
     bool isReg64 = ((m_opSpec->op == Op::BRC || m_opSpec->op == Op::BRD) &&
@@ -1400,7 +1423,7 @@ Instruction *DecoderBase::decodeBranchSimplifiedInstruction(Kernel& kernel)
     return inst;
 }
 
-void DecoderBase::decodeBranchDestination(Instruction *inst)
+void Decoder::decodeBranchDestination(Instruction *inst)
 {
     DirRegOpInfo dri = decodeDstDirRegInfo();
     inst->setDirectDestination(
@@ -1410,35 +1433,39 @@ void DecoderBase::decodeBranchDestination(Instruction *inst)
 ///////////////////////////////////////////////////////////////////////
 // OTHER INSTRUCTIONS
 ///////////////////////////////////////////////////////////////////////
-Instruction *DecoderBase::decodeWaitInstruction(Kernel &kernel)
+Instruction *Decoder::decodeWaitInstruction(Kernel &kernel)
 {
     // wait encodes as
     //   wait (..) nreg  nreg  null
     GED_ACCESS_MODE accessMode = decodeAccessMode();
     FlagRegInfo fri = decodeFlagRegInfo();
-    Instruction *inst = kernel.createBasicInstruction(
+    Instruction *inst =
+        kernel.createBasicInstruction(
             *m_opSpec,
             fri.pred,
             fri.reg,
             decodeExecSize(),
             decodeChannelOffset(),
             decodeMaskCtrl(),
-            fri.modifier);
+            fri.modifier,
+            m_subfunc);
     decodeSourceBasic<SourceIndex::SRC0>(inst, accessMode);
     return inst;
 }
 
-Instruction *DecoderBase::decodeSyncInstruction(Kernel &kernel)
+Instruction *Decoder::decodeSyncInstruction(Kernel &kernel)
 {
     FlagRegInfo fri = decodeFlagRegInfo();
-    Instruction *inst = kernel.createBasicInstruction(
+    Instruction *inst =
+        kernel.createBasicInstruction(
             *m_opSpec,
             fri.pred,
             fri.reg,
             decodeExecSize(),
             decodeChannelOffset(),
             decodeMaskCtrl(),
-            fri.modifier);
+            fri.modifier,
+            m_subfunc);
     GED_REG_FILE regFile = decodeSrcRegFile<SourceIndex::SRC0>();
 
     if (regFile == GED_REG_FILE_ARF) {
@@ -1456,27 +1483,27 @@ Instruction *DecoderBase::decodeSyncInstruction(Kernel &kernel)
     return inst;
 }
 
-Predication DecoderBase::decodePredication()
+Predication Decoder::decodePredication()
 {
     Predication pred = {PredCtrl::NONE, false};
     GED_DECODE_RAW(GED_PRED_CTRL, pc, PredCtrl);
-    pred.function = GEDToIGATranslation::translate(pc);
+    pred.function = translate(pc);
     return pred;
 }
 
-void DecoderBase::decodePredInv(Predication& pred)
+void Decoder::decodePredInv(Predication& pred)
 {
     GED_DECODE_RAW(GED_PRED_INV, pi, PredInv);
     pred.inverse = (pi == GED_PRED_INV_Invert);
 }
 
-MaskCtrl DecoderBase::decodeMaskCtrl()
+MaskCtrl Decoder::decodeMaskCtrl()
 {
     GED_DECODE(MaskCtrl, GED_MASK_CTRL, ctrl, MaskCtrl);
     return ctrl;
 }
 
-FlagRegInfo DecoderBase::decodeFlagRegInfo(bool imm64Src0Overlaps) {
+FlagRegInfo Decoder::decodeFlagRegInfo(bool imm64Src0Overlaps) {
 
     FlagRegInfo fri = {
         {PredCtrl::NONE, false},
@@ -1488,11 +1515,10 @@ FlagRegInfo DecoderBase::decodeFlagRegInfo(bool imm64Src0Overlaps) {
     if (m_opSpec->supportsFlagModifier() && !imm64Src0Overlaps) {
         // GEN12 SWSB overlaps CondModifier and Imm64 values
         GED_DECODE_RAW(GED_COND_MODIFIER, condMod, CondModifier);
-        fri.modifier = GEDToIGATranslation::translate(condMod);
-    } else if (m_opSpec->hasImplicitFlagModifier()) {
+        fri.modifier = translate(condMod);
+    } else if (m_opSpec->is(Op::MATH) && isMacro()) {
         // math.inv and math.rsqrtm both implicitly support EO
         // currently math is the only case, and its flagModifier must be EO
-        assert(m_opSpec->isMathSubFunc());
         fri.modifier = FlagModifier::EO;
     }
 
@@ -1511,13 +1537,13 @@ FlagRegInfo DecoderBase::decodeFlagRegInfo(bool imm64Src0Overlaps) {
     return fri;
 }
 
-ExecSize DecoderBase::decodeExecSize()
+ExecSize Decoder::decodeExecSize()
 {
     GED_DECODE_RAW(uint32_t, execSize, ExecSize);
-    return GEDToIGATranslation::translateExecSize(execSize);
+    return translateExecSize(execSize);
 }
 
-ChannelOffset DecoderBase::decodeChannelOffset()
+ChannelOffset Decoder::decodeChannelOffset()
 {
     if (m_opSpec->supportsQtrCtrl()) {
         GED_DECODE(ChannelOffset, GED_CHANNEL_OFFSET, em, ChannelOffset);
@@ -1527,7 +1553,7 @@ ChannelOffset DecoderBase::decodeChannelOffset()
     }
 }
 
-GED_ACCESS_MODE DecoderBase::decodeAccessMode()
+GED_ACCESS_MODE Decoder::decodeAccessMode()
 {
     if (m_model.supportsAccessMode()) {
         GED_DECODE_RAW(GED_ACCESS_MODE, accessMode, AccessMode);
@@ -1536,10 +1562,10 @@ GED_ACCESS_MODE DecoderBase::decodeAccessMode()
     return GED_ACCESS_MODE_Align1;
 }
 
-void DecoderBase::decodeJipToSrc(Instruction *inst, SourceIndex s, Type type) {
+void Decoder::decodeJipToSrc(Instruction *inst, SourceIndex s, Type type) {
     inst->setLabelSource(s, decodeJip(), type);
 }
-void DecoderBase::decodeUipToSrc1(Instruction *inst, Type type) {
+void Decoder::decodeUipToSrc1(Instruction *inst, Type type) {
     inst->setLabelSource(SourceIndex::SRC1, decodeUip(), type);
 }
 
@@ -1550,16 +1576,16 @@ void DecoderBase::decodeUipToSrc1(Instruction *inst, Type type) {
         m_opSpec->op != Op::CALL && \
         m_opSpec->op != Op::CALLA && \
         m_opSpec->op != Op::JMPI) ? 8 : 1)
-int32_t DecoderBase::decodeJip() {
+int32_t Decoder::decodeJip() {
     GED_DECODE_RAW(int32_t, jip, JIP);
     return jip * PC_SCALE;
 }
-int32_t DecoderBase::decodeUip() {
+int32_t Decoder::decodeUip() {
     GED_DECODE_RAW(int32_t, uip, UIP);
     return uip * PC_SCALE;
 }
 
-int DecoderBase::decodeDestinationRegNumAccBitsFromChEn()
+int Decoder::decodeDestinationRegNumAccBitsFromChEn()
 {
     // this is used by the math macro register (implicit accumulator access)
     // and for context save and restore access to those registers
@@ -1592,7 +1618,7 @@ int DecoderBase::decodeDestinationRegNumAccBitsFromChEn()
 }
 
 
-MathMacroExt DecoderBase::decodeDestinationMathMacroRegFromChEn()
+MathMacroExt Decoder::decodeDestinationMathMacroRegFromChEn()
 {
     // this is used by the math macro register (implicit accumulator) access
     // and for context save and restore access to those registers
@@ -1613,9 +1639,9 @@ MathMacroExt DecoderBase::decodeDestinationMathMacroRegFromChEn()
     }
 }
 
-void DecoderBase::decodeDstDirSubRegNum(DirRegOpInfo& dri)
+void Decoder::decodeDstDirSubRegNum(DirRegOpInfo& dri)
 {
-    if (m_opSpec->isMacro() || m_opSpec->isSendOrSendsFamily()) {
+    if (isMacro() || m_opSpec->isSendOrSendsFamily()) {
         dri.regRef.subRegNum = 0;
     } else {
         Type scalingType = dri.type;
@@ -1628,7 +1654,7 @@ void DecoderBase::decodeDstDirSubRegNum(DirRegOpInfo& dri)
     }
 }
 
-void DecoderBase::decodeReg(
+void Decoder::decodeReg(
     int opIx,
     GED_REG_FILE regFile,
     uint32_t regNumBits,
@@ -1662,9 +1688,9 @@ void DecoderBase::decodeReg(
     }
 }
 
-DirRegOpInfo DecoderBase::decodeDstDirRegInfo() {
+DirRegOpInfo Decoder::decodeDstDirRegInfo() {
     DirRegOpInfo dri;
-    dri.type = m_opSpec->implicitDstType(platform());
+    dri.type = m_opSpec->implicitDstType();
     bool hasDstType = true;
     if (platform() >= Platform::GEN12P1) {
         hasDstType &= !m_opSpec->isSendOrSendsFamily();
@@ -1682,26 +1708,26 @@ DirRegOpInfo DecoderBase::decodeDstDirRegInfo() {
     return dri;
 }
 
-Type DecoderBase::decodeDstType() {
+Type Decoder::decodeDstType() {
     GED_DECODE(Type, GED_DATA_TYPE, t, DstDataType);
     return t;
 }
 
-bool DecoderBase::hasImplicitScalingType(Type& type, DirRegOpInfo& dri)
+bool Decoder::hasImplicitScalingType(Type& type, DirRegOpInfo& dri)
 {
     // FIXME: when entering this function, assuming it MUST NOT be imm or label src
     if (platform() >= Platform::GEN12P1 &&
         (m_opSpec->isSendFamily() || m_opSpec->isBranching()))
     {
         dri.type = m_opSpec->implicitSrcType(
-            static_cast<int>(SourceIndex::SRC0), false, platform());
+            static_cast<int>(SourceIndex::SRC0), false);
         type = Type::D;
         return true;
     }
     return false;
 }
 
-ImmVal DecoderBase::decodeSrcImmVal(Type t) {
+ImmVal Decoder::decodeSrcImmVal(Type t) {
     ImmVal val;
     val.kind = ImmVal::Kind::UNDEF;
     memset(&val, 0, sizeof(val)); // zero value in case GED only sets bottom bits
@@ -1712,7 +1738,7 @@ ImmVal DecoderBase::decodeSrcImmVal(Type t) {
 }
 
 template <SourceIndex S>
-void DecoderBase::decodeSourceBasicAlign1(
+void Decoder::decodeSourceBasicAlign1(
     Instruction *inst, SourceIndex toSrcIxE)
 {
     const int toSrcIx = static_cast<int>(toSrcIxE);
@@ -1730,10 +1756,10 @@ void DecoderBase::decodeSourceBasicAlign1(
         // region (implicit accumulator if Align16 and <GEN11)
         Region implRgn = Region::INVALID;
         if (inst->getOpSpec().hasImplicitSrcRegion(
-            toSrcIx, platform(), inst->getExecSize()))
+            toSrcIx, inst->getExecSize(), isMacro()))
         {
             implRgn = inst->getOpSpec().implicitSrcRegion(
-                toSrcIx, platform(), inst->getExecSize());
+                toSrcIx, inst->getExecSize(), isMacro());
         }
         Region decRgn = Region::INVALID;
         if (m_opSpec->isSendOrSendsFamily()) {
@@ -1744,7 +1770,7 @@ void DecoderBase::decodeSourceBasicAlign1(
         // ensure the region matches any implicit region rules
         if (!m_opSpec->isSendOrSendsFamily() &&
             inst->getOpSpec().hasImplicitSrcRegion(
-                toSrcIx, platform(), inst->getExecSize()))
+                toSrcIx, inst->getExecSize(), isMacro()))
         {
             if (implRgn != decRgn) {
                 warning("src%d.Rgn should have %s for binary normal form",
@@ -1796,7 +1822,7 @@ void DecoderBase::decodeSourceBasicAlign1(
 
 
 template <SourceIndex S>
-void DecoderBase::decodeSourceBasicAlign16(
+void Decoder::decodeSourceBasicAlign16(
     Instruction *inst, SourceIndex toSrcIx)
 {
     GED_REG_FILE regFile = decodeSrcRegFile<S>();
@@ -1894,7 +1920,7 @@ void DecoderBase::decodeSourceBasicAlign16(
 }
 
 
-void DecoderBase::decodeChSelToSwizzle(uint32_t chanSel, GED_SWIZZLE swizzle[4])
+void Decoder::decodeChSelToSwizzle(uint32_t chanSel, GED_SWIZZLE swizzle[4])
 {
     GED_RETURN_VALUE status = GED_RETURN_VALUE_INVALID_FIELD;
 
@@ -1917,7 +1943,7 @@ void DecoderBase::decodeChSelToSwizzle(uint32_t chanSel, GED_SWIZZLE swizzle[4])
 }
 
 template <SourceIndex S>
-bool DecoderBase::isChanSelPacked()
+bool Decoder::isChanSelPacked()
 {
     uint32_t chanSel = decodeSrcChanSel<S>();
     GED_SWIZZLE swizzle[4];
@@ -1926,7 +1952,7 @@ bool DecoderBase::isChanSelPacked()
            swizzle[2] != GED_SWIZZLE_z && swizzle[3] != GED_SWIZZLE_w;
 }
 
-void DecoderBase::decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntrl)
+void Decoder::decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntrl)
 {
     switch (trdCntrl) {
     case GED_THREAD_CTRL_Atomic:
@@ -1945,7 +1971,7 @@ void DecoderBase::decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntr
 }
 
 template <SourceIndex S> ImmVal
-DecoderBase::decodeTernarySrcImmVal(Type t)
+Decoder::decodeTernarySrcImmVal(Type t)
 {
     ImmVal val;
     val.kind = ImmVal::Kind::UNDEF;
@@ -1964,17 +1990,17 @@ DecoderBase::decodeTernarySrcImmVal(Type t)
     return val;
 }
 
-uint32_t DecoderBase::binNumToSubRegNum(
+uint32_t Decoder::binNumToSubRegNum(
     uint32_t binNum, RegName regName, Type type)
 {
 
     return BytesOffsetToSubReg(binNum, regName, type);
 }
 
-void DecoderBase::decodeOptions(Instruction *inst)
+void Decoder::decodeOptions(Instruction *inst)
 {
     const OpSpec &os = inst->getOpSpec();
-    if (os.supportsAccWrEn(platform())) {
+    if (os.supportsAccWrEn()) {
         // * GED doesn't allow AccWrEn on send's
         // * BrnchCtrl overlaps AccWrEn, so anything using that is out
         GED_ACC_WR_CTRL accWrEn = GED_ACC_WR_CTRL_Normal;
@@ -2000,7 +2026,7 @@ void DecoderBase::decodeOptions(Instruction *inst)
         }
     }
 
-    if (os.supportsDepCtrl(platform())) {
+    if (os.supportsDepCtrl()) {
         GED_DEP_CTRL dpCtrl = GED_DEP_CTRL_Normal;
         GED_DECODE_RAW_TO(DepCtrl, dpCtrl);
         if (dpCtrl == GED_DEP_CTRL_NoDDClr) {
@@ -2039,7 +2065,7 @@ void DecoderBase::decodeOptions(Instruction *inst)
 }
 
 
-Instruction *DecoderBase::createErrorInstruction(
+Instruction *Decoder::createErrorInstruction(
     Kernel& kernel,
     const char *message,
     const void *binary,
@@ -2065,7 +2091,7 @@ Instruction *DecoderBase::createErrorInstruction(
 }
 
 
-uint32_t DecoderBase::getBitField(int ix, int len) const {
+uint32_t Decoder::getBitField(int ix, int len) const {
     const uint32_t *ws = (const uint32_t *)((const char *)m_binary + currentPc());
     // shift is only well-defined for values <32, use 0xFFFFFFFF
     uint32_t mask = len >= 32 ? 0xFFFFFFFF : (1<<(uint32_t)len) - 1;
@@ -2075,7 +2101,7 @@ uint32_t DecoderBase::getBitField(int ix, int len) const {
 }
 
 
-void DecoderBase::handleGedDecoderError(
+void Decoder::handleGedDecoderError(
     int line,
     const char *field,
     GED_RETURN_VALUE status)
@@ -2110,14 +2136,14 @@ void DecoderBase::handleGedDecoderError(
 // .cpp.  We need to explicitly instantiate those template functions so
 // the other .cpp can reference them.
 template
-void DecoderBase::decodeSourceBasicAlign16<SourceIndex::SRC0>(
+void Decoder::decodeSourceBasicAlign16<SourceIndex::SRC0>(
     Instruction *inst, SourceIndex toSrcIx);
 template
-void DecoderBase::decodeSourceBasicAlign16<SourceIndex::SRC1>(
+void Decoder::decodeSourceBasicAlign16<SourceIndex::SRC1>(
     Instruction *inst, SourceIndex toSrcIx);
 template
-void DecoderBase::decodeSourceBasicAlign1<SourceIndex::SRC0>(
+void Decoder::decodeSourceBasicAlign1<SourceIndex::SRC0>(
     Instruction *inst, SourceIndex toSrcIx);
 template
-void DecoderBase::decodeSourceBasicAlign1<SourceIndex::SRC1>(
+void Decoder::decodeSourceBasicAlign1<SourceIndex::SRC1>(
     Instruction *inst, SourceIndex toSrcIx);

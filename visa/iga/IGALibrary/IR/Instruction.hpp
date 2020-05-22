@@ -73,18 +73,18 @@ namespace iga
             ChannelOffset chOff,
             MaskCtrl mc)
             : m_opSpec(os)
+            , m_sf(InvalidFC::INVALID)
             , m_maskCtrl(mc)
             , m_pred(PredCtrl::NONE,false)
             , m_flagReg(REGREF_ZERO_ZERO)
             , m_execSize(execSize)
             , m_chOff(chOff)
             , m_flagModifier(FlagModifier::NONE)
-            , m_brnch(BranchCtrl::OFF)
+            , m_instLoc(Loc::INVALID)
             , m_instId(0xFFFFFFFF)
             , m_pc(0)
-            , m_instLoc(Loc::INVALID)
             , m_sendDstLength(-1)
-            , m_sendSrc0Length(-1)
+            , m_sendSrc0Len(-1)
             , m_sendSrc1Length(-1)
         {
         }
@@ -96,6 +96,8 @@ namespace iga
 
         ///////////////////////////////////////////////////////////////////////
         // operations that set instruction state
+        // (these are kept roughly in syntax order;
+        //  e.g. predication before instruction options)
         //
         void setLoc(const Loc &loc) {m_instLoc = loc;}
         void setPC(int32_t pc) {m_pc = pc;}
@@ -103,10 +105,11 @@ namespace iga
         void setMaskCtrl(MaskCtrl mc) {m_maskCtrl = mc;}
         void setExecSize(ExecSize es) {m_execSize = es;}
         void setChannelOffset(ChannelOffset co) {m_chOff = co;}
-        void setBranchCtrl(BranchCntrl bc) {m_brnch = bc;}
         void setFlagModifier(FlagModifier flagModifier) {m_flagModifier = flagModifier;}
         void setFlagReg(RegRef reg) {m_flagReg = reg;}
         void setPredication(const Predication &predOpnd) {m_pred = predOpnd;}
+
+        void setSubfunction(Subfunction sf);
 
         void setDirectDestination(
             DstModifier dstMod,
@@ -168,7 +171,7 @@ namespace iga
         void setMsgDesc(const SendDesc &msg) {m_desc = msg;}
         void setExtMsgDesc(const SendDesc &msg) {m_exDesc = msg;}
         void setDstLength(int dstLength) {m_sendDstLength = dstLength;}
-        void setSrc0Length(int src0Length) {m_sendSrc0Length = src0Length;}
+        void setSrc0Length(int src0Length) {m_sendSrc0Len = src0Length;}
         void setSrc1Length(int src1Length) {m_sendSrc1Length = src1Length;}
 
         void setSWSB(SWSB swsb) {m_depInfo = swsb;}
@@ -189,6 +192,9 @@ namespace iga
 
         // returns the instruction op specification
         const OpSpec      &getOpSpec()         const {return m_opSpec;}
+        // opcode, math function control, and branch control
+        Op                 getOp()             const {return m_opSpec.op;}
+        bool               is(Op op)           const {return m_opSpec.is(op);}
 
         // WrEn (NoMask)
         MaskCtrl           getMaskCtrl()       const {return m_maskCtrl;}
@@ -196,16 +202,18 @@ namespace iga
         bool               hasPredication()    const {return m_pred.function != PredCtrl::NONE;}
         const Predication& getPredication()    const {return m_pred;}
 
-        // opcode, math function control, and branch control
-        Op                 getOp()             const {return m_opSpec.op;}
-        // for sub-ops such as Op::MATH_SQT or Op::SENT_GTWY this returns
-        // the *parent* op (i.e. Op::MATH or Op::SEND)
-        Op                 getGroupOp()        const {return m_opSpec.groupOp;}
+        ///////////////////////////////////////////////////////////
+        // subfunction accessors
+        Subfunction        getSubfunction()    const {return m_sf;}
+        // specific subfunction accessors
+        // TODO: tantrum (assert) if they call one on the wrong op?
+        BranchCntrl        getBranchCtrl()     const {return m_sf.branch;}
+        MathFC             getMathFc()         const {return m_sf.math;}
+        SFID               getSendFc()         const {return m_sf.send;}
+        SyncFC             getSyncFc()         const {return m_sf.sync;}
 
-
-        BranchCntrl        getBranchCtrl()     const {return m_brnch;}
         // true for madm or math.invm and math.rsqrtm
-        bool               isMacro()           const {return getOpSpec().isMacro();}
+        bool               isMacro()           const;
         // execution width info
         ExecSize           getExecSize()       const {return m_execSize;}
         ChannelOffset      getChannelOffset()  const {return m_chOff;}
@@ -224,16 +232,12 @@ namespace iga
         const Operand&     getSource(SourceIndex srcNum) const {return m_srcs[(int)srcNum];}
               Operand&     getSource(SourceIndex srcNum)       {return m_srcs[(int)srcNum];}
 
-        unsigned           getSourceCount() const{
-            // BRC can have 1 or 2 operands, everyone else is simple
-            return getOp() != Op::BRC ?
-                getOpSpec().getSourceCount() : getSourceCountBrc();
-        }
+        unsigned           getSourceCount() const;
 
         SendDesc           getExtMsgDescriptor() const {return m_exDesc;}
         SendDesc           getMsgDescriptor()    const {return m_desc;}
         int                getDstLength() const {return m_sendDstLength;}
-        int                getSrc0Length() const {return m_sendSrc0Length;}
+        int                getSrc0Length() const {return m_sendSrc0Len;}
         int                getSrc1Length() const {return m_sendSrc1Length;}
 
         const InstOptSet&  getInstOpts() const {return m_instOpts;}
@@ -251,9 +255,9 @@ namespace iga
         void               validate() const; // asserts on malformed IR
         std::string        str(Platform p) const; // returns syntax of this instruction
     private:
-        unsigned           getSourceCountBrc() const;
-
         const OpSpec&    m_opSpec; // information about the specific inst op
+        Subfunction      m_sf; // e.g. MathFC::INV for math.inv, SFID::DC0 for send.dc0
+
         MaskCtrl         m_maskCtrl; // (W) WrEn (write enable / NoMask)
         Predication      m_pred; // predication function (and logical sign)
         RegRef           m_flagReg; // shared by m_pred and m_flagModifier
@@ -264,12 +268,11 @@ namespace iga
         Operand          m_srcs[3];
 
         FlagModifier     m_flagModifier; // conditional-modifier function
-        BranchCtrl       m_brnch;        // for certain branching instructions
 
         SendDesc         m_exDesc;
         SendDesc         m_desc;
         int              m_sendDstLength; // -1 if unknown
-        int              m_sendSrc0Length; // -1 if unknown
+        int              m_sendSrc0Len; // -1 if unknown
         int              m_sendSrc1Length; // -1 if unknown
 
         InstOptSet       m_instOpts; // miscellaneous instruction attributes

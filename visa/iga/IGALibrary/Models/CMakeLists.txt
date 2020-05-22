@@ -3,6 +3,7 @@ set(IGA_ModelsOpen
   ${CMAKE_CURRENT_SOURCE_DIR}/Models.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Models.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/OpSpec.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/OpSpec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model7P5.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model8.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model9.hpp

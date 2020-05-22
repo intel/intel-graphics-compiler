@@ -23,34 +23,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef IGA_FRONTEND_LDSTSYNTAX_MESSAGEFORMATTING_HPP
-#define IGA_FRONTEND_LDSTSYNTAX_MESSAGEFORMATTING_HPP
+#include <ostream>
 
-#include "../../IR/Instruction.hpp"
-#include "../../Models/Models.hpp"
-
-#include <string>
-#include <vector>
+#ifdef _WIN32
+#include <Windows.h>
+#include <io.h>
+#define IS_STDERR_TTY (_isatty(_fileno(stderr)) != 0)
+#define IS_STDOUT_TTY (_isatty(_fileno(stdout)) != 0)
+#else
+#include <unistd.h>
+#define IS_STDERR_TTY (isatty(STDERR_FILENO) != 0)
+#define IS_STDOUT_TTY (isatty(STDOUT_FILENO) != 0)
+#endif
 
 namespace iga
 {
-    struct FormatResult {
-        std::string opcode; // e.g. "ld.sc8.x4"
-        std::string dst;    // e.g. ""r12-14:f" or "[r12-14]:f" (for ld and st)
-        std::string src;    // e.g. as above, but flipped
-        std::vector<const char *> instOpts; // any field that manifests as an instruction option
+    bool IsTty(const std::ostream &os);
 
-        std::string errMessage; // why formatting failed
-
-        FormatResult &error(const char *msg) {errMessage = msg; return *this;}
-        bool success() const {return errMessage.empty();}
-    };
-
-    // returns false if we cannot format as ld/st and errMessage has more info
-    FormatResult FormatLdStInstruction(
-        const Model &m,
-        const Instruction &i);
+    // bool LookupEnvironmentVariable(const char *key, std::string &value);
+    // bool IsDirectory(const char *path);
+    // bool FileExists(const char *path);
 }
-
-
-#endif // IGA_FRONTEND_LDSTSYNTAX_MESSAGEFORMATTING_HPP

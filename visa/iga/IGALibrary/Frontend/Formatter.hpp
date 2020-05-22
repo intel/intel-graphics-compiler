@@ -59,6 +59,7 @@ namespace iga {
         bool              printInstDeps = true;
         bool              printInstBits = true;
         bool              printLdSt = false;
+        bool              printAnsi = false;
         DepAnalysis      *liveAnalysis = nullptr;
 
         // format with default labels
@@ -87,10 +88,12 @@ namespace iga {
         {
         }
 
-        void setSWSBEncodingMode(SWSB_ENCODE_MODE mode)
-        {
+        void setSWSBEncodingMode(SWSB_ENCODE_MODE mode) {
             swsbEncodingMode = mode;
         }
+
+        // in iga.cpp
+        void addApiOpts(uint32_t fmtOpts);
     };
 
 
@@ -138,117 +141,176 @@ namespace iga {
     std::string FormatOpName(const iga::Model &m, const void *bits);
 
 
-
-
-
-
     //////////////////////////////////////////////////////////////////////////
     // Used by other modules internal to this directory
     //////////////////////////////////////////////////////////////////////////
 
+    // This wraps a constant ansi escape sequence in a unique type so
+    // template functions can handle them different from (const char *)'s.
+    // We define emitT(ansi_esc) to not count the characters as part of the
+    // current column (for column alignment).
+    struct ansi_esc {
+        const char *esc;
+        constexpr ansi_esc() : ansi_esc(nullptr) {}
+        constexpr ansi_esc(const char *_seq) : esc(_seq) {}
+    };
 
+    // This wraps a value of some sort to be emitted with an ANSI escape
+    // sequence.  We emit this and an ANSI_RESET afterwards.
+    // E.g. emit(ansi_span<int>("\033[1;32m",0x12))
+    template <typename T>
+    struct ansi_span {
+        ansi_esc esc;
+        const T &val;
+        constexpr ansi_span(const T &_val)
+            : ansi_span(nullptr, _val) { }
+        constexpr ansi_span(const char *_seq, const T &_val)
+            : esc(_seq), val(_val) { }
+    };
 
 
     // The abstract implementation of a formatter that has a notion of
     // column alignment and some other basic, language-agnostic constructs.
     class BasicFormatter {
-        size_t           currColLen; // length of the current column
-        size_t           currColStart; // stream offset of start of last col
-        size_t           currColDebt; // how far the current column has overflowed
+        size_t           currColCapacity; // preferred size of current column
+        size_t           currColSize; // current col's size
+        size_t           currLineDebt; // sum total of the column overflow
+                                      // (later cols can pay for overflow
+                                      // to realign future columns)
+        bool             printAnsi;
+
     protected:
+        ansi_esc ANSI_RESET;
+        // subclasses to this class may define other ansi sequences
+
         std::ostream&    o;
-        BasicFormatter(std::ostream &out) :
-            currColLen(0),
-            currColStart((size_t)-1),
-            currColDebt(0),
+
+        BasicFormatter(bool _printAnsi, std::ostream &out) :
+            printAnsi(_printAnsi),
+            currColCapacity((size_t)-1),
+            currColSize(0),
+            currLineDebt(0),
             o(out)
         {
+            // TODO: could make these mappable via environment variable
+            // export IGA_FormatAnsiRegisterArf="\033[38;2;138;43;211m"
+            // export IGA_FormatAnsiMnemonic=...
+            // export IGA_FormatAnsiComment=...
+            if (printAnsi) {
+                ANSI_RESET          = "\033[0m";
+            }
         }
 
     public:
         // start or finish a padded column
         void startColumn(int len) {
-            IGA_ASSERT(currColStart == (size_t)-1,
+            IGA_ASSERT(len >= 0, "negative column size");
+            IGA_ASSERT(currColCapacity == (size_t)-1,
                 "startColumn() called from with-in column "
                 "(missing finishColumn())");
-            currColLen = len;
-            currColStart = (size_t)o.tellp();
+            currColCapacity = (size_t)len;
+            currColSize = 0;
         }
         void finishColumn() {
-            IGA_ASSERT(currColStart != (size_t)-1,
+            IGA_ASSERT(currColCapacity != (size_t)-1,
                 "finishColumn() called with no active column "
                 "(missing startColumn(...))");
-            size_t end = (size_t)o.tellp();
-            size_t actualWidth = end - currColStart;
-            if (actualWidth <= currColLen) {
+            //
+            if (currColSize <= currColCapacity) {
                 // we underflowed; we have space left;
                 // if there is debt, we can cover some of it
-                size_t padding = currColLen - actualWidth;
-                if (currColDebt > 0) {
-                    size_t correction = std::min<size_t>(currColDebt, padding);
+                size_t padding = currColCapacity - currColSize;
+                if (currLineDebt > 0) {
+                    size_t correction =
+                        std::min<size_t>(currLineDebt, padding);
                     padding -= correction;
-                    currColDebt -= correction;
+                    currLineDebt -= correction;
                 }
                 emitSpaces(padding);
-            } else if (actualWidth > currColLen) {
+            } else if (currColSize > currColCapacity) {
                 // we overflowed accummulate debt
-                currColDebt += actualWidth - currColLen;
+                currLineDebt += currColSize - currColCapacity;
             }
-            currColStart = (size_t)-1;
+            //
+            currColCapacity = -1;
+            currColSize = 0;
         }
 
 
         void newline() {
+            IGA_ASSERT(currColCapacity == (size_t)-1,
+                "column open at newline");
             emit('\n');
-            currColDebt = 0;
+            currLineDebt = 0;
         }
+
 
         template <typename T>
-        void emit(const T &t) {
+        void emitT(ansi_span<T> t) {
+            emitT(t.esc);
+            emitT(t.value);
+            emitT(ANSI_RESET);
+        }
+        void emitT(ansi_esc e) {
+            // specialize this instance to not count the ANSI escapes as
+            // output characters (size of column)
+            if (e.esc)
+                o << e.esc;
+        }
+        template <typename T>
+        void emitT(const T &t) {
+            size_t n = (size_t)o.tellp();
             o << t;
-#ifdef TRACE_EMIT
-            std::cerr << t;
-            std::cerr.flush();
-#endif
-        }
-        template <typename T, typename U>
-        void emit(const T &t, const U &u) {
-            emit(t); emit(u);
-        }
-        template <typename T, typename U, typename V>
-        void emit(const T &t, const U &u, const V &v) {
-            emit(t); emit(u); emit(v);
-        }
-        template <typename T, typename U, typename V, typename W>
-        void emit(const T &t, const U &u, const V &v, const W &w) {
-            emit(t); emit(u); emit(v); emit(w);
+            currColSize += (size_t)o.tellp() - n;
         }
 
+
+        // enables you emit a list of things
+        //
+        // emit(foo, bar, baz, ...);
+        template <typename T, typename...Ts>
+        void emit(T t) {
+            emitT(t);
+        }
+        template <typename T, typename...Ts>
+        void emit(T t, Ts...ts) {
+            emitT(t);
+            emit(ts...);
+        }
+
+        // emits an sequence conditionally surrounded by an ANSI color
+        template <typename T, typename...Ts>
+        void emitAnsi(bool z, ansi_esc esc, T t0, Ts...ts) {
+            if (z)
+                emitT(esc);
+
+            emit(t0, ts...);
+
+            if (z)
+                emitT(ANSI_RESET);
+        }
+        template <typename T, typename...Ts>
+        void emitAnsi(ansi_esc esc, T t, Ts...ts) {
+            emitAnsi(true, esc, t, ts...);
+        }
 
         void emitSpaces(size_t n) {
-            for (size_t i = 0; i < n; i++) {
-                emit(' ');
-            }
+            for (size_t i = 0; i < n; i++)
+                o << ' ';
+            currColSize += n;
         }
 
 
         template <typename T>
         void emitDecimal(const T &t) {
             o << std::dec << t;
-#ifdef TRACE_EMIT
-            std::cerr << std::dec << t;
-            std::cerr.flush();
-#endif
         }
 
 
         template <typename T>
         void emitHex(const T &t, int w = 0) {
             fmtHex(o, (uint64_t)t);
-#ifdef TRACE_EMIT
-            std::cerr << "0x" << std::hex << t << std::dec;
-            std::cerr.flush();
-#endif
+            o << std::dec;
         }
 
 
@@ -285,7 +347,8 @@ namespace iga {
         int sendSrcOp; //we give send ops less space than norma
         int sendDesc;
         ColumnPreferences()
-            : predication(8)
+            // enough space for (~f0.0) or (W), (W&~f0.0) overflows
+            : predication(7)
             // sends (16|M0)
             // madm (16|M16)
             , opCodeExecInfo(13)
