@@ -271,11 +271,6 @@ void G4Verifier::verifyDstSrcOverlap(G4_INST* inst)
             return;
         }
 
-        if (!inst->isComprInst())
-        {
-            return;
-        }
-
         int dstStart = dst->getLinearizedStart() / GENX_GRF_REG_SIZ;
         int dstEnd = dst->getLinearizedEnd() / GENX_GRF_REG_SIZ;
 

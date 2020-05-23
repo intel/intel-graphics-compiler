@@ -1977,8 +1977,8 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_INST* inst)
     G4_DstRegRegion* dst = inst->getDst();
     if (dst && !dst->isNullReg() && dst->getBase()->isRegVar())
     {
-        G4_Declare* dstRootDcl = dst->getTopDcl();
-        int dstGRFOffset = dst->getLeftBound() / G4_GRF_REG_NBYTES;
+        G4_Declare* dstDcl = dst->getBase()->asRegVar()->getDeclare();
+        int dstGRFOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) / G4_GRF_REG_NBYTES;
 
         if (dst->getBase()->isRegAllocPartaker())
         {
@@ -2020,8 +2020,8 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_INST* inst)
                     src->asSrcRegRegion()->getBase()->isRegVar())
                 {
                     G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
-                    G4_Declare* srcRootDcl = src->getTopDcl();
-                    int srcGRFOffset = src->getLeftBound() / G4_GRF_REG_NBYTES;
+                    G4_Declare* srcDcl = src->getBase()->asRegVar()->getDeclare();
+                    int srcGRFOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
                     int srcOpndNumRows = ((srcRgn->getSubRegOff() + srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) / G4_GRF_REG_NBYTES) + 1;
 
                     if (dstOpndNumRows > 1 || srcOpndNumRows > 1)
@@ -2029,7 +2029,7 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_INST* inst)
                         // If the declares are even aligned, and
                         // the dst and src GRF offset are same, and source operand occupy multiple GRF,
                         // there is no possible to overlap.
-                        if (!(gra.isEvenAligned(dstRootDcl) && gra.isEvenAligned(srcRootDcl) &&
+                        if (!(gra.isEvenAligned(dstDcl) && gra.isEvenAligned(srcDcl) &&
                             (srcGRFOffset % 2 == dstGRFOffset % 2) &&
                             (srcOpndNumRows > 1)))
                         {
@@ -2038,23 +2038,23 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_INST* inst)
                                 unsigned srcId = src->asSrcRegRegion()->getBase()->asRegVar()->getId();
 #ifdef DEBUG_VERBOSE_ON
                                 printf("Src%d  ", j);
-                                printf("dst: %s, src: %s :\t", gra.isEvenAligned(dstRootDcl) ? "E" : "O", gra.isEvenAligned(srcRootDcl) ? "E" : "O");
+                                printf("dst: %s, src: %s :\t", gra.isEvenAligned(dstDcl) ? "E" : "O", gra.isEvenAligned(srcDcl) ? "E" : "O");
                                 printf("dstGRFOffset: %d, srcGRFOffset: %d\t", dstGRFOffset, srcGRFOffset);
                                 printf("dstNum: %d, srcNum: %d\n", dstOpndNumRows, srcOpndNumRows);
                                 inst->dump();
 #endif
                                 if (srcGRFOffset % 2 == dstGRFOffset % 2 &&
-                                    !(gra.getLocalLR(dstRootDcl) && gra.getLocalLR(dstRootDcl)->getAssigned()) &&
-                                    !(gra.getLocalLR(srcRootDcl) && gra.getLocalLR(srcRootDcl)->getAssigned()) &&
+                                    !(gra.getLocalLR(dstDcl) && gra.getLocalLR(dstDcl)->getAssigned()) &&
+                                    !(gra.getLocalLR(srcDcl) && gra.getLocalLR(srcDcl)->getAssigned()) &&
                                     srcOpndNumRows > 1)
                                 {
-                                    if (!gra.isEvenAligned(dstRootDcl))
+                                    if (!gra.isEvenAligned(dstDcl))
                                     {
-                                        gra.setEvenAligned(dstRootDcl, true);
+                                        gra.setEvenAligned(dstDcl, true);
                                     }
-                                    if (!gra.isEvenAligned(srcRootDcl))
+                                    if (!gra.isEvenAligned(srcDcl))
                                     {
-                                        gra.setEvenAligned(srcRootDcl, true);
+                                        gra.setEvenAligned(srcDcl, true);
                                     }
                                 }
                                 else
@@ -2128,10 +2128,7 @@ void Interference::buildInterferenceForDstSrcOverlap()
         for (auto i = bb->rbegin(); i != bb->rend(); i++)
         {
             G4_INST* inst = (*i);
-            if (inst->isComprInst())
-            {
-                markInterferenceToAvoidDstSrcOvrelap(inst);
-            }
+            markInterferenceToAvoidDstSrcOvrelap(inst);
         }
     }
 }
@@ -5917,6 +5914,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
             bool failed_alloc = false;
             G4_Declare* dcl = lrVar->getDeclare();
+
             if (!(noIndirForceSpills &&
                 liveAnalysis.isAddressSensitive(lr_id)) &&
                 forceSpill &&
