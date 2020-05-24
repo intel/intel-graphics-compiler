@@ -1961,31 +1961,27 @@ void Interference::markInterferenceForSend(G4_BB* bb,
     }
 }
 
-void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_INST* inst)
+void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
+    G4_INST* inst)
 {
     bool isDstRegAllocPartaker = false;
     bool isDstLocallyAssigned = false;
     unsigned dstId = 0;
     int dstPreg = 0, dstNumRows = 0;
-    int dstOpndNumRows = 0;
-
-    if (inst->isSend())
-    {
-        return;
-    }
+    bool dstOpndNumRows = false;
 
     G4_DstRegRegion* dst = inst->getDst();
-    if (dst && !dst->isNullReg() && dst->getBase()->isRegVar())
+    if (dst->getBase()->isRegVar())
     {
         G4_Declare* dstDcl = dst->getBase()->asRegVar()->getDeclare();
-        int dstGRFOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) / G4_GRF_REG_NBYTES;
+        int dstOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) / G4_GRF_REG_NBYTES;
 
         if (dst->getBase()->isRegAllocPartaker())
         {
             G4_DstRegRegion* dstRgn = dst;
             isDstRegAllocPartaker = true;
             dstId = ((G4_RegVar*)dstRgn->getBase())->getId();
-            dstOpndNumRows = ((dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) / G4_GRF_REG_NBYTES) + 1;
+            dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
         }
         else if (kernel.getOption(vISA_LocalRA))
         {
@@ -2006,7 +2002,7 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_INST* inst)
                 dstPreg = preg->asGreg()->getRegNum();
                 dstNumRows = localLR->getTopDcl()->getNumRows();
                 G4_DstRegRegion* dstRgn = dst;
-                dstOpndNumRows = ((dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) / G4_GRF_REG_NBYTES) + 1;
+                dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
             }
         }
 
@@ -2021,62 +2017,39 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_INST* inst)
                 {
                     G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
                     G4_Declare* srcDcl = src->getBase()->asRegVar()->getDeclare();
-                    int srcGRFOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
-                    int srcOpndNumRows = ((srcRgn->getSubRegOff() + srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) / G4_GRF_REG_NBYTES) + 1;
+                    int srcOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
+                    bool srcOpndNumRows = srcRgn->getSubRegOff() + srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
 
-                    if (dstOpndNumRows > 1 || srcOpndNumRows > 1)
+                    if (dstOpndNumRows || srcOpndNumRows)
                     {
-                        // If the declares are even aligned, and
-                        // the dst and src GRF offset are same, and source operand occupy multiple GRF,
-                        // there is no possible to overlap.
                         if (!(gra.isEvenAligned(dstDcl) && gra.isEvenAligned(srcDcl) &&
-                            (srcGRFOffset % 2 == dstGRFOffset % 2) &&
-                            (srcOpndNumRows > 1)))
+                            srcOffset % 2 == dstOffset % 2 &&
+                            dstOpndNumRows && srcOpndNumRows))
                         {
                             if (src->asSrcRegRegion()->getBase()->isRegAllocPartaker())
                             {
                                 unsigned srcId = src->asSrcRegRegion()->getBase()->asRegVar()->getId();
 #ifdef DEBUG_VERBOSE_ON
                                 printf("Src%d  ", j);
-                                printf("dst: %s, src: %s :\t", gra.isEvenAligned(dstDcl) ? "E" : "O", gra.isEvenAligned(srcDcl) ? "E" : "O");
-                                printf("dstGRFOffset: %d, srcGRFOffset: %d\t", dstGRFOffset, srcGRFOffset);
-                                printf("dstNum: %d, srcNum: %d\n", dstOpndNumRows, srcOpndNumRows);
                                 inst->dump();
 #endif
-                                if (srcGRFOffset % 2 == dstGRFOffset % 2 &&
-                                    !(gra.getLocalLR(dstDcl) && gra.getLocalLR(dstDcl)->getAssigned()) &&
-                                    !(gra.getLocalLR(srcDcl) && gra.getLocalLR(srcDcl)->getAssigned()) &&
-                                    srcOpndNumRows > 1)
+                                if (isDstRegAllocPartaker)
                                 {
-                                    if (!gra.isEvenAligned(dstDcl))
+                                    if (!varSplitCheckBeforeIntf(dstId, srcId))
                                     {
-                                        gra.setEvenAligned(dstDcl, true);
-                                    }
-                                    if (!gra.isEvenAligned(srcDcl))
-                                    {
-                                        gra.setEvenAligned(srcDcl, true);
+                                        checkAndSetIntf(dstId, srcId);
+                                        buildInterferenceWithAllSubDcl(dstId, srcId);
                                     }
                                 }
                                 else
                                 {
-                                    if (isDstRegAllocPartaker)
+                                    for (int j = dstPreg, sum = dstPreg + dstNumRows; j < sum; j++)
                                     {
-                                        if (!varSplitCheckBeforeIntf(dstId, srcId))
+                                        int k = getGRFDclForHRA(j)->getRegVar()->getId();
+                                        if (!varSplitCheckBeforeIntf(k, srcId))
                                         {
-                                            checkAndSetIntf(dstId, srcId);
-                                            buildInterferenceWithAllSubDcl(dstId, srcId);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        for (int j = dstPreg, sum = dstPreg + dstNumRows; j < sum; j++)
-                                        {
-                                            int k = getGRFDclForHRA(j)->getRegVar()->getId();
-                                            if (!varSplitCheckBeforeIntf(k, srcId))
-                                            {
-                                                checkAndSetIntf(k, srcId);
-                                                buildInterferenceWithAllSubDcl(k, srcId);
-                                            }
+                                            checkAndSetIntf(k, srcId);
+                                            buildInterferenceWithAllSubDcl(k, srcId);
                                         }
                                     }
                                 }
@@ -2120,19 +2093,6 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_INST* inst)
         }
     }
 }
-
-void Interference::buildInterferenceForDstSrcOverlap()
-{
-    for (auto bb : kernel.fg)
-    {
-        for (auto i = bb->rbegin(); i != bb->rend(); i++)
-        {
-            G4_INST* inst = (*i);
-            markInterferenceToAvoidDstSrcOvrelap(inst);
-        }
-    }
-}
-
 
 uint32_t GlobalRA::getRefCount(int loopNestLevel)
 {
@@ -2304,6 +2264,10 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
             kernel.fg.builder->WaDisableSendSrcDstOverlap())
         {
             markInterferenceForSend(bb, inst, dst);
+        }
+        else if (kernel.fg.builder->avoidDstSrcOverlap() && dst && !dst->isNullReg())
+        {
+            markInterferenceToAvoidDstSrcOvrelap(bb, inst);
         }
 
         if ((inst->isSend() || inst->isFillIntrinsic()) && !dst->isNullReg())
@@ -2522,12 +2486,6 @@ void Interference::computeInterference()
     // Augment interference graph to accomodate non-default masks
     Augmentation aug(kernel, *this, *liveAnalysis, lrs, gra);
     aug.augmentIntfGraph();
-
-    if (liveAnalysis->livenessClass(G4_GRF) &&
-        kernel.fg.builder->avoidDstSrcOverlap())
-    {
-        buildInterferenceForDstSrcOverlap();
-    }
 
     generateSparseIntfGraph();
 }

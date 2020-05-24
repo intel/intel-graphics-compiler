@@ -514,10 +514,6 @@ namespace vISA
 
         void markInterferenceForSend(G4_BB* bb, G4_INST* inst, G4_DstRegRegion* dst);
 
-        void markInterferenceToAvoidDstSrcOvrelap(G4_INST* inst);
-
-        void buildInterferenceForDstSrcOverlap();
-
         void dumpInterference() const;
         bool dumpIntf(const char*) const;
         void interferenceVerificationForSplit() const;
@@ -525,6 +521,8 @@ namespace vISA
         void buildInterferenceWithLocalRA(G4_BB* bb);
 
         void buildInterferenceAmongLiveIns();
+
+        void markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb, G4_INST* inst);
 
         void generateSparseIntfGraph();
         bool isStrongEdgeBetween(G4_Declare*, G4_Declare*);
