@@ -371,7 +371,7 @@ void CShader::RestoreSP()
 void CShader::CreateImplicitArgs()
 {
     m_numBlocks = entry->size();
-    m_R0 = GetNewVariable(getGRFSize() >> 2, ISA_TYPE_D, EALIGN_GRF, false, 1, CName::NONE);
+    m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, 1, CName::NONE);
     encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
 
     // create variables for implicit args

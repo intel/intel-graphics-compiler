@@ -74,7 +74,7 @@ namespace IGC
         EALIGN_AUTO
     };
 
-    static const unsigned int alignmentSize[] =
+    static const std::array<unsigned int, 7> alignmentSize =
     {
         1,
         2,

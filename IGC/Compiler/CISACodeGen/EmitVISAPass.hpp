@@ -346,7 +346,7 @@ namespace IGC
         void emitPhaseInput(llvm::GenIntrinsicInst* inst);
 
         void emitPSInput(llvm::Instruction* inst);
-        void emitPSInputMAD(llvm::Instruction* inst);
+        void emitPSInputMADHalf(llvm::Instruction* inst);
         void emitPSInputPln(llvm::Instruction* inst);
         void emitPSInputCst(llvm::Instruction* inst);
         void emitEvalAttribute(llvm::GenIntrinsicInst* inst);

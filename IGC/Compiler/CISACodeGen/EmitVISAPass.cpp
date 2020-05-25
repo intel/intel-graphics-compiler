@@ -3402,7 +3402,8 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
     }
 }
 
-void EmitPass::emitPSInputMAD(llvm::Instruction* inst)
+
+void EmitPass::emitPSInputMADHalf(llvm::Instruction* inst)
 {
     //create the payload and do interpolation
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
@@ -3479,7 +3480,7 @@ void EmitPass::emitPSInput(llvm::Instruction* inst)
     else if (inst->getType()->isHalfTy()
         )
     {
-        emitPSInputMAD(inst);
+        emitPSInputMADHalf(inst);
     }
     else
     {

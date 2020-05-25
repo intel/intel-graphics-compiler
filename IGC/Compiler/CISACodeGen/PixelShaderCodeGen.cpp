@@ -46,7 +46,6 @@ using namespace IGC::IGCMD;
 
 namespace IGC
 {
-
     CVariable* CPixelShader::GetR1()
     {
         return m_R1;
@@ -128,8 +127,10 @@ namespace IGC
 
     void CPixelShader::AllocatePSPayload()
     {
+        // In bytes
         uint offset = 0;
-        //R0 is always allocated as a predefined variable. Increase offset for R0
+
+        // R0 is always allocated as a predefined variable. Increase offset for R0
         IGC_ASSERT(m_R0);
         offset += getGRFSize();
 
@@ -192,11 +193,13 @@ namespace IGC
                 offset += m_pPositionWPixel->GetSize();
             }
 
-            //Add support for POSITION_XY_OFFSET
+            // Add support for POSITION_XY_OFFSET
             if (m_pPositionXYOffset)
             {
-                AllocateInput(m_pPositionXYOffset, offset, i);
-                offset += m_pPositionXYOffset->GetSize();
+                {
+                    AllocateInput(m_pPositionXYOffset, offset, i);
+                    offset += m_pPositionXYOffset->GetSize();
+                }
             }
 
             // Add support for input coverage mask
@@ -206,42 +209,44 @@ namespace IGC
                 offset += m_pInputCoverageMask->GetSize();
             }
 
-            if (m_pCPSRequestedSizeX || m_pCPSRequestedSizeY)
             {
-                if (m_pCPSRequestedSizeX)
+                if (m_pCPSRequestedSizeX || m_pCPSRequestedSizeY)
                 {
-                    AllocateInput(m_pCPSRequestedSizeX, offset, i);
+                    if (m_pCPSRequestedSizeX)
+                    {
+                        AllocateInput(m_pCPSRequestedSizeX, offset, i);
+                    }
+                    if (m_pCPSRequestedSizeY)
+                    {
+                        AllocateInput(m_pCPSRequestedSizeY, offset + SIZE_OWORD, i);
+                    }
+                    offset += getGRFSize();
                 }
-                if (m_pCPSRequestedSizeY)
+                if (m_ZWDelta)
                 {
-                    AllocateInput(m_pCPSRequestedSizeY, offset + SIZE_OWORD, i);
+                    AllocateInput(m_ZWDelta, offset, i);
+                    if (m_Signature)
+                    {
+                        GetDispatchSignature().ZWDelta = offset;
+                    }
+                    offset += getGRFSize();
                 }
-                offset += getGRFSize();
-            }
-            if (m_ZWDelta)
-            {
-                AllocateInput(m_ZWDelta, offset, i);
-                if (m_Signature)
+                if (m_SampleOffsetX || m_SampleOffsetY)
                 {
-                    GetDispatchSignature().ZWDelta = offset;
+                    if (m_SampleOffsetX)
+                    {
+                        AllocateInput(m_SampleOffsetX, offset, i);
+                    }
+                    if (m_SampleOffsetY)
+                    {
+                        AllocateInput(m_SampleOffsetY, offset + SIZE_OWORD, i);
+                    }
+                    if (m_Signature)
+                    {
+                        GetDispatchSignature().pixelOffset = offset;
+                    }
+                    offset += getGRFSize();
                 }
-                offset += getGRFSize();
-            }
-            if (m_SampleOffsetX || m_SampleOffsetY)
-            {
-                if (m_SampleOffsetX)
-                {
-                    AllocateInput(m_SampleOffsetX, offset, i);
-                }
-                if (m_SampleOffsetY)
-                {
-                    AllocateInput(m_SampleOffsetY, offset + SIZE_OWORD, i);
-                }
-                if (m_Signature)
-                {
-                    GetDispatchSignature().pixelOffset = offset;
-                }
-                offset += getGRFSize();
             }
         }
 
@@ -255,6 +260,7 @@ namespace IGC
 
         IGC_ASSERT(offset % getGRFSize() == 0);
         unsigned int payloadEnd = offset;
+
         //Allocate size for values coming from VS
         for (uint i = 0; i < setup.size(); i++)
         {
@@ -457,22 +463,22 @@ namespace IGC
         CVariable* inputVar = setup[index];
         if (inputVar == nullptr)
         {
-                if (loweredInput)
+            if (loweredInput)
+            {
+                if (index % 2 == 0)
                 {
-                    if (index % 2 == 0)
-                    {
-                        inputVar = GetNewVariable(8, ISA_TYPE_F, EALIGN_GRF, true, CName::NONE);
-                        setup[index + 1] = GetNewAlias(inputVar, ISA_TYPE_F, 16, 4);
-                    }
-                    else
-                    {
-                        inputVar = GetNewAlias(GetInputDelta(index - 1), ISA_TYPE_F, 16, 4);
-                    }
+                    inputVar = GetNewVariable(8, ISA_TYPE_F, EALIGN_GRF, true, CName::NONE);
+                    setup[index + 1] = GetNewAlias(inputVar, ISA_TYPE_F, 16, 4);
                 }
                 else
                 {
-                    inputVar = GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, true, CName::NONE);
+                    inputVar = GetNewAlias(GetInputDelta(index - 1), ISA_TYPE_F, 16, 4);
                 }
+            }
+            else
+            {
+                inputVar = GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, true, CName::NONE);
+            }
             setup[index] = inputVar;
         }
         return inputVar;
@@ -847,10 +853,10 @@ namespace IGC
     void CPixelShader::PreCompile()
     {
         CreateImplicitArgs();
-        m_R1 = GetNewVariable(
-            getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_HWORD, false,
-            m_numberInstance, "R1");
         CodeGenContext* ctx = GetContext();
+
+        const uint8_t numberInstance = m_numberInstance;
+        m_R1 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, numberInstance, "R1");
 
         // make sure the return block is properly set
         if (ctx->getModule()->getNamedMetadata("KillPixel"))

@@ -465,6 +465,7 @@ namespace IGC
         bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
         calignmentSize as;
 
+        // In bytes
         uint32_t getGRFSize() const { return m_Platform->getGRFSize(); }
 
 
