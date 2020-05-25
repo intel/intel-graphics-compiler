@@ -57,7 +57,7 @@ const Region Region::SRCXX0 = REGION_VWH(VT_INVALID,WI_INVALID,HZ_0);
 const Region Region::SRCXX1 = REGION_VWH(VT_INVALID,WI_INVALID,HZ_1);
 const Region Region::SRCXX2 = REGION_VWH(VT_INVALID,WI_INVALID,HZ_2);
 
-
+/*
 SFID iga::OpToSFID(Op op)
 {
     switch (op) {
@@ -122,3 +122,4 @@ Op iga::SFIDToOp(SFID sfid)
         return Op::INVALID;
     }
 }
+*/

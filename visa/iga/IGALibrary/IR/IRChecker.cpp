@@ -163,19 +163,15 @@ struct SemanticChecker : LOCChecker {
             switch (ispec.format) {
             case OpSpec::BASIC_UNARY_REG:
             case OpSpec::BASIC_UNARY_REGIMM:
-            case OpSpec::MATH_UNARY_REGIMM:
-            case OpSpec::MATH_MACRO_UNARY_REG:
                 checkOperandTypes(i);
                 break;
             case OpSpec::BASIC_BINARY_REG_IMM:
             case OpSpec::BASIC_BINARY_REG_REG:
             case OpSpec::BASIC_BINARY_REG_REGIMM:
             case OpSpec::MATH_BINARY_REG_REGIMM:
-            case OpSpec::MATH_MACRO_BINARY_REG_REG:
                 checkOperandTypes(i);
                 break;
             case OpSpec::TERNARY_REGIMM_REG_REGIMM:
-            case OpSpec::TERNARY_MACRO_REG_REG_REG:
                 checkOperandTypes(i);
                 break;
 
@@ -246,8 +242,8 @@ struct SemanticChecker : LOCChecker {
                 src.getKind() == Operand::Kind::IMMEDIATE;
         if ((m_enabled_warnings & IGA_WARNINGS_NORMFORM) &&
             srcType != Type::INVALID &&
-            instSpec.hasImplicitSrcType(srcIx, lblArg, m_model.platform) &&
-            instSpec.implicitSrcType(srcIx, lblArg, m_model.platform) != srcType)
+            instSpec.hasImplicitSrcType(srcIx, lblArg) &&
+            instSpec.implicitSrcType(srcIx, lblArg) != srcType)
         {
             warning("src type is not binary normal form");
         }

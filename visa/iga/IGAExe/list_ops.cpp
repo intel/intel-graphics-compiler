@@ -28,22 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 
 
-static void opFullMnemonic(const igax::OpSpec &os,std::stringstream &ss)
-{
-    auto par = os.parent();
-    if (par.op() != iga::Op::INVALID) {
-        opFullMnemonic(par, ss);
-        ss << '.';
-    }
-    ss << os.menmonic();
-}
-static std::string opFullMnemonic(const igax::OpSpec &os)
-{
-    std::stringstream ss;
-    opFullMnemonic(os, ss);
-    return ss.str();
-}
-
 bool listOps(const Opts &opts, const std::string &opmn)
 {
     bool hasError = false;
@@ -56,7 +40,7 @@ bool listOps(const Opts &opts, const std::string &opmn)
         ss << std::setw(12) << std::left << "Mnemonic" << "  " << "Op" << "\n";
         for (const auto &op : ops) {
             ss << std::setw(12) << std::left <<
-                opFullMnemonic(op) << "  " << op.name() << "\n";
+                op.menmonic() << "  " << op.name() << "\n";
         }
     } else {
         bool prefixSearch = opmn[opmn.size() - 1] == '*';

@@ -36,7 +36,7 @@ namespace iga
 {
     void EmitSendDescriptorInfo(
         Platform p,
-        const OpSpec &os,
+        SFID sfid,
         ExecSize execSize,
         bool dstNonNull,
         int dstLen,

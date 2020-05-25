@@ -377,8 +377,8 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     {
 
         // ToDo: add support for debug info/FastComposite
-        BinaryEncodingIGA pBinaryEncoding(*m_kernelMem, *m_kernel, std::string(m_asmName));
-        pBinaryEncoding.DoAll();
+        BinaryEncodingIGA pBinaryEncoding(*m_kernelMem, *m_kernel, m_asmName);
+        pBinaryEncoding.Encode();
         binary = pBinaryEncoding.EmitBinary(binarySize);
 
         if (isFCCallableKernel() || isFCCallerKernel())
@@ -398,11 +398,11 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
         if (getGenxPlatform() >= GENX_ICLLP && m_options->getOption(vISA_BXMLEncoder))
         {
-            pBinaryEncoding = new BinaryEncodingCNL(*m_kernelMem, *m_kernel, std::string(m_asmName));
+            pBinaryEncoding = new BinaryEncodingCNL(*m_kernelMem, *m_kernel, m_asmName);
         }
         else
         {
-            pBinaryEncoding = new BinaryEncoding(*m_kernelMem, *m_kernel, std::string(m_asmName));
+            pBinaryEncoding = new BinaryEncoding(*m_kernelMem, *m_kernel, m_asmName);
         }
 
         pBinaryEncoding->DoAll();

@@ -26,10 +26,95 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _IGA_BACKEND_GED_DECODER_HPP_
 #define _IGA_BACKEND_GED_DECODER_HPP_
 
-#include "DecoderCommon.hpp"
 #include "GEDBitProcessor.hpp"
 #include "GEDToIGATranslation.hpp"
 #include "ged.h"
+
+
+#define GED_DECODE_TO(FIELD, TRANS, DST) \
+    do { \
+      GED_RETURN_VALUE _status; \
+      if (print_ged_debug) { \
+          std::cout << "FIELD: " << #FIELD << std::endl; \
+          GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
+      } \
+      DST = TRANS(GED_Get ## FIELD(&m_currGedInst, &_status)); \
+      if (_status != GED_RETURN_VALUE_SUCCESS) { \
+          handleGedDecoderError(__LINE__, #FIELD, _status); \
+      } \
+    } while (0)
+
+#define GED_DECODE_RAW_TO(FIELD, DST) \
+    do { \
+      GED_RETURN_VALUE _status; \
+      if (print_ged_debug) { \
+          std::cout << "FIELD: " << #FIELD << std::endl; \
+          GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
+      } \
+      DST = GED_Get ## FIELD(&m_currGedInst, &_status); \
+      if (_status != GED_RETURN_VALUE_SUCCESS) { \
+          handleGedDecoderError(__LINE__, #FIELD, _status); \
+      } \
+    } while (0)
+
+#define GED_DECODE_RAW(GED_TYPE, ID, FIELD) \
+        GED_TYPE ID; \
+        GED_DECODE_RAW_TO(FIELD, ID);
+
+#define GED_DECODE(IGA_TYPE, GED_TYPE, ID, FIELD) \
+        GED_DECODE_RAW(GED_TYPE, GED_ ## ID, FIELD); \
+        IGA_TYPE ID = translate(GED_ ## ID);
+
+
+#define GED_DECODE_RAW_TO_SRC(DST, TYPE, FIELD) \
+    do { \
+      GED_RETURN_VALUE _STATUS; \
+      if (print_ged_debug) { \
+          std::cout << "FIELD: " << #FIELD << std::endl; \
+          GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
+      } \
+      DST = GED_Get ## FIELD(&m_currGedInst, &_STATUS); \
+      if (_STATUS != GED_RETURN_VALUE_SUCCESS) { \
+          handleGedDecoderError(__LINE__, #FIELD, _STATUS); \
+      } \
+    } while (0)
+
+#define RETURN_GED_DECODE_RAW_TO_SRC(TYPE, FIELD) { \
+        TYPE _DST; \
+        GED_DECODE_RAW_TO_SRC(_DST, TYPE, FIELD); \
+        return _DST; \
+    }
+// the extra namespace declaration is needed to make g++ happy
+#define DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, I) \
+    namespace iga { \
+        template <> TYPE Decoder::decodeSrc ## FIELD <SourceIndex::SRC##I>() { \
+            RETURN_GED_DECODE_RAW_TO_SRC(TYPE, Src ## I ## FIELD); \
+        } \
+    }
+
+/* #define DEFINE_SOURCE_ACCESSOR_INLINE(TYPE, FIELD, I) \
+template <> TYPE decodeSrc ## FIELD <SourceIndex::SRC##I>() { \
+RETURN_GED_DECODE_RAW_TO_SRC(TYPE, Src ## I ## FIELD); \
+}
+*/
+/* #define DEFINE_GED_SOURCE_ACCESSORS_INLINE_01(TYPE, FIELD) \
+DEFINE_SOURCE_ACCESSOR_INLINE(TYPE, FIELD, 0) \
+DEFINE_SOURCE_ACCESSOR_INLINE(TYPE, FIELD, 1)
+*/
+#define DEFINE_GED_SOURCE_ACCESSORS_01(TYPE, FIELD) \
+    DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 0) \
+    DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 1)
+
+/* #define DEFINE_GED_SOURCE_ACCESSORS_INLINE_012(TYPE, FIELD) \
+DEFINE_SOURCE_ACCESSOR_INLINE(TYPE, FIELD, 0) \
+DEFINE_SOURCE_ACCESSOR_INLINE(TYPE, FIELD, 1) \
+DEFINE_SOURCE_ACCESSOR_INLINE(TYPE, FIELD, 2)
+*/
+#define DEFINE_GED_SOURCE_ACCESSORS_012(TYPE, FIELD) \
+    DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 0) \
+    DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 1) \
+    DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 2)
+
 
 namespace iga
 {
@@ -44,11 +129,11 @@ namespace iga
         Type      type = Type::INVALID;
     };
 
-    class DecoderBase : public GEDBitProcessor
+    class Decoder : public GEDBitProcessor
     {
     public:
         // Constructs a new decoder with an error handler and an empty kernel
-        DecoderBase(const Model &model, ErrorHandler &errHandler);
+        Decoder(const Model &model, ErrorHandler &errHandler);
 
         // the main entry point for decoding a kernel
         Kernel *decodeKernelBlocks(
@@ -63,6 +148,8 @@ namespace iga
         {
             m_SWSBEncodeMode = mode;
         }
+
+        bool isMacro() const;
 
     private:
         Kernel *decodeKernel(
@@ -170,6 +257,8 @@ namespace iga
         GED_ADDR_MODE decodeSendSource0AddressMode();
         void decodeSendSource0(Instruction *inst);
         void decodeSendSource1(Instruction *inst);
+        SendDesc decodeSendExDesc();
+        SendDesc decodeSendDesc();
 
         ///////////////////////////////////////////////////////////////////////
         // BRANCH INSTRUCTIONS
@@ -200,12 +289,12 @@ namespace iga
         int decodeDestinationRegNumAccBitsFromChEn();
         MathMacroExt decodeDestinationMathMacroRegFromChEn();
 
-        virtual unsigned decodeOpGroup(Op op);
-                bool hasImm64Src0Overlap();
+        Subfunction decodeSubfunction();
+        bool hasImm64Src0Overlap();
 
-        virtual void decodeDstDirSubRegNum(DirRegOpInfo& dri);
-        virtual bool hasImplicitScalingType(Type& type, DirRegOpInfo& dri);
-        virtual void decodeNextInstructionEpilog(Instruction *inst);
+        void decodeDstDirSubRegNum(DirRegOpInfo& dri);
+        bool hasImplicitScalingType(Type& type, DirRegOpInfo& dri);
+        void decodeNextInstructionEpilog(Instruction *inst);
 
         void decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntrl);
 
@@ -243,11 +332,11 @@ namespace iga
 
 
         template <SourceIndex S> Type decodeSrcType() {
-            return GEDToIGATranslation::translate(decodeSrcDataType<S>());
+            return translate(decodeSrcDataType<S>());
         }
 
         template <SourceIndex S> Region decodeSrcRegionVWH() {
-            return GEDToIGATranslation::transateGEDtoIGARegion(
+            return transateGEDtoIGARegion(
                 decodeSrcVertStride<S>(),
                 decodeSrcWidth<S>(),
                 decodeSrcHorzStride<S>());
@@ -256,11 +345,11 @@ namespace iga
         template <SourceIndex S> Region decodeSrcRegionTernaryAlign1(const OpSpec &);
 
         template <SourceIndex S> MathMacroExt decodeSrcMathMacroReg() {
-            return GEDToIGATranslation::translate(decodeSrcMathMacroExt<S>());
+            return translate(decodeSrcMathMacroExt<S>());
         }
         template <SourceIndex S> SrcModifier decodeSrcModifier() {
             if (m_opSpec->supportsSourceModifiers()) {
-                return GEDToIGATranslation::translate(decodeSrcSrcMod<S>());
+                return translate(decodeSrcSrcMod<S>());
             }
             return SrcModifier::NONE;
         }
@@ -272,7 +361,7 @@ namespace iga
             RegName regName = RegName::INVALID;
             GED_REG_FILE regFile = decodeSrcRegFile<S>();
             decodeReg((int)S, regFile, regNumBits, regName, regRef);
-            if (!m_opSpec->isSendOrSendsFamily() && !m_opSpec->isMacro()) {
+            if (!m_opSpec->isSendOrSendsFamily() && !isMacro()) {
                 regRef.subRegNum = (uint8_t)decodeSrcSubRegNum<S>();
             } else {
                 regRef.subRegNum = 0;
@@ -338,6 +427,7 @@ namespace iga
         // info about the instruction being converted to IGA IR
         ged_ins_t                     m_currGedInst;
         const OpSpec                 *m_opSpec;
+        Subfunction                   m_subfunc;
         const void                   *m_binary;
 
         // SWSB encoding mode
@@ -366,7 +456,7 @@ namespace iga
 
 namespace iga
 {
-    typedef DecoderBase Decoder;
+    typedef Decoder Decoder;
 }
 
 #endif //end: _IGA_DECODER_H_

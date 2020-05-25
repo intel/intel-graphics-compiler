@@ -150,6 +150,9 @@ namespace iga
         bool Skip(int k = 1) {return m_lexer.Skip(k);}
 
         std::string GetTokenAsString(const Token &token) const;
+        std::string GetTokenAsString() const {
+            return GetTokenAsString(Next());
+        }
 
         //////////////////////////////////////////////////////////////////////
         // QUERYING (non-destructive lookahead)
@@ -161,6 +164,7 @@ namespace iga
         bool LookingAtSeq(std::initializer_list<Lexeme> lxms) const;
 
         bool LookingAtAnyOf(Lexeme lxm0, Lexeme lxm1) const {return LookingAtAnyOf({lxm0,lxm1}); }
+        bool LookingAtAnyOf(Lexeme lxm0, Lexeme lxm1, Lexeme lxm2) const {return LookingAtAnyOf({lxm0,lxm1,lxm2}); }
         bool LookingAtAnyOf(std::initializer_list<Lexeme> lxms) const;
         bool LookingAtAnyOfFrom(int i, std::initializer_list<Lexeme> lxms) const;
 

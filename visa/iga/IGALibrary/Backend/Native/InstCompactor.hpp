@@ -33,8 +33,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga {
     class InstCompactor : public BitProcessor {
-        const OpSpec *os = nullptr;
         const Model &model;
+
+        const OpSpec *os = nullptr;
+        Subfunction sfs;
 
         MInst compactedBits;
         MInst uncompactedBits;
@@ -55,11 +57,13 @@ namespace iga {
 
         CompactionResult tryToCompact(
             const OpSpec *_os,
+            Subfunction _sfs,
             MInst _uncompactedBits, // copy-in
             MInst *compactedBitsOutput, // output
             CompactionDebugInfo *cdbi)
         {
             os = _os;
+            sfs = _sfs;
             uncompactedBits = _uncompactedBits;
             compactedBits.qw0 = compactedBits.qw1 = 0;
             compactionDebugInfo = cdbi;
@@ -71,10 +75,27 @@ namespace iga {
             }
             return cr;
         }
+        CompactionResult tryToCompact(
+            const OpSpec *_os,
+            MInst _uncompactedBits, // copy-in
+            MInst *compactedBitsOutput, // output
+            CompactionDebugInfo *cdbi)
+        {
+            return tryToCompact(
+                _os,
+                MathFC::INVALID,
+                _uncompactedBits,
+                compactedBitsOutput,
+                cdbi);
+        }
 
         ///////////////////////////////////////////////////////////////////////
         // used by child implementations
         const OpSpec &getOpSpec() const {return *os;}
+
+        unsigned getSourceCount() const {
+            return os->getSourceCount(sfs);
+        }
 
         uint64_t getUncompactedField(const Field &f) const {
             return uncompactedBits.getField(f);

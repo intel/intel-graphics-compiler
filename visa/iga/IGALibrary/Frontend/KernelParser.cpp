@@ -28,14 +28,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "KernelParser.hpp"
 #include "Lexemes.hpp"
 #include "Parser.hpp"
-#include "LdStSyntax/MessageParsing.hpp"
 #include "../IR/InstBuilder.hpp"
 #include "../IR/Types.hpp"
 #include "../strings.hpp"
 
 #include <algorithm>
 #include <limits>
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <vector>
 
@@ -144,6 +143,7 @@ static const IdentMap<MathMacroExt> MATHMACROREGS_OLDSTYLE = {
     {"noacc", MathMacroExt::NOMME},
 };
 
+
 GenParser::GenParser(
     const Model &model,
     InstBuilder &handler,
@@ -237,11 +237,11 @@ void GenParser::ParseExecInfo(
 Type GenParser::SendOperandDefaultType(int srcIx) const {
     auto t = srcIx == 1 ? Type::INVALID : Type::UD;
     if (srcIx < 0) {
-        if (m_opSpec->hasImplicitDstType(platform()))
-            t = m_opSpec->implicitDstType(platform());
+        if (m_opSpec->hasImplicitDstType())
+            t = m_opSpec->implicitDstType();
     } else {
-        if (m_opSpec->hasImplicitSrcType(srcIx, false, platform()))
-            t = m_opSpec->implicitSrcType(srcIx, false, platform());
+        if (m_opSpec->hasImplicitSrcType(srcIx, false))
+            t = m_opSpec->implicitSrcType(srcIx, false);
     }
     return t;
 }
@@ -324,14 +324,14 @@ bool GenParser::PeekReg(const RegInfo*& regInfo, int& regNum) {
                 regInfo = mme;
                 // adjust the reg num (e.g. acc2 -> mme0 on GEN8)
                 regNum -= mme->regNumBase;
-                WarningF(tk.loc,"old-style access to mme via acc"
-                    " (use mme%d for acc%d)",
+                WarningF(tk.loc,
+                    "old-style access to mme via acc (use mme%d for acc%d)",
                     regNum,
                     regNum + mme->regNumBase);
             }
         }
         if (!regInfo->isRegNumberValid(regNum)) {
-            Warning(tk.loc,"register number out of bounds");
+            Warning(tk.loc, "register number out of bounds");
         }
         return true;
     } else {
@@ -995,7 +995,7 @@ void GenParser::initSymbolMaps()
 class KernelParser : GenParser
 {
     // maps mnemonics and registers for faster lookup
-    std::map<std::string,const OpSpec*>   opmap;
+    std::unordered_map<std::string,const OpSpec*>   opmap;
 
     ExecSize                       m_defaultExecutionSize;
     Type                           m_defaultRegisterType;
@@ -1035,12 +1035,7 @@ private:
         std::vector<const OpSpec *> subOps;
         for (const OpSpec *os : m_model.ops()) {
             if (os->isValid()) {
-                if (os->isSubop()) {
-                    opmap[os->fullMnemonic] = os;
-                    subOps.emplace_back(os);
-                } else {
-                    opmap[os->mnemonic] = os;
-                }
+                opmap[os->mnemonic] = os;
             }
         }
         // subops get mapped by their short names only if that does not
@@ -1065,10 +1060,6 @@ private:
                 opmap[os->mnemonic] = os;
             }
         }
-    }
-
-    bool isMacroOp() const {
-        return m_opSpec->isMacro();
     }
 
 
@@ -1104,7 +1095,7 @@ private:
     bool ParseLegacyDirectives() {
         int parsed = 0;
         try {
-            while (LookingAtSeq(Lexeme::DOT,Lexeme::IDENT)) {
+            while (LookingAtSeq(Lexeme::DOT, Lexeme::IDENT)) {
                 Skip();
                 parsed++;
                 if (ConsumeIdentEq("default_execution_size")) {
@@ -1238,19 +1229,15 @@ private:
         //
         //         math.sqrt (8|M0) ...
         //         ^
-        //
-        // (f0.0)  ld.sc8.x4 (8) ... surf[4][...]
-        //         ^
-        const Loc mnemonicLoc = m_mnemonicLoc = NextLoc();
+        m_mnemonicLoc = NextLoc();
         m_opSpec = ParseMnemonic();
         if (m_opSpec) {
             // looking at a regular instruction (non special-ld-st inst)
             m_builder.InstOp(m_opSpec);
             FinishNonLdStInstBody();
-        } else if (
-            !ParseLdStInst(m_defaultExecutionSize, *this))
+        } else
         {
-            Fail(mnemonicLoc, "invalid mnemonic");
+            Fail(m_mnemonicLoc, "invalid mnemonic");
         }
 
         // .... {...}
@@ -1294,8 +1281,6 @@ private:
             break; // fallthrough to instruction options
         case OpSpec::BASIC_UNARY_REG:
         case OpSpec::BASIC_UNARY_REGIMM:
-        case OpSpec::MATH_UNARY_REGIMM:
-        case OpSpec::MATH_MACRO_UNARY_REG:
             ParseDstOp();
             ParseSrcOp(0);
             if (m_opSpec->format == OpSpec::BASIC_UNARY_REG &&
@@ -1318,21 +1303,31 @@ private:
             // <=Gen11
             ParseSendDstOp();
             ParseSendSrcOp(0, false);
-            ParseSendDescs();
+            ParseSendDescsLegacy();
             break;
         case OpSpec::SEND_BINARY:
-            ParseSendInstruction();
+            if (platform() <= Platform::GEN12P1) {
+                ParseSendInstructionLegacy();
+            } else {
+                IGA_ASSERT_FALSE("invalid format for platform");
+            }
+            break;
         case OpSpec::BASIC_BINARY_REG_IMM:
         case OpSpec::BASIC_BINARY_REG_REG:
         case OpSpec::BASIC_BINARY_REG_REGIMM:
-        case OpSpec::MATH_BINARY_REG_REGIMM:
-        case OpSpec::MATH_MACRO_BINARY_REG_REG:
             ParseDstOp();
             ParseSrcOp(0);
             ParseSrcOp(1);
             break;
+        case OpSpec::MATH_BINARY_REG_REGIMM:
+            ParseDstOp();
+            ParseSrcOp(0);
+            if (m_opSpec->getSourceCount(m_builder.getSubfunction()) > 1) {
+                // math sometimes has only one operand
+                ParseSrcOp(1);
+            }
+            break;
         case OpSpec::TERNARY_REGIMM_REG_REGIMM:
-        case OpSpec::TERNARY_MACRO_REG_REG_REG:
             ParseDstOp();
             ParseSrcOp(0);
             ParseSrcOp(1);
@@ -1411,15 +1406,14 @@ private:
 
 
     // Original binary send <=GEN12P1
-    void ParseSendInstruction() {
+    void ParseSendInstructionLegacy() {
         ParseSendDstOp();
         ParseSendSrcOp(0, false);
         ParseSendSrcOp(1,
             m_model.supportsUnarySend() &&
-                m_parseOpts.supportLegacyDirectives);
-        ParseSendDescs();
+            m_parseOpts.supportLegacyDirectives);
+        ParseSendDescsLegacy();
     }
-
 
 
 
@@ -1552,8 +1546,8 @@ private:
     {
         std::stringstream ss;
         ss << "unexpected subfunction for op";
-        std::vector<std::pair<float,const char *>> matches;
 #if 0
+        std::vector<std::pair<float,const char *>> matches;
         for (int i = (int)m_opSpec->op + 1;
             i < (int)m_opSpec->op + m_opSpec->subopsLength;
             i++)
@@ -1589,10 +1583,10 @@ private:
                 ss << matches[i].second;
             }
         }
-
 #endif
         Fail(loc, ss.str());
     }
+
 
 
     //
@@ -1611,11 +1605,7 @@ private:
         if (!pOs) {
             return nullptr;
         }
-        if (pOs->format == OpSpec::GROUP) {
-            // e.g. math.*, send.*, etc...
-            pOs = ParseSubOp(pOs);
-        }
-
+        m_builder.InstOp(pOs);
         // GED will reject this otherwise
         if (!m_hasWrEn && pOs->op == Op::JMPI) {
             Warning(mnemonicLoc,
@@ -1623,16 +1613,31 @@ private:
             m_builder.InstNoMask(mnemonicLoc);
         }
 
+        // TODO: abstract this all into a something that's contained in
+        // the IGA bxml enums files.
+        //   e.g. use OpSpec::supportsSubfunction()
+        //        bool Subfunction::FromString(Op, Subfunction&)
         if (pOs->supportsBranchCtrl()) {
+            BranchCntrl brctl = BranchCntrl::OFF;
             if (Consume(DOT)) {
                 if (!ConsumeIdentEq("b")) {
                     Fail("expected 'b' (branch control)");
                 }
-                m_builder.InstBrCtl(BranchCntrl::ON);
-            } else {
-                m_builder.InstBrCtl(BranchCntrl::OFF);
+                brctl = BranchCntrl::ON;
             }
-        } else if (LookingAt(DOT)) {
+            m_builder.InstSubfunction(brctl);
+        } else if (pOs->is(Op::MATH)) {
+            // e.g. math.*, send.*, etc...
+            m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<MathFC>());
+        } else if (pOs->is(Op::SYNC)) {
+            m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<SyncFC>());
+        } else if (pOs->isOneOf(Op::SEND, Op::SENDC)) {
+            if (platform() >= Platform::GEN12P1)
+                m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<SFID>());
+            // else: it's part of ExDesc
+        }
+
+        if (LookingAt(DOT)) {
             // maybe an old condition modifier or saturation
             FlagModifier fm;
             if (LookingAtIdentEq(1,"sat")) {
@@ -1653,52 +1658,51 @@ private:
         return pOs;
     }
 
-    //   SubMnemoninc
-    //     = '.' Ident
-    //     | '.' HEX_INT | '.' DEC_INT
-    //
-    // E.g.
-    //    math.inv
-    //    math.1
-    //    math.0x1
-    const OpSpec* ParseSubOp(const OpSpec *pParent)
-    {
-        const OpSpec *pOp = nullptr;
+    template <typename T>
+    T ParseSubfunctionFromBxmlEnum() {
         if (!Consume(DOT)) {
             FailAfterPrev("expected operation subfunction");
         }
 
         auto sfLoc = NextLoc();
         if (LookingAt(IDENT)) {
-            auto sfIdent = GetTokenAsString(Next());
-            // look up the function by the fully qualified name
-            std::stringstream ss;
-            ss << pParent->mnemonic << "." << sfIdent;
-            auto itr = opmap.find(ss.str());
-            if (itr == opmap.end()) {
-                failWithUnexpectedSubfunction(sfLoc, sfIdent);
-            } else {
-                // resolve to idiv etc...
-                Skip();
-                pOp = itr->second;
-                if (pOp->format == OpSpec::GROUP) {
-                    return ParseSubOp(pOp);
-                }
+            auto loc = NextLoc();
+            const std::string sfIdent = GetTokenAsString();
+            Skip();
+            auto x = FromSyntax<T>(sfIdent);
+            if (x == T::INVALID) {
+                Fail(loc, "invalid subfunction");
             }
-        } else if (LookingAtAnyOf(INTLIT10,INTLIT16)) {
-            // e.g. math.0x1
-            unsigned sfVal;
-            ParseIntFrom<unsigned>(NextLoc(), sfVal);
-            Skip(1);
-            pOp = &m_model.lookupGroupSubOp(pParent->op, sfVal);
-            if (!pOp->isValid()) {
-                Fail(sfLoc, "subfunction is out of bounds");
-            }
-        } else {
-            Fail(sfLoc, "invalid subfunction");
+            return x;
+        } else if (LookingAtAnyOf(INTLIT10, INTLIT16)) {
+            uint32_t val;
+            (void)ConsumeIntLit(val);
+            return (T)val;
+        }
+        Fail(sfLoc, "invalid subfunction");
+        return (T)-1;
+    }
+
+    template <typename T>
+    T ParseSubfunctionFromTable(const IdentMap<T> elems) {
+        if (!Consume(DOT)) {
+            FailAfterPrev("expected operation subfunction");
         }
 
-        return pOp;
+        auto sfLoc = NextLoc();
+        if (LookingAt(IDENT)) {
+            const std::string sfIdent = GetTokenAsString();
+            for (const auto &e : elems) {
+                if (e.first == sfIdent)
+                    return e.second;
+            }
+        } else if (LookingAtAnyOf(INTLIT10, INTLIT16)) {
+            uint32_t val;
+            (void)ConsumeIntLit(val);
+            return (T)val;
+        }
+        Fail(sfLoc, "invalid subfunction");
+        return (T)-1;
     }
 
 
@@ -1912,7 +1916,7 @@ private:
                 }
             }
             rgnHz = ParseDstOpRegion();
-        } else if (isMacroOp()) {
+        } else if (m_builder.isMacroOp()) {
             // implicit accumulator operand
             mmeReg = ParseMathMacroReg();
         } else {
@@ -1961,7 +1965,7 @@ private:
             }
         }
 
-        if (isMacroOp()) {
+        if (m_builder.isMacroOp()) {
             m_builder.InstDstOpRegMathMacroExtReg(
                 opStart, ri.regName, regNum, mmeReg, rgnHz, dty);
         } else {
@@ -2032,8 +2036,8 @@ private:
     // '<' INT '>'
     Region::Horz ParseDstOpRegion() {
         if (!LookingAt(LANGLE)) {
-            if (m_opSpec->hasImplicitDstRegion()) {
-                return m_opSpec->implicitDstRegion().getHz();
+            if (m_opSpec->hasImplicitDstRegion(m_builder.isMacroOp())) {
+                return m_opSpec->implicitDstRegion(m_builder.isMacroOp()).getHz();
             } else {
                 return Region::Horz::HZ_1;
             }
@@ -2116,34 +2120,28 @@ private:
             if (pipeAbs) {
                 ConsumeOrFailAfterPrev(PIPE, "expected |");
             }
-        } else if (ConsumeReg(regInfo, regNum)) {
-            // register direct or new pre-scaled register indirect
-            // r13
-            //   or
-            // r13[a0.0,4] translates to r[a0.0, 13*sizeof(GRF) + 4]
-            if (LookingAt(LBRACK)) {
-                if (!regInfo->supportsRegioning()) {
-                    Fail("this doesn't support regioning");
-                }
-                m_srcKinds[srcOpIx] = Operand::Kind::INDIRECT;
-                ParseSrcOpInd(
-                    srcOpIx,
-                    m_srcLocs[srcOpIx],
-                    srcMods,
-                    32*regNum);
-            } else {
-                // normal register access
-                //   r13.3<0;1,0>
-                //   acc3
-                m_srcKinds[srcOpIx] = Operand::Kind::DIRECT;
-                FinishSrcOpRegDirSubRegRgnTy(
-                    srcOpIx,
-                    m_srcLocs[srcOpIx],
-                    regnameTk.loc,
-                    srcMods,
-                    *regInfo,
-                    regNum);
+            if (!m_opSpec->supportsSourceModifiers() &&
+                srcMods != SrcModifier::NONE)
+            {
+                Fail(m_srcLocs[srcOpIx], "source modifier not supported");
             }
+        } else if (ConsumeReg(regInfo, regNum)) {
+            // normal register access
+            //   r13.3<0;1,0>
+            //   acc3
+            m_srcKinds[srcOpIx] = Operand::Kind::DIRECT;
+            if (!m_opSpec->supportsSourceModifiers() &&
+                srcMods != SrcModifier::NONE)
+            {
+                Fail(m_srcLocs[srcOpIx], "source modifier not supported");
+            }
+            FinishSrcOpRegDirSubRegRgnTy(
+                srcOpIx,
+                m_srcLocs[srcOpIx],
+                regnameTk.loc,
+                srcMods,
+                *regInfo,
+                regNum);
             if (pipeAbs) {
                 ConsumeOrFailAfterPrev(PIPE, "expected |");
             }
@@ -2156,7 +2154,7 @@ private:
 
             // try as constant expression
             ImmVal immVal;
-            if (TryParseConstExpr(immVal,srcOpIx)) {
+            if (TryParseConstExpr(immVal, srcOpIx)) {
                 // does not match labels
                 m_srcKinds[srcOpIx] = Operand::Kind::IMMEDIATE;
                 if (pipeAbs) {
@@ -2179,7 +2177,7 @@ private:
                     // e.g. LABEL64
                     if (m_opSpec->isBranching() || m_opSpec->op == Op::MOV) {
                         m_srcKinds[srcOpIx] = Operand::Kind::LABEL;
-                        std::string str = GetTokenAsString(Next(0));
+                        std::string str = GetTokenAsString();
                         Skip(1);
                         FinishSrcOpImmLabel(
                             srcOpIx,
@@ -2250,7 +2248,7 @@ private:
         Loc subregLoc = NextLoc(1);
         MathMacroExt mme = MathMacroExt::INVALID;
         bool hasExplicitSubreg = false;
-        if (isMacroOp()) {
+        if (m_builder.isMacroOp()) {
             // implicit accumulator operand
             // r13.acc2:f
             subregNum = 0;
@@ -2305,7 +2303,7 @@ private:
             }
         }
 
-        if (isMacroOp()) {
+        if (m_builder.isMacroOp()) {
             m_builder.InstSrcOpRegMathMacroExtReg(
                 srcOpIx,
                 opStart,
@@ -2332,9 +2330,12 @@ private:
     Region ParseSrcOpRegionVWH(
         const RegInfo &ri, int srcOpIx, bool hasExplicitSubreg)
     {
-        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, platform(), m_execSize)) {
+        if (m_opSpec->hasImplicitSrcRegion(
+            srcOpIx, m_execSize, m_builder.isMacroOp()))
+        {
             if (!LookingAt(LANGLE)) {
-                return m_opSpec->implicitSrcRegion(srcOpIx, platform(), m_execSize);
+                return m_opSpec->implicitSrcRegion(
+                    srcOpIx, m_execSize, m_builder.isMacroOp());
             } else {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
@@ -2366,9 +2367,12 @@ private:
     // '<' INT ';' INT '>'   (CNL Align1 ternary)
     Region ParseSrcOpRegionVH(int srcOpIx, bool hasExplicitSubreg)
     {
-        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, platform(), m_execSize)) {
+        if (m_opSpec->hasImplicitSrcRegion(
+            srcOpIx, m_execSize, m_builder.isMacroOp()))
+        {
             if (!LookingAt(LANGLE)) {
-                return m_opSpec->implicitSrcRegion(srcOpIx, platform(), m_execSize);
+                return m_opSpec->implicitSrcRegion(
+                    srcOpIx, m_execSize, m_builder.isMacroOp());
             } else if (m_parseOpts.deprecatedSyntaxWarnings) {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
@@ -2399,9 +2403,12 @@ private:
     // '<' INT '>'   (CNL Align1 ternary src2)
     Region ParseSrcOpRegionH(int srcOpIx, bool hasExplicitSubreg)
     {
-        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, platform(), m_execSize)) {
+        if (m_opSpec->hasImplicitSrcRegion(
+            srcOpIx, m_execSize, m_builder.isMacroOp()))
+        {
             if (!LookingAt(LANGLE)) {
-                return m_opSpec->implicitSrcRegion(srcOpIx, platform(), m_execSize);
+                return m_opSpec->implicitSrcRegion(
+                    srcOpIx, m_execSize, m_builder.isMacroOp());
             } else if (m_parseOpts.deprecatedSyntaxWarnings) {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
@@ -2428,12 +2435,14 @@ private:
     Region defaultSendOperandRegion(RegName rn, int opIx) const {
         Region r = Region::INVALID;
         if (opIx < 0) {
-            if (m_opSpec->hasImplicitDstRegion()) {
-                r = m_opSpec->implicitDstRegion();
+            if (m_opSpec->hasImplicitDstRegion(m_builder.isMacroOp())) {
+                r = m_opSpec->implicitDstRegion(m_builder.isMacroOp());
             }
         } else {
-            if (m_opSpec->hasImplicitSrcRegion(opIx, platform(), m_execSize)) {
-                r =  m_opSpec->implicitSrcRegion(0, platform(), m_execSize);
+            if (m_opSpec->hasImplicitSrcRegion(
+                opIx, m_execSize, m_builder.isMacroOp())) {
+                r =  m_opSpec->implicitSrcRegion(
+                    0, m_execSize, m_builder.isMacroOp());
             } else if (rn == RegName::ARF_NULL) {
                 r = Region::SRC010;
             } else {
@@ -2447,11 +2456,11 @@ private:
     // '<' INT ';' INT ',' INT '>'
     Region ParseSrcOpRegionInd(int srcOpIx) {
         if (m_opSpec->hasImplicitSrcRegion(
-            srcOpIx, platform(), m_execSize))
+            srcOpIx, m_execSize, m_builder.isMacroOp()))
         {
             if (!LookingAt(LANGLE)) {
                 return m_opSpec->implicitSrcRegion(
-                    srcOpIx, platform(), m_execSize);
+                    srcOpIx, m_execSize, m_builder.isMacroOp());
             } else if (m_parseOpts.deprecatedSyntaxWarnings) {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
@@ -2812,19 +2821,6 @@ private:
     // = '-' | '~' | '(abs)' | '-(abs)' | '~(abs)'
     // = or start of "|r3|" like
     SrcModifier ParseSrcModifierOpt(bool &pipeAbs) {
-        if (!m_opSpec->supportsSourceModifiers()) {
-            if (LookingAt(SUB) &&
-                LookingAtAnyOfFrom(1, {INTLIT02, INTLIT10, INTLIT16}))
-            {
-                // e.g. jmpi (...) -16:d
-                //                 ^ we will convert the literal
-                Skip();
-                return SrcModifier::NEG;
-            } else if (LookingAtAnyOf(TILDE, ABS)) {
-                Fail("source modifier unsupported on this op");
-            }
-            return SrcModifier::NONE;
-        }
         SrcModifier srcMod = SrcModifier::NONE;
         if (Consume(SUB) || Consume(TILDE)) { // same lexeme as -
             srcMod = SrcModifier::NEG;
@@ -2902,7 +2898,7 @@ private:
 
 
     Type ParseDstOpTypeWithDefault() {
-        if (m_opSpec->hasImplicitDstType(platform())) {
+        if (m_opSpec->hasImplicitDstType()) {
             if (LookingAt(COLON)) {
                 if (m_parseOpts.deprecatedSyntaxWarnings)
                     Warning("implicit type on dst should be omitted");
@@ -2910,7 +2906,7 @@ private:
                 ParseOpTypeWithDefault(DST_TYPES, "expected destination type");
             }
             // use the implicit type anyway
-            return m_opSpec->implicitDstType(platform());
+            return m_opSpec->implicitDstType();
         }
         return ParseOpTypeWithDefault(DST_TYPES, "expected destination type");
     }
@@ -2919,7 +2915,7 @@ private:
     Type ParseSrcOpTypeWithDefault(
         int srcOpIx, bool immOrLbl, bool isLabel = false)
     {
-        if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl, platform())) {
+        if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl)) {
             if (LookingAt(COLON)) {
                 if (m_parseOpts.deprecatedSyntaxWarnings)
                     WarningF("implicit type on src should be omitted", srcOpIx);
@@ -2928,7 +2924,7 @@ private:
             }
             // use the implicit type anyway
             return
-                m_opSpec->implicitSrcType(srcOpIx, immOrLbl, platform());
+                m_opSpec->implicitSrcType(srcOpIx, immOrLbl);
         } else if (m_opSpec->op == Op::MOV && immOrLbl && isLabel) {
             // support mov label without giving label's type
             return Type::UD;
@@ -2937,7 +2933,7 @@ private:
         return ParseOpTypeWithDefault(SRC_TYPES, "expected source type");
     }
     Type ParseSrcOpTypeWithoutDefault(int srcOpIx, bool immOrLbl) {
-        if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl, platform())) {
+        if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl)) {
             if (LookingAt(COLON)) {
                 if (m_parseOpts.deprecatedSyntaxWarnings)
                     WarningF("implicit type on src should be omitted", srcOpIx);
@@ -2945,8 +2941,7 @@ private:
                 TryParseOpType(SRC_TYPES);
             }
             // use the implicit type anyway
-            return
-                m_opSpec->implicitSrcType(srcOpIx, immOrLbl, platform());
+            return m_opSpec->implicitSrcType(srcOpIx, immOrLbl);
         }
         Type t = TryParseOpType(SRC_TYPES);
         if (t == Type::INVALID &&
@@ -2990,16 +2985,23 @@ private:
 
 
 
-
+    //
     // (INTEXPR|AddrRegRef) (INTEXPR|AddrRegRef)
-    void ParseSendDescs() {
+    void ParseSendDescsLegacy() {
+        IGA_ASSERT(platform() <= Platform::GEN12P1,
+            "wrong platform for function");
+
+
         const Loc exDescLoc = NextLoc();
         SendDesc exDesc;
         if (ParseAddrRegRefOpt(exDesc.reg)) {
             exDesc.type = SendDesc::Kind::REG32A;
+            if (platform() < Platform::GEN12P1)
+                m_builder.InstSubfunction(SFID::A0REG);
+            // subfunc is already set as part of opcode (e.g. send.gtwy)
         } else {
-            ImmVal v;
             // constant integral expression
+            ImmVal v;
             if (!TryParseConstExpr(v)) {
                 Fail("expected extended send descriptor");
             }
@@ -3013,6 +3015,10 @@ private:
                 Fail(exDescLoc,
                     "ExDesc[3:0] must be 0's; SFID is expressed "
                     "as a function control value (e.g. send.dc0 ...)");
+            }
+            if (platform() < Platform::GEN12P1) {
+                SFID sfid = sfidFromEncoding(platform(), exDesc.imm & 0xF);
+                m_builder.InstSubfunction(sfid);
             }
         }
 
@@ -3122,7 +3128,7 @@ private:
     // See LookingAtLabelDef for definition of a label
     bool ConsumeLabelDef(std::string &label) {
         if (LookingAtLabelDef()) {
-            label = GetTokenAsString(Next(0));
+            label = GetTokenAsString();
             (void)Skip(2);
             return true;
         }

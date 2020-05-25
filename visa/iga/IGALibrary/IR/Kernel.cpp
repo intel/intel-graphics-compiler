@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "Kernel.hpp"
+#include "../IR/Messages.hpp"
 
 using namespace iga;
 
@@ -71,43 +72,43 @@ void Kernel::appendBlock(Block *blk)
 
 
 Instruction *Kernel::createBasicInstruction(
-    const OpSpec &op,
-    const Predication &predOpnd,
-    const RegRef &flagReg,
+    const OpSpec& os,
+    const Predication& predOpnd,
+    const RegRef& freg,
     ExecSize execSize,
     ChannelOffset chOff,
-    MaskCtrl ectr,
-    FlagModifier condMod)
+    MaskCtrl mc,
+    FlagModifier condMod,
+    Subfunction sf)
 {
-    Instruction *inst = new(&m_mem)Instruction(
-        op,
-        execSize,
-        chOff,
-        ectr);
+    Instruction *inst = new(&m_mem)Instruction(os, execSize, chOff, mc);
+    inst->setSubfunction(sf);
+
     inst->setPredication(predOpnd);
     inst->setFlagModifier(condMod);
-    inst->setFlagReg(flagReg);
+    inst->setFlagReg(freg);
 
     return inst;
 }
 
 
 Instruction *Kernel::createBranchInstruction(
-    const OpSpec &op,
+    const OpSpec &os,
     const Predication &predOpnd,
     const RegRef &flagReg,
     ExecSize execSize,
     ChannelOffset chOff,
     MaskCtrl ectr,
-    BranchCntrl brnch)
+    Subfunction sf)
 {
     Instruction *inst = new(&m_mem)Instruction(
-        op,
+        os,
         execSize,
         chOff,
         ectr);
+    if (os.supportsSubfunction())
+        inst->setSubfunction(sf); // only branch control for now
 
-    inst->setBranchCtrl(brnch);
     inst->setPredication(predOpnd);
     inst->setFlagReg(flagReg);
 
@@ -117,13 +118,14 @@ Instruction *Kernel::createBranchInstruction(
 
 Instruction *Kernel::createSendInstruction(
     const OpSpec &op,
+    SFID sfid,
     const Predication &predOpnd,
     const RegRef &flagReg,
     ExecSize execSize,
     ChannelOffset chOff,
     MaskCtrl ectr,
-    const SendDesc &extDesc,
-    const SendDesc &msgDesc
+    const SendDesc &exDesc,
+    const SendDesc &desc
     )
 {
     Instruction *inst = new(&m_mem)Instruction(
@@ -131,12 +133,50 @@ Instruction *Kernel::createSendInstruction(
         execSize,
         chOff,
         ectr);
+    inst->setSubfunction(sfid);
 
     inst->setPredication(predOpnd);
     inst->setFlagReg(flagReg);
 
-    inst->setMsgDesc(msgDesc);
-    inst->setExtMsgDesc(extDesc);
+    inst->setMsgDesc(desc);
+    inst->setExtMsgDesc(exDesc);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // make a best effort to set payload lengths
+    int dstLen = -1, src0Len = -1, src1Len = -1;
+    //
+    Platform p = inst->getOpSpec().platform;
+    bool immDescsHaveLens = desc.isImm();
+    bool attemptLenDeduction = !immDescsHaveLens;
+    //
+    if (immDescsHaveLens) {
+        dstLen = (int)((desc.imm >> 20) & 0x1F);
+    } else if (desc.isImm() && attemptLenDeduction) {
+        // if we at least have the SFID and an immediate descriptor
+        // try and deduce it from descriptor details we make a
+        // best-effort for exDesc, but may not need it specifically
+        PayloadLengths lens(
+            p,
+            sfid,
+            inst->getExecSize(),
+            desc.imm);
+        dstLen = lens.dstLen;
+    }
+    inst->setDstLength(dstLen);
+    //
+    if (src0Len < 0 && immDescsHaveLens) {
+        src0Len = (int)((desc.imm >> 25) & 0xF);
+    }
+    inst->setSrc0Length(src0Len);
+    //
+    if (src1Len < 0) {
+        // copy Src1.Length if no one else set it
+        bool immExDescHasSrc1Len = exDesc.isImm();
+        if (immExDescHasSrc1Len) {
+            src1Len = (exDesc.imm >> 6) & 0x1F;
+        }
+    }
+    inst->setSrc1Length(src1Len);
 
     return inst;
 }
@@ -175,13 +215,15 @@ Instruction *Kernel::createIllegalInstruction()
     return inst;
 }
 
-static Instruction *createSyncInstruction(SWSB &sw, const OpSpec &ops, MemManager &mem)
+static Instruction *createSyncInstruction(
+    SWSB &sw, const OpSpec &ops, SyncFC sf, MemManager &mem)
 {
     Instruction *inst = new(&mem)Instruction(
         ops,
-        ExecSize::SIMD8,
+        ExecSize::SIMD1,
         ChannelOffset::M0,
         MaskCtrl::NOMASK);
+    inst->setSubfunction(sf);
 
     const Predication predOpnd;
     inst->setPredication(predOpnd);
@@ -194,13 +236,16 @@ static Instruction *createSyncInstruction(SWSB &sw, const OpSpec &ops, MemManage
 }
 Instruction *Kernel::createSyncNopInstruction(SWSB sw)
 {
-    return createSyncInstruction(sw, m_model.lookupOpSpec(Op::SYNC_NOP), m_mem);
+    return createSyncInstruction(sw,
+        m_model.lookupOpSpec(Op::SYNC), SyncFC::NOP, m_mem);
 }
 Instruction *Kernel::createSyncAllRdInstruction(SWSB sw)
 {
-    return createSyncInstruction(sw, m_model.lookupOpSpec(Op::SYNC_ALLRD), m_mem);
+    return createSyncInstruction(sw,
+        m_model.lookupOpSpec(Op::SYNC), SyncFC::ALLRD, m_mem);
 }
 Instruction *Kernel::createSyncAllWrInstruction(SWSB sw)
 {
-    return createSyncInstruction(sw, m_model.lookupOpSpec(Op::SYNC_ALLWR), m_mem);
+    return createSyncInstruction(sw,
+        m_model.lookupOpSpec(Op::SYNC), SyncFC::ALLWR, m_mem);
 }

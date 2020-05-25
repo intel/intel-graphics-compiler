@@ -277,9 +277,6 @@ namespace iga
     // only valid if `decoodeOpSpec` returns nullptr
     struct OpSpecMissInfo
     {
-        const OpSpec *parent; // nullptr if at the root  (a top-level op)
-                              // otherwise if it's a group op (e.g. math.*,
-                              // this'll be that parent
         uint64_t     opcode;  // the opcode bits we tried to lookup
                               // for subfunctions (e.g. math.*), this'll be
                               // the subfunction bits we were looking for
@@ -310,8 +307,6 @@ namespace iga
         const OpSpec&        lookupOpSpec(Op op) const;
         const OpSpec&        lookupOpSpecByCode(unsigned opcode) const;
         const OpSpec&        lookupOpSpecFromBits(const void *bits, OpSpecMissInfo &missInfo) const;
-        const OpSpec&        lookupGroupSubOp(Op op, unsigned fcBits) const;
-        const OpSpec*        lookupSubOpParent(const OpSpec &os) const;
         const RegInfo*       lookupArfRegInfoByRegNum(uint8_t regNum7_0) const;
         const RegInfo*       lookupRegInfoByRegName(RegName name) const;
 

@@ -72,11 +72,6 @@ struct Predication
 };
 
 
-enum class BranchCtrl
-{
-    OFF,
-    ON,
-};
 typedef BranchCtrl BranchCntrl; // for backwards compatibility
 
 static inline int ExecSizeToInt(ExecSize es)
@@ -317,13 +312,6 @@ struct SendDesc {
     bool isReg() const {return type == Kind::REG32A;}
     bool isImm() const {return type == Kind::IMM;}
 };
-
-
-// Converts a send subop to SFID
-SFID OpToSFID(Op op);
-
-// Converts an SFID to send subop (note: send, not sendc)
-Op SFIDToOp(SFID sfid);
 
 } // namespace
 #endif

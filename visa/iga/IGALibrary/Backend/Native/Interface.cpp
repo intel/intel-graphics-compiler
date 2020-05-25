@@ -43,13 +43,13 @@ using namespace iga;
 //     the kernel and order instructions etc...  Examples of this are a
 //     a serial or a parallel encoder.  E.g. SerialEncoder
 //
-//   * a "child" or instruction encoder (InstEncoder), concerned with
+//   * A "child" or instruction encoder (InstEncoder), concerned with
 //     encoding a single instruction at a time only.  It is blissfully
 //     unaware of any clever parallelism or other tricks.
 //
 // The general encoding algorithm consists of two phases:
 //
-//   1. Encoding.  initial encoding encodes most instruction fields
+//   1. Encoding.  Initial encoding encodes most instruction fields
 //      but may not be able to resolve backpatches since later instructions
 //      may not have known sizes at the moment.
 //
@@ -94,7 +94,9 @@ static size_t encodeInst(
     if (mustCompact || opts.autoCompact && !mustntCompact) {
         // attempt compaction
         InstCompactor ic(enc, enc.getModel());
-        auto cr = ic.tryToCompact(&inst->getOpSpec(), *bits, bits, cbdi);
+        MathFC mfc = inst->is(Op::MATH) ? inst->getMathFc() : MathFC::INVALID;
+
+        auto cr = ic.tryToCompact(&inst->getOpSpec(), mfc, *bits, bits, cbdi);
         switch (cr) {
         case CompactionResult::CR_MISS:
         case CompactionResult::CR_NO_FORMAT:
@@ -383,14 +385,15 @@ void iga::native::Encode(
     void *&bits,
     size_t &bitsLen)
 {
-    switch (model.platform)
-    {
-    case Platform::GENNEXT:
-    default:
-        IGA_ASSERT_FALSE("platform not supported; "
-            "caller should have checked via iga::native::IsEncodeSupported");
-    }
+    IGA_ASSERT(IsEncodeSupported(model, opts), "platform not supported; "
+        "caller should have checked via iga::native::IsEncodeSupported");
+    //
+    // EncodeParallel(model, opts, eh, k, bits, bitsLen);
+    EncodeSerial(model, opts, eh, k, bits, bitsLen);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// decoding interfaces
 
 
 
@@ -406,6 +409,7 @@ bool iga::native::IsDecodeSupported(
     return false;
 }
 
+
 Kernel *iga::native::Decode(
     const Model &m,
     const DecoderOpts &dopts,
@@ -413,16 +417,10 @@ Kernel *iga::native::Decode(
     const void *bits,
     size_t bitsLen)
 {
-    Kernel *k = nullptr;
-    switch (m.platform)
-    {
-    case Platform::GENNEXT:
-    default:
-        IGA_ASSERT_FALSE("invalid platform for decode; "
+    IGA_ASSERT(IsDecodeSupported(m, dopts), "invalid platform for decode; "
             "caller should have checked via iga::native::IsDecodeSupported");
-    }
-
-    return k;
+    eh.reportError(Loc(0),"feature currently only available on internal builds");
+    return nullptr;
 }
 
 
@@ -433,14 +431,13 @@ void iga::native::DecodeFields(
     FragmentList &fields,
     ErrorHandler &eh)
 {
-    switch (m.platform)
-    {
-    case Platform::GENNEXT:
-    default:
-        IGA_ASSERT_FALSE("invalid platform for decode; "
-            "caller should have checked via iga::native::IsDecodeSupported");
-    }
+    DecoderOpts dopts;
+    IGA_ASSERT(IsDecodeSupported(m, dopts), "invalid platform for decode; "
+        "caller should have checked via iga::native::IsDecodeSupported");
+    //
+    eh.reportError(Loc(0),"feature currently only available on internal builds");
 }
+
 
 CompactionResult iga::native::DebugCompaction(
     const Model &m,
@@ -448,6 +445,10 @@ CompactionResult iga::native::DebugCompaction(
     void *compactedOutput, // optional
     CompactionDebugInfo &info)
 {
+    DecoderOpts dopts;
+    IGA_ASSERT(IsDecodeSupported(m, dopts), "invalid platform for decode; "
+        "caller should have checked via iga::native::IsDecodeSupported");
+
     MInst *mi = (MInst *)inputBits;
     if (mi->isCompact()) {
         // already compact, no need to try and compact it
@@ -463,14 +464,13 @@ CompactionResult iga::native::DebugCompaction(
     if (!os.isValid()) {
         return CompactionResult::CR_NO_FORMAT;
     }
-
-    switch (m.platform)
-    {
-    case Platform::GENNEXT:
-    default:
-        IGA_ASSERT_FALSE("invalid platform for decode; "
-            "caller should have checked via iga::native::IsDecodeSupported");
-    }
-    return CompactionResult::CR_NO_FORMAT;
+    ErrorHandler eh;
+    BitProcessor bp(eh);
+    InstCompactor ic(bp, m);
+    MInst dummyOutput;
+    MInst *outputBits = compactedOutput == nullptr ?
+        &dummyOutput :
+        (MInst *)compactedOutput;
+    return ic.tryToCompact(&os, *mi, outputBits, &info);
 }
 

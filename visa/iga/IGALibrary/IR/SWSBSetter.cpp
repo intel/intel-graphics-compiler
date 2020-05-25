@@ -26,7 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RegDeps.hpp"
 #include "Traversals.hpp"
 #include "BitSet.hpp"
+
 #include <iterator>
+
 using namespace iga;
 
 /**
@@ -629,7 +631,7 @@ void SWSBAnalyzer::processActiveSBID(SWSB &distanceDependency, const DepSet* inp
 SWSB::InstType SWSBAnalyzer::getInstType(const Instruction& inst) {
     if (inst.getOpSpec().isSendOrSendsFamily())
         return SWSB::InstType::SEND;
-    else if (inst.getOpSpec().isMathSubFunc())
+    else if (inst.is(Op::MATH))
         return SWSB::InstType::MATH;
     return SWSB::InstType::OTHERS;
 }
@@ -652,6 +654,10 @@ void SWSBAnalyzer::advanceInorderInstCounter(DEP_PIPE dep_pipe)
 }
 
 
+static bool isSyncNop(const Instruction &i) {
+    return i.is(Op::SYNC) && i.getSyncFc() == SyncFC::NOP;
+};
+
 void SWSBAnalyzer::postProcess()
 {
     // revisit all instructions to remove redundant sync.nop
@@ -666,11 +672,12 @@ void SWSBAnalyzer::postProcess()
             continue;
         auto inst_it = instList.begin();
         // skip the first instruction, which must not be sync
+
         ++inst_it;
         for (; inst_it != instList.end(); ++inst_it)
         {
             Instruction* inst = *inst_it;
-            if (inst->getOp() == Op::SYNC_NOP)
+            if (isSyncNop(*inst))
                 continue;
             SWSB cur_swsb = inst->getSWSB();
             if (cur_swsb.hasToken() && (cur_swsb.tokenType == SWSB::TokenType::SET)) {
@@ -679,7 +686,7 @@ void SWSBAnalyzer::postProcess()
                 --sync_it;
                 while (sync_it != instList.begin()) {
                     Instruction* sync_inst = *sync_it;
-                    if (sync_inst->getOp() != Op::SYNC_NOP)
+                    if (isSyncNop(*sync_inst))
                         break;
                     SWSB sync_swsb = sync_inst->getSWSB();
                     // if the sync has sbid set, it could be the reserved sbid for shoot down
@@ -695,10 +702,7 @@ void SWSBAnalyzer::postProcess()
         }
         // remove the redundant sync.nop (sync.nop with no swsb)
         instList.remove_if([](const Instruction* inst) {
-            if (inst->getOp() == Op::SYNC_NOP &&
-                (!inst->getSWSB().hasSWSB()))
-                return true;
-            return false;
+            return isSyncNop(*inst) && !inst->getSWSB().hasSWSB();
         });
     }
 }
@@ -754,7 +758,7 @@ void SWSBAnalyzer::run()
 
             if (math_wa_info.math_inst != nullptr)
                 math_wa_info.previous_is_math = true;
-            if (inst->getOpSpec().isMathSubFunc()) {
+            if (inst->getOpSpec().is(Op::MATH)) {
                 math_wa_info.math_inst = inst;
 
                 // if the math following a math, we only care about the last math
@@ -909,7 +913,7 @@ void SWSBAnalyzer::run()
                 }
 
                 //record the sbid if it's math
-                if (inst->getOpSpec().isMathSubFunc()) {
+                if (inst->getOpSpec().is(Op::MATH)) {
                     math_wa_info.math_sbid = *sbidFree;
                 }
             }

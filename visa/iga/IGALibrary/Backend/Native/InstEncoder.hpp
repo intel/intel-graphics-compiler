@@ -162,8 +162,8 @@ namespace iga
 
         BackpatchList &getBackpatches() {return backpatches;}
 
-        const OpSpec &getOpSpec() const {return state.inst->getOpSpec();}
-
+        const Instruction &getInst() const {return *state.inst;}
+        const OpSpec &getOpSpec() const {return getInst().getOpSpec();}
         const Model &getModel() const {return model;}
         Platform platform() const {return getModel().platform;}
 
@@ -308,7 +308,8 @@ namespace iga
         if (!os.isValid()) {
             encodingError(f, "invalid opcode");
         }
-        encodeFieldBits(f, os.code);
+        encodeFieldBits(f, os.opcode);
+#if 0
         if (os.isSubop()) {
             int fcValue = os.functionControlValue;
             const OpSpec *parOp = model.lookupSubOpParent(os);
@@ -317,6 +318,7 @@ namespace iga
                 "cannot find subop fields");
             encode(parOp->functionControlField, fcValue);
         }
+#endif
     }
 
 #define ENCODING_CASE(X, V) case X: val = (V); break

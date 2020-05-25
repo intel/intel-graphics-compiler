@@ -35,7 +35,7 @@ using namespace iga;
 
 static DEP_CLASS getClassFromPipeType(DEP_PIPE type, const OpSpec& opspec)
 {
-    if (opspec.groupOp == Op::SYNC || opspec.op == Op::ILLEGAL)
+    if (opspec.is(Op::SYNC) || opspec.op == Op::ILLEGAL)
         return DEP_CLASS::OTHER;
 
     switch(type) {
@@ -57,7 +57,7 @@ static void setDEPPipeClass_SingleDistPipe(DepSet &dep, const Instruction &inst)
 {
     auto opsec = inst.getOpSpec();
     dep.setDepPipe(DEP_PIPE::SHORT);
-    if (opsec.isMathSubFunc())
+    if (opsec.is(Op::MATH))
     {
         dep.setDepPipe(DEP_PIPE::MATH);
     }
@@ -211,7 +211,7 @@ void DepSet::setInputsSrcDep()
     // For sync instructions we do not need to consider its dependency. Though it may still apply the above
     // case so still set ARF_CR to it.
     if (m_instruction->getSourceCount() == 0 ||
-        m_instruction->getOpSpec().isSyncSubFunc()) {
+        m_instruction->getOpSpec().is(Op::SYNC)) {
         m_bucketList.push_back(m_DB.getBucketStart(RegName::ARF_CR));
         return;
     }
@@ -452,9 +452,9 @@ void DepSet::setOutputsDstcDep()
             addToBucket(m_DB.getBucketStart(RegName::ARF_CR));
 
         }
-        else if (m_instruction->getOpSpec().isMathSubFunc() &&
+        else if (m_instruction->getOpSpec().is(Op::MATH) &&
             op.getDirRegName() == RegName::GRF_R &&
-            m_instruction->getOpSpec().functionControlValue == static_cast<int>(MathFC::IDIV))
+            m_instruction->getMathFc() == MathFC::IDIV)
         {
             uint8_t regNum = op.getDirRegRef().regNum;
             addGrf(regNum);

@@ -32,27 +32,7 @@ bool disassemble(
     readBinaryFile(inpFile.c_str(), inp);
 
     iga_disassemble_options_t dopts = IGA_DISASSEMBLE_OPTIONS_INIT();
-    setOptBit(dopts.formatting_opts,
-        IGA_FORMATTING_OPT_NUMERIC_LABELS,
-        opts.numericLabels);
-    setOptBit(dopts.formatting_opts,
-        IGA_FORMATTING_OPT_SYNTAX_EXTS,
-        opts.syntaxExts);
-    setOptBit(dopts.formatting_opts,
-        IGA_FORMATTING_OPT_PRINT_HEX_FLOATS,
-        opts.printHexFloats);
-    setOptBit(dopts.formatting_opts,
-        IGA_FORMATTING_OPT_PRINT_PC,
-        opts.printInstructionPc);
-    setOptBit(dopts.formatting_opts,
-        IGA_FORMATTING_OPT_PRINT_BITS,
-        opts.printBits);
-    setOptBit(dopts.formatting_opts,
-        IGA_FORMATTING_OPT_PRINT_DEPS,
-        opts.printDeps);
-    setOptBit(dopts.formatting_opts,
-        IGA_FORMATTING_OPT_PRINT_LDST,
-        opts.printLdSt);
+    dopts.formatting_opts = makeFormattingOpts(opts);
     setOptBit(dopts.decoder_opts,
         IGA_DECODING_OPT_NATIVE,
         opts.useNativeEncoder);
