@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/secure_mem.h"
 
 #include <string>
+#include <iterator>
 
 #if defined(_WIN64)
 #define CMC_LIBRARY_NAME "igcmc64.dll"
