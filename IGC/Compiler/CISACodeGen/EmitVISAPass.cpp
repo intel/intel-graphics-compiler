@@ -65,7 +65,7 @@ char EmitPass::ID = 0;
 EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool canAbortOnSpill, ShaderDispatchMode shaderMode, PSSignature* pSignature)
     : FunctionPass(ID),
     m_SimdMode(mode),
-    m_ShaderMode(shaderMode),
+    m_ShaderDispatchMode(shaderMode),
     m_shaders(shaders),
     m_currShader(nullptr),
     m_encoder(nullptr),
@@ -273,7 +273,7 @@ bool EmitPass::setCurrentShader(llvm::Function* F)
     {
         return false;
     }
-    m_currShader = Iter->second->GetOrCreateShader(m_SimdMode, m_ShaderMode);
+    m_currShader = Iter->second->GetOrCreateShader(m_SimdMode, m_ShaderDispatchMode);
     m_encoder = &(m_currShader->GetEncoder());
     return true;
 }
@@ -434,7 +434,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
-        m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderMode);
+        m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderDispatchMode);
         // Pre-analysis pass to be executed before call to visa builder so we can pass scratch space offset
         m_currShader->PreAnalysisPass();
         if (!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
@@ -744,7 +744,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     }
 
     if (m_SimdMode == SIMDMode::SIMD16 &&
-        this->m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE &&
+        this->m_ShaderDispatchMode == ShaderDispatchMode::NOT_APPLICABLE &&
         IsStage1BestPerf(m_pCtx->m_CgFlag, m_pCtx->m_StagingCtx))
     {
         m_pCtx->m_doSimd32Stage2 = m_currShader->CompileSIMDSize(SIMDMode::SIMD32, *this, F);
