@@ -434,7 +434,7 @@
     bool WaDisableSendSrcDstOverlap() const
     {
         return getOption(vISA_noSendSrcDstOverlap) ||
-        (m_options->getTarget() == VISA_CM && getPlatform() >= GENX_SKL) ||
+        (m_options->getTarget() == VISA_CM && getPlatform() >= GENX_SKL && getPlatform() < GENX_TGLLP) ||
         getPlatform() == GENX_ICLLP;
     }
 

@@ -5840,19 +5840,19 @@ void HWConformity::fixSendInst(G4_BB* bb)
                 int dstSize = inst->getMsgDesc()->ResponseLength();
                 int src0Size = src0Overlap ? inst->getMsgDesc()->MessageLength() : 0;
                 int src1Size = src1Overlap ? inst->getMsgDesc()->extMessageLength() : 0;
-                if (dstSize > src0Size + src1Size)
+                if (inst->getPredicate() || (bb->isDivergent() && !inst->isWriteEnableInst()) || dstSize > src0Size + src1Size)
                 {
-                    //copy src0/src1
+                    //copy src0/src1 if inst does not update all channels
                     if (src0Overlap)
                     {
-                        G4_Declare* copyDst = builder.createTempVar(src0Size * 8, Type_UD, Any);
+                        G4_Declare* copyDst = builder.createTempVar(src0Size * NUM_DWORDS_PER_GRF, Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(0)->getBase()->asRegVar()->getDeclare(),
                             inst->getSrc(0)->asSrcRegRegion()->getRegOff() * getGRFSize(), src0Size, bb, i);
                         inst->setSrc(builder.Create_Src_Opnd_From_Dcl(copyDst, builder.getRegionStride1()), 0);
                     }
                     if (src1Overlap)
                     {
-                        G4_Declare* copyDst = builder.createTempVar(src1Size * 8, Type_UD, Any);
+                        G4_Declare* copyDst = builder.createTempVar(src1Size * NUM_DWORDS_PER_GRF, Type_UD, Any);
                         copyRegs(copyDst, 0, inst->getSrc(1)->getBase()->asRegVar()->getDeclare(),
                             inst->getSrc(1)->asSrcRegRegion()->getRegOff() * getGRFSize(), src1Size, bb, i);
                         inst->setSrc(builder.Create_Src_Opnd_From_Dcl(copyDst, builder.getRegionStride1()), 1);
@@ -5863,7 +5863,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
                     // copy dst
                     auto copyIter = i;
                     ++copyIter;
-                    G4_Declare* copySrc = builder.createTempVar(dstSize * 8, Type_UD, Any);
+                    G4_Declare* copySrc = builder.createTempVar(dstSize * NUM_DWORDS_PER_GRF, Type_UD, Any);
                     copyRegs(inst->getDst()->getBase()->asRegVar()->getDeclare(), inst->getDst()->getRegOff() * getGRFSize(),
                         copySrc, 0, dstSize, bb, copyIter);
                     inst->setDest(builder.Create_Dst_Opnd_From_Dcl(copySrc, 1));
