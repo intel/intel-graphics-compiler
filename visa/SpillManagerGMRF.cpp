@@ -3260,9 +3260,17 @@ SpillManagerGRF::insertSpillRangeCode (
                 ((*spilledInstIter)->opcode() != G4_sel)?
                 (*spilledInstIter)->getPredicate () : nullptr;
 
+            if (tmpRangeSrcRegion->getType() == spillRangeDstRegion->getType() && IS_TYPE_FLOAT_ALL(tmpRangeSrcRegion->getType()))
+            {
+                // use int copy when possible as floating-point copy moves may need further legalization
+                auto equivIntTy = floatToSameWidthIntType(tmpRangeSrcRegion->getType());
+                tmpRangeSrcRegion->setType(equivIntTy);
+                spillRangeDstRegion->setType(equivIntTy);
+            }
+
             createMovInst (
                 execSize, spillRangeDstRegion, tmpRangeSrcRegion,
-                predicate != nullptr ? builder_->duplicateOperand(predicate) : predicate,
+                builder_->duplicateOperand(predicate),
                 (*spilledInstIter)->getMaskOption());
             numGRFMove ++;
 

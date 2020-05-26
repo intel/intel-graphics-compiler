@@ -421,6 +421,25 @@ inline bool isLowPrecisionFloatTy(G4_Type ty)
     return ty == Type_HF;
 }
 
+inline G4_Type floatToSameWidthIntType(G4_Type floatTy)
+{
+    assert(IS_TYPE_FLOAT_ALL(floatTy));
+    switch (getTypeSize(floatTy))
+    {
+    case 1:
+        return Type_UB;
+    case 2:
+        return Type_UW;
+    case 4:
+        return Type_UD;
+    case 8:
+        return Type_UQ;
+    default:
+        assert(false && "illegal type size");
+        return Type_UD;
+    }
+}
+
 #define GRFALIGN (Sixteen_Word)
 #define HALFGRFALIGN (Eight_Word)
 #endif  // _G4_OPCODE_H_
