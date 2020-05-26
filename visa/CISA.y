@@ -43,12 +43,17 @@ void CISAerror(CISA_IR_Builder* builder, char const* msg);
 int  yylex();
 extern int CISAlineno;
 
+static bool ParseAlign(CISA_IR_Builder* pCisaBuilder, const char *sym, VISA_Align &value);
+static bool ParseEMask(CISA_IR_Builder* pCisaBuilder, const char* sym, VISA_EMask_Ctrl &emask);
+
 /*
  * check if the cond is true.
  * if cond is false, then print errorMessage (syntax error) and YYABORT
  */
 #define MUST_HOLD(cond, errorMessage) \
-  {if (!(cond)) {printf("Line %d: ", CISAlineno); printf("ERROR Message : %s\n", errorMessage); YYABORT;}}
+  {if (!(cond)) {pCisaBuilder->RecordParseError(CISAlineno, errorMessage); YYABORT;}}
+#define PARSE_ERROR(...)\
+  {pCisaBuilder->RecordParseError(CISAlineno, __VA_ARGS__); YYABORT;}
 #ifdef _DEBUG
 #define TRACE(str) fprintf(CISAout, str)
 #else
@@ -268,8 +273,11 @@ VISA_RawOpnd* rawOperandArray[16];
 %token DIRECTIVE_PARAMETER  /* .parameter */
 %token DIRECTIVE_LOC        /* .loc */
 %token DIRECTIVE_FUNC       /* .function */
-%token DIRECTIVE_GLOBAL_FUNC       /* .global_function */
-%token ABS                  /* .abs */
+%token DIRECTIVE_GLOBAL_FUNC /* .global_function */
+%token SRCMOD_NEG           /* (-) */
+%token SRCMOD_ABS           /* (abs) */
+%token SRCMOD_NEGABS        /* (-abs) */
+%token SRCMOD_NOT           /* (~) */
 %token SAT                  /* .sat */
 %token PIXEL_NULL_MASK      /* .pixel_null_mask */
 %token CPS                  /* .cps */
@@ -279,20 +287,19 @@ VISA_RawOpnd* rawOperandArray[16];
 %token RAW_SEND_STRING      /* raw_send */
 %token RAW_SENDC_STRING     /* raw_sendc */
 %token RAW_SENDS_STRING     /* raw_sends */
-%token RAW_SENDS_EOT_STRING     /* raw_sends_eot */
+%token RAW_SENDS_EOT_STRING /* raw_sends_eot */
 %token RAW_SENDSC_STRING    /* raw_sendsc */
-%token RAW_SENDSC_EOT_STRING    /* raw_sendsc_eot */
+%token RAW_SENDSC_EOT_STRING /* raw_sendsc_eot */
 
 %token <atomic_op> ATOMIC_SUB_OP
 %token <var_name> PHYSICAL_REGISTER
 %token <type> ITYPE
-%token <type> RETURN_TYPE
 %token <type> DECL_DATA_TYPE
-%token <type> DFTYPE         /* df */
-%token <type> FTYPE          /* f */
-%token <type> HFTYPE         /* hf */
-%token <type> TYPE           /* w, uw, ud, d, b, ub */
-%token <type> VTYPE          /* v and vf */
+%token <type> DFTYPE         /* :df */
+%token <type> FTYPE          /* :f */
+%token <type> HFTYPE         /* :hf */
+%token <type> TYPE           /* :w, :uw, :ud, :d, ... */
+%token <type> VTYPE          /* :v and vf */
 %token <fp> FLOATINGPOINT    /* fp value */
 %token <fp> DOUBLEFLOAT      /* double fp value */
 %token <number> NUMBER       /* integer number */
@@ -304,7 +311,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <string> RANGLE          /* > */
 %token <string> LBRACK          /* [ */
 %token <string> RBRACK          /* ] */
-%token <string> IND_LBRACK /* r[ */
+%token <string> IND_LBRACK      /* r[ */
 %token <string> LPAREN           /* ( */
 %token <string> RPAREN           /* ) */
 %token <string> LBRACE           /* { */
@@ -328,7 +335,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <string> IMPLICIT_INPUT
 %token <string> OFFSET
 %token <string> SLM_SIZE
-%token <string> PRED_CNTL     /* any2h, any4h, any8h, any16h, allv, all2h, all4h, all8h, all16h, allv */
+%token <string> PRED_CNTL     /* .any2h, .any4h, ... */
 %token <string> CHAN4_MASK    /* RGBA */
 %token <string> VAR           /* variable */
 %token <string> NULL_VAR      /* variable (V0) */
@@ -349,7 +356,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <string> RTWRITE_OPTION
 
 %token <string>            STRING_LITERAL
-%token <CISA_align>        ALIGNTYPE
+%token <CISA_align>        ALIGNTYPE_2GRF
 %token <media_mode>        MEDIA_MODE
 %token <oword_mod>         OWORD_MODIFIER
 %token <s_channel>         SAMPLER_CHANNEL
@@ -357,7 +364,6 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <s_channel_output>  CHANNEL_OUTPUT
 %token <VME_type>          VME_TYPE
 %token <file_end>          FILE_EOF
-%token <emask>             EMASK
 %token <execMode>          EXECMODE
 %token <cntrl>             CNTRL
 %token <fence_options>     FENCE_OPTIONS;
@@ -498,6 +504,7 @@ VISA_RawOpnd* rawOperandArray[16];
 
 %type <CISA_align>          AlignType
 %type <emask_exec_size>     ExecSize
+%type <ushortnum>           ExecSizeInt
 %type <offset>              TwoDimOffset
 %type <type>                DataType
 %type <src_mod>             SrcModifier
@@ -614,7 +621,9 @@ DeclVariable: DIRECTIVE_DECL VAR G_CLASS DECL_DATA_TYPE NUM_ELTS NUMBER AlignTyp
                    temp_struct.string_val = $9.string_val;
                    temp_struct.isInt = $9.isInt;
                    temp_struct.attr_set = $9.attr_set;
-                   pCisaBuilder->CISA_general_variable_decl($2, (unsigned int)$6, $4, $7, $8.aliasname, $8.offset, temp_struct, CISAlineno);
+                   if (!pCisaBuilder->CISA_general_variable_decl($2, (unsigned int)$6, $4, $7, $8.aliasname, $8.offset, temp_struct, CISAlineno)) {
+                       YYABORT; // error already reported
+                   }
                };
 
                //     1      2     3       4       5      6
@@ -638,13 +647,17 @@ DeclPredicate: DIRECTIVE_DECL VAR P_CLASS NUM_ELTS NUMBER GEN_ATTR
                    temp_struct.string_val = $6.string_val;
                    temp_struct.isInt = $6.isInt;
                    temp_struct.attr_set = $6.attr_set;
-                   pCisaBuilder->CISA_predicate_variable_decl($2, (unsigned int)$5, temp_struct, CISAlineno);
+                   if (!pCisaBuilder->CISA_predicate_variable_decl($2, (unsigned int)$5, temp_struct, CISAlineno)) {
+                       YYABORT; // error already reported
+                   }
                };
 
                //     1      2     3       4       5       6         7
 DeclSampler: DIRECTIVE_DECL VAR S_CLASS NUM_ELTS NUMBER  V_NAME GEN_ATTR
                {
-                   pCisaBuilder->CISA_sampler_variable_decl($2, (int)$5, $6, CISAlineno);
+                   if (!pCisaBuilder->CISA_sampler_variable_decl($2, (int)$5, $6, CISAlineno)) {
+                       YYABORT; // error already reported
+                   }
                };
 
                //     1      2     3       4       5       6        7
@@ -656,7 +669,9 @@ DeclSurface: DIRECTIVE_DECL VAR T_CLASS NUM_ELTS NUMBER  V_NAME GEN_ATTR
                    temp_struct.string_val = $7.string_val;
                    temp_struct.isInt = $7.isInt;
                    temp_struct.attr_set = $7.attr_set;
-                   pCisaBuilder->CISA_surface_variable_decl($2, (int)$5, $6, temp_struct, CISAlineno);
+                   if (!pCisaBuilder->CISA_surface_variable_decl($2, (int)$5, $6, temp_struct, CISAlineno)) {
+                       YYABORT; // error already reported
+                   }
                };
 
 /* ----- .input ------ */
@@ -715,21 +730,18 @@ AlignType : /* empty */
                {
                    $$ = ALIGN_BYTE;
                }
-              | ALIGN ALIGNTYPE
+              | ALIGN ALIGNTYPE_2GRF {
+                   $$ = ALIGN_BYTE;
+              }
+              | ALIGN VAR /* e.g. byte, word, dword, qword, GRF, GRFx2 */
                {
-                   $$ = $2;
+                   if (!ParseAlign(pCisaBuilder, $2, $$)) {
+                       PARSE_ERROR($2, ": invalid ALIGN");
+                   }
                }
               | ALIGN error
                {
-                   fprintf (stderr,"[Hint]: expecting Even, Odd or Either in 'Align=ALIGNTYPE' \n");
-                   yyerrok;
-                   yyclearin;
-               }
-              | error
-               {
-                   fprintf (stderr,"[Ref]: Align=[Either|Odd|Even]\n");
-                   yyerrok;
-                   yyclearin;
+                   PARSE_ERROR("syntax error in align attribute");
                };
 
 AliasInfo : /* empty */
@@ -744,21 +756,17 @@ AliasInfo : /* empty */
                }
               | ALIAS LANGLE error
                {
-                   fprintf (stderr,"[Hint]: expecting VAR in 'ALIAS(VAR,Exp)'\n");
-                   yyerrok;
-                   yyclearin;
+                   PARSE_ERROR("syntax error in alias attribute");
                }
               | ALIAS LANGLE VAR error RANGLE
                {
-                   fprintf (stderr,"[Hint]: expecting numerical expression in 'ALIAS(VAR,Exp)' \n");
-                   yyerrok;
-                   yyclearin;
+                   PARSE_ERROR("syntax error in alias attribute");
+                   YYABORT; // bail out
                }
               | error
                {
-                  fprintf (stderr,"[Ref]: ALIAS(VAR,Exp) \n");
-                  yyerrok;
-                  yyclearin;
+                   PARSE_ERROR("syntax error in alias attribute");
+                   YYABORT; // bail out
                };
 
 GEN_ATTR : /* Empty */
@@ -1391,26 +1399,11 @@ InstModifier :  /* empty */
            | SAT     /* .sat */
            {$$ = true;};
 
-SrcModifier : LPAREN MINUS RPAREN
-            {
-                //$$.srcMod = Mod_Minus;
-                $$.mod = MODIFIER_NEG;
-            }
-          | LPAREN ABS RPAREN
-          {
-            //$$.srcMod = Mod_Abs;
-            $$.mod = MODIFIER_ABS;
-          }
-          | LPAREN MINUS ABS RPAREN
-          {
-           // $$.srcMod = Mod_Minus_Abs;
-            $$.mod = MODIFIER_NEG_ABS;
-          }
-          | LPAREN TILDE RPAREN
-          {
-            $$.mod = MODIFIER_NOT;
-          }
-          ;
+SrcModifier :
+      SRCMOD_NEG    {$$.mod = MODIFIER_NEG;}
+    | SRCMOD_ABS    {$$.mod = MODIFIER_ABS;}
+    | SRCMOD_NEGABS {$$.mod = MODIFIER_NEG_ABS;}
+    | SRCMOD_NOT    {$$.mod = MODIFIER_NOT;}
 
 ConditionalModifier :   /* empty */
             {
@@ -1588,12 +1581,16 @@ DstGeneralOperand :  VAR TwoDimOffset DstRegion
                       //VISA_Type data_type = variable_declaration_and_type_check($1, GENERAL_VAR);
 
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_dst_general_operand($1, $2.row, $2.elem, (unsigned short)$3, CISAlineno);
+                      if ($$.cisa_gen_opnd == nullptr)
+                          YYABORT; // error is already reported
                   };
 
                     //   1           2           3
 DstIndirectOperand: IndirectVar IndirectRegion DataType
                   {
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_indirect_dst($1.cisa_decl, MODIFIER_NONE, $1.row, $1.elem, $1.immOff, $2.h_stride, $3);
+                      if ($$.cisa_gen_opnd == nullptr)
+                          YYABORT; // error is already reported
                   };
 
 
@@ -1616,6 +1613,8 @@ AddrOfOperand : AMP AddressableVar
 SrcAddrOperand : AddrVar
                {
                   $$.cisa_gen_opnd = pCisaBuilder->CISA_set_address_operand($1.cisa_decl, $1.elem, $1.row, false);
+                  if ($$.cisa_gen_opnd == nullptr)
+                      YYABORT; // error is already reported
                };
 
                   //   1          2         3
@@ -1623,6 +1622,8 @@ SrcGeneralOperand :  VAR TwoDimOffset SrcRegion
                   {
                       //$$.opnd = pBuilder->CISA_src_general_operand($1, $3.rgn, Mod_src_undef, $2.row, $2.elem, CISAlineno);
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_gen_src_operand($1, $3.v_stride, $3.width, $3.h_stride, $2.row, $2.elem, MODIFIER_NONE, CISAlineno);
+                      if ($$.cisa_gen_opnd == nullptr)
+                          YYABORT; // error is already reported
                   };
 
                     //   1          2         3          4
@@ -1630,6 +1631,8 @@ SrcGeneralOperand_1 : SrcModifier VAR TwoDimOffset SrcRegion
                   {
                       //$$.opnd = pBuilder->CISA_src_general_operand($2, $4.rgn, $1.srcMod, $3.row, $3.elem, CISAlineno);
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_gen_src_operand($2, $4.v_stride, $4.width, $4.h_stride, $3.row, $3.elem, $1.mod, CISAlineno);
+                      if ($$.cisa_gen_opnd == nullptr)
+                          YYABORT; // error is already reported
                   };
 
 SrcImmOperand: Imm
@@ -1644,6 +1647,8 @@ SrcIndirectOperand: IndirectVar IndirectRegion DataType
                       //src.setImmAddrOff($1.immOff);
                       //$$.opnd = pBuilder->createSrcRegRegion(src);
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_indirect($1.cisa_decl, MODIFIER_NONE, $1.row, $1.elem, $1.immOff, $2.v_stride, $2.width, $2.h_stride, $3);
+                      if ($$.cisa_gen_opnd == nullptr)
+                          YYABORT; // error is already reported
                   };
 
                     //   1           2           3            4
@@ -1653,6 +1658,8 @@ SrcIndirectOperand_1: SrcModifier IndirectVar IndirectRegion DataType
                       //src.setImmAddrOff($2.immOff);
                       //$$.opnd = pBuilder->createSrcRegRegion(src);
                       $$.cisa_gen_opnd = pCisaBuilder->CISA_create_indirect($2.cisa_decl, $1.mod, $2.row, $2.elem, $2.immOff, $3.v_stride, $3.width, $3.h_stride, $4);
+                      if ($$.cisa_gen_opnd == nullptr)
+                          YYABORT; // error is already reported
                   };
 
 /* -------- regions ----------- */
@@ -1754,7 +1761,7 @@ ImmAddrOffset :   /* empty */
                 {$$ = 0;}   /* default to 0 */
               | COMMA Exp     /* need to chech whether the number is between -512 ... 511 */
                 {
-                    MUST_HOLD(($2 <= 511 && $2 >= -512),"imm addr offset must be -512 .. 511");
+                    MUST_HOLD(($2 <= 1023 && $2 >= -1024), "imm addr offset must be -1024 .. 1023");
                     $$ = $2;
                 };
 
@@ -1769,7 +1776,7 @@ AddrVar :  VAR
               TRACE("\n** Address operand");
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  CISAerror(pCisaBuilder, "unbound variable");
+                  PARSE_ERROR("unbound variable");
               $$.row = 0;
               $$.elem = 0;
           }
@@ -1779,7 +1786,7 @@ AddrVar :  VAR
 
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  CISAerror(pCisaBuilder, "unbound variable");
+                  PARSE_ERROR("unbound variable");
               $$.row = 1;
               $$.elem = (int)$3;
           }
@@ -1790,7 +1797,7 @@ AddrVar :  VAR
 
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  CISAerror(pCisaBuilder, "unbound variable");
+                  PARSE_ERROR("unbound variable");
               $$.row = (int)$6;
               $$.elem = (int)$3;
           }
@@ -1799,7 +1806,7 @@ AddrVar :  VAR
               TRACE("\n** Address operand");
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  CISAerror(pCisaBuilder, "unbound variable");
+                  PARSE_ERROR("unbound variable");
               $$.row = (int)$3;
               $$.elem = (int)$5;
           };
@@ -1809,7 +1816,7 @@ AddressableVar : VAR {
               //$$.opnd = pBuilder->getRegVar($1);
               $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
               if (!$$.cisa_decl)
-                  CISAerror(pCisaBuilder, "unbound variable");
+                  PARSE_ERROR("unbound variable");
               $$.row = 0;
               $$.elem = 0;
           };
@@ -1852,23 +1859,28 @@ ExecSize :   /* empty */
                 $$.exec_size = UNDEFINED_EXEC_SIZE;
                 $$.emask = vISA_EMASK_M1;
            }
-         | LPAREN NUMBER RPAREN
+         | LPAREN ExecSizeInt RPAREN
            {
                TRACE("\n** Execution Size ");
-               MUST_HOLD(($2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16 || $2 == 32),
-                         "execution size must be 1, 2, 4, 8, 16, or 32");
                $$.emask = vISA_EMASK_M1;
                $$.exec_size = (int)$2;
            };
-         | LPAREN EMASK COMMA NUMBER RPAREN
+         | LPAREN VAR COMMA ExecSizeInt RPAREN
            {
-               TRACE("\n** Execution Size ");
-               MUST_HOLD(($4 == 1 || $4 == 2 || $4 == 4 || $4 == 8 || $4 == 16 || $4 == 32),
-                         "execution size must be 1, 2, 4, 8, 16, or 32");
-               $$.emask = $2;
+               /* */
+               TRACE("\n** Execution Size With Offset ");
+               if (!ParseEMask(pCisaBuilder, $2, $$.emask)) {
+                    PARSE_ERROR("invalid execution offset info");
+               }
                $$.exec_size = (int)$4;
            };
 
+ExecSizeInt : NUMBER {
+           if ($1 != 1 && $1 != 2 && $1 != 4 && $1 != 8 && $1 != 16 && $1 != 32) {
+                PARSE_ERROR("invalid execution size");
+           }
+           $$ = (unsigned short)$1;
+        }
 
 /* ------ imm operand ----------------------------------- */
 Imm : Exp DataType
@@ -2022,9 +2034,9 @@ ATOMIC_BITWIDTH: { $$ = 32; } |DOT NUMBER
 
 %%
 
-void CISAerror(CISA_IR_Builder* builder, char const *s)
+void CISAerror(CISA_IR_Builder* pCisaBuilder, char const *s)
 {
-
+    /*
     int yytype = YYTRANSLATE (yychar);
     if (strcmp(yytname[yytype], "NUMBER") == 0)
         fprintf (stderr, "\nLine %d: %s, number: %" PRId64 "\n", CISAlineno,  s, yylval.number);
@@ -2032,7 +2044,53 @@ void CISAerror(CISA_IR_Builder* builder, char const *s)
         fprintf (stderr, "\nLine %d: %s, symbol: %s\n", CISAlineno,  s, yylval.string);
      else
         fprintf (stderr, "\nLine %d: %s\n", CISAlineno,  s);
+        */
 
-    return;
+    pCisaBuilder->RecordParseError(CISAlineno, s);
+}
+
+static bool ParseAlign(CISA_IR_Builder* pCisaBuilder, const char *sym, VISA_Align &value)
+{
+    if (strcmp(sym, "byte") == 0) {
+        value = ALIGN_BYTE;
+    } else if (strcmp(sym, "word") == 0) {
+        value = ALIGN_WORD;
+    } else if (strcmp(sym, "dword") == 0) {
+        value = ALIGN_DWORD;
+    } else if (strcmp(sym, "qword") == 0) {
+        value = ALIGN_QWORD;
+    } else if (strcmp(sym, "oword") == 0) {
+        value = ALIGN_OWORD;
+    } else if (strcmp(sym, "GRF") == 0) {
+        value = ALIGN_GRF;
+    } else if (strcmp(sym, "GRFx2") == 0) {
+        value = ALIGN_2_GRF;
+    } else {
+        value = ALIGN_UNDEF;
+        return false;
+    }
+    return true;
+}
+
+static bool ParseEMask(
+    CISA_IR_Builder* pCisaBuilder,
+    const char* sym,
+    VISA_EMask_Ctrl &emask)
+{
+    if (strcmp(sym, "NoMask") == 0) {
+        emask = vISA_EMASK_M1_NM;
+        return true;
+    }
+    for (int i = 0; i < vISA_NUM_EMASK +1; i++)
+    {
+        if (!strcmp(emask_str[i], sym))
+        {
+            emask = (VISA_EMask_Ctrl)i;
+            return true;
+        }
+    }
+
+    emask = vISA_NUM_EMASK;
+    return false;
 }
 

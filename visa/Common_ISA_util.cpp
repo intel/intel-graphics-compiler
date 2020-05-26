@@ -43,7 +43,7 @@ vISAPreDefinedSurface vISAPreDefSurf[COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1] =
 };
 
 
-const char* Common_ISA_Get_Align_Name( VISA_Align align )
+const char* Common_ISA_Get_Align_Name(VISA_Align align)
 {
     static const char* common_ISA_align_name[] = {
         " ",
@@ -52,7 +52,7 @@ const char* Common_ISA_Get_Align_Name( VISA_Align align )
         "qword",
         "oword",
         "GRF",
-        "2GRF",
+        "GRFx2", // "2GRF"
         "byte",
     };
 

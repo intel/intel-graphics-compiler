@@ -129,7 +129,7 @@ typedef enum {
     ALIGN_QWORD = 0x3,
     ALIGN_OWORD = 0x4,
     ALIGN_GRF = 0x5,
-    ALIGN_2_GRF = 0x6,
+    ALIGN_2_GRF = 0x6, /* GRFx2 */
     ALIGN_BYTE = 0x0
 } VISA_Align;
 

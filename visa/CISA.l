@@ -60,7 +60,6 @@ static OutputFormatControl     avs_control(const char* str);
 static AVSExecMode             avsExecMode(const char* str);
 static unsigned char           FENCEOptions(const char *str);
 static COMMON_ISA_VME_OP_MODE  VMEType(const char *str);
-static VISA_EMask_Ctrl  Get_CISA_Emask(const char* str);
 static CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
 static void                    appendStringLiteralChar(char c, char *buf, size_t *len);
 
@@ -698,37 +697,37 @@ alias[ ]*=[ ]* {TRACE("\n** ALIAS "); return ALIAS;}
 
 
 v_type[ ]*=[ ]*F {
-        TRACE("\n** General variable type");
+        TRACE("\n** General variable type ");
         CISAlval.string = strdup(yytext);
         return F_CLASS;
     }
 
 v_type[ ]*=[ ]*G {
-        TRACE("\n** General variable type");
+        TRACE("\n** General variable type ");
         CISAlval.string = strdup(yytext);
         return G_CLASS;
     }
 
 v_type[ ]*=[ ]*A {
-        TRACE("\n** Address variable type");
+        TRACE("\n** Address variable type ");
         CISAlval.string = strdup(yytext);
         return A_CLASS;
     }
 
 v_type[ ]*=[ ]*P {
-        TRACE("\n** Predicate variable type");
+        TRACE("\n** Predicate variable type ");
         CISAlval.string = strdup(yytext);
         return P_CLASS;
     }
 
 v_type[ ]*=[ ]*S {
-        TRACE("\n** Sampler variable type");
+        TRACE("\n** Sampler variable type ");
         CISAlval.string = strdup(yytext);
         return S_CLASS;
     }
 
 v_type[ ]*=[ ]*T {
-        TRACE("\n** Surface variable type");
+        TRACE("\n** Surface variable type ");
         CISAlval.string = strdup(yytext);
         return T_CLASS;
     }
@@ -739,37 +738,18 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
         return DECL_DATA_TYPE;
     }
 
+2GRF {
+        /* other cases are handled as VAR */
+        TRACE("\n** AlignType - 2GRF ");
+        CISAlval.align = ALIGN_2_GRF;
+        // fprintf(stderr, "%s", "2GRF symbol is deprecated; please use GRFx2");
+        return ALIGNTYPE_2GRF;
+}
 
-byte|word|dword|qword|oword|GRF|2GRF  {
-        //------- Align Support in Declaration -------------
-        TRACE("\n** AlignType ");
-        if (strcmp(yytext, "byte") == 0)
-            CISAlval.align = ALIGN_BYTE;
-        if (strcmp(yytext, "word") == 0)
-            CISAlval.align = ALIGN_WORD;
-        else if (strcmp(yytext, "dword") == 0)
-            CISAlval.align = ALIGN_DWORD;
-        else if (strcmp(yytext, "qword") == 0)
-            CISAlval.align = ALIGN_QWORD;
-        else if (strcmp(yytext, "oword") == 0)
-            CISAlval.align = ALIGN_OWORD;
-        else if (strcmp(yytext, "GRF") == 0)
-            CISAlval.align = ALIGN_GRF;
-        else if (strcmp(yytext, "2GRF") == 0)
-            CISAlval.align = ALIGN_2_GRF;
-        else
-            CISAlval.align = ALIGN_UNDEF;
-
-        return ALIGNTYPE;
-    }
-
-M1|M2|M3|M4|M5|M6|M7|M8|M1_NM|M2_NM|M3_NM|M4_NM|M5_NM|M6_NM|M7_NM|M8_NM|NoMask {
-        TRACE("\n** EMASK control ");
-        CISAlval.emask = Get_CISA_Emask(yytext);
-        return EMASK;
-    }
-
-"abs"    {TRACE("\n** ABS ");  return ABS;}
+"(-)"    {TRACE("\n** SRCMOD_NEG "); return SRCMOD_NEG;}
+"(abs)"  {TRACE("\n** SRCMOD_ABS "); return SRCMOD_ABS;}
+"(-abs)" {TRACE("\n** SRCMOD_NEGABS "); return SRCMOD_NEGABS;}
+"(~)"    {TRACE("\n** SRCMOD_NOT "); return SRCMOD_NOT;}
 
 ".sat"   {TRACE("\n** SAT ");  return SAT;}
 
@@ -817,11 +797,6 @@ M1|M2|M3|M4|M5|M6|M7|M8|M1_NM|M2_NM|M3_NM|M4_NM|M5_NM|M6_NM|M7_NM|M8_NM|NoMask {
         TRACE("\n** DATA TYPE ");
         CISAlval.type = str2type(yytext, yyleng);
         return ITYPE;
-    }
-(ud|d|uw|w|ub|b|bool|UD|D|UW|W|UB|B|BOOL|Bool|f|F|q|uq|Q|UQ|hf|HF)  {
-        TRACE("\n** RETURN TYPE ");
-        CISAlval.type = str2type(yytext, yyleng);
-        return RETURN_TYPE;
     }
 
 :(v|vf|V|VF|uv)  {
@@ -877,7 +852,7 @@ V0 {
     }
 
 %[[:alpha:]_][[:alnum:]_]* {
-        TRACE("\n** Predefined Var");
+        TRACE("\n** Predefined Var ");
         CISAlval.string = strdup(yytext);
         return VAR;
 }
@@ -1106,26 +1081,9 @@ static COMMON_ISA_VME_OP_MODE VMEType(const char* str)
         if (!strcmp(vme_op_mode_str[i], str))
             return (COMMON_ISA_VME_OP_MODE)i;
 
-    YY_FATAL_ERROR("Invalid Medial Mode");
+    YY_FATAL_ERROR("Invalid Media Mode");
 
     return VME_OP_MODE_NUM;
-}
-
-static VISA_EMask_Ctrl Get_CISA_Emask(const char* str)
-{
-    if(strcmp(str, "NoMask") == 0)
-        return vISA_EMASK_M1_NM;
-    for (int i = 0; i < vISA_NUM_EMASK +1; i++)
-    {
-        if (!strcmp(emask_str[i], str))
-        {
-            return (VISA_EMask_Ctrl)i;
-        }
-    }
-
-    YY_FATAL_ERROR("Invalid emask ");
-    YY_FATAL_ERROR(str);
-    return vISA_EMASK_M1;
 }
 
 static CHANNEL_OUTPUT_FORMAT Get_Channel_Output(const char* str)

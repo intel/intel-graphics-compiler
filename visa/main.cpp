@@ -520,7 +520,11 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
         fclose(CISAin);
         if (fail)
         {
-            fprintf(stderr, "Error during parsing: VISAParse() exited with exit code %d\n", fail);
+            if (cisa_builder->HasParseError()) {
+                std::cerr << cisa_builder->GetParseError() << "\n";
+            } else {
+                std::cerr << "Error during parsing: CISAparse() returned " << fail << "\n";
+            }
             exit(1);
         }
 
