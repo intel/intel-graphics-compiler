@@ -48,8 +48,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "Probe/Assertion.h"
 
+
 namespace llvm
 {
+
+//namespace dwarf
+// Intel extensions
+#ifndef DW_AT_INTEL_simd_width
+#define DW_AT_INTEL_simd_width 0x2400
+#endif
+#ifndef DW_OP_INTEL_push_simd_lane
+#define DW_OP_INTEL_push_simd_lane 0xed
+#endif
+#ifndef DW_OP_INTEL_piece_stack
+#define DW_OP_INTEL_piece_stack 0xee
+#endif
+#ifndef DW_OP_INTEL_bit_piece_stack
+#define DW_OP_INTEL_bit_piece_stack 0xef
+#endif
+
+
     class MCSymbol;
     class raw_ostream;
     class MCExpr;

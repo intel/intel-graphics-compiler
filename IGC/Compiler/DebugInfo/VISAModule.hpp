@@ -97,7 +97,8 @@ namespace IGC
         /// @param isRegister true if offset value is a register, false if it is immediate.
         /// @param isInMemory true if location is stored in memory, false otherwise.
         /// @param isVectorized true if the underlying virtual variable has been vectorized during codegen.
-        VISAVariableLocation(unsigned int surfaceReg, unsigned int locationValue, bool isRegister, bool isInMemory, bool isVectorized)
+        VISAVariableLocation(unsigned int surfaceReg, unsigned int locationValue, bool isRegister,
+            bool isInMemory, unsigned int vectorNumElements, bool isVectorized)
         {
             Reset();
             m_hasSurface = true;
@@ -107,7 +108,8 @@ namespace IGC
             m_isRegister = isRegister;
             m_locationReg = isRegister ? locationValue : 0;
             m_locationOffset = isRegister ? 0 : locationValue;
-            m_IsVectorized = isVectorized;
+            m_isVectorized = isVectorized;
+            m_vectorNumElements = isVectorized ? vectorNumElements : 0;
         }
 
         /// @brief Constructor. Creates address/register location.
@@ -116,8 +118,8 @@ namespace IGC
         /// @param isInMemory true if location is stored in memory, false otherwise.
         /// @param isVectorized true if the underlying virtual variable has been vectorized during codegen.
         /// @param isGlobalAddrSpace true if variable represents a src var belonging to global address space.
-        VISAVariableLocation(unsigned int locationValue, bool isRegister,
-            bool isInMemory, bool isVectorized, bool isGlobalAddrSpace)
+        VISAVariableLocation(unsigned int locationValue, bool isRegister, bool isInMemory,
+             unsigned int vectorNumElements, bool isVectorized, bool isGlobalAddrSpace)
         {
             Reset();
             m_hasLocation = true;
@@ -125,7 +127,8 @@ namespace IGC
             m_isRegister = isRegister;
             m_locationReg = isRegister ? locationValue : 0;
             m_locationOffset = isRegister ? 0 : locationValue;
-            m_IsVectorized = isVectorized;
+            m_isVectorized = isVectorized;
+            m_vectorNumElements = isVectorized ? vectorNumElements : 0;
             m_isGlobalAddrSpace = isGlobalAddrSpace;
         }
 
@@ -135,13 +138,15 @@ namespace IGC
         bool HasLocation() const { return m_hasLocation; }
         bool IsInMemory() const { return m_isInMemory; }
         bool IsRegister() const { return m_isRegister; }
-        bool IsVectorized() const { return m_IsVectorized; }
+        bool IsVectorized() const { return m_isVectorized; }
         bool IsInGlobalAddrSpace() const { return m_isGlobalAddrSpace; }
 
         const llvm::Constant* GetImmediate() { return m_pConstVal; }
         unsigned int GetSurface() const { return m_surfaceReg; }
         unsigned int GetRegister() const { return m_locationReg; }
         unsigned int GetOffset() const { return m_locationOffset; }
+        unsigned int GetVectorNumElements() const { return m_vectorNumElements; }
+
         bool IsSampler() const;
         bool IsTexture() const;
         bool IsSLM() const;
@@ -159,7 +164,7 @@ namespace IGC
             m_surfaceReg = (~0);
             m_locationReg = (~0);
             m_locationOffset = (~0);
-            m_IsVectorized = false;
+            m_isVectorized = false;
             m_isGlobalAddrSpace = false;
         }
 
@@ -169,14 +174,14 @@ namespace IGC
         bool m_hasLocation;
         bool m_isInMemory;
         bool m_isRegister;
-        bool m_IsVectorized;
+        bool m_isVectorized;
         bool m_isGlobalAddrSpace;
 
         const llvm::Constant* m_pConstVal;
         unsigned int m_surfaceReg;
         unsigned int m_locationReg;
         unsigned int m_locationOffset;
-
+        unsigned int m_vectorNumElements;
     };
 
     typedef uint64_t GfxAddress;

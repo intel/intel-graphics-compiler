@@ -388,13 +388,13 @@ namespace IGC
         DbgVariable* findAbstractVariable(llvm::DIVariable* Var, llvm::DebugLoc Loc);
 
         /// \brief Find DIE for the given subprogram and attach appropriate
-        /// DW_AT_low_pc and DW_AT_high_pc attributes. If there are global
-        /// variables in this scope then create and insert DIEs for these
-        /// variables.
+        /// DW_AT_low_pc, DW_AT_high_pc and DW_AT_INTEL_simd_width.
+        /// If there are globalvariables in this scope then create and insert
+        /// DIEs for these variables.
         DIE* updateSubprogramScopeDIE(CompileUnit* SPCU, llvm::DISubprogram* SP);
 
         /// \brief Construct new DW_TAG_lexical_block for this scope and
-        /// attach DW_AT_low_pc/DW_AT_high_pc labels.
+        /// attach DW_AT_low_pc/DW_AT_high_pc and DW_AT_INTEL_simd_width labels.
         DIE* constructLexicalScopeDIE(CompileUnit* TheCU, ::IGC::LexicalScope* Scope);
         /// A helper function to check whether the DIE for a given Scope is going
         /// to be null.
@@ -657,6 +657,9 @@ namespace IGC
 
         unsigned int lowPc = 0, highPc = 0;
 
+		// SIMD width
+        unsigned short simdWidth = 0;   // Not set until IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging)
+
         DbgDecoder* getDecodedDbg() { return decodedDbg; }
         void setDecodedDbg(DbgDecoder* d)
         {
@@ -667,6 +670,7 @@ namespace IGC
             decodedDbg = d;
         }
         unsigned int CopyDebugLoc(unsigned int offset);
+
 
     private:
         void encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges);

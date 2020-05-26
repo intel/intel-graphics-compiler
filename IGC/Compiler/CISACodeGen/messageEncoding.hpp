@@ -284,6 +284,11 @@ namespace IGC
     static const unsigned int SLM_BTI = 254;
 
     /*****************************************************************************\
+    CONST: STATELESS_NONCOHERENT_BTI
+    \*****************************************************************************/
+    static const unsigned int STATELESS_NONCOHERENT_BTI = 253;
+
+    /*****************************************************************************\
     CONST: BINDLESS_BTI
     \*****************************************************************************/
     static const unsigned int BINDLESS_BTI = 252;

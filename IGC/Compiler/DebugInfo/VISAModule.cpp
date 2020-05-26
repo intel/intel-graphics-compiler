@@ -518,6 +518,7 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     Value* pValue = const_cast<Value*>(pVal);
 
     Type* pType = pValue->getType();
+
     if (isDbgDclInst)
     {
         if (!pType->isPointerTy()) {
@@ -558,9 +559,9 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
         unsigned int offset = m_pShader->GetGlobalMappingValue(pValue);
         if (isInSurface)
         {
-            return VISAVariableLocation(surfaceReg, offset, false, isDbgDclInst, false);
+            return VISAVariableLocation(surfaceReg, offset, false, isDbgDclInst, 0, false);
         }
-        return VISAVariableLocation(offset, false, isDbgDclInst, false, false);
+        return VISAVariableLocation(offset, false, isDbgDclInst, 0, false, false);
     }
 
     // At this point we expect only a register
@@ -579,6 +580,8 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
 
     std::string varName = cast<DIVariable>(pNode)->getName();
     unsigned int reg = 0;
+    unsigned int vectorNumElements = 0;
+
     switch (pVar->GetVarType()) {
     case EVARTYPE_GENERAL:
         // We want to attach "Output" attribute to all src variables
@@ -587,11 +590,21 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
         // values anywhere in the code till they are in scope.
         reg = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[0]);
         IGC_ASSERT(reg < GENERAL_REGISTER_NUM && "Bad VISA general register");
+
+        if (pType->isVectorTy())
+        {
+            vectorNumElements = pType->getVectorNumElements();
+        }
+        else if (!pVar->IsUniform())
+        {
+            vectorNumElements = 1;
+        }
+
         if (isInSurface)
         {
-            return VISAVariableLocation(surfaceReg, GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, !pVar->IsUniform());
+            return VISAVariableLocation(surfaceReg, GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform());
         }
-        return VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, !pVar->IsUniform(), isGlobalAddrSpace);
+        return VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace);
     case EVARTYPE_ADDRESS:
     case EVARTYPE_PREDICATE:
     case EVARTYPE_SURFACE:

@@ -221,6 +221,12 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
         unsigned int prevLastGenOff = lastGenOff;
         m_pDwarfDebug->lowPc = lastGenOff;
 
+        if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
+        {
+            // SIMD width
+            m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
+        }
+
         if (co->subs.size() == 0)
         {
             GenISAToVISAIndex = m_pVISAModule->GenISAToVISAIndex;

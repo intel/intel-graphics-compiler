@@ -66,6 +66,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/MC/MCDwarf.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
+#include "Compiler/CISACodeGen/messageEncoding.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -104,7 +105,6 @@ DIType* DbgVariable::getType() const
  #if LLVM_VERSION_MAJOR < 10
     // isBlockByrefStruct is no more support by LLVM10 IR - more info in this commit below:
     // https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
-
     // FIXME: isBlockByrefVariable should be reformulated in terms of complex
     // addresses instead.
     if (Ty->isBlockByrefStruct()) {
@@ -303,6 +303,8 @@ DIE* DwarfDebug::updateSubprogramScopeDIE(CompileUnit* SPCU, DISubprogram* SP)
     {
         SPCU->addUInt(SPDie, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, lowPc);
         SPCU->addUInt(SPDie, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, highPc);
+
+
     }
     else
     {
@@ -310,6 +312,13 @@ DIE* DwarfDebug::updateSubprogramScopeDIE(CompileUnit* SPCU, DISubprogram* SP)
             Asm->GetTempSymbol("func_begin", m_pModule->GetFunctionNumber(SP->getName().data())));
         SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
             Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP->getName().data())));
+
+        if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
+        {
+            // Emit SIMD width
+            SPCU->addUInt(SPDie, (dwarf::Attribute)DW_AT_INTEL_simd_width, dwarf::DW_FORM_data2,
+                m_pModule->GetSIMDSize());
+        }
     }
 #else
     // Following existed before supporting stack calls. GetFunctionNumber() was hard
@@ -351,7 +360,7 @@ bool DwarfDebug::isLexicalScopeDIENull(LexicalScope* Scope)
 }
 
 // Construct new DW_TAG_lexical_block for this scope and attach
-// DW_AT_low_pc/DW_AT_high_pc labels.
+// DW_AT_low_pc/DW_AT_high_pc labels as well as DW_AT_INTEL_simd_width
 DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scope)
 {
     if (isLexicalScopeDIENull(Scope))
@@ -428,6 +437,7 @@ void DwarfDebug::encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::Smal
             // Emit loc/high_pc
             TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
             TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
+
             needDebugRange = false;
         }
     }
@@ -767,6 +777,9 @@ CompileUnit* DwarfDebug::constructCompileUnit(DICompileUnit* DIUnit)
         NewCU->addLabel(Die, dwarf::DW_AT_stmt_list, dwarf::DW_FORM_sec_offset,
             UseTheFirstCU ? Asm->GetTempSymbol("section_line") : LineTableStartSym);
     }
+
+    simdWidth = m_pModule->GetSIMDSize();
+    NewCU->addSimdWidth(Die, simdWidth);
 
     // If we're using split dwarf the compilation dir is going to be in the
     // skeleton CU and so we don't need to duplicate it here.
@@ -1380,57 +1393,217 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                 // use regx
                                 op = llvm::dwarf::DW_OP_reg0;
                             }
-                            if (regNum <= 31)
+
+                            if (!IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
                             {
-                                op += regNum;
-                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + subRegSize));
-                                write(dotLoc.loc, (uint8_t)op);
-                            }
-                            else
-                            {
-                                op = op == llvm::dwarf::DW_OP_breg0 ? llvm::dwarf::DW_OP_bregx : llvm::dwarf::DW_OP_regx;
-                                if (op == llvm::dwarf::DW_OP_bregx)
+                                if (regNum <= 31)
                                 {
-                                    auto lebsize = encodeULEB128(regNum, bufLEB128);
-                                    auto lebsize1 = 1; // immediate 0
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + lebsize1 + subRegSize));
+                                    op += regNum;
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + subRegSize));
                                     write(dotLoc.loc, (uint8_t)op);
-                                    write(dotLoc.loc, bufLEB128, lebsize);
-                                    write(dotLoc.loc, (uint8_t)0);
                                 }
                                 else
                                 {
-                                    auto lebsize = encodeULEB128(regNum, bufLEB128);
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + subRegSize));
-                                    write(dotLoc.loc, (uint8_t)op);
-                                    write(dotLoc.loc, bufLEB128, lebsize);
+                                    op = op == llvm::dwarf::DW_OP_breg0 ? llvm::dwarf::DW_OP_bregx : llvm::dwarf::DW_OP_regx;
+                                    if (op == llvm::dwarf::DW_OP_bregx)
+                                    {
+                                        auto lebsize = encodeULEB128(regNum, bufLEB128);
+                                        auto lebsize1 = 1; // immediate 0
+                                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + lebsize1 + subRegSize));
+                                        write(dotLoc.loc, (uint8_t)op);
+                                        write(dotLoc.loc, bufLEB128, lebsize);
+                                        write(dotLoc.loc, (uint8_t)0);
+                                    }
+                                    else
+                                    {
+                                        auto lebsize = encodeULEB128(regNum, bufLEB128);
+                                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + subRegSize));
+                                        write(dotLoc.loc, (uint8_t)op);
+                                        write(dotLoc.loc, bufLEB128, lebsize);
+                                    }
+                                }
+
+                                if (hasSubReg)
+                                {
+                                    unsigned int subReg = varInfo.getGRF().subRegNum;
+                                    auto offsetInBits = subReg * 8;
+                                    auto sizeInBits = (m_pModule->m_pShader->getGRFSize() * 8) - offsetInBits;
+
+                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bit_piece);
+                                    sizeLEB128Size = encodeULEB128(sizeInBits, bufLEB128);
+                                    write(dotLoc.loc, (unsigned char*)bufLEB128, sizeLEB128Size);
+                                    offsetLEB128Size = encodeULEB128(offsetInBits, bufLEB128);
+                                    write(dotLoc.loc, (unsigned char*)bufLEB128, offsetLEB128Size);
                                 }
                             }
-
-                            if (hasSubReg)
+                            else
                             {
-                                unsigned int subReg = varInfo.getGRF().subRegNum;
-                                auto offsetInBits = subReg * 8;
-                                auto sizeInBits = (m_pModule->m_pShader->getGRFSize() * 8) - offsetInBits;
+                                IGC_ASSERT(IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging));
 
-                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bit_piece);
-                                sizeLEB128Size = encodeULEB128(sizeInBits, bufLEB128);
-                                write(dotLoc.loc, (unsigned char*)bufLEB128, sizeLEB128Size);
-                                offsetLEB128Size = encodeULEB128(offsetInBits, bufLEB128);
-                                write(dotLoc.loc, (unsigned char*)bufLEB128, offsetLEB128Size);
+                                uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
+                                unsigned int vectorNumElements = 1;
+                                uint16_t varSizeInBits = (uint16_t)RegVar->getType()->getSizeInBits();
+                                uint16_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
+                                uint16_t numOfRegs = ((varSizeInReg * (uint16_t)simdWidth) > (grfSize * 8)) ?
+                                    ((varSizeInReg * (uint16_t)simdWidth) / (grfSize * 8)) : 1;
+
+                                if (Loc.IsVectorized() == true)
+                                {
+                                    vectorNumElements = Loc.GetVectorNumElements();
+                                }
+                                for (unsigned int vectorElem = 0; vectorElem < vectorNumElements; ++vectorElem)
+                                {
+                                    if (regNum <= 31)
+                                    {
+                                        op += regNum;
+                                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + subRegSize));
+                                        write(dotLoc.loc, (uint8_t)op);
+                                    }
+                                    else
+                                    {
+                                        op = op == llvm::dwarf::DW_OP_breg0 ? llvm::dwarf::DW_OP_bregx : llvm::dwarf::DW_OP_regx;
+                                        if (op == llvm::dwarf::DW_OP_bregx)
+                                        {
+                                            auto lebsize = encodeULEB128(regNum, bufLEB128);
+                                            auto lebsize1 = 1; // immediate 0
+                                            write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + lebsize1 + subRegSize));
+                                            write(dotLoc.loc, (uint8_t)op);
+                                            write(dotLoc.loc, bufLEB128, lebsize);
+                                            write(dotLoc.loc, (uint8_t)0);
+                                        }
+                                        else
+                                        {
+                                            auto lebsize = encodeULEB128(regNum, bufLEB128);
+                                            write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + subRegSize));
+                                            write(dotLoc.loc, (uint8_t)op);
+                                            write(dotLoc.loc, bufLEB128, lebsize);
+                                        }
+                                    }
+
+                                    auto lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
+
+                                    IGC_ASSERT((varSizeInBits == 64) || (varSizeInBits == 32 || varSizeInBits == 16 || varSizeInBits == 8) &&
+                                        "Unexpected variable's size");
+                                    unsigned int opLit = llvm::dwarf::DW_OP_lit5;
+                                    if (varSizeInBits == 64)
+                                    {
+                                        opLit = llvm::dwarf::DW_OP_lit4;
+                                    }
+
+                                    if (Loc.IsVectorized() == false)
+                                    {
+                                        unsigned int subReg = varInfo.getGRF().subRegNum;
+
+                                        // Scalar in a subregister
+                                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                        write(dotLoc.loc, (uint8_t)subReg);  // TBD MT verify correctness of encoding
+                                    }
+                                    else
+                                    {
+                                        // SIMD lane
+                                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                        write(dotLoc.loc, (uint8_t)DW_OP_INTEL_push_simd_lane);
+                                    }
+
+                                    // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
+                                    // as well as 32-bit float/int, while 64-bit variable takes two 32-bit subregisters.
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                    write(dotLoc.loc, (uint8_t)opLit);
+
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));;
+                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
+
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
+
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsizeVarSizeInBits));
+                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_const1u);
+                                    write(dotLoc.loc, bufLEB128, lebsizeVarSizeInBits);
+
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                    write(dotLoc.loc, DW_OP_INTEL_bit_piece_stack);
+
+                                    regNum = regNum + numOfRegs;
+                                }
                             }
                         }
                         else if (varInfo.isSpill())
                         {
-                            Address addr;
-                            addr.Set(Address::Space::eScratch, 0, varInfo.getSpillOffset().memoryOffset);
+                            if (!IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
+                            {
+                                Address addr;
+                                addr.Set(Address::Space::eScratch, 0, varInfo.getSpillOffset().memoryOffset);
 
-                            unsigned int op = llvm::dwarf::DW_OP_const8u;
-                            write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + sizeof(uint64_t) + sizeof(uint8_t)));
-                            write(dotLoc.loc, (uint8_t)op);
-                            write(dotLoc.loc, addr.GetAddress());
-                            op = llvm::dwarf::DW_OP_deref;
-                            write(dotLoc.loc, (uint8_t)op);
+                                unsigned int op = llvm::dwarf::DW_OP_const8u;
+                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + sizeof(uint64_t) + sizeof(uint8_t)));
+                                write(dotLoc.loc, (uint8_t)op);
+                                write(dotLoc.loc, addr.GetAddress());
+                                op = llvm::dwarf::DW_OP_deref;
+                                write(dotLoc.loc, (uint8_t)op);
+                            }
+                            else
+                            {
+                                // Scratch space
+                                // 1 DW_OP_bregx <scrbase>, <offset>
+                                uint64_t scratchBaseAddr = 0; // TBD MT
+                                auto lebsizeScratchBaseAddr = encodeULEB128(scratchBaseAddr, bufLEB128); // Address for bregx
+                                auto lebsizeScratchOffset = encodeULEB128(varInfo.getSpillOffset().memoryOffset, bufLEB128); // Offset for bregx
+
+                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsizeScratchBaseAddr + lebsizeScratchOffset));
+                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bregx);
+                                write(dotLoc.loc, bufLEB128, lebsizeScratchBaseAddr);
+                                write(dotLoc.loc, bufLEB128, lebsizeScratchOffset);
+                            }
+
+                            if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
+                            {
+                                // Emit SIMD lane for spill (unpacked)
+                                uint64_t varSizeInBits = RegVar->getType()->getSizeInBits();
+                                auto lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
+
+                                IGC_ASSERT((varSizeInBits == 64) || (varSizeInBits == 32 || varSizeInBits == 16 || varSizeInBits == 8) &&
+                                    "Unexpected variable's size");
+                                IGC_ASSERT(Loc.GetVectorNumElements() <= 1);
+
+                                unsigned int opLit = llvm::dwarf::DW_OP_lit5;
+                                if (varSizeInBits == 64)
+                                {
+                                    opLit = llvm::dwarf::DW_OP_lit4;
+                                }
+
+                                if (Loc.IsVectorized() == false)
+                                {
+                                    unsigned int subReg = varInfo.getGRF().subRegNum;
+
+                                    // Scalar in a subregister
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                    write(dotLoc.loc, (uint8_t)subReg);  // TBD MT verify correctness of encoding
+                                }
+                                else
+                                {
+                                    // SIMD lane
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                    write(dotLoc.loc, (uint8_t)DW_OP_INTEL_push_simd_lane);
+                                }
+
+                                // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
+                                // as well as 32-bit float/int, while 64-bit variable takes two 32-bit subregisters.
+                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                write(dotLoc.loc, (uint8_t)opLit);
+
+                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
+
+                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
+
+                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsizeVarSizeInBits));
+                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_const1u);
+                                write(dotLoc.loc, bufLEB128, lebsizeVarSizeInBits);
+
+                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
+                                write(dotLoc.loc, DW_OP_INTEL_bit_piece_stack);
+                            }
                         }
                         if (Loc.IsVectorized())
                             RegVar->getDecorations().append("v ");

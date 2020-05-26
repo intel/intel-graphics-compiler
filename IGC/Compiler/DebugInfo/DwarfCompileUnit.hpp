@@ -248,6 +248,47 @@ namespace IGC
         /// type references.
         void addType(DIE* Entity, llvm::DIType* Ty, llvm::dwarf::Attribute Attribute = llvm::dwarf::DW_AT_type);
 
+        // addSimdWidth - add SIMD width
+        void addSimdWidth(DIE* Die, uint16_t SimdWidth);
+
+        // addGTRelativeLocation - add a sequence of attributes to calculate either:
+        // - BTI-relative location of variable in surface state, or
+        // - stateless surface location, or
+        // - bindless surface location or
+        // - bindless sampler location
+        void addGTRelativeLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+
+        // addBindlessOrStatelessLocation - add a sequence of attributes to calculate stateless or
+        // bindless location of variable. baseAddr is one of the following base addreses:
+        // - General State Base Address when variable located in stateless surface
+        // - Bindless Surface State Base Address when variable located in bindless surface
+        // - Bindless Sampler State Base Addres when variable located in bindless sampler
+        void addBindlessOrStatelessLocation(DIEBlock* Block, VISAVariableLocation* Loc, uint32_t baseAddr);
+
+        // addStatelessLocation - add a sequence of attributes to calculate stateless surface location of variable
+        void addStatelessLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+
+        // addBindlessSurfaceLocation - add a sequence of attributes to calculate bindless surface location of variable
+        void addBindlessSurfaceLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+
+        // addBindlessSamplerLocation - add a sequence of attributes to calculate bindless sampler location of variable
+        void addBindlessSamplerLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+
+        // addScratchLocation - add a sequence of attributes to emit scratch space location
+        // of variable
+        void addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varInfo);
+
+        // addSLMLocation - add a sequence of attributes to emit SLM location of variable
+        void addSLMLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+
+        // addSimdLane - add a sequence of attributes to calculate location of variable
+        // among SIMD lanes, e.g. a GRF subregister.
+        void addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc, bool isPacked);
+
+        // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
+        // e.g. a GRF subregister.
+        void addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, uint16_t subReg, bool isPacked);
+
         /// getOrCreateNameSpace - Create a DIE for DINameSpace.
         DIE* getOrCreateNameSpace(llvm::DINamespace* NS);
 
