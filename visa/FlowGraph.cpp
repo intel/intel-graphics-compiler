@@ -7120,7 +7120,7 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     memset(&t, 0, sizeof(t));
 
     t.version = gtpin::igc::GTPIN_IGC_INTERFACE_VERSION;
-    t.igc_init_size = sizeof(t);
+    //t.igc_init_size = sizeof(t);
     if (gtpinInitFromL0)
     {
         if (kernel.getOption(vISA_GetFreeGRFInfo))
