@@ -4011,6 +4011,7 @@ namespace IGC
 
         Value* data = I.getOperand(0);
         Value* source = I.getOperand(1);
+        uint typeByteSize = data->getType()->getScalarSizeInBits() / 8;
         bool isMatch = false;
         int subReg = 0;
         uint verticalStride = 1; //Default value for special case  Shuffle( data, (laneID << x) + y )  when x = 0
@@ -4063,21 +4064,27 @@ namespace IGC
         //Finally check for simLaneID intrisic
         if (intrin && (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_simdLaneId))
         {
-            MatchRegionPattern* pattern = new (m_allocator) MatchRegionPattern();
-            pattern->source.elementOffset = subReg;
+            //To avoid compiler crash, pattern match with direct mov will be disable
+            //Conservetively, we assum simd16 for 32 bytes GRF platforms and simd32 for 64 bytes GRF platforms
+            bool cross2GRFs = typeByteSize * (subReg + verticalStride * (m_Platform.getGRFSize() > 32 ? 32 : 16)) > (2 * m_Platform.getGRFSize());
+            if (!cross2GRFs)
+            {
+                MatchRegionPattern* pattern = new (m_allocator) MatchRegionPattern();
+                pattern->source.elementOffset = subReg;
 
-            //Set Region Parameters <VerString;Width,HorzString>
-            pattern->source.region_set = true;
-            pattern->source.region[0] = verticalStride;
-            pattern->source.region[1] = 1;
-            pattern->source.region[2] = 0;
+                //Set Region Parameters <VerString;Width,HorzString>
+                pattern->source.region_set = true;
+                pattern->source.region[0] = verticalStride;
+                pattern->source.region[1] = 1;
+                pattern->source.region[2] = 0;
 
-            pattern->source.value = data;
-            MarkAsSource(data);
-            HandleSubspanUse(data);
-            AddPattern(pattern);
+                pattern->source.value = data;
+                MarkAsSource(data);
+                HandleSubspanUse(data);
+                AddPattern(pattern);
 
-            isMatch = true;
+                isMatch = true;
+            }
         }
 
         return isMatch;
