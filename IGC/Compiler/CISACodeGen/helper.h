@@ -175,8 +175,6 @@ namespace IGC
 
     bool isURBWriteIntrinsic(const llvm::Instruction* inst);
 
-    llvm::Instruction* AdjustSystemValueCall(llvm::GenIntrinsicInst* inst);
-
     unsigned EncodeAS4GFXResource(
         const llvm::Value& bufIdx,
         BufferType bufType,

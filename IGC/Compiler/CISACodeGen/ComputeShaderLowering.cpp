@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "helper.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -53,6 +52,7 @@ public:
     static char ID;
 protected:
     Function* m_function = nullptr;
+    void shortenThreadID(GenIntrinsicInst& inst, Function& F);
 };
 
 char ComputeShaderLowering::ID = 0;
@@ -67,13 +67,37 @@ bool ComputeShaderLowering::runOnFunction(Function& F)
             {
                 if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_SystemValue)
                 {
-                    II = AdjustSystemValueCall(inst)->getIterator();
+                    shortenThreadID(*inst, F);
                 }
             }
         }
     }
 
     return true;
+}
+
+void ComputeShaderLowering::shortenThreadID(GenIntrinsicInst& inst, Function& F)
+{
+    SGVUsage usage =
+        static_cast<SGVUsage>(llvm::cast<llvm::ConstantInt>(inst.getOperand(0))->getZExtValue());
+    if (THREAD_ID_IN_GROUP_X != usage &&
+        THREAD_ID_IN_GROUP_Y != usage &&
+        THREAD_ID_IN_GROUP_Z != usage
+        )
+    {
+        return;
+    }
+
+    llvm::Module* module = F.getParent();
+    IRBuilder<> builder(&inst);
+    llvm::Value* vSGV = builder.getInt32(usage);
+    llvm::Function* funcSGV = llvm::GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_DCL_SystemValue, builder.getInt16Ty());
+    llvm::Value* vSGVCreate = builder.CreateCall(funcSGV, vSGV);
+    vSGVCreate = builder.CreateZExtOrTrunc(vSGVCreate, builder.getIntNTy((unsigned int)inst.getType()->getPrimitiveSizeInBits()));
+    vSGVCreate = builder.CreateBitCast(vSGVCreate, inst.getType());
+    inst.replaceAllUsesWith(vSGVCreate);
+
+    return;
 }
 
 namespace IGC {
