@@ -3041,6 +3041,13 @@ void verifyKernelHeader(const common_isa_header& isaHeader,
                      int varSize = header->getVar(varId)->num_elements * CISATypeTable[header->getVar(varId)->getType()].typeSize;
                      REPORT_HEADER(options,varSize == header->getInput(i)->size,
                          "Input %d's size(%d) does not agree with its variable (V%d)'s", i, header->getInput(i)->size, varId + numPreDefinedVars);
+                     if (header->getInput(i)->size < getGRFSize())
+                     {
+                         // check that input does not straddle GRF boundary
+                         auto beginGRF = header->getInput(i)->offset / getGRFSize();
+                         auto endGRF = (header->getInput(i)->offset + header->getInput(i)->size - 1) / getGRFSize();
+                         REPORT_HEADER(options, beginGRF == endGRF, "Input %s is <1 GRF but straddles GRF boundary", header->getInput(i)->dcl->getName());
+                     }
                  }
                  break;
             case INPUT_SAMPLER:
