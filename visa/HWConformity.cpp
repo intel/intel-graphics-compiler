@@ -2811,7 +2811,294 @@ void HWConformity::copyRegs(G4_Declare* dst,
     }
 }
 
-void HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
+bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
+{
+    auto inst = (*iter);
+    auto origIter = iter;
+    auto dst = inst->getDst();
+    auto src0 = inst->getSrc(0);
+
+    MUST_BE_TRUE(!inst->getCondMod(), "cant handle cond mod");
+    auto dstHS = dst->getHorzStride();
+
+    auto incrementVar = [&](G4_Operand* var, unsigned int width, unsigned int regOff, unsigned int sregOff, G4_INST* inst, short increment)
+    {
+        auto addrDst = builder.createDstRegRegion(Direct, var->getBase(), regOff, sregOff, 1, Type_UW);
+        auto addrSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, var->getBase(), regOff, sregOff,
+            builder.getRegionStride1(), Type_UW);
+        auto incrementImm = builder.createImm(increment, Type_W);
+        auto addrAddInst = builder.createInternalInst(nullptr, G4_add, nullptr, false, inst->getExecSize()/width, addrDst, addrSrc, incrementImm, InstOpt_WriteEnable);
+        return addrAddInst;
+    };
+
+    if (src0->isSrcRegRegion())
+    {
+        auto src0RR = src0->asSrcRegRegion();
+        MUST_BE_TRUE(IS_INT(src0RR->getType()) && IS_INT(dst->getType()), "expecting int types on src, dst");
+        MUST_BE_TRUE(src0RR->getModifier() == Mod_src_undef, "cannot handle saturation");
+
+        const RegionDesc* rgnToUse = nullptr;
+
+        if (src0RR->getRegion()->isScalar())
+            rgnToUse = builder.getRegionScalar();
+        else if(!src0RR->isIndirect())
+        {
+            uint16_t stride = 0;
+            bool legal = src0RR->getRegion()->isSingleStride(inst->getExecSize(), stride);
+            MUST_BE_TRUE(legal, "unsupported region");
+            if (stride == 1)
+                rgnToUse = builder.getRegionStride2();
+            else if (stride == 2)
+                rgnToUse = builder.getRegionStride4();
+            else
+                MUST_BE_TRUE(false, "unsupported stride");
+        }
+        else
+        {
+            if (G4_Type_Table[src0RR->getType()].byteSize < 8)
+                rgnToUse = src0RR->getRegion();
+            else
+            {
+                // this will be broken up in to 2 instructions
+                auto factor = G4_Type_Table[src0RR->getType()].byteSize / G4_Type_Table[dst->getType()].byteSize;
+                auto vs = src0RR->getRegion()->vertStride * factor;
+                auto w = src0RR->getRegion()->width;
+                auto hs = src0RR->getRegion()->horzStride * factor;
+                rgnToUse = builder.createRegionDesc(vs, w, hs);
+            }
+        }
+
+        if (G4_Type_Table[dst->getType()].byteSize == 8)
+        {
+            if (G4_Type_Table[src0->getType()].byteSize == 8)
+            {
+                // may be q->uq or uq->q or raw mov
+                // safe to do raw copy for all 3 cases
+
+                // mov (8) r10.0<1>:uq   r20.0<1;1,0>:uq
+                // =>
+                // mov (8) r10.0<2>:ud   r20.0<2;1,0>:ud
+                // mov (8) r10.1<2>:ud   r20.1<2;1,0>:ud
+
+                // 1st half
+                auto newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_UD, dst->getAddrImm())) :
+                    (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2, 2 * dstHS, Type_UD));
+                auto newSrc = builder.createSrcRegRegion(Mod_src_undef, src0RR->getRegAccess(), src0RR->getBase(), src0RR->getRegOff(),
+                    src0RR->isIndirect() ? src0RR->getSubRegOff() : (src0RR->getSubRegOff() * 2), rgnToUse, Type_UD);
+                newSrc->setImmAddrOff(src0RR->getAddrImm());
+                auto newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
+                newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+                iter = bb->insert(origIter, newInst);
+
+                // second half
+                bool dstAddrIncremented = false, src0AddrIncremented = false;
+                unsigned int immAddrOff = 4;
+                if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512)
+                {
+                    // increment dst address register by 4, later decrement it
+                    dstAddrIncremented = true;
+                    immAddrOff = 0;
+                    iter = bb->insert(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, 4));
+                }
+                newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_UD, immAddrOff + dst->getAddrImm())) :
+                    (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1, 2 * dstHS, Type_UD));
+                newSrc = builder.createSrcRegRegion(Mod_src_undef, src0RR->getRegAccess(), src0RR->getBase(), src0RR->getRegOff(),
+                    src0RR->isIndirect() ? src0RR->getSubRegOff() : (src0RR->getSubRegOff() * 2 + 1), rgnToUse, Type_UD);
+                if (newSrc->isIndirect())
+                {
+                    // upper 4 bytes
+                    if ((4 + src0RR->getAddrImm()) > 512)
+                    {
+                        src0AddrIncremented = true;
+                        iter = bb->insert(origIter, incrementVar(src0RR, src0RR->getRegion()->width, src0RR->getRegOff(), src0RR->getSubRegOff(), inst, 4));
+                        newSrc->setImmAddrOff(src0RR->getAddrImm());
+                    }
+                    else
+                        newSrc->setImmAddrOff(4 + src0RR->getAddrImm());
+                }
+                newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
+                newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+                iter = bb->insert(origIter, newInst);
+
+                if (dstAddrIncremented)
+                {
+                    iter = bb->insert(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, -4));
+                }
+
+                if (src0AddrIncremented)
+                {
+                    iter = bb->insert(origIter, incrementVar(src0RR, src0RR->getRegion()->width, src0RR->getRegOff(), src0RR->getSubRegOff(), inst, -4));
+                }
+
+                bb->erase(origIter);
+
+                return true;
+            }
+            else if (G4_Type_Table[dst->getType()].byteSize == 8 && G4_Type_Table[src0->getType()].byteSize < 8)
+            {
+                // d/ud/w/uw/b/ub -> q/uq
+                if (IS_SIGNED_INT(src0->getType()))
+                {
+                    // when src is signed, sign extend
+                    // b/w/d -> q/uq
+                    //
+                    // dst<2>.0:d = src:[d|w|b]
+                    // dst<2>.1:d = asr dst<2>.0:d 31
+                    auto newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_D, dst->getAddrImm())) :
+                        (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2, 2 * dstHS, Type_D));
+                    auto newSrc = builder.createSrcRegRegion(*src0RR);
+                    auto newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
+                    newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+                    iter = bb->insert(origIter, newInst);
+
+                    bool dstAddrIncremented = false;
+                    unsigned int immAddrOff = 4;
+                    if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512)
+                    {
+                        // increment dst address register by 4, later decrement it
+                        dstAddrIncremented = true;
+                        immAddrOff = 0;
+                        iter = bb->insert(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, 4));
+                    }
+
+                    newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_D, immAddrOff + dst->getAddrImm())) :
+                        (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1, 2 * dstHS, Type_D));
+                    if (dst->isIndirect())
+                    {
+                        newSrc = builder.createSrcRegRegion(Mod_src_undef, IndirGRF, dst->getBase(), dst->getRegOff(), dst->getSubRegOff(),
+                            rgnToUse, Type_D);
+                        newSrc->setImmAddrOff(newDst->getAddrImm());
+                    }
+                    else
+                        newSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2,
+                            builder.getRegionStride2(), Type_D);
+                    auto imm31 = builder.createImm(31, Type_W);
+                    newInst = builder.createBinOp(G4_asr, inst->getExecSize(), newDst, newSrc, imm31, inst->getOption(), false);
+                    newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+                    iter = bb->insert(origIter, newInst);
+
+                    if (dstAddrIncremented)
+                    {
+                        iter = bb->insert(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, -4));
+                    }
+
+                    bb->erase(origIter);
+
+                    return true;
+                }
+                else
+                {
+                    // when src is unsigned, zero extend
+                    // ub/uw/ud -> q/uq
+                    //
+                    // dst<2>.0:ud = src:[ud|uw|ub]
+                    // dst<2>.1:ud = 0
+
+                    auto newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_UD, dst->getAddrImm())) :
+                        (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2, 2 * dstHS, Type_UD));
+                    auto newSrc = builder.createSrcRegRegion(*src0RR);
+                    auto newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
+                    newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+                    iter = bb->insert(origIter, newInst);
+
+                    bool dstAddrIncremented = false;
+                    unsigned int immAddrOff = 4;
+                    if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512)
+                    {
+                        // increment dst address register by 4, later decrement it
+                        dstAddrIncremented = true;
+                        immAddrOff = 0;
+                        iter = bb->insert(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, 4));
+                    }
+                    newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_UD, immAddrOff + dst->getAddrImm())) :
+                        (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1, 2 * dstHS, Type_UD));
+                    auto imm0 = builder.createImm(0);
+                    newInst = builder.createMov(inst->getExecSize(), newDst, imm0, inst->getOption(), false);
+                    newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+                    iter = bb->insert(origIter, newInst);
+
+                    if (dstAddrIncremented)
+                    {
+                        iter = bb->insert(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, -4));
+                    }
+
+                    bb->erase(origIter);
+
+                    return true;
+                }
+            }
+        }
+        else if (G4_Type_Table[dst->getType()].byteSize < 8 && G4_Type_Table[src0->getType()].byteSize == 8)
+        {
+            // truncate
+            // q/uq -> d/ud/w/uw/b/ub
+            // 1. mov(8) r10.0<1>:d   r20.0<1;1,0>:uq
+            // =>
+            // mov(8) r10.0<1>:d   r20.0<2;1,0>:d
+            //
+            // 2. mov(8) r10.0<1>:d   r20.1<2;1,0>:uq
+            // =>
+            // mov(8) r10.0<1>:d   r20.2<4;1,0>:d
+
+            unsigned int factor = G4_Type_Table[src0->getType()].byteSize / G4_Type_Table[dst->getType()].byteSize;
+            auto newDst = builder.createDstRegRegion(*dst);
+            auto newSrc = builder.createSrcRegRegion(Mod_src_undef, src0RR->getRegAccess(), src0RR->getBase(), src0RR->getRegOff(),
+                src0RR->isIndirect() ? src0RR->getSubRegOff() : (src0RR->getSubRegOff() * factor), rgnToUse, dst->getType());
+            newSrc->setImmAddrOff(src0RR->getAddrImm());
+            auto newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
+            newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+            iter = bb->insert(origIter, newInst);
+
+            bb->erase(origIter);
+
+            return true;
+        }
+    }
+    else if (src0->isImm())
+    {
+        auto imm = src0->asImm()->getInt();
+        int low = imm & 0xffffffff;
+        int high = (imm >> 32) & 0xffffffff;
+
+        // low
+        auto newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_D, dst->getAddrImm())) :
+            (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2, 2 * dstHS, Type_D));
+        auto immLowSrc = builder.createImm(low, Type_D);
+        auto newInst = builder.createMov(inst->getExecSize(), newDst, immLowSrc, inst->getOption(), false);
+        newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+        iter = bb->insert(origIter, newInst);
+
+        // high
+        bool dstAddrIncremented = false;
+        unsigned int immAddrOff = 4;
+        if (dst->isIndirect() && (4 + dst->getAddrImm()) > 512)
+        {
+            // increment dst address register by 4, later decrement it
+            dstAddrIncremented = true;
+            immAddrOff = 0;
+            iter = bb->insert(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, 4));
+        }
+        newDst = dst->isIndirect() ? (builder.createIndirectDst(dst->getBase(), dst->getSubRegOff(), 2 * dstHS, Type_D, immAddrOff + dst->getAddrImm())) :
+            (builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1, 2 * dstHS, Type_D));
+        auto immHigh = builder.createImm(high, Type_D);
+        newInst = builder.createMov(inst->getExecSize(), newDst, immHigh, inst->getOption(), false);
+        newInst->setPredicate(inst->getPredicate() ? builder.createPredicate(*inst->getPredicate()) : nullptr);
+        iter = bb->insert(origIter, newInst);
+
+        if (dstAddrIncremented)
+        {
+            iter = bb->insert(origIter, incrementVar(dst, inst->getExecSize(), dst->getRegOff(), dst->getSubRegOff(), inst, -4));
+        }
+
+        bb->erase(origIter);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
 {
 
     // HW restrictions:
@@ -2829,7 +3116,7 @@ void HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
 
     if (!builder.no64bitRegioning())
     {
-        return;
+        return false;
     }
 
     G4_INST* inst = *iter;
@@ -2839,7 +3126,7 @@ void HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
 
     if (inst->mayExceedTwoGRF())
     {
-        return;
+        return false;
     }
     if (inst->getDst() != NULL && G4_Type_Table[inst->getDst()->getType()].byteSize == 8)
     {
@@ -2864,40 +3151,14 @@ void HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
 
     if (uses64BitType)
     {
-
-        if (builder.no64bitType() && inst->opcode() == G4_mov)
+        if (builder.no64bitType())
         {
-            // while input should not have any ALU inst with 64b type, we may still end up
-            // with 64b moves generated when preparing send payload (e.g., 64b atomics,
-            // A64 messages). We fix such moves here by breaking them into 2 32b moves
-            // For now only handle copy moves.
-            auto dst = inst->getDst();
-            auto src0 = inst->getSrc(0);
-            assert(getTypeSize(dst->getType()) == 8 &&
-                getTypeSize(src0->getType()) == 8 && "must be copy moves");
-            assert(src0->isSrcRegRegion() &&
-                (src0->asSrcRegRegion()->isScalar() ||
-                    src0->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize())) &&
-                "expect src0 to be scalar or contiguous");
-            auto src0RR = src0->asSrcRegRegion();
-            assert(inst->isRawMov() && dst->getHorzStride() == 1 && "expect only copy moves");
-
-            // 1st half
-            auto newDst = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2,
-                2, Type_UD);
-            auto newSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff(),
-                src0RR->getSubRegOff() * 2, src0RR->isScalar() ? builder.getRegionScalar() : builder.getRegionStride2(), Type_UD);
-            auto newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
-            bb->insert(iter, newInst);
-
-            // second half
-            newDst = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1,
-                2, Type_UD);
-            newSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff(),
-                src0RR->getSubRegOff() * 2 + 1, src0RR->isScalar() ? builder.getRegionScalar() : builder.getRegionStride2(), Type_UD);
-            newInst = builder.createMov(inst->getExecSize(), newDst, newSrc, inst->getOption(), false);
-            *iter = newInst;
-            return;
+            // handle mov/add/cmp/sel
+            if (inst->opcode() == G4_mov)
+            {
+                if (emulate64bMov(iter, bb))
+                    return true;
+            }
         }
 
         int numSrc = inst->getNumSrc();
@@ -3192,6 +3453,7 @@ void HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
             }
         }
             }
+            return false;
         }
 
 //------------------------------------------------------------------------------
@@ -6101,7 +6363,10 @@ void HWConformity::conformBB(G4_BB* bb)
         }
 
         // CHV/BXT specific checks for 64b datatypes
-        fix64bInst(i, bb);
+        if (fix64bInst(i, bb))
+        {
+            continue;
+        }
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);

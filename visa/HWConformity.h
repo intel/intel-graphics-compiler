@@ -141,7 +141,8 @@ namespace vISA
         void fixImm64(INST_LIST_ITER i, G4_BB* bb);
         bool checkSrcCrossGRF(INST_LIST_ITER &i, G4_BB* bb);
         G4_INST* checkSrcDefInst(G4_INST *inst, G4_INST *def_inst, uint32_t srcNum);
-        void fix64bInst(INST_LIST_ITER i, G4_BB* bb);
+        bool emulate64bMov(INST_LIST_ITER iter, G4_BB* bb);
+        bool fix64bInst(INST_LIST_ITER i, G4_BB* bb);
         bool fixPlaneInst(INST_LIST_ITER i, G4_BB* bb);
         void expandPlaneInst(INST_LIST_ITER i, G4_BB* bb);
         bool fixAddcSubb(G4_BB* bb);
