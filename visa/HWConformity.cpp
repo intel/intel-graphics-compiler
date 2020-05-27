@@ -5749,31 +5749,33 @@ void HWConformity::fixSendInst(G4_BB* bb)
                         dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum() < 2));
         };
 
-        if (needsTempSrc(inst, src0TopDcl))
+        auto fixSrc = [&](G4_INST* inst, bool isSrc0)
         {
-            uint16_t rows = inst->getMsgDesc()->MessageLength();
-            G4_Type type = src0->getType();
-            G4_Declare* dcl = builder.createTempVar(rows * 8, type, GRFALIGN);
+            auto sendSrc = isSrc0 ? inst->getSrc(0)->asSrcRegRegion() : inst->getSrc(1)->asSrcRegRegion();
+            uint16_t rows = isSrc0 ? inst->getMsgDesc()->MessageLength() : inst->getMsgDesc()->extMessageLength();
+            G4_Type type = sendSrc->getType();
+            G4_Declare* dcl = builder.createTempVar(rows * builder.getNativeExecSize(), type, GRFALIGN);
 
-            MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src0 opnd type for send.");
+            MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src opnd type for send.");
 
             const RegionDesc* region = builder.getRegionStride1();
-            G4_VarBase* base = src0->asSrcRegRegion()->getBase();
-            short baseOff = src0->asSrcRegRegion()->getRegOff();
-            short baseSubOff = src0->asSrcRegRegion()->getSubRegOff();
+            G4_VarBase* base = sendSrc->getBase();
+            short baseOff = sendSrc->getRegOff();
+            short baseSubOff = sendSrc->getSubRegOff();
             for (uint16_t idx = 0; idx != rows; ++idx) {
                 G4_SrcRegRegion* src = builder.createSrcRegRegion(Mod_src_undef, Direct, base, baseOff + idx, baseSubOff + 0, region, type);
                 G4_DstRegRegion* dst = builder.createDst(dcl->getRegVar(), idx, 0, 1, type);
-
-                G4_INST* newInst = builder.createMov(8, dst, src, InstOpt_WriteEnable, false);
-
+                G4_INST* newInst = builder.createMov(builder.getNativeExecSize(), dst, src, InstOpt_WriteEnable, false);
                 bb->insert(i, newInst);
-                inst->transferDef(newInst, Opnd_src0, Opnd_src0);
-                newInst->addDefUse(inst, Opnd_src0);
             }
 
             G4_Operand* newSrc = builder.Create_Src_Opnd_From_Dcl(dcl, builder.getRegionStride1());
-            inst->setSrc(newSrc, 0);
+            inst->setSrc(newSrc, isSrc0 ? 0 : 1);
+        };
+
+        if (needsTempSrc(inst, src0TopDcl))
+        {
+            fixSrc(inst, true);
         }
 
         if (inst->isSplitSend() && !inst->getSrc(1)->isNullReg())
@@ -5788,30 +5790,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
 
             if (needsTempSrc(inst, src1TopDcl))
             {
-                uint16_t rows = inst->getMsgDesc()->extMessageLength();
-                G4_Type type = src1->getType();
-                G4_Declare* dcl = builder.createTempVar(rows * 8, type, GRFALIGN);
-
-                MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src1 opnd type for send.");
-
-                const RegionDesc* region = builder.getRegionStride1();
-                G4_VarBase* base = src1->asSrcRegRegion()->getBase();
-                short baseOff = src1->asSrcRegRegion()->getRegOff();
-                short baseSubOff = src1->asSrcRegRegion()->getSubRegOff();
-                for (uint16_t idx = 0; idx != rows; ++idx)
-                {
-                    G4_SrcRegRegion* src = builder.createSrcRegRegion(Mod_src_undef, Direct, base, baseOff + idx, baseSubOff + 0, region, type);
-                    G4_DstRegRegion* dst = builder.createDst(dcl->getRegVar(), idx, 0, 1, type);
-
-                    G4_INST* newInst = builder.createMov(8, dst, src, InstOpt_WriteEnable, false);
-
-                    bb->insert(i, newInst);
-                    inst->transferDef(newInst, Opnd_src1, Opnd_src1);
-                    newInst->addDefUse(inst, Opnd_src1);
-                }
-
-                G4_Operand* newSrc = builder.Create_Src_Opnd_From_Dcl(dcl, region);
-                inst->setSrc(newSrc, 1);
+                fixSrc(inst, false);
             }
         }
 
@@ -6171,10 +6150,10 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
     {
         G4_INST* inst = *iter;
         if ((inst->opcode() == G4_addc || inst->opcode() == G4_subb) &&
-            inst->getExecSize() != 8)
+            inst->getExecSize() != builder.getNativeExecSize())
         {
             // find the matching carry move
-            G4_INST* carryMov = NULL;
+            G4_INST* carryMov = nullptr;
             auto movIter = iter;
             for (++movIter; movIter != iterEnd; ++movIter)
             {
