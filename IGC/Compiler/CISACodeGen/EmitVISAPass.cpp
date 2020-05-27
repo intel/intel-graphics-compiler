@@ -9559,121 +9559,33 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     unsigned char argSizeInGRF = (offsetA + getGRFSize() - 1) / getGRFSize();
     unsigned char retSizeInGRF = retOnStack ? 0 : (retSize + getGRFSize() - 1) / getGRFSize();
 
-    CVariable* funcAddr = GetSymbol(inst->getCalledValue());
-
-    if (!isIndirectFCall)
+    // lambda to read the return value
+    auto CopyReturnValue = [this](CallInst* inst, bool isStackCopy)->void
     {
-        m_encoder->StackCall(nullptr, F, argSizeInGRF, retSizeInGRF);
-        m_encoder->Push();
-    }
-    else
-    {
-        if (funcAddr->IsUniform())
+        if (!isStackCopy)
         {
-            funcAddr = TruncatePointer(funcAddr);
-            m_encoder->IndirectStackCall(nullptr, funcAddr, argSizeInGRF, retSizeInGRF);
-            m_encoder->Push();
-        }
-        else
-        {
-            // If the call is not uniform, we have to make a uniform call per lane
-            // First get the execution mask for active lanes
-            CVariable* eMask = GetExecutionMask();
-            // Create a label for the loop
-            uint label = m_encoder->GetNewLabelID();
-            m_encoder->Label(label);
-            m_encoder->Push();
-
-            // Get the first active lane's function address
-            CVariable* offset = nullptr;
-            funcAddr = TruncatePointer(funcAddr);
-            CVariable* uniformAddr = UniformCopy(funcAddr, offset, eMask);
-            // Set the predicate to true for all lanes with the same address
-            CVariable* callPred = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
-            m_encoder->Cmp(EPREDICATE_EQ, callPred, uniformAddr, funcAddr);
-            m_encoder->Push();
-
-            uint callLabel = m_encoder->GetNewLabelID();
-            m_encoder->SetInversePredicate(true);
-            m_encoder->Jump(callPred, callLabel);
-            m_encoder->Push();
-
-            // Indirect call for all lanes set by the flag
-            m_encoder->IndirectStackCall(nullptr, uniformAddr, argSizeInGRF, retSizeInGRF);
-            m_encoder->Copy(eMask, eMask);
-            m_encoder->Push();
-
-            // Label for lanes that skipped the call
-            m_encoder->Label(callLabel);
-            m_encoder->Push();
-
-            // Unset the bits in execution mask for lanes that were called
-            CVariable* callMask = m_currShader->GetNewVariable(1, eMask->GetType(), eMask->GetAlign(), true, CName::NONE);
-            CVariable* loopPred = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
-            m_encoder->Cast(callMask, callPred);
-            m_encoder->Not(callMask, callMask);
-            m_encoder->And(eMask, eMask, callMask);
-            m_encoder->Push();
-            m_encoder->SetP(loopPred, eMask);
-            m_encoder->Push();
-
-            if (!inst->use_empty() && !retOnStack)
+            CVariable* Dst = GetSymbol(inst);
+            CVariable* Src = m_currShader->GetRETV();
+            if (Dst->GetType() == ISA_TYPE_BOOL)
             {
-                // Emit the return value if used: copy the reserved RET register to call's dst
-                // For non-uniform call, copy the ret inside this loop so that it'll honor
-                // the loop mask
-                CVariable* Dst = GetSymbol(inst);
-                CVariable* Src = m_currShader->GetRETV();
-                if (Dst->GetType() == ISA_TYPE_BOOL)
-                {
-                    CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
-                    m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
-                }
-                else
-                {
-                    IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
-                    if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
-                    {
-                        Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
-                    }
-                    emitCopyAll(Dst, Src, inst->getType());
-                }
+                CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
+                m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
             }
-
-            // Loop while there are bits still left in the mask
-            m_encoder->Jump(loopPred, label);
-            m_encoder->Push();
-        }
-    }
-
-    // Emit the return value if used.
-    if (!inst->use_empty())
-    {
-        CVariable* Dst = GetSymbol(inst);
-        if (!retOnStack)
-        {
-            // non-unifrm funcAddr case has been handled in above loop expansion
-            if (funcAddr->IsUniform()) {
-                CVariable* Src = m_currShader->GetRETV();
-                if (Dst->GetType() == ISA_TYPE_BOOL)
+            else
+            {
+                IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
+                if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
                 {
-                    CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
-                    m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
+                    Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
                 }
-                else
-                {
-                    IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
-                    if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
-                    {
-                        Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
-                    }
-                    emitCopyAll(Dst, Src, inst->getType());
-                }
+                emitCopyAll(Dst, Src, inst->getType());
             }
         }
         else
         {
-            // read return value from stack, from (SP+n)
+            CVariable* retDst = GetSymbol(inst);
+            CVariable* Dst = m_currShader->GetNewVariable(retDst);
+
             int RmnBytes = Dst->GetSize();
             IGC_ASSERT(Dst->GetType() != ISA_TYPE_BOOL);
             uint32_t RdBytes = 0;
@@ -9736,14 +9648,93 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
                         else
                             m_encoder->OWLoad(pTempDst, resource, pTempVar, false, SIZE_OWORD);
                         m_encoder->Push();
+                        m_encoder->SetNoMask();
                         emitVectorCopy(Dst, pTempDst, RmnBytes / elemSize, RdBytes, 0);
                     }
                 }
                 RdBytes += RdSize;
                 RmnBytes -= RdSize;
-            } while (RmnBytes > 0);
-            // end of reading return value from stack
+            } while (RmnBytes > 0); // end of reading return value from stack
+
+            // First do a block read from SP, then a copy that respects the execution mask
+            emitCopyAll(retDst, Dst, inst->getType());
         }
+    };
+
+    CVariable* funcAddr = GetSymbol(inst->getCalledValue());
+    if (!isIndirectFCall)
+    {
+        m_encoder->StackCall(nullptr, F, argSizeInGRF, retSizeInGRF);
+        m_encoder->Push();
+    }
+    else
+    {
+        if (funcAddr->IsUniform())
+        {
+            funcAddr = TruncatePointer(funcAddr);
+            m_encoder->IndirectStackCall(nullptr, funcAddr, argSizeInGRF, retSizeInGRF);
+            m_encoder->Push();
+        }
+        else
+        {
+            // If the call is not uniform, we have to make a uniform call per lane
+            // First get the execution mask for active lanes
+            CVariable* eMask = GetExecutionMask();
+            // Create a label for the loop
+            uint label = m_encoder->GetNewLabelID();
+            m_encoder->Label(label);
+            m_encoder->Push();
+
+            // Get the first active lane's function address
+            CVariable* offset = nullptr;
+            funcAddr = TruncatePointer(funcAddr);
+            CVariable* uniformAddr = UniformCopy(funcAddr, offset, eMask);
+            // Set the predicate to true for all lanes with the same address
+            CVariable* callPred = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
+            m_encoder->Cmp(EPREDICATE_EQ, callPred, uniformAddr, funcAddr);
+            m_encoder->Push();
+
+            uint callLabel = m_encoder->GetNewLabelID();
+            m_encoder->SetInversePredicate(true);
+            m_encoder->Jump(callPred, callLabel);
+            m_encoder->Push();
+
+            // Indirect call for all lanes set by the flag
+            m_encoder->IndirectStackCall(nullptr, uniformAddr, argSizeInGRF, retSizeInGRF);
+            m_encoder->Copy(eMask, eMask);
+            m_encoder->Push();
+
+            if (!inst->use_empty())
+            {
+                // For non-uniform call, copy the ret inside this loop so that it'll honor the loop mask
+                CopyReturnValue(inst, retOnStack);
+            }
+
+            // Label for lanes that skipped the call
+            m_encoder->Label(callLabel);
+            m_encoder->Push();
+
+            // Unset the bits in execution mask for lanes that were called
+            CVariable* callMask = m_currShader->GetNewVariable(1, eMask->GetType(), eMask->GetAlign(), true, CName::NONE);
+            CVariable* loopPred = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
+            m_encoder->Cast(callMask, callPred);
+            m_encoder->Not(callMask, callMask);
+            m_encoder->And(eMask, eMask, callMask);
+            m_encoder->Push();
+            m_encoder->SetP(loopPred, eMask);
+            m_encoder->Push();
+
+            // Loop while there are bits still left in the mask
+            m_encoder->Jump(loopPred, label);
+            m_encoder->Push();
+        }
+    }
+
+    // Emit the return value if used
+    // Non-uniform handled in above loop
+    if (!inst->use_empty() && funcAddr->IsUniform())
+    {
+        CopyReturnValue(inst, retOnStack);
     }
 
     // Set the max stack sized pushed in the parent function for this call's args
