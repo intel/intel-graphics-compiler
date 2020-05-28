@@ -81,9 +81,9 @@ bool SampleMultiversioning::isOnlyExtractedAfterSample(Value* SampleInst, SmallV
     return true;
 }
 
-bool SampleMultiversioning::isOnlyMultiplied(Instruction* Sample, Instruction* Val, SmallSet<Instruction*, 4> & MulVals)
+bool SampleMultiversioning::isOnlyMultiplied(Instruction* Sample, Instruction* Val, SmallSet<Value*, 4> & MulVals)
 {
-    SmallSet<Instruction*, 4> TmpMulVals;
+    SmallSet<Value*, 4> TmpMulVals;
     for (auto* Use2 : Val->users())
     {
         if (auto * BOP = dyn_cast<BinaryOperator>(Use2))
@@ -111,8 +111,24 @@ bool SampleMultiversioning::isOnlyMultiplied(Instruction* Sample, Instruction* V
                         return false;
                     }
                 }
+                else
+                {
+                    BasicBlock::iterator II(DepI);
+                    BasicBlock::iterator IE = DepI->getParent()->end();
+                    for (++II; II != IE; ++II)
+                    {
+                        if ((&*II) == Sample)
+                        {
+                            break;
+                        }
+                    }
+                    if (II == IE)
+                    {
+                        return false;
+                    }
+                }
 
-                TmpMulVals.insert(DepI);
+                TmpMulVals.insert(Dep);
             }
             else
             {
@@ -151,9 +167,9 @@ Instruction* SampleMultiversioning::getPureFunction(Value* Val)
 };
 
 bool SampleMultiversioning::isOnlyMultipliedAfterSample(Instruction* Val,
-    SmallSet<Instruction*, 4> & MulVals)
+    SmallSet<Value*, 4> & MulVals)
 {
-    SmallSet<Instruction*, 4> TmpMulVals;
+    SmallSet<Value*, 4> TmpMulVals;
 
     SmallVector<Instruction*, 4> ExtrVals;
     if (isOnlyExtractedAfterSample(Val, ExtrVals))
@@ -177,19 +193,17 @@ bool SampleMultiversioning::isOnlyMultipliedAfterSample(Instruction* Val,
     return true;
 };
 
-bool SampleMultiversioning::runOnFunction(Function& F)
-{
+bool SampleMultiversioning::runOnFunction(Function& F) {
     DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
-    struct MulAfterSample
-    {
+    struct MulAfterSample {
         Instruction* Sample;
-        SmallSet<Instruction*, 4> MulVals;
+        SmallVector<Value*, 4> MulVals;
     };
     SmallVector<MulAfterSample, 4> SampleInsts;
 
-    SmallSet<Instruction*, 4> TmpMulVals;
-    SmallSet<Instruction*, 4> MulVals;
+    SmallSet<Value*, 4> TmpMulVals;
+    SmallVector<Value*, 4> MulVals;
     for (BasicBlock& BB : F)
     {
         for (Instruction& Inst : BB)
@@ -201,7 +215,7 @@ bool SampleMultiversioning::runOnFunction(Function& F)
                 {
                     for (auto Val : TmpMulVals)
                     {
-                        MulVals.insert(Val);
+                        MulVals.push_back(Val);
                     }
                     SampleInsts.push_back({ &Inst, MulVals });
                     MulVals.clear();
@@ -223,113 +237,6 @@ bool SampleMultiversioning::runOnFunction(Function& F)
             BasicBlock* Parent = Sample->getParent();
             IGC_ASSERT(SI.MulVals.size());
 
-            // Check if some multipliers are redundant or duplicated
-            SmallSet<Instruction*, 4> ToRemove;
-            for (auto CurrMulVal : SI.MulVals)
-            {
-                if (Instruction * dep = dyn_cast<Instruction>(CurrMulVal))
-                {
-                    if (dep->getOpcode() == Instruction::FMul)
-                    {
-                        SmallVector<Instruction*, 4> ToCheck;
-                        ToCheck.push_back(dep);
-                        while (!ToCheck.empty())
-                        {
-                            Instruction* Current = ToCheck.pop_back_val();
-
-                            Instruction* op0 = dyn_cast<Instruction>(Current->getOperand(0));
-                            if (op0 && (SI.MulVals.find(op0) != SI.MulVals.end()))
-                            {
-                                ToRemove.insert(dep);
-                                break;
-                            }
-
-                            Instruction* op1 = dyn_cast<Instruction>(Current->getOperand(1));
-                            if (op1 && (SI.MulVals.find(op1) != SI.MulVals.end()))
-                            {
-                                ToRemove.insert(dep);
-                                break;
-                            }
-
-                            if (op0 && op0->getOpcode() == Instruction::FMul)
-                            {
-                                ToCheck.push_back(op0);
-                            }
-
-                            if (op1 && op1->getOpcode() == Instruction::FMul)
-                            {
-                                ToCheck.push_back(op1);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Erase redundant multipliers
-            for (auto remInsn : ToRemove)
-            {
-                SI.MulVals.erase(remInsn);
-            }
-
-            // Consider instructions after sample blocking optimization for hoisting
-            SmallVector<Instruction*, 4> toCheckUses;
-            SmallSet<Instruction*, 4> toHoist;
-            for (auto val : SI.MulVals)
-            {
-                if (DT->dominates(SI.Sample, val))
-                {
-                    toHoist.insert(val);
-                    toCheckUses.push_back(val);
-                }
-            }
-
-           // Consider hoisting some instruction after the sample if they block opt.
-            bool skipOpt = false;
-            while (toCheckUses.size() > 0)
-            {
-                Instruction* checkVal = toCheckUses.pop_back_val();
-                for (auto op = checkVal->op_begin(); op != checkVal->op_end(); ++op)
-                {
-                    Value* val = op->get();
-                    Instruction* val_insn = dyn_cast<Instruction>(val);
-                    if (val_insn)
-                    {
-                        if ((val_insn->getParent() != Parent) || DT->dominates(val_insn, SI.Sample))
-                        {
-                            continue;
-                        }
-                        else
-                        {
-                            for (auto tempSI : SampleInsts)
-                            {
-                                // Corner case where two samplers can be branched for one Mul.
-                                if (val_insn == tempSI.Sample)
-                                    skipOpt = true;
-                            }
-                            toHoist.insert(val_insn);
-                            toCheckUses.push_back(val_insn);
-                        }
-                    }
-                }
-            }
-
-            if (skipOpt)
-                continue;
-
-            int hoistSize = toHoist.size();
-            Instruction * iterInsn = SI.Sample->getNextNode();
-
-            while (hoistSize > 0)
-            {
-                Instruction* tempInsn = iterInsn;
-                iterInsn = iterInsn->getNextNode();
-                if (toHoist.find(tempInsn) != toHoist.end())
-                {
-                    tempInsn->moveBefore(SI.Sample);
-                    hoistSize--;
-                }
-            }
-
             BasicBlock* BB1 = Parent->splitBasicBlock(Sample);
             Parent->getTerminator()->eraseFromParent();
             BasicBlock* BB2 =
@@ -345,7 +252,7 @@ bool SampleMultiversioning::runOnFunction(Function& F)
 
             Value* PrevCmp = nullptr;
             Value* And = nullptr;
-            for (auto Dep : SI.MulVals)
+            for (auto& Dep : SI.MulVals)
             {
                 auto Cmp = AndBuilder.CreateFCmp(
                     CmpInst::Predicate::FCMP_OEQ, Dep,
@@ -371,9 +278,7 @@ bool SampleMultiversioning::runOnFunction(Function& F)
                                ConstantFP::get(F.getContext(), APFloat(0.0f)),
                 }),
                 Parent);
-            DT->recalculate(F);
         }
-        pContext->m_instrTypes.hasMultipleBB = true;
         return true;
     }
     return false;
