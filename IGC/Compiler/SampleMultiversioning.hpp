@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Dominators.h>
+#include <llvm/Analysis/DependenceAnalysis.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/InstrTypes.h>
@@ -62,12 +63,11 @@ namespace IGC {
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<llvm::DominatorTreeWrapperPass>();
-            AU.setPreservesCFG();
         }
     private:
         bool isOnlyExtractedAfterSample(Value* SampleInst, SmallVector<Instruction*, 4> & ExtrVals);
-        bool isOnlyMultiplied(Instruction* Sample, Instruction* Val, SmallSet<Value*, 4> & MulVals);
+        bool isOnlyMultiplied(Instruction* Sample, Instruction* Val, SmallSet<Instruction*, 4> & MulVals);
         Instruction* getPureFunction(Value* Val);
-        bool isOnlyMultipliedAfterSample(Instruction* Val, SmallSet<Value*, 4> & MulVals);
+        bool isOnlyMultipliedAfterSample(Instruction* Val, SmallSet<Instruction*, 4> & MulVals);
     };
 } // namespace IGC
