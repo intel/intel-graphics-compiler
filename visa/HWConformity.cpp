@@ -7516,6 +7516,84 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
             }
         }
 
+        if (builder.hasPartialMixMode() && inst->getNumSrc() > 1)
+        {
+            // no HF on mad src2 or mul src1
+            if (inst->isMixedMode())
+            {
+                auto canSwapSource = [](G4_INST* inst)
+                {
+                    int srcPos = inst->opcode() == G4_mad ? 2 : 1;
+                    G4_Operand* src = inst->getSrc(srcPos);
+                    G4_Operand* otherSrc = inst->getSrc(srcPos - 1);
+                    if (src->isImm() || otherSrc->getType() != Type_F)
+                    {
+                        // swapping won't work
+                        return false;
+                    }
+                    if (inst->opcode() == G4_mad)
+                    {
+                        // src2 has more restrictive regioning, so we can swap only when
+                        // src1 is scalar or has contiguous region
+                        if (otherSrc->isSrcRegRegion())
+                        {
+                            G4_SrcRegRegion* other = otherSrc->asSrcRegRegion();
+                            if (other->getRegion()->isScalar() ||
+                                other->getRegion()->isContiguous(inst->getExecSize()))
+                            {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                    else
+                    {
+                        // swapping is always legal for mul
+                        return true;
+                    }
+                };
+                if (inst->opcode() == G4_mad)
+                {
+                    if (isLowPrecisionFloatTy(inst->getSrc(2)->getType()))
+                    {
+                        if (canSwapSource(inst))
+                        {
+                            inst->swapSrc(1, 2);
+                        }
+                        else
+                        {
+                            inst->setSrc(insertMovBefore(instIter, 2, Type_F, bb), 2);
+                        }
+                    }
+                    // at this point src2 must be F. If dst is HF, it must be aligned to
+                    // same subreg as src2 if src2 is non-scalar
+                    bool nonScalarSrc2 = inst->getSrc(2)->isSrcRegRegion() &&
+                        !inst->getSrc(2)->asSrcRegRegion()->getRegion()->isScalar();
+                    if (isLowPrecisionFloatTy(inst->getDst()->getType()) && nonScalarSrc2)
+                    {
+                        if (!builder.isOpndAligned(inst->getDst(), GENX_GRF_REG_SIZ))
+                        {
+                            inst->setDest(insertMovAfter(instIter, inst->getDst(), Type_F, bb, GRFALIGN));
+                        }
+                        if (!builder.isOpndAligned(inst->getSrc(2), GENX_GRF_REG_SIZ))
+                        {
+                            inst->setSrc(insertMovBefore(instIter, 2, inst->getSrc(2)->getType(), bb, GRFALIGN), 2);
+                        }
+                    }
+                }
+                else if (inst->opcode() == G4_mul && isLowPrecisionFloatTy(inst->getSrc(1)->getType()))
+                {
+                    if (canSwapSource(inst))
+                    {
+                        inst->swapSrc(0, 1);
+                    }
+                    else
+                    {
+                        inst->setSrc(insertMovBefore(instIter, 1, Type_F, bb), 1);
+                    }
+                }
+            }
+        }
 
         // The execution size must be no more than 8 when half-floats are used in source or destination operand.
         // ToDO: move this to fixmathinst
