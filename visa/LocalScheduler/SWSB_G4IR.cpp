@@ -4257,12 +4257,19 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
 void G4_BB_SB::getGRFBuckets(SBNode* node,
     SBFootprint* footprint,
     Gen4_Operand_Number opndNum,
-    std::vector<SBBucketDescr>& BDvec)
+    std::vector<SBBucketDescr>& BDvec,
+    bool GRFOnly)
 {
     SBFootprint* curFootprint = footprint;
 
     while (curFootprint != nullptr)
     {
+        if (GRFOnly && (curFootprint->fType != GRF_T))
+        {
+            curFootprint = curFootprint->next;
+            continue;
+        }
+
         int aregOffset = totalGRFNum;
         int startingBucket = curFootprint->LeftB / G4_GRF_REG_NBYTES;
         int endingBucket = curFootprint->RightB / G4_GRF_REG_NBYTES;
@@ -4331,7 +4338,7 @@ void G4_BB_SB::getGRFBucketsForOperands(SBNode* node,
         {
             continue;
         }
-        getGRFBuckets(node, footprint, opndNum, BDvec);
+        getGRFBuckets(node, footprint, opndNum, BDvec, GRFOnly);
     }
 
     return;
