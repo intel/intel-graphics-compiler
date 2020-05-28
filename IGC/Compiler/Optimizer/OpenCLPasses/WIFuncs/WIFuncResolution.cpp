@@ -93,12 +93,6 @@ bool WIFuncResolution::runOnFunction(Function& F)
     return m_changed;
 }
 
-// Debug line info helper function
-static void updateDebugLoc(Instruction* pOrigin, Instruction* pNew) {
-    IGC_ASSERT(pOrigin && pNew && "Expect valid instructions");
-    pNew->setDebugLoc(pOrigin->getDebugLoc());
-}
-
 void WIFuncResolution::visitCallInst(CallInst& CI)
 {
     if (!CI.getCalledFunction())
