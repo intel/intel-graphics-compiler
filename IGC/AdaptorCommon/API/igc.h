@@ -86,7 +86,8 @@ typedef struct {
 typedef struct {
     CG_CTX_STATS_t  m_stats;              // record what simd has been generated
     void*           m_pixelShaderGen;     // Generated pixel shader output
-    std::string     m_savedBitcodeString; // Serialized Bitcode
+    char*           m_savedBitcodeCharArray; // Serialized Bitcode
+    unsigned int    m_savedBitcodeCharArraySize;
     void*           m_savedInstrTypes;
     SHADER_STATS_t  m_savedShaderStats;
 } CG_CTX_t;
@@ -118,7 +119,7 @@ typedef enum {
 #define IsStage1(pCtx)   (IsStage1BestPerf(pCtx->m_CgFlag, pCtx->m_StagingCtx) || \
                           IsStage1FastCompile(pCtx->m_CgFlag, pCtx->m_StagingCtx))
 #define HasSavedIR(pCtx) (pCtx && IsStage2RestSIMDs(pCtx->m_StagingCtx) && \
-                          pCtx->m_StagingCtx->m_savedBitcodeString.size() > 0)
+                          pCtx->m_StagingCtx->m_savedBitcodeCharArraySize > 0)
 
 #define DoSimd32Stage2(prev_ctx_ptr) (IsStage2RestSIMDs(prev_ctx_ptr) && DoSimd32(prev_ctx_ptr->m_stats))
 #define DoSimd16Stage2(prev_ctx_ptr) (IsStage2RestSIMDs(prev_ctx_ptr) && DoSimd16(prev_ctx_ptr->m_stats))
