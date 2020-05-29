@@ -7,6 +7,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 set(IGC_BUILD__SRC__common
     "${CMAKE_CURRENT_SOURCE_DIR}/CompilerStatsUtils.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_regkeys.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IGCConstantFolder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LLVMUtils.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ShaderOverride.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Stats.cpp"
@@ -45,6 +46,7 @@ set(IGC_BUILD__HDR__common
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_flags.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_regkeys.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_resourceDimTypes.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/IGCConstantFolder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/LLVMWarningsPop.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LLVMWarningsPush.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LLVMUtils.h"
