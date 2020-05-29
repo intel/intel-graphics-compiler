@@ -73,8 +73,6 @@ instead if the structure is small.
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
-#include "common/IGCConstantFolder.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "WrapperLLVM/Utils.h"
 #include <llvmWrapper/IR/IRBuilder.h>
@@ -2324,6 +2322,84 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
 }
 #endif
 
+llvm::Constant* IGC::IGCConstantFolder::CreateFAdd(llvm::Constant* C0, llvm::Constant* C1, llvm::APFloatBase::roundingMode roundingMode) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1))
+    {
+        return llvm::ConstantFolder::CreateFAdd(C0, C1);
+    }
+    llvm::ConstantFP* CFP0 = llvm::cast<ConstantFP>(C0);
+    llvm::ConstantFP* CFP1 = llvm::cast<ConstantFP>(C1);
+    APFloat firstOperand = CFP0->getValueAPF();
+    APFloat secondOperand = CFP1->getValueAPF();
+    APFloat::opStatus status = firstOperand.add(secondOperand, roundingMode);
+    if (status != APFloat::opInvalidOp)
+    {
+        return llvm::ConstantFP::get(C0->getContext(), firstOperand);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+llvm::Constant* IGC::IGCConstantFolder::CreateFMul(llvm::Constant* C0, llvm::Constant* C1, llvm::APFloatBase::roundingMode roundingMode) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1))
+    {
+        return llvm::ConstantFolder::CreateFMul(C0, C1);
+    }
+    llvm::ConstantFP* CFP0 = llvm::cast<ConstantFP>(C0);
+    llvm::ConstantFP* CFP1 = llvm::cast<ConstantFP>(C1);
+    APFloat firstOperand = CFP0->getValueAPF();
+    APFloat secondOperand = CFP1->getValueAPF();
+    APFloat::opStatus status = firstOperand.multiply(secondOperand, roundingMode);
+    if (status != APFloat::opInvalidOp)
+    {
+        return llvm::ConstantFP::get(C0->getContext(), firstOperand);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+llvm::Constant* IGC::IGCConstantFolder::CreateFPTrunc(llvm::Constant* C0, llvm::Type* dstType, llvm::APFloatBase::roundingMode roundingMode) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return llvm::ConstantFolder::CreateFPCast(C0, dstType);
+    }
+    APFloat APF = llvm::cast<ConstantFP>(C0)->getValueAPF();
+    const fltSemantics& outputSemantics = dstType->isHalfTy() ? APFloatBase::IEEEhalf() :
+        dstType->isFloatTy() ? APFloatBase::IEEEsingle() :
+        APFloatBase::IEEEdouble();
+    bool losesInfo = false;
+    APFloat::opStatus status = APF.convert(outputSemantics, roundingMode, &losesInfo);
+    if (status != APFloat::opInvalidOp)
+    {
+        return llvm::ConstantFP::get(C0->getContext(), APF);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+llvm::Constant* IGC::IGCConstantFolder::CreateCanonicalize(llvm::Constant* C0, bool flushDenorms /*= true*/) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return C0;
+    }
+    auto APF = llvm::cast<ConstantFP>(C0)->getValueAPF();
+    if (flushDenorms && APF.isDenormal())
+    {
+        APF = APFloat::getZero(APF.getSemantics(), APF.isNegative());
+    }
+    return ConstantFP::get(C0->getContext(), APF);
+}
+
 // Register pass to igc-opt
 #define PASS_FLAG3 "igc-const-prop"
 #define PASS_DESCRIPTION3 "Custom Const-prop Pass"
@@ -2335,9 +2411,10 @@ IGC_INITIALIZE_PASS_END(IGCConstProp, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ON
 
 char IGCConstProp::ID = 0;
 
-IGCConstProp::IGCConstProp(
+IGCConstProp::IGCConstProp(bool enableMathConstProp,
     bool enableSimplifyGEP) :
     FunctionPass(ID),
+    m_enableMathConstProp(enableMathConstProp),
     m_enableSimplifyGEP(enableSimplifyGEP),
     m_TD(nullptr), m_TLI(nullptr)
 {
@@ -2549,67 +2626,113 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
 
 Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
 {
-    IGCConstantFolder constantFolder;
     Constant* C = nullptr;
     if (inst)
     {
+        llvm::Type* type = inst->getType();
+        // used for GenISA_sqrt, GenISA_rsq and GenISA_ROUNDNE
         ConstantFP* C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
         EOPCODE igcop = GetOpCode(inst);
+        IGCConstantFolder folder;
 
+        // special case of gen-intrinsic
         switch (igcop)
         {
         case llvm_gradientXfine:
-        {
-            if (C0)
-            {
-                C = constantFolder.CreateGradientXFine(C0);
-            }
-        }
-        break;
         case llvm_gradientYfine:
-        {
-            if (C0)
-            {
-                C = constantFolder.CreateGradientYFine(C0);
-            }
-        }
-        break;
         case llvm_gradientX:
-        {
+        case llvm_gradientY:
+            if (C0 && C0->getValueAPF().isFinite())
+            {
+                C = ConstantFP::get(type, 0.0f);
+            }
+            break;
+        case llvm_sqrt:
             if (C0)
             {
-                C = constantFolder.CreateGradientX(C0);
+                auto APF = C0->getValueAPF();
+                double C0value = type->isFloatTy() ? APF.convertToFloat() :
+                    APF.convertToDouble();
+                if (C0value > 0.0)
+                {
+                    C = ConstantFP::get(type, sqrt(C0value));
+                }
             }
-        }
-        break;
+            break;
         case llvm_rsq:
-        {
             if (C0)
             {
-                C = constantFolder.CreateRsq(C0);
+                auto APF = C0->getValueAPF();
+                double C0value = type->isFloatTy() ? APF.convertToFloat() :
+                    APF.convertToDouble();
+                if (C0value > 0.0)
+                {
+                    C = ConstantFP::get(type, 1. / sqrt(C0value));
+                }
+            }
+            break;
+        case llvm_roundne:
+            if (C0)
+            {
+                auto APF = C0->getValueAPF();
+                double C0value = type->isFloatTy() ? APF.convertToFloat() :
+                    APF.convertToDouble();
+                double C0value_intPart = trunc(C0value);
+                double C0value_fractPart = C0value - C0value_intPart;
+                if (C0value > 0.0)
+                {
+                    if (C0value_fractPart == .5 && fmod(C0value_intPart, 2) == 0)
+                    {
+                        C = ConstantFP::get(type, trunc(C0value));
+                    }
+                    else
+                    {
+                        C = ConstantFP::get(type, round(C0value));
+                    }
+                }
+            }
+            break;
+        case llvm_max:
+        {
+            ConstantFP* CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            ConstantFP* CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
+            if (CFP0 && CFP1)
+            {
+                const APFloat& A = CFP0->getValueAPF();
+                const APFloat& B = CFP1->getValueAPF();
+                C = ConstantFP::get(inst->getContext(), maxnum(A, B));
             }
         }
         break;
-        case llvm_roundne:
+        case llvm_min:
         {
-            if (C0)
+            ConstantFP* CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            ConstantFP* CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
+            if (CFP0 && CFP1)
             {
-                C = constantFolder.CreateRoundNE(C0);
+                const APFloat& A = CFP0->getValueAPF();
+                const APFloat& B = CFP1->getValueAPF();
+                C = ConstantFP::get(inst->getContext(), minnum(A, B));
             }
         }
         break;
         case llvm_fsat:
         {
-            if (C0)
+            ConstantFP* CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            if (CFP0)
             {
-                C = constantFolder.CreateFSat(C0);
+                const APFloat& A = CFP0->getValueAPF();
+                const APFloat& zero = cast<ConstantFP>(ConstantFP::get(type, 0.))->getValueAPF();
+                const APFloat& One = cast<ConstantFP>(ConstantFP::get(type, 1.))->getValueAPF();
+                C = ConstantFP::get(inst->getContext(), minnum(One, maxnum(zero, A)));
             }
         }
+        break;
         case llvm_fptrunc_rte:
         {
             if (C0)
             {
-                C = constantFolder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmNearestTiesToEven);
+                C = folder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmNearestTiesToEven);
             }
         }
         break;
@@ -2617,7 +2740,7 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
         {
             if (C0)
             {
-                C = constantFolder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardZero);
+                C = folder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardZero);
             }
         }
         break;
@@ -2625,7 +2748,7 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
         {
             if (C0)
             {
-                C = constantFolder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardPositive);
+                C = folder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardPositive);
             }
         }
         break;
@@ -2633,7 +2756,7 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
         {
             if (C0)
             {
-                C = constantFolder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardNegative);
+                C = folder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardNegative);
             }
         }
         break;
@@ -2642,7 +2765,7 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
             if (C0 && C1)
             {
-                C = constantFolder.CreateFAdd(C0, C1, llvm::APFloatBase::rmTowardZero);
+                C = folder.CreateFAdd(C0, C1, llvm::APFloatBase::rmTowardZero);
             }
         }
         break;
@@ -2651,7 +2774,7 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
             if (C0 && C1)
             {
-                C = constantFolder.CreateFMul(C0, C1, llvm::APFloatBase::rmTowardZero);
+                C = folder.CreateFMul(C0, C1, llvm::APFloatBase::rmTowardZero);
             }
         }
         break;
@@ -2665,12 +2788,67 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
                 bool flushVal = pCodeGenContext->m_floatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
                 flushVal = flushVal || (pCodeGenContext->m_floatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
                 flushVal = flushVal || (pCodeGenContext->m_floatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
-                C = constantFolder.CreateCanonicalize(C0, flushVal);
+                C = folder.CreateCanonicalize(C0, flushVal);
             }
         }
         break;
         default:
             break;
+        }
+
+        if (m_enableMathConstProp && type->isFloatTy())
+        {
+            float C0value = 0;
+            float C1value = 0;
+            ConstantFP* C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            ConstantFP* C1 = nullptr;
+            if (C0)
+            {
+                C0value = C0->getValueAPF().convertToFloat();
+
+                switch (igcop)
+                {
+                case llvm_cos:
+                    C = ConstantFP::get(type, cosf(C0value));
+                    break;
+                case llvm_sin:
+                    C = ConstantFP::get(type, sinf(C0value));
+                    break;
+                case llvm_log:
+                    // skip floating-point exception and keep the original instructions
+                    if (C0value > 0.0f)
+                    {
+                        C = ConstantFP::get(type, log10f(C0value) / log10f(2.0f));
+                    }
+                    break;
+                case llvm_exp:
+                    C = ConstantFP::get(type, powf(2.0f, C0value));
+                    break;
+                case llvm_pow:
+                    C1 = dyn_cast<ConstantFP>(inst->getOperand(1));
+                    if (C1)
+                    {
+                        C1value = C1->getValueAPF().convertToFloat();
+                        C = ConstantFP::get(type, powf(C0value, C1value));
+                    }
+                    break;
+                case llvm_sqrt:
+                    // Don't handle negative values
+                    if (C0value > 0.0f)
+                    {
+                        C = ConstantFP::get(type, sqrtf(C0value));
+                    }
+                    break;
+                case llvm_floor:
+                    C = ConstantFP::get(type, floorf(C0value));
+                    break;
+                case llvm_ceil:
+                    C = ConstantFP::get(type, ceilf(C0value));
+                    break;
+                default:
+                    break;
+                }
+            }
         }
     }
     return C;
