@@ -342,7 +342,6 @@ public:
         PI_initializePayload,
         PI_cleanupBindless,
         PI_countGRFUsage,
-        PI_splitVariables,
         PI_changeMoveType,
         PI_reRAPostSchedule,
         PI_accSubPostSchedule,
