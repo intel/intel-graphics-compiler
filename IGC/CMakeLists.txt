@@ -997,6 +997,7 @@ function(igc_arch_crosscompile_needed retVarName targetArch hostArch)
   # Allowed cross-executions (keys list, lists for each key).
   # Key:    host architecture.
   # Values: target architecture that can be run on host (different than host).
+    set(__allowedCrossExecution "Windows64")
   set(__allowedCrossExecution_Windows64 "Windows32")
 
   igc_arch_normalize(_targetArch "${targetArch}")
