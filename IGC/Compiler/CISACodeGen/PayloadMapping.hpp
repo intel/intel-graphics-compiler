@@ -64,6 +64,7 @@ namespace IGC
         uint GetNumPayloadElements(const llvm::Instruction* inst);
         uint GetNumPayloadElements_URBWrite(const llvm::GenIntrinsicInst* inst);
         uint GetNumPayloadElements_RTWrite(const llvm::GenIntrinsicInst* inst);
+        uint GetNumPayloadElements_DSRTWrite(const llvm::GenIntrinsicInst* inst);
         uint GetNumPayloadElements_LDMS(const llvm::GenIntrinsicInst* inst);
         uint GetNonAdjustedNumPayloadElements_Sample(const llvm::SampleIntrinsic* inst);
         uint GetNumPayloadElements_Sample(const llvm::SampleIntrinsic* inst);
@@ -74,6 +75,7 @@ namespace IGC
         llvm::Value* GetPayloadElementToValueMapping(const llvm::Instruction* inst, uint index);
         llvm::Value* GetPayloadElementToValueMapping_URBWrite(const llvm::GenIntrinsicInst* inst, uint index);
         llvm::Value* GetPayloadElementToValueMapping_RTWrite(const llvm::GenIntrinsicInst* inst, const uint index);
+        llvm::Value* GetPayloadElementToValueMapping_DSRTWrite(const llvm::GenIntrinsicInst* inst, const uint index);
         uint GetNonAdjustedPayloadElementIndexToValueIndexMapping_sample(const llvm::SampleIntrinsic* inst, uint index);
         llvm::Value* GetPayloadElementToValueMapping_LDMS(const llvm::SamplerLoadIntrinsic* inst, const uint index);
         llvm::Value* GetNonAdjustedPayloadElementToValueMapping_sample(const llvm::SampleIntrinsic* inst, const uint index);
@@ -89,9 +91,12 @@ namespace IGC
         const llvm::Instruction* GetSupremumOfNonHomogeneousPart_RTWrite(
             const llvm::Instruction* inst1,
             const llvm::Instruction* inst2);
-        int GetLeftReservedOffset_RTWrite(const llvm::Instruction* inst, SIMDMode simdMode);
-        int GetRightReservedOffset_RTWrite(const llvm::Instruction* inst, SIMDMode simdMode);
-        bool HasNonHomogeneousPayloadElements_RTWrite(const llvm::Instruction* inst);
+        template <typename T>
+        int GetLeftReservedOffset_RTWrite(const T* inst, SIMDMode simdMode);
+        template <typename T>
+        int GetRightReservedOffset_RTWrite(const T* inst, SIMDMode simdMode);
+        template <typename T>
+        bool HasNonHomogeneousPayloadElements_RTWrite(const T* inst);
 
         /// ------------------------------
         bool IsUndefOrZeroImmediate(const llvm::Value* value);

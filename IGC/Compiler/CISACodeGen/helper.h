@@ -298,14 +298,17 @@ namespace IGC
         return &(*I);
     }
 
+    template <typename T>
     inline bool RTWriteHasSource0Alpha(
-        const llvm::RTWritIntrinsic* rtWrite,
+        const T* rtWrite,
         ModuleMetaData* md)
     {
-        return !llvm::isa<llvm::UndefValue>(rtWrite->getSource0Alpha());
+        return (nullptr != rtWrite->getSource0Alpha()) && !llvm::isa<llvm::UndefValue>(rtWrite->getSource0Alpha());
     }
+
+    template <typename T>
     inline bool DoesRTWriteSrc0AlphaBelongToHomogeneousPart(
-        const llvm::RTWritIntrinsic* rtWrite,
+        const T* rtWrite,
         ModuleMetaData* md)
     {
         return !rtWrite->hasMask() && RTWriteHasSource0Alpha(rtWrite, md);

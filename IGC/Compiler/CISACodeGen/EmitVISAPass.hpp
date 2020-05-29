@@ -175,10 +175,12 @@ public:
     void emitPredicateFromChannelIP(CVariable* dst, CVariable* alias = NULL);
 
     // Helper methods for message emit functions.
+    template <typename T>
     void prepareRenderTargetWritePayload(
-        llvm::RTWritIntrinsic* inst,
+        T* inst,
         llvm::DenseMap<llvm::Value*, CVariable**>& valueToVariableMap,
-        llvm::Value* color[4],
+        llvm::Value* color[],
+        uint8_t colorCnt,
         //output:
         CVariable** src,
         bool* isUndefined,
@@ -197,8 +199,9 @@ public:
         bool& payloadCovered
     );
 
+    template <typename T>
     bool interceptRenderTargetWritePayloadCoalescing(
-        llvm::RTWritIntrinsic* inst,
+        T* inst,
         CVariable** src,
         CVariable*& source0Alpha,
         CVariable*& oMaskOpnd,

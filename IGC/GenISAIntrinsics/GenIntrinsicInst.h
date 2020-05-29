@@ -173,6 +173,7 @@ protected:
     void setOperand(unsigned i, Value* v) { return GenIntrinsicInst::setOperand(i, v); }
 
 public:
+    inline Value* getSource0Alpha()     const { return nullptr; }
     inline Value* getOMask()            const { return getOperand(0); }
     inline Value* getPMask()            const { return getOperand(1); }
     inline void setPMask(Value* mask)         { setOperand(1, mask);  }

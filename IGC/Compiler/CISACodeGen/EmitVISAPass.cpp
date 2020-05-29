@@ -4043,8 +4043,9 @@ static int GetOffsetIncrement(const DataLayout* m_DL, SIMDMode simdMode, Value* 
 }
 
 ///
+template <typename T>
 bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
-    llvm::RTWritIntrinsic* inst,
+    T* inst,
     CVariable** src,
     CVariable*& source0Alpha,
     CVariable*& oMaskOpnd,
@@ -4097,7 +4098,8 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
 
     //Elements are processed in the payload slot order.
     //Homogeneous part is looked-up through payload coalescing methods.
-    //Payload layout: s0Alpha oM[R G B A] sZ oS
+    //Payload layout for RT writer: s0Alpha oM [R G B A] sZ oS
+    //Payload layout for dual source RT writer: oM [R0 G0 B0 A0 R1 G1 B1 A1] sZ oS
     int offset = 0;
     if (RTWriteHasSource0Alpha(inst, m_moduleMD))
     {
@@ -4118,7 +4120,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
     if (ccTuple->HasNonHomogeneousElements())
     {
         IGC_ASSERT(ccTuple->GetRoot()); //in other words, there is a 'supremum' element
-        IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()));
+        IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) || llvm::isa<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()));
         if (llvm::RTWritIntrinsic * rtwi = llvm::dyn_cast<llvm::RTWritIntrinsic>(ccTuple->GetRoot()))
         {
             if (RTWriteHasSource0Alpha(rtwi, m_moduleMD))
@@ -4130,6 +4132,10 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
                 //when computing 'left' reserved offset.
                 offset += GetOffsetIncrement(m_DL, m_currShader->m_SIMDSize, rtwi->getSource0Alpha());
             }
+        }
+        else if (llvm::RTDualBlendSourceIntrinsic * dsrtwi = llvm::dyn_cast<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()))
+        {
+            IGC_ASSERT(!RTWriteHasSource0Alpha(rtwi, m_moduleMD)); // dual-source doesn't support Source0Alpha
         }
     }
 
@@ -4149,8 +4155,8 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
     if (ccTuple->HasNonHomogeneousElements())
     {
         IGC_ASSERT(ccTuple->GetRoot()); //in other words, there is a 'supremum' element
-        IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()));
-        if (llvm::dyn_cast<llvm::RTWritIntrinsic>(ccTuple->GetRoot()))
+        IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) || llvm::isa<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()));
+        if (llvm::dyn_cast<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) || llvm::dyn_cast<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()))
         {
             //Take left reserved offset from 'root' of the group, not from this instruction.
             offset = m_CE->GetLeftReservedOffset(ccTuple->GetRoot(), m_currShader->m_SIMDSize);
@@ -4164,7 +4170,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
 
 
     SmallPtrSet<Value*, 8> touchedValuesSet;
-    IGC_ASSERT(numOperands == 4);
+    IGC_ASSERT(numOperands == 4 || numOperands == 8);
     for (uint index = 0; index < numOperands; index++)
     {
         Value* val = m_CE->GetPayloadElementToValueMapping(inst, index);
@@ -4222,11 +4228,18 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
     if (ccTuple->HasNonHomogeneousElements())
     {
         IGC_ASSERT(ccTuple->GetRoot()); //in other words, there is a 'supremum' element
-        IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()));
+        IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) || llvm::isa<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()));
 
         if (llvm::RTWritIntrinsic * rtwi = llvm::dyn_cast<llvm::RTWritIntrinsic>(ccTuple->GetRoot()))
         {
             if (rtwi->hasDepth())
+            {
+                offset += GetOffsetIncrement(m_DL, m_currShader->m_SIMDSize, inst->getDepth());
+            }
+        }
+        else if (llvm::RTDualBlendSourceIntrinsic * dsrtwi = llvm::dyn_cast<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()))
+        {
+            if (dsrtwi->hasDepth())
             {
                 offset += GetOffsetIncrement(m_DL, m_currShader->m_SIMDSize, inst->getDepth());
             }
@@ -4258,10 +4271,12 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
 }
 
 ///
+template <typename T>
 void EmitPass::prepareRenderTargetWritePayload(
-    llvm::RTWritIntrinsic* inst,
+    T* inst,
     DenseMap<Value*, CVariable**>& valueToVariableMap,
-    Value* color[4],
+    Value* color[],
+    uint8_t colorCnt,
     //output:
     CVariable** src,
     bool* isUndefined,
@@ -4279,7 +4294,7 @@ void EmitPass::prepareRenderTargetWritePayload(
         vType = ISA_TYPE_HF;
     }
 
-    for (uint i = 0; i < 4; ++i)
+    for (uint i = 0; i < colorCnt; ++i)
     {
         if (isa<UndefValue>(color[i]))
         {
@@ -4299,28 +4314,22 @@ void EmitPass::prepareRenderTargetWritePayload(
         return;
     }
 
-    CVariable* var[4];
-
-    var[0] = GetSymbol(color[0]);
-    var[1] = GetSymbol(color[1]);
-    var[2] = GetSymbol(color[2]);
-    var[3] = GetSymbol(color[3]);
-
-    for (uint i = 0; i < 4; ++i)
+    for (uint i = 0; i < colorCnt; ++i)
     {
+        CVariable* var = GetSymbol(color[i]);
+
         if (!isa<UndefValue>(color[i]))
         {
-            if (var[i]->IsUniform())
+            if (var->IsUniform())
             {
                 //if uniform creates a move to payload
-                src[i] = m_currShader->GetNewVariable(
-                    numLanes(m_currShader->m_SIMDSize), vType, EALIGN_GRF, CName::NONE);
-                m_encoder->Copy(src[i], var[i]);
+                src[i] = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), vType, EALIGN_GRF, CName::NONE);
+                m_encoder->Copy(src[i], var);
                 m_encoder->Push();
             }
             else
             {
-                src[i] = var[i];
+                src[i] = var;
             }
         }
     }
@@ -4495,6 +4504,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         inst,
         valueToVariableMap,
         vColor,
+        4,
         //out:
         src,
         isUndefined,
@@ -7571,7 +7581,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_simdSize:
         emitSimdSize(inst);
-        break;
         break;
     case GenISAIntrinsic::GenISA_simdShuffleDown:
         emitSimdShuffleDown(inst);
