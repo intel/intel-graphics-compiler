@@ -579,6 +579,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(initializePayload,       vISA_InitPayload,             TIMER_NUM_TIMERS);
     INITIALIZE_PASS(cleanupBindless,         vISA_enableCleanupBindless,   TIMER_OPTIMIZER);
     INITIALIZE_PASS(countGRFUsage,           vISA_PrintRegUsage,           TIMER_MISC_OPTS);
+    INITIALIZE_PASS(splitVariables,          vISA_EnableSplitVariables,    TIMER_MISC_OPTS);
     INITIALIZE_PASS(changeMoveType,          vISA_ChangeMoveType,          TIMER_MISC_OPTS);
     INITIALIZE_PASS(reRAPostSchedule,        vISA_ReRAPostSchedule,        TIMER_OPTIMIZER);
     INITIALIZE_PASS(accSubPostSchedule,      vISA_accSubstitution,         TIMER_OPTIMIZER);
@@ -1059,6 +1060,9 @@ int Optimizer::optimization()
 
     // remove redundant movs
     runPass(PI_newLocalCopyPropagation);
+
+    // split 4GRF variables.
+    runPass(PI_splitVariables);
 
     runPass(PI_mergeScalarInst);
 

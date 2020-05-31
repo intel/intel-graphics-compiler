@@ -3716,7 +3716,8 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         kernel.dumpDotFile("PreRegAlloc");
     }
 
-    kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.frameSizeInOWord = 0;
+    kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.paramOverflowAreaOffset =
+        kernel.fg.paramOverflowAreaSize = 0;
 
     // This must be done before Points-to analysis as it may modify CFG and add new BB!
     if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())

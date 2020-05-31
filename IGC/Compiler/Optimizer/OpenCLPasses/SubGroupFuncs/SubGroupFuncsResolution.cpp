@@ -235,6 +235,13 @@ bool SubGroupFuncsResolution::runOnFunction(Function& F)
     return m_changed;
 }
 
+// Debug line info helper function
+static void updateDebugLoc(Instruction* pOrigin, Instruction* pNew)
+{
+    IGC_ASSERT(pOrigin && pNew && "Expect valid instructions");
+    pNew->setDebugLoc(pOrigin->getDebugLoc());
+}
+
 // Helps to obtain temporary index corresponding to the kernel argument.
 // This index will be used during codegen to resolve BTIs for Images (SRVs and UAVs).
 void SubGroupFuncsResolution::BTIHelper(llvm::CallInst& CI)

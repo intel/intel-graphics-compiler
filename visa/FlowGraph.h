@@ -729,7 +729,8 @@ public:
     // offset in unit of OW
     unsigned                    callerSaveAreaOffset = 0;
     unsigned                    calleeSaveAreaOffset = 0;
-    unsigned                    frameSizeInOWord = 0;
+    unsigned                    paramOverflowAreaOffset = 0;
+    unsigned                    paramOverflowAreaSize = 0;
 
     // Bank conflict statistics.
     struct BankConflictStatistics

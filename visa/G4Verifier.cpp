@@ -102,6 +102,7 @@ bool G4Verifier::verifyInst(G4_INST *inst)
         passIndex == Optimizer::PI_renameRegister ||
         passIndex == Optimizer::PI_newLocalDefHoisting ||
         passIndex == Optimizer::PI_newLocalCopyPropagation ||
+        passIndex == Optimizer::PI_splitVariables ||
         passIndex == Optimizer::PI_cselPeepHoleOpt)
     {
         // def-use chain should be valid after these passes

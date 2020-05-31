@@ -1245,13 +1245,11 @@ SpillManagerGRF::createTransientGRFRangeDeclare (
         height = 1;
     }
 
-    bool usesStack = builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls();
-
-    if (useScratchMsg_ || usesStack)
+    if( useScratchMsg_ )
     {
-        // the message will read/write a minimum of one GRF
-        if (height == 1 && width < getGRFSize())
-            width = getGRFSize() / region->getElemSize();
+        // Read/write size when using scratch msg descriptor is 32-bytes
+        if( height == 1 && width < REG_BYTE_SIZE )
+            width = REG_BYTE_SIZE/region->getElemSize();
     }
 
     G4_Declare * transientRangeDeclare =
