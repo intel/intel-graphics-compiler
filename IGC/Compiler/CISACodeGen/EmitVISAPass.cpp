@@ -7319,29 +7319,32 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             m_encoder->And(dst, temp, m_currShader->ImmToVariable(BITMASK(11), ISA_TYPE_UD));
             m_encoder->Push();
         }
-        break;
     }
+    break;
     case SAMPLEINDEX:
     {
-        //Sample index is stored in one half byte per subspan. we shift right
-        //each lane with a different value to get the right number for each subspan
-        //shr (8) r9.0<1>:uw   r1.0<0;1,0>:uw   0x0c080400:uv    { Align1, NoMask, Q1 }
-        //and (16) r9.0<1>:ud   r9.0<1;4,0>:ud   0x0000000f:uw       { Align1, Q1 }
-        CVariable* r1 = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UW);
-        CVariable* imm = m_currShader->ImmToVariable(0x0C080400, ISA_TYPE_UV);
-        CVariable* temp = m_currShader->GetNewVariable(8, ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-        m_encoder->SetNoMask();
-        m_encoder->Shr(temp, r1, imm);
-        m_encoder->Push();
+        // Sample index is stored in one half byte per subspan. We shift right
+        // each lane with a different value to get the right number for each subspan
+        // shr (8) r9.0<1>:uw   r1.0<0;1,0>:uw   0x0c080400:uv    { Align1, NoMask, Q1 }
+        // and (16) r9.0<1>:ud   r9.0<1;4,0>:ud   0x0000000f:uw       { Align1, Q1 }
+        CVariable* shiftPos = m_currShader->ImmToVariable(0x0C080400, ISA_TYPE_UV);
+        CVariable* temp = nullptr;
+        {
+            CVariable* r1 = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UW);
+            temp = m_currShader->GetNewVariable(8, ISA_TYPE_UW, EALIGN_GRF,
+                std::string(IF_DEBUG_INFO("SampleIndexExtracted")));
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->SetNoMask();
+            m_encoder->Shr(temp, r1, shiftPos);
+            m_encoder->Push();
+        }
 
+        CVariable* andMask = m_currShader->ImmToVariable(0x0000000F, ISA_TYPE_UD);
         dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
         temp = m_currShader->BitCast(temp, ISA_TYPE_UD);
-
-        imm = m_currShader->ImmToVariable(0x0000000F, ISA_TYPE_UD);
         m_encoder->SetSrcRegion(0, 1, 4, 0);
-        m_encoder->And(dst, temp, imm);
+        m_encoder->And(dst, temp, andMask);
         m_encoder->Push();
     }
     break;
