@@ -118,8 +118,11 @@ namespace {
         LLVMContext* getContext() const { return TheContext; }
         Module* getModule() const { return TheModule; }
         Function* getFunction() const { return TheFunction; }
-
-        bool hasPtr64() const { return DL->getPointerSizeInBits() == 64; }
+        bool hasPtr64() const {
+            return (DL->getPointerSizeInBits() == 64 ||
+                DL->getPointerSizeInBits(ADDRESS_SPACE_GLOBAL) == 64 ||
+                DL->getPointerSizeInBits(ADDRESS_SPACE_CONSTANT) == 64);
+        }
         bool isPtr64(const PointerType* PtrTy) const {
             return CGC->getRegisterPointerSizeInBits(PtrTy->getAddressSpace()) == 64;
         }
