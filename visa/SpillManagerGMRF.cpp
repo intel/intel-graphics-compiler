@@ -150,7 +150,6 @@ SpillManagerGRF::SpillManagerGRF(
     , nextSpillOffset_(spillAreaOffset)
     , iterationNo_(iterationNo)
     , bbId_(UINT_MAX)
-    , inSIMDCFContext_(false)
     , doSpillSpaceCompression(enableSpillSpaceCompression)
     , failSafeSpill_(failSafeSpill)
     , spillIntf_(intf)
@@ -2524,8 +2523,9 @@ SpillManagerGRF::sendInSpilledRegVarPortions (
 //         oword or dword aligned for writing the exact region)
 
 bool
-SpillManagerGRF::shouldPreloadSpillRange (
-    G4_INST *         instContext
+SpillManagerGRF::shouldPreloadSpillRange(
+    G4_INST* instContext,
+    G4_BB* parentBB
 )
 {
     // Check for partial and unaligned regions and add pre-load code, if
@@ -2533,9 +2533,9 @@ SpillManagerGRF::shouldPreloadSpillRange (
     auto spilledRangeRegion = instContext->getDst();
     uint8_t execSize = instContext->getExecSize();
 
-    if (isPartialRegion (spilledRangeRegion, execSize) ||
-        isUnalignedRegion (spilledRangeRegion, execSize) ||
-        instContext->isPartialWriteForSpill(inSIMDCFContext_))
+    if (isPartialRegion(spilledRangeRegion, execSize) ||
+        isUnalignedRegion(spilledRangeRegion, execSize) ||
+        instContext->isPartialWriteForSpill(parentBB->isDivergent()))
     {
 #if 0
         // special check for scalar variables: no need for pre-fill if instruction is not predicated
@@ -3231,7 +3231,7 @@ SpillManagerGRF::insertSpillRangeCode (
         // Unaligned region specific handling.
 
         unsigned int spillSendOption = InstOpt_WriteEnable;
-        if (shouldPreloadSpillRange (*spilledInstIter)) {
+        if (shouldPreloadSpillRange (*spilledInstIter, bb)) {
 
             // Preload the segment aligned spill range from memory to use
             // as an overlay
@@ -3311,7 +3311,7 @@ SpillManagerGRF::insertSpillRangeCode (
             }
 
             replacementRangeDcl = spillRangeDcl;
-            if (inSIMDCFContext_)
+            if (!bb->isAllLaneActive())
             {
                 spillSendOption = (*spilledInstIter)->getMaskOption();
             }
@@ -3903,7 +3903,6 @@ SpillManagerGRF::insertSpillFillCode (
 
     for (BB_LIST_ITER it = fg.begin(); it != fg.end(); it++)
     {
-        inSIMDCFContext_ = !((*it)->isAllLaneActive());
         bbId_ = (*it)->getId();
         INST_LIST::iterator jt = (*it)->begin();
 
@@ -3992,7 +3991,6 @@ SpillManagerGRF::insertSpillFillCode (
 
 
     bbId_ = UINT_MAX;
-    inSIMDCFContext_ = false;
 
     // Calculate the spill memory used in this iteration
 
@@ -4008,74 +4006,6 @@ SpillManagerGRF::insertSpillFillCode (
             }
         }
     }
-
-    // Verify the spill memory assignments for spill ranges introduced
-
-#if defined (_DEBUG) || defined (VERIFY_SPILL_ASSIGNMENTS)
-
-    LIVERANGE_LIST::const_iterator kt = spilledLRs_.begin ();
-    LIVERANGE_LIST::const_iterator ktEnd = spilledLRs_.end ();
-
-    for (; kt != ktEnd; ++kt) {
-        if ((*kt)->getVar ()->isSpilled () == false) continue;
-        G4_RegVar * sRange1 = getReprRegVar ((*kt)->getVar ());
-        unsigned sidx1 = sRange1->getId ();
-        G4_RegVar * tRange1 =
-            (*kt)->getVar ()->getNonTransientBaseRegVar ();
-        unsigned tidx1 = tRange1->getId ();
-
-        for (unsigned lidx = 0; lidx < varIdCount_; ++lidx) {
-            if (getRegVar (lidx)->isSpilled() == false) continue;
-            G4_RegVar * sRange2 = getReprRegVar (getRegVar (lidx));
-            unsigned sidx2 = sRange2->getId ();
-            G4_RegVar * tRange2 =
-                getRegVar (lidx)->getNonTransientBaseRegVar ();
-            unsigned tidx2 = tRange2->getId ();
-
-            while (true) {
-
-                if (spillMemLifetimeInterfere (sidx1, sidx2)) {
-                    unsigned disp1 = sRange1->getDisp ();
-                    unsigned size1 = getByteSize (sRange1);
-                    unsigned disp2 = sRange2->getDisp ();
-                    unsigned size2 = getByteSize (sRange2);
-
-                    if (disp1 == disp2) {
-                        MUST_BE_TRUE(false, "Bad spill displacements !");
-                    }
-
-                    else if (disp1 < disp2) {
-
-                        if (disp1 + size1 > disp2) {
-                            MUST_BE_TRUE(false, "Bad spill displacements !");
-                        }
-                    }
-
-                    else {
-
-                        if (disp2 + size2 > disp1) {
-                            MUST_BE_TRUE(false, "Bad spill displacements !");
-                        }
-                    }
-                }
-
-                if (sidx1 == tidx1 && sidx2 == tidx2) {
-                    break;
-                }
-
-                else if (sidx1 == tidx1) {
-                    sidx2 = tidx2;
-                    sRange2 = tRange2;
-                }
-
-                else {
-                    sidx1 = tidx1;
-                    sRange1 = tRange1;
-                }
-            }
-        }
-    }
-#endif
 
     // Emit the instruction with the introduced spill/fill ranges in the
     // current iteration.

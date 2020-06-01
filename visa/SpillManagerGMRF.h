@@ -636,9 +636,9 @@ private:
         unsigned          option
         );
 
-    bool
-    shouldPreloadSpillRange (
-        G4_INST *         instContext
+    bool shouldPreloadSpillRange(
+        G4_INST* instContext,
+        G4_BB* parentBB
     );
 
     void
@@ -806,7 +806,6 @@ private:
     unsigned                 iterationNo_;
     unsigned                 bbId_;
     unsigned                 spillAreaOffset_;
-    bool                     inSIMDCFContext_;
     bool                     doSpillSpaceCompression;
 
     bool                     failSafeSpill_;
