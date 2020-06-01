@@ -43,6 +43,7 @@ typedef enum {
     IGFX_JASPERLAKE,
     IGFX_ELKHARTLAKE = IGFX_JASPERLAKE,
     IGFX_TIGERLAKE_LP,
+    IGFX_DG1 = 1210,
     IGFX_MAX_PRODUCT,
 
 
@@ -243,6 +244,7 @@ typedef enum __NATIVEGTTYPE
 #define GFX_GET_CURRENT_PRODUCT(p)     ( (p).eProductFamily )
 #define GFX_GET_CURRENT_DISPLAYCORE(p) ( (p).eDisplayCoreFamily )
 #define GFX_GET_CURRENT_RENDERCORE(p)  ( (p).eRenderCoreFamily )
+#define GFX_IS_DISCRETE_FAMILY(p)      ( GFX_GET_CURRENT_PRODUCT(p) == IGFX_DG1 )
 // These macros return true/false depending on the current render family.
 #define GFX_IS_NAPA_RENDER_FAMILY(p)   ( ( GFX_GET_CURRENT_RENDERCORE(p) == IGFX_GEN3_CORE )    ||   \
                                          ( GFX_GET_CURRENT_RENDERCORE(p) == IGFX_GEN3_5_CORE ) )
@@ -567,6 +569,7 @@ typedef enum __NATIVEGTTYPE
 #define ITGL_LP_1x2x16_DESK_WS_65W_DEVICE_F0_ID 0x9A78
 #define ITGL_LP_GT0_ULT_DEVICE_F0_ID            0x9A7F
 
+#define DEV_ID_4905                             0x4905
 //LKF
 #define ILKF_1x8x8_DESK_DEVICE_F0_ID            0x9840
 #define ILKF_GT0_DESK_DEVICE_A0_ID              0x9850

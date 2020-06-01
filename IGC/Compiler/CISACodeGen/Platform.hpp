@@ -310,6 +310,17 @@ bool hasFDIV() const {
     return (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE);
 }
 
+bool doIntegerMad() const
+{
+    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && m_platformInfo.eProductFamily != IGFX_DG1 &&
+        IGC_IS_FLAG_ENABLED(EnableIntegerMad);
+}
+
+bool isDG1() const
+{
+    return m_platformInfo.eProductFamily == IGFX_DG1;
+}
+
 bool supportsSIMD16TypedRW() const
 {
     return false;
@@ -331,7 +342,8 @@ bool hasNoInt64Inst() const {
         m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
         m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
         m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
-        m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP;
+        m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
+        m_platformInfo.eProductFamily == IGFX_DG1;
 }
 
 //all the platforms which DONOT support 64 bit float operations
@@ -340,7 +352,8 @@ bool hasNoFP64Inst() const {
         m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
         m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
         m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
-        m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP;
+        m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
+        m_platformInfo.eProductFamily == IGFX_DG1;
 }
 
 //all the platforms which do not support 64 bit operations and
@@ -360,7 +373,8 @@ bool hasCorrectlyRoundedMacros() const {
     return m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
         m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
         m_platformInfo.eProductFamily != IGFX_JASPERLAKE &&
-        m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP;
+        m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP &&
+        m_platformInfo.eProductFamily != IGFX_DG1;
 }
 
 bool hasHWDp4AddSupport() const {
@@ -418,11 +432,6 @@ bool NeedsHDCFenceBeforeEOTInPixelShader() const
 bool canFuseTypedWrite() const
 {
     return IGC_IS_FLAG_ENABLED(FuseTypedWrite);
-}
-
-bool doIntegerMad() const
-{
-    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && IGC_IS_FLAG_ENABLED(EnableIntegerMad);
 }
 
 unsigned int getMaxNumberHWThreadForEachWG() const

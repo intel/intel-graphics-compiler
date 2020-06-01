@@ -96,6 +96,10 @@ namespace IGC
             InitJslHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             InitJslSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
+        case IGFX_DG1:
+            InitDg1HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitDg1SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
         default:
             IGC_ASSERT(0);
             break;

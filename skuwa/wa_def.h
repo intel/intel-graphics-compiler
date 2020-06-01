@@ -312,6 +312,14 @@ void InitTglLpSwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
+void InitDg1HwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitDg1SwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
 #ifdef __cplusplus
 } // extern "C"
 #endif
@@ -393,6 +401,11 @@ void InitJslHASWaTable(
         PSKU_FEATURE_TABLE                  pSkuTable,
         PWA_INIT_PARAM                      pWaParam);
 void InitTgllpHASWaTable(
+        PHW_DEVICE_EXTENSION            pKchContext,
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitDg1HASWaTable(
         PHW_DEVICE_EXTENSION            pKchContext,
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,

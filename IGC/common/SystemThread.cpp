@@ -331,7 +331,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         }
         else if (mode == SYSTEM_THREAD_MODE_CSR)
         {
-            if (platform.getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
+            if (   platform.getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
+                || platform.getPlatformInfo().eProductFamily == IGFX_DG1
             )
             {
                 SIPIndex = GEN12_LP_CSR;

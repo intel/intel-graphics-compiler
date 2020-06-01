@@ -83,7 +83,7 @@ int SetPlatform( const char * str ) {
         visaPlatform = GENX_ICLLP;
         retVal = VISA_SUCCESS;
     }
-    else if (platform == "TGLLP" || platform == "gen12lp")
+    else if (platform == "TGLLP" || platform == "DG1" || platform == "gen12lp")
     {
         visaPlatform = GENX_TGLLP;
         retVal = VISA_SUCCESS;

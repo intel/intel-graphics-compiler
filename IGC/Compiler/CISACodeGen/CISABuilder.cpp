@@ -3079,7 +3079,8 @@ namespace IGC
             return GENX_ICLLP;
         case IGFX_GEN12_CORE:
         case IGFX_GEN12LP_CORE:
-            if (platform->getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
+            if (   platform->getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
+                || platform->getPlatformInfo().eProductFamily == IGFX_DG1
                 )
             {
                 return GENX_TGLLP;
