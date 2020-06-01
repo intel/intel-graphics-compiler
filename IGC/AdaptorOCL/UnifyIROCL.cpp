@@ -246,6 +246,9 @@ static void CommonOCLBasedPasses(
     CompilerOpts.DisableA64WA =
         pContext->m_InternalOptions.IntelDisableA64WA;
 
+    CompilerOpts.ForceEnableA64WA =
+        pContext->m_InternalOptions.IntelForceEnableA64WA;
+
     CompilerOpts.HasBufferOffsetArg =
         pContext->m_InternalOptions.IntelHasBufferOffsetArg;
 

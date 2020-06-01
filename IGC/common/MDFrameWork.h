@@ -208,6 +208,7 @@ namespace IGC
         bool GreaterThan2GBBufferRequired               = true;
         bool GreaterThan4GBBufferRequired               = true;
         bool DisableA64WA                               = false;
+        bool ForceEnableA64WA                           = false;
         bool PushConstantsEnable                        = true;
         bool HasBufferOffsetArg                         = false;
         bool replaceGlobalOffsetsByZero                 = false;

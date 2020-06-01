@@ -1116,6 +1116,11 @@ namespace IGC
                     IntelDisableA64WA = true;
                 }
 
+                if (strstr(options, "-intel-force-enable-a64WA"))
+                {
+                    IntelForceEnableA64WA = true;
+                }
+
                 if (strstr(options, "-intel-gtpin-rera"))
                 {
                     DoReRA = true;
@@ -1162,6 +1167,7 @@ namespace IGC
             bool IncludeSIPKernelDebug;
             bool IntelGreaterThan4GBBufferRequired;
             bool IntelDisableA64WA = false;
+            bool IntelForceEnableA64WA = false;
             bool Use32BitPtrArith = false;
             bool IncludeSIPKernelDebugWithLocalMemory;
             bool DoReRA;

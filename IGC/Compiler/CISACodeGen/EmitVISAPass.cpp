@@ -14911,9 +14911,25 @@ void EmitPass::A64LSLoopTail(CVariable* curMask, CVariable* lsPred, uint label)
 
 bool EmitPass::hasA64WAEnable() const
 {
+    // Check WA table entry for current platform.
+    if (!m_currShader->m_Platform->WaEnableA64WA())
+        return false;
+
+    // -intel-force-enable-a64WA
+    if (m_pCtx->getModuleMetaData()->compOpt.ForceEnableA64WA)
+        return true;
+
+    // -intel-disable-a64WA
     if (m_pCtx->getModuleMetaData()->compOpt.DisableA64WA)
         return false;
-    return m_currShader->m_Platform->WaEnableA64WA();
+
+    // Disable A64WA for kernels which specify work_group_size_hint(1, 1, 1).
+    MetaDataUtils* pMdUtils =  m_currShader->GetMetaDataUtils();
+    uint32_t WGSize = IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, m_currShader->entry);
+    if (WGSize == 1)
+        return false;
+
+    return true;
 }
 
 void EmitPass::emitGatherA64(Value* loadInst, CVariable* dst, CVariable* offset, unsigned elemSize, unsigned numElems, bool addrUniform)
