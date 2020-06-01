@@ -940,6 +940,73 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator& I)
     return false;
 }
 
+// Attempt to create new float instruction if both operands are from FPTruncInst instructions.
+// Example with fadd:
+//  %Temp-31.prec.i = fptrunc float %34 to half
+//  %Temp-30.prec.i = fptrunc float %33 to half
+//  %41 = fadd fast half %Temp-31.prec.i, %Temp-30.prec.i
+//  %Temp-32.i = fpext half %41 to float
+//
+//  This fadd is used as a float, and doesn't need the operands to be cased to half.
+//  We can remove the extra casts in this case.
+//  This becomes:
+//  %41 = fadd fast float %34, %33
+void CustomSafeOptPass::removeHftoFCast(Instruction& I)
+{
+    // Skip if mix mode is supported
+
+    CodeGenContext* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (Ctx->platform.supportMixMode())
+        return;
+
+    if (!I.getType()->isFloatingPointTy())
+        return;
+
+    // Check if the only user is a FPExtInst
+    if (!I.hasOneUse())
+        return;
+
+    FPExtInst* castInst = NULL;
+    User* U = *I.user_begin();
+    if (FPExtInst* inst = dyn_cast<FPExtInst>(U))
+    {
+        if (inst->getType()->isFloatTy())
+        {
+            castInst = inst;
+        }
+    }
+    if (!castInst)
+      return;
+
+    // Check if operands come from a Float to HF Cast
+    Value *S1 = NULL, *S2 = NULL;
+    if (FPTruncInst* inst = dyn_cast<FPTruncInst>(I.getOperand(0)))
+    {
+        if (!inst->getType()->isHalfTy())
+          return;
+        S1 = inst->getOperand(0);
+    }
+    if (FPTruncInst* inst = dyn_cast<FPTruncInst>(I.getOperand(1)))
+    {
+        if (!inst->getType()->isHalfTy())
+          return;
+        S2 = inst->getOperand(0);
+    }
+    if (!S1 || !S2)
+    {
+        return;
+    }
+
+    Value* newInst = NULL;
+    if (BinaryOperator* bo = dyn_cast<BinaryOperator>(&I))
+    {
+        newInst = BinaryOperator::Create(bo->getOpcode(), S1, S2, "", &I);
+        Instruction* inst = dyn_cast<Instruction>(newInst);
+        inst->copyFastMathFlags(&I);
+        castInst->replaceAllUsesWith(inst);
+    }
+}
+
 void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
 {
     matchDp4a(I);
@@ -987,6 +1054,8 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 }
             }
         }
+    } else if (I.getType()->isFloatingPointTy()) {
+        removeHftoFCast(I);
     }
 }
 
