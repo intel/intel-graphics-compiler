@@ -7071,8 +7071,8 @@ void GraphColor::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::v
 //
 void GraphColor::addCallerSaveRestoreCode()
 {
-    // maxCallerSaveSize in Oword
-    unsigned int maxCallerSaveSize = builder.kernel.fg.callerSaveAreaOffset;
+
+    uint32_t maxCallerSaveSize = 0;
     unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
 
     for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); ++it)
@@ -7208,10 +7208,7 @@ void GraphColor::addCallerSaveRestoreCode()
             }
             afterFCallBB->erase(insertRestIt);
 
-            // FIXME: maxCallerSaveSize in unit of OWord, here assume a register is 2 Oword
-            // builder.kernel.fg.paramOverflowAreaOffset = builder.kernel.fg.callerSaveAreaOffset + callerSaveRegsWritten * 2;
-            if (maxCallerSaveSize < (builder.kernel.fg.callerSaveAreaOffset + callerSaveRegsWritten * 2))
-                maxCallerSaveSize = (builder.kernel.fg.callerSaveAreaOffset + callerSaveRegsWritten * 2);
+            maxCallerSaveSize = std::max(maxCallerSaveSize, callerSaveRegsWritten * getGRFSize());
 
             if (m_options->getOption(vISA_OptReport))
             {
@@ -7225,7 +7222,8 @@ void GraphColor::addCallerSaveRestoreCode()
         }
     }
 
-    builder.kernel.fg.paramOverflowAreaOffset = maxCallerSaveSize;
+    auto byteOffset = builder.kernel.fg.callerSaveAreaOffset * 16 + maxCallerSaveSize;
+    builder.kernel.fg.frameSizeInOWord = ROUND(byteOffset, 64) / 16;
 
     builder.instList.clear();
 }
@@ -7235,7 +7233,7 @@ void GraphColor::addCallerSaveRestoreCode()
 //
 void GraphColor::addCalleeSaveRestoreCode()
 {
-    builder.kernel.fg.callerSaveAreaOffset = builder.kernel.fg.calleeSaveAreaOffset;
+
     unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
     unsigned int numCalleeSaveRegs = builder.kernel.getNumCalleeSaveRegs();
 
@@ -7335,15 +7333,11 @@ void GraphColor::addCalleeSaveRestoreCode()
     }
     builder.kernel.fg.getUniqueReturnBlock()->erase(eraseIt);
 
-    // FIXME: builder.kernel.fg.calleeSaveAreaOffset looks like in OWord, here assume
-    // register size is two Oword, so
-    // builder.kernel.fg.callerSaveAreaOffset = calleeSaveAreaOffset + calleeSaveRegsWritten * 2
-    builder.kernel.fg.callerSaveAreaOffset =
-        MAX(
-            builder.kernel.fg.calleeSaveAreaOffset + calleeSaveRegsWritten * 2,
-            builder.kernel.fg.callerSaveAreaOffset);
     builder.instList.clear();
 
+    // caller-save starts after callee-save and is 64-byte aligned
+    auto byteOffset = builder.kernel.fg.calleeSaveAreaOffset * 16 + calleeSaveRegsWritten * getGRFSize();
+    builder.kernel.fg.callerSaveAreaOffset = ROUND(byteOffset, 64) / 16;
     if (m_options->getOption(vISA_OptReport))
     {
         std::ofstream optreport;
@@ -7360,11 +7354,11 @@ void GraphColor::addCalleeSaveRestoreCode()
 void GraphColor::addGenxMainStackSetupCode()
 {
     uint32_t fpInitVal = (uint32_t)kernel.getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
-    // FIXME: a potential failure here is that paramOverflowAreaOffset is already the offset based on
+    // FIXME: a potential failure here is that frameSizeInOword is already the offset based on
     // GlobalSratchOffset, which is the value of fpInitVal. So below we generate code to do
     // SP = fpInitVal + frameSize, which does not make sense. It is correct now since when there's stack call,
     // IGC will not use scratch, so fpInitVal will be 0.
-    unsigned frameSize = builder.kernel.fg.paramOverflowAreaOffset + builder.kernel.fg.paramOverflowAreaSize;
+    unsigned frameSize = builder.kernel.fg.frameSizeInOWord;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
     G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
 
@@ -7409,7 +7403,7 @@ void GraphColor::addGenxMainStackSetupCode()
 //
 void GraphColor::addCalleeStackSetupCode()
 {
-    int frameSize = (int)builder.kernel.fg.paramOverflowAreaOffset /*- builder.kernel.fg.calleeSaveAreaOffset*/;
+    int frameSize = (int)builder.kernel.fg.frameSizeInOWord;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
     G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
 
@@ -7430,7 +7424,7 @@ void GraphColor::addCalleeStackSetupCode()
     }
     //
     // BE_FP = BE_SP
-    // BE_SP += FrameSize (overflow-area offset + overflow-area size)
+    // BE_SP += FrameSize
     //
     {
         G4_DstRegRegion* dst = builder.createDst(stackPtr->getRegVar(), 0, 0, 1, Type_UD);
@@ -7629,6 +7623,8 @@ void GraphColor::addFlagSaveRestoreCode()
 
 //
 // Add GRF caller/callee save/restore code for stack calls.
+// localSpillAreaOwordsize specifices the starting offset of the caller/callee-save area in this frame.
+// It is 64-byte aligned.
 //
 void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
 {
@@ -7645,9 +7641,6 @@ void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
     }
     else
     {
-        // FIXME: looks like inside addCalleeSaveRestoreCode() and addCallerSaveRestoreCode(),
-        // the expected offset (of calleeSaveAreaOffset and callerSaveAreaOffset) is 0-based.
-        // But localSpillAreaOwordSize is based on globalScratchOffset.
         builder.kernel.fg.calleeSaveAreaOffset = localSpillAreaOwordSize;
         addCalleeSaveRestoreCode();
     }
@@ -9549,7 +9542,9 @@ int GlobalRA::coloringRegAlloc()
 
                 if (hasStackCall)
                 {
-                    unsigned localSpillAreaOwordSize = ROUND(scratchOffset, 16) / 16;
+                    // spill/fill intrinsics expect offset in HWord, so round up to 64 byte but maintain it in OWord unit
+                    // ToDo: we really need to change everything to byte for everyone's sanity..
+                    unsigned localSpillAreaOwordSize = ROUND(scratchOffset, 64) / 16;
                     // the given localSpillAreaOwordSize is the offset based on globalScratchOffset
                     coloring.addSaveRestoreCode(localSpillAreaOwordSize);
                 }
@@ -9662,7 +9657,7 @@ int GlobalRA::coloringRegAlloc()
         jitInfo->isSpill = spillMemUsed > 0;
         jitInfo->hasStackcalls = kernel.fg.getHasStackCalls();
 
-        if (builder.kernel.fg.paramOverflowAreaOffset != 0) {
+        if (builder.kernel.fg.frameSizeInOWord != 0) {
             // jitInfo->spillMemUsed is the entire visa stack size. Consider the caller/callee
             // save size if having caller/callee save
             // globalScratchOffset in unit of byte, others in Oword
@@ -9676,13 +9671,8 @@ int GlobalRA::coloringRegAlloc()
             //  callerSaveAreaOffset    -> ---------------------
             //                             |  caller save      |
             //  paramOverflowAreaOffset -> ---------------------
-            //                             | paramOverflowArea |
-            //                             ---------------------
-            // FIXME: paramOverflowAreaOffset and paramOverflowAreaSize don't seem like be used
-            // anywhere, do we need them?
             jitInfo->spillMemUsed =
-                (builder.kernel.fg.paramOverflowAreaOffset +
-                    builder.kernel.fg.paramOverflowAreaSize) * 16 - globalScratchOffset;
+                builder.kernel.fg.frameSizeInOWord * 16 - globalScratchOffset;
 
             // reserve spillMemUsed #bytes before 8kb boundary
             kernel.getGTPinData()->setScratchNextFree(8*1024 - kernel.getGTPinData()->getNumBytesScratchUse());

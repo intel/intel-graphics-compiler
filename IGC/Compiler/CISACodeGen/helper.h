@@ -439,4 +439,10 @@ namespace IGC
         }
     }
 
+    // Debug line info helper function
+    inline void updateDebugLoc(llvm::Instruction* pOrigin, llvm::Instruction* pNew)
+    {
+        IGC_ASSERT(pOrigin && pNew && "Expect valid instructions");
+        pNew->setDebugLoc(pOrigin->getDebugLoc());
+    }
 } // namespace IGC

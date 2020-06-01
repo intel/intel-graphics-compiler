@@ -256,7 +256,7 @@ void VISAKernelImpl::adjustIndirectCallOffset()
             {
                 // for every indirect call, count # of instructions inserted
                 // between call and the first add
-                uint32_t num_sync = 0;
+                uint64_t sync_offset = 0;
                 G4_INST* first_add = nullptr;
                 INST_LIST::reverse_iterator it = bb->rbegin();
                 // skip call itself
@@ -264,26 +264,36 @@ void VISAKernelImpl::adjustIndirectCallOffset()
                 for (; it != bb->rend(); ++it)
                 {
                     G4_INST* inst = *it;
-                    if (inst->opcode() == G4_sync_nop) {
-                        ++num_sync;
+                    G4_opcode op = inst->opcode();
+                    if (op == G4_sync_allrd || op == G4_sync_allwr)
+                    {
+                        inst->setNoCompacted();
+                        sync_offset += 16;
                         continue;
-                    } else if (inst->opcode() == G4_add) {
-                        if (first_add == nullptr) {
+                    }
+                    else if (op == G4_sync_nop) {
+                        inst->setCompacted();
+                        sync_offset += 8;
+                        continue;
+                    }
+                    else if (op == G4_add)
+                    {
+                        if (first_add == nullptr)
+                        {
                             first_add = inst;
                             continue;
-                        } else {
+                        }
+                        else
+                        {
                             break;
                         }
                     }
                     // instructions between call and add could only be
-                    // sync.nop
+                    // sync.nop, sync.allrd or sync.allwr
                     assert(0);
                 }
-                // assume that the sync.nop must be compacted, the instruction
-                // length is 8
                 assert(first_add->getSrc(1)->isImm());
-                int64_t adjust_off = first_add->getSrc(1)->asImm()->getInt()
-                    - num_sync * 8;
+                int64_t adjust_off = first_add->getSrc(1)->asImm()->getInt() - sync_offset;
                 first_add->setSrc(m_builder->createImm(adjust_off, Type_D), 1);
             }
         }
