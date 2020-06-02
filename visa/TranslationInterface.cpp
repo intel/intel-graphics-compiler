@@ -519,9 +519,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, VISA_Exec_S
         loopCount = instExecSize / exsize;
     }
 
-    bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, 32) &&
-        dstOpnd->getRegAccess() == Direct && dstOpnd->getHorzStride() == 1;
-
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
 
     // pred and conModifier
@@ -553,13 +550,19 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, VISA_Exec_S
     G4_SrcRegRegion tsrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF );
     G4_SrcRegRegion tsrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF );
 
-    // those are for drcp
-    G4_SrcRegRegion valueOneScalarReg(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, getRegionScalar(), Type_DF );
-    G4_Operand *valueOneOpnd = createSrcRegRegion(valueOneScalarReg); // it is used in drcp
-
-    if ( src0Opnd == NULL )
+    if (!src0Opnd)
     {
+        // those are for drcp
+        G4_SrcRegRegion valueOneScalarReg(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, getRegionScalar(), Type_DF);
+        G4_Operand* valueOneOpnd = createSrcRegRegion(valueOneScalarReg); // it is used in drcp
         src0Opnd = valueOneOpnd;
+    }
+
+    bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, getGRFSize()) &&
+        dstOpnd->getRegAccess() == Direct && dstOpnd->getHorzStride() == 1;
+    if (noDstMove && (dstOpnd->getTopDcl() == src0Opnd->getTopDcl() || dstOpnd->getTopDcl() == src1Opnd->getTopDcl()))
+    {
+        noDstMove = false;
     }
 
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
@@ -1517,8 +1520,12 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         loopCount = instExecSize / exsize;
     }
 
-    bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, 32) &&
+    bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, getGRFSize()) &&
         dstOpnd->getRegAccess() == Direct && dstOpnd->getHorzStride() == 1;
+    if (noDstMove && dstOpnd->getTopDcl() == src0Opnd->getTopDcl())
+    {
+        noDstMove = false;
+    }
 
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
 
