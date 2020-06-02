@@ -124,16 +124,21 @@ typedef enum {
 #define DoSimd32Stage2(prev_ctx_ptr) (IsStage2RestSIMDs(prev_ctx_ptr) && DoSimd32(prev_ctx_ptr->m_stats))
 #define DoSimd16Stage2(prev_ctx_ptr) (IsStage2RestSIMDs(prev_ctx_ptr) && DoSimd16(prev_ctx_ptr->m_stats))
 
-// We don't need compile continuation if no staged compilation enabled denoted by RegKeys.
+#define ContinueFastCompileStage1(flag, prev_ctx_ptr, stats) ( \
+    IsStage1FastCompile(flag, prev_ctx_ptr) && \
+    (IsRetry(stats) || DoSimd16(stats)))
+
 // If the staged compilation enabled, we don't need compile continuation when SIMD8 is spilled.
+#define ContinueBestPerfStage1(flag, prev_ctx_ptr, stats) ( \
+    IsStage1BestPerf(flag, prev_ctx_ptr) && \
+     (( IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && !HasSimdSpill(8, stats)) || \
+      (!IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && (!HasSimd(8, stats) || DoSimd32(stats)))))
+
+// We don't need compile continuation if no staged compilation enabled denoted by RegKeys.
 #define HasCompileContinuation(Ail, flag, prev_ctx_ptr, stats) ( \
     (IGC_IS_FLAG_ENABLED(StagedCompilation) || Ail) && \
-    ((IsStage1FastCompile(flag, prev_ctx_ptr) && \
-     !(!IsRetry(stats) && !DoSimd16(stats))) || \
-    ((IsStage1BestPerf(flag, prev_ctx_ptr)) && \
-     ( IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && !HasSimdSpill(8, stats)) || \
-     (!IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && (!HasSimd(8, stats) || DoSimd32(stats))))) \
-    )
+    (ContinueFastCompileStage1(flag, prev_ctx_ptr, stats) || \
+     ContinueBestPerfStage1(flag, prev_ctx_ptr, stats)))
 
 // Return true when simd MODE has been generated previously
 #define AvoidDupStage2(MODE, flag, prev_ctx_ptr)      (IsStage2RestSIMDs(prev_ctx_ptr) && HasSimdNoSpill(MODE, prev_ctx_ptr->m_stats))
