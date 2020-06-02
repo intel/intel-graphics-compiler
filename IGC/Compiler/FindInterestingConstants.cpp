@@ -60,7 +60,7 @@ void FindInterestingConstants::UpdateInstCount(Instruction* inst)
     else if (SelectInst * selInst = dyn_cast<SelectInst>(inst))
     {
         if (dyn_cast<Constant>(selInst->getOperand(1)) && dyn_cast<Constant>(selInst->getOperand(2)))
-            m_instCount += 5;
+            m_instCount++;
         else
             m_selectCount++;
     }
