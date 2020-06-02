@@ -121,6 +121,11 @@ static bool hasSamePredicator(G4_INST* inst1, G4_INST* inst2)
         return false;
     }
 
+    if (inst1->isWriteEnableInst() || inst2->isWriteEnableInst())
+    {
+        return false;
+    }
+
     return true;
 }
 
