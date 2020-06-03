@@ -205,12 +205,26 @@ namespace IGC
         void visitSelectInst(llvm::SelectInst& I);
     };
 
+    class IGCConstantFolder : public llvm::ConstantFolder
+    {
+    public:
+        IGCConstantFolder() :
+            ConstantFolder()
+        {}
+
+        llvm::Constant* CreateCanonicalize(llvm::Constant* C0, bool flushDenorms = true) const;
+        llvm::Constant* CreateFAdd(llvm::Constant* C0, llvm::Constant* C1, llvm::APFloatBase::roundingMode roundingMode) const;
+        llvm::Constant* CreateFMul(llvm::Constant* C0, llvm::Constant* C1, llvm::APFloatBase::roundingMode roundingMode) const;
+        llvm::Constant* CreateFPTrunc(llvm::Constant* C0, llvm::Type* dstType, llvm::APFloatBase::roundingMode roundingMode) const;
+    };
+
     class IGCConstProp : public llvm::FunctionPass
     {
     public:
         static char ID;
 
-        IGCConstProp(bool enableSimplifyGEP = false);
+        IGCConstProp(bool enableMathConstProp = false,
+            bool enableSimplifyGEP = false);
 
         ~IGCConstProp() {}
 
