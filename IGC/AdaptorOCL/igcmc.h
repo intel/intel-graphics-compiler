@@ -44,7 +44,8 @@ enum class cmc_arg_kind : int32_t {
     Image1d,
     Image2d,
     Image3d,
-    PrintBuffer
+    PrintBuffer,
+    PrivateBase
 };
 
 struct cmc_ocl_print_string {

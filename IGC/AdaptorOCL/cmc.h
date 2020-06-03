@@ -70,6 +70,10 @@ public:
                                        unsigned payloadPosition,
                                        int BTI);
 
+    void createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
+                                     unsigned payloadPosition, int BTI,
+                                     unsigned statelessPrivateMemSize);
+
     // add a stateful buffer patch token.
     void createBufferStatefulAnnotation(unsigned argNo);
 

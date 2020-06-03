@@ -182,6 +182,24 @@ void CMKernel::createPointerGlobalAnnotation(unsigned argNo, unsigned byteSize, 
     m_kernelInfo.m_pointerArgument.push_back(ptrAnnotation);
 }
 
+void CMKernel::createPrivateBaseAnnotation(
+    unsigned argNo, unsigned byteSize, unsigned payloadPosition, int BTI,
+    unsigned statelessPrivateMemSize) {
+  iOpenCL::PrivateInputAnnotation *ptrAnnotation =
+      new iOpenCL::PrivateInputAnnotation();
+
+  ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE;
+  ptrAnnotation->AnnotationSize = sizeof(ptrAnnotation);
+  ptrAnnotation->ArgumentNumber = argNo;
+  // PerThreadPrivateMemorySize is defined as "Total private memory requirements for each OpenCL work-item."
+  ptrAnnotation->PerThreadPrivateMemorySize = statelessPrivateMemSize;
+  ptrAnnotation->BindingTableIndex = BTI;
+  ptrAnnotation->IsStateless = true;
+  ptrAnnotation->PayloadPosition = payloadPosition;
+  ptrAnnotation->PayloadSizeInBytes = byteSize;
+  m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
+}
+
 void CMKernel::createBufferStatefulAnnotation(unsigned argNo)
 {
     iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation;
@@ -419,6 +437,12 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& ker
             kernel.m_kernelInfo.m_printfBufferAnnotation->PayloadPosition = AI.offset - constantPayloadStart;
             kernel.m_kernelInfo.m_printfBufferAnnotation->Index = 0;
             kernel.m_kernelInfo.m_printfBufferAnnotation->DataSize = 8;
+            break;
+        case cmc_arg_kind::PrivateBase:
+            // FIXME: replace 8192 to  8k * simdSize * numDispatchedThreads
+            kernel.createPrivateBaseAnnotation(AI.index, AI.sizeInBytes,
+                AI.offset - constantPayloadStart, AI.BTI, 8192);
+            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         }
     }
