@@ -2429,7 +2429,7 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
         RelocationEntry relocEntry = RelocationEntry::createSymbolAddrReloc(mov, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
         kernel.addRelocation(relocEntry);
     }
-    else if (no64bitType() || needSwap64ImmLoHi())
+    else if (noInt64() || needSwap64ImmLoHi())
     {
         auto* funcAddrLow = createRelocImm(Type_UD);
         auto* funcAddrHigh = createRelocImm(Type_UD);
@@ -9473,7 +9473,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
 
     unsigned numOword = Get_VISA_Oword_Num(size);
     G4_Declare* dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
-    if (no64bitType())
+    if (noInt64())
     {
         G4_SrcRegRegion *region = address->asSrcRegRegion();
         G4_SrcRegRegion *tmp;
@@ -9542,7 +9542,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     }
 
     G4_Declare* dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
-    if (no64bitType())
+    if (noInt64())
     {
         G4_SrcRegRegion *region = address->asSrcRegRegion();
         G4_SrcRegRegion *tmp;

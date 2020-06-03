@@ -449,7 +449,12 @@
     }
 
 
-    bool no64bitType() const
+    bool noInt64() const
+    {
+        return getPlatform() == GENX_ICLLP || isGen12LP();
+    }
+
+    bool noFP64() const
     {
         return getPlatform() == GENX_ICLLP || isGen12LP();
     }
@@ -518,7 +523,7 @@
 
     bool noDwDstForDwordMul() const
     {
-        return no64bitType();
+        return noInt64();
     }
 
     bool useNewExtDescFormat() const

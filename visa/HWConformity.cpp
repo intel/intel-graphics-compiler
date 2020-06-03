@@ -3128,7 +3128,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
     {
         return false;
     }
-    if (inst->getDst() != NULL && G4_Type_Table[inst->getDst()->getType()].byteSize == 8)
+    if (inst->getDst() && getTypeSize(inst->getDst()->getType()) == 8)
     {
         uses64BitType = true;
     }
@@ -3136,7 +3136,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
     {
         G4_Operand* src = inst->getSrc(i);
 
-        if (src && G4_Type_Table[src->getType()].byteSize == 8)
+        if (src && getTypeSize(src->getType()) == 8)
         {
             uses64BitType = true;
         }
@@ -3151,10 +3151,11 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
 
     if (uses64BitType)
     {
-        if (builder.no64bitType())
+        if (builder.noInt64())
         {
-            // handle mov/add/cmp/sel
-            if (inst->opcode() == G4_mov)
+            // handle i64 mov/add/cmp/sel
+            // ToDo: move it to its own pass
+            if (inst->opcode() == G4_mov && IS_INT(inst->getDst()->getType()) && IS_INT(inst->getSrc(0)->getType()))
             {
                 if (emulate64bMov(iter, bb))
                     return true;
