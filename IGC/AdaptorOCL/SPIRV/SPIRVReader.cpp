@@ -1930,6 +1930,15 @@ SPIRVToLLVM::transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F) {
         transValue(BC->getOperand(0), F, BB),
         transValue(BC->getOperand(1), F, BB));
   IGC_ASSERT(Inst && "not implemented");
+
+  if (PlaceholderMap.count(BV) && Inst){
+    if (BV->getType()->isTypeBool())
+      Inst = cast<Instruction>(promoteBool(Inst, BB));
+    else
+      IGC_ASSERT(Inst->getType() == transType(BC->getType()));
+
+    IGC_ASSERT(Inst && "Out of memory");
+  }
   return Inst;
 }
 
