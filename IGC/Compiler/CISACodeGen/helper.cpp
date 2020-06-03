@@ -1153,6 +1153,47 @@ namespace IGC
 
     }
 
+    llvm::Instruction* AdjustSystemValueCall(llvm::GenIntrinsicInst* inst)
+    {
+        IGC_ASSERT(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_SystemValue);
+        llvm::Module* pModule = inst->getParent()->getParent()->getParent();
+        auto CommonConvertFunc = [pModule](llvm::GenIntrinsicInst* inst, llvm::Type* outputType)
+        {
+            IGC_ASSERT(outputType->isVectorTy() == false);
+            IGC_ASSERT(inst->getType()->isVectorTy() == false);
+            llvm::Instruction* result = inst;
+            if (inst->getType() != outputType)
+            {
+                llvm::IRBuilder<> builder(inst);
+                llvm::Function* systemValueFunc = llvm::GenISAIntrinsic::getDeclaration(pModule, GenISAIntrinsic::GenISA_DCL_SystemValue, outputType);
+                llvm::Instruction* sgv = builder.CreateCall(systemValueFunc, inst->getOperand(0));
+                // a default system value intrinsic function returns a float value. The returned value is bit casted to an appropriate integer or floating point value
+                // in reference to HW specification. Casting from floating point to integer and in the opposite direction is not expected.
+                sgv = llvm::cast<llvm::Instruction>(builder.CreateZExtOrTrunc(sgv, builder.getIntNTy((unsigned int)inst->getType()->getPrimitiveSizeInBits())));
+                sgv = llvm::cast<llvm::Instruction>(builder.CreateBitCast(sgv, inst->getType()));
+                inst->replaceAllUsesWith(sgv);
+                inst->eraseFromParent();
+                result = sgv;
+            }
+            return result;
+        };
+
+        SGVUsage usage = static_cast<SGVUsage>(llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
+        llvm::Instruction* result = inst;
+
+        switch (usage)
+        {
+        case THREAD_ID_IN_GROUP_X:
+        case THREAD_ID_IN_GROUP_Y:
+        case THREAD_ID_IN_GROUP_Z:
+            result = CommonConvertFunc(inst, llvm::IntegerType::get(pModule->getContext(), 16));
+            break;
+        default:
+            break;
+        }
+        return result;
+    }
+
     bool isReadInput(llvm::Instruction* pLLVMInstr);
 
 #define DECLARE_OPCODE(instName, llvmType, name, modifiers, sat, pred, condMod, mathIntrinsic, atomicIntrinsic, regioning) \
