@@ -94,7 +94,6 @@ CIF_DEFINE_INTERFACE_VER(GTSystemInfo, 1){
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 2, 1) {
   CIF_INHERIT_CONSTRUCTOR();
-
 };
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 3, 1) {
@@ -108,7 +107,7 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 3, 1) {
 
 CIF_GENERATE_VERSIONS_LIST(GTSystemInfo);
 CIF_MARK_LATEST_VERSION(GTSystemInfoLatest, GTSystemInfo);
-using GTSystemInfoTagOCL = GTSystemInfo<2>;    // Note : can tag with different version for
+using GTSystemInfoTagOCL = GTSystemInfo<3>;    // Note : can tag with different version for
                                                //        transition periods
 
 }

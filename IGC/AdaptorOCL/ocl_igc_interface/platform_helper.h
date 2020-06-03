@@ -88,9 +88,11 @@ inline void PopulateInterfaceWith(IGC::GTSystemInfo<Ver> &dst,
 }
 
 template <typename SrcStructT>
-inline void PopulateInterfaceWith(IGC::GTSystemInfo<2>& dst,
+inline void PopulateInterfaceWith(IGC::GTSystemInfo<3>& dst,
                                   const SrcStructT& src) {
   PopulateInterfaceWith<1>(dst, src);
+  COPY_VAL_EXACT(MaxDualSubSlicesSupported);
+  COPY_VAL_EXACT(DualSubSliceCount);
 }
 
 }
