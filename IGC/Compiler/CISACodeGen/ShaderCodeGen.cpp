@@ -1427,6 +1427,11 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createSROAPass());
         }
 
+        if (IGC_IS_FLAG_ENABLED(SampleMultiversioning) || pContext->m_enableSampleMultiversioning)
+        {
+            mpm.add(new SampleMultiversioning(pContext));
+        }
+
         if (pContext->m_instrTypes.hasMultipleBB)
         {
             // disable loop unroll for excessive large shaders
@@ -1701,11 +1706,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createDeadPHINodeEliminationPass());
         }
 
-        if (IGC_IS_FLAG_ENABLED(SampleMultiversioning) ||
-            pContext->m_enableSampleMultiversioning)
-        {
-            mpm.add(new SampleMultiversioning(pContext));
-        }
         mpm.run(*pContext->getModule());
     } // end scope
     COMPILER_TIME_END(pContext, TIME_OptimizationPasses);
