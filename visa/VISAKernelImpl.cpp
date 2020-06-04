@@ -47,6 +47,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IsaDisassembly.h"
 #include "LocalScheduler/SWSB_G4IR.h"
 #include "visa/include/RelocationInfo.h"
+#include "InstSplit.h"
 
 #if defined( _DEBUG ) && ( defined( _WIN32 ) || defined( _WIN64 ) )
 #include <windows.h>
@@ -221,6 +222,12 @@ static void setDeclAlignment(G4_Declare* dcl, VISA_Align align)
 
 int VISAKernelImpl::compileTillOptimize()
 {
+    if (m_options->getOption(vISA_splitInstructions))
+    {
+        InstSplitPass instSplit(m_builder);
+        instSplit.run();
+    }
+
     // For separate compilation run compilation till RA then return
     startTimer(TIMER_CFG);
     m_kernel->fg.constructFlowGraph(m_builder->instList);

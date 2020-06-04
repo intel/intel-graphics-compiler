@@ -188,6 +188,7 @@ set(GenX_Common_Sources_External
   SpillCleanup.cpp
   Rematerialization.cpp
   RPE.cpp
+  InstSplit.cpp
   VarSplit.cpp
   Attributes.cpp
   ${LocalScheduler_SOURCES}
@@ -266,6 +267,7 @@ set(GenX_Common_Headers
   Metadata.h
   RPE.h
   include/gtpin_IGC_interface.h
+  InstSplit.h
   VarSplit.h
   Attributes.hpp
   ${LocalScheduler_HEADERS}
