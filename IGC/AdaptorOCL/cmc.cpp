@@ -441,7 +441,7 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& ker
         case cmc_arg_kind::PrivateBase:
             // FIXME: replace 8192 to  8k * simdSize * numDispatchedThreads
             kernel.createPrivateBaseAnnotation(AI.index, AI.sizeInBytes,
-                AI.offset - constantPayloadStart, AI.BTI, 8192 * 128);
+                AI.offset - constantPayloadStart, AI.BTI, 8192);
             kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             break;
         }
