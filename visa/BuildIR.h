@@ -2727,7 +2727,8 @@ public:
         unsigned alignPayloadTo,
         uint32_t payloadSize,
         uint32_t srcSize,
-        std::initializer_list<G4_SrcRegRegion *> srcs);
+        std::initializer_list<G4_SrcRegRegion *> srcs,
+        VISA_EMask_Ctrl emask);
 
     // struct PayloadElem {
     //     enum PayloadKind {REG,IMM};

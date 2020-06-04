@@ -10424,7 +10424,9 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
     unsigned payloadAlignment,
     uint32_t payloadWidth,   // number of elements for one payload in the send.
     uint32_t srcSize,       // number of elements provided by src
-    std::initializer_list<G4_SrcRegRegion *> srcs)
+    std::initializer_list<G4_SrcRegRegion *> srcs,
+    VISA_EMask_Ctrl emask // the send's emask
+    )
 {
     MUST_BE_TRUE(sourceAlignment != 0 && payloadAlignment != 0,
         "alignment mustn't be 0");
@@ -10494,11 +10496,11 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
             auto copyRegion =
               [&] (G4_Type type) {
                   uint32_t numMoves = std::max(1u, totalSize / (2 * getGRFSize()));
+                  auto moveMask = emask;
                   unsigned MAX_SIMD = std::min(srcSize, getNativeExecSize() * (laneSize == 8 ? 1 : 2));
                   for (unsigned i = 0; i < numMoves; i++) {
                       auto rowOffset = i * 2;
-                      unsigned int instOpt =
-                          Get_Gen4_Emask(vISA_EMASK_M1_NM, MAX_SIMD);
+                      unsigned int instOpt = Get_Gen4_Emask(moveMask, MAX_SIMD);
                       G4_DstRegRegion* dstRegion =
                           createDst(
                               payloadDeclUD->getRegVar(),
@@ -10512,6 +10514,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
                               type);
                       createMov(MAX_SIMD,
                           dstRegion, srcRegion, instOpt, true);
+                     moveMask = Get_Next_EMask(moveMask, MAX_SIMD);
                   }
             };
 
