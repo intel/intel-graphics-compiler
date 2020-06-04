@@ -2075,8 +2075,8 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
                 auto sizeInBits = (m_pModule->m_pShader->getGRFSize() * 8) - offsetInBits;
 
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
-                addUInt(Block, dwarf::DW_FORM_data1, sizeInBits);
-                addUInt(Block, dwarf::DW_FORM_data1, offsetInBits);
+                addUInt(Block, dwarf::DW_FORM_udata, sizeInBits);
+                addUInt(Block, dwarf::DW_FORM_udata, offsetInBits);
             }
         }
         else

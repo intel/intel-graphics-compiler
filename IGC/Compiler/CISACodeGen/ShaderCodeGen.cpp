@@ -1110,6 +1110,7 @@ void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& kernels
             AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
         }
     }
+
     Passes.add(new DebugInfoPass(kernels));
     COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
 
