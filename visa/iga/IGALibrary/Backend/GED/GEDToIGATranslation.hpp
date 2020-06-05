@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
-    static Op translate(GED_OPCODE gedOpcode)
+    static inline Op translate(GED_OPCODE gedOpcode)
     {
         Op opcode;
         switch (gedOpcode)
@@ -120,7 +120,7 @@ namespace iga
         return opcode;
     }
 
-    static PredCtrl translate(GED_PRED_CTRL pred)
+    static inline PredCtrl translate(GED_PRED_CTRL pred)
     {
         PredCtrl predCtrl;
 
@@ -150,7 +150,7 @@ namespace iga
     }
 
 
-    static SrcModifier translate(GED_SRC_MOD mod)
+    static inline SrcModifier translate(GED_SRC_MOD mod)
     {
         SrcModifier srcMod;
 
@@ -177,7 +177,7 @@ namespace iga
     }
 
 
-    static DstModifier translate(GED_SATURATE mod)
+    static inline DstModifier translate(GED_SATURATE mod)
     {
         DstModifier dstMod;
 
@@ -194,7 +194,7 @@ namespace iga
     }
 
 
-    static MathMacroExt translate(GED_MATH_MACRO_EXT mme)
+    static inline MathMacroExt translate(GED_MATH_MACRO_EXT mme)
     {
         switch (mme)
         {
@@ -212,7 +212,7 @@ namespace iga
     }
 
 
-    static Type translate(GED_DATA_TYPE type)
+    static inline Type translate(GED_DATA_TYPE type)
     {
         Type opndType;
 
@@ -242,7 +242,7 @@ namespace iga
         return opndType;
     }
 
-    static ChannelOffset translate(GED_CHANNEL_OFFSET ctrl)
+    static inline ChannelOffset translate(GED_CHANNEL_OFFSET ctrl)
     {
         ChannelOffset mOffset = ChannelOffset::M0;
 
@@ -263,7 +263,7 @@ namespace iga
     }
 
     // TODO: remove this an retain only translate<GED_CHANNEL_OFFSET>
-    static ChannelOffset translate(GED_EXEC_MASK_OFFSET_CTRL ctrl)
+    static inline ChannelOffset translate(GED_EXEC_MASK_OFFSET_CTRL ctrl)
     {
         assert(ctrl != GED_EXEC_MASK_OFFSET_CTRL_INVALID);
         ChannelOffset mOffset = ChannelOffset::M0;
@@ -307,7 +307,7 @@ namespace iga
         return mOffset;
     }
 
-    static MaskCtrl translate(GED_MASK_CTRL cntrl)
+    static inline MaskCtrl translate(GED_MASK_CTRL cntrl)
     {
         MaskCtrl mCtrl;
 
@@ -325,13 +325,13 @@ namespace iga
     }
 
 
-    static ExecSize translateExecSize(uint32_t size)
+    static inline ExecSize translateExecSize(uint32_t size)
     {
         return ExecSizeFromInt((uint32_t)size);
     }
 
 
-    static FlagModifier translate(GED_COND_MODIFIER mod)
+    static inline FlagModifier translate(GED_COND_MODIFIER mod)
     {
         switch (mod)
         {
@@ -348,7 +348,7 @@ namespace iga
         }
     }
 
-    static SFID translate(GED_SFID fc)
+    static inline SFID translate(GED_SFID fc)
     {
         switch (fc) {
         case GED_SFID_NULL:       return SFID::NULL_;
@@ -370,7 +370,7 @@ namespace iga
         }
     }
 
-    static SFMessageType translate(GED_MESSAGE_TYPE fc)
+    static inline SFMessageType translate(GED_MESSAGE_TYPE fc)
     {
         switch (fc) {
         case GED_MESSAGE_TYPE_MSD0R_HWB:       return SFMessageType::MSD0R_HWB;
@@ -440,7 +440,7 @@ namespace iga
         }
     }
 
-    static MathFC translate(GED_MATH_FC fc)
+    static inline MathFC translate(GED_MATH_FC fc)
     {
         switch (fc)
         {
@@ -463,18 +463,18 @@ namespace iga
     }
 
 
-    static BranchCntrl translate(GED_BRANCH_CTRL c)
+    static inline BranchCntrl translate(GED_BRANCH_CTRL c)
     {
         return c == GED_BRANCH_CTRL_Branch ? BranchCntrl::ON : BranchCntrl::OFF;
     }
 
 
-    static bool translate(GED_PRED_INV inv)
+    static inline bool translate(GED_PRED_INV inv)
     {
         return inv == GED_PRED_INV_Invert;
     }
 
-    static Region::Vert translateRgnV(uint32_t stride)
+    static inline Region::Vert translateRgnV(uint32_t stride)
     {
         Region::Vert vStride;
 
@@ -496,7 +496,7 @@ namespace iga
     }
 
 
-    static Region::Width translateRgnW(uint32_t w)
+    static inline Region::Width translateRgnW(uint32_t w)
     {
         Region::Width width;
         switch (w)
@@ -512,7 +512,7 @@ namespace iga
     }
 
 
-    static Region::Horz translateRgnH(uint32_t stride)
+    static inline Region::Horz translateRgnH(uint32_t stride)
     {
         Region::Horz hStride;
         switch (stride)
@@ -527,7 +527,7 @@ namespace iga
     }
 
 
-    static Region transateGEDtoIGARegion(uint32_t v, uint32_t w, uint32_t h)
+    static inline Region transateGEDtoIGARegion(uint32_t v, uint32_t w, uint32_t h)
     {
         Region val;
         val.set(
@@ -537,7 +537,7 @@ namespace iga
         return val;
     }
 
-    static SyncFC translate(GED_SYNC_FC fc)
+    static inline SyncFC translate(GED_SYNC_FC fc)
     {
         switch (fc) {
         case GED_SYNC_FC_nop:   return SyncFC::NOP;

@@ -125,18 +125,18 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
     int decodeXXX_OW(int off, const char *fieldName) {
         int bits = getDescBits(off,3);
         int ows = 0;
-        const char *desc = "???";
+        const char *descs = "???";
         // MDC_DB_OW and MDC_64_DB_OW
         // 1L, 1H, 2, 4, 8, 16
         switch (bits) {
-        case 0: ows = 1; desc = "1L (accesses low half of GRF)"; break;
-        case 1: ows = 1; desc = "1H (accesses high half of GRF)"; break;
-        case 2: ows = 2; desc = "2 OWords"; break;
-        case 3: ows = 4; desc = "4 OWords"; break;
-        case 4: ows = 8; desc = "8 OWords"; break;
+        case 0: ows = 1; descs = "1L (accesses low half of GRF)"; break;
+        case 1: ows = 1; descs = "1H (accesses high half of GRF)"; break;
+        case 2: ows = 2; descs = "2 OWords"; break;
+        case 3: ows = 4; descs = "4 OWords"; break;
+        case 4: ows = 8; descs = "8 OWords"; break;
         default: break;
         }
-        addField(fieldName, off, 3, bits, desc);
+        addField(fieldName, off, 3, bits, descs);
         return ows;
     }
     int decodeMDC_A64_DB_OW(int off) {
@@ -901,15 +901,15 @@ void MessageDecoderHDC::tryDecodeDC0BSRW(bool isRead)
 
     addField("MessageType", 14, 5, msgType, msgName);
 
-    std::stringstream desc;
-    desc << msgName;
+    std::stringstream descs;
+    descs << msgName;
     int memBytes = decodeMDC_DS(10);
     if (memBytes == 1)
-        desc << " 8b";
+        descs << " 8b";
     else if (memBytes == 2)
-        desc << " 16b";
+        descs << " 16b";
     else if (memBytes == 4)
-        desc << " 32b";
+        descs << " 32b";
 
     //
     // "byte" scattered always consumes a DW of GRF per channel,
@@ -921,7 +921,7 @@ void MessageDecoderHDC::tryDecodeDC0BSRW(bool isRead)
     //     DWS_DS == 2 (dword) as u32
     setHdcMessageX(
         isRead ? "load" : "store",
-        desc.str(),
+        descs.str(),
         isRead ? SendOp::LOAD : SendOp::STORE,
         32, // 32b addrs
         32, // each channel occupies a DW in the reg file
@@ -937,10 +937,10 @@ void MessageDecoderHDC::tryDecodeDC0BSRW(bool isRead)
 void MessageDecoderHDC::tryDecodeDC0AlignedBlock()
 {
     const int msgType = getDescBits(14, 5);
-    const char *desc ="aligned block read";
+    const char *descs ="aligned block read";
     const char *doc = "7030";
     bool isHw = false;
-    addField("MessageType", 14, 5, msgType, desc);
+    addField("MessageType", 14, 5, msgType, descs);
     if (isHw) {
         setHdcHwBlock(
             "aligned_load_block256",
@@ -967,7 +967,7 @@ void MessageDecoderHDC::tryDecodeDC0Memfence()
     // memory fence
     addField("MessageType", 14, 5, msgType, "fence");
     //
-    std::stringstream sym, desc;
+    std::stringstream sym, descs;
     uint32_t surfId = getDescBits(0,8);
     int extraAttrs = 0;
     if (decodeDescBitField("Commit", 13,
@@ -975,53 +975,53 @@ void MessageDecoderHDC::tryDecodeDC0Memfence()
         "on (wait for fence commit)"))
     {
         sym << "sync_";
-        desc << "synchronized ";
+        descs << "synchronized ";
     }
     if (surfId == SLM_BTI) {
         (void)decodeBTI(32); // add the field
         sym << "slm_fence";
-        desc << "SLM fence";
+        descs << "SLM fence";
         extraAttrs |= MessageInfo::SLM;
     } else if (surfId == 0) {
         sym << "global_fence";
-        desc << "global fence";
+        descs << "global fence";
         if (getDescBits(9, 4) && getDescBit(8)) {
             error(8, 1, "L3 implies L1 flush");
         }
-        desc << " flushing";
+        descs << " flushing";
         if (decodeDescBitField("L1Flush",8,"Flush L3","FLush L1") != 0) {
             sym << ".l1";
-            desc << " L1";
+            descs << " L1";
         }
         if (decodeDescField("L3 Flush Targets",9,4)) {
             if (getDescBits(9, 4) == 0xF) {
-                desc << " all L3 data";
+                descs << " all L3 data";
                 sym << ".dcti";// data, const?, text, inst
             } else {
                 int n = 0;
-                desc << " L3";
+                descs << " L3";
                 sym << ".";
                 if (getDescBit(12)) {
                     sym << "d";
-                    desc << " r/w data";
+                    descs << " r/w data";
                 }
                 if (getDescBit(11)) {
                     if (n++ > 0)
-                        desc << ",";
+                        descs << ",";
                     sym << "c";
-                    desc << " constant data";
+                    descs << " constant data";
                 }
                 if (getDescBit(10)) {
                     if (n++ > 0)
-                        desc << ",";
+                        descs << ",";
                     sym << "t";
-                    desc << " texture data";
+                    descs << " texture data";
                 }
                 if (getDescBit(9)) {
                     if (n++ > 0)
-                        desc << ",";
+                        descs << ",";
                     sym << "i";
-                    desc << " instruction data";
+                    descs << " instruction data";
                 }
             }
         }
@@ -1030,7 +1030,7 @@ void MessageDecoderHDC::tryDecodeDC0Memfence()
     }
     setSpecialOpX(
         sym.str(),
-        desc.str(),
+        descs.str(),
         SendOp::FENCE,
         AddrType::FLAT,
         SendDesc(surfId),
@@ -1223,19 +1223,19 @@ void MessageDecoderHDC::tryDecodeDC1() {
                         "a64 byte scattering with status return message");
             }
             //
-            std::stringstream desc;
-            desc << msgName;
+            std::stringstream descs;
+            descs << msgName;
             int bExt = MDC_A64_DS(10);
             if (bExt == 1)
-                desc << " 8b";
+                descs << " 8b";
             else if (bExt == 2)
-                desc << " 16b";
+                descs << " 16b";
             else if (bExt == 4)
-                desc << " 32b";
+                descs << " 32b";
             //
             setHdcMessageX(
                 isRead ? "load" : "store",
-                desc.str(),
+                descs.str(),
                 isRead ? SendOp::LOAD : SendOp::STORE,
                 64, // A64
                 32, // widens to DW (similar to non-A64 version)
@@ -1441,16 +1441,16 @@ void MessageDecoderHDC::tryDecodeDC1() {
     case MSD1R_MB: // media block read
     case MSD1W_MB: // media block write
     {
-        std::stringstream sym, desc;
+        std::stringstream sym, descs;
         sym << "mb";
-        desc << "media block ";
+        descs << "media block ";
         int bytesTransmitted = 0;
         if (msgType == MSD1R_MB) {
-            desc << "read";
+            descs << "read";
             sym << "rd";
             bytesTransmitted = 2*DEFAULT_EXEC_SIZE*getDescBits(20,5);
         } else {
-            desc << "write";
+            descs << "write";
             sym << "wr";
             int mlen = getDescBits(25, 4);
             if (mlen == 0) {
@@ -1461,26 +1461,26 @@ void MessageDecoderHDC::tryDecodeDC1() {
         }
         int vlso = getDescBits(8, 3); // [10:8] is vert. line stride overr.
         if (vlso) {
-            desc << " with vertical line stride ";
+            descs << " with vertical line stride ";
             int n = 0;
             if (vlso & 0x2) {
-                desc << "override";
+                descs << "override";
                 n++;
             }
             if (vlso & 0x1) {
                 if ((vlso & 0x2) == 0)
-                    desc << " and ";
+                    descs << " and ";
                 else if (n > 0)
-                    desc << ",";
-                desc << "skip";
+                    descs << ",";
+                descs << "skip";
                 n++;
             }
             if (vlso & 0x2) {
                 if (n >= 2)
-                    desc << ", and ";
+                    descs << ", and ";
                 else if (n > 0)
-                    desc << " and ";
-                desc << "offset";
+                    descs << " and ";
+                descs << "offset";
                 n++;
                 if ((vlso & 0) == 0) {
                     warning(8, 3,
@@ -1488,7 +1488,7 @@ void MessageDecoderHDC::tryDecodeDC1() {
                 }
             }
         }
-        setHdcMessage(sym.str(), desc.str(),
+        setHdcMessage(sym.str(), descs.str(),
             msgType == 0x4 ? SendOp::LOAD : SendOp::STORE,
             32, 8, bytesTransmitted, 1,
             MessageInfo::TRANSPOSED);

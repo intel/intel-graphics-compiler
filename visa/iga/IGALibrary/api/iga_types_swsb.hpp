@@ -73,66 +73,72 @@ namespace iga
         DistType  distType;
         TokenType tokenType;
         uint32_t  minDist; // distance to nearest register dependency
-        uint32_t  sbid;    // swsb id. the barrier identifier (sbid) applies to all wait's
+        uint32_t  sbid; // swsb id. the barrier identifier (sbid) applies to all wait's
 
-        SWSB()
-            : distType(DistType::NO_DIST), tokenType(TokenType::NOTOKEN), minDist(0), sbid(0) {}
-        SWSB(DistType dt, TokenType tt, uint32_t dis, uint32_t id)
-            : distType(dt), tokenType(tt), minDist(dis), sbid(id) {}
+        constexpr SWSB()
+            : distType(DistType::NO_DIST)
+            , tokenType(TokenType::NOTOKEN)
+            , minDist(0)
+            , sbid((uint32_t)-1) { }
+        constexpr SWSB(DistType dt, TokenType tt, uint32_t dis, uint32_t id)
+            : distType(dt), tokenType(tt), minDist(dis), sbid(id) { }
 
-        bool operator==(const SWSB& rhs) const
-        {
+        constexpr bool operator==(const SWSB& rhs) const {
             return distType == rhs.distType && tokenType == rhs.tokenType &&
                 sbid == rhs.sbid && minDist == rhs.minDist;
         }
 
-        bool operator!=(const SWSB& rhs) const
-        {
+        constexpr bool operator!=(const SWSB& rhs) const {
             return !(*this == rhs);
         }
 
-        bool hasSWSB() const
-        {
-            return (distType != DistType::NO_DIST) || (tokenType != TokenType::NOTOKEN);
+        constexpr bool hasSWSB() const {
+            return (distType != DistType::NO_DIST) ||
+                (tokenType != TokenType::NOTOKEN);
         }
 
-        bool hasBothDistAndToken() const
-        {
-            return (distType != DistType::NO_DIST) && (tokenType != TokenType::NOTOKEN);
+        constexpr bool hasBothDistAndToken() const {
+            return (distType != DistType::NO_DIST) &&
+                (tokenType != TokenType::NOTOKEN);
         }
 
-        bool hasDist() const
-        {
+        constexpr bool hasDist() const {
             return distType != DistType::NO_DIST;
         }
 
-        bool hasToken() const
-        {
+        constexpr bool hasToken() const {
             return tokenType != TokenType::NOTOKEN;
         }
 
+
+        /// decode swsb info to SWSB from the raw encoding into this object
+        SWSB_STATUS decode(
+            uint32_t swsbBits,
+            SWSB_ENCODE_MODE enMode,
+            InstType instTy);
+
+        /// encode - encode swsb to bianry
+        uint32_t encode(SWSB_ENCODE_MODE enMode, InstType instTy) const;
+
+        /// same as encode (for backwards compatibility)
+        uint32_t getSWSBBinary(SWSB_ENCODE_MODE enMode, InstType instTy) const {
+            return encode(enMode, instTy);
+        }
+
+        /// verify - verify if the SWSB is in the correct combination
+        /// according to given instruction type and encoding mode
+        bool verify(SWSB_ENCODE_MODE enMode, InstType instTy) const;
 
     private:
         template<SWSB_ENCODE_MODE M>
         SWSB_STATUS decode(uint32_t swsbBits, InstType instTy);
 
         template<SWSB_ENCODE_MODE M>
-        uint32_t getSWSBBinary(InstType instTy) const;
+        uint32_t encode(InstType instTy) const;
 
         template<SWSB_ENCODE_MODE M>
         bool verify(InstType instTy) const;
 
-    public:
-        /// createSWSB - decode swsb info to SWSB
-        SWSB_STATUS decode(
-            uint32_t swsbBits, SWSB_ENCODE_MODE enMode, InstType instTy);
-
-        /// getSWSBBinary - encode swsb to bianry
-        uint32_t getSWSBBinary(SWSB_ENCODE_MODE enMode, InstType instTy) const;
-
-        /// verify - verify if the SWSB is in the correct combination according to given
-        /// instruction type and encoding mode
-        bool verify(SWSB_ENCODE_MODE enMode, InstType instTy) const;
     };
 } // namespace iga
 #endif //#ifndef _IGA_TYPES_SWSB_HPP

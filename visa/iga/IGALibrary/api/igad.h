@@ -267,6 +267,8 @@ typedef bool(CDECLATTRIBUTE *pIGAKVGetSWSBInfo)(
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetNumberSources)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_OPCODE_STR "kv_get_opcode"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetOpcode)(const kv_t *kv, int32_t pc);
+#define IGA_KV_GET_SUBFUNCTION_STR "kv_get_subfunction"
+typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetSubfunction)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_HAS_DESTINATION_STR "kv_get_has_destination"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetHasDestination)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_DESTINATION_REGISTER_STR "kv_get_destination_register"
@@ -391,6 +393,7 @@ typedef struct
     pIGAKVGetExecutionSize     kv_get_execution_size;
     pIGAKVGetNumberSources     kv_get_number_sources;
     pIGAKVGetOpcode            kv_get_opcode;
+    pIGAKVGetSubfunction       kv_get_subfunction;
     pIGAKVGetHasDestination    kv_get_has_destination;
     pIGAKVGetDstRegister       kv_get_destination_register;
     pIGAKVGetDstSubRegister    kv_get_destination_sub_register;

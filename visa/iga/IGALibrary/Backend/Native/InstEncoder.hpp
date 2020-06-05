@@ -224,7 +224,7 @@ namespace iga
         void encode(const Field &f, uint32_t val) {encodeFieldBits(f, (uint64_t)val);}
         void encode(const Field &f, uint64_t val) {encodeFieldBits(f, val);}
         void encode(const Field &f, bool val) {encodeFieldBits(f, val ? 1 : 0);}
-        void encode(const Field &f, const Model &model, const OpSpec &os);
+        void encode(const Field &f, const OpSpec &os);
         void encode(const Field &f, ExecSize es);
         void encode(const Field &f, MathMacroExt acc);
         void encode(const Field &f, Region::Vert vt);
@@ -302,23 +302,12 @@ namespace iga
     // longer method implementations (declared above)
     ///////////////////////////////////////////////////////////////////////////
 
-    inline void InstEncoder::encode(
-        const Field &f, const Model &model, const OpSpec &os)
+    inline void InstEncoder::encode(const Field &f, const OpSpec &os)
     {
         if (!os.isValid()) {
             encodingError(f, "invalid opcode");
         }
         encodeFieldBits(f, os.opcode);
-#if 0
-        if (os.isSubop()) {
-            int fcValue = os.functionControlValue;
-            const OpSpec *parOp = model.lookupSubOpParent(os);
-            IGA_ASSERT(parOp != nullptr, "cannot find SubOpParent");
-            IGA_ASSERT(parOp->functionControlField.name != nullptr,
-                "cannot find subop fields");
-            encode(parOp->functionControlField, fcValue);
-        }
-#endif
     }
 
 #define ENCODING_CASE(X, V) case X: val = (V); break

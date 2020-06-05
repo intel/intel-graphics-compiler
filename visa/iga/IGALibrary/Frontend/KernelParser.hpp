@@ -51,8 +51,7 @@ namespace iga {
         // before we give up on the parse
         size_t maxSyntaxErrors = 3;
 
-        ParseOpts(const Model &model)
-        {
+        ParseOpts(const Model &model) {
             swsbEncodeMode = model.getSWSBEncodeMode();
         }
     };
@@ -64,7 +63,8 @@ namespace iga {
         ErrorHandler &e,
         const ParseOpts &popts);
 
-    // typedef std::function<bool(const std::string &, ImmVal &)> SymbolTableFunc;
+    // using SymbolTableFunc =
+    //     std::function<bool(const std::string &, ImmVal &)>;
 
     // Generic GEN parser that can:
     //   - parse constant expressions and knows it's model
@@ -74,7 +74,7 @@ namespace iga {
     {
         const Model&                   m_model;
         InstBuilder&                   m_builder;
-        const ParseOpts                m_parseOpts;
+        const ParseOpts                m_opts;
 
         // TODO: sink to KernelParser
         const OpSpec                  *m_opSpec;
@@ -102,7 +102,7 @@ namespace iga {
             const RegInfo *&regInfo,
             int &regNum);
         bool PeekReg(const RegInfo*& regInfo, int& regNum);
-        bool ConsumeReg(const RegInfo *&regInfo, int &regNum);
+        bool ConsumeReg(const RegInfo*& regInfo, int &regNum);
 
         // expression parsing
         // &,|
@@ -113,30 +113,21 @@ namespace iga {
         bool TryParseConstExpr(ImmVal &v,int srcOpIx = -1);
         bool TryParseIntConstExpr(ImmVal &v, const char *forWhat);
 
-        // attempts to parse an instruction option or dependency info
-        // if this fails without consuming input, return false
-        bool TryParseInstOptOrDepInfo(InstOptSet &instOpts);
-
     protected:
         void ensureIntegral(const Token &t, const ImmVal &v);
-        void checkNumTypes(const ImmVal &v1, const Token &op, const ImmVal &v2);
-        void checkIntTypes(const ImmVal &v1, const Token &op, const ImmVal &v2);
+        void checkNumTypes(const ImmVal &v1, const Token &t, const ImmVal &v2);
+        void checkIntTypes(const ImmVal &v1, const Token &t, const ImmVal &v2);
 
-        ImmVal evalBinExpr(const ImmVal &v1, const Token &op, const ImmVal &v2);
+        ImmVal evalBinExpr(const ImmVal &v1, const Token &t, const ImmVal &v2);
         bool parseBitwiseExpr(bool consumed, ImmVal &v);
         bool parseShiftExpr(bool consumed, ImmVal &v);
         bool parseAddExpr(bool consumed, ImmVal &v);
         bool parseMulExpr(bool consumed, ImmVal &v);
         bool parseUnExpr(bool consumed, ImmVal &v);
         bool parsePrimary(bool consumed, ImmVal &v);
-
-        bool tryParseInstOptDepInfoToken(InstOptSet &instOpts);
-        bool tryParseInstOptToken(InstOptSet &instOpts);
     private:
         void initSymbolMaps();
         std::map<std::string,const RegInfo*>  m_regmap;
-    };
-}
-
-
+    }; // class GenParser
+} // iga::
 #endif

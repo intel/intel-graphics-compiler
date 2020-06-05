@@ -92,9 +92,9 @@ public:
         return t;
     }
 
-    void deallocate(void* p, size_type)
+    void deallocate(void*, size_type)
     {
-        //No deallocation for arena allocator.
+        // No deallocation for arena allocator.
     }
 
     pointer           address(reference x) const { return &x; }

@@ -558,6 +558,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * *** It should build without warnings. ***
  *   => It's nice to strip end of line whitespace on the generated files.
  */
+#if defined(_MSC_VER)
+#pragma warning(default : 4505)
+#endif
 
 #include "Lexemes.hpp"
 
@@ -570,11 +573,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define YY_USER_ACTION \
     yyset_column(yyget_column(yyscanner) + (int)yyget_leng(yyscanner), yyscanner);
 
-#line 599 "lex.yy.cpp"
+#line 602 "lex.yy.cpp"
 #define YY_NO_UNISTD_H 1
 /* omits isatty */
 
-#line 603 "lex.yy.cpp"
+#line 606 "lex.yy.cpp"
 
 #define INITIAL 0
 #define SLASH_STAR 1
@@ -837,10 +840,10 @@ YY_DECL
         }
 
     {
-#line 86 "LexicalSpec.flex"
+#line 89 "LexicalSpec.flex"
 
 
-#line 869 "lex.yy.cpp"
+#line 872 "lex.yy.cpp"
 
     while ( /*CONSTCOND*/1 )        /* loops until end-of-file is reached */
         {
@@ -907,242 +910,242 @@ do_action:  /* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 88 "LexicalSpec.flex"
+#line 91 "LexicalSpec.flex"
 { inp_off += 2; BEGIN(INITIAL); }
     YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 89 "LexicalSpec.flex"
+#line 92 "LexicalSpec.flex"
 { inp_off += (unsigned int)yyget_leng(yyscanner); } // eat comment in line chunks
     YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 90 "LexicalSpec.flex"
+#line 93 "LexicalSpec.flex"
 { inp_off++; } // eat the lone star
     YY_BREAK
 case 4:
 /* rule 4 can match eol */
 YY_RULE_SETUP
-#line 91 "LexicalSpec.flex"
+#line 94 "LexicalSpec.flex"
 { inp_off++; }
     YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 93 "LexicalSpec.flex"
+#line 96 "LexicalSpec.flex"
 { inp_off++;
                         BEGIN(INITIAL);
                         return iga::Lexeme::STRLIT; }
     YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 96 "LexicalSpec.flex"
+#line 99 "LexicalSpec.flex"
 { inp_off += 2; }
     YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 97 "LexicalSpec.flex"
+#line 100 "LexicalSpec.flex"
 { inp_off++; }
     YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 99 "LexicalSpec.flex"
+#line 102 "LexicalSpec.flex"
 { inp_off++;
                         BEGIN(INITIAL);
                         return iga::Lexeme::CHRLIT; }
     YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 102 "LexicalSpec.flex"
+#line 105 "LexicalSpec.flex"
 { inp_off += 2; }
     YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 103 "LexicalSpec.flex"
+#line 106 "LexicalSpec.flex"
 { inp_off++; }
     YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 105 "LexicalSpec.flex"
+#line 108 "LexicalSpec.flex"
 {inp_off += 2; BEGIN(SLASH_STAR);}
     YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 106 "LexicalSpec.flex"
+#line 109 "LexicalSpec.flex"
 return iga::Lexeme::LANGLE;
     YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 107 "LexicalSpec.flex"
+#line 110 "LexicalSpec.flex"
 return iga::Lexeme::RANGLE;
     YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 108 "LexicalSpec.flex"
+#line 111 "LexicalSpec.flex"
 return iga::Lexeme::LBRACK;
     YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 109 "LexicalSpec.flex"
+#line 112 "LexicalSpec.flex"
 return iga::Lexeme::RBRACK;
     YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 110 "LexicalSpec.flex"
+#line 113 "LexicalSpec.flex"
 return iga::Lexeme::LBRACE;
     YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 111 "LexicalSpec.flex"
+#line 114 "LexicalSpec.flex"
 return iga::Lexeme::RBRACE;
     YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 112 "LexicalSpec.flex"
+#line 115 "LexicalSpec.flex"
 return iga::Lexeme::LPAREN;
     YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 113 "LexicalSpec.flex"
+#line 116 "LexicalSpec.flex"
 return iga::Lexeme::RPAREN;
     YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 115 "LexicalSpec.flex"
+#line 118 "LexicalSpec.flex"
 return iga::Lexeme::DOLLAR;
     YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 116 "LexicalSpec.flex"
+#line 119 "LexicalSpec.flex"
 return iga::Lexeme::DOT;
     YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 117 "LexicalSpec.flex"
+#line 120 "LexicalSpec.flex"
 return iga::Lexeme::COMMA;
     YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 118 "LexicalSpec.flex"
+#line 121 "LexicalSpec.flex"
 return iga::Lexeme::SEMI;
     YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 119 "LexicalSpec.flex"
+#line 122 "LexicalSpec.flex"
 return iga::Lexeme::COLON;
     YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 121 "LexicalSpec.flex"
+#line 124 "LexicalSpec.flex"
 return iga::Lexeme::TILDE;
     YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 122 "LexicalSpec.flex"
+#line 125 "LexicalSpec.flex"
 return iga::Lexeme::ABS;
     YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 123 "LexicalSpec.flex"
+#line 126 "LexicalSpec.flex"
 return iga::Lexeme::SAT;
     YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 125 "LexicalSpec.flex"
+#line 128 "LexicalSpec.flex"
 return iga::Lexeme::BANG;
     YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 126 "LexicalSpec.flex"
+#line 129 "LexicalSpec.flex"
 return iga::Lexeme::AT;
     YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 127 "LexicalSpec.flex"
+#line 130 "LexicalSpec.flex"
 return iga::Lexeme::HASH;
     YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 128 "LexicalSpec.flex"
+#line 131 "LexicalSpec.flex"
 return iga::Lexeme::EQ;
     YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 130 "LexicalSpec.flex"
+#line 133 "LexicalSpec.flex"
 return iga::Lexeme::MOD;
     YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 131 "LexicalSpec.flex"
+#line 134 "LexicalSpec.flex"
 return iga::Lexeme::MUL;
     YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 132 "LexicalSpec.flex"
+#line 135 "LexicalSpec.flex"
 return iga::Lexeme::DIV;
     YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 133 "LexicalSpec.flex"
+#line 136 "LexicalSpec.flex"
 return iga::Lexeme::ADD;
     YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 134 "LexicalSpec.flex"
+#line 137 "LexicalSpec.flex"
 return iga::Lexeme::SUB;
     YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 135 "LexicalSpec.flex"
+#line 138 "LexicalSpec.flex"
 return iga::Lexeme::LSH;
     YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 136 "LexicalSpec.flex"
+#line 139 "LexicalSpec.flex"
 return iga::Lexeme::RSH;
     YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 137 "LexicalSpec.flex"
+#line 140 "LexicalSpec.flex"
 return iga::Lexeme::AMP;
     YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 138 "LexicalSpec.flex"
+#line 141 "LexicalSpec.flex"
 return iga::Lexeme::CIRC;
     YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 139 "LexicalSpec.flex"
+#line 142 "LexicalSpec.flex"
 return iga::Lexeme::PIPE;
     YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 141 "LexicalSpec.flex"
+#line 144 "LexicalSpec.flex"
 return iga::Lexeme::INTLIT02; /* 0b1101 */
     YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 142 "LexicalSpec.flex"
+#line 145 "LexicalSpec.flex"
 return iga::Lexeme::INTLIT10; /* 13 */
     YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 143 "LexicalSpec.flex"
+#line 146 "LexicalSpec.flex"
 return iga::Lexeme::INTLIT16; /* 0x13 */
     YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 145 "LexicalSpec.flex"
+#line 148 "LexicalSpec.flex"
 return iga::Lexeme::FLTLIT; /* 3.14 */
     YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 146 "LexicalSpec.flex"
+#line 149 "LexicalSpec.flex"
 return iga::Lexeme::FLTLIT; /* 3e-9 */
     YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 148 "LexicalSpec.flex"
+#line 151 "LexicalSpec.flex"
 return iga::Lexeme::IDENT;
     YY_BREAK
 
@@ -1153,43 +1156,43 @@ return iga::Lexeme::IDENT;
 
 case 48:
 YY_RULE_SETUP
-#line 156 "LexicalSpec.flex"
+#line 159 "LexicalSpec.flex"
 return iga::Lexeme::IDENT;
     YY_BREAK
 case 49:
 /* rule 49 can match eol */
 YY_RULE_SETUP
-#line 159 "LexicalSpec.flex"
+#line 162 "LexicalSpec.flex"
 return iga::Lexeme::NEWLINE; /* newlines are explicitly represented */
     YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 160 "LexicalSpec.flex"
+#line 163 "LexicalSpec.flex"
 { inp_off += (unsigned int)yyget_leng(yyscanner); } /* whitespace */;
     YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 161 "LexicalSpec.flex"
+#line 164 "LexicalSpec.flex"
 { inp_off += (unsigned int)yyget_leng(yyscanner); } /* EOL comment ?*/
     YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 163 "LexicalSpec.flex"
+#line 166 "LexicalSpec.flex"
 return iga::Lexeme::LEXICAL_ERROR;
     YY_BREAK
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(SLASH_STAR):
 case YY_STATE_EOF(STRING_DBL):
 case YY_STATE_EOF(STRING_SNG):
-#line 164 "LexicalSpec.flex"
+#line 167 "LexicalSpec.flex"
 return iga::Lexeme::END_OF_FILE;
     YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 166 "LexicalSpec.flex"
+#line 169 "LexicalSpec.flex"
 ECHO;
     YY_BREAK
-#line 1218 "lex.yy.cpp"
+#line 1221 "lex.yy.cpp"
 
     case YY_END_OF_BUFFER:
         {
@@ -2368,6 +2371,6 @@ void yyfree (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 166 "LexicalSpec.flex"
+#line 169 "LexicalSpec.flex"
 
 

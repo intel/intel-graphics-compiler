@@ -30,9 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
-bool iga::ged::IsEncodeSupported(
-    const Model &m,
-    const EncoderOpts &opts)
+bool iga::ged::IsEncodeSupported(const Model &, const EncoderOpts &)
 {
     return true;
 }
@@ -59,8 +57,8 @@ void iga::ged::Encode(
 }
 
 bool iga::ged::IsDecodeSupported(
-    const Model &m,
-    const DecoderOpts &opts)
+    const Model &,
+    const DecoderOpts &)
 {
     return true;
 }

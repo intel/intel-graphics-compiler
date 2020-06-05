@@ -187,22 +187,32 @@ class InstBuilder {
 
 public:
     struct SWSBInfo {
-        enum DIST_TYPE {
-            NONE,
-            REG_DIST,
-        };
-        DIST_TYPE distType = NONE;
+        SWSB::DistType distType = SWSB::DistType::NO_DIST;
         uint32_t regDist = 0;      // e.g. @3       0 = not set
         int32_t memSBidAlloc = -1; // e.g. $2      -1 = not set
         int32_t memSBidDst = -1;   // e.g. $2.dst  -1 = not set
         int32_t memSBidSrc = -1;   // e.g. $2.src  -1 = not set
+
         SWSBInfo() { } // sets default values as above
+
         bool anyBarrierSet() const {
             return sbidAllocSet() || sbidDstSet() || sbidSrcSet();
         }
         bool sbidAllocSet() const {return memSBidAlloc >= 0;}
         bool sbidDstSet() const {return memSBidDst >= 0;}
         bool sbidSrcSet() const {return memSBidSrc >= 0;}
+
+        bool operator==(const SWSBInfo &sbi) const {
+            return
+                distType == sbi.distType &&
+                regDist == sbi.regDist &&
+                memSBidAlloc == sbi.memSBidAlloc &&
+                memSBidDst == sbi.memSBidDst &&
+                memSBidSrc == sbi.memSBidSrc;
+        }
+        bool operator!=(const SWSBInfo &sbi) const {
+            return !(*this == sbi);
+        }
     };
 
 private:
@@ -239,6 +249,7 @@ private:
         m_sendSrc0Len = m_sendSrc1Len = -1;
 
         m_instOpts.clear();
+
         m_depInfo = SWSBInfo();
 
         m_comment.clear();
@@ -518,16 +529,8 @@ public:
 
         if (m_depInfo.regDist > 0)
         {
-            SWSB::DistType swsb_type = SWSB::DistType::NO_DIST;
-            switch(m_depInfo.distType) {
-            case SWSBInfo::REG_DIST:
-                swsb_type = SWSB::REG_DIST;
-                break;
-            default:
-                break;
-            }
             swInfo.minDist = m_depInfo.regDist;
-            swInfo.distType = swsb_type;
+            swInfo.distType = m_depInfo.distType;
         }
         SWSB::InstType inst_type = SWSB::InstType::OTHERS;
         if (m_opSpec->isSendOrSendsFamily())
@@ -551,7 +554,7 @@ public:
 
 
     void InstPredication(
-        const Loc &loc,
+        const Loc &,
         bool inv,
         const RegRef &flagReg,
         PredCtrl predCtrl)
@@ -574,15 +577,15 @@ public:
 
 
     void InstExecInfo(
-        const Loc &execSizeLoc, ExecSize execSize,
-        const Loc &execOffLoc, ChannelOffset execOff)
+        const Loc &, ExecSize execSize,
+        const Loc &, ChannelOffset execOff)
     {
         m_execSize = execSize;
         m_chOff = execOff;
     }
 
 
-    void InstNoMask(const Loc &loc) {
+    void InstNoMask(const Loc &) {
         m_maskCtrl = MaskCtrl::NOMASK;
     }
 
@@ -669,7 +672,6 @@ public:
     void InstDstOpRegMathMacroExtReg(
         const Loc &loc,
         const RegInfo &ri,
-        RegName rnm,
         int regNum,
         MathMacroExt mme,
         Region::Horz rgnH,
@@ -899,9 +901,9 @@ public:
     // E.g. "send ... 0xC  a0.0"
     // (we translate  this to:  a0.0<0;1,0>:ud)
     void InstSendDescs(
-        const Loc &locExDesc,
+        const Loc &,
         const SendDesc &exDesc,
-        const Loc &locDesc,
+        const Loc &,
         const SendDesc &desc)
     {
         m_exDesc = exDesc;
@@ -946,10 +948,10 @@ public:
         m_depInfo.memSBidAlloc = sbid;
     }
 
-    void InstDepInfoDist(Loc loc, SWSBInfo::DIST_TYPE type, uint32_t dist) {
+    void InstDepInfoDist(Loc loc, SWSB::DistType type, uint32_t dist) {
         if (dist > m_model.getSWSBMaxValidDistance())
             m_errorHandler.reportError(loc, "Invalid SWSB distance number");
-        if (m_depInfo.distType != SWSBInfo::DIST_TYPE::NONE)
+        if (m_depInfo.distType != SWSB::DistType::NO_DIST)
             m_errorHandler.reportError(loc, "More than one SWSB distance set");
         m_depInfo.distType = type;
         m_depInfo.regDist = dist;
@@ -958,10 +960,11 @@ public:
     ///////////////////////////////////////////////
     // for decoding from binary
     void InstSwsb(Loc loc, SWSB swsb) {
-        m_depInfo = SWSBInfo(); // clobber old value
+        IGA_ASSERT(m_depInfo == SWSBInfo(), "resetting SWSB info");
+
         // verify the given swsb
-        SWSB::InstType inst_type = m_opSpec->getSWSBInstType();
-        if (!swsb.verify(m_model.getSWSBEncodeMode(), inst_type))
+        SWSB::InstType instType = m_opSpec->getSWSBInstType();
+        if (!swsb.verify(m_model.getSWSBEncodeMode(), instType))
             m_errorHandler.reportError(loc, "invalid SWSB bits");
 
         switch(swsb.tokenType) {
@@ -978,16 +981,7 @@ public:
             break;
         }
 
-        switch (swsb.distType) {
-        case SWSB::DistType::NO_DIST:
-            m_depInfo.distType = SWSBInfo::NONE;
-            break;
-        case SWSB::DistType::REG_DIST:
-            m_depInfo.distType = SWSBInfo::REG_DIST;
-            break;
-        default:
-            m_errorHandler.reportError(loc, "invalid SWSB bits");
-        }
+        m_depInfo.distType = swsb.distType;
         if (swsb.distType != SWSB::DistType::NO_DIST)
             m_depInfo.regDist = swsb.minDist;
     }

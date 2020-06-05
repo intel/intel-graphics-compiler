@@ -362,7 +362,7 @@ namespace iga
             GED_REG_FILE regFile = decodeSrcRegFile<S>();
             decodeReg((int)S, regFile, regNumBits, regName, regRef);
             if (!m_opSpec->isSendOrSendsFamily() && !isMacro()) {
-                regRef.subRegNum = (uint8_t)decodeSrcSubRegNum<S>();
+                regRef.subRegNum = (uint16_t)decodeSrcSubRegNum<S>();
             } else {
                 regRef.subRegNum = 0;
             }
@@ -386,7 +386,7 @@ namespace iga
                     scalingType = Type::D;
             }
 
-            dri.regRef.subRegNum = binNumToSubRegNum(
+            dri.regRef.subRegNum = (uint16_t)binNumToSubRegNum(
                 dri.regRef.subRegNum, dri.regName,
                 scalingType);
 
@@ -407,9 +407,13 @@ namespace iga
         static const bool print_ged_debug = true;
 #else
         static const bool print_ged_debug = false;
-        static GED_RETURN_VALUE GED_PrintFieldBitLocation(const ged_ins_t* ins, const GED_INS_FIELD field) { return GED_RETURN_VALUE_SUCCESS; };
+        static GED_RETURN_VALUE GED_PrintFieldBitLocation(
+            const ged_ins_t*,
+            const GED_INS_FIELD)
+        {
+            return GED_RETURN_VALUE_SUCCESS;
+        };
 #endif
-
 
         void decodeOptions(Instruction *inst);
 

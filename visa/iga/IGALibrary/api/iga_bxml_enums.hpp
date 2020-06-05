@@ -167,6 +167,9 @@ namespace iga
             MathFC      math; // op == Op::MATH
             SFID        send; // op == Op::SEND*  (**)
             SyncFC      sync; // op == Op::SYNC
+            // NOTE: this does *not* correspond to any direct encoding
+            // since that can vary from platform to platform.
+            uint32_t    bits;
         };
         constexpr Subfunction() : Subfunction(InvalidFC::INVALID) { }
         constexpr Subfunction(InvalidFC sf) : invalid(sf) { }

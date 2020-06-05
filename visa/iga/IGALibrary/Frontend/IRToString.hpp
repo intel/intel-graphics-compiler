@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga {
 
-static std::string MakeErrorString(const char *pfx, int t) {
+static inline std::string MakeErrorString(const char *pfx, int t) {
     std::stringstream ss;
     ss << pfx << "::" << t << "?";
     return ss.str();
@@ -45,7 +45,7 @@ static std::string MakeErrorString(const char *pfx, int t) {
 #define MAKE_CASE(C,S) case C::S: return #C "::" #S
 #define MAKE_DEFAULT_CASE(C) default: return MakeErrorString(#C, (int)x)
 
-static std::string ToSymbol(Platform x) {
+static inline std::string ToSymbol(Platform x) {
     switch (x) {
     MAKE_CASE(Platform, INVALID);
     MAKE_CASE(Platform, GEN6);
@@ -65,7 +65,7 @@ static std::string ToSymbol(Platform x) {
 }
 
 
-static std::string ToSymbol(PredCtrl x) {
+static inline std::string ToSymbol(PredCtrl x) {
     switch (x) {
     MAKE_CASE(PredCtrl, NONE);
     MAKE_CASE(PredCtrl, SEQ);
@@ -86,7 +86,7 @@ static std::string ToSymbol(PredCtrl x) {
 }
 
 
-static std::string ToSymbol(Op op) {
+static inline std::string ToSymbol(Op op) {
     // TODO: expand this manually, this is a crude approximation
     std::stringstream ss;
     ss << "op#" << (int)op;
@@ -94,11 +94,11 @@ static std::string ToSymbol(Op op) {
 }
 
 
-static std::string ToSymbol(bool x) {
+static inline std::string ToSymbol(bool x) {
     return x ? "true" : "false";
 }
 
-static std::string ToSymbol(BranchCntrl x) {
+static inline std::string ToSymbol(BranchCntrl x) {
     switch (x) {
     MAKE_CASE(BranchCntrl, ON);
     MAKE_CASE(BranchCntrl, OFF);
@@ -107,7 +107,7 @@ static std::string ToSymbol(BranchCntrl x) {
 }
 
 
-static std::string ToSymbol(ExecSize x) {
+static inline std::string ToSymbol(ExecSize x) {
     switch (x) {
     MAKE_CASE(ExecSize, SIMD1);
     MAKE_CASE(ExecSize, SIMD2);
@@ -120,7 +120,7 @@ static std::string ToSymbol(ExecSize x) {
 }
 
 
-static std::string ToSymbol(ChannelOffset x) {
+static inline std::string ToSymbol(ChannelOffset x) {
     switch (x) {
     MAKE_CASE(ChannelOffset, M0);
     MAKE_CASE(ChannelOffset, M4);
@@ -135,7 +135,7 @@ static std::string ToSymbol(ChannelOffset x) {
 }
 
 
-static std::string ToSymbol(MaskCtrl x) {
+static inline std::string ToSymbol(MaskCtrl x) {
     switch (x) {
     MAKE_CASE(MaskCtrl, NORMAL);
     MAKE_CASE(MaskCtrl, NOMASK);
@@ -144,7 +144,7 @@ static std::string ToSymbol(MaskCtrl x) {
 }
 
 
-static std::string ToSymbol(SrcModifier x) {
+static inline std::string ToSymbol(SrcModifier x) {
     switch (x) {
     MAKE_CASE(SrcModifier, NONE);
     MAKE_CASE(SrcModifier, ABS);
@@ -155,7 +155,8 @@ static std::string ToSymbol(SrcModifier x) {
 }
 
 
-static std::string ToSymbol(DstModifier x) {
+static inline std::string ToSymbol(DstModifier x)
+{
     switch (x) {
     MAKE_CASE(DstModifier, NONE);
     MAKE_CASE(DstModifier, SAT);
@@ -164,7 +165,8 @@ static std::string ToSymbol(DstModifier x) {
 }
 
 
-static std::string ToSymbol(RegName x) {
+static inline std::string ToSymbol(RegName x)
+{
     switch (x) {
     MAKE_CASE(RegName, INVALID);
     MAKE_CASE(RegName, ARF_NULL);
@@ -189,7 +191,8 @@ static std::string ToSymbol(RegName x) {
 }
 
 
-static std::string ToSymbol(MathMacroExt x) {
+static inline std::string ToSymbol(MathMacroExt x)
+{
     switch (x) {
     MAKE_CASE(MathMacroExt, INVALID);
     MAKE_CASE(MathMacroExt, MME0);
@@ -206,7 +209,8 @@ static std::string ToSymbol(MathMacroExt x) {
 }
 
 
-static std::string ToSymbol(Type x) {
+static inline std::string ToSymbol(Type x)
+{
     switch (x) {
     MAKE_CASE(Type, INVALID);
 
@@ -234,7 +238,8 @@ static std::string ToSymbol(Type x) {
 }
 
 
-static std::string ToSymbol(FlagModifier x) {
+static inline std::string ToSymbol(FlagModifier x)
+{
     switch (x) {
     MAKE_CASE(FlagModifier, NONE);
     MAKE_CASE(FlagModifier, EQ);
@@ -251,7 +256,8 @@ static std::string ToSymbol(FlagModifier x) {
 }
 
 
-static std::string ToSymbol(Region x) {
+static inline std::string ToSymbol(Region x)
+{
     if (x == Region::INVALID)
         return "Region::INVALID";
     else if (x == Region::SRC010)
@@ -324,7 +330,8 @@ static std::string ToSymbol(Region x) {
 }
 
 
-static std::string ToSymbol(InstOpt x) {
+static inline std::string ToSymbol(InstOpt x)
+{
     switch (x) {
     MAKE_CASE(InstOpt, ACCWREN);
     MAKE_CASE(InstOpt, ATOMIC);
@@ -342,7 +349,8 @@ static std::string ToSymbol(InstOpt x) {
 }
 
 
-static std::string ToSymbol(const RegRef& x) {
+static inline std::string ToSymbol(const RegRef& x)
+{
     if (x == REGREF_INVALID) {
         return "RegRef::INVALID";
     } else {
@@ -357,7 +365,7 @@ static std::string ToSymbol(const RegRef& x) {
 }
 
 
-static std::string ToSymbol(const SendDesc& x) {
+static inline std::string ToSymbol(const SendDesc& x) {
     std::stringstream ss;
     ss << "{";
     ss << (x.isImm() ? "IMM" : "REG32A");
@@ -372,7 +380,7 @@ static std::string ToSymbol(const SendDesc& x) {
 }
 
 
-static std::string ToSyntax(Type ot) {
+static inline std::string ToSyntax(Type ot) {
     switch (ot) {
     case Type::UV: return ":uv";
     case Type::UB: return ":ub";
@@ -399,12 +407,12 @@ static std::string ToSyntax(Type ot) {
 }
 
 
-static std::string ToSyntax(MaskCtrl mc) {
+static inline std::string ToSyntax(MaskCtrl mc) {
     return mc == MaskCtrl::NOMASK ? "W" : "";
 }
 
 
-static std::string ToSyntax(PredCtrl pc) {
+static inline std::string ToSyntax(PredCtrl pc) {
     switch (pc) {
     case PredCtrl::NONE: return "";
     case PredCtrl::SEQ: return "";
@@ -425,7 +433,7 @@ static std::string ToSyntax(PredCtrl pc) {
 }
 
 
-static std::string ToSyntax(const Predication& pred) {
+static inline std::string ToSyntax(const Predication& pred) {
     std::stringstream ss;
     ss << (pred.inverse ? "~" : "");
     ss << ToSyntax(pred.function);
@@ -433,7 +441,7 @@ static std::string ToSyntax(const Predication& pred) {
 }
 
 
-static std::string ToSyntax(ExecSize es) {
+static inline std::string ToSyntax(ExecSize es) {
     switch (es) {
     case ExecSize::SIMD1: return "1";
     case ExecSize::SIMD2: return "2";
@@ -446,7 +454,7 @@ static std::string ToSyntax(ExecSize es) {
 }
 
 
-static std::string ToSyntax(ChannelOffset es) {
+static inline std::string ToSyntax(ChannelOffset es) {
     switch (es) {
     case ChannelOffset::M0: return "M0";
     case ChannelOffset::M4: return "M4";
@@ -461,7 +469,7 @@ static std::string ToSyntax(ChannelOffset es) {
 }
 
 
-static std::string ToSyntax(FlagModifier fm) {
+static inline std::string ToSyntax(FlagModifier fm) {
     switch (fm) {
     case FlagModifier::NONE: return ""; // 0
     case FlagModifier::EQ: return "eq";
@@ -478,19 +486,23 @@ static std::string ToSyntax(FlagModifier fm) {
 }
 
 
-static bool IsBitwise(Op op) {
+static inline bool IsBitwise(Op op) {
     switch (op) {
     case Op::AND:
     case Op::OR:
     case Op::XOR:
     case Op::NOT:
-      return true;
+    // what about these?
+    // case Op::CBIT:
+    // case Op::LZD:
+        return true;
     default:
       return false;
     }
 }
 
-static std::string ToSyntax(BranchCntrl bc) {
+
+static inline std::string ToSyntax(BranchCntrl bc) {
     switch (bc) {
     case BranchCntrl::OFF: return "";
     case BranchCntrl::ON: return ".b";
@@ -498,7 +510,7 @@ static std::string ToSyntax(BranchCntrl bc) {
     }
 }
 
-static std::string ToSyntax(Op op, SrcModifier sm) {
+static inline std::string ToSyntax(Op op, SrcModifier sm) {
     switch (sm) {
     case SrcModifier::NONE: return "";
     case SrcModifier::ABS: return "(abs)";
@@ -509,7 +521,7 @@ static std::string ToSyntax(Op op, SrcModifier sm) {
 }
 
 
-static std::string ToSyntax(RegName regName) {
+static inline std::string ToSyntax(RegName regName) {
     switch (regName) {
     case RegName::ARF_NULL:  return "null";  // null
     case RegName::ARF_A:     return "a";
@@ -533,7 +545,7 @@ static std::string ToSyntax(RegName regName) {
 }
 
 
-static std::string ToSyntax(MathMacroExt MathMacroReg) {
+static inline std::string ToSyntax(MathMacroExt MathMacroReg) {
     switch (MathMacroReg) {
     case MathMacroExt::MME0:  return ".mme0";
     case MathMacroExt::MME1:  return ".mme1";
@@ -550,7 +562,7 @@ static std::string ToSyntax(MathMacroExt MathMacroReg) {
 }
 
 
-static std::string ToSyntax(const Region &rgn) {
+static inline std::string ToSyntax(const Region &rgn) {
     std::stringstream ss;
 
     if (rgn.getVt() != Region::Vert::VT_INVALID &&
@@ -584,7 +596,7 @@ static std::string ToSyntax(const Region &rgn) {
 }
 
 
-static std::string ToSyntax(const InstOpt &i) {
+static inline std::string ToSyntax(const InstOpt &i) {
     switch (i) {
     case InstOpt::ACCWREN:     return "AccWrEn";
     case InstOpt::ATOMIC:      return "Atomic";
@@ -603,7 +615,7 @@ static std::string ToSyntax(const InstOpt &i) {
 }
 
 
-static void ToSyntaxNoBraces(
+static inline void ToSyntaxNoBraces(
     std::ostream &os,
     const InstOptSet &instOpts)
 {
@@ -639,7 +651,7 @@ static void ToSyntaxNoBraces(
     }
 }
 
-static std::string ToSyntax(const InstOptSet &instOpts) {
+static inline std::string ToSyntax(const InstOptSet &instOpts) {
     std::stringstream ss;
 
     ss << "{";

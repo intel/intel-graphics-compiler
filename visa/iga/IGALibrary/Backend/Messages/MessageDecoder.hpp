@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace iga {
     using DescFieldFormatter =
         std::function<void (std::stringstream &,uint32_t)>;
-    static void NO_DECODE(std::stringstream &,uint32_t) { }
+    static inline void NO_DECODE(std::stringstream &,uint32_t) { }
 
 
     struct MessageDecoder {

@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
-    static GED_OPCODE lowerOpcode(Op opcode, Platform pltfm)
+    static inline GED_OPCODE lowerOpcode(Op opcode)
     {
         GED_OPCODE op = GED_OPCODE_INVALID;
         switch (opcode)
@@ -121,7 +121,7 @@ namespace iga
         return op;
     }
 
-    static GED_MODEL lowerPlatform(Platform platform)
+    static inline GED_MODEL lowerPlatform(Platform platform)
     {
         GED_MODEL pltf = GED_MODEL_INVALID;
         switch (platform)
@@ -143,7 +143,7 @@ namespace iga
         return pltf;
     }
 
-    static GED_SYNC_FC lowerSyncFC(SyncFC fc)
+    static inline GED_SYNC_FC lowerSyncFC(SyncFC fc)
     {
         switch (fc)
         {
@@ -157,7 +157,7 @@ namespace iga
     }
 
 
-    static GED_PRED_CTRL lowerPredCtrl(PredCtrl predMod)
+    static inline GED_PRED_CTRL lowerPredCtrl(PredCtrl predMod)
     {
         GED_PRED_CTRL predCtrl = GED_PRED_CTRL_INVALID;
 
@@ -184,7 +184,7 @@ namespace iga
         return predCtrl;
     }
 
-    static GED_SRC_MOD lowerSrcMod(SrcModifier modSource)
+    static inline GED_SRC_MOD lowerSrcMod(SrcModifier modSource)
     {
         GED_SRC_MOD srcMod = GED_SRC_MOD_INVALID;
 
@@ -201,7 +201,7 @@ namespace iga
         return srcMod;
     }
 
-    static GED_SFID lowerSFID(SFID igaSfid)
+    static inline GED_SFID lowerSFID(SFID igaSfid)
     {
         GED_SFID sfid = GED_SFID_INVALID;
         switch (igaSfid) {
@@ -224,7 +224,7 @@ namespace iga
         return sfid;
     }
 
-    static GED_SFID lowerSendTFID(uint32_t id, Platform platform)
+    static inline GED_SFID lowerSendTFID(uint32_t id, Platform platform)
     {
         GED_SFID tfid = GED_SFID_INVALID;
         switch (id)
@@ -269,7 +269,7 @@ namespace iga
         return tfid;
     }
 
-    static GED_SATURATE lowerSaturate(DstModifier dstSat)
+    static inline GED_SATURATE lowerSaturate(DstModifier dstSat)
     {
         GED_SATURATE gedSat = GED_SATURATE_INVALID;
 
@@ -284,7 +284,7 @@ namespace iga
         return gedSat;
     }
 
-    static GED_DATA_TYPE lowerDataType(Type opndType)
+    static inline GED_DATA_TYPE lowerDataType(Type opndType)
     {
         GED_DATA_TYPE dataType = GED_DATA_TYPE_INVALID;
 
@@ -313,7 +313,7 @@ namespace iga
 
 
 
-    static GED_MATH_MACRO_EXT lowerSpecialAcc(MathMacroExt mme)
+    static inline GED_MATH_MACRO_EXT lowerSpecialAcc(MathMacroExt mme)
     {
         switch (mme)
         {
@@ -331,7 +331,7 @@ namespace iga
     }
 
 
-    static GED_CHANNEL_OFFSET lowerQtrCtrl(ChannelOffset ectrl)
+    static inline GED_CHANNEL_OFFSET lowerQtrCtrl(ChannelOffset ectrl)
     {
         GED_CHANNEL_OFFSET gedCtrl = GED_CHANNEL_OFFSET_INVALID;
         switch (ectrl)
@@ -349,7 +349,7 @@ namespace iga
         return gedCtrl;
     }
 
-    static GED_EXEC_MASK_OFFSET_CTRL lowerQtrCtrl(
+    static inline GED_EXEC_MASK_OFFSET_CTRL lowerQtrCtrl(
         ExecSize eSize, ChannelOffset ectrl)
     {
         GED_EXEC_MASK_OFFSET_CTRL gedCtrl = GED_EXEC_MASK_OFFSET_CTRL_INVALID;
@@ -450,7 +450,7 @@ namespace iga
     }
 
 
-    static GED_MASK_CTRL lowerEmask(MaskCtrl ectrl)
+    static inline GED_MASK_CTRL lowerEmask(MaskCtrl ectrl)
     {
         GED_MASK_CTRL eMask = GED_MASK_CTRL_INVALID;
 
@@ -466,13 +466,13 @@ namespace iga
     }
 
 
-    static uint32_t lowerExecSize(ExecSize eSize)
+    static inline uint32_t lowerExecSize(ExecSize eSize)
     {
         return (uint32_t)ExecSizeToInt(eSize);
     }
 
 
-    static GED_COND_MODIFIER lowerCondModifier(FlagModifier condMod)
+    static inline GED_COND_MODIFIER lowerCondModifier(FlagModifier condMod)
     {
         GED_COND_MODIFIER mod = GED_COND_MODIFIER_INVALID;
 
@@ -497,7 +497,7 @@ namespace iga
 
 
 
-    static GED_MATH_FC lowerMathFC(MathFC fc)
+    static inline GED_MATH_FC lowerMathFC(MathFC fc)
     {
         switch (fc) {
         case MathFC::INV:   return GED_MATH_FC_INV; break;
@@ -518,7 +518,7 @@ namespace iga
         }
     }
 
-    static GED_BRANCH_CTRL lowerBranchCntrl(BranchCntrl brnch)
+    static inline GED_BRANCH_CTRL lowerBranchCntrl(BranchCntrl brnch)
     {
         GED_BRANCH_CTRL gedBrnch = GED_BRANCH_CTRL_INVALID;
 
@@ -533,12 +533,12 @@ namespace iga
         return gedBrnch;
     }
 
-    static GED_REG_FILE lowerRegFile(RegName type)
+    static inline GED_REG_FILE lowerRegFile(RegName type)
     {
         return (type == RegName::GRF_R) ? GED_REG_FILE_GRF : GED_REG_FILE_ARF;
     }
 
-    static GED_MATH_MACRO_EXT lowerMathMacroReg(MathMacroExt MathMacroReg)
+    static inline GED_MATH_MACRO_EXT lowerMathMacroReg(MathMacroExt MathMacroReg)
     {
         // NOTE: GED puts special accumulators as acc2 to acc9
         switch (MathMacroReg) {
@@ -556,7 +556,7 @@ namespace iga
         return GED_MATH_MACRO_EXT_INVALID;
     }
 
-    static GED_ARCH_REG lowerArchReg(RegName type)
+    static inline GED_ARCH_REG lowerArchReg(RegName type)
     {
         GED_ARCH_REG archReg;
 
@@ -586,28 +586,25 @@ namespace iga
     }
 
 
-    static uint32_t lowerRegionVert(
-        const Region::Vert vt)
+    static inline uint32_t lowerRegionVert(const Region::Vert vt)
     {
         return vt == Region::Vert::VT_VxH ? 3 : static_cast<uint32_t>(vt);
     }
 
 
-    static uint32_t lowerRegionWidth(
-        const Region::Width wi)
+    static inline uint32_t lowerRegionWidth(const Region::Width wi)
     {
         return static_cast<uint32_t>(wi);
     }
 
 
-    static uint32_t lowerRegionHorz(
-        const Region::Horz hz)
+    static inline uint32_t lowerRegionHorz(const Region::Horz hz)
     {
         return static_cast<uint32_t>(hz);
     }
 
 
-    static uint32_t createChanSel(
+    static inline uint32_t createChanSel(
         GED_SWIZZLE swizzleX, GED_SWIZZLE swizzleY,
         GED_SWIZZLE swizzleZ, GED_SWIZZLE swizzleW)
     {

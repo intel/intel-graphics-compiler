@@ -91,7 +91,7 @@ namespace iga
 
 
         // for placement allocation
-        void operator delete(void *foo, MemManager* m) { }
+        void operator delete(void *, MemManager*) { }
         void *operator new(size_t sz, MemManager* m) {return m->alloc(sz);}
 
         ///////////////////////////////////////////////////////////////////////

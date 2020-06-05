@@ -48,7 +48,6 @@ class KernelViewImpl {
 private:
     KernelViewImpl(const KernelViewImpl& k)
         : m_model(*iga::Model::LookupModel(k.m_model.platform)) { }
-    KernelViewImpl& operator =(const KernelViewImpl &k) { return *this; }
 public:
     const iga::Model                       &m_model;
     iga::Kernel                            *m_kernel = nullptr;
@@ -388,16 +387,16 @@ void kv_get_send_indirect_descs(
     }
 
     if (inst->getExtMsgDescriptor().isReg()) {
-        *ex_desc_reg = inst->getExtMsgDescriptor().reg.regNum;
-        *ex_desc_subreg = inst->getExtMsgDescriptor().reg.subRegNum;
+        *ex_desc_reg = (uint8_t)inst->getExtMsgDescriptor().reg.regNum;
+        *ex_desc_subreg = (uint8_t)inst->getExtMsgDescriptor().reg.subRegNum;
     }
     else {
         *ex_desc_reg = *ex_desc_subreg = KV_INVALID_REG;
     }
 
     if (inst->getMsgDescriptor().isReg()) {
-        *desc_reg = inst->getMsgDescriptor().reg.regNum;
-        *desc_subreg = inst->getMsgDescriptor().reg.subRegNum;
+        *desc_reg = (uint8_t)inst->getMsgDescriptor().reg.regNum;
+        *desc_subreg = (uint8_t)inst->getMsgDescriptor().reg.subRegNum;
     }
     else {
         *desc_reg = *desc_subreg = KV_INVALID_REG;
@@ -437,7 +436,7 @@ kv_status_t kv_get_message_type(
 
     Platform p = ((KernelViewImpl *)kv)->m_model.platform;
     SFMessageType msgType =
-        getMessageType(p, inst->getSendFc(), exDesc.imm, desc.imm);
+        getMessageType(p, inst->getSendFc(), desc.imm);
     *message_type_enum = static_cast<int32_t>(msgType);
 
     if (msgType == SFMessageType::INVALID)
@@ -516,8 +515,8 @@ uint32_t kv_get_execution_size(const kv_t *kv, int32_t pc)
     return static_cast<uint32_t>(inst->getExecSize());
 }
 
-bool kv_get_swsb_info(const kv_t *kv, int32_t pc,
-    iga::SWSB_ENCODE_MODE encdoe_mode, iga::SWSB& swsb)
+bool kv_get_swsb_info(
+    const kv_t *kv, int32_t pc, iga::SWSB_ENCODE_MODE, iga::SWSB& swsb)
 {
     if (!kv) {
         return false;
@@ -553,7 +552,18 @@ uint32_t kv_get_opcode(const kv_t *kv, int32_t pc)
         return static_cast<uint32_t>(Op::INVALID);
     }
     return static_cast<uint32_t>(inst->getOpSpec().op);
-    //    return static_cast<uint32_t>(inst->getOpSpec().code);
+}
+
+uint32_t kv_get_subfunction(const kv_t *kv, int32_t pc)
+{
+    if (!kv) {
+        return static_cast<uint32_t>(-1);
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst) {
+        return static_cast<uint32_t>(-1);
+    }
+    return static_cast<uint32_t>(inst->getSubfunction().bits);
 }
 
 int32_t kv_get_has_destination(const kv_t *kv, int32_t pc)
@@ -727,7 +737,7 @@ uint32_t kv_get_source_register_type(const kv_t *kv, int32_t pc, uint32_t source
     }
     const auto &src = inst->getSource((size_t)sourceNumber);
     if (src.getKind() == Operand::Kind::INVALID) {
-        return -1;
+        return (uint32_t)-1;
     }
     return static_cast<uint32_t>(src.getDirRegName());
 }

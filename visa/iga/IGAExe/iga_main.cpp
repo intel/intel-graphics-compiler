@@ -64,7 +64,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "Without this iga attempts to infer the mode based on the extension.  "
         "Files ending in '.krn' are assumed binary without this option.",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &eh, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.mode = Opts::Mode::DIS;
         });
     cmdline.defineFlag(
@@ -75,7 +75,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "Without this iga attempts to infer the mode based on the extension.  "
         "Files ending in '.asm' are assumed syntax input without this option.",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &eh, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.mode = Opts::Mode::ASM;
         });
     cmdline.defineOpt(
@@ -105,7 +105,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "labels will be in bytes relative to the IP pre-increment "
         "(even for jmpi and on HSW)",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &eh, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.numericLabels = true;
         });
     cmdline.defineFlag(
@@ -114,7 +114,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "lower verbosity output",
         "This is the same as -v=-1",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &eh, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.verbosity = -1;
         });
     cmdline.defineOpt(
@@ -185,11 +185,9 @@ extern "C" int iga_main(int argc, const char **argv)
               inp = inp.substr(3); // gen9 -> 9
             //
             for (const auto &pt : platforms) {
-                std::string pnm = pt.suffix;
+                std::string pnm = normalizePlatformName(pt.suffix);
                 // try IGA-preferred names first (e.g. "12p1")
                 // normalized the IGA-returned platform name to lowercase
-                std::transform(
-                    pnm.begin(), pnm.end(), pnm.begin(), ::tolower);
                 if (pnm == inp) {
                     baseOpts.platform = pt.toGen();
                     return; // bail out
@@ -197,8 +195,7 @@ extern "C" int iga_main(int argc, const char **argv)
                 // Try library returned names second (e.g. "skl")
                 for (std::string pnm : pt.names) {
                     // normalized the IGA-returned platform name to lowercase
-                    std::transform(
-                        pnm.begin(), pnm.end(), pnm.begin(), ::tolower);
+                    pnm = normalizePlatformName(pnm);
                     if (pnm == inp) {
                         baseOpts.platform = pt.toGen();
                         return;
@@ -229,7 +226,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "disables all warnings",
         nullptr,
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler, Opts &baseOpts) {
             baseOpts.enabledWarnings = IGA_WARNINGS_NONE;
         });
     wGrp.defineFlag(
@@ -238,7 +235,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "enables all warnings",
         nullptr,
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler, Opts &baseOpts) {
             baseOpts.enabledWarnings = IGA_WARNINGS_ALL;
         });
     wGrp.defineFlag(
@@ -247,7 +244,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "uses default warnings",
         nullptr,
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler, Opts &baseOpts) {
             baseOpts.enabledWarnings = IGA_WARNINGS_DEFAULT;
         });
     wGrp.defineFlag(
@@ -256,7 +253,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "checks some don't-care fields for being in normal forms",
         "examples of this are types and regions on send operands",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler, Opts &baseOpts) {
             baseOpts.enabledWarnings |= IGA_WARNINGS_NORMFORM;
         });
     wGrp.defineFlag(
@@ -265,7 +262,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "enables warnings on invalid regions",
         nullptr,
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler, Opts &baseOpts) {
             baseOpts.enabledWarnings |= IGA_WARNINGS_REGIONS;
         });
     wGrp.defineFlag(
@@ -274,7 +271,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "enables warnings on invalid operand type combinations",
         nullptr,
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler, Opts &baseOpts) {
             baseOpts.enabledWarnings |= IGA_WARNINGS_TYPES;
         });
     wGrp.defineFlag(
@@ -283,7 +280,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "enables warnings related to scheduling (e.g. use of Switch)",
         nullptr,
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler, Opts &baseOpts) {
             baseOpts.enabledWarnings |= IGA_WARNINGS_SCHED;
         });
 
@@ -298,10 +295,10 @@ extern "C" int iga_main(int argc, const char **argv)
         "disables the IR checking on assembly",
         nullptr,
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler, Opts &baseOpts) {
             baseOpts.enabledWarnings = IGA_WARNINGS_NONE;
-            fprintf(stderr, "%s\n",
-                "-Xdisable-ir-checking is deprecated; use -W* options");
+            std::cerr <<
+                "-Xdisable-ir-checking is deprecated; use -W* options\n";
         });
     xGrp.defineFlag(
         "auto-deps",
@@ -330,7 +327,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "This mode debugs an instruction's compaction.  The input format is the same as -Xifs\n"
         "See that option for more information\n",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &eh, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.mode = Opts::Mode::XDCMP;
         });
     xGrp.defineFlag(
@@ -473,7 +470,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "number of sbid being used on auto dependency set",
         "",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler eh, Opts &baseOpts) {
+        [] (const char *cinp, const opts::ErrorHandler &eh, Opts &baseOpts) {
             std::string str = cinp;
             baseOpts.sbidCount = eh.parseInt(cinp);
         }
@@ -485,7 +482,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "By default we fail if we are unable to compact an instruction with "
         "the {Compacted} option set; this allows one to make it a warning",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &eh, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.errorOnCompactFail = false;
         });
 
@@ -495,7 +492,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "the input files",
         "The input files to assemble.  This defaults to stdin.",
         opts::OptAttrs::ALLOW_UNSET | opts::OptAttrs::ALLOW_MULTI,
-        [] (const char *inp, const opts::ErrorHandler &eh, Opts &baseOpts) {
+        [] (const char *inp, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.inputFiles.push_back(inp);
         });
 

@@ -80,7 +80,6 @@ struct Opts {
     bool printInstructionPc  = false;                // -Xprint-pc
 };
 
-
 bool disassemble(
     const Opts &opts,
     igax::Context &ctx,
@@ -105,7 +104,7 @@ bool listOps(
 bool decodeSendDescriptor(
     const Opts &opts); // -Xsds in decode_message.cpp
 
-static void setOptBit(uint32_t &opts, uint32_t bit, bool isSet) {
+static inline void setOptBit(uint32_t &opts, uint32_t bit, bool isSet) {
     if (isSet) {
         opts |= bit;
     } else {
@@ -113,7 +112,7 @@ static void setOptBit(uint32_t &opts, uint32_t bit, bool isSet) {
     }
 }
 
-static void writeText(const Opts &opts, const std::string &outp) {
+static inline void writeText(const Opts &opts, const std::string &outp) {
     if (opts.outputFile == "") {
 #ifdef WIN32
         // http://stackoverflow.com/questions/22633665/extremely-slow-stdcout-using-ms-compiler
@@ -123,15 +122,15 @@ static void writeText(const Opts &opts, const std::string &outp) {
         // This is the recommended fix.
         setvbuf(stdout, 0, _IOLBF, 4096);
 #endif
-        writeTextStream("<<stdout>>", std::cout, outp.c_str(), outp.size());
+        writeTextStream("<<stdout>>", std::cout, outp.c_str());
         // fiddled with a different approach here
         //  writeTextStreamF("<<stdout>>", stdout, outp.c_str(), outp.size());
     } else {
-        writeTextFile(opts.outputFile.c_str(), outp.c_str(), outp.size());
+        writeTextFile(opts.outputFile.c_str(), outp.c_str());
     }
 }
 
-static void writeBinary(const Opts &opts, const void *bits, size_t bitsLen) {
+static inline void writeBinary(const Opts &opts, const void *bits, size_t bitsLen) {
     if (opts.outputFile == "") {
         // have to use C/stdio here since C++ will not let us output binary
 #ifdef WIN32
@@ -155,7 +154,7 @@ static void writeBinary(const Opts &opts, const void *bits, size_t bitsLen) {
     } while (0)
 
 
-static void emitWarningToStderr(
+static inline void emitWarningToStderr(
     const igax::Diagnostic &w,
     const std::string &inp)
 {
@@ -166,11 +165,11 @@ static void emitWarningToStderr(
 
     w.emitContext(std::cerr, inp);
 }
-static void emitWarningToStderr(
+
+static inline void emitWarningToStderr(
     const igax::Diagnostic &w,
     const std::vector<unsigned char> &inp)
 {
-
     w.emitLoc(std::cerr);
     std::cerr << " warning: ";
     emitYellowText(std::cerr, w.message);
@@ -178,7 +177,8 @@ static void emitWarningToStderr(
 
     w.emitContext(std::cerr, "", inp.data(), inp.size());
 }
-static void emitErrorToStderr(
+
+static inline void emitErrorToStderr(
     const igax::Diagnostic &e,
     const std::string &inp)
 {
@@ -189,7 +189,7 @@ static void emitErrorToStderr(
 
     e.emitContext(std::cerr, inp);
 }
-static void emitErrorToStderr(
+static inline void emitErrorToStderr(
     const igax::Diagnostic &e,
     const std::vector<unsigned char> &inp)
 {
@@ -201,18 +201,18 @@ static void emitErrorToStderr(
     e.emitContext(std::cerr, "", inp.data(), inp.size());
 }
 
-static std::string normalizePlatformName(std::string inp) {
+static inline std::string normalizePlatformName(std::string inp) {
     std::string norm;
     for (size_t i = 0; i < inp.size(); i++) {
         if (inp[i] == '.')
             norm += 'p'; // 12.1 ==> 12p1
         else
-            norm += std::tolower(inp[i]);
+            norm += (char)std::tolower(inp[i]);
     }
     return norm;
 }
 
-static void inferPlatform(const std::string &file, Opts &os)
+static inline void inferPlatform(const std::string &file, Opts &os)
 {
     // try and infer the project (-p) if needed
     std::string ext = "";
@@ -239,7 +239,7 @@ static void inferPlatform(const std::string &file, Opts &os)
     }
 }
 
-static void inferPlatformAndMode(const std::string &file, Opts &os)
+static inline void inferPlatformAndMode(const std::string &file, Opts &os)
 {
     std::string ext = "";
     size_t ix = file.rfind('.');
@@ -259,7 +259,7 @@ static void inferPlatformAndMode(const std::string &file, Opts &os)
     inferPlatform(file, os);
 }
 
-static void ensurePlatformIsSet(const Opts &opts)
+static inline void ensurePlatformIsSet(const Opts &opts)
 {
     if (opts.platform == IGA_GEN_INVALID) {
         const char *tool =
@@ -274,7 +274,7 @@ static void ensurePlatformIsSet(const Opts &opts)
 }
 
 
-static uint32_t makeFormattingOpts(const Opts &opts)
+static inline uint32_t makeFormattingOpts(const Opts &opts)
 {
     uint32_t fmtOpts = 0;
 

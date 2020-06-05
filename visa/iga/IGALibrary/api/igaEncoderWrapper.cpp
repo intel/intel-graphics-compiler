@@ -60,7 +60,7 @@ bool KernelEncoder::patchImmValue(const Model& model, unsigned char* binary, Typ
         return false;
 
     // set the imm value
-    status = GED_SetImm(&ged_inst, EncoderBase::typeConvesionHelper(val, type));
+    status = GED_SetImm(&ged_inst, Encoder::typeConvesionHelper(val, type));
     assert(status == GED_RETURN_VALUE_SUCCESS);
     if (status != GED_RETURN_VALUE_SUCCESS)
         return false;

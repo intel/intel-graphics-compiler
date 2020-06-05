@@ -339,7 +339,6 @@ inline Context::Context(const iga_context_options_t &copts)
 }
 
 inline Context::~Context() {
-    // ignore the return value since we are in a destructor
     (void)iga_release_context(context);
     context = nullptr;
 }

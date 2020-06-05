@@ -55,7 +55,7 @@ void FormatFloat(std::ostream &os, uint8_t q); // GEN's 8-bit restricted float
 float     ConvertDoubleToFloat(double d);
 uint32_t  ConvertDoubleToFloatBits(double d);
 uint16_t  ConvertFloatToHalf(float f);
-static
+static inline
 uint16_t  ConvertDoubleToHalf(double d) {
     return ConvertFloatToHalf(ConvertDoubleToFloat(d));
 }
@@ -67,28 +67,28 @@ float     ConvertQuarterToFloatGEN(uint8_t u8);
 
 
 // Various raw accessors to convert between bits and float
-static uint64_t FloatToBits(double f) {
+static inline uint64_t FloatToBits(double f) {
     union{double f; uint64_t i;} u;
     u.f = f;
     return u.i;
 }
-static uint32_t FloatToBits(float f) {
+static inline uint32_t FloatToBits(float f) {
     union{float f; uint32_t i;} u;
     u.f = f;
     return u.i;
 }
-static uint16_t FloatToBits(uint16_t f) {return f;}
-static double FloatFromBits(uint64_t f) {
+static inline uint16_t FloatToBits(uint16_t f) {return f;}
+static inline double FloatFromBits(uint64_t f) {
     union{double f; uint64_t i;} u;
     u.i = f;
     return u.f;
 }
-static float FloatFromBits(uint32_t f) {
+static inline float FloatFromBits(uint32_t f) {
     union{float f; uint32_t i;} u;
     u.i = f;
     return u.f;
 }
-static uint16_t FloatFromBits(uint16_t f) {return f;}
+static inline uint16_t FloatFromBits(uint16_t f) {return f;}
 
 bool IsNaN(uint16_t u16);
 bool IsInf(uint16_t u16);

@@ -43,12 +43,12 @@ namespace iga
     (BITFIELD_MASK32_UNSHIFTED(OFF,LEN) << (OFF))
 
     template <typename T>
-    static constexpr T getFieldMaskUnshifted(int len)
+    static inline constexpr T getFieldMaskUnshifted(int len)
     {
         return len == 8*sizeof(T) ? ((T)-1) : ((T)1 << len) - 1;
     }
     template <typename T>
-    static constexpr T getFieldMask(int off, int len)
+    static inline constexpr T getFieldMask(int off, int len)
     {
         return getFieldMaskUnshifted<T>(len) << (off % (8*sizeof(T)));
     }
@@ -59,7 +59,7 @@ namespace iga
     //     return mask << off % 64;
     // }
     template <typename T>
-    static T getBits(T bits, int off, int len) {
+    static inline T getBits(T bits, int off, int len) {
         IGA_ASSERT(
             off >= 0 && len > 0 && off + len - 1 < 8*sizeof(T),
             "getBits: out of bounds");
@@ -67,12 +67,12 @@ namespace iga
         return ((bits >> off) & mask);
     }
     template <typename T>
-    static bool testBit(T bits, int off) {
+    static inline bool testBit(T bits, int off) {
         IGA_ASSERT(off < 8*sizeof(T), "testBit: out of bounds");
         return getBits<T>(bits, off, 1) != 0;
     }
     template <typename T>
-    static T getSignedBits(T bits, int off, int len) {
+    static inline T getSignedBits(T bits, int off, int len) {
         IGA_ASSERT(
             off >= 0 && len > 0 && off + len - 1 < 8*sizeof(T),
             "getBits: out of bounds");
@@ -94,7 +94,7 @@ namespace iga
         return getBits<T>(bits[wIx], wOff, len);
     }
     template <typename T, int N>
-    static T getSignedBits(const T bits[N], int off, int len)
+    static inline T getSignedBits(const T bits[N], int off, int len)
     {
         IGA_ASSERT(
             off >= 0 && len > 0 && off + len - 1 < N*8*sizeof(T),
@@ -104,7 +104,7 @@ namespace iga
     }
 
     template <typename T, int N>
-    static bool setBits(T qws[N], int off, int len, T val) {
+    static inline bool setBits(T qws[N], int off, int len, T val) {
         IGA_ASSERT(
             off >= 0 && len > 0 && off + len - 1 < N*8*sizeof(T),
             "setBits: out of bounds");
@@ -134,7 +134,7 @@ namespace iga
     }
 
     template <typename T>
-    static bool setBits(T &bits, int off, int len, T val) {
+    static inline bool setBits(T &bits, int off, int len, T val) {
         IGA_ASSERT(
             off >= 0 && len > 0 && off + len - 1 < 8*sizeof(T),
             "setBits: out of bounds");
@@ -151,7 +151,7 @@ namespace iga
     //
     // STL really needs this
     // gcc has __builtin_clzll, but let's ignore the #ifdef nonsense
-    static int findLeadingOne(uint64_t v) {
+    static inline int findLeadingOne(uint64_t v) {
         static const uint64_t MASKS[] {
             0xFFFFFFFF00000000ull,
             0xFFFF0000,

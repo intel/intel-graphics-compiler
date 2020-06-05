@@ -48,8 +48,7 @@ static std::string disassembleInst(
     bool useNativeDecoder,
     uint32_t fmtOpts,
     size_t fromPc,
-    const void *bits,
-    bool enableSWSBGen12HPencoding = true)
+    const void *bits)
 {
     ErrorHandler eh;
     std::stringstream ss;
@@ -286,7 +285,7 @@ static bool decodeFieldsForInst(
 
 iga_status_t iga::DecodeFields(
     Platform p,
-    int verbosity,
+    int /* verbosity */,
     bool useNativeDecoder,
     uint32_t fmtOpts,
     std::ostream &os,
@@ -782,7 +781,7 @@ static bool listInstructionCompaction(
 
 iga_status_t iga::DebugCompaction(
     Platform p,
-    int verbosity,
+    int /* verbosity */,
     bool useNativeDecoder,
     uint32_t fmtOpts,
     std::ostream &os,
@@ -914,11 +913,12 @@ iga_status_t iga::DebugCompaction(
             // emit those that miss
             // mStats.orderMisses();
             for (const auto &missExample : mStats.misses) {
-                PC pc = missExample.first;
+                PC missPc = missExample.first;
                 int totalMissesForThisPc = missExample.second;
                 os << "        misses " << totalMissesForThisPc << ": " <<
                     disassembleInst(
-                        p, useNativeDecoder, fmtOpts, pc, bits + pc) << "\n";
+                        p, useNativeDecoder,
+                        fmtOpts, missPc, bits + missPc) << "\n";
             }
         }
     }

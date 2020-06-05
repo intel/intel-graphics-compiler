@@ -63,21 +63,21 @@ namespace iga
             }
         }
 
-        void operator delete(void *, MemManager* m) { }
+        void operator delete(void *, MemManager*) { }
         void *operator new(size_t sz, MemManager* m) { return m->alloc(sz); }
 
         void appendInstruction(Instruction *inst) {
             m_instructions.push_back(inst);
         }
 
-        PC                 getPC() const { return m_offset; }
-        void               setPC(PC pc) { m_offset = pc; }
-        Loc                getLoc() const { return m_loc; }
-        void               setLoc(const Loc &loc) { m_loc = loc; }
-        void               setID(int id) { m_id = id; }
-        int                getID() const { return m_id; }
-        const InstList&    getInstList() const { return m_instructions; }
-              InstList&    getInstList()       { return m_instructions; }
+        PC                 getPC() const {return m_offset;}
+        void               setPC(PC pc) {m_offset = pc;}
+        Loc                getLoc() const {return m_loc;}
+        void               setLoc(const Loc &loc) {m_loc = loc;}
+        void               setID(int id) {m_id = id;}
+        int                getID() const {return m_id;}
+        const InstList&    getInstList() const {return m_instructions;}
+              InstList&    getInstList()       {return m_instructions;}
         void               insertInstBefore(InstList::iterator iter,
                                             Instruction *inst);
 

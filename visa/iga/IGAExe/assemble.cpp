@@ -43,7 +43,7 @@ bool assemble(
 bool assemble(
     const Opts &opts,
     igax::Context &ctx,
-    const std::string &inpFile,
+    const std::string &,
     const std::string &inpText,
     igax::Bits &bits)
 {

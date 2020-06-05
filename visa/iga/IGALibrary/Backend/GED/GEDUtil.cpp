@@ -91,8 +91,7 @@ iga::SFID iga::getSFID(
 }
 */
 
-iga::SFMessageType iga::getMessageType(
-    Platform p, SFID sfid, uint32_t exDesc, uint32_t desc)
+iga::SFMessageType iga::getMessageType(Platform p, SFID sfid, uint32_t desc)
 {
     GED_SFID gedSFID = lowerSFID(sfid);
 

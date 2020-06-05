@@ -94,10 +94,11 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
         default: return nullptr;
         }
     }
-    static size_t relativeAddressOf(
+    static inline size_t relativeAddressOf(
         const RegSetInfo &rsi, RegRef rr, size_t tySzBits)
     {
-        return static_cast<size_t>(rsi.bytesPerRegister) * rr.regNum + rr.subRegNum * tySzBits / 8;
+        return static_cast<size_t>(rsi.bytesPerRegister)*rr.regNum +
+            rr.subRegNum*tySzBits/8;
     }
 
     // A register set represent all the storage in the register files

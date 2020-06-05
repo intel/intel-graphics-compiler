@@ -37,7 +37,7 @@ GEDBitProcessor::GEDBitProcessor(
 }
 
 bool GEDBitProcessor::isAlign16MathMacroRegisterCsrOperand(
-    Operand::Kind opKind, RegName regName, uint8_t regNum) const
+    Operand::Kind opKind, RegName regName, uint16_t regNum) const
 {
     return
         isAlign16MathMacroRegisterCsrPlatform() &&

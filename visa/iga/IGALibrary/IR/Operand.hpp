@@ -171,11 +171,11 @@ public:
         SrcModifier srcMod,
         RegName rName,
         const RegRef &reg,
-        Region rgn,
+        Region /* rgn */,
         MathMacroExt mme,
         Type type)
     {
-        setMacroSource(srcMod,rName,reg,mme,Region::SRC110,type);
+        setMacroSource(srcMod, rName, reg, mme, Region::SRC110, type);
     }
     void setMacroSource(
         SrcModifier srcMod,

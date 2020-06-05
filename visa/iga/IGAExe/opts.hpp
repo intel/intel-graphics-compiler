@@ -806,7 +806,6 @@ class CmdlineSpec {
                 std::cerr << exeTitle << "\n";
             CmdlineSpec::appendUsage(
                 std::cerr,
-                IS_STDERR_TTY,
                 opts,
                 groups,
                 args,
@@ -994,7 +993,6 @@ class CmdlineSpec {
 
     static void appendUsage(
         std::ostream &os,
-        bool isTty,
         const Group<O> &opts,
         const std::vector<Group<O> *> &groups,
         const std::vector<Opt<O>> &args,

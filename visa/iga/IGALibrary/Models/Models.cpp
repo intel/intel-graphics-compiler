@@ -306,7 +306,7 @@ const RegInfo* Model::lookupArfRegInfoByRegNum(uint8_t regNum7_0) const
     for (const RegInfo &ri : REGISTER_SPECIFICATIONS) {
         if (ri.regName == RegName::GRF_R) {
             continue; // GRF will be in the table as 0000b
-        } else if (ri.regNum7_4 == (regNum7_0 >> 4) && // RegNum[7:4] matches AND
+        } else if (ri.regNum7_4 == ((uint32_t)regNum7_0 >> 4) && // RegNum[7:4] matches AND
             ri.supportedOn(platform))           // platform matches
         {
             int shiftedRegNum = regNum - ri.regNumBase;
@@ -349,7 +349,7 @@ bool RegInfo::encode(int reg, uint8_t &regNumBits) const
     }
 
     if (regName == RegName::GRF_R) {
-        regNumBits = reg;
+        regNumBits = (uint8_t)reg;
     } else {
         // ARF
         // RegNum[7:4] = high bits from the spec
@@ -357,7 +357,7 @@ bool RegInfo::encode(int reg, uint8_t &regNumBits) const
         // this assert would suggest that something is busted in
         // the RegInfo table
         IGA_ASSERT(reg <= 0xF, "ARF encoding overflowed");
-        regNumBits = regNum7_4 << 4;
+        regNumBits = (uint8_t)(regNum7_4 << 4);
         regNumBits |= (uint8_t)reg;
     }
     return true;

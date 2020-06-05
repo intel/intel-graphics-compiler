@@ -246,7 +246,7 @@ bool RegSet::addSourceInputs(const Instruction &i, RegSet &rs)
                         if (nregs < 0)
                             nregs = 8;
                     }
-                    uint8_t regNum = op.getDirRegRef().regNum;
+                    uint16_t regNum = op.getDirRegRef().regNum;
                     for (int i = 0; i < nregs; i++) {
                         if ((regNum + i) >= RS_GRF_R.numRegisters) {
                             break;
@@ -342,7 +342,7 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
     }
     bool added = false;
 
-    int execOff = 4 * (static_cast<int>(i.getChannelOffset()));
+    unsigned execOff = 4 * (static_cast<int>(i.getChannelOffset()));
     int execSize = static_cast<int>(i.getExecSize());
     auto op = i.getDestination();
     auto tType = op.getType();
@@ -350,10 +350,9 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
 
     if (i.hasInstOpt(InstOpt::ACCWREN) /* || i.getDestination().getDirRegName() == RegName::ARF_ACC*/) { // AccWrEn
         auto elemsPerAccReg = 8*RS_ARF_ACC.bytesPerRegister / typeSizeBits; // e.g. 8 subreg elems for :f
-        RegRef ar = {
-            (uint8_t)(execOff / elemsPerAccReg),
-            (uint8_t)(execOff % elemsPerAccReg)
-        };
+        RegRef ar(
+            execOff / elemsPerAccReg,
+            execOff % elemsPerAccReg);
         added |= rs.setDstRegion(
             RegName::ARF_ACC,
             ar,
@@ -371,12 +370,12 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
             int nregs = i.getDstLength();
             if (nregs < 0)
                 nregs = 31;
-            for (int i = 0; i < nregs; i++) {
-                uint8_t regNum = op.getDirRegRef().regNum;
-                if ((regNum + i) >= RS_GRF_R.numRegisters) {
+            for (int ri = 0; ri < nregs; ri++) {
+                uint16_t regNum = op.getDirRegRef().regNum;
+                if ((regNum + ri) >= RS_GRF_R.numRegisters) {
                     break;
                 }
-                added |= rs.addFullReg(RS_GRF_R, regNum + i);
+                added |= rs.addFullReg(RS_GRF_R, regNum + ri);
             }
             rgn = Region::DST1;
         } else {

@@ -83,7 +83,7 @@ public:
 
 private:
 
-    ArenaHeader(size_t dataSize, ArenaHeader* nextArena)
+    ArenaHeader(size_t dataSize, ArenaHeader* /* nextArena */)
         : _nextArena (nullptr)
     {
         _nextByte = GetArenaData ();

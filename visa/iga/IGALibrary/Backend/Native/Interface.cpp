@@ -29,6 +29,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../BitProcessor.hpp"
 #include "../../strings.hpp"
 
+
+
 #include <vector>
 
 using namespace iga;
@@ -366,7 +368,7 @@ static void EncodeParallel(
 #endif
 bool iga::native::IsEncodeSupported(
     const Model &m,
-    const EncoderOpts &opts)
+    const EncoderOpts &)
 {
     switch (m.platform)
     {
@@ -394,12 +396,9 @@ void iga::native::Encode(
 
 ///////////////////////////////////////////////////////////////////////////////
 // decoding interfaces
-
-
-
 bool iga::native::IsDecodeSupported(
     const Model &m,
-    const DecoderOpts &opts)
+    const DecoderOpts &)
 {
     switch (m.platform)
     {
@@ -419,7 +418,7 @@ Kernel *iga::native::Decode(
 {
     IGA_ASSERT(IsDecodeSupported(m, dopts), "invalid platform for decode; "
             "caller should have checked via iga::native::IsDecodeSupported");
-    eh.reportError(Loc(0),"feature currently only available on internal builds");
+    eh.reportError(Loc(0), "feature currently only available on internal builds");
     return nullptr;
 }
 
@@ -435,7 +434,7 @@ void iga::native::DecodeFields(
     IGA_ASSERT(IsDecodeSupported(m, dopts), "invalid platform for decode; "
         "caller should have checked via iga::native::IsDecodeSupported");
     //
-    eh.reportError(Loc(0),"feature currently only available on internal builds");
+    eh.reportError(loc, "feature currently only available on internal builds");
 }
 
 

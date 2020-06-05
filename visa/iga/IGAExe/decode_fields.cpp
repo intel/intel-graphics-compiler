@@ -138,7 +138,7 @@ static void parseBitsAsHex(
             return -1;
         }
         int digit = 0;
-        char chr = ::toupper(inp[off]);
+        char chr = (char)::toupper(inp[off]);
         if (chr >= '0' && chr <= '9') {
             digit = chr - '0';
         } else if (chr >= 'A' && chr <= 'F') {
@@ -266,17 +266,6 @@ static igax::Bits parseBits(const std::string &inp, Opts &opts)
         }
     }
     return bits;
-}
-
-static void checkPlatform(Opts &opts)
-{
-    if (opts.platform == IGA_GEN_INVALID) {
-        if (!opts.inputFiles.empty() && opts.mode != Opts::Mode::XDSD) {
-            // mode will be ignored, don't worry
-            inferPlatformAndMode(opts.inputFiles[0], opts);
-        }
-        ensurePlatformIsSet(opts);
-    } // else -p=... was given
 }
 
 static bool decodeFieldsSingle(Opts opts)

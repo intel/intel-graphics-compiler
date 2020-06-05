@@ -47,7 +47,7 @@ namespace iga
 {
     typedef std::function<void(uint64_t bits, std::stringstream &ss)> FormatFunction;
 
-    static int nextPowerOfTwo(int v) {
+    static inline int nextPowerOfTwo(int v) {
         v--;
         v |= v >> 1;
         v |= v >> 2;
@@ -57,10 +57,10 @@ namespace iga
         v++;
         return v;
     }
-    static PredCtrl decodePredCtrl(uint64_t bits) {
+    static inline PredCtrl decodePredCtrl(uint64_t bits) {
         return static_cast<PredCtrl>(bits);
     }
-    static ExecSize decodeExecSizeBits(uint64_t val) {
+    static inline ExecSize decodeExecSizeBits(uint64_t val) {
         switch (val) {
         case 0: return ExecSize::SIMD1;
         case 1: return ExecSize::SIMD2;
@@ -71,10 +71,10 @@ namespace iga
         default: return ExecSize::INVALID;
         }
     }
-    static ChannelOffset decodeChannelOffsetBits(uint64_t val) {
+    static inline ChannelOffset decodeChannelOffsetBits(uint64_t val) {
         return static_cast<ChannelOffset>(val);
     }
-    static FlagModifier decodeFlagModifierBits(uint64_t val) {
+    static inline FlagModifier decodeFlagModifierBits(uint64_t val) {
         FlagModifier fm;
         switch (val) {
         case 0: fm = FlagModifier::NONE; break;
@@ -91,7 +91,7 @@ namespace iga
         }
         return fm;
     }
-    static SrcModifier decodeSrcModifierBits(uint64_t bits)
+    static inline SrcModifier decodeSrcModifierBits(uint64_t bits)
     {
         switch (bits) {
         case 0: return SrcModifier::NONE;
@@ -101,7 +101,7 @@ namespace iga
         default: return static_cast<SrcModifier>(bits);
         }
     }
-    static FlagModifier decodeFlagModifier(uint64_t bits)
+    static inline FlagModifier decodeFlagModifier(uint64_t bits)
     {
         switch (bits) {
         case 0: return FlagModifier::NONE;
@@ -378,7 +378,7 @@ namespace iga
                 }
                 i++;
             }
-            if (i == vals.size() || retVal == invalid) { // didn't find it
+            if (i == (int)vals.size() || retVal == invalid) { // didn't find it
                 retVal = invalid;
                 strVal = "?";
                 reportFieldErrorInvalidValue(f);
@@ -430,9 +430,8 @@ namespace iga
         }
 
         RegRef peekFlagRegRef(const Field &fFLAGREG) const {
-            auto val = bits.getField(fFLAGREG);
-            RegRef rr{(uint8_t)(val >> 1),(uint8_t)(val & 0x1)};
-            return rr;
+            auto val = (uint32_t)bits.getField(fFLAGREG);
+            return RegRef(val >> 1, val & 0x1);
         }
 
         RegRef decodeFlagReg(const Field &fFLAGREG) {
@@ -627,26 +626,23 @@ namespace iga
         }
 
         void decodeSubReg(
-            OpIx opIndex,
             OperandInfo &opInfo,
             const Field &fSUBREG)
         {
             decodeSubRegWithType(
-                opIndex, opInfo, fSUBREG, opInfo.type, ToSyntax(opInfo.type));
+                opInfo, fSUBREG, opInfo.type, ToSyntax(opInfo.type));
         }
 
         // e.g. for subregisters without proper types
         void decodeSubRegWithImplicitType(
-            OpIx opIndex,
             OperandInfo &opInfo,
             const Field &fSUBREG,
             Type t)
         {
-            decodeSubRegWithType(opIndex, opInfo, fSUBREG, t, "");
+            decodeSubRegWithType(opInfo, fSUBREG, t, "");
         }
 
         void decodeSubRegWithType(
-            OpIx opIndex,
             OperandInfo &opInfo,
             const Field &fSUBREG,
             Type type,
@@ -656,7 +652,7 @@ namespace iga
             auto scaled = BytesOffsetToSubReg(srb, opInfo.regOpName, type);
             auto unscaled =
                 SubRegToBytesOffset((int)scaled, opInfo.regOpName, type);
-            if (unscaled != srb) {
+            if ((int)unscaled != srb) {
                 reportFieldError(fSUBREG,
                     "subregister offset is misaligned for type size");
             }
@@ -692,7 +688,7 @@ namespace iga
                 }
             } else {
                 opInfo.kind = Operand::Kind::DIRECT;
-                decodeSubReg(opIndex, opInfo, fSUBREG);
+                decodeSubReg(opInfo, fSUBREG);
             }
         }
 
@@ -706,7 +702,7 @@ namespace iga
             auto regVal = bits.getField(fREG);
             if (isGrf) {
                 opInfo.regOpName = RegName::GRF_R;
-                opInfo.regOpReg.regNum = (uint8_t)regVal;
+                opInfo.regOpReg.regNum = (uint16_t)regVal;
                 ss << "r" << regVal;
             } else {
                 readArfRegisterInfo(opInfo, fREG, ss);
@@ -744,11 +740,11 @@ namespace iga
                 if (regInfo->hasRegNum()) {
                     ssDesc << arfReg;
                 }
-                opInfo.regOpReg.regNum = (int)arfReg;
+                opInfo.regOpReg.regNum = (uint16_t)arfReg;
                 if (regInfo->regNumBase > 0) {
                     // if the register covers to another, let's tell
                     // them which
-                    uint8_t coverRegBits = (uint8_t)regVal & 0xF0;
+                    uint8_t coverRegBits = (uint8_t)(regVal & 0xF0);
                     const RegInfo *coverRegInfo =
                         model.lookupArfRegInfoByRegNum(coverRegBits);
                     if (coverRegInfo) {
@@ -758,7 +754,6 @@ namespace iga
                     }
                 }
             }
-            return;
         }
 
 

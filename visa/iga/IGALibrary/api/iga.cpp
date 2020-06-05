@@ -174,8 +174,8 @@ iga_status_t iga_platform_names(
             const int n_copy = std::min<int>(
                 p_names,
                 (int)names_bytes/sizeof(const char *));
-            for (int i = 0; i < n_copy; i++)
-                names[i] = p.names[i];
+            for (int ni = 0; ni < n_copy; ni++)
+                names[ni] = p.names[ni];
             return IGA_SUCCESS;
         }
     }
@@ -271,7 +271,7 @@ public:
     static const uint64_t VALID_COOKIE = 0xFEDCBA9876543210ull;
 
 public:
-    IGAContext(iga_context_options_t opts, iga::Platform platf)
+    IGAContext(iga_context_options_t opts)
         : m_validToken(VALID_COOKIE)
         , m_opts(opts)
         , m_model(convertPlatform(opts.gen))
@@ -674,7 +674,7 @@ iga_status_t  iga_context_create(
 
     IGAContext *ctx_obj = nullptr;
     try {
-        ctx_obj = new IGAContext(*opts, p);
+        ctx_obj = new IGAContext(*opts);
     } catch (std::bad_alloc &) {
         return IGA_OUT_OF_MEM;
     }

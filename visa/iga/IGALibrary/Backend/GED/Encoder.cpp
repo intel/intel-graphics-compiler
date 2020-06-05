@@ -36,7 +36,7 @@ using namespace iga;
 
 //
 // NOTE: if we have it to do again I would have:
-//     EncoderBase::encodeInstruction(Instruction &)
+//     Encoder::encodeInstruction(Instruction &)
 //  instantiate a
 //     BasicInstructionEncoder (derives from InstructionEncoder)
 // And call run on that op (pass the GEDInstruction).
@@ -59,7 +59,7 @@ static const char *gedReturnValueToString(GED_RETURN_VALUE rv)
     default: return "other error";
     }
 }
-void EncoderBase::handleGedError(
+void Encoder::handleGedError(
     int line, const char *setter, GED_RETURN_VALUE status)
 {
     error("encoder line %d: unsupported GED setter %s (%s)",
@@ -68,7 +68,7 @@ void EncoderBase::handleGedError(
 
 
 
-EncoderBase::EncoderBase(
+Encoder::Encoder(
     const Model &model,
     ErrorHandler &errHandler,
     const EncoderOpts &opts)
@@ -83,12 +83,12 @@ EncoderBase::EncoderBase(
     }
 }
 
-void EncoderBase::encodeKernelPreProcess(Kernel &k)
+void Encoder::encodeKernelPreProcess(Kernel &k)
 {
     doEncodeKernelPreProcess(k);
 }
 
-void EncoderBase::doEncodeKernelPreProcess(Kernel &k)
+void Encoder::doEncodeKernelPreProcess(Kernel &k)
 {
     if (m_opts.autoDepSet && platform() >= Platform::GEN12P1) {
         SWSBAnalyzer swsb_analyzer(k, errorHandler(), m_opts.swsbEncodeMode, m_opts.sbidCount);
@@ -96,27 +96,27 @@ void EncoderBase::doEncodeKernelPreProcess(Kernel &k)
     }
 }
 
-double EncoderBase::getElapsedTimeMicros(unsigned int idx)
+double Encoder::getElapsedTimeMicros(unsigned int idx)
 {
     return getIGATimerUS(idx);
 }
 
-int64_t EncoderBase::getElapsedTimeTicks(unsigned int idx)
+int64_t Encoder::getElapsedTimeTicks(unsigned int idx)
 {
     return getIGATimerTicks(idx);
 }
 
-std::string EncoderBase::getTimerName(unsigned int idx)
+std::string Encoder::getTimerName(unsigned int idx)
 {
     return getIGATimerNames(idx);
 }
 
-size_t EncoderBase::getNumInstructionsEncoded() const
+size_t Encoder::getNumInstructionsEncoded() const
 {
     return m_numberInstructionsEncoded;
 }
 
-void EncoderBase::encodeKernel(
+void Encoder::encodeKernel(
     Kernel &k,
     MemManager &mem,
     void *&bits,
@@ -170,7 +170,7 @@ void EncoderBase::encodeKernel(
 #endif
 }
 
-void EncoderBase::encodeBlock(Block *blk)
+void Encoder::encodeBlock(Block *blk)
 {
     m_blockToOffsetMap[blk] = currentPc();
     for (const auto inst : blk->getInstList()) {
@@ -218,7 +218,7 @@ void EncoderBase::encodeBlock(Block *blk)
     }
 }
 
-bool EncoderBase::getBlockOffset(const Block *b, uint32_t &pc)
+bool Encoder::getBlockOffset(const Block *b, uint32_t &pc)
 {
     auto iter = m_blockToOffsetMap.find(b);
     if (iter != m_blockToOffsetMap.end())
@@ -229,7 +229,7 @@ bool EncoderBase::getBlockOffset(const Block *b, uint32_t &pc)
     return false;
 }
 
-void EncoderBase::setEncodedPC(Instruction *inst, int32_t encodedPC)
+void Encoder::setEncodedPC(Instruction *inst, int32_t encodedPC)
 {
 #if 0
     auto iter = m_instPcs.find(inst);
@@ -241,7 +241,7 @@ void EncoderBase::setEncodedPC(Instruction *inst, int32_t encodedPC)
 #endif
 }
 
-int32_t EncoderBase::getEncodedPC(const Instruction *inst) const
+int32_t Encoder::getEncodedPC(const Instruction *inst) const
 {
 #if 0
     auto iter = m_instPcs.find(inst);
@@ -255,7 +255,7 @@ int32_t EncoderBase::getEncodedPC(const Instruction *inst) const
 #endif
 }
 
-void EncoderBase::encodeFC(const Instruction &i)
+void Encoder::encodeFC(const Instruction &i)
 {
     const OpSpec &os = i.getOpSpec();
 
@@ -278,11 +278,11 @@ void EncoderBase::encodeFC(const Instruction &i)
     }
 }
 
-void EncoderBase::encodeInstruction(Instruction& inst)
+void Encoder::encodeInstruction(Instruction& inst)
 {
     m_opcode = inst.getOp();
     const auto gedPlat = lowerPlatform(platform());
-    const auto gedOp = lowerOpcode(m_opcode, platform());
+    const auto gedOp = lowerOpcode(m_opcode);
     GED_RETURN_VALUE status = GED_InitEmptyIns(
         gedPlat,
         &m_gedInst,
@@ -323,7 +323,7 @@ void EncoderBase::encodeInstruction(Instruction& inst)
         inst.getExecSize() == ExecSize::SIMD1)
     {
         // scalar ternary workaround for Align16
-        // (c.f. EncoderBase::encodeTernaryDestinationAlign16)
+        // (c.f. Encoder::encodeTernaryDestinationAlign16)
         execSize = inst.getDestination().getType() == Type::DF ?
             ExecSize::SIMD2 : ExecSize::SIMD4;
     }
@@ -405,7 +405,7 @@ void EncoderBase::encodeInstruction(Instruction& inst)
     }
 }
 
-void EncoderBase::encodeBasicInstruction(
+void Encoder::encodeBasicInstruction(
     const Instruction& inst,
     GED_ACCESS_MODE accessMode)
 {
@@ -430,9 +430,7 @@ void EncoderBase::encodeBasicInstruction(
     }
 }
 
-void EncoderBase::encodeTernaryDestinationAlign1(
-    const Instruction& inst,
-    GED_EXECUTION_DATA_TYPE execDataType)
+void Encoder::encodeTernaryDestinationAlign1(const Instruction& inst)
 {
     const Operand& dst = inst.getDestination();
 
@@ -457,9 +455,7 @@ void EncoderBase::encodeTernaryDestinationAlign1(
 }
 
 template <SourceIndex S>
-void EncoderBase::encodeTernarySourceAlign1(
-    const Instruction& inst,
-    GED_EXECUTION_DATA_TYPE execDataType)
+void Encoder::encodeTernarySourceAlign1(const Instruction& inst)
 {
     // CNL+ align1 ternary
     if (platform() < Platform::GEN10) {
@@ -544,7 +540,7 @@ void EncoderBase::encodeTernarySourceAlign1(
 }
 
 
-void EncoderBase::encodeTernaryInstruction(
+void Encoder::encodeTernaryInstruction(
     const Instruction& inst,
     GED_ACCESS_MODE accessMode)
 {
@@ -554,7 +550,7 @@ void EncoderBase::encodeTernaryInstruction(
         encodeTernaryAlign16Instruction(inst);
     }
 }
-void EncoderBase::encodeTernaryAlign16Instruction(const Instruction& inst)
+void Encoder::encodeTernaryAlign16Instruction(const Instruction& inst)
 {
     if (inst.getOpSpec().supportsDestination()) {
         encodeTernaryDestinationAlign16(inst);
@@ -563,7 +559,7 @@ void EncoderBase::encodeTernaryAlign16Instruction(const Instruction& inst)
     encodeTernarySourceAlign16<SourceIndex::SRC1>(inst);
     encodeTernarySourceAlign16<SourceIndex::SRC2>(inst);
 }
-void EncoderBase::encodeTernaryAlign1Instruction(const Instruction& inst)
+void Encoder::encodeTernaryAlign1Instruction(const Instruction& inst)
 {
     // set ExecutionDataType (integral or floating)
     // the operands must be part of the same type set
@@ -580,14 +576,14 @@ void EncoderBase::encodeTernaryAlign1Instruction(const Instruction& inst)
     GED_ENCODE(ExecutionDataType, execDataType);
 
     if (inst.getOpSpec().supportsDestination()) {
-        encodeTernaryDestinationAlign1(inst, execDataType);
+        encodeTernaryDestinationAlign1(inst);
     }
-    encodeTernarySourceAlign1<SourceIndex::SRC0>(inst, execDataType);
-    encodeTernarySourceAlign1<SourceIndex::SRC1>(inst, execDataType);
-    encodeTernarySourceAlign1<SourceIndex::SRC2>(inst, execDataType);
+    encodeTernarySourceAlign1<SourceIndex::SRC0>(inst);
+    encodeTernarySourceAlign1<SourceIndex::SRC1>(inst);
+    encodeTernarySourceAlign1<SourceIndex::SRC2>(inst);
 }
 
-void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
+void Encoder::encodeBranchingInstruction(const Instruction& inst)
 {
     // the destination stride is always 1 for all control flow
     GED_ENCODE(DstHorzStride, 1);
@@ -713,7 +709,7 @@ void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
     }
 }
 
-void EncoderBase::encodeBranchingInstructionSimplified(const Instruction& inst)
+void Encoder::encodeBranchingInstructionSimplified(const Instruction& inst)
 {
     const OpSpec& instSpec = inst.getOpSpec();
 
@@ -728,9 +724,9 @@ void EncoderBase::encodeBranchingInstructionSimplified(const Instruction& inst)
 
     // for jmpi HW will take care of IP so don't need to encode it for dst/src0
     if (inst.getOpSpec().supportsDestination()) {
-        encodeBranchDestination(inst, inst.getDestination());
+        encodeBranchDestination(inst.getDestination());
     } else {
-        encodeBranchDestination(inst, Operand::DST_REG_NULL_UD);
+        encodeBranchDestination(Operand::DST_REG_NULL_UD);
     }
     // regualar control flow that only accepts immediate values
     // e.g. if, else, endif, while, cont, break, goto, join, halt
@@ -741,7 +737,7 @@ void EncoderBase::encodeBranchingInstructionSimplified(const Instruction& inst)
     } else {
         if (inst.getSource(0).getKind() == Operand::Kind::INDIRECT)
             error("Branch instructions do not support indirect register mode");
-        encodeBranchSource(inst, inst.getSource(0));
+        encodeBranchSource(inst.getSource(0));
     }
 
     if (inst.getSourceCount() == 2) {
@@ -752,7 +748,7 @@ void EncoderBase::encodeBranchingInstructionSimplified(const Instruction& inst)
     }
 }
 
-void EncoderBase::encodeSendInstructionProcessSFID(const Instruction& inst)
+void Encoder::encodeSendInstructionProcessSFID(const Instruction& inst)
 {
     if (platform() >= Platform::GEN12P1) {
         auto gedSfid = lowerSFID(inst.getSendFc());
@@ -760,17 +756,17 @@ void EncoderBase::encodeSendInstructionProcessSFID(const Instruction& inst)
     }
 }
 
-void EncoderBase::encodeSendInstruction(const Instruction& inst)
+void Encoder::encodeSendInstruction(const Instruction& inst)
 {
     const OpSpec& os = inst.getOpSpec();
     if (os.isSendFamily()) {
-        encodeSendDestination(inst, inst.getDestination());
+        encodeSendDestination(inst.getDestination());
         encodeSendSource0(inst.getSource(0));
         if (m_model.supportsUnifiedSend()) {
             encodeSendsSource1(inst.getSource(1));
         }
     } else if (os.isSendsFamily()) {
-        encodeSendDestination(inst, inst.getDestination());
+        encodeSendDestination(inst.getDestination());
         encodeSendsSource0(inst.getSource(0));
         encodeSendsSource1(inst.getSource(1));
     }
@@ -867,7 +863,7 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
     }
 } //end: encodeSendInstruction
 
-void EncoderBase::encodeSyncInstruction(const Instruction& inst)
+void Encoder::encodeSyncInstruction(const Instruction& inst)
 {
     // Set the Dst.HorStride to 1 so that "sync.bar null" can be compacted
     GED_ENCODE(DstHorzStride, 1);
@@ -882,10 +878,7 @@ void EncoderBase::encodeSyncInstruction(const Instruction& inst)
     }
 }
 
-void EncoderBase::encodeBranchDestination(
-    const Instruction& inst,
-    const Operand& dst)
-{
+void Encoder::encodeBranchDestination(const Operand& dst) {
     GED_ENCODE(DstRegFile,
         lowerRegFile(dst.getDirRegName()));
     encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
@@ -896,7 +889,7 @@ void EncoderBase::encodeBranchDestination(
                        true);
 }
 
-void EncoderBase::encodeBasicDestination(
+void Encoder::encodeBasicDestination(
     const Instruction& inst,
     const Operand& dst,
     GED_ACCESS_MODE accessMode)
@@ -1020,9 +1013,7 @@ static void createChSelForCtxSavRst(
 }
 
 
-void EncoderBase::encodeBranchSource(
-    const Instruction& inst,
-    const Operand& src)
+void Encoder::encodeBranchSource(const Operand& src)
 {
     encodeSrcRegFile<SourceIndex::SRC0>(lowerRegFile(src.getDirRegName()));
     encodeSrcReg<SourceIndex::SRC0>(src.getDirRegName(),src.getDirRegRef().regNum);
@@ -1032,7 +1023,7 @@ void EncoderBase::encodeBranchSource(
 }
 
 template <SourceIndex S>
-void EncoderBase::encodeBasicSource(
+void Encoder::encodeBasicSource(
     const Instruction& inst,
     const Operand& src,
     GED_ACCESS_MODE accessMode)
@@ -1191,7 +1182,7 @@ void EncoderBase::encodeBasicSource(
     }
 }
 
-void EncoderBase::encodeSendDirectDestination(const Operand& dst)
+void Encoder::encodeSendDirectDestination(const Operand& dst)
 {
     if (platform() >= Platform::GEN12P1) {
         //auto t = dst.getType() == Type::INVALID ? Type::UD : dst.getType();
@@ -1212,7 +1203,7 @@ void EncoderBase::encodeSendDirectDestination(const Operand& dst)
     }
 }
 
-void EncoderBase::encodeSendDestinationDataType(const Operand& dst)
+void Encoder::encodeSendDestinationDataType(const Operand& dst)
 {
     if (platform() >= Platform::GEN12P1)
         return;
@@ -1221,8 +1212,7 @@ void EncoderBase::encodeSendDestinationDataType(const Operand& dst)
     GED_ENCODE(DstDataType, lowerDataType(t));
 }
 
-void EncoderBase::encodeSendDestination(
-    const Instruction& inst, const Operand& dst)
+void Encoder::encodeSendDestination(const Operand& dst)
 {
     if (m_model.supportsUnarySend()) {
         switch (dst.getKind())
@@ -1254,7 +1244,7 @@ void EncoderBase::encodeSendDestination(
     }
 }
 
-void EncoderBase::encodeSendSource0(const Operand& src)
+void Encoder::encodeSendSource0(const Operand& src)
 {
     if (m_model.supportsUnarySend()) {
         switch( src.getKind() )
@@ -1299,7 +1289,7 @@ void EncoderBase::encodeSendSource0(const Operand& src)
 // Starting from gen12, send opcode can have two sources, so the sends opcode
 // is not needed.
 
-void EncoderBase::encodeSendsSource0(const Operand& src)
+void Encoder::encodeSendsSource0(const Operand& src)
 {
     // "...for sends/sendsc instructions Src0.SrcMod, ... and Src0.SrcType are not used."
     // "Src0.RegFile[1], Src1.RegFile[1] are implicitly set to 0,
@@ -1332,7 +1322,7 @@ void EncoderBase::encodeSendsSource0(const Operand& src)
 }
 
 
-void EncoderBase::encodeSendsSource1(const Operand& src)
+void Encoder::encodeSendsSource1(const Operand& src)
 {
     //GED_ENCODE(Src1AddrMode, GED_ADDR_MODE_Direct);
     GED_REG_FILE gedRegFile = lowerRegFile(src.getDirRegName());
@@ -1340,7 +1330,7 @@ void EncoderBase::encodeSendsSource1(const Operand& src)
     GED_ENCODE(Src1RegNum, src.getDirRegRef().regNum);
 }
 
-void EncoderBase::encodeSendsDestination(const Operand& dst)
+void Encoder::encodeSendsDestination(const Operand& dst)
 {
     GED_ENCODE(DstAddrMode, GED_ADDR_MODE_Direct);
     GED_ENCODE(DstRegFile, lowerRegFile(dst.getDirRegName()));
@@ -1359,7 +1349,7 @@ void EncoderBase::encodeSendsDestination(const Operand& dst)
 }
 
 template <SourceIndex S>
-void EncoderBase::encodeTernarySourceAlign16(const Instruction& inst)
+void Encoder::encodeTernarySourceAlign16(const Instruction& inst)
 {
     // PreCNL Align16
     // GRF-only
@@ -1394,7 +1384,7 @@ void EncoderBase::encodeTernarySourceAlign16(const Instruction& inst)
         const RegRef& reg = src.getDirRegRef();
         //Adjusting sub register when going from align1 to align 16 representation.
         //in align 16 subregister is always 16 byte alligned, but we can play with swizzle to access none aligned sub register
-        uint8_t subRegNumber = reg.subRegNum;
+        uint16_t subRegNumber = reg.subRegNum;
         //mad (8) r46.0.xyzw:df r46.0.xyzw:df r50.0.xyzw:df r48.0.xyzw:df {Align16, Q1} // #??:$66:%66 {0=EL, 1=EL, 2=EL, BC=BAD}
         //mad (2) r5.0.xy:df r5.0.xyxy:df r92.2.xyxy:df r93.0.xyxy:df {Align16, Q1, NoMask} // #??:$988:%988 {0=OL, 1=EH, 2=OH, BC=GOOD} BDW,SKL
         if (S != SourceIndex::SRC2) {
@@ -1443,7 +1433,7 @@ void EncoderBase::encodeTernarySourceAlign16(const Instruction& inst)
             }
         }
         uint32_t regNum = reg.regNum;
-        encodeSrcReg<S>(RegName::GRF_R,regNum);
+        encodeSrcReg<S>(RegName::GRF_R, (uint16_t)regNum);
         auto subReg =
             subRegNumToBinNum(subRegNumber, src.getDirRegName(), src.getType());
         encodeSrcSubRegNum<S>(subReg, true);
@@ -1455,7 +1445,7 @@ void EncoderBase::encodeTernarySourceAlign16(const Instruction& inst)
     }
 }
 
-void EncoderBase::encodeTernaryDestinationAlign16(const Instruction& inst)
+void Encoder::encodeTernaryDestinationAlign16(const Instruction& inst)
 {
     const Operand& dst = inst.getDestination();
     if (inst.getOpSpec().supportsSaturation()) {
@@ -1529,20 +1519,20 @@ void EncoderBase::encodeTernaryDestinationAlign16(const Instruction& inst)
     }
 }
 
-void EncoderBase::encodeDstReg(RegName regName, uint8_t regNum)
+void Encoder::encodeDstReg(RegName regName, uint16_t regNum)
 {
     // encodes ARF or GRF
-    uint32_t gedBits = translateRegNum(-1,regName,regNum);
+    uint32_t gedBits = translateRegNum(-1, regName, regNum);
     GED_ENCODE(DstRegNum, gedBits);
 }
 
 
-void EncoderBase::encodeImmVal(const ImmVal &val, Type type) {
+void Encoder::encodeImmVal(const ImmVal &val, Type type) {
     GED_ENCODE(Imm, typeConvesionHelper(val, type));
 }
 
 template <SourceIndex S>
-void EncoderBase::encodeSrcRepCtrl(GED_REP_CTRL rep)
+void Encoder::encodeSrcRepCtrl(GED_REP_CTRL rep)
 {
     if (S == SourceIndex::SRC0) {
         GED_ENCODE(Src0RepCtrl, rep);
@@ -1553,7 +1543,7 @@ void EncoderBase::encodeSrcRepCtrl(GED_REP_CTRL rep)
     }
 }
 
-template <SourceIndex S> void EncoderBase::encodeSrcChanSel(
+template <SourceIndex S> void Encoder::encodeSrcChanSel(
     GED_SWIZZLE chSelX,
     GED_SWIZZLE chSelY,
     GED_SWIZZLE chSelZ,
@@ -1570,8 +1560,8 @@ template <SourceIndex S> void EncoderBase::encodeSrcChanSel(
     }
 }
 
-uint32_t EncoderBase::translateRegNum(
-    int opIx, RegName regName, uint8_t regNum)
+uint32_t Encoder::translateRegNum(
+    int opIx, RegName regName, uint16_t regNum)
 {
     uint8_t regNumBits = 0;
 
@@ -1587,12 +1577,12 @@ uint32_t EncoderBase::translateRegNum(
     } else if (!ri->isRegNumberValid((int)regNum)) {
         error("%s: %s%d number out of range", whichOp, ri->syntax, regNum);
     } else {
-        ri->encode((int)regNum,regNumBits);
+        ri->encode((int)regNum, regNumBits);
     }
     return regNumBits; // widen for GED
 }
 
-uint32_t EncoderBase::mathMacroRegToBits(int src, MathMacroExt implAcc) {
+uint32_t Encoder::mathMacroRegToBits(int src, MathMacroExt implAcc) {
     uint32_t bits = 8; // NOACC
     switch (implAcc) {
     /// or 00000000b (GEN11)
@@ -1616,7 +1606,7 @@ uint32_t EncoderBase::mathMacroRegToBits(int src, MathMacroExt implAcc) {
     }
     return bits;
 }
-GED_DST_CHAN_EN EncoderBase::mathMacroRegToChEn(MathMacroExt implAcc) {
+GED_DST_CHAN_EN Encoder::mathMacroRegToChEn(MathMacroExt implAcc) {
     GED_DST_CHAN_EN bits = GED_DST_CHAN_EN_w; // NOACC
     switch (implAcc) {
     case MathMacroExt::MME0:   bits = GED_DST_CHAN_EN_None; break; // 0000b
@@ -1633,7 +1623,7 @@ GED_DST_CHAN_EN EncoderBase::mathMacroRegToChEn(MathMacroExt implAcc) {
     return bits;
 }
 
-void EncoderBase::encodeOptionsThreadControl(const Instruction& inst)
+void Encoder::encodeOptionsThreadControl(const Instruction& inst)
 {
     if (inst.hasInstOpt(InstOpt::NOPREEMPT)) {
         if (m_model.supportsNoPreempt()) {
@@ -1646,19 +1636,19 @@ void EncoderBase::encodeOptionsThreadControl(const Instruction& inst)
 }
 
 // Translate from subRegNum to num represented in binary encoding
-std::pair<bool, uint32_t> EncoderBase::subRegNumToBinNum(
+std::pair<bool, uint32_t> Encoder::subRegNumToBinNum(
     int subRegNum, RegName regName, Type type)
 {
     return std::make_pair(true, SubRegToBytesOffset(subRegNum, regName, type));
 }
 
-void EncoderBase::encodeDstSubRegNum(
+void Encoder::encodeDstSubRegNum(
     std::pair<bool, uint32_t> subReg, bool isTernaryOrBranch)
 {
     GED_ENCODE(DstSubRegNum, subReg.second);
 }
 
-void EncoderBase::encodeOptions(const Instruction& inst)
+void Encoder::encodeOptions(const Instruction& inst)
 {
     GED_ENCODE(DebugCtrl,
         inst.hasInstOpt(InstOpt::BREAKPOINT) ?
@@ -1733,7 +1723,7 @@ void EncoderBase::encodeOptions(const Instruction& inst)
             inst_type = SWSB::InstType::SEND;
         else if (inst.is(Op::MATH))
             inst_type = SWSB::InstType::MATH;
-        uint32_t swsb_binary = inst.getSWSB().getSWSBBinary(
+        uint32_t swsb_binary = inst.getSWSB().encode(
                                     m_opts.swsbEncodeMode, inst_type);
 
         assert(inst.getSWSB().verify(m_opts.swsbEncodeMode, inst_type));
@@ -1743,7 +1733,7 @@ void EncoderBase::encodeOptions(const Instruction& inst)
 }
 
 
-void EncoderBase::patchJumpOffsets()
+void Encoder::patchJumpOffsets()
 {
     for (JumpPatch &jp : m_needToPatch)
     {
@@ -1830,7 +1820,7 @@ void EncoderBase::patchJumpOffsets()
 }
 
 
-bool EncoderBase::arePcsInQWords(const OpSpec &os) const
+bool Encoder::arePcsInQWords(const OpSpec &os) const
 {
     // everything is in bytes except:
     // HSW calla, call, and jmpi
@@ -1840,7 +1830,7 @@ bool EncoderBase::arePcsInQWords(const OpSpec &os) const
         os.op != Op::CALLA;
 }
 
-bool EncoderBase::callNeedsSrcRegion221(const Instruction &inst) const
+bool Encoder::callNeedsSrcRegion221(const Instruction &inst) const
 {
     // [call]: "Restriction: The src0 regioning control must be <2;2,1>" [IVB,HSW]
     // [calla]: "Restriction: The src0 regioning control must be <2;2,1>"
@@ -1849,7 +1839,7 @@ bool EncoderBase::callNeedsSrcRegion221(const Instruction &inst) const
 }
 
 
-void EncoderBase::encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v) {
+void Encoder::encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v) {
     if (S == SourceIndex::SRC0) {
         GED_ENCODE(Src0VertStride, lowerRegionVert(v));
     } else { // (S == SourceIndex::SRC1)
@@ -1859,7 +1849,8 @@ void EncoderBase::encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v) {
 
 // fixes stuff where GED just ignores or where it refuses to allow us to
 // set bits.  This should be empty unless GED fixes are in flight.
-void EncoderBase::applyGedWorkarounds(const Kernel& k, size_t bitsLen)
+void Encoder::applyGedWorkarounds(
+    const Kernel& /* k */, size_t /* bitsLen */)
 {
     // NOTE: there should be a GED raw bits setter (we can use this for
     // workarounds...)

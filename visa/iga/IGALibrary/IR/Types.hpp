@@ -153,7 +153,7 @@ static inline bool TypeIs64b(Type t)
 {
     return TypeSizeInBitsWithDefault(t,0) == 64;
 }
-static bool TypeIsFloating(Type t)
+static inline bool TypeIsFloating(Type t)
 {
     switch (t)
     {
@@ -208,11 +208,11 @@ struct Region {
         uint32_t bits;
     };
 
-    void set(Vert v, Width w, Horz h) {
+    void set(Vert _v, Width _w, Horz _h) {
         this->bits = 0; // clear padding
-        this->v = static_cast<unsigned int>(v);
-        this->w =  static_cast<unsigned int>(w);
-        this->h =  static_cast<unsigned int>(h);
+        v = static_cast<unsigned int>(_v);
+        w = static_cast<unsigned int>(_w);
+        h = static_cast<unsigned int>(_h);
     }
 
     void set(Vert vt) {
@@ -278,12 +278,16 @@ typedef EnumBitset<InstOpt> InstOptSet;
 
 
 struct RegRef {
-    uint8_t  regNum    = 0;
-    uint8_t  subRegNum = 0;
+    uint16_t  regNum    = 0;
+    uint16_t  subRegNum = 0;
 
     constexpr RegRef() { }
-    constexpr RegRef(uint8_t reg_num, uint8_t sub_reg_num)
-        : regNum(reg_num), subRegNum(sub_reg_num) {}
+    constexpr RegRef(uint16_t rNum, uint16_t srNum)
+        : regNum(rNum), subRegNum(srNum) { }
+    constexpr RegRef(int rNum, int srNum)
+        : regNum((uint8_t)rNum), subRegNum((uint8_t)srNum) { }
+    constexpr RegRef(uint32_t rNum, uint32_t srNum)
+        : regNum((uint8_t)rNum), subRegNum((uint8_t)srNum) { }
 
     bool operator==(const RegRef &rr) const {
         return regNum == rr.regNum && subRegNum == rr.subRegNum;

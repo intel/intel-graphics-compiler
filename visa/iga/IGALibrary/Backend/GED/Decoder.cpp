@@ -546,7 +546,7 @@ void Decoder::decodeBasicDestinationAlign16(Instruction *inst)
             {
                 // special access to acc2-acc9 via ChEn encoding
                 // (for context save and restore)
-                dri.regRef.regNum = (uint8_t)decodeDestinationRegNumAccBitsFromChEn();
+                dri.regRef.regNum = (uint16_t)decodeDestinationRegNumAccBitsFromChEn();
             } else if (chEn == GED_DST_CHAN_EN_xyzw) {
                 hStride = 1;
             } else {
@@ -571,7 +571,7 @@ void Decoder::decodeBasicDestinationAlign16(Instruction *inst)
         GED_DECODE_RAW(int32_t, addrImm, DstAddrImm);
 
         GED_DECODE_RAW(uint32_t, subRegNum, DstAddrSubRegNum);
-        RegRef a0(0, (uint8_t)subRegNum);
+        RegRef a0(0u, subRegNum);
         inst->setInidirectDestination(
             dstMod, a0, (uint16_t)addrImm, Region::Horz::HZ_1, type);
         break;
@@ -629,7 +629,7 @@ void Decoder::decodeBasicDestinationAlign1(Instruction *inst) {
     case GED_ADDR_MODE_Indirect: {
         GED_DECODE_RAW(int32_t, addrImm, DstAddrImm);
         GED_DECODE_RAW(uint32_t, subRegNum, DstAddrSubRegNum);
-        RegRef a0 = {0, (uint8_t)subRegNum};
+        RegRef a0(0u, subRegNum);
         inst->setInidirectDestination(
             dstMod, a0, (uint16_t)addrImm, rgnHzDec, type);
         break;
@@ -802,9 +802,10 @@ void Decoder::decodeTernaryDestinationAlign16(Instruction *inst)
         }
 
         GED_DECODE_RAW(uint32_t, subRegNumBytes, DstSubRegNum);
-        uint8_t subRegNumber = type == Type::INVALID ?
-            0 : binNumToSubRegNum((uint8_t)subRegNumBytes, regName, type);
-        regRef.subRegNum = (uint8_t)(subRegNumber + subregOffAlign16Elems);
+        uint16_t subRegNumber =
+            type == Type::INVALID ? 0 :
+                (uint16_t)binNumToSubRegNum(subRegNumBytes, regName, type);
+        regRef.subRegNum = (uint16_t)(subRegNumber + subregOffAlign16Elems);
         inst->setDirectDestination(
             dstMod,
             regName,
@@ -846,7 +847,7 @@ void Decoder::decodeTernarySourceAlign16(Instruction *inst)
 
     if (isMacro) {
         MathMacroExt MathMacroReg = decodeSrcMathMacroReg<S>();
-        RegRef rr = RegRef((uint8_t)regNum, 0);
+        RegRef rr(regNum, 0u);
         Region macroDftSrcRgn = macroDefaultSourceRegion(
             (int)S, inst->getOpSpec(), platform(), inst->getExecSize());
         inst->setMacroSource(
@@ -860,7 +861,7 @@ void Decoder::decodeTernarySourceAlign16(Instruction *inst)
     } else {
         int subReg = type == Type::INVALID ?
             0 : binNumToSubRegNum(decodeSrcSubRegNum<S>(), RegName::GRF_R, type);
-        RegRef reg = RegRef((uint8_t)regNum, (uint8_t)subReg);
+        RegRef reg = RegRef(regNum, (uint32_t)subReg);
         Region rgn;
         if (decodeSrcRepCtrl<S>() == GED_REP_CTRL_NoRep) {
             GED_SWIZZLE swizzle[4];
@@ -1052,7 +1053,7 @@ SendDesc Decoder::decodeSendExDesc()
         GED_DECODE_RAW(uint32_t, subRegNum, ExDescAddrSubRegNum);
         exDesc.type = SendDesc::Kind::REG32A;
         exDesc.reg.regNum = 0; // a0 is implied
-        exDesc.reg.subRegNum = subRegNum / 2;
+        exDesc.reg.subRegNum = (uint16_t)(subRegNum / 2);
     }
     return exDesc;
 }
@@ -1529,9 +1530,9 @@ FlagRegInfo Decoder::decodeFlagRegInfo(bool imm64Src0Overlaps) {
         fri.modifier != FlagModifier::NONE)
     {
         GED_DECODE_RAW(uint32_t, flagRegNum, FlagRegNum);
-        fri.reg.regNum = static_cast<uint8_t>(flagRegNum);
+        fri.reg.regNum = (uint16_t)flagRegNum;
         GED_DECODE_RAW(uint32_t, flagSubRegNum, FlagSubRegNum);
-        fri.reg.subRegNum = static_cast<uint8_t>(flagSubRegNum);
+        fri.reg.subRegNum = (uint16_t)flagSubRegNum;
     }
 
     return fri;
@@ -1650,7 +1651,7 @@ void Decoder::decodeDstDirSubRegNum(DirRegOpInfo& dri)
 
         GED_DECODE_RAW(uint32_t, subRegNum, DstSubRegNum);
         dri.regRef.subRegNum =
-            binNumToSubRegNum((uint8_t)subRegNum, dri.regName, scalingType);
+            (uint16_t)binNumToSubRegNum(subRegNum, dri.regName, scalingType);
     }
 }
 
@@ -1668,21 +1669,21 @@ void Decoder::decodeReg(
         "dst";
     if (regFile == GED_REG_FILE_GRF) {
         regName = RegName::GRF_R;
-        regRef.regNum = (uint8_t)regNumBits;
+        regRef.regNum = (uint16_t)regNumBits;
     } else if (regFile == GED_REG_FILE_ARF) { // ARF
         regName = RegName::INVALID;
         int arfRegNum = 0;
-        const RegInfo *ri = m_model.lookupArfRegInfoByRegNum(regNumBits);
+        const RegInfo *ri = m_model.lookupArfRegInfoByRegNum((uint8_t)regNumBits);
         if (ri == nullptr) {
             error("%s: 0x%02X: invalid arf register", opName, regNumBits);
         } else {
             regName = ri->regName;
-            if (!ri->decode(regNumBits, arfRegNum)) {
+            if (!ri->decode((uint8_t)regNumBits, arfRegNum)) {
                 error("%s: %s%d: invalid register number ",
                     opName, ri->syntax, arfRegNum);
             }
         }
-        regRef.regNum = (uint8_t)arfRegNum;
+        regRef.regNum = (uint16_t)arfRegNum;
     } else { // e.g. 10b
         error("%s: invalid register file", opName);
     }
@@ -1803,13 +1804,13 @@ void Decoder::decodeSourceBasicAlign1(
                     opInfo.type);
             }
         } else if (addrMode == GED_ADDR_MODE_Indirect) {
-            RegRef a0 {0, (uint8_t)decodeSrcAddrSubRegNum<S>()};
-            int16_t addr_imm = decodeSrcAddrImm<S>();
+            RegRef a0(0u, decodeSrcAddrSubRegNum<S>());
+            int16_t addrImm = (uint16_t)decodeSrcAddrImm<S>();
             inst->setInidirectSource(
                 toSrcIxE,
                 srcMod,
                 a0,
-                addr_imm,
+                addrImm,
                 decRgn,
                 decodeSrcType<S>());
         } else { // == GED_ADDR_MODE_INVALID
@@ -1900,7 +1901,6 @@ void Decoder::decodeSourceBasicAlign16(
                     toSrcIx, srcMod, opInfo.regName, opInfo.regRef, rgn, opInfo.type);
             }
         } else if (addrMode == GED_ADDR_MODE_Indirect) {
-            uint32_t vs = decodeSrcVertStride<S>();
             if (!isChanSelPacked<S>() && vs == 4) {
                 fatal("src%d: inconvertible align16 operand", (int)S);
             }
@@ -1909,7 +1909,7 @@ void Decoder::decodeSourceBasicAlign16(
             RegRef indReg = {0, (uint8_t)subRegNum};
             inst->setInidirectSource(
                 toSrcIx, srcMod, indReg,
-                addrImm, Region::SRC110, decodeSrcType<S>());
+                (int16_t)addrImm, Region::SRC110, decodeSrcType<S>());
         } else {
              // == GED_ADDR_MODE_INVALID
             fatal("src%d: invalid addressing mode", (int)S);

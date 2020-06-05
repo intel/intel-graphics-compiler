@@ -153,7 +153,7 @@ GenParser::GenParser(
     : Parser(inp,eh)
     , m_model(model)
     , m_builder(handler)
-    , m_parseOpts(pots)
+    , m_opts(pots)
 {
     initSymbolMaps();
 }
@@ -212,7 +212,7 @@ void GenParser::ParseExecInfo(
         if (m_opSpec && m_opSpec->hasImpicitEm()) {
             chOff = ChannelOffset::M0;
             execSizeVal = 1;
-        } else if (m_parseOpts.supportLegacyDirectives) {
+        } else if (m_opts.supportLegacyDirectives) {
             chOff = ChannelOffset::M0;
             execSizeVal = (int)dftExecSize;
         } else {
@@ -621,6 +621,7 @@ bool GenParser::parseMulExpr(bool consumed, ImmVal &v) {
     }
     return true;
 }
+
 // E -> ('-'|'~') E
 bool GenParser::parseUnExpr(bool consumed, ImmVal &v) {
     if (!LookingAtAnyOf(SUB, TILDE)) {
@@ -644,6 +645,7 @@ bool GenParser::parseUnExpr(bool consumed, ImmVal &v) {
     }
     return true;
 }
+
 // special symbol (e.g. nan, inf, ...)
 // grouped expression (E)
 // literal
@@ -700,7 +702,7 @@ bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
         ParseFltFrom(t.loc, v.f64);
         v.kind = ImmVal::Kind::F64;
         Skip();
-    } else if (LookingAtAnyOf({INTLIT02,INTLIT10,INTLIT16})) {
+    } else if (LookingAtAnyOf({INTLIT02, INTLIT10, INTLIT16})) {
         // we parse as unsigned, but tag as signed for negation etc...
         ParseIntFrom<uint64_t>(t.loc, v.u64);
         v.kind = ImmVal::Kind::S64;
@@ -718,7 +720,7 @@ bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
         // // join (16) LABEL                // passes
         // // mov (1) r65:ud LABEL:ud        // fails
         // // mov (1) r65:ud (2 + LABEL):ud  // fails (poor diagnostic)
-        if (m_opSpec && (m_opSpec->isBranching() || m_opSpec->op == Op::MOV)) {
+        if (m_opSpec && (m_opSpec->isBranching() || m_opSpec->is(Op::MOV))) {
             if (consumed) {
                 //   jmpi (LABEL + 2)
                 //         ^^^^^ already consumed LPAREN
@@ -768,213 +770,6 @@ bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
     return true;
 } // parsePrimary
 
-bool GenParser::TryParseInstOptOrDepInfo(InstOptSet &instOpts)
-{
-    return tryParseInstOptDepInfoToken(instOpts) ||
-        tryParseInstOptToken(instOpts);
-}
-
-
-bool GenParser::tryParseInstOptDepInfoToken(InstOptSet &instOpts)
-{
-    auto loc = NextLoc();
-    if (LookingAt(IDENT)) {
-        InstOpt newOpt = InstOpt::ACCWREN;
-        bool isSwsb = false;
-        // classic instruction option that affects instruction dependency
-        // scheduling etc...
-        if (ConsumeIdentEq("NoDDChk")) {
-            newOpt = InstOpt::NODDCHK;
-            if (!m_model.supportsHwDeps()) {
-                Fail(loc, "NoDDChk not supported on given platform");
-            }
-        } else if (ConsumeIdentEq("NoDDClr")) {
-            newOpt = InstOpt::NODDCLR;
-            if (!m_model.supportsHwDeps()) {
-                Fail(loc, "NoDDClr not supported on given platform");
-            }
-        } else if (ConsumeIdentEq("NoPreempt")) {
-            if (m_model.supportsNoPreempt()) {
-                newOpt = InstOpt::NOPREEMPT;
-            } else {
-                Fail(loc, "NoPreempt not supported on given platform");
-            }
-        } else if (ConsumeIdentEq("NoSrcDepSet")) {
-            if (m_model.supportNoSrcDepSet()) {
-                newOpt = InstOpt::NOSRCDEPSET;
-            } else {
-                Fail(loc, "NoSrcDep not supported on given platform");
-            }
-        } else if (ConsumeIdentEq("Switch")) {
-            newOpt = InstOpt::SWITCH;
-            if (!m_model.supportsHwDeps()) {
-                m_errorHandler.reportWarning(loc,
-                    "ignoring unsupported instruction option {Switch}");
-            }
-        } else {
-            return false; // unrecognized option
-        }
-        if ((!isSwsb) && (!instOpts.add(newOpt))) {
-            // adding the option doesn't change the set... (it's a duplicate)
-            Fail(loc, "duplicate instruction options");
-        }
-    } else if (Consume(DOLLAR)) {
-        // sbid directive
-        if (m_model.supportsHwDeps()) {
-            Fail(loc, "software dependencies not supported on this platform");
-        }
-        int32_t sbid;
-        ConsumeIntLitOrFail(sbid, "expected SBID token");
-        // $4
-        if (Consume(DOT)) {
-            if (ConsumeIdentEq("dst")) {
-                // $4.dst
-                m_builder.InstDepInfoSBidDst(loc, sbid);
-            } else if (ConsumeIdentEq("src")) {
-                // $4.src
-                m_builder.InstDepInfoSBidSrc(loc, sbid);
-            } else {
-                Fail("invalid SBID directive expecting 'dst' or 'src'");
-            }
-        } else if (!LookingAtAnyOf(COMMA,RBRACE)) {
-            Fail("syntax error in SBID directive"
-                " (expected '.' ',' or '}')");
-        } else {
-            // $4 (allocate/.set)
-            m_builder.InstDepInfoSBidAlloc(loc, sbid);
-        }
-    } else if (Consume(AT)) {
-        // min dependency distance @3
-        if (m_model.supportsHwDeps()) {
-            Fail(loc, "software dependencies not supported on this platform");
-        }
-        int32_t dist;
-        auto loc = NextLoc();
-        ConsumeIntLitOrFail(dist,"expected register min distance value");
-        m_builder.InstDepInfoDist(loc, InstBuilder::SWSBInfo::REG_DIST, dist);
-    } else {
-        return false;
-    }
-    return true;
-}
-
-bool GenParser::tryParseInstOptToken(InstOptSet &instOpts) {
-    auto loc = NextLoc();
-    InstOpt newOpt = InstOpt::ACCWREN;
-    if (ConsumeIdentEq("AccWrEn")) {
-        newOpt = InstOpt::ACCWREN;
-    } else if (ConsumeIdentEq("Atomic")) {
-        if (platform() < Platform::GEN7) {
-            Fail(loc, "Atomic mot supported on given platform");
-        }
-        newOpt = InstOpt::ATOMIC;
-        if (instOpts.contains(InstOpt::SWITCH)) {
-            Fail(loc, "Atomic mutually exclusive with Switch");
-        } else if (instOpts.contains(InstOpt::NOPREEMPT)) {
-            Fail(loc, "Atomic mutually exclusive with NoPreempt");
-        }
-    } else if (ConsumeIdentEq("Breakpoint")) {
-        newOpt = InstOpt::BREAKPOINT;
-    } else if (ConsumeIdentEq("Compacted")) {
-        newOpt = InstOpt::COMPACTED;
-        if (instOpts.contains(InstOpt::NOCOMPACT)) {
-            Fail(loc, "Compacted mutually exclusive with "
-                "Uncompacted/NoCompact");
-        }
-    } else if (ConsumeIdentEq("EOT")) {
-        newOpt = InstOpt::EOT;
-        if (!m_opSpec->isSendOrSendsFamily()) {
-            Fail(loc, "EOT is only allowed on send instructions");
-        }
-    } else if (ConsumeIdentEq("NoCompact") ||
-        ConsumeIdentEq("Uncompacted"))
-    {
-        newOpt = InstOpt::NOCOMPACT;
-        if (instOpts.contains(InstOpt::COMPACTED)) {
-            Fail(loc, "Uncomapcted/NoCompact mutually exclusive "
-                "with Compacted");
-        }
-    } else if (ConsumeIdentEq("Serialize")) {
-        newOpt = InstOpt::SERIALIZE;
-    } else if (ConsumeIdentEq("NoMask")) {
-        Fail(loc, "NoMask goes precedes predication as (W) for WrEn: "
-            "e.g. (W) op (..) ...   or    (W&f0.0) op (..) ..");
-    } else if (ConsumeIdentEq("H1")) {
-        Fail(loc, "H1 is obsolete; use M0 in execution offset: "
-            "e.g. op (16|M0) ...");
-    } else if (ConsumeIdentEq("H2")) {
-        Fail(loc, "H2 is obsolete; use M16 in execution offset: "
-            "e.g. op (16|M16) ...");
-    } else if (ConsumeIdentEq("Q1")) {
-        Fail(loc, "Q1 is obsolete; use M0 in execution offset: "
-            "e.g. op (8|M0) ...");
-    } else if (ConsumeIdentEq("Q2")) {
-        Fail(loc, "Q2 is obsolete; use M8 in execution offset: "
-            "e.g. op (8|M8) ...");
-    } else if (ConsumeIdentEq("Q3")) {
-        Fail(loc, "Q3 is obsolete; use M16 in execution offset: "
-            "e.g. op (8|M16) ...");
-    } else if (ConsumeIdentEq("Q4")) {
-        Fail(loc, "Q4 is obsolete; use M24 in execution offset: "
-            "e.g. op (8|M24) ...");
-    } else if (ConsumeIdentEq("N1")) {
-        Fail(loc, "N1 is obsolete; use M0 in execution offset: "
-            "e.g. op (4|M0) ...");
-    } else if (ConsumeIdentEq("N2")) {
-        Fail(loc, "N2 is obsolete; use M4 in execution offset: "
-            "e.g. op (4|M4) ...");
-    } else if (ConsumeIdentEq("N3")) {
-        Fail(loc, "N3 is obsolete; use M8 in execution offset: "
-            "e.g. op (4|M8) ...");
-    } else if (ConsumeIdentEq("N4")) {
-        Fail(loc, "N4 is obsolete; use M12 in execution offset: "
-            "e.g. op (4|M12) ...");
-    } else if (ConsumeIdentEq("N5")) {
-        Fail(loc, "N5 is obsolete; use M16 in execution offset: "
-            "e.g. op (4|M16) ...");
-    } else if (ConsumeIdentEq("N6")) {
-        Fail(loc, "N6 is obsolete; use M20 in execution offset: "
-            "e.g. op (4|M20) ...");
-    } else if (ConsumeIdentEq("N7")) {
-        Fail(loc, "N7 is obsolete; use M24 in execution offset: "
-            "e.g. op (4|M24) ...");
-    } else if (ConsumeIdentEq("N8")) {
-        Fail(loc, "N8 is obsolete; use M28 in execution offset: "
-            "e.g. op (4|M28) ...");
-    } else {
-        return false;
-    }
-
-    if (!instOpts.add(newOpt)) {
-        // adding the option doesn't change the set... (it's duplicate)
-        Fail(loc, "duplicate instruction options");
-    }
-    return true;
-}
-
-/*
-// constructs
-class KernelBuilder {
-    // all the instructions in order
-    std::vector<Instruction*>                         instructions;
-    std::vector<std::tuple<Loc,Operand&>>             patches;
-    std::map<std::string,int32_t>                     labelOffsets;
-    std::set<int32_t>                                 blockStarts;
-
-    InstBuilder                                       instBuilder;
-    const Model                                      &model;
-    Kernel                                           *kernel;
-    ErrorHandler                                     &errorHandler;
-public:
-    KernelBuilder(const Model &m, ErrorHandler &e)
-        : InstBuilder(kernel, e), model(m), errorHandler(e)
-    {
-    }
-
-    Kernel *endListing() {
-    }
-};
-*/
 
 void GenParser::initSymbolMaps()
 {
@@ -997,8 +792,19 @@ class KernelParser : GenParser
     // maps mnemonics and registers for faster lookup
     std::unordered_map<std::string,const OpSpec*>   opmap;
 
-    ExecSize                       m_defaultExecutionSize;
-    Type                           m_defaultRegisterType;
+    ExecSize              m_defaultExecutionSize;
+    Type                  m_defaultRegisterType;
+
+    // instruction state
+    bool                  m_hasWrEn;
+    Type                  m_unifType;
+    const Token          *m_unifTypeTk;
+    RegRef                m_flagReg;
+    ExecSize              m_execSize;
+    ChannelOffset         m_chOff;
+
+    Loc                   m_mnemonicLoc;
+    Loc                   m_srcLocs[3];
 
 public:
     KernelParser(
@@ -1017,46 +823,12 @@ public:
     void ParseListing() {
         ParseProgram();
     }
-private:
-    // instruction state
-    bool                  m_hasWrEn;
-    Type                  m_unifType;
-    const Token          *m_unifTypeTk;
-    RegRef                m_flagReg;
-    ExecSize              m_execSize;
-    ChannelOffset         m_chOff;
-
-    Loc                   m_mnemonicLoc;
-    Loc                   m_srcLocs[3];
 
     void initSymbolMaps() {
         // map mnemonics names to their ops
         // subops only get mapped by their fully qualified names in this pass
-        std::vector<const OpSpec *> subOps;
         for (const OpSpec *os : m_model.ops()) {
             if (os->isValid()) {
-                opmap[os->mnemonic] = os;
-            }
-        }
-        // subops get mapped by their short names only if that does not
-        // conflict with some other op.
-        // e.g. "sync.nop" will not parse as "nop", but as the real nop.
-        for (auto os : subOps) {
-            // frequency of a short name in the subops
-            auto subOpMnemonicFreq = [&](const std::string &mne) {
-                int k = 0;
-                for (auto os : subOps) {
-                    if (mne == os->mnemonic) {
-                        k++;
-                    }
-                }
-                return k;
-            };
-            // e.g. SYNC_NOP's "nop" conflicts with NOP
-            bool conflictsWithRealOp = opmap.find(os->mnemonic) != opmap.end();
-            // e.g. A_C's "c" short name would conflict with B_C's "c" short op
-            bool conflictsWithOtherSubOp = subOpMnemonicFreq(os->mnemonic) != 1;
-            if (!conflictsWithRealOp && !conflictsWithOtherSubOp) {
                 opmap[os->mnemonic] = os;
             }
         }
@@ -1068,7 +840,7 @@ private:
         m_builder.ProgramStart();
 
         // parse default type directives
-        if (m_parseOpts.supportLegacyDirectives) {
+        if (m_opts.supportLegacyDirectives) {
             // e.g. .default_execution_size...
             ParseLegacyDirectives();
         }
@@ -1142,7 +914,7 @@ private:
         m_errorHandler.reportError(s.loc, s.message);
         // bail if we've reached the max number of errors
         if (m_errorHandler.getErrors().size() >=
-            m_parseOpts.maxSyntaxErrors)
+            m_opts.maxSyntaxErrors)
         {
             throw s;
         }
@@ -1168,7 +940,7 @@ private:
         while (true) {
             if (Consume(Lexeme::NEWLINE) || Consume(Lexeme::SEMI)) {
                 continue;
-            } else if (m_parseOpts.supportLegacyDirectives &&
+            } else if (m_opts.supportLegacyDirectives &&
                 ParseLegacyDirectives())
             {
                 // .default_execution_size...
@@ -1247,7 +1019,7 @@ private:
             !LookingAt(Lexeme::SEMI) &&
             !LookingAt(Lexeme::END_OF_FILE))
         {
-            FailAfterPrev("expected '\\n', ';', or EOF");
+            FailAfterPrev("expected newline, ';', or EOF");
         }
 
         m_builder.InstEnd(ExtentToPrevEnd(startLoc));
@@ -1411,7 +1183,7 @@ private:
         ParseSendSrcOp(0, false);
         ParseSendSrcOp(1,
             m_model.supportsUnarySend() &&
-            m_parseOpts.supportLegacyDirectives);
+            m_opts.supportLegacyDirectives);
         ParseSendDescsLegacy();
     }
 
@@ -1542,10 +1314,9 @@ private:
 #endif
     void failWithUnexpectedSubfunction(
         const Loc &loc,
-        const std::string &sfIdent)
+        const std::string &)
     {
-        std::stringstream ss;
-        ss << "unexpected subfunction for op";
+        Fail(loc, "unexpected subfunction for op");
 #if 0
         std::vector<std::pair<float,const char *>> matches;
         for (int i = (int)m_opSpec->op + 1;
@@ -1584,7 +1355,6 @@ private:
             }
         }
 #endif
-        Fail(loc, ss.str());
     }
 
 
@@ -1717,7 +1487,7 @@ private:
             }
             ParseFlagModFlagReg();
             ConsumeOrFail(RBRACK, "expected ]");
-            if (m_parseOpts.deprecatedSyntaxWarnings) {
+            if (m_opts.deprecatedSyntaxWarnings) {
                 Warning(loc,
                     "deprecated flag modifier "
                     "syntax (omit the brackets)");
@@ -1744,7 +1514,7 @@ private:
             Loc loc = NextLoc(1);
             if (!IdentLookupFrom(1, FLAGMODS_LEGACY, flagMod)) {
                 return false;
-            } else if (m_parseOpts.deprecatedSyntaxWarnings) {
+            } else if (m_opts.deprecatedSyntaxWarnings) {
                 // deprecated syntax
                 std::stringstream ss;
                 ss << "deprecated flag modifier syntax: ";
@@ -1904,12 +1674,12 @@ private:
         if (m_opSpec->isSendOrSendsFamily() && Consume(DOT)) {
             ConsumeIntLitOrFail(subregNum, "expected subregister");
             // whine about them using a subregister on a send operand
-            if (m_parseOpts.deprecatedSyntaxWarnings) {
+            if (m_opts.deprecatedSyntaxWarnings) {
                 Warning(subregLoc, "send operand subregisters have no effect"
                     " and are deprecated syntax");
             }
             if (m_opSpec->isSendOrSendsFamily() && LookingAt(LANGLE)) {
-                if (m_parseOpts.deprecatedSyntaxWarnings) {
+                if (m_opts.deprecatedSyntaxWarnings) {
                     // whine about them using a region
                     Warning("send operand region has no effect and is"
                         " deprecated syntax");
@@ -1969,8 +1739,9 @@ private:
             m_builder.InstDstOpRegMathMacroExtReg(
                 opStart, ri.regName, regNum, mmeReg, rgnHz, dty);
         } else {
+            RegRef reg(regNum, subregNum);
             m_builder.InstDstOpRegDirect(
-                opStart, ri.regName, RegRef(regNum, subregNum), rgnHz, dty);
+                opStart, ri.regName, reg, rgnHz, dty);
         }
     }
 
@@ -2182,7 +1953,6 @@ private:
                         FinishSrcOpImmLabel(
                             srcOpIx,
                             m_srcLocs[srcOpIx],
-                            srcMods,
                             regnameTk.loc,
                             str);
                     } else {
@@ -2314,12 +2084,13 @@ private:
                 rgn,
                 sty);
         } else {
+            RegRef reg((uint8_t)regNum, (uint8_t)subregNum);
             m_builder.InstSrcOpRegDirect(
                 srcOpIx,
                 opStart,
                 srcMod,
                 ri.regName,
-                RegRef(regNum, subregNum),
+                reg,
                 rgn,
                 sty);
         }
@@ -2373,7 +2144,7 @@ private:
             if (!LookingAt(LANGLE)) {
                 return m_opSpec->implicitSrcRegion(
                     srcOpIx, m_execSize, m_builder.isMacroOp());
-            } else if (m_parseOpts.deprecatedSyntaxWarnings) {
+            } else if (m_opts.deprecatedSyntaxWarnings) {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
                     srcOpIx);
@@ -2409,7 +2180,7 @@ private:
             if (!LookingAt(LANGLE)) {
                 return m_opSpec->implicitSrcRegion(
                     srcOpIx, m_execSize, m_builder.isMacroOp());
-            } else if (m_parseOpts.deprecatedSyntaxWarnings) {
+            } else if (m_opts.deprecatedSyntaxWarnings) {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
                     srcOpIx);
@@ -2461,7 +2232,7 @@ private:
             if (!LookingAt(LANGLE)) {
                 return m_opSpec->implicitSrcRegion(
                     srcOpIx, m_execSize, m_builder.isMacroOp());
-            } else if (m_parseOpts.deprecatedSyntaxWarnings) {
+            } else if (m_opts.deprecatedSyntaxWarnings) {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
                     srcOpIx);
@@ -2809,8 +2580,7 @@ private:
     void FinishSrcOpImmLabel(
         int srcOpIx,
         const Loc &opStart,
-        const SrcModifier &srcMod,
-        const Loc valLoc,
+        const Loc /* lblLoc */,
         const std::string &lbl)
     {
         Type type = ParseSrcOpTypeWithDefault(srcOpIx, true, true);
@@ -2875,7 +2645,7 @@ private:
             }
         }
         RegRef reg = {
-            static_cast<uint8_t>(regNum),
+            static_cast<uint16_t>(regNum),
             0
         };
         // gets the implicit region and warns against using explicit regioning
@@ -2900,7 +2670,7 @@ private:
     Type ParseDstOpTypeWithDefault() {
         if (m_opSpec->hasImplicitDstType()) {
             if (LookingAt(COLON)) {
-                if (m_parseOpts.deprecatedSyntaxWarnings)
+                if (m_opts.deprecatedSyntaxWarnings)
                     Warning("implicit type on dst should be omitted");
                 // parse the type but ignore it
                 ParseOpTypeWithDefault(DST_TYPES, "expected destination type");
@@ -2917,7 +2687,7 @@ private:
     {
         if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl)) {
             if (LookingAt(COLON)) {
-                if (m_parseOpts.deprecatedSyntaxWarnings)
+                if (m_opts.deprecatedSyntaxWarnings)
                     WarningF("implicit type on src should be omitted", srcOpIx);
                 // parse the type but ignore it
                 ParseOpTypeWithDefault(SRC_TYPES, "expected source type");
@@ -2935,7 +2705,7 @@ private:
     Type ParseSrcOpTypeWithoutDefault(int srcOpIx, bool immOrLbl) {
         if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl)) {
             if (LookingAt(COLON)) {
-                if (m_parseOpts.deprecatedSyntaxWarnings)
+                if (m_opts.deprecatedSyntaxWarnings)
                     WarningF("implicit type on src should be omitted", srcOpIx);
                 // parse the type but ignore it
                 TryParseOpType(SRC_TYPES);
@@ -3065,7 +2835,7 @@ private:
             while (Consume(COMMA)) {
                 ParseInstOptOrFail(instOpts);
             }
-            ConsumeOrFail(RBRACE,"expected }");
+            ConsumeOrFail(RBRACE, "expected }");
         }
 
 
@@ -3074,9 +2844,187 @@ private:
 
     void ParseInstOptOrFail(InstOptSet &instOpts) {
         auto loc = NextLoc();
-        if (!TryParseInstOptOrDepInfo(instOpts)) {
+        if (!tryParseInstOptToken(instOpts) &&
+            !tryParseInstOptDepInfo(instOpts))
+        {
             Fail(loc, "invalid instruction option");
         }
+    }
+
+    bool tryParseInstOptToken(InstOptSet &instOpts) {
+        auto loc = NextLoc();
+        InstOpt newOpt = InstOpt::ACCWREN;
+        if (ConsumeIdentEq("AccWrEn")) {
+            newOpt = InstOpt::ACCWREN;
+        } else if (ConsumeIdentEq("Atomic")) {
+            if (platform() < Platform::GEN7) {
+                Fail(loc, "Atomic mot supported on given platform");
+            }
+            newOpt = InstOpt::ATOMIC;
+            if (instOpts.contains(InstOpt::SWITCH)) {
+                Fail(loc, "Atomic mutually exclusive with Switch");
+            } else if (instOpts.contains(InstOpt::NOPREEMPT)) {
+                Fail(loc, "Atomic mutually exclusive with NoPreempt");
+            }
+        } else if (ConsumeIdentEq("Breakpoint")) {
+            newOpt = InstOpt::BREAKPOINT;
+        } else if (ConsumeIdentEq("Compacted")) {
+            newOpt = InstOpt::COMPACTED;
+            if (instOpts.contains(InstOpt::NOCOMPACT)) {
+                Fail(loc, "Compacted mutually exclusive with "
+                    "Uncompacted/NoCompact");
+            }
+        } else if (ConsumeIdentEq("EOT")) {
+            newOpt = InstOpt::EOT;
+            if (!m_opSpec->isSendOrSendsFamily()) {
+                Fail(loc, "EOT is only allowed on send instructions");
+            }
+        } else if (ConsumeIdentEq("NoCompact") ||
+            ConsumeIdentEq("Uncompacted"))
+        {
+            newOpt = InstOpt::NOCOMPACT;
+            if (instOpts.contains(InstOpt::COMPACTED)) {
+                Fail(loc, "Uncomapcted/NoCompact mutually exclusive "
+                    "with Compacted");
+            }
+        } else if (ConsumeIdentEq("Serialize")) {
+            newOpt = InstOpt::SERIALIZE;
+        } else if (ConsumeIdentEq("NoMask")) {
+            Fail(loc, "NoMask goes precedes predication as (W) for WrEn: "
+                "e.g. (W) op (..) ...   or    (W&f0.0) op (..) ..");
+        } else if (ConsumeIdentEq("H1")) {
+            Fail(loc, "H1 is obsolete; use M0 in execution offset: "
+                "e.g. op (16|M0) ...");
+        } else if (ConsumeIdentEq("H2")) {
+            Fail(loc, "H2 is obsolete; use M16 in execution offset: "
+                "e.g. op (16|M16) ...");
+        } else if (ConsumeIdentEq("Q1")) {
+            Fail(loc, "Q1 is obsolete; use M0 in execution offset: "
+                "e.g. op (8|M0) ...");
+        } else if (ConsumeIdentEq("Q2")) {
+            Fail(loc, "Q2 is obsolete; use M8 in execution offset: "
+                "e.g. op (8|M8) ...");
+        } else if (ConsumeIdentEq("Q3")) {
+            Fail(loc, "Q3 is obsolete; use M16 in execution offset: "
+                "e.g. op (8|M16) ...");
+        } else if (ConsumeIdentEq("Q4")) {
+            Fail(loc, "Q4 is obsolete; use M24 in execution offset: "
+                "e.g. op (8|M24) ...");
+        } else if (ConsumeIdentEq("N1")) {
+            Fail(loc, "N1 is obsolete; use M0 in execution offset: "
+                "e.g. op (4|M0) ...");
+        } else if (ConsumeIdentEq("N2")) {
+            Fail(loc, "N2 is obsolete; use M4 in execution offset: "
+                "e.g. op (4|M4) ...");
+        } else if (ConsumeIdentEq("N3")) {
+            Fail(loc, "N3 is obsolete; use M8 in execution offset: "
+                "e.g. op (4|M8) ...");
+        } else if (ConsumeIdentEq("N4")) {
+            Fail(loc, "N4 is obsolete; use M12 in execution offset: "
+                "e.g. op (4|M12) ...");
+        } else if (ConsumeIdentEq("N5")) {
+            Fail(loc, "N5 is obsolete; use M16 in execution offset: "
+                "e.g. op (4|M16) ...");
+        } else if (ConsumeIdentEq("N6")) {
+            Fail(loc, "N6 is obsolete; use M20 in execution offset: "
+                "e.g. op (4|M20) ...");
+        } else if (ConsumeIdentEq("N7")) {
+            Fail(loc, "N7 is obsolete; use M24 in execution offset: "
+                "e.g. op (4|M24) ...");
+        } else if (ConsumeIdentEq("N8")) {
+            Fail(loc, "N8 is obsolete; use M28 in execution offset: "
+                "e.g. op (4|M28) ...");
+        } else {
+            return false;
+        }
+
+        if (!instOpts.add(newOpt)) {
+            // adding the option doesn't change the set... (it's duplicate)
+            Fail(loc, "duplicate instruction options");
+        }
+        return true;
+    }
+
+    bool tryParseInstOptDepInfo(InstOptSet &instOpts) {
+        auto loc = NextLoc();
+        if (LookingAt(IDENT)) {
+            InstOpt newOpt = InstOpt::ACCWREN;
+            bool isSwsbOpt = false;
+            // classic instruction option that affects instruction dependency
+            // scheduling etc...
+            if (ConsumeIdentEq("NoDDChk")) {
+                newOpt = InstOpt::NODDCHK;
+                if (!m_model.supportsHwDeps()) {
+                    Fail(loc, "NoDDChk not supported on given platform");
+                }
+            } else if (ConsumeIdentEq("NoDDClr")) {
+                newOpt = InstOpt::NODDCLR;
+                if (!m_model.supportsHwDeps()) {
+                    Fail(loc, "NoDDClr not supported on given platform");
+                }
+            } else if (ConsumeIdentEq("NoPreempt")) {
+                if (m_model.supportsNoPreempt()) {
+                    newOpt = InstOpt::NOPREEMPT;
+                } else {
+                    Fail(loc, "NoPreempt not supported on given platform");
+                }
+            } else if (ConsumeIdentEq("NoSrcDepSet")) {
+                if (m_model.supportNoSrcDepSet()) {
+                    newOpt = InstOpt::NOSRCDEPSET;
+                } else {
+                    Fail(loc, "NoSrcDep not supported on given platform");
+                }
+            } else if (ConsumeIdentEq("Switch")) {
+                newOpt = InstOpt::SWITCH;
+                if (!m_model.supportsHwDeps()) {
+                    m_errorHandler.reportWarning(loc,
+                        "ignoring unsupported instruction option {Switch}");
+                }
+            } else {
+                return false; // unrecognized option
+            }
+            if (!isSwsbOpt && !instOpts.add(newOpt)) {
+                // adding the option doesn't change the set... (it's a duplicate)
+                Fail(loc, "duplicate instruction options");
+            }
+        } else if (Consume(DOLLAR)) {
+            // sbid directive
+            if (m_model.supportsHwDeps()) {
+                Fail(loc, "software dependencies not supported on this platform");
+            }
+            int32_t sbid;
+            ConsumeIntLitOrFail(sbid, "expected SBID token");
+            // $4
+            if (Consume(DOT)) {
+                if (ConsumeIdentEq("dst")) {
+                    // $4.dst
+                    m_builder.InstDepInfoSBidDst(loc, sbid);
+                } else if (ConsumeIdentEq("src")) {
+                    // $4.src
+                    m_builder.InstDepInfoSBidSrc(loc, sbid);
+                } else {
+                    Fail("invalid SBID directive expecting 'dst' or 'src'");
+                }
+            } else if (!LookingAtAnyOf(COMMA,RBRACE)) {
+                Fail("syntax error in SBID directive"
+                    " (expected '.' ',' or '}')");
+            } else {
+                // $4 (allocate/.set)
+                m_builder.InstDepInfoSBidAlloc(loc, sbid);
+            }
+        } else if (Consume(AT)) {
+            // min dependency distance @3
+            if (m_model.supportsHwDeps()) {
+                Fail(loc, "software dependencies not supported on this platform");
+            }
+            int32_t dist;
+            auto loc = NextLoc();
+            ConsumeIntLitOrFail(dist,"expected register min distance value");
+            m_builder.InstDepInfoDist(loc, SWSB::DistType::REG_DIST, dist);
+        } else {
+            return false;
+        }
+        return true;
     }
 
     // FlagRegRef = ('f0'|'f1'|'f2'|'f3') ('.' ('0'|'1'))?

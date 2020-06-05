@@ -32,6 +32,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * *** It should build without warnings. ***
  *   => It's nice to strip end of line whitespace on the generated files.
  */
+#if defined(_MSC_VER)
+#pragma warning(default : 4505)
+#endif
 
 #include "Lexemes.hpp"
 

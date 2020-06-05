@@ -232,7 +232,7 @@ namespace iga {
                 currLineDebt += currColSize - currColCapacity;
             }
             //
-            currColCapacity = -1;
+            currColCapacity = (size_t)-1;
             currColSize = 0;
         }
 
@@ -308,8 +308,8 @@ namespace iga {
 
 
         template <typename T>
-        void emitHex(const T &t, int w = 0) {
-            fmtHex(o, (uint64_t)t);
+        void emitHex(const T &t, int cw = 0) {
+            fmtHex(o, (uint64_t)t, cw);
             o << std::dec;
         }
 

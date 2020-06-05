@@ -67,7 +67,7 @@ static void emitRegName(std::ostream &os, int grfNum) {
 }
 
 static void formatSIMT(
-    const Opts &opts,
+    const Opts &,
     std::ostream &os,
     const iga::MessageInfo &mi,
     int grfSizeB)
@@ -100,7 +100,7 @@ static void formatSIMT(
 }
 
 static void formatSIMD(
-    const Opts &opts,
+    const Opts &,
     std::ostream &os,
     const iga::MessageInfo &mi,
     int grfSizeB)
@@ -141,6 +141,8 @@ static void formatSIMD(
     }
 }
 
+static char toLower(char c) {return (char)std::tolower(c);}
+
 bool decodeSendDescriptor(const Opts &opts)
 {
     std::ofstream ofs(opts.outputFile);
@@ -157,7 +159,7 @@ bool decodeSendDescriptor(const Opts &opts)
                 inp = inp.substr(3);
                 iga::RegRef a0rr;
                 try {
-                    a0rr.subRegNum = (uint8_t)std::stoul(inp, nullptr, 10);
+                    a0rr.subRegNum = (uint16_t)std::stoul(inp, nullptr, 10);
                 } catch (...) {
                     fatalExitWithMessage(
                         "-Xdsd: %s: %s: invalid a0 subregister",
@@ -190,7 +192,7 @@ bool decodeSendDescriptor(const Opts &opts)
     if (opts.inputFiles.size() == 3) {
         std::string sfidSym = opts.inputFiles[0];
         std::transform(
-            sfidSym.begin(), sfidSym.end(), sfidSym.begin(), ::tolower);
+            sfidSym.begin(), sfidSym.end(), sfidSym.begin(), toLower);
         sfid = iga::FromSyntax<iga::SFID>(sfidSym);
         if (sfid == iga::SFID::INVALID) {
             fatalExitWithMessage(

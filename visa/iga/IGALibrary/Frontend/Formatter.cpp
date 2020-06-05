@@ -60,7 +60,7 @@ protected:
     const FormatOpts&            opts;
     struct ColumnPreferences     cols;
     const Instruction           *currInst;
-    const uint8_t               *bits = nullptr; // optional bits to render inline
+    const uint8_t               *currInstBits = nullptr; // optional to render encoding inline
 
     ansi_esc ANSI_FADED;
     ansi_esc ANSI_REGISTER(RegName rnm) const  {
@@ -166,7 +166,7 @@ public:
         const Kernel& k,
         const void *vbits)
     {
-        bits = (const uint8_t *)vbits;
+        currInstBits = (const uint8_t *)vbits;
 
         for (const Block *b : k.getBlockList()) {
             if (!opts.numericLabels) {
@@ -185,8 +185,8 @@ public:
             formatInstruction(*i);
             newline();
 
-            if (bits) {
-                bits += i->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
+            if (currInstBits) {
+                currInstBits += i->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
             }
         }
     }
@@ -222,7 +222,7 @@ public:
 
     // for single instruction
     void formatInstruction(const Instruction& i, const void *vbits) {
-        bits = (const uint8_t *)vbits;
+        currInstBits = (const uint8_t *)vbits;
         formatInstruction(i);
     }
 
@@ -230,8 +230,8 @@ public:
     void formatInstruction(const Instruction& i) {
         currInst = &i;
 
-        if (opts.printInstBits && bits != nullptr) {
-            formatInstructionBits(i, bits);
+        if (opts.printInstBits && currInstBits != nullptr) {
+            formatInstructionBits(i, currInstBits);
         }
 
         const bool isSend = i.getOpSpec().isSendOrSendsFamily();
@@ -463,7 +463,7 @@ private:
     }
 
 
-    void formatDstRegion(const OpSpec &os, const Region &rgn) {
+    void formatDstRegion(const Region &rgn) {
         bool isVector = rgn.getHz() == Region::Horz::HZ_1;
         emitAnsi(isVector, ANSI_FADED, ToSyntax(rgn));
     }
@@ -846,7 +846,7 @@ void Formatter::formatDstOp(const Instruction &i)
             dstRgn != Region::INVALID))
     {
         // some instructions don't have dst regions
-        formatDstRegion(os, dst.getRegion());
+        formatDstRegion(dst.getRegion());
     }
     formatDstType(os, dst.getType());
 

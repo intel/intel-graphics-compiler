@@ -316,6 +316,12 @@ IGA_API int32_t kv_get_number_sources(const kv_t *kv, int32_t pc);
 IGA_API uint32_t kv_get_opcode(const kv_t *kv, int32_t pc);
 
 /*
+ * This function returns OPcode integer.  The value corresponds to
+ * binary encoding value of the opcode.
+ */
+IGA_API uint32_t kv_get_subfunction(const kv_t *kv, int32_t pc);
+
+/*
  * This function returns if intruction has destination.
  */
 IGA_API int32_t kv_get_has_destination(const kv_t *kv, int32_t pc);

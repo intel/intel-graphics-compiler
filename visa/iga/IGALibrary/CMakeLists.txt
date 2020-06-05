@@ -17,8 +17,6 @@ execute_process(
     RESULT_VARIABLE GIT_DIRTY
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-message("GIT_DIRTY = ${GIT_DIRTY}")
-
 set(IGA_VERSION_SUFFIX "")
 if(GIT_COMMIT)
     set(IGA_VERSION_DIRTY_TAG "")
@@ -61,10 +59,20 @@ else ()
 endif()
 
 # Mimick IGC/MDF warnings within IGA library on our side to ensure we don't
-# break the build.
+# break the build.  We're a little more strict here.
 if (MSVC)
-  add_compile_options(/w14189)
+  # unhandled enum case not handled in switch (from comp/igc I believe)
   add_compile_options(/w14062)
+  # add_compile_options(/w14100) # unreferenced parameter. Enable caused Release build failure
+  add_compile_options(/w14189) # unreachable code
+  add_compile_options(/w14244) # implicit narrowing
+  add_compile_options(/w14245) # signed/unsigned conversion
+  add_compile_options(/w14389) # signed/unsigned compare
+  # add_compile_options(/w14456) # var name shadows outer scope var
+  # add_compile_options(/w14458) # var name shadows field
+  # add_compile_options(/w14505) # unreferenced local function (static). Enable caused Release build failure
+
+  # warnings are errors
   add_compile_options(/WX)
 endif()
 

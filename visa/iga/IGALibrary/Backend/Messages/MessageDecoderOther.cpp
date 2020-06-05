@@ -62,7 +62,7 @@ void MessageDecoderOther::tryDecodeGTWY() {
     auto choosePage = [&](const char *gen12, const char *genX = nullptr) {
         return gen12 ? gen12 : genX;
     };
-    std::stringstream sym, desc;
+    std::stringstream sym, descs;
     int opBits = getDescBits(0, 3); // [2:0]
     int expectMlen = 0;
     const char *doc = nullptr;
@@ -70,35 +70,35 @@ void MessageDecoderOther::tryDecodeGTWY() {
     switch (opBits) {
     case 1:
         sym << "signal_event";
-        desc << "signal event";
+        descs << "signal event";
         expectMlen = 1; //
         sendOp = SendOp::SIGNAL_EVENT;
         doc = choosePage("54036", "57494");
         break;
     case 2:
         sym << "monitor";
-        desc << "monitor event";
+        descs << "monitor event";
         expectMlen = 1; // C.f. MDP_EVENT
         sendOp = SendOp::MONITOR;
         doc = choosePage("47925", "57490");
         break;
     case 3:
         sym << "unmonitor";
-        desc << "unmonitor event";
+        descs << "unmonitor event";
         expectMlen = 1; // C.f. MDP_NO_EVENT
         sendOp = SendOp::UNMONITOR;
         doc = choosePage("47926", "57491");
         break;
     case 4:
         sym << "barrier";
-        desc << "barrier";
+        descs << "barrier";
         expectMlen = 1; // C.f. MDP_Barrier
         sendOp = SendOp::BARRIER;
         doc = choosePage("47924", "57489");
         break;
     case 6:
         sym << "wait";
-        desc << "wait for event";
+        descs << "wait for event";
         sendOp = SendOp::WAIT;
         expectMlen = 1; // C.f. MDP_Timeout
         doc = choosePage("47928", "57493");
@@ -106,9 +106,9 @@ void MessageDecoderOther::tryDecodeGTWY() {
     default:
         error(0, 2, "unsupported GTWY op");
     }
-    addField("GatewayOpcode", 0, 3, opBits, desc.str());
+    addField("GatewayOpcode", 0, 3, opBits, descs.str());
     setSpecialOpX(
-        sym.str(), desc.str(), sendOp,
+        sym.str(), descs.str(), sendOp,
         AddrType::FLAT, SendDesc(0),
         1, // mlen
         0, // rlen
@@ -145,19 +145,19 @@ void MessageDecoderOther::tryDecodeRC()
     }
     addField("MessageTypeRC", 14, 4, mt, descSfx);
 
-    std::stringstream desc;
+    std::stringstream descs;
     int bitSize =
         decodeDescBitField("DataSize", 30, "FP32", "FP16") == 0 ? 32 : 16;
     if (bitSize == 32) {
-        desc << "full-precision";
+        descs << "full-precision";
         sym << ".f32";
     } else {
-        desc << "half-precision";
+        descs << "half-precision";
         if (mt == 0xD)
             warning(30, 1, "half-precision not supported on render target read");
         sym << ".f16";
     }
-    desc << " " << descSfx;
+    descs << " " << descSfx;
 
     std::string subopSym;
     auto subOpBits = getDescBits(8,3);
@@ -167,43 +167,43 @@ void MessageDecoderOther::tryDecodeRC()
         switch (subOpBits) {
         case 0x0:
             subopSym = ".simd16";
-            desc << " SIMD16";
+            descs << " SIMD16";
             execSize = 16;
             break;
         case 0x1:
             subopSym = ".rep16";
-            desc << " replicated SIMD16";
+            descs << " replicated SIMD16";
             execSize = 16;
             break;
         case 0x2:
             subopSym = ".lo8ds";
-            desc << " of low SIMD8";
+            descs << " of low SIMD8";
             execSize = 8;
             break;
         case 0x3:
             subopSym = ".hi8ds";
-            desc << " of high SIMD8";
+            descs << " of high SIMD8";
             execSize = 8;
             break;
         case 0x4:
             subopSym = ".simd8";
-            desc << " SIMD8";
+            descs << " SIMD8";
             execSize = 8;
             break;
         default:
             sym << ".???";
-            desc << "unknown write subop";
+            descs << "unknown write subop";
             error(8, 3, "unknown write subop");
             break;
         }
         break;
     case RT_READ:
         switch (subOpBits) {
-        case 0x0: subopSym = ".simd16"; desc << " SIMD16"; execSize = 16; break;
-        case 0x1: subopSym = ".simd8"; desc << " SIMD8"; execSize = 8; break;
+        case 0x0: subopSym = ".simd16"; descs << " SIMD16"; execSize = 16; break;
+        case 0x1: subopSym = ".simd8"; descs << " SIMD8"; execSize = 8; break;
         default:
             sym << ".???";
-            desc << "unknown read subop";
+            descs << "unknown read subop";
             error(8, 3, "unknown read subop");
             break;
         }
@@ -219,14 +219,14 @@ void MessageDecoderOther::tryDecodeRC()
             decodeDescBitField(
                 "PerCoarsePixelPSOutputs", 18, "disabled", "enabled");
         if (pc) {
-            desc << " with Per-Coarse Pixel PS outputs enable";
+            descs << " with Per-Coarse Pixel PS outputs enable";
             sym << ".cpo";
         }
     }
     auto ps =
         decodeDescBitField("PerSamplePS", 13, "disabled", "enabled");
     if (ps) {
-        desc << " with Per-Sample Pixel PS outputs enable";
+        descs << " with Per-Sample Pixel PS outputs enable";
         sym << ".psp";
     }
 
@@ -234,7 +234,7 @@ void MessageDecoderOther::tryDecodeRC()
         auto lrts =
             decodeDescBitField("LastRenderTargetSelect", 12, "false", "true");
         if (lrts) {
-            desc << "; last render target";
+            descs << "; last render target";
             sym << ".lrts";
         }
     }
@@ -242,7 +242,7 @@ void MessageDecoderOther::tryDecodeRC()
     auto sgs =
         decodeDescBitField("SlotGroupSelect", 11, "SLOTGRP_LO","SLOTGRP_HI");
     if (sgs) {
-        desc << " slot group high";
+        descs << " slot group high";
         sym << ".sgh";
     }
 
@@ -251,13 +251,13 @@ void MessageDecoderOther::tryDecodeRC()
         [&](std::stringstream &ss, uint32_t value) {
             surfaceIndex = value;
             ss << "surface " << value;
-            desc << " to surface " << value;
+            descs << " to surface " << value;
             sym << ".bti[" << value << "]";
         });
 
     MessageInfo &mi = result.info;
     mi.symbol = sym.str();
-    mi.description = desc.str();
+    mi.description = descs.str();
     mi.op = mt == RT_READ ? SendOp::RENDER_READ : SendOp::RENDER_WRITE;
     mi.execWidth = execSize;
     mi.elemSizeBitsMemory = mi.elemSizeBitsRegFile = bitSize;
@@ -286,7 +286,7 @@ void MessageDecoderOther::tryDecodeSMPL()
     auto simd01 = getDescBits(17, 2);
     uint32_t simdBits = simd01|(simd2<<2);
     setDoc("12484");
-    std::stringstream sym, desc;
+    std::stringstream sym, descs;
     int simdSize = 0;
 
     switch (simdBits) {
@@ -296,18 +296,18 @@ void MessageDecoderOther::tryDecodeSMPL()
     case 1:
         simd = SIMD8;
         simdSize = 8;
-        desc << "simd8";
+        descs << "simd8";
         sym << "simd8";
         break;
     case 2:
         simd = SIMD16;
         simdSize = 16;
-        desc << "simd16";
+        descs << "simd16";
         sym << "simd16";
         break;
     case 3:
         simd = SIMD32_64;
-        desc << "simd32/64";
+        descs << "simd32/64";
         sym << "simd32";
         simdSize = 32;
         break;
@@ -318,27 +318,27 @@ void MessageDecoderOther::tryDecodeSMPL()
         simd = SIMD8H;
         simdSize = 8;
         sym << "simd8h";
-        desc << "simd8 high";
+        descs << "simd8 high";
         break;
     case 6:
         simd = SIMD16H;
         sym << "simd16h";
-        desc << "simd16 high";
+        descs << "simd16 high";
         simdSize = 16;
         break;
     default:
         error(17,2,"invalid SIMD mode");
         return;
     } // switch
-    addField("SIMD[1:0]", 17, 2, simd01, desc.str());
+    addField("SIMD[1:0]", 17, 2, simd01, descs.str());
 
     bool is16bData = decodeDescBitField("ReturnFormat", 30, "32b", "16b") != 0;
     if (is16bData) {
         sym << "_16";
-        desc << " 16b";
+        descs << " 16b";
     }
     sym << "_";
-    desc << " ";
+    descs << " ";
 
     SendOp sendOp = SendOp::SAMPLER_LOAD;
     int params = 0;
@@ -531,17 +531,17 @@ void MessageDecoderOther::tryDecodeSMPL()
         }
     }
     (void)addField("SamplerMessageType",12,5,opBits,messageDesc);
-    desc << messageDesc;
+    descs << messageDesc;
 
     auto six = decodeDescField("SamplerIndex", 8, 4,
         [&](std::stringstream &ss, uint32_t six){ss << "sampler " << six;});
-    desc << " using sampler index " << six;
+    descs << " using sampler index " << six;
     sym << "[" << six << "," << decodeBTI(32) << "]";
 
     AddrType addrType = AddrType::BTI;
     setScatterGatherOp(
         sym.str(),
-        desc.str(),
+        descs.str(),
         sendOp,
         addrType,
         getDescBits(0,8),
@@ -570,7 +570,7 @@ void MessageDecoderOther::tryDecodeTS()
 
 void MessageDecoderOther::tryDecodeURB()
 {
-    std::stringstream sym, desc;
+    std::stringstream sym, descs;
     SendOp op;
     int simd = 8;
     int addrSize = 32;
@@ -601,12 +601,12 @@ void MessageDecoderOther::tryDecodeURB()
         addField("ChannelMaskEnable", 15, 1, getDescBit(15),
             chMaskPresent ? "enabled" : "disabled");
         sym << "MSDUW_DWS";
-        desc << "urb dword ";
+        descs << "urb dword ";
         if (chMaskPresent)
-            desc << "masked ";
-        desc << "write";
+            descs << "masked ";
+        descs << "write";
         if (decodePSO())
-            desc << " with per-slot offset enabled";
+            descs << " with per-slot offset enabled";
         // "SIMD8 URB Dword Read message. Reads 1..8 Dwords, based on RLEN."
         elemsPerAddr = xlen != 0 ? xlen : 1;
         setDoc(chMaskPresent ? "44779" : "44778");
@@ -616,9 +616,9 @@ void MessageDecoderOther::tryDecodeURB()
         op = SendOp::LOAD;
         off = 8*decodeGUO();
         sym << "MSDUR_DWS";
-        desc << "urb dword read";
+        descs << "urb dword read";
         if (decodePSO())
-            desc << " with per-slot offset enabled";
+            descs << " with per-slot offset enabled";
         elemsPerAddr = rlen;
         setDoc("44777");
         decodeMDC_HR();
@@ -627,11 +627,11 @@ void MessageDecoderOther::tryDecodeURB()
         error(0, 4, "unsupported URB op");
         return;
     }
-    addField("URBOpcode", 0, 4, opBits, sym.str() + " (" + desc.str() + ")");
+    addField("URBOpcode", 0, 4, opBits, sym.str() + " (" + descs.str() + ")");
 
     setScatterGatherOp(
         sym.str(),
-        desc.str(),
+        descs.str(),
         op,
         AddrType::FLAT,
         0,

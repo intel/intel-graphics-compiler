@@ -277,7 +277,7 @@ namespace iga
         }
     }; // Field
 
-    static bool operator== (const Fragment &f1, const Fragment &f2)
+    static inline bool operator== (const Fragment &f1, const Fragment &f2)
     {
         return
             f1.kind == f2.kind &&
@@ -285,7 +285,7 @@ namespace iga
             f1.length == f2.length &&
             strcmp(f1.name, f2.name) == 0;
     }
-    static bool operator< (const Fragment &f1, const Fragment &f2)
+    static inline bool operator< (const Fragment &f1, const Fragment &f2)
     {
         if (f1.kind != f2.kind) {
             return f1.kind < f2.kind;
@@ -352,7 +352,7 @@ namespace iga
     static inline int ToFieldOperandArrayIndex(OpIx IX) {
         return (IX & OpIx::OP_IX_MASK);
     }
-    static ::std::string ToStringOpIx(OpIx ix) {
+    static inline std::string ToStringOpIx(OpIx ix) {
         switch (ix & OpIx::OP_IX_TYPE_MASK) {
         case OpIx::IX_DST:  return "dst";
         case OpIx::IX_SRC0: return "src0";

@@ -90,7 +90,7 @@ enum Lexeme
   NUM_LEXEMES
 };
 
-static const char *LexemeString(const Lexeme &l)
+static inline const char *LexemeString(const Lexeme &l)
 {
 #define IGA_LEXEME_TOKEN(T) case Lexeme::T: return #T
   switch (l) {

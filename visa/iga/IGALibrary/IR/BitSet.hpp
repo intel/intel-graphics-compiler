@@ -119,13 +119,13 @@ inline bool BitSet<I>::set(size_t off, size_t len, bool val)
     auto w_off = off % BITS_PER_WORD;
     auto misaligned_len = std::min<size_t>(BITS_PER_WORD - w_off, len);
     auto misaligned_mask = makeMask(misaligned_len) << w_off;
-    auto oldWord = words[w_ix];
+    auto oldWord0 = words[w_ix];
     if (val) {
         words[w_ix] |= misaligned_mask;
     } else {
         words[w_ix] &= ~misaligned_mask;
     }
-    bool changed = oldWord != words[w_ix];
+    bool changed = oldWord0 != words[w_ix];
 
     // check successive words (all aligned now)
     len -= misaligned_len;

@@ -239,7 +239,7 @@ namespace iga
         //////////////////////////////////////////////////////////////////////
         // DESTINATION IMPLICIT VALUES FOR SYNTAX
         //////////////////////////////////////////////////////////////////////
-        bool is(Op op) const {return this->op == op;}
+        bool is(Op _op) const {return op == _op;}
         bool isOneOf(Op op1, Op op2) const {return is(op1) || is(op2);}
         bool isOneOf(Op op1, Op op2, Op op3) const {
             return is(op1) || is(op2) || is(op3);

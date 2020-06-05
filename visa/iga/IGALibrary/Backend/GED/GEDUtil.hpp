@@ -40,7 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace iga
 {
 //    iga::SFID getSFID(Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc);
-    iga::SFMessageType getMessageType(Platform p, SFID sfid, uint32_t exDesc, uint32_t desc);
+    iga::SFMessageType getMessageType(Platform p, SFID sfid, uint32_t desc);
 //    uint32_t getMessageLengths(Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
 
 

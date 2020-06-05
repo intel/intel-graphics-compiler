@@ -419,7 +419,7 @@ struct DepAnalysisComputer
     bool joinBlocks(
               LiveDepMap &predOUT, // predecessor block live OUT
         const LiveDepMap &succIN,  // successor   block live IN
-        bool isJump)               // as opposed to fallthrough
+        bool /* isJump */)         // as opposed to fallthrough
     {
         bool changed = false;
         for (const auto &lrElem : succIN) {

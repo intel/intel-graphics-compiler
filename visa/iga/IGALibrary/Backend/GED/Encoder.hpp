@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _IGA_BACKEND_GED_ENCODER_H_
 #define _IGA_BACKEND_GED_ENCODER_H_
 
-#include "EncoderCommon.hpp"
 #include "GEDBitProcessor.hpp"
 #include "IGAToGEDTranslation.hpp"
 #include "../EncoderOpts.hpp"
@@ -40,18 +39,75 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 
 
-
 namespace iga
 {
+// #define GED_TRACE_SETTERS
+//
+#ifdef GED_TRACE_SETTERS
+#define GED_TRACE_SETTER(X) X
+#else
+#define GED_TRACE_SETTER(X)
+#endif
+
+#define GED_ENCODE(FUNC, ARG) \
+    GED_ENCODE_TO(FUNC, ARG, &m_gedInst)
+#if defined(GED_TIMER) || defined(_DEBUG)
+#define START_GED_TIMER() startIGATimer(TIMER_GED);
+#define STOP_GED_TIMER()  stopIGATimer(TIMER_GED);
+#else
+#define START_GED_TIMER()
+#define STOP_GED_TIMER()
+#endif
+
+#if defined(TOTAL_ENCODE_TIMER) || defined (_DEBUG)
+#define START_ENCODER_TIMER() startIGATimer(TIMER_TOTAL);
+#define STOP_ENCODER_TIMER()  stopIGATimer(TIMER_TOTAL);
+#else
+#define START_ENCODER_TIMER()
+#define STOP_ENCODER_TIMER()
+#endif
+#ifdef GED_DEBUG_PRINT
+static const bool gedDebugPrint = true;
+#else
+static const bool gedDebugPrint = false;
+#endif
+
+#if GED_VALIDATION_API
+static const bool print_ged_debug = true;
+#else
+static const bool print_ged_debug = false;
+static inline GED_RETURN_VALUE GED_PrintFieldBitLocation(
+    const ged_ins_t*, const GED_INS_FIELD)
+{
+    return GED_RETURN_VALUE_SUCCESS;
+}
+#endif
+
+
+#define GED_ENCODE_TO(FUNC, ARG, GED) \
+    do { \
+        GED_RETURN_VALUE _status; \
+        if (print_ged_debug) { \
+          std::cout << "FIELD: " << #FUNC << std::endl; \
+          GED_PrintFieldBitLocation(GED, GED_INS_FIELD_ ## FUNC); \
+        } \
+        START_GED_TIMER() \
+        _status = GED_Set ## FUNC (GED, ARG); \
+        STOP_GED_TIMER() \
+        GED_TRACE_SETTER(printf("%s <= GED_%s(...,%d)\n", \
+            gedReturnValueToString(_status), #FUNC, (int)ARG)); \
+        if (_status != GED_RETURN_VALUE_SUCCESS) { \
+            handleGedError(__LINE__, #FUNC, _status); \
+        } \
+    } while(0)
+
+
     typedef list<Block *, std_arena_based_allocator<Block*>> BlockList;
 
-    class EncoderBase : protected GEDBitProcessor
+    class Encoder : protected GEDBitProcessor
     {
     public:
-        EncoderBase(
-            const Model& model,
-            ErrorHandler& errHandler,
-            const EncoderOpts& eos);
+        Encoder(const Model& model, ErrorHandler& eh, const EncoderOpts& eos);
 
         void encodeKernel(
             Kernel& k,
@@ -72,19 +128,19 @@ namespace iga
     protected:
 
         // TODO: phase these out
-                void encodeKernelPreProcess(Kernel &k);
-        virtual void doEncodeKernelPreProcess(Kernel &k);
-        virtual void encodeFC(const Instruction &i);
-        virtual void encodeTernaryInstruction(const Instruction& inst, GED_ACCESS_MODE accessMode);
-                void encodeTernaryAlign1Instruction(const Instruction& inst);
-                void encodeTernaryAlign16Instruction(const Instruction& inst);
-        virtual void encodeSendInstructionProcessSFID(const Instruction& inst);
-        virtual void encodeSendDirectDestination(const Operand& dst);
-        virtual void encodeSendDestinationDataType(const Operand& dst);
-                void encodeOptionsThreadControl(const Instruction& inst);
+        void encodeKernelPreProcess(Kernel &k);
+        void doEncodeKernelPreProcess(Kernel &k);
+        void encodeFC(const Instruction &i);
+        void encodeTernaryInstruction(const Instruction& inst, GED_ACCESS_MODE accessMode);
+        void encodeTernaryAlign1Instruction(const Instruction& inst);
+        void encodeTernaryAlign16Instruction(const Instruction& inst);
+        void encodeSendInstructionProcessSFID(const Instruction& inst);
+        void encodeSendDirectDestination(const Operand& dst);
+        void encodeSendDestinationDataType(const Operand& dst);
+        void encodeOptionsThreadControl(const Instruction& inst);
 
     protected:
-        void encodeDstReg(RegName regName, uint8_t regNum); // just the regnum
+        void encodeDstReg(RegName regName, uint16_t regNum); // just the regnum
 
         void encodeImmVal(const ImmVal &val, Type type);
 
@@ -98,7 +154,7 @@ namespace iga
 
         template <SourceIndex S> void encodeSrcMathMacroReg(MathMacroExt a);
 
-        template <SourceIndex S> void encodeSrcReg(RegName regName, uint8_t regNum);
+        template <SourceIndex S> void encodeSrcReg(RegName regName, uint16_t regNum);
         template <SourceIndex S> void encodeSrcAddrImm(int32_t addrImm);
         template <SourceIndex S> void encodeSrcAddrSubRegNum(uint32_t addrSubReg);
         template <SourceIndex S> void encodeSrcRegion(const Region& r, bool hasRgnWi = true);
@@ -115,14 +171,10 @@ namespace iga
         void encodeTernaryDestinationAlign16(const Instruction& inst);
 
         template <SourceIndex S>
-        void encodeTernarySourceAlign1(
-            const Instruction& inst,
-            GED_EXECUTION_DATA_TYPE execDataType);
-        void encodeTernaryDestinationAlign1(
-            const Instruction& inst,
-            GED_EXECUTION_DATA_TYPE execDataType);
+        void encodeTernarySourceAlign1(const Instruction& inst);
+        void encodeTernaryDestinationAlign1(const Instruction& inst);
 
-        virtual void encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v);
+        void encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v);
 
         template <SourceIndex S>
         void encodeTernaryImmVal(const ImmVal &val, Type type);
@@ -142,8 +194,8 @@ namespace iga
         size_t                                    m_numberInstructionsEncoded;
 
     private:
-        void operator delete(void*foo, MemManager* m) { };
-        void *operator new(size_t sz, MemManager* m) { return m->alloc(sz); };
+        void operator delete(void*, MemManager*) { };
+        void *operator new(size_t sz, MemManager* m) {return m->alloc(sz);};
 
         void encodeBlock(Block* blk);
         void encodeInstruction(Instruction& inst);
@@ -166,14 +218,14 @@ namespace iga
         ///////////////////////////////////////////////////////////////////////
         void encodeBranchingInstruction(const Instruction& inst);
         void encodeBranchingInstructionSimplified(const Instruction& inst);
-        void encodeBranchDestination(const Instruction& inst, const Operand& dst);
-        void encodeBranchSource(const Instruction& inst, const Operand& src);
+        void encodeBranchDestination(const Operand& dst);
+        void encodeBranchSource(const Operand& src);
         ///////////////////////////////////////////////////////////////////////
         // SEND INSTRUCTIONS
         ///////////////////////////////////////////////////////////////////////
         void encodeSendInstruction(const Instruction& inst);
         void encodeSendSource0(const Operand& src);
-        void encodeSendDestination(const Instruction& inst, const Operand& dst);
+        void encodeSendDestination(const Operand& dst);
         void encodeSendsSource0(const Operand& src);
         void encodeSendsSource1(const Operand& src);
         void encodeSendsDestination(const Operand& dst);
@@ -194,7 +246,7 @@ namespace iga
         // handles encoding ARF registers as well as the easy GRF case
         // caller actually pulls the trigger and encodes the bits, but this
         // call can raise the encoding error
-        uint32_t         translateRegNum(int opIx, RegName reg, uint8_t regNum);
+        uint32_t         translateRegNum(int opIx, RegName reg, uint16_t regNum);
         uint32_t         mathMacroRegToBits(int src, MathMacroExt mme); // ChSel and SubReg
         GED_DST_CHAN_EN  mathMacroRegToChEn(MathMacroExt mme);
 
@@ -306,9 +358,9 @@ namespace iga
         }
 
 
-    }; //end: class definition EncoderBase
+    }; //end: class definition Encoder
 
-    template <SourceIndex S> void EncoderBase::encodeSrcRegFile(GED_REG_FILE rf) {
+    template <SourceIndex S> void Encoder::encodeSrcRegFile(GED_REG_FILE rf) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0RegFile, rf);
         } else if (S == SourceIndex::SRC1) {
@@ -318,7 +370,7 @@ namespace iga
         }
     }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcRegionVert(Region::Vert v) {
+    template <SourceIndex S> void Encoder::encodeSrcRegionVert(Region::Vert v) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0VertStride, lowerRegionVert(v));
         } else { // (S == SourceIndex::SRC1)
@@ -326,7 +378,7 @@ namespace iga
         } // S != SRC2 since ternary Align1 doesn't have bits for that
     }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcType(Type t) {
+    template <SourceIndex S> void Encoder::encodeSrcType(Type t) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0DataType, lowerDataType(t));
         } else if (S == SourceIndex::SRC1) {
@@ -336,7 +388,7 @@ namespace iga
         }
     }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcAddrMode(GED_ADDR_MODE x) {
+    template <SourceIndex S> void Encoder::encodeSrcAddrMode(GED_ADDR_MODE x) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0AddrMode, x);
         } else {
@@ -344,7 +396,7 @@ namespace iga
         }
     }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcModifier(SrcModifier x) {
+    template <SourceIndex S> void Encoder::encodeSrcModifier(SrcModifier x) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0SrcMod, lowerSrcMod(x));
         } else if (S == SourceIndex::SRC1) {
@@ -354,7 +406,7 @@ namespace iga
         }
     }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcSubRegNum(
+    template <SourceIndex S> void Encoder::encodeSrcSubRegNum(
         std::pair<bool, uint32_t> subReg, bool isTernaryOrBranch) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0SubRegNum, subReg.second);
@@ -366,7 +418,7 @@ namespace iga
     }
 
     template <SourceIndex S>
-    void EncoderBase::encodeSrcMathMacroReg(MathMacroExt a)
+    void Encoder::encodeSrcMathMacroReg(MathMacroExt a)
     {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0MathMacroExt, lowerSpecialAcc(a));
@@ -376,9 +428,9 @@ namespace iga
             GED_ENCODE(Src2MathMacroExt, lowerSpecialAcc(a));
         }
     }
-    template <SourceIndex S> void EncoderBase::encodeSrcReg(
+    template <SourceIndex S> void Encoder::encodeSrcReg(
         RegName regName,
-        uint8_t regNum)
+        uint16_t regNum)
     {
         uint32_t regBits = 0;
         if (regName == RegName::GRF_R) {
@@ -388,8 +440,9 @@ namespace iga
             if (!ri) {
                 error("src%d: unexpected register on this platform", (int)S);
             } else {
-                ri->encode((int)regNum,regNum);
-                regBits = regNum; // widen for GED
+                uint8_t reg8;
+                ri->encode((int)regNum, reg8);
+                regBits = reg8; // widen for GED
             }
         }
         if (S == SourceIndex::SRC0) {
@@ -401,7 +454,7 @@ namespace iga
         }
     }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcAddrImm(int32_t addrImm) {
+    template <SourceIndex S> void Encoder::encodeSrcAddrImm(int32_t addrImm) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0AddrImm, addrImm);
         } else {
@@ -409,7 +462,7 @@ namespace iga
         }
     }
     template <SourceIndex S>
-    void EncoderBase::encodeSrcAddrSubRegNum(uint32_t addrSubReg) {
+    void Encoder::encodeSrcAddrSubRegNum(uint32_t addrSubReg) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0AddrSubRegNum, addrSubReg);
         } else {
@@ -417,7 +470,7 @@ namespace iga
         }
     }
     template <SourceIndex S>
-    void EncoderBase::encodeSrcRegion(const Region &rgn, bool hasRgnWi) {
+    void Encoder::encodeSrcRegion(const Region &rgn, bool hasRgnWi) {
         uint32_t v = 0;
         if (rgn.getVt() == Region::Vert::VT_VxH) {
             v = 0x3;
@@ -462,12 +515,12 @@ namespace iga
             GED_ENCODE(Src1Width, w);
             GED_ENCODE(Src1HorzStride, h);
         } else {
-            IGA_ASSERT_FALSE("EncoderBase::encodeSrcRegion only works on src0 and src1");
+            IGA_ASSERT_FALSE("Encoder::encodeSrcRegion: only works on src0 and src1");
         }
     }
 
     template <SourceIndex S>
-    void EncoderBase::encodeSrcRegionWidth(Region::Width w) {
+    void Encoder::encodeSrcRegionWidth(Region::Width w) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0Width, lowerRegionWidth(w));
         } else { // (S == SourceIndex::SRC1)
@@ -476,7 +529,7 @@ namespace iga
     }
 
     template <SourceIndex S>
-    void EncoderBase::encodeTernaryImmVal(const ImmVal &val, Type type) {
+    void Encoder::encodeTernaryImmVal(const ImmVal &val, Type type) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0TernaryImm, typeConvesionHelper(val, type));
         } else if (S == SourceIndex::SRC2) {
@@ -487,7 +540,7 @@ namespace iga
     }
 
     template <SourceIndex S>
-    void EncoderBase::encodeSrcRegionHorz(Region::Horz s) {
+    void Encoder::encodeSrcRegionHorz(Region::Horz s) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0HorzStride, lowerRegionHorz(s));
         } else if (S == SourceIndex::SRC1) {
@@ -500,6 +553,6 @@ namespace iga
 
 namespace iga
 {
-    typedef EncoderBase Encoder;
+    typedef Encoder Encoder;
 }
 #endif

@@ -242,7 +242,7 @@ namespace iga
         const char *val_start = m_lexer.GetSource().c_str() + loc.offset;
         char *val_end;
         value = strtod(val_start,&val_end);
-        if (val_end - val_start != loc.extent) {
+        if ((uint32_t)(val_end - val_start) != loc.extent) {
             // TODO: this is an internal error since it indicates an
             // inconsistency between the lexical specification and the parser
             Fail(loc,"INTERNAL ERROR: parsing float literal");

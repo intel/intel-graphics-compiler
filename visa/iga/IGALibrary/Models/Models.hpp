@@ -121,7 +121,7 @@ namespace iga
     const RegInfo *GetRegisterSpecificationTable(int &len);
 
     // See IRChecker.cpp / checkDst (these ARFs need {Switch})
-    static bool arfNeedsSwitch(RegName rn) {
+    static inline bool arfNeedsSwitch(RegName rn) {
         // ARFs without a scoreboard need {Switch} before the write
         //  Registers with scoreboard and no switch required -
         //    Accumulator/address register/flag register/notify register
@@ -144,7 +144,7 @@ namespace iga
         }
     }
 
-    static bool IsRegisterScaled(RegName regName)
+    static inline bool IsRegisterScaled(RegName regName)
     {
         switch (regName)
         {
@@ -169,18 +169,18 @@ namespace iga
     }
 
     // helper function to translate byte offset to subReg Num
-    static uint8_t BytesOffsetToSubReg(
+    static inline uint8_t BytesOffsetToSubReg(
         uint32_t offset, RegName regName, Type type)
     {
         if (!IsRegisterScaled(regName) || type == Type::INVALID) {
-            return offset;
+            return (uint8_t)offset;
         }
         auto tsh = TypeSizeShiftsOffsetToSubreg(type);
         return (uint8_t)((offset << std::get<0>(tsh)) >> std::get<1>(tsh));
     }
 
     // helper functions to translate subReg number to Offset in binary
-    static uint32_t SubRegToBytesOffset(
+    static inline uint32_t SubRegToBytesOffset(
         int subRegNum, RegName regName, Type type)
     {
         if (!IsRegisterScaled(regName) || type == Type::INVALID) {
@@ -191,20 +191,20 @@ namespace iga
         return (subRegNum << std::get<1>(tsh)) >> std::get<0>(tsh);
     }
 
-    static uint8_t WordsOffsetToSubReg(
+    static inline uint8_t WordsOffsetToSubReg(
         uint32_t offset, RegName regName, Type type)
     {
         // for the non-scaled registers (e.g. fc), the sub-register in binary
         // and in asm is the same value
         if (!IsRegisterScaled(regName) || type == Type::INVALID) {
-            return offset;
+            return (uint8_t)offset;
         }
         return BytesOffsetToSubReg(offset * 2, regName, type);
     }
 
     // reutrn if the given subreg num is Word aligned or not and
     // the corresponding word offset
-    static std::pair<bool, uint32_t> SubRegToWordsOffset(
+    static inline std::pair<bool,uint32_t> SubRegToWordsOffset(
         int subRegNum, RegName regName, Type type)
     {
         // for the non-scaled registers (e.g. fc), the sub-register in binary

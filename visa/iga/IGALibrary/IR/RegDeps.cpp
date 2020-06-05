@@ -339,7 +339,7 @@ void DepSet::setInputsSrcDep()
         }
         case Operand::Kind::INDIRECT: {
             setHasIndirect();
-            setDepType(DEP_TYPE::WRITE_ALWAYS_INTERFERE);
+            setDepType(DEP_TYPE::READ_ALWAYS_INTERFERE);
             auto rgn = op.getRegion();
             if (rgn.getVt() == Region::Vert::VT_VxH) {
                 // VxH or Vx1 mode
@@ -417,8 +417,8 @@ void DepSet::setOutputsDstcDep()
         m_instruction->getOp() == Op::MACH) {
         auto elemsPerAccReg = 8 * m_DB.getARF_ACC_BYTES_PER_REG() / typeSizeBits; // e.g. 8 subreg elems for :f
         RegRef ar;
-        ar.regNum = (uint8_t)(execOff / elemsPerAccReg);
-        ar.subRegNum = (uint8_t)(execOff % elemsPerAccReg);
+        ar.regNum = (uint16_t)(execOff / elemsPerAccReg);
+        ar.subRegNum = (uint16_t)(execOff % elemsPerAccReg);
         setDstRegion(
             RegName::ARF_ACC,
             ar,
@@ -456,7 +456,7 @@ void DepSet::setOutputsDstcDep()
             op.getDirRegName() == RegName::GRF_R &&
             m_instruction->getMathFc() == MathFC::IDIV)
         {
-            uint8_t regNum = op.getDirRegRef().regNum;
+            uint16_t regNum = op.getDirRegRef().regNum;
             addGrf(regNum);
             addToBucket(regNum);
             addGrf((size_t)regNum + 1);

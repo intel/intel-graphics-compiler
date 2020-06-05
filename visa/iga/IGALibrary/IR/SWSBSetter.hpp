@@ -127,12 +127,27 @@ namespace iga
                                InstList::iterator iter,
                                vector<SBID>& activeSBID);
 
+        // helper function to pick a free SBID and set it to distanceDependency.
+        // This function only set SBID to distanceDependency, will not assign distanceDependency to
+        // the inst
+        SBID& assignSBID(DepSet* input, DepSet* output, Instruction& inst, SWSB& distanceDependency,
+            InstList::iterator insertPoint, Block *curBB, bool needSyncForShootDown);
+
+        // helper fuction to set out-of-order dependecy. Called by calculateDependence.
+        // This function create SBID with depedency to given dep, and add it to activeSBID
+        // it also set needSyncForShootDownInst if required.
+        void setSbidDependency(DepSet& dep, const Instruction& currInst,
+            bool& needSyncForShootDownInst, vector<SBID>& activeSBID);
+
         // clear dependency of the given dep
         void clearDepBuckets(DepSet &dep);
         // clear all sbid, set ids to all free and insert sync to sync with all pipes
-        void clearSBIDDependence(InstList::iterator iter, Instruction *lastInst, Block *bb);
+        void clearSBIDDependence(InstList::iterator insertPoint, Instruction *lastInst, Block *bb);
         // clear given input and output dependency in the buckets (for in-order pipes only)
         void clearBuckets(DepSet* input, DepSet* output);
+
+        // helper function to insert sync.allrd and sync.allwr before the given inserPoint of given bb
+        void insertSyncAllRdWr(InstList::iterator insertPoint, Block *bb);
 
         // a helper function to increase inst id counter based on the current encoding (gen12 hp or lp)
         // For lp, only consider one id counder for all in-order instrucions, for hp, all four

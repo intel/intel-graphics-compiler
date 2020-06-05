@@ -40,7 +40,8 @@ const static uint32_t SWSB_FOOTPRINT_DIST         = 0x7;
 namespace iga {
 
     template<>
-    SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::SingleDistPipe>(uint32_t swsbBits, InstType instTy)
+    SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::SingleDistPipe>(
+        uint32_t swsbBits, InstType instTy)
     {
         SWSB_STATUS stat = SWSB_STATUS::SUCCESS;
         if ((0xF0 & swsbBits) == 0) {
@@ -87,7 +88,7 @@ namespace iga {
     }
 
     template<>
-    uint32_t SWSB::getSWSBBinary<SWSB_ENCODE_MODE::SingleDistPipe>(InstType instTy) const
+    uint32_t SWSB::encode<SWSB_ENCODE_MODE::SingleDistPipe>(InstType) const
     {
         uint32_t swsb = 0; //all 0's means no dependency
 
@@ -151,13 +152,13 @@ namespace iga {
 
 
     template<>
-    SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::SWSBInvalidMode>(uint32_t swsbBits, InstType instTy)
+    SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::SWSBInvalidMode>(uint32_t, InstType)
     {
         return SWSB_STATUS::ERROR_ENCODE_MODE;
     }
 
     template<SWSB_ENCODE_MODE M>
-    uint32_t SWSB::getSWSBBinary(InstType instTy) const
+    uint32_t SWSB::encode(InstType instTy) const
     {
         return 0;
     }
@@ -172,7 +173,8 @@ namespace iga {
 using namespace iga;
 
 /// createSWSB - decode swsb info to SWSB
-SWSB_STATUS SWSB::decode(uint32_t swsbBits, SWSB_ENCODE_MODE enMode, InstType instTy)
+SWSB_STATUS SWSB::decode(
+    uint32_t swsbBits, SWSB_ENCODE_MODE enMode, InstType instTy)
 {
     switch(enMode) {
     case SWSB_ENCODE_MODE::SingleDistPipe:
@@ -186,12 +188,12 @@ SWSB_STATUS SWSB::decode(uint32_t swsbBits, SWSB_ENCODE_MODE enMode, InstType in
     return SWSB_STATUS::ERROR_ENCODE_MODE;
 }
 
-/// getSWSBBinary - encode swsb to bianry
-uint32_t SWSB::getSWSBBinary(SWSB_ENCODE_MODE enMode, InstType instTy) const
+/// encode - encode swsb to bianry
+uint32_t SWSB::encode(SWSB_ENCODE_MODE enMode, InstType instTy) const
 {
     switch (enMode) {
     case SWSB_ENCODE_MODE::SingleDistPipe:
-        return getSWSBBinary<SWSB_ENCODE_MODE::SingleDistPipe>(instTy);
+        return encode<SWSB_ENCODE_MODE::SingleDistPipe>(instTy);
     default:
         break;
     }

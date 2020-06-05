@@ -19,7 +19,6 @@ set(IGA_Backend_Messages
 set(IGA_Backend_GED_EncoderOnly
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/Encoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/Encoder.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/GED/EncoderCommon.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/GEDBitProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/GEDBitProcessor.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/GEDToIGATranslation.hpp

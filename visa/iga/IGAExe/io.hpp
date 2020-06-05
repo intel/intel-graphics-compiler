@@ -45,7 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "system.hpp"
 
 
-static void readBinaryStream(
+static inline void readBinaryStream(
     const char *streamName,
     std::istream &is,
     std::vector<unsigned char> &bin)
@@ -62,9 +62,8 @@ static void readBinaryStream(
     fatalExitWithMessage("iga: error reading %s", streamName);
 }
 
-static void readBinaryFile(
-    const char *fileName,
-    std::vector<unsigned char> &bin)
+static inline void readBinaryFile(
+    const char *fileName, std::vector<unsigned char> &bin)
 {
     std::ifstream is(fileName, std::ios::binary);
     if (!is.is_open()) {
@@ -73,7 +72,7 @@ static void readBinaryFile(
     readBinaryStream(fileName, is, bin);
 }
 
-static std::string readTextStream(
+static inline std::string readTextStream(
     const char *streamName,
     std::istream &is)
 {
@@ -87,7 +86,7 @@ static std::string readTextStream(
     return s;
 }
 
-static std::string readTextFile(
+static inline std::string readTextFile(
     const char *fileName)
 {
     std::ifstream file(fileName);
@@ -97,11 +96,8 @@ static std::string readTextFile(
     return readTextStream(fileName,file);
 }
 
-static void writeTextStream(
-    const char *streamName,
-    std::ostream &os,
-    const char *output,
-    size_t outputLength)
+static inline void writeTextStream(
+    const char *streamName, std::ostream &os, const char *output)
 {
     os.clear();
     os << output;
@@ -129,19 +125,16 @@ static void writeTextStreamF(
 }
 #endif
 
-static void writeTextFile(
-    const char *fileName,
-    const char *output,
-    size_t outputLength)
+static inline void writeTextFile(const char *fileName, const char *output)
 {
     std::ofstream file(fileName);
     if (!file.good()) {
         fatalExitWithMessage("iga: %s: failed to open file", fileName);
     }
-    writeTextStream(fileName, file, output, outputLength);
+    writeTextStream(fileName, file, output);
 }
 
-static void writeBinaryStream(
+static inline void writeBinaryStream(
     const char *streamName,
     std::ostream &os,
     const void *bits,
@@ -154,7 +147,7 @@ static void writeBinaryStream(
     }
 }
 
-static void writeBinaryFile(
+static inline void writeBinaryFile(
   const char *fileName,
   const void *bits,
   size_t bitsLen)
@@ -166,7 +159,7 @@ static void writeBinaryFile(
     writeBinaryStream(fileName,file,bits,bitsLen);
 }
 
-static bool doesFileExist(const char *fileName) {
+static inline bool doesFileExist(const char *fileName) {
 #ifdef _WIN32
     DWORD dwAttrib = GetFileAttributesA(fileName);
     return (dwAttrib != INVALID_FILE_ATTRIBUTES &&

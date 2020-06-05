@@ -356,6 +356,24 @@ public:
         return static_cast<iga::Op>(kv_get_opcode(m_kv, pc));
     }
 
+    // Returns the subfunction (iga::Subfunction) of the given operation.
+    // E.g. for "math.exp" (iga::Op::MATH) this returns
+    //   static_cast<uint32_t>(iga::MathFC::EXP);
+    //
+    // For operations that do not support a subfunction this returns
+    // (uint32_t)-1.  For invalid PC's this also returns that value.
+    //
+    // Example usage:
+    //   if (getOpcode(pc) == iga::Op::MATH) {
+    //      iga::MathFC mfc = static_cast<iga::MathFC>(getSubfunction(pc));
+    //      ...
+    //   }
+    iga::Subfunction getSubfunction(int32_t pc) const {
+        iga::Subfunction sf;
+        sf.bits = kv_get_subfunction(m_kv, pc);
+        return sf;
+    }
+
     // Returns the Execution Mask Offset for the given PC
     iga::ChannelOffset getChannelOffset(int32_t pc) const {
         return static_cast<iga::ChannelOffset>(kv_get_channel_offset(m_kv, pc));
@@ -473,7 +491,8 @@ public:
     // Returns 0 if instruction's destination operand horizontal stride
     // (DstRgnHz) is succesfully returned.
     // Otherwise returns -1.
-    // DstRgnHz is returned by *hz parameter, as numeric numeric value (e.g. 1,2,4).
+    // DstRgnHz is returned by *hz parameter, as numeric numeric value
+    // (e.g. 1,2,4).
     int32_t getDstRegion(int32_t pc, uint32_t *hz) const {
         return kv_get_destination_region(m_kv, pc, hz);
     }
@@ -485,17 +504,18 @@ public:
     // Vt, Wi and Hz are returned by *vt, *wi and *hz parameter,
     // as numeric numeric values (e.g. 1,2,4).
     int32_t getSrcRegion(
-        int32_t pc, uint32_t src_op, uint32_t *vt, uint32_t *wi, uint32_t *hz) const
+        int32_t pc, uint32_t src_op,
+        uint32_t *vt, uint32_t *wi, uint32_t *hz) const
     {
         return kv_get_source_region(m_kv, pc, src_op, vt, wi, hz);
     }
 
-    // Returns 0 if the source is an immediate and sets the 64b immediate value in imm
-    // otherwise it returns -1.
+    // Returns 0 if the source is an immediate and sets the 64b immediate value
+    // in imm; otherwise it returns -1.
     //
     // 16b and 32b immediate will stored in the lower bits of imm.
     int32_t getSrcImmediate(
-        const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm) const
+        int32_t pc, uint32_t src_op, uint64_t *imm) const
     {
         return kv_get_source_immediate(m_kv, pc, src_op, imm);
     }

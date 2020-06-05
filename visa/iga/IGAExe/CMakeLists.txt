@@ -13,15 +13,13 @@ set(IGA_EXE_CPP
   ${CMAKE_CURRENT_SOURCE_DIR}/decode_message.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/iga_main.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/list_ops.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-)
+  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 
 set(IGA_EXE_HPP
   ${CMAKE_CURRENT_SOURCE_DIR}/fatal.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/iga_main.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/io.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/opts.hpp
-)
+  ${CMAKE_CURRENT_SOURCE_DIR}/opts.hpp)
 
 source_group("HeaderFiles" FILES ${IGA_EXE_HPP})
 source_group("SourceFiles" FILES ${IGA_EXE_CPP})
@@ -30,6 +28,19 @@ set(IGA_EXE_DEFINITIONS _CONSOLE _LIB ${GED_BRANCH})
 
 if(MSVC)
   add_compile_options(/EHsc)
+
+  # unhandled enum case not handled in switch (from comp/igc I believe)
+  add_compile_options(/w14062)
+  # add_compile_options(/w14100) # unreferenced parameter. Enable caused Release build failure
+  add_compile_options(/w14189) # unreachable code
+  add_compile_options(/w14244) # implicit narrowing
+  add_compile_options(/w14245) # signed/unsigned conversion
+  add_compile_options(/w14389) # signed/unsigned compare
+  # add_compile_options(/w14456) # var name shadows outer scope var
+  # add_compile_options(/w14458) # var name shadows field
+  add_compile_options(/w14505) # unreferenced local function (static)
+
+  add_compile_options(/WX)
 else(MSVC)
   add_compile_options(-fexceptions)
 endif(MSVC)
