@@ -98,6 +98,7 @@ struct cmc_kernel_info_v2 {
     uint32_t HasBarriers = 0;
     bool HasReadWriteImages = false;
     uint32_t ThreadPrivateMemSize = 0;
+    uint32_t StatelessPrivateMemSize = 0;
 
     /// number of format strings in the kernel
     unsigned num_print_strings;

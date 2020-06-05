@@ -38,6 +38,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
 
+#include <llvm/Support/raw_ostream.h>
+
 #include <string>
 #include <iterator>
 
@@ -439,10 +441,11 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& ker
             kernel.m_kernelInfo.m_printfBufferAnnotation->DataSize = 8;
             break;
         case cmc_arg_kind::PrivateBase:
-            // FIXME: replace 8192 to  8k * simdSize * numDispatchedThreads
-            kernel.createPrivateBaseAnnotation(AI.index, AI.sizeInBytes,
-                AI.offset - constantPayloadStart, AI.BTI, 8192);
-            kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            if (info->StatelessPrivateMemSize) {
+                kernel.createPrivateBaseAnnotation(AI.index, AI.sizeInBytes,
+                    AI.offset - constantPayloadStart, AI.BTI, info->StatelessPrivateMemSize);
+                kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
+            }
             break;
         }
     }
