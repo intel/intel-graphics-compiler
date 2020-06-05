@@ -399,6 +399,20 @@ unsigned int FindInterestingConstants::BranchSize(llvm::Instruction* I, llvm::Br
             isLoop = true;
             return size;
         }
+        for (Loop* subLoop : L->getSubLoops())
+        {
+            body = subLoop->getLoopLatch();
+            br = cast<BranchInst>(body->getTerminator());
+            if (br == dyn_cast<BranchInst>(Br))
+            {
+                for (BasicBlock* BB : subLoop->getBlocks())
+                {
+                    size += BB->size();
+                }
+                isLoop = true;
+                return size;
+            }
+        }
     }
     for (auto& U : Br->operands())
     {
