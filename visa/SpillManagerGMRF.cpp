@@ -2535,7 +2535,7 @@ SpillManagerGRF::shouldPreloadSpillRange(
 
     if (isPartialRegion(spilledRangeRegion, execSize) ||
         isUnalignedRegion(spilledRangeRegion, execSize) ||
-        instContext->isPartialWriteForSpill(parentBB->isDivergent()))
+        instContext->isPartialWriteForSpill(!parentBB->isAllLaneActive()))
     {
 #if 0
         // special check for scalar variables: no need for pre-fill if instruction is not predicated
