@@ -5954,7 +5954,7 @@ void G4_BB::emitDepInfo(std::ostream& output, G4_INST* inst, int offset)
     return;
 }
 
-static bool isSWSBRequired(G4_INST* inst)
+static bool isSWSBRequired(IR_Builder* builder, G4_INST* inst)
 {
     // Iterate over all operands and create buckets.
     for (Gen4_Operand_Number opndNum
@@ -5990,11 +5990,12 @@ static bool isSWSBRequired(G4_INST* inst)
     return false;
 }
 
-static G4_INST* setForceDebugSWSB(IR_Builder* builder, G4_BB* bb, G4_INST* inst)
+static G4_INST* setForceDebugSWSB(IR_Builder* builder, G4_BB* bb, INST_LIST_ITER inst_it)
 {
+    G4_INST* inst = (*inst_it);
     G4_INST* syncInst = nullptr;
 
-    if (!isSWSBRequired(inst))
+    if (!isSWSBRequired(builder, inst))
     {
         return nullptr;
     }
@@ -6043,7 +6044,7 @@ void vISA::forceDebugSWSB(G4_Kernel* kernel)
                 G4_INST* inst = (*inst_it);
                 G4_INST* newInst = nullptr;
 
-                newInst = setForceDebugSWSB(kernel->fg.builder, bb, inst);
+                newInst = setForceDebugSWSB(kernel->fg.builder, bb, inst_it);
                 inst->setLexicalId(instID);
                 instID++;
 
