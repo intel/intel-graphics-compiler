@@ -1398,9 +1398,14 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                             {
                                 if (regNum <= 31)
                                 {
+                                    auto lebsize1 = op == llvm::dwarf::DW_OP_breg0 ? 1 : 0; // immediate 0 for breg0-31
                                     op += regNum;
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + subRegSize));
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize1 + subRegSize));
                                     write(dotLoc.loc, (uint8_t)op);
+                                    if (lebsize1 > 0)
+                                    {
+                                        write(dotLoc.loc, (uint8_t)0);
+                                    }
                                 }
                                 else
                                 {
@@ -1446,41 +1451,80 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                 uint16_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
                                 uint16_t numOfRegs = ((varSizeInReg * (uint16_t)simdWidth) > (grfSize * 8)) ?
                                     ((varSizeInReg * (uint16_t)simdWidth) / (grfSize * 8)) : 1;
+                                auto lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
+                                auto simdLaneSize =
+                                    sizeof(uint8_t) +                        // subReg or DW_OP_INTEL_push_simd_lane
+                                    sizeof(uint8_t) +                        // opLit
+                                    sizeof(uint8_t) +                        // DW_OP_shl
+                                    sizeof(uint8_t) + lebsizeVarSizeInBits + // DW_OP_const1u+val
+                                    sizeof(uint8_t);                         // DW_OP_INTEL_bit_piece_stack
 
                                 if (Loc.IsVectorized() == true)
                                 {
                                     vectorNumElements = Loc.GetVectorNumElements();
                                 }
+
+                                // Calculate and write size of encodings for all vectors (if vectorized).
+                                uint16_t allVectorsSize = 0;
+                                auto regNumCurr = regNum;
+                                for (unsigned int vectorElem = 0; vectorElem < vectorNumElements; ++vectorElem)
+                                {
+                                    if (regNumCurr <= 31)
+                                    {
+                                        // immediate 0 for breg0-31
+                                        uint16_t lebsize1 = op >= llvm::dwarf::DW_OP_breg0 && op <= llvm::dwarf::DW_OP_breg31? 1 : 0;
+                                        allVectorsSize += (uint16_t)(sizeof(uint8_t) + lebsize1 + simdLaneSize);
+                                    }
+                                    else
+                                    {
+                                        if (op == llvm::dwarf::DW_OP_breg0)
+                                        {
+                                            // DW_OP_bregx
+                                            auto lebsize = encodeULEB128(regNumCurr, bufLEB128);
+                                            uint16_t lebsize1 = 1; // immediate 0
+                                            allVectorsSize += (uint16_t)(sizeof(uint8_t) + lebsize + lebsize1 + simdLaneSize);
+                                        }
+                                        else
+                                        {
+                                            // DW_OP_regx
+                                            auto lebsize = encodeULEB128(regNum, bufLEB128);
+                                            allVectorsSize += (uint16_t)(sizeof(uint8_t) + lebsize + simdLaneSize);
+                                        }
+                                    }
+                                    regNumCurr = regNumCurr + numOfRegs;
+                                }
+                                write(dotLoc.loc, allVectorsSize);
+
+                                auto opCurr = op;
                                 for (unsigned int vectorElem = 0; vectorElem < vectorNumElements; ++vectorElem)
                                 {
                                     if (regNum <= 31)
                                     {
-                                        op += regNum;
-                                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + subRegSize));
-                                        write(dotLoc.loc, (uint8_t)op);
+                                        auto lebsize1 = op == llvm::dwarf::DW_OP_breg0 ? 1 : 0; // immediate 0 for breg0-31
+                                        opCurr = op + regNum;
+                                        write(dotLoc.loc, (uint8_t)opCurr);
+                                        if (lebsize1 > 0)
+                                        {
+                                            write(dotLoc.loc, (uint8_t)0);
+                                        }
                                     }
                                     else
                                     {
-                                        op = op == llvm::dwarf::DW_OP_breg0 ? llvm::dwarf::DW_OP_bregx : llvm::dwarf::DW_OP_regx;
-                                        if (op == llvm::dwarf::DW_OP_bregx)
+                                        opCurr = op == llvm::dwarf::DW_OP_breg0 ? llvm::dwarf::DW_OP_bregx : llvm::dwarf::DW_OP_regx;
+                                        if (opCurr == llvm::dwarf::DW_OP_bregx)
                                         {
+                                            write(dotLoc.loc, (uint8_t)opCurr);
                                             auto lebsize = encodeULEB128(regNum, bufLEB128);
-                                            auto lebsize1 = 1; // immediate 0
-                                            write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + lebsize1 + subRegSize));
-                                            write(dotLoc.loc, (uint8_t)op);
                                             write(dotLoc.loc, bufLEB128, lebsize);
                                             write(dotLoc.loc, (uint8_t)0);
                                         }
                                         else
                                         {
+                                            write(dotLoc.loc, (uint8_t)opCurr);
                                             auto lebsize = encodeULEB128(regNum, bufLEB128);
-                                            write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + subRegSize));
-                                            write(dotLoc.loc, (uint8_t)op);
                                             write(dotLoc.loc, bufLEB128, lebsize);
                                         }
                                     }
-
-                                    auto lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
 
                                     IGC_ASSERT((varSizeInBits == 64) || (varSizeInBits == 32 || varSizeInBits == 16 || varSizeInBits == 8) &&
                                         "Unexpected variable's size");
@@ -1495,35 +1539,26 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                         unsigned int subReg = varInfo.getGRF().subRegNum;
 
                                         // Scalar in a subregister
-                                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
                                         write(dotLoc.loc, (uint8_t)subReg);  // TBD MT verify correctness of encoding
                                     }
                                     else
                                     {
                                         // SIMD lane
-                                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
                                         write(dotLoc.loc, (uint8_t)DW_OP_INTEL_push_simd_lane);
                                     }
 
                                     // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
                                     // as well as 32-bit float/int, while 64-bit variable takes two 32-bit subregisters.
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
                                     write(dotLoc.loc, (uint8_t)opLit);
 
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));;
                                     write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
-
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
-                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
-
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsizeVarSizeInBits));
                                     write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_const1u);
+                                    lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
                                     write(dotLoc.loc, bufLEB128, lebsizeVarSizeInBits);
-
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
-                                    write(dotLoc.loc, DW_OP_INTEL_bit_piece_stack);
+                                    write(dotLoc.loc, (uint8_t)DW_OP_INTEL_bit_piece_stack);
 
                                     regNum = regNum + numOfRegs;
+
                                 }
                             }
                         }
@@ -1546,20 +1581,26 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                 // Scratch space
                                 // 1 DW_OP_bregx <scrbase>, <offset>
                                 uint64_t scratchBaseAddr = 0; // TBD MT
+                                uint16_t varSizeInBits = (uint16_t)RegVar->getType()->getSizeInBits();
                                 auto lebsizeScratchBaseAddr = encodeULEB128(scratchBaseAddr, bufLEB128); // Address for bregx
                                 auto lebsizeScratchOffset = encodeULEB128(varInfo.getSpillOffset().memoryOffset, bufLEB128); // Offset for bregx
-
-                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsizeScratchBaseAddr + lebsizeScratchOffset));
-                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bregx);
-                                write(dotLoc.loc, bufLEB128, lebsizeScratchBaseAddr);
-                                write(dotLoc.loc, bufLEB128, lebsizeScratchOffset);
-                            }
-
-                            if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
-                            {
-                                // Emit SIMD lane for spill (unpacked)
-                                uint64_t varSizeInBits = RegVar->getType()->getSizeInBits();
                                 auto lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
+
+                                auto simdLaneSize =
+                                    sizeof(uint8_t) +                        // subReg or DW_OP_INTEL_push_simd_lane
+                                    sizeof(uint8_t) +                        // opLit
+                                    sizeof(uint8_t) +                        // DW_OP_shl
+                                    sizeof(uint8_t) + lebsizeVarSizeInBits + // DW_OP_const1u+val
+                                    sizeof(uint8_t);                         // DW_OP_INTEL_bit_piece_stack
+
+                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsizeScratchBaseAddr + lebsizeScratchOffset + simdLaneSize));
+                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bregx);
+                                lebsizeScratchBaseAddr = encodeULEB128(scratchBaseAddr, bufLEB128); // Address for bregx
+                                write(dotLoc.loc, bufLEB128, lebsizeScratchBaseAddr);
+                                lebsizeScratchOffset = encodeULEB128(varInfo.getSpillOffset().memoryOffset, bufLEB128); // Offset for bregx
+                                write(dotLoc.loc, bufLEB128, lebsizeScratchOffset);
+
+                                // Emit SIMD lane for spill (unpacked)
 
                                 IGC_ASSERT((varSizeInBits == 64) || (varSizeInBits == 32 || varSizeInBits == 16 || varSizeInBits == 8) &&
                                     "Unexpected variable's size");
@@ -1576,33 +1617,22 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     unsigned int subReg = varInfo.getGRF().subRegNum;
 
                                     // Scalar in a subregister
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
-                                    write(dotLoc.loc, (uint8_t)subReg);  // TBD MT verify correctness of encoding
+                                    write(dotLoc.loc, (uint8_t)subReg);
                                 }
                                 else
                                 {
                                     // SIMD lane
-                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
                                     write(dotLoc.loc, (uint8_t)DW_OP_INTEL_push_simd_lane);
                                 }
 
                                 // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
                                 // as well as 32-bit float/int, while 64-bit variable takes two 32-bit subregisters.
-                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
                                 write(dotLoc.loc, (uint8_t)opLit);
-
-                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
                                 write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
-
-                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
-                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
-
-                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsizeVarSizeInBits));
                                 write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_const1u);
+                                lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
                                 write(dotLoc.loc, bufLEB128, lebsizeVarSizeInBits);
-
-                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t)));
-                                write(dotLoc.loc, DW_OP_INTEL_bit_piece_stack);
+                                write(dotLoc.loc, (uint8_t)DW_OP_INTEL_bit_piece_stack);
                             }
                         }
                         if (Loc.IsVectorized())
