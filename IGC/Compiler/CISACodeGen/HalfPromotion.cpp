@@ -70,13 +70,13 @@ bool HalfPromotion::runOnFunction(Function& F)
 
 void HalfPromotion::visitCallInst(llvm::CallInst& I)
 {
-    if (llvm::isa<llvm::IntrinsicInst>(I) && I.getType()->isHalfTy())
-    {
-        handleLLVMIntrinsic(llvm::cast<IntrinsicInst>(I));
-    }
-    else if (llvm::isa<GenIntrinsicInst>(I) && I.getType()->isHalfTy())
+    if (llvm::isa<GenIntrinsicInst>(I) && I.getType()->isHalfTy())
     {
         handleGenIntrinsic(llvm::cast<GenIntrinsicInst>(I));
+    }
+    else if (llvm::isa<llvm::IntrinsicInst>(I) && I.getType()->isHalfTy())
+    {
+        handleLLVMIntrinsic(llvm::cast<IntrinsicInst>(I));
     }
 }
 
@@ -130,11 +130,9 @@ void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst& I)
 void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst& I)
 {
     GenISAIntrinsic::ID id = I.getIntrinsicID();
-    if (id == GenISAIntrinsic::GenISA_fsat ||
-        id == GenISAIntrinsic::GenISA_rsq ||
-        id == GenISAIntrinsic::GenISA_GradientX ||
-        id == GenISAIntrinsic::GenISA_GradientY ||
-        id == GenISAIntrinsic::GenISA_WaveShuffleIndex)
+    if (id == GenISAIntrinsic::GenISA_WaveAll ||
+        id == GenISAIntrinsic::GenISA_WavePrefix ||
+        id == GenISAIntrinsic::GenISA_WaveClustered)
     {
         Module* M = I.getParent()->getParent()->getParent();
         llvm::IGCIRBuilder<> builder(&I);
@@ -163,6 +161,7 @@ void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst& I)
             arguments);
         Value* f16Val = builder.CreateFPTrunc(f32Val, builder.getHalfTy());
         I.replaceAllUsesWith(f16Val);
+        I.eraseFromParent();
         m_changed = true;
     }
 }
