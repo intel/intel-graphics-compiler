@@ -2957,7 +2957,7 @@ foreach(_linkerFlagName IN ITEMS "CMAKE_EXE_LINKER_FLAGS" "CMAKE_SHARED_LINKER_F
 endforeach()
 
 if(MSVC)
-if(${LLVM_VERSION_MAJOR} EQUAL 8)
+if(LLVM_VERSION_MAJOR EQUAL 8)
 message("WA For LLVM8 : Igonre warning 4199 - Need to fix it")
   igc_config_flag_apply_settings(
       LinkerOptions
