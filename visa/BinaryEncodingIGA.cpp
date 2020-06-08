@@ -682,6 +682,12 @@ iga::Instruction *BinaryEncodingIGA::translateInstruction(
                 maskCtrl,
                 exDesc,
                 desc);
+
+        ASSERT_USER(igaInst, "Instruction is NULL");
+        if (!igaInst) {
+            return nullptr;
+        }
+
         igaInst->setSrc1Length(xlen);
         igaInst->addInstOpts(extraOpts);
     }
