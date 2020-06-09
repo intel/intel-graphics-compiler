@@ -3502,7 +3502,8 @@ bool Augmentation::markNonDefaultMaskDef()
     {
         if (liveAnalysis.livenessClass(dcl->getRegFile()))
         {
-            if (gra.getAugmentationMask(dcl) == AugmentationMasks::Undetermined)
+            if (gra.getAugmentationMask(dcl) == AugmentationMasks::Undetermined ||
+                ((getGenxPlatform() == GENX_TGLLP) && (!kernel.fg.builder->hasEarlyGRFRead()) && gra.getBankConflict(dcl) != BANK_CONFLICT_NONE))
             {
                 gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
                 nonDefaultMaskDefFound = true;

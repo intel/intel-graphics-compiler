@@ -5172,12 +5172,15 @@ static int getConflictTimesForTGL(std::ostream& output, int *firstRegCandidate, 
             {
                 bundleID = (firstRegCandidate[i] % 16) / 2;
             }
+            else if (zeroOne)
+            {
+                bundleID = (firstRegCandidate[i] % 32) / 2;
+            }
 
             int bankID = (firstRegCandidate[i] % 4) / 2;
             if (zeroOne)
             {
                 bankID = (firstRegCandidate[i]) % 2;
-                bundleID = (firstRegCandidate[i] % 32) / 2;
             }
 
             //Same bank and same bundle
