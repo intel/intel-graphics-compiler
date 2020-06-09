@@ -436,6 +436,10 @@ SIMDMode getMinDispatchMode() const
     return SIMDMode::SIMD8;
 }
 
+unsigned getAccChNumUD() const
+{
+    return 8;
+}
 // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
 bool WaDoNotPushConstantsForAllPulledGSTopologies() const
