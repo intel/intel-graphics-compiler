@@ -173,7 +173,7 @@ namespace vISA
             if (inst->isFlowControl() || inst->isWait() ||
                 (inst->isSend() && inst->asSendInst()->isFence()) ||
                 inst->isLifeTimeEnd() || inst->isAccDstInst() || inst->isAccSrcInst() ||
-                inst->getImplAccDst() || inst->getImplAccSrc())
+                inst->getImplAccDst() || inst->getImplAccSrc() || inst->isRelocationMov())
             {
                 return false;
             }

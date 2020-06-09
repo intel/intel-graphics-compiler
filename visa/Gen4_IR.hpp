@@ -707,6 +707,7 @@ public:
     bool isCallerRestore() const;
     bool isCalleeSave() const;
     bool isCalleeRestore() const;
+    bool isRelocationMov() const;
     bool isMov() const { return G4_Inst_Table[op].instType == InstTypeMov; }
     bool isLogic() const { return G4_Inst_Table[op].instType == InstTypeLogic; }
     bool isCompare() const
@@ -3930,6 +3931,11 @@ inline bool G4_INST::isCalleeSave() const
 inline bool G4_INST::isCalleeRestore() const
 {
     return isIntrinsic() && asIntrinsicInst()->getIntrinsicId() == Intrinsic::CalleeRestore;
+}
+
+inline bool G4_INST::isRelocationMov() const
+{
+    return isMov() && srcs[0]->isRelocImm();
 }
 
 inline const char* G4_INST::getLabelStr() const

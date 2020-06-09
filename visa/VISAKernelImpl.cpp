@@ -7975,9 +7975,10 @@ int VISAKernelImpl::GetRelocations(RelocListType &relocs)
     for (RelocationEntry& reloc : reloc_table)
     {
         G4_INST* inst = reloc.getInst();
-        uint32_t offset = static_cast<uint32_t>(inst->getGenOffset()) + reloc.getTargetOffset(*m_builder);
+        int64_t genOffset = inst->getGenOffset();
+        uint32_t offset = static_cast<uint32_t>(genOffset + reloc.getTargetOffset(*m_builder));
         relocs.emplace_back(reloc.getType(), offset, reloc.getSymbolName());
-        assert((offset > inst->getGenOffset()) && (offset < inst->getGenOffset() + BYTES_PER_INST));
+        assert((genOffset != UNDEFINED_GEN_OFFSET) && (offset > genOffset) && (offset < genOffset + BYTES_PER_INST));
     }
     return VISA_SUCCESS;
 }
