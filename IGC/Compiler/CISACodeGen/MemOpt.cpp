@@ -777,10 +777,9 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         if (Ty->isVectorTy()) {
             if (Pos + Ty->getVectorNumElements() > NumElts) {
                 // This implies we're trying to extract an element from our new load
-                // with an index > the size of the new load.  This shouldn't happen,
-                // but we'll generate correct code if it does since we don't remove the
+                // with an index > the size of the new load.  If this happens,
+                // we'll generate correct code if it does since we don't remove the
                 // original load for this element.
-                IGC_ASSERT(false && "Trying to merge a load with an offset bigger than the load");
                 continue;
             }
             Value* Val = UndefValue::get(Ty);
@@ -793,7 +792,6 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         }
         else {
             if (Pos > NumElts) {
-                IGC_ASSERT(false && "Trying to merge a load with an offset bigger than the load");
                 continue;
             }
             Value* Val = Builder.CreateExtractElement(NewLoad,
