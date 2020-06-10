@@ -23,42 +23,27 @@ uint16_t LatencyTable::getOccupancy(G4_INST* Inst) const
     return getOccupancyLegacy(Inst);
 }
 
-static const uint16_t LegacyFFLatency[] = {
-    2,   // 0: SFID_NULL
-    2,   // 1: Useless
-    300, // 2: SFID_SAMPLER
-    200, // 3: SFID_GATEWAY
-    400, // 4: SFID_DP_READ, SFID_DP_DC2
-    200, // 5: SFID_DP_WRITE
-    50,  // 6: SFID_URB
-    50,  // 7: SFID_SPAWNER
-    50,  // 8: SFID_VME
-    60,  // 9: SFID_DP_CC
-    400, //10: SFID_DP_DC
-    50,  //11: SFID_DP_PI
-    400, //12: SFID_DP_DC1
-    200, //13: SFID_CRE
-    200  //14: unknown, SFID_NUM
-};
+
 
 uint16_t LatencyTable::getLatencyLegacy(G4_INST* Inst) const
 {
-    if (Inst->isSend()) {
+    if (Inst->isSend())
+    {
         G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
         return LegacyFFLatency[SFIDtoInt(MsgDesc->getFuncId())];
     } else if (Inst->isMath()) {
         if (Inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
             Inst->asMathInst()->getMathCtrl() == MATH_POW)
-            return EDGE_LATENCY_MATH_TYPE2;
-        return EDGE_LATENCY_MATH;
+            return LegacyLatencies::EDGE_LATENCY_MATH_TYPE2;
+        return LegacyLatencies::EDGE_LATENCY_MATH;
     }
-    return IVB_PIPELINE_LENGTH;
+    return LegacyLatencies::IVB_PIPELINE_LENGTH;
 }
 
 uint16_t LatencyTable::getOccupancyLegacy(G4_INST* Inst) const
 {
     int divisor = 8;
-    int InstLatency = UNCOMPR_LATENCY;
+    int InstLatency = LegacyLatencies::UNCOMPR_LATENCY;
     if (Inst->isFastHFInstruction()) {
         divisor = 16;
     }
@@ -122,73 +107,34 @@ uint16_t LatencyTable::getOccupancyLegacy(G4_INST* Inst) const
 
 uint16_t LatencyTable::getLatencyG12(G4_INST* Inst) const
 {
-    enum GEN12Latency {
-        // SIMD8 latency if dst is acc.
-        G12_FPU_ACC = 6,
-
-        // SIMD8 latency for general FPU ops.
-        G12_FPU = 10,
-
-        // Math latency.
-        G12_MATH = 17,
-
-
-        // Latency for SIMD16 branch.
-        G12_BRANCH = 23,
-
-        // Latency for barrier.
-        G12_BARRIER = 30,
-
-        // Latency for SLM fence.
-        G12_SLM_FENCE = 23,
-
-        // Latency for SIMD16 SLM messages. If accessing
-        // the same location, it takes 28 cycles. For the
-        // sequential access pattern, it takes 26 cycles.
-        G12_SLM = 28,
-
-        // Latency for L3 hit dataport.
-        G12_L3 = 146,
-
-        // Latency for L3 hit sampler.
-        G12_SAMPLER = 214,
-
-        // Latency for other messages.
-        G12_SEND_OTHERS = 50,
-
-        // Extra cycles for wider SIMD sizes, compute only.
-        G12_Delta = 1,
-        G12_Delta_Math = 4
-    };
-
     int Sz = Inst->getExecSize();
     int Scale = (Sz <= 8) ? 0 : (Sz == 16) ? 1 : 3;
 
     if (Inst->isSend()) {
         G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
         if (MsgDesc->isSLMMessage())
-            return Inst->asSendInst()->isFence() ? G12_SLM_FENCE : G12_SLM;
+            return Inst->asSendInst()->isFence() ? GEN12Latencies::SLM_FENCE : GEN12Latencies::SLM;
         if (MsgDesc->isSampler())
-            return G12_SAMPLER;
+            return GEN12Latencies::SAMPLER_L3;
         if (MsgDesc->isHDC())
-            return G12_L3;
+            return GEN12Latencies::DP_L3;
         if (MsgDesc->isBarrierMsg())
-            return G12_BARRIER;
-         return G12_SEND_OTHERS;
+            return GEN12Latencies::BARRIER;
+         return GEN12Latencies::SEND_OTHERS;
     } else if (Inst->isMath()) {
-        return uint16_t(G12_MATH + G12_Delta_Math * Scale);
+        return uint16_t(GEN12Latencies::MATH + GEN12Latencies::DELTA_MATH * Scale);
     } else if (Inst->isFlowControl()) {
-        return G12_BRANCH;
+        return GEN12Latencies::BRANCH;
     }
     else if (Inst->isArithmetic()) {
         G4_DstRegRegion *Dst = Inst->getDst();
         if (Dst->isAccReg())
-            return uint16_t(G12_FPU_ACC + G12_Delta * Scale);
-        return uint16_t(G12_FPU + G12_Delta * Scale);
+            return uint16_t(GEN12Latencies::FPU_ACC + GEN12Latencies::DELTA * Scale);
+        return uint16_t(GEN12Latencies::FPU + GEN12Latencies::DELTA * Scale);
     }
 
     // By default, use the FPU pipeline latency.
-    return uint16_t(G12_FPU);
+    return uint16_t(GEN12Latencies::FPU);
 }
 
 uint16_t LatencyTable::getOccupancyG12(G4_INST* Inst) const

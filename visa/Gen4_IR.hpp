@@ -475,7 +475,6 @@ public:
 
     bool isBarrierMsg() const;
     bool isFence() const;
-
     bool isSendBarrier() const {
         return isAtomicMessage() || isBarrierMsg();  // atomic write or explicit barrier
     }

@@ -40,16 +40,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "LatencyTable.h"
 #include "Dependencies_G4IR.h"
 
-//To be comptabile with send cycles, don't normalized them to 1
-#define UNCOMPR_LATENCY  2    // Latency of an uncompressed instruction
-#define COMPR_LATENCY    4    // Latency of a compressed instruction
-#define ACC_BUBBLE       4    // Accumulator back-to-back stall
-#define IVB_PIPELINE_LENGTH  14
-#define EDGE_LATENCY_MATH 22
-#define EDGE_LATENCY_MATH_TYPE2 30
-#define EDGE_LATENCY_SEND_WAR 36
-
 #define THREE_SOURCE_BLOCK_HERISTIC 0.5
+
 namespace vISA {
 
 class Node;
