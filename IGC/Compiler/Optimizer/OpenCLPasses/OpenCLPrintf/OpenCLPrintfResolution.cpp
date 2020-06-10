@@ -422,7 +422,7 @@ bool OpenCLPrintfResolution::argIsString(Value* printfArg)
             return false;
         }
         ConstantDataArray* formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
-        if ((nullptr == formatStringConst) && !formatStringConst->isCString())
+        if (!formatStringConst || !formatStringConst->isCString())
         {
             return false;
         }
@@ -844,11 +844,7 @@ IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* prin
 {
     Type* argType = printfArg->getType();
 
-    if (argIsString(printfArg))
-    {
-        return IGC::SHADER_PRINTF_STRING_LITERAL;
-    }
-    else if (argType->isVectorTy())
+    if (argType->isVectorTy())
     {
         Type* elemType = argType->getVectorElementType();
         if (elemType->isFloatingPointTy())
@@ -874,34 +870,35 @@ IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* prin
             }
         }
     }
-    else
+    else if (argType->isFloatingPointTy())
     {
-        if (argType->isPointerTy())
+        if (argType->isDoubleTy())
+            return IGC::SHADER_PRINTF_DOUBLE;
+        else
+            return IGC::SHADER_PRINTF_FLOAT;
+    }
+    else if (argType->isIntegerTy())
+    {
+        unsigned int typeSize = argType->getScalarSizeInBits();
+        switch (typeSize)
         {
-            return IGC::SHADER_PRINTF_POINTER;
+        case 8:
+            return IGC::SHADER_PRINTF_BYTE;
+        case 16:
+            return IGC::SHADER_PRINTF_SHORT;
+        case 32:
+            return IGC::SHADER_PRINTF_INT;
+        case 64:
+            return IGC::SHADER_PRINTF_LONG;
         }
-        else if (argType->isFloatingPointTy())
-        {
-            if (argType->isDoubleTy())
-                return IGC::SHADER_PRINTF_DOUBLE;
-            else
-                return IGC::SHADER_PRINTF_FLOAT;
-        }
-        else if (argType->isIntegerTy())
-        {
-            unsigned int typeSize = argType->getScalarSizeInBits();
-            switch (typeSize)
-            {
-            case 8:
-                return IGC::SHADER_PRINTF_BYTE;
-            case 16:
-                return IGC::SHADER_PRINTF_SHORT;
-            case 32:
-                return IGC::SHADER_PRINTF_INT;
-            case 64:
-                return IGC::SHADER_PRINTF_LONG;
-            }
-        }
+    }
+    else if (argIsString(printfArg))
+    {
+        return IGC::SHADER_PRINTF_STRING_LITERAL;
+    }
+    else if (argType->isPointerTy())
+    {
+        return IGC::SHADER_PRINTF_POINTER;
     }
     return IGC::SHADER_PRINTF_INVALID;
 }
