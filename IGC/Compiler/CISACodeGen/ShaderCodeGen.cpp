@@ -1411,7 +1411,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(new BreakConstantExpr());
-        mpm.add(new IGCConstProp(!pContext->m_DriverInfo.SupportsPreciseMath()));
+        mpm.add(new IGCConstProp());
 
         mpm.add(new CustomSafeOptPass());
         if (!pContext->m_DriverInfo.WADisableCustomPass())
@@ -1552,8 +1552,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(llvm::createAggressiveDCEPass());
 
             mpm.add(new BreakConstantExpr());
-            mpm.add(new IGCConstProp(!pContext->m_DriverInfo.SupportsPreciseMath(),
-                IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
+            mpm.add(new IGCConstProp(IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
 
             if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
             {
