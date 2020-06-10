@@ -3751,13 +3751,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     PointsToAnalysis pointsToAnalysis(kernel.Declares, kernel.fg.getNumBB());
     pointsToAnalysis.doPointsToAnalysis(kernel.fg);
 
-    // Run explicit variable split pass
-    VarSplitPass splitPass(kernel);
-    if(kernel.getOption(vISA_IntrinsicSplit))
-        splitPass.run();
-
     GlobalRA gra(kernel, regPool, pointsToAnalysis);
-    gra.setVarSplitPass(&splitPass);
 
     //
     // insert pseudo save/restore return address so that reg alloc
@@ -3802,7 +3796,11 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     {
         jitInfo->numBytesScratchGtpin = kernel.getGTPinData()->getNumBytesScratchUse();
     }
-    splitPass.replaceIntrinsics();
+
+    if (auto sp = kernel.getVarSplitPass())
+    {
+        sp->replaceIntrinsics();
+    }
 
     recordRAStats(builder, kernel, status);
     if (status != VISA_SUCCESS)

@@ -267,6 +267,7 @@ private:
     void recomputeBound(std::unordered_set<G4_Declare*>& declares);
 
     void mapOrphans();
+    void varSplit();
 
     G4_Imm* foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op);
 
@@ -353,6 +354,7 @@ public:
         PI_insertFenceBeforeEOT,
         PI_insertScratchReadBeforeEOT,
         PI_mapOrphans,
+        PI_varSplit,
         PI_NUM_PASSES
     };
 

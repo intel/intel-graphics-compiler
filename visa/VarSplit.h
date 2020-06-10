@@ -116,6 +116,7 @@ private:
     // Split verification related declarations
     void buildPreVerify();
     void verify();
+    void verifyOverlap();
 
     class InstData
     {

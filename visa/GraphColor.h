@@ -802,10 +802,8 @@ namespace vISA
         PhyRegPool& regPool;
         PointsToAnalysis& pointsToAnalysis;
         FCALL_RET_MAP fcallRetMap;
-        VarSplitPass* splitPass = nullptr;
 
-        void setVarSplitPass(VarSplitPass* p) { splitPass = p; }
-        VarSplitPass* getVarSplitPass() { return splitPass; }
+        VarSplitPass* getVarSplitPass() { return kernel.getVarSplitPass(); }
 
         unsigned int getSubRetLoc(G4_BB* bb)
         {

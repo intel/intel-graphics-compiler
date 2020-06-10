@@ -7004,7 +7004,21 @@ G4_Kernel::~G4_Kernel()
         gtPinInfo->~gtPinData();
     }
 
+    if (varSplitPass)
+    {
+        delete varSplitPass;
+        varSplitPass = nullptr;
+    }
+
     Declares.clear();
+}
+
+VarSplitPass* G4_Kernel::getVarSplitPass()
+{
+    if (varSplitPass)
+        return varSplitPass;
+
+    return new VarSplitPass(*this);
 }
 
 //

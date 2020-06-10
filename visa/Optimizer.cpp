@@ -590,6 +590,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(insertFenceBeforeEOT,    vISA_EnableAlways,            TIMER_MISC_OPTS);
     INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT, TIMER_MISC_OPTS);
     INITIALIZE_PASS(mapOrphans,              vISA_EnableAlways,            TIMER_MISC_OPTS);
+    INITIALIZE_PASS(varSplit,                vISA_EnableAlways,            TIMER_OPTIMIZER);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1086,6 +1087,8 @@ int Optimizer::optimization()
     runPass(PI_split4GRFVars);
 
     runPass(PI_insertFenceBeforeEOT);
+
+    runPass(PI_varSplit);
 
     // PreRA scheduling
     runPass(PI_preRA_Schedule);
@@ -8165,6 +8168,16 @@ public:
                     inst->setCISAOff(catchAllCISAOff);
                 }
             }
+        }
+    }
+
+    void Optimizer::varSplit()
+    {
+        VarSplitPass* splitPass = kernel.getVarSplitPass();
+        // Run explicit variable split pass
+        if (kernel.getOption(vISA_IntrinsicSplit))
+        {
+            splitPass->run();
         }
     }
 

@@ -172,6 +172,53 @@ void VarSplitPass::verify()
     printf("Split verification passed successfully - %d split!\n", numSplitIntrinsics);
 }
 
+void VarSplitPass::verifyOverlap()
+{
+    for (auto bb : kernel.fg.getBBList())
+    {
+        for (auto inst : bb->getInstList())
+        {
+            if (inst->isSplitIntrinsic())
+            {
+                auto dst = inst->getDst();
+                auto src = inst->getSrc(0);
+                auto dstTopDcl = dst->getTopDcl();
+                auto srcTopDcl = src->getTopDcl();
+                MUST_BE_TRUE(dstTopDcl->getRegVar()->getPhyReg() &&
+                    dstTopDcl->getRegVar()->getPhyReg()->isGreg(), "Unexpected assignment condition on split dst");
+                MUST_BE_TRUE(srcTopDcl->getRegVar()->getPhyReg() &&
+                    srcTopDcl->getRegVar()->getPhyReg()->isGreg(), "Unexpected assignment condition on split src");
+
+                auto dstLS = dst->getLinearizedStart();
+                auto dstLE = dst->getLinearizedEnd();
+
+                auto srcLS = src->getLinearizedStart();
+                auto srcLE = src->getLinearizedEnd();
+
+                if (dstLS == srcLS &&
+                    dstLE == srcLE)
+                {
+                    // assignment is ok and will be coalesced away
+                    continue;
+                }
+
+                auto dstDclRegNum = dstTopDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+                auto dstDclNumRows = dstTopDcl->getNumRows();
+                auto srcDclRegNum = srcTopDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+                auto srcDclNumRows = srcTopDcl->getNumRows();
+
+                if (dstDclRegNum < (srcDclRegNum + srcDclNumRows) &&
+                    ((dstDclRegNum + dstDclNumRows) > srcDclRegNum))
+                {
+                    MUST_BE_TRUE(false, "Invalid overlap in assignments");
+                }
+            }
+        }
+    }
+
+    printf("Split assignment overlap passed successfully\n");
+}
+
 void VarSplitPass::run()
 {
     if (kernel.getOption(vISA_VerifyExplicitSplit))
@@ -203,7 +250,9 @@ void VarSplitPass::findSplitCandidates()
             {
                 auto dstDcl = inst->getDst()->getTopDcl();
 
-                if (dstDcl && dstDcl->getRegFile() == G4_RegFileKind::G4_GRF)
+                if (dstDcl &&
+                    !dstDcl->getAddressed() &&
+                    dstDcl->getRegFile() == G4_RegFileKind::G4_GRF)
                 {
                     auto& prop = splitVars[dstDcl];
                     prop.numDefs++;
@@ -494,6 +543,14 @@ void VarSplitPass::replaceIntrinsics()
 #ifdef DEBUG_VERBOSE_ON
     unsigned int numSplitMovs = 0;
 #endif
+
+    if (kernel.getOption(vISA_VerifyExplicitSplit))
+    {
+        // Check whether intrinsic assignments overlap with other
+        // rows of original variable
+        verifyOverlap();
+    }
+
     // Replace intrinsic.split with mov
     for (auto bb : kernel.fg.getBBList())
     {

@@ -55,6 +55,7 @@ class PhyRegSummary;
 class G4_BB;
 class FlowGraph;
 class KernelDebugInfo;
+class VarSplitPass;
 
 //
 // FuncInfo - Function CFG information
@@ -1422,6 +1423,8 @@ class G4_Kernel
 
     bool m_hasIndirectCall = false;
 
+    VarSplitPass* varSplitPass = nullptr;
+
     // store the actual sourfce line stream for each source file referenced by this kernel.
     std::map<std::string, std::vector<std::string> > debugSrcLineMap;
 
@@ -1616,6 +1619,8 @@ public:
     G4_INST* getFirstNonLabelInst() const;
 
     std::string getDebugSrcLine(const std::string& filename, int lineNo);
+
+    VarSplitPass* getVarSplitPass();
 
 };
 
