@@ -5780,11 +5780,20 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                         }
                         if (parentGRF)
                         {
+                            // mark interference between partial lr and all
+                            // other GRFs allocated to parent dcl. this logic
+                            // allows either coalesceable allocation or a
+                            // fully non-overlapping assignment.
                             auto siblingNum = varSplitPass.getSiblingNum(lr->getDcl());
                             auto parentGRFNum = parentGRF->asGreg()->getRegNum();
-                            auto forbiddenStart = parentGRFNum + ((siblingNum + 1) * lr->getDcl()->getNumRows());
-                            auto forbiddenEnd = parentGRFNum + parentDcl->getNumRows();
-                            lr->markForbidden(forbiddenStart, forbiddenEnd - forbiddenStart);
+                            auto parentNumRows = parentDcl->getNumRows();
+                            auto numRows = lr->getDcl()->getNumRows();
+                            for (unsigned int i = parentGRFNum; i != (parentGRFNum + parentNumRows); i += numRows)
+                            {
+                                if ((i - parentGRFNum) == siblingNum * numRows)
+                                    continue;
+                                lr->markForbidden(i, numRows);
+                            }
                             skipParentIntf = true;
                         }
                     }
@@ -9160,6 +9169,15 @@ bool canDoLRA(G4_Kernel& kernel)
 {
     bool ret = true;
 
+
+    if (kernel.getVarSplitPass()->splitOccured())
+    {
+        // skip LRA when split changes IR as it may
+        // result in copies in the program. coalescing
+        // requires more work in LRA because preRA
+        // scheduler schedules sampler and split nodes.
+        ret = false;
+    }
 
     return ret;
 }

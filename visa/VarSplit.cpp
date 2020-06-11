@@ -174,6 +174,11 @@ void VarSplitPass::verify()
 
 void VarSplitPass::verifyOverlap()
 {
+    // For defs, map GRF written with G4_Declare of dst rgn.
+    // Verify that src reg# used in intrinsic_split comes from
+    // parent dcl of the split dst.
+    std::unordered_map<unsigned int, G4_Declare*> regToDcl;
+    unsigned int numSplitLeft = 0;
     for (auto bb : kernel.fg.getBBList())
     {
         for (auto inst : bb->getInstList())
@@ -202,21 +207,57 @@ void VarSplitPass::verifyOverlap()
                     continue;
                 }
 
-                auto dstDclRegNum = dstTopDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-                auto dstDclNumRows = dstTopDcl->getNumRows();
-                auto srcDclRegNum = srcTopDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-                auto srcDclNumRows = srcTopDcl->getNumRows();
+                numSplitLeft++;
 
-                if (dstDclRegNum < (srcDclRegNum + srcDclNumRows) &&
-                    ((dstDclRegNum + dstDclNumRows) > srcDclRegNum))
+                auto srcDclRegNum = srcLS / G4_GRF_REG_NBYTES;
+                auto srcDclNumRows = ((srcLE + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES) - srcDclRegNum;
+
+                // check whether src GRF# is written by parent of dst split dcl
+                for (unsigned int i = srcDclRegNum; i != (srcDclRegNum + srcDclNumRows); i++)
                 {
-                    MUST_BE_TRUE(false, "Invalid overlap in assignments");
+                    auto dcl = regToDcl[i];
+                    if (dcl != getParentDcl(dstTopDcl))
+                    {
+                        if (!dstTopDcl->getRegVar()->isRegVarTransient() &&
+                            !dstTopDcl->getRegVar()->isRegVarCoalesced())
+                        {
+                            MUST_BE_TRUE(false, "split src uses GRF value from non-parent");
+                        }
+                        else if(dstTopDcl->getRegVar()->isRegVarTransient())
+                        {
+                            // dst is spilled
+                            auto dstOrigDcl = dstTopDcl->getRegVar()->getNonTransientBaseRegVar()->getDeclare()->getRootDeclare();
+                            if (dcl != getParentDcl(dstOrigDcl))
+                            {
+                                MUST_BE_TRUE(false, "split src uses GRF value from non-parent. dst spilled.");
+                            }
+                        }
+                        else
+                        {
+                            // do nothing for coalesced ranges
+                        }
+                    }
+                }
+            }
+            else
+            {
+                auto dstRgn = inst->getDst();
+                if (dstRgn && dstRgn->getTopDcl() &&
+                    dstRgn->getTopDcl()->getRegVar()->getPhyReg() &&
+                    dstRgn->getTopDcl()->getRegVar()->getPhyReg()->isGreg())
+                {
+                    auto grf = dstRgn->getTopDcl()->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+                    auto numRows = (dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES;
+                    for (unsigned int i = grf; i != (grf + numRows); i++)
+                    {
+                        regToDcl[i] = dstRgn->getTopDcl();
+                    }
                 }
             }
         }
     }
 
-    printf("Split assignment overlap passed successfully\n");
+    printf("Split assignment overlap passed successfully - %d splits left\n", numSplitLeft);
 }
 
 void VarSplitPass::run()
@@ -483,6 +524,7 @@ void VarSplitPass::split()
             intrin->setCISAOff(item.second.def.first->getInst()->getCISAOff());
             item.second.def.second->insert(it, intrin);
             splitDcls.push_back(std::make_tuple(lb, rb, splitDcl));
+            IRchanged = true;
 #ifdef DEBUG_VERBOSE_ON
             numIntrinsicsInserted++;
 #endif

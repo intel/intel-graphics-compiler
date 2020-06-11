@@ -95,6 +95,7 @@ public:
     bool reallocParent(G4_Declare*, LiveRange**);
     bool isParentChildRelation(G4_Declare*, G4_Declare*);
     bool isSplitVarLocal(G4_Declare*);
+    bool splitOccured() { return IRchanged; }
 
 private:
     G4_Kernel& kernel;
@@ -111,6 +112,7 @@ private:
     // Store pre-split regions for undo
     // <new src/dst region, <old src inst, old src rgn, old src#>>
     std::unordered_map<G4_Operand*, std::tuple<G4_INST*, G4_Operand*, unsigned int>> preSplit;
+    bool IRchanged = false;
 
 private:
     // Split verification related declarations

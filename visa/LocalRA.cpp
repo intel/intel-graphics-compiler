@@ -450,6 +450,9 @@ bool LocalRA::localRA()
         kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D);
 
     preLocalRAAnalysis();
+    // no support to handle coalescing var split in LRA
+    if (hasSplitInsts)
+        return !needGlobalRA;
 
     bool reduceBCInRR = false;
 
@@ -2523,7 +2526,7 @@ void LinearScan::run(G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
 
         expireRanges(idx);
         expireInputRanges(currInst->getLexicalId(), idx, firstGlobalIdx);
-        expireSplitParent(lr);
+        //expireSplitParent(lr);
 
         if (!lr->hasHint() &&
             doBankConflict && builder.lowHighBundle() && (highInternalConflict || (simdSize >= 16 && builder.oneGRFBankDivision())))
