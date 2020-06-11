@@ -1068,8 +1068,6 @@ namespace vISA
 
     typedef std::vector<G4_BB_SB *> BB_SWSB_VECTOR;
     typedef BB_SWSB_VECTOR::iterator BB_SWSB_VECTOR_ITER;
-    typedef std::vector<SWSB_LOOP> LOOP_SWSB_VECTOR;
-    typedef LOOP_SWSB_VECTOR::iterator LOOP_SWSB_VECTOR_ITER;
 
     class Dom
     {
@@ -1188,7 +1186,6 @@ namespace vISA
         vISA::Mem_Manager& mem;
 
         BB_SWSB_VECTOR BBVector;    // The basic block vector, ordered with ID of the BB
-        LOOP_SWSB_VECTOR loopVector;
         SBNODE_VECT SBNodes;        // All instruction nodes
         SBNODE_VECT SBSendNodes;    // All out-of-order instruction nodes
         SBNODE_VECT SBSendUses;    // All out-of-order instruction nodes

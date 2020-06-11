@@ -647,8 +647,6 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
         }
     }
 
-    loopVector.resize(nestLoopLevel + 1);
-
     return;
 }
 
@@ -764,30 +762,44 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
 #ifdef DEBUG_VERBOSE_ON
         BBVector[i]->dumpLiveInfo(&globalSendOpndList, globalSendNum, nullptr);
 #endif
-
-        int loopLevel = BBVector[i]->getBB()->getNestLevel();
-        if (loopLevel)
-        {
-            if (loopVector[loopLevel].entryBBID == -1 ||
-                BBVector[loopVector[loopLevel].entryBBID]->first_node > BBVector[i]->first_node)
-            {
-                loopVector[loopLevel].entryBBID = i;
-            }
-            if (loopVector[loopLevel].endBBID == -1 ||
-                BBVector[loopVector[loopLevel].entryBBID]->last_node < BBVector[i]->last_node)
-            {
-                loopVector[loopLevel].endBBID = i;
-            }
-        }
     }
 
+    /*
+    Loop info is used to reduce the token required for certain instructions, or count the delay of the backedge for token reuse
+    We do the token reduction and count delay of backedge only for the nature loops, i.e with the backedge,
+    if the instruction distance is far enough, there is no need to set dependence.
+    For the irreducible flow graph, those optimizations wouldn't be kicked in.
+    */
     for (size_t i = 0; i < BBVector.size(); i++)
     {
-        int loopLevel = BBVector[i]->getBB()->getNestLevel();
-        if (loopLevel)
+        for (auto&& be : kernel.fg.backEdges)
         {
-            BBVector[i]->setLoopStartBBID(loopVector[loopLevel].entryBBID);
-            BBVector[i]->setLoopEndBBID(loopVector[loopLevel].endBBID);
+            auto loopIt = kernel.fg.naturalLoops.find(be);
+
+            if (loopIt != kernel.fg.naturalLoops.end())
+            {
+                auto&& bbsInLoop = (*loopIt).second;
+
+                auto bb1InLoop = bbsInLoop.find(BBVector[i]->getBB());
+                if (bb1InLoop != bbsInLoop.end())
+                {
+                    if (BBVector[i]->getLoopStartBBID() != -1)
+                    {
+                        //Innerest loop only
+                        if (BBVector[i]->getLoopStartBBID() <= be.second->getId() &&
+                            BBVector[i]->getLoopEndBBID() >= be.first->getId())
+                        {
+                            BBVector[i]->setLoopStartBBID(be.second->getId());
+                            BBVector[i]->setLoopEndBBID(be.first->getId());
+                        }
+                    }
+                    else
+                    {
+                        BBVector[i]->setLoopStartBBID(be.second->getId());
+                        BBVector[i]->setLoopEndBBID(be.first->getId());
+                    }
+                }
+            }
         }
     }
 
@@ -1153,6 +1165,7 @@ void SWSB::SWSBGenerator()
     PointsToAnalysis p(kernel.Declares, kernel.fg.getNumBB());
     p.doPointsToAnalysis(kernel.fg);
 
+    //For VISA_3D, the naturalLoop finding is handled in register allocation already
     if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D)
     {
         kernel.fg.findNaturalLoops();
