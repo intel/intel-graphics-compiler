@@ -28,9 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "inc/common/igfxfmid.h"
 #include "Compiler/compiler_caps.h"
 #include "Compiler/igc_workaround.h"
-#include "common/igc_regkeys.hpp"
 #include "common/Types.hpp"
 #include "Probe/Assertion.h"
+#include "common/igc_regkeys.hpp"
+
 
 namespace IGC
 {
@@ -53,6 +54,10 @@ CPlatform() {}
 
 void setOclCaps(OCLCaps& caps) { m_OCLCaps = caps; }
 uint32_t getMaxOCLParameteSize() const { return m_OCLCaps.MaxParameterSize;  }
+void OverrideRevId(unsigned short newRevId)
+{
+    m_platformInfo.usRevId = newRevId;
+}
 
     WA_TABLE const& getWATable() const { return m_WaTable; }
 SKU_FEATURE_TABLE const& getSkuTable() const { return m_SkuTable; }
