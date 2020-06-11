@@ -672,6 +672,7 @@ private:
     bool isHalfGRFReturn(CVariable* dst, SIMDMode simdMode);
 
     void emitFeedbackEnable();
+
 };
 
 } // namespace IGC
