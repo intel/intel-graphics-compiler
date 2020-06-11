@@ -316,9 +316,8 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop* L) {
         if (PN->getNumIncomingValues() != 2)
             return LOOPCOUNT_UNKNOWN;
         BasicBlock* BB0 = PN->getIncomingBlock(0);
-        BasicBlock* BB1 = PN->getIncomingBlock(1);
         BasicBlock* IfBB = BB0->getSinglePredecessor();
-        if (!IfBB || IfBB == BB1->getSinglePredecessor())
+        if (!IfBB)
             return LOOPCOUNT_UNKNOWN;
         Br = dyn_cast<BranchInst>(IfBB->getTerminator());
         if (!Br || !Br->isConditional())
