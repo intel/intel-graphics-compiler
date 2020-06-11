@@ -75,6 +75,7 @@ typedef enum {
     KV_NON_SEND_INSTRUCTION   = 20, /* underlying inst isn't a send */
     KV_DESCRIPTOR_INDIRECT    = 21, /* a send message with a reg desc */
     KV_DESCRIPTOR_INVALID     = 22, /* an unrecognized send descriptor */
+    KV_NO_SUBFUNCTION         = 23, /* underlyting inst has no sub-function*/
 } kv_status_t;
 
 /*
@@ -319,7 +320,7 @@ IGA_API uint32_t kv_get_opcode(const kv_t *kv, int32_t pc);
  * This function returns OPcode integer.  The value corresponds to
  * binary encoding value of the opcode.
  */
-IGA_API uint32_t kv_get_subfunction(const kv_t *kv, int32_t pc);
+IGA_API kv_status_t kv_get_subfunction(const kv_t *kv, int32_t pc, uint32_t* subfunc);
 
 /*
  * This function returns if intruction has destination.

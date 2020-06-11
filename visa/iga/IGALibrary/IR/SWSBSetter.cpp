@@ -268,8 +268,8 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                     currDep.getInstruction()->getOpSpec().isSendFamily())
                 {
                     send_in_diff_pipe =
-                        (dep->getInstruction()->getOpSpec().op !=
-                         currDep.getInstruction()->getOpSpec().op);
+                        (dep->getInstruction()->getSendFc() !=
+                         currDep.getInstruction()->getSendFc());
                 }
 
                 bool isRAW = currDepType == DEP_TYPE::READ &&

@@ -126,6 +126,7 @@ void MessageDecoderOther::tryDecodeRC()
 
     static const uint32_t RT_READ = 0xD;
     static const uint32_t RT_WRITE = 0xC;
+    static const uint32_t RTR_SIMD = 0x1;
 
     std::string descSfx;
     sym << "rt";
@@ -153,42 +154,42 @@ void MessageDecoderOther::tryDecodeRC()
         sym << ".f32";
     } else {
         descs << "half-precision";
-        if (mt == 0xD)
-            warning(30, 1, "half-precision not supported on render target read");
         sym << ".f16";
+        if (mt == RT_READ)
+            warning(30, 1, "half-precision not supported on render target read");
     }
     descs << " " << descSfx;
 
-    std::string subopSym;
-    auto subOpBits = getDescBits(8,3);
+    std::stringstream subopSymSs;
+    auto subOpBits = getDescBits(8, 3);
     int execSize = 0;
     switch (mt) {
     case RT_WRITE:
         switch (subOpBits) {
         case 0x0:
-            subopSym = ".simd16";
-            descs << " SIMD16";
-            execSize = 16;
+            execSize = DEFAULT_EXEC_SIZE;
+            subopSymSs << ".simd" << execSize;
+            descs << " SIMD" << execSize;
             break;
         case 0x1:
-            subopSym = ".rep16";
-            descs << " replicated SIMD16";
-            execSize = 16;
+            execSize = DEFAULT_EXEC_SIZE;
+            subopSymSs << ".rep" << execSize;
+            descs << " replicated SIMD" << execSize;
             break;
         case 0x2:
-            subopSym = ".lo8ds";
-            descs << " of low SIMD8";
-            execSize = 8;
+            execSize = DEFAULT_EXEC_SIZE/2;
+            subopSymSs << ".lo" << execSize << "ds";
+            descs << " of low SIMD" << execSize;
             break;
         case 0x3:
-            subopSym = ".hi8ds";
-            descs << " of high SIMD8";
-            execSize = 8;
+            execSize = DEFAULT_EXEC_SIZE/2;
+            subopSymSs << ".hi" << execSize << "ds";
+            descs << " of high SIMD" << execSize;
             break;
         case 0x4:
-            subopSym = ".simd8";
-            descs << " SIMD8";
-            execSize = 8;
+            execSize = DEFAULT_EXEC_SIZE/2;
+            subopSymSs << ".simd" << execSize;
+            descs << " SIMD" << execSize;
             break;
         default:
             sym << ".???";
@@ -199,8 +200,16 @@ void MessageDecoderOther::tryDecodeRC()
         break;
     case RT_READ:
         switch (subOpBits) {
-        case 0x0: subopSym = ".simd16"; descs << " SIMD16"; execSize = 16; break;
-        case 0x1: subopSym = ".simd8"; descs << " SIMD8"; execSize = 8; break;
+        case 0x0:
+            execSize = DEFAULT_EXEC_SIZE;
+            subopSymSs << ".simd" << execSize;
+            descs << " SIMD" << execSize;
+            break;
+        case 0x1:
+            execSize = DEFAULT_EXEC_SIZE/2;
+            subopSymSs << ".simd" << execSize;
+            descs << " SIMD" << execSize;
+            break;
         default:
             sym << ".???";
             descs << "unknown read subop";
@@ -211,8 +220,8 @@ void MessageDecoderOther::tryDecodeRC()
     default:
         break;
     }
-    addField("Subop",8,3,subOpBits,subopSym);
-    sym << subopSym;
+    addField("Subop", 8, 3, subOpBits, subopSymSs.str());
+    sym << subopSymSs.str();
 
     if (mt == RT_WRITE) {
         auto pc =
@@ -270,261 +279,297 @@ void MessageDecoderOther::tryDecodeRC()
 
 
 ///////////////////////////////////////////////////////////////////////////////
-enum SamplerSIMD {
+enum class SamplerSIMD {
+    INVALID = 0,
     SIMD8,
     SIMD16,
+    SIMD32,
     SIMD32_64,
     SIMD8H,
     SIMD16H,
+    SIMD32H,
 };
 
 
-void MessageDecoderOther::tryDecodeSMPL()
-{
-    SamplerSIMD simd;
-    auto simd2 = decodeDescBitField("SIMD[2]", 29, "", "");
-    auto simd01 = getDescBits(17, 2);
-    uint32_t simdBits = simd01|(simd2<<2);
-    setDoc("12484");
-    std::stringstream sym, descs;
-    int simdSize = 0;
+// TGL ...
+// 000 Reserved
+// 001 SIMD8
+// 010 SIMD16
+// 011 SIMD32/64
+// 100 Reserved
+// 101 SIMD8H
+// 110 SIMD16H
+// 111 Reserved
+//
 
+static SamplerSIMD decodeSimdSize(
+    Platform p,
+    uint32_t simdBits,
+    int &simdSize,
+    std::stringstream &syms,
+    std::stringstream &descs)
+{
+    SamplerSIMD simdMode = SamplerSIMD::INVALID;
     switch (simdBits) {
     case 0:
-        error(17, 2, "invalid sampler SIMD mode");
-        return;
+        simdMode = SamplerSIMD::INVALID;
+        syms << "???";
+        descs << "unknown simd mode";
+        simdSize = 1;
+        return simdMode;
     case 1:
-        simd = SIMD8;
+        simdMode = SamplerSIMD::SIMD8;
         simdSize = 8;
         descs << "simd8";
-        sym << "simd8";
+        syms << "simd8";
         break;
     case 2:
-        simd = SIMD16;
+        simdMode = SamplerSIMD::SIMD16;
         simdSize = 16;
         descs << "simd16";
-        sym << "simd16";
+        syms << "simd16";
         break;
     case 3:
-        simd = SIMD32_64;
+        simdMode = SamplerSIMD::SIMD32_64;
         descs << "simd32/64";
-        sym << "simd32";
+        syms << "simd32";
         simdSize = 32;
         break;
     case 4:
-        error(17,2,"invalid SIMD mode");
-        return;
+        simdMode = SamplerSIMD::INVALID;
+        syms << "???";
+        descs << "unknown simd mode";
+        simdSize = 1;
+        break;
     case 5:
-        simd = SIMD8H;
+        simdMode = SamplerSIMD::SIMD8H;
         simdSize = 8;
-        sym << "simd8h";
+        syms << "simd8h";
         descs << "simd8 high";
         break;
     case 6:
-        simd = SIMD16H;
-        sym << "simd16h";
+        simdMode = SamplerSIMD::SIMD16H;
+        syms << "simd16h";
         descs << "simd16 high";
         simdSize = 16;
         break;
     default:
-        error(17,2,"invalid SIMD mode");
-        return;
+        break;
     } // switch
+
+    return simdMode;
+}
+
+void MessageDecoderOther::tryDecodeSMPL()
+{
+    setDoc(platform() >= Platform::GEN12P1 ? "43860" : "12484");
+    std::stringstream syms, descs;
+
+    auto simd2 = decodeDescBitField("SIMD[2]", 29, "", "");
+    auto simd01 = getDescBits(17, 2);
+    uint32_t simdBits = simd01|(simd2<<2);
+    int simdSize = 0;
+    const SamplerSIMD simdMode = decodeSimdSize(
+        platform(), simdBits, simdSize, syms, descs);
+    if (simdMode == SamplerSIMD::INVALID) {
+        error(17, 2, "invalid SIMD mode");
+    }
     addField("SIMD[1:0]", 17, 2, simd01, descs.str());
 
     bool is16bData = decodeDescBitField("ReturnFormat", 30, "32b", "16b") != 0;
     if (is16bData) {
-        sym << "_16";
+        syms << "_16";
         descs << " 16b";
     }
-    sym << "_";
+    syms << "_";
     descs << " ";
+
 
     SendOp sendOp = SendOp::SAMPLER_LOAD;
     int params = 0;
     const char *messageDesc = "";
     auto opBits = getDescBits(12,5);
-    if (simd != SIMD32_64) {
+    if (simdMode != SamplerSIMD::SIMD32_64) {
         switch (opBits) {
         case 0x00:
-            sym << "sample";
+            syms << "sample";
             messageDesc = "sample";
             params = 4;
             break;
         case 0x01:
-            sym << "sample_b";
+            syms << "sample_b";
             messageDesc = "sample+LOD bias";
             params = 5;
             break;
         case 0x02:
-            sym << "sample_l";
+            syms << "sample_l";
             messageDesc = "sample override LOD";
             params = 5;
             break;
         case 0x03:
-            sym << "sample_c";
+            syms << "sample_c";
             messageDesc = "sample compare";
             params = 5;
             break;
         case 0x04:
-            sym << "sample_d";
+            syms << "sample_d";
             messageDesc = "sample gradient";
             params = 10;
             break;
         case 0x05:
-            sym << "sample_b_c";
+            syms << "sample_b_c";
             messageDesc = "sample compare+LOD bias";
             params = 6;
             break;
         case 0x06:
-            sym << "sample_l_c";
+            syms << "sample_l_c";
             messageDesc = "sample compare+override LOD";
             params = 6;
             break;
         case 0x07:
-            sym << "sample_ld";
+            syms << "sample_ld";
             messageDesc = "sample load";
             params = 4;
             break;
         case 0x08:
-            sym << "sample_gather4";
+            syms << "sample_gather4";
             messageDesc = "sample gather4";
             params = 4;
             break;
         case 0x09:
-            sym << "sample_lod";
+            syms << "sample_lod";
             messageDesc = "sample override lod";
             params = 4;
             break;
         case 0x0A:
-            sym << "sample_resinfo";
+            syms << "sample_resinfo";
             messageDesc = "sample res info";
             params = 1;
             break;
         case 0x0B:
-            sym << "sample_info";
+            syms << "sample_info";
             messageDesc = "sample info";
             params = 0;
             break;
         case 0x0C:
-            sym << "sample_killpix";
+            syms << "sample_killpix";
             messageDesc = "sample+killpix";
             params = 3;
             break;
         case 0x10:
-            sym << "sample_gather4_c";
+            syms << "sample_gather4_c";
             messageDesc = "sample gather4+compare";
             params = 5;
             break;
         case 0x11:
-            sym << "sample_gather4_po";
+            syms << "sample_gather4_po";
             messageDesc = "sample gather4+pixel offset";
             params = 5;
             break;
         case 0x12:
-            sym << "sample_gather4_po_c";
+            syms << "sample_gather4_po_c";
             messageDesc = "sample gather4 pixel offset+compare";
             params = 6;
             break;
             // case 0x13: //skipped
         case 0x14:
-            sym << "sample_d_c";
+            syms << "sample_d_c";
             messageDesc = "sample derivatives+compare";
             params = 11;
             break;
         case 0x16:
-            sym << "sample_min";
+            syms << "sample_min";
             messageDesc = "sample min";
             params = 2;
             break;
         case 0x17:
-            sym << "sample_max";
+            syms << "sample_max";
             messageDesc = "sample max";
             params = 2;
             break;
         case 0x18:
-            sym << "sample_lz";
+            syms << "sample_lz";
             messageDesc = "sample with lod forced to 0";
             params = 4;
             break;
         case 0x19:
-            sym << "sample_c_lz";
+            syms << "sample_c_lz";
             messageDesc = "sample compare+with lod forced to 0";
             params = 5;
             break;
         case 0x1A:
-            sym << "sample_ld_lz";
+            syms << "sample_ld_lz";
             messageDesc = "sample load with lod forced to 0";
             params = 3;
             break;
             // case 0x1B:
         case 0x1C:
-            sym << "sample_ld2dms_w";
+            syms << "sample_ld2dms_w";
             messageDesc = "sample ld2 multi-sample wide";
             params = 7;
             break;
         case 0x1D:
-            sym << "sample_ld_mcs";
+            syms << "sample_ld_mcs";
             messageDesc = "sample load mcs auxilary data";
             params = 4;
             break;
         case 0x1E:
-            sym << "sample_ld2dms";
+            syms << "sample_ld2dms";
             messageDesc = "sample load multi-sample";
             params = 6;
             break;
         case 0x1F:
-            sym << "sample_ld2ds";
+            syms << "sample_ld2ds";
             messageDesc = "sample multi-sample without mcs";
             params = 6;
             break;
         default:
-            sym << "sample_" << std::hex << std::uppercase << opBits << "?";
+            syms << "sample_" << std::hex << std::uppercase << opBits << "?";
             messageDesc = "?";
             break;
         }
     } else {
         switch (opBits) {
         case 0x00:
-            sym << "sample_unorm";
+            syms << "sample_unorm";
             messageDesc = "sample unorm";
             params = 4; // relatively sure
             break;
         case 0x02:
-            sym << "sample_unorm_killpix";
+            syms << "sample_unorm_killpix";
             messageDesc = "sample unorm+killpix";
             params = 4; // no idea???
             break;
         case 0x08:
-            sym << "sample_deinterlace";
+            syms << "sample_deinterlace";
             messageDesc = "sample deinterlace";
             params = 4; // no idea???
             break;
         case 0x0C:
             // yes: this appears to be replicated
-            sym << "sample_unorm_media";
+            syms << "sample_unorm_media";
             messageDesc = "sample unorm for media";
             params = 4; // no idea???
             break;
         case 0x0A:
             // yes: this appears to be replicated
-            sym << "sample_unorm_killpix_media";
+            syms << "sample_unorm_killpix_media";
             messageDesc = "sample unorm+killpix for media";
             params = 4; // no idea???
             break;
         case 0x0B:
-            sym << "sample_8x8";
+            syms << "sample_8x8";
             messageDesc = "sample 8x8";
             params = 4; // no idea???
             break;
         case 0x1F:
-            sym << "sample_flush";
+            syms << "sample_flush";
             messageDesc = "sampler cache flush";
             sendOp = SendOp::SAMPLER_FLUSH;
             params = 0; // certain
             break;
         default:
-            sym << "sample_" << std::hex << std::uppercase << opBits << "?";
+            syms << "sample_" << std::hex << std::uppercase << opBits << "?";
             messageDesc = "?";
             sendOp = SendOp::INVALID;
             break;
@@ -536,11 +581,11 @@ void MessageDecoderOther::tryDecodeSMPL()
     auto six = decodeDescField("SamplerIndex", 8, 4,
         [&](std::stringstream &ss, uint32_t six){ss << "sampler " << six;});
     descs << " using sampler index " << six;
-    sym << "[" << six << "," << decodeBTI(32) << "]";
+    syms << "[" << six << "," << decodeBTI(32) << "]";
 
     AddrType addrType = AddrType::BTI;
     setScatterGatherOp(
-        sym.str(),
+        syms.str(),
         descs.str(),
         sendOp,
         addrType,
@@ -572,23 +617,23 @@ void MessageDecoderOther::tryDecodeURB()
 {
     std::stringstream sym, descs;
     SendOp op;
-    int simd = 8;
+    int simd = DEFAULT_EXEC_SIZE/2;
     int addrSize = 32;
     int dataSize = 32; // MH_URB_HANDLE has this an array of MHC_URB_HANDLE
     auto opBits = getDescBits(0, 4); // [3:0]
     auto chMaskPresent = getDescBit(15) != 0; // [15]
     auto decodeGUO =
         [&]() {
-        return decodeDescField("GlobalUrbOffset", 4, 11,
-            [&](std::stringstream &ss, uint32_t val) {
-                ss << val << " (in owords)";
-            }); // [14:4]
-    };
+            return decodeDescField("GlobalUrbOffset", 4, 11,
+                [&](std::stringstream &ss, uint32_t val) {
+                    ss << val << " (in owords)";
+                }); // [14:4]
+        };
     auto decodePSO =
         [&]() {
-        return decodeDescBitField(
-            "PerSlotOffsetPresent", 17, "per-slot offset in payload") != 0;
-    };
+            return decodeDescBitField(
+                "PerSlotOffsetPresent", 17, "per-slot offset in payload") != 0;
+        };
     int rlen = getDescBits(20, 5);
     // int mlen = getDescBits(25,4);
     int xlen = getDescBits(32+6, 5);

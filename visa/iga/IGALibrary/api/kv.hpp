@@ -370,7 +370,7 @@ public:
     //   }
     iga::Subfunction getSubfunction(int32_t pc) const {
         iga::Subfunction sf;
-        sf.bits = kv_get_subfunction(m_kv, pc);
+        kv_get_subfunction(m_kv, pc, &sf.bits);
         return sf;
     }
 

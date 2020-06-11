@@ -554,16 +554,32 @@ uint32_t kv_get_opcode(const kv_t *kv, int32_t pc)
     return static_cast<uint32_t>(inst->getOpSpec().op);
 }
 
-uint32_t kv_get_subfunction(const kv_t *kv, int32_t pc)
+kv_status_t kv_get_subfunction(const kv_t *kv, int32_t pc, uint32_t* subfunc)
 {
+    *subfunc = static_cast<uint32_t>(InvalidFC::INVALID);
+
     if (!kv) {
-        return static_cast<uint32_t>(-1);
+        return KV_INVALID_ARGUMENT;
     }
     const Instruction *inst = getInstruction(kv, pc);
     if (!inst) {
-        return static_cast<uint32_t>(-1);
+        return KV_INVALID_PC;
     }
-    return static_cast<uint32_t>(inst->getSubfunction().bits);
+
+    // for send, get_message_sfid to support decoding SFID from exDesc
+    if (inst->getOpSpec().isSendOrSendsFamily()) {
+        int32_t sfid = -1;
+        kv_status_t st = kv_get_message_sfid(kv, pc, &sfid);
+        *subfunc = static_cast<uint32_t>(sfid);
+        return st;
+    }
+
+    *subfunc = inst->getSubfunction().bits;
+
+    if (!inst->getSubfunction().isValid())
+        return KV_NO_SUBFUNCTION;
+
+    return KV_SUCCESS;
 }
 
 int32_t kv_get_has_destination(const kv_t *kv, int32_t pc)

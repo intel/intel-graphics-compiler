@@ -268,7 +268,7 @@ typedef int32_t(CDECLATTRIBUTE *pIGAKVGetNumberSources)(const kv_t *kv, int32_t 
 #define IGA_KV_GET_OPCODE_STR "kv_get_opcode"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetOpcode)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_SUBFUNCTION_STR "kv_get_subfunction"
-typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetSubfunction)(const kv_t *kv, int32_t pc);
+typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetSubfunction)(const kv_t *kv, int32_t pc, uint32_t* subfunc);
 #define IGA_KV_GET_HAS_DESTINATION_STR "kv_get_has_destination"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetHasDestination)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_DESTINATION_REGISTER_STR "kv_get_destination_register"

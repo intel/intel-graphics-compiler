@@ -1364,11 +1364,14 @@ public:
     //     = Ident SubMnemonic?
     //     | Ident BrCtl
     //   SubMnemoninc
-    //     = '.' Ident
+    //     = '.' SfIdent
     //     | '.' HEX_INT | '.' DEC_INT
     //
-    //   BrCtl = '.b'
-    //
+    //   SfIdent =
+    //     | BrnchCtl
+    //     | SFID
+    //     | SyncFc
+    //     | ... other subfunction identifier
     const OpSpec *ParseMnemonic() {
         const Loc mnemonicLoc = NextLoc();
         const OpSpec *pOs = TryConsumeMmenonic();
@@ -1403,15 +1406,23 @@ public:
             m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<SyncFC>());
         } else if (pOs->isOneOf(Op::SEND, Op::SENDC)) {
             if (platform() >= Platform::GEN12P1)
-                m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<SFID>());
+                m_builder.InstSubfunction(
+                    ParseSubfunctionFromBxmlEnum<SFID>());
             // else: it's part of ExDesc
+        } else {
+            // isOldSend: pre GEN12 will have a subfunction,
+            // but we pull it from ExDesc
+            bool isOldSend =
+                platform() < Platform::GEN12P1 || pOs->isSendOrSendsFamily();
+            IGA_ASSERT(!pOs->supportsSubfunction() || isOldSend,
+                "INTERNAL ERROR: subfunction expected");
         }
 
         if (LookingAt(DOT)) {
             // maybe an old condition modifier or saturation
             FlagModifier fm;
             if (LookingAtIdentEq(1,"sat")) {
-                Fail("saturation flag goes on destination operand: "
+                Fail("saturation flag prefixes destination operand: "
                     "e.g. op (..) (sat)dst ...");
             } else if (
                 IdentLookupFrom(1, FLAGMODS, fm) ||
@@ -1453,28 +1464,6 @@ public:
         return (T)-1;
     }
 
-    template <typename T>
-    T ParseSubfunctionFromTable(const IdentMap<T> elems) {
-        if (!Consume(DOT)) {
-            FailAfterPrev("expected operation subfunction");
-        }
-
-        auto sfLoc = NextLoc();
-        if (LookingAt(IDENT)) {
-            const std::string sfIdent = GetTokenAsString();
-            for (const auto &e : elems) {
-                if (e.first == sfIdent)
-                    return e.second;
-            }
-        } else if (LookingAtAnyOf(INTLIT10, INTLIT16)) {
-            uint32_t val;
-            (void)ConsumeIntLit(val);
-            return (T)val;
-        }
-        Fail(sfLoc, "invalid subfunction");
-        return (T)-1;
-    }
-
 
     // FlagModifierOpt = '(' FlagModif ')' FlagReg
     void ParseFlagModOpt() {
@@ -1488,9 +1477,9 @@ public:
             ParseFlagModFlagReg();
             ConsumeOrFail(RBRACK, "expected ]");
             if (m_opts.deprecatedSyntaxWarnings) {
-                Warning(loc,
-                    "deprecated flag modifier "
-                    "syntax (omit the brackets)");
+                Warning(
+                    loc,
+                    "deprecated flag modifier syntax (omit the brackets)");
             }
             m_builder.InstFlagModifier(m_flagReg, flagMod);
         } else {
