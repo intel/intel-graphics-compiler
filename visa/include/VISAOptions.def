@@ -157,7 +157,7 @@ DEF_VISA_OPTION(vISA_ScheduleForReadSuppression, ET_BOOL, "-scheduleForReadSuppr
 //=== SWSB options ===
 DEF_VISA_OPTION(vISA_USEL3HIT,      ET_BOOL,  "-SBIDL3Hit",    UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableIGASWSB,      ET_BOOL,  "-IGASWSB",    UNUSED, false)
-DEF_VISA_OPTION(vISA_SWSBDepReduction,    ET_BOOL,  "-SWSBDepReduction",  UNUSED, true)
+DEF_VISA_OPTION(vISA_SWSBDepReduction,    ET_BOOL,  "-SWSBDepReduction",  UNUSED, false)
 DEF_VISA_OPTION(vISA_forceDebugSWSB,      ET_BOOL,  "-forceDebugSWSB",    UNUSED, false)
 DEF_VISA_OPTION(vISA_SWSBInstStall,       ET_INT32, "-SWSBInstStall",     UNUSED, 0)
 DEF_VISA_OPTION(vISA_SWSBInstStallEnd,    ET_INT32, "-SWSBInstStallEnd",  UNUSED, 0)
