@@ -592,11 +592,6 @@ bool VectorPreProcess::splitStore(
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned stores can only store a dword at a time.
-        unsigned int alignment = ASI.getAlignment();
-        if (isStoreInst && alignment < 4)
-        {
-            ASI.setAlignment(std::max(getKnownAlignment(ASI.getPointerOperand(), *m_DL), alignment));
-        }
         bool needsDWordSplit =
             (!isStoreInst ||
                 m_CGCtx->m_DriverInfo.splitUnalignedVectors() ||
@@ -751,12 +746,6 @@ bool VectorPreProcess::splitLoad(
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned loads can only load a dword at a time.
-        unsigned int alignment = ALI.getAlignment();
-        if (!isLdRaw && alignment < 4)
-        {
-            ALI.setAlignment(std::max(getKnownAlignment(ALI.getPointerOperand(), *m_DL), alignment));
-        }
-
         if ((isLdRaw || !WI.isUniform(ALI.getInst())) && ALI.getAlignment() < 4)
             splitSize = 4;
     }
