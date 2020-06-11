@@ -7018,7 +7018,9 @@ VarSplitPass* G4_Kernel::getVarSplitPass()
     if (varSplitPass)
         return varSplitPass;
 
-    return new VarSplitPass(*this);
+    varSplitPass = new VarSplitPass(*this);
+
+    return varSplitPass;
 }
 
 //
