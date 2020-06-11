@@ -906,8 +906,8 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator& I)
                     if (ConstantInt * pConstOrVal = dyn_cast<ConstantInt>(I.getOperand(1)))
                     {
                         int const_shift = int_cast<int>(pConstShiftLeft->getZExtValue());
-                        int const_or_val = int_cast<int>(pConstOrVal->getZExtValue());
-                        if ((1 << const_shift) > const_or_val)
+                        int const_or_val = int_cast<int>(pConstOrVal->getSExtValue());
+                        if ((1 << const_shift) > abs(const_or_val))
                         {
                             // The value fits in the shl. So this is an emulated add.
                             return true;
