@@ -81,6 +81,7 @@ void initializeImplicitGlobalIdPass(llvm::PassRegistry&);
 void initializeInlineLocalsResolutionPass(llvm::PassRegistry&);
 void initializeLegalizationPass(llvm::PassRegistry&);
 void initializeLegalizeResourcePointerPass(llvm::PassRegistry&);
+void initializeLegalizeFunctionSignaturesPass(llvm::PassRegistry&);
 void initializeLiveVarsAnalysisPass(llvm::PassRegistry&);
 void initializeLowerGEPForPrivMemPass(llvm::PassRegistry&);
 void initializeLowPrecisionOptPass(llvm::PassRegistry&);

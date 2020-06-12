@@ -48,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "AdaptorCommon/ProcessFuncAttributes.h"
+#include "AdaptorCommon/LegalizeFunctionSignatures.h"
 #include "common/LLVMUtils.h"
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -357,6 +358,16 @@ static void CommonOCLBasedPasses(
             mpm.add(createProcessBuiltinMetaDataPass());
         }
         mpm.add(new PurgeMetaDataUtils());
+    }
+
+    // Fix illegal argument/return types in function calls not already inlined.
+    // Structs/arrays are not allowed to be passed by value.
+    // Return types are not allowed to be more than 64-bits.
+    // This pass changes all illegal function signatures to be passed by pointer instead.
+    // NOTE: SPIR-V adaptor already handles this for struct types
+    if (pContext->m_instrTypes.hasSubroutines)
+    {
+        mpm.add(new LegalizeFunctionSignatures());
     }
 
     // OpenCL WI + image function resolution

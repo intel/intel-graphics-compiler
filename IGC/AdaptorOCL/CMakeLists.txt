@@ -100,6 +100,7 @@ endif(IGC_BUILD__SPIRV_ENABLED)
 set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/customApi.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ProcessFuncAttributes.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/LegalizeFunctionSignatures.h"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/KernelAnnotations.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/CommandStream/SamplerTypes.h"
