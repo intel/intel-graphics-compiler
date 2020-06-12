@@ -157,7 +157,7 @@ void VarSplitPass::verify()
                 //auto childRb = childData.second;
 
                 auto totalLb = childLb + lb;
-                auto totalRb = totalLb + rb;
+                auto totalRb = childLb + rb;
 
                 auto origInstData = splitVerify[inst];
                 auto origLb = origInstData.srcLb[i];

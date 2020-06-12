@@ -5754,7 +5754,18 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
     auto& varSplitPass = *gra.getVarSplitPass();
 
-    auto assignColor = [&](LiveRange* lr, bool ignoreChildrenIntf = false, bool spillAllowed = true)
+    // Returns true when valid assignment is found or when lr is added to spilled set.
+    // Adding to spill set happens only if heuristic is not round_robin (FF may not spill).
+    // Parameter returnFalseOnFail is set when the function is required to return false on
+    // assignment failure.
+    // When parameter spillAllowed is set to true, this function adds lr to spilled set. If
+    // spillAllowed is false, the lr is not added to spill set. This logic is useful to
+    // try re-allocation of a child/parent dcl when split is enabled.
+    // ignoreChildrenIntf is set to true when all children are assigned to consecutive ranges
+    // and we want to get fully coalesceable assignment for parent. In such circumstance, we
+    // dont want to account for interference between parent/child since doing so cannot result
+    // in a coalesceable assignment.
+    auto assignColor = [&](LiveRange* lr, bool ignoreChildrenIntf = false, bool spillAllowed = true, bool returnFalseOnFail = false)
     {
         auto lrVar = lr->getVar();
 
@@ -5951,6 +5962,11 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                         lr->setSpilled(true);
                     }
                 }
+
+                if (returnFalseOnFail)
+                {
+                    return false;
+                }
             }
             else
             {
@@ -6041,7 +6057,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                             if (oldPhyReg->asGreg()->getRegNum() == hint)
                                 continue;
                             childLR->resetPhyReg();
-                            bool success = assignColor(childLR, false, false);
+                            bool success = assignColor(childLR, false, false, true);
                             if (!success || childLR->getPhyReg()->asGreg()->getRegNum() != hint)
                                 childLR->setPhyReg(oldPhyReg, oldPhySubReg);
                         }
