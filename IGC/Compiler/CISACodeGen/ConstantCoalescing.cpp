@@ -1059,6 +1059,14 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     // 2 i16s/halfs into a single non-aligned DWORD.
     const bool isDwordAligned = ((offsetInBytes % 4) == 0 && (eltIdxV == nullptr || alignment >= 4));
 
+    bool isStatelessLoad = false;
+
+    if (isa<LoadInst>(load))
+    {
+        if (cast<LoadInst>(load)->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
+            isStatelessLoad = true;
+    }
+
     BufChunk* cov_chunk = nullptr;
     for (std::vector<BufChunk*>::iterator rit = chunk_vec.begin(); rit != chunk_vec.end(); rit++)
     {
@@ -1100,9 +1108,33 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
         uint lb = std::min(eltid, cov_chunk->chunkStart);
         uint ub = std::max(eltid + maxEltPlus, cov_chunk->chunkStart + cov_chunk->chunkSize);
         uint start_adj = cov_chunk->chunkStart - lb;
-        uint size_adj = ub - lb - cov_chunk->chunkSize;
         // Gen only has 1, 2, 4 or 8 oword loads round up
-        size_adj = iSTD::RoundPower2((DWORD)(size_adj + cov_chunk->chunkSize)) - cov_chunk->chunkSize;
+        uint size_adj = iSTD::RoundPower2((DWORD)(ub - lb)) - cov_chunk->chunkSize;
+        if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOutOfBoundsCheck) && isStatelessLoad)
+        {
+            uint furthest_access = size_adj + lb + cov_chunk->chunkSize;
+            if (furthest_access > ub)
+            {
+                // We are reaching out of bounds (OOB) of the backside of the buffer
+                // First lets try moving the start index by the difference it is OOB
+                uint new_start_adj = start_adj + (furthest_access - ub);
+                if (cov_chunk->chunkStart < new_start_adj) //need to check if we are OOB on the frontside
+                {
+                    //Looks like we are not able to adjust the starting point lets do a deeper check to
+                    //see if the furthest access is really okay by looking at other starting points
+                    uint furthest_cb_access = 0;
+                    for (BufChunk *cur_chunk: chunk_vec)
+                    {
+                        if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace))
+                            furthest_cb_access = std::max(furthest_cb_access, cur_chunk->chunkStart + cur_chunk->chunkSize);
+                    }
+                    if (furthest_cb_access < furthest_access)
+                        return; //Not able to really benefit from merge for its not safe with this size
+                }
+                else
+                    start_adj = new_start_adj;
+            }
+        }
         if (start_adj == 0)
         {
             if (size_adj)

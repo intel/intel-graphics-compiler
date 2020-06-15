@@ -105,6 +105,7 @@ DECLARE_IGC_REGKEY(bool, DisableSimplePushWithDynamicUniformBuffers, false,"Disa
 DECLARE_IGC_REGKEY(bool, DisableStaticCheck,            false, "Disable static check to push or fold constants.", true)
 DECLARE_IGC_REGKEY(int, forcePushConstantMode,  0, "set the push constant mode, 0 is default, 1 is simple push, 2 is gather constant", false)
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescing,     false, "Setting this to 1/true adds a compiler switch to disable constant coalesing", false)
+DECLARE_IGC_REGKEY(bool, DisableConstantCoalescingOutOfBoundsCheck,     false, "Setting this to 1/true adds a compiler switch to disable constant coalesing out of bounds check", false)
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTextures, false, "Setting this to use HDC message rather than sampler ld for texture read", false)
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTypedBuffers,  false, "Setting this to use HDC message rather than sampler ld for buffer read", false)
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllNonTemporalTextures,  false, "Setting this changes the ld to type read when index comes from thread id", false)
