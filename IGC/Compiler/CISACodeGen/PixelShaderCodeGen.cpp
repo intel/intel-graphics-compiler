@@ -540,7 +540,7 @@ CVariable* CPixelShader::GetPositionW()
     if (!m_pPositionWPixel)
     {
         m_pPositionWPixel =
-            GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "PosZPixel");
+            GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "PosWPixel");
     }
     return m_pPositionWPixel;
 }
@@ -616,7 +616,6 @@ CPixelShader::CPixelShader(llvm::Function* pFunc, CShaderProgram* pProgram)
     m_HasoDepth = false;
     m_HasoStencil = false;
     m_HasoMask = false;
-    m_HasPositionXY = false;
     m_isPerSample = false;
     m_HasInputCoverageMask = false;
     m_HasPullBary = false;
@@ -949,7 +948,6 @@ void CPixelShader::DeclareSGV(uint usage)
     {
     case POSITION_X:
     case POSITION_Y:
-        m_HasPositionXY = true;
         break;
     case POSITION_Z:
         break;

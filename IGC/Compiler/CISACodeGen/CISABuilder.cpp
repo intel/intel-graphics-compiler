@@ -4586,7 +4586,7 @@ namespace IGC
         // requested types and elements..
         vKernel->CreateVISAGenVar(
             pAliasGenVar,
-            "",
+            pVar->getVisaCString(),
             pVar->GetNumberElement(),
             pVar->GetType(),
             ALIGN_GRF,

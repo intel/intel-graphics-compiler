@@ -152,7 +152,6 @@ protected:
     CVariable* m_pCPSRequestedSizeX;
     CVariable* m_pCPSRequestedSizeY;
     uint       m_RenderTargetMask;
-    bool       m_HasPositionXY;
     bool       m_HasoDepth;
     bool       m_HasoStencil;
     bool       m_HasoMask;

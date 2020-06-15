@@ -7210,7 +7210,6 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             m_encoder->SetSrcSubReg(1, 1);
             m_encoder->Mad(m_destination, floatPixelPositionDeltaX, delta, floatPixelPositionDeltaY);
             m_encoder->Push();
-
         }
         else
         {
@@ -7476,12 +7475,15 @@ void EmitPass::getPixelPosition(CVariable* destination, const uint component)
     {
         pixelSize = imm;
     }
-    CVariable* position = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UW);
-    m_encoder->SetSrcRegion(0, 2, 4, 0);
-    // subreg 4 as position_x and subreg 5 as position_y
-    m_encoder->SetSrcSubReg(0, getX ? 4 : 5);
-    m_encoder->Add(destination, position, pixelSize);
-    m_encoder->Push();
+
+    {
+        CVariable* position = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UW);
+        // subreg 4 as position_x and subreg 5 as position_y
+        m_encoder->SetSrcSubReg(0, getX ? 4 : 5);
+        m_encoder->SetSrcRegion(0, 2, 4, 0);
+        m_encoder->Add(destination, position, pixelSize);
+        m_encoder->Push();
+    }
 }
 
 
