@@ -94,7 +94,7 @@ SPIRVDecorateGeneric::getDecorateKind()const {
 
 SPIRVWord
 SPIRVDecorateGeneric::getLiteral(size_t i) const {
-  IGC_ASSERT_EXIT(i <= Literals.size() && "Out of bounds");
+  IGC_ASSERT_EXIT_MESSAGE(i <= Literals.size(), "Out of bounds");
   return Literals[i];
 }
 

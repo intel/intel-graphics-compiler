@@ -318,7 +318,8 @@ void GenUpdateCB::InsertInstTree(Instruction* inst, Instruction* pos)
                 llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
             break;
         default:
-            IGC_ASSERT(false && "Intrinsic not supported");
+            IGC_ASSERT_MESSAGE(0, "Intrinsic not supported");
+            break;
         }
         callI->setCalledFunction(pfunc);
     }
@@ -575,10 +576,8 @@ namespace IGC
         }
         else
         {
-            if (CalculatedValue.find(op) == CalculatedValue.end())
-            {
-                IGC_ASSERT(false && "can't find matching cb value");
-            }
+            IGC_ASSERT_MESSAGE(CalculatedValue.find(op) != CalculatedValue.end(), "can't find matching cb value");
+
             return CalculatedValue[op];
         }
         return 0;
@@ -639,7 +638,7 @@ namespace IGC
 
             if (llvm::Error EC = ModuleOrErr.takeError())
             {
-                IGC_ASSERT(false && "parsing bitcode failed");
+                IGC_ASSERT_MESSAGE(0, "parsing bitcode failed");
             }
             else
             {
@@ -648,7 +647,7 @@ namespace IGC
         }
         else
         {
-            IGC_ASSERT(false && "parsing bitcode failed");
+            IGC_ASSERT_MESSAGE(0, "parsing bitcode failed");
         }
 
         // start constant folding

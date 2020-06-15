@@ -114,7 +114,7 @@ public:
 
   bool hasType()const { return !(Attrib & SPIRVEA_NOTYPE);}
   SPIRVType *getType()const {
-    IGC_ASSERT(hasType() && "value has no type");
+    IGC_ASSERT_MESSAGE(hasType(), "value has no type");
     return Type;
   }
   bool isVolatile()const;
@@ -129,7 +129,7 @@ public:
 
   void validate()const {
     SPIRVEntry::validate();
-    IGC_ASSERT((!hasType() || Type) && "Invalid type");
+    IGC_ASSERT_MESSAGE((!hasType() || Type), "Invalid type");
   }
 
   void setType(SPIRVType *Ty) {
@@ -203,7 +203,8 @@ protected:
   }
   void validate() const {
     SPIRVValue::validate();
-    IGC_ASSERT_EXIT(NumWords >= 1 && NumWords <= 2 && "Invalid constant size");
+    IGC_ASSERT_EXIT_MESSAGE(1 <= NumWords, "Invalid constant size");
+    IGC_ASSERT_EXIT_MESSAGE(NumWords <= 2, "Invalid constant size");
   }
   void setWordCount(SPIRVWord WordCount) {
     SPIRVValue::setWordCount(WordCount);
@@ -259,7 +260,7 @@ public:
 protected:
   void validate() const {
     SPIRVConstantEmpty<OC>::validate();
-    IGC_ASSERT(this->Type->isTypeBool() && "Invalid type");
+    IGC_ASSERT_MESSAGE(this->Type->isTypeBool(), "Invalid type");
   }
 };
 
@@ -282,12 +283,7 @@ public:
 protected:
     void validate() const override {
         SPIRVConstantEmpty::validate();
-        IGC_ASSERT((Type->isTypeInt() || Type->isTypeBool() || Type->isTypeFloat() ||
-            Type->isTypeComposite() || Type->isTypeOpaque() ||
-            Type->isTypeEvent() || Type->isTypePointer() ||
-            Type->isTypeReserveId() || Type->isTypeDeviceEvent() ||
-            (Type->isTypeSubgroupAvcINTEL())) &&
-            "Invalid type");
+        IGC_ASSERT_MESSAGE((Type->isTypeInt() || Type->isTypeBool() || Type->isTypeFloat() || Type->isTypeComposite() || Type->isTypeOpaque() || Type->isTypeEvent() || Type->isTypePointer() || Type->isTypeReserveId() || Type->isTypeDeviceEvent() || (Type->isTypeSubgroupAvcINTEL())), "Invalid type");
     }
 };
 
@@ -387,7 +383,7 @@ public:
       setType(TheTy);
   }
   SPIRVForward():SPIRVValue(OC) {
-    IGC_ASSERT_EXIT(0 && "should never be called");
+    IGC_ASSERT_EXIT_MESSAGE(0, "should never be called");
   }
   _SPIRV_DEF_DEC1(Id)
   friend class SPIRVFunction;

@@ -270,7 +270,7 @@ bool DeadPHINodeElimination::runOnFunction(Function& F)
 
             for (auto U : P->users()) {
                 PHINode* phiUser = dyn_cast<PHINode>(U);
-                IGC_ASSERT(phiUser && "ICE: all candidates should have phi as its users!");
+                IGC_ASSERT_MESSAGE(nullptr != phiUser, "ICE: all candidates should have phi as its users!");
                 auto iter = candidates.find(phiUser);
                 if (iter == candidates.end())
                 {

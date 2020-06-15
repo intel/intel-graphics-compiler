@@ -159,7 +159,7 @@ void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst& CI)
 
 void PrivateMemoryUsageAnalysis::visitAllocaInst(llvm::AllocaInst& AI)
 {
-    IGC_ASSERT(AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");
+    IGC_ASSERT_MESSAGE(AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE, "Allocaitons are expected to be in private address space");
 
     // If we encountered Alloca, then the function uses private memory
     m_hasPrivateMem = true;

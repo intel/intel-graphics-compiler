@@ -46,8 +46,8 @@ public:
   }
 
   void init(T* ptr) {
-    IGC_ASSERT(!m_ptr && "overrunning non NULL pointer");
-    IGC_ASSERT(!m_refCount && "overrunning non NULL pointer");
+    IGC_ASSERT_MESSAGE(!m_ptr, "overrunning non NULL pointer");
+    IGC_ASSERT_MESSAGE(!m_refCount, "overrunning non NULL pointer");
     m_refCount = new int(1);
     m_ptr = ptr;
   }
@@ -84,9 +84,9 @@ public:
   }
 private:
   void sanity() const{
-    IGC_ASSERT(m_ptr && "NULL pointer");
-    IGC_ASSERT(m_refCount && "NULL ref counter");
-    IGC_ASSERT(*m_refCount && "zero ref counter");
+    IGC_ASSERT_MESSAGE(m_ptr, "NULL pointer");
+    IGC_ASSERT_MESSAGE(m_refCount, "NULL ref counter");
+    IGC_ASSERT_MESSAGE(*m_refCount, "zero ref counter");
   }
 
   void cpy(const RefCount<T>& other) {

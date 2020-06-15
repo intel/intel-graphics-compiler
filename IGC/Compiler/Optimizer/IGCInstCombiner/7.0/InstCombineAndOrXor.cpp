@@ -56,8 +56,9 @@ using namespace IGCombiner;
 /// Similar to getICmpCode but for FCmpInst. This encodes a fcmp predicate into
 /// a four bit mask.
 static unsigned getFCmpCode(FCmpInst::Predicate CC) {
-    IGC_ASSERT(FCmpInst::FCMP_FALSE <= CC && CC <= FCmpInst::FCMP_TRUE &&
-        "Unexpected FCmp predicate!");
+    IGC_ASSERT_MESSAGE(FCmpInst::FCMP_FALSE <= CC, "Unexpected FCmp predicate!");
+    IGC_ASSERT_MESSAGE(CC <= FCmpInst::FCMP_TRUE, "Unexpected FCmp predicate!");
+
     // Take advantage of the bit pattern of FCmpInst::Predicate here.
     //                                                 U L G E
     static_assert(FCmpInst::FCMP_FALSE == 0, "");  // 0 0 0 0
@@ -96,8 +97,9 @@ static Value* getNewICmpValue(bool Sign, unsigned Code, Value* LHS, Value* RHS,
 static Value* getFCmpValue(unsigned Code, Value* LHS, Value* RHS,
     InstCombiner::BuilderTy& Builder) {
     const auto Pred = static_cast<FCmpInst::Predicate>(Code);
-    IGC_ASSERT(FCmpInst::FCMP_FALSE <= Pred && Pred <= FCmpInst::FCMP_TRUE &&
-        "Unexpected FCmp predicate!");
+    IGC_ASSERT_MESSAGE(FCmpInst::FCMP_FALSE <= Pred, "Unexpected FCmp predicate!");
+    IGC_ASSERT_MESSAGE(Pred <= FCmpInst::FCMP_TRUE, "Unexpected FCmp predicate!");
+
     if (Pred == FCmpInst::FCMP_FALSE)
         return ConstantInt::get(CmpInst::makeCmpResultType(LHS->getType()), 0);
     if (Pred == FCmpInst::FCMP_TRUE)
@@ -112,7 +114,7 @@ static Value* getFCmpValue(unsigned Code, Value* LHS, Value* RHS,
 ///         null pointer if no transformation was made.
 static Value* SimplifyBSwap(BinaryOperator& I,
     InstCombiner::BuilderTy& Builder) {
-    IGC_ASSERT(I.isBitwiseLogicOp() && "Unexpected opcode for bswap simplifying");
+    IGC_ASSERT_MESSAGE(I.isBitwiseLogicOp(), "Unexpected opcode for bswap simplifying");
 
     Value* OldLHS = I.getOperand(0);
     Value* OldRHS = I.getOperand(1);
@@ -198,8 +200,7 @@ Instruction* InstCombiner::OptAndOp(BinaryOperator* Op,
 /// whether to treat V, Lo, and Hi as signed or not.
 Value* InstCombiner::insertRangeTest(Value* V, const APInt& Lo, const APInt& Hi,
     bool isSigned, bool Inside) {
-    IGC_ASSERT((isSigned ? Lo.sle(Hi) : Lo.ule(Hi)) &&
-        "Lo is not <= Hi in range emission code!");
+    IGC_ASSERT_MESSAGE((isSigned ? Lo.sle(Hi) : Lo.ule(Hi)), "Lo is not <= Hi in range emission code!");
 
     Type* Ty = V->getType();
     if (Lo == Hi)
@@ -603,7 +604,7 @@ static Value* foldLogOpOfMaskedICmps_NotAllZeros_BMask_Mixed(
     // Otherwise, B is a subset of D. If B and E have a common bit set,
     // ie. (B & E) != 0, then LHS is subsumed by RHS. For example.
     // (icmp ne (A & 12), 0) & (icmp eq (A & 15), 8) -> (icmp eq (A & 15), 8).
-    IGC_ASSERT(IsSubSetOrEqual(BCst, DCst) && "Precondition due to above code");
+    IGC_ASSERT_MESSAGE(IsSubSetOrEqual(BCst, DCst), "Precondition due to above code");
     if ((BCst->getValue() & ECst->getValue()) != 0)
         return RHS;
     // Otherwise, LHS and RHS contradict and the whole expression becomes false
@@ -622,8 +623,9 @@ static Value* foldLogOpOfMaskedICmpsAsymmetric(
     ICmpInst::Predicate PredL, ICmpInst::Predicate PredR,
     unsigned LHSMask, unsigned RHSMask,
     InstCombiner::BuilderTy& Builder) {
-    IGC_ASSERT(ICmpInst::isEquality(PredL) && ICmpInst::isEquality(PredR) &&
-        "Expected equality predicates for masked type of icmps.");
+    IGC_ASSERT_MESSAGE(ICmpInst::isEquality(PredL), "Expected equality predicates for masked type of icmps.");
+    IGC_ASSERT_MESSAGE(ICmpInst::isEquality(PredR), "Expected equality predicates for masked type of icmps.");
+
     // Handle Mask_NotAllZeros-BMask_Mixed cases.
     // (icmp ne/eq (A & B), C) &/| (icmp eq/ne (A & D), E), or
     // (icmp eq/ne (A & B), C) &/| (icmp ne/eq (A & D), E)
@@ -660,8 +662,9 @@ static Value* foldLogOpOfMaskedICmps(ICmpInst* LHS, ICmpInst* RHS, bool IsAnd,
         getMaskedTypeForICmpPair(A, B, C, D, E, LHS, RHS, PredL, PredR);
     if (!MaskPair)
         return nullptr;
-    IGC_ASSERT(ICmpInst::isEquality(PredL) && ICmpInst::isEquality(PredR) &&
-        "Expected equality predicates for masked type of icmps.");
+    IGC_ASSERT_MESSAGE(ICmpInst::isEquality(PredL), "Expected equality predicates for masked type of icmps.");
+    IGC_ASSERT_MESSAGE(ICmpInst::isEquality(PredR), "Expected equality predicates for masked type of icmps.");
+
     unsigned LHSMask = MaskPair->first;
     unsigned RHSMask = MaskPair->second;
     unsigned Mask = LHSMask & RHSMask;
@@ -1076,7 +1079,7 @@ Value* InstCombiner::foldAndOfICmps(ICmpInst* LHS, ICmpInst* RHS,
     // icmp eq, icmp ne, icmp [su]lt, and icmp [SU]gt here. We also know
     // (from the icmp folding check above), that the two constants
     // are not equal and that the larger constant is on the RHS
-    IGC_ASSERT(LHSC != RHSC && "Compares not folded above?");
+    IGC_ASSERT_MESSAGE(LHSC != RHSC, "Compares not folded above?");
 
     switch (PredL) {
     default:
@@ -1187,8 +1190,7 @@ Value* InstCombiner::foldLogicOfFCmps(FCmpInst* LHS, FCmpInst* RHS, bool IsAnd) 
 static Instruction* matchDeMorgansLaws(BinaryOperator& I,
     InstCombiner::BuilderTy& Builder) {
     auto Opcode = I.getOpcode();
-    IGC_ASSERT((Opcode == Instruction::And || Opcode == Instruction::Or) &&
-        "Trying to match De Morgan's Laws with something other than and/or");
+    IGC_ASSERT_MESSAGE((Opcode == Instruction::And || Opcode == Instruction::Or), "Trying to match De Morgan's Laws with something other than and/or");
 
     // Flip the logic operation.
     Opcode = (Opcode == Instruction::And) ? Instruction::Or : Instruction::And;
@@ -1263,7 +1265,7 @@ static Instruction* foldLogicCastConstant(BinaryOperator& Logic, CastInst* Cast,
 /// Fold {and,or,xor} (cast X), Y.
 Instruction* InstCombiner::foldCastedBitwiseLogic(BinaryOperator& I) {
     auto LogicOpc = I.getOpcode();
-    IGC_ASSERT(I.isBitwiseLogicOp() && "Unexpected opcode for bitwise logic folding");
+    IGC_ASSERT_MESSAGE(I.isBitwiseLogicOp(), "Unexpected opcode for bitwise logic folding");
 
     Value* Op0 = I.getOperand(0), * Op1 = I.getOperand(1);
     CastInst* Cast0 = dyn_cast<CastInst>(Op0);
@@ -2000,7 +2002,7 @@ Value* InstCombiner::foldOrOfICmps(ICmpInst* LHS, ICmpInst* RHS,
     // ICMP_EQ, ICMP_NE, ICMP_LT, and ICMP_GT here. We also know (from the
     // icmp folding check above), that the two constants are not
     // equal.
-    IGC_ASSERT(LHSC != RHSC && "Compares not folded above?");
+    IGC_ASSERT_MESSAGE(LHSC != RHSC, "Compares not folded above?");
 
     switch (PredL) {
     default:
@@ -2024,7 +2026,7 @@ Value* InstCombiner::foldOrOfICmps(ICmpInst* LHS, ICmpInst* RHS,
         case ICmpInst::ICMP_EQ: // (X u< 13 | X == 14) -> no change
             break;
         case ICmpInst::ICMP_UGT: // (X u< 13 | X u> 15) -> (X-13) u> 2
-            IGC_ASSERT(!RHSC->isMaxValue(false) && "Missed icmp simplification");
+            IGC_ASSERT_MESSAGE(!RHSC->isMaxValue(false), "Missed icmp simplification");
             return insertRangeTest(LHS0, LHSC->getValue(), RHSC->getValue() + 1,
                 false, false);
         }
@@ -2036,7 +2038,7 @@ Value* InstCombiner::foldOrOfICmps(ICmpInst* LHS, ICmpInst* RHS,
         case ICmpInst::ICMP_EQ: // (X s< 13 | X == 14) -> no change
             break;
         case ICmpInst::ICMP_SGT: // (X s< 13 | X s> 15) -> (X-13) s> 2
-            IGC_ASSERT(!RHSC->isMaxValue(true) && "Missed icmp simplification");
+            IGC_ASSERT_MESSAGE(!RHSC->isMaxValue(true), "Missed icmp simplification");
             return insertRangeTest(LHS0, LHSC->getValue(), RHSC->getValue() + 1, true,
                 false);
         }

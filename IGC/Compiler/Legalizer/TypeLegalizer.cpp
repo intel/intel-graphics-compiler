@@ -74,7 +74,7 @@ IGC_INITIALIZE_PASS_END(TypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS
 bool TypeLegalizer::runOnFunction(Function & F) {
     DL = &F.getParent()->getDataLayout();
 
-    IGC_ASSERT(DL->isLittleEndian() && "ONLY SUPPORT LITTLE ENDIANNESS!");
+    IGC_ASSERT_MESSAGE(DL->isLittleEndian(), "ONLY SUPPORT LITTLE ENDIANNESS!");
 
     BuilderType TheBuilder(F.getContext(), TargetFolder(*DL));
     IRB = &TheBuilder;
@@ -348,12 +348,12 @@ TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
     // We visit instructions in topological order and we handle phis and
     // arguments specially, so we shouldn't see a use before a def here except
     // constants.
-    TypeSeq* TySeq;
+    TypeSeq* TySeq = nullptr;
     std::tie(TySeq, Act) = getLegalizedTypes(C->getType());
 
     switch (Act) {
     case Legal:
-        IGC_ASSERT(false && "LEGAL CONSTANT IS BEING LEGALIZED!");
+        IGC_ASSERT_MESSAGE(0, "LEGAL CONSTANT IS BEING LEGALIZED!");
         break;
     case Promote:
         promoteConstant(&VMI->second, TySeq, C, isSigned);

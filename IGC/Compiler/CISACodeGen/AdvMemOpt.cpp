@@ -192,7 +192,11 @@ bool AdvMemOpt::hasMemoryWrite(BasicBlock* BB) const {
 
 bool AdvMemOpt::hasMemoryWrite(BasicBlock* Entry, BasicBlock* Exit) const {
     // Entry and Exit must be on line of code.
-    IGC_ASSERT(DT->dominates(Entry, Exit) && PDT->dominates(Exit, Entry));
+    IGC_ASSERT(nullptr != DT);
+    IGC_ASSERT(DT->dominates(Entry, Exit));
+    IGC_ASSERT(nullptr != PDT);
+    IGC_ASSERT(PDT->dominates(Exit, Entry));
+
     RegionSubgraph RSG(Exit);
     for (auto SI = po_ext_begin(Entry, RSG),
         SE = po_ext_end(Entry, RSG); SI != SE; ++SI)

@@ -429,8 +429,8 @@ public:
   /// Also adds the new instruction to the worklist and returns \p New so that
   /// it is suitable for use as the return from the visitation patterns.
   Instruction *InsertNewInstBefore(Instruction *New, Instruction &Old) {
-    IGC_ASSERT(New && !New->getParent() &&
-           "New instruction already inserted into a basic block!");
+    IGC_ASSERT(nullptr != New);
+    IGC_ASSERT_MESSAGE(nullptr == New->getParent(), "New instruction already inserted into a basic block.");
     BasicBlock *BB = Old.getParent();
     BB->getInstList().insert(Old.getIterator(), New); // Insert inst
     Worklist.Add(New);
@@ -486,7 +486,7 @@ public:
   Instruction *eraseInstFromFunction(Instruction &I) {
     DEBUG(dbgs() << "IC: ERASE " << I << '\n');
 
-    IGC_ASSERT(I.use_empty() && "Cannot erase instruction that is used!");
+    IGC_ASSERT_MESSAGE(I.use_empty(), "Cannot erase instruction that is used!");
     // Make sure that we reprocess all operands now that we reduced their
     // use counts.
     if (I.getNumOperands() < 8) {

@@ -4636,10 +4636,12 @@ namespace IGC
                         // This is the opposite of the calculation that happens in
                         // CVariable::CVariable.
 
+                        const unsigned int denominator = CEncoder::GetCISADataTypeSize(var->GetType());
+                        IGC_ASSERT(denominator);
                         uint16_t nbElement =
                             var->GetAlias()->GetNumberElement() *
                             CEncoder::GetCISADataTypeSize(var->GetAlias()->GetType()) /
-                            CEncoder::GetCISADataTypeSize(var->GetType());
+                            denominator;
 
                         V(vKernel->CreateVISAGenVar(
                             var->visaGenVariable[i],

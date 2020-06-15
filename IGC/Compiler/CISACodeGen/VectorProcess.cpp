@@ -199,12 +199,12 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     StoreInst* SI = dyn_cast<StoreInst>(Inst);
     GenIntrinsicInst* II = dyn_cast<GenIntrinsicInst>(Inst);
 
-    IGC_ASSERT(
+    IGC_ASSERT_MESSAGE(
         (LI || SI ||
         (II &&
             (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
                 II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)))
-        && "Inst should be either load or store");
+        , "Inst should be either load or store");
 
     Value* Ptr = nullptr;
     if (LI != nullptr)
@@ -246,8 +246,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     Type* eTy = VTy ? VTy->getElementType() : Ty;
     uint32_t eTyBits = int_cast<unsigned int>(m_DL->getTypeSizeInBits(eTy));
 
-    IGC_ASSERT((eTyBits == 8 || eTyBits == 16 || eTyBits == 32 || eTyBits == 64) &&
-        "the Size of Vector element must be 8/16/32/64 bits.");
+    IGC_ASSERT_MESSAGE((eTyBits == 8 || eTyBits == 16 || eTyBits == 32 || eTyBits == 64), "the Size of Vector element must be 8/16/32/64 bits.");
 
     uint32_t eTyBytes = (eTyBits >> 3);
     uint32_t TBytes = nelts * eTyBytes;  // Total size in bytes
@@ -277,7 +276,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
     if (TBytes == 1)
     {
-        IGC_ASSERT(nelts == 1 && "Internal Error: something wrong");
+        IGC_ASSERT_MESSAGE(nelts == 1, "Internal Error: something wrong");
         return false;
     }
     else if (TBytes == 2 || TBytes == 4)
@@ -322,7 +321,8 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             return false;
         }
         new_eTy = useQW ? Type::getInt64Ty(*m_C) : Type::getInt32Ty(*m_C);
-        IGC_ASSERT((TBytes % new_eTyBytes) == 0 && "Wrong new vector size");
+        IGC_ASSERT(new_eTyBytes);
+        IGC_ASSERT_MESSAGE((TBytes % new_eTyBytes) == 0, "Wrong new vector size");
         new_nelts = TBytes / new_eTyBytes;
     }
 
@@ -688,8 +688,7 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
         defaultDataType = ISA_TYPE_UB;
 
         // To make sure that vector and message match.
-        IGC_ASSERT((MB == eltSize || (MB > eltSize && nElts == 1)) &&
-            "Internal Error: mismatch layout for vector");
+        IGC_ASSERT_MESSAGE((MB == eltSize || (MB > eltSize && nElts == 1)), "Internal Error: mismatch layout for vector");
     }
     else
     {
@@ -763,8 +762,7 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
     }
 
     numInsts = i;
-    IGC_ASSERT(numInsts <= VECMESSAGEINFO_MAX_LEN &&
-        "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
+    IGC_ASSERT_MESSAGE(numInsts <= VECMESSAGEINFO_MAX_LEN, "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
 }
 
 

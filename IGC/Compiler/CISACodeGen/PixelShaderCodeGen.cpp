@@ -73,7 +73,8 @@ void CPixelShader::AllocatePayload()
         AllocatePixelPhasePayload();
         break;
     default:
-        IGC_ASSERT(false && "unknown phase");
+        IGC_ASSERT_MESSAGE(0, "unknown phase");
+        break;
     }
 }
 
@@ -323,7 +324,7 @@ PSSignature::DispatchSignature& CPixelShader::GetDispatchSignature()
     case SIMDMode::SIMD32:
         return m_Signature->dispatchSign[2];
     default:
-        IGC_ASSERT(false && "bad dispatch size");
+        IGC_ASSERT_MESSAGE(0, "bad dispatch size");
         break;
     }
     return m_Signature->dispatchSign[0];
@@ -1330,7 +1331,7 @@ void linkCPS(SPixelShaderKernelProgram* output, SPixelShaderKernelProgram& linke
     linkProgram(CoarsePhaseOutput.simd8, PixelPhaseOutput.simd8, linked.simd8);
     linked.hasPullBary = true;
     linked.renderTargetMask = (CoarsePhaseOutput.renderTargetMask || PixelPhaseOutput.renderTargetMask);
-    IGC_ASSERT(numberPhases == 2 && "maximum number of phases is 2");
+    IGC_ASSERT_MESSAGE(numberPhases == 2, "maximum number of phases is 2");
 }
 
 void CodeGen(PixelShaderContext* ctx)

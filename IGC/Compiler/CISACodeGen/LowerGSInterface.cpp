@@ -107,7 +107,7 @@ namespace IGC
         llvm::IRBuilder<> builder(&F.getEntryBlock(), F.getEntryBlock().begin());
 
         auto pMaxOutputVertices = F.getParent()->getGlobalVariable("GsMaxOutputVertices");
-        IGC_ASSERT(pMaxOutputVertices != nullptr && "GsMaxOutputVertices must be defined");
+        IGC_ASSERT_MESSAGE(nullptr != pMaxOutputVertices, "GsMaxOutputVertices must be defined");
         const unsigned int maxOutputVertices = static_cast<unsigned int>(
             (llvm::cast<llvm::ConstantInt>(pMaxOutputVertices->getInitializer())->getZExtValue()));
 
@@ -121,7 +121,7 @@ namespace IGC
 
         // find out if we have default streamID defined by looking up the value of a global var
         auto pDefaultStreamID = F.getParent()->getGlobalVariable("DefaultStreamID");
-        IGC_ASSERT(pDefaultStreamID != nullptr && "DefaultStreamID needs to be defined");
+        IGC_ASSERT_MESSAGE(nullptr != pDefaultStreamID, "DefaultStreamID needs to be defined");
         const int defaultStreamId = static_cast<int>(llvm::cast<llvm::ConstantInt>(pDefaultStreamID->getInitializer())->getSExtValue());
         m_hasDefaultStreamId = defaultStreamId != -1;
         setCutBitsRequired(F);
@@ -182,9 +182,7 @@ namespace IGC
                         llvm::cast<llvm::ConstantInt>(pDefaultStreamID->getInitializer())->getSExtValue());
                     const int streamID = static_cast<int>(
                         llvm::cast<llvm::ConstantInt>(I.getArgOperand(0))->getSExtValue());
-                    IGC_ASSERT(defaultStreamId == streamID &&
-                        "When default streamID is set, all SetStream() calls"
-                        "need to set setreamID to the default value");
+                    IGC_ASSERT_MESSAGE(defaultStreamId == streamID, "When default streamID is set, all SetStream() calls need to set setreamID to the default value");
                 }
                 I.eraseFromParent();
                 break;

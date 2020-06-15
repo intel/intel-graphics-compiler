@@ -131,7 +131,7 @@ protected:
     SPIRVInstruction::validate();
     IGC_ASSERT(WordCount >= FixedWC);
     IGC_ASSERT(OpCode == OC);
-    IGC_ASSERT(getBasicBlock() && "Invalid BB");
+    IGC_ASSERT_MESSAGE(getBasicBlock(), "Invalid BB");
     IGC_ASSERT(getBasicBlock()->getModule() == Asm->getModule());
   }
   SPIRVAsmINTEL *Asm;

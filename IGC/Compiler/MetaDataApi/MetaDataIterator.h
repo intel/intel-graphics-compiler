@@ -43,7 +43,7 @@ namespace IGC
     template<class MDorNamedMD>
     inline llvm::Metadata* getMDOpnd(MDorNamedMD* MD, unsigned idx)
     {
-        IGC_ASSERT(false);
+        IGC_ASSERT(0);
         return nullptr;
     }
 
@@ -112,20 +112,16 @@ namespace IGC
 
         llvm::Metadata* operator *()
         {
-            if (isNil())
-            {
-                IGC_ASSERT(false && "m_Index has to be 0");
-            }
+            IGC_ASSERT_MESSAGE(false == isNil(), "m_Index has to be 0");
+
             return getMDOpnd(m_pNode, m_index);
         }
         ///
         // returns the current item in the list
         value_type get()
         {
-            if (isNil())
-            {
-                IGC_ASSERT(false && "m_Index has to be 0");
-            }
+            IGC_ASSERT_MESSAGE(false == isNil(), "m_Index has to be 0");
+
             return C::load(getMDOpnd(m_pNode, m_index));
         }
 

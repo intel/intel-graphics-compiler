@@ -294,9 +294,9 @@ public:
 
   /// Checks the integrity of the object.
   virtual void validate()const {
-    IGC_ASSERT(Module && "Invalid module");
-    IGC_ASSERT(OpCode != OpNop && "Invalid op code");
-    IGC_ASSERT((!hasId() || isValid(Id)) && "Invalid Id");
+    IGC_ASSERT_MESSAGE(Module, "Invalid module");
+    IGC_ASSERT_MESSAGE(OpCode != OpNop, "Invalid op code");
+    IGC_ASSERT_MESSAGE((!hasId() || isValid(Id)), "Invalid Id");
   }
   void validateFunctionControlMask(SPIRVWord FCtlMask)const;
   void validateValues(const std::vector<SPIRVId> &)const;

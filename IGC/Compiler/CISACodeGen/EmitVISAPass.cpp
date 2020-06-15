@@ -4107,7 +4107,6 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
 
         VISA_Type vType = m_currShader->GetType(inst->getSource0Alpha()->getType());
 
-        //CVariable** source0AlphaVarPtr = valueToVariableMap[inst->getSource0Alpha()];
         IGC_ASSERT(source0Alpha == nullptr);
         CVariable* temp = m_currShader->GetNewAlias(rootPayloadVar, vType, (uint16_t)offset, 0);
         m_encoder->Copy(temp, GetSymbol(inst->getSource0Alpha()));
@@ -4115,11 +4114,9 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         source0Alpha = temp;
     }
 
-    //IGC_ASSERT(ccTuple->IsFrozen()); //in other words, has non-homogeneous elements
-
     if (ccTuple->HasNonHomogeneousElements())
     {
-        IGC_ASSERT(ccTuple->GetRoot()); //in other words, there is a 'supremum' element
+        IGC_ASSERT_MESSAGE(ccTuple->GetRoot(), "in other words, there is a 'supremum' element");
         IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) || llvm::isa<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()));
         if (llvm::RTWritIntrinsic * rtwi = llvm::dyn_cast<llvm::RTWritIntrinsic>(ccTuple->GetRoot()))
         {
@@ -4135,7 +4132,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         }
         else if (llvm::RTDualBlendSourceIntrinsic * dsrtwi = llvm::dyn_cast<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()))
         {
-            IGC_ASSERT(!RTWriteHasSource0Alpha(rtwi, m_moduleMD)); // dual-source doesn't support Source0Alpha
+            IGC_ASSERT_MESSAGE(!RTWriteHasSource0Alpha(rtwi, m_moduleMD), "dual-source doesn't support Source0Alpha");
         }
     }
 
@@ -4154,7 +4151,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
 
     if (ccTuple->HasNonHomogeneousElements())
     {
-        IGC_ASSERT(ccTuple->GetRoot()); //in other words, there is a 'supremum' element
+        IGC_ASSERT_MESSAGE(ccTuple->GetRoot(), "in other words, there is a 'supremum' element");
         IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) || llvm::isa<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()));
         if (llvm::dyn_cast<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) || llvm::dyn_cast<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()))
         {
@@ -4227,7 +4224,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
 
     if (ccTuple->HasNonHomogeneousElements())
     {
-        IGC_ASSERT(ccTuple->GetRoot()); //in other words, there is a 'supremum' element
+        IGC_ASSERT_MESSAGE(ccTuple->GetRoot(), "in other words, there is a 'supremum' element");
         IGC_ASSERT(llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) || llvm::isa<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()));
 
         if (llvm::RTWritIntrinsic * rtwi = llvm::dyn_cast<llvm::RTWritIntrinsic>(ccTuple->GetRoot()))
@@ -8943,7 +8940,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
     // otherwise, generate gather/gather4
     if (m_currShader->GetIsUniform(inst))
     {
-        IGC_ASSERT(predDefSurface != ESURFACE_STATELESS);  // scratch cannot be uniform
+        IGC_ASSERT_MESSAGE(predDefSurface != ESURFACE_STATELESS, "scratch cannot be uniform");
         Type* loadType = inst->getType();
         uint numElement = loadType->isVectorTy() ? loadType->getVectorNumElements() : 1;
         if (predDefSurface == ESURFACE_SLM)

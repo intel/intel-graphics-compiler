@@ -188,7 +188,7 @@ namespace //Anonymous
         std::string getKernelArgTypeName(const llvm::Function* func, unsigned argNum)
         {
             auto funcInfoMD = getOrEmitKernelMetadata(const_cast<llvm::Function*>(func));
-            IGC_ASSERT((funcInfoMD != nullptr) && "cannot get or emit for kernel metadata");
+            IGC_ASSERT_MESSAGE((funcInfoMD != nullptr), "cannot get or emit for kernel metadata");
             IGC_ASSERT(funcInfoMD->m_OpenCLArgBaseTypes.size() > (unsigned)argNum);
             return funcInfoMD->m_OpenCLArgBaseTypes[argNum];
         }
@@ -484,7 +484,7 @@ namespace //Anonymous
 
         virtual llvm::Value* getValueStoredAtIndex(GEPIndex index)
         {
-            IGC_ASSERT(false && "Should not be here");
+            IGC_ASSERT_MESSAGE(0, "Should not be here");
             return nullptr;
         }
     };
@@ -1575,7 +1575,7 @@ namespace //Anonymous
                                             changed = true;
                                             llvm::InlineFunctionInfo IFI;
                                             inlined = llvm::InlineFunction(callInst, IFI, nullptr, false);
-                                            IGC_ASSERT(inlined && "failed inlining block invoke function");
+                                            IGC_ASSERT_MESSAGE(inlined, "failed inlining block invoke function");
                                         }
                                     }
                                 }
@@ -1697,7 +1697,7 @@ namespace //Anonymous
                     // there are no compound vectors in OpenCL.
                     return BaseTypeName(type->getVectorElementType(), os) << type->getVectorNumElements();
                 default:
-                    IGC_ASSERT(false && "Unknown basic type found");
+                    IGC_ASSERT_MESSAGE(0, "Unknown basic type found");
                     return os << "unknown_type";
                 }
             }
@@ -2149,7 +2149,7 @@ namespace //Anonymous
         {
             return std::unique_ptr<StructValue>(new NullStructValue(sourceValue));
         }
-        IGC_ASSERT(false && "should not be here");
+        IGC_ASSERT_MESSAGE(0, "should not be here");
         return nullptr;
     }
 
@@ -2255,7 +2255,7 @@ namespace //Anonymous
                 }
                 else
                 {
-                    IGC_ASSERT(false && "Unacceptable block_invoke() argument");
+                    IGC_ASSERT_MESSAGE(0, "Unacceptable block_invoke() argument");
                 }
             }
 

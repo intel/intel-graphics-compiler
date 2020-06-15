@@ -138,7 +138,7 @@ void ResolveOCLAtomics::visitCallInst(CallInst& callInst)
 
     if (funcName.startswith("__builtin_IB_atomic"))
     {
-        IGC_ASSERT(m_AtomicDescMap.count(funcName) && "Unexpected IGC atomic function name.");
+        IGC_ASSERT_MESSAGE(m_AtomicDescMap.count(funcName), "Unexpected IGC atomic function name.");
         processOCLAtomic(callInst, getAtomicOp(funcName), getBufType(funcName));
         m_changed = true;
     }
@@ -345,8 +345,8 @@ void ResolveOCLAtomics::findLockUsers(Value* V)
 //     call void @llvm.genx.GenISA.threadgroupbarrier()
 void ResolveOCLAtomics::generateLockInitilization(Function* F)
 {
-    IGC_ASSERT(m_localLock && "Local lock is not created!");
-    IGC_ASSERT(F->getCallingConv() == CallingConv::SPIR_KERNEL && "SLM should be initialized only on the beginning of kernel function!");
+    IGC_ASSERT_MESSAGE(m_localLock, "Local lock is not created!");
+    IGC_ASSERT_MESSAGE(F->getCallingConv() == CallingConv::SPIR_KERNEL, "SLM should be initialized only on the beginning of kernel function!");
 
     auto& C = m_pModule->getContext();
 

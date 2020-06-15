@@ -123,7 +123,7 @@ public:
       return false;
   }
   uint64_t getSpecConstant(SPIRVWord spec_id) override {
-    IGC_ASSERT_EXIT(isSpecConstantSpecialized(spec_id) && "Specialization constant was not specialized!");
+    IGC_ASSERT_EXIT_MESSAGE(isSpecConstantSpecialized(spec_id), "Specialization constant was not specialized!");
     return SCMap->at(spec_id);
   }
   void setSpecConstantMap(SPIRVSpecConstantMap *specConstants) override { SCMap = specConstants; }
@@ -435,11 +435,11 @@ SPIRVModuleImpl::layoutEntry(SPIRVEntry* E) {
 // logic layout of SPIRV.
 SPIRVEntry *
 SPIRVModuleImpl::addEntry(SPIRVEntry *Entry) {
-    IGC_ASSERT(Entry && "Invalid entry");
+    IGC_ASSERT_MESSAGE(Entry, "Invalid entry");
     if (Entry->hasId())
     {
         SPIRVId Id = Entry->getId();
-        IGC_ASSERT(Entry->getId() != SPIRVID_INVALID && "Invalid id");
+        IGC_ASSERT_MESSAGE(Entry->getId() != SPIRVID_INVALID, "Invalid id");
         SPIRVEntry *Mapped = nullptr;
         if (exist(Id, &Mapped))
         {
@@ -449,7 +449,7 @@ SPIRVModuleImpl::addEntry(SPIRVEntry *Entry) {
             }
             else
             {
-                IGC_ASSERT(Mapped == Entry && "Id used twice");
+                IGC_ASSERT_MESSAGE(Mapped == Entry, "Id used twice");
             }
         }
         else
@@ -475,7 +475,7 @@ SPIRVModuleImpl::exist(SPIRVId Id) const {
 
 bool
 SPIRVModuleImpl::exist(SPIRVId Id, SPIRVEntry **Entry) const {
-  IGC_ASSERT(Id != SPIRVID_INVALID && "Invalid Id");
+  IGC_ASSERT_MESSAGE(Id != SPIRVID_INVALID, "Invalid Id");
   SPIRVIdToEntryMap::const_iterator Loc = IdEntryMap.find(Id);
   if (Loc == IdEntryMap.end())
     return false;
@@ -498,9 +498,9 @@ SPIRVModuleImpl::getId(SPIRVId Id, unsigned increment) {
 
 SPIRVEntry *
 SPIRVModuleImpl::getEntry(SPIRVId Id) const {
-  IGC_ASSERT(Id != SPIRVID_INVALID && "Invalid Id");
+  IGC_ASSERT_MESSAGE(Id != SPIRVID_INVALID, "Invalid Id");
   SPIRVIdToEntryMap::const_iterator Loc = IdEntryMap.find(Id);
-  IGC_ASSERT_EXIT(Loc != IdEntryMap.end() && "Id is not in map");
+  IGC_ASSERT_EXIT_MESSAGE(Loc != IdEntryMap.end(), "Id is not in map");
   return Loc->second;
 }
 
@@ -532,15 +532,15 @@ void SPIRVModuleImpl::resolveUnknownStructFields()
 SPIRVExtInstSetKind
 SPIRVModuleImpl::getBuiltinSet(SPIRVId SetId) const {
   auto Loc = IdBuiltinMap.find(SetId);
-  IGC_ASSERT_EXIT(Loc != IdBuiltinMap.end() && "Invalid builtin set id");
+  IGC_ASSERT_EXIT_MESSAGE(Loc != IdBuiltinMap.end(), "Invalid builtin set id");
   return Loc->second;
 }
 
 bool
 SPIRVModuleImpl::isEntryPoint(SPIRVExecutionModelKind ExecModel, SPIRVId EP)
   const {
-  IGC_ASSERT(isValid(ExecModel) && "Invalid execution model");
-  IGC_ASSERT(EP != SPIRVID_INVALID && "Invalid function id");
+  IGC_ASSERT_MESSAGE(isValid(ExecModel), "Invalid execution model");
+  IGC_ASSERT_MESSAGE(EP != SPIRVID_INVALID, "Invalid function id");
   auto Loc = EntryPointSet.find(ExecModel);
   if (Loc == EntryPointSet.end())
     return false;
@@ -622,7 +622,7 @@ SPIRVModuleImpl::addDecorate(const SPIRVDecorateGeneric *Dec) {
   SPIRVId Id = Dec->getTargetId();
   SPIRVEntry *Target = nullptr;
   bool Found = exist(Id, &Target);
-  IGC_ASSERT(Found && "Decorate target does not exist");
+  IGC_ASSERT_MESSAGE(Found, "Decorate target does not exist");
   if (!Dec->getOwner())
     DecorateSet.insert(Dec);
   return Dec;
@@ -631,8 +631,8 @@ SPIRVModuleImpl::addDecorate(const SPIRVDecorateGeneric *Dec) {
 void
 SPIRVModuleImpl::addEntryPoint(SPIRVExecutionModelKind ExecModel,
     SPIRVId EntryPoint){
-  IGC_ASSERT(isValid(ExecModel) && "Invalid execution model");
-  IGC_ASSERT(EntryPoint != SPIRVID_INVALID && "Invalid entry point");
+  IGC_ASSERT_MESSAGE(isValid(ExecModel), "Invalid execution model");
+  IGC_ASSERT_MESSAGE(EntryPoint != SPIRVID_INVALID, "Invalid entry point");
   EntryPointSet[ExecModel].insert(EntryPoint);
   EntryPointVec[ExecModel].push_back(EntryPoint);
 }
@@ -795,14 +795,14 @@ operator>> (std::istream &I, SPIRVModule &M) {
   SPIRVWord Magic;
   Decoder >> Magic;
 
-  IGC_ASSERT_EXIT((MagicNumber == Magic) && "Invalid magic number");
+  IGC_ASSERT_EXIT_MESSAGE((MagicNumber == Magic), "Invalid magic number");
 
   Decoder >> MI.SPIRVVersion;
 
   bool supportVersion =
       MI.SPIRVVersion <= SPIRVVersionSupported::fullyCompliant;
 
-  IGC_ASSERT_EXIT(supportVersion && "Unsupported SPIRV version number");
+  IGC_ASSERT_EXIT_MESSAGE(supportVersion, "Unsupported SPIRV version number");
 
   Decoder >> MI.SPIRVGenerator;
 
@@ -810,7 +810,7 @@ operator>> (std::istream &I, SPIRVModule &M) {
   Decoder >> MI.NextId;
 
   Decoder >> MI.InstSchema;
-  IGC_ASSERT(MI.InstSchema == SPIRVISCH_Default && "Unsupported instruction schema");
+  IGC_ASSERT_MESSAGE(MI.InstSchema == SPIRVISCH_Default, "Unsupported instruction schema");
 
   while(Decoder.getWordCountAndOpCode())
     Decoder.getEntry();

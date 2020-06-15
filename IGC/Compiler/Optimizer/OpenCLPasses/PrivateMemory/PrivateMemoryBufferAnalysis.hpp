@@ -80,8 +80,8 @@ namespace IGC
         /// @return offset in private buffer of given alloca instruction.
         unsigned int getBufferOffset(llvm::Function* pFunc, llvm::AllocaInst* pAI)
         {
-            IGC_ASSERT(m_privateInfoMap.count(pFunc) && "Function should have private buffer info");
-            IGC_ASSERT(m_privateInfoMap[pFunc].m_bufferOffsets.count(pAI) && "AllocalInst should have buffer offset info");
+            IGC_ASSERT_MESSAGE(m_privateInfoMap.count(pFunc), "Function should have private buffer info");
+            IGC_ASSERT_MESSAGE(m_privateInfoMap[pFunc].m_bufferOffsets.count(pAI), "AllocalInst should have buffer offset info");
             return m_privateInfoMap[pFunc].m_bufferOffsets[pAI];
         }
 
@@ -91,8 +91,8 @@ namespace IGC
         /// @return buffer size of given alloca instruction.
         unsigned int getBufferSize(llvm::Function* pFunc, llvm::AllocaInst* pAI)
         {
-            IGC_ASSERT(m_privateInfoMap.count(pFunc) && "Function should have private buffer info");
-            IGC_ASSERT(m_privateInfoMap[pFunc].m_bufferSizes.count(pAI) && "AllocalInst should have buffer size info");
+            IGC_ASSERT_MESSAGE(m_privateInfoMap.count(pFunc), "Function should have private buffer info");
+            IGC_ASSERT_MESSAGE(m_privateInfoMap[pFunc].m_bufferSizes.count(pAI), "AllocalInst should have buffer size info");
             return m_privateInfoMap[pFunc].m_bufferSizes[pAI];
         }
 
@@ -101,7 +101,7 @@ namespace IGC
         /// @return alloca instructions of given function.
         std::vector<llvm::AllocaInst*>& getAllocaInsts(llvm::Function* pFunc)
         {
-            IGC_ASSERT(m_privateInfoMap.count(pFunc) && "Function should have private buffer info");
+            IGC_ASSERT_MESSAGE(m_privateInfoMap.count(pFunc), "Function should have private buffer info");
             return m_privateInfoMap[pFunc].m_allocaInsts;
         }
 
@@ -110,7 +110,7 @@ namespace IGC
         /// @return total private memory buffer size of given function.
         unsigned int getTotalPrivateMemPerWI(llvm::Function* pFunc)
         {
-            IGC_ASSERT(m_privateInfoMap.count(pFunc) && "Function should have private buffer info");
+            IGC_ASSERT_MESSAGE(m_privateInfoMap.count(pFunc), "Function should have private buffer info");
             return m_privateInfoMap[pFunc].m_bufferTotalSize;
         }
 

@@ -135,7 +135,7 @@ namespace IGC
         case IGC::OtherResourceType:
             return BUFFER_TYPE_UNKNOWN;
         default:
-            IGC_ASSERT(false && "unknown type!");
+            IGC_ASSERT_MESSAGE(0, "unknown type!");
             return BUFFER_TYPE_UNKNOWN;
         }
     };

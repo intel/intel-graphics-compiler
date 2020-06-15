@@ -323,7 +323,7 @@ namespace IGC
             break;
 
         default:
-            IGC_ASSERT(false && "should not reach here");
+            IGC_ASSERT_MESSAGE(0, "should not reach here");
             break;
         }
 
@@ -409,7 +409,7 @@ namespace IGC
                 break;
 
             default:
-                IGC_ASSERT(false && "should not reach here");
+                IGC_ASSERT_MESSAGE(0, "should not reach here");
                 break;
             }
 

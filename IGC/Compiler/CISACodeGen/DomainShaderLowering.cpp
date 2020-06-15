@@ -571,7 +571,7 @@ namespace IGC
             return QuadEltUnit(0);
             break;
         default:
-            IGC_ASSERT(false && "unknown DS output type");
+            IGC_ASSERT_MESSAGE(0, "unknown DS output type");
             break;
         }
         return QuadEltUnit(0);
@@ -586,7 +586,7 @@ namespace IGC
         llvm::Value* data[8],
         llvm::Instruction* prev)
     {
-        IGC_ASSERT((mask < 256) && "mask is an 8-bit bitmask and has to be in range 0..255");
+        IGC_ASSERT_MESSAGE(mask < 256, "mask is an 8-bit bitmask and has to be in range 0..255");
         Value* arguments[] =
         {
             offset,

@@ -514,9 +514,13 @@ bool AdvCodeMotion::runOnFunction(Function& F) {
     if (!WIS.hasOneDim())
         return false;
 
-    IGC_ASSERT(WIS.LocalSize.X && WIS.EnqueuedLocalSize.X && WIS.GlobalSize.X &&
-        WIS.GroupId.X && WIS.GlobalOffset.X && WIS.LocalId.X &&
-        WIS.GlobalId.X && "Missing necessary work-item settings");
+    IGC_ASSERT_MESSAGE(WIS.LocalSize.X, "Missing necessary work-item setting");
+    IGC_ASSERT_MESSAGE(WIS.EnqueuedLocalSize.X, "Missing necessary work-item setting");
+    IGC_ASSERT_MESSAGE(WIS.GlobalSize.X, "Missing necessary work-item setting");
+    IGC_ASSERT_MESSAGE(WIS.GroupId.X, "Missing necessary work-item setting");
+    IGC_ASSERT_MESSAGE(WIS.GlobalOffset.X, "Missing necessary work-item setting");
+    IGC_ASSERT_MESSAGE(WIS.LocalId.X, "Missing necessary work-item setting");
+    IGC_ASSERT_MESSAGE(WIS.GlobalId.X, "Missing necessary work-item setting");
 
     bool Changed = false;
 

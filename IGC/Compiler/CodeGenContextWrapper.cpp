@@ -52,7 +52,7 @@ CodeGenContextWrapper::CodeGenContextWrapper(CodeGenContext* pCtx) : ImmutablePa
 CodeGenContextWrapper::CodeGenContextWrapper() : ImmutablePass(ID), m_ctx(nullptr), m_ctxOwner(false)
 {
     initializeCodeGenContextWrapperPass(*PassRegistry::getPassRegistry());
-    IGC_ASSERT(false && "CodeGenContextWrapper shouldn't get here in runtime");
+    IGC_ASSERT_MESSAGE(0, "CodeGenContextWrapper shouldn't get here in runtime");
 }
 
 CodeGenContextWrapper::CodeGenContextWrapper(ShaderType _type, CBTILayout* _bitLayout, CPlatform* _platform, CDriverInfo* driverInfo, bool _owner) : ImmutablePass(ID), m_ctxOwner(_owner)

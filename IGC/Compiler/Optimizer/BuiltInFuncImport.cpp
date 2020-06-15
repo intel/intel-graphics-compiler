@@ -377,7 +377,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
                         getOwningLazyBitcodeModule(std::move(OutputBuffer), M.getContext());
                     if (llvm::Error EC = ModuleOrErr.takeError())
                     {
-                        IGC_ASSERT(false && "Error linking generic builtin module");
+                        IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
                     }
                     elf_index[SectionIndex] = (std::move(*ModuleOrErr));
                 }
@@ -398,7 +398,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
                     handleAllErrors(std::move(Err), [&](ErrorInfoBase& EIB) {
                         errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
                     });
-                    IGC_ASSERT(false && "Failed to materialize Global Variables");
+                    IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
                 }
                 else {
                     pFunc->addAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::Builtin);
@@ -444,12 +444,12 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
 
         if (Error err = setIterator->materializeAll())
         {
-            IGC_ASSERT(false && "materializeAll failed for size_t builtin module");
+            IGC_ASSERT_MESSAGE(0, "materializeAll failed for size_t builtin module");
         }
 
         if (ld.linkInModule(std::move(setIterator), Linker::OverrideFromSrc))
         {
-            IGC_ASSERT(false && "Error linking generic builtin module");
+            IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
         }
     }
 
@@ -474,11 +474,11 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
                 getOwningLazyBitcodeModule(std::move(OutputBuffer), M.getContext());
             if (llvm::Error EC = ModuleOrErr.takeError())
             {
-                IGC_ASSERT(false && "Error when LazyLoading global module");
+                IGC_ASSERT_MESSAGE(0, "Error when LazyLoading global module");
             }
             if (ld.linkInModule(std::move(*ModuleOrErr)))
             {
-                IGC_ASSERT(false && "Error linking generic builtin module");
+                IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
             }
         }
     }
@@ -555,7 +555,7 @@ bool BIImport::runOnModule(Module& M)
                     handleAllErrors(std::move(Err), [&](ErrorInfoBase& EIB) {
                         errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
                     });
-                    IGC_ASSERT(false && "Failed to materialize Global Variables");
+                    IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
                 }
                 else {
                     pFunc->addAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::Builtin);
@@ -596,12 +596,12 @@ bool BIImport::runOnModule(Module& M)
     Linker ld(M);
 
     if (Error err = m_GenericModule->materializeAll()) {
-        IGC_ASSERT(false && "materializeAll failed for generic builtin module");
+        IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
     }
 
     if (ld.linkInModule(std::move(m_GenericModule)))
     {
-        IGC_ASSERT(false && "Error linking generic builtin module");
+        IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
     }
 
     if (m_SizeModule)
@@ -609,12 +609,12 @@ bool BIImport::runOnModule(Module& M)
         CleanUnused(m_SizeModule.get());
         if (Error err = m_SizeModule->materializeAll())
         {
-            IGC_ASSERT(false && "materializeAll failed for size_t builtin module");
+            IGC_ASSERT_MESSAGE(0, "materializeAll failed for size_t builtin module");
         }
 
         if (ld.linkInModule(std::move(m_SizeModule)))
         {
-            IGC_ASSERT(false && "Error linking size_t builtin module");
+            IGC_ASSERT_MESSAGE(0, "Error linking size_t builtin module");
         }
     }
 

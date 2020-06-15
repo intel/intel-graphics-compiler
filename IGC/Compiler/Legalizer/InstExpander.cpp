@@ -139,9 +139,7 @@ bool InstExpander::visitShl(BinaryOperator& I) {
     Type* MajorTy = TySeq->front();
     IntegerType* MajorITy = cast<IntegerType>(MajorTy);
     IntegerType* ITy = cast<IntegerType>(I.getType());
-    IGC_ASSERT(ITy->getBitWidth() < MajorITy->getBitMask() &&
-        "YOU HAVE A HUGE INTEGER TO BE SHIFTED! "
-        "Shift amount cannot be encoded in legal integer types!");
+    IGC_ASSERT_MESSAGE(ITy->getBitWidth() < MajorITy->getBitMask(), "YOU HAVE A HUGE INTEGER TO BE SHIFTED! Shift amount cannot be encoded in legal integer types!");
 
     // Arbitrary integer left-shift is implemented as follows:
     //
@@ -272,9 +270,7 @@ bool InstExpander::visitLShr(BinaryOperator& I) {
     Type* MajorTy = TySeq->front();
     IntegerType* MajorITy = cast<IntegerType>(MajorTy);
     IntegerType* ITy = cast<IntegerType>(I.getType());
-    IGC_ASSERT(ITy->getBitWidth() < MajorITy->getBitMask() &&
-        "YOU HAVE A HUGE INTEGER TO BE SHIFTED! "
-        "Shift amount cannot be encoded in legal integer types!");
+    IGC_ASSERT_MESSAGE(ITy->getBitWidth() < MajorITy->getBitMask(), "YOU HAVE A HUGE INTEGER TO BE SHIFTED! Shift amount cannot be encoded in legal integer types!");
 
     // Arbitrary integer logic-right-shift is implemented similar to
     // arbitrary integer left-shift.
@@ -496,9 +492,9 @@ bool InstExpander::visitTruncInst(TruncInst& I) {
     unsigned Part = 0;
     for (auto* Ty : *TySeq) {
         Value* Val = (*ValSeq)[Part];
-        IGC_ASSERT(isa<IntegerType>(Ty) && isa<IntegerType>(Val->getType()));
-        IGC_ASSERT(cast<IntegerType>(Val->getType())->getBitWidth() >=
-            cast<IntegerType>(Ty)->getBitWidth());
+        IGC_ASSERT(isa<IntegerType>(Ty));
+        IGC_ASSERT(isa<IntegerType>(Val->getType()));
+        IGC_ASSERT(cast<IntegerType>(Val->getType())->getBitWidth() >= cast<IntegerType>(Ty)->getBitWidth());
 
         Expanded.push_back(
             IRB->CreateTrunc(Val, Ty,
@@ -536,9 +532,9 @@ bool InstExpander::visitZExtInst(ZExtInst& I) {
     for (auto* Ty : *TySeq) {
         Value* Val =
             Part < ValSeq->size() ? (*ValSeq)[Part] : Constant::getNullValue(Ty);
-        IGC_ASSERT(isa<IntegerType>(Ty) && isa<IntegerType>(Val->getType()));
-        IGC_ASSERT(cast<IntegerType>(Val->getType())->getBitWidth() <=
-            cast<IntegerType>(Ty)->getBitWidth());
+        IGC_ASSERT(isa<IntegerType>(Ty));
+        IGC_ASSERT(isa<IntegerType>(Val->getType()));
+        IGC_ASSERT(cast<IntegerType>(Val->getType())->getBitWidth() <= cast<IntegerType>(Ty)->getBitWidth());
 
         if (Ty != Val->getType())
             Expanded.push_back(IRB->CreateZExt(Val, Ty, Twine(Val->getName(), ".zext")));

@@ -235,7 +235,7 @@ LexicalScopes::getOrCreateInlinedScope(const DILocalScope* Scope,
 /// getOrCreateAbstractScope - Find or create an abstract lexical scope.
 LexicalScope*
 LexicalScopes::getOrCreateAbstractScope(const DILocalScope* Scope) {
-    IGC_ASSERT(Scope && "Invalid Scope encoding!");
+    IGC_ASSERT_MESSAGE(Scope, "Invalid Scope encoding!");
 
     if (auto * File = dyn_cast<DILexicalBlockFile>(Scope))
         Scope = File->getScope();
@@ -259,7 +259,7 @@ LexicalScopes::getOrCreateAbstractScope(const DILocalScope* Scope) {
 
 /// constructScopeNest
 void LexicalScopes::constructScopeNest(LexicalScope* Scope) {
-    IGC_ASSERT(Scope && "Unable to calculate scope dominance graph!");
+    IGC_ASSERT_MESSAGE(Scope, "Unable to calculate scope dominance graph!");
     SmallVector<LexicalScope*, 4> WorkStack;
     WorkStack.push_back(Scope);
     unsigned Counter = 0;
@@ -298,7 +298,7 @@ assignInstructionRanges(SmallVectorImpl<InsnRange>& MIRanges,
     {
         const InsnRange& R = *RI;
         LexicalScope* S = MI2ScopeMap.lookup(R.first);
-        IGC_ASSERT(S && "Lost LexicalScope for a machine instruction!");
+        IGC_ASSERT_MESSAGE(S, "Lost LexicalScope for a machine instruction!");
         if (PrevLexicalScope && !PrevLexicalScope->dominates(S))
             PrevLexicalScope->closeInsnRange(S);
         S->openInsnRange(R.first);

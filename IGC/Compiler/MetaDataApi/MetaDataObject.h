@@ -110,10 +110,7 @@ namespace IGC
                 return NULL;
             }
 
-            if (!pNode->getNumOperands())
-            {
-                IGC_ASSERT(false && "Named list doesn't have a name node");
-            }
+            IGC_ASSERT_MESSAGE(0 < pNode->getNumOperands(), "Named list doesn't have a name node");
 
             llvm::MDString* pIdNode = llvm::dyn_cast<llvm::MDString>(pNode->getOperand(0));
 
@@ -299,8 +296,8 @@ namespace IGC
             }
             else
             {
-                llvm::MDNode* pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
-                IGC_ASSERT(pMDNode && "pNode is not an MDNode value");
+                llvm::MDNode* const pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
+                IGC_ASSERT_MESSAGE(nullptr != pMDNode, "pNode is not an MDNode value");
                 return MetaObjectHandle<T>(new T(pMDNode, false));
             }
         }

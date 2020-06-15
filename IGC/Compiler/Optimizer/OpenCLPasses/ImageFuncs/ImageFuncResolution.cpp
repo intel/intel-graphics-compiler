@@ -205,7 +205,7 @@ Value* ImageFuncResolution::getSamplerAddressMode(CallInst& CI)
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     Value* sampler = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, pMdUtils, modMD);
-    IGC_ASSERT(sampler != nullptr && "Sampler untraceable for ImplicitArg::SAMPLER_ADDRESS");
+    IGC_ASSERT_MESSAGE(sampler != nullptr, "Sampler untraceable for ImplicitArg::SAMPLER_ADDRESS");
     if (isa<Argument>(sampler))
     {
         Argument* arg = getImplicitImageArg(CI, ImplicitArg::SAMPLER_ADDRESS);
@@ -215,7 +215,7 @@ Value* ImageFuncResolution::getSamplerAddressMode(CallInst& CI)
     {
         llvm::Function* pFunc = CI.getParent()->getParent();
 
-        IGC_ASSERT(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
+        IGC_ASSERT_MESSAGE(isa<ConstantInt>(sampler), "Sampler must be a constant integer");
         InlineSamplerState samplerStateAddressMode{ cast<ConstantInt>(sampler)->getZExtValue() };
         uint64_t samplerVal = 0;
         uint samplerValue = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
@@ -256,7 +256,7 @@ Value* ImageFuncResolution::getSamplerNormalizedCoords(CallInst& CI)
     else
     {
         llvm::Function* pFunc = CI.getParent()->getParent();
-        IGC_ASSERT(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
+        IGC_ASSERT_MESSAGE(isa<ConstantInt>(sampler), "Sampler must be a constant integer");
 
         uint64_t samplerVal = 0;
         uint samplerValue = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
@@ -297,7 +297,7 @@ Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst& CI)
     }
     else
     {
-        IGC_ASSERT(isa<ConstantInt>(sampler) && "Sampler must be a constant integer");
+        IGC_ASSERT_MESSAGE(isa<ConstantInt>(sampler), "Sampler must be a constant integer");
 
         llvm::Function* pFunc = CI.getParent()->getParent();
 

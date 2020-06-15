@@ -95,12 +95,12 @@ public:
 
     virtual CVariable* GetURBOutputHandle()
     {
-        IGC_ASSERT(false && "Should be overridden in a derived class!");
+        IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
         return nullptr;
     }
     virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex)
     {
-        IGC_ASSERT(false && "Should be overridden in a derived class!");
+        IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
         return nullptr;
     }
     virtual bool hasReadWriteImage(llvm::Function& F) { return false; }
@@ -440,8 +440,7 @@ public:
     std::vector<std::pair<unsigned int, unsigned int>> m_VISAIndexToGenISAOff;
     void addCVarsForVectorBC(llvm::BitCastInst* BCI, llvm::SmallVector<CVariable*, 8> CVars)
     {
-        IGC_ASSERT(m_VectorBCItoCVars.find(BCI) == std::end(m_VectorBCItoCVars) &&
-            "a variable already exists for this vector bitcast");
+        IGC_ASSERT_MESSAGE(m_VectorBCItoCVars.find(BCI) == std::end(m_VectorBCItoCVars), "a variable already exists for this vector bitcast");
         m_VectorBCItoCVars.try_emplace(BCI, CVars);
     }
 

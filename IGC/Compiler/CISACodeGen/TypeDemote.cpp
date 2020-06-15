@@ -308,13 +308,15 @@ bool TypeDemote::demoteOnBasicBlock(BasicBlock* BB) const {
 }
 
 Value* TypeDemote::getDemotedValue(Value* V, Type* DemotedTy, bool Unsigned) const {
-    IGC_ASSERT(DemotedTy->isIntegerTy(8) && Unsigned && "Only support demotion to i8!");
+    IGC_ASSERT(nullptr != DemotedTy);
+    IGC_ASSERT_MESSAGE(DemotedTy->isIntegerTy(8), "Only support demotion to i8!");
+    IGC_ASSERT_MESSAGE(Unsigned, "Only support demotion to i8!");
 
     if (ConstantInt * CI = dyn_cast<ConstantInt>(V)) {
         if (!CI->getValue().isIntN(8))
             return nullptr;
         V = IRB->CreateTrunc(V, DemotedTy);
-        IGC_ASSERT(isa<ConstantInt>(V) && "Constant folding is failed!");
+        IGC_ASSERT_MESSAGE(isa<ConstantInt>(V), "Constant folding is failed!");
         return V;
     }
 

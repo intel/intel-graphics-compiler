@@ -127,7 +127,7 @@ namespace IGC
                         continue;
                     }
                 }
-                IGC_ASSERT(false && "Invalid function in function group!");
+                IGC_ASSERT_MESSAGE(0, "Invalid function in function group!");
                 return false;
             }
         }

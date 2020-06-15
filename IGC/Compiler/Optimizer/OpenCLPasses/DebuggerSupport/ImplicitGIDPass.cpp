@@ -91,7 +91,7 @@ bool ImplicitGlobalId::runOnModule(Module& M)
 
 bool ImplicitGlobalId::runOnFunction(Function& F)
 {
-    IGC_ASSERT(!F.isDeclaration() && "Expect kernel functions, which must be defined");
+    IGC_ASSERT_MESSAGE(!F.isDeclaration(), "Expect kernel functions, which must be defined");
 
     insertComputeIds(&F);
     return true;
@@ -136,7 +136,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     BasicBlock& entry_block = pFunc->getEntryBlock();
     Instruction* insert_before = &(entry_block.front());
 
-    IGC_ASSERT(insert_before && "There is no instruction in the current basic block!");
+    IGC_ASSERT_MESSAGE(insert_before, "There is no instruction in the current basic block!");
 
     // Prepare to create debug metadata for implicit gid variables
     //
@@ -262,9 +262,9 @@ Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
 
         // Create function declaration
         FunctionType* pFuncTy = FunctionType::get(pResult, funcTyArgs, false);
-        IGC_ASSERT(pFuncTy && "Failed to create new function type");
+        IGC_ASSERT_MESSAGE(pFuncTy, "Failed to create new function type");
         Function* pNewFunc = Function::Create(pFuncTy, GlobalValue::ExternalLinkage, nameFunc, m_pModule);
-        IGC_ASSERT(pNewFunc && "Failed to create new function declaration");
+        IGC_ASSERT_MESSAGE(pNewFunc, "Failed to create new function declaration");
 
         // Set function attributes
         IGCLLVM::AttributeSet funcAttrs;

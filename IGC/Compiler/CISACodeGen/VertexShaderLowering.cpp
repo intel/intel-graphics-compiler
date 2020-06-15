@@ -136,7 +136,7 @@ namespace IGC
                 return i;
             }
         }
-        IGC_ASSERT(false && "All input slots are already used, cannot find an empty one");
+        IGC_ASSERT_MESSAGE(0, "All input slots are already used, cannot find an empty one");
         return 32 * 4 - 1;
     }
 
@@ -151,7 +151,7 @@ namespace IGC
             }
         }
 
-        IGC_ASSERT(idx < ARRAY_COUNT(m_inputUsed) && "All input slots are already used, cannot find an empty one");
+        IGC_ASSERT_MESSAGE(idx < ARRAY_COUNT(m_inputUsed), "All input slots are already used, cannot find an empty one");
         return idx;
     }
 
@@ -428,7 +428,7 @@ namespace IGC
             }
             else
             {
-                IGC_ASSERT(false && "This case of indirect accessing of attribute  shouldn't be hit");
+                IGC_ASSERT_MESSAGE(0, "This case of indirect accessing of attribute  shouldn't be hit");
             }
         }
         case SHADER_OUTPUT_TYPE_POINTWIDTH:
@@ -440,7 +440,7 @@ namespace IGC
             m_vsPropsPass->DeclareRTAI();
             return 0;
         default:
-            IGC_ASSERT(false && "unknown VS output type");
+            IGC_ASSERT_MESSAGE(0, "unknown VS output type");
             break;
         }
         return 0;
@@ -560,7 +560,7 @@ namespace IGC
             m_isHeaderPresent = true;
             AddInitializedHeader(prev);
         }
-        IGC_ASSERT(mask < 256 && "mask is an 8-bit bitmask and has to be in range 0..255");
+        IGC_ASSERT_MESSAGE(mask < 256, "mask is an 8-bit bitmask and has to be in range 0..255");
         Value* arguments[] =
         {
             offset,

@@ -298,7 +298,7 @@ namespace IGC
             ValueToIntMap::iterator II = m_LVA->ValueIds.find(V);
             if (II == m_LVA->ValueIds.end())
             {
-                IGC_ASSERT(false && "Value is not part of LivenessAnalysis");
+                IGC_ASSERT_MESSAGE(0, "Value is not part of LivenessAnalysis");
                 return nullptr;
             }
             uint32_t valId = II->second;

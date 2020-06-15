@@ -119,7 +119,7 @@ namespace IGC {
         // Saves the structure changes to the given MDNode
         void VectorTypeHintMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
         {
-            IGC_ASSERT(pNode && "The target node should be valid pointer");
+            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
 
             // we assume that underlying metadata node has not changed under our foot
             if (pNode == m_pNode && !dirty())
@@ -246,7 +246,7 @@ namespace IGC {
         // Saves the structure changes to the given MDNode
         void VersionMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
         {
-            IGC_ASSERT(pNode && "The target node should be valid pointer");
+            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
 
             // we assume that underlying metadata node has not changed under our foot
             if (pNode == m_pNode && !dirty())
@@ -388,7 +388,7 @@ namespace IGC {
         // Saves the structure changes to the given MDNode
         void WorkGroupDimensionsMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
         {
-            IGC_ASSERT(pNode && "The target node should be valid pointer");
+            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
 
             // we assume that underlying metadata node has not changed under our foot
             if (pNode == m_pNode && !dirty())
@@ -516,7 +516,7 @@ namespace IGC {
         // Saves the structure changes to the given MDNode
         void SubGroupDimensionsMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
         {
-            IGC_ASSERT(pNode && "The target node should be valid pointer");
+            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
 
             // we assume that underlying metadata node has not changed under our foot
             if (pNode == m_pNode && !dirty())
@@ -646,7 +646,7 @@ namespace IGC {
         // Saves the structure changes to the given MDNode
         void WorkgroupWalkOrderMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
         {
-            IGC_ASSERT(pNode && "The target node should be valid pointer");
+            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
 
             // we assume that underlying metadata node has not changed under our foot
             if (pNode == m_pNode && !dirty())
@@ -958,7 +958,7 @@ namespace IGC {
         // Saves the structure changes to the given MDNode
         void KernelMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
         {
-            IGC_ASSERT(pNode && "The target node should be valid pointer");
+            IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
 
             // we assume that underlying metadata node has not changed under our foot
             if (pNode == m_pNode && !dirty())

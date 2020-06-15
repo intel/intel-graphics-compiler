@@ -240,8 +240,7 @@ bool InstPromoter::visitLoadInst(LoadInst& I) {
         PromotedVal =
             IRB->CreateOr(PromotedVal, NewVal, Twine(NewVal->getName(), ".concat"));
 
-        IGC_ASSERT((ActualLoadBits & 0x7) == 0 &&
-            "LEGAL INTEGER TYPE IS NOT BYTE ADDRESSABLE!");
+        IGC_ASSERT_MESSAGE((ActualLoadBits & 0x7) == 0, "LEGAL INTEGER TYPE IS NOT BYTE ADDRESSABLE!");
         Off += ActualLoadBits >> 3;
         ++Part;
     }
@@ -289,8 +288,7 @@ bool InstPromoter::visitStoreInst(StoreInst& I) {
         StoreInst* NewSt = IRB->CreateStore(NewVal, NewPtr);
         TL->dupMemoryAttribute(NewSt, &I, Off);
 
-        IGC_ASSERT((ActualStoreBits & 0x7) == 0 &&
-            "LEGAL INTEGER TYPE IS NOT BYTE ADDRESSABLE!");
+        IGC_ASSERT_MESSAGE((ActualStoreBits & 0x7) == 0, "LEGAL INTEGER TYPE IS NOT BYTE ADDRESSABLE!");
         Off += ActualStoreBits >> 3;
     }
 
@@ -324,8 +322,7 @@ bool InstPromoter::visitTruncInst(TruncInst& I) {
 
     Type* PromotedTy = TySeq->front();
 
-    IGC_ASSERT(cast<IntegerType>(PromotedTy)->getBitWidth() <=
-        cast<IntegerType>(Val->getType())->getBitWidth());
+    IGC_ASSERT(cast<IntegerType>(PromotedTy)->getBitWidth() <= cast<IntegerType>(Val->getType())->getBitWidth());
 
     Promoted =
         IRB->CreateTrunc(Val, PromotedTy, Twine(I.getName(), getSuffix()));
@@ -365,8 +362,7 @@ bool InstPromoter::visitZExtInst(ZExtInst& I) {
 
     Type* PromotedTy = TySeq->front();
 
-    IGC_ASSERT(cast<IntegerType>(PromotedTy)->getBitWidth() >=
-        cast<IntegerType>(Val->getType())->getBitWidth());
+    IGC_ASSERT(cast<IntegerType>(PromotedTy)->getBitWidth() >= cast<IntegerType>(Val->getType())->getBitWidth());
 
     if (ValAct != Legal)
         Val = TL->zext(Val, I.getSrcTy());

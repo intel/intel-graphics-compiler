@@ -102,7 +102,7 @@ namespace IGC {
         void replaceGroupHead(llvm::Function* OH, llvm::Function* NH) {
             auto headSG = Functions[0];
             llvm::AssertingVH<llvm::Function>& HVH = (*headSG)[0];
-            IGC_ASSERT(&(*HVH) == OH && "Group's head isn't set up correctly!");
+            IGC_ASSERT_MESSAGE(&(*HVH) == OH, "Group's head isn't set up correctly!");
             HVH = NH;
         }
 
@@ -163,7 +163,7 @@ namespace IGC {
         /// \brief Get the group head for the group to which F belongs.
         llvm::Function* getGroupHead(llvm::Function* F) {
             auto FG = getGroup(F);
-            IGC_ASSERT(FG);
+            IGC_ASSERT(nullptr != FG);
             return FG->getHead();
         }
         /// \brief Get the subgroup head for the subgroup to which F belongs
@@ -193,7 +193,7 @@ namespace IGC {
         /// order is also reflected in the module function list.
         bool isGroupTail(llvm::Function* F) {
             FunctionGroup* FG = getGroup(F);
-            IGC_ASSERT(FG && "not in function group");
+            IGC_ASSERT_MESSAGE(nullptr != FG, "not in function group");
             return F == FG->back();
         }
 

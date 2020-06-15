@@ -98,7 +98,7 @@ static bool canEvaluateShiftedShift(unsigned FirstShiftAmt,
                                     bool IsFirstShiftLeft,
                                     Instruction *SecondShift, InstCombiner &IC,
                                     Instruction *CxtI) {
-  IGC_ASSERT(SecondShift->isLogicalShift() && "Unexpected instruction type");
+  IGC_ASSERT_MESSAGE(SecondShift->isLogicalShift(), "Unexpected instruction type");
 
   // We need constant shifts.
   auto *SecondShiftConst = dyn_cast<ConstantInt>(SecondShift->getOperand(1));
@@ -386,7 +386,7 @@ foldShiftByConstOfShiftByConst(BinaryOperator &I, ConstantInt *COp1,
     ConstantInt *ShiftAmt1C = cast<ConstantInt>(ShiftOp->getOperand(1));
     uint32_t ShiftAmt1 = ShiftAmt1C->getLimitedValue(TypeBits);
     uint32_t ShiftAmt2 = COp1->getLimitedValue(TypeBits);
-    IGC_ASSERT(ShiftAmt2 != 0 && "Should have been simplified earlier");
+    IGC_ASSERT_MESSAGE(ShiftAmt2 != 0, "Should have been simplified earlier");
     if (ShiftAmt1 == 0)
       return nullptr; // Will be simplified in the future.
     Value *X = ShiftOp->getOperand(0);
@@ -548,8 +548,7 @@ Instruction *InstCombiner::FoldShiftByConstant(Value *Op0, Constant *Op1,
   // purpose is to compute bits we don't care about.
   uint32_t TypeBits = Op0->getType()->getScalarSizeInBits();
 
-  IGC_ASSERT(!COp1->uge(TypeBits) &&
-         "Shift over the type width should have been removed already");
+  IGC_ASSERT_MESSAGE(!COp1->uge(TypeBits), "Shift over the type width should have been removed already");
 
   // ((X*C1) << C2) == (X * (C1 << C2))
   if (BinaryOperator *BO = dyn_cast<BinaryOperator>(Op0))
@@ -591,7 +590,7 @@ Instruction *InstCombiner::FoldShiftByConstant(Value *Op0, Constant *Op1,
       if (I.getOpcode() == Instruction::Shl)
         MaskV <<= COp1->getZExtValue();
       else {
-        IGC_ASSERT(I.getOpcode() == Instruction::LShr && "Unknown logical shift");
+        IGC_ASSERT_MESSAGE(I.getOpcode() == Instruction::LShr, "Unknown logical shift");
         MaskV = MaskV.lshr(COp1->getZExtValue());
       }
 

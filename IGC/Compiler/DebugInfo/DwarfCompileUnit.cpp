@@ -355,7 +355,7 @@ void CompileUnit::addSourceLine(DIE* Die, DIScope* S, unsigned Line)
     if (Line == 0) return;
 
     unsigned FileID = DD->getOrCreateSourceID(S->getFilename(), S->getDirectory(), getUniqueID());
-    IGC_ASSERT(FileID && "Invalid file id");
+    IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
     addUInt(Die, dwarf::DW_AT_decl_file, None, FileID);
     addUInt(Die, dwarf::DW_AT_decl_line, None, Line);
 }
@@ -560,7 +560,7 @@ static uint64_t getBasicTypeSize(DwarfDebug* DD, DIDerivedType* Ty)
     else
     {
         // Be prepared for unexpected.
-        IGC_ASSERT_MESSAGE(false, "Missing support for this type");
+        IGC_ASSERT_MESSAGE(0, "Missing support for this type");
     }
 
     return BaseType->getSizeInBits();
@@ -683,10 +683,9 @@ DIE* CompileUnit::getOrCreateContextDIE(DIScope* Context)
         return getOrCreateNameSpace(NS);
     if (auto * SP = dyn_cast<DISubprogram>(Context))
         return getOrCreateSubprogramDIE(SP);
-    if (dyn_cast<DIModule>(Context))
-    {
-        IGC_ASSERT(false && "Missing implementation for DIModule!");
-    }
+
+    IGC_ASSERT_MESSAGE(nullptr == dyn_cast<DIModule>(Context), "Missing implementation for DIModule!");
+
     return getDIE(Context);
 
 }
@@ -698,16 +697,16 @@ DIE* CompileUnit::getOrCreateTypeDIE(const MDNode* TyNode)
     if (!TyNode)
         return NULL;
 
-    DIType* Ty = cast_or_null<DIType>(const_cast<MDNode*>(TyNode));
-    IGC_ASSERT(Ty);
+    DIType* const Ty = cast_or_null<DIType>(const_cast<MDNode*>(TyNode));
+    IGC_ASSERT(nullptr != Ty);
 
     // Construct the context before querying for the existence of the DIE in case
     // such construction creates the DIE.
-    DIE* ContextDIE = getOrCreateContextDIE(resolve(Ty->getScope()));
-    IGC_ASSERT(ContextDIE);
+    DIE* const ContextDIE = getOrCreateContextDIE(resolve(Ty->getScope()));
+    IGC_ASSERT(nullptr != ContextDIE);
 
     DIE* TyDIE = getDIE(Ty);
-    if (TyDIE)
+    if (nullptr != TyDIE)
         return TyDIE;
 
     // Create new type.
@@ -721,7 +720,7 @@ DIE* CompileUnit::getOrCreateTypeDIE(const MDNode* TyNode)
         constructTypeDIE(*TyDIE, cast<DISubroutineType>(Ty));
     else
     {
-        IGC_ASSERT(isa<DIDerivedType>(Ty) && "Unknown kind of DIType");
+        IGC_ASSERT_MESSAGE(isa<DIDerivedType>(Ty), "Unknown kind of DIType");
         constructTypeDIE(*TyDIE, cast<DIDerivedType>(Ty));
     }
 
@@ -731,7 +730,7 @@ DIE* CompileUnit::getOrCreateTypeDIE(const MDNode* TyNode)
 /// addType - Add a new type attribute to the specified entity.
 void CompileUnit::addType(DIE* Entity, DIType* Ty, dwarf::Attribute Attribute)
 {
-    IGC_ASSERT(Ty && "Trying to add a type that doesn't exist?");
+    IGC_ASSERT_MESSAGE(nullptr != Ty, "Trying to add a type that doesn't exist?");
 
     // Check for pre-existence.
     DIEEntry* Entry = getDIEEntry(Ty);
@@ -809,7 +808,8 @@ void CompileUnit::addGTRelativeLocation(DIEBlock* Block, VISAVariableLocation* L
             // 7 DW_OP_deref
             // 8 DW_OP_plus_uconst <offset>
 
-            IGC_ASSERT(Loc->HasSurface() && !Loc->IsInGlobalAddrSpace() && "Missing surface for variable location");
+            IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
+            IGC_ASSERT_MESSAGE(false == Loc->IsInGlobalAddrSpace(), "Missing surface for variable location");
 
             uint64_t btiBaseAddr = 0;                   // TBD MT
             uint64_t bti = Loc->GetSurface();           // BTI
@@ -852,7 +852,7 @@ void CompileUnit::addBindlessOrStatelessLocation(DIEBlock* Block, VISAVariableLo
 {
     if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
     {
-        IGC_ASSERT(Loc->IsInGlobalAddrSpace() && "Neither bindless nor stateless");
+        IGC_ASSERT_MESSAGE(Loc->IsInGlobalAddrSpace(), "Neither bindless nor stateless");
 
         if (Loc->HasLocation())  // Is offset available as literal?
         {
@@ -899,7 +899,7 @@ void CompileUnit::addBindlessOrStatelessLocation(DIEBlock* Block, VISAVariableLo
         }
         else
         {
-            IGC_ASSERT(false && "Unexpected bindless or stateless variable - offset neither literal nor in register");
+            IGC_ASSERT_MESSAGE(0, "Unexpected bindless or stateless variable - offset neither literal nor in register");
         }
     }
 }
@@ -911,7 +911,7 @@ void CompileUnit::addStatelessLocation(DIEBlock* Block, VISAVariableLocation* Lo
     {
         uint32_t statelessBaseAddr = 0; // TBD MT use virtual debug register with Stateless Surface State Base Address
 
-        IGC_ASSERT(Loc->HasSurface() && "Missing surface for variable location");
+        IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
 
         addBindlessOrStatelessLocation(Block, Loc, statelessBaseAddr);
     }
@@ -924,7 +924,7 @@ void CompileUnit::addBindlessSurfaceLocation(DIEBlock* Block, VISAVariableLocati
     {
         uint32_t bindlessSurfBaseAddr = 0; // TBD MT use virtual debug register with Bindless Surface State Base Address
 
-        IGC_ASSERT(Loc->HasSurface() && "Missing surface for variable location");
+        IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
 
         addBindlessOrStatelessLocation(Block, Loc, bindlessSurfBaseAddr);
     }
@@ -937,7 +937,7 @@ void CompileUnit::addBindlessSamplerLocation(DIEBlock* Block, VISAVariableLocati
     {
         uint32_t bindlessSamplerBaseAddr = 0; // TBD MT use virtual debug register with Bindless Sampler State Base Address
 
-        IGC_ASSERT(Loc->IsSampler() && "Missing sampler for variable location");
+        IGC_ASSERT_MESSAGE(Loc->IsSampler(), "Missing sampler for variable location");
 
         addBindlessOrStatelessLocation(Block, Loc, bindlessSamplerBaseAddr);
     }
@@ -966,7 +966,7 @@ void CompileUnit::addSLMLocation(DIEBlock* Block, VISAVariableLocation* Loc)
 {
     if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
     {
-        IGC_ASSERT(Loc->IsSLM() && "SLM expected as variable location");
+        IGC_ASSERT_MESSAGE(Loc->IsSLM(), "SLM expected as variable location");
 
         // For SLM addressing using address <slm - va> available as literal
         // 1 DW_OP_addr <slm - va>
@@ -1626,8 +1626,7 @@ DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
         return SPDie;
     }
 
-    IGC_ASSERT(SPTy->getTag() == dwarf::DW_TAG_subroutine_type &&
-        "the type of a subprogram should be a subroutine");
+    IGC_ASSERT_MESSAGE(SPTy->getTag() == dwarf::DW_TAG_subroutine_type, "the type of a subprogram should be a subroutine");
 
     DITypeRefArray Args = SPTy->getTypeArray();
     // Add a return type. If this is a type like a C/C++ void type we don't add a
@@ -1944,14 +1943,13 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
             numOperands here indicates complex addressing is used. But for complex addressing,
             9th operand should be a metadata node whereas here integer nodes are added.
             */
-            IGC_ASSERT(!(DV.variableHasComplexAddress() || DV.isBlockByrefVariable()) &&
-                "Should handle complex address");
+            IGC_ASSERT_MESSAGE(!(DV.variableHasComplexAddress() || DV.isBlockByrefVariable()), "Should handle complex address");
 #endif
             DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
 
             if (!Loc.IsInMemory())
             {
-                IGC_ASSERT(Loc.IsRegister() && "Direct location must be register");
+                IGC_ASSERT_MESSAGE(Loc.IsRegister(), "Direct location must be register");
                 addRegisterOp(Block, Loc.GetRegister());
             }
             else
@@ -2188,7 +2186,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
                     addSimdLane(Block, var, loc, false); // Emit SIMD lane for GRF (unpacked)
 
                     regNum = regNum + numOfRegs;
-                    IGC_ASSERT(((DD->simdWidth < 32) && (grfSize == 32)) && "SIMD32 debugging not supported");
+                    IGC_ASSERT_MESSAGE(((DD->simdWidth < 32) && (grfSize == 32)), "SIMD32 debugging not supported");
                 }
             }
         }
@@ -2314,8 +2312,7 @@ DIE* CompileUnit::getOrCreateStaticMemberDIE(DIDerivedType* DT)
     // Construct the context before querying for the existence of the DIE in case
     // such construction creates the DIE.
     DIE* ContextDIE = getOrCreateContextDIE(resolve(DT->getScope()));
-    IGC_ASSERT(dwarf::isType(ContextDIE->getTag()) &&
-        "Static member should belong to a type.");
+    IGC_ASSERT_MESSAGE(dwarf::isType(ContextDIE->getTag()), "Static member should belong to a type.");
 
     DIE* StaticMemberDIE = getDIE(DT);
     if (StaticMemberDIE)

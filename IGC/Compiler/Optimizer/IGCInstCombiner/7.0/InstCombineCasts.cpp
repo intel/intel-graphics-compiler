@@ -347,7 +347,7 @@ static bool canAlwaysEvaluateInType(Value* V, Type* Ty) {
 /// Filter out values that we can not evaluate in the destination type for free.
 /// This is a helper for canEvaluate*.
 static bool canNotEvaluateInType(Value* V, Type* Ty) {
-    IGC_ASSERT(!isa<Constant>(V) && "Constant should already be handled.");
+    IGC_ASSERT_MESSAGE(!isa<Constant>(V), "Constant should already be handled.");
     if (!isa<Instruction>(V))
         return true;
     // We don't extend or shrink something that has multiple uses --  doing so
@@ -394,7 +394,7 @@ static bool canEvaluateTruncated(Value* V, Type* Ty, InstCombiner& IC,
         // UDiv and URem can be truncated if all the truncated bits are zero.
         uint32_t OrigBitWidth = OrigTy->getScalarSizeInBits();
         uint32_t BitWidth = Ty->getScalarSizeInBits();
-        IGC_ASSERT(BitWidth < OrigBitWidth && "Unexpected bitwidths!");
+        IGC_ASSERT_MESSAGE(BitWidth < OrigBitWidth, "Unexpected bitwidths!");
         APInt Mask = APInt::getBitsSetFrom(OrigBitWidth, BitWidth);
         if (IC.MaskedValueIsZero(I->getOperand(0), Mask, 0, CxtI) &&
             IC.MaskedValueIsZero(I->getOperand(1), Mask, 0, CxtI)) {
@@ -524,9 +524,7 @@ static Instruction* foldVecTruncToExtElt(TruncInst& Trunc, InstCombiner& IC) {
 /// Rotate left/right may occur in a wider type than necessary because of type
 /// promotion rules. Try to narrow all of the component instructions.
 Instruction* InstCombiner::narrowRotate(TruncInst& Trunc) {
-    IGC_ASSERT((isa<VectorType>(Trunc.getSrcTy()) ||
-        shouldChangeType(Trunc.getSrcTy(), Trunc.getType())) &&
-        "Don't narrow to an illegal scalar type");
+    IGC_ASSERT_MESSAGE((isa<VectorType>(Trunc.getSrcTy()) || shouldChangeType(Trunc.getSrcTy(), Trunc.getType())), "Don't narrow to an illegal scalar type");
 
     // First, find an or'd pair of opposite shifts with the same shifted operand:
     // trunc (or (lshr ShVal, ShAmt0), (shl ShVal, ShAmt1))
@@ -675,8 +673,7 @@ static Instruction* shrinkSplatShuffle(TruncInst& Trunc,
 static Instruction* shrinkInsertElt(CastInst& Trunc,
     InstCombiner::BuilderTy& Builder) {
     Instruction::CastOps Opcode = Trunc.getOpcode();
-    IGC_ASSERT((Opcode == Instruction::Trunc || Opcode == Instruction::FPTrunc) &&
-        "Unexpected instruction for shrinking");
+    IGC_ASSERT_MESSAGE((Opcode == Instruction::Trunc || Opcode == Instruction::FPTrunc), "Unexpected instruction for shrinking");
 
     auto* InsElt = dyn_cast<InsertElementInst>(Trunc.getOperand(0));
     if (!InsElt || !InsElt->hasOneUse())
@@ -1100,8 +1097,7 @@ Instruction* InstCombiner::visitZExt(ZExtInst& CI) {
     unsigned BitsToClear;
     if ((DestTy->isVectorTy() || shouldChangeType(SrcTy, DestTy)) &&
         canEvaluateZExtd(Src, DestTy, BitsToClear, *this, &CI)) {
-        IGC_ASSERT(BitsToClear <= SrcTy->getScalarSizeInBits() &&
-            "Can't clear more bits than in SrcTy");
+        IGC_ASSERT_MESSAGE(BitsToClear <= SrcTy->getScalarSizeInBits(), "Can't clear more bits than in SrcTy");
 
         // Okay, we can transform this!  Insert the new expression now.
         LLVM_DEBUG(
@@ -1309,8 +1305,7 @@ Instruction* InstCombiner::transformSExtICmp(ICmpInst* ICI, Instruction& CI) {
 /// This function works on both vectors and scalars.
 ///
 static bool canEvaluateSExtd(Value* V, Type* Ty) {
-    IGC_ASSERT(V->getType()->getScalarSizeInBits() < Ty->getScalarSizeInBits() &&
-        "Can't sign extend type to a smaller type");
+    IGC_ASSERT_MESSAGE(V->getType()->getScalarSizeInBits() < Ty->getScalarSizeInBits(), "Can't sign extend type to a smaller type");
     if (canAlwaysEvaluateInType(V, Ty))
         return true;
     if (canNotEvaluateInType(V, Ty))
@@ -1895,8 +1890,7 @@ static unsigned getTypeSizeIndex(unsigned Value, Type* Ty) {
 static bool collectInsertionElements(Value* V, unsigned Shift,
     SmallVectorImpl<Value*>& Elements,
     Type* VecEltTy, bool isBigEndian) {
-    IGC_ASSERT(isMultipleOfTypeSize(Shift, VecEltTy) &&
-        "Shift should be a multiple of the element type size");
+    IGC_ASSERT_MESSAGE(isMultipleOfTypeSize(Shift, VecEltTy), "Shift should be a multiple of the element type size");
 
     // Undef values never contribute useful bits to the result.
     if (isa<UndefValue>(V)) return true;

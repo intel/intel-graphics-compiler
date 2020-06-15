@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/BinaryFormat/ELF.h"
+#include "Probe/Assertion.h"
 
 using namespace IGC;
 using namespace iOpenCL;
@@ -349,7 +350,8 @@ void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize,
     }
     // otherwise, using arg_type::local_id format
     // byte size for one id, have to be grf align
-    assert(simdSize && grfSize);
+    IGC_ASSERT(simdSize);
+    IGC_ASSERT(grfSize);
     // each id takes 2 bytes
     int32_t per_id_size = 2 * simdSize;
     per_id_size = (per_id_size % grfSize) == 0 ?

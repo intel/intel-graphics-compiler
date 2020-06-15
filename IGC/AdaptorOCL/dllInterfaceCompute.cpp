@@ -292,7 +292,7 @@ bool CIGCTranslationBlock::Translate(
     }
     else
     {
-        IGC_ASSERT(0 && "Unsupported input format");
+        IGC_ASSERT_MESSAGE(0, "Unsupported input format");
         return false;
     }
     return false;
@@ -482,7 +482,7 @@ bool ProcessElfInput(
                       llvm::SMDiagnostic(pInputBuffer->getBufferIdentifier(), llvm::SourceMgr::DK_Error,
                           EIB.message());
                   });
-                  IGC_ASSERT(errMsg.empty() && "parsing bitcode failed");
+                  IGC_ASSERT_MESSAGE(errMsg.empty(), "parsing bitcode failed");
               }
 
               InputModule = std::move(errorOrModule.get());
@@ -575,7 +575,7 @@ bool ProcessElfInput(
           }
           else
           {
-            IGC_ASSERT(0 && "Unrecognized output format when processing ELF input");
+            IGC_ASSERT_MESSAGE(0, "Unrecognized output format when processing ELF input");
             success = false;
           }
         }
@@ -722,7 +722,7 @@ bool ParseInput(
     if (pKernelModule == nullptr)
     {
         err.print(nullptr, llvm::errs(), false);
-        IGC_ASSERT(false && "Parsing module failed!");
+        IGC_ASSERT_MESSAGE(0, "Parsing module failed!");
     }
     if (pKernelModule == nullptr)
     {
@@ -760,7 +760,7 @@ bool ReadSpecConstantsFromSPIRV(std::istream &IS, std::vector<std::pair<uint32_t
             }
             else
             {
-                IGC_ASSERT(0 && "Wrong instruction opcode, shouldn't be here!");
+                IGC_ASSERT_MESSAGE(0, "Wrong instruction opcode, shouldn't be here!");
                 return false;
             }
         }
@@ -791,7 +791,7 @@ void overrideOCLProgramBinary(OpenCLProgramContext &Ctx, char *&binaryOutput, in
     char *newBinaryOutput = new char[newBinarySize];
     f.read(newBinaryOutput, newBinarySize);
 
-    IGC_ASSERT(f && "Not fully read!");
+    IGC_ASSERT_MESSAGE(f.good(), "Not fully read!");
 
     delete[] binaryOutput;
     binaryOutput = newBinaryOutput;
@@ -1028,22 +1028,21 @@ bool TranslateBuild(
                     _snprintf(ResNumber, sizeof(ResNumber), "#%d", OCL_BC_64);
                     break;
                 default:
-                    IGC_ASSERT(0 && "Unknown bitness of compiled module");
+                    IGC_ASSERT_MESSAGE(0, "Unknown bitness of compiled module");
                 }
 
                 // the MemoryBuffer becomes owned by the module and does not need to be managed
                 pSizeTBuffer.reset(llvm::LoadBufferFromResource(ResNumber, "BC"));
-                IGC_ASSERT(pSizeTBuffer && "Error loading builtin resource");
+                IGC_ASSERT_MESSAGE(pSizeTBuffer, "Error loading builtin resource");
 
                 llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
                     getLazyBitcodeModule(pSizeTBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
                 if (llvm::Error EC = ModuleOrErr.takeError())
-                    IGC_ASSERT(0 && "Error lazily loading bitcode for size_t builtins");
+                    IGC_ASSERT_MESSAGE(0, "Error lazily loading bitcode for size_t builtins");
                 else
                     BuiltinSizeModule = std::move(*ModuleOrErr);
 
-                IGC_ASSERT(BuiltinSizeModule
-                    && "Error loading builtin module from buffer");
+                IGC_ASSERT_MESSAGE(BuiltinSizeModule, "Error loading builtin module from buffer");
             }
 
             BuiltinGenericModule->setDataLayout(BuiltinSizeModule->getDataLayout());
@@ -1237,7 +1236,7 @@ bool CIGCTranslationBlock::Initialize(
         (m_DataFormatInput == TB_DATA_FORMAT_SPIR_V) &&
         isDeviceBinaryFormat(m_DataFormatOutput);
 
-    IGC_ASSERT(validTBChain && "Invalid TB Chain");
+    IGC_ASSERT_MESSAGE(validTBChain, "Invalid TB Chain");
 
     return validTBChain;
 }

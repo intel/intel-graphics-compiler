@@ -301,7 +301,8 @@ void MergeURBWrites::MergeInstructions()
         // merge per-channel write masks
         auto lowWriteMask = GetChannelMask(ii->second.GetInst());
         auto highWriteMask = GetChannelMask(next->second.GetInst());
-        IGC_ASSERT(lowWriteMask <= 0x0F && highWriteMask <= 0x0F);
+        IGC_ASSERT(lowWriteMask <= 0x0F);
+        IGC_ASSERT(highWriteMask <= 0x0F);
         auto mergedMask = lowWriteMask | (highWriteMask << 4);
 
         // Move the data operands from the earlier instruction to the later instruction.

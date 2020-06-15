@@ -130,7 +130,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst& I)
             const unsigned int shaderResourceViewMcsMaskIndex = textureIndex / BITS_PER_QWORD;
             const unsigned long long resourceViewMcsMaskElement = ctx->getModuleMetaData()->m_ShaderResourceViewMcsMask[shaderResourceViewMcsMaskIndex];
             const unsigned int resourceViewMaskTextureBit = textureIndex % BITS_PER_QWORD;
-            IGC_ASSERT(textureIndex <= 127 && "Texture index is incorrectly extracted from ld_mcs");
+            IGC_ASSERT_MESSAGE(textureIndex <= 127, "Texture index is incorrectly extracted from ld_mcs");
 
             unsigned long long resultBit = resourceViewMcsMaskElement >> resourceViewMaskTextureBit;
             if ((resultBit & 1) == 0)

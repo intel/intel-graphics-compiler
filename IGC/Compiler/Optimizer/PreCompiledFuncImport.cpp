@@ -399,10 +399,10 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                     llvm::parseBitcodeFile(MemoryBufferRef(BitRef.str(), ""), M.getContext());
                 if (llvm::Error EC = ModuleOrErr.takeError())
                 {
-                    IGC_ASSERT(false && "llvm getLazyBitcodeModule - FAILED to parse bitcode");
+                    IGC_ASSERT_MESSAGE(0, "llvm getLazyBitcodeModule - FAILED to parse bitcode");
                 }
                 std::unique_ptr<llvm::Module> m_pBuiltinModule = std::move(*ModuleOrErr);
-                IGC_ASSERT(m_pBuiltinModule && "llvm version mismatch - could not load llvm module");
+                IGC_ASSERT_MESSAGE(m_pBuiltinModule, "llvm version mismatch - could not load llvm module");
 
                 // Set target triple and datalayout to the original module (emulation func
                 // works for both 64 & 32 bit applications).
@@ -414,7 +414,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
 
                 if (ld.linkInModule(std::move(m_pBuiltinModule)))
                 {
-                    IGC_ASSERT(false && "Error linking the two modules");
+                    IGC_ASSERT_MESSAGE(0, "Error linking the two modules");
                 }
                 m_libModuleAlreadyImported[i] = true;
                 m_pBuiltinModule = nullptr;
@@ -654,7 +654,7 @@ void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunction
         elementIndex = 5;
         break;
     default:
-        IGC_ASSERT(false && "Unexpected vector size");
+        IGC_ASSERT_MESSAGE(0, "Unexpected vector size");
         return;
     }
 
@@ -705,7 +705,7 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
     {
         if (inst.getDestTy()->isVectorTy())
         {
-            IGC_ASSERT(false && "Unexpected vector size");
+            IGC_ASSERT_MESSAGE(0, "Unexpected vector size");
             return;
         }
 
@@ -1614,7 +1614,7 @@ void PreCompiledFuncImport::replaceFunc(Function* old_func, Function* new_func)
         i->eraseFromParent();
     }
 
-    IGC_ASSERT(old_func->use_empty() && "old_func should have no use at this point!");
+    IGC_ASSERT_MESSAGE(old_func->use_empty(), "old_func should have no use at this point!");
     // Now, after changing funciton signature,
     // and validate there are no calls to the old function we can erase it.
     //

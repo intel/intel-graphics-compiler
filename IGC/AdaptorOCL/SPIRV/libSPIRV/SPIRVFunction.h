@@ -102,7 +102,7 @@ public:
 protected:
   void validate()const override {
     SPIRVValue::validate();
-    IGC_ASSERT(ParentFunc && "Invalid parent function");
+    IGC_ASSERT_MESSAGE(ParentFunc, "Invalid parent function");
   }
   _SPIRV_DEF_DEC2(Type, Id)
 private:
@@ -162,7 +162,7 @@ public:
   _SPIRV_DCL_DEC
   void validate()const {
     SPIRVValue::validate();
-    IGC_ASSERT(FuncType && "Invalid func type");
+    IGC_ASSERT_MESSAGE(FuncType, "Invalid func type");
   }
 
 private:

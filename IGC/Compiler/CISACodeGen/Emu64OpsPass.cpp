@@ -1393,7 +1393,7 @@ bool InstExpander::visitFPToSI(FPToSIInst& F2S) {
         Sign = IRB->CreateExtractElement(Sign, IRB->getInt32(1));
     }
     else {
-        IGC_ASSERT(SrcTy->isFloatTy() && "Unknown float type!");
+        IGC_ASSERT_MESSAGE(SrcTy->isFloatTy(), "Unknown float type!");
         Sign = IRB->CreateBitCast(Src, IRB->getInt32Ty());
     }
     Sign = IRB->CreateAShr(Sign, 31);

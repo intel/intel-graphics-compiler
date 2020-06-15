@@ -674,8 +674,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
     // Start to merge loads.
 
-    IGC_ASSERT(NumElts > 1
-        && "It's expected to merge into at least 2-element vector!");
+    IGC_ASSERT_MESSAGE(1 < NumElts, "It's expected to merge into at least 2-element vector!");
 
     // Try to find the profitable vector length first.
     unsigned s = LoadsToMerge.size();
@@ -711,9 +710,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     // new pointer.
     LoadInst* FirstLoad = std::get<0>(LoadsToMerge.front());
     int64_t FirstOffset = std::get<1>(LoadsToMerge.front());
-    IGC_ASSERT(FirstOffset <= 0 &&
-        "The 1st load should be either the leading load or "
-        "load with smaller offset!");
+    IGC_ASSERT_MESSAGE(FirstOffset <= 0, "The 1st load should be either the leading load or load with smaller offset!");
 
     // Next we need to check alignment
     if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge, NumElts))
@@ -731,7 +728,8 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     if (FirstOffset < 0) {
         // If the first load is not the leading load, re-calculate the pointer
         // from the pointer of the leading load.
-        IGC_ASSERT(FirstOffset % LdScalarSize == 0 && "Remainder is expected to be 0!");
+        IGC_ASSERT(LdScalarSize);
+        IGC_ASSERT_MESSAGE(FirstOffset % LdScalarSize == 0, "Remainder is expected to be 0!");
 
         Value* Idx = Builder.getInt64(FirstOffset / LdScalarSize);
         Type* Ty =
@@ -1013,8 +1011,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         NumElts += getNumElements(Ty);
     }
 
-    IGC_ASSERT(NumElts > 1 &&
-        "It's expected to merge into at least 2-element vector!");
+    IGC_ASSERT_MESSAGE(1 < NumElts, "It's expected to merge into at least 2-element vector!");
 
     // Try to find the profitable vector length first.
     unsigned s = StoresToMerge.size();
@@ -1396,7 +1393,9 @@ Value*
 SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
     ExtensionKind& Extension, unsigned Depth,
     const DataLayout* DL) {
-    IGC_ASSERT(V->getType()->isIntegerTy() && "Not an integer value");
+    IGC_ASSERT(nullptr != V);
+    IGC_ASSERT(nullptr != V->getType());
+    IGC_ASSERT_MESSAGE(V->getType()->isIntegerTy(), "Not an integer value");
 
     // Limit our recursion depth.
     if (Depth == 16) {

@@ -134,7 +134,7 @@ namespace IGC
                 CASE(VISA_DOTALL);
                 CASE(VISA_SLOWPATH);
                 CASE(VISA_NOBXMLENCODER);
-            default : IGC_ASSERT(false && "unknown DebugFlag"); return "<unknown>";
+            default : IGC_ASSERT_MESSAGE(0, "unknown DebugFlag"); return "<unknown>";
             }
 #undef CASE
         }
@@ -159,7 +159,7 @@ namespace IGC
                 CASE(LLVM_OPT_STAT_TEXT);
                 CASE(TIME_STATS_TEXT);
                 CASE(TIME_STATS_CSV);
-            default : IGC_ASSERT(false && "unknown DumpType"); return "<unknown>";
+            default : IGC_ASSERT_MESSAGE(0, "unknown DumpType"); return "<unknown>";
             }
 #undef CASE
         }
@@ -171,7 +171,7 @@ namespace IGC
             {
                 CASE(ODS);
                 CASE(FILE);
-            default : IGC_ASSERT(false && "unknown DumpLoc"); return "<unknown>";
+            default : IGC_ASSERT_MESSAGE(0, "unknown DumpLoc"); return "<unknown>";
             }
 #undef CASE
         }
@@ -259,9 +259,8 @@ namespace IGC
         void IGC_DEBUG_API_CALL SetDebugFlag( DebugFlag flag, bool enabled )
         {
 #if defined( _DEBUG ) || defined( _INTERNAL )
-            IGC_ASSERT((0 <= static_cast<int>(flag)) &&
-                        (static_cast<int>(flag) < static_cast<int> (DebugFlag::END)) &&
-                        "range sanity check");
+            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(flag)) &&
+                        (static_cast<int>(flag) < static_cast<int> (DebugFlag::END)), "range sanity check");
             g_debugFlags[ static_cast<int>( flag ) ] = enabled;
 #else
             (void) flag;
@@ -287,9 +286,8 @@ namespace IGC
 
             }
 #endif
-            IGC_ASSERT((0 <= static_cast<int>(flag)) &&
-                        (static_cast<int>(flag) < static_cast<int> (DebugFlag::END)) &&
-                        "range sanity check");
+            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(flag)) &&
+                        (static_cast<int>(flag) < static_cast<int> (DebugFlag::END)), "range sanity check");
             return g_debugFlags[ static_cast<int>(flag) ];
 #else
             (void) flag;
@@ -300,14 +298,13 @@ namespace IGC
         void IGC_DEBUG_API_CALL SetDumpFlag( DumpType type, DumpLoc loc, bool enabled )
         {
 #if defined( _DEBUG ) || defined( _INTERNAL )
-            IGC_ASSERT((0 <= static_cast<int>(type)) &&
-                        (static_cast<int>(type) < static_cast<int> (DumpType::END)) &&
-                        "range sanity check");
+            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(type)) &&
+                        (static_cast<int>(type) < static_cast<int> (DumpType::END)), "range sanity check");
             switch (loc)
             {
             case DumpLoc::ODS  : g_dumpFlags[ static_cast<int>(type) ].dumpODS  = enabled; break;
             case DumpLoc::FILE : g_dumpFlags[ static_cast<int>(type) ].dumpFile = enabled; break;
-            default            : IGC_ASSERT(false && "unreachable"); break;
+            default            : IGC_ASSERT_MESSAGE(0, "unreachable"); break;
             }
 #else
             (void) type;
@@ -319,9 +316,8 @@ namespace IGC
         bool IGC_DEBUG_API_CALL GetDumpFlag( DumpType type, DumpLoc loc )
         {
 #if defined( _DEBUG ) || defined( _INTERNAL )
-            IGC_ASSERT((0 <= static_cast<int>(type)) &&
-                        (static_cast<int>(type) < static_cast<int> (DumpType::END)) &&
-                        "range sanity check");
+            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(type)) &&
+                        (static_cast<int>(type) < static_cast<int> (DumpType::END)), "range sanity check");
 #if defined(_WIN32 )|| defined( _WIN64 )
             //Disable Dump  for OS Applications
             if (GetModuleHandleA("dwm.exe") || GetModuleHandleA("explorer.exe"))
@@ -333,7 +329,7 @@ namespace IGC
             {
             case DumpLoc::ODS  : return g_dumpFlags[ static_cast<int>(type) ].dumpODS;
             case DumpLoc::FILE : return g_dumpFlags[ static_cast<int>(type) ].dumpFile;
-            default            : IGC_ASSERT(false && "unreachable"); return false;
+            default            : IGC_ASSERT_MESSAGE(0, "unreachable"); return false;
             }
 #else
             (void) type;

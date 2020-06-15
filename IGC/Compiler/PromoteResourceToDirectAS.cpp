@@ -102,7 +102,7 @@ Type* GetBufferAccessType(Instruction* inst)
         }
     }
 
-    IGC_ASSERT(false && "Unsupported buffer access intrinsic");
+    IGC_ASSERT_MESSAGE(0, "Unsupported buffer access intrinsic");
     return inst->getType();
 }
 
@@ -247,7 +247,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
                     FunctionMetaData* funcMD = &modMD->FuncMD[function];
                     ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
                     ArgAllocMD* argInfo = &resAllocMD->argAllocMDList[argPtr->getArgNo()];
-                    IGC_ASSERT((size_t)argPtr->getArgNo() < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds Error");
+                    IGC_ASSERT_MESSAGE((size_t)argPtr->getArgNo() < resAllocMD->argAllocMDList.size(), "ArgAllocMD List Out of Bounds Error");
 
                     if (argInfo->type == ResourceTypeEnum::BindlessUAVResourceType)
                     {
@@ -377,7 +377,7 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
         }
         else
         {
-            IGC_ASSERT(false && "Can not patch unsupported instruction!");
+            IGC_ASSERT_MESSAGE(0, "Can not patch unsupported instruction!");
             return false;
         }
     }
@@ -500,7 +500,7 @@ Value* PromoteResourceToDirectAS::getOffsetValue(Value* srcPtr, int& bufferOffse
     if (offsetEntry != m_SrcPtrToBufferOffsetMap.end())
     {
         GenIntrinsicInst* runtimevalue = dyn_cast<GenIntrinsicInst>(offsetEntry->second);
-        IGC_ASSERT(runtimevalue && "Buffer offset must be a runtime value");
+        IGC_ASSERT_MESSAGE(runtimevalue, "Buffer offset must be a runtime value");
         bufferOffsetHandle = (int)llvm::cast<llvm::ConstantInt>(runtimevalue->getOperand(0))->getZExtValue();
         return offsetEntry->second;
     }
@@ -508,7 +508,7 @@ Value* PromoteResourceToDirectAS::getOffsetValue(Value* srcPtr, int& bufferOffse
     {
         Instruction* srcPtrInst;
         srcPtrInst = dyn_cast<Instruction>(srcPtr);
-        IGC_ASSERT(srcPtrInst && "source pointer must have been an instruction");
+        IGC_ASSERT_MESSAGE(srcPtrInst, "source pointer must have been an instruction");
         IGCIRBuilder<> builder(srcPtrInst);
 
         Instruction* bufferOffset;

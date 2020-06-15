@@ -66,7 +66,7 @@ namespace IGC
         // m_NOSBufferSize is the additional space for cross-thread constant data (constants set by driver).
         curbeTotalDataLength = iSTD::Align(dimX_aligned * dimY * sizeof(ThreadPayloadEntry) + m_NOSBufferSize, alignedVal);
 
-        IGC_ASSERT((pThreadPayload == nullptr) && "Thread payload should be a null variable");
+        IGC_ASSERT_MESSAGE((pThreadPayload == nullptr), "Thread payload should be a null variable");
 
         unsigned threadPayloadEntries = curbeTotalDataLength / sizeof(ThreadPayloadEntry);
 
@@ -163,7 +163,9 @@ namespace IGC
 
     CVariable* CComputeShaderBase::CreateThreadIDinGroup(SGVUsage channelNum)
     {
-        IGC_ASSERT((channelNum <= THREAD_ID_IN_GROUP_Z) && (channelNum >= THREAD_ID_IN_GROUP_X) && "Thread id's are in 3 dimensions only");
+        IGC_ASSERT_MESSAGE((channelNum <= THREAD_ID_IN_GROUP_Z), "Thread id's are in 3 dimensions only");
+        IGC_ASSERT_MESSAGE((channelNum >= THREAD_ID_IN_GROUP_X), "Thread id's are in 3 dimensions only");
+
         switch(channelNum)
         {
         case THREAD_ID_IN_GROUP_X:
@@ -188,7 +190,8 @@ namespace IGC
             }
             return m_pThread_ID_in_Group_Z;
         default:
-            IGC_ASSERT(false && "Invalid channel number");
+            IGC_ASSERT_MESSAGE(0, "Invalid channel number");
+            break;
         }
 
         return nullptr;

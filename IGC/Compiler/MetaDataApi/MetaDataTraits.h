@@ -61,7 +61,7 @@ namespace IGC
 
             llvm::ValueAsMetadata* val = llvm::dyn_cast<llvm::ValueAsMetadata>(pMD);
             value_type pT = llvm::dyn_cast<T>(val->getValue());
-            IGC_ASSERT(pT && "can't load value, wrong node type");
+            IGC_ASSERT_MESSAGE(pT, "can't load value, wrong node type");
             return pT;
         }
 
@@ -108,7 +108,7 @@ namespace IGC
             }
 
             llvm::MDString* mdStr = llvm::dyn_cast<llvm::MDString>(pNode);
-            IGC_ASSERT(mdStr && "can't load string, wrong node type");
+            IGC_ASSERT_MESSAGE(mdStr, "can't load string, wrong node type");
             return mdStr->getString();
         }
 
@@ -147,7 +147,7 @@ namespace IGC
 
             llvm::ValueAsMetadata* val = llvm::dyn_cast<llvm::ValueAsMetadata>(pNode);
             llvm::ConstantInt* pval = llvm::dyn_cast<llvm::ConstantInt>(val->getValue());
-            IGC_ASSERT(pval && "can't load bool value, wrong node type");
+            IGC_ASSERT_MESSAGE(pval, "can't load bool value, wrong node type");
             return pval->isOne();
         }
 
@@ -281,7 +281,7 @@ namespace IGC
 
             llvm::ValueAsMetadata* val = llvm::dyn_cast<llvm::ValueAsMetadata>(pNode);
             llvm::ConstantInt* pval = llvm::dyn_cast<llvm::ConstantInt>(val->getValue());
-            IGC_ASSERT(pval && "can't load int value, wrong node type");
+            IGC_ASSERT_MESSAGE(pval, "can't load int value, wrong node type");
             return (int8_t)pval->getValue().getSExtValue();
         }
 
@@ -368,7 +368,7 @@ namespace IGC
             llvm::ValueAsMetadata* val = llvm::dyn_cast<llvm::ValueAsMetadata>(pNode);
             value_type pT = llvm::dyn_cast<llvm::Function>(
                 val->getValue()->stripPointerCasts());
-            IGC_ASSERT(pT && "can't load value, wrong node type");
+            IGC_ASSERT_MESSAGE(pT, "can't load value, wrong node type");
             return pT;
         }
 
@@ -406,7 +406,7 @@ namespace IGC
             }
 
             value_type pNode = llvm::dyn_cast<llvm::MDNode>(pMD);
-            IGC_ASSERT(pNode && "can't load value, wrong node type");
+            IGC_ASSERT_MESSAGE(pNode, "can't load value, wrong node type");
             return pNode;
         }
 

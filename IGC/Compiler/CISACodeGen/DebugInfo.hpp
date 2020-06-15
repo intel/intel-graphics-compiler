@@ -65,11 +65,7 @@ namespace IGC
 
         void addVISAModule(llvm::Function* F, VISAModule* m)
         {
-            auto it = m_VISAModules.find(F);
-            if (it != m_VISAModules.end())
-            {
-                IGC_ASSERT(false && "Reinserting VISA module for function");
-            }
+            IGC_ASSERT_MESSAGE(m_VISAModules.find(F) == m_VISAModules.end(), "Reinserting VISA module for function");
 
             m_VISAModules.insert(std::make_pair(F, m));
         }

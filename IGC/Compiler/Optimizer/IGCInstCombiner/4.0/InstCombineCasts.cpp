@@ -251,6 +251,7 @@ Value *InstCombiner::EvaluateInDifferentType(Value *V, Type *Ty,
   default:
     // TODO: Can handle more cases here.
     IGC_ASSERT_EXIT_MESSAGE(0, "Unreachable!");
+    break;
   }
 
   Res->takeName(I);
@@ -882,8 +883,7 @@ Instruction *InstCombiner::visitZExt(ZExtInst &CI) {
   unsigned BitsToClear = 0;
   if ((DestTy->isVectorTy() || ShouldChangeType(SrcTy, DestTy)) &&
       canEvaluateZExtd(Src, DestTy, BitsToClear, *this, &CI)) {
-    IGC_ASSERT(BitsToClear < SrcTy->getScalarSizeInBits() &&
-           "Unreasonable BitsToClear");
+    IGC_ASSERT_MESSAGE(BitsToClear < SrcTy->getScalarSizeInBits(), "Unreasonable BitsToClear");
 
     // Okay, we can transform this!  Insert the new expression now.
     DEBUG(dbgs() << "ICE: EvaluateInDifferentType converting expression type"
@@ -1088,8 +1088,7 @@ Instruction *InstCombiner::transformSExtICmp(ICmpInst *ICI, Instruction &CI) {
 /// This function works on both vectors and scalars.
 ///
 static bool canEvaluateSExtd(Value *V, Type *Ty) {
-  IGC_ASSERT(V->getType()->getScalarSizeInBits() < Ty->getScalarSizeInBits() &&
-         "Can't sign extend type to a smaller type");
+  IGC_ASSERT_MESSAGE(V->getType()->getScalarSizeInBits() < Ty->getScalarSizeInBits(), "Can't sign extend type to a smaller type");
   // If this is a constant, it can be trivially promoted.
   if (isa<Constant>(V))
     return true;
@@ -1643,11 +1642,15 @@ static Instruction *optimizeVectorResize(Value *InVal, VectorType *DestTy,
 }
 
 static bool isMultipleOfTypeSize(unsigned Value, Type *Ty) {
-  return Value % Ty->getPrimitiveSizeInBits() == 0;
+  const unsigned int primitiveSize = Ty->getPrimitiveSizeInBits();
+  IGC_ASSERT(primitiveSize);
+  return Value % primitiveSize == 0;
 }
 
 static unsigned getTypeSizeIndex(unsigned Value, Type *Ty) {
-  return Value / Ty->getPrimitiveSizeInBits();
+  const unsigned int primitiveSize = Ty->getPrimitiveSizeInBits();
+  IGC_ASSERT(primitiveSize);
+  return Value / primitiveSize;
 }
 
 /// V is a value which is inserted into a vector of VecEltTy.
@@ -1663,8 +1666,7 @@ static unsigned getTypeSizeIndex(unsigned Value, Type *Ty) {
 static bool collectInsertionElements(Value *V, unsigned Shift,
                                      SmallVectorImpl<Value *> &Elements,
                                      Type *VecEltTy, bool isBigEndian) {
-  IGC_ASSERT(isMultipleOfTypeSize(Shift, VecEltTy) &&
-         "Shift should be a multiple of the element type size");
+  IGC_ASSERT_MESSAGE(isMultipleOfTypeSize(Shift, VecEltTy), "Shift should be a multiple of the element type size");
 
   // Undef values never contribute useful bits to the result.
   if (isa<UndefValue>(V)) return true;

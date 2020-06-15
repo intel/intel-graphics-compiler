@@ -113,7 +113,7 @@ uint32_t RegisterEstimator::getNumLiveGRFAtInst(Instruction* I, uint16_t simdsiz
             ruse_curr += regs;
         }
     }
-    IGC_ASSERT(false && "Instruction is not in its BB, something wrong!");
+    IGC_ASSERT_MESSAGE(0, "Instruction is not in its BB, something wrong!");
     return 0;
 }
 
@@ -349,7 +349,7 @@ bool RegisterEstimator::runOnFunction(Function& F)
         RegUse regs = estimateNumOfRegs(Val);
         RegUse& ruse = estNumRegs.allUses[regs.rClass];
         ruse += regs;
-        IGC_ASSERT(valId < nVals && "ValueIds does not match IdValues!");
+        IGC_ASSERT_MESSAGE(valId < nVals, "ValueIds does not match IdValues!");
         m_ValueRegUses[valId] = regs;
     }
 
@@ -403,11 +403,11 @@ void RegisterEstimator::print(raw_ostream& OS, BasicBlock* BB, int dumpLevel)
     {
         int id = *I;
         Value* V = IdValues[id];
-        IGC_ASSERT(V && "Value should be in Value Map!");
+        IGC_ASSERT_MESSAGE(nullptr != V, "Value should be in Value Map!");
 
         const RegUse* pregs = getRegUse(id);
         if (pregs == nullptr) {
-            IGC_ASSERT(false && "Missing RegUse!");
+            IGC_ASSERT_MESSAGE(0, "Missing RegUse!");
             continue;
         }
 

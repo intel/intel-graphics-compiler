@@ -93,7 +93,7 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
             case GenISAIntrinsic::GenISA_simdBlockWrite:
                 break;
             default:
-                IGC_ASSERT(false && "Unsupported Instruction");
+                IGC_ASSERT_MESSAGE(0, "Unsupported Instruction");
                 return;
             }
         }
@@ -108,7 +108,7 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
         !isa<Argument>(srcPtr))
     {
         // Cannot trace the resource pointer back to it's source, cannot promote
-        IGC_ASSERT(false && "Stateless buffer pointer not traceable, cannot promote stateless to bindless");
+        IGC_ASSERT_MESSAGE(0, "Stateless buffer pointer not traceable, cannot promote stateless to bindless");
         return;
     }
 
@@ -130,7 +130,7 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
                 FunctionMetaData* funcMD = &modMD->FuncMD[&F];
                 ResourceAllocMD* resourceAlloc = &funcMD->resAllocMD;
                 ArgAllocMD* argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
-                IGC_ASSERT((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+                IGC_ASSERT_MESSAGE((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size(), "ArgAllocMD List Out of Bounds");
                 if (argInfo->type == ResourceTypeEnum::UAVResourceType)
                 {
                     // Update metadata to show bindless resource type

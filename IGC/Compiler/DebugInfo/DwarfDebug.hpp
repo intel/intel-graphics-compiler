@@ -193,7 +193,7 @@ namespace IGC
 #if LLVM_3_5
         bool variableHasComplexAddress()   const
         {
-            IGC_ASSERT(Var.isVariable() && "Invalid complex DbgVariable!");
+            IGC_ASSERT_MESSAGE(Var.isVariable(), "Invalid complex DbgVariable!");
             return Var.hasComplexAddress();
         }
 #endif
@@ -201,7 +201,7 @@ namespace IGC
 #if LLVM_3_5
         unsigned getNumAddrElements()      const
         {
-            IGC_ASSERT(Var.isVariable() && "Invalid complex DbgVariable!");
+            IGC_ASSERT_MESSAGE(Var.isVariable(), "Invalid complex DbgVariable!");
             return Var.getNumAddrElements();
         }
         uint64_t getAddrElement(unsigned i) const
@@ -493,7 +493,7 @@ namespace IGC
         llvm::MCSymbol* getLabelBeforeInsn(const llvm::Instruction* MI)
         {
             llvm::MCSymbol* Label = LabelsBeforeInsn.lookup(MI);
-            IGC_ASSERT(Label && "Didn't insert label before instruction");
+            IGC_ASSERT_MESSAGE(Label, "Didn't insert label before instruction");
             return Label;
         }
 

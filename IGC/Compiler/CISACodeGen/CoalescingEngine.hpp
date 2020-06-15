@@ -222,7 +222,6 @@ namespace IGC {
 
             inline void InitializeIndexWithCCRoot(int index, ElementNode* elNode)
             {
-                //            IGC_ASSERT(OffsetToCCMap.count(index) == 0);
                 OffsetToCCMap[index] = elNode;
 
                 ResizeBounds(index);
@@ -277,7 +276,8 @@ namespace IGC {
                     else
                     {
                         //Here comes a logic that will attach a new node to CC.
-                        IGC_ASSERT(OffsetToCCMap.count(index) && OffsetToCCMap[index]);
+                        IGC_ASSERT(OffsetToCCMap.count(index));
+                        IGC_ASSERT(OffsetToCCMap[index]);
 
                         llvm::Value* ccRootValue = OffsetToCCMap[index]->value;
 

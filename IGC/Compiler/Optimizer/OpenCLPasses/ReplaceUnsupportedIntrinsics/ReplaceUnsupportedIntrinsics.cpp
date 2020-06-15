@@ -191,7 +191,9 @@ namespace {
         Type* ETy = VTy ? VTy->getElementType() : Ty;
         uint32_t sBits = (unsigned int)ScalarVal->getType()->getPrimitiveSizeInBits();
         uint32_t nBits = (unsigned int)ETy->getPrimitiveSizeInBits();
-        IGC_ASSERT((nBits % sBits) == 0 && nBits <= 64 && "Type mismatch in replicateScalar!");
+        IGC_ASSERT(sBits);
+        IGC_ASSERT_MESSAGE((nBits % sBits) == 0, "Type mismatch in replicateScalar!");
+        IGC_ASSERT_MESSAGE(nBits <= 64, "Type mismatch in replicateScalar!");
         uint32_t ratio = nBits / sBits;
 
         IRBuilder<> Builder(InsertBefore);
@@ -310,7 +312,7 @@ namespace {
             Vecs[n++] = TyI32;
             CntI32 -= 1;
         }
-        IGC_ASSERT(CntI32 == 0 && "Did not handle all types of i32");
+        IGC_ASSERT_MESSAGE(CntI32 == 0, "Did not handle all types of i32");
 
         // CntI8 range [0, 3]
         if (CntI8 >= 2)
@@ -323,7 +325,7 @@ namespace {
             Vecs[n++] = TyI8;
             CntI8 -= 1;
         }
-        IGC_ASSERT(CntI8 == 0 && "Did not handle all types of i8");
+        IGC_ASSERT_MESSAGE(CntI8 == 0, "Did not handle all types of i8");
 
         L = n;
     }

@@ -106,7 +106,7 @@ unsigned LdShrink::getExtractIndexMask(LoadInst* LI) const {
         auto Idx = dyn_cast<ConstantInt>(EEI->getIndexOperand());
         if (!Idx)
             return 0;
-        IGC_ASSERT(Idx->getZExtValue() < 32 && "Index is out of range!");
+        IGC_ASSERT_MESSAGE(Idx->getZExtValue() < 32, "Index is out of range!");
         Mask |= (1 << Idx->getZExtValue());
     }
 

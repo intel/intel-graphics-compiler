@@ -666,7 +666,7 @@ static bool PHIsEqualValue(PHINode *PN, Value *NonPhiInVal,
 /// Return an existing non-zero constant if this phi node has one, otherwise
 /// return constant 1.
 static ConstantInt *GetAnyNonZeroConstInt(PHINode &PN) {
-  IGC_ASSERT(isa<IntegerType>(PN.getType()) && "Expect only intger type phi");
+  IGC_ASSERT_MESSAGE(isa<IntegerType>(PN.getType()), "Expect only intger type phi");
   for (Value *V : PN.operands())
     if (auto *ConstVA = dyn_cast<ConstantInt>(V))
       if (!ConstVA->isZeroValue())
@@ -834,8 +834,7 @@ Instruction *InstCombiner::SliceUpIllegalIntegerPHI(PHINode &FirstPhi) {
       // Otherwise, Create the new PHI node for this user.
       EltPHI = PHINode::Create(Ty, PN->getNumIncomingValues(),
                                PN->getName()+".off"+Twine(Offset), PN);
-      IGC_ASSERT(EltPHI->getType() != PN->getType() &&
-             "Truncate didn't shrink phi?");
+      IGC_ASSERT_MESSAGE(EltPHI->getType() != PN->getType(), "Truncate didn't shrink phi?");
 
       for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
         BasicBlock *Pred = PN->getIncomingBlock(i);

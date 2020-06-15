@@ -129,8 +129,7 @@ bool InstScalarizer::visitLoadInst(LoadInst& I) {
 
         // NOTE: It's assumed the element in this case is byte-addressable;
         // otherwise, it's broken.
-        IGC_ASSERT(TL->getTypeSizeInBits(EltTy) ==
-            TL->getTypeStoreSizeInBits(EltTy));
+        IGC_ASSERT(TL->getTypeSizeInBits(EltTy) == TL->getTypeStoreSizeInBits(EltTy));
 
         unsigned NumElts = OrigTy->getVectorNumElements();
         unsigned Elt = 0;
@@ -268,8 +267,7 @@ bool InstScalarizer::visitStoreInst(StoreInst& I) {
 
         // NOTE: It's assumed the element in this case is byte-addressable;
         // otherwise, it's broken.
-        IGC_ASSERT(TL->getTypeSizeInBits(EltTy) ==
-            TL->getTypeStoreSizeInBits(EltTy));
+        IGC_ASSERT(TL->getTypeSizeInBits(EltTy) == TL->getTypeStoreSizeInBits(EltTy));
 
         unsigned NumElts = OrigTy->getVectorNumElements();
         unsigned Elt = 0;
@@ -487,7 +485,8 @@ bool InstScalarizer::visitInsertElementInst(InsertElementInst& I) {
     // and previously received ValueSeq objects will become invalid.
     ValueSeq VecSeqCopy(*VecSeq);
 
-    ValueSeq* EltSeq; LegalizeAction Act;
+    ValueSeq* EltSeq = nullptr;
+    LegalizeAction Act;
     std::tie(EltSeq, Act) = TL->getLegalizedValues(I.getOperand(1));
 
     ValueSeq LegalVal;
@@ -496,6 +495,8 @@ bool InstScalarizer::visitInsertElementInst(InsertElementInst& I) {
         EltSeq = &LegalVal;
     }
 
+    IGC_ASSERT(nullptr != EltSeq);
+    IGC_ASSERT(EltSeq->size());
     IGC_ASSERT(VecSeqCopy.size() % EltSeq->size() == 0);
 
     unsigned NumElts = I.getOperand(0)->getType()->getVectorNumElements();

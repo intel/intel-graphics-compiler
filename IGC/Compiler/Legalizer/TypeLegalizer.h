@@ -190,8 +190,7 @@ namespace IGC {
                 return Width;
             }
 
-            /// getTypeStoreSize() - Similar to the same method in DL but IGC_ASSERT
-            /// on overflows.
+            /// getTypeStoreSize() - Similar to the same method in DL but assertion on overflows.
             unsigned getTypeStoreSize(Type* Ty) const {
                 uint64_t FullWidth = DL->getTypeStoreSize(Ty);
                 unsigned Width = static_cast<unsigned>(FullWidth);
@@ -200,8 +199,7 @@ namespace IGC {
                 return Width;
             }
 
-            /// getTypeStoreSizeInBits() - Similar to the same method in DL but IGC_ASSERT
-            /// on overflows.
+            /// getTypeStoreSizeInBits() - Similar to the same method in DL but assertion on overflows.
             unsigned getTypeStoreSizeInBits(Type* Ty) const {
                 uint64_t FullWidth = DL->getTypeStoreSizeInBits(Ty);
                 unsigned Width = static_cast<unsigned>(FullWidth);
@@ -430,8 +428,7 @@ namespace IGC {
 
             /// zext() - Zero-extend illegal integer values holding in promoted types.
             Value* zext(Value* V, Type* OrigTy) const {
-                IGC_ASSERT(V->getType()->getIntegerBitWidth() >
-                    OrigTy->getIntegerBitWidth());
+                IGC_ASSERT(V->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
 
                 APInt Mask = APInt::getAllOnesValue(OrigTy->getIntegerBitWidth());
                 Constant* C =
@@ -442,8 +439,7 @@ namespace IGC {
             std::pair<Value*, Value*>
                 zext(Value* LHS, Value* RHS, Type* OrigTy) const {
                 IGC_ASSERT(LHS->getType() == RHS->getType());
-                IGC_ASSERT(LHS->getType()->getIntegerBitWidth() >
-                    OrigTy->getIntegerBitWidth());
+                IGC_ASSERT(LHS->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
 
                 APInt Mask = APInt::getAllOnesValue(OrigTy->getIntegerBitWidth());
                 Constant* C =
@@ -455,8 +451,7 @@ namespace IGC {
 
             /// sext() - Sign-extend illegal integer values holding in promoted types.
             Value* sext(Value* V, Type* OrigTy) const {
-                IGC_ASSERT(V->getType()->getIntegerBitWidth() >
-                    OrigTy->getIntegerBitWidth());
+                IGC_ASSERT(V->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
 
                 Constant* ShAmt =
                     getIntN(V->getType()->getIntegerBitWidth(),
@@ -470,8 +465,7 @@ namespace IGC {
             std::pair<Value*, Value*>
                 sext(Value* LHS, Value* RHS, Type* OrigTy) const {
                 IGC_ASSERT(LHS->getType() == RHS->getType());
-                IGC_ASSERT(LHS->getType()->getIntegerBitWidth() >
-                    OrigTy->getIntegerBitWidth());
+                IGC_ASSERT(LHS->getType()->getIntegerBitWidth() > OrigTy->getIntegerBitWidth());
 
                 Constant* ShAmt =
                     getIntN(LHS->getType()->getIntegerBitWidth(),
@@ -575,7 +569,8 @@ namespace IGC {
                         IRB->CreateBitCast(Pack, Ty, Name + Twine(Part)));
                 }
 
-                IGC_ASSERT(++VI == VE && SrcOff == SrcWidth);
+                IGC_ASSERT(VI + 1 == VE);
+                IGC_ASSERT(SrcOff == SrcWidth);
             }
 
             /// getSuffix() - return suffix for legalization rewriting.

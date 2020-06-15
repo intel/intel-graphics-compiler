@@ -205,7 +205,7 @@ Argument* CImagesBI::CImagesUtils::findImageFromBufferPtr(const MetaDataUtils& M
     {
         FunctionMetaData funcMD = modMD->FuncMD.find(F)->second;
         ResourceAllocMD resAllocMD = funcMD.resAllocMD;
-        IGC_ASSERT(resAllocMD.argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+        IGC_ASSERT_MESSAGE(resAllocMD.argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
         for (auto& arg : F->args())
         {
             unsigned argNo = arg.getArgNo();
@@ -387,7 +387,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     modMD);
             }
 
-            IGC_ASSERT(false && "Found GetBufferPtr but cannot match it with an argument!");
+            IGC_ASSERT_MESSAGE(0, "Found GetBufferPtr but cannot match it with an argument!");
             return nullptr;
         }
         else if (CastInst * inst = dyn_cast<CastInst>(baseValue))
@@ -406,7 +406,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             }
             else
             {
-                IGC_ASSERT(false && "dynamic index");
+                IGC_ASSERT_MESSAGE(0, "dynamic index");
                 return nullptr;
             }
 
@@ -430,7 +430,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     }
                     else
                     {
-                        IGC_ASSERT(false && "dynamic index");
+                        IGC_ASSERT_MESSAGE(0, "dynamic index");
                         return nullptr;
                     }
                 }
@@ -443,7 +443,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                 }
                 else
                 {
-                    IGC_ASSERT(false && "unknown construct!");
+                    IGC_ASSERT_MESSAGE(0, "unknown construct!");
                     return nullptr;
                 }
             }
@@ -506,7 +506,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             }
             else
             {
-                IGC_ASSERT(getElementPtr && "Expected GEP instruction.");
+                IGC_ASSERT_MESSAGE(getElementPtr, "Expected GEP instruction.");
                 return nullptr;
             }
         }
@@ -754,7 +754,7 @@ public:
         }
 
         // The sampler is not an argument, make sure it's a constant
-        IGC_ASSERT(isa<ConstantInt>(samplerParam) && "Sampler must be a global variable or a constant");
+        IGC_ASSERT_MESSAGE(isa<ConstantInt>(samplerParam), "Sampler must be a global variable or a constant");
         ConstantInt* constSampler = cast<ConstantInt>(samplerParam);
         int samplerValue = int_cast<int>(constSampler->getZExtValue());
 
@@ -824,7 +824,7 @@ public:
 #endif // RELEASE INTERNAL||DEBUG
 
             default:
-                IGC_ASSERT(false && "Invalid sampler type");
+                IGC_ASSERT_MESSAGE(0, "Invalid sampler type");
                 break;
             }
 
@@ -841,7 +841,7 @@ public:
                 inlineSamplerMD.MinFilterType = (iOpenCL::SAMPLER_MAPFILTER_LINEAR);
                 break;
             default:
-                IGC_ASSERT(false && "Filter Type must have value");
+                IGC_ASSERT_MESSAGE(0, "Filter Type must have value");
                 break;
             }
 
@@ -894,7 +894,7 @@ public:
 #endif // RELEASE INTERNAL||DEBUG
 
             default:
-                IGC_ASSERT(false && "Invalid sampler type");
+                IGC_ASSERT_MESSAGE(0, "Invalid sampler type");
                 break;
             }
 
@@ -907,7 +907,7 @@ public:
                 inlineSamplerMD.NormalizedCoords = (LEGACY_CLK_NORMALIZED_COORDS_FALSE);
                 break;
             default:
-                IGC_ASSERT(false && "Invalid normalized coords");
+                IGC_ASSERT_MESSAGE(0, "Invalid normalized coords");
                 break;
             }
 
@@ -923,7 +923,7 @@ public:
                 inlineSamplerMD.MinFilterType = (iOpenCL::SAMPLER_MAPFILTER_LINEAR);
                 break;
             default:
-                IGC_ASSERT(false && "Filter Type must have value");
+                IGC_ASSERT_MESSAGE(0, "Filter Type must have value");
                 break;
             }
 
@@ -935,7 +935,7 @@ public:
         }
         else
         {
-            IGC_ASSERT(false && "Input IR version must be OCL or SPIR");
+            IGC_ASSERT_MESSAGE(0, "Input IR version must be OCL or SPIR");
         }
     }
 
@@ -1231,8 +1231,7 @@ protected:
     void createIntrinsicType(const CallInst* pCI, ArrayRef<Type*> overloadTypes)
     {
         m_args.append(pCI->op_begin(), pCI->op_begin() + pCI->getNumArgOperands());
-        IGC_ASSERT(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
-            "Both intrinsic id's cannot be valid at the same time");
+        IGC_ASSERT_MESSAGE(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics), "Both intrinsic id's cannot be valid at the same time");
 
         // GenISA intrinsics ID start after llvm intrinsics
         if (isaId != GenISAIntrinsic::num_genisa_intrinsics && isaId > static_cast<int>(Intrinsic::num_intrinsics))
@@ -1264,7 +1263,7 @@ public:
 
     void createIntrinsic()
     {
-        IGC_ASSERT(!(this->isOverloadable && m_pCallInst->getNumArgOperands() == 0) && "Cannot create an overloadable with no args");
+        IGC_ASSERT_MESSAGE(!(this->isOverloadable && m_pCallInst->getNumArgOperands() == 0), "Cannot create an overloadable with no args");
         llvm::Type* tys[2];
         switch (isaId)
         {
@@ -1286,8 +1285,7 @@ public:
             tys[0] = m_pCallInst->getCalledFunction()->getReturnType();
             tys[1] = m_pCallInst->getArgOperand(0)->getType();
             m_args.append(m_pCallInst->op_begin(), m_pCallInst->op_begin() + m_pCallInst->getNumArgOperands());
-            IGC_ASSERT(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics) &&
-                "Both intrinsic id's cannot be valid at the same time");
+            IGC_ASSERT_MESSAGE(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics), "Both intrinsic id's cannot be valid at the same time");
             replaceGenISACallInst(isaId, llvm::ArrayRef<llvm::Type*>(tys));
             break;
         case GenISAIntrinsic::GenISA_simdGetMessagePhase:

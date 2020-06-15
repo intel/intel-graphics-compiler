@@ -622,7 +622,7 @@ public:
           const unsigned TemplateParamsIndex = 9;
 #endif
           target->replaceOperandWith(TemplateParamsIndex, TParams.get());
-          IGC_ASSERT(cast<DISubprogram>(target)->getRawTemplateParams() == TParams.get() && "Invalid template parameters");
+          IGC_ASSERT_MESSAGE(cast<DISubprogram>(target)->getRawTemplateParams() == TParams.get(), "Invalid template parameters");
           return target;
       }
 
@@ -1192,10 +1192,10 @@ private:
       if (Loc->second == V)
         return V;
       auto LD = dyn_cast<LoadInst>(Loc->second);
+      IGC_ASSERT_EXIT(nullptr != LD);
       auto Placeholder = dyn_cast<GlobalVariable>(LD->getPointerOperand());
-      IGC_ASSERT_EXIT(LD && Placeholder &&
-          Placeholder->getName().startswith(kPlaceholderPrefix) &&
-          "A value is translated twice");
+      IGC_ASSERT_EXIT(nullptr != Placeholder);
+      IGC_ASSERT_EXIT_MESSAGE(Placeholder->getName().startswith(kPlaceholderPrefix), "A value is translated twice");
       // Replaces placeholders for PHI nodes
       LD->replaceAllUsesWith(V);
       LD->eraseFromParent();
@@ -1302,11 +1302,11 @@ void SPIRVToLLVMDbgTran::transDbgInfo(SPIRVValue *SV, Value *V) {
     if (!Enable || !SV->hasLine() || !SV->getDIScope())
         return;
     if (auto I = dyn_cast<Instruction>(V)) {
-        IGC_ASSERT(SV->isInst() && "Invalid instruction");
+        IGC_ASSERT_MESSAGE(SV->isInst(), "Invalid instruction");
         auto SI = static_cast<SPIRVInstruction *>(SV);
-        IGC_ASSERT(SI->getParent() &&
-            SI->getParent()->getParent() &&
-            "Invalid instruction");
+        IGC_ASSERT(nullptr != SI);
+        IGC_ASSERT_MESSAGE(nullptr != SI->getParent(), "Invalid instruction");
+        IGC_ASSERT_MESSAGE(nullptr != SI->getParent()->getParent(), "Invalid instruction");
         auto Line = SV->getLine();
         DILocation* iat = nullptr;
         DIScope* scope = nullptr;
@@ -1441,9 +1441,10 @@ SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
   }
   for (auto &I : Deletes)
   {
-      IGC_ASSERT(I->use_empty());
       if (I->use_empty())
           I->eraseFromParent();
+      else
+          IGC_ASSERT(0);
   }
 
   return true;
@@ -1523,30 +1524,25 @@ void SPIRVToLLVM::setLLVMLoopMetadata(SPIRVLoopMerge *LM, BranchInst *BI) {
           getMetadataFromNameAndParameter("llvm.loop.ivdep.safelen",
                                           LoopControlParameters[NumParam])));
       ++NumParam;
-      IGC_ASSERT(NumParam <= LoopControlParameters.size() &&
-             "Missing loop control parameter!");
+      IGC_ASSERT_MESSAGE(NumParam <= LoopControlParameters.size(), "Missing loop control parameter!");
     }
   }
   // Placeholder for LoopControls added in SPIR-V 1.4 spec (see 3.23)
   if (LC & LoopControlMinIterationsMask) {
     ++NumParam;
-    IGC_ASSERT(NumParam <= LoopControlParameters.size() &&
-           "Missing loop control parameter!");
+    IGC_ASSERT_MESSAGE(NumParam <= LoopControlParameters.size(), "Missing loop control parameter!");
   }
   if (LC & LoopControlMaxIterationsMask) {
     ++NumParam;
-    IGC_ASSERT(NumParam <= LoopControlParameters.size() &&
-           "Missing loop control parameter!");
+    IGC_ASSERT_MESSAGE(NumParam <= LoopControlParameters.size(), "Missing loop control parameter!");
   }
   if (LC & LoopControlIterationMultipleMask) {
     ++NumParam;
-    IGC_ASSERT(NumParam <= LoopControlParameters.size() &&
-           "Missing loop control parameter!");
+    IGC_ASSERT_MESSAGE(NumParam <= LoopControlParameters.size(), "Missing loop control parameter!");
   }
   if (LC & LoopControlPeelCountMask) {
     ++NumParam;
-    IGC_ASSERT(NumParam <= LoopControlParameters.size() &&
-           "Missing loop control parameter!");
+    IGC_ASSERT_MESSAGE(NumParam <= LoopControlParameters.size(), "Missing loop control parameter!");
   }
   if (LC & LoopControlPartialCountMask && !(LC & LoopControlDontUnrollMask)) {
     // If unroll factor is set as '1' - disable loop unrolling
@@ -1558,8 +1554,7 @@ void SPIRVToLLVM::setLLVMLoopMetadata(SPIRVLoopMerge *LM, BranchInst *BI) {
           getMetadataFromNameAndParameter("llvm.loop.unroll.count",
                                           LoopControlParameters[NumParam])));
     ++NumParam;
-    IGC_ASSERT(NumParam <= LoopControlParameters.size() &&
-           "Missing loop control parameter!");
+    IGC_ASSERT_MESSAGE(NumParam <= LoopControlParameters.size(), "Missing loop control parameter!");
   }
   llvm::MDNode *Node = llvm::MDNode::get(*Context, Metadata);
 
@@ -1827,7 +1822,7 @@ SPIRVToLLVM::transValue(SPIRVValue *BV, Function *F, BasicBlock *BB,
   }
   V->setName(BV->getName());
   if (!transDecoration(BV, V)) {
-    IGC_ASSERT_EXIT(0 && "trans decoration fail");
+    IGC_ASSERT_EXIT_MESSAGE(0, "trans decoration fail");
     return nullptr;
   }
 
@@ -1859,7 +1854,7 @@ SPIRVToLLVM::transConvertInst(SPIRVValue* BV, Function* F, BasicBlock* BB) {
   default:
     CO = static_cast<CastInst::CastOps>(OpCodeMap::rmap(BC->getOpCode()));
   }
-  IGC_ASSERT(CastInst::isCast(CO) && "Invalid cast op code");
+  IGC_ASSERT_MESSAGE(CastInst::isCast(CO), "Invalid cast op code");
   if (BB)
     return CastInst::Create(CO, Src, Dst, BV->getName(), BB);
   return ConstantExpr::getCast(CO, dyn_cast<Constant>(Src), Dst);
@@ -1868,7 +1863,7 @@ SPIRVToLLVM::transConvertInst(SPIRVValue* BV, Function* F, BasicBlock* BB) {
 BinaryOperator *SPIRVToLLVM::transShiftLogicalBitwiseInst(SPIRVValue* BV,
     BasicBlock* BB,Function* F) {
   SPIRVBinary* BBN = static_cast<SPIRVBinary*>(BV);
-  IGC_ASSERT(BB && "Invalid BB");
+  IGC_ASSERT_MESSAGE(BB, "Invalid BB");
   Instruction::BinaryOps BO;
   auto OP = BBN->getOpCode();
   if (isLogicalOpCode(OP))
@@ -1915,7 +1910,7 @@ SPIRVToLLVM::transLifetimeInst(SPIRVInstTemplateBase* BI, BasicBlock* BB, Functi
 Instruction *
 SPIRVToLLVM::transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F) {
   SPIRVCompare* BC = static_cast<SPIRVCompare*>(BV);
-  IGC_ASSERT(BB && "Invalid BB");
+  IGC_ASSERT_MESSAGE(BB, "Invalid BB");
   SPIRVType* BT = BC->getOperand(0)->getType();
   Instruction* Inst = nullptr;
   if (BT->isTypeVectorOrScalarInt()
@@ -1929,7 +1924,7 @@ SPIRVToLLVM::transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F) {
     Inst = new FCmpInst(*BB, CmpMap::rmap(BC->getOpCode()),
         transValue(BC->getOperand(0), F, BB),
         transValue(BC->getOperand(1), F, BB));
-  IGC_ASSERT(Inst && "not implemented");
+  IGC_ASSERT_MESSAGE(Inst, "not implemented");
 
   if (PlaceholderMap.count(BV) && Inst){
     if (BV->getType()->isTypeBool())
@@ -1937,7 +1932,7 @@ SPIRVToLLVM::transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F) {
     else
       IGC_ASSERT(Inst->getType() == transType(BC->getType()));
 
-    IGC_ASSERT(Inst && "Out of memory");
+    IGC_ASSERT_MESSAGE(Inst, "Out of memory");
   }
   return Inst;
 }
@@ -2218,7 +2213,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     Type *LT = transType(BT);
     uint64_t V = BConst->getZExtIntValue();
     if(BV->hasDecorate(DecorationSpecId)) {
-      IGC_ASSERT_EXIT(OC == OpSpecConstant && "Only SpecConstants can be specialized!");
+      IGC_ASSERT_EXIT_MESSAGE(OC == OpSpecConstant, "Only SpecConstants can be specialized!");
       SPIRVWord specid = *BV->getDecorate(DecorationSpecId).begin();
       if(BM->isSpecConstantSpecialized(specid))
         V = BM->getSpecConstant(specid);
@@ -2241,7 +2236,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         FS = &APFloat::IEEEdouble();
         break;
       default:
-        IGC_ASSERT_EXIT(0 && "invalid float type");
+        IGC_ASSERT_EXIT_MESSAGE(0, "invalid float type");
         break;
       }
       return mapValue(BV, ConstantFP::get(*Context, APFloat(*FS,
@@ -2446,7 +2441,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         Initializer = UndefValue::get(Ty);
 
     if (BS == StorageClassFunction && !Init) {
-        IGC_ASSERT(BB && "Invalid BB");
+        IGC_ASSERT_MESSAGE(BB, "Invalid BB");
         IGCLLVM::IRBuilder<> builder(BB);
         //return mapValue(BV, new AllocaInst(Ty, BV->getName(), BB));
         return mapValue(BV, builder.CreateAlloca(Ty, nullptr, BV->getName()));
@@ -2467,14 +2462,14 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpFunctionParameter: {
     auto BA = static_cast<SPIRVFunctionParameter*>(BV);
-    IGC_ASSERT(F && "Invalid function");
+    IGC_ASSERT_MESSAGE(F, "Invalid function");
     unsigned ArgNo = 0;
     for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E;
         ++I, ++ArgNo) {
       if (ArgNo == BA->getArgNo())
         return mapValue(BV, &(*I));
     }
-    IGC_ASSERT_EXIT(0 && "Invalid argument");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Invalid argument");
     return NULL;
   }
   break;
@@ -2498,7 +2493,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   // For such instruction BB and F should be nullptr, because it is a constant
   // expression declared out of scope of any basic block or function.
   // All other values require valid BB pointer.
-  IGC_ASSERT(((isSpecConstantOpAllowedOp(OC) && !F && !BB) || BB) && "Invalid BB");
+  IGC_ASSERT_MESSAGE(((isSpecConstantOpAllowedOp(OC) && !F && !BB) || BB), "Invalid BB");
 
   // Creation of place holder
   if (CreatePlaceHolder) {
@@ -2518,7 +2513,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   switch (BV->getOpCode()) {
   case OpBranch: {
     auto BR = static_cast<SPIRVBranch *>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
 
     auto BI = BranchInst::Create(
       dyn_cast<BasicBlock>(transValue(BR->getTargetLabel(), F, BB)), BB);
@@ -2534,7 +2529,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpBranchConditional: {
     auto BR = static_cast<SPIRVBranchConditional *>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     auto BC = BranchInst::Create(
       dyn_cast<BasicBlock>(transValue(BR->getTrueLabel(), F, BB)),
       dyn_cast<BasicBlock>(transValue(BR->getFalseLabel(), F, BB)),
@@ -2553,7 +2548,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpPhi: {
     auto Phi = static_cast<SPIRVPhi *>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     auto LPhi = dyn_cast<PHINode>(mapValue(BV, PHINode::Create(
       transType(Phi->getType()),
       Phi->getPairs().size() / 2,
@@ -2570,7 +2565,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     break;
 
   case OpReturn:
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     return mapValue(BV, ReturnInst::Create(*Context, BB));
     break;
 
@@ -2583,7 +2578,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpStore: {
     SPIRVStore *BS = static_cast<SPIRVStore*>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     auto *pValue    = transValue(BS->getSrc(), F, BB);
     auto *pPointer  = transValue(BS->getDst(), F, BB);
     bool isVolatile =
@@ -2647,7 +2642,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpLoad: {
     SPIRVLoad *BL = static_cast<SPIRVLoad*>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     return mapValue(BV, new LoadInst(
       transValue(BL->getSrc(), F, BB),
       BV->getName(),
@@ -2706,7 +2701,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   }
   case OpSelect: {
     SPIRVSelect *BS = static_cast<SPIRVSelect*>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     return mapValue(BV, SelectInst::Create(
       // cond must be an i1, truncate bool to i1 if it was an i8.
       transValue(BS->getCondition(), F, BB, true, BoolAction::Truncate),
@@ -2724,15 +2719,15 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpSwitch: {
     auto BS = static_cast<SPIRVSwitch *>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     auto Select = transValue(BS->getSelect(), F, BB);
     auto LS = SwitchInst::Create(Select,
       dyn_cast<BasicBlock>(transValue(BS->getDefault(), F, BB)),
       BS->getNumPairs(), BB);
     BS->foreachPair(
         [&](SPIRVSwitch::LiteralTy Literals, SPIRVBasicBlock *Label) {
-        IGC_ASSERT(!Literals.empty() && "Literals should not be empty");
-        IGC_ASSERT(Literals.size() <= 2 && "Number of literals should not be more then two");
+        IGC_ASSERT_MESSAGE(!Literals.empty(), "Literals should not be empty");
+        IGC_ASSERT_MESSAGE(Literals.size() <= 2, "Number of literals should not be more then two");
         uint64_t Literal = uint64_t(Literals.at(0));
         if (Literals.size() == 2) {
           Literal += uint64_t(Literals.at(1)) << 32;
@@ -2769,8 +2764,8 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpCompositeExtract: {
     SPIRVCompositeExtract *CE = static_cast<SPIRVCompositeExtract *>(BV);
     auto Type = CE->getComposite()->getType();
-    IGC_ASSERT(BB && "Invalid BB");
-    IGC_ASSERT(CE->getIndices().size() == 1 && "Invalid index");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
+    IGC_ASSERT_MESSAGE(CE->getIndices().size() == 1, "Invalid index");
     if (Type->isTypeVector())
     {
         return mapValue(BV, ExtractElementInst::Create(
@@ -2790,7 +2785,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpVectorExtractDynamic: {
     auto CE = static_cast<SPIRVVectorExtractDynamic *>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     return mapValue(BV, ExtractElementInst::Create(
       transValue(CE->getVector(), F, BB),
       transValue(CE->getIndex(), F, BB),
@@ -2801,8 +2796,8 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpCompositeInsert: {
     auto CI = static_cast<SPIRVCompositeInsert *>(BV);
     auto Type = CI->getComposite()->getType();
-    IGC_ASSERT(BB && "Invalid BB");
-    IGC_ASSERT(CI->getIndices().size() == 1 && "Invalid index");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
+    IGC_ASSERT_MESSAGE(CI->getIndices().size() == 1, "Invalid index");
     if (Type->isTypeVector())
     {
         return mapValue(BV, InsertElementInst::Create(
@@ -2824,7 +2819,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpVectorInsertDynamic: {
     auto CI = static_cast<SPIRVVectorInsertDynamic *>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     return mapValue(BV, InsertElementInst::Create(
       transValue(CI->getVector(), F, BB),
       transValue(CI->getComponent(), F, BB),
@@ -2835,7 +2830,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpVectorShuffle: {
     auto VS = static_cast<SPIRVVectorShuffle *>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     std::vector<Constant *> Components;
     IntegerType *Int32Ty = IntegerType::get(*Context, 32);
     for (auto I : VS->getComponents()) {
@@ -2854,7 +2849,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpFunctionCall: {
     SPIRVFunctionCall *BC = static_cast<SPIRVFunctionCall *>(BV);
-    IGC_ASSERT(BB && "Invalid BB");
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     auto Call = CallInst::Create(
       transFunction(BC->getFunction()),
       transValue(BC->getArgumentValues(), F, BB),
@@ -2921,7 +2916,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpSizeOf:
   {
       auto BI = static_cast<SPIRVSizeOf*>(BV);
-      IGC_ASSERT(BI->getOpWords().size() == 1 && "OpSizeOf takes one argument!");
+      IGC_ASSERT_MESSAGE(BI->getOpWords().size() == 1, "OpSizeOf takes one argument!");
       // getOperands() returns SPIRVValue(s) but this argument is a SPIRVType so
       // we have to just grab it by its entry id.
       auto pArg = BI->get<SPIRVTypePointer>(BI->getOpWord(0));
@@ -2933,8 +2928,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpCreatePipeFromPipeStorage:
   {
       auto BI = static_cast<SPIRVCreatePipeFromPipeStorage*>(BV);
-      IGC_ASSERT(BI->getOpWords().size() == 1 &&
-          "OpCreatePipeFromPipeStorage takes one argument!");
+      IGC_ASSERT_MESSAGE(BI->getOpWords().size() == 1, "OpCreatePipeFromPipeStorage takes one argument!");
       return mapValue(BI, CastInst::CreateTruncOrBitCast(
           transValue(BI->getOperand(0), F, BB),
           transType(BI->getType()),
@@ -3043,7 +3037,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       static_cast<SPIRVInstruction *>(BV), BB));
   }
 
-  IGC_ASSERT_EXIT(0 && "Translation of SPIRV instruction not implemented");
+  IGC_ASSERT_EXIT_MESSAGE(0, "Translation of SPIRV instruction not implemented");
   return NULL;
   }
 }
@@ -3164,7 +3158,7 @@ uint64_t SPIRVToLLVM::calcImageType(const SPIRVValue *ImageVal)
 
 Instruction *
 SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
-  IGC_ASSERT(BB && "Invalid BB");
+  IGC_ASSERT_MESSAGE(BB, "Invalid BB");
   const auto OC = BI->getOpCode();
   auto Ops = BI->getOperands();
   // builtins use bool for scalar and ucharx for vector bools.  Truncate
@@ -3594,7 +3588,7 @@ SPIRVToLLVM::transKernelMetadata()
     {
         SPIRVFunction *BF = BM->getFunction(I);
         Function *F = static_cast<Function *>(getTranslatedValue(BF));
-        IGC_ASSERT(F && "Invalid translated function");
+        IGC_ASSERT_MESSAGE(F, "Invalid translated function");
 
         // __attribute__((annotate("some_user_annotation"))) are passed via
         // UserSemantic decoration on functions.
@@ -3871,7 +3865,7 @@ Instruction* SPIRVToLLVM::transDebugInfo(SPIRVExtInst* BC, BasicBlock* BB)
 
 Instruction *
 SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
-  IGC_ASSERT(BB && "Invalid BB");
+  IGC_ASSERT_MESSAGE(BB, "Invalid BB");
   SPIRVWord EntryPoint = BC->getExtOp();
   SPIRVExtInstSetKind Set = BM->getBuiltinSet(BC->getExtSetId());
   bool IsPrintf = false;
@@ -3882,7 +3876,7 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
       return transDebugInfo(BC, BB);
   }
 
-  IGC_ASSERT(Set == SPIRVEIS_OpenCL && "Not OpenCL extended instruction");
+  IGC_ASSERT_MESSAGE(Set == SPIRVEIS_OpenCL, "Not OpenCL extended instruction");
   if (EntryPoint == OpenCLLIB::printf)
     IsPrintf = true;
   else {
@@ -3942,7 +3936,7 @@ bool
 SPIRVToLLVM::transSourceLanguage() {
   SPIRVWord Ver = 0;
   SpvSourceLanguage Lang = BM->getSourceLanguage(&Ver);
-  IGC_ASSERT((Lang == SpvSourceLanguageOpenCL_C || Lang == SpvSourceLanguageOpenCL_CPP) && "Unsupported source language");
+  IGC_ASSERT_MESSAGE((Lang == SpvSourceLanguageOpenCL_C || Lang == SpvSourceLanguageOpenCL_CPP), "Unsupported source language");
   unsigned short Major = 0;
   unsigned char Minor = 0;
   unsigned char Rev = 0;

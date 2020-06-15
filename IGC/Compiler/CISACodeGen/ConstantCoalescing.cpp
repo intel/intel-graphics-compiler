@@ -855,7 +855,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
 Value* ConstantCoalescing::FormChunkAddress(BufChunk* chunk)
 {
     IGC_ASSERT(nullptr != chunk);
-    IGC_ASSERT((chunk->bufIdxV || chunk->baseIdxV) && "at least one!");
+    IGC_ASSERT_MESSAGE((chunk->bufIdxV || chunk->baseIdxV), "at least one!");
     WIAnalysis::WIDependancy uniformness = chunk->bufIdxV ?
         wiAns->whichDepend(chunk->bufIdxV) :
         wiAns->whichDepend(chunk->baseIdxV);
@@ -978,7 +978,7 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk* cov_chunk, Instruction* load,
     else
     {
         // bindless case
-        IGC_ASSERT(false && "TODO");
+        IGC_ASSERT_MESSAGE(0, "TODO");
     }
 
     // add two splitters
@@ -1538,14 +1538,15 @@ Instruction* ConstantCoalescing::FindOrAddChunkExtract(BufChunk* cov_chunk, uint
     Value::user_iterator use_e = cov_chunk->chunkIO->user_end();
     for (; use_it != use_e; ++use_it)
     {
-        Instruction* usei = dyn_cast<Instruction>(*use_it);
-        IGC_ASSERT(usei && isa<ExtractElementInst>(usei));
+        Instruction* const usei = dyn_cast<Instruction>(*use_it);
+        IGC_ASSERT(nullptr != usei);
+        IGC_ASSERT(isa<ExtractElementInst>(usei));
         ConstantInt* e_idx = dyn_cast<ConstantInt>(usei->getOperand(1));
         if (!e_idx)
         {
             continue;
         }
-        IGC_ASSERT(e_idx);
+        IGC_ASSERT(nullptr != e_idx);
         uint val = (uint)e_idx->getZExtValue();
         if (val == eltid - cov_chunk->chunkStart)
         {
@@ -1689,8 +1690,7 @@ void ConstantCoalescing::AdjustChunk(BufChunk* cov_chunk, uint start_adj, uint s
             Value* eac = ldRaw->getOffsetValue();
             IGC_ASSERT(isa<Instruction>(eac));
             IGC_ASSERT(cast<Instruction>(eac));
-            IGC_ASSERT((cast<Instruction>(eac)->getOpcode() == Instruction::Add) ||
-                (cast<Instruction>(eac)->getOpcode() == Instruction::Or));
+            IGC_ASSERT((cast<Instruction>(eac)->getOpcode() == Instruction::Add) || (cast<Instruction>(eac)->getOpcode() == Instruction::Or));
             Value* cv_start = irBuilder->getInt32(cov_chunk->chunkStart * cov_chunk->elementSize);
             cast<Instruction>(eac)->setOperand(1, cv_start);
         }
@@ -2297,9 +2297,11 @@ void ConstantCoalescing::ReplaceLoadWithSamplerLoad(
 /// change GEP to oword-based for oword-aligned load in order to avoid SHL
 void ConstantCoalescing::ChangePTRtoOWordBased(BufChunk* chunk)
 {
-    IGC_ASSERT(chunk && chunk->chunkIO);
-    LoadInst* load = dyn_cast<LoadInst>(chunk->chunkIO);
-    IGC_ASSERT(load);
+    IGC_ASSERT(nullptr != chunk);
+    IGC_ASSERT(nullptr != chunk->chunkIO);
+    LoadInst* const load = dyn_cast<LoadInst>(chunk->chunkIO);
+    IGC_ASSERT(nullptr != load);
+
     // has to be a 3d-load for now.
     // Argument pointer coming from OCL may not be oword-aligned
     uint addrSpace = load->getPointerAddressSpace();

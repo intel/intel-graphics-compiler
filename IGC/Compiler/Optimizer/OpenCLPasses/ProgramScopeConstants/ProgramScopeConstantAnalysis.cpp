@@ -77,8 +77,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     {
         GlobalVariable* globalVar = &(*I);
 
-        PointerType* ptrType = cast<PointerType>(globalVar->getType());
-        IGC_ASSERT(ptrType && "The type of a global variable must be a pointer type");
+        PointerType* const ptrType = cast<PointerType>(globalVar->getType());
+        IGC_ASSERT_MESSAGE(nullptr != ptrType, "The type of a global variable must be a pointer type");
 
         // Pointer's address space should be either constant or global
         // The ?: is a workaround for clang bug, clang creates string constants with private address sapce!
@@ -96,14 +96,14 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         if (AS != ADDRESS_SPACE_CONSTANT &&
             AS != ADDRESS_SPACE_GLOBAL)
         {
-            IGC_ASSERT(false && "program scope variable with unexpected address space");
+            IGC_ASSERT_MESSAGE(0, "program scope variable with unexpected address space");
             continue;
         }
 
         // The only way to get a null initializer is via an external variable.
         // Linking has already occurred; everything should be resolved.
         Constant* initializer = globalVar->getInitializer();
-        IGC_ASSERT(initializer && "Constant must be initialized");
+        IGC_ASSERT_MESSAGE(initializer, "Constant must be initialized");
         if (!initializer)
         {
             continue;
@@ -262,7 +262,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             }
             else
             {
-                IGC_ASSERT(false && "trying to patch unsupported address space");
+                IGC_ASSERT_MESSAGE(0, "trying to patch unsupported address space");
             }
         }
 
@@ -432,13 +432,13 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
             }
             else
             {
-                IGC_ASSERT(false && "unknown constant expression");
+                IGC_ASSERT_MESSAGE(0, "unknown constant expression");
             }
         }
         else
         {
             // What other shapes can pointers take at the program scope?
-            IGC_ASSERT(false && "unknown pointer shape encountered");
+            IGC_ASSERT_MESSAGE(0, "unknown pointer shape encountered");
         }
     }
     else if (const UndefValue * UV = dyn_cast<UndefValue>(initializer))
@@ -460,8 +460,9 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         }
         else if (ce->getOpcode() == Instruction::IntToPtr)
         {
-            ConstantExpr* opExpr = dyn_cast<ConstantExpr>(ce->getOperand(0));
-            IGC_ASSERT(opExpr && opExpr->getOpcode() == Instruction::PtrToInt && "Unexpected operand of IntToPtr");
+            ConstantExpr* const opExpr = dyn_cast<ConstantExpr>(ce->getOperand(0));
+            IGC_ASSERT_MESSAGE(nullptr != opExpr, "Unexpected operand of IntToPtr");
+            IGC_ASSERT_MESSAGE(opExpr->getOpcode() == Instruction::PtrToInt, "Unexpected operand of IntToPtr");
             addData(opExpr->getOperand(0), inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
         }
         else if (ce->getOpcode() == Instruction::PtrToInt)
@@ -470,7 +471,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         }
         else
         {
-            IGC_ASSERT(false && "Unexpected constant expression type");
+            IGC_ASSERT_MESSAGE(0, "Unexpected constant expression type");
         }
     }
     else if (ConstantDataSequential * cds = dyn_cast<ConstantDataSequential>(initializer))
@@ -494,7 +495,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         for (int i = 0; i < numElts; ++i)
         {
             Constant* C = initializer->getAggregateElement(i);
-            IGC_ASSERT(C && "getAggregateElement returned null, unsupported constant");
+            IGC_ASSERT_MESSAGE(C, "getAggregateElement returned null, unsupported constant");
             // Since the type may not be primitive, extra alignment is required.
             addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
         }
@@ -513,13 +514,14 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         }
         else
         {
-            IGC_ASSERT(false && "Unsupported constant type");
+            IGC_ASSERT_MESSAGE(0, "Unsupported constant type");
         }
 
-        int bitWidth = intVal.getBitWidth();
-        IGC_ASSERT((bitWidth % 8 == 0) && (bitWidth <= 64) && "Unsupported bitwidth");
+        const int bitWidth = intVal.getBitWidth();
+        IGC_ASSERT_MESSAGE((bitWidth % 8 == 0), "Unsupported bitwidth");
+        IGC_ASSERT_MESSAGE((bitWidth <= 64), "Unsupported bitwidth");
 
-        const uint64_t* val = intVal.getRawData();
+        const uint64_t* const val = intVal.getRawData();
         inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char*)val, ((char*)val) + (bitWidth / 8));
     }
 

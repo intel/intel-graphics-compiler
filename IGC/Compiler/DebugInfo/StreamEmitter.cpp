@@ -335,15 +335,13 @@ namespace IGC
         {
             unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
-            IGC_ASSERT(fixup.getOffset() + size <= dataSize &&
-                "Invalid fixup offset!");
+            IGC_ASSERT_MESSAGE(fixup.getOffset() + size <= dataSize, "Invalid fixup offset!");
 
             // Check that uppper bits are either all zeros or all ones.
             // Specifically ignore overflow/underflow as long as the leakage is
             // limited to the lower bits. This is to remain compatible with
             // other assemblers.
-            IGC_ASSERT(isIntN(size * 8 + 1, value) &&
-                "value does not fit in the fixup field");
+            IGC_ASSERT_MESSAGE(isIntN(size * 8 + 1, value), "value does not fit in the fixup field");
 
             for (unsigned i = 0; i != size; ++i)
             {
@@ -358,15 +356,13 @@ namespace IGC
         {
             unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
-            IGC_ASSERT(fixup.getOffset() + size <= Data.size() &&
-                "Invalid fixup offset!");
+            IGC_ASSERT_MESSAGE(fixup.getOffset() + size <= Data.size(), "Invalid fixup offset!");
 
             // Check that uppper bits are either all zeros or all ones.
             // Specifically ignore overflow/underflow as long as the leakage is
             // limited to the lower bits. This is to remain compatible with
             // other assemblers.
-            IGC_ASSERT(isIntN(size * 8 + 1, value) &&
-                "value does not fit in the fixup field");
+            IGC_ASSERT_MESSAGE(isIntN(size * 8 + 1, value), "value does not fit in the fixup field");
 
             for (unsigned i = 0; i != size; ++i)
             {
@@ -381,7 +377,7 @@ namespace IGC
         bool mayNeedRelaxation(const MCInst & inst, const MCSubtargetInfo & STI) const override
 #endif
         {
-            IGC_ASSERT(false && "TODO: implement this");
+            // TODO: implement this
             IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
             return false;
         }
@@ -391,7 +387,7 @@ namespace IGC
             const MCRelaxableFragment* pDF,
             const MCAsmLayout& layout) const override
         {
-            IGC_ASSERT(false && "TODO: implement this");
+            // TODO: implement this
             IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
             return false;
         }
@@ -399,7 +395,7 @@ namespace IGC
         void relaxInstruction(const MCInst& inst, const MCSubtargetInfo& STI,
             MCInst& res) const override
         {
-            IGC_ASSERT(false && "TODO: implement this");
+            // TODO: implement this
             IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
         }
 
@@ -454,7 +450,7 @@ namespace IGC
 #if LLVM_VERSION_MAJOR >= 7
         std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
         {
-            IGC_ASSERT(false && "TODO: implement this");
+            // TODO: implement this
             IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
         }
 #endif
@@ -467,13 +463,13 @@ namespace IGC
         virtual void encodeInstruction(const MCInst& inst, raw_ostream& os, SmallVectorImpl<MCFixup>& fixups,
             const MCSubtargetInfo& m) const
         {
-            IGC_ASSERT(false && "TODO: implement this");
+            // TODO: implement this
             IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
         }
 
         void operator=(const VISAMCCodeEmitter&)
         {
-            IGC_ASSERT(false && "TODO: implement this");
+            // TODO: implement this
             IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
         }
 
@@ -639,7 +635,7 @@ MCSymbol* StreamEmitter::GetSymbol(const GlobalValue* pGV) const
     M.getNameWithPrefix(NameStr, pGV, false);
     return m_pContext->GetOrCreateSymbol(NameStr.str());
     */
-    IGC_ASSERT(pGV->hasName() && "TODO: fix this case");
+    IGC_ASSERT_MESSAGE(pGV->hasName(), "TODO: fix this case");
     return m_pContext->getOrCreateSymbol(Twine(m_pAsmInfo->getPrivateGlobalPrefix()) + pGV->getName());
 }
 
@@ -800,8 +796,7 @@ void StreamEmitter::EmitSectionOffset(const MCSymbol* pLabel, const MCSymbol* pS
 
     // If pLabel has already been emitted, verify that it is in the same section as
     // section label for sanity.
-    IGC_ASSERT((!pLabel->isInSection() || &pLabel->getSection() == &section) &&
-        "section offset using wrong section base for label");
+    IGC_ASSERT_MESSAGE((!pLabel->isInSection() || &pLabel->getSection() == &section), "section offset using wrong section base for label");
 
     // If the section in question will end up with an address of 0 anyway, we can
     // just emit an absolute reference to save a relocation.
@@ -878,7 +873,7 @@ void StreamEmitter::Finalize() const
 
 const MCObjectFileInfo& StreamEmitter::GetObjFileLowering() const
 {
-    IGC_ASSERT(m_pObjFileInfo && "Object File Lowering was not initialized");
+    IGC_ASSERT_MESSAGE(m_pObjFileInfo, "Object File Lowering was not initialized");
     return *m_pObjFileInfo;
 }
 

@@ -106,16 +106,16 @@ SPIRVInstruction::SPIRVInstruction(unsigned TheWordCount, Op TheOC,
 
 void
 SPIRVInstruction::setParent(SPIRVBasicBlock *TheBB) {
-  IGC_ASSERT(TheBB && "Invalid BB");
+  IGC_ASSERT_MESSAGE(TheBB, "Invalid BB");
   if (BB == TheBB)
     return;
-  IGC_ASSERT(BB == NULL && "BB cannot change parent");
+  IGC_ASSERT_MESSAGE(BB == NULL, "BB cannot change parent");
   BB = TheBB;
 }
 
 void
 SPIRVInstruction::setScope(SPIRVEntry *Scope) {
-  IGC_ASSERT(Scope && Scope->getOpCode() == OpLabel && "Invalid scope");
+  IGC_ASSERT_MESSAGE(Scope && Scope->getOpCode() == OpLabel, "Invalid scope");
   setParent(static_cast<SPIRVBasicBlock*>(Scope));
 }
 
@@ -153,7 +153,7 @@ void SPIRVFunctionPointerINTEL::validate() const {
 std::vector<SPIRVValue*>
 SPIRVInstruction::getOperands() {
   std::vector<SPIRVValue*> Empty;
-  IGC_ASSERT_EXIT(0 && "not supported");
+  IGC_ASSERT_EXIT_MESSAGE(0, "not supported");
   return Empty;
 }
 
@@ -248,8 +248,7 @@ isSpecConstantOpAllowedOp(Op OC) {
 SPIRVSpecConstantOp *
 createSpecConstantOpInst(SPIRVInstruction *Inst) {
   auto OC = Inst->getOpCode();
-  IGC_ASSERT(isSpecConstantOpAllowedOp(OC) &&
-      "Op code not allowed for OpSpecConstantOp");
+  IGC_ASSERT_MESSAGE(isSpecConstantOpAllowedOp(OC), "Op code not allowed for OpSpecConstantOp");
   auto Ops = Inst->getIds(Inst->getOperands());
   Ops.insert(Ops.begin(), OC);
   return static_cast<SPIRVSpecConstantOp *>(
@@ -259,12 +258,10 @@ createSpecConstantOpInst(SPIRVInstruction *Inst) {
 
 SPIRVInstruction *
 createInstFromSpecConstantOp(SPIRVSpecConstantOp *Inst) {
-  IGC_ASSERT(Inst->getOpCode() == OpSpecConstantOp &&
-      "Not OpSpecConstantOp");
+  IGC_ASSERT_MESSAGE(Inst->getOpCode() == OpSpecConstantOp, "Not OpSpecConstantOp");
   auto Ops = Inst->getOpWords();
   auto OC = static_cast<Op>(Ops[0]);
-  IGC_ASSERT(isSpecConstantOpAllowedOp(OC) &&
-      "Op code not allowed for OpSpecConstantOp");
+  IGC_ASSERT_MESSAGE(isSpecConstantOpAllowedOp(OC), "Op code not allowed for OpSpecConstantOp");
   Ops.erase(Ops.begin(), Ops.begin() + 1);
   return SPIRVInstTemplateBase::create(OC, Inst->getType(),
       Inst->getId(), Ops, nullptr, Inst->getModule());

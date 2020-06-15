@@ -170,7 +170,7 @@ namespace IGC {
 
         e_alignment GetAlign() const
         {
-            IGC_ASSERT(!m_isImmediate && "Calling GetAlign() on an immediate returns undefined result");
+            IGC_ASSERT_MESSAGE(!m_isImmediate, "Calling GetAlign() on an immediate returns undefined result");
             return m_align;
         }
         void SetAlign(e_alignment thisAlign) { m_align = thisAlign; }
@@ -192,7 +192,7 @@ namespace IGC {
         }
         bool IsImmediate() const
         {
-            IGC_ASSERT((!m_isImmediate || (m_isImmediate && m_uniform)) && "IsImmediate => IsUniform invariant broken");
+            IGC_ASSERT_MESSAGE((!m_isImmediate || (m_isImmediate && m_uniform)), "IsImmediate => IsUniform invariant broken");
             return m_isImmediate;
         }
         bool IsVectorUniform() const { return m_uniformVector; }

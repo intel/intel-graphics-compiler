@@ -158,7 +158,7 @@ void IGC::insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
 
 void DebugEmitter::Initialize(CShader* pShader, bool debugEnabled)
 {
-    IGC_ASSERT(!m_initialized && "DebugEmitter is already initialized!");
+    IGC_ASSERT_MESSAGE(false == m_initialized, "DebugEmitter is already initialized!");
     m_initialized = true;
 
     m_debugEnabled = debugEnabled;

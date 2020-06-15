@@ -1213,7 +1213,8 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator& I)
         ConstantFP* C0 = dyn_cast<ConstantFP>(prevInst->getOperand(1 - prevInstRegSrcNum));
         ConstantFP* C1 = dyn_cast<ConstantFP>(I.getOperand(1 - regSrcNum));
 
-        IGC_ASSERT(C0 && C1);
+        IGC_ASSERT(nullptr != C0);
+        IGC_ASSERT(nullptr != C1);
 
         APFloat newConstantFloat(0.0);
         bool orderConstantFirst = false;

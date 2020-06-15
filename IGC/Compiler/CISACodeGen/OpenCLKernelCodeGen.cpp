@@ -255,7 +255,7 @@ namespace IGC
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
         FunctionMetaData* funcMD = &modMD->FuncMD[entry];
         ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-        IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
+        IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMD List Out of Bounds");
         ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
 
         SOpenCLKernelInfo::SResourceInfo resInfo;
@@ -284,7 +284,7 @@ namespace IGC
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
         FunctionMetaData* funcMD = &modMD->FuncMD[entry];
         ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-        IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
+        IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMD List Out of Bounds");
         ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
         return (ResourceExtensionTypeEnum)argAlloc->extensionType;
     }
@@ -374,7 +374,7 @@ namespace IGC
                 kernelArgInfo->AddressQualifier = "__private";
                 break;
             default:
-                IGC_ASSERT(false && "Unexpected address space");
+                IGC_ASSERT_MESSAGE(0, "Unexpected address space");
                 break;
             }
 
@@ -550,7 +550,7 @@ namespace IGC
                 vecTypeString += "long";
                 break;
             default:
-                IGC_ASSERT(false && "Unexpected data type in vec_type_hint");
+                IGC_ASSERT_MESSAGE(0, "Unexpected data type in vec_type_hint");
                 break;
             }
             break;
@@ -564,7 +564,7 @@ namespace IGC
             vecTypeString += "half";
             break;
         default:
-            IGC_ASSERT(false && "Unexpected data type in vec_type_hint");
+            IGC_ASSERT_MESSAGE(0, "Unexpected data type in vec_type_hint");
             break;
         }
 
@@ -691,7 +691,7 @@ namespace IGC
                 break;
              */
             ResourceAllocMD& resAllocMD = GetContext()->getModuleMetaData()->FuncMD[entry].resAllocMD;
-            IGC_ASSERT(resAllocMD.argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+            IGC_ASSERT_MESSAGE(resAllocMD.argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
 
             ArgAllocMD& argAlloc = resAllocMD.argAllocMDList[arg_idx];
 
@@ -738,7 +738,7 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN:
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE:
         default:
-            IGC_ASSERT(false && "ZEBin: unsupported KernelArg Type");
+            IGC_ASSERT_MESSAGE(0, "ZEBin: unsupported KernelArg Type");
             break;
         } // end switch (kernelArg->getArgType())
     }
@@ -854,7 +854,7 @@ namespace IGC
                 ModuleMetaData* modMD = pCtx->getModuleMetaData();
                 FunctionMetaData* funcMD = &modMD->FuncMD[entry];
                 ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-                IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+                IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
                 ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
 
                 iOpenCL::PointerArgumentAnnotation* ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
@@ -1208,7 +1208,8 @@ namespace IGC
                     imageInput->Writeable = false;
                     break;
                 default:
-                    IGC_ASSERT(false && "Unknown resource type");
+                    IGC_ASSERT_MESSAGE(0, "Unknown resource type");
+                    break;
                 }
                 m_kernelInfo.m_imageInputAnnotations.push_back(imageInput);
 
@@ -1626,7 +1627,7 @@ namespace IGC
             }
 
             if (!nosBufferAllocated && isRuntimeValue) {
-                IGC_ASSERT(arg.isConstantBuf() && "RuntimeValues must be marked as isConstantBuf");
+                IGC_ASSERT_MESSAGE(arg.isConstantBuf(), "RuntimeValues must be marked as isConstantBuf");
                 AllocateNOSConstants(offset);
                 nosBufferAllocated = true;
             }
@@ -1738,7 +1739,7 @@ namespace IGC
         }
         else
         {
-            IGC_ASSERT(false && "Trying to access a GlobalVariable not in locals map");
+            IGC_ASSERT_MESSAGE(0, "Trying to access a GlobalVariable not in locals map");
         }
         return val;
     }
@@ -2335,7 +2336,8 @@ namespace IGC
                 EP.m_canAbortOnSpill = false;
                 break;
             default:
-                IGC_ASSERT(false && "Unsupported required sub group size");
+                IGC_ASSERT_MESSAGE(0, "Unsupported required sub group size");
+                break;
             }
         }
         else

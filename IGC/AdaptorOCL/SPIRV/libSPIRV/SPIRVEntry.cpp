@@ -83,7 +83,7 @@ SPIRVEntry::create(Op OpCode) {
 #include "SPIRVOpCodeEnum.h"
 #undef _SPIRV_OP
   default:
-    IGC_ASSERT_EXIT(0 && "No factory the OpCode ");
+    IGC_ASSERT_EXIT_MESSAGE(0, "No factory the OpCode ");
     break;
   }
   return 0;
@@ -135,10 +135,10 @@ SPIRVEntry::setName(const std::string& TheName) {
 
 void
 SPIRVEntry::setModule(SPIRVModule *TheModule) {
-  IGC_ASSERT(TheModule && "Invalid module");
+  IGC_ASSERT_MESSAGE(TheModule, "Invalid module");
   if (TheModule == Module)
     return;
-  IGC_ASSERT(Module == NULL && "Cannot change owner of entry");
+  IGC_ASSERT_MESSAGE(Module == NULL, "Cannot change owner of entry");
   Module = TheModule;
 }
 
@@ -148,7 +148,7 @@ SPIRVEntry::setModule(SPIRVModule *TheModule) {
 // contains the remaining part of the words for the SPIRVEntry.
 void
 SPIRVEntry::decode(std::istream &I) {
-  IGC_ASSERT_EXIT(0 && "Not implemented");
+  IGC_ASSERT_EXIT_MESSAGE(0, "Not implemented");
 }
 
 std::vector<SPIRVValue *>
@@ -195,8 +195,8 @@ SPIRVEntry::validateValues(const std::vector<SPIRVId> &Ids)const {
 
 void
 SPIRVEntry::validateBuiltin(SPIRVWord TheSet, SPIRVWord Index)const {
-  IGC_ASSERT(TheSet != SPIRVWORD_MAX && Index != SPIRVWORD_MAX &&
-      "Invalid builtin");
+  IGC_ASSERT_MESSAGE(TheSet != SPIRVWORD_MAX, "Invalid builtin");
+  IGC_ASSERT_MESSAGE(Index != SPIRVWORD_MAX, "Invalid builtin");
 }
 
 void
@@ -307,7 +307,7 @@ SPIRVEntry::getDecorate(Decoration Kind, size_t Index) const {
   auto Range = Decorates.equal_range(Kind);
   std::set<SPIRVWord> Value;
   for (auto I = Range.first, E = Range.second; I != E; ++I) {
-    IGC_ASSERT(Index < I->second->getLiteralCount() && "Invalid index");
+    IGC_ASSERT_MESSAGE(Index < I->second->getLiteralCount(), "Invalid index");
     Value.insert(I->second->getLiteral(Index));
   }
   return Value;
@@ -412,8 +412,7 @@ SPIRVForward *
 SPIRVAnnotationGeneric::getOrCreateTarget()const {
   SPIRVEntry *Entry = nullptr;
   bool Found = Module->exist(Target, &Entry);
-  IGC_ASSERT((!Found || Entry->getOpCode() == OpForward) &&
-      "Annotations only allowed on forward");
+  IGC_ASSERT_MESSAGE((!Found || Entry->getOpCode() == OpForward), "Annotations only allowed on forward");
   if (!Found)
     Entry = Module->addForward(Target, nullptr);
   return static_cast<SPIRVForward *>(Entry);
@@ -431,7 +430,7 @@ SPIRVName::decode(std::istream &I) {
 
 void
 SPIRVName::validate() const {
-  IGC_ASSERT(WordCount == getSizeInWords(Str) + 2 && "Incorrect word count");
+  IGC_ASSERT_MESSAGE(WordCount == getSizeInWords(Str) + 2, "Incorrect word count");
 }
 
 _SPIRV_IMP_DEC2(SPIRVString, Id, Str)
@@ -484,7 +483,7 @@ SPIRVExtInstImport::decode(std::istream &I) {
 void
 SPIRVExtInstImport::validate() const {
   SPIRVEntry::validate();
-  IGC_ASSERT(!Str.empty() && "Invalid builtin set");
+  IGC_ASSERT_MESSAGE(!Str.empty(), "Invalid builtin set");
 }
 
 void

@@ -487,7 +487,7 @@ namespace IGC
     public:
         explicit DIEEntry(DIE* E, unsigned Version) : DIEValue(isEntry), Entry(E), DwarfVersion(Version)
         {
-            IGC_ASSERT(E && "Cannot construct a DIEEntry with a null DIE");
+            IGC_ASSERT_MESSAGE(nullptr != E, "Cannot construct a DIEEntry with a null DIE");
         }
 
         DIE* getEntry() const { return Entry; }

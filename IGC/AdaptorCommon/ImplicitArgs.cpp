@@ -103,7 +103,7 @@ Type* ImplicitArg::getLLVMType(LLVMContext& context) const
         baseType = Type::getInt8Ty(context)->getPointerTo(ADDRESS_SPACE_GLOBAL);
         break;
     default:
-        IGC_ASSERT(false && "Unrecognized implicit argument type");
+        IGC_ASSERT_MESSAGE(0, "Unrecognized implicit argument type");
         return nullptr;
     }
 
@@ -146,7 +146,8 @@ VISA_Type ImplicitArg::getVISAType(const DataLayout& DL) const
     case PRIVATEPTR:
         return getPointerSize(DL) == 4 ? VISA_Type::ISA_TYPE_UD : VISA_Type::ISA_TYPE_UQ;
     default:
-        IGC_ASSERT(false && "Unrecognized implicit argument type");
+        IGC_ASSERT_MESSAGE(0, "Unrecognized implicit argument type");
+        break;
     }
 
     return VISA_Type::ISA_TYPE_UD;
@@ -158,7 +159,8 @@ unsigned int ImplicitArg::getPointerSize(const DataLayout& DL) const {
   case PRIVATEPTR:  return DL.getPointerSize(ADDRESS_SPACE_PRIVATE);
   case GLOBALPTR:   return DL.getPointerSize(ADDRESS_SPACE_GLOBAL);
   default:
-    IGC_ASSERT(false && "Unrecognized pointer type");
+    IGC_ASSERT_MESSAGE(0, "Unrecognized pointer type");
+    break;
   }
   return 0;
 }
@@ -176,7 +178,8 @@ IGC::e_alignment ImplicitArg::getAlignType(const DataLayout& DL) const
         case ALIGN_PTR:
           return getPointerSize(DL) == 4 ? IGC::EALIGN_DWORD : IGC::EALIGN_QWORD;
         default:
-            IGC_ASSERT(false && "Uknown alignment");
+            IGC_ASSERT_MESSAGE(0, "Uknown alignment");
+            break;
     }
 
     return IGC::EALIGN_DWORD;
@@ -219,7 +222,8 @@ unsigned int ImplicitArg::getAllocateSize(const DataLayout& DL) const
         elemSize = getPointerSize(DL);
         break;
     default:
-        IGC_ASSERT(false && "Unrecognized implicit argument type");
+        IGC_ASSERT_MESSAGE(0, "Unrecognized implicit argument type");
+        break;
     }
 
     return m_nbElement *  elemSize;
@@ -306,32 +310,29 @@ ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMd
 
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SYNC_BUFFER, "syncBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_PTR, false));
 
-        IGC_ASSERT((IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS) && "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
+        IGC_ASSERT_MESSAGE((IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS), "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
 
-#ifdef _DEBUG
-        // Note: the order that implicit args are added here must match the
-        // order of the ImplicitArg::Argtype enum.  Let's check that they match:
-        uint32_t CurArgId = ImplicitArg::START_ID;
-        for (auto &Arg : IMPLICIT_ARGS)
         {
-            if (Arg.getArgType() != CurArgId++)
+            // Note: the order that implicit args are added here must match the
+            // order of the ImplicitArg::Argtype enum.  Let's check that they match:
+            uint32_t CurArgId = ImplicitArg::START_ID;
+            for (auto& Arg : IMPLICIT_ARGS)
             {
-                IGC_ASSERT(false && "enum and vector out of sync!");
+                IGC_ASSERT_MESSAGE((Arg.getArgType() == CurArgId++), "enum and vector out of sync!");
             }
         }
-#endif // _DEBUG
     }
 
     m_funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(&func));
 }
 
 const ImplicitArg& ImplicitArgs::operator[](unsigned int i) const {
-    IGC_ASSERT((IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS) && "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
+    IGC_ASSERT_MESSAGE((IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS), "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
     return IMPLICIT_ARGS[getArgType(i)];
 }
 
 unsigned int ImplicitArgs::getArgIndex(ImplicitArg::ArgType argType) {
-    IGC_ASSERT((this->size() > 0) && "There are no implicit arguments!");
+    IGC_ASSERT_MESSAGE((this->size() > 0), "There are no implicit arguments!");
 
     // Find the first appearance of the given implicit arg type
     unsigned int implicitArgIndex = 0;
@@ -344,7 +345,7 @@ unsigned int ImplicitArgs::getArgIndex(ImplicitArg::ArgType argType) {
         }
     }
 
-    IGC_ASSERT((implicitArgIndex < this->size()) && "Implicit argument not found!");
+    IGC_ASSERT_MESSAGE((implicitArgIndex < this->size()), "Implicit argument not found!");
 
     return implicitArgIndex;
 }
@@ -388,12 +389,12 @@ bool ImplicitArgs::isImplicitArgExist(
 }
 
 unsigned int ImplicitArgs::getImageArgIndex(ImplicitArg::ArgType argType, const Argument* image) {
-    IGC_ASSERT(isImplicitImage(argType) && "Non image/sampler implicit arg!");
+    IGC_ASSERT_MESSAGE(isImplicitImage(argType), "Non image/sampler implicit arg!");
     return getNumberedArgIndex(argType, image->getArgNo());
 }
 
 unsigned int ImplicitArgs::getNumberedArgIndex(ImplicitArg::ArgType argType, int argNum) {
-    IGC_ASSERT((argNum >= 0) && "objectNum cannot be less than 0");
+    IGC_ASSERT_MESSAGE((argNum >= 0), "objectNum cannot be less than 0");
 
     for (int i = 0, e = m_funcInfoMD->size_ImplicitArgInfoList() ; i < e; ++i)
     {
@@ -404,7 +405,7 @@ unsigned int ImplicitArgs::getNumberedArgIndex(ImplicitArg::ArgType argType, int
         }
     }
 
-    IGC_ASSERT(false && "No implicit argument for the given type & argNum");
+    IGC_ASSERT_MESSAGE(0, "No implicit argument for the given type & argNum");
     return m_funcInfoMD->size_ImplicitArgInfoList();
 }
 
@@ -545,7 +546,7 @@ bool ImplicitArgs::isImplicitStruct(ImplicitArg::ArgType argType)
 }
 
 ImplicitArg::ArgType ImplicitArgs::getArgType(unsigned int index) const {
-    IGC_ASSERT((index < size()) && "Index out of range");
+    IGC_ASSERT_MESSAGE((index < size()), "Index out of range");
     ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(index);
     return (ImplicitArg::ArgType)argInfo->getArgId();
 }
@@ -577,7 +578,7 @@ int32_t ImplicitArgs::getStructArgOffset(unsigned int index) const
 
 TODO("Refactor code to avoid code triplication for getArgInFunc(), getImplicitArg() and WIFuncResolution::getImplicitArg()")
 Argument* ImplicitArgs::getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType) {
-    IGC_ASSERT((IGCLLVM::GetFuncArgSize(F) >= size()) && "Invalid number of argumnents in the function!");
+    IGC_ASSERT_MESSAGE((IGCLLVM::GetFuncArgSize(F) >= size()), "Invalid number of argumnents in the function!");
 
     unsigned int argIndex       =  getArgIndex(argType);
     unsigned int argIndexInFunc = IGCLLVM::GetFuncArgSize(F) - size() + argIndex;
@@ -604,7 +605,7 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
 
 Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType, int argNum)
 {
-    IGC_ASSERT((IGCLLVM::GetFuncArgSize(F) >= size()) && "Invalid number of arguments in the function!");
+    IGC_ASSERT_MESSAGE((IGCLLVM::GetFuncArgSize(F) >= size()), "Invalid number of arguments in the function!");
 
     unsigned int numImplicitArgs = size();
     unsigned int implicitArgIndex = this->getNumberedArgIndex(argType, argNum);

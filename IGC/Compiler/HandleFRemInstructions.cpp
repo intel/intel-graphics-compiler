@@ -61,8 +61,8 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
     auto ScalarType = ValType->getScalarType();
     SmallVector<Type*, 2> ArgsTypes{ ValType, ValType };
 
-    IGC_ASSERT(Val1->getType() == Val2->getType() && "Operands of frem instruction must have same type");
-    IGC_ASSERT(ScalarType->isFloatingPointTy() && "Operands of frem instruction must have floating point type");
+    IGC_ASSERT_MESSAGE(Val1->getType() == Val2->getType(), "Operands of frem instruction must have same type");
+    IGC_ASSERT_MESSAGE(ScalarType->isFloatingPointTy(), "Operands of frem instruction must have floating point type");
 
     std::string VecStr = "";
     std::string FpTypeStr;
@@ -74,7 +74,7 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
     }
     else
     {
-        IGC_ASSERT(false && "Unsupported type");
+        IGC_ASSERT_MESSAGE(0, "Unsupported type");
     }
 
     if (ValType->isVectorTy())
@@ -86,7 +86,7 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
         }
         else
         {
-            IGC_ASSERT(false && "Unsupported vector size");
+            IGC_ASSERT_MESSAGE(0, "Unsupported vector size");
         }
     }
     std::string TypeStr = "_" + VecStr + FpTypeStr;

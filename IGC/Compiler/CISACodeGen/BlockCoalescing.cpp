@@ -78,8 +78,8 @@ namespace IGC
                 {
                     if (br->isUnconditional())
                     {
-                        BasicBlock* succ = br->getSuccessor(0);
-                        IGC_ASSERT(succ && "Branch must have a successor!");
+                        BasicBlock* const succ = br->getSuccessor(0);
+                        IGC_ASSERT_MESSAGE(nullptr != succ, "Branch must have a successor!");
                         if (block.id >= patternMatch->GetBlockId(succ))
                         {
                             if (block.bb->getSinglePredecessor() == nullptr)

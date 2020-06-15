@@ -120,8 +120,7 @@ static bool MultiplyOverflows(const APInt &C1, const APInt &C2, APInt &Product,
 /// \brief True if C2 is a multiple of C1. Quotient contains C2/C1.
 static bool IsMultiple(const APInt &C1, const APInt &C2, APInt &Quotient,
                        bool IsSigned) {
-  IGC_ASSERT(C1.getBitWidth() == C2.getBitWidth() &&
-         "Inconsistent width of constants!");
+  IGC_ASSERT_MESSAGE(C1.getBitWidth() == C2.getBitWidth(), "Inconsistent width of constants!");
 
   // Bail if we will divide by zero.
   if (C2.isMinValue())
@@ -586,7 +585,7 @@ static bool isFMulOrFDivWithConstant(Value *V) {
 ///
 Value *InstCombiner::foldFMulConst(Instruction *FMulOrDiv, Constant *C,
                                    Instruction *InsertBefore) {
-  IGC_ASSERT(isFMulOrFDivWithConstant(FMulOrDiv) && "V is invalid");
+  IGC_ASSERT_MESSAGE(isFMulOrFDivWithConstant(FMulOrDiv), "V is invalid");
 
   Value *Opnd0 = FMulOrDiv->getOperand(0);
   Value *Opnd1 = FMulOrDiv->getOperand(1);

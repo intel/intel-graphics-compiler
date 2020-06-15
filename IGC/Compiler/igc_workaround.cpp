@@ -97,7 +97,7 @@ namespace IGC
             InitJslSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
         default:
-            IGC_ASSERT(false);
+            IGC_ASSERT(0);
             break;
         }
 

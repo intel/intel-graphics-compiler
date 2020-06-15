@@ -157,8 +157,8 @@ DIE::~DIE()
 /// belongs.
 const DIE* DIE::getCompileUnit() const
 {
-    const DIE* Cu = getCompileUnitOrNull();
-    IGC_ASSERT(Cu && "We should not have orphaned DIEs.");
+    const DIE* const Cu = getCompileUnitOrNull();
+    IGC_ASSERT_MESSAGE(nullptr != Cu, "We should not have orphaned DIEs.");
     return Cu;
 }
 

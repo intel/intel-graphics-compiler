@@ -217,8 +217,7 @@ void CollectGeometryShaderProperties::HandleOutputWrite(llvm::GenIntrinsicInst& 
         // shader has output clip or cull distances
         // this should have been recognized already by global variable extraction
         // that deals with clip or cull distance masks
-        IGC_ASSERT(m_gsProps.Output().PerVertex().HasClipDistances() ||
-            m_gsProps.Output().PerVertex().HasCullDistances());
+        IGC_ASSERT((m_gsProps.Output().PerVertex().HasClipDistances()) || (m_gsProps.Output().PerVertex().HasCullDistances()));
         break;
     case SHADER_OUTPUT_TYPE_VIEWPORT_ARRAY_INDEX:
         m_gsProps.Output().HasViewportArrayIndex(true);

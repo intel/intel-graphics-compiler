@@ -187,15 +187,14 @@ static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllo
 
 static int decodeBufferId(const llvm::Argument* arg)
 {
-    IGC_ASSERT(arg->getType()->isPointerTy()
-        && "Expected a pointer type for address space decoded samplers");
+    IGC_ASSERT_MESSAGE(arg->getType()->isPointerTy(), "Expected a pointer type for address space decoded samplers");
     unsigned int addressSpace = arg->getType()->getPointerAddressSpace();
 
     // This is a buffer. Try to decode this
     bool directIdx = false;
     unsigned int bufId = 0;
     DecodeAS4GFXResource(addressSpace, directIdx, bufId);
-    IGC_ASSERT(directIdx == true && "Expected a direct index for address space decoded images");
+    IGC_ASSERT_MESSAGE(directIdx == true, "Expected a direct index for address space decoded images");
 
     return bufId;
 }
@@ -246,12 +245,13 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
     KernelArgs kernelArgs(F, &(F.getParent()->getDataLayout()), MDU, MMD, ctx->platform.getGRFSize());
     ExtensionArgAnalysis& EAA = getAnalysis<ExtensionArgAnalysis>(F);
 
-    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    if (modMD->FuncMD.find(&F) == modMD->FuncMD.end())
-    {
-        IGC_ASSERT(false && "Function was not found.");
-    }
-    FunctionMetaData* funcMD = &modMD->FuncMD[&F];
+    ModuleMetaData* const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    IGC_ASSERT(nullptr != modMD);
+    IGC_ASSERT_MESSAGE(modMD->FuncMD.find(&F) != modMD->FuncMD.end(), "Function was not found.");
+
+    FunctionMetaData* const funcMD = &modMD->FuncMD[&F];
+    IGC_ASSERT(nullptr != funcMD);
+
     ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
 
     CompOptions& CompilerOpts = MMD->compOpt;

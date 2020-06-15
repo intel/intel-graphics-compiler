@@ -63,7 +63,7 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
     }
 
     llvm::Value* textureArgValue = cast<SampleIntrinsic>(&I)->getTextureValue();
-    IGC_ASSERT(textureArgValue);
+    IGC_ASSERT(nullptr != textureArgValue);
 
     uint addrSpace = textureArgValue->getType()->getPointerAddressSpace();
     bool directIdx = false;

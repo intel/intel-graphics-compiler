@@ -122,7 +122,8 @@ namespace IGC
         case SIMDMode::SIMD16:  m_simdEntries[1] = shader;  break;
         case SIMDMode::SIMD32:  m_simdEntries[2] = shader;  break;
         default:
-            IGC_ASSERT(false);
+            IGC_ASSERT(0);
+            break;
         }
     }
 
@@ -134,10 +135,11 @@ namespace IGC
         case SIMDMode::SIMD16:  return m_simdEntries[1];
         case SIMDMode::SIMD32:  return m_simdEntries[2];
         default:
-            IGC_ASSERT(false);
+            IGC_ASSERT(0);
             return nullptr;
         }
     }
+
     RetryManager::~RetryManager()
     {
         for (unsigned i = 0; i < 3; i++)
@@ -169,7 +171,7 @@ namespace IGC
         }
         else
         {
-            IGC_ASSERT(false && "TODO for other shader types");
+            IGC_ASSERT_MESSAGE(0, "TODO for other shader types");
             return true;
         }
     }
@@ -294,7 +296,7 @@ namespace IGC
                     simdMode = SIMDMode::SIMD16;
                     return m_simdEntries[1];
                 }
-                IGC_ASSERT((m_simdEntries[0] == NULL) || simd8NoSpill == true); // If SIMD16 doesn't spill, SIMD8 shouldn't, if it exists
+                IGC_ASSERT_MESSAGE((m_simdEntries[0] == NULL) || simd8NoSpill == true, "If SIMD16 doesn't spill, SIMD8 shouldn't, if it exists");
             }
         }
 
@@ -405,7 +407,8 @@ namespace IGC
                 break;
 
             default:
-                IGC_ASSERT(false && "Invalie SIMDMode");
+                IGC_ASSERT_MESSAGE(0, "Invalie SIMDMode");
+                break;
             }
             shader->FillProgram(pKernelProgram);
 
@@ -556,7 +559,7 @@ namespace IGC
 
     IGC::IGCMD::MetaDataUtils* CodeGenContext::getMetaDataUtils()
     {
-        IGC_ASSERT(m_pMdUtils && "Metadata Utils is not initialized");
+        IGC_ASSERT_MESSAGE(nullptr != m_pMdUtils, "Metadata Utils is not initialized");
         return m_pMdUtils;
     }
 
@@ -598,7 +601,7 @@ namespace IGC
 
     IGC::ModuleMetaData* CodeGenContext::getModuleMetaData() const
     {
-        IGC_ASSERT(modMD && "Module Metadata is not initialized");
+        IGC_ASSERT_MESSAGE(nullptr != modMD, "Module Metadata is not initialized");
         return modMD;
     }
 

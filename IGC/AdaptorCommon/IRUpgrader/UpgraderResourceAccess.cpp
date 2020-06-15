@@ -160,7 +160,7 @@ void UpgradeResourceAccess::ChangeIntrinsic(CallInst& C, GenISAIntrinsic::ID ID)
     }
         break;
     default:
-        IGC_ASSERT(false && "unhandled intrinsic upgrade");
+        IGC_ASSERT_MESSAGE(0, "unhandled intrinsic upgrade");
         break;
     }
     Function* f = GenISAIntrinsic::getDeclaration(m, ID, types);

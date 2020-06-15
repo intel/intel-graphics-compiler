@@ -135,7 +135,7 @@ void BreakConstantExpr::replaceConstantWith(llvm::Constant* exprOrVec, llvm::Ins
         // llvm 3.6.0 transition
         user->setOperand(operandIndex, newInst);
 #else
-        IGC_ASSERT(false);
+        IGC_ASSERT(0);
 #endif
     }
     else

@@ -85,7 +85,7 @@ namespace IGC
 
         const KernelArg* getKernelArg(llvm::Value* Arg)
         {
-            IGC_ASSERT(m_pKernelArgs && "Should initialize it before use!");
+            IGC_ASSERT_MESSAGE(m_pKernelArgs, "Should initialize it before use!");
             for (const KernelArg& arg : *m_pKernelArgs) {
                 if (arg.getArg() == Arg) {
                     return &arg;
@@ -96,7 +96,7 @@ namespace IGC
 
         const KernelArg* getBufferOffsetKernelArg(const KernelArg* KA)
         {
-            IGC_ASSERT(m_pKernelArgs && "KernelArgs: should initialize it before use!");
+            IGC_ASSERT_MESSAGE(m_pKernelArgs, "KernelArgs: should initialize it before use!");
             int argno = KA->getAssociatedArgNo();
             for (const KernelArg& arg : *m_pKernelArgs) {
                 if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET &&

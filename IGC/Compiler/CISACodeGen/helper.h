@@ -218,7 +218,7 @@ namespace IGC
             return false;
 
         IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
-        IGC_ASSERT(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
+        IGC_ASSERT_MESSAGE(Info->isTypeHasValue(), "FunctionInfoMetaData missing type!");
         return Info->getType() == FunctionTypeMD::KernelFunction;
     }
 
@@ -396,15 +396,17 @@ namespace IGC
         case SIMDMode::SIMD16:  simdWidth = 16; break;
         case SIMDMode::SIMD32:  simdWidth = 32; break;
         default:
-            IGC_ASSERT(false && "Invalid SIMD mode");
+            IGC_ASSERT_MESSAGE(0, "Invalid SIMD mode");
+            break;
         }
-        unsigned nThreadsPerTG = (threadGroupSize + simdWidth - 1) / simdWidth;
 
-        unsigned TGPerSubsliceNoSLM = hwThreadPerSubslice / nThreadsPerTG;
-        unsigned nTGDispatch = (slmSize == 0) ? TGPerSubsliceNoSLM : std::min(TGPerSubsliceNoSLM, slmSizePerSubSlice / slmSize);
-
-        float occupancy =
-            float(nTGDispatch * nThreadsPerTG) / float(hwThreadPerSubslice);
+        IGC_ASSERT(simdWidth);
+        const unsigned nThreadsPerTG = (threadGroupSize + simdWidth - 1) / simdWidth;
+        IGC_ASSERT(nThreadsPerTG);
+        const unsigned TGPerSubsliceNoSLM = hwThreadPerSubslice / nThreadsPerTG;
+        const unsigned nTGDispatch = (slmSize == 0) ? TGPerSubsliceNoSLM : std::min(TGPerSubsliceNoSLM, slmSizePerSubSlice / slmSize);
+        IGC_ASSERT(float(hwThreadPerSubslice));
+        const float occupancy = float(nTGDispatch * nThreadsPerTG) / float(hwThreadPerSubslice);
         return occupancy;
     }
 
@@ -447,7 +449,8 @@ namespace IGC
     // Debug line info helper function
     inline void updateDebugLoc(llvm::Instruction* pOrigin, llvm::Instruction* pNew)
     {
-        IGC_ASSERT(pOrigin && pNew && "Expect valid instructions");
+        IGC_ASSERT_MESSAGE(nullptr != pOrigin, "Expect valid instructions");
+        IGC_ASSERT_MESSAGE(nullptr != pNew, "Expect valid instructions");
         pNew->setDebugLoc(pOrigin->getDebugLoc());
     }
 } // namespace IGC

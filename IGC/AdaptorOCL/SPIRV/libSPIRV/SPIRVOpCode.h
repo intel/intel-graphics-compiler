@@ -202,7 +202,7 @@ inline unsigned getSubgroupAvcINTELTypeVectorWidth(Op Opcode) {
     return 1;
 
   default:
-    IGC_ASSERT(0 && "Unknown VME Opcode!");
+    IGC_ASSERT_MESSAGE(0, "Unknown VME Opcode!");
     return 0;
   }
 }

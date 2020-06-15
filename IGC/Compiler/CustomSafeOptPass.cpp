@@ -813,8 +813,7 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
     // Check if values in A and B all have the same extension type (sext/zext) and that they come from i8 type.
     // A and B extension types can be different.
     auto checkExt = [](auto &range) {
-      IGC_ASSERT((range.begin() != range.end()) &&
-             "Cannot check empty collection.");
+      IGC_ASSERT_MESSAGE((range.begin() != range.end()), "Cannot check empty collection.");
       const unsigned OP = range[0]->getOpcode();
       return (OP == Instruction::SExt || OP == Instruction::ZExt) &&
              std::all_of(range.begin(), range.end(), [&](Instruction *I) {
@@ -1155,8 +1154,9 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
     // FIXME: is it better to make typedRead return ty a anyvector?
     if (inst->getType() != pNewCallInst->getType())
     {
-        IGC_ASSERT(inst->getType()->isVectorTy() && inst->getType()->getVectorElementType()->isIntegerTy(32) &&
-            inst->getType()->getVectorNumElements() == 4 && "expect int4 here");
+        IGC_ASSERT_MESSAGE(inst->getType()->isVectorTy(), "expect int4 here");
+        IGC_ASSERT_MESSAGE(inst->getType()->getVectorElementType()->isIntegerTy(32), "expect int4 here");
+        IGC_ASSERT_MESSAGE(inst->getType()->getVectorNumElements() == 4, "expect int4 here");
         auto bitCastInst = builder.CreateBitCast(pNewCallInst, inst->getType());
         inst->replaceAllUsesWith(bitCastInst);
     }
@@ -2949,8 +2949,9 @@ Constant* IGCConstProp::ConstantFoldCmpInst(CmpInst* CI)
         unsigned N = VecOpnd->getType()->getVectorNumElements();
         for (unsigned i = 0; i < N; ++i)
         {
-            Constant* Opnd = VecOpnd->getAggregateElement(i);
-            IGC_ASSERT(Opnd && "null entry");
+            Constant* const Opnd = VecOpnd->getAggregateElement(i);
+            IGC_ASSERT_MESSAGE(nullptr != Opnd, "null entry");
+
             if (isa<UndefValue>(Opnd))
                 continue;
             Constant* Result = ConstantFoldCompareInstOperands(

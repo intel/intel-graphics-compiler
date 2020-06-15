@@ -85,7 +85,7 @@ SPIRVBasicBlock::getDecoder(std::istream &IS){
 SPIRVInstruction *
 SPIRVBasicBlock::addInstruction(SPIRVInstruction *I,
                                 const SPIRVInstruction *InsertBefore) {
-  IGC_ASSERT(I && "Invalid instruction");
+  IGC_ASSERT_MESSAGE(I, "Invalid instruction");
   Module->add(I);
   I->setParent(this);
   if (InsertBefore) {
@@ -105,6 +105,6 @@ _SPIRV_IMP_DEC1(SPIRVBasicBlock, Id)
 
 void
 SPIRVBasicBlock::setScope(SPIRVEntry *Scope) {
-  IGC_ASSERT(Scope && Scope->getOpCode() == OpFunction && "Invalid scope");
+  IGC_ASSERT_MESSAGE(Scope && Scope->getOpCode() == OpFunction, "Invalid scope");
   setParent(static_cast<SPIRVFunction*>(Scope));
 }

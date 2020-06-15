@@ -69,7 +69,7 @@ getInductionVariable(Loop* L) {
 
     BasicBlock* Incoming = 0, *Backedge = 0;
     pred_iterator PI = pred_begin(H);
-    IGC_ASSERT(PI != pred_end(H) && "Loop must have at least one backedge!");
+    IGC_ASSERT_MESSAGE(PI != pred_end(H), "Loop must have at least one backedge!");
     Backedge = *PI++;
     if (PI == pred_end(H)) // dead loop
         return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
@@ -185,7 +185,7 @@ static Value* getLoopCounter(Loop* L, Value* X) {
 
     BasicBlock* Incoming = 0, *Backedge = 0;
     pred_iterator PI = pred_begin(H);
-    IGC_ASSERT(PI != pred_end(H) && "Loop must have at least one backedge!");
+    IGC_ASSERT_MESSAGE(PI != pred_end(H), "Loop must have at least one backedge!");
     Backedge = *PI++;
     if (PI == pred_end(H)) // dead loop
         return nullptr;
@@ -245,8 +245,7 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
     }
 
 
-    IGC_ASSERT(BO->getOpcode() == Instruction::Add ||
-        BO->getOpcode() == Instruction::Sub);
+    IGC_ASSERT((BO->getOpcode() == Instruction::Add) || (BO->getOpcode() == Instruction::Sub));
 
     if (isa<Constant>(BO->getOperand(1)))
         return countOperands(BO->getOperand(0), LHS, RHS);

@@ -152,8 +152,8 @@ bool BlendToDiscard::runOnFunction(Function& F)
 
             if (out)
             {
-                IGC_ASSERT(isa<ConstantInt>(out->getOperand(4)) &&
-                    isa<ConstantInt>(out->getOperand(5)));
+                IGC_ASSERT(isa<ConstantInt>(out->getOperand(4)));
+                IGC_ASSERT(isa<ConstantInt>(out->getOperand(5)));
 
                 ShaderOutputType oType = static_cast<ShaderOutputType>(
                     out->getImm64Operand(4));
@@ -401,7 +401,8 @@ bool BlendToDiscard::blendToDiscardMRT(
         }
 
         default:
-            IGC_ASSERT(false && "Need to handle more cases");
+            IGC_ASSERT_MESSAGE(0, "Need to handle more cases");
+            break;
         }
 
         if (discardCond)

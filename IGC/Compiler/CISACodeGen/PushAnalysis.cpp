@@ -284,7 +284,7 @@ namespace IGC
         if (!retBB)
         {
             auto& roots = m_PDT->getRoots();
-            IGC_ASSERT(roots.size() == 1 && "Unexpected multiple roots");
+            IGC_ASSERT_MESSAGE(roots.size() == 1, "Unexpected multiple roots");
             retBB = roots[0];
         }
 
@@ -675,7 +675,7 @@ namespace IGC
             return 0;
         }
         unsigned int size = (unsigned int)load->getType()->getPrimitiveSizeInBits() / 8;
-        IGC_ASSERT(isa<LoadInst>(load) && "Expected a load instruction");
+        IGC_ASSERT_MESSAGE(isa<LoadInst>(load), "Expected a load instruction");
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
         bool canPromote = false;
@@ -772,7 +772,7 @@ namespace IGC
             if (it != info.simplePushLoads.end())
             {
                 // Value is already getting pushed
-                IGC_ASSERT((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                IGC_ASSERT_MESSAGE((it->second <= m_argIndex), "Function arguments list and metadata are out of sync!");
                 value = m_argList[it->second];
                 if (pTypeToPush != value->getType())
                     value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
@@ -937,8 +937,7 @@ namespace IGC
                 }
                 else
                 {
-                    IGC_ASSERT((it->second <= m_argIndex) &&
-                        "Function arguments list and metadata are out of sync!");
+                    IGC_ASSERT_MESSAGE((it->second <= m_argIndex), "Function arguments list and metadata are out of sync!");
                     value = m_argList[it->second];
                     if (pTypeToPush != value->getType())
                         value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
@@ -1006,7 +1005,7 @@ namespace IGC
                 }
                 else
                 {
-                    IGC_ASSERT((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                    IGC_ASSERT_MESSAGE((it->second.argIndex <= m_argIndex), "Function arguments list and metadata are out of sync!");
                     input.argIndex = it->second.argIndex;
                 }
                 llvm::Value* replacementValue = m_argList[input.argIndex];
@@ -1058,7 +1057,7 @@ namespace IGC
                             }
                             else
                             {
-                                IGC_ASSERT((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                                IGC_ASSERT_MESSAGE((it->second.argIndex <= m_argIndex), "Function arguments list and metadata are out of sync!");
                                 input.argIndex = it->second.argIndex;
                             }
 
@@ -1137,7 +1136,7 @@ namespace IGC
                             }
                             else
                             {
-                                IGC_ASSERT((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                                IGC_ASSERT_MESSAGE((it->second.argIndex <= m_argIndex), "Function arguments list and metadata are out of sync!");
                                 input.argIndex = it->second.argIndex;
                             }
                             extract->replaceAllUsesWith(m_argList[input.argIndex]);
@@ -1173,8 +1172,7 @@ namespace IGC
         }
         else
         {
-            IGC_ASSERT((it->second <= m_argIndex) &&
-                "Function arguments list and metadata are out of sync!");
+            IGC_ASSERT_MESSAGE(it->second <= m_argIndex, "Function arguments list and metadata are out of sync!");
             arg = m_argList[it->second];
             while (arg->getType() != runtimeValue->getType() &&
                 runtimeValue->hasOneUse() &&
@@ -1441,7 +1439,7 @@ namespace IGC
         {
             Function* pFunc = I->first;
 
-            IGC_ASSERT(pFunc->use_empty() && "Assume all user function are inlined at this point");
+            IGC_ASSERT_MESSAGE(pFunc->use_empty(), "Assume all user function are inlined at this point");
 
             if (FGA) {
                 FGA->replaceEntryFunc(pFunc, I->second);

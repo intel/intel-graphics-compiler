@@ -286,7 +286,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
   }
 
   // What other kind of instruction can we have here?
-  IGC_ASSERT(false && "Unresolved instruction!");
+  IGC_ASSERT_MESSAGE(0, "Unresolved instruction!");
 
   // Fallback by creating an ExtractValueInstr.
   IRBuilder<> builder( ip );

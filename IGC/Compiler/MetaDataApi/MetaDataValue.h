@@ -119,7 +119,7 @@ namespace IGC
 #if 0
             pNode->replaceAllUsesWith(generateNode(context));
 #else
-            IGC_ASSERT(false);
+            IGC_ASSERT(0);
 #endif
         }
 
@@ -229,14 +229,14 @@ namespace IGC
             }
 
             llvm::MDNode* pMDNode = llvm::dyn_cast<llvm::MDNode>(pNode);
-            IGC_ASSERT(pMDNode && "Named value parent node is not of MDNode type");
+            IGC_ASSERT_MESSAGE(pMDNode, "Named value parent node is not of MDNode type");
 
             if (pMDNode->getNumOperands() != 2)
             {
 #if 0
                 pMDNode->replaceAllUsesWith(generateNode(context));
 #else
-                IGC_ASSERT(false);
+                IGC_ASSERT(0);
 #endif
                 return;
             }
@@ -288,19 +288,15 @@ namespace IGC
                 return NULL; //this is allowed for optional nodes
             }
 
-            const llvm::MDNode* pMDNode = llvm::dyn_cast<const llvm::MDNode>(pNode);
+            const llvm::MDNode* const pMDNode = llvm::dyn_cast<const llvm::MDNode>(pNode);
 
-            IGC_ASSERT(pMDNode && "Named value parent node is not of MDNode type");
+            IGC_ASSERT_MESSAGE(nullptr != pMDNode, "Named value parent node is not of MDNode type");
 
-            if (pMDNode->getNumOperands() < 1)
-            {
-                IGC_ASSERT(false && "Named value doesn't have a name node");
-            }
+            IGC_ASSERT_MESSAGE(1 <= pMDNode->getNumOperands(), "Named value doesn't have a name node");
 
-            llvm::MDString* pIdNode =
-                llvm::dyn_cast<llvm::MDString>(pMDNode->getOperand(0));
+            llvm::MDString* const pIdNode = llvm::dyn_cast<llvm::MDString>(pMDNode->getOperand(0));
 
-            IGC_ASSERT(pIdNode && "Named list id node is not a string");
+            IGC_ASSERT_MESSAGE(nullptr != pIdNode, "Named list id node is not a string");
 
             return pIdNode;
         }
@@ -312,15 +308,11 @@ namespace IGC
                 return NULL; //this is allowed for optional nodes
             }
 
-            const llvm::MDNode* pMDNode = llvm::dyn_cast<const llvm::MDNode>(pNode);
+            const llvm::MDNode* const pMDNode = llvm::dyn_cast<const llvm::MDNode>(pNode);
 
-            IGC_ASSERT(pMDNode && "Named value parent node is not of MDNode type");
+            IGC_ASSERT_MESSAGE(nullptr != pMDNode, "Named value parent node is not of MDNode type");
 
-
-            if (pMDNode->getNumOperands() < 2)
-            {
-                IGC_ASSERT(false && "Named value doesn't have a value node");
-            }
+            IGC_ASSERT_MESSAGE(2 <= pMDNode->getNumOperands(), "Named value doesn't have a value node");
 
             return pMDNode->getOperand(1).get();
         }

@@ -236,8 +236,7 @@ namespace IGC
                 }
                 else
                 {
-                    // should not compile again if already got a non spill kernel
-                    IGC_ASSERT(false);
+                    IGC_ASSERT_MESSAGE(0, "should not compile again if already got a non spill kernel");
                 }
             }
         }
@@ -255,8 +254,7 @@ namespace IGC
                 }
                 else
                 {
-                    // should not compile again if already got a non spill kernel
-                    IGC_ASSERT(false);
+                    IGC_ASSERT_MESSAGE(0, "should not compile again if already got a non spill kernel");
                 }
             }
         }
@@ -274,8 +272,7 @@ namespace IGC
                 }
                 else
                 {
-                    // should not compile again if already got a non spill kernel
-                    IGC_ASSERT(false);
+                    IGC_ASSERT_MESSAGE(0, "should not compile again if already got a non spill kernel");
                 }
             }
         }

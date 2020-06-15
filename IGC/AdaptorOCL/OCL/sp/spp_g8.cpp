@@ -224,7 +224,7 @@ void overrideOCLKernelBinary(
     std::unique_ptr<char[]> Buf(new char[newBinarySize]);
     f.read(Buf.get(), newBinarySize);
 
-    IGC_ASSERT(f && "Not fully read!");
+    IGC_ASSERT_MESSAGE(f.good(), "Not fully read!");
 
     KernBin->Write(Buf.get(), newBinarySize);
 }

@@ -38,7 +38,7 @@ void CVariable::ResolveAlias()
 {
     // If a variable alias another alias, make it point to the main variable
     CVariable* aliasVar = m_alias;
-    IGC_ASSERT(aliasVar);
+    IGC_ASSERT(nullptr != aliasVar);
     uint offset = m_aliasOffset;
     while (aliasVar->m_alias != nullptr)
     {
@@ -46,7 +46,7 @@ void CVariable::ResolveAlias()
         aliasVar = aliasVar->m_alias;
     }
     m_alias = aliasVar;
-    IGC_ASSERT((offset < (UINT16_MAX)) && "offset > higher than 64k");
+    IGC_ASSERT_MESSAGE((offset < (UINT16_MAX)), "offset > higher than 64k");
 
     m_aliasOffset = (uint16_t)offset;
 }
@@ -134,9 +134,11 @@ CVariable::CVariable(
     }
     else
     {
-        m_nbElement = var->m_nbElement * CEncoder::GetCISADataTypeSize(var->m_type) / CEncoder::GetCISADataTypeSize(m_type);
+        const unsigned int denominator = CEncoder::GetCISADataTypeSize(m_type);
+        IGC_ASSERT(denominator);
+        m_nbElement = var->m_nbElement * CEncoder::GetCISADataTypeSize(var->m_type) / denominator;
     }
-    IGC_ASSERT(var->m_varType == EVARTYPE_GENERAL && "only general variable can have alias");
+    IGC_ASSERT_MESSAGE(var->m_varType == EVARTYPE_GENERAL, "only general variable can have alias");
 }
 
 /// CVariable constructor, for immediate

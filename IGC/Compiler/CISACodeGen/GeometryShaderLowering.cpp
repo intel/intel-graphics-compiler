@@ -460,7 +460,7 @@ void GeometryShaderLowering::AddURBWrite(
     llvm::Value* data[8],
     llvm::Instruction* prev)
 {
-    IGC_ASSERT(mask < 256 && "mask is an 8-bit bitmask and has to be in range 0..255");
+    IGC_ASSERT_MESSAGE(mask < 256, "mask is an 8-bit bitmask and has to be in range 0..255");
     Value* arguments[] =
     {
         offset,
@@ -563,7 +563,8 @@ QuadEltUnit GeometryShaderLowering::GetURBReadOffset(SGVUsage usage)
         return QuadEltUnit(2);
 
     default:
-        IGC_ASSERT(false && "Other URB offsets for GS not yet defined");
+        IGC_ASSERT_MESSAGE(0, "Other URB offsets for GS not yet defined");
+        break;
     }
 
     return QuadEltUnit(0);
@@ -592,7 +593,8 @@ Unit<Element> GeometryShaderLowering::GetChannel(SGVUsage usage)
     case CLIP_DISTANCE_W:
         return Unit<Element>(3);
     default:
-        IGC_ASSERT(false && "Gs SGV Local offset not yet defined");
+        IGC_ASSERT_MESSAGE(0, "Gs SGV Local offset not yet defined");
+        break;
     }
 
     return Unit<Element>(0);
@@ -623,7 +625,7 @@ QuadEltUnit GeometryShaderLowering::GetURBWriteOffset(
             m_gsProps->GetProperties().Output().PerVertex().HeaderSize());
     }
     default:
-        IGC_ASSERT(false && "Unknown GS output type");
+        IGC_ASSERT_MESSAGE(0, "Unknown GS output type");
         break;
     }
 

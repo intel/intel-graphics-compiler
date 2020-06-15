@@ -180,7 +180,7 @@ SPIRVDecoder::getWordCountAndOpCode() {
   WordCount = WordCountAndOpCode >> 16;
   OpCode = static_cast<Op>(WordCountAndOpCode & 0xFFFF);
 
-  IGC_ASSERT(!IS.bad() && "SPIRV stream is bad");
+  IGC_ASSERT_MESSAGE(false == IS.bad(), "SPIRV stream is bad");
   if (IS.fail()) {
     WordCount = 0;
     OpCode = OpNop;
@@ -205,16 +205,17 @@ SPIRVDecoder::getEntry() {
   else
       Entry->setScope(Scope);
 
-  IGC_ASSERT(!IS.bad() && !IS.fail() && "SPIRV stream fails");
+  IGC_ASSERT_MESSAGE(false == IS.bad(), "SPIRV stream fails");
+  IGC_ASSERT_MESSAGE(false == IS.fail(), "SPIRV stream fails");
   M.add(Entry);
   return Entry;
 }
 
 void
 SPIRVDecoder::validate()const {
-  IGC_ASSERT(OpCode != OpNop && "Invalid op code");
-  IGC_ASSERT(WordCount && "Invalid word count");
-  IGC_ASSERT(!IS.bad() && "Bad iInput stream");
+  IGC_ASSERT_MESSAGE(OpCode != OpNop, "Invalid op code");
+  IGC_ASSERT_MESSAGE(WordCount, "Invalid word count");
+  IGC_ASSERT_MESSAGE(!IS.bad(), "Bad iInput stream");
 }
 
 }

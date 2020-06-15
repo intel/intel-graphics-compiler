@@ -574,10 +574,10 @@ Value* GenIRLowering::rearrangeAdd(Value* val, Loop* loop) const
 
 bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP) const
 {
-    Value* PtrOp = GEP->getPointerOperand();
-    PointerType* PtrTy = dyn_cast<PointerType>(PtrOp->getType());
-
-    IGC_ASSERT(PtrTy && "Only accept scalar pointer!");
+    Value* const PtrOp = GEP->getPointerOperand();
+    IGC_ASSERT(nullptr != PtrOp);
+    PointerType* const PtrTy = dyn_cast<PointerType>(PtrOp->getType());
+    IGC_ASSERT_MESSAGE(nullptr != PtrTy, "Only accept scalar pointer!");
 
     unsigned pointerSizeInBits = m_ctx->getRegisterPointerSizeInBits(PtrTy->getAddressSpace());
     unsigned pointerMathSizeInBits = pointerSizeInBits;
@@ -806,7 +806,7 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP) const
 
     if (reducePointerArith)
     {
-        IGC_ASSERT(GEP->isInBounds() && "we can only do a zext if the GEP is inbound");
+        IGC_ASSERT_MESSAGE(GEP->isInBounds(), "we can only do a zext if the GEP is inbound");
         if (!canReduceNegativeOffset)
         {
             PointerValue = Builder->CreateZExt(PointerValue, BasePointer->getType());

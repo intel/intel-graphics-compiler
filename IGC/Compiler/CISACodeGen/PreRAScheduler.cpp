@@ -446,7 +446,7 @@ PreRAScheduler::Node* PreRAScheduler::FindFirstUnscheduledNodeInLatencyQueueFrom
         }
     }
 
-    IGC_ASSERT(false && "We should never reach here");
+    IGC_ASSERT_MESSAGE(0, "We should never reach here");
     return scheduled;
 }
 
@@ -468,7 +468,7 @@ PreRAScheduler::Node* PreRAScheduler::FindReadyListWinnerCandidate(unsigned curr
             return scheduled;
         }
 
-        IGC_ASSERT(false && "We should never reach here");
+        IGC_ASSERT_MESSAGE(0, "We should never reach here");
         return scheduled;
     }
     else
@@ -485,7 +485,7 @@ PreRAScheduler::Node* PreRAScheduler::FindReadyListWinnerCandidate(unsigned curr
             return scheduled;
         }
 
-        IGC_ASSERT(false && "We should never reach here");
+        IGC_ASSERT_MESSAGE(0, "We should never reach here");
         return scheduled;
     }
 }
@@ -653,7 +653,7 @@ void PreRAScheduler::buildBasicBlockDDG(
                     if (useInstFound == m_pInstToNodeMap.end())
                     {
                         // successors or uses are processed before the def. Hence assertion fails if a node is not found
-                        IGC_ASSERT(false && "user node not found");
+                        IGC_ASSERT_MESSAGE(0, "user node not found");
                     }
                     else
                     {
@@ -722,7 +722,7 @@ bool PreRAScheduler::ScheduleReadyNodes(
             RPTracker.getCurrNumGRF((uint16_t)m_pSIMDSize), current_cycle, prevScheduledNode)) == nullptr)
         {
             // we have scheduled all the nodes or its an error
-            IGC_ASSERT(false && "should not reach here");
+            IGC_ASSERT_MESSAGE(0, "should not reach here");
             break;
         }
 

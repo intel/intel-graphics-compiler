@@ -532,6 +532,7 @@ void VectorPreProcess::createSplitVectorTypes(
     {
         if (ebytes > SplitSize)
         {
+            IGC_ASSERT(SplitSize);
             uint32_t M = NElts * ebytes / SplitSize;
             Type* Ty = IntegerType::get(ETy->getContext(), SplitSize * 8);
             SplitInfo.push_back(std::make_pair(Ty, M));
@@ -540,10 +541,13 @@ void VectorPreProcess::createSplitVectorTypes(
     }
 
     // Both SplitSize and ebytes shall be a power of 2
-    IGC_ASSERT((SplitSize % ebytes) == 0 && "Internal Error: Wrong split size!");
+    IGC_ASSERT(ebytes);
+    IGC_ASSERT_MESSAGE((SplitSize % ebytes) == 0, "Internal Error: Wrong split size!");
 
     uint32_t E = SplitSize / ebytes; // split size in elements
     uint32_t N = NElts;  // the number of elements to be split
+
+    IGC_ASSERT(E);
 
     // 1. Make sure splitting it by SplitSize as required
     uint32_t M = N / E;  // the number of subvectors for split size E
@@ -558,6 +562,8 @@ void VectorPreProcess::createSplitVectorTypes(
     // 2. The remaining elts are splitted if not power of 2 until N <= 4.
     while (N > 4)
     {
+        IGC_ASSERT(E);
+
         M = N / E;  // the number of subvectors for split size E
         if (M > 0)
         {
@@ -628,6 +634,7 @@ bool VectorPreProcess::splitStore(
             if (ETy->getPrimitiveSizeInBits() > Ty1->getScalarSizeInBits())
             {
                 std::vector<Value*> splitScalars;
+                IGC_ASSERT(Ty1->getScalarSizeInBits());
                 const uint32_t vectorSize = (unsigned int)ETy->getPrimitiveSizeInBits() / Ty1->getScalarSizeInBits();
                 Type* splitType = llvm::VectorType::get(Ty1, vectorSize);
                 for (uint32_t i = 0; i < nelts; i++)
@@ -794,8 +801,13 @@ bool VectorPreProcess::splitLoad(
     {
         if (svals[0]->getType()->getPrimitiveSizeInBits() < ETy->getPrimitiveSizeInBits())
         {
-            uint32_t scalarsPerElement = (unsigned int)ETy->getPrimitiveSizeInBits() / (unsigned int)svals[0]->getType()->getPrimitiveSizeInBits();
-            IGC_ASSERT(svals.size() % scalarsPerElement == 0 && scalarsPerElement > 1);
+            const unsigned int denominator = (unsigned int)svals[0]->getType()->getPrimitiveSizeInBits();
+            IGC_ASSERT(0 < denominator);
+
+            const uint32_t scalarsPerElement = (unsigned int)ETy->getPrimitiveSizeInBits() / denominator;
+            IGC_ASSERT(1 < scalarsPerElement);
+            IGC_ASSERT((svals.size() % scalarsPerElement) == 0);
+
             ValVector mergedScalars;
             IRBuilder<> builder(LI->getParent());
             Instruction* nextInst = LI->getNextNode();
@@ -833,7 +845,7 @@ bool VectorPreProcess::splitLoadStore(
 {
     Optional<AbstractLoadInst> ALI = AbstractLoadInst::get(Inst);
     Optional<AbstractStoreInst> ASI = AbstractStoreInst::get(Inst);
-    IGC_ASSERT((ALI || ASI) && "Inst should be either load or store");
+    IGC_ASSERT_MESSAGE((ALI || ASI), "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
     VectorType* VTy = dyn_cast<VectorType>(Ty);
     if (!VTy)
@@ -891,11 +903,11 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
     AbstractLoadInst* ALI = optionalALI ? optionalALI.getPointer() : nullptr;
     Optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst);
     AbstractStoreInst* ASI = optionalASI ? optionalASI.getPointer() : nullptr;
-    IGC_ASSERT((optionalALI || optionalASI) && "Inst should be either load or store");
+    IGC_ASSERT_MESSAGE((optionalALI || optionalASI), "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
     VectorType* VTy = dyn_cast<VectorType>(Ty);
-    IGC_ASSERT(VTy && VTy->getNumElements() == 3 &&
-        "Inst should be a 3-element vector load/store!");
+    IGC_ASSERT_MESSAGE(nullptr != VTy, "Inst should be a 3-element vector load/store!");
+    IGC_ASSERT_MESSAGE(VTy->getNumElements() == 3, "Inst should be a 3-element vector load/store!");
 
     Type* eTy = VTy->getElementType();
     uint32_t etyBytes = int_cast<unsigned int>(m_DL->getTypeAllocSize(eTy));
@@ -1205,7 +1217,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         }
 
         // All uses are constant EEI.
-        IGC_ASSERT(ConstEEIUses.size() == Inst->getNumUses() && "out of sync");
+        IGC_ASSERT_MESSAGE(ConstEEIUses.size() == Inst->getNumUses(), "out of sync");
 
         // FIXME: this is to WA an issue that splitLoadStore does not split
         // vectors of size 5, 6, 7.
@@ -1239,7 +1251,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
             EEI->replaceAllUsesWith(NewEEI[Idx]);
             EEI->eraseFromParent();
         }
-        IGC_ASSERT(Inst->use_empty() && "out of sync");
+        IGC_ASSERT_MESSAGE(Inst->use_empty(), "out of sync");
         Inst->eraseFromParent();
         return NewLI;
     }

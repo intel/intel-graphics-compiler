@@ -256,7 +256,7 @@ namespace IGC
         // Find the common dominator as CSE.
         if (BasicBlock * BB = ConstantPlacement.lookup(C))
             LCA = DT->findNearestCommonDominator(LCA, BB);
-        IGC_ASSERT(LCA && "LCA always exists for reachable BBs within a function!");
+        IGC_ASSERT_MESSAGE(LCA, "LCA always exists for reachable BBs within a function!");
         ConstantPlacement[C] = LCA;
     }
 
@@ -285,7 +285,10 @@ namespace IGC
             while (!ValList.empty()) {
                 Value* V = ValList.back();
                 ValList.pop_back();
-                IGC_ASSERT(isUniform(V) && V->getType()->isIntegerTy(1));
+                IGC_ASSERT(nullptr != V);
+                IGC_ASSERT(nullptr != V->getType());
+                IGC_ASSERT(isUniform(V));
+                IGC_ASSERT(V->getType()->isIntegerTy(1));
 
                 // Check uses.
                 for (auto UI = V->user_begin(), UE = V->user_end(); UI != UE; ++UI) {
@@ -799,12 +802,12 @@ namespace IGC
 
     void CodeGenPatternMatch::visitFPToSIInst(llvm::FPToSIInst& I) {
         bool match = MatchFPToIntegerWithSaturation(I) || MatchModifier(I);
-        IGC_ASSERT(match && "Pattern match Failed\n");
+        IGC_ASSERT_MESSAGE(match, "Pattern match Failed");
     }
 
     void CodeGenPatternMatch::visitFPToUIInst(llvm::FPToUIInst& I) {
         bool match = MatchFPToIntegerWithSaturation(I) || MatchModifier(I);
-        IGC_ASSERT(match && "Pattern match Failed\n");
+        IGC_ASSERT_MESSAGE(match, "Pattern match Failed");
     }
 
     bool CodeGenPatternMatch::MatchSIToFPZExt(llvm::SIToFPInst* S2FI) {
@@ -952,7 +955,7 @@ namespace IGC
             MatchMinMax(I) ||
             /*MatchPredicate(I)   ||*/
             MatchSelectModifier(I);
-        IGC_ASSERT(match && "Pattern Match failed\n");
+        IGC_ASSERT_MESSAGE(match, "Pattern Match failed");
     }
 
     void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator& I)
@@ -1027,7 +1030,7 @@ namespace IGC
                 MatchLogicAlu(I);
             break;
         default:
-            IGC_ASSERT(false && "unknown binary instruction");
+            IGC_ASSERT_MESSAGE(0, "unknown binary instruction");
             break;
         }
         IGC_ASSERT(match == true);
@@ -1131,7 +1134,7 @@ namespace IGC
                 // no pattern for the rest of the intrinsics
                 break;
             }
-            IGC_ASSERT(match && "no pattern found for GenISA intrinsic");
+            IGC_ASSERT_MESSAGE(match, "no pattern found for GenISA intrinsic");
         }
         else
         {
@@ -1156,7 +1159,7 @@ namespace IGC
                 match = MatchSingleInstruction(I);
             }
         }
-        IGC_ASSERT(match && "no match for this call");
+        IGC_ASSERT_MESSAGE(match, "no match for this call");
     }
 
     void CodeGenPatternMatch::visitUnaryInstruction(llvm::UnaryInstruction& I)
@@ -1211,7 +1214,7 @@ namespace IGC
             // no pattern for the rest of the intrinsics
             break;
         }
-        IGC_ASSERT(match && "no pattern found");
+        IGC_ASSERT_MESSAGE(match, "no pattern found");
     }
 
     void CodeGenPatternMatch::visitStoreInst(StoreInst& I)
@@ -1341,7 +1344,7 @@ namespace IGC
     {
         if (!MatchCopyToStruct(&I))
         {
-            IGC_ASSERT(false && "Unknown `insertvalue` instruction!");
+            IGC_ASSERT_MESSAGE(0, "Unknown `insertvalue` instruction!");
         }
     }
 
@@ -1364,7 +1367,7 @@ namespace IGC
             matchPtrToPair(&I) ||
             MatchCopyFromStruct(&I);
 
-        IGC_ASSERT(Match && "Unknown `extractvalue` instruction!");
+        IGC_ASSERT_MESSAGE(Match, "Unknown `extractvalue` instruction!");
     }
 
     bool CodeGenPatternMatch::MatchCopyToStruct(InsertValueInst* II)
@@ -2223,7 +2226,8 @@ namespace IGC
                     pass->emitSimdBlockWrite(inst, offset);
                     break;
                 default:
-                    IGC_ASSERT(false && "unexpected intrinsic");
+                    IGC_ASSERT_MESSAGE(0, "unexpected intrinsic");
+                    break;
                 }
             }
         };
@@ -2307,8 +2311,7 @@ namespace IGC
                 const bool isConstant1 = llvm::isa<llvm::ConstantInt>(inst->getOperand(1));
                 if (isConstant0 || isConstant1)
                 {
-                    IGC_ASSERT(!(isConstant0 && isConstant1) &&
-                        "Both operands are immediate - constants should be folded elsewhere.");
+                    IGC_ASSERT_MESSAGE(!(isConstant0 && isConstant1), "Both operands are immediate - constants should be folded elsewhere.");
 
                     if (hasVertexIndexAsArg0)
                     {
@@ -2414,7 +2417,7 @@ namespace IGC
             return false;
         }
 
-        IGC_ASSERT(I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub);
+        IGC_ASSERT((I.getOpcode() == Instruction::FAdd) || (I.getOpcode() == Instruction::FSub));
 
         bool startPatternIsAdd = false;
         if (I.getOpcode() == Instruction::FAdd)
@@ -2720,7 +2723,7 @@ namespace IGC
             }
         };
 
-        IGC_ASSERT(I.getOpcode() == llvm::Instruction::Mul && "Mul instruction is expected!");
+        IGC_ASSERT_MESSAGE(I.getOpcode() == llvm::Instruction::Mul, "Mul instruction is expected!");
 
         if (!I.getType()->isIntegerTy(64))
             return false;
@@ -2841,10 +2844,7 @@ namespace IGC
         }
 
         unsigned opc = I.getOpcode();
-        IGC_ASSERT((opc == Instruction::Mul ||
-            opc == Instruction::Add ||
-            opc == Instruction::Sub) &&
-            "Mul instruction is expected!");
+        IGC_ASSERT_MESSAGE((opc == Instruction::Mul) || (opc == Instruction::Add) || (opc == Instruction::Sub), "Mul instruction is expected!");
 
         // Handle 32 bit integer mul/add/sub only.
         if (!I.getType()->isIntegerTy(32))
@@ -3069,7 +3069,8 @@ namespace IGC
             llvm::Instruction* inst;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                IGC_ASSERT(modifier.sat == false && modifier.flag == nullptr);
+                IGC_ASSERT(modifier.sat == false);
+                IGC_ASSERT(modifier.flag == nullptr);
                 pass->EmitNoModifier(inst);
             }
         };
@@ -3209,7 +3210,7 @@ namespace IGC
                 if (inst->hasOneUse() && SupportsSaturate(inst))
                 {
                     satPattern->pattern = Match(*inst);
-                    IGC_ASSERT(satPattern->pattern && "Failed to match pattern");
+                    IGC_ASSERT_MESSAGE(satPattern->pattern, "Failed to match pattern");
                     match = true;
                 }
             }
@@ -3276,8 +3277,8 @@ namespace IGC
             pattern->invertFlag = invertFlag;
             pattern->patternNotPredicated = Match(*source1);
             pattern->patternPredicated = Match(*source0);
-            IGC_ASSERT(pattern->patternNotPredicated &&
-                pattern->patternPredicated && "Failed to match pattern");
+            IGC_ASSERT_MESSAGE(pattern->patternNotPredicated, "Failed to match pattern");
+            IGC_ASSERT_MESSAGE(pattern->patternPredicated, "Failed to match pattern");
             AddPattern(pattern);
         }
         return match;
@@ -3430,7 +3431,8 @@ namespace IGC
             CmpInst* cmp;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                IGC_ASSERT(modifier.flag == nullptr && modifier.sat == false);
+                IGC_ASSERT(modifier.flag == nullptr);
+                IGC_ASSERT(modifier.sat == false);
                 pass->emitAluConditionMod(pattern, alu, cmp);
             }
         };
@@ -3444,7 +3446,7 @@ namespace IGC
                 {
                     CondModifierPattern* pattern = new (m_allocator) CondModifierPattern();
                     pattern->pattern = Match(*alu);
-                    IGC_ASSERT(pattern->pattern && "Failed to match pattern");
+                    IGC_ASSERT_MESSAGE(pattern->pattern, "Failed to match pattern");
                     pattern->alu = alu;
                     pattern->cmp = &I;
                     AddPattern(pattern);
@@ -3551,7 +3553,7 @@ namespace IGC
 
         // Sanity check:
         //   make sure that rotate is supported and "I" is a scalar "or" instruction
-        IGC_ASSERT(!I.getType()->isVectorTy() && "Vector type not expected here");
+        IGC_ASSERT_MESSAGE(false == I.getType()->isVectorTy(), "Vector type not expected here");
 
         uint64_t typeWidth = I.getType()->getScalarSizeInBits();
         Instruction* OrInst = nullptr;
@@ -3576,7 +3578,7 @@ namespace IGC
         }
         else
         {
-            IGC_ASSERT(false && "Should be invoked with Or/Trunc instruction");
+            IGC_ASSERT_MESSAGE(0, "Should be invoked with Or/Trunc instruction");
         }
 
         // Do rotate only if
@@ -3863,7 +3865,7 @@ namespace IGC
         }
         else
         {
-            IGC_ASSERT(false && "Unhandled Dbg intrinsic");
+            IGC_ASSERT_MESSAGE(0, "Unhandled Dbg intrinsic");
         }
         AddPattern(pattern);
         return true;

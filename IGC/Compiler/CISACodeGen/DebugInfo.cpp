@@ -185,7 +185,7 @@ void DebugInfoPass::EmitDebugInfo(bool finalize)
 
         if (dbgSize != 0)
         {
-            IGC_ASSERT(buffer != nullptr && "Failed to generate VISA debug info");
+            IGC_ASSERT_MESSAGE(nullptr != buffer, "Failed to generate VISA debug info");
 
             dbgInfo = IGC::aligned_malloc(dbgSize, sizeof(void*));
 

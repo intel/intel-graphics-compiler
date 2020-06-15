@@ -117,7 +117,7 @@ public:
   _SPIRV_DCL_DEC
   void validate()const {
     SPIRVValue::validate();
-    IGC_ASSERT(ParentF && "Invalid parent function");
+    IGC_ASSERT_MESSAGE(ParentF, "Invalid parent function");
   }
 
 private:

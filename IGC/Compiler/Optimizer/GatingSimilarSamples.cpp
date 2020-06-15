@@ -101,7 +101,7 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
             }
             instItr++;
         }
-        IGC_ASSERT(texels.size() == 0 && " All texels.x/y/z were not multiplied by same float");
+        IGC_ASSERT_MESSAGE(texels.size() == 0, " All texels.x/y/z were not multiplied by same float");
         texels.clear();
     }
     return true;
@@ -272,7 +272,7 @@ bool GatingSimilarSamples::setOrCmpGatingValue(Value*& gatingValueToCmp1, Instru
     if (!gatingValueToCmp1)
     {
         //This is the first texel sample inst from the loop after unrolled
-        IGC_ASSERT(texelSampleInst == similarSampleInsts[0] && "incorrect inst sequence while extracting the loop gating value");
+        IGC_ASSERT_MESSAGE(texelSampleInst == similarSampleInsts[0], "incorrect inst sequence while extracting the loop gating value");
         gatingValueToCmp1 = mulInst;
         return true;
     }
@@ -382,7 +382,8 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
 bool GatingSimilarSamples::areSampleInstructionsSimilar(Instruction* firstSampleInst, Instruction* secondSampleInst)
 {
     if (!firstSampleInst || !secondSampleInst) return false;
-    IGC_ASSERT(isSampleInstruction(firstSampleInst) && isSampleInstruction(secondSampleInst));
+    IGC_ASSERT(isSampleInstruction(firstSampleInst));
+    IGC_ASSERT(isSampleInstruction(secondSampleInst));
     if (firstSampleInst->getNumOperands() != secondSampleInst->getNumOperands())
         return false;
 

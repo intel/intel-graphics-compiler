@@ -376,7 +376,7 @@ namespace SPIR {
     // @param index the sequential number of the queried parameter
     ///@return parameter type
     const RefParamType& getParam(unsigned int index) const {
-      IGC_ASSERT(m_params.size() > index && "index is OOB");
+      IGC_ASSERT_MESSAGE(m_params.size() > index, "index is OOB");
       return m_params[index];
     }
 
@@ -391,7 +391,7 @@ namespace SPIR {
         m_params.push_back(type);
       }
       else {
-        IGC_ASSERT(false && "index is OOB");
+        IGC_ASSERT_MESSAGE(0, "index is OOB");
       }
     }
 
@@ -450,7 +450,7 @@ namespace SPIR {
   //          that type, NULL otherwise.
   template <typename T>
   T* dyn_cast(ParamType* pType) {
-    IGC_ASSERT(pType && "dyn_cast does not support casting of NULL");
+    IGC_ASSERT_MESSAGE(pType, "dyn_cast does not support casting of NULL");
     return (T::enumTy == pType->getTypeId()) ? (T*)pType : NULL;
   }
 
@@ -461,7 +461,7 @@ namespace SPIR {
   //          that type, NULL otherwise.
   template <typename T>
   const T* dyn_cast(const ParamType* pType) {
-    IGC_ASSERT(pType && "dyn_cast does not support casting of NULL");
+    IGC_ASSERT_MESSAGE(pType, "dyn_cast does not support casting of NULL");
     return (T::enumTy == pType->getTypeId()) ? (const T*)pType : NULL;
   }
 

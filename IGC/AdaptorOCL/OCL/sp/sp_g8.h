@@ -255,7 +255,7 @@ inline DWORD CGen8OpenCLStateProcessor::GetSamplerStateSizeMultiplier(
     case SAMPLER_OBJECT_SAMPLE_8X8_BOOL_CENTROID:   multiplier =   0; break;
     case SAMPLER_OBJECT_SAMPLE_8X8_BOOL_SUM:        multiplier =   0; break;
     default:
-        IGC_ASSERT(0 && "Unknown sampler type");
+        IGC_ASSERT_MESSAGE(0, "Unknown sampler type");
         multiplier = 0;
         break;
     }

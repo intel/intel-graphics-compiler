@@ -63,7 +63,7 @@ InlineLocalsResolution::InlineLocalsResolution() :
 const unsigned int InlineLocalsResolution::VALID_LOCAL_HIGH_BITS = 0x10000000;
 
 static bool useAsPointerOnly(Value* V) {
-    IGC_ASSERT(V->getType()->isPointerTy() && "Expect the input value is a pointer!");
+    IGC_ASSERT_MESSAGE(V->getType()->isPointerTy(), "Expect the input value is a pointer!");
 
     SmallSet<PHINode*, 8> VisitedPHIs;
     SmallVector<Value*, 16> WorkList;
@@ -339,7 +339,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
         }
 
         PointerType* ptrType = dyn_cast<PointerType>(globalVar->getType());
-        IGC_ASSERT(ptrType && "The type of a global variable must be a pointer type");
+        IGC_ASSERT_MESSAGE(ptrType, "The type of a global variable must be a pointer type");
         if (!ptrType)
         {
             continue;

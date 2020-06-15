@@ -110,7 +110,7 @@ namespace IGC
             {
                 V = IdValues[BitId];
             }
-            IGC_ASSERT(V && "Invalid bit id found!");
+            IGC_ASSERT_MESSAGE(nullptr != V, "Invalid bit id found!");
             return V;
         }
 

@@ -133,7 +133,7 @@ bool RectListOptimizationPass::isGSTriStripPrimTopology(Function& F)
 bool RectListOptimizationPass::isGSOutputVertValid(Function& F)
 {
     auto pMaxOutputVertices = F.getParent()->getGlobalVariable("GsMaxOutputVertices");
-    IGC_ASSERT(pMaxOutputVertices != nullptr && "GsMaxOutputVertices must be defined");
+    IGC_ASSERT_MESSAGE(pMaxOutputVertices != nullptr, "GsMaxOutputVertices must be defined");
     const unsigned int maxOutputVertices = static_cast<unsigned int>(
         (llvm::cast<llvm::ConstantInt>(pMaxOutputVertices->getInitializer())->getZExtValue()));
     return (maxOutputVertices == m_NUM_OUTPUT_VERT_FOR_RECTLIST);
@@ -252,7 +252,7 @@ bool RectListOptimizationPass::isRectCoords(
                 Value* V = *it;
                 coordToVertMap::iterator coordToVertIt = rectCoordToVertM.find(V);
                 if (coordToVertIt == rectCoordToVertM.end()) {
-                    IGC_ASSERT(false && "Not able to find one of the XChannel Values");
+                    IGC_ASSERT_MESSAGE(0, "Not able to find one of the XChannel Values");
                     isRectCoords = false;
                     break;
                 }
@@ -286,7 +286,7 @@ bool RectListOptimizationPass::isConstantCoords(
         Value* uniqueValue = *ChannelValues.begin();
         coordToVertMap::iterator it = rectCoordToVertM.find(uniqueValue);
         if (it == rectCoordToVertM.end()) {
-            IGC_ASSERT(false && "Not able to find the value in the unique value in Vale to vertex List map");
+            IGC_ASSERT_MESSAGE(0, "Not able to find the value in the unique value in Vale to vertex List map");
             break;
         }
         if (it->second.size() != m_NUM_OUTPUT_VERT_FOR_RECTLIST) {
@@ -346,7 +346,7 @@ void RectListOptimizationPass::analyzeForRectList(Function& F, GeometryShaderCon
     //   And ZY channel must be constant
     bool bPositionFound = false;
     bool isRectList = false;
-    IGC_ASSERT(m_rectListPerAttrib.size() != 0 && "Empty attribute list, should not happen\n");
+    IGC_ASSERT_MESSAGE(m_rectListPerAttrib.size() != 0, "Empty attribute list, should not happen\n");
     for (atrribRectListMap::iterator it = m_rectListPerAttrib.begin(); it != m_rectListPerAttrib.end(); it++) {
         ATTRIB_SOURCELIST_ST* pAttrSrcList = &it->second;
         channelToCoordMap::iterator ctCitXit = pAttrSrcList->channelToCoordM.find(IGC::SHADER_CHANNEL_X);
@@ -361,7 +361,7 @@ void RectListOptimizationPass::analyzeForRectList(Function& F, GeometryShaderCon
             ctCitZit == pAttrSrcList->channelToCoordM.end() ||
             ctCitWit == pAttrSrcList->channelToCoordM.end())
         {
-            IGC_ASSERT(false && "Not able to find one of the Channel X/Y/Z/W!!!");
+            IGC_ASSERT_MESSAGE(0, "Not able to find one of the Channel X/Y/Z/W!!!");
             break;
         }
 
@@ -422,17 +422,17 @@ bool RectListOptimizationPass::runOnFunction(Function& F)
         IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
         {
-            IGC_ASSERT(false && "failed to find the function in metadata\n");
+            IGC_ASSERT_MESSAGE(0, "failed to find the function in metadata\n");
             break;
         }
         IGC::CodeGenContext* ctx = getAnalysis<IGC::CodeGenContextWrapper>().getCodeGenContext();
         if (!ctx || ctx->type != ShaderType::GEOMETRY_SHADER) {
-            IGC_ASSERT(false && "Failed to get the code gen context or not a Geometry shader\n");
+            IGC_ASSERT_MESSAGE(0, "Failed to get the code gen context or not a Geometry shader\n");
             break;
         }
         IGC::GeometryShaderContext* pgsctx = static_cast <IGC::GeometryShaderContext*>(ctx);
         if (!pgsctx) {
-            IGC_ASSERT(false && "Failed to get the GS code gen context \n");
+            IGC_ASSERT_MESSAGE(0, "Failed to get the GS code gen context \n");
             break;
         }
 

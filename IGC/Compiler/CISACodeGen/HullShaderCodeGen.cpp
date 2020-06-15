@@ -141,7 +141,7 @@ namespace IGC
             m_pNumURBReadHandleGRF = m_properties.m_pInputControlPointCount;
             break;
         default:
-            IGC_ASSERT(false && "Dispatch mode does not exist");
+            IGC_ASSERT_MESSAGE(0, "Dispatch mode does not exist");
             break;
         }
     }
@@ -157,7 +157,7 @@ namespace IGC
             AllocateEightPatchPayload();
             break;
         default:
-            IGC_ASSERT(false && "dispatch mode does not exist");
+            IGC_ASSERT_MESSAGE(0, "dispatch mode does not exist");
             break;
         }
     }

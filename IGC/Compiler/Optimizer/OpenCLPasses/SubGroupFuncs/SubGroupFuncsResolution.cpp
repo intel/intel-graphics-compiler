@@ -247,7 +247,7 @@ void SubGroupFuncsResolution::BTIHelper(llvm::CallInst& CI)
         int argNo = (*arg).getArgNo();
         FunctionMetaData* funcMD = &modMD->FuncMD[F];
         ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-        IGC_ASSERT((size_t)argNo < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+        IGC_ASSERT_MESSAGE((size_t)argNo < resAllocMD->argAllocMDList.size(), "ArgAllocMD List Out of Bounds");
         ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
         m_argIndexMap[&(*arg)] = CImagesBI::ParamInfo(
             argAlloc->indexType,
@@ -285,7 +285,7 @@ WaveOps SubGroupFuncsResolution::GetWaveOp(StringRef funcName)
             return op.second;
         }
     }
-    IGC_ASSERT(false && "Function name does not contain spir-v operation type");
+    IGC_ASSERT_MESSAGE(0, "Function name does not contain spir-v operation type");
     return WaveOps::UNDEF;
 }
 
@@ -349,7 +349,7 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
     LLVMContext& C = CI.getCalledFunction()->getContext();
     Value* Ptr = CI.getArgOperand(0);
     PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType());
-    IGC_ASSERT(PtrTy && "simdBlockRead has non-pointer type!");
+    IGC_ASSERT_MESSAGE(PtrTy, "simdBlockRead has non-pointer type!");
     SmallVector<Value*, 1> args;
     args.push_back(Ptr);
     SmallVector<Type*, 2>  types;
@@ -378,7 +378,7 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
         types[1] = (Type::getInt64PtrTy(C, AS));
         break;
     default:
-        IGC_ASSERT(false && "unrecognized bit width!");
+        IGC_ASSERT_MESSAGE(0, "unrecognized bit width!");
         // assertion failed but continue code failsafe using default 32
     case 32:
         types[1] = (Type::getInt32PtrTy(C, AS));
@@ -425,7 +425,7 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst& CI)
     LLVMContext& C = CI.getCalledFunction()->getContext();
     Value* Ptr = CI.getArgOperand(0);
     PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType());
-    IGC_ASSERT(PtrTy && "simdBlockWrite has non-pointer type!");
+    IGC_ASSERT_MESSAGE(PtrTy, "simdBlockWrite has non-pointer type!");
     ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
     bool supportLocal = false;
     supportLocal = m_pCtx->platform.supportSLMBlockMessage();
@@ -454,7 +454,7 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst& CI)
         types.push_back(Type::getInt64PtrTy(C, AS));
         break;
     default:
-        IGC_ASSERT(false && "unrecognized bit width!");
+        IGC_ASSERT_MESSAGE(0, "unrecognized bit width!");
         // assertion failed but continue code failsafe using default 32
     case 32:
         types.push_back(Type::getInt32PtrTy(C, AS));
@@ -540,7 +540,7 @@ void SubGroupFuncsResolution::subGroupArithmetic(CallInst& CI, WaveOps op, Group
     }
     else
     {
-        IGC_ASSERT(false && "Unsupported group operation type!");
+        IGC_ASSERT_MESSAGE(0, "Unsupported group operation type!");
     }
 
     if (isBoolean)

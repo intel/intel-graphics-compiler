@@ -157,8 +157,8 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst* bufPtr, Value* bufIdx)
         Instruction* inst = foldlist.back();
         foldlist.pop_back();
 
-        PointerType* instType = dyn_cast<PointerType>(inst->getType());
-        IGC_ASSERT(instType);
+        PointerType* const instType = dyn_cast<PointerType>(inst->getType());
+        IGC_ASSERT(nullptr != instType);
         Type* eltType = instType->getElementType();
         PointerType* ptrType = PointerType::get(eltType, outAS);
         inst->mutateType(ptrType);
@@ -399,7 +399,10 @@ Value* FixResourcePtr::ResolveBufferIndex(Value* bufferIndex, Value* vectorIndex
         {
             return bufferIndex;
         }
-        IGC_ASSERT(0);
+        else
+        {
+            IGC_ASSERT(0);
+        }
     }
     else if (ExtractElementInst * ee = dyn_cast<ExtractElementInst>(bufferIndex))
     {

@@ -531,8 +531,8 @@ bool WIAnalysis::insideDivergentCF(const llvm::Value* val)
 
 WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val)
 {
-    IGC_ASSERT(m_pChangedNew->empty() && "set should be empty before query");
-    IGC_ASSERT(val && "Bad value");
+    IGC_ASSERT_MESSAGE(m_pChangedNew->empty(), "set should be empty before query");
+    IGC_ASSERT_MESSAGE(nullptr != val, "Bad value");
     if (isa<Constant>(val))
     {
         return WIAnalysis::UNIFORM;
@@ -567,7 +567,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::getDependency(const Value* val)
             return WIAnalysis::UNIFORM;
         }
         // Don't expect this happens, let's assertion fail
-        IGC_ASSERT(false && "Dependence for 'val' should bave been set already!");
+        IGC_ASSERT_MESSAGE(0, "Dependence for 'val' should bave been set already!");
     }
     IGC_ASSERT(m_depMap.GetAttributeWithoutCreating(val) != m_depMap.end());
     return m_depMap.GetAttributeWithoutCreating(val);
@@ -597,15 +597,15 @@ static bool HasPhiUse(const llvm::Value* inst)
 
 void WIAnalysisRunner::calculate_dep(const Value* val)
 {
-    IGC_ASSERT(val && "Bad value");
+    IGC_ASSERT_MESSAGE(nullptr != val, "Bad value");
 
     // Not an instruction, must be a constant or an argument
     // Could this vector type be of a constant which
     // is not uniform ?
-    IGC_ASSERT(isa<Instruction>(val) && "Could we reach here with non instruction value?");
+    IGC_ASSERT_MESSAGE(isa<Instruction>(val), "Could we reach here with non instruction value?");
 
-    const Instruction* inst = dyn_cast<Instruction>(val);
-    IGC_ASSERT(inst && "This Value is not an Instruction");
+    const Instruction* const inst = dyn_cast<Instruction>(val);
+    IGC_ASSERT_MESSAGE(nullptr != inst, "This Value is not an Instruction");
 
     bool hasOriginal = hasDependency(inst);
     WIAnalysis::WIDependancy orig;
@@ -1257,7 +1257,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const PHINode* inst)
         }
     }
 
-    IGC_ASSERT(foundFirst && "We should not reach here with All incoming values are unset");
+    IGC_ASSERT_MESSAGE(foundFirst, "We should not reach here with All incoming values are unset");
 
     return totalDep;
 }
@@ -1466,7 +1466,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst* inst)
         return WIAnalysis::RANDOM;
     }
     default:
-        IGC_ASSERT(false && "no such opcode");
+        IGC_ASSERT_MESSAGE(0, "no such opcode");
         // never get here
         return WIAnalysis::RANDOM;
     }
@@ -1474,7 +1474,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst* inst)
 
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const VAArgInst* inst)
 {
-    IGC_ASSERT(false && "Are we supporting this ??");
+    IGC_ASSERT_MESSAGE(0, "Are we supporting this ??");
     return WIAnalysis::RANDOM;
 }
 
@@ -1581,7 +1581,7 @@ BranchInfo::BranchInfo(const IGCLLVM::TerminatorInst* inst, const BasicBlock* ip
     full_join(ipd)
 {
     const BasicBlock* fork_blk = inst->getParent();
-    IGC_ASSERT(cbr == fork_blk->getTerminator() && "block terminator mismatch");
+    IGC_ASSERT_MESSAGE(cbr == fork_blk->getTerminator(), "block terminator mismatch");
 
     if (cbr->getNumSuccessors() != 2) {
         std::set<const BasicBlock*> Reached;

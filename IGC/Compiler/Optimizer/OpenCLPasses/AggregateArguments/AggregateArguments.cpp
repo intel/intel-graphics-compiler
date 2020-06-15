@@ -129,7 +129,7 @@ static uint64_t getNumElements(SequentialType* type)
     {
         return vectorType->getNumElements();
     }
-    IGC_ASSERT(false && "expected array or vector");
+    IGC_ASSERT_MESSAGE(0, "expected array or vector");
     return 0;
 }
 
@@ -203,7 +203,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
             implicitArgType = ImplicitArg::CONSTANT_REG_QWORD;
             break;
         default:
-            IGC_ASSERT(false && "unknown primitve type");
+            IGC_ASSERT_MESSAGE(0, "unknown primitve type");
             break;
         };
 

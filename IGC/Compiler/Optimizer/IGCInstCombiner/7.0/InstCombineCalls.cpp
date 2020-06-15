@@ -122,8 +122,7 @@ static Constant* getNegativeIsTrueBoolVec(ConstantDataVector* V) {
     IntegerType* BoolTy = Type::getInt1Ty(V->getContext());
     for (unsigned I = 0, E = V->getNumElements(); I != E; ++I) {
         Constant* Elt = V->getElementAsConstant(I);
-        IGC_ASSERT((isa<ConstantInt>(Elt) || isa<ConstantFP>(Elt)) &&
-            "Unexpected constant data vector element type");
+        IGC_ASSERT_MESSAGE((isa<ConstantInt>(Elt) || isa<ConstantFP>(Elt)), "Unexpected constant data vector element type");
         bool Sign = V->getElementType()->isIntegerTy()
             ? cast<ConstantInt>(Elt)->isNegative()
             : cast<ConstantFP>(Elt)->isNegative();
@@ -157,7 +156,7 @@ Instruction* InstCombiner::SimplifyAnyMemTransfer(AnyMemTransferInst* MI) {
     // A single load+store correctly handles overlapping memory in the memmove
     // case.
     uint64_t Size = MemOpLength->getLimitedValue();
-    IGC_ASSERT(Size && "0-sized memory transferring should be removed already.");
+    IGC_ASSERT_MESSAGE(Size, "0-sized memory transferring should be removed already.");
 
     if (Size > 8 || (Size & (Size - 1)))
         return nullptr;  // If not 1/2/4/8 bytes, exit.
@@ -240,7 +239,7 @@ Instruction* InstCombiner::SimplifyAnyMemSet(AnyMemSetInst* MI) {
         return nullptr;
     uint64_t Len = LenC->getLimitedValue();
     Alignment = MI->getDestAlignment();
-    IGC_ASSERT(Len && "0-sized memory setting should be removed already.");
+    IGC_ASSERT_MESSAGE(Len, "0-sized memory setting should be removed already.");
 
     // memset(s,c,n) -> store s, c (for n=1,2,4,8)
     if (Len <= 8 && isPowerOf2_32((uint32_t)Len)) {
@@ -338,7 +337,7 @@ static Value* simplifyX86immShift(const IntrinsicInst& II,
         LogicalShift = true; ShiftLeft = true;
         break;
     }
-    IGC_ASSERT((LogicalShift || !ShiftLeft) && "Only logical shifts can shift left");
+    IGC_ASSERT_MESSAGE((LogicalShift || !ShiftLeft), "Only logical shifts can shift left");
 
     // Simplify if count is constant.
     auto Arg1 = II.getArgOperand(1);
@@ -353,8 +352,9 @@ static Value* simplifyX86immShift(const IntrinsicInst& II,
         // SSE2/AVX2 uses all the first 64-bits of the 128-bit vector
         // operand to compute the shift amount.
         auto VT = cast<VectorType>(CDV->getType());
-        unsigned BitWidth = VT->getElementType()->getPrimitiveSizeInBits();
-        IGC_ASSERT((64 % BitWidth) == 0 && "Unexpected packed shift size");
+        const unsigned BitWidth = VT->getElementType()->getPrimitiveSizeInBits();
+        IGC_ASSERT(0 < BitWidth);
+        IGC_ASSERT_MESSAGE((64 % BitWidth) == 0, "Unexpected packed shift size");
         unsigned NumSubElts = 64 / BitWidth;
 
         // Concatenate the sub-elements to create the 64-bit value.
@@ -448,7 +448,7 @@ static Value* simplifyX86varShift(const IntrinsicInst& II,
         ShiftLeft = true;
         break;
     }
-    IGC_ASSERT((LogicalShift || !ShiftLeft) && "Only logical shifts can shift left");
+    IGC_ASSERT_MESSAGE((LogicalShift || !ShiftLeft), "Only logical shifts can shift left");
 
     // Simplify if all shift amounts are constant/undef.
     auto* CShift = dyn_cast<Constant>(II.getArgOperand(1));
@@ -499,7 +499,7 @@ static Value* simplifyX86varShift(const IntrinsicInst& II,
                 ConstantVec.push_back(UndefValue::get(SVT));
             }
             else {
-                IGC_ASSERT(LogicalShift && "Logical shift expected");
+                IGC_ASSERT_MESSAGE(LogicalShift, "Logical shift expected");
                 ConstantVec.push_back(ConstantInt::getNullValue(SVT));
             }
         }
@@ -540,15 +540,15 @@ static Value* simplifyX86pack(IntrinsicInst& II, bool IsSigned) {
 
     Type* ArgTy = Arg0->getType();
     unsigned NumLanes = ResTy->getPrimitiveSizeInBits() / 128;
+    IGC_ASSERT(NumLanes);
     unsigned NumDstElts = ResTy->getVectorNumElements();
     unsigned NumSrcElts = ArgTy->getVectorNumElements();
-    IGC_ASSERT(NumDstElts == (2 * NumSrcElts) && "Unexpected packing types");
+    IGC_ASSERT_MESSAGE(NumDstElts == (2 * NumSrcElts), "Unexpected packing types");
 
     unsigned NumDstEltsPerLane = NumDstElts / NumLanes;
     unsigned NumSrcEltsPerLane = NumSrcElts / NumLanes;
     unsigned DstScalarSizeInBits = ResTy->getScalarSizeInBits();
-    IGC_ASSERT(ArgTy->getScalarSizeInBits() == (2 * DstScalarSizeInBits) &&
-        "Unexpected packing types");
+    IGC_ASSERT_MESSAGE(ArgTy->getScalarSizeInBits() == (2 * DstScalarSizeInBits), "Unexpected packing types");
 
     // Constant folding.
     auto* Cst0 = dyn_cast<Constant>(Arg0);
@@ -572,8 +572,7 @@ static Value* simplifyX86pack(IntrinsicInst& II, bool IsSigned) {
                 return nullptr;
 
             APInt Val = CInt->getValue();
-            IGC_ASSERT(Val.getBitWidth() == ArgTy->getScalarSizeInBits() &&
-                "Unexpected constant bitwidth");
+            IGC_ASSERT_MESSAGE(Val.getBitWidth() == ArgTy->getScalarSizeInBits(), "Unexpected constant bitwidth");
 
             if (IsSigned) {
                 // PACKSS: Truncate signed value with signed saturation.
@@ -752,7 +751,7 @@ static Value* simplifyX86insertps(const IntrinsicInst& II,
         return nullptr;
 
     VectorType* VecTy = cast<VectorType>(II.getType());
-    IGC_ASSERT(VecTy->getNumElements() == 4 && "insertps with wrong vector type");
+    IGC_ASSERT_MESSAGE(VecTy->getNumElements() == 4, "insertps with wrong vector type");
 
     // The immediate permute control byte looks like this:
     //    [3:0] - zero mask for each 32-bit lane
@@ -1004,8 +1003,7 @@ static Value* simplifyX86pshufb(const IntrinsicInst& II,
     auto* VecTy = cast<VectorType>(II.getType());
     auto* MaskEltTy = Type::getInt32Ty(II.getContext());
     unsigned NumElts = VecTy->getNumElements();
-    IGC_ASSERT((NumElts == 16 || NumElts == 32 || NumElts == 64) &&
-        "Unexpected number of elements in shuffle mask!");
+    IGC_ASSERT_MESSAGE((NumElts == 16 || NumElts == 32 || NumElts == 64), "Unexpected number of elements in shuffle mask!");
 
     // Construct a shuffle mask from constant integers or UNDEFs.
     Constant* Indexes[64] = { nullptr };
@@ -1101,8 +1099,7 @@ static Value* simplifyX86vpermv(const IntrinsicInst& II,
     auto* VecTy = cast<VectorType>(II.getType());
     auto* MaskEltTy = Type::getInt32Ty(II.getContext());
     unsigned Size = VecTy->getNumElements();
-    IGC_ASSERT((Size == 4 || Size == 8 || Size == 16 || Size == 32 || Size == 64) &&
-        "Unexpected shuffle mask size");
+    IGC_ASSERT_MESSAGE((Size == 4 || Size == 8 || Size == 16 || Size == 32 || Size == 64), "Unexpected shuffle mask size");
 
     // Construct a shuffle mask from constant integers or UNDEFs.
     Constant* Indexes[64] = { nullptr };
@@ -1344,9 +1341,7 @@ static Instruction* simplifyMaskedScatter(IntrinsicInst& II, InstCombiner& IC) {
 }
 
 static Instruction* foldCttzCtlz(IntrinsicInst& II, InstCombiner& IC) {
-    IGC_ASSERT((II.getIntrinsicID() == Intrinsic::cttz ||
-        II.getIntrinsicID() == Intrinsic::ctlz) &&
-        "Expected cttz or ctlz intrinsic");
+    IGC_ASSERT_MESSAGE((II.getIntrinsicID() == Intrinsic::cttz) || (II.getIntrinsicID() == Intrinsic::ctlz), "Expected cttz or ctlz intrinsic");
     Value* Op0 = II.getArgOperand(0);
 
     KnownBits Known = IC.computeKnownBits(Op0, 0, &II);
@@ -1395,8 +1390,7 @@ static Instruction* foldCttzCtlz(IntrinsicInst& II, InstCombiner& IC) {
 }
 
 static Instruction* foldCtpop(IntrinsicInst& II, InstCombiner& IC) {
-    IGC_ASSERT(II.getIntrinsicID() == Intrinsic::ctpop &&
-        "Expected ctpop intrinsic");
+    IGC_ASSERT_MESSAGE(II.getIntrinsicID() == Intrinsic::ctpop, "Expected ctpop intrinsic");
     Value* Op0 = II.getArgOperand(0);
     // FIXME: Try to simplify vectors of integers.
     auto* IT = dyn_cast<IntegerType>(Op0->getType());
@@ -1512,12 +1506,12 @@ static APFloat fmed3AMDGCN(const APFloat& Src0, const APFloat& Src1,
     APFloat Max3 = maxnum(maxnum(Src0, Src1), Src2);
 
     APFloat::cmpResult Cmp0 = Max3.compare(Src0);
-    IGC_ASSERT(Cmp0 != APFloat::cmpUnordered && "nans handled separately");
+    IGC_ASSERT_MESSAGE(Cmp0 != APFloat::cmpUnordered, "nans handled separately");
     if (Cmp0 == APFloat::cmpEqual)
         return maxnum(Src1, Src2);
 
     APFloat::cmpResult Cmp1 = Max3.compare(Src1);
-    IGC_ASSERT(Cmp1 != APFloat::cmpUnordered && "nans handled separately");
+    IGC_ASSERT_MESSAGE(Cmp1 != APFloat::cmpUnordered, "nans handled separately");
     if (Cmp1 == APFloat::cmpEqual)
         return maxnum(Src0, Src2);
 
@@ -1590,8 +1584,8 @@ static Value* simplifyNeonVld1(const IntrinsicInst& II,
 // comparison to the first NumOperands.
 static bool haveSameOperands(const IntrinsicInst& I, const IntrinsicInst& E,
     unsigned NumOperands) {
-    IGC_ASSERT(I.getNumArgOperands() >= NumOperands && "Not enough operands");
-    IGC_ASSERT(E.getNumArgOperands() >= NumOperands && "Not enough operands");
+    IGC_ASSERT_MESSAGE(I.getNumArgOperands() >= NumOperands, "Not enough operands");
+    IGC_ASSERT_MESSAGE(E.getNumArgOperands() >= NumOperands, "Not enough operands");
     for (unsigned i = 0; i < NumOperands; i++)
         if (I.getArgOperand(i) != E.getArgOperand(i))
             return false;
@@ -1609,8 +1603,7 @@ static bool haveSameOperands(const IntrinsicInst& I, const IntrinsicInst& E,
 //   call @llvm.foo.end(i1 0)
 static bool removeTriviallyEmptyRange(IntrinsicInst& I, unsigned StartID,
     unsigned EndID, InstCombiner& IC) {
-    IGC_ASSERT(I.getIntrinsicID() == StartID &&
-        "Start intrinsic does not have expected ID");
+    IGC_ASSERT_MESSAGE(I.getIntrinsicID() == StartID, "Start intrinsic does not have expected ID");
     BasicBlock::iterator BI(I), BE(I.getParent()->end());
     for (++BI; BI != BE; ++BI) {
         if (auto * E = dyn_cast<IntrinsicInst>(BI)) {
@@ -2058,7 +2051,7 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
     case Intrinsic::ssub_with_overflow: {
         OverflowCheckFlavor OCF =
             IntrinsicIDToOverflowCheckFlavor(II->getIntrinsicID());
-        IGC_ASSERT(OCF != OCF_INVALID && "unexpected!");
+        IGC_ASSERT_MESSAGE(OCF != OCF_INVALID, "unexpected!");
 
         Value* OperationResult = nullptr;
         Constant* OverflowResult = nullptr;
@@ -2322,12 +2315,10 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
         auto RetType = cast<VectorType>(II->getType());
         unsigned ArgWidth = ArgType->getNumElements();
         unsigned RetWidth = RetType->getNumElements();
-        IGC_ASSERT(RetWidth <= ArgWidth && "Unexpected input/return vector widths");
-        IGC_ASSERT(ArgType->isIntOrIntVectorTy() &&
-            ArgType->getScalarSizeInBits() == 16 &&
-            "CVTPH2PS input type should be 16-bit integer vector");
-        IGC_ASSERT(RetType->getScalarType()->isFloatTy() &&
-            "CVTPH2PS output type should be 32-bit float vector");
+        IGC_ASSERT_MESSAGE(RetWidth <= ArgWidth, "Unexpected input/return vector widths");
+        IGC_ASSERT_MESSAGE(ArgType->isIntOrIntVectorTy(), "CVTPH2PS input type should be 16-bit integer vector");
+        IGC_ASSERT_MESSAGE(ArgType->getScalarSizeInBits() == 16, "CVTPH2PS input type should be 16-bit integer vector");
+        IGC_ASSERT_MESSAGE(RetType->getScalarType()->isFloatTy(), "CVTPH2PS output type should be 32-bit float vector");
 
         // Constant folding: Convert to generic half to single conversion.
         if (isa<ConstantAggregateZero>(Arg))
@@ -2708,8 +2699,7 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
         // SSE2/AVX2 uses only the first 64-bits of the 128-bit vector
         // operand to compute the shift amount.
         Value* Arg1 = II->getArgOperand(1);
-        IGC_ASSERT(Arg1->getType()->getPrimitiveSizeInBits() == 128 &&
-            "Unexpected packed shift size");
+        IGC_ASSERT_MESSAGE(Arg1->getType()->getPrimitiveSizeInBits() == 128, "Unexpected packed shift size");
         unsigned VWidth = Arg1->getType()->getVectorNumElements();
 
         if (Value * V = SimplifyDemandedVectorEltsLow(Arg1, VWidth, VWidth / 2)) {
@@ -2821,9 +2811,10 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
         Value* Op1 = II->getArgOperand(1);
         unsigned VWidth0 = Op0->getType()->getVectorNumElements();
         unsigned VWidth1 = Op1->getType()->getVectorNumElements();
-        IGC_ASSERT(Op0->getType()->getPrimitiveSizeInBits() == 128 &&
-            Op1->getType()->getPrimitiveSizeInBits() == 128 && VWidth0 == 2 &&
-            VWidth1 == 16 && "Unexpected operand sizes");
+        IGC_ASSERT_MESSAGE(Op0->getType()->getPrimitiveSizeInBits() == 128, "Unexpected operand sizes");
+        IGC_ASSERT_MESSAGE(Op1->getType()->getPrimitiveSizeInBits() == 128, "Unexpected operand sizes");
+        IGC_ASSERT_MESSAGE(VWidth0 == 2, "Unexpected operand sizes");
+        IGC_ASSERT_MESSAGE(VWidth1 == 16, "Unexpected operand sizes");
 
         // See if we're dealing with constant values.
         Constant* C1 = dyn_cast<Constant>(Op1);
@@ -2859,8 +2850,8 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
         // bits of the lower 64-bits. The upper 64-bits are undefined.
         Value* Op0 = II->getArgOperand(0);
         unsigned VWidth = Op0->getType()->getVectorNumElements();
-        IGC_ASSERT(Op0->getType()->getPrimitiveSizeInBits() == 128 && VWidth == 2 &&
-            "Unexpected operand size");
+        IGC_ASSERT_MESSAGE(Op0->getType()->getPrimitiveSizeInBits() == 128, "Unexpected operand size");
+        IGC_ASSERT_MESSAGE(VWidth == 2, "Unexpected operand size");
 
         // See if we're dealing with constant values.
         ConstantInt* CILength = dyn_cast<ConstantInt>(II->getArgOperand(1));
@@ -2883,10 +2874,10 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
         Value* Op0 = II->getArgOperand(0);
         Value* Op1 = II->getArgOperand(1);
         unsigned VWidth = Op0->getType()->getVectorNumElements();
-        IGC_ASSERT(Op0->getType()->getPrimitiveSizeInBits() == 128 &&
-            Op1->getType()->getPrimitiveSizeInBits() == 128 && VWidth == 2 &&
-            Op1->getType()->getVectorNumElements() == 2 &&
-            "Unexpected operand size");
+        IGC_ASSERT_MESSAGE(Op0->getType()->getPrimitiveSizeInBits() == 128, "Unexpected operand size");
+        IGC_ASSERT_MESSAGE(Op1->getType()->getPrimitiveSizeInBits() == 128, "Unexpected operand size");
+        IGC_ASSERT_MESSAGE(VWidth == 2, "Unexpected operand size");
+        IGC_ASSERT_MESSAGE(Op1->getType()->getVectorNumElements() == 2, "Unexpected operand size");
 
         // See if we're dealing with constant values.
         Constant* C1 = dyn_cast<Constant>(Op1);
@@ -2920,9 +2911,10 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
         Value* Op1 = II->getArgOperand(1);
         unsigned VWidth0 = Op0->getType()->getVectorNumElements();
         unsigned VWidth1 = Op1->getType()->getVectorNumElements();
-        IGC_ASSERT(Op0->getType()->getPrimitiveSizeInBits() == 128 &&
-            Op1->getType()->getPrimitiveSizeInBits() == 128 && VWidth0 == 2 &&
-            VWidth1 == 2 && "Unexpected operand sizes");
+        IGC_ASSERT_MESSAGE(Op0->getType()->getPrimitiveSizeInBits() == 128, "Unexpected operand sizes");
+        IGC_ASSERT_MESSAGE(Op1->getType()->getPrimitiveSizeInBits() == 128, "Unexpected operand sizes");
+        IGC_ASSERT_MESSAGE(VWidth0 == 2, "Unexpected operand sizes");
+        IGC_ASSERT_MESSAGE(VWidth1 == 2, "Unexpected operand sizes");
 
         // See if we're dealing with constant values.
         ConstantInt* CILength = dyn_cast<ConstantInt>(II->getArgOperand(2));
@@ -3067,8 +3059,7 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
         // the permutation mask with respect to 31 and reverse the order of
         // V1 and V2.
         if (Constant * Mask = dyn_cast<Constant>(II->getArgOperand(2))) {
-            IGC_ASSERT(Mask->getType()->getVectorNumElements() == 16 &&
-                "Bad type for intrinsic!");
+            IGC_ASSERT_MESSAGE(Mask->getType()->getVectorNumElements() == 16, "Bad type for intrinsic!");
 
             // Check that all of the elements are integer constants or undefs.
             bool AllEltsOk = true;
@@ -4034,7 +4025,7 @@ Instruction* InstCombiner::visitCallSite(CallSite CS) {
         ArgNo++;
     }
 
-    IGC_ASSERT(ArgNo == CS.arg_size() && "sanity check");
+    IGC_ASSERT_MESSAGE(ArgNo == CS.arg_size(), "sanity check");
 
     if (!ArgNos.empty()) {
         AttributeList AS = CS.getAttributes();
@@ -4352,8 +4343,7 @@ bool InstCombiner::transformConstExprCastCall(CallSite CS) {
     if (NewRetTy->isVoidTy())
         Caller->setName("");   // Void type should not have a name.
 
-    IGC_ASSERT((ArgAttrs.size() == FT->getNumParams() || FT->isVarArg()) &&
-        "missing argument attributes");
+    IGC_ASSERT_MESSAGE((ArgAttrs.size() == FT->getNumParams() || FT->isVarArg()), "missing argument attributes");
     LLVMContext& Ctx = Callee->getContext();
     AttributeList NewCallerPAL = AttributeList::get(
         Ctx, FnAttrs, AttributeSet::get(Ctx, RAttrs), ArgAttrs);
@@ -4436,8 +4426,7 @@ InstCombiner::transformCallThroughTrampoline(CallSite CS,
     if (Attrs.hasAttrSomewhere(Attribute::Nest))
         return nullptr;
 
-    IGC_ASSERT(Tramp &&
-        "transformCallThroughTrampoline called with incorrect CallSite.");
+    IGC_ASSERT_MESSAGE(Tramp, "transformCallThroughTrampoline called with incorrect CallSite.");
 
     Function* NestF = cast<Function>(Tramp->getArgOperand(1)->stripPointerCasts());
     FunctionType* NestFTy = cast<FunctionType>(NestF->getValueType());

@@ -805,7 +805,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
                 }
             }
 
-            IGC_ASSERT(found && "GTPIN_IGC_OCL Error: Fail to find a free BTI for GT-Pin surface (i)");
+            IGC_ASSERT_MESSAGE(found, "GTPIN_IGC_OCL Error: Fail to find a free BTI for GT-Pin surface (i)");
         }
         const int res = GTPIN_IGC_OCL_UpdateKernelInfo(0, btiAssigned[0], btiAssigned[1]);
 
@@ -977,7 +977,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
                 if( !retValue.Success )
                 {
-                    IGC_ASSERT(0 && "Error during adding sampler state for sampler argument (index: samplerAnnotation->SamplerTableIndex, type: samplerAnnotation->SamplerType)");
+                    IGC_ASSERT_MESSAGE(0, "Error during adding sampler state for sampler argument (index: samplerAnnotation->SamplerTableIndex, type: samplerAnnotation->SamplerType)");
                     break;
                 }
             }
@@ -1032,7 +1032,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
                 if( !retValue.Success )
                 {
-                    IGC_ASSERT(0 && "Error during adding sampler state for inline sampler (index: samplerAnnotation->SamplerTableIndex, type: samplerAnnotation->SamplerType)");
+                    IGC_ASSERT_MESSAGE(0, "Error during adding sampler state for inline sampler (index: samplerAnnotation->SamplerTableIndex, type: samplerAnnotation->SamplerType)");
                     break;
                 }
             }

@@ -298,7 +298,7 @@ void DeSSA::print(raw_ostream& OS, const Module*) const
 
         Value* VL;
         if (isIsolated(Leader)) {
-            IGC_ASSERT((allNodes.size() == 0) && "ICE: isolated node still in multi-value CC!");
+            IGC_ASSERT_MESSAGE(allNodes.size() == 0, "ICE: isolated node still in multi-value CC!");
             VL = Leader->value;
             OS << "\nVar isolated : ";
             VL->print(OS);
@@ -658,8 +658,8 @@ void DeSSA::unionRegs(Node* Nd1, Node* Nd2)
         NewLeader->rank++;
     }
 
-    IGC_ASSERT(NewLeader && Leadee &&
-        "ICE: both leader and leadee shall not be null!");
+    IGC_ASSERT_MESSAGE(nullptr != NewLeader, "ICE: both leader and leadee shall not be null!");
+    IGC_ASSERT_MESSAGE(nullptr != Leadee, "ICE: both leader and leadee shall not be null!");
     Leadee->parent = NewLeader;
 
     // Link the circular list of Leadee right before NewLeader
@@ -999,7 +999,7 @@ void DeSSA::SplitInterferencesForAlignment()
             if (Curr->alignment != EALIGN_AUTO && Curr->alignment != EALIGN_GRF)
             {
                 IGC_ASSERT(nullptr != Curr);
-                IGC_ASSERT((Curr != Head) && "Head Node cannot be isolated, something wrong!");
+                IGC_ASSERT_MESSAGE((Curr != Head), "Head Node cannot be isolated, something wrong!");
                 isolateReg(Curr->value);
             }
         } while (N != Head);
@@ -1169,7 +1169,7 @@ void DeSSA::getAllValuesInCongruentClass(
     Value* RootV = nullptr;
     RootV = getNodeValue(V);
 
-    IGC_ASSERT(RootV && "ICE: Node value should not be nullptr!");
+    IGC_ASSERT_MESSAGE(nullptr != RootV, "ICE: Node value should not be nullptr!");
     ValsInCC.push_back(RootV);
     auto RI = RegNodeMap.find(RootV);
     if (RI != RegNodeMap.end()) {
@@ -1262,7 +1262,7 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
                     // Only src operands of a phi can be visited before
                     // operands' definition. For other instructions such
                     // as castInst, this shall never happen
-                    IGC_ASSERT(false && "ICE: Use visited before definition!");
+                    IGC_ASSERT_MESSAGE(0, "ICE: Use visited before definition!");
                 }
             }
         }
@@ -1273,8 +1273,7 @@ int DeSSA::checkInsertElementAlias(
     InsertElementInst* IEI, SmallVector<Value*, 16> & AllIEIs)
 {
     IGC_ASSERT(nullptr != IEI);
-    IGC_ASSERT(isa<UndefValue>(IEI->getOperand(0)) &&
-        "ICE: need to pass first IEI as the argument");
+    IGC_ASSERT_MESSAGE(isa<UndefValue>(IEI->getOperand(0)), "ICE: need to pass first IEI as the argument");
 
     // Find the the alias pattern:
     //     V0 = IEI UndefValue, S0, 0

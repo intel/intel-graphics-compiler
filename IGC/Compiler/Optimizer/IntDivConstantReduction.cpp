@@ -547,8 +547,8 @@ struct IntDivConstantReduction : public FunctionPass
             unsigned s = divisor.countTrailingZeros();
             shiftedDividend = B.CreateLShr(shiftedDividend, s);
             appxRecip = divisor.lshr(s).magicu(s);
-            IGC_ASSERT(!appxRecip.a && "expected to subtract now");
-            IGC_ASSERT(appxRecip.s < divisor.getBitWidth() && "undefined shift");
+            IGC_ASSERT_MESSAGE(!appxRecip.a, "expected to subtract now");
+            IGC_ASSERT_MESSAGE(appxRecip.s < divisor.getBitWidth(), "undefined shift");
         }
         //
         ConstantInt *appxRcp = getConstantUInt(
@@ -664,7 +664,7 @@ struct IntDivConstantReduction : public FunctionPass
                 return CreateMulhU64(B, u, v);
             }
         } else {
-            IGC_ASSERT(false && "CreateMulH must be 32 or 64");
+            IGC_ASSERT_MESSAGE(0, "CreateMulH must be 32 or 64");
             return nullptr;
         }
     }
@@ -749,7 +749,7 @@ struct IntDivConstantReduction : public FunctionPass
         case 32: return Builder.getInt32((uint32_t)val);
         case 64: return Builder.getInt64((uint64_t)val);
         default:
-            IGC_ASSERT(false && "invalid bitsize");
+            IGC_ASSERT_MESSAGE(0, "invalid bitsize");
             return nullptr;
         }
     }
@@ -762,7 +762,7 @@ struct IntDivConstantReduction : public FunctionPass
         case 32: return Builder.getInt32((uint32_t)val);
         case 64: return Builder.getInt64(val);
         default:
-            IGC_ASSERT(false && "invalid bitsize");
+            IGC_ASSERT_MESSAGE(0, "invalid bitsize");
             return nullptr;
         }
     }

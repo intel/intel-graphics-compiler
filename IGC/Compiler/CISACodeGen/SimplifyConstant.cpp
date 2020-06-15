@@ -496,21 +496,21 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
         unsigned NElts = CDA->getNumElements();
         for (unsigned i = 0; i < NElts; ++i) {
             Constant* Elt = CDA->getAggregateElement(i);
-            IGC_ASSERT(Elt && "Null AggregateElement");
+            IGC_ASSERT_MESSAGE(nullptr != Elt, "Null AggregateElement");
             Vals[i] = getConstantVal(VEltTy, Elt, IsSigned);
         }
     }
     else {
-        IGC_ASSERT(isa<ConstantArray>(Init) && "out of sync");
+        IGC_ASSERT_MESSAGE(isa<ConstantArray>(Init), "out of sync");
         ConstantArray* CA = cast<ConstantArray>(Init);
         unsigned NElts = CA->getNumOperands();
         for (unsigned i = 0; i < NElts; ++i) {
-            Constant* Elt = CA->getAggregateElement(i);
+            Constant* const Elt = CA->getAggregateElement(i);
+            IGC_ASSERT_MESSAGE(nullptr != Elt, "Null AggregateElement");
             if (auto EltTy = dyn_cast<VectorType>(Elt->getType())) {
                 unsigned VectorSize = EltTy->getVectorNumElements();
                 for (unsigned j = 0; j < VectorSize; ++j) {
                     Constant* V = Elt->getAggregateElement(j);
-                    IGC_ASSERT(Elt && "Null AggregateElement");
                     Vals[i * VectorSize + j] = getConstantVal(VEltTy, V, IsSigned);
                 }
             }
@@ -544,7 +544,7 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
         }
         for (auto I = GEP->user_begin(); I != GEP->user_end(); /*empty*/) {
             auto LI = dyn_cast<LoadInst>(*I++);
-            IGC_ASSERT(LI && "nullptr");
+            IGC_ASSERT_MESSAGE(nullptr != LI, "nullptr");
             IRBuilder<> Builder(LI);
             Type* Ty = LI->getType();
             unsigned N = 1;
@@ -613,7 +613,7 @@ static bool rewriteAsCmpSel(GlobalVariable* GV, Function& F) {
         }
         for (auto I = GEP->user_begin(); I != GEP->user_end(); /*empty*/) {
             auto LI = dyn_cast<LoadInst>(*I++);
-            IGC_ASSERT(LI && "nullptr");
+            IGC_ASSERT_MESSAGE(nullptr != LI, "nullptr");
             IRBuilder<> Builder(LI);
 
             int n = (int)NextPowerOf2(NElts - 1);

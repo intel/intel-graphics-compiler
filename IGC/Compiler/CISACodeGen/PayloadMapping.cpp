@@ -66,7 +66,7 @@ const Instruction* PayloadMapping::GetSupremumOfNonHomogeneousPart(
     case GenISAIntrinsic::GenISA_RTWrite:
         return GetSupremumOfNonHomogeneousPart_RTWrite(inst1, inst2);
     default:
-        IGC_ASSERT(0); //should not be called at all for other intrinsics
+        IGC_ASSERT_MESSAGE(0, "should not be called at all for other intrinsics");
         return nullptr;
     }
 }

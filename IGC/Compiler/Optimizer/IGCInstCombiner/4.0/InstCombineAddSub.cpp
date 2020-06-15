@@ -72,7 +72,7 @@ namespace {
     ~FAddendCoef();
 
     void set(short C) {
-      IGC_ASSERT(!insaneIntVal(C) && "Insane coefficient");
+      IGC_ASSERT_MESSAGE(!insaneIntVal(C), "Insane coefficient");
       IsFp = false; IntVal = C;
     }
 
@@ -102,12 +102,14 @@ namespace {
       { return reinterpret_cast<const APFloat*>(&FpValBuf.buffer[0]); }
 
     const APFloat &getFpVal() const {
-      IGC_ASSERT(IsFp && BufHasFpVal && "Incorret state");
+      IGC_ASSERT_MESSAGE(IsFp, "Incorret state");
+      IGC_ASSERT_MESSAGE(BufHasFpVal, "Incorret state");
       return *getFpValPtr();
     }
 
     APFloat &getFpVal() {
-      IGC_ASSERT(IsFp && BufHasFpVal && "Incorret state");
+      IGC_ASSERT_MESSAGE(IsFp, "Incorret state");
+      IGC_ASSERT_MESSAGE(BufHasFpVal, "Incorret state");
       return *getFpValPtr();
     }
 
@@ -175,7 +177,7 @@ namespace {
     unsigned drillAddendDownOneStep(FAddend &Addend0, FAddend &Addend1) const;
 
     void operator+=(const FAddend &T) {
-      IGC_ASSERT((Val == T.Val) && "Symbolic-values disagree");
+      IGC_ASSERT_MESSAGE((Val == T.Val), "Symbolic-values disagree");
       Coeff += T.Coeff;
     }
 
@@ -310,7 +312,7 @@ void FAddendCoef::operator*=(const FAddendCoef &That) {
 
   if (isInt() && That.isInt()) {
     int Res = IntVal * (int)That.IntVal;
-    IGC_ASSERT(!insaneIntVal(Res) && "Insane int value");
+    IGC_ASSERT_MESSAGE(!insaneIntVal(Res), "Insane int value");
     IntVal = Res;
     return;
   }
@@ -443,8 +445,7 @@ unsigned FAddend::drillAddendDownOneStep
 //   (y / x) +/- (z / x)               (y +/- z) / x
 //
 Value *FAddCombine::performFactorization(Instruction *I) {
-  IGC_ASSERT((I->getOpcode() == Instruction::FAdd ||
-          I->getOpcode() == Instruction::FSub) && "Expect add/sub");
+  IGC_ASSERT_MESSAGE((I->getOpcode() == Instruction::FAdd) || (I->getOpcode() == Instruction::FSub), "Expect add/sub");
 
   Instruction *I0 = dyn_cast<Instruction>(I->getOperand(0));
   Instruction *I1 = dyn_cast<Instruction>(I->getOperand(1));
@@ -520,14 +521,13 @@ Value *FAddCombine::performFactorization(Instruction *I) {
 }
 
 Value *FAddCombine::simplify(Instruction *I) {
-  IGC_ASSERT(I->isFast() && "Expected 'fast' instruction");
+  IGC_ASSERT_MESSAGE(I->isFast(), "Expected 'fast' instruction");
 
   // Currently we are not able to handle vector type.
   if (I->getType()->isVectorTy())
     return nullptr;
 
-  IGC_ASSERT((I->getOpcode() == Instruction::FAdd ||
-          I->getOpcode() == Instruction::FSub) && "Expect add/sub");
+  IGC_ASSERT_MESSAGE((I->getOpcode() == Instruction::FAdd) || (I->getOpcode() == Instruction::FSub), "Expect add/sub");
 
   // Save the instruction before calling other member-functions.
   Instr = I;
@@ -608,7 +608,7 @@ Value *FAddCombine::simplify(Instruction *I) {
 
 Value *FAddCombine::simplifyFAdd(AddendVect& Addends, unsigned InstrQuota) {
   unsigned AddendNum = Addends.size();
-  IGC_ASSERT(AddendNum <= 4 && "Too many addends");
+  IGC_ASSERT_MESSAGE(AddendNum <= 4, "Too many addends");
 
   // For saving intermediate results;
   unsigned NextTmpIdx = 0;
@@ -679,8 +679,7 @@ Value *FAddCombine::simplifyFAdd(AddendVect& Addends, unsigned InstrQuota) {
     }
   }
 
-  IGC_ASSERT((NextTmpIdx <= array_lengthof(TmpResult) + 1) &&
-         "out-of-bound access");
+  IGC_ASSERT_MESSAGE((NextTmpIdx <= array_lengthof(TmpResult) + 1), "out-of-bound access");
 
   if (ConstAdd)
     SimpVect.push_back(ConstAdd);
@@ -698,7 +697,7 @@ Value *FAddCombine::simplifyFAdd(AddendVect& Addends, unsigned InstrQuota) {
 
 Value *FAddCombine::createNaryFAdd
   (const AddendVect &Opnds, unsigned InstrQuota) {
-  IGC_ASSERT(!Opnds.empty() && "Expect at least one addend");
+  IGC_ASSERT_MESSAGE(!Opnds.empty(), "Expect at least one addend");
 
   // Step 1: Check if the # of instructions needed exceeds the quota.
   //
@@ -746,7 +745,7 @@ Value *FAddCombine::createNaryFAdd
     LastVal = createFNeg(LastVal);
   }
 
-  IGC_ASSERT((InstructionCounter == InstrNeeded) && "Inconsistent in instruction numbers");
+  IGC_ASSERT_MESSAGE((InstructionCounter == InstrNeeded), "Inconsistent in instruction numbers");
 
   return LastVal;
 }
@@ -1570,8 +1569,7 @@ Instruction *InstCombiner::visitSub(BinaryOperator &I) {
     BinaryOperator *Res = BinaryOperator::CreateAdd(Op0, V);
 
     if (const auto *BO = dyn_cast<BinaryOperator>(Op1)) {
-      IGC_ASSERT(BO->getOpcode() == Instruction::Sub &&
-             "Expected a subtraction operator!");
+      IGC_ASSERT_MESSAGE(BO->getOpcode() == Instruction::Sub, "Expected a subtraction operator!");
       if (BO->hasNoSignedWrap() && I.hasNoSignedWrap())
         Res->setHasNoSignedWrap(true);
     } else {

@@ -73,6 +73,7 @@ namespace IGC
         AllocateInput(m_R1, offset);
         offset += getGRFSize();
 
+        IGC_ASSERT(getGRFSize());
         IGC_ASSERT(offset % getGRFSize() == 0);
         ProgramOutput()->m_startReg = offset / getGRFSize();
 
@@ -159,7 +160,8 @@ namespace IGC
 
     void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     {
-        IGC_ASSERT(entry && entry->getParent());
+        IGC_ASSERT(nullptr != entry);
+        IGC_ASSERT(entry->getParent());
         const bool isPositionOnlyShader = (entry->getParent()->getModuleFlag("IGC::PositionOnlyVertexShader") != nullptr);
 
         pKernelProgram->simd8 = *ProgramOutput();

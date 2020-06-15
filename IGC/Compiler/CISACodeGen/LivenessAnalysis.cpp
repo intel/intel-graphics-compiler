@@ -179,8 +179,9 @@ bool LivenessAnalysis::isInstLastUseOfValue(Value* V, Instruction* I)
 
 bool LivenessAnalysis::isBefore(Instruction* A, Instruction* B)
 {
-    IGC_ASSERT(A->getParent() == B->getParent() &&
-        "A and B must be within the same BB!");
+    IGC_ASSERT(nullptr != A);
+    IGC_ASSERT(nullptr != B);
+    IGC_ASSERT_MESSAGE(A->getParent() == B->getParent(), "A and B must be within the same BB!");
 
     int nA = (int)getDistance(A);
     int nB = (int)getDistance(B);
@@ -287,7 +288,7 @@ void LivenessAnalysis::print_livein(raw_ostream& OS, BasicBlock* BB)
     {
         int id = *I;
         Value* V = IdValues[id];
-        IGC_ASSERT(V && "Value should be in Value Map!");
+        IGC_ASSERT_MESSAGE(nullptr != V, "Value should be in Value Map!");
         if (nVals == 0) {
             OS << "      ";
         }

@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <string>
 #include <iterator>
+#include "Probe/Assertion.h"
 
 #if defined(_WIN64)
 #define CMC_LIBRARY_NAME "igcmc64.dll"
@@ -134,7 +135,7 @@ void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,
     else if (dim == 3)
         imageInput->ImageType = iOpenCL::IMAGE_MEMORY_OBJECT_3D;
     else
-        IGC_ASSERT(false && "unsupported image dimension");
+        IGC_ASSERT_MESSAGE(0, "unsupported image dimension");
     imageInput->LocationIndex = 0;
     imageInput->LocationCount = 0;
     imageInput->IsEmulationArgument = false;
@@ -346,7 +347,7 @@ const char* cmc::getPlatformStr(PLATFORM platform)
             return "ICLLP";
         return "ICL";
     default:
-        IGC_ASSERT(0 && "unsupported platform");
+        IGC_ASSERT_MESSAGE(0, "unsupported platform");
         break;
     }
     return "SKL";
@@ -376,7 +377,7 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& ker
     kernel.m_kernelInfo.m_argIndexMap.clear();
 
     for (unsigned i = 0; i < info->num_print_strings; i++) {
-        assert(info->print_string_descs);
+        IGC_ASSERT(info->print_string_descs);
         cmc_ocl_print_string& SI = info->print_string_descs[i];
 
         iOpenCL::PrintfStringAnnotation* stringAnnotation = new iOpenCL::PrintfStringAnnotation;
@@ -461,7 +462,7 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& ker
       kernelProgram = &kernel.m_kernelInfo.m_kernelProgram.simd16;
     else if (info->CompiledSIMDSize == 32 || info->CompiledSIMDSize == 1)
       kernelProgram = &kernel.m_kernelInfo.m_kernelProgram.simd32;
-    assert(kernelProgram);
+    IGC_ASSERT(kernelProgram);
     if (info->RelocationTable.Size > 0) {
       kernelProgram->m_funcRelocationTable = info->RelocationTable.Buf;
       kernelProgram->m_funcRelocationTableSize = info->RelocationTable.Size;
@@ -581,7 +582,7 @@ int cmc::vISACompile_v2(cmc_compile_info_v2* output, iOpenCL::CGen8CMProgram& CM
     const char* platformStr = getPlatformStr(CMProgram.getPlatform());
 
     // JIT compile kernels in vISA
-    IGC_ASSERT(output->kernel_info_v2 && "null kernel info");
+    IGC_ASSERT_MESSAGE(output->kernel_info_v2, "null kernel info");
     for (unsigned i = 0; i < output->num_kernels; ++i) {
         cmc_kernel_info_v2* info = output->kernel_info_v2 + i;
         void* genBinary = nullptr;

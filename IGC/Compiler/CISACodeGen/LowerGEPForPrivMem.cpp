@@ -202,7 +202,7 @@ void TransposeHelper::EraseDeadCode()
 {
     for (auto pInst = m_toBeRemovedGEP.rbegin(); pInst != m_toBeRemovedGEP.rend(); ++pInst)
     {
-        IGC_ASSERT((*pInst)->use_empty() && "Instruction still has usage");
+        IGC_ASSERT_MESSAGE((*pInst)->use_empty(), "Instruction still has usage");
         (*pInst)->eraseFromParent();
     }
 }
@@ -633,7 +633,7 @@ static Value* loadEltsFromVecAlloca(
     // %v0 = extractelement <32 x float> %w, i32 %idx
     // %v1 = extractelement <32 x float> %w, i32 %idx+1
     // replace all uses of %v with <%v0, %v1>
-    IGC_ASSERT((N > 1) && "out of sync");
+    IGC_ASSERT_MESSAGE((N > 1), "out of sync");
     Type* Ty = VectorType::get(scalarType, N);
     Value* Result = UndefValue::get(Ty);
 

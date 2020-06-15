@@ -208,7 +208,8 @@ bool VariableReuseAnalysis::checkUseInst(Instruction* UseInst, LiveVars* LV) {
 
 bool VariableReuseAnalysis::checkDefInst(Instruction* DefInst,
     Instruction* UseInst, LiveVars* LV) {
-    IGC_ASSERT(DefInst && UseInst);
+    IGC_ASSERT(nullptr != DefInst);
+    IGC_ASSERT(nullptr != UseInst);
     if (isa<PHINode>(DefInst))
         return false;
 
@@ -779,7 +780,7 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
             return false;
         }
 
-        IGC_ASSERT(IEI_ix < nelts && "ICE: IEI's index out of bound!");
+        IGC_ASSERT_MESSAGE(IEI_ix < nelts, "ICE: IEI's index out of bound!");
         SVecInsEltInfo& InsEltInfo = AllIEIs[IEI_ix];
         if (InsEltInfo.IEI) {
             // One element is inserted more than once, skip.

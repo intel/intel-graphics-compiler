@@ -109,7 +109,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
     {
         GlobalVariable* pGlobalVar = &(*I);
         PointerType* ptrType = cast<PointerType>(pGlobalVar->getType());
-        IGC_ASSERT(ptrType && "The type of a global variable must be a pointer type");
+        IGC_ASSERT_MESSAGE(ptrType, "The type of a global variable must be a pointer type");
 
         // Pointer's address space should be either constant or global
         const unsigned AS = ptrType->getAddressSpace();
@@ -126,12 +126,12 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             // This is a workaround for clang bug, clang creates string constants with private address sapce!
             AS != ADDRESS_SPACE_PRIVATE)
         {
-            IGC_ASSERT(false && "program scope variable with unexpected address space");
+            IGC_ASSERT_MESSAGE(0, "program scope variable with unexpected address space");
             continue;
         }
 
         Constant* initializer = pGlobalVar->getInitializer();
-        IGC_ASSERT(initializer && "Constant must be initialized");
+        IGC_ASSERT_MESSAGE(initializer, "Constant must be initialized");
         if (!initializer)
         {
             continue;
@@ -205,7 +205,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             }
 
             Value* bc = funcToVarSet[userFunc][pGlobalVar];
-            IGC_ASSERT(bc != nullptr && "Program Scope buffer handling is broken!");
+            IGC_ASSERT_MESSAGE(bc != nullptr, "Program Scope buffer handling is broken!");
 
             // And actually use the bitcast.
             user->replaceUsesOfWith(pGlobalVar, bc);

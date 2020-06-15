@@ -616,7 +616,7 @@ private:
         {
             if (Item.first == TypeSizeInBytes)
             {
-                IGC_ASSERT(Item.second && "null variable");
+                IGC_ASSERT_MESSAGE(Item.second, "null variable");
                 return Item.second;
             }
         }

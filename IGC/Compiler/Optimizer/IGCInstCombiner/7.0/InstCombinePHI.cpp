@@ -208,8 +208,7 @@ Instruction* InstCombiner::FoldIntegerTypedPHI(PHINode& PN) {
 
     // Now search for a matching PHI
     auto* BB = PN.getParent();
-    IGC_ASSERT(AvailablePtrVals.size() == PN.getNumIncomingValues() &&
-        "Not enough available ptr typed incoming values");
+    IGC_ASSERT_MESSAGE(AvailablePtrVals.size() == PN.getNumIncomingValues(), "Not enough available ptr typed incoming values");
     PHINode* MatchingPtrPHI = nullptr;
     unsigned NumPhis = 0;
     for (auto II = BB->begin(), EI = BasicBlock::iterator(BB->getFirstNonPHI());
@@ -234,8 +233,7 @@ Instruction* InstCombiner::FoldIntegerTypedPHI(PHINode& PN) {
     }
 
     if (MatchingPtrPHI) {
-        IGC_ASSERT(MatchingPtrPHI->getType() == IntToPtr->getType() &&
-            "Phi's Type does not match with IntToPtr");
+        IGC_ASSERT_MESSAGE(MatchingPtrPHI->getType() == IntToPtr->getType(), "Phi's Type does not match with IntToPtr");
         // The PtrToCast + IntToPtr will be simplified later
         return CastInst::CreateBitOrPointerCast(MatchingPtrPHI,
             IntToPtr->getOperand(0)->getType());
@@ -276,10 +274,7 @@ Instruction* InstCombiner::FoldIntegerTypedPHI(PHINode& PN) {
             continue;
         }
 
-        IGC_ASSERT((isa<PHINode>(IncomingVal) ||
-            IncomingVal->getType()->isPointerTy() ||
-            (dyn_cast<LoadInst>(IncomingVal) && dyn_cast<LoadInst>(IncomingVal)->hasOneUse())) &&
-            "Can not replace LoadInst with multiple uses");
+        IGC_ASSERT_MESSAGE((isa<PHINode>(IncomingVal) || IncomingVal->getType()->isPointerTy() || (nullptr != dyn_cast<LoadInst>(IncomingVal) && dyn_cast<LoadInst>(IncomingVal)->hasOneUse())), "Can not replace LoadInst with multiple uses");
 
         // Need to insert a BitCast.
         // For an integer Load instruction with a single use, the load + IntToPtr
@@ -918,7 +913,7 @@ static bool PHIsEqualValue(PHINode* PN, Value* NonPhiInVal,
 /// Return an existing non-zero constant if this phi node has one, otherwise
 /// return constant 1.
 static ConstantInt* GetAnyNonZeroConstInt(PHINode& PN) {
-    IGC_ASSERT(isa<IntegerType>(PN.getType()) && "Expect only integer type phi");
+    IGC_ASSERT_MESSAGE(isa<IntegerType>(PN.getType()), "Expect only integer type phi");
     for (Value* V : PN.operands())
         if (auto * ConstVA = dyn_cast<ConstantInt>(V))
             if (!ConstVA->isZero())
@@ -1085,8 +1080,7 @@ Instruction* InstCombiner::SliceUpIllegalIntegerPHI(PHINode& FirstPhi) {
             // Otherwise, Create the new PHI node for this user.
             EltPHI = PHINode::Create(Ty, PN->getNumIncomingValues(),
                 PN->getName() + ".off" + Twine(Offset), PN);
-            IGC_ASSERT(EltPHI->getType() != PN->getType() &&
-                "Truncate didn't shrink phi?");
+            IGC_ASSERT_MESSAGE(EltPHI->getType() != PN->getType(), "Truncate didn't shrink phi?");
 
             for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
                 BasicBlock* Pred = PN->getIncomingBlock(i);

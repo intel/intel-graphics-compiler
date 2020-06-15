@@ -61,7 +61,7 @@ bool BuiltinsConverter::fillIndexMap(Function& F)
     for (Function::arg_iterator arg = F.arg_begin(), e = F.arg_end(); arg != e; ++arg)
     {
         int argNo = (*arg).getArgNo();
-        IGC_ASSERT(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+        IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
         ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
         if (argAlloc->type == OtherResourceType)
         {

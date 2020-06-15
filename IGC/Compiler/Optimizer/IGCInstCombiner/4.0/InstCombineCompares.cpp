@@ -206,10 +206,10 @@ static bool isSignTest(ICmpInst::Predicate &Pred, const APInt &C) {
 static void computeSignedMinMaxValuesFromKnownBits(const APInt &KnownZero,
                                                    const APInt &KnownOne,
                                                    APInt &Min, APInt &Max) {
-  IGC_ASSERT(KnownZero.getBitWidth() == KnownOne.getBitWidth() &&
-         KnownZero.getBitWidth() == Min.getBitWidth() &&
-         KnownZero.getBitWidth() == Max.getBitWidth() &&
-         "KnownZero, KnownOne and Min, Max must have equal bitwidth.");
+  IGC_ASSERT_MESSAGE(KnownZero.getBitWidth() == KnownOne.getBitWidth(), "KnownZero, KnownOne and Min, Max must have equal bitwidth.");
+  IGC_ASSERT_MESSAGE(KnownZero.getBitWidth() == Min.getBitWidth(), "KnownZero, KnownOne and Min, Max must have equal bitwidth.");
+  IGC_ASSERT_MESSAGE(KnownZero.getBitWidth() == Max.getBitWidth(), "KnownZero, KnownOne and Min, Max must have equal bitwidth.");
+
   APInt UnknownBits = ~(KnownZero|KnownOne);
 
   // The minimum value is when all unknown bits are zeros, EXCEPT for the sign
@@ -229,10 +229,10 @@ static void computeSignedMinMaxValuesFromKnownBits(const APInt &KnownZero,
 static void computeUnsignedMinMaxValuesFromKnownBits(const APInt &KnownZero,
                                                      const APInt &KnownOne,
                                                      APInt &Min, APInt &Max) {
-  IGC_ASSERT(KnownZero.getBitWidth() == KnownOne.getBitWidth() &&
-         KnownZero.getBitWidth() == Min.getBitWidth() &&
-         KnownZero.getBitWidth() == Max.getBitWidth() &&
-         "Ty, KnownZero, KnownOne and Min, Max must have equal bitwidth.");
+  IGC_ASSERT_MESSAGE(KnownZero.getBitWidth() == KnownOne.getBitWidth(), "Ty, KnownZero, KnownOne and Min, Max must have equal bitwidth.");
+  IGC_ASSERT_MESSAGE(KnownZero.getBitWidth() == Min.getBitWidth(), "Ty, KnownZero, KnownOne and Min, Max must have equal bitwidth.");
+  IGC_ASSERT_MESSAGE(KnownZero.getBitWidth() == Max.getBitWidth(), "Ty, KnownZero, KnownOne and Min, Max must have equal bitwidth.");
+
   APInt UnknownBits = ~(KnownZero|KnownOne);
 
   // The minimum value is when the unknown bits are all zeros.
@@ -465,7 +465,7 @@ Instruction *InstCombiner::foldCmpLoadFromIndexedGlobal(GetElementPtrInst *GEP,
   // If the comparison can be replaced with a range comparison for the elements
   // where it is true, emit the range check.
   if (TrueRangeEnd != Overdefined) {
-    IGC_ASSERT(TrueRangeEnd != FirstTrueElement && "Should emit single compare");
+    IGC_ASSERT_MESSAGE(TrueRangeEnd != FirstTrueElement, "Should emit single compare");
 
     // Generate (i-FirstTrue) <u (TrueRangeEnd-FirstTrue+1).
     if (FirstTrueElement) {
@@ -480,7 +480,7 @@ Instruction *InstCombiner::foldCmpLoadFromIndexedGlobal(GetElementPtrInst *GEP,
 
   // False range check.
   if (FalseRangeEnd != Overdefined) {
-    IGC_ASSERT(FalseRangeEnd != FirstFalseElement && "Should emit single compare");
+    IGC_ASSERT_MESSAGE(FalseRangeEnd != FirstFalseElement, "Should emit single compare");
     // Generate (i-FirstFalse) >u (FalseRangeEnd-FirstFalse).
     if (FirstFalseElement) {
       Value *Offs = ConstantInt::get(Idx->getType(), -FirstFalseElement);
@@ -743,7 +743,7 @@ static void setInsertionPoint(IRBuilder<> &Builder, Value *V,
   }
   // Otherwise, this is a constant and we don't need to set a new
   // insertion point.
-  IGC_ASSERT(isa<Constant>(V) && "Setting insertion point for unknown value!");
+  IGC_ASSERT_MESSAGE(isa<Constant>(V), "Setting insertion point for unknown value!");
 }
 
 /// Returns a re-written value of Start as an indexed GEP using Base as a
@@ -1082,7 +1082,7 @@ Instruction *InstCombiner::foldGEPICmp(GEPOperator *GEPLHS, Value *RHS,
 Instruction *InstCombiner::foldAllocaCmp(ICmpInst &ICI,
                                          const AllocaInst *Alloca,
                                          const Value *Other) {
-  IGC_ASSERT(ICI.isEquality() && "Cannot fold non-equality comparison.");
+  IGC_ASSERT_MESSAGE(ICI.isEquality(), "Cannot fold non-equality comparison.");
 
   // It would be tempting to fold away comparisons between allocas and any
   // pointer not based on that alloca (e.g. an argument). However, even
@@ -1211,7 +1211,7 @@ Instruction *InstCombiner::foldICmpAddOpConst(Instruction &ICI,
 Instruction *InstCombiner::foldICmpShrConstConst(ICmpInst &I, Value *A,
                                                  const APInt &AP1,
                                                  const APInt &AP2) {
-  IGC_ASSERT(I.isEquality() && "Cannot fold icmp gt/lt");
+  IGC_ASSERT_MESSAGE(I.isEquality(), "Cannot fold icmp gt/lt");
 
   auto getICmp = [&I](CmpInst::Predicate Pred, Value *LHS, Value *RHS) {
     if (I.getPredicate() == I.ICMP_NE)
@@ -1270,7 +1270,7 @@ Instruction *InstCombiner::foldICmpShrConstConst(ICmpInst &I, Value *A,
 Instruction *InstCombiner::foldICmpShlConstConst(ICmpInst &I, Value *A,
                                                  const APInt &AP1,
                                                  const APInt &AP2) {
-  IGC_ASSERT(I.isEquality() && "Cannot fold icmp gt/lt");
+  IGC_ASSERT_MESSAGE(I.isEquality(), "Cannot fold icmp gt/lt");
 
   auto getICmp = [&I](CmpInst::Predicate Pred, Value *LHS, Value *RHS) {
     if (I.getPredicate() == I.ICMP_NE)
@@ -1991,9 +1991,7 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
     // (X << S) <=u C is equiv to X <=u (C >> S) for all C
     // (X << S) <u (C + 1) is equiv to X <u (C >> S) + 1 if C <u ~0u
     // (X << S) <u C is equiv to X <u ((C - 1) >> S) + 1 if C >u 0
-    IGC_ASSERT((Pred != ICmpInst::ICMP_ULT || C->ugt(0)) &&
-           "Encountered `ult 0` that should have been eliminated by "
-           "InstSimplify.");
+    IGC_ASSERT_MESSAGE((Pred != ICmpInst::ICMP_ULT || C->ugt(0)), "Encountered `ult 0` that should have been eliminated by InstSimplify.");
     APInt ShiftedC = Pred == ICmpInst::ICMP_ULT ? (*C - 1).lshr(*ShiftAmt) + 1
                                                 : C->lshr(*ShiftAmt);
     return new ICmpInst(Pred, X, ConstantInt::get(X->getType(), ShiftedC));
@@ -2075,11 +2073,10 @@ Instruction *InstCombiner::foldICmpShrConstant(ICmpInst &Cmp,
       return &Cmp;
 
     // Otherwise, fold this div/compare.
-    IGC_ASSERT(TheDiv->getOpcode() == Instruction::SDiv ||
-           TheDiv->getOpcode() == Instruction::UDiv);
+    IGC_ASSERT(TheDiv->getOpcode() == Instruction::SDiv || TheDiv->getOpcode() == Instruction::UDiv);
 
     Instruction *Res = foldICmpDivConstant(Cmp, TheDiv, C);
-    IGC_ASSERT(Res && "This div/cst should have folded!");
+    IGC_ASSERT_MESSAGE(Res, "This div/cst should have folded!");
     return Res;
   }
 
@@ -2088,9 +2085,7 @@ Instruction *InstCombiner::foldICmpShrConstant(ICmpInst &Cmp,
   // If the comparison constant changes with the shift, the comparison cannot
   // succeed (bits of the comparison constant cannot match the shifted value).
   // This should be known by InstSimplify and already be folded to true/false.
-  IGC_ASSERT(((IsAShr && C->shl(ShAmtVal).ashr(ShAmtVal) == *C) ||
-          (!IsAShr && C->shl(ShAmtVal).lshr(ShAmtVal) == *C)) &&
-         "Expected icmp+shr simplify did not occur.");
+  IGC_ASSERT_MESSAGE(((IsAShr && C->shl(ShAmtVal).ashr(ShAmtVal) == *C) || (!IsAShr && C->shl(ShAmtVal).lshr(ShAmtVal) == *C)), "Expected icmp+shr simplify did not occur.");
 
   // Check if the bits shifted out are known to be zero. If so, we can compare
   // against the unshifted value:
@@ -2118,20 +2113,19 @@ Instruction *InstCombiner::foldICmpUDivConstant(ICmpInst &Cmp,
   if (!match(UDiv->getOperand(0), m_APInt(C2)))
     return nullptr;
 
-  IGC_ASSERT(C2 != 0 && "udiv 0, X should have been simplified already.");
+  IGC_ASSERT_MESSAGE(C2 != 0, "udiv 0, X should have been simplified already.");
 
   // (icmp ugt (udiv C2, Y), C) -> (icmp ule Y, C2/(C+1))
   Value *Y = UDiv->getOperand(1);
   if (Cmp.getPredicate() == ICmpInst::ICMP_UGT) {
-    IGC_ASSERT(!C->isMaxValue() &&
-           "icmp ugt X, UINT_MAX should have been simplified already.");
+    IGC_ASSERT_MESSAGE(!C->isMaxValue(), "icmp ugt X, UINT_MAX should have been simplified already.");
     return new ICmpInst(ICmpInst::ICMP_ULE, Y,
                         ConstantInt::get(Y->getType(), C2->udiv(*C + 1)));
   }
 
   // (icmp ult (udiv C2, Y), C) -> (icmp ugt Y, C2/C)
   if (Cmp.getPredicate() == ICmpInst::ICMP_ULT) {
-    IGC_ASSERT(C != 0 && "icmp ult X, 0 should have been simplified already.");
+    IGC_ASSERT_MESSAGE(C != 0, "icmp ult X, 0 should have been simplified already.");
     return new ICmpInst(ICmpInst::ICMP_UGT, Y,
                         ConstantInt::get(Y->getType(), C2->udiv(*C)));
   }
@@ -3408,7 +3402,7 @@ Instruction *InstCombiner::foldICmpWithCastAndCast(ICmpInst &ICmp) {
   if (ICmp.getPredicate() == ICmpInst::ICMP_ULT)
     return replaceInstUsesWith(ICmp, Result);
 
-  IGC_ASSERT(ICmp.getPredicate() == ICmpInst::ICMP_UGT && "ICmp should be folded!");
+  IGC_ASSERT_MESSAGE(ICmp.getPredicate() == ICmpInst::ICMP_UGT, "ICmp should be folded!");
   return BinaryOperator::CreateNot(Result);
 }
 
@@ -3838,7 +3832,8 @@ static bool swapMayExposeCSEOpportunities(const Value * Op0,
 bool InstCombiner::dominatesAllUses(const Instruction *DI,
                                     const Instruction *UI,
                                     const BasicBlock *DB) const {
-  IGC_ASSERT(DI && UI && "Instruction not defined\n");
+  IGC_ASSERT_MESSAGE(nullptr != DI, "Instruction not defined\n");
+  IGC_ASSERT_MESSAGE(nullptr != UI, "Instruction not defined\n");
   // Ignore incomplete definitions.
   if (!DI->getParent())
     return false;
@@ -3913,7 +3908,7 @@ static bool isChainSelectCmpBranch(const SelectInst *SI) {
 bool InstCombiner::replacedSelectWithOperand(SelectInst *SI,
                                              const ICmpInst *Icmp,
                                              const unsigned SIOpd) {
-  IGC_ASSERT((SIOpd == 1 || SIOpd == 2) && "Invalid select operand!");
+  IGC_ASSERT_MESSAGE((SIOpd == 1 || SIOpd == 2), "Invalid select operand!");
   if (isChainSelectCmpBranch(SI) && Icmp->getPredicate() == ICmpInst::ICMP_EQ) {
     BasicBlock *Succ = SI->getParent()->getTerminator()->getSuccessor(1);
     // The check for the unique predecessor is not the best that can be
@@ -4118,28 +4113,28 @@ Instruction *InstCombiner::foldICmpUsingKnownBits(ICmpInst &I) {
     }
     break;
   case ICmpInst::ICMP_SGE:
-    IGC_ASSERT(!isa<ConstantInt>(Op1) && "ICMP_SGE with ConstantInt not folded!");
+    IGC_ASSERT_MESSAGE(!isa<ConstantInt>(Op1), "ICMP_SGE with ConstantInt not folded!");
     if (Op0Min.sge(Op1Max)) // A >=s B -> true if min(A) >= max(B)
       return replaceInstUsesWith(I, ConstantInt::getTrue(I.getType()));
     if (Op0Max.slt(Op1Min)) // A >=s B -> false if max(A) < min(B)
       return replaceInstUsesWith(I, ConstantInt::getFalse(I.getType()));
     break;
   case ICmpInst::ICMP_SLE:
-    IGC_ASSERT(!isa<ConstantInt>(Op1) && "ICMP_SLE with ConstantInt not folded!");
+    IGC_ASSERT_MESSAGE(!isa<ConstantInt>(Op1), "ICMP_SLE with ConstantInt not folded!");
     if (Op0Max.sle(Op1Min)) // A <=s B -> true if max(A) <= min(B)
       return replaceInstUsesWith(I, ConstantInt::getTrue(I.getType()));
     if (Op0Min.sgt(Op1Max)) // A <=s B -> false if min(A) > max(B)
       return replaceInstUsesWith(I, ConstantInt::getFalse(I.getType()));
     break;
   case ICmpInst::ICMP_UGE:
-    IGC_ASSERT(!isa<ConstantInt>(Op1) && "ICMP_UGE with ConstantInt not folded!");
+    IGC_ASSERT_MESSAGE(!isa<ConstantInt>(Op1), "ICMP_UGE with ConstantInt not folded!");
     if (Op0Min.uge(Op1Max)) // A >=u B -> true if min(A) >= max(B)
       return replaceInstUsesWith(I, ConstantInt::getTrue(I.getType()));
     if (Op0Max.ult(Op1Min)) // A >=u B -> false if max(A) < min(B)
       return replaceInstUsesWith(I, ConstantInt::getFalse(I.getType()));
     break;
   case ICmpInst::ICMP_ULE:
-    IGC_ASSERT(!isa<ConstantInt>(Op1) && "ICMP_ULE with ConstantInt not folded!");
+    IGC_ASSERT_MESSAGE(!isa<ConstantInt>(Op1), "ICMP_ULE with ConstantInt not folded!");
     if (Op0Max.ule(Op1Min)) // A <=u B -> true if max(A) <= min(B)
       return replaceInstUsesWith(I, ConstantInt::getTrue(I.getType()));
     if (Op0Min.ugt(Op1Max)) // A <=u B -> false if min(A) > max(B)
@@ -4356,7 +4351,7 @@ Instruction *InstCombiner::visitICmpInst(ICmpInst &I) {
 
   // Try to optimize equality comparisons against alloca-based pointers.
   if (Op0->getType()->isPointerTy() && I.isEquality()) {
-    IGC_ASSERT(Op1->getType()->isPointerTy() && "Comparing pointer with non-pointer?");
+    IGC_ASSERT_MESSAGE(Op1->getType()->isPointerTy(), "Comparing pointer with non-pointer?");
     if (auto *Alloca = dyn_cast<AllocaInst>(GetUnderlyingObject(Op0, DL)))
       if (Instruction *New = foldAllocaCmp(I, Alloca, Op1))
         return New;
@@ -4556,7 +4551,7 @@ Instruction *InstCombiner::foldFCmpIntToFPConst(FCmpInst &I, Instruction *LHSI,
   // Otherwise, we can potentially simplify the comparison.  We know that it
   // will always come through as an integer value and we know the constant is
   // not a NAN (it would have been previously simplified).
-  IGC_ASSERT(!RHS.isNaN() && "NaN comparison not already folded!");
+  IGC_ASSERT_MESSAGE(!RHS.isNaN(), "NaN comparison not already folded!");
 
   ICmpInst::Predicate Pred;
   switch (I.getPredicate()) {

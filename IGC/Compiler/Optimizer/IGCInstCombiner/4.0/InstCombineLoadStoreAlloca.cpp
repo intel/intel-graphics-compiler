@@ -144,7 +144,7 @@ isOnlyCopiedFromConstantGlobal(Value *V, MemTransferInst *&TheCopy,
       if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(I)) {
         if (II->getIntrinsicID() == Intrinsic::lifetime_start ||
             II->getIntrinsicID() == Intrinsic::lifetime_end) {
-          IGC_ASSERT(II->use_empty() && "Lifetime markers have no result to use!");
+          IGC_ASSERT_MESSAGE(II->use_empty(), "Lifetime markers have no result to use!");
           ToDelete.push_back(II);
           continue;
         }
@@ -353,8 +353,7 @@ static bool isSupportedAtomicType(Type *Ty) {
 /// point the \c InstCombiner currently is using.
 static LoadInst *combineLoadToNewType(InstCombiner &IC, LoadInst &LI, Type *NewTy,
                                       const Twine &Suffix = "") {
-  IGC_ASSERT((!LI.isAtomic() || isSupportedAtomicType(NewTy)) &&
-         "can't fold an atomic load to requested type");
+  IGC_ASSERT_MESSAGE((!LI.isAtomic() || isSupportedAtomicType(NewTy)), "can't fold an atomic load to requested type");
 
   Value *Ptr = LI.getPointerOperand();
   unsigned AS = LI.getPointerAddressSpace();
@@ -437,8 +436,7 @@ static LoadInst *combineLoadToNewType(InstCombiner &IC, LoadInst &LI, Type *NewT
 ///
 /// Returns the newly created store instruction.
 static StoreInst *combineStoreToNewValue(InstCombiner &IC, StoreInst &SI, Value *V) {
-  IGC_ASSERT((!SI.isAtomic() || isSupportedAtomicType(V->getType())) &&
-         "can't fold an atomic store of requested type");
+  IGC_ASSERT_MESSAGE((!SI.isAtomic() || isSupportedAtomicType(V->getType())), "can't fold an atomic store of requested type");
 
   Value *Ptr = SI.getPointerOperand();
   unsigned AS = SI.getPointerAddressSpace();
@@ -544,7 +542,7 @@ static Instruction *combineLoadToOperationType(InstCombiner &IC, LoadInst &LI) {
         combineStoreToNewValue(IC, *SI, NewLoad);
         IC.eraseInstFromFunction(*SI);
       }
-      IGC_ASSERT(LI.use_empty() && "Failed to remove all users of the load!");
+      IGC_ASSERT_MESSAGE(LI.use_empty(), "Failed to remove all users of the load!");
       // Return the old load so the combiner can delete it safely.
       return &LI;
     }
@@ -580,7 +578,7 @@ static Instruction *unpackLoadToAggregate(InstCombiner &IC, LoadInst &LI) {
     return nullptr;
 
   StringRef Name = LI.getName();
-  IGC_ASSERT(LI.getAlignment() && "Alignment must be set at this point");
+  IGC_ASSERT_MESSAGE(LI.getAlignment(), "Alignment must be set at this point");
 
   if (auto *ST = dyn_cast<StructType>(T)) {
     // If the struct only have one element, we unpack.
@@ -941,7 +939,7 @@ Instruction *InstCombiner::visitLoadInst(LoadInst &LI) {
                                            SI->getOperand(1)->getName()+".val");
         LoadInst *V2 = Builder->CreateLoad(SI->getOperand(2),
                                            SI->getOperand(2)->getName()+".val");
-        IGC_ASSERT(LI.isUnordered() && "implied by above");
+        IGC_ASSERT_MESSAGE(LI.isUnordered(), "implied by above");
         V1->setAlignment(Align);
         V1->setAtomic(LI.getOrdering(), LI.getSynchScope());
         V2->setAlignment(Align);
@@ -1288,7 +1286,7 @@ Instruction *InstCombiner::visitStoreInst(StoreInst &SI) {
     // then *this* store is dead (X = load P; store X -> P).
     if (LoadInst *LI = dyn_cast<LoadInst>(BBI)) {
       if (LI == Val && equivalentAddressValues(LI->getOperand(0), Ptr)) {
-        IGC_ASSERT(SI.isUnordered() && "can't eliminate ordering operation");
+        IGC_ASSERT_MESSAGE(SI.isUnordered(), "can't eliminate ordering operation");
         return eraseInstFromFunction(SI);
       }
 
@@ -1341,8 +1339,7 @@ Instruction *InstCombiner::visitStoreInst(StoreInst &SI) {
 /// into a phi node with a store in the successor.
 ///
 bool InstCombiner::SimplifyStoreAtEndOfBlock(StoreInst &SI) {
-  IGC_ASSERT(SI.isUnordered() &&
-         "this code has not been auditted for volatile or ordered store case");
+  IGC_ASSERT_MESSAGE(SI.isUnordered(), "this code has not been auditted for volatile or ordered store case");
 
   BasicBlock *StoreBB = SI.getParent();
 

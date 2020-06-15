@@ -426,7 +426,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
                     uint setupIndex =
                         (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
 
-                    IGC_ASSERT(setupIndex < MAX_INPUTS && "Max inputs cannot be greater than 32 x 4");
+                    IGC_ASSERT_MESSAGE(setupIndex < MAX_INPUTS, "Max inputs cannot be greater than 32 x 4");
                     inputUsed[setupIndex] = true;
 
                     e_interpolation mode = (e_interpolation)

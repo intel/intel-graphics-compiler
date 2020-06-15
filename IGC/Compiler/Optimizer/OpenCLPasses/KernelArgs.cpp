@@ -95,6 +95,8 @@ KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const
     m_isEmulationArgument(false),
     m_imageInfo({ false, false })
 {
+    IGC_ASSERT(implicitArg.getNumberElements());
+
     m_elemAllocateSize = m_allocateSize / implicitArg.getNumberElements();
     if (implicitArg.isLocalIDs() && GRFSize == 64)
     {
@@ -198,7 +200,7 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef t
             // on subroutines.
             //
             // FIXME: There is a chain of dependency.
-            IGC_ASSERT(false && "Unrecognized address space");
+            IGC_ASSERT_MESSAGE(0, "Unrecognized address space");
 #endif
             // This is a buffer. Try to decode this
             int address_space = ptrType->getPointerAddressSpace();

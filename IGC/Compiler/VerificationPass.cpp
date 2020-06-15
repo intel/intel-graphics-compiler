@@ -122,11 +122,11 @@ bool VerificationPass::runOnModule(Module& M)
             }
         }
 
-        if (!success)
+        if (false == success)
         {
+            IGC_ASSERT_MESSAGE(0, "IGC IR Verification failed");
             printf("\nIGC IR verification failed:\n\n");
             errs() << m_messagesToDump.str();
-            IGC_ASSERT(false && "IGC IR Verification failed");
         }
     }
 
@@ -218,7 +218,7 @@ bool VerificationPass::verifyInstCommon(Instruction& inst)
 bool VerificationPass::verifyInstCall(Instruction& inst)
 {
     CallInst* instCall = dyn_cast<CallInst>(&inst);
-    IGC_ASSERT(instCall && "Unexpected instruction");
+    IGC_ASSERT_MESSAGE(instCall, "Unexpected instruction");
 
     if (GenIntrinsicInst::classof(instCall))
     {

@@ -140,11 +140,11 @@ void DeviceEnqueueFuncsAnalysis::visitCallInst(CallInst& CI)
     else if (funcName == GET_OBJECT_ID)
     {
         // Extract the arg num and add it to the appropriate data structure
-        IGC_ASSERT(CI.getNumArgOperands() == 1 && "get_object_id function is expected to have only one argument");
+        IGC_ASSERT_MESSAGE(CI.getNumArgOperands() == 1, "get_object_id function is expected to have only one argument");
 
         // We support only compile-time constants as arguments of get_object_id()
         ConstantInt* callArg = dyn_cast<ConstantInt>(CI.getArgOperand(0));
-        IGC_ASSERT(callArg != NULL && "get_object_id function is expected to have only conatnt argument");
+        IGC_ASSERT_MESSAGE(callArg != NULL, "get_object_id function is expected to have only conatnt argument");
 
         m_newNumberedImplicitArgs[ImplicitArg::GET_OBJECT_ID].insert((int)callArg->getZExtValue());
         m_hasDeviceEnqueue = true;
@@ -152,11 +152,11 @@ void DeviceEnqueueFuncsAnalysis::visitCallInst(CallInst& CI)
     else if (funcName == GET_BLOCK_SIMD_SIZE)
     {
         // Extract the arg num and add it to the appropriate data structure
-        IGC_ASSERT(CI.getNumArgOperands() == 1 && "get_block_simd_size function is expected to have only one argument");
+        IGC_ASSERT_MESSAGE(CI.getNumArgOperands() == 1, "get_block_simd_size function is expected to have only one argument");
 
         // We support only compile-time constants as arguments of get_object_id()
         ConstantInt* callArg = dyn_cast<ConstantInt>(CI.getArgOperand(0));
-        IGC_ASSERT(callArg != NULL && "get_block_simd_size function is expected to have only constant argument");
+        IGC_ASSERT_MESSAGE(callArg != NULL, "get_block_simd_size function is expected to have only constant argument");
 
         m_newNumberedImplicitArgs[ImplicitArg::GET_BLOCK_SIMD_SIZE].insert((int)callArg->getZExtValue());
         m_hasDeviceEnqueue = true;

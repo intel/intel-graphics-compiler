@@ -71,8 +71,8 @@ namespace IGC
             bool A)
             : Parent(P), Desc(D), InlinedAtLocation(I), AbstractScope(A),
             LastInsn(nullptr), FirstInsn(nullptr), DFSIn(0), DFSOut(0) {
-            IGC_ASSERT((!D || D->isResolved()) && "Expected resolved node");
-            IGC_ASSERT((!I || I->isResolved()) && "Expected resolved node");
+            IGC_ASSERT_MESSAGE((!D || D->isResolved()), "Expected resolved node");
+            IGC_ASSERT_MESSAGE((!I || I->isResolved()), "Expected resolved node");
             if (Parent)
                 Parent->addChild(this);
         }
@@ -105,7 +105,7 @@ namespace IGC
         /// this scope.
         void extendInsnRange(const llvm::Instruction* MI)
         {
-            IGC_ASSERT(FirstInsn && "MI Range is not open!");
+            IGC_ASSERT_MESSAGE(FirstInsn, "MI Range is not open!");
             LastInsn = MI;
             if (Parent)
                 Parent->extendInsnRange(MI);
@@ -116,7 +116,7 @@ namespace IGC
         /// machine instructions.
         void closeInsnRange(LexicalScope* NewScope = NULL)
         {
-            IGC_ASSERT(LastInsn && "Last insn missing!");
+            IGC_ASSERT_MESSAGE(LastInsn, "Last insn missing!");
             Ranges.push_back(InsnRange(FirstInsn, LastInsn));
             FirstInsn = NULL;
             LastInsn = NULL;

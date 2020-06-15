@@ -95,7 +95,7 @@ namespace IGC
             break;
         default:
             // !! unsupported input primitive type
-            IGC_ASSERT(false && "Unimplemented Primitive type");
+            IGC_ASSERT_MESSAGE(0, "Unimplemented Primitive type");
             break;
         }
 
@@ -146,7 +146,7 @@ namespace IGC
         case IGC::GSHADER_INPUT_PATCHLIST_32: return 32;
 
         default:
-            IGC_ASSERT(false && "Input primitive type not implemented");
+            IGC_ASSERT_MESSAGE(0, "Input primitive type not implemented");
             return 0;
         }
     }
@@ -479,7 +479,7 @@ namespace IGC
             return Unit<Element>(3);
 
         default:
-            IGC_ASSERT(false && "Gs SGV Local offset not yet defined");
+            IGC_ASSERT_MESSAGE(0, "Gs SGV Local offset not yet defined");
         }
 
         return Unit<Element>(0);
