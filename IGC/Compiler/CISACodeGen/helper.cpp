@@ -325,7 +325,9 @@ namespace IGC
         {
             llvm::Type* dataType = storeVal->getType();
             IGC_ASSERT(nullptr != dataType);
-            IGC_ASSERT((dataType->getPrimitiveSizeInBits() == 16) || (dataType->getPrimitiveSizeInBits() == 32));
+            IGC_ASSERT((dataType->getPrimitiveSizeInBits() == 8)  ||
+                       (dataType->getPrimitiveSizeInBits() == 16) ||
+                       (dataType->getPrimitiveSizeInBits() == 32));
 
             llvm::Type* types[2] = {
                 bufPtr->getType(),
