@@ -510,6 +510,62 @@ static uint64_t getBaseTypeSize(DwarfDebug* DD, DIDerivedType* Ty)
     return BaseType->getSizeInBits();
 }
 
+/// If this type is derived from a base type then return base type size
+/// even if it derived directly or indirectly from Composite Type
+static uint64_t getBasicTypeSize(DwarfDebug* DD, DIDerivedType* Ty)
+{
+    unsigned Tag = Ty->getTag();
+
+    if (Tag != dwarf::DW_TAG_member && Tag != dwarf::DW_TAG_typedef &&
+        Tag != dwarf::DW_TAG_const_type && Tag != dwarf::DW_TAG_volatile_type &&
+        Tag != dwarf::DW_TAG_restrict_type)
+    {
+        return Ty->getSizeInBits();
+    }
+
+    DIType* BaseType = DD->resolve(Ty->getBaseType());
+
+    // If this type is not derived from any type then take conservative approach.
+    if (isa<DIBasicType>(BaseType))
+    {
+        return BaseType->getSizeInBits();
+    }
+
+    // If this is a derived type, go ahead and get the base type, unless it's a
+    // reference then it's just the size of the field. Pointer types have no need
+    // of this since they're a different type of qualification on the type.
+    if (BaseType->getTag() == dwarf::DW_TAG_reference_type ||
+        BaseType->getTag() == dwarf::DW_TAG_rvalue_reference_type)
+    {
+        return Ty->getSizeInBits();
+    }
+
+    if (isa<DIDerivedType>(BaseType))
+    {
+        return getBasicTypeSize(DD, cast<DIDerivedType>(BaseType));
+    }
+    else if (isa<DICompositeType>(BaseType))
+    {
+        DICompositeType* compTy = cast<DICompositeType>(BaseType);
+        BaseType = DD->resolve(compTy->getBaseType());
+
+        // If this type is not derived from any type then take conservative approach.
+        if (isa<DIBasicType>(BaseType))
+        {
+            return BaseType->getSizeInBits();
+        }
+
+        return getBasicTypeSize(DD, cast<DIDerivedType>(BaseType));
+    }
+    else
+    {
+        // Be prepared for unexpected.
+        IGC_ASSERT_MESSAGE(false, "Missing support for this type");
+    }
+
+    return BaseType->getSizeInBits();
+}
+
 /// addConstantFPValue - Add constant value entry in variable DIE.
 void CompileUnit::addConstantFPValue(DIE* Die, const ConstantFP* CFP)
 {
@@ -929,19 +985,33 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
         uint64_t varSizeInBits = DV.getType()->getSizeInBits();
         // uint64_t varOffsetInBits = DV.getType()->getOffsetInBits(); // TBD MT
 
-        addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
-
-        if (varSizeInBits == 64)
+        if (isa<DIDerivedType>(DV.getType()))
         {
-            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit4);  // Two subregs
+            // If type is derived then size of a basic type is needed
+            DIType* Ty = DV.getType();
+            DIDerivedType* DDTy = cast<DIDerivedType>(Ty);
+            varSizeInBits = getBasicTypeSize(DD, DDTy);
+            IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Variable's basic type size 0");
         }
         else
         {
-            if (!isPacked || (varSizeInBits == 32))
-            {
-                IGC_ASSERT((varSizeInBits == 32 || varSizeInBits == 16 || varSizeInBits == 8) &&
-                    "Unexpected variable's size");
+            IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Not derived type variable's size 0");
+        }
 
+        IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
+
+        addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
+
+        if (varSizeInBits >= 64)
+        {
+            {
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit5);  // Two+ subregs
+            }
+        }
+        else
+        {
+            if (!isPacked || (varSizeInBits >= 32))
+            {
                 // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
                 // as well as 32-bit float/int.
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit5);
@@ -955,13 +1025,10 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
                 {
                     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit6);
                 }
-                else if (varSizeInBits == 8)
-                {
-                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit7);
-                }
                 else
                 {
-                    IGC_ASSERT(false && "Unexpected packed variable's size");
+                    IGC_ASSERT_MESSAGE(varSizeInBits == 8, "Unexpected packed variable's size");
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit7);
                 }
             }
         }
@@ -990,20 +1057,35 @@ void CompileUnit::addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, uint16_t s
         uint64_t varSizeInBits = DV.getType()->getSizeInBits();
         // uint64_t varOffsetInBits = DV.getType()->getOffsetInBits(); // TBD MT
 
-        // Scalar in a subregister
-        addUInt(Block, dwarf::DW_FORM_data1, subReg);
-
-        if (varSizeInBits == 64)
+        if (isa<DIDerivedType>(DV.getType()))
         {
-            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit4);  // Two subregs
+            // If type is derived then size of a basic type is needed
+            DIType* Ty = DV.getType();
+            DIDerivedType* DDTy = cast<DIDerivedType>(Ty);
+            varSizeInBits = getBasicTypeSize(DD, DDTy);
+            IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Variable's basic type size 0");
         }
         else
         {
-            if (!isPacked || (varSizeInBits == 32))
-            {
-                IGC_ASSERT((varSizeInBits == 32 || varSizeInBits == 16 || varSizeInBits == 8) &&
-                    "Unexpected variable's size");
+            IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Not derived type variable's size 0");
+        }
 
+        IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
+
+        // Scalar in a subregister
+        addUInt(Block, dwarf::DW_FORM_data1, subReg);
+
+        if (varSizeInBits >= 64)
+        {
+            {
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit5);  // Two+ subregs
+            }
+        }
+        else
+        {
+            if (!isPacked || (varSizeInBits >= 32))
+            {
+                IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Unexpected variable's size");
                 // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
                 // as well as 32-bit float/int.
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit5);
@@ -1017,13 +1099,10 @@ void CompileUnit::addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, uint16_t s
                 {
                     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit6);
                 }
-                else if (varSizeInBits == 8)
-                {
-                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit7);
-                }
                 else
                 {
-                    IGC_ASSERT(false && "Unexpected packed variable's size");
+                    IGC_ASSERT_MESSAGE(varSizeInBits == 8, "Unexpected packed variable's size");
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit7);
                 }
             }
         }
@@ -2109,6 +2188,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
                     addSimdLane(Block, var, loc, false); // Emit SIMD lane for GRF (unpacked)
 
                     regNum = regNum + numOfRegs;
+                    IGC_ASSERT(((DD->simdWidth < 32) && (grfSize == 32)) && "SIMD32 debugging not supported");
                 }
             }
         }

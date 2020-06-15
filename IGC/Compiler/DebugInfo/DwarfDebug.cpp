@@ -97,17 +97,17 @@ bool DbgVariable::isBlockByrefVariable() const {
 
 DIType* DbgVariable::getType() const
 {
-    DIType* Ty = Var->getType()
-#if LLVM_VERSION_MAJOR <= 8
-        .resolve()
-#endif
-        ;
- #if LLVM_VERSION_MAJOR < 10
+    //DIType* Ty = Var->getType()
+//#if LLVM_VERSION_MAJOR <= 8
+    //    .resolve()
+//#endif
+    //    ;
+// #if LLVM_VERSION_MAJOR < 10
     // isBlockByrefStruct is no more support by LLVM10 IR - more info in this commit below:
     // https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
     // FIXME: isBlockByrefVariable should be reformulated in terms of complex
     // addresses instead.
-    if (Ty->isBlockByrefStruct()) {
+    //if (Ty->isBlockByrefStruct()) {
         /* Byref variables, in Blocks, are declared by the programmer as
         "SomeType VarName;", but the compiler creates a
         __Block_byref_x_VarName struct, and gives the variable VarName
@@ -132,22 +132,22 @@ DIType* DbgVariable::getType() const
         have a DW_AT_location that tells the debugger how to unwind through
         the pointers and __Block_byref_x_VarName struct to find the actual
         value of the variable.  The function addBlockByrefType does this.  */
-        DIType* subType = Ty;
-        uint16_t tag = (uint16_t)Ty->getTag();
+        //DIType* subType = Ty;
+        //uint16_t tag = (uint16_t)Ty->getTag();
 
-        if (tag == dwarf::DW_TAG_pointer_type)
-            subType = resolve(cast<DIDerivedType>(Ty)->getBaseType());
+        //if (tag == dwarf::DW_TAG_pointer_type)
+        //    subType = resolve(cast<DIDerivedType>(Ty)->getBaseType());
 
-        auto Elements = cast<DICompositeType>(subType)->getElements();
-        for (unsigned i = 0, N = Elements.size(); i < N; ++i) {
-            auto* DT = cast<DIDerivedType>(Elements[i]);
-            if (getName() == DT->getName())
-                return resolve(DT->getBaseType());
-        }
-    }
-#endif
-    return Ty;
-
+        //auto Elements = cast<DICompositeType>(subType)->getElements();
+        //for (unsigned i = 0, N = Elements.size(); i < N; ++i) {
+        //    auto* DT = cast<DIDerivedType>(Elements[i]);
+        //    if (getName() == DT->getName())
+        //        return resolve(DT->getBaseType());
+        //}
+    //}
+//#endif
+    //return Ty;
+    return resolve(getVariable()->getType());
 }
 
 /// Return Dwarf Version by checking module flags.
