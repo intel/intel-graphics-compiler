@@ -2999,7 +2999,9 @@ void FlowGraph::markDivergentBBs()
             {
                 G4_BB* predBB = *PI0;
                 if (!isBackwardBranch(predBB, BB)) {
-                    assert(BB->getId() > predBB->getId() && "backward Branch did not set correctly!");
+                    G4_opcode t_opc = predBB->getLastOpcode();
+                    bool isBr = (t_opc == G4_goto || t_opc == G4_jmpi);
+                    assert((!isBr || (BB->getId() > predBB->getId())) && "backward Branch did not set correctly!");
                     continue;
                 }
                 assert(BB->getId() <= predBB->getId() && "Branch incorrectly set to be backward!");
