@@ -84,6 +84,10 @@ bool AddImplicitArgs::runOnModule(Module &M)
         if (m_pMdUtils->findFunctionsInfoItem(pFunc) == m_pMdUtils->end_FunctionsInfo()) continue;
         // No implicit arg support for indirect calls
         if (pFunc->hasFnAttribute("IndirectlyCalled")) continue;
+        // Skip functions called from function marked with IndirectlyCalled attribute
+        // TODO: This function verifies only parent caller, in the future we may need to
+        //       also verify all the callers up to the tree.
+        if (hasIndirectlyCalledParent(pFunc)) continue;
 
         // see the detail in StatelessToStatefull.cpp.
         // If SToSProducesPositivePointer is true, do not generate implicit arguments.
@@ -167,6 +171,20 @@ bool AddImplicitArgs::runOnModule(Module &M)
     }
 
     return true;
+}
+
+bool AddImplicitArgs::hasIndirectlyCalledParent(Function* F)
+{
+    for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
+    {
+        if (CallInst* call = dyn_cast<CallInst>(*u))
+        {
+            Function* parent = call->getParent()->getParent();
+            if (parent->hasFnAttribute("IndirectlyCalled"))
+                return true;
+        }
+    }
+    return false;
 }
 
 FunctionType* AddImplicitArgs::getNewFuncType(Function* pFunc, const ImplicitArgs* pImplicitArgs)
@@ -733,6 +751,9 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
 
 void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(ImplicitArgmentDetail& data, Function * f)
 {
+    if (f->hasFnAttribute("IndirectlyCalled"))
+        return;
+
     FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(f);
     funcInfo->clearImplicitArgInfoList();
 
