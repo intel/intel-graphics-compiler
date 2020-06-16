@@ -1537,6 +1537,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_Declare *t0 = getImmDcl(createDFImm(0.0), element_size);
     G4_Declare *t1 = getImmDcl(createDFImm(1.0), element_size);
     G4_Declare *t2 = getImmDcl(createDFImm(0.5), element_size);
+    G4_Declare* t3 = getImmDcl(createDFImm(1.5), element_size);
     G4_Declare *t6  = createTempVarWithNoSpill(element_size, Type_DF, Any);
     G4_Declare *t7  = createTempVarWithNoSpill(element_size, Type_DF, Any);
     G4_Declare *t8  = createTempVarWithNoSpill(element_size, Type_DF, Any);
@@ -1567,7 +1568,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
     // constants
 
-    // r0 = 0.0:df, r1 = 1.0:df, r2(r8) = 0.5:df
+    // r0 = 0.0:df, r1 = 1.0:df, r2(r8) = 0.5:df, r3 = 1.5:df
     // NOTE: 'NoMask' is required as constants are required for splitting
     // parts. Once they are in diverged branches, it won't be properly
     // initialized without 'NoMask'.
@@ -1576,6 +1577,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_SrcRegRegion csrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
     G4_SrcRegRegion csrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
     G4_SrcRegRegion csrc2(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
+    G4_SrcRegRegion csrc3(Mod_src_undef, Direct, t3->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
 
     // each madm only handles 4 channel double data
     VISA_EMask_Ctrl currEMask = emask;
@@ -1698,17 +1700,10 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             neg_src1->setAccRegSel(src1->getAccRegSel());
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, neg_src1, src2, madmInstOpt, line_no);
 
-            // madm (4) r8.acc6 r1.noacc r2(r8).noacc r1.noacc {Align16, N1/N2}
-            dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC6);
-            src0 = createSrcRegRegion(csrc1); src0->setAccRegSel(NOACC);
-            src1 = createSrcRegRegion(csrc2); src1->setAccRegSel(NOACC);
-            src2 = createSrcRegRegion(csrc1); src2->setAccRegSel(NOACC);
-            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-
-            // madm (4) r8.acc7 r1.noacc r8.acc6 r10.acc5 {Align16, N1/N2}
+            // madm (4) r8.acc7 r1.noacc r3.noacc r10.acc5 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC7);
             src0 = createSrcRegRegion(csrc1); src0->setAccRegSel(NOACC);
-            src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC6);
+            src1 = createSrcRegRegion(csrc3); src1->setAccRegSel(NOACC);
             src2 = createSrcRegRegion(tsrc10); src2->setAccRegSel(ACC5);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
 
