@@ -1205,6 +1205,11 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
             return true;
         }
 
+        if (IGC_IS_FLAG_ENABLED(ForceBestSIMD))
+        {
+            return true;
+        }
+
         if (forceSIMD16)
         {
             return true;

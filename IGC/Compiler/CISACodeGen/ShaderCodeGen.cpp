@@ -811,7 +811,16 @@ static void PSCodeGen(
         enableSimd32 = true;
     }
 
-    if (IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
+    if (IGC_IS_FLAG_ENABLED(ForceBestSIMD))
+    {
+        if (enableSimd32)
+        {
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, true, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+        }
+        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+        useRegKeySimd = true;
+    }
+    else if (IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
     {
         // don't retry SIMD16 for ForcePSBestSIMD
         if (enableSimd32 || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))

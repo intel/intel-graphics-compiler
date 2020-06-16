@@ -374,7 +374,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
-    if ((IsStage1BestPerf(m_pCtx->m_CgFlag, m_pCtx->m_StagingCtx)) && m_SimdMode == SIMDMode::SIMD8)
+    if ((IsStage1BestPerf(m_pCtx->m_CgFlag, m_pCtx->m_StagingCtx) ||
+        IGC_IS_FLAG_ENABLED(ForceBestSIMD)) &&
+        m_SimdMode == SIMDMode::SIMD8)
     {
         /* Don't do SIMD8 if SIMD16 has no spill */
         auto Iter = m_shaders.find(&F);
@@ -741,6 +743,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         COpenCLKernel* kernel = static_cast<COpenCLKernel*>(m_currShader);
         kernel->SetDisableMidthreadPreemption();
+    }
+
+    if (IGC_IS_FLAG_ENABLED(ForceBestSIMD))
+    {
+        return false;
     }
 
     if (m_SimdMode == SIMDMode::SIMD16 &&
