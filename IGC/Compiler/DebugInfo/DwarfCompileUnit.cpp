@@ -510,62 +510,6 @@ static uint64_t getBaseTypeSize(DwarfDebug* DD, DIDerivedType* Ty)
     return BaseType->getSizeInBits();
 }
 
-/// If this type is derived from a base type then return base type size
-/// even if it derived directly or indirectly from Composite Type
-static uint64_t getBasicTypeSize(DwarfDebug* DD, DIDerivedType* Ty)
-{
-    unsigned Tag = Ty->getTag();
-
-    if (Tag != dwarf::DW_TAG_member && Tag != dwarf::DW_TAG_typedef &&
-        Tag != dwarf::DW_TAG_const_type && Tag != dwarf::DW_TAG_volatile_type &&
-        Tag != dwarf::DW_TAG_restrict_type)
-    {
-        return Ty->getSizeInBits();
-    }
-
-    DIType* BaseType = DD->resolve(Ty->getBaseType());
-
-    // If this type is not derived from any type then take conservative approach.
-    if (isa<DIBasicType>(BaseType))
-    {
-        return BaseType->getSizeInBits();
-    }
-
-    // If this is a derived type, go ahead and get the base type, unless it's a
-    // reference then it's just the size of the field. Pointer types have no need
-    // of this since they're a different type of qualification on the type.
-    if (BaseType->getTag() == dwarf::DW_TAG_reference_type ||
-        BaseType->getTag() == dwarf::DW_TAG_rvalue_reference_type)
-    {
-        return Ty->getSizeInBits();
-    }
-
-    if (isa<DIDerivedType>(BaseType))
-    {
-        return getBasicTypeSize(DD, cast<DIDerivedType>(BaseType));
-    }
-    else if (isa<DICompositeType>(BaseType))
-    {
-        DICompositeType* compTy = cast<DICompositeType>(BaseType);
-        BaseType = DD->resolve(compTy->getBaseType());
-
-        // If this type is not derived from any type then take conservative approach.
-        if (isa<DIBasicType>(BaseType))
-        {
-            return BaseType->getSizeInBits();
-        }
-
-        return getBasicTypeSize(DD, cast<DIDerivedType>(BaseType));
-    }
-    else
-    {
-        // Be prepared for unexpected.
-        IGC_ASSERT_MESSAGE(0, "Missing support for this type");
-    }
-
-    return BaseType->getSizeInBits();
-}
-
 /// addConstantFPValue - Add constant value entry in variable DIE.
 void CompileUnit::addConstantFPValue(DIE* Die, const ConstantFP* CFP)
 {
@@ -768,9 +712,11 @@ void CompileUnit::addSimdWidth(DIE* Die, uint16_t SimdWidth)
 // - bindless sampler location
 void CompileUnit::addGTRelativeLocation(DIEBlock* Block, VISAVariableLocation* Loc)
 {
-    if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
+    if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging) && Loc->HasSurface())
     {
         uint32_t bti = Loc->GetSurface() - VISAModule::TEXTURE_REGISTER_BEGIN;
+
+        IGC_ASSERT_MESSAGE(bti >= 0 && bti <= 255, "Surface BTI out of scope");
 
         if ((bti == STATELESS_BTI) || (bti == STATELESS_NONCOHERENT_BTI))  // 255, 253
         {
@@ -808,7 +754,6 @@ void CompileUnit::addGTRelativeLocation(DIEBlock* Block, VISAVariableLocation* L
             // 7 DW_OP_deref
             // 8 DW_OP_plus_uconst <offset>
 
-            IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
             IGC_ASSERT_MESSAGE(false == Loc->IsInGlobalAddrSpace(), "Missing surface for variable location");
 
             uint64_t btiBaseAddr = 0;                   // TBD MT
@@ -982,21 +927,8 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
     if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging) && Loc->IsVectorized())
     {
         // SIMD lane
-        uint64_t varSizeInBits = DV.getType()->getSizeInBits();
+        uint64_t varSizeInBits = DV.getBasicSize(DD);
         // uint64_t varOffsetInBits = DV.getType()->getOffsetInBits(); // TBD MT
-
-        if (isa<DIDerivedType>(DV.getType()))
-        {
-            // If type is derived then size of a basic type is needed
-            DIType* Ty = DV.getType();
-            DIDerivedType* DDTy = cast<DIDerivedType>(Ty);
-            varSizeInBits = getBasicTypeSize(DD, DDTy);
-            IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Variable's basic type size 0");
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Not derived type variable's size 0");
-        }
 
         IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
 
@@ -1054,21 +986,8 @@ void CompileUnit::addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, uint16_t s
 {
     if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
     {
-        uint64_t varSizeInBits = DV.getType()->getSizeInBits();
+        uint64_t varSizeInBits = DV.getBasicSize(DD);
         // uint64_t varOffsetInBits = DV.getType()->getOffsetInBits(); // TBD MT
-
-        if (isa<DIDerivedType>(DV.getType()))
-        {
-            // If type is derived then size of a basic type is needed
-            DIType* Ty = DV.getType();
-            DIDerivedType* DDTy = cast<DIDerivedType>(Ty);
-            varSizeInBits = getBasicTypeSize(DD, DDTy);
-            IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Variable's basic type size 0");
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Not derived type variable's size 0");
-        }
 
         IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
 
@@ -2172,7 +2091,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
             else
             {
                 uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
-                uint16_t varSizeInBits = (uint16_t)var.getType()->getSizeInBits();
+                uint16_t varSizeInBits = (uint16_t)var.getBasicSize(DD);
                 uint16_t varSizeInReg = (uint16_t)(loc->IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
                 uint16_t numOfRegs = ((varSizeInReg * (uint16_t)DD->simdWidth) > (grfSize * 8)) ?
                     ((varSizeInReg * (uint16_t)DD->simdWidth) / (grfSize * 8)) : 1;
@@ -2209,13 +2128,19 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
         }
         else
         {
-            addScratchLocation(Block, &varInfo);
-        }
+            uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
+            uint16_t varSizeInBits = (uint16_t)var.getBasicSize(DD);
+            uint16_t varSizeInReg = (uint16_t)(loc->IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
+            uint16_t numOfRegs = ((varSizeInReg * (uint16_t)DD->simdWidth) > (grfSize * 8)) ?
+                ((varSizeInReg * (uint16_t)DD->simdWidth) / (grfSize * 8)) : 1;
 
-        addSimdLane(Block, var, loc, false); // Emit SIMD lane for spill (unpacked)
-        if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
-        {
-            IGC_ASSERT(loc->GetVectorNumElements() <= 1);
+            for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
+            {
+                addScratchLocation(Block, &varInfo);
+                addSimdLane(Block, var, loc, false); // Emit SIMD lane for spill (unpacked)
+                regNum = regNum + numOfRegs;
+                IGC_ASSERT(((DD->simdWidth < 32) && (grfSize == 32)) && "SIMD32 debugging not supported");
+            }
         }
 
         addBlock(die, dwarf::DW_AT_location, Block);

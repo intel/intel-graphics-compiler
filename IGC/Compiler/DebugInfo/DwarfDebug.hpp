@@ -162,7 +162,16 @@ namespace IGC
         DbgVariable* getAbstractVariable()  const { return AbsVar; }
         const llvm::Instruction* getDbgInst() const { return m_pDbgInst; }
         void setDbgInst(const llvm::Instruction* pInst) { m_pDbgInst = pInst; }
+
+        /// If this type is derived from a base type then return base type size
+        /// even if it derived directly or indirectly from Composite Type
+        uint64_t getBasicTypeSize(llvm::DIDerivedType* Ty);
+
+        /// Return base type size even if it derived directly or indirectly from Composite Type
+        uint64_t getBasicSize(DwarfDebug* DD);
+
         // Translate tag to proper Dwarf tag.
+
         llvm::dwarf::Tag getTag()                  const
         {
             // FIXME: Why don't we just infer this tag and store it all along?

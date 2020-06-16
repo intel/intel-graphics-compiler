@@ -95,6 +95,83 @@ bool DbgVariable::isBlockByrefVariable() const {
 #endif
 }
 
+/// If this type is derived from a base type then return base type size
+/// even if it derived directly or indirectly from Composite Type
+uint64_t DbgVariable::getBasicTypeSize(DIDerivedType* Ty)
+{
+    unsigned Tag = Ty->getTag();
+
+    if (Tag != dwarf::DW_TAG_member && Tag != dwarf::DW_TAG_typedef &&
+        Tag != dwarf::DW_TAG_const_type && Tag != dwarf::DW_TAG_volatile_type &&
+        Tag != dwarf::DW_TAG_restrict_type)
+    {
+        return Ty->getSizeInBits();
+    }
+
+    DIType* BaseType = resolve(Ty->getBaseType());
+
+    // If this type is not derived from any type then take conservative approach.
+    if (isa<DIBasicType>(BaseType))
+    {
+        return BaseType->getSizeInBits();
+    }
+
+    // If this is a derived type, go ahead and get the base type, unless it's a
+    // reference then it's just the size of the field. Pointer types have no need
+    // of this since they're a different type of qualification on the type.
+    if (BaseType->getTag() == dwarf::DW_TAG_reference_type ||
+        BaseType->getTag() == dwarf::DW_TAG_rvalue_reference_type)
+    {
+        return Ty->getSizeInBits();
+    }
+
+    if (isa<DIDerivedType>(BaseType))
+    {
+        return getBasicTypeSize(cast<DIDerivedType>(BaseType));
+    }
+    else if (isa<DICompositeType>(BaseType))
+    {
+        DICompositeType* compTy = cast<DICompositeType>(BaseType);
+        BaseType = resolve(compTy->getBaseType());
+
+        // If this type is not derived from any type then take conservative approach.
+        if (isa<DIBasicType>(BaseType))
+        {
+            return BaseType->getSizeInBits();
+        }
+
+        return getBasicTypeSize(cast<DIDerivedType>(BaseType));
+    }
+    else
+    {
+        // Be prepared for unexpected.
+        IGC_ASSERT_MESSAGE(0, "Missing support for this type");
+    }
+
+    return BaseType->getSizeInBits();
+}
+
+/// Return base type size even if it derived directly or indirectly from Composite Type
+uint64_t DbgVariable::getBasicSize(DwarfDebug* DD)
+{
+    uint64_t varSizeInBits = getType()->getSizeInBits();
+
+    if (isa<DIDerivedType>(getType()))
+    {
+        // If type is derived then size of a basic type is needed
+        DIType* Ty = getType();
+        DIDerivedType* DDTy = cast<DIDerivedType>(Ty);
+        varSizeInBits = getBasicTypeSize(DDTy);
+        IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Variable's basic type size 0");
+    }
+    else
+    {
+        IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Not derived type variable's size 0");
+    }
+
+    return varSizeInBits;
+}
+
 DIType* DbgVariable::getType() const
 {
     //DIType* Ty = Var->getType()
@@ -1447,7 +1524,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
                                 uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
                                 unsigned int vectorNumElements = 1;
-                                uint16_t varSizeInBits = (uint16_t)RegVar->getType()->getSizeInBits();
+                                uint16_t varSizeInBits = (uint16_t)RegVar->getBasicSize(this);  // TBD MT getBasicSize
                                 uint16_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
                                 uint16_t numOfRegs = ((varSizeInReg * (uint16_t)simdWidth) > (grfSize * 8)) ?
                                     ((varSizeInReg * (uint16_t)simdWidth) / (grfSize * 8)) : 1;
@@ -1526,11 +1603,14 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                         }
                                     }
 
-                                    IGC_ASSERT_MESSAGE((varSizeInBits == 64) || (varSizeInBits == 32 || varSizeInBits == 16 || varSizeInBits == 8), "Unexpected variable's size");
+                                    IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Unexpected variable's size");
                                     unsigned int opLit = llvm::dwarf::DW_OP_lit5;
-                                    if (varSizeInBits == 64)
+
+                                    if (varSizeInBits >= 64)
                                     {
-                                        opLit = llvm::dwarf::DW_OP_lit4;
+                                        {
+                                            opLit = llvm::dwarf::DW_OP_lit5;  // Two+ subregs
+                                        }
                                     }
 
                                     if (Loc.IsVectorized() == false)
@@ -1557,6 +1637,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     write(dotLoc.loc, (uint8_t)DW_OP_INTEL_bit_piece_stack);
 
                                     regNum = regNum + numOfRegs;
+                                    IGC_ASSERT_MESSAGE(((simdWidth < 32) && (grfSize == 32)), "SIMD32 debugging not supported");
 
                                 }
                             }
@@ -1580,11 +1661,15 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                 // Scratch space
                                 // 1 DW_OP_bregx <scrbase>, <offset>
                                 uint64_t scratchBaseAddr = 0; // TBD MT
-                                uint16_t varSizeInBits = (uint16_t)RegVar->getType()->getSizeInBits();
+                                unsigned int vectorNumElements = 1;
+                                uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
+                                uint16_t varSizeInBits = (uint16_t)RegVar->getBasicSize(this);  // TBD MT getBasicSize
+                                uint16_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
+                                uint16_t numOfRegs = ((varSizeInReg * (uint16_t)simdWidth) > (grfSize * 8)) ?
+                                    ((varSizeInReg * (uint16_t)simdWidth) / (grfSize * 8)) : 1;
                                 auto lebsizeScratchBaseAddr = encodeULEB128(scratchBaseAddr, bufLEB128); // Address for bregx
                                 auto lebsizeScratchOffset = encodeULEB128(varInfo.getSpillOffset().memoryOffset, bufLEB128); // Offset for bregx
                                 auto lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
-
                                 auto simdLaneSize =
                                     sizeof(uint8_t) +                        // subReg or DW_OP_INTEL_push_simd_lane
                                     sizeof(uint8_t) +                        // opLit
@@ -1592,45 +1677,73 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     sizeof(uint8_t) + lebsizeVarSizeInBits + // DW_OP_const1u+val
                                     sizeof(uint8_t);                         // DW_OP_INTEL_bit_piece_stack
 
-                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsizeScratchBaseAddr + lebsizeScratchOffset + simdLaneSize));
-                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bregx);
-                                lebsizeScratchBaseAddr = encodeULEB128(scratchBaseAddr, bufLEB128); // Address for bregx
-                                write(dotLoc.loc, bufLEB128, lebsizeScratchBaseAddr);
-                                lebsizeScratchOffset = encodeULEB128(varInfo.getSpillOffset().memoryOffset, bufLEB128); // Offset for bregx
-                                write(dotLoc.loc, bufLEB128, lebsizeScratchOffset);
-
-                                // Emit SIMD lane for spill (unpacked)
-
-                                IGC_ASSERT_MESSAGE((varSizeInBits == 64) || (varSizeInBits == 32 || varSizeInBits == 16 || varSizeInBits == 8), "Unexpected variable's size");
-                                IGC_ASSERT(Loc.GetVectorNumElements() <= 1);
-
-                                unsigned int opLit = llvm::dwarf::DW_OP_lit5;
-                                if (varSizeInBits == 64)
+                                if (Loc.IsVectorized() == true)
                                 {
-                                    opLit = llvm::dwarf::DW_OP_lit4;
+                                    vectorNumElements = Loc.GetVectorNumElements();
                                 }
 
-                                if (Loc.IsVectorized() == false)
+                                // Calculate and write size of encodings for all vectors (if vectorized).
+                                uint16_t allVectorsSize = 0;
+                                auto currMemoryOffset = varInfo.getSpillOffset().memoryOffset;
+                                for (unsigned int vectorElem = 0; vectorElem < vectorNumElements; ++vectorElem)
                                 {
-                                    unsigned int subReg = varInfo.getGRF().subRegNum;
+                                    // DW_OP_bregx
+                                    lebsizeScratchOffset = encodeULEB128(currMemoryOffset, bufLEB128);
+                                    allVectorsSize += (uint16_t)(sizeof(uint8_t) + lebsizeScratchBaseAddr + lebsizeScratchOffset + simdLaneSize);
 
-                                    // Scalar in a subregister
-                                    write(dotLoc.loc, (uint8_t)subReg);
+                                    currMemoryOffset += numOfRegs * m_pModule->m_pShader->getGRFSize();
                                 }
-                                else
+
+                                IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Unexpected variable's size");
+
+                                write(dotLoc.loc, allVectorsSize);
+
+                                currMemoryOffset = varInfo.getSpillOffset().memoryOffset;
+                                for (unsigned int vectorElem = 0; vectorElem < vectorNumElements; ++vectorElem)
                                 {
-                                    // SIMD lane
-                                    write(dotLoc.loc, (uint8_t)DW_OP_INTEL_push_simd_lane);
-                                }
+                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bregx);
+                                    lebsizeScratchBaseAddr = encodeULEB128(scratchBaseAddr, bufLEB128); // Address for bregx
+                                    write(dotLoc.loc, bufLEB128, lebsizeScratchBaseAddr);
+                                    lebsizeScratchOffset = encodeULEB128(currMemoryOffset, bufLEB128); // Offset for bregx
+                                    write(dotLoc.loc, bufLEB128, lebsizeScratchOffset);
 
-                                // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
-                                // as well as 32-bit float/int, while 64-bit variable takes two 32-bit subregisters.
-                                write(dotLoc.loc, (uint8_t)opLit);
-                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
-                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_const1u);
-                                lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
-                                write(dotLoc.loc, bufLEB128, lebsizeVarSizeInBits);
-                                write(dotLoc.loc, (uint8_t)DW_OP_INTEL_bit_piece_stack);
+                                    currMemoryOffset += numOfRegs * m_pModule->m_pShader->getGRFSize();
+
+                                    // Emit SIMD lane for spill (unpacked)
+
+                                    unsigned int opLit = llvm::dwarf::DW_OP_lit5;
+                                    if (varSizeInBits >= 64)
+                                    {
+                                        {
+                                            opLit = llvm::dwarf::DW_OP_lit5;  // Two+ subregs
+                                        }
+                                    }
+
+                                    if (Loc.IsVectorized() == false)
+                                    {
+                                        unsigned int subReg = varInfo.getGRF().subRegNum;
+
+                                        // Scalar in a subregister
+                                        write(dotLoc.loc, (uint8_t)subReg);
+                                    }
+                                    else
+                                    {
+                                        // SIMD lane
+                                        write(dotLoc.loc, (uint8_t)DW_OP_INTEL_push_simd_lane);
+                                    }
+
+                                    // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
+                                    // as well as 32-bit float/int, while 64-bit variable takes two 32-bit subregisters.
+                                    write(dotLoc.loc, (uint8_t)opLit);
+                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
+                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_const1u);
+                                    lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
+                                    write(dotLoc.loc, bufLEB128, lebsizeVarSizeInBits);
+                                    write(dotLoc.loc, (uint8_t)DW_OP_INTEL_bit_piece_stack);
+
+                                    regNum = regNum + numOfRegs;
+                                    IGC_ASSERT_MESSAGE(((simdWidth < 32) && (grfSize == 32)), "SIMD32 debugging not supported");
+                                }
                             }
                         }
                         if (Loc.IsVectorized())
