@@ -6181,6 +6181,76 @@ void HWConformity::fixSelCsel(INST_LIST_ITER it, G4_BB* bb)
     }
 }
 
+//
+//  Avoid the dst and src overlap when they are using the same variable by inserting a mov instruction
+//  add(8)  var1<2>, var2, var1<0, 1, 0>
+//
+void HWConformity::avoidDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb)
+{
+    G4_INST* inst = *it;
+
+    if (inst->isSend() ||
+        inst->opcode() == G4_nop ||
+        inst->isLabel())
+    {
+        return;
+    }
+
+    G4_DstRegRegion* dst = inst->getDst();
+
+    if (dst && dst->getBase()->isRegVar())
+    {
+        G4_Declare* dstDcl = dst->getTopDcl();
+
+        if (dstDcl != nullptr)
+        {
+            G4_DstRegRegion* dstRgn = dst;
+            int dstOpndNumRows = (( dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) / G4_GRF_REG_NBYTES) + 1;
+            int dstLeft = dstRgn->getLinearizedStart();
+            int dstRight = dstOpndNumRows > 1 ? ((dstLeft / G4_GRF_REG_NBYTES + 1) * G4_GRF_REG_NBYTES - 1) :
+                dstRgn->getLinearizedEnd();
+
+            for (int i = 0, nSrcs = inst->getNumSrc(); i < nSrcs; i++)
+            {
+                G4_Operand* src = inst->getSrc(i);
+
+                if (!src || !src->getTopDcl())
+                {
+                    continue;
+                }
+
+                G4_Declare* srcDcl = src->getTopDcl();
+                G4_CmpRelation rel = dst->compareOperand(src);
+                if ((rel != Rel_disjoint && rel != Rel_undef) &&
+                    src->isSrcRegRegion() &&
+                    src->asSrcRegRegion()->getBase()->isRegVar() &&
+                    srcDcl == dstDcl)
+                {
+                    G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
+                    int srcOpndNumRows = ((srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) / G4_GRF_REG_NBYTES) + 1;
+                    int srcLeft = srcRgn->getLinearizedStart();
+                    int srcRight = srcRgn->getLinearizedEnd();
+
+                    if (!srcRgn->isScalar() && srcOpndNumRows > 1)
+                    {
+                        srcLeft = (srcRgn->getLinearizedStart() / G4_GRF_REG_NBYTES + 1) * G4_GRF_REG_NBYTES;
+                    }
+
+                    if (dstOpndNumRows > 1 || srcOpndNumRows > 1)
+                    {
+                        if (!(srcLeft > dstRight || dstLeft > srcRight))
+                        {
+                            inst->setSrc(insertMovBefore(it, i, src->getType(), bb), i);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return;
+}
+
 void HWConformity::conformBB(G4_BB* bb)
 {
     INST_LIST_ITER i = bb->begin(), iEnd = bb->end();
@@ -6199,6 +6269,12 @@ void HWConformity::conformBB(G4_BB* bb)
             opcode == G4_label)
         {
             continue;
+        }
+
+        if(builder.avoidDstSrcOverlap() &&
+            inst->getDst() != NULL)
+        {
+            avoidDstSrcOverlap(i, bb);
         }
 
         // do this early since otherwise the moves inserted by other passes may still

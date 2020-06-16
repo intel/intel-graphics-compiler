@@ -196,6 +196,7 @@ namespace vISA
 
         void fixSelCsel(INST_LIST_ITER it, G4_BB *bb);
 
+        void avoidDstSrcOverlap(INST_LIST_ITER i, G4_BB* bb);
         void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
         void multiAccSubstitution(G4_BB* bb);
 
