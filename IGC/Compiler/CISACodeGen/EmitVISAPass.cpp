@@ -13434,6 +13434,11 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     bool L3_Flush_Instructions = llvm::cast<llvm::ConstantInt>((inst->getOperand(4)))->getValue().getBoolValue();
     bool Global_Mem_Fence = true;
     bool L1_Invalidate = llvm::cast<llvm::ConstantInt>((inst->getOperand(6)))->getValue().getBoolValue() && ctx->platform.hasL1ReadOnlyCache();
+    if (L3_Flush_RW_Data)
+    {
+        // dont flush L1 if L3 is also being flushed
+        L1_Invalidate = false;
+    }
 
     bool EmitFence = true;
     // If passed a non-constant parameter, be conservative and emit a fence.
