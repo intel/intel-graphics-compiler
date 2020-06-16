@@ -10428,10 +10428,13 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                 // for each simd lane.
                 // Since HW doesn't support scattered GRF writes, we need to simulate
                 // scattered write by a sequence of instructions, each one writing to a single simd-lane.
+                // Also, hardcode to simd8 to avoid complain about possible being across 3 GRFs.
+                // Changing to simd1 needs more work and might cause extra overhead as well.
+                uint numLanesSimd8 = numLanes(SIMDMode::SIMD8);
                 for (uint lane = 0; lane < numLanes(simdMode); ++lane)
                 {
                     uint position = lane + i * 16;
-                    CVariable* immMask = m_currShader->ImmToVariable(1ULL << lane, ISA_TYPE_UD);
+                    CVariable* immMask = m_currShader->ImmToVariable(1ULL << (lane % numLanesSimd8), ISA_TYPE_UD);
                     CVariable* dstPred = m_currShader->GetNewVariable(
                         numLanes(m_SimdMode),
                         ISA_TYPE_BOOL,
@@ -10447,9 +10450,10 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                     {
                         m_encoder->SetSrcSubReg(0, position);
                     }
+                    m_encoder->SetMask(lane/numLanesSimd8 ? EMASK_Q2 : EMASK_Q1);
                     m_encoder->SetSrcRegion(0, 0, 1, 0);
                     m_encoder->SetDstSubReg(lane);
-                    m_encoder->SetSimdSize(simdMode);
+                    m_encoder->SetSimdSize(SIMDMode::SIMD8);
                     m_encoder->Copy(pDstArrElm, pElemVar);
                     m_encoder->Push();
                 }
