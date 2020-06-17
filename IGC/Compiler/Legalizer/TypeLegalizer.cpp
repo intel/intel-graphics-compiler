@@ -370,6 +370,9 @@ TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
     case Elementize:
         elementizeConstant(&VMI->second, TySeq, C);
         break;
+    default:
+        IGC_ASSERT(0);
+        break;
     }
 
     return std::make_pair(&VMI->second, Act);

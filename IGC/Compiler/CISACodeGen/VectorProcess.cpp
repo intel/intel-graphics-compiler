@@ -195,51 +195,52 @@ FunctionPass* IGC::createVectorProcessPass()
 
 bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 {
-    LoadInst* LI = dyn_cast<LoadInst>(Inst);
-    StoreInst* SI = dyn_cast<StoreInst>(Inst);
-    GenIntrinsicInst* II = dyn_cast<GenIntrinsicInst>(Inst);
-
-    IGC_ASSERT_MESSAGE(
-        (LI || SI ||
-        (II &&
-            (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
-                II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)))
-        , "Inst should be either load or store");
+    LoadInst* const LI = dyn_cast<LoadInst>(Inst);
+    StoreInst* const SI = dyn_cast<StoreInst>(Inst);
+    GenIntrinsicInst* const II = dyn_cast<GenIntrinsicInst>(Inst);
 
     Value* Ptr = nullptr;
-    if (LI != nullptr)
+    Type* Ty = nullptr;
+
+    if (nullptr != LI)
     {
         Ptr = LI->getPointerOperand();
+        Ty = LI->getType();
+    }
+    else if (nullptr != SI)
+    {
+        IGC_ASSERT(0 < SI->getNumOperands());
+        IGC_ASSERT(nullptr != SI->getOperand(0));
+
+        Ptr = SI->getPointerOperand();
+        Ty = SI->getOperand(0)->getType();
     }
     else
-        if (SI != nullptr)
+    {
+        IGC_ASSERT(nullptr != II);
+        IGC_ASSERT(0 < II->getNumOperands());
+        IGC_ASSERT(nullptr != II->getOperand(0));
+
+        Ptr = II->getOperand(0);
+
+        if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
         {
-            Ptr = SI->getPointerOperand();
+            Ty = II->getType();
         }
         else
         {
-            Ptr = II->getOperand(0);
+            IGC_ASSERT(II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed);
+            IGC_ASSERT(2 < II->getNumArgOperands());
+            IGC_ASSERT(nullptr != II->getArgOperand(2));
+
+            Ty = II->getArgOperand(2)->getType();
         }
-
-    Type* Ty;
-    if (LI)
-    {
-        Ty = LI->getType();
-    }
-    else if (SI)
-    {
-        Ty = SI->getOperand(0)->getType();
-    }
-    else if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
-    {
-        Ty = II->getType();
-    }
-    else
-    {
-        Ty = II->getArgOperand(2)->getType();
     }
 
-    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    IGC_ASSERT(nullptr != Ptr);
+    IGC_ASSERT(nullptr != Ty);
+
+    VectorType* const VTy = dyn_cast<VectorType>(Ty);
 
     // Treat a scalar as 1-element vector
     uint32_t nelts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
@@ -706,21 +707,21 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
 
         defaultDataType = (eltSize == 8) ? ISA_TYPE_UQ : ISA_TYPE_UD;
         //To make sure that send returns the correct layout for vector.
-        IGC_ASSERT((eltSize == 4 ||                              // common
-            allowQWMessage) && // A64, QW
-            "Internal Error: mismatch layout for vector");
+        IGC_ASSERT_MESSAGE((eltSize == 4 /* common */ || allowQWMessage /* A64, QW */), "Internal Error: mismatch layout for vector");
     }
 
     MESSAGE_KIND kind = defaultKind;
     VISA_Type    dataType = defaultDataType;
     unsigned bytes = TBytes;
-    unsigned short i = 0;
+    size_t i = 0;
     for (; bytes >= MB; ++i, bytes -= MB)
     {
+        IGC_ASSERT(i < (sizeof(insts) / sizeof(*insts)));
         insts[i].startByte = (uint16_t)(TBytes - bytes);
         insts[i].kind = kind;
         insts[i].blkType = dataType;
         insts[i].blkInBytes = (uint16_t)CEncoder::GetCISADataTypeSize(dataType);
+        IGC_ASSERT(insts[i].blkInBytes);
         insts[i].numBlks = MB / insts[i].blkInBytes;
     }
 
@@ -734,9 +735,11 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
         unsigned MB2 = A64_SCATTERED_MAX_BYTES_8DW_SIMD8 / 2; // 16 bytes
         if (bytes > MB2)
         {
+            IGC_ASSERT(i < (sizeof(insts) / sizeof(*insts)));
             insts[i].startByte = (uint16_t)(TBytes - bytes);
             insts[i].kind = kind;
             insts[i].blkInBytes = (uint16_t)CEncoder::GetCISADataTypeSize(dataType);
+            IGC_ASSERT(insts[i].blkInBytes);
             insts[i].numBlks = MB2 / insts[i].blkInBytes;
             ++i;
             bytes -= MB2;
@@ -753,16 +756,19 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
             }
         }
 
+        IGC_ASSERT(i < (sizeof(insts) / sizeof(*insts)));
         insts[i].startByte = (uint16_t)(TBytes - bytes);
         insts[i].kind = kind;
         insts[i].blkType = dataType;
         insts[i].blkInBytes = (uint16_t)CEncoder::GetCISADataTypeSize(dataType);
+        IGC_ASSERT(insts[i].blkInBytes);
         insts[i].numBlks = (uint16_t)bytes / insts[i].blkInBytes;
         ++i;
     }
 
     numInsts = i;
     IGC_ASSERT_MESSAGE(numInsts <= VECMESSAGEINFO_MAX_LEN, "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
+    IGC_ASSERT_MESSAGE(numInsts <= (sizeof(insts) / sizeof(*insts)), "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
 }
 
 

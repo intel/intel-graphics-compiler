@@ -867,10 +867,10 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         Changed = true;
     }
     break;
-    //default:
-    //    printf("Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing. Source Inst opcode:%d", prevInst->getOpcode());
-    //    IGC_ASSERT_MESSAGE(0, "Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing.");
-    //    break;
+    default:
+        printf("Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing. Source Inst opcode:%d", prevInst->getOpcode());
+        IGC_ASSERT_MESSAGE(0, "Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing.");
+        break;
     }
 }
 
@@ -946,7 +946,7 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {
         break;
     }
     default:
-        // IGC_ASSERT_MESSAGE(0, "Unhandled source to BitCast Instruction seen with illegal int type. Legalization support missing.");
+        IGC_ASSERT_MESSAGE(0, "Unhandled source to BitCast Instruction seen with illegal int type. Legalization support missing.");
         break;
     }
 }

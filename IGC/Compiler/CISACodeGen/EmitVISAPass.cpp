@@ -6242,6 +6242,7 @@ void EmitPass::emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit
     const Unit<Element> messageLength = payloadSize;
     CVariable* const payload = m_currShader->GetNewVariable(payloadSize.Count() * numLanes(SIMDMode::SIMD8),
         ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
+    IGC_ASSERT(numLanes(SIMDMode::SIMD8));
     Unit<Element> responseLength(m_destination->GetNumberElement() / numLanes(SIMDMode::SIMD8));
 
     {
@@ -10593,7 +10594,10 @@ void EmitPass::SplitSIMD(llvm::Instruction* inst, uint numSources, uint headerSi
 {
     for (uint i = 0; i < numSources; ++i)
     {
-        uint subVarIdx = numLanes(mode) / (getGRFSize() >> 2) * i + headerSize;
+        const unsigned int GRFSizeBy4 = (getGRFSize() >> 2);
+        IGC_ASSERT(GRFSizeBy4);
+
+        uint subVarIdx = numLanes(mode) / GRFSizeBy4 * i + headerSize;
 
         CVariable* rawDst = payload;
         CVariable* src = GetSymbol(inst->getOperand(i));
@@ -10620,8 +10624,10 @@ void EmitPass::JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode 
     {
         for (uint i = 0; i < responseLength; ++i)
         {
+            const unsigned int GRFSizeBy4 = (getGRFSize() >> 2);
+            IGC_ASSERT(GRFSizeBy4);
             m_encoder->SetSimdSize(mode);
-            uint subVarIdx = numLanes(origMode) / (getGRFSize() >> 2) * i;
+            const unsigned int subVarIdx = numLanes(origMode) / GRFSizeBy4 * i;
             m_encoder->SetSrcSubVar(0, i);
             m_encoder->SetDstSubVar(subVarIdx + half);
             m_encoder->SetMask(half == 0 ? (mode == SIMDMode::SIMD8 ? EMASK_Q1 : EMASK_H1) :
@@ -11229,6 +11235,7 @@ void EmitPass::ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src
     CVariable* srcTmp = src;
     CVariable* pSrcTmp[2] = { pSrc[0], pSrc[1] };
 
+    IGC_ASSERT(nullptr != m_encoder);
     m_encoder->SetSecondHalf(secondHalf);
     for (uint i = 0; i < numInst; ++i)
     {
@@ -11236,6 +11243,7 @@ void EmitPass::ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src
 
         for (uint j = 0; j < 2; ++j)
         {
+            IGC_ASSERT(numInst);
             m_encoder->SetSimdSize(lanesToSIMDMode(numLanes / numInst));
             m_encoder->SetNoMask();
             m_encoder->SetMask(mask);
@@ -11297,6 +11305,7 @@ CVariable* EmitPass::ReductionClusteredReduceHelper(e_opcode op, VISA_Type type,
         m_encoder->SetSecondHalf(secondHalf);
         for (uint i = 0; i < numInst; ++i)
         {
+            IGC_ASSERT(numInst);
             m_encoder->SetSimdSize(lanesToSIMDMode(numLanes(simd) / numInst));
             m_encoder->SetNoMask();
             const e_mask mask = secondHalf ? (i == 1 ? EMASK_Q4 : EMASK_Q3) : (i == 1 ? EMASK_Q2 : EMASK_Q1);
@@ -11341,11 +11350,13 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
         CVariable* pSrc[2] = {};
         // For src the 2 grf boundary may be crossed for 2-clusters only in SIMD16 for 64-bit types.
         const uint srcNumInst = clusterSize == 2 ? numInst : 1;
+        IGC_ASSERT(clusterSize);
         ReductionClusteredSrcHelper(pSrc, src, numLanes(simd) / clusterSize, type, srcNumInst, secondHalf);
 
         // Perform reduction with op
         CVariable* tempDst = m_currShader->GetNewVariable(dst);
         m_encoder->SetSecondHalf(secondHalf);
+        IGC_ASSERT(clusterSize);
         const SIMDMode tmpSimd = lanesToSIMDMode(numLanes(simd) / clusterSize);
         if (isInt64Mul)
         {
@@ -11382,7 +11393,9 @@ void EmitPass::ReductionClusteredExpandHelper(e_opcode op, VISA_Type type, SIMDM
                 // Outer loop is for 64-bit types in SIMD16 only (cluster size is always <= 8)
                 // to broadcast data to upper dst's half which crosses 2-grf boundary.
                 // The inner is for movement splitting: one 64-bit to a pair of 32-bit.
+                IGC_ASSERT(numInst);
                 uint lanes = numLanes(simd) / numInst;
+                IGC_ASSERT(clusterSize);
                 uint clustersPerInst = lanes / clusterSize;
                 uint srcSubReg = i * clustersPerInst * numMovPerElement + j;
                 const e_mask mask = simd == SIMDMode::SIMD32 ? (i == 1 ? EMASK_H2 : EMASK_H1) :
@@ -11879,7 +11892,9 @@ void EmitPass::emitPreOrPostFixOp(
 
         // Because we write continuous elements in the one above, for SIMD16 we have to split into
         // 2 SIMD4's.
-        uint numTimesToLoop = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
+        const unsigned int numLanesForSimd8 = numLanes(SIMDMode::SIMD8);
+        IGC_ASSERT(numLanesForSimd8);
+        const unsigned int numTimesToLoop = numLanes(m_currShader->m_SIMDSize) / numLanesForSimd8;
 
         for (uint loop_counter = 0; loop_counter < numTimesToLoop; ++loop_counter)
         {
@@ -12683,13 +12698,15 @@ void EmitPass::emitAtomicStructured(llvm::Instruction* pInsn)
         }
 
         auto hw_atomic_op_enum = getHwAtomicOpEnum(atomic_op);
-        uint messageLength = parameterLength * (numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8));
+        const unsigned int numLanesForSimd8 = numLanes(SIMDMode::SIMD8);
+        IGC_ASSERT(numLanesForSimd8);
+        const unsigned int messageLength = parameterLength * (numLanes(m_currShader->m_SIMDSize) / numLanesForSimd8);
         uint responseLength = 0;
 
         CVariable* pDst = nullptr;
         if (returnsImmValue == true)
         {
-            responseLength = (numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8));
+            responseLength = (numLanes(m_currShader->m_SIMDSize) / numLanesForSimd8);
             pDst = m_destination;
         }
 
@@ -12822,7 +12839,11 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
                 numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, CName::NONE) :
             nullptr;
         CVariable* pPayload[2] = { nullptr, nullptr };
-        uint loopIter = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
+
+        const unsigned int numLanesForSimd8 = numLanes(SIMDMode::SIMD8);
+        IGC_ASSERT(numLanesForSimd8);
+        const unsigned int loopIter = numLanes(m_currShader->m_SIMDSize) / numLanesForSimd8;
+
         for (uint i = 0; i < loopIter; ++i)
         {
             pPayload[i] = m_currShader->GetNewVariable(
@@ -12955,7 +12976,10 @@ void EmitPass::emitLdStructured(llvm::Instruction* pInsn)
                 (parameterLength)* numLanes(m_currShader->m_SIMDSize),
                 ISA_TYPE_D, IGC::EALIGN_GRF, CName::NONE);
 
-        uint responseLength = m_destination->GetNumberElement() / numLanes(m_currShader->m_SIMDSize);
+        const unsigned int numLanesForSimdSize = numLanes(m_currShader->m_SIMDSize);
+        IGC_ASSERT(numLanesForSimdSize);
+        unsigned int responseLength = m_destination->GetNumberElement() / numLanesForSimdSize;
+
         if (m_currShader->m_SIMDSize == SIMDMode::SIMD8)
         {
             m_currShader->CopyVariable(pPayload, pArrIdx, 0);
@@ -12973,8 +12997,11 @@ void EmitPass::emitLdStructured(llvm::Instruction* pInsn)
             ConvertChannelMaskToVisaType(writeMask),
             m_currShader->m_SIMDSize);
 
-        uint desc = DataPortRead(
-            parameterLength * (numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8)),
+        const unsigned int numLanesForSimd8 = numLanes(SIMDMode::SIMD8);
+        IGC_ASSERT(numLanesForSimd8);
+
+        const unsigned int desc = DataPortRead(
+            parameterLength * (numLanes(m_currShader->m_SIMDSize) / numLanesForSimd8),
             responseLength,
             false,
             EU_DATA_PORT_READ_MESSAGE_TYPE_UNTYPED_SURFACE_READ,
@@ -13155,8 +13182,11 @@ void EmitPass::emitStoreStructured(llvm::Instruction* pInsn)
             channelMask,
             m_currShader->m_SIMDSize);
 
-        uint desc = DataPortWrite(
-            parameterLength * (numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8)),
+        const unsigned int numLanesForSimd8 = numLanes(SIMDMode::SIMD8);
+        IGC_ASSERT(numLanesForSimd8);
+
+        const unsigned int desc = DataPortWrite(
+            parameterLength * (numLanes(m_currShader->m_SIMDSize) / numLanesForSimd8),
             responseLength,
             false,
             false,
@@ -13235,7 +13265,10 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         }
         else
         {
-            uint splitInstCount = numLanes(m_currShader->m_SIMDSize) / numLanes(instWidth);
+            const unsigned int numLanesForInstWidth = numLanes(instWidth);
+            IGC_ASSERT(numLanesForInstWidth);
+            const unsigned int splitInstCount = numLanes(m_currShader->m_SIMDSize) / numLanesForInstWidth;
+
             for (uint i = 0; i < splitInstCount; ++i)
             {
                 tempdst[i] = m_currShader->GetNewVariable(
