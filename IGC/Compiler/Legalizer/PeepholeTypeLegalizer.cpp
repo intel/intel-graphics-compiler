@@ -121,7 +121,7 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction& I) {
         if (dyn_cast<PHINode>(&I)) {
             legalizePhiInstruction(I);  // phi nodes and all incoming values
         }
-        if (dyn_cast<UnaryInstruction>(&I)) {
+        else if (dyn_cast<UnaryInstruction>(&I)) {
             legalizeUnaryInstruction(I); // pointercast &/or load
         }
         else if (dyn_cast<ICmpInst>(&I) || dyn_cast<BinaryOperator>(&I) || dyn_cast<SelectInst>(&I)) {
