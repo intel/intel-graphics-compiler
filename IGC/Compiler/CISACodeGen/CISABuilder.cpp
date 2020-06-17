@@ -2063,7 +2063,7 @@ namespace IGC
                 VISA_VectorOpnd* H = GetDestinationOperand(Hi, NewDstMod);
                 VISA_VectorOpnd* HIn = GetSourceOperand(Hi, NewDstMod);
 
-            unsigned short NumElems = 8;
+            unsigned short NumElems = m_program->m_Platform->getAccChNumUD();
                 CVariable* Carry =
                     m_program->GetNewVariable(NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform(), CName(Lo->getName(), "Carry"));
                 VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
@@ -2099,7 +2099,7 @@ namespace IGC
             VISA_VectorOpnd* H = GetDestinationOperand(Hi, m_encoderState.m_dstOperand);
             VISA_PredOpnd* Pred = GetFlagOperand(m_encoderState.m_flag);
 
-        unsigned short NumElems = (ExecSize == 1) ? 1 : 8;
+        unsigned short NumElems = (ExecSize == 1) ? 1 : m_program->m_Platform->getAccChNumUD();
             CVariable* Carry = m_program->GetNewVariable(
                 NumElems, Lo->GetType(), Lo->GetAlign(), Lo->IsUniform(), CName(Lo->getName(), "Carry"));
             VISA_VectorOpnd* AccOut = GetDestinationOperand(Carry, m_encoderState.m_dstOperand);
