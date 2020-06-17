@@ -1379,11 +1379,6 @@ namespace TC
                             {
                                 checkBinaryType = true;
                             }
-                            else if (strcmp(pParam, "-cl-intel-num-thread-per-eu") == 0)
-                            {
-                                // Next token is N, so ignore it
-                                ignoreNextToken = true;
-                            }
                             else if (strcmp(pParam, "-ze-gtpin-scratch-area-size") == 0)
                             {
                                 // Next token is N, so ignore it
