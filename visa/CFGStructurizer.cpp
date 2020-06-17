@@ -1317,7 +1317,8 @@ inline bool CFGStructurizer::isGotoScalarJmp(G4_INST *gotoInst)
 {
     MUST_BE_TRUE(gotoInst->opcode() == G4_goto, "It should be a goto inst");
     return gotoInst->getExecSize() == 1 ||
-           gotoInst->getPredicate() == nullptr;
+           gotoInst->getPredicate() == nullptr ||
+           gotoInst->asCFInst()->isUniform();
 }
 
 inline bool CFGStructurizer::isJoinBB(G4_BB* bb)
