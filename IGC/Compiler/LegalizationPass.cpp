@@ -1698,6 +1698,8 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
     case Intrinsic::usub_with_overflow:
     case Intrinsic::ssub_with_overflow:
     case Intrinsic::uadd_with_overflow:
+    case Intrinsic::umul_with_overflow:
+    case Intrinsic::smul_with_overflow:
     {
         Value* src0 = I.getArgOperand(0);
         Value* src1 = I.getArgOperand(1);
@@ -1737,6 +1739,72 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                 // Signed a - b overflows if the sign of a and -b are the same, but diffrent from the result
                 // Signed a + b overflows if the sign of a and b are the same, but diffrent from the result
                 isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_SLT, andOpt, zero, "", &I);
+            }
+            break;
+            case Intrinsic::umul_with_overflow:
+            case Intrinsic::smul_with_overflow:
+            {
+                IGC_ASSERT(nullptr != src0);
+                IGC_ASSERT(nullptr != src1);
+                IGC_ASSERT(src0->getType() == src1->getType());
+                IGC_ASSERT(src0->getType()->isIntegerTy());
+                bool isSigned = intrinsicID == Intrinsic::smul_with_overflow;
+                res = BinaryOperator::Create(Instruction::Mul, src0, src1, "", &I);
+                const unsigned int bitWidth = src0->getType()->getIntegerBitWidth();
+                if (bitWidth == 64 || bitWidth == 32 )
+                {
+                    BasicBlock* const bb = I.getParent();
+                    IGC_ASSERT(nullptr != bb);
+                    Function* const f = bb->getParent();
+                    IGC_ASSERT(nullptr != f);
+                    Value* hiDst = CreateMulh(*f, Builder, isSigned, src0, src1);
+                    if (isSigned)
+                    {
+                        // Signed a * b overflows if Mulh(a, b) != 0 or -1   and consequently
+                        // if Mulh(a, b) + 1 > 1 (for an unsigned comparison)
+                        Value* const one = ConstantInt::get(src0->getType(), 1, true);
+                        Value* const add1 = BinaryOperator::Create(Instruction::Add, hiDst, one, "", &I);
+                        isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGT, add1, one, "", &I);
+                    }
+                    else
+                    {
+                        // Unsigned a * b overflows if Mulh(a, b) != 0
+                        Value* const zero = ConstantInt::get(src0->getType(), 0, isSigned);
+                        isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, hiDst, zero, "", &I);
+                    }
+                }
+                else
+                {
+                    IGC_ASSERT(bitWidth < 32);
+                    Value* ores = nullptr;
+                    if (isSigned)
+                    {
+                        // Signed a * b overflows if (a * b) + (1 << (bitWidth-1)) >= (1 << bitWidth)
+                        //   (for an unsigned comparison)
+                        // For example. If src0 is 0xFF (-1) and src0 is 0xFF (-1) then
+                        //   src0SExt is 0xFFFFFFFF
+                        //   src1SExt is 0xFFFFFFFF
+                        //   mulRes is 0x00000001   (0xFFFFFFFF * 0xFFFFFFFF or -1 * -1)
+                        //   oneShl is 0x00000080   (1 << 7)
+                        //   ores is 0x00000081     (1 + 128)
+                        //   overflowed is 0x00000100    (1 << 8)
+                        //   isOverflow is false    (129 >= 256)
+                        Value* const src0SExt = BitCastInst::CreateSExtOrBitCast(src0, Builder.getInt32Ty(), "", &I);
+                        Value* const src1SExt = BitCastInst::CreateSExtOrBitCast(src1, Builder.getInt32Ty(), "", &I);
+                        Value* const mulRes = BinaryOperator::Create(Instruction::Mul, src0SExt, src1SExt, "", &I);
+                        Value* const oneShl = ConstantInt::get(Builder.getInt32Ty(), 1LL << (bitWidth - 1), true);
+                        ores = BinaryOperator::Create(Instruction::Add, mulRes, oneShl, "", &I);
+                    }
+                    else
+                    {
+                        // Unsigned a * b overflows if a * b >= (1 << bitWidth) (for an unsigned comparison)
+                        Value* const src0ZExt = BitCastInst::CreateZExtOrBitCast(src0, Builder.getInt32Ty(), "", &I);
+                        Value* const src1ZExt = BitCastInst::CreateZExtOrBitCast(src1, Builder.getInt32Ty(), "", &I);
+                        ores = BinaryOperator::Create(Instruction::Mul, src0ZExt, src1ZExt, "", &I);
+                    }
+                    Value* const overflowed = ConstantInt::get(Builder.getInt32Ty(), 1LL << bitWidth, false);
+                    isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGE, ores, overflowed, "", &I);
+                }
             }
             break;
             default:
@@ -1822,11 +1890,6 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         I.eraseFromParent();
     }
     break;
-    case Intrinsic::umul_with_overflow:
-    case Intrinsic::smul_with_overflow:
-        TODO("Handle the other with_overflow intrinsics");
-        IGC_ASSERT_MESSAGE(0, "Unhandled llvm.x.with.overflow intrinsic");
-        break;
     default:
         break;
     }

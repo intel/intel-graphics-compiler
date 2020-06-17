@@ -454,4 +454,11 @@ namespace IGC
         IGC_ASSERT_MESSAGE(nullptr != pNew, "Expect valid instructions");
         pNew->setDebugLoc(pOrigin->getDebugLoc());
     }
+
+    llvm::ConstantInt* getConstantSInt(llvm::IRBuilder<>& Builder, const int bitSize, int64_t val);
+    llvm::ConstantInt* getConstantUInt(llvm::IRBuilder<>& Builder, const int bitSize, uint64_t val);
+    llvm::Value* CreateMulhS64(llvm::IRBuilder<>& B, llvm::Value* const u, llvm::Value* const v);
+    llvm::Value* CreateMulhU64(llvm::IRBuilder<>& B, llvm::Value* const u, llvm::Value* const v);
+    llvm::Value* CreateMulh(llvm::Function& F, llvm::IRBuilder<>& B, const bool isSigned, llvm::Value* const u, llvm::Value* const v);
+
 } // namespace IGC

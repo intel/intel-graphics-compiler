@@ -1964,4 +1964,155 @@ namespace IGC
         InsertPos = I;
         return true;
     }
+
+    ConstantInt* getConstantSInt(
+        IRBuilder<>& Builder, const int bitSize, int64_t val)
+    {
+        ConstantInt* res = nullptr;
+        switch (bitSize) {
+        case 8: res = Builder.getInt8((uint8_t)val); break;
+        case 16: res = Builder.getInt16((uint16_t)val); break;
+        case 32: res = Builder.getInt32((uint32_t)val); break;
+        case 64: res = Builder.getInt64((uint64_t)val); break;
+        default:
+            IGC_ASSERT_MESSAGE(0, "invalid bitsize");
+        }
+        return res;
+    }
+
+    ConstantInt* getConstantUInt(
+        IRBuilder<>& Builder, const int bitSize, uint64_t val)
+    {
+        ConstantInt* res = nullptr;
+        switch (bitSize) {
+        case 8: res = Builder.getInt8((uint8_t)val); break;
+        case 16: res = Builder.getInt16((uint16_t)val); break;
+        case 32: res = Builder.getInt32((uint32_t)val); break;
+        case 64: res = Builder.getInt64(val); break;
+        default:
+            IGC_ASSERT_MESSAGE(0, "invalid bitsize");
+        }
+        return res;
+    }
+
+    // MulH implementation for 64-bit signed integers
+    Value* CreateMulhS64(IRBuilder<>& B, Value* const u, Value* const v) {
+        // This comes from Hacker's Delight 8-2.
+        // Think of this as elementry schoole multiplication, but base 2^32.
+        ConstantInt* const loMask = getConstantSInt(B, 64, 0xFFFFFFFFll);
+        ConstantInt* const hiShift = getConstantSInt(B, 64, 32);
+        //
+        // u64 u0 = u & 0xFFFFFFFF; s64 u1 = u >> 32;
+        // u64 v0 = v & 0xFFFFFFFF; s64 v1 = v >> 32;
+        Value* const u0 = B.CreateAnd(u, loMask, "u.lo32");
+        Value* const u1 = B.CreateAShr(u, hiShift, "u.hi32");
+        Value* const v0 = B.CreateAnd(v, loMask, "v.lo32");
+        Value* const v1 = B.CreateAShr(v, hiShift, "v.hi32");
+        //
+        // w = u0*v0
+        Value* const w0 = B.CreateMul(u0, v0, "w0");
+        //
+        // t = u1*v0 + (w0 >> 32)
+        Value* const tLHS = B.CreateMul(u1, v0);
+        Value* const tRHS = B.CreateLShr(w0, hiShift, "w0.lo32");
+        Value* const t = B.CreateAdd(tLHS, tRHS, "t");
+        //
+        // w1 = u0*v0 + (t >> 32)
+        Value* const u0v1 = B.CreateMul(u0, v1);
+        Value* const tLO32 = B.CreateAnd(t, loMask, "t.lo32");
+        Value* const w1 = B.CreateAdd(u0v1, tLO32, "w1");
+        //
+        // return u0*v1 + (t >> 32) + (w1 >> 32)
+        Value* const u1v1 = B.CreateMul(u1, v1);
+        Value* const tHI32 = B.CreateAShr(t, hiShift, "t.hi32");
+        Value* const rLHS = B.CreateAdd(u1v1, tHI32);
+        Value* const rRHS = B.CreateAShr(w1, hiShift, "w1.lo32");
+        Value* const r = B.CreateAdd(rLHS, rRHS, "uv");
+        //
+        return r;
+    }
+
+    // MulH implementation for 64-bit unsigned integers
+    Value* CreateMulhU64(IRBuilder<>& B, Value* const u, Value* const v)
+    {
+        // This is the same as CreateMulhS64, but with all logical shifts.
+        ConstantInt* const loMask = getConstantUInt(B, 64, 0xFFFFFFFFull);
+        ConstantInt* const hiShift = getConstantUInt(B, 64, 32);
+        //
+        // u64 u0 = u & 0xFFFFFFFF, u1 = u >> 32;
+        // u64 v0 = v & 0xFFFFFFFF, v1 = v >> 32;
+        Value* const u0 = B.CreateAnd(u, loMask, "u.lo32");
+        Value* const u1 = B.CreateLShr(u, hiShift, "u.hi32");
+        Value* const v0 = B.CreateAnd(v, loMask, "v.lo32");
+        Value* const v1 = B.CreateLShr(v, hiShift, "v.hi32");
+        //
+        // w0 = u0*v0
+        Value* const w0 = B.CreateMul(u0, v0, "w0");
+        //
+        // t = u1*v0 + (w0 >> 32)
+        Value* const tLHS = B.CreateMul(u1, v0);
+        Value* const tRHS = B.CreateLShr(w0, hiShift, "w0.lo32");
+        Value* const t = B.CreateAdd(tLHS, tRHS, "t");
+        //
+        // w1 = u0*v0 + (t >> 32)
+        Value* const u0v1 = B.CreateMul(u0, v1);
+        Value* const tLO32 = B.CreateAnd(t, loMask, "t.lo32");
+        Value* const w1 = B.CreateAdd(u0v1, tLO32, "w1");
+        //
+        // w1 = u0*v1 + (t >> 32) + (w1 >> 32)
+        Value* const u1v1 = B.CreateMul(u1, v1);
+        Value* const tHI32 = B.CreateLShr(t, hiShift, "t.hi32");
+        Value* const rLHS = B.CreateAdd(u1v1, tHI32);
+        Value* const rRHS = B.CreateLShr(w1, hiShift, "w1.lo32");
+        Value* const r = B.CreateAdd(rLHS, rRHS, "uv");
+        //
+        return r;
+    }
+
+    // MulH implementation for 32/64 bit integers
+    Value* CreateMulh(
+        Function& F,
+        IRBuilder<>&  B,
+        const bool isSigned,
+        Value* const u,
+        Value* const v)
+    {
+        Value* res = nullptr;
+        IGC_ASSERT(nullptr != u);
+        IGC_ASSERT(nullptr != u->getType());
+        int bitWidth = u->getType()->getIntegerBitWidth();
+        switch(bitWidth)
+        {
+        case 32:
+        {
+            // we have a dedicated machine instruction for 32b
+            SmallVector<Value*, 2> imulhArgs;
+            imulhArgs.push_back(u);
+            imulhArgs.push_back(v);
+            auto intrinsic = isSigned ?
+                GenISAIntrinsic::GenISA_imulH :
+                GenISAIntrinsic::GenISA_umulH;
+            IGC_ASSERT(nullptr != v);
+            Function* const iMulhDecl = llvm::GenISAIntrinsic::getDeclaration(
+                F.getParent(),
+                intrinsic,
+                v->getType());
+            res = B.CreateCall(iMulhDecl, imulhArgs, "q_appx");
+            break;
+        }
+        case 64:
+            // emulate via 64b arithmetic
+            if (isSigned) {
+                res = CreateMulhS64(B, u, v);
+            }
+            else {
+                res = CreateMulhU64(B, u, v);
+            }
+            break;
+        default:
+            IGC_ASSERT_MESSAGE(0, "CreateMulH must be 32 or 64");
+        }
+        return res;
+    }
+
 } // namespace IGC

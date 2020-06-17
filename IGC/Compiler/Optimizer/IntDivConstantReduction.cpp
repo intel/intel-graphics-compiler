@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <limits>
 #include <type_traits>
 #include "Probe/Assertion.h"
+#include "Compiler/CISACodeGen/helper.h"
 
 using namespace llvm;
 
@@ -142,8 +143,8 @@ struct IntDivConstantReduction : public FunctionPass
 
         Value *result = nullptr;
         Value *zero = isSigned ?
-            getConstantSInt(B, divisorValue.getBitWidth(), 0) :
-            getConstantUInt(B, divisorValue.getBitWidth(), 0);
+            IGC::getConstantSInt(B, divisorValue.getBitWidth(), 0) :
+            IGC::getConstantUInt(B, divisorValue.getBitWidth(), 0);
 
         if (uVal == 1) {
             // all bit sizes x signed and unsigned
@@ -290,9 +291,9 @@ struct IntDivConstantReduction : public FunctionPass
             //          cmp    (f0.0)lt  null:d num:d       0:d
             //          sel.f0.0         rounding:d   (2^K-1):d   0:d
             //          add              num:d   num:d  rounding:d
-            Value *zero = getConstantSInt(B, bitSize, 0);
+            Value *zero = IGC::getConstantSInt(B, bitSize, 0);
             Value *isNegative = B.CreateICmpSLT(dividend, zero, "is-neg");
-            ConstantInt *twoKm1 = getConstantSInt(B, bitSize, twoToTheKminus1);
+            ConstantInt *twoKm1 = IGC::getConstantSInt(B, bitSize, twoToTheKminus1);
             return CreatePredicatedAdd(
                 bitSize, B, currDivRem, isNegative, dividend, twoKm1);
         }
@@ -497,10 +498,10 @@ struct IntDivConstantReduction : public FunctionPass
         //
         APInt::ms appxRecip = divisor.magic();
         //
-        ConstantInt *appxRcp = getConstantSInt(
+        ConstantInt *appxRcp = IGC::getConstantSInt(
             B, bitSize, appxRecip.m.getSExtValue());
         Value *appxQ =
-            CreateMulh(F, B, true, dividend, appxRcp);
+            IGC::CreateMulh(F, B, true, dividend, appxRcp);
         if (divisor.isStrictlyPositive() && appxRecip.m.isNegative()) {
             appxQ = B.CreateAdd(appxQ, dividend, "q_appx");
         }
@@ -508,19 +509,19 @@ struct IntDivConstantReduction : public FunctionPass
             appxQ = B.CreateSub(appxQ, dividend, "q_appx");
         }
         if (appxRecip.s > 0) {
-            ConstantInt *shift = getConstantSInt(B, bitSize, appxRecip.s);
+            ConstantInt *shift = IGC::getConstantSInt(B, bitSize, appxRecip.s);
             appxQ = B.CreateAShr(appxQ, shift, "q_appx");
         }
         //
         // Extract the sign bit and add it to the quotient
         if (IGC_GET_FLAG_VALUE(EnableConstIntDivReduction) == 3) {
             ConstantInt *shiftSignBit =
-                getConstantSInt(B, bitSize, bitSize - 1);
+                IGC::getConstantSInt(B, bitSize, bitSize - 1);
             Value *sign = B.CreateLShr(appxQ, shiftSignBit, "q_sign");
             appxQ = B.CreateAdd(appxQ, sign, "q");
         } else {
-            ConstantInt *zero = getConstantSInt(B, bitSize, 0);
-            ConstantInt *one = getConstantSInt(B, bitSize, 1);
+            ConstantInt *zero = IGC::getConstantSInt(B, bitSize, 0);
+            ConstantInt *one = IGC::getConstantSInt(B, bitSize, 1);
             Value *negative = B.CreateICmpSLT(appxQ, zero);
             appxQ =
                 CreatePredicatedAdd(bitSize, B, end, negative, appxQ, one);
@@ -551,10 +552,10 @@ struct IntDivConstantReduction : public FunctionPass
             IGC_ASSERT_MESSAGE(appxRecip.s < divisor.getBitWidth(), "undefined shift");
         }
         //
-        ConstantInt *appxRcp = getConstantUInt(
+        ConstantInt *appxRcp = IGC::getConstantUInt(
             B, bitSize, appxRecip.m.getZExtValue());
         Value *appxQ =
-            CreateMulh(F, B, false, shiftedDividend, appxRcp);
+            IGC::CreateMulh(F, B, false, shiftedDividend, appxRcp);
         //
         if (!appxRecip.a) {
             appxQ = B.CreateLShr(appxQ, appxRecip.s, "q_appx");
@@ -599,7 +600,7 @@ struct IntDivConstantReduction : public FunctionPass
             // use a select:
             //   %addend1 = select %p, %addend, 0
             //   add %x, %addend1
-            Value *zero = getConstantSInt(B, bitSize, 0);
+            Value *zero = IGC::getConstantSInt(B, bitSize, 0);
             Value *addend1 = B.CreateSelect(pred, addend, zero);
             return B.CreateAdd(x, addend1);
         } else {
@@ -632,138 +633,6 @@ struct IntDivConstantReduction : public FunctionPass
             phi->addIncoming(x1, t->getParent());
             //
             return phi;
-        }
-    }
-
-    Value *CreateMulh(
-        Function &F,
-        IRBuilder<> &B,
-        bool isSigned,
-        Value *u,
-        Value *v)
-    {
-        int bitWidth = u->getType()->getIntegerBitWidth();
-        if (bitWidth == 32) {
-            // we have a dedicated machine instruction for 32b
-            SmallVector<Value*,2> imulhArgs;
-            imulhArgs.push_back(u);
-            imulhArgs.push_back(v);
-            auto intrinsic = isSigned ?
-                GenISAIntrinsic::GenISA_imulH :
-                GenISAIntrinsic::GenISA_umulH;
-            Function *iMulhDecl = llvm::GenISAIntrinsic::getDeclaration(
-                F.getParent(),
-                intrinsic,
-                v->getType());
-            return B.CreateCall(iMulhDecl, imulhArgs, "q_appx");
-        } else if (bitWidth == 64) {
-            // emulate via 64b arithmetic
-            if (isSigned) {
-                return CreateMulhS64(B, u, v);
-            } else {
-                return CreateMulhU64(B, u, v);
-            }
-        } else {
-            IGC_ASSERT_MESSAGE(0, "CreateMulH must be 32 or 64");
-            return nullptr;
-        }
-    }
-
-    Value *CreateMulhS64(IRBuilder<> &B, Value *u, Value *v) const {
-        // This comes from Hacker's Delight 8-2.
-        // Think of this as elementry schoole multiplication, but base 2^32.
-        ConstantInt *loMask = getConstantSInt(B, 64, 0xFFFFFFFFll);
-        ConstantInt *hiShift = getConstantSInt(B, 64, 32);
-        //
-        // u64 u0 = u & 0xFFFFFFFF; s64 u1 = u >> 32;
-        // u64 v0 = v & 0xFFFFFFFF; s64 v1 = v >> 32;
-        Value *u0 = B.CreateAnd(u, loMask, "u.lo32");
-        Value *u1 = B.CreateAShr(u, hiShift, "u.hi32");
-        Value *v0 = B.CreateAnd(v,  loMask, "v.lo32");
-        Value *v1 = B.CreateAShr(v, hiShift, "v.hi32");
-        //
-        // w = u0*v0
-        Value *w0 = B.CreateMul(u0, v0, "w0");
-        //
-        // t = u1*v0 + (w0 >> 32)
-        Value *tLHS = B.CreateMul(u1, v0);
-        Value *tRHS = B.CreateLShr(w0, hiShift, "w0.lo32");
-        Value *t = B.CreateAdd(tLHS, tRHS, "t");
-        //
-        // w1 = u0*v0 + (t >> 32)
-        Value *u0v1 = B.CreateMul(u0, v1);
-        Value *tLO32 = B.CreateAnd(t, loMask, "t.lo32");
-        Value *w1 = B.CreateAdd(u0v1, tLO32, "w1");
-        //
-        // return u0*v1 + (t >> 32) + (w1 >> 32)
-        Value *u1v1 = B.CreateMul(u1, v1);
-        Value *tHI32 = B.CreateAShr(t, hiShift, "t.hi32");
-        Value *rLHS = B.CreateAdd(u1v1, tHI32);
-        Value *rRHS = B.CreateAShr(w1, hiShift, "w1.lo32");
-        Value *r = B.CreateAdd(rLHS, rRHS, "uv");
-        //
-        return r;
-    }
-
-    Value *CreateMulhU64(IRBuilder<> &B, Value *u, Value *v) const {
-        // This is the same as CreateMulhS64, but with all logical shifts.
-        ConstantInt *loMask = getConstantUInt(B, 64, 0xFFFFFFFFull);
-        ConstantInt *hiShift = getConstantUInt(B, 64, 32);
-        //
-        // u64 u0 = u & 0xFFFFFFFF, u1 = u >> 32;
-        // u64 v0 = v & 0xFFFFFFFF, v1 = v >> 32;
-        Value *u0 = B.CreateAnd(u, loMask, "u.lo32");
-        Value *u1 = B.CreateLShr(u, hiShift, "u.hi32");
-        Value *v0 = B.CreateAnd(v, loMask, "v.lo32");
-        Value *v1 = B.CreateLShr(v, hiShift, "v.hi32");
-        //
-        // w0 = u0*v0
-        Value *w0 = B.CreateMul(u0, v0, "w0");
-        //
-        // t = u1*v0 + (w0 >> 32)
-        Value *tLHS = B.CreateMul(u1, v0);
-        Value *tRHS = B.CreateLShr(w0, hiShift, "w0.lo32");
-        Value *t = B.CreateAdd(tLHS, tRHS, "t");
-        //
-        // w1 = u0*v0 + (t >> 32)
-        Value *u0v1 = B.CreateMul(u0, v1);
-        Value *tLO32 = B.CreateAnd(t, loMask, "t.lo32");
-        Value *w1 = B.CreateAdd(u0v1, tLO32, "w1");
-        //
-        // w1 = u0*v1 + (t >> 32) + (w1 >> 32)
-        Value *u1v1 = B.CreateMul(u1, v1);
-        Value *tHI32 = B.CreateLShr(t, hiShift, "t.hi32");
-        Value *rLHS = B.CreateAdd(u1v1, tHI32);
-        Value *rRHS = B.CreateLShr(w1, hiShift, "w1.lo32");
-        Value *r = B.CreateAdd(rLHS, rRHS, "uv");
-        //
-        return r;
-    }
-
-    ConstantInt *getConstantSInt(
-        IRBuilder<> &Builder, int bitSize, int64_t val) const
-    {
-        switch (bitSize) {
-        case 8: return Builder.getInt8((uint8_t)val);
-        case 16: return Builder.getInt16((uint16_t)val);
-        case 32: return Builder.getInt32((uint32_t)val);
-        case 64: return Builder.getInt64((uint64_t)val);
-        default:
-            IGC_ASSERT_MESSAGE(0, "invalid bitsize");
-            return nullptr;
-        }
-    }
-    ConstantInt *getConstantUInt(
-        IRBuilder<> &Builder, int bitSize, uint64_t val) const
-    {
-        switch (bitSize) {
-        case 8: return Builder.getInt8((uint8_t)val);
-        case 16: return Builder.getInt16((uint16_t)val);
-        case 32: return Builder.getInt32((uint32_t)val);
-        case 64: return Builder.getInt64(val);
-        default:
-            IGC_ASSERT_MESSAGE(0, "invalid bitsize");
-            return nullptr;
         }
     }
 };
