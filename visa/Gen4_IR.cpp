@@ -6648,6 +6648,10 @@ unsigned G4_RegVar::getByteAddr() const
         return reg.phyReg->asGreg()->getRegNum() * GENX_GRF_REG_SIZ +
             reg.subRegOff * (G4_Type_Table[decl->getElemType()].byteSize);
     }
+    if (reg.phyReg->isA0())
+    {
+        return reg.subRegOff * (G4_Type_Table[Type_UW].byteSize);
+    }
 
     MUST_BE_TRUE(false, ERROR_UNKNOWN);
     return 0;

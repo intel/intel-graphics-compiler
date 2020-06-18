@@ -125,13 +125,15 @@ namespace IGC
         switch (type)
         {
         case IGC::UAVResourceType:
-        case IGC::BindlessUAVResourceType:
             return UAV;
+        case IGC::BindlessUAVResourceType:
+            return BINDLESS;
         case IGC::SRVResourceType:
             return RESOURCE;
         case IGC::SamplerResourceType:
-        case IGC::BindlessSamplerResourceType:
             return SAMPLER;
+        case IGC::BindlessSamplerResourceType:
+            return BINDLESS_SAMPLER;
         case IGC::OtherResourceType:
             return BUFFER_TYPE_UNKNOWN;
         default:
