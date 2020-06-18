@@ -5117,11 +5117,14 @@ namespace IGC
 
         // the kernel has to be padded to have a size aligned on 64 bytes
         size_t padding = iSTD::GetAlignmentOffset(size, 64);//m_program->m_Platform->getKernelPointerAlignSize() );
-        void* kernel = IGC::aligned_malloc(size + padding, 16 /* sizeof(DQWORD) */);
-        memcpy_s(kernel, size + padding, genxbin, binSize);
-        // pad out the rest with 0s
-        memset(static_cast<char*>(kernel) + size, 0, padding);
-
+        void* kernel = nullptr;
+        if (size!=0)
+        {
+            kernel = IGC::aligned_malloc(size + padding, 16 /* sizeof(DQWORD) */);
+            memcpy_s(kernel, size + padding, genxbin, binSize);
+            // pad out the rest with 0s
+            memset(static_cast<char*>(kernel) + size, 0, padding);
+        }
         if (binOverride)
         {
             free(genxbin);
