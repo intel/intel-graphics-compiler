@@ -183,6 +183,7 @@ namespace IGC
         unsigned uniqueIndAS);
 
     unsigned SetBufferAsBindless(unsigned addressSpaceOfPtr, BufferType bufferType);
+    bool isStatefulAddrSpace(unsigned AS);
 
     BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIdx, unsigned& bufId);
     int getConstantBufferLoadOffset(llvm::LoadInst* ld);

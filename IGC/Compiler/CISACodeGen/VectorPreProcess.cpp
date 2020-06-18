@@ -598,6 +598,21 @@ bool VectorPreProcess::splitStore(
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned stores can only store a dword at a time.
+        unsigned int alignment = ASI.getAlignment();
+        if (isStoreInst && alignment < 4)
+        {
+            uint32_t newAlign = getKnownAlignment(ASI.getPointerOperand(), *m_DL);
+            if (newAlign > alignment)
+            {
+                // For the same reason as Load, use DW-aligned for OCL stateful.
+                StoreInst* aSI = dyn_cast<StoreInst>(SI);
+                if (aSI && newAlign > 4 && isStatefulAddrSpace(aSI->getPointerAddressSpace()))
+                {
+                    newAlign = 4;
+                }
+                ASI.setAlignment(newAlign);
+            }
+        }
         bool needsDWordSplit =
             (!isStoreInst ||
                 m_CGCtx->m_DriverInfo.splitUnalignedVectors() ||
@@ -753,6 +768,28 @@ bool VectorPreProcess::splitLoad(
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned loads can only load a dword at a time.
+        unsigned int alignment = ALI.getAlignment();
+        if (!isLdRaw && alignment < 4)
+        {
+            uint32_t newAlign = getKnownAlignment(ALI.getPointerOperand(), *m_DL);
+            if (newAlign > alignment)
+            {
+                //  For OCL stateful, the base can be as little as DW-aligned. To be safe,
+                //  need to use DW-aligned. For example,
+                //       % 0 = add i32 0, 16
+                //       % 4 = inttoptr i32 % 0 to <8 x i16> addrspace(131073) *
+                //       %5 = load <8 x i16>, <8 x i16> addrspace(131073) * %4, align 2
+                //  newAlign from getKnownAlignment() is 16. But we can only set align to 4 as
+                //  the base of this stateful could be just DW-aligned.
+                LoadInst* aLI = dyn_cast<LoadInst>(LI);
+                if (aLI && newAlign > 4 && isStatefulAddrSpace(aLI->getPointerAddressSpace()))
+                {
+                    newAlign = 4;
+                }
+                ALI.setAlignment(newAlign);
+            }
+        }
+
         if ((isLdRaw || !WI.isUniform(ALI.getInst())) && ALI.getAlignment() < 4)
             splitSize = 4;
     }

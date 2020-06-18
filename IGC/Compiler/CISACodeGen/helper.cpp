@@ -100,6 +100,14 @@ namespace IGC
         return temp.u32Val;
     }
 
+    // Return true if AS is for a stateful surface.
+    //    Stateful surface should have an encoded AS that is bigger than
+    //    ADDRESS_SPACE_NUM_ADDRESSES.
+    bool isStatefulAddrSpace(unsigned AS)
+    {
+        return AS > ADDRESS_SPACE_NUM_ADDRESSES;
+    }
+
     bool isDummyBasicBlock(llvm::BasicBlock* BB)
     {
         if (BB->size() != 1)
