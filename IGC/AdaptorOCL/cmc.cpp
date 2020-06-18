@@ -353,7 +353,8 @@ const char* cmc::getPlatformStr(PLATFORM platform)
     return "SKL";
 }
 
-static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& kernel)
+static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info,
+                                   CMKernel& kernel)
 {
     // This is the starting constant thread payload
     // r0-r3 are reserved for SIMD8 dispatch.
@@ -474,6 +475,7 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info, CMKernel& ker
       kernelProgram->m_funcSymbolTableSize = info->SymbolTable.Size;
       kernelProgram->m_funcSymbolTableEntries = info->SymbolTable.NumEntries;
     }
+
 }
 
 // Combine cmc compiler metadata with jitter info.
@@ -531,6 +533,7 @@ static void populateKernelInfo_v2(const cmc_kernel_info_v2* info,
     kernel.m_prog.m_programSize = size + padding;
     kernel.m_prog.m_unpaddedProgramSize = size;
     kernel.m_prog.m_InstructionCount = JITInfo.numAsmCount;
+
 
     // Iterate kernel arguments (This should stay in sync with cmc on resource type.)
     int numUAVs = 0;
