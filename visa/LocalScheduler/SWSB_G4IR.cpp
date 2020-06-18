@@ -2115,7 +2115,7 @@ bool SWSB::propogateDist(G4_BB* bb)
 
     for (unsigned i = 0; i < globalSendNum; i++)
     {
-        tokenLiveInDist[i] = -1;
+        tokenLiveInDist[i] = BBVector[bbID]->tokenLiveInDist[i];
     }
 
     //Get the live out from all predicator BBs
@@ -2137,7 +2137,8 @@ bool SWSB::propogateDist(G4_BB* bb)
     //Update the live in
     for (unsigned i = 0; i < globalSendNum; i++)
     {
-        if (tokenLiveInDist[i] != BBVector[bbID]->tokenLiveInDist[i])
+        if (tokenLiveInDist[i] != BBVector[bbID]->tokenLiveInDist[i] &&
+            tokenLiveInDist[i] != -1)
         {
             changed = true;
             BBVector[bbID]->tokenLiveInDist[i] = tokenLiveInDist[i];
@@ -2524,20 +2525,6 @@ void SWSB::assignTokenToPred(SBNode* node, SBNode* pred, G4_BB* bb)
     }
 }
 
-void SWSB::assignTokenToSucc(SBNode* node, G4_BB* bb)
-{
-    for (auto node_it = node->succs.begin();
-        node_it != node->succs.end(); node_it++)
-    {
-        SBDEP_ITEM& curSucc = (*node_it);
-        SBNode* succ = curSucc.node;
-
-        assignTokenToPred(succ, node, bb);
-    }
-
-    return;
-}
-
 bool SWSB::assignTokenWithPred(SBNode* node, G4_BB* bb)
 {
     unsigned predDist = -1;
@@ -2867,7 +2854,7 @@ void SWSB::buildExclusiveForCoalescing()
             SBDEP_ITEM& curSucc = node->succs[i];
             SBNode* succ = curSucc.node;
             DepType type = curSucc.type;
-            if ((type == RAW) || (type == WAW))
+            if (((type == RAW) || (type == WAW)) && succ->reachingSends)
             {
                 send_live = *succ->reachingSends;
                 //FIXME, the complexity may be a little big high, n*n*succSize
@@ -5469,13 +5456,15 @@ void SWSB::addReachingDefineSet(SBNode* node, SBBitSets* globalLiveSet, SBBitSet
 
 void SWSB::addReachingUseSet(SBNode* node, SBNode* use)
 {
-    if (node->reachedUses == nullptr)
+    if (use->getSendUseID() != -1)
     {
-        node->reachedUses = new (mem)SBBitSets(mem, SBSendUses.size());
-    }
+        if (node->reachedUses == nullptr)
+        {
+            node->reachedUses = new (mem)SBBitSets(mem, SBSendUses.size());
+        }
 
-    assert(use->getSendUseID() != -1);
-    node->reachedUses->setDst(use->getSendUseID(), true);
+        node->reachedUses->setDst(use->getSendUseID(), true);
+    }
 
     return;
 }

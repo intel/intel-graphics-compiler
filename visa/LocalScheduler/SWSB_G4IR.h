@@ -1247,7 +1247,6 @@ namespace vISA
         void addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_VECTOR* globalSendOpndList, SBNODE_VECT* SBNodes, PointsToAnalysis& p, bool afterWrite);
         void expireLocalIntervals(unsigned startID, unsigned BBID);
         void assignTokenToPred(SBNode* node, SBNode* pred, G4_BB* bb);
-        void assignTokenToSucc(SBNode* node, G4_BB* bb);
         bool assignTokenWithPred(SBNode* node, G4_BB* bb);
         void allocateToken(G4_BB* bb);
         void tokenAllocationBB(G4_BB* bb);
