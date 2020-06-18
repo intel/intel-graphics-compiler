@@ -2613,14 +2613,15 @@ static G4_SrcRegRegion* getSpillFillHeader(IR_Builder& builder, G4_Declare* decl
 
 // Create the send instruction to perform the spill of the spilled regvars's
 // segment into spill memory.
-
+// regOff - Offset of sub-spill. If one spill is splitted into more than one spill, this is the offset of them, unit in register size
+// spillOff - Offset of the original variable being spilled, unit in register size.
 G4_INST *
 SpillManagerGRF::createSpillSendInstr (
     G4_Declare *      spillRangeDcl,
     G4_Declare *      mRangeDcl,
     unsigned          regOff,
     unsigned          height,
-    unsigned          srcRegOff
+    unsigned          spillOff
 )
 {
     unsigned execSize (0);
@@ -2632,7 +2633,7 @@ SpillManagerGRF::createSpillSendInstr (
         G4_RegVar* r = spillRangeDcl->getRegVar();
         G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
         messageDescImm =
-            createSpillSendMsgDesc (srcRegOff, height, execSize, rvar->getBaseRegVar());
+            createSpillSendMsgDesc (spillOff, height, execSize, rvar->getBaseRegVar());
 #ifdef _DEBUG
         int offset = (messageDescImm->getInt() & 0xFFF) * GENX_GRF_REG_SIZ;
         MUST_BE_TRUE(offset >= globalScratchOffset, "incorrect offset");
@@ -2665,7 +2666,7 @@ SpillManagerGRF::createSpillSendInstr (
                 int offset = getDisp(rvar->getBaseRegVar());
                 getSpillOffset(offset);
                 // message expects offsets to be in HWord
-                off = (offset + regOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
+                off = (offset + spillOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
                 fp = builder_->kernel.fg.getFramePtrDcl();
             }
         }
@@ -2925,14 +2926,14 @@ SpillManagerGRF::createFillInstr(
 
 // Create the send instruction to perform the fill of the spilled regvars's
 // segment from spill memory.
-
+// spillOff - spill offset to the fillRangeDcl, in unit of grf size
 G4_INST *
 SpillManagerGRF::createFillSendInstr (
     G4_Declare *      fillRangeDcl,
     G4_Declare *      mRangeDcl,
     unsigned          regOff,
     unsigned          height,
-    unsigned          srcRegOff
+    unsigned          spillOff
 )
 {
     unsigned execSize (0);
@@ -2944,7 +2945,7 @@ SpillManagerGRF::createFillSendInstr (
         G4_RegVar* r = fillRangeDcl->getRegVar();
         G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
         messageDescImm =
-            createFillSendMsgDesc (srcRegOff, height, execSize, rvar->getBaseRegVar());
+            createFillSendMsgDesc (spillOff, height, execSize, rvar->getBaseRegVar());
 #ifdef _DEBUG
         int offset = (messageDescImm->getInt() & 0xFFF) * GENX_GRF_REG_SIZ;
         MUST_BE_TRUE(offset >= globalScratchOffset, "incorrect offset");
@@ -2976,7 +2977,7 @@ SpillManagerGRF::createFillSendInstr (
             int offset = getDisp(rvar->getBaseRegVar());
             getSpillOffset(offset);
             // message expects offsets to be in HWord
-            off = (offset + regOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
+            off = (offset + spillOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
             fp = builder_->kernel.fg.getFramePtrDcl();
         }
     }

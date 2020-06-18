@@ -655,7 +655,7 @@ private:
         G4_Declare *      mRangeDcl,
         unsigned          regOff,
         unsigned          height,
-        unsigned          srcRegOff = 0
+        unsigned          spillOff
     );
 
     G4_INST *
@@ -693,7 +693,7 @@ private:
         G4_Declare *      mRangeDcl,
         unsigned          regOff,
         unsigned          height,
-        unsigned          srcRegOff = 0
+        unsigned          spillOff
     );
 
     G4_INST *
