@@ -560,18 +560,8 @@ SpillManagerGRF::calculateSpillDisp (
             break;
         unsigned curLocEnd = curLocDisp + getByteSize (*curLoc);
         {
-            if (useScratchMsg_)
-            {
-                if(curLocEnd % G4_GRF_REG_NBYTES != 0)
-                    curLocEnd = ROUND(curLocEnd, G4_GRF_REG_NBYTES);
-            }
-            else
-            {
-                if (owordAligned (curLocEnd) == false) {
-                    curLocEnd =
-                        (curLocEnd & owordMask ()) + OWORD_BYTE_SIZE;
-                }
-            }
+            if (curLocEnd % G4_GRF_REG_NBYTES != 0)
+                curLocEnd = ROUND(curLocEnd, G4_GRF_REG_NBYTES);
         }
 
         regVarLocDisp = (regVarLocDisp > curLocEnd)? regVarLocDisp: curLocEnd;
@@ -607,8 +597,9 @@ G4_RegVar * regVar
 {
     // Already calculated spill memory disp
 
-    if (regVar->getDisp() != UINT_MAX) {
-        // Do nothing.
+    if (regVar->getDisp() != UINT_MAX)
+    {
+        return regVar->getDisp();
     }
 
     // If it is an aliased regvar then calculate the disp for the
@@ -690,6 +681,10 @@ G4_RegVar * regVar
             spillAreaOffset_ += getByteSize(regVar);
         }
     }
+
+    // ToDo: log this in some dump to help debug
+    //regVar->getDeclare()->dump();
+    //std::cerr << "spill offset = " << regVar->getDisp() << "\n";
 
     return regVar->getDisp();
 }
