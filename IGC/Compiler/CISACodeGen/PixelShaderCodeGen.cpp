@@ -562,7 +562,7 @@ CVariable* CPixelShader::GetInputCoverageMask()
         m_pInputCoverageMask =
             GetNewVariable(
                 numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false,
-                m_numberInstance, "InputConvergeMask");
+                m_numberInstance, "InputCoverageMask");
     }
     return m_pInputCoverageMask;
 }

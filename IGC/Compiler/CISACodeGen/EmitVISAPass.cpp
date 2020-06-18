@@ -7287,40 +7287,45 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
     case RENDER_TARGET_ARRAY_INDEX:
     case VFACE:
     {
-        unsigned int numTri = 1;
-        SIMDMode simdSize = psProgram->m_SIMDSize;
-        unsigned int subReg = 0;
-        CVariable* reg = psProgram->GetR0();
-        if (usage == VFACE)
+        // VFACE in shader's payload is one bit: 0/1 for front/back facing, respectively.
+        // As it is sign bit of R1.2:w value in payload, the value may be simply converted to float and set as
+        // dst - float(VFACE) >=0 (<0) means front (back) facing.
         {
-            for (unsigned int i = 0; i < numTri; i++)
+            unsigned int numTri = 1;
+            SIMDMode simdSize = psProgram->m_SIMDSize;
+            CVariable* reg = psProgram->GetR0();
+            unsigned int subReg = 0;
+            if (usage == VFACE)
             {
-                CVariable* src = m_currShader->BitCast(reg, ISA_TYPE_W);
-                m_encoder->SetSrcSubReg(0, 2 * (subReg + i * 5));
-                m_encoder->SetSrcRegion(0, 0, 1, 0);
-                m_encoder->SetSimdSize(simdSize);
-                m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
-                m_encoder->SetDstSubVar(i);
-                m_encoder->Cast(dst, src);
+                for (unsigned int i = 0; i < numTri; i++)
+                {
+                    CVariable* src = m_currShader->BitCast(reg, ISA_TYPE_W);
+                    m_encoder->SetSrcSubReg(0, 2 * (subReg + i * 5));
+                    m_encoder->SetSrcRegion(0, 0, 1, 0);
+                    m_encoder->SetSimdSize(simdSize);
+                    m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
+                    m_encoder->SetDstSubVar(i);
+                    m_encoder->Cast(dst, src);
+                    m_encoder->Push();
+                }
+            }
+            else if (usage == RENDER_TARGET_ARRAY_INDEX)
+            {
+                dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
+                CVariable* temp = m_currShader->GetNewVariable(dst);
+                for (unsigned int i = 0; i < numTri; i++)
+                {
+                    m_encoder->SetSrcRegion(0, 0, 1, 0);
+                    m_encoder->SetSrcSubReg(0, subReg + i * 5);
+                    m_encoder->SetSimdSize(simdSize);
+                    m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
+                    m_encoder->SetDstSubVar(i);
+                    m_encoder->Shr(temp, reg, m_currShader->ImmToVariable(16, ISA_TYPE_UD));
+                    m_encoder->Push();
+                }
+                m_encoder->And(dst, temp, m_currShader->ImmToVariable(BITMASK(11), ISA_TYPE_UD));
                 m_encoder->Push();
             }
-        }
-        else if (usage == RENDER_TARGET_ARRAY_INDEX)
-        {
-            dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
-            CVariable* temp = m_currShader->GetNewVariable(dst);
-            for (unsigned int i = 0; i < numTri; i++)
-            {
-                m_encoder->SetSrcRegion(0, 0, 1, 0);
-                m_encoder->SetSrcSubReg(0, subReg + i * 5);
-                m_encoder->SetSimdSize(simdSize);
-                m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
-                m_encoder->SetDstSubVar(i);
-                m_encoder->Shr(temp, reg, m_currShader->ImmToVariable(16, ISA_TYPE_UD));
-                m_encoder->Push();
-            }
-            m_encoder->And(dst, temp, m_currShader->ImmToVariable(BITMASK(11), ISA_TYPE_UD));
-            m_encoder->Push();
         }
     }
     break;
