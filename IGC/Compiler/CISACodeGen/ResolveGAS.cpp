@@ -476,9 +476,29 @@ bool GASPropagator::visitSelect(SelectInst& I) {
     if (!ASCI || ASCI->getSrcTy() != NonGASTy)
         return false;
 
+    // Change select operands to non-GAS
     TheUse->set(TheVal);
     TheOtherUse->set(ASCI->getOperand(0));
 
+    // Handle select return type
+    BuilderType::InsertPointGuard Guard(*IRB);
+    IRB->SetInsertPoint(&(*std::next(BasicBlock::iterator(&I))));
+
+    PointerType* DstPtrTy = cast<PointerType>(I.getType());
+    PointerType* NonGASPtrTy = dyn_cast<PointerType>(NonGASTy);
+
+    // Push 'addrspacecast' forward by changing the select return type to non-GAS pointer
+    // followed by a new 'addrspacecast' to GAS
+    PointerType* TransPtrTy = PointerType::get(DstPtrTy->getElementType(), NonGASPtrTy->getAddressSpace());
+    I.mutateType(TransPtrTy);
+    Value* NewPtr = IRB->CreateAddrSpaceCast(&I, DstPtrTy);
+
+    for (auto UI = I.use_begin(), UE = I.use_end(); UI != UE;) {
+        Use& U = *UI++;
+        if (U.getUser() == NewPtr)
+            continue;
+        U.set(NewPtr);
+    }
     return true;
 }
 
