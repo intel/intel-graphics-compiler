@@ -8130,7 +8130,7 @@ public:
                 auto iter = std::prev(bb->end());
 
                 {
-                    if (hasUAVWrites)
+                    if (hasUAVWrites || hasTypedWrites)
                     {
                         auto fenceInst = builder.createFenceInstruction(0, true, true, false);
                         bb->insert(iter, fenceInst);
