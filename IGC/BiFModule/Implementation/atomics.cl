@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define SEMANTICS_POST_OP_NEEDS_FENCE ( Acquire | AcquireRelease | SequentiallyConsistent)
 
+
   __local uint* __builtin_IB_get_local_lock();
   void __builtin_IB_eu_thread_pause(uint value);
 
@@ -403,6 +404,79 @@ ulong __builtin_spirv_OpAtomicExchange_p1i64_i32_i32_i64( volatile __global ulon
     atomic_operation_1op( __builtin_IB_atomic_xchg_global_i64, ulong, (global long*)Pointer, Scope, Semantics, Value, true );
 }
 
+enum IntAtomicOp
+{
+    ATOMIC_IADD64,
+    ATOMIC_SUB64,
+    ATOMIC_XCHG64,
+    ATOMIC_AND64,
+    ATOMIC_OR64,
+    ATOMIC_XOR64,
+    ATOMIC_IMIN64,
+    ATOMIC_IMAX64,
+    ATOMIC_UMAX64,
+    ATOMIC_UMIN64
+};
+
+// handle int64 SLM atomic add/sub/xchg/and/or/xor/umax/umin
+ulong __builtin_spirv_OpAtomicUlongBinary_p3( enum IntAtomicOp atomicOp, volatile __local ulong *Pointer,
+    uint Scope, uint Semantics, ulong Value )
+{
+
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    switch (atomicOp)
+    {
+        case ATOMIC_IADD64: *Pointer += Value; break;
+        case ATOMIC_SUB64:  *Pointer -= Value; break;
+        case ATOMIC_AND64:  *Pointer &= Value; break;
+        case ATOMIC_OR64:   *Pointer |= Value; break;
+        case ATOMIC_XOR64:  *Pointer ^= Value; break;
+        case ATOMIC_XCHG64: *Pointer = Value; break;
+        case ATOMIC_UMIN64: *Pointer = ( orig < Value ) ? orig : Value; break;
+        case ATOMIC_UMAX64: *Pointer = ( orig > Value ) ? orig : Value; break;
+        default: break; // What should we do here? OCL doesn't have assert
+    }
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+// handle int64 SLM atomic IMin and IMax
+long __builtin_spirv_OpAtomicSlongBinary_p3( enum IntAtomicOp atomicOp, volatile __local long *Pointer,
+    uint Scope, uint Semantics, long Value )
+{
+
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    switch (atomicOp)
+    {
+        case ATOMIC_IMIN64: *Pointer = ( orig < Value ) ? orig : Value; break;
+        case ATOMIC_IMAX64: *Pointer = ( orig > Value ) ? orig : Value; break;
+        default: break; // What should we do here? OCL doesn't have assert
+    }
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+// handle uint64 SLM atomic inc/dec
+ulong __builtin_spirv_OpAtomicUlongUnary_p3( bool isInc, volatile __local long *Pointer, uint Scope, uint Semantics )
+{
+
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer = isInc ? orig + 1 : orig - 1;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
 
 ulong __builtin_spirv_OpAtomicExchange_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
