@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ShaderCodeGen.hpp"
 #include "common/allocator.h"
 #include "common/debug/Dump.hpp"
+#include "common/debug/Dump.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/Stats.hpp"
 #include "Compiler/CISACodeGen/helper.h"
@@ -450,10 +451,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         if (hasStackCall)
         {
             m_encoder->InitFuncAttribute(&F, true);
-            CVariable* pStackBase = nullptr;
-            CVariable* pStackSize = nullptr;
-            m_currShader->InitKernelStack(pStackBase, pStackSize);
-            emitAddSP(m_currShader->GetSP(), pStackBase, pStackSize);
+            InitializeKernelStack(&F);
         }
         m_currShader->AddPrologue();
     }
@@ -9380,6 +9378,80 @@ void EmitPass::emitReturn(llvm::ReturnInst* inst)
     m_currShader->AddEpilogue(inst);
 }
 
+/// Initializes the kernel for stack call by initializing the SP and FP
+void EmitPass::InitializeKernelStack(Function* pKernel)
+{
+    m_currShader->CreateSP();
+    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto pModuleMetadata = pCtx->getModuleMetaData();
+
+    CVariable* pStackBufferBase = m_currShader->GetPrivateBase();
+
+    CVariable* pHWTID = m_currShader->GetHWTID();
+
+    CVariable* pSize = nullptr;
+
+    // Maximun private size in byte, per-workitem
+    // When there's stack call, we don't know the actual stack size being used,
+    // so set a conservative max stack size.
+    uint32_t MaxPrivateSize = m_currShader->GetMaxPrivateMem();
+    if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
+    {
+        // Experimental: Patch private memory size
+        std::string patchName = "INTEL_PATCH_PRIVATE_MEMORY_SIZE";
+        pSize = m_currShader->GetNewVariable(1, ISA_TYPE_UD, CVariable::getAlignment(getGRFSize()), true, CName(patchName));
+        m_encoder->AddVISASymbol(patchName, pSize);
+    }
+    else
+    {
+        // hard-code per-workitem private-memory size to max size
+        pSize = m_currShader->ImmToVariable(MaxPrivateSize * numLanes(m_currShader->m_dispatchSize), ISA_TYPE_UD);
+    }
+
+    CVariable* pThreadOffset = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, CName::NONE);
+    m_encoder->Mul(pThreadOffset, pHWTID, pSize);
+    m_encoder->Push();
+
+    unsigned totalAllocaSize = 0;
+
+    // reserve space for kernel FP
+    totalAllocaSize += SIZE_OWORD;
+
+    // reserve space for alloca
+    auto funcMDItr = pModuleMetadata->FuncMD.find(pKernel);
+    if (funcMDItr != pModuleMetadata->FuncMD.end())
+    {
+        if (funcMDItr->second.privateMemoryPerWI != 0)
+        {
+            totalAllocaSize += funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
+
+            if ((uint32_t)funcMDItr->second.privateMemoryPerWI > MaxPrivateSize)
+            {
+                pCtx->EmitError("Private memory allocation exceeds max allowed size");
+                IGC_ASSERT(0);
+            }
+        }
+    }
+
+    // Set the total alloca size for the entry function
+    m_encoder->SetFunctionAllocaStackSize(pKernel, totalAllocaSize);
+
+    if (!IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
+    {
+        // If we don't return per-function private memory size,
+        // modify private-memory size to a large setting.
+        // This will be reported through patch-tokens as per-kernel requirement.
+        pModuleMetadata->FuncMD[pKernel].privateMemoryPerWI = MaxPrivateSize;
+    }
+
+    // Initialize SP to per-thread kernel stack base
+    CVariable* pSP = m_currShader->GetSP();
+    emitAddSP(pSP, pStackBufferBase, pThreadOffset);
+
+    // Update FP and SP
+    emitPushToStack(m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD), true);
+}
+
 /// This function is NOT about the alignment-rule for storing argv into GRF!
 /// It is about the alignment-rule when we pack the arguments into a block for stack-call!
 uint EmitPass::stackCallArgumentAlignment(CVariable* argv)
@@ -9942,8 +10014,11 @@ void EmitPass::emitStackFuncEntry(Function* F)
             }
         }
     }
-    // save SP before allocation
-    m_currShader->SaveSP();
+
+    unsigned totalAllocaSize = 0;
+
+    // reserve space to store caller's FP
+    totalAllocaSize += SIZE_OWORD;
 
     // reserve space for all the alloca in the function subgroup
     auto funcMDItr = m_currShader->m_ModuleMetadata->FuncMD.find(F);
@@ -9951,13 +10026,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
     {
         if (funcMDItr->second.privateMemoryPerWI != 0)
         {
-            CVariable* pSP = m_currShader->GetSP();
-            unsigned totalAllocaSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
-            emitAddSP(pSP, pSP, m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
-
-            // Set the per-function private mem size
-            m_encoder->SetFunctionAllocaStackSize(F, totalAllocaSize);
-
+            totalAllocaSize += funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
             if ((uint32_t)funcMDItr->second.privateMemoryPerWI > m_currShader->GetMaxPrivateMem())
             {
                 m_currShader->GetContext()->EmitError("Private memory allocation exceeds max allowed size");
@@ -9965,12 +10034,21 @@ void EmitPass::emitStackFuncEntry(Function* F)
             }
         }
     }
+
+    // save FP before allocation
+    m_currShader->SaveStackState();
+
+    // Update SP and FP
+    emitPushToStack(m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD), false);
+
+    // Set the per-function private mem size
+    m_encoder->SetFunctionAllocaStackSize(F, totalAllocaSize);
 }
 
 void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
 {
-    // restore SP
-    m_currShader->RestoreSP();
+    // restore SP and FP
+    m_currShader->RestoreStackState();
 
     llvm::Function* F = inst->getParent()->getParent();
     llvm::Type* RetTy = F->getReturnType();
@@ -15953,6 +16031,35 @@ void EmitPass::emitGenISACopy(GenIntrinsicInst* GenCopyInst)
     CVariable* Src = GetSymbol(GenCopyInst->getArgOperand(0));
     Type* Ty = GenCopyInst->getType();
     emitCopyAll(Dst, Src, Ty);
+}
+
+// Puts FP on stack, update FP to SP, then update SP by pushOffset
+// If isKernel, write special FP value instead to indicate base of the stack
+void EmitPass::emitPushToStack(CVariable* pushOffset, bool isKernel)
+{
+    CVariable* pFP = m_currShader->GetFP();
+    CVariable* pSP = m_currShader->GetSP();
+    if (isKernel)
+    {
+        // Put 0 into FP to indicate kernel stack base
+        m_encoder->Copy(pFP, m_currShader->ImmToVariable(0, ISA_TYPE_UQ));
+        m_encoder->Push();
+    }
+
+    // Store FP value into current SP
+    bool is64BitAddr = (pSP->GetSize() > 4);
+    if (is64BitAddr)
+        m_encoder->OWStoreA64(pFP, pSP, SIZE_OWORD, 0);
+    else
+        m_encoder->OWStore(pFP, ESURFACE_STATELESS, nullptr, pSP, SIZE_OWORD, 0);
+    m_encoder->Push();
+
+    // Set FP = SP
+    m_encoder->Copy(pFP, pSP);
+    m_encoder->Push();
+
+    // Update SP by pushOffset
+    emitAddSP(pSP, pSP, pushOffset);
 }
 
 void EmitPass::emitAddSP(CVariable* Dst, CVariable* Src, CVariable* offset)

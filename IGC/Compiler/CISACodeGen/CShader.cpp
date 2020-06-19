@@ -99,7 +99,8 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     m_DBG = nullptr;
     m_HW_TID = nullptr;
     m_SP = nullptr;
-    m_SavedSP = nullptr;
+    m_FP = nullptr;
+    m_SavedFP = nullptr;
     m_ARGV = nullptr;
     m_RETV = nullptr;
 
@@ -247,6 +248,9 @@ CVariable* CShader::CreateSP()
     // create stack-pointer register
     m_SP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "SP");
     encoder.GetVISAPredefinedVar(m_SP, PREDEFINED_FE_SP);
+    // create frame-pointer register
+    m_FP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "FP");
+    encoder.GetVISAPredefinedVar(m_FP, PREDEFINED_FE_FP);
 
     return m_SP;
 }
@@ -269,108 +273,26 @@ uint32_t CShader::GetMaxPrivateMem()
     return MaxPrivateSize;
 }
 
-/// initial stack-pointer at the beginning of the kernel
-void CShader::InitKernelStack(CVariable*& stackBase, CVariable*& stackAllocSize)
+/// save FP of previous frame when entering a stack-call function
+void CShader::SaveStackState()
 {
-    CreateSP();
-    ImplicitArgs implicitArgs(*entry, m_pMdUtils);
-    unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-    unsigned numImplicitArgs = implicitArgs.size();
-    unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
-
-    Argument* kerArg = nullptr;
-    llvm::Function::arg_iterator arg = entry->arg_begin();
-    for (unsigned i = 0; i < numFuncArgs; ++i, ++arg);
-    for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg) {
-        ImplicitArg implicitArg = implicitArgs[i];
-        if (implicitArg.getArgType() == ImplicitArg::ArgType::PRIVATE_BASE)
-        {
-            kerArg = (&*arg);
-            break;
-        }
-    }
-    IGC_ASSERT(kerArg);
-
-    CVariable* pHWTID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
-    encoder.SetSrcRegion(0, 0, 1, 0);
-    encoder.SetSrcSubReg(0, 5);
-    encoder.And(pHWTID, GetR0(), ImmToVariable(0x1ff, ISA_TYPE_UD));
-    encoder.Push();
-
-    CVariable* pSize = nullptr;
-
-    // Maximun private size in byte, per-workitem
-    // When there's stack call, we don't know the actual stack size being used,
-    // so set a conservative max stack size.
-    uint32_t MaxPrivateSize = GetMaxPrivateMem();
-    if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
-    {
-        // Experimental: Patch private memory size
-        std::string patchName = "INTEL_PATCH_PRIVATE_MEMORY_SIZE";
-        pSize = GetNewVariable(1, ISA_TYPE_UD, CVariable::getAlignment(getGRFSize()), true, CName(patchName));
-        encoder.AddVISASymbol(patchName, pSize);
-    }
-    else
-    {
-        // hard-code per-workitem private-memory size to max size
-        pSize = ImmToVariable(MaxPrivateSize * numLanes(m_dispatchSize), ISA_TYPE_UD);
-    }
-
-    CVariable* pTemp = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, CName::NONE);
-    encoder.Mul(pTemp, pHWTID, pSize);
-    encoder.Push();
-
-    // reserve space for alloca
-    auto funcMDItr = m_ModuleMetadata->FuncMD.find(entry);
-    if (funcMDItr != m_ModuleMetadata->FuncMD.end())
-    {
-        if (funcMDItr->second.privateMemoryPerWI != 0)
-        {
-            unsigned totalAllocaSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
-            encoder.Add(pTemp, pTemp, ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
-            encoder.Push();
-
-            // Set the total alloca size for the entry function
-            encoder.SetFunctionAllocaStackSize(entry, totalAllocaSize);
-
-            if ((uint32_t)funcMDItr->second.privateMemoryPerWI > MaxPrivateSize)
-            {
-                GetContext()->EmitError("Private memory allocation exceeds max allowed size");
-                IGC_ASSERT(0);
-            }
-        }
-    }
-
-    if (!IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
-    {
-        // If we don't return per-function private memory size,
-        // modify private-memory size to a large setting.
-        // This will be reported through patch-tokens as per-kernel requirement.
-        m_ModuleMetadata->FuncMD[entry].privateMemoryPerWI = MaxPrivateSize;
-    }
-
-    stackBase = GetSymbol(kerArg);
-    stackAllocSize = pTemp;
-}
-
-/// save stack-pointer when entering a stack-call function
-void CShader::SaveSP()
-{
-    IGC_ASSERT(!m_SavedSP);
-    IGC_ASSERT(m_SP);
-    m_SavedSP = GetNewVariable(m_SP);
-    encoder.Copy(m_SavedSP, m_SP);
+    IGC_ASSERT(!m_SavedFP && m_FP && m_SP);
+    m_SavedFP = GetNewVariable(m_FP);
+    encoder.Copy(m_SavedFP, m_FP);
     encoder.Push();
 }
 
-/// restore stack-pointer when exiting a stack-call function
-void CShader::RestoreSP()
+/// restore SP and FP when exiting a stack-call function
+void CShader::RestoreStackState()
 {
-    IGC_ASSERT(m_SavedSP);
-    IGC_ASSERT(m_SP);
-    encoder.Copy(m_SP, m_SavedSP);
+    IGC_ASSERT(m_SavedFP && m_FP && m_SP);
+    // Restore SP to current FP
+    encoder.Copy(m_SP, m_FP);
     encoder.Push();
-    m_SavedSP = nullptr;
+    // Restore FP to previous frame's FP
+    encoder.Copy(m_FP, m_SavedFP);
+    encoder.Push();
+    m_SavedFP = nullptr;
 }
 
 void CShader::CreateImplicitArgs()
@@ -822,13 +744,41 @@ CVariable* CShader::GetHWTID()
 {
     if (!m_HW_TID)
     {
-        m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, CName::NONE);
-        encoder.GetVISAPredefinedVar(m_HW_TID, PREDEFINED_HW_TID);
+        {
+            m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
+            encoder.GetVISAPredefinedVar(m_HW_TID, PREDEFINED_HW_TID);
+        }
     }
     return m_HW_TID;
 }
 
+CVariable* CShader::GetPrivateBase()
+{
+    ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+    unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+    unsigned numImplicitArgs = implicitArgs.size();
+    unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
 
+    Argument* kerArg = nullptr;
+    llvm::Function::arg_iterator arg = entry->arg_begin();
+    for (unsigned i = 0; i < numFuncArgs; ++i, ++arg);
+    for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg) {
+        ImplicitArg implicitArg = implicitArgs[i];
+        if (implicitArg.getArgType() == ImplicitArg::ArgType::PRIVATE_BASE)
+        {
+            kerArg = (&*arg);
+            break;
+        }
+    }
+    IGC_ASSERT(kerArg);
+    return GetSymbol(kerArg);
+}
+
+CVariable* CShader::GetFP()
+{
+    IGC_ASSERT(m_FP);
+    return m_FP;
+}
 CVariable* CShader::GetSP()
 {
     IGC_ASSERT(m_SP);
