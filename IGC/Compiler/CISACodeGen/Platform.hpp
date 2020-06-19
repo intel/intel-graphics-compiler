@@ -53,7 +53,10 @@ CPlatform(PLATFORM platform) {
 CPlatform() {}
 
 void setOclCaps(OCLCaps& caps) { m_OCLCaps = caps; }
-uint32_t getMaxOCLParameteSize() const { return m_OCLCaps.MaxParameterSize;  }
+uint32_t getMaxOCLParameteSize() const {
+  uint32_t limitFromFlag = IGC_GET_FLAG_VALUE(OverrideOCLMaxParamSize);
+  return limitFromFlag ? limitFromFlag : m_OCLCaps.MaxParameterSize;
+}
 void OverrideRevId(unsigned short newRevId)
 {
     m_platformInfo.usRevId = newRevId;
