@@ -354,17 +354,23 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 for (auto &arg : F->args())
                 {
                     // If argument contains an opaque type e.g. image, then always inline it.
-                    if (containsOpaque(arg.getType()))
+                    // If argument is a pointer to GAS, always inline it for perf reason.
+                    //
+                    // Note that this workaround should be removed.
+                    if (containsOpaque(arg.getType()) || isSupportedAggregateArgument(&arg) ||
+                        isGASPointer(&arg))
                     {
                         keepAlwaysInline = true;
                         break;
                     }
                 }
 
-                // always inline spirv builtins
-                if (F->getName().startswith(spv::kLLVMName::builtinPrefix))
-                {
-                    keepAlwaysInline = true;
+                // SPIR-V image functions don't contain opaque types for images,
+                // they use i64 values instead.
+                // We need to detect them based on function name.
+                if (F->getName().startswith(spv::kLLVMName::builtinPrefix) &&
+                    F->getName().contains("Image")) {
+                  keepAlwaysInline = true;
                 }
             }
 
