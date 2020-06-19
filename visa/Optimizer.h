@@ -223,7 +223,6 @@ private:
     void cleanupBindless();
     G4_Operand* updateSendsHeaderReuse(std::vector<std::vector<G4_INST*>> &, std::vector<G4_INST*> &, INST_LIST_ITER);
     void countGRFUsage();
-    void splitVariables();
     void changeMoveType();
     void split4GRFVars();
 
