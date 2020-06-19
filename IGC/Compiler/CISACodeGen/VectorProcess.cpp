@@ -201,7 +201,6 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
     Value* Ptr = nullptr;
     Type* Ty = nullptr;
-
     if (nullptr != LI)
     {
         Ptr = LI->getPointerOperand();
@@ -254,8 +253,8 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
     //
     // Assumption:
-    //    1. if vector size < 4 bytes, it must be 1 or 2 bytes (never 3);
-    //    2. if vector size >= 4 bytes, it must be multiple of DW
+    //    1. if the size of vector < 4 bytes, it must be 1 or 2 bytes (never 3);
+    //    2. if the size of vector >= 4 bytes, it must be multiple of DW
     // Those 2 assumption are guaranteed by VectorPreProcess.
     //
     // So far, we are using A32 untyped and byte scattered messages,
@@ -301,15 +300,14 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         {
             align = LI->getAlignment();
         }
+        else if (SI)
+        {
+            align = SI->getAlignment();
+        }
         else
-            if (SI)
-            {
-                align = SI->getAlignment();
-            }
-            else
-            {
-                align = 1;
-            }
+        {
+            align = 1;
+        }
 
         bool useQW = useA64 && ((TBytes % 8) == 0) &&
             ((has_8Byte_A64_BS && align < 4) || (eTyBytes == 8U && align >= 8U));
