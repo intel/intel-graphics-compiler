@@ -8294,6 +8294,16 @@ int IR_Builder::translateVISARTWrite3DInst(
     if(cntrls.isCoarseMode)
             fc |= 0x1 << COARSE_PIXEL_OUTPUT_ENABLE;
 #define CPS_COUNTER_EXT_MSG_DESC_OFFSET 16
+
+    uint16_t extFuncCtrl = 0;
+    if (cntrls.isNullRT && getPlatform() >= GENX_ICLLP)
+    {
+        // extFuncCtrl is the 16:31 bits of extDesc. NullRT is the bit 20 of extDesc.
+        // That says NullRT is the bit 4 of extFuncCtrl.
+#define NULL_RENDER_TARGET 4
+        extFuncCtrl |= 0x1 << NULL_RENDER_TARGET;
+    }
+
     if (useSplitSend || cpsCounter)
     {
         G4_SendMsgDescriptor *msgDesc = NULL;
@@ -8303,7 +8313,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         {
             m0 = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
             msgDesc = createSendMsgDesc(fc, 0, numHeaderGRF, SFID::DP_WRITE, numRows,
-                0, SendAccess::WRITE_ONLY, surface);
+                extFuncCtrl, SendAccess::WRITE_ONLY, surface);
             msgDesc->setHeaderPresent(useHeader);
         }
         else
@@ -8312,16 +8322,15 @@ int IR_Builder::translateVISARTWrite3DInst(
             {
                 // direct imm is a-ok for ext desc
                 msgDesc = createSendMsgDesc(fc, 0, numRows, SFID::DP_WRITE, 0,
-                        0, SendAccess::WRITE_ONLY, surface);
+                    extFuncCtrl, SendAccess::WRITE_ONLY, surface);
             }
             else
             {
-
                 assert(rtIndex->isImm() && "RTIndex must be imm at this point");
                 uint8_t RTIndex = (uint8_t)rtIndex->asImm()->getImm() & 0x7;
                 uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, false, numRows, 0);
                 uint32_t extDesc = G4_SendMsgDescriptor::createMRTExtDesc(cntrls.s0aPresent, RTIndex,
-                    false, 0);
+                    false, 0, extFuncCtrl);
                 msgDesc = createGeneralMsgDesc(desc, extDesc, SendAccess::WRITE_ONLY, surface);
 
                 if (!canEncodeFullExtDesc())
