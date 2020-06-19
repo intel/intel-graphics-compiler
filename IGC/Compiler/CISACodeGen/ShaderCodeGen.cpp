@@ -799,21 +799,21 @@ static void PSCodeGen(
 
     // for versioned loop, in general SIMD16 with spill has better perf
     bool earlyExit16 = psInfo.hasVersionedLoop ? false : earlyExit;
-    bool enableSimd32 = false;
+    bool enableHigherSimd = false;
 
     if (psInfo.ForceEnableSimd32) // UMD forced compilation of simd32.
     {
-        enableSimd32 = true;
+        enableHigherSimd = true;
     }
     // heuristic based on performance measures.
     else if (SimdEarlyCheck(ctx))
     {
-        enableSimd32 = true;
+        enableHigherSimd = true;
     }
 
     if (IGC_IS_FLAG_ENABLED(ForceBestSIMD))
     {
-        if (enableSimd32)
+        if (enableHigherSimd)
         {
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, true, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         }
@@ -823,7 +823,7 @@ static void PSCodeGen(
     else if (IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
     {
         // don't retry SIMD16 for ForcePSBestSIMD
-        if (enableSimd32 || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
+        if (enableHigherSimd || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
         {
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, earlyExit16, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         }
@@ -865,7 +865,7 @@ static void PSCodeGen(
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
 
-        if (enableSimd32 || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
+        if (enableHigherSimd || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
         {
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, earlyExit16, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, earlyExit, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
