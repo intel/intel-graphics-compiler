@@ -36,9 +36,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <ZEELF.h>
 #include <ZEInfo.hpp>
 
+#ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPush.hpp"
+#endif
+
 #include "llvm/BinaryFormat/ELF.h"
+
+#ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPop.hpp"
+#endif
 
 #include <map>
 #include <string>

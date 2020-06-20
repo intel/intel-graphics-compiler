@@ -35,9 +35,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <ZEInfo.hpp>
 
+#ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPush.hpp"
+#endif
+
 #include "llvm/Support/YAMLTraits.h"
+#ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPop.hpp"
+#endif
 
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoPayloadArgument)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoPerThreadPayloadArgument)

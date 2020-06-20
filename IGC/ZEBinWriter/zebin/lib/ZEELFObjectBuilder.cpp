@@ -27,12 +27,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <ZEInfo.hpp>
 #include <ZEInfoYAML.hpp>
 
+#ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPush.hpp"
+#endif
+
 #include "llvm/MC/StringTableBuilder.h"
 #include "llvm/Support/EndianStream.h"
 #include "llvm/Support/raw_ostream.h"
-#include "common/LLVMWarningsPop.hpp"
 
+#ifndef ZEBinStandAloneBuild
+#include "common/LLVMWarningsPop.hpp"
+#endif
 
 #include <iostream>
 

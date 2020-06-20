@@ -35,7 +35,7 @@ using namespace zebin;
 
 static void getTestZEInfo(zeInfoContainer& ks)
 {
-    zeInfoKernels k1;
+    zeInfoKernel k1;
 
     k1.name = "kernel_name_1";
     k1.execution_env.actual_kernel_start_offset = 0;
@@ -45,32 +45,32 @@ static void getTestZEInfo(zeInfoContainer& ks)
     k1.execution_env.required_work_group_size.push_back(2);
     k1.execution_env.required_work_group_size.push_back(1);
 
-    zeInfoPerThreadPayloadArguments p_arg;
+    zeInfoPerThreadPayloadArgument p_arg;
     p_arg.arg_type = "local_id";
     p_arg.offset = 0;
     p_arg.size = 96;
 
     k1.per_thread_payload_arguments.push_back(p_arg);
 
-    zeInfoPayloadArguments imp_arg1;
+    zeInfoPayloadArgument imp_arg1;
     imp_arg1.arg_type = "local_size";
     imp_arg1.offset = 0;
     imp_arg1.size = 12;
     k1.payload_arguments.push_back(imp_arg1);
 
-    zeInfoPayloadArguments imp_arg2;
+    zeInfoPayloadArgument imp_arg2;
     imp_arg2.arg_type = "group_size";
     imp_arg2.offset = 12;
     imp_arg2.size = 12;
     k1.payload_arguments.push_back(imp_arg2);
 
-    zeInfoPayloadArguments imp_arg3;
+    zeInfoPayloadArgument imp_arg3;
     imp_arg3.arg_type = "global_id_offset";
     imp_arg3.offset = 24;
     imp_arg3.size = 12;
     k1.payload_arguments.push_back(imp_arg3);
 
-    zeInfoPayloadArguments arg1;
+    zeInfoPayloadArgument arg1;
     arg1.arg_type = "arg_pointer";
     arg1.offset = 64;
     arg1.size = 8;
@@ -80,7 +80,7 @@ static void getTestZEInfo(zeInfoContainer& ks)
     arg1.access_type = "readwrite";
     k1.payload_arguments.push_back(arg1);
 
-    zeInfoPayloadArguments arg2;
+    zeInfoPayloadArgument arg2;
     arg2.arg_type = "arg_pointer";
     arg2.offset = 0;
     arg2.size = 8;
@@ -90,12 +90,12 @@ static void getTestZEInfo(zeInfoContainer& ks)
     arg2.access_type = "readwrite";
     k1.payload_arguments.push_back(arg2);
 
-    zeInfoBindingTableIndexes bti;
+    zeInfoBindingTableIndex bti;
     bti.bti_value = 0;
     bti.arg_index = 0;
     k1.binding_table_indexes.push_back(bti);
 
-    zeInfoKernels k2;
+    zeInfoKernel k2;
     k2.name = "kernel_name_2";
     k2.execution_env.actual_kernel_start_offset = 0;
     k2.execution_env.grf_count = 100;
@@ -122,7 +122,7 @@ void Tester::testELFOutput()
     // add fake text
     uint8_t text_buff[100] = {0x1, 0x2, 0x3, 0x4};
     uint32_t text =
-        builder.addSectionText(".text.kernel", (uint8_t*)text_buff, 10);
+        builder.addSectionText(".text.kernel", (uint8_t*)text_buff, 10, 0, 0);
 
     // add fake data 1
     uint8_t data_buff_1[4] = {0x1, 0x2, 0x3, 0x4};
@@ -142,8 +142,8 @@ void Tester::testELFOutput()
     builder.addSymbol("undef_sym",      0, 0, llvm::ELF::STB_GLOBAL, llvm::ELF::STT_OBJECT, -1);
 
     // add fake relocations
-    builder.addRelocation(4, "data1_sym_at_3", R_TYPE_ZEBIN::R_ZE_SYM_ADDR);
-    builder.addRelocation(8, "text_sym_at_1", R_TYPE_ZEBIN::R_ZE_SYM_ADDR_32);
+    builder.addRelocation(4, "data1_sym_at_3", R_TYPE_ZEBIN::R_ZE_SYM_ADDR, text);
+    builder.addRelocation(8, "text_sym_at_1", R_TYPE_ZEBIN::R_ZE_SYM_ADDR_32, text);
 
     // add fake ze_info
     zeInfoContainer ks;

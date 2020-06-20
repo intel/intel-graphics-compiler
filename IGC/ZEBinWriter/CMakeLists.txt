@@ -22,6 +22,9 @@ set(VS_DEBUG_COMPILER_OPTIONS
     /MTd
 )
 
+set (CMAKE_C_FLAGS "-DZEBinStandAloneBuild")
+set (CMAKE_CXX_FLAGS "-DZEBinStandAloneBuild")
+
 # Include sub-projects.
 add_subdirectory ("zebin")
 add_subdirectory ("tools")
