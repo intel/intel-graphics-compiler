@@ -345,7 +345,7 @@ public:
         return createExtDesc(funcID, isEot, 0, 0);
     }
 
-    static uint32_t createMRTExtDesc(bool src0Alpha, uint8_t RTIndex, bool isEOT, uint32_t extMsgLen, uint16_t extFuncCtrl)
+    static uint32_t createMRTExtDesc(bool src0Alpha, uint8_t RTIndex, bool isEOT, uint32_t extMsgLen)
     {
         ExtDescData data;
         data.value = 0;
@@ -354,7 +354,6 @@ public:
         data.layout.src0Alpha = src0Alpha;
         data.layout.eot = isEOT;
         data.layout.extMsgLength = extMsgLen;
-        data.layout.extFuncCtrl = extFuncCtrl;
         return data.value;
     }
 

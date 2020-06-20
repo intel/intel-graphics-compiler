@@ -5674,17 +5674,16 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
         int num_operands = 0;
         bool isCPSCounter = (cPSCounter)? true: false;
 
-        int mode =  ((int)cntrls.isNullRT      << 12)   |
-                    ((int)cntrls.isSampleIndex << 11)   |
+        int mode =  ((int)cntrls.isSampleIndex << 11)  |
                     ((int)cntrls.isCoarseMode   << 10)  |
                     ((int)cntrls.isPerSample    << 9)   |
                     ((int)(isCPSCounter)        << 8)   |
-                    ((int)cntrls.isLastWrite    << 7)   |
+                    (((int)cntrls.isLastWrite   << 7)   |
                     ((int)cntrls.isStencil      << 6)   |
                     ((int)cntrls.zPresent       << 5)   |
                     ((int)cntrls.oMPresent      << 4)   |
                     ((int)cntrls.s0aPresent     << 3)   |
-                    ((int)cntrls.RTIndexPresent << 2);
+                    ((int)cntrls.RTIndexPresent << 2));
 
         //mode
         ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, mode));

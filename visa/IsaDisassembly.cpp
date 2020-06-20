@@ -2392,7 +2392,6 @@ static std::string printInstructionDataport(
                 if( mode & (0x1 << 0x9)) sstr << "<PS>";
                 if( mode & (0x1 << 0x10)) sstr << "<CM>";
                 if (mode & (0x1 << 0x11)) sstr << "<SI>";
-                if (mode & (0x1 << 0x12)) sstr << "<NULLRT>";
             }
 
             sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";

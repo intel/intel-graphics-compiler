@@ -2229,11 +2229,6 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(
         {
             cntrls.isCoarseMode = true;
         }
-
-        if (strstr(mode, "NULLRT"))
-        {
-            cntrls.isNullRT = true;
-        }
     }
     else
     {
