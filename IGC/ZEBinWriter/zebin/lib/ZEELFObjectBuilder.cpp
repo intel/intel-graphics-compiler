@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include <iostream>
+#include "Probe/Assertion.h"
 
 namespace zebin {
 
@@ -160,7 +161,7 @@ ZEELFObjectBuilder::addStandardSection(
     std::string name, std::string sectName, const uint8_t* data, uint64_t size,
     unsigned type, uint32_t padding, uint32_t align, StandardSectionListTy& sections)
 {
-    assert(type != ELF::SHT_NULL);
+    IGC_ASSERT(type != ELF::SHT_NULL);
     // calcaulate the required padding to satisfy alignment requirement
     // The orignal data size is (size + padding)
     uint32_t need_padding_for_align = (align == 0) ?
@@ -232,7 +233,7 @@ void
 ZEELFObjectBuilder::addSectionZEInfo(zeInfoContainer& zeInfo)
 {
     // every object should have exactly one ze_info section
-    assert(m_zeInfoSection == nullptr);
+    IGC_ASSERT(nullptr == m_zeInfoSection);
     m_zeInfoSection = new ZEInfoSection(zeInfo, m_sectionId);
     ++m_sectionId;
 }
@@ -299,18 +300,20 @@ std::string ZEELFObjectBuilder::getSectionNameBySectionID(SectionID id)
         if (sect.id() == id)
             return sect.m_name;
     }
-    assert(0 && "getSectionNameBySectionID: invalid SectionID");
+    IGC_ASSERT_MESSAGE(0, "getSectionNameBySectionID: invalid SectionID");
     return "";
 }
 
 uint64_t ELFWriter::writeSectionData(const uint8_t* data, uint64_t size, uint32_t padding)
 {
+    IGC_ASSERT(nullptr != data);
+
     uint64_t start_off = m_W.OS.tell();
     m_W.OS.write((const char*)data, size);
 
     writePadding(padding);
 
-    assert((m_W.OS.tell() - start_off) == (size + padding));
+    IGC_ASSERT((m_W.OS.tell() - start_off) == (size + padding));
     return m_W.OS.tell() - start_off;
 }
 
@@ -376,7 +379,7 @@ uint64_t ELFWriter::writeRelocTab(const RelocationListTy& relocs)
 
     for (const ZEELFObjectBuilder::Relocation& reloc : relocs) {
         // the target symbol's name must have been added into symbol table
-        assert(m_SymNameIdxMap.find(reloc.symName()) != m_SymNameIdxMap.end());
+        IGC_ASSERT(m_SymNameIdxMap.find(reloc.symName()) != m_SymNameIdxMap.end());
         writeRelocation(
             reloc.offset(), reloc.type(), m_SymNameIdxMap[reloc.symName()]);
     }
@@ -402,7 +405,7 @@ uint64_t ELFWriter::writeSymTab()
         if (sym.sectionId() >= 0) {
             // the given section's index must have been adjusted in
             // createSectionHdrEntries
-            assert(m_SectionIndex.find(sym.sectionId()) != m_SectionIndex.end());
+            IGC_ASSERT(m_SectionIndex.find(sym.sectionId()) != m_SectionIndex.end());
             sect_idx = m_SectionIndex.at(sym.sectionId());
         } else {
             sect_idx = ELF::SHN_UNDEF;
@@ -411,7 +414,7 @@ uint64_t ELFWriter::writeSymTab()
         writeSymbol(nameoff, sym.addr(), sym.size(), sym.binding(), sym.type(),
             0, sect_idx);
         // symbol name must be unique
-        assert(m_SymNameIdxMap.find(sym.name()) == m_SymNameIdxMap.end());
+        IGC_ASSERT(m_SymNameIdxMap.find(sym.name()) == m_SymNameIdxMap.end());
         m_SymNameIdxMap.insert(std::make_pair(sym.name(), symidx));
         ++symidx;
     }
@@ -424,6 +427,7 @@ uint64_t ELFWriter::writeZEInfo()
     uint64_t start_off = m_W.OS.tell();
     // serialize ze_info contents
     llvm::yaml::Output yout(m_W.OS);
+    IGC_ASSERT(nullptr != m_ObjBuilder.m_zeInfoSection);
     yout << m_ObjBuilder.m_zeInfoSection->getZeInfo();
 
     return m_W.OS.tell() - start_off;
@@ -479,10 +483,11 @@ void ELFWriter::writeSections()
         switch(entry.type) {
         case ELF::SHT_PROGBITS:
         case SHT_ZEBIN_SPIRV: {
-            assert(entry.section != nullptr);
-            assert(entry.section->getKind() == Section::STANDARD);
-            const StandardSection* stdsect =
+            IGC_ASSERT(nullptr != entry.section);
+            IGC_ASSERT(entry.section->getKind() == Section::STANDARD);
+            const StandardSection* const stdsect =
                 static_cast<const StandardSection*>(entry.section);
+            IGC_ASSERT(nullptr != stdsect);
             entry.size = writeSectionData(
                 stdsect->m_data, stdsect->m_size, stdsect->m_padding);
             break;
@@ -497,9 +502,11 @@ void ELFWriter::writeSections()
             entry.info = 1;
             break;
         case ELF::SHT_REL: {
-            assert(entry.section->getKind() == Section::RELOC);
-            const RelocSection* relocSec =
+            IGC_ASSERT(nullptr != entry.section);
+            IGC_ASSERT(entry.section->getKind() == Section::RELOC);
+            const RelocSection* const relocSec =
                 static_cast<const RelocSection*>(entry.section);
+            IGC_ASSERT(nullptr != relocSec);
             entry.size = writeRelocTab(relocSec->m_Relocations);
             entry.entsize = getRelocTabEntSize();
             break;
@@ -518,8 +525,9 @@ void ELFWriter::writeSections()
                 (m_SectionHdrEntries.size() + 1) >= ELF::SHN_LORESERVE ?
                 (m_SectionHdrEntries.size() + 1) : 0;
             break;
+
         default:
-            assert(0);
+            IGC_ASSERT(0);
             break;
         }
     }
@@ -699,7 +707,7 @@ void ELFWriter::createSectionHdrEntries()
             // set apply target's section index
             // relocations could only apply to standard sections. At this point,
             // all standard section's section index should be adjusted
-            assert(m_SectionIndex.find(sect.m_TargetID) != m_SectionIndex.end());
+            IGC_ASSERT(m_SectionIndex.find(sect.m_TargetID) != m_SectionIndex.end());
             entry.info = m_SectionIndex.at(sect.m_TargetID);
             entry.link = m_SymTabIndex;
             ++index;
@@ -708,12 +716,13 @@ void ELFWriter::createSectionHdrEntries()
 
     // .ze_info
     // every object must have exactly one ze_info section
-    assert(m_ObjBuilder.m_zeInfoSection != nullptr);
     if (m_ObjBuilder.m_zeInfoSection != nullptr) {
         createSectionHdrEntry(m_ObjBuilder.m_ZEInfoName, SHT_ZEBIN_ZEINFO,
             m_ObjBuilder.m_zeInfoSection);
         ++index;
     }
+    else
+        IGC_ASSERT(0);
 
     // .strtab
     m_StringTableIndex = index;
