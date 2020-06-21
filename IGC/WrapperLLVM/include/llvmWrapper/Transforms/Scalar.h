@@ -31,7 +31,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGCLLVM
 {
-#if LLVM_VERSION_MAJOR == 4
+#if LLVM_VERSION_MAJOR < 4
+#error Not supported llvm version.
+#elif LLVM_VERSION_MAJOR == 4
     inline static llvm::Pass* createLoopUnrollPass(
         int OptLevel = 2, int Threshold = -1, int Count = -1,
         int AllowPartial = -1, int Runtime = -1,
@@ -59,7 +61,7 @@ namespace IGCLLVM
     }
 #elif LLVM_VERSION_MAJOR >= 11
     //DO NOT assume same function signature for all incoming llvm versions! Double check to upgrade!
-    assert(!"Not supported llvm version!");
+#error Not supported llvm version.
 #endif
 }
 #endif
