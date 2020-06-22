@@ -241,7 +241,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     bool Changed = false;
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
-        Function *F = &(*I);
+        Function* F = &(*I);
         if (F->isDeclaration())
         {
             if (F->getName() == "__translate_sampler_initializer")
@@ -275,32 +275,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // Remove noinline attr if present.
         F->removeFnAttr(llvm::Attribute::NoInline);
 
-        if (IGC_IS_FLAG_ENABLED(DisableAddingAlwaysAttribute))
-        {
-            // Add always attribute if function has an argument with opaque type
-            // Curently, ExtensionArgAnalysis assumes that all functions with image arguments to be inlined
-            // This patch makes sure that we add always inline for such cases
-            for (auto& arg : F->args())
-            {
-                if (containsOpaque(arg.getType()))
-                {
-                    F->addFnAttr(llvm::Attribute::AlwaysInline);
-                    break;
-                }
-            }
-
-            // Add always attribtue if function is a builtin
-            if (F->hasFnAttribute(llvm::Attribute::Builtin))
-            {
-                F->addFnAttr(llvm::Attribute::AlwaysInline);
-            }
-        }
-        else
-        {
-            // Add AlwaysInline attribute to force inlining all calls.
-            F->addFnAttr(llvm::Attribute::AlwaysInline);
-        }
-
         // Go through call sites and remove NoInline atrributes.
         for (auto I : F->users()) {
             if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
@@ -314,7 +288,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // inliner doesn't conservatively turn off unsafe optimizations
         // when inlining BIFs (see mergeAttributesForInlining() in inliner).
 
-        const auto &opts = modMD->compOpt;
+        const auto& opts = modMD->compOpt;
 
         if (opts.MadEnable)
             F->addFnAttr("less-precise-fpmad", "true");
@@ -330,51 +304,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
         // F is not a kernel
         // it is builtin, or user function
-        const bool notKernel =  pMdUtils->findFunctionsInfoItem(F) == pMdUtils->end_FunctionsInfo();
+        const bool notKernel = pMdUtils->findFunctionsInfoItem(F) == pMdUtils->end_FunctionsInfo();
 
         if (notKernel)
         {
             F->setLinkage(GlobalValue::InternalLinkage);
             Changed = true;
-        }
-
-        // inline all OCL math functions if __FastRelaxedMath is set
-        if (fastMathFunct.find(F) != fastMathFunct.end()) continue;
-
-        // The following subroutine check is added to disable two-phase-inlining
-        // when we do not enable subroutines.
-        bool keepAlwaysInline = (MemPoolFuncs.count(F) != 0);
-        if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
-        {
-            if (!keepAlwaysInline)
-            {
-                for (auto &arg : F->args())
-                {
-                    // If argument contains an opaque type e.g. image, then always inline it.
-                    // If argument is a pointer to GAS, always inline it for perf reason.
-                    //
-                    // Note that this workaround should be removed.
-                    if (containsOpaque(arg.getType()) || isSupportedAggregateArgument(&arg) ||
-                        isGASPointer(&arg))
-                    {
-                        keepAlwaysInline = true;
-                        break;
-                    }
-                }
-
-                // SPIR-V image functions don't contain opaque types for images,
-                // they use i64 values instead.
-                // We need to detect them based on function name.
-                if (F->getName().startswith(spv::kLLVMName::builtinPrefix) &&
-                    F->getName().contains("Image")) {
-                  keepAlwaysInline = true;
-                }
-            }
-
-            if (!keepAlwaysInline)
-            {
-                F->removeFnAttr(llvm::Attribute::AlwaysInline);
-            }
         }
 
         // Add Optnone to user functions but not on builtins. This allows to run
@@ -387,25 +322,82 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             }
         }
 
-        bool istrue = false;
-        if (notKernel || istrue)
-        {
-            if (!keepAlwaysInline)
-            {
-                bool forceSubroutine = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_SUBROUTINE;
-                bool forceStackCall = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL;
+        // Flag for function calls where alwaysinline must be true
+        bool mustAlwaysInline = false;
 
-                if ((forceSubroutine || forceStackCall) && (istrue == false))
+        // Add always attribute if function has an argument with opaque type
+        for (auto& arg : F->args())
+        {
+            if (containsOpaque(arg.getType()))
+            {
+                mustAlwaysInline = true;
+                break;
+            }
+        }
+        // Add always attribtue if function is a builtin
+        if (F->hasFnAttribute(llvm::Attribute::Builtin) ||
+            F->getName().startswith(spv::kLLVMName::builtinPrefix))
+        {
+            mustAlwaysInline = true;
+        }
+        // inline all OCL math functions if __FastRelaxedMath is set
+        else if (fastMathFunct.find(F) != fastMathFunct.end())
+        {
+            mustAlwaysInline = true;
+        }
+        if (mustAlwaysInline)
+        {
+            F->addFnAttr(llvm::Attribute::AlwaysInline);
+            Changed = true;
+            continue;
+        }
+
+        if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
+        {
+            // Set default inline mode
+            if (IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
+            {
+                bool shouldAlwaysInline = (MemPoolFuncs.count(F) != 0);
+                if (!shouldAlwaysInline)
                 {
-                    // add the following line in order to stress-test
-                    // subroutine call or stack call
-                    F->removeFnAttr(llvm::Attribute::AlwaysInline);
-                    F->addFnAttr(llvm::Attribute::NoInline);
-                    if (forceStackCall)
+                    for (auto& arg : F->args())
                     {
-                        F->addFnAttr("visaStackCall");
+                        // If argument is a pointer to GAS or aggregate type, always inline it for perf reasons
+                        if (isSupportedAggregateArgument(&arg) || isGASPointer(&arg))
+                        {
+                            shouldAlwaysInline = true;
+                            break;
+                        }
                     }
                 }
+                if (shouldAlwaysInline)
+                {
+                    F->addFnAttr(llvm::Attribute::AlwaysInline);
+                }
+            }
+        }
+        else if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE)
+        {
+            // Forced inlining all functions
+            F->addFnAttr(llvm::Attribute::AlwaysInline);
+        }
+
+        bool istrue = false;
+        // Forcing subroutines/stack-call/indirect-call
+        // Do not add alwaysinline
+        if (notKernel || istrue)
+        {
+            bool forceSubroutine = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_SUBROUTINE;
+            bool forceStackCall = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL;
+            if ((forceSubroutine || forceStackCall) && (istrue == false))
+            {
+                F->removeFnAttr(llvm::Attribute::AlwaysInline);
+                F->addFnAttr(llvm::Attribute::NoInline);
+                if (forceStackCall)
+                {
+                    F->addFnAttr("visaStackCall");
+                }
+                Changed = true;
             }
 
             if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
@@ -430,17 +422,17 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     pCtx->m_enableFunctionPointer = true;
                     SetIndirectFuncAttributes(F);
 
-                    if(istrue)
+                    if (istrue)
                         F->removeFnAttr("visaStackCall");
 
                     if (isExtern)
                     {
                         F->setLinkage(GlobalValue::ExternalLinkage);
                     }
+                    Changed = true;
                 }
             }
         }
-        Changed = true;
     }
     return Changed;
 }
