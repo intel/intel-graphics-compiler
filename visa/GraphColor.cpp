@@ -9181,19 +9181,22 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
     return true;
 }
 
+bool canDoHRA(G4_Kernel& kernel)
+{
+    bool ret = true;
+
+    if (kernel.getVarSplitPass()->splitOccured())
+    {
+        ret = false;
+    }
+
+    return ret;
+}
+
 bool canDoLRA(G4_Kernel& kernel)
 {
     bool ret = true;
 
-
-    if (kernel.getVarSplitPass()->splitOccured())
-    {
-        // skip LRA when split changes IR as it may
-        // result in copies in the program. coalescing
-        // requires more work in LRA because preRA
-        // scheduler schedules sampler and split nodes.
-        ret = false;
-    }
 
     return ret;
 }
@@ -9259,9 +9262,20 @@ int GlobalRA::coloringRegAlloc()
         stopTimer(TIMER_LOCAL_RA);
         if (!success)
         {
-            startTimer(TIMER_HYBRID_RA);
-            success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
-            stopTimer(TIMER_HYBRID_RA);
+            if (canDoHRA(kernel))
+            {
+                startTimer(TIMER_HYBRID_RA);
+                success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
+                stopTimer(TIMER_HYBRID_RA);
+            }
+            else
+            {
+                if (builder.getOption(vISA_RATrace))
+                {
+                    std::cout << "\t--skip HRA due to var split. undo LRA results." << "\n";
+                }
+                lra.undoLocalRAAssignments(false);
+            }
         }
         if (success)
         {

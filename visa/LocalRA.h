@@ -470,7 +470,8 @@ public:
     }
 
     int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign, int & regnum, int & subregnum, int startRegNum, int endRegNum,
-        unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc, std::unordered_set<unsigned int>& forbidden, bool hasHint);
+        unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc, std::unordered_set<unsigned int>& forbidden, bool hasHint,
+        unsigned int hintReg);
 
     void freeRegs( int regnum, int subregnum, int numwords, int instID);
     PhyRegsLocalRA * getAvaialableRegs() { return &availableRegs; }
@@ -492,9 +493,9 @@ private:
     void expireInputRanges(unsigned int, unsigned int, unsigned int);
     unsigned short getOccupiedBundle(G4_Declare* dcl);
     void expireAllActive();
-    void expireSplitParent(LocalLiveRange*);
     bool allocateRegsFromBanks(LocalLiveRange*);
     bool allocateRegs(LocalLiveRange*, G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);
+    void coalesceSplit(LocalLiveRange* lr);
     void freeAllocedRegs(LocalLiveRange*, bool);
     void updateActiveList(LocalLiveRange*);
     void updateBitset(LocalLiveRange*);
