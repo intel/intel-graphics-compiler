@@ -87,9 +87,6 @@ namespace IGC
         /// Pointer to a variable representing physical GRF register R1 containing.
         CVariable* m_R1;
 
-        /// Pointer to a variable representing physical GRF register with output URB handle
-        CVariable* m_pURBWriteHandleReg;
-
         // Indicates if Vertex Elements Components packing was applied.
         bool m_ElementComponentPackingEnabled;
 
