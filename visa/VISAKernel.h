@@ -973,8 +973,10 @@ private:
     typedef std::map<std::string, CISA_GEN_VAR *> GenDeclNameToVarMap;
     std::vector<GenDeclNameToVarMap> m_GenNamedVarMap;
     GenDeclNameToVarMap m_UniqueNamedVarMap;
-    // std::vector<VISAScope> m_GenNamedVarMap;
-    // VISAScope m_UniqueNamedVarMap;
+
+    // reverse map from a GenVar to its declared name, used in inline assembly
+    // Note that name is only unique within the same scope
+    std::map<CISA_GEN_VAR*, std::string> m_GenVarToNameMap;
 
     std::unordered_map<std::string, VISA_LabelOpnd *> m_label_name_to_index_map;
     std::unordered_map<std::string, VISA_LabelOpnd *> m_funcName_to_labelID_map;

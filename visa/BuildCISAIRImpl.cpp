@@ -698,7 +698,15 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
         YY_BUFFER_STATE visaBuf = CISA_scan_string(visaText.c_str());
         if (CISAparse(this) != 0)
         {
-            assert(0 && "Parsing visa text failed");
+#ifdef _DEBUG
+            // how do we detect offline IGCBuild?
+            std::cerr << "Parsing visa text failed.";
+            if (!visaTextFile.empty())
+            {
+                std::cerr << " Please examine " << visaTextFile << " and fix the error";
+            }
+            std::cerr << "\n" << criticalMsg.str();
+#endif
             return VISA_FAILURE;
         }
         CISA_delete_buffer(visaBuf);

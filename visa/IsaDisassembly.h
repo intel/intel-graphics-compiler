@@ -81,11 +81,8 @@ std::string printPredicateDecl(
     const print_format_provider_t* header,
     unsigned declID);
 std::string printVariableDecl (
-    const common_isa_header& isaHeader,
     const print_format_provider_t* header,
     unsigned declID,
-    bool isKernel,
-    unsigned int funcId,
     const Options *options);
 std::string printAddressDecl(
     const common_isa_header& isaHeader,

@@ -831,10 +831,8 @@ void VISAKernelImpl::generateVariableName(Common_ISA_Var_Class Ty, const char *&
 
 std::string VISAKernelImpl::getVarName(VISA_GenVar* decl) const
 {
-    int index = getDeclarationID(decl);
-    stringstream ss;
-    ss << "V" << index;
-    return ss.str();
+    assert(m_GenVarToNameMap.count(decl) && "Can't find the decl's name");
+    return m_GenVarToNameMap.find(decl)->second;
 }
 std::string VISAKernelImpl::getVarName(VISA_PredVar* decl) const
 {
@@ -898,6 +896,8 @@ int VISAKernelImpl::CreateVISAGenVar(
         return VISA_FAILURE;
     }
 
+    m_GenVarToNameMap[decl] = varName;
+
     info->bit_properties = (uint8_t)dataType;
     info->bit_properties += varAlign << 4;
     info->bit_properties += STORAGE_REG << 7;
@@ -915,6 +915,8 @@ int VISAKernelImpl::CreateVISAGenVar(
 
     info->attribute_count = 0;
     info->attributes = NULL;
+
+    decl->index = m_var_info_count++;
 
     if(IS_GEN_BOTH_PATH)
     {
@@ -960,16 +962,10 @@ int VISAKernelImpl::CreateVISAGenVar(
         // Write asm variable decl to stream
         if (IsAsmWriterMode())
         {
-            unsigned funcId = 0;
-            if (!this->getIsKernel())
-            {
-                this->GetFunctionId(funcId);
-            }
             VISAKernel_format_provider fmt(this);
-            m_CISABuilder->m_ssIsaAsm << printVariableDecl(m_CISABuilder->m_header, &fmt, m_printDeclIndex.var_index++, getIsKernel(), funcId, getOptions()) << endl;
+            m_CISABuilder->m_ssIsaAsm << printVariableDecl(&fmt, m_printDeclIndex.var_index++, getOptions()) << "\n";
         }
     }
-    decl->index = m_var_info_count++;
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_VAR);
@@ -1019,7 +1015,7 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName,
         if (IsAsmWriterMode())
         {
             VISAKernel_format_provider fmt(this);
-            m_CISABuilder->m_ssIsaAsm << printAddressDecl(m_CISABuilder->m_header, &fmt, m_printDeclIndex.addr_index++) << endl;
+            m_CISABuilder->m_ssIsaAsm << printAddressDecl(m_CISABuilder->m_header, &fmt, m_printDeclIndex.addr_index++) << "\n";
         }
     }
 
@@ -1134,7 +1130,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
             if (IsAsmWriterMode())
             {
                 VISAKernel_format_provider fmt(this);
-                m_CISABuilder->m_ssIsaAsm << printSamplerDecl(&fmt, m_printDeclIndex.sampler_index++) << endl;
+                m_CISABuilder->m_ssIsaAsm << printSamplerDecl(&fmt, m_printDeclIndex.sampler_index++) << "\n";
             }
             break;
         }
@@ -1145,7 +1141,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
             {
                 VISAKernel_format_provider fmt(this);
                 unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
-                m_CISABuilder->m_ssIsaAsm << printSurfaceDecl(&fmt, m_printDeclIndex.surface_index++, numPreDefinedSurfs) << endl;
+                m_CISABuilder->m_ssIsaAsm << printSurfaceDecl(&fmt, m_printDeclIndex.surface_index++, numPreDefinedSurfs) << "\n";
             }
             break;
         }
@@ -1672,7 +1668,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
             {
                 // Print input var
                 VISAKernel_format_provider fmt(this);
-                m_CISABuilder->m_ssIsaAsm << printFuncInput(&fmt, m_printDeclIndex.input_index++, getIsKernel(), getOptions()) << endl;
+                m_CISABuilder->m_ssIsaAsm << printFuncInput(&fmt, m_printDeclIndex.input_index++, getIsKernel(), getOptions()) << "\n";
             }
         }
     }
@@ -7459,7 +7455,7 @@ void VISAKernelImpl::addInstructionToEnd(CisaInst * inst)
     {
         // Print instructions
         VISAKernel_format_provider fmt(this);
-        m_CISABuilder->m_ssIsaAsm << printInstruction(&fmt, inst->getCISAInst(), getOptions()) << endl;
+        m_CISABuilder->m_ssIsaAsm << printInstruction(&fmt, inst->getCISAInst(), getOptions()) << "\n";
     }
 }
 

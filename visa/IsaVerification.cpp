@@ -159,7 +159,7 @@ static string diagDumpInstructionOperandDecls(
             switch (opnd.getOperandClass())
             {
                 case OPERAND_STATE     :
-                case OPERAND_GENERAL   : sstr << printVariableDecl  (isaHeader, header, index-numPreDefinedVars, true, 0, options); break;
+                case OPERAND_GENERAL   : sstr << printVariableDecl  (header, index-numPreDefinedVars, options); break;
                 case OPERAND_ADDRESS   :
                 case OPERAND_INDIRECT  : sstr << printAddressDecl   (isaHeader, header, index); break;
                 case OPERAND_PREDICATE : sstr << printPredicateDecl (header, index); break;
@@ -172,7 +172,7 @@ static string diagDumpInstructionOperandDecls(
         {
             uint32_t index = getRawOperand(inst, i).index;
             if ( numPreDefinedVars <= index && index < header->getVarCount() + numPreDefinedVars )
-                sstr << printVariableDecl(isaHeader, header, index-numPreDefinedVars, true, 0, options);
+                sstr << printVariableDecl(header, index-numPreDefinedVars, options);
         }
         else if (inst->opnd_array[i]->opnd_type == CISA_OPND_OTHER) // new loader only
         {
@@ -272,7 +272,7 @@ static void verifyVariableDecl(
     ERROR_LIST,
     Options *options)
 {
-    string declError = string(" Error in CISA variable decl: ") + printVariableDecl(isaHeader, header, declID, true, 0, options);
+    string declError = string(" Error in CISA variable decl: ") + printVariableDecl(header, declID, options);
 
     const var_info_t* var = header->getVar(declID);
     VISA_Align align = var->getAlignment();

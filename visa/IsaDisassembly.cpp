@@ -126,7 +126,7 @@ std::string printVariableDeclName(
     std::stringstream sstr;
 
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
-    if (options->getOption(vISA_DumpIsaVarNames) && operand_prefix_kind == NOT_A_STATE_OPND)
+    if (operand_prefix_kind == NOT_A_STATE_OPND)
     {
         sstr << getGenVarName(declID, *header);
     }
@@ -553,47 +553,30 @@ std::string printFuncInput(
 
 // declID is in the range of [0..#user-var], pre-defnied are not included
 std::string printVariableDecl(
-    const common_isa_header& isaHeader,
     const print_format_provider_t* header,
     unsigned declID,
-    bool isKernel,
-    unsigned int funcId,
     const Options *options)
 {
     MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
     std::stringstream sstr;
 
-    const var_info_t *var = header->getVar(declID);
-    VISA_Type  isa_type = (VISA_Type)  ((var->bit_properties     ) & 0xF);
-    VISA_Align align    = var->getAlignment();
+    const var_info_t* var = header->getVar(declID);
+    VISA_Type  isa_type = (VISA_Type)((var->bit_properties) & 0xF);
+    VISA_Align align = var->getAlignment();
 
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
-    sstr << ".decl " << printVariableDeclName(header, declID+numPreDefinedVars, options)
-         << " v_type=G"
-         << " type=" << CISATypeTable[isa_type].typeName
-         << " num_elts=" << var->num_elements;
+    sstr << ".decl " << printVariableDeclName(header, declID + numPreDefinedVars, options)
+        << " v_type=G"
+        << " type=" << CISATypeTable[isa_type].typeName
+        << " num_elts=" << var->num_elements;
 
-    if(align != ALIGN_UNDEF)
+    if (align != ALIGN_UNDEF)
         sstr << " align=" << Common_ISA_Get_Align_Name(align);
 
     if (var->alias_index)
     {
         sstr << " alias=<";
-        if (options->getOption(vISA_DumpIsaVarNames))
-        {
-            sstr << printVariableDeclName(header, var->alias_index, options);
-        }
-        else
-        {
-            if(options->getOption(vISA_easyIsaasm))
-            {
-                sstr << printVariableDeclName(header, var->alias_index, options);
-            }
-            else
-            {
-               sstr << 'V' << var->alias_index;
-            }
-        }
+        sstr << printVariableDeclName(header, var->alias_index, options);
         sstr << ", " << var->alias_offset << ">";
     }
 
@@ -2534,7 +2517,7 @@ std::string printKernelHeader(
         //.decl  V<#> name=<name> type=<type> num_elts=<num_elements> [align=<align>] [alias=(<alias_index>,<alias_offset>)]
         for (unsigned i = 0; i < header->getVarCount(); i++)
         {
-            sstr << "\n" << printVariableDecl(isaHeader, header, i, isKernel, funcionId, options);
+            sstr << "\n" << printVariableDecl(header, i, options);
         }
         // address decls
         for (unsigned i = 0; i < header->getAddrCount(); i++)

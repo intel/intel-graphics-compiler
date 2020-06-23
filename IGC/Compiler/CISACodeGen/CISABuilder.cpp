@@ -4973,8 +4973,15 @@ namespace IGC
             }
             else
             {
-                std::string parseTextFile = m_enableVISAdump ? GetDumpFileName("inline.visaasm") : "";
-                V(vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextHeaderStream().str(), vbuilder->GetAsmTextStream().str(), parseTextFile));
+                std::string parseTextFile = GetDumpFileName("inline.visaasm");
+                auto result = vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextHeaderStream().str(), vbuilder->GetAsmTextStream().str(), parseTextFile);
+                if (result != 0)
+                {
+                    std::string output;
+                    raw_string_ostream S(output);
+                    S << "parsing vISA inline assembly failed:\t" << vAsmTextBuilder->GetCriticalMsg();
+                    context->EmitError(output.c_str());
+                }
             }
 
             pMainKernel = vAsmTextBuilder->GetVISAKernel();
