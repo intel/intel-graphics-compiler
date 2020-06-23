@@ -233,6 +233,29 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
 {
     CodeGenContext* pCodeGenCtx = m_pCtxWrapper->getCodeGenContext();
 
+    IntrinsicInst* intrinsicInst = llvm::cast<IntrinsicInst>(&I);
+
+    if (pCodeGenCtx->getModuleMetaData()->enableRangeReduce || IGC_IS_FLAG_ENABLED(EnableTrigFuncRangeReduction))
+    {
+        if (intrinsicInst->getIntrinsicID() == Intrinsic::sin || intrinsicInst->getIntrinsicID() == Intrinsic::cos)
+        {
+            m_builder->SetInsertPoint(intrinsicInst);
+            Value* angle = intrinsicInst->getOperand(0);
+            Value* int1_res_s1 = m_builder->CreateFCmpOGE(angle, llvm::ConstantFP::get(m_builder->getFloatTy(), 0.0));
+            Value* float_selRes_s = m_builder->CreateSelect(int1_res_s1, llvm::ConstantFP::get(m_builder->getFloatTy(), 6.283185f), llvm::ConstantFP::get(m_builder->getFloatTy(), -6.283185f));
+            Value* float_selRes_s4 = m_builder->CreateSelect(int1_res_s1, llvm::ConstantFP::get(m_builder->getFloatTy(), 0.159155f), llvm::ConstantFP::get(m_builder->getFloatTy(), -0.159155f));
+            Value* float_res_s5 = m_builder->CreateFMul(float_selRes_s4, angle);
+            Value* funcFloor = m_builder->CreateFPToSI(float_res_s5,m_builder->getInt32Ty());
+            Value* funcfloorfloat = m_builder->CreateSIToFP(funcFloor, m_builder->getFloatTy());
+            Value* float_res_s_i_s = m_builder->CreateFSub(float_res_s5, funcfloorfloat);
+            Value* float_res_s6 = m_builder->CreateFMul(float_res_s_i_s, float_selRes_s);
+            intrinsicInst->setOperand(0,float_res_s6);
+
+        }
+    }
+
+
+
     // TODO: Fix this for all Shaders once and for all
     if (pCodeGenCtx->type == ShaderType::VERTEX_SHADER && pCodeGenCtx->isPOSH())
     {

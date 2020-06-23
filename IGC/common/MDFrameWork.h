@@ -358,6 +358,7 @@ namespace IGC
         ShaderData shaderData;
         URBLayoutInfo URBInfo;
         bool UseBindlessImage = false;
+        bool enableRangeReduce = false;
 
         // When true compiler can assume that resources bound to two different
         // bindings do not alias.
