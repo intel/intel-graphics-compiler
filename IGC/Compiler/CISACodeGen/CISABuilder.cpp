@@ -4777,7 +4777,7 @@ namespace IGC
                 for (auto ui = pGlobal->user_begin(), ue = pGlobal->user_end(); ui != ue; ui++)
                 {
                     Instruction* inst = dyn_cast<Instruction>(*ui);
-                    if (inst && inst->getParent()->getParent()->hasFnAttribute("EnableGlobalRelocation"))
+                    if (inst && inst->getParent()->getParent()->hasFnAttribute("visaStackCall"))
                     {
                         needSymbol = true;
                         break;

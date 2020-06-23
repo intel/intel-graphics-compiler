@@ -172,7 +172,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             Function* userFunc = user->getParent()->getParent();
 
             // Don't have implicit arg if doing relocation
-            if (userFunc->hasFnAttribute("EnableGlobalRelocation"))
+            if (userFunc->hasFnAttribute("visaStackCall"))
                 continue;
 
             // Skip unused internal functions.

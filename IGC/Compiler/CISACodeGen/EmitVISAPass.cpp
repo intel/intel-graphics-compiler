@@ -10212,7 +10212,7 @@ void EmitPass::emitSymbolRelocation(Function& F)
         m_currShader->CreateFunctionSymbol(pFunc);
     }
 
-    if (F.hasFnAttribute("EnableGlobalRelocation"))
+    if (F.hasFnAttribute("visaStackCall"))
     {
         SmallSet<GlobalVariable*, 16> globalAddrSymbols;
         for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)

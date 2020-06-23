@@ -78,8 +78,6 @@ namespace IGC
         /// @param  I The binary op
         void visitBinaryOperator(llvm::BinaryOperator& I);
 
-        void visitCallInst(llvm::CallInst& CI);
-
     private:
         /// @brief  Function entry point.
         ///         Finds all alloca instructions in this function, analyzes them and adds

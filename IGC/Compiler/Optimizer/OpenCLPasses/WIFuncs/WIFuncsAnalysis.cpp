@@ -74,7 +74,6 @@ bool WIFuncsAnalysis::runOnModule(Module& M)
     {
         Function* pFunc = &(*I);
         if (pFunc->isDeclaration()) continue;
-        if (pFunc->hasFnAttribute("IndirectlyCalled")) continue;
         runOnFunction(*pFunc);
     }
 
