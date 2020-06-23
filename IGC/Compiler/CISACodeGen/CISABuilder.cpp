@@ -2471,6 +2471,9 @@ namespace IGC
         //controls last render target select bit
         cntrls.isLastWrite = lastRenderTarget;
 
+        // controls NULL render target enbale bit
+        cntrls.isNullRT = false;
+
         //r1Reg should always be populated
         //vISA will decide whether to use it or not.
         VISA_RawOpnd* r1RegOpnd = GetRawSource(r1Reg);

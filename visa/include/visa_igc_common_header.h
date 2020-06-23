@@ -621,6 +621,7 @@ typedef struct _vISA_RT_CONTROLS
     unsigned isCoarseMode:1; //controls coasrse mode bit inmsg descriptor
     unsigned isSampleIndex : 1; //controls whether sampleIndex is used.
     unsigned isHeaderMaskfromCe0 : 1;
+    unsigned isNullRT : 1;   // null render target
 } vISA_RT_CONTROLS;
 
 typedef enum

@@ -948,6 +948,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
             cntrls.isCoarseMode  = (mode & (0x1 << 10))? true:false;
             cntrls.isSampleIndex = (mode & (0x1 << 11)) ? true : false;
             cntrls.RTIndexPresent = (mode & (0x1 << 2)) ? true : false;
+            cntrls.isNullRT = (mode & (0x1 << 12)) ? true : false;
             cntrls.isHeaderMaskfromCe0 = 0;
 
             VISA_VectorOpnd *sampleIndex = cntrls.isSampleIndex ? readVectorOperandNG(bytePos, buf, container, false) : NULL;
