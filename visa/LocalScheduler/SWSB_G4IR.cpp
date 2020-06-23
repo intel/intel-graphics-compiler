@@ -1532,12 +1532,12 @@ void SWSB::tokenDepReduction(SBNode* n1, SBNode* n2)
             //BB:
             //     node2
             //     succ(node1)
-            if ((node1BBID == node2BBID && bbID1 != node2BBID) ||
-                (node1BBID != node2BBID && bbID1 == node2BBID && succ1->getNodeID() > node2->getNodeID()))
-            {
-                node_it = node1->succs.erase(node_it);//FIXME, if the succ is the token instruction, do we need free the tokens assigned to the instruction because of the dependence
-                continue;
-            }
+            //if ((node1BBID == node2BBID && bbID1 != node2BBID) ||
+            //    (node1BBID != node2BBID && bbID1 == node2BBID && succ1->getNodeID() > node2->getNodeID()))
+            //{
+            //    node_it = node1->succs.erase(node_it);//FIXME, if the succ is the token instruction, do we need free the tokens assigned to the instruction because of the dependence
+            //    continue;
+            //}
 
             //When two sucessors are in same BB, previous one kill the following one
             // FIXME: This may not be good, because the policy is trying to keep the longest dependence and move the short one
