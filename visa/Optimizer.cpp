@@ -1846,7 +1846,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
          return false;
     }
 
-    // Do not do def-hoisting for seeting flags which is likely to increase flag
+    // Do not do def-hoisting for setting flags which is likely to increase flag
     // register pressure.
     if (auto Dst = inst->getDst())
     {
@@ -1855,6 +1855,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
         {
             return false;
         }
+
     }
 
     // Now check each definition of src(0)
