@@ -2497,7 +2497,6 @@ SpillManagerGRF::sendInSpilledRegVarPortions (
     if (currentStride)
     {
         createFillInstr(fillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
-        numGRFFill++;
         if (height - currentStride > 0)
         {
             sendInSpilledRegVarPortions (
@@ -2566,6 +2565,11 @@ void SpillManagerGRF::preloadSpillRange (
     uint16_t hstride = spilledRangeRegion->getHorzStride();
     const RegionDesc *rDesc = builder_->createRegionDesc(execSize, hstride, 1, 0);
 
+    G4_SrcRegRegion* preloadRegion = builder_->createSrcRegRegion(
+        Mod_src_undef, Direct, spillRangeDcl->getRegVar(),
+        REG_ORIGIN, spilledRangeRegion->getSubRegOff(),
+        rDesc, spilledRangeRegion->getType());
+
     if( useScratchMsg_)
     {
         // src region's base refers to the filled region's base
@@ -2584,25 +2588,14 @@ void SpillManagerGRF::preloadSpillRange (
         // Since the filled register's register offset is 0,0 in first
         // send instruction, this change is made when creating the operand
         // itself.
-        G4_SrcRegRegion * preloadRegion = builder_->createSrcRegRegion(
-            Mod_src_undef, Direct, spillRangeDcl->getRegVar (),
-            REG_ORIGIN, spilledRangeRegion->getSubRegOff(),
-            rDesc, spilledRangeRegion->getType ());
+
         // Attach preloadRegion to dummy mov so getLeftBound/getRightBound won't crash when called from crossGRF in createFillSendMsgDesc
         builder_->createMov(execSize, builder_->createNullDst(Type_UD), preloadRegion, InstOpt_NoOpt, false);
-        numGRFFill++;
-        createFillInstr(spillRangeDcl, mRangeDcl, preloadRegion, execSize);
+        createFillSendInstr(spillRangeDcl, mRangeDcl, preloadRegion, execSize);
     }
     else
     {
-        G4_SrcRegRegion * preloadRegion = builder_->createSrcRegRegion(
-            Mod_src_undef, Direct, spillRangeDcl->getRegVar (),
-            spilledRangeRegion->getRegOff (), spilledRangeRegion->getSubRegOff (),
-            rDesc, spilledRangeRegion->getType ());
-
-        numGRFFill++;
-        createFillInstr(
-                spillRangeDcl, mRangeDcl, preloadRegion, execSize, 0);
+        createFillSendInstr(spillRangeDcl, mRangeDcl, preloadRegion, execSize);
     }
 }
 
@@ -2985,18 +2978,6 @@ SpillManagerGRF::createFillSendInstr (
         curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 }
 
-G4_INST*
-SpillManagerGRF::createFillInstr(
-    G4_Declare* fillRangeDcl,
-    G4_Declare* mRangeDcl,
-    G4_SrcRegRegion* filledRangeRegion,
-    unsigned          execSize,
-    unsigned          regOff
-)
-{
-    return createFillSendInstr(fillRangeDcl, mRangeDcl, filledRangeRegion, execSize);
-}
-
 // Create the send instruction to perform the fill of the filled region's
 // segment into fill memory.
 
@@ -3005,8 +2986,7 @@ SpillManagerGRF::createFillSendInstr (
     G4_Declare *      fillRangeDcl,
     G4_Declare *      mRangeDcl,
     G4_SrcRegRegion * filledRangeRegion,
-    unsigned          execSize,
-    unsigned          regOff
+    unsigned          execSize
 )
 {
     auto oldExecSize = execSize;
@@ -3019,7 +2999,7 @@ SpillManagerGRF::createFillSendInstr (
     }
 
     G4_DstRegRegion * postDst = builder_->createDst(
-        fillRangeDcl->getRegVar (), (short) regOff, SUBREG_ORIGIN,
+        fillRangeDcl->getRegVar (), 0, SUBREG_ORIGIN,
         DEF_HORIZ_STRIDE, (execSize > 8)? Type_UW : Type_UD);
 
     auto payload = getSpillFillHeader(*builder_, mRangeDcl);
@@ -3150,8 +3130,6 @@ SpillManagerGRF::sendOutSpilledRegVarPortions (
         initMWritePayload (spillRangeDcl, mRangeDcl, regOff, currentStride);
 
         createSpillSendInstr(spillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
-
-        numGRFSpill++;
 
         if (height - currentStride > 0) {
             sendOutSpilledRegVarPortions (
@@ -3320,8 +3298,6 @@ SpillManagerGRF::insertSpillRangeCode (
 
             spillSendInst = createSpillSendInstr(
                 spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
-
-            numGRFSpill++;
         }
         if (failSafeSpill_)
         {
@@ -3384,8 +3360,7 @@ SpillManagerGRF::insertFillGRFRangeCode (
                 *filledInstIter);
         G4_Declare * mRangeDcl =
             createAndInitMHeader(filledRegion, execSize);
-        numGRFFill++;
-        fillSendInst = createFillInstr(fillRangeDcl, mRangeDcl, filledRegion, execSize);
+        fillSendInst = createFillSendInstr(fillRangeDcl, mRangeDcl, filledRegion, execSize);
 
         LocalLiveRange* filledLLR = gra.getLocalLR(filledRegion->getBase()->asRegVar()->getDeclare());
         if (filledLLR && filledLLR->getSplit())
@@ -4480,7 +4455,6 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
         rowOffsetOword += respSizeInOwords;
     }
 }
-
 
 void GlobalRA::expandFillIntrinsic(G4_BB* bb)
 {

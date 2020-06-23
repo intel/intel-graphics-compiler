@@ -701,12 +701,10 @@ private:
         G4_Declare *       fillRangeDcl,
         G4_Declare *       mRangeDcl,
         G4_SrcRegRegion *  filledRangeRegion,
-        unsigned           execSize,
-        unsigned           regOff = 0
+        unsigned           execSize
     );
 
-    G4_INST* createFillInstr(G4_Declare* fillRangeDcl, G4_Declare* mRangeDcl, unsigned regOff, unsigned height, unsigned srcRegOff = 0);
-    G4_INST* createFillInstr(G4_Declare* fillRangeDcl, G4_Declare* mRangeDcl, G4_SrcRegRegion* filledRangeRegion, unsigned execSize, unsigned regOff = 0);
+    G4_INST* createFillInstr(G4_Declare* fillRangeDcl, G4_Declare* mRangeDcl, unsigned regOff, unsigned height, unsigned srcRegOff);
 
     void
     replaceSpilledRange (

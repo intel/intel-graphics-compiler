@@ -5576,13 +5576,23 @@ void G4_Declare::emit(std::ostream &output) const
     }
     else if (isSpilled())
     {
-        if (spillDCL != nullptr)
+        if (spillDCL)
         {
+            // flag/addr spill
             output << " (spilled -> " << spillDCL->getName() << ")";
         }
         else
         {
-            output << " (spilled)";
+            // GRF spill
+            auto GRFOffset = getRegVar()->getDisp() / getGRFSize();
+            if (!AliasDCL)
+            {
+                output << " (spilled -> Scratch[" << GRFOffset << "x" << (int)getGRFSize() << "])";
+            }
+            else
+            {
+                output << " (spilled)";
+            }
         }
     }
 
