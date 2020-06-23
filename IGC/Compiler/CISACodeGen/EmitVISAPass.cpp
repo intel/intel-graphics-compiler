@@ -9634,7 +9634,6 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     }
 
     uint retSize = 0;
-    bool retOnStack = false;
     if (!inst->use_empty())
     {
         CVariable* Dst = GetSymbol(inst);
@@ -9647,113 +9646,30 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             retSize = Dst->GetSize();
         }
         CVariable* Src = m_currShader->GetRETV();
-        if (retSize > Src->GetSize())
-        {
-            retOnStack = true;
-        }
+        IGC_ASSERT_MESSAGE(retSize <= Src->GetSize(), "No support for return on stack!");
     }
+
     unsigned char argSizeInGRF = (offsetA + getGRFSize() - 1) / getGRFSize();
-    unsigned char retSizeInGRF = retOnStack ? 0 : (retSize + getGRFSize() - 1) / getGRFSize();
+    unsigned char retSizeInGRF = (retSize + getGRFSize() - 1) / getGRFSize();
 
     // lambda to read the return value
-    auto CopyReturnValue = [this](CallInst* inst, bool isStackCopy)->void
+    auto CopyReturnValue = [this](CallInst* inst)->void
     {
-        if (!isStackCopy)
+        CVariable* Dst = GetSymbol(inst);
+        CVariable* Src = m_currShader->GetRETV();
+        if (Dst->GetType() == ISA_TYPE_BOOL)
         {
-            CVariable* Dst = GetSymbol(inst);
-            CVariable* Src = m_currShader->GetRETV();
-            if (Dst->GetType() == ISA_TYPE_BOOL)
-            {
-                CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
-                m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
-            }
-            else
-            {
-                IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
-                if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
-                {
-                    Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
-                }
-                emitCopyAll(Dst, Src, inst->getType());
-            }
+            CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
+            m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
         }
         else
         {
-            CVariable* retDst = GetSymbol(inst);
-            CVariable* Dst = m_currShader->GetNewVariable(retDst);
-
-            int RmnBytes = Dst->GetSize();
-            IGC_ASSERT(Dst->GetType() != ISA_TYPE_BOOL);
-            uint32_t RdBytes = 0;
-            do
+            IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
+            if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
             {
-                uint RdSize = 0;
-                if (RmnBytes >= SIZE_OWORD * 8)
-                {
-                    RdSize = 8 * SIZE_OWORD;
-                }
-                else if (RmnBytes >= SIZE_OWORD * 4)
-                {
-                    RdSize = 4 * SIZE_OWORD;
-                }
-                else if (RmnBytes >= SIZE_OWORD * 2)
-                {
-                    RdSize = 2 * SIZE_OWORD;
-                }
-                else
-                {
-                    RdSize = SIZE_OWORD;
-                }
-
-                CVariable* pSP = m_currShader->GetSP();
-                bool is64BitSP = (pSP->GetSize() > 4);
-                // emit oword-block-read
-                ResourceDescriptor resource;
-                resource.m_surfaceType = ESURFACE_STATELESS;
-                CVariable* pTempVar = m_currShader->GetNewVariable(
-                    numLanes(SIMDMode::SIMD1),
-                    is64BitSP ? ISA_TYPE_UQ : ISA_TYPE_UD,
-                    is64BitSP ? EALIGN_QWORD : EALIGN_DWORD,
-                    true, 1,
-                    CName::NONE);
-                // emit write address
-                CVariable* pStackOffset = m_currShader->ImmToVariable(RdBytes, ISA_TYPE_UD);
-                emitAddSP(pTempVar, pSP, pStackOffset);
-
-                bool needRmCopy = RdSize == SIZE_OWORD && RmnBytes > 0 && RmnBytes < SIZE_OWORD;
-                if (!needRmCopy)
-                {
-                    if (is64BitSP)
-                        m_encoder->OWLoadA64(Dst, pTempVar, RdSize, RdBytes);
-                    else
-                        m_encoder->OWLoad(Dst, resource, pTempVar, false, RdSize, RdBytes);
-                    m_encoder->Push();
-                }
-                else
-                {
-                    uint elemSize = Dst->GetElemSize();
-                    if (elemSize > 0)
-                    {
-                        // less than one oword, read one oword, then copy
-                        CVariable* pTempDst = m_currShader->GetNewVariable(
-                            SIZE_OWORD / elemSize,
-                            Dst->GetType(),
-                            m_currShader->getGRFAlignment(), true, 1, CName::NONE);
-                        if (is64BitSP)
-                            m_encoder->OWLoadA64(pTempDst, pTempVar, SIZE_OWORD);
-                        else
-                            m_encoder->OWLoad(pTempDst, resource, pTempVar, false, SIZE_OWORD);
-                        m_encoder->Push();
-                        m_encoder->SetNoMask();
-                        emitVectorCopy(Dst, pTempDst, RmnBytes / elemSize, RdBytes, 0);
-                    }
-                }
-                RdBytes += RdSize;
-                RmnBytes -= RdSize;
-            } while (RmnBytes > 0); // end of reading return value from stack
-
-            // First do a block read from SP, then a copy that respects the execution mask
-            emitCopyAll(retDst, Dst, inst->getType());
+                Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
+            }
+            emitCopyAll(Dst, Src, inst->getType());
         }
     };
 
@@ -9803,7 +9719,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             if (!inst->use_empty())
             {
                 // For non-uniform call, copy the ret inside this loop so that it'll honor the loop mask
-                CopyReturnValue(inst, retOnStack);
+                CopyReturnValue(inst);
             }
 
             // Label for lanes that skipped the call
@@ -9830,18 +9746,15 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     // Non-uniform handled in above loop
     if (!inst->use_empty() && funcAddr->IsUniform())
     {
-        CopyReturnValue(inst, retOnStack);
+        CopyReturnValue(inst);
     }
 
-    // Set the max stack sized pushed in the parent function for this call's args
-    unsigned totalStackSize = offsetS + (retOnStack ? retSize : 0);
-    if (totalStackSize)
-    {
-        m_encoder->SetFunctionMaxArgumentStackSize(inst->getParent()->getParent(), totalStackSize);
-    }
     if (offsetS > 0)
     {
-        //  update stack pointer after the call
+        // Set the max stack sized pushed in the parent function for this call's args
+        m_encoder->SetFunctionMaxArgumentStackSize(inst->getParent()->getParent(), offsetS);
+
+        //  pop stack pointer after the call
         CVariable* pSP = m_currShader->GetSP();
         CVariable* pPopSize = m_currShader->ImmToVariable((uint64_t)(~offsetS + 1), ISA_TYPE_D);
         emitAddSP(pSP, pSP, pPopSize);
@@ -10054,7 +9967,6 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
     llvm::Type* RetTy = F->getReturnType();
     if (!RetTy->isVoidTy())
     {
-        bool RetOnStack = false;
         unsigned RetSize = 0;
         unsigned nLanes = numLanes(m_currShader->m_dispatchSize);
         CVariable* Dst = m_currShader->GetRETV();
@@ -10068,99 +9980,20 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
             m_encoder->Select(Src, DstAlias, one, zero);
             RetSize = nLanes * SIZE_WORD;
         }
-        else if (Src->IsUniform())
-        {
-            // If Src is uniform, we have to vectorize it since caller cannot assume uniform return value
-            RetSize = nLanes * Src->GetSize();
-            if (Dst->GetSize() < RetSize)
-            {
-                // If return register cannot hold the value, create a new variable to hold it and return on stack
-                RetOnStack = true;
-                Dst = m_currShader->GetNewVariable(
-                    Src->GetNumberElement() * nLanes, Src->GetType(), Src->GetAlign(), false, Src->getName());
-            }
-            if (Dst->GetType() != Src->GetType())
-            {
-                Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, Src->GetNumberElement() * nLanes, false);
-            }
-            emitCopyAll(Dst, Src, RetTy);
-
-            if (RetOnStack)
-            {
-                Src = Dst;
-            }
-        }
-        else  // Non-uniform copy
-        {
-            RetSize = Src->GetSize();
-            if (Dst->GetSize() < RetSize)
-            {
-                RetOnStack = true;
-            }
-            else
-            {
-                if (Dst->GetType() != Src->GetType())
-                {
-                    Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, Src->GetNumberElement(), false);
-                }
-                emitCopyAll(Dst, Src, RetTy);
-            }
-        }
-
-        if (RetOnStack)
-        {
-            // write return value onto stack at (SP+n)
-            // emit oword_stores
-            int RmnBytes = RetSize;
-            uint32_t WrtBytes = 0;
-            do
-            {
-                uint32_t WrtSize = 0;
-                if (RmnBytes >= SIZE_OWORD * 8)
-                {
-                    WrtSize = 8 * SIZE_OWORD;
-                }
-                else if (RmnBytes >= SIZE_OWORD * 4)
-                {
-                    WrtSize = 4 * SIZE_OWORD;
-                }
-                else if (RmnBytes >= SIZE_OWORD * 2)
-                {
-                    WrtSize = 2 * SIZE_OWORD;
-                }
-                else
-                {
-                    WrtSize = SIZE_OWORD;
-                }
-
-                CVariable* pSP = m_currShader->GetSP();
-                bool is64BitSP = (pSP->GetSize() > 4);
-                // emit oword-block-writes
-                CVariable* pTempVar = m_currShader->GetNewVariable(
-                    numLanes(SIMDMode::SIMD1),
-                    is64BitSP ? ISA_TYPE_UQ : ISA_TYPE_UD,
-                    is64BitSP ? EALIGN_QWORD : EALIGN_DWORD,
-                    true, 1, CName::NONE);
-                // emit write address
-                CVariable* pStackOffset = m_currShader->ImmToVariable(WrtBytes, ISA_TYPE_UD);
-                emitAddSP(pTempVar, pSP, pStackOffset);
-                // emit oword-store
-                if (is64BitSP)
-                    m_encoder->OWStoreA64(Src, pTempVar, WrtSize, WrtBytes);
-                else
-                    m_encoder->OWStore(Src, ESURFACE_STATELESS, nullptr, pTempVar, WrtSize, WrtBytes);
-                m_encoder->Push();
-
-                WrtBytes += WrtSize;
-                RmnBytes -= WrtSize;
-            } while (RmnBytes > 0);
-            // end of writing return-value to stack
-            m_encoder->SetStackFunctionRetSize(0);
-        }
         else
         {
-            m_encoder->SetStackFunctionRetSize((RetSize + getGRFSize() - 1) / getGRFSize());
+            bool isSrcUniform = Src->IsUniform();
+            RetSize = isSrcUniform ? nLanes * Src->GetSize() : Src->GetSize();
+            IGC_ASSERT_MESSAGE(RetSize <= Dst->GetSize(), "No support for return on stack!");
+
+            if (Dst->GetType() != Src->GetType() || Dst->IsUniform() != Src->IsUniform())
+            {
+                unsigned elements = isSrcUniform ? Src->GetNumberElement() * nLanes : Src->GetNumberElement();
+                Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, elements, false);
+            }
+            emitCopyAll(Dst, Src, RetTy);
         }
+        m_encoder->SetStackFunctionRetSize((RetSize + getGRFSize() - 1) / getGRFSize());
     }
     else
     {
