@@ -957,10 +957,20 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator& I)
 //  We can remove the extra casts in this case.
 //  This becomes:
 //  %41 = fadd fast float %34, %33
+// Can also do matches with fadd/fmul that will later become an mad instruction.
+// mad example:
+//  %.prec70.i = fptrunc float %273 to half
+//  %.prec78.i = fptrunc float %276 to half
+//  %279 = fmul fast half %233, %.prec70.i
+//  %282 = fadd fast half %279, %.prec78.i
+//  %.prec84.i = fpext half %282 to float
+// This becomes:
+//  %279 = fpext half %233 to float
+//  %280 = fmul fast float %273, %279
+//  %281 = fadd fast float %280, %276
 void CustomSafeOptPass::removeHftoFCast(Instruction& I)
 {
     // Skip if mix mode is supported
-
     CodeGenContext* Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (Ctx->platform.supportMixMode())
         return;
@@ -972,6 +982,7 @@ void CustomSafeOptPass::removeHftoFCast(Instruction& I)
     if (!I.hasOneUse())
         return;
 
+    // Check if this instruction is used in a single FPExtInst
     FPExtInst* castInst = NULL;
     User* U = *I.user_begin();
     if (FPExtInst* inst = dyn_cast<FPExtInst>(U))
@@ -983,6 +994,87 @@ void CustomSafeOptPass::removeHftoFCast(Instruction& I)
     }
     if (!castInst)
       return;
+
+    // Check for fmad pattern
+    if (I.getOpcode() == Instruction::FAdd)
+    {
+        Value* src0 = nullptr, * src1 = nullptr, * src2 = nullptr;
+
+        // CodeGenPatternMatch::MatchMad matches the first fmul.
+        Instruction* fmulInst = nullptr;
+        for (uint i = 0; i < 2; i++)
+        {
+            fmulInst = dyn_cast<Instruction>(I.getOperand(i));
+            if (fmulInst && fmulInst->getOpcode() == Instruction::FMul)
+            {
+                src0 = fmulInst->getOperand(0);
+                src1 = fmulInst->getOperand(1);
+                src2 = I.getOperand(1 - i);
+                break;
+            }
+            else
+            {
+                // Prevent other non-fmul instructions from getting used
+                fmulInst = nullptr;
+            }
+        }
+        if (fmulInst)
+        {
+            // Used to get the new float operands for the new instructions
+            auto getFloatValue = [](Value* operand, Instruction* I, Type* type)
+            {
+                if (FPTruncInst* inst = dyn_cast<FPTruncInst>(operand))
+                {
+                    // Use the float input of the FPTrunc
+                    if (inst->getOperand(0)->getType()->isFloatTy())
+                    {
+                        return inst->getOperand(0);
+                    }
+                    else
+                    {
+                        return (Value*)NULL;
+                    }
+                }
+                else if (Instruction* inst = dyn_cast<Instruction>(operand))
+                {
+                    // Cast the result of this operand to a float
+                    return dyn_cast<Value>(new FPExtInst(inst, type, "", I));
+                }
+                return (Value*)NULL;
+            };
+
+            int convertCount = 0;
+            if (dyn_cast<FPTruncInst>(src0))
+                convertCount++;
+            if (dyn_cast<FPTruncInst>(src1))
+                convertCount++;
+            if (dyn_cast<FPTruncInst>(src2))
+                convertCount++;
+            if (convertCount >= 2)
+            {
+                // Conversion for the hf values
+                auto floatTy = castInst->getType();
+                src0 = getFloatValue(src0, fmulInst, floatTy);
+                src1 = getFloatValue(src1, fmulInst, floatTy);
+                src2 = getFloatValue(src2, &I, floatTy);
+
+                if (!src0 || !src1 || !src2)
+                    return;
+
+                // Create new float fmul and fadd instructions
+                Value* newFmul = BinaryOperator::Create(Instruction::FMul, src0, src1, "", &I);
+                Value* newFadd = BinaryOperator::Create(Instruction::FAdd, newFmul, src2, "", &I);
+
+                // Copy fast math flags
+                Instruction* fmulInst = dyn_cast<Instruction>(newFmul);
+                Instruction* faddInst = dyn_cast<Instruction>(newFadd);
+                fmulInst->copyFastMathFlags(fmulInst);
+                faddInst->copyFastMathFlags(&I);
+                castInst->replaceAllUsesWith(faddInst);
+                return;
+            }
+        }
+    }
 
     // Check if operands come from a Float to HF Cast
     Value *S1 = NULL, *S2 = NULL;
