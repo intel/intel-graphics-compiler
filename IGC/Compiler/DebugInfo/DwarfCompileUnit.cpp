@@ -970,7 +970,23 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
         if (!isPacked)
         {
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-            addUInt(Block, dwarf::DW_FORM_data1, varSizeInBits);
+            dwarf::Form form = dwarf::DW_FORM_data1;
+            if (varSizeInBits > 0xFF)
+            {
+                if (varSizeInBits <= 0xFFFF)
+                {
+                    form = dwarf::DW_FORM_data2;
+                }
+                else if (varSizeInBits <= 0xFFFFFFFF)
+                {
+                    form = dwarf::DW_FORM_data4;
+                }
+                else
+                {
+                    form = dwarf::DW_FORM_data8;
+                }
+            }
+            addUInt(Block, form, varSizeInBits);
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_bit_piece_stack);
         }
         else
@@ -1031,7 +1047,23 @@ void CompileUnit::addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, uint16_t s
         if (!isPacked)
         {
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-            addUInt(Block, dwarf::DW_FORM_data1, varSizeInBits);
+            dwarf::Form form = dwarf::DW_FORM_data1;
+            if (varSizeInBits > 0xFF)
+            {
+                if (varSizeInBits <= 0xFFFF)
+                {
+                    form = dwarf::DW_FORM_data2;
+                }
+                else if (varSizeInBits <= 0xFFFFFFFF)
+                {
+                    form = dwarf::DW_FORM_data4;
+                }
+                else
+                {
+                    form = dwarf::DW_FORM_data8;
+                }
+            }
+            addUInt(Block, form, varSizeInBits);
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_bit_piece_stack);
         }
         else

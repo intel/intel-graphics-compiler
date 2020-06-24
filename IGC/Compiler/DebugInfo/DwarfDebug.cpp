@@ -96,8 +96,8 @@ bool DbgVariable::isBlockByrefVariable() const {
 }
 
 /// If this type is derived from a base type then return base type size
-/// even if it derived directly or indirectly from Composite Type
-uint64_t DbgVariable::getBasicTypeSize(DIDerivedType* Ty)
+/// even if it derived directly or indirectly from Derived Type
+uint64_t DbgVariable::getBasicTypeSize(DICompositeType* Ty)
 {
     unsigned Tag = Ty->getTag();
 
@@ -109,12 +109,6 @@ uint64_t DbgVariable::getBasicTypeSize(DIDerivedType* Ty)
     }
 
     DIType* BaseType = resolve(Ty->getBaseType());
-
-    // If this type is not derived from any type then take conservative approach.
-    if (isa<DIBasicType>(BaseType))
-    {
-        return BaseType->getSizeInBits();
-    }
 
     // If this is a derived type, go ahead and get the base type, unless it's a
     // reference then it's just the size of the field. Pointer types have no need
@@ -131,16 +125,56 @@ uint64_t DbgVariable::getBasicTypeSize(DIDerivedType* Ty)
     }
     else if (isa<DICompositeType>(BaseType))
     {
-        DICompositeType* compTy = cast<DICompositeType>(BaseType);
-        BaseType = resolve(compTy->getBaseType());
+        return getBasicTypeSize(cast<DICompositeType>(BaseType));
+    }
+    else if (isa<DIBasicType>(BaseType))
+    {
+        return BaseType->getSizeInBits();
+    }
+    else
+    {
+        // Be prepared for unexpected.
+        IGC_ASSERT_MESSAGE(0, "Missing support for this type");
+    }
 
-        // If this type is not derived from any type then take conservative approach.
-        if (isa<DIBasicType>(BaseType))
-        {
-            return BaseType->getSizeInBits();
-        }
+    return BaseType->getSizeInBits();
+}
 
+/// If this type is derived from a base type then return base type size
+/// even if it derived directly or indirectly from Composite Type
+uint64_t DbgVariable::getBasicTypeSize(DIDerivedType* Ty)
+{
+    unsigned Tag = Ty->getTag();
+
+    if (Tag != dwarf::DW_TAG_member && Tag != dwarf::DW_TAG_typedef &&
+        Tag != dwarf::DW_TAG_const_type && Tag != dwarf::DW_TAG_volatile_type &&
+        Tag != dwarf::DW_TAG_restrict_type)
+    {
+        return Ty->getSizeInBits();
+    }
+
+    DIType* BaseType = resolve(Ty->getBaseType());
+
+    // If this is a derived type, go ahead and get the base type, unless it's a
+    // reference then it's just the size of the field. Pointer types have no need
+    // of this since they're a different type of qualification on the type.
+    if (BaseType->getTag() == dwarf::DW_TAG_reference_type ||
+        BaseType->getTag() == dwarf::DW_TAG_rvalue_reference_type)
+    {
+        return Ty->getSizeInBits();
+    }
+
+    if (isa<DIDerivedType>(BaseType))
+    {
         return getBasicTypeSize(cast<DIDerivedType>(BaseType));
+    }
+    else if (isa<DICompositeType>(BaseType))
+    {
+        return getBasicTypeSize(cast<DICompositeType>(BaseType));
+    }
+    else if (isa<DIBasicType>(BaseType))
+    {
+        return BaseType->getSizeInBits();
     }
     else
     {
@@ -162,7 +196,9 @@ uint64_t DbgVariable::getBasicSize(DwarfDebug* DD)
         DIType* Ty = getType();
         DIDerivedType* DDTy = cast<DIDerivedType>(Ty);
         varSizeInBits = getBasicTypeSize(DDTy);
-        IGC_ASSERT_MESSAGE(varSizeInBits > 0, "Variable's basic type size 0");
+        IGC_ASSERT_MESSAGE(varSizeInBits > 0, "\nVariable's basic type size 0\n");
+        IGC_ASSERT_MESSAGE(!(varSizeInBits == 0 && getType()->getSizeInBits() == 0),
+            "\nVariable's basic type size 0 and getType()->getSizeInBits() 0\n");
     }
     else
     {

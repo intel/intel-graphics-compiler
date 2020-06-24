@@ -166,6 +166,9 @@ namespace IGC
         /// If this type is derived from a base type then return base type size
         /// even if it derived directly or indirectly from Composite Type
         uint64_t getBasicTypeSize(llvm::DIDerivedType* Ty);
+        /// If this type is derived from a base type then return base type size
+        /// even if it derived directly or indirectly from Derived Type
+        uint64_t getBasicTypeSize(llvm::DICompositeType* Ty);
 
         /// Return base type size even if it derived directly or indirectly from Composite Type
         uint64_t getBasicSize(DwarfDebug* DD);
