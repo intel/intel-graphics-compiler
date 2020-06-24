@@ -10634,8 +10634,8 @@ void IR_Builder::expandPredefinedVars()
     //
     // [Pre-DevBDW]: Format = U8. Bits 9:8 are Reserved, MBZ.
     //
-    // For BDW format is U9
-    // For SKL format is U10
+    // [0:8] For Pre-Gen9
+    // [0:9] For Gen10+
     //
 
     // first non-label instruction
@@ -10643,9 +10643,10 @@ void IR_Builder::expandPredefinedVars()
 
     if (preDefVars.isHasPredefined(PreDefinedVarsInternal::HW_TID))
     {
+        const unsigned fftid_mask = getPlatform() >= GENX_CNL ? 0x3FF : 0x1FF;
         G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, realR0->getRegVar(),
             0, 5, getRegionScalar(), Type_UD);
-        G4_Imm* mask1 = this->createImm(0x3ff, Type_UD);
+        G4_Imm* mask1 = this->createImm(fftid_mask, Type_UD);
         G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinHWTID, 1);
         G4_INST* inst = this->createBinOp(G4_and, 1, dst, src, mask1, InstOpt_WriteEnable, false);
         instList.insert(iter, inst);
