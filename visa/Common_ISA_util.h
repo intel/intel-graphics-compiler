@@ -97,7 +97,7 @@ inline unsigned int Get_CISA_PreDefined_Var_Count()
     return COMMON_ISA_NUM_PREDEFINED_VAR_VER_3;
 }
 
- const char* createStringCopy(const char* name, vISA::Mem_Manager &m_mem);
+const char* createStringCopy(const char* name, vISA::Mem_Manager &m_mem);
 
 std::string sanitizePathString(std::string str);
 std::string sanitizeLabelString(std::string str);
