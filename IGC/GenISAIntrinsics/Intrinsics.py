@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 #===================== begin_copyright_notice ==================================
 
 #Copyright (c) 2017 Intel Corporation
@@ -432,7 +430,7 @@ def createAttributeTable():
             "  unsigned NumAttrs = 0;\n"
             "  if (id != 0) {\n"
             "    switch(IntrinsicsToAttributesMap[id - Intrinsic::num_intrinsics]) {\n"
-            "    default: llvm_unreachable(\"Invalid attribute number\");\n")
+            "    default: IGC_ASSERT_EXIT_MESSAGE(0, \"Invalid attribute number\");\n")
 
     for i in range(len(attribute_Array)): #Building case statements
         Attrs = getAttributeList([x.strip() for x in attribute_Array[i].split(',')])

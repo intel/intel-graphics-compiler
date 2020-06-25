@@ -59,6 +59,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublicEnums.h"
 #include "common/Types.hpp"
 #include "GenIntrinsics.h"
+#include "Probe/Assertion.h"
 
 namespace llvm {
 /// IntrinsicInst - A useful wrapper class for inspecting calls to intrinsic
@@ -98,7 +99,7 @@ public:
     }
 
     uint64_t getImm64Operand(unsigned idx) const {
-        assert(isa<ConstantInt>(getOperand(idx)));
+        IGC_ASSERT(isa<ConstantInt>(getOperand(idx)));
         return valueToImm64(getOperand(idx));
     }
 };
@@ -488,7 +489,7 @@ public:
         return static_cast<unsigned int>(cast<ConstantInt>(getAlignmentValue())->getZExtValue());
     }
     inline bool isVolatile() const {
-        assert(isa<ConstantInt>(getOperand(3)));
+        IGC_ASSERT(isa<ConstantInt>(getOperand(3)));
         ConstantInt* val = dyn_cast<ConstantInt>(getOperand(3));
         const bool isVolatile = val ? val->getZExtValue() : false;
         return isVolatile;
@@ -533,13 +534,13 @@ public:
         return getOperand(0);
     }
     inline unsigned int getAlignment() const {
-        assert(isa<ConstantInt>(getAlignmentValue()));
+        IGC_ASSERT(isa<ConstantInt>(getAlignmentValue()));
         ConstantInt* val = dyn_cast<ConstantInt>(getAlignmentValue());
         const unsigned int alignment = val ? int_cast<unsigned int>(val->getZExtValue()) : 1;
         return alignment;
     }
     inline bool isVolatile() const {
-        assert(isa<ConstantInt>(getOperand(4)));
+        IGC_ASSERT(isa<ConstantInt>(getOperand(4)));
         ConstantInt* val = dyn_cast<ConstantInt>(getOperand(4));
         const bool isVolatile = val ? val->getZExtValue() : false;
         return isVolatile;
