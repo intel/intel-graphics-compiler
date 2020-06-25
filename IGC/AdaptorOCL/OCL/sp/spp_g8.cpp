@@ -238,7 +238,7 @@ void CGen8OpenCLProgram::GetZEBinary(
         return (shader && shader->ProgramOutput()->m_programSize > 0);
     };
 
-    ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes, m_pContext->m_programInfo);
+    ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8, m_pContext->m_programInfo);
 
     for (auto pKernel : m_ShaderProgramList)
     {

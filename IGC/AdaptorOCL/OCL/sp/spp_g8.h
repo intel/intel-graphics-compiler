@@ -87,7 +87,7 @@ public:
 
 public:
     // GetZEBinary - get ZE binary object
-    virtual void GetZEBinary(Util::BinaryStream& programBinary,
+    virtual void GetZEBinary(llvm::raw_pwrite_stream& programBinary,
         unsigned pointerSizeInBytes) {}
 
 protected:
@@ -109,7 +109,7 @@ public:
     /// m_ProgramScopePatchStream and m_KernelBinaries
     void CreateKernelBinaries();
 
-    /// getZEBinary - create ZE Binary
+    /// getZEBinary - create and get ZE Binary
     void GetZEBinary(llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes);
 
     // Used to track the kernel info from CodeGen
