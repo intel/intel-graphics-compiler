@@ -62,6 +62,8 @@ namespace IGC
 
     enum e_alignment : unsigned char
     {
+        // In the increasing alignment order, except AUTO
+        // (AUTO: naturally aligned)
         EALIGN_BYTE,
         EALIGN_WORD,
         EALIGN_DWORD,

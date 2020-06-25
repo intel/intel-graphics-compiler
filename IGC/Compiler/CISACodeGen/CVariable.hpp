@@ -201,9 +201,18 @@ namespace IGC {
         bool IsGRFAligned(e_alignment requiredAlign = EALIGN_GRF) const
         {
             e_alignment align = GetAlign();
-            if (requiredAlign == EALIGN_GRF)
-                return align == EALIGN_GRF || align == EALIGN_2GRF;
-            return align == requiredAlign;
+            if (requiredAlign == EALIGN_BYTE)
+            {
+                // trivial
+                return true;
+            }
+            if (requiredAlign == EALIGN_AUTO || align == EALIGN_AUTO)
+            {
+                // Can only assume that AUTO only matches AUTO (?)
+                // (keep the previous behavior unchanged.)
+                return align == requiredAlign;
+            }
+            return align >= requiredAlign;
         }
 
         void setisUnpacked() { m_isUnpacked = true; }
