@@ -2233,7 +2233,7 @@ public:
         return const_cast<G4_Predicate*>(((const G4_Operand *)this)->asPredicate());
     }
 
-    const G4_CondMod*    asCondMod() const {
+    const G4_CondMod* asCondMod() const {
 #ifdef _DEBUG
         if (!isCondMod())
         {
@@ -2242,6 +2242,7 @@ public:
 #endif
         return reinterpret_cast<const G4_CondMod*>(this);
     }
+
     G4_CondMod* asCondMod()
     {
         return const_cast<G4_CondMod*>(((const G4_Operand *)this)->asCondMod());
@@ -2261,6 +2262,13 @@ public:
     {
         return const_cast<G4_Label*>(((const G4_Operand *)this)->asLabel());
     }
+
+    bool isSrc() const
+    {
+        return isImm() || isAddrExp() || isSrcRegRegion();
+    }
+
+    bool isScalarSrc() const;
 
     bool crossGRF()
     {
@@ -4101,6 +4109,11 @@ private:
     uint32_t numRows = 0;
     uint32_t offset = InvalidOffset;
 };
+
+inline bool G4_Operand::isScalarSrc() const
+{
+    return isImm() || isAddrExp() || (isSrcRegRegion() && asSrcRegRegion()->isScalar());
+}
 
 } // namespace vISA
 
