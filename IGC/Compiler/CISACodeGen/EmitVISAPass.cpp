@@ -3467,9 +3467,11 @@ void EmitPass::emitPSInputCst(llvm::Instruction* inst)
     CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
     // temp variable should be the same type as the destination
     {
+        // A0 vertex data are in Rp.{3 + 4*n}
         m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, 3);
     }
-    m_encoder->SetSrcSubReg(0, 3);
+
     m_encoder->Cast(m_destination, inputVar);
     m_encoder->Push();
 }
@@ -6992,6 +6994,14 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     {
         CVariable* src = GetSymbol(inst->getOperand(i));
         src = BroadcastIfUniform(src);
+        if (src->GetAliasOffset() % getGRFSize() != 0)
+        {
+            CVariable* tmp = m_currShader->GetNewVariable(src->GetNumberElement(), src->GetType(), EALIGN_GRF,
+                src->IsUniform(), src->GetNumberInstance(), CName(src->getName(), "_GRFAligned"));
+            m_encoder->Copy(tmp, src);
+            m_encoder->Push();
+            src = tmp;
+        }
         payload.push_back(src);
     }
 

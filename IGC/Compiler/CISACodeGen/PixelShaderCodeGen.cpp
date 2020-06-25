@@ -135,15 +135,18 @@ void CPixelShader::AllocatePSPayload()
     IGC_ASSERT(m_R0);
     offset += getGRFSize();
 
-    IGC_ASSERT(m_R1);
     if (m_Signature)
     {
         GetDispatchSignature().r1 = offset;
     }
-    for (uint i = 0; i < m_R1->GetNumberInstance(); i++)
+
     {
-        AllocateInput(m_R1, offset, i);
-        offset += getGRFSize();
+        IGC_ASSERT(GetR1());
+        for (uint i = 0; i < GetR1()->GetNumberInstance(); i++)
+        {
+            AllocateInput(GetR1(), offset, i);
+            offset += getGRFSize();
+        }
     }
 
     for (uint i = 0; i < m_numberInstance; i++)
@@ -855,7 +858,12 @@ void CPixelShader::PreCompile()
     CodeGenContext* ctx = GetContext();
 
     const uint8_t numberInstance = m_numberInstance;
-    m_R1 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, numberInstance, "R1");
+    const bool isR1Available = true;
+
+    if (isR1Available)
+    {
+        m_R1 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, numberInstance, "R1");
+    }
 
     // make sure the return block is properly set
     if (ctx->getModule()->getNamedMetadata("KillPixel"))
@@ -1033,7 +1041,7 @@ void CPixelShader::AddPrologue()
     if (m_phase == PSPHASE_PIXEL)
     {
         uint responseLength = 2;
-        m_CoarseR1 = m_R1;
+        m_CoarseR1 = GetR1();
         m_PixelPhasePayload =
             GetNewVariable(responseLength * (getGRFSize() >> 2),
                 ISA_TYPE_D, EALIGN_GRF, "PixelPhasePayload");
@@ -1439,7 +1447,8 @@ void CPixelShader::CreatePassThroughVar()
         // if there is no pixel phase we have nothing to do
         return;
     }
-    encoder.MarkAsOutput(m_R1);
+    IGC_ASSERT(nullptr != GetR1());
+    encoder.MarkAsOutput(GetR1());
     Function* pixelPhase = mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
     for (auto BB = pixelPhase->begin(), BE = pixelPhase->end(); BB != BE; ++BB)
     {
