@@ -258,9 +258,10 @@ namespace IGC
 
         void IGC_DEBUG_API_CALL SetDebugFlag( DebugFlag flag, bool enabled )
         {
+            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(flag)), "range sanity check");
+            IGC_ASSERT_MESSAGE((static_cast<int>(flag) < static_cast<int> (DebugFlag::END)), "range sanity check");
+
 #if defined( _DEBUG ) || defined( _INTERNAL )
-            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(flag)) &&
-                        (static_cast<int>(flag) < static_cast<int> (DebugFlag::END)), "range sanity check");
             g_debugFlags[ static_cast<int>( flag ) ] = enabled;
 #else
             (void) flag;
@@ -270,6 +271,9 @@ namespace IGC
 
         bool IGC_DEBUG_API_CALL GetDebugFlag( DebugFlag flag )
         {
+            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(flag)), "range sanity check");
+            IGC_ASSERT_MESSAGE((static_cast<int>(flag) < static_cast<int> (DebugFlag::END)), "range sanity check");
+
 #if defined( _DEBUG ) || defined( _INTERNAL )
 
 #if defined(_WIN32 )|| defined( _WIN64 )
@@ -286,8 +290,6 @@ namespace IGC
 
             }
 #endif
-            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(flag)) &&
-                        (static_cast<int>(flag) < static_cast<int> (DebugFlag::END)), "range sanity check");
             return g_debugFlags[ static_cast<int>(flag) ];
 #else
             (void) flag;
@@ -297,9 +299,10 @@ namespace IGC
 
         void IGC_DEBUG_API_CALL SetDumpFlag( DumpType type, DumpLoc loc, bool enabled )
         {
+            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(type)), "range sanity check");
+            IGC_ASSERT_MESSAGE((static_cast<int>(type) < static_cast<int> (DumpType::END)), "range sanity check");
+
 #if defined( _DEBUG ) || defined( _INTERNAL )
-            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(type)) &&
-                        (static_cast<int>(type) < static_cast<int> (DumpType::END)), "range sanity check");
             switch (loc)
             {
             case DumpLoc::ODS  : g_dumpFlags[ static_cast<int>(type) ].dumpODS  = enabled; break;
@@ -315,9 +318,11 @@ namespace IGC
 
         bool IGC_DEBUG_API_CALL GetDumpFlag( DumpType type, DumpLoc loc )
         {
+            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(type)), "range sanity check");
+            IGC_ASSERT_MESSAGE((static_cast<int>(type) < static_cast<int> (DumpType::END)), "range sanity check");
+
 #if defined( _DEBUG ) || defined( _INTERNAL )
-            IGC_ASSERT_MESSAGE((0 <= static_cast<int>(type)) &&
-                        (static_cast<int>(type) < static_cast<int> (DumpType::END)), "range sanity check");
+
 #if defined(_WIN32 )|| defined( _WIN64 )
             //Disable Dump  for OS Applications
             if (GetModuleHandleA("dwm.exe") || GetModuleHandleA("explorer.exe"))

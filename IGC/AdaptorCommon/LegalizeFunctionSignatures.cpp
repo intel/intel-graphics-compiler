@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublic.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -37,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Transforms/Utils/Cloning.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/Types.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -130,10 +130,14 @@ inline bool isLegalIntVectorType(Module& M, Type* ty)
     return true;
 }
 
-inline Type* LegalizedIntVectorType(Module& M, Type* oldTy)
+inline Type* LegalizedIntVectorType(Module& M, const Type* const oldTy)
 {
-    assert((oldTy->isVectorTy() && oldTy->getVectorElementType()->isIntegerTy()));
-    unsigned size = (unsigned)M.getDataLayout().getTypeSizeInBits(oldTy->getVectorElementType());
+    IGC_ASSERT(nullptr != oldTy);
+    IGC_ASSERT(oldTy->isVectorTy());
+    IGC_ASSERT(nullptr != oldTy->getVectorElementType());
+    IGC_ASSERT(oldTy->getVectorElementType()->isIntegerTy());
+
+    const unsigned size = (unsigned)M.getDataLayout().getTypeSizeInBits(oldTy->getVectorElementType());
     unsigned newSize = 0;
 
     // Upscale the size to the next supported legal size
@@ -141,7 +145,7 @@ inline Type* LegalizedIntVectorType(Module& M, Type* oldTy)
     else if (size <= 16) newSize = 16;
     else if (size <= 32) newSize = 32;
     else if (size <= 64) newSize = 64;
-    else assert(0 && "Currently don't support upscaling int sizes > 64 bits");
+    else IGC_ASSERT_MESSAGE(0, "Currently don't support upscaling int sizes > 64 bits");
 
     return VectorType::get(IntegerType::get(M.getContext(), newSize), oldTy->getVectorNumElements());
 }
@@ -231,7 +235,8 @@ void LegalizeFunctionSignatures::FixFunctionSignatures()
             if (fixReturnType)
             {
                 IGC_ASSERT(argINew != pNewFunc->arg_end());
-                IGC_ASSERT(argINew->getType()->isPointerTy() && argINew->getType()->getPointerElementType() == pFunc->getReturnType());
+                IGC_ASSERT(argINew->getType()->isPointerTy());
+                IGC_ASSERT(argINew->getType()->getPointerElementType() == pFunc->getReturnType());
                 // Instead of returning the illegal type, we loop through all the return instructions and
                 // replace them with a store into the argument pointer. The caller will then use the value stored in
                 // this pointer instead of the returned value from the old function.
@@ -259,7 +264,8 @@ void LegalizeFunctionSignatures::FixFunctionSignatures()
                     if (!isLegalSignatureType(argI->getType()))
                     {
                         // Load from the pointer first before using
-                        assert(argINew->getType()->isPointerTy() && argINew->getType()->getPointerElementType() == argI->getType());
+                        IGC_ASSERT(argINew->getType()->isPointerTy());
+                        IGC_ASSERT(argINew->getType()->getPointerElementType() == argI->getType());
                         Value* load = m_pBuilder->CreateLoad(&*argINew);
                         argI->replaceAllUsesWith(load);
 
@@ -400,7 +406,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(CallInst* callInst)
         else
         {
             // Directly call the new function pointer
-            assert(oldToNewFuncMap.find(calledFunc) != oldToNewFuncMap.end());
+            IGC_ASSERT(oldToNewFuncMap.find(calledFunc) != oldToNewFuncMap.end());
             newCalledValue = oldToNewFuncMap[calledFunc];
         }
 
