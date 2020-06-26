@@ -90,6 +90,16 @@ namespace IGC
         /// Return true if the constant is in the range which we are allowed to push
         bool IsPushableShaderConstant(llvm::Instruction* inst, uint& bufId, uint& eltId, bool& isStateless);
 
+        /// Checks if stateless buffer load is not under flow control.
+        bool IsSafeToPushNonStaticBufferLoad(llvm::Instruction* inst) const;
+
+        // Checks if pAddress is a RuntimeValue and is on the list of pushable
+        // runtime values.
+        bool IsPushableAddress(
+            llvm::Instruction* inst,
+            llvm::Value* pAddress,
+            uint& GRFOffset) const;
+
         bool GetConstantOffsetForDynamicUniformBuffer(
             uint bufferId,
             llvm::Value* offsetValue,

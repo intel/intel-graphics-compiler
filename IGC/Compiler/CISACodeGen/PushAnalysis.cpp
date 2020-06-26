@@ -243,17 +243,23 @@ namespace IGC
             }
 
         }
-        // skip casts
-        while (1)
+        if (IsPushableAddress(inst, pAddress, GRFOffset))
         {
-            if (isa<IntToPtrInst>(pAddress) || isa<PtrToIntInst>(pAddress) || isa<BitCastInst>(pAddress))
-            {
-                pAddress = cast<Instruction>(pAddress)->getOperand(0);
-            }
-            else
-            {
-                break;
-            }
+            return true;
+        }
+        return false;
+    }
+
+
+    bool PushAnalysis::IsPushableAddress(
+        llvm::Instruction* inst,
+        llvm::Value* pAddress,
+        uint& GRFOffset) const
+    {
+        // skip casts
+        while (isa<IntToPtrInst>(pAddress) || isa<PtrToIntInst>(pAddress) || isa<BitCastInst>(pAddress))
+        {
+            pAddress = cast<Instruction>(pAddress)->getOperand(0);
         }
 
         llvm::GenIntrinsicInst* pRuntimeVal = llvm::dyn_cast<llvm::GenIntrinsicInst>(pAddress);
@@ -268,17 +274,27 @@ namespace IGC
         // then check for static flag so that we can do push safely
         for (auto it : pushInfo.pushableAddresses)
         {
-            if ((runtimeval0 * 4 == it.addressOffset) && (IGC_IS_FLAG_ENABLED(DisableStaticCheck) || it.isStatic))
+            if (runtimeval0 * 4 != it.addressOffset)
+            {
+                continue;
+            }
+
+            if (IGC_IS_FLAG_ENABLED(DisableStaticCheck) ||
+                it.isStatic ||
+                IsSafeToPushNonStaticBufferLoad(inst))
             {
                 GRFOffset = runtimeval0;
                 return true;
             }
         }
 
-        // otherwise the descriptor could bound to uninitialized buffer and we
-        // need to avoid pushing in control flow
-        // Find the return BB or the return BB before discard lowering.
 
+        return false;
+    }
+
+    bool PushAnalysis::IsSafeToPushNonStaticBufferLoad(llvm::Instruction* inst) const
+    {
+        // Find the return BB or the return BB before discard lowering.
         bool searchForRetBBBeforeDiscard = false;
         BasicBlock* retBB = m_PDT->getRootNode()->getBlock();
         if (!retBB)
@@ -313,14 +329,7 @@ namespace IGC
 
         if (m_DT->dominates(inst->getParent(), retBB))
         {
-            for (auto it : pushInfo.pushableAddresses)
-            {
-                if (runtimeval0 * 4 == it.addressOffset)
-                {
-                    GRFOffset = runtimeval0;
-                    return true;
-                }
-            }
+            return true;
         }
 
         return false;
