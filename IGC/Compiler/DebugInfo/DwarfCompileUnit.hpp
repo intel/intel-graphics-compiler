@@ -276,7 +276,7 @@ namespace IGC
 
         // addScratchLocation - add a sequence of attributes to emit scratch space location
         // of variable
-        void addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varInfo);
+        void addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varInfo, int32_t vectorOffset);
 
         // addSLMLocation - add a sequence of attributes to emit SLM location of variable
         void addSLMLocation(DIEBlock* Block, VISAVariableLocation* Loc);
@@ -287,7 +287,7 @@ namespace IGC
 
         // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
         // e.g. a GRF subregister.
-        void addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, uint16_t subReg, bool isPacked);
+        void addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation* Loc, uint16_t subRegInBytes);
 
         /// getOrCreateNameSpace - Create a DIE for DINameSpace.
         DIE* getOrCreateNameSpace(llvm::DINamespace* NS);

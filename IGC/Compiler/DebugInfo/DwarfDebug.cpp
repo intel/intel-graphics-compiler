@@ -1560,7 +1560,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
                                 uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
                                 unsigned int vectorNumElements = 1;
-                                uint16_t varSizeInBits = (uint16_t)RegVar->getBasicSize(this);  // TBD MT getBasicSize
+                                uint16_t varSizeInBits = Loc.IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)RegVar->getBasicSize(this);
                                 uint16_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
                                 uint16_t numOfRegs = ((varSizeInReg * (uint16_t)simdWidth) > (grfSize * 8)) ?
                                     ((varSizeInReg * (uint16_t)simdWidth) / (grfSize * 8)) : 1;
@@ -1651,10 +1651,10 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
                                     if (Loc.IsVectorized() == false)
                                     {
-                                        unsigned int subReg = varInfo.getGRF().subRegNum;
+                                        unsigned int subRegInBits = varInfo.getGRF().subRegNum * 8;
 
                                         // Scalar in a subregister
-                                        write(dotLoc.loc, (uint8_t)subReg);  // TBD MT verify correctness of encoding
+                                        write(dotLoc.loc, (uint8_t)subRegInBits);
                                     }
                                     else
                                     {
@@ -1699,7 +1699,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                 uint64_t scratchBaseAddr = 0; // TBD MT
                                 unsigned int vectorNumElements = 1;
                                 uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
-                                uint16_t varSizeInBits = (uint16_t)RegVar->getBasicSize(this);  // TBD MT getBasicSize
+                                uint16_t varSizeInBits = Loc.IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)RegVar->getBasicSize(this);
                                 uint16_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
                                 uint16_t numOfRegs = ((varSizeInReg * (uint16_t)simdWidth) > (grfSize * 8)) ?
                                     ((varSizeInReg * (uint16_t)simdWidth) / (grfSize * 8)) : 1;
@@ -1723,11 +1723,18 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                 auto currMemoryOffset = varInfo.getSpillOffset().memoryOffset;
                                 for (unsigned int vectorElem = 0; vectorElem < vectorNumElements; ++vectorElem)
                                 {
-                                    // DW_OP_bregx
-                                    lebsizeScratchOffset = encodeULEB128(currMemoryOffset, bufLEB128);
-                                    allVectorsSize += (uint16_t)(sizeof(uint8_t) + lebsizeScratchBaseAddr + lebsizeScratchOffset + simdLaneSize);
+                                    if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
+                                    {
+                                        // DW_OP_bregx
+                                        lebsizeScratchOffset = encodeULEB128(currMemoryOffset, bufLEB128);
+                                        allVectorsSize += (uint16_t)(sizeof(uint8_t) + lebsizeScratchBaseAddr + lebsizeScratchOffset + simdLaneSize);
 
-                                    currMemoryOffset += numOfRegs * m_pModule->m_pShader->getGRFSize();
+                                        currMemoryOffset += numOfRegs * m_pModule->m_pShader->getGRFSize();
+                                    }
+                                    else
+                                    {
+                                        allVectorsSize += (uint16_t)(sizeof(uint8_t) + sizeof(uint64_t) + sizeof(uint8_t));
+                                    }
                                 }
 
                                 IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Unexpected variable's size");
@@ -1737,13 +1744,29 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                 currMemoryOffset = varInfo.getSpillOffset().memoryOffset;
                                 for (unsigned int vectorElem = 0; vectorElem < vectorNumElements; ++vectorElem)
                                 {
-                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bregx);
-                                    lebsizeScratchBaseAddr = encodeULEB128(scratchBaseAddr, bufLEB128); // Address for bregx
-                                    write(dotLoc.loc, bufLEB128, lebsizeScratchBaseAddr);
-                                    lebsizeScratchOffset = encodeULEB128(currMemoryOffset, bufLEB128); // Offset for bregx
-                                    write(dotLoc.loc, bufLEB128, lebsizeScratchOffset);
+                                    if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
+                                    {
+                                        write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bregx);
+                                        lebsizeScratchBaseAddr = encodeULEB128(scratchBaseAddr, bufLEB128); // Address for bregx
+                                        write(dotLoc.loc, bufLEB128, lebsizeScratchBaseAddr);
+                                        lebsizeScratchOffset = encodeULEB128(currMemoryOffset, bufLEB128); // Offset for bregx
+                                        write(dotLoc.loc, bufLEB128, lebsizeScratchOffset);
 
-                                    currMemoryOffset += numOfRegs * m_pModule->m_pShader->getGRFSize();
+                                        currMemoryOffset += numOfRegs * m_pModule->m_pShader->getGRFSize();
+                                    }
+                                    else
+                                    {
+                                        Address addr;
+                                        uint64_t memoryOffset = (uint64_t)varInfo.getSpillOffset().memoryOffset +
+                                            (uint64_t)(vectorElem * numOfRegs * m_pModule->m_pShader->getGRFSize());
+                                        addr.Set(Address::Space::eScratch, 0, memoryOffset);
+
+                                        unsigned int op = llvm::dwarf::DW_OP_const8u;
+                                        write(dotLoc.loc, (uint8_t)op);
+                                        write(dotLoc.loc, addr.GetAddress());
+                                        op = llvm::dwarf::DW_OP_deref;
+                                        write(dotLoc.loc, (uint8_t)op);
+                                    }
 
                                     // Emit SIMD lane for spill (unpacked)
 
@@ -1757,10 +1780,10 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
                                     if (Loc.IsVectorized() == false)
                                     {
-                                        unsigned int subReg = varInfo.getGRF().subRegNum;
+                                        unsigned int subRegInBits = varInfo.getGRF().subRegNum * 8;
 
                                         // Scalar in a subregister
-                                        write(dotLoc.loc, (uint8_t)subReg);
+                                        write(dotLoc.loc, (uint8_t)subRegInBits);
                                     }
                                     else
                                     {
