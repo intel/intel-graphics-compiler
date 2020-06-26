@@ -2563,85 +2563,6 @@ static Constant* GetConstantValue(Type* type, char* rawData)
     return nullptr;
 }
 
-Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, unsigned int size_in_bytes, LoadInst* inst)
-{
-    Type* type = inst->getType();
-
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    ModuleMetaData* modMD = ctx->getModuleMetaData();
-
-    // Handling for base types (Integer/FloatingPoint)
-    if (!(type->isVectorTy()))
-    {
-        ConstantAddress cl;
-        cl.bufId = bufId;
-        cl.eltId = eltId;
-        cl.size = size_in_bytes;
-
-        // Inline the constants for constant buffer accesses of size <= 32bit only.
-        if (size_in_bytes > 4)
-            return nullptr;
-
-        auto it = modMD->inlineDynConstants.find(cl);
-        if (it != modMD->inlineDynConstants.end() && (it->first.size == cl.size))
-        {
-            // This constant is
-            //          found in the Dynamic inline constants list, and
-            //          sizes match (find only looking for bufId and eltId, so need to compare size field explicitly)
-            char* pConstVal;
-            pConstVal = (char*)(&(it->second));
-            return GetConstantValue(type, pConstVal);
-        }
-    }
-    else
-    {
-        Type * srcEltTy = type->getVectorElementType();
-        uint32_t srcNElts = type->getVectorNumElements();
-        uint32_t eltSize_in_bytes = (unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8;
-        std::vector<uint32_t> constValVec;
-
-        if (eltSize_in_bytes > 4)
-            return nullptr;
-
-        // First make sure all elements of vector are available in the dynamic inline constants
-        //    If not, we cannot inline the vector
-        for (uint i = 0; i < srcNElts; i++)
-        {
-            ConstantAddress cl;
-            cl.bufId = bufId;
-            cl.eltId = eltId + (i * eltSize_in_bytes);
-            cl.size = eltSize_in_bytes;
-
-            auto it = modMD->inlineDynConstants.find(cl);
-            if (it != modMD->inlineDynConstants.end() && (it->first.size == cl.size))
-            {
-                constValVec.push_back(it->second);
-            }
-            else
-            {
-                // All elements of the vector has to be available for inlining,
-                //     otherwise we cannot replace the load instruction, hence return nullptr
-                return nullptr;
-            }
-        }
-        if (constValVec.size() == srcNElts)
-        {
-            IRBuilder<> builder(inst);
-            Value * vectorValue = UndefValue::get(inst->getType());
-            for (uint i = 0; i < srcNElts; i++)
-            {
-                char* pConstVal;
-                pConstVal = (char*)(&(constValVec[i]));
-                vectorValue = builder.CreateInsertElement(
-                vectorValue,
-                GetConstantValue(srcEltTy, pConstVal),
-                builder.getInt32(i));
-            }
-            return dyn_cast<Constant>(vectorValue);
-        }
-    }
-    return nullptr;
-}
 
 Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
 {
@@ -2739,10 +2660,6 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
                         pEltValue = offset + eltId;
                     return GetConstantValue(inst->getType(), pEltValue);
                 }
-            }
-            else if ((!IGC_IS_FLAG_ENABLED(DisableDynamicConstantFolding)) && (modMD->inlineDynConstants.size() > 0))
-            {
-                return ReplaceFromDynConstants(bufIdOrGRFOffset, eltId, size_in_bytes, inst);
             }
         }
     }

@@ -274,19 +274,6 @@ namespace IGC
         bool isStateless = false;
     };
 
-    struct SConstantAddrValue
-    {
-        ConstantAddress ca;
-        bool anyValue;
-        uint32_t value;
-        uint32_t instCount = 0;
-        uint32_t branchCount = 0;
-        uint32_t loopCount = 0;
-        uint32_t samplerCount = 0;
-        uint32_t extendedMath = 0;
-        uint32_t selectCount = 0;
-        uint32_t weight = 0;
-    };
 
     struct SKernelProgram
     {
@@ -320,9 +307,6 @@ namespace IGC
         uint        m_ConstantBufferReplaceSize = 0;
 
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
-
-        // Interesting constants for dynamic constant folding
-        std::vector<SConstantAddrValue> m_pInterestingConstants;
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram

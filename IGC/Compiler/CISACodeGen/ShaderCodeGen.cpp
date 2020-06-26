@@ -110,7 +110,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
-#include "Compiler/FindInterestingConstants.h"
 #include "Compiler/DynamicTextureFolding.h"
 #include "Compiler/SampleMultiversioning.hpp"
 #include "Compiler/ThreadCombining.hpp"
@@ -1702,12 +1701,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
             mpm.add(new PurgeMetaDataUtils());
-        }
-
-        if (!IGC_IS_FLAG_ENABLED(DisableDynamicConstantFolding) &&
-            pContext->getModuleMetaData()->inlineDynConstants.empty())
-        {
-            mpm.add(new FindInterestingConstants());
         }
         // mpm.add(llvm::createDeadCodeEliminationPass()); // this should be done both before/after constant propagation
 
