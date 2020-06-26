@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <iomanip>
 #include <stack>
+#include <optional>
 
 #include "Mem_Manager.h"
 #include "G4_Opcode.h"
@@ -547,6 +548,8 @@ protected:
 
     MDLocation* location;
 
+    Metadata* MD = nullptr;
+
 #define UNDEFINED_GEN_OFFSET -1
     int64_t genOffset = UNDEFINED_GEN_OFFSET;
 
@@ -674,7 +677,9 @@ public:
         G4_Operand* s2,
         unsigned int opt);
 
-    virtual ~G4_INST() {}
+    virtual ~G4_INST()
+    {
+    }
 
     // The method is declared virtual so subclasses of G4_INST
     // should also implement this method to populate members
@@ -1172,6 +1177,21 @@ public:
     bool canSrcBeAcc(Gen4_Operand_Number opndNum) const;
 
     TARGET_PLATFORM getPlatform() const;
+
+    void setMetadata(const std::string& key, MDNode* value);
+
+    MDNode* getMetadata(const std::string& key) const
+    {
+        return MD ? MD->getMetadata(key) : nullptr;
+    }
+
+    void setComments(const std::string& comments);
+
+    std::string getComments()
+    {
+        auto comments = getMetadata(Metadata::InstComment);
+        return comments && comments->isMDString() ? comments->asMDString()->getData() : "";
+    }
 
 private:
     bool detectComprInst() const;

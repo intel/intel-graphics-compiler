@@ -4274,6 +4274,9 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
         }
 
         auto spillSends = createOwordSpill(payloadSizeInOwords, payloadToUse);
+        std::stringstream comments;
+        comments <<  "stack spill: " << payload->getTopDcl()->getName() << " to FP[" << inst->asSpillIntrinsic()->getOffset() << "x32]";
+        spillSends->setComments(comments.str());
 
         bb->insert(spillIt, spillSends);
 
@@ -4447,6 +4450,10 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
         }
 
         auto fillSends = createOwordFill(respSizeInOwords, fillDst);
+
+        std::stringstream comments;
+        comments << "stack fill: " << resultRgn->getTopDcl()->getName() << " from FP[" << inst->asFillIntrinsic()->getOffset() << "x32]";
+        fillSends->setComments(comments.str());
 
         bb->insert(fillIt, fillSends);
 

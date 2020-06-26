@@ -525,6 +525,11 @@ private:
 
     const CISA_IR_Builder* parentBuilder = nullptr;
 
+    // stores all metadata ever allocated
+    Mem_Manager metadataMem;
+    std::vector<Metadata*> allMDs;
+    std::vector<MDNode*> allMDNodes;
+
 public:
     PreDefinedVars preDefVars;
     Mem_Manager&        mem;        // memory for all operands and insts
@@ -895,7 +900,7 @@ public:
         builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
         mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m),
-        instList(alloc), kernel(k)
+        instList(alloc), kernel(k), metadataMem(4096)
     {
         m_inst = nullptr;
         num_temp_dcl = 0;
@@ -935,7 +940,17 @@ public:
         }
         instAllocList.clear();
 
-        if (fcPatchInfo != NULL)
+        for (auto MD : allMDs)
+        {
+            MD->~Metadata();
+        }
+
+        for (auto node : allMDNodes)
+        {
+            node->~MDNode();
+        }
+
+        if (fcPatchInfo)
         {
             fcPatchInfo->~FCPatchingInfo();
         }
@@ -2750,6 +2765,20 @@ public:
             !(VISA_WA_CHECK(m_pWaTable, WaDisableSendsSrc0DstOverlap));
     }
 
+    Metadata* allocateMD()
+    {
+        Metadata* newMD = new (metadataMem) Metadata();
+        allMDs.push_back(newMD);
+        return newMD;
+    }
+
+    MDNode* allocateMDString(const std::string& str)
+    {
+        auto newNode = new (metadataMem) MDString(str);
+        allMDNodes.push_back(newNode);
+        return newNode;
+    }
+
     void doSamplerHeaderMove(G4_Declare* header, G4_Operand* sampler);
 
     void expandFdiv(uint8_t exsize, G4_Predicate *predOpnd, bool saturate,
@@ -2831,7 +2860,6 @@ private:
         uint32_t mask);
 
     VISA_Exec_Size roundUpExecSize(VISA_Exec_Size execSize);
-
 };
 }
 

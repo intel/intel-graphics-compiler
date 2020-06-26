@@ -5813,6 +5813,12 @@ void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST
     if (!inst->isLabel() && inst->opcode() < G4_NUM_OPCODE)
     {
         output << " //";
+
+        auto comments = inst->getComments();
+        if (comments != "")
+        {
+            output << " " << comments << ", ";
+        }
         emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getLexicalId(), inst->getGenOffset());
 
         if (getPlatformGeneration(platform) < PlatformGen::GEN12)

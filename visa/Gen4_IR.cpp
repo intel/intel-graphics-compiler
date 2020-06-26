@@ -1099,6 +1099,22 @@ uint16_t G4_INST::getMaskOffset() const
     }
 }
 
+void G4_INST::setMetadata(const std::string& key, MDNode* value)
+{
+    if (!MD)
+    {
+        MD = const_cast<IR_Builder&>(builder).allocateMD();
+    }
+    MD->setMetadata(key, value);
+}
+
+void G4_INST::setComments(const std::string& str)
+{
+    // we create a new MDNode the assumption is that comment should be unique and there is no opportunity for sharing
+    auto node = const_cast<IR_Builder&>(builder).allocateMDString(str);
+    setMetadata(Metadata::InstComment, node);
+}
+
 //
 // remove all references to this inst in other inst's use_list
 // this is used when we want to delete this instruction

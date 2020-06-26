@@ -27,6 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _METADATA_H_
 #define _METADATA_H_
 
+#include <optional>
+#include <iostream>
+
 namespace vISA
 {
 
@@ -47,6 +50,140 @@ public:
     void setLineNo(int line) { lineNo = line; }
     const char* getSrcFilename() const { return srcFilename; }
     void setSrcFilename(const char* filename) { srcFilename = filename; }
+};
+
+//
+// A metadata is simply a collection of (<key>, <value>) pairs that may be attached to an IR object (BB, Inst, Declare, etc.)
+// Metadata is completely optional; vISA optimizations and transformations are not obliged to preserve them, and dropping them should not affect correctness
+// Metadata key is a string, and only one value is allowed per key for now.
+// Metadata value is represented by an MDNode abstract class, each subclass provides the actual implementation of the metadata value
+// Currently there are only two types of metadata: MDString and MDLocation (to be added).
+// Metadata memory management is performed by IR_Builder through the various allocaeMD* methods.
+// An MDNode may be shared among muitiple IR objects, it's the user's responsiblity to ensure correct ownership and sharing behaviors.
+// Each object has its own unqiue metadata map, however.
+// Currently only G4_INST supports metadata through the setMetaData/getMetadata interface.
+// OPEN: use enum instead of string as metadata key. This would speed up lookup at the expense of some flexibility.
+// OPEN: better management schemes for a MDNode's lifetime/ownership.
+//
+
+enum class MDType
+{
+    String,
+    SrcLoc
+};
+
+// forward declaration so that the asMD*() calls can work
+class MDString;
+
+class MDNode
+{
+
+    const MDType nodeType;
+
+protected:
+    MDNode(MDType ty) : nodeType(ty) {}
+
+ public:
+
+    MDNode(const MDNode& node) = delete;
+
+    void operator=(const MDNode& node) = delete;
+
+    void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
+
+    virtual ~MDNode() {}
+
+    bool isMDString() const { return nodeType == MDType::String; }
+    bool isMDLocation() const { return nodeType == MDType::SrcLoc; }
+
+    const MDString* asMDString() const
+    {
+        return isMDString() ? reinterpret_cast<const MDString*>(this) : nullptr;
+    }
+
+    const MDLocation* asMDLocation() const
+    {
+        return isMDLocation() ? reinterpret_cast<const MDLocation*>(this) : nullptr;
+    }
+
+    virtual void print(std::ostream& OS) const = 0;
+    void dump() const
+    {
+        print(std::cerr);
+    }
+};
+
+class MDString : public MDNode
+{
+    const std::string data;
+
+public:
+
+    MDString(const std::string& str) : MDNode(MDType::String), data(str) {}
+
+    MDString(const MDString& node) = delete;
+
+    void operator=(const MDString& node) = delete;
+
+    virtual ~MDString() = default;
+
+    std::string getData() const { return data; }
+
+    void print(std::ostream& OS) const
+    {
+        OS << "\"" << data << "\"";
+    }
+};
+
+class Metadata
+{
+
+    std::unordered_map<std::string, MDNode*> MDMap;
+
+public:
+    explicit Metadata() {}
+
+    Metadata(const Metadata& md) = delete;
+
+    virtual ~Metadata() {}
+
+    void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
+
+    // it simply overwrites existing value for key if it already exists
+    void setMetadata(const std::string& key, MDNode* value)
+    {
+        MDMap.emplace(key, value);
+    }
+
+    MDNode* getMetadata(const std::string& key)
+    {
+        auto iter = MDMap.find(key);
+        return iter != MDMap.end() ? iter->second : nullptr;
+    }
+
+    bool isMetadataSet(const std::string& key)
+    {
+        return MDMap.count(key);
+    }
+
+    void print(std::ostream& OS) const
+    {
+        for (auto&& iter : MDMap)
+        {
+            OS << "\"" << iter.first << "\" : ";
+            iter.second->print(OS);
+            OS << "\n";
+        }
+    }
+
+    void dump() const
+    {
+        print(std::cerr);
+    }
+
+    // list the known keys here to avoid typos
+    inline static const std::string InstComment = "comment";
+    inline static const std::string InstLoc = "location";
 };
 
 }
