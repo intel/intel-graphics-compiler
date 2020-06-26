@@ -1545,57 +1545,6 @@ auto sizeToSIMDMode = [](uint32_t size)
     }
 };
 
-CVariable* CShader::GetStructVariable(llvm::Value* value, llvm::Constant* initValue)
-{
-    IGC_ASSERT(value->getType()->isStructTy());
-
-    // check if we already created the symbol mapping
-    if (!isa<Constant>(value))
-    {
-        auto it = symbolMapping.find(value);
-        if (it != symbolMapping.end())
-        {
-            return it->second;
-        }
-    }
-
-    StructType* sTy = cast<StructType>(value->getType());
-    auto& DL = entry->getParent()->getDataLayout();
-    const StructLayout* SL = DL.getStructLayout(sTy);
-
-    unsigned structSizeInBytes = (unsigned)SL->getSizeInBytes();
-    // Represent the struct as a vector of BYTES
-    bool isUniform = GetIsUniform(value);
-    unsigned lanes = isUniform ? 1 : numLanes(m_dispatchSize);
-    CVariable* cVar =
-        GetNewVariable(structSizeInBytes * lanes, ISA_TYPE_B, EALIGN_GRF, isUniform, value->getName());
-
-    // Initialize the struct
-    if (Constant* C = dyn_cast<Constant>(value))
-        initValue = C;
-
-    if (initValue)
-    {
-        for (unsigned i = 0; i < sTy->getNumElements(); i++)
-        {
-            CVariable* elementSrc = GetSymbol(initValue->getAggregateElement(i));
-            if (!elementSrc->IsUndef())
-            {
-                unsigned elementOffset = (unsigned)SL->getElementOffset(i);
-                CVariable* elementDst = GetNewAlias(cVar, elementSrc->GetType(), elementOffset * lanes, elementSrc->GetNumberElement() * lanes);
-                GetEncoder().Copy(elementDst, elementSrc);
-                GetEncoder().Push();
-            }
-        }
-    }
-
-    if (!isa<Constant>(value))
-    {
-        symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, cVar));
-    }
-    return cVar;
-}
-
 CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
 {
     llvm::VectorType* VTy = llvm::dyn_cast<llvm::VectorType>(C->getType());
@@ -2448,12 +2397,6 @@ unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
 CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
 {
     CVariable* var = nullptr;
-
-    // Symbol mappings for struct types
-    if (value->getType()->isStructTy())
-    {
-        return GetStructVariable(value);
-    }
 
     if (Constant * C = llvm::dyn_cast<llvm::Constant>(value))
     {

@@ -171,7 +171,6 @@ namespace IGC
         void visitFPToUIInst(llvm::FPToUIInst& I);
         void visitDbgInfoIntrinsic(llvm::DbgInfoIntrinsic& I);
         void visitExtractValueInst(llvm::ExtractValueInst& I);
-        void visitInsertValueInst(llvm::InsertValueInst& I);
         void visitBranchInst(llvm::BranchInst& I);
 
     public:
@@ -239,9 +238,6 @@ namespace IGC
         bool matchMulPair(llvm::ExtractValueInst*);
         bool matchPtrToPair(llvm::ExtractValueInst*);
 
-        bool MatchCopyToStruct(llvm::InsertValueInst*);
-        bool MatchCopyFromStruct(llvm::ExtractValueInst*);
-
         void AddPattern(Pattern* P)
         {
             m_currentPattern = P;
@@ -292,13 +288,6 @@ namespace IGC
         typedef std::pair<llvm::ExtractValueInst*, llvm::ExtractValueInst*> PairOutputTy;
         typedef llvm::DenseMap<llvm::Value*, PairOutputTy> PairOutputMapTy;
         PairOutputMapTy PairOutputMap;
-
-        // Maps the final insertvalue instruction to a struct type to:
-        // The initial value of the struct
-        // A vector of sources and the corresponding index into the struct
-        // [InsertValueInst] -> [Constant Init Value][vector<[Source][Idx]>]
-        typedef llvm::DenseMap<llvm::InsertValueInst*, std::pair<llvm::Constant*, std::vector<std::pair<SSource, unsigned>>>> StructValueInsertMapTy;
-        StructValueInsertMapTy StructValueInsertMap;
 
         llvm::Instruction* m_root;
         Pattern* m_currentPattern;
