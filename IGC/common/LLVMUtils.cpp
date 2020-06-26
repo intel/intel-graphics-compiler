@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/Stats.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/shaderOverride.hpp"
+#include "common/IntrinsicAnnotator.hpp"
 #include "common/LLVMUtils.h"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -137,6 +138,7 @@ IGCPassManager::~IGCPassManager()
 void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
 {
     SetCurrentDebugHash(pContext->hash.asmHash);
+
     if (IGC_IS_FLAG_ENABLED(DumpLLVMIR))
     {
         pContext->getMetaDataUtils()->save(*pContext->getLLVMContext());
@@ -149,10 +151,12 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
             .Pass(dumpName)
             .Retry(pContext->m_retryManager.GetRetryId())
             .Extension("ll");
+        auto new_annotator = IntrinsicAnnotator();
+        auto annotator = (pContext->annotater != nullptr) ? pContext->annotater : &new_annotator;
         DumpLLVMIRText(
             pContext->getModule(),
             Dump(name, DumpType::PASS_IR_TEXT),
-            pContext->annotater);
+            annotator);
     }
     if (IGC_IS_FLAG_ENABLED(ShaderOverride))
     {

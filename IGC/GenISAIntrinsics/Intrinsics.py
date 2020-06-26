@@ -105,9 +105,13 @@ def getAttributeList(Attrs):
 Intrinsics = dict()
 parse = sys.argv
 
+turnOnComments = True;
+
 for i in range(len(parse)):
     #Populate the dictionary with the appropriate Intrinsics
     if i != 0:
+        if parse[i] == "false":
+            turnOnComments = False;
         if (".py" in parse[i]):
             module = importlib.import_module(os.path.split(parse[i])[1].replace(".py",""))
             Intrinsics.update(module.Imported_Intrinsics)
@@ -447,6 +451,42 @@ def createAttributeTable():
             "#endif // GET_INTRINSIC_ATTRIBUTES\n\n")
     f.close()
 
+def compileComments():
+    f = open(outputFile,"a")
+    f.write("//Comments for each Intrinsic\n"
+            "#ifdef GET_INTRINSIC_COMMENTS_TABLE\n")
+    f.write("static const std::array<IntrinsicComments,"+str(len(ID_array))+"> IDComments = {{\n")
+    for i in range(len(ID_array)):
+        func_desc = Intrinsics[ID_array[i]][0]
+        output_array = Intrinsics[ID_array[i]][1][0]
+        input_array = Intrinsics[ID_array[i]][1][1]
+        f.write('{"'+func_desc+'", {')
+        if len(output_array) == 2 and isinstance(output_array[0], str):
+            f.write('"'+output_array[1]+'"')
+        else:
+            if len(output_array) == 0:
+                f.write('"none"')
+            else:
+                for o in range(len(output_array)):
+                    f.write('"'+output_array[o][1]+'"')
+                    if o != (len(output_array) - 1):
+                        f.write(",")
+        f.write('}, {')
+        if len(input_array) == 0:
+            f.write('"none"')
+        else:
+            for input in range(len(input_array)):
+                f.write('"'+input_array[input][1]+'"')
+                if input != (len(input_array) - 1):
+                    f.write(",")
+        f.write('}}')
+        if i != (len(ID_array) - 1):
+            f.write(",\n")
+    f.write('}};\n')
+    f.write("return IDComments[id-Intrinsic::num_intrinsics - 1];\n")
+    f.write("#endif //GET_INTRINSIC_COMMENTS_TABLE\n")
+    f.close()
+
 def emitSuffix():
     f = open(outputFile,"a")
     f.write("#if defined(_MSC_VER) && defined(setjmp_undefined_for_msvc)\n"
@@ -464,4 +504,12 @@ createOverloadTable()
 sortedIntrinsicsOnLenth()
 createTypeTable()
 createAttributeTable()
+if turnOnComments:
+    compileComments()
+else:
+    f = open(outputFile,"a")
+    f.write("#ifdef GET_INTRINSIC_COMMENTS_TABLE\n")
+    f.write('return {"", {""}, {""}};\n')
+    f.write("#endif //GET_INTRINSIC_COMMENTS_TABLE\n\n")
+    f.close()
 emitSuffix()

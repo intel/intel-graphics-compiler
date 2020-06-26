@@ -55,6 +55,15 @@ namespace GenISAIntrinsic {
   std::string getName(ID id, ArrayRef<Type*> Tys = None);
 
 
+  struct IntrinsicComments
+  {
+      const char* funcDescription;
+      std::vector<const char*> outputs;
+      std::vector<const char*> inputs;
+  };
+
+  IntrinsicComments getIntrinsicComments(ID id);
+
   /// Intrinsic::getDeclaration(M, ID) - Create or insert an LLVM Function
   /// declaration for an intrinsic, and return it.
   ///

@@ -464,6 +464,13 @@ std::string GenISAIntrinsic::getName(GenISAIntrinsic::ID id, ArrayRef<Type*> Tys
   return Result;
 }
 
+GenISAIntrinsic::IntrinsicComments GenISAIntrinsic::getIntrinsicComments(
+    GenISAIntrinsic::ID id) {
+#define GET_INTRINSIC_COMMENTS_TABLE
+#include "IntrinsicGenISA.gen"
+#undef GET_INTRINSIC_COMMENTS_TABLE
+}
+
 FunctionType *GenISAIntrinsic::getType(LLVMContext &Context,
                                  ID id, ArrayRef<Type*> Tys) {
   SmallVector<IITDescriptor, 8> Table;

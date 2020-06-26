@@ -34,11 +34,13 @@ set_property(TARGET "${IGC_BUILD__PROJ__GenISAIntrinsics}" PROPERTY
 
 set(_intrinsicScript "${IGC_SOURCE_DIR}/GenISAIntrinsics/Intrinsics.py")
 
+set(_InstCmdline)
     set(_fileInput "Intrinsic_definitions.py")
 
+list(APPEND _InstCmdline ${_fileInput})
 add_custom_command(OUTPUT "${_fileOutput}"
     COMMAND "${PYTHON_EXECUTABLE}"
-    ARGS ${_intrinsicScript} ${_fileInput} ${_fileOutput}
+    ARGS ${_intrinsicScript} ${_InstCmdline} ${_fileOutput}
     DEPENDS "${_intrinsicScript}" ${_fileInput}
     COMMENT "Generating Gen intrinsic definition file: ${_fileOutput}"
   )
