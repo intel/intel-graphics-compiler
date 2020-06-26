@@ -480,7 +480,14 @@ ulong __builtin_spirv_OpAtomicUlongUnary_p3( bool isInc, volatile __local long *
 
 ulong __builtin_spirv_OpAtomicExchange_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    return __builtin_spirv_OpAtomicUlongBinary_p3(ATOMIC_XCHG64, Pointer, Scope, Semantics, Value);
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer = Value;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 
@@ -821,7 +828,14 @@ ulong __builtin_spirv_OpAtomicIIncrement_p1i64_i32_i32( volatile __global ulong 
 
 ulong __builtin_spirv_OpAtomicIIncrement_p3i64_i32_i32( volatile __local ulong *Pointer, uint Scope, uint Semantics )
 {
-    return __builtin_spirv_OpAtomicUlongUnary_p3(true, Pointer, Scope, Semantics);
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer += 1;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -894,7 +908,14 @@ ulong __builtin_spirv_OpAtomicIDecrement_p1i64_i32_i32( volatile __global ulong 
 
 ulong __builtin_spirv_OpAtomicIDecrement_p3i64_i32_i32( volatile __local ulong *Pointer, uint Scope, uint Semantics )
 {
-    return __builtin_spirv_OpAtomicUlongUnary_p3(false, Pointer, Scope, Semantics);
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer -= 1;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -967,7 +988,14 @@ ulong __builtin_spirv_OpAtomicIAdd_p1i64_i32_i32_i64( volatile __global ulong *P
 
 ulong __builtin_spirv_OpAtomicIAdd_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    return __builtin_spirv_OpAtomicUlongBinary_p3(ATOMIC_IADD64, Pointer, Scope, Semantics, Value);
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer += Value;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 
@@ -1042,7 +1070,14 @@ ulong __builtin_spirv_OpAtomicISub_p1i64_i32_i32_i64( volatile __global ulong *P
 
 ulong __builtin_spirv_OpAtomicISub_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    return __builtin_spirv_OpAtomicUlongBinary_p3(ATOMIC_SUB64, Pointer, Scope, Semantics, Value);
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer -= Value;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1116,7 +1151,14 @@ long __builtin_spirv_OpAtomicSMin_p1i64_i32_i32_i64( volatile __global ulong *Po
 
 long __builtin_spirv_OpAtomicSMin_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
-    return __builtin_spirv_OpAtomicSlongBinary_p3(ATOMIC_IMIN64, Pointer, Scope, Semantics, Value);
+    long orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer = ( orig < Value ) ? orig : Value;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1188,7 +1230,14 @@ ulong __builtin_spirv_OpAtomicUMin_p1i64_i32_i32_i64( volatile __global ulong *P
 
 ulong __builtin_spirv_OpAtomicUMin_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    return __builtin_spirv_OpAtomicUlongBinary_p3(ATOMIC_UMIN64, Pointer, Scope, Semantics, Value);
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer = ( orig < Value ) ? orig : Value;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1261,7 +1310,14 @@ long __builtin_spirv_OpAtomicSMax_p1i64_i32_i32_i64( volatile __global ulong *Po
 
 long __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
-    return __builtin_spirv_OpAtomicSlongBinary_p3(ATOMIC_IMAX64, Pointer, Scope, Semantics, Value);
+    long orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer = ( orig > Value ) ? orig : Value;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1336,7 +1392,14 @@ ulong __builtin_spirv_OpAtomicUMax_p1i64_i32_i32_i64( volatile __global ulong *P
 
 ulong __builtin_spirv_OpAtomicUMax_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    return __builtin_spirv_OpAtomicUlongBinary_p3(ATOMIC_UMAX64, Pointer, Scope, Semantics, Value);
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer = ( orig > Value ) ? orig : Value;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1409,7 +1472,14 @@ ulong __builtin_spirv_OpAtomicAnd_p1i64_i32_i32_i64( volatile __global ulong *Po
 
 ulong __builtin_spirv_OpAtomicAnd_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    return __builtin_spirv_OpAtomicUlongBinary_p3(ATOMIC_AND64, Pointer, Scope, Semantics, Value);
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer &= Value;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1482,7 +1552,14 @@ ulong __builtin_spirv_OpAtomicOr_p1i64_i32_i32_i64( volatile __global ulong *Poi
 
 ulong __builtin_spirv_OpAtomicOr_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    return __builtin_spirv_OpAtomicUlongBinary_p3(ATOMIC_OR64, Pointer, Scope, Semantics, Value);
+      ulong orig;
+      FENCE_PRE_OP(Scope, Semantics, false)
+      SPINLOCK_START
+      orig = *Pointer;
+      *Pointer |= Value;
+      SPINLOCK_END
+      FENCE_POST_OP(Scope, Semantics, false)
+      return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -1556,7 +1633,14 @@ ulong __builtin_spirv_OpAtomicXor_p1i64_i32_i32_i64( volatile __global ulong *Po
 
 ulong __builtin_spirv_OpAtomicXor_p3i64_i32_i32_i64( volatile __local ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    return __builtin_spirv_OpAtomicUlongBinary_p3(ATOMIC_XOR64, Pointer, Scope, Semantics, Value);
+    ulong orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START
+    orig = *Pointer;
+    *Pointer ^= Value;
+    SPINLOCK_END
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
