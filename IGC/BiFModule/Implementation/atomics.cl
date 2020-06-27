@@ -449,7 +449,7 @@ long __builtin_spirv_OpAtomicSlongBinary_p3( enum IntAtomicOp atomicOp, volatile
     uint Scope, uint Semantics, long Value )
 {
 
-    ulong orig;
+    long orig;
     FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START
     orig = *Pointer;
