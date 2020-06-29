@@ -257,6 +257,7 @@ namespace IGC
         bool hasTypedwrite;
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
         bool hasUniformAssumptions;
+        bool hasWaveIntrinsics;
         unsigned int numSample;
         unsigned int numBB;
         unsigned int numLoopInsts;

@@ -87,6 +87,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasTypedwrite = false;
     instrList->mayHaveIndirectOperands = false;
     instrList->hasUniformAssumptions = false;
+    instrList->hasWaveIntrinsics = false;
     instrList->numSample = 0;
     instrList->numBB = 0;
     instrList->numLoopInsts = 0;
@@ -226,6 +227,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             break;
         case GenISAIntrinsic::GenISA_WaveShuffleIndex:
             g_InstrTypes->mayHaveIndirectOperands = true;
+            g_InstrTypes->hasWaveIntrinsics = true;
             break;
         case GenISAIntrinsic::GenISA_threadgroupbarrier:
             g_InstrTypes->hasBarrier = true;
@@ -235,6 +237,16 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             break;
         case GenISAIntrinsic::GenISA_typedwrite:
             g_InstrTypes->hasTypedwrite = true;
+            break;
+        case GenISAIntrinsic::GenISA_WaveAll:
+        case GenISAIntrinsic::GenISA_WaveBallot:
+        case GenISAIntrinsic::GenISA_wavebarrier:
+        case GenISAIntrinsic::GenISA_WaveInverseBallot:
+        case GenISAIntrinsic::GenISA_WavePrefix:
+        case GenISAIntrinsic::GenISA_WaveClustered:
+        case GenISAIntrinsic::GenISA_QuadPrefix:
+        case GenISAIntrinsic::GenISA_simdShuffleDown:
+            g_InstrTypes->hasWaveIntrinsics = true;
             break;
         default:
             break;
