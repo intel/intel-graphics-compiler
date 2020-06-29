@@ -180,7 +180,7 @@ namespace vISA
 
                     auto dupOp = samplerHeaderMov->cloneInst();
 
-                    bb->insert(instIt, dupOp);
+                    bb->insertBefore(instIt, dupOp);
                 }
             }
 
@@ -1145,7 +1145,7 @@ namespace vISA
                                 rematSrc = rematerialize(src->asSrcRegRegion(), bb, uniqueDef, newInsts, cacheInst);
                                 while (!newInsts.empty())
                                 {
-                                    bb->insert(instIt, newInsts.front());
+                                    bb->insertBefore(instIt, newInsts.front());
                                     newInsts.pop_front();
                                 }
 

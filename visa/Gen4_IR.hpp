@@ -544,7 +544,8 @@ protected:
     // instruction's id in BB. Each optimization should re-initialize before using
     int32_t   local_id;
 
-    int srcCISAoff; // record CISA inst offset that resulted in this instruction
+    static const int UndefinedCisaOffset = -1;
+    int srcCISAoff = UndefinedCisaOffset; // record CISA inst offset that resulted in this instruction
 
     MDLocation* location;
 
@@ -832,6 +833,7 @@ public:
         return (G4_Label*) getSrc(0);
     }
 
+    void inheritDIFrom(const G4_INST* inst);
     MDLocation *getLocation() const { return location; }
     void setLocation(MDLocation* loc) {
         location = loc;
@@ -972,6 +974,7 @@ public:
 
     void setCISAOff(int offset) { srcCISAoff = offset; }
     int getCISAOff() const { return srcCISAoff; }
+    bool isCISAOffValid() const { return getCISAOff() != UndefinedCisaOffset; }
 
     bool isOptBarrier() const;
     bool hasImplicitAccSrc() const

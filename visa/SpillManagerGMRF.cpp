@@ -3597,7 +3597,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                         inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
                             curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 
-                        bb->insert( inst_it, inst );
+                        bb->insertBefore( inst_it, inst );
 
                         if( spill )
                         {
@@ -3609,7 +3609,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                             inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
                                 curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 
-                            bb->insert( next_inst_it, inst );
+                            bb->insertBefore( next_inst_it, inst );
                         }
 
                         // If 2 rows were processed then increment induction var suitably
@@ -3669,7 +3669,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                     inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
                         curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 
-                    bb->insert( inst_it, inst );
+                    bb->insertBefore( inst_it, inst );
 
                     if( spill )
                     {
@@ -3681,7 +3681,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
                         inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
                             curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
 
-                        bb->insert( next_inst_it, inst );
+                        bb->insertBefore( next_inst_it, inst );
                     }
 
                     off += curExSize;
@@ -3705,7 +3705,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                 G4_INST* pseudoUseInst = kernel->fg.builder->createInternalIntrinsicInst(nullptr, Intrinsic::Use, 1, nullptr, pseudoUseSrc, nullptr, nullptr, InstOpt_NoOpt);
 
-                bb->insert(next_inst_it, pseudoUseInst);
+                bb->insertBefore(next_inst_it, pseudoUseInst);
             }
 
         }
@@ -4119,7 +4119,7 @@ void GlobalRA::expandSpillNonStackcall(uint32_t& numRows, uint32_t& offset, shor
         auto sendInst = builder->createInternalSplitSendInst(nullptr, G4_sends, execSize,
             inst->getDst(), header, payloadToUse, msgDescImm, inst->getOption(),
             msgDesc, extDesc, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
-        instIt = bb->insert(instIt, sendInst);
+        instIt = bb->insertBefore(instIt, sendInst);
     }
     else
     {
@@ -4142,7 +4142,7 @@ void GlobalRA::expandSpillNonStackcall(uint32_t& numRows, uint32_t& offset, shor
                 inst->getOption(), msgDesc, extDesc, inst->getLineNo(), inst->getCISAOff(),
                 inst->getSrcFilename());
 
-            instIt = bb->insert(instIt, sendInst);
+            instIt = bb->insertBefore(instIt, sendInst);
 
             numRows -= getPayloadSizeGRF(numRows);
             offset += getPayloadSizeGRF(numRows);
@@ -4216,7 +4216,7 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
                 hdrSetInst = builder->createMov(1, dst, src0, InstOpt_WriteEnable, false);
             }
 
-            bb->insert(spillIt, hdrSetInst);
+            bb->insertBefore(spillIt, hdrSetInst);
         }
 
         auto spillSends = createOwordSpill(payloadSizeInOwords, payloadToUse);
@@ -4224,7 +4224,7 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
         comments <<  "stack spill: " << payload->getTopDcl()->getName() << " to FP[" << inst->asSpillIntrinsic()->getOffset() << "x32]";
         spillSends->setComments(comments.str());
 
-        bb->insert(spillIt, spillSends);
+        bb->insertBefore(spillIt, spillSends);
 
         numRowsOword -= payloadSizeInOwords;
         offsetOword += payloadSizeInOwords;
@@ -4296,7 +4296,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
          G4_Operand* msgDescOpnd = builder->createImm(msgDesc->getDesc(), Type_UD);
          auto sendInst = builder->createInternalSendInst(nullptr, G4_send, execSize, fillDst, sendSrc0, msgDescOpnd,
              InstOpt_WriteEnable, msgDesc, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
-         instIt = bb->insert(instIt, sendInst);
+         instIt = bb->insertBefore(instIt, sendInst);
      }
      else
      {
@@ -4322,7 +4322,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
 
              sendInst->setCISAOff(inst->getCISAOff());
 
-             instIt = bb->insert(instIt, sendInst);
+             instIt = bb->insertBefore(instIt, sendInst);
 
              numRows -= getPayloadSizeGRF(numRows);
              offset += getPayloadSizeGRF(numRows);
@@ -4392,7 +4392,7 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
                 hdrSetInst = builder->createMov(1, dst, src0, InstOpt_WriteEnable, false);
             }
 
-            bb->insert(fillIt, hdrSetInst);
+            bb->insertBefore(fillIt, hdrSetInst);
         }
 
         auto fillSends = createOwordFill(respSizeInOwords, fillDst);
@@ -4401,7 +4401,7 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
         comments << "stack fill: " << resultRgn->getTopDcl()->getName() << " from FP[" << inst->asFillIntrinsic()->getOffset() << "x32]";
         fillSends->setComments(comments.str());
 
-        bb->insert(fillIt, fillSends);
+        bb->insertBefore(fillIt, fillSends);
 
         numRowsOword -= respSizeInOwords;
         offsetOword += respSizeInOwords;

@@ -2870,7 +2870,7 @@ void CFGStructurizer::insertAtBegin(G4_BB* aBB, G4_INST *anInst)
     MUST_BE_TRUE((*I)->opcode() == G4_label,
                  "The 1st inst of BB must be a label inst");
     ++I;
-    aBB->insert(I, anInst);
+    aBB->insertBefore(I, anInst);
 }
 
 void CFGStructurizer::setJoinJIP(G4_BB* joinBB, G4_BB* jipBB)
@@ -3498,7 +3498,7 @@ void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinB
                 gotoInst->getCISAOff(), gotoInst->getSrcFilename());
             INST_LIST_ITER iter = gotoBB->end();
             iter--;
-            gotoBB->insert(iter, predInst);
+            gotoBB->insertBefore(iter, predInst);
 
             pred = CFG->builder->createPredicate(
                 PredState_Plus,

@@ -45,6 +45,7 @@ class MDLocation {
 
 public:
     ~MDLocation() = default;
+    MDLocation(MDLocation& loc) = default;
     void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
     int getLineNo() { return lineNo; }
     void setLineNo(int line) { lineNo = line; }

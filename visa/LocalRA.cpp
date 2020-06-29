@@ -2928,7 +2928,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(oldDcl, builder.getRegionStride1());
                                     G4_INST* splitInst = builder.createMov(
                                         (uint8_t) (oldDcl->getTotalElems() > 16 ? 16 : oldDcl->getTotalElems()), dst, src, InstOpt_WriteEnable, false);
-                                    bb->insert(iter, splitInst);
+                                    bb->insertBefore(iter, splitInst);
 
                                     unsigned int idx = 0;
                                     gra.getLocalLR(oldDcl)->setLastRef(splitInst, idx);
@@ -2941,7 +2941,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                         G4_DstRegRegion* dst = builder.createDst(splitDcl->getRegVar(), 2, 0, 1, oldDcl->getElemType());
                                         auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, oldDcl->getRegVar(), 2, 0, builder.getRegionStride1(), oldDcl->getElemType());
                                         G4_INST* splitInst2 = builder.createMov(16, dst, src, InstOpt_WriteEnable, false);
-                                        bb->insert(iter, splitInst2);
+                                        bb->insertBefore(iter, splitInst2);
                                     }
 
                                     const char* newDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldDcl->getName());
@@ -2958,7 +2958,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     G4_INST* movInst = builder.createMov(
                                         (uint8_t) (splitDcl->getTotalElems() > 16 ? 16 : splitDcl->getTotalElems()),
                                         dst, src, InstOpt_WriteEnable, false);
-                                    bb->insert(iter, movInst);
+                                    bb->insertBefore(iter, movInst);
 
                                     splitLR->setLastRef(movInst, idx);
                                     G4_INST* old_last_use = activeLR->getLastRef(idx);
@@ -2971,7 +2971,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                         G4_DstRegRegion* dst = builder.createDst(newDcl->getRegVar(), 2, 0, 1, splitDcl->getElemType());
                                         auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, splitDcl->getRegVar(), 2, 0, builder.getRegionStride1(), splitDcl->getElemType());
                                         G4_INST* movInst2 = builder.createMov(16, dst, src, InstOpt_WriteEnable, false);
-                                        bb->insert(iter, movInst2);
+                                        bb->insertBefore(iter, movInst2);
                                     }
 
                                     unsigned int pos = usePoint.second;

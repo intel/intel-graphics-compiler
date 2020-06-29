@@ -357,7 +357,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                 auto movSrc = builder.Create_Src_Opnd_From_Dcl(spDcl, builder.getRegionScalar());
                 auto movDst = builder.Create_Dst_Opnd_From_Dcl(tmpDcl, 1);
                 G4_INST* movInst = builder.createMov(1, movDst, movSrc, InstOpt_WriteEnable, false);
-                bb->insert(it, movInst);
+                bb->insertBefore(it, movInst);
 
                 s = builder.createSrcRegRegion(
                     Mod_src_undef,

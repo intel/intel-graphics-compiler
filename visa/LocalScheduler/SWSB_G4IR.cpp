@@ -3067,7 +3067,7 @@ G4_INST* SWSB::insertSyncInstruction(G4_BB* bb, INST_LIST_ITER nextIter, int CIS
 {
     G4_SrcRegRegion* src0 = fg.builder->createNullSrc(Type_UD);
     G4_INST* syncInst = fg.builder->createSync(G4_sync_nop, src0);
-    bb->insert(nextIter, syncInst);
+    bb->insertBefore(nextIter, syncInst);
     syncInstCount++;
 
     return syncInst;
@@ -3079,7 +3079,7 @@ G4_INST* SWSB::insertSyncInstructionAfter(G4_BB* bb, INST_LIST_ITER iter, int CI
     nextIter++;
     G4_SrcRegRegion* src0 = fg.builder->createNullSrc(Type_UD);
     G4_INST* syncInst = fg.builder->createSync(G4_sync_nop, src0);
-    bb->insert(nextIter, syncInst);
+    bb->insertBefore(nextIter, syncInst);
     syncInstCount++;
 
     return syncInst;
@@ -3088,7 +3088,7 @@ G4_INST* SWSB::insertSyncInstructionAfter(G4_BB* bb, INST_LIST_ITER iter, int CI
 G4_INST* SWSB::insertTestInstruction(G4_BB* bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo, bool countSync)
 {
     G4_INST* nopInst = fg.builder->createNop(InstOpt_NoOpt);
-    bb->insert(nextIter, nopInst);
+    bb->insertBefore(nextIter, nopInst);
     if (countSync)
     {
         syncInstCount++;
@@ -3112,7 +3112,7 @@ G4_INST* SWSB::insertSyncAllRDInstruction(G4_BB* bb, unsigned int SBIDs, INST_LI
         syncInst = fg.builder->createSync(G4_sync_allrd, src0);
         ARSyncAllCount++;
     }
-    bb->insert(nextIter, syncInst);
+    bb->insertBefore(nextIter, syncInst);
 
     return syncInst;
 }
@@ -3132,7 +3132,7 @@ G4_INST* SWSB::insertSyncAllWRInstruction(G4_BB* bb, unsigned int SBIDs, INST_LI
         syncInst = fg.builder->createSync(G4_sync_allwr, src0);
         AWSyncAllCount++;
     }
-    bb->insert(nextIter, syncInst);
+    bb->insertBefore(nextIter, syncInst);
 
     return syncInst;
 }
@@ -6054,7 +6054,7 @@ void vISA::forceDebugSWSB(G4_Kernel* kernel)
                 {
                     INST_LIST_ITER new_it = inst_it;
                     new_it++;
-                    bb->insert(new_it, newInst);
+                    bb->insertBefore(new_it, newInst);
                     newInst->setLexicalId(instID);
                     instID++;
                 }
@@ -6102,7 +6102,7 @@ static void setInstructionStallSWSB(IR_Builder* builder,
             tokenType = SWSBTokenType::AFTER_WRITE;
         }
         syncInst->setDepToken(token, tokenType);
-        inst_it = bb->insert(next_it, syncInst);
+        inst_it = bb->insertBefore(next_it, syncInst);
     }
 
     return;
@@ -6119,7 +6119,7 @@ static void setInstructionBarrierSWSB(IR_Builder* builder,
     syncAllRdInst->setDistance(1);
     INST_LIST_ITER next_it = inst_it;
     next_it++;
-    inst_it = bb->insert(next_it, syncAllRdInst);
+    inst_it = bb->insertBefore(next_it, syncAllRdInst);
 
     G4_INST* syncAllWrInst = nullptr;
     src0 = builder->createNullSrc(Type_UD);
@@ -6127,7 +6127,7 @@ static void setInstructionBarrierSWSB(IR_Builder* builder,
 
     next_it = inst_it;
     next_it++;
-    inst_it = bb->insert(next_it, syncAllWrInst);
+    inst_it = bb->insertBefore(next_it, syncAllWrInst);
 }
 
 

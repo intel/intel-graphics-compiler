@@ -522,7 +522,7 @@ void VarSplitPass::split()
             auto intrin = kernel.fg.builder->createIntrinsicInst(nullptr, Intrinsic::Split, esize, dstRgn, srcRgn, nullptr, nullptr,
                 item.second.def.first->getInst()->getOption() | G4_InstOption::InstOpt_WriteEnable, item.second.def.first->getInst()->getLineNo());
             intrin->setCISAOff(item.second.def.first->getInst()->getCISAOff());
-            item.second.def.second->insert(it, intrin);
+            item.second.def.second->insertBefore(it, intrin);
             splitDcls.push_back(std::make_tuple(lb, rb, splitDcl));
             IRchanged = true;
 #ifdef DEBUG_VERBOSE_ON

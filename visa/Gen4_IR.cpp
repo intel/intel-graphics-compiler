@@ -751,7 +751,7 @@ G4_INST::G4_INST(const IR_Builder& irb,
     useInstList(irb.getAllocator()),
     defInstList(irb.getAllocator()),
     local_id(0),
-    srcCISAoff(-1),
+    srcCISAoff(UndefinedCisaOffset),
     location(NULL),
     sat(s),
     evenlySplitInst(false),
@@ -795,7 +795,7 @@ G4_INST::G4_INST(const IR_Builder& irb,
     useInstList(irb.getAllocator()),
     defInstList(irb.getAllocator()),
     local_id(0),
-    srcCISAoff(-1),
+    srcCISAoff(UndefinedCisaOffset),
     location(NULL),
     sat(s),
     evenlySplitInst(false),
@@ -8142,3 +8142,16 @@ G4_INST* G4_InstMath::cloneInst()
         src0, src1, getMathCtrl(), option, getLineNo(), getCISAOff(), getSrcFilename());
 }
 
+
+void G4_INST::inheritDIFrom(const G4_INST* inst)
+{
+    // Copy over debug info from inst
+    if (inst->getLocation())
+    {
+        auto mdCopy = new (builder.mem) MDLocation(*inst->getLocation());
+        setLocation(mdCopy);
+    }
+    else
+        setLocation(nullptr);
+    setCISAOff(getCISAOff() == UndefinedCisaOffset ? inst->getCISAOff() : getCISAOff());
+}

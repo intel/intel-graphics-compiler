@@ -6825,7 +6825,7 @@ void GraphColor::stackCallProlog()
 
     G4_BB* entryBB = builder.kernel.fg.getEntryBB();
     auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
-    entryBB->insert(iter, mov);
+    entryBB->insertBefore(iter, mov);
 }
 
 //
@@ -6851,7 +6851,7 @@ void GraphColor::saveRegs(
             builder.getRegionStride1(), Type_UD);
         G4_DstRegRegion* dst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
         auto spillIntrinsic = builder.createSpill(dst, sendSrc2, execSize, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable);
-        bb->insert(insertIt, spillIntrinsic);
+        bb->insertBefore(insertIt, spillIntrinsic);
     }
     else if (owordSize > 8)
     {
@@ -6932,7 +6932,7 @@ void GraphColor::restoreRegs(
         dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         G4_DstRegRegion* dstRgn = builder.createDst(dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
         auto fillIntrinsic = builder.createFill(dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
-        bb->insert(insertIt, fillIntrinsic);
+        bb->insertBefore(insertIt, fillIntrinsic);
     }
     //
     // Split into chunks of sizes 8 and remaining owords.
@@ -7396,7 +7396,7 @@ void GraphColor::addGenxMainStackSetupCode()
         G4_DstRegRegion* dst = builder.createDst(framePtr->getRegVar(), 0, 0, 1, Type_UD);
         G4_Imm * src = builder.createImm(fpInitVal, Type_UD);
         G4_INST* fpInst = builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
-        insertIt = entryBB->insert(insertIt, fpInst);
+        insertIt = entryBB->insertBefore(insertIt, fpInst);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
@@ -7411,7 +7411,7 @@ void GraphColor::addGenxMainStackSetupCode()
         G4_DstRegRegion* dst = builder.createDst(stackPtr->getRegVar(), 0, 0, 1, Type_UD);
         G4_Imm * src = builder.createImm(fpInitVal + frameSize, Type_UD);
         G4_INST* spIncInst = builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
-        entryBB->insert(++insertIt, spIncInst);
+        entryBB->insertBefore(++insertIt, spIncInst);
     }
 
     if (m_options->getOption(vISA_OptReport))
@@ -7475,8 +7475,8 @@ void GraphColor::addCalleeStackSetupCode()
         }
 
         insertIt++;
-        entryBB->insert(insertIt, createBEFP);
-        entryBB->insert(insertIt, addInst);
+        entryBB->insertBefore(insertIt, createBEFP);
+        entryBB->insertBefore(insertIt, addInst);
     }
     //
     // BE_SP = BE_FP
@@ -7497,7 +7497,7 @@ void GraphColor::addCalleeStackSetupCode()
             builder.kernel.getKernelDebugInfo()->setCallerSPRestoreInst(spRestore);
             builder.kernel.getKernelDebugInfo()->setCallerBEFPRestoreInst(callerFPRestore);
         }
-        builder.kernel.fg.getUniqueReturnBlock()->insert(insertIt, spRestore);
+        builder.kernel.fg.getUniqueReturnBlock()->insertBefore(insertIt, spRestore);
     }
     builder.instList.clear();
 
@@ -7543,7 +7543,7 @@ void GraphColor::addA0SaveRestoreCode()
                         Mod_src_undef, Direct, regPool.getAddrReg(), 0, 0, rDesc, Type_UW);
                     G4_INST* saveInst = builder.createMov(numA0Elements, dst, src, InstOpt_WriteEnable, false);
                     INST_LIST_ITER insertIt = std::prev(bb->end());
-                    bb->insert(insertIt, saveInst);
+                    bb->insertBefore(insertIt, saveInst);
                 }
 
                 {
@@ -7556,7 +7556,7 @@ void GraphColor::addA0SaveRestoreCode()
                         Mod_src_undef, Direct, savedDcl->getRegVar(), 0, 0, rDesc, Type_UW);
                     G4_INST* restoreInst = builder.createMov(numA0Elements, dst, src, InstOpt_WriteEnable, false);
                     auto insertIt = std::find_if(succ->begin(), succ->end(), [](G4_INST* inst) { return !inst->isLabel(); });
-                    succ->insert(insertIt, restoreInst);
+                    succ->insertBefore(insertIt, restoreInst);
                 }
             }
         }
@@ -7614,7 +7614,7 @@ void GraphColor::addFlagSaveRestoreCode()
                     for (int i = 0; i < num32BitFlags; ++i)
                     {
                         auto saveInst = createFlagSaveInst(i);
-                        bb->insert(iter, saveInst);
+                        bb->insertBefore(iter, saveInst);
                     }
                 }
 
@@ -7636,7 +7636,7 @@ void GraphColor::addFlagSaveRestoreCode()
                     for (int i = 0; i < num32BitFlags; ++i)
                     {
                         auto restoreInst = createRestoreFlagInst(i);
-                        succ->insert(insertIt, restoreInst);
+                        succ->insertBefore(insertIt, restoreInst);
                     }
                 }
             }
@@ -7703,7 +7703,7 @@ void GlobalRA::addCallerSavePseudoCode()
             G4_DstRegRegion* dst = builder.createDst(pseudoVCADcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_INST* saveInst = builder.createInternalIntrinsicInst(nullptr, Intrinsic::CallerSave, 1, dst, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
             INST_LIST_ITER callBBIt = bb->end();
-            bb->insert(--callBBIt, saveInst);
+            bb->insertBefore(--callBBIt, saveInst);
 
             G4_FCALL* fcall = builder.getFcallInfo(bb->back());
             MUST_BE_TRUE(fcall != NULL, "fcall info not found");
@@ -7725,7 +7725,7 @@ void GlobalRA::addCallerSavePseudoCode()
             for (; retBBIt != retBB->end() && (*retBBIt)->isLabel(); ++retBBIt);
             G4_INST* restoreInst =
                 builder.createInternalIntrinsicInst(nullptr, Intrinsic::CallerRestore, 1, nullptr, src, nullptr, nullptr, InstOpt_WriteEnable);
-            retBB->insert(retBBIt, restoreInst);
+            retBB->insertBefore(retBBIt, restoreInst);
         }
     }
     builder.instList.clear();
@@ -7747,7 +7747,7 @@ void GlobalRA::addCalleeSavePseudoCode()
         ++insertIt)
     {   /*  void */
     };
-    builder.kernel.fg.getEntryBB()->insert(insertIt, saveInst);
+    builder.kernel.fg.getEntryBB()->insertBefore(insertIt, saveInst);
 
     G4_BB* exitBB = builder.kernel.fg.getUniqueReturnBlock();
     const RegionDesc* rDesc = builder.getRegionScalar();
@@ -7758,7 +7758,7 @@ void GlobalRA::addCalleeSavePseudoCode()
     INST_LIST_ITER exitBBIt = exitBB->end();
     --exitBBIt;
     MUST_BE_TRUE((*exitBBIt)->isFReturn(), ERROR_REGALLOC);
-    exitBB->insert(exitBBIt, restoreInst);
+    exitBB->insertBefore(exitBBIt, restoreInst);
     builder.instList.clear();
 }
 
@@ -7784,14 +7784,14 @@ void GlobalRA::addStoreRestoreForFP()
         ++insertIt)
     {   /*  void */
     };
-    builder.kernel.fg.getEntryBB()->insert(insertIt, saveBE_FPInst);
+    builder.kernel.fg.getEntryBB()->insertBefore(insertIt, saveBE_FPInst);
 
     restoreBE_FPInst = builder.createMov(1, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
     insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
     for (--insertIt; (*insertIt)->isFReturn() == false; --insertIt)
     {   /*  void */
     };
-    builder.kernel.fg.getUniqueReturnBlock()->insert(insertIt, restoreBE_FPInst);
+    builder.kernel.fg.getUniqueReturnBlock()->insertBefore(insertIt, restoreBE_FPInst);
 
     auto gtpin = builder.kernel.getGTPinData();
     if (gtpin &&
@@ -8317,7 +8317,7 @@ void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Ope
             auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, oldDcl->getRegVar(),
                 (gra.getSubOffset(subDcl)) / G4_GRF_REG_NBYTES, 0, builder.getRegionStride1(), oldDcl->getElemType());
             G4_INST* splitInst = builder.createMov((uint8_t)subDcl->getTotalElems(), dst, src, maskFlag, false);
-            bb->insert(iter, splitInst);
+            bb->insertBefore(iter, splitInst);
         }
     }
 
@@ -8372,7 +8372,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
                 G4_INST* movInst = kernel.fg.builder->createMov(
                     (unsigned char)subDcl->getTotalElems(), dst, src, InstOpt_WriteEnable, false,
                     inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
-                bb->insert(instIter, movInst);
+                bb->insertBefore(instIter, movInst);
             }
         }
         auto newSrc = kernel.fg.builder->createSrcRegRegion(oldSrc->getModifier(), Direct, newDcl->getRegVar(),

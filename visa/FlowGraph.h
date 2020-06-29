@@ -298,23 +298,45 @@ class G4_BB
 
     INST_LIST instList;
 
+    INST_LIST_ITER insert(INST_LIST::iterator iter, G4_INST* inst)
+    {
+        return instList.insert(iter, inst);
+    }
 public:
-
     // forwarding functions to this BB's instList
     INST_LIST_ITER begin() { return instList.begin(); }
     INST_LIST_ITER end() { return instList.end(); }
     INST_LIST::reverse_iterator rbegin() { return instList.rbegin(); }
     INST_LIST::reverse_iterator rend() { return instList.rend(); }
     INST_LIST& getInstList() { return instList; }
-    INST_LIST_ITER insert(INST_LIST::iterator iter, G4_INST* inst)
-    {
-        return instList.insert(iter, inst);
-    }
+
     template <class InputIt>
     INST_LIST_ITER insert(INST_LIST::iterator iter, InputIt first, InputIt last)
     {
         return instList.insert(iter, first, last);
     }
+
+    INST_LIST_ITER insertBefore(INST_LIST::iterator iter, G4_INST* inst)
+    {
+        if (iter != instList.end() && !inst->isCISAOffValid())
+            inst->inheritDIFrom(*iter);
+        return instList.insert(iter, inst);
+    }
+
+    INST_LIST_ITER insertAfter(INST_LIST::iterator iter, G4_INST* inst)
+    {
+        auto next = iter;
+        ++next;
+        if (!inst->isCISAOffValid())
+        {
+            // Inheriting from iter seems more reasonable
+            // since invoking invokeAfter on iter means
+            // we're processing iter and not ++iter
+            inst->inheritDIFrom(*iter);
+        }
+        return instList.insert(next, inst);
+    }
+
     INST_LIST_ITER erase(INST_LIST::iterator iter)
     {
         return instList.erase(iter);
@@ -327,8 +349,14 @@ public:
     void clear() { instList.clear(); }
     void pop_back() { instList.pop_back(); }
     void pop_front() { instList.pop_front(); }
-    void push_back(G4_INST* inst) { instList.push_back(inst); }
-    void push_front(G4_INST* inst) { instList.push_front(inst); }
+    void push_back(G4_INST* inst)
+    {
+        insertBefore(instList.end(), inst);
+    }
+    void push_front(G4_INST* inst)
+    {
+        insertBefore(instList.begin(), inst);
+    }
     size_t size() const { return instList.size(); }
     bool empty() const { return instList.empty(); }
     G4_INST* front() { return instList.front(); }

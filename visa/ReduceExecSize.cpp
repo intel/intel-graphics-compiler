@@ -911,7 +911,7 @@ void HWConformity::splitSIMD32Inst( INST_LIST_ITER iter, G4_BB* bb )
             newInst->setDest( newDst );
             newInst->setPredicate( newPredOpnd );
             newInst->setCondMod( newCondMod );
-            bb->insert( iter, newInst );
+            bb->insertBefore( iter, newInst );
         }
         else
         {
@@ -1031,7 +1031,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             // update def-use chain
             inst->copyDefsTo(newInst, true);
             inst->copyDefsTo(newInst, true);
-            bb->insert(iter, newInst);
+            bb->insertBefore(iter, newInst);
             continue;
         }
 
@@ -1132,7 +1132,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             newInst->setDest( newDst );
             newInst->setPredicate(builder.duplicateOperand(inst->getPredicate()));
             newInst->setCondMod(builder.duplicateOperand(inst->getCondMod()) );
-            bb->insert( iter, newInst );
+            bb->insertBefore( iter, newInst );
             newInstIter = iter;
             newInstIter--;
         }
@@ -1337,7 +1337,7 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb, bool checkOve
             newInst->setPredicate(builder.duplicateOperand(newPred));
             newInst->setCondMod(builder.duplicateOperand(newCond));
             newInst->setEvenlySplitInst(true);
-            bb->insert(iter, newInst);
+            bb->insertBefore(iter, newInst);
         }
         else
         {
@@ -1545,7 +1545,7 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
         execSize, dstRegion, src, (!bb->isAllLaneActive() ? InstOpt_WriteEnable : InstOpt_NoOpt), false);
 
     // insert instruction and maintain def-use chain
-    bb->insert( it, newInst );
+    bb->insertBefore( it, newInst );
     inst->transferDef( newInst, Gen4_Operand_Number(srcNum + 1), Opnd_src0 );
     newInst->addDefUse(inst, Gen4_Operand_Number(srcNum + 1));
 
@@ -1592,7 +1592,7 @@ void HWConformity::saveDst( INST_LIST_ITER& it, uint8_t stride, G4_BB *bb )
     G4_INST* newInst = builder.createMov(execSize, tmpDstOpnd, srcRegion, new_option, false);
     newInst->setNoMask(true);
 
-    bb->insert(it, newInst);
+    bb->insertBefore(it, newInst);
     inst->setDest(builder.duplicateOperand( tmpDstOpnd ) );
 }
 
@@ -1614,7 +1614,7 @@ void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_
 
     INST_LIST_ITER iter = it;
     iter++;
-    bb->insert( iter, newInst );
+    bb->insertBefore( iter, newInst );
 
     // how about def-use?
     inst->transferUse(newInst);
@@ -1657,7 +1657,7 @@ void HWConformity::insertMovAfter( INST_LIST_ITER& it, uint16_t stride, G4_BB* b
 
     INST_LIST_ITER iter = it;
     iter++;
-    bb->insert( iter, newInst );
+    bb->insertBefore( iter, newInst );
     // change dst of inst
     inst->setDest( tmpDstOpnd );
 

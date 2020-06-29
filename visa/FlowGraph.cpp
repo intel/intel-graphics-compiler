@@ -277,7 +277,7 @@ int64_t FlowGraph::insertDummyUUIDMov()
             {
                 if ((*it)->isLabel())
                 {
-                    bb->insert(++it, movInst);
+                    bb->insertBefore(++it, movInst);
                     return uuID;
                 }
 
@@ -962,7 +962,7 @@ void IR_Builder::materializeGlobalImm(G4_BB* entryBB)
             Create_Dst_Opnd_From_Dcl(dcl, 1), immVal.imm, InstOpt_WriteEnable, false);
         auto iter = std::find_if(entryBB->begin(), entryBB->end(),
             [](G4_INST* inst) { return !inst->isLabel(); });
-        entryBB->insert(iter, inst);
+        entryBB->insertBefore(iter, inst);
     }
 }
 
@@ -1007,7 +1007,7 @@ void FlowGraph::handleWait()
                     if (sendInst != NULL)
                     {
                         sendInst->setSendc();
-                        bb->insert(iter, fenceInst);
+                        bb->insertBefore(iter, fenceInst);
                     }
                 }
                 iter = bb->erase(iter);
@@ -3141,7 +3141,7 @@ void FlowGraph::insertJoinToBB(G4_BB* bb, uint8_t execSize, G4_Label* jip)
         {
             G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, InstOpt_NoOpt,
                 secondInst->getLineNo(), secondInst->getCISAOff(), secondInst->getSrcFilename());
-            bb->insert(iter, jInst);
+            bb->insertBefore(iter, jInst);
         }
     }
 }
@@ -3207,7 +3207,7 @@ G4_Label* FlowGraph::insertEndif(G4_BB* bb, unsigned char execSize, bool createL
     INST_LIST_ITER iter = bb->begin();
     MUST_BE_TRUE(iter != bb->end(), "empty BB");
     iter++;
-    bb->insert(iter, endifInst);
+    bb->insertBefore(iter, endifInst);
 
     // this block may be a target of multiple ifs, in which case we will need to insert
     // one endif for each if.  The innermost endif will use the BB label, while for the other
@@ -3443,7 +3443,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                             InstOpt_WriteEnable, false, lastInst->getLineNo(), lastInst->getCISAOff(), lastInst->getSrcFilename());
                         INST_LIST_ITER iter = bb->end();
                         iter--;
-                        bb->insert(iter, predInst);
+                        bb->insertBefore(iter, predInst);
 
                         pred = builder->createPredicate(
                             PredState_Plus,
@@ -6894,7 +6894,7 @@ bool FlowGraph::convertJmpiToGoto()
                         auto pInst = builder->createBinOp(
                             G4_and, 1, pDst, pSrc0, pSrc1,
                             InstOpt_M0 | InstOpt_WriteEnable, false);
-                        bb->insert(I, pInst);
+                        bb->insertBefore(I, pInst);
                     }
                     else if (G4_Predicate::isAnyH(pCtrl))
                     {
@@ -6904,7 +6904,7 @@ bool FlowGraph::convertJmpiToGoto()
                         auto pInst = builder->createBinOp(
                             G4_and, 1, pDst, pSrc0, pSrc1,
                             InstOpt_M0 | InstOpt_WriteEnable, false);
-                        bb->insert(I, pInst);
+                        bb->insertBefore(I, pInst);
                     }
                     else
                     {
@@ -6915,7 +6915,7 @@ bool FlowGraph::convertJmpiToGoto()
                         auto pInst = builder->createBinOp(
                             G4_or, 1, pDst, pSrc0, pSrc1,
                             InstOpt_M0 | InstOpt_WriteEnable, false);
-                        bb->insert(I, pInst);
+                        bb->insertBefore(I, pInst);
                     }
 
                     // Adjust pred control to the new execution size and build the
