@@ -1998,7 +1998,7 @@ unsigned int LVN::removeRedundantSamplerMovs(G4_Kernel& kernel, G4_BB* bb)
     G4_INST* lastSamplerDclDef = nullptr;
     unsigned int numInstsRemoved = 0;
 
-    for (auto instIt = bb->getInstList().begin(); instIt != bb->getInstList().end();)
+    for (auto instIt = bb->begin(); instIt != bb->end();)
     {
         auto inst = (*instIt);
         auto dst = inst->getDst();
@@ -2021,7 +2021,7 @@ unsigned int LVN::removeRedundantSamplerMovs(G4_Kernel& kernel, G4_BB* bb)
                 lastSamplerDclDef->getSrc(0)->asImm()->isEqualTo(inst->getSrc(0)->asImm()))
             {
                 // Redundant mov found, erase it
-                instIt = bb->getInstList().erase(instIt);
+                instIt = bb->erase(instIt);
                 numInstsRemoved++;
                 continue;
             }

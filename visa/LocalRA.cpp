@@ -866,7 +866,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
 
                     if (bb->size() > 0)
                     {
-                        for (auto inst : bb->getInstList())
+                        for (auto inst : *bb)
                         {
                             if (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX)
                             {

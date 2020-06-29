@@ -473,16 +473,16 @@ void BinaryEncodingIGA::Encode()
         kernel.fg.builder->getHasComputeFFIDProlog())
     {
         G4_BB* first_bb = *kernel.fg.begin();
-        size_t num_inst = first_bb->getInstList().size();
+        size_t num_inst = first_bb->size();
         assert(num_inst != 0 && "the first BB must not be empty");
         // label instructions don't count. Only the first instruction could be a label
-        if (first_bb->getInstList().front()->isLabel())
+        if (first_bb->front()->isLabel())
             --num_inst;
 
         if (num_inst % 4 != 0) {
             size_t num_nop = 4 - (num_inst % 4);
             for (size_t i = 0; i < num_nop; ++i)
-                first_bb->getInstList().push_back(
+                first_bb->push_back(
                     kernel.fg.builder->createNop(InstOpt_NoCompact));
         }
         // set all instruction to be NoCompact

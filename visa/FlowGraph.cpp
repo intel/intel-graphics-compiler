@@ -6108,7 +6108,7 @@ void G4_Kernel::computeChannelSlicing()
     std::unordered_map<G4_Declare*, std::bitset<32>> emaskRef;
     for (auto bb : fg)
     {
-        for (auto inst : bb->getInstList())
+        for (auto inst : *bb)
         {
             if (inst->isSend())
                 continue;

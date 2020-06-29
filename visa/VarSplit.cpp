@@ -38,7 +38,7 @@ void VarSplitPass::buildPreVerify()
 {
     for (auto bb : kernel.fg.getBBList())
     {
-        for (auto inst : bb->getInstList())
+        for (auto inst :*bb)
         {
             if (inst->getDst())
             {
@@ -91,7 +91,7 @@ void VarSplitPass::verify()
     // create parent->child mapping
     for (auto bb : kernel.fg.getBBList())
     {
-        for (auto inst : bb->getInstList())
+        for (auto inst :*bb)
         {
             if (inst->isSplitIntrinsic())
             {
@@ -118,7 +118,7 @@ void VarSplitPass::verify()
     std::unordered_map<G4_Declare*, unsigned int> parentDefCount;
     for (auto bb : kernel.fg.getBBList())
     {
-        for (auto inst : bb->getInstList())
+        for (auto inst :*bb)
         {
             auto dst = inst->getDst();
 
@@ -181,7 +181,7 @@ void VarSplitPass::verifyOverlap()
     unsigned int numSplitLeft = 0;
     for (auto bb : kernel.fg.getBBList())
     {
-        for (auto inst : bb->getInstList())
+        for (auto inst :*bb)
         {
             if (inst->isSplitIntrinsic())
             {
@@ -285,7 +285,7 @@ void VarSplitPass::findSplitCandidates()
     // Find all dcls that can be split in to smaller chunks
     for (auto bb : kernel.fg.getBBList())
     {
-        for (auto inst : bb->getInstList())
+        for (auto inst :*bb)
         {
             if (inst->getDst() && inst->getDst()->getTopDcl())
             {
@@ -399,7 +399,7 @@ void VarSplitPass::findSplitCandidates()
     std::unordered_map<G4_INST*, unsigned int> instId;
     for (auto bb : kernel.fg.getBBList())
     {
-        for (auto inst : bb->getInstList())
+        for (auto inst :*bb)
         {
             instId[inst] = instId.size();
         }
@@ -596,7 +596,7 @@ void VarSplitPass::replaceIntrinsics()
     // Replace intrinsic.split with mov
     for (auto bb : kernel.fg.getBBList())
     {
-        for (auto inst : bb->getInstList())
+        for (auto inst :*bb)
         {
             if (inst->isSplitIntrinsic())
             {

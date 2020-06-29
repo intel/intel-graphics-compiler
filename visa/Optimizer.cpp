@@ -8162,7 +8162,7 @@ public:
 
         for (auto bb : kernel.fg)
         {
-            for (auto inst : bb->getInstList())
+            for (auto inst : *bb)
             {
                 if (inst->getCISAOff() == UNMAPPABLE_VISA_INDEX)
                 {
@@ -8424,13 +8424,13 @@ public:
                     INST_LIST_ITER insert_point = bb->end();
                     --insert_point;
                     for (auto inst_to_add : expanded_insts) {
-                        bb->getInstList().insert(insert_point, inst_to_add);
+                        bb->insert(insert_point, inst_to_add);
                         inst_to_add->setCISAOff(fcall->getCISAOff());
                     }
 
                     // remove call from the instlist for Jmpi WA
                     if (builder.needReplaceIndirectCallWithJmpi())
-                        bb->getInstList().erase(--bb->end());
+                        bb->erase(--bb->end());
                 }
             }
         }

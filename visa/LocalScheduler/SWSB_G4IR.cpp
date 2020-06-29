@@ -2154,7 +2154,7 @@ bool SWSB::propogateDist(G4_BB* bb)
                 BBVector[bbID]->send_live_out->isDstSet(i) &&
                 !BBVector[bbID]->send_may_kill->isDstSet(i))
             {
-                BBVector[bbID]->tokenLiveOutDist[i] = BBVector[bbID]->tokenLiveInDist[i] + bb->getInstList().size();
+                BBVector[bbID]->tokenLiveOutDist[i] = BBVector[bbID]->tokenLiveInDist[i] + bb->size();
             }
         }
     }
@@ -3312,7 +3312,7 @@ void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER ins
     {
         INST_LIST_ITER nextIt = inst_it;
         nextIt++;
-        if (nextIt != bb->getInstList().end())
+        if (nextIt != bb->end())
         {
             G4_INST *nextInst = *nextIt;
             if (tokenHonourInstruction(nextInst) ||

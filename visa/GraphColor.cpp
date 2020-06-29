@@ -12440,7 +12440,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
         bool done = false;
         for (auto bb : gra.kernel.fg.getBBList())
         {
-            for (auto inst : bb->getInstList())
+            for (auto inst : *bb)
             {
                 if (inst == startInst)
                 {
@@ -12471,7 +12471,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
     // Now emit instructions with GRFs
     for (auto bb : gra.kernel.fg.getBBList())
     {
-        for (auto inst : bb->getInstList())
+        for (auto inst : *bb)
         {
             constexpr unsigned int maxInstLen = 80;
             auto item = busyGRFPerInst[inst];
