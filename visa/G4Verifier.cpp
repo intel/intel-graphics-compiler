@@ -796,6 +796,18 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                     }
                 }
             }
+
+            // if src0 is V/UV/VF imm, dst must be 16 byte aligned.
+            if (inst->opcode() == G4_mov && IS_VTYPE(inst->getSrc(0)->getType()))
+            {
+                auto dst = inst->getDst();
+                // should we assert if dst is not phyReg assigned?
+                bool dstIsAssigned = dst->getBase()->isRegVar() && dst->getBase()->asRegVar()->isPhyRegAssigned();
+                if (dstIsAssigned && dst->getLinearizedStart() % 16 != 0)
+                {
+                    assert(false && "destination of move instruction with V/VF imm is not 16-byte aligned");
+                }
+            }
         }
     }
 }
