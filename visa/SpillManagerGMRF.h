@@ -844,8 +844,6 @@ private:
 
         return needed;
     }
-
-    void saveRestoreA0(G4_BB*);
 };
 }
 bool isDisContRegion (

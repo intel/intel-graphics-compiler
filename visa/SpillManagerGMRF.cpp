@@ -3960,7 +3960,6 @@ SpillManagerGRF::insertSpillFillCode (
         }
     }
 
-
     bbId_ = UINT_MAX;
 
     // Calculate the spill memory used in this iteration
@@ -3996,61 +3995,8 @@ SpillManagerGRF::insertSpillFillCode (
     return true;
 }
 
-void SpillManagerGRF::saveRestoreA0(G4_BB* bb)
-{
-    for (auto instIt = bb->getInstList().begin(); instIt != bb->getInstList().end(); ++instIt)
-    {
-        auto inst = (*instIt);
-
-        if (inst->isSpillIntrinsic() || inst->isFillIntrinsic())
-        {
-            // Check whether prev inst was save/restore for a0
-            auto prevIt = instIt;
-
-            while (prevIt != bb->getInstList().begin())
-            {
-                --prevIt;
-                if (!(*prevIt)->isPseudoKill())
-                    break;
-            }
 
 
-            auto prevInst = (*prevIt);
-            if (prevInst->opcode() == G4_mov && prevInst->getDst()->getTopDcl()->getRegFile() == G4_RegFileKind::G4_GRF &&
-                prevInst->getSrc(0)->isSrcRegRegion() && prevInst->getSrc(0)->asSrcRegRegion()->getTopDcl()->getRegFile() == G4_RegFileKind::G4_ADDRESS)
-            {
-                auto nextIt = instIt;
-                nextIt++;
-                if (nextIt != bb->getInstList().end())
-                {
-                    auto nextInst = (*nextIt);
-
-                    if (nextInst->opcode() == G4_mov && nextInst->getDst()->getTopDcl()->getRegFile() == G4_RegFileKind::G4_ADDRESS &&
-                        nextInst->getSrc(0)->isSrcRegRegion() && nextInst->getSrc(0)->asSrcRegRegion()->getTopDcl()->getRegFile() == G4_RegFileKind::G4_GRF &&
-                        prevInst->getDst()->getTopDcl() == nextInst->getSrc(0)->asSrcRegRegion()->getTopDcl())
-                        continue;
-                }
-            }
-
-            // Insert save/restore
-            auto tmp = builder_->createTempVar(1, Type_UD, G4_SubReg_Align::Any, "SRA0");
-            const char* buf = builder_->getNameString(builder_->mem, 20, "SaveA0");
-            G4_Declare* saveA0 = builder_->createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
-            saveA0->getRegVar()->setPhyReg(builder_->phyregpool.getAddrReg(), 0);
-
-            auto dstSave = builder_->Create_Dst_Opnd_From_Dcl(tmp, 1);
-            auto srcSave = builder_->createSrcRegRegion(Mod_src_undef, Direct, saveA0->getRegVar(), 0, 0, builder_->getRegionScalar(), Type_UD);
-            auto saveInst = builder_->createMov(1, dstSave, srcSave, InstOpt_WriteEnable, false);
-            bb->getInstList().insert(instIt, saveInst);
-
-            auto dstRestore = builder_->Create_Dst_Opnd_From_Dcl(saveA0, 1);
-            auto srcRestore = builder_->createSrcRegRegion(Mod_src_undef, Direct, tmp->getRegVar(), 0, 0, builder_->getRegionScalar(), Type_UD);
-            auto restoreInst = builder_->createMov(1, dstRestore, srcRestore, InstOpt_WriteEnable, false);
-            auto nextIt = instIt;
-            bb->getInstList().insert(++nextIt, restoreInst);
-        }
-    }
-}
 
 uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUnits)
 {
@@ -4499,13 +4445,11 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
     }
 }
 
+
 void GlobalRA::expandSpillFillIntrinsics()
 {
-    for (auto bbIt = kernel.fg.begin();
-        bbIt != kernel.fg.end();
-        bbIt++)
+    for (auto bb : kernel.fg)
     {
-        auto bb = (*bbIt);
         expandSpillIntrinsic(bb);
         expandFillIntrinsic(bb);
     }
