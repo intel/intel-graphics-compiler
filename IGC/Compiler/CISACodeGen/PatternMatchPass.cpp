@@ -771,7 +771,7 @@ namespace IGC
         return std::make_tuple(LHS, isSignedDst, true);
     }
 
-    bool CodeGenPatternMatch::MatchIntegerSatModifier(llvm::SelectInst& I) {
+    bool CodeGenPatternMatch::MatchIntegerTruncSatModifier(llvm::SelectInst& I) {
         // Only match BYTE or WORD.
         if (!I.getType()->isIntegerTy(8) && !I.getType()->isIntegerTy(16))
             return false;
@@ -947,8 +947,8 @@ namespace IGC
 
     void CodeGenPatternMatch::visitSelectInst(SelectInst& I)
     {
-        bool match = MatchSatModifier(I) ||
-            MatchIntegerSatModifier(I) ||
+        bool match = MatchFloatingPointSatModifier(I) ||
+            MatchIntegerTruncSatModifier(I) ||
             MatchAbsNeg(I) ||
             MatchFPToIntegerWithSaturation(I) ||
             MatchMinMax(I) ||
@@ -1111,7 +1111,11 @@ namespace IGC
                 match = MatchSampleDerivative(*CI);
                 break;
             case GenISAIntrinsic::GenISA_fsat:
-                match = MatchSatModifier(I);
+                match = MatchFloatingPointSatModifier(I);
+                break;
+            case GenISAIntrinsic::GenISA_usat:
+            case GenISAIntrinsic::GenISA_isat:
+                match = MatchIntegerSatModifier(I);
                 break;
             case GenISAIntrinsic::GenISA_WaveShuffleIndex:
                 match = MatchRegisterRegion(*CI) ||
@@ -1205,7 +1209,7 @@ namespace IGC
             break;
         case Intrinsic::maxnum:
         case Intrinsic::minnum:
-            match = MatchSatModifier(I) ||
+            match = MatchFloatingPointSatModifier(I) ||
                 MatchModifier(I);
             break;
         default:
@@ -3079,12 +3083,13 @@ namespace IGC
         return true;
     }
 
-    bool CodeGenPatternMatch::MatchSatModifier(llvm::Instruction& I)
+    bool CodeGenPatternMatch::MatchFloatingPointSatModifier(llvm::Instruction& I)
     {
         struct SatPattern : Pattern
         {
             Pattern* pattern;
             SSource source;
+            bool isUnsigned;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
                 DstModifier mod = modifier;
@@ -3101,7 +3106,8 @@ namespace IGC
         };
         bool match = false;
         llvm::Value* source = nullptr;
-        if (isSat(&I, source))
+        bool isUnsigned = false;
+        if (isSat(&I, source, isUnsigned))
         {
             SatPattern* satPattern = new (m_allocator) SatPattern();
             if (llvm::Instruction * inst = llvm::dyn_cast<Instruction>(source))
@@ -3127,6 +3133,83 @@ namespace IGC
                 gatherUniformBools(source);
             }
             AddPattern(satPattern);
+        }
+        return match;
+    }
+
+    bool CodeGenPatternMatch::MatchIntegerSatModifier(llvm::Instruction& I)
+    {
+        // a default pattern
+        struct SatPattern : Pattern
+        {
+            Pattern* pattern;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                DstModifier mod = modifier;
+                mod.sat = true;
+                pattern->Emit(pass, mod);
+            }
+        };
+
+        // a special pattern is required because of the fact that the instruction works on unsigned values
+        // whereas the default type is signed for arithmetic instructions
+        struct UAddPattern : Pattern
+        {
+            BinaryOperator* inst;
+
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                DstModifier mod = modifier;
+                mod.sat = true;
+                pass->EmitUAdd(inst, modifier);
+            }
+        };
+
+        bool match = false;
+        llvm::Value* source = nullptr;
+        bool isUnsigned = false;
+        if (isSat(&I, source, isUnsigned))
+        {
+            IGC_ASSERT(llvm::isa<Instruction>(source));
+
+            // As an heuristic we only match saturate if the instruction has one use
+            // to avoid duplicating expensive instructions and increasing reg pressure
+            // without improve code quality this may be refined in the future
+            if (llvm::Instruction* sourceInst = llvm::cast<llvm::Instruction>(source);
+                sourceInst->hasOneUse() && SupportsSaturate(sourceInst))
+            {
+                if (llvm::BinaryOperator* binaryOpInst = llvm::dyn_cast<llvm::BinaryOperator>(source);
+                    binaryOpInst && (binaryOpInst->getOpcode() == llvm::BinaryOperator::BinaryOps::Add) && isUnsigned)
+                {
+                    match = true;
+                    UAddPattern* uAddPattern = new (m_allocator) UAddPattern();
+                    uAddPattern->inst = binaryOpInst;
+                    AddPattern(uAddPattern);
+                }
+                else if (binaryOpInst && (binaryOpInst->getOpcode() == llvm::BinaryOperator::BinaryOps::Add) && !isUnsigned)
+                {
+                    match = true;
+                    SatPattern* satPattern = new (m_allocator) SatPattern();
+                    satPattern->pattern = Match(*sourceInst);
+                    AddPattern(satPattern);
+                }
+                else if (llvm::GenIntrinsicInst * genIsaInst = llvm::dyn_cast<llvm::GenIntrinsicInst>(source);
+                    genIsaInst &&
+                    (genIsaInst->getIntrinsicID() == llvm::GenISAIntrinsic::ID::GenISA_dp4a_ss ||
+                    genIsaInst->getIntrinsicID() == llvm::GenISAIntrinsic::ID::GenISA_dp4a_su ||
+                    genIsaInst->getIntrinsicID() == llvm::GenISAIntrinsic::ID::GenISA_dp4a_uu ||
+                    genIsaInst->getIntrinsicID() == llvm::GenISAIntrinsic::ID::GenISA_dp4a_us))
+                {
+                    match = true;
+                    SatPattern* satPattern = new (m_allocator) SatPattern();
+                    satPattern->pattern = Match(*sourceInst);
+                    AddPattern(satPattern);
+                }
+                else
+                {
+                    IGC_ASSERT_MESSAGE(0, "An undefined pattern match");
+                }
+            }
         }
         return match;
     }
@@ -4414,19 +4497,22 @@ namespace IGC
         return false;
     }
 
-    bool isSat(llvm::Instruction* sat, llvm::Value*& source)
+    bool isSat(llvm::Instruction* sat, llvm::Value*& source, bool& isUnsigned)
     {
         bool found = false;
         llvm::Value* sources[2] = { 0 };
-        bool typeMatch = sat->getType()->isFloatingPointTy();
-
+        bool floatMatch = sat->getType()->isFloatingPointTy();
         GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(sat);
-        if (intrin && intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_fsat)
+        if (intrin &&
+            (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_fsat ||
+            intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_usat ||
+            intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_isat))
         {
             source = intrin->getOperand(0);
             found = true;
+            isUnsigned = intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_usat;
         }
-        else if (typeMatch && isMax(sat, sources[0], sources[1]))
+        else if (floatMatch && isMax(sat, sources[0], sources[1]))
         {
             for (int i = 0; i < 2; i++)
             {
@@ -4441,6 +4527,7 @@ namespace IGC
                             {
                                 found = true;
                                 source = maxSources[1 - j];
+                                isUnsigned = false;
                                 break;
                             }
                         }
@@ -4449,7 +4536,7 @@ namespace IGC
                 }
             }
         }
-        else if (typeMatch && isMin(sat, sources[0], sources[1]))
+        else if (floatMatch && isMin(sat, sources[0], sources[1]))
         {
             for (int i = 0; i < 2; i++)
             {
@@ -4464,6 +4551,7 @@ namespace IGC
                             {
                                 found = true;
                                 source = maxSources[1 - j];
+                                isUnsigned = false;
                                 break;
                             }
                         }

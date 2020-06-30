@@ -1854,6 +1854,22 @@ void EmitPass::EmitMinMax(bool isMin, bool isUnsigned, const SSource sources[2],
     EmitSimpleAlu(opCode, dst, srcs[0], srcs[1]);
 }
 
+void IGC::EmitPass::EmitUAdd(llvm::BinaryOperator* inst, const DstModifier& modifier)
+{
+    // the emit function should be called only if saturation is enabled. In other case the signedness of
+    // the instruction doesn't play a role in case of computing the instruction.
+    IGC_ASSERT(modifier.sat == true);
+    CVariable* srcs[2] = { GetSymbol(inst->getOperand(0)), GetSymbol(inst->getOperand(1)) };
+
+    // create new aliases for the operands and the destination
+    srcs[0] = m_currShader->BitCast(srcs[0], GetUnsignedType(srcs[0]->GetType()));
+    srcs[1] = m_currShader->BitCast(srcs[1], GetUnsignedType(srcs[1]->GetType()));
+    CVariable* dst = m_currShader->BitCast(m_destination, GetUnsignedType(m_destination->GetType()));
+    m_encoder->SetDstModifier(modifier);
+
+    EmitSimpleAlu(EOPCODE::llvm_add, dst, srcs[0], srcs[1]);
+}
+
 void EmitPass::EmitFullMul32(bool isUnsigned, const SSource sources[2], const DstModifier& dstMod) {
     CVariable* srcs[2] = { nullptr, nullptr };
     srcs[0] = GetSrcVariable(sources[0]);

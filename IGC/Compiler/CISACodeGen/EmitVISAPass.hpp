@@ -117,6 +117,7 @@ public:
     void EmitSimpleAlu(EOPCODE opCode, const SSource source[2], const DstModifier& modifier);
     void EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CVariable* src1);
     void EmitMinMax(bool isMin, bool isUnsigned, const SSource source[2], const DstModifier& modifier);
+    void EmitUAdd(llvm::BinaryOperator* inst, const DstModifier& modifier);
     void EmitFullMul32(bool isUnsigned, const SSource srcs[2], const DstModifier& dstMod);
     void EmitFPToIntWithSat(bool isUnsigned, bool needBitCast, VISA_Type type, const SSource& source, const DstModifier& modifier);
     void EmitNoModifier(llvm::Instruction* inst);
