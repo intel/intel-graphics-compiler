@@ -39,8 +39,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #endif
 
-#include <iostream>
+#ifndef ZEBinStandAloneBuild
 #include "Probe/Assertion.h"
+#endif
+
+#ifdef ZEBinStandAloneBuild
+#define IGC_ASSERT(x) ((void)0)
+#define IGC_ASSERT_MESSAGE(x, m, ...) ((void)0)
+#endif
+
+#include <iostream>
 
 namespace zebin {
 

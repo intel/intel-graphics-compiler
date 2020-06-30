@@ -56,6 +56,7 @@ struct zeInfoExecutionEnvironment
     zeinfo_bool_t has_global_atomics = false;
     zeinfo_bool_t has_multi_scratch_spaces = false;
     zeinfo_bool_t has_no_stateless_write = false;
+    zeinfo_int32_t hw_preemption_mode = -1;
     zeinfo_int32_t offset_to_skip_per_thread_data_load = 0;
     zeinfo_int32_t offset_to_skip_set_ffid_gp = 0;
     zeinfo_int32_t required_sub_group_size = 0;

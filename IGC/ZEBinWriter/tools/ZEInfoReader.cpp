@@ -56,7 +56,7 @@ static void dumpZEInfo(std::unique_ptr<llvm::object::ObjectFile> object) {
             continue;
 
         llvm::StringRef content;
-        sect.getContents(content);
+        sect.getContents();
 
         std::ofstream outfile;
         outfile.open("ze_info.dump", std::ios::out | std::ios::binary);

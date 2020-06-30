@@ -40,6 +40,7 @@ void MappingTraits<zeInfoExecutionEnvironment>::mapping(IO& io, zeInfoExecutionE
     io.mapOptional("has_global_atomics", info.has_global_atomics, false);
     io.mapOptional("has_multi_scratch_spaces", info.has_multi_scratch_spaces, false);
     io.mapOptional("has_no_stateless_write", info.has_no_stateless_write, false);
+    io.mapOptional("hw_preemption_mode", info.hw_preemption_mode, -1);
     io.mapOptional("offset_to_skip_per_thread_data_load", info.offset_to_skip_per_thread_data_load, 0);
     io.mapOptional("offset_to_skip_set_ffid_gp", info.offset_to_skip_set_ffid_gp, 0);
     io.mapOptional("required_sub_group_size", info.required_sub_group_size, 0);
