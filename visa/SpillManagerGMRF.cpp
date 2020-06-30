@@ -2663,8 +2663,9 @@ SpillManagerGRF::createSpillSendInstr (
                 fp = builder_->kernel.fg.getFramePtrDcl();
             }
         }
-        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, fp,
-            InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
+        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, fp, InstOpt_WriteEnable);
+        sendInst->setLocation(curInst->getLocation());
+        sendInst->setCISAOff(curInst->getCISAOff());
     }
     else
     {
@@ -2728,8 +2729,9 @@ SpillManagerGRF::createSpillSendInstr (
             }
         }
         sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, (uint16_t)extMsgLength,
-            off, fp, static_cast<G4_InstOption>(option), curInst->getLineNo(),
-            curInst->getCISAOff(), curInst->getSrcFilename());
+            off, fp, static_cast<G4_InstOption>(option));
+        sendInst->setLocation(curInst->getLocation());
+        sendInst->setCISAOff(curInst->getCISAOff());
     }
     else
     {
@@ -2974,8 +2976,11 @@ SpillManagerGRF::createFillSendInstr (
             fp = builder_->kernel.fg.getFramePtrDcl();
         }
     }
-    return builder_->createFill(payload, postDst, execSize, height, off, fp, InstOpt_WriteEnable,
-        curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
+    auto fillInst = builder_->createFill(payload, postDst, execSize, height, off, fp, InstOpt_WriteEnable);
+    fillInst->setLocation(curInst->getLocation());
+    fillInst->setCISAOff(curInst->getCISAOff());
+    return fillInst;
+
 }
 
 // Create the send instruction to perform the fill of the filled region's
@@ -3028,8 +3033,10 @@ SpillManagerGRF::createFillSendInstr (
     }
 
     unsigned responseLength = cdiv(segmentByteSize, REG_BYTE_SIZE);
-    return builder_->createFill(payload, postDst, execSize, responseLength, off, fp,
-        InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
+    auto fillInst = builder_->createFill(payload, postDst, execSize, responseLength, off, fp, InstOpt_WriteEnable);
+    fillInst->setLocation(curInst->getLocation());
+    fillInst->setCISAOff(curInst->getCISAOff());
+    return fillInst;
 }
 
 // Replace the reference to the spilled region with a reference to an
@@ -3594,8 +3601,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), (short)i, 0, 1, Type_F);
 
-                        inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
-                            curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
+                        inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false);
 
                         bb->insertBefore( inst_it, inst );
 
@@ -3606,8 +3612,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                             G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getVar(), (short)i, 0, 1, Type_F);
 
-                            inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
-                                curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
+                            inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false);
 
                             bb->insertBefore( next_inst_it, inst );
                         }
@@ -3666,8 +3671,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                     G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), 0, off, 1, type);
 
-                    inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
-                        curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
+                    inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false);
 
                     bb->insertBefore( inst_it, inst );
 
@@ -3678,8 +3682,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB*
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getVar(), 0, off, 1, type);
 
-                        inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false,
-                            curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename());
+                        inst = kernel->fg.builder->createMov(curExSize, dstRex, srcRex, InstOpt_WriteEnable, false);
 
                         bb->insertBefore( next_inst_it, inst );
                     }

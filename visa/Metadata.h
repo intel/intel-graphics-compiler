@@ -33,32 +33,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace vISA
 {
 
-class MDLocation {
-    int lineNo;
-    const char* srcFilename;
-
-    MDLocation() : lineNo(-1), srcFilename(nullptr) {}
-    MDLocation(int lineNo, const char *srcFilename) :
-        lineNo(lineNo), srcFilename(srcFilename) {}
-
-    friend class IR_Builder;
-
-public:
-    ~MDLocation() = default;
-    MDLocation(MDLocation& loc) = default;
-    void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
-    int getLineNo() { return lineNo; }
-    void setLineNo(int line) { lineNo = line; }
-    const char* getSrcFilename() const { return srcFilename; }
-    void setSrcFilename(const char* filename) { srcFilename = filename; }
-};
-
 //
 // A metadata is simply a collection of (<key>, <value>) pairs that may be attached to an IR object (BB, Inst, Declare, etc.)
 // Metadata is completely optional; vISA optimizations and transformations are not obliged to preserve them, and dropping them should not affect correctness
 // Metadata key is a string, and only one value is allowed per key for now.
 // Metadata value is represented by an MDNode abstract class, each subclass provides the actual implementation of the metadata value
-// Currently there are only two types of metadata: MDString and MDLocation (to be added).
+// Currently there are only two types of metadata: MDString and MDLocation.
 // Metadata memory management is performed by IR_Builder through the various allocaeMD* methods.
 // An MDNode may be shared among muitiple IR objects, it's the user's responsiblity to ensure correct ownership and sharing behaviors.
 // Each object has its own unqiue metadata map, however.
@@ -75,6 +55,7 @@ enum class MDType
 
 // forward declaration so that the asMD*() calls can work
 class MDString;
+class MDLocation;
 
 class MDNode
 {
@@ -102,9 +83,9 @@ protected:
         return isMDString() ? reinterpret_cast<const MDString*>(this) : nullptr;
     }
 
-    const MDLocation* asMDLocation() const
+    MDLocation* asMDLocation() const
     {
-        return isMDLocation() ? reinterpret_cast<const MDLocation*>(this) : nullptr;
+        return isMDLocation() ? reinterpret_cast<MDLocation*>(const_cast<MDNode*>(this)) : nullptr;
     }
 
     virtual void print(std::ostream& OS) const = 0;
@@ -136,6 +117,33 @@ public:
     }
 };
 
+class MDLocation : public MDNode
+{
+    int lineNo = -1;
+    const char* srcFilename = nullptr;
+
+public:
+
+    MDLocation(int lineNo, const char* srcFilename) :
+        MDNode(MDType::SrcLoc), lineNo(lineNo), srcFilename(srcFilename) {}
+
+    MDLocation(const MDLocation& node) = delete;
+
+    void operator=(const MDLocation& node) = delete;
+
+    ~MDLocation() = default;
+
+    void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
+    int getLineNo() const { return lineNo; }
+    const char* getSrcFilename() const { return srcFilename; }
+
+    void print(std::ostream& OS) const
+    {
+        OS << "\"" << srcFilename << ":" << lineNo << "\"";
+    }
+};
+
+
 class Metadata
 {
 
@@ -153,6 +161,11 @@ public:
     // it simply overwrites existing value for key if it already exists
     void setMetadata(const std::string& key, MDNode* value)
     {
+        if (!value)
+        {
+            // do not allow nullptr value for now. ToDo: distinguish between nullptr value vs. metadata not set?
+            return;
+        }
         MDMap.emplace(key, value);
     }
 

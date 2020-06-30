@@ -752,7 +752,6 @@ G4_INST::G4_INST(const IR_Builder& irb,
     defInstList(irb.getAllocator()),
     local_id(0),
     srcCISAoff(UndefinedCisaOffset),
-    location(NULL),
     sat(s),
     evenlySplitInst(false),
     execSize(size),
@@ -796,7 +795,6 @@ G4_INST::G4_INST(const IR_Builder& irb,
     defInstList(irb.getAllocator()),
     local_id(0),
     srcCISAoff(UndefinedCisaOffset),
-    location(NULL),
     sat(s),
     evenlySplitInst(false),
     execSize(size),
@@ -8146,12 +8144,6 @@ G4_INST* G4_InstMath::cloneInst()
 void G4_INST::inheritDIFrom(const G4_INST* inst)
 {
     // Copy over debug info from inst
-    if (inst->getLocation())
-    {
-        auto mdCopy = new (builder.mem) MDLocation(*inst->getLocation());
-        setLocation(mdCopy);
-    }
-    else
-        setLocation(nullptr);
+    setLocation(inst->getLocation());
     setCISAOff(getCISAOff() == UndefinedCisaOffset ? inst->getCISAOff() : getCISAOff());
 }

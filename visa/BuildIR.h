@@ -1154,13 +1154,10 @@ public:
     G4_INST* createSpill(
         G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
         unsigned int execSize,
-        uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option,
-        unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
+        uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option)
     {
         G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
-            header, payload, nullptr, option, lineno);
-        spill->asSpillIntrinsic()->setSrcFilename(srcFilename);
-        spill->asSpillIntrinsic()->setCISAOff(CISAoff);
+            header, payload, nullptr, option);
         spill->asSpillIntrinsic()->setFP(fp);
         spill->asSpillIntrinsic()->setOffset((uint32_t)
             (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
@@ -1171,17 +1168,13 @@ public:
     G4_INST* createSpill(
         G4_DstRegRegion* dst, G4_SrcRegRegion* payload,
         unsigned int execSize, uint16_t numRows, uint32_t offset,
-        G4_Declare* fp, G4_InstOption option,
-        unsigned int lineno = 0, int CISAoff = -1,
-        const char* srcFilename = nullptr)
+        G4_Declare* fp, G4_InstOption option)
     {
         auto builtInR0 = getBuiltinR0();
         auto rd = getRegionStride1();
         auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
         G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
-            srcRgnr0, payload, nullptr, option, lineno);
-        spill->asSpillIntrinsic()->setSrcFilename(srcFilename);
-        spill->asSpillIntrinsic()->setCISAOff(CISAoff);
+            srcRgnr0, payload, nullptr, option);
         spill->asSpillIntrinsic()->setFP(fp);
         spill->asSpillIntrinsic()->setOffset((uint32_t)
             (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
@@ -1190,12 +1183,10 @@ public:
     }
 
     G4_INST* createFill(G4_SrcRegRegion* header, G4_DstRegRegion* dstData, unsigned int execSize, uint16_t numRows, uint32_t offset,
-        G4_Declare* fp, G4_InstOption option, unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
+        G4_Declare* fp, G4_InstOption option)
     {
         G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
-            header, nullptr, nullptr, option, lineno);
-        fill->asFillIntrinsic()->setSrcFilename(srcFilename);
-        fill->asFillIntrinsic()->setCISAOff(CISAoff);
+            header, nullptr, nullptr, option);
         fill->asFillIntrinsic()->setFP(fp);
         fill->asFillIntrinsic()->setOffset((uint32_t)
             (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
@@ -1203,16 +1194,14 @@ public:
         return fill;
     }
 
-    G4_INST* createFill(G4_DstRegRegion* dstData, unsigned int execSize, uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option,
-        unsigned int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr)
+    G4_INST* createFill(G4_DstRegRegion* dstData, unsigned int execSize, uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option)
     {
         auto builtInR0 = getBuiltinR0();
         auto rd = getRegionStride1();
         auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
         G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
-            srcRgnr0, nullptr, nullptr, option, lineno);
-        fill->asFillIntrinsic()->setSrcFilename(srcFilename);
-        fill->asFillIntrinsic()->setCISAOff(CISAoff);
+            srcRgnr0, nullptr, nullptr, option);
+
         fill->asFillIntrinsic()->setFP(fp);
         fill->asFillIntrinsic()->setOffset((uint32_t)
             (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
@@ -1854,8 +1843,7 @@ public:
     G4_INST* createSync(G4_opcode syncOp, G4_Operand* src);
 
     G4_INST* createMov(uint8_t execSize, G4_DstRegRegion* dst,
-        G4_Operand* src0, uint32_t option, bool appendToInstList,
-        int lineno = 0, int CISAoff = -1, const char* srcFilename = nullptr);
+        G4_Operand* src0, uint32_t option, bool appendToInstList);
 
     G4_INST* createBinOp(G4_opcode op, uint8_t execSize, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, uint32_t option, bool appendToInstList);
@@ -2775,6 +2763,13 @@ public:
     MDNode* allocateMDString(const std::string& str)
     {
         auto newNode = new (metadataMem) MDString(str);
+        allMDNodes.push_back(newNode);
+        return newNode;
+    }
+
+    MDLocation* allocateMDLocation(int line, const char* file)
+    {
+        auto newNode = new (metadataMem) MDLocation(line, file);
         allMDNodes.push_back(newNode);
         return newNode;
     }

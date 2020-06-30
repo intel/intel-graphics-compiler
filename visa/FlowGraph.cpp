@@ -3440,7 +3440,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                         G4_Declare* tmpFlagDcl = builder->createTempFlag(execSize);
                         G4_DstRegRegion* newPredDef = builder->createDst(tmpFlagDcl->getRegVar(), 0, 0, 1, execSize == 2 ? Type_UD : Type_UW);
                         G4_INST* predInst = builder->createMov(1, newPredDef, builder->createImm(0, Type_UW),
-                            InstOpt_WriteEnable, false, lastInst->getLineNo(), lastInst->getCISAOff(), lastInst->getSrcFilename());
+                            InstOpt_WriteEnable, false);
                         INST_LIST_ITER iter = bb->end();
                         iter--;
                         bb->insertBefore(iter, predInst);
@@ -4701,11 +4701,10 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     G4_DstRegRegion* movDst = builder->Create_Dst_Opnd_From_Dcl(dcl, 1);
     G4_SrcRegRegion* r0Src = builder->Create_Src_Opnd_From_Dcl(
         builder->getBuiltinR0(), builder->getRegionStride1());
-    G4_INST *movInst = builder->createMov(NUM_DWORDS_PER_GRF, movDst, r0Src, InstOpt_WriteEnable, false,
-        lastInst ? lastInst->getLineNo() : 0, lastInst ? lastInst->getCISAOff() : UNMAPPABLE_VISA_INDEX,
-        lastInst ? lastInst->getSrcFilename() : nullptr);
+    G4_INST *movInst = builder->createMov(NUM_DWORDS_PER_GRF, movDst, r0Src, InstOpt_WriteEnable, false);
     if (lastInst)
     {
+        movInst->setCISAOff(lastInst->getCISAOff());
         movInst->setLocation(lastInst->getLocation());
     }
     instList.push_back(movInst);

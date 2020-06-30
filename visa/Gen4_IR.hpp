@@ -547,8 +547,6 @@ protected:
     static const int UndefinedCisaOffset = -1;
     int srcCISAoff = UndefinedCisaOffset; // record CISA inst offset that resulted in this instruction
 
-    MDLocation* location;
-
     Metadata* MD = nullptr;
 
 #define UNDEFINED_GEN_OFFSET -1
@@ -833,29 +831,6 @@ public:
         return (G4_Label*) getSrc(0);
     }
 
-    void inheritDIFrom(const G4_INST* inst);
-    MDLocation *getLocation() const { return location; }
-    void setLocation(MDLocation* loc) {
-        location = loc;
-    }
-    void setLineNo(int i) {
-        if (location != nullptr)
-            location->setLineNo(i);
-    }
-    int getLineNo() const {
-        if (location == nullptr)
-            return 0;
-        return location->getLineNo();
-    }
-    void setSrcFilename(const char* filename) {
-        if (location != nullptr)
-            location->setSrcFilename(filename);
-    }
-    const char* getSrcFilename() const {
-        if (location == nullptr)
-            return nullptr;
-        return location->getSrcFilename();
-    }
     void setDest(G4_DstRegRegion* opnd);
     void setExecSize(unsigned char s);
 
@@ -1195,6 +1170,31 @@ public:
         auto comments = getMetadata(Metadata::InstComment);
         return comments && comments->isMDString() ? comments->asMDString()->getData() : "";
     }
+
+    MDLocation* getLocation() const
+    {
+        auto location = getMetadata(Metadata::InstLoc);
+        return (location && location->isMDLocation()) ? location->asMDLocation() : nullptr;
+    }
+
+    void setLocation(MDLocation* loc)
+    {
+        setMetadata(Metadata::InstLoc, loc);
+    }
+
+    int getLineNo() const
+    {
+        auto location = getLocation();
+        return location ? location->getLineNo() : 0;
+    }
+
+    const char* getSrcFilename() const
+    {
+        auto location = getLocation();
+        return location ? location->getSrcFilename() : nullptr;
+    }
+
+    void inheritDIFrom(const G4_INST* inst);
 
 private:
     bool detectComprInst() const;

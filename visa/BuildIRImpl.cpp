@@ -300,7 +300,7 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+            i->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
         }
 
         instList.push_back(i);
@@ -345,7 +345,7 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
 
     if (m_options->getOption(vISA_EmitLocation))
     {
-        ii->setLocation(new (mem) MDLocation(lineno, curFile));
+        ii->setLocation(allocateMDLocation(lineno, curFile));
     }
 
     return ii;
@@ -364,8 +364,7 @@ G4_INST* IR_Builder::createSync(G4_opcode syncOp, G4_Operand* src)
 }
 
 G4_INST* IR_Builder::createMov(uint8_t execSize, G4_DstRegRegion* dst,
-    G4_Operand* src0, uint32_t option, bool appendToInstList,
-    int lineno, int CISAoff, const char* srcFilename)
+    G4_Operand* src0, uint32_t option, bool appendToInstList)
 {
     G4_INST* newInst = nullptr;
     if (appendToInstList)
@@ -376,9 +375,6 @@ G4_INST* IR_Builder::createMov(uint8_t execSize, G4_DstRegRegion* dst,
     {
         newInst = createInternalInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
     }
-    newInst->setLineNo(lineno);
-    newInst->setCISAOff(CISAoff);
-    newInst->setSrcFilename(srcFilename);
     return newInst;
 }
 
@@ -458,7 +454,7 @@ G4_INST* IR_Builder::createInternalCFInst(
 
     if (m_options->getOption(vISA_EmitLocation))
     {
-        ii->setLocation(new (mem) MDLocation(lineno, srcFilename));
+        ii->setLocation(allocateMDLocation(lineno, srcFilename));
     }
 
     return ii;
@@ -485,7 +481,7 @@ G4_INST* IR_Builder::createCFInst(
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+            ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
         }
         instList.push_back(ii);
     }
@@ -536,7 +532,7 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+            i->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
         }
 
         instList.push_back(i);
@@ -581,7 +577,7 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
 
     if (m_options->getOption(vISA_EmitLocation))
     {
-        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
+        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
     }
 
     return ii;
@@ -608,7 +604,7 @@ G4_InstSend* IR_Builder::createSendInst(G4_Predicate* prd,
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            m->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+            m->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
         }
 
         instList.push_back(m);
@@ -638,7 +634,7 @@ G4_InstSend* IR_Builder::createInternalSendInst(G4_Predicate* prd,
 
     if (m_options->getOption(vISA_EmitLocation))
     {
-        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
+        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
     }
 
     return ii;
@@ -681,7 +677,7 @@ G4_InstSend* IR_Builder::createSplitSendInst(G4_Predicate* prd,
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            m->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+            m->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
         }
         instList.push_back(m);
     }
@@ -712,7 +708,7 @@ G4_InstSend* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
 
     if (m_options->getOption(vISA_EmitLocation))
     {
-        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
+        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
     }
 
     return ii;
@@ -743,7 +739,7 @@ G4_INST* IR_Builder::createMathInst(G4_Predicate* prd,
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+            i->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
         }
         instList.push_back(i);
     }
@@ -771,7 +767,7 @@ G4_INST* IR_Builder::createInternalMathInst(G4_Predicate* prd,
 
     if (m_options->getOption(vISA_EmitLocation))
     {
-        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
+        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
     }
 
     return ii;
@@ -798,7 +794,7 @@ G4_INST* IR_Builder::createIntrinsicInst(
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+            i->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
         }
 
         instList.push_back(i);
@@ -821,7 +817,7 @@ G4_INST* IR_Builder::createInternalIntrinsicInst(G4_Predicate* prd, Intrinsic in
 
     if (m_options->getOption(vISA_EmitLocation))
     {
-        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
+        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
     }
 
     return ii;

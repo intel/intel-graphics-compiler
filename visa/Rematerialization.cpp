@@ -848,8 +848,7 @@ namespace vISA
 
             dupOp = dstInst->cloneInst();
             dupOp->setDest(newDst);
-
-            dupOp->setLineNo(dstInst->getLineNo());
+            dupOp->setLocation(dstInst->getLocation());
             dupOp->setCISAOff(dstInst->getCISAOff());
 
             rematSrc = createSrcRgn(src, dst, newTemp);
@@ -936,7 +935,7 @@ namespace vISA
                 kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
                 kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),
                 newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), dstInst->getLineNo());
-            dupOp->setLineNo(dstInst->getLineNo());
+            dupOp->setLocation(dstInst->getLocation());
             dupOp->setCISAOff(dstInst->getCISAOff());
 
             newInst.push_back(dupOp);
