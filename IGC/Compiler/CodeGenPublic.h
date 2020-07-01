@@ -1122,6 +1122,15 @@ namespace IGC
                 {
                     PreferBindlessImages = true;
                 }
+                if (strstr(options, "-intel-use-bindless-mode"))
+                {
+                    // This is a new option that combines bindless generation for buffers
+                    // and images. Keep the old internal options to have compatibility
+                    // for existing tests. Those (old) options could be removed in future.
+                    UseBindlessMode = true;
+                    PreferBindlessImages = true;
+                    PromoteStatelessToBindless = true;
+                }
                 if (strstr(options, "-intel-force-global-mem-allocation"))
                 {
                     IntelForceGlobalMemoryAllocation = true;
@@ -1161,6 +1170,7 @@ namespace IGC
             bool IntelEnablePreRAScheduling = true;
             bool PromoteStatelessToBindless = false;
             bool PreferBindlessImages = false;
+            bool UseBindlessMode = false;
             bool IntelForceGlobalMemoryAllocation = false;
             bool hasNoLocalToGeneric = false;
 

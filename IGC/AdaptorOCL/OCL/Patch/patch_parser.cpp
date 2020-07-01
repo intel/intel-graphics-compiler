@@ -908,6 +908,9 @@ void DebugPatchList(
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tNumGRFRequired = %d\n",
                     pPatchItem->NumGRFRequired);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tUseBindlessMode = %d\n",
+                    pPatchItem->UseBindlessMode);
             }
             break;
 

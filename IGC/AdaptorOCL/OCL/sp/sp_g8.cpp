@@ -2035,6 +2035,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.HasGlobalAtomics = annotations.m_executionEnivronment.HasGlobalAtomics;
 
 
+        patch.UseBindlessMode = annotations.m_executionEnivronment.UseBindlessMode;
 
         retValue = AddPatchItem(
             patch,

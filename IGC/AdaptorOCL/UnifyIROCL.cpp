@@ -254,7 +254,8 @@ static void CommonOCLBasedPasses(
         pContext->m_InternalOptions.IntelHasBufferOffsetArg;
 
     CompilerOpts.PreferBindlessImages =
-        pContext->m_InternalOptions.PreferBindlessImages;
+        pContext->m_InternalOptions.PreferBindlessImages ||
+        pContext->m_InternalOptions.UseBindlessMode;
 
     if (CompilerOpts.PreferBindlessImages) {
         pContext->getModuleMetaData()->UseBindlessImage = true;

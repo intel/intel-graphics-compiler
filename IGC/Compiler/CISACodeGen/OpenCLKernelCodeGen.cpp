@@ -1843,6 +1843,8 @@ namespace IGC
 
         m_kernelInfo.m_executionEnivronment.NumGRFRequired = ProgramOutput()->m_numGRFTotal;
 
+
+        m_kernelInfo.m_executionEnivronment.UseBindlessMode = m_Context->m_InternalOptions.UseBindlessMode;
     }
 
     void COpenCLKernel::RecomputeBTLayout()
