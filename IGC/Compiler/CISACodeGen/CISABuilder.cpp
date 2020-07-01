@@ -4961,6 +4961,7 @@ namespace IGC
             // Use the same build options as before
             SetBuilderOptions(vAsmTextBuilder);
 
+            bool vISAAsmParseError = false;
             // Parse the generated VISA text
             if (visaAsmOverride)
             {
@@ -4969,9 +4970,10 @@ namespace IGC
                 asmName.pop_back();
                 vAsmTextBuilder->SetOption(VISA_AsmFileNameUser, true);
                 vAsmTextBuilder->SetOption(VISA_AsmFileName, asmName.c_str());
-                V(vAsmTextBuilder->ParseVISAText(visaAsmOverrideFile));
+                auto result = vAsmTextBuilder->ParseVISAText(visaAsmOverrideFile);
                 asmName = asmName + ".visaasm";
                 appendToShaderOverrideLogFile(asmName, "OVERRIDEN: ");
+                vISAAsmParseError = (result != 0);
             }
             else
             {
@@ -4983,11 +4985,20 @@ namespace IGC
                     raw_string_ostream S(output);
                     S << "parsing vISA inline assembly failed:\t" << vAsmTextBuilder->GetCriticalMsg();
                     context->EmitError(output.c_str());
+                    vISAAsmParseError = true;
                 }
             }
 
-            pMainKernel = vAsmTextBuilder->GetVISAKernel();
-            vIsaCompile = vAsmTextBuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
+            if (vISAAsmParseError)
+            {
+                COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
+                return;
+            }
+            else
+            {
+                pMainKernel = vAsmTextBuilder->GetVISAKernel();
+                vIsaCompile = vAsmTextBuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
+            }
         }
         //Compile to generate the V-ISA binary
         else
@@ -4996,7 +5007,17 @@ namespace IGC
             vIsaCompile = vbuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
         }
 
-        FINALIZER_INFO* jitInfo;
+        COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
+
+#if GET_TIME_STATS
+        // handle the vISA time counters differently here
+        if (context->m_compilerTimeStats)
+        {
+            context->m_compilerTimeStats->recordVISATimers();
+        }
+#endif
+
+        FINALIZER_INFO* jitInfo = nullptr;
         pMainKernel->GetJitInfo(jitInfo);
         if (jitInfo->isSpill)
         {
@@ -5007,15 +5028,6 @@ namespace IGC
 
             context->m_retryManager.numInstructions = jitInfo->numAsmCount;
         }
-        COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
-
-#if GET_TIME_STATS
-        // handle the vISA time counters differently here
-        if (context->m_compilerTimeStats)
-        {
-            context->m_compilerTimeStats->recordVISATimers();
-        }
-#endif
 
         if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
         {
