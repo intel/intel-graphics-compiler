@@ -466,9 +466,6 @@ void CisaBinary::isaDumpVerify(
         }
     }
 
-    ERROR_LIST_TYPE errors;
-    ERROR_LIST_TYPE kerrors;
-
     std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
     std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
     bool hasErrors = false;
@@ -537,21 +534,12 @@ void CisaBinary::isaDumpVerify(
 
         if (verify)
         {
-            std::list<std::string> kerror_list;
-            std::list<std::string> error_list;
             VISAKernel_format_provider fmt(kTemp);
 
-            verifyKernelHeader(m_header, &fmt, kerrors, m_options);
+            vISAVerifier verifier(m_header, &fmt, m_options);
+            verifier.run(kTemp);
 
-            inst_iter = kTemp->getInstructionListBegin();
-            for(; inst_iter != inst_iter_end; inst_iter++)
-            {
-                CisaFramework::CisaInst * cisa_inst = *inst_iter;
-                CISA_INST * inst = cisa_inst->getCISAInst();
-                verifyInstruction(m_header, &fmt, inst, errors, options);
-            }
-
-            if ( (errors.size() + kerrors.size() /* total errors*/) > 0)
+            if (verifier.hasErrors())
             {
                 stringstream verifierName;
 
@@ -567,11 +555,11 @@ void CisaBinary::isaDumpVerify(
                     verifierName << funcId;
                 }
                 verifierName << ".errors.txt";
-                writeReport(verifierName.str().c_str(), errors, kerrors);
+                verifier.writeReport(verifierName.str().c_str());
                 hasErrors = true;
-                totalErrors += (uint32_t) (errors.size() + kerrors.size());
-                cerr << "Found " << errors.size() + kerrors.size() << " errors in vISA files." << endl;
-                cerr << "Please see error report written to the file "<< verifierName.str() << endl;
+                totalErrors += (uint32_t) verifier.getNumErrors();
+                cerr << "Found " << verifier.getNumErrors() << " errors in vISA files.\n";
+                cerr << "Please see error report written to the file "<< verifierName.str() << "\n";
             }
         }
         if ( hasErrors )
@@ -585,3 +573,15 @@ void CisaBinary::isaDumpVerify(
 
 }
 
+// It's unfortunate we have to define vISAVerifier functions here due to the #include mess..
+void vISAVerifier::run(VISAKernelImpl* kernel)
+{
+    verifyKernelHeader();
+    for (auto iter = kernel->getInstructionListBegin(), iterEnd = kernel->getInstructionListEnd();
+        iter != iterEnd; ++iter)
+    {
+        auto inst = (*iter)->getCISAInst();
+        verifyInstruction(inst);
+    }
+    finalize();
+}
