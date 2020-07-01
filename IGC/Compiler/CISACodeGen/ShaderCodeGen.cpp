@@ -1456,8 +1456,11 @@ void OptimizeIR(CodeGenContext* const pContext)
 
                 if (pContext->m_retryManager.AllowLICM() && IGC_IS_FLAG_ENABLED(allowLICM))
                 {
+                    int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
+                    mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::BEGIN, licmTh));
                     mpm.add(llvm::createLICMPass());
                     mpm.add(llvm::createLICMPass());
+                    mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::END, licmTh));
                 }
 
                 mpm.add(CreateHoistFMulInLoopPass());
@@ -1514,9 +1517,9 @@ void OptimizeIR(CodeGenContext* const pContext)
                 {
                         if (pContext->m_DriverInfo.NeedCountSROA())
                     {
-                        mpm.add(new InstrStatitic(pContext, SROA_PROMOTED, InstrStatStage::BEGIN, 300));
+                        mpm.add(new InstrStatistic(pContext, SROA_PROMOTED, InstrStatStage::BEGIN, 300));
                         mpm.add(createSROAPass());
-                        mpm.add(new InstrStatitic(pContext, SROA_PROMOTED, InstrStatStage::END, 300));
+                        mpm.add(new InstrStatistic(pContext, SROA_PROMOTED, InstrStatStage::END, 300));
                     }
                     else
                     {

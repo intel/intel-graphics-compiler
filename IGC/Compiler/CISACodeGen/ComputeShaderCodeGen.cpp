@@ -452,6 +452,11 @@ namespace IGC
                 {
                     return false;
                 }
+                else if (!ctx->m_retryManager.IsLastTry() && ctx->instrStat[LICM_STAT][EXCEED_THRESHOLD])
+                {
+                    // skip SIMD8 if LICM threshold is met, unless it's lastTry
+                    return false;
+                }
                 else
                 {
                     return true;

@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/Analysis/LoopInfo.h>
+#include <llvm/Analysis/LoopPass.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
@@ -83,31 +84,41 @@ namespace IGC
 
     };
 
-    class InstrStatitic : public llvm::FunctionPass, public llvm::InstVisitor<InstrStatitic>
+    class InstrStatistic : public llvm::FunctionPass, public llvm::InstVisitor<InstrStatistic>
     {
     public:
         static char ID;
-        InstrStatitic() : FunctionPass(ID), m_ctx(nullptr), m_type(InstrStatTypes(0)), m_stage(InstrStatStage::BEGIN), m_threshold(0)
+        InstrStatistic() : FunctionPass(ID), m_ctx(nullptr), m_type(InstrStatTypes(0)), m_stage(InstrStatStage::BEGIN), m_threshold(0)
         {
         };
-        InstrStatitic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold);
+        InstrStatistic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold);
 
         virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
-            return "InstrStatitic";
+            return "InstrStatistic";
         }
 
         void visitInstruction(llvm::Instruction& I);
         void visitLoadInst(llvm::LoadInst& I);
         void visitStoreInst(llvm::StoreInst& I);
 
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<llvm::LoopInfoWrapperPass>();
+            AU.setPreservesAll();
+        }
+
     private:
         CodeGenContext* m_ctx;
         IGC::InstrStatTypes m_type;
         InstrStatStage m_stage;
         int m_threshold;
+        llvm::LoopInfo* m_LI;
+
+        bool parseLoops();
+        bool parseLoop(llvm::Loop* loop);
     };
 
 } // namespace IGC

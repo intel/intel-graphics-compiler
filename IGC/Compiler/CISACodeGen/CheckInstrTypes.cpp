@@ -1,3 +1,4 @@
+
 /*===================== begin_copyright_notice ==================================
 
 Copyright (c) 2017 Intel Corporation
@@ -373,19 +374,20 @@ void CheckInstrTypes::visitGetElementPtrInst(llvm::GetElementPtrInst& I)
 #undef PASS_CFG_ONLY
 #undef PASS_ANALYSIS
 
-#define PASS_FLAG "InstrStatitic"
+#define PASS_FLAG "InstrStatistic"
 #define PASS_DESCRIPTION "Check individual type of instructions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(InstrStatitic, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(InstrStatitic, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(InstrStatistic, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(InstrStatistic, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char InstrStatitic::ID = 0;
+char InstrStatistic::ID = 0;
 
-InstrStatitic::InstrStatitic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold) :
+InstrStatistic::InstrStatistic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold) :
     FunctionPass(ID), m_ctx(ctx), m_type(type), m_stage(stage), m_threshold(threshold)
 {
-    initializeInstrStatiticPass(*PassRegistry::getPassRegistry());
+    initializeInstrStatisticPass(*PassRegistry::getPassRegistry());
+    initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());
 
     if (stage == InstrStatStage::BEGIN)
     {
@@ -395,10 +397,18 @@ InstrStatitic::InstrStatitic(CodeGenContext* ctx, InstrStatTypes type, InstrStat
     }
 }
 
-bool InstrStatitic::runOnFunction(Function& F)
+bool InstrStatistic::runOnFunction(Function& F)
 {
-    // run the pass
-    visit(F);
+    bool changed = false;
+
+    if (m_type == LICM_STAT) {
+        m_LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+        changed = parseLoops();
+    }
+    else {
+        // run the pass
+        visit(F);
+    }
 
     // if this is a call for ending statistic, find out if the difference exceeds the threshold.
     if (m_stage == InstrStatStage::END)
@@ -406,23 +416,55 @@ bool InstrStatitic::runOnFunction(Function& F)
         if (m_ctx->instrStat[m_type][InstrStatStage::BEGIN] - m_ctx->instrStat[m_type][InstrStatStage::END] > m_threshold)
         {
             m_ctx->instrStat[m_type][InstrStatStage::EXCEED_THRESHOLD] = 1;
+        }
+
+        if (m_type == SROA_PROMOTED)
+        {
             m_ctx->m_retryManager.Disable();
         }
     }
+
+    return changed;
+}
+
+void InstrStatistic::visitInstruction(llvm::Instruction& I)
+{
+}
+
+void InstrStatistic::visitLoadInst(LoadInst& I)
+{
+    if (m_type == SROA_PROMOTED)
+        m_ctx->instrStat[m_type][m_stage]++;
+}
+
+void InstrStatistic::visitStoreInst(StoreInst& I)
+{
+    if (m_type == SROA_PROMOTED)
+        m_ctx->instrStat[m_type][m_stage]++;
+}
+
+bool InstrStatistic::parseLoops()
+{
+    bool changed = false;
+
+    for (auto& LI : *m_LI)
+    {
+        Loop* L1 = &(*LI);
+        changed |= parseLoop(L1);
+
+        for (auto& L2 : L1->getSubLoops())
+        {
+            changed |= parseLoop(L2);
+        }
+    }
+
+    return changed;
+}
+
+bool InstrStatistic::parseLoop(Loop* loop)
+{
+    auto* header = loop->getHeader();
+    m_ctx->instrStat[m_type][m_stage] += header->size();
+
     return false;
 }
-
-void InstrStatitic::visitInstruction(llvm::Instruction& I)
-{
-}
-
-void InstrStatitic::visitLoadInst(LoadInst& I)
-{
-    m_ctx->instrStat[m_type][m_stage]++;
-}
-
-void InstrStatitic::visitStoreInst(StoreInst& I)
-{
-    m_ctx->instrStat[m_type][m_stage]++;
-}
-

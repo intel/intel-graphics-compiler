@@ -213,6 +213,7 @@ namespace IGC
     enum InstrStatTypes
     {
         SROA_PROMOTED,
+        LICM_STAT,
         TOTAL_TYPES
     };
     enum InstrStatStage
