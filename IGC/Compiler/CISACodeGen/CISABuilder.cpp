@@ -4511,7 +4511,7 @@ namespace IGC
         m_encoderState = newState;
     }
 
-    static inline VISA_Align GetVISAAlign(CVariable* var)
+    VISA_Align CEncoder:: GetVISAAlign(CVariable* var)
     {
         VISA_Align align;
         switch (var->GetAlign())
@@ -4526,9 +4526,11 @@ namespace IGC
             break;
         case EALIGN_OWORD: align = ALIGN_OWORD;
             break;
-        case EALIGN_GRF: align = ALIGN_GRF;
+        case EALIGN_GRF:
+            align = ALIGN_HWORD;
             break;
-        case EALIGN_2GRF: align = ALIGN_2_GRF;
+        case EALIGN_2GRF:
+            align = ALIGN_32WORD;
             break;
         default:
             align = ALIGN_UNDEF;
@@ -4593,7 +4595,7 @@ namespace IGC
             pVar->getVisaCString(),
             pVar->GetNumberElement(),
             pVar->GetType(),
-            ALIGN_GRF,
+            ALIGN_HWORD,
             pVar->visaGenVariable[0],
             pVar->GetAliasOffset());
 

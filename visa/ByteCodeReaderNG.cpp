@@ -2202,7 +2202,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         var_info_t* var = &header.variables[declID];
         VISA_GenVar* decl = NULL;
         VISA_Type  varType  = (VISA_Type)  ((var->bit_properties     ) & 0xF);
-        VISA_Align varAlign = (VISA_Align) ((var->bit_properties >> 4) & 0x7);
+        VISA_Align varAlign = (VISA_Align) ((var->bit_properties >> 4) & 0xF);
         uint8_t aliasScopeSpecifier = header.variables[declID].alias_scope_specifier;
         int status = VISA_SUCCESS;
 

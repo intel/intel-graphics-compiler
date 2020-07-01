@@ -53,6 +53,9 @@ const char* Common_ISA_Get_Align_Name(VISA_Align align)
         "oword",
         "GRF",
         "GRFx2", // "2GRF"
+        "hword",
+        "32word",
+        "64word",
         "byte",
     };
 
@@ -370,6 +373,8 @@ G4_SubReg_Align Get_G4_SubRegAlign_From_Size( uint16_t size )
         return Eight_Word;
     case 32:
         return Sixteen_Word;
+    case 64:
+        return ThirtyTwo_Word;
     default:
         return GRFALIGN;
     }

@@ -115,11 +115,6 @@ typedef enum {
 } Common_ISA_Var_Class;
 
 typedef enum {
-    STORAGE_REG = 0x0,
-    STORAGE_SLM = 0x1
-} Common_ISA_Var_Storage;
-
-typedef enum {
     INPUT_GENERAL   = 0x0,
     INPUT_SAMPLER   = 0x1,
     INPUT_SURFACE   = 0x2,
@@ -270,7 +265,7 @@ typedef struct {
 
     VISA_Align getAlignment() const
     {
-        return (VISA_Align) ((bit_properties >> 4 ) & 0x7);
+        return (VISA_Align) ((bit_properties >> 4 ) & 0xF);
     }
 
     VISA_Align getTypeAlignment() const
@@ -278,7 +273,7 @@ typedef struct {
         VISA_Align typeAlign = ALIGN_WORD;
         if (getSize() >= getGRFSize())
         {
-            typeAlign = ALIGN_GRF;
+            typeAlign = ALIGN_HWORD;
         }
         else
         {

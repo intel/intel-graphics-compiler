@@ -357,6 +357,12 @@ static void verifyVariableDecl(
             break;
         case ALIGN_2_GRF:
             break;
+        case ALIGN_HWORD:
+            break;
+        case ALIGN_32WORD:
+            break;
+        case ALIGN_64WORD:
+            break;
         default:
             REPORT_HEADER(options,false, "V%d's variable alignment is not a valid alignment value: %s", declID, declError.c_str());
     }

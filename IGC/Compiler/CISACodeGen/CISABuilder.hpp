@@ -135,6 +135,7 @@ namespace IGC
         void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR);
         SEncoderState CopyEncoderState();
         void SetEncoderState(SEncoderState& newState);
+        VISA_Align GetVISAAlign(CVariable* var);
 
         void SetDispatchSimdSize();
         void SetSpillMemOffset();
