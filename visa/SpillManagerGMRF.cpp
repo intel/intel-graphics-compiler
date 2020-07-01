@@ -3165,7 +3165,7 @@ SpillManagerGRF::insertSpillRangeCode (
     // offset to the spill range and create the instructions to load the
     // save the spill range to spill memory.
 
-    if ((*spilledInstIter)->mayExceedTwoGRF())
+    if (inst->mayExceedTwoGRF())
     {
         INST_LIST::iterator sendOutIter = spilledInstIter;
         assert (getRFType (spilledRegion) == G4_GRF);
@@ -3175,13 +3175,19 @@ SpillManagerGRF::insertSpillRangeCode (
             createAndInitMHeader (
                 (G4_RegVarTransient *) spillRangeDcl->getRegVar ());
 
-        sendInSpilledRegVarPortions (
-            spillRangeDcl, mRangeDcl, 0,
-            spillRangeDcl->getNumRows (),
-            spilledRegion->getRegOff());
+        // Assumption here is that a NoMask send doesn't need read-modify-write
+        // since it writes the entire GRF(s).
+        // May need to revisit if we have some strange sends that update partial GRFs. (e.g., SIMD4 scatter read)
+        if (!inst->isWriteEnableInst())
+        {
+            sendInSpilledRegVarPortions(
+                spillRangeDcl, mRangeDcl, 0,
+                spillRangeDcl->getNumRows(),
+                spilledRegion->getRegOff());
 
-        INST_LIST::iterator insertPos = sendOutIter;
-        bb->splice (insertPos, builder_->instList);
+            INST_LIST::iterator insertPos = sendOutIter;
+            bb->splice(insertPos, builder_->instList);
+        }
 
         sendOutSpilledRegVarPortions (
             spillRangeDcl, mRangeDcl, 0, spillRangeDcl->getNumRows (),
