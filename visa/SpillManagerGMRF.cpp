@@ -772,7 +772,7 @@ SpillManagerGRF::calculateEncAlignedSegment (
     unsigned regionDisp = getRegionDisp (region);
     unsigned regionByteSize = getRegionByteSize (region, execSize);
 
-    if( useScratchMsg_ )
+    if (need32ByteAlignedOffset())
     {
         unsigned hwordLB = regionDisp & grfMask();
         unsigned hwordRB = hwordLB + G4_GRF_REG_NBYTES;
@@ -782,14 +782,14 @@ SpillManagerGRF::calculateEncAlignedSegment (
             hwordRB += blockSize;
         }
 
-        assert ((hwordRB - hwordLB)/ REG_BYTE_SIZE <= 4);
+        assert((hwordRB - hwordLB) / REG_BYTE_SIZE <= 4);
         start = hwordLB;
         end = hwordRB;
-        type = grfMask ();
+        type = grfMask();
     }
     else
     {
-        unsigned owordLB = regionDisp & owordMask ();
+        unsigned owordLB = regionDisp & owordMask();
         unsigned owordRB = owordLB + OWORD_BYTE_SIZE;
         unsigned blockSize = OWORD_BYTE_SIZE;
 
@@ -798,10 +798,10 @@ SpillManagerGRF::calculateEncAlignedSegment (
             blockSize *= 2;
         }
 
-        assert ((owordRB - owordLB)/ REG_BYTE_SIZE <= 4);
+        assert((owordRB - owordLB) / REG_BYTE_SIZE <= 4);
         start = owordLB;
         end = owordRB;
-        type = owordMask ();
+        type = owordMask();
     }
 }
 
@@ -1239,9 +1239,7 @@ SpillManagerGRF::createTransientGRFRangeDeclare (
         height = 1;
     }
 
-    bool usesStack = builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls();
-
-    if (useScratchMsg_ || usesStack)
+    if (need32ByteAlignedOffset())
     {
         // the message will read/write a minimum of one GRF
         if (height == 1 && width < getGRFSize())
