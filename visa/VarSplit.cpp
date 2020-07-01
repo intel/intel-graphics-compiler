@@ -329,7 +329,8 @@ void VarSplitPass::findSplitCandidates()
     for (auto itemIt = splitVars.begin(); itemIt != splitVars.end(); itemIt++)
     {
         auto& item = (*itemIt);
-        if (item.second.numDefs != 1 || !item.second.candidateDef)
+        if (item.second.numDefs != 1 || !item.second.candidateDef ||
+            !item.second.isDefUsesInSameBB())
         {
             item.second.legitCandidate = false;
             continue;
