@@ -192,8 +192,7 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
         if (StoreInst * ST = dyn_cast<StoreInst>(sdag.m_root))
         {
             // Limit to OpenCL so far as it has uniform load/store support.
-            if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER &&
-                isUniformStoreOCL(ST))
+            if (isUniformStoreOCL(ST))
                 numInstance = 1;
             slicing = false;
         }
@@ -14338,12 +14337,14 @@ void EmitPass::emitftoi(llvm::GenIntrinsicInst* inst)
 // Return true if this store will be emit as uniform store
 bool EmitPass::isUniformStoreOCL(llvm::StoreInst* SI)
 {
-    if (!m_currShader->GetIsUniform(SI->getPointerOperand()))
+    if (m_currShader->GetShaderType() != ShaderType::OPENCL_SHADER ||
+        !m_currShader->GetIsUniform(SI->getPointerOperand()))
     {
         return false;
     }
 
-    Type* Ty = SI->getValueOperand()->getType();
+    Value* storeVal = SI->getValueOperand();
+    Type* Ty = storeVal->getType();
     VectorType* VTy = dyn_cast<VectorType>(Ty);
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
     Type* eltTy = VTy ? VTy->getElementType() : Ty;
@@ -14354,8 +14355,8 @@ bool EmitPass::isUniformStoreOCL(llvm::StoreInst* SI)
     // Note that when elts > 1, VectorProcess make sure that its element
     // size must be 4 or 8. Also, note that if totalBytes = 4, elts must be 1.
     bool doUniformStore = (elts == 1 ||
-        (m_currShader->GetIsUniform(SI->getValueOperand()) &&
-        (totalBytes == 8 || totalBytes == 12 || totalBytes == 16)));
+        (m_currShader->GetIsUniform(storeVal) &&
+         (totalBytes == 8 || totalBytes == 12 || totalBytes == 16)));
     return doUniformStore;
 }
 
@@ -15683,6 +15684,215 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
     {
         ResetVMask(false);
     }
+}
+
+// prepareAddressForUniform():       for both load and store
+// prepareDataForUniform():          for store only
+//    Unaligned (less than 4 bytes) uniform load/store. One for address payload,
+//    and the other for data payload.
+//
+//  Example 1:  "store <4xi32> V,  <4xi32>* P, align 2"
+//     A new pointer pVar is create with 4 elements.
+//
+//     add  (4|M0_NM) pVar<1>:ud  P<0;1,0>:UD 0xC840:UV
+//     send (4|M0_NM) pVar   V
+//
+//         prepareAddressForUniform() : create pVar
+//         prepareDataForUniform() : return V (assuming V can be used directly)
+//
+//  Example 2:  "store <3xi32> V,  <3xi32>* P, align 2"
+//     Non-power of 2 vector size is rounded up to the next power of 2.
+//     Additional elements are duplicated with the first vector element.
+
+//     add  (4|M0_NM) pVar<1>:ud  P<0;1,0>:UD 0x0840:UV
+//     mov  (4|M0_NM) vVar<1>:ud  V<0;1,0>:ud
+//     mov  (2|M0_NM) vVar<1>:ud  V<1;1,0>:ud
+//     mov  (1|M0_NM) vVar.2<1>:ud  V.2<1;1,0>:ud
+//     send (4|M0_NM) vVar  pVar
+//
+//         prepareAddressForUniform() : create pVar
+//         prepareDataForUniform() : return vVar
+//
+// This function handles vector size up to 8. It also handles QW element size.
+// When vector size > 4, it uses 0x76543210, left-shifted by 2 (DW) or 3 (QW)
+// as an immediate to be added to 'AddrVar' to form a new address var.
+//
+// In addition, if 64bit add is not supported, emitAddPair() will be used to
+// use 32bit add/addc to emulate 64bit add.
+//
+// Note that argument 'AddrVar' in prepareAddressForUniform() is uniform, so is its return var.
+// The argument 'DataVar' in prepareDataForUniform() is uniform, so is its return var.
+//
+CVariable* EmitPass::prepareAddressForUniform(
+    CVariable* AddrVar, uint32_t EltBytes, uint32_t NElts, uint32_t ExecSz, e_alignment Align)
+{
+    IGC_ASSERT(NElts <= 8 && (EltBytes == 4 || EltBytes == 8));
+    if (ExecSz == 1 && AddrVar->IsGRFAligned(Align))
+    {
+        return AddrVar;
+    }
+    bool isA64 = (AddrVar->GetElemSize() == 8);
+    SIMDMode simdmode = lanesToSIMDMode(ExecSz);
+    CVariable* newVar = m_currShader->GetNewVariable(ExecSz, AddrVar->GetType(), Align, true, CName::NONE);
+
+    CVariable* off;
+    uint32_t incImm = (0x76543210 & maskTrailingOnes<uint32_t>(NElts * 4));
+    if ((ExecSz <= 4 && EltBytes == 4) || (ExecSz <= 2 && EltBytes == 8))
+    {
+        // This case needs a single UV immediate
+        incImm = incImm << (EltBytes == 4 ? 2 : 3);
+        off = m_currShader->ImmToVariable(incImm, ISA_TYPE_UV);
+    }
+    else
+    {
+        // Need a temporary var to calculate offsets
+        off = m_currShader->GetNewVariable(ExecSz, ISA_TYPE_UD, EALIGN_DWORD, false, CName::NONE);
+
+        // actualES is the actual execsize used for computing offsets.
+        uint32_t actualES = (uint32_t)PowerOf2Ceil(NElts);
+
+        // incImm is UV type and can be used in execsize <= 8 only. If ExecSz is greater
+        // than the actual number of lanes (for example, 4GRF alignment case), the upper lanes
+        // beyond need to be zero'ed.
+        if (ExecSz > actualES)
+        {
+            // Need to zero the upper lanes.
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(simdmode);
+            m_encoder->Copy(off, m_currShader->ImmToVariable(0, ISA_TYPE_UD));
+            m_encoder->Push();
+        }
+
+        SIMDMode sm = lanesToSIMDMode(actualES);
+        if (incImm > 0 &&
+            ((actualES <= 4 && EltBytes == 4) || (actualES <= 2 && EltBytes == 8)))
+        {
+            // This case needs a single UV immediate
+            incImm = incImm << (EltBytes == 4 ? 2 : 3);
+
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(sm);
+            m_encoder->Copy(off, m_currShader->ImmToVariable(incImm, ISA_TYPE_UV));
+            m_encoder->Push();
+        }
+        else if (incImm > 0)
+        {
+            // Need a mov and mul
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(sm);
+            m_encoder->Copy(off, m_currShader->ImmToVariable(incImm, ISA_TYPE_UV));
+            m_encoder->Push();
+
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(sm);
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+            m_encoder->SetSrcRegion(1, 0, 1, 0);
+            m_encoder->Mul(off, off, m_currShader->ImmToVariable(EltBytes, ISA_TYPE_UW));
+            m_encoder->Push();
+        }
+    }
+
+    // May need splitting for A64
+    bool needSplit = (newVar->GetSize() > (2 * (uint32_t)getGRFSize()));
+    if (needSplit)
+    {
+        IGC_ASSERT(!off->IsImmediate());
+        uint32_t bytes1 = (ExecSz / 2) * newVar->GetElemSize();
+        uint32_t bytes2 = (ExecSz / 2) * off->GetElemSize();
+        CVariable* newVarHi = m_currShader->GetNewAlias(newVar, newVar->GetType(), 0, ExecSz / 2);
+        CVariable* newVarLo = m_currShader->GetNewAlias(newVar, newVar->GetType(), bytes1, ExecSz / 2);
+        CVariable* offHi = m_currShader->GetNewAlias(off, off->GetType(), 0, ExecSz / 2);
+        CVariable* offLo = m_currShader->GetNewAlias(off, off->GetType(), bytes2, ExecSz / 2);
+
+        if (m_currShader->m_Platform->hasNoInt64Inst())
+        {
+            emitAddPair(newVarHi, AddrVar, offHi);
+            emitAddPair(newVarLo, AddrVar, offLo);
+        }
+        else
+        {
+            SIMDMode sm = lanesToSIMDMode(ExecSz / 2);
+            m_encoder->SetNoMask();
+            m_encoder->SetUniformSIMDSize(sm);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->SetSrcRegion(1, 1, 1, 0);
+            m_encoder->Add(newVarHi, AddrVar, offHi);
+            m_encoder->Push();
+
+            m_encoder->SetNoMask();
+            m_encoder->SetUniformSIMDSize(sm);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->SetSrcRegion(1, 1, 1, 0);
+            m_encoder->Add(newVarLo, AddrVar, offLo);
+            m_encoder->Push();
+        }
+    }
+    else if (isA64 && m_currShader->m_Platform->hasNoInt64Inst())
+    {
+        emitAddPair(newVar, AddrVar, off);
+    }
+    else
+    {
+        m_encoder->SetNoMask();
+        m_encoder->SetUniformSIMDSize(simdmode);
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcRegion(1, 1, 1, 0);
+        m_encoder->Add(newVar, AddrVar, off);
+        m_encoder->Push();
+    }
+    return newVar;
+}
+
+CVariable* EmitPass::prepareDataForUniform(
+    CVariable* DataVar, uint32_t ExecSz, e_alignment Align)
+{
+    uint32_t NElts = DataVar->GetNumberElement();
+    uint32_t EltBytes = DataVar->GetElemSize();
+    IGC_ASSERT(ExecSz >= NElts && NElts <= 8 && (EltBytes == 4 || EltBytes == 8));
+    if (NElts == ExecSz && !DataVar->IsImmediate() && DataVar->IsGRFAligned(Align))
+    {
+        return DataVar;
+    }
+    CVariable* newVar = m_currShader->GetNewVariable(ExecSz, DataVar->GetType(), Align, true, CName::NONE);
+
+   // Initialize to DataVar's first element (set Elts from NElts and up to the first element).
+    bool needSplit = (newVar->GetSize() > (2 * (uint32_t)getGRFSize()));
+    if (needSplit)
+    {
+        uint32_t esz = ExecSz / 2;
+        uint32_t bytes = esz * newVar->GetElemSize();
+        CVariable* newVarHi = m_currShader->GetNewAlias(newVar, newVar->GetType(), 0, esz);
+        CVariable* newVarLo = m_currShader->GetNewAlias(newVar, newVar->GetType(), bytes, esz);
+
+        m_encoder->SetNoMask();
+        m_encoder->SetUniformSIMDSize(lanesToSIMDMode(esz));
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->Copy(newVarHi, DataVar);
+        m_encoder->Push();
+
+        m_encoder->SetNoMask();
+        m_encoder->SetUniformSIMDSize(lanesToSIMDMode(esz));
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->Copy(newVarLo, DataVar);
+        m_encoder->Push();
+    }
+    else
+    {
+
+        m_encoder->SetNoMask();
+        m_encoder->SetUniformSIMDSize(lanesToSIMDMode(ExecSz));
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->Copy(newVar, DataVar);
+        m_encoder->Push();
+    }
+
+    if (!DataVar->IsImmediate() && NElts > 1)
+    {
+        // Copy values over, the elements from NElts to ExecSz-1 are set to the first element
+        // in the initialization above.
+        emitVectorCopy(newVar, DataVar, NElts);
+    }
+    return newVar;
 }
 
 
