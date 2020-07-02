@@ -55,10 +55,6 @@ IGC_INITIALIZE_PASS_END(OpenCLPrintfResolution, PASS_FLAG, PASS_DESCRIPTION, PAS
 
 char OpenCLPrintfResolution::ID = 0;
 
-#define KB                                  ( 1024 )
-#define MB                                  ( 1024 * KB )
-const unsigned int  PrintfBufferSize = 4 * MB;
-
 //
 // FORMAT OF PRINTF OUTPUT BUFFER:
 // ================================
@@ -520,8 +516,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
     Instruction* endOffset = BinaryOperator::CreateAdd(writeOffset, dataSizeVal, "end_offset", &printfCall);
     endOffset->setDebugLoc(m_DL);
 
-    // The size of output printf buffer is 4 MB by agreement with Runtime.
-    Value* bufferMaxSize = ConstantInt::get(m_int32Type, PrintfBufferSize);
+    Value* bufferMaxSize = ConstantInt::get(m_int32Type, m_CGContext->m_DriverInfo.getPrintfBufferSize());
 
     // write_ptr = buffer_ptr + write_offset;
     if (m_ptrSizeIntType != writeOffset->getType())
