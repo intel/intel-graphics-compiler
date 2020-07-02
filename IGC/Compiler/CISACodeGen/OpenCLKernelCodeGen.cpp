@@ -2039,17 +2039,16 @@ namespace IGC
         bool noRetry = ((subGrpSize > 0 || pOutput->m_scratchSpaceUsedBySpills < 1000) &&
             ctx->m_instrTypes.mayHaveIndirectOperands);
 
-        bool fullDebugInfo = false;
-        if (ctx->m_instrTypes.hasDebugInfo)
+        bool optDisable = false;
+        if (ctx->getModuleMetaData()->compOpt.OptDisable)
         {
-            IF_DEBUG_INFO(bool hasLineNumber = false;)
-                IF_DEBUG_INFO(IGC::DebugMetadataInfo::hasAnyDebugInfo(ctx, fullDebugInfo, hasLineNumber);)
+            optDisable = true;
         }
 
         if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
             noRetry ||
             ctx->m_retryManager.IsLastTry() ||
-            fullDebugInfo)
+            optDisable)
         {
             // Save the shader program to the state processor to be handled later
             if (ctx->m_programOutput.m_ShaderProgramList.size() == 0 ||
@@ -2375,16 +2374,11 @@ namespace IGC
             // Here we check profitablility, etc.
             if (simdMode == SIMDMode::SIMD16)
             {
-                if (pCtx->m_instrTypes.hasDebugInfo)
-                {
-                    bool hasFullDebugInfo = false;
-                    IF_DEBUG_INFO(bool hasLineNumbersOnly = false;)
-                        IF_DEBUG_INFO(DebugMetadataInfo::hasAnyDebugInfo(pCtx, hasFullDebugInfo, hasLineNumbersOnly);)
+                bool optDisable = this->GetContext()->getModuleMetaData()->compOpt.OptDisable;
 
-                        if (hasFullDebugInfo)
-                        {
-                            return SIMDStatus::SIMD_FUNC_FAIL;
-                        }
+                if (optDisable)
+                {
+                    return SIMDStatus::SIMD_FUNC_FAIL;
                 }
 
                 // bail out of SIMD16 if it's not profitable.
@@ -2396,17 +2390,13 @@ namespace IGC
             }
             if (simdMode == SIMDMode::SIMD32)
             {
-                if (pCtx->m_instrTypes.hasDebugInfo)
-                {
-                    bool hasFullDebugInfo = false;
-                    IF_DEBUG_INFO(bool hasLineNumbersOnly = false;)
-                        IF_DEBUG_INFO(DebugMetadataInfo::hasAnyDebugInfo(pCtx, hasFullDebugInfo, hasLineNumbersOnly);)
+                bool optDisable = this->GetContext()->getModuleMetaData()->compOpt.OptDisable;
 
-                        if (hasFullDebugInfo)
-                        {
-                            return SIMDStatus::SIMD_FUNC_FAIL;
-                        }
+                if (optDisable)
+                {
+                    return SIMDStatus::SIMD_FUNC_FAIL;
                 }
+
                 // bail out of SIMD32 if it's not profitable.
                 Simd32ProfitabilityAnalysis& PA = EP.getAnalysis<Simd32ProfitabilityAnalysis>();
                 if (!PA.isSimd32Profitable())
