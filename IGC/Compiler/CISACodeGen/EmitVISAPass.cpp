@@ -13127,10 +13127,10 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
         CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
-        bool needsSplit = m_currShader->m_SIMDSize == SIMDMode::SIMD16
-            && !m_currShader->m_Platform->supportsSIMD16TypedRW();
-
-        auto instWidth = SIMDMode::SIMD8;
+        SIMDMode instWidth = std::min(
+            m_currShader->m_Platform->supportsSIMD16TypedRW() ? SIMDMode::SIMD16 : SIMDMode::SIMD8,
+            m_currShader->m_SIMDSize);
+        bool needsSplit = m_currShader->m_SIMDSize > instWidth;
 
         if (!needsSplit)
         {
@@ -13213,9 +13213,10 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
         bool needLoop = ResourceLoopHeader(resource, flag, label);
         uint parameterLength = 4;
 
-        bool needsSplit = m_currShader->m_SIMDSize == SIMDMode::SIMD16
-            && !m_currShader->m_Platform->supportsSIMD16TypedRW();
-        auto instWidth = SIMDMode::SIMD8;
+        SIMDMode instWidth = std::min(
+            m_currShader->m_Platform->supportsSIMD16TypedRW() ? SIMDMode::SIMD16 : SIMDMode::SIMD8,
+            m_currShader->m_SIMDSize);
+        bool needsSplit = m_currShader->m_SIMDSize > instWidth;
 
         if (!needsSplit)
         {
@@ -13236,7 +13237,11 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
         }
         else
         {
-            for (uint i = 0; i < 2; ++i)
+            IGC_ASSERT(instWidth == SIMDMode::SIMD8 ||
+                instWidth == SIMDMode::SIMD16);
+            IGC_ASSERT(m_currShader->m_SIMDSize > instWidth);
+            const uint numInst = numLanes(m_currShader->m_SIMDSize) / numLanes(instWidth);
+            for (uint i = 0; i < numInst; ++i)
             {
                 CVariable* pPayload = nullptr;
 
