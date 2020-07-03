@@ -88,7 +88,13 @@ namespace IGC
 
         // Helper function
         /// Return true if the constant is in the range which we are allowed to push
-        bool IsPushableShaderConstant(llvm::Instruction* inst, uint& bufId, uint& eltId, bool& isStateless);
+        bool IsPushableShaderConstant(
+            llvm::Instruction* inst,
+            unsigned int& cbIdx,
+            int& pushableAddressGrfOffset,
+            int& pushableOffsetGrfOffset,
+            unsigned int& eltId,
+            bool& isStateless);
 
         /// Checks if stateless buffer load is not under flow control.
         bool IsSafeToPushNonStaticBufferLoad(llvm::Instruction* inst) const;
@@ -98,7 +104,8 @@ namespace IGC
         bool IsPushableAddress(
             llvm::Instruction* inst,
             llvm::Value* pAddress,
-            uint& GRFOffset) const;
+            int& pushableAddressGrfOffset,
+            int& pushableOffsetGrfOffset) const;
 
         bool GetConstantOffsetForDynamicUniformBuffer(
             uint bufferId,
@@ -110,7 +117,13 @@ namespace IGC
 
         /// Try to push allocate space for the constant to be pushed
         unsigned int AllocatePushedConstant(
-            llvm::Instruction* load, unsigned int cbIdx, unsigned int offset, unsigned int maxSizeAllowed, bool isStateless);
+            llvm::Instruction* load,
+            unsigned int cbIdx,
+            int pushableAddressGrfOffset,
+            int pushableOffsetGrfOffset,
+            unsigned int offset,
+            unsigned int maxSizeAllowed,
+            bool isStateless);
 
         /// promote the load to function argument
         void PromoteLoadToSimplePush(llvm::Instruction* load, SimplePushInfo& info, unsigned int offset);
@@ -121,7 +134,11 @@ namespace IGC
         bool CanPushConstants();
 
         /// Return true if the Load is a stateless.
-        bool IsStatelessCBLoad(llvm::Instruction* inst, unsigned int& pBaseAddress, unsigned int& offset);
+        bool IsStatelessCBLoad(
+            llvm::Instruction* inst,
+            int& pushableAddressGrfOffset,
+            int& pushableOffsetGrfOffset,
+            unsigned int& offset);
 
         /// return the maximum number of inputs pushed for this kernel
         unsigned int GetMaxNumberOfPushedInputs();
@@ -140,6 +157,7 @@ namespace IGC
         void processRuntimeValue(llvm::GenIntrinsicInst* intrinsic);
 
         int getGRFSize() const { return m_context->platform.getGRFSize(); }
+        unsigned int GetSizeInBits(llvm::Type* type) const;
 
     public:
         static char ID;

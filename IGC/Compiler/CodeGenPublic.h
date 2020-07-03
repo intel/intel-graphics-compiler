@@ -270,8 +270,30 @@ namespace IGC
 
     struct SSimplePushInfo
     {
+        // Constant buffer BTI - valid only if isStateless is false
         uint m_cbIdx = 0;
+        // m_pushableAddressGrfOffset and m_pushableOffsetGrfOffset are GRF
+        // offsets in the runtime data pushed to the shader. UMD uses these
+        // offsets to calculate the starting address of a simple push region.
+        // These fields are valid only if greater or equal to 0 and if
+        // isStateless is true. Offsets are in DWORDs.
+        // Runtime data starting at m_pushableAddressGrfOffset contains the
+        // 64bit stateless address, data starting at m_pushableOffsetGrfOffset
+        // contains 32bit offset relative to the 64bit starting address.
+        // pseudo-code to calculate the address:
+        //   uint8_t* pShaderRuntimeData ={...}; // to be pushed
+        //   uint64_t pushableAddress =
+        //     *(uint64_t*)(pShaderRuntimeData + 4*pushableAddressGrfOffset);
+        //   if (pushableOffsetGrfOffset >=0) {
+        //     pushableAddress +=
+        //       *(uint32_t*)(pShaderRuntimeData + 4*pushableOffsetGrfOffset);
+        //   }
+        //   pushableAddress += m_offset;
+        int m_pushableAddressGrfOffset = -1;
+        int m_pushableOffsetGrfOffset = -1;
+        // Immediate offset in bytes add to the start of the simple push region.
         uint m_offset = 0;
+        // Data size in bytes, must be a multiple of GRF size
         uint m_size = 0;
         bool isStateless = false;
     };

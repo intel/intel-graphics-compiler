@@ -639,6 +639,8 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram* pKernelProgram)
     for (unsigned int i = 0; i < pushInfo.simplePushBufferUsed; i++)
     {
         pKernelProgram->simplePushInfoArr[i].m_cbIdx = pushInfo.simplePushInfoArr[i].cbIdx;
+        pKernelProgram->simplePushInfoArr[i].m_pushableAddressGrfOffset= pushInfo.simplePushInfoArr[i].pushableAddressGrfOffset;
+        pKernelProgram->simplePushInfoArr[i].m_pushableOffsetGrfOffset = pushInfo.simplePushInfoArr[i].pushableOffsetGrfOffset;
         pKernelProgram->simplePushInfoArr[i].m_offset = pushInfo.simplePushInfoArr[i].offset;
         pKernelProgram->simplePushInfoArr[i].m_size = pushInfo.simplePushInfoArr[i].size;
         pKernelProgram->simplePushInfoArr[i].isStateless = pushInfo.simplePushInfoArr[i].isStateless;

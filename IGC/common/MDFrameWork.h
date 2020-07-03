@@ -260,13 +260,19 @@ namespace IGC
         int interpolationMode = 0;
     };
 
-    // SimplePushInfo holding the argument number in map so that we can retrieve relavent Argument as a value pointer from Function
+    // SimplePushInfo holds information about the promoted constant buffer
+    // region (see member descriptions in SSimplePushInfo). It also holds
+    // mappings between the byte offsets in the promoted region and
+    // corresponding argument index.
     struct SimplePushInfo
     {
         unsigned int cbIdx = 0;
+        int pushableAddressGrfOffset = -1;
+        int pushableOffsetGrfOffset = -1;
         unsigned int offset = 0;
         unsigned int size = 0;
         bool isStateless = false;
+        // std::map<offset, argumentIndex>
         std::map<unsigned int, int> simplePushLoads;
     };
 
