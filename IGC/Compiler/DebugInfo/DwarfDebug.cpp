@@ -1558,19 +1558,33 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                             {
                                 IGC_ASSERT(IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging));
 
-                                uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
+                                uint32_t grfSize = m_pModule->m_pShader->getGRFSize();
                                 unsigned int vectorNumElements = 1;
-                                uint16_t varSizeInBits = Loc.IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)RegVar->getBasicSize(this);
-                                uint16_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
-                                uint16_t numOfRegs = ((varSizeInReg * (uint16_t)simdWidth) > (grfSize * 8)) ?
-                                    ((varSizeInReg * (uint16_t)simdWidth) / (grfSize * 8)) : 1;
-                                auto lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
+                                uint64_t varSizeInBits = Loc.IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : RegVar->getBasicSize(this);
+                                uint32_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : (uint32_t)varSizeInBits;
+                                uint32_t numOfRegs = ((varSizeInReg * (uint32_t)simdWidth) > (grfSize * 8)) ?
+                                    ((varSizeInReg * (uint32_t)simdWidth) / (grfSize * 8)) : 1;
+                                uint8_t varSizeInBytes = 8;
+                                if (varSizeInBits <= 0xFF)
+                                {
+                                    varSizeInBytes = 1;
+                                }
+                                else if (varSizeInBits <= 0xFFFF)
+                                {
+                                    varSizeInBytes = 2;
+                                }
+                                else if (varSizeInBits <= 0xFFFFFFFF)
+                                {
+                                    varSizeInBytes = 4;
+                                }
+                                IGC_ASSERT_MESSAGE(varSizeInBytes <= 4, "Unexpected variable's size");
+
                                 auto simdLaneSize =
-                                    sizeof(uint8_t) +                        // subReg or DW_OP_INTEL_push_simd_lane
-                                    sizeof(uint8_t) +                        // opLit
-                                    sizeof(uint8_t) +                        // DW_OP_shl
-                                    sizeof(uint8_t) + lebsizeVarSizeInBits + // DW_OP_const1u+val
-                                    sizeof(uint8_t);                         // DW_OP_INTEL_bit_piece_stack
+                                    sizeof(uint8_t) +                  // subReg or DW_OP_INTEL_push_simd_lane
+                                    sizeof(uint8_t) +                  // opLit
+                                    sizeof(uint8_t) +                  // DW_OP_shl
+                                    sizeof(uint8_t) + varSizeInBytes + // DW_OP_const1u+val
+                                    sizeof(uint8_t);                   // DW_OP_INTEL_bit_piece_stack
 
                                 if (Loc.IsVectorized() == true)
                                 {
@@ -1640,14 +1654,23 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     }
 
                                     IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Unexpected variable's size");
-                                    unsigned int opLit = llvm::dwarf::DW_OP_lit5;
+                                    IGC_ASSERT_MESSAGE(varSizeInBits <= 0x80000000, "Too huge variable's size");
+                                    unsigned int opLit = llvm::dwarf::DW_OP_lit5;  // Assume unpacked <= 32 variable size
 
-                                    if (varSizeInBits >= 64)
+                                    // Verify if variable's size if a power of 2 and greater than 32 bits.
+                                    bool isSizePowerOf2 = false;
+                                    uint64_t powerOf2 = 1 << 5;
+                                    for (int bitPos = 6; bitPos < 32; bitPos++)
                                     {
+                                        powerOf2 = powerOf2 << 1;
+                                        if (varSizeInBits == powerOf2)
                                         {
-                                            opLit = llvm::dwarf::DW_OP_lit5;  // Two+ subregs
+                                            isSizePowerOf2 = true;
+                                            opLit = llvm::dwarf::DW_OP_lit0 + bitPos;
                                         }
                                     }
+
+                                    IGC_ASSERT_MESSAGE(isSizePowerOf2 == true, "Missing support for variable size other than power of 2");
 
                                     if (Loc.IsVectorized() == false)
                                     {
@@ -1667,9 +1690,28 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     write(dotLoc.loc, (uint8_t)opLit);
 
                                     write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
-                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_const1u);
-                                    lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
-                                    write(dotLoc.loc, bufLEB128, lebsizeVarSizeInBits);
+
+                                    if (varSizeInBits <= 0xFF)
+                                    {
+                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const1u);
+                                        write(dotLoc.loc, (uint8_t)varSizeInBits);
+                                    }
+                                    else if (varSizeInBits <= 0xFFFF)
+                                    {
+                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const2u);
+                                        write(dotLoc.loc, (uint16_t)varSizeInBits);
+                                    }
+                                    else if (varSizeInBits <= 0xFFFFFFFF)
+                                    {
+                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const4u);
+                                        write(dotLoc.loc, (uint32_t)varSizeInBits);
+                                    }
+                                    else
+                                    {
+                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const8u);
+                                        write(dotLoc.loc, (uint64_t)varSizeInBits);
+                                    }
+
                                     write(dotLoc.loc, (uint8_t)DW_OP_INTEL_bit_piece_stack);
 
                                     regNum = regNum + numOfRegs;
@@ -1698,20 +1740,34 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                 // 1 DW_OP_bregx <scrbase>, <offset>
                                 uint64_t scratchBaseAddr = 0; // TBD MT
                                 unsigned int vectorNumElements = 1;
-                                uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
-                                uint16_t varSizeInBits = Loc.IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)RegVar->getBasicSize(this);
-                                uint16_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
-                                uint16_t numOfRegs = ((varSizeInReg * (uint16_t)simdWidth) > (grfSize * 8)) ?
-                                    ((varSizeInReg * (uint16_t)simdWidth) / (grfSize * 8)) : 1;
+                                uint32_t grfSize = m_pModule->m_pShader->getGRFSize();
+                                uint64_t varSizeInBits = Loc.IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : RegVar->getBasicSize(this);
+                                uint32_t varSizeInReg = (Loc.IsInMemory() && varSizeInBits < 32) ? 32 : (uint32_t)varSizeInBits;
+                                uint32_t numOfRegs = ((varSizeInReg * (uint32_t)simdWidth) > (grfSize * 8)) ?
+                                    ((varSizeInReg * (uint32_t)simdWidth) / (grfSize * 8)) : 1;
                                 auto lebsizeScratchBaseAddr = encodeULEB128(scratchBaseAddr, bufLEB128); // Address for bregx
                                 auto lebsizeScratchOffset = encodeULEB128(varInfo.getSpillOffset().memoryOffset, bufLEB128); // Offset for bregx
-                                auto lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
+                                uint8_t varSizeInBytes = 8;
+                                if (varSizeInBits <= 0xFF)
+                                {
+                                    varSizeInBytes = 1;
+                                }
+                                else if (varSizeInBits <= 0xFFFF)
+                                {
+                                    varSizeInBytes = 2;
+                                }
+                                else if (varSizeInBits <= 0xFFFFFFFF)
+                                {
+                                    varSizeInBytes = 4;
+                                }
+                                IGC_ASSERT_MESSAGE(varSizeInBytes <= 4, "Unexpected variable's size");
+
                                 auto simdLaneSize =
-                                    sizeof(uint8_t) +                        // subReg or DW_OP_INTEL_push_simd_lane
-                                    sizeof(uint8_t) +                        // opLit
-                                    sizeof(uint8_t) +                        // DW_OP_shl
-                                    sizeof(uint8_t) + lebsizeVarSizeInBits + // DW_OP_const1u+val
-                                    sizeof(uint8_t);                         // DW_OP_INTEL_bit_piece_stack
+                                    sizeof(uint8_t) +                  // subReg or DW_OP_INTEL_push_simd_lane
+                                    sizeof(uint8_t) +                  // opLit
+                                    sizeof(uint8_t) +                  // DW_OP_shl
+                                    sizeof(uint8_t) + varSizeInBytes + // DW_OP_const1u+val
+                                    sizeof(uint8_t);                   // DW_OP_INTEL_bit_piece_stack
 
                                 if (Loc.IsVectorized() == true)
                                 {
@@ -1769,12 +1825,20 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     }
 
                                     // Emit SIMD lane for spill (unpacked)
+                                    IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Unexpected variable's size");
+                                    IGC_ASSERT_MESSAGE(varSizeInBits <= 0x80000000, "Too huge variable's size");
+                                    unsigned int opLit = llvm::dwarf::DW_OP_lit5;  // Assume unpacked <= 32 variable size
 
-                                    unsigned int opLit = llvm::dwarf::DW_OP_lit5;
-                                    if (varSizeInBits >= 64)
+                                    // Verify if variable's size if a power of 2 and greater than 32 bits.
+                                    bool isSizePowerOf2 = false;
+                                    uint64_t powerOf2 = 1 << 5;
+                                    for (int bitPos = 6; bitPos < 32; bitPos++)
                                     {
+                                        powerOf2 = powerOf2 << 1;
+                                        if (varSizeInBits == powerOf2)
                                         {
-                                            opLit = llvm::dwarf::DW_OP_lit5;  // Two+ subregs
+                                            isSizePowerOf2 = true;
+                                            opLit = llvm::dwarf::DW_OP_lit0 + bitPos;
                                         }
                                     }
 
@@ -1795,9 +1859,28 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     // as well as 32-bit float/int, while 64-bit variable takes two 32-bit subregisters.
                                     write(dotLoc.loc, (uint8_t)opLit);
                                     write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
-                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_const1u);
-                                    lebsizeVarSizeInBits = encodeULEB128(varSizeInBits, bufLEB128);
-                                    write(dotLoc.loc, bufLEB128, lebsizeVarSizeInBits);
+
+                                    if (varSizeInBits <= 0xFF)
+                                    {
+                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const1u);
+                                        write(dotLoc.loc, (uint8_t)varSizeInBits);
+                                    }
+                                    else if (varSizeInBits <= 0xFFFF)
+                                    {
+                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const2u);
+                                        write(dotLoc.loc, (uint16_t)varSizeInBits);
+                                    }
+                                    else if (varSizeInBits <= 0xFFFFFFFF)
+                                    {
+                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const4u);
+                                        write(dotLoc.loc, (uint32_t)varSizeInBits);
+                                    }
+                                    else
+                                    {
+                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const8u);
+                                        write(dotLoc.loc, (uint64_t)varSizeInBits);
+                                    }
+
                                     write(dotLoc.loc, (uint8_t)DW_OP_INTEL_bit_piece_stack);
 
                                     regNum = regNum + numOfRegs;

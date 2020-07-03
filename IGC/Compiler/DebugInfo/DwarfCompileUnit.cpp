@@ -990,23 +990,25 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
 
         if (!isPacked)
         {
-            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-            dwarf::Form form = dwarf::DW_FORM_data1;
-            if (varSizeInBits > 0xFF)
+            dwarf::LocationAtom constOP = dwarf::DW_OP_const8u;
+            dwarf::Form form = dwarf::DW_FORM_data8;
+            if (varSizeInBits <= 0xFF)
             {
-                if (varSizeInBits <= 0xFFFF)
-                {
-                    form = dwarf::DW_FORM_data2;
-                }
-                else if (varSizeInBits <= 0xFFFFFFFF)
-                {
-                    form = dwarf::DW_FORM_data4;
-                }
-                else
-                {
-                    form = dwarf::DW_FORM_data8;
-                }
+                constOP = dwarf::DW_OP_const1u;
+                form = dwarf::DW_FORM_data1;
             }
+            else if (varSizeInBits <= 0xFFFF)
+            {
+                constOP = dwarf::DW_OP_const2u;
+                form = dwarf::DW_FORM_data2;
+            }
+            else if (varSizeInBits <= 0xFFFFFFFF)
+            {
+                constOP = dwarf::DW_OP_const4u;
+                form = dwarf::DW_FORM_data4;
+            }
+
+            addUInt(Block, dwarf::DW_FORM_data1, constOP);
             addUInt(Block, form, varSizeInBits);
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_bit_piece_stack);
         }
