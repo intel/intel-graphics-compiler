@@ -87,7 +87,7 @@ DECLARE_OPCODE(FCmp, Instruction, llvm_fcmp, true, false, false, false, false, f
 DECLARE_OPCODE(Br, Instruction, llvm_branch, false, false, false, false, false, false, false)
 DECLARE_OPCODE(PHI, Instruction, llvm_phi, false, false, false, false, false, false, false)
 DECLARE_OPCODE(ICmp, Instruction, llvm_icmp, true, false, false, false, false, false, false)
-DECLARE_OPCODE(Add, Instruction, llvm_add, true, false, true, true, false, false, true)
+DECLARE_OPCODE(Add, Instruction, llvm_add, true, true, true, true, false, false, true)
 DECLARE_OPCODE(Sub, Instruction, llvm_sub, true, false, true, true, false, false, false)
 DECLARE_OPCODE(UIToFP, Instruction, llvm_uitofp, false, true, true, true, false, false, false)
 DECLARE_OPCODE(SIToFP, Instruction, llvm_sitofp, true, true, true, true, false, false, false)
@@ -136,6 +136,10 @@ DECLARE_OPCODE(GenISA_f32tof16_rtz, GenISAIntrinsic, llvm_f32tof16_rtz, true, fa
 DECLARE_OPCODE(fabs, Intrinsic, llvm_fabs, false, false, true, false, true, false, false)
 DECLARE_OPCODE(GenISA_fsat, GenISAIntrinsic, llvm_fsat, true, false, true, true, true, false, false)
 DECLARE_OPCODE(canonicalize, Intrinsic, llvm_canonicalize, true, true, true, true, false, false, false)
+DECLARE_OPCODE(GenISA_dp4a_ss, GenISAIntrinsic, llvm_dp4a_ss, false, true, true, true, false, false, false)
+DECLARE_OPCODE(GenISA_dp4a_uu, GenISAIntrinsic, llvm_dp4a_uu, false, true, true, true, false, false, false)
+DECLARE_OPCODE(GenISA_dp4a_su, GenISAIntrinsic, llvm_dp4a_su, false, true, true, true, false, false, false)
+DECLARE_OPCODE(GenISA_dp4a_us, GenISAIntrinsic, llvm_dp4a_us, false, true, true, true, false, false, false)
 
 // GS Intrinsics
 DECLARE_OPCODE(GenISA_OUTPUTGS, GenISAIntrinsic, llvm_output_gs, false, false, false, false, false, false, false)

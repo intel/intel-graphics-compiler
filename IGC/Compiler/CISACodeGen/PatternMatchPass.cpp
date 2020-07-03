@@ -3165,6 +3165,15 @@ namespace IGC
             }
         };
 
+        struct IntegerSatTruncPattern : public Pattern {
+            SSource src;
+            bool isSigned;
+            virtual void Emit(EmitPass* pass, const DstModifier& dstMod)
+            {
+                pass->EmitIntegerTruncWithSat(isSigned, isSigned, src, dstMod);
+            }
+        };
+
         bool match = false;
         llvm::Value* source = nullptr;
         bool isUnsigned = false;
@@ -3191,6 +3200,15 @@ namespace IGC
                     match = true;
                     SatPattern* satPattern = new (m_allocator) SatPattern();
                     satPattern->pattern = Match(*sourceInst);
+                    AddPattern(satPattern);
+                }
+                else if (llvm::TruncInst* truncInst = llvm::dyn_cast<llvm::TruncInst>(source);
+                    truncInst)
+                {
+                    match = true;
+                    IntegerSatTruncPattern* satPattern = new (m_allocator) IntegerSatTruncPattern();
+                    satPattern->isSigned = !isUnsigned;
+                    satPattern->src = GetSource(truncInst->getOperand(0), !isUnsigned, false);
                     AddPattern(satPattern);
                 }
                 else if (llvm::GenIntrinsicInst * genIsaInst = llvm::dyn_cast<llvm::GenIntrinsicInst>(source);
