@@ -8190,7 +8190,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
     {
         CVariable* opVar = opnds[i];
         StringRef constraint = constraints[i];
-        if (opVar->IsImmediate() && !constraint.equals("i"))
+        if (opVar && opVar->IsImmediate() && !constraint.equals("i"))
         {
             CVariable* tempMov = m_currShader->GetNewVariable(
                 1, opVar->GetType(), EALIGN_GRF, true, opVar->getName());
@@ -8226,7 +8226,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
             IGC_ASSERT_MESSAGE(0, "Invalid operand index");
             return;
         }
-        string varName = m_encoder->GetVariableName(opnds[val]);
+        string varName = opnds[val] ? m_encoder->GetVariableName(opnds[val]) : "null";
         asmStr.replace(varPos, (idEnd - idStart + 1), varName);
 
         startPos = varPos + varName.size();
