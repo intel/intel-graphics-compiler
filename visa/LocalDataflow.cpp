@@ -1,6 +1,32 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
 #include "FlowGraph.h"
 #include "BitSet.h"
 #include "BuildIR.h"
+#include "LocalDataflow.h"
 #include <algorithm>
 #include <unordered_map>
 #include <vector>
@@ -528,5 +554,115 @@ void FlowGraph::resetLocalDataFlowData()
             inst->clearDef();
             inst->clearUse();
         }
+    }
+}
+
+void DefEscapeBBAnalysis::analyzeBB(G4_BB* bb)
+{
+    // active defines in this BB, organized by root declare
+    invalidateBB(bb);
+    std::unordered_map<G4_Declare*, std::vector<G4_INST*> > activeDefines;
+    std::vector<G4_INST*> escapedDefs;
+    for (auto inst : *bb)
+    {
+        if (!inst->getDst())
+        {
+            continue;
+        }
+
+        // analyze GRF/Address dst
+        auto dst = inst->getDst();
+
+        if (dst->isIndirect())
+        {
+            escapedDefs.push_back(inst);
+        }
+        else if (dst->getTopDcl())
+        {
+            auto dcl = dst->getTopDcl()->getRootDeclare();
+            auto&& iter = activeDefines.find(dcl);
+            if (iter == activeDefines.end())
+            {
+                // first define for dcl in this BB
+                activeDefines[dcl] = { inst };
+            }
+            else
+            {
+                auto&& vec = iter->second;
+                // note size may shrink!
+                for (int i = 0; i < (int)vec.size(); ++i)
+                {
+
+                    auto prevInst = vec[i];
+                    if (inst->getMaskOffset() != prevInst->getMaskOffset() ||
+                        (prevInst->isWriteEnableInst() && !inst->isWriteEnableInst()) ||
+                        dst->getExecTypeSize() != prevInst->getDst()->getExecTypeSize())
+                    {
+                        continue;
+                    }
+                    auto rel = dst->compareOperand(prevInst->getDst());
+                    if (rel == Rel_eq || rel == Rel_gt)
+                    {
+                        std::swap(vec[i], vec[vec.size() - 1]);
+                        vec.pop_back();
+#ifdef _DEBUG
+                        std::cerr << "Inst:\t";
+                        prevInst->dump();
+                        std::cerr << "killed by Inst:\t";
+                        inst->dump();
+                        auto killIter = killedDefs.find(bb);
+                        if (killIter == killedDefs.end())
+                        {
+                            killedDefs[bb] = { prevInst };
+                        }
+                        else
+                        {
+                            auto&& killedVec = killIter->second;
+                            killedVec.push_back(prevInst);
+                        }
+#endif
+                    }
+                }
+                vec.push_back(inst);
+            }
+        }
+    }
+
+    for (auto&& iter : activeDefines)
+    {
+        auto&& vec = iter.second;
+        for (auto I : vec)
+        {
+            escapedDefs.push_back(I);
+        }
+    }
+    escapedInsts[bb] = escapedDefs;
+}
+
+void DefEscapeBBAnalysis::print(ostream& OS) const
+{
+    for (auto&& iter : escapedInsts)
+    {
+        G4_BB* bb = iter.first;
+        OS << "BB"  << bb->getId() << ":\n";
+        OS << "Escaped inst:\n";
+        for (auto&& inst : iter.second)
+        {
+            OS << "\t";
+            inst->print(OS);
+        }
+#ifdef _DEBUG
+        auto&& killIt = killedDefs.find(bb);
+        if (killIt != killedDefs.end())
+        {
+            OS << "Killed inst:\n";
+            for (auto&& inst : killIt->second)
+            {
+                OS << "\t";
+                inst->print(OS);
+            }
+        }
+#endif // _DEBUG
+        OS << "\n";
     }
 }

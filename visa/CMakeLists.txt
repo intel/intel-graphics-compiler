@@ -270,6 +270,7 @@ set(GenX_Common_Headers
   InstSplit.h
   VarSplit.h
   Attributes.hpp
+  LocalDataflow.h
   ${LocalScheduler_HEADERS}
 )
 set(GenX_CISA_dis_Common_Headers
