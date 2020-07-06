@@ -55,6 +55,7 @@ public:
     IGC::SOpenCLKernelInfo m_kernelInfo;
     IGC::SProgramOutput m_prog;
     IGC::COCLBTILayout m_btiLayout;
+    uint32_t m_GRFSizeInBytes;
 
     // General argument
     void createConstArgumentAnnotation(unsigned argNo,
@@ -68,20 +69,18 @@ public:
                                 bool isWriteable);
 
     // add a pointer patch token.
-    void createPointerGlobalAnnotation(unsigned argNo,
-                                       unsigned byteSize,
-                                       unsigned payloadPosition,
-                                       int BTI);
+    void createPointerGlobalAnnotation(const cmc_arg_info &argInfo);
 
     void createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
                                      unsigned payloadPosition, int BTI,
                                      unsigned statelessPrivateMemSize);
 
     // add a stateful buffer patch token.
-    void createBufferStatefulAnnotation(unsigned argNo);
+    void createBufferStatefulAnnotation(unsigned argNo,
+                                        cmc_access_kind accessKind);
 
     // Local or global size
-    void createSizeAnnotation(unsigned payloadPosition, int32_t type);
+    void createSizeAnnotation(unsigned payloadPosition, iOpenCL::DATA_PARAMETER_TOKEN type);
 
     // Global work offset/local work size
     void createImplicitArgumentsAnnotation(unsigned payloadPosition);

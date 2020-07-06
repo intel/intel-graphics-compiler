@@ -404,4 +404,20 @@ void CGen8CMProgram::CreateKernelBinaries()
     }
 }
 
+void CGen8CMProgram::GetZEBinary(
+    llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes)
+{
+    ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8, *m_programInfo};
+
+    for (auto *kernel : m_kernels)
+    {
+        zebuilder.createKernel(
+            reinterpret_cast<const char*>(kernel->m_prog.m_programBin),
+            kernel->m_prog.m_programSize,
+            kernel->m_kernelInfo,
+            kernel->m_GRFSizeInBytes);
+    }
+    zebuilder.getBinaryObject(programBinary);
+}
+
 } // namespace iOpenCL

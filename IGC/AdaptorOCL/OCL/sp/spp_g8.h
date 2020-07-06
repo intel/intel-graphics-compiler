@@ -127,6 +127,8 @@ public:
     // Produce the final ELF binary with the given CM kernels
     // in OpenCL format.
     void CreateKernelBinaries();
+    void GetZEBinary(llvm::raw_pwrite_stream& programBinary,
+        unsigned pointerSizeInBytes) override;
 
     // CM kernel list.
     std::vector<cmc::CMKernel*> m_kernels;
