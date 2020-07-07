@@ -88,7 +88,7 @@ namespace IGC
         static const unsigned MINIMAL_MAX_PARAMETER_SIZE = 1024;
 
         // maximum size (in bytes) of the arguments that can be passed to OCL kernel
-        uint32_t MaxParameterSize = MINIMAL_MAX_PARAMETER_SIZE;
+        uint32_t MaxParameterSize = 2048;
 
     };
 
