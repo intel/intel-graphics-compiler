@@ -2067,9 +2067,9 @@ static bool ParseAlign(CISA_IR_Builder* pCisaBuilder, const char *sym, VISA_Alig
         value = ALIGN_2_GRF;
     } else if (strcmp(sym, "hword") == 0) {
         value = ALIGN_HWORD;
-    } else if (strcmp(sym, "32word") == 0) {
+    } else if (strcmp(sym, "wordx32") == 0) {
         value = ALIGN_32WORD;
-    } else if (strcmp(sym, "64word") == 0) {
+    } else if (strcmp(sym, "wordx64") == 0) {
         value = ALIGN_64WORD;
     } else {
         value = ALIGN_UNDEF;

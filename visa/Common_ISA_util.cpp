@@ -54,8 +54,8 @@ const char* Common_ISA_Get_Align_Name(VISA_Align align)
         "GRF",
         "GRFx2", // "2GRF"
         "hword",
-        "32word",
-        "64word",
+        "wordx32",
+        "wordx64",
         "byte",
     };
 

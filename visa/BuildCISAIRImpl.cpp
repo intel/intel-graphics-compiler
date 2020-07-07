@@ -3083,3 +3083,4 @@ std::stringstream& IR_Builder::criticalMsgStream()
     return const_cast<CISA_IR_Builder*>(parentBuilder)->criticalMsgStream();
 }
 
+

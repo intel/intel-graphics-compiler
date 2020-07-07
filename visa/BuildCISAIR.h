@@ -797,6 +797,7 @@ public:
     void* getGtpinInit() { return gtpin_init; }
 
 
+
 private:
 
     vISA::Mem_Manager m_mem;
