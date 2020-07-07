@@ -9383,8 +9383,11 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     unsigned totalAllocaSize = 0;
 
-    // reserve space for kernel FP
-    totalAllocaSize += SIZE_OWORD;
+    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+    {
+        // reserve space for kernel FP
+        totalAllocaSize += SIZE_OWORD;
+    }
 
     // reserve space for alloca
     auto funcMDItr = pModuleMetadata->FuncMD.find(pKernel);
@@ -9417,8 +9420,13 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     CVariable* pSP = m_currShader->GetSP();
     emitAddSP(pSP, pStackBufferBase, pThreadOffset);
 
+    // Init FP to 0. When doing stack-walk, a zero-value FP indicates stack base
+    CVariable* pFP = m_currShader->GetFP();
+    m_encoder->Copy(pFP, m_currShader->ImmToVariable(0, ISA_TYPE_UQ));
+    m_encoder->Push();
+
     // Update FP and SP
-    emitPushToStack(m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD), true);
+    emitPushToStack(m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
 }
 
 /// This function is NOT about the alignment-rule for storing argv into GRF!
@@ -9899,8 +9907,11 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
     unsigned totalAllocaSize = 0;
 
-    // reserve space to store caller's FP
-    totalAllocaSize += SIZE_OWORD;
+    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+    {
+        // reserve space for caller's FP
+        totalAllocaSize += SIZE_OWORD;
+    }
 
     // reserve space for all the alloca in the function subgroup
     auto funcMDItr = m_currShader->m_ModuleMetadata->FuncMD.find(F);
@@ -9921,7 +9932,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
     m_currShader->SaveStackState();
 
     // Update SP and FP
-    emitPushToStack(m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD), false);
+    emitPushToStack(m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
 
     // Set the per-function private mem size
     m_encoder->SetFunctionAllocaStackSize(F, totalAllocaSize);
@@ -16052,26 +16063,21 @@ void EmitPass::emitGenISACopy(GenIntrinsicInst* GenCopyInst)
 }
 
 // Puts FP on stack, update FP to SP, then update SP by pushOffset
-// If isKernel, write special FP value instead to indicate base of the stack
-void EmitPass::emitPushToStack(CVariable* pushOffset, bool isKernel)
+void EmitPass::emitPushToStack(CVariable* pushOffset)
 {
     CVariable* pFP = m_currShader->GetFP();
     CVariable* pSP = m_currShader->GetSP();
-    if (isKernel)
+
+    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
     {
-        // Put 0 into FP to indicate kernel stack base
-        m_encoder->Copy(pFP, m_currShader->ImmToVariable(0, ISA_TYPE_UQ));
+        // Store FP value into current SP
+        bool is64BitAddr = (pSP->GetSize() > 4);
+        if (is64BitAddr)
+            m_encoder->OWStoreA64(pFP, pSP, SIZE_OWORD, 0);
+        else
+            m_encoder->OWStore(pFP, ESURFACE_STATELESS, nullptr, pSP, SIZE_OWORD, 0);
         m_encoder->Push();
     }
-
-    // Store FP value into current SP
-    bool is64BitAddr = (pSP->GetSize() > 4);
-    if (is64BitAddr)
-        m_encoder->OWStoreA64(pFP, pSP, SIZE_OWORD, 0);
-    else
-        m_encoder->OWStore(pFP, ESURFACE_STATELESS, nullptr, pSP, SIZE_OWORD, 0);
-    m_encoder->Push();
-
     // Set FP = SP
     m_encoder->Copy(pFP, pSP);
     m_encoder->Push();
