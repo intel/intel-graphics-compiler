@@ -135,6 +135,7 @@ public:
         m_GenNamedVarMap.emplace_back();
 
         createKernelAttributes();
+        createReservedKeywordSet();
     }
 
     void* alloc(size_t sz) { return m_mem.alloc(sz); }
@@ -851,6 +852,8 @@ public:
     void computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions);
 
 private:
+    void createReservedKeywordSet();
+    bool isReservedName(const std::string &nm) const;
     void ensureVariableNameUnique(const char *&varName);
     void generateVariableName(Common_ISA_Var_Class Ty, const char *&varName);
 
@@ -1008,6 +1011,7 @@ private:
     // TODO: this should be merged and re-worked to fit into the symbol table
     // scheme
     std::unordered_set<std::string> varNames;
+    std::unordered_set<std::string> reservedNames;
 
     int m_vISAInstCount;
     print_decl_index_t m_printDeclIndex;

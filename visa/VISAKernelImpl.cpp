@@ -763,12 +763,47 @@ void VISAKernelImpl::createBindlessSampler()
     }
 }
 
+void VISAKernelImpl::createReservedKeywordSet() {
+    for (int i = 0; i < ISA_NUM_OPCODE; i++) {
+        const VISA_INST_Desc &desc = CISA_INST_table[i];
+        if (desc.name != nullptr)
+            reservedNames.insert(desc.name);
+        int subOpsLen = 0;
+        const ISA_SubInst_Desc *subOps = getSubInstTable(desc.opcode, subOpsLen);
+        if (subOps != nullptr) {
+            // e.g. ops like ISA_SVM have a subtable of operations
+            for (int si = 0; si < subOpsLen; si++) {
+                // same tables have some padding and empty ops
+                if (subOps[si].name != nullptr)
+                    reservedNames.insert(subOps[si].name);
+            }
+        }
+    }
+
+}
+
+bool VISAKernelImpl::isReservedName(const std::string &nm) const {
+    auto opItr = reservedNames.find(nm);
+    return (opItr != reservedNames.end());
+}
+
 void VISAKernelImpl::ensureVariableNameUnique(const char *&varName)
 {
-    // escape the name to ensure it's a legal vISA identifier
+    // legalize the LLVM name to vISA standards; some examples follow:
+    // given  ==> we fix it to this
+    // 1.  "0"  ==> "_0"              (LLVM name)
+    // 2.  "add.i.i" ==> "add_i_i"    (LLVM compound name)
+    // 3.  "mul" ==> "mul_"           (vISA keyword)
+    // 4.  suppose both variable "x" and "x0" exist
+    //       "x" ==> "x_1"            (since "x0" already used)
+    //       "x0" ==> "x0_1"          (it's a dumb suffixing strategy)
     std::stringstream escdName;
+
+    // step 1
     if (isdigit(varName[0]))
         escdName << '_';
+
+    // step 2
     for (size_t i = 0, slen = strlen(varName); i < slen; i++) {
         char c = varName[i];
         if (!isalnum(c)) {
@@ -777,6 +812,11 @@ void VISAKernelImpl::ensureVariableNameUnique(const char *&varName)
         escdName << c;
     }
 
+    // case 3: "mul" ==> "mul_"
+    while (isReservedName(escdName.str()))
+        escdName << '_';
+
+    // case 4: if "x" already exists, then use "x_#" where # is 0,1,..
     std::string varNameS = escdName.str();
     if (varNames.find(varNameS) != varNames.end()) {
         // not unqiue, add a counter until it is unique

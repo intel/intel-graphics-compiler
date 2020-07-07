@@ -356,7 +356,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <string> RTWRITE_OPTION
 
 %token <string>            STRING_LITERAL
-%token <CISA_align>        ALIGNTYPE_2GRF
+%token <CISA_align>        ALIGNTYPE_NONVAR_KEYWORD
 %token <media_mode>        MEDIA_MODE
 %token <oword_mod>         OWORD_MODIFIER
 %token <s_channel>         SAMPLER_CHANNEL
@@ -730,8 +730,8 @@ AlignType : /* empty */
                {
                    $$ = ALIGN_BYTE;
                }
-              | ALIGN ALIGNTYPE_2GRF {
-                   $$ = ALIGN_BYTE;
+              | ALIGN ALIGNTYPE_NONVAR_KEYWORD {
+                   $$ = $2;
               }
               | ALIGN VAR /* e.g. byte, word, dword, qword, GRF, GRFx2 */
                {
@@ -2063,7 +2063,7 @@ static bool ParseAlign(CISA_IR_Builder* pCisaBuilder, const char *sym, VISA_Alig
         value = ALIGN_OWORD;
     } else if (strcmp(sym, "GRF") == 0) {
         value = ALIGN_GRF;
-    } else if (strcmp(sym, "GRFx2") == 0) {
+    } else if (strcmp(sym, "GRFx2") == 0 || strcmp(sym, "2GRF") == 0) {
         value = ALIGN_2_GRF;
     } else if (strcmp(sym, "hword") == 0) {
         value = ALIGN_HWORD;

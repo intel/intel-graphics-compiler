@@ -732,7 +732,7 @@ v_type[ ]*=[ ]*T {
         return T_CLASS;
     }
 
-type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|hf|HF)  {
+type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|hf|HF) {
         TRACE("\n** TYPE ");
         CISAlval.type = str2type(yytext, yyleng);
         return DECL_DATA_TYPE;
@@ -743,7 +743,20 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
         TRACE("\n** AlignType - 2GRF ");
         CISAlval.align = ALIGN_2_GRF;
         // fprintf(stderr, "%s", "2GRF symbol is deprecated; please use GRFx2");
-        return ALIGNTYPE_2GRF;
+        return ALIGNTYPE_NONVAR_KEYWORD;
+}
+
+32word {
+        /* other cases are handled as VAR */
+        TRACE("\n** AlignType - 32word ");
+        CISAlval.align = ALIGN_32WORD;
+        return ALIGNTYPE_NONVAR_KEYWORD;
+}
+64word {
+        /* other cases are handled as VAR */
+        TRACE("\n** AlignType - 64word ");
+        CISAlval.align = ALIGN_64WORD;
+        return ALIGNTYPE_NONVAR_KEYWORD;
 }
 
 "(-)"    {TRACE("\n** SRCMOD_NEG "); return SRCMOD_NEG;}
