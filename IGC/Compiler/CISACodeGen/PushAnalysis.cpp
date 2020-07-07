@@ -860,7 +860,7 @@ namespace IGC
             {
                 pushConstantMode = PushConstantMode::SIMPLE_PUSH;
             }
-            else if (m_context->platform.supportsHardwareResourceStreamer())
+            else if (m_context->platform.supportsHardwareResourceStreamer() || m_context->m_DriverInfo.SupportsGatherConstantOnly())
             {
                 pushConstantMode = PushConstantMode::GATHER_CONSTANT;
             }

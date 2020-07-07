@@ -47,6 +47,9 @@ namespace IGC
         /// Driver supports Simple Push Mechanism only.
         virtual bool SupportsSimplePushOnly() const { return false; }
 
+        /// Driver supports Gather Constant Mechanism only.
+        virtual bool SupportsGatherConstantOnly() const { return false; }
+
         /// Driver supports resource streamer if HW supportes it, otherwise simple push
         virtual bool SupportsHWResourceStreameAndSimplePush() const { return false; }
 
