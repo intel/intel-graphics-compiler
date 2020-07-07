@@ -215,23 +215,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
     }
 
-    // lambda for setting indirect function attributes
-    auto SetIndirectFuncAttributes = [this](Function* F)->void
-    {
-        F->addFnAttr("IndirectlyCalled");
-        F->addFnAttr("visaStackCall");
-
-        if (!F->isDeclaration())
-        {
-            if (F->hasFnAttribute("IFCALL_BUILTIN") ||
-                IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL)
-            {
-                F->removeFnAttr(llvm::Attribute::AlwaysInline);
-                F->addFnAttr(llvm::Attribute::NoInline);
-            }
-        }
-    };
-
     // 1. Set function's linkage type to InternalLinkage (C's static) so that
     //    LLVM can remove the dead functions asap, which saves compiling time.
     //    Only non-kernel function with function bodies are set.
@@ -248,21 +231,13 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 F->addFnAttr(llvm::Attribute::ReadOnly);
             if (F->hasFnAttribute("referenced-indirectly"))
             {
+                // External function not defined in current module
                 pCtx->m_enableFunctionPointer = true;
-                SetIndirectFuncAttributes(F);
+                F->addFnAttr("IndirectlyCalled");
+                F->addFnAttr("visaStackCall");
             }
 
             // It is not a defined function
-            continue;
-        }
-
-        // If EnableOCLNoInlineAttr is on and F does have
-        // NoInline, do not reset it.
-        if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
-            pCtx->type == ShaderType::OPENCL_SHADER &&
-            F->hasFnAttribute(llvm::Attribute::NoInline) &&
-            !F->hasFnAttribute(llvm::Attribute::Builtin))
-        {
             continue;
         }
 
@@ -271,9 +246,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             continue;
         }
-
-        // Remove noinline attr if present.
-        F->removeFnAttr(llvm::Attribute::NoInline);
 
         // Go through call sites and remove NoInline atrributes.
         for (auto I : F->users()) {
@@ -287,7 +259,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // set function attributes according to build options so
         // inliner doesn't conservatively turn off unsafe optimizations
         // when inlining BIFs (see mergeAttributesForInlining() in inliner).
-
         const auto& opts = modMD->compOpt;
 
         if (opts.MadEnable)
@@ -302,16 +273,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             F->addFnAttr("no-nans-fp-math", "true");
         }
 
-        // F is not a kernel
-        // it is builtin, or user function
-        const bool notKernel = pMdUtils->findFunctionsInfoItem(F) == pMdUtils->end_FunctionsInfo();
-
-        if (notKernel)
-        {
-            F->setLinkage(GlobalValue::InternalLinkage);
-            Changed = true;
-        }
-
         // Add Optnone to user functions but not on builtins. This allows to run
         // optimizations on builtins.
         if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable)
@@ -319,6 +280,54 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             if (!F->hasFnAttribute(llvm::Attribute::Builtin))
             {
                 F->addFnAttr(llvm::Attribute::OptimizeNone);
+            }
+        }
+
+        if (isEntryFunc(pMdUtils, F))
+        {
+            // No need to process kernel funcs any further
+            continue;
+        }
+        else
+        {
+            F->setLinkage(GlobalValue::InternalLinkage);
+            Changed = true;
+        }
+
+
+        bool istrue = false;
+        // Add function attribute for indirectly called functions
+        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+        {
+            // Check if the function can be called either from
+            // externally or as a function pointer
+            bool isExtern = (F->hasFnAttribute("referenced-indirectly"));
+            bool isIndirect = false;
+            for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
+            {
+                CallInst* call = dyn_cast<CallInst>(*u);
+
+                if (!call || call->getCalledValue() != F)
+                {
+                    isIndirect = true;
+                }
+            }
+
+            // Add indirect call function attributes
+            if (isExtern || isIndirect)
+            {
+                pCtx->m_enableFunctionPointer = true;
+
+                F->addFnAttr("IndirectlyCalled");
+                if (!istrue)
+                {
+                    F->addFnAttr("visaStackCall");
+                }
+                if (isExtern)
+                {
+                    F->setLinkage(GlobalValue::ExternalLinkage);
+                }
+                Changed = true;
             }
         }
 
@@ -347,15 +356,32 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
         if (mustAlwaysInline)
         {
+            F->removeFnAttr(llvm::Attribute::NoInline);
             F->addFnAttr(llvm::Attribute::AlwaysInline);
             Changed = true;
             continue;
         }
 
-        if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
+        // Set default inline mode
+        auto FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
+        if (FCtrl == FLAG_FCALL_DEFAULT)
         {
-            // Set default inline mode
-            if (IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
+            // Respect the noinline attribute given by user if EnableOCLNoInlineAttr is set
+            bool hasNoInlineAttr = false;
+
+            if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
+                pCtx->type == ShaderType::OPENCL_SHADER &&
+                F->hasFnAttribute(llvm::Attribute::NoInline))
+            {
+                hasNoInlineAttr = true;
+            }
+            else
+            {
+                F->removeFnAttr(llvm::Attribute::NoInline);
+            }
+
+            if (!hasNoInlineAttr &&
+                IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
             {
                 bool shouldAlwaysInline = (MemPoolFuncs.count(F) != 0);
                 if (!shouldAlwaysInline)
@@ -376,20 +402,22 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 }
             }
         }
-        else if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE)
+        else if (FCtrl == FLAG_FCALL_FORCE_INLINE)
         {
             // Forced inlining all functions
+            F->removeFnAttr(llvm::Attribute::NoInline);
             F->addFnAttr(llvm::Attribute::AlwaysInline);
         }
-
-        bool istrue = false;
-        // Forcing subroutines/stack-call/indirect-call
-        // Do not add alwaysinline
-        if (notKernel || istrue)
+        else
         {
-            bool forceSubroutine = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_SUBROUTINE;
-            bool forceStackCall = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL;
-            if ((forceSubroutine || forceStackCall) && (istrue == false))
+            // Forcing subroutines/stack-call/indirect-call
+            // Do not add alwaysinline
+            bool forceSubroutine = FCtrl == FLAG_FCALL_FORCE_SUBROUTINE;
+            bool forceStackCall = FCtrl == FLAG_FCALL_FORCE_STACKCALL;
+            bool forceIndirectCall = F->hasFnAttribute("IndirectlyCalled") &&
+                (FCtrl == FLAG_FCALL_FORCE_INDIRECTCALL || F->hasFnAttribute("IFCALL_BUILTIN"));
+
+            if (forceSubroutine || forceStackCall || forceIndirectCall)
             {
                 F->removeFnAttr(llvm::Attribute::AlwaysInline);
                 F->addFnAttr(llvm::Attribute::NoInline);
@@ -398,39 +426,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     F->addFnAttr("visaStackCall");
                 }
                 Changed = true;
-            }
-
-            if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
-            {
-                // Check if the function can be called either from
-                // externally or as a function pointer
-                bool isExtern = (F->hasFnAttribute("referenced-indirectly"));
-                bool isIndirect = false;
-
-                for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
-                {
-                    CallInst* call = dyn_cast<CallInst>(*u);
-
-                    if (!call || call->getCalledValue() != F)
-                    {
-                        isIndirect = true;
-                    }
-                }
-
-                if (isExtern || isIndirect)
-                {
-                    pCtx->m_enableFunctionPointer = true;
-                    SetIndirectFuncAttributes(F);
-
-                    if (istrue)
-                        F->removeFnAttr("visaStackCall");
-
-                    if (isExtern)
-                    {
-                        F->setLinkage(GlobalValue::ExternalLinkage);
-                    }
-                    Changed = true;
-                }
             }
         }
     }
