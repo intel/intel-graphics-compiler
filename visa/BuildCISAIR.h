@@ -785,7 +785,8 @@ public:
         string_pool_entry **spool, const char *str,
         Common_ISA_Var_Class type, VISA_Type data_type);
 
-    std::list<VISAKernelImpl*>& getKernels() { return m_kernels; }
+    // getKernels - get all kernels and functions added into this builder
+    std::list<VISAKernelImpl*>& getKernels() { return m_kernelsAndFunctions; }
 
     void InitVisaWaTable(TARGET_PLATFORM platform, Stepping step);
 
@@ -806,9 +807,8 @@ private:
     unsigned int m_kernel_count;
     unsigned int m_function_count;
 
-    std::list<VISAKernelImpl *> m_kernels;
-    //keeps track of functions for stitching purposes, after compilation.
-    std::vector<VISAFunction *> m_functionsVector;
+    // list of kernels and functions added to this builder
+    std::list<VISAKernelImpl *> m_kernelsAndFunctions;
     // for cases of several kernels/functions in one CisaBuilder
     // we need to keep a mapping of kernels to names
     // to make GetVISAKernel() work

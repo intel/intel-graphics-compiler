@@ -62,8 +62,8 @@ CISA_IR_Builder::~CISA_IR_Builder()
 {
     m_cisaBinary->~CisaBinary();
 
-    std::list<VISAKernelImpl *>::iterator iter_start = m_kernels.begin();
-    std::list<VISAKernelImpl *>::iterator iter_end = m_kernels.end();
+    std::list<VISAKernelImpl *>::iterator iter_start = m_kernelsAndFunctions.begin();
+    std::list<VISAKernelImpl *>::iterator iter_end = m_kernelsAndFunctions.end();
 
     while (iter_start != iter_end)
     {
@@ -363,7 +363,7 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     m_kernel = kerneltemp;
     //m_kernel->setName(kernelName);
     m_kernel->setIsKernel(true);
-    m_kernels.push_back(kerneltemp);
+    m_kernelsAndFunctions.push_back(kerneltemp);
     m_kernel->setVersion((unsigned char)this->m_header.major_version, (unsigned char)this->m_header.minor_version);
     m_kernel->InitializeKernel(kernelName);
     m_kernel->SetGTPinInit(getGtpinInit());
@@ -393,7 +393,6 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
     this->m_kernel_count--;
     this->m_function_count++;
     ((VISAKernelImpl *)function)->setIsKernel(false);
-    m_functionsVector.push_back(function);
     return VISA_SUCCESS;
 }
 
@@ -530,45 +529,46 @@ void restoreFCallState(G4_Kernel* kernel, SavedFCallStates savedFCallState)
     }
 }
 
-// Stitch the Gen binary for all functions in this vISA program with the given kernel
-// It modifies pseudo_fcall/fret in to call/ret opcodes.
-// ToDo: may consider stitching only functions that may be called by this kernel
-static void Stitch_Compiled_Units(G4_Kernel* kernel, std::map<std::string, G4_Kernel*>& compilation_units)
+// Stitch the FG of subFunctions to mainFunc
+// mainFunc could be a kernel or a non-kernel function.
+// It also modifies pseudo_fcall/fret in to call/ret opcodes.
+// ToDo: may consider stitching only functions that may be called by this kernel/function
+static void Stitch_Compiled_Units(G4_Kernel* mainFunc, std::map<std::string, G4_Kernel*>& subFuncs)
 {
 
-    // Append flowgraph of all callees to kernel. For now just assume all functions in the modules
-    // may be called
-    for (auto&& iter : compilation_units)
+    // Append subFunctions to mainFunc
+    for (auto&& iter : subFuncs)
     {
         G4_Kernel* callee = iter.second;
-        kernel->fg.append(callee->fg);
+        mainFunc->fg.append(callee->fg);
 
         // merge the relocation when append
         if (!callee->getRelocationTable().empty())
-            kernel->getRelocationTable().insert(kernel->getRelocationTable().end(),
+            mainFunc->getRelocationTable().insert(mainFunc->getRelocationTable().end(),
                 callee->getRelocationTable().begin(), callee->getRelocationTable().end());
     }
 
-    kernel->fg.reassignBlockIDs();
+    mainFunc->fg.reassignBlockIDs();
 
     // Change fcall/fret to call/ret and setup caller/callee edges
-    for (G4_BB* cur : kernel->fg)
+    for (G4_BB* cur : mainFunc->fg)
     {
         if (cur->size() > 0 && cur->isEndWithFCall())
         {
             // Setup successor/predecessor
             G4_INST* fcall = cur->back();
-            if (kernel->getOption(vISA_GenerateDebugInfo))
+            if (mainFunc->getOption(vISA_GenerateDebugInfo))
             {
-                kernel->getKernelDebugInfo()->setFCallInst(fcall);
+                mainFunc->getKernelDebugInfo()->setFCallInst(fcall);
             }
 
             if (!fcall->asCFInst()->isIndirectCall())
             {
+                // Setup caller/callee edges for direct call
                 std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
 
-                auto iter = compilation_units.find(funcName);
-                assert(iter != compilation_units.end() && "can't find function with given name");
+                auto iter = subFuncs.find(funcName);
+                assert(iter != subFuncs.end() && "can't find function with given name");
                 G4_Kernel* callee = iter->second;
                 G4_BB* retBlock = cur->Succs.front();
                 ASSERT_USER(cur->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
@@ -579,8 +579,8 @@ static void Stitch_Compiled_Units(G4_Kernel* kernel, std::map<std::string, G4_Ke
                 cur->Succs.erase(cur->Succs.begin());
 
                 // Connect new fg
-                kernel->fg.addPredSuccEdges(cur, callee->fg.getEntryBB());
-                kernel->fg.addPredSuccEdges(callee->fg.getUniqueReturnBlock(), retBlock);
+                mainFunc->fg.addPredSuccEdges(cur, callee->fg.getEntryBB());
+                mainFunc->fg.addPredSuccEdges(callee->fg.getUniqueReturnBlock(), retBlock);
 
                 G4_INST* calleeLabel = callee->fg.getEntryBB()->front();
                 ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
@@ -601,24 +601,24 @@ static void Stitch_Compiled_Units(G4_Kernel* kernel, std::map<std::string, G4_Ke
     }
 
     // Change fret to ret
-    for (G4_BB* cur : kernel->fg)
+    for (G4_BB* cur : mainFunc->fg)
     {
         if( cur->size() > 0 && cur->isEndWithFRet() )
         {
             G4_INST* fret = cur->back();
             ASSERT_USER( fret->opcode() == G4_pseudo_fret, "Expecting to see pseudo_fret");
             fret->setOpcode( G4_return );
-            fret->setDest( kernel->fg.builder->createNullDst(Type_UD) );
+            fret->setDest( mainFunc->fg.builder->createNullDst(Type_UD) );
         }
     }
 
-    // Append declarations and color attributes from all callees to kernel
-    for (auto iter : compilation_units)
+    // Append declarations and color attributes from all callees to mainFunc
+    for (auto iter : subFuncs)
     {
         G4_Kernel* callee = iter.second;
         for (auto curDcl : callee->Declares)
         {
-            kernel->Declares.push_back(curDcl);
+            mainFunc->Declares.push_back(curDcl);
         }
     }
 }
@@ -777,8 +777,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             return VISA_FAILURE;
         }
 
-        std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
-        std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
+        std::list< VISAKernelImpl *>::iterator iter = m_kernelsAndFunctions.begin();
+        std::list< VISAKernelImpl *>::iterator end = m_kernelsAndFunctions.end();
         CBinaryCISAEmitter cisaBinaryEmitter;
         int kernelIndex = 0;
         if ( IS_BOTH_PATH )
@@ -809,7 +809,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         // We call the verifier and dumper directly.
         if (m_options.getOption(vISA_GenerateISAASM) || !m_options.getOption(vISA_NoVerifyvISA))
         {
-            m_cisaBinary->isaDumpVerify(m_kernels, &m_options);
+            m_cisaBinary->isaDumpVerify(m_kernelsAndFunctions, &m_options);
         }
     }
 
@@ -831,10 +831,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         Mem_Manager mem(4096);
         common_isa_header pseudoHeader;
         // m_kernels contains kernels and functions to compile.
-        std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
-        std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
-        iter = m_kernels.begin();
-        end = m_kernels.end();
+        std::list<VISAKernelImpl*>::iterator iter = m_kernelsAndFunctions.begin();
+        std::list<VISAKernelImpl*>::iterator end = m_kernelsAndFunctions.end();
 
         pseudoHeader.num_kernels = 0;
         pseudoHeader.num_functions = 0;
@@ -854,9 +852,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
         int i;
         unsigned int k = 0;
-        std::list<VISAKernelImpl*> kernels;
-        std::list<VISAKernelImpl*> functions;
-        for( iter = m_kernels.begin(), i = 0; iter != end; iter++, i++ )
+        for( iter = m_kernelsAndFunctions.begin(), i = 0; iter != end; iter++, i++ )
         {
             VISAKernelImpl* kernel = (*iter);
             kernel->finalizeAttributes();
@@ -874,11 +870,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
                 strcpy_s((char*)&pseudoHeader.functions[k].name, COMMON_ISA_MAX_FILENAME_LENGTH, (*iter)->getKernel()->getName());
                 k++;
-                functions.push_back(kernel);
-            }
-            else
-            {
-                kernels.push_back(kernel);
             }
 
             int status =  kernel->compileFastPath();
@@ -890,55 +881,77 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         }
 
         SavedFCallStates savedFCallState;
-
-        for(std::list<VISAKernelImpl*>::iterator kernel_it = kernels.begin(), kend = kernels.end();
-            kernel_it != kend;
-            kernel_it++)
+        for(auto func : m_kernelsAndFunctions)
         {
-            VISAKernelImpl* kernel = (*kernel_it);
-
-            saveFCallState(kernel->getKernel(), savedFCallState);
+            saveFCallState(func->getKernel(), savedFCallState);
         }
 
-        for( std::list<VISAKernelImpl*>::iterator func_it = functions.begin(), fend = functions.end();
-            func_it != fend;
-            func_it++ )
+        // Preparing for stitching some functions to other functions
+        // There are two stiching policies:
+        // 1. vISA_noStitchExternFunc == false
+        //    Stitch all non-kernel functions to all kernels
+        // 2. vISA_noStitchExternFunc == true
+        //    Stitch only non-external functions. Stich them to all kernels and external functions
+
+        // mainFunctions: functions or kernels those will be stiched by others
+        // Thses functions/kernels will be the unit of compilePostOptimize
+        VISAKernelImpl::VISAKernelImplListTy mainFunctions;
+        // subFunctions: functions those will stitch to others
+        VISAKernelImpl::VISAKernelImplListTy subFunctions;
+        std::map<std::string, G4_Kernel*> subFunctionsNameMap;
+        // For functions those will be stitch to others, create table to map their name to G4_Kernel
+        for (auto func : m_kernelsAndFunctions)
         {
-            VISAKernelImpl* function = (*func_it);
-
-            saveFCallState( function->getKernel(), savedFCallState );
-        }
-
-        std::map<std::string, G4_Kernel*> allFunctions;
-
-        for (auto func_it = functions.begin(); func_it != functions.end(); func_it++)
-        {
-            G4_Kernel* func = (*func_it)->getKernel();
-            allFunctions[std::string(func->getName())] = func;
-            if (m_options.getOption(vISA_GenerateDebugInfo))
-            {
-                func->getKernelDebugInfo()->resetRelocOffset();
-                resetGenOffsets(*func);
+            if (func->getIsKernel()) {
+                // kernels must be stitched
+                mainFunctions.push_back(func);
+                continue;
+            } else {
+                if (!m_options.getOption(vISA_noStitchExternFunc)) {
+                    // Policy 1: all fnunctions will stitch to kernels
+                    subFunctions.push_back(func);
+                    subFunctionsNameMap[std::string(func->getName())] = func->getKernel();
+                } else {
+                    // Policy 2: external functions will be stitched, non-external functions will stitch to others
+                    if (func->getKernel()->getIntKernelAttribute(Attributes::ATTR_Extern) != 0)
+                    {
+                        mainFunctions.push_back(func);
+                    }
+                    else
+                    {
+                        subFunctions.push_back(func);
+                        subFunctionsNameMap[std::string(func->getName())] = func->getKernel();
+                    }
+                }
             }
         }
 
-        for (auto kernel_it = kernels.begin(); kernel_it != kernels.end(); kernel_it++ )
+        // reset debug info offset of functionsToStitch
+        for (auto func : subFunctions)
         {
-            VISAKernelImpl* kernel = (*kernel_it);
+            if (m_options.getOption(vISA_GenerateDebugInfo))
+            {
+                func->getKernel()->getKernelDebugInfo()->resetRelocOffset();
+                resetGenOffsets(*func->getKernel());
+            }
+        }
 
+        // stitch functions and compile to gen binary
+        for (auto func : mainFunctions)
+        {
             unsigned int genxBufferSize = 0;
 
-            Stitch_Compiled_Units(kernel->getKernel(), allFunctions);
+            Stitch_Compiled_Units(func->getKernel(), subFunctionsNameMap);
 
-            void* genxBuffer = kernel->compilePostOptimize(genxBufferSize);
-            kernel->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
+            void* genxBuffer = func->compilePostOptimize(genxBufferSize);
+            func->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
 
             if(m_options.getOption(vISA_GenerateDebugInfo))
             {
-                kernel->computeAndEmitDebugInfo(functions);
+                func->computeAndEmitDebugInfo(subFunctions);
             }
 
-            restoreFCallState( kernel->getKernel(), savedFCallState );
+            restoreFCallState(func->getKernel(), savedFCallState);
 
 
         }
@@ -952,8 +965,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
         if (numGenBinariesWillBePatched)
         {
-            std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
-            std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
+            std::list< VISAKernelImpl *>::iterator iter = m_kernelsAndFunctions.begin();
+            std::list< VISAKernelImpl *>::iterator end = m_kernelsAndFunctions.end();
 
             int kernelCount = 0;
             int functionCount = 0;
@@ -972,7 +985,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                     kernelCount++;
                 }
             }
-            iter = m_kernels.begin();
+            iter = m_kernelsAndFunctions.begin();
             for (int i = 0; iter != end; iter++, i++)
             {
               VISAKernelImpl * kTemp = *iter;

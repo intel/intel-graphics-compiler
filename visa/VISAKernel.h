@@ -848,7 +848,8 @@ public:
 
     bool IsAsmWriterMode() const { return m_options->getOption(vISA_IsaAssembly); }
 
-    void computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions);
+    typedef std::list<VISAKernelImpl*> VISAKernelImplListTy;
+    void computeAndEmitDebugInfo(VISAKernelImplListTy& functions);
 
 private:
     void ensureVariableNameUnique(const char *&varName);

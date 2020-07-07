@@ -8498,7 +8498,7 @@ int64_t VISAKernelImpl::getGenSize() const
     return size;
 }
 
-void VISAKernelImpl::computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions)
+void VISAKernelImpl::computeAndEmitDebugInfo(VISAKernelImplListTy& functions)
 {
     std::list<VISAKernelImpl*> compilationUnitsForDebugInfo;
     compilationUnitsForDebugInfo.push_back(this);
