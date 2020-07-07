@@ -1998,7 +1998,8 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] =
 };
 
 
-const ISA_SubInst_Desc *getSubInstTable(uint8_t opcode, int &size)
+static const ISA_SubInst_Desc *getSubInstTable(
+    uint8_t opcode, int &size)
 {
     const ISA_SubInst_Desc *table = nullptr;
     switch (opcode)
@@ -2016,9 +2017,7 @@ const ISA_SubInst_Desc *getSubInstTable(uint8_t opcode, int &size)
         size = sizeof(SVMSubOpcodeDesc)/sizeof(SVMSubOpcodeDesc[0]);
         break;
     default:
-        table = nullptr;
-        size = 0;
-        break;
+        MUST_BE_TRUE(false, "instruction does not have sub opcode");
     }
     return table;
 }

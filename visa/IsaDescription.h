@@ -236,11 +236,6 @@ struct VISA_INST_Desc
     const ISA_SubInst_Desc& getSubInstDescByName(const char *symbol) const;
 };
 
-// looks up a parent opcode and resolves the sub ops of that parent
-// returns nullptr and sets 'size' to 0 if an op doesn't have a subop.
-// e.g. ... = getSubInstTable(ISA_SVM, svmSubOps);
-const ISA_SubInst_Desc *getSubInstTable(uint8_t opcode, int &size);
-
 enum SVMSubOpcode
 {
     SVM_BLOCK_LD = 0x1,
