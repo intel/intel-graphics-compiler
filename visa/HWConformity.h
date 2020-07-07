@@ -34,8 +34,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <map>
 
-struct AccInterval;
-
 namespace vISA
 {
     class HWConformity
@@ -43,9 +41,6 @@ namespace vISA
         IR_Builder& builder;
         G4_Kernel& kernel;
         vISA::Mem_Manager& mem;
-        int numAccSubDef = 0;
-        int numAccSubUse = 0;
-
 
         // This is added for data layout optimization.
         // Currently it only targets packed-byte pattern.
@@ -198,8 +193,6 @@ namespace vISA
 
         void avoidDstSrcOverlap(INST_LIST_ITER i, G4_BB* bb);
         void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
-        void multiAccSubstitution(G4_BB* bb);
-
 
         bool checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos);
 
@@ -216,9 +209,6 @@ namespace vISA
         }
         void chkHWConformity();
         static void tryEliminateMadSrcModifier(IR_Builder &builder, G4_INST *inst);
-        int getNumAccSubDef() const { return numAccSubDef; }
-        int getNumAccSubUse() const { return numAccSubUse; }
-        void accSubstitution(G4_BB* bb);
         void localizeForAcc(G4_BB* bb);
     };
 }

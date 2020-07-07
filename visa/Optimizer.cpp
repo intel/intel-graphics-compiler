@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_BinaryEncoding.h"
 #include <tuple>
 #include "DebugInfo.h"
+#include "AccSubstitution.h"
 
 using namespace std;
 using namespace vISA;
@@ -946,10 +947,9 @@ void Optimizer::accSubPostSchedule()
     kernel.fg.resetLocalDataFlowData();
     kernel.fg.localDataFlowAnalysis();
 
-    HWConformity hwConf(builder, kernel, mem);
-
     if (builder.getOption(vISA_localizationForAccSub))
     {
+        HWConformity hwConf(builder, kernel, mem);
         for (auto bb : kernel.fg)
         {
             hwConf.localizeForAcc(bb);
@@ -959,10 +959,8 @@ void Optimizer::accSubPostSchedule()
         kernel.fg.localDataFlowAnalysis();
     }
 
-    for (auto bb : kernel.fg)
-    {
-        hwConf.accSubstitution(bb);
-    }
+    AccSubPass accSub(builder, kernel);
+    accSub.run();
 }
 
 void* gtPinData::getFreeGRFInfo(unsigned int& size)

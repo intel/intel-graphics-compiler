@@ -191,6 +191,7 @@ set(GenX_Common_Sources_External
   InstSplit.cpp
   VarSplit.cpp
   Attributes.cpp
+  AccSubstitution.cpp
   ${LocalScheduler_SOURCES}
 )
 
@@ -271,6 +272,7 @@ set(GenX_Common_Headers
   VarSplit.h
   Attributes.hpp
   LocalDataflow.h
+  AccSubstitution.h
   ${LocalScheduler_HEADERS}
 )
 set(GenX_CISA_dis_Common_Headers
