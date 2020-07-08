@@ -268,7 +268,6 @@ struct CMABI : public CallGraphSCCPass {
   virtual bool doFinalization(CallGraph &CG);
 
 private:
-  unsigned int const MaxCallSites = 5;
 
   CallGraphNode *ProcessNode(CallGraphNode *CGN);
 
@@ -306,11 +305,16 @@ private:
     getLocalizationInfo(F).addGlobals(getLocalizationInfo(Callee));
   }
 
-  // Return true if pointer type argument arg appears in a
+  // Return true if pointer type argument appears in a
   // store instruction. This helps decide whether it is safe
-  // to convert ptr arg to byvalue arg. Latter can be passed
-  // in GRF.
+  // to convert ptr arg to byvalue arg without adding
+  // a return value
   bool IsPtrArgModified(Value * Arg);
+  // Return true if pointer type arugment is only used to
+  // load or store a simple value. This helps decide whehter
+  // it is safe to convert ptr arg to by-value arg or
+  // simple-value copy-in-copy-out.
+  bool OnlyUsedBySimpleValueLoadStore(Value *Arg);
 
   // \brief Diagnose illegal overlapping by-ref args.
   void diagnoseOverlappingArgs(CallInst *CI);
@@ -588,11 +592,10 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   for (unsigned i = 0, e = PointerArgs.size(); i != e; ++i) {
     Argument *PtrArg = PointerArgs[i];
     Type *ArgTy = cast<PointerType>(PtrArg->getType())->getElementType();
-
-  // Only transform to simple types.
-  if ((F->getNumUses() > MaxCallSites || ArgTy->isVectorTy() || IsPtrArgModified(PtrArg)) &&
-    (ArgTy->isIntOrIntVectorTy() || ArgTy->isFPOrFPVectorTy()))
-    ArgsToTransform.insert(PtrArg);
+    // Only transform to simple types.
+    if ((ArgTy->isVectorTy() || OnlyUsedBySimpleValueLoadStore(PtrArg)) &&
+        (ArgTy->isIntOrIntVectorTy() || ArgTy->isFPOrFPVectorTy()))
+      ArgsToTransform.insert(PtrArg);
   }
 
   if (ArgsToTransform.empty() && LI.empty())
@@ -636,6 +639,45 @@ bool CMABI::IsPtrArgModified(Value *Arg) {
     }
   }
   return false;
+}
+
+bool CMABI::OnlyUsedBySimpleValueLoadStore(Value *Arg) {
+  for (const auto &U : Arg->users()) {
+    if (auto I = dyn_cast<Instruction>(U)) {
+      if (auto LI = dyn_cast<LoadInst>(U)) {
+        if (Arg != LI->getPointerOperand())
+          return false;
+      }
+      if (auto SI = dyn_cast<LoadInst>(U)) {
+        if (Arg != SI->getPointerOperand())
+          return false;
+      }
+      else if (auto GEP = dyn_cast<GetElementPtrInst>(U)) {
+        if (Arg != GEP->getPointerOperand())
+          return false;
+        else if (!GEP->hasAllZeroIndices())
+          return false;
+        if (!OnlyUsedBySimpleValueLoadStore(U))
+          return false;
+      }
+      else if (isa<AddrSpaceCastInst>(U) || isa<PtrToIntInst>(U)) {
+        if (!OnlyUsedBySimpleValueLoadStore(U))
+          return false;
+      }
+      else if (auto CI = dyn_cast<CallInst>(U)) {
+        auto Callee = CI->getCalledFunction();
+        if (Callee && !Callee->isIntrinsic()) {
+          //if (GenXIntrinsic::isAnyNonTrivialIntrinsic(Inst))
+          return false;
+        }
+      }
+      else
+        return false;
+    }
+    else
+      return false;
+  }
+  return true;
 }
 
 // \brief Fix argument passing for kernels: i1 -> i8.
@@ -782,7 +824,6 @@ CallGraphNode *CMABI::TransformNode(Function *F,
   SmallVector<Type *, 8> RetTys;
   if (!FTy->getReturnType()->isVoidTy())
     RetTys.push_back(FTy->getReturnType());
-  auto SkipHeuristic = (F->getNumUses() > MaxCallSites);
 
   // Keep track of parameter attributes for the arguments that we are *not*
   // transforming. For the ones we do transform, parameter attributes are lost.
@@ -811,7 +852,7 @@ CallGraphNode *CMABI::TransformNode(Function *F,
       // Use the element type as the new argument type.
       Params.push_back(I->getType()->getPointerElementType());
 
-      if (IsPtrArgModified(I) || SkipHeuristic) {
+      if (IsPtrArgModified(I)) {
         CopyInOutNeeded.insert(I);
         RetTys.push_back(I->getType()->getPointerElementType());
       }
