@@ -5380,9 +5380,10 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
                 }
                 else
                 {
+                    unsigned short numRows = lrs[i]->getDcl()->getTotalElems() ? lrs[i]->getDcl()->getNumRows() : 1;
                     spillCost = 1.0f * lrs[i]->getRefCount() * lrs[i]->getRefCount() * lrs[i]->getDcl()->getByteSize() *
                         (float)sqrt(lrs[i]->getDcl()->getByteSize())
-                        / ((float)sqrt(lrs[i]->getDegree() + 1) * (float)(sqrt(sqrt(lrs[i]->getDcl()->getNumRows()))));
+                        / ((float)sqrt(lrs[i]->getDegree() + 1) * (float)(sqrt(sqrt(numRows))));
                 }
             }
             else
