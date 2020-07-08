@@ -322,6 +322,8 @@ private:
   std::map<CallInst *, CallInst *> GotoJoinMap;
   std::map<Value *, Value *> EMProducers;
   std::map<Value *, GotoJoinEVs> GotoJoinEVsMap;
+  std::map<Value *, Value *> LoweredEMValsMap;
+
 protected:
   GenXSimdCFConformance() : 
 	M(0), FG(0), FGA(0), DTWrapper(0), Liveness(0), lowerSimdCF(false) {}
@@ -342,6 +344,7 @@ protected:
     GotoJoinMap.clear();
     GotoJoinEVsMap.clear();
     EMProducers.clear();
+    LoweredEMValsMap.clear();
   }
 private:
   bool isLatePass() { return FG != nullptr; }
@@ -375,6 +378,12 @@ private:
     Value *FalseVal, std::map<BasicBlock *, Value *> &foundVals);
   bool canUseLoweredEM(Instruction *Val);
   void replaceUseWithLoweredEM(Instruction *Val, unsigned opNo, SetVector<Value *> &ToRemove);
+  Value *findLoweredEMValue(Value *Val);
+  Value *buildLoweringViaGetEM(Value *Val, Instruction *InsertBefore);
+  Value *getGetEMLoweredValue(Value *Val, Instruction *InsertBefore);
+  Value *lowerEVIUse(ExtractValueInst *EVI, Instruction *User);
+  Value *lowerPHIUse(PHINode *PN, SetVector<Value *> &ToRemove);
+  Value *lowerArgumentUse(Argument *Arg);
   Value *insertCond(Value *OldVal, Value *NewVal, const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL);
   Value *truncateCond(Value *In, Type *Ty, const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL);
   void lowerGoto(CallInst *Goto);
@@ -2869,6 +2878,152 @@ void GenXSimdCFConformance::checkEMInterference()
 }
 
 /***********************************************************************
+ * findLoweredEMValue : find lowered EM Value
+ */
+Value *GenXSimdCFConformance::findLoweredEMValue(Value *Val) {
+  LLVM_DEBUG(dbgs() << "Looking for lowered value for:\n" << *Val << "\n");
+
+  auto It = LoweredEMValsMap.find(Val);
+  if (It != LoweredEMValsMap.end()) {
+    auto *loweredVal = It->second;
+    LLVM_DEBUG(dbgs() << "Found lowered value:\n" << *loweredVal << "\n");
+    return loweredVal;
+  }
+
+  LLVM_DEBUG(dbgs() << "No lowered value was found\n");
+
+  return nullptr;
+}
+
+/***********************************************************************
+ * buildLoweringViaGetEM : build GetEM instruction to get explicit EM
+ *   from Val.
+ */
+Value *GenXSimdCFConformance::buildLoweringViaGetEM(Value *Val,
+                                                    Instruction *InsertBefore) {
+  Function *GetEMDecl = GenXIntrinsic::getGenXDeclaration(
+      M, GenXIntrinsic::genx_simdcf_get_em, {Val->getType()});
+  Value *GetEM = CallInst::Create(GetEMDecl, {Val}, "getEM", InsertBefore);
+  LoweredEMValsMap[Val] = GetEM;
+
+  LLVM_DEBUG(dbgs() << "Built getEM:\n" << *GetEM << "\n");
+
+  return GetEM;
+}
+
+/***********************************************************************
+ * getGetEMLoweredValue : find lowered EM Value (via GetEM) or build
+ *   GetEM instruction if lowered value was not found.
+ */
+Value *GenXSimdCFConformance::getGetEMLoweredValue(Value *Val,
+                                                   Instruction *InsertBefore) {
+  auto *GetEM = findLoweredEMValue(Val);
+
+  if (!GetEM) {
+    GetEM = buildLoweringViaGetEM(Val, InsertBefore);
+  }
+
+  return GetEM;
+}
+
+/***********************************************************************
+ * lowerEVIUse : lower ExtractValue use.
+ *
+ * EM is being lowered via genx_simdcf_get_em intrinsic.
+ */
+Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
+                                          Instruction *User) {
+  LLVM_DEBUG(dbgs() << "Lowering EVI use:\n" << *EVI << "\n");
+
+  CallInst *GotoJoin = dyn_cast<CallInst>(EVI->getOperand(0));
+  assert(GotoJoin &&
+         (GenXIntrinsic::getGenXIntrinsicID(GotoJoin) ==
+              GenXIntrinsic::genx_simdcf_goto ||
+          GenXIntrinsic::getGenXIntrinsicID(GotoJoin) ==
+              GenXIntrinsic::genx_simdcf_join) &&
+         "Bad ExtractValue with EM!");
+
+  // The CFG was corrected for SIMD CF by earlier transformations
+  // so isBranchingGotoJoinBlock works correctly here.
+  if (GotoJoin::isBranchingGotoJoinBlock(GotoJoin->getParent()) == GotoJoin) {
+    // For branching case, we need to create false and true value
+    LLVM_DEBUG(dbgs() << "Handling branching block case\n");
+
+    BasicBlock *DefBB = GotoJoin->getParent();
+    BasicBlock *TrueBlock = DefBB->getTerminator()->getSuccessor(0);
+    BasicBlock *FalseBlock = DefBB->getTerminator()->getSuccessor(1);
+
+    Value *TrueVal = Constant::getNullValue(EVI->getType());
+    Value *FalseVal = getGetEMLoweredValue(EVI, FalseBlock->getFirstNonPHI());
+
+    std::map<BasicBlock *, Value *> foundVals;
+    BasicBlockEdge TrueEdge(DefBB, TrueBlock);
+    BasicBlockEdge FalseEdge(DefBB, FalseBlock);
+
+    return findGotoJoinVal(RegCategory::EM, User->getParent(), EVI, TrueEdge,
+                           FalseEdge, TrueVal, FalseVal, foundVals);
+  }
+
+  // Non-branching case: must be join. Insert get_em right after join's EM
+  assert(GenXIntrinsic::getGenXIntrinsicID(GotoJoin) ==
+             GenXIntrinsic::genx_simdcf_join &&
+         "Gotos should be turned into branching earlier!");
+
+  LLVM_DEBUG(dbgs() << "Handling simple join case\n");
+
+  return getGetEMLoweredValue(EVI, EVI->getNextNode());
+}
+
+/***********************************************************************
+ * lowerPHIUse : lower PHI use.
+ *
+ * EM is being lowered via genx_simdcf_get_em intrinsic.
+ * When PHI lowering is needed, we have to lower all incoming
+ * values. Lowered phis are also stored in LoweredPhisMap to
+ * prevent redundant lowerings.
+ */
+Value *GenXSimdCFConformance::lowerPHIUse(PHINode *PN,
+                                          SetVector<Value *> &ToRemove) {
+  LLVM_DEBUG(dbgs() << "Lowering PHI use:\n" << *PN << "\n");
+
+  // Check if the phi was already lowered
+  if (auto *FoundVal = findLoweredEMValue(PN)) {
+    return FoundVal;
+  }
+
+  // Clone phi and store it as lowered value.
+  auto *newPN = cast<PHINode>(PN->clone());
+  newPN->insertAfter(PN);
+  LoweredEMValsMap[PN] = newPN;
+
+  LLVM_DEBUG(dbgs() << "Cloned phi before lowering values:\n"
+                    << *newPN << "\n");
+
+  // Lower clone's preds
+  for (unsigned idx = 0, op_no = newPN->getNumIncomingValues(); idx < op_no;
+       ++idx) {
+    replaceUseWithLoweredEM(newPN, idx, ToRemove);
+  }
+
+  LLVM_DEBUG(dbgs() << "Cloned phi with lowered values:\n" << *newPN << "\n");
+
+  return newPN;
+}
+
+/***********************************************************************
+ * lowerArgumentUse : lower argument use.
+ *
+ * EM is being lowered via genx_simdcf_get_em intrinsic.
+ * Get_em is created at function enter. Lowering can be needed
+ * if argument's user was moved under SIMD CF due to some reason.
+ */
+Value *GenXSimdCFConformance::lowerArgumentUse(Argument *Arg) {
+  LLVM_DEBUG(dbgs() << "Lowering argument use:\n" << *Arg << "\n");
+
+  return getGetEMLoweredValue(Arg, Arg->getParent()->front().getFirstNonPHI());
+}
+
+/***********************************************************************
  * replaceUseWithLoweredEM : lower incoming EM for user.
  *
  * EM is being lowered via genx_simdcf_get_em intrinsic.
@@ -2879,62 +3034,24 @@ void GenXSimdCFConformance::replaceUseWithLoweredEM(Instruction *Val, unsigned o
 
   LLVM_DEBUG(dbgs() << "Replacing EM use:\n" << *EM << "\nwith lowered EM for:\n" << *Val << "\n");
 
-  if (auto EVI = dyn_cast<ExtractValueInst>(EM)) {
-    CallInst *GotoJoin = dyn_cast<CallInst>(EVI->getOperand(0));
-    assert(GotoJoin && (GenXIntrinsic::getGenXIntrinsicID(GotoJoin) == GenXIntrinsic::genx_simdcf_goto ||
-      GenXIntrinsic::getGenXIntrinsicID(GotoJoin) == GenXIntrinsic::genx_simdcf_join));
-    Type *Tys[] = { EVI->getType() };
-    Function *GetEMDecl = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_simdcf_get_em, Tys);
-    // The CFG was corrected for SIMD CF by earlier transformations
-    // so isBranchingGotoJoinBlock works correctly here.
-    if (GotoJoin::isBranchingGotoJoinBlock(GotoJoin->getParent()) == GotoJoin) {
-      // For branching case, we need to create false and true value
-      BasicBlock *DefBB = GotoJoin->getParent();
-      BasicBlock *TrueBlock = DefBB->getTerminator()->getSuccessor(0);
-      BasicBlock *FalseBlock = DefBB->getTerminator()->getSuccessor(1);
+  Value *LoweredEM = nullptr;
 
-      Value *TrueVal = Constant::getNullValue(EVI->getType());
-      Value *FalseVal = CallInst::Create(GetEMDecl, { EVI }, "getEM", FalseBlock->getFirstNonPHI());
-
-      LLVM_DEBUG(dbgs() << "Built GetEM for Branching goto/join:\n" << *FalseVal << "\n");
-
-      std::map<BasicBlock *, Value *> foundVals;
-      BasicBlockEdge TrueEdge(DefBB, TrueBlock);
-      BasicBlockEdge FalseEdge(DefBB, FalseBlock);
-      auto newPred = findGotoJoinVal(RegCategory::EM, Val->getParent(), EVI,
-        TrueEdge, FalseEdge, TrueVal, FalseVal, foundVals);
-      Val->setOperand(operandNo, newPred);
-    } else {
-      // Non-branching case: must be join. Insert get_em right after join's EM
-      assert(GenXIntrinsic::getGenXIntrinsicID(GotoJoin) == GenXIntrinsic::genx_simdcf_join &&
-        "Gotos should be turned into branching earlier!");
-      auto GetEM = CallInst::Create(GetEMDecl, { EVI }, "getEM", EVI->getParent());
-      LLVM_DEBUG(dbgs() << "Built GetEM for simple join:\n" << *GetEM << "\n");
-      GetEM->moveAfter(EVI);
-      Val->setOperand(operandNo, GetEM);
-    }
-  } else if (auto SVI = dyn_cast<ShuffleVectorInst>(EM)) {
-    // Shuffle vector: got through it and lower its pred
+  if (auto *EVI = dyn_cast<ExtractValueInst>(EM)) {
+    LoweredEM = lowerEVIUse(EVI, Val);
+  } else if (auto *SVI = dyn_cast<ShuffleVectorInst>(EM)) {
+    // Shuffle vector: go through it and lower its pred.
+    // All changes will be applied here.
     replaceUseWithLoweredEM(SVI, 0, ToRemove);
-  } else if (auto PN = dyn_cast<PHINode>(EM)) {
-    // The saddest case: for phi we need to lower all its preds
-    auto newPN = PN->clone();
-    newPN->insertAfter(PN);
-    for (unsigned idx = 0, op_no = newPN->getNumOperands(); idx < op_no; ++idx) {
-      replaceUseWithLoweredEM(newPN, idx, ToRemove);
-    }
-
-    Val->setOperand(operandNo, newPN);
-  } else if (auto Arg = dyn_cast<Argument>(EM)) {
-    // Create get_em at function enter. This may happen if argument's user
-    // is moved under SIMD CF due to some reason.
-    Type *Tys[] = { Arg->getType() };
-    Function *GetEMDecl = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_simdcf_get_em, Tys);
-    auto GetEM = CallInst::Create(GetEMDecl, { Arg }, "getEM", Arg->getParent()->front().getFirstNonPHI());
-    Val->setOperand(operandNo, GetEM);
+  } else if (auto *PN = dyn_cast<PHINode>(EM)) {
+    LoweredEM = lowerPHIUse(PN, ToRemove);
+  } else if (auto *Arg = dyn_cast<Argument>(EM)) {
+    LoweredEM = lowerArgumentUse(Arg);
   } else
     // All other instructions should not be EM producers with correct DF
-    assert("Failed to lower EM!");
+    llvm_unreachable("Failed to lower EM!");
+
+  if (LoweredEM)
+    Val->setOperand(operandNo, LoweredEM);
 
   ToRemove.insert(Val);
 }
