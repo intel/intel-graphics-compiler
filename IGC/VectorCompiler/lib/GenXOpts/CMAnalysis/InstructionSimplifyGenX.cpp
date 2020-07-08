@@ -30,24 +30,31 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //===----------------------------------------------------------------------===//
 
-#include "vc/GenXOpts/GenXAnalysis.h"
-#include "vc/GenXOpts/GenXOpts.h"
-#include "llvm/ADT/ArrayRef.h"
-#include "llvm/Analysis/InstructionSimplify.h"
-#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
-#include "llvm/IR/CallSite.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/Intrinsics.h"
-#include "llvm/Pass.h"
-#include "llvm/PassSupport.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Transforms/Scalar.h"
-
 #define DEBUG_TYPE "genx-simplify"
 
+#include "vc/GenXOpts/GenXAnalysis.h"
+#include "vc/GenXOpts/GenXOpts.h"
+
+#include <llvm/GenXIntrinsics/GenXIntrinsics.h>
+
+#include <llvm/Analysis/InstructionSimplify.h>
+#include <llvm/Analysis/PostDominators.h>
+#include <llvm/IR/CallSite.h>
+#include <llvm/IR/Dominators.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/InitializePasses.h>
+#include <llvm/Pass.h>
+#include <llvm/PassSupport.h>
+#include <llvm/Support/Debug.h>
+#include <llvm/Support/CommandLine.h>
+
 using namespace llvm;
+
+static cl::opt<bool>
+    GenXEnablePeepholes("genx-peepholes", cl::init(true), cl::Hidden,
+                        cl::desc("apply additional peephole optimizations"));
 
 /***********************************************************************
  * SimplifyGenXIntrinsic : given a GenX intrinsic and a set of arguments,
@@ -227,11 +234,17 @@ public:
     initializeGenXSimplifyPass(*PassRegistry::getPassRegistry());
   }
 
+  bool runOnFunction(Function &F) override;
+
   void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addPreserved<DominatorTreeWrapperPass>();
   }
 
-  bool runOnFunction(Function &F) override;
+private:
+  std::vector<CallInst *> WorkSet;
+
+  bool processGenXIntrinsics(Function &F);
 };
 } // namespace
 
@@ -259,11 +272,43 @@ bool GenXSimplify::runOnFunction(Function &F) {
       }
     }
   }
+  Changed |= processGenXIntrinsics(F);
+  return Changed;
+}
+
+bool GenXSimplify::processGenXIntrinsics(Function &F) {
+
+  if (!GenXEnablePeepholes) {
+    LLVM_DEBUG(dbgs() << "genx-specific peepholes disabled\n");
+    return false;
+  }
+
+  bool Changed = false;
+
+  for (Instruction &Inst : instructions(F))
+    if (GenXIntrinsic::isGenXIntrinsic(&Inst))
+      WorkSet.push_back(cast<CallInst>(&Inst));
+
+  const auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  while (!WorkSet.empty()) {
+    auto *CI = WorkSet.back();
+    WorkSet.pop_back();
+
+    auto GenXID = GenXIntrinsic::getGenXIntrinsicID(CI);
+    switch (GenXID) {
+    default:
+      (void)CI; // do nothing
+    }
+  }
+
   return Changed;
 }
 
 char GenXSimplify::ID = 0;
-INITIALIZE_PASS(GenXSimplify, "genx-simplify",
-                "simplify genx specific instructions", false, false)
+INITIALIZE_PASS_BEGIN(GenXSimplify, "genx-simplify",
+                      "simplify genx specific instructions", false, false)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+INITIALIZE_PASS_END(GenXSimplify, "genx-simplify",
+                    "simplify genx specific instructions", false, false)
 
 FunctionPass *llvm::createGenXSimplifyPass() { return new GenXSimplify; }

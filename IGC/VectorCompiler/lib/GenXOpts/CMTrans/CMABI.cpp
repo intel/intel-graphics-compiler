@@ -1397,6 +1397,7 @@ void CMABI::diagnoseOverlappingArgs(CallInst *CI)
                     GenXIntrinsic::GenXRegion::WrVStrideOperandNum))->getSExtValue();
               unsigned Width = cast<ConstantInt>(CI->getOperand(
                     GenXIntrinsic::GenXRegion::WrWidthOperandNum))->getZExtValue();
+              assert((Width > 0)&& "Width of a region must be non-zero");
               int Stride = cast<ConstantInt>(CI->getOperand(
                     GenXIntrinsic::GenXRegion::WrStrideOperandNum))->getSExtValue();
               OpndEntry = &ValMap[CI->getOperand(

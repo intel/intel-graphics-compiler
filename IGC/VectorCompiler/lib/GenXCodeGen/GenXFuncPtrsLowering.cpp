@@ -69,8 +69,8 @@ class GenXFunctionPointersLowering : public ModulePass {
   SetVector<Instruction *> InstToProcess;
   std::map<PHINode *, unsigned> PhisIndex;
 
-  const DataLayout *DL;
-  LLVMContext *Ctx;
+  const DataLayout *DL = nullptr;
+  LLVMContext *Ctx = nullptr;
 
   bool IsFuncPointerVec(Value *V, SetVector<Function *> *Funcs = nullptr);
 

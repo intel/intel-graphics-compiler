@@ -145,8 +145,8 @@ private:
   GlobalVariable *findGlobalExecMask();
 
 private:
-  Module *M;
-  PacketBuilder *B;
+  Module *M = nullptr;
+  PacketBuilder *B = nullptr;
 
   // track already packetized values
   ValueToValueMapTy ReplaceMap;
@@ -162,7 +162,7 @@ private:
   /// Map: original function and vectorization width ==> vectorized version
   std::map<std::pair<Function *, unsigned>, Function *> FuncMap;
 
-  const DataLayout *DL;
+  const DataLayout *DL = nullptr;
 };
 
 bool GenXPacketize::runOnModule(Module &Module) {

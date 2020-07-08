@@ -97,7 +97,7 @@ class GenXReduceIntSize : public FunctionPass {
     ValueNumBits(unsigned NumBits, bool IsSignExtended)
         : NumBits(NumBits), IsSignExtended(IsSignExtended) {}
   };
-  bool Modified;
+  bool Modified = false;
 public:
   static char ID;
   explicit GenXReduceIntSize() : FunctionPass(ID) { }

@@ -2088,6 +2088,7 @@ Instruction *GenXLegalization::transformByteMove(Bale *B) {
     RdR.NumElements >>= LogAlignment;
     RdR.VStride >>= LogAlignment;
     RdR.Width >>= LogAlignment;
+    RdR.ElementBytes <<= LogAlignment;
     auto NewRd = RdR.createRdRegion(Val, "", Head, Rd->getDebugLoc(),
                                     /*AllowScalar=*/false);
     NewRd->takeName(Rd);
@@ -2119,6 +2120,7 @@ Instruction *GenXLegalization::transformByteMove(Bale *B) {
     WrR.NumElements >>= LogAlignment;
     WrR.VStride >>= LogAlignment;
     WrR.Width >>= LogAlignment;
+    WrR.ElementBytes <<= LogAlignment;
     auto NewWr = cast<Instruction>(
         WrR.createWrRegion(BCOld, Val, "", Head, Wr->getDebugLoc()));
     NewWr->takeName(Wr);

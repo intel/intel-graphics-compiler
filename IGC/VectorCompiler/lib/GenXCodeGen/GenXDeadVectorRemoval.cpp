@@ -171,7 +171,7 @@ class GenXDeadVectorRemoval : public FunctionPass {
   std::set<Instruction *> WorkListSet;
   std::queue<Instruction *> WorkList;
   std::set<Instruction *> WrRegionsWithUsedOldInput;
-  bool WorkListPhase;
+  bool WorkListPhase = false;
 public:
   static char ID;
   explicit GenXDeadVectorRemoval() : FunctionPass(ID) { }
@@ -184,6 +184,7 @@ private:
     WorkListSet.clear();
     assert(WorkList.empty());
     WrRegionsWithUsedOldInput.clear();
+    WorkListPhase = false;
   }
   bool nullOutInstructions(Function *F);
   void processInst(Instruction *Inst);

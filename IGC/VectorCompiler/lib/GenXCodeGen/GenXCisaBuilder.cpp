@@ -426,7 +426,9 @@ public:
   CisaVariable *getAlias(VISA_Type T, VISAKernel *K) {
     if (!AliasDecls[T]) {
       VISA_GenVar *VV = nullptr;
-      K->CreateVISAGenVar(VV, Name, getNumElements(T), T, ALIGN_GRF, VisaVar);
+      K->CreateVISAGenVar(VV, Name, getNumElements(T), T,
+          ALIGN_HWORD,
+          VisaVar);
       Storage.push_back(CisaVariable(T, ByteSize, VV));
       AliasDecls[T] = &Storage.back();
     }
@@ -745,9 +747,9 @@ private:
                    unsigned &SrcColOff, int &PrevStackOff);
 
 public:
-  GenXKernelBuilder(FunctionGroup *FG)
-      : TheKernelMetadata(FG->getHead()), Ctx(FG->getContext()),
-        DL(FG->getModule()->getDataLayout()), FG(FG) {
+  GenXKernelBuilder(FunctionGroup &FG)
+      : TheKernelMetadata(FG.getHead()), Ctx(FG.getContext()),
+        DL(FG.getModule()->getDataLayout()), FG(&FG) {
     collectKernelInfo();
   }
   ~GenXKernelBuilder() { clearLoops(); }
@@ -797,7 +799,7 @@ void GenXCisaBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
 
 bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
   Ctx = &FG.getContext();
-  std::unique_ptr<GenXKernelBuilder> KernelBuilder(new GenXKernelBuilder(&FG));
+  std::unique_ptr<GenXKernelBuilder> KernelBuilder(new GenXKernelBuilder(FG));
   KernelBuilder->FGA = getAnalysisIfAvailable<FunctionGroupAnalysis>();
   KernelBuilder->GM = getAnalysisIfAvailable<GenXModule>();
   KernelBuilder->CisaBuilder = KernelBuilder->GM->GetCisaBuilder();
@@ -5681,7 +5683,7 @@ void GenXModule::collectFinalizerArgs(std::vector<const char*> &Owner) const {
                           std::vector<const char*> &Owner) {
     const size_t BufferSize = ArgString.size() + 1;
     char* ArgCopyBuff = new char [BufferSize];
-    std::memcpy(ArgCopyBuff, ArgString.data(), BufferSize);
+    std::copy(ArgString.data(), ArgString.data() + BufferSize, ArgCopyBuff);
     Owner.push_back(ArgCopyBuff);
   };
 
