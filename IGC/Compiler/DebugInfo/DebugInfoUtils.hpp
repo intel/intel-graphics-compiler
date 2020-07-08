@@ -111,7 +111,7 @@ namespace IGC
                 IGCLLVM::DIBuilder Builder(M);
                 llvm::DIGlobalVariable* GV = GVs[j]->getVariable();
                 llvm::DIScope* scopeToUse = GV->getScope();
-                llvm::DILocation* locToUse = llvm::DebugLoc::get(GV->getLine(), 0, scopeToUse);
+                llvm::DILocation* locToUse = llvm::DebugLoc::get(GV->getLine(), 0, scopeToUse, loc);
                 if (llvm::isa<llvm::DICompileUnit>(GV->getScope()))
                 {
                     // Function has no DebugLoc so it is either internal
