@@ -6057,6 +6057,11 @@ void vISA::forceDebugSWSB(G4_Kernel* kernel)
                     bb->insertBefore(new_it, newInst);
                     newInst->setLexicalId(instID);
                     instID++;
+                    if (new_it == bb->end())
+                    {
+                        break;
+                    }
+                    inst_it++;
                 }
             }
         }
