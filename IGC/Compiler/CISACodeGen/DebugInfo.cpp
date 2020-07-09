@@ -145,11 +145,6 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
 
         for (auto& m : sortedVISAModules)
         {
-            m_pDebugEmitter->AddVISAModFunc(m.second.second, m.second.first);
-        }
-
-        for (auto& m : sortedVISAModules)
-        {
             isOneStepElf |= m.second.second->isDirectElfInput;
             m_pDebugEmitter->SetVISAModule(m.second.second);
             m_pDebugEmitter->setFunction(m.second.first, isCloned);

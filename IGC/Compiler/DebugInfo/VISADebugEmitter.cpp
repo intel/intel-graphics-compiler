@@ -192,12 +192,6 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
         return;
     }
 
-    if (m_pVISAModule->isDirectElfInput)
-    {
-        auto decodedDbg = new DbgDecoder(m_pVISAModule->m_pShader->ProgramOutput()->m_debugDataGenISA);
-        m_pDwarfDebug->setDecodedDbg(decodedDbg);
-    }
-
     if (!doneOnce)
     {
         m_pDwarfDebug->beginModule();
@@ -211,6 +205,9 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
 
     if (m_pVISAModule->isDirectElfInput)
     {
+        auto decodedDbg = new DbgDecoder(m_pVISAModule->m_pShader->ProgramOutput()->m_debugDataGenISA);
+        m_pDwarfDebug->setDecodedDbg(decodedDbg);
+
         m_pVISAModule->buildDirectElfMaps();
         auto co = m_pVISAModule->getCompileUnit();
 
@@ -599,9 +596,4 @@ std::string DebugMetadataInfo::getUniqueFuncName(Function& F)
     DebugMetadataInfo::hasAnyDebugInfo(s->GetContext(), fullDebugInfo, lineTableOnly);
 
     return lineTableOnly && !fullDebugInfo;
-}
-
-void DebugEmitter::AddVISAModFunc(IGC::VISAModule* v, llvm::Function* f)
-{
-    m_pDwarfDebug->AddVISAModToFunc(v, f);
 }

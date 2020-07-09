@@ -1684,7 +1684,6 @@ namespace vISA
 
     private:
         std::list<std::pair<uint32_t, uint32_t>> liveIntervals;
-        std::vector<std::pair<unsigned int, unsigned int>> saveRestore;
         uint32_t cleanedAt;
         DebugLiveIntervalState state;
         uint32_t openIntervalVISAIndex;
@@ -1694,7 +1693,6 @@ namespace vISA
 
         void addLiveInterval(uint32_t start, uint32_t end);
         void liveAt(uint32_t cisaOff);
-        const std::vector<std::pair<uint32_t, uint32_t>>& getSaveRestore();
         void getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>>& intervals);
         void clearLiveIntervals() { liveIntervals.clear(); }
 
@@ -1712,21 +1710,6 @@ namespace vISA
             //MUST_BE_TRUE(state == Open, "Cannot close interval in Close state");
             state = Closed;
             addLiveInterval(VISAIndex, openIntervalVISAIndex);
-        }
-
-        bool isLiveAt(uint32_t VISAIndex) const
-        {
-            for (auto& k : liveIntervals)
-            {
-                if (k.first <= VISAIndex && k.second >= VISAIndex)
-                    return true;
-            }
-            return false;
-        }
-
-        void addGRFSave(uint32_t cisaIndex, uint32_t stack_Slot)
-        {
-            saveRestore.push_back(std::make_pair(cisaIndex, stack_Slot));
         }
 
         LiveIntervalInfo() { cleanedAt = 0; state = Closed; openIntervalVISAIndex = 0; }
@@ -4067,7 +4050,6 @@ public:
     uint32_t getOffset() const { return offset; }
     G4_Declare* getFP() const { return fp; }
     G4_SrcRegRegion* getHeader() const { return getSrc(0)->asSrcRegRegion(); }
-    G4_SrcRegRegion* getPayload() const { return getSrc(1)->asSrcRegRegion(); }
 
     void setNumRows(uint32_t r) { numRows = r; }
     void setOffset(uint32_t o) { offset = o; }

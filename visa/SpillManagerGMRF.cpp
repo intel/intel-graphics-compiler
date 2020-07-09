@@ -4206,9 +4206,9 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
 
         G4_DstRegRegion* dst = builder->createDst(scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
 
-        G4_INST* hdrSetInst = nullptr;
         if (inst->asSpillIntrinsic()->isOffsetValid())
         {
+            G4_INST* hdrSetInst = nullptr;
             // Skip header if spill module emits its own header
             if (framePtr)
             {
@@ -4232,12 +4232,6 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
         spillSends->setComments(comments.str());
 
         bb->insertBefore(spillIt, spillSends);
-
-        if (kernel.getOption(vISA_GenerateDebugInfo))
-        {
-            kernel.getKernelDebugInfo()->updateExpandedIntrinsic(inst->asSpillIntrinsic(), hdrSetInst);
-            kernel.getKernelDebugInfo()->updateExpandedIntrinsic(inst->asSpillIntrinsic(), spillSends);
-        }
 
         numRowsOword -= payloadSizeInOwords;
         offsetOword += payloadSizeInOwords;
@@ -4388,9 +4382,9 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
 
         G4_DstRegRegion* dst = builder->createDst(scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
 
-        G4_INST* hdrSetInst = nullptr;
         if (inst->asFillIntrinsic()->isOffsetValid())
         {
+            G4_INST* hdrSetInst = nullptr;
             // Skip header if spill module emits its own header
             if (framePtr)
             {
@@ -4415,12 +4409,6 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
         fillSends->setComments(comments.str());
 
         bb->insertBefore(fillIt, fillSends);
-
-        if (kernel.getOption(vISA_GenerateDebugInfo))
-        {
-            kernel.getKernelDebugInfo()->updateExpandedIntrinsic(inst->asFillIntrinsic(), hdrSetInst);
-            kernel.getKernelDebugInfo()->updateExpandedIntrinsic(inst->asFillIntrinsic(), fillSends);
-        }
 
         numRowsOword -= respSizeInOwords;
         offsetOword += respSizeInOwords;

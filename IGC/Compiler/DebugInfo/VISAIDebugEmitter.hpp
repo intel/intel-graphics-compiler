@@ -97,8 +97,6 @@ namespace IGC
         virtual IGC::VISAModule* GetVISAModule() = 0;
 
         virtual void SetVISAModule(IGC::VISAModule*) = 0;
-
-        virtual void AddVISAModFunc(IGC::VISAModule*, llvm::Function*) = 0;
     };
 
     template<typename T> T read(void*& dbg)

@@ -80,6 +80,8 @@ namespace IGC
 
         /// Asm - Target of Dwarf emission.
         StreamEmitter* Asm;
+        /// m_pModule - VISA processed module
+        VISAModule* m_pModule;
 
         // Holders for some common dwarf information.
         IGC::DwarfDebug* DD;
@@ -114,7 +116,7 @@ namespace IGC
 
     public:
         CompileUnit(unsigned UID, DIE* D, llvm::DICompileUnit* CU,
-            StreamEmitter* A, IGC::DwarfDebug* DW);
+            StreamEmitter* A, VISAModule* M, IGC::DwarfDebug* DW);
         ~CompileUnit();
 
         // Accessors.
