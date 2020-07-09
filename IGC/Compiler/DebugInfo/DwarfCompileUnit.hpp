@@ -235,6 +235,9 @@ namespace IGC
         /// addTemplateParams - Add template parameters in buffer.
         void addTemplateParams(DIE& Buffer, llvm::DINodeArray TParams);
 
+        ///  addRegisterLoc - Decide whether to emit regx or bregx
+        void addRegisterLoc(DIEBlock* TheDie, unsigned DWReg, int64_t Offset, const llvm::Instruction* dbgInst);
+
         /// addRegisterOp - Add register operand.
         void addRegisterOp(DIEBlock* TheDie, unsigned Reg);
 

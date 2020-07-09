@@ -159,6 +159,32 @@ namespace IGC
             uint16_t start = 0;
             uint16_t end = 0;
             VarAlloc var;
+
+            bool isGRF()
+            {
+                if (var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF)
+                    return true;
+
+                return false;
+            }
+
+            bool isSpill()
+            {
+                if (var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory)
+                    return true;
+
+                return false;
+            }
+
+            Mapping::Register getGRF()
+            {
+                return var.mapping.r;
+            }
+
+            Mapping::Memory getSpillOffset()
+            {
+                return var.mapping.m;
+            }
         };
         class LiveIntervalGenISA
         {
@@ -173,40 +199,6 @@ namespace IGC
         public:
             std::string name;
             std::vector<LiveIntervalsVISA> lrs;
-
-            // Assume JIT always assigned same GRF/scratch slot for entire
-            // lifetime for variable
-            bool isGRF()
-            {
-                if (lrs.size() == 0)
-                    return false;
-
-                if (lrs.front().var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF)
-                    return true;
-
-                return false;
-            }
-
-            bool isSpill()
-            {
-                if (lrs.size() == 0)
-                    return false;
-
-                if (lrs.front().var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory)
-                    return true;
-
-                return false;
-            }
-
-            Mapping::Register getGRF()
-            {
-                return lrs.front().var.mapping.r;
-            }
-
-            Mapping::Memory getSpillOffset()
-            {
-                return lrs.front().var.mapping.m;
-            }
         };
         class SubroutineInfo
         {

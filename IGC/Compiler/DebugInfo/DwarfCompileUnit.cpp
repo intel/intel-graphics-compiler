@@ -402,6 +402,14 @@ void CompileUnit::addSourceLine(DIE * Die, DINamespace * NS)
 }
 #endif
 
+void CompileUnit::addRegisterLoc(DIEBlock* TheDie, unsigned DWReg, int64_t Offset, const llvm::Instruction* dbgInst)
+{
+    if (isa<llvm::DbgDeclareInst>(dbgInst))
+        addRegisterOffset(TheDie, DWReg, Offset);
+    else
+        addRegisterOp(TheDie, DWReg);
+}
+
 /// addRegisterOp - Add register operand.
 void CompileUnit::addRegisterOp(DIEBlock* TheDie, unsigned DWReg)
 {
@@ -892,7 +900,7 @@ void CompileUnit::addBindlessSamplerLocation(DIEBlock* Block, VISAVariableLocati
 // of variable
 void CompileUnit::addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varInfo, int32_t vectorOffset)
 {
-    uint32_t offset = varInfo->getSpillOffset().memoryOffset + vectorOffset;
+    uint32_t offset = varInfo->lrs.front().getSpillOffset().memoryOffset + vectorOffset;
 
     if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
     {
@@ -1984,10 +1992,13 @@ void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc
             auto regNum = loc->GetRegister();
             VISAMod->getVarInfo("V", regNum, varInfo);
 
+            if (varInfo.lrs.size() == 0)
+                return;
+
             Address addr;
             addr.Set(Address::Space::eLocal, 0, 0);
 
-            addRegisterOffset(Block, varInfo.getGRF().regNum, 0);
+            addRegisterLoc(Block, varInfo.lrs.front().getGRF().regNum, 0, var.getDbgInst());
 
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref_size);
             addUInt(Block, dwarf::DW_FORM_data1, 4);
@@ -2054,18 +2065,21 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
     auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
     VISAMod->getVarInfo("V", regNum, varInfo);
 
-    if (varInfo.isGRF())
+    if (varInfo.lrs.size() == 0)
+        return;
+
+    if (varInfo.lrs.front().isGRF())
     {
         DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
-        uint16_t regNum = varInfo.getGRF().regNum;
+        uint16_t regNum = varInfo.lrs.front().getGRF().regNum;
 
         if (!IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
         {
-            addRegisterOffset(Block, varInfo.getGRF().regNum, 0);
+            addRegisterLoc(Block, varInfo.lrs.front().getGRF().regNum, 0, var.getDbgInst());
 
-            if (varInfo.getGRF().subRegNum != 0)
+            if (varInfo.lrs.front().getGRF().subRegNum != 0)
             {
-                unsigned int subReg = varInfo.getGRF().subRegNum;
+                unsigned int subReg = varInfo.lrs.front().getGRF().subRegNum;
                 auto offsetInBits = subReg * 8;
                 auto sizeInBits = (VISAMod->m_pShader->getGRFSize() * 8) - offsetInBits;
 
@@ -2080,8 +2094,8 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
 
             if (loc->IsVectorized() == false)
             {
-                unsigned int subReg = varInfo.getGRF().subRegNum;
-                addRegisterOffset(Block, regNum, 0);
+                unsigned int subReg = varInfo.lrs.front().getGRF().subRegNum;
+                addRegisterLoc(Block, regNum, 0, var.getDbgInst());
 
                 addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
 
@@ -2097,7 +2111,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
 
                 for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                 {
-                    addRegisterOffset(Block, regNum, 0);
+                    addRegisterLoc(Block, regNum, 0, var.getDbgInst());
 
                     addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
 
@@ -2111,7 +2125,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
 
         addBlock(die, dwarf::DW_AT_location, Block);
     }
-    else if (varInfo.isSpill())
+    else if (varInfo.lrs.front().isSpill())
     {
         // handle spill
         DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
@@ -2119,7 +2133,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
         if (!IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
         {
             Address addr;
-            addr.Set(Address::Space::eScratch, 0, varInfo.getSpillOffset().memoryOffset);
+            addr.Set(Address::Space::eScratch, 0, varInfo.lrs.front().getSpillOffset().memoryOffset);
 
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
             addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
@@ -2145,7 +2159,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
     }
     else
     {
-        IGC_ASSERT_MESSAGE(false, "\nVariable neither in GRF nor spilled\n");
+        //IGC_ASSERT_MESSAGE(false, "\nVariable neither in GRF nor spilled\n");
     }
 
 }
