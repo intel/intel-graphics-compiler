@@ -494,7 +494,9 @@ namespace IGC
         {
             type = ISA_TYPE_D;
         }
-        else if (atomic_op == EATOMIC_FMAX || atomic_op == EATOMIC_FMIN || atomic_op == EATOMIC_FCMPWR)
+        else if (atomic_op == EATOMIC_FMAX ||
+            atomic_op == EATOMIC_FMIN ||
+            atomic_op == EATOMIC_FCMPWR)
         {
             type = ISA_TYPE_F;
         }
