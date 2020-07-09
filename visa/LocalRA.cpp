@@ -298,13 +298,13 @@ void LocalRA::trivialAssignRA(bool& needGlobalRA, bool threeSourceCandidate)
     {
         std::cout << "\t--trivial RA\n";
     }
-    if (builder.oneGRFBankDivision())
+    if (builder.lowHighBundle())
     {
         needGlobalRA = assignUniqueRegisters(threeSourceCandidate, true);
     }
     else
     {
-        needGlobalRA = assignUniqueRegisters(threeSourceCandidate, highInternalConflict);
+        needGlobalRA = assignUniqueRegisters(threeSourceCandidate, false);
     }
 
 
@@ -476,7 +476,6 @@ bool LocalRA::localRA()
     {
         doBCR = true;
     }
-
     // Local RA passes:
     // RR+BC --> FF+BC -->FF-->Hybrids
     // or
