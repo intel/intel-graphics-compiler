@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_BinaryEncoding.h"
 #include "RegAlloc.h"
 #include "GraphColor.h"
+#include <unordered_map>
 
 #define CALLER_SAVE_START 1
 #define CALLEE_SAVE_START 60
@@ -249,6 +250,7 @@ public:
     G4_Declare* getFretVar() { return fretVar; }
     void setFretVar(G4_Declare* dcl) { fretVar = dcl; }
 
+    void updateExpandedIntrinsic(G4_InstIntrinsic* spillOrFill, G4_INST* inst);
     void addCallerSaveInst(G4_INST* fcall, G4_INST* inst);
     void addCallerRestoreInst(G4_INST* fcall, G4_INST* inst);
     void addCalleeSaveInst(G4_INST* inst);
@@ -290,6 +292,16 @@ public:
         mapCISAOffset.insert(std::make_pair(a, b));
     }
 
+    unsigned int getGenOffsetFromVISAIndex(unsigned int v)
+    {
+        for (auto& item : mapCISAIndexGenOffset)
+        {
+            if(item.first == v)
+                return item.second;
+        }
+        return 0;
+    }
+
     std::vector<std::pair<unsigned int, unsigned int>>& getMapCISAOffsetGenOffset() { return mapCISAOffsetGenOffset; }
     std::vector<std::pair<unsigned int, unsigned int>>& getMapCISAIndexGenOffset() { return mapCISAIndexGenOffset; }
     std::vector<std::pair<unsigned int, unsigned int>>& getMapGenISAOffsetToCISAIndex() { return genISAOffsetToVISAIndex; }
@@ -299,6 +311,8 @@ public:
 
     void computeMissingVISAIds();
     bool isMissingVISAId(unsigned int);
+
+    void computeGRFToStackOffset();
 };
 
 class SaveRestoreInfo

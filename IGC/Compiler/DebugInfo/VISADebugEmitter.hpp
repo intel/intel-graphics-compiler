@@ -94,6 +94,7 @@ namespace IGC
         void ResetVISAModule();
         VISAModule* GetVISAModule() { return m_pVISAModule; }
         void SetVISAModule(VISAModule* other) { m_pVISAModule = other; }
+        void AddVISAModFunc(IGC::VISAModule* v, llvm::Function* f);
 
     private:
         /// @brief Reset Debug Emitter instance.
