@@ -5370,8 +5370,8 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
         //
         else
         {
-            float spillCost;
-            // NOTE: Add 1 to degree to avoid divide-by-0.
+            float spillCost = 0.0f;
+            // NOTE: Add 1 to degree to avoid divide-by-0, as a live range may have no neighbors
             if (builder.kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D)
             {
                 if (useSplitLLRHeuristic)
@@ -5380,7 +5380,8 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
                 }
                 else
                 {
-                    unsigned short numRows = lrs[i]->getDcl()->getTotalElems() ? lrs[i]->getDcl()->getNumRows() : 1;
+                    assert(lrs[i]->getDcl()->getTotalElems() > 0);
+                    unsigned short numRows = lrs[i]->getDcl()->getNumRows();
                     spillCost = 1.0f * lrs[i]->getRefCount() * lrs[i]->getRefCount() * lrs[i]->getDcl()->getByteSize() *
                         (float)sqrt(lrs[i]->getDcl()->getByteSize())
                         / ((float)sqrt(lrs[i]->getDegree() + 1) * (float)(sqrt(sqrt(numRows))));

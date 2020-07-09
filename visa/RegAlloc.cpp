@@ -602,9 +602,9 @@ bool LivenessAnalysis::livenessCandidate(G4_Declare* decl, bool verifyRA)
     }
     else if ((selectedRF & decl->getRegFile()))
     {
-        if ((selectedRF & G4_GRF) && (decl->getRegFile() & G4_INPUT))
+        if (selectedRF & G4_GRF)
         {
-            if (decl->getRegVar()->isPhyRegAssigned() && !decl->getRegVar()->isGreg())
+            if ((decl->getRegFile() & G4_INPUT) && decl->getRegVar()->isPhyRegAssigned() && !decl->getRegVar()->isGreg())
             {
                 return false;
             }
