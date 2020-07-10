@@ -4610,7 +4610,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
                 if (!hasOverlap &&
                     dep == RAW &&
-                    (liveNode->getNodeID() + 1) == node->getNodeID() && //Adjacent nodes
                     liveInst->isMath() &&
                     (!hasSamePredicator(liveInst, curInst)))
                 {
