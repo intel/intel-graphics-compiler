@@ -115,9 +115,6 @@ namespace IGC
         /// API supports IEEE min/max
         virtual bool SupportsIEEEMinMax() const { return false; }
 
-        /// Supports precise math
-        virtual bool SupportsPreciseMath() const { return false; }
-
         virtual bool NeedCountSROA() const { return false; }
 
         /// Can we always contract mul and add
