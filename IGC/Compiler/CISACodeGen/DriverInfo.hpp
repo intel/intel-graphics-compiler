@@ -279,12 +279,6 @@ namespace IGC
         /// add shader hash code after EOT for debug purposes
         virtual bool EnableShaderDebugHashCodeInKernel() const { return false; }
 
-        // The size of output printf buffer is 4 MB by default by agreement with Runtime.
-        virtual uint32_t getPrintfBufferSize() const
-        {
-            return 4 * sizeof(MEGABYTE);
-        }
-
 
     };
 

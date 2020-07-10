@@ -467,8 +467,6 @@ public:
 
     e_alignment getGRFAlignment() const { return CVariable::getAlignment(getGRFSize()); }
 
-protected:
-    void GetPrintfStrings(std::vector<std::pair<unsigned int, std::string>>& printfStrings);
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return
     // nullptr otherwise.

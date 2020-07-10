@@ -58,37 +58,33 @@ const StringRef OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME = "printf";
 
 bool OpenCLPrintfAnalysis::runOnModule(Module& M)
 {
+    m_hasPrintf = false;
+
     visit(M);
 
-    if (m_hasPrintfs.size())
+    if (m_hasPrintf)
     {
         for (Function& func : M.getFunctionList())
         {
-            if (!func.isDeclaration() &&
-                m_hasPrintfs.find(&func) != m_hasPrintfs.end())
+            if (!func.isDeclaration())
             {
                 addPrintfBufferArgs(func);
             }
         }
     }
 
-    return m_hasPrintfs.size();
+    return m_hasPrintf;
 }
 
 void OpenCLPrintfAnalysis::visitCallInst(llvm::CallInst& callInst)
 {
-    Function* pF = callInst.getParent()->getParent();
-    if (!callInst.getCalledFunction() || m_hasPrintfs.find(pF)!=m_hasPrintfs.end())
+    if (!callInst.getCalledFunction())
     {
         return;
     }
 
     StringRef  funcName = callInst.getCalledFunction()->getName();
-    bool hasPrintf = (funcName == OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME);
-    if (hasPrintf)
-    {
-        m_hasPrintfs.insert(pF);
-    }
+    m_hasPrintf |= (funcName == OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME);
 }
 
 void OpenCLPrintfAnalysis::addPrintfBufferArgs(Function& F)

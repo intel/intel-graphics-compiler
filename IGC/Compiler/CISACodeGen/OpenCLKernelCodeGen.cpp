@@ -580,18 +580,30 @@ namespace IGC
 
     void COpenCLKernel::CreatePrintfStringAnnotations()
     {
-        std::vector<std::pair<unsigned int, std::string>> printfStrings;
-        GetPrintfStrings(printfStrings);
+        std::string MDNodeName = "printf.strings";
+        NamedMDNode* printfMDNode = entry->getParent()->getOrInsertNamedMetadata(MDNodeName);
 
-        for (auto printfString : printfStrings)
+        for (uint i = 0, NumStrings = printfMDNode->getNumOperands();
+            i < NumStrings;
+            i++)
         {
             iOpenCL::PrintfStringAnnotation* printfAnnotation = new iOpenCL::PrintfStringAnnotation();
+
+            llvm::MDNode* argMDNode = printfMDNode->getOperand(i);
+
+            llvm::ConstantInt* indexOpndVal =
+                mdconst::dyn_extract<llvm::ConstantInt>(argMDNode->getOperand(0));
+            llvm::Metadata* stringOpnd = argMDNode->getOperand(1);
+            llvm::MDString* stringOpndVal = dyn_cast<llvm::MDString>(stringOpnd);
+
+            llvm::StringRef stringData(stringOpndVal->getString());
+
             printfAnnotation->AnnotationSize = sizeof(printfAnnotation);
-            printfAnnotation->Index = printfString.first;
-            printfAnnotation->StringSize = printfString.second.size() + 1;
+            printfAnnotation->Index = int_cast<unsigned int>(indexOpndVal->getZExtValue());
+            printfAnnotation->StringSize = stringData.size() + 1;
             printfAnnotation->StringData = new char[printfAnnotation->StringSize + 1];
 
-            memcpy_s(printfAnnotation->StringData, printfAnnotation->StringSize, printfString.second.c_str(), printfAnnotation->StringSize);
+            memcpy_s(printfAnnotation->StringData, printfAnnotation->StringSize, stringData.data(), printfAnnotation->StringSize);
             printfAnnotation->StringData[printfAnnotation->StringSize - 1] = '\0';
 
             m_kernelInfo.m_printfStringAnnotations.push_back(printfAnnotation);

@@ -308,8 +308,7 @@ void CShader::CreateImplicitArgs()
     // Push Args are only for entry function
     unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
     unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) && !isNonEntryMultirateShader(entry) ? numPushArgsEntry : 0);
-    int numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
-    IGC_ASSERT(numFuncArgs >= 0 && "Function arg size does not match meta data and push args.");
+    unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
 
     // Create symbol for every arguments [5/2019]
     //   (Previously, symbols are created only for implicit args.)
@@ -345,7 +344,7 @@ void CShader::CreateImplicitArgs()
     };
 
     llvm::Function::arg_iterator arg = entry->arg_begin();
-    for (int i = 0; i < numFuncArgs; ++i, ++arg)
+    for (unsigned i = 0; i < numFuncArgs; ++i, ++arg)
     {
         Value* ArgVal = arg;
         if (ArgVal->use_empty())
@@ -399,25 +398,6 @@ void CShader::CreateImplicitArgs()
     CreateAliasVars();
 }
 
-void CShader::GetPrintfStrings(std::vector<std::pair<unsigned int, std::string>>& printfStrings)
-{
-    std::string MDNodeName = "printf.strings";
-    NamedMDNode* printfMDNode = entry->getParent()->getOrInsertNamedMetadata(MDNodeName);
-
-    for (uint i = 0, NumStrings = printfMDNode->getNumOperands();
-        i < NumStrings;
-        i++)
-    {
-        llvm::MDNode* argMDNode = printfMDNode->getOperand(i);
-        llvm::ConstantInt* indexOpndVal =
-            mdconst::dyn_extract<llvm::ConstantInt>(argMDNode->getOperand(0));
-        llvm::MDString* stringOpndVal =
-            dyn_cast<llvm::MDString>(argMDNode->getOperand(1));
-
-        printfStrings.push_back(
-            std::pair<unsigned int, std::string>(int_cast<unsigned int>(indexOpndVal->getZExtValue()), stringOpndVal->getString().data()));
-    }
-}
 // For sub-vector aliasing, pre-allocating cvariables for those
 // valeus that have sub-vector aliasing before emit instructions.
 // (The sub-vector aliasing is done in VariableReuseAnalysis.)

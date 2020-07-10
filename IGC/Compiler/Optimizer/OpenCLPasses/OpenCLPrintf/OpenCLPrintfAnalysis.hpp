@@ -75,7 +75,7 @@ namespace IGC
         ///         size of the buffer.
         void addPrintfBufferArgs(llvm::Function& F);
 
-        std::unordered_set < llvm::Function*> m_hasPrintfs;
+        bool m_hasPrintf;
     };
 
 } // namespace IGC
