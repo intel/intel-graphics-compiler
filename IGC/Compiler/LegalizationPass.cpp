@@ -1866,26 +1866,48 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
     break;
     case Intrinsic::copysign:
     {
-        Value* src0 = I.getArgOperand(0);
-        Value* src1 = I.getArgOperand(1);
-        auto srcType = src0->getType();
+        Value* const src0 = I.getArgOperand(0);
+        Value* const src1 = I.getArgOperand(1);
+        Type* const srcType = src0->getType();
 
         IGC_ASSERT(nullptr != srcType);
-        IGC_ASSERT_MESSAGE(!srcType->isVectorTy(), "Vector type not supported!");
-        IGC_ASSERT_MESSAGE(srcType->isFloatingPointTy(), "llvm.copysign supports only floating-point type");
+        IGC_ASSERT_MESSAGE(srcType->getScalarType()->isFloatingPointTy(), "llvm.copysign supports only floating-point type");
 
-        auto srcTypeSize = (unsigned int)srcType->getPrimitiveSizeInBits();
-        uint64_t signMask = (uint64_t)0x1 << (srcTypeSize - 1);
+        auto cpySign = [&Builder](Value* const src0, Value* const src1) {
+            Type* const srcType = src0->getType();
+            const unsigned int srcTypeSize = srcType->getPrimitiveSizeInBits();
+            const uint64_t signMask = (uint64_t)0x1 << (srcTypeSize - 1);
 
-        auto src0Int = Builder.CreateBitCast(src0, Builder.getIntNTy(srcTypeSize));
-        auto src1Int = Builder.CreateBitCast(src1, Builder.getIntNTy(srcTypeSize));
+            Value* const src0Int = Builder.CreateBitCast(src0, Builder.getIntNTy(srcTypeSize));
+            Value* const src1Int = Builder.CreateBitCast(src1, Builder.getIntNTy(srcTypeSize));
 
-        auto src0NoSign = Builder.CreateAnd(src0Int, Builder.getIntN(srcTypeSize, ~signMask));
-        auto src1Sign = Builder.CreateAnd(src1Int, Builder.getIntN(srcTypeSize, signMask));
+            Value* const src0NoSign = Builder.CreateAnd(src0Int, Builder.getIntN(srcTypeSize, ~signMask));
+            Value* const src1Sign = Builder.CreateAnd(src1Int, Builder.getIntN(srcTypeSize, signMask));
 
-        auto newValue = static_cast<Value*>(Builder.CreateOr(src0NoSign, src1Sign));
-        newValue = Builder.CreateBitCast(newValue, srcType);
+            Value* newValue = static_cast<Value*>(Builder.CreateOr(src0NoSign, src1Sign));
+            newValue = Builder.CreateBitCast(newValue, srcType);
+            return newValue;
+        };
 
+        Value* newValue = nullptr;
+        if (srcType->isVectorTy())
+        {
+            const unsigned int numElements = srcType->getVectorNumElements();
+            Value* dstVec = UndefValue::get(srcType);
+            for (unsigned int i = 0; i < numElements; ++i)
+            {
+                Value* const src0Scalar = Builder.CreateExtractElement(src0, i);
+                Value* const src1Scalar = Builder.CreateExtractElement(src1, i);
+                auto newValue = cpySign(src0Scalar, src1Scalar);
+                dstVec = Builder.CreateInsertElement(dstVec, newValue, i);
+            }
+            newValue = dstVec;
+        }
+        else
+        {
+            newValue = cpySign(src0, src1);
+        }
+        IGC_ASSERT(nullptr != newValue);
         I.replaceAllUsesWith(newValue);
         I.eraseFromParent();
     }
