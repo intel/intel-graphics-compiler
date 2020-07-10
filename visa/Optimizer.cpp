@@ -6416,6 +6416,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         const RegionDesc* rd = NULL;
         uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
+        G4_Type srcType = src->getType();
         // even if src has VxH region, it could have a width that is equal to the new exec_size,
         // meaning that it's really just a 1x1 region.
         auto isVxHRegion = src->getRegion()->isRegionWH() && wd < size;
@@ -6454,7 +6455,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 short numRows = start / wd;
                 short numCols = start % wd;
-                short newOff = (numRows * vs + numCols * hs) * G4_Type_Table[src->getType()].byteSize;
+                short newOff = (numRows * vs + numCols * hs) * G4_Type_Table[srcType].byteSize;
                 auto newSrc = createIndirectSrc(src->getModifier(), src->getBase(), src->getRegOff(), src->getSubRegOff(), rd,
                     src->getType(), src->getAddrImm() + newOff);
                 return newSrc;
@@ -6468,64 +6469,55 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
 
         // direct access oprand
-        uint16_t regOff, subRegOff;
-        if (start > 0)
+        if (src->isAccReg())
         {
-            G4_Type srcType = src->getType();
-            uint16_t newEleOff;
-            uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
-
-            if (src->isAccReg())
+            switch (srcType)
             {
-                switch (srcType)
+            case Type_F:
+                // must be acc1.0 as result of simd16 -> 8 split
+                assert(size == 8 && "only support simd16->simd8 for now");
+                return createSrcRegRegion(src->getModifier(), Direct, phyregpool.getAcc1Reg(), 0, 0, src->getRegion(), srcType);
+            case Type_HF:
+            {
+                // can be one of acc0.8, acc1.0, acc1.8
+                if (src->getBase()->asAreg()->getArchRegType() == AREG_ACC1)
                 {
-                case Type_F:
-                    // must be acc1.0 as result of simd16 -> 8 split
-                    assert(size == 8 && "only support simd16->simd8 for now");
-                    return createSrcRegRegion(src->getModifier(), Direct, phyregpool.getAcc1Reg(), 0, 0, src->getRegion(), srcType);
-                case Type_HF:
-                {
-                    // can be one of acc0.8, acc1.0, acc1.8
-                    if (src->getBase()->asAreg()->getArchRegType() == AREG_ACC1)
-                    {
-                        start += 16;
-                    }
-                    G4_Areg* accReg = start >= 16 ? phyregpool.getAcc1Reg() : phyregpool.getAcc0Reg();
-                    return createSrcRegRegion(src->getModifier(), Direct, accReg, 0, start % 16, src->getRegion(), srcType);
-
+                    start += 16;
                 }
-                default:
-                    // Keep using acc0 for other types.
-                    return duplicateOperand(src);
-                }
-            }
+                G4_Areg* accReg = start >= 16 ? phyregpool.getAcc1Reg() : phyregpool.getAcc0Reg();
+                return createSrcRegRegion(src->getModifier(), Direct, accReg, 0, start % 16, src->getRegion(), srcType);
 
-            newEleOff = start * hs +
-                (start >= wd && vs != wd * hs ? (start / wd * (vs - wd * hs)) : 0);
-
-            uint16_t newSubRegOff = src->getSubRegOff() + newEleOff;
-            bool crossGRF = newSubRegOff * G4_Type_Table[srcType].byteSize >= G4_GRF_REG_NBYTES;
-            if (crossGRF)
-            {
-                regOff = src->getRegOff() + 1;
-                subRegOff = newSubRegOff - G4_GRF_REG_NBYTES / G4_Type_Table[srcType].byteSize;
             }
-            else
-            {
-                regOff = src->getRegOff();
-                subRegOff = newSubRegOff;
+            default:
+                // Keep using acc0 for other types.
+                return duplicateOperand(src);
             }
-
-            // create a new one
-            return createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd,
-                srcType, src->getAccRegSel());
         }
-        else
-        {
-            G4_SrcRegRegion* newSrc = duplicateOperand(src);
-            newSrc->setRegion(rd);
-            return newSrc;
-        }
+
+        // Since this function creates a new sub src operand based on a start offset,
+        // the reg and subreg offsets need to be re-computed.
+        uint16_t regOff, subRegOff, subRegOffByte, newSubRegOffByte, newEleOff, newEleOffByte, crossGRF;
+
+        newEleOff = start * hs +
+            (start >= wd && vs != wd * hs ? (start / wd * (vs - wd * hs)) : 0);
+
+        // Linearize offsets into bytes to verify potential GRF crossing
+        newEleOffByte = newEleOff * G4_Type_Table[src->getType()].byteSize;
+        subRegOffByte = src->getSubRegOff() * G4_Type_Table[src->getType()].byteSize;
+
+        // If subreg crosses GRF size, update reg and subreg offset accordingly
+        newSubRegOffByte = subRegOffByte + newEleOffByte;
+        crossGRF = newSubRegOffByte / G4_GRF_REG_NBYTES;
+
+        newSubRegOffByte = newSubRegOffByte - crossGRF * G4_GRF_REG_NBYTES;
+
+        // Compute final reg and subreg offsets
+        regOff = src->getRegOff() + crossGRF;
+        subRegOff = newSubRegOffByte / G4_Type_Table[src->getType()].byteSize;
+
+        return createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd,
+            srcType, src->getAccRegSel());
+
     }
 
     G4_DstRegRegion* IR_Builder::createSubDstOperand(G4_DstRegRegion* dst, uint16_t start, uint8_t size)
