@@ -349,11 +349,7 @@ locally visible new & delete for Linux
     */
 
 // TODO: Throw exception if the allocation fails.
-#if defined(ANDROID)
 inline void* operator new(size_t size)
-#else
-inline void* operator new(size_t size)
-#endif
 {
     void* storage = CAllocator::Allocate(size);
     IGC_ASSERT_MESSAGE(nullptr != storage, "Could not allocate the required memory to storage");
@@ -367,11 +363,7 @@ inline void operator delete(void* ptr)
 }
 
 // TODO: Throw exception if the allocation fails.
-#if defined(ANDROID)
 inline void* operator new[](size_t size)
-#else
-inline void* operator new[](size_t size)
-#endif
 {
     return ::operator new(size);
 }
