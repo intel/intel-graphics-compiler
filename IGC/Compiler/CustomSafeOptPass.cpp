@@ -1345,6 +1345,190 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
     }
 }
 
+bool CustomSafeOptPass::isIdentityMatrix(ExtractElementInst& I)
+{
+    bool found = false;
+    if (I.getVectorOperandType()->getVectorNumElements() == 20 ||
+        I.getVectorOperandType()->getVectorNumElements() == 16)
+    {
+        if (Constant * C = dyn_cast<Constant>(I.getVectorOperand()))
+        {
+            found = true;
+
+            // found = true if the extractelement is like this:
+            // %189 = extractelement <20 x float>
+            //    <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00,
+            //     float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00,
+            //     float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00,
+            //     float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00,
+            //     float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00>, i32 %188
+            for (unsigned int i = 0; i < I.getVectorOperandType()->getVectorNumElements(); i++)
+            {
+                if (i == 0 || i == 5 || i == 10 || i == 15)
+                {
+                    ConstantFP* fpC = dyn_cast<ConstantFP>(C->getAggregateElement(i));
+                    ConstantInt* intC = dyn_cast<ConstantInt>(C->getAggregateElement(i));
+                    if((fpC && !fpC->isExactlyValue(1.f)) || (intC && !intC->isAllOnesValue()))
+                    {
+                        found = false;
+                        break;
+                    }
+                }
+                else if (!C->getAggregateElement(i)->isZeroValue())
+                {
+                    found = false;
+                    break;
+                }
+            }
+        }
+    }
+    return found;
+}
+
+void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
+{
+    /*
+    convert dp4 with identity matrix icb ( ex: "dp4 r[6].x, cb[2][8].xyzw, icb[ r[4].w].xyzw") from
+        %189 = shl nuw nsw i32 %188, 2, !dbg !326
+        %190 = extractelement <20 x float> <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00>, i32 %189, !dbg !326
+        %191 = or i32 %189, 1, !dbg !326
+        %192 = extractelement <20 x float> <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00>, i32 %191, !dbg !326
+        %193 = or i32 %189, 2, !dbg !326
+        %194 = extractelement <20 x float> <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00>, i32 %193, !dbg !326
+        %195 = or i32 %189, 3, !dbg !326
+        %196 = extractelement <20 x float> <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00>, i32 %195, !dbg !326
+        %s01_s.chan0141 = fmul fast float %181, %190, !dbg !326
+        %197 = fmul fast float %182, %192, !dbg !326
+        %198 = fadd fast float %197, %s01_s.chan0141, !dbg !326
+        %199 = fmul fast float %183, %194, !dbg !326
+        %200 = fadd fast float %199, %198, !dbg !326
+        %201 = fmul fast float %184, %196, !dbg !326
+        %202 = fadd fast float %201, %200, !dbg !326
+    to
+        %533 = icmp eq i32 %532, 0, !dbg !434
+        %534 = icmp eq i32 %532, 1, !dbg !434
+        %535 = icmp eq i32 %532, 2, !dbg !434
+        %536 = icmp eq i32 %532, 3, !dbg !434
+        %537 = select i1 %533, float %525, float 0.000000e+00, !dbg !434
+        %538 = select i1 %534, float %526, float %537, !dbg !434
+        %539 = select i1 %535, float %527, float %538, !dbg !434
+        %540 = select i1 %536, float %528, float %539, !dbg !434
+    */
+
+    // check %190 = extractelement <20 x float> <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00 ...
+    if (!I.hasOneUse() || !isIdentityMatrix(I))
+        return;
+
+    Instruction* offset[4] = {nullptr, nullptr, nullptr, nullptr};
+    ExtractElementInst* eeInst[4] = { &I, nullptr, nullptr, nullptr };
+
+    // check %189 = shl nuw nsw i32 %188, 2, !dbg !326
+    // put it in offset[0]
+    offset[0] = dyn_cast<BinaryOperator>(I.getOperand(1));
+    if (!offset[0] ||
+        offset[0]->getOpcode() != Instruction::Shl ||
+        offset[0]->getOperand(1) != ConstantInt::get(offset[0]->getOperand(1)->getType(), 2))
+    {
+        return;
+    }
+
+    // check %191 = or i32 %189, 1, !dbg !326
+    //       %193 = or i32 % 189, 2, !dbg !326
+    //       %195 = or i32 % 189, 3, !dbg !326
+    // put them in offset[1], offset[2], offset[3]
+    for (auto iter = offset[0]->user_begin(); iter != offset[0]->user_end(); iter++)
+    {
+        // skip checking for the %190 = extractelement <20 x float> <float 1.000000e+00, ....
+        if (*iter == &I)
+            continue;
+
+        if (BinaryOperator * orInst = dyn_cast<BinaryOperator>(*iter))
+        {
+            if (orInst->getOpcode() == BinaryOperator::Or && orInst->getNumUses() == 1)
+            {
+                if (ConstantInt * orSrc1 = dyn_cast<ConstantInt>(orInst->getOperand(1)))
+                {
+                    if (orSrc1->getZExtValue() < 4)
+                    {
+                        offset[orSrc1->getZExtValue()] = orInst;
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < 4; i++)
+    {
+        if (offset[i] == nullptr)
+            return;
+    }
+
+    // check %192 = extractelement <20 x float> ...
+    //       %194 = extractelement <20 x float> ...
+    //       %196 = extractelement <20 x float> ...
+    // put them in eeInst[i]
+    for (int i = 1; i < 4; i++)
+    {
+        eeInst[i] = dyn_cast<ExtractElementInst>(*offset[i]->user_begin());
+        if (!eeInst[i] || !isIdentityMatrix(*eeInst[i]))
+        {
+            return;
+        }
+    }
+
+    // check dp4 and put them in mulI[] and addI[]
+    Instruction* mulI[4] = { nullptr, nullptr, nullptr, nullptr };
+    for (int i = 0; i < 4; i++)
+    {
+        mulI[i] = dyn_cast<Instruction>(*eeInst[i]->user_begin());
+        if (mulI[i] == nullptr || !mulI[i]->hasOneUse())
+        {
+            return;
+        }
+    }
+    int inputInSrcIndex = 0;
+    if (mulI[0]->getOperand(0) == eeInst[0])
+        inputInSrcIndex = 1;
+
+    // the 1st and 2nd mul are the srcs for add
+    if (*mulI[0]->user_begin() != *mulI[1]->user_begin())
+    {
+        return;
+    }
+    Instruction* addI[3] = { nullptr, nullptr, nullptr };
+    addI[0] = dyn_cast<Instruction>(*mulI[0]->user_begin());
+    addI[1] = dyn_cast<Instruction>(*mulI[2]->user_begin());
+    addI[2] = dyn_cast<Instruction>(*mulI[3]->user_begin());
+
+    if( addI[0] == nullptr ||
+        addI[1] == nullptr ||
+        addI[2] == nullptr ||
+        !addI[0]->hasOneUse() ||
+        !addI[1]->hasOneUse() ||
+        *addI[0]->user_begin() != *mulI[2]->user_begin() ||
+        *addI[1]->user_begin() != *mulI[3]->user_begin())
+    {
+        return;
+    }
+
+    // start the conversion
+    IRBuilder<> builder(&I);
+
+    Value* cond0 = builder.CreateICmp(ICmpInst::ICMP_EQ, offset[0]->getOperand(0), ConstantInt::get(offset[0]->getOperand(0)->getType(), 0));
+    Value* cond1 = builder.CreateICmp(ICmpInst::ICMP_EQ, offset[0]->getOperand(0), ConstantInt::get(offset[0]->getOperand(0)->getType(), 1));
+    Value* cond2 = builder.CreateICmp(ICmpInst::ICMP_EQ, offset[0]->getOperand(0), ConstantInt::get(offset[0]->getOperand(0)->getType(), 2));
+    Value* cond3 = builder.CreateICmp(ICmpInst::ICMP_EQ, offset[0]->getOperand(0), ConstantInt::get(offset[0]->getOperand(0)->getType(), 3));
+
+    Value* zero = ConstantFP::get(Type::getFloatTy(I.getContext()), 0);
+    Value* sel0 = builder.CreateSelect(cond0, mulI[0]->getOperand(inputInSrcIndex), zero);
+    Value* sel1 = builder.CreateSelect(cond1, mulI[1]->getOperand(inputInSrcIndex), sel0);
+    Value* sel2 = builder.CreateSelect(cond2, mulI[2]->getOperand(inputInSrcIndex), sel1);
+    Value* sel3 = builder.CreateSelect(cond3, mulI[3]->getOperand(inputInSrcIndex), sel2);
+
+    addI[2]->replaceAllUsesWith(sel3);
+}
+
+
 void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
 {
     // convert:
@@ -1398,11 +1582,14 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
                         Value* newScalar = builder.CreateExtractElement(newBitCast, newIndex);
                         I.replaceAllUsesWith(newScalar);
                         I.eraseFromParent();
+                        return;
                     }
                 }
             }
         }
     }
+
+    dp4WithIdentityMatrix(I);
 }
 
 #if LLVM_VERSION_MAJOR >= 7

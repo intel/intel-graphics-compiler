@@ -82,6 +82,8 @@ namespace IGC
         void visitLdptr(llvm::CallInst* inst);
         void visitLdRawVec(llvm::CallInst* inst);
         void visitLoadInst(llvm::LoadInst& I);
+        void dp4WithIdentityMatrix(llvm::ExtractElementInst& I);
+        bool isIdentityMatrix(llvm::ExtractElementInst& I);
 
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
