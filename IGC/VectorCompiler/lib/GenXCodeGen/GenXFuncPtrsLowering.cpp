@@ -107,8 +107,6 @@ void initializeGenXFunctionPointersLoweringPass(PassRegistry &);
 INITIALIZE_PASS_BEGIN(GenXFunctionPointersLowering,
                       "GenXFunctionPointersLowering",
                       "GenXFunctionPointersLowering", false, false)
-INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
-INITIALIZE_PASS_DEPENDENCY(GenXModule)
 INITIALIZE_PASS_END(GenXFunctionPointersLowering,
                     "GenXFunctionPointersLowering",
                     "GenXFunctionPointersLowering", false, false)
@@ -122,9 +120,6 @@ ModulePass *llvm::createGenXFunctionPointersLoweringPass() {
 }
 
 void GenXFunctionPointersLowering::getAnalysisUsage(AnalysisUsage &AU) const {
-  ModulePass::getAnalysisUsage(AU);
-  AU.addRequired<FunctionGroupAnalysis>();
-  AU.addRequired<GenXModule>();
   AU.setPreservesCFG();
 }
 
