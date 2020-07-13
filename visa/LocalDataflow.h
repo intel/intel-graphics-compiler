@@ -36,7 +36,7 @@ using namespace std;
 
 // ToDo: move Local dataflow here and make it a class
 
-namespace {
+namespace vISA {
 
     // A simple local (within one BB) analysis that checks if a def escapes (i.e., reaches the end of BB without other defines killing it).
     // This information may be helpful for a number of optimizations by determining if a define has only local effect.

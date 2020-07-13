@@ -606,10 +606,10 @@ void DefEscapeBBAnalysis::analyzeBB(G4_BB* bb)
                         std::swap(vec[i], vec[vec.size() - 1]);
                         vec.pop_back();
 #ifdef _DEBUG
-                        std::cerr << "Inst:\t";
-                        prevInst->dump();
-                        std::cerr << "killed by Inst:\t";
-                        inst->dump();
+                        //std::cerr << "Inst:\t";
+                        //prevInst->dump();
+                        //std::cerr << "killed by Inst:\t";
+                        //inst->dump();
                         auto killIter = killedDefs.find(bb);
                         if (killIter == killedDefs.end())
                         {
