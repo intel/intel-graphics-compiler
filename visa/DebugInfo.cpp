@@ -207,7 +207,7 @@ void DbgDecoder::ddCalleeCallerSave(uint32_t relocOffset)
         if (!retval)
             return;
 
-        std::cout << "Gen ISA offset: " << (genOffset - relocOffset) << "\n";
+        std::cout << "Gen ISA offset: " << genOffset << "\n";
 
         uint16_t numElems;
         retval = fread(&numElems, sizeof(uint16_t), 1, dbgFile);
@@ -692,6 +692,66 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
     mapCISAIndexGenOffset.push_back(std::make_pair(++maxVISAIndex, (unsigned int)maxGenIsaOffset));
 }
 
+void KernelDebugInfo::computeGRFToStackOffset()
+{
+    if (!kernel->fg.getHasStackCalls())
+        return;
+
+    // Store VISA index of each fcall and list of GRFs stored in stack with stack offset
+    // <CISA Index, vector<pair<GRF#, be_fp slot#>>
+    using GRFToStackCallSlot = std::unordered_map<unsigned int, std::vector<std::pair<unsigned int, unsigned int>>>;
+    GRFToStackCallSlot frameGRFStoreLocs;
+
+    bool hasSaveRestore = (callerSaveRestore.size() > 0);
+
+    if (hasSaveRestore)
+    {
+        for (auto& item : callerSaveRestore)
+        {
+            auto& sr = item.second;
+            for (auto& fill : sr.second)
+            {
+                if (fill->isFillIntrinsic())
+                {
+                    unsigned int firstGRF = fill->getDst()->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum();
+                    for (unsigned int row = 0; row != fill->asFillIntrinsic()->getNumRows(); ++row)
+                    {
+                        unsigned int grf = (firstGRF + row);
+                        unsigned int slot = fill->asFillIntrinsic()->getOffset() + row;
+                        // fill intrinsic stores offset in hword units
+                        auto other = std::make_pair(grf, slot*(BYTES_PER_OWORD*2));
+                        frameGRFStoreLocs[item.first->getCISAOff()].push_back(other);
+                    }
+                }
+            }
+        }
+    }
+
+    // Now associate store/restore with respective live-intervals
+    for (auto lr : debugInfoLiveIntervalMap)
+    {
+        if (lr.first->getRegVar()->getPhyReg() &&
+            lr.first->getRegVar()->getPhyReg()->isGreg())
+        {
+            auto grf = lr.first->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+            for (auto& sr : frameGRFStoreLocs)
+            {
+                if (!lr.second->isLiveAt(sr.first))
+                {
+                    continue;
+                }
+                for (auto& grfSlotPair : sr.second)
+                {
+                    if (grf == grfSlotPair.first)
+                    {
+                        lr.second->addGRFSave(sr.first, grfSlotPair.second);
+                    }
+                }
+            }
+        }
+    }
+}
+
 void KernelDebugInfo::emitRegisterMapping()
 {
     // Emit out mapping between
@@ -701,6 +761,7 @@ void KernelDebugInfo::emitRegisterMapping()
     // For address/flag registers, spill location is
     // GRF registers. Only general variables, ie GRF
     // candidates can be spilled to memory.
+
     for( DECLARE_LIST_ITER dcl_it = getKernel().Declares.begin();
         dcl_it != getKernel().Declares.end();
         dcl_it++ )
@@ -987,19 +1048,71 @@ void emitDataUInt8(uint8_t data, T& t)
 }
 
 template<class T>
-void emitDataVarLiveInterval(VISAKernelImpl* visaKernel, LiveIntervalInfo* lrInfo, uint32_t i, uint16_t size, T& t)
+void emitDataVarLiveInterval(VISAKernelImpl* visaKernel, LiveIntervalInfo* lrInfo, uint32_t i, uint16_t size, T& t, bool lrHasGenISAOff = false)
 {
+    // given lrs and saverestore, prepare assembled list of ranges to write out
+    KernelDebugInfo* dbgInfo = visaKernel->getKernel()->getKernelDebugInfo();
+
+    // When lrHasGenISAOff = true, it means lrInfo contains offsets that are Gen offsets, rather than VISA index
+    auto assembleAll = [lrHasGenISAOff, dbgInfo](const std::vector<std::pair<uint32_t, uint32_t>>& lrs,
+        std::vector<std::pair<uint32_t, uint32_t>>& saveRestore)
+    {
+        // Return count of total LRs to emit including
+        // save/restore
+        // <is save/restore, start, end, stack slot>
+        std::vector<std::tuple<bool, uint32_t, uint32_t, uint32_t>> assembled;
+        for (auto& lr : lrs)
+        {
+            assembled.push_back(std::make_tuple(false, lr.first, lr.second, 0));
+            for (auto& sr : saveRestore)
+            {
+                uint32_t srFirst = sr.first;
+                if (lrHasGenISAOff)
+                {
+                    srFirst = dbgInfo->getGenOffsetFromVISAIndex(srFirst) - dbgInfo->getRelocOffset();
+                }
+                // check whether lr overlaps save/restore
+                if (srFirst >= lr.first &&
+                    srFirst < lr.second)
+                {
+                    unsigned int e1 = sr.first - 1;
+                    unsigned int e2 = sr.first + 2;
+                    if (lrHasGenISAOff)
+                    {
+                        e1 = dbgInfo->getGenOffsetFromVISAIndex(e1) - dbgInfo->getRelocOffset();
+                        e2 = dbgInfo->getGenOffsetFromVISAIndex(e2) - dbgInfo->getRelocOffset();
+                    }
+                    // break original LR
+                    assembled.back() = std::make_tuple(false, std::get<1>(assembled.back()), e1, 0);
+                    // insert stack LR
+                    assembled.push_back(std::make_tuple(true, srFirst, e2, sr.second));
+                    // restore original LR
+                    assembled.push_back(std::make_tuple(false, e2, lr.second, 0));
+                }
+            }
+        }
+
+        return assembled;
+    };
+
+    // start cisa index, end cisa index
     std::vector<std::pair<uint32_t, uint32_t>> lrs;
+    std::vector<std::pair<uint32_t, uint32_t>> saveRestore;
+    // at cisa index, stack slot off
     if (lrInfo != NULL)
     {
         lrInfo->getLiveIntervals(lrs);
+        saveRestore = lrInfo->getSaveRestore();
     }
-    uint16_t numLRs = (uint16_t)lrs.size();
+    std::sort(lrs.begin(), lrs.end(), [](std::pair<uint32_t, uint32_t>& a, std::pair<uint32_t, uint32_t>& b) { return a.first < b.first; });
+    std::sort(saveRestore.begin(), saveRestore.end(), [](std::pair<uint32_t, uint32_t>& a, std::pair<uint32_t, uint32_t>& b) { return a.first < b.first; });
+    auto assembledLRs = assembleAll(lrs, saveRestore);
+    uint16_t numLRs = (uint16_t)assembledLRs.size();
     emitDataUInt16(numLRs, t);
-    for (auto it : lrs)
+    for (auto& it : assembledLRs)
     {
-        const uint32_t start = (uint32_t)it.first;
-        const uint32_t end = (uint32_t)it.second;
+        const uint32_t start = std::get<1>(it);
+        const uint32_t end = std::get<2>(it);
 
         if (size == 2)
         {
@@ -1012,12 +1125,18 @@ void emitDataVarLiveInterval(VISAKernelImpl* visaKernel, LiveIntervalInfo* lrInf
             emitDataUInt32(end, t);
         }
 
-        auto& varsMap = visaKernel->getKernel()->getKernelDebugInfo()->getVarsMap();
+        auto& varsMap = dbgInfo->getVarsMap();
         const unsigned char virtualType = varsMap[i]->virtualType;
         // Write virtual register type
         emitDataUInt8((uint8_t)virtualType, t);
 
-        const unsigned char physicalType = varsMap[i]->physicalType;
+        unsigned char physicalType = varsMap[i]->physicalType;
+        if (std::get<0>(it))
+        {
+            // save restore
+            physicalType = VARMAP_PREG_FILE_MEMORY;
+        }
+
         // Write physical register type
         emitDataUInt8((uint8_t)physicalType, t);
 
@@ -1026,6 +1145,10 @@ void emitDataVarLiveInterval(VISAKernelImpl* visaKernel, LiveIntervalInfo* lrInf
         if (physicalType == VARMAP_PREG_FILE_MEMORY)
         {
             unsigned int memOffset = (unsigned int)varsMap[i]->Mapping.Memory.memoryOffset;
+            if (std::get<0>(it))
+            {
+                memOffset = std::get<3>(it);
+            }
             if (visaKernel->getKernel()->fg.getHasStackCalls() == false)
             {
                 memOffset |= 0x80000000;
@@ -1144,6 +1267,7 @@ template<class T>
 void emitDataPhyRegSaveInfoPerIP(VISAKernelImpl* visaKernel, SaveRestoreManager& mgr, T& t)
 {
     auto& srInfo = mgr.getSRInfo();
+    auto relocOffset = visaKernel->getKernel()->getKernelDebugInfo()->getRelocOffset();
 
     for (auto sr : srInfo)
     {
@@ -1153,7 +1277,7 @@ void emitDataPhyRegSaveInfoPerIP(VISAKernelImpl* visaKernel, SaveRestoreManager&
         }
 
         emitDataUInt32((uint32_t)sr.getInst()->getGenOffset() +
-            getBinInstSize(sr.getInst()), t);
+            getBinInstSize(sr.getInst()) - relocOffset, t);
         emitDataUInt16((uint16_t) sr.saveRestoreMap.size(), t);
         for (auto mapIt : sr.saveRestoreMap)
         {
@@ -1431,7 +1555,7 @@ void emitDataCallFrameInfo(VISAKernelImpl* visaKernel, T& t)
         {
             emitDataUInt8((uint8_t)1, t);
             uint32_t idx = kernel->getKernelDebugInfo()->getVarIndex(callerfpdcl);
-            emitDataVarLiveInterval(visaKernel, callerfpLIInfo, idx, sizeof(uint32_t), t);
+            emitDataVarLiveInterval(visaKernel, callerfpLIInfo, idx, sizeof(uint32_t), t, true);
         }
         else
         {
@@ -1451,7 +1575,7 @@ void emitDataCallFrameInfo(VISAKernelImpl* visaKernel, T& t)
         {
             emitDataUInt8((uint8_t)1, t);
             uint32_t idx = kernel->getKernelDebugInfo()->getVarIndex(fretVar);
-            emitDataVarLiveInterval(visaKernel, fretVarLIInfo, idx, sizeof(uint32_t), t);
+            emitDataVarLiveInterval(visaKernel, fretVarLIInfo, idx, sizeof(uint32_t), t, true);
         }
         else
         {
@@ -2037,6 +2161,54 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
             {
                 updateDebugInfo(*kernel, callerbefp, i);
             }
+        }
+    }
+}
+
+void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic* spillOrFill, G4_INST* inst)
+{
+    // This function looks up all caller/callee save code added.
+    // Once it finds "spillOrFill", it adds inst to it. This is
+    // because VISA now uses spill/fill intrinsics to model
+    // save/restore. These intrinsics are expanded after RA is
+    // done. So this method gets invoked after RA is done and
+    // when intrinsics are expanded.
+    for (auto& k : callerSaveRestore)
+    {
+        for (auto it = k.second.first.begin(); it != k.second.first.end(); ++it)
+        {
+            if ((*it) == spillOrFill)
+            {
+                k.second.first.insert(it, inst);
+                return;
+            }
+        }
+
+        for (auto it = k.second.second.begin(); it != k.second.second.end(); ++it)
+        {
+            if ((*it) == spillOrFill)
+            {
+                k.second.second.insert(it, inst);
+                return;
+            }
+        }
+    }
+
+    for (auto it = calleeSaveRestore.first.begin(); it != calleeSaveRestore.first.end(); ++it)
+    {
+        if ((*it) == spillOrFill)
+        {
+            calleeSaveRestore.first.insert(it, inst);
+            return;
+        }
+    }
+
+    for (auto it = calleeSaveRestore.second.begin(); it != calleeSaveRestore.second.end(); ++it)
+    {
+        if ((*it) == spillOrFill)
+        {
+            calleeSaveRestore.second.insert(it, inst);
+            return;
         }
     }
 }

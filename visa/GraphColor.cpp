@@ -7682,6 +7682,11 @@ void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
     }
     stackCallProlog();
     builder.instList.clear();
+
+    if (kernel.getOption(vISA_GenerateDebugInfo))
+    {
+        kernel.getKernelDebugInfo()->computeGRFToStackOffset();
+    }
 }
 
 //

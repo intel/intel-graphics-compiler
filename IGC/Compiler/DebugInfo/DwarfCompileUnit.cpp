@@ -66,8 +66,8 @@ using namespace ::IGC;
 
 /// CompileUnit - Compile unit constructor.
 CompileUnit::CompileUnit(unsigned UID, DIE* D, DICompileUnit* Node,
-    StreamEmitter* A, VISAModule* M, IGC::DwarfDebug* DW)
-    : UniqueID(UID), Node(Node), CUDie(D), Asm(A), m_pModule(M), DD(DW),
+    StreamEmitter* A, IGC::DwarfDebug* DW)
+    : UniqueID(UID), Node(Node), CUDie(D), Asm(A), DD(DW),
     IndexTyDie(0), DebugInfoOffset(0)
 {
     DIEIntegerOne = new (DIEValueAllocator)DIEInteger(1);
@@ -221,7 +221,7 @@ void CompileUnit::addSInt(DIEBlock* Die, Optional<dwarf::Form> Form, int64_t Int
 /// table.
 void CompileUnit::addString(DIE* Die, dwarf::Attribute Attribute, StringRef String)
 {
-    if (m_pModule->isDirectElfInput)
+    if (DD->IsDirectElfInput())
     {
         // Emit string inlined
         auto Str = new (DIEValueAllocator) DIEInlinedString(String);
@@ -1751,7 +1751,7 @@ DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstract)
     unsigned Offset = DV.getDotDebugLocOffset();
     if (Offset != ~0U)
     {
-        if (m_pModule->isDirectElfInput)
+        if (DD->IsDirectElfInput())
         {
             // Copy over references ranges to DotLocDebugEntries
             Offset = DD->CopyDebugLoc(Offset);
@@ -1786,7 +1786,9 @@ DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstract)
 
 void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& DV, IGC::DIE* VariableDie)
 {
-    VISAVariableLocation Loc = m_pModule->GetVariableLocation(pDbgInst);
+    auto F = pDbgInst->getParent()->getParent();
+    auto VISAModule = DD->GetVISAModule(F);
+    VISAVariableLocation Loc = VISAModule->GetVariableLocation(pDbgInst);
 
     // Variable can be immdeiate or in a location (but not both)
     if (Loc.IsImmediate())
@@ -1803,7 +1805,7 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
         else
         {
             VISAModule::DataVector rawData;
-            m_pModule->GetConstantData(pConstVal, rawData);
+            VISAModule->GetConstantData(pConstVal, rawData);
             addConstantData(VariableDie, rawData.data(), rawData.size());
         }
         DV.setDIE(VariableDie);
@@ -1811,7 +1813,7 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
     }
 
     bool addDecoration = false;
-    if (m_pModule->isDirectElfInput)
+    if (VISAModule->isDirectElfInput)
     {
         if (Loc.HasSurface())
         {
@@ -1902,7 +1904,7 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
         {
             // Add description stating whether variable was vectorized in VISA
             addString(VariableDie, dwarf::DW_AT_description, "vectorized");
-            uint16_t simdSize = m_pModule->GetSIMDSize();
+            uint16_t simdSize = VISAModule->GetSIMDSize();
             addString(VariableDie, dwarf::DW_AT_description,
                 simdSize == 8 ? "simd8" : simdSize == 16 ? "simd16" : "???");
         }
@@ -1979,6 +1981,7 @@ void CompileUnit::buildSampler(DbgVariable& var, DIE* die, VISAVariableLocation*
 
 void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
 {
+    auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
     if (loc->IsRegister())
     {
         DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
@@ -1987,7 +1990,7 @@ void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc
         {
             DbgDecoder::VarInfo varInfo;
             auto regNum = loc->GetRegister();
-            m_pModule->getVarInfo("V", regNum, varInfo);
+            VISAMod->getVarInfo("V", regNum, varInfo);
 
             if (varInfo.lrs.size() == 0)
                 return;
@@ -2059,7 +2062,8 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
 {
     DbgDecoder::VarInfo varInfo;
     auto regNum = loc->GetRegister();
-    m_pModule->getVarInfo("V", regNum, varInfo);
+    auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
+    VISAMod->getVarInfo("V", regNum, varInfo);
 
     if (varInfo.lrs.size() == 0)
         return;
@@ -2077,7 +2081,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
             {
                 unsigned int subReg = varInfo.lrs.front().getGRF().subRegNum;
                 auto offsetInBits = subReg * 8;
-                auto sizeInBits = (m_pModule->m_pShader->getGRFSize() * 8) - offsetInBits;
+                auto sizeInBits = (VISAMod->m_pShader->getGRFSize() * 8) - offsetInBits;
 
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
                 addUInt(Block, dwarf::DW_FORM_udata, sizeInBits);
@@ -2099,7 +2103,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
             }
             else
             {
-                uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
+                uint16_t grfSize = (uint16_t)VISAMod->m_pShader->getGRFSize();
                 uint16_t varSizeInBits = loc->IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)var.getBasicSize(DD);
                 uint16_t varSizeInReg = (uint16_t)(loc->IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
                 uint16_t numOfRegs = ((varSizeInReg * (uint16_t)DD->simdWidth) > (grfSize * 8)) ?
@@ -2137,7 +2141,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
         }
         else
         {
-            uint16_t grfSize = (uint16_t)m_pModule->m_pShader->getGRFSize();
+            uint16_t grfSize = (uint16_t)VISAMod->m_pShader->getGRFSize();
             uint16_t varSizeInBits = loc->IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)var.getBasicSize(DD);
             uint16_t varSizeInReg = (uint16_t)(loc->IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
             uint16_t numOfRegs = ((varSizeInReg * (uint16_t)DD->simdWidth) > (grfSize * 8)) ?

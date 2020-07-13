@@ -836,7 +836,7 @@ CompileUnit* DwarfDebug::constructCompileUnit(DICompileUnit* DIUnit)
     CompilationDir = DIUnit->getDirectory();
 
     DIE* Die = new DIE(dwarf::DW_TAG_compile_unit);
-    CompileUnit* NewCU = new CompileUnit(GlobalCUIndexCount++, Die, DIUnit, Asm, m_pModule, this);
+    CompileUnit* NewCU = new CompileUnit(GlobalCUIndexCount++, Die, DIUnit, Asm, this);
 
     FileIDCUMap[NewCU->getUniqueID()] = 0;
     // Call this to emit a .file directive if it wasn't emitted for the source
@@ -1015,6 +1015,12 @@ void DwarfDebug::beginModule()
 
     // Prime section data.
     SectionMap[Asm->GetTextSection()];
+
+    if(DwarfFrameSectionNeeded())
+    {
+        Asm->SwitchSection(Asm->GetDwarfFrameSection());
+        writeCIE();
+    }
 }
 
 // Attach DW_AT_inline attribute with inlined subprogram DIEs.
@@ -1287,6 +1293,15 @@ void write(std::vector<unsigned char>& vec, const unsigned char* data, uint8_t N
 {
     for (unsigned int i = 0; i != N; i++)
         vec.push_back(*(data + i));
+}
+
+void writeULEB128(std::vector<unsigned char>& vec, uint64_t data)
+{
+    auto uleblen = getULEB128Size(data);
+    uint8_t* buf = (uint8_t*)malloc(uleblen * sizeof(uint8_t));
+    encodeULEB128(data, buf);
+    write(vec, buf, uleblen);
+    free(buf);
 }
 
 
@@ -2425,6 +2440,12 @@ void DwarfDebug::endFunction(const Function* MF)
 
     constructScopeDIE(TheCU, FnScope);
 
+    if (DwarfFrameSectionNeeded())
+    {
+        Asm->SwitchSection(Asm->GetDwarfFrameSection());
+        writeFDE(*m_pModule->getCompileUnit());
+    }
+
     // Clear debug info
     for (ScopeVariablesMap::iterator
         I = ScopeVariables.begin(), E = ScopeVariables.end(); I != E; ++I)
@@ -2953,22 +2974,14 @@ void DwarfDebug::writeCIE()
 
     // Emit CIE
     auto ptrSize = Asm->GetPointerSize();
+    // The size of the length field plus the value of length must be an integral multiple of the address size.
     uint8_t lenSize = ptrSize;
     if (ptrSize == 8)
         lenSize = 12;
 
     // Write CIE_id
     // Only 1 CIE is emitted
-    if (ptrSize == 8)
-    {
-        uint64_t id = 0xffffffff;
-        write(data, id);
-    }
-    else
-    {
-        uint32_t id = 0xffffffff;
-        write(data, id);
-    }
+    write(data, ptrSize == 4 ? (uint32_t)0xffffffff : (uint64_t)0xffffffffffffffff);
 
     // version - ubyte
     write(data, (uint8_t)4);
@@ -2989,20 +3002,30 @@ void DwarfDebug::writeCIE()
     write(data, (uint8_t)1);
 
     // return address register - uleb128
-    // set machine return register to 128 which is physically
+    // set machine return register to one which is physically
     // absent. later CFA instructions map this to a valid GRF.
-    auto uleblen = getULEB128Size(returnReg);
-    uint8_t* buf = (uint8_t*)malloc(uleblen * sizeof(uint8_t));
-    encodeULEB128(returnReg, buf);
-    write(data, buf, uleblen);
-    free(buf);
+    writeULEB128(data, returnReg);
+
 
     // initial instructions (array of ubyte)
+    // DW_CFA_def_cfa -> fpreg+0
+    write(data, (uint8_t)llvm::dwarf::DW_CFA_def_cfa);
+    writeULEB128(data, fpReg);
+    writeULEB128(data, 0);
+
     while ((lenSize + data.size()) % ptrSize != 0)
         // Insert DW_CFA_nop
         write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
 
     // Emit length with marker 0xffffffff for 8-byte ptr
+    // DWARF4 spec:
+    //  in the 64-bit DWARF format, an initial length field is 96 bits in size, and has two parts:
+    //  * The first 32-bits have the value 0xffffffff.
+    //  * The following 64-bits contain the actual length represented as an unsigned 64-bit integer.
+    //
+    // In the 32-bit DWARF format, an initial length field (see Section 7.2.2) is an unsigned 32-bit integer
+    //  (which must be less than 0xfffffff0)
+
     if (ptrSize == 8)
         Asm->EmitInt32(0xffffffff);
     Asm->EmitIntValue(data.size(), ptrSize);
@@ -3063,18 +3086,235 @@ void DwarfDebug::writeFDE(DbgDecoder::SubroutineInfo& sub)
     write(data, (uint8_t)llvm::dwarf::DW_CFA_register);
 
     // return reg operand
-    auto uleblen = getULEB128Size(returnReg);
-    uint8_t* buf = (uint8_t*)malloc(uleblen * sizeof(uint8_t));
-    encodeULEB128(returnReg, buf);
-    write(data, buf, uleblen);
-    free(buf);
+    writeULEB128(data, returnReg);
 
     // actual reg holding retval
-    uleblen = getULEB128Size(linearAddr);
-    buf = (uint8_t*)malloc(uleblen * sizeof(uint8_t));
-    encodeULEB128(linearAddr, buf);
-    write(data, buf, uleblen);
-    free(buf);
+    writeULEB128(data, linearAddr);
+
+    // initial instructions (array of ubyte)
+    while ((lenSize + data.size()) % ptrSize != 0)
+        // Insert DW_CFA_nop
+        write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
+
+    // Emit length with marker 0xffffffff for 8-byte ptr
+    if (ptrSize == 8)
+        Asm->EmitInt32(0xffffffff);
+    Asm->EmitIntValue(data.size(), ptrSize);
+
+    for (auto& byte : data)
+        Asm->EmitInt8(byte);
+}
+
+void DwarfDebug::writeFDE(DbgDecoder::DbgInfoFormat& dbgInfo)
+{
+    std::vector<uint8_t> data;
+    uint64_t loc = 0;
+    // <ip, <instructiont to write>
+    auto sortAsc = [](uint64_t a, uint64_t b) { return a < b; };
+    std::map <uint64_t, std::vector<uint8_t>, decltype(sortAsc)> cfaOps(sortAsc);
+
+    auto advanceLoc = [&loc](std::vector<uint8_t>& data, uint64_t newLoc)
+    {
+        uint64_t diff = newLoc - loc;
+        if (diff == 0)
+            return;
+
+        if (diff < (1<<(8*sizeof(uint8_t)-1)))
+        {
+            write(data, (uint8_t)llvm::dwarf::DW_CFA_advance_loc1);
+            write(data, (uint8_t)diff);
+        }
+        else if (diff < (1 << (8*sizeof(uint16_t)-1)))
+        {
+            write(data, (uint8_t)llvm::dwarf::DW_CFA_advance_loc2);
+            write(data, (uint16_t)diff);
+        }
+        else
+        {
+            write(data, (uint8_t)llvm::dwarf::DW_CFA_advance_loc4);
+            write(data, (uint32_t)diff);
+        }
+        loc = newLoc;
+    };
+
+    auto writeSameValue = [](std::vector<uint8_t>& data, uint32_t srcReg)
+    {
+        write(data, (uint8_t)llvm::dwarf::DW_CFA_same_value);
+        writeULEB128(data, srcReg);
+    };
+
+    auto writeRegToMem = [](std::vector<uint8_t>& data, uint32_t srcReg, DbgDecoder::Mapping& mapping)
+    {
+        // srcReg -> (fp) + mapping.m.offset
+        write(data, (uint8_t)llvm::dwarf::DW_CFA_offset_extended);
+        writeULEB128(data, srcReg);
+        writeULEB128(data, mapping.m.memoryOffset);
+        IGC_ASSERT_MESSAGE(!mapping.m.isBaseOffBEFP, "Expecting location offset from BE_FP");
+    };
+
+    auto writeNonCFALoc = [](std::vector<uint8_t>& data, uint32_t srcReg, DbgDecoder::LiveIntervalGenISA& lr)
+    {
+        if (lr.var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory)
+        {
+            write(data, (uint8_t)llvm::dwarf::DW_CFA_offset_extended);
+            writeULEB128(data, srcReg);
+            writeULEB128(data, lr.var.mapping.m.memoryOffset);
+            IGC_ASSERT_MESSAGE(!lr.var.mapping.m.isBaseOffBEFP, "Expecting location offset from BE_FP");
+        }
+        else if (lr.var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF)
+        {
+            write(data, (uint8_t)llvm::dwarf::DW_CFA_register);
+            writeULEB128(data, srcReg);
+            writeULEB128(data, lr.var.mapping.r.regNum);
+        }
+    };
+
+    auto writeCFALoc = [](std::vector<uint8_t>& data, uint32_t srcReg, DbgDecoder::LiveIntervalGenISA& lr)
+    {
+        if (lr.var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory)
+        {
+            // map out CFA to an offset on be stack
+            // TODO: use  DW_CFA_def_cfa_expression
+            write(data, (uint8_t)llvm::dwarf::DW_CFA_def_cfa);
+            // The DW_CFA_def_cfa instruction takes two unsigned LEB128 operands representing a register number and a (non-factored) offset.
+            writeULEB128(data, srcReg);
+            writeULEB128(data, lr.var.mapping.m.memoryOffset);
+            IGC_ASSERT_MESSAGE(!lr.var.mapping.m.isBaseOffBEFP, "Expecting location offset from BE_FP");
+        }
+        else if (lr.var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF)
+        {
+            // map CFA to physical GRF
+            write(data, (uint8_t)llvm::dwarf::DW_CFA_def_cfa_register);
+            writeULEB128(data, lr.var.mapping.r.regNum);
+            write(data, (uint8_t)llvm::dwarf::DW_CFA_def_cfa_offset);
+            writeULEB128(data, 0);
+        }
+    };
+
+    auto ptrSize = Asm->GetPointerSize();
+    auto& cfi = dbgInfo.cfi;
+    // Emit CIE
+    uint8_t lenSize = 4;
+    if (ptrSize == 8)
+        lenSize = 12;
+
+    // CIE_ptr (4/8 bytes)
+    write(data, ptrSize == 4 ? (uint32_t)0 : (uint64_t)0);
+
+    // initial location
+    auto genOffStart = dbgInfo.relocOffset;
+    auto genOffEnd = highPc;
+
+    write(data, ptrSize == 4 ? (uint32_t)genOffStart : (uint64_t)genOffStart);
+
+    // address range
+    write(data, ptrSize == 4 ? (uint32_t)(genOffEnd - genOffStart) :
+        (uint64_t)(genOffEnd - genOffStart));
+
+    // emit same value for all callee save entries in frame
+    std::unordered_set<uint32_t> uniqueCalleeSave;
+    for (auto& item : cfi.calleeSaveEntry)
+    {
+        for (unsigned int idx = 0; idx != item.data.size(); ++idx)
+        {
+            auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->m_pShader->getGRFSize());
+            uniqueCalleeSave.insert(regNum);
+        }
+    }
+
+    for (auto r : uniqueCalleeSave)
+    {
+        writeSameValue(cfaOps[0], r);
+    }
+
+    // first write instructions to retrieve CFA (ie, be_fp of caller frame)
+    if (cfi.callerbefpValid)
+    {
+        auto& callerFP = cfi.callerbefp;
+        unsigned int regNum = 0;
+        for (auto& item : callerFP)
+        {
+            if (item.var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory)
+            {
+                // Caller CFA in memory offset by current CFA
+                writeNonCFALoc(cfaOps[item.start], regNum, item);
+            }
+            else
+            {
+                regNum = item.var.mapping.r.regNum;
+                writeCFALoc(cfaOps[item.start], fpReg, item);
+            }
+        }
+    }
+
+    // write return addr on stack
+    if (cfi.retAddrValid)
+    {
+        auto& retAddr = cfi.retAddr;
+        for (auto& item : retAddr)
+        {
+            writeNonCFALoc(cfaOps[item.start], returnReg, item);
+        }
+    }
+
+    // write callee save
+    if (cfi.calleeSaveEntry.size() > 0)
+    {
+        // set holds any callee save GRF that has been saved already to stack.
+        // this is required because of some differences between dbginfo structure
+        // reporting callee save and dwarf's debug_frame section requirements.
+        std::unordered_set<uint32_t> calleeSaveRegsSaved;
+        for (auto& item : cfi.calleeSaveEntry)
+        {
+            for (unsigned int idx = 0; idx != item.data.size(); ++idx)
+            {
+                auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->m_pShader->getGRFSize());
+                if (calleeSaveRegsSaved.find(regNum) == calleeSaveRegsSaved.end())
+                {
+                    writeRegToMem(cfaOps[item.genIPOffset], regNum, item.data[idx].dst);
+                    calleeSaveRegsSaved.insert(regNum);
+                }
+                else
+                {
+                    // already saved, so no need to emit same save again
+                }
+            }
+
+            // check whether an entry is present in calleeSaveRegsSaved but not in cfi.calleeSaveEntry
+            // missing entries are available in original locations
+            for (auto it = calleeSaveRegsSaved.begin(); it != calleeSaveRegsSaved.end();)
+            {
+                bool found = false;
+                for (unsigned int idx = 0; idx != item.data.size(); ++idx)
+                {
+                    auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->m_pShader->getGRFSize());
+                    if ((*it) == regNum)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    writeSameValue(cfaOps[item.genIPOffset], (*it));
+                    it = calleeSaveRegsSaved.erase(it);
+                    continue;
+                }
+                ++it;
+            }
+        }
+    }
+
+    // write to actual buffer
+    advanceLoc(data, loc);
+    for (auto& item : cfaOps)
+    {
+        advanceLoc(data, item.first);
+        for (auto& c : item.second)
+        {
+            data.push_back(c);
+        }
+    }
 
     // initial instructions (array of ubyte)
     while ((lenSize + data.size()) % ptrSize != 0)
@@ -3093,16 +3333,17 @@ void DwarfDebug::writeFDE(DbgDecoder::SubroutineInfo& sub)
 // Emit debug_frame section to allow stack traversal
 void DwarfDebug::emitDebugFrame()
 {
-    auto subs = m_pModule->getSubroutines();
-    if (subs->size() == 0)
+    if (!DwarfFrameSectionNeeded())
         return;
 
     Asm->SwitchSection(Asm->GetDwarfFrameSection());
 
     // All subs share CIE.
-    // Each sub has its unique FDE.
-    writeCIE();
+    // CIE was written when starting module
 
+    // Write FDEs when there are subs.
+    // Call stack FDEs are written in endFunction()
+    auto subs = m_pModule->getSubroutines();
     for (auto& sub : *subs)
     {
         // write unique FDE
@@ -3180,6 +3421,19 @@ bool VISAModule::getVarInfo(std::string prefix, unsigned int vreg, DbgDecoder::V
 
     var = (*it).second;
     return true;
+}
+
+bool VISAModule::hasOrIsStackCall() const
+{
+    auto co = getCompileUnit();
+    if (!co)
+        return false;
+
+    auto& cfi = co->cfi;
+    if (cfi.befpValid || cfi.frameSize > 0 || cfi.retAddr.size() > 0)
+        return true;
+
+    return false;
 }
 
 std::vector<DbgDecoder::SubroutineInfo>* VISAModule::getSubroutines() const
