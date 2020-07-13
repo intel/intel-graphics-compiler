@@ -108,6 +108,11 @@ def llvm_options : Separate<["-"], "llvm-options">,
 def llvm_options_eq : Joined<["-"], "llvm-options=">,
   Alias<llvm_options>, HelpText<"Alias for -llvm-options">;
 
+def target_features : Separate<["-"], "target-features">,
+  HelpText<"Auxilirary target features">;
+def target_features_eq : Joined<["-"], "target-features=">,
+  Alias<target_features>, HelpText<"Alias for -target_features">;
+
 def runtime : Separate<["-"], "runtime">,
   HelpText<"Set runtime for which binary should be generated; values: 'ocl' or 'cm'">;
 def runtime_eq : Joined<["-"], "runtime=">,

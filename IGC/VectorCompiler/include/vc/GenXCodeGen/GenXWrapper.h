@@ -129,6 +129,7 @@ struct CompileOptions {
   OptimizerLevel OptLevel = OptimizerLevel::Full;
 
   // Internal options.
+  std::string FeaturesString; // format is: [+-]<feature1>,[+-]<feature2>,...
   RuntimeKind Runtime = RuntimeKind::OpenCL;
   bool DumpIsa = false;
   bool DumpIR = false;

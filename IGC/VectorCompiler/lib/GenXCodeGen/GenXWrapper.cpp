@@ -306,11 +306,28 @@ static Triple overrideTripleWithVC(StringRef TripleStr) {
 }
 
 static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
+
   SubtargetFeatures Features;
+
+  if (!Opts.FeaturesString.empty()) {
+    SmallVector<StringRef, 8> AuxFeatures;
+    StringRef(Opts.FeaturesString).split(AuxFeatures, ",", -1, false);
+    for (const auto& F: AuxFeatures) {
+      auto Feature = F.trim();
+      bool Enabled = Feature.consume_front("+");
+      if (!Enabled) {
+        bool Disabled = Feature.consume_front("-");
+        assert(!Disabled && "unexpected feature format");
+      }
+      Features.AddFeature(Feature.str(), Enabled);
+    }
+  }
+
   if (Opts.NoVecDecomp)
     Features.AddFeature("disable_vec_decomp");
   if (Opts.Runtime == vc::RuntimeKind::OpenCL)
     Features.AddFeature("ocl_runtime");
+
   return Features.getString();
 }
 
@@ -605,6 +622,9 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     }
     Opts.Runtime = MaybeRuntime.getValue();
   }
+
+  Opts.FeaturesString = llvm::join(
+    InternalOptions.getAllArgValues(vc::options::OPT_target_features), ",");
 
   if (InternalOptions.hasArg(vc::options::OPT_help)) {
     constexpr const char *Usage = "-options \"-vc-codegen [options]\"";
