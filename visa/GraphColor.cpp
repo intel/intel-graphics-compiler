@@ -6014,8 +6014,9 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             return assignColors(colorHeuristicGRF, doBankConflict, highInternalConflict, false);
         }
 
-        if (honorHints && gra.getIterNo() < 3)
+        if (honorHints && gra.getIterNo() == 0)
         {
+            // attempt coalescing in non-spill iteration only
             if (varSplitPass.isSplitDcl(lr->getDcl()))
             {
                 // Try allocating children, out of order in hopes
