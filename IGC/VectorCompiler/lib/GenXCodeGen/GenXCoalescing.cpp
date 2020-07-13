@@ -1671,7 +1671,8 @@ Instruction *GenXCoalescing::insertCopy(SimpleValue Input, LiveRange *LR,
     Liveness->setLiveRange(SimpleValue(Extract), SourceLR);
     Input = SimpleValue(Extract);
   }
-  return Liveness->insertCopy(Input.getValue(), LR, InsertBefore, Name, Number);
+  return Liveness->insertCopy(Input.getValue(), LR, InsertBefore, Name, Number,
+                              ST);
 }
 
 /***********************************************************************

@@ -139,6 +139,11 @@ const constexpr int DWordBytes = DWordBits / ByteBits;
 const constexpr int QWordBytes = QWordBits / ByteBits;
 const constexpr int OWordBytes = OWordBits / ByteBits;
 
+// Currently EM determines behavior of 32 lanes.
+// Probably that should be moved to subtarget if
+// different targets will support different EM sizes.
+const constexpr unsigned int TotalEMSize = 32;
+
 // vISA allows [-512,511] for operation to be baled as offset
 // for rdregion, copied from visa
 const constexpr int G4_MAX_ADDR_IMM = 511;

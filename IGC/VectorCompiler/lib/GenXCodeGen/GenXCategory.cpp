@@ -577,8 +577,9 @@ bool GenXCategory::fixCircularPhis(Function *F)
       // A phi node is never a struct -- GenXLowering removed struct phis.
       assert(!isa<StructType>(Phi->getType()));
       // Insert a copy, split as required to be legal.
-      auto NewCopy = Liveness->insertCopy(Phi, nullptr, BB->getFirstNonPHI(),
-          Phi->getName() + ".unoverlapper", 0);
+      auto NewCopy =
+          Liveness->insertCopy(Phi, nullptr, BB->getFirstNonPHI(),
+                               Phi->getName() + ".unoverlapper", 0, Subtarget);
       // Change the uses that existed before we added the copy to use the
       // copy instead.
       for (auto ui = Uses.begin(), ue = Uses.end(); ui != ue; ++ui)

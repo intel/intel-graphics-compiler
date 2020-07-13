@@ -196,6 +196,7 @@ class FunctionPass;
 class GenXBaling;
 class GenXLiveness;
 class GenXNumbering;
+class GenXSubtarget;
 class Instruction;
 class PHINode;
 class raw_ostream;
@@ -609,7 +610,9 @@ public:
   // See if V1 is a phi node and V2 wraps round to a phi use in the same BB after V1's def
   static bool wrapsAround(Value *V1, Value *V2);
   // Insert a copy of a non-struct value.
-  Instruction *insertCopy(Value *InputVal, genx::LiveRange *LR, Instruction *InsertBefore, const Twine &Name, unsigned Number);
+  Instruction *insertCopy(Value *InputVal, genx::LiveRange *LR,
+                          Instruction *InsertBefore, const Twine &Name,
+                          unsigned Number, const GenXSubtarget *ST);
   // eraseUnusedTree : erase unused tree of instructions, and remove from GenXLiveness
   void eraseUnusedTree(Instruction *Inst);
   // setArgAddressBase : set the base value of an argument indirect address

@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXIntrinsics.h"
 #include "GenXNumbering.h"
 #include "GenXRegion.h"
+#include "GenXSubtarget.h"
 #include "GenXUtil.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm/ADT/SmallSet.h"
@@ -1163,8 +1164,9 @@ bool GenXLiveness::wrapsAround(Value *V1, Value *V2)
  * adjust live ranges. Also at this stage there is no baling info to update.
  */
 Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
-    Instruction *InsertBefore, const Twine &Name, unsigned Number)
-{
+                                      Instruction *InsertBefore,
+                                      const Twine &Name, unsigned Number,
+                                      const GenXSubtarget *ST) {
   assert(!isa<Constant>(InputVal));
   bool AdjustLRs = LR != nullptr;
   LiveRange *SourceLR = nullptr;
@@ -1211,7 +1213,10 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
   }
 
   Region R(InputVal);
-  unsigned MaxNum = R.ElementBytes == 1 ? 32 : 64 / R.ElementBytes;
+  unsigned MaxNum =
+      R.getLegalSize(/* StartIdx */ 0, /* Allow2D */ false, R.NumElements, ST);
+  // Adjust size to Exec size
+  MaxNum = std::min(MaxNum, TotalEMSize);
   if (exactLog2(R.NumElements) >= 0 && R.NumElements <= MaxNum) {
     // Can be done with a single copy.
     if (SourceLR && (SourceLR->Category != RegCategory::GENERAL
