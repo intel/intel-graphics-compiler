@@ -139,12 +139,15 @@ public:
   static char ID;
   explicit FunctionGroupAnalysis() : ModulePass(ID) {}
   ~FunctionGroupAnalysis() { clear(); }
-  virtual StringRef getPassName() const { return "function group analysis"; }
+  StringRef getPassName() const override { return "function group analysis"; }
   // runOnModule : does almost nothing
-  bool runOnModule(Module &ArgM) {
+  bool runOnModule(Module &ArgM) override {
     clear();
     M = &ArgM;
     return false;
+  }
+  void releaseMemory() override {
+    clear();
   }
   // getModule : get the Module that this FunctionGroupAnalysis is for
   Module *getModule() { return M; }
