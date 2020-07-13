@@ -125,7 +125,16 @@ inline bool isLegalIntVectorType(Module& M, Type* ty)
     if (ty->isVectorTy() && ty->getVectorElementType()->isIntegerTy())
     {
         unsigned size = (unsigned)M.getDataLayout().getTypeSizeInBits(ty->getVectorElementType());
-        return M.getDataLayout().isLegalInteger(size);
+        switch (size)
+        {
+        case 8:
+        case 16:
+        case 32:
+        case 64:
+            return true;
+        default:
+            return false;
+        }
     }
     return true;
 }
