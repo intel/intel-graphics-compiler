@@ -318,14 +318,27 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
                 }
             }
 
-            if (emptyLoc && prevSrcLoc && pFunc->getSubprogram())
+            if (emptyLoc && prevSrcLoc)
             {
-              auto scope = pFunc->getSubprogram();
+              if (IGC_IS_FLAG_ENABLED(FillMissingDebugLocations))
+              {
+                if (auto scope = pFunc->getSubprogram())
+                {
+                  auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
+
+                  // Emit func top as line# for unattributed lines
+                  m_pStreamEmitter->EmitDwarfLocDirective(src, scope->getLine(), 0, 0, 0, 0, scope->getFilename());          
+                }
+              } 
+              else
+              {
+                auto scope = prevSrcLoc->getScope();
                 auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
 
-                // TODO It is workaround to not emit empty lines until we figure out a proper solution
-                // Emit func top as line# for unattributed lines
-                m_pStreamEmitter->EmitDwarfLocDirective(src, scope->getLine(), 0, 0, 0, 0, scope->getFilename());
+                // Emit 0 as line# for unattributed lines
+                m_pStreamEmitter->EmitDwarfLocDirective(src, 0, 0, 0, 0, 0, scope->getFilename());   
+              }
+
                 prevSrcLoc = DebugLoc();
             }
         }

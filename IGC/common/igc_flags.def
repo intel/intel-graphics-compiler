@@ -219,6 +219,7 @@ DECLARE_IGC_REGKEY(debugString, DisablePassToggles,     0,     "Disable each IGC
 DECLARE_IGC_REGKEY(bool, ForceStatelessForQueueT,       true,  "In OCL, force to use stateless memory to hold queue_t*. This is a legacy feature to be removed.", false)
 DECLARE_IGC_REGKEY(bool, ForceMemoryFenceBeforeEOT,     false, "Forces inserting SLM or gloabal memory fence before EOT if shader writes to SLM or goblam memory respectively.", false)
 DECLARE_IGC_REGKEY(bool, EnableRTmaskPso,               true,  "Enable render target mask optimization in PSO opt", false)
+DECLARE_IGC_REGKEY(bool, FillMissingDebugLocations,     true,  "Enable emiting function entry debug location for instruction that miss DL", false)
 
 DECLARE_IGC_GROUP("Shader dumping")
 DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump", true)
