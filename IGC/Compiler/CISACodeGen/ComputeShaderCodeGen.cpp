@@ -397,6 +397,12 @@ namespace IGC
         bool hasSimd16 = simd16Program && simd16Program->ProgramOutput()->m_programSize > 0;
         bool hasSimd32 = simd32Program && simd32Program->ProgramOutput()->m_programSize > 0;
 
+        if (!ctx->m_retryManager.IsFirstTry())
+        {
+            ctx->ClearSIMDInfo(simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+            ctx->SetSIMDInfo(SIMD_RETRY, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+        }
+
         ////////
         // dynamic rules
         ////////
@@ -411,6 +417,7 @@ namespace IGC
         if (simdMode == SIMDMode::SIMD32 && simd16Program &&
             simd16Program->m_spillSize > 0)
         {
+            ctx->SetSIMDInfo(SIMD_SKIP_SPILL, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
             return false;
         }
 
@@ -445,16 +452,20 @@ namespace IGC
                 {
                     return true;
                 }
+
+                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
             }
             else    // SIMD8
             {
                 if (simd16Program->m_spillCost <= ctx->GetSpillThreshold())
                 {
+                    ctx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return false;
                 }
                 else if (!ctx->m_retryManager.IsLastTry() && ctx->instrStat[LICM_STAT][EXCEED_THRESHOLD])
                 {
                     // skip SIMD8 if LICM threshold is met, unless it's lastTry
+                    ctx->SetSIMDInfo(SIMD_SKIP_REGPRES, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return false;
                 }
                 else

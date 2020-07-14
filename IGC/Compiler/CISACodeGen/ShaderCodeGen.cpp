@@ -811,6 +811,9 @@ static void PSCodeGen(
         if (enableHigherSimd)
         {
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, true, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+        } else
+        {
+            ctx->SetSIMDInfo(SIMD_SKIP_SPILL, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
         }
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
@@ -821,6 +824,9 @@ static void PSCodeGen(
         if (enableHigherSimd || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
         {
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, earlyExit16, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+        }
+        else {
+            ctx->SetSIMDInfo(SIMD_SKIP_SPILL, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
         }
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
@@ -864,6 +870,11 @@ static void PSCodeGen(
         {
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, earlyExit16, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, earlyExit, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+        }
+        else
+        {
+            ctx->SetSIMDInfo(SIMD_SKIP_SPILL, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+            ctx->SetSIMDInfo(SIMD_SKIP_SPILL, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
         }
     }
 
@@ -942,6 +953,10 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
                     allowSpill = true;
                 }
             }
+            else {
+                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
+            }
 
             // if simd16 has better thread occupancy, then allows spills
             unsigned tempThreshold16 = allowSpill
@@ -959,6 +974,8 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8,
                     !ctx->m_retryManager.IsLastTry());
                 setEarlyExit16Stat = true;
+                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
             }
             else
             {
@@ -967,9 +984,13 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
                 // allow simd16 spill if having SLM
                 if (cgSimd16)
                     AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, earlyExit);
+                else
+                    ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
 
                 if (cgSimd32)
                     AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
+                else
+                    ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
 
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8,
                     !ctx->m_retryManager.IsLastTry());
@@ -985,6 +1006,10 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
             {
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
             }
+            else {
+                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
+            }
+            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
             break;
         }
 
@@ -992,6 +1017,8 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
         {
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32,
                 !ctx->m_retryManager.IsLastTry());
+            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
             break;
         }
 

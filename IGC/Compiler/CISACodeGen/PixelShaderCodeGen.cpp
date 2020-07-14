@@ -732,7 +732,12 @@ void CShaderProgram::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
             {
                 pKernelProgram->simd32 = *simd32Shader->ProgramOutput();
                 pShader = simd32Shader;
+                GetContext()->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
             }
+        }
+        else if (kernelSize > 0 && (kernelSize < InstCacheSize))
+        {
+            GetContext()->SetSIMDInfo(SIMD_SKIP_PERF, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
         }
     }
     if (simd16Shader)
@@ -742,6 +747,7 @@ void CShaderProgram::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
         {
             pKernelProgram->simd16 = *simd16Shader->ProgramOutput();
             pShader = simd16Shader;
+            GetContext()->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
         }
     }
     {
@@ -749,6 +755,7 @@ void CShaderProgram::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
         {
             pKernelProgram->simd8 = *simd8Shader->ProgramOutput();
             pShader = simd8Shader;
+            GetContext()->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
         }
     }
 
@@ -757,6 +764,7 @@ void CShaderProgram::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     {
         pShader->FillProgram(pKernelProgram);
     }
+    pKernelProgram->SIMDInfo = GetContext()->GetSIMDInfo();
 }
 
 void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
@@ -1157,7 +1165,14 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
     if (!CompileSIMDSizeInCommon())
         return false;
 
+
     CodeGenContext* ctx = GetContext();
+    if (!ctx->m_retryManager.IsFirstTry())
+    {
+        ctx->ClearSIMDInfo(simdMode, EP.m_ShaderDispatchMode);
+        ctx->SetSIMDInfo(SIMD_RETRY, simdMode, EP.m_ShaderDispatchMode);
+    }
+
     bool forceSIMD32 =
         (ctx->getCompilerOption().forcePixelShaderSIMDMode &
             FLAG_PS_SIMD_MODE_FORCE_SIMD32) != 0;
@@ -1174,21 +1189,25 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
 
     if (m_HasoStencil && !ctx->platform.supportsStencil(simdMode))
     {
+        ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
         return false;
     }
     if (m_HasDouble && simdMode != SIMDMode::SIMD8)
     {
+        ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
         return false;
     }
     if (m_hasDualBlendSource && simdMode != SIMDMode::SIMD8 &&
         (m_phase == PSPHASE_PIXEL || (m_phase != PSPHASE_LEGACY && ctx->platform.getWATable().Wa_1409392000)))
     {
         // Spec restriction CPS multi-phase cannot use SIMD16 with dual source blending
+        ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
         return false;
     }
     if (m_phase != PSPHASE_LEGACY && simdMode == SIMDMode::SIMD32)
     {
         // Coarse pixel shader doesn't support SIMD32
+        ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
         return false;
     }
 
@@ -1197,6 +1216,7 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
         IsPerSample() && !IsStage1(ctx))
     {
         //Fused SIMD32 not enabled when dispatch rate is per sample
+        ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
         return false;
     }
 
@@ -1223,6 +1243,7 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
         CShader* simd8Program = m_parent->GetShader(SIMDMode::SIMD8);
         if (simd8Program != nullptr && simd8Program->ProgramOutput()->m_scratchSpaceUsedBySpills > 0)
         {
+            ctx->SetSIMDInfo(SIMD_SKIP_REGPRES, simdMode, EP.m_ShaderDispatchMode);
             return false;
         }
     }
@@ -1243,6 +1264,7 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
             simd16Program->ProgramOutput()->m_programBin == 0 ||
             simd16Program->ProgramOutput()->m_scratchSpaceUsedBySpills > 0))
         {
+            ctx->SetSIMDInfo(SIMD_SKIP_REGPRES, simdMode, EP.m_ShaderDispatchMode);
             return false;
         }
 
@@ -1255,12 +1277,14 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
 
         if (!ctx->platform.enablePSsimd32())
         {
+            ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
             return false;
         }
 
         if (iSTD::BitCount(m_RenderTargetMask) > 1)
         {
             // don't compile SIMD32 for MRT as we may trash the render cache
+            ctx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, EP.m_ShaderDispatchMode);
             return false;
         }
 
@@ -1269,9 +1293,15 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
         {
             return true;
         }
+        else
+        {
+            ctx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, EP.m_ShaderDispatchMode);
+        }
 
         if (simd16Program && static_cast<CPixelShader*>(simd16Program)->m_sendStallCycle == 0)
         {
+            // simd16 doesn't have any latency issue, no need to try simd32
+            ctx->SetSIMDInfo(SIMD_SKIP_STALL, simdMode, EP.m_ShaderDispatchMode);
             return false;
         }
 
@@ -1287,6 +1317,10 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
             if (sendStallCycle / (float)staticCycle > 0.4)
             {
                 return true;
+            }
+            else
+            {
+                ctx->SetSIMDInfo(SIMD_SKIP_STALL, simdMode, EP.m_ShaderDispatchMode);
             }
         }
         return false;

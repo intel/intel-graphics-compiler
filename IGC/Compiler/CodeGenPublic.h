@@ -299,6 +299,25 @@ namespace IGC
     };
 
 
+    enum SIMDInfoBit
+    {
+        SIMD_SELECTED,       // 0: if the SIMD is selected. If 1, all the other bits are ignored.
+        SIMD_RETRY,          // 1: is a retry
+        SIMD_SKIP_HW,        // 2: skip this SIMD due to HW restriction / WA.
+        SIMD_SKIP_REGPRES,   // 3: skip this SIMD due to register pressure early out.
+        SIMD_SKIP_SPILL,     // 4: skip this SIMD due to spill or high chance of spilling.
+        SIMD_SKIP_STALL,     // 5: skip this SIMD due to stall cycle or thread occupancy heuristic.
+        SIMD_SKIP_THGRPSIZE, // 6: skip due to threadGroupSize heuristic(CS / OCL only).
+        SIMD_SKIP_PERF       // 7: skip this SIMD due to performance concern (dx12 + discard, MRT, etc) or other reasons.
+    };
+
+    enum SIMDInfoOffset
+    {
+        SIMD8_OFFSET = 0,
+        SIMD16_OFFSET = 8,
+        SIMD32_OFFSET = 16,
+    };
+
     struct SKernelProgram
     {
         SProgramOutput simd8;
@@ -331,6 +350,8 @@ namespace IGC
         uint        m_ConstantBufferReplaceSize = 0;
 
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
+
+        uint64_t    SIMDInfo;
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram
@@ -835,7 +856,7 @@ namespace IGC
         std::vector<int> m_gsNonDefaultIdxMap;
         std::vector<int> m_psIdxMap;
         DWORD LtoUsedMask = 0;
-
+        uint64_t m_SIMDInfo;
 
     protected:
         // Objects pointed to by these pointers are owned by this class.
@@ -855,7 +876,8 @@ namespace IGC
             const CDriverInfo& driverInfo, ///< Queries to know runtime features support
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* LLVMContext = nullptr)///< LLVM context to use, if null a new one will be created
-            : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext)
+            : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo),
+            llvmCtxWrapper(LLVMContext), m_SIMDInfo(0)
         {
             if (llvmCtxWrapper == nullptr)
             {
@@ -914,6 +936,49 @@ namespace IGC
         {
             return m_Stats;
         }
+
+        unsigned int GetSIMDInfoOffset(SIMDMode simd, ShaderDispatchMode mode)
+        {
+            unsigned int offset = 0;
+
+            switch (mode) {
+            case ShaderDispatchMode::NOT_APPLICABLE:
+                switch (simd) {
+                case SIMDMode::SIMD8:
+                    offset = SIMD8_OFFSET;
+                    break;
+                case SIMDMode::SIMD16:
+                    offset = SIMD16_OFFSET;
+                    break;
+                case SIMDMode::SIMD32:
+                    offset = SIMD32_OFFSET;
+                    break;
+                default:
+                    break;
+                }
+                break;
+
+            default:
+                break;
+            }
+            return offset;
+        }
+
+        void SetSIMDInfo(SIMDInfoBit bit, SIMDMode simd, ShaderDispatchMode mode)
+        {
+            unsigned int offset = GetSIMDInfoOffset(simd, mode);
+            m_SIMDInfo |= (uint64_t)1 << (bit + offset);
+            //printf("iwwu SetSIMDInfo bit %d simd %d mode %d offset %d --> %016llx\n",
+              //  bit, simd, mode, offset, m_SIMDInfo);
+        }
+
+        void ClearSIMDInfo(SIMDMode simd, ShaderDispatchMode mode)
+        {
+            unsigned int offset = GetSIMDInfoOffset(simd, mode);
+            m_SIMDInfo &= ~(0xff << offset);
+        }
+
+        uint64_t GetSIMDInfo() { return m_SIMDInfo; }
     };
 
     class VertexShaderContext : public CodeGenContext

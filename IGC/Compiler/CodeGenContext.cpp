@@ -387,6 +387,7 @@ namespace IGC
                 PickCSEntryFinally(simdMode));
             IGC_ASSERT(shader != nullptr);
         }
+
         if (shader)
         {
             switch (simdMode)
@@ -394,16 +395,22 @@ namespace IGC
             case SIMDMode::SIMD8:
                 pKernelProgram->simd8 = *shader->ProgramOutput();
                 pKernelProgram->SimdWidth = USC::GFXMEDIA_GPUWALKER_SIMD8;
+                cgCtx->SetSIMDInfo(SIMD_SELECTED, simdMode,
+                    ShaderDispatchMode::NOT_APPLICABLE);
                 break;
 
             case SIMDMode::SIMD16:
                 pKernelProgram->simd16 = *shader->ProgramOutput();
                 pKernelProgram->SimdWidth = USC::GFXMEDIA_GPUWALKER_SIMD16;
+                cgCtx->SetSIMDInfo(SIMD_SELECTED, simdMode,
+                    ShaderDispatchMode::NOT_APPLICABLE);
                 break;
 
             case SIMDMode::SIMD32:
                 pKernelProgram->simd32 = *shader->ProgramOutput();
                 pKernelProgram->SimdWidth = USC::GFXMEDIA_GPUWALKER_SIMD32;
+                cgCtx->SetSIMDInfo(SIMD_SELECTED, simdMode,
+                    ShaderDispatchMode::NOT_APPLICABLE);
                 break;
 
             default:
@@ -411,6 +418,8 @@ namespace IGC
                 break;
             }
             shader->FillProgram(pKernelProgram);
+            pKernelProgram->SIMDInfo = cgCtx->GetSIMDInfo();
+
 
             // free allocated memory for the remaining kernels
             FreeAllocatedMemForNotPickedCS(simdMode);
