@@ -104,6 +104,13 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0)
         return false;
     }
 
+    if (inst->getCondMod())
+    {
+        // since our du-chain is on inst instead of operand, the presence of conditional modifier complicates the checks later.
+        // This is somewhat conservative but shouldn't matter too much as inst with both dst and conditional modifiers are rare.
+        return false;
+    }
+
     // check that every use may be replaced with acc
     int lastUseId = 0;
     std::vector<G4_INST*> madSrc0Use;
@@ -179,7 +186,7 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0)
                 return false;
             }
         }
-        else if (opndNum != Opnd_src0)
+        else if (!builder.relaxedACCRestrictions() && opndNum != Opnd_src0)
         {
             return false;
         }
@@ -274,14 +281,25 @@ bool AccSubPass::replaceDstWithAcc(G4_INST* inst, int accNum)
             }
         }
 
-        if (!builder.relaxedACCRestrictions())
+        if (builder.relaxedACCRestrictions())
+        {
+            // mul/mac can't have both sources be acc
+            // Note that we only need to check for explicit mac here since we will not change mad to mac
+            if (useInst->opcode() == G4_mul || useInst->opcode() == G4_mac)
+            {
+                if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg())
+                {
+                    return false;
+                }
+            }
+        }
+        else
         {
             // do not allow an inst to have multiple acc source operands
             if (useInst->getNumSrc() == 3)
             {
                 if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg())
                 {
-
                     return false;
                 }
             }

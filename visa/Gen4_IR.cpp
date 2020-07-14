@@ -7754,7 +7754,7 @@ bool G4_INST::canDstBeAcc() const
         return false;
     }
 
-    if (dst == nullptr || dst->getTopDcl() == nullptr || dst->asDstRegRegion()->getHorzStride() != 1)
+    if (dst == nullptr || dst->getTopDcl() == nullptr || dst->getHorzStride() != 1)
     {
         return false;
     }
