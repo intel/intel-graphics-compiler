@@ -475,8 +475,20 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             if (isa<AllocaInst>(pVal))
             {
                 auto* pArg = track(pVal);
-                if (pArg && (isa<Argument>(pArg) || isa<ConstantInt>(pArg)))
-                    return pArg;
+                if (pArg)
+                {
+                    if ((isa<Argument>(pArg) || isa<ConstantInt>(pArg)))
+                    {
+                        return pArg;
+                    }
+                    else if (isa<LoadInst>(pArg))
+                    {
+                        // If tracked value is load instruction, it means that 'pVal' alloca uses value from another alloca.
+                        // Let's make a try to recursively track argument stored into that another alloca.
+                        baseValue = pArg;
+                        continue;
+                    }
+                }
             }
 
             // More complicated case:
