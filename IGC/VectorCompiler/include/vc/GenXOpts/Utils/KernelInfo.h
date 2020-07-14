@@ -148,6 +148,7 @@ public:
   // Accessors
   bool isKernel() const { return IsKernel; }
   StringRef getName() const { return Name; }
+  const Function *getFunction() const { return F; }
   unsigned getSLMSize() const { return SLMSize; }
   ArrayRef<unsigned> getArgKinds() const { return ArgKinds; }
   unsigned getNumArgs() const { return ArgKinds.size(); }

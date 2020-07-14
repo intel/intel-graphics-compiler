@@ -96,7 +96,7 @@ public:
 
 private:
   LLVMContext *m_ctx;
-  GenXSubtarget *m_ST;
+  const GenXSubtarget *m_ST;
   const DataLayout *m_DL;
   std::vector<AllocaInst *> m_alloca;
   std::vector<CallInst *> m_gather;
@@ -105,6 +105,7 @@ private:
   std::queue<Instruction *> m_AIUsers;
   std::set<Instruction *> m_AlreadyAdded;
   PreDefined_Surface m_stack;
+  bool m_useGlobalMem = false;
 };
 } // namespace
 
@@ -355,19 +356,19 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
   Value *PointerOp = LdI->getPointerOperand();
   Value *Offset = lookForPtrReplacement(PointerOp);
   Offset =
-      ZExtOrTruncIfNeeded(Offset, m_ST->useGlobalMem() ? I64Ty : I32Ty, LdI);
-  auto IID = m_ST->useGlobalMem()
+      ZExtOrTruncIfNeeded(Offset, m_useGlobalMem ? I64Ty : I32Ty, LdI);
+  auto IID = m_useGlobalMem
                  ? llvm::GenXIntrinsic::genx_svm_gather
                  : llvm::GenXIntrinsic::genx_gather_scaled;
 
   Value *EltsOffset = FormEltsOffsetVector(NumEltsToLoad, RealTyToLoadSz, LdI);
 
   unsigned SrcSize = genx::log2(RealTyToLoadSz);
-  Value *logNumBlocks = ConstantInt::get(I32Ty, m_ST->useGlobalMem() ? 0 : SrcSize);
+  Value *logNumBlocks = ConstantInt::get(I32Ty, m_useGlobalMem ? 0 : SrcSize);
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
-  if (m_ST->useGlobalMem() && NumEltsToLoad > 1) {
+  if (m_useGlobalMem && NumEltsToLoad > 1) {
     assert(Offset->getType()->getScalarType()->isIntegerTy(64));
     auto *BaseOff = FormEltsOffsetVectorForSVM(NumEltsToLoad, LdI, Offset);
     auto *ZextOff = CastInst::CreateZExtOrBitCast(
@@ -380,9 +381,9 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
       LdI->getModule(), IID,
       {OldValOfTheDataRead->getType(),
       Pred->getType(),
-       (m_ST->useGlobalMem() ? Offset : EltsOffset)->getType()});
+       (m_useGlobalMem ? Offset : EltsOffset)->getType()});
   CallInst *Gather =
-      m_ST->useGlobalMem()
+      m_useGlobalMem
           ? IntrinsicInst::Create(
                 F, {Pred, logNumBlocks, Offset, OldValOfTheDataRead})
           : IntrinsicInst::Create(F, {Pred, logNumBlocks, Scale, Surface,
@@ -423,9 +424,9 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
   Type *I32Ty = Type::getInt32Ty(*m_ctx);
   Type *I64Ty = Type::getInt64Ty(*m_ctx);
   Offset =
-      ZExtOrTruncIfNeeded(Offset, m_ST->useGlobalMem() ? I64Ty : I32Ty, StI);
+      ZExtOrTruncIfNeeded(Offset, m_useGlobalMem ? I64Ty : I32Ty, StI);
 
-  auto IID = m_ST->useGlobalMem()
+  auto IID = m_useGlobalMem
                  ? llvm::GenXIntrinsic::genx_svm_scatter
                  : llvm::GenXIntrinsic::genx_scatter_scaled;
 
@@ -433,7 +434,7 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
   Value *Pred = Builder.CreateVectorSplat(ValueNumElts, PredVal);
   Value *EltsOffset = FormEltsOffsetVector(ValueNumElts, ValueEltSz, StI);
 
-  if (m_ST->useGlobalMem() && ValueNumElts > 1) {
+  if (m_useGlobalMem && ValueNumElts > 1) {
     assert(Offset->getType()->getScalarType()->isIntegerTy(64));
     auto *BaseOff = FormEltsOffsetVectorForSVM(ValueNumElts, StI, Offset);
     auto *ZextOff = CastInst::CreateZExtOrBitCast(
@@ -446,14 +447,14 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
   Function *F = GenXIntrinsic::getGenXDeclaration(
       StI->getModule(), IID,
       {Pred->getType(),
-       (m_ST->useGlobalMem() ? Offset : EltsOffset)->getType(),
+       (m_useGlobalMem ? Offset : EltsOffset)->getType(),
        ValueOp->getType()});
-  Value *logNumBlocks = ConstantInt::get(I32Ty, m_ST->useGlobalMem() ? 0 : genx::log2(ValueEltSz));
+  Value *logNumBlocks = ConstantInt::get(I32Ty, m_useGlobalMem ? 0 : genx::log2(ValueEltSz));
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
   auto *Scatter =
-      m_ST->useGlobalMem()
+      m_useGlobalMem
           ? IntrinsicInst::Create(F, {Pred, logNumBlocks, Offset, ValueOp})
           : IntrinsicInst::Create(F, {Pred, logNumBlocks, Scale, Surface,
                                       Offset, EltsOffset, ValueOp});
@@ -477,7 +478,7 @@ bool GenXThreadPrivateMemory::replacePTI(PtrToIntInst *PTI) {
 }
 
 bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
-  auto IID = m_ST->useGlobalMem()
+  auto IID = m_useGlobalMem
                  ? llvm::GenXIntrinsic::genx_svm_gather
                  : llvm::GenXIntrinsic::genx_gather_scaled;
 
@@ -512,7 +513,7 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
   Function *F = GenXIntrinsic::getGenXDeclaration(
       CI->getModule(), IID,
       {NewDstTy, Pred->getType(),
-       (m_ST->useGlobalMem() ? Offset : EltsOffset)->getType()});
+       (m_useGlobalMem ? Offset : EltsOffset)->getType()});
 
   Value *logNumBlocks = ConstantInt::get(I32Ty, genx::log2(ValueEltSz));
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
@@ -520,7 +521,7 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
                                     visa::getReservedSurfaceIndex(m_stack));
 
   CallInst *Gather =
-      m_ST->useGlobalMem()
+      m_useGlobalMem
           ? IntrinsicInst::Create(F, {Pred, logNumBlocks, Offset, OldValue})
           : IntrinsicInst::Create(F, {Pred, logNumBlocks, Scale, Surface,
                                       Offset, EltsOffset, OldValue});
@@ -536,7 +537,7 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
 }
 
 bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
-  auto IID = m_ST->useGlobalMem()
+  auto IID = m_useGlobalMem
                  ? llvm::GenXIntrinsic::genx_svm_scatter
                  : llvm::GenXIntrinsic::genx_scatter_scaled;
   Value *ValueOp = CI->getArgOperand(3);
@@ -560,7 +561,7 @@ bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
 
   Function *F = GenXIntrinsic::getGenXDeclaration(
       CI->getModule(), IID,
-      {Pred->getType(), (m_ST->useGlobalMem() ? Offset : EltsOffset)->getType(),
+      {Pred->getType(), (m_useGlobalMem ? Offset : EltsOffset)->getType(),
        ValueOp->getType()});
 
   unsigned logNumBlocks = genx::log2(EltSz);
@@ -568,7 +569,7 @@ bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
   CallInst *ScatterStScaled =
-      m_ST->useGlobalMem()
+      m_useGlobalMem
           ? IntrinsicInst::Create(
                 F,
                 {Pred, ConstantInt::get(I32Ty, logNumBlocks), Offset, ValueOp})
@@ -838,7 +839,7 @@ void GenXThreadPrivateMemory::addUsersIfNeeded(Instruction *I) {
       break;
     }
   }
-  if (m_ST->useGlobalMem() ||
+  if (m_useGlobalMem ||
       (!isa<LoadInst>(I) && !isa<StoreInst>(I) && !isGatherScatterPrivate))
     addUsers(I);
 }
@@ -889,8 +890,11 @@ bool GenXThreadPrivateMemory::runOnModule(Module &M) {
   for (auto &F : M)
     visit(F);
   if (std::find_if(m_alloca.begin(), m_alloca.end(), checkSVMNecessaryPred) !=
-      m_alloca.end())
-    m_ST->setUseGlobalMem();
+      m_alloca.end()) {
+    //TODO: maybe move the name string to vc-intrinsics *MD::useGlobalMem
+    M.addModuleFlag(Module::ModFlagBehavior::Error, "genx.useGlobalMem", 1);
+    m_useGlobalMem = true;
+  }
   bool Result = false;
   for (auto &F : M)
     Result |= runOnFunction(F);
@@ -1006,7 +1010,7 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
 
   for (auto CI : m_scatter) {
     Type *DataTy =
-        CI->getArgOperand(m_ST->useGlobalMem() ? 3 : 5)->getType();
+        CI->getArgOperand(m_useGlobalMem ? 3 : 5)->getType();
     unsigned NumElts = DataTy->getVectorNumElements();
     unsigned EltSz = DataTy->getVectorElementType()->getPrimitiveSizeInBits();
     unsigned ExecSz = NumElts * EltSz;

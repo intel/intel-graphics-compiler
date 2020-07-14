@@ -84,10 +84,8 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
     genx::KernelMetadata &KM, const GenXSubtarget &ST) {
   Name = KM.getName();
   SLMSize = KM.getSLMSize();
-  // will be replaced to metadata usage once
-  // useGlobalMem option is removed from GenXSubtarget
   // FIXME: replace with 8k * simdSize * numDispatchedThreads
-  if (ST.useGlobalMem())
+  if (KM.getFunction()->getParent()->getModuleFlag("genx.useGlobalMem"))
     StatelessPrivateMemSize = 16 * 8192;
 
 }

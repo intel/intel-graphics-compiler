@@ -111,8 +111,6 @@ private:
   // Limit in bytes for stack purposes
   unsigned StackSurfMaxSize;
 
-  bool UseGlobalMem;
-
 public:
   // This constructor initializes the data members to match that
   // of the specified triple.
@@ -202,14 +200,6 @@ public:
   ///   crossing one GRF boundary
   bool hasIndirectGRFCrossing() const { return isSKLplus(); }
 
-  bool useGlobalMem() const { return UseGlobalMem; }
-
-  void setUseGlobalMem() {
-    assert(hasLongLong() && isOCLRuntime() &&
-           "Global mem stack can't be used on 32-bit targets or on CMRT");
-    UseGlobalMem = true;
-  }
-
   /// * getEmulateFunction - return the corresponding emulation function name,
   ///   empty string if no emulation is needed.
   StringRef getEmulateFunction(const Instruction *Inst) const;
@@ -277,16 +267,16 @@ public:
 };
 
 class GenXSubtargetPass : public ImmutablePass {
-  GenXSubtarget *ST;
+  const GenXSubtarget *ST;
 public:
   GenXSubtargetPass();
-  GenXSubtargetPass(GenXSubtarget &ST);
+  GenXSubtargetPass(const GenXSubtarget &ST);
   ~GenXSubtargetPass();
-  GenXSubtarget *getSubtarget() { return ST; }
+  const GenXSubtarget *getSubtarget() const { return ST; }
   static char ID;
 };
 
-ImmutablePass *createGenXSubtargetPass(GenXSubtarget &ST);
+ImmutablePass *createGenXSubtargetPass(const GenXSubtarget &ST);
 
 } // End llvm namespace
 

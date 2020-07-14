@@ -500,6 +500,7 @@ class GenXKernelBuilder {
   bool HasCallable = false;
   bool HasStackcalls = false;
   bool HasAlloca = false;
+  bool UseGlobalMem = false;
   // GRF width in unit of byte
   unsigned GrfByteSize = 32;
 
@@ -2905,6 +2906,8 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
  * barrier.
  */
 void GenXKernelBuilder::collectKernelInfo() {
+  UseGlobalMem |=
+      (FG->getModule()->getModuleFlag("genx.useGlobalMem") != nullptr);
   for (auto It = FG->begin(), E = FG->end(); It != E; ++It) {
     auto Func = *It;
     HasStackcalls |=
@@ -4933,7 +4936,7 @@ void GenXKernelBuilder::pushStackArg(VISA_StateOpndHandle *Dst, Value *Src,
                      DoCopy);
       VISA_VectorOpnd *Imm = nullptr;
       unsigned OffVal = Sz;
-      if (Subtarget->useGlobalMem())
+      if (UseGlobalMem)
         OffVal *= BYTES_PER_OWORD;
       CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_UD));
       VISA_RawOpnd *RawSrc = nullptr;
@@ -4945,7 +4948,7 @@ void GenXKernelBuilder::pushStackArg(VISA_StateOpndHandle *Dst, Value *Src,
         CISA_CALL(Kernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false,
                                                      vISA_EMASK_M1, EXEC_SIZE_1,
                                                      TmpOffDst, SpOpSrc1));
-        if (Subtarget->useGlobalMem()) {
+        if (UseGlobalMem) {
           CISA_CALL(Kernel->AppendVISASvmBlockStoreInst(
               getCisaOwordNumFromNumber(Sz), true, TmpOffSrc, RawSrc));
         } else {
@@ -4997,7 +5000,7 @@ void GenXKernelBuilder::popStackArg(llvm::Value *Dst, VISA_StateOpndHandle *Src,
 
       VISA_VectorOpnd *Imm = nullptr;
       int OffVal = PrevStackOff;
-      if (Subtarget->useGlobalMem())
+      if (UseGlobalMem)
         OffVal *= BYTES_PER_OWORD;
       CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_UD));
       PrevStackOff += Sz;
@@ -5007,7 +5010,7 @@ void GenXKernelBuilder::popStackArg(llvm::Value *Dst, VISA_StateOpndHandle *Src,
       CISA_CALL(Kernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false,
                                                  vISA_EMASK_M1, EXEC_SIZE_1,
                                                  TmpOffDst, SpOpSrc, Imm));
-      if (Subtarget->useGlobalMem()) {
+      if (UseGlobalMem) {
         CISA_CALL(Kernel->AppendVISASvmBlockLoadInst(
             getCisaOwordNumFromNumber(Sz), false, TmpOffSrc, RawSrc));
       } else {
@@ -5097,7 +5100,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
           EXEC_SIZE_1, OffOpDst, HwtidOp, Imm));
 
       VISA_VectorOpnd *OpSrc = nullptr;
-      if (Subtarget->useGlobalMem()) {
+      if (UseGlobalMem) {
         assert(Func->arg_size() > 0);
         Value &PrivBase = *(Func->arg_end() - 1);
         genx::KernelArgInfo AI(TheKernelMetadata.getArgKind(Func->arg_size() - 1));
@@ -5475,7 +5478,7 @@ void GenXKernelBuilder::buildStackCall(IGCLLVM::CallInst *CI,
     CISA_CALL(Kernel->CreateVISASrcOperand(SpOpSrc, Sp, MODIFIER_NONE, 0, 1, 0,
                                            0, 0));
 
-    if (Subtarget->useGlobalMem())
+    if (UseGlobalMem)
       StackOff *= BYTES_PER_OWORD;
     CISA_CALL(Kernel->CreateVISAImmediate(Imm, &StackOff, ISA_TYPE_UQ));
     CISA_CALL(Kernel->AppendVISAArithmeticInst(

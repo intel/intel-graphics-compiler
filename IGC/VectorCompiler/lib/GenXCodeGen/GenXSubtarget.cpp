@@ -70,7 +70,6 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   else
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_STACK;
   StackSurfMaxSize = StackMemSize;
-  UseGlobalMem = false;
 
   GenXVariant = llvm::StringSwitch<GenXTag>(CPU)
     .Case("HSW", GENX_HSW)
@@ -124,7 +123,7 @@ StringRef GenXSubtarget::getEmulateFunction(const Instruction *Inst) const {
 }
 
 GenXSubtargetPass::GenXSubtargetPass() : ImmutablePass(ID), ST(nullptr) {}
-GenXSubtargetPass::GenXSubtargetPass(GenXSubtarget &ST)
+GenXSubtargetPass::GenXSubtargetPass(const GenXSubtarget &ST)
     : ImmutablePass(ID), ST(&ST) {}
 GenXSubtargetPass::~GenXSubtargetPass() {}
 
@@ -134,7 +133,7 @@ namespace llvm {
 
 void initializeGenXSubtargetPassPass(PassRegistry &);
 
-ImmutablePass *createGenXSubtargetPass(GenXSubtarget &ST) {
+ImmutablePass *createGenXSubtargetPass(const GenXSubtarget &ST) {
   initializeGenXSubtargetPassPass(*PassRegistry::getPassRegistry());
   return new GenXSubtargetPass(ST);
 }
