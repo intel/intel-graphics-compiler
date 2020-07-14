@@ -8463,6 +8463,12 @@ typedef struct _WA_TABLE
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
+        Wa_1409909237,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
         Wa_14010875903,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
