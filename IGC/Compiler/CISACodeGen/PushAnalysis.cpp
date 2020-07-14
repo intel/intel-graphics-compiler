@@ -470,8 +470,8 @@ namespace IGC
             const Instruction* andInst = cast<Instruction>(offsetValue);
             ConstantInt* src1 = dyn_cast<ConstantInt>(andInst->getOperand(1));
             if (src1 &&
-                (int_cast<uint>(src1->getZExtValue()) == 0xFFFFFFE0 || int_cast<uint>(src1->getZExtValue()) == 0xFFFFFFF0) &&
-                isa<BitCastInst>(andInst->getOperand(0)))
+                (int_cast<uint>(src1->getZExtValue()) == 0xFFFFFFE0 ||
+                 int_cast<uint>(src1->getZExtValue()) == 0xFFFFFFF0))
             {
                 uint offset = 0;
                 if (GetConstantOffsetForDynamicUniformBuffer(bufferId, andInst->getOperand(0), offset) &&
@@ -505,18 +505,19 @@ namespace IGC
         }
         else if (BitCastInst * bitCast = dyn_cast<BitCastInst>(offsetValue))
         {
-            if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(bitCast->getOperand(0)))
+            return GetConstantOffsetForDynamicUniformBuffer(bufferId, bitCast->getOperand(0), relativeOffsetInBytes);
+        }
+        else if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(offsetValue))
+        {
+            if (genIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
             {
-                if (genIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
+                if (MDNode * bufIdMd = genIntr->getMetadata("dynamicBufferOffset.bufferId"))
                 {
-                    if (MDNode * bufIdMd = genIntr->getMetadata("dynamicBufferOffset.bufferId"))
+                    ConstantInt* bufIdMdVal = mdconst::extract<ConstantInt>(bufIdMd->getOperand(0));
+                    if (bufferId == int_cast<uint>(bufIdMdVal->getZExtValue()))
                     {
-                        ConstantInt* bufIdMdVal = mdconst::extract<ConstantInt>(bufIdMd->getOperand(0));
-                        if (bufferId == int_cast<uint>(bufIdMdVal->getZExtValue()))
-                        {
-                            relativeOffsetInBytes = 0;
-                            return true;
-                        }
+                        relativeOffsetInBytes = 0;
+                        return true;
                     }
                 }
             }
