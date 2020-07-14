@@ -75,8 +75,8 @@ static errno_t memcpy_s(void* dst, size_t numberOfElements, const void* src, siz
 typedef char CHAR;
 typedef int INT;
 typedef short SHORT;
-typedef long LONG;
-typedef long long LONGLONG;
+typedef int32_t LONG;
+typedef int64_t LONGLONG;
 
 typedef uint32_t UINT32;
 typedef uint32_t DWORD;
@@ -85,6 +85,7 @@ typedef uint16_t WORD;
 typedef double DOUBLE;
 typedef float FLOAT;
 
+#ifndef __LARGE_INTEGER_STRUCT_DEFINED
 union LARGE_INTEGER {
     struct dummy {
         DWORD LowPart;
@@ -98,6 +99,7 @@ union LARGE_INTEGER {
 
     LONGLONG QuadPart;
 };
+#endif /* __LARGE_INTEGER_STRUCT_DEFINED */
 
 #endif /* Windows types for non-Windows end */
 
