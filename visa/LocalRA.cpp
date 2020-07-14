@@ -1574,7 +1574,7 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
                         if ((builder.WaDisableSendSrcDstOverlap() &&
                             ((curInst->isSend() && i == 0) ||
                             (curInst->isSplitSend() && i == 1)))
-                           )
+                            )
                         {
 #ifdef DEBUG_VERBOSE_ON
                             if (curInst->getDst() != NULL && hasDstSrcOverlapPotential(curInst->getDst(), src->asSrcRegRegion()))

@@ -6867,6 +6867,15 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         if (builder.needResetA0forVxHA0())
         {
             // reset a0 to 0 at the beginning of a shader.
+            // The goal of this initialization is to make sure that there is no
+            // garbage values in the address register for inactive simd lanes.
+            // With indirect addressing HW requires that there is no
+            // out-of-bounds access even on inactive simd lanes.
+
+
+            // Note: this initialization doesn't cover scenarios where the
+            // address register is used in a send descriptor and later used in
+            // indirect addressing.
             resetA0();
         }
 
@@ -8074,7 +8083,6 @@ public:
         bool hasUAVWrites = false;
         bool hasSLMWrites = false;
         bool hasTypedWrites = false;
-
 
         for (auto bb : kernel.fg)
         {
