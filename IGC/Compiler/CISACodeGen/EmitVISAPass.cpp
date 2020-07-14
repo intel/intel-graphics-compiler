@@ -10310,6 +10310,23 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
         }
         else
         {
+            //todo : At this moment, we only fix 32bit data type in simd16or32.
+            //will handle other data type later
+            bool multiGRFWA = (m_currShader->m_Platform->enableMultiGRFAccessWA() &&
+                m_currShader->m_SIMDSize > SIMDMode::SIMD8 &&
+                m_currShader->m_Platform->getMinDispatchMode() == SIMDMode::SIMD8 &&
+                pElement->getType()->getScalarSizeInBits() == 32
+                );
+            if (multiGRFWA)
+            {
+                CVariable* pOffset1_2ndHalf = m_currShader->ImmToVariable(0x20, ISA_TYPE_UW);
+                CVariable* pOffset2_2ndHalf = m_currShader->GetNewAlias(pOffset2, ISA_TYPE_UW, 16, 0);
+                m_encoder->SetSrcRegion(0, 8, 8, 1);
+                m_encoder->SetSimdSize(SIMDMode::SIMD8);
+                m_encoder->Add(pOffset2_2ndHalf, pOffset2_2ndHalf, pOffset1_2ndHalf);
+                m_encoder->Push();
+            }
+
             int loopCount = (m_currShader->m_dispatchSize == SIMDMode::SIMD32 && m_currShader->m_numberInstance == 1) ? 2 : 1;
             for (int i = 0; i < loopCount; ++i)
             {
@@ -10355,7 +10372,17 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                     }
                     m_encoder->SetSrcRegion(0, 0, 1, 0);
                     m_encoder->SetDstSubReg(lane);
-                    m_encoder->SetSimdSize(simdMode);
+                    if (multiGRFWA)
+                    {
+                        // Hardcode to simd8 to avoid complain about possible being across 3 GRFs.
+                        // Changing to simd1 needs more work and might cause extra overhead as well.
+                        m_encoder->SetMask(lane / numLanes(SIMDMode::SIMD8) ? EMASK_Q2 : EMASK_Q1);
+                        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+                    }
+                    else
+                    {
+                        m_encoder->SetSimdSize(simdMode);
+                    }
                     m_encoder->Copy(pDstArrElm, pElemVar);
                     m_encoder->Push();
                 }
