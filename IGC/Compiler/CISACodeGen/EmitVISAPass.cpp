@@ -9455,6 +9455,130 @@ uint EmitPass::stackCallArgumentAlignment(CVariable* argv)
     }
 }
 
+// Either do a block load or store to the stack-pointer given a vector of function arguments
+uint EmitPass::emitStackArgumentLoadOrStore(std::vector<CVariable*>& Args, bool isWrite)
+{
+    uint32_t offsetS = 0;
+    SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t>, 8> owordBlks;
+
+    for (auto Arg : Args)
+    {
+        // stack offset is always oword-aligned
+        offsetS = int_cast<unsigned>(llvm::alignTo(offsetS, SIZE_OWORD));
+
+        // calculate block sizes for each arg
+        int32_t RmnBytes = Arg->GetSize();
+        uint32_t BlkBytes = 0;
+        do
+        {
+            uint32_t BlkSize = 0;
+            if (RmnBytes >= SIZE_OWORD * 8)
+            {
+                BlkSize = 8 * SIZE_OWORD;
+            }
+            else if (RmnBytes >= SIZE_OWORD * 4)
+            {
+                BlkSize = 4 * SIZE_OWORD;
+            }
+            else if (RmnBytes >= SIZE_OWORD * 2)
+            {
+                BlkSize = 2 * SIZE_OWORD;
+            }
+            else
+            {
+                BlkSize = SIZE_OWORD;
+            }
+            owordBlks.push_back(std::make_tuple(Arg, offsetS, BlkSize, BlkBytes));
+
+            offsetS += BlkSize;
+            BlkBytes += BlkSize;
+            RmnBytes -= BlkSize;
+        } while (RmnBytes > 0);
+    }
+
+    if (offsetS > 0)
+    {
+        // Get current SP
+        CVariable* pSP = m_currShader->GetSP();
+        bool is64BitSP = (pSP->GetSize() > 4);
+        if (isWrite)
+        {
+            // If storing to stack, first push SP by total store bytes
+            CVariable* pPushSize = m_currShader->ImmToVariable(offsetS, ISA_TYPE_UD);
+            emitAddSP(pSP, pSP, pPushSize);
+        }
+
+        // Load or store each OWORD block to stack
+        for (auto& I : owordBlks)
+        {
+            CVariable* Arg = std::get<0>(I);
+            uint32_t StackOffset = std::get<1>(I);
+            uint32_t BlkSize = std::get<2>(I);
+            uint32_t ArgOffset = std::get<3>(I);
+
+            // offset for each block
+            CVariable* pStackOffset = m_currShader->ImmToVariable(StackOffset - offsetS, ISA_TYPE_D);
+
+            CVariable* pTempSP = m_currShader->GetNewVariable(pSP);
+            emitAddSP(pTempSP, pSP, pStackOffset);
+
+            if (isWrite)
+            {
+                // Write oword block data to stack
+                if (is64BitSP)
+                    m_encoder->OWStoreA64(Arg, pTempSP, BlkSize, ArgOffset);
+                else
+                    m_encoder->OWStore(Arg, ESURFACE_STATELESS, nullptr, pTempSP, BlkSize, ArgOffset);
+                m_encoder->Push();
+            }
+            else
+            {
+                // Read oword block data from stack
+                CVariable* LdDst = Arg;
+                if (Arg->GetType() == ISA_TYPE_BOOL)
+                {
+                    LdDst = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_W, EALIGN_HWORD, false, 1, CName::NONE);
+                }
+
+                ResourceDescriptor resource;
+                resource.m_surfaceType = ESURFACE_STATELESS;
+                int RmnBytes = LdDst->GetSize() - ArgOffset;
+                bool needRmCopy = BlkSize == SIZE_OWORD && RmnBytes > 0 && RmnBytes < SIZE_OWORD;
+                if (!needRmCopy)
+                {
+                    if (is64BitSP)
+                        m_encoder->OWLoadA64(LdDst, pTempSP, BlkSize, ArgOffset);
+                    else
+                        m_encoder->OWLoad(LdDst, resource, pTempSP, false, BlkSize, ArgOffset);
+                    m_encoder->Push();
+                }
+                else
+                {
+                    // Reading less than one oword, read one oword, then copy
+                    uint ldDstElemSize = LdDst->GetElemSize();
+                    if (ldDstElemSize > 0)
+                    {
+                        CVariable* pTempDst = m_currShader->GetNewVariable(SIZE_OWORD / ldDstElemSize, LdDst->GetType(), m_currShader->getGRFAlignment(), true, 1, CName::NONE);
+                        if (is64BitSP)
+                            m_encoder->OWLoadA64(pTempDst, pTempSP, SIZE_OWORD);
+                        else
+                            m_encoder->OWLoad(pTempDst, resource, pTempSP, false, SIZE_OWORD);
+                        m_encoder->Push();
+                        emitVectorCopy(LdDst, pTempDst, RmnBytes / ldDstElemSize, ArgOffset, 0);
+                    }
+                }
+                if (LdDst != Arg)
+                {
+                    // only happens to bool
+                    IGC_ASSERT(Arg->GetType() == ISA_TYPE_BOOL);
+                    m_encoder->Cmp(EPREDICATE_NE, Arg, LdDst, m_currShader->ImmToVariable(0, LdDst->GetType()));
+                }
+            }
+        }
+    }
+    return offsetS;
+}
+
 void EmitPass::emitStackCall(llvm::CallInst* inst)
 {
     llvm::Function* F = inst->getCalledFunction();
@@ -9463,7 +9587,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     CVariable* ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
-    SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t>, 8> owordWrites;
+    std::vector<CVariable*> argsOnStack;
     for (uint32_t i = 0; i < inst->getNumArgOperands(); i++)
     {
         CVariable* ArgCV = nullptr;
@@ -9545,70 +9669,11 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         }
         else
         {
-            // write to stack, stack offset is always oword-aligned
-            offsetS = int_cast<unsigned>(llvm::alignTo(offsetS, SIZE_OWORD));
-            // emit oword_stores
-            int RmnBytes = Src->GetSize();
-            uint32_t WrtBytes = 0;
-            do
-            {
-                uint32_t WrtSize = 0;
-                if (RmnBytes >= SIZE_OWORD * 8)
-                {
-                    WrtSize = 8 * SIZE_OWORD;
-                }
-                else if (RmnBytes >= SIZE_OWORD * 4)
-                {
-                    WrtSize = 4 * SIZE_OWORD;
-                }
-                else if (RmnBytes >= SIZE_OWORD * 2)
-                {
-                    WrtSize = 2 * SIZE_OWORD;
-                }
-                else
-                {
-                    WrtSize = SIZE_OWORD;
-                }
-
-                // record list of write
-                owordWrites.push_back(std::make_tuple(Src, offsetS, WrtSize, WrtBytes));
-
-                offsetS += WrtSize;
-                WrtBytes += WrtSize;
-                RmnBytes -= WrtSize;
-            } while (RmnBytes > 0);
+            argsOnStack.push_back(Src);
         }
     }
-    if (offsetS > 0)
-    {
-        // update stack pointer before call
-        CVariable* pSP = m_currShader->GetSP();
-        CVariable* pPushSize = m_currShader->ImmToVariable(offsetS, ISA_TYPE_UD);
-        emitAddSP(pSP, pSP, pPushSize);
-
-        // emit oword-block-writes
-        bool is64BitSP = (pSP->GetSize() > 4);
-        for (auto& I : owordWrites)
-        {
-            CVariable* Src = std::get<0>(I);
-            uint32_t StackOffset = std::get<1>(I);
-            uint32_t WrtSize = std::get<2>(I);
-            uint32_t SrcOffset = std::get<3>(I);
-            CVariable* pTempVar = m_currShader->GetNewVariable(
-                numLanes(SIMDMode::SIMD1),
-                is64BitSP ? ISA_TYPE_UQ : ISA_TYPE_UD,
-                is64BitSP ? EALIGN_QWORD : EALIGN_DWORD, true, 1, CName::NONE);
-            // emit write address
-            CVariable* pStackOffset = m_currShader->ImmToVariable(StackOffset - offsetS, ISA_TYPE_D);
-            emitAddSP(pTempVar, pSP, pStackOffset);
-            // emit oword-store
-            if (is64BitSP)
-                m_encoder->OWStoreA64(Src, pTempVar, WrtSize, SrcOffset);
-            else
-                m_encoder->OWStore(Src, ESURFACE_STATELESS, nullptr, pTempVar, WrtSize, SrcOffset);
-            m_encoder->Push();
-        }
-    }
+    // Write all arguments that does not fit in GRF to stack
+    offsetS = emitStackArgumentLoadOrStore(argsOnStack, true);
 
     uint retSize = 0;
     if (!inst->use_empty())
@@ -9751,7 +9816,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
     CVariable* ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
-    SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t>, 8> owordReads;
+    std::vector<CVariable*> argsOnStack;
     for (auto& Arg : F->args())
     {
         if (!F->hasFnAttribute("IndirectlyCalled"))
@@ -9799,111 +9864,13 @@ void EmitPass::emitStackFuncEntry(Function* F)
         }
         else
         {
-            // read from stack, stack offset is always oword-aligned
-            offsetS = int_cast<unsigned>(llvm::alignTo(offsetS, SIZE_OWORD));
-            // emit oword_loads
-            int RmnBytes = Dst->GetSize();
-            if (Dst->GetType() == ISA_TYPE_BOOL)
-            {
-                RmnBytes = numLanes(m_currShader->m_dispatchSize) * SIZE_WORD;
-            }
-            uint32_t RdBytes = 0;
-            do
-            {
-                uint RdSize = 0;
-                if (RmnBytes >= SIZE_OWORD * 8)
-                {
-                    RdSize = 8 * SIZE_OWORD;
-                }
-                else if (RmnBytes >= SIZE_OWORD * 4)
-                {
-                    RdSize = 4 * SIZE_OWORD;
-                }
-                else if (RmnBytes >= SIZE_OWORD * 2)
-                {
-                    RdSize = 2 * SIZE_OWORD;
-                }
-                else
-                {
-                    RdSize = SIZE_OWORD;
-                }
-                if (!Arg.use_empty())
-                {
-                    owordReads.push_back(std::make_tuple(Dst, offsetS, RdSize, RdBytes));
-                }
-                offsetS += RdSize;
-                RdBytes += RdSize;
-                RmnBytes -= RdSize;
-            } while (RmnBytes > 0);
+            argsOnStack.push_back(Dst);
         }
     }
     m_encoder->SetStackFunctionArgSize((offsetA + getGRFSize() - 1) / getGRFSize());
-    if (offsetS > 0)
-    {
-        CVariable* pSP = m_currShader->GetSP();
-        // emit oword-block-read
-        bool is64bitSP = (pSP->GetSize() > 4);
-        for (auto& I : owordReads)
-        {
-            CVariable* Dst = std::get<0>(I);
-            uint32_t StackOffset = std::get<1>(I);
-            uint32_t RdSize = std::get<2>(I);
-            uint32_t DstOffset = std::get<3>(I);
-            ResourceDescriptor resource;
-            resource.m_surfaceType = ESURFACE_STATELESS;
-            CVariable* pTempVar = m_currShader->GetNewVariable(
-                numLanes(SIMDMode::SIMD1),
-                is64bitSP ? ISA_TYPE_UQ : ISA_TYPE_UD,
-                is64bitSP ? EALIGN_QWORD : EALIGN_DWORD,
-                true, 1, CName::NONE);
-            // emit write address
-            CVariable* pStackOffset = m_currShader->ImmToVariable(StackOffset - offsetS, ISA_TYPE_D);
-            emitAddSP(pTempVar, pSP, pStackOffset);
-            CVariable* LdDst = Dst;
-            if (Dst->GetType() == ISA_TYPE_BOOL)
-            {
-                LdDst = m_currShader->GetNewVariable(
-                    numLanes(m_currShader->m_dispatchSize),
-                    ISA_TYPE_W,
-                    EALIGN_HWORD, false, 1, CName::NONE);
-            }
 
-            int RmnBytes = LdDst->GetSize() - DstOffset;
-            bool needRmCopy = RdSize == SIZE_OWORD && RmnBytes > 0 && RmnBytes < SIZE_OWORD;
-            if (!needRmCopy)
-            {
-                if (is64bitSP)
-                    m_encoder->OWLoadA64(LdDst, pTempVar, RdSize, DstOffset);
-                else
-                    m_encoder->OWLoad(LdDst, resource, pTempVar, false, RdSize, DstOffset);
-                m_encoder->Push();
-            }
-            else
-            {
-                uint ldDstElemSize = LdDst->GetElemSize();
-
-                if (ldDstElemSize > 0)
-                {
-                    // less than one oword, read one oword, then copy
-                    CVariable* pTempDst = m_currShader->GetNewVariable(
-                        SIZE_OWORD / ldDstElemSize,
-                        LdDst->GetType(),
-                        m_currShader->getGRFAlignment(), true, 1, CName::NONE);
-                    if (is64bitSP)
-                        m_encoder->OWLoadA64(pTempDst, pTempVar, SIZE_OWORD);
-                    else
-                        m_encoder->OWLoad(pTempDst, resource, pTempVar, false, SIZE_OWORD);
-                    m_encoder->Push();
-                    emitVectorCopy(LdDst, pTempDst, RmnBytes / ldDstElemSize, DstOffset, 0);
-                }
-            }
-            if (LdDst != Dst)
-            {
-                // only happens to bool
-                m_encoder->Cmp(EPREDICATE_NE, Dst, LdDst, m_currShader->ImmToVariable(0, LdDst->GetType()));
-            }
-        }
-    }
+    // Read all stack-pushed args back into registers
+    offsetS = emitStackArgumentLoadOrStore(argsOnStack, false);
 
     unsigned totalAllocaSize = 0;
 
