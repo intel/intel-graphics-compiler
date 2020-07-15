@@ -185,6 +185,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
 #include "llvm/InitializePasses.h"
@@ -995,6 +996,7 @@ unsigned GenXLegalization::getExecutionWidth() {
   return VT->getNumElements();
 }
 
+
 /***********************************************************************
  * determineWidth : determine width of the next split
  *
@@ -1336,6 +1338,9 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
 
 /***********************************************************************
  * determineNonRegionWidth : determine max valid width of non-region instruction
+ *
+ * Width is determined based only on input and output vector element sizes and
+ * register size (including predicates).
  *
  * Enter:   Inst = the instruction
  *          StartIdx = start index

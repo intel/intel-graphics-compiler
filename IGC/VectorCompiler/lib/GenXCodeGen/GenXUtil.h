@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 
 namespace llvm {
@@ -422,6 +423,7 @@ CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst, Type *RefType);
 
 CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst,
                                        Instruction *InstToReplace);
+
 
 } // namespace genx
 } // namespace llvm

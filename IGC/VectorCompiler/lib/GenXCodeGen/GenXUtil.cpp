@@ -29,17 +29,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 #include "GenXUtil.h"
 #include "FunctionGroup.h"
+#include "GenX.h"
 #include "GenXIntrinsics.h"
 #include "GenXRegion.h"
-#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
@@ -1444,3 +1446,4 @@ bool genx::isFuncPointerVec(Value *V, SetVector<Function *> *Funcs) {
     Res = false;
   return Res;
 }
+

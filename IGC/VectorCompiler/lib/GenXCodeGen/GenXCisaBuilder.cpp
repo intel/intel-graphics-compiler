@@ -42,11 +42,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 //===----------------------------------------------------------------------===//
 
+#include "GenX.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
 #include "GenXOCLRuntimeInfo.h"
 #include "GenXPressureTracker.h"
 #include "GenXRegion.h"
+#include "GenXSubtarget.h"
 #include "GenXUtil.h"
 #include "GenXVisaRegAlloc.h"
 #include "common.h"
@@ -690,8 +692,8 @@ private:
                                               VISA_PREDICATE_STATE &PredField,
                                               VISA_EMask_Ctrl *MaskCtrl);
 
-  VISA_RawOpnd *createRawSourceOperand(Instruction *Inst, unsigned OperandNum,
-                                       genx::BaleInfo BI,
+  VISA_RawOpnd *createRawSourceOperand(const Instruction *Inst,
+                                       unsigned OperandNum, genx::BaleInfo BI,
                                        genx::Signedness Signed);
   VISA_RawOpnd *createRawDestination(Value *V, const DstOpndDesc &DstDesc,
                                      genx::Signedness Signed);
@@ -4688,7 +4690,7 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
  *          BI = BaleInfo for Inst (so we can tell whether a rdregion
  *                  or modifier is bundled in)
  */
-VISA_RawOpnd *GenXKernelBuilder::createRawSourceOperand(Instruction *Inst,
+VISA_RawOpnd *GenXKernelBuilder::createRawSourceOperand(const Instruction *Inst,
                                                         unsigned OperandNum,
                                                         BaleInfo BI,
                                                         Signedness Signed) {
@@ -5554,6 +5556,7 @@ void GenXKernelBuilder::buildStackCall(IGCLLVM::CallInst *CI,
       ISA_ADD, nullptr, false, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
       EXEC_SIZE_1, SpOpDst, SpOpSrc, Imm));
 }
+
 
 namespace {
 

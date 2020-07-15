@@ -151,6 +151,7 @@ enum ImmIntVec {
   MinSInt = -(1 << (ElemSize - 1))
 };
 
+
 } // End genx namespace
 } // End llvm namespace
 
