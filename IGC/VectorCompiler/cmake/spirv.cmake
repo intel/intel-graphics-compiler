@@ -123,19 +123,19 @@ install(FILES
 )
 
 elseif(NOT TARGET SPIRVDLL)
+  if(DEFINED SPIRV_PREBUILD_DIR)
+    set(PREBUILT_SPIRVDLL_PATH "${SPIRV_PREBUILD_DIR}/lib" )
+  endif()
   if(DEFINED WIN32)
     set(SPIRVDLL_NAME "SPIRVDLL.dll")
   else()
     set(SPIRVDLL_NAME "libSPIRVDLL.so")
   endif()
-  if(DEFINED SPIRV_PREBUILD_DIR)
-    set(PREBUILT_SPIRVDLL_PATH "${SPIRV_PREBUILD_DIR}/lib" )
-  endif()
   find_file(SPIRVDLL_LIB
     ${SPIRVDLL_NAME}
     PATHS ${PREBUILT_SPIRVDLL_PATH}
     NO_DEFAULT_PATH
-    )
+  )
   if(NOT SPIRVDLL_LIB)
     message(FATAL_ERROR "[VC] Cannot find SPIRVDLL in prebuilds")
   endif()
@@ -149,11 +149,6 @@ elseif(NOT TARGET SPIRVDLL)
       install(FILES ${SPIRVDLL_LIB}
         CONFIGURATIONS Debug Release
         DESTINATION $<CONFIG>/lh64
-        RENAME ${INSTALL_SPRIRVDLL_NAME}
-      )
-      install(FILES ${SPIRVDLL_LIB}
-        CONFIGURATIONS ReleaseInternal
-        DESTINATION Release-Internal/lh64
         RENAME ${INSTALL_SPRIRVDLL_NAME}
       )
     endif()
