@@ -1,4 +1,4 @@
-From ac92d249ea1177c7bee2b2aa7861267f775ff0db Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: nrudenko <nikita.rudenko@intel.com>
 Date: Thu, 4 Jun 2020 16:34:15 +0300
 Subject: [PATCH 2/4] Add DecorationFuncParamKindINTEL and
@@ -18,10 +18,10 @@ Change-Id: Ic90237386532736588c558c7479370e48af7ce87
  9 files changed, 56 insertions(+)
 
 diff --git a/lib/SPIRV/SPIRVReader.cpp b/lib/SPIRV/SPIRVReader.cpp
-index 210c741..8dc5784 100644
+index 67c8812..436cb3c 100644
 --- a/lib/SPIRV/SPIRVReader.cpp
 +++ b/lib/SPIRV/SPIRVReader.cpp
-@@ -3362,6 +3362,18 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
+@@ -3366,6 +3366,18 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
                                        std::to_string(Kind));
        F->addAttribute(ArgNo + 1, Attr);
      }
@@ -41,10 +41,10 @@ index 210c741..8dc5784 100644
  
    // Do not add float control if there is no any
 diff --git a/lib/SPIRV/SPIRVWriter.cpp b/lib/SPIRV/SPIRVWriter.cpp
-index 3f569ff..670ba1a 100644
+index 34500b7..dd3d715 100644
 --- a/lib/SPIRV/SPIRVWriter.cpp
 +++ b/lib/SPIRV/SPIRVWriter.cpp
-@@ -567,6 +567,19 @@ void LLVMToSPIRV::transVectorComputeMetadata(Function *F) {
+@@ -576,6 +576,19 @@ void LLVMToSPIRV::transVectorComputeMetadata(Function *F) {
            .getAsInteger(0, Kind);
        BA->addDecorate(DecorationFuncParamIOKind, Kind);
      }
@@ -65,13 +65,13 @@ index 3f569ff..670ba1a 100644
  }
  
 diff --git a/lib/SPIRV/VectorComputeUtil.h b/lib/SPIRV/VectorComputeUtil.h
-index 08d2129..f215b2d 100755
+index 39255ad..772d682 100755
 --- a/lib/SPIRV/VectorComputeUtil.h
 +++ b/lib/SPIRV/VectorComputeUtil.h
-@@ -116,6 +116,8 @@ const static char VCSLMSize[] = "VCSLMSize";
- const static char VCGlobalVariable[] = "VCGlobalVariable";
+@@ -117,6 +117,8 @@ const static char VCGlobalVariable[] = "VCGlobalVariable";
  const static char VCVolatile[] = "VCVolatile";
  const static char VCByteOffset[] = "VCByteOffset";
+ const static char VCSIMTCall[] = "VCSIMTCall";
 +const static char VCArgumentKind[] = "VCArgumentKind";
 +const static char VCArgumentDesc[] = "VCArgumentDesc";
  } // namespace kVCMetadata
@@ -142,20 +142,20 @@ index ea816ba..23eca12 100644
  public:
    // Complete constructor for MergeINTEL decoration
 diff --git a/lib/SPIRV/libSPIRV/SPIRVEnum.h b/lib/SPIRV/libSPIRV/SPIRVEnum.h
-index 0b65093..c653016 100644
+index 043d53b..c6cf08d 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVEnum.h
-@@ -392,6 +392,8 @@ template <> inline void SPIRVMap<Decoration, SPIRVCapVec>::init() {
-                {CapabilityVectorComputeINTEL});
+@@ -393,6 +393,8 @@ template <> inline void SPIRVMap<Decoration, SPIRVCapVec>::init() {
    ADD_VEC_INIT(DecorationFuncParamIOKind, {CapabilityVectorComputeINTEL});
    ADD_VEC_INIT(DecorationStackCallINTEL, {CapabilityVectorComputeINTEL});
+   ADD_VEC_INIT(DecorationSIMTCallINTEL, {CapabilityVectorComputeINTEL});
 +  ADD_VEC_INIT(DecorationFuncParamKindINTEL, {CapabilityVectorComputeINTEL});
 +  ADD_VEC_INIT(DecorationFuncParamDescINTEL, {CapabilityVectorComputeINTEL});
  }
  
  template <> inline void SPIRVMap<BuiltIn, SPIRVCapVec>::init() {
 diff --git a/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h b/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h
-index 09b9b8a..78c7925 100644
+index aa7c8b4..ecd4ab5 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h
 @@ -422,6 +422,8 @@ inline bool isValid(spv::Decoration V) {
@@ -168,7 +168,7 @@ index 09b9b8a..78c7925 100644
    case DecorationGlobalVariableOffsetINTEL:
    case DecorationFuncParamIOKind:
 diff --git a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
-index 867c9c1..077b662 100644
+index 72a7260..3b5ce77 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 @@ -361,6 +361,8 @@ template <> inline void SPIRVMap<Decoration, std::string>::init() {
@@ -181,13 +181,13 @@ index 867c9c1..077b662 100644
    add(DecorationGlobalVariableOffsetINTEL, "GlobalVariableOffsetINTEL");
    add(DecorationFuncParamIOKind, "FuncParamIOKind");
 diff --git a/lib/SPIRV/libSPIRV/spirv.hpp b/lib/SPIRV/libSPIRV/spirv.hpp
-index d0f5f75..bfc92ef 100644
+index 4950255..aa970f8 100644
 --- a/lib/SPIRV/libSPIRV/spirv.hpp
 +++ b/lib/SPIRV/libSPIRV/spirv.hpp
-@@ -475,6 +475,8 @@ enum Decoration {
-   DecorationRestrictPointerEXT = 5355,
+@@ -476,6 +476,8 @@ enum Decoration {
    DecorationAliasedPointer = 5356,
    DecorationAliasedPointerEXT = 5356,
+   DecorationSIMTCallINTEL = 5599,
 +  DecorationFuncParamKindINTEL = 9624,
 +  DecorationFuncParamDescINTEL = 9625,
    DecorationReferencedIndirectlyINTEL = 5602,

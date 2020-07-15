@@ -76,7 +76,7 @@ else()
   endif()
 endif()
 
-set(SPIRV_REV_PATCH e87b59a77abb30d3b5fb0b3e0555a39acbe5ebb4)
+set(SPIRV_REV_PATCH 7c8443e3d2032af05b46571c12c7de1b5209f7fe)
 set(SPRIV_PATCHES ${CMAKE_CURRENT_SOURCE_DIR}/spirv-patches-new/)
 set(SPRIV_BRANCH_PATCH spirvdll_100)
 find_program(MAKE_EXEC NAMES make gmake)
