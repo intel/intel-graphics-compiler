@@ -888,36 +888,23 @@ void VISAKernelImpl::generateVariableName(Common_ISA_Var_Class Ty, const char *&
 
 std::string VISAKernelImpl::getVarName(VISA_GenVar* decl) const
 {
-    assert(m_GenVarToNameMap.count(decl) && "Can't find the decl's name");
-    return m_GenVarToNameMap.find(decl)->second;
+    return getVarName((CISA_GEN_VAR*)decl);
 }
 std::string VISAKernelImpl::getVarName(VISA_PredVar* decl) const
 {
-    int index = getDeclarationID(decl) + COMMON_ISA_NUM_PREDEFINED_PRED;
-    stringstream ss;
-    ss << "P" << index;
-    return ss.str();
+    return getVarName((CISA_GEN_VAR*)decl);
 }
 std::string VISAKernelImpl::getVarName(VISA_AddrVar* decl) const
 {
-    int index = getDeclarationID(decl);
-    stringstream ss;
-    ss << "A" << index;
-    return ss.str();
+    return getVarName((CISA_GEN_VAR*)decl);
 }
 std::string VISAKernelImpl::getVarName(VISA_SurfaceVar* decl) const
 {
-    int index = getDeclarationID(decl);
-    stringstream ss;
-    ss << "T" << index;
-    return ss.str();
+    return getVarName((CISA_GEN_VAR*)decl);
 }
 std::string VISAKernelImpl::getVarName(VISA_SamplerVar* decl) const
 {
-    int index = getDeclarationID(decl);
-    stringstream ss;
-    ss << "S" << index;
-    return ss.str();
+    return getVarName((CISA_GEN_VAR*)decl);
 }
 
 std::string VISAKernelImpl::getVectorOperandName(VISA_VectorOpnd* opnd, bool showRegion) const
@@ -1047,6 +1034,8 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName,
     addr_info_t * addr = &decl->addrVar;
     generateVariableName(decl->type, varName);
 
+    m_GenVarToNameMap[decl] = varName;
+
     decl->index = m_addr_info_count++;
     if (IS_GEN_BOTH_PATH)
     {
@@ -1101,6 +1090,8 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *& decl, const char* varName,
     }
     generateVariableName(decl->type, varName);
 
+    m_GenVarToNameMap[decl] = varName;
+
     pred_info_t * pred = &decl->predVar;
 
     decl->index = COMMON_ISA_NUM_PREDEFINED_PRED + this->m_pred_info_count++;
@@ -1146,6 +1137,8 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
         return VISA_FAILURE;
     }
     generateVariableName(decl->type, varName);
+
+    m_GenVarToNameMap[decl] = varName;
 
     state_info_t * state = &decl->stateVar;
     state->attribute_count = 0;

@@ -857,6 +857,12 @@ public:
         return (*it);
     }
 
+    std::string getVarName(CISA_GEN_VAR* decl) const
+    {
+        assert(m_GenVarToNameMap.count(decl) && "Can't find the decl's name");
+        return m_GenVarToNameMap.find(decl)->second;
+    }
+
     Options * getOptions() { return m_options; }
 
     bool IsAsmWriterMode() const { return m_options->getOption(vISA_IsaAssembly); }
