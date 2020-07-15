@@ -1450,7 +1450,7 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst& I)
             Constant* constSrc = dyn_cast<Constant>(srcVector);
             if (constSrc)
             {
-                srcVal = constSrc->getAggregateElement(dstIndex);
+                srcVal = constSrc->getAggregateElement(srcIndex);
             }
             else
             {
