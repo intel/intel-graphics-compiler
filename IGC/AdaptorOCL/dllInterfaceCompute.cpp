@@ -1568,12 +1568,24 @@ static std::error_code TranslateBuildVC(
         {
             iOpenCL::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo()};
             vc::createBinary(CMProgram, CompileResult.Kernels);
-            Util::BinaryStream ProgramBinary;
-            CMProgram.GetProgramBinary(ProgramBinary,
-                                       CompileResult.PointerSizeInBytes);
-            llvm::StringRef BinaryRef(ProgramBinary.GetLinearPointer(),
-                                      ProgramBinary.Size());
-            outputBinaryVC(BinaryRef, pOutputArgs);
+            if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+            {
+                llvm::SmallVector<char, 0> ProgramBinary;
+                llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};
+                CMProgram.GetZEBinary(ProgramBinaryOS, CompileResult.PointerSizeInBytes);
+                llvm::StringRef BinaryRef(ProgramBinary.data(), ProgramBinary.size());
+                outputBinaryVC(BinaryRef, pOutputArgs);
+            }
+            else
+            {
+                CMProgram.CreateKernelBinaries();
+                Util::BinaryStream ProgramBinary;
+                CMProgram.GetProgramBinary(ProgramBinary,
+                                           CompileResult.PointerSizeInBytes);
+                llvm::StringRef BinaryRef(ProgramBinary.GetLinearPointer(),
+                                          ProgramBinary.Size());
+                outputBinaryVC(BinaryRef, pOutputArgs);
+            }
         }
         else
         {

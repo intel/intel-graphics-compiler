@@ -812,5 +812,4 @@ void vc::createBinary(
             Info.GenBinary.size()};
         populateKernelInfo_v2(&CmcInfo, Info.JitInfo, GenBin, *K);
     }
-    CMProgram.CreateKernelBinaries();
 }
