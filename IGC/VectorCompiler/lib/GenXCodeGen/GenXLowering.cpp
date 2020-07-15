@@ -138,7 +138,6 @@ using namespace genx;
 static cl::opt<bool>
     EnableGenXByteWidening("enable-genx-byte-widening", cl::init(true),
                            cl::Hidden, cl::desc("Enable GenX byte widening."));
-
 namespace {
 
 // GenXLowering : legalize execution widths and GRF crossing
@@ -2391,64 +2390,35 @@ bool GenXLowering::lowerFCmpInst(FCmpInst *Inst) {
 
 // Lower cmp instructions that GenX cannot deal with.
 bool GenXLowering::lowerMul64(Instruction *Inst) {
+
+  LoHiSplitter SplitBuilder(*Inst);
+  if (!SplitBuilder.IsI64Operation())
+    return false;
+
   IRBuilder<> Builder(Inst);
   Builder.SetCurrentDebugLocation(Inst->getDebugLoc());
-  auto Src0 = Inst->getOperand(0);
-  auto Src1 = Inst->getOperand(1);
-  auto ETy = Src0->getType();
-  auto Len = 1;
-  if (ETy->isVectorTy()) {
-    Len = ETy->getVectorNumElements();
-    ETy = ETy->getVectorElementType();
-  }
-  if (!ETy->isIntegerTy() || ETy->getPrimitiveSizeInBits() != 64)
-    return false;
-  auto VTy = VectorType::get(ETy->getInt32Ty(Inst->getContext()), Len * 2);
-  // create src0 bitcast, then the low and high part
-  auto Src0V = Builder.CreateBitCast(Src0, VTy);
-  Region R(Inst);
-  R.Offset = 0;
-  R.Width = Len;
-  R.NumElements = Len;
-  R.Stride = 2;
-  R.VStride = 0;
-  auto Src0L = R.createRdRegion(Src0V, "", Inst, Inst->getDebugLoc());
-  R.Offset = 4;
-  auto Src0H = R.createRdRegion(Src0V, "", Inst, Inst->getDebugLoc());
-  // create src1 bitcast, then the low and high part
-  auto Src1V = Builder.CreateBitCast(Src1, VTy);
-  R.Offset = 0;
-  auto Src1L = R.createRdRegion(Src1V, "", Inst, Inst->getDebugLoc());
-  R.Offset = 4;
-  auto Src1H = R.createRdRegion(Src1V, "", Inst, Inst->getDebugLoc());
+
+  auto Src0 = SplitBuilder.splitOperand(0);
+  auto Src1 = SplitBuilder.splitOperand(1);
+
   // create muls and adds
-  auto ResL = Builder.CreateMul(Src0L, Src1L);
+  auto *ResL = Builder.CreateMul(Src0.Lo, Src1.Lo);
   // create the mulh intrinsic to the get the carry-part
-  Type *tys[2];
-  SmallVector<llvm::Value *, 2> args;
-  // build type-list
-  tys[0] = ResL->getType();
-  tys[1] = Src0L->getType();
+  Type *tys[2] = {ResL->getType(), Src0.Lo->getType()};
   // build argument list
-  args.push_back(Src0L);
-  args.push_back(Src1L);
-  auto M = Inst->getParent()->getParent()->getParent();
+  SmallVector<llvm::Value *, 2> args{Src0.Lo, Src1.Lo};
+  auto *M = Inst->getModule();
   Function *IntrinFunc =
       GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_umulh, tys);
-  Instruction *Cari = CallInst::Create(IntrinFunc, args, "", Inst);
-  Cari->setDebugLoc(Inst->getDebugLoc());
-  auto Temp0 = Builder.CreateMul(Src0L, Src1H);
-  auto Temp1 = Builder.CreateAdd(Cari, Temp0);
-  auto Temp2 = Builder.CreateMul(Src0H, Src1L);
-  auto ResH = Builder.CreateAdd(Temp2, Temp1);
-  // create the write-regions
-  auto UndefV = UndefValue::get(VTy);
-  R.Offset = 0;
-  auto WrL = R.createWrRegion(UndefV, ResL, "WrLow", Inst, Inst->getDebugLoc());
-  R.Offset = 4;
-  auto WrH = R.createWrRegion(WrL, ResH, "WrHigh", Inst, Inst->getDebugLoc());
+
+  auto *Cari = Builder.CreateCall(IntrinFunc, args, ".cari");
+  auto *Temp0 = Builder.CreateMul(Src0.Lo, Src1.Hi);
+  auto *Temp1 = Builder.CreateAdd(Cari, Temp0);
+  auto *Temp2 = Builder.CreateMul(Src0.Hi, Src1.Lo);
+  auto *ResH = Builder.CreateAdd(Temp2, Temp1);
+
   // create the bitcast to the destination-type
-  auto Replace = Builder.CreateBitCast(WrH, Inst->getType(), "mul64");
+  auto *Replace = SplitBuilder.combineSplit(*ResL, *ResH, "mul64");
   Inst->replaceAllUsesWith(Replace);
   ToErase.push_back(Inst);
   return true;

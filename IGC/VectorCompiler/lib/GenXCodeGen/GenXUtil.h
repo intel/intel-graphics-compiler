@@ -257,6 +257,40 @@ public:
   OperandRegionInfo getMaskRegionPrefix(int StartIdx);
 };
 
+// class for splitting i64 (both vector and scalar) to subregions of i32 vectors
+// Used in GenxLowering and emulation routines
+class LoHiSplitter {
+  Instruction &Inst;
+
+  Type *ETy = nullptr;
+  Type *VI32Ty = nullptr;
+  size_t Len = 0;
+
+  enum class RegionType { LoRegion, HiRegion };
+  Region createSplitRegion(Type *Ty, RegionType RT);
+
+public:
+  struct Split {
+    Value *Lo;
+    Value *Hi;
+  };
+
+  // Instruction is used as an insertion point, debug location source and
+  // as a source of operands to split.
+  // If BaseOpIdx indexes a scalar/vector operand of i64 type, then
+  // IsI64Operation shall return true
+  LoHiSplitter(Instruction &Inst, unsigned BaseOpIdx = 0);
+
+  // Splitted Operand is expected to be a scalar/vector of i64 type
+  Split splitOperand(unsigned SourceIdx);
+
+  // Combined values are expected to be a vector of i32 of the same size
+  Value *combineSplit(Value &L, Value &H, const Twine &Name);
+
+  // convinence method for quick sanity checking
+  bool IsI64Operation() { return ETy->isIntegerTy(64); }
+};
+
 // adjustPhiNodesForBlockRemoval : adjust phi nodes when removing a block
 void adjustPhiNodesForBlockRemoval(BasicBlock *Succ, BasicBlock *BB);
 

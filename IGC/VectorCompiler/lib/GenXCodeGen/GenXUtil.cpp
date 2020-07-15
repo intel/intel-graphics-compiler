@@ -760,6 +760,71 @@ unsigned ShuffleVectorAnalyzer::getSerializeCost(unsigned i) {
   return Cost;
 }
 
+LoHiSplitter::LoHiSplitter(Instruction &Inst, unsigned BaseOpIdx) : Inst(Inst) {
+
+  auto *Operand = Inst.getOperand(BaseOpIdx);
+  ETy = Operand->getType();
+  Len = 1;
+  if (ETy->isVectorTy()) {
+    Len = ETy->getVectorNumElements();
+    ETy = ETy->getVectorElementType();
+  }
+  VI32Ty = VectorType::get(ETy->getInt32Ty(Inst.getContext()), Len * 2);
+}
+
+Region LoHiSplitter::createSplitRegion(Type *Ty, LoHiSplitter::RegionType RT) {
+  Region R(Ty);
+  R.Width = Len;
+  R.NumElements = Len;
+  R.VStride = 0;
+  // take every second element;
+  R.Stride = 2;
+  // offset is encoded in bytes
+  R.Offset = (RT == RegionType::LoRegion) ? 0 : 4;
+  return R;
+}
+
+LoHiSplitter::Split LoHiSplitter::splitOperand(unsigned SourceIdx) {
+
+  const auto &DL = Inst.getDebugLoc();
+  auto Name = Inst.getName();
+
+  assert(Inst.getNumOperands() > SourceIdx);
+  auto *Src = Inst.getOperand(SourceIdx);
+  assert(Src->getType()->getScalarType()->isIntegerTy(64));
+
+  auto *ShreddedSrc = new BitCastInst(Src, VI32Ty, Name + ".iv32cast", &Inst);
+  ShreddedSrc->setDebugLoc(DL);
+
+  auto LoRegion = createSplitRegion(VI32Ty, RegionType::LoRegion);
+  auto *L = LoRegion.createRdRegion(ShreddedSrc, Name + ".lsplit", &Inst, DL);
+
+  auto HiRegion = createSplitRegion(VI32Ty, RegionType::HiRegion);
+  auto *H = HiRegion.createRdRegion(ShreddedSrc, Name + ".rsplit", &Inst, DL);
+
+  return {L, H};
+}
+Value *LoHiSplitter::combineSplit(Value &L, Value &H, const Twine &Name) {
+
+  const auto &DL = Inst.getDebugLoc();
+
+  assert(L.getType() == H.getType() && L.getType()->isVectorTy() &&
+         L.getType()->getVectorElementType()->isIntegerTy(32));
+
+  // create the write-regions
+  auto LoRegion = createSplitRegion(VI32Ty, RegionType::LoRegion);
+  auto *UndefV = UndefValue::get(VI32Ty);
+  auto *WrL = LoRegion.createWrRegion(UndefV, &L, "WrLow", &Inst, DL);
+
+  auto HiRegion = createSplitRegion(VI32Ty, RegionType::HiRegion);
+  auto *WrH = HiRegion.createWrRegion(WrL, &H, "WrHigh", &Inst, DL);
+
+  auto *V64Ty = VectorType::get(ETy->getInt64Ty(Inst.getContext()), Len);
+  auto *Result = new BitCastInst(WrH, V64Ty, Name, &Inst);
+  Result->setDebugLoc(DL);
+  return Result;
+}
+
 /***********************************************************************
  * adjustPhiNodesForBlockRemoval : adjust phi nodes when removing a block
  *
