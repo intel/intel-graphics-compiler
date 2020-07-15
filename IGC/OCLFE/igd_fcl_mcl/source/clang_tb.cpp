@@ -923,6 +923,15 @@ namespace TC
         {
             pClangArgs->options.assign(pOptions);
         }
+#if defined(IGC_DEBUG_VARIABLES)
+        char debugOptions[1024];
+        if (FCL::FCLReadIGCRegistry("ExtraOCLOptions", debugOptions, sizeof(debugOptions)))
+        {
+            if (!pClangArgs->options.empty())
+                pClangArgs->options += ' ';
+            pClangArgs->options += debugOptions;
+        }
+#endif
 
         GetOclCVersionFromOptions(pOptions, pInternalOptions, pClangArgs->oclVersion, exceptString);
         EnsureProperPCH(pClangArgs, pInternalOptions, exceptString);
@@ -967,7 +976,7 @@ namespace TC
             if (pData != NULL)
             {
                 assert(pData[uiDataSize - 1] == '\0' && "Program source is not null terminated");
-                pClangArgs->pszProgramSource = (const char *)pData;
+                pClangArgs->pszProgramSource = pData;
             }
         }
 
@@ -1008,27 +1017,25 @@ namespace TC
 
         if (!extensions.empty())
         {
-            output << "-cl-ext=-all,";
-            output << "+" << extensions[0];
+            output << "-cl-ext=-all";
+            for (const std::string &extension : extensions)
+                output << ",+" << extension;
         }
-
-        for (unsigned i = 1; i < extensions.size(); i++)
-            output << ",+" << extensions[i];
 
         output.flush();
         return output.str();
     }
 
     std::string GetListOfExtensionsFromInternalOptions(const std::string& internalOptions) {
-    size_t start_pos = 0, end_pos = 0;
-    std::string clextString = "";
+        size_t start_pos = 0, end_pos = 0;
+        std::string clextString = "";
 
-    while ((start_pos = internalOptions.find("-cl-ext=", end_pos)) != std::string::npos) {
-      end_pos = internalOptions.find(" ", start_pos);
-      clextString += internalOptions.substr(start_pos, end_pos - start_pos) + " ";
-    }
+        while ((start_pos = internalOptions.find("-cl-ext=", end_pos)) != std::string::npos) {
+          end_pos = internalOptions.find(' ', start_pos);
+          clextString += internalOptions.substr(start_pos, end_pos - start_pos) + " ";
+        }
 
-    return clextString;
+        return clextString;
     }
 
     std::string GetCDefinesFromInternalOptions(const char *pInternalOptions) {
@@ -1761,15 +1768,14 @@ namespace TC
             bool successTC = TranslateClang(&args, pOutputArgs, exceptString, pInputArgs->pInternalOptions);
 
 #if defined(IGC_DEBUG_VARIABLES)
-            if (pInputArgs->pOptions != NULL)
+            if (pInputArgs->pOptions != nullptr)
             {
-                const std::string& igc_optsName = "-igc_opts";
-                const std::string& optionsWithFlags = (const char*)pInputArgs->pOptions;
-                std::size_t found = optionsWithFlags.find(igc_optsName);
+                const std::string optionsWithFlags = pInputArgs->pOptions;
+                std::size_t found = optionsWithFlags.find("-igc_opts");
                 if (found != std::string::npos)
                 {
-                    std::size_t foundFirstSingleQuote = optionsWithFlags.find("'", found);
-                    std::size_t foundSecondSingleQuote = optionsWithFlags.find("'", foundFirstSingleQuote + 1);
+                    std::size_t foundFirstSingleQuote = optionsWithFlags.find('\'', found);
+                    std::size_t foundSecondSingleQuote = optionsWithFlags.find('\'', foundFirstSingleQuote + 1);
                     if (foundFirstSingleQuote != std::string::npos && foundSecondSingleQuote != std::string::npos)
                     {
                         FCL::RegKeysFlagsFromOptions = optionsWithFlags.substr(foundFirstSingleQuote + 1, foundSecondSingleQuote - foundFirstSingleQuote - 1);
@@ -1783,12 +1789,12 @@ namespace TC
                 // Works for all OSes. Creates dir if necessary.
                 const char *pOutputFolder = FCL::GetShaderOutputFolder();
                 stringstream ss;
-                char* pBuffer = (char *)pInputArgs->pInput;
+                const char* pBuffer = pInputArgs->pInput;
                 UINT  bufferSize = pInputArgs->InputSize;
 
                 // Create hash based on cclang binary output (currently llvm binary; later also spirv).
                 // Hash computed in fcl needs to be same as the one computed in igc.
-                // This is to ensure easy matching .cl files dumped in fcl with .ll/.dat/.asm/... files dumoed in igc.
+                // This is to ensure easy matching .cl files dumped in fcl with .ll/.dat/.asm/... files dumped in igc.
                 QWORD hash = iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->pOutput), (DWORD)(pOutputArgs->OutputSize) / 4);
 
                 ss << pOutputFolder;

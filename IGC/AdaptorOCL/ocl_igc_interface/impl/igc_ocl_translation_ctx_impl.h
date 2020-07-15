@@ -177,7 +177,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
             inputArgs.InputSize = static_cast<uint32_t>(src->GetSizeRaw());
         }
         if(options != nullptr){
-            inputArgs.pOptions =  options->GetMemory<char>();
+            inputArgs.pOptions = options->GetMemory<char>();
             inputArgs.OptionsSize = static_cast<uint32_t>(options->GetSizeRaw());
         }
         if(internalOptions != nullptr){
@@ -205,16 +205,15 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         TC::STB_TranslateOutputArgs output;
         CIF::SafeZeroOut(output);
 
-        std::string RegKeysFlagsFromOptions = "";
-        if (inputArgs.pOptions != NULL)
+        std::string RegKeysFlagsFromOptions;
+        if (inputArgs.pOptions != nullptr)
         {
-            const std::string& igc_optsName = "-igc_opts";
-            const std::string& optionsWithFlags = (const char*)inputArgs.pOptions;
-            std::size_t found = optionsWithFlags.find(igc_optsName);
+            const std::string optionsWithFlags = inputArgs.pOptions;
+            std::size_t found = optionsWithFlags.find("-igc_opts");
             if (found != std::string::npos)
             {
-                std::size_t foundFirstSingleQuote = optionsWithFlags.find("'", found);
-                std::size_t foundSecondSingleQuote = optionsWithFlags.find("'", foundFirstSingleQuote + 1);
+                std::size_t foundFirstSingleQuote = optionsWithFlags.find('\'', found);
+                std::size_t foundSecondSingleQuote = optionsWithFlags.find('\'', foundFirstSingleQuote + 1);
                 if (foundFirstSingleQuote != std::string::npos && foundSecondSingleQuote)
                 {
                     RegKeysFlagsFromOptions = optionsWithFlags.substr(foundFirstSingleQuote + 1, (foundSecondSingleQuote - foundFirstSingleQuote - 1));
@@ -225,6 +224,19 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         bool RegFlagNameError = 0;
         LoadRegistryKeys(RegKeysFlagsFromOptions, &RegFlagNameError);
         if(RegFlagNameError) outputInterface->GetImpl()->SetError(TranslationErrorType::Unused, "Invalid registry flag name in -igc_opts, at least one flag has been ignored");
+
+        const char *extraOptions = IGC_GET_REGKEYSTRING(ExtraOCLOptions);
+        std::string combinedOptions;
+        if (extraOptions[0] != '\0')
+        {
+            if (inputArgs.pOptions != nullptr)
+            {
+                combinedOptions = std::string(inputArgs.pOptions) + ' ';
+            }
+            combinedOptions += extraOptions;
+            inputArgs.pOptions = combinedOptions.c_str();
+            inputArgs.OptionsSize = combinedOptions.size();
+        }
 
         bool success = false;
         if (this->inType == CodeType::elf)
