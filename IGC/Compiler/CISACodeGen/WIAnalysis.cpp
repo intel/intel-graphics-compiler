@@ -443,9 +443,10 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
     bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF) || isNonEntryMultirateShader(pF);
 
     ImplicitArgs implicitArgs(*pF, m_pMdUtils);
-    unsigned implicitArgStart = (unsigned)(IGCLLVM::GetFuncArgSize(pF)
+    int implicitArgStart = (unsigned)(IGCLLVM::GetFuncArgSize(pF)
         - implicitArgs.size()
         - (IsSubroutine ? 0 : m_ModMD->pushInfo.pushAnalysisWIInfos.size()));
+    IGC_ASSERT(implicitArgStart >= 0 && "Function arg size does not match meta data and push args.");
 
     llvm::Function::arg_iterator ai, ae;
     ai = pF->arg_begin();
@@ -453,7 +454,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
 
     // 1. add all kernel function args as uniform, or
     //    add all subroutine function args as random
-    for (unsigned i = 0; i < implicitArgStart; ++i, ++ai)
+    for (int i = 0; i < implicitArgStart; ++i, ++ai)
     {
         IGC_ASSERT(ai != ae);
         incUpdateDepend(&(*ai), IsSubroutine ? WIAnalysis::RANDOM : WIAnalysis::UNIFORM);
