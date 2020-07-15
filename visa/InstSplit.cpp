@@ -70,9 +70,7 @@ void InstSplitPass::run()
     {
         G4_INST* inst = *it;
 
-        // Only SIMD16 and SIMD32 are considered for splitting
-        if (inst->getExecSize() == 1 || inst->getExecSize() == 2 ||
-            inst->getExecSize() == 4 || inst->getExecSize() == 8)
+        if (inst->getExecSize() == 1)
         {
             continue;
         }
@@ -136,6 +134,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
             break;
         }
     }
+
 
     // Check destination
     if (inst->getDst() && cross2GRFDst(inst->getDst()))
