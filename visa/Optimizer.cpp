@@ -8129,6 +8129,11 @@ public:
                 auto iter = std::prev(bb->end());
 
                 {
+                    if (builder.getPlatform() == GENX_ICLLP)
+                    {
+                        hasTypedWrites = false; // Workaround Under debug and being clarified
+                        hasSLMWrites = false;   // Workaround not needed for ICL SLM Writes
+                    }
                     if (hasUAVWrites || hasTypedWrites)
                     {
                         auto fenceInst = builder.createFenceInstruction(0, true, true, false);
