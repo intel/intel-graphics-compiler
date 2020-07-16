@@ -4739,39 +4739,6 @@ bool HWConformity::convertMAD2MAC(INST_LIST_ITER iter, std::vector<G4_INST*>& ma
     return false;
 }
 
-void HWConformity::convertComprInstSrcRegion(G4_INST* inst)
-{
-    for (int k = 0; k < 2; k++)
-    {
-        G4_Operand* src = inst->getSrc(k);
-
-        if (!src || src->isImm() || (inst->isMath() && k == 1 && src->isNullReg()))
-        {
-            continue;
-        }
-
-        if (!src->isSrcRegRegion()) {
-            continue;
-        }
-
-        int w = src->asSrcRegRegion()->getRegion()->width;
-        int hs = src->asSrcRegRegion()->getRegion()->horzStride;
-        int vs = src->asSrcRegRegion()->getRegion()->vertStride;
-
-        if (w == 1 && hs == 0 && vs == 0)
-        {
-            continue;
-        }
-
-        if (inst->getExecSize() < w)
-        {
-            const RegionDesc* rd =
-                builder.createRegionDesc((uint16_t)(vs / 2), (uint16_t)(w / 2), (uint16_t)(hs / 2));
-            src->asSrcRegRegion()->setRegion(rd);
-        }
-    }
-}
-
 // replace src/dst with ACC
 void HWConformity::addACCOpnd(
     G4_INST* curInst, bool needACCSrc, int dstStride, G4_Type accTy)

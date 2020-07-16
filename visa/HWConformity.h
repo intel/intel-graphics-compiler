@@ -130,7 +130,6 @@ namespace vISA
         void convertMAD2MulAdd(INST_LIST_ITER iter, G4_BB *bb);
         G4_Type getAccType(G4_Type ty);
         bool findHoistLocation(INST_LIST_ITER start, INST_LIST_ITER &end, uint16_t &movDist, G4_INST *boundary);
-        void convertComprInstSrcRegion(G4_INST *inst);
         void addACCOpnd(G4_INST *inst, bool needACCSrc, int stride, G4_Type accTy);
         void maintainDU4TempMov(G4_INST *inst, G4_INST *movInst);
         void fixImm64(INST_LIST_ITER i, G4_BB* bb);
