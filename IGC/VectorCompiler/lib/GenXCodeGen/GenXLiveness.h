@@ -174,6 +174,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GENXLIVENESS_H
 
 #include "FunctionGroup.h"
+#include "GenXSubtarget.h"
 #include "IgnoreRAUWValueMap.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Value.h"
@@ -422,7 +423,7 @@ public:
   // getLogAlignment : get log alignment
   unsigned getLogAlignment() const { return LogAlignment; }
   // setAlignmentFromValue : increase alignment if necessary from a value
-  void setAlignmentFromValue(SimpleValue V);
+  void setAlignmentFromValue(SimpleValue V, unsigned GRFWidth);
   // setLogAlignment : set log alignment to greater than implied by the LR's values
   void setLogAlignment(unsigned Align) { LogAlignment = std::max(LogAlignment, Align); }
   // addSegment : add a segment to a live range
@@ -505,6 +506,7 @@ class GenXLiveness : public FunctionGroupPass {
   genx::CallGraph *CG;
   GenXBaling *Baling;
   GenXNumbering *Numbering;
+  const GenXSubtarget *Subtarget;
   std::map<Function *, Value *> UnifiedRets;
   std::map<Value *, Function *> UnifiedRetToFunc;
   std::map<AssertingVH<Value>, Value *> ArgAddressBaseMap;

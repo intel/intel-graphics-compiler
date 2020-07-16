@@ -2852,7 +2852,9 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
     // This is not an aliased register. Go through all the aliases and
     // determine the biggest alignment required. If the register is at least
     // as big as a GRF, make the alignment GRF.
-    unsigned Alignment = 5; // GRF alignment
+    unsigned Alignment = getLogAlignment(
+        VISA_Align::ALIGN_GRF, Subtarget ? Subtarget->getGRFWidth()
+                                         : defaultGRFWidth); // GRF alignment
     Type *Ty = Reg.Ty;
     unsigned NBits = Ty->isPointerTy() ? DL.getPointerSizeInBits()
                                        : Ty->getPrimitiveSizeInBits();
@@ -2888,12 +2890,11 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
 
   visa::TypeDetails TD(DL, Reg.Ty, Reg.Signed);
 
-  CISA_CALL(Kernel->CreateVISAGenVar(
-      Decl, Reg.NameStr.c_str(), TD.NumElements,
-      static_cast<VISA_Type>(TD.VisaType),
-      // 0x7 is a hack because for some reasons
-      // alignment can be a large number
-      static_cast<VISA_Align>(Reg.Alignment & 0x7), parentDecl, 0));
+  VISA_Align VA = getVISA_Align(
+      Reg.Alignment, Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth);
+  CISA_CALL(Kernel->CreateVISAGenVar(Decl, Reg.NameStr.c_str(), TD.NumElements,
+                                     static_cast<VISA_Type>(TD.VisaType), VA,
+                                     parentDecl, 0));
 
   Reg.SetVar(Kernel, Decl);
 

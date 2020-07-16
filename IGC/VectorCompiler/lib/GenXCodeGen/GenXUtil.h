@@ -459,6 +459,15 @@ CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst,
                                        Instruction *InstToReplace);
 
 
+// Returns log alignment for align type and target grf width, because ALIGN_GRF
+// must be target-dependent.
+unsigned getLogAlignment(VISA_Align Align, unsigned GRFWidth);
+// The opposite of getLogAlignment.
+VISA_Align getVISA_Align(unsigned LogAlignment, unsigned GRFWidth);
+// Some log alignments cannot be transparently transformed to VISA_Align. This
+// chooses suitable log alignment which is convertible to VISA_Align.
+unsigned CeilAlignment(unsigned LogAlignment, unsigned GRFWidth);
+
 } // namespace genx
 } // namespace llvm
 

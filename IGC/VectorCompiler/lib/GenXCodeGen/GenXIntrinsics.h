@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 #ifndef GENXINTRINSICS_H
 #define GENXINTRINSICS_H
+#include "GenX.h"
 #include "GenXVisa.h"
 
 #define GENX_ITR_CATVAL(v) ((v) << CATBASE)
@@ -192,18 +193,19 @@ public:
     ArgInfo(unsigned Info) : Info(Info) {}
     // getCategory : return field category
     unsigned getCategory() { return Info & CATMASK; }
-    // getLogAlignment : get any special alignment requirement, else 0
-    unsigned getLogAlignment() {
+    // getAlignment : get any special alignment requirement, else align to 1
+    // byte
+    VISA_Align getAlignment() {
       if (isGeneral()) {
         if (Info & GRFALIGNED)
-          return 5;
+          return VISA_Align::ALIGN_GRF;
         if (Info & OWALIGNED)
-          return 4;
-        return 0;
+          return VISA_Align::ALIGN_OWORD;
+        return VISA_Align::ALIGN_BYTE;
       }
       if (isRaw())
-        return 5;
-      return 0;
+        return VISA_Align::ALIGN_GRF;
+      return VISA_Align::ALIGN_BYTE;
     }
     // isGeneral : test whether this is a general operand
     bool isGeneral() { return getCategory() == GENERAL; }

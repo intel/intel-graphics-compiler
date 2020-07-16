@@ -842,7 +842,9 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
         auto AI = II.getRetInfo();
         return CategoryAndAlignment(
             intrinsicCategoryToRegCategory(AI.getCategory()),
-            AI.getLogAlignment());
+            getLogAlignment(AI.getAlignment(), Subtarget
+                                                   ? Subtarget->getGRFWidth()
+                                                   : defaultGRFWidth));
       } else if (GenXIntrinsic::isRdRegion(IntrinsicID)) {
         // Add this to avoid conversion in case of read-region on SurfaceIndex
         // or SamplerIndex type
@@ -970,7 +972,9 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
             auto AI = II.getArgInfo(U->getOperandNo());
             return CategoryAndAlignment(
                 intrinsicCategoryToRegCategory(AI.getCategory()),
-                AI.getLogAlignment());
+                getLogAlignment(AI.getAlignment(),
+                                Subtarget ? Subtarget->getGRFWidth()
+                                          : defaultGRFWidth));
           }
           break;
           }

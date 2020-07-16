@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifndef TARGET_GENX_H
 #define TARGET_GENX_H
+#include "visa_igc_common_header.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
@@ -129,17 +130,22 @@ const constexpr int ByteBits  = 8;
 const constexpr int WordBits  = 16;
 const constexpr int DWordBits = 32;
 const constexpr int QWordBits = 64;
+const constexpr int OWordBits = 128;
 const constexpr int GRFBits = 256;
 
 const constexpr int ByteBytes = ByteBits / ByteBits;
 const constexpr int WordBytes = WordBits / ByteBits;
 const constexpr int DWordBytes = DWordBits / ByteBits;
 const constexpr int QWordBytes = QWordBits / ByteBits;
+const constexpr int OWordBytes = OWordBits / ByteBits;
 
 // vISA allows [-512,511] for operation to be baled as offset
 // for rdregion, copied from visa
 const constexpr int G4_MAX_ADDR_IMM = 511;
 const constexpr int G4_MIN_ADDR_IMM = -512;
+
+// Default GRF Width if subtarget is not available
+const constexpr int defaultGRFWidth = 32;
 
 // describe integer vector immediate (V, UV)
 enum ImmIntVec {

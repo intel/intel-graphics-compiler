@@ -78,6 +78,8 @@ bool GenXLiveness::runOnFunctionGroup(FunctionGroup &ArgFG)
 {
   clear();
   FG = &ArgFG;
+  auto STP = getAnalysisIfAvailable<GenXSubtargetPass>();
+  Subtarget = STP ? STP->getSubtarget() : nullptr;
   return false;
 }
 
@@ -116,14 +118,14 @@ void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR)
   assert(LiveRangeMap.find(V) == LiveRangeMap.end() && "Attempting to set LiveRange for Value that already has one");
   LR->addValue(V);
   LiveRangeMap[V] = LR;
-  LR->setAlignmentFromValue(V);
+  LR->setAlignmentFromValue(V, Subtarget ? Subtarget->getGRFWidth()
+                                         : defaultGRFWidth);
 }
 
 /***********************************************************************
  * setAlignmentFromValue : set a live range's alignment from a value
  */
-void LiveRange::setAlignmentFromValue(SimpleValue V)
-{
+void LiveRange::setAlignmentFromValue(SimpleValue V, unsigned GRFWidth) {
   Type *Ty = IndexFlattener::getElementType(
         V.getValue()->getType(), V.getIndex());
   if (Ty->isPointerTy())
@@ -133,8 +135,10 @@ void LiveRange::setAlignmentFromValue(SimpleValue V)
     SizeInBits *= VT->getNumElements();
   unsigned LogAlign = Log2_32(SizeInBits) - 3;
   // Set max alignment to GRF
-  if (LogAlign > 5)
-    LogAlign = 5;
+  unsigned MaxLogAlignment =
+      genx::getLogAlignment(VISA_Align::ALIGN_GRF, GRFWidth);
+  LogAlign = (LogAlign > MaxLogAlignment) ? MaxLogAlignment : LogAlign;
+  LogAlign = CeilAlignment(LogAlign, GRFWidth);
   setLogAlignment(LogAlign);
 }
 
@@ -585,7 +589,8 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
     LR = new LiveRange;
     LR->Values.push_back(V);
     i->second = LR;
-    LR->setAlignmentFromValue(V);
+    LR->setAlignmentFromValue(V, Subtarget ? Subtarget->getGRFWidth()
+                                           : defaultGRFWidth);
   }
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   // Give the Value a name if it doesn't already have one.

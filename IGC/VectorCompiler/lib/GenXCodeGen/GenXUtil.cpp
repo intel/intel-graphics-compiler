@@ -1512,3 +1512,62 @@ bool genx::isFuncPointerVec(Value *V, SetVector<Function *> *Funcs) {
   return Res;
 }
 
+
+unsigned genx::getLogAlignment(VISA_Align Align, unsigned GRFWidth) {
+  switch (Align) {
+  case ALIGN_BYTE:
+    return Log2_32(ByteBytes);
+  case ALIGN_WORD:
+    return Log2_32(WordBytes);
+  case ALIGN_DWORD:
+    return Log2_32(DWordBytes);
+  case ALIGN_QWORD:
+    return Log2_32(QWordBytes);
+  case ALIGN_OWORD:
+    return Log2_32(OWordBytes);
+  case ALIGN_GRF:
+    return Log2_32(GRFWidth);
+  case ALIGN_2_GRF:
+    return Log2_32(GRFWidth) + 1;
+  default:
+    report_fatal_error("Unknown alignment");
+  }
+}
+
+VISA_Align genx::getVISA_Align(unsigned LogAlignment, unsigned GRFWidth) {
+  if (LogAlignment == Log2_32(ByteBytes))
+    return ALIGN_BYTE;
+  else if (LogAlignment == Log2_32(WordBytes))
+    return ALIGN_WORD;
+  else if (LogAlignment == Log2_32(DWordBytes))
+    return ALIGN_DWORD;
+  else if (LogAlignment == Log2_32(QWordBytes))
+    return ALIGN_QWORD;
+  else if (LogAlignment == Log2_32(OWordBytes))
+    return ALIGN_OWORD;
+  else if (LogAlignment == Log2_32(GRFWidth))
+    return ALIGN_GRF;
+  else if (LogAlignment == Log2_32(GRFWidth) + 1)
+    return ALIGN_2_GRF;
+  else
+    report_fatal_error("Unknown log alignment");
+}
+
+unsigned genx::CeilAlignment(unsigned LogAlignment, unsigned GRFWidth) {
+  if (LogAlignment <= Log2_32(ByteBytes))
+    return Log2_32(ByteBytes);
+  else if (LogAlignment <= Log2_32(WordBytes))
+    return Log2_32(WordBytes);
+  else if (LogAlignment <= Log2_32(DWordBytes))
+    return Log2_32(DWordBytes);
+  else if (LogAlignment <= Log2_32(QWordBytes))
+    return Log2_32(QWordBytes);
+  else if (LogAlignment <= Log2_32(OWordBytes))
+    return Log2_32(OWordBytes);
+  else if (LogAlignment <= Log2_32(GRFWidth))
+    return Log2_32(GRFWidth);
+  else if (LogAlignment <= Log2_32(GRFWidth) + 1)
+    return Log2_32(GRFWidth) + 1;
+  else
+    report_fatal_error("Unknown log alignment");
+}

@@ -245,7 +245,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
   unsigned Restriction = AI.getRestriction();
   if (!Restriction)
     return true;
-  unsigned GRFWidth = ST ? ST->getGRFWidth() : 32;
+  unsigned GRFWidth = ST ? ST->getGRFWidth() : defaultGRFWidth;
   unsigned ElementsPerGrf = GRFWidth / R.ElementBytes;
   unsigned GRFLogAlign = Log2_32(GRFWidth);
   if (AI.Info & GenXIntrinsicInfo::GRFALIGNED) {
@@ -530,7 +530,8 @@ void GenXBaling::processWrRegion(Instruction *Inst)
             (ValIntrinID != GenXIntrinsic::genx_sat) &&
             !GenXIntrinsic::isRdRegion(V) && !GenXIntrinsic::isWrRegion(V) &&
             (II.getRetInfo().getCategory() == GenXIntrinsicInfo::RAW))
-          Liveness->getOrCreateLiveRange(Inst)->LogAlignment = 5;
+          Liveness->getOrCreateLiveRange(Inst)->LogAlignment = getLogAlignment(
+              VISA_Align::ALIGN_GRF, ST ? ST->getGRFWidth() : defaultGRFWidth);
       }
     }
   }
@@ -1238,7 +1239,9 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
               if (Liveness) {
                 Value *Opnd = Inst->getOperand(ArgIdx);
                 Opnd = cast<Instruction>(Opnd)->getOperand(0);
-                Liveness->getOrCreateLiveRange(Opnd)->LogAlignment = 5;
+                Liveness->getOrCreateLiveRange(Opnd)->LogAlignment =
+                    getLogAlignment(VISA_Align::ALIGN_GRF,
+                                    ST ? ST->getGRFWidth() : defaultGRFWidth);
               }
             }
             break;
