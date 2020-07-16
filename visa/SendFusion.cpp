@@ -145,8 +145,18 @@ namespace vISA
               FlagDefPerBB(nullptr),
               WAce0Read(false)
         {
-            WAce0Read = VISA_WA_CHECK(Builder->getPWaTable(), Wa_1406950495) ;
-            initDMaskModInfo();
+            // Using "dmask (sr0.2) And ce0.0" for emask for each BB is not very safe
+            // for the following reasons:
+            //    1) shader may use vmask; or
+            //    2) reading ce might be unsafe (for example, hardware issue)
+            // Thus, we set WAce0Read to true to force using "cmp r0, r0" to create emask
+            // always, and no dmask would be used at all!
+            //WAce0Read = VISA_WA_CHECK(Builder->getPWaTable(), Wa_1406950495) ;
+            WAce0Read = true;
+            if (!WAce0Read)
+            {
+                initDMaskModInfo();
+            }
         }
 
         bool run(G4_BB* BB);
@@ -1248,7 +1258,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
     }
     else
     {
-        // (W) and (|M0) tmp<1>:ud ce0.0<0;1,0>:ud DMaskUD:ud
+        // (W) and (1|M0) tmp<1>:ud ce0.0<0;1,0>:ud DMaskUD:ud
         G4_SrcRegRegion *ce0Src = Builder->createSrcRegRegion(
             Mod_src_undef, Direct, Builder->phyregpool.getMask0Reg(), 0, 0, scalar, Type_UD);
         G4_SrcRegRegion *dmaskSrc = Builder->createSrcRegRegion(
