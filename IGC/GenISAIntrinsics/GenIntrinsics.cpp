@@ -521,7 +521,7 @@ Function *GenISAIntrinsic::getDeclaration(
     IGCLLVM::Module* M = (IGCLLVM::Module*)Module;
 
     Function *F =
-        cast<Function>(
+        dyn_cast<Function>(
             M->getOrInsertFunction(
                 getName((GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),
                 getType(
@@ -530,6 +530,7 @@ Function *GenISAIntrinsic::getDeclaration(
                     Tys),
                 getAttributes(M->getContext(),(GenISAIntrinsic::ID)(id - 1))));
 
+    IGC_ASSERT_MESSAGE(F, "getOrInsertFunction probably returned constant expression!");
     // Since Function::isIntrinsic() will return true due to llvm.* prefix,
     // Module::getOrInsertFunction fails to add the attributes.
     // explicitly adding the attribute to handle this problem.
