@@ -141,8 +141,9 @@ static Value *ZExtOrTruncIfNeeded(Value *From, Type *To,
   Value *Res = From;
   if (From->getType()->isVectorTy() &&
       From->getType()->getVectorNumElements() == 1) {
-    Res = CastInst::CreateBitOrPointerCast(
+    auto *TmpRes = CastInst::CreateBitOrPointerCast(
         Res, From->getType()->getVectorElementType(), "", InsertBefore);
+    Res = TmpRes;
   }
   if (FromTySz < ToTySz)
     Res = CastInst::CreateZExtOrBitCast(Res, To, "", InsertBefore);
@@ -204,18 +205,18 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
     Restored = CastInst::Create(Instruction::Trunc, From, To, "");
   } else if (EltSz == genx::QWordBits &&
              !(m_useGlobalMem && To->getScalarType()->isIntegerTy(64))) {
-    auto *NewFrom = From;
     if (!From->getType()->getScalarType()->isPointerTy() &&
         To->getScalarType()->isPointerTy()) {
       assert(From->getType()->getScalarType()->isIntegerTy(genx::DWordBits));
       Type *NewTy =
           VectorType::get(Type::getInt64Ty(*m_ctx),
                           From->getType()->getVectorNumElements() / 2);
-      NewFrom = CastInst::CreateBitOrPointerCast(From, NewTy);
+      auto *NewFrom = CastInst::CreateBitOrPointerCast(From, NewTy);
       NewFrom->insertAfter(From);
-      Restored = CastInst::Create(CastInst::IntToPtr, NewFrom, To);
+      From = NewFrom;
+      Restored = CastInst::Create(CastInst::IntToPtr, From, To);
     } else
-      Restored = CastInst::CreateBitOrPointerCast(NewFrom, To);
+      Restored = CastInst::CreateBitOrPointerCast(From, To);
   }
   if (Restored != From)
     Restored->insertAfter(From);
@@ -303,11 +304,12 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
   } else if (isa<ExtractElementInst>(Ptr) &&
              lookForPtrReplacement(
                  cast<ExtractElementInst>(Ptr)->getVectorOperand())) {
-    if (Ptr->getType()->isPointerTy())
-      return CastInst::Create(Instruction::PtrToInt, Ptr,
-                              Type::getInt32Ty(*m_ctx), "",
-                              cast<Instruction>(Ptr));
-    else
+    if (Ptr->getType()->isPointerTy()) {
+      auto *PTI = CastInst::Create(Instruction::PtrToInt, Ptr,
+                              Type::getInt32Ty(*m_ctx));
+      PTI->insertAfter(cast<Instruction>(Ptr));
+      return PTI;
+    } else
       return Ptr;
   } else if (auto *CI = dyn_cast<IGCLLVM::CallInst>(Ptr)) {
     if (!CI->isIndirectCall() &&
@@ -707,8 +709,9 @@ bool GenXThreadPrivateMemory::replacePhi(PHINode *Phi) {
                V->getType()->isVectorTy() != NonVecTy->isVectorTy()) {
         if (V->getType()->isVectorTy()) {
           assert(V->getType()->getVectorNumElements() == 1);
-          V = CastInst::Create(CastInst::BitCast, V, NonVecTy->getScalarType(),
-                               "", cast<Instruction>(V));
+          auto *VCast = CastInst::Create(CastInst::BitCast, V, NonVecTy->getScalarType());
+          VCast->insertAfter(cast<Instruction>(V));
+          V = VCast;
         }
       } else {
         assert(0 && "New phi types mismatch");
@@ -980,7 +983,6 @@ void GenXThreadPrivateMemory::addUsers(Value *V) {
 
 void GenXThreadPrivateMemory::collectEachPossibleTPMUsers() {
   assert(m_AIUsers.empty());
-  m_AlreadyAdded.clear();
   // At first collect every alloca user
   for (auto B = m_allocaToIntrinsic.begin(), E = m_allocaToIntrinsic.end();
        B != E; ++B) {
@@ -990,15 +992,9 @@ void GenXThreadPrivateMemory::collectEachPossibleTPMUsers() {
   }
   // Then collect all pointer args - they may be used
   // in loads/stores we need to lower to svm intrinsics
-  // Process args if only we are sure
-  // it's necessary
-  if (m_useGlobalMem) {
-    for (auto &Arg : m_args) {
-      // SVM-pointer func arg users should be handled too
-      if (checkSVMNecessary(Arg))
-        addUsers(Arg);
-    }
-  }
+  // m_args already contatins only args that require processing
+  for (auto &Arg : m_args)
+    addUsers(Arg);
 }
 
 void GenXThreadPrivateMemory::addUsersIfNeeded(Value *V) {
@@ -1030,10 +1026,9 @@ bool GenXThreadPrivateMemory::runOnModule(Module &M) {
   m_ST = STP->getSubtarget();
   for (auto &F : M)
     visit(F);
-  if (std::find_if(m_alloca.begin(), m_alloca.end(), checkSVMNecessaryPred) !=
-          m_alloca.end() ||
-      std::find_if(m_args.begin(), m_args.end(), checkSVMNecessaryPred) !=
-          m_args.end()) {
+  if (!m_useGlobalMem &&
+      std::find_if(m_alloca.begin(), m_alloca.end(), checkSVMNecessaryPred) !=
+          m_alloca.end()) {
     LLVM_DEBUG(dbgs() << "Switching TPM to SVM\n");
     // TODO: move the name string to vc-intrinsics *MD::useGlobalMem
     M.addModuleFlag(Module::ModFlagBehavior::Error, "genx.useGlobalMem", 1);
@@ -1095,6 +1090,7 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   }
 
   // Main loop where instructions are replaced one by one.
+  m_AlreadyAdded.clear();
   collectEachPossibleTPMUsers();
   while (!m_AIUsers.empty()) {
     Instruction *I = m_AIUsers.front();
@@ -1145,11 +1141,10 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   }
 
   for (auto AllocaPair : m_allocaToIntrinsic) {
-    if (!AllocaPair.first->use_empty()) {
-      for (const auto &U : AllocaPair.first->users()) {
-        assert(U->getNumUses() == 0);
-        cast<Instruction>(U)->eraseFromParent();
-      }
+    while (!AllocaPair.first->user_empty()) {
+      const auto &U = AllocaPair.first->user_back();
+      assert(U->getNumUses() == 0);
+      cast<Instruction>(U)->eraseFromParent();
     }
     assert(AllocaPair.first->use_empty() &&
            "uses of replaced alloca aren't empty");
@@ -1188,6 +1183,13 @@ void GenXThreadPrivateMemory::visitAllocaInst(AllocaInst &I) {
 
 void GenXThreadPrivateMemory::visitFunction(Function &F) {
   for (auto &Arg : F.args())
-    if (Arg.getType()->isPointerTy())
+    if (Arg.getType()->isPointerTy() && checkSVMNecessaryPred(&Arg)) {
+      LLVM_DEBUG(dbgs() << "Switching TPM to SVM: svm arg\n");
+      // TODO: move the name string to vc-intrinsics *MD::useGlobalMem
+      if (!m_useGlobalMem)
+        F.getParent()->addModuleFlag(Module::ModFlagBehavior::Error,
+                                     "genx.useGlobalMem", 1);
+      m_useGlobalMem = true;
       m_args.push_back(&Arg);
+    }
 }
