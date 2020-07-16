@@ -368,6 +368,7 @@ namespace IGC {
         BasicBlock::iterator I = blk.end();
         --I;
         bool processedBegin = false;
+        bool metDbgValueIntrinsic = false;
         SmallPtrSet<Instruction*, 16> stores;
         undoLocas.clear();
         movedInsts.clear();
@@ -389,6 +390,10 @@ namespace IGC {
             else if (isa<DbgInfoIntrinsic>(inst) || inst->isTerminator() ||
                 isa<PHINode>(inst) || inst->use_empty())
             {
+                if (isa<DbgValueInst>(inst))
+                {
+                    metDbgValueIntrinsic = true;
+                }
                 prevLoca = inst;
             }
             else {
@@ -431,7 +436,7 @@ namespace IGC {
                 }
             }
         }
-        if (madeChange) {
+        if (madeChange || metDbgValueIntrinsic) {
             ProcessDbgValueInst(blk);
         }
 
