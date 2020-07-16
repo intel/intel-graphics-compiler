@@ -7764,6 +7764,11 @@ bool G4_INST::canDstBeAcc() const
         return false;
     }
 
+    if (!builder.hasFP64Acc() && dst->getType() == Type_DF)
+    {
+        return false;
+    }
+
     // src0 may not have indirect regioning
     if (!builder.accDstforIndirectSrc() && getSrc(0) && getSrc(0)->isSrcRegRegion())
     {
