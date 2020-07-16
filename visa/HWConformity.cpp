@@ -2186,15 +2186,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
     G4_CondMod* condmod = builder.duplicateOperand(inst->getCondMod());
     G4_Predicate* pred = builder.duplicateOperand(inst->getPredicate());
 
-    // check if the following inst is mulh and uses the same srcs as this mul.
-    // if true, translate them into
-    // mul acc src0 src1
-    // mach dst_mulh src0 src1
-    // mov mul_dst src0 src1
-    INST_LIST_ITER next_i = i;
-    next_i++;
     G4_Type tmp_type = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
-    bool isCompressed = isCompressedInst(inst);
 
     if (src1->isSrcRegRegion())
     {
@@ -2210,115 +2202,17 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
     bool sat_mod = inst->getSaturate();
     inst->setSaturate(false);
 
-    // see if we can combine this mul with a mulh following it
-    if (next_i != bb->end())
-    {
-        G4_INST* next_inst = *next_i;
-
-        if (next_inst->opcode() == G4_mulh &&
-            next_inst->getExecSize() == exec_size &&
-            inst->getPredicate() == next_inst->getPredicate() &&
-            ((srcExchanged &&
-                src0->getType() == next_inst->getSrc(1)->getType() &&
-                src0->compareOperand(next_inst->getSrc(1)) == Rel_eq &&
-                src1->getType() == next_inst->getSrc(0)->getType() &&
-                src1->compareOperand(next_inst->getSrc(0)) == Rel_eq) ||
-                (!srcExchanged &&
-                    src0->getType() == next_inst->getSrc(0)->getType() &&
-                    src0->compareOperand(next_inst->getSrc(0)) == Rel_eq &&
-                    src1->getType() == next_inst->getSrc(1)->getType() &&
-                    src1->compareOperand(next_inst->getSrc(1)) == Rel_eq)))
-        {
-            // change current mul inst
-            G4_DstRegRegion* acc_dst_opnd = builder.createDst(
-                builder.phyregpool.getAcc0Reg(),
-                0,
-                0,
-                1,
-                tmp_type);
-
-            inst->setDest(acc_dst_opnd);
-
-            fixMulSrc1(i, bb);
-
-            inst->transferUse(next_inst, true);
-            inst->addDefUse(next_inst, Opnd_implAccSrc);
-            // change mulh inst
-            next_inst->setOpcode(G4_mach);
-
-            G4_DstRegRegion* next_dst = next_inst->getDst();
-            if (next_dst != NULL &&
-                (next_inst->getSaturate() ||
-                    next_dst->getByteOffset() % GENX_GRF_REG_SIZ != 0 ||
-                    (!bb->isAllLaneActive() && next_inst->isWriteEnableInst() == false) ||
-                    (next_dst &&
-                    ((next_dst->getExecTypeSize() > G4_Type_Table[Type_D].byteSize) ||
-                        isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(next_dst)))))
-            {
-                // add a tmp mov
-                G4_DstRegRegion* new_next_dst = insertMovAfter(next_i, next_dst, next_dst->getType(), bb);
-                next_inst->setDest(new_next_dst);
-            }
-
-            // set implicit source/dst for MACH
-            const RegionDesc* rd = exec_size == 1 ? builder.getRegionScalar() : builder.getRegionStride1();
-            G4_SrcRegRegion* acc_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
-            next_inst->setImplAccSrc(acc_src_opnd);
-            next_inst->setImplAccDst(builder.createDstRegRegion(*acc_dst_opnd));
-
-            // create mov inst
-            G4_SrcRegRegion* movAccSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
-            G4_INST* newMov = builder.createMov(exec_size, dst, movAccSrc, inst_opt, false);
-            newMov->setPredicate(pred);
-            newMov->setCondMod(condmod);
-
-            INST_LIST_ITER iter = next_i;
-            iter++;
-            bb->insertBefore(iter, newMov);
-
-            next_inst->addDefUse(newMov, Opnd_src0);
-
-            INST_LIST_ITER last_iter = iter;
-            last_iter--;
-
-            if (dst != NULL &&
-                (sat_mod ||
-                (dst &&
-                    ((dst->getExecTypeSize() > G4_Type_Table[Type_D].byteSize) ||
-                    (isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst))))))
-            {
-                // add a tmp mov
-                iter--;
-                G4_DstRegRegion* new_next_dst = insertMovAfter(iter, dst, dst->getType(), bb);
-                newMov->setDest(new_next_dst);
-                if (new_next_dst != dst && sat_mod)
-                {
-                    MUST_BE_TRUE(iter != bb->end() && (*iter)->opcode() == G4_mov,
-                        "Next instruciton should be the MOV generated for consistent Dst and ACC source region.");
-                    (*iter)->setSaturate(false);
-                }
-            }
-
-            next_inst->setOptionOn(InstOpt_AccWrCtrl);
-
-            if (exec_size > builder.getNativeExecSize())
-            {
-                splitDWMULInst(i, last_iter, bb);
-            }
-            return true;
-        }
-    }
-
     G4_DstRegRegion* acc_dst_opnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, tmp_type);
     inst->setDest(acc_dst_opnd);
     fixMulSrc1(i, bb);
 
     inst->setNoMask(true);
 
-    if (pred != NULL) {
+    if (pred)
+    {
         // conditional modifier cannot be used
         // when the MUL source operand is of dword type.
-        inst->setCondMod(NULL);
+        inst->setCondMod(nullptr);
     }
 
     // Dst is either null, or a temp D if the original dst is Q/UQ
@@ -2344,7 +2238,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
     iter++;
     bb->insertBefore(iter, newInst);
 
-    inst->setPredicate(NULL);
+    inst->setPredicate(nullptr);
 
     inst->copyDef(newInst, Opnd_src0, Opnd_src0);
     inst->copyDef(newInst, Opnd_src1, Opnd_src1);
@@ -2352,16 +2246,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
     inst->addDefUse(newInst, Opnd_implAccSrc);
 
     // create an implicit source for MACH
-    const RegionDesc* rd = NULL;
-    unsigned short vs = 0, wd = exec_size, hs = 0;
-    if (exec_size > 1) {
-        if (isCompressed) {
-            wd = wd / 2;
-        }
-        hs = 1;
-        vs = wd;
-    }
-    rd = builder.createRegionDesc(vs, wd, hs);
+    const RegionDesc* rd = exec_size > 1 ? builder.getRegionStride1() : builder.getRegionScalar();
     G4_SrcRegRegion* acc_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct,
         builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
 
