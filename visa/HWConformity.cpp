@@ -5637,15 +5637,17 @@ void HWConformity::conformBB(G4_BB* bb)
 }
 
 //
-// SIMD16 addc/subb are illegal on GEN, since they write to acc and there are only 8 acc
-// channels for D/UD type.  In vISA IR we should get something like
-// addc (16) V0 V2 V3
-// mov  (16) V1 acc0<8;8,1>:ud
+// SIMD16 addc/subb are illegal on GEN, since they write to acc and there are
+// only 8 acc channels for D/UD type.  In vISA IR we should get something like
+//   addc (16|M0) V0  V2       V3
+//   use  (16|M0) V1  ... acc0:ud // or :d
 // which needs to be translated to
-// addc (8) V0(0) V2(0) V3(0) {Q1}
-// mov (8) V1(0) acc0<8;8,1>:ud {Q1}
-// addc (8) V0(1) V2(1) V3(1) {Q2}
-// mov (8) V1(1) acc0<8;8,1>:ud {Q2}
+//   addc (8|M0)  V0(0)  V2(0)  V3(0)
+//   use  (8|M0)  V1(0) ... acc0:ud
+//   addc (8|M8)  V0(1)  V2(1)  V3(1)
+//   use  (8|M8)  V1(1) ... acc0:ud
+// NOTE: we also support other consumers such as add.
+//
 //
 // We do this first thing in HW conformity to avoid REXES from splitting addc/subb incorrectly
 // We also count on previous opt to preserve the inst pair by not inserting any acc using inst in between;
@@ -5653,13 +5655,12 @@ void HWConformity::conformBB(G4_BB* bb)
 //
 // If exec size of addc is < 8, we also have to make sure both the addc's dst and the carry move's dst are
 // GRF-aligned, since acc's channel is dependent on the dst's subreg offset.  In other words, we fix
-// addc (1) r1.0 ...
-// mov (1) r1.1 acc0.0<0;1,0>
+//   addc (1) r1.0 ...
+//   mov (1) r1.1 acc0.0<0;1,0>
 // into
-// addc (1) r1.0 ...
-// mov (1) r2.0 acc0.0<0;1,0>
-// mov (1) r1.1 r2.0
-//
+//   addc (1) r1.0 ...
+//   mov (1) r2.0 acc0.0<0;1,0>
+//   mov (1) r1.1 r2.0
 //
 bool HWConformity::fixAddcSubb(G4_BB* bb)
 {
@@ -5672,40 +5673,59 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
             inst->getExecSize() != builder.getNativeExecSize())
         {
             // find the matching carry move
-            G4_INST* carryMov = nullptr;
-            auto movIter = iter;
-            for (++movIter; movIter != iterEnd; ++movIter)
+            G4_INST* carryUse = nullptr;
+            auto srchIter = iter;
+            for (++srchIter; srchIter != iterEnd; ++srchIter)
             {
-                G4_INST* inst2 = *movIter;
-                if (inst2->opcode() == G4_mov && inst2->getExecSize() == inst->getExecSize() &&
-                    inst2->getSrc(0)->isAccReg() && inst2->getSrc(0)->getType() == Type_UD)
+                G4_INST* inst2 = *srchIter;
+                auto op = inst2->opcode();
+
+                bool opPossibleConsumer =
+                    op == G4_mov || op == G4_add || op == G4_addc ||
+                    op == G4_mad || op == G4_pseudo_mad;
+
+                auto srcUsesAcc = [&] (int srcIx) {
+                    if (srcIx >= inst2->getNumSrc())
+                        return false;
+                    auto type = inst2->getSrc(srcIx)->getType();
+                    return inst2->getSrc(srcIx)->isAccReg() &&
+                        (type == Type_UD || type == Type_D);
+                };
+
+                // only check for a handful of user instructions
+                // this list could be extended
+                if (opPossibleConsumer &&
+                    inst2->getExecSize() == inst->getExecSize() &&
+                    (srcUsesAcc(0) || srcUsesAcc(1) || srcUsesAcc(1)))
                 {
-                    carryMov = inst2;
+                    carryUse = inst2;
                     break;
                 }
                 else if (inst2->useAcc())
                 {
+                    // someone redefines acc0; we can stop looking
                     break;
                 }
             }
 
-            if (carryMov == NULL)
+            if (carryUse == NULL)
             {
                 // can't find the move using acc, skip this addc/subb
-                assert(false && "expect a carry move instruction");
+                assert(false && "unable to find addc/subc consumer");
                 continue;
             }
 
             if (inst->getExecSize() > builder.getNativeExecSize())
             {
+                // we're breaking a bigger instruction into a smaller one
                 evenlySplitInst(iter, bb);
-                evenlySplitInst(movIter, bb);
+                evenlySplitInst(srchIter, bb);
 
-                // movIter now points to the second half of move, and we want to move the first move to be
+                // srchIter now points to the second half of move, and we want to move the first move to be
                 // before the second half of the addc/subb, which is pointed by iter
-                --movIter;
-                G4_INST* mov1 = *movIter;
-                bb->erase(movIter);
+                --srchIter;
+                G4_INST* mov1 = *srchIter;
+                bb->erase(srchIter);
                 bb->insertBefore(iter, mov1);
 
                 changed = true;
@@ -5721,10 +5741,10 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
                         insertMovAfter(iter, inst->getDst(), inst->getDst()->getType(), bb));
                     changed = true;
                 }
-                if (!builder.isOpndAligned(carryMov->getDst(), 32))
+                if (!builder.isOpndAligned(carryUse->getDst(), 32))
                 {
-                    carryMov->setDest(
-                        insertMovAfter(movIter, carryMov->getDst(), carryMov->getDst()->getType(), bb));
+                    carryUse->setDest(
+                        insertMovAfter(srchIter, carryUse->getDst(), carryUse->getDst()->getType(), bb));
                     changed = true;
                 }
             }

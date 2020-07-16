@@ -284,14 +284,14 @@ void G4Verifier::verifyDstSrcOverlap(G4_INST* inst)
             if (src != NULL && !src->isNullReg() && src->getTopDcl() &&
                 (src->getTopDcl()->getRegFile() == G4_GRF || src->getTopDcl()->getRegFile() == G4_INPUT))
             {
-                bool noOverlap = dataHazardCheck(dst, src);
+                bool overlap = dataHazardCheck(dst, src);
 
                 int srcStart = src->getLinearizedStart() / GENX_GRF_REG_SIZ;
                 int srcEnd = src->getLinearizedEnd() / GENX_GRF_REG_SIZ;
                 if (dstEnd != dstStart ||
                     srcStart != srcEnd)  //Any operand is more than 2 GRF
                 {
-                    MUST_BE_TRUE(!noOverlap, "dst and src0 overlap");
+                    MUST_BE_TRUE(!overlap, "dst and src0 overlap");
                 }
             }
         }
@@ -392,7 +392,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
         opnd->isNullReg() == false &&
         opnd->isAddrExp() == false)
     {
-        DEBUG_VERBOSE("Inst not set correctly for opnd ");
+        DEBUG_VERBOSE("operand does not have exactly one owning instruction (shared or orphaned)");
 
         std::cerr << "operand: ";
         opnd->emit(std::cerr);
@@ -402,15 +402,13 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
 
         if (opnd->getInst() == NULL)
         {
-            DEBUG_VERBOSE("Inst set to NULL");
-            MUST_BE_TRUE(false, "Inst pointer set to NULL in opnd");
+            DEBUG_VERBOSE("operand has no owner instruction (orphaned)");
+            MUST_BE_TRUE(false, "operand has no owner instruction (orphaned)");
         }
         else
         {
-            opnd->getInst()->emit(std::cerr);
-            std::cerr << "\n";
-            DEBUG_VERBOSE("Inst ptr set to incorrect inst");
-            MUST_BE_TRUE(false, "Inst pointer incorrectly set in opnd");
+            DEBUG_VERBOSE("operand pointer is shared by another instruction");
+            MUST_BE_TRUE(false, "operand pointer is shared by another instruction");
         }
         DEBUG_VERBOSE(std::endl);
     }
