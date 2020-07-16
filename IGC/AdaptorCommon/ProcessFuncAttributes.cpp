@@ -283,19 +283,21 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             }
         }
 
-        if (isEntryFunc(pMdUtils, F))
+        bool istrue = false;
+
+        const bool isKernel = isEntryFunc(pMdUtils, F);
+
+        if (isKernel && !istrue)
         {
             // No need to process kernel funcs any further
             continue;
         }
-        else
+        else if (!isKernel)
         {
             F->setLinkage(GlobalValue::InternalLinkage);
             Changed = true;
         }
 
-
-        bool istrue = false;
         // Add function attribute for indirectly called functions
         if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
         {
@@ -330,6 +332,9 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 Changed = true;
             }
         }
+
+        if (isKernel)
+            continue;
 
         // Flag for function calls where alwaysinline must be true
         bool mustAlwaysInline = false;
