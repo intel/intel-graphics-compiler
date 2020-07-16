@@ -1210,7 +1210,7 @@ namespace IGC
         else
         {
             payload = outProgram->GetNewVariable(
-                numOperands * numLanes(simdMode), ISA_TYPE_F, EALIGN_GRF, CName::NONE);
+                numOperands * numLanes(simdMode), ISA_TYPE_F, outProgram->GetContext()->platform.getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD, CName::NONE);
 
             for (uint i = 0; i < numOperands; i++)
             {

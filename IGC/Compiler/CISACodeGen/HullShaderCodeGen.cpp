@@ -435,7 +435,7 @@ namespace IGC
         // Allocate payload with size = messageLength
         CVariable* pPayload = GetNewVariable(
             messageLength * numLanes(m_SIMDSize),
-            ISA_TYPE_D, IGC::EALIGN_GRF, CName::NONE);
+            ISA_TYPE_D, EALIGN_GRF, CName::NONE);
 
         // Get the register with URBHandles
         CopyVariable(pPayload, m_pURBWriteHandleReg);

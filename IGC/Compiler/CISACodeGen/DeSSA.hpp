@@ -266,6 +266,8 @@ namespace IGC {
         /// If there is no node for Val, create a new one.
         void addReg(llvm::Value* Val, e_alignment Align);
 
+        int getGRFSize() const { return CTX->platform.getGRFSize(); }
+
         /// union-by-rank:
         ///   Join the congruence classes of two registers by attaching
         ///   a shorter tree to a taller tree. If they have the same height,

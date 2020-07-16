@@ -2441,7 +2441,7 @@ void EmitPass::emitExtractMVAndSAD(llvm::GenIntrinsicInst* inst)
     CVariable* pFlag = m_currShader->GetNewVariable(
         16,
         ISA_TYPE_BOOL,
-        IGC::EALIGN_GRF,
+        EALIGN_GRF,
         CName::NONE);
 
     auto EmitCmp = [&](unsigned imm)
@@ -2525,7 +2525,7 @@ void EmitPass::emitCmpSADs(llvm::GenIntrinsicInst* inst)
     CVariable* pFlag = m_currShader->GetNewVariable(
         16,
         ISA_TYPE_BOOL,
-        IGC::EALIGN_GRF,
+        EALIGN_GRF,
         CName::NONE);
 
     CVariable* pSADCurrAlias = m_currShader->GetNewAlias(pSADCurr, ISA_TYPE_UW, 0, 16);
@@ -10807,7 +10807,7 @@ CVariable* EmitPass::ExtendVariable(CVariable* pVar, e_alignment uniformAlign) {
         // to align it for SIMD1 gather/scatter.
         if (!pVar->IsUniform())
             return pVar;
-        if (!pVar->IsImmediate() && pVar->IsGRFAligned(uniformAlign))
+        if (!pVar->IsImmediate() && IsGRFAligned(pVar, EALIGN_GRF))
             return pVar;
         // Otherwise, we need to re-align the variable holding that uniform value.
     }
@@ -10891,7 +10891,7 @@ CVariable* EmitPass::TruncatePointer(CVariable* pVar) {
             return pVar;
         // For uniform variable, we need to re-align to GRF to ensure it's
         // placed at the 1st element.
-        if (!pVar->IsImmediate() && pVar->IsGRFAligned())
+        if (!pVar->IsImmediate() && IsGRFAligned(pVar, EALIGN_GRF))
             return pVar;
         // Re-align the container of the pointer.
     }
@@ -10915,7 +10915,7 @@ CVariable* EmitPass::ReAlignUniformVariable(CVariable* pVar, e_alignment align) 
     if (!pVar->IsUniform())
         return pVar;
 
-    if (!pVar->IsImmediate() && pVar->IsGRFAligned(align))
+    if (!pVar->IsImmediate() && IsGRFAligned(pVar, EALIGN_GRF))
         return pVar;
 
     CVariable* NewVar = m_currShader->GetNewVariable(
@@ -11024,7 +11024,7 @@ CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue
         dst = m_currShader->GetNewVariable(
             numLanes(m_currShader->m_SIMDSize),
             type,
-            IGC::EALIGN_GRF,
+            EALIGN_GRF,
             false,
             src->getName());
     }
@@ -11033,7 +11033,7 @@ CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue
         IGC_ASSERT(0 < dst->GetElemSize());
         IGC_ASSERT(numLanes(m_currShader->m_SIMDSize) == (dst->GetSize() / dst->GetElemSize()));
         IGC_ASSERT(dst->GetType() == type);
-        IGC_ASSERT(dst->GetAlign() == IGC::EALIGN_GRF);
+        IGC_ASSERT(dst->GetAlign() == EALIGN_GRF);
         IGC_ASSERT(!dst->IsUniform());
     }
 
@@ -11385,7 +11385,7 @@ void EmitPass::emitReductionAll(
             temp = m_currShader->GetNewVariable(
                 numLanes(SIMDMode::SIMD16),
                 type,
-                IGC::EALIGN_GRF,
+                EALIGN_GRF,
                 false,
                 CName::NONE);
             if (isInt64Mul)
@@ -11647,19 +11647,19 @@ void EmitPass::emitPreOrPostFixOp(
             pMulSrc[0] = m_currShader->GetNewVariable(
                 maxNumLanes,
                 type,
-                IGC::EALIGN_GRF,
+                EALIGN_GRF,
                 false,
                 pSrc0->getName());
             pMulSrc[1] = m_currShader->GetNewVariable(
                 maxNumLanes,
                 type,
-                IGC::EALIGN_GRF,
+                EALIGN_GRF,
                 false,
                 pSrc1->getName());
             CVariable* pMulDst = m_currShader->GetNewVariable(
                 maxNumLanes,
                 type,
-                IGC::EALIGN_GRF,
+                EALIGN_GRF,
                 false,
                 pDst->getName());
 
@@ -11875,7 +11875,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
         result[i] = m_currShader->GetNewVariable(
             numLanes(m_currShader->m_SIMDSize),
             type,
-            IGC::EALIGN_GRF,
+            EALIGN_GRF,
             false,
             CName::NONE);
 
@@ -11915,7 +11915,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
             m_currShader->GetNewVariable(
                 1,
                 type,
-                IGC::EALIGN_GRF,
+                EALIGN_GRF,
                 true,
                 result[0]->getName()) : nullptr;
 
@@ -12061,7 +12061,7 @@ void EmitPass::emitScalarAtomics(
     CVariable* pFinalAtomicSrcVal = m_currShader->GetNewVariable(
         1,
         type,
-        isA64 ? IGC::EALIGN_2GRF : IGC::EALIGN_GRF,
+        isA64 ? EALIGN_2GRF : EALIGN_GRF,
         true,
         CName::NONE);
     CVariable* pSrcsArr[2] = { nullptr, nullptr };
@@ -12089,7 +12089,7 @@ void EmitPass::emitScalarAtomics(
     if (pDstAddr->IsImmediate())
     {
         CVariable* pDstAddrCopy = m_currShader->GetNewVariable(
-            1, ISA_TYPE_UD, IGC::EALIGN_GRF, true, CName::NONE);
+            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE);
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
         m_encoder->Copy(pDstAddrCopy, pDstAddr);
@@ -12102,13 +12102,13 @@ void EmitPass::emitScalarAtomics(
 
     CVariable* pReturnVal = returnsImmValue ?
         m_currShader->GetNewVariable(
-            1, ISA_TYPE_UD, IGC::EALIGN_GRF, true, CName::NONE) :
+            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE) :
         nullptr;
 
     if (bitWidth == 16)
     {
         CVariable* pCastAtomicSrcVal =
-            m_currShader->GetNewVariable(1, ISA_TYPE_UD, IGC::EALIGN_GRF, true, CName::NONE);
+            m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE);
 
         m_encoder->Cast(pCastAtomicSrcVal, pFinalAtomicSrcVal);
         pFinalAtomicSrcVal = pCastAtomicSrcVal;
@@ -12168,7 +12168,7 @@ void EmitPass::emitScalarAtomicLoad(
 {
     if (pDstAddr->IsImmediate())
     {
-        CVariable* pDstAddrCopy = m_currShader->GetNewVariable(1, ISA_TYPE_UD, IGC::EALIGN_GRF, true, pDstAddr->getName());
+        CVariable* pDstAddrCopy = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, pDstAddr->getName());
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
         m_encoder->Copy(pDstAddrCopy, pDstAddr);
@@ -12178,7 +12178,7 @@ void EmitPass::emitScalarAtomicLoad(
 
     {
         // pSrc is imm zero
-        CVariable* pSrcCopy = m_currShader->GetNewVariable(1, ISA_TYPE_UD, IGC::EALIGN_GRF, true, pSrc->getName());
+        CVariable* pSrcCopy = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, pSrc->getName());
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
         m_encoder->Copy(pSrcCopy, pSrc);
@@ -12193,7 +12193,7 @@ void EmitPass::emitScalarAtomicLoad(
         m_currShader->GetNewVariable(
             1,
             ISA_TYPE_UD,
-            isA64 ? IGC::EALIGN_2GRF : IGC::EALIGN_GRF,
+            isA64 ? EALIGN_2GRF : EALIGN_GRF,
             true,
             pDstAddr->getName()) : nullptr;
 
@@ -12452,7 +12452,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
             {
                 CVariable* pDwordAddr =
                     m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
-                        ISA_TYPE_D, IGC::EALIGN_GRF, CName::NONE);
+                        ISA_TYPE_D, EALIGN_GRF, CName::NONE);
 
                 m_encoder->Shl(pDwordAddr, pDstAddr,
                     m_currShader->ImmToVariable(0x2, ISA_TYPE_D));
@@ -12585,7 +12585,7 @@ void EmitPass::emitAtomicStructured(llvm::Instruction* pInsn)
         CVariable* pPayload = m_currShader->GetNewVariable(
             parameterLength * numLanes(m_currShader->m_SIMDSize),
             ISA_TYPE_D,
-            IGC::EALIGN_GRF,
+            EALIGN_GRF,
             CName::NONE);
 
         if (m_currShader->m_SIMDSize == SIMDMode::SIMD8)
@@ -12763,7 +12763,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
             pPayload[i] = m_currShader->GetNewVariable(
                 parameterLength * numLanes(SIMDMode::SIMD8),
                 ISA_TYPE_F,
-                IGC::EALIGN_GRF,
+                EALIGN_GRF,
                 CName::NONE);
 
             int writeIndex = 0;
@@ -12888,7 +12888,7 @@ void EmitPass::emitLdStructured(llvm::Instruction* pInsn)
         CVariable* pPayload =
             m_currShader->GetNewVariable(
                 (parameterLength)* numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_D, IGC::EALIGN_GRF, CName::NONE);
+                ISA_TYPE_D, EALIGN_GRF, CName::NONE);
 
         const unsigned int numLanesForSimdSize = numLanes(m_currShader->m_SIMDSize);
         IGC_ASSERT(numLanesForSimdSize);
@@ -13040,7 +13040,7 @@ void EmitPass::emitStoreStructured(llvm::Instruction* pInsn)
         CVariable* pPayload = m_currShader->GetNewVariable(
             parameterLength * numLanes(m_currShader->m_SIMDSize),
             ISA_TYPE_D,
-            IGC::EALIGN_GRF,
+            EALIGN_GRF,
             CName::NONE);
 
         uint writeIndex = 0;
@@ -13261,7 +13261,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
             CVariable* pPayload = m_currShader->GetNewVariable(
                 parameterLength * numLanes(m_currShader->m_SIMDSize),
                 ISA_TYPE_F,
-                IGC::EALIGN_GRF,
+                EALIGN_GRF,
                 CName::NONE);
             // pSrcX, Y, Z & W are broadcast to uniform by this function itself.
             m_currShader->CopyVariable(pPayload, pSrc_X, 0);
@@ -13286,7 +13286,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 pPayload = m_currShader->GetNewVariable(
                     parameterLength * numLanes(instWidth),
                     ISA_TYPE_F,
-                    IGC::EALIGN_GRF, CName::NONE);
+                    EALIGN_GRF, CName::NONE);
                 setSIMDSizeMask(m_encoder, m_currShader, i);
                 if (!pSrc_X->IsUniform())
                 {
@@ -13612,7 +13612,7 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
         pHeader = m_currShader->GetNewVariable(
             numLanes(SIMDMode::SIMD8),
             ISA_TYPE_UD,
-            IGC::EALIGN_GRF, CName::NONE);
+            EALIGN_GRF, CName::NONE);
 
         m_encoder->SetNoMask();
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
@@ -13624,7 +13624,7 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     CVariable* pPayload = m_currShader->GetNewVariable(
         8,
         ISA_TYPE_D,
-        IGC::EALIGN_GRF,
+        EALIGN_GRF,
         true, CName::NONE);
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetSrcRegion(0, 0, 1, 0);
@@ -13634,7 +13634,7 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     dst = m_currShader->GetNewVariable(
         8,
         ISA_TYPE_D,
-        IGC::EALIGN_GRF,
+        EALIGN_GRF,
         true, CName::NONE);
 
     uint messageDescriptor = encodeMessageDescriptorForAtomicUnaryOp(
@@ -13734,7 +13734,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     CVariable* pPayload = m_currShader->GetNewVariable(
         numLanes(SIMDMode::SIMD8),
         ISA_TYPE_UD,
-        IGC::EALIGN_GRF, CName::NONE);
+        EALIGN_GRF, CName::NONE);
     m_encoder->SetNoMask();
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetDstSubReg(7);
@@ -15052,7 +15052,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
 
         eOffset = ReAlignUniformVariable(eOffset, align);
 
-        bool needTemporary = (totalBytes < 4) || !m_destination->IsGRFAligned();
+        bool needTemporary = (totalBytes < 4) || !IsGRFAligned(m_destination, EALIGN_GRF);
         CVariable* gatherDst = m_destination;
         if (needTemporary)
         {
@@ -15096,7 +15096,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         bool useOWAligned = false;
         if (rightBlockSize && (useDWAligned || useOWAligned))
         {
-            bool needTemp = (!destUniform || !m_destination->IsGRFAligned());
+            bool needTemp = (!destUniform || !IsGRFAligned(m_destination, EALIGN_GRF));
             CVariable* loadDest = m_destination;
 
             if (useOWAligned)
@@ -15149,7 +15149,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         (totalBytes == 32 && (useA32 || !m_currShader->m_Platform->hasNoInt64Inst()))))
     {
         bool needTemp = !destUniform ||
-            !m_destination->IsGRFAligned() ||
+            !IsGRFAligned(m_destination, EALIGN_GRF) ||
             totalBytes == 12;
         // For uniform src, we can map value to messages (vector re-layout) as follows
         //   1. A64:
@@ -15397,7 +15397,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             rawAddrVar = eOffset;
         }
 
-        bool needTemp = (!m_destination->IsGRFAligned());
+        bool needTemp = (!IsGRFAligned(m_destination, EALIGN_GRF));
         CVariable* gatherDst;
         if (needTemp)
         {
@@ -15582,7 +15582,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
 
             // Prepare stored value
             if (storedVar->IsImmediate() || activelanes < nbelts ||
-                !storedVar->IsGRFAligned(grfAlign))
+                !IsGRFAligned(storedVar, grfAlign))
             {
                 CVariable* NewVar = m_currShader->GetNewVariable(
                     nbelts, storedVar->GetType(), grfAlign, true /*srcUniform*/, CName::NONE);
@@ -15792,7 +15792,7 @@ CVariable* EmitPass::prepareAddressForUniform(
     uint32_t allocNElts = (RequiredNElts > 0 ? RequiredNElts : pow2NElts);
     IGC_ASSERT(NElts <= 8 && (EltBytes == 4 || EltBytes == 8));
     IGC_ASSERT(allocNElts >= pow2NElts);
-    if (allocNElts == NElts && NElts == 1 && AddrVar->IsGRFAligned(Align))
+    if (allocNElts == NElts && NElts == 1 && IsGRFAligned(AddrVar, Align))
     {
         // No need to create a new var.
         return AddrVar;
@@ -15901,7 +15901,7 @@ CVariable* EmitPass::prepareDataForUniform(
     uint32_t pow2NElts = (uint32_t)(uint32_t)PowerOf2Ceil(NElts);
     uint32_t allocNElts = RequiredNElts > 0 ? RequiredNElts : pow2NElts;
     IGC_ASSERT(allocNElts >= pow2NElts && NElts <= 8 && (EltBytes == 4 || EltBytes == 8));
-    if (NElts == allocNElts && !DataVar->IsImmediate() && DataVar->IsGRFAligned(Align))
+    if (NElts == allocNElts && !DataVar->IsImmediate() && IsGRFAligned(DataVar, Align))
     {
         return DataVar;
     }

@@ -167,7 +167,7 @@ void CShader::EOTURBWrite()
     CVariable* pEOTPayload =
         GetNewVariable(
             messageLength * numLanes(SIMDMode::SIMD8),
-            ISA_TYPE_D, IGC::EALIGN_GRF, false, 1, "EOTPayload");
+            ISA_TYPE_D, EALIGN_GRF, false, 1, "EOTPayload");
 
     CVariable* zero = ImmToVariable(0x0, ISA_TYPE_D);
     // write at handle 0
@@ -1845,16 +1845,16 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
                 Value* Ptr = ST->getPointerOperand();
                 if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
                     if (IGC::isA64Ptr(cast<PointerType>(Ptr->getType()), pCtx))
-                        return EALIGN_2GRF;
-                    return EALIGN_GRF;
+                        return (pCtx->platform.getGRFSize() == 64) ? EALIGN_64WORD : EALIGN_32WORD;
+                    return (pCtx->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
                 }
             }
             if (StoreInst* ST = dyn_cast<StoreInst>(*UI)) {
                 Value* Ptr = ST->getPointerOperand();
                 if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
                     if (IGC::isA64Ptr(cast<PointerType>(Ptr->getType()), pCtx))
-                        return EALIGN_2GRF;
-                    return EALIGN_GRF;
+                        return (pCtx->platform.getGRFSize() == 64) ? EALIGN_64WORD : EALIGN_32WORD;
+                    return (pCtx->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
                 }
             }
 
@@ -1869,9 +1869,9 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
                 if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
                     if (PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType())) {
                         if (IGC::isA64Ptr(PtrTy, pCtx))
-                            return EALIGN_2GRF;
+                            return (pCtx->platform.getGRFSize() == 64) ? EALIGN_64WORD : EALIGN_32WORD;
                     }
-                    return EALIGN_GRF;
+                    return (pCtx->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
                 }
             }
         }
@@ -1935,10 +1935,10 @@ e_alignment IGC::GetPreferredAlignment(llvm::Value* V, WIAnalysis* WIA,
     if (LoadInst * LD = dyn_cast<LoadInst>(V)) {
         Value* Ptr = LD->getPointerOperand();
         // For 64-bit load, we have to check how the loaded value being used.
-        e_alignment Align = EALIGN_GRF;
+        e_alignment Align = (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
         if (IGC::isA64Ptr(cast<PointerType>(Ptr->getType()), pContext))
             Align = GetPreferredAlignmentOnUse(V, WIA, pContext);
-        return (Align == EALIGN_AUTO) ? EALIGN_GRF : Align;
+        return (Align == EALIGN_AUTO) ? (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD : Align;
     }
 
     // If uniform variables are results from uniform atomic ops, they need
@@ -1948,12 +1948,12 @@ e_alignment IGC::GetPreferredAlignment(llvm::Value* V, WIAnalysis* WIA,
         Value* Ptr = GII->getArgOperand(1);
         // For 64-bit atomic ops, we have to check how the return value being
         // used.
-        e_alignment Align = EALIGN_GRF;
+        e_alignment Align = (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
         if (PointerType * PtrTy = dyn_cast<PointerType>(Ptr->getType())) {
             if (IGC::isA64Ptr(PtrTy, pContext))
                 Align = GetPreferredAlignmentOnUse(V, WIA, pContext);
         }
-        return (Align == EALIGN_AUTO) ? EALIGN_GRF : Align;
+        return (Align == EALIGN_AUTO) ? (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD : Align;
     }
 
     // Check how that value is used.
@@ -1990,7 +1990,7 @@ CVariable* CShader::LazyCreateCCTupleBackingVariable(
         var = GetNewVariable(
             (uint16_t)numElts,
             ISA_TYPE_F,
-            EALIGN_GRF,
+            (GetContext()->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD,
             false,
             m_numberInstance,
             "CCTuple");
@@ -2471,7 +2471,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
                 {
                     // Map the entire vector value to the CVar
                     unsigned numElements = value->getType()->getVectorNumElements();
-                    var = GetNewVariable(numElements, ISA_TYPE_UQ, EALIGN_GRF, true, 1, valName);
+                    var = GetNewVariable(numElements, ISA_TYPE_UQ, (GetContext()->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD, true, 1, valName);
                     symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
 
                     // Copy over each element

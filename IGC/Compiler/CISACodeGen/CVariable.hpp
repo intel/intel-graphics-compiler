@@ -198,23 +198,6 @@ namespace IGC {
         bool IsVectorUniform() const { return m_uniformVector; }
         uint8_t GetNumberInstance() const { return m_numberOfInstance; }
         bool IsUndef() const { return m_undef; }
-        bool IsGRFAligned(e_alignment requiredAlign = EALIGN_GRF) const
-        {
-            e_alignment align = GetAlign();
-            if (requiredAlign == EALIGN_BYTE)
-            {
-                // trivial
-                return true;
-            }
-            if (requiredAlign == EALIGN_AUTO || align == EALIGN_AUTO)
-            {
-                // Can only assume that AUTO only matches AUTO (?)
-                // (keep the previous behavior unchanged.)
-                return align == requiredAlign;
-            }
-            return align >= requiredAlign;
-        }
-
         void setisUnpacked() { m_isUnpacked = true; }
         bool isUnpacked() { return m_isUnpacked; }
         uint8_t getOffsetMultiplier() const { return m_isUnpacked ? 2 : 1; }
@@ -239,6 +222,7 @@ namespace IGC {
             case 16: return EALIGN_OWORD;
             case 32: return EALIGN_HWORD;
             case 64: return EALIGN_32WORD;
+            case 128: return EALIGN_64WORD;
             default:
                 break;
             }

@@ -473,10 +473,27 @@ public:
         return nullptr;
     }
 
-    CVariable* ExtendVariable(CVariable* pVar, e_alignment uniformAlign = EALIGN_GRF);
+    bool IsGRFAligned(CVariable* pVar, e_alignment requiredAlign) const
+    {
+        e_alignment align = pVar->GetAlign();
+        if (requiredAlign == EALIGN_BYTE)
+        {
+            // trivial
+            return true;
+        }
+        if (requiredAlign == EALIGN_AUTO || align == EALIGN_AUTO)
+        {
+            // Can only assume that AUTO only matches AUTO (?)
+            // (keep the previous behavior unchanged.)
+            return align == requiredAlign;
+        }
+        return align >= requiredAlign;
+    }
+
+    CVariable* ExtendVariable(CVariable* pVar, e_alignment uniformAlign);
     CVariable* BroadcastAndExtend(CVariable* pVar);
     CVariable* TruncatePointer(CVariable* pVar);
-    CVariable* ReAlignUniformVariable(CVariable* pVar, e_alignment align = EALIGN_GRF);
+    CVariable* ReAlignUniformVariable(CVariable* pVar, e_alignment align);
     CVariable* BroadcastAndTruncPointer(CVariable* pVar);
     CVariable* IndexableResourceIndex(CVariable* indexVar, uint btiIndex);
     ResourceDescriptor GetResourceVariable(llvm::Value* resourcePtr);

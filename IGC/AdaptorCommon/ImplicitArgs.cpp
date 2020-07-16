@@ -173,8 +173,8 @@ IGC::e_alignment ImplicitArg::getAlignType(const DataLayout& DL) const
            return IGC::EALIGN_DWORD;
         case ALIGN_QWORD:
             return IGC::EALIGN_QWORD;
-        case ALIGN_GRF:
-           return IGC::EALIGN_GRF;
+        case ALIGN_GRF: //According to old implementation, EALIGN_GRF = EALIGN_HWORD, the correpsonding alignmentSize is 32, so EALIGN_HWORD will not change the old define.
+           return IGC::EALIGN_HWORD;  //FIXME: But, the ALIGN_GRF is really GRF aligned? If so, there is bug here.
         case ALIGN_PTR:
           return getPointerSize(DL) == 4 ? IGC::EALIGN_DWORD : IGC::EALIGN_QWORD;
         default:

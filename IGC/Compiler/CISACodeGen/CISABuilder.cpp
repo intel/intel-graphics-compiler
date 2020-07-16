@@ -4532,11 +4532,11 @@ namespace IGC
             break;
         case EALIGN_OWORD: align = ALIGN_OWORD;
             break;
-        case EALIGN_GRF:
-            align = ALIGN_HWORD;
+        case EALIGN_HWORD: align = ALIGN_HWORD;
             break;
-        case EALIGN_2GRF:
-            align = ALIGN_32WORD;
+        case EALIGN_32WORD: align = ALIGN_32WORD;
+            break;
+        case EALIGN_64WORD: align = ALIGN_64WORD;
             break;
         default:
             align = ALIGN_UNDEF;

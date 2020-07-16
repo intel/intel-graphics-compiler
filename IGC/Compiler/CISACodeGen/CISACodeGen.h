@@ -70,13 +70,15 @@ namespace IGC
         EALIGN_QWORD,
         EALIGN_OWORD,
         EALIGN_HWORD,
-        EALIGN_GRF = EALIGN_HWORD,
         EALIGN_32WORD,
-        EALIGN_2GRF = EALIGN_32WORD,
+        EALIGN_64WORD,
         EALIGN_AUTO
     };
 
-    static const std::array<unsigned int, 7> alignmentSize =
+#define EALIGN_GRF EALIGN_HWORD
+#define EALIGN_2GRF EALIGN_32WORD
+
+    static const std::array<unsigned int, 8> alignmentSize =
     {
         1,
         2,
@@ -84,7 +86,8 @@ namespace IGC
         8,
         16,
         32,
-        64
+        64,
+        128
     };
 
     class calignmentSize
