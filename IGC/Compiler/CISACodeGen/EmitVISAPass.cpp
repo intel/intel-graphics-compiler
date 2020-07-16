@@ -10310,6 +10310,51 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
         }
         else
         {
+            // Lower execution size to avoid complains of indirectly addressing across more than two GRFs.
+            // One example is below:
+            //(W)     mov (1|M0)              f1.1<1>:uw    0x100:uw
+            //(f1.1)  mov(16|M0)              r[a0.8]<1>:f  r63.0 < 0; 1, 0 >:f
+            //will be changed to
+            //(W)     mov (1|M0)              f1.1<1>:uw    0x100:uw
+            //(f1.1)  mov(8|M8)              r[a0.8+0x20]<1>:f  r63.0 < 0; 1, 0 >:f
+            // To avoid complains, we limit the execSizeNew*datatypesize to the same memory size of getMinDispatchMode()
+            // In above example, say, getMinDispatchMode()==8, that means the execSizeNew should be 8
+            // because 8 * SIZE_DWORD = getMinDispatchMode() * SIZE_DWORD
+            // But if datatype is 64bit, then, execSizeNew should be 4
+            // because 4 * SIZE_QWORD = getMinDispatchMode() * SIZE_DWORD
+            // Changing to simd1 needs more work and might cause extra overhead as well.
+            // indirect address, emaskoffset should be offsetted correspondingly
+            SIMDMode simdMode = std::min(m_currShader->m_SIMDSize, SIMDMode::SIMD16);
+            SIMDMode minDispatchMode = m_currShader->m_Platform->getMinDispatchMode();
+            SIMDMode execSizeNew = minDispatchMode;
+            bool bWAMultiGRF = false;
+            if (m_currShader->m_Platform->enableMultiGRFAccessWA())
+            {
+                uint32_t dataTypeSize = pElement->getType()->getScalarSizeInBits();
+                uint32_t memSizeToUse = numLanes(simdMode) * dataTypeSize / 8;
+                uint32_t memSizeMinDisp = numLanes(minDispatchMode) * SIZE_DWORD;
+                bWAMultiGRF = (memSizeToUse > memSizeMinDisp);
+                if (bWAMultiGRF)
+                {
+                    execSizeNew = lanesToSIMDMode(memSizeMinDisp * 8 / dataTypeSize);
+                    uint32_t lanesNew = numLanes(execSizeNew);
+                    int cnt = memSizeToUse / memSizeMinDisp;
+                    for (int i=1; i<cnt; i++)
+                    {
+                        CVariable* pOffset1_2ndHalf = m_currShader->ImmToVariable(memSizeMinDisp * i, ISA_TYPE_UW);
+                        uint32_t laneIdx = lanesNew * i;
+                        CVariable* pOffset2_2ndHalf = m_currShader->GetNewAlias(pOffset2, ISA_TYPE_UW, laneIdx * SIZE_WORD, 0);
+                        m_encoder->SetSrcRegion(0, lanesNew, lanesNew, 1);
+                        m_encoder->SetSimdSize(execSizeNew);
+                        m_encoder->SetMask((laneIdx / 8) % 2 ? EMASK_Q2 : EMASK_Q1);
+                        m_encoder->SetSecondNibble((laneIdx / 4) % 2 ? true : false);
+                        m_encoder->Add(pOffset2_2ndHalf, pOffset2_2ndHalf, pOffset1_2ndHalf);
+                        m_encoder->Push();
+                    }
+                    m_encoder->SetSecondNibble(false);
+                }
+            }
+
             int loopCount = (m_currShader->m_dispatchSize == SIMDMode::SIMD32 && m_currShader->m_numberInstance == 1) ? 2 : 1;
             for (int i = 0; i < loopCount; ++i)
             {
@@ -10318,7 +10363,6 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                     // explicitly set second half as we are manually splitting
                     m_encoder->SetSecondHalf(true);
                 }
-                SIMDMode simdMode = std::min(m_currShader->m_SIMDSize, SIMDMode::SIMD16);
                 CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
                     numLanes(simdMode),
                     m_destination->GetType(),
@@ -10355,9 +10399,22 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                     }
                     m_encoder->SetSrcRegion(0, 0, 1, 0);
                     m_encoder->SetDstSubReg(lane);
-                    m_encoder->SetSimdSize(simdMode);
+                    if(bWAMultiGRF)
+                    {
+                        m_encoder->SetMask((lane / 8) % 2 ? EMASK_Q2 : EMASK_Q1);
+                        if (execSizeNew == SIMDMode::SIMD4)
+                        {
+                            m_encoder->SetSecondNibble((lane / 4) % 2 ? true : false);
+                        }
+                        m_encoder->SetSimdSize(execSizeNew);
+                    }
+                    else
+                    {
+                        m_encoder->SetSimdSize(simdMode);
+                    }
                     m_encoder->Copy(pDstArrElm, pElemVar);
                     m_encoder->Push();
+                    m_encoder->SetSecondNibble(false);
                 }
             }
         }

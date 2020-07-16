@@ -125,6 +125,7 @@ namespace IGC
         bool      m_noMask;
         bool      m_SubSpanDestination;
         bool      m_secondHalf;
+        bool      m_secondNibble = false;
     };
 
     class CEncoder
@@ -353,6 +354,8 @@ namespace IGC
         inline bool IsSubSpanDestination();
         inline void SetSecondHalf(bool secondHalf);
         inline bool IsSecondHalf();
+        inline void SetSecondNibble(bool secondNibble);
+        inline bool IsSecondNibble();
 
         void Wait();
 
@@ -923,6 +926,16 @@ namespace IGC
     inline bool CEncoder::IsSecondHalf()
     {
         return m_encoderState.m_secondHalf;
+    }
+
+    inline void CEncoder::SetSecondNibble(bool secondNibble)
+    {
+        m_encoderState.m_secondNibble = secondNibble;
+    }
+
+    inline bool CEncoder::IsSecondNibble()
+    {
+        return m_encoderState.m_secondNibble;
     }
 
     inline bool CEncoder::IsSubSpanDestination()

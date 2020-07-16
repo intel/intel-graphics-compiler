@@ -569,7 +569,13 @@ bool WaEnableA64WA() const
     return false;
 }
 
-    const SCompilerHwCaps& GetCaps() { return m_caps; }
+//Only enable this WA for TGLLP+ because, in pre TGLLP projects, smov was replaced with two instructions which caused performance penalty.
+bool enableMultiGRFAccessWA() const
+{
+    return (m_platformInfo.eProductFamily >= IGFX_TIGERLAKE_LP);
+}
+
+const SCompilerHwCaps& GetCaps() { return m_caps; }
 };
 
 }//namespace IGC

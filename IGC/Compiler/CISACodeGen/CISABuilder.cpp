@@ -3379,38 +3379,63 @@ namespace IGC
 
     VISA_EMask_Ctrl CEncoder::ConvertMaskToVisaType(e_mask mask, bool noMask)
     {
+        VISA_EMask_Ctrl emaskRet = vISA_EMASK_M1_NM;
         switch (mask)
         {
         case EMASK_Q1:
             if (m_encoderState.m_secondHalf)
             {
-                return noMask ? vISA_EMASK_M5_NM : vISA_EMASK_M5;
+                emaskRet = noMask ? vISA_EMASK_M5_NM : vISA_EMASK_M5;
             }
             else
             {
-                return noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+                emaskRet = noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
             }
+            break;
         case EMASK_Q2:
             if (m_encoderState.m_secondHalf)
             {
-                return noMask ? vISA_EMASK_M7_NM : vISA_EMASK_M7;
+                emaskRet = noMask ? vISA_EMASK_M7_NM : vISA_EMASK_M7;
             }
             else
             {
-                return noMask ? vISA_EMASK_M3_NM : vISA_EMASK_M3;
+                emaskRet = noMask ? vISA_EMASK_M3_NM : vISA_EMASK_M3;
             }
+            break;
         case EMASK_Q3:
-            return noMask ? vISA_EMASK_M5_NM : vISA_EMASK_M5;
+            emaskRet = noMask ? vISA_EMASK_M5_NM : vISA_EMASK_M5;
+            break;
         case EMASK_Q4:
-            return noMask ? vISA_EMASK_M7_NM : vISA_EMASK_M7;
+            emaskRet = noMask ? vISA_EMASK_M7_NM : vISA_EMASK_M7;
+            break;
         case EMASK_H1:
-            return noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+            emaskRet = noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+            break;
         case EMASK_H2:
-            return noMask ? vISA_EMASK_M5_NM : vISA_EMASK_M5;
+            emaskRet = noMask ? vISA_EMASK_M5_NM : vISA_EMASK_M5;
+            break;
+        default:
+            IGC_ASSERT_MESSAGE(0, "unreachable");
+            emaskRet = vISA_EMASK_M1_NM;
+        }
+
+        if (!m_encoderState.m_secondNibble)
+            return emaskRet;
+
+        switch (emaskRet) {
+        case vISA_EMASK_M1:     return vISA_EMASK_M2;
+        case vISA_EMASK_M1_NM:  return vISA_EMASK_M2_NM;
+        case vISA_EMASK_M3:     return vISA_EMASK_M4;
+        case vISA_EMASK_M3_NM:  return vISA_EMASK_M4_NM;
+        case vISA_EMASK_M5:     return vISA_EMASK_M6;
+        case vISA_EMASK_M5_NM:  return vISA_EMASK_M6_NM;
+        case vISA_EMASK_M7:     return vISA_EMASK_M8;
+        case vISA_EMASK_M7_NM:  return vISA_EMASK_M8_NM;
         default:
             IGC_ASSERT_MESSAGE(0, "unreachable");
             return vISA_EMASK_M1_NM;
         }
+        return vISA_EMASK_M1_NM;
     }
 
     VISA_Modifier ConvertModifierToVisaType(e_modifier modifier)
@@ -4351,6 +4376,7 @@ namespace IGC
         m_encoderState.m_SubSpanDestination = false;
         CodeGenContext* context = m_program->GetContext();
         m_encoderState.m_secondHalf = false;
+        m_encoderState.m_secondNibble = false;
         m_enableVISAdump = false;
         labelMap.clear();
         labelMap.resize(m_program->entry->size(), nullptr);
