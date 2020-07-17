@@ -76,7 +76,7 @@ void InstSplitPass::run()
         }
 
         if (inst->isSend() || inst->opcode() == G4_label || inst->opcode() == G4_pln
-            || inst->opcode() == G4_return || inst->isFlowControl())
+            || inst->opcode() == G4_return || inst->isFlowControl() || inst->isPseudoLogic())
         {
             continue;
         }
@@ -109,7 +109,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
         G4_SrcRegRegion* src = opnd->asSrcRegRegion();
         uint32_t leftBound = 0, rightBound = 0;
         computeSrcBounds(src, leftBound, rightBound);
-        return (leftBound / (getGRFSize() * 2u)) != (rightBound / (getGRFSize() * 2u));
+        return (rightBound - leftBound) > (getGRFSize() * 2u);
     };
 
     auto cross2GRFDst = [inst, this](G4_DstRegRegion* dst)
@@ -120,7 +120,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
         }
         uint32_t leftBound = 0, rightBound = 0;
         computeDstBounds(dst, leftBound, rightBound);
-        return (leftBound / (getGRFSize() * 2u)) != (rightBound / (getGRFSize() * 2u));
+        return (rightBound - leftBound) > (getGRFSize() * 2u);
     };
 
     // Check sources
