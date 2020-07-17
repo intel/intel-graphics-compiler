@@ -82,7 +82,6 @@ namespace IGC
         void visitLdptr(llvm::CallInst* inst);
         void visitLdRawVec(llvm::CallInst* inst);
         void visitLoadInst(llvm::LoadInst& I);
-        void visitWaveShuffleIndex(llvm::CallInst* inst);
 
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
