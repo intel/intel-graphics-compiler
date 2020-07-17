@@ -184,6 +184,7 @@ private:
   bool lowerUAddWithOverflow(CallInst *CI);
   bool lowerCtpop(CallInst *CI);
   bool lowerFCmpInst(FCmpInst *Inst);
+  bool lowerUnorderedFCmpInst(FCmpInst *Inst);
   bool widenByteOp(Instruction *Inst);
   bool lowerLoadStore(Instruction *Inst);
   bool lowerMul64(Instruction *Inst);
@@ -2356,7 +2357,7 @@ bool GenXLowering::lowerFCmpInst(FCmpInst *Inst) {
 
   switch (Inst->getPredicate()) {
   default:
-    break;
+    return lowerUnorderedFCmpInst(Inst);
   case CmpInst::FCMP_ORD: // True if ordered (no nans)
   {
     // %c = fcmp ord %a %b
@@ -2372,6 +2373,7 @@ bool GenXLowering::lowerFCmpInst(FCmpInst *Inst) {
     return true;
   }
   case CmpInst::FCMP_UNO: // True if unordered: isnan(X) | isnan(Y)
+  {
     // %c = fcmp uno %a %b
     // =>
     // %1 = fcmp une %a %a
@@ -2384,8 +2386,66 @@ bool GenXLowering::lowerFCmpInst(FCmpInst *Inst) {
     ToErase.push_back(Inst);
     return true;
   }
+  case CmpInst::FCMP_UEQ: // UEQ cannot be replaced with NOT ONE because we do
+                          // not have ONE
+  {
+    // %c = fcmp ueq %a %b
+    // =>
+    // %1 = fcmp olt %a %b
+    // %2 = fcmp ogt %a %b
+    // %3 = or %1 %2
+    // %c = not %3
+    Value *LHS = Builder.CreateFCmpOLT(Ops[0], Ops[1]);
+    Value *RHS = Builder.CreateFCmpOGT(Ops[0], Ops[1]);
+    Value *Or = Builder.CreateOr(LHS, RHS);
+    Value *New = Builder.CreateNot(Or);
+    Inst->replaceAllUsesWith(New);
+    ToErase.push_back(Inst);
+    return true;
+  }
+  case CmpInst::FCMP_ONE: // NE is unordered
+  {
+    // %c = fcmp one %a %b
+    // =>
+    // %1 = fcmp olt %a %b
+    // %2 = fcmp ogt %a %b
+    // %c = or %1 %2
+    Value *LHS = Builder.CreateFCmpOLT(Ops[0], Ops[1]);
+    Value *RHS = Builder.CreateFCmpOGT(Ops[0], Ops[1]);
+    Value *New = Builder.CreateOr(LHS, RHS);
+    Inst->replaceAllUsesWith(New);
+    ToErase.push_back(Inst);
+    return true;
+  }
+  }
 
   return false;
+}
+
+// FCmp with NE is the only one supported unordered cmp inst. All the rest must
+// be lowered.
+bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
+  CmpInst::Predicate Pred = Inst->getPredicate();
+  if (CmpInst::isOrdered(Pred))
+    return false;
+
+  // We support UNE.
+  if (Pred == CmpInst::FCMP_UNE)
+    return false;
+
+  // For UNO and UEQ we have replacement in lowerFCmpInst.
+  assert(Pred != CmpInst::FCMP_UNO && Pred != CmpInst::FCMP_UEQ);
+
+  CmpInst *InverseFCmp = CmpInst::Create(
+      Inst->getOpcode(), CmpInst::getInversePredicate(Pred),
+      Inst->getOperand(0), Inst->getOperand(1),
+      Inst->getName() + ".ordered.inversed", Inst->getNextNode());
+  Instruction *Result = BinaryOperator::CreateNot(
+      InverseFCmp, InverseFCmp->getName() + ".not", InverseFCmp->getNextNode());
+  Inst->replaceAllUsesWith(Result);
+  ToErase.push_back(Inst);
+
+  return true;
 }
 
 // Lower cmp instructions that GenX cannot deal with.

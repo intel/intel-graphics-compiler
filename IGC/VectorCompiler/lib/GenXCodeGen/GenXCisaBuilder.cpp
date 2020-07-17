@@ -3879,18 +3879,25 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
   Signedness Signed = DONTCARESIGNED;
   VISA_Cond_Mod opSpec;
   switch (Cmp->getPredicate()) {
-  case CmpInst::FCMP_OEQ:
+  case CmpInst::FCMP_ONE:
+  case CmpInst::FCMP_ORD:
   case CmpInst::FCMP_UEQ:
+  case CmpInst::FCMP_UGT:
+  case CmpInst::FCMP_UGE:
+  case CmpInst::FCMP_ULT:
+  case CmpInst::FCMP_ULE:
+  case CmpInst::FCMP_UNO:
+    assert(false && "unsupported fcmp predicate");
+    break;
+  case CmpInst::FCMP_OEQ:
   case CmpInst::ICMP_EQ:
     opSpec = ISA_CMP_E;
     break;
-  case CmpInst::FCMP_ONE:
   case CmpInst::FCMP_UNE:
   case CmpInst::ICMP_NE:
     opSpec = ISA_CMP_NE;
     break;
   case CmpInst::FCMP_OGT:
-  case CmpInst::FCMP_UGT:
     opSpec = ISA_CMP_G;
     break;
   case CmpInst::ICMP_UGT:
@@ -3902,7 +3909,6 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
     Signed = SIGNED;
     break;
   case CmpInst::FCMP_OGE:
-  case CmpInst::FCMP_UGE:
     opSpec = ISA_CMP_GE;
     break;
   case CmpInst::ICMP_UGE:
@@ -3914,7 +3920,6 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
     Signed = SIGNED;
     break;
   case CmpInst::FCMP_OLT:
-  case CmpInst::FCMP_ULT:
     opSpec = ISA_CMP_L;
     break;
   case CmpInst::ICMP_ULT:
@@ -3926,7 +3931,6 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
     Signed = SIGNED;
     break;
   case CmpInst::FCMP_OLE:
-  case CmpInst::FCMP_ULE:
     opSpec = ISA_CMP_LE;
     break;
   case CmpInst::ICMP_ULE:

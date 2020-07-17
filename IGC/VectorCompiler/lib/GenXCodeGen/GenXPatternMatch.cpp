@@ -720,9 +720,16 @@ bool GenXPatternMatch::flipBoolNot(Instruction *Inst) {
     return false; // input has a "real" use, so we don't want to flip
   // We want to flip the not by inverting the comparison that generates its
   // input.
-  auto NewCmp = CmpInst::Create(
-      Input->getOpcode(), Input->getInversePredicate(), Input->getOperand(0),
-      Input->getOperand(1), Input->getName() + ".inverted", Input);
+  CmpInst::Predicate InversedPred = Input->getInversePredicate();
+  // We do not have a support of unordered comparisons except UNE.
+  if (CmpInst::isUnordered(InversedPred) && InversedPred != CmpInst::FCMP_UNE)
+    return false;
+  // ORD and ONE are not supported.
+  if (InversedPred == CmpInst::FCMP_ORD || InversedPred == CmpInst::FCMP_ONE)
+    return false;
+  auto NewCmp = CmpInst::Create(Input->getOpcode(), InversedPred,
+                                Input->getOperand(0), Input->getOperand(1),
+                                Input->getName() + ".inversed", Input);
   NewCmp->setDebugLoc(Input->getDebugLoc());
   Inst->replaceAllUsesWith(NewCmp);
   if (!Input->use_empty()) {
