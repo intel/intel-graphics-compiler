@@ -446,6 +446,11 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             break;
         }
 
+        case GenISAIntrinsic::GenISA_WaveShuffleIndex:
+        {
+            visitWaveShuffleIndex(inst);
+            break;
+        }
         default:
             break;
         }
@@ -1173,6 +1178,15 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
     }
 }
 
+void IGC::CustomSafeOptPass::visitWaveShuffleIndex(llvm::CallInst* inst)
+{
+    llvm::Constant* src1 = llvm::dyn_cast<llvm::Constant>(inst->getOperand(1));
+    llvm::Constant* src2 = llvm::dyn_cast<llvm::Constant>(inst->getOperand(2));
+    if (src1 && src2 && src1->isZeroValue() && src2->isZeroValue())
+    {
+        inst->replaceAllUsesWith(inst->getOperand(0));
+    }
+}
 
 void IGC::CustomSafeOptPass::visitLdRawVec(llvm::CallInst* inst)
 {
