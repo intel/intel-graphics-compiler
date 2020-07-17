@@ -929,45 +929,45 @@ void SplitGather(CallInst *CI) {
   CI->eraseFromParent();
 }
 
-// pre-transformation analysis to determine
-// which kind of mem should we place TPM at
-static bool checkSVMNecessary(Value *V, int LoadsMet = 0) {
-  // do not handle ConstExprs for now
-  if (!isa<Instruction>(V) && !isa<Argument>(V))
-    return false;
-  if (isa<LoadInst>(V)) {
-    if (LoadsMet > 0)
-      return true;
-    else
-      ++LoadsMet;
-  } else if (auto *CI = dyn_cast<CallInst>(V)) {
-    auto IID = GenXIntrinsic::getAnyIntrinsicID(CI);
-    if (IID == GenXIntrinsic::genx_gather_private ||
-        IID == GenXIntrinsic::genx_scatter_private ||
-        IID == GenXIntrinsic::not_any_intrinsic) {
-      // do not process users of priv mem intrinsics
-      // or calls to other functions
-      return false;
-    }
-  } else if (isa<PHINode>(V)) {
-    // do not go thru phi as loops may appear and
-    // it doesn't seem necessary for the analysis now
-    return false;
-  }
-  bool Result = false;
-  for (auto *U : V->users()) {
-    Result |= checkSVMNecessary(U, LoadsMet);
-    if (Result)
-      break;
-  }
-  return Result;
-}
+class SVMChecker {
+  std::map<Value *, int> Visited;
 
-// required to pass find_if's typecheck
-static bool checkSVMNecessaryPred(Value *V) {
-  assert(isa<Instruction>(V) || isa<Argument>(V));
-  return checkSVMNecessary(V);
-}
+public:
+  // pre-transformation analysis to determine
+  // which kind of mem should we place TPM at
+  int checkSVMNecessary(Value *V) {
+    if (Visited.count(V) > 0)
+      return Visited.at(V);
+    // do not handle ConstExprs for now
+    if (!isa<Instruction>(V) && !isa<Argument>(V))
+      return 0;
+    int LoadsMet = 0;
+    if (isa<LoadInst>(V)) {
+      ++LoadsMet;
+    } else if (auto *CI = dyn_cast<CallInst>(V)) {
+      auto IID = GenXIntrinsic::getAnyIntrinsicID(CI);
+      if (IID == GenXIntrinsic::genx_gather_private ||
+          IID == GenXIntrinsic::genx_scatter_private ||
+          IID == GenXIntrinsic::not_any_intrinsic) {
+        // do not process users of priv mem intrinsics
+        // or calls to other functions
+        return 0;
+      }
+    } else if (isa<PHINode>(V) || isa<ICmpInst>(V)) {
+      // do not go thru phi as loops may appear and
+      // it doesn't seem necessary for the analysis now
+      return 0;
+    }
+    int Result = 0;
+    for (auto *U : V->users()) {
+      Result = std::max(Result, checkSVMNecessary(U));
+    }
+    Visited.insert(std::make_pair(V, Result + LoadsMet));
+    return Result + LoadsMet;
+  }
+
+  bool operator()(Value *V) { return checkSVMNecessary(V) > 1; }
+};
 
 void GenXThreadPrivateMemory::addUsers(Value *V) {
   assert(isa<Instruction>(V) || isa<Argument>(V));
@@ -1027,7 +1027,7 @@ bool GenXThreadPrivateMemory::runOnModule(Module &M) {
   for (auto &F : M)
     visit(F);
   if (!m_useGlobalMem &&
-      std::find_if(m_alloca.begin(), m_alloca.end(), checkSVMNecessaryPred) !=
+      std::find_if(m_alloca.begin(), m_alloca.end(), SVMChecker()) !=
           m_alloca.end()) {
     LLVM_DEBUG(dbgs() << "Switching TPM to SVM\n");
     // TODO: move the name string to vc-intrinsics *MD::useGlobalMem
@@ -1183,7 +1183,7 @@ void GenXThreadPrivateMemory::visitAllocaInst(AllocaInst &I) {
 
 void GenXThreadPrivateMemory::visitFunction(Function &F) {
   for (auto &Arg : F.args())
-    if (Arg.getType()->isPointerTy() && checkSVMNecessaryPred(&Arg)) {
+    if (Arg.getType()->isPointerTy() && SVMChecker()(&Arg)) {
       LLVM_DEBUG(dbgs() << "Switching TPM to SVM: svm arg\n");
       // TODO: move the name string to vc-intrinsics *MD::useGlobalMem
       if (!m_useGlobalMem)
