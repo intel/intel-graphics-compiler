@@ -2311,28 +2311,42 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int
             found = true;
         }
     }
-    else
+    else if (subalign == Eight_Word || subalign == Four_Word)
     {
-        // ToDo: check if dynamic step size has compile time impact
-        int step = 1;
-        switch (subalign)
+        for (int j = 0; j < (NUM_WORDS_PER_GRF - size + 1) && found == false; j += 4)
         {
-            case Eight_Word: step = 8; break;
-            case Four_Word: step = 4; break;
-            case Even_Word: step = 2; break;
-            case Any: step = 1; break;
-            default:
-                assert("unexpected alignment");
-        }
-        for (int j = 0; j + size <= NUM_WORDS_PER_GRF; j += step)
-        {
-            if (!isWordBusy(regIdx, j, size))
+            if (isWordBusy(regIdx, j, size) == false)
             {
                 subregnum = j;
                 found = true;
-                break;
             }
         }
+    }
+    else if (subalign == Even_Word)
+    {
+        for (int j = 0; j < (NUM_WORDS_PER_GRF - size + 1) && found == false; j += 2)
+        {
+            if (isWordBusy(regIdx, j, size) == false)
+            {
+                subregnum = j;
+                found = true;
+            }
+        }
+    }
+    else if (subalign == Any)
+    {
+        for (int j = 0; j < (NUM_WORDS_PER_GRF - size) && found == false; j++)
+        {
+            if (isWordBusy(regIdx, j, size) == false)
+            {
+                subregnum = j;
+                found = true;
+            }
+        }
+    }
+    else
+    {
+        ASSERT_USER(false, "Dont know how to allocate this sub-alignment");
     }
 
     if (found)
