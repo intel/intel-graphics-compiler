@@ -1011,7 +1011,8 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
                 else
                     ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
 
-                if (cgSimd32)
+                // if this is a retry already, don't bother trying simd32
+                if (cgSimd32 && !ctx->m_retryManager.IsLastTry())
                     AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
                 else
                     ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
@@ -1026,7 +1027,9 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
         {
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16,
                 !ctx->m_retryManager.IsLastTry());
-            if (!ctx->m_enableSubroutine && maxSimdMode == SIMDMode::SIMD32)
+
+            // if this is a retry already, don't bother trying simd32
+            if (!ctx->m_enableSubroutine && !ctx->m_retryManager.IsLastTry() && maxSimdMode == SIMDMode::SIMD32)
             {
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
             }
