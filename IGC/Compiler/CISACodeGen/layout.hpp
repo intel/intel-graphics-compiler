@@ -29,6 +29,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/PostDominators.h>
+#include <llvm/IR/Dominators.h>
+#include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
@@ -64,8 +66,15 @@ namespace IGC
             const llvm::LoopInfo& LI,
             const std::set<llvm::BasicBlock*>& VisitSet);
 
+        bool isAtomicWrite(llvm::Instruction* inst, bool onlyLocalMem);
+        bool isAtomicRead(llvm::Instruction* inst, bool onlyLocalMem);
+        llvm::Value* getMemoryOperand(llvm::Instruction* inst, bool onlyLocalMem);
+        bool isReturnBlock(llvm::BasicBlock* bb);
+        bool tryMovingWrite(llvm::Instruction* write, llvm::Loop* loop, llvm::LoopInfo& LI);
+        void moveAtomicWrites2Loop(llvm::Function& func, llvm::LoopInfo& LI, bool onlyLocalMem);
 
         llvm::PostDominatorTree* m_PDT;
+        llvm::DominatorTree* m_DT;
     };
 
 }

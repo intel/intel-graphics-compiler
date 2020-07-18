@@ -77,11 +77,13 @@ void Layout::getAnalysisUsage(llvm::AnalysisUsage& AU) const
     AU.setPreservesAll();
     AU.addRequired<llvm::LoopInfoWrapperPass>();
     AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
+    AU.addRequired<llvm::DominatorTreeWrapperPass>();
 }
 
 bool Layout::runOnFunction(Function& func)
 {
     m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+    m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     if (LI.empty())
     {
@@ -93,6 +95,255 @@ bool Layout::runOnFunction(Function& func)
     }
     MEM_SNAPSHOT(IGC::SMS_AFTER_LAYOUTPASS);
     return true;
+}
+
+// check if the instruction is atomic write (xchg or cmpxchng)
+bool Layout::isAtomicWrite(llvm::Instruction* inst, bool onlyLocalMem)
+{
+    if (AtomicRawIntrinsic *atomicRawInst = dyn_cast<AtomicRawIntrinsic>(inst))
+    {
+        bool isSpinlock = inst->getOperand(0)->getName() == "spinlock";
+        bool isLocalMem = inst->getOperand(0)->getType()
+            ->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL;
+        if ((!onlyLocalMem || isLocalMem) && !isSpinlock)
+        {
+            llvm::ConstantInt* opOperand = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(3));
+            if (opOperand)
+            {
+                AtomicOp atomicOp = static_cast<AtomicOp>(opOperand->getZExtValue());
+                if ((atomicOp == EATOMIC_XCHG) || (atomicOp == EATOMIC_CMPXCHG))
+                {
+                    return true;
+                }
+            }
+            GenISAIntrinsic::ID ID = atomicRawInst->getIntrinsicID();
+            if (ID == GenISAIntrinsic::GenISA_icmpxchgatomicraw ||
+                ID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
+                ID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
+                ID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+// check if the instruction is atomic read (ATOMIC_OR)
+bool Layout::isAtomicRead(llvm::Instruction* inst, bool onlyLocalMem)
+{
+    if (AtomicRawIntrinsic *atomicRawInst = dyn_cast<AtomicRawIntrinsic>(inst))
+    {
+        bool isLocalMem = inst->getOperand(0)->getType()
+            ->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL;
+        if (!onlyLocalMem || isLocalMem)
+        {
+            llvm::ConstantInt* opOperand = llvm::cast<llvm::ConstantInt>(inst->getOperand(3));
+            AtomicOp atomicOp = static_cast<AtomicOp>(opOperand->getZExtValue());
+            if (auto src = llvm::dyn_cast<llvm::ConstantInt>(atomicRawInst->getOperand(2)))
+            {
+                return ((atomicOp == EATOMIC_OR) || (atomicOp == EATOMIC_OR64)) && (src->getZExtValue() == 0);
+            }
+        }
+    }
+
+    return false;
+}
+
+// get memory operand for atomic read or write
+llvm::Value* Layout::getMemoryOperand(llvm::Instruction* inst, bool onlyLocalMem)
+{
+    if (isAtomicRead(inst, onlyLocalMem) || isAtomicWrite(inst, onlyLocalMem))
+    {
+        llvm::Value* dstAddr = inst->getOperand(1);
+        if (llvm::PtrToIntInst* pti = llvm::dyn_cast<llvm::PtrToIntInst>(dstAddr))
+        {
+            return pti->getPointerOperand();
+        }
+        return dstAddr;
+    }
+
+    return nullptr;
+}
+
+bool Layout::isReturnBlock(llvm::BasicBlock* bb)
+{
+    return llvm::isa<llvm::ReturnInst>(bb->getTerminator());
+}
+
+// Try moving atomic write (or its loop) into the given destination loop
+// If there are no direct predecessor in the needed loop,
+// Try to move it together with a chain of predecessors. New BB is added in chain if
+// it is either single predecessor or it is a previous node in current layout.
+//
+bool Layout::tryMovingWrite(llvm::Instruction* write, llvm::Loop* loop, LoopInfo& LI)
+{
+    std::vector<llvm::BasicBlock*> blocksToMove;
+
+    if (llvm::Loop* writingLoop = LI.getLoopFor(write->getParent()))
+    {
+        auto blocks = writingLoop->getBlocks();
+        for (auto bbi = blocks.rbegin(), bbEnd = blocks.rend(); bbi != bbEnd; ++bbi)
+        {
+            llvm::BasicBlock* bb = *bbi;
+            if (isReturnBlock(bb))
+            {
+                return false;
+            }
+            blocksToMove.push_back(bb);
+        }
+    }
+    else
+    {
+        if (!isReturnBlock(write->getParent()))
+        {
+            blocksToMove.push_back(write->getParent());
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    while (true)
+    {
+        llvm::BasicBlock* blk = blocksToMove.back();
+
+        // If one (and only one) of the predecessors is in the needed loop, move blocks after it
+        llvm::BasicBlock* insertPoint;
+        int predsInLoop = 0;
+        for (pred_iterator predIter = pred_begin(blk), predEnd = pred_end(blk);
+            predIter != predEnd; ++predIter)
+        {
+            llvm::BasicBlock* pred = *predIter;
+            if (loop->contains(pred))
+            {
+                predsInLoop++;
+                insertPoint = pred;
+            }
+        }
+        if (predsInLoop == 1)
+        {
+            for (auto bb : blocksToMove)
+            {
+                bb->moveAfter(insertPoint);
+            }
+            return true;
+        }
+        else if (predsInLoop > 1)
+        {
+            return false;
+        }
+
+        // Add prev node if it is the predecessor of the block
+        bool predPushed = false;
+        for (pred_iterator predIter = pred_begin(blk), predEnd = pred_end(blk);
+            predIter != predEnd; ++predIter)
+        {
+            llvm::BasicBlock* pred = *predIter;
+
+            if ((pred == blk->getPrevNode()) && !isReturnBlock(pred))
+            {
+                blocksToMove.push_back(pred);
+                predPushed = true;
+                break;
+            }
+        }
+
+        if (predPushed)
+        {
+            continue;
+        }
+
+        // Add predecessor if it is single
+        llvm::BasicBlock* pred = blk->getSinglePredecessor();
+        if (pred && !isReturnBlock(pred))
+        {
+            blocksToMove.push_back(pred);
+            predPushed = true;
+        }
+        else
+        {
+            // Don't move the blocks and return
+            return false;
+        }
+    }
+}
+
+
+// Place basic blocks with atomic write (or the whole loop with the
+// atomic write) into the other loop if there is an atomic read
+// from the same memory, which dominates the write.
+//
+// It benefits cases like:
+//
+// Loop:
+//    Load A
+//    if (!pred(Load A))
+//    {
+//        break;
+//    }
+//    if (success(do_work())
+//    {
+//        Store A;
+//        break;
+//    }
+// Br Loop
+//
+// If the Store is placed after the back edge of the loop
+// there will be goto instruction disabling channels based on some
+// "success(do_work())" condition placed before the back edge in SIMD control flow,
+// and the store will be delayed until the whole loop is finished.
+// It makes "if (!pred(Load A))" checking useless and doesn't allow
+// to perform early break based on the condition.
+//
+void Layout::moveAtomicWrites2Loop(Function& func, LoopInfo& LI, bool onlyLocalMem)
+{
+    std::vector<llvm::Instruction*> writes;
+    std::vector<llvm::Instruction*> reads;
+    for (auto BI = func.begin(), BE = func.end(); BI != BE; BI++)
+    {
+        for (auto II = BI->begin(), IE = BI->end(); II != IE; II++)
+        {
+            if (isAtomicWrite(&*II, onlyLocalMem))
+            {
+                writes.push_back(&*II);
+            }
+            else if (isAtomicRead(&*II, onlyLocalMem))
+            {
+                reads.push_back(&*II);
+            }
+        }
+    }
+
+    // write: LoopWhereToMove mapping
+    std::map<Instruction*, llvm::Loop*> writesToMove;
+
+    for (auto read : reads)
+    {
+        for (auto write : writes)
+        {
+            if (getMemoryOperand(read, onlyLocalMem) == getMemoryOperand(write, onlyLocalMem))
+            {
+                llvm::Loop* readLoop = LI.getLoopFor(read->getParent());
+                llvm::Loop* writeLoop = LI.getLoopFor(write->getParent());
+                if (readLoop && (readLoop != writeLoop)
+                    && ((m_DT->dominates(read, write))))
+                {
+                    writesToMove[write] = LI.getLoopFor(read->getParent());
+                }
+            }
+        }
+    }
+
+    for (const auto &pair : writesToMove)
+    {
+        llvm::Instruction* write = pair.first;
+        llvm::Loop* loop = pair.second;
+
+        tryMovingWrite(write, loop, LI);
+    }
 }
 
 #define BREAK_BLOCK_SIZE_LIMIT 3
@@ -322,6 +573,8 @@ void Layout::LayoutBlocks(Function& func, LoopInfo& LI)
             }
         }
     }
+
+    moveAtomicWrites2Loop(func, LI, false);
 
     // if function has a single exit, then the last block must be an exit
     // comment this out due to infinite loop example in OCL
