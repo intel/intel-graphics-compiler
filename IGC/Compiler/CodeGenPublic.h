@@ -968,8 +968,6 @@ namespace IGC
         {
             unsigned int offset = GetSIMDInfoOffset(simd, mode);
             m_SIMDInfo |= (uint64_t)1 << (bit + offset);
-            //printf("iwwu SetSIMDInfo bit %d simd %d mode %d offset %d --> %016llx\n",
-              //  bit, simd, mode, offset, m_SIMDInfo);
         }
 
         void ClearSIMDInfo(SIMDMode simd, ShaderDispatchMode mode)
