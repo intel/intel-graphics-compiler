@@ -54,6 +54,7 @@ OpenCLPrintfAnalysis::OpenCLPrintfAnalysis() : ModulePass(ID)
     initializeOpenCLPrintfAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
+//TODO: move to a common place
 const StringRef OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME = "printf";
 
 bool OpenCLPrintfAnalysis::runOnModule(Module& M)
