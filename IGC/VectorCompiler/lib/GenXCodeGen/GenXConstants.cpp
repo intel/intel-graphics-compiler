@@ -117,6 +117,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 
+#include "llvmWrapper/Support/MathExtras.h"
+
 using namespace llvm;
 using namespace genx;
 
@@ -1375,7 +1377,10 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
     NewC = ConstantVector::getSplat(NumElements, SomeDefinedElement);
     return;
   }
-  if (Max - Min <= ImmIntVec::MaxUInt) {
+  int64_t ResArith;
+  if (IGCLLVM::SubOverflow(Max, Min, ResArith))
+    return;
+  if (ResArith <= ImmIntVec::MaxUInt) {
     if (Min >= ImmIntVec::MinUInt && Max <= ImmIntVec::MaxUInt) {
       // Values all in the range [MinUInt..MaxUInt]. We can do this with a packed
       // unsigned int with no extra scaling or adjustment.
@@ -1402,74 +1407,58 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
   // Get unique absolute differences, so we can detect if we have a valid
   // packed int vector that is then scaled and has a splatted constant
   // added/subtracted.
-  SmallVector<unsigned, 7> Diffs;
-  SmallSet<unsigned, 7> DiffsSet;
+  SmallVector<uint64_t, 7> Diffs;
+  SmallSet<uint64_t, 7> DiffsSet;
   for (unsigned i = 0, e = Elements.size() - 1; i != e; ++i) {
-    Min = std::min(Min, Elements[i + 1]);
-    Max = std::max(Max, Elements[i + 1]);
-    int64_t Diff = Elements[i + 1] - Elements[i];
+    int64_t Diff;
+    if (IGCLLVM::SubOverflow(Elements[i + 1], Elements[i], Diff))
+      return;
     if (!Diff)
       continue;
-    if (Diff < 0)
-      Diff = -Diff;
-    if (Diff > UINT_MAX)
+    uint64_t AbsDiff = std::abs(Diff);
+    if (AbsDiff > UINT_MAX)
       return;
-    if (DiffsSet.insert((unsigned)Diff).second)
-      Diffs.push_back((unsigned)Diff);
+    if (DiffsSet.insert(AbsDiff).second)
+      Diffs.push_back(AbsDiff);
   }
   assert(!Diffs.empty() && "not expecting splatted constant");
-  // Calculate the GCD (greatest common divisor) of the diffs using the binary
-  // GCD algorithm http://en.wikipedia.org/wiki/Binary_GCD_algorithm
-  unsigned GCD = Diffs[0];
+  // Calculate the GCD (greatest common divisor) of the diffs
+  uint64_t GCD = Diffs[0];
   if (Diffs.size() > 1) {
-    // Remove factors of 2.
-    unsigned MaxPowerOfTwo = 31;
-    for (unsigned i = 0, e = Diffs.size(); i != e; ++i)
-      MaxPowerOfTwo = std::min(MaxPowerOfTwo,
-          (unsigned)countTrailingZeros(Diffs[i], ZB_Undefined));
-    if (MaxPowerOfTwo)
-      for (unsigned i = 0, e = Diffs.size(); i != e; ++i)
-        Diffs[i] >>= MaxPowerOfTwo;
-    // Apply the rest of the binary GCD algorithm to Diffs[0] and Diffs[1]
-    // first, then to the (not yet scaled by the power of two) GCD so far
-    // and each other element of Diffs in turn.
-    unsigned V = Diffs[0];
-    for (unsigned i = 1, e = Diffs.size(); i != e; ++i) {
-      unsigned U = Diffs[i];
-      for (;;) {
-        while (!(U & 1))
-          U >>= 1;
-        while (!(V & 1))
-          V >>= 1;
-        if (U == V)
-          break;
-        if (U < V)
-          std::swap(U, V); // make U >= V
-        U = (U - V) / 2;
-      }
-    }
-    // Scale the resulting GCD by the common power of two.
-    GCD = V << MaxPowerOfTwo;
+    for(unsigned i = 1; i < Diffs.size(); i++)
+      GCD = GreatestCommonDivisor64(GCD, Diffs[i]);
   }
-  if ((Max - Min) > GCD * ImmIntVec::MaxUInt)
-    return; // range of values too big.
-  PackedIntScale = GCD;
+  // Scale should fit in signed integer
+  if (GCD > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
+    return;
+  int64_t CurScale = static_cast<int64_t>(GCD);
+  if (!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(ImmIntVec::MaxUInt), ResArith) &&
+      (Max - Min) > ResArith)
+    return; // range of values too big
+  PackedIntScale = CurScale;
   PackedIntMax = ImmIntVec::MaxUInt;
   // Special case adjust of 0 or -8 as then we can save doing an adjust at all
   // by using unsigned or signed packed vector respectively.
-  if (!(Min % GCD)) {
-    if (Min >= ImmIntVec::MinUInt && Max <= GCD * ImmIntVec::MaxUInt) {
+  if (!(Min % CurScale)) {
+    if (Min >= ImmIntVec::MinUInt &&
+        (!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(ImmIntVec::MaxUInt), ResArith) &&
+         Max <= ResArith)) {
       PackedIntAdjust = ImmIntVec::MinUInt;
       return;
     }
-    if (Min >= ImmIntVec::MinSInt * GCD && Max <= ImmIntVec::MaxSInt * GCD) {
+    if ((!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(ImmIntVec::MinSInt), ResArith) &&
+         Min >= ResArith) &&
+        (!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(ImmIntVec::MaxSInt), ResArith) &&
+         Max <= ResArith)) {
       PackedIntAdjust = Min;
       PackedIntMax = ImmIntVec::MaxSInt;
       return;
     }
     // Special case all pre-scaled values being in [-15,0] as we can do that
     // by negating the scale and not needing to adjust.
-    if (Min >= -ImmIntVec::MaxUInt * GCD && Max <= -ImmIntVec::MinUInt) {
+    if ((!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(-ImmIntVec::MaxUInt), ResArith) &&
+         Min >= ResArith) &&
+        Max <= -ImmIntVec::MinUInt) {
       PackedIntAdjust = ImmIntVec::MinUInt;
       PackedIntScale = -PackedIntScale;
       return;

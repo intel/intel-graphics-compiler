@@ -46,7 +46,7 @@ class ConstantLoader {
   // instructions to be pushed in to.
   SmallVectorImpl<Instruction *> *AddedInstructions;
   // Info from analyzing for possible packed vector constant.
-  int PackedIntScale = 0;  // amount to scale packed int vector by
+  int64_t PackedIntScale = 0;  // amount to scale packed int vector by
   int64_t PackedIntAdjust; // amount to adjust by, special casing 0 or -8
                            //  when PackedIntScale is 1
   unsigned PackedIntMax;   // max value in packed vector, used when scale is

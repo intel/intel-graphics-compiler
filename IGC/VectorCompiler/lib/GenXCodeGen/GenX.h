@@ -153,7 +153,7 @@ const constexpr int G4_MIN_ADDR_IMM = -512;
 const constexpr int defaultGRFWidth = 32;
 
 // describe integer vector immediate (V, UV)
-enum ImmIntVec {
+enum ImmIntVec : int8_t {
   Width = 8, // num elem in vector
   ElemSize = 4, // in bits
   MaxUInt = (1 << ElemSize) - 1,
