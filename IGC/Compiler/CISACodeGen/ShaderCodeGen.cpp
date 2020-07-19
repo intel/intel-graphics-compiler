@@ -1340,7 +1340,7 @@ void OptimizeIR(CodeGenContext* const pContext)
     if (false == pContext->m_hasLegacyDebugInfo)
     {
         IGC_ASSERT(nullptr != pContext->getModule());
-        // IGC_ASSERT(false == llvm::verifyModule(*pContext->getModule()));
+        IGC_ASSERT(false == llvm::verifyModule(*pContext->getModule()));
     }
 
     COMPILER_TIME_START(pContext, TIME_OptimizationPasses);
