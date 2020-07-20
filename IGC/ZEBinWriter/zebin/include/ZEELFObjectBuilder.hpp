@@ -334,7 +334,9 @@ private:
 
     // every ze object contains only one ze_info section
     ZEInfoSection* m_zeInfoSection = nullptr;
-    SymbolListTy m_symbols;
+    SymbolListTy m_localSymbols;
+    SymbolListTy m_globalSymbols;
+
 };
 
 /// ZEInfoBuilder - Build a zeInfoContainer for .ze_info section

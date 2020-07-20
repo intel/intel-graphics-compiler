@@ -786,6 +786,9 @@ public:
     //Gets the VISA string format for the operand
     VISA_BUILDER_API virtual std::string getVectorOperandName(VISA_VectorOpnd* opnd, bool showRegion) const = 0;
     VISA_BUILDER_API virtual std::string getPredicateOperandName(VISA_PredOpnd* opnd) const = 0;
+
+    /// getGenSize -- Get gen binary size of this kernel/function
+    VISA_BUILDER_API virtual int64_t getGenSize() const = 0;
 };
 
 class VISAFunction : public VISAKernel
@@ -805,9 +808,6 @@ public:
 
     /// getGenOffset -- Get gen binary offset of this function
     VISA_BUILDER_API virtual int64_t getGenOffset() const = 0;
-
-    /// getGenOffset -- Get gen binary size of this function
-    VISA_BUILDER_API virtual int64_t getGenSize() const = 0;
 };
 
 typedef enum

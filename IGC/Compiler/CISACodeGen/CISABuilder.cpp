@@ -4752,6 +4752,12 @@ namespace IGC
             context->m_retryManager.IsFirstTry();
     }
 
+    void CEncoder::CreateKernelSymbol(const std::string& kernelName, const VISAKernel& visaKernel, SProgramOutput::SymbolLists& symbols)
+    {
+        // kernel symbols are local symbols, and point to the offset 0 of this kernel binary
+        symbols.local.emplace_back(vISA::GenSymType::S_KERNEL, 0, visaKernel.getGenSize(), kernelName);
+    }
+
     void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::SymbolLists& symbols)
     {
         buffer = nullptr;
@@ -4791,9 +4797,11 @@ namespace IGC
                     fEntry.s_offset = (uint32_t)visaFunc->getGenOffset();
                     fEntry.s_size = (uint32_t)visaFunc->getGenSize();
                 }
+                symbolTable.push_back(fEntry);
+
+                // symbols for ZEBinary
                 symbols.function.emplace_back((vISA::GenSymType)fEntry.s_type,
                     fEntry.s_offset, fEntry.s_size, F.getName().str());
-                symbolTable.push_back(fEntry);
             }
         }
 
@@ -4835,6 +4843,7 @@ namespace IGC
                     sEntry.s_type = vISA::GenSymType::S_CONST_SAMPLER;
                     sEntry.s_size = 0;
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    // symbols for ZEBinary
                     symbols.sampler.emplace_back((vISA::GenSymType)sEntry.s_type,
                         sEntry.s_offset, sEntry.s_size, name.str());
                 }
@@ -4843,6 +4852,7 @@ namespace IGC
                     sEntry.s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
                     sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    // symbols for ZEBinary
                     if (sEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR)
                         symbols.global.emplace_back((vISA::GenSymType)sEntry.s_type,
                             sEntry.s_offset, sEntry.s_size, name.str());
@@ -4868,19 +4878,22 @@ namespace IGC
         void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
         SProgramOutput::RelocListTy& relocations)
     {
-        buffer = nullptr;
-        bufferSize = 0;
-        tableEntries = 0;
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+            // for ZEBinary format
+            V(vMainKernel->GetRelocations(relocations));
+            IGC_ASSERT(sizeof(vISA::GenRelocEntry) * tableEntries == bufferSize);
+        } else {
+            // for patch-token-based binary format
+            buffer = nullptr;
+            bufferSize = 0;
+            tableEntries = 0;
 
-        IGC_ASSERT(nullptr != vMainKernel);
+            IGC_ASSERT(nullptr != vMainKernel);
 
-        // vISA will directly return the buffer with GenRelocEntry layout
-        V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
-        IGC_ASSERT((sizeof(vISA::GenRelocEntry) * tableEntries) == bufferSize);
-
-        // get relocations
-        V(vMainKernel->GetRelocations(relocations));
-        IGC_ASSERT(sizeof(vISA::GenRelocEntry) * tableEntries == bufferSize);
+            // vISA will directly return the buffer with GenRelocEntry layout
+            V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
+            IGC_ASSERT((sizeof(vISA::GenRelocEntry) * tableEntries) == bufferSize);
+        }
     }
 
     void CEncoder::CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize,
@@ -5248,6 +5261,12 @@ namespace IGC
                 pOutput->m_funcSymbolTableSize,
                 pOutput->m_funcSymbolTableEntries,
                 pOutput->m_symbols);
+        }
+        if(IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        {
+            // cretae symbols for kernel. Symbols have name the same as the kernels, and offset to the
+            // start of that kernel
+            CreateKernelSymbol(m_program->entry->getName().str(), *pMainKernel, pOutput->m_symbols);
         }
         CreateRelocationTable(pOutput->m_funcRelocationTable,
             pOutput->m_funcRelocationTableSize,

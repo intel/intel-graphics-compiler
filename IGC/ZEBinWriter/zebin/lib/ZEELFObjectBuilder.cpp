@@ -250,8 +250,12 @@ void ZEELFObjectBuilder::addSymbol(
     std::string name, uint64_t addr, uint64_t size, uint8_t binding,
     uint8_t type, ZEELFObjectBuilder::SectionID sectionId)
 {
-    m_symbols.emplace_back(
-        ZEELFObjectBuilder::Symbol(name, addr, size, binding, type, sectionId));
+    if (binding == llvm::ELF::STB_LOCAL)
+        m_localSymbols.emplace_back(
+            ZEELFObjectBuilder::Symbol(name, addr, size, binding, type, sectionId));
+    else
+        m_globalSymbols.emplace_back(
+            ZEELFObjectBuilder::Symbol(name, addr, size, binding, type, sectionId));
 }
 
 ZEELFObjectBuilder::RelocSection&
@@ -405,7 +409,7 @@ uint64_t ELFWriter::writeSymTab()
     writeSymbol(0, 0, 0, 0, 0, 0, ELF::SHN_UNDEF);
     ++symidx;
 
-    for (ZEELFObjectBuilder::Symbol& sym : m_ObjBuilder.m_symbols) {
+    auto writeOneSym = [&](ZEELFObjectBuilder::Symbol& sym) {
         // create symbol name entry in str table
         uint32_t nameoff = m_StrTabBuilder.add(StringRef(sym.name()));
 
@@ -415,7 +419,8 @@ uint64_t ELFWriter::writeSymTab()
             // createSectionHdrEntries
             IGC_ASSERT(m_SectionIndex.find(sym.sectionId()) != m_SectionIndex.end());
             sect_idx = m_SectionIndex.at(sym.sectionId());
-        } else {
+        }
+        else {
             sect_idx = ELF::SHN_UNDEF;
         }
 
@@ -425,6 +430,16 @@ uint64_t ELFWriter::writeSymTab()
         IGC_ASSERT(m_SymNameIdxMap.find(sym.name()) == m_SymNameIdxMap.end());
         m_SymNameIdxMap.insert(std::make_pair(sym.name(), symidx));
         ++symidx;
+    };
+
+    // Write the local symbols first
+    for (ZEELFObjectBuilder::Symbol& sym : m_ObjBuilder.m_localSymbols) {
+        writeOneSym(sym);
+    }
+
+    // And then global symbols
+    for (ZEELFObjectBuilder::Symbol& sym : m_ObjBuilder.m_globalSymbols) {
+        writeOneSym(sym);
     }
 
     return m_W.OS.tell() - start_off;
@@ -504,10 +519,9 @@ void ELFWriter::writeSections()
             entry.size = writeSymTab();
             entry.entsize = getSymTabEntSize();
             entry.link = m_StringTableIndex;
-            // one greater than the last local symbol index. Currently we
-            // should only have global symbols be exported. The only local
-            // symbol is the default null symbol with index 0
-            entry.info = 1;
+            // one greater than the last local symbol index, including the
+            // first null symbol
+            entry.info = m_ObjBuilder.m_localSymbols.size() + 1;
             break;
         case ELF::SHT_REL: {
             IGC_ASSERT(nullptr != entry.section);
@@ -693,7 +707,8 @@ void ELFWriter::createSectionHdrEntries()
     }
 
     // .symtab
-    if (!m_ObjBuilder.m_symbols.empty()) {
+    if (!m_ObjBuilder.m_localSymbols.empty() ||
+        !m_ObjBuilder.m_globalSymbols.empty()) {
         m_SymTabIndex = index;
         ++index;
         createSectionHdrEntry(m_ObjBuilder.m_SymTabName, ELF::SHT_SYMTAB);

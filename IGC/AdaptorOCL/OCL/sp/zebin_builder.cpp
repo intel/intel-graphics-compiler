@@ -199,10 +199,14 @@ uint8_t ZEBinaryBuilder::getSymbolElfType(vISA::ZESymEntry& sym)
     switch (sym.s_type) {
     case vISA::GenSymType::S_NOTYPE:
         return llvm::ELF::STT_NOTYPE;
+
     case vISA::GenSymType::S_UNDEF:
         return llvm::ELF::STT_NOTYPE;
+
     case vISA::GenSymType::S_FUNC:
+    case vISA::GenSymType::S_KERNEL:
         return llvm::ELF::STT_FUNC;
+
     case vISA::GenSymType::S_GLOBAL_VAR:
     case vISA::GenSymType::S_GLOBAL_VAR_CONST:
     case vISA::GenSymType::S_CONST_SAMPLER:
@@ -218,6 +222,9 @@ uint8_t ZEBinaryBuilder::getSymbolElfBinding(vISA::ZESymEntry& sym)
     // all symbols we have now that could be exposed must have
     // global binding
     switch (sym.s_type) {
+    case vISA::GenSymType::S_KERNEL:
+        return llvm::ELF::STB_LOCAL;
+
     case vISA::GenSymType::S_NOTYPE:
     case vISA::GenSymType::S_UNDEF:
     case vISA::GenSymType::S_FUNC:
@@ -247,27 +254,31 @@ void ZEBinaryBuilder::addSymbols(
     } (annotations.m_executionEnivronment.CompiledSIMDSize,
         annotations.m_kernelProgram);
 
+    // add local symbols of this kernel binary
+    for (auto sym : symbols.local) {
+        IGC_ASSERT(sym.s_type != vISA::GenSymType::S_UNDEF);
+        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
+            getSymbolElfBinding(sym), getSymbolElfType(sym), kernelSectId);
+    }
+
     // If the symbol has UNDEF type, set its sectionId to -1
     // add function symbols defined in kernel text
-    if (!symbols.function.empty())
-        for (auto sym : symbols.function)
-            mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
-                getSymbolElfBinding(sym), getSymbolElfType(sym),
-                (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : kernelSectId);
+    for (auto sym : symbols.function)
+        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
+            getSymbolElfBinding(sym), getSymbolElfType(sym),
+            (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : kernelSectId);
 
     // add symbols defined in global constant section
-    if (!symbols.globalConst.empty())
-        for (auto sym : symbols.globalConst)
-            mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
-                getSymbolElfBinding(sym), getSymbolElfType(sym),
-                (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mGlobalConstSectID);
+    for (auto sym : symbols.globalConst)
+        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
+            getSymbolElfBinding(sym), getSymbolElfType(sym),
+            (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mGlobalConstSectID);
 
     // add symbols defined in global section
-    if (!symbols.global.empty())
-        for (auto sym : symbols.global)
-            mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
-                getSymbolElfBinding(sym), getSymbolElfType(sym),
-                (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mGlobalSectID);
+    for (auto sym : symbols.global)
+        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
+            getSymbolElfBinding(sym), getSymbolElfType(sym),
+            (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mGlobalSectID);
 
     // we do not support sampler symbols now
     IGC_ASSERT(symbols.sampler.empty());

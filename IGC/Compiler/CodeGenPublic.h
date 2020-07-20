@@ -99,6 +99,7 @@ namespace IGC
             SymbolListTy global;      // global symbols
             SymbolListTy globalConst; // global constant symbols
             SymbolListTy sampler;     // sampler symbols
+            SymbolListTy local;       // local symbols
         };
 
     public:

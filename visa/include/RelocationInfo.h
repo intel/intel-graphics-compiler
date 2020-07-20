@@ -46,7 +46,8 @@ enum GenSymType {
     S_FUNC             = 2,    // The symbol is associated with a function
     S_GLOBAL_VAR       = 3,    // The symbol is associated with a global variable in global address space
     S_GLOBAL_VAR_CONST = 4,    // The symbol is associated with a global variable in constant address space
-    S_CONST_SAMPLER    = 5     // The symbol is associated with a constant sampler
+    S_CONST_SAMPLER    = 5,    // The symbol is associated with a constant sampler
+    S_KERNEL           = 6     // The symbol is associated with a kernel function
 };
 
 /// GenSymEntry - An symbol table entry
