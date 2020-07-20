@@ -1429,6 +1429,7 @@ class G4_Kernel
     unsigned int simdSize;
     bool channelSliced = true;
     bool hasAddrTaken;
+    bool hasUndefinePointknowAddrTaken = false;
     bool sharedRegisters;
     Options *m_options;
     const Attributes* m_kernelAttrs;
@@ -1552,6 +1553,9 @@ public:
 
     void setHasAddrTaken(bool val) { hasAddrTaken = val; }
     bool getHasAddrTaken() { return hasAddrTaken;  }
+
+    void setHasUndefinedPointAddrTaken(bool val) { hasUndefinePointknowAddrTaken = val; }
+    bool getHasUndefinedPointAddrTaken() { return hasUndefinePointknowAddrTaken; }
 
     void setNumRegTotal(unsigned num) { numRegTotal = num; }
     unsigned getNumRegTotal() const { return numRegTotal; }
