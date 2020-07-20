@@ -108,6 +108,9 @@ static cl::opt<bool>
     PrintFinalizerOptions("cg-print-finalizer-args", cl::init(false), cl::Hidden,
                           cl::desc("Prints options used to invoke finalizer"));
 
+static cl::opt<bool> SkipNoWiden("skip-widen", cl::init(false), cl::Hidden,
+                                 cl::desc("Do new emit NoWiden hint"));
+
 enum {
   BYTES_PER_OWORD = 16,
   BYTES_PER_FADDR = 8,
@@ -4427,14 +4430,16 @@ void GenXKernelBuilder::emitOptimizationHints() {
   PressureTracker RP(*FG, Liveness, /*ByteWidening*/ true);
   const std::vector<genx::LiveRange *> &WidenLRs = RP.getWidenVariables();
 
-  for (auto LR : WidenLRs) {
-    SimpleValue SV = *LR->value_begin();
-    auto *R = RegAlloc->getRegForValueOrNull(FG->getHead(), SV);
-    // This variable is being used in or crossing a high register pressure
-    // region. Set an optimization hint not to widen it.
-    if (R && RP.intersectWithRedRegion(LR)) {
-      R->addAttribute(addStringToPool("NoWidening"), "");
-      RP.decreasePressure(LR);
+  if (!SkipNoWiden) {
+    for (auto LR : WidenLRs) {
+      SimpleValue SV = *LR->value_begin();
+      auto *R = RegAlloc->getRegForValueOrNull(FG->getHead(), SV);
+      // This variable is being used in or crossing a high register pressure
+      // region. Set an optimization hint not to widen it.
+      if (R && RP.intersectWithRedRegion(LR)) {
+        R->addAttribute(addStringToPool("NoWidening"), "");
+        RP.decreasePressure(LR);
+      }
     }
   }
 }
