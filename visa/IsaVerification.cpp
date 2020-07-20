@@ -2880,6 +2880,7 @@ void vISAVerifier::verifyInstructionDataport(
 }
 
 
+
 void vISAVerifier::verifyKernelAttributes()
 {
     /// Verify SLMSize, if present, shows up only once

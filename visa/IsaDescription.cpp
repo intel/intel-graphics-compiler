@@ -1998,6 +1998,7 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] =
 };
 
 
+
 const ISA_SubInst_Desc *getSubInstTable(uint8_t opcode, int &size)
 {
     const ISA_SubInst_Desc *table = nullptr;

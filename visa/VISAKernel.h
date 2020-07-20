@@ -582,6 +582,13 @@ public:
     VISA_BUILDER_API int AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOpnd *varId);
 
 
+
+
+
+
+
+
+
     /********** APPEND INSTRUCTION APIS END   ******************/
 
     /********** APPEND 3D Instructions START ******************/
@@ -601,7 +608,8 @@ public:
         int numMsgSpecificOpnds,
         VISA_RawOpnd **opndArray);
 
-    VISA_BUILDER_API int AppendVISA3dLoad(VISASampler3DSubOpCode subOpcode,
+    VISA_BUILDER_API int AppendVISA3dLoad(
+        VISASampler3DSubOpCode subOpcode,
         bool pixelNullMask,
         VISA_PredOpnd *pred,
         VISA_EMask_Ctrl emask,
@@ -613,7 +621,8 @@ public:
         int numMsgSpecificOpnds,
         VISA_RawOpnd ** opndArray);
 
-    VISA_BUILDER_API int AppendVISA3dGather4(VISASampler3DSubOpCode subOpcode,
+    VISA_BUILDER_API int AppendVISA3dGather4(
+        VISASampler3DSubOpCode subOpcode,
         bool pixelNullMask,
         VISA_PredOpnd *pred,
         VISA_EMask_Ctrl emask,
@@ -628,15 +637,18 @@ public:
 
     VISA_BUILDER_API int AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISAChannelMask srcChannel, VISA_StateOpndHandle *surface, VISA_RawOpnd *lod, VISA_RawOpnd *dst);
 
-    VISA_BUILDER_API int AppendVISA3dRTWrite(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
+    VISA_BUILDER_API int AppendVISA3dRTWrite(
+        VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *r1HeaderOpnd, VISA_VectorOpnd *sampleIndex,
         uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray);
 
-    VISA_BUILDER_API int AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
+    VISA_BUILDER_API int AppendVISA3dRTWriteCPS(
+        VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *r1HeaderOpnd, VISA_VectorOpnd *sampleIndex,
         VISA_VectorOpnd *cPSCounter, uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray);
 
-    VISA_BUILDER_API int AppendVISA3dURBWrite(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API int AppendVISA3dURBWrite(
+        VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
         VISA_Exec_Size executionSize, unsigned char numberOutputParams,
         VISA_RawOpnd *channelMask, unsigned short globalOffset, VISA_RawOpnd *URBHandle,
         VISA_RawOpnd *perSLotOffset, VISA_RawOpnd *vertexData);

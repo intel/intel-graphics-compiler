@@ -771,9 +771,9 @@ void VISAKernelImpl::createReservedKeywordSet() {
         int subOpsLen = 0;
         const ISA_SubInst_Desc *subOps = getSubInstTable(desc.opcode, subOpsLen);
         if (subOps != nullptr) {
-            // e.g. ops like ISA_SVM have a subtable of operations
+            // e.g. ops like ISA_SVM have a sub-table of operations
             for (int si = 0; si < subOpsLen; si++) {
-                // same tables have some padding and empty ops
+                // some tables have padding and empty ops; a nullptr name indicates that
                 if (subOps[si].name != nullptr)
                     reservedNames.insert(subOps[si].name);
             }
@@ -7459,6 +7459,10 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
 #endif
     return status;
 }
+
+
+
+
 
 
 

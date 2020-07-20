@@ -24,7 +24,6 @@ uint16_t LatencyTable::getOccupancy(G4_INST* Inst) const
 }
 
 
-
 uint16_t LatencyTable::getLatencyLegacy(G4_INST* Inst) const
 {
     if (Inst->isSend())

@@ -314,6 +314,9 @@ void IR_Builder::expandPow(uint8_t exsize, G4_Predicate *predOpnd, bool saturate
 }
 
 
+
+
+
 int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, VISA_Exec_Size executionSize,
                                             VISA_EMask_Ctrl emask, G4_Predicate *predOpnd,
                                             bool saturate, G4_CondMod* condMod, G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd, G4_Operand *src2Opnd, G4_DstRegRegion *carryBorrow)
@@ -4190,7 +4193,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
 #endif
 
     ASSERT_USER(!IsFloatAtomicOps(atomicOp) || hasFloatAtomics(),
-                "Float atomic operations are only supported on SKL+ devices!");
+        "Float atomic operations are only supported on SKL+ devices");
 
 
     surface = lowerSurface255To253(surface, *this);

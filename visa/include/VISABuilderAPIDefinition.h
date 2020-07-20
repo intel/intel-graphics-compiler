@@ -237,34 +237,48 @@ public:
     VISA_BUILDER_API virtual int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
                                           VISA_Exec_Size executionSize, VISA_VectorOpnd *dst1, VISA_VectorOpnd *carry_borrow, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
 
+
+
+
+
+
     /// FIXME: we should probably have separate API for logic and shift instructions, as the arguments they expect are quite different
     /// AppendVISALogicOrShiftInst -- append a two-dst, two-source vISA arithmetic instruction to this kernel
     /// [pred] op[.sat] (emask, execSize) dst src0 src1 [src2 src3]
     /// src2 is used only for bfe and bfi
     /// src3 is used only for bfi
-    VISA_BUILDER_API virtual int AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode, VISA_EMask_Ctrl emask,
-                                            VISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1, VISA_VectorOpnd *src2 = NULL, VISA_VectorOpnd *src3 = NULL) = 0;
+    VISA_BUILDER_API virtual int AppendVISALogicOrShiftInst(
+        ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode,
+        VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_VectorOpnd *dst,
+        VISA_VectorOpnd *src0, VISA_VectorOpnd *src1,
+        VISA_VectorOpnd *src2 = NULL, VISA_VectorOpnd *src3 = NULL) = 0;
 
     ///AppendVISALogicOrShiftInst
     ///Used to perform logic operations on predicates.
     ///The operand is constructed internally.
     ///Enforces none matching types
-    VISA_BUILDER_API virtual int AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_EMask_Ctrl emask,
-                                            VISA_Exec_Size executionSize, VISA_PredVar *dst, VISA_PredVar *src0, VISA_PredVar *src1) = 0;
+    VISA_BUILDER_API virtual int AppendVISALogicOrShiftInst(
+        ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_PredVar *dst, VISA_PredVar *src0, VISA_PredVar *src1) = 0;
     /// FIXME: why not use the addressof_opnd if we had introduced it earlier?
     /// AppendVISAAddrAddInst -- append an address add instruction to this kernel
     /// addr_add (emask, execSize) dst src0 src1
-    VISA_BUILDER_API virtual int AppendVISAAddrAddInst(VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
+    VISA_BUILDER_API virtual int AppendVISAAddrAddInst(
+        VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
 
     /// AppendVISADataMovementInst -- append a one-source data movement instruction to this kernel
     /// [pred] op[.sat] (emask, execSize) dst src0
-    VISA_BUILDER_API virtual int AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMod, VISA_EMask_Ctrl emask,
-                                            VISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0) = 0;
+    VISA_BUILDER_API virtual int AppendVISADataMovementInst(
+        ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMod, VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0) = 0;
 
     /// AppendVISADataMovementInst -- append a two-source data movement instruction to this kernel
     /// [pred] op[.sat] (emask, execSize) dst src0 src1
-    VISA_BUILDER_API virtual int AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMod, VISA_EMask_Ctrl emask,
-                                            VISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
+    VISA_BUILDER_API virtual int AppendVISADataMovementInst(
+        ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMod, VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
 
     ///AppendVISAPredicateMove
     ///Moves the context of the Predicate in to a Vector Operand.
@@ -278,19 +292,24 @@ public:
 
     /// AppendVISAMinMaxInst -- append a two-source data movement instruction to this kernel
     /// min/max[.sat] (emask, execSize) dst src0 src1
-    VISA_BUILDER_API virtual int AppendVISAMinMaxInst(CISA_MIN_MAX_SUB_OPCODE subOpcode, bool satMod, VISA_EMask_Ctrl emask,
-                                            VISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
+    VISA_BUILDER_API virtual int AppendVISAMinMaxInst(
+        CISA_MIN_MAX_SUB_OPCODE subOpcode, bool satMod, VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
 
     /// AppendVISAComparisonInst -- append a two-source comparison instruction to this kernel
     ///                             Destination is a flag register.
     /// cmp.sub_op.f# (emask, execSize) nullDst src0 src1
-    VISA_BUILDER_API virtual int AppendVISAComparisonInst(VISA_Cond_Mod sub_op, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_PredVar *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
+    VISA_BUILDER_API virtual int AppendVISAComparisonInst(
+        VISA_Cond_Mod sub_op, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_PredVar *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
 
     /// AppendVISAComparisonInst -- append a two-source comparison instruction to this kernel.
     ///                             Destination is a GRF register.
     ///                             Flag register is updated but live range is only this instruction.
     /// cmp.sub_op.f# (emask, execSize) dst src0 src1
-    VISA_BUILDER_API virtual int AppendVISAComparisonInst(VISA_Cond_Mod sub_op, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
+    VISA_BUILDER_API virtual int AppendVISAComparisonInst(
+        VISA_Cond_Mod sub_op, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_VectorOpnd *dst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
 
     /// AppendVISACFGotoInst -- append a possibly divergent goto instruction to this kernel
     /// [pred] goto (emask, execSize) label
@@ -354,8 +373,10 @@ public:
     /// FIXME: why not have separate functions for them?
     /// AppendVISASurfAccessGatherScatterInst -- append gather/scatter instruction to this kernel
     /// globalOffset and elementOffset are both in unit of element size
-    VISA_BUILDER_API virtual int AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, VISA_EMask_Ctrl emask, GATHER_SCATTER_ELEMENT_SIZE elementSize,
-                                                      VISA_Exec_Size executionSize, VISA_StateOpndHandle *surface, VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset, VISA_RawOpnd *srcDst) = 0;
+    VISA_BUILDER_API virtual int AppendVISASurfAccessGatherScatterInst(
+        ISA_Opcode opcode, VISA_EMask_Ctrl emask, GATHER_SCATTER_ELEMENT_SIZE elementSize,
+        VISA_Exec_Size executionSize, VISA_StateOpndHandle *surface,
+        VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset, VISA_RawOpnd *srcDst) = 0;
 
     /// AppendVISASurfAccessGather4Scatter4TypedInst -- append a typed dword gather4/scatter4 instruction to this kernel
     /// uOffset, vOffset, and rOffset are all in unit of pixels.

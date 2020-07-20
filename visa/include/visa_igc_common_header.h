@@ -393,7 +393,7 @@ typedef enum {
     ISA_ROL                = 0x80,
     ISA_ROR                = 0x81,
     ISA_DP4A               = 0x82,
-    ISA_NUM_OPCODE,
+        ISA_NUM_OPCODE,
     ISA_OPCODE_ENUM_SIZE   = 0xFF
 } ISA_Opcode;
 
@@ -632,6 +632,7 @@ typedef enum
     LIFETIME_START = 0,
     LIFETIME_END = 1
 } VISAVarLifetime;
+
 
 
 // FixedFunctionID: these are hardware FFID values

@@ -245,7 +245,6 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(
     // Otherwise, need to be set individually.
     desc.value = fCtrl;
 
-
     desc.layout.rspLength = regs2rcv;
     desc.layout.msgLength = regs2snd;
 
@@ -5487,7 +5486,7 @@ PhyRegPool::PhyRegPool(Mem_Manager& m, unsigned int maxRegisterNumber)
     ARF_Table[AREG_ACC1]     = new (m) G4_Areg(AREG_ACC1);
     ARF_Table[AREG_MASK0]    = new (m) G4_Areg(AREG_MASK0);
     ARF_Table[AREG_MS0]      = new (m) G4_Areg(AREG_MS0);
-    ARF_Table[AREG_DBG]     = new (m) G4_Areg(AREG_DBG);
+    ARF_Table[AREG_DBG]      = new (m) G4_Areg(AREG_DBG);
     ARF_Table[AREG_SR0]      = new (m) G4_Areg(AREG_SR0);
     ARF_Table[AREG_CR0]      = new (m) G4_Areg(AREG_CR0);
     ARF_Table[AREG_TM0]      = new (m) G4_Areg(AREG_TM0);

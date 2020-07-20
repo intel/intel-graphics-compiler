@@ -1208,7 +1208,6 @@ std::ostream& operator<<(std::ostream& os, vISA::G4_INST& inst);
 namespace vISA
 {
 
-
 class G4_InstMath : public G4_INST
 {
     G4_MathOp mathOp;
