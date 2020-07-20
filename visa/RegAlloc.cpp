@@ -385,6 +385,22 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
         }
     }
 
+#ifndef NDEBUG
+    for (unsigned i = 0; i < numAddrs; i++)
+    {
+        REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[i]];
+        unsigned indirectVarSize = 0;
+        for (REGVAR_VECTOR::iterator it = vec.begin();
+            it != vec.end();
+            it++)
+        {
+            G4_RegVar* cur = (*it);
+            indirectVarSize += cur->getDeclare()->getByteSize();
+        }
+        assert((indirectVarSize < (unsigned)getGRFSize()* fg.getKernel()->getNumRegTotal()) && "indirected variables' size is larger than GRF file size");
+    }
+#endif
+
 #ifdef DEBUG_VERBOSE_ON
     for (unsigned int i = 0; i < numBBs; i++)
     {
