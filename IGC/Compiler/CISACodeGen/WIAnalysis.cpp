@@ -758,12 +758,10 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
     {
         BasicBlock* def_blk = *blk_it;
         // add the branch into the controlling-branch set of the block
-        // if the block is in the influence-region, and not a partial join
-        bool is_join = (br_info.partial_joins.count(def_blk) > 0);
-        if (!is_join)
-        {
-            m_ctrlBranches[def_blk].insert(inst);
-        }
+        // if the block is in the influence-region
+        IGC_ASSERT(def_blk != br_info.full_join);
+        m_ctrlBranches[def_blk].insert(inst);
+
         for (BasicBlock::iterator I = def_blk->begin(), E = def_blk->end(); I != E; ++I)
         {
             Instruction* defi = &(*I);
