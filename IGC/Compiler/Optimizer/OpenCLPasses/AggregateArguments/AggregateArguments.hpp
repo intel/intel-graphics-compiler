@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-    class AggregateArgumentsAnalysis : public llvm::FunctionPass
+    class AggregateArgumentsAnalysis : public llvm::ModulePass
     {
     public:
 
@@ -58,7 +58,7 @@ namespace IGC
             AU.addRequired<MetaDataUtilsWrapper>();
         }
 
-        virtual bool runOnFunction(llvm::Function& F) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
     private:
         void addImplictArgs(llvm::Type* type, uint64_t baseAllocaOffset);
@@ -66,6 +66,7 @@ namespace IGC
     private:
         const llvm::DataLayout* m_pDL;
         ImplicitArg::StructArgList m_argList;
+        IGCMD::MetaDataUtils* m_pMdUtils;
 
     };
 

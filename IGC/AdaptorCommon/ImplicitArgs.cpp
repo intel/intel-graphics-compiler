@@ -460,8 +460,6 @@ void ImplicitArgs::addStructArgs(llvm::Function& F, const Argument* A, const Imp
         argMD->setStructArgOffset(offset);
         funcInfo->addImplicitArgInfoListItem(argMD);
     }
-
-    pMdUtils->save(F.getParent()->getContext());
 }
 
 void ImplicitArgs::addNumberedArgs(llvm::Function& F, ImplicitArg::ArgMap& argMap, IGCMD::MetaDataUtils* pMdUtils)
