@@ -569,6 +569,10 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     if (!isOptDisabled)
     {
         // Optimize lower-level IR
+        if (!fastCompile)
+        {
+            mpm.add(createIGCInstructionCombiningPass());
+        }
         mpm.add(new GenSpecificPattern());
         if (!fastCompile)
         {
