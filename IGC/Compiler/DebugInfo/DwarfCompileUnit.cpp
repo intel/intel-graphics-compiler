@@ -911,6 +911,7 @@ void CompileUnit::addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varIn
         addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bregx);
         addUInt(Block, dwarf::DW_FORM_udata, scratchBaseAddr);  // Base address of surface or sampler
         addSInt(Block, dwarf::DW_FORM_sdata, offset);           // Offset to base address
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
     }
     else
     {
@@ -996,7 +997,7 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
 
         addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_shl);
 
-        if (!isPacked)
+        if ((!isPacked) && (!Loc->IsInMemory()))
         {
             dwarf::LocationAtom constOP = dwarf::DW_OP_const8u;
             dwarf::Form form = dwarf::DW_FORM_data8;
@@ -1023,6 +1024,7 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
         else
         {
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
         }
     }
 }
@@ -2151,6 +2153,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
             {
                 addScratchLocation(Block, &varInfo, vectorElem * numOfRegs * grfSize);
                 addSimdLane(Block, var, loc, false); // Emit SIMD lane for spill (unpacked)
+
                 IGC_ASSERT(((DD->simdWidth < 32) && (grfSize == 32)) && "SIMD32 debugging not supported");
             }
         }

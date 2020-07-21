@@ -1800,8 +1800,8 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     sizeof(uint8_t) +                  // subReg or DW_OP_INTEL_push_simd_lane
                                     sizeof(uint8_t) +                  // opLit
                                     sizeof(uint8_t) +                  // DW_OP_shl
-                                    sizeof(uint8_t) + varSizeInBytes + // DW_OP_const1u+val
-                                    sizeof(uint8_t);                   // DW_OP_INTEL_bit_piece_stack
+                                    sizeof(uint8_t) +                  // DW_OP_plus
+                                    sizeof(uint8_t);                   // DW_OP_deref
 
                                 if (Loc.IsVectorized() == true)
                                 {
@@ -1823,7 +1823,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     }
                                     else
                                     {
-                                        allVectorsSize += (uint16_t)(sizeof(uint8_t) + sizeof(uint64_t) + sizeof(uint8_t));
+                                        allVectorsSize += (uint16_t)(sizeof(uint8_t) + sizeof(uint64_t) + simdLaneSize);
                                     }
                                 }
 
@@ -1851,16 +1851,16 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                             (uint64_t)(vectorElem * numOfRegs * m_pModule->m_pShader->getGRFSize());
                                         addr.Set(Address::Space::eScratch, 0, memoryOffset);
 
-                                        unsigned int op = llvm::dwarf::DW_OP_const8u;
-                                        write(dotLoc.loc, (uint8_t)op);
+                                        write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_const8u);
                                         write(dotLoc.loc, addr.GetAddress());
-                                        op = llvm::dwarf::DW_OP_deref;
-                                        write(dotLoc.loc, (uint8_t)op);
                                     }
 
                                     // Emit SIMD lane for spill (unpacked)
                                     IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Unexpected variable's size");
                                     IGC_ASSERT_MESSAGE(varSizeInBits <= 0x80000000, "Too huge variable's size");
+
+                                    unsigned int opLit = llvm::dwarf::DW_OP_lit6;  // Always 64-bit ptrs in scratch space
+#if 0
                                     unsigned int opLit = llvm::dwarf::DW_OP_lit5;  // Assume unpacked <= 32 variable size
 
                                     // Verify if variable's size if a power of 2 and greater than 32 bits.
@@ -1875,47 +1875,16 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                             opLit = llvm::dwarf::DW_OP_lit0 + bitPos;
                                         }
                                     }
-
-                                    if (Loc.IsVectorized() == false)
-                                    {
-                                        unsigned int subRegInBits = genIsaRange.getGRF().subRegNum * 8;
-
-                                        // Scalar in a subregister
-                                        write(dotLoc.loc, (uint8_t)subRegInBits);
-                                    }
-                                    else
-                                    {
-                                        // SIMD lane
-                                        write(dotLoc.loc, (uint8_t)DW_OP_INTEL_push_simd_lane);
-                                    }
+#endif // 0
+                                    // SIMD lane
+                                    write(dotLoc.loc, (uint8_t)DW_OP_INTEL_push_simd_lane);
 
                                     // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
                                     // as well as 32-bit float/int, while 64-bit variable takes two 32-bit subregisters.
                                     write(dotLoc.loc, (uint8_t)opLit);
                                     write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_shl);
-
-                                    if (varSizeInBits <= 0xFF)
-                                    {
-                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const1u);
-                                        write(dotLoc.loc, (uint8_t)varSizeInBits);
-                                    }
-                                    else if (varSizeInBits <= 0xFFFF)
-                                    {
-                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const2u);
-                                        write(dotLoc.loc, (uint16_t)varSizeInBits);
-                                    }
-                                    else if (varSizeInBits <= 0xFFFFFFFF)
-                                    {
-                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const4u);
-                                        write(dotLoc.loc, (uint32_t)varSizeInBits);
-                                    }
-                                    else
-                                    {
-                                        write(dotLoc.loc, (uint8_t)dwarf::DW_OP_const8u);
-                                        write(dotLoc.loc, (uint64_t)varSizeInBits);
-                                    }
-
-                                    write(dotLoc.loc, (uint8_t)DW_OP_INTEL_bit_piece_stack);
+                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_plus);
+                                    write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_deref);
 
                                     regNum = regNum + numOfRegs;
                                     IGC_ASSERT_MESSAGE(((simdWidth < 32) && (grfSize == 32)), "SIMD32 debugging not supported");
