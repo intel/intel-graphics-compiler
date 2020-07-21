@@ -197,7 +197,6 @@ void CisaBinary::initKernel( int kernelIndex, VISAKernelImpl * kernel )
 
     if (!kernel->getIsKernel())
     {
-
         m_header.functions[functionIndex].linkage = 0; // deprecated and MBZ
         m_header.functions[functionIndex].name_len = (unsigned char) nameLen;
         memcpy_s(&m_header.functions[functionIndex].name, COMMON_ISA_MAX_FILENAME_LENGTH, kernel->getName(), m_header.functions[functionIndex].name_len);
@@ -410,6 +409,18 @@ void CisaBinary::patchKernel(int index, unsigned int genxBufferSize, void * buff
     m_header.kernels[index].genx_binary_buffer = (char *) buffer;
     m_header.kernels[index].binary_size = genxBufferSize;
     this->genxBinariesSize+= genxBufferSize;
+}
+
+void CisaBinary::patchFunctionWithGenBinary(int index, unsigned int genxBufferSize, char* buffer)
+{
+    m_header.functions[index].offset += genxBinariesSize;
+    size_t copySize = sizeof(m_header.functions[index].offset);
+    memcpy_s(&m_header_buffer[this->m_functionOffsetLocationsArray[index]], copySize, &m_header.functions[index].offset, copySize);
+
+    m_header.functions[index].binary_size = genxBufferSize;
+    m_header.functions[index].genx_binary_buffer = buffer;
+
+    this->genxBinariesSize += genxBufferSize;
 }
 
 void CisaBinary::patchFunction(int index, unsigned genxBufferSize)

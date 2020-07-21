@@ -775,11 +775,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             assert(0 && "Should not be calling Compile() in asm text writter mode!");
             return VISA_FAILURE;
         }
-
-        std::list< VISAKernelImpl *>::iterator iter = m_kernelsAndFunctions.begin();
-        std::list< VISAKernelImpl *>::iterator end = m_kernelsAndFunctions.end();
-        CBinaryCISAEmitter cisaBinaryEmitter;
-        int kernelIndex = 0;
         if ( IS_BOTH_PATH )
         {
             m_options.setOptionInternally(vISA_NumGenBinariesWillBePatched, (uint32_t) 1);
@@ -789,14 +784,16 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         m_cisaBinary->setMinorVersion((unsigned char)this->m_header.minor_version);
         m_cisaBinary->setMagicNumber(COMMON_ISA_MAGIC_NUM);
 
+        CBinaryCISAEmitter cisaBinaryEmitter;
         int status = VISA_SUCCESS;
-        for( ; iter != end; iter++, kernelIndex++ )
+        int kernelIndex = 0;
+        for(auto func : m_kernelsAndFunctions)
         {
-            VISAKernelImpl * kTemp = *iter;
-            kTemp->finalizeAttributes();
+            func->finalizeAttributes();
             unsigned int binarySize = 0;
-            status = cisaBinaryEmitter.Emit(kTemp, binarySize);
-            m_cisaBinary->initKernel(kernelIndex, kTemp);
+            status = cisaBinaryEmitter.Emit(func, binarySize);
+            m_cisaBinary->initKernel(kernelIndex, func);
+            kernelIndex++;
         }
         m_cisaBinary->finalizeCisaBinary();
 
@@ -964,37 +961,31 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
         if (numGenBinariesWillBePatched)
         {
-            std::list< VISAKernelImpl *>::iterator iter = m_kernelsAndFunctions.begin();
-            std::list< VISAKernelImpl *>::iterator end = m_kernelsAndFunctions.end();
-
+            //only patch for Both path; vISA path doesn't need this.
             int kernelCount = 0;
             int functionCount = 0;
-
-            //only patch for Both path; vISA path doesn't need this.
-            for (int i = 0; iter != end; iter++, i++)
+            for (auto func : m_kernelsAndFunctions)
             {
-                VISAKernelImpl * kTemp = *iter;
-                void * genxBuffer = NULL;
-                unsigned int genxBufferSize = 0;
-                if (kTemp->getIsKernel())
+                if (func->getIsKernel())
                 {
-                    genxBuffer = kTemp->getGenxBinaryBuffer();
-                    genxBufferSize = kTemp->getGenxBinarySize();
-                    m_cisaBinary->patchKernel(kernelCount, genxBufferSize, genxBuffer, getGenxPlatformEncoding());
+                    m_cisaBinary->patchKernel(
+                        kernelCount, func->getGenxBinarySize(), func->getGenxBinaryBuffer(), getGenxPlatformEncoding());
                     kernelCount++;
+                } else {
+                    // functions be treated as "mainFunctions" will have its own binary, will need to
+                    // specify its binary buffer in m_cisaBinary
+                    // FIXME: By this the external functions' gen-binary will be part of .isa output when
+                    // calling CisaBinary::dumpToStream, and avoid the assert in dumpToStream. But when
+                    // parsing the emited .isa file, our parser may not correctly support this case.
+                    if (m_options.getOption(vISA_noStitchExternFunc) &&
+                        func->getKernel()->getIntKernelAttribute(Attributes::ATTR_Extern) != 0) {
+                        m_cisaBinary->patchFunctionWithGenBinary(functionCount, func->getGenxBinarySize(),
+                            func->getGenxBinaryBuffer());
+                    } else {
+                        m_cisaBinary->patchFunction(functionCount, func->getGenxBinarySize());
+                    }
+                    functionCount++;
                 }
-            }
-            iter = m_kernelsAndFunctions.begin();
-            for (int i = 0; iter != end; iter++, i++)
-            {
-              VISAKernelImpl * kTemp = *iter;
-              unsigned int genxBufferSize = 0;
-              if (!kTemp->getIsKernel())
-              {
-                genxBufferSize = kTemp->getGenxBinarySize();
-                m_cisaBinary->patchFunction(functionCount, genxBufferSize);
-                functionCount++;
-              }
             }
         }
 
