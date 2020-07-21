@@ -832,6 +832,61 @@ static std::error_code TranslateBuildVC(
     const IGC::CPlatform& IGCPlatform, float profilingTimerResolution);
 #endif //  !defined(WDDM_LINUX)
 
+#if !defined(WDDM_LINUX)
+struct VcPayloadInfo {
+    bool IsValid = false;
+    uint64_t VcOptsOffset = 0;
+    uint64_t IrSize = 0;
+};
+VcPayloadInfo tryExtractPayload(char* pInput, size_t inputSize) {
+
+    // Payload format:
+    // |-vc-codegen|c-str llvm-opts|i64(IR size)|i64(Payload size)|-vc-codegen|
+    //
+    // Should be in sync with:
+    //  Source/IGC/AdaptorOCL/ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.cpp
+
+    // Check for availability of "-vc-codegen" marker at the end
+    const std::string CodegenMarker = "-vc-codegen";
+    // make sure that we also have a room for 2 i64 size items
+    if (inputSize < (CodegenMarker.size() + 2 * sizeof(uint64_t)))
+        return {};
+    const char* const pInputEnd = pInput + inputSize;
+    if (std::memcmp(pInputEnd - CodegenMarker.size(),
+                    CodegenMarker.data(), CodegenMarker.size()) != 0)
+        return {};
+
+    // Read IR and Payload sizes. We already ensured that we have the room
+    uint64_t IrSize;
+    uint64_t PayloadSize;
+    const char* pIrSizeBuff = pInputEnd - CodegenMarker.size() - 2 * sizeof(uint64_t);
+    const char* pPayloadSizeBuff = pInputEnd - CodegenMarker.size() - 1 * sizeof(uint64_t);
+    std::memcpy(&IrSize, pIrSizeBuff, sizeof(IrSize));
+    std::memcpy(&PayloadSize, pPayloadSizeBuff, sizeof(PayloadSize));
+    if (inputSize != (PayloadSize + IrSize))
+        return {};
+
+    // Search for the start of payload, it should start with "-vc-codegen" marker
+    const char* const pIREnd = pInputEnd - PayloadSize;
+    if (std::memcmp(pIREnd, CodegenMarker.data(), CodegenMarker.size()) != 0)
+        return {};
+
+    // Make sure that we have a zero-terminated c-string (vc-options are encoded as such)
+    auto NullPos = std::find(pIREnd, pInputEnd, 0);
+    if (NullPos == pInputEnd)
+        return {};
+    // Consistency check, see the Payload format
+    if ((NullPos + 1) != pIrSizeBuff)
+        return {};
+
+    VcPayloadInfo Result;
+    Result.VcOptsOffset = (pIREnd + CodegenMarker.size()) - pInput;
+    Result.IrSize = IrSize;
+    Result.IsValid = true;
+
+    return Result;
+}
+#endif //  !defined(WDDM_LINUX)
 
 bool TranslateBuild(
     const STB_TranslateInputArgs* pInputArgs,
@@ -1539,6 +1594,13 @@ static std::error_code TranslateBuildVC(
     auto pInput = pInputArgs->pInput;
     size_t InputSize = pInputArgs->InputSize;
 
+    auto NewPathPayload = tryExtractPayload(pInputArgs->pInput,
+                                            pInputArgs->InputSize);
+    if (NewPathPayload.IsValid) {
+        ApiOptions = "-vc-codegen";
+        InternalOptions = pInputArgs->pInput + NewPathPayload.VcOptsOffset;
+        InputSize = static_cast<size_t>(NewPathPayload.IrSize);
+    }
 
     auto ExpOptions = vc::ParseOptions(ApiOptions, InternalOptions);
     if (!ExpOptions)
