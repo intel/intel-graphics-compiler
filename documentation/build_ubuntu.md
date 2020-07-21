@@ -4,7 +4,7 @@
 
 ### 1. Prepare workspace
 
-Building IGC needs flex, bison, libz and cmake version at least 3.4.3. You can install required packages on Ubuntu using this command:
+Building IGC needs flex, bison, libz and cmake version at least 3.13.4. You can install required packages on Ubuntu using this command:
 
 ```shell
 $ sudo apt-get install flex bison libz-dev cmake
@@ -21,18 +21,22 @@ $ git config --global user.email "your@email.com"
 > <span style="color: firebrick; font-weight: 600;">Important notice</span>
 Every LLVM/Clang version brings some restrictions and in some cases needs different configuration. Please refer to [LLVM/Clang caveats](#LLVM/Clang-version-specific-caveats) section for more information.
 
-In this step you need to prepare LLVM, OpenCL-Clang libraries and Clang for IGC.
+In this step you need to prepare VC Intrinsics, SPIRV-LLVM Translator, LLVM, OpenCL-Clang libraries and Clang for IGC.
 It can be done either by using packaged releases or building those yourself:
 
 #### Use preinstalled packages
 
 For **LLVM** and **Clang** packages please visit this [link](https://apt.llvm.org/) to download and install desired version.
 As of now **OpenCL Clang** is still needed to be built and installed manually. Sources are available [here](https://github.com/intel/opencl-clang). You can use out-of-tree build method with LLVM and Clang preinstalled.
+**VC Intrinsics** is a lightweight library that is built from sources with IGC and there is no package for it.
+Currently, in this mode **SPIRV-LLVM Translator** sources should be present too.
 
-Installing these three components (LLVM, Clang, and OpenCL Clang) means you no longer have to download their sources alongside IGC, so the workspace tree in the next step may look like this:
+Installing LLVM, Clang, and OpenCL Clang components means you no longer have to download their sources alongside IGC, so the workspace tree in the next step may look like this:
 ```
 <workspace>
       |- igc                          https://github.com/intel/intel-graphics-compiler
+      |- vc-intrinsics                https://github.com/intel/vc-intrinsics
+      |- llvm-spirv                   https://github.com/KhronosGroup/SPIRV-LLVM-Translator
 ```
 
 #### Build from sources
@@ -41,6 +45,7 @@ Download all dependencies and create workspace folder as below:
 ```
 <workspace>
       |- igc                               https://github.com/intel/intel-graphics-compiler
+      |- vc-intrinsics                     https://github.com/intel/vc-intrinsics
       |- llvm_patches                      https://github.com/intel/llvm-patches
       |- llvm-project                      https://github.com/llvm/llvm-project
             |- llvm/projects/opencl-clang  https://github.com/intel/opencl-clang
@@ -51,6 +56,7 @@ Download all dependencies and create workspace folder as below:
 You can use following commands:
 ```shell
 $ cd <workspace>
+$ git clone https://github.com/intel/vc-intrinsics vc-intrinsics
 $ git clone -b release/9.x https://github.com/llvm/llvm-project llvm-project
 $ git clone -b ocl-open-90 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
 $ git clone -b llvm_release_90 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
@@ -118,6 +124,7 @@ No additional steps are needed.
 You can either use prebuilt packages or build from sources:
 ```shell
 $ cd <workspace>
+$ git clone https://github.com/intel/vc-intrinsics vc-intrinsics
 $ git clone -b release/10.x https://github.com/llvm/llvm-project llvm-project
 $ git clone -b ocl-open-100 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
 $ git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
@@ -133,6 +140,7 @@ Latest known configuration that compiles successfully:
 ```
 <workspace>
       |- igc                               (master f94e38306fa0b84f23306d4b5c4da1c52fa5a956)
+      |- vc-intrinsics                     (master 65602bab586afb085048ecc75749087216dc67fb)
       |- llvm_patches                      (master 1c93162ab33af968c22fe1cbfb12ea87f5a25bfa)
       |- llvm-project                      (release/10.x 4e6ec0fff658cbe29e70f46491917202baa061c0)
             |- llvm/projects/opencl-clang  (ocl-open-100 0a5a9f67b56431ef7b9436d1af812df6dfb44975)

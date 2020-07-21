@@ -25,6 +25,7 @@ https://opensource.org/licenses/MIT
 * LLVM Project -  https://github.com/llvm/llvm-project
 * OpenCL Clang - https://github.com/intel/opencl-clang
 * SPIRV-LLVM Translator - https://github.com/KhronosGroup/SPIRV-LLVM-Translator
+* VC Intrinsics - https://github.com/intel/vc-intrinsics
 
 ## Supported Linux versions
 
