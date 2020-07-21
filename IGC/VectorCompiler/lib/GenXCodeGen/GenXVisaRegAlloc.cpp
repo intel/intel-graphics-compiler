@@ -317,17 +317,12 @@ void GenXVisaRegAlloc::extraCoalescing()
 /***********************************************************************
  * allocReg : allocate a register for a LiveRange
  */
-void GenXVisaRegAlloc::allocReg(LiveRange *LR)
-{
+void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   if (LR->value_empty())
     return;
   if (LR->getCategory() >= RegCategory::NUMREALCATEGORIES)
     return; // don't allocate register to EM or RM value
-  LLVM_DEBUG(
-    dbgs() << "Allocating ";
-    LR->print(dbgs());
-    dbgs() << "\n"
-  );
+  LLVM_DEBUG(dbgs() << "Allocating "; LR->print(dbgs()); dbgs() << "\n");
   SimpleValue V = *LR->value_begin();
   Type *Ty = V.getType();
   if (auto GV = dyn_cast<GlobalVariable>(V.getValue()))
@@ -336,28 +331,29 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR)
   assert(!Ty->isVoidTy());
   if (LR->Category == RegCategory::PREDICATE) {
     VectorType *VT = dyn_cast<VectorType>(Ty);
-    assert((!VT || genx::exactLog2(VT->getNumElements()) >= 0) && "invalid predicate width");
+    assert((!VT || genx::exactLog2(VT->getNumElements()) >= 0) &&
+           "invalid predicate width");
     (void)VT;
   }
   // Allocate the register, also setting the alignment.
+  Reg *NewReg =
+      createReg(LR->Category, Ty, DONTCARESIGNED, LR->getLogAlignment());
   // Assign to the values. If any value is an input arg, ensure the register
   // gets its type, to avoid needing an alias for an input arg.
-  for (auto &F : LR->Funcs) {
-    Reg *NewReg =
-        createReg(LR->Category, Ty, DONTCARESIGNED, LR->getLogAlignment());
-    if (RegMap.count(F) > 0) {
-      for (LiveRange::value_iterator vi = LR->value_begin(),
-                                     ve = LR->value_end();
-           vi != ve; ++vi) {
-        LLVM_DEBUG(dbgs() << "Allocating reg " << NewReg->Num << " to "
+  for (LiveRange::value_iterator vi = LR->value_begin(), ve = LR->value_end();
+       vi != ve; ++vi) {
+    for (auto &F : LR->Funcs) {
+      if (FGA->getGroup(F) == FG) {
+        assert(RegMap.count(F) > 0);
+        LLVM_DEBUG(dbgs() << "Allocating reg " << NewReg->Num << " for "
                           << *(vi->getValue()) << " in func " << F->getName()
-                          << "\n";);
+                          << "\n");
         assert(RegMap.at(F).find(*vi) == RegMap.at(F).end());
         RegMap.at(F)[*vi] = NewReg;
-        if (isa<Argument>(vi->getValue()))
-          NewReg->Ty = vi->getType();
       }
     }
+    if (isa<Argument>(vi->getValue()))
+      NewReg->Ty = vi->getType();
   }
 }
 

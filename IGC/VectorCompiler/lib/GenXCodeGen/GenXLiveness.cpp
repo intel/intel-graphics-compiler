@@ -1629,12 +1629,16 @@ void LiveRange::sortAndMerge() {
  *
  */
 void LiveRange::prepareFuncs(FunctionGroupAnalysis *FGA) {
-  for (auto &val : getValues()) {
-    auto Inst = dyn_cast<Instruction>(val.getValue());
+  // Funcs must be empty as it's being filled immediately
+  // before it's required in VisaRegAlloc (because most of the passes
+  // invalidate this set) once for every LR
+  assert(Funcs.empty());
+  for (auto &Val : getValues()) {
+    auto Inst = dyn_cast<Instruction>(Val.getValue());
     Function *DefFunc = nullptr;
     if (Inst && Inst->getParent())
       DefFunc = Inst->getFunction();
-    else if (auto Arg = dyn_cast<Argument>(val.getValue()))
+    else if (auto Arg = dyn_cast<Argument>(Val.getValue()))
       DefFunc = Arg->getParent();
 
     if (DefFunc)
@@ -1642,9 +1646,9 @@ void LiveRange::prepareFuncs(FunctionGroupAnalysis *FGA) {
         ? FGA->getSubGroup(DefFunc)->getHead()
         : FGA->getGroup(DefFunc)->getHead());
 
-    for (auto U : val.getValue()->users())
-      if (Instruction *userInst = dyn_cast<Instruction>(U)) {
-        auto F = userInst->getFunction();
+    for (auto U : Val.getValue()->users())
+      if (Instruction *UserInst = dyn_cast<Instruction>(U)) {
+        auto F = UserInst->getFunction();
         Funcs.insert(FGA->getSubGroup(F) ? FGA->getSubGroup(F)->getHead()
                                          : FGA->getGroup(F)->getHead());
       }
