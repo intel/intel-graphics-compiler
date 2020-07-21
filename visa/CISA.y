@@ -258,7 +258,9 @@ VISA_RawOpnd* rawOperandArray[16];
     bool                   cps;
     bool                   non_uniform_sampler;
     bool                   flag;
-}
+
+    CISA_GEN_VAR*          vISADecl;
+} // end of possible token types
 
 %start CISAStmt
 
@@ -498,6 +500,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <regAccess> AddrParam
 %type <regAccess> AddrVar
 %type <regAccess> AddressableVar
+%type <vISADecl>  PredVar
 
 %type <fp>  FloatPoint
 %type <fp>  DoubleFloat
@@ -858,7 +861,7 @@ LogicInstruction : Predicate BINARY_LOGIC_OP InstModifier  ExecSize VecDstOperan
          {
              pCisaBuilder->CISA_create_logic_instruction($1.cisa_gen_opnd, $2, $3, $4.emask, $4.exec_size, $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, NULL, NULL, CISAlineno);
          };
-         | Predicate BINARY_LOGIC_OP InstModifier  ExecSize VAR VAR VAR
+         | Predicate BINARY_LOGIC_OP InstModifier  ExecSize PredVar PredVar PredVar
          {
              pCisaBuilder->CISA_create_logic_instruction($2, $4.emask, $4.exec_size, $5, $6, $7, CISAlineno);
          };
@@ -876,7 +879,7 @@ UnaryLogicInstruction : Predicate UNARY_LOGIC_OP InstModifier  ExecSize VecDstOp
          {
              pCisaBuilder->CISA_create_logic_instruction($1.cisa_gen_opnd, $2, $3, $4.emask, $4.exec_size, $5.cisa_gen_opnd, $6.cisa_gen_opnd, NULL, NULL, NULL, CISAlineno);
          }
-         | Predicate UNARY_LOGIC_OP InstModifier  ExecSize VAR VAR
+         | Predicate UNARY_LOGIC_OP InstModifier  ExecSize PredVar PredVar
          {
              pCisaBuilder->CISA_create_logic_instruction($2, $4.emask, $4.exec_size, $5, $6, NULL, CISAlineno);
          };
@@ -934,7 +937,7 @@ AddrAddInstruction : ADDR_ADD_OP ExecSize VecDstOperand_A VecSrcOperand_A_G  Vec
          };
 
                 //   1       2        3                  4
-SetpInstruction : SETP_OP ExecSize   VAR  VecSrcOperand_G_I_IMM
+SetpInstruction : SETP_OP ExecSize   PredVar  VecSrcOperand_G_I_IMM
          {
              pCisaBuilder->CISA_create_setp_instruction($1, $2.emask, $2.exec_size, $3, $4.cisa_gen_opnd, CISAlineno);
          };
@@ -962,7 +965,7 @@ MovInstruction : Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I VecSrc
          {
              pCisaBuilder->CISA_create_mov_instruction($1.cisa_gen_opnd, $2, $4.emask, $4.exec_size, $3, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
          };
-         | Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I VAR
+         | Predicate MOV_OP InstModifier ExecSize VecDstOperand_G_I PredVar
          {
              pCisaBuilder->CISA_create_mov_instruction($5.cisa_gen_opnd, $6, CISAlineno);
          };
@@ -982,9 +985,9 @@ MovsInstruction : MOVS_OP ExecSize DstStateOperand SrcStateOperand
          };
 
                  //   1          2            3        4                  5                6
-CmpInstruction :  CMP_OP ConditionalModifier ExecSize VAR VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM
+CmpInstruction :  CMP_OP ConditionalModifier ExecSize PredVar VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM
          {
-             pCisaBuilder->CISA_create_cmp_instruction($2.cisa_mod, ISA_CMP, $3.emask, $3.exec_size, $4, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
+             pCisaBuilder->CISA_create_cmp_instruction($2.cisa_mod, $3.emask, $3.exec_size, $4, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
          };
          //    1        2                    3        4                    5                        6
          |  CMP_OP ConditionalModifier ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM
@@ -1367,15 +1370,9 @@ Predicate :   /* empty */
             {
              $$.cisa_gen_opnd = NULL;
             }
-          | LPAREN PredState VAR PredCntrl RPAREN
+          | LPAREN PredState PredVar PredCntrl RPAREN
             {
-                char upppered[20];  //FIXME, there should be single name in the dumpling, lower/Upper changes should not be allowed.
-                int str_len = strlen($3);
-                for (int i = 0; i < str_len; i++) {
-                    upppered[i] = toupper($3[i]);
-                }
-                upppered[str_len]='\0';
-                $$.cisa_gen_opnd = pCisaBuilder->CISA_create_predicate_operand(upppered, MODIFIER_NONE, $2.cisa_state, $4, CISAlineno);
+                $$.cisa_gen_opnd = pCisaBuilder->CISA_create_predicate_operand($3, $2.cisa_state, $4, CISAlineno);
             };
 
 PredState :   /* empty */
@@ -1770,6 +1767,14 @@ TwoDimOffset : LPAREN Exp COMMA Exp RPAREN
               $$.row = (int)$2;
               $$.elem = (int)$4;
           };
+
+PredVar : VAR
+          {
+              TRACE("\n** Predicate Operand");
+              $$ = pCisaBuilder->CISA_find_decl($1);
+              if (!$$ || $$->type != PREDICATE_VAR)
+                  PARSE_ERROR("undefined predicate variable: ", $1);
+          }
 
 AddrVar :  VAR
           {

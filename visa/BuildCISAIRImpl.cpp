@@ -1334,11 +1334,10 @@ bool CISA_IR_Builder::CISA_create_mov_instruction(VISA_opnd *pred,
 }
 
 bool CISA_IR_Builder::CISA_create_mov_instruction(
-    VISA_opnd *dst, const char *src0_name, int line_no)
+    VISA_opnd* dst, CISA_GEN_VAR* src0, int line_no)
 {
-    CISA_GEN_VAR *src0 = m_kernel->getDeclFromName(src0_name);
     MUST_BE_TRUE1(src0 != NULL, line_no, "The source operand of a move instruction was null");
-    m_kernel->AppendVISAPredicateMove((VISA_VectorOpnd *)dst, (VISA_PredVar  *)src0);
+    m_kernel->AppendVISAPredicateMove((VISA_VectorOpnd*)dst, (VISA_PredVar*)src0);
     return true;
 }
 
@@ -1425,16 +1424,14 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(VISA_opnd *pred,
 
 bool CISA_IR_Builder::CISA_create_cmp_instruction(
     VISA_Cond_Mod sub_op,
-    ISA_Opcode opcode,
     VISA_EMask_Ctrl emask,
     unsigned exec_size,
-    const char *name,
+    CISA_GEN_VAR *decl,
     VISA_opnd *src0,
     VISA_opnd *src1,
     int line_no)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    CISA_GEN_VAR * decl = m_kernel->getDeclFromName(std::string(name));
     m_kernel->AppendVISAComparisonInst(
         sub_op, emask, executionSize,
         (VISA_PredVar *)decl, (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1);
@@ -1708,9 +1705,9 @@ bool CISA_IR_Builder::CISA_create_logic_instruction(
     ISA_Opcode opcode,
     VISA_EMask_Ctrl emask,
     unsigned exec_size,
-    const char *dst_name,
-    const char *src0_name,
-    const char *src1_name,
+    CISA_GEN_VAR *dst,
+    CISA_GEN_VAR *src0,
+    CISA_GEN_VAR *src1,
     int line_no)
 {
     if( opcode != ISA_AND &&
@@ -1721,15 +1718,11 @@ bool CISA_IR_Builder::CISA_create_logic_instruction(
         MUST_BE_TRUE1(false, line_no, "Prediate variables are not supported for this Logic Opcode." );
     }
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    CISA_GEN_VAR *dst = m_kernel->getDeclFromName(dst_name);
-    MUST_BE_TRUE1(dst != NULL, line_no, "The destination operand of a logical instruction was null");
-    CISA_GEN_VAR *src0 = m_kernel->getDeclFromName(src0_name);
-    MUST_BE_TRUE1(src0 != NULL, line_no, "The first source operand of a logical instruction was null");
-    CISA_GEN_VAR *src1 = NULL;
+    MUST_BE_TRUE1(dst, line_no, "The destination operand of a logical instruction was null");
+    MUST_BE_TRUE1(src0, line_no, "The first source operand of a logical instruction was null");
     if ( opcode != ISA_NOT )
     {
-        src1 = m_kernel->getDeclFromName(src1_name);
-        MUST_BE_TRUE1(src1 != NULL, line_no, "The second source operand of a logical instruction was null");
+        MUST_BE_TRUE1(src1, line_no, "The second source operand of a logical instruction was null");
     }
     m_kernel->AppendVISALogicOrShiftInst(
         opcode, emask, executionSize,
@@ -1759,12 +1752,11 @@ bool CISA_IR_Builder::CISA_create_setp_instruction(
     ISA_Opcode opcode,
     VISA_EMask_Ctrl emask,
     unsigned exec_size,
-    const char * var_name,
+    CISA_GEN_VAR * dst,
     VISA_opnd *src0,
     int line_no)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    CISA_GEN_VAR *dst = m_kernel->getDeclFromName(var_name);
     m_kernel->AppendVISASetP(emask, executionSize, (VISA_PredVar *)dst, (VISA_VectorOpnd *)src0);
     return true;
 }
@@ -2709,7 +2701,7 @@ bool CISA_IR_Builder::CISA_create_lifetime_inst(
     else if(cisaVar->type == PREDICATE_VAR)
     {
         char cntrl[4] = {0, 0, 0, 0};
-        var = CISA_create_predicate_operand(src, MODIFIER_NONE, PredState_NO_INVERSE, cntrl, line_no);
+        var = CISA_create_predicate_operand(cisaVar, PredState_NO_INVERSE, cntrl, line_no);
     }
     m_kernel->AppendVISALifetime((VISAVarLifetime)startOrEnd, (VISA_VectorOpnd*)var);
 
@@ -2940,7 +2932,7 @@ VISA_opnd * CISA_IR_Builder::CISA_create_state_operand(
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_create_predicate_operand(
-    const char * var_name, VISA_Modifier mod, VISA_PREDICATE_STATE state,
+    CISA_GEN_VAR *decl, VISA_PREDICATE_STATE state,
     const char * cntrl, int line_no)
 {
 
@@ -2953,8 +2945,7 @@ VISA_opnd * CISA_IR_Builder::CISA_create_predicate_operand(
     {
         control = PRED_CTRL_ALL;
     }
-    VISA_PredOpnd *cisa_opnd = NULL;
-    CISA_GEN_VAR * decl = m_kernel->getDeclFromName(std::string(var_name));
+    VISA_PredOpnd *cisa_opnd = nullptr;
     int status = VISA_SUCCESS;
     m_kernel->CreateVISAPredicateOperand(cisa_opnd, (VISA_PredVar *)decl, state, control);
     MUST_BE_TRUE1((status == VISA_SUCCESS), line_no, "Failed to create predicate operand.");

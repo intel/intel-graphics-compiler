@@ -231,7 +231,7 @@ public:
         int line_no);
 
     bool CISA_create_mov_instruction(
-        VISA_opnd *dst, const char *src0, int line_no);
+        VISA_opnd *dst, CISA_GEN_VAR *src0, int line_no);
 
     bool CISA_create_movs_instruction(
         VISA_EMask_Ctrl emask,
@@ -253,10 +253,9 @@ public:
 
     bool CISA_create_cmp_instruction(
         VISA_Cond_Mod sub_op,
-        ISA_Opcode opcode,
         VISA_EMask_Ctrl emask,
         unsigned exec_size,
-        const char *name,
+        CISA_GEN_VAR* decl,
         VISA_opnd *src0,
         VISA_opnd *src1,
         int line_no);
@@ -378,9 +377,9 @@ public:
         ISA_Opcode opcode,
         VISA_EMask_Ctrl emask,
         unsigned exec_size,
-        const char *dst,
-        const char *src0,
-        const char *src1,
+        CISA_GEN_VAR *dst,
+        CISA_GEN_VAR *src0,
+        CISA_GEN_VAR *src1,
         int line_no);
 
     bool CISA_create_math_instruction(
@@ -398,7 +397,7 @@ public:
         ISA_Opcode opcode,
         VISA_EMask_Ctrl emask,
         unsigned exec_size,
-        const char *dst,
+        CISA_GEN_VAR *dst,
         VISA_opnd *src0,
         int line_no);
 
@@ -770,7 +769,7 @@ public:
     VISA_opnd * CISA_create_state_operand(
         const char * var_name, unsigned char offset, int line_no, bool isDst);
     VISA_opnd * CISA_create_predicate_operand(
-        const char * var_name, VISA_Modifier mod, VISA_PREDICATE_STATE state,
+        CISA_GEN_VAR * var, VISA_PREDICATE_STATE state,
         const char * pred_cntrl, int line_no);
     VISA_opnd * CISA_create_RAW_NULL_operand(int line_no);
     VISA_opnd * CISA_create_RAW_operand(const char * var_name, unsigned short offset, int line_no);
