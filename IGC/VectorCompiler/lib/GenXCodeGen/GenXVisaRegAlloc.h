@@ -220,7 +220,6 @@ namespace llvm {
     // print : dump the state of the pass. This is used by -genx-dump-regalloc
     virtual void print(raw_ostream &O, const Module *M) const;
   private:
-    Type *BoolTy;
     void getLiveRanges(std::vector<genx::LiveRange *> *LRs) const;
     void getLiveRangesForValue(Value *V, std::vector<genx::LiveRange *> *LRs) const;
     void extraCoalescing();

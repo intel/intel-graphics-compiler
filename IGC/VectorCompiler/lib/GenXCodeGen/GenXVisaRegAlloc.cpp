@@ -89,7 +89,6 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   Liveness = &getAnalysis<GenXLiveness>();
   Numbering = &getAnalysis<GenXNumbering>();
   FGA = &getAnalysis<FunctionGroupAnalysis>();
-  BoolTy = Type::getInt1Ty(FG->getContext());
   // Empty out the analysis from the last function it was used on.
   RegMap.clear();
   RegStorage.clear();
@@ -406,6 +405,12 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *k
 GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
     const Function* kernel, SimpleValue V, Signedness Signed, Type *OverrideType)
 {
+  Reg *R = getRegForValueUntyped(kernel, V);
+  if (!R)
+    return nullptr; // no register allocated
+  if (R->Category != RegCategory::GENERAL)
+    return R;
+
   if (!OverrideType)
     OverrideType = V.getType();
   if (OverrideType->isPointerTy()) {
@@ -413,38 +418,22 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
     if (GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile))
       OverrideType = OverrideType->getPointerElementType();
   }
-  Reg* R = getRegForValueUntyped(kernel, V);
-  if (!R)
-    return nullptr; // no register allocated
-  Reg* OriginalReg = R;
+  OverrideType = &fixDegenerateVectorType(*OverrideType);
 
-  if (R->Category == RegCategory::GENERAL) {
-    for (;;) {
-      Type *ExistingType = R->Ty;
-      if (VectorType *VT = dyn_cast<VectorType>(ExistingType))
-        if (VT->getNumElements() == 1)
-          ExistingType = VT->getElementType();
-      if (VectorType *VT = dyn_cast<VectorType>(OverrideType))
-        if (VT->getNumElements() == 1)
-          OverrideType = VT->getElementType();
-      if (ExistingType == OverrideType) {
-        if (R->Signed == Signed || Signed == DONTCARESIGNED)
-          break; // Match, use this alias.
-      }
-      // On to next alias.
-      auto Next = R->NextAlias[kernel];
-      if (Next) {
-        R = Next;
-        continue;
-      }
-      // Run out of aliases. Add a new one.
-      Reg* NewReg = createReg(RegCategory::GENERAL, OverrideType, Signed, 0, OriginalReg);
-      R->NextAlias[kernel] = NewReg;
-      R = NewReg;
-      break;
-    }
+  Reg *LastAlias = R;
+  // std::find_if
+  for (Reg *CurAlias = R; CurAlias; CurAlias = CurAlias->NextAlias[kernel]) {
+    LastAlias = CurAlias;
+    Type *ExistingType = CurAlias->Ty;
+    ExistingType = &fixDegenerateVectorType(*ExistingType);
+    if (ExistingType == OverrideType &&
+        (CurAlias->Signed == Signed || Signed == DONTCARESIGNED))
+      return CurAlias;
   }
-  return R;
+  // Run out of aliases. Add a new one.
+  Reg *NewReg = createReg(RegCategory::GENERAL, OverrideType, Signed, 0, R);
+  LastAlias->NextAlias[kernel] = NewReg;
+  return NewReg;
 }
 
 /***********************************************************************
