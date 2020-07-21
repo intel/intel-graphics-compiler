@@ -562,7 +562,7 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
 
   // Cast data type to legal.
   // Consider i64 legal for SVM cases
-  if (!m_useGlobalMem && !CI->getType()->getScalarType()->isIntegerTy(64))
+  if (!(m_useGlobalMem && CI->getType()->getScalarType()->isIntegerTy(64)))
     std::tie(OldValue, ValueEltSz) = NormalizeVector(OldValue, NewDstTy, CI);
   NewDstTy = OldValue->getType();
   unsigned ValueNumElts = NewDstTy->getVectorNumElements();
