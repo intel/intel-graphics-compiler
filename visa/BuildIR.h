@@ -1860,6 +1860,12 @@ public:
     G4_INST* createBinOp(G4_opcode op, uint8_t execSize, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, uint32_t option, bool appendToInstList);
 
+    G4_INST* createMach(uint8_t execSize, G4_DstRegRegion* dst,
+        G4_Operand* src0, G4_Operand* src1, uint32_t option, G4_Type accType);
+
+    G4_INST* createMacl(uint8_t execSize, G4_DstRegRegion* dst,
+        G4_Operand* src0, G4_Operand* src1, uint32_t option, G4_Type accType);
+
     static G4_MathOp Get_MathFuncCtrl(ISA_Opcode op, G4_Type type);
 
     void resizePredefinedStackVars();

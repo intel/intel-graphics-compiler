@@ -1993,15 +1993,12 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
         mulInst->setCondMod(nullptr);
     }
 
-    // create a mach inst
-    G4_INST* machInst = builder.createBinOp(G4_mach, mulInst->getExecSize(),
-        origDst, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, false);
+    // create a macl inst
+    G4_INST* machInst = builder.createMacl(mulInst->getExecSize(),
+        origDst, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, accType);
     machInst->setPredicate(predicate);
 
     // maintain du chain as fixAccDst uses it later
-    G4_SrcRegRegion* accSrcOpnd = builder.createSrcRegRegion(Mod_src_undef, Direct,
-        builder.phyregpool.getAcc0Reg(), 0, 0, builder.getRegionStride1(), accType);
-    machInst->setImplAccSrc(accSrcOpnd);
     mulInst->addDefUse(machInst, Opnd_implAccSrc);
 
     INST_LIST_ITER machIter = it;
@@ -2228,10 +2225,8 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
     }
 
     // create a mach inst
-    G4_INST* newInst = builder.createBinOp(G4_mach, exec_size, machDst,
-        builder.duplicateOperand(src0), builder.duplicateOperand(src1), inst_opt, false);
-
-    newInst->setOptionOn(InstOpt_AccWrCtrl);
+    G4_INST* newInst = builder.createMach(exec_size, machDst,
+        builder.duplicateOperand(src0), builder.duplicateOperand(src1), inst_opt, tmp_type);
 
     INST_LIST_ITER iter = i;
     iter++;
@@ -2244,15 +2239,10 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
     inst->transferUse(newInst);
     inst->addDefUse(newInst, Opnd_implAccSrc);
 
-    // create an implicit source for MACH
+    // create an explciit acc source for later use
     const RegionDesc* rd = exec_size > 1 ? builder.getRegionStride1() : builder.getRegionScalar();
     G4_SrcRegRegion* acc_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct,
         builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
-
-    newInst->setImplAccSrc(acc_src_opnd);
-
-    // set an implicit dst for MACH
-    newInst->setImplAccDst(builder.createDstRegRegion(*acc_dst_opnd));
 
     insertedInst = true;
 
@@ -2508,53 +2498,47 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
 
     bb->insertBefore(iter, newMul);
     inst->copyDefsTo(newMul, false);
-    newMul->addDefUse(inst, Opnd_implAccSrc);
 
-    iter = i;
-    iter--;
-    fixMulSrc1(iter, bb);
 
+    fixMulSrc1(std::prev(i), bb);
     newMul->setNoMask(true);
 
-    inst->setOpcode(G4_mach);
-
+    auto machSrc1 = inst->getSrc(1);
     if (src1->isImm() && src0->getType() != src1->getType())
     {
         G4_Imm* oldImm = src1->asImm();
         // Ensure src1 has the same type as src0.
-        G4_Imm* newImm = builder.createImm(oldImm->getInt(), src0->getType());
-        inst->setSrc(newImm, 1);
+        machSrc1 = builder.createImm(oldImm->getInt(), src0->getType());
     }
     else if (!IS_DTYPE(src1->getType()))
     {
         // this can happen due to vISA opt, convert them to src0 type which should be D/UD
         // We use D as the tmp type to make sure we can represent all src1 values
-        auto isSrc1NonScalar = inst->getSrc(1)->isSrcRegRegion() && !inst->getSrc(1)->asSrcRegRegion()->isScalar();
-        auto newSrc = insertMovBefore(i, 1, Type_D, bb);
-        inst->setSrc(builder.createSrcRegRegion(Mod_src_undef, Direct, newSrc->getTopDcl()->getRegVar(), 0, 0,
-            isSrc1NonScalar ? builder.getRegionStride1() : builder.getRegionScalar(), src0->getType()), 1);
+        machSrc1 = insertMovBefore(i, 1, Type_D, bb);
     }
 
-    //set implicit src/dst for mach
-    const RegionDesc* rd = exec_size > 1 ? builder.getRegionStride1() : builder.getRegionScalar();
-    G4_SrcRegRegion* acc_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
-    inst->setImplAccSrc(acc_src_opnd);
-    inst->setImplAccDst(builder.createDstRegRegion(*acc_dst_opnd));
+    // We don't duplicate the operands here as original inst is unlinked
+    // ToDo: this invalidate du-chain, do we still need to maintain it?
+    auto machInst = builder.createMach(inst->getExecSize(), inst->getDst(), inst->getSrc(0), machSrc1, inst_opt, tmp_type);
+    machInst->setPredicate(inst->getPredicate());
+    machInst->setCondMod(inst->getCondMod());
+    *i = machInst;
+    inst->transferUse(machInst);
+    inst->removeAllDefs();
+    newMul->addDefUse(machInst, Opnd_implAccSrc);
 
     INST_LIST_ITER end_iter = i;
     // check if the ACC source is aligned to mach dst
+    // ToDo: this should be checked by fixAcc?
     G4_DstRegRegion* dst = inst->getDst();
-    if ((inst->getSaturate()) ||
-        (dst &&
-        ((dst->getExecTypeSize() > G4_Type_Table[Type_D].byteSize) ||
-            (isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst)))))
+    if (inst->getSaturate() ||
+        dst->getExecTypeSize() > G4_Type_Table[Type_D].byteSize ||
+        isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst))
     {
         // add a tmp mov
-        inst->setDest(insertMovAfter(i, dst, dst->getType(), bb));
+        machInst->setDest(insertMovAfter(i, dst, dst->getType(), bb));
         end_iter++;
     }
-
-    inst->setOptionOn(InstOpt_AccWrCtrl);
 
     if (exec_size > builder.getNativeExecSize())
     {

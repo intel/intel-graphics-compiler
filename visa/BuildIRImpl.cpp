@@ -391,6 +391,33 @@ G4_INST* IR_Builder::createBinOp(G4_opcode op, uint8_t execSize, G4_DstRegRegion
     }
 }
 
+// mach creates both implicit acc and src using the supplied accType. AccWrCtrl is turned on.
+// acc0.0 is always used
+G4_INST* IR_Builder::createMach(uint8_t execSize, G4_DstRegRegion* dst,
+    G4_Operand* src0, G4_Operand* src1, uint32_t option, G4_Type accType)
+{
+    auto machInst = createInternalInst(nullptr, G4_mach, nullptr, false, execSize, dst, src0, src1, option);
+    const RegionDesc* rd = execSize > 1 ? getRegionStride1() : getRegionScalar();
+    auto accSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getAcc0Reg(), 0, 0, rd, accType);
+    machInst->setImplAccSrc(accSrc);
+    auto accDSt = createDst(phyregpool.getAcc0Reg(), 0, 0, 1, accType);
+    machInst->setImplAccDst(accDSt);
+    machInst->setOptionOn(InstOpt_AccWrCtrl);
+    return machInst;
+}
+
+// macl creates an implicit src using the supplied the accType. AccWrCtrl is not set.
+// acc0.0 is always used
+G4_INST* IR_Builder::createMacl(uint8_t execSize, G4_DstRegRegion* dst,
+    G4_Operand* src0, G4_Operand* src1, uint32_t option, G4_Type accType)
+{
+    auto maclInst = createInternalInst(nullptr, G4_mach, nullptr, false, execSize, dst, src0, src1, option);
+    const RegionDesc* rd = execSize > 1 ? getRegionStride1() : getRegionScalar();
+    auto accSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getAcc0Reg(), 0, 0, rd, accType);
+    maclInst->setImplAccSrc(accSrc);
+    return maclInst;
+}
+
 G4_INST* IR_Builder::createIf(G4_Predicate* prd, uint8_t size, uint32_t option)
 {
     auto inst = createCFInst(prd, G4_if, size, nullptr, nullptr, option);
