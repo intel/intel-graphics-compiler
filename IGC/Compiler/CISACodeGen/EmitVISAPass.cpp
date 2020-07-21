@@ -400,6 +400,17 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         return false;
     }
 
+    // Dummy program is only used for symbol table info
+    if (IGC::isIntelSymbolTableVoidProgram(&F))
+    {
+        // No extern functions or globals, can skip compiling this dummy kernel
+        if ((!m_FGA || m_FGA->getGroup(&F)->isSingle()) &&
+            m_moduleMD->inlineProgramScopeOffsets.empty())
+        {
+            return false;
+        }
+    }
+
     bool isCloned = false;
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {
@@ -690,10 +701,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         destroyVISABuilder = true;
         // We only need one symbol table per module. If there are multiple entry functions, only create a symbol
-        // table for the unique entry function
-        Function* uniqueEntry = getUniqueEntryFunc(pMdUtils, m_moduleMD);
+        // for the dummy kernel with indirect functions attached.
+        bool compileWithSymbolTable = false;
         Function* currHead = m_FGA ? m_FGA->getGroupHead(&F) : &F;
-        bool compileWithSymbolTable = (currHead == uniqueEntry);
+        if (IGC::isIntelSymbolTableVoidProgram(currHead))
+        {
+            compileWithSymbolTable = true;
+        }
         m_encoder->Compile(compileWithSymbolTable);
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa

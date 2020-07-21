@@ -1088,27 +1088,30 @@ void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& kernels
     AddAnalysisPasses(*ctx, Passes);
 
     if (ctx->m_enableFunctionPointer
-        && ctx->platform.getMinDispatchMode() == SIMDMode::SIMD8
         && ctx->m_DriverInfo.sendMultipleSIMDModes()
         && ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)
     {
         // In order to support compiling multiple SIMD modes for function pointer calls,
         // we require a separate pass manager per SIMD mode, due to interdependencies across
         // function compilations.
-        // Only SIMD16 and SIMD8 are supported.
-
-        // Run first pass for SIMD8
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
-        COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
+        SIMDMode pass1Mode;
+        SIMDMode pass2Mode;
+        {
+            pass1Mode = SIMDMode::SIMD16;
+            pass2Mode = SIMDMode::SIMD8;
+        }
+        // Run first pass
+        AddCodeGenPasses(*ctx, kernels, Passes, pass1Mode, false);
         Passes.run(*(ctx->getModule()));
 
-        // Create and run second pass for SIMD16
+        // Create and run second pass
         IGCPassManager Passes2(ctx, "CG2");
         // Add required immutable passes
         Passes2.add(new MetaDataUtilsWrapper(ctx->getMetaDataUtils(), ctx->getModuleMetaData()));
         Passes2.add(new CodeGenContextWrapper(ctx));
         Passes2.add(createGenXFunctionGroupAnalysisPass());
-        AddCodeGenPasses(*ctx, kernels, Passes2, SIMDMode::SIMD16, false);
+        AddCodeGenPasses(*ctx, kernels, Passes2, pass2Mode, false);
+        COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
         Passes2.run(*(ctx->getModule()));
 
         COMPILER_TIME_END(ctx, TIME_CodeGen);
