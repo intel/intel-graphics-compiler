@@ -241,13 +241,13 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
         {
             for (auto item : m_pVISAModule->GenISAToVISAIndex)
             {
-                if ((item.first > lastGenOff) || ((item.first | lastGenOff) == 0))
+                if ((item.first >= lastGenOff) || ((item.first | lastGenOff) == 0))
                 {
-                    if (item.second <= subEnd ||
-                        item.second == 0xffffffff)
+                    if (item.second <= subEnd || item.second == 0xffffffff)
                     {
                         GenISAToVISAIndex.push_back(item);
-                        lastGenOff = item.first;
+                        auto size = m_pVISAModule->GenISAInstSizeBytes[item.first];
+                        lastGenOff = item.first + size;
                         continue;
                     }
 
@@ -327,16 +327,16 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
                   auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
 
                   // Emit func top as line# for unattributed lines
-                  m_pStreamEmitter->EmitDwarfLocDirective(src, scope->getLine(), 0, 0, 0, 0, scope->getFilename());          
+                  m_pStreamEmitter->EmitDwarfLocDirective(src, scope->getLine(), 0, 0, 0, 0, scope->getFilename());
                 }
-              } 
+              }
               else
               {
                 auto scope = prevSrcLoc->getScope();
                 auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
 
                 // Emit 0 as line# for unattributed lines
-                m_pStreamEmitter->EmitDwarfLocDirective(src, 0, 0, 0, 0, 0, scope->getFilename());   
+                m_pStreamEmitter->EmitDwarfLocDirective(src, 0, 0, 0, 0, 0, scope->getFilename());
               }
 
                 prevSrcLoc = DebugLoc();
@@ -349,6 +349,14 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
             {
                 m_pStreamEmitter->EmitInt8(genxISA[i]);
                 lastGenOff++;
+            }
+        }
+        else if (pc != lastGenOff)
+        {
+            // for subroutines
+            for (unsigned int i = pc; i != lastGenOff; i++)
+            {
+                m_pStreamEmitter->EmitInt8(genxISA[i]);
             }
         }
 

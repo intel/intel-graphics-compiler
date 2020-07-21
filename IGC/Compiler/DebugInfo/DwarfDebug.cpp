@@ -1219,9 +1219,6 @@ void DwarfDebug::endModule()
     // Emit info into a debug macinfo section.
     emitDebugMacInfo();
 
-    // Emit frame information for subroutines
-    emitDebugFrame();
-
     // clean up.
     SPMap.clear();
     for (DenseMap<const MDNode*, CompileUnit*>::iterator I = CUMap.begin(), E = CUMap.end(); I != E; ++I)
@@ -2412,7 +2409,14 @@ void DwarfDebug::endFunction(const Function* MF)
     if (DwarfFrameSectionNeeded())
     {
         Asm->SwitchSection(Asm->GetDwarfFrameSection());
-        writeFDE(*m_pModule->getCompileUnit());
+        if (m_pModule->hasOrIsStackCall())
+        {
+            writeFDEStackCall(m_pModule);
+        }
+        else
+        {
+            writeFDESubroutine(m_pModule);
+        }
     }
 
     // Clear debug info
@@ -3003,9 +3007,26 @@ void DwarfDebug::writeCIE()
         Asm->EmitInt8(byte);
 }
 
-void DwarfDebug::writeFDE(DbgDecoder::SubroutineInfo& sub)
+void DwarfDebug::writeFDESubroutine(VISAModule* m)
 {
     std::vector<uint8_t> data;
+
+    auto firstInst = (m->GetInstInfoMap()->begin())->first;
+    auto funcName = firstInst->getParent()->getParent()->getName();
+
+    IGC::DbgDecoder::SubroutineInfo* sub = nullptr;
+    auto co = m->getCompileUnit();
+    for (auto& s : co->subs)
+    {
+        if (s.name.compare(funcName) == 0)
+        {
+            sub = &s;
+            break;
+        }
+    }
+
+    if (!sub)
+        return;
 
     // Emit CIE
     auto ptrSize = Asm->GetPointerSize();
@@ -3017,7 +3038,6 @@ void DwarfDebug::writeFDE(DbgDecoder::SubroutineInfo& sub)
     write(data, ptrSize == 4 ? (uint32_t)0 : (uint64_t)0);
 
     // initial location
-    auto co = m_pModule->getCompileUnit();
     auto getGenISAOffset = [co](unsigned int VISAIndex)
     {
         uint64_t genOffset = 0;
@@ -3033,9 +3053,9 @@ void DwarfDebug::writeFDE(DbgDecoder::SubroutineInfo& sub)
 
         return genOffset;
     };
-    auto genOffStart = getGenISAOffset(sub.startVISAIndex);
-    auto genOffEnd = getGenISAOffset(sub.endVISAIndex);
-    auto& retvarLR = sub.retval;
+    uint64_t genOffStart = m->GetDwarfDebug()->lowPc;
+    uint64_t genOffEnd = m->GetDwarfDebug()->highPc;
+    auto& retvarLR = sub->retval;
     IGC_ASSERT_MESSAGE(retvarLR.size() > 0, "expecting GRF for return");
     IGC_ASSERT_MESSAGE(retvarLR[0].var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF, "expecting GRF for return");
 
@@ -3074,13 +3094,14 @@ void DwarfDebug::writeFDE(DbgDecoder::SubroutineInfo& sub)
         Asm->EmitInt8(byte);
 }
 
-void DwarfDebug::writeFDE(DbgDecoder::DbgInfoFormat& dbgInfo)
+void DwarfDebug::writeFDEStackCall(VISAModule* m)
 {
     std::vector<uint8_t> data;
     uint64_t loc = 0;
     // <ip, <instructiont to write>
     auto sortAsc = [](uint64_t a, uint64_t b) { return a < b; };
     std::map <uint64_t, std::vector<uint8_t>, decltype(sortAsc)> cfaOps(sortAsc);
+    auto& dbgInfo = *m->getCompileUnit();
 
     auto advanceLoc = [&loc](std::vector<uint8_t>& data, uint64_t newLoc)
     {
@@ -3297,27 +3318,6 @@ void DwarfDebug::writeFDE(DbgDecoder::DbgInfoFormat& dbgInfo)
 
     for (auto& byte : data)
         Asm->EmitInt8(byte);
-}
-
-// Emit debug_frame section to allow stack traversal
-void DwarfDebug::emitDebugFrame()
-{
-    if (!DwarfFrameSectionNeeded())
-        return;
-
-    Asm->SwitchSection(Asm->GetDwarfFrameSection());
-
-    // All subs share CIE.
-    // CIE was written when starting module
-
-    // Write FDEs when there are subs.
-    // Call stack FDEs are written in endFunction()
-    auto subs = m_pModule->getSubroutines();
-    for (auto& sub : *subs)
-    {
-        // write unique FDE
-        writeFDE(sub);
-    }
 }
 
 void DwarfDebug::gatherDISubprogramNodes()

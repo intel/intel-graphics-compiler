@@ -465,9 +465,6 @@ namespace IGC
         /// \brief Emit visible names into a debug macinfo section.
         void emitDebugMacInfo();
 
-        /// \brief Emit debug frame section to allow stack traversal.
-        void emitDebugFrame();
-
         /// \brief Recursively Emits a debug information entry.
         void emitDIE(DIE* Die);
 
@@ -720,8 +717,8 @@ namespace IGC
     private:
         void encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges);
         void writeCIE();
-        void writeFDE(DbgDecoder::SubroutineInfo& sub);
-        void writeFDE(DbgDecoder::DbgInfoFormat& dbgInfo);
+        void writeFDESubroutine(VISAModule* m);
+        void writeFDEStackCall(VISAModule* m);
         bool DwarfFrameSectionNeeded()
         {
             return (m_pModule->hasOrIsStackCall() || (m_pModule->getSubroutines()->size() > 0));

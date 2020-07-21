@@ -514,6 +514,17 @@ namespace IGC
 
         DwarfDebug* GetDwarfDebug() { return dd; }
 
+        enum class ObjectType
+        {
+            UNKNOWN = 0,
+            KERNEL = 1,
+            STACKCALL_FUNC = 2,
+            SUBROUTINE = 3
+        };
+
+        ObjectType GetType() const { return m_objectType; }
+        void SetType(ObjectType t) { m_objectType = t; }
+
     private:
         /// @brief Default Constructor.
         ///        Defined as private to prevent creation of default constructor.
@@ -551,6 +562,8 @@ namespace IGC
         bool isCloned;
 
         InstInfoMap m_instInfoMap;
+
+        ObjectType m_objectType = ObjectType::UNKNOWN;
 
     public:
         /// Constants represents VISA register encoding in DWARF
