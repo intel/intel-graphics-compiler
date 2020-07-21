@@ -496,8 +496,8 @@ void CMKernelArgOffset::processKernelOnOCLRT(MDNode *Node, Function *F) {
         int32_t BTI = KM->getBTI(Idx);
         assert(BTI >= 0 && "unassigned BTI");
 
-        Type *Ty = Arg.getType();
-        if (Ty->isPointerTy()) {
+        Type *ArgTy = Arg.getType();
+        if (ArgTy->isPointerTy()) {
           SmallVector<Instruction *, 8> ToErase;
 
           assert(Arg.hasOneUse() && "invalid surface input");
@@ -517,7 +517,26 @@ void CMKernelArgOffset::processKernelOnOCLRT(MDNode *Node, Function *F) {
             (*i)->eraseFromParent();
           ToErase.clear();
         } else {
-          Arg.replaceAllUsesWith(ConstantInt::get(Arg.getType(), BTI));
+          auto BTIConstant = ConstantInt::get(ArgTy, BTI);
+          // If the number of uses for this arg more than 1 it's better to
+          // create a separate instruction for the constant. Otherwise, category
+          // conversion will create a separate ".categoryconv" instruction for
+          // each use of the arg. As a result, each conversion instruction will
+          // be materialized as movs to a surface var. This will increase
+          // register pressure and the number of instructions. But if there is
+          // only one use, it will be okay to wait for the replacement until
+          // category conv do it.
+          if (Arg.getNumUses() > 1) {
+            auto ID = ArgTy->isFPOrFPVectorTy() ? GenXIntrinsic::genx_constantf
+                                                : GenXIntrinsic::genx_constanti;
+            Module *M = F->getParent();
+            Function *Decl = GenXIntrinsic::getGenXDeclaration(M, ID, ArgTy);
+            auto NewInst =
+                CallInst::Create(Decl, BTIConstant, Arg.getName() + ".bti",
+                                 &*F->begin()->begin());
+            Arg.replaceAllUsesWith(NewInst);
+          } else
+            Arg.replaceAllUsesWith(BTIConstant);
         }
       }
       ++Kind, ++Idx;
