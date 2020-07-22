@@ -275,10 +275,19 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
         return nullptr;
     };
 
-    std::function<Value* (Value*, int)> findArgument = [&](Value* pVal, unsigned int depth) -> Value *
+    using VisitedValuesSetType = SmallPtrSet<Value*, 10>;
+    std::function<Value*(Value*, unsigned int, VisitedValuesSetType)> findArgument =
+        [&](Value* pVal, unsigned int depth, VisitedValuesSetType visitedValues) -> Value *
+
     {
+        if (!pVal) return nullptr;
+
+        visitedValues.insert(pVal);
         for (auto U : pVal->users())
         {
+            if (visitedValues.find(U) != visitedValues.end()) continue;
+            visitedValues.insert(U);
+
             if (auto * GEP = dyn_cast<GetElementPtrInst>(U))
             {
                 if (!GEP->hasAllConstantIndices())
@@ -295,26 +304,26 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     else
                     {
                         matchingGep = false;
-                        continue;
+                        break;
                     }
                 }
 
                 if (!matchingGep)
                     continue;
 
-                if (auto * leaf = findArgument(GEP, depth - (GEP->getNumIndices() - 1)))
+                if (auto * leaf = findArgument(GEP, depth - (GEP->getNumIndices() - 1), visitedValues))
                     return leaf;
             }
             else if (CastInst * inst = dyn_cast<CastInst>(U))
             {
-                if (auto * leaf = findArgument(inst, depth))
+                if (auto * leaf = findArgument(inst, depth, visitedValues))
                     return leaf;
             }
             else if (CallInst * callInst = dyn_cast<CallInst>(U))
             {
                 if (callInst->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy)
                 {
-                    if (auto * leaf = findArgument(findAlloca(callInst->getOperand(1)), depth))
+                    if (auto * leaf = findArgument(findAlloca(callInst->getOperand(1)), depth, visitedValues))
                         return leaf;
                 }
             }
@@ -499,7 +508,8 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                 addr = findAlloca(getElementPtr);
                 if (addr && isa<AllocaInst>(addr))
                 {
-                    auto* pArg = findArgument(addr, gepIndices.size());
+                    VisitedValuesSetType visitedValues;
+                    auto* pArg = findArgument(addr, gepIndices.size(), visitedValues);
                     if (pArg && isa<Argument>(pArg))
                     {
                         return pArg;
