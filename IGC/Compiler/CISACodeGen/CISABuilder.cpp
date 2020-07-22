@@ -4949,8 +4949,8 @@ namespace IGC
     void CEncoder::Compile(bool hasSymbolTable)
     {
         IGC_ASSERT(nullptr != m_program);
-        CodeGenContext* context = m_program->GetContext();
-        SProgramOutput* pOutput = m_program->ProgramOutput();
+        CodeGenContext* const context = m_program->GetContext();
+        SProgramOutput* const pOutput = m_program->ProgramOutput();
 
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
         {

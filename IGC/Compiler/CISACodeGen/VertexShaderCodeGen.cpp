@@ -164,7 +164,9 @@ namespace IGC
         IGC_ASSERT(entry->getParent());
         const bool isPositionOnlyShader = (entry->getParent()->getModuleFlag("IGC::PositionOnlyVertexShader") != nullptr);
 
-        pKernelProgram->simd8 = *ProgramOutput();
+        {
+            pKernelProgram->simd8 = *ProgramOutput();
+        }
         pKernelProgram->MaxNumInputRegister = GetMaxNumInputRegister();
         pKernelProgram->VertexURBEntryReadLength = GetVertexURBEntryReadLength();
         pKernelProgram->VertexURBEntryReadOffset = GetVertexURBEntryReadOffset();
