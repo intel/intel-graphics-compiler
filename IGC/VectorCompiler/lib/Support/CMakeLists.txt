@@ -4,8 +4,12 @@ set(SUPPORT_SOURCES
   )
 
 add_library(VCSupport ${SUPPORT_SOURCES})
-target_link_libraries(VCSupport
-  VCHeaders
+vc_get_llvm_targets(LLVM_LIBS
   LLVMSupport
   LLVMOption
+  )
+target_link_libraries(VCSupport
+  VCHeaders
+
+  ${LLVM_LIBS}
   )

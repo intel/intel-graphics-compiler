@@ -46,7 +46,7 @@ igc_arch_get_cpu(_cpuSuffix)
 set(BUILD_EXTERNAL YES)
 
 # --- LLVM ---
-if(IGC_OPTION__FORCE_SYSTEM_LLVM OR (WIN32 AND LLVM_USE_PREBUILT))
+if(IGC_BUILD__USING_SYSTEM_LLVM OR (WIN32 AND LLVM_USE_PREBUILT))
   message(STATUS "[VC] Using system llvm")
 
   # Need to search for llvm-tblgen
@@ -150,6 +150,7 @@ add_subdirectory(${INTRSRC} ${INTRBUILD})
 include_directories(${INTRSRC}/include ${INTRBUILD}/include)
 
 include(cmake/spirv.cmake)
+include(cmake/utils.cmake)
 
 # --- VC Opt ---
 
