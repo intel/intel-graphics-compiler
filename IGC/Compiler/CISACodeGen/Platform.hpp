@@ -330,19 +330,65 @@ bool isDG1() const
     return m_platformInfo.eProductFamily == IGFX_DG1;
 }
 
-bool supportsSIMD16TypedRW() const
+bool simplePushIsFasterThanGather() const
 {
-    return false;
+    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE;
 }
 
 bool singleThreadBasedInstScheduling() const
 {
-    return true;
+    return m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE;
 }
 
+//all the platforms which do not support 64 bit operations and
+//needs int64 emulation support. Except also for BXT where
+//64-bit inst has much lower throughput compared to SKL.
+//Emulating it improves performance on some benchmarks and
+//won't have impact on the overall performance.
+bool need64BitEmulation() const {
+    return m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
+        m_platformInfo.eProductFamily == IGFX_BROXTON ||
+        hasNoInt64Inst();
+}
+
+bool HDCCoalesceSLMAtomicINCWithNoReturn() const
+{
+    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE;
+}
 bool HDCCoalesceAtomicCounterAccess() const
 {
-    return IGC_IS_FLAG_DISABLED(ForceSWCoalescingOfAtomicCounter);
+    return (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE) && IGC_IS_FLAG_DISABLED(ForceSWCoalescingOfAtomicCounter);
+}
+
+bool supportsMCSNonCompressedFix() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
+bool hasHWDp4AddSupport() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
+
+bool useOnlyEightPatchDispatchHS() const
+{
+    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE);
+}
+
+bool supportsPrimitiveReplication() const
+{
+    return ((m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE) ||
+            (m_platformInfo.eRenderCoreFamily == IGFX_GEN11_CORE && m_platformInfo.eProductFamily == IGFX_ICELAKE));
+}
+
+// If true then screen space coordinates for upper-left vertex of a triangle
+// being rasterized are delivered together with source depth or W deltas.
+bool hasStartCoordinatesDeliveredWithDeltas() const
+{
+    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE;
+}
+
+bool hasEarlyGRFRead() const
+{
+    return m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP && m_platformInfo.usRevId == REVISION_A0;
+}
+
+bool supportsSIMD16TypedRW() const
+{
+    return false;
 }
 
 //all the platforms which DONOT support 64 bit int operations
@@ -365,18 +411,6 @@ bool hasNoFP64Inst() const {
         m_platformInfo.eProductFamily == IGFX_DG1;
 }
 
-//all the platforms which do not support 64 bit operations and
-//needs int64 emulation support. Except also for BXT where
-//64-bit inst has much lower throughput compared to SKL.
-//Emulating it improves performance on some benchmarks and
-//won't have impact on the overall performance.
-bool need64BitEmulation() const {
-    return (m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
-        m_platformInfo.eProductFamily == IGFX_BROXTON ||
-        hasNoInt64Inst());
-}
-
-
 //all the platforms which have correctly rounded macros (INVM, RSQRTM, MADM)
 bool hasCorrectlyRoundedMacros() const {
     return m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
@@ -386,10 +420,6 @@ bool hasCorrectlyRoundedMacros() const {
         m_platformInfo.eProductFamily != IGFX_DG1;
 }
 
-bool hasHWDp4AddSupport() const {
-    return m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP;
-}
-bool useOnlyEightPatchDispatchHS() const { return false; }
 bool hasFusedEU() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
 bool supports256GRFPerThread() const { return false; }
 bool supportMixMode() const {
@@ -416,13 +446,6 @@ uint32_t getGRFSize() const
     return 32;
 }
 
-// If true then screen space coordinates for upper-left vertex of a triangle
-// being rasterized are delivered together with source depth or W deltas.
-bool hasStartCoordinatesDeliveredWithDeltas() const
-{
-    return false;
-}
-
 uint32_t maxPerThreadScratchSpace() const
 {
     return 0x200000;
@@ -445,7 +468,15 @@ bool canFuseTypedWrite() const
 
 unsigned int getMaxNumberHWThreadForEachWG() const
 {
-    return getMaxNumberThreadPerSubslice();
+    if (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE)
+    {
+        //each WG is dispatched into one subslice for GEN11 and before
+        return getMaxNumberThreadPerSubslice();
+    }
+    else
+    {
+        return getMaxNumberThreadPerSubslice() * 2;
+    }
 }
 
 // max block size for legacy OWord block messages
