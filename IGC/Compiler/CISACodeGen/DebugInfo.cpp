@@ -359,8 +359,13 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
         // values anywhere in the code till they are in scope.
         if (m_outputVals.find(pVar) == m_outputVals.end())
         {
-            //m_pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[0], "Output", 0, nullptr);
-            (void)m_outputVals.insert(pVar);
+            if (m_pShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
+            {
+                // Emit "Output" attribute only when -g and -cl-opt-disable are both passed
+                // -g by itself shouldnt alter generated code
+                m_pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[0], "Output", 0, nullptr);
+                (void)m_outputVals.insert(pVar);
+            }
         }
     }
 }
