@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "common/igc_regkeys.hpp"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Compiler.h"
@@ -75,6 +76,37 @@ namespace llvm
 
 namespace IGC
 {
+    class RegisterNumbering
+    {
+    public:
+        constexpr static unsigned int IP = 0;
+        constexpr static unsigned int EMask = 1;
+        constexpr static unsigned int BTBase = 5;
+        constexpr static unsigned int ScratchBase = 6;
+        constexpr static unsigned int GenStateBase = 7;
+        constexpr static unsigned int SurfStateBase = 8;
+        constexpr static unsigned int BindlessSurfStateBase = 9;
+        constexpr static unsigned int BindlessSamplerStateBase = 10;
+        constexpr static unsigned int GRFBase = 16;
+        constexpr static unsigned int A0Base = 272;
+        constexpr static unsigned int F0Base = 288;
+        constexpr static unsigned int Acc0Base = 304;
+        constexpr static unsigned int Mme0Base = 335;
+    };
+
+    // Use following templated method to get encoded register number
+    // for regx and bregx operations. For eg, if GRF to encode in regx is
+    // 10 then invoke method as GetEncodedRegNum<RegisterNumbering::GRFBase>(10).
+    template<unsigned int T>
+    unsigned int GetEncodedRegNum(unsigned int i)
+    {
+        if (IGC_IS_FLAG_ENABLED(UseNewRegEncoding))
+        {
+            return (T + i);
+        }
+        return i;
+    }
+
     class StreamEmitter;
 
     //===--------------------------------------------------------------------===//

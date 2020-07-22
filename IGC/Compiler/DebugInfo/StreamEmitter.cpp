@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
 #include "llvm/Config/llvm-config.h"
+#include "Compiler/DebugInfo/DIE.hpp"
 #include "Compiler/DebugInfo/StreamEmitter.hpp"
 #include "Compiler/DebugInfo/Version.hpp"
 #include "common/LLVMWarningsPush.hpp"
@@ -814,31 +815,32 @@ void StreamEmitter::EmitSectionOffset(const MCSymbol* pLabel, const MCSymbol* pS
 
 void StreamEmitter::EmitDwarfRegOp(unsigned reg, unsigned offset, bool indirect) const
 {
+    auto regEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(reg);
     if (indirect)
     {
-        if (reg < 32)
+        if (regEncoded < 32)
         {
-            EmitInt8(dwarf::DW_OP_breg0 + reg);
+            EmitInt8(dwarf::DW_OP_breg0 + regEncoded);
         }
         else
         {
             // Emit ("DW_OP_bregx");
             EmitInt8(dwarf::DW_OP_bregx);
-            EmitULEB128(reg);
+            EmitULEB128(regEncoded);
         }
         EmitSLEB128(offset);
     }
     else
     {
-        if (reg < 32)
+        if (regEncoded < 32)
         {
-            EmitInt8(dwarf::DW_OP_reg0 + reg);
+            EmitInt8(dwarf::DW_OP_reg0 + regEncoded);
         }
         else
         {
             // Emit ("DW_OP_regx");
             EmitInt8(dwarf::DW_OP_regx);
-            EmitULEB128(reg);
+            EmitULEB128(regEncoded);
         }
     }
 }

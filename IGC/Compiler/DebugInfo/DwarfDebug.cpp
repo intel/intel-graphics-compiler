@@ -1527,6 +1527,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                             }
 
                             regNum = genIsaRange.getGRF().regNum;
+                            regNum = GetEncodedRegNum<RegisterNumbering::GRFBase>(regNum);
                             unsigned int op = llvm::dwarf::DW_OP_breg0;
                             if (Loc.IsInMemory())
                             {

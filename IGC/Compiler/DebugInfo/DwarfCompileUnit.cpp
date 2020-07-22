@@ -413,28 +413,30 @@ void CompileUnit::addRegisterLoc(DIEBlock* TheDie, unsigned DWReg, int64_t Offse
 /// addRegisterOp - Add register operand.
 void CompileUnit::addRegisterOp(DIEBlock* TheDie, unsigned DWReg)
 {
-    if (DWReg < 32)
+    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(DWReg);
+    if (DWRegEncoded < 32)
     {
-        addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_reg0 + DWReg);
+        addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_reg0 + DWRegEncoded);
     }
     else
     {
         addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_regx);
-        addUInt(TheDie, dwarf::DW_FORM_udata, DWReg);
+        addUInt(TheDie, dwarf::DW_FORM_udata, DWRegEncoded);
     }
 }
 
 /// addRegisterOffset - Add register offset.
 void CompileUnit::addRegisterOffset(DIEBlock* TheDie, unsigned DWReg, int64_t Offset)
 {
-    if (DWReg < 32)
+    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(DWReg);
+    if (DWRegEncoded < 32)
     {
-        addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_breg0 + DWReg);
+        addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_breg0 + DWRegEncoded);
     }
     else
     {
         addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_bregx);
-        addUInt(TheDie, dwarf::DW_FORM_udata, DWReg);
+        addUInt(TheDie, dwarf::DW_FORM_udata, DWRegEncoded);
     }
     addSInt(TheDie, dwarf::DW_FORM_sdata, Offset);
 }
