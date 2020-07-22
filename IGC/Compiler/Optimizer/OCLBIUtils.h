@@ -72,8 +72,9 @@ namespace IGC
         void replaceGenISACallInst(llvm::GenISAIntrinsic::ID intrinsicName, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
 
         /// @brief  reap init() and createIntrinsic().
-        /// @param  Inst        the call instruction that need to be replaced.
-        void execute(llvm::CallInst* Inst);
+        /// @param  Inst            the call instruction that need to be replaced.
+        /// @param  CodeGenContext  context to return errors
+        void execute(llvm::CallInst* Inst, IGC::CodeGenContext* CodeGenContext);
 
         /// @brief  replace the old __builtin_IB function call with the match llvm/GenISA_ISA
         ///         instructions.
@@ -81,12 +82,12 @@ namespace IGC
         virtual void createIntrinsic() = 0;
 
         /// @brief  verify that there are no user errors
-        /// @param  context to return errors
-        virtual void verifiyCommand(IGC::CodeGenContext*) {}
+        virtual void verifyCommand() {}
 
         /// @brief  initialize the callInst,  function, context, constants and clear the arg list.
-        /// @param  Inst       the call instruction that need to be replaced.
-        void init(llvm::CallInst* Inst);
+        /// @param  Inst            the call instruction that need to be replaced.
+        /// @param  CodeGenContext  context to return errors
+        void init(llvm::CallInst* Inst, IGC::CodeGenContext* CodeGenContext);
         void clearArgsList(void);
 
         enum CoordType
@@ -102,6 +103,7 @@ namespace IGC
             m_pCallInst(nullptr),
             m_pFunc(nullptr),
             m_pCtx(nullptr),
+            m_pCodeGenContext(nullptr),
             m_pFloatType(nullptr),
             m_pIntType(nullptr)
         {}
@@ -114,6 +116,7 @@ namespace IGC
         llvm::CallInst* m_pCallInst;
         llvm::Function* m_pFunc;
         llvm::LLVMContext* m_pCtx;
+        IGC::CodeGenContext* m_pCodeGenContext;
         llvm::SmallVector<llvm::Value*, 10> m_args;
         llvm::DebugLoc m_DL;
         llvm::Type* m_pFloatType;
@@ -231,7 +234,7 @@ namespace IGC
         /// @brief  returns "true" if the "val" is integer or float with fractional part = 0.
         static bool derivedFromInt(const llvm::Value* pVal);
 
-        void verifiyCommand(IGC::CodeGenContext*);
+        void verifyCommand();
 
     protected:
         /// @brief  push the image index into the function argument list

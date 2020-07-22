@@ -39,17 +39,18 @@ using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
 
-void CCommand::execute(CallInst* Inst)
+void CCommand::execute(CallInst* Inst, CodeGenContext* CodeGenContext)
 {
-    init(Inst);
+    init(Inst, CodeGenContext);
     createIntrinsic();
 }
 
-void CCommand::init(CallInst* Inst)
+void CCommand::init(CallInst* Inst, CodeGenContext* CodeGenContext)
 {
     m_pCallInst = Inst;
     m_pFunc = m_pCallInst->getParent()->getParent();
     m_pCtx = &(m_pFunc->getContext());
+    m_pCodeGenContext = CodeGenContext;
     m_pFloatType = Type::getFloatTy(*m_pCtx);
     m_pIntType = Type::getInt32Ty(*m_pCtx);
     m_pFloatZero = Constant::getNullValue(m_pFloatType);
@@ -191,11 +192,11 @@ void CImagesBI::prepareImageBTI()
     }
 }
 
-void CImagesBI::verifiyCommand(CodeGenContext* context)
+void CImagesBI::verifyCommand()
 {
     if (m_IncorrectBti)
     {
-        context->EmitError("Inconsistent use of image!");
+        m_pCodeGenContext->EmitError("Inconsistent use of image!");
     }
 }
 
@@ -767,6 +768,11 @@ public:
     {
         ConstantInt* samplerIndex = nullptr;
         Value* samplerParam = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(m_pCallInst, 1, m_pMdUtils, m_modMD);
+        if (!samplerParam) {
+            m_pCodeGenContext->EmitError("There are instructions that use a sampler, but no sampler found in the kernel!");
+            return nullptr;
+        }
+
         // Argument samplers are looked up in the parameter map
         if (isa<Argument>(samplerParam))
         {
@@ -961,12 +967,14 @@ public:
         }
     }
 
-    void prepareSamplerIndex()
+    bool prepareSamplerIndex()
     {
         ConstantInt* samplerIndex = getSamplerIndex();
+        if (!samplerIndex) return false;
         unsigned int addrSpace = EncodeAS4GFXResource(*samplerIndex, SAMPLER, 0);
         Value* sampler = ConstantPointerNull::get(PointerType::get(samplerIndex->getType(), addrSpace));
         m_args.push_back(sampler);
+        return true;
     }
 
     void prepareGradients(Dimension Dim, Value* gradX, Value* gradY)
@@ -1057,7 +1065,9 @@ public:
         m_args.push_back(CoordZ);
         m_args.push_back(m_pFloatZero); // ai (?)
         createGetBufferPtr();
-        prepareSamplerIndex();
+        bool samplerIndexFound = prepareSamplerIndex();
+        if (!samplerIndexFound) return;
+
         prepareZeroOffsets();
         Type* types[] = { m_pCallInst->getType(), m_pFloatType, m_args[5]->getType(), m_args[6]->getType() };
         replaceGenISACallInst(GenISAIntrinsic::GenISA_sampleLptr, types);
@@ -1936,8 +1946,8 @@ bool CBuiltinsResolver::resolveBI(CallInst* Inst)
     {
         return false;
     }
-    m_CommandMap[calleeName]->execute(Inst);
-    m_CommandMap[calleeName]->verifiyCommand(m_CodeGenContext);
+    m_CommandMap[calleeName]->execute(Inst, m_CodeGenContext);
+    m_CommandMap[calleeName]->verifyCommand();
 
-    return true;
+    return !m_CodeGenContext->HasError();
 }

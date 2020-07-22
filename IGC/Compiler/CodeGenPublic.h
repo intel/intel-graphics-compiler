@@ -925,6 +925,7 @@ namespace IGC
         virtual ~CodeGenContext();
         void clear();
         void EmitError(const char* errorstr);
+        bool HasError() const;
         CompOptions& getCompilerOption();
         virtual void resetOnRetry();
         virtual uint32_t getNumThreadsPerEU() const;

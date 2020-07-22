@@ -693,6 +693,11 @@ namespace IGC
         return;
     }
 
+    bool CodeGenContext::HasError() const
+    {
+        return !this->oclErrorMessage.empty();
+    }
+
     CompOptions& CodeGenContext::getCompilerOption()
     {
         return getModuleMetaData()->compOpt;
