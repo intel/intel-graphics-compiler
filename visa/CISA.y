@@ -1667,14 +1667,7 @@ DstRegion :  LANGLE NUMBER RANGLE    /* <HorzStride> */
                  $$ = $2;
              };
 
-SrcRegion : /* empty */
-           {
-                $$.v_stride = 0;
-                $$.width = 0;
-                $$.h_stride = 0;
-                //$$.rgn = NULL;
-            }
-          | LANGLE Exp SEMI Exp COMMA Exp RANGLE   /* <VertStride;Width,HorzStride> */
+SrcRegion : LANGLE Exp SEMI Exp COMMA Exp RANGLE   /* <VertStride;Width,HorzStride> */
            {
                MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16 || $2 == 32),
                          "VertStride must be 0, 1, 2, 4, 8, 16, or 32");
@@ -1776,16 +1769,8 @@ PredVar : VAR
                   PARSE_ERROR("undefined predicate variable: ", $1);
           }
 
-AddrVar :  VAR
-          {
-              TRACE("\n** Address operand");
-              $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
-              if (!$$.cisa_decl)
-                  PARSE_ERROR("unbound variable");
-              $$.row = 0;
-              $$.elem = 0;
-          }
-         |  VAR LPAREN Exp RPAREN
+AddrVar :
+         VAR LPAREN Exp RPAREN
           {
               TRACE("\n** Address operand");
 
@@ -1795,7 +1780,7 @@ AddrVar :  VAR
               $$.row = 1;
               $$.elem = (int)$3;
           }
-          // 1   2   3   4   5    6     7
+          // 1   2      3   4       5    6     7
          |  VAR LPAREN Exp RPAREN LANGLE NUMBER RANGLE
           {
               TRACE("\n** Address operand");
@@ -1806,15 +1791,6 @@ AddrVar :  VAR
               $$.row = (int)$6;
               $$.elem = (int)$3;
           }
-         |  VAR LPAREN Exp COMMA Exp RPAREN
-          {
-              TRACE("\n** Address operand");
-              $$.cisa_decl = pCisaBuilder->CISA_find_decl($1);
-              if (!$$.cisa_decl)
-                  PARSE_ERROR("unbound variable");
-              $$.row = (int)$3;
-              $$.elem = (int)$5;
-          };
 
 AddressableVar : VAR {
               // Both GENERAL_VAR and SURFACE_VAR are addressable
