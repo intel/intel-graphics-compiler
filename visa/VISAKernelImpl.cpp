@@ -180,26 +180,26 @@ void replaceFCOpcodes(IR_Builder& builder)
 {
     BB_LIST_ITER bbEnd = builder.kernel.fg.end();
 
-    for(BB_LIST_ITER bb_it = builder.kernel.fg.begin();
+    for (BB_LIST_ITER bb_it = builder.kernel.fg.begin();
         bb_it != bbEnd;
         bb_it++)
     {
         G4_BB* bb = (*bb_it);
 
-        if(bb->size() > 0)
+        if (bb->size() > 0)
         {
             // pseudo_fc_call/ret would always be last
             // instruction in BB so only look at back
             // of instlist.
             G4_INST* lastInstInBB = bb->back();
 
-            if(lastInstInBB->opcode() == G4_pseudo_fc_call)
+            if (lastInstInBB->opcode() == G4_pseudo_fc_call)
             {
-                lastInstInBB->setOpcode(G4_call);
+                lastInstInBB->asCFInst()->pseudoCallToCall();
             }
-            else if(lastInstInBB->opcode() == G4_pseudo_fc_ret)
+            else if (lastInstInBB->opcode() == G4_pseudo_fc_ret)
             {
-                lastInstInBB->setOpcode(G4_return);
+                lastInstInBB->asCFInst()->pseudoRetToRet();
             }
         }
     }

@@ -1361,6 +1361,30 @@ public:
             return nullptr;
         }
     }
+
+    void pseudoCallToCall()
+    {
+        assert(isFCall() || op == G4_pseudo_fc_call);
+        setOpcode(G4_call);
+    }
+
+    void pseudoRetToRet()
+    {
+        assert(isFReturn() || op == G4_pseudo_fc_ret);
+        setOpcode(G4_return);
+    }
+
+    void callToFCall()
+    {
+        assert(isCall());
+        setOpcode(G4_pseudo_fcall);
+    }
+
+    void retToFRet()
+    {
+        assert(isReturn());
+        setOpcode(G4_pseudo_fret);
+    }
 };
 
 class G4_InstSend : public G4_INST

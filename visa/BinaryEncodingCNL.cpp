@@ -2367,15 +2367,15 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncoding(G4_INST* inst)
     {
 
         //Prolog:
-        if(inst->opcode() == G4_pseudo_fc_call)
+        if (inst->opcode() == G4_pseudo_fc_call)
         {
-            inst->setOpcode(G4_call);
+            inst->asCFInst()->pseudoCallToCall();
             isFCCall = true;
         }
 
-        if(inst->opcode() == G4_pseudo_fc_ret)
+        if (inst->opcode() == G4_pseudo_fc_ret)
         {
-            inst->setOpcode(G4_return);
+            inst->asCFInst()->pseudoRetToRet();
             isFCRet = true;
         }
 

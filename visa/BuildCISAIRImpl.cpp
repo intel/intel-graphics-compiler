@@ -484,7 +484,7 @@ void restoreFCallState(G4_Kernel* kernel, SavedFCallStates savedFCallState)
 
                     G4_INST* retToReplace = retbbToConvert->back();
 
-                    retToReplace->setOpcode( G4_pseudo_fret );
+                    retToReplace->asCFInst()->retToFRet();
                     retToReplace->setDest(NULL);
 
                     kernel->fg.removePredSuccEdges(retbbToConvert, retBlock);
@@ -506,7 +506,7 @@ void restoreFCallState(G4_Kernel* kernel, SavedFCallStates savedFCallState)
                     // Restore edge to retBlock
                     kernel->fg.addPredSuccEdges( curBB, (*state_it).second.retBlock );
 
-                    instToReplace->setOpcode( G4_pseudo_fcall );
+                    instToReplace->asCFInst()->callToFCall();
                 }
             }
         }
@@ -516,7 +516,7 @@ void restoreFCallState(G4_Kernel* kernel, SavedFCallStates savedFCallState)
     {
         G4_INST* retToReplace = retBB->back();
 
-        retToReplace->setOpcode(G4_pseudo_fret);
+        retToReplace->asCFInst()->retToFRet();
         retToReplace->setDest(NULL);
 
     }
@@ -590,12 +590,12 @@ static void Stitch_Compiled_Units(G4_Kernel* mainFunc, std::map<std::string, G4_
 
                 // dst label
                 fcall->setSrc(calleeLabel->getSrc(0), 0);
-                fcall->setOpcode(G4_call);
+                fcall->asCFInst()->pseudoCallToCall();
             }
             else
             {
                 fcall->setSrc(fcall->getSrc(0), 1);
-                fcall->setOpcode(G4_call);
+                fcall->asCFInst()->pseudoCallToCall();
             }
         }
     }
@@ -606,8 +606,7 @@ static void Stitch_Compiled_Units(G4_Kernel* mainFunc, std::map<std::string, G4_
         if( cur->size() > 0 && cur->isEndWithFRet() )
         {
             G4_INST* fret = cur->back();
-            ASSERT_USER( fret->opcode() == G4_pseudo_fret, "Expecting to see pseudo_fret");
-            fret->setOpcode( G4_return );
+            fret->asCFInst()->pseudoRetToRet();
             fret->setDest( mainFunc->fg.builder->createNullDst(Type_UD) );
         }
     }
