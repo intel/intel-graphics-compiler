@@ -2432,15 +2432,13 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
         auto* funcAddrLow = createRelocImm(Type_UD);
         auto* funcAddrHigh = createRelocImm(Type_UD);
 
-        dst->setType(Type_UD);
+        assert(!dst->isIndirect());
         // change type from uq to ud, adjust the subRegOff
-        dst->setSubRegOff(dst->getSubRegOff() * 2);
-        G4_INST* movLo = createMov(1, dst, funcAddrLow, InstOpt_WriteEnable, true);
-        G4_DstRegRegion* tempDst = createDstRegRegion(*dst);
+        auto dstLo = createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2, 1, Type_UD);
+        G4_INST* movLo = createMov(1, dstLo, funcAddrLow, InstOpt_WriteEnable, true);
         // subRegOff will be right following dst's sub-reg
-        tempDst->setSubRegOff(dst->getSubRegOff() + 1);
-        tempDst->setType(Type_UD);
-        G4_INST* movHi = createMov(1, tempDst, funcAddrHigh, InstOpt_WriteEnable, true);
+        auto dstHi = createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1, 1, Type_UD);
+        G4_INST* movHi = createMov(1, dstHi, funcAddrHigh, InstOpt_WriteEnable, true);
 
         RelocationEntry relocEntryLo = RelocationEntry::createSymbolAddrReloc(movLo, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
         kernel.addRelocation(relocEntryLo);
@@ -6527,7 +6525,7 @@ int IR_Builder::translateVISADataMovementInst(ISA_Opcode opcode,
             {
                 // write to f0.1/f1.1 instead
                 MUST_BE_TRUE(dstOpnd->getTopDcl()->getNumberFlagElements() == 32, "Dst must have 32 flag elements");
-                dstOpnd->setSubRegOff(1);
+                dstOpnd = createDstWithNewSubRegOff(dstOpnd, 1);
             }
             createInst(
                 predOpnd,

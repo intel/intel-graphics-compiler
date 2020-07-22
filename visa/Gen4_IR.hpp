@@ -3200,15 +3200,6 @@ public:
     G4_RegAccess   getRegAccess() const { return acc; }
     short          getRegOff() const { return regOff; }
     short          getSubRegOff() const { return subRegOff; }
-    void  setSubRegOff(short off)
-    {
-        if (subRegOff != off)
-        {
-            subRegOff = off;
-            computeLeftBound();
-            unsetRightBound();
-        }
-    }
 
     bool isCrossGRFDst()
     {
@@ -3318,7 +3309,6 @@ public:
 
         return false;
     }
-
 };
 }
 

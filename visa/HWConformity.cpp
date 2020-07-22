@@ -1551,9 +1551,8 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
         if (exec_size >= scale)
         {
             G4_Type new_type = (scale == 2) ? Type_UW : Type_UD;
-            dst->setHorzStride(1);
-            dst->setSubRegOff((short)(dst->getSubRegOff() / scale));
-            dst->setType(new_type);
+            auto newDst = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() / scale, 1, new_type, dst->getAccRegSel());
+            inst->setDest(newDst);
             inst->setSrc(builder.createImm(new_value, new_type), 0);
             inst->setExecSize((unsigned char)(exec_size / scale));
             return insertMOV;
@@ -6855,9 +6854,8 @@ void HWConformity::fixImm64(INST_LIST_ITER i,
 
             bb->insertBefore(i, lowMovInst);
 
-            G4_DstRegRegion* dstRegionNext = builder.Create_Dst_Opnd_From_Dcl(dcl, 1);
-            G4_INST* highMovInst = builder.createMov(1, dstRegionNext, highImm, InstOpt_WriteEnable, false);
-            dstRegionNext->setSubRegOff(1);
+            auto newDst = builder.createDst(dcl->getRegVar(), 0, 1, 1, dcl->getElemType());
+            G4_INST* highMovInst = builder.createMov(1, newDst, highImm, InstOpt_WriteEnable, false);
             bb->insertBefore(i, highMovInst);
 
             inst->transferDef(lowMovInst, Gen4_Operand_Number(j + 1), Opnd_src0);

@@ -3473,7 +3473,8 @@ static void expandPseudoLogic(IR_Builder& builder,
                 auto newSrc1 = builder.createSrcWithNewSubRegOff(inst->getSrc(1)->asSrcRegRegion(), 1);
                 inst->setSrc(newSrc1, 1);
             }
-            inst->getDst()->setSubRegOff(1);
+            auto newDst = builder.createDstWithNewSubRegOff(inst->getDst(), 1);
+            inst->setDest(newDst);
         }
 
         switch (inst->opcode())
@@ -4700,8 +4701,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         else
         {
             short subRegOff = dest->getDst()->getSubRegOff();
-            dest->setDest( builder.duplicateOperand( mDot2->getDst() ) );
-            dest->getDst()->setSubRegOff( subRegOff );
+            auto newDst = builder.createDstWithNewSubRegOff(mDot2->getDst(), subRegOff);
+            dest->setDest(newDst);
         }
     }
 

@@ -1482,6 +1482,18 @@ public:
         return dst;
     }
 
+    G4_DstRegRegion* createDstWithNewSubRegOff(G4_DstRegRegion* old, short newSubRegOff)
+    {
+        if (old->getRegAccess() == Direct)
+        {
+            return createDst(old->getBase(), old->getRegOff(), newSubRegOff, old->getHorzStride(), old->getType(), old->getAccRegSel());
+        }
+        else
+        {
+            return createIndirectDst(old->getBase(), newSubRegOff, old->getHorzStride(), old->getType(), old->getAddrImm());
+        }
+    }
+
     //
     // return the imm operand; create one if not yet created
     //
