@@ -953,8 +953,20 @@ namespace IGC
 
     void PushAnalysis::BlockPushConstants()
     {
-        // push up to 31 GRF
-        static const unsigned int cthreshold = m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * getGRFSize();
+        auto& inputs = m_context->getModuleMetaData()->pushInfo.inputs;
+        typedef const std::map<unsigned int, SInputDesc>::value_type& inputPairType;
+        auto largestPair = std::max_element(inputs.begin(), inputs.end(),
+            [](inputPairType a, inputPairType b) { return a.second.index < b.second.index; });
+        unsigned int largestIndex = largestPair != inputs.end() ? largestPair->second.index : 0;
+        const unsigned int maxPushedGRFs = 96;
+        if (largestIndex >= maxPushedGRFs)
+        {
+            return;
+        }
+        // push up to 31 GRFs of constants
+        // The maximum number of GRFs used for all pushed data is 96.
+        const unsigned int cthreshold =
+            std::min(m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction), maxPushedGRFs - largestIndex) * getGRFSize();
         unsigned int sizePushed = 0;
         m_entryBB = &m_pFunction->getEntryBlock();
 
@@ -1381,11 +1393,6 @@ namespace IGC
             m_dsProps->SetDomainPointWArgu(valueW);
         }
 
-        if (pushConstantMode == PushConstantMode::SIMPLE_PUSH)
-        {
-            BlockPushConstants();
-        }
-
         for (auto BB = m_pFunction->begin(), E = m_pFunction->end(); BB != E; ++BB)
         {
             llvm::BasicBlock::InstListType& instructionList = BB->getInstList();
@@ -1456,6 +1463,11 @@ namespace IGC
                     }
                 }
             }
+        }
+
+        if (pushConstantMode == PushConstantMode::SIMPLE_PUSH)
+        {
+            BlockPushConstants();
         }
         // WA: Gen11+ HW doesn't work correctly if doubles are on vertex shader input and the input has unused components,
         // so ElementComponentEnableMask is not full => packing occurs
