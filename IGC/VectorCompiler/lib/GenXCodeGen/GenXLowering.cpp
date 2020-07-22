@@ -2451,15 +2451,15 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
 // Lower cmp instructions that GenX cannot deal with.
 bool GenXLowering::lowerMul64(Instruction *Inst) {
 
-  LoHiSplitter SplitBuilder(*Inst);
+  IVSplitter SplitBuilder(*Inst);
   if (!SplitBuilder.IsI64Operation())
     return false;
 
   IRBuilder<> Builder(Inst);
   Builder.SetCurrentDebugLocation(Inst->getDebugLoc());
 
-  auto Src0 = SplitBuilder.splitOperand(0);
-  auto Src1 = SplitBuilder.splitOperand(1);
+  auto Src0 = SplitBuilder.splitOperandLoHi(0);
+  auto Src1 = SplitBuilder.splitOperandLoHi(1);
 
   // create muls and adds
   auto *ResL = Builder.CreateMul(Src0.Lo, Src1.Lo);
@@ -2478,7 +2478,8 @@ bool GenXLowering::lowerMul64(Instruction *Inst) {
   auto *ResH = Builder.CreateAdd(Temp2, Temp1);
 
   // create the bitcast to the destination-type
-  auto *Replace = SplitBuilder.combineSplit(*ResL, *ResH, "mul64");
+  auto *Replace = SplitBuilder.combineLoHiSplit({ ResL, ResH }, "mul64",
+                                                Inst->getType()->isIntegerTy());
   Inst->replaceAllUsesWith(Replace);
   ToErase.push_back(Inst);
   return true;

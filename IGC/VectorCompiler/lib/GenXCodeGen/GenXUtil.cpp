@@ -760,71 +760,127 @@ unsigned ShuffleVectorAnalyzer::getSerializeCost(unsigned i) {
   return Cost;
 }
 
-LoHiSplitter::LoHiSplitter(Instruction &Inst, unsigned BaseOpIdx) : Inst(Inst) {
 
-  auto *Operand = Inst.getOperand(BaseOpIdx);
-  ETy = Operand->getType();
+IVSplitter::IVSplitter(Instruction &Inst, unsigned* BaseOpIdx) : Inst(Inst) {
+
+  ETy = Inst.getType();
+  if (BaseOpIdx)
+    ETy = Inst.getOperand(*BaseOpIdx)->getType();
+
   Len = 1;
   if (ETy->isVectorTy()) {
     Len = ETy->getVectorNumElements();
     ETy = ETy->getVectorElementType();
   }
+
   VI32Ty = VectorType::get(ETy->getInt32Ty(Inst.getContext()), Len * 2);
 }
 
-Region LoHiSplitter::createSplitRegion(Type *Ty, LoHiSplitter::RegionType RT) {
+Region IVSplitter::createSplitRegion(Type *Ty, IVSplitter::RegionType RT) {
   Region R(Ty);
   R.Width = Len;
   R.NumElements = Len;
   R.VStride = 0;
-  // take every second element;
-  R.Stride = 2;
-  // offset is encoded in bytes
-  R.Offset = (RT == RegionType::LoRegion) ? 0 : 4;
+
+  if (RT == RegionType::LoRegion || RT == RegionType::HiRegion) {
+    // take every second element;
+    R.Stride = 2;
+    // offset is encoded in bytes
+    R.Offset = (RT == RegionType::LoRegion) ? 0 : 4;
+  }
+  else if (RT == RegionType::FirstHalf || RT == RegionType::SecondHalf) {
+    // take every element
+    R.Stride = 1;
+    // offset is encoded in bytes
+    R.Offset = (RT == RegionType::FirstHalf) ? 0 : 4 * Len;
+  }
+  else {
+    llvm_unreachable("incorrect region type");
+  }
   return R;
 }
 
-LoHiSplitter::Split LoHiSplitter::splitOperand(unsigned SourceIdx) {
-
+std::pair<Value*, Value*> IVSplitter::splitValue(Value& Val, RegionType RT1,
+                                                 const Twine& Name1,
+                                                 RegionType RT2,
+                                                 const Twine& Name2) {
   const auto &DL = Inst.getDebugLoc();
-  auto Name = Inst.getName();
+  auto BaseName = Inst.getName();
+
+  assert(Val.getType()->getScalarType()->isIntegerTy(64));
+  auto *ShreddedVal = new BitCastInst(&Val, VI32Ty, BaseName + ".iv32cast", &Inst);
+  ShreddedVal->setDebugLoc(DL);
+
+  auto R1 = createSplitRegion(VI32Ty, RT1);
+  auto *V1 = R1.createRdRegion(ShreddedVal, BaseName + Name1, &Inst, DL);
+
+  auto R2 = createSplitRegion(VI32Ty, RT2);
+  auto *V2 = R2.createRdRegion(ShreddedVal, BaseName + Name2, &Inst, DL);
+  return { V1, V2 };
+}
+
+IVSplitter::LoHiSplit IVSplitter::splitOperandLoHi(unsigned SourceIdx) {
 
   assert(Inst.getNumOperands() > SourceIdx);
-  auto *Src = Inst.getOperand(SourceIdx);
-  assert(Src->getType()->getScalarType()->isIntegerTy(64));
+  auto Splitted =  splitValue(*Inst.getOperand(SourceIdx),
+                              RegionType::LoRegion, ".LoSplit",
+                              RegionType::HiRegion, ".HiSplit");
 
-  auto *ShreddedSrc = new BitCastInst(Src, VI32Ty, Name + ".iv32cast", &Inst);
-  ShreddedSrc->setDebugLoc(DL);
-
-  auto LoRegion = createSplitRegion(VI32Ty, RegionType::LoRegion);
-  auto *L = LoRegion.createRdRegion(ShreddedSrc, Name + ".lsplit", &Inst, DL);
-
-  auto HiRegion = createSplitRegion(VI32Ty, RegionType::HiRegion);
-  auto *H = HiRegion.createRdRegion(ShreddedSrc, Name + ".rsplit", &Inst, DL);
-
-  return {L, H};
+  return {Splitted.first, Splitted.second};
 }
-Value *LoHiSplitter::combineSplit(Value &L, Value &H, const Twine &Name) {
+IVSplitter::HalfSplit IVSplitter::splitOperandHalf(unsigned SourceIdx) {
 
+  assert(Inst.getNumOperands() > SourceIdx);
+  auto Splitted =  splitValue(*Inst.getOperand(SourceIdx),
+                              RegionType::FirstHalf, ".FirstHalf",
+                              RegionType::SecondHalf, ".SecondHalf");
+
+  return {Splitted.first, Splitted.second};
+}
+Value* IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
+                                RegionType RT2, const Twine& Name,
+                                bool Scalarize) {
   const auto &DL = Inst.getDebugLoc();
 
-  assert(L.getType() == H.getType() && L.getType()->isVectorTy() &&
-         L.getType()->getVectorElementType()->isIntegerTy(32));
+  assert(V1.getType() == V2.getType() && V1.getType()->isVectorTy() &&
+         V1.getType()->getVectorElementType()->isIntegerTy(32));
 
   // create the write-regions
-  auto LoRegion = createSplitRegion(VI32Ty, RegionType::LoRegion);
+  auto R1 = createSplitRegion(VI32Ty, RT1);
   auto *UndefV = UndefValue::get(VI32Ty);
-  auto *WrL = LoRegion.createWrRegion(UndefV, &L, "WrLow", &Inst, DL);
+  auto *W1 = R1.createWrRegion(UndefV, &V1, Name + ".partial_join", &Inst, DL);
 
-  auto HiRegion = createSplitRegion(VI32Ty, RegionType::HiRegion);
-  auto *WrH = HiRegion.createWrRegion(WrL, &H, "WrHigh", &Inst, DL);
+  auto R2 = createSplitRegion(VI32Ty, RT2);
+  auto *W2 = R2.createWrRegion(W1, &V2, Name + ".joined", &Inst, DL);
 
   auto *V64Ty = VectorType::get(ETy->getInt64Ty(Inst.getContext()), Len);
-  auto *Result = new BitCastInst(WrH, V64Ty, Name, &Inst);
+  auto *Result = new BitCastInst(W2, V64Ty, Name, &Inst);
   Result->setDebugLoc(DL);
+
+  if (Scalarize) {
+    assert(Result->getType()->getVectorNumElements() == 1);
+    Result = new BitCastInst(Result, ETy->getInt64Ty(Inst.getContext()),
+                             Name + ".recast", &Inst);
+  }
   return Result;
+
+}
+Value *IVSplitter::combineLoHiSplit(const LoHiSplit &Split, const Twine &Name,
+                                    bool Scalarize) {
+
+  assert(Split.Lo && Split.Hi);
+
+  return combineSplit(*Split.Lo, *Split.Hi, RegionType::LoRegion,
+                      RegionType::HiRegion, Name, Scalarize);
 }
 
+Value *IVSplitter::combineHalfSplit(const HalfSplit &Split, const Twine &Name,
+                                    bool Scalarize) {
+  assert(Split.Left && Split.Right);
+
+  return combineSplit(*Split.Left, *Split.Right, RegionType::FirstHalf,
+                      RegionType::SecondHalf, Name, Scalarize);
+}
 /***********************************************************************
  * adjustPhiNodesForBlockRemoval : adjust phi nodes when removing a block
  *

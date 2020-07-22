@@ -259,33 +259,49 @@ public:
 
 // class for splitting i64 (both vector and scalar) to subregions of i32 vectors
 // Used in GenxLowering and emulation routines
-class LoHiSplitter {
+class IVSplitter {
   Instruction &Inst;
 
   Type *ETy = nullptr;
   Type *VI32Ty = nullptr;
   size_t Len = 0;
 
-  enum class RegionType { LoRegion, HiRegion };
+  enum class RegionType { LoRegion, HiRegion, FirstHalf, SecondHalf };
   Region createSplitRegion(Type *Ty, RegionType RT);
 
+  std::pair<Value*, Value*> splitValue(Value& Val, RegionType RT1,
+                                       const Twine& Name1, RegionType RT2,
+                                       const Twine& Name2);
+  Value* combineSplit(Value &V1, Value &V2, RegionType RT1, RegionType RT2,
+                      const Twine& Name, bool Scalarize);
+
 public:
-  struct Split {
+
+  struct LoHiSplit {
     Value *Lo;
     Value *Hi;
+  };
+  struct HalfSplit {
+    Value *Left;
+    Value *Right;
   };
 
   // Instruction is used as an insertion point, debug location source and
   // as a source of operands to split.
   // If BaseOpIdx indexes a scalar/vector operand of i64 type, then
-  // IsI64Operation shall return true
-  LoHiSplitter(Instruction &Inst, unsigned BaseOpIdx = 0);
+  // IsI64Operation shall return true, otherwise the value type of an
+  // instruction is used
+  IVSplitter(Instruction &Inst, unsigned* BaseOpIdx = nullptr);
 
   // Splitted Operand is expected to be a scalar/vector of i64 type
-  Split splitOperand(unsigned SourceIdx);
+  LoHiSplit splitOperandLoHi(unsigned SourceIdx);
+  HalfSplit splitOperandHalf(unsigned SourceIdx);
 
   // Combined values are expected to be a vector of i32 of the same size
-  Value *combineSplit(Value &L, Value &H, const Twine &Name);
+  Value *combineLoHiSplit(const LoHiSplit &Split, const Twine &Name,
+                          bool Scalarize);
+  Value *combineHalfSplit(const HalfSplit &Split, const Twine &Name,
+                          bool Scalarize);
 
   // convinence method for quick sanity checking
   bool IsI64Operation() { return ETy->isIntegerTy(64); }
