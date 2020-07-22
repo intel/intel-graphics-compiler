@@ -125,6 +125,8 @@ extern SRegKeysList g_RegKeyList;
 ( CheckHashRange(g_RegKeyList.name.hashes) ? g_RegKeyList.name.m_string : "" )
 #endif
 
+#define IGC_REGKEY_OR_FLAG_ENABLED( name, flag ) ( IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
+
 #if defined(_WIN64) || defined(_WIN32)
 struct DEVICE_INFO
     {
@@ -167,4 +169,5 @@ namespace IGC
 #define IGC_IS_FLAG_DISABLED( name )    (IGC::DebugVariable::name##default == 0)
 #define IGC_GET_FLAG_VALUE( name )      (IGC::DebugVariable::name##default)
 #define IGC_GET_REGKEYSTRING( name )    ("")
+#define IGC_REGKEY_OR_FLAG_ENABLED( name, flag ) ( IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
 #endif

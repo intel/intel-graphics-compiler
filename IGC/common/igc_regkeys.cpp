@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "3d/common/iStdLib/File.h"
 #include "secure_mem.h"
 #include "secure_string.h"
+#include "AdaptorCommon/customApi.hpp"
 
 #if defined(_WIN64) || defined(_WIN32)
 #include <devguid.h>  // for GUID_DEVCLASS_DISPLAY
@@ -897,6 +898,18 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
             IGC_SET_FLAG_VALUE(DumpPatchTokens, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(DumpTimeStatsPerPass) ||
+            IGC_IS_FLAG_ENABLED(DumpTimeStatsCoarse))
+        {
+            IGC_SET_FLAG_VALUE(DumpTimeStats, true);
+            IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(DumpTimeStats))
+        {
+            // Need to turn on this setting so per-shader .csv is generated
+            IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
+        }
 
         switch(IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth))
         {

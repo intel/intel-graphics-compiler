@@ -45,7 +45,7 @@ namespace IGC
 
     public:
         static char ID;
-        CheckInstrTypes() : FunctionPass(ID), g_InstrTypes(nullptr)
+        CheckInstrTypes() : FunctionPass(ID), g_InstrTypes(nullptr), LI(nullptr)
         {
         };
         CheckInstrTypes(IGC::SInstrTypes* instrList);
@@ -88,7 +88,8 @@ namespace IGC
     {
     public:
         static char ID;
-        InstrStatistic() : FunctionPass(ID), m_ctx(nullptr), m_type(InstrStatTypes(0)), m_stage(InstrStatStage::BEGIN), m_threshold(0)
+        InstrStatistic() : FunctionPass(ID), m_ctx(nullptr), m_type(InstrStatTypes(0)),
+            m_stage(InstrStatStage::BEGIN), m_threshold(0), m_LI(nullptr)
         {
         };
         InstrStatistic(CodeGenContext* ctx, InstrStatTypes type, InstrStatStage stage, int threshold);

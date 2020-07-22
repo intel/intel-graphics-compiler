@@ -92,14 +92,14 @@ void IGCPassManager::add(Pass *P)
         return;
     }
 
-    if (IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_PASS))
+    if (IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStatsPerPass, TIME_STATS_PER_PASS))
     {
         PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + std::string(P->getPassName()), STATS_COUNTER_START));
     }
 
     PassManager::add(P);
 
-    if (IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_PASS))
+    if (IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStatsPerPass, TIME_STATS_PER_PASS))
     {
         PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + std::string(P->getPassName()), STATS_COUNTER_END));
     }

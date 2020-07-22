@@ -244,6 +244,9 @@ DECLARE_IGC_REGKEY(bool, DumpPatchTokens,               false, "Enable dumping o
 DECLARE_IGC_REGKEY(bool, DumpVariableAlias,             false, "Dump variable alias info, valid if EnableVariableAlias is on)", true)
 DECLARE_IGC_REGKEY(bool, DumpDeSSA,                     false, "dump DeSSA info into file.", true)
 DECLARE_IGC_REGKEY(bool, EnableScalarizerDebugLog,      false, "print step by step scalarizer debug info.", true)
+DECLARE_IGC_REGKEY(bool, DumpTimeStats,                 false, "Timing of translation, code generation, finalizer, etc", true)
+DECLARE_IGC_REGKEY(bool, DumpTimeStatsCoarse,           false, "Only collect/dump coarse level time stats, i.e. skip opt detail timer for now", true)
+DECLARE_IGC_REGKEY(bool, DumpTimeStatsPerPass,          false, "Collect Timing of IGC/LLVM passes", true)
 
 DECLARE_IGC_GROUP("Debugging features")
 DECLARE_IGC_REGKEY(bool, InitializeUndefValueEnable,    false, "Setting this to 1/true initializes all undefs in URB payload to 0", false)

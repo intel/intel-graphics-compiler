@@ -369,7 +369,7 @@ private:
     { \
         if( (pointer) && (pointer)->m_sumCompilerTimeStats ) \
         { \
-            if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_SUM ) ) \
+            if ( IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStats, TIME_STATS_SUM ) ) \
             { \
                 (pointer)->m_sumCompilerTimeStats->printSumTime(); \
             } \
@@ -381,7 +381,7 @@ private:
     { \
         if( (pointer) && (pointer)->m_sumCompilerTimeStats ) \
         { \
-            if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_SUM ) ) \
+            if ( IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStats, TIME_STATS_SUM ) ) \
             { \
                 for(int i = 1; i < size; i++) \
                 { \
