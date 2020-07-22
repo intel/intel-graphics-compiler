@@ -198,7 +198,9 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
 
   // Before we get the simd-control-flow representation right,
   // we avoid dealing with predicate constants
-  loadPhiConstants(&F, DT, true);
+  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
+  const GenXSubtarget *ST = P ? P->getSubtarget() : nullptr;
+  loadPhiConstants(&F, DT, true, ST);
   Changed |= distributeIntegerMul(&F);
   Changed |= propagateFoldableRegion(&F);
   Changed |= reassociateIntegerMad(&F);

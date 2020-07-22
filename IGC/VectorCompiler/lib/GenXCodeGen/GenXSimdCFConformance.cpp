@@ -3583,6 +3583,9 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
     }
   }
   // Modify each select into a predicated wrregion.
+  auto SubtargetAnalysis = getAnalysisIfAvailable<GenXSubtargetPass>();
+  const GenXSubtarget *Subtarget =
+      SubtargetAnalysis ? SubtargetAnalysis->getSubtarget() : nullptr;
   for (auto si = Selects.begin(), se = Selects.end(); si != se; ++si) {
     auto Sel = *si;
     Value *FalseVal = Sel->getFalseValue();
@@ -3591,7 +3594,8 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
         // The false value needs loading if it is a constant other than
         // undef.
         SmallVector<Instruction *, 4> AddedInstructions;
-        FalseVal = ConstantLoader(C, nullptr, &AddedInstructions).loadBig(Sel);
+        FalseVal = ConstantLoader(C, nullptr, &AddedInstructions, Subtarget)
+                       .loadBig(Sel);
         // ConstantLoader generated at least one instruction.  Ensure that
         // each one has debug loc and category.
         for (auto aii = AddedInstructions.begin(), aie = AddedInstructions.end();

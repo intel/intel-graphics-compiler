@@ -927,8 +927,9 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
     if (!Result) {
       // For the first time round the loop, just splat the whole vector,
       // whatever BestSplatBits says.
-      Result = loadConstant(ConstantVector::getSplat(
-            NumElements, BestSplatSetConst), Inst, AddedInstructions);
+      Result =
+          loadConstant(ConstantVector::getSplat(NumElements, BestSplatSetConst),
+                       Inst, AddedInstructions, Subtarget);
       Result->setDebugLoc(Inst->getDebugLoc());
     } else {
       // Not the first time round the loop. Set up the splatted subvector,
@@ -1076,7 +1077,8 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore)
       // We're loading a vector of byte or short (but not i1). Use int so the
       // instruction does not use so many channels. This may also save it being
       // split by legalization.
-      Instruction *NewInst = loadConstant(CC, InsertBefore, AddedInstructions);
+      Instruction *NewInst =
+          loadConstant(CC, InsertBefore, AddedInstructions, Subtarget);
       NewInst = CastInst::Create(Instruction::BitCast, NewInst, C->getType(),
           "constant", InsertBefore);
       if (AddedInstructions)
@@ -1127,9 +1129,11 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore)
   }
   auto VT = cast<VectorType>(C->getType());
   unsigned NumElements = VT->getNumElements();
-  unsigned LogElementBits = genx::log2(
-      VT->getElementType()->getPrimitiveSizeInBits());
-  unsigned MaxSize = 1 << (9/*log 2xGRFsize*/ - LogElementBits);
+  unsigned DefaultGRFWidth = 32 /*bytes*/ * CHAR_BIT;
+  unsigned GRFWidth = Subtarget ? Subtarget->getGRFWidth() /*bytes*/ * CHAR_BIT
+                                : DefaultGRFWidth;
+  unsigned ElementBits = VT->getElementType()->getPrimitiveSizeInBits();
+  unsigned MaxSize = 2 * GRFWidth / ElementBits;
   MaxSize = std::min(MaxSize, 32U);
   Instruction *Result = nullptr;
   for (unsigned Idx = 0; Idx != NumElements; ) {

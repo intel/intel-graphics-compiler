@@ -107,8 +107,10 @@ inline bool opMustBeConstant(Instruction *I, unsigned OpNum) {
 // Load a constant using the llvm.genx.constant intrinsic.
 inline Instruction *
 loadConstant(Constant *C, Instruction *InsertBefore,
-             SmallVectorImpl<Instruction *> *AddedInstructions = nullptr) {
-  return ConstantLoader(C, nullptr, AddedInstructions).load(InsertBefore);
+             SmallVectorImpl<Instruction *> *AddedInstructions = nullptr,
+             const GenXSubtarget *Subtarget = nullptr) {
+  return ConstantLoader(C, nullptr, AddedInstructions, Subtarget)
+      .load(InsertBefore);
 }
 
 // Load non-simple constants used in an instruction.
