@@ -321,6 +321,7 @@ namespace IGC
 
     struct SKernelProgram
     {
+        SProgramOutput simd1;
         SProgramOutput simd8;
         SProgramOutput simd16;
         SProgramOutput simd32;

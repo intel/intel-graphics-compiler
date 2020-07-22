@@ -2187,12 +2187,17 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             size = program->simd16.m_funcSymbolTableSize;
             entries = program->simd16.m_funcSymbolTableEntries;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32 ||
-                 annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
         {
             buffer = program->simd32.m_funcSymbolTable;
             size = program->simd32.m_funcSymbolTableSize;
             entries = program->simd32.m_funcSymbolTableEntries;
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        {
+            buffer = program->simd1.m_funcSymbolTable;
+            size = program->simd1.m_funcSymbolTableSize;
+            entries = program->simd1.m_funcSymbolTableEntries;
         }
 
         if (size > 0)
@@ -2242,14 +2247,19 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             size = program->simd16.m_funcRelocationTableSize;
             entries = program->simd16.m_funcRelocationTableEntries;
         }
-        // CM kernels are dispatched with CompiledSIMDSize == 1, this is just a contract
-        // between igcmc and patch token generator, shouldn't break existing scenarios for IGC
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32 ||
-                 annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
         {
             buffer = program->simd32.m_funcRelocationTable;
             size = program->simd32.m_funcRelocationTableSize;
             entries = program->simd32.m_funcRelocationTableEntries;
+        }
+        // CM kernels are dispatched with CompiledSIMDSize == 1, this is just a contract
+        // between igcmc and patch token generator, shouldn't break existing scenarios for IGC
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        {
+            buffer = program->simd1.m_funcRelocationTable;
+            size = program->simd1.m_funcRelocationTableSize;
+            entries = program->simd1.m_funcRelocationTableEntries;
         }
 
         if (size > 0)

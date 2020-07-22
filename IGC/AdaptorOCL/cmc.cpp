@@ -410,6 +410,22 @@ const char* cmc::getPlatformStr(PLATFORM platform)
     return "SKL";
 }
 
+static void generateSymbols(const cmc_kernel_info_v2 &info,
+                            IGC::SProgramOutput &kernelProgram)
+{
+    if (info.RelocationTable.Size > 0) {
+      kernelProgram.m_funcRelocationTable = info.RelocationTable.Buf;
+      kernelProgram.m_funcRelocationTableSize = info.RelocationTable.Size;
+      kernelProgram.m_funcRelocationTableEntries =
+          info.RelocationTable.NumEntries;
+    }
+    if (info.SymbolTable.Size > 0) {
+      kernelProgram.m_funcSymbolTable = info.SymbolTable.Buf;
+      kernelProgram.m_funcSymbolTableSize = info.SymbolTable.Size;
+      kernelProgram.m_funcSymbolTableEntries = info.SymbolTable.NumEntries;
+    }
+}
+
 static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info,
                                    CMKernel& kernel)
 {
@@ -514,25 +530,10 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info,
     ConstantBufferLength = iSTD::Align(ConstantBufferLength, info->GRFByteSize) / info->GRFByteSize;
     kernel.m_kernelInfo.m_kernelProgram.ConstantBufferLength = ConstantBufferLength;
 
-    IGC::SProgramOutput *kernelProgram = nullptr;
-    if (info->CompiledSIMDSize == 8)
-      kernelProgram = &kernel.m_kernelInfo.m_kernelProgram.simd8;
-    else if (info->CompiledSIMDSize == 16)
-      kernelProgram = &kernel.m_kernelInfo.m_kernelProgram.simd16;
-    else if (info->CompiledSIMDSize == 32 || info->CompiledSIMDSize == 1)
-      kernelProgram = &kernel.m_kernelInfo.m_kernelProgram.simd32;
-    IGC_ASSERT(kernelProgram);
-    if (info->RelocationTable.Size > 0) {
-      kernelProgram->m_funcRelocationTable = info->RelocationTable.Buf;
-      kernelProgram->m_funcRelocationTableSize = info->RelocationTable.Size;
-      kernelProgram->m_funcRelocationTableEntries =
-          info->RelocationTable.NumEntries;
-    }
-    if (info->SymbolTable.Size > 0) {
-      kernelProgram->m_funcSymbolTable = info->SymbolTable.Buf;
-      kernelProgram->m_funcSymbolTableSize = info->SymbolTable.Size;
-      kernelProgram->m_funcSymbolTableEntries = info->SymbolTable.NumEntries;
-    }
+    IGC_ASSERT_MESSAGE(info->CompiledSIMDSize == 1, "CM code must be dispatched in SIMD1 mode");
+    IGC::SProgramOutput &kernelProgram = kernel.m_kernelInfo.m_kernelProgram.simd1;
+
+    generateSymbols(*info, kernelProgram);
 
 }
 
