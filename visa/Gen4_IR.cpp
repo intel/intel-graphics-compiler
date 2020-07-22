@@ -7969,7 +7969,7 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     case G4_csel:
         return builder.canMadHaveAcc();
     case G4_mul:
-        return IS_FTYPE(src->getType());
+        return IS_TYPE_FLOAT_ALL(src->getType());
     case G4_and:
     case G4_not:
     case G4_or:
