@@ -151,6 +151,8 @@ bool AddImplicitArgs::runOnModule(Module &M)
             FuncMD[i.second] = funcInfo;
         }
     }
+
+    // Update LLVM metadata based on IGC MetadataUtils
     m_pMdUtils->save(M.getContext());
 
     //Return if any error

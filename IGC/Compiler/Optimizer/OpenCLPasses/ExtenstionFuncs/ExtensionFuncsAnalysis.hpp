@@ -91,6 +91,8 @@ namespace IGC
     private:
         /// @brief  Marks whether VME information is needed by the current function
         bool m_hasVME;
+        /// @brief  MetaData utils used to generate LLVM metadata
+        IGCMD::MetaDataUtils* m_pMDUtils;
     };
 
 } // namespace IGC

@@ -75,6 +75,7 @@ DeviceEnqueueFuncsAnalysis::DeviceEnqueueFuncsAnalysis() :
 
 bool DeviceEnqueueFuncsAnalysis::runOnModule(Module& M) {
     bool changed = false;
+    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     // Run on all functions defined in this module
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
         Function* pFunc = &(*I);
@@ -88,6 +89,9 @@ bool DeviceEnqueueFuncsAnalysis::runOnModule(Module& M) {
         }
     }
 
+    if(changed)
+        m_pMDUtils->save(M.getContext());
+
     return changed;
 }
 
@@ -99,8 +103,8 @@ bool DeviceEnqueueFuncsAnalysis::runOnFunction(Function& F) {
     // Visit the function
     visit(F);
 
-    ImplicitArgs::addImplicitArgs(F, m_newImplicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    ImplicitArgs::addNumberedArgs(F, m_newNumberedImplicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+    ImplicitArgs::addImplicitArgs(F, m_newImplicitArgs, m_pMDUtils);
+    ImplicitArgs::addNumberedArgs(F, m_newNumberedImplicitArgs, m_pMDUtils);
 
     return m_hasDeviceEnqueue;
 }

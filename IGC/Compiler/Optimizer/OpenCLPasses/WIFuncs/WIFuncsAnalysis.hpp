@@ -115,6 +115,8 @@ namespace IGC
         bool m_hasStageInGridSize;
         /// @brief  Marks whether sync buffer is needed by the current function
         bool m_hasSyncBuffer;
+        /// @brief  MetaData utils used to generate LLVM metadata
+        IGCMD::MetaDataUtils* m_pMDUtils;
     };
 
 } // namespace IGC

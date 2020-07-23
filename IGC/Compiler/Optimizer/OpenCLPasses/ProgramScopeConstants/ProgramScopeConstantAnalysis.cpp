@@ -214,7 +214,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
             ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
         }
-        mdUtils->save(C);
     }
 
     if (hasInlineGlobalBuffer)
@@ -229,7 +228,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);
             ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
         }
-        mdUtils->save(C);
     }
 
     // Setup the metadata for pointer patch info to be utilized during
@@ -265,8 +263,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 IGC_ASSERT_MESSAGE(0, "trying to patch unsupported address space");
             }
         }
-
-        mdUtils->save(C);
     }
 
     const bool changed = !inlineProgramScopeOffsets.empty();
@@ -275,6 +271,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         modMd->inlineProgramScopeOffsets[offset.first] = offset.second;
     }
 
+    // Update LLVM metadata based on IGC MetadataUtils
     if (changed)
     {
         mdUtils->save(C);

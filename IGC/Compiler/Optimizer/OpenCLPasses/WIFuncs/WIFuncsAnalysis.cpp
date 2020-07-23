@@ -69,6 +69,7 @@ WIFuncsAnalysis::WIFuncsAnalysis() : ModulePass(ID)
 
 bool WIFuncsAnalysis::runOnModule(Module& M)
 {
+    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     // Run on all functions defined in this module
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
@@ -76,6 +77,9 @@ bool WIFuncsAnalysis::runOnModule(Module& M)
         if (pFunc->isDeclaration()) continue;
         runOnFunction(*pFunc);
     }
+
+    // Update LLVM metadata based on IGC MetadataUtils
+    m_pMDUtils->save(M.getContext());
 
     return true;
 }
@@ -144,7 +148,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     }
 
     // Create the metadata representing the implicit args needed by this function
-    ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+    ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
 
     return true;
 }

@@ -69,6 +69,7 @@ const llvm::StringRef ImageFuncsAnalysis::GET_FLAT_IMAGE_PITCH = "__builtin_IB_g
 
 bool ImageFuncsAnalysis::runOnModule(Module& M) {
     bool changed = false;
+    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     // Run on all functions defined in this module
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
         Function* pFunc = &(*I);
@@ -78,6 +79,10 @@ bool ImageFuncsAnalysis::runOnModule(Module& M) {
             changed = true;
         }
     }
+
+    // Update LLVM metadata based on IGC MetadataUtils
+    if (changed)
+        m_pMDUtils->save(M.getContext());
 
     return changed;
 }

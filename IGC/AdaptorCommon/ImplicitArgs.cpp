@@ -426,7 +426,6 @@ void ImplicitArgs::addImplicitArgs(llvm::Function& F, SmallVectorImpl<ImplicitAr
             funcInfo->addImplicitArgInfoListItem(argMD);
         }
     }
-    pMdUtils->save(F.getParent()->getContext());
 }
 
 void ImplicitArgs::addImageArgs(llvm::Function& F, ImplicitArg::ArgMap& argMap, MetaDataUtils* pMdUtils)
@@ -443,7 +442,6 @@ void ImplicitArgs::addImageArgs(llvm::Function& F, ImplicitArg::ArgMap& argMap, 
             funcInfo->addImplicitArgInfoListItem(argMD);
         }
     }
-    pMdUtils->save(F.getParent()->getContext());
 }
 
 void ImplicitArgs::addStructArgs(llvm::Function& F, const Argument* A, const ImplicitArg::StructArgList& S, MetaDataUtils* pMdUtils)
@@ -477,7 +475,6 @@ void ImplicitArgs::addNumberedArgs(llvm::Function& F, ImplicitArg::ArgMap& argMa
       funcInfo->addImplicitArgInfoListItem(argMD);
     }
   }
-  pMdUtils->save(F.getParent()->getContext());
 }
 
 // Add one implicit argument for each pointer argument to global or constant buffer.

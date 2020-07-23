@@ -54,7 +54,7 @@ PrivateMemoryUsageAnalysis::PrivateMemoryUsageAnalysis()
 bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
 {
     bool changed = false;
-    IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     bool hasStackCall = false;
@@ -70,7 +70,7 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
         }
         if (pFunc->isDeclaration())
             continue;
-        if (pMdUtils->findFunctionsInfoItem(pFunc) == pMdUtils->end_FunctionsInfo())
+        if (m_pMDUtils->findFunctionsInfoItem(pFunc) == m_pMDUtils->end_FunctionsInfo())
             continue;
         if (runOnFunction(*pFunc))
         {
@@ -86,15 +86,19 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
         for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
         {
             Function* pFunc = &(*I);
-            if (isEntryFunc(pMdUtils, pFunc))
+            if (isEntryFunc(m_pMDUtils, pFunc))
             {
                 SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
                 implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
-                ImplicitArgs::addImplicitArgs(*pFunc, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+                ImplicitArgs::addImplicitArgs(*pFunc, implicitArgs, m_pMDUtils);
                 changed = true;
             }
         }
     }
+
+    // Update LLVM metadata based on IGC MetaDataUtils
+    if (changed)
+        m_pMDUtils->save(M.getContext());
 
     return changed;
 }

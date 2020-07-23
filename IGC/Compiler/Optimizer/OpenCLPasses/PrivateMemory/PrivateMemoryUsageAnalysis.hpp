@@ -88,6 +88,9 @@ namespace IGC
 
         /// @brief  A flag signaling if the current function uses private memory
         bool m_hasPrivateMem;
+
+        /// @brief  MetaData utils used to generate LLVM metadata
+        IGCMD::MetaDataUtils* m_pMDUtils;
     };
 
 } // namespace IGC

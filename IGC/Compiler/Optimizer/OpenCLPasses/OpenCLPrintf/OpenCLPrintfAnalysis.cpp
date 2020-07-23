@@ -59,8 +59,10 @@ const StringRef OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME = "printf";
 
 bool OpenCLPrintfAnalysis::runOnModule(Module& M)
 {
-    visit(M);
+    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
+    visit(M);
+    bool changed = false;
     if (m_hasPrintfs.size())
     {
         for (Function& func : M.getFunctionList())
@@ -69,9 +71,14 @@ bool OpenCLPrintfAnalysis::runOnModule(Module& M)
                 m_hasPrintfs.find(&func) != m_hasPrintfs.end())
             {
                 addPrintfBufferArgs(func);
+                changed = true;
             }
         }
     }
+
+    // Update LLVM metadata based on IGC MetadataUtils
+    if (changed)
+        m_pMDUtils->save(M.getContext());
 
     return m_hasPrintfs.size();
 }
@@ -95,7 +102,6 @@ void OpenCLPrintfAnalysis::visitCallInst(llvm::CallInst& callInst)
 void OpenCLPrintfAnalysis::addPrintfBufferArgs(Function& F)
 {
     SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     implicitArgs.push_back(ImplicitArg::PRINTF_BUFFER);
-    ImplicitArgs::addImplicitArgs(F, implicitArgs, pMdUtils);
+    ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
 }
