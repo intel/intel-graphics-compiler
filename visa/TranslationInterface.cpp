@@ -2424,8 +2424,7 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
         auto* privateMemPatch = createRelocImm(Type_UD);
         dst->setType(Type_UD);
         G4_INST* mov = createMov(1, dst, privateMemPatch, InstOpt_WriteEnable, true);
-        RelocationEntry relocEntry = RelocationEntry::createSymbolAddrReloc(mov, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
-        kernel.addRelocation(relocEntry);
+        RelocationEntry::createRelocation(kernel, *mov, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
     }
     else if (noInt64() || needSwap64ImmLoHi())
     {
@@ -2440,11 +2439,8 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
         auto dstHi = createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1, 1, Type_UD);
         G4_INST* movHi = createMov(1, dstHi, funcAddrHigh, InstOpt_WriteEnable, true);
 
-        RelocationEntry relocEntryLo = RelocationEntry::createSymbolAddrReloc(movLo, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
-        kernel.addRelocation(relocEntryLo);
-
-        RelocationEntry relocEntryHi = RelocationEntry::createSymbolAddrReloc(movHi, 0, symbolName, GenRelocType::R_SYM_ADDR_32_HI);
-        kernel.addRelocation(relocEntryHi);
+        RelocationEntry::createRelocation(kernel, *movLo, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
+        RelocationEntry::createRelocation(kernel, *movHi, 0, symbolName, GenRelocType::R_SYM_ADDR_32_HI);
 
     }
     else
@@ -2453,8 +2449,7 @@ int IR_Builder::translateVISACFSymbolInst(const std::string& symbolName, G4_DstR
         auto funcAddr = createRelocImm(Type_UQ);
         auto movInst = createMov(1, dst, funcAddr, InstOpt_WriteEnable, true);
 
-        RelocationEntry relocEntry = RelocationEntry::createSymbolAddrReloc(movInst, 0, symbolName, GenRelocType::R_SYM_ADDR);
-        kernel.addRelocation(relocEntry);
+        RelocationEntry::createRelocation(kernel, *movInst, 0, symbolName, GenRelocType::R_SYM_ADDR);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)

@@ -1626,6 +1626,18 @@ public:
     }
 
     //
+    // Create immediate operand without looking up hash table. This operand
+    // is a relocatable immediate type. Specify the value of this imm field,
+    // which will present in the output instruction's imm value.
+    //
+    G4_Reloc_Imm* createRelocImm(int64_t immval, G4_Type ty)
+    {
+        G4_Reloc_Imm* newImm;
+        newImm = new (mem)G4_Reloc_Imm(immval, ty);
+        return newImm;
+    }
+
+    //
     // return the label operand; create one if not found
     //
     G4_Label* lookupLabel(char* lab)

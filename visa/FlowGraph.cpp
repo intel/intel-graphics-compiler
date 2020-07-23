@@ -7036,6 +7036,13 @@ FlowGraph::~FlowGraph()
     }
 }
 
+RelocationEntry& RelocationEntry::createRelocation(G4_Kernel& kernel, G4_INST& inst,
+    int opndPos, const std::string& symbolName, RelocationType type)
+{
+    kernel.getRelocationTable().emplace_back(RelocationEntry(&inst, opndPos, type, symbolName));
+    return kernel.getRelocationTable().back();
+}
+
 KernelDebugInfo* G4_Kernel::getKernelDebugInfo()
 {
     if (kernelDbgInfo == nullptr)
@@ -7399,24 +7406,42 @@ void RelocationEntry::doRelocation(const G4_Kernel& kernel, void* binary, uint32
 
 uint32_t RelocationEntry::getTargetOffset(const IR_Builder& builder) const
 {
-    // currently we only support relocation on mov instruction
-    assert(inst->isMov());
+    // instruction being relocated must not be compacted, or the offset need to be re-adjusted
+    // FIXME: This only check if vISA force to compact the instruction, it cannot make sure
+    // the Binary encoder won't compact it
     assert(inst->isCompactedInst() == false);
-    auto src0 = inst->getSrc(0);
-    assert(src0->isRelocImm() && ((src0->getType() == Type_UD) || (src0->getType() == Type_UQ)));
 
-    // When src0 type is 64 bits:
-    //  On PreGen12:
-    //   Src0.imm[31:0] mapped to Instruction [95:64]
-    //   Src0.imm[63:32] mapped to Instruction [127:96]
-    //  On Gen12+:
-    //   Src0.imm[31:0] mapped to Instruction [127:96]
-    //   Src0.imm[63:32] mapped to Instruction [95:64]
+    G4_Operand* target_operand = inst->getSrc(opndPos);
+    assert(target_operand->isRelocImm());
 
-    // When src0 type is 32 bits:
-    //   Src0.imm[31:0] mapped to instruction [127:96]
+    switch (inst->opcode()) {
+    case G4_mov:
+        // When src0 type is 64 bits:
+        //  On PreGen12:
+        //   Src0.imm[31:0] mapped to Instruction [95:64]
+        //   Src0.imm[63:32] mapped to Instruction [127:96]
+        //  On Gen12+:
+        //   Src0.imm[31:0] mapped to Instruction [127:96]
+        //   Src0.imm[63:32] mapped to Instruction [95:64]
+        // When src0 type is 32 bits:
+        //   Src0.imm[31:0] mapped to instruction [127:96]
+        assert((target_operand->getType() == Type_UD) || (target_operand->getType() == Type_UQ));
+        assert(opndPos == 0);
+        return (target_operand->getType() == Type_UD) ? 12 : 8;
 
-    return (src0->getType() == Type_UD) ? 12 : 8;
+    case G4_add:
+        // add instruction cannot have 64-bit imm
+        assert(relocType != R_SYM_ADDR && relocType != R_SYM_ADDR_32_HI);
+        assert(opndPos == 1);
+        // Src1.imm[31:0] mapped to Instruction [127:96]
+        return 12;
+    default:
+        break;
+    }
+
+    // currently we only support relocation on mov or add instruction
+    assert(false && "Unreachable");
+    return 0;
 }
 
 void RelocationEntry::dump() const
@@ -7437,6 +7462,9 @@ void RelocationEntry::dump() const
             break;
         case RelocationType::R_SYM_ADDR_32_HI:
             std::cerr << "R_SYM_ADDR_32_HI: symbol name = " << symName;
+            break;
+        case RelocationType::R_PER_THREAD_PAYLOAD_OFFSET_32:
+            std::cerr << "R_PER_THREAD_PAYLOAD_OFFSET_32: symbol name = " << symName;
             break;
     }
     std::cerr << "\n";

@@ -53,6 +53,7 @@ class PhyRegSummary;
 //
 
 class G4_BB;
+class G4_Kernel;
 class FlowGraph;
 class KernelDebugInfo;
 class VarSplitPass;
@@ -672,7 +673,6 @@ typedef std::pair<BB_LIST_ITER, BB_LIST_ITER> GRAPH_CUT_BOUNDS;
 namespace vISA
 {
 
-class G4_Kernel; // forward declaration
 class FlowGraph
 {
     // Data
@@ -1363,11 +1363,8 @@ class RelocationEntry
         inst(i), opndPos(pos), relocType(type), symName(symbolName){}
 
 public:
-    static RelocationEntry createSymbolAddrReloc(G4_INST* inst, int opndPos, const std::string& symbolName, RelocationType type)
-    {
-        RelocationEntry entry(inst, opndPos, type, symbolName);
-        return entry;
-    }
+    static RelocationEntry& createRelocation(G4_Kernel& kernel, G4_INST& inst,
+        int opndPos, const std::string& symbolName, RelocationType type);
 
     G4_INST* getInst() const
     {
@@ -1389,6 +1386,8 @@ public:
                 return "R_SYM_ADDR_32";
             case RelocationType::R_SYM_ADDR_32_HI:
                 return "R_SYM_ADDR_32_HI";
+            case RelocationType::R_PER_THREAD_PAYLOAD_OFFSET_32:
+                return "R_PER_THREAD_PAYLOAD_OFFSET_32";
             default:
                 assert(false && "unhandled relocation type");
                 return "";
@@ -1402,12 +1401,6 @@ public:
 
     const std::string& getSymbolName() const
     {
-        bool isValidRelocType =
-            relocType == RelocationType::R_SYM_ADDR ||
-            relocType == RelocationType::R_SYM_ADDR_32 ||
-            relocType == RelocationType::R_SYM_ADDR_32_HI;
-
-        assert(isValidRelocType && "invalid relocation type");
         return symName;
     }
 
@@ -1625,11 +1618,6 @@ public:
     void setHasIndirectCall()
     {
         m_hasIndirectCall = true;
-    }
-
-    void addRelocation(RelocationEntry& entry)
-    {
-        relocationTable.push_back(entry);
     }
 
     RelocationTableTy& getRelocationTable()

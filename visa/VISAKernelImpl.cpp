@@ -8065,6 +8065,8 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
         assert((buffer_p->r_offset > inst->getGenOffset()) && (buffer_p->r_offset < inst->getGenOffset() + BYTES_PER_INST));
 
         assert(reloc.getSymbolName().size() <= MAX_SYMBOL_NAME_LENGTH);
+        // clean the buffer first
+        memset(buffer_p->r_symbol, '0', MAX_SYMBOL_NAME_LENGTH);
         strcpy_s(buffer_p->r_symbol, MAX_SYMBOL_NAME_LENGTH, reloc.getSymbolName().c_str());
         ++buffer_p;
     }

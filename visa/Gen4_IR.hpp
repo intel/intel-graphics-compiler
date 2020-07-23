@@ -2720,7 +2720,13 @@ public:
     void *operator new(size_t sz, Mem_Manager& m){ return m.alloc(sz); }
     bool isRelocImm() const override { return true; }
 
+    // G4_Reloc_Imm is the relocation target field. If the value is not given,
+    // a magic number 0x6e10ca2e will present in final output
     G4_Reloc_Imm(G4_Type ty) : G4_Imm((int64_t)0x6e10ca2e, ty)
+    {
+    }
+
+    G4_Reloc_Imm(int64_t val, G4_Type ty) : G4_Imm(val, ty)
     {
     }
 };
