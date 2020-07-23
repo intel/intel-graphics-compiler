@@ -1291,11 +1291,14 @@ bool MemOpt::canonicalizeGEP64(Instruction* I) const {
             Value* RHS = BinOp->getOperand(1);
             LHS = Builder.CreateCast(CastOpcode, LHS, IdxTy);
             RHS = Builder.CreateCast(CastOpcode, RHS, IdxTy);
-            auto BO = cast<BinaryOperator>(Builder.CreateBinOp(BinOpcode, LHS, RHS));
-            if (BinOp->hasNoUnsignedWrap())
-                BO->setHasNoUnsignedWrap();
-            if (BinOp->hasNoSignedWrap())
-                BO->setHasNoSignedWrap();
+            auto BO = Builder.CreateBinOp(BinOpcode, LHS, RHS);
+            // BO can be a constant if both sides are constants
+            if (auto BOP = dyn_cast<BinaryOperator>(BO)) {
+                if (BinOp->hasNoUnsignedWrap())
+                    BOP->setHasNoUnsignedWrap();
+                if (BinOp->hasNoSignedWrap())
+                    BOP->setHasNoSignedWrap();
+            }
             U->set(BO);
             RecursivelyDeleteTriviallyDeadInstructions(ExtOp);
             Changed = true;
