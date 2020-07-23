@@ -2464,7 +2464,7 @@ Instruction *InstCombiner::visitExtractValueInst(ExtractValueInst &EV) {
 }
 
 /// Return 'true' if the given typeinfo will match anything.
-static bool isCatchAll(EHPersonality Personality, Constant *TypeInfo) {
+static bool isCatchAll(EHPersonality Personality, Constant* TypeInfo) {
   switch (Personality) {
   case EHPersonality::GNU_C:
   case EHPersonality::GNU_C_SjLj:
@@ -2485,12 +2485,19 @@ static bool isCatchAll(EHPersonality Personality, Constant *TypeInfo) {
   case EHPersonality::MSVC_Win64SEH:
   case EHPersonality::MSVC_CXX:
   case EHPersonality::CoreCLR:
+    IGC_ASSERT(nullptr != TypeInfo);
     return TypeInfo->isNullValue();
   }
   IGC_ASSERT_EXIT_MESSAGE(0, "invalid enum");
 }
 
 static bool shorter_filter(const Value *LHS, const Value *RHS) {
+    IGC_ASSERT(nullptr != LHS);
+    IGC_ASSERT(nullptr != LHS->getType());
+    IGC_ASSERT(nullptr != cast<ArrayType>(LHS->getType()));
+    IGC_ASSERT(nullptr != RHS);
+    IGC_ASSERT(nullptr != RHS->getType());
+    IGC_ASSERT(nullptr != cast<ArrayType>(RHS->getType()));
   return
     cast<ArrayType>(LHS->getType())->getNumElements()
   <

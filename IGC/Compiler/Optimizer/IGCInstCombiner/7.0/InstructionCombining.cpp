@@ -2624,12 +2624,19 @@ static bool isCatchAll(EHPersonality Personality, Constant* TypeInfo) {
     case EHPersonality::MSVC_CXX:
     case EHPersonality::CoreCLR:
     case EHPersonality::Wasm_CXX:
+        IGC_ASSERT(nullptr != TypeInfo);
         return TypeInfo->isNullValue();
     }
     IGC_ASSERT_EXIT_MESSAGE(0, "invalid enum");
 }
 
 static bool shorter_filter(const Value* LHS, const Value* RHS) {
+    IGC_ASSERT(nullptr != LHS);
+    IGC_ASSERT(nullptr != LHS->getType());
+    IGC_ASSERT(nullptr != cast<ArrayType>(LHS->getType()));
+    IGC_ASSERT(nullptr != RHS);
+    IGC_ASSERT(nullptr != RHS->getType());
+    IGC_ASSERT(nullptr != cast<ArrayType>(RHS->getType()));
     return
         cast<ArrayType>(LHS->getType())->getNumElements()
         <
