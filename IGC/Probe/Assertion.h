@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         if(0 == (x)) \
         { \
             assert(0); \
-            exit(EXIT_FAILURE); \
+            std::exit(EXIT_FAILURE); \
         } \
     } while(0)
 
