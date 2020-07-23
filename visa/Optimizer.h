@@ -225,6 +225,7 @@ private:
     void countGRFUsage();
     void changeMoveType();
     void split4GRFVars();
+    void legalizeType();
 
     void countBankConflicts();
     unsigned int numBankConflicts;
@@ -354,6 +355,7 @@ public:
         PI_insertScratchReadBeforeEOT,
         PI_mapOrphans,
         PI_varSplit,
+        PI_legalizeType,
         PI_NUM_PASSES
     };
 

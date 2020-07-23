@@ -592,6 +592,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT, TIMER_MISC_OPTS);
     INITIALIZE_PASS(mapOrphans,              vISA_EnableAlways,            TIMER_MISC_OPTS);
     INITIALIZE_PASS(varSplit,                vISA_EnableAlways,            TIMER_OPTIMIZER);
+    INITIALIZE_PASS(legalizeType,            vISA_EnableAlways,            TIMER_MISC_OPTS);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1144,6 +1145,8 @@ int Optimizer::optimization()
     runPass(PI_localSchedule);
 
     runPass(PI_accSubPostSchedule);
+
+    runPass(PI_legalizeType);
 
     runPass(PI_changeMoveType);
 
@@ -10962,6 +10965,79 @@ void Optimizer::split4GRFVars()
     for (auto DI : DclMap)
     {
         delete DI.second;
+    }
+}
+
+//
+// A platform may not support 64b types (FP64, INT64, or neither).
+// While HW conformity should have legalized away use of such types, they may get
+// re-introduced again later due to copy moves inserted by spill code generation, rematerialization etc.
+// Instead of checking whether 64b type is used at each createMov(), we add a catch-all pass here.
+// Since this is called post-RA the change we can make are very limited, for now just handle copy moves.
+// We make this a separate pass instead of part of changeMoveType() as the latter is considered an optimization.
+//
+void Optimizer::legalizeType()
+{
+    if (builder.noFP64() || builder.noInt64())
+    {
+        for (auto bb : kernel.fg)
+        {
+            for (auto inst : *bb)
+            {
+                auto uses64bType = [](G4_INST* inst)
+                {
+                    bool useFP64 = false;
+                    bool useInt64 = false;
+                    {
+                        auto dstTy = inst->getDst() ? inst->getDst()->getType() : Type_UNDEF;
+                        if (dstTy == Type_DF)
+                        {
+                            useFP64 = true;
+                        }
+                        else if (dstTy == Type_Q || dstTy == Type_UQ)
+                        {
+                            useInt64 = true;
+                        }
+                    }
+                    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                    {
+                        auto srcTy = inst->getSrc(i) ? inst->getSrc(i)->getType() : Type_UNDEF;
+                        if (srcTy == Type_DF)
+                        {
+                            useFP64 = true;
+                        }
+                        else if (srcTy == Type_Q || srcTy == Type_UQ)
+                        {
+                            useInt64 = true;
+                        }
+                    }
+                    return std::make_tuple(useFP64, useInt64);
+                };
+                //ToDo: handle more cases (e.g., immSrc, use UD for copy moves)
+                if (inst->isRawMov() && inst->getSrc(0)->isSrcRegRegion())
+                {
+                    bool hasFP64 = false, hasInt64 = false;
+                    std::tie(hasFP64, hasInt64) = uses64bType(inst);
+                    if (hasFP64 && hasInt64)
+                    {
+                        assert(false && "can't handle inst with both FP64 and INT64 at this point");
+                        return;
+                    }
+                    if (hasFP64 && builder.noFP64())
+                    {
+                        assert(!builder.noInt64() && "can't change DF to UQ");
+                        inst->getDst()->setType(Type_UQ);
+                        inst->getSrc(0)->asSrcRegRegion()->setType(Type_UQ);
+                    }
+                    if (hasInt64 && builder.noInt64())
+                    {
+                        assert(!builder.noFP64() && "can't change Q/UQ to DF");
+                        inst->getDst()->setType(Type_DF);
+                        inst->getSrc(0)->asSrcRegRegion()->setType(Type_DF);
+                    }
+                }
+            }
+        }
     }
 }
 
