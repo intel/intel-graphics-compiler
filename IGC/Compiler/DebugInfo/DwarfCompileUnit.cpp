@@ -902,6 +902,8 @@ void CompileUnit::addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varIn
 {
     uint32_t offset = varInfo->lrs.front().getSpillOffset().memoryOffset + vectorOffset;
 
+    IGC_ASSERT_MESSAGE(IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging), "SIMD lane expressions support only");
+
     if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
     {
         // For spills to the scratch area at offset available as literal
@@ -911,7 +913,7 @@ void CompileUnit::addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varIn
         addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bregx);
         addUInt(Block, dwarf::DW_FORM_udata, scratchBaseAddr);  // Base address of surface or sampler
         addSInt(Block, dwarf::DW_FORM_sdata, offset);           // Offset to base address
-        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
+        // DW_OP_deref moved to the end of SIMD lane snippet
     }
     else
     {
@@ -920,7 +922,7 @@ void CompileUnit::addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varIn
 
         addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
         addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
-        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
+        // DW_OP_deref moved to the end of SIMD lane snippet
     }
 }
 
@@ -940,6 +942,30 @@ void CompileUnit::addSLMLocation(DIEBlock* Block, VISAVariableLocation* Loc)
 
 // addSimdLane - add a sequence of attributes to calculate location of vectorized variable
 // among SIMD lanes, e.g. a GRF subregister.
+//
+// Example of expression generated for 32-bit variables located in GRF:
+// (note: DW_OP_regx N is generated earlier, i.e. prior to addSimdLane())
+// DW_OP_INTEL_push_simd_lane
+// DW_OP_lit5
+// DW_OP_shl
+// DW_OP_const1u 32
+// DW_OP_INTEL_bit_piece_stack
+//
+// Example of expression generated for 64-bit variable, which is located in memory:
+// (note: DW_OP_bregx N is generated earlier)
+// DW_OP_INTEL_push_simd_lane
+// DW_OP_lit6
+// DW_OP_shl
+// DW_OP_plus
+// (note: no deref is emitted for bregx)
+
+// Example of expression generated for (64-bit) ptr to a variable, which is located in scratch:
+// (note: DW_OP_const8u address is generated earlier)
+// DW_OP_INTEL_push_simd_lane
+// DW_OP_lit6
+// DW_OP_shl
+// DW_OP_plus
+// DW_OP_deref
 void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc, bool isPacked)
 {
     if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging) && Loc->IsVectorized())
@@ -1024,7 +1050,12 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
         else
         {
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
-            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
+
+            // Emit deref for const8u address not for bregx
+            if (!isa<llvm::DbgDeclareInst>(DV.getDbgInst()))
+            {
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
+            }
         }
     }
 }
@@ -2040,9 +2071,7 @@ void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc
 
             Address addr;
             addr.Set(Address::Space::eLocal, 0, offset);
-
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
-
             addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
         }
         else
