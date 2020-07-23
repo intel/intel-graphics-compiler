@@ -246,13 +246,19 @@ namespace IGC
         TranslationTable* m_TT;
 
 
+        /// Examines the uniformity of the load and the number of used elements
+        /// to determine whether we should try to merge it.
+        bool isProfitableLoad(const Instruction* I, uint32_t &MaxEltPlus) const;
+        /// Is this a chunk we should be creating?
+        static bool profitableChunkSize(uint32_t ub, uint32_t lb, uint32_t eltSizeInBytes);
+        static bool profitableChunkSize(uint32_t chunkSize, uint32_t eltSizeInBytes);
         /// check if two access have the same buffer-base
-        bool   CompareBufferBase(llvm::Value* bufIdxV1, uint bufid1, llvm::Value* bufIdxV2, uint bufid2);
+        static bool CompareBufferBase(const llvm::Value* bufIdxV1, uint bufid1, const llvm::Value* bufIdxV2, uint bufid2);
         /// find element base and element imm-offset
         llvm::Value* SimpleBaseOffset(llvm::Value* elt_idxv, uint& offset);
         /// used along ocl path, based upon int2ptr
         bool   DecomposePtrExp(llvm::Value* ptr_val, llvm::Value*& buf_idxv, llvm::Value*& elt_idxv, uint& eltid);
-        uint   CheckVectorElementUses(llvm::Instruction* load);
+        static uint CheckVectorElementUses(const llvm::Instruction* load);
         void   AdjustChunk(BufChunk* cov_chunk, uint start_adj, uint size_adj);
         void   EnlargeChunk(BufChunk* cov_chunk, uint size_adj);
         void   MoveExtracts(BufChunk* cov_chunk, llvm::Instruction* load, uint start_adj);
