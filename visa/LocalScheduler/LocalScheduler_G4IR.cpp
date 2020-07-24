@@ -223,6 +223,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager& m, G4_BB* block,
     {
         ddd.pairTypedWriteOrURBWriteNodes(bb);
     }
+
     if (getOptions()->getOption(vISA_ScheduleForReadSuppression) && ddd.getIsThreeSourceBlock())
     {
         lastCycle = ddd.listScheduleForSuppression(this);
