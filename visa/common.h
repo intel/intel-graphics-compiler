@@ -99,6 +99,7 @@ union LARGE_INTEGER {
 
     LONGLONG QuadPart;
 };
+#define __LARGE_INTEGER_STRUCT_DEFINED
 #endif /* __LARGE_INTEGER_STRUCT_DEFINED */
 
 #endif /* Windows types for non-Windows end */
