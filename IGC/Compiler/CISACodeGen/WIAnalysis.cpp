@@ -1412,6 +1412,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
     }
     // otherwise assume the alloca is uniform by default
     WIAnalysis::WIDependancy dep = WIAnalysis::UNIFORM;
+    bool storesInDifferentBBs = false;
+    const BasicBlock* pStoreInstParent = NULL;
     for (auto it : depIt->second.stores)
     {
         if (hasDependency(&(*it)))
@@ -1421,11 +1423,34 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
             {
                 return WIAnalysis::RANDOM;
             }
+            // Detect stores in different BasicBlocks (under different control flow statements)
+            if( llvm::isa<llvm::Instruction>( &( *it ) ) )
+            {
+                const Instruction* inst = llvm::cast<llvm::Instruction>( &( *it ) );
+                if( inst->getParent() != NULL )
+                {
+                    if( pStoreInstParent == NULL )
+                    {
+                        pStoreInstParent = inst->getParent();
+                    }
+                    if( pStoreInstParent != inst->getParent() )
+                    {
+                        storesInDifferentBBs = true;
+                    }
+                }
+            }
             if (insideDivergentCF(&(*it)))
             {
-                return WIAnalysis::RANDOM;
+                if( storesInDifferentBBs )
+                {
+                    return WIAnalysis::RANDOM;
+                }
             }
         }
+    }
+    if( storesInDifferentBBs )
+    {
+        return WIAnalysis::RANDOM;
     }
     return dep;
 }
