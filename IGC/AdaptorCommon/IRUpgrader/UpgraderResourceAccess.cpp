@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/helper.h"
 
 #include <vector>
+#include <set>
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -54,12 +55,17 @@ private:
     void ChangeIntrinsic(CallInst& C, GenISAIntrinsic::ID ID);
     void FixSamplerSignature(SampleIntrinsic* sample);
     bool m_changed = false;
+    std::set<Function*> m_ToRemoveFromParentList;
 };
 char UpgradeResourceAccess::ID = 0;
 
 bool UpgradeResourceAccess::runOnFunction(llvm::Function &F)
 {
     visit(F);
+    for (auto i : m_ToRemoveFromParentList)
+    {
+        i->removeFromParent();
+    }
     return m_changed;
 }
 
@@ -166,6 +172,7 @@ void UpgradeResourceAccess::ChangeIntrinsic(CallInst& C, GenISAIntrinsic::ID ID)
     Function* f = GenISAIntrinsic::getDeclaration(m, ID, types);
     Value* newCall = builder.CreateCall(f, args);
     C.replaceAllUsesWith(newCall);
+    m_ToRemoveFromParentList.insert(C.getCalledFunction());
     C.eraseFromParent();
     m_changed = true;
 }
