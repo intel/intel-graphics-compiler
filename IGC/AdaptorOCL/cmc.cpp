@@ -414,16 +414,22 @@ static void generateSymbols(const cmc_kernel_info_v2 &info,
                             IGC::SProgramOutput &kernelProgram)
 {
     if (info.RelocationTable.Size > 0) {
-      kernelProgram.m_funcRelocationTable = info.RelocationTable.Buf;
-      kernelProgram.m_funcRelocationTableSize = info.RelocationTable.Size;
-      kernelProgram.m_funcRelocationTableEntries =
-          info.RelocationTable.NumEntries;
+        kernelProgram.m_funcRelocationTable = info.RelocationTable.Buf;
+        kernelProgram.m_funcRelocationTableSize = info.RelocationTable.Size;
+        kernelProgram.m_funcRelocationTableEntries =
+            info.RelocationTable.NumEntries;
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+            kernelProgram.m_relocs = info.ZEBinInfo.Relocations;
     }
     if (info.SymbolTable.Size > 0) {
-      kernelProgram.m_funcSymbolTable = info.SymbolTable.Buf;
-      kernelProgram.m_funcSymbolTableSize = info.SymbolTable.Size;
-      kernelProgram.m_funcSymbolTableEntries = info.SymbolTable.NumEntries;
+        kernelProgram.m_funcSymbolTable = info.SymbolTable.Buf;
+        kernelProgram.m_funcSymbolTableSize = info.SymbolTable.Size;
+        kernelProgram.m_funcSymbolTableEntries = info.SymbolTable.NumEntries;
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+            kernelProgram.m_symbols.function = info.ZEBinInfo.Symbols.Functions;
     }
+    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        kernelProgram.m_symbols.local = info.ZEBinInfo.Symbols.Local;
 }
 
 static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info,
@@ -793,6 +799,7 @@ static void getCmcKernelInfo(
            sizeof(Info.RelocationTable));
     memcpy_s(&CmcInfo.SymbolTable, sizeof(Info.SymbolTable), &Info.SymbolTable,
            sizeof(Info.SymbolTable));
+    CmcInfo.ZEBinInfo = Info.ZEBinInfo;
 }
 
 void vc::createBinary(

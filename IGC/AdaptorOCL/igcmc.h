@@ -1,6 +1,9 @@
 #ifndef _IGCMC_H_
 #define _IGCMC_H_
 
+#include "RelocationInfo.h"
+#include "VectorCompiler/include/vc/GenXCodeGen/GenXWrapper.h"
+
 #include <cstddef>
 #include <string>
 #include <stdint.h>
@@ -113,6 +116,7 @@ struct cmc_kernel_info_v2 {
 
     TableInfo RelocationTable;
     TableInfo SymbolTable;
+    vc::ocl::ZEBinaryInfo ZEBinInfo;
 };
 
 struct cmc_compile_info_v2 {

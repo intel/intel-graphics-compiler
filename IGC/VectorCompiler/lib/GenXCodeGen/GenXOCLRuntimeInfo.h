@@ -32,6 +32,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/Pass.h"
+
+#include "RelocationInfo.h"
+
 #include <cassert>
 #include <map>
 
@@ -104,9 +107,25 @@ public:
     unsigned Entries = 0;
   };
 
+  // This data partially duplicates KernelInfo data.
+  // It exists due to OCLBinary to ZEBinary transition period.
+  struct ZEBinaryInfo {
+    struct SymbolsInfo {
+      using ZESymEntrySeq = std::vector<vISA::ZESymEntry>;
+      ZESymEntrySeq Functions;
+      ZESymEntrySeq Local;
+      // for now only function and local symbols are used
+    };
+    using ZERelocEntrySeq = std::vector<vISA::ZERelocEntry>;
+    ZERelocEntrySeq Relocations;
+    SymbolsInfo Symbols;
+  };
+
   // Additional kernel info that are not provided by finalizer
   // but still required for runtime.
   struct KernelInfo {
+    ZEBinaryInfo ZEBinInfo;
+
   private:
     std::string Name;
 

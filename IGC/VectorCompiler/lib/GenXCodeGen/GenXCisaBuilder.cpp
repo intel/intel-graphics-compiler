@@ -5627,16 +5627,16 @@ ModulePass *llvm::createGenXFinalizerPass(raw_pwrite_stream &o) {
   return new GenXFinalizer(o);
 }
 
-static void constructSymbolTable(FunctionGroup &FG, GenXModule &GM,
-                                 void *&Buffer, unsigned &ByteSize,
-                                 unsigned &NumEntries) {
-  NumEntries = std::count_if(FG.begin(), FG.end(), [](Function *F) {
+static void constructFunctionSymbols(
+    FunctionGroup &FG, GenXModule &GM, GenXOCLRuntimeInfo::TableInfo &TI,
+    GenXOCLRuntimeInfo::ZEBinaryInfo::SymbolsInfo::ZESymEntrySeq &FuncSymbols) {
+  TI.Entries = std::count_if(FG.begin(), FG.end(), [](Function *F) {
     return F->hasFnAttribute("referenced-indirectly");
   });
-  ByteSize = NumEntries * sizeof(vISA::GenSymEntry);
+  TI.Size = TI.Entries * sizeof(vISA::GenSymEntry);
   // this will be eventually freed in AdaptorOCL
-  Buffer = new vISA::GenSymEntry[NumEntries];
-  auto *Entry = static_cast<vISA::GenSymEntry *>(Buffer);
+  TI.Buffer = new vISA::GenSymEntry[TI.Entries];
+  auto *Entry = static_cast<vISA::GenSymEntry *>(TI.Buffer);
   for (auto &F : FG)
     if (F->hasFnAttribute("referenced-indirectly")) {
       assert(F->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
@@ -5646,8 +5646,34 @@ static void constructSymbolTable(FunctionGroup &FG, GenXModule &GM,
       Entry->s_type = vISA::GenSymType::S_FUNC;
       Entry->s_offset = Func->getGenOffset();
       Entry->s_size = Func->getGenSize();
+
+      // EnableZEBinary: this is requred by ZEBinary
+      FuncSymbols.emplace_back(vISA::GenSymType::S_FUNC, Entry->s_offset,
+                               Entry->s_size, F->getName().str());
+
       Entry++;
     }
+}
+
+// EnableZEBinary: this is requred by ZEBinary
+static void constructLocalSymbols(
+    const VISAKernel &BuiltKernel, const Function &KernelIR,
+    GenXOCLRuntimeInfo::ZEBinaryInfo::SymbolsInfo::ZESymEntrySeq
+        &LocalSymbols) {
+  // kernel is always placed with zero offset
+  constexpr int KernelOffset = 0;
+  LocalSymbols.emplace_back(vISA::GenSymType::S_KERNEL, KernelOffset,
+                            BuiltKernel.getGenSize(), KernelIR.getName().str());
+  // for now only kernel symbol is required
+}
+
+static void
+constructSymbolTable(FunctionGroup &FG, GenXModule &GM,
+                     const VISAKernel &BuiltKernel,
+                     GenXOCLRuntimeInfo::TableInfo &TI,
+                     GenXOCLRuntimeInfo::ZEBinaryInfo::SymbolsInfo &ZESymbols) {
+  constructFunctionSymbols(FG, GM, TI, ZESymbols.Functions);
+  constructLocalSymbols(BuiltKernel, *FG.getHead(), ZESymbols.Local);
 }
 
 void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
@@ -5672,10 +5698,13 @@ void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
     BuiltKernel->GetGenxBinary(GenBin, GenBinSize);
     assert(GenBin && GenBinSize &&
            "Unexpected null buffer or zero-sized kernel (compilation failed?)");
-    TableInfo &RTable = Info.getRelocationTable();
+
+    auto &RTable = Info.getRelocationTable();
     CISA_CALL(BuiltKernel->GetGenRelocEntryBuffer(RTable.Buffer, RTable.Size, RTable.Entries));
-    TableInfo &STable = Info.getSymbolTable();
-    constructSymbolTable(*FG, GM, STable.Buffer, STable.Size, STable.Entries);
+    // EnableZEBinary: this is requred by ZEBinary
+    CISA_CALL(BuiltKernel->GetRelocations(Info.ZEBinInfo.Relocations));
+    constructSymbolTable(*FG, GM, *BuiltKernel, Info.getSymbolTable(),
+                         Info.ZEBinInfo.Symbols);
 
     // Save it all here.
     CompiledKernel FullInfo{std::move(Info), *JitInfo,

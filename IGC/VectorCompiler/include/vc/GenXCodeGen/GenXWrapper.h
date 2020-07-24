@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include "RelocationInfo.h"
+
 #include <JitterDataStruct.h>
 #include <inc/common/sku_wa.h>
 
@@ -72,6 +74,20 @@ struct TableInfo {
   uint32_t NumEntries = 0;
 };
 
+// This data partially duplicates KernelInfo data.
+// It exists due to OCLBinary to ZEBinary transition period.
+struct ZEBinaryInfo {
+  struct SymbolsInfo {
+    using ZESymEntrySeq = std::vector<vISA::ZESymEntry>;
+    ZESymEntrySeq Functions;
+    ZESymEntrySeq Local;
+    // for now only function and local symbols are used
+  };
+  using ZERelocEntrySeq = std::vector<vISA::ZERelocEntry>;
+  ZERelocEntrySeq Relocations;
+  SymbolsInfo Symbols;
+};
+
 // Mirror of cmc_kernel_info that owns its data.
 struct KernelInfo {
   std::string Name;
@@ -87,6 +103,7 @@ struct KernelInfo {
 
   TableInfo RelocationTable;
   TableInfo SymbolTable;
+  ZEBinaryInfo ZEBinInfo;
 };
 
 

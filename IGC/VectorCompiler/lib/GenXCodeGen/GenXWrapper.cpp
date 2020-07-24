@@ -280,6 +280,9 @@ static void convertOCLKernelInfo(vc::ocl::KernelInfo &Converted,
     Converted.SymbolTable.Size = Info.getSymbolTable().Size;
     Converted.SymbolTable.NumEntries = Info.getSymbolTable().Entries;
   }
+  Converted.ZEBinInfo.Relocations = Info.ZEBinInfo.Relocations;
+  Converted.ZEBinInfo.Symbols.Functions = Info.ZEBinInfo.Symbols.Functions;
+  Converted.ZEBinInfo.Symbols.Local = Info.ZEBinInfo.Symbols.Local;
 }
 
 

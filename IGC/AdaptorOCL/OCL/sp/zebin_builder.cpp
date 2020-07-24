@@ -249,8 +249,10 @@ void ZEBinaryBuilder::addSymbols(
             return program.simd8.m_symbols;
         else if (simdSize == 16)
             return program.simd16.m_symbols;
-        else
+        else if (simdSize == 32)
             return program.simd32.m_symbols;
+        else
+            return program.simd1.m_symbols;
     } (annotations.m_executionEnivronment.CompiledSIMDSize,
         annotations.m_kernelProgram);
 
@@ -294,8 +296,10 @@ void ZEBinaryBuilder::addKernelRelocations(
             return program.simd8.m_relocs;
         else if (simdSize == 16)
             return program.simd16.m_relocs;
-        else
+        else if (simdSize == 32)
             return program.simd32.m_relocs;
+        else
+            return program.simd1.m_relocs;
     } (annotations.m_executionEnivronment.CompiledSIMDSize, annotations.m_kernelProgram);
 
     // FIXME: For r_type, zebin::R_TYPE_ZEBIN should have the same enum value as visa::GenRelocType.
