@@ -66,6 +66,11 @@ using namespace IGC;
 //    Note that splitting keeps the vector element's type without
 //    changing it.
 //
+//    Note that as 6/2020,
+//      if size of vector element >= DW, the number of elements of the new vector
+//      should be power of 2 except for vector3.  Thus, we should not see 5xi32,
+//      7xi32, etc.  This makes code emit easier.
+//
 // 2. Special processing of 3-element vectors
 //    If (vector element's size < 4 bytes)
 //    {
@@ -321,7 +326,7 @@ namespace
             // of SPLIT_SIZE (plus smaller sub-vectors or scalar if any).
             // With SPLIT_SIZE=32, we have the max vectors as below after this pass:
             //     <32 x i8>, 16xi16, 8xi32, or 4xi64!
-            SPLIT_SIZE = 32,       // 32 bytes (power of 2)
+            SPLIT_SIZE = 32,              // default, 32 bytes
             RAW_SPLIT_SIZE = 16
         };
 
@@ -360,6 +365,7 @@ namespace
         bool isValueUsedOnlyByEEI(Value* V, ExtractElementInst** EEInsts);
 
         // Split load/store that cannot be re-layout or is too big.
+        uint32_t getSplitByteSize(Instruction* I, WIAnalysisRunner& WI) const;
         bool splitLoadStore(Instruction* Inst, V2SMap& vecToSubVec, WIAnalysisRunner& WI);
         bool splitLoad(AbstractLoadInst& LI, V2SMap& vecToSubVec, WIAnalysisRunner& WI);
         bool splitStore(AbstractStoreInst& SI, V2SMap& vecToSubVec, WIAnalysisRunner& WI);
@@ -582,6 +588,28 @@ void VectorPreProcess::createSplitVectorTypes(
     }
 }
 
+uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI) const
+{
+    uint32_t bytes = 0;
+    if (LoadInst* LI = dyn_cast<LoadInst>(I))
+    {
+        bytes = (uint32_t)VPConst::SPLIT_SIZE;
+    }
+    else if (StoreInst* SI = dyn_cast<StoreInst>(I))
+    {
+        bytes = (uint32_t)VPConst::SPLIT_SIZE;
+    }
+    else if (isa<LdRawIntrinsic>(I) || isa<StoreRawIntrinsic>(I))
+    {
+        bytes = (uint32_t)VPConst::RAW_SPLIT_SIZE;
+    }
+    else
+    {
+        bytes = (uint32_t)VPConst::SPLIT_SIZE;
+    }
+    return bytes;
+}
+
 bool VectorPreProcess::splitStore(
     AbstractStoreInst& ASI, V2SMap& vecToSubVec, WIAnalysisRunner& WI)
 {
@@ -594,7 +622,7 @@ bool VectorPreProcess::splitStore(
     // splitInfo: Keep track of all pairs of (sub-vec type, #sub-vec).
     SmallVector<std::pair<Type*, uint32_t>, 8> splitInfo;
     bool isStoreInst = isa<StoreInst>(SI);
-    uint32_t splitSize = (uint32_t)(isStoreInst ? VPConst::SPLIT_SIZE : VPConst::RAW_SPLIT_SIZE);
+    uint32_t splitSize = getSplitByteSize(SI, WI);
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned stores can only store a dword at a time.
@@ -764,7 +792,7 @@ bool VectorPreProcess::splitLoad(
     //       ...
     // SplitInfo : all pairs, each of which is (sub-vector's type, #sub-vectors).
     SmallVector< std::pair<Type*, uint32_t>, 8 > splitInfo;
-    uint32_t splitSize = (uint32_t)(isLdRaw ? VPConst::RAW_SPLIT_SIZE : VPConst::SPLIT_SIZE);
+    uint32_t splitSize = getSplitByteSize(LI, WI);
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned loads can only load a dword at a time.
