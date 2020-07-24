@@ -1486,7 +1486,6 @@ void OptimizeIR(CodeGenContext* const pContext)
                     int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
                     mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::BEGIN, licmTh));
                     mpm.add(llvm::createLICMPass());
-                    mpm.add(llvm::createLICMPass());
                     mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::END, licmTh));
                 }
 
