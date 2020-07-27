@@ -54,6 +54,11 @@ set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.hpp"
   )
 
+set(IGC_BUILD__HDR__Optimizer
+    ${IGC_BUILD__HDR__Optimizer}
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Builtins/LibraryDPEmu.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../Builtins/LibraryMiscEmu.hpp"
+  )
 
 set(IGC_BUILD__HDR__Compiler_Optimizer
     ${IGC_BUILD__HDR__Optimizer}

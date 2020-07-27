@@ -53,7 +53,8 @@ namespace IGC
         EMU_I64DIVREM = 0x1,    // bit 0: original emulation lib, mostly i64 div/rem
         EMU_DP = 0x2,           // bit 1: IEEE-compliant double emulation (+-*/,cmp,convert,etc)
         EMU_SP_DIV = 0x4,       // bit 2: IEEE-complaint float div emulation (float)
-
+        EMU_I32DIVREM = 0x8,    // bit 3: emulation lib for i32 div/rem
+        EMU_I32DIVREM_SP = 0x10 //bit 4: emulation lib for i32 div/rem using fp32
     };
 
     class PreCompiledFuncImport : public llvm::ModulePass, public llvm::InstVisitor<PreCompiledFuncImport>
@@ -63,6 +64,10 @@ namespace IGC
         enum LibraryModules
         {
             LIBMOD_INT_DIV_REM,      // [u|s][div|rem], and their vector forms
+            LIBMOD_UINT32_DIV_REM,   // [u][div|rem], for 32 bit integers
+            LIBMOD_SINT32_DIV_REM,   // [s][div|rem], for 32 bit integers
+            LIBMOD_UINT32_DIV_REM_SP,// [u][div|rem], for 32 bit integers using fp32
+            LIBMOD_SINT32_DIV_REM_SP,// [s][div|rem], for 32 bit integers using fp32
             LIBMOD_DP_ADD_SUB,       // dp_add & dp_sub
             LIBMOD_DP_FMA_MUL,       // dp_mul & dp_fma
             LIBMOD_DP_DIV,           // dp_div
@@ -107,6 +112,14 @@ namespace IGC
             NUM_FUNCTIONS
         };
 
+        enum Int32EmulatedFunctions
+        {
+            FUNCTION_32_UDIVREM,
+            FUNCTION_32_SDIVREM,
+            FUNCTION_32_UDIVREM_SP,
+            FUNCTION_32_SDIVREM_SP,
+            NUM_INT32_EMU_FUNCTIONS
+        };
 
         enum EmulatedFunctionTypes
         {
@@ -156,6 +169,8 @@ namespace IGC
 
     private:
         void processDivide(llvm::BinaryOperator& inst, EmulatedFunctions function);
+        llvm::BinaryOperator* upcastTo32Bit(llvm::BinaryOperator* I);
+        void processInt32Divide(llvm::BinaryOperator& inst, Int32EmulatedFunctions function);
 
         void processFPBinaryOperator(llvm::Instruction& I, FunctionIDs FID);
         llvm::Function* getOrCreateFunction(FunctionIDs FID);
@@ -196,11 +211,14 @@ namespace IGC
         bool m_changed;
 
         const static char* m_sFunctionNames[NUM_FUNCTIONS][NUM_TYPES];
+        const static char* m_Int32EmuFunctionNames[NUM_INT32_EMU_FUNCTIONS];
 
         /// @brief  Kind of emulations. Its bits are defined by EmuKind.
         const uint32_t m_emuKind;
         bool isDPEmu() const { return (m_emuKind & EmuKind::EMU_DP) > 0; }
         bool isI64DivRem() const { return (m_emuKind & EmuKind::EMU_I64DIVREM) > 0; }
+        bool isI32DivRem() const { return (m_emuKind & EmuKind::EMU_I32DIVREM) > 0; }
+        bool isI32DivRemSP() const { return (m_emuKind & EmuKind::EMU_I32DIVREM_SP) > 0; }
         bool isSPDiv() const { return (m_emuKind & EmuKind::EMU_SP_DIV) > 0; }
         bool isDPConvFunc(llvm::Function* F) const;
 
@@ -216,6 +234,7 @@ namespace IGC
         unsigned m_flushDenorm = 0;
         unsigned m_flushToZero = 0;
 
+        llvm::SmallVector<llvm::CallInst*, 16> m_CallRemDiv;
     };
 
 } // namespace IGC
