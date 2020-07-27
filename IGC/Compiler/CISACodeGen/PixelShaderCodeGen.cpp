@@ -264,7 +264,6 @@ void CPixelShader::AllocatePSPayload()
 
     IGC_ASSERT(offset % getGRFSize() == 0);
     unsigned int payloadEnd = offset;
-
     //Allocate size for values coming from VS
     for (uint i = 0; i < setup.size(); i++)
     {
@@ -290,6 +289,8 @@ void CPixelShader::AllocatePSPayload()
     }
 
     offset = payloadEnd;
+
+
     // create output registers for coarse phase
     calignmentSize as;
     for (auto it = m_CoarseOutput.begin(), ie = m_CoarseOutput.end(); it != ie; ++it)
@@ -712,8 +713,10 @@ void CPixelShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDi
     CShader::InitEncoder(simdMode, canAbortOnSpill, shaderMode);
 }
 
+
 void CShaderProgram::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
 {
+
     const unsigned int InstCacheSize = 0xC000;
     CPixelShader* simd8Shader = static_cast<CPixelShader*>(GetShader(SIMDMode::SIMD8));
     CPixelShader* simd16Shader = static_cast<CPixelShader*>(GetShader(SIMDMode::SIMD16));
@@ -729,11 +732,9 @@ void CShaderProgram::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
         if ((!simd8Shader && !simd16Shader) ||
             (kernelSize > 0 && (kernelSize < InstCacheSize || forceSIMD32)))
         {
-            {
-                pKernelProgram->simd32 = *simd32Shader->ProgramOutput();
-                pShader = simd32Shader;
-                GetContext()->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
-            }
+            pKernelProgram->simd32 = *simd32Shader->ProgramOutput();
+            pShader = simd32Shader;
+            GetContext()->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
         }
         else if (kernelSize > 0 && (kernelSize < InstCacheSize))
         {
@@ -758,7 +759,6 @@ void CShaderProgram::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
             GetContext()->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
         }
     }
-
 
     if (pShader)
     {
