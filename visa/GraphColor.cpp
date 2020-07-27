@@ -9600,7 +9600,6 @@ int GlobalRA::coloringRegAlloc()
                     // spill/fill intrinsics expect offset in HWord, so round up to 64 byte but maintain it in OWord unit
                     // ToDo: we really need to change everything to byte for everyone's sanity..
                     unsigned localSpillAreaOwordSize = ROUND(scratchOffset, 64) / 16;
-                    // the given localSpillAreaOwordSize is the offset based on globalScratchOffset
                     coloring.addSaveRestoreCode(localSpillAreaOwordSize);
                 }
 
@@ -9727,7 +9726,7 @@ int GlobalRA::coloringRegAlloc()
             //                             |  caller save      |
             //  paramOverflowAreaOffset -> ---------------------
             jitInfo->spillMemUsed =
-                builder.kernel.fg.frameSizeInOWord * 16 - globalScratchOffset;
+                builder.kernel.fg.frameSizeInOWord * 16;
 
             // reserve spillMemUsed #bytes before 8kb boundary
             kernel.getGTPinData()->setScratchNextFree(8*1024 - kernel.getGTPinData()->getNumBytesScratchUse());
