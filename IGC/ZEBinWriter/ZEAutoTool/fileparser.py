@@ -123,11 +123,10 @@ Create YAML mappings in ZEInfoYAML.cpp
 """
 def format_zeinfoyaml_cpp_mapping(row):
     first = row[row.index[0]]
-    if "str" in row["Type"]:
-        return "    io.mapOptional(" + '"' + first + '"' + ", info." + first + ", std::string());\n"
-    if "vector" in row["Type"]:
+    if "str" in row["Type"] and row["Required/Optional"] == "Optional":
+        return "    io.map" + row["Required/Optional"] + "(" + '"' + first + '"' + ", info." + first + ", std::string());\n"
+    if "vector" in row["Type"] or "vector" in row["Description"]:
         return "    io.mapOptional(" + '"' + first + '"' + ", info." + first + ");\n"
-
     if row["Required/Optional"] == "Optional":
         default_val = row.Default
         return "    io.mapOptional(" + '"' + first + '"' + ", info." + first + ", " + default_val + ");\n"
@@ -366,7 +365,6 @@ def create_yaml_hpp(check_vectors, folder):
 
     output_file.write("namespace llvm {\n    namespace yaml{\n")
 
-    #yaml_hpp_args.append(["Container", ""])
     for item in check_vectors.keys():
         singular = check_vectors[item]
         if singular != "":
@@ -384,24 +382,28 @@ def main(argv):
     source_file = argv[0]
     dir_path = os.path.dirname(os.path.realpath(__file__))
     zeinfo_files = [ZEINFO_HPP, ZEINFOYAML_HPP, ZEINFOYAML_CPP]
+    zebin_path = os.path.join(os.path.join(dir_path, ".."), "zebin")
+    source_path = os.path.join(zebin_path, "source")
+    spec_path = os.path.join(zebin_path, "spec")
+
 
     src_lines = []
+    source_file = os.path.join(spec_path, source_file)
     with open(source_file, "r") as input_file:
         for line in input_file:
             src_lines.append(line)
-    public = os.path.join(dir_path, "Public")
+    public = os.path.join(source_path, "autogen")
     os.makedirs(public, exist_ok = True)
-    folder = "Public"
+
     for file in zeinfo_files:
-        folder = os.path.join(dir_path, folder)
-        file = os.path.join(folder, file)
+        file = os.path.join(public, file)
 
         output_file = open(file, "w")
         output_file.write(COPYRIGHT)
         output_file.close()
 
-    check_vectors = create_zeinfo_hpp_yaml_cpp(src_lines, folder)
-    create_yaml_hpp(check_vectors, folder)
+    check_vectors = create_zeinfo_hpp_yaml_cpp(src_lines, public)
+    create_yaml_hpp(check_vectors, public)
 
 
 if __name__ == "__main__":

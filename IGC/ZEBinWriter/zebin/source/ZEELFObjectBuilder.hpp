@@ -389,12 +389,12 @@ public:
     // addBindingTableIndex - add a binding table index into kernel, with
     // corresponding kernel argument index
     static zeInfoBindingTableIndex& addBindingTableIndex(
-        BindingTableIndexesTy& bti_list,
+        BindingTableIndicesTy& bti_list,
         int32_t bti_value,
         int32_t arg_index);
 
     // addPerThreadMemoryBuffer - add a memory buffer info
-    static zePerThreadMemoryBuffer& addPerThreadMemoryBuffer(
+    static zeInfoPerThreadMemoryBuffer& addPerThreadMemoryBuffer(
         PerThreadMemoryBuffersTy& mem_buff_list,
         PreDefinedAttrGetter::MemBufferType type,
         PreDefinedAttrGetter::MemBufferUsage usage,

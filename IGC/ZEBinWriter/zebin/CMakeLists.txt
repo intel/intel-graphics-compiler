@@ -1,9 +1,10 @@
-add_subdirectory ("include")
-add_subdirectory ("lib")
-
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
-
+add_subdirectory ("source")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/source")
 add_library(zebinlib STATIC ${ZE_INFO_SOURCE_FILE} ${ZE_INFO_INCLUDE_FILE})
+
+set(ZEBIN_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/source/autogen")
+
+include_directories("${ZEBIN_INCLUDE_PATH}")
 
 if(MSVC)
     set(ZEBIN_COMPILER_OPTIONS

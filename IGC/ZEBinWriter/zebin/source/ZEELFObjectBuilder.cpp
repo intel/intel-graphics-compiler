@@ -838,7 +838,7 @@ zeInfoPerThreadPayloadArgument& ZEInfoBuilder::addPerThreadPayloadArgument(
 // addBindingTableIndex - add a binding table index into kernel, with
 // corresponding kernel argument index
 zeInfoBindingTableIndex& ZEInfoBuilder::addBindingTableIndex(
-    BindingTableIndexesTy& bti_list,
+    BindingTableIndicesTy& bti_list,
     int32_t bti_value,
     int32_t arg_index)
 {
@@ -849,14 +849,14 @@ zeInfoBindingTableIndex& ZEInfoBuilder::addBindingTableIndex(
     return bti;
 }
 
-zePerThreadMemoryBuffer& ZEInfoBuilder::addPerThreadMemoryBuffer(
+zeInfoPerThreadMemoryBuffer& ZEInfoBuilder::addPerThreadMemoryBuffer(
     PerThreadMemoryBuffersTy& mem_buff_list,
     PreDefinedAttrGetter::MemBufferType type,
     PreDefinedAttrGetter::MemBufferUsage usage,
     int32_t size)
 {
     mem_buff_list.emplace_back();
-    zePerThreadMemoryBuffer& info = mem_buff_list.back();
+    zeInfoPerThreadMemoryBuffer& info = mem_buff_list.back();
     info.type = PreDefinedAttrGetter::get(type);
     info.usage = PreDefinedAttrGetter::get(usage);
     info.size = size;

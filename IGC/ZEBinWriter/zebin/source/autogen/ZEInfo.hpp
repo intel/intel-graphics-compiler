@@ -38,17 +38,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace zebin {
 
-/// ze_info Types
-typedef std::string zeinfo_str_t;
+typedef int64_t     zeinfo_int64_t;
 typedef int32_t     zeinfo_int32_t;
 typedef bool        zeinfo_bool_t;
-
-/// execution_env
-struct zeInfoExecutionEnvironment
+typedef std::string zeinfo_str_t;
+struct zeInfoExecutionEnv
 {
     zeinfo_int32_t actual_kernel_start_offset = 0;
     zeinfo_int32_t barrier_count = 0;
-    zeinfo_bool_t  disable_mid_thread_preemption = false;
+    zeinfo_bool_t disable_mid_thread_preemption = false;
     zeinfo_int32_t grf_count = 0;
     zeinfo_bool_t has_4gb_buffers = false;
     zeinfo_bool_t has_device_enqueue = false;
@@ -66,70 +64,52 @@ struct zeInfoExecutionEnvironment
     zeinfo_bool_t subgroup_independent_forward_progress = false;
     std::vector<zeinfo_int32_t> work_group_walk_order_dimensions;
 };
-
-/// payload_argument
 struct zeInfoPayloadArgument
 {
-    zeinfo_str_t   arg_type;
+    zeinfo_str_t arg_type;
     zeinfo_int32_t offset = 0;
     zeinfo_int32_t size = 0;
     zeinfo_int32_t arg_index = -1;
-    zeinfo_str_t   addrmode;
-    zeinfo_str_t   addrspace;
-    zeinfo_str_t   access_type;
+    zeinfo_str_t addrmode;
+    zeinfo_str_t addrspace;
+    zeinfo_str_t access_type;
 };
-
-/// per_thread_payload_argument
 struct zeInfoPerThreadPayloadArgument
 {
-    zeinfo_str_t   arg_type;
+    zeinfo_str_t arg_type;
     zeinfo_int32_t offset = 0;
     zeinfo_int32_t size = 0;
 };
-
-/// binding_table_index
 struct zeInfoBindingTableIndex
 {
     zeinfo_int32_t bti_value = 0;
     zeinfo_int32_t arg_index = 0;
 };
-
-/// per_thread_memory_buffers
-struct zePerThreadMemoryBuffer
+struct zeInfoPerThreadMemoryBuffer
 {
     zeinfo_str_t type;
     zeinfo_str_t usage;
     zeinfo_int32_t size = 0;
 };
-
-/// kernel
 typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
 typedef std::vector<zeInfoPerThreadPayloadArgument> PerThreadPayloadArgumentsTy;
-typedef std::vector<zeInfoBindingTableIndex> BindingTableIndexesTy;
-typedef std::vector<zePerThreadMemoryBuffer> PerThreadMemoryBuffersTy;
-
+typedef std::vector<zeInfoBindingTableIndex> BindingTableIndicesTy;
+typedef std::vector<zeInfoPerThreadMemoryBuffer> PerThreadMemoryBuffersTy;
 struct zeInfoKernel
 {
     zeinfo_str_t name;
-    zeInfoExecutionEnvironment execution_env;
+    zeInfoExecutionEnv execution_env;
     PayloadArgumentsTy payload_arguments;
     PerThreadPayloadArgumentsTy per_thread_payload_arguments;
-    BindingTableIndexesTy binding_table_indexes;
+    BindingTableIndicesTy binding_table_indices;
     PerThreadMemoryBuffersTy per_thread_memory_buffers;
 };
-
-/// kernel container
+typedef std::vector<zeInfoKernel> KernelsTy;
 struct zeInfoContainer
 {
-    std::vector<zeInfoKernel> kernels;
+    KernelsTy kernels;
 };
-
-/// Pre-defined attribute values getter
-// Some attributes with string type are pre-defined. PreDefinedAttr is a
-// helper class to manage the predefined strings.
-// FIXME: Should be part of ZEInfoBuilder or somewhere else?
-struct PreDefinedAttrGetter {
-    // zeInfoPayloadArguments::arg_type and zeInfoPerThreadPayloadArguments::arg_type
+struct PreDefinedAttrGetter{
     enum class ArgType {
         packed_local_ids,
         local_id,
@@ -140,14 +120,12 @@ struct PreDefinedAttrGetter {
         arg_byvalue,
         arg_bypointer
     };
-    // zeInfoPayloadArguments::addrmode
     enum class ArgAddrMode {
         stateless,
         stateful,
         bindless,
         shared_local_memory
     };
-    // zeInfoPayloadArguments::addrspace
     enum class ArgAddrSpace {
         global,
         local,
@@ -155,25 +133,21 @@ struct PreDefinedAttrGetter {
         image,
         sampler
     };
-    // zeInfoPayloadArguments::access_type
     enum class ArgAccessType {
         readonly,
         writeonly,
         readwrite
     };
-    // zePerThreadMemoryBuffers::type
     enum class MemBufferType {
         global,
         scratch,
         slm
     };
-    // zePerThreadMemoryBuffers::usage
     enum class MemBufferUsage {
         private_space,
         spill_fill_space,
         single_space
     };
-
     static zeinfo_str_t get(ArgType val) {
         switch(val) {
         case ArgType::packed_local_ids:
@@ -197,9 +171,8 @@ struct PreDefinedAttrGetter {
         }
         return "";
     }
-
     static zeinfo_str_t get(ArgAddrMode val) {
-        switch (val) {
+        switch(val) {
         case ArgAddrMode::stateless:
             return "stateless";
         case ArgAddrMode::stateful:
@@ -213,7 +186,6 @@ struct PreDefinedAttrGetter {
         }
         return "";
     }
-
     static zeinfo_str_t get(ArgAddrSpace val) {
         switch(val) {
         case ArgAddrSpace::global:
@@ -231,7 +203,6 @@ struct PreDefinedAttrGetter {
         }
         return "";
     }
-
     static zeinfo_str_t get(ArgAccessType val) {
         switch(val) {
         case ArgAccessType::readonly:
@@ -245,7 +216,6 @@ struct PreDefinedAttrGetter {
         }
         return "";
     }
-
     static zeinfo_str_t get(MemBufferType val) {
         switch(val) {
         case MemBufferType::global:
@@ -259,7 +229,6 @@ struct PreDefinedAttrGetter {
         }
         return "";
     }
-
     static zeinfo_str_t get(MemBufferUsage val) {
         switch(val) {
         case MemBufferUsage::private_space:
@@ -274,6 +243,5 @@ struct PreDefinedAttrGetter {
         return "";
     }
 };
-
-} // end namespace zebin
-#endif //ZEINFO_HPP
+}
+#endif

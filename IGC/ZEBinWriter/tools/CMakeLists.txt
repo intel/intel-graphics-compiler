@@ -14,7 +14,10 @@ set (ZEInfoReader_Header
 # Add source to this project's executable.
 add_executable (ZEInfoReader ${ZEInfoReader_Source} ${ZEInfoReader_Header})
 
-include_directories("../zebin/include")
+include_directories("../zebin/source")
+set(ZEBIN_INCLUDE "../zebin/source/autogen")
+
+include_directories("${ZEBIN_INCLUDE}")
 
 # Find the libraries that correspond to the LLVM components
 # that we wish to use

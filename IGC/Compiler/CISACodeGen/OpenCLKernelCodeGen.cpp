@@ -49,7 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iStdLib/utility.h>
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Probe/Assertion.h"
-#include "ZEBinWriter/zebin/include/ZEELFObjectBuilder.hpp"
+#include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
 
 /***********************************************************************************
 This file contains the code specific to opencl kernels

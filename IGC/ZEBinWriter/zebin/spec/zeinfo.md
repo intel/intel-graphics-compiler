@@ -28,14 +28,14 @@ All **literals** have one of the following types:
 <!--- Container --->
 
 # Kernel Attributes
-| Attribute | Type | Description |
+| Attribute | Type | Required/Optional | Description |
 | ----- | ----- | ------ |
-| name | str | |
-| execution_env | ExecutionEnv | |
-| payload_arguments | PayloadArgumentsTy | vector |
-| per_thread_payload_arguments | PerThreadPayloadArgumentsTy | vector |
-| binding_table_indices | BindingTableIndicesTy | vector |
-| per_thread_memory_buffers | PerThreadMemoryBuffersTy | vector |
+| name | str | Required | |
+| execution_env | ExecutionEnv | Required | |
+| payload_arguments | PayloadArgumentsTy | Optional | vector |
+| per_thread_payload_arguments | PerThreadPayloadArgumentsTy | Optional | vector |
+| binding_table_indices | BindingTableIndicesTy | Optional | vector |
+| per_thread_memory_buffers | PerThreadMemoryBuffersTy | Optional | vector |
 <!--- Kernel Kernels --->
 
 A ze_info section may contain more than one kernel's attributes, each is

@@ -46,7 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "visa/include/RelocationInfo.h"
-#include "ZEBinWriter/zebin/include/ZEInfo.hpp"
+#include "ZEBinWriter/zebin/source/autogen/ZEInfo.hpp"
 
 #include "../AdaptorOCL/OCL/sp/spp_g8.h"
 #include "../GenISAIntrinsics/GenIntrinsics.h"
@@ -624,7 +624,7 @@ namespace IGC
         // Cross-thread payload arguments
         zebin::PayloadArgumentsTy m_zePayloadArgs;
         // BTI information for payload arguments
-        zebin::BindingTableIndexesTy m_zeBTIArgs;
+        zebin::BindingTableIndicesTy m_zeBTIArgs;
     };
 
 

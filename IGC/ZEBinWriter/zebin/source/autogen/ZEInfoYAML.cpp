@@ -23,12 +23,30 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#include <ZEInfoYAML.hpp>
+//===- ZEInfoYAML.cpp -----------------------------------------------*- C++ -*-===//
+// ZE Binary Utilitis
+//
+// file
+//===----------------------------------------------------------------------===//
 
+#include <ZEInfoYAML.hpp>
 using namespace zebin;
 using namespace llvm::yaml;
 
-void MappingTraits<zeInfoExecutionEnvironment>::mapping(IO& io, zeInfoExecutionEnvironment& info)
+void MappingTraits<zeInfoContainer>::mapping(IO& io, zeInfoContainer& info)
+{
+    io.mapOptional("kernels", info.kernels);
+}
+void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
+{
+    io.mapRequired("name", info.name);
+    io.mapRequired("execution_env", info.execution_env);
+    io.mapOptional("payload_arguments", info.payload_arguments);
+    io.mapOptional("per_thread_payload_arguments", info.per_thread_payload_arguments);
+    io.mapOptional("binding_table_indices", info.binding_table_indices);
+    io.mapOptional("per_thread_memory_buffers", info.per_thread_memory_buffers);
+}
+void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info)
 {
     io.mapRequired("actual_kernel_start_offset", info.actual_kernel_start_offset);
     io.mapOptional("barrier_count", info.barrier_count, 0);
@@ -50,8 +68,7 @@ void MappingTraits<zeInfoExecutionEnvironment>::mapping(IO& io, zeInfoExecutionE
     io.mapOptional("subgroup_independent_forward_progress", info.subgroup_independent_forward_progress, false);
     io.mapOptional("work_group_walk_order_dimensions", info.work_group_walk_order_dimensions);
 }
-
-void MappingTraits<zebin::zeInfoPayloadArgument>::mapping(IO& io, zebin::zeInfoPayloadArgument& info)
+void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument& info)
 {
     io.mapRequired("arg_type", info.arg_type);
     io.mapRequired("offset", info.offset);
@@ -61,38 +78,20 @@ void MappingTraits<zebin::zeInfoPayloadArgument>::mapping(IO& io, zebin::zeInfoP
     io.mapOptional("addrspace", info.addrspace, std::string());
     io.mapOptional("access_type", info.access_type, std::string());
 }
-
-void MappingTraits<zebin::zeInfoPerThreadPayloadArgument>::mapping(IO& io, zebin::zeInfoPerThreadPayloadArgument& info)
+void MappingTraits<zeInfoPerThreadPayloadArgument>::mapping(IO& io, zeInfoPerThreadPayloadArgument& info)
 {
     io.mapRequired("arg_type", info.arg_type);
     io.mapRequired("offset", info.offset);
     io.mapRequired("size", info.size);
 }
-
-void MappingTraits<zebin::zeInfoBindingTableIndex>::mapping(IO& io, zebin::zeInfoBindingTableIndex& info)
+void MappingTraits<zeInfoBindingTableIndex>::mapping(IO& io, zeInfoBindingTableIndex& info)
 {
     io.mapRequired("bti_value", info.bti_value);
     io.mapRequired("arg_index", info.arg_index);
 }
-
-void MappingTraits<zebin::zePerThreadMemoryBuffer>::mapping(IO& io, zebin::zePerThreadMemoryBuffer& info)
+void MappingTraits<zeInfoPerThreadMemoryBuffer>::mapping(IO& io, zeInfoPerThreadMemoryBuffer& info)
 {
     io.mapRequired("type", info.type);
     io.mapRequired("usage", info.usage);
     io.mapRequired("size", info.size);
-}
-
-void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
-{
-    io.mapRequired("name", info.name);
-    io.mapRequired("execution_env", info.execution_env);
-    io.mapOptional("payload_arguments", info.payload_arguments);
-    io.mapOptional("per_thread_payload_arguments", info.per_thread_payload_arguments);
-    io.mapOptional("binding_table_indexes", info.binding_table_indexes);
-    io.mapOptional("per_thread_memory_buffers", info.per_thread_memory_buffers);
-}
-
-void MappingTraits<zebin::zeInfoContainer>::mapping(IO& io, zebin::zeInfoContainer& info)
-{
-    io.mapRequired("kernels", info.kernels);
 }

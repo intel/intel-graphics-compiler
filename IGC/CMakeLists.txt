@@ -3403,8 +3403,11 @@ if(LLVM_ON_WIN32)
 endif()
 
 # ==================================== ZE Binary Writer ================================================
+
 add_subdirectory(ZEBinWriter/zebin)
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ZEBinWriter/zebin/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ZEBinWriter/zebin/source")
+set(ZEBIN_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ZEBinWriter/zebin/source/autogen")
+include_directories("${ZEBIN_INCLUDE_PATH}")
 
 # ===================================== Projects and source groups =====================================
 

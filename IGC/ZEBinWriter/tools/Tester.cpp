@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 
 using llvm::yaml::Output;
+using llvm::yaml::Input;
 using namespace zebin;
 
 static void getTestZEInfo(zeInfoContainer& ks)
@@ -93,7 +94,12 @@ static void getTestZEInfo(zeInfoContainer& ks)
     zeInfoBindingTableIndex bti;
     bti.bti_value = 0;
     bti.arg_index = 0;
-    k1.binding_table_indexes.push_back(bti);
+    k1.binding_table_indices.push_back(bti);
+
+    zeInfoBindingTableIndex bti2;
+    bti2.bti_value = 5;
+    bti2.arg_index = 10;
+    k1.binding_table_indices.push_back(bti2);
 
     zeInfoKernel k2;
     k2.name = "kernel_name_2";
@@ -101,16 +107,41 @@ static void getTestZEInfo(zeInfoContainer& ks)
     k2.execution_env.grf_count = 100;
     k2.execution_env.simd_size = 16;
 
+    zeInfoPerThreadPayloadArgument p_arg1;
+    p_arg1.arg_type = "local_id";
+    p_arg1.offset = 10;
+    p_arg1.size = 100;
+
+    k2.per_thread_payload_arguments.push_back(p_arg1);
+
+    zeInfoPerThreadPayloadArgument p_arg2;
+    p_arg2.arg_type = "local_size";
+    p_arg2.offset = 20;
+    p_arg2.size = 30;
+
+    k2.per_thread_payload_arguments.push_back(p_arg2);
+
     ks.kernels.push_back(k1);
     ks.kernels.push_back(k2);
 }
 
 void Tester::testZEInfoOutput()
 {
-    zeInfoContainer ks;
-    getTestZEInfo(ks);
-    Output yout(llvm::outs());
-    yout << ks;
+    zeInfoContainer in_ks;
+    getTestZEInfo(in_ks);
+    std::string in_string;
+    llvm::raw_string_ostream OS(in_string);
+    Output yout(OS);
+    yout << in_ks;
+
+    zeInfoContainer out_ks;
+    Input Yin(OS.str());
+    Yin >> out_ks;
+
+    std::string out_string;
+    llvm::raw_string_ostream out_OS(out_string);
+    Output out_yout(out_OS);
+    out_yout << out_ks;
 }
 
 void Tester::testELFOutput()
@@ -120,16 +151,16 @@ void Tester::testELFOutput()
     ZEELFObjectBuilder builder(false, ET_ZEBIN_EXE, 0, flag);
 
     // add fake text
-    uint8_t text_buff[100] = {0x1, 0x2, 0x3, 0x4};
+    uint8_t text_buff[100] = { 0x1, 0x2, 0x3, 0x4 };
     uint32_t text =
         builder.addSectionText(".text.kernel", (uint8_t*)text_buff, 10, 0, 0);
 
     // add fake data 1
-    uint8_t data_buff_1[4] = {0x1, 0x2, 0x3, 0x4};
+    uint8_t data_buff_1[4] = { 0x1, 0x2, 0x3, 0x4 };
     uint32_t data1 = builder.addSectionData(".data.buff_1", data_buff_1, 4);
 
     // add fake data 2
-    uint8_t data_buff_2[2] = {0x5, 0x6};
+    uint8_t data_buff_2[2] = { 0x5, 0x6 };
     uint32_t data2 = builder.addSectionData(".data.buff_2", data_buff_2, 2);
 
     // add fake symbols to text
@@ -139,7 +170,7 @@ void Tester::testELFOutput()
     builder.addSymbol("data1_sym_at_3", 3, 2, llvm::ELF::STB_WEAK, llvm::ELF::STT_OBJECT, data1);
     builder.addSymbol("data1_sym_at_0", 0, 1, llvm::ELF::STB_GLOBAL, llvm::ELF::STT_OBJECT, data1);
     builder.addSymbol("data2_sym_at_1", 1, 1, llvm::ELF::STB_GLOBAL, llvm::ELF::STT_OBJECT, data2);
-    builder.addSymbol("undef_sym",      0, 0, llvm::ELF::STB_GLOBAL, llvm::ELF::STT_OBJECT, -1);
+    builder.addSymbol("undef_sym", 0, 0, llvm::ELF::STB_GLOBAL, llvm::ELF::STT_OBJECT, -1);
 
     // add fake relocations
     builder.addRelocation(4, "data1_sym_at_3", R_TYPE_ZEBIN::R_ZE_SYM_ADDR, text);

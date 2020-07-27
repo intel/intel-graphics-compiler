@@ -43,52 +43,41 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPop.hpp"
 #endif
-
+LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoKernel)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoPayloadArgument)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoPerThreadPayloadArgument)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoBindingTableIndex)
-LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zePerThreadMemoryBuffer)
-LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoKernel)
-
+LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoPerThreadMemoryBuffer)
 namespace llvm {
     namespace yaml{
-
-        template <>
-        struct MappingTraits<zebin::zeInfoExecutionEnvironment> {
-            static void mapping(IO& io, zebin::zeInfoExecutionEnvironment& info);
-        };
-
-        template <>
-        struct MappingTraits<zebin::zeInfoPayloadArgument> {
-            static void mapping(IO& io, zebin::zeInfoPayloadArgument& info);
-        };
-
-        template <>
-        struct MappingTraits<zebin::zeInfoPerThreadPayloadArgument> {
-            static void mapping(IO& io, zebin::zeInfoPerThreadPayloadArgument& info);
-        };
-
-        template <>
-        struct MappingTraits<zebin::zeInfoBindingTableIndex> {
-            static void mapping(IO& io, zebin::zeInfoBindingTableIndex& info);
-        };
-
-        template <>
-        struct MappingTraits<zebin::zePerThreadMemoryBuffer> {
-            static void mapping(IO& io, zebin::zePerThreadMemoryBuffer& info);
-        };
-
-        template <>
-        struct MappingTraits<zebin::zeInfoKernel> {
-            static void mapping(IO& io, zebin::zeInfoKernel& info);
-        };
-
-        template <>
+        template<>
         struct MappingTraits<zebin::zeInfoContainer> {
             static void mapping(IO& io, zebin::zeInfoContainer& info);
         };
-
-    } // end namespace yaml
-} // end namespace llvm
-
-#endif // ZE_INFO_YAML_HPP
+        template<>
+        struct MappingTraits<zebin::zeInfoKernel> {
+            static void mapping(IO& io, zebin::zeInfoKernel& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoExecutionEnv> {
+            static void mapping(IO& io, zebin::zeInfoExecutionEnv& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoPayloadArgument> {
+            static void mapping(IO& io, zebin::zeInfoPayloadArgument& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoPerThreadPayloadArgument> {
+            static void mapping(IO& io, zebin::zeInfoPerThreadPayloadArgument& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoBindingTableIndex> {
+            static void mapping(IO& io, zebin::zeInfoBindingTableIndex& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoPerThreadMemoryBuffer> {
+            static void mapping(IO& io, zebin::zeInfoPerThreadMemoryBuffer& info);
+        };
+    }
+}
+#endif

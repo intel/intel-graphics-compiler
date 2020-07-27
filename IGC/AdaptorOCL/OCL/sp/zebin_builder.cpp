@@ -145,8 +145,8 @@ void ZEBinaryBuilder::addPayloadArgsAndBTI(
         annotations.m_zePayloadArgs.end());
 
     // copy the bit table into zeinfoKernel
-    zeinfoKernel.binding_table_indexes.insert(
-        zeinfoKernel.binding_table_indexes.end(),
+    zeinfoKernel.binding_table_indices.insert(
+        zeinfoKernel.binding_table_indices.end(),
         annotations.m_zeBTIArgs.begin(),
         annotations.m_zeBTIArgs.end());
 }
@@ -312,7 +312,7 @@ void ZEBinaryBuilder::addKernelRelocations(
 void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     zeInfoKernel& zeinfoKernel)
 {
-    zeInfoExecutionEnvironment& env = zeinfoKernel.execution_env;
+    zeInfoExecutionEnv& env = zeinfoKernel.execution_env;
 
     // FIXME: compiler did not provide this information
     env.actual_kernel_start_offset = 0;
