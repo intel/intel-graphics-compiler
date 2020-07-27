@@ -2236,7 +2236,8 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         for (unsigned ai = 0; ai < var->attribute_count; ai++)
         {
             attribute_info_t* attribute = &var->attributes[ai];
-            kernelBuilderImpl->AddAttributeToVar(decl, header.strings[attribute->nameIndex], attribute->size, attribute->value.stringVal);
+            kernelBuilderImpl->AddAttributeToVar(decl, header.strings[attribute->nameIndex], attribute->size,
+                attribute->isInt ? (char *)&attribute->value.intVal : attribute->value.stringVal);
         }
 
         container.generalVarDecls[i] = decl;
