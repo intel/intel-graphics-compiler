@@ -819,12 +819,6 @@ void dumpOCLProgramBinary(OpenCLProgramContext &Ctx, char *binaryOutput, int bin
 #endif
 }
 
-static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
-    STB_TranslateOutputArgs* pOutputArgs,
-    TB_DATA_FORMAT inputDataFormatTemp,
-    const IGC::CPlatform& IGCPlatform,
-    float profilingTimerResolution);
-
 #if !defined(WDDM_LINUX)
 static std::error_code TranslateBuildVC(
     const STB_TranslateInputArgs* pInputArgs,
@@ -906,13 +900,6 @@ bool TranslateBuild(
         if (static_cast<vc::errc>(Status.value()) != vc::errc::not_vc_codegen)
             return false;
 #endif // !defined(WDDM_LINUX)
-        static const char* CMC = "-cmc";
-        if (strstr(pInputArgs->pOptions, CMC) != nullptr)
-            return TranslateBuildCM(pInputArgs,
-                                    pOutputArgs,
-                                    inputDataFormatTemp,
-                                    IGCPlatform,
-                                    profilingTimerResolution);
     }
 
     // Disable code sinking in instruction combining.
@@ -1472,49 +1459,6 @@ static void getvISACompileOpts(const STB_TranslateInputArgs* pInputArgs,
     }
 }
 
-// When an internal otion "-cmc" is present, compile the input as a CM program.
-static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
-    STB_TranslateOutputArgs* pOutputArgs,
-    TB_DATA_FORMAT inputDataFormatTemp,
-    const IGC::CPlatform& IGCPlatform,
-    float profilingTimerResolution)
-{
-    cmc::CMCLibraryLoader Loader;
-    if (!Loader.isValid()) {
-        SetErrorMessage(Loader.ErrMsg, *pOutputArgs);
-        return false;
-    }
-
-    cmc_compile_info_v2* output_v2 = nullptr;
-    int32_t status = -1;
-    const std::string cmd = getCommandLine(pInputArgs, inputDataFormatTemp, IGCPlatform);
-    status = Loader.compileFn_v2(pInputArgs->pInput, pInputArgs->InputSize, cmd.c_str(), &output_v2);
-    if (status == 0 && output_v2) {
-        iOpenCL::CGen8CMProgram CMProgram(IGCPlatform.getPlatformInfo());
-        std::vector<std::string> optstrings;
-        std::vector<const char*> opts;
-        getvISACompileOpts(pInputArgs, optstrings, opts);
-        Util::BinaryStream programBinary;
-        cmc::vISACompile_v2(output_v2, CMProgram, opts);
-        // Prepare and set program binary
-        CMProgram.GetProgramBinary(programBinary, output_v2->pointer_size_in_bytes);
-
-        size_t binarySize = static_cast<size_t>(programBinary.Size());
-        char* binaryOutput = new char[binarySize];
-        memcpy_s(binaryOutput, binarySize, (char*)programBinary.GetLinearPointer(), binarySize);
-        pOutputArgs->OutputSize = static_cast<uint32_t>(binarySize);
-        pOutputArgs->pOutput = binaryOutput;
-
-        // Free the resource allocated in the dll side.
-        Loader.freeFn_v2(output_v2);
-        return true;
-    }
-
-    // Set the error message.
-    const char* Err = "compilation error";
-    SetErrorMessage(Err, *pOutputArgs);
-    return false;
-}
 
 #if !defined(WDDM_LINUX)
 

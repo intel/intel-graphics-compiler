@@ -91,21 +91,6 @@ public:
     void RecomputeBTLayout(int numUAVs, int numResources);
 };
 
-// Utility class to load and compile a cmc program.
-struct CMCLibraryLoader {
-    using compileFnTy_v2 = std::add_pointer<decltype(cmc_load_and_compile_v2)>::type;
-    using freeFnTy_v2 = std::add_pointer<decltype(cmc_free_compile_info_v2)>::type;
-
-    using DL = llvm::sys::DynamicLibrary;
-    DL Dylib;
-    std::string ErrMsg;
-
-    compileFnTy_v2 compileFn_v2 = nullptr;
-    freeFnTy_v2 freeFn_v2 = nullptr;
-    CMCLibraryLoader();
-    bool isValid();
-};
-
 extern int vISACompile_v2(cmc_compile_info_v2 *output,
                           iOpenCL::CGen8CMProgram &CMProgram,
                           std::vector<const char*> &opts);

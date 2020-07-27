@@ -44,33 +44,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iterator>
 #include "Probe/Assertion.h"
 
-#if defined(_WIN64)
-#define CMC_LIBRARY_NAME "igcmc64.dll"
-#elif defined(_WIN32)
-#define CMC_LIBRARY_NAME "igcmc32.dll"
-#else
-#define CMC_LIBRARY_NAME "libigcmc.so"
-#endif
-
-#ifdef _WIN32
-#include <Windows.h>
-EXTERN_C IMAGE_DOS_HEADER __ImageBase;
-
-// Return the current binary path. Windows only.
-static std::string getCurrentLibraryPath()
-{
-    char CurPath[1024] = {};
-    HINSTANCE Inst = reinterpret_cast<HINSTANCE>(&__ImageBase);
-    ::GetModuleFileName(Inst, CurPath, sizeof(CurPath));
-    return CurPath;
-}
-#else
-static std::string getCurrentLibraryPath()
-{
-    return {};
-}
-#endif
-
 using namespace cmc;
 
 CMKernel::CMKernel(const PLATFORM& platform)
@@ -354,41 +327,6 @@ inline func_ptr_type getFunctionType(void* ptr)
 {
     intptr_t val = reinterpret_cast<intptr_t>(ptr);
     return reinterpret_cast<func_ptr_type>(val);
-}
-
-CMCLibraryLoader::CMCLibraryLoader()
-{
-    Dylib = DL::getPermanentLibrary(CMC_LIBRARY_NAME, &ErrMsg);
-    if (!Dylib.isValid()) {
-        // Cannot locate CMC dll in PATH; try to locate it along with the current image.
-        std::string DLLPath = getCurrentLibraryPath();
-        if (!DLLPath.empty()) {
-            llvm::SmallVector<char, 1024> ParentPath(DLLPath.begin(), DLLPath.end());
-            llvm::sys::path::remove_filename(ParentPath);
-            DLLPath.assign(ParentPath.data(), ParentPath.data() + ParentPath.size());
-            DLLPath.append("\\").append(CMC_LIBRARY_NAME);
-            Dylib = DL::getPermanentLibrary(DLLPath.c_str(), &ErrMsg);
-        }
-    }
-    if (Dylib.isValid()) {
-        compileFn_v2 = getFunctionType<compileFnTy_v2>(Dylib.getAddressOfSymbol("cmc_load_and_compile_v2"));
-        freeFn_v2 = getFunctionType<freeFnTy_v2>(Dylib.getAddressOfSymbol("cmc_free_compile_info_v2"));
-    }
-}
-
-bool CMCLibraryLoader::isValid()
-{
-    if (!Dylib.isValid())
-        return false;
-    if (!compileFn_v2) {
-        ErrMsg = "cannot load symbol cmc_load_and_compile_v2";
-        return false;
-    }
-    if (!freeFn_v2) {
-        ErrMsg = "cannot load symbol cmc_free_compile_info_v2";
-        return false;
-    }
-    return true;
 }
 
 const char* cmc::getPlatformStr(PLATFORM platform)
