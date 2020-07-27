@@ -25,11 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "common/debug/DebugMacros.hpp" // VALUE_NAME() definition.
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/AsmParser/Parser.h"
 #include "common/LLVMWarningsPop.hpp"
-
+#include "Probe/Assertion.h"
 
 typedef union _gfxResourceAddressSpace
 {
@@ -64,7 +63,7 @@ unsigned LLVM3DBuilder<preserveNames, T, Inserter>::EncodeASForGFXResource(
     static_assert(sizeof(temp) == 4, "Code below may need and update.");
 
     temp.u32Val = 0;
-    assert((bufType + 1) < 16);
+    IGC_ASSERT((bufType + 1) < 16);
     temp.bits.bufType = bufType + 1;
     if (bufType == IGC::BufferType::SLM)
     {
@@ -72,8 +71,8 @@ unsigned LLVM3DBuilder<preserveNames, T, Inserter>::EncodeASForGFXResource(
     }
     else if (llvm::isa<llvm::ConstantInt>(&bufIdx))
     {
-        unsigned bufId = (unsigned)(llvm::cast<llvm::ConstantInt>(&bufIdx)->getZExtValue());
-        assert(bufId < (1 << 16));
+        const unsigned bufId = (unsigned)(llvm::cast<llvm::ConstantInt>(&bufIdx)->getZExtValue());
+        IGC_ASSERT(bufId < (1 << 16));
         temp.bits.bufId = bufId;
         return temp.u32Val;
     }
@@ -1954,8 +1953,11 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
     llvm::Value* int32_textureIdx,
     llvm::Value* int32_sampler)
 {
-    llvm::Type* coordType = float_address_0->getType();
-    assert(coordType->isFloatTy() || coordType->isHalfTy());
+    IGC_ASSERT(nullptr != float_address_0);
+    llvm::Type* const coordType = float_address_0->getType();
+    IGC_ASSERT(nullptr != coordType);
+    IGC_ASSERT(coordType->isFloatTy() || coordType->isHalfTy());
+
     llvm::Value* zero = llvm::ConstantFP::get(coordType, 0.0);
 
     //   %xneg_s = fsub float 0.000000e+00, %src_s.chan0
@@ -2076,10 +2078,13 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
     //  here use the form:
     //        (fA/fB)' = [fA'/fB] - [fB'/fB]*[fA/fB]
 
-    llvm::Function* parentFunc = this->GetInsertBlock()->getParent();
+    IGC_ASSERT(nullptr != this->GetInsertBlock());
+    llvm::Function* const parentFunc = this->GetInsertBlock()->getParent();
+    IGC_ASSERT(nullptr != float_src_r);
+    llvm::Type* const coordType = float_src_r->getType();
+    IGC_ASSERT(nullptr != coordType);
+    IGC_ASSERT(coordType->isFloatTy() || coordType->isHalfTy());
 
-    llvm::Type* coordType = float_src_r->getType();
-    assert(coordType->isFloatTy() || coordType->isHalfTy());
     llvm::Value* zero = llvm::ConstantFP::get(coordType, 0.0);
 
     // Create coordinate absolute values to look for major.
@@ -2118,7 +2123,8 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
         llvm::BasicBlock* splitBlock = nullptr;
         if (shouldSplitBB)
         {
-            assert(currentBlock->getTerminator());
+            IGC_ASSERT(nullptr != currentBlock);
+            IGC_ASSERT(currentBlock->getTerminator());
             splitBlock = currentBlock->splitBasicBlock(this->GetInsertPoint()->getNextNode());
             currentBlock->getTerminator()->eraseFromParent();
             this->SetInsertPoint(currentBlock);
@@ -2641,8 +2647,8 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
     IGC::SURFACE_FORMAT surfaceFormat,
     llvm::Value* pLdUAVTypedResult)
 {
-    assert(m_Platform->GetPlatformFamily() >= IGFX_GEN9_CORE);
-
+    IGC_ASSERT(nullptr != m_Platform);
+    IGC_ASSERT(m_Platform->GetPlatformFamily() >= IGFX_GEN9_CORE);
 
     if (m_Platform->hasHDCSupportForTypedReadsUnormSnormToFloatConversion())
     {
@@ -3655,7 +3661,8 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateFExp(llvm::Value *
 template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDFloor(llvm::Value* src)
 {
-    llvm::Module* mod = this->GetInsertBlock()->getParent()->getParent();
+    llvm::Module* const mod = this->GetInsertBlock()->getParent()->getParent();
+    IGC_ASSERT(nullptr != mod);
     llvm::Function* func = mod->getFunction("__builtin_floor_f64");
     if (func != nullptr)
     {
@@ -3717,8 +3724,8 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDFloor(llvm::Value
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
-    assert(!failed && "Error parse llvm assembly");
+    const bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_floor_f64");
     return this->CreateCall(func, src);
@@ -3744,7 +3751,8 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateFloor(llvm::Value 
 template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDCeil(llvm::Value *src)
 {
-    llvm::Module* mod = this->GetInsertBlock()->getParent()->getParent();
+    llvm::Module* const mod = this->GetInsertBlock()->getParent()->getParent();
+    IGC_ASSERT(nullptr != mod);
     llvm::Function* func = mod->getFunction("__builtin_ceil_f64");
     if (func != nullptr)
     {
@@ -3807,8 +3815,8 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDCeil(llvm::Value 
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
-    assert(!failed && "Error parse llvm assembly");
+    const bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_ceil_f64");
 
@@ -3835,7 +3843,8 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateCeil(llvm::Value *
 template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDTrunc(llvm::Value *src)
 {
-    llvm::Module* mod = this->GetInsertBlock()->getParent()->getParent();
+    llvm::Module* const mod = this->GetInsertBlock()->getParent()->getParent();
+    IGC_ASSERT(nullptr != mod);
     llvm::Function* func = mod->getFunction("__builtin_trunc_f64");
     if (func != nullptr)
     {
@@ -3887,8 +3896,8 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDTrunc(llvm::Value
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
-    assert(!failed && "Error parse llvm assembly");
+    const bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_trunc_f64");
 
@@ -3915,7 +3924,8 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateRoundZ(llvm::Value
 template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDRoundNE(llvm::Value *src)
 {
-    llvm::Module* mod = this->GetInsertBlock()->getParent()->getParent();
+    llvm::Module* const mod = this->GetInsertBlock()->getParent()->getParent();
+    IGC_ASSERT(nullptr != mod);
     llvm::Function* func = mod->getFunction("__builtin_roundne_f64");
     if (func != nullptr)
     {
@@ -3989,8 +3999,8 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDRoundNE(llvm::Val
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
-    assert(!failed && "Error parse llvm assembly");
+    const bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_roundne_f64");
 
@@ -4104,26 +4114,14 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDeriveRTY_Fine(llv
 template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_MAD_Scalar(llvm::Value* float_src0, llvm::Value* float_src1, llvm::Value* float_src2)
 {
-    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+    llvm::Module* const module = this->GetInsertBlock()->getParent()->getParent();
+    IGC_ASSERT(nullptr != module);
+    IGC_ASSERT(nullptr != float_src0);
 
-    {
-        // Builtin Signature: float (float, float, float)
-        assert("Type check @MAD.scalar arg: 0" && (
-            float_src0->getType() == llvm::Type::getHalfTy(module->getContext()) ||
-            float_src0->getType() == this->getFloatTy() ||
-            float_src0->getType() == this->getDoubleTy()));
-
-        assert("Type check @MAD.scalar arg: 1" && (
-            float_src1->getType() == llvm::Type::getHalfTy(module->getContext()) ||
-            float_src1->getType() == this->getFloatTy() ||
-            float_src1->getType() == this->getDoubleTy()));
-
-        assert("Type check @MAD.scalar arg: 2" && (
-            float_src2->getType() == llvm::Type::getHalfTy(module->getContext()) ||
-            float_src2->getType() == this->getFloatTy() ||
-            float_src2->getType() == this->getDoubleTy()));
-
-    }
+    // Builtin Signature: float (float, float, float)
+    IGC_ASSERT_MESSAGE((float_src0->getType() == llvm::Type::getHalfTy(module->getContext()) || float_src0->getType() == this->getFloatTy() || float_src0->getType() == this->getDoubleTy()), "Type check @MAD.scalar arg: 0");
+    IGC_ASSERT_MESSAGE((float_src1->getType() == llvm::Type::getHalfTy(module->getContext()) || float_src1->getType() == this->getFloatTy() || float_src1->getType() == this->getDoubleTy()), "Type check @MAD.scalar arg: 1");
+    IGC_ASSERT_MESSAGE((float_src2->getType() == llvm::Type::getHalfTy(module->getContext()) || float_src2->getType() == this->getFloatTy() || float_src2->getType() == this->getDoubleTy()), "Type check @MAD.scalar arg: 2");
 
     llvm::Function* madFunc = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::fma, float_src0->getType());
     llvm::Value* args[] = { float_src0, float_src1, float_src2 };
@@ -4877,7 +4875,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateImageDataConversio
 {
     if (m_Platform->GetPlatformFamily() >= IGFX_GEN9_CORE)
     {
-        assert(dataHi == nullptr);
+        IGC_ASSERT(dataHi == nullptr);
         return this->CreateGen9PlusImageDataConversion(format, data);
     }
     else
@@ -4887,18 +4885,18 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateImageDataConversio
 
         if (!info.m_RequiresConversion)
         {
-            assert(dataHi == nullptr);
+            IGC_ASSERT(dataHi == nullptr);
             return data;
         }
 
         if (info.m_Is128b)
         {
-            assert(dataHi != nullptr);
+            IGC_ASSERT(dataHi != nullptr);
             return this->CreateGen8ImageDataConversion(format, data, dataHi);
         }
         else
         {
-            assert(dataHi == nullptr);
+            IGC_ASSERT(dataHi == nullptr);
             return this->CreateGen8ImageDataConversion(format, data);
         }
     }
@@ -4920,16 +4918,18 @@ void LLVM3DBuilder<preserveNames, T, Inserter>::VectorToScalars(
     unsigned maxSize,
     llvm::Value* initializer)
 {
-    assert(vector);
+    IGC_ASSERT(nullptr != vector);
+    IGC_ASSERT(nullptr != vector->getType());
+    IGC_ASSERT(vector->getType()->isVectorTy());
 
-    assert(vector->getType()->isVectorTy());
-
-    const unsigned vectorSize = (unsigned)vector->getType()->getVectorNumElements();
-    assert(vectorSize <= 4 && vectorSize <= maxSize);
+    const unsigned count = vector->getType()->getVectorNumElements();
+    IGC_ASSERT(1 < count);
+    IGC_ASSERT(count <= 4);
+    IGC_ASSERT(count <= maxSize);
 
     for (unsigned vecElem = 0; vecElem < maxSize; vecElem++)
     {
-        if (vecElem >= vectorSize)
+        if (vecElem >= count)
         {
             outScalars[vecElem] = initializer;
             continue;
@@ -4953,13 +4953,14 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::ScalarsToVector(
     llvm::Value* (&scalars)[4],
     unsigned vectorElementCnt)
 {
-    llvm::Type*  resultType = llvm::VectorType::get(scalars[0]->getType(), vectorElementCnt);
+    llvm::Type* const resultType = llvm::VectorType::get(scalars[0]->getType(), vectorElementCnt);
+    IGC_ASSERT(nullptr != resultType);
     llvm::Value* result = llvm::UndefValue::get(resultType);
 
     for (unsigned i = 0; i < resultType->getVectorNumElements(); i++)
     {
-        assert(scalars[i]);
-        assert(resultType->getVectorElementType() == scalars[i]->getType());
+        IGC_ASSERT(nullptr != scalars[i]);
+        IGC_ASSERT(resultType->getVectorElementType() == scalars[i]->getType());
 
         result = this->CreateInsertElement(
             result,
@@ -5009,17 +5010,18 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen8ImageDataConve
     IGC::SURFACE_FORMAT format,
     llvm::Value* data)
 {
-    assert(m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE);
+    IGC_ASSERT(nullptr != m_Platform);
+    IGC_ASSERT(m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE);
     if (data == nullptr)
     {
-        assert(!"Invalid arguments!");
+        IGC_ASSERT_MESSAGE(0, "Invalid arguments!");
         return nullptr;
     }
 
     ImageFormatInfo info;
     this->GetGen8ImageFormatInfo(format, info);
 
-    assert(info.m_RequiresConversion);
+    IGC_ASSERT(info.m_RequiresConversion);
 
     llvm::Constant* zeroFloat = llvm::ConstantFP::get(this->getFloatTy(), 0);
     llvm::Constant* posOneFloat = llvm::ConstantFP::get(this->getFloatTy(), -1.0f);
@@ -5074,9 +5076,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen8ImageDataConve
 
         for (unsigned i = 0; i < info.m_NumComponents; i++)
         {
-            assert(info.m_BPE == 8 ||
-                info.m_BPE == 16 ||
-                info.m_BPE == 32);
+            IGC_ASSERT((info.m_BPE == 8) || (info.m_BPE == 16) || (info.m_BPE == 32));
 
             outData[i] = this->CreateTrunc(rawData[i], this->getIntNTy(info.m_BPE));
             outData[i] = this->CreateSIToFP(outData[i], this->getFloatTy());
@@ -5222,18 +5222,17 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen8ImageDataConve
 {
     if (rawDataBAVec == nullptr || rawDataRGVec == nullptr)
     {
-        assert(!"Invalid arguments!");
+        IGC_ASSERT_MESSAGE(0, "Invalid arguments!");
         return nullptr;
     }
 
     ImageFormatInfo info;
     this->GetGen8ImageFormatInfo(format, info);
 
-    assert(info.m_RequiresConversion);
-    assert(info.m_NumComponents == 4 && info.m_BPE == 32);
-    assert(format == IGC::SURFACE_FORMAT_R32G32B32A32_FLOAT ||
-        format == IGC::SURFACE_FORMAT_R32G32B32A32_UINT ||
-        format == IGC::SURFACE_FORMAT_R32G32B32A32_SINT);
+    IGC_ASSERT(info.m_RequiresConversion);
+    IGC_ASSERT(info.m_NumComponents == 4);
+    IGC_ASSERT(info.m_BPE == 32);
+    IGC_ASSERT((format == IGC::SURFACE_FORMAT_R32G32B32A32_FLOAT) || (format == IGC::SURFACE_FORMAT_R32G32B32A32_UINT) || (format == IGC::SURFACE_FORMAT_R32G32B32A32_SINT));
 
     llvm::Constant* zeroFloat = llvm::ConstantFP::get(this->getFloatTy(), 0);
     llvm::Value* rawData[8];
