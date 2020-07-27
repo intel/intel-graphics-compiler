@@ -150,7 +150,7 @@ add_subdirectory(${INTRSRC} ${INTRBUILD})
 include_directories(${INTRSRC}/include ${INTRBUILD}/include)
 
 include(cmake/spirv.cmake)
-include(cmake/utils.cmake)
+include(${IGC_SOURCE_DIR}/cmake/utils.cmake)
 
 # --- VC Opt ---
 

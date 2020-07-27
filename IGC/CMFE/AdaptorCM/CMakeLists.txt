@@ -20,8 +20,14 @@ add_library(AdaptorCM STATIC
   InputArgsWrapper.cpp
 )
 
-target_link_libraries(AdaptorCM
+vc_get_llvm_targets(LLVM_LIBS
   LLVMSupport
+)
+
+message(STATUS "Linking CMFE with ${LLVM_LIBS}")
+
+target_link_libraries(AdaptorCM
+  ${LLVM_LIBS}
 )
 
 target_compile_definitions(AdaptorCM PRIVATE

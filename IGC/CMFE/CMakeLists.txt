@@ -27,5 +27,7 @@ else(WIN32)
 endif(WIN32)
 
 
+include(${IGC_SOURCE_DIR}/cmake/utils.cmake)
+
 add_subdirectory(AdaptorCM)
 
