@@ -403,6 +403,7 @@ DECLARE_IGC_REGKEY(bool, EnableOneStepElf, true, "Enable generation of direct el
 DECLARE_IGC_REGKEY(bool, EmitDebugRanges, false, "Emit .debug_ranges section when instructions in a block are non-consecutive", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugLoc, false, "Enable generation of .debug_loc section", false)
 DECLARE_IGC_REGKEY(bool, UseNewRegEncoding, false, "Use new location encoding for register numbers in dwarf", false)
+DECLARE_IGC_REGKEY(bool, EmitOffsetInDbgLoc, false, "Emit offset of private memory in DW_AT_location when available", false)
 DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi is uniform", false)
 DECLARE_IGC_REGKEY(bool, EnableZEBinary, false,  "Enable output in ZE binary format", true)
 DECLARE_IGC_REGKEY(DWORD, OverrideOCLMaxParamSize, 0,  "Override the value imposed on the kernel by CL_DEVICE_MAX_PARAMETER_SIZE. Value in bytes, if value==0 no override happens.", true)

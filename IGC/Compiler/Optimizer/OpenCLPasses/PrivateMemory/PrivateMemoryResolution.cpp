@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Transforms/Utils/Local.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Dominators.h"
@@ -855,6 +856,16 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool stackCall)
             Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
             Value* stackAlloca = builder.CreateCall(stackAllocaFunc, totalOffset, VALUE_NAME("stackAlloca"));
             Value* privateBuffer = builder.CreatePointerCast(stackAlloca, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
+            auto DbgUses = llvm::FindDbgAddrUses(pAI);
+            for (auto Use : DbgUses)
+            {
+                if (auto DbgDcl = dyn_cast_or_null<DbgDeclareInst>(Use))
+                {
+                    // Attach metadata to instruction containing offset of storage
+                    auto OffsetMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
+                    DbgDcl->setMetadata("StorageOffset", OffsetMD);
+                }
+            }
             // Replace all uses of original alloca with the bitcast
             pAI->replaceAllUsesWith(privateBuffer);
             pAI->eraseFromParent();
@@ -1011,6 +1022,17 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool stackCall)
         Value* totalOffset = builder.CreateAdd(bufferOffsetForThread, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
         Value* privateBufferGEP = builder.CreateGEP(privateMemArg, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
+
+        auto DbgUses = llvm::FindDbgAddrUses(pAI);
+        for (auto Use : DbgUses)
+        {
+            if (auto DbgDcl = dyn_cast_or_null<DbgDeclareInst>(Use))
+            {
+                // Attach metadata to instruction containing offset of storage
+                auto OffsetMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
+                DbgDcl->setMetadata("StorageOffset", OffsetMD);
+            }
+        }
 
         // Replace all uses of original alloca with the bitcast
         pAI->replaceAllUsesWith(privateBuffer);

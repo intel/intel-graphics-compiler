@@ -2093,9 +2093,31 @@ void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc
 
 void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
 {
+    int64_t offset = 0;
+    auto storageMD = var.getDbgInst()->getMetadata("StorageOffset");
+    auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
+    VISAVariableLocation V(VISAMod);
+    if (storageMD && IGC_IS_FLAG_ENABLED(EmitOffsetInDbgLoc))
+    {
+        // Storage offset is known so emit location as
+        // DW_OP_bregx (privateBase) + StorageOffset*SIMD_SIZE
+        // This is executed only when llvm.dbg.declare still exists.
+        // With mem2reg run, data is stored in GRFs and this wont be
+        // executed.
+        auto pVar = const_cast<VISAModule*>(loc->GetVISAModule())->m_pShader->GetPrivateBase();
+        uint32_t privateBaseRegNum = VISAMod->m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[0]);
+        if (privateBaseRegNum)
+        {
+            auto simdSize = VISAMod->GetSIMDSize();
+            offset = simdSize * dyn_cast<ConstantAsMetadata>(storageMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
+            V = VISAVariableLocation(VISAModule::GENERAL_REGISTER_BEGIN + privateBaseRegNum, loc->IsRegister(),
+                loc->IsInMemory(), loc->GetVectorNumElements(), loc->IsVectorized(), loc->IsInGlobalAddrSpace(), VISAMod);
+            loc = &V;
+        }
+    }
+
     DbgDecoder::VarInfo varInfo;
     auto regNum = loc->GetRegister();
-    auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
     VISAMod->getVarInfo("V", regNum, varInfo);
 
     if (varInfo.lrs.size() == 0)
@@ -2108,7 +2130,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
 
         if (!IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
         {
-            addRegisterLoc(Block, varInfo.lrs.front().getGRF().regNum, 0, var.getDbgInst());
+            addRegisterLoc(Block, varInfo.lrs.front().getGRF().regNum, offset, var.getDbgInst());
 
             if (varInfo.lrs.front().getGRF().subRegNum != 0)
             {
@@ -2144,7 +2166,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
 
                 for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                 {
-                    addRegisterLoc(Block, regNum, 0, var.getDbgInst());
+                    addRegisterLoc(Block, regNum, offset, var.getDbgInst());
 
                     addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
 
