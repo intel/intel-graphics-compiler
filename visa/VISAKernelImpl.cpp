@@ -372,6 +372,12 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
     m_kernel->evalAddrExp();
 
+    if (getOptions()->getOption(vISA_DumpRegInfo))
+    {
+        m_kernel->dump();
+        m_kernel->emit_RegInfo();
+    }
+
     if (getOptions()->getOption(vISA_setStartBreakPoint))
     {
         auto getFirstNonLabelInst = [this]()

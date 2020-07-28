@@ -5856,6 +5856,50 @@ void G4_BB_SB::createAddGRFEdge(SBNode* pred, SBNode* succ, DepType d, SBDepende
     return;
 }
 
+void G4_Kernel::emit_RegInfo()
+{
+    const char* asmName = nullptr;
+    getOptions()->getOption(VISA_AsmFileName, asmName);
+    char dumpFileName[MAX_OPTION_STR_LENGTH];
+    SNPRINTF(dumpFileName, MAX_OPTION_STR_LENGTH, "%s.regInfo",
+        asmName);
+    fstream ofile(dumpFileName, ios::out);
+
+    emit_RegInfoKernel(ofile);
+
+    ofile.close();
+}
+
+void G4_Kernel::emit_RegInfoKernel(std::ostream& output)
+{
+    output << "//.platform " << platformString[fg.builder->getPlatform()];
+    output << "\n" << "//.stepping " << GetSteppingString();
+    output << "\n" << "//.CISA version " << (unsigned int)major_version
+        << "." << (unsigned int)minor_version;
+    output << "\n" << "//.kernel ID 0x" << hex << getKernelID() << "\n";
+    output << dec << "\n";
+    int instOffset = 0;
+
+    for (BB_LIST_ITER itBB = fg.begin(); itBB != fg.end(); ++itBB)
+    {
+        for (INST_LIST_ITER itInst = (*itBB)->begin(); itInst != (*itBB)->end(); ++itInst)
+        {
+            G4_INST* inst = (*itInst);
+            if (inst->isLabel())
+            {
+                continue;
+            }
+            if (inst->getLexicalId() == -1)
+            {
+                continue;
+            }
+
+            (*itBB)->emitRegInfo(output, inst, instOffset);
+            instOffset += inst->isCompactedInst() ? 8 : 16;
+        }
+    }
+    return;
+}
 
 void G4_Kernel::emit_dep(std::ostream& output)
 {
@@ -5888,6 +5932,49 @@ void G4_Kernel::emit_dep(std::ostream& output)
             instOffset += inst->isCompactedInst() ? 8 : 16;
         }
     }
+    return;
+}
+
+void G4_BB::emitRegInfo(std::ostream& output, G4_INST* inst, int offset)
+{
+    output << "#" << inst->getLexicalId() << "|" << offset << ":";
+    G4_DstRegRegion* dstOpnd = inst->getDst();
+
+    if (dstOpnd &&
+        !dstOpnd->isIndirect() &&
+        dstOpnd->isGreg())
+    {
+        uint32_t byteAddress = dstOpnd->getLinearizedStart();
+        unsigned dstReg0 = byteAddress / GENX_GRF_REG_SIZ;
+        output << " {";
+        output << "D:" << dstReg0;
+        output << "}";
+    }
+
+    for (int i = 0; i < inst->getNumSrc(); i++)
+    {
+        G4_Operand* srcOpnd = inst->getSrc(i);
+        if (srcOpnd)
+        {
+            if (srcOpnd->isSrcRegRegion() &&
+                srcOpnd->asSrcRegRegion()->getBase() &&
+                !srcOpnd->asSrcRegRegion()->isIndirect() &&
+                srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
+            {
+                G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
+                if (baseVar->isGreg()) {
+                    uint32_t byteAddress = srcOpnd->getLinearizedStart();
+                    unsigned srcReg = byteAddress / GENX_GRF_REG_SIZ;
+                    output << " {";
+                    output << "S" << i;
+                    output << ":" << srcReg;
+                    output << "}";
+                }
+            }
+        }
+    }
+
+    output << std::endl;
     return;
 }
 
