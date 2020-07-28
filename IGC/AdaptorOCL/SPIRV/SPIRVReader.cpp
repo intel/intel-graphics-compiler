@@ -3582,6 +3582,14 @@ static bool transKernelArgTypeMedataFromString(
     return true;
 }
 
+// Some of the metadata may disappera when linking LLVM modules; attributes are much more permament.
+static void convertAnnotaionsToAttributes(llvm::Function *F, const std::vector<std::string> &annotations)
+{
+  if (std::find(annotations.begin(), annotations.end(), "igc-force-stackcall") != annotations.end()) {
+    F->addFnAttr("igc-force-stackcall");
+  }
+}
+
 bool
 SPIRVToLLVM::transKernelMetadata()
 {
@@ -3598,6 +3606,7 @@ SPIRVToLLVM::transKernelMetadata()
         if (BF->hasDecorate(DecorationUserSemantic)) {
           auto &funcInfo = MD.FuncMD[F];
           funcInfo.UserAnnotations = BF->getDecorationStringLiteral(DecorationUserSemantic);
+          convertAnnotaionsToAttributes(F, funcInfo.UserAnnotations);
         }
 
         if (F->getCallingConv() != CallingConv::SPIR_KERNEL || F->isDeclaration())

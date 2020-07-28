@@ -876,6 +876,9 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
             Callee->hasFnAttribute(llvm::Attribute::NoInline))
             return IGCLLVM::InlineCost::getNever();
 
+        if (Callee->hasFnAttribute("igc-force-stackcall"))
+            return IGCLLVM::InlineCost::getNever();
+
         if (FCtrl != FLAG_FCALL_FORCE_SUBROUTINE &&
             FCtrl != FLAG_FCALL_FORCE_STACKCALL)
         {

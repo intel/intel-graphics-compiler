@@ -427,15 +427,22 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 F->removeFnAttr(llvm::Attribute::NoInline);
             }
 
+            const bool forceStackCall = F->hasFnAttribute("igc-force-stackcall");
             // If this flag is enabled, default function call mode will be stackcall.
             // Otherwise subroutines are used.
-            if (IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall))
+            if (IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall) || forceStackCall)
             {
+                pCtx->m_enableStackCall = true;
                 F->addFnAttr("visaStackCall");
+                if (forceStackCall) {
+                    F->removeFnAttr(llvm::Attribute::AlwaysInline);
+                    F->addFnAttr(llvm::Attribute::NoInline);
+                }
             }
 
             if (!hasNoInlineAttr &&
-                IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
+                IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute) &&
+                !forceStackCall)
             {
                 bool shouldAlwaysInline = (MemPoolFuncs.count(F) != 0);
 
@@ -495,6 +502,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 F->addFnAttr(llvm::Attribute::NoInline);
                 if (forceStackCall)
                 {
+                    pCtx->m_enableStackCall = true;
                     F->addFnAttr("visaStackCall");
                 }
                 Changed = true;

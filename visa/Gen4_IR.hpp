@@ -1383,6 +1383,7 @@ public:
 
     void retToFRet()
     {
+        if (isFReturn()) return;
         assert(isReturn());
         setOpcode(G4_pseudo_fret);
     }

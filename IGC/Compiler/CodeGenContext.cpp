@@ -649,7 +649,7 @@ namespace IGC
 
     bool CodeGenContext::enableFunctionCall() const
     {
-        if (m_enableSubroutine || m_enableFunctionPointer)
+        if (m_enableSubroutine || m_enableStackCall || m_enableFunctionPointer)
             return true;
 
         int FCtrol = IGC_GET_FLAG_VALUE(FunctionControl);
@@ -668,6 +668,7 @@ namespace IGC
     void CodeGenContext::clear()
     {
         m_enableSubroutine = false;
+        m_enableStackCall = false;
         m_enableFunctionPointer = false;
 
         delete modMD;
