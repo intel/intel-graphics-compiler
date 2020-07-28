@@ -53,7 +53,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "usc.h"
 
 #include "AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
-#include "AdaptorOCL/igcmc.h"
 #include "AdaptorOCL/cmc.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/ScopeExit.h>

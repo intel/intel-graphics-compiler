@@ -80,7 +80,6 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/cmc.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/igcmc.h"
 
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/ErrorCode.h"
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/SurfaceFormats.h"
