@@ -373,7 +373,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             // Respect the noinline attribute given by user if EnableOCLNoInlineAttr is set
             bool hasNoInlineAttr = false;
-
             if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
                 pCtx->type == ShaderType::OPENCL_SHADER &&
                 F->hasFnAttribute(llvm::Attribute::NoInline))
@@ -383,6 +382,13 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             else
             {
                 F->removeFnAttr(llvm::Attribute::NoInline);
+            }
+
+            // If this flag is enabled, default function call mode will be stackcall.
+            // Otherwise subroutines are used.
+            if (IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall))
+            {
+                F->addFnAttr("visaStackCall");
             }
 
             if (!hasNoInlineAttr &&

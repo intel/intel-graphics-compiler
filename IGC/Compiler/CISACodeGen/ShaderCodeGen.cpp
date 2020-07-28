@@ -536,7 +536,13 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     if (ctx.m_enableSubroutine && !isOptDisabled)
     {
         mpm.add(createPruneUnusedArgumentsPass());
-        mpm.add(createIPConstantPropagationPass());
+
+        if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT &&
+            IGC_IS_FLAG_DISABLED(EnableOCLNoInlineAttr))
+        {
+            // Don't run IPConstantProp when debugging function calls, to avoid folding function arg/ret constants
+            mpm.add(createIPConstantPropagationPass());
+        }
         mpm.add(createConstantPropagationPass());
         mpm.add(createDeadCodeEliminationPass());
         mpm.add(createCFGSimplificationPass());
