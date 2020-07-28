@@ -60,6 +60,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/InitializePasses.h"
@@ -143,16 +144,37 @@ TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F)
 
 } // namespace llvm
 
+namespace {
+
+class GenXPassConfig : public TargetPassConfig {
+public:
+  GenXPassConfig(GenXTargetMachine &TM, PassManagerBase &PM)
+      : TargetPassConfig(TM, PM) {}
+
+  GenXTargetMachine &getGenXTargetMachine() const {
+    return getTM<GenXTargetMachine>();
+  }
+};
+
+} // namespace
+
 GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
                                      StringRef CPU, StringRef FS,
                                      const TargetOptions &Options,
                                      Optional<Reloc::Model> RM,
                                      Optional<CodeModel::Model> CM,
                                      CodeGenOpt::Level OL, bool Is64Bit)
-    : IGCLLVM::TargetMachine(T, getDL(Is64Bit), TT, CPU, FS, Options),
+    : IGCLLVM::LLVMTargetMachine(T, getDL(Is64Bit), TT, CPU, FS, Options,
+                                 RM ? RM.getValue() : Reloc::Model::Static,
+                                 CM ? CM.getValue() : CodeModel::Model::Small,
+                                 OL),
       Is64Bit(Is64Bit), Subtarget(TT, CPU, FS) {}
 
 GenXTargetMachine::~GenXTargetMachine() = default;
+
+TargetPassConfig *GenXTargetMachine::createPassConfig(PassManagerBase &PM) {
+  return new GenXPassConfig(*this, PM);
+}
 
 void GenXTargetMachine32::anchor() {}
 
@@ -181,6 +203,10 @@ extern "C" void LLVMInitializeGenXTarget() {
   // Register the target.
   RegisterTargetMachine<GenXTargetMachine32> X(getTheGenXTarget32());
   RegisterTargetMachine<GenXTargetMachine64> Y(getTheGenXTarget64());
+}
+
+extern "C" void LLVMInitializeGenXPasses() {
+  llvm::initializeGenXPasses(*PassRegistry::getPassRegistry());
 }
 
 //===----------------------------------------------------------------------===//

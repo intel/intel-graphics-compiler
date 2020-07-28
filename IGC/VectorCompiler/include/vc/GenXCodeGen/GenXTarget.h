@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern "C" void LLVMInitializeGenXTargetInfo();
 extern "C" void LLVMInitializeGenXTarget();
 extern "C" void LLVMInitializeGenXTargetMC();
+extern "C" void LLVMInitializeGenXPasses();
 
 namespace llvm {
 void initializeGenX() {

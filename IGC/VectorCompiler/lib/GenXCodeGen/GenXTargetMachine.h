@@ -48,7 +48,7 @@ namespace llvm {
 class raw_pwrite_stream;
 class MachineModuleInfo;
 
-class GenXTargetMachine : public IGCLLVM::TargetMachine {
+class GenXTargetMachine : public IGCLLVM::LLVMTargetMachine {
   bool Is64Bit;
   GenXSubtarget Subtarget;
 
@@ -66,6 +66,8 @@ public:
                            MachineModuleInfo *MMI = nullptr) override;
 
   void adjustPassManager(PassManagerBuilder &PMBuilder) override;
+
+  TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
 
   virtual const DataLayout *getDataLayout() const { return &DL; }
 

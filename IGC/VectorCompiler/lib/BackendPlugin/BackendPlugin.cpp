@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static int initializeAll() {
   llvm::initializeGenX();
+  LLVMInitializeGenXPasses();
   return 0;
 }
 
