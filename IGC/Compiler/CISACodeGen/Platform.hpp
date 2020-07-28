@@ -113,6 +113,12 @@ bool SupportHDCUnormFormats() const { return m_platformInfo.eRenderCoreFamily >=
     }
 bool psSimd32SkipStallHeuristic() const { return m_caps.KernelHwCaps.EUThreadsPerEU == 6; }
 bool enablePSsimd32() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
+
+bool supportSimd32PerPixelPSWithNumSamples16() const
+{
+    return false;
+}
+
 bool supportDisableMidThreadPreemptionSwitch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
 bool needSWStencil() const

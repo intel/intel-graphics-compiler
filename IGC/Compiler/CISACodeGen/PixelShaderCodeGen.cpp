@@ -1270,6 +1270,15 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
 
         const PixelShaderInfo& psInfo = ctx->getModuleMetaData()->psInfo;
 
+        // Disable simd32 compilation on platforms that do not support per-pixel
+        // dispatch with num samples == 16.
+        if (psInfo.NumSamples == 16 &&
+            !ctx->platform.supportSimd32PerPixelPSWithNumSamples16() &&
+            !IsPerSample())
+        {
+            return false;
+        }
+
         if (psInfo.ForceEnableSimd32) // UMD forced compilation of simd32.
         {
             return true;
