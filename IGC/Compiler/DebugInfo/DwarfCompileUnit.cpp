@@ -755,7 +755,7 @@ void CompileUnit::addGTRelativeLocation(DIEBlock* Block, VISAVariableLocation* L
         {
             // BTI surface
 
-            // 1 DW_OP_bregx <btbase>, (<bti> * 4)
+            // 1 DW_OP_bregx <BT Base Address>, (<bti> * 4)
             // 2 DW_OP_deref_size 4
             // 3 DW_OP_const4u 0xffffffc0
             // 4 DW_OP_and
@@ -764,12 +764,13 @@ void CompileUnit::addGTRelativeLocation(DIEBlock* Block, VISAVariableLocation* L
             // 7 DW_OP_deref
             // 8 DW_OP_plus_uconst <offset>
 
+            IGC_ASSERT(IGC_IS_FLAG_ENABLED(UseNewRegEncoding));
             IGC_ASSERT_MESSAGE(false == Loc->IsInGlobalAddrSpace(), "Missing surface for variable location");
 
-            uint64_t btiBaseAddr = 0;                   // TBD MT use virtual debug register
-            uint64_t bti = Loc->GetSurface();           // BTI
-            uint64_t surfaceStateBaseAddr = 0;          // TBD MT use virtual debug register
-            uint32_t surfaceOffset = Loc->GetOffset();  // Surface offset
+            uint64_t btiBaseAddr = RegisterNumbering::BTBase;                  // Use virtual debug register
+            uint64_t bti = Loc->GetSurface();                                  // BTI
+            uint64_t surfaceStateBaseAddr = RegisterNumbering::SurfStateBase;  // Use virtual debug register
+            uint32_t surfaceOffset = Loc->GetOffset();                         // Surface offset
 
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bregx);
             addUInt(Block, dwarf::DW_FORM_udata, btiBaseAddr);  // Address for bregx
@@ -864,8 +865,9 @@ void CompileUnit::addStatelessLocation(DIEBlock* Block, VISAVariableLocation* Lo
 {
     if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
     {
-        uint32_t statelessBaseAddr = 0; // TBD MT use virtual debug register with Stateless Surface State Base Address
-
+        // Use virtual debug register with Stateless Surface State Base Address
+        uint32_t statelessBaseAddr = RegisterNumbering::GenStateBase;
+        IGC_ASSERT(IGC_IS_FLAG_ENABLED(UseNewRegEncoding));
         IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
 
         addBindlessOrStatelessLocation(Block, Loc, statelessBaseAddr);
@@ -877,8 +879,10 @@ void CompileUnit::addBindlessSurfaceLocation(DIEBlock* Block, VISAVariableLocati
 {
     if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
     {
-        uint32_t bindlessSurfBaseAddr = 0; // TBD MT use virtual debug register with Bindless Surface State Base Address
+        // Use virtual debug register with Bindless Surface State Base Address
+        uint32_t bindlessSurfBaseAddr = RegisterNumbering::BindlessSurfStateBase;
 
+        IGC_ASSERT(IGC_IS_FLAG_ENABLED(UseNewRegEncoding));
         IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
 
         addBindlessOrStatelessLocation(Block, Loc, bindlessSurfBaseAddr);
@@ -890,8 +894,10 @@ void CompileUnit::addBindlessSamplerLocation(DIEBlock* Block, VISAVariableLocati
 {
     if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
     {
-        uint32_t bindlessSamplerBaseAddr = 0; // TBD MT use virtual debug register with Bindless Sampler State Base Address
+        // Use virtual debug register with Bindless Sampler State Base Address
+        uint32_t bindlessSamplerBaseAddr = RegisterNumbering::BindlessSamplerStateBase;
 
+        IGC_ASSERT(IGC_IS_FLAG_ENABLED(UseNewRegEncoding));
         IGC_ASSERT_MESSAGE(Loc->IsSampler(), "Missing sampler for variable location");
 
         addBindlessOrStatelessLocation(Block, Loc, bindlessSamplerBaseAddr);
@@ -909,8 +915,10 @@ void CompileUnit::addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varIn
     if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
     {
         // For spills to the scratch area at offset available as literal
-        // 1 DW_OP_bregx <scrbase>, <offset>
-        uint32_t scratchBaseAddr = 0; // TBD MT use virtual debug register with Scratch Base Address
+        // 1 DW_OP_bregx <Scratch Space Base Address>, <offset>
+        uint32_t scratchBaseAddr = RegisterNumbering::ScratchBase; // Use virtual debug register with Scratch Base Address
+
+        IGC_ASSERT(IGC_IS_FLAG_ENABLED(UseNewRegEncoding));
 
         addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bregx);
         addUInt(Block, dwarf::DW_FORM_udata, scratchBaseAddr);  // Base address of surface or sampler
@@ -933,6 +941,7 @@ void CompileUnit::addSLMLocation(DIEBlock* Block, VISAVariableLocation* Loc)
 {
     if (IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
     {
+        IGC_ASSERT(IGC_IS_FLAG_ENABLED(UseNewRegEncoding));
         IGC_ASSERT_MESSAGE(Loc->IsSLM(), "SLM expected as variable location");
 
         // For SLM addressing using address <slm - va> available as literal
@@ -2173,7 +2182,6 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
                     addSimdLane(Block, var, loc, false); // Emit SIMD lane for GRF (unpacked)
 
                     regNum = regNum + numOfRegs;
-                    IGC_ASSERT_MESSAGE(((DD->simdWidth < 32) && (grfSize == 32)), "SIMD32 debugging not supported");
                 }
             }
         }
@@ -2206,8 +2214,6 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
             {
                 addScratchLocation(Block, &varInfo, vectorElem * numOfRegs * grfSize);
                 addSimdLane(Block, var, loc, false); // Emit SIMD lane for spill (unpacked)
-
-                IGC_ASSERT(((DD->simdWidth < 32) && (grfSize == 32)) && "SIMD32 debugging not supported");
             }
         }
 

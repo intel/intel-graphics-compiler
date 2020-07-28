@@ -1747,8 +1747,6 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     write(dotLoc.loc, (uint8_t)DW_OP_INTEL_bit_piece_stack);
 
                                     regNum = regNum + numOfRegs;
-                                    IGC_ASSERT_MESSAGE(((simdWidth < 32) && (grfSize == 32)), "SIMD32 debugging not supported");
-
                                 }
                             }
                         }
@@ -1769,7 +1767,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                             else
                             {
                                 // Scratch space
-                                // 1 DW_OP_bregx <scrbase>, <offset>
+                                // 1 DW_OP_bregx <Scratch Space Base Address>, <offset>
                                 uint64_t scratchBaseAddr = 0; // TBD MT
                                 unsigned int vectorNumElements = 1;
                                 uint32_t grfSize = m_pModule->m_pShader->getGRFSize();
@@ -1885,7 +1883,6 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                                     write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_deref);
 
                                     regNum = regNum + numOfRegs;
-                                    IGC_ASSERT_MESSAGE(((simdWidth < 32) && (grfSize == 32)), "SIMD32 debugging not supported");
                                 }
                             }
                         }
