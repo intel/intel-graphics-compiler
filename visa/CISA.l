@@ -76,18 +76,16 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
 
 %%
 
-([ \t]*\n[ \t]*)+ {
-      TRACE("\n** DELIMITER");
-      return STMT_DELIM;
-    }
-([ \t]*"\\n"[ \t]*)+ {
-        TRACE("\n** DELIMITER");
-        return STMT_DELIM;
-    }
+\n {
+      return NEWLINE;
+   }
+
+[ \t] { /*drop non-newline spaces*/}
 "//"[^\n]* {
-        TRACE("\n** COMMENT TEXT");
-        CISAlval.string = strdup(yytext);
-        return COMMENT_LINE;
+        // drop comments
+        // TRACE("\n** COMMENT ");
+        // CISAlval.string = strdup(yytext);
+        // return COMMENT_LINE;
     }
 
 "/*"  BEGIN(eat_comment);
@@ -130,7 +128,7 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
         appendStringLiteralChar(val,CISAlval.strlit.decoded,&CISAlval.strlit.len);
     }
     \\.                       YY_FATAL_ERROR("lexical error: illegal escape sequence");
-    \"                        {CISAlval.string = strdup(CISAlval.strlit.decoded); BEGIN(INITIAL); return STRING_LITERAL;}
+    \"                        {CISAlval.string = strdup(CISAlval.strlit.decoded); BEGIN(INITIAL); return STRING_LIT;}
     .                         {
     /* important: this must succeed the exit rule above (\"); lex prefers the first match */
         appendStringLiteralChar(yytext[0],CISAlval.strlit.decoded,&CISAlval.strlit.len);
@@ -141,16 +139,26 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
 "*" {TRACE("\n** TIMES ");  return TIMES;}
 "+" {TRACE("\n** PLUS ");   return PLUS;}
 "-" {TRACE("\n** MINUS ");  return MINUS;}
-"=" {TRACE("\n** EQUALS ");  return EQUALS;}
-"&" {TRACE("\n** AMP ");  return AMP;}
+"=" {TRACE("\n** EQUALS "); return EQUALS;}
+"&" {TRACE("\n** AMP ");    return AMP;}
+"^" {TRACE("\n** CIRC ");   return CIRC;}
+"|" {TRACE("\n** PIPE ");   return PIPE;}
 "~" {TRACE("\n** TILDE ");  return TILDE;}
-"!" {TRACE("\n** BANG "); return BANG;}
+"!" {TRACE("\n** BANG ");   return BANG;}
 
-"." {TRACE("\n** COLON "); return DOT;}
-"," {TRACE("\n** COMMA "); return COMMA;}
-";" {TRACE("\n** SEMI "); return SEMI;}
-":" {TRACE("\n** COLON "); return COLON;}
-"/" {TRACE("\n** SLASH"); return SLASH;}
+"<=" {TRACE("\n** LEQ "); return LEQ;}
+">=" {TRACE("\n** GEQ "); return GEQ;}
+"==" {TRACE("\n** EQ ");  return  EQ;}
+"!=" {TRACE("\n** NEQ "); return NEQ;}
+
+
+"." {TRACE("\n** DOT ");     return DOT;}
+"," {TRACE("\n** COMMA ");   return COMMA;}
+";" {TRACE("\n** SEMI ");    return SEMI;}
+":" {TRACE("\n** COLON ");   return COLON;}
+"/" {TRACE("\n** SLASH");    return SLASH;}
+"%" {TRACE("\n** PERCENT");  return PERCENT;}
+"?" {TRACE("\n** QUESTION"); return QUESTION;}
 
 "(" {TRACE("\n** LPAREN "); return LPAREN;}
 ")" {TRACE("\n** RPAREN "); return RPAREN;}
@@ -158,43 +166,40 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
 "}" {TRACE("\n** RBRACE "); return RBRACE;}
 "<" {TRACE("\n** LANGLE "); return LANGLE;}
 ">" {TRACE("\n** RANGLE "); return RANGLE;}
-"r[" {
-        TRACE("\n** Register Indirect LEFT bracket");
-        CISAlval.string = strdup(yytext);
-        return IND_LBRACK;
-    }
-"[" {
-        TRACE("\n** LEFT bracket");
-        CISAlval.string = strdup(yytext);
-        return LBRACK;
-    }
+"<<"  {TRACE("\n** SHL ");  return SHL;}
+">>"  {TRACE("\n** SHRS "); return SHRS;}
+">>>" {TRACE("\n** SHRZ "); return SHRZ;}
 
-"]"  {
-        TRACE("\n** RIGHT bracket");
-        CISAlval.string = strdup(yytext);
-        return RBRACK;
-    }
+"r[" {TRACE("\n** IND_LBRACK"); return IND_LBRACK;}
+"["  {TRACE("\n** LBRACK"); return LBRACK;}
+"]"  {TRACE("\n** RBRACK"); return RBRACK;}
 
 
 ".version"          {TRACE("\n** VERSION "); return DIRECTIVE_VERSION;}
-".entry"            {TRACE("\n** ENTRY "); return DIRECTIVE_ENTRY;}
 ".decl"             {TRACE("\n** DECLARE "); return DIRECTIVE_DECL;}
 ".funcdecl"         {TRACE("\n** FUNCTION DECLARE "); return FUNC_DIRECTIVE_DECL;}
 ".attr"             {TRACE("\n** ATTR "); return DIRECTIVE_ATTR;}
 ".kernel_attr"      {TRACE("\n** KERNEL ATTR "); return DIRECTIVE_KERNEL_ATTR;}
 ".input"            {TRACE("\n** INPUT "); return DIRECTIVE_INPUT;}
 ".parameter"        {TRACE("\n** PARAMETER "); return DIRECTIVE_PARAMETER;}
-".loc"              {TRACE("\n** LOC "); return DIRECTIVE_LOC;}
 ".function"         {TRACE("\n** FUNCTION "); return DIRECTIVE_FUNC;}
 ".global_function"  {TRACE("\n** GLOBAL FUNCTION "); return DIRECTIVE_GLOBAL_FUNC;}
 ".kernel"           {TRACE("\n** KERNEL NAME DIRECTIVE "); return DIRECTIVE_KERNEL;}
 
-"."implicit[a-zA-Z0-9_\-$@?]* {
-        TRACE("\n**  IMPLICIT_INPUT ");
-        CISAlval.string = strdup(yytext);
-        CISAlval.string[yyleng] = '\0';
-        return IMPLICIT_INPUT;
-    }
+num_elts[ ]*= {TRACE("\n** NUM_ELTS_EQ "); return NUM_ELTS_EQ;}
+align[ ]*= {   TRACE("\n** ALIGN_EQ ");    return ALIGN_EQ;}
+offset[ ]*= {  TRACE("\n** OFFSET_EQ ");   return OFFSET_EQ;}
+size[ ]*= {    TRACE("\n** SIZE_EQ ");     return SIZE_EQ;}
+alias[ ]*= {   TRACE("\n** ALIAS_EQ ");    return ALIAS_EQ;}
+attr[ ]*= {    TRACE("\n** ATTR_EQ ");     return ATTR_EQ;}
+v_name[ ]*= {  TRACE("\n** V_NAME_EQ ");   return V_NAME_EQ;}
+
+v_type[ ]*=[ ]*G {TRACE("\n** G_CLASS "); return G_CLASS;}
+v_type[ ]*=[ ]*A {TRACE("\n** A_CLASS "); return A_CLASS;}
+v_type[ ]*=[ ]*P {TRACE("\n** P_CLASS "); return P_CLASS;}
+v_type[ ]*=[ ]*S {TRACE("\n** S_CLASS "); return S_CLASS;}
+v_type[ ]*=[ ]*T {TRACE("\n** T_CLASS "); return T_CLASS;}
+
 
 "."(add|sub|inc|dec|min|max|xchg|cmpxchg|and|or|xor|minsint|maxsint|fmax|fmin|fcmpwr)   {
         TRACE("\n** Atomic Operations ");
@@ -222,46 +227,48 @@ bfi {
 
 
 inv|log|exp|sqrt|rsqrt|sin|cos|sqrtm {
-         TRACE("\n** 2 operands math INST ");
+         TRACE("\n** 2 operand math INST ");
          CISAlval.opcode = str2opcode(yytext);
          return MATH2_OP;
     }
 
 div|mod|pow|divm {
-        TRACE("\n** 3 operands math INST ");
+        TRACE("\n** 3 operand math INST ");
         CISAlval.opcode = str2opcode(yytext);
         return MATH3_OP;
     }
 
 frc|lzd|rndd|rndu|rnde|rndz {
-        TRACE("\n** Frc INST ");
+        TRACE("\n** ARITH2_OP ");
         CISAlval.opcode = str2opcode(yytext);
         return ARITH2_OP;
     }
 
 add|avg|dp2|dp3|dp4|dph|line|mul|pow|mulh|sad2|plane {
-        TRACE("\n** MATH INST ");
+        TRACE("\n** ARITH3_OP ");
         CISAlval.opcode = str2opcode(yytext);
         return ARITH3_OP;
     }
 
 mad|lrp|sad2add {
-        TRACE("\n** MATH INST ");
+        TRACE("\n** ARITH4_OP ");
         CISAlval.opcode = str2opcode(yytext);
         return ARITH4_OP;
     }
 
 and|or|xor|shl|shr|asr {
-        TRACE("\n** Binary Logic INST ");
+        TRACE("\n** BINARY_LOGIC_OP ");
         CISAlval.opcode = str2opcode(yytext);
         return BINARY_LOGIC_OP;
     }
 
 rol|ror {
-        TRACE("\n** Binary Logic INST ");
+        TRACE("\n** BINARY_LOGIC_OP ");
         CISAlval.opcode = str2opcode(yytext);
         return BINARY_LOGIC_OP;
     }
+
+
 
 
 addc|subb {
@@ -331,11 +338,12 @@ svm_block_ld|svm_block_st|svm_scatter|svm_gather|svm_gather4scaled|svm_scatter4s
         if (!strcmp(yytext, "svm_scatter4scaled")) {CISAlval.opcode = (ISA_Opcode)SVM_SCATTER4SCALED; return SVM_SCATTER4SCALED_OP;}
         if (!strcmp(yytext, "svm_block_ld")) CISAlval.opcode = (ISA_Opcode)SVM_BLOCK_LD;
         if (!strcmp(yytext, "svm_block_st")) CISAlval.opcode = (ISA_Opcode)SVM_BLOCK_ST;
-        if (!strcmp(yytext, "svm_scatter" )) { CISAlval.opcode = (ISA_Opcode)SVM_SCATTER; return SVM_SCATTER_OP; }
-        if (!strcmp(yytext, "svm_gather"  )) { CISAlval.opcode = (ISA_Opcode)SVM_GATHER; return SVM_SCATTER_OP; }
-        if (!strcmp(yytext, "svm_atomic"  )) { CISAlval.opcode = (ISA_Opcode)SVM_ATOMIC; return SVM_ATOMIC_OP; }
+        if (!strcmp(yytext, "svm_scatter" )) {CISAlval.opcode = (ISA_Opcode)SVM_SCATTER; return SVM_SCATTER_OP;}
+        if (!strcmp(yytext, "svm_gather"  )) {CISAlval.opcode = (ISA_Opcode)SVM_GATHER; return SVM_SCATTER_OP;}
+        if (!strcmp(yytext, "svm_atomic"  )) {CISAlval.opcode = (ISA_Opcode)SVM_ATOMIC; return SVM_ATOMIC_OP;}
         return SVM_OP;
     }
+
 
 
 oword_ld|oword_st|oword_ld_unaligned {
@@ -343,7 +351,6 @@ oword_ld|oword_st|oword_ld_unaligned {
         CISAlval.opcode = str2opcode(yytext);
         return OWORD_OP;
     }
-
 
 media_ld|media_st {
         TRACE("\n** media INST ");
@@ -426,12 +433,6 @@ yield {
         TRACE("\n** yield INST ");
         CISAlval.opcode = str2opcode(yytext);
         return YIELD_OP;
-    }
-
-untyped_atomic {
-        TRACE("\n** atomic INST ");
-        CISAlval.opcode = str2opcode(yytext);
-        return ATOMIC_OP;
     }
 
 dword_atomic {
@@ -540,13 +541,17 @@ avs {
         return AVS_OP;
     }
 
-FILE {
+(FILE|\.file) {
+        // FIXME: need to retire FILE and LOC because
+        // they will confict with identifiers
+        // retain .file and migrate to that
         TRACE("\n** FILE ");
         CISAlval.opcode = str2opcode("file");
         return FILE_OP;
     }
 
-LOC {
+(LOC|\.loc) {
+        // FIXME: same as FILE above...
         TRACE("\n** LOC ");
         CISAlval.opcode = str2opcode("loc");
         return LOC_OP;
@@ -613,11 +618,7 @@ lifetime"."end {
         return LABEL;
     }
 
-0x[[:xdigit:]]+ {
-        TRACE("\n** HEX NUMBER ");
-        CISAlval.number = hexToInt(yytext+2, yyleng-2);
-        return HEX_NUMBER;
-    }
+
 
 "."(nomod|modified|top|bottom|top_mod|bottom_mod) {
         TRACE("\n** MEDIA MODE :");
@@ -643,94 +644,43 @@ AVS_(4|8|16)x(4|8) {
         return OWORD_MODIFIER;
     }
 
-
-
 [0-9]+         {
-        TRACE("\n** NUMBER ");
-        CISAlval.number = atoi(yytext);
-        return NUMBER;
+        TRACE("\n** DEC_LIT ");
+        CISAlval.intval = atoi(yytext);
+        return DEC_LIT;
+    }
+
+0[xX][[:xdigit:]]+ {
+        TRACE("\n** HEX_LIT ");
+        CISAlval.intval = hexToInt(yytext+2, yyleng-2);
+        return HEX_LIT;
     }
 
 [0-9]+"."[0-9]+":f" {
-        TRACE("\n** FLOAT ");
-        CISAlval.fp = atof(yytext);
-        return FLOATINGPOINT;
+        TRACE("\n** F32_LIT ");
+        CISAlval.fltval = (float)atof(yytext);
+        return F32_LIT;
     }
 
-([0-9]+|[0-9]+"."[0-9]+)"e"("+"|"-")[0-9]+":f" {
-        TRACE("\n** FLOAT ");
-        CISAlval.fp = atof(yytext);
-        return FLOATINGPOINT;
+([0-9]+|[0-9]+"."[0-9]+)[eE]("+"|"-")[0-9]+":f" {
+        TRACE("\n** F32_LIT ");
+        CISAlval.fltval = (float)atof(yytext);
+        return F32_LIT;
     }
 
 [0-9]+"."[0-9]+":df" {
-        TRACE("\n** DOUBLE ");
-        CISAlval.fp = atof(yytext);
-        return DOUBLEFLOAT;
+        TRACE("\n** F64_LIT ");
+        CISAlval.fltval = atof(yytext);
+        return F64_LIT;
     }
 
-([0-9]+|[0-9]+"."[0-9]+)"e"("+"|"-")[0-9]+":df" {
-        TRACE("\n** DOUBLE ");
-        CISAlval.fp = atof(yytext);
-        return DOUBLEFLOAT;
+([0-9]+|[0-9]+"."[0-9]+)[eE]("+"|"-")[0-9]+":df" {
+        TRACE("\n** F64_LIT ");
+        CISAlval.fltval = atof(yytext);
+        return F64_LIT;
     }
 
-qSLMSize[ ]*=[ ]* {TRACE("\n** SLM Size "); CISAlval.string = "SLMSize"; return SLM_SIZE;}
 
-qFlagRegNum[ ]*=[ ]* {TRACE("\n** Flag regisetr number "); CISAlval.string = "FlagRegNum"; return FLAG_REG_NAME;}
-
-qSurfaceUsage[ ]*=[ ]* {TRACE("\n** Surface Usage number "); CISAlval.string = "SurfaceUsage"; return SURF_USE_NAME;}
-
-phyReg[ ]*=[ ]* {TRACE("\n** Physical Register "); return PHYSICAL_REGISTER;}
-
-num_elts[ ]*=[ ]* {TRACE("\n** Number of element "); return NUM_ELTS;}
-
-v_name[ ]*=[ ]* {TRACE("\n** V_NAME of element "); return V_NAME_TOKEN;}
-
-align[ ]*=[ ]* {TRACE("\n** Alignment "); return ALIGN;}
-
-offset[ ]*=[ ]* {TRACE("\n** Offset "); return OFFSET;}
-
-size[ ]*=[ ]* {TRACE("\n** Size "); return SIZE;}
-
-alias[ ]*=[ ]* {TRACE("\n** ALIAS "); return ALIAS;}
-
-
-v_type[ ]*=[ ]*F {
-        TRACE("\n** General variable type ");
-        CISAlval.string = strdup(yytext);
-        return F_CLASS;
-    }
-
-v_type[ ]*=[ ]*G {
-        TRACE("\n** General variable type ");
-        CISAlval.string = strdup(yytext);
-        return G_CLASS;
-    }
-
-v_type[ ]*=[ ]*A {
-        TRACE("\n** Address variable type ");
-        CISAlval.string = strdup(yytext);
-        return A_CLASS;
-    }
-
-v_type[ ]*=[ ]*P {
-        TRACE("\n** Predicate variable type ");
-        CISAlval.string = strdup(yytext);
-        return P_CLASS;
-    }
-
-v_type[ ]*=[ ]*S {
-        TRACE("\n** Sampler variable type ");
-        CISAlval.string = strdup(yytext);
-        return S_CLASS;
-    }
-
-v_type[ ]*=[ ]*T {
-        TRACE("\n** Surface variable type ");
-        CISAlval.string = strdup(yytext);
-        return T_CLASS;
-    }
 
 type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|hf|HF) {
         TRACE("\n** TYPE ");
@@ -743,20 +693,20 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
         TRACE("\n** AlignType - 2GRF ");
         CISAlval.align = ALIGN_2_GRF;
         // fprintf(stderr, "%s", "2GRF symbol is deprecated; please use GRFx2");
-        return ALIGNTYPE_NONVAR_KEYWORD;
+        return ALIGN_KEYWORD;
 }
 
 32word {
         /* other cases are handled as VAR */
         TRACE("\n** AlignType - 32word ");
         CISAlval.align = ALIGN_32WORD;
-        return ALIGNTYPE_NONVAR_KEYWORD;
+        return ALIGN_KEYWORD;
 }
 64word {
         /* other cases are handled as VAR */
         TRACE("\n** AlignType - 64word ");
         CISAlval.align = ALIGN_64WORD;
-        return ALIGNTYPE_NONVAR_KEYWORD;
+        return ALIGN_KEYWORD;
 }
 
 "(-)"    {TRACE("\n** SRCMOD_NEG "); return SRCMOD_NEG;}
@@ -784,7 +734,7 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
 
 "."(eq|ne|gt|ge|lt|le|EQ|NE|GT|GE|LT|LE) {
         TRACE("\n** COND_MOD ");
-        CISAlval.mod = str2cond(yytext+1);
+        CISAlval.cond_mod = str2cond(yytext+1);
         return COND_MOD;
     }
 
@@ -821,6 +771,7 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
 
 
 
+
 "."((R|r)((G|g)?(B|b)?(A|a)?)|(G|g)((B|b)?(A|a)?)|(B|b)((A|a)?)|(A|a))  {
         TRACE("\n** CHANNEL MASK ");
         CISAlval.s_channel = ChannelMask::createFromString(yytext+1).getAPI();
@@ -839,41 +790,46 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
         return RTWRITE_OPTION;
     }
 
-"."(0|A)(0|B)(0|G)(0|R) {
-        TRACE("\n** SLM CHANNELS ");
-        CISAlval.s_channel = ChannelMask::createFromString(yytext+1).getAPI();
-        return SLM_CHANNEL;
+".any" {
+        TRACE("\n** PRED_CNTL (.any) ");
+        CISAlval.pred_ctrl = PRED_CTRL_ANY;
+        return PRED_CNTL;
     }
-
-"."(inter|intra|both) {
-        TRACE("\n** VME_TYPE ");
-        CISAlval.VME_type = VMEType(yytext+1);
-        return VME_TYPE;
-    }
-
-"."(any|all) {
-        TRACE("\n** PRED_CNTL ");
-        CISAlval.string = strdup(yytext+1);
+".all" {
+        TRACE("\n** PRED_CNTL (.all) ");
+        CISAlval.pred_ctrl = PRED_CTRL_ALL;
         return PRED_CNTL;
     }
 
 
-V0 {
-        TRACE("\n** NULL VAR ");
+%null {
+        TRACE("\n** Built-in %%null ");
         CISAlval.string = strdup(yytext);
-        return NULL_VAR;
+        return BUILTIN_NULL;
     }
 
+%sizeof {
+        TRACE("\n** Built-in %%sizeof ");
+        return BUILTIN_SIZEOF;
+    }
+
+%DispatchSimd {
+        TRACE("\n** Built-in %%DispatchSimd ");
+        return BUILTIN_DISPATCH_SIMD_SIZE;
+    }
+
+
 %[[:alpha:]_][[:alnum:]_]* {
-        TRACE("\n** Predefined Var ");
+        // this matches %null, but lex prefers the first pattern
+        TRACE("\n** Builtin-in variable ");
         CISAlval.string = strdup(yytext);
-        return VAR;
-}
+        return BUILTIN;
+    }
 
 [[:alpha:]_][[:alnum:]_]* {
-        TRACE("\n** VAR ");
+        TRACE("\n** IDENTIFIER ");
         CISAlval.string = strdup(yytext);
-        return VAR;
+        return IDENT;
     }
 
 
@@ -891,11 +847,7 @@ V0 {
 
 [ \n\t]+"\\"\n {TRACE("\n** Multiple instructions in a line");}
 
-'<EOF>' {
-        TRACE("\n** End Of File");
-        CISAlval.file_end = true;
-        return FILE_EOF;
-    }
+    /* <<EOF>> {TRACE("\n** EOF_TOKEN"); return EOF_TOKEN;} */
 %%
 
 int yywrap() { return 1;}
@@ -933,6 +885,7 @@ static VISA_Type str2type(const char *str, int str_len)
 }
 
 
+
 // convert "z" to Mod_z
 static VISA_Cond_Mod str2cond(const char *str)
 {
@@ -954,7 +907,7 @@ static unsigned hexCharToDigit(char d)
     else if (d >= 'A' && d <= 'F')
         return d - 'A' + 10;
 
-    YY_FATAL_ERROR("Invalid Hex Digit");
+    YY_FATAL_ERROR("lexical error: invalid hex digit");
 
     return 0;
 }
@@ -963,7 +916,7 @@ static unsigned hexCharToDigit(char d)
 static int64_t hexToInt(const char *hex_str, int str_len)
 {
     if (str_len > 16) { // make sure is within 32 bits
-        YY_FATAL_ERROR("Hex number larger than 8 digits");
+        YY_FATAL_ERROR("lexical error: hex literal too long");
     }
 
     uint64_t result = 0;

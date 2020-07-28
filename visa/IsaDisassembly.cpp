@@ -306,9 +306,10 @@ std::string printVectorOperand(
         }
         case OPERAND_ADDRESSOF:
         {
-            sstr << "&" << printVariableDeclName(header, opnd.getOperandIndex(), opt, NOT_A_STATE_OPND)
-                 << (((short)opnd.opnd_val.addressof_opnd.addr_offset >= 0) ? "+" : "")
-                 << (((short)opnd.opnd_val.addressof_opnd.addr_offset));
+            sstr << "&" << printVariableDeclName(header, opnd.getOperandIndex(), opt, NOT_A_STATE_OPND);
+            if (opnd.opnd_val.addressof_opnd.addr_offset >= 0) {
+                sstr << "[" << (((short)opnd.opnd_val.addressof_opnd.addr_offset)) << "]";
+            }
             break;
         }
         case OPERAND_IMMEDIATE:
@@ -834,23 +835,29 @@ static std::string printInstructionCommon(
 
                     unsigned opnd_index = curOpnd.getOperandIndex();
 
-                    if(curOpnd.getOperandClass() == OPERAND_GENERAL)
+                    if (curOpnd.getOperandClass() == OPERAND_GENERAL)
                     {
                         uint32_t numPredefined = Get_CISA_PreDefined_Var_Count();
-                        VISA_Type type = opnd_index < numPredefined ? getPredefinedVarType(mapExternalToInternalPreDefVar(opnd_index)) :
+                        VISA_Type type = opnd_index < numPredefined ?
+                            getPredefinedVarType(mapExternalToInternalPreDefVar(opnd_index)) :
                             header->getVar(opnd_index - numPredefined)->getType();
-                        int offset = curOpnd.opnd_val.gen_opnd.col_offset *
-                                     CISATypeTable[type].typeSize +
-                                     curOpnd.opnd_val.gen_opnd.row_offset * G4_GRF_REG_NBYTES;
-                        sstr << "&" << printVariableDeclName( header, opnd_index, opt) << "+"
-                             << offset;
+                        sstr << "&" << printVariableDeclName(header, opnd_index, opt);
+                        int offset =
+                            curOpnd.opnd_val.gen_opnd.col_offset * CISATypeTable[type].typeSize +
+                            curOpnd.opnd_val.gen_opnd.row_offset * G4_GRF_REG_NBYTES;
+                        if (offset) {
+                            sstr << "[" << offset << "]";
+                        }
                     }
                     else if (curOpnd.getOperandClass() == OPERAND_STATE)
                     {
                         auto OpClass = curOpnd.getStateOpClass();
-                        sstr << "&" << printVariableDeclName(header, opnd_index, opt, OpClass) << "+"
-                             << curOpnd.opnd_val.state_opnd.offset *
-                                CISATypeTable[ISA_TYPE_D].typeSize;
+                        sstr << "&" << printVariableDeclName(header, opnd_index, opt, OpClass);
+                        int offset =
+                            curOpnd.opnd_val.state_opnd.offset * CISATypeTable[ISA_TYPE_D].typeSize;
+                        if (offset) {
+                            sstr << "[" << offset << "]";
+                        }
                     }
                     else
                     {

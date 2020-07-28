@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _BUILDCISAIR_H_
 
 #include <sstream>
+#include <cstdint>
 
 namespace vISA
 {
@@ -116,7 +117,6 @@ public:
         return criticalMsg.str();
     }
 
-    std::string    m_errorMessage;
 
     static void cat(std::stringstream &ss) { }
     template <typename T, typename...Ts>
@@ -125,6 +125,7 @@ public:
         cat(ss, ts...);
     }
 
+    std::string                 m_errorMessage;
     template <typename...Ts>
     void RecordParseError(int lineNum, Ts...ts)
     {
@@ -136,10 +137,26 @@ public:
         m_errorMessage = ss.str();
         criticalMsg << m_errorMessage << "\n";
     }
-
     bool HasParseError() const {return !m_errorMessage.empty();}
     std::string GetParseError() {return m_errorMessage;}
 
+    template <typename...Ts>
+    void RecordParseWarning(int lineNum, Ts...ts)
+    {
+        std::stringstream ss;
+        ss << "near line " << lineNum << ": ";
+        cat(ss, ts...);
+        m_warnings.push_back(ss.str());
+    }
+
+    std::vector<std::string>    m_warnings;
+    const std::vector<std::string> &GetWarnings() const {
+        return m_warnings;
+    }
+
+    /////////////////////////////////////////////////////
+    // holds the %DispatchSimdSize attribute
+    int    m_dispatchSimdSize = -1;
 
     const PWA_TABLE getWATable() { return m_pWaTable; }
 
@@ -151,8 +168,12 @@ public:
 
     Common_ISA_Input_Class get_input_class(Common_ISA_Var_Class var_class);
 
-    //CISA Build Functions
+    // CISA Build Functions
     bool CISA_IR_initialization(const char *kernel_name, int line_no);
+
+    bool CISA_lookup_builtin_constant(int lineNo, const char *symbol, int64_t &val);
+    bool CISA_eval_sizeof_decl(int lineNo, const char *arg, int64_t &val);
+
     bool CISA_general_variable_decl(
         const char * var_name,
         unsigned int var_elemts_num,
@@ -758,7 +779,7 @@ public:
         CISA_GEN_VAR * cisa_decl, unsigned char offset, short width, bool isDst);
     VISA_opnd * CISA_set_address_expression(CISA_GEN_VAR *cisa_decl, short offset);
     VISA_opnd * CISA_create_indirect(
-        CISA_GEN_VAR * cisa_decl,VISA_Modifier mod, unsigned short row_offset,
+        CISA_GEN_VAR * cisa_decl, VISA_Modifier mod, unsigned short row_offset,
         unsigned char col_offset, unsigned short immedOffset,
         unsigned short vertical_stride, unsigned short width,
         unsigned short horizontal_stride, VISA_Type type);
@@ -770,9 +791,10 @@ public:
         const char * var_name, unsigned char offset, int line_no, bool isDst);
     VISA_opnd * CISA_create_predicate_operand(
         CISA_GEN_VAR * var, VISA_PREDICATE_STATE state,
-        const char * pred_cntrl, int line_no);
+        VISA_PREDICATE_CONTROL pred_cntrl, int line_no);
     VISA_opnd * CISA_create_RAW_NULL_operand(int line_no);
-    VISA_opnd * CISA_create_RAW_operand(const char * var_name, unsigned short offset, int line_no);
+    VISA_opnd * CISA_create_RAW_operand(
+        const char * var_name, unsigned short offset, int line_no);
 
     void CISA_push_decl_scope();
     void CISA_pop_decl_scope();

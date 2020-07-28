@@ -780,6 +780,10 @@ void VISAKernelImpl::createReservedKeywordSet() {
         }
     }
 
+    // a mishmash of some of the other reserved words from the lexical
+    // specification
+    reservedNames.insert("FILE");
+    reservedNames.insert("LOC");
 }
 
 bool VISAKernelImpl::isReservedName(const std::string &nm) const {

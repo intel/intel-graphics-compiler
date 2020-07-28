@@ -818,10 +818,10 @@ VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, int execSize)
     return vISA_NUM_EMASK;
 }
 
-unsigned int Get_Gen4_Emask( VISA_EMask_Ctrl cisa_emask, int exec_size )
+unsigned int Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, int exec_size)
 {
 
-    switch( exec_size )
+    switch (exec_size)
     {
     case 32:
         switch (cisa_emask)
@@ -841,7 +841,7 @@ unsigned int Get_Gen4_Emask( VISA_EMask_Ctrl cisa_emask, int exec_size )
         break;
     case 16:
         {
-            switch( cisa_emask )
+            switch (cisa_emask)
             {
                 case vISA_EMASK_M1:
                     return InstOpt_M0;
@@ -859,7 +859,7 @@ unsigned int Get_Gen4_Emask( VISA_EMask_Ctrl cisa_emask, int exec_size )
         break;
     case 8:
         {
-            switch( cisa_emask )
+            switch (cisa_emask)
             {
                 case vISA_EMASK_M1:
                     return InstOpt_M0;
