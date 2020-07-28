@@ -419,8 +419,7 @@ private:
 
     G4_Declare *
     createPostDstSpillRangeDeclare (
-        G4_INST *         sendOut,
-        G4_DstRegRegion * spillRegion
+        G4_INST *         sendOut
     );
 
     G4_Declare *

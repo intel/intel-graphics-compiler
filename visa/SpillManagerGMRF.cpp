@@ -1265,21 +1265,29 @@ SpillManagerGRF::createTransientGRFRangeDeclare (
 }
 
 static unsigned short getSpillRowSizeForSendDst(
-    G4_INST *         inst,
-    G4_DstRegRegion * spilledRegion
+    G4_INST *         inst
 )
 {
     unsigned short nRows = 0;
+
+    auto dst = inst->getDst();
 
     if (inst->isSend())
     {
         G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
         nRows = msgDesc->ResponseLength();
+        if (dst->getTopDcl()->getByteSize() <= getGRFSize())
+        {
+            // we may have a send that that writes to a <1 GRF variable, but due to A64 message requirements
+            // the send has a response length > 1. We return row size as one instead as we've only allocated
+            // one GRF for the spilled variable in scratch space
+            nRows = 1;
+        }
     }
     else
     {
-        assert(spilledRegion->getLinearizedStart() % GENX_GRF_REG_SIZ == 0);
-        nRows = (spilledRegion->getLinearizedEnd() - spilledRegion->getLinearizedStart() + 1) / GENX_GRF_REG_SIZ;
+        assert(dst->getLinearizedStart() % GENX_GRF_REG_SIZ == 0);
+        nRows = (dst->getLinearizedEnd() - dst->getLinearizedStart() + 1) / GENX_GRF_REG_SIZ;
     }
     return nRows;
 }
@@ -1292,18 +1300,18 @@ static unsigned short getSpillRowSizeForSendDst(
 
 G4_Declare *
 SpillManagerGRF::createPostDstSpillRangeDeclare (
-    G4_INST *         sendOut,
-    G4_DstRegRegion * spilledRegion
+    G4_INST *         sendOut
 )
 {
-    G4_RegVar * spilledRegVar = getRegVar (spilledRegion);
+    auto dst = sendOut->getDst();
+    G4_RegVar * spilledRegVar = getRegVar (dst);
     const char * name =
         createImplicitRangeName (
             "SP_GRF", spilledRegVar, getSpillIndex (spilledRegVar));
-    unsigned short nRows = getSpillRowSizeForSendDst(sendOut, spilledRegion);
+    unsigned short nRows = getSpillRowSizeForSendDst(sendOut);
 
       G4_DstRegRegion * normalizedPostDst = builder_->createDst(
-        spilledRegVar, spilledRegion->getRegOff (), SUBREG_ORIGIN,
+        spilledRegVar, dst->getRegOff (), SUBREG_ORIGIN,
         DEF_HORIZ_STRIDE, Type_UD);
 
     // We use the width as the user specified, the height however is
@@ -3170,7 +3178,7 @@ SpillManagerGRF::insertSpillRangeCode (
         INST_LIST::iterator sendOutIter = spilledInstIter;
         assert (getRFType (spilledRegion) == G4_GRF);
         G4_Declare * spillRangeDcl =
-            createPostDstSpillRangeDeclare (*sendOutIter, spilledRegion);
+            createPostDstSpillRangeDeclare (*sendOutIter);
         G4_Declare * mRangeDcl =
             createAndInitMHeader (
                 (G4_RegVarTransient *) spillRangeDcl->getRegVar ());
