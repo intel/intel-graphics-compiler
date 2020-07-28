@@ -1501,9 +1501,10 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* var
     attr->nameIndex = addStringPool(std::string(varName));
     attr->isInt = Attributes::isIntNonKernelAttribute(Attributes::getAttributeID(varName));
 
+    attr->size = (uint8_t)size;
     if (attr->isInt)
     {
-        attr->value.intVal = *((int*)val);
+        attr->value.intVal = val ? *((int*)val) : 0;
         assert(attr->size <= 4 && "Int attribute has a value of 4 bytes at most!");
     }
     else
@@ -1512,7 +1513,6 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* var
         memcpy_s(temp, size, val, size);
         attr->value.stringVal = (char*)temp;
     }
-    attr->size = (uint8_t)size;
 
     switch(decl->type)
     {
