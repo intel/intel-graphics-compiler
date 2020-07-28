@@ -224,62 +224,14 @@ Argument* CImagesBI::CImagesUtils::findImageFromBufferPtr(const MetaDataUtils& M
 Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst, unsigned int paramIndex, const MetaDataUtils* pMdUtils, const IGC::ModuleMetaData* modMD)
 {
     std::vector<ConstantInt*> gepIndices;
-
-    std::function<Value* (Value*)> track = [&track](Value* pVal) -> Value *
-    {
-        for (auto U : pVal->users())
-        {
-            if (auto * GEP = dyn_cast<GetElementPtrInst>(U))
-            {
-                if (!GEP->hasAllZeroIndices())
-                    continue;
-
-                if (auto * leaf = track(GEP))
-                    return leaf;
-            }
-            else if (CastInst * inst = dyn_cast<CastInst>(U))
-            {
-                if (auto * leaf = track(inst))
-                    return leaf;
-            }
-            else if (auto * ST = dyn_cast<StoreInst>(U))
-            {
-                return ST->getValueOperand();
-            }
-        }
-
-        return nullptr;
-    };
-
-    std::function<Value* (Value*)> findAlloca = [&](Value* pVal) -> Value *
-    {
-        if (auto * GEP = dyn_cast<GetElementPtrInst>(pVal))
-        {
-            if (!GEP->hasAllConstantIndices())
-                return nullptr;
-
-            for (unsigned int i = GEP->getNumIndices(); i > 1; --i)
-                gepIndices.push_back(cast<ConstantInt>(GEP->getOperand(i)));
-
-            if (auto * leaf = findAlloca(GEP->getOperand(0)))
-                return leaf;
-        }
-        else if (CastInst * inst = dyn_cast<CastInst>(pVal))
-        {
-            if (auto * leaf = findAlloca(inst->getOperand(0)))
-                return leaf;
-        }
-        else if (auto * allocaInst = dyn_cast<AllocaInst>(pVal))
-        {
-            return allocaInst;
-        }
-        return nullptr;
-    };
-
     using VisitedValuesSetType = SmallPtrSet<Value*, 10>;
-    std::function<Value*(Value*, unsigned int, VisitedValuesSetType)> findArgument =
-        [&](Value* pVal, unsigned int depth, VisitedValuesSetType visitedValues) -> Value *
+    VisitedValuesSetType visitedValues;
 
+    // This lambda looks for the value stored into alloca. A specific case here is that
+    // alloca can contain pointer instead of value. In such case, we also looks into another allocas
+    // containing the same pointer.
+    std::function<Value*(Value*, unsigned int)> findArgument =
+        [&](Value* pVal, unsigned int depth) -> Value *
     {
         if (!pVal) return nullptr;
 
@@ -294,11 +246,12 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                 if (!GEP->hasAllConstantIndices())
                     return nullptr;
 
-                if (GEP->getNumIndices() > depth + 1)
+                unsigned numIndices = GEP->getNumIndices();
+                if (numIndices > depth + 1)
                     continue;
 
                 bool matchingGep = false;
-                for (unsigned int i = 1; i < GEP->getNumIndices(); ++i)
+                for (unsigned int i = 1; i < numIndices; ++i)
                 {
                     if (gepIndices[depth - i]->getZExtValue() == cast<ConstantInt>(GEP->getOperand(i + 1))->getZExtValue())
                         matchingGep = true;
@@ -312,25 +265,57 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                 if (!matchingGep)
                     continue;
 
-                if (auto * leaf = findArgument(GEP, depth - (GEP->getNumIndices() - 1), visitedValues))
+                unsigned reducedIndices = numIndices - 1;
+                if (auto * leaf = findArgument(GEP, depth - reducedIndices))
+                {
+                    IGC_ASSERT(gepIndices.size() >= reducedIndices);
+                    gepIndices.resize(gepIndices.size() - reducedIndices);
                     return leaf;
+                }
             }
             else if (CastInst * inst = dyn_cast<CastInst>(U))
             {
-                if (auto * leaf = findArgument(inst, depth, visitedValues))
+                if (auto * leaf = findArgument(inst, depth))
                     return leaf;
             }
             else if (CallInst * callInst = dyn_cast<CallInst>(U))
             {
                 if (callInst->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy)
                 {
-                    if (auto * leaf = findArgument(findAlloca(callInst->getOperand(1)), depth, visitedValues))
+                    return callInst->getOperand(1);
+                }
+            }
+            else if (LoadInst * loadInst = dyn_cast<LoadInst>(U))
+            {
+                // Continue tracing load if it's type is a pointer. Example(tracing %1 alloca value):
+                // %0 = alloca %opencl.image2d_t.read_only addrspace(1)*, align 8
+                // %1 = alloca %opencl.image2d_t.read_only addrspace(1)*, align 8
+                // %2 = load %opencl.image2d_t.read_only addrspace(1)*, %opencl.image2d_t.read_only addrspace(1)** %1, align 8
+                // store %opencl.image2d_t.read_only addrspace(1)* %2, %opencl.image2d_t.read_only addrspace(1)** %0, align 8
+                // %3 = load % opencl.image2d_t.read_only addrspace(1)*, %opencl.image2d_t.read_only addrspace(1)** %0, align 8
+                // We cannot ignore load if alloca type is a pointer.
+                if (loadInst->getType()->isPointerTy())
+                {
+                    if (auto * leaf = findArgument(loadInst, depth))
                         return leaf;
                 }
             }
             else if (auto * ST = dyn_cast<StoreInst>(U))
             {
-                return ST->getValueOperand();
+                Value* V = ST->getValueOperand();
+                if (V == pVal)
+                {
+                    // If we are here, it means that alloca value is stored into another alloca.
+                    // Check if value is pointer type, if so, it means that our object can be accessed
+                    // through another alloca and we need to continue tracing it.
+                    if (V->getType()->isPointerTy())
+                    {
+                        if (auto * leaf = findArgument(ST->getPointerOperand(), depth))
+                            return leaf;
+                    }
+                }
+                else
+                    return ST->getValueOperand();
             }
         }
         return nullptr;
@@ -339,6 +324,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
     Value* baseValue = pCallInst->getOperand(paramIndex);
     while (true)
     {
+        visitedValues.insert(baseValue);
         if (isa<Argument>(baseValue))
         {
             // Reached an Argument, return it.
@@ -458,6 +444,38 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                 }
             }
         }
+        else if (AllocaInst * alloca = dyn_cast<AllocaInst>(baseValue))
+        {
+            auto* pArg = findArgument(alloca, gepIndices.size());
+            if (pArg)
+            {
+                if ((isa<Argument>(pArg) || isa<ConstantInt>(pArg)))
+                {
+                    return pArg;
+                }
+                else
+                {
+                    baseValue = pArg;
+                    continue;
+                }
+            }
+            else
+            {
+                // Cannot trace, it could be a bindless or indirect access
+                return nullptr;
+            }
+        }
+        else if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(baseValue))
+        {
+            if (!gep->hasAllConstantIndices())
+                return nullptr;
+
+            for (unsigned int i = gep->getNumIndices(); i > 1; --i)
+                gepIndices.push_back(cast<ConstantInt>(gep->getOperand(i)));
+
+            baseValue = gep->getOperand(0);
+            continue;
+        }
         else if (LoadInst * load = dyn_cast<LoadInst>(baseValue))
         {
             // Found a LoadInst, it could be
@@ -477,59 +495,16 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                     pSamplerVal->getAggregateElement(0U) : pSamplerVal;
             }
 
-            // Simple case:
-            // If, after stripping casts and zero GEPs, we make it to alloca then the base of that alloca must contain the image.
-            // track() will walk through casts and zero GEPs that don't change the offset of the pointer until arriving at the store
-            // (assuming it is the only store to that location for an image) whose value should be the image argument.
-            Value* pVal = addr->stripPointerCasts();
-            if (isa<AllocaInst>(pVal))
+            if (isa<LoadInst>(addr) ||
+                isa<AllocaInst>(addr) ||
+                isa<GetElementPtrInst>(addr))
             {
-                auto* pArg = track(pVal);
-                if (pArg)
-                {
-                    if ((isa<Argument>(pArg) || isa<ConstantInt>(pArg)))
-                    {
-                        return pArg;
-                    }
-                    else if (isa<LoadInst>(pArg))
-                    {
-                        // If tracked value is load instruction, it means that 'pVal' alloca uses value from another alloca.
-                        // Let's make a try to recursively track argument stored into that another alloca.
-                        baseValue = pArg;
-                        continue;
-                    }
-                }
-            }
-
-            // More complicated case:
-            // We need to go through non-zero GEPs, memcpys and casts to reach an argument.
-            // In the same time we need to track the indices for geps as there might be more loads/stores to given alloca.
-            if (GetElementPtrInst * getElementPtr = dyn_cast<GetElementPtrInst>(addr))
-            {
-                addr = findAlloca(getElementPtr);
-                if (addr && isa<AllocaInst>(addr))
-                {
-                    VisitedValuesSetType visitedValues;
-                    auto* pArg = findArgument(addr, gepIndices.size(), visitedValues);
-                    if (pArg && isa<Argument>(pArg))
-                    {
-                        return pArg;
-                    }
-                    else
-                    {
-                        // Cannot trace, it could be indirect access
-                        return nullptr;
-                    }
-                }
-                else
-                {
-                    // Cannot trace, it could be indirect access
-                    return nullptr;
-                }
+                baseValue = addr;
+                continue;
             }
             else
             {
-                IGC_ASSERT_MESSAGE(getElementPtr, "Expected GEP instruction.");
+                IGC_ASSERT_MESSAGE(0, "Unexpected instruction");
                 return nullptr;
             }
         }
