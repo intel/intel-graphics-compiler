@@ -147,8 +147,6 @@ class Optimizer
     void cselPeepHoleOpt();
     void regAlloc();
     void insertFallThroughJump();
-    void chkRegBoundary();
-    bool chkOpndBoundary(G4_INST *inst, G4_Operand *opnd);
     void reverseOffsetProp(
             AddrSubReg_Node addrRegInfo[8],
             int subReg,
@@ -163,9 +161,7 @@ class Optimizer
     bool foldCmpToCondMod(G4_BB* BB, INST_LIST_ITER& iter);
     void HWWorkaround();
     void preRA_HWWorkaround();
-    void NoSrcDepSet();
     void normalizeRegion();
-    void NoDD();
     void initializePayload();
     void dumpPayload();
     void collectStats();
@@ -316,7 +312,6 @@ public:
         PI_preRA_HWWorkaround,         // always, each WA under specific control
         PI_preRA_Schedule,
         PI_regAlloc,                   // always
-        PI_NoDD,
         PI_removeLifetimeOps,          // always
         PI_countBankConflicts,
         PI_removeRedundMov,            // always
@@ -325,10 +320,8 @@ public:
         PI_reassignBlockIDs,           // always
         PI_evalAddrExp,                // always
         PI_FoldAddrImmediate,
-        PI_chkRegBoundary,
         PI_localSchedule,
         PI_HWWorkaround,               // always
-        PI_NoSrcDepSet,                // always
         PI_insertInstLabels,           // always
         PI_insertHashMovs,
         PI_insertDummyCompactInst,

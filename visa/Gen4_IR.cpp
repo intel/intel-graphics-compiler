@@ -3010,49 +3010,49 @@ bool G4_INST::goodTwoGRFDst( bool& evenSplitDst )
 // check if there is WAW, WAR, RAW dependency between the passing-in inst and this instruction
 // there is no check for the case that two instructions are both send, since these checks are
 // only used in def-joisting and copy propagation
-bool G4_INST::isWARdep( G4_INST *inst )
+bool G4_INST::isWARdep(G4_INST* inst)
 {
-    G4_Operand *msg0 = NULL;
-    G4_Operand *src0_0 = inst->getSrc( 0 );
-    G4_Operand *src0_1 = inst->getSrc( 1 );
-    G4_Operand *src0_2 = inst->getSrc( 2 );
-    G4_Operand *implicitSrc0   = inst->getImplAccSrc();
-    G4_Predicate *pred0   = inst->getPredicate();
+    G4_Operand* msg0 = NULL;
+    G4_Operand* src0_0 = inst->getSrc(0);
+    G4_Operand* src0_1 = inst->getSrc(1);
+    G4_Operand* src0_2 = inst->getSrc(2);
+    G4_Operand* implicitSrc0 = inst->getImplAccSrc();
+    G4_Predicate* pred0 = inst->getPredicate();
 
-    G4_Operand *dst1 = this->dst;
+    G4_Operand* dst1 = this->dst;
 
-    if( dst1 && !this->hasNULLDst() )
+    if (dst1 && !this->hasNULLDst())
     {
 
-        if( //checkDst0 && ( dependency = DoInterfere( dst0, dst1, RET_WAR, noDDChkMode ) ) ||
-            ( src0_0 && src0_0->compareOperand( dst1 ) != Rel_disjoint ) ||
-            ( src0_1 && src0_1->compareOperand( dst1 ) != Rel_disjoint ) ||
-            ( src0_2 && src0_2->compareOperand( dst1 ) != Rel_disjoint ) ||
-            ( msg0 && ( msg0->compareOperand( dst1 ) != Rel_disjoint ) ) ||
-            ( pred0 && ( pred0->compareOperand( dst1 ) != Rel_disjoint ) ) ||
-            ( implicitSrc0 && ( implicitSrc0->compareOperand( dst1 ) != Rel_disjoint ) ) )
+        if (
+            (src0_0 && src0_0->compareOperand(dst1) != Rel_disjoint) ||
+            (src0_1 && src0_1->compareOperand(dst1) != Rel_disjoint) ||
+            (src0_2 && src0_2->compareOperand(dst1) != Rel_disjoint) ||
+            (msg0 && (msg0->compareOperand(dst1) != Rel_disjoint)) ||
+            (pred0 && (pred0->compareOperand(dst1) != Rel_disjoint)) ||
+            (implicitSrc0 && (implicitSrc0->compareOperand(dst1) != Rel_disjoint)))
         {
             return true;
         }
     }
 
-    if( mod )
+    if (mod)
     {
-        if( ( pred0 && pred0->compareOperand( mod ) != Rel_disjoint ) ||
-            ( src0_0 && src0_0->isFlag() && src0_0->compareOperand( mod ) != Rel_disjoint ) ||
-            ( src0_1 && src0_1->isFlag() && src0_1->compareOperand( mod ) != Rel_disjoint ) ||
-            ( src0_2 && src0_2->isFlag() && src0_2->compareOperand( mod ) != Rel_disjoint ) )
+        if ((pred0 && pred0->compareOperand(mod) != Rel_disjoint) ||
+            (src0_0 && src0_0->isFlag() && src0_0->compareOperand(mod) != Rel_disjoint) ||
+            (src0_1 && src0_1->isFlag() && src0_1->compareOperand(mod) != Rel_disjoint) ||
+            (src0_2 && src0_2->isFlag() && src0_2->compareOperand(mod) != Rel_disjoint))
         {
             return true;
         }
     }
 
-    if( this->implAccDst )
+    if (this->implAccDst)
     {
-        if( ( implicitSrc0 && implicitSrc0->compareOperand( implAccDst ) != Rel_disjoint ) ||
-            ( src0_0 && src0_0->isAccReg() && src0_0->compareOperand( implAccDst ) != Rel_disjoint ) ||
-            ( src0_1 && src0_1->isAccReg() && src0_1->compareOperand( implAccDst ) != Rel_disjoint ) ||
-            ( src0_2 && src0_2->isAccReg() && src0_2->compareOperand( implAccDst ) != Rel_disjoint ) )
+        if ((implicitSrc0 && implicitSrc0->compareOperand(implAccDst) != Rel_disjoint) ||
+            (src0_0 && src0_0->isAccReg() && src0_0->compareOperand(implAccDst) != Rel_disjoint) ||
+            (src0_1 && src0_1->isAccReg() && src0_1->compareOperand(implAccDst) != Rel_disjoint) ||
+            (src0_2 && src0_2->isAccReg() && src0_2->compareOperand(implAccDst) != Rel_disjoint))
         {
             return true;
         }
