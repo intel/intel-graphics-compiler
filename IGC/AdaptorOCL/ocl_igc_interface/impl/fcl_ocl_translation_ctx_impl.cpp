@@ -55,40 +55,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC {
 
-OclTranslationOutputBase *CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 1)::TranslateImpl(
-                                                CIF::Version_t outVersion,
-                                                CIF::Builtins::BufferSimple *src,
-                                                CIF::Builtins::BufferSimple *options,
-                                                CIF::Builtins::BufferSimple *internalOptions,
-                                                CIF::Builtins::BufferSimple *tracingOptions,
-                                                uint32_t tracingOptionsCount) {
+OclTranslationOutputBase *
+CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 1)::TranslateImpl(
+        CIF::Version_t outVersion,
+        CIF::Builtins::BufferSimple *src,
+        CIF::Builtins::BufferSimple *options,
+        CIF::Builtins::BufferSimple *internalOptions,
+        CIF::Builtins::BufferSimple *tracingOptions,
+        uint32_t tracingOptionsCount) {
+
     return CIF_GET_PIMPL()->Translate(outVersion, src, options, internalOptions,
                                       tracingOptions, tracingOptionsCount);
 }
 
 }
-
-#ifdef _WIN32
-#include <Windows.h>
-EXTERN_C IMAGE_DOS_HEADER __ImageBase;
-std::string getCurrentLibraryPath() {
-    char path[4096] = {};
-    ::GetModuleFileName(reinterpret_cast<HINSTANCE>(&__ImageBase), path, sizeof(path));
-    return path;
-}
-
-std::string getCmInsideUsrIncludePath(){
-    return std::string();
-}
-#else
-std::string getCurrentLibraryPath() {
-    return std::string();
-}
-
-std::string getCmInsideUsrIncludePath() {
-    return "/usr/include/cm";
-}
-#endif
 
 namespace IGC {
 
@@ -384,4 +364,5 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
 }
 
 }
+
 #include "cif/macros/disable.h"
