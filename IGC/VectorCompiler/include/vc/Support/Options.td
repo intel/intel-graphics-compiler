@@ -60,15 +60,15 @@ def optimize : Separate<["-"], "optimize">,
   HelpText<"Set optimization level to either 'none' or 'full'">,
   MetaVarName<"<level>">;
 def optimize_eq : Joined<["-"], "optimize=">,
-  Alias<optimize>;
+  Alias<optimize>, HelpText<"Alias for -optimize">;
 def no_optimize : Flag<["-"], "no-optimize">,
-  Alias<optimize>, AliasArgs<["none"]>;
+  Alias<optimize>, AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
 
 def no_vector_decomposition : Flag<["-"], "no-vector-decomposition">,
   HelpText<"Disable vector decomposition pass">;
 // Old igcmc alias.
 def no_vector_decomposition_old : Flag<["-"], "no_vector_decomposition">,
-  Alias<no_vector_decomposition> {
+  Alias<no_vector_decomposition>, HelpText<"Alias for -no-vector-decomposition"> {
   let Flags = [ApiOption, IgcmcApiOption];
 }
 
