@@ -24,8 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef IGCLLVM_SUPPORT_TOOLOUTPUTFILE_H
-#define IGCLLVM_SUPPORT_TOOLOUTPUTFILE_H
+#ifndef IGCLLVM_SUPPORT_MATHEXTRAS_H
+#define IGCLLVM_SUPPORT_MATHEXTRAS_H
 
 #include <llvm/Support/MathExtras.h>
 
