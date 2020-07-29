@@ -4142,7 +4142,6 @@ void HWConformity::fixMADInst(G4_BB* bb)
         G4_Operand* src0 = inst->getSrc(0), * src1 = inst->getSrc(1), * src2 = inst->getSrc(2);
 
         bool conforming_genx_mad = true;
-        bool generate_genx_mac;
 
         if (exec_size > builder.getNativeExecSize() * 2)
         {
@@ -4181,16 +4180,7 @@ void HWConformity::fixMADInst(G4_BB* bb)
             }
         }
 
-        // Translate the LF MAD to an equivalent GenX sequence.
-        if (builder.getOption(vISA_LocalMACopt))
-        {
-            generate_genx_mac = true;
-        }
-        else
-        {
-            generate_genx_mac = false;
-        }
-
+        bool generate_genx_mac = false;
         if (IS_TYPE_FLOAT_ALL(dst->getType()) && exec_size > 8)
         {
             // no float mac following the original code
