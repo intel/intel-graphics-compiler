@@ -349,7 +349,7 @@ static Type *GetBaseType(Type *pType, Type *pBaseType) {
     }
   }
   if (pType->isPointerTy() && pType->getPointerElementType()->isFunctionTy())
-    pType = IntegerType::getInt8Ty(pType->getContext());
+    pType = IntegerType::getInt64Ty(pType->getContext());
   return pType;
 }
 
@@ -767,25 +767,29 @@ void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore,
   if (VETy != StTy && !IsFuncPointerStore) {
     auto VLen = pLoadVecAlloca->getType()->getVectorNumElements();
     assert(VETy->getScalarSizeInBits() >= StTy->getScalarSizeInBits());
-    assert((VETy->getScalarSizeInBits()%StTy->getScalarSizeInBits()) == 0);
+    assert((VETy->getScalarSizeInBits() % StTy->getScalarSizeInBits()) == 0);
     VLen = VLen * (VETy->getScalarSizeInBits() / StTy->getScalarSizeInBits());
     WriteOut = IRB.CreateBitCast(WriteOut, VectorType::get(StTy, VLen));
   }
   if (IsFuncPointerStore) {
     auto *NewStoreVal = pStoreVal;
-    assert(pVecAlloca->getType()->getPointerElementType()->getVectorElementType()->isIntegerTy(8));
+    assert(pVecAlloca->getType()
+               ->getPointerElementType()
+               ->getVectorElementType()
+               ->isIntegerTy(64));
     if (NewStoreVal->getType()->isPointerTy() &&
         NewStoreVal->getType()->getPointerElementType()->isFunctionTy()) {
-      NewStoreVal = IRB.CreatePtrToInt(NewStoreVal, IntegerType::get(pStore->getContext(), 64));
-      NewStoreVal = IRB.CreateBitCast(NewStoreVal, VectorType::get(VETy, 8));
+      NewStoreVal = IRB.CreatePtrToInt(
+          NewStoreVal, IntegerType::getInt64Ty(pStore->getContext()));
     }
     Region R(NewStoreVal, m_pDL);
     if (!pScalarizedIdx->getType()->isIntegerTy(16)) {
-      pScalarizedIdx = IRB.CreateZExtOrTrunc(pScalarizedIdx, Type::getInt16Ty(pStore->getContext()));
+      pScalarizedIdx = IRB.CreateZExtOrTrunc(
+          pScalarizedIdx, Type::getInt16Ty(pStore->getContext()));
     }
     R.Indirect = pScalarizedIdx;
-    WriteOut = R.createWrRegion(WriteOut, NewStoreVal, pStore->getName(), pStore,
-                     pStore->getDebugLoc());
+    WriteOut = R.createWrRegion(WriteOut, NewStoreVal, pStore->getName(),
+                                pStore, pStore->getDebugLoc());
   } else if (pStoreVal->getType()->isVectorTy()) {
     // A vector store
     // store <2 x float> %v, <2 x float>* %ptr
