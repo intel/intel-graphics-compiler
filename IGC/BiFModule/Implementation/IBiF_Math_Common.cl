@@ -37,7 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern __constant int __FlushDenormals;
 extern __constant int __FastRelaxedMath;
 extern __constant int __APIRS;
-extern __constant int __APIAIR;
 extern __constant int __SVML;
 extern __constant int __CRMacros;
 
