@@ -954,118 +954,205 @@ void CompileUnit::addSLMLocation(DIEBlock* Block, VISAVariableLocation* Loc)
 // addSimdLane - add a sequence of attributes to calculate location of vectorized variable
 // among SIMD lanes, e.g. a GRF subregister.
 //
-// Example of expression generated for 32-bit variables located in GRF:
-// (note: DW_OP_regx N is generated earlier, i.e. prior to addSimdLane())
+// CASE 1: Example of expression generated for 64-bit (or 32-bit) ptr to a variable,
+// which is located in scratch: (note: DW_OP_const8u address is generated earlier)
 // DW_OP_INTEL_push_simd_lane
-// DW_OP_lit5
-// DW_OP_shl
-// DW_OP_const1u 32
-// DW_OP_INTEL_bit_piece_stack
-//
-// Example of expression generated for 64-bit variable, which is located in memory:
-// (note: DW_OP_bregx N is generated earlier)
-// DW_OP_INTEL_push_simd_lane
-// DW_OP_lit6
-// DW_OP_shl
-// DW_OP_plus
-// (note: no deref is emitted for bregx)
-
-// Example of expression generated for (64-bit) ptr to a variable, which is located in scratch:
-// (note: DW_OP_const8u address is generated earlier)
-// DW_OP_INTEL_push_simd_lane
-// DW_OP_lit6
+// DW_OP_lit6 (or lit5 for 32-bit ptr)
 // DW_OP_shl
 // DW_OP_plus
 // DW_OP_deref
-void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc, bool isPacked)
+//
+// CASE 2: Example of expressions generated for 64-bit ptr addresses in SIMD8 or SIMD16:
+// 1 DW_OP_INTEL_push_simd_lane
+// 2 DW_OP_lit2
+// 3 DW_OP_shr
+// 4 DW_OP_plus_uconst(<n> +16)
+// 5 DW_OP_INTEL_regs
+// 6 DW_OP_INTEL_push_simd_lane
+// 7 DW_OP_lit3
+// 8 DW_OP_and
+// 9 DW_OP_const1u 64
+// 10 DW_OP_mul
+// 11 DW_OP_const1u 64
+// 12 DW_OP_INTEL_push_bit_piece_stack
+//
+// CASE 3: Example of expressions generated for 32-bit ptr in SIMD8 or SIMD16
+// 1 DW_OP_INTEL_push_simd_lane
+// 2 DW_OP_lit3
+// 3 DW_OP_shr
+// 4 DW_OP_plus_uconst(<n> +16)
+// 5 DW_OP_INTEL_regs
+// 6 DW_OP_INTEL_push_simd_lane
+// 7 DW_OP_lit7
+// 8 DW_OP_and
+// 9 DW_OP_const1u 32
+// 10 DW_OP_mul
+// 11 DW_OP_const1u 32  (or 16 or 8)
+// 12 DW_OP_INTEL_bit_piece_stack
+//
+// CASE 4: Example of expression generated for 64-bit or 32-bit or
+// 16-bit packed or 8-bit packed variable in SIMD8 or SIMD16:
+// 1 DW_OP_INTEL_push_simd_lane
+// 2 DW_OP_lit2 or lit3 or lit4 or lit5 respectively for 64/32/16/8 bit variable
+// 3 DW_OP_shr
+// 4 DW_OP_plus_uconst(<n> +16)
+// 5 DW_OP_INTEL_regs
+// 6 DW_OP_INTEL_push_simd_lane
+// 7 DW_OP_lit3 or lit7 or lit15 or lit31 respectively for 64/32/16/8 bit variable
+// 8 DW_OP_and
+// 9 DW_OP_const1u 64 or 32 or 16 or 8
+// 10 DW_OP_mul
+// 11 DW_OP_const1u 64 or 32 or 16 or 8
+// 12 DW_OP_INTEL_bit_piece_stack
+//
+// CASE 5: Example of expression generated for 16-bit or 8-bit variable unpacked
+// in SIMD8 or SIMD16:
+// 1 DW_OP_INTEL_push_simd_lane
+// 2 DW_OP_lit3
+// 3 DW_OP_shr
+// 4 DW_OP_plus_uconst(<n> +16)
+// 5 DW_OP_INTEL_regs
+// 6 DW_OP_INTEL_push_simd_lane
+// 7 DW_OP_lit7
+// 8 DW_OP_and
+// 9 DW_OP_const1u 32
+// 10 DW_OP_mul
+// 11 DW_OP_const1u 16 or 8
+// 12 DW_OP_INTEL_bit_piece_stack
+//
+void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc, DbgDecoder::VarInfo* varInfo, bool isPacked)
 {
     if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging) && Loc->IsVectorized())
     {
         // SIMD lane
-        uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
+        auto regNum = Loc->GetRegister();
+        auto VISAMod = const_cast<VISAModule*>(Loc->GetVISAModule());
+        uint16_t SIMDsize = VISAMod->GetSIMDSize();
 
+        uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
         IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
 
-        addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
+        IGC_ASSERT_MESSAGE((SIMDsize == 8) || (SIMDsize == 16), "Unsupported SIMD32 mode");
 
-        if (varSizeInBits <= 32)
+        if (Loc->IsInMemory() && (varInfo->lrs.front().isSpill()))
         {
-            if (!isPacked || (varSizeInBits == 32))
+            // CASE 1: Example of expression generated for 64-bit or 32-bit ptr to a variable,
+            // which is located in scratch:
+            // (note: DW_OP_const8u address is generated earlier)
+            // DW_OP_INTEL_push_simd_lane
+            // DW_OP_lit6 (or DW_OP_lit5 for 32-bit ptr)
+            // DW_OP_shl
+            // DW_OP_plus
+            // DW_OP_deref
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
+            dwarf::LocationAtom litOP = (varSizeInBits == 64) ? dwarf::DW_OP_lit6 : dwarf::DW_OP_lit5;
+            IGC_ASSERT_MESSAGE((varSizeInBits == 32) || (varSizeInBits == 64), "Unexpected ptr size");
+
+            addUInt(Block, dwarf::DW_FORM_data1, litOP);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_shl);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
+        }
+        else
+        {
+            auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(regNum);
+
+            IGC_ASSERT_MESSAGE((varSizeInBits == 32) || (varSizeInBits == 64), "Unexpected ptr size");
+
+            // CASE 2 and CASE 3: Expressions generated for 64-bit (or 32-bit) bit ptr addresses in SIMD8 or SIMD16:
+            // 1 DW_OP_INTEL_push_simd_lane
+            // 2 DW_OP_lit2 (CASE 3: lit3)
+            // 3 DW_OP_shr
+            // 4 DW_OP_plus_uconst(<n> +16)
+            // 5 DW_OP_INTEL_regs
+            // 6 DW_OP_INTEL_push_simd_lane
+            // 7 DW_OP_lit3 (CASE 3: lit7)
+            // 8 DW_OP_and
+            // 9 DW_OP_const1u 64 (CASE 3: 32)
+            // 10 DW_OP_mul
+            // 11 DW_OP_const1u 64 (CASE 3: 32)
+            // 12 DW_OP_INTEL_push_bit_piece_stack
+            //
+            // CASE 4: Example of expression generated for 64-bit or 32-bit or
+            // 16-bit packed or 8-bit packed variable in SIMD8 or SIMD16:
+            // 1 DW_OP_INTEL_push_simd_lane
+            // 2 DW_OP_lit2 or lit3 or lit4 or lit5 respectively for 64/32/16/8 bit variable
+            // 3 DW_OP_shr
+            // 4 DW_OP_plus_uconst(<n> +16)
+            // 5 DW_OP_INTEL_regs
+            // 6 DW_OP_INTEL_push_simd_lane
+            // 7 DW_OP_lit3 or lit7 or lit15 or lit31 respectively for 64/32/16/8 bit variable
+            // 8 DW_OP_and
+            // 9 DW_OP_const1u 64 or 32 or 16 or 8
+            // 10 DW_OP_mul
+            // 11 DW_OP_const1u 64 or 32 or 16 or 8
+            // 12 DW_OP_INTEL_bit_piece_stack
+            //
+            // CASE 5: Example of expression generated for 16-bit or 8-bit variable unpacked
+            // in SIMD8 or SIMD16:
+            // 1 DW_OP_INTEL_push_simd_lane
+            // 2 DW_OP_lit3
+            // 3 DW_OP_shr
+            // 4 DW_OP_plus_uconst(<n> +16)
+            // 5 DW_OP_INTEL_regs
+            // 6 DW_OP_INTEL_push_simd_lane
+            // 7 DW_OP_lit7
+            // 8 DW_OP_and
+            // 9 DW_OP_const1u 32
+            // 10 DW_OP_mul
+            // 11 DW_OP_const1u 16 or 8
+            // 12 DW_OP_INTEL_piece_stack
+
+            dwarf::LocationAtom litForSubReg = dwarf::DW_OP_lit2;   // If 64-bit ptr or variable
+            dwarf::LocationAtom litForSIMDlane = dwarf::DW_OP_lit3; // If 64-bit ptr or variable
+            uint64_t bitsUsedByVar = varSizeInBits;                 // If unpacked then small variable uses 32 bits
+            if ((varSizeInBits == 32) || ((varSizeInBits < 32) && !isPacked))
             {
-                // If not directly in a register then fp16/int16/fp8/int8 unpacked in 32-bit subregister
-                // as well as 32-bit float/int.
-                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit5);
+                litForSubReg = dwarf::DW_OP_lit3;
+                litForSIMDlane = dwarf::DW_OP_lit7;
+                bitsUsedByVar = 32;
+            }
+            else if (varSizeInBits == 16)
+            {
+                IGC_ASSERT_MESSAGE(isPacked, "16-bit packed variable expected");
+                litForSubReg = dwarf::DW_OP_lit4;
+                litForSIMDlane = dwarf::DW_OP_lit15;
+            }
+            else if (varSizeInBits == 8)
+            {
+                IGC_ASSERT_MESSAGE(isPacked, "8-bit packed variable expected");
+                litForSubReg = dwarf::DW_OP_lit5;
+                litForSIMDlane = dwarf::DW_OP_lit31;
             }
             else
             {
-                // If directly in a register then fp16/int16/fp8/int8 packed:
-                // Two 16-bit float/int in 32-bit subregister, or
-                // Four 8-bit float/int in 32-bit subregister.
-                if (varSizeInBits == 16)
-                {
-                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit4);
-                }
-                else
-                {
-                    IGC_ASSERT_MESSAGE(varSizeInBits == 8, "Unexpected packed variable's size");
-                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit3);
-                }
+                // Nothing to do else for 64-bit variable or ptr
+                IGC_ASSERT_MESSAGE(varSizeInBits == 64, "Missing support for this variable size");
             }
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(varSizeInBits <= 0x80000000, "Too huge variable's size");
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
+            addUInt(Block, dwarf::DW_FORM_data1, litForSubReg);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_shr);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus_uconst);
+            addUInt(Block, dwarf::DW_FORM_udata, DWRegEncoded);  // Register ID is shifted by offset (16)
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
+            addUInt(Block, dwarf::DW_FORM_data1, litForSIMDlane);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
+            addUInt(Block, dwarf::DW_FORM_data1, bitsUsedByVar);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
+            addUInt(Block, dwarf::DW_FORM_data1, varSizeInBits);
 
-            // Verify if variable's size if a power of 2
-            bool isSizePowerOf2 = false;
-            uint64_t powerOf2 = 1 << 5;
-            for (int bitPos = 6; bitPos < 32; bitPos++)
+            if (isa<llvm::DbgDeclareInst>(DV.getDbgInst()))
             {
-                powerOf2 = powerOf2 << 1;
-                if (varSizeInBits == powerOf2)
-                {
-                    isSizePowerOf2 = true;
-                    addUInt(Block, dwarf::DW_FORM_data1, (uint64_t)(dwarf::DW_OP_lit0 + bitPos));
-                }
+                // Pointer
+                addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
             }
-
-            IGC_ASSERT_MESSAGE(isSizePowerOf2 == true, "Missing support for variable size other than power of 2");
-        }
-
-        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_shl);
-
-        if ((!isPacked) && (!Loc->IsInMemory()))
-        {
-            dwarf::LocationAtom constOP = dwarf::DW_OP_const8u;
-            dwarf::Form form = dwarf::DW_FORM_data8;
-            if (varSizeInBits <= 0xFF)
+            else
             {
-                constOP = dwarf::DW_OP_const1u;
-                form = dwarf::DW_FORM_data1;
-            }
-            else if (varSizeInBits <= 0xFFFF)
-            {
-                constOP = dwarf::DW_OP_const2u;
-                form = dwarf::DW_FORM_data2;
-            }
-            else if (varSizeInBits <= 0xFFFFFFFF)
-            {
-                constOP = dwarf::DW_OP_const4u;
-                form = dwarf::DW_FORM_data4;
-            }
-
-            addUInt(Block, dwarf::DW_FORM_data1, constOP);
-            addUInt(Block, form, varSizeInBits);
-            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_bit_piece_stack);
-        }
-        else
-        {
-            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
-
-            // Emit deref for const8u address not for bregx
-            if (!isa<llvm::DbgDeclareInst>(DV.getDbgInst()))
-            {
-                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
+                // Variable
+                addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_bit_piece_stack);
             }
         }
     }
@@ -1073,16 +1160,27 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
 
 // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
 // e.g. a GRF subregister.
-void CompileUnit::addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation* Loc, uint16_t subRegInBytes)
+void CompileUnit::addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation* Loc, DbgDecoder::VarInfo* varInfo, uint16_t subRegInBytes)
 {
     if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
     {
+        IGC_ASSERT_MESSAGE(varInfo->lrs.front().isSpill() == false, "Scalar spilled in scratch space");
+
         ///addRegisterOffset(Block, varInfo.getGRF().regNum, 0);
         uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
 
         auto offsetInBits = subRegInBytes * 8;
 
-        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
+        if (isa<llvm::DbgDeclareInst>(DV.getDbgInst()))
+        {
+            // Pointer
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+        }
+        else
+        {
+            // Variable
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
+        }
         addUInt(Block, dwarf::DW_FORM_udata, varSizeInBits);
         addUInt(Block, dwarf::DW_FORM_udata, offsetInBits);
     }
@@ -2026,19 +2124,18 @@ void CompileUnit::buildSampler(DbgVariable& var, DIE* die, VISAVariableLocation*
 void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
 {
     auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
+    DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
+    DbgDecoder::VarInfo varInfo;
+    auto regNum = loc->GetRegister();
+    VISAMod->getVarInfo("V", regNum, varInfo);
+
+    if (varInfo.lrs.size() == 0)
+        return;
+
     if (loc->IsRegister())
     {
-        DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
-
         if (!IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
         {
-            DbgDecoder::VarInfo varInfo;
-            auto regNum = loc->GetRegister();
-            VISAMod->getVarInfo("V", regNum, varInfo);
-
-            if (varInfo.lrs.size() == 0)
-                return;
-
             Address addr;
             addr.Set(Address::Space::eLocal, 0, 0);
 
@@ -2064,7 +2161,7 @@ void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc
             addSLMLocation(Block, loc); // Emit SLM location expression
         }
 
-        addSimdLane(Block, var, loc, false); // Emit SIMD lane for SLM (unpacked)
+        addSimdLane(Block, var, loc, &varInfo, false); // Emit SIMD lane for SLM (unpacked)
         if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
         {
             IGC_ASSERT(loc->GetVectorNumElements() <= 1);
@@ -2090,7 +2187,7 @@ void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc
             addSLMLocation(Block, loc); // Emit SLM location expression
         }
 
-        addSimdLane(Block, var, loc, false); // Emit SIMD lane for SLM (unpacked)
+        addSimdLane(Block, var, loc, &varInfo, false); // Emit SIMD lane for SLM (unpacked)
         if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
         {
             IGC_ASSERT(loc->GetVectorNumElements() <= 1);
@@ -2163,7 +2260,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
 
                 addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
 
-                addSimdLaneScalar(Block, var, loc, subReg); // Emit subregister for GRF (unpacked)
+                addSimdLaneScalar(Block, var, loc, &varInfo, subReg); // Emit subregister for GRF (unpacked)
             }
             else
             {
@@ -2175,11 +2272,11 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
 
                 for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                 {
-                    addRegisterLoc(Block, regNum, offset, var.getDbgInst());
+                    // addRegisterLoc(Block, regNum, offset, var.getDbgInst());
 
                     addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
 
-                    addSimdLane(Block, var, loc, false); // Emit SIMD lane for GRF (unpacked)
+                    addSimdLane(Block, var, loc, &varInfo, false); // Emit SIMD lane for GRF (unpacked)
 
                     regNum = regNum + numOfRegs;
                 }
@@ -2213,7 +2310,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation*
             for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
             {
                 addScratchLocation(Block, &varInfo, vectorElem * numOfRegs * grfSize);
-                addSimdLane(Block, var, loc, false); // Emit SIMD lane for spill (unpacked)
+                addSimdLane(Block, var, loc, &varInfo, false); // Emit SIMD lane for spill (unpacked)
             }
         }
 

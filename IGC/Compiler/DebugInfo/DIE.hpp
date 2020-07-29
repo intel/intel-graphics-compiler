@@ -58,6 +58,12 @@ namespace llvm
 #ifndef DW_AT_INTEL_simd_width
 #define DW_AT_INTEL_simd_width 0x2400
 #endif
+#ifndef DW_OP_INTEL_regs
+#define DW_OP_INTEL_regs 0xeb
+#endif
+#ifndef DW_OP_INTEL_push_bit_piece_stack
+#define DW_OP_INTEL_push_bit_piece_stack 0xec
+#endif
 #ifndef DW_OP_INTEL_push_simd_lane
 #define DW_OP_INTEL_push_simd_lane 0xed
 #endif
