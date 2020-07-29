@@ -28,7 +28,11 @@ StringVect_t convertBackendArgsToVcOpts(const StringVect_t& BackendArgs);
 using IOutputArgs = Intel::CM::ClangFE::IOutputArgs;
 using IDriverInvocation = Intel::CM::ClangFE::IDriverInvocation;
 
-void validateABICompatibility();
+struct AbiCompatibilityInfo {
+  int RequestedVersion = -1;
+  int AvailableVersion = -1;
+};
+bool validateABICompatibility(AbiCompatibilityInfo *AbiInfo = nullptr);
 
 IOutputArgs *translate(const IInputArgs *);
 

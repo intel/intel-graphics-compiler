@@ -34,21 +34,30 @@ llvm::sys::DynamicLibrary getFELibrary() {
 
 } // namespace
 
-void IGC::AdaptorCM::Frontend::validateABICompatibility() {
+bool IGC::AdaptorCM::Frontend::validateABICompatibility(
+    IGC::AdaptorCM::Frontend::AbiCompatibilityInfo *AbiInfo) {
+
+  if (AbiInfo) {
+    AbiInfo->RequestedVersion = -1;
+    AbiInfo->AvailableVersion = -1;
+  }
 
   auto DL = getFELibrary();
   auto GetInterfaceVersion =
     reinterpret_cast<decltype(&IntelCMClangFEGetInterfaceVersion)>(
       DL.getAddressOfSymbol("IntelCMClangFEGetInterfaceVersion"));
 
-  auto LoadedInterfaceVersion = GetInterfaceVersion();
-  auto SupportedInterfaceVersion = Intel::CM::ClangFE::InterfaceVersion;
-  if (SupportedInterfaceVersion != LoadedInterfaceVersion) {
-    llvm::report_fatal_error(
-      llvm::StringRef("AdaptorCM: incompatible clangFEWrapper interface: ") +
-        "expected = " + llvm::Twine(SupportedInterfaceVersion) +
-        ", loaded = " + llvm::Twine(LoadedInterfaceVersion));
+  if (!GetInterfaceVersion)
+    return false;
+
+  const auto LoadedInterfaceVersion = GetInterfaceVersion();
+  const auto SupportedInterfaceVersion = Intel::CM::ClangFE::InterfaceVersion;
+
+  if (AbiInfo) {
+    AbiInfo->RequestedVersion = SupportedInterfaceVersion;
+    AbiInfo->AvailableVersion = LoadedInterfaceVersion;
   }
+  return LoadedInterfaceVersion == SupportedInterfaceVersion;
 }
 
 IDriverInvocation *

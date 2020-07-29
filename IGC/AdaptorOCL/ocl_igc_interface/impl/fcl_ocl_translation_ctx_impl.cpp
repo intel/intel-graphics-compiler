@@ -348,6 +348,18 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
 
 #if !defined(WDDM_LINUX)
     OclTranslationOutputBase& Out = *outputInterface.get();
+
+    IGC::AdaptorCM::Frontend::AbiCompatibilityInfo AbiInfo;
+    if (!IGC::AdaptorCM::Frontend::validateABICompatibility(&AbiInfo)) {
+        const auto &ErrMsg =
+            llvm::StringRef("AdaptorCM: incompatible clangFEWrapper interface: ") +
+            "expected = " + llvm::Twine(AbiInfo.RequestedVersion) +
+            ", loaded = " + llvm::Twine(AbiInfo.AvailableVersion);
+        Out.GetImpl()->SetError(TranslationErrorType::Internal,
+                                ErrMsg.str().c_str());
+        return outputInterface.release();
+    }
+
     auto OptSrc = MakeTemporaryCMSource(src, Out);
     if (!OptSrc)
         return outputInterface.release(); // proper error message is already set
@@ -365,7 +377,7 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
         runFeInvocation(*invoker, Out);
     else
         Out.GetImpl()->SetError(TranslationErrorType::Internal,
-                                            "could not create CM fronend invocation");
+                                "could not create CM fronend invocation");
 #endif // !defined(WDDM_LINUX)
 
     return outputInterface.release();
