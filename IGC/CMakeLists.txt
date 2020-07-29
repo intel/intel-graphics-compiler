@@ -3378,6 +3378,8 @@ include_directories(
 
     "${IGC_OPTION__OUTPUT_DIR}"
 
+    "${IGC_BUILD__IGC_BIN_DIR}/${CMAKE_CFG_INTDIR}"
+
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL/ocl_igc_shared/executable_format"
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL"
     )
