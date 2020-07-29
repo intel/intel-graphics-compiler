@@ -63,6 +63,7 @@ struct IDriverInvocation {
   virtual const StrT& getTargetArch() const = 0;
   virtual const StrT& getInputFilename() const = 0;
   virtual const StrT& getOutputFilename() const = 0;
+  virtual const StrT& getTargetFeaturesStr() const = 0;
 
   virtual bool isHelp() const = 0;
 
@@ -71,7 +72,7 @@ struct IDriverInvocation {
 };
 
 // this number should be increased whenever the public interface changes
-static const int InterfaceVersion = 5;
+static const int InterfaceVersion = 6;
 
 } // namespace ClangFE
 } // namespace CM
