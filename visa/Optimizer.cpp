@@ -1060,18 +1060,6 @@ int Optimizer::optimization()
 
     runPass(PI_countBankConflicts);
 
-    // some passes still rely on G4_Declares and their def-use even after RA,
-    // and removeRedundantMove will break them since it deletes moves solely based on GRF assignment
-    // without maintaining def-use of G4_Declares.
-    // so when these passes are active we have to defer removeRedundMov until after the passes
-    // ToDo: study the perf impact of moving this post scheduling
-    bool preserveVirtualDefUse = kernel.getOption(vISA_ReRAPostSchedule) || builder.doAccSub();
-
-    if (!preserveVirtualDefUse)
-    {
-        runPass(PI_removeRedundMov);
-    }
-
     //
     // if a fall-through BB does not immediately follow its predecessor
     // in the code layout, then insert a jump-to-fall-through in the predecessor
@@ -1099,11 +1087,9 @@ int Optimizer::optimization()
 
     runPass(PI_reRAPostSchedule);
 
-    if (preserveVirtualDefUse
-        )
-    {
-        runPass(PI_removeRedundMov);
-    }
+    // No pass after this should expect def-use to be preserved as this pass
+    // removes raw movs with identical src/dst physical GRFs.
+    runPass(PI_removeRedundMov);
 
     // remove any placeholders blocks inserted to aid regalloc
     // run this pass after reRA pass otherwise CFG can become
