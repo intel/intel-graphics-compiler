@@ -9588,6 +9588,8 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
     std::vector<CVariable*> argsOnStack;
+    SmallVector<std::tuple<CVariable*, Type*, uint32_t>, 8> argsOnRegister;
+
     for (uint32_t i = 0; i < inst->getNumArgOperands(); i++)
     {
         CVariable* ArgCV = nullptr;
@@ -9626,9 +9628,11 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         }
         if (Src->GetType() == ISA_TYPE_BOOL)
         {
+            // bool args are treated as a vector of WORDs
             IGC_ASSERT(ArgCV->GetType() == ISA_TYPE_BOOL);
+            uint nElts = numLanes(m_currShader->m_dispatchSize);
             CVariable* ReplaceArg = m_currShader->GetNewVariable(
-                numLanes(m_currShader->m_dispatchSize),
+                nElts,
                 ISA_TYPE_W,
                 EALIGN_HWORD, false, 1,
                 CName::NONE);
@@ -9636,6 +9640,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_W);
             m_encoder->Select(Src, ReplaceArg, one, zero);
             Src = ReplaceArg;
+            argType = VectorType::get(IntegerType::getInt16Ty(inst->getContext()), nElts);
         }
         else
         {
@@ -9650,21 +9655,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         bool overflow = ((offsetA + Src->GetSize()) > ArgBlkVar->GetSize());
         if (!overflow)
         {
-            CVariable* Dst = ArgBlkVar;
-            if (Dst->GetType() != Src->GetType() ||
-                offsetA != 0 ||
-                Src->IsUniform() != Dst->IsUniform())
-            {
-                Dst = m_currShader->GetNewAlias(ArgBlkVar, Src->GetType(), (uint16_t)offsetA, Src->GetNumberElement(), Src->IsUniform());
-            }
-            if (ArgCV->GetType() == ISA_TYPE_BOOL)
-            {
-                emitVectorCopy(Dst, Src, Src->GetNumberElement());
-            }
-            else
-            {
-                emitCopyAll(Dst, Src, argType);
-            }
+            argsOnRegister.push_back(std::make_tuple(Src, argType, offsetA));
             offsetA += Src->GetSize();
         }
         else
@@ -9694,9 +9685,31 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     unsigned char argSizeInGRF = (offsetA + getGRFSize() - 1) / getGRFSize();
     unsigned char retSizeInGRF = (retSize + getGRFSize() - 1) / getGRFSize();
 
+    // lamda to copy arguments to arg register block
+    auto CopyArgBlkVariables = [&](void)->void
+    {
+        for (auto& I : argsOnRegister)
+        {
+            CVariable * Src = std::get<0>(I);
+            Type* argType = std::get<1>(I);
+            uint32_t offset = std::get<2>(I);
+            CVariable* Dst = ArgBlkVar;
+
+            if (Dst->GetType() != Src->GetType() || offset != 0 || Src->IsUniform() != Dst->IsUniform())
+            {
+                Dst = m_currShader->GetNewAlias(ArgBlkVar, Src->GetType(), (uint16_t)offset, Src->GetNumberElement(), Src->IsUniform());
+            }
+            emitCopyAll(Dst, Src, argType);
+        }
+    };
+
     // lambda to read the return value
     auto CopyReturnValue = [this](CallInst* inst)->void
     {
+        // No need to copy if there are no uses
+        if (inst->use_empty())
+            return;
+
         CVariable* Dst = GetSymbol(inst);
         CVariable* Src = m_currShader->GetRETV();
         if (Dst->GetType() == ISA_TYPE_BOOL)
@@ -9718,16 +9731,20 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     CVariable* funcAddr = GetSymbol(inst->getCalledValue());
     if (!isIndirectFCall)
     {
+        CopyArgBlkVariables();
         m_encoder->StackCall(nullptr, F, argSizeInGRF, retSizeInGRF);
         m_encoder->Push();
+        CopyReturnValue(inst);
     }
     else
     {
         if (funcAddr->IsUniform())
         {
+            CopyArgBlkVariables();
             funcAddr = TruncatePointer(funcAddr);
             m_encoder->IndirectStackCall(nullptr, funcAddr, argSizeInGRF, retSizeInGRF);
             m_encoder->Push();
+            CopyReturnValue(inst);
         }
         else
         {
@@ -9753,16 +9770,17 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             m_encoder->Jump(callPred, callLabel);
             m_encoder->Push();
 
+            // Copy args to ArgBlk on each iteration of the loop, such that arg registers
+            // won't be corrupted by previous iterations.
+            CopyArgBlkVariables();
+
             // Indirect call for all lanes set by the flag
             m_encoder->IndirectStackCall(nullptr, uniformAddr, argSizeInGRF, retSizeInGRF);
             m_encoder->Copy(eMask, eMask);
             m_encoder->Push();
 
-            if (!inst->use_empty())
-            {
-                // For non-uniform call, copy the ret inside this loop so that it'll honor the loop mask
-                CopyReturnValue(inst);
-            }
+            // For non-uniform call, copy the ret inside this loop so that it'll honor the loop mask
+            CopyReturnValue(inst);
 
             // Label for lanes that skipped the call
             m_encoder->Label(callLabel);
@@ -9782,13 +9800,6 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             m_encoder->Jump(loopPred, label);
             m_encoder->Push();
         }
-    }
-
-    // Emit the return value if used
-    // Non-uniform handled in above loop
-    if (!inst->use_empty() && funcAddr->IsUniform())
-    {
-        CopyReturnValue(inst);
     }
 
     if (offsetS > 0)
