@@ -270,6 +270,7 @@ namespace IGC
                             };
                             AddURBWrite(offset, 0xF, data, inst);
                         }
+                        m_isHeaderPresent = hasHeaderData;
                         instructionToRemove.push_back(inst);
                     }
                     else if (IID == GenISAIntrinsic::GenISA_DCL_ShaderInputVec)
