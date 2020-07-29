@@ -81,12 +81,12 @@ G4_SubReg_Align HWConformity::getDclAlignment(int opndBytes, G4_INST* inst, bool
 
     if (!isScalar)
     {
-        // certain instructions have additional alignment requirements for non-scalar sources, FIXME: what about 64 bytes?
+        // certain instructions have additional alignment requirements for non-scalar sources
         if (!builder.hasAlign1Ternary() && inst->getNumSrc() == 3 && !inst->isSend() && subAlign < Eight_Word)
         {
             subAlign = Eight_Word;
         }
-        if (inst->isMath())  //FIXME: need confirm, used to be GRFALIGN
+        if (inst->isMath())
         {
             subAlign = GRFALIGN;
         }
@@ -807,36 +807,6 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB* bb)
         else if (!inst->isMath())
         {
             // math immediate src0 is handled separately in fixMathInst()
-            if ((inst->opcode() == G4_add || inst->opcode() == G4_mul) &&
-                src0->isImm() && src1->isImm() &&
-                IS_TYPE_INT(src0->getType()) && IS_TYPE_INT(src1->getType()) &&
-                inst->getSaturate() == false)
-            {
-                // FIXME: this is duplicating the functionality of Optimizer::doConsFolding.
-                G4_Type src0T = src0->getType(), src1T = src1->getType(), resultType = src0T;
-
-                resultType = findConstFoldCommonType(src0T, src1T);
-                if (resultType != Type_UNDEF)
-                {
-                    G4_Imm* newSrc = NULL;
-                    int64_t res = inst->opcode() == G4_add ?
-                        ((int64_t)(src0->asImm()->getInt()) + (int64_t)(src1->asImm()->getInt())) :
-                        ((int64_t)(src0->asImm()->getInt()) * (int64_t)(src1->asImm()->getInt()));
-
-                    // don't fold if the value overflows D/UD
-                    if (G4_Imm::isInTypeRange(res, resultType))
-                    {
-                        newSrc = builder.createImmWithLowerType(res, resultType);
-
-                        // change instruction into a MOV
-                        // change instruction into a MOV
-                        inst->setOpcode(G4_mov);
-                        inst->setSrc(newSrc, 0);
-                        inst->setSrc(nullptr, 1);
-                        return;
-                    }
-                }
-            }
             // If src0 is not 64-bit, src1 is 64-bit, swap them to save one move.
             if (INST_COMMUTATIVE(inst->opcode()) && src0->isImm() && src1->isImm() &&
                 G4_Type_Table[src0->getType()].byteSize != 8 &&
@@ -5601,7 +5571,6 @@ void HWConformity::conformBB(G4_BB* bb)
         fixImm64(i, bb); // fixed immediates for DF4 in fixImm64()
 
 
-        // FIXME: may be better to call fixDstAlign instead
         if (builder.getPlatform() == GENX_BDW)
         {
             fixPackedHFConversions(i, bb);
