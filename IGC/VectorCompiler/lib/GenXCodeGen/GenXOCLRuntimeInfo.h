@@ -221,7 +221,7 @@ public:
 
   public:
     CompiledKernel(KernelInfo &&KI, const FINALIZER_INFO &JI,
-                   ArrayRef<char> GenBin);
+                   std::vector<ArrayRef<char>> &GenBin);
 
     const KernelInfo &getKernelInfo() const { return CompilerInfo; }
     const FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }

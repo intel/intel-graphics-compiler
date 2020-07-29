@@ -5637,22 +5637,23 @@ ModulePass *llvm::createGenXFinalizerPass(raw_pwrite_stream &o) {
 
 static void constructFunctionSymbols(
     FunctionGroup &FG, GenXModule &GM, GenXOCLRuntimeInfo::TableInfo &TI,
-    GenXOCLRuntimeInfo::ZEBinaryInfo::SymbolsInfo::ZESymEntrySeq &FuncSymbols) {
+    GenXOCLRuntimeInfo::ZEBinaryInfo::SymbolsInfo::ZESymEntrySeq &FuncSymbols,
+    const std::map<VISAKernel *, uint32_t> &Offsets) {
   TI.Entries = std::count_if(FG.begin(), FG.end(), [](Function *F) {
-    return F->hasFnAttribute("referenced-indirectly");
+    return F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
   });
   TI.Size = TI.Entries * sizeof(vISA::GenSymEntry);
   // this will be eventually freed in AdaptorOCL
   TI.Buffer = new vISA::GenSymEntry[TI.Entries];
   auto *Entry = static_cast<vISA::GenSymEntry *>(TI.Buffer);
   for (auto &F : FG)
-    if (F->hasFnAttribute("referenced-indirectly")) {
+    if (F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
       assert(F->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
       strcpy_s(Entry->s_name, vISA::MAX_SYMBOL_NAME_LENGTH,
                F->getName().str().c_str());
       VISAFunction *Func = static_cast<VISAFunction *>(GM.getVISAKernel(F));
       Entry->s_type = vISA::GenSymType::S_FUNC;
-      Entry->s_offset = Func->getGenOffset();
+      Entry->s_offset = Offsets.at(Func);
       Entry->s_size = Func->getGenSize();
 
       // EnableZEBinary: this is requred by ZEBinary
@@ -5679,8 +5680,9 @@ static void
 constructSymbolTable(FunctionGroup &FG, GenXModule &GM,
                      const VISAKernel &BuiltKernel,
                      GenXOCLRuntimeInfo::TableInfo &TI,
-                     GenXOCLRuntimeInfo::ZEBinaryInfo::SymbolsInfo &ZESymbols) {
-  constructFunctionSymbols(FG, GM, TI, ZESymbols.Functions);
+                     GenXOCLRuntimeInfo::ZEBinaryInfo::SymbolsInfo &ZESymbols,
+                     const std::map<VISAKernel *, uint32_t> &Offsets) {
+  constructFunctionSymbols(FG, GM, TI, ZESymbols.Functions, Offsets);
   constructLocalSymbols(BuiltKernel, *FG.getHead(), ZESymbols.Local);
 }
 
@@ -5701,23 +5703,36 @@ void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
     FINALIZER_INFO *JitInfo = nullptr;
     BuiltKernel->GetJitInfo(JitInfo);
     assert(JitInfo && "Jit info is not set by finalizer");
+    std::vector<ArrayRef<char>> GenBins;
     void *GenBin = nullptr;
     int GenBinSize = 0; // Finalizer uses signed int for size...
     BuiltKernel->GetGenxBinary(GenBin, GenBinSize);
+    size_t GlobalOffset = GenBinSize;
     assert(GenBin && GenBinSize &&
            "Unexpected null buffer or zero-sized kernel (compilation failed?)");
-
-    auto &RTable = Info.getRelocationTable();
-    CISA_CALL(BuiltKernel->GetGenRelocEntryBuffer(RTable.Buffer, RTable.Size, RTable.Entries));
+    GenBins.push_back(ArrayRef<char>{static_cast<char *>(GenBin),
+                                     static_cast<size_t>(GenBinSize)});
+    std::map<VISAKernel *, uint32_t> Offsets;
+    for (auto &F : *FG) {
+      if (F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
+        VISAKernel *ExtKernel = GM.getVISAKernel(F);
+        ExtKernel->GetGenxBinary(GenBin, GenBinSize);
+        GenBins.push_back(ArrayRef<char>{static_cast<char *>(GenBin),
+                                         static_cast<size_t>(GenBinSize)});
+        Offsets[ExtKernel] = GlobalOffset;
+        GlobalOffset += GenBinSize;
+      }
+    }
+    TableInfo &RTable = Info.getRelocationTable();
+    CISA_CALL(BuiltKernel->GetGenRelocEntryBuffer(RTable.Buffer, RTable.Size,
+                                                  RTable.Entries));
     // EnableZEBinary: this is requred by ZEBinary
     CISA_CALL(BuiltKernel->GetRelocations(Info.ZEBinInfo.Relocations));
     constructSymbolTable(*FG, GM, *BuiltKernel, Info.getSymbolTable(),
-                         Info.ZEBinInfo.Symbols);
+                         Info.ZEBinInfo.Symbols, Offsets);
 
     // Save it all here.
-    CompiledKernel FullInfo{std::move(Info), *JitInfo,
-                            ArrayRef<char>{static_cast<char *>(GenBin),
-                                           static_cast<size_t>(GenBinSize)}};
+    CompiledKernel FullInfo{std::move(Info), *JitInfo, GenBins};
     OCLInfo.saveCompiledKernel(std::move(FullInfo));
 
     freeBlock(GenBin);
