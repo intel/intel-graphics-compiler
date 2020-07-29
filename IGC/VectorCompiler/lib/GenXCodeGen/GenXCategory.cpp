@@ -141,12 +141,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXLiveness.h"
 #include "GenXModule.h"
 #include "GenXRegion.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "llvmWrapper/IR/InstrTypes.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -158,7 +161,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Metadata.h"
 #include "llvm/PassAnalysisSupport.h"
 #include "llvm/Support/Debug.h"
-#include "llvmWrapper/IR/InstrTypes.h"
 
 using namespace llvm;
 using namespace genx;
@@ -384,6 +386,7 @@ void GenXCategory::getAnalysisUsage(AnalysisUsage &AU) const
   FunctionGroupPass::getAnalysisUsage(AU);
   AU.addRequired<DominatorTreeGroupWrapperPass>();
   AU.addRequired<GenXLiveness>();
+  AU.addRequired<TargetPassConfig>();
   AU.addPreserved<GenXModule>();
   AU.addPreserved<GenXLiveness>();
   AU.addPreserved<FunctionGroupAnalysis>();
@@ -400,8 +403,9 @@ bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG)
   KM = KernelMetadata(FG.getHead());
   DTs = &getAnalysis<DominatorTreeGroupWrapperPass>();
   Liveness = &getAnalysis<GenXLiveness>();
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  Subtarget = P ? P->getSubtarget() : nullptr;
+  Subtarget = &getAnalysis<TargetPassConfig>()
+                   .getTM<GenXTargetMachine>()
+                   .getGenXSubtarget();
   bool Modified = false;
   if (KM.isKernel()) {
     // Get the offset of each kernel arg.

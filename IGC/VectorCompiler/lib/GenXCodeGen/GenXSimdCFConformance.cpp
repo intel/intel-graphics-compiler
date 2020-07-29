@@ -210,6 +210,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXLiveness.h"
 #include "GenXModule.h"
 #include "GenXRegion.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm/ADT/MapVector.h"
@@ -217,6 +218,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/Analysis/CFG.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -415,6 +417,7 @@ public:
     FunctionGroupPass::getAnalysisUsage(AU);
     AU.addRequired<DominatorTreeGroupWrapperPass>();
     AU.addRequired<GenXLiveness>();
+    AU.addRequired<TargetPassConfig>();
     AU.addPreserved<GenXModule>();
     AU.addPreserved<GenXLiveness>();
     AU.addPreserved<FunctionGroupAnalysis>();
@@ -3583,9 +3586,9 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
     }
   }
   // Modify each select into a predicated wrregion.
-  auto SubtargetAnalysis = getAnalysisIfAvailable<GenXSubtargetPass>();
-  const GenXSubtarget *Subtarget =
-      SubtargetAnalysis ? SubtargetAnalysis->getSubtarget() : nullptr;
+  const GenXSubtarget *Subtarget = &getAnalysis<TargetPassConfig>()
+                                        .getTM<GenXTargetMachine>()
+                                        .getGenXSubtarget();
   for (auto si = Selects.begin(), se = Selects.end(); si != se; ++si) {
     auto Sel = *si;
     Value *FalseVal = Sel->getFalseValue();

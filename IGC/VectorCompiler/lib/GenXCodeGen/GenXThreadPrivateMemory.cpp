@@ -33,10 +33,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstVisitor.h"
@@ -68,6 +70,7 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const {
     ModulePass::getAnalysisUsage(AU);
+    AU.addRequired<TargetPassConfig>();
     AU.setPreservesCFG();
   }
 
@@ -1021,9 +1024,9 @@ void GenXThreadPrivateMemory::addUsersIfNeeded(Value *V) {
 }
 
 bool GenXThreadPrivateMemory::runOnModule(Module &M) {
-  auto STP = getAnalysisIfAvailable<GenXSubtargetPass>();
-  assert(STP);
-  m_ST = STP->getSubtarget();
+  m_ST = &getAnalysis<TargetPassConfig>()
+              .getTM<GenXTargetMachine>()
+              .getGenXSubtarget();
   for (auto &F : M)
     visit(F);
   if (!m_useGlobalMem &&

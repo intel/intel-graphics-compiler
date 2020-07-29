@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXPressureTracker.h"
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisaRegAlloc.h"
 #include "common.h"
@@ -56,6 +57,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visaBuilder_interface.h"
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/DebugInfo.h"
@@ -800,6 +802,7 @@ void GenXCisaBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXVisaRegAlloc>();
   AU.addRequired<GenXModule>();
   AU.addRequired<FunctionGroupAnalysis>();
+  AU.addRequired<TargetPassConfig>();
   AU.setPreservesAll();
 }
 
@@ -813,8 +816,9 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
   KernelBuilder->Baling = &getAnalysis<GenXGroupBaling>();
   KernelBuilder->DTs = &getAnalysis<DominatorTreeGroupWrapperPass>();
   KernelBuilder->Liveness = &getAnalysis<GenXLiveness>();
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  KernelBuilder->Subtarget = P ? P->getSubtarget() : nullptr;
+  KernelBuilder->Subtarget = &getAnalysis<TargetPassConfig>()
+                                  .getTM<GenXTargetMachine>()
+                                  .getGenXSubtarget();
 
   std::string KernelName;
   KernelBuilder->run(KernelName);
@@ -5588,7 +5592,7 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequired<GenXModule>();
     AU.addRequired<FunctionGroupAnalysis>();
-    AU.addRequired<GenXSubtargetPass>();
+    AU.addRequired<TargetPassConfig>();
     AU.setPreservesAll();
   }
 
@@ -5601,7 +5605,9 @@ public:
     GenXModule &GM = getAnalysis<GenXModule>();
     FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
     GenXOCLRuntimeInfo *OCLInfo = getAnalysisIfAvailable<GenXOCLRuntimeInfo>();
-    const GenXSubtarget &ST = *getAnalysis<GenXSubtargetPass>().getSubtarget();
+    const GenXSubtarget &ST = getAnalysis<TargetPassConfig>()
+                                  .getTM<GenXTargetMachine>()
+                                  .getGenXSubtarget();
 
     std::stringstream ss;
     auto *CisaBuilder = GM.GetCisaBuilder();

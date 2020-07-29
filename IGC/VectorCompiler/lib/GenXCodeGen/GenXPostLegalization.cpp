@@ -50,9 +50,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXConstants.h"
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVectorDecomposer.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -102,6 +104,7 @@ FunctionPass *llvm::createGenXPostLegalizationPass()
 void GenXPostLegalization::getAnalysisUsage(AnalysisUsage &AU) const
 {
   AU.addRequired<DominatorTreeWrapperPass>();
+  AU.addRequired<TargetPassConfig>();
   AU.setPreservesCFG();
 }
 
@@ -111,11 +114,9 @@ void GenXPostLegalization::getAnalysisUsage(AnalysisUsage &AU) const
 bool GenXPostLegalization::runOnFunction(Function &F)
 {
   DL = &F.getParent()->getDataLayout();
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  if (P)
-    ST = P->getSubtarget();
-  else
-    return false;
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   bool Modified = false;

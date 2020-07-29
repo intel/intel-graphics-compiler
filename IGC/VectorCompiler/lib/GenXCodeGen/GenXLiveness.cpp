@@ -38,9 +38,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXNumbering.h"
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "llvmWrapper/IR/InstrTypes.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm/ADT/SmallSet.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Function.h"
@@ -49,7 +52,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Support/Debug.h"
-#include "llvmWrapper/IR/InstrTypes.h"
 
 #include <unordered_set>
 
@@ -69,6 +71,7 @@ FunctionGroupPass *llvm::createGenXLivenessPass()
 void GenXLiveness::getAnalysisUsage(AnalysisUsage &AU) const
 {
   FunctionGroupPass::getAnalysisUsage(AU);
+  AU.addRequired<TargetPassConfig>();
   AU.setPreservesAll();
 }
 
@@ -79,8 +82,9 @@ bool GenXLiveness::runOnFunctionGroup(FunctionGroup &ArgFG)
 {
   clear();
   FG = &ArgFG;
-  auto STP = getAnalysisIfAvailable<GenXSubtargetPass>();
-  Subtarget = STP ? STP->getSubtarget() : nullptr;
+  Subtarget = &getAnalysis<TargetPassConfig>()
+                   .getTM<GenXTargetMachine>()
+                   .getGenXSubtarget();
   return false;
 }
 
@@ -149,7 +153,7 @@ void LiveRange::setAlignmentFromValue(SimpleValue V, unsigned GRFWidth) {
 void GenXLiveness::rebuildCallGraph()
 {
   delete CG;
-  CG = new CallGraph(FG);
+  CG = new genx::CallGraph(FG);
   CG->build(this);
 }
 
@@ -188,7 +192,7 @@ LiveRange *GenXLiveness::visitPropagateSLRs(Function *F)
   LR->push_back(Segment(Numbering->getNumber(F),
       Numbering->getNumber(F->back().getTerminator()) + 1, Segment::WEAK));
   // For each child...
-  CallGraph::Node *N = CG->getNode(F);
+  genx::CallGraph::Node *N = CG->getNode(F);
   for (auto i = N->begin(), e = N->end(); i != e; ++i) {
     // Visit the child to calculate its LR.
     LiveRange *ChildLR = visitPropagateSLRs(i->Call->getCalledFunction());
@@ -1858,8 +1862,7 @@ void SimpleValue::printName(raw_ostream &OS) const
  * The call graph is acyclic because no recursive edges added here
  * CM supports recursion though
  */
-void CallGraph::build(GenXLiveness *Liveness)
-{
+void genx::CallGraph::build(GenXLiveness *Liveness) {
   Nodes.clear();
   // Create a node for each Function.
   for (auto fgi = FG->begin(), fge = FG->end(); fgi != fge; ++fgi) {
@@ -1883,4 +1886,3 @@ void CallGraph::build(GenXLiveness *Liveness)
     }
   }
 }
-

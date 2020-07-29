@@ -127,7 +127,6 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXReduceIntSizePass(registry);
   initializeGenXRegionCollapsingPass(registry);
   initializeGenXRematerializationPass(registry);
-  initializeGenXSubtargetPassPass(registry);
   initializeGenXThreadPrivateMemoryPass(registry);
   initializeGenXUnbalingPass(registry);
   initializeGenXVisaRegAllocPass(registry);
@@ -226,10 +225,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
       (FileType != IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile))
     return true;
 
-  // GenXSubtargetPass is a wrapper pass to query features or options.
-  // This adds it explicitly to allow passes access the subtarget object using
-  // method getAnalysisIfAvailable.
-  PM.add(createGenXSubtargetPass(Subtarget));
+  TargetPassConfig *PassConfig = createPassConfig(PM);
+  PM.add(PassConfig);
 
   // Wrapper structure for collecting information related to OCL runtime.
   // Can be used by external caller by adding extractor pass in the end

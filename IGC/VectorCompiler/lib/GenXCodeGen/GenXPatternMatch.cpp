@@ -65,6 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVectorDecomposer.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -73,6 +74,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/TargetFolder.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -127,6 +129,7 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
+    AU.addRequired<TargetPassConfig>();
     AU.addPreserved<GenXModule>();
     AU.setPreservesCFG();
   }
@@ -198,8 +201,9 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
 
   // Before we get the simd-control-flow representation right,
   // we avoid dealing with predicate constants
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  const GenXSubtarget *ST = P ? P->getSubtarget() : nullptr;
+  const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
+                                 .getTM<GenXTargetMachine>()
+                                 .getGenXSubtarget();
   loadPhiConstants(&F, DT, true, ST);
   Changed |= distributeIntegerMul(&F);
   Changed |= propagateFoldableRegion(&F);
@@ -338,8 +342,9 @@ private:
 } // namespace
 
 void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  const GenXSubtarget *ST = P ? P->getSubtarget() : nullptr;
+  const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
+                                 .getTM<GenXTargetMachine>()
+                                 .getGenXSubtarget();
   if (isPredNot(&I))
     Changed |= flipBoolNot(&I);
   else
@@ -371,8 +376,9 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
 }
 
 void GenXPatternMatch::visitCallInst(CallInst &I) {
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  const GenXSubtarget *ST = P ? P->getSubtarget() : nullptr;
+  const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
+                                 .getTM<GenXTargetMachine>()
+                                 .getGenXSubtarget();
   switch (unsigned ID = GenXIntrinsic::getGenXIntrinsicID(&I)) {
   default:
     break;
@@ -2118,8 +2124,9 @@ bool GenXPatternMatch::simplifyVolatileGlobals(Function *F) {
 
 // Decompose predicate operand for large vector selects.
 bool GenXPatternMatch::decomposeSelect(Function *F) {
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  const GenXSubtarget *ST = P ? P->getSubtarget() : nullptr;
+  const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
+                                 .getTM<GenXTargetMachine>()
+                                 .getGenXSubtarget();
   SelectDecomposer SD(ST);
   for (auto &BB : F->getBasicBlockList())
     for (auto &Inst : BB.getInstList())

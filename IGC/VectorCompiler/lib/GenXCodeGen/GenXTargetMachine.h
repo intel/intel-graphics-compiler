@@ -75,6 +75,8 @@ public:
     return &Subtarget;
   }
   TargetTransformInfo getTargetTransformInfo(const Function &F) override;
+
+  const GenXSubtarget &getGenXSubtarget() const { return Subtarget; }
 };
 
 class GenXTargetMachine32 : public GenXTargetMachine {
@@ -174,7 +176,6 @@ void initializeGenXRawSendRipperPass(PassRegistry &);
 void initializeGenXReduceIntSizePass(PassRegistry &);
 void initializeGenXRegionCollapsingPass(PassRegistry &);
 void initializeGenXRematerializationPass(PassRegistry &);
-void initializeGenXSubtargetPassPass(PassRegistry &);
 void initializeGenXThreadPrivateMemoryPass(PassRegistry &);
 void initializeGenXUnbalingPass(PassRegistry &);
 void initializeGenXVisaRegAllocPass(PassRegistry &);

@@ -108,13 +108,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
 #include "visa_igc_common_header.h"
-#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Dominators.h"
@@ -207,6 +209,7 @@ FunctionPass *llvm::createGenXLoweringPass() {
 }
 
 void GenXLowering::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<TargetPassConfig>();
   AU.addPreserved<DominatorTreeWrapperPass>();
   AU.addPreserved<LoopInfoWrapperPass>();
   AU.addPreserved<GenXModule>();
@@ -227,8 +230,9 @@ void GenXLowering::getAnalysisUsage(AnalysisUsage &AU) const {
 bool GenXLowering::runOnFunction(Function &F) {
   auto *DTWP = getAnalysisIfAvailable<DominatorTreeWrapperPass>();
   DT = DTWP ? &DTWP->getDomTree() : nullptr;
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  ST = P ? P->getSubtarget() : nullptr;
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
   // First split any phi nodes with struct type.
   splitStructPhis(&F);
   // Create a list of basic blocks in the order we want to process them, before
@@ -2805,8 +2809,7 @@ private:
 
 // Translate store instructions into genx builtins.
 bool GenXLowering::lowerLoadStore(Instruction *Inst) {
-  auto ST = getAnalysisIfAvailable<GenXSubtargetPass>();
-  LoadStoreResolver Resolver(Inst, ST ? ST->getSubtarget() : nullptr);
+  LoadStoreResolver Resolver(Inst, ST);
   if (Resolver.resolve()) {
     ToErase.push_back(Inst);
     return true;

@@ -189,8 +189,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXNumbering.h"
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "llvmWrapper/IR/InstrTypes.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfo.h"
@@ -202,7 +205,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
-#include "llvmWrapper/IR/InstrTypes.h"
 #include <algorithm>
 #include <vector>
 
@@ -287,6 +289,7 @@ namespace {
       AU.addRequired<GenXGroupBaling>();
       AU.addRequired<GenXNumbering>();
       AU.addRequired<DominatorTreeGroupWrapperPass>();
+      AU.addRequired<TargetPassConfig>();
       AU.addPreserved<DominatorTreeGroupWrapperPass>();
       AU.addPreserved<GenXGroupBaling>();
       AU.addPreserved<GenXLiveness>();
@@ -384,8 +387,9 @@ FunctionGroupPass *llvm::createGenXCoalescingPass() {
 bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
 {
   // Get analyses that we use and/or modify.
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  ST = P ? P->getSubtarget() : nullptr;
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
   Baling = &getAnalysis<GenXGroupBaling>();
   Liveness = &getAnalysis<GenXLiveness>();
   Numbering = &getAnalysis<GenXNumbering>();

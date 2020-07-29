@@ -266,18 +266,6 @@ public:
   unsigned stackSurfaceMaxSize() const { return StackSurfMaxSize; }
 };
 
-class GenXSubtargetPass : public ImmutablePass {
-  const GenXSubtarget *ST;
-public:
-  GenXSubtargetPass();
-  GenXSubtargetPass(const GenXSubtarget &ST);
-  ~GenXSubtargetPass();
-  const GenXSubtarget *getSubtarget() const { return ST; }
-  static char ID;
-};
-
-ImmutablePass *createGenXSubtargetPass(const GenXSubtarget &ST);
-
 } // End llvm namespace
 
 #endif

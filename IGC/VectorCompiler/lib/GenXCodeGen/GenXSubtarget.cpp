@@ -122,23 +122,3 @@ StringRef GenXSubtarget::getEmulateFunction(const Instruction *Inst) const {
   return EmuFnName;
 }
 
-GenXSubtargetPass::GenXSubtargetPass() : ImmutablePass(ID), ST(nullptr) {}
-GenXSubtargetPass::GenXSubtargetPass(const GenXSubtarget &ST)
-    : ImmutablePass(ID), ST(&ST) {}
-GenXSubtargetPass::~GenXSubtargetPass() {}
-
-char GenXSubtargetPass::ID = 0;
-
-namespace llvm {
-
-void initializeGenXSubtargetPassPass(PassRegistry &);
-
-ImmutablePass *createGenXSubtargetPass(const GenXSubtarget &ST) {
-  initializeGenXSubtargetPassPass(*PassRegistry::getPassRegistry());
-  return new GenXSubtargetPass(ST);
-}
-
-} // namespace llvm
-
-INITIALIZE_PASS_BEGIN(GenXSubtargetPass, "GenXSubtargetPass", "GenXSubtargetPass", false, true)
-INITIALIZE_PASS_END(GenXSubtargetPass, "GenXSubtargetPass", "GenXSubtargetPass", false, true)

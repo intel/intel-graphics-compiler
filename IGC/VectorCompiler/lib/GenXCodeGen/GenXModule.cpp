@@ -35,12 +35,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXWATable.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/GenXIntrinsics/GenXMetadata.h"
 
 #include <set>
 
@@ -62,6 +64,7 @@ ModulePass *llvm::createGenXModulePass() {
 void GenXModule::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<FunctionGroupAnalysis>();
   AU.addRequired<GenXWATable>();
+  AU.addRequired<TargetPassConfig>();
   AU.setPreservesAll();
 }
 
@@ -89,8 +92,9 @@ bool GenXModule::CheckForInlineAsm(Module &M) const {
  */
 bool GenXModule::runOnModule(Module &M) {
   auto FGA = &getAnalysis<FunctionGroupAnalysis>();
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  ST = P ? P->getSubtarget() : nullptr;
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
   WaTable = getAnalysis<GenXWATable>().getWATable();
   Ctx = &M.getContext();
 

@@ -78,9 +78,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXModule.h"
 #include "GenXNumbering.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Function.h"
@@ -112,6 +114,7 @@ namespace {
       AU.addPreserved<GenXNumbering>();
       AU.addPreserved<FunctionGroupAnalysis>();
       AU.addRequired<LoopInfoWrapperPass>();
+      AU.addRequired<TargetPassConfig>();
     }
 
     bool runOnFunction(Function &F);
@@ -138,8 +141,9 @@ FunctionPass *llvm::createGenXTidyControlFlowPass() {
  */
 bool GenXTidyControlFlow::runOnFunction(Function &F)
 {
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  ST = P ? P->getSubtarget() : nullptr;
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
   Modified = false;
   removeEmptyBlocks(&F);
   reorderBlocks(&F);

@@ -33,6 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GenX.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
@@ -87,14 +89,16 @@ ModulePass *llvm::createGenXEmulatePass() {
 }
 
 void GenXEmulate::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<TargetPassConfig>();
   AU.setPreservesCFG();
 }
 
 bool GenXEmulate ::runOnModule(Module &M) {
   bool Changed = false;
   EmulationFuns.clear();
-  if (auto P = getAnalysisIfAvailable<GenXSubtargetPass>())
-    ST = P->getSubtarget();
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
 
   // Process non-builtin functions.
   for (auto &F : M.getFunctionList()) {

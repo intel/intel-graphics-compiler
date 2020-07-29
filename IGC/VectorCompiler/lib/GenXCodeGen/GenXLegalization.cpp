@@ -173,6 +173,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXIntrinsics.h"
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "KillAnalysis.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -181,6 +182,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
@@ -411,6 +413,7 @@ FunctionPass *llvm::createGenXLegalizationPass() {
 void GenXLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXFuncBaling>();
   AU.addRequired<ScalarEvolutionWrapperPass>();
+  AU.addRequired<TargetPassConfig>();
   AU.addPreserved<GenXModule>();
 }
 
@@ -421,8 +424,9 @@ void GenXLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
 bool GenXLegalization::runOnFunction(Function &F) {
   Baling = &getAnalysis<GenXFuncBaling>();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-  auto P = getAnalysisIfAvailable<GenXSubtargetPass>();
-  ST = P ? P->getSubtarget() : nullptr;
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
   // Check args for illegal predicates.
   for (Function::arg_iterator fi = F.arg_begin(), fe = F.arg_end(); fi != fe;
        ++fi) {
