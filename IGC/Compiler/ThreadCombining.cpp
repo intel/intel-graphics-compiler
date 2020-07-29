@@ -308,7 +308,7 @@ void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel,
                 {
                     for (auto barrierInst = m_barriers.begin(); barrierInst != m_barriers.end(); ++barrierInst)
                     {
-                        if (!DT->getDomTree().dominates(*barrierInst, instToCheck))
+                        if (DT->getDomTree().dominates(instToCheck ,*barrierInst))
                         {
                             // Optimization: check if the live register can be moved to the entry block,
                             // this way we skip the store and restore across barriers
