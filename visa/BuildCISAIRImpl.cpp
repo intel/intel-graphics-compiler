@@ -2329,7 +2329,8 @@ bool CISA_IR_Builder::CISA_create_info_3d_instruction(
     return true;
 }
 
-bool CISA_IR_Builder::createSample4Instruction(VISA_opnd* pred,
+bool CISA_IR_Builder::createSample4Instruction(
+    VISA_opnd* pred,
     VISASampler3DSubOpCode subOpcode,
     bool pixelNullMask,
     ChannelMask channel,

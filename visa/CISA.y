@@ -239,18 +239,20 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <align>     ALIGN_KEYWORD
 %token <atomic_op> ATOMIC_SUB_OP
 
-%token CPS                  // .cps
-%token DIRECTIVE_ATTR       // .attr
-%token DIRECTIVE_DECL       // .decl
-%token DIRECTIVE_FUNC       // .function
-%token DIRECTIVE_GLOBAL_FUNC // .global_function
-%token DIRECTIVE_INPUT      // .input
-%token DIRECTIVE_KERNEL     // .kernel
-%token DIRECTIVE_KERNEL_ATTR // .kernel_attr
-%token DIRECTIVE_PARAMETER  // .parameter
-%token DIRECTIVE_VERSION    // .verions
+// directives
+%token          DIRECTIVE_ATTR        // .attr
+%token          DIRECTIVE_DECL        // .decl
+%token          DIRECTIVE_FUNC        // .function
+%token          DIRECTIVE_FUNCDECL    // .funcdecl
+%token          DIRECTIVE_GLOBAL_FUNC // .global_function
+%token <string> DIRECTIVE_IMPLICIT    // .implicit*
+%token          DIRECTIVE_INPUT       // .input
+%token          DIRECTIVE_KERNEL      // .kernel
+%token          DIRECTIVE_KERNEL_ATTR // .kernel_attr
+%token          DIRECTIVE_PARAMETER   // .parameter
+%token          DIRECTIVE_VERSION     // .verions
 
-
+// tokens to support .decl and .input
 %token ALIAS_EQ             // .decl ... alias=...
 %token ALIGN_EQ             // .decl ... align=...
 %token ATTR_EQ              // .decl ... attr=...
@@ -258,13 +260,14 @@ VISA_RawOpnd* rawOperandArray[16];
 %token NUM_ELTS_EQ
 %token V_NAME_EQ
 %token SIZE_EQ
-%token G_CLASS
-%token P_CLASS
-%token A_CLASS
-%token S_CLASS
-%token T_CLASS
+%token V_TYPE_EQ_G // v_type=G
+%token V_TYPE_EQ_P
+%token V_TYPE_EQ_A
+%token V_TYPE_EQ_S
+%token V_TYPE_EQ_T
 
-%token FUNC_DIRECTIVE_DECL  // .funcdecl
+
+%token CPS                   // .cps
 %token NON_UNIFORM_SAMPLER  // .divS
 %token PIXEL_NULL_MASK      // .pixel_null_mask
 %token RAW_SENDC_STRING     // raw_sendc
@@ -543,6 +546,7 @@ NewlinesOpt: %empty | Newlines
 Statement:
       DirectiveDecl
     | DirectiveGlobalFunction
+    | DirectiveImplicitInput
     | DirectiveInput
     | DirectiveParameter
     | DirectiveFunc
@@ -603,38 +607,38 @@ DirectiveDecl:
     | DeclPredicate
     | DeclSampler
     | DeclSurface
-    | DeclFunctions
+    | DeclFunction
 
-DeclFunctions: FUNC_DIRECTIVE_DECL STRING_LIT
+DeclFunction: DIRECTIVE_FUNCDECL STRING_LIT
     {
         // do nothing as it's informational only
     }
 
 DeclVariable:
-    //     1         2     3           4             5        6        7            8          9
-    DIRECTIVE_DECL IDENT G_CLASS DECL_DATA_TYPE NUM_ELTS_EQ IntExp AlignAttrOpt AliasAttrOpt GenAttrOpt
+    //     1         2         3           4             5        6        7            8          9
+    DIRECTIVE_DECL IDENT V_TYPE_EQ_G DECL_DATA_TYPE NUM_ELTS_EQ IntExp AlignAttrOpt AliasAttrOpt GenAttrOpt
     {
        if (!pBuilder->CISA_general_variable_decl($2, (unsigned int)$6, $4, $7, $8.aliasname, $8.offset, $9, CISAlineno)) {
            YYABORT; // error already reported
        }
     }
 
-               //     1       2     3         4         5        6
-DeclAddress: DIRECTIVE_DECL IDENT A_CLASS NUM_ELTS_EQ IntExp GenAttrOpt
+               //     1       2        3         4         5        6
+DeclAddress: DIRECTIVE_DECL IDENT V_TYPE_EQ_A NUM_ELTS_EQ IntExp GenAttrOpt
    {
        pBuilder->CISA_addr_variable_decl($2, (unsigned int)$5, ISA_TYPE_UW, $6, CISAlineno);
    }
 
-               //     1         2      3        4          5       6
-DeclPredicate: DIRECTIVE_DECL IDENT P_CLASS NUM_ELTS_EQ IntExp GenAttrOpt
+               //     1         2         3        4          5       6
+DeclPredicate: DIRECTIVE_DECL IDENT V_TYPE_EQ_P NUM_ELTS_EQ IntExp GenAttrOpt
    {
        if (!pBuilder->CISA_predicate_variable_decl($2, (unsigned int)$5, $6, CISAlineno)) {
            YYABORT; // error already reported
        }
    }
 
-               //     1       2      3        4          5         6          7
-DeclSampler: DIRECTIVE_DECL IDENT S_CLASS NUM_ELTS_EQ IntExp  VNameEqOpt GenAttrOpt
+               //     1       2         3       4          5         6          7
+DeclSampler: DIRECTIVE_DECL IDENT V_TYPE_EQ_S NUM_ELTS_EQ IntExp VNameEqOpt GenAttrOpt
    {
        if (!pBuilder->CISA_sampler_variable_decl($2, (int)$5, $6, CISAlineno)) {
            YYABORT; // error already reported
@@ -642,8 +646,8 @@ DeclSampler: DIRECTIVE_DECL IDENT S_CLASS NUM_ELTS_EQ IntExp  VNameEqOpt GenAttr
    }
 VNameEqOpt: %empty  {$$ = "";} | V_NAME_EQ IDENT {$$ = $2;};
 
-               //     1       2      3       4          5         6          7
-DeclSurface: DIRECTIVE_DECL IDENT T_CLASS NUM_ELTS_EQ IntExp  VNameEqOpt GenAttrOpt
+               //     1       2         3          4         5         6          7
+DeclSurface: DIRECTIVE_DECL IDENT V_TYPE_EQ_T  NUM_ELTS_EQ IntExp  VNameEqOpt GenAttrOpt
    {
        if (!pBuilder->CISA_surface_variable_decl($2, (int)$5, $6, $7, CISAlineno)) {
            YYABORT; // error already reported
@@ -671,9 +675,33 @@ DirectiveInput:
         }
     }
 
+///////////////////////////////////////////////////////////
+// ----- .implicit* inputs ------
+DirectiveImplicitInput:
+    //  1                2        3        4        5
+    DIRECTIVE_IMPLICIT IDENT InputOffset InputSize GenAttrOpt
+    {
+        pBuilder->CISA_implicit_input_directive(
+            $1, $2, (short)$3, (unsigned short)$4, CISAlineno);
+    }
+    |
+    //  1                2        3           4
+    DIRECTIVE_IMPLICIT IDENT InputOffset  GenAttrOpt
+    {
+        int64_t size = 0;
+        if (!pBuilder->CISA_eval_sizeof_decl(CISAlineno, $2, size)) {
+            YYABORT; // error already reported
+        }
+        MUST_HOLD(size < 0x10000, "declaration size is too large");
+        if (!pBuilder->CISA_input_directive($2, (short)$3, (unsigned short)size, CISAlineno)) {
+            YYABORT; // error already reported
+        }
+    }
+
 InputOffset: %empty {$$ = 0;} | OFFSET_EQ IntExp {$$ = $2;}
 InputSize: SIZE_EQ IntExp {$$ = $2;}
 
+///////////////////////////////////////////////////////////
 // ----- .parameter ------
 
 DirectiveParameter:
@@ -1199,19 +1227,19 @@ Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHA
 PixelNullMaskEnableOpt: %empty {$$ = false;} | PIXEL_NULL_MASK {$$ = true;}
 
             //          1                   2              3           4           5              6
-ResInfo3dInstruction: RESINFO_OP_3D     ExecSize   SAMPLER_CHANNEL    Var     RawOperand      RawOperand
+ResInfo3dInstruction: RESINFO_OP_3D   SAMPLER_CHANNEL  ExecSize       Var     RawOperand      RawOperand
    {
         pBuilder->CISA_create_info_3d_instruction(
-            VISA_3D_RESINFO, $2.emask, $2.exec_size,
-            ChannelMask::createFromAPI($3), $4, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
+            VISA_3D_RESINFO, $3.emask, $3.exec_size,
+            ChannelMask::createFromAPI($2), $4, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
    }
 
-           //               1                   2           3           4          5
-SampleInfo3dInstruction: SAMPLEINFO_OP_3D   ExecSize  SAMPLER_CHANNEL  Var     RawOperand
+           //               1                    2              3         4          5
+SampleInfo3dInstruction: SAMPLEINFO_OP_3D   SAMPLER_CHANNEL  ExecSize    Var     RawOperand
    {
         pBuilder->CISA_create_info_3d_instruction(
-            VISA_3D_SAMPLEINFO, $2.emask, $2.exec_size,
-            ChannelMask::createFromAPI($3), $4, NULL, $5.cisa_gen_opnd, CISAlineno);
+            VISA_3D_SAMPLEINFO, $3.emask, $3.exec_size,
+            ChannelMask::createFromAPI($2), $4, NULL, $5.cisa_gen_opnd, CISAlineno);
    }
 
 RTWriteOperandParse:

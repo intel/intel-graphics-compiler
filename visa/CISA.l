@@ -177,28 +177,34 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
 
 ".version"          {TRACE("\n** VERSION "); return DIRECTIVE_VERSION;}
 ".decl"             {TRACE("\n** DECLARE "); return DIRECTIVE_DECL;}
-".funcdecl"         {TRACE("\n** FUNCTION DECLARE "); return FUNC_DIRECTIVE_DECL;}
+".funcdecl"         {TRACE("\n** FUNCTION DECLARE "); return DIRECTIVE_FUNCDECL;}
 ".attr"             {TRACE("\n** ATTR "); return DIRECTIVE_ATTR;}
 ".kernel_attr"      {TRACE("\n** KERNEL ATTR "); return DIRECTIVE_KERNEL_ATTR;}
 ".input"            {TRACE("\n** INPUT "); return DIRECTIVE_INPUT;}
+"."implicit[a-zA-Z0-9_\-$@?]* {
+        TRACE("\n**  DIRECTIVE_IMPLICIT ");
+        CISAlval.string = strdup(yytext);
+        CISAlval.string[yyleng] = '\0';
+        return DIRECTIVE_IMPLICIT;
+    }
 ".parameter"        {TRACE("\n** PARAMETER "); return DIRECTIVE_PARAMETER;}
 ".function"         {TRACE("\n** FUNCTION "); return DIRECTIVE_FUNC;}
 ".global_function"  {TRACE("\n** GLOBAL FUNCTION "); return DIRECTIVE_GLOBAL_FUNC;}
 ".kernel"           {TRACE("\n** KERNEL NAME DIRECTIVE "); return DIRECTIVE_KERNEL;}
 
 num_elts[ ]*= {TRACE("\n** NUM_ELTS_EQ "); return NUM_ELTS_EQ;}
-align[ ]*= {   TRACE("\n** ALIGN_EQ ");    return ALIGN_EQ;}
-offset[ ]*= {  TRACE("\n** OFFSET_EQ ");   return OFFSET_EQ;}
-size[ ]*= {    TRACE("\n** SIZE_EQ ");     return SIZE_EQ;}
-alias[ ]*= {   TRACE("\n** ALIAS_EQ ");    return ALIAS_EQ;}
-attr[ ]*= {    TRACE("\n** ATTR_EQ ");     return ATTR_EQ;}
-v_name[ ]*= {  TRACE("\n** V_NAME_EQ ");   return V_NAME_EQ;}
+align[ ]*=    {TRACE("\n** ALIGN_EQ ");    return ALIGN_EQ;}
+offset[ ]*=   {TRACE("\n** OFFSET_EQ ");   return OFFSET_EQ;}
+size[ ]*=     {TRACE("\n** SIZE_EQ ");     return SIZE_EQ;}
+alias[ ]*=    {TRACE("\n** ALIAS_EQ ");    return ALIAS_EQ;}
+attr[ ]*=     {TRACE("\n** ATTR_EQ ");     return ATTR_EQ;}
+v_name[ ]*=   {TRACE("\n** V_NAME_EQ ");   return V_NAME_EQ;}
 
-v_type[ ]*=[ ]*G {TRACE("\n** G_CLASS "); return G_CLASS;}
-v_type[ ]*=[ ]*A {TRACE("\n** A_CLASS "); return A_CLASS;}
-v_type[ ]*=[ ]*P {TRACE("\n** P_CLASS "); return P_CLASS;}
-v_type[ ]*=[ ]*S {TRACE("\n** S_CLASS "); return S_CLASS;}
-v_type[ ]*=[ ]*T {TRACE("\n** T_CLASS "); return T_CLASS;}
+v_type[ ]*=[ ]*G {TRACE("\n** V_TYPE_EQ_G "); return V_TYPE_EQ_G;}
+v_type[ ]*=[ ]*A {TRACE("\n** V_TYPE_EQ_A "); return V_TYPE_EQ_A;}
+v_type[ ]*=[ ]*P {TRACE("\n** V_TYPE_EQ_P "); return V_TYPE_EQ_P;}
+v_type[ ]*=[ ]*S {TRACE("\n** V_TYPE_EQ_S "); return V_TYPE_EQ_S;}
+v_type[ ]*=[ ]*T {TRACE("\n** V_TYPE_EQ_T "); return V_TYPE_EQ_T;}
 
 
 "."(add|sub|inc|dec|min|max|xchg|cmpxchg|and|or|xor|minsint|maxsint|fmax|fmin|fcmpwr)   {

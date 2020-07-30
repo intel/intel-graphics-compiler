@@ -1583,15 +1583,16 @@ static std::string printInstructionSampler(
         {
             VISASampler3DSubOpCode subop = (VISASampler3DSubOpCode)getPrimitiveOperand<uint8_t>(inst, i++);
             sstr << SAMPLE_OP_3D_NAME[subop];
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
-
-            if (subop == VISA_3D_RESINFO)
+            if (subop == VISA_3D_RESINFO || subop == VISA_3D_SAMPLEINFO)
             {
                 // channelMask
                 uint8_t channels = getPrimitiveOperand<uint8_t>(inst, i++);
                 ChannelMask chMask = ChannelMask::createFromBinary(ISA_3D_INFO, channels);
-                sstr << chMask.getString();
+                sstr << "." << chMask.getString();
             }
+
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
+
             // surface
             uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
             sstr << " " << printSurfaceName(surface);
