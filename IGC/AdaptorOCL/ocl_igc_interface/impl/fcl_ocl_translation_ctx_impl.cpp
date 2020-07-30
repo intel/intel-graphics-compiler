@@ -92,10 +92,14 @@ using InvocationInfo = IGC::AdaptorCM::Frontend::IDriverInvocation;
 using PathT = llvm::SmallVector<char, 1024>;
 
 std::vector<char> makeVcOptPayload(uint64_t IR_size,
+                                   const std::string& TargetFeaturesStr,
                                    const std::vector<std::string>& VcOpts) {
     std::string InternalVcOptions;
     if (!VcOpts.empty()) {
         InternalVcOptions += " -llvm-options='" + llvm::join(VcOpts, " ") + "'";
+    }
+    if (!TargetFeaturesStr.empty()) {
+        InternalVcOptions.append(" -target-features=").append(TargetFeaturesStr);
     }
     // Payload format:
     // |-vc-codegen|c-str llvm-opts|i64(IR size)|i64(Payload size)|-vc-codegen|
@@ -183,7 +187,9 @@ void runFeInvocation(const InvocationInfo& Invocation,
     // into the underlying buffer which contains SPIRV IR
     const auto& VcOpts =
         IGC::AdaptorCM::Frontend::convertBackendArgsToVcOpts(Invocation.getBEArgs());
-    std::vector<char> Payload = makeVcOptPayload(IR.size(), VcOpts);
+    const auto& TargetFeatures = Invocation.getTargetFeaturesStr();
+
+    std::vector<char> Payload = makeVcOptPayload(IR.size(), TargetFeatures, VcOpts);
 
     std::vector<char> FinalOutput;
     FinalOutput.reserve(IR.size() + Payload.size());
