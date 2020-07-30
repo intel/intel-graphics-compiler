@@ -1412,8 +1412,7 @@ static std::string printInstructionSampler(
             if (opcode == ISA_SAMPLE)
                 sstr << " S" << (unsigned)sampler;
 
-            sstr << " T"
-                 << (unsigned)surface;
+            sstr << " " << printSurfaceName(surface);
 
             /// u offset
             sstr << printOperand(header, inst, i++, opt);
@@ -1467,7 +1466,8 @@ static std::string printInstructionSampler(
             sstr << " S" << printOperand(header, inst, i++, opt);
 
             // surface
-            sstr << " T" << printOperand(header, inst, i++, opt);
+            uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
+            sstr << " " << printSurfaceName(surface);
 
             // dst
             sstr << printOperand(header, inst, i++, opt);
@@ -1505,7 +1505,8 @@ static std::string printInstructionSampler(
             sstr << printOperand(header, inst, i++, opt);
 
             // surface
-            sstr << " T" << printOperand(header, inst, i++, opt);
+            uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
+            sstr << " " << printSurfaceName(surface);
 
             // dst
             sstr << printOperand(header, inst, i++, opt);
@@ -1562,7 +1563,8 @@ static std::string printInstructionSampler(
             sstr << " S" << printOperand(header, inst, i++, opt);
 
             // surface
-            sstr << " T" << printOperand(header, inst, i++, opt);
+            uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
+            sstr << " " << printSurfaceName(surface);
 
             // dst
             sstr << printOperand(header, inst, i++, opt);
@@ -1591,7 +1593,8 @@ static std::string printInstructionSampler(
                 sstr << chMask.getString();
             }
             // surface
-            sstr << " T" << printOperand(header, inst, i++, opt);
+            uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
+            sstr << " " << printSurfaceName(surface);
 
             if (subop == VISA_3D_RESINFO)
             {
@@ -1610,14 +1613,13 @@ static std::string printInstructionSampler(
             uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
             uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
             sstr << ISA_Inst_Table[opcode].str
-                 << "."
-                 << channel_mask_str[(channel & 0xf)]
-                 << "."
-                 << sampler_channel_output_str[ChannelMask::getChannelOutputFormat(channel)]
-                 << " S"
-                 << (unsigned)sampler
-                 << " T"
-                 << (unsigned)surface;
+                << "."
+                << channel_mask_str[(channel & 0xf)]
+                << "."
+                << sampler_channel_output_str[ChannelMask::getChannelOutputFormat(channel)]
+                << " S"
+                << (unsigned)sampler
+                << " " << printSurfaceName(surface);
 
             /// u offset
             sstr << printOperand(header, inst, i++, opt);
@@ -1643,12 +1645,11 @@ static std::string printInstructionSampler(
             uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
             sstr << ISA_Inst_Table[opcode].str
-                 << "."
-                 << channel_mask_str[channel]
-                 << " T"
-                 << (unsigned)surface
-                 << " S"
-                 << (unsigned)sampler;
+                << "."
+                << channel_mask_str[channel]
+                << " " << printSurfaceName(surface)
+                << " S"
+                << (unsigned)sampler;
 
             /// u offset
             sstr << printOperand(header, inst, i++, opt);
@@ -1704,7 +1705,7 @@ static std::string printInstructionSampler(
                      sstr << ISA_Inst_Table[opcode].str
                           << "."
                           << va_sub_names[subOpcode]
-                          << " T" << (unsigned)surface;
+                          << " " << printSurfaceName(surface);
 
                      /// u offset
                      sstr << printOperand(header, inst, i++, opt);
@@ -1736,7 +1737,7 @@ static std::string printInstructionSampler(
                      sstr << ISA_Inst_Table[opcode].str
                           << "."
                           << va_sub_names[subOpcode]
-                          << " T" << (unsigned)surface
+                          << " " << printSurfaceName(surface)
                           << " S" << (unsigned)sampler;
 
                      /// u offset
@@ -1764,12 +1765,12 @@ static std::string printInstructionSampler(
                 case BoolCentroid_FOPCODE:
                 case Centroid_FOPCODE:
                 {
-                     uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
+                    uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
-                     sstr << ISA_Inst_Table[opcode].str
-                          << "."
-                          << va_sub_names[subOpcode]
-                          << " T" << (unsigned)surface;
+                    sstr << ISA_Inst_Table[opcode].str
+                        << "."
+                        << va_sub_names[subOpcode]
+                        << " " << printSurfaceName(surface);
 
                      /// u offset
                      sstr << printOperand(header, inst, i++, opt);
@@ -1799,7 +1800,7 @@ static std::string printInstructionSampler(
                      sstr << ISA_Inst_Table[opcode].str
                           << "."
                           << va_sub_names[subOpcode]
-                          << " T" << (unsigned)surface
+                          << " " << printSurfaceName(surface)
                           << " S" << (unsigned)sampler;
 
                      /// u offset
@@ -1840,9 +1841,9 @@ static std::string printInstructionSampler(
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
                      sstr << ISA_Inst_Table[opcode].str
-                          << "."
-                          << va_sub_names[subOpcode]
-                          << " T" << (unsigned)surface;
+                         << "."
+                         << va_sub_names[subOpcode]
+                         << " " << printSurfaceName(surface);
 
                      /// u offset
                      sstr << printOperand(header, inst, i++, opt);
@@ -1866,10 +1867,10 @@ static std::string printInstructionSampler(
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
                      sstr << ISA_Inst_Table[opcode].str
-                          << "."
-                          << va_sub_names[subOpcode]
-                          << " T" << (unsigned)surface
-                          << " S" << (unsigned)sampler;
+                         << "."
+                         << va_sub_names[subOpcode]
+                         << " " << printSurfaceName(surface)
+                         << " S" << (unsigned)sampler;
 
                      /// u offset
                      sstr << printOperand(header, inst, i++, opt);
@@ -1900,9 +1901,9 @@ static std::string printInstructionSampler(
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
                      sstr << ISA_Inst_Table[opcode].str
-                          << "."
-                          << va_sub_names[subOpcode]
-                          << " T" << (unsigned)surface;
+                         << "."
+                         << va_sub_names[subOpcode]
+                         << " " << printSurfaceName(surface);
 
                      /// u offset
                      sstr << printOperand(header, inst, i++, opt);
@@ -1950,9 +1951,9 @@ static std::string printInstructionSampler(
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
                      sstr << ISA_Inst_Table[opcode].str
-                          << "."
-                          << va_sub_names[subOpcode]
-                          << " T" << (unsigned)surface;
+                         << "."
+                         << va_sub_names[subOpcode]
+                         << " " << printSurfaceName(surface);
 
                      /// u offset
                      sstr << printOperand(header, inst, i++, opt);
@@ -2003,16 +2004,15 @@ static std::string printInstructionSampler(
                             uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
                             uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
-                            sstr << " T" << (unsigned)surface
+                            sstr << " " << printSurfaceName(surface)
                                  << " S" << (unsigned)sampler;
                         }
                         else
                         {
                             /// surface
                             uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
-                            sstr << " T" << (unsigned)surface;
+                            sstr << " " << printSurfaceName(surface);
                         }
-
 
                         /// u offset
                         sstr << printOperand(header, inst, i++, opt);
@@ -2077,7 +2077,7 @@ static std::string printInstructionSampler(
                         /// dst surface
                         uint8_t dst_surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
-                        sstr << " T" << (unsigned)dst_surface;
+                        sstr << " " << printSurfaceName(dst_surface);
 
                         /// x offset
                         sstr << printOperand(header, inst, i++, opt);
@@ -2095,21 +2095,6 @@ static std::string printInstructionSampler(
         default: ASSERT_USER( false, "illegal opcode for sampler instruction");
     }
 
-    return sstr.str();
-}
-
-static std::string printSurfaceIndex(uint8_t surface)
-{
-    std::stringstream sstr;
-    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
-    if (surface < numPreDefinedSurfs)
-    {
-        sstr << " " << vISAPreDefSurf[surface].name;
-    }
-    else
-    {
-        sstr << " " << "T" << (unsigned)surface;
-    }
     return sstr.str();
 }
 
@@ -2173,7 +2158,7 @@ static std::string printInstructionDataport(
             sstr << (unsigned)block_height;
             sstr << ")";
 
-            sstr << " T" << (unsigned)surface;
+            sstr << " " << printSurfaceName(surface);
             sstr << " " << (unsigned)plane;
 
             /// x offset
@@ -2204,7 +2189,7 @@ static std::string printInstructionDataport(
             sstr << " (" << num_oword << ")";
 
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr <<printSurfaceIndex(surface);
+            sstr << " " << printSurfaceName(surface);
 
             /// offset
             sstr << printOperand(header, inst, i++, opt);
@@ -2264,7 +2249,7 @@ static std::string printInstructionDataport(
 
             //surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr <<printSurfaceIndex(surface);
+            sstr << " " << printSurfaceName(surface);
 
             /// global offset
             sstr << printOperand(header, inst, i++, opt);
@@ -2287,7 +2272,7 @@ static std::string printInstructionDataport(
             sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr <<printSurfaceIndex(surface);
+            sstr << " " << printSurfaceName(surface);
 
             /// u offset
             sstr << printOperand(header, inst, i++, opt);
@@ -2320,7 +2305,7 @@ static std::string printInstructionDataport(
 
             /// surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr <<printSurfaceIndex(surface);
+            sstr << " " << printSurfaceName(surface);
 
             /// global offset
             sstr << printOperand(header, inst, i++, opt);
@@ -2351,7 +2336,7 @@ static std::string printInstructionDataport(
 
             /// surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr <<printSurfaceIndex(surface);
+            sstr << " " << printSurfaceName(surface);
 
             /// global offset
             sstr << printOperand(header, inst, i++, opt);
@@ -2385,11 +2370,11 @@ static std::string printInstructionDataport(
                 if (mode & (0x1 << 0x12)) sstr << "<NULLRT>";
             }
 
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
             // surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr <<printSurfaceIndex(surface);
+            sstr << " " << printSurfaceName(surface);
 
             while (i < inst->opnd_count)
             {
@@ -2404,7 +2389,7 @@ static std::string printInstructionDataport(
 
             /// surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr <<printSurfaceIndex(surface);
+            sstr << " " << printSurfaceName(surface);
 
             /// offsets
             sstr << printOperand(header, inst, i++, opt);
@@ -2426,7 +2411,7 @@ static std::string printInstructionDataport(
 
             /// surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(surface);
+            sstr << " " << printSurfaceName(surface);
 
             /// u
             sstr << printOperand(header, inst, i++, opt);
