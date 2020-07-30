@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "common/IGCConstantFolder.h"
 #include <cfenv>
+#include "Probe/Assertion.h"
 
 namespace IGC
 {
@@ -57,13 +58,18 @@ llvm::Constant* IGCConstantFolder::CreateGradientY(llvm::Constant* C0) const
 
 llvm::Constant* IGCConstantFolder::CreateRsq(llvm::Constant* C0) const
 {
-    assert(llvm::isa<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != C0);
+    IGC_ASSERT(llvm::isa<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != llvm::cast<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != C0->getType());
     auto APF = llvm::cast<llvm::ConstantFP>(C0)->getValueAPF();
     double C0value = C0->getType()->isFloatTy() ? static_cast<double>(APF.convertToFloat()) :
         APF.convertToDouble();
     if (C0value > 0.0)
     {
-        return llvm::ConstantFP::get(C0->getType(), 1. / sqrt(C0value));
+        const double sq = sqrt(C0value);
+        IGC_ASSERT(sq);
+        return llvm::ConstantFP::get(C0->getType(), 1.0 / sq);
     }
     else
     {
@@ -73,7 +79,10 @@ llvm::Constant* IGCConstantFolder::CreateRsq(llvm::Constant* C0) const
 
 llvm::Constant* IGCConstantFolder::CreateRoundNE(llvm::Constant* C0) const
 {
-    assert(llvm::isa<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != C0);
+    IGC_ASSERT(llvm::isa<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != llvm::cast<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != C0->getType());
     auto APF = llvm::cast<llvm::ConstantFP>(C0)->getValueAPF();
     double C0value = C0->getType()->isFloatTy() ? static_cast<double>(APF.convertToFloat()) :
         APF.convertToDouble();
@@ -87,7 +96,10 @@ llvm::Constant* IGCConstantFolder::CreateRoundNE(llvm::Constant* C0) const
 
 llvm::Constant* IGCConstantFolder::CreateFSat(llvm::Constant* C0) const
 {
-    assert(llvm::isa<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != C0);
+    IGC_ASSERT(llvm::isa<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != llvm::cast<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != C0->getType());
     auto APF = llvm::cast<llvm::ConstantFP>(C0)->getValueAPF();
     const llvm::APFloat& zero = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(C0->getType(), 0.))->getValueAPF();
     const llvm::APFloat& One = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(C0->getType(), 1.))->getValueAPF();
@@ -174,9 +186,12 @@ llvm::Constant* IGCConstantFolder::CreateCanonicalize(llvm::Constant* C0, bool f
 
 llvm::Constant* IGCConstantFolder::CreateGradient(llvm::Constant* C0) const
 {
-    assert(llvm::isa<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != C0);
+    IGC_ASSERT(llvm::isa<llvm::ConstantFP>(C0));
+    IGC_ASSERT(nullptr != llvm::cast<llvm::ConstantFP>(C0));
     if (llvm::cast<llvm::ConstantFP>(C0)->getValueAPF().isFinite())
     {
+        IGC_ASSERT(nullptr != C0->getType());
         return llvm::ConstantFP::get(C0->getType(), 0.0f);
     }
     else
