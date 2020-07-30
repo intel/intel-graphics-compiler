@@ -632,10 +632,10 @@
         return !noFP64();
     }
 
+
     bool hasByteALU() const
     {
         return true;
     }
-
 
     // end HW capabilities
