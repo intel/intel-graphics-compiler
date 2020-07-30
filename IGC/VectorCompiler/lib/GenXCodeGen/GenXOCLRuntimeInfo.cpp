@@ -60,6 +60,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
           UsesGroupId = true;
           break;
         case GenXIntrinsic::genx_barrier:
+        case GenXIntrinsic::genx_sbarrier:
           UsesBarriers = true;
           break;
         case GenXIntrinsic::genx_ssdp4a:

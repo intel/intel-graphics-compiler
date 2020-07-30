@@ -939,6 +939,7 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
     }
   }
 
+
 }
 
 // Legalize name for using as filename or in visa asm
@@ -2621,6 +2622,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
                         // does not have a register allocated.
                         // fall through...
       case GenXIntrinsic::genx_barrier:
+      case GenXIntrinsic::genx_sbarrier:
         HasBarrier = true;
       default:
         if (!(CI->user_empty() &&
