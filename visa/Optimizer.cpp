@@ -1784,6 +1784,10 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
             return false;
         }
 
+        if (!fg.builder->hasByteALU() && (getTypeSize(Dst->getType()) == 1))
+        {
+            return false;
+        }
     }
 
     // Now check each definition of src(0)
@@ -10018,6 +10022,14 @@ bool MadSequenceInfo::checkMadSequence()
             return false;
         }
 
+        if (!builder.hasByteALU())
+        {
+            if (IS_BTYPE(src0->getType()) || IS_BTYPE(src1->getType()))
+            {
+                return false;
+            }
+        }
+
         // If there is a modifier for src2, or src2 is accessed somewhere
         // indirectly then we will not generate a MAC.
         if (!src2->isSrcRegRegion())
@@ -10176,6 +10188,18 @@ void MadSequenceInfo::populateSrc2Def()
         return setNotSafe();
     }
 
+    if (!builder.hasByteALU())
+    {
+        // do not allow acc if src2Dest inst has byte source
+        for (int i = 0; i < src2Def->getNumSrc(); ++i)
+        {
+            if (IS_BTYPE(src2Def->getSrc(i)->getType()))
+            {
+                return setNotSafe();
+            }
+        }
+    }
+
     // Check if there is any ACC dependency.
     if (!checkACCDependency(src2Def, firstMad))
         return setNotSafe();
@@ -10236,9 +10260,8 @@ void MadSequenceInfo::populateUserChain(G4_INST *defInst, int level)
         return setNotSafe();
 
     G4_INST *useInst = defInst->use_back().first;
-    G4_Operand *useDst = useInst->getDst();
+    auto useDst = useInst->getDst();
 
-    // Should support a null dst?
     if (useDst == nullptr)
         return setNotSafe();
 

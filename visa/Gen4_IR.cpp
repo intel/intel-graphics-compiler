@@ -1863,6 +1863,11 @@ G4_INST::MovType G4_INST::canPropagate() const
     G4_Type dstType = dst->getType();
     G4_Type srcType = src->getType();
 
+    if (!builder.hasByteALU()
+        && (getTypeSize(dstType) == 1 || getTypeSize(srcType) == 1))
+    {
+        return SuperMov;
+    }
 
     G4_SrcModifier srcMod = Mod_src_undef;
     if (src->isSrcRegRegion()) {
