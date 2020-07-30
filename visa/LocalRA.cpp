@@ -2535,6 +2535,8 @@ void LinearScan::run(G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
             startregnum = endregnum = op->asGreg()->getRegNum();
             endsregnum = startsregnum + (lr->getTopDcl()->getNumElems() * lr->getTopDcl()->getElemSize() / 2) - 1;
 
+            MUST_BE_TRUE(((unsigned int)startregnum + lr->getTopDcl()->getNumRows() - 1) < numRegLRA, "Linear scan allocated unavailable physical GRF");
+
             if (lr->getTopDcl()->getNumRows() > 1) {
                 endregnum = startregnum + lr->getTopDcl()->getNumRows() - 1;
 
@@ -3225,7 +3227,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
                 if (*startGRFReg < SECOND_HALF_BANK_START_GRF)
                 {
                     *startGRFReg += bank2_start;
-                    if (*startGRFReg >= gra.kernel.getNumRegTotal())
+                    if (*startGRFReg >= numRegLRA)
                     {
                         *startGRFReg = bank2_start;
                         return false;
