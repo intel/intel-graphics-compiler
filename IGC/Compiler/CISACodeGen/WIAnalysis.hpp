@@ -91,6 +91,7 @@ namespace IGC
     public:
         void init(
             llvm::Function* F,
+            llvm::DominatorTree* DT,
             llvm::PostDominatorTree* PDT,
             IGCMD::MetaDataUtils* MDUtils,
             CodeGenContext* CGCtx,
@@ -99,13 +100,14 @@ namespace IGC
 
         WIAnalysisRunner(
             llvm::Function* F,
+            llvm::DominatorTree* DT,
             llvm::PostDominatorTree* PDT,
             IGCMD::MetaDataUtils* MDUtils,
             CodeGenContext* CGCtx,
             ModuleMetaData* ModMD,
             TranslationTable* TransTable)
         {
-            init(F, PDT, MDUtils, CGCtx, ModMD, TransTable);
+            init(F, DT, PDT, MDUtils, CGCtx, ModMD, TransTable);
         }
 
         WIAnalysisRunner() {}
@@ -271,6 +273,7 @@ namespace IGC
         std::vector<const llvm::Instruction*> m_backwardList;
 
         llvm::Function* m_func;
+        llvm::DominatorTree* DT;
         llvm::PostDominatorTree* PDT;
         IGC::IGCMD::MetaDataUtils* m_pMdUtils;
         IGC::CodeGenContext* m_CGCtx;

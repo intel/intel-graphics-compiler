@@ -242,6 +242,7 @@ void WIAnalysisRunner::dump() const
 
 void WIAnalysisRunner::init(
     llvm::Function* F,
+    llvm::DominatorTree* DT,
     llvm::PostDominatorTree* PDT,
     IGC::IGCMD::MetaDataUtils* MDUtils,
     IGC::CodeGenContext* CGCtx,
@@ -249,6 +250,7 @@ void WIAnalysisRunner::init(
     IGC::TranslationTable* TransTable)
 {
     m_func = F;
+    this->DT = DT;
     this->PDT = PDT;
     m_pMdUtils = MDUtils;
     m_CGCtx = CGCtx;
@@ -307,12 +309,13 @@ bool WIAnalysisRunner::run()
 bool WIAnalysis::runOnFunction(Function& F)
 {
     auto* MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto* DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     auto* PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
     auto* CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto* ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     auto* pTT = &getAnalysis<TranslationTable>();
 
-    Runner.init(&F, PDT, MDUtils, CGCtx, ModMD, pTT);
+    Runner.init(&F, DT, PDT, MDUtils, CGCtx, ModMD, pTT);
     return Runner.run();
 }
 
@@ -1410,10 +1413,21 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
         // If we haven't been able to track the dependency of the alloca make it random
         return WIAnalysis::RANDOM;
     }
-    // otherwise assume the alloca is uniform by default
-    WIAnalysis::WIDependancy dep = WIAnalysis::UNIFORM;
-    bool storesInDifferentBBs = false;
-    const BasicBlock* pStoreInstParent = NULL;
+    // find the common dominator block among all the stores
+    // that can be considered as the nearest logical location for alloca.
+    const BasicBlock* CommonDomB = nullptr;
+    for (auto it : depIt->second.stores)
+    {
+        auto BB = (*it).getParent();
+        IGC_ASSERT(BB);
+        if (!CommonDomB)
+            CommonDomB = BB;
+        else
+            CommonDomB = DT->findNearestCommonDominator(CommonDomB, BB);
+    }
+    // if any store is not uniform, then alloca is not uniform
+    // if any store is affected by a divergent branch after alloca,
+    // then alloca is also not uniform
     for (auto it : depIt->second.stores)
     {
         if (hasDependency(&(*it)))
@@ -1423,36 +1437,20 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
             {
                 return WIAnalysis::RANDOM;
             }
-            // Detect stores in different BasicBlocks (under different control flow statements)
-            if( llvm::isa<llvm::Instruction>( &( *it ) ) )
+            if (m_ctrlBranches.find((*it).getParent()) != m_ctrlBranches.end())
             {
-                const Instruction* inst = llvm::cast<llvm::Instruction>( &( *it ) );
-                if( inst->getParent() != NULL )
-                {
-                    if( pStoreInstParent == NULL )
-                    {
-                        pStoreInstParent = inst->getParent();
-                    }
-                    if( pStoreInstParent != inst->getParent() )
-                    {
-                        storesInDifferentBBs = true;
-                    }
-                }
-            }
-            if (insideDivergentCF(&(*it)))
-            {
-                if( storesInDifferentBBs )
-                {
-                    return WIAnalysis::RANDOM;
+                auto Branches = m_ctrlBranches[(*it).getParent()];
+                for (auto BrI = Branches.begin(), BrE = Branches.end();
+                    BrI != BrE; ++BrI) {
+                    // exclude those branches that dominates alloca
+                    if (!DT->dominates((*BrI), CommonDomB))
+                        return WIAnalysis::RANDOM;
                 }
             }
         }
     }
-    if( storesInDifferentBBs )
-    {
-        return WIAnalysis::RANDOM;
-    }
-    return dep;
+
+    return WIAnalysis::UNIFORM;
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst* inst)

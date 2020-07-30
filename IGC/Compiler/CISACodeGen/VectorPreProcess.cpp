@@ -349,6 +349,7 @@ namespace
             AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<DominatorTreeWrapperPass>();
             AU.addRequired<PostDominatorTreeWrapperPass>();
         }
 
@@ -397,6 +398,7 @@ namespace
 IGC_INITIALIZE_PASS_BEGIN(VectorPreProcess, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_END(VectorPreProcess, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
@@ -1481,6 +1483,8 @@ bool VectorPreProcess::runOnFunction(Function& F)
         {
             auto* MDUtils =
                 getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+            auto* DT =
+                &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
             auto* PDT =
                 &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
             auto* ModMD =
@@ -1488,7 +1492,7 @@ bool VectorPreProcess::runOnFunction(Function& F)
 
             TranslationTable TT;
             TT.run(F);
-            WIAnalysisRunner WI(&F, PDT, MDUtils, m_CGCtx, ModMD, &TT);
+            WIAnalysisRunner WI(&F, DT, PDT, MDUtils, m_CGCtx, ModMD, &TT);
             WI.run();
 
             for (uint32_t i = 0; i < m_WorkList.size(); ++i)
