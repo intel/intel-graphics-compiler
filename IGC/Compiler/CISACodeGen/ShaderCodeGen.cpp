@@ -551,12 +551,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     // Since we don't support switch statements, switch lowering is needed after the last CFG simplication
     mpm.add(llvm::createLowerSwitchPass());
 
-    // There's no particular reason for this exact place, but it should be after LowerGEPForPrivMem
-    if (IGC_IS_FLAG_ENABLED(EnableSplitIndirectEEtoSel))
-    {
-        mpm.add(createSplitIndirectEEtoSelPass());
-    }
-
     // Split big vector & 3-element load/store, etc.
     mpm.add(createVectorPreProcessPass());
 
