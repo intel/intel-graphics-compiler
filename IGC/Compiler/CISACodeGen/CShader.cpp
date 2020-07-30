@@ -276,7 +276,9 @@ uint32_t CShader::GetMaxPrivateMem()
 /// save FP of previous frame when entering a stack-call function
 void CShader::SaveStackState()
 {
-    IGC_ASSERT(!m_SavedFP && m_FP && m_SP);
+    IGC_ASSERT(!m_SavedFP);
+    IGC_ASSERT(m_FP);
+    IGC_ASSERT(m_SP);
     m_SavedFP = GetNewVariable(m_FP);
     encoder.Copy(m_SavedFP, m_FP);
     encoder.Push();
@@ -285,7 +287,9 @@ void CShader::SaveStackState()
 /// restore SP and FP when exiting a stack-call function
 void CShader::RestoreStackState()
 {
-    IGC_ASSERT(m_SavedFP && m_FP && m_SP);
+    IGC_ASSERT(m_SavedFP);
+    IGC_ASSERT(m_FP);
+    IGC_ASSERT(m_SP);
     // Restore SP to current FP
     encoder.Copy(m_SP, m_FP);
     encoder.Push();
@@ -306,10 +310,10 @@ void CShader::CreateImplicitArgs()
     unsigned numImplicitArgs = implicitArgs.size();
 
     // Push Args are only for entry function
-    unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-    unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) && !isNonEntryMultirateShader(entry) ? numPushArgsEntry : 0);
-    int numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
-    IGC_ASSERT(numFuncArgs >= 0 && "Function arg size does not match meta data and push args.");
+    const unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+    const unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) && !isNonEntryMultirateShader(entry) ? numPushArgsEntry : 0);
+    const int numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
+    IGC_ASSERT_MESSAGE(0 <= numFuncArgs, "Function arg size does not match meta data and push args.");
 
     // Create symbol for every arguments [5/2019]
     //   (Previously, symbols are created only for implicit args.)
@@ -505,6 +509,7 @@ void CShader::AddPatchConstantSetup(uint index, CVariable* var)
 void CShader::AllocateInput(CVariable* var, uint offset, uint instance)
 {
     // the input offset must respect the variable alignment
+    IGC_ASSERT(nullptr != var);
     IGC_ASSERT(as[var->GetAlign()]);
     IGC_ASSERT(offset % as[var->GetAlign()] == 0);
     encoder.DeclareInput(var, offset, instance);
@@ -512,6 +517,7 @@ void CShader::AllocateInput(CVariable* var, uint offset, uint instance)
 
 void CShader::AllocateOutput(CVariable* var, uint offset, uint instance)
 {
+    IGC_ASSERT(nullptr != var);
     IGC_ASSERT(as[var->GetAlign()]);
     IGC_ASSERT(offset % as[var->GetAlign()] == 0);
     encoder.DeclareInput(var, offset, instance);
@@ -1313,7 +1319,8 @@ uint CShader::GetNbElementAndMask(llvm::Value* value, uint32_t& mask)
 
     uint nbElement = 0;
     uint bSize = 0;
-    llvm::Type* type = value->getType();
+    llvm::Type* const type = value->getType();
+    IGC_ASSERT(nullptr != type);
     switch (type->getTypeID())
     {
     case llvm::Type::FloatTyID:
@@ -1365,6 +1372,7 @@ CVariable* CShader::GetUndef(VISA_Type type)
 // TODO: Obviously, lots of works are needed to support constant expression
 // better.
 uint64_t CShader::GetConstantExpr(ConstantExpr* CE) {
+    IGC_ASSERT(nullptr != CE);
     switch (CE->getOpcode()) {
     default:
         break;
@@ -1405,10 +1413,8 @@ uint64_t CShader::GetConstantExpr(ConstantExpr* CE) {
     }
     }
 
-    errs() << "CE: " << *CE << '\n';
-    IGC_ASSERT_MESSAGE(0, "Unsupported constant expression!");
-    return 0xBADDCAFEbaddcafeU;
-
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported constant expression!");
+    return 0;
 }
 
 unsigned int CShader::GetGlobalMappingValue(llvm::Value* c)
@@ -1426,9 +1432,10 @@ CVariable* CShader::GetGlobalMapping(llvm::Value* c)
     return ImmToVariable(0, type);
 }
 
-CVariable* CShader::GetScalarConstant(llvm::Value* c)
+CVariable* CShader::GetScalarConstant(llvm::Value* const c)
 {
-    VISA_Type type = GetType(c->getType());
+    IGC_ASSERT(nullptr != c);
+    const VISA_Type type = GetType(c->getType());
 
     // Constants
     if (isa<ConstantInt>(c) || isa<ConstantFP>(c) || isa<ConstantPointerNull>(c))
@@ -1729,6 +1736,9 @@ CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
 
 VISA_Type IGC::GetType(llvm::Type* type, CodeGenContext* pContext)
 {
+    IGC_ASSERT(nullptr != pContext);
+    IGC_ASSERT(nullptr != type);
+
     switch (type->getTypeID())
     {
     case llvm::Type::FloatTyID:
@@ -1771,6 +1781,7 @@ VISA_Type IGC::GetType(llvm::Type* type, CodeGenContext* pContext)
     case llvm::Type::HalfTyID:
         return ISA_TYPE_HF;
     default:
+        IGC_ASSERT(0);
         break;
     }
     IGC_ASSERT(0);
@@ -2089,6 +2100,7 @@ CVariable* CShader::getOrCreateReturnSymbol(llvm::Function* F)
     }
 
     auto retType = F->getReturnType();
+    IGC_ASSERT(nullptr != retType);
     if (F->isDeclaration() || retType->isVoidTy())
         return nullptr;
 
@@ -2115,6 +2127,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
     bool useStackCall)
 {
     llvm::DenseMap<llvm::Value*, CVariable*>* pSymMap = &globalSymbolMapping;
+    IGC_ASSERT(nullptr != pSymMap);
     auto it = pSymMap->find(Arg);
     if (it != pSymMap->end())
     {
@@ -2572,7 +2585,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
     {
         if (CanTreatAsAlias(EEI))
         {
-            llvm::ConstantInt* pConstElem = llvm::dyn_cast<llvm::ConstantInt>(EEI->getIndexOperand());
+            llvm::ConstantInt* const pConstElem = llvm::dyn_cast<llvm::ConstantInt>(EEI->getIndexOperand());
             IGC_ASSERT(nullptr != pConstElem);
             Value* vecOperand = EEI->getVectorOperand();
             // need to call GetSymbol() before AdjustExtractIndex(), since
@@ -3303,6 +3316,9 @@ CShader* CShaderProgram::CreateNewShader(SIMDMode simd)
             break;
         }
     }
+
+    IGC_ASSERT(nullptr != pShader);
+
     pShader->m_shaderStats = m_shaderStats;
     pShader->m_DriverInfo = &m_context->m_DriverInfo;
     pShader->m_Platform = &m_context->platform;
