@@ -317,9 +317,7 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     // FIXME: compiler did not provide this information
     env.actual_kernel_start_offset = 0;
 
-    // FIXME: is this barrier counts?
     env.barrier_count = annotations.m_executionEnivronment.HasBarriers;
-
     env.disable_mid_thread_preemption = annotations.m_executionEnivronment.DisableMidThreadPreemption;
     env.grf_count = annotations.m_executionEnivronment.NumGRFRequired;
     env.has_4gb_buffers = annotations.m_executionEnivronment.CompiledForGreaterThan4GBBuffers;
@@ -336,10 +334,8 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
         env.required_work_group_size.push_back(annotations.m_executionEnivronment.FixedWorkgroupSize[2]);
     }
     env.simd_size = annotations.m_executionEnivronment.CompiledSIMDSize;
-
-    // FIXME: where is this information?
-    env.slm_size = 0;
-
+    // set slm size to inline local size
+    env.slm_size = annotations.m_executionEnivronment.SumFixedTGSMSizes ;
     env.subgroup_independent_forward_progress = annotations.m_executionEnivronment.SubgroupIndependentForwardProgressRequired;
     if (annotations.m_executionEnivronment.WorkgroupWalkOrder[0] ||
         annotations.m_executionEnivronment.WorkgroupWalkOrder[1] ||
