@@ -352,13 +352,12 @@ locally visible new & delete for Linux
 inline void* operator new(size_t size)
 {
     void* storage = CAllocator::Allocate(size);
-    IGC_ASSERT_MESSAGE(nullptr != storage, "Could not allocate the required memory to storage");
+    IGC_ASSERT_EXIT_MESSAGE(nullptr != storage, "Could not allocate the required memory to storage");
     return storage;
 }
 
 inline void operator delete(void* ptr)
 {
-    IGC_ASSERT_MESSAGE(nullptr != ptr, "ptr cannot be null");
     CAllocator::Deallocate(ptr);
 }
 
@@ -370,7 +369,6 @@ inline void* operator new[](size_t size)
 
 inline void operator delete[](void* ptr)
 {
-    IGC_ASSERT_MESSAGE(nullptr != ptr, "ptr cannot be null");
     CAllocator::Deallocate(ptr);
 }
 #endif // !defined __clang__
@@ -388,7 +386,7 @@ inline void operator delete[](void* ptr)
 void* __cdecl operator new( size_t size )
 {
     void* storage = CAllocator::Allocate(size);
-    IGC_ASSERT_MESSAGE(nullptr != storage, "Could not allocate the required memory to storage");
+    IGC_ASSERT_EXIT_MESSAGE(nullptr != storage, "Could not allocate the required memory to storage");
     return storage;
 }
 
