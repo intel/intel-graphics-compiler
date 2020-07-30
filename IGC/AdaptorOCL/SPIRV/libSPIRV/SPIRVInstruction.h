@@ -2168,6 +2168,20 @@ _SPIRV_OP(SicGetIpeChromaMode, true, 4)
 
 SPIRVSpecConstantOp *createSpecConstantOpInst(SPIRVInstruction *Inst);
 SPIRVInstruction *createInstFromSpecConstantOp(SPIRVSpecConstantOp *C);
+
+class SPIRVVariableLengthArrayINTELInstBase : public SPIRVInstTemplateBase {
+protected:
+    CapVec getRequiredCapability() const override {
+        return getVec(CapabilityVariableLengthArrayINTEL);
+    }
+};
+#define _SPIRV_OP(x, ...)                                                      \
+  typedef SPIRVInstTemplate<SPIRVVariableLengthArrayINTELInstBase,             \
+    Op##x##INTEL, __VA_ARGS__> SPIRV##x##INTEL;
+_SPIRV_OP(VariableLengthArray, true, 4)
+_SPIRV_OP(SaveMemory, true, 3)
+_SPIRV_OP(RestoreMemory, false, 2)
+#undef _SPIRV_OP
 }
 
 #endif // SPIRVINSTRUCTION_HPP_
