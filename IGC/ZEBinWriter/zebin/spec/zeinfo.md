@@ -29,7 +29,7 @@ All **literals** have one of the following types:
 
 # Kernel Attributes
 | Attribute | Type | Required/Optional | Description |
-| ----- | ----- | ------ |
+| ----- | ----- | ------ | ----- |
 | name | str | Required | |
 | execution_env | ExecutionEnv | Required | |
 | payload_arguments | PayloadArgumentsTy | Optional | vector |
@@ -102,7 +102,7 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 If an attribute is **Required**, it must be present in payload arguments. If it's **Optional** and it's not present, the **Default** value is used.
 
 | Attribute | Type | Required/Optional | Default | Description |
-| ------ | ------ | ------ | ------ |
+| ------ | ------ | ------ | ------ | ----- |
 | arg_type | <argument_type> | Required | | |
 | offset | int32 | Required | | |
 | size | int32 | Required | | |
