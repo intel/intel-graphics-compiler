@@ -1103,32 +1103,29 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
             // 11 DW_OP_const1u 16 or 8
             // 12 DW_OP_INTEL_piece_stack
 
-            dwarf::LocationAtom litForSubReg = dwarf::DW_OP_lit2;   // If 64-bit ptr or variable
-            dwarf::LocationAtom litForSIMDlane = dwarf::DW_OP_lit3; // If 64-bit ptr or variable
-            uint64_t bitsUsedByVar = varSizeInBits;                 // If unpacked then small variable uses 32 bits
-            if ((varSizeInBits == 32) || ((varSizeInBits < 32) && !isPacked))
+            // If unpacked then small variable takes up 32 bits else when packed fits its exact size
+            uint32_t bitsUsedByVar = (isPacked || varSizeInBits > 32) ? (uint32_t)varSizeInBits : 32;
+            uint32_t variablesInSingleGRF = (VISAMod->m_pShader->getGRFSize() * 8) / bitsUsedByVar;
+
+            uint32_t iterNo = 0;
+            uint32_t variablesCounter = 1;
+            while (variablesInSingleGRF > variablesCounter)
             {
-                litForSubReg = dwarf::DW_OP_lit3;
-                litForSIMDlane = dwarf::DW_OP_lit7;
-                bitsUsedByVar = 32;
+                variablesCounter = 2 * variablesCounter;
+                iterNo++;
             }
-            else if (varSizeInBits == 16)
-            {
-                IGC_ASSERT_MESSAGE(isPacked, "16-bit packed variable expected");
-                litForSubReg = dwarf::DW_OP_lit4;
-                litForSIMDlane = dwarf::DW_OP_lit15;
-            }
-            else if (varSizeInBits == 8)
-            {
-                IGC_ASSERT_MESSAGE(isPacked, "8-bit packed variable expected");
-                litForSubReg = dwarf::DW_OP_lit5;
-                litForSIMDlane = dwarf::DW_OP_lit31;
-            }
-            else
-            {
-                // Nothing to do else for 64-bit variable or ptr
-                IGC_ASSERT_MESSAGE(varSizeInBits == 64, "Missing support for this variable size");
-            }
+
+            // 1 var fits the whole GRF then set litForSubReg=dwarf::DW_OP_lit0 and litForSIMDlane=dwarf::DW_OP_lit0,
+            // 2 vars   - dwarf::DW_OP_lit1 and dwarf::DW_OP_lit1,
+            // 4 vars   - dwarf::DW_OP_lit2 and dwarf::DW_OP_lit3,
+            // 8 vars   - dwarf::DW_OP_lit3 and dwarf::DW_OP_lit7,
+            // 16 vars  - dwarf::DW_OP_lit4 and dwarf::DW_OP_lit15,
+            // 32 vars  - dwarf::DW_OP_lit5 and dwarf::DW_OP_lit31,
+            // 64 vars  - dwarf::DW_OP_lit6 and dwarf::DW_OP_lit63,
+            // 128 vars - dwarf::DW_OP_lit7 and dwarf::DW_OP_lit127, etc.
+            dwarf::LocationAtom litForSubReg = (dwarf::LocationAtom)(dwarf::DW_OP_lit0 + iterNo);
+            dwarf::LocationAtom litForSIMDlane = (dwarf::LocationAtom)(dwarf::DW_OP_lit0 + variablesInSingleGRF - 1);
+
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
             addUInt(Block, dwarf::DW_FORM_data1, litForSubReg);
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_shr);
