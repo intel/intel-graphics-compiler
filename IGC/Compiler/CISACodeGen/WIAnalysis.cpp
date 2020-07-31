@@ -640,6 +640,24 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
         {
             // We do not calculate non-PhiNode instruction that have unset operands
             if (unsetOpNum > 0) return;
+
+            // We have all operands set. Check a special case from calculate_dep for
+            // binary ops (see the details below). It checks for ASHR+ADD and ASHR+SHL
+            // cases, and in particular it accesses dependency for ADD operands. It
+            // could happen these operands are not processed yet and in such case
+            // getDependency raises the assertion. Thus check if dependency is set.
+            // Currently we need to check dependency for ASHR->ADD operands only.
+            // For SHR, its operands are checked to be constant so skip this case.
+            // This code could be extended further depending on requirements.
+            if (inst->getOpcode() == Instruction::AShr)
+            {
+                BinaryOperator* op0 = dyn_cast<BinaryOperator>(inst->getOperand(0));
+                if (op0 && op0->getOpcode() == Instruction::Add &&
+                    !hasDependency(op0->getOperand(1)))
+                {
+                    return;
+                }
+            }
         }
         orig = WIAnalysis::UNIFORM;
     }
