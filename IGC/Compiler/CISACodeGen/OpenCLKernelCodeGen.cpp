@@ -2054,7 +2054,7 @@ namespace IGC
         }
     }
 
-    static bool SetKernelProgram(COpenCLKernel* shader, DWORD simdMode)
+    static bool SetKernelProgram(OpenCLProgramContext* ctx, COpenCLKernel* shader, DWORD simdMode)
     {
         if (shader && shader->ProgramOutput()->m_programSize > 0)
         {
@@ -2065,16 +2065,20 @@ namespace IGC
                 //shader->m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize =
                 //    shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
                 shader->m_kernelInfo.m_kernelProgram.simd32 = *shader->ProgramOutput();
+                ctx->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
             }
             else if (simdMode == 16)
             {
                 shader->m_kernelInfo.m_kernelProgram.simd16 = *shader->ProgramOutput();
+                ctx->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
             }
             else if (simdMode == 8)
             {
                 shader->m_kernelInfo.m_kernelProgram.simd8 = *shader->ProgramOutput();
+                ctx->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
             }
             shader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = simdMode;
+            shader->m_kernelInfo.m_executionEnivronment.SIMDInfo = ctx->GetSIMDInfo();
             return true;
         }
         return false;
@@ -2145,21 +2149,21 @@ namespace IGC
             if (ctx->m_DriverInfo.sendMultipleSIMDModes() && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
             {
                 //Gather the kernel binary for each compiled kernel
-                if (SetKernelProgram(simd32Shader, 32))
+                if (SetKernelProgram(ctx, simd32Shader, 32))
                     GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
-                if (SetKernelProgram(simd16Shader, 16))
+                if (SetKernelProgram(ctx, simd16Shader, 16))
                     GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
-                if (SetKernelProgram(simd8Shader, 8))
+                if (SetKernelProgram(ctx, simd8Shader, 8))
                     GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
             }
             else
             {
                 //Gather the kernel binary only for 1 SIMD mode of the kernel
-                if (SetKernelProgram(simd32Shader, 32))
+                if (SetKernelProgram(ctx, simd32Shader, 32))
                     GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
-                else if (SetKernelProgram(simd16Shader, 16))
+                else if (SetKernelProgram(ctx, simd16Shader, 16))
                     GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
-                else if (SetKernelProgram(simd8Shader, 8))
+                else if (SetKernelProgram(ctx, simd8Shader, 8))
                     GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
             }
         }
@@ -2194,6 +2198,12 @@ namespace IGC
     {
         if (!CompileSIMDSizeInCommon())
             return false;
+
+        if (!m_Context->m_retryManager.IsFirstTry())
+        {
+            m_Context->ClearSIMDInfo(simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+            m_Context->SetSIMDInfo(SIMD_RETRY, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+        }
 
 
 
@@ -2275,11 +2285,14 @@ namespace IGC
             {
                 if (simdMode == SIMDMode::SIMD32)
                 {
+                    pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_FUNC_FAIL;
                 }
             }
             else if (simdMode != SIMDMode::SIMD8)
             {
+                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+
                 // default simd8
                 return SIMDStatus::SIMD_FUNC_FAIL;
             }
@@ -2307,12 +2320,14 @@ namespace IGC
             case 8:
                 if (simdMode == SIMDMode::SIMD16 || simdMode == SIMDMode::SIMD32)
                 {
+                    pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_FUNC_FAIL;
                 }
                 break;
             case 16:
                 if (simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD32)
                 {
+                    pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_FUNC_FAIL;
                 }
                 EP.m_canAbortOnSpill = false;
@@ -2320,6 +2335,7 @@ namespace IGC
             case 32:
                 if (simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16)
                 {
+                    pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_FUNC_FAIL;
                 }
                 EP.m_canAbortOnSpill = false;
@@ -2355,6 +2371,7 @@ namespace IGC
                 if (simdMode == SIMDMode::SIMD32 ||
                     (groupSize <= 8 && simdMode != SIMDMode::SIMD8))
                 {
+                    pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_FUNC_FAIL;
                 }
             }
@@ -2373,6 +2390,7 @@ namespace IGC
                 Simd32ProfitabilityAnalysis& PA = EP.getAnalysis<Simd32ProfitabilityAnalysis>();
                 if (!PA.isSimd16Profitable())
                 {
+                    pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_PERF_FAIL;
                 }
             }
@@ -2389,6 +2407,7 @@ namespace IGC
                 Simd32ProfitabilityAnalysis& PA = EP.getAnalysis<Simd32ProfitabilityAnalysis>();
                 if (!PA.isSimd32Profitable())
                 {
+                    pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_PERF_FAIL;
                 }
             }

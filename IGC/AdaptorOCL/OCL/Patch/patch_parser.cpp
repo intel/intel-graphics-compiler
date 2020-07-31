@@ -911,6 +911,9 @@ void DebugPatchList(
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tUseBindlessMode = %d\n",
                     pPatchItem->UseBindlessMode);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tSIMDInfo = %lld\n",
+                    pPatchItem->SIMDInfo);
             }
             break;
 

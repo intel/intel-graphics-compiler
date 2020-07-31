@@ -2036,6 +2036,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
 
         patch.UseBindlessMode = annotations.m_executionEnivronment.UseBindlessMode;
+        patch.SIMDInfo = annotations.m_executionEnivronment.SIMDInfo;
 
         retValue = AddPatchItem(
             patch,

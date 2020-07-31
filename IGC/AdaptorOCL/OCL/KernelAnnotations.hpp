@@ -324,6 +324,7 @@ struct ExecutionEnivronment
     DWORD  WorkgroupWalkOrder[3]                      = {};
     bool   HasGlobalAtomics                           = false;
     bool   UseBindlessMode                            = false;
+    uint64_t SIMDInfo                                 = 0;
 };
 
 struct KernelTypeProgramBinaryInfo
