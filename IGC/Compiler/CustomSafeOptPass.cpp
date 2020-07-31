@@ -3875,9 +3875,11 @@ IGC_INITIALIZE_PASS_BEGIN(GenStrengthReduction, "GenStrengthReduction",
     This class flatten small switch. For example,
 
     before optimization:
+        then153:
         switch i32 %115, label %else229 [
         i32 1, label %then214
         i32 2, label %then222
+        i32 3, label %then222 ; duplicate blocks are fine
         ]
 
         then214:                                          ; preds = %then153
@@ -3981,6 +3983,9 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
         if (br->getSuccessor(0) != MergeBlock)
             return false;
 
+        if (!BB->getUniquePredecessor())
+            return false;
+
         return true;
     };
 
@@ -4059,14 +4064,13 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
     // from BB to the InsertPoint.
     auto splice = [](BasicBlock* BB, Instruction* InsertPoint)
     {
-        Instruction* preIter = nullptr;
-        for (auto& iter : *BB)
+        for (auto II = BB->begin(), IE = BB->end(); II != IE; /* empty */)
         {
-            if (preIter)
-            {
-                preIter->moveBefore(InsertPoint);
-            }
-            preIter = cast<Instruction>(&iter);
+            auto* I = &*II++;
+            if (I->isTerminator())
+                return;
+
+            I->moveBefore(InsertPoint);
         }
     };
 
@@ -4105,6 +4109,8 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
     // connect the original block and the phi node block with a pass through branch
     builder.CreateBr(Dest);
 
+    SmallPtrSet<BasicBlock*, 4> Succs;
+
     // Remove the switch.
     BasicBlock* SelectBB = SI->getParent();
     for (unsigned i = 0, e = SI->getNumSuccessors(); i < e; ++i)
@@ -4114,7 +4120,9 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
         {
             continue;
         }
-        Succ->removePredecessor(SelectBB);
+
+        if (Succs.insert(Succ).second)
+            Succ->removePredecessor(SelectBB);
     }
     SI->eraseFromParent();
 
