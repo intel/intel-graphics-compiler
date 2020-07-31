@@ -82,7 +82,9 @@ std::string iga::ToSyntax(SFID sfid)
     case SFID::URB:  return "urb";
     case SFID::VME:  return "vme";
     default:
-        return fmtHex(static_cast<uint32_t>(sfid)) + "?";
+        std::stringstream ss;
+        ss << "SFID::0x" << std::hex << static_cast<int>(sfid) << "?";
+        return ss.str();
     }
 }
 template <> SFID iga::FromSyntax<SFID>(std::string syn)

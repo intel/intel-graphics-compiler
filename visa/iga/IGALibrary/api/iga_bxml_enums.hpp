@@ -83,21 +83,20 @@ namespace iga
     enum class SFID
     {
         INVALID = -1,
-        NULL_  =   0,
-        SMPL   =   2,
-        GTWY   =   3,
-        DC2    =   4,
-        RC     =   5,
-        URB    =   6,
-        TS     =   7,
-        VME    =   8,
-        DCRO   =   9,
-        DC0    =  10,
-        PIXI   =  11,
-        DC1    =  12,
-        CRE    =  13,
-        // for <GEN12 SFID can be indirect
-        A0REG  = 0x100
+        NULL_ = 0, // the null shared function
+        SMPL, // sampler
+        GTWY, // gateway
+        DC2,  // data cache 2
+        RC,   // render cache
+        URB,  // unified return buffer
+        TS,   // thread spawner
+        VME,  // video motion estimation
+        DCRO, // data cache read-only
+        DC0,  // data cache 0
+        PIXI, // pixel interpolator
+        DC1,  // data cache 1
+        CRE,  // check and refinement engine
+        A0REG  = 0x100, // for <GEN12 SFID can be indirect
     };
     // static const SFID ALL_SFIDS[]
     static const std::array<SFID,

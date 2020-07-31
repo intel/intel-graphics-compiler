@@ -436,8 +436,9 @@ namespace iga
 
         RegRef decodeFlagReg(const Field &fFLAGREG) {
             // flag register
-            decodeField(fFLAGREG, [](uint64_t bits, std::stringstream &ss) {
-                ss << "f" << (bits >> 1) << "." << (bits & 0x1);
+            decodeField(fFLAGREG,
+                [] (uint64_t bits, std::stringstream &ss) {
+                    ss << "f" << (bits >> 1) << "." << (bits & 0x1);
                 });
             return peekFlagRegRef(fFLAGREG);
         }

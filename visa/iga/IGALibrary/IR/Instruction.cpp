@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "Instruction.hpp"
 #include "Types.hpp"
-#include "IRChecker.hpp"
+#include "Checker/IRChecker.hpp"
 #include "../Frontend/Formatter.hpp"
 
 #include <sstream>

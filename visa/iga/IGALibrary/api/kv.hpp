@@ -297,6 +297,7 @@ public:
         return kv_get_number_sources(m_kv, pc);
     }
 
+
     // Fetches the message type for send/sends instructions.
     //
     // Returns:
@@ -525,7 +526,6 @@ private:
     KernelView(const KernelView &) { }
     KernelView& operator = (const KernelView&) {return *this;}
 };
-
 
 inline kv_status_t KernelView::getMessageType(
     int32_t pc, iga::SFMessageType &sfmt) const

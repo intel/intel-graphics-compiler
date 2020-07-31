@@ -48,22 +48,22 @@ using namespace iga;
 static const char *gedReturnValueToString(GED_RETURN_VALUE rv)
 {
     switch(rv) {
-    case GED_RETURN_VALUE_SUCCESS: return "success";
-    case GED_RETURN_VALUE_CYCLIC_DEPENDENCY: return "cyclic dependency";
-    case GED_RETURN_VALUE_NULL_POINTER: return "null pointer";
+    case GED_RETURN_VALUE_SUCCESS:              return "success";
+    case GED_RETURN_VALUE_CYCLIC_DEPENDENCY:    return "cyclic dependency";
+    case GED_RETURN_VALUE_NULL_POINTER:         return "null pointer";
     case GED_RETURN_VALUE_OPCODE_NOT_SUPPORTED: return "unsupported opcode";
-    case GED_RETURN_VALUE_NO_COMPACT_FORM: return "no compact form";
-    case GED_RETURN_VALUE_INVALID_FIELD: return "invalid field";
-    case GED_RETURN_VALUE_INVALID_VALUE: return "invalid value";
-    case GED_RETURN_VALUE_INVALID_INTERPRETER: return "invalid interpreter";
-    default: return "other error";
+    case GED_RETURN_VALUE_NO_COMPACT_FORM:      return "no compact form";
+    case GED_RETURN_VALUE_INVALID_FIELD:        return "invalid field";
+    case GED_RETURN_VALUE_INVALID_VALUE:        return "invalid value";
+    case GED_RETURN_VALUE_INVALID_INTERPRETER:  return "invalid interpreter";
+    default:                                    return "other error";
     }
 }
 void Encoder::handleGedError(
     int line, const char *setter, GED_RETURN_VALUE status)
 {
-    error("encoder line %d: unsupported GED setter %s (%s)",
-        line, setter, gedReturnValueToString(status), setter);
+    error("IGALibrary/GED/Encoder.cpp:%d: GED_Set%s: %s",
+        line, setter, gedReturnValueToString(status));
 }
 
 
@@ -91,8 +91,9 @@ void Encoder::encodeKernelPreProcess(Kernel &k)
 void Encoder::doEncodeKernelPreProcess(Kernel &k)
 {
     if (m_opts.autoDepSet && platform() >= Platform::GEN12P1) {
-        SWSBAnalyzer swsb_analyzer(k, errorHandler(), m_opts.swsbEncodeMode, m_opts.sbidCount);
-        swsb_analyzer.run();
+        SWSBAnalyzer swsbAnalyzer(
+            k, errorHandler(), m_opts.swsbEncodeMode, m_opts.sbidCount);
+        swsbAnalyzer.run();
     }
 }
 
@@ -264,6 +265,7 @@ void Encoder::encodeFC(const Instruction &i)
         GED_ENCODE(MathFC, mfc);
     } else if (os.isSendOrSendsFamily()) {
         if (platform() >= Platform::GEN12P1) {
+            // on earlier platforms this is stowed in ExDesc
             auto sfid = lowerSFID(i.getSendFc());
             GED_ENCODE(SFID, sfid);
         }
@@ -347,8 +349,7 @@ void Encoder::encodeInstruction(Instruction& inst)
         GED_ENCODE(PredCtrl, GED_PRED_CTRL_Normal);
     }
 
-    bool isImm64Src0Overlap = false;
-    isImm64Src0Overlap =
+    bool isImm64Src0Overlap =
         platform() >= Platform::GEN12P1 &&
         inst.getSource(0).getKind() == Operand::Kind::IMMEDIATE &&
         TypeIs64b(inst.getSource(0).getType());
@@ -711,15 +712,15 @@ void Encoder::encodeBranchingInstruction(const Instruction& inst)
 
 void Encoder::encodeBranchingInstructionSimplified(const Instruction& inst)
 {
-    const OpSpec& instSpec = inst.getOpSpec();
+    const OpSpec& os = inst.getOpSpec();
 
     // set branch control
-    if (instSpec.supportsBranchCtrl()) {
+    if (os.supportsBranchCtrl()) {
         GED_ENCODE(BranchCtrl, lowerBranchCntrl(inst.getBranchCtrl()));
     }
 
     // control flow instructions require patching later if any operand is a label
-    const Operand &src0 = inst.getSource(0);
+    const Operand& src0 = inst.getSource(0);
     bool src0IsLabel = src0.getKind() == Operand::Kind::LABEL;
 
     // for jmpi HW will take care of IP so don't need to encode it for dst/src0
@@ -734,25 +735,22 @@ void Encoder::encodeBranchingInstructionSimplified(const Instruction& inst)
     // encoding JIP
     if (src0IsLabel) {
         GED_ENCODE(Src0RegFile, GED_REG_FILE_IMM);
+        // if (src0.getTargetBlock() == nullptr) {
+        //    // the input value is immediate; use m_immVal as the value
+        //    encodeBranchSource(src0);
+        // }
     } else {
-        if (inst.getSource(0).getKind() == Operand::Kind::INDIRECT)
+        // jmpi, call, brc, ...
+        if (src0.getKind() == Operand::Kind::INDIRECT)
             error("Branch instructions do not support indirect register mode");
-        encodeBranchSource(inst.getSource(0));
+        encodeBranchSource(src0);
     }
 
     if (inst.getSourceCount() == 2) {
         // encoding UIP always IMM except for brc with a register argument
-        if (inst.getOp() != Op::BRC || inst.getSource(0).isImm()) {
+        if (inst.getOp() != Op::BRC || src0.isImm()) {
             GED_ENCODE(Src1RegFile, GED_REG_FILE_IMM);
         }
-    }
-}
-
-void Encoder::encodeSendInstructionProcessSFID(const Instruction& inst)
-{
-    if (platform() >= Platform::GEN12P1) {
-        auto gedSfid = lowerSFID(inst.getSendFc());
-        GED_ENCODE(SFID, gedSfid);
     }
 }
 
@@ -774,8 +772,6 @@ void Encoder::encodeSendInstruction(const Instruction& inst)
     const bool supportsExDescReg =
         os.isSendsFamily() ||
         m_model.supportsUnifiedSend();
-
-    encodeSendInstructionProcessSFID(inst);
 
     // ex_desc
     SendDesc extMsgDesc = inst.getExtMsgDescriptor();

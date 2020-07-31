@@ -87,6 +87,7 @@ bool InstCompactor::compactIndex(
 
 CompactionResult InstCompactor::tryToCompactImpl() {
     switch (model.platform) {
+    case Platform::GEN12P1:
     case Platform::GENNEXT:
     default:
         compactionMissed = true;

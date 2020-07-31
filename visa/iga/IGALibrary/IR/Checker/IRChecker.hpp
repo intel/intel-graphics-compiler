@@ -25,9 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #ifndef _IR_CHECKER_HPP_
-#include "../ErrorHandler.hpp"
-#include "Instruction.hpp"
-#include "Kernel.hpp"
+#include "../../ErrorHandler.hpp"
+#include "../Instruction.hpp"
+#include "../Kernel.hpp"
 #include <cstdint>
 
 namespace iga {

@@ -413,6 +413,7 @@ const Instruction *getInstruction(const kv_t *kv, int32_t pc)
     return inst;
 }
 
+
 kv_status_t kv_get_message_type(
     const kv_t *kv, int32_t pc, int32_t *message_type_enum)
 {

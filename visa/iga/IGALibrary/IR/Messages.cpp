@@ -225,7 +225,9 @@ SFID iga::sfidFromEncoding(Platform p, uint32_t sfidBits)
     case 0x8:
         sfid = SFID::VME;
         break;
-    case 0x9: sfid = SFID::DCRO; break;
+    case 0x9:
+        sfid = SFID::DCRO;
+        break;
     case 0xA: sfid = SFID::DC0;  break;
     case 0xB: sfid = SFID::PIXI; break;
     case 0xC: sfid = SFID::DC1;  break;
@@ -242,25 +244,7 @@ SFID iga::sfidFromEncoding(Platform p, uint32_t sfidBits)
 
 std::string iga::format(SFID sfid)
 {
-    switch (sfid) {
-    case SFID::NULL_: return "null";
-    case SFID::SMPL:  return "smpl";
-    case SFID::GTWY:  return "gtwy";
-    case SFID::DC2:   return "dc2";
-    case SFID::RC:    return "rc";
-    case SFID::URB:   return "urb";
-    case SFID::TS:    return "ts";
-    case SFID::VME:   return "vme";
-    case SFID::DCRO:  return "dcro";
-    case SFID::DC0:   return "dc0";
-    case SFID::PIXI:  return "pixi";
-    case SFID::DC1:   return "dc1";
-    case SFID::CRE:   return "cre";
-    default:
-        std::stringstream ss;
-        ss << "SFID::0x" << std::hex << static_cast<int>(sfid) << "?";
-        return ss.str();
-    }
+    return ToSyntax(sfid);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -1,10 +1,10 @@
+add_subdirectory(Checker)
+
 set(IGA_IR_Open
   ${CMAKE_CURRENT_SOURCE_DIR}/Block.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Block.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/DUAnalysis.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/DUAnalysis.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IRChecker.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IRChecker.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ImmVal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ImmVal.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/InstBuilder.hpp
@@ -28,6 +28,7 @@ set(IGA_IR_Open
   ${CMAKE_CURRENT_SOURCE_DIR}/RegDeps.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/SWSBSetter.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/SWSBSetter.hpp
+  ${IGA_IR_Checker}
 )
 
 set(IGA_IR

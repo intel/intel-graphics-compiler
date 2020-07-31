@@ -2725,6 +2725,9 @@ public:
             {
                 // no more types for branching
                 t = Type::UD;
+            } else if (m_opSpec->is(Op::SYNC)) {
+                // we allow implicit type for sync reg32 (grf or null)
+                t = Type::UB;
             } else {
                 Fail(expected_err);
             }

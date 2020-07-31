@@ -297,6 +297,8 @@ typedef int32_t(CDECLATTRIBUTE *pIGAKVGetIsSrcVector)(const kv_t *kv, int32_t pc
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetChannelOffset)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_MASK_CONTROL_STR "kv_get_mask_control"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetMaskControl)(const kv_t *kv, int32_t pc);
+
+
 #define IGA_KV_GET_MESSAGE_TYPE_STR "kv_get_message_type"
 typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetMessageType)(const kv_t *kv, int32_t pc, int32_t *message_type_enum);
 #define IGA_KV_GET_MESSAGE_SFID_STR "kv_get_message_sfid"

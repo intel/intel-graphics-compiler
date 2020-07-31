@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Frontend/Formatter.hpp"
 #include "../Frontend/KernelParser.hpp"
 #include "../IR/DUAnalysis.hpp"
-#include "../IR/IRChecker.hpp"
+#include "../IR/Checker/IRChecker.hpp"
 #include "../Models/Models.hpp"
 #include "../strings.hpp"
 #include "../version.hpp"
@@ -316,6 +316,11 @@ public:
         bool used_legacy_fields = false;
         if (aopts._reserved0) { // used to be error_on_compact_fail
             aopts.encoder_opts |= IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL;
+            used_legacy_fields = true;
+        }
+
+        if (aopts._reserved1) { // used to be error_on_compact_fail
+            aopts.encoder_opts |= IGA_ENCODER_OPT_AUTO_DEPENDENCIES;
             used_legacy_fields = true;
         }
 

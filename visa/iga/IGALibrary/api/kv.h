@@ -76,6 +76,8 @@ typedef enum {
     KV_DESCRIPTOR_INDIRECT    = 21, /* a send message with a reg desc */
     KV_DESCRIPTOR_INVALID     = 22, /* an unrecognized send descriptor */
     KV_NO_SUBFUNCTION         = 23, /* underlyting inst has no sub-function*/
+
+    KV_INCAPABLE_PLATFORM     = 30  /* the called-api is incapable on the platform*/
 } kv_status_t;
 
 /*
@@ -229,6 +231,7 @@ IGA_API void kv_get_send_indirect_descs(
     uint8_t *ex_desc_subreg,
     uint8_t *desc_reg,
     uint8_t *desc_subreg);
+
 
 /*
  * A symbol to indicate an invalid send descriptor value.

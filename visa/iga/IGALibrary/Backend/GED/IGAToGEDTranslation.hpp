@@ -205,19 +205,19 @@ namespace iga
     {
         GED_SFID sfid = GED_SFID_INVALID;
         switch (igaSfid) {
-        case SFID::CRE:   sfid = GED_SFID_CRE; break;
-        case SFID::DC0:   sfid = GED_SFID_DP_DC0; break;
-        case SFID::DC1:   sfid = GED_SFID_DP_DC1; break;
-        case SFID::DC2:   sfid = GED_SFID_DP_DC2; break;
-        case SFID::DCRO:  sfid = GED_SFID_DP_DCRO; break;
-        case SFID::GTWY:  sfid = GED_SFID_GATEWAY; break;
-        case SFID::NULL_: sfid = GED_SFID_NULL; break;
-        case SFID::PIXI:  sfid = GED_SFID_PI; break;
-        case SFID::SMPL:  sfid = GED_SFID_SAMPLER; break;
-        case SFID::RC:    sfid = GED_SFID_DP_RC; break;
-        case SFID::TS:    sfid = GED_SFID_SPAWNER; break;
-        case SFID::URB:   sfid = GED_SFID_URB; break;
-        case SFID::VME:   sfid = GED_SFID_VME; break;
+        case SFID::CRE:    sfid = GED_SFID_CRE; break;
+        case SFID::DC0:    sfid = GED_SFID_DP_DC0; break;
+        case SFID::DC1:    sfid = GED_SFID_DP_DC1; break;
+        case SFID::DC2:    sfid = GED_SFID_DP_DC2; break;
+        case SFID::DCRO:   sfid = GED_SFID_DP_DCRO; break;
+        case SFID::GTWY:   sfid = GED_SFID_GATEWAY; break;
+        case SFID::NULL_:  sfid = GED_SFID_NULL; break;
+        case SFID::PIXI:   sfid = GED_SFID_PI; break;
+        case SFID::SMPL:   sfid = GED_SFID_SAMPLER; break;
+        case SFID::RC:     sfid = GED_SFID_DP_RC; break;
+        case SFID::TS:     sfid = GED_SFID_SPAWNER; break;
+        case SFID::URB:    sfid = GED_SFID_URB; break;
+        case SFID::VME:    sfid = GED_SFID_VME; break;
         default:
             break;
         }

@@ -276,6 +276,8 @@ static inline std::string ToSymbol(Region x)
         return "Region::DST1";
     else if (x == Region::SRC0X0)
         return "Region::SRC0X0";
+    else if (x == Region::SRC1X0)
+        return "Region::SRC1X0";
     else if (x == Region::SRC2X1)
         return "Region::SRC2X1";
     else if (x == Region::SRC4X1)

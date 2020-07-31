@@ -1,0 +1,5 @@
+set(IGA_IR_Checker
+  ${CMAKE_CURRENT_SOURCE_DIR}/IRChecker.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IRChecker.hpp
+  PARENT_SCOPE
+)

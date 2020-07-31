@@ -437,6 +437,7 @@ namespace iga
     inline void InstEncoder::encodeForPlatform(const Instruction &i)
     {
         switch (platform()) {
+        case Platform::GEN12P1:
         case Platform::GENNEXT:
         default:
             // caller checks this and gives a soft error

@@ -193,6 +193,7 @@ static void parseBitsAsHex(
             for (int i = 0; i < 4; i++)
                 bits.push_back(w[i]);
         };
+
         parseWord(3);
         char sep = '_';
         if (consumeIf('`')) {

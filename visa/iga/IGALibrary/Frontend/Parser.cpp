@@ -79,9 +79,7 @@ namespace iga
             Fail(msg);
         } else {
             // step over the token contents manually
-            Loc loc = pv.loc;
-            loc.col += loc.extent;
-            loc.extent = 1;
+            Loc loc = pv.loc.endOfToken();
             Fail(loc, msg);
         }
     }

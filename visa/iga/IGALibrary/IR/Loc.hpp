@@ -60,6 +60,14 @@ struct Loc {
     {
     }
 
+    Loc endOfToken() const {
+        Loc l = *this;
+        l.col += extent;
+        l.offset += extent;
+        l.extent = 1;
+        return l;
+    }
+
 
     bool isValid() const {return line != INVALID.line && col != INVALID.col;}
     // tells if the offset value is a PC or text offset

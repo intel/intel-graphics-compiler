@@ -235,7 +235,7 @@ public:
     //    encoding will be converted to bytes.
     //  * JMPI uses the pos-increment PC; we normalize that here
     //    as well to a pre-increment value.
-    Block* m_lblBlock;
+    Block* m_lblBlock = nullptr;
 
     // the operand type (e.g. :d, :f, etc...)
     Type m_type;

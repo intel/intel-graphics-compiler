@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "IRChecker.hpp"
-#include "../api/iga.h"
+#include "../../api/iga.h"
 
 #include <sstream>
 

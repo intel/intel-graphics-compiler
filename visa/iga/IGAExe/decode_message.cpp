@@ -365,6 +365,7 @@ bool decodeSendDescriptor(const Opts &opts)
         os << " channel" << (dr.info.execWidth != 1 ? "s" : "") << "\n";
         bool emitCacheSettings =
             dr.info.isLoad() || dr.info.isStore() || dr.info.isAtomic();
+        emitCacheSettings |= dr.info.op == iga::SendOp::READ_STATE;
         if (emitCacheSettings) {
             auto emitCaching =
                 [&] (const char *name, iga::CacheOpt co) {
@@ -416,6 +417,8 @@ bool decodeSendDescriptor(const Opts &opts)
         // don't pretend to understand the sampler
         const auto &mi = dr.info;
         bool showDataPayload =
+              mi.op != iga::SendOp::READ_STATE &&
+              mi.op != iga::SendOp::LOAD_STATUS &&
               mi.op != iga::SendOp::SAMPLER_LOAD &&
               mi.op != iga::SendOp::RENDER_READ &&
               mi.op != iga::SendOp::RENDER_WRITE &&

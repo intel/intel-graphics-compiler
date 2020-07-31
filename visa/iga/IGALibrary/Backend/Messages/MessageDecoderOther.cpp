@@ -668,6 +668,14 @@ void MessageDecoderOther::tryDecodeURB()
         setDoc("44777");
         decodeMDC_HR();
         break;
+    case 9:
+        op = SendOp::FENCE;
+        sym << "MSD_URBFENCE";
+        descs << "urb fence";
+        simd = 1;
+        dataSize = 0;
+        setDoc("53422");
+        break;
     default:
         error(0, 4, "unsupported URB op");
         return;

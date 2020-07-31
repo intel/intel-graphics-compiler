@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../asserts.hpp"
 #include "../../Frontend/Formatter.hpp"
 #include "../../Frontend/IRToString.hpp"
-#include "../../IR/IRChecker.hpp"
+#include "../../IR/Checker/IRChecker.hpp"
 #include "../../IR/Messages.hpp"
 #include "../../IR/SWSBSetter.hpp"
 #include "../../MemManager/MemManager.hpp"
