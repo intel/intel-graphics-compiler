@@ -955,9 +955,13 @@ namespace IGC
     {
         auto& inputs = m_context->getModuleMetaData()->pushInfo.inputs;
         typedef const std::map<unsigned int, SInputDesc>::value_type& inputPairType;
-        auto largestPair = std::max_element(inputs.begin(), inputs.end(),
-            [](inputPairType a, inputPairType b) { return a.second.index < b.second.index; });
-        unsigned int largestIndex = largestPair != inputs.end() ? largestPair->second.index : 0;
+        unsigned int largestIndex = 0;
+        if (m_context->m_DriverInfo.EnableSimplePushRestriction())
+        {
+            auto largestPair = std::max_element(inputs.begin(), inputs.end(),
+                [](inputPairType a, inputPairType b) { return a.second.index < b.second.index; });
+            largestIndex = largestPair != inputs.end() ? largestPair->second.index : 0;
+        }
         const unsigned int maxPushedGRFs = 96;
         if (largestIndex >= maxPushedGRFs)
         {

@@ -282,6 +282,9 @@ namespace IGC
             return 4 * sizeof(MEGABYTE);
         }
 
+        // Limits simple push constants based on pushed inputs
+        virtual bool EnableSimplePushRestriction() const { return false; }
+
 
     };
 
