@@ -23,10 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #ifndef DECLARE_IGC_GROUP
 #define DECLARE_IGC_GROUP(groupName)
 #endif
-// Debug flags
+
+
 #include "igc_flags.def"
 
 #undef DECLARE_IGC_GROUP
