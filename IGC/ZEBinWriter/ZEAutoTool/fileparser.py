@@ -227,7 +227,8 @@ Stores all struct names and whether they are a vector in yaml_hpp_args
 def pandas_parse_top_layers(df, types, output_file, struct_name, check_vectors):
 
     for index, row in df.iterrows():
-        if "vector" in row["Description"]:
+        descript = row["Description"]
+        if descript != None and "vector" in descript.split(" ")[0]:
             if row["Type"][:-2] in check_vectors.keys():
                 vector_str = "typedef std::vector<zeInfo" + \
                 check_vectors[row["Type"][:-2]] + "> " + row["Type"] + ";\n"
