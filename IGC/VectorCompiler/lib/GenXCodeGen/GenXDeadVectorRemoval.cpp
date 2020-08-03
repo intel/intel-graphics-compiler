@@ -194,7 +194,8 @@ private:
   void processElementwise(Instruction *Inst, LiveBits LB);
   void markWhollyLive(Value *V);
   void addToWorkList(Instruction *Inst);
-  LiveBits getLiveBits(Instruction *Inst, bool Create = false);
+  LiveBits createLiveBits(Instruction *Inst);
+  LiveBits getLiveBits(Instruction *Inst);
 };
 
 } // end anonymous namespace
@@ -430,7 +431,7 @@ void GenXDeadVectorRemoval::processRdRegion(Instruction *Inst, LiveBits LB)
   // Set bits in InLB (InInst's livebits) for live elements read by the
   // rdregion.
   bool Modified = false;
-  LiveBits InLB = getLiveBits(InInst, /*Create=*/true);
+  LiveBits InLB = createLiveBits(InInst);
   for (unsigned RowIdx = R.Offset / R.ElementBytes, Row = 0,
       NumRows = R.NumElements / R.Width; Row != NumRows;
       RowIdx += R.VStride, ++Row)
@@ -459,7 +460,7 @@ void GenXDeadVectorRemoval::processWrRegion(Instruction *Inst, LiveBits LB)
     // Set bits in NewInLB (NewInInst's livebits) for live elements read by
     // the wrregion in the "new value" input.
     bool Modified = false;
-    LiveBits NewInLB = getLiveBits(NewInInst, /*Create=*/true);
+    LiveBits NewInLB = createLiveBits(NewInInst);
     for (unsigned RowIdx = R.Offset / R.ElementBytes, Row = 0,
         NumRows = R.NumElements / R.Width; Row != NumRows;
         RowIdx += R.VStride, ++Row)
@@ -478,7 +479,7 @@ void GenXDeadVectorRemoval::processWrRegion(Instruction *Inst, LiveBits LB)
   auto OldInInst = dyn_cast<Instruction>(
         Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
   if (OldInInst)
-    OldInLB = getLiveBits(OldInInst, /*Create=*/true);
+    OldInLB = createLiveBits(OldInInst);
   bool Modified = false;
   bool UsedOldInput = false;
   if (R.Indirect) {
@@ -535,7 +536,7 @@ void GenXDeadVectorRemoval::processBitCast(Instruction *Inst, LiveBits LB)
   auto InInst = dyn_cast<Instruction>(Inst->getOperand(0));
   if (!InInst)
     return;
-  LiveBits InLB = getLiveBits(InInst, /*Create=*/true);
+  LiveBits InLB = createLiveBits(InInst);
   bool Modified = false;
   if (InLB.getNumElements() == LB.getNumElements())
     Modified = InLB.orBits(LB);
@@ -572,7 +573,7 @@ void GenXDeadVectorRemoval::processElementwise(Instruction *Inst, LiveBits LB)
     auto OpndInst = dyn_cast<Instruction>(Inst->getOperand(oi));
     if (!OpndInst)
       continue;
-    auto OpndLB = getLiveBits(OpndInst, /*Create=*/true);
+    auto OpndLB = createLiveBits(OpndInst);
     if (isa<SelectInst>(Inst) && oi == 0 &&
         !OpndInst->getType()->isVectorTy()) {
       // First operand of select inst can be scalar, ignore it
@@ -593,7 +594,7 @@ void GenXDeadVectorRemoval::markWhollyLive(Value *V)
   auto Inst = dyn_cast_or_null<Instruction>(V);
   if (!Inst)
     return;
-  auto LB = getLiveBits(Inst, /*Create=*/true);
+  auto LB = createLiveBits(Inst);
   if (LB.setRange(0, LB.getNumElements()))
     addToWorkList(Inst);
 }
@@ -616,32 +617,45 @@ void GenXDeadVectorRemoval::addToWorkList(Instruction *Inst)
 }
 
 /***********************************************************************
+ * createLiveBits : create the bitmap of live elements for the given
+ *               instruction if it doesn't exist.
+ *
+ * Return:  LiveBits object, which contains a pointer to the bitmap for
+ *          this instruction, and a size which is set to 0 if there is no
+ *          bitmap allocated yet for this instruction and Create is false
+ */
+LiveBits GenXDeadVectorRemoval::createLiveBits(Instruction *Inst)
+{
+  unsigned NumElements = 1;
+  if (auto VT = dyn_cast<VectorType>(Inst->getType()))
+    NumElements = VT->getNumElements();
+  decltype(InstMap)::iterator Iter;
+  bool WasAnInsertion;
+  std::tie(Iter, WasAnInsertion) = InstMap.insert(std::make_pair(Inst, LiveBitsStorage{}));
+  LiveBitsStorage *LBS = &Iter->second;
+  if (WasAnInsertion) {
+    // New entry. Set its number of elements.
+    LBS->setNumElements(NumElements);
+  }
+  return LiveBits{LBS, NumElements};
+}
+
+/***********************************************************************
  * getLiveBits : get the bitmap of live elements for the given instruction
  *
  * Return:  LiveBits object, which contains a pointer to the bitmap for
  *          this instruction, and a size which is set to 0 if there is no
  *          bitmap allocated yet for this instruction and Create is false
  */
-LiveBits GenXDeadVectorRemoval::getLiveBits(Instruction *Inst, bool Create)
+LiveBits GenXDeadVectorRemoval::getLiveBits(Instruction *Inst)
 {
   unsigned NumElements = 1;
   if (auto VT = dyn_cast<VectorType>(Inst->getType()))
     NumElements = VT->getNumElements();
-  LiveBitsStorage *LBS = nullptr;
-  if (!Create) {
-    auto i = InstMap.find(Inst);
-    if (i == InstMap.end())
-      return LiveBits();
-    LBS = &i->second;
-  } else {
-    auto Ret = InstMap.insert(std::map<Instruction *,
-          LiveBitsStorage>::value_type(Inst, LiveBitsStorage()));
-    LBS = &Ret.first->second;
-    if (Ret.second) {
-      // New entry. Set its number of elements.
-      LBS->setNumElements(NumElements);
-    }
-  }
+  auto i = InstMap.find(Inst);
+  if (i == InstMap.end())
+    return LiveBits();
+  LiveBitsStorage *LBS = &i->second;
   return LiveBits(LBS, NumElements);
 }
 
