@@ -42,8 +42,7 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
             // An image fence requires a fence with R/W invalidate (L3 flush) + a flush
             // of the sampler cache,
             // ImageMemory | WorkgroupMemory should count as global!
-            __builtin_IB_memfence(true, true, false, false, false, true, invalidateL1);
-            __builtin_IB_flush_sampler_cache();
+            __builtin_IB_typedmemfence(invalidateL1);
         }
         else if( Semantics & ( CrossWorkgroupMemory | WorkgroupMemory ) )
         {
