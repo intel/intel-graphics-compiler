@@ -215,7 +215,9 @@ void CMKernel::createPrivateBaseAnnotation(
   m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
 
     if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-        IGC_ASSERT_MESSAGE(0, "not yet supported for L0 binary");
+        zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+            zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
+            payloadPosition, byteSize);
 }
 
 void CMKernel::createBufferStatefulAnnotation(unsigned argNo, cmc_access_kind accessKind)
@@ -464,6 +466,8 @@ static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info,
             if (info->StatelessPrivateMemSize) {
                 kernel.createPrivateBaseAnnotation(AI.index, AI.sizeInBytes,
                     AI.offset, AI.BTI, info->StatelessPrivateMemSize);
+                kernel.m_kernelInfo.m_executionEnivronment.PerThreadPrivateOnStatelessSize =
+                    info->StatelessPrivateMemSize;
                 kernel.m_kernelInfo.m_argIndexMap[AI.index] = AI.BTI;
             }
             break;
