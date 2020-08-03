@@ -1343,6 +1343,7 @@ namespace TC
                             (strcmp(pParam, "-cl-std=CL1.2") == 0) ||
                             (strcmp(pParam, "-cl-std=CL2.0") == 0) ||
                             (strcmp(pParam, "-cl-std=CL2.1") == 0) ||
+                            (strcmp(pParam, "-cl-std=CL3.0") == 0) ||
                             (strcmp(pParam, "-cl-uniform-work-group-size") == 0) || //it's work only for OCL version greater than 1.2
                             (strcmp(pParam, "-cl-kernel-arg-info") == 0) ||
                             (strncmp(pParam, "-x", 2) == 0) ||
