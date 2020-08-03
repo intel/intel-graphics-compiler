@@ -72,6 +72,9 @@ def no_vector_decomposition_old : Flag<["-"], "no_vector_decomposition">,
   let Flags = [ApiOption, IgcmcApiOption];
 }
 
+def Xfinalizer : Separate<["-"], "Xfinalizer">,
+  HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
+
 }
 // }} Api options
 

@@ -697,10 +697,16 @@ composeLLVMArgs(const opt::InputArgList &ApiArgs,
     UpdatedArgs.AddSeparateArg(BaseArg, LLVMOpt, BaseArg->getValue());
 
   // Add visaopts if any.
-  if (opt::Arg *VisaArg = ApiArgs.getLastArg(vc::options::OPT_igcmc_visaopts)) {
-    StringRef WrappedVisaOpts =
-        Saver.save(Twine{"-finalizer-opts='"} + VisaArg->getValue() + "'");
-    UpdatedArgs.AddSeparateArg(VisaArg, LLVMOpt, WrappedVisaOpts);
+  for (auto OptID :
+       {vc::options::OPT_igcmc_visaopts, vc::options::OPT_Xfinalizer}) {
+    if (!ApiArgs.hasArg(OptID))
+      continue;
+
+    const std::string FinalizerOpts =
+        llvm::join(ApiArgs.getAllArgValues(OptID), " ");
+    StringRef WrappedOpts =
+        Saver.save(Twine{"-finalizer-opts='"} + FinalizerOpts + "'");
+    UpdatedArgs.AddSeparateArg(ApiArgs.getLastArg(OptID), LLVMOpt, WrappedOpts);
   }
 
 
