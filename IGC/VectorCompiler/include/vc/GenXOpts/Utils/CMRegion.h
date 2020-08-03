@@ -90,6 +90,10 @@ class Twine;
 class DebugLoc;
 class TargetLibraryInfo;
 
+namespace WrPredRegionOperand {
+enum { OldValue, NewValue, Offset };
+} // namespace WrPredRegionOperand
+
 // CMRegion : description of an operand's region
 class CMRegion {
 public:

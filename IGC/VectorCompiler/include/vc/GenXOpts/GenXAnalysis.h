@@ -44,6 +44,7 @@ class ImmutableCallSite;
 class Type;
 class Use;
 class Value;
+class Function;
 
 /// canConstantFoldGenXIntrinsic - Return true if it is even possible to fold
 /// a call to the specified GenX intrinsic.
@@ -73,6 +74,15 @@ Value *SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
 ///
 /// If this instruction could not be simplified returns null.
 Value *SimplifyGenX(CallInst *I);
+
+// simplifyWritesWithUndefInput - removes write instrinsics (currently wrregion,
+// wrpredregion) that have undef as input value, replaces all uses with the old
+// value. If this replacement produced new context (write intrinsic's input
+// value was replaced with undef), those writes are cleaned up too. No writes
+// with undef input should be left in the function \p F as the result.
+//
+// Returns whether the function was modified.
+bool simplifyWritesWithUndefInput(Function &F);
 
 } // end namespace llvm
 

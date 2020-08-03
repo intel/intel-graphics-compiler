@@ -33,8 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /// As a result of this analysis, the pass can then make the two following
 /// modifications to the code:
 ///
-/// 1. If all vector elements of an instruction result turn out to be unused, the
-///    instruction is removed. In fact, this pass just sets all its uses to
+/// 1. If all vector elements of an instruction result turn out to be unused,
+///    the instruction is removed. In fact, this pass just sets all its uses to
 ///    undef, relying on the subsequent dead code removal pass to actually
 ///    remove it.
 ///
@@ -50,6 +50,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///       of defs and uses from each other to reduce register pressure in
 ///       between.
 ///
+/// Besides this pass removes all write intrinsics (wrregion, wrpredregion)
+/// that have undef input value and replaces their uses with the old value.
 //===----------------------------------------------------------------------===//
 #define DEBUG_TYPE "GENX_DEAD_VECTOR_REMOVAL"
 
@@ -57,6 +59,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXBaling.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
+#include "vc/GenXOpts/GenXAnalysis.h"
 
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/CFG.h"
@@ -269,6 +272,7 @@ bool GenXDeadVectorRemoval::runOnFunction(Function &F)
   // removes them.
   LLVM_DEBUG(dbgs() << "GenXDeadVectorRemoval: null out instructions\n");
   bool Modified = nullOutInstructions(&F);
+  Modified |= simplifyWritesWithUndefInput(F);
   clear();
   return Modified;
 }

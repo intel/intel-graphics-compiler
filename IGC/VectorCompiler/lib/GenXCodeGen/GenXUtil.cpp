@@ -130,14 +130,21 @@ CallInst *genx::createUnifiedRet(Type *Ty, const Twine &Name, Module *M) {
 }
 
 /***********************************************************************
- * getPredicateConstantAsInt : get an i1 or vXi1 constant's value as a single integer
+ * getPredicateConstantAsInt : get an i1 or vXi1 constant's value as a single
+ * integer
+ *
+ * Elements of constant \p C are encoded as least significant bits of the
+ * result. For scalar case only LSB of the result is set to corresponding value.
  */
-unsigned genx::getPredicateConstantAsInt(Constant *C)
-{
+unsigned genx::getPredicateConstantAsInt(const Constant *C) {
+  assert(C->getType()->isIntOrIntVectorTy(1) &&
+         "wrong argument: constant of i1 or Nxi1 type was expected");
   if (auto CI = dyn_cast<ConstantInt>(C))
     return CI->getZExtValue(); // scalar
   unsigned Bits = 0;
   unsigned NumElements = cast<VectorType>(C->getType())->getNumElements();
+  assert(NumElements <= sizeof(Bits) * CHAR_BIT &&
+         "vector has too much elements, it won't fit into Bits");
   for (unsigned i = 0; i != NumElements; ++i) {
     auto El = C->getAggregateElement(i);
     if (!isa<UndefValue>(El))
@@ -1640,4 +1647,22 @@ unsigned genx::CeilAlignment(unsigned LogAlignment, unsigned GRFWidth) {
     return Log2_32(GRFWidth) + 1;
   else
     report_fatal_error("Unknown log alignment");
+}
+
+bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
+  assert(GenXIntrinsic::getGenXIntrinsicID(&WrPredRegion) ==
+             GenXIntrinsic::genx_wrpredregion &&
+         "wrong argument: wrpredregion intrinsic was expected");
+  auto &NewValue = *WrPredRegion.getOperand(WrPredRegionOperand::NewValue);
+  auto ExecSize = NewValue.getType()->isVectorTy()
+                      ? NewValue.getType()->getVectorNumElements()
+                      : 1;
+  auto Offset =
+      cast<ConstantInt>(WrPredRegion.getOperand(WrPredRegionOperand::Offset))
+          ->getZExtValue();
+  if (ExecSize >= 32 || !isPowerOf2_64(ExecSize))
+    return false;
+  if (ExecSize == 32)
+    return Offset == 0;
+  return Offset == 0 || Offset == 16;
 }

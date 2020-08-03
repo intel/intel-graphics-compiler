@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "vc/GenXOpts/GenXAnalysis.h"
 #include "vc/GenXOpts/GenXOpts.h"
+#include "vc/GenXOpts/Utils/CMRegion.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 
@@ -55,6 +56,79 @@ using namespace llvm;
 static cl::opt<bool>
     GenXEnablePeepholes("genx-peepholes", cl::init(true), cl::Hidden,
                         cl::desc("apply additional peephole optimizations"));
+
+// isWriteWithUndefInput - checks whether provided \p Inst is a write
+// intrinsic (currently wrregion, wrpredregion) and it's input value
+// (new value) is undef (undef value is written into a vector).
+static bool isWriteWithUndefInput(const Instruction &Inst) {
+  switch (GenXIntrinsic::getAnyIntrinsicID(&Inst)) {
+  default:
+    return false;
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+    return isa<UndefValue>(
+        Inst.getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
+  case GenXIntrinsic::genx_wrpredregion:
+    return isa<UndefValue>(Inst.getOperand(WrPredRegionOperand::NewValue));
+  }
+}
+
+static Value &getWriteOldValueOperand(Instruction &Inst) {
+  switch (GenXIntrinsic::getAnyIntrinsicID(&Inst)) {
+  default:
+    llvm_unreachable("wrong argument: write region intrinsics are expected");
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+    return *Inst.getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+  case GenXIntrinsic::genx_wrpredregion:
+    return *Inst.getOperand(WrPredRegionOperand::OldValue);
+  }
+}
+
+// processWriteWithUndefInput - removes provided \p Inst, replaces its uses
+// with the old value. If this replacement produced new context (write
+// intrinsic's input value was  replaced with undef), those writes are put into
+// \p ToProcess output iterator.
+template <typename OutIter>
+void processWriteWithUndefInput(Instruction &Inst, OutIter ToProcess) {
+  assert(isWriteWithUndefInput(Inst) &&
+         "wrong argument: write intrinsic with undef input was expected");
+  Inst.replaceAllUsesWith(&getWriteOldValueOperand(Inst));
+  // As a result of operand promotion we can get new suitable instructions.
+  // Using additional copy_if instead of make_filter_range as workaround,
+  // because user_iterator returns pointer instead of reference.
+  std::vector<User *> UsersToProcess;
+  std::copy_if(Inst.user_begin(), Inst.user_end(),
+               std::back_inserter(UsersToProcess), [](User *Usr) {
+                 return isa<Instruction>(Usr) &&
+                        isWriteWithUndefInput(*cast<Instruction>(Usr));
+               });
+  std::transform(UsersToProcess.begin(), UsersToProcess.end(), ToProcess,
+                 [](User *Usr) { return cast<Instruction>(Usr); });
+  Inst.eraseFromParent();
+}
+
+bool llvm::simplifyWritesWithUndefInput(Function &F) {
+  using WorkListT = std::vector<Instruction *>;
+  WorkListT WorkList;
+  auto WorkListRange =
+      make_filter_range(instructions(F), [](const Instruction &Inst) {
+        return isWriteWithUndefInput(Inst);
+      });
+  llvm::transform(WorkListRange, std::back_inserter(WorkList),
+                  [](Instruction &Inst) { return &Inst; });
+  bool Modified = !WorkList.empty();
+  while (!WorkList.empty()) {
+    WorkListT CurrentWorkList = std::move(WorkList);
+    WorkList = WorkListT{};
+    auto WorkListInserter = std::back_inserter(WorkList);
+    std::for_each(CurrentWorkList.begin(), CurrentWorkList.end(),
+                  [WorkListInserter](Instruction *Inst) {
+                    processWriteWithUndefInput(*Inst, WorkListInserter);
+                  });
+  }
+  return Modified;
+}
 
 /***********************************************************************
  * SimplifyGenXIntrinsic : given a GenX intrinsic and a set of arguments,
@@ -174,12 +248,6 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
         }
       }
       break;
-    case GenXIntrinsic::genx_wrpredregion:
-      // wrpredregion with undef "new value" input is simplified to the "old
-      // value" input.
-      if (isa<UndefValue>(ArgBegin[1]))
-        return ArgBegin[0];
-      break;
   }
   return nullptr;
 }
@@ -273,6 +341,7 @@ bool GenXSimplify::runOnFunction(Function &F) {
     }
   }
   Changed |= processGenXIntrinsics(F);
+  Changed |= simplifyWritesWithUndefInput(F);
   return Changed;
 }
 

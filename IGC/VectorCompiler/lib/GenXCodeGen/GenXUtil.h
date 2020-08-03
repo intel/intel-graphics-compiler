@@ -80,7 +80,7 @@ CallInst *createAddAddr(Value *Lhs, Value *Rhs, const Twine &Name,
 CallInst *createUnifiedRet(Type *Ty, const Twine &Name, Module *M);
 
 // getPredicateConstantAsInt : get a vXi1 constant's value as a single integer
-unsigned getPredicateConstantAsInt(Constant *C);
+unsigned getPredicateConstantAsInt(const Constant *C);
 
 // getConstantSubvector : get a contiguous region from a vector constant
 Constant *getConstantSubvector(Constant *V, unsigned StartIdx, unsigned Size);
@@ -488,6 +488,10 @@ unsigned CeilAlignment(unsigned LogAlignment, unsigned GRFWidth);
 // ElTy is returned, otherwise original type \p Ty is returned.
 const Type &fixDegenerateVectorType(const Type &Ty);
 Type &fixDegenerateVectorType(Type &Ty);
+
+// Checks whether provided wrpredregion intrinsic can be encoded
+// as legal SETP instruction.
+bool isWrPredRegionLegalSetP(const CallInst &WrPredRegion);
 
 } // namespace genx
 } // namespace llvm

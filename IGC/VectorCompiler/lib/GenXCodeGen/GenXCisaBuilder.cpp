@@ -2380,11 +2380,12 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
  * buildLoneWrPredRegion : build a lone wrpredregion
  */
 void GenXKernelBuilder::buildLoneWrPredRegion(Instruction *Inst, BaleInfo BI) {
+  assert(isWrPredRegionLegalSetP(*cast<CallInst>(Inst)) &&
+         "wrpredregion cannot be legally represented as SETP instruction");
   enum { OperandNum = 1 };
   Value *Input = Inst->getOperand(OperandNum);
-  assert(isa<Constant>(Input));
-  auto C = dyn_cast<Constant>(Input);
-  assert(C);
+  assert(isa<Constant>(Input) && "only immediate case is yet supported");
+  auto *C = cast<Constant>(Input);
   unsigned Size = C->getType()->getPrimitiveSizeInBits();
 
   VISA_EMask_Ctrl ctrlMask = getExecMaskFromWrPredRegion(Inst, true);
