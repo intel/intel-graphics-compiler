@@ -780,7 +780,7 @@ void CompileUnit::addGTRelativeLocation(DIEBlock* Block, VISAVariableLocation* L
             addUInt(Block, dwarf::DW_FORM_data1, 4);
 
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const4u);
-            addUInt(Block, dwarf::DW_FORM_data2, 0xffffffc0);
+            addUInt(Block, dwarf::DW_FORM_data4, 0xffffffc0);
 
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
 
@@ -1106,14 +1106,7 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
             // If unpacked then small variable takes up 32 bits else when packed fits its exact size
             uint32_t bitsUsedByVar = (isPacked || varSizeInBits > 32) ? (uint32_t)varSizeInBits : 32;
             uint32_t variablesInSingleGRF = (VISAMod->m_pShader->getGRFSize() * 8) / bitsUsedByVar;
-
-            uint32_t iterNo = 0;
-            uint32_t variablesCounter = 1;
-            while (variablesInSingleGRF > variablesCounter)
-            {
-                variablesCounter = 2 * variablesCounter;
-                iterNo++;
-            }
+            uint32_t valForSubRegLit = (uint32_t)log2(variablesInSingleGRF);
 
             // 1 var fits the whole GRF then set litForSubReg=dwarf::DW_OP_lit0 and litForSIMDlane=dwarf::DW_OP_lit0,
             // 2 vars   - dwarf::DW_OP_lit1 and dwarf::DW_OP_lit1,
@@ -1121,10 +1114,20 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
             // 8 vars   - dwarf::DW_OP_lit3 and dwarf::DW_OP_lit7,
             // 16 vars  - dwarf::DW_OP_lit4 and dwarf::DW_OP_lit15,
             // 32 vars  - dwarf::DW_OP_lit5 and dwarf::DW_OP_lit31,
-            // 64 vars  - dwarf::DW_OP_lit6 and dwarf::DW_OP_lit63,
-            // 128 vars - dwarf::DW_OP_lit7 and dwarf::DW_OP_lit127, etc.
-            dwarf::LocationAtom litForSubReg = (dwarf::LocationAtom)(dwarf::DW_OP_lit0 + iterNo);
-            dwarf::LocationAtom litForSIMDlane = (dwarf::LocationAtom)(dwarf::DW_OP_lit0 + variablesInSingleGRF - 1);
+            // 64 vars  - dwarf::DW_OP_lit6 and dwarf::DW_OP_const1u 63,
+            // 128 vars - dwarf::DW_OP_lit7 and dwarf::DW_OP_const1u 127,
+            // 256 vars - dwarf::DW_OP_lit8 and dwarf::DW_OP_const1u 255,
+            // 512 vars - dwarf::DW_OP_lit9 and dwarf::DW_OP_const2u 511, etc.
+            dwarf::LocationAtom litForSubReg = (dwarf::LocationAtom)(dwarf::DW_OP_lit0 + valForSubRegLit);
+            dwarf::LocationAtom litForSIMDlane = dwarf::DW_OP_const2u;
+            if (variablesInSingleGRF <= 32)
+            {
+                litForSIMDlane = (dwarf::LocationAtom)(dwarf::DW_OP_lit0 + variablesInSingleGRF - 1);
+            }
+            else if (variablesInSingleGRF <= 256)
+            {
+                litForSIMDlane = dwarf::DW_OP_const1u;
+            }
 
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
             addUInt(Block, dwarf::DW_FORM_data1, litForSubReg);
@@ -1134,6 +1137,15 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
             addUInt(Block, dwarf::DW_FORM_data1, litForSIMDlane);
+            if (variablesInSingleGRF > 256)
+            {
+                addUInt(Block, dwarf::DW_FORM_data2, variablesInSingleGRF - 1);
+            }
+            else if (variablesInSingleGRF > 32)
+            {
+                addUInt(Block, dwarf::DW_FORM_data1, variablesInSingleGRF - 1);
+            }
+
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
             addUInt(Block, dwarf::DW_FORM_data1, bitsUsedByVar);
