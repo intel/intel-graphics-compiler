@@ -57,9 +57,9 @@ You can use following commands:
 ```shell
 $ cd <workspace>
 $ git clone https://github.com/intel/vc-intrinsics vc-intrinsics
-$ git clone -b release/9.x https://github.com/llvm/llvm-project llvm-project
-$ git clone -b ocl-open-90 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
-$ git clone -b llvm_release_90 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
+$ git clone -b release/10.x https://github.com/llvm/llvm-project llvm-project
+$ git clone -b ocl-open-100 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
+$ git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
 $ mv llvm-project/clang llvm-project/llvm/tools/
 ```
@@ -121,13 +121,17 @@ No additional steps are needed.
 
 ### LLVM10/Clang10
 
+No additional steps are needed.
+
+### LLVM11/Clang11 (TBD)
+
 You can either use prebuilt packages or build from sources:
 ```shell
 $ cd <workspace>
 $ git clone https://github.com/intel/vc-intrinsics vc-intrinsics
-$ git clone -b release/10.x https://github.com/llvm/llvm-project llvm-project
-$ git clone -b ocl-open-100 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
-$ git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
+$ git clone -b release/11.x https://github.com/llvm/llvm-project llvm-project
+$ git clone -b ocl-open-110 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
+$ git clone -b llvm_release_110 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
 $ git clone https://github.com/intel/intel-graphics-compiler igc
 $ mv llvm-project/clang llvm-project/llvm/tools/
@@ -139,11 +143,11 @@ Latest known configuration that compiles successfully:
 
 ```
 <workspace>
-      |- igc                               (master f94e38306fa0b84f23306d4b5c4da1c52fa5a956)
-      |- vc-intrinsics                     (master 65602bab586afb085048ecc75749087216dc67fb)
-      |- llvm_patches                      (master 1c93162ab33af968c22fe1cbfb12ea87f5a25bfa)
-      |- llvm-project                      (release/10.x 4e6ec0fff658cbe29e70f46491917202baa061c0)
-            |- llvm/projects/opencl-clang  (ocl-open-100 0a5a9f67b56431ef7b9436d1af812df6dfb44975)
-            |- llvm/projects/llvm-spirv    (llvm_release_100 6af878027f2eb002e96d0ed86a091de7fd7fe314)
-            |- llvm/tools/clang            (release/10.x 4e6ec0fff658cbe29e70f46491917202baa061c0)
+      |- igc                               (master TBD)
+      |- vc-intrinsics                     (master TBD)
+      |- llvm_patches                      (master TBD)
+      |- llvm-project                      (release/11.x TBD)
+            |- llvm/projects/opencl-clang  (ocl-open-110 TBD)
+            |- llvm/projects/llvm-spirv    (llvm_release_110 TBD)
+            |- llvm/tools/clang            (release/11.x TBD)
 ```
