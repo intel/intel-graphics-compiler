@@ -361,6 +361,7 @@ class GenXDepressurizer : public FunctionGroupPass {
   // InstNumbers[I1] < InstNumbers[I2], unless the reachability is via a
   // loop backedge. The converse is not necessarily true.
   std::map<Instruction *, unsigned> InstNumbers;
+  std::map<Value *, CallInst *> TwoAddrValueMap;
 
 public:
   static char ID;
@@ -393,6 +394,7 @@ private:
   int  getSinkBenefit(Superbale *SB, Liveness::Category Cat, unsigned Headroom);
   bool fillSuperbale(Superbale *SB, Instruction *Inst, bool IsFlag);
   void MergeCandidate(SinkCandidate &Lhs, SinkCandidate &Rhs);
+  void fillTwoAddrValueMap(BasicBlock *BB);
 };
 
 } // end anonymous namespace
@@ -601,6 +603,8 @@ void GenXDepressurizer::processBasicBlock(BasicBlock *BB) {
   Live = &LiveIn[BB];
   // Populate Live with the live out values.
   getLiveOut(BB, Live);
+
+  fillTwoAddrValueMap(BB);
   // Scan backwards through the block, excluding phi nodes.
   auto Inst = &BB->back();
   for (;;) {
@@ -788,22 +792,6 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
                << ", AllowClone=" << AllowClone << ")\n");
   if (!InsertBefore)
     return;
-  // Build two-addr operand -> instruction map for checking against two-addr
-  // instructions.
-  std::map<Value *, CallInst *> TwoAddrValueMap;
-    BasicBlock *BB = InsertBefore->getParent();
-  if (InsertBefore != &BB->front()) {
-    for (auto I = InsertBefore->getPrevNode(); I != &BB->front();
-      I = I->getPrevNode()) {
-      auto CI = dyn_cast<CallInst>(I);
-      if (!CI)
-        continue;
-      int OpndNum = getTwoAddressOperandNum(CI);
-      if (OpndNum < 0)
-        continue;
-      TwoAddrValueMap[I->getOperand(OpndNum)] = CI;
-    }
-  }
   // Gather the currently live superbales with a sink benefit.
   // Exclude any that is used in the present bale.
   SmallVector<SinkCandidate, 8> Candidates;
@@ -1035,6 +1023,22 @@ void GenXDepressurizer::MergeCandidate(SinkCandidate &Lhs, SinkCandidate &Rhs) {
   std::swap(Lhs.SB->Bales, Merge);
   Rhs.SB = nullptr;
   Rhs.Benefit = (-1);
+}
+
+void GenXDepressurizer::fillTwoAddrValueMap(BasicBlock *BB) {
+  TwoAddrValueMap.clear();
+
+  // Build two-addr operand -> instruction map for checking against two-addr
+  // instructions.
+  for (auto I = BB->rbegin(), E = BB->rend(); I != E; ++I) {
+      auto CI = dyn_cast<CallInst>(&*I);
+      if (!CI)
+        continue;
+      int OpndNum = getTwoAddressOperandNum(CI);
+      if (OpndNum < 0)
+        continue;
+      TwoAddrValueMap[I->getOperand(OpndNum)] = CI;
+  }
 }
 
 /***********************************************************************
