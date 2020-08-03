@@ -353,6 +353,8 @@ namespace IGC
 
         uint64_t getValue() const { return Integer; }
 
+        void setValue(uint64_t v) { Integer = v; }
+
         /// SizeOf - Determine size of integer value in bytes.
         ///
         virtual unsigned SizeOf(StreamEmitter* AP, llvm::dwarf::Form Form) const;
@@ -564,6 +566,10 @@ namespace IGC
         /// ComputeSize - calculate the size of the block.
         ///
         unsigned ComputeSize(StreamEmitter* AP);
+
+        /// ComputeSizeOnTheFly - calculate size of block on the fly.
+        ///
+        unsigned ComputeSizeOnTheFly(StreamEmitter* AP) const;
 
         /// BestForm - Choose the best form for data.
         ///

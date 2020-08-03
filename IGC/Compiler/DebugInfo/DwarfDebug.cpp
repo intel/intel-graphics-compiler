@@ -1404,7 +1404,8 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 continue;
 
             // assume that VISA preserves location thoughout its lifetime
-            auto Loc = m_pModule->GetVariableLocation(pInst);
+            auto Locs = m_pModule->GetVariableLocation(pInst);
+            auto& Loc = Locs.front();
 
             if (Loc.IsSampler() || Loc.IsSLM() ||
                 Loc.HasSurface())

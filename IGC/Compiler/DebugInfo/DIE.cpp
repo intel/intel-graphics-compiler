@@ -507,6 +507,19 @@ unsigned DIEBlock::ComputeSize(StreamEmitter* AP)
     return Size;
 }
 
+/// ComputeSizeOnTheFly - calculate size of block on the fly.
+/// This function is used to compute size of abbrevs already
+/// emitted this far. It doesnt update Size method.
+unsigned DIEBlock::ComputeSizeOnTheFly(StreamEmitter* AP) const
+{
+    unsigned S = 0;
+    const SmallVectorImpl<DIEAbbrevData>& AbbrevData = Abbrev.getData();
+    for (unsigned i = 0, N = Values.size(); i < N; ++i)
+        S += Values[i]->SizeOf(AP, AbbrevData[i].getForm());
+
+    return S;
+}
+
 /// EmitValue - Emit block data.
 ///
 void DIEBlock::EmitValue(StreamEmitter* Asm, dwarf::Form Form) const

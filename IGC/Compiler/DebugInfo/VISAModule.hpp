@@ -400,9 +400,11 @@ namespace IGC
         const llvm::MDNode* GetDebugVariable(const llvm::Instruction*) const;
 
         /// @brief Return variable location in VISA for from given debug info instruction.
+        /// Return type is a vector since for SIMD32 a single src variable may map to 2
+        /// VISA variables. In case of SIMD32, each entry is treated to be one half of SIMD16.
         /// @param Instruction to query.
         /// @return variable location in VISA.
-        VISAVariableLocation GetVariableLocation(const llvm::Instruction*) const;
+        std::vector<VISAVariableLocation> GetVariableLocation(const llvm::Instruction*) const;
 
         /// @brief Return raw data of given LLVM constant value.
         /// @param pConstVal constant value to process.

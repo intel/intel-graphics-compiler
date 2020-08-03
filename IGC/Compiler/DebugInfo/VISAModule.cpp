@@ -401,11 +401,12 @@ const Argument* VISAModule::GetTracedArgument(const Value* pVal, bool isAddress)
     return nullptr;
 }
 
-VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pInst) const
+std::vector<VISAVariableLocation> VISAModule::GetVariableLocation(const llvm::Instruction* pInst) const
 {
     const Value* pVal = nullptr;
     MDNode* pNode = nullptr;
     bool isDbgDclInst = false;
+    std::vector<VISAVariableLocation> ret;
     if (const DbgDeclareInst * pDbgAddrInst = dyn_cast<DbgDeclareInst>(pInst))
     {
         pVal = pDbgAddrInst->getAddress();
@@ -425,7 +426,8 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     if (!pVal || isa<UndefValue>(pVal))
     {
         // No debug info value, return empty location!
-        return VISAVariableLocation(this);
+        ret.push_back(VISAVariableLocation(this));
+        return ret;
     }
 
     if (const Constant * pConstVal = dyn_cast<Constant>(pVal))
@@ -433,7 +435,8 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
         if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal))
         {
             IGC_ASSERT_MESSAGE(!isDbgDclInst, "address cannot be immediate!");
-            return VISAVariableLocation(pConstVal, this);
+            ret.push_back(VISAVariableLocation(pConstVal, this));
+            return ret;
         }
     }
 
@@ -480,7 +483,8 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
                     break;
                 case KernelArg::ArgType::SAMPLER:
                     IGC_ASSERT_MESSAGE(index < SAMPLER_REGISTER_NUM, "Bad sampler index");
-                    return VISAVariableLocation(SAMPLER_REGISTER_BEGIN + index, this);
+                    ret.push_back(VISAVariableLocation(SAMPLER_REGISTER_BEGIN + index, this));
+                    return ret;
                 case KernelArg::ArgType::IMAGE_1D:
                 case KernelArg::ArgType::IMAGE_1D_BUFFER:
                 case KernelArg::ArgType::IMAGE_2D:
@@ -500,15 +504,18 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
                         // Found write image
                         index = m_pShader->m_pBtiLayout->GetUavIndex(index);
                         IGC_ASSERT_MESSAGE(index < TEXTURE_REGISTER_NUM, "Bad texture index");
-                        return VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this);
+                        ret.push_back(VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this));
+                        return ret;
                     case SRVResourceType:
                         // Found read image
                         index = m_pShader->m_pBtiLayout->GetTextureIndex(index);
                         IGC_ASSERT_MESSAGE(index < TEXTURE_REGISTER_NUM, "Bad texture index");
-                        return VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this);
+                        ret.push_back(VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index, this));
+                        return ret;
                     default:
                         IGC_ASSERT_MESSAGE(0, "Unknown texture resource");
-                        return VISAVariableLocation(this);
+                        ret.push_back(VISAVariableLocation(this));
+                        return ret;
                     }
                 }
             }
@@ -523,7 +530,8 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     {
         if (!pType->isPointerTy()) {
             IGC_ASSERT_MESSAGE(0, "DBG declare intrinsic must point to an address");
-            return VISAVariableLocation(this);
+            ret.push_back(VISAVariableLocation(this));
+            return ret;
         }
         pType = pType->getPointerElementType();
     }
@@ -559,16 +567,19 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
         unsigned int offset = m_pShader->GetGlobalMappingValue(pValue);
         if (isInSurface)
         {
-            return VISAVariableLocation(surfaceReg, offset, false, isDbgDclInst, 0, false, this);
+            ret.push_back(VISAVariableLocation(surfaceReg, offset, false, isDbgDclInst, 0, false, this));
+            return ret;
         }
-        return VISAVariableLocation(offset, false, isDbgDclInst, 0, false, false, this);
+        ret.push_back(VISAVariableLocation(offset, false, isDbgDclInst, 0, false, false, this));
+        return ret;
     }
 
     // At this point we expect only a register
     auto globalSubCVar = m_pShader->GetGlobalCVar(pValue);
 
     if (!globalSubCVar && !m_pShader->IsValueUsed(pValue)) {
-        return VISAVariableLocation(this);
+        ret.push_back(VISAVariableLocation(this));
+        return ret;
     }
 
     CVariable* pVar = nullptr;
@@ -579,7 +590,7 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     IGC_ASSERT_MESSAGE(false == pVar->IsImmediate(), "Do not expect an immediate value at this level");
 
     std::string varName = cast<DIVariable>(pNode)->getName();
-    unsigned int reg = 0;
+    unsigned int reg = 0, reg2 = 0;
     unsigned int vectorNumElements = 0;
 
     switch (pVar->GetVarType()) {
@@ -602,9 +613,16 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
 
         if (isInSurface)
         {
-            return VISAVariableLocation(surfaceReg, GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), this);
+            ret.push_back(VISAVariableLocation(surfaceReg, GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), this));
+            return ret;
         }
-        return VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this);
+        ret.push_back(VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this));
+        if (GetSIMDSize() == 32 && pVar->visaGenVariable[1])
+        {
+            reg2 = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[1]);
+            ret.push_back(VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg2, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this));
+        }
+        return ret;
     case EVARTYPE_ADDRESS:
     case EVARTYPE_PREDICATE:
     case EVARTYPE_SURFACE:
@@ -617,7 +635,8 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
     }
 
     IGC_ASSERT_MESSAGE(0, "Empty variable location");
-    return VISAVariableLocation(this);
+    ret.push_back(VISAVariableLocation(this));
+    return ret;
 }
 
 void VISAModule::GetConstantData(const Constant* pConstVal, DataVector& rawData) const
