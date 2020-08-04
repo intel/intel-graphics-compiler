@@ -1366,6 +1366,18 @@ public:
 
     // Create a new srcregregion allocated in mem
     G4_SrcRegRegion* createSrcRegRegion(
+        G4_VarBase* b,
+        short roff,
+        short sroff,
+        const RegionDesc *rd,
+        G4_Type ty,
+        G4_AccRegSel regSel = ACC_UNDEFINED)
+    {
+        return createSrcRegRegion(Mod_src_undef, Direct, b, roff, sroff, rd, ty, regSel);
+    }
+
+    // Create a new srcregregion allocated in mem
+    G4_SrcRegRegion* createSrcRegRegion(
         G4_SrcModifier m,
         G4_RegAccess   a,
         G4_VarBase*    b,
@@ -1446,7 +1458,8 @@ public:
     // create a new dstregregion allocated in mem
     // TODO: Avoid calling this directly since direct dst and indirect dst
     // have different parameters. Will make it private in the future.
-    G4_DstRegRegion* createDstRegRegion(G4_RegAccess a,
+    G4_DstRegRegion* createDstRegRegion(
+        G4_RegAccess a,
         G4_VarBase* b,
         short roff,
         short sroff,
@@ -1459,7 +1472,8 @@ public:
     }
 
     // create a direct DstRegRegion
-    G4_DstRegRegion* createDst(G4_VarBase* b,
+    G4_DstRegRegion* createDst(
+        G4_VarBase* b,
         short roff,
         short sroff,
         unsigned short hstride,
@@ -1467,6 +1481,11 @@ public:
         G4_AccRegSel regSel = ACC_UNDEFINED)
     {
         return createDstRegRegion(Direct, b, roff, sroff, hstride, ty, regSel);
+    }
+    // create a direct DstRegRegion
+    G4_DstRegRegion* createDst(G4_VarBase* b, G4_Type ty)
+    {
+        return createDstRegRegion(Direct, b, 0, 0, 1, ty, ACC_UNDEFINED);
     }
 
     // create a indirect DstRegRegion
@@ -1869,8 +1888,16 @@ public:
     G4_INST* createMov(uint8_t execSize, G4_DstRegRegion* dst,
         G4_Operand* src0, uint32_t option, bool appendToInstList);
 
-    G4_INST* createBinOp(G4_opcode op, uint8_t execSize, G4_DstRegRegion* dst,
-        G4_Operand* src0, G4_Operand* src1, uint32_t option, bool appendToInstList);
+    G4_INST* createBinOp(
+        G4_opcode op, uint8_t execSize,
+        G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
+        uint32_t option, bool appendToInstList);
+
+    G4_INST* createBinOp(
+        G4_Predicate *pred,
+        G4_opcode op, uint8_t execSize,
+        G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
+        uint32_t option, bool appendToInstList = true);
 
     G4_INST* createMach(uint8_t execSize, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, uint32_t option, G4_Type accType);
@@ -1882,7 +1909,7 @@ public:
 
     void resizePredefinedStackVars();
 
-    G4_Operand* duplicateOpndImpl( G4_Operand* opnd );
+    G4_Operand* duplicateOpndImpl(G4_Operand* opnd);
     template <typename T> T* duplicateOperand(T* opnd)
     {
         return static_cast<T *>(duplicateOpndImpl(opnd));
@@ -1936,7 +1963,8 @@ public:
         unsigned int option,
         bool is_sendc);
 
-    G4_InstSend* Create_SplitSend_Inst_For_CISA(G4_Predicate* pred, G4_DstRegRegion* dst,
+    G4_InstSend* Create_SplitSend_Inst_For_CISA(
+        G4_Predicate* pred, G4_DstRegRegion* dst,
         G4_SrcRegRegion* src1, unsigned regs2snd1,
         G4_SrcRegRegion* src2, unsigned regs2snd2,
         unsigned regs2rcv,
@@ -1950,7 +1978,7 @@ public:
         bool is_sendc);
 
     // helper functions
-    G4_Declare *createSendPayloadDcl( unsigned num_elt, G4_Type type );
+    G4_Declare *createSendPayloadDcl(unsigned num_elt, G4_Type type);
     void Create_MOVR0_Inst(
         G4_Declare* dcl,
         short refOff,

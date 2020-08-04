@@ -67,14 +67,14 @@ using namespace vISA;
 #define IS_VISA_BOTH_PATH (mBuildOption == VISA_BUILDER_VISA || mBuildOption == VISA_BUILDER_BOTH)
 
 
-static void PACK_EXEC_SIZE( unsigned int &size, VISA_EMask_Ctrl eMask )
+static void PACK_EXEC_SIZE(unsigned int &size, VISA_EMask_Ctrl eMask)
 {
     size |= eMask << 4;
 }
 
-static void ADD_OPND( int &num_operands, VISA_opnd **opnd, VISA_opnd * topnd )
+static void ADD_OPND(int &num_operands, VISA_opnd **opnd, VISA_opnd * topnd)
 {
-    if( topnd != NULL )
+    if (topnd != NULL)
     {
         opnd[num_operands++] = topnd;
     }
@@ -84,7 +84,7 @@ static void ADD_OPND( int &num_operands, VISA_opnd **opnd, VISA_opnd * topnd )
 #define ERROR_PRINT( error_msg ) std::cerr << error_msg << "\n"
 static int CHECK_NUM_OPNDS(VISA_INST_Desc *instDesc, int numOperands, int predOpnds)
 {
-    if((instDesc->opnd_num -predOpnds) != numOperands)
+    if ((instDesc->opnd_num -predOpnds) != numOperands)
     {
         ERROR_PRINT("Number of parameters does not match");
         std::cerr<<"LINE: "<<__LINE__<<std::endl;
@@ -94,12 +94,12 @@ static int CHECK_NUM_OPNDS(VISA_INST_Desc *instDesc, int numOperands, int predOp
     }
     return VISA_SUCCESS;
 }
-static void GET_NUM_PRED_DESC_OPNDS(int &predOpnd, VISA_INST_Desc *inst_desc_temp )
+static void GET_NUM_PRED_DESC_OPNDS(int &predOpnd, VISA_INST_Desc *inst_desc_temp)
 {
     predOpnd = 0;
     for(int i = 0; i < inst_desc_temp->opnd_num; i++)
     {
-        if(inst_desc_temp->opnd_desc[i].opnd_type == OPND_EXECSIZE ||
+        if (inst_desc_temp->opnd_desc[i].opnd_type == OPND_EXECSIZE ||
             inst_desc_temp->opnd_desc[i].opnd_type == OPND_PRED)
             predOpnd++;
     }
@@ -139,7 +139,7 @@ int VISAKernelImpl::calculateTotalInputSize()
     for(unsigned int i = 0; i < m_builder->getInputCount(); i++)
     {
         input_info_t * temp = m_builder->getInputArg(i);
-        if(m_inputSize < (unsigned int)(temp->offset + temp->size))
+        if (m_inputSize < (unsigned int)(temp->offset + temp->size))
         {
             m_inputSize = temp->offset + temp->size;
         }
@@ -524,8 +524,8 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     }
     stopTimer(TIMER_ENCODE_AND_EMIT);
 
-#if defined( _DEBUG ) && ( defined( _WIN32 ) || defined( _WIN64 ) )
-    if(m_options->getOption(vISA_DebugConsoleDump)){
+#if defined(_DEBUG) && (defined(_WIN32) || defined(_WIN64))
+    if (m_options->getOption(vISA_DebugConsoleDump)) {
         std::basic_ostringstream<char> debugBuff;
         m_kernel->emit_asm(debugBuff, false, nullptr, binarySize);
         debugBuff.flush();
@@ -535,16 +535,12 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
     if (m_options->getOption(vISA_outputToFile))
     {
-        std::ofstream krnlOutput;
-
-        char asmFileName[MAX_OPTION_STR_LENGTH];
-        SNPRINTF( asmFileName, MAX_OPTION_STR_LENGTH, "%s.asm", m_asmName.c_str() );
-        krnlOutput.open( asmFileName );
-        if (!krnlOutput)
-        {
-            cerr << "Fail to open " << asmFileName << std::endl;
+        std::stringstream ss;
+        ss << m_asmName.c_str() << ".asm";
+        std::ofstream krnlOutput(ss.str().c_str(), std::ofstream::out);
+        if (!krnlOutput) {
+            std::cerr << ss.str() << ": fail to open\n";
         }
-
         m_kernel->emit_asm(krnlOutput, false, binary, binarySize);
         krnlOutput.close();
     }
@@ -612,13 +608,13 @@ int VISAKernelImpl::InitializeKernel(const char *kernel_name)
     int status = VISA_SUCCESS;
     m_num_pred_vars = Get_CISA_PreDefined_Var_Count();
     setName(kernel_name);
-    if( IS_GEN_BOTH_PATH && m_isKernel)
+    if (IS_GEN_BOTH_PATH && m_isKernel)
     {
         //only doing it for kernel, since function will need Physical register pool created by the kernel
         //so will need to be passed in when kernel is compiled.
         status = InitializeFastPath();
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         m_branch_targets = new_string_pool();
     }
@@ -632,7 +628,7 @@ int VISAKernelImpl::InitializeKernel(const char *kernel_name)
     stopTimer(TIMER_VISA_BUILDER_CREATE_VAR);
 #endif
 
-    if(m_isKernel)
+    if (m_isKernel)
     {
         m_kernelID++;
     }
@@ -713,7 +709,7 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
         decl->stateVar.attributes = NULL;
         decl->stateVar.attribute_count = 0;
         decl->stateVar.name_index = -1;
-        if(IS_VISA_BOTH_PATH)
+        if (IS_VISA_BOTH_PATH)
         {
             const char* name = vISAPreDefSurf[i].name;
             decl->stateVar.name_index = addStringPool(std::string(name));
@@ -965,7 +961,7 @@ int VISAKernelImpl::CreateVISAGenVar(
 
     decl->index = m_var_info_count++;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Type type = GetGenTypeFromVISAType(dataType);
         unsigned short dclWidth = 1, dclHeight = 1;
@@ -1135,7 +1131,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
     ////memset(decl, 0, sizeof(CISA_GEN_VAR));
     decl->type = type;
 
-    if(m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
+    if (m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
     {
         assert( 0 );
         return VISA_FAILURE;
@@ -1148,7 +1144,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
     state->attribute_count = 0;
     state->attributes = NULL;
     state->num_elements = (uint16_t)numberElements;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         state->dcl = m_builder->createDeclareNoLookup(
             createStringCopy(varName, m_mem),
@@ -1159,7 +1155,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
         state->name_index = -1;
     }
 
-    switch( type )
+    switch (type)
     {
     case SAMPLER_VAR:
         decl->index = this->m_sampler_count++;
@@ -1172,10 +1168,10 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
         return VISA_FAILURE;
     }
 
-    if(IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo) || IsAsmWriterMode())
+    if (IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo) || IsAsmWriterMode())
     {
         state->name_index = addStringPool(std::string(varName));
-        switch( type )
+        switch (type)
         {
         case SAMPLER_VAR:
         {
@@ -1227,7 +1223,7 @@ int VISAKernelImpl::CreateDummyLabelOperand(VISA_LabelOpnd *& opnd, char * name,
 #endif
     VISA_INST_Desc *inst_desc = NULL;
     ISA_Opcode opcode = ISA_LABEL;
-    if( kind == LABEL_SUBROUTINE )
+    if (kind == LABEL_SUBROUTINE )
     {
         opcode = ISA_SUBROUTINE;
     }
@@ -1253,7 +1249,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
 #endif
     opnd = (VISA_LabelOpnd *)m_mem.alloc(sizeof(VISA_LabelOpnd));
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         //needs to be persistent since label opnd can be used multiple times
         if (m_isKernel == false)
@@ -1266,7 +1262,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
             std::string kname(name);
             opnd->g4opnd = m_builder->createLabel(kname, kind);
         }
-        if(kind == LABEL_SUBROUTINE)
+        if (kind == LABEL_SUBROUTINE)
         {
             ((G4_Label*)opnd->g4opnd)->setFuncLabel(true);
         }
@@ -1274,7 +1270,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
         {
             ((G4_Label*)opnd->g4opnd)->setFuncLabel(false);
 
-            if(kind == LABEL_FC)
+            if (kind == LABEL_FC)
             {
                 // Need to do this here because label kind
                 // from VISA is not propagated to G4 IR
@@ -1283,7 +1279,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
             }
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         label_info_t *lbl = (label_info_t *)m_mem.alloc(sizeof(label_info_t));
         lbl->name_index = addStringPool(std::string(name));
@@ -1295,9 +1291,9 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
 
         VISA_INST_Desc *inst_desc = NULL;
 
-        if( kind == LABEL_BLOCK )
+        if (kind == LABEL_BLOCK )
         {
-            if(!this->setLabelNameIndexMap(std::string(name), opnd))
+            if (!this->setLabelNameIndexMap(std::string(name), opnd))
             {
                 assert( 0 );
                 return VISA_FAILURE;
@@ -1433,11 +1429,11 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         {
             m_options->setTarget(VISA_CM);
         }
-        else if(attr->value.intVal == 1)
+        else if (attr->value.intVal == 1)
         {
             m_options->setTarget(VISA_3D);
         }
-        else if(attr->value.intVal == 2)
+        else if (attr->value.intVal == 2)
         {
             m_options->setTarget(VISA_CS);
         }
@@ -1447,15 +1443,15 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         }
     }
 
-    if(attrID == Attributes::ATTR_Callable)
+    if (attrID == Attributes::ATTR_Callable)
     {
         setFCCallableKernel(true);
     }
-    else if(attrID == Attributes::ATTR_Caller)
+    else if (attrID == Attributes::ATTR_Caller)
     {
         setFCCallerKernel(true);
     }
-    else if(attrID == Attributes::ATTR_Composable)
+    else if (attrID == Attributes::ATTR_Composable)
     {
         setFCComposableKernel(true);
         if (IS_GEN_BOTH_PATH)
@@ -1526,7 +1522,7 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* var
             decl->genVar.attributes = attr;
             //calculated during emission
             //this->m_var_info_size += Get_Size_Attribute_Info(attr);
-            if(IS_GEN_BOTH_PATH)
+            if (IS_GEN_BOTH_PATH)
             {
                 if (Attributes::isAttribute(Attributes::ATTR_Input, varName) ||
                     Attributes::isAttribute(Attributes::ATTR_Input_Output, varName))
@@ -1682,7 +1678,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
     input->offset = offset;
     input->size = size;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = NULL;
         switch(decl->type)
@@ -1716,7 +1712,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
     if (IS_VISA_BOTH_PATH || IsAsmWriterMode())
     {
 
-        if((input->kind & 0x3) == INPUT_UNKNOWN) {
+        if ((input->kind & 0x3) == INPUT_UNKNOWN) {
             fprintf(stderr, "Wrong input variable is used");
             status = VISA_FAILURE;
         }else
@@ -1777,11 +1773,11 @@ int VISAKernelImpl::CreateVISAAddressOperand(VISA_VectorOpnd *&cisa_opnd, VISA_A
 #endif
 
     cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->addrVar.dcl;
 
-        if(!isDst)
+        if (!isDst)
         {
             // FIXME: This does not adhere to the vISA spec, which allows <0;N,1> regions where
             // N is < exec size
@@ -1805,7 +1801,7 @@ int VISAKernelImpl::CreateVISAAddressOperand(VISA_VectorOpnd *&cisa_opnd, VISA_A
                 dcl->getElemType());
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         cisa_opnd->opnd_type = CISA_OPND_VECTOR;
         cisa_opnd->tag = OPERAND_ADDRESS;
@@ -1830,7 +1826,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(VISA_VectorOpnd *&cisa_opn
     int status = VISA_SUCCESS;
     cisa_opnd = (VISA_VectorOpnd*)getOpndFromPool();
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *src0Dcl = NULL;
         switch(decl->type)
@@ -1864,7 +1860,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(VISA_VectorOpnd *&cisa_opn
             offset,
             Type_UW );
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         //memset(cisa_opnd,0,sizeof(VISA_opnd));
         switch(decl->type)
@@ -1936,12 +1932,12 @@ int VISAKernelImpl::CreateVISAIndirectGeneralOperand(VISA_VectorOpnd *& cisa_opn
 #endif
     cisa_opnd = (VISA_VectorOpnd*)getOpndFromPool();
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = cisa_decl->addrVar.dcl;
-        if(!isDst)
+        if (!isDst)
         {
-            if(verticalStride == MAX_UWORD_VALUE)
+            if (verticalStride == MAX_UWORD_VALUE)
                 verticalStride = UNDEFINED_SHORT;
 
             const RegionDesc *rd = m_builder->createRegionDesc( verticalStride, width, horizontalStride );
@@ -1968,7 +1964,7 @@ int VISAKernelImpl::CreateVISAIndirectGeneralOperand(VISA_VectorOpnd *& cisa_opn
             cisa_opnd->g4opnd = dst;
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         //memset(cisa_opnd,0,sizeof(VISA_opnd));
 
@@ -1980,7 +1976,7 @@ int VISAKernelImpl::CreateVISAIndirectGeneralOperand(VISA_VectorOpnd *& cisa_opn
         cisa_opnd->_opnd.v_opnd.opnd_val.indirect_opnd.indirect_offset = immediateOffset;
         cisa_opnd->_opnd.v_opnd.opnd_val.indirect_opnd.bit_property = type;
 
-        if( !isDst )
+        if (!isDst )
         {
             cisa_opnd->_opnd.v_opnd.opnd_val.indirect_opnd.region = Create_CISA_Region(verticalStride,width,horizontalStride);//Get_CISA_Region_Val(horizontal_stride) <<8;
 
@@ -2033,7 +2029,7 @@ int VISAKernelImpl::CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_
 
         G4_Type type = Type_UW;
 
-        if(size == 32)
+        if (size == 32)
             type = Type_UD;
 
         opnd->g4opnd = m_builder->createSrcRegRegion(
@@ -2063,7 +2059,7 @@ int VISAKernelImpl::CreateVISAPredicateDstOperand(VISA_VectorOpnd *& opnd, VISA_
     int status = VISA_SUCCESS;
 
     opnd = (VISA_VectorOpnd *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->predVar.dcl;
 
@@ -2074,7 +2070,7 @@ int VISAKernelImpl::CreateVISAPredicateDstOperand(VISA_VectorOpnd *& opnd, VISA_
             1,
             size == 32 ? Type_UD : Type_UW);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         status = CreateVISAPredicateOperandvISA((VISA_PredOpnd *&)opnd, decl, PredState_NO_INVERSE, PRED_CTRL_NON);
     }
@@ -2105,11 +2101,11 @@ int VISAKernelImpl::CreateVISAPredicateOperand(VISA_PredOpnd *& cisa_opnd, VISA_
 #endif
 
     cisa_opnd = (VISA_PredOpnd *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->predVar.dcl;
 #if START_ASSERT_CHECK
-        if(dcl == NULL)
+        if (dcl == NULL)
         {
             assert( 0 );
             return VISA_FAILURE;
@@ -2126,7 +2122,7 @@ int VISAKernelImpl::CreateVISAPredicateOperand(VISA_PredOpnd *& cisa_opnd, VISA_
             0,
             predCtrl );
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         CreateVISAPredicateOperandvISA(cisa_opnd, decl, state, cntrl);
     }
@@ -2145,9 +2141,9 @@ int VISAKernelImpl::CreateVISASrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_GenV
 #endif
 
     cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
-        if( cisa_decl->index < Get_CISA_PreDefined_Var_Count() )
+        if (cisa_decl->index < Get_CISA_PreDefined_Var_Count() )
         {
             cisa_opnd->g4opnd = CommonISABuildPreDefinedSrc(cisa_decl->index, vStride, width, hStride, rowOffset, colOffset, mod);
         }
@@ -2163,7 +2159,7 @@ int VISAKernelImpl::CreateVISASrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_GenV
             cisa_opnd->g4opnd = m_builder->createSrcRegRegion(g4_mod, Direct, dcl->getRegVar(), rowOffset, colOffset, rd, dcl->getElemType());
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         cisa_opnd->opnd_type = CISA_OPND_VECTOR;
         cisa_opnd->tag = OPERAND_GENERAL; //<--- I think this is redundant at this point.
@@ -2191,7 +2187,7 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
     cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         //create reg region
         G4_Declare *dcl = cisa_decl->genVar.dcl;
@@ -2199,7 +2195,7 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
         cisa_opnd->g4opnd = m_builder->createDst(dcl->getRegVar(), rowOffset, colOffset, hStride, dcl->getElemType());
     }
 
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
 
         cisa_opnd->opnd_type = CISA_OPND_VECTOR;
@@ -2305,14 +2301,14 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
 #endif
 
     cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Declare *dcl = decl->stateVar.dcl;
 
-        if(!useAsDst)
+        if (!useAsDst)
         {
             // pre-defined surface
-            if( opndClass == STATE_OPND_SURFACE &&
+            if (opndClass == STATE_OPND_SURFACE &&
                 decl->index < Get_CISA_PreDefined_Surf_Count() )
             {
                 int64_t immVal = Get_PreDefined_Surf_Index(decl->index);
@@ -2353,7 +2349,7 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
                 dcl->getElemType());
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
 
         cisa_opnd->opnd_type = CISA_OPND_VECTOR;
@@ -2466,7 +2462,7 @@ int VISAKernelImpl::CreateGenRawDstOperand(VISA_RawOpnd *& cisa_opnd)
 
     unsigned short offset = cisa_opnd->_opnd.r_opnd.offset;
 
-    //if(IS_GEN_BOTH_PATH) //will only be called in GEN or BOTH path
+    //if (IS_GEN_BOTH_PATH) //will only be called in GEN or BOTH path
     {
         G4_Declare *dcl = cisa_opnd->decl->genVar.dcl;
 
@@ -2513,7 +2509,7 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
 
     Common_ISA_Var_Class type = decl->type;
 
-    switch( type )
+    switch (type)
     {
     case SAMPLER_VAR:
     {
@@ -2565,11 +2561,11 @@ int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VI
 {
     int status = VISA_SUCCESS;
     opnd = (VISA_StateOpndHandle *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH )
+    if (IS_GEN_BOTH_PATH )
     {
         status = CreateStateInstUseFastPath(opnd, (CISA_GEN_VAR *)decl);
     }
-    if(IS_VISA_BOTH_PATH && status == VISA_SUCCESS)
+    if (IS_VISA_BOTH_PATH && status == VISA_SUCCESS)
     {
         status = CreateStateInstUse(opnd, decl->index);
     }
@@ -2580,11 +2576,11 @@ int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VI
 {
     int status = VISA_SUCCESS;
     opnd = (VISA_StateOpndHandle *)getOpndFromPool();
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         status =  CreateStateInstUseFastPath(opnd, (CISA_GEN_VAR *)decl);
     }
-    if(IS_VISA_BOTH_PATH && status == VISA_SUCCESS)
+    if (IS_VISA_BOTH_PATH && status == VISA_SUCCESS)
     {
         status =  CreateStateInstUse(opnd, decl->index);
     }
@@ -2621,9 +2617,9 @@ int VISAKernelImpl::CreateGenNullRawOperand(VISA_RawOpnd *& cisa_opnd, bool isDs
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
-        if(isDst)
+        if (isDst)
         {
             cisa_opnd->g4opnd = m_builder->createNullDst(Type_UD);
         }
@@ -2670,7 +2666,7 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         if ( ( tmpDst->g4opnd->getType() == Type_DF ) &&
@@ -2707,7 +2703,7 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
                 NULL, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, GET_G4_OPNG(src1), GET_G4_OPNG(src2), NULL);
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         int num_pred_desc_operands = 2; //accounting for exec_size and pred_id in descriptor
         int num_operands = 0;
@@ -2719,7 +2715,7 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
         GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc );
         VISA_Modifier mod = MODIFIER_NONE;
 
-        if(satMode)
+        if (satMode)
         {
             mod = MODIFIER_SAT;
             dst = (VISA_opnd *)m_mem.alloc(sizeof(VISA_opnd));
@@ -2776,14 +2772,14 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISAArithmeticInst(opcode, executionSize, emask, g4Pred,
             false, NULL, dst1->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd, NULL,
             carry_borrow->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         int num_pred_desc_operands = 2; //accounting for exec_size and pred_id in descriptor
         int num_operands = 0;
@@ -2793,7 +2789,7 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
         inst_desc = &CISA_INST_table[opcode];
         GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc );
 
-        if(opcode != ISA_ADDC && opcode != ISA_SUBB)
+        if (opcode != ISA_ADDC && opcode != ISA_SUBB)
         {
             assert( 0 );
             std::cerr<<"ONLY ADDC AND SUBB are supported by this API"<<std::endl;
@@ -2837,7 +2833,7 @@ int VISAKernelImpl::AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_EMask_Ctr
     uint32_t exSize = Get_VISA_Exec_Size(executionSize);
     CreateVISAPredicateDstOperand(dstOpnd, dst, exSize);
     CreateVISAPredicateSrcOperand(src0Opnd, src0, exSize);
-    if(src1 != NULL)
+    if (src1 != NULL)
         CreateVISAPredicateSrcOperand(src1Opnd, src1, exSize);
 
     return AppendVISALogicOrShiftInst(opcode, NULL, false, emask, executionSize, dstOpnd, src0Opnd, src1Opnd, NULL, NULL);
@@ -2853,13 +2849,13 @@ int VISAKernelImpl::AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_PredOpnd 
 
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISALogicInst(opcode, g4Pred,
             satMode, executionSize, emask, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, GET_G4_OPNG(src1), GET_G4_OPNG(src2), GET_G4_OPNG(src3));
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         int num_pred_desc_operands = 2; //accounting for exec_size and pred_id in descriptor
         int num_operands = 0;
@@ -2870,9 +2866,9 @@ int VISAKernelImpl::AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_PredOpnd 
         VISA_Modifier mod = MODIFIER_NONE;
 
         VISA_opnd *dst = tmpDst;
-        if(satMode)
+        if (satMode)
         {
-            if(tmpDst == NULL)
+            if (tmpDst == NULL)
             {
                 ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
                 assert(0);
@@ -2921,11 +2917,11 @@ int VISAKernelImpl::AppendVISAAddrAddInst(VISA_EMask_Ctrl emask, VISA_Exec_Size 
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         status = m_builder->translateVISAAddrInst(ISA_ADDR_ADD, executionSize, emask, dst->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         int num_pred_desc_operands = 0; //accounting for exec_size and pred_id in descriptor
         int num_operands = 0;
@@ -2942,7 +2938,7 @@ int VISAKernelImpl::AppendVISAAddrAddInst(VISA_EMask_Ctrl emask, VISA_Exec_Size 
         ADD_OPND(num_operands, opnd, src1);
 
 #if START_ASSERT_CHECK
-        if((inst_desc->opnd_num -num_pred_desc_operands) != num_operands)
+        if ((inst_desc->opnd_num -num_pred_desc_operands) != num_operands)
         {
             ERROR_PRINT("Number of parameters does not match");
             std::cerr<<"LINE: "<<__LINE__<<std::endl;
@@ -2976,11 +2972,11 @@ int VISAKernelImpl::AppendVISAMinMaxInst(CISA_MIN_MAX_SUB_OPCODE subOpcode, bool
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         status = m_builder->translateVISADataMovementInst(ISA_FMINMAX, subOpcode, NULL, executionSize, emask, satMode, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         int num_operands = 0;
         VISA_INST_Desc *inst_desc = NULL;
@@ -2992,9 +2988,9 @@ int VISAKernelImpl::AppendVISAMinMaxInst(CISA_MIN_MAX_SUB_OPCODE subOpcode, bool
         VISA_Modifier mod = MODIFIER_NONE;
 
         VISA_opnd *dst = tmpDst;
-        if(satMode)
+        if (satMode)
         {
-            if(tmpDst == NULL)
+            if (tmpDst == NULL)
             {
                 ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
                 assert( 0 );
@@ -3059,13 +3055,13 @@ int VISAKernelImpl::AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd 
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISADataMovementInst(opcode, CISA_DM_FMIN /*ignored */,
             g4Pred, executionSize, emask, satMode, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, GET_G4_OPNG(src1));
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         int num_operands = 0;
         VISA_INST_Desc *inst_desc = NULL;
@@ -3076,9 +3072,9 @@ int VISAKernelImpl::AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd 
         VISA_Modifier mod = MODIFIER_NONE;
 
         VISA_opnd *dst = tmpDst;
-        if(satMode)
+        if (satMode)
         {
-            if(tmpDst == NULL)
+            if (tmpDst == NULL)
             {
                 ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
                 assert(0);
@@ -3123,13 +3119,13 @@ int VISAKernelImpl::AppendVISAComparisonInst(VISA_Cond_Mod sub_op, VISA_EMask_Ct
     AppendVISAInstCommon();
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         status = m_builder->translateVISACompareInst(ISA_CMP, executionSize, emask, sub_op,
             dstOpnd->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd);
     }
 
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_CMP;
         VISA_INST_Desc *inst_desc = NULL;
@@ -3173,11 +3169,11 @@ int VISAKernelImpl::AppendVISAComparisonInst(VISA_Cond_Mod sub_op, VISA_EMask_Ct
     uint32_t exSize = Get_VISA_Exec_Size(executionSize);
     VISA_VectorOpnd *dst = NULL;
     CreateVISAPredicateDstOperand(dst, dstDcl, exSize);
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         status = m_builder->translateVISACompareInst(ISA_CMP, executionSize, emask, sub_op, dstDcl->predVar.dcl, src0->g4opnd, src1->g4opnd);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_CMP;
         VISA_INST_Desc *inst_desc = NULL;
@@ -3265,19 +3261,19 @@ int VISAKernelImpl::AppendVISACFJmpInst(VISA_PredOpnd *pred, VISA_LabelOpnd *lab
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISACFJumpInst(g4Pred, (G4_Label*)label->g4opnd);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd * opnd[1];
         inst_desc = &CISA_INST_table[ISA_JMP];
         opnd[0] = label;
 
-        if( label == NULL )
+        if (label == NULL )
         {
             assert( 0 );
             return VISA_FAILURE;
@@ -3309,23 +3305,23 @@ int VISAKernelImpl::AppendVISACFCallInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl em
 #endif
 
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
-        if(isFCCallerKernel())
+        if (isFCCallerKernel())
         {
             m_builder->getFCPatchInfo()->setHasFCCalls(true);
         }
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISACFCallInst(executionSize, emask, g4Pred, (G4_Label*)label->g4opnd);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd * opnd[1];
         inst_desc = &CISA_INST_table[ISA_CALL];
         opnd[0] = label;
 
-        if( label == NULL )
+        if (label == NULL )
         {
             assert( 0 );
             return VISA_FAILURE;
@@ -3356,16 +3352,16 @@ int VISAKernelImpl::AppendVISACFRetInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl ema
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
-        if(isFCCallableKernel())
+        if (isFCCallableKernel())
         {
             m_builder->getFCPatchInfo()->setIsCallableKernel(true);
         }
         status = m_builder->translateVISACFRetInst(executionSize, emask, g4Pred);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         ISA_Opcode opcode = ISA_RET;
@@ -3373,7 +3369,7 @@ int VISAKernelImpl::AppendVISACFRetInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl ema
 
         //pred id
         unsigned short pred_id = 0;
-        if(pred != NULL)
+        if (pred != NULL)
             pred_id = pred->_opnd.v_opnd.opnd_val.pred_opnd.index;
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
@@ -3395,11 +3391,11 @@ int VISAKernelImpl::AppendVISACFLabelInst(VISA_LabelOpnd *label)
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         status = m_builder->translateVISACFLabelInst((G4_Label*)label->g4opnd);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[1] = {label};
@@ -3424,12 +3420,12 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, VISA_EMask
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISACFFCallInst(executionSize, emask, g4Pred, funcName, argSize, returnSize);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[3]; //should be more then enough
@@ -3563,12 +3559,12 @@ int VISAKernelImpl::AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, VISA_EMask_
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISACFFretInst(executionSize, emask, g4Pred);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         ISA_Opcode opcode = ISA_FRET;
@@ -3576,7 +3572,7 @@ int VISAKernelImpl::AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, VISA_EMask_
 
         //pred id
         unsigned short pred_id = 0;
-        if(pred != NULL)
+        if (pred != NULL)
             pred_id = pred->_opnd.v_opnd.opnd_val.pred_opnd.index;
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
@@ -3598,10 +3594,10 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Label* labelsArray[50];
-        if(labelCount >= 50)
+        if (labelCount >= 50)
         {
             assert( 0 );
             status = VISA_FAILURE;
@@ -3610,7 +3606,7 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
             for(int i = 0; i< labelCount; i++)
             {
 #if START_ASSERT_CHECK
-                if(labels[i] == NULL || labels[i]->g4opnd == NULL)
+                if (labels[i] == NULL || labels[i]->g4opnd == NULL)
                 {
                     assert( 0 );
                     status = VISA_FAILURE;
@@ -3623,7 +3619,7 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
             status = m_builder->translateVISACFSwitchInst(index->g4opnd, labelCount, labelsArray);
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc_temp = NULL;
         VISA_INST_Desc *inst_desc = (VISA_INST_Desc *)m_mem.alloc(sizeof(VISA_INST_Desc));
@@ -3636,7 +3632,7 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
 
         CISA_opnd *opnd[35];
 
-        if(index == NULL || labelCount == 0 || labels == NULL)
+        if (index == NULL || labelCount == 0 || labels == NULL)
         {
             assert( 0 );
             return VISA_FAILURE;
@@ -3745,11 +3741,11 @@ int VISAKernelImpl::AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, VIS
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(elementOffset);
         auto offset = elementOffset->g4opnd->asSrcRegRegion();
-        if(opcode == ISA_GATHER)
+        if (opcode == ISA_GATHER)
         {
             CreateGenRawDstOperand(srcDst); //gather: srcDst is dst
             status = m_builder->translateVISAGatherInst(emask, false, elementSize, executionSize,
@@ -3762,7 +3758,7 @@ int VISAKernelImpl::AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, VIS
                 surface->g4opnd, globalOffset->g4opnd, offset, srcDst->g4opnd->asSrcRegRegion());
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[8];
@@ -3776,14 +3772,14 @@ int VISAKernelImpl::AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, VIS
         //elt_size
         ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, elementSize));
 
-        if(opcode == ISA_GATHER)
+        if (opcode == ISA_GATHER)
         {
             //ignored
             ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, 0));
         }
 
         //elt_size
-        switch( executionSize )
+        switch (executionSize)
         {
         case EXEC_SIZE_8:
             numberOfElements = 0;
@@ -3846,7 +3842,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4TypedInst(ISA_Opcode opco
     int status = VISA_SUCCESS;
     ChannelMask chMask = ChannelMask::createFromAPI(_chMask);
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_Predicate * g4Pred = (pred != NULL) ? pred->g4opnd->asPredicate() : NULL;
         CreateGenRawSrcOperand(uOffset);
@@ -3862,7 +3858,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4TypedInst(ISA_Opcode opco
             status = m_builder->translateVISAScatter4TypedInst(g4Pred, emask, chMask, surface->g4opnd, executionSize, uOffset->g4opnd->asSrcRegRegion(), vOffset->g4opnd->asSrcRegRegion(), rOffset->g4opnd->asSrcRegRegion(), lod->g4opnd->asSrcRegRegion(), dst->g4opnd->asSrcRegRegion());
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[8];
@@ -3886,7 +3882,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4TypedInst(ISA_Opcode opco
         PACK_EXEC_SIZE(size, emask);
 
         int status = inst->createCisaInstruction(opcode, (uint8_t)size, 0, predId, opnd, num_operands, inst_desc);
-        if( status != VISA_SUCCESS )
+        if (status != VISA_SUCCESS )
         {
             assert( 0 );
             return status;
@@ -3921,7 +3917,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4ScaledInst(ISA_Opcode    
                     "Unknown opcode for scaled message!");
 
         CreateGenRawSrcOperand(offsets);
-        if ( opcode == ISA_GATHER4_SCALED )
+        if (opcode == ISA_GATHER4_SCALED)
         {
             CreateGenRawDstOperand(dstSrc);
         }
@@ -4076,9 +4072,9 @@ int VISAKernelImpl::AppendVISASurfAccessMediaLoadStoreInst(ISA_Opcode opcode, ME
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
-        if(opcode == ISA_MEDIA_LD)
+        if (opcode == ISA_MEDIA_LD)
         {
             CreateGenRawDstOperand(srcDst); //srcDst: dst
             status = m_builder->translateVISAMediaLoadInst(modifier, surface->g4opnd, plane, blockWidth, blockHeight,
@@ -4098,7 +4094,7 @@ int VISAKernelImpl::AppendVISASurfAccessMediaLoadStoreInst(ISA_Opcode opcode, ME
                 blockHeight, xOffset->g4opnd, yOffset->g4opnd, srcDst->g4opnd->asSrcRegRegion());
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[8];
@@ -4231,7 +4227,7 @@ int VISAKernelImpl::AppendVISASvmBlockStoreInst(VISA_Oword_Num size, bool unalig
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(srcDst); //src for store
         status = m_builder->translateVISASVMBlockWriteInst(size, address->g4opnd->asSrcRegRegion(),
@@ -4261,7 +4257,7 @@ int VISAKernelImpl::AppendVISASvmGatherInst(VISA_PredOpnd *pred,
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(address);
         CreateGenRawDstOperand(srcDst); // dst for gather
@@ -4293,7 +4289,7 @@ int VISAKernelImpl::AppendVISASvmScatterInst(VISA_PredOpnd *pred,
         startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = VISA_SUCCESS;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(address);
         CreateGenRawSrcOperand(srcDst); // src for scatter
@@ -4514,9 +4510,9 @@ int VISAKernelImpl::AppendVISASurfAccessOwordLoadStoreInst(ISA_Opcode opcode, VI
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
-        if(opcode == ISA_OWORD_ST)
+        if (opcode == ISA_OWORD_ST)
         {
             CreateGenRawSrcOperand(srcDst);
             status = m_builder->translateVISAOwordStoreInst(surface->g4opnd, size, offset->g4opnd,
@@ -4528,7 +4524,7 @@ int VISAKernelImpl::AppendVISASurfAccessOwordLoadStoreInst(ISA_Opcode opcode, VI
                 srcDst->g4opnd->asDstRegRegion());
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[5];
@@ -4546,7 +4542,7 @@ int VISAKernelImpl::AppendVISASurfAccessOwordLoadStoreInst(ISA_Opcode opcode, VI
         num_operands++;
 
         //ignored
-        if(opcode == ISA_OWORD_LD || opcode == ISA_OWORD_LD_UNALIGNED)
+        if (opcode == ISA_OWORD_LD || opcode == ISA_OWORD_LD_UNALIGNED)
         {
             ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, 0));
         }
@@ -4577,7 +4573,7 @@ int VISAKernelImpl::AppendVISASILoad(VISA_StateOpndHandle *surface, VISAChannelM
     int status = VISA_SUCCESS;
     ChannelMask channel = ChannelMask::createFromAPI(_channel);
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t simdMode = isSIMD16 ? 16: 8;
         CreateGenRawSrcOperand(uOffset);
@@ -4586,7 +4582,7 @@ int VISAKernelImpl::AppendVISASILoad(VISA_StateOpndHandle *surface, VISAChannelM
         CreateGenRawDstOperand(dst);
         status = m_builder->translateVISASamplerInst(simdMode, surface->g4opnd, NULL, channel, channel.getNumEnabledChannels(), uOffset->g4opnd, vOffset->g4opnd, rOffset->g4opnd, dst->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[8];
@@ -4598,7 +4594,7 @@ int VISAKernelImpl::AppendVISASILoad(VISA_StateOpndHandle *surface, VISAChannelM
 
         unsigned mode = channel.getBinary(opcode);
 
-        if(isSIMD16)
+        if (isSIMD16)
             mode += 0x1<<4;
 
         //mode
@@ -4633,7 +4629,7 @@ int VISAKernelImpl::AppendVISASISample(VISA_EMask_Ctrl emask, VISA_StateOpndHand
     int status = VISA_SUCCESS;
     ChannelMask channel = ChannelMask::createFromAPI(_channel);
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t simdMode = (isSIMD16)?16:8;
         CreateGenRawSrcOperand(uOffset);
@@ -4642,7 +4638,7 @@ int VISAKernelImpl::AppendVISASISample(VISA_EMask_Ctrl emask, VISA_StateOpndHand
         CreateGenRawDstOperand(dst); //srcDst: src
         status = m_builder->translateVISASamplerInst(simdMode, surface->g4opnd, sampler->g4opnd, channel, channel.getNumEnabledChannels(), uOffset->g4opnd, vOffset->g4opnd, rOffset->g4opnd, dst->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[8];
@@ -4654,7 +4650,7 @@ int VISAKernelImpl::AppendVISASISample(VISA_EMask_Ctrl emask, VISA_StateOpndHand
 
         unsigned mode = channel.getBinary(opcode);
 
-        if(isSIMD16)
+        if (isSIMD16)
             mode += 0x1<<4;
 
         //mode
@@ -4687,12 +4683,12 @@ int VISAKernelImpl::AppendVISASISampleUnorm(VISA_StateOpndHandle *surface, VISA_
     int status = VISA_SUCCESS;
     ChannelMask channel = ChannelMask::createFromAPI(_channel);
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst); //srcDst: src
         status = m_builder->translateVISASamplerNormInst(surface->g4opnd, sampler->g4opnd, channel, channel.getNumEnabledChannels(), deltaU->g4opnd, uOffset->g4opnd, deltaV->g4opnd, vOffset->g4opnd, dst->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[8];
@@ -4738,7 +4734,7 @@ int VISAKernelImpl::AppendVISAWaitInst(VISA_VectorOpnd* mask)
     {
         status = m_builder->translateVISAWaitInst(mask != NULL ? mask->g4opnd : NULL);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd* opnd[1];
@@ -4777,11 +4773,11 @@ int VISAKernelImpl::AppendVISASyncInst(ISA_Opcode opcode, unsigned char mask)
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         status = m_builder->translateVISASyncInst(opcode, mask);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd* opnd[1];
@@ -4790,7 +4786,7 @@ int VISAKernelImpl::AppendVISASyncInst(ISA_Opcode opcode, unsigned char mask)
         GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc );
         int num_operands = 0;
 
-        if( opcode == ISA_FENCE )
+        if (opcode == ISA_FENCE )
         {
             //number of registers to send
             ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, mask));
@@ -4855,14 +4851,14 @@ int VISAKernelImpl::AppendVISAMiscFileInst(const char *fileName)
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         size_t fileLen = strlen(fileName) + 1;
         char *newFile = (char*)m_mem.alloc(fileLen);
         m_builder->curFile = newFile;
         strcpy_s(newFile, fileLen, fileName);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd* opnd[1];
@@ -4912,11 +4908,11 @@ int VISAKernelImpl::AppendVISAMiscLOC(unsigned int lineNumber)
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         m_builder->curLine = lineNumber;
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd* opnd[1];
@@ -4950,7 +4946,7 @@ int VISAKernelImpl::AppendVISAMiscRawSend(VISA_PredOpnd *pred, VISA_EMask_Ctrl e
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(src);
         CreateGenRawDstOperand(dst);
@@ -4961,7 +4957,7 @@ int VISAKernelImpl::AppendVISAMiscRawSend(VISA_PredOpnd *pred, VISA_EMask_Ctrl e
             emask, modifiers, exMsgDesc, srcSize, dstSize, desc->g4opnd,
             src->g4opnd->asSrcRegRegion(), dst->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[7];
@@ -5020,7 +5016,7 @@ int VISAKernelImpl::AppendVISAMiscRawSends(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(src0);
         CreateGenRawSrcOperand(src1);
@@ -5031,7 +5027,7 @@ int VISAKernelImpl::AppendVISAMiscRawSends(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
         status = m_builder->translateVISARawSendsInst(g4Pred, executionSize,
             emask, modifiers, exMsgDesc->g4opnd, src0Size, src1Size, dstSize, desc->g4opnd, src0->g4opnd, src1->g4opnd, dst->g4opnd->asDstRegRegion(), ffid, hasEOT);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[12]; // TODO: avoid hard-coding
@@ -5100,7 +5096,7 @@ int VISAKernelImpl::AppendVISAMiscVME_FBR(VISA_StateOpndHandle *surface, VISA_Ra
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(UNIInput);
         CreateGenRawSrcOperand(FBRInput);
@@ -5108,7 +5104,7 @@ int VISAKernelImpl::AppendVISAMiscVME_FBR(VISA_StateOpndHandle *surface, VISA_Ra
         status = m_builder->translateVISAVmeFbrInst(surface->g4opnd, UNIInput->g4opnd, FBRInput->g4opnd,
             FBRMbMode->g4opnd, FBRSubMbShape->g4opnd, FBRSubPredMode->g4opnd, output->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[7];
@@ -5155,7 +5151,7 @@ int VISAKernelImpl::AppendVISAMiscVME_IME(VISA_StateOpndHandle *surface, unsigne
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(UNIInput);
         CreateGenRawSrcOperand(IMEInput);
@@ -5166,7 +5162,7 @@ int VISAKernelImpl::AppendVISAMiscVME_IME(VISA_StateOpndHandle *surface, unsigne
         status = m_builder->translateVISAVmeImeInst(streamMode, searchControlMode, surface->g4opnd,
             UNIInput->g4opnd, IMEInput->g4opnd, ref0->g4opnd, ref1->g4opnd, costCenter->g4opnd, output->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[9];
@@ -5216,14 +5212,14 @@ int VISAKernelImpl::AppendVISAMiscVME_SIC(VISA_StateOpndHandle *surface, VISA_Ra
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(UNIInput);
         CreateGenRawSrcOperand(SICInput);
         CreateGenRawDstOperand(output);
         status = m_builder->translateVISAVmeSicInst(surface->g4opnd, UNIInput->g4opnd, SICInput->g4opnd, output->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[4];
@@ -5260,14 +5256,14 @@ int VISAKernelImpl::AppendVISAMiscVME_IDM(VISA_StateOpndHandle *surface, VISA_Ra
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(UNIInput);
         CreateGenRawSrcOperand(IDMInput);
         CreateGenRawDstOperand(output);
         status = m_builder->translateVISAVmeIdmInst(surface->g4opnd, UNIInput->g4opnd, IDMInput->g4opnd, output->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[4];
@@ -5306,7 +5302,7 @@ int VISAKernelImpl::AppendVISAMEAVS(VISA_StateOpndHandle *surface,  VISA_StateOp
 #endif
     int status = VISA_SUCCESS;
     ChannelMask chMask = ChannelMask::createFromAPI(_chMask);
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         unsigned numChannelsEnabled = 0;
@@ -5317,7 +5313,7 @@ int VISAKernelImpl::AppendVISAMEAVS(VISA_StateOpndHandle *surface,  VISA_StateOp
             GET_G4_OPNG(u2d), GET_G4_OPNG(groupID), GET_G4_OPNG(verticalBlockNumber), cntrl, GET_G4_OPNG(v2d),
             execMode, GET_G4_OPNG(iefBypass), dst->g4opnd->asDstRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd *opnd[32];
@@ -5384,7 +5380,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
                         subOpcode == VISA_3D_GATHER4_PO ||
                         subOpcode == VISA_3D_GATHER4_PO_C );
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_SrcRegRegion* g4params[32];
@@ -5392,7 +5388,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
         for(unsigned int i = 0; i< numMsgSpecificOpnds; ++i)
         {
 #if START_ASSERT_CHECK
-            if(opndArray[i] == NULL)
+            if (opndArray[i] == NULL)
             {
                 assert( 0 );
                 return VISA_FAILURE;
@@ -5434,7 +5430,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
                                                            numMsgSpecificOpnds, g4params);
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = (VISA_INST_Desc*)m_mem.alloc(sizeof(VISA_INST_Desc));
         *inst_desc = CISA_INST_table[opcode];
@@ -5460,7 +5456,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
         ADD_OPND(num_operands, opnd, aoffimmi);
 
         //sampler
-        if( opcode == ISA_3D_SAMPLE ||
+        if (opcode == ISA_3D_SAMPLE ||
             opcode == ISA_3D_GATHER4 )
         {
             ADD_OPND(num_operands, opnd, sampler);
@@ -5477,7 +5473,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
 
         for(unsigned int i = 0; i < numMsgSpecificOpnds; i++)
         {
-            if(opndArray[i] == NULL)
+            if (opndArray[i] == NULL)
             {
                 assert( 0 );
                 return VISA_FAILURE;
@@ -5583,11 +5579,11 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, VISA_EMas
 #endif
     int status = VISA_SUCCESS;
     ChannelMask channels = ChannelMask::createFromAPI(srcChannels);
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_SrcRegRegion * lodg4 = NULL;
-        if(subOpcode == VISA_3D_RESINFO)
+        if (subOpcode == VISA_3D_RESINFO)
         {
             CreateGenRawSrcOperand(lod);
             lodg4 = lod->g4opnd->asSrcRegRegion();
@@ -5600,9 +5596,9 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, VISA_EMas
                 dst->g4opnd->asDstRegRegion());
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
-        if( subOpcode != VISA_3D_RESINFO && subOpcode != VISA_3D_SAMPLEINFO )
+        if (subOpcode != VISA_3D_RESINFO && subOpcode != VISA_3D_SAMPLEINFO )
         {
             assert( 0 );
             return VISA_FAILURE;
@@ -5622,7 +5618,7 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, VISA_EMas
         ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, channels.getBinary(opcode)));
 
         ADD_OPND(num_operands, opnd, surface);
-        if(subOpcode == VISA_3D_RESINFO)
+        if (subOpcode == VISA_3D_RESINFO)
         {
             ADD_OPND(num_operands, opnd, lod);
             //opnd_num used in binary emiter, so need to have correct value.
@@ -5671,12 +5667,12 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
 #endif
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         G4_SrcRegRegion* g4params[32];
 
 #if START_ASSERT_CHECK
-        if(numMsgSpecificOpnds >= 32)
+        if (numMsgSpecificOpnds >= 32)
         {
             assert( 0 );
             return VISA_FAILURE;
@@ -5685,7 +5681,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
         for(unsigned int i = 0; i< numMsgSpecificOpnds; ++i)
         {
 #if START_ASSERT_CHECK
-            if(opndArray[i] == NULL)
+            if (opndArray[i] == NULL)
             {
                 assert( 0 );
                 return VISA_FAILURE;
@@ -5696,7 +5692,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
         }
 
 #if START_ASSERT_CHECK
-        if(cPSCounter && !cPSCounter->g4opnd)
+        if (cPSCounter && !cPSCounter->g4opnd)
         {
             assert( 0 );
             return VISA_FAILURE;
@@ -5720,7 +5716,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
                 surface->g4opnd, r1HeaderOpnd, renderTargetIndexOpnd, cntrls, sampleIndexOpnd, cPSCounterOpnd, numMsgSpecificOpnds, g4params);
         }
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_3D_RT_WRITE;
         VISA_INST_Desc *inst_desc = (VISA_INST_Desc*)m_mem.alloc(sizeof(VISA_INST_Desc));
@@ -5754,7 +5750,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
         if (cntrls.isSampleIndex)
             ADD_OPND(num_operands, opnd, sampleIndex);
 
-        if(cPSCounter)
+        if (cPSCounter)
             ADD_OPND(num_operands, opnd, cPSCounter);
 
         if (cntrls.RTIndexPresent)
@@ -5762,7 +5758,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, VISA_EMask_Ctrl 
 
         for(int i = 0; i < numMsgSpecificOpnds; i++, num_operands++)
         {
-            if( opndArray[i] == NULL )
+            if (opndArray[i] == NULL )
             {
                 assert(0);
                 return VISA_FAILURE;
@@ -5803,7 +5799,7 @@ int VISAKernelImpl::AppendVISA3dURBWrite(VISA_PredOpnd *pred, VISA_EMask_Ctrl em
 
     int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(channelMask);
         CreateGenRawSrcOperand(URBHandle);
@@ -5814,7 +5810,7 @@ int VISAKernelImpl::AppendVISA3dURBWrite(VISA_PredOpnd *pred, VISA_EMask_Ctrl em
             numberOutputParams, globalOffset, channelMask->g4opnd->asSrcRegRegion(), URBHandle->g4opnd->asSrcRegRegion(),
             perSlotOffset->g4opnd->asSrcRegRegion(), vertexData->g4opnd->asSrcRegRegion());
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_3D_URB_WRITE;
         VISA_INST_Desc *inst_desc = (VISA_INST_Desc*)m_mem.alloc(sizeof(VISA_INST_Desc));
@@ -5874,7 +5870,7 @@ int VISAKernelImpl::AppendVISA3dTypedAtomic(
 
         int status = VISA_SUCCESS;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(u);
         CreateGenRawSrcOperand(v);
@@ -5892,7 +5888,7 @@ int VISAKernelImpl::AppendVISA3dTypedAtomic(
             dst->g4opnd->asDstRegRegion());
     }
 
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_3D_TYPED_ATOMIC;
         VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
@@ -5955,7 +5951,7 @@ int VISAKernelImpl::AppendVISAVABooleanCentroid(VISA_StateOpndHandle *surface, V
     int status = VISA_SUCCESS;
 
     ISA_VA_Sub_Opcode subOp = BoolCentroid_FOPCODE;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
@@ -5963,7 +5959,7 @@ int VISAKernelImpl::AppendVISAVABooleanCentroid(VISA_StateOpndHandle *surface, V
             vOffset->g4opnd, vSize->g4opnd, hSize->g4opnd, NULL, 0, 0, subOp,
             dstOpnd, dstOpnd->getType(), 16 * G4_Type_Table[dstOpnd->getBase()->asRegVar()->getDeclare()->getElemType()].byteSize);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA;
         VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
@@ -6006,7 +6002,7 @@ int VISAKernelImpl::AppendVISAVACentroid(VISA_StateOpndHandle *surface, VISA_Vec
     int status = VISA_SUCCESS;
 
     ISA_VA_Sub_Opcode subOp = Centroid_FOPCODE;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
@@ -6014,7 +6010,7 @@ int VISAKernelImpl::AppendVISAVACentroid(VISA_StateOpndHandle *surface, VISA_Vec
             vOffset->g4opnd, vSize->g4opnd, NULL, NULL, 0, 0, subOp,
             dstOpnd, dstOpnd->getType(), 32 * G4_Type_Table[dstOpnd->getBase()->asRegVar()->getDeclare()->getElemType()].byteSize);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA;
         VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
@@ -6056,7 +6052,7 @@ int VISAKernelImpl::AppendVISAVAConvolve(VISA_StateOpndHandle *sampler, VISA_Sta
     int status = VISA_SUCCESS;
 
     ISA_VA_Sub_Opcode subOp = Convolve_FOPCODE;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
@@ -6065,7 +6061,7 @@ int VISAKernelImpl::AppendVISAVAConvolve(VISA_StateOpndHandle *sampler, VISA_Sta
             vOffset->g4opnd, NULL, NULL, NULL, 0, execMode, subOp,
             dstOpnd, dstOpnd->getType(), dstSize, isBigKernel);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA;
         VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
@@ -6116,7 +6112,7 @@ int VISAKernelImpl::AppendVISAVAErodeDilate(EDMode mode, VISA_StateOpndHandle *s
         subOp = Dilate_FOPCODE;
     }
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
@@ -6125,7 +6121,7 @@ int VISAKernelImpl::AppendVISAVAErodeDilate(EDMode mode, VISA_StateOpndHandle *s
             vOffset->g4opnd, NULL, NULL, NULL, 0, execMode, subOp,
             dstOpnd, dstOpnd->getType(), dstSize, false);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA;
         VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
@@ -6170,7 +6166,7 @@ int VISAKernelImpl::AppendVISAVAMinMax(VISA_StateOpndHandle *surface, VISA_Vecto
 
     ISA_VA_Sub_Opcode subOp = MINMAX_FOPCODE;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
@@ -6178,7 +6174,7 @@ int VISAKernelImpl::AppendVISAVAMinMax(VISA_StateOpndHandle *surface, VISA_Vecto
             vOffset->g4opnd, NULL, NULL, mmMode->g4opnd, 0, 0, subOp,
             dstOpnd, dstOpnd->getType(), 32, false);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA;
         VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
@@ -6221,13 +6217,13 @@ int VISAKernelImpl::AppendVISAVAMinMaxFilter(VISA_StateOpndHandle *sampler, VISA
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = MINMAXFILTER_FOPCODE;
 
-    if(cntrl != AVS_16_FULL && cntrl != AVS_8_FULL)
+    if (cntrl != AVS_16_FULL && cntrl != AVS_8_FULL)
     {
         assert(0);
         return VISA_FAILURE;
     }
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
@@ -6236,7 +6232,7 @@ int VISAKernelImpl::AppendVISAVAMinMaxFilter(VISA_StateOpndHandle *sampler, VISA
             vOffset->g4opnd, NULL, NULL, mmfMode->g4opnd, cntrl, execMode, subOp,
             dstOpnd, dstOpnd->getType(), dstSize);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA;
         VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
@@ -6285,7 +6281,7 @@ int VISAKernelImpl::AppendVISAVACorrelationSearch(VISA_StateOpndHandle *surface,
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_CORRELATION_SEARCH;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
@@ -6324,7 +6320,7 @@ int VISAKernelImpl::AppendVISAVACorrelationSearch(VISA_StateOpndHandle *surface,
                         NULL  /*dstXOffOnd*/            , NULL /*dstYOffOpnd*/,
                         false);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -6374,7 +6370,7 @@ int VISAKernelImpl::AppendVISAVAFloodFill(bool is8Connect, VISA_RawOpnd *pixelMa
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_FLOOD_FILL;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(pixelMaskHDirection);
         CreateGenRawDstOperand(dst);
@@ -6415,7 +6411,7 @@ int VISAKernelImpl::AppendVISAVAFloodFill(bool is8Connect, VISA_RawOpnd *pixelMa
                         NULL  /*dstXOffOnd*/            , NULL /*dstYOffOpnd*/,
                         false);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -6461,7 +6457,7 @@ int VISAKernelImpl::AppendVISAVALBPCorrelation(VISA_StateOpndHandle *surface, VI
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_LBP_CORRELATION;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = 0;
         uint8_t functionality = 0x3; /*reserved*/
@@ -6503,7 +6499,7 @@ int VISAKernelImpl::AppendVISAVALBPCorrelation(VISA_StateOpndHandle *surface, VI
                         NULL  /*dstXOffOnd*/            , NULL /*dstYOffOpnd*/,
                         false);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -6548,7 +6544,7 @@ int VISAKernelImpl::AppendVISAVALBPCreation(VISA_StateOpndHandle *surface, VISA_
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_LBP_CREATION;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = 0;
         uint8_t functionality = mode; /*reserved*/
@@ -6590,7 +6586,7 @@ int VISAKernelImpl::AppendVISAVALBPCreation(VISA_StateOpndHandle *surface, VISA_
                         NULL  /*dstXOffOnd*/            , NULL /*dstYOffOpnd*/,
                         false);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -6679,7 +6675,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1D(VISA_StateOpndHandle *sampler, VISA_S
                         NULL  /*dstXOffOnd*/            , NULL /*dstYOffOpnd*/,
                         false);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -6724,7 +6720,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1Pixel(VISA_StateOpndHandle *sampler, VI
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = VA_OP_CODE_1PIXEL_CONVOLVE;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = mode;
         uint8_t functionality = 0x3; /*reserved*/
@@ -6767,7 +6763,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1Pixel(VISA_StateOpndHandle *sampler, VI
                         NULL  /*dstXOffOnd*/            , NULL /*dstYOffOpnd*/,
                         false);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -6814,7 +6810,7 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve(VISA_StateOpndHandle *sampler, VISA_
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_CONV;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = regionSize; /*reserved*/
@@ -6848,7 +6844,7 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve(VISA_StateOpndHandle *sampler, VISA_
                         xOffset->g4opnd  /*dstXOffOnd*/            , yOffset->g4opnd /*dstYOffOpnd*/,
                         true);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -6897,10 +6893,10 @@ int VISAKernelImpl::AppendVISAVAHDCErodeDilate(EDMode subOpED, VISA_StateOpndHan
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_ERODE;
 
-    if(subOpED == VA_DILATE)
+    if (subOpED == VA_DILATE)
         subOp = ISA_HDC_DILATE;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = VA_ED_64x4;
         uint8_t functionality = 0x3; /*reserved*/
@@ -6934,7 +6930,7 @@ int VISAKernelImpl::AppendVISAVAHDCErodeDilate(EDMode subOpED, VISA_StateOpndHan
                         xOffset->g4opnd  /*dstXOffOnd*/            , yOffset->g4opnd /*dstYOffOpnd*/,
                         true);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -6981,7 +6977,7 @@ int VISAKernelImpl::AppendVISAVAHDCMinMaxFilter(VISA_StateOpndHandle *sampler, V
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_MMF;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = mmfMode; /*reserved*/
@@ -7015,7 +7011,7 @@ int VISAKernelImpl::AppendVISAVAHDCMinMaxFilter(VISA_StateOpndHandle *sampler, V
                         xOffset->g4opnd  /*dstXOffOnd*/            , yOffset->g4opnd /*dstYOffOpnd*/,
                         true);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -7064,7 +7060,7 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCorrelation(VISA_StateOpndHandle *surface,
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_LBPCORRELATION;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = 0x3; /*reserved*/
@@ -7098,7 +7094,7 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCorrelation(VISA_StateOpndHandle *surface,
                         xOffset->g4opnd  /*dstXOffOnd*/            , yOffset->g4opnd /*dstYOffOpnd*/,
                         true);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -7145,13 +7141,13 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCreation(VISA_StateOpndHandle *surface, VI
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_LBPCREATION;
 
-    if(mode == VA_3x3_AND_5x5)
+    if (mode == VA_3x3_AND_5x5)
     {
         assert(0);
         return VISA_FAILURE;
     }
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = mode; /*reserved*/
@@ -7185,7 +7181,7 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCreation(VISA_StateOpndHandle *surface, VI
                         xOffset->g4opnd  /*dstXOffOnd*/            , yOffset->g4opnd /*dstYOffOpnd*/,
                         true);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -7237,7 +7233,7 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve1D(VISA_StateOpndHandle *sampler, VIS
         subOp = ISA_HDC_1DCONV_V;
     }
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         uint8_t execMode = VA_CONV_16x4;
         uint8_t functionality = 0x3; /*reserved*/
@@ -7271,7 +7267,7 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve1D(VISA_StateOpndHandle *sampler, VIS
                         xOffset->g4opnd  /*dstXOffOnd*/            , yOffset->g4opnd /*dstYOffOpnd*/,
                         true);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -7319,7 +7315,7 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve1Pixel(VISA_StateOpndHandle *sampler,
     int status = VISA_SUCCESS;
     ISA_VA_Sub_Opcode subOp = ISA_HDC_1PIXELCONV;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(offsets);
         uint8_t execMode = VA_CONV_16x4;
@@ -7354,7 +7350,7 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve1Pixel(VISA_StateOpndHandle *sampler,
                         xOffset->g4opnd  /*dstXOffOnd*/            , yOffset->g4opnd /*dstYOffOpnd*/,
                         true);
     }
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         ISA_Opcode opcode = ISA_VA_SKL_PLUS;
         VISA_INST_Desc *instDesc = &CISA_INST_table[opcode];
@@ -7401,17 +7397,17 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
     int status = VISA_SUCCESS;
     unsigned char properties = (unsigned char)startOrEnd;
 
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
-        if(var->g4opnd->isGreg())
+        if (var->g4opnd->isGreg())
         {
             properties |= (OPERAND_GENERAL << 4);
         }
-        else if(var->g4opnd->isAddress())
+        else if (var->g4opnd->isAddress())
         {
             properties |= (OPERAND_ADDRESS << 4);
         }
-        else if(var->g4opnd->isFlag())
+        else if (var->g4opnd->isFlag())
         {
             properties |= (OPERAND_PREDICATE << 4);
         }
@@ -7419,7 +7415,7 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
         status = m_builder->translateVISALifetimeInst(properties, var->g4opnd);
     }
 
-    if(IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH)
     {
         VISA_INST_Desc *inst_desc = NULL;
         VISA_opnd* opnd[2];
@@ -7435,17 +7431,17 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
         opnd[0]->tag = (uint8_t) inst_desc->opnd_desc[0].opnd_type;
 
         opnd[1] = (VISA_opnd*)m_mem.alloc(sizeof(VISA_opnd));
-        if(var->_opnd.v_opnd.tag == OPERAND_GENERAL)
+        if (var->_opnd.v_opnd.tag == OPERAND_GENERAL)
         {
             opnd[0]->_opnd.other_opnd |= (OPERAND_GENERAL << 4);
             opnd[1]->_opnd.other_opnd = var->_opnd.v_opnd.opnd_val.gen_opnd.index;
         }
-        else if(var->_opnd.v_opnd.tag == OPERAND_ADDRESS)
+        else if (var->_opnd.v_opnd.tag == OPERAND_ADDRESS)
         {
             opnd[0]->_opnd.other_opnd |= (OPERAND_ADDRESS << 4);
             opnd[1]->_opnd.other_opnd = var->_opnd.v_opnd.opnd_val.addr_opnd.index;
         }
-        else if(var->_opnd.v_opnd.tag == OPERAND_PREDICATE)
+        else if (var->_opnd.v_opnd.tag == OPERAND_PREDICATE)
         {
             opnd[0]->_opnd.other_opnd |= (OPERAND_PREDICATE << 4);
             opnd[1]->_opnd.other_opnd = var->_opnd.v_opnd.opnd_val.pred_opnd.index;
@@ -7473,16 +7469,16 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
 
 int VISAKernelImpl::patchLastInst(VISA_LabelOpnd *label)
 {
-    if(label->_opnd.other_opnd == CISA_INVALID_VAR_ID)
+    if (label->_opnd.other_opnd == CISA_INVALID_VAR_ID)
     {
         std::map<unsigned int, std::string>::iterator iter = this->m_forward_label_pool.find(label->index);
 
-        if( iter == this->m_forward_label_pool.end() )
+        if (iter == this->m_forward_label_pool.end() )
         {
             assert( 0 );
             return VISA_FAILURE;
         }
-        if((ISA_Opcode)label->tag == ISA_SUBROUTINE)
+        if ((ISA_Opcode)label->tag == ISA_SUBROUTINE)
         {
             this->m_lastInst->setLabelInfo(iter->second, true, true);
         }else
@@ -7554,9 +7550,9 @@ void VISAKernelImpl::patchLabels()
     for(; iter != m_instruction_list.end(); iter++)
     {
         CisaInst * inst = *iter;
-        if(inst->needLabelPatch())
+        if (inst->needLabelPatch())
         {
-            if(inst->isFuncLabel())
+            if (inst->isFuncLabel())
             {
                 int labelID = this->getLabelIdFromFunctionName(inst->getLabelName());
                 MUST_BE_TRUE(labelID != INVALID_LABEL_ID, "Invalid Function Name.");
@@ -7829,7 +7825,7 @@ unsigned long VISAKernelImpl::writeInToCisaBinaryBuffer(const void * value, int 
 VISA_LabelOpnd* VISAKernelImpl::getLabelOperandFromFunctionName(std::string name)
 {
     auto it = m_funcName_to_labelID_map.find(name);
-    if(m_funcName_to_labelID_map.end() == it) {
+    if (m_funcName_to_labelID_map.end() == it) {
         return nullptr;
     } else {
         return it->second;
@@ -7966,7 +7962,7 @@ bool VISAKernelImpl::string_pool_lookup_and_insert_branch_targets( char *str,
 
     for( entry = m_branch_targets[key]; entry != NULL; entry = entry->next ){
         s = (char *)entry->value;
-        if(!strcmp(s, str))
+        if (!strcmp(s, str))
             return false;
     }
 
@@ -8195,7 +8191,7 @@ VISA_opnd* VISAKernelImpl::CreateOtherOpndHelper(int num_pred_desc_operands, int
     VISA_Type dataType = ISA_TYPE_NUM;
     VISA_opnd *temp = getOpndFromPool();
 
-    if(!hasSubOpcode)
+    if (!hasSubOpcode)
     {
         dataType = (VISA_Type)inst_desc->opnd_desc[num_pred_desc_operands + num_operands].data_type;
     }
@@ -8299,7 +8295,7 @@ void VISAKernelImpl::setName(const char* n)
     if (!strcmp("", n)) return;
     m_cisa_kernel.name_index = addStringPool(n);
     m_name = m_string_pool[m_cisa_kernel.name_index];
-    if(m_kernel != NULL)
+    if (m_kernel != NULL)
     {
         this->m_kernel->setName(m_name.c_str());
     }
@@ -8358,7 +8354,7 @@ void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)
     G4_Kernel* kernel = getKernel();
     IR_Builder* builder = getIRBuilder();
 
-    if(isFCCallerKernel() == false && isFCCallableKernel() == false)
+    if (isFCCallerKernel() == false && isFCCallableKernel() == false)
     {
         // No need to do anything since the kernel doesnt
         // have any FC calls.
@@ -8382,11 +8378,11 @@ void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)
             G4_INST* inst = (*inst_it);
             G4_opcode opc = inst->opcode();
 
-            if(opc == G4_pseudo_fc_call)
+            if (opc == G4_pseudo_fc_call)
             {
                 FCInstMap.insert(make_pair(inst->getBinInst(), make_pair(inst, true)));
             }
-            else if(opc == G4_pseudo_fc_ret)
+            else if (opc == G4_pseudo_fc_ret)
             {
                 FCInstMap.insert(make_pair(inst->getBinInst(), make_pair(inst, false)));
             }
@@ -8400,9 +8396,9 @@ void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)
 
         std::map<BinInst*, std::pair<G4_INST*, bool>>::iterator fcMapIt = FCInstMap.find(bin);
 
-        if(fcMapIt != FCInstMap.end())
+        if (fcMapIt != FCInstMap.end())
         {
-            if(fcMapIt->second.second == true)
+            if (fcMapIt->second.second == true)
             {
                 // pseudo_fc_call
                 FCCalls* callToPatch = (FCCalls*)builder->mem.alloc(sizeof(FCCalls));
@@ -8454,7 +8450,7 @@ void VISAKernelImpl::computeFCInfo() {
             G4_INST* inst = (*inst_it);
             G4_opcode opc = inst->opcode();
 
-            if(opc == G4_pseudo_fc_call) {
+            if (opc == G4_pseudo_fc_call) {
                 // TODO: Need to create FCCalls and push into calls-to-patch.
                 // FCInstMap.insert(make_pair(inst->getBinInst(), make_pair(inst, true)));
                 ASSERT_USER(inst->getGenOffset() % 16 == 0, "Non-128-bit instruction is found!");
@@ -8566,7 +8562,7 @@ void VISAKernelImpl::computeAndEmitDebugInfo(VISAKernelImplListTy& functions)
         cunitsIt++)
     {
         VISAKernelImpl* cunit = (*cunitsIt);
-        if(cunit->getIsKernel() == false)
+        if (cunit->getIsKernel() == false)
         {
             stackCallEntryBBs.push_back(cunit->getKernel()->fg.getEntryBB());
         }

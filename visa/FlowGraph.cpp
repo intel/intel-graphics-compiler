@@ -3996,6 +3996,15 @@ void G4_Kernel::dumpPassInternal(const char* appendix)
     else
         ofile << asmFileName << std::endl << std::endl;
 
+    for (const G4_Declare *d : Declares) {
+        // stuff below this is usually builtin-type stuff?
+        static const int MIN_DECL = 34;
+        if (d->getDeclId() > MIN_DECL) {
+            // ofile << d->getDeclId() << "\n";
+            d->emit(ofile);
+        }
+    }
+
     for (std::list<G4_BB*>::iterator it = fg.begin();
         it != fg.end(); ++it)
     {
