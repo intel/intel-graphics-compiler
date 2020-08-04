@@ -857,9 +857,31 @@ CVariable* CShader::GetGlobalCVar(llvm::Value* value)
 CVariable* CShader::BitCast(CVariable* var, VISA_Type newType)
 {
     CVariable* bitCast = nullptr;
+    uint32_t newEltSz = CEncoder::GetCISADataTypeSize(newType);
+    uint32_t eltSz = var->GetElemSize();
+    // Bitcase requires both src and dst have the same size. Thus, they
+    // are either equal or one is a multiple of the other.
+    IGC_ASSERT(   (newEltSz >= eltSz && (newEltSz % eltSz) == 0)
+               || (newEltSz < eltSz && (eltSz% newEltSz) == 0));
     if (var->IsImmediate())
     {
-        bitCast = ImmToVariable(var->GetImmediateValue(), newType);
+        if (newEltSz == eltSz)
+            bitCast = ImmToVariable(var->GetImmediateValue(), newType);
+        else
+        {
+            // Need a temp. For example,  bitcast i64 0 -> 2xi32
+            CVariable* tmp = GetNewVariable(
+                1,
+                var->GetType(),
+                CEncoder::GetCISADataTypeAlignment(var->GetType()),
+                true,
+                1,
+                "vecImmBitCast");
+            encoder.Copy(tmp, var);
+            encoder.Push();
+
+            bitCast = GetNewAlias(tmp, newType, 0, 0);
+        }
     }
     else
     {

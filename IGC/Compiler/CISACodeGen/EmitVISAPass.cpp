@@ -14460,26 +14460,21 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         dstNElts = 1;
     }
 
+    uint32_t dstEltBytes = int_cast<uint32_t>((unsigned int)dstEltTy->getPrimitiveSizeInBits() / 8);
+    uint32_t srcEltBytes = int_cast<uint32_t>((unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8);
     if (src->IsImmediate())
     {
-        CVariable* reg = m_currShader->GetNewVariable(
-            1,
-            src->GetType(),
-            m_encoder->GetCISADataTypeAlignment(src->GetType()),
-            true,
-            1, CName::NONE);
-
-        m_encoder->Copy(reg, src);
+        IGC_ASSERT((dstNElts * dstEltBytes) == srcEltBytes && srcNElts == 1);
+        CVariable* tmp = m_currShader->GetNewAlias(m_destination, src->GetType(), 0, 0);
+        m_encoder->Copy(tmp, src);
         m_encoder->Push();
-
-        src = reg;
+        return;
     }
 
     uint32_t width = numLanes(m_currShader->m_SIMDSize);
-    uint32_t dstEltBytes = int_cast<uint32_t>((unsigned int)dstEltTy->getPrimitiveSizeInBits() / 8);
-    uint32_t srcEltBytes = int_cast<uint32_t>((unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8);
     bool srcUniform = src->IsUniform();
     bool dstUniform = m_destination->IsUniform();
+
     if (srcUniform && dstUniform &&
         (dstNElts == 2 || dstNElts == 4 || dstNElts == 8) &&
         m_destination != src &&
