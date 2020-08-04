@@ -284,7 +284,8 @@ namespace IGC
 
         // addSimdLane - add a sequence of attributes to calculate location of variable
         // among SIMD lanes, e.g. a GRF subregister.
-        void addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc, DbgDecoder::VarInfo* varInfo, bool isPacked, bool isSecondHalf);
+        void addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc, DbgDecoder::VarInfo* varInfo,
+            uint16_t regOffset, bool isPacked, bool isSecondHalf);
 
         // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
         // e.g. a GRF subregister.
