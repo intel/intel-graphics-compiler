@@ -2564,7 +2564,6 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const
 // check if this instruction can be hoisted to defInst
 bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
 {
-
     bool indirect_dst = (dst->getRegAccess() != Direct);
 
     G4_Operand *def_dst = defInst->getDst();
@@ -2576,8 +2575,25 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     }
     G4_Type defDstType = def_dst->getType();
     G4_Type dstType = dst->getType(), srcType = srcs[0]->getType();
+    unsigned int srcElSize = G4_Type_Table[srcType].byteSize;
+    unsigned int dstElSize = G4_Type_Table[dstType].byteSize;
+    unsigned int defDstElSize = G4_Type_Table[defDstType].byteSize;
+
+    // cannot hoist an accumulator access into an instruction
+    // that doesn't have a dst hz stride that matches source
+    //   def (..) T<1> .. acc:d
+    //   use (..) ...<2>:d  T<1>
+    // ==>
+    //   def2 (..) ...<2>:d ... acc
+    //                 ^ dst stride mismatch means we mustn't hoist
+    if (defInst->useAcc() && dst->getExecTypeSize() != srcElSize) {
+        return false;
+    }
+
     bool rawMovInst = isRawMov();
-    bool cantHoistMAD = (defInst->opcode() == G4_pseudo_mad && !(IS_TYPE_FLOAT_ALL(dstType) && IS_TYPE_FLOAT_ALL(defDstType)));
+    bool cantHoistMAD =
+        (defInst->opcode() == G4_pseudo_mad &&
+            !(IS_TYPE_FLOAT_ALL(dstType) && IS_TYPE_FLOAT_ALL(defDstType)));
     if ((defInst->useInstList.size() != 1) ||
         (defInst->opcode() == G4_sad2) ||
         (defInst->opcode() == G4_sada2) ||
@@ -2626,8 +2642,8 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     }
 
     // compare boudaries and bitset
-    if( ( def_dst->getLeftBound() < srcs[0]->getLeftBound() ) ||
-        ( def_dst->getRightBound() > srcs[0]->getRightBound() ) )
+    if ((def_dst->getLeftBound() < srcs[0]->getLeftBound()) ||
+        (def_dst->getRightBound() > srcs[0]->getRightBound()))
     {
         return false;
     }
@@ -2637,17 +2653,14 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         return false;
     }
 
-    unsigned int srcElSize = G4_Type_Table[srcType].byteSize, defDstElSize = G4_Type_Table[defDstType].byteSize,
-        dstElSize = G4_Type_Table[dstType].byteSize;
-
     // check mixed type conversion
     // TODO: cleanup this part since mixed type check of the first half is already checked in canHoist.
-    if( ( !( defInst->isRawMov() && ( defDstType == srcType ) ) &&
-        ( ( IS_FTYPE(dstType) && ( IS_TYPE_INT( srcType ) || IS_VINTTYPE( srcType ) ) ) ||
-        ( ( IS_FTYPE(srcType) || IS_VFTYPE(srcType) ) && IS_TYPE_INT( dstType ) ) ) ) ||
-        ( !rawMovInst &&
-        ( ( IS_FTYPE( defDstType ) && IS_TYPE_INT( defInst->getExecType() ) ) ||
-        ( IS_FTYPE( defInst->getExecType() )  && IS_TYPE_INT( defDstType ) ) ) ) )
+    if ((!(defInst->isRawMov() && (defDstType == srcType)) &&
+        (( IS_FTYPE(dstType) && ( IS_TYPE_INT(srcType) || IS_VINTTYPE(srcType))) ||
+        (( IS_FTYPE(srcType) || IS_VFTYPE(srcType)) && IS_TYPE_INT(dstType)))) ||
+        (!rawMovInst &&
+        ((IS_FTYPE(defDstType) && IS_TYPE_INT( defInst->getExecType())) ||
+        (IS_FTYPE(defInst->getExecType())  && IS_TYPE_INT(defDstType)))))
     {
         return false;
     }
@@ -2705,8 +2718,8 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     bool same_type_size = G4_Type_Table[def_dst->getType()].byteSize == G4_Type_Table[srcType].byteSize;
     bool scalarSrc = srcs[0]->asSrcRegRegion()->isScalar();
     // handle predicated MOV and float def
-    if( ( getPredicate() && ( execSize > 1 ) && !same_type_size ) ||
-        ( IS_FTYPE( defDstType ) && ( defDstType != srcType ) && ( dstType != srcType ) ) )
+    if ((getPredicate() && (execSize > 1) && !same_type_size) ||
+        (IS_FTYPE(defDstType) && (defDstType != srcType) && (dstType != srcType)))
     {
         return false;
     }
@@ -2714,25 +2727,25 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     // if used as scalar and repeated region, dst should be packed
     // add(2) v2<1>:w v3 v4
     // mov(2) v5<2>:d  V2<0;1,0>:d
-    if( scalarSrc && !same_type_size &&
-        ( execSize > 1 ) && ( dst->getHorzStride() != 1 ) )
+    if (scalarSrc && !same_type_size &&
+        (execSize > 1) && (dst->getHorzStride() != 1))
     {
         return false;
     }
 
     // if indirect source is repeat region, or defhoisting will make it a repeat region,
     // no opt
-    if( srcs[0]->asSrcRegRegion()->getRegion()->isRepeatRegion( execSize ) &&
-        !scalarSrc )
+    if (srcs[0]->asSrcRegRegion()->getRegion()->isRepeatRegion(execSize) &&
+        !scalarSrc)
     {
         return false;
     }
 
     // check type conversion
     if( IS_SIGNED_INT(dstType) && ( defInst->opcode() == G4_mov ) &&
-        ( G4_Type_Table[dstType].byteSize > srcElSize ) &&
-        ( ( IS_SIGNED_INT(defDstType) && IS_UNSIGNED_INT(defInst->getSrc(0)->getType()) ) ||
-        ( IS_UNSIGNED_INT(defDstType) && IS_SIGNED_INT(defInst->getSrc(0)->getType()) ) ) )
+        (G4_Type_Table[dstType].byteSize > srcElSize ) &&
+        ((IS_SIGNED_INT(defDstType) && IS_UNSIGNED_INT(defInst->getSrc(0)->getType())) ||
+        (IS_UNSIGNED_INT(defDstType) && IS_SIGNED_INT(defInst->getSrc(0)->getType()))))
     {
         return false;
     }
@@ -2804,13 +2817,13 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
 bool G4_INST::isCommutative() const
 {
     //TODO: we can invert condMod of cmp to swap sources
-    if( !( G4_Inst_Table[op].attributes & ATTR_COMMUTATIVE ) || op == G4_cmp )
+    if (!(G4_Inst_Table[op].attributes & ATTR_COMMUTATIVE ) || op == G4_cmp)
         return false;
 
     // for mul we can do D*W but not W*D
-    if( op == G4_mul )
+    if (op == G4_mul)
     {
-        if( IS_DTYPE(srcs[0]->getType()))
+        if (IS_DTYPE(srcs[0]->getType()))
         {
             return false;
         }
@@ -2827,7 +2840,7 @@ bool G4_INST::isCommutative() const
 // 5. acc src can not use modifier in LOGIC inst
 
 // There are many cases that use simd16 Float, split these instructions enables more opportimizations.
-bool G4_INST::canUseACCOpt( bool handleComprInst, bool checkRegion, uint16_t &hs, bool allowTypeDemotion, bool insertMov )
+bool G4_INST::canUseACCOpt(bool handleComprInst, bool checkRegion, uint16_t &hs, bool allowTypeDemotion, bool insertMov)
 {
     hs = 0;
 

@@ -561,6 +561,7 @@ public:
     void SetCurrentInst(const void* inst) { m_inst = inst; };
 
     const CISA_IR_Builder* getParent() const { return parentBuilder; }
+    void dump(std::ostream &os);
     std::stringstream& criticalMsgStream();
 
     const USE_DEF_ALLOCATOR& getAllocator() const { return useDefAllocator; }
@@ -1891,7 +1892,10 @@ public:
     G4_INST* createBinOp(
         G4_opcode op, uint8_t execSize,
         G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
-        uint32_t option, bool appendToInstList);
+        uint32_t option, bool appendToInstList)
+    {
+        return createBinOp(nullptr, op, execSize, dst, src0, src1, option, appendToInstList);
+    }
 
     G4_INST* createBinOp(
         G4_Predicate *pred,

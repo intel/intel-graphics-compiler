@@ -5627,19 +5627,11 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
                     op == G4_mov || op == G4_add || op == G4_addc ||
                     op == G4_mad || op == G4_pseudo_mad;
 
-                auto srcUsesAcc = [&] (int srcIx) {
-                    if (srcIx >= inst2->getNumSrc())
-                        return false;
-                    auto type = inst2->getSrc(srcIx)->getType();
-                    return inst2->getSrc(srcIx)->isAccReg() &&
-                        (type == Type_UD || type == Type_D);
-                };
-
                 // only check for a handful of user instructions
                 // this list could be extended
                 if (opPossibleConsumer &&
                     inst2->getExecSize() == inst->getExecSize() &&
-                    (srcUsesAcc(0) || srcUsesAcc(1) || srcUsesAcc(1)))
+                    inst2->useAcc())
                 {
                     carryUse = inst2;
                     break;

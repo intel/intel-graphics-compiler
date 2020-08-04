@@ -379,15 +379,6 @@ G4_INST* IR_Builder::createMov(uint8_t execSize, G4_DstRegRegion* dst,
 }
 
 G4_INST* IR_Builder::createBinOp(
-    G4_opcode op, uint8_t execSize,
-    G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
-    uint32_t option, bool appendToInstList)
-{
-    return createBinOp(nullptr, op, execSize,
-        dst, src0, src1, option, appendToInstList);
-}
-
-G4_INST* IR_Builder::createBinOp(
     G4_Predicate *pred,
     G4_opcode op, uint8_t execSize,
     G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
@@ -395,11 +386,11 @@ G4_INST* IR_Builder::createBinOp(
 {
     if (appendToInstList)
     {
-        return createInst(nullptr, op, nullptr, false, execSize, dst, src0, src1, option);
+        return createInst(pred, op, nullptr, false, execSize, dst, src0, src1, option);
     }
     else
     {
-        return createInternalInst(nullptr, op, nullptr, false, execSize, dst, src0, src1, option);
+        return createInternalInst(pred, op, nullptr, false, execSize, dst, src0, src1, option);
     }
 }
 

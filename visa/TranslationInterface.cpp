@@ -175,6 +175,21 @@ static SendAccess getSendAccessType(bool isRead, bool isWrite)
     return isRead ? SendAccess::READ_ONLY : SendAccess::WRITE_ONLY;
 }
 
+void IR_Builder::dump(std::ostream &os)
+{
+    os << "DECLARES:\n";
+    for (const G4_Declare *dcl : kernel.Declares) {
+        dcl->emit(os);
+        os  << "\n";
+    }
+    os << "\n";
+    os << "INSTS:\n";
+    for (G4_INST *i : instList) {
+        i->emit(os, false, false);
+        os << "\n";
+    }
+}
+
 int IR_Builder::translateVISAAddrInst(ISA_Opcode opcode, VISA_Exec_Size executionSize,
                                       VISA_EMask_Ctrl emask, G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
 {
