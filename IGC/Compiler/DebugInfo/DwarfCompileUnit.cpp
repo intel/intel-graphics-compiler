@@ -1043,7 +1043,6 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
     if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging) && Loc->IsVectorized())
     {
         // SIMD lane
-        auto regNum = Loc->GetRegister();
         auto VISAMod = const_cast<VISAModule*>(Loc->GetVISAModule());
 
         uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
@@ -1072,6 +1071,7 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
         {
             // This case handles the case where a source variable is held in
             // GRF or a ptr to it is held in GRF.
+            uint32_t regNum = varInfo->lrs.front().getGRF().regNum;
             auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(regNum);
 
             // CASE 2 and CASE 3: Expressions generated for 64-bit (or 32-bit) bit ptr addresses in SIMD8 or SIMD16:
@@ -1197,7 +1197,7 @@ void CompileUnit::addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, VISAVariab
     {
         IGC_ASSERT_MESSAGE(varInfo->lrs.front().isSpill() == false, "Scalar spilled in scratch space");
 
-        ///addRegisterOffset(Block, varInfo.getGRF().regNum, 0);
+        // addRegisterOffset(Block, varInfo.lrs.front().getGRF().regNum, 0);
         uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
 
         auto offsetInBits = subRegInBytes * 8;
