@@ -909,7 +909,7 @@ ANode *ANode::getChildANode(ANode *parent)
 //
 //     changed to
 //           goto L0
-//       L0:
+//       L0:      (new empty BB)
 //       L1:
 //           goto L1
 //  2) avoid a fall-thru BB of a backward goto BB is the target BB of another
@@ -921,62 +921,99 @@ ANode *ANode::getChildANode(ANode *parent)
 //    changed to
 //          L0:
 //            (p0) goto L0
-//          L :
+//          L :         (new empty BB)
 //          L1 :
 //            (p1) goto L1
+// 3) make sure the last BB's pred is its physical predecessor.
+//    In another word, if there is a case:
+//          B0 : goto L1
+//          ...
+//        L0:
+//          ...
+//          B1:  goto L0
+//        L1:
+//           ret
+//   changed to
+//          B0 : goto L
+//          ...
+//       L0:
+//          ...
+//          B1: goto L0
+//       L:            (new empty BB)
+//       L1:
+//          ret
+//   This case is to guarantee that the last HG has its valid, non-null exit BB
+//   except Basic block ANode. (Without this, the last HG isn't handled completely
+//   with the current algo.)
 void CFGStructurizer::preProcess()
 {
     bool CFGChanged = false;
     for (BB_LIST_ITER BI = CFG->begin(), BE = CFG->end();
         BI != BE; ++BI)
     {
+        bool insertEmptyBBBefore = false;
+        bool isLastBB = (std::next(BI) == BE);
         G4_BB *B = *BI;
-        if (B->Preds.size() < 2)
-        {
-            continue;
-        }
-
-        // Check if this B is a successor of both backward and forward branches.
-        bool isForwardTarget = false;
-        bool isBackwardTarget = false;
-        bool isFallThruOfBackwardGotoBB = false;
         BB_LIST_ITER IT, IE;
-        for (IT = B->Preds.begin(), IE = B->Preds.end(); IT != IE; IT++)
+        if (isLastBB)
         {
-            G4_BB* P = *IT;
-            if (P->getId() >= B->getId())
+            // case 3
+            if (B->Preds.size() >= 2)
             {
-                isBackwardTarget = true;
-                continue;
+                // Maybe too conservative, but shouldn't cause any perf change!
+                insertEmptyBBBefore = true;
             }
-            // P is a BB before B
-            G4_INST *gotoInst = getGotoInst(B);
-            G4_INST* gotoInstP = getGotoInst(P);
-            if (gotoInst && P->getPhysicalSucc() != B)
+            else if (B->Preds.size() == 1)
             {
-                isForwardTarget = true;
-            }
-            else if (gotoInstP
-                && P->getPhysicalSucc() == B
-                && gotoInstP->asCFInst()->isBackward())
-            {
-                isFallThruOfBackwardGotoBB = true;
+                G4_BB* phyPred = B->getPhysicalPred();
+                G4_BB* pred = B->Preds.back();
+                insertEmptyBBBefore = (phyPred != pred);
             }
         }
 
-        if (   !(isBackwardTarget && isForwardTarget)              // case 1
-            && !(isBackwardTarget && isFallThruOfBackwardGotoBB))  // case 2
+        if (!insertEmptyBBBefore && B->Preds.size() >= 2)
         {
-            // not candidate
+            // case 1 & 2
+            // Check if this B is a successor of both backward and forward branches.
+            bool isForwardTarget = false;
+            bool isBackwardTarget = false;
+            bool isFallThruOfBackwardGotoBB = false;
+            for (IT = B->Preds.begin(), IE = B->Preds.end(); IT != IE; IT++)
+            {
+                G4_BB* P = *IT;
+                if (P->getId() >= B->getId())
+                {
+                    isBackwardTarget = true;
+                    continue;
+                }
+                // P is a BB before B
+                G4_INST* gotoInstP = getGotoInst(P);
+                if (gotoInstP && P->getPhysicalSucc() != B)
+                {
+                    isForwardTarget = true;
+                }
+                else if (gotoInstP
+                    && P->getPhysicalSucc() == B
+                    && gotoInstP->asCFInst()->isBackward())
+                {
+                    isFallThruOfBackwardGotoBB = true;
+                }
+            }
+
+            if (   (isBackwardTarget && isForwardTarget)              // case 1
+                || (isBackwardTarget && isFallThruOfBackwardGotoBB))  // case 2
+            {
+                insertEmptyBBBefore = true;
+            }
+        }
+
+        if (!insertEmptyBBBefore)
+        {
             continue;
         }
 
-        // "B" is the target of both forward and backward branching, or is the
-        // target of a backward branching and also the fall-thru of another
-        // backward goto BB.
-        //
-        // Create an empty BB right before "B", and adjust all forward
-        // branching to this new BB.
+        // Now, create an empty BB right before "B", and adjust all forward
+        // branching to this new BB and leave all backward branching unchanged.
         G4_BB *newBB = createBBWithLabel();
         G4_Label *newLabel = newBB->getLabel();
 
@@ -2534,7 +2571,9 @@ void CFGStructurizer::constructPST(BB_LIST_ITER IB, BB_LIST_ITER IE)
         G4_BB *bb = *II;
         ANodeBB *ndbb = getANodeBB(bb);
 
-        // Do the following cases in order:
+        // Do the following cases in order. (Note that bb should be part of
+        // the current pending ANode (top of ANStack), although it could
+        // be the beginning node of the new inner ANode.)
         //
         // 1: If bb is the target of some gotos, that is, the end of
         //    some CGs, merge the current bb into ANStack nodes of
@@ -2548,15 +2587,16 @@ void CFGStructurizer::constructPST(BB_LIST_ITER IB, BB_LIST_ITER IE)
         //    cg that is associated with a backward goto, a forward
         //    conditional goto, and the root (first) forward unconditional
         //    goto.  No new HG is created for a non-root unconditional
-        //    goto (see details in code).
+        //    goto (see details in code). This is where an inner HG is formed.)
         //
         // 3: Add bb into this node as it is part of node. If bb can
         //    be merged with its pred, merge it. The new node's type
         //    must be type AN_SEQUENCE.
         //
         // 4: Check if bb is the end of the node.  If it is, finalize the
-        //    node. If it is not, go on to process the next BB and continue
-        //    the next iteration.
+        //    node. If it is not, go on to process the next BB in the next
+        //    iteration (This implies that if the next BB should be part
+        //    of the current pending HG in ANStack).
         //
 
         // case 1.
