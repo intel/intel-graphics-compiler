@@ -319,12 +319,14 @@ void GenerateCompilerOptionsMD(llvm::LLVMContext &C, llvm::Module &M, llvm::Stri
 {
     llvm::SmallVector<llvm::StringRef, 8> flags;
     llvm::StringRef sep(" ");
-    options.split(flags, sep);
+    options.split(flags, sep, -1, false);
 
     std::vector<llvm::Metadata*> ValueVec;
     for (auto flag : flags) {
         flag = flag.trim();
-        if (!flag.empty())
+        flag = flag.rtrim(0);  // make sure no ending 0
+        // flags : C string (ended with 0)
+        if (!flag.empty() && flag.front() != 0)
             ValueVec.push_back(llvm::MDString::get(C, flag));
     }
     llvm::NamedMDNode* NamedMD = M.getOrInsertNamedMetadata("opencl.compiler.options");
