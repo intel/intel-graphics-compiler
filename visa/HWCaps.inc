@@ -619,7 +619,7 @@
 
     bool avoidDstSrcOverlap()
     {
-        return false;
+        return getPlatform() >= GENX_ICLLP && getOption(vISA_DstSrcOverlapWA);
     }
 
     bool hasTwoGRFMathMacro() const
