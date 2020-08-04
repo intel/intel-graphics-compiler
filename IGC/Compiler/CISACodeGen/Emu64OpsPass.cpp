@@ -2059,6 +2059,7 @@ bool InstExpander::visitExtractElement(ExtractElementInst& EEI) {
     V = IRB->CreateBitCast(V, Emu->getV2Int32Ty(NumElts));
     // Re-calculate indices to Lo and Hi parts.
     Value* Idx = EEI.getIndexOperand();
+    Idx = IRB->CreateZExt(Idx, IRB->getInt32Ty());
     Idx = IRB->CreateMul(Idx, IRB->getInt32(2));
     Value* IdxLo = IRB->CreateAdd(Idx, IRB->getInt32(0));
     Value* IdxHi = IRB->CreateAdd(Idx, IRB->getInt32(1));
