@@ -241,6 +241,21 @@ private:
   SPIRVType *ElemType;                    // Element Type
 };
 
+class SPIRVTypeForwardPointer : public SPIRVEntryNoId<OpTypeForwardPointer> {
+public:
+  SPIRVTypeForwardPointer(SPIRVModule* M, SPIRVTypePointer* Pointer,
+      SPIRVStorageClassKind SC)
+      : SPIRVEntryNoId(M, 3), Pointer(Pointer), SC(SC) {}
+
+  SPIRVTypeForwardPointer()
+      : Pointer(nullptr), SC(StorageClassUniformConstant) {}
+
+  _SPIRV_DCL_DEC
+private:
+  SPIRVTypePointer* Pointer;
+  SPIRVStorageClassKind SC;
+};
+
 class SPIRVTypeVector:public SPIRVType {
 public:
   // Complete constructor
