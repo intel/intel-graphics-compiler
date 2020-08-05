@@ -328,7 +328,8 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
 
   if (Opts.NoVecDecomp)
     Features.AddFeature("disable_vec_decomp");
-  if (Opts.Runtime == vc::RuntimeKind::OpenCL)
+  if (Opts.Binary == vc::BinaryKind::OpenCL ||
+      Opts.Binary == vc::BinaryKind::ZE)
     Features.AddFeature("ocl_runtime");
 
   return Features.getString();
@@ -467,10 +468,11 @@ static vc::cm::CompileOutput runCmCodeGen(const vc::CompileOptions &Opts,
 
 static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
                                     TargetMachine &TM, Module &M) {
-  switch (Opts.Runtime) {
-  case vc::RuntimeKind::CM:
+  switch (Opts.Binary) {
+  case vc::BinaryKind::CM:
     return runCmCodeGen(Opts, TM, M);
-  case vc::RuntimeKind::OpenCL:
+  case vc::BinaryKind::OpenCL:
+  case vc::BinaryKind::ZE:
     return runOclCodeGen(Opts, TM, M);
   }
   llvm_unreachable("Unknown runtime kind");
@@ -613,17 +615,19 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   if (InternalOptions.hasArg(vc::options::OPT_dump_llvm_ir))
     Opts.DumpIR = true;
 
-  if (opt::Arg *A = InternalOptions.getLastArg(vc::options::OPT_runtime)) {
+  if (opt::Arg *A =
+          InternalOptions.getLastArg(vc::options::OPT_binary_format)) {
     StringRef Val = A->getValue();
-    auto MaybeRuntime = StringSwitch<Optional<vc::RuntimeKind>>(Val)
-                            .Case("cm", vc::RuntimeKind::CM)
-                            .Case("ocl", vc::RuntimeKind::OpenCL)
-                            .Default(None);
-    if (!MaybeRuntime) {
+    auto MaybeBinary = StringSwitch<Optional<vc::BinaryKind>>(Val)
+                           .Case("cm", vc::BinaryKind::CM)
+                           .Case("ocl", vc::BinaryKind::OpenCL)
+                           .Case("ze", vc::BinaryKind::ZE)
+                           .Default(None);
+    if (!MaybeBinary) {
       const std::string BadOpt = A->getAsString(InternalOptions);
       return make_error<vc::OptionError>(BadOpt, /*IsInternal=*/true);
     }
-    Opts.Runtime = MaybeRuntime.getValue();
+    Opts.Binary = MaybeBinary.getValue();
   }
 
   Opts.FeaturesString = llvm::join(

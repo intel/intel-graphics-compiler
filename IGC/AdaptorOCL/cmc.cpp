@@ -104,9 +104,9 @@ void CMKernel::createConstArgumentAnnotation(unsigned argNo, unsigned sizeInByte
     constInput->IsEmulationArgument = false;
     m_kernelInfo.m_constantArgumentAnnotation.push_back(constInput);
 
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-            zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
-                payloadPosition, sizeInBytes, argNo);
+    // EnableZEBinary: ZEBinary related code
+    zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
+        payloadPosition, sizeInBytes, argNo);
 }
 
 // TODO: this is incomplete.
@@ -185,16 +185,14 @@ void CMKernel::createPointerGlobalAnnotation(const cmc_arg_info &argInfo)
     ptrAnnotation->IsEmulationArgument = false;
     m_kernelInfo.m_pointerArgument.push_back(ptrAnnotation);
 
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-    {
-        zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
-            argInfo.offset, argInfo.sizeInBytes, argInfo.index,
-            zebin::PreDefinedAttrGetter::ArgAddrMode::stateless,
-            zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
-            getZEArgAccessType(argInfo.access));
-        zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
-            argInfo.BTI, argInfo.index);
-    }
+    // EnableZEBinary: ZEBinary related code
+    zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+        argInfo.offset, argInfo.sizeInBytes, argInfo.index,
+        zebin::PreDefinedAttrGetter::ArgAddrMode::stateless,
+        zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
+        getZEArgAccessType(argInfo.access));
+    zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
+        argInfo.BTI, argInfo.index);
 }
 
 void CMKernel::createPrivateBaseAnnotation(
@@ -214,10 +212,10 @@ void CMKernel::createPrivateBaseAnnotation(
   ptrAnnotation->PayloadSizeInBytes = byteSize;
   m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
 
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-        zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
-            zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
-            payloadPosition, byteSize);
+    // EnableZEBinary: ZEBinary related code
+    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+        zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
+        payloadPosition, byteSize);
 }
 
 void CMKernel::createBufferStatefulAnnotation(unsigned argNo, cmc_access_kind accessKind)
@@ -234,14 +232,12 @@ void CMKernel::createBufferStatefulAnnotation(unsigned argNo, cmc_access_kind ac
     constInput->LocationCount = 0;
     m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
 
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-    {
-        zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
-            0, 0, argNo,
-            zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
-            zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
-            getZEArgAccessType(accessKind));
-    }
+    // EnableZEBinary: ZEBinary related code
+    zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+        0, 0, argNo,
+        zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
+        zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
+        getZEArgAccessType(accessKind));
 }
 
 void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
@@ -264,10 +260,10 @@ void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
         constInput->LocationCount = 0;
         m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
     }
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-        zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
-            getZEArgType(Type), initPayloadPosition,
-            iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
+    // EnableZEBinary: ZEBinary related code
+    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+        getZEArgType(Type), initPayloadPosition,
+        iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
 }
 
 // TODO: refactor this function with the OCL part.
@@ -358,18 +354,18 @@ static void generateSymbols(const cmc_kernel_info_v2 &info,
         kernelProgram.m_funcRelocationTableSize = info.RelocationTable.Size;
         kernelProgram.m_funcRelocationTableEntries =
             info.RelocationTable.NumEntries;
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-            kernelProgram.m_relocs = info.ZEBinInfo.Relocations;
+        // EnableZEBinary: ZEBinary related code
+        kernelProgram.m_relocs = info.ZEBinInfo.Relocations;
     }
     if (info.SymbolTable.Size > 0) {
         kernelProgram.m_funcSymbolTable = info.SymbolTable.Buf;
         kernelProgram.m_funcSymbolTableSize = info.SymbolTable.Size;
         kernelProgram.m_funcSymbolTableEntries = info.SymbolTable.NumEntries;
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-            kernelProgram.m_symbols.function = info.ZEBinInfo.Symbols.Functions;
+        // EnableZEBinary: ZEBinary related code
+        kernelProgram.m_symbols.function = info.ZEBinInfo.Symbols.Functions;
     }
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-        kernelProgram.m_symbols.local = info.ZEBinInfo.Symbols.Local;
+    // EnableZEBinary: ZEBinary related code
+    kernelProgram.m_symbols.local = info.ZEBinInfo.Symbols.Local;
 }
 
 static void generatePatchTokens_v2(const cmc_kernel_info_v2 *info,

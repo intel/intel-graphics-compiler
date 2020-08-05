@@ -116,10 +116,15 @@ def target_features : Separate<["-"], "target-features">,
 def target_features_eq : Joined<["-"], "target-features=">,
   Alias<target_features>, HelpText<"Alias for -target_features">;
 
-def runtime : Separate<["-"], "runtime">,
+def binary_format : Separate<["-"], "binary-format">,
+  HelpText<"Set in which format should be generated binary; values: 'cm', 'ocl' or 'ze'">;
+def binary_format_eq : Joined<["-"], "binary-format=">,
+  Alias<binary_format>, HelpText<"Alias for -binary-format <value>">;
+
+def runtime : Separate<["-"], "runtime">, Alias<binary_format>,
   HelpText<"Set runtime for which binary should be generated; values: 'ocl' or 'cm'">;
 def runtime_eq : Joined<["-"], "runtime=">,
-  Alias<runtime>, HelpText<"Alias for -runtime <value>">;
+  Alias<binary_format>, HelpText<"Alias for -runtime <value>">;
 
 }
 // }} Internal options

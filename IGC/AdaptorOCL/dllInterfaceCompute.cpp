@@ -1489,12 +1489,22 @@ static void adjustOptLevelVC(vc::CompileOptions& Opts)
         Opts.OptLevel = vc::OptimizerLevel::None;
 }
 
+// Overwrite binary format option for backward compatibility with
+// environment variable approach.
+static void adjustBinaryFormat(vc::BinaryKind &Binary)
+{
+    if (Binary == vc::BinaryKind::OpenCL &&
+        IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        Binary = vc::BinaryKind::ZE;
+}
+
 static void adjustOptionsVC(const IGC::CPlatform& IGCPlatform,
                             TB_DATA_FORMAT DataFormat, vc::CompileOptions& Opts)
 {
     adjustPlatformVC(IGCPlatform, Opts);
     adjustFileTypeVC(DataFormat, Opts);
     adjustOptLevelVC(Opts);
+    adjustBinaryFormat(Opts.Binary);
 }
 
 static std::error_code getErrorVC(llvm::Error Err,
@@ -1565,42 +1575,41 @@ static std::error_code TranslateBuildVC(
         return getErrorVC(ExpOutput.takeError(), pOutputArgs);
     vc::CompileOutput& Res = ExpOutput.get();
 
-    auto Visitor = [&IGCPlatform, pOutputArgs](auto&& CompileResult) {
-        using Ty = std::decay_t<decltype(CompileResult)>;
-        if constexpr (std::is_same_v<Ty, vc::cm::CompileOutput>)
-        {
-            outputBinaryVC(CompileResult.IsaBinary, pOutputArgs);
-        }
-        else if constexpr (std::is_same_v<Ty, vc::ocl::CompileOutput>)
-        {
-            iOpenCL::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo()};
-            vc::createBinary(CMProgram, CompileResult.Kernels);
-            if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-            {
-                llvm::SmallVector<char, 0> ProgramBinary;
-                llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};
-                CMProgram.GetZEBinary(ProgramBinaryOS, CompileResult.PointerSizeInBytes);
-                llvm::StringRef BinaryRef(ProgramBinary.data(), ProgramBinary.size());
-                outputBinaryVC(BinaryRef, pOutputArgs);
-            }
-            else
-            {
-                CMProgram.CreateKernelBinaries();
-                Util::BinaryStream ProgramBinary;
-                CMProgram.GetProgramBinary(ProgramBinary,
-                                           CompileResult.PointerSizeInBytes);
-                llvm::StringRef BinaryRef(ProgramBinary.GetLinearPointer(),
-                                          ProgramBinary.Size());
-                outputBinaryVC(BinaryRef, pOutputArgs);
-            }
-        }
-        else
-        {
-            static_assert(!sizeof(Ty), "One of compile output is not visited");
-        }
-    };
-
-    std::visit(Visitor, Res);
+    switch (Opts.Binary)
+    {
+    case vc::BinaryKind::CM:
+    {
+        auto &CompileResult = std::get<vc::cm::CompileOutput>(Res);
+        outputBinaryVC(CompileResult.IsaBinary, pOutputArgs);
+        break;
+    }
+    case vc::BinaryKind::OpenCL:
+    {
+        auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
+        iOpenCL::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo()};
+        vc::createBinary(CMProgram, CompileResult.Kernels);
+        CMProgram.CreateKernelBinaries();
+        Util::BinaryStream ProgramBinary;
+        CMProgram.GetProgramBinary(ProgramBinary,
+                                   CompileResult.PointerSizeInBytes);
+        llvm::StringRef BinaryRef{ProgramBinary.GetLinearPointer(),
+            static_cast<std::size_t>(ProgramBinary.Size())};
+        outputBinaryVC(BinaryRef, pOutputArgs);
+        break;
+    }
+    case vc::BinaryKind::ZE:
+    {
+        auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
+        iOpenCL::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo()};
+        vc::createBinary(CMProgram, CompileResult.Kernels);
+        llvm::SmallVector<char, 0> ProgramBinary;
+        llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};
+        CMProgram.GetZEBinary(ProgramBinaryOS, CompileResult.PointerSizeInBytes);
+        llvm::StringRef BinaryRef{ProgramBinary.data(), ProgramBinary.size()};
+        outputBinaryVC(BinaryRef, pOutputArgs);
+        break;
+    }
+    }
 
     return {};
 #endif

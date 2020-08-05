@@ -134,7 +134,7 @@ enum class FileType {
 
 enum class OptimizerLevel { None, Full };
 
-enum class RuntimeKind { CM, OpenCL };
+enum class BinaryKind { CM, OpenCL, ZE };
 
 struct CompileOptions {
   FileType FType = FileType::SPIRV;
@@ -147,7 +147,7 @@ struct CompileOptions {
 
   // Internal options.
   std::string FeaturesString; // format is: [+-]<feature1>,[+-]<feature2>,...
-  RuntimeKind Runtime = RuntimeKind::OpenCL;
+  BinaryKind Binary = BinaryKind::OpenCL;
   bool DumpIsa = false;
   bool DumpIR = false;
 };
