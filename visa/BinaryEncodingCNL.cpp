@@ -1648,11 +1648,10 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
          op == G4_goto ||
          op == G4_join )
     {
-        G4_Operand *jip = inst->asCFInst()->getJip();
-        if (jip && jip->isLabel())
+        G4_Label *jip = inst->asCFInst()->getJip();
+        if (jip)
         {
-            jipLabel = inst->asCFInst()->getJipLabelStr();
-            int32_t info = GetLabelInfo(this->LabelMap, jipLabel);
+            int32_t info = GetLabelInfo(jip);
             if (info == -1)
             {
                 return false;
@@ -1684,11 +1683,10 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
         op == G4_else                  ||
         op == G4_goto )
     {
-        G4_Operand *uip = inst->asCFInst()->getUip();
-        if ( uip && uip->isLabel() )
+        G4_Label* uip = inst->asCFInst()->getUip();
+        if (uip)
         {
-            uipLabel = inst->asCFInst()->getUipLabelStr();
-            int32_t info = GetLabelInfo(this->LabelMap, uipLabel);
+            int32_t info = GetLabelInfo(uip);
             if (info == -1)
             {
                 return false;
@@ -1714,12 +1712,11 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
     {
         // find the label's IP count
         G4_Operand *opnd = inst->getSrc(0);
-        std::string jmpLabel = opnd->asLabel()->getLabel();
         BinInst * mybin = inst->getBinInst();
         // Calculate the address offset
         // Label has the same IP count as the following instruction,
         // "break 1" is to the fall through instruction
-        int32_t info = GetLabelInfo(this->LabelMap, jmpLabel);
+        int32_t info = GetLabelInfo(opnd->asLabel());
         if (info == -1)
         {
             return false;
@@ -1755,8 +1752,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
          inst->getSrc(0)->isLabel() )
     {
         G4_Operand *opnd = inst->getSrc(0);
-        std::string jmpLabel = opnd->asLabel()->getLabel();
-        int32_t info = GetLabelInfo(this->LabelMap, jmpLabel);
+        int32_t info = GetLabelInfo(opnd->asLabel());
         if (info == -1)
         {
             return false;
