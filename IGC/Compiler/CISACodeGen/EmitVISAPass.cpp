@@ -3020,7 +3020,7 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     CVariable* srcLo[2], * srcHi[2];
     for (int i = 0; i < 2; ++i)
     {
-        CVariable* srcAsUD = m_currShader->BitCast(src[i], ISA_TYPE_UD);
+        CVariable* srcAsUD;
         if (src[i]->IsUniform())
         {
             if (src[i]->IsImmediate())
@@ -3030,12 +3030,14 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
             }
             else
             {
+                srcAsUD = m_currShader->BitCast(src[i], ISA_TYPE_UD);
                 srcLo[i] = m_currShader->GetNewAlias(srcAsUD, ISA_TYPE_UD, 0, 1);
                 srcHi[i] = m_currShader->GetNewAlias(srcAsUD, hiType, SIZE_DWORD, 1);
             }
         }
         else
         {
+            srcAsUD = m_currShader->BitCast(src[i], ISA_TYPE_UD);
             //TODO: Would it be better for these two to be consecutive?
             srcLo[i] = m_currShader->GetNewVariable(
                 src[i]->GetNumberElement(),
