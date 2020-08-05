@@ -399,133 +399,41 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
 // default size of the physical reg pool mem manager in bytes
 #define PHY_REG_MEM_SIZE   (16*1024)
 
-struct FCallState
-{
-    G4_INST* fcallInst;
-    G4_Operand* opnd0;
-    G4_Operand* opnd1;
-    G4_BB* retBlock;
-    unsigned int execSize;
-};
-
-struct SavedFCallStates
-{
-    std::vector<std::pair<G4_Kernel*, FCallState>> states;
-    std::vector<G4_BB*> retbbs;
-};
-
-void saveFCallState(G4_Kernel* kernel, SavedFCallStates& savedFCallState)
-{
-    // Iterate over all BBs in kernel.
-    // For each fcall seen, store its opnd0, opnd1, retBlock.
-    // so that after compiling the copy of function for 1 kernel,
-    // the IR can be reused for another kernel rather than
-    // recompiling.
-    // kernel points to a stackcall function.
-    std::set<G4_BB*> calledFrets;
-    for (auto curBB : kernel->fg)
-    {
-        if( curBB->size() > 0 && curBB->isEndWithFCall() )
-        {
-            // Save state for this fcall
-            G4_INST* fcallInst = curBB->back();
-
-            FCallState currFCallState;
-
-            currFCallState.fcallInst = fcallInst;
-            currFCallState.opnd0 = fcallInst->getSrc(0);
-            currFCallState.opnd1 = fcallInst->getSrc(1);
-            currFCallState.retBlock = curBB->Succs.front();
-            currFCallState.execSize = fcallInst->getExecSize();
-
-            savedFCallState.states.push_back( std::make_pair( kernel, currFCallState ) );
-            calledFrets.insert(currFCallState.retBlock);
-        }
-        if (curBB->size() > 0 && curBB->isEndWithFRet() && !calledFrets.count(curBB))
-        {
-            savedFCallState.retbbs.push_back(curBB);
-        }
-    }
-}
-
-void restoreFCallState(G4_Kernel* kernel, SavedFCallStates savedFCallState)
+void restoreFCallState(G4_Kernel* kernel, const std::map<G4_BB*, G4_INST*>& savedFCallState)
 {
     // Iterate over all BBs in kernel and fix all fcalls converted
     // to calls by reconverting them to fcall. This is required
     // because we want to reuse IR of function for next kernel.
 
-    // start, end iterators denote boundaries in vector that correspond
-    // to current kernel. This assumes that entries for different
-    // functions are not interspersed.
-    auto start = savedFCallState.states.begin(), end = savedFCallState.states.end();
-
-    for( BB_LIST_ITER bb_it = kernel->fg.begin();
-        bb_it != kernel->fg.end();
-        bb_it++ )
+    for (auto&& iter : savedFCallState)
     {
-        G4_BB* curBB = (*bb_it);
-
-        if( curBB->size() > 0 &&
-            curBB->back()->isCall() )
+        auto curBB = iter.first;
+        curBB->pop_back();
+        auto origInst = iter.second;
+        assert(origInst->isFCall() || origInst->isFReturn());
+        curBB->push_back(origInst);
+        if (origInst->isFCall() && !origInst->asCFInst()->isIndirectCall())
         {
-            // Check whether this call is a convert from fcall
-            for( auto state_it = start;
-                state_it != end;
-                state_it++ )
+            // curBB must have a physical successor as we don't allow calls that do not return
+            G4_BB* retBlock = curBB->getPhysicalSucc();
+            G4_BB* retbbToConvert = retBlock->Preds.back();
+            kernel->fg.removePredSuccEdges(retbbToConvert, retBlock);
+            // Remove edge between call and previously joined function
+            while (curBB->Succs.size() > 0)
             {
-                if( (*state_it).second.fcallInst == curBB->back() )
-                {
-                    // Found a call to replace with fcall and ret with fret
-
-                    // Restore corresponding ret to fret
-                    G4_BB* retBlock = (*state_it).second.retBlock;
-
-                    G4_BB* retbbToConvert = retBlock->Preds.back();
-
-                    G4_INST* retToReplace = retbbToConvert->back();
-
-                    retToReplace->asCFInst()->retToFRet();
-                    retToReplace->setDest(NULL);
-
-                    kernel->fg.removePredSuccEdges(retbbToConvert, retBlock);
-
-                    // Now restore call operands
-                    G4_INST* instToReplace = curBB->back();
-
-                    auto& state = (*state_it).second;
-                    instToReplace->setSrc(state.opnd0, 0);
-                    instToReplace->setSrc(state.opnd1, 1);
-                    instToReplace->setExecSize((unsigned char)state.execSize);
-
-                    // Remove edge between call and previously joined function
-                    while( curBB->Succs.size() > 0 )
-                    {
-                        kernel->fg.removePredSuccEdges( curBB, curBB->Succs.front() );
-                    }
-
-                    // Restore edge to retBlock
-                    kernel->fg.addPredSuccEdges( curBB, (*state_it).second.retBlock );
-
-                    instToReplace->asCFInst()->callToFCall();
-                }
+                kernel->fg.removePredSuccEdges(curBB, curBB->Succs.front());
             }
+
+            // Restore edge to retBlock
+            kernel->fg.addPredSuccEdges(curBB, retBlock);
         }
-    }
-
-    for (G4_BB* retBB : savedFCallState.retbbs)
-    {
-        G4_INST* retToReplace = retBB->back();
-
-        retToReplace->asCFInst()->retToFRet();
-        retToReplace->setDest(NULL);
-
     }
 
     // Remove all in-edges to stack call function. These may have been added
     // to connect earlier kernels with the function.
-    while( kernel->fg.getEntryBB()->Preds.size() > 0 )
+    while (kernel->fg.getEntryBB()->Preds.size() > 0)
     {
-        kernel->fg.removePredSuccEdges( kernel->fg.getEntryBB()->Preds.front(), kernel->fg.getEntryBB() );
+        kernel->fg.removePredSuccEdges(kernel->fg.getEntryBB()->Preds.front(), kernel->fg.getEntryBB());
     }
 }
 
@@ -533,7 +441,7 @@ void restoreFCallState(G4_Kernel* kernel, SavedFCallStates savedFCallState)
 // mainFunc could be a kernel or a non-kernel function.
 // It also modifies pseudo_fcall/fret in to call/ret opcodes.
 // ToDo: may consider stitching only functions that may be called by this kernel/function
-static void Stitch_Compiled_Units(G4_Kernel* mainFunc, std::map<std::string, G4_Kernel*>& subFuncs)
+static void Stitch_Compiled_Units(G4_Kernel* mainFunc, std::map<std::string, G4_Kernel*>& subFuncs, std::map<G4_BB*, G4_INST*>& FCallRetMap)
 {
 
     // Append subFunctions to mainFunc
@@ -549,11 +457,13 @@ static void Stitch_Compiled_Units(G4_Kernel* mainFunc, std::map<std::string, G4_
     }
 
     mainFunc->fg.reassignBlockIDs();
+    mainFunc->fg.setPhysicalPredSucc(); // this is to locate the next BB after an fcall
 
+    auto builder = mainFunc->fg.builder;
     // Change fcall/fret to call/ret and setup caller/callee edges
     for (G4_BB* cur : mainFunc->fg)
     {
-        if (cur->size() > 0 && cur->isEndWithFCall())
+        if (cur->isEndWithFCall())
         {
             // Setup successor/predecessor
             G4_INST* fcall = cur->back();
@@ -565,6 +475,7 @@ static void Stitch_Compiled_Units(G4_Kernel* mainFunc, std::map<std::string, G4_
             if (!fcall->asCFInst()->isIndirectCall())
             {
                 // Setup caller/callee edges for direct call
+                // ToDo: remove this once SWSB is moved before stithcing, as we would not need to maintain CFG otherwise
                 std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
 
                 auto iter = subFuncs.find(funcName);
@@ -585,29 +496,34 @@ static void Stitch_Compiled_Units(G4_Kernel* mainFunc, std::map<std::string, G4_
                 G4_INST* calleeLabel = callee->fg.getEntryBB()->front();
                 ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
 
-                // ret/e-mask
-                fcall->setSrc(fcall->getSrc(0), 1);
-
-                // dst label
-                fcall->setSrc(calleeLabel->getSrc(0), 0);
-                fcall->asCFInst()->pseudoCallToCall();
+                auto callInst = builder->createInternalInst(fcall->getPredicate(), G4_call, nullptr, false, fcall->getExecSize(), fcall->getDst(),
+                    calleeLabel->getSrc(0), fcall->getSrc(0), fcall->getOption());
+                cur->pop_back();
+                cur->push_back(callInst);
             }
             else
             {
-                fcall->setSrc(fcall->getSrc(0), 1);
-                fcall->asCFInst()->pseudoCallToCall();
+                // src0 is dont care for indirect call as long it's not a label
+                auto callInst = builder->createInternalInst(fcall->getPredicate(), G4_call, nullptr, false, fcall->getExecSize(), fcall->getDst(),
+                    fcall->getSrc(0), fcall->getSrc(0), fcall->getOption());
+                cur->pop_back();
+                cur->push_back(callInst);
             }
+            FCallRetMap[cur] = fcall;
         }
     }
 
     // Change fret to ret
     for (G4_BB* cur : mainFunc->fg)
     {
-        if( cur->size() > 0 && cur->isEndWithFRet() )
+        if (cur->isEndWithFRet())
         {
             G4_INST* fret = cur->back();
-            fret->asCFInst()->pseudoRetToRet();
-            fret->setDest( mainFunc->fg.builder->createNullDst(Type_UD) );
+            auto retInst = builder->createInternalInst(fret->getPredicate(), G4_return, nullptr, false, fret->getExecSize(), builder->createNullDst(Type_UD),
+                fret->getSrc(0), fret->getSrc(1), fret->getOption());
+            cur->pop_back();
+            cur->push_back(retInst);
+            FCallRetMap[cur] = fret;
         }
     }
 
@@ -850,12 +766,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             }
         }
 
-        SavedFCallStates savedFCallState;
-        for(auto func : m_kernelsAndFunctions)
-        {
-            saveFCallState(func->getKernel(), savedFCallState);
-        }
-
         // Preparing for stitching some functions to other functions
         // There are two stiching policies:
         // 1. vISA_noStitchExternFunc == false
@@ -878,7 +788,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 continue;
             } else {
                 if (!m_options.getOption(vISA_noStitchExternFunc)) {
-                    // Policy 1: all fnunctions will stitch to kernels
+                    // Policy 1: all functions will stitch to kernels
                     subFunctions.push_back(func);
                     subFunctionsNameMap[std::string(func->getName())] = func->getKernel();
                 } else {
@@ -911,7 +821,9 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         {
             unsigned int genxBufferSize = 0;
 
-            Stitch_Compiled_Units(func->getKernel(), subFunctionsNameMap);
+            // store the BBs with FCall and FRet, which must terminate the BB
+            std::map<G4_BB*, G4_INST*> origFCallFRet;
+            Stitch_Compiled_Units(func->getKernel(), subFunctionsNameMap, origFCallFRet);
 
             void* genxBuffer = func->compilePostOptimize(genxBufferSize);
             func->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
@@ -921,7 +833,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 func->computeAndEmitDebugInfo(subFunctions);
             }
 
-            restoreFCallState(func->getKernel(), savedFCallState);
+            restoreFCallState(func->getKernel(), origFCallFRet);
 
 
         }
