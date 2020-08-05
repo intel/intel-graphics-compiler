@@ -37,6 +37,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
+#include <deque>
+#include <iostream>
 
 using namespace llvm;
 using namespace IGC;
@@ -114,10 +116,11 @@ bool EstimateFunctionSize::runOnModule(Module& Mod) {
 namespace {
 
     /// Associate each function with a partially expanded size and remaining
-    /// unexpanded function list.
+    /// unexpanded function list, etc.
     struct FunctionNode {
         FunctionNode(Function* F, std::size_t Size)
-            : F(F), Size(Size), Processed(false), CallingSubroutine(false) {}
+            : F(F), Size(Size), InitialSize(Size), Processed(0), KernelNum(0),
+              CallingSubroutine(false) {}
 
         Function* F;
 
@@ -125,12 +128,21 @@ namespace {
         /// leaf node.
         std::size_t Size;
 
-        /// \brief A flag to indicate whether this node has been fully expanded.
-        bool Processed;
+        /// \brief Initial size before expansion.
+        std::size_t InitialSize;
+
+        /// \brief A number to indicate whether this node has been processed in current traversal.
+        uint32_t Processed;
+
+        /// \brief A number to indicate whether this node belongs to the current kernel.
+        uint32_t KernelNum;
 
         /// \brief A flag to indicate whether this node has a subroutine call before
         /// expanding.
         bool CallingSubroutine;
+
+        /// \brief A flag to indicate whether this node should be always inlined.
+        bool ToBeInlined;
 
         /// \brief All functions directly called in this function.
         std::vector<Function*> CalleeList;
@@ -142,6 +154,7 @@ namespace {
         bool isLeaf() const { return CalleeList.empty(); }
 
         /// \brief Add a caller or callee.
+        // A caller may call the same callee multiple times, e.g. A->{B,B,B}: A->CalleeList(B,B,B), B->CallerList(A,A,A)
         void addCallee(Function* G) {
             IGC_ASSERT(!G->empty());
             CalleeList.push_back(G);
@@ -164,6 +177,12 @@ namespace {
                 else
                     ++I;
             }
+        }
+
+        /// \brief A single step to expand F: accumulate the size and DON't remove it
+        /// from the callee list.
+        void expandSpecial( FunctionNode* Node ) {
+            Size += Node->Size;
         }
 
 #if defined(_DEBUG)
@@ -304,8 +323,20 @@ void EstimateFunctionSize::checkSubroutine() {
     else if (EnableSubroutine) {
         std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
         std::size_t MaxSize = getMaxExpandedSize();
-        if (MaxSize <= Threshold && !HasRecursion)
+        if( MaxSize <= Threshold && !HasRecursion )
+        {
             EnableSubroutine = false;
+        } else if( MaxSize > Threshold) {
+            if( IGC_IS_FLAG_ENABLED( ControlKernelTotalSize ) &&
+                IGC_IS_FLAG_DISABLED( DisableAddingAlwaysAttribute ) )
+            {
+                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
+                {
+                    std::cout << "Max size " << MaxSize << " is larger than the threshold (to trim) " << Threshold << std::endl;
+                }
+                reduceKernelSize();
+            }
+        }
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
@@ -380,4 +411,297 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function* F) {
         }
     }
     return false;
+}
+
+/*
+For all F: F->ToBeInlined = True
+For each kernel K
+     kernelTotalSize = findKernelTotalSize(K)  // O(C) >= O(N*logN)
+     IF (FullInlinedKernelSize > T)
+    workList= non-tiny-functions sorted by size from large to small // O(N*logN)
+    AdjustInterval = sizeof(worklist) / 20; cnt = 0;
+    WHILE (worklist not empty) // O(N)
+        remove F from worklist
+        F->ToBeInlined = False
+        if (++cnt == AdjustInterval) {  kernelTotalSize = findKernelTotalSize(K); cnt = 0; }  // exact kernelTotalSize
+        else { kernelTotalSize -= (F->#callers ?1) * F->expdSize ; }
+        IF (kernelTotalSize <= T) break
+    ENDWHILE
+     Inline functions with ToBeInlined = True
+     Inline functions with single caller // done
+
+*/
+void EstimateFunctionSize::reduceKernelSize() {
+    auto MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
+    auto pMdUtils = MdWrapper->getMetaDataUtils();
+    std::vector<llvm::Function*> kernels;
+
+    uint32_t uniqKn = 0; // unique kernel number
+    uint32_t uniqProc = 0; // unique processed number (Processed already updated in EstimateFunctionSize::analyze()
+    // init unique kernel/processed numbers (UK/UP) and identify kernel functions
+    for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I) {
+        auto Node = (FunctionNode*)I->second;
+        Node->KernelNum = uniqKn;
+        Node->Processed = uniqProc;
+        if (Node->F->hasFnAttribute(llvm::Attribute::NoInline)) { /* user specified noinline */
+            Node->ToBeInlined = false;
+        } else {
+            Node->ToBeInlined = true;
+        }
+        if (isEntryFunc(pMdUtils, Node->F)) {
+            if( Node->Size > IGC_GET_FLAG_VALUE( KernelTotalSizeThreshold ) )
+            {
+                kernels.push_back( Node->F );
+                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
+                {
+                    std::cout << "Enqueue kernel " << Node->F->getName().str() << " expanded size=" << Node->Size << std::endl;
+                }
+            }
+            else
+            {
+                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
+                {
+                    std::cout << "Notenqueue kernel " << Node->F->getName().str() << " expanded size=" << Node->Size << std::endl;
+                }
+            }  
+        }
+    }
+
+    // Visit all call instructions and populate call graph (callers and calees in function nodes).
+    // The following are already done in EstimateFunctionSize::analyze(), before calling this function
+    // But Callee was destroyed in expand.  Redo here, but don't call addCaller() which is still available.
+    // Should only build CG once -- to be improved late.
+    for (auto& F : M->getFunctionList()) {
+        if (F.empty())
+            continue;
+
+        // FunctionNode* Node = get<FunctionNode>(&F);
+        // need to verify: F.users(), getParent()->getParent(), etc
+        for (auto U : F.users()) {
+            // Other users (like bitcast/store) are ignored.
+            if (auto* CI = dyn_cast<CallInst>(U)) {
+                // G calls F, or G --> F
+                Function* G = CI->getParent()->getParent();
+                get<FunctionNode>(G)->addCallee(&F);
+                // Node->addCaller(G);
+            }
+        }
+    }
+
+    // Iterate over kernels
+    for (auto Kernel : kernels) {
+
+        uniqKn++; // get a unique number for this kernel
+
+        if ( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 ) {
+            std::cout << "Trimming Kernel named " << Kernel->getName().str() << " expSize= " << get<FunctionNode>( Kernel )->Size << std::endl;
+        }
+
+        size_t KernelSize = findKernelTotalSize(Kernel, uniqKn, uniqProc );
+        if ( (IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize) & 0x2) != 0) {
+            std::cout << "findKernelTotalSize  " << KernelSize << std::endl;
+        }
+
+        if (KernelSize <= IGC_GET_FLAG_VALUE(KernelTotalSizeThreshold)) {
+            if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x2 ) != 0 )
+            {
+                std::cout << "Kernel " << Kernel->getName().str() << " ok size " << KernelSize << std::endl;
+            }
+            continue;
+        }
+
+        if ( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x2 ) != 0 ) {
+            std::cout << "Kernel size is bigger than the threshold " << std::endl;
+        }
+
+        std::vector<FunctionNode*> SortedKernelFunctions;
+
+        std::deque<FunctionNode*> Queue;
+        Queue.push_back(get<FunctionNode>(Kernel));
+
+        uniqProc++;
+        // top down traversal to find non-tiny-functions and sort them from large to small
+        while (!Queue.empty()) {
+            FunctionNode* Node = Queue.front();
+            Node->Size = Node->InitialSize;
+            Node->Processed = uniqProc;
+            Node->KernelNum = uniqKn;
+            if (Node->Size >= IGC_GET_FLAG_VALUE(ControlInlineTinySize) && /* not tiny function */
+                Node != get<FunctionNode>(Kernel) && /* not kernel itself */
+                !Node->F->hasFnAttribute( llvm::Attribute::AlwaysInline)) { /* not user specified alwaysInline */
+               SortedKernelFunctions.push_back(Node);
+            }
+            //std::cout << "Node       " << Node->F->getName().str() << std::endl;
+            Queue.pop_front();
+
+            for (auto Callee : Node->CalleeList) {
+                FunctionNode* CalleeNode = get<FunctionNode>(Callee);
+                if( CalleeNode->Processed != uniqProc )  // Not processed yet
+                {
+                    Queue.push_back(CalleeNode);
+                    CalleeNode->Processed = uniqProc; // prevent this callee from entering queue again
+                }
+            }
+        }
+        if( SortedKernelFunctions.empty() )
+        {
+            if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
+            {
+                std::cout << "Kernel " << Kernel->getName().str() << " size " << KernelSize << " has no sorted list " << std::endl;
+            }
+            continue; // all functions are tiny.
+        }
+
+
+        auto Cmp = [](const FunctionNode* LHS, const FunctionNode* RHS) {
+            return LHS->Size > RHS->Size;
+        };
+        std::sort(SortedKernelFunctions.begin(), SortedKernelFunctions.end(), Cmp);
+
+        if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
+        {
+            std::cout << "Kernel " << Kernel->getName().str() << " has " << SortedKernelFunctions.size() << " to consider for trimming" << std::endl;
+        }
+        uint32_t AdjustInterval = 1; //  SortedKernelFunctions.size() / 20;
+        uint32_t cnt = 0;
+
+        while (KernelSize > IGC_GET_FLAG_VALUE(KernelTotalSizeThreshold) && !SortedKernelFunctions.empty() ) {
+            FunctionNode* FunctionToRemove = SortedKernelFunctions.front();
+            SortedKernelFunctions.erase(SortedKernelFunctions.begin());
+
+            FunctionToRemove->ToBeInlined = false;
+            // TrimmingCandidates[FunctionToRemove->F] = true;
+            if ( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 ) {
+                std::cout << "FunctionToRemove " << FunctionToRemove->F->getName().str() << "Size "<< FunctionToRemove->Size << std::endl;
+            }
+
+            if( ++cnt == AdjustInterval )
+            {
+                cnt = 0;
+                KernelSize = findKernelTotalSize(Kernel, uniqKn, uniqProc);
+                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
+                {
+                    std::cout << "Precise size after trimming " << KernelSize << FunctionToRemove->F->getName().str() << std::endl;
+                }
+            } else {
+                KernelSize -= (FunctionToRemove->CallerList.size()- 1) * FunctionToRemove->Size; // #caller is underestimated
+                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
+                {
+                    std::cout << "Estimated trimming -=" << ( FunctionToRemove->CallerList.size() - 1 ) << " * " << FunctionToRemove->Size << std::endl;
+                }
+            }
+            if ( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 ) {
+                std::cout << "Kernel size is " << KernelSize << " after trimming " << FunctionToRemove->F->getName().str() << std::endl;
+            }
+        }
+        if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
+        {
+            size_t ks = findKernelTotalSize(Kernel, uniqKn, uniqProc);
+            std::cout << "Kernel " << Kernel->getName().str() << " final size " << KernelSize << " real size "<< ks << std::endl;
+        }
+    }
+}
+
+size_t EstimateFunctionSize::findKernelTotalSize(llvm::Function* Kernel, uint32_t UK, uint32_t &UP)
+{
+    FunctionNode* k = get<FunctionNode>( Kernel );
+    std::deque<FunctionNode*> TopDownQueue;
+    std::deque<FunctionNode*> LeafNodes;
+
+    UP++;  // unique process number for traversals of call graph
+    TopDownQueue.push_back(get<FunctionNode>(Kernel));
+    get<FunctionNode>( Kernel )->Processed = UP;
+    // top down traversal to find leafNodes.  Could be done once outside this routine and pass here
+    while (!TopDownQueue.empty()) {
+        FunctionNode* Node = TopDownQueue.front();
+        TopDownQueue.pop_front();
+        Node->Size = Node->InitialSize;
+        if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x8 ) != 0 )
+        {
+            std::cout << "tdqueue node " << Node->F->getName().str() << " size " << Node->Size << std::endl;
+        }
+        Node->Processed = UP; // processed
+        Node->KernelNum = UK;
+
+        for (auto Callee : Node->CalleeList) {
+            FunctionNode* CalleeNode = get<FunctionNode>(Callee);
+            if( CalleeNode->Processed != UP )  // Not processed yet
+            {
+                if( CalleeNode->isLeaf() ) {
+                    LeafNodes.push_back( CalleeNode );
+                    if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x8 ) != 0 )
+                    {
+                        std::cout << "found leaf node " << CalleeNode->F->getName().str() << " size " << CalleeNode->Size << std::endl;
+                    }
+                }
+                else
+                {
+                    TopDownQueue.push_back( CalleeNode );
+                }
+                CalleeNode->Processed = UP; // not to enter into queu again
+            }
+        }
+    }
+    IGC_ASSERT(!LeafNodes.empty());
+    if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x8 ) != 0 )
+    {
+        std::cout << "Kernel " << Kernel->getName().str() << " initial size " << k->Size << std::endl;
+    }
+    // Expand leaf nodes until all are expanded (the second list is empty).
+    UP++;
+    while (!LeafNodes.empty()) {
+
+        // Expand leaf nodes one by one.
+        FunctionNode* Node = LeafNodes.front();
+        LeafNodes.pop_front();
+        if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x8 ) != 0 )
+        {
+            std::cout << "Visit leaf node " << Node->F->getName().str() << " size " << Node->Size << std::endl;
+            if( Node->Processed == UP )
+                std::cout << "  already processed " << std::endl;
+        }
+
+        if( Node->Processed == UP )
+            continue; // already processed, e.g. the same caller might be enqueued multiple times -- CallerList duplication issue
+
+        Node->Processed = UP; // processed
+
+        if (Node->ToBeInlined) {
+            // Populate size to its Callers.
+            for (auto Caller : Node->CallerList) {
+                get<FunctionNode>(Caller)->expandSpecial(Node);
+                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x8 ) != 0 )
+                {
+                    std::cout << "Expand to caller " << Caller->getName().str() << " from callee " << Node->F->getName().str() << " new size " << get<FunctionNode>( Caller )->Size << std::endl;
+                }
+            }
+        }
+        else {
+            get<FunctionNode>(Kernel)->Size += Node->Size;
+        }
+
+        for (auto C : Node->CallerList) {
+            FunctionNode* caller = get<FunctionNode>(C);
+            if ( caller == k || caller->KernelNum != UK)
+                continue; // Skip kernel entry and callers outside this kernel
+            if( caller->Processed == UP )  // Already processed
+                continue;
+            bool is_new_leaf = true;
+            for (auto S : caller->CalleeList) {
+                if ( get<FunctionNode>(S)->Processed != UP) {
+                    is_new_leaf = false;
+                    break;
+                }
+            }
+            if (is_new_leaf) {
+                LeafNodes.push_back(caller);
+            }
+        }
+    }
+
+    return k->Size;
+}
+
+bool EstimateFunctionSize::isTrimmingCandidate( llvm::Function* F) {
+    return get<FunctionNode>(F)->ToBeInlined == false;
 }

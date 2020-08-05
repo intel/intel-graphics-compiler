@@ -337,6 +337,13 @@ DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeY,              8, "force group size alo
 DECLARE_IGC_REGKEY(bool, EnableThreadCombiningWithNoSLM, false, "Enable thread combining opt for shader without SLM", false)
 DECLARE_IGC_REGKEY(DWORD, SubroutineThreshold,          110000, "Minimal kernel size to enable subroutines", false)
 DECLARE_IGC_REGKEY(DWORD, SubroutineInlinerThreshold,   3000, "Subroutine inliner threshold", false)
+
+DECLARE_IGC_REGKEY(bool, ControlKernelTotalSize,        false, "Control kernel total size", false)
+DECLARE_IGC_REGKEY(DWORD, ControlInlineTinySize,        50, "Tiny function size for controlling kernel total size", false)
+DECLARE_IGC_REGKEY(DWORD, PrintControlKernelTotalSize,  0, "Print Control kernel total size", false)
+DECLARE_IGC_REGKEY(bool, AddNoInlineToTrimmedFunctions, false, "Tell late passes not to inline trimmed functions", false)
+DECLARE_IGC_REGKEY(DWORD, KernelTotalSizeThreshold,     50000, "Minimal kernel total size to enable subroutines", false)
+
 DECLARE_IGC_REGKEY(bool, EnableConstantPromotion,       true, "Enable global constant data to register promotion", false)
 DECLARE_IGC_REGKEY(bool, AllowNonLoopConstantPromotion, false, "Allows promotion for constants not in loop (e.g. used once)", false)
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionSize,        2, "Threshold in number of GRFs", false)

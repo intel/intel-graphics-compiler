@@ -63,10 +63,15 @@ namespace IGC {
 
         bool hasRecursion() const { return HasRecursion; }
 
+        bool isTrimmingCandidate( llvm::Function* F);
+
     private:
         void analyze();
         void checkSubroutine();
         void clear();
+
+        void reduceKernelSize();
+        size_t findKernelTotalSize(llvm::Function* Kernel, uint32_t uk, uint32_t &up);
 
         /// \brief Return the associated opaque data.
         template <typename T> T* get(llvm::Function* F) {
@@ -84,6 +89,8 @@ namespace IGC {
         /// Internal data structure for the analysis which is approximately an
         /// extended call graph.
         llvm::SmallDenseMap<llvm::Function*, void*> ECG;
+
+        // llvm::SmallDenseMap<llvm::Function*, bool> TrimmingCandidates;
     };
 
     llvm::ModulePass* createEstimateFunctionSizePass();

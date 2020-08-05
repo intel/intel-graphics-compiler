@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "ProcessFuncAttributes.h"
+#include "Compiler/CISACodeGen/EstimateFunctionSize.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
@@ -58,11 +59,12 @@ class ProcessFuncAttributes : public ModulePass
 {
 public:
     static char ID;
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
     {
         AU.setPreservesCFG();
         AU.addRequired<MetaDataUtilsWrapper>();
         AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<EstimateFunctionSize>();
     }
 
     ProcessFuncAttributes();
@@ -79,6 +81,7 @@ public:
 private:
     bool isGASPointer(Value* arg);
 
+    bool shouldForceToInline(const Function* F);
 };
 
 } // namespace
@@ -187,6 +190,27 @@ static DenseSet<Function*> collectMemPoolUsage(const Module &M)
     return FuncsToInline;
 }
 
+bool ProcessFuncAttributes::shouldForceToInline(const Function* F)
+{
+    for (auto& arg : F->args())
+    {
+        if (containsOpaque(arg.getType()))
+        {
+            return true;
+        }
+    }
+
+    // SPIR-V image functions don't contain opaque types for images,
+    // they use i64 values instead.
+    // We need to detect them based on function name.
+    if (F->getName().startswith(spv::kLLVMName::builtinPrefix) &&
+        F->getName().contains("Image")) {
+        return true;
+    }
+
+    return false;
+}
+
 bool ProcessFuncAttributes::runOnModule(Module& M)
 {
     MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
@@ -194,6 +218,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     ModuleMetaData *modMD = mduw.getModuleMetaData();
     auto MemPoolFuncs = collectMemPoolUsage(M);
     CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    EstimateFunctionSize& efs = getAnalysis<EstimateFunctionSize>();
 
     std::set<llvm::Function *> fastMathFunct;
     GlobalVariable *gv_fastMath = M.getGlobalVariable("__FastRelaxedMath", true);
@@ -363,6 +388,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             F->removeFnAttr(llvm::Attribute::NoInline);
             F->addFnAttr(llvm::Attribute::AlwaysInline);
+
             Changed = true;
             continue;
         }
@@ -395,6 +421,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
             {
                 bool shouldAlwaysInline = (MemPoolFuncs.count(F) != 0);
+
                 if (!shouldAlwaysInline)
                 {
                     for (auto& arg : F->args())
@@ -409,7 +436,24 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 }
                 if (shouldAlwaysInline)
                 {
-                    F->addFnAttr(llvm::Attribute::AlwaysInline);
+                    if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize) &&
+                        pCtx->m_enableSubroutine &&
+                        efs.isTrimmingCandidate(F))
+                    {
+                        if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
+                        {
+                            std::cout << "Trimming Candidate " << F->getName().str() << std::endl;
+                        }
+
+                        if (IGC_IS_FLAG_ENABLED(AddNoInlineToTrimmedFunctions))
+                        {
+                            F->addFnAttr(llvm::Attribute::NoInline);
+                        }
+                    }
+                    else
+                    {
+                        F->addFnAttr(llvm::Attribute::AlwaysInline);
+                    }
                 }
             }
         }
@@ -512,7 +556,7 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
     bool Changed = false;
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
-        Function *F = &(*I);
+        Function* F = &(*I);
         if (!F || F->isDeclaration()) continue;
 
         // add AlwaysInline for functions. It will be handle in optimization phase
