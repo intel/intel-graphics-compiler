@@ -939,11 +939,13 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk* cov_chunk, Instruction* load,
         unsigned addrSpace = (cast<PointerType>(addr_ptr->getType()))->getAddressSpace();
         if (addrSpace == ADDRESS_SPACE_CONSTANT)
         {
-            // no GEP, OCL path
-            IGC_ASSERT(isa<IntToPtrInst>(addr_ptr));
+            // OCL path
+            IGC_ASSERT(
+                isa<IntToPtrInst>(addr_ptr) ||
+                isa<BitCastInst>(addr_ptr)  ||
+                cast<GetElementPtrInst>(addr_ptr)->hasAllZeroIndices());
             Value* eac = cast<Instruction>(addr_ptr)->getOperand(0);
             // non-uniform, address must be non-uniform
-            IGC_ASSERT(isa<Instruction>(eac));
             // modify the address calculation if the chunk-start is changed
             if (eltid0 != cov_chunk->chunkStart)
             {
@@ -951,7 +953,8 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk* cov_chunk, Instruction* load,
             }
             // new IntToPtr and new load
             // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
-            Value* ptrcast = IntToPtrInst::Create(Instruction::IntToPtr, eac, PointerType::get(vty, addrSpace), "twoScalar", load0);
+            auto* ptrcast = CastInst::CreateBitOrPointerCast(
+                eac, PointerType::get(vty, addrSpace), "twoScalar", load0);
             m_TT->RegisterNewValueAndAssignID(ptrcast);
             wiAns->incUpdateDepend(ptrcast, WIAnalysis::RANDOM);
             cov_chunk->chunkIO = irBuilder->CreateLoad(ptrcast, false);
