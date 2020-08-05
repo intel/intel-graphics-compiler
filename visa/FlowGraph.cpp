@@ -794,7 +794,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 
     if (builder->getOption(vISA_DumpDotAll))
     {
-        pKernel->dumpDotFile("beforeRemoveRedundantLabels");
+        pKernel->dumpDotFile("afterCFGConstruction");
     }
 
     removeRedundantLabels();
@@ -833,10 +833,6 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         mergeFReturns();
     }
 
-    if (builder->getOption(vISA_DumpDotAll))
-    {
-        pKernel->dumpDotFile("beforeRemoveUnreachableBlocks");
-    }
     removeUnreachableBlocks();
 
     if (builder->getOption(vISA_DumpDotAll))
@@ -864,11 +860,6 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         if (builder->getOption(vISA_EnableStructurizer) &&
             !endWithGotoInLastBB())
         {
-            if (builder->getOption(vISA_DumpDotAll))
-            {
-                pKernel->dumpDotFile("before_doCFGStructurizer");
-            }
-
             doCFGStructurize(this);
 
             if (builder->getOption(vISA_DumpDotAll))
@@ -878,10 +869,6 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         }
         else
         {
-            if (builder->getOption(vISA_DumpDotAll))
-            {
-                pKernel->dumpDotFile("beforeProcessGoto");
-            }
             processGoto(hasSIMDCF);
             if (builder->getOption(vISA_DumpDotAll))
             {

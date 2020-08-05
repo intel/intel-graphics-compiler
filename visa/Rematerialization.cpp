@@ -1032,13 +1032,6 @@ namespace vISA
 
     void Rematerialization::run()
     {
-        //unsigned int before = getNumSamplers(kernel);
-
-        if (kernel.fg.builder->getOption(vISA_DumpDotAll))
-        {
-            kernel.dumpDotFile("before.remat");
-        }
-
         populateRefs();
 
         auto firstProgInst = kernel.fg.getEntryBB()->getFirstInst();

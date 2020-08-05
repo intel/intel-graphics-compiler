@@ -536,6 +536,7 @@ static void Stitch_Compiled_Units(G4_Kernel* mainFunc, std::map<std::string, G4_
             mainFunc->Declares.push_back(curDcl);
         }
     }
+    mainFunc->dumpDotFile("stitched");
 }
 
 

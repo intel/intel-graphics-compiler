@@ -461,9 +461,6 @@ void Optimizer::runPass(PassIndex Index)
 
     std::string Name = PI.Name;
 
-    if (builder.getOption(vISA_DumpDotAll))
-        kernel.dumpDotFile(("before." + Name).c_str());
-
     if (PI.Timer != TIMER_NUM_TIMERS)
         startTimer(PI.Timer);
 
