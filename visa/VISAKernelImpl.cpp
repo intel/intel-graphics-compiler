@@ -210,22 +210,23 @@ static void setDeclAlignment(G4_Declare* dcl, VISA_Align align)
     switch (align)
     {
     case ALIGN_BYTE: //no alignment;
-    case ALIGN_WORD: dcl->setSubRegAlign(Any); break; //word aligned;
-    case ALIGN_DWORD: dcl->setSubRegAlign(Even_Word); break;//dword aligned;
-    case ALIGN_QWORD: dcl->setSubRegAlign(Four_Word); break;//8 byte aligned;
-    case ALIGN_OWORD: dcl->setSubRegAlign(Eight_Word); break;//oword aligned;
-    case ALIGN_GRF: //grf aligned;
-        dcl->setSubRegAlign(Sixteen_Word);
+    case ALIGN_WORD: dcl->setSubRegAlign(Any); break;
+    case ALIGN_DWORD: dcl->setSubRegAlign(Even_Word); break;
+    case ALIGN_QWORD: dcl->setSubRegAlign(Four_Word); break;
+    case ALIGN_OWORD: dcl->setSubRegAlign(Eight_Word); break;
+    case ALIGN_GRF:
+        dcl->setSubRegAlign(GRFALIGN);
         break;
-    case ALIGN_2_GRF:  //2 grf aligned;
-        {
-            dcl->setSubRegAlign(Sixteen_Word); dcl->setEvenAlign();
-        }
+    case ALIGN_2_GRF:
+        dcl->setSubRegAlign(GRFALIGN);
+        dcl->setEvenAlign();
         break;
-    case ALIGN_HWORD: dcl->setSubRegAlign(Sixteen_Word); break; // grf aligned for 32 bytes GRF
+    case ALIGN_HWORD: dcl->setSubRegAlign(Sixteen_Word); break;
     case ALIGN_32WORD:
+        dcl->setSubRegAlign(GRFALIGN);
+        if (getGRFSize() == 32)
         {
-            dcl->setSubRegAlign(Sixteen_Word); dcl->setEvenAlign(); break;  //2 grf aligned for 32 bytes
+            dcl->setEvenAlign();
         }
         break;
     default: assert(false && "Incorrect vISA alignment"); break;

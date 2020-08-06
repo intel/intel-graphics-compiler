@@ -142,6 +142,7 @@ unsigned char getGRFSize()
 // 7 CNL
 // 8 ICL
 // 10 ICLLP
+// 12 TGLLP
 // Note that encoding is not linearized.
 int getGenxPlatformEncoding()
 {

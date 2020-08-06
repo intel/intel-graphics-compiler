@@ -5576,6 +5576,7 @@ void HWConformity::conformBB(G4_BB* bb)
             fixPackedHFConversions(i, bb);
         }
     }
+
 }
 
 //
@@ -6578,7 +6579,6 @@ void HWConformity::expandPlaneInst(INST_LIST_ITER it, G4_BB* bb)
     G4_INST* inst = *it;
     MUST_BE_TRUE(inst->opcode() == G4_pln, "expect a plane inst");
     MUST_BE_TRUE(inst->getSrc(0)->isSrcRegRegion(), "src0 must be source reg region");
-    MUST_BE_TRUE(inst->getExecSize() == 8 || inst->getExecSize() == 16, " only size 8 and 16 are supported");
 
     G4_DstRegRegion* dst = inst->getDst();
     if (dst->getRegAccess() == IndirGRF || dst->getHorzStride() > 1)
