@@ -348,11 +348,11 @@ protected:
     EMProducers.clear();
     LoweredEMValsMap.clear();
   }
+  DominatorTree *getDomTree(Function *F);
 private:
   bool isLatePass() { return FG != nullptr; }
   void emptyBranchingJoinBlocksInFunc(Function *F);
   void emptyBranchingJoinBlock(CallInst *Join);
-  DominatorTree *getDomTree(Function *F);
   bool hoistJoin(CallInst *Join);
   bool checkEMVal(SimpleValue EMVal);
   bool checkGoto(SimpleValue EMVal);
@@ -899,7 +899,6 @@ void GenXSimdCFConformance::handleNoCondEVCase(GenXSimdCFConformance::GotoJoinEV
       // before this branch, but it wasn't found. Skip it.
       return;
     }
-
     // We are turning unconditional branch into conditional one
     BasicBlock *Split = BasicBlock::Create(CondEV->getContext(), "goto_split", CondEV->getParent()->getParent(), Br->getSuccessor(0));
     BranchInst::Create(Br->getSuccessor(0), Split);
@@ -3592,20 +3591,60 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
   for (auto si = Selects.begin(), se = Selects.end(); si != se; ++si) {
     auto Sel = *si;
     Value *FalseVal = Sel->getFalseValue();
+
+    // This code removes redundancy introduced by
+    // select & phi lying within the same goto-join region
+    // and effectively duplicating the work.
+    bool LoadFalseVal = true;
+    Instruction *Goto = nullptr;
+    if (auto *ExtrCond = dyn_cast<ExtractValueInst>(Sel->getCondition()))
+      Goto = dyn_cast<Instruction>(ExtrCond->getAggregateOperand());
+    for (auto *U : Sel->users()) {
+      auto *SelPhiUser = dyn_cast<PHINode>(U);
+      if (!SelPhiUser)
+        continue;
+      DominatorTree *DomTree = getDomTree(Sel->getFunction());
+      // NOTE: we should expect exactly 2 incoming blocks,
+      // but sometimes we may have more due to both
+      // NoCondEV cases and critical edge splitting,
+      // and that should not affect correctness of the transformation
+      // assert(PhiUser->getNumIncomingValues() == 2);
+      if (auto *DomBB = DomTree->findNearestCommonDominator(
+              SelPhiUser->getIncomingBlock(0),
+              SelPhiUser->getIncomingBlock(1))) {
+        auto *Term = dyn_cast<BranchInst>(DomBB->getTerminator());
+        if (Term && Term->isConditional()) {
+          auto *ExtrCond = dyn_cast<ExtractValueInst>(Term->getCondition());
+          if (ExtrCond && ExtrCond->getAggregateOperand() == Goto) {
+            LoadFalseVal = false;
+            break;
+          }
+        }
+      }
+    }
+
     if (auto C = dyn_cast<Constant>(FalseVal)) {
       if (!isa<UndefValue>(C)) {
-        // The false value needs loading if it is a constant other than
-        // undef.
-        SmallVector<Instruction *, 4> AddedInstructions;
-        FalseVal = ConstantLoader(C, nullptr, &AddedInstructions, Subtarget)
-                       .loadBig(Sel);
-        // ConstantLoader generated at least one instruction.  Ensure that
-        // each one has debug loc and category.
-        for (auto aii = AddedInstructions.begin(), aie = AddedInstructions.end();
-            aii != aie; ++aii) {
-          Instruction *I = *aii;
-          I->setDebugLoc(Sel->getDebugLoc());
-        }
+        if (LoadFalseVal) {
+          // The false value needs loading if it is a constant other than
+          // undef.
+          SmallVector<Instruction *, 4> AddedInstructions;
+          FalseVal = ConstantLoader(C, nullptr, &AddedInstructions, Subtarget)
+                         .loadBig(Sel);
+          // ConstantLoader generated at least one instruction.  Ensure that
+          // each one has debug loc and category.
+          for (auto aii = AddedInstructions.begin(),
+                    aie = AddedInstructions.end();
+               aii != aie; ++aii) {
+            Instruction *I = *aii;
+            I->setDebugLoc(Sel->getDebugLoc());
+          }
+        } else
+          // As mentioned above, we're trying to eliminate
+          // redundancy with select+phi in a goto/join region.
+          // So we convert select to a wrr with an undef source
+          // for it to effectively become a simple mov
+          FalseVal = UndefValue::get(C->getType());
       }
     }
     Region R(Sel);
