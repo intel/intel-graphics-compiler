@@ -109,7 +109,7 @@ public:
         const  SSource source[2],
         const SSource& bitSource,
         const DstModifier& modifier);
-    void emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, llvm::CmpInst* cmp);
+    void emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, llvm::CmpInst* cmp, int aluOprdNum);
 
     void EmitAluIntrinsic(llvm::CallInst* I, const SSource source[2], const DstModifier& modifier);
     void EmitSimpleAlu(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier);
