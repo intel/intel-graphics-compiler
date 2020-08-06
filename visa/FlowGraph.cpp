@@ -4734,7 +4734,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     sendInst->setLocation(movInst->getLocation());
     instList.push_back(sendInst);
 
-    if (builder->getHasNullReturnSampler())
+    if (builder->getHasNullReturnSampler() && VISA_WA_CHECK(builder->getPWaTable(), Wa_1607871015))
     {
         addSamplerFlushBeforeEOT();
     }
