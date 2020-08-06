@@ -105,6 +105,7 @@ namespace IGC
 
         void matchDp4a(llvm::BinaryOperator& I);
 
+        template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
     private:
         bool psHasSideEffect;
     };
@@ -184,7 +185,6 @@ namespace IGC
         void visitFNeg(llvm::UnaryOperator& I);
 #endif
 
-        template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
         void createBitcastExtractInsertPattern(llvm::BinaryOperator& I,
             llvm::Value* Op1, llvm::Value* Op2, unsigned extractNum1, unsigned extractNum2);
     };

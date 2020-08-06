@@ -1119,6 +1119,25 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
     //    d = a + 8
 
     CodeGenContext* pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    // Before WA if() as it's validated behavior.
+    if (I.getType()->isIntegerTy() && I.getOpcode() == Instruction::Or)
+    {
+        unsigned int bitWidth = cast<IntegerType>(I.getType())->getBitWidth();
+        switch (bitWidth)
+        {
+        case 16:
+            matchReverse<unsigned short>(I);
+            break;
+        case 32:
+            matchReverse<unsigned int>(I);
+            break;
+        case 64:
+            matchReverse<unsigned long long>(I);
+            break;
+        }
+    }
+
     // WA for remaining bug in custom pass
     if (pContext->m_DriverInfo.WADisableCustomPass())
         return;
@@ -1832,7 +1851,7 @@ into:
 And similarly for patterns reversing 16 and 64 bit type values.
 */
 template <typename MaskType>
-void GenSpecificPattern::matchReverse(BinaryOperator& I)
+void CustomSafeOptPass::matchReverse(BinaryOperator& I)
 {
     using namespace llvm::PatternMatch;
     IGC_ASSERT(I.getType()->isIntegerTy());
@@ -1999,23 +2018,6 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
     if (I.getOpcode() == Instruction::Or)
     {
         using namespace llvm::PatternMatch;
-
-        if (I.getType()->isIntegerTy())
-        {
-            unsigned int bitWidth = cast<IntegerType>(I.getType())->getBitWidth();
-            switch (bitWidth)
-            {
-            case 16:
-                matchReverse<unsigned short>(I);
-                break;
-            case 32:
-                matchReverse<unsigned int>(I);
-                break;
-            case 64:
-                matchReverse<unsigned long long>(I);
-                break;
-            }
-        }
 
         /*
         llvm changes ADD to OR when possible, and this optimization changes it back and allow 2 ADDs to merge.
