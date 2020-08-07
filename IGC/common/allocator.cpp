@@ -282,7 +282,7 @@ inline void* CAllocator::Malloc(size_t size)
     if(ptr)
     {
         // does not introduce dependencies, is into memset by compiler
-        for(unsigned int t = 0; t<size; ++t)
+        for(uint64_t t = 0; t<size; ++t)
             static_cast< unsigned char* >(ptr)[t] = 0xcc;
     }
 #endif
