@@ -666,6 +666,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         if (KeepGEPs)
         {
             mpm.add(createGEPLoweringPass());
+            mpm.add(llvm::createEarlyCSEPass());
         }
         // Run dead code elimination pass right before Emu64OpsPass,
         // as legalization passes do not always clear unused (operating
