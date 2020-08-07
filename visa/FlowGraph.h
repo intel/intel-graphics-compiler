@@ -362,6 +362,9 @@ public:
     bool empty() const { return instList.empty(); }
     G4_INST* front() { return instList.front(); }
     G4_INST* back() { return instList.back(); }
+    // splice functions below expect caller to have correctly set CISA offset
+    // in instructions to be spliced. CISA offsets must be maintained to
+    // preserve debug info links.
     void splice(INST_LIST::iterator pos, INST_LIST& other)
     {
         instList.splice(pos, other);

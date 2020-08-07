@@ -108,6 +108,18 @@ static const unsigned SCRATCH_MSG_DESC_BLOCK_SIZE            = 12;
 
 extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
 
+static void splice(G4_BB* bb, INST_LIST_ITER iter, INST_LIST& instList, unsigned int CISAOff)
+{
+    // Update CISA offset of all instructions in instList before splicing
+    // operation.
+    for (auto inst : instList)
+    {
+        inst->setCISAOff(CISAOff);
+    }
+
+    bb->splice(iter, instList);
+}
+
 // spill/fill temps are always GRF-aligned, and are also even/odd aligned
 // following the original declare's alignment
 static void setNewDclAlignment(GlobalRA& gra, G4_Declare* newDcl, bool evenAlign)
@@ -3193,7 +3205,7 @@ SpillManagerGRF::insertSpillRangeCode (
                 spilledRegion->getRegOff());
 
             INST_LIST::iterator insertPos = sendOutIter;
-            bb->splice(insertPos, builder_->instList);
+            splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
         }
 
         sendOutSpilledRegVarPortions (
@@ -3332,7 +3344,7 @@ SpillManagerGRF::insertSpillRangeCode (
     INST_LIST::iterator nextIter = spilledInstIter;
     ++nextIter;
 
-    bb->splice (insertPos, builder_->instList);
+    splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
 
     if (optimizeSplitLLR && spillSendInst && spillSendInst->isSplitSend())
     {
@@ -3344,7 +3356,7 @@ SpillManagerGRF::insertSpillRangeCode (
     }
     else
     {
-        bb->splice(spilledInstIter, builder_->instList);
+        splice(bb, spilledInstIter, builder_->instList, curInst->getCISAOff());
     }
 
     return nextIter;
@@ -3403,7 +3415,7 @@ SpillManagerGRF::insertFillGRFRangeCode (
     replaceFilledRange (fillRangeDcl, filledRegion, *filledInstIter);
     INST_LIST::iterator insertPos = filledInstIter;
 
-    bb->splice (insertPos, builder_->instList);
+    splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
     if (optimizeSplitLLR)
     {
         INST_LIST::iterator nextIter = filledInstIter;
@@ -3459,7 +3471,7 @@ SpillManagerGRF::insertSendFillRangeCode (
     replaceFilledRange(fillGRFRangeDcl, filledRegion, *filledInstIter);
     INST_LIST::iterator insertPos = filledInstIter;
 
-    bb->splice(insertPos, builder_->instList);
+    splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
 
     // Return the next instruction
 
@@ -3585,7 +3597,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(G4_Kernel* kernel, G4_BB* 
                         fillGRFRangeDcl, mRangeDcl, 0,
                         temp->getNumRows(), 0);
 
-                    bb->splice(inst_it, builder_->instList);
+                    splice(bb, inst_it, builder_->instList, curInst->getCISAOff());
 
                     if (spill)
                     {
@@ -3593,7 +3605,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(G4_Kernel* kernel, G4_BB* 
                             temp, mRangeDcl, 0, temp->getNumRows(),
                             0);
 
-                        bb->splice(next_inst_it, builder_->instList);
+                        splice(bb, next_inst_it, builder_->instList, curInst->getCISAOff());
                     }
                 }
                 else
@@ -4112,7 +4124,6 @@ static G4_INST* createSpillFillAddr(IR_Builder& builder, G4_Declare* addr, G4_De
         return builder.createMov(1, dst, imm, InstOpt_WriteEnable, true);
     }
 };
-
 
 
 void GlobalRA::expandSpillNonStackcall(uint32_t& numRows, uint32_t& offset, short& rowOffset, G4_SrcRegRegion* header, G4_SrcRegRegion* payload, G4_BB* bb, INST_LIST_ITER& instIt)
