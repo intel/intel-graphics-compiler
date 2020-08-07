@@ -159,6 +159,7 @@ SProgramOutput* CShader::ProgramOutput()
 
 void CShader::EOTURBWrite()
 {
+
     CEncoder& encoder = GetEncoder();
     uint messageLength = 3;
 
@@ -192,41 +193,29 @@ void CShader::EOTURBWrite()
     encoder.Push();
 }
 
-void CShader::EOTRenderTarget()
+void CShader::EOTRenderTarget(CVariable* r1)
 {
-    // dummy render target to do EOT and free release the pixel scoreboard
-    EU_GEN6_DATA_PORT_RENDER_TARGET_WRITE_CONTROL msgControl =
-        (m_SIMDSize == SIMDMode::SIMD8)
-        ? EU_GEN6_DATA_PORT_RENDER_TARGET_WRITE_CONTROL_SIMD8_SINGLE_SOURCE_LOW
-        : EU_GEN6_DATA_PORT_RENDER_TARGET_WRITE_CONTROL_SIMD16_SINGLE_SOURCE;
-
-    bool perCoarse = false;
-    if (GetShaderType() == ShaderType::PIXEL_SHADER)
-    {
-        perCoarse = (static_cast<CPixelShader*>(this)->GetPhase() != PSPHASE_LEGACY);
-    }
-
-    const uint Desc = PixelDataPort(
-        false,
-        m_SIMDSize == SIMDMode::SIMD8 ? 4 : 8,
-        0,
-        false,
-        perCoarse,
-        false,
-        true, // scoreboard release
-        false,
-        msgControl,
-        m_pBtiLayout->GetNullSurfaceIdx());
-
-    // we don't want to update the usage mask for null surface, so set the buffer type to be unknown.
-    this->SetBindingTableEntryCountAndBitmap(true, BUFFER_TYPE_UNKNOWN, 0, m_pBtiLayout->GetNullSurfaceIdx());
-
-    constexpr uint nullRenderTargetBit = BIT(20);
-    constexpr uint exDesc = EU_MESSAGE_TARGET_DATA_PORT_WRITE | cMessageExtendedDescriptorEOTBit | nullRenderTargetBit;
-
-    CVariable* payload = GetNewVariable(
-        4 * numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, "EOTPayload");
-    encoder.SendC(nullptr, payload, exDesc, ImmToVariable(Desc, ISA_TYPE_UD));
+    CVariable* src[4] = { nullptr, nullptr, nullptr, nullptr };
+    bool isUndefined[4] = { true, true, true, true };
+    CVariable* const nullSurfaceBti = ImmToVariable(m_pBtiLayout->GetNullSurfaceIdx(), ISA_TYPE_D);
+    CVariable* const blendStateIndex = ImmToVariable(0, ISA_TYPE_D);
+    SetBindingTableEntryCountAndBitmap(true, BUFFER_TYPE_UNKNOWN, 0, m_pBtiLayout->GetNullSurfaceIdx());
+    encoder.RenderTargetWrite(
+        src,
+        isUndefined,
+        true,  // lastRenderTarget,
+        false, // perSample,
+        false, // coarseMode,
+        false, // isHeaderMaskFromCe0,
+        nullSurfaceBti,
+        blendStateIndex,
+        nullptr, // source0Alpha,
+        nullptr, // oMaskOpnd,
+        nullptr, // outputDepthOpnd,
+        nullptr, // stencilOpnd,
+        nullptr, // cpscounter,
+        nullptr, // sampleIndex,
+        r1);
     encoder.Push();
 }
 
