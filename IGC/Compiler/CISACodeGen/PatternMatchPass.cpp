@@ -3432,12 +3432,11 @@ namespace IGC
             Pattern* pattern;
             Instruction* alu;
             CmpInst* cmp;
-            int aluOprdNum = 0;  // default : alu is for src0
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
                 IGC_ASSERT(modifier.flag == nullptr);
                 IGC_ASSERT(modifier.sat == false);
-                pass->emitAluConditionMod(pattern, alu, cmp, aluOprdNum);
+                pass->emitAluConditionMod(pattern, alu, cmp);
             }
         };
         bool found = false;
@@ -3453,7 +3452,6 @@ namespace IGC
                     IGC_ASSERT_MESSAGE(pattern->pattern, "Failed to match pattern");
                     pattern->alu = alu;
                     pattern->cmp = &I;
-                    pattern->aluOprdNum = i;
                     AddPattern(pattern);
                     found = true;
                     break;

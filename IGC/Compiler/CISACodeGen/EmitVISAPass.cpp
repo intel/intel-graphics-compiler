@@ -13888,7 +13888,7 @@ void EmitPass::CmpBoolOp(llvm::BinaryOperator* inst,
     EmitSimpleAlu(inst, m_destination, m_destination, boolOpSource);
 }
 
-void EmitPass::emitAluConditionMod(Pattern* aluPattern, Instruction* alu, CmpInst* cmp, int aluOprdNum)
+void EmitPass::emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, llvm::CmpInst* cmp)
 {
     CVariable* temp = m_currShader->GetNewVector(alu);
     CVariable* dst = m_destination;
@@ -13902,14 +13902,7 @@ void EmitPass::emitAluConditionMod(Pattern* aluPattern, Instruction* alu, CmpIns
     {
         temp = m_currShader->BitCast(temp, GetUnsignedType(temp->GetType()));
     }
-    if (aluOprdNum == 0)
-    {
-        m_encoder->Cmp(predicate, dst, temp, m_currShader->ImmToVariable(0, temp->GetType()));
-    }
-    else
-    {
-        m_encoder->Cmp(predicate, dst, m_currShader->ImmToVariable(0, temp->GetType()), temp);
-    }
+    m_encoder->Cmp(predicate, dst, temp, m_currShader->ImmToVariable(0, temp->GetType()));
     m_encoder->Push();
     m_destination = dst;
 }
