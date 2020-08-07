@@ -4788,15 +4788,13 @@ void Augmentation::buildInterferenceIncompatibleMask()
 
 void Augmentation::augmentIntfGraph()
 {
+    if (!(kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
+        !liveAnalysis.livenessClass(G4_ADDRESS) &&
+        kernel.fg.size() > 2))
     {
-        if (!(kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
-            !liveAnalysis.livenessClass(G4_ADDRESS) &&
-            kernel.fg.size() > 2))
+        if (!kernel.getOption(vISA_DumpRegChart))
         {
-            if (!kernel.getOption(vISA_DumpRegChart))
-            {
-                return;
-            }
+            return;
         }
     }
 
@@ -9204,7 +9202,6 @@ bool canDoLRA(G4_Kernel& kernel)
 {
     bool ret = true;
 
-
     return ret;
 }
 
@@ -9647,8 +9644,6 @@ int GlobalRA::coloringRegAlloc()
                     computePhyReg();
                     verifyAugmentation->verify();
                 }
-
-
                 break; // done
             }
         }

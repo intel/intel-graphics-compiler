@@ -554,7 +554,6 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
     recordFinalizerInfo();
 
-
     return binary;
 }
 
@@ -569,7 +568,6 @@ void VISAKernelImpl::recordFinalizerInfo()
 
 int VISAKernelImpl::InitializeFastPath()
 {
-
     m_kernelMem = new vISA::Mem_Manager(4096);
 
     m_kernel = new (m_mem) G4_Kernel(

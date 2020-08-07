@@ -317,6 +317,7 @@ void G4Verifier::verifySend(G4_INST* inst)
                 }
                 return src->getLinearizedStart() >= EOTStart;
             };
+
             if (kernel.getNumRegTotal() >= 128)
             {
                 MUST_BE_TRUE(checkEOTSrc(src0), "src0 for EOT send is not in r112-r127");
