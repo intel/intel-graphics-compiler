@@ -2379,16 +2379,23 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, std::vector<VISAVaria
                 }
                 else
                 {
-                    uint16_t grfSize = (uint16_t)VISAMod->m_pShader->getGRFSize();
-                    uint16_t varSizeInBits = loc->IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)var.getBasicSize(DD);
-                    uint16_t varSizeInReg = (uint16_t)(loc->IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
-                    uint16_t numOfRegs = ((varSizeInReg * (uint16_t)DD->simdWidth) > (grfSize * 8)) ?
-                        ((varSizeInReg * (uint16_t)DD->simdWidth) / (grfSize * 8)) : 1;
-
-                    for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
+                    if (loc->IsVectorized() == false)
                     {
-                        addScratchLocation(Block, &varInfo, vectorElem * numOfRegs * grfSize);
-                        addSimdLane(Block, var, loc, &varInfo, 0, false, !firstHalf); // Emit SIMD lane for spill (unpacked)
+                        addScratchLocation(Block, &varInfo, 0);
+                    }
+                    else
+                    {
+                        uint16_t grfSize = (uint16_t)VISAMod->m_pShader->getGRFSize();
+                        uint16_t varSizeInBits = loc->IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)var.getBasicSize(DD);
+                        uint16_t varSizeInReg = (uint16_t)(loc->IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
+                        uint16_t numOfRegs = ((varSizeInReg * (uint16_t)DD->simdWidth) > (grfSize * 8)) ?
+                            ((varSizeInReg * (uint16_t)DD->simdWidth) / (grfSize * 8)) : 1;
+
+                        for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
+                        {
+                            addScratchLocation(Block, &varInfo, vectorElem * numOfRegs * grfSize);
+                            addSimdLane(Block, var, loc, &varInfo, 0, false, !firstHalf); // Emit SIMD lane for spill (unpacked)
+                        }
                     }
                 }
             }

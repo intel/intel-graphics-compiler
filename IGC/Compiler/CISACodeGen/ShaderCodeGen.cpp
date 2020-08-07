@@ -75,6 +75,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ComputeShaderLowering.hpp"
 #include "Compiler/CISACodeGen/CrossPhaseConstProp.hpp"
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
@@ -1346,6 +1347,13 @@ void OptimizeIR(CodeGenContext* const pContext)
 
     // Remove inline attribute if subroutine is enabled.
     purgeInlineAttribute(pContext, NoOpt);
+
+    if (pContext->getModuleMetaData()->compOpt.DashGSpecified)
+    {
+        IGCPassManager mpm(pContext, "CleanImplicitId");
+        IF_DEBUG_INFO(mpm.add(new CleanImplicitIds()));
+        mpm.run(*pContext->getModule());
+    }
     if (NoOpt)
     {
         return;

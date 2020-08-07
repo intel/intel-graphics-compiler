@@ -50,7 +50,7 @@ namespace IGC
     /// @brief Inserts debugging information for OpenCL debugging.
     class ImplicitGlobalId : public llvm::ModulePass
     {
-        enum GlobalOrLocal
+        enum class GlobalOrLocal
         {
             Global = 0,
             Local = 1,
@@ -90,9 +90,10 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& F);
 
         /// @brief execute pass on given basic block
-        /// @param alloca0/1/2 are allocas for each dimension
         /// @param insertBefore Instruction to insert other instructions before
-        void runOnBasicBlock(llvm::AllocaInst* alloca0, llvm::AllocaInst* alloca1, llvm::AllocaInst* alloca2, llvm::Instruction* insertBefore, GlobalOrLocal wi);
+        /// @param wi chooses the particular pre-defined variable to emit
+        /// @returns vector of values. Vector size is equal to 3, which is number of dimensions.
+        std::vector<llvm::Value*> runOnBasicBlock(llvm::Instruction* insertBefore, GlobalOrLocal wi);
 
         /// @brief Adds instructions to the beginning of the given function to compute the
         ///  global/local IDs for 3 dimensions. Fills in the FunctionContext.
@@ -129,4 +130,29 @@ namespace IGC
         unsigned int m_uiSizeT;
     };
 
+    class CleanImplicitIds : public llvm::ModulePass
+    {
+    public:
+        static char ID;
+
+        /// @brief C'tor
+        CleanImplicitIds();
+
+        /// @brief D'tor
+        ~CleanImplicitIds() {}
+
+        /// @brief Provides name of pass
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "CleanImplicitIds";
+        }
+
+        /// @brief execute pass on given module
+        /// @param M module to update
+        /// @returns True if module was modified
+        virtual bool runOnModule(llvm::Module& M) override;
+
+    private:
+        bool processFunc(llvm::Function& F);
+    };
 } // namespace IGC

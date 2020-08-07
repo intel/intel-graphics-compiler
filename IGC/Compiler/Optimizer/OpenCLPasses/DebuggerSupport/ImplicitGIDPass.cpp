@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
+#include "common/igc_regkeys.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -48,6 +49,11 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(ImplicitGlobalId, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ImplicitGlobalId::ID = 0;
+
+IGC_INITIALIZE_PASS_BEGIN(CleanImplicitIds, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CleanImplicitIds, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+char CleanImplicitIds::ID = 0;
 
 ImplicitGlobalId::ImplicitGlobalId() : ModulePass(ID)
 {
@@ -97,8 +103,7 @@ bool ImplicitGlobalId::runOnFunction(Function& F)
     return true;
 }
 
-void ImplicitGlobalId::runOnBasicBlock(llvm::AllocaInst* alloca0, llvm::AllocaInst* alloca1, llvm::AllocaInst* alloca2,
-    llvm::Instruction* insertBefore, GlobalOrLocal wi)
+std::vector<llvm::Value*> ImplicitGlobalId::runOnBasicBlock(llvm::Instruction* insertBefore, GlobalOrLocal wi)
 {
     IRBuilder<> B(insertBefore);
     // **********************************************************************
@@ -109,24 +114,23 @@ void ImplicitGlobalId::runOnBasicBlock(llvm::AllocaInst* alloca0, llvm::AllocaIn
 
     Value* id_at_dim = CreateGetId(B, wi);
 
-    std::string name = "gid";
+    std::string name = "__ocl_dbg_gid";
     if (wi == GlobalOrLocal::Local)
     {
-        name = "lid";
+        name = "__ocl_dbg_lid";
     }
     else if (wi == GlobalOrLocal::WorkItem)
     {
-        name = "grid";
+        name = "__ocl_dbg_grid";
     }
 
     const uint64_t dims[] = { 0, 1, 2 };
-    auto val0 = B.CreateExtractElement(id_at_dim, dims[0], Twine(name) + Twine(dims[0]));
-    auto val1 = B.CreateExtractElement(id_at_dim, dims[1], Twine(name) + Twine(dims[1]));
-    auto val2 = B.CreateExtractElement(id_at_dim, dims[2], Twine(name) + Twine(dims[2]));
+    std::vector<llvm::Value*> vec;
+    vec.push_back(B.CreateExtractElement(id_at_dim, dims[0], Twine(name) + Twine(dims[0])));
+    vec.push_back(B.CreateExtractElement(id_at_dim, dims[1], Twine(name) + Twine(dims[1])));
+    vec.push_back(B.CreateExtractElement(id_at_dim, dims[2], Twine(name) + Twine(dims[2])));
 
-    B.CreateStore(val0, alloca0);
-    B.CreateStore(val1, alloca1);
-    B.CreateStore(val2, alloca2);
+    return vec;
 }
 
 void ImplicitGlobalId::insertComputeIds(Function* pFunc)
@@ -147,54 +151,43 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
         return;
 
     llvm::DIType* gid_di_type = getOrCreateIntDIType();
-    AllocaInst* gid_alloca[3];
     SmallVector<uint64_t, 1> NewDIExpr;
+
+    auto gidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Global);
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the gids
         //
-        gid_alloca[i] = new AllocaInst(
-            IntegerType::getIntNTy(*m_pContext, m_uiSizeT), 0, Twine("__ocl_dbg_gid") + Twine(i), insert_before);
-
-        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, gid_alloca[i]->getName(), nullptr,
+        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, gidVals[i]->getName(), nullptr,
             1, gid_di_type);
 
-        m_pDIB->insertDeclare(gid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
+        m_pDIB->insertDbgValueIntrinsic(gidVals[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
     }
-    runOnBasicBlock(gid_alloca[0], gid_alloca[1], gid_alloca[2], insert_before, GlobalOrLocal::Global);
 
     // Similar code for local id
     llvm::DIType* lid_di_type = getOrCreateIntDIType();
-    AllocaInst* lid_alloca[3];
+    auto lidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Local);
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the gids
         //
-        lid_alloca[i] = new AllocaInst(
-            IntegerType::getIntNTy(*m_pContext, m_uiSizeT), 0, Twine("__ocl_dbg_lid") + Twine(i), insert_before);
-
-        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, lid_alloca[i]->getName(), nullptr,
+        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, lidVals[i]->getName(), nullptr,
             1, lid_di_type);
 
-        m_pDIB->insertDeclare(lid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
+        m_pDIB->insertDbgValueIntrinsic(lidVals[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
     }
-    runOnBasicBlock(lid_alloca[0], lid_alloca[1], lid_alloca[2], insert_before, GlobalOrLocal::Local);
 
     // Similar code for work item id
     llvm::DIType* grid_di_type = getOrCreateIntDIType();
-    AllocaInst* grid_alloca[3];
+    auto gridVals = runOnBasicBlock(insert_before, GlobalOrLocal::WorkItem);
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the work item ids
         //
-        grid_alloca[i] = new AllocaInst(
-            IntegerType::getIntNTy(*m_pContext, m_uiSizeT), 0, Twine("__ocl_dbg_grid") + Twine(i), insert_before);
+        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, gridVals[i]->getName(), nullptr, 1, grid_di_type);
 
-        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, grid_alloca[i]->getName(), nullptr, 1, grid_di_type);
-
-        m_pDIB->insertDeclare(grid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
+        m_pDIB->insertDbgValueIntrinsic(gridVals[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
     }
-    runOnBasicBlock(grid_alloca[0], grid_alloca[1], grid_alloca[2], insert_before, GlobalOrLocal::WorkItem);
 }
 
 bool ImplicitGlobalId::getBBScope(const BasicBlock& BB, llvm::DIScope*& scope_out, DebugLoc& loc_out)
@@ -278,4 +271,135 @@ Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
     // Create call instruction
     std::vector<Value*> args;
     return B.CreateCall(getFunc, args, nameCall);
+}
+
+CleanImplicitIds::CleanImplicitIds() : ModulePass(ID)
+{
+}
+
+bool CleanImplicitIds::runOnModule(Module& M)
+{
+    // For every function, check whether redundant pre-defined variables
+    // have been emitted. If yes, erase them from program. Each inlined
+    // function should refer to kernel's register holding pre-defined
+    // variable.
+
+    bool change = false;
+    for (auto& F : M)
+    {
+        if(!F.isDeclaration())
+            change |= processFunc(F);
+    }
+
+    return change;
+}
+
+bool CleanImplicitIds::processFunc(Function& F)
+{
+    // Each function gets its own copy of pre-defined vairables - __ocl_*.
+    // This is done before inlining. These pre-defined variables are
+    // immutable. Post inlining, it means there would be as many instances
+    // of these variables (and corresponding computation) as are number of
+    // inlined callees. This is redundant. This function cleans up all
+    // redundant copies of pre-defined variables and their associated
+    // computation.
+    SmallVector<std::pair<std::string, llvm::DbgValueInst*>, 9> PredefinedInsts;
+    SmallVector<DbgValueInst*, 10> ToErase;
+    auto DIB = std::unique_ptr<DIBuilder>(new DIBuilder(*F.getParent()));
+
+    bool Changed = false;
+
+    auto FindPredefinedInst = [](auto& PredefinedInsts, std::string& name)
+    {
+        for (auto& Item : PredefinedInsts)
+        {
+            if (Item.first == name)
+                return Item.second;
+        }
+        return (llvm::DbgValueInst*)nullptr;
+    };
+
+    for (auto& BB : F)
+    {
+        for (auto& I : BB)
+        {
+            if (auto DbgVal = dyn_cast_or_null<DbgValueInst>(&I))
+            {
+                auto Name = DbgVal->getVariable()->getName().str();
+                if (DebugInfoUtils::IsSpecialDebugVariable(Name))
+                {
+                    auto PredefVar = FindPredefinedInst(PredefinedInsts, Name);
+                    if (PredefVar == nullptr)
+                    {
+                        PredefinedInsts.push_back(std::make_pair(Name, DbgVal));
+                    }
+                    else
+                    {
+                        // dbg.value from inlined function
+                        DIB->insertDbgValueIntrinsic(PredefVar->getValue(), DbgVal->getVariable(),
+                            DbgVal->getExpression(), DbgVal->getDebugLoc(), &I);
+                        ToErase.push_back(DbgVal);
+                        Changed = true;
+                    }
+                }
+            }
+        }
+    }
+
+    for (auto DbgVal : ToErase)
+    {
+        auto OldVar = DbgVal->getValue();
+
+        SmallVector<Instruction*, 5> WorkList;
+        WorkList.push_back(cast<Instruction>(OldVar));
+
+        DbgVal->eraseFromParent();
+        while (WorkList.size() > 0)
+        {
+            auto Top = WorkList.back();
+            WorkList.pop_back();
+            if (Top->user_empty())
+            {
+                for(unsigned int I = 0; I != Top->getNumOperands(); ++I)
+                {
+                    auto Opnd = Top->getOperand(I);
+                    if (isa<Instruction>(Opnd))
+                        WorkList.push_back(cast<Instruction>(Opnd));
+
+                }
+                Top->eraseFromParent();
+            }
+            else if (Top->getNumUses() == 1)
+            {
+                // Catch specific case:
+                // %localIdX49 = zext i16 %localIdX to i32
+                // % cmp20.i.i.i.i = icmp ult i32 % localIdX49, 65536
+                // call void @llvm.assume(i1 % cmp20.i.i.i.i) #5
+                // Top is localIdX49 definition
+                if (auto CmpI = dyn_cast_or_null<ICmpInst>(*Top->user_begin()))
+                {
+                    if (CmpI->getOperand(0) == Top &&
+                        isa<ConstantInt>(CmpI->getOperand(1)))
+                    {
+                        if (CmpI->getNumUses() == 1)
+                        {
+                            if (auto IntrinsicI = dyn_cast_or_null<IntrinsicInst>(*CmpI->user_begin()))
+                            {
+                                auto IntrinsicId = IntrinsicI->getIntrinsicID();
+                                if (IntrinsicId == Intrinsic::assume)
+                                {
+                                    IntrinsicI->eraseFromParent();
+                                    CmpI->eraseFromParent();
+                                    // retry
+                                    WorkList.push_back(Top);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return Changed;
 }
