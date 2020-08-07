@@ -71,12 +71,16 @@ void ZEBinaryBuilder::createKernel(
 
     zeInfoKernel& zeKernel = mZEInfoBuilder.createKernel(annotations.m_kernelName);
     addKernelExecEnv(annotations, zeKernel);
-    addLocalIds(annotations.m_executionEnivronment.CompiledSIMDSize,
-        grfSize,
-        annotations.m_threadPayload.HasLocalIDx,
-        annotations.m_threadPayload.HasLocalIDy,
-        annotations.m_threadPayload.HasLocalIDz,
-        zeKernel);
+    if (annotations.m_threadPayload.HasLocalIDx ||
+        annotations.m_threadPayload.HasLocalIDy ||
+        annotations.m_threadPayload.HasLocalIDz) {
+        addLocalIds(annotations.m_executionEnivronment.CompiledSIMDSize,
+            grfSize,
+            annotations.m_threadPayload.HasLocalIDx,
+            annotations.m_threadPayload.HasLocalIDy,
+            annotations.m_threadPayload.HasLocalIDz,
+            zeKernel);
+    }
     addPayloadArgsAndBTI(annotations, zeKernel);
     addMemoryBuffer(annotations, zeKernel);
 }
@@ -104,7 +108,7 @@ ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)
     // FIXME: not sure in what cases there will be more than one global constant buffer
     IGC_ASSERT(annotations.m_initConstantAnnotation.size() == 1);
     auto& ca = annotations.m_initConstantAnnotation.front();
-    return mBuilder.addSectionData("global_const", (const uint8_t*)ca->InlineData.data(),
+    return mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
         ca->InlineData.size());
 }
 

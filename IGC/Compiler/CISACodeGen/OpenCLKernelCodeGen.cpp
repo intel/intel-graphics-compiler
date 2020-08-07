@@ -716,8 +716,11 @@ namespace IGC
         // Local ids are supported in per-thread payload arguments
         case KernelArg::ArgType::IMPLICIT_LOCAL_IDS:
             break;
-        // FIXME: Seen this in a simple test case, should be supported?
+
+        // We don't need these in ZEBinary
         case KernelArg::ArgType::IMPLICIT_R0:
+        case KernelArg::ArgType::R1:
+        // FIXME: Seen this in a simple test case, should be supported?
         case KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE:
             break;
         case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:

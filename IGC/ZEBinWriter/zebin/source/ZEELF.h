@@ -67,11 +67,11 @@ enum R_TYPE_ZEBIN
 struct TargetFlags {
 
     // bit[7:0]: dedicated for specific generator (meaning based on generatorId)
-    enum GeneratorSpecificFlags {
+    enum GeneratorSpecificFlags : uint8_t {
         NONE = 0
     };
     // bit[23:21]: generator of this device binary
-    enum GeneratorId {
+    enum GeneratorId : uint8_t {
         UNREGISTERED = 0,
         IGC          = 1
     };
@@ -96,8 +96,8 @@ struct TargetFlags {
             bool machineEntryUsesGfxCoreInsteadOfProductFamily : 1;
             // bit[20:16]:  max compatbile device revision Id (stepping)
             uint8_t maxHwRevisionId : 5;
-            // bit[23:21]: generator of this device binary
-            GeneratorId generatorId : 3;
+            // bit[23:21]: generator of this device binary. Value defined in above GeneratorId
+            uint8_t generatorId : 3;
             // bit[31:24]: MBZ, reserved for future use
             uint8_t reserved : 8;
         };
