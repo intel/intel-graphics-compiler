@@ -13835,7 +13835,7 @@ void EmitPass::CmpBoolOp(llvm::BinaryOperator* inst,
     EmitSimpleAlu(inst, m_destination, m_destination, boolOpSource);
 }
 
-void EmitPass::emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, llvm::CmpInst* cmp)
+void EmitPass::emitAluConditionMod(Pattern* aluPattern, Instruction* alu, CmpInst* cmp, int aluOprdNum)
 {
     CVariable* temp = m_currShader->GetNewVector(alu);
     CVariable* dst = m_destination;
@@ -13844,8 +13844,12 @@ void EmitPass::emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, 
 
     aluPattern->Emit(this, init);
 
-    e_predicate predicate = GetPredicate(cmp->getPredicate());
-    if (IsUnsignedCmp(cmp->getPredicate()))
+    // condMod is in the form of "alu cmpOp 0". If pattern is in the form of
+    // "0 cmpOp alu", cmp's predicate should be swapped. aluOprdNum indicates
+    // which form this pattern is.
+    auto llvmPredicate = (aluOprdNum == 0 ? cmp->getPredicate() : cmp->getSwappedPredicate());
+    e_predicate predicate = GetPredicate(llvmPredicate);
+    if (IsUnsignedCmp(llvmPredicate))
     {
         temp = m_currShader->BitCast(temp, GetUnsignedType(temp->GetType()));
     }
