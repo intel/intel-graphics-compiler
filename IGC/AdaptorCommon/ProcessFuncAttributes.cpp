@@ -312,23 +312,8 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
         bool istrue = false;
 
-        // set hasVLA function attribute
-        bool isSet = false;
-        for (auto& BB : F->getBasicBlockList()) {
-            for (auto& Inst : BB.getInstList()) {
-                if (AllocaInst * AI = dyn_cast<AllocaInst>(&Inst)) {
-                    if (!isa<ConstantInt>(AI->getArraySize())) {
-                        F->addFnAttr("hasVLA");
-                        isSet = true;
-                        break;
-                    }
-                }
-            }
-            if (isSet)
-                break;
-        }
-
         const bool isKernel = isEntryFunc(pMdUtils, F);
+
         if (isKernel && !istrue)
         {
             // No need to process kernel funcs any further
