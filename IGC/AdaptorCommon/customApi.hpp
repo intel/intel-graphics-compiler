@@ -92,6 +92,9 @@ namespace IGC
             VISA_SLOWPATH,
             VISA_NOBXMLENCODER,            //!< do not perform binary encoding using BXML based encoder, but fall-back to old proven encoder
             NO_ASM_LINE_NO_DUMP_IN_FILE, //!< Do not dump asm line numbers in file.
+            GS_BINARY,                   //!< Hint indicating a GS binary is present
+            GS_STREAMOUT,                //!< Hint indicating GS streamout
+            DS_BINARY,                   //!< Hint indicating a DS binary is present
             END,
             BEGIN = 0
         };
