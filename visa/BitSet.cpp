@@ -26,48 +26,48 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "BitSet.h"
 
-void BitSet::create( unsigned size )
+void BitSet::create(unsigned size)
 {
-    const unsigned newArraySize = ( size + NUM_BITS_PER_ELT - 1 ) / NUM_BITS_PER_ELT;
-    const unsigned oldArraySize = ( m_Size + NUM_BITS_PER_ELT - 1 ) / NUM_BITS_PER_ELT;
+    const unsigned newArraySize = (size + NUM_BITS_PER_ELT - 1) / NUM_BITS_PER_ELT;
+    const unsigned oldArraySize = (m_Size + NUM_BITS_PER_ELT - 1) / NUM_BITS_PER_ELT;
     const unsigned numBitsLeft = size % NUM_BITS_PER_ELT;
 
-    if( size == 0 )
+    if (size == 0)
     {
-        free( m_BitSetArray );
+        free(m_BitSetArray);
         m_Size = 0;
         return;
     }
 
-    if( newArraySize == oldArraySize )
+    if (newArraySize == oldArraySize)
     {
         // same array size, zero out the unused bits if necessary
         m_Size = size;
-        if( newArraySize && numBitsLeft != 0 )
+        if (newArraySize && numBitsLeft != 0)
         {
             m_BitSetArray[ newArraySize - 1 ] &= BIT(numBitsLeft) - 1;
         }
     }
     else
     {
-        BITSET_ARRAY_TYPE*  ptr = (BITSET_ARRAY_TYPE*) malloc( newArraySize * sizeof(BITSET_ARRAY_TYPE) );
+        BITSET_ARRAY_TYPE*  ptr = (BITSET_ARRAY_TYPE*) malloc(newArraySize * sizeof(BITSET_ARRAY_TYPE));
 
-        if( ptr )
+        if (ptr)
         {
-            if( m_BitSetArray )
+            if (m_BitSetArray)
             {
-                if( newArraySize > oldArraySize )
+                if (newArraySize > oldArraySize)
                 {
                     // copy entire old array over, set uninitialized bits to zero
                     memcpy_s(ptr, newArraySize * sizeof(BITSET_ARRAY_TYPE), m_BitSetArray, oldArraySize * sizeof(BITSET_ARRAY_TYPE));
-                    memset( ptr + oldArraySize, 0,
-                        (newArraySize - oldArraySize) * sizeof(BITSET_ARRAY_TYPE) );
+                    memset(ptr + oldArraySize, 0,
+                        (newArraySize - oldArraySize) * sizeof(BITSET_ARRAY_TYPE));
                 }
                 else
                 {
                     // copy old array up to the size of new array, zero out the unused bits
                     memcpy_s(ptr, newArraySize * sizeof(BITSET_ARRAY_TYPE), m_BitSetArray, newArraySize * sizeof(BITSET_ARRAY_TYPE));
-                    if( numBitsLeft != 0 )
+                    if (numBitsLeft != 0)
                     {
                         ptr[ newArraySize - 1 ] &= BIT(numBitsLeft) - 1;
                     }
@@ -75,10 +75,10 @@ void BitSet::create( unsigned size )
             }
             else
             {
-                memset( ptr, 0, newArraySize * sizeof(BITSET_ARRAY_TYPE) );
+                memset(ptr, 0, newArraySize * sizeof(BITSET_ARRAY_TYPE));
             }
 
-            free( m_BitSetArray );
+            free(m_BitSetArray);
 
             m_BitSetArray = ptr;
             m_Size = size;
@@ -90,12 +90,12 @@ void BitSet::create( unsigned size )
     }
 }
 
-void BitSet::setAll( void )
+void BitSet::setAll(void)
 {
-    if( m_BitSetArray )
+    if (m_BitSetArray)
     {
         unsigned index;
-        for( index = 0; index < m_Size / NUM_BITS_PER_ELT; index++ )
+        for (index = 0; index < m_Size / NUM_BITS_PER_ELT; index++)
         {
             m_BitSetArray[index] = ~((BITSET_ARRAY_TYPE)0);
         }
@@ -103,28 +103,28 @@ void BitSet::setAll( void )
         // do the leftover bits, make sure we don't change the values of the unused bits,
         // so isEmpty() can be implemented faster
         int numBitsLeft = m_Size % NUM_BITS_PER_ELT;
-        if( numBitsLeft )
+        if (numBitsLeft)
         {
             m_BitSetArray[index] = BIT(numBitsLeft) - 1;
         }
     }
 }
 
-void BitSet::invert( void )
+void BitSet::invert(void)
 {
-    if( m_BitSetArray )
+    if (m_BitSetArray)
     {
         unsigned index;
-        for( index = 0; index < m_Size / NUM_BITS_PER_ELT; index++ )
+        for (index = 0; index < m_Size / NUM_BITS_PER_ELT; index++)
         {
             m_BitSetArray[index] = ~m_BitSetArray[index];
         }
 
         // do the leftover bits
         int numBitsLeft = m_Size % NUM_BITS_PER_ELT;
-        if( numBitsLeft )
+        if (numBitsLeft)
         {
-            m_BitSetArray[index] = ~m_BitSetArray[index] & ( BIT(numBitsLeft) - 1);
+            m_BitSetArray[index] = ~m_BitSetArray[index] & (BIT(numBitsLeft) - 1);
         }
     }
 }
@@ -156,42 +156,42 @@ void vector_minus(T *__restrict__ p1, const T *const p2, unsigned n)
     }
 }
 
-BitSet& BitSet::operator|=( const BitSet& other )
+BitSet& BitSet::operator|=(const BitSet& other)
 {
     unsigned size = other.m_Size;
 
     //grow the set to the size of the other set if necessary
-    if( m_Size < other.m_Size )
+    if (m_Size < other.m_Size)
     {
-        create( other.m_Size );
+        create(other.m_Size);
         size = m_Size;
     }
 
-    unsigned arraySize = ( size + NUM_BITS_PER_ELT - 1 ) / NUM_BITS_PER_ELT;
+    unsigned arraySize = (size + NUM_BITS_PER_ELT - 1) / NUM_BITS_PER_ELT;
     vector_or(m_BitSetArray, other.m_BitSetArray, arraySize);
 
     return *this;
 }
 
-BitSet& BitSet::operator-= ( const BitSet &other )
+BitSet& BitSet::operator-= (const BitSet &other)
 {
     // do not grow the set for subtract
     unsigned size = m_Size < other.m_Size ? m_Size : other.m_Size;
-    unsigned arraySize = ( size + NUM_BITS_PER_ELT - 1 ) / NUM_BITS_PER_ELT;
+    unsigned arraySize = (size + NUM_BITS_PER_ELT - 1) / NUM_BITS_PER_ELT;
     vector_minus(m_BitSetArray, other.m_BitSetArray, arraySize);
     return *this;
 }
 
-BitSet& BitSet::operator&= ( const BitSet &other )
+BitSet& BitSet::operator&= (const BitSet &other)
 {
     // do not grow the set for and
     unsigned size =  m_Size < other.m_Size ? m_Size : other.m_Size;
-    unsigned arraySize = ( size + NUM_BITS_PER_ELT - 1 ) / NUM_BITS_PER_ELT;
+    unsigned arraySize = (size + NUM_BITS_PER_ELT - 1) / NUM_BITS_PER_ELT;
     vector_and(m_BitSetArray, other.m_BitSetArray, arraySize);
 
     //zero out the leftover bits if there are any
-    unsigned myArraySize = ( m_Size + NUM_BITS_PER_ELT - 1 ) / NUM_BITS_PER_ELT;
-    for( unsigned i = arraySize; i < myArraySize; i++ )
+    unsigned myArraySize = (m_Size + NUM_BITS_PER_ELT - 1) / NUM_BITS_PER_ELT;
+    for (unsigned i = arraySize; i < myArraySize; i++)
     {
         m_BitSetArray[ i ] = 0;
     }

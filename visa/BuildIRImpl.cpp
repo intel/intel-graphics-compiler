@@ -433,7 +433,7 @@ G4_INST* IR_Builder::createElse(uint8_t size, uint32_t option)
     return inst;
 }
 
-G4_INST* IR_Builder::createEndif(uint8_t size, uint32_t option)
+G4_INST* IR_Builder::createEndif (uint8_t size, uint32_t option)
 {
     auto inst = createCFInst(nullptr, G4_endif, size, nullptr, nullptr, option);
     return inst;
@@ -522,32 +522,34 @@ G4_INST* IR_Builder::createCFInst(
 }
 
 
-G4_INST* IR_Builder::createInst(G4_Predicate* prd,
-                                G4_opcode op,
-                                G4_CondMod* mod,
-                                bool sat,
-                                unsigned char size,
-                                G4_DstRegRegion* dst,
-                                G4_Operand* src0,
-                                G4_Operand* src1,
-                                G4_Operand* src2,
-                                unsigned int option,
-                                bool addToInstList)
+G4_INST* IR_Builder::createInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    G4_CondMod* mod,
+    bool sat,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_Operand* src2,
+    unsigned int option,
+    bool addToInstList)
 {
     return createInst(prd, op, mod, sat, size, dst, src0, src1, src2, option, 0);
 }
-G4_INST* IR_Builder::createInst(G4_Predicate* prd,
-                                G4_opcode op,
-                                G4_CondMod* mod,
-                                bool sat,
-                                unsigned char size,
-                                G4_DstRegRegion* dst,
-                                G4_Operand* src0,
-                                G4_Operand* src1,
-                                G4_Operand* src2,
-                                unsigned int option,
-                                int lineno,
-                                bool addToInstList)
+G4_INST* IR_Builder::createInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    G4_CondMod* mod,
+    bool sat,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_Operand* src2,
+    unsigned int option,
+    int lineno,
+    bool addToInstList)
 {
     MUST_BE_TRUE(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow,
         "IR_Builder::createInst should not be used to create math/CF instructions");
@@ -574,31 +576,33 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
 }
 
 // same as above, except we don't add it to the Builder's instList
-G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
-                                        G4_opcode op,
-                                        G4_CondMod* mod,
-                                        bool sat,
-                                        unsigned char size,
-                                        G4_DstRegRegion* dst,
-                                        G4_Operand* src0,
-                                        G4_Operand* src1,
-                                        G4_Operand* src2,
-                                        unsigned int option)
+G4_INST* IR_Builder::createInternalInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    G4_CondMod* mod,
+    bool sat,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_Operand* src2,
+    unsigned int option)
 {
     return createInternalInst(prd, op, mod, sat, size, dst, src0, src1, src2, option, 0, UNMAPPABLE_VISA_INDEX, NULL);
 }
-G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
-                                        G4_opcode op,
-                                        G4_CondMod* mod,
-                                        bool sat,
-                                        unsigned char size,
-                                        G4_DstRegRegion* dst,
-                                        G4_Operand* src0,
-                                        G4_Operand* src1,
-                                        G4_Operand* src2,
-                                        unsigned int option,
-                                        int lineno, int CISAoff,
-                                        const char* srcFilename)
+G4_INST* IR_Builder::createInternalInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    G4_CondMod* mod,
+    bool sat,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_Operand* src2,
+    unsigned int option,
+    int lineno, int CISAoff,
+    const char* srcFilename)
 {
     auto ii = createInst(prd, op, mod, sat, size, dst, src0, src1, src2, option,
         lineno, false);
@@ -613,7 +617,8 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
     return ii;
 }
 
-G4_InstSend* IR_Builder::createSendInst(G4_Predicate* prd,
+G4_InstSend* IR_Builder::createSendInst(
+    G4_Predicate* prd,
     G4_opcode op,
     unsigned char size,
     G4_DstRegRegion* postDst,
@@ -626,7 +631,8 @@ G4_InstSend* IR_Builder::createSendInst(G4_Predicate* prd,
 {
 
     assert (msgDesc && "msgDesc must not be null");
-    G4_InstSend* m = new (mem)G4_InstSend(*this, prd, op, size, postDst, currSrc, msg, option, msgDesc);
+    G4_InstSend* m = new (mem)G4_InstSend(
+        *this, prd, op, size, postDst, currSrc, msg, (G4_InstOpts)option, msgDesc);
 
     if (addToInstList)
     {
@@ -645,7 +651,8 @@ G4_InstSend* IR_Builder::createSendInst(G4_Predicate* prd,
     return m;
 }
 
-G4_InstSend* IR_Builder::createInternalSendInst(G4_Predicate* prd,
+G4_InstSend* IR_Builder::createInternalSendInst(
+    G4_Predicate* prd,
     G4_opcode op,
     unsigned char size,
     G4_DstRegRegion* postDst,
@@ -675,18 +682,19 @@ G4_InstSend* IR_Builder::createInternalSendInst(G4_Predicate* prd,
 // sends (size) dst src0 src1 exDesc msgDesc
 //
 
-G4_InstSend* IR_Builder::createSplitSendInst(G4_Predicate* prd,
-                                         G4_opcode op,
-                                         unsigned char size,
-                                         G4_DstRegRegion* dst,
-                                         G4_SrcRegRegion* src0, // can be header
-                                         G4_SrcRegRegion* src1,
-                                         G4_Operand* msg,       // msg descriptor: imm or vec
-                                         unsigned int option,
-                                         G4_SendMsgDescriptor *msgDesc,
-                                         G4_Operand* src3,      // ext msg desciptor: imm or vec
-                                         int lineno,
-                                         bool addToInstList)
+G4_InstSend* IR_Builder::createSplitSendInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_SrcRegRegion* src0, // can be header
+    G4_SrcRegRegion* src1,
+    G4_Operand* msg,       // msg descriptor: imm or vec
+    unsigned int option,
+    G4_SendMsgDescriptor *msgDesc,
+    G4_Operand* src3,      // ext msg desciptor: imm or vec
+    int lineno,
+    bool addToInstList)
 {
 
     if (!src1)
@@ -699,7 +707,8 @@ G4_InstSend* IR_Builder::createSplitSendInst(G4_Predicate* prd,
     {
         src3 = createImm(msgDesc->getExtendedDesc(), Type_UD);
     }
-    G4_InstSend* m = new (mem) G4_InstSend(*this, prd, op, size, dst, src0, src1, msg, src3, option, msgDesc);
+    G4_InstSend* m = new (mem) G4_InstSend(
+        *this, prd, op, size, dst, src0, src1, msg, src3, (G4_InstOpts)option, msgDesc);
 
     if (addToInstList)
     {
@@ -750,16 +759,17 @@ G4_InstSend* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
 // -- conditional modifier is not allowed
 // -- there are additional restrictions on dst/src regions that will be checked in HW conformity
 //
-G4_INST* IR_Builder::createMathInst(G4_Predicate* prd,
-                                    bool sat,
-                                    unsigned char size,
-                                    G4_DstRegRegion* dst,
-                                    G4_Operand* src0,
-                                    G4_Operand* src1,
-                                    G4_MathOp mathOp,
-                                    unsigned int option,
-                                    int lineno,
-                                    bool addToInstList)
+G4_INST* IR_Builder::createMathInst(
+    G4_Predicate* prd,
+    bool sat,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_MathOp mathOp,
+    unsigned int option,
+    int lineno,
+    bool addToInstList)
 {
     G4_INST* i = new (mem)G4_InstMath(*this, prd, G4_math, NULL, sat, size, dst, src0, src1, option, mathOp);
 
@@ -779,7 +789,8 @@ G4_INST* IR_Builder::createMathInst(G4_Predicate* prd,
     return i;
 }
 
-G4_INST* IR_Builder::createInternalMathInst(G4_Predicate* prd,
+G4_INST* IR_Builder::createInternalMathInst(
+    G4_Predicate* prd,
     bool sat,
     unsigned char size,
     G4_DstRegRegion* dst,
@@ -807,13 +818,16 @@ G4_INST* IR_Builder::createIntrinsicInst(
     G4_Predicate* prd, Intrinsic intrinId,
     uint8_t size, G4_DstRegRegion* dst,
     G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-    unsigned int option, int lineno, bool addToInstList)
+    unsigned int options, int lineno, bool addToInstList)
 {
     G4_INST* i = nullptr;
 
-    if(intrinId == Intrinsic::Spill)
+    // TODO: plumb directly
+    G4_InstOpts option = (G4_InstOpts)options;
+
+    if (intrinId == Intrinsic::Spill)
         i = new (mem) G4_SpillIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
-    else if(intrinId == Intrinsic::Fill)
+    else if (intrinId == Intrinsic::Fill)
         i = new (mem) G4_FillIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
     else
         i = new (mem) G4_InstIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
@@ -835,9 +849,9 @@ G4_INST* IR_Builder::createIntrinsicInst(
     return i;
 }
 
-G4_INST* IR_Builder::createInternalIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
-    uint8_t size, G4_DstRegRegion* dst,
-    G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
+G4_INST* IR_Builder::createInternalIntrinsicInst(
+    G4_Predicate* prd, Intrinsic intrinId, uint8_t size,
+    G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
     unsigned int option, int lineno, int CISAoff, const char* srcFilename)
 {
     auto ii = createIntrinsicInst(prd, intrinId, size, dst, src0, src1, src2, option,
@@ -855,7 +869,7 @@ G4_INST* IR_Builder::createInternalIntrinsicInst(G4_Predicate* prd, Intrinsic in
 
 G4_MathOp IR_Builder::Get_MathFuncCtrl(ISA_Opcode op, G4_Type type)
 {
-    switch(op)
+    switch (op)
     {
     case ISA_LOG:
         return MATH_LOG;
@@ -878,7 +892,7 @@ G4_MathOp IR_Builder::Get_MathFuncCtrl(ISA_Opcode op, G4_Type type)
     case ISA_EXP:
         return MATH_EXP;
     default:
-        ASSERT_USER(0, "Illegal math opcode." );
+        ASSERT_USER(0, "Illegal math opcode.");
         return MATH_RESERVED;
     }
 }
@@ -945,13 +959,14 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
     return Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar());
 }
 
-G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
-                                               G4_DstRegRegion *postDst,
-                                               G4_SrcRegRegion *payload,
-                                               unsigned execsize,
-                                               G4_SendMsgDescriptor *msgDesc,
-                                               unsigned option,
-                                               bool is_sendc)
+G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
+    G4_Predicate *pred,
+    G4_DstRegRegion *postDst,
+    G4_SrcRegRegion *payload,
+    unsigned execsize,
+    G4_SendMsgDescriptor *msgDesc,
+    unsigned option,
+    bool is_sendc)
 {
     G4_opcode send_opcode= is_sendc ? G4_sendc : G4_send;
 
@@ -969,7 +984,7 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
         // use a0.0 directly
         G4_DstRegRegion* addr_dst_opnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
 
-        if( bti && !bti->isImm() )
+        if (bti && !bti->isImm())
         {
             //add (1) a0.0:ud bti:ud desc:ud
             // create source for bti
@@ -978,14 +993,14 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
                 1,
                 addr_dst_opnd,
                 bti,
-                createImm( desc, Type_UD ),
+                createImm(desc, Type_UD),
                 InstOpt_WriteEnable,
                 true);
         }
 
         if (needSamplerMove)
         {
-            G4_Declare *dcl1 = createTempVar(1, Type_UD, Any );
+            G4_Declare *dcl1 = createTempVar(1, Type_UD, Any);
             G4_DstRegRegion* tmp_dst_opnd = Create_Dst_Opnd_From_Dcl(dcl1, 1);
 
             createBinOp(
@@ -993,20 +1008,20 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
                 1,
                 tmp_dst_opnd,
                 sti,
-                createImm( 8, Type_UD ),
+                createImm(8, Type_UD),
                 InstOpt_WriteEnable,
-                true );
+                true);
 
             G4_SrcRegRegion* tmp_src_opnd = Create_Src_Opnd_From_Dcl(dcl1, getRegionScalar());
 
-            if( !bti || bti->isImm() )
+            if (!bti || bti->isImm())
             {
                 createBinOp(
                     G4_add,
                     1,
                     addr_dst_opnd,
                     tmp_src_opnd,
-                    createImm( desc, Type_UD ),
+                    createImm(desc, Type_UD),
                     InstOpt_WriteEnable,
                     true);
             }
@@ -1017,11 +1032,11 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
                 createBinOp(
                     G4_add,
                     1,
-                    duplicateOperand( addr_dst_opnd ),
+                    duplicateOperand(addr_dst_opnd),
                     addr_src_opnd,
                     tmp_src_opnd,
                     InstOpt_WriteEnable,
-                    true );
+                    true);
             }
         }
 
@@ -1045,11 +1060,11 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
 }
 
 /*
-* Create split send instruction for specified GenX architecture.
-* bti: surface id
-* sti: sampler id
-* Gen9: sends (execsize)     dst,  src1,  src2,  ex_desc,  desc
-*/
+ * Create split send instruction for specified GenX architecture.
+ * bti: surface id
+ * sti: sampler id
+ * Gen9: sends (execsize)     dst,  src1,  src2,  ex_desc,  desc
+ */
 G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
     G4_Predicate* pred,
     G4_DstRegRegion *dst,
@@ -1079,7 +1094,8 @@ G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
 }
 
 // desc, if indirect, is constructed from the BTI/STI values in msgDesc and is always a0.0
-G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
+G4_InstSend *IR_Builder::Create_SplitSend_Inst(
+    G4_Predicate *pred,
     G4_DstRegRegion *dst,
     G4_SrcRegRegion *src1,
     G4_SrcRegRegion *src2,
@@ -1206,7 +1222,8 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
 // for RTWrite,
 // desc has a constant BTI value (i.e., no bindless) and no STI
 // extDesc may be indirect (MRT and other bits) and is passed in
-G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
+G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(
+    G4_Predicate *pred,
     G4_DstRegRegion *dst,
     G4_SrcRegRegion *src1,
     G4_SrcRegRegion *src2,
@@ -1242,11 +1259,11 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
 }
 
 // create a declare for send payload
-G4_Declare* IR_Builder::createSendPayloadDcl( unsigned num_elt, G4_Type type )
+G4_Declare* IR_Builder::createSendPayloadDcl(unsigned num_elt, G4_Type type)
 {
     const char* name = getNameString(mem, 16, "M%u", ++num_temp_dcl);
-    unsigned short numRow = ( num_elt * G4_Type_Table[type].byteSize - 1 ) / GENX_GRF_REG_SIZ + 1;
-    unsigned short numElt = ( numRow == 1 ) ? num_elt : (GENX_GRF_REG_SIZ/G4_Type_Table[type].byteSize);
+    unsigned short numRow = (num_elt * G4_Type_Table[type].byteSize - 1) / GENX_GRF_REG_SIZ + 1;
+    unsigned short numElt = (numRow == 1) ? num_elt : (GENX_GRF_REG_SIZ/G4_Type_Table[type].byteSize);
     G4_Declare *dcl = createDeclareNoLookup(
         name,
         G4_GRF,
@@ -1256,7 +1273,7 @@ G4_Declare* IR_Builder::createSendPayloadDcl( unsigned num_elt, G4_Type type )
     return dcl;
 }
 
-void IR_Builder::Create_MOVR0_Inst( G4_Declare* dcl, short regOff, short subregOff, bool use_nomask )
+void IR_Builder::Create_MOVR0_Inst(G4_Declare* dcl, short regOff, short subregOff, bool use_nomask)
 {
     G4_DstRegRegion* dst1_opnd = createDst(
         dcl->getRegVar(),
@@ -1272,12 +1289,14 @@ void IR_Builder::Create_MOVR0_Inst( G4_Declare* dcl, short regOff, short subregO
         GENX_DATAPORT_IO_SZ,
         dst1_opnd,
         r0_src_opnd,
-        ( use_nomask ? InstOpt_WriteEnable : 0 ),
-        true );
+        (use_nomask ? InstOpt_WriteEnable : 0),
+        true);
 }
 
-void IR_Builder::Create_ADD_Inst(G4_Declare* dcl, short regOff, short subregOff, uint8_t execsize,
-    G4_Predicate* pred, G4_CondMod* condMod, G4_Operand* src0_opnd, G4_Operand* src1_opnd, G4_InstOption options)
+void IR_Builder::Create_ADD_Inst(
+    G4_Declare* dcl, short regOff, short subregOff, uint8_t execsize,
+    G4_Predicate* pred, G4_CondMod* condMod,
+    G4_Operand* src0_opnd, G4_Operand* src1_opnd, G4_InstOption options)
 {
     auto dst = createDst(dcl->getRegVar(), regOff, subregOff, 1, dcl->getElemType());
 
@@ -1310,7 +1329,7 @@ void IR_Builder::Create_MOV_Inst(
     G4_Predicate* pred,
     G4_CondMod* condMod,
     G4_Operand* src_opnd,
-    bool use_nomask )
+    bool use_nomask)
 {
     G4_DstRegRegion* dst2_opnd = createDst(
         dcl->getRegVar(),
@@ -1328,8 +1347,8 @@ void IR_Builder::Create_MOV_Inst(
         dst2_opnd,
         src_opnd,
         NULL,
-        ( use_nomask ? InstOpt_WriteEnable : 0 ),
-        0 );
+        (use_nomask ? InstOpt_WriteEnable : 0),
+        0);
 }
 
 // send payload preparation.
@@ -1342,7 +1361,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
     short subregoff,
     unsigned num_dword,
     G4_Operand* src_opnd,
-    unsigned int option )
+    unsigned int option)
 {
     // since src_opnd is raw source in CISA, it is aligned to GRF, so there is no subRegOff.
     unsigned remained_dword = num_dword;
@@ -1357,13 +1376,13 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
     G4_Declare *dst_dcl = dcl;
     short src_regoff = 0, src_subregoff = 0;
     bool non_ud_scalar = false;
-    bool scalar_src = ( src_opnd->isImm() || num_dword == 1 );
+    bool scalar_src = (src_opnd->isImm() || num_dword == 1);
 
-    if( scalar_src && src_opnd->getType() != Type_UD ){
+    if (scalar_src && src_opnd->getType() != Type_UD) {
         // change the type of dst dcl to src type
-        remained_dword = num_dword * ( G4_Type_Table[Type_UD].byteSize/G4_Type_Table[src_opnd->getType()].byteSize );
+        remained_dword = num_dword * (G4_Type_Table[Type_UD].byteSize/G4_Type_Table[src_opnd->getType()].byteSize);
         dst_dcl = createSendPayloadDcl(remained_dword, src_opnd->getType());
-        dst_dcl->setAliasDeclare( dcl, regoff * G4_GRF_REG_NBYTES + subregoff * G4_Type_Table[Type_UD].byteSize );
+        dst_dcl->setAliasDeclare(dcl, regoff * G4_GRF_REG_NBYTES + subregoff * G4_Type_Table[Type_UD].byteSize);
         dst_regoff = 0;
         dst_subregoff = 0;
         non_ud_scalar = true;
@@ -1396,15 +1415,15 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
     int maxEsize = getMaxEsize(option);
 
     // here remained_dword is not the number of DW, but the number of dst data type.
-    while( remained_dword )
+    while (remained_dword)
     {
-        if( non_ud_scalar && G4_Type_Table[src_opnd->getType()].byteSize != G4_Type_Table[Type_UD].byteSize )
+        if (non_ud_scalar && G4_Type_Table[src_opnd->getType()].byteSize != G4_Type_Table[Type_UD].byteSize)
         {
-            if( remained_dword >= 32 )
+            if (remained_dword >= 32)
             {
                 execsize = 32;
             }
-            else if( remained_dword >= 16 )
+            else if (remained_dword >= 16)
             {
                 execsize = 16;
             }
@@ -1414,7 +1433,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
             }
 
             execsize = (execsize > maxEsize) ? maxEsize :  execsize;
-            if( execsize == 1 )
+            if (execsize == 1)
             {
                 rd = getRegionScalar();
             }
@@ -1425,11 +1444,11 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
         }
         else
         {
-            if( remained_dword >= 16 )
+            if (remained_dword >= 16)
             {
                 execsize = 16;
             }
-            else if( remained_dword >= 8 )
+            else if (remained_dword >= 8)
             {
                 execsize = 8;
             }
@@ -1438,7 +1457,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
                 execsize = (uint8_t) Round_Down_Pow2(remained_dword);
             }
             execsize = (execsize > maxEsize) ? maxEsize :  execsize;
-            if ( execsize == 1 )
+            if (execsize == 1)
             {
                 rd = getRegionScalar();
             }
@@ -1477,7 +1496,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
             dst,
             src,
             option,
-            true );
+            true);
 
         // update offset in decl
         if (remained_dword >= execsize) {
@@ -1512,7 +1531,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
     }
 }
 // create an opnd without regpoff and subregoff
-G4_DstRegRegion* IR_Builder::Create_Dst_Opnd_From_Dcl( G4_Declare* dcl, unsigned short hstride )
+G4_DstRegRegion* IR_Builder::Create_Dst_Opnd_From_Dcl(G4_Declare* dcl, unsigned short hstride)
 {
     return createDst(
         dcl->getRegVar(),
@@ -1542,12 +1561,12 @@ G4_DstRegRegion* IR_Builder::createNullDst(G4_Type dstType)
         0,
         0,
         1,
-        dstType );
+        dstType);
 }
 
-G4_SrcRegRegion* IR_Builder::createNullSrc( G4_Type srcType )
+G4_SrcRegRegion* IR_Builder::createNullSrc(G4_Type srcType)
 {
-    return createSrcRegRegion( Mod_src_undef,
+    return createSrcRegRegion(Mod_src_undef,
                                Direct,
                                phyregpool.getNullReg(),
                                0,
@@ -1561,13 +1580,13 @@ G4_SrcRegRegion* IR_Builder::createNullSrc( G4_Type srcType )
 1. change align of var dcl to GRF if the dst size is smaller than GRF size, no alias or alias offset is 0.
 2. otherwise, create a temp operand and return it.
 */
-G4_DstRegRegion* IR_Builder::Check_Send_Dst( G4_DstRegRegion *dst_opnd )
+G4_DstRegRegion* IR_Builder::Check_Send_Dst(G4_DstRegRegion *dst_opnd)
 {
     //FIXME: This function seems to be bogus
     G4_DstRegRegion* d;
     // check if dst is align to GRF
 
-    if( G4_Type_Table[dst_opnd->getType()].byteSize > G4_Type_Table[Type_B].byteSize )
+    if (G4_Type_Table[dst_opnd->getType()].byteSize > G4_Type_Table[Type_B].byteSize)
     {
         d = dst_opnd;
     }
@@ -1575,7 +1594,7 @@ G4_DstRegRegion* IR_Builder::Check_Send_Dst( G4_DstRegRegion *dst_opnd )
     {
         // change type of dcl and offset in it
         short new_SubRegOff = dst_opnd->getSubRegOff();
-        if( dst_opnd->getRegAccess() == Direct )
+        if (dst_opnd->getRegAccess() == Direct)
         {
             new_SubRegOff = dst_opnd->getSubRegOff() * G4_Type_Table[Type_B].byteSize / G4_Type_Table[Type_UD].byteSize;
         }
@@ -1586,7 +1605,7 @@ G4_DstRegRegion* IR_Builder::Check_Send_Dst( G4_DstRegRegion *dst_opnd )
             new_SubRegOff,
             1,
             Type_UD);
-        d = createDstRegRegion( new_dst );
+        d = createDstRegRegion(new_dst);
     }
 
     return d;
@@ -1620,12 +1639,12 @@ input_info_t *IR_Builder::getRetIPArg() {
 }
 
 // check if an operand is aligned to <align_byte>
-bool IR_Builder::isOpndAligned( G4_Operand *opnd, unsigned short &offset, int align_byte )
+bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset, int align_byte)
 {
     offset = 0;
     bool isAligned = true;
 
-    switch ( opnd->getKind() )
+    switch (opnd->getKind())
     {
     case G4_Operand::immediate:
     case G4_Operand::addrExp:
@@ -1646,9 +1665,9 @@ bool IR_Builder::isOpndAligned( G4_Operand *opnd, unsigned short &offset, int al
             dcl = opnd->getBase()->asRegVar()->getDeclare();
             while (dcl && dcl->getAliasDeclare())
             {
-                if( dcl->getSubRegAlign() != Any &&
-                    ( ( ( dcl->getSubRegAlign() * 2 ) >= align_byte && ( dcl->getSubRegAlign() * 2 ) % align_byte != 0 ) ||
-                    ( ( dcl->getSubRegAlign() * 2 ) < align_byte && align_byte % ( dcl->getSubRegAlign() * 2 ) != 0 ) ) )
+                if (dcl->getSubRegAlign() != Any &&
+                    (((dcl->getSubRegAlign() * 2) >= align_byte && (dcl->getSubRegAlign() * 2) % align_byte != 0) ||
+                    ((dcl->getSubRegAlign() * 2) < align_byte && align_byte % (dcl->getSubRegAlign() * 2) != 0)))
                 {
                         isAligned = false;
                         break;
@@ -1662,28 +1681,28 @@ bool IR_Builder::isOpndAligned( G4_Operand *opnd, unsigned short &offset, int al
                 offset += static_cast<unsigned short>(dcl->getRegVar()->getByteAddr());
             }
         }
-        if( !isAligned )
+        if (!isAligned)
         {
             return isAligned;
         }
 
-        if( opnd->isDstRegRegion() )
+        if (opnd->isDstRegRegion())
         {
-            if( opnd->asDstRegRegion()->getRegAccess() != Direct )
+            if (opnd->asDstRegRegion()->getRegAccess() != Direct)
             {
                 isAligned = false;
             }
             offset += opnd->asDstRegRegion()->getRegOff() * G4_GRF_REG_NBYTES + opnd->asDstRegRegion()->getSubRegOff() * type_size;
         }
-        else if( opnd->isSrcRegRegion() )
+        else if (opnd->isSrcRegRegion())
         {
-            if( opnd->asSrcRegRegion()->getRegAccess() != Direct )
+            if (opnd->asSrcRegRegion()->getRegAccess() != Direct)
             {
                 isAligned = false;
             }
             offset += opnd->asSrcRegRegion()->getRegOff() * G4_GRF_REG_NBYTES + opnd->asSrcRegRegion()->getSubRegOff() * type_size;
         }
-        if( offset % align_byte != 0 )
+        if (offset % align_byte != 0)
         {
             return false;
         }
@@ -1695,7 +1714,7 @@ bool IR_Builder::isOpndAligned( G4_Operand *opnd, unsigned short &offset, int al
             {
                 dcl->setSubRegAlign(G4_SubReg_Align(align_byte / 2));
             }
-            else if( ( dcl->getSubRegAlign() * 2 ) < align_byte || ( dcl->getSubRegAlign() * 2 ) % align_byte != 0 )
+            else if ((dcl->getSubRegAlign() * 2) < align_byte || (dcl->getSubRegAlign() * 2) % align_byte != 0)
             {
                     isAligned = false;
             }

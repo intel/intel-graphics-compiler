@@ -653,7 +653,7 @@ public:
     bool getHasComputeFFIDProlog() const { return hasComputeFFIDProlog; }
     void setHasComputeFFIDProlog() { hasComputeFFIDProlog = true; }
 
-    bool isOpndAligned( G4_Operand *opnd, unsigned short &offset, int align_byte );
+    bool isOpndAligned(G4_Operand *opnd, unsigned short &offset, int align_byte);
 
     // check if opnd is or can be made "alignByte"-byte aligned. This function will change the underlying
     // variable's alignment (e.g., make a scalar variable GRF-aligned) when possible to satisfy
@@ -664,19 +664,19 @@ public:
         return isOpndAligned(opnd, offset, alignByte);
     }
 
-    void setIsKernel( bool value ) { isKernel = value; }
+    void setIsKernel(bool value) { isKernel = value; }
     bool getIsKernel() { return isKernel; }
     void predefinedVarRegAssignment(uint8_t inputSize);
     void expandPredefinedVars();
-    void setArgSize( unsigned short size ) { arg_size = size; }
+    void setArgSize(unsigned short size) { arg_size = size; }
     unsigned short getArgSize() { return arg_size; }
-    void setRetVarSize( unsigned short size ) { return_var_size = size; }
+    void setRetVarSize(unsigned short size) { return_var_size = size; }
     unsigned short getRetVarSize() { return return_var_size; }
     FCPatchingInfo* getFCPatchInfo()
     {
         // Create new instance of FC patching class if one is not
         // yet created.
-        if(fcPatchInfo == NULL)
+        if (fcPatchInfo == NULL)
         {
             FCPatchingInfo* instance;
             instance = (FCPatchingInfo*)mem.alloc(sizeof(FCPatchingInfo));
@@ -1056,7 +1056,7 @@ public:
     CompilerStats &getcompilerStats() {return compilerStats;}
 
     // create a new temp GRF with the specified type/size and undefined regions
-    G4_Declare* createTempVar(unsigned int numElements, G4_Type type, G4_SubReg_Align subAlign, const char* prefix = "TV", bool appendIdToName = true )
+    G4_Declare* createTempVar(unsigned int numElements, G4_Type type, G4_SubReg_Align subAlign, const char* prefix = "TV", bool appendIdToName = true)
     {
         const char* name = appendIdToName ?
             getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++) :
@@ -1064,7 +1064,7 @@ public:
 
         unsigned short dcl_width = 0, dcl_height = 1;
         int totalByteSize = numElements * G4_Type_Table[type].byteSize;
-        if( totalByteSize <= G4_GRF_REG_NBYTES )
+        if (totalByteSize <= G4_GRF_REG_NBYTES)
         {
             dcl_width = totalByteSize / G4_Type_Table[type].byteSize;
         }
@@ -1074,14 +1074,14 @@ public:
             // so subregister must be 0?
             dcl_width = G4_GRF_REG_NBYTES / G4_Type_Table[type].byteSize;
             dcl_height = totalByteSize / G4_GRF_REG_NBYTES;
-            if( totalByteSize % G4_GRF_REG_NBYTES != 0 )
+            if (totalByteSize % G4_GRF_REG_NBYTES != 0)
             {
                 dcl_height++;
             }
         }
 
         G4_Declare* dcl = createDeclareNoLookup(name, G4_GRF, dcl_width, dcl_height, type);
-        dcl->setSubRegAlign( subAlign );
+        dcl->setSubRegAlign(subAlign);
         return dcl;
     }
 
@@ -1211,7 +1211,7 @@ public:
     }
 
     /* numberOfFlags MEANS NUMBER OF WORDS (e.g., 1 means 16-bit), not number of bits or number of data elements in operands. */
-    G4_Declare* createTempFlag(unsigned short numberOfFlags, const char* prefix = "TEMP_FLAG_" )
+    G4_Declare* createTempFlag(unsigned short numberOfFlags, const char* prefix = "TEMP_FLAG_")
     {
         const char* name = getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++);
 
@@ -1235,7 +1235,7 @@ public:
         MUST_BE_TRUE(preDefVar_index < PreDefinedVarsInternal::VAR_LAST, "illegal predefined var index");
         unsigned short dcl_width = 0, dcl_height = 1;
         int totalByteSize = numElements * G4_Type_Table[type].byteSize;
-        if( totalByteSize <= G4_GRF_REG_NBYTES )
+        if (totalByteSize <= G4_GRF_REG_NBYTES)
         {
             dcl_width = totalByteSize / G4_Type_Table[type].byteSize;
         }
@@ -1245,7 +1245,7 @@ public:
             // so subregister must be 0?
             dcl_width = G4_GRF_REG_NBYTES / G4_Type_Table[type].byteSize;
             dcl_height = totalByteSize / G4_GRF_REG_NBYTES;
-            if( totalByteSize % G4_GRF_REG_NBYTES != 0 )
+            if (totalByteSize % G4_GRF_REG_NBYTES != 0)
             {
                 dcl_height++;
             }
@@ -1574,9 +1574,9 @@ public:
 
     // For integer immediates use a narrower type if possible
     // also change byte type to word type since HW does not support byte imm
-    G4_Type getNewType( int64_t imm, G4_Type ty )
+    G4_Type getNewType(int64_t imm, G4_Type ty)
     {
-        switch(ty)
+        switch (ty)
         {
         case Type_Q:
         case Type_D:
@@ -1625,11 +1625,11 @@ public:
     }
 
     //
-    // return the imm operand with its lowest type( W or above ); create one if not yet created
+    // return the imm operand with its lowest type(W or above); create one if not yet created
     //
     G4_Imm* createImmWithLowerType(int64_t imm, G4_Type ty)
     {
-        G4_Type new_type = getNewType( imm, ty );
+        G4_Type new_type = getNewType(imm, ty);
         G4_Imm* i = hashtable.lookupImm(imm, new_type);
         return (i != NULL)? i : hashtable.createImm(imm, new_type);
     }
@@ -1687,7 +1687,7 @@ public:
 
     G4_Predicate* createPredicate(G4_Predicate& prd)
     {
-        G4_Predicate* p = new (mem) G4_Predicate( prd );
+        G4_Predicate* p = new (mem) G4_Predicate(prd);
         return p;
     }
 
@@ -1702,7 +1702,7 @@ public:
     //
     G4_CondMod* createCondMod(G4_CondMod& mod)
     {
-        G4_CondMod* p = new (mem) G4_CondMod( mod );
+        G4_CondMod* p = new (mem) G4_CondMod(mod);
         return p;
     }
 
@@ -1783,7 +1783,7 @@ public:
 
     G4_INST* createIf(G4_Predicate* prd, uint8_t size, uint32_t option);
     G4_INST* createElse(uint8_t size, uint32_t option);
-    G4_INST* createEndif(uint8_t size, uint32_t option);
+    G4_INST* createEndif (uint8_t size, uint32_t option);
     G4_INST* createLabelInst(G4_Label* label, bool appendToInstList);
     G4_INST* createJmp(G4_Predicate* pred, G4_Operand* jmpTarget, uint32_t option, bool appendToInstList);
 
@@ -1821,19 +1821,21 @@ public:
         unsigned int option,
         int lineno = 0,
         bool addToInstList= true);
-    G4_INST* createInternalCFInst(G4_Predicate* prd, G4_opcode op,
+    G4_INST* createInternalCFInst(
+        G4_Predicate* prd, G4_opcode op,
         unsigned char size, G4_Label* jip, G4_Label* uip,
         unsigned int option, int lineno = 0, int CISAoff = -1,
         const char* srcFilename = NULL);
 
-    G4_InstSend* createSendInst(G4_Predicate* prd, G4_opcode op,
-                            unsigned char size, G4_DstRegRegion* postDst,
-                            G4_SrcRegRegion* payload,
-                            G4_Operand* msg, unsigned int option,
-                            G4_SendMsgDescriptor *msgDesc,
-                            int lineno = 0, bool addToInstList = true);
-
-    G4_InstSend* createInternalSendInst(G4_Predicate* prd, G4_opcode op,
+    G4_InstSend* createSendInst(
+        G4_Predicate* prd, G4_opcode op,
+        unsigned char size, G4_DstRegRegion* postDst,
+        G4_SrcRegRegion* payload,
+        G4_Operand* msg, unsigned int option,
+        G4_SendMsgDescriptor *msgDesc,
+        int lineno = 0, bool addToInstList = true);
+    G4_InstSend* createInternalSendInst(
+        G4_Predicate* prd, G4_opcode op,
         unsigned char size, G4_DstRegRegion* postDst,
         G4_SrcRegRegion* payload,
         G4_Operand* msg, unsigned int option,
@@ -1842,7 +1844,8 @@ public:
         int CISAoff = -1,
         const char* srcFilename = NULL);
 
-    G4_InstSend* createSplitSendInst(G4_Predicate* prd, G4_opcode op,
+    G4_InstSend* createSplitSendInst(
+        G4_Predicate* prd, G4_opcode op,
         unsigned char size, G4_DstRegRegion* dst,
         G4_SrcRegRegion* src1, G4_SrcRegRegion* src2,
         G4_Operand* msg, unsigned int option,
@@ -1851,7 +1854,8 @@ public:
         int lineno = 0,
         bool addToInstList = true);
 
-    G4_InstSend* createInternalSplitSendInst(G4_Predicate* prd, G4_opcode op,
+    G4_InstSend* createInternalSplitSendInst(
+        G4_Predicate* prd, G4_opcode op,
         unsigned char size, G4_DstRegRegion* dst,
         G4_SrcRegRegion* src1, G4_SrcRegRegion* src2,
         G4_Operand* msg, unsigned int option,
@@ -1861,10 +1865,11 @@ public:
         int CISAoff = -1,
         const char* srcFilename = NULL);
 
-    G4_INST* createMathInst(G4_Predicate* prd, bool sat,
-                            unsigned char size, G4_DstRegRegion* dst,
-                            G4_Operand* src0, G4_Operand* src1, G4_MathOp mathOp,
-                            unsigned int option, int lineno = 0, bool addToInstList = true);
+    G4_INST* createMathInst(
+        G4_Predicate* prd, bool sat,
+        unsigned char size, G4_DstRegRegion* dst,
+        G4_Operand* src0, G4_Operand* src1, G4_MathOp mathOp,
+        unsigned int option, int lineno = 0, bool addToInstList = true);
 
     G4_INST* createInternalMathInst(G4_Predicate* prd, bool sat,
         unsigned char size, G4_DstRegRegion* dst,
@@ -1920,17 +1925,18 @@ public:
     }
 
 
-    G4_DstRegRegion *createSubDstOperand( G4_DstRegRegion* dst, uint16_t start, uint8_t size);
-    G4_SrcRegRegion *createSubSrcOperand( G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd);
+    G4_DstRegRegion *createSubDstOperand(G4_DstRegRegion* dst, uint16_t start, uint8_t size);
+    G4_SrcRegRegion *createSubSrcOperand(G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd);
     G4_INST *makeSplittingInst(G4_INST *inst, uint8_t ExSize);
 
-    G4_InstSend *Create_Send_Inst_For_CISA(G4_Predicate *pred,
-                                       G4_DstRegRegion *postDst,
-                                       G4_SrcRegRegion *payload,
-                                       unsigned execSize,
-                                       G4_SendMsgDescriptor *msgDesc,
-                                       unsigned option,
-                                       bool is_sendc);
+    G4_InstSend *Create_Send_Inst_For_CISA(
+        G4_Predicate *pred,
+        G4_DstRegRegion *postDst,
+        G4_SrcRegRegion *payload,
+        unsigned execSize,
+        G4_SendMsgDescriptor *msgDesc,
+        unsigned option,
+        bool is_sendc);
 
     G4_InstSend *Create_SplitSend_Inst(G4_Predicate *pred,
         G4_DstRegRegion *dst,
@@ -1942,7 +1948,8 @@ public:
         bool is_sendc);
 
 
-    G4_InstSend *Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
+    G4_InstSend *Create_SplitSend_Inst_For_RTWrite(
+        G4_Predicate *pred,
         G4_DstRegRegion *dst,
         G4_SrcRegRegion *src1,
         G4_SrcRegRegion *src2,
@@ -2013,7 +2020,7 @@ public:
         short subregOff,
         unsigned num_dword,
         G4_Operand* src_opnd,
-        unsigned int option );
+        unsigned int option);
 
     G4_INST* createFenceInstruction(
         uint8_t flushParam, bool commitEnable, bool globalMemFence, bool isSendc);
@@ -2233,74 +2240,74 @@ public:
         G4_SrcRegRegion* srcOpnd);
 
     int translateVISAMediaLoadInst(
-                        MEDIA_LD_mod mod,
-                        G4_Operand* surface,
-                        unsigned planeID,
-                        unsigned blockWidth,
-                        unsigned blockHeight,
-                        G4_Operand* xOffOpnd,
-                        G4_Operand* yOffOpnd,
-                        G4_DstRegRegion* dst_opnd);
+        MEDIA_LD_mod mod,
+        G4_Operand* surface,
+        unsigned planeID,
+        unsigned blockWidth,
+        unsigned blockHeight,
+        G4_Operand* xOffOpnd,
+        G4_Operand* yOffOpnd,
+        G4_DstRegRegion* dst_opnd);
 
     int translateVISAMediaStoreInst(
-                        MEDIA_ST_mod mod,
-                        G4_Operand* surface,
-                        unsigned planeID,
-                        unsigned blockWidth,
-                        unsigned blockHeight,
-                        G4_Operand* xOffOpnd,
-                        G4_Operand* yOffOpnd,
-                        G4_SrcRegRegion* srcOpnd );
+        MEDIA_ST_mod mod,
+        G4_Operand* surface,
+        unsigned planeID,
+        unsigned blockWidth,
+        unsigned blockHeight,
+        G4_Operand* xOffOpnd,
+        G4_Operand* yOffOpnd,
+        G4_SrcRegRegion* srcOpnd);
 
     int translateVISAGatherInst(
-                        VISA_EMask_Ctrl emask,
-                        bool modified,
-                        GATHER_SCATTER_ELEMENT_SIZE eltSize,
-                        VISA_Exec_Size executionSize,
-                        G4_Operand* surface,
-                        G4_Operand* gOffOpnd,
-                        G4_SrcRegRegion* eltOFfOpnd,
-                        G4_DstRegRegion* dstOpnd
-                        );
+        VISA_EMask_Ctrl emask,
+        bool modified,
+        GATHER_SCATTER_ELEMENT_SIZE eltSize,
+        VISA_Exec_Size executionSize,
+        G4_Operand* surface,
+        G4_Operand* gOffOpnd,
+        G4_SrcRegRegion* eltOFfOpnd,
+        G4_DstRegRegion* dstOpnd);
 
     int translateVISAScatterInst(
-                        VISA_EMask_Ctrl emask,
-                        GATHER_SCATTER_ELEMENT_SIZE eltSize,
-                        VISA_Exec_Size executionSize,
-                        G4_Operand* surface,
-                        G4_Operand* gOffOpnd,
-                        G4_SrcRegRegion* eltOffOpnd,
-                        G4_SrcRegRegion* srcOpnd );
+        VISA_EMask_Ctrl emask,
+        GATHER_SCATTER_ELEMENT_SIZE eltSize,
+        VISA_Exec_Size executionSize,
+        G4_Operand* surface,
+        G4_Operand* gOffOpnd,
+        G4_SrcRegRegion* eltOffOpnd,
+        G4_SrcRegRegion* srcOpnd);
 
     int translateVISAGather4Inst(
-                        VISA_EMask_Ctrl emask,
-                        bool modified,
-                        ChannelMask chMask,
-                        VISA_Exec_Size executionSize,
-                        G4_Operand* surface,
-                        G4_Operand* gOffOpnd,
-                        G4_SrcRegRegion* eltOffOpnd,
-                        G4_DstRegRegion* dstOpnd );
+        VISA_EMask_Ctrl emask,
+        bool modified,
+        ChannelMask chMask,
+        VISA_Exec_Size executionSize,
+        G4_Operand* surface,
+        G4_Operand* gOffOpnd,
+        G4_SrcRegRegion* eltOffOpnd,
+        G4_DstRegRegion* dstOpnd);
 
     int translateVISAScatter4Inst(
-                        VISA_EMask_Ctrl emask,
-                        ChannelMask chMask,
-                        VISA_Exec_Size executionSize,
-                        G4_Operand* surface,
-                        G4_Operand* gOffOpnd,
-                        G4_SrcRegRegion* eltOffOpnd,
-                        G4_SrcRegRegion* srcOpnd );
+        VISA_EMask_Ctrl emask,
+        ChannelMask chMask,
+        VISA_Exec_Size executionSize,
+        G4_Operand* surface,
+        G4_Operand* gOffOpnd,
+        G4_SrcRegRegion* eltOffOpnd,
+        G4_SrcRegRegion* srcOpnd);
 
-    int translateVISADwordAtomicInst(VISAAtomicOps subOpc,
-                                     bool is16Bit,
-                                     G4_Predicate *pred,
-                                     VISA_Exec_Size execSize,
-                                     VISA_EMask_Ctrl eMask,
-                                     G4_Operand* surface,
-                                     G4_SrcRegRegion* offsets,
-                                     G4_SrcRegRegion* src0,
-                                     G4_SrcRegRegion* src1,
-                                     G4_DstRegRegion* dst);
+    int translateVISADwordAtomicInst(
+        VISAAtomicOps subOpc,
+        bool is16Bit,
+        G4_Predicate *pred,
+        VISA_Exec_Size execSize,
+        VISA_EMask_Ctrl eMask,
+        G4_Operand* surface,
+        G4_SrcRegRegion* offsets,
+        G4_SrcRegRegion* src0,
+        G4_SrcRegRegion* src1,
+        G4_DstRegRegion* dst);
 
     int translateVISATypedAtomicInst(
         VISAAtomicOps atomicOp,
@@ -2317,296 +2324,309 @@ public:
         G4_SrcRegRegion *src1,
         G4_DstRegRegion *dst);
 
-    int translateVISAGather4TypedInst(G4_Predicate           *pred,
-                                      VISA_EMask_Ctrl emask,
-                                      ChannelMask chMask,
-                                      G4_Operand *surfaceOpnd,
-                                      VISA_Exec_Size executionSize,
-                                      G4_SrcRegRegion *uOffsetOpnd,
-                                      G4_SrcRegRegion *vOffsetOpnd,
-                                      G4_SrcRegRegion *rOffsetOpnd,
-                                      G4_SrcRegRegion *lodOpnd,
-                                      G4_DstRegRegion *dstOpnd);
+    int translateVISAGather4TypedInst(
+        G4_Predicate           *pred,
+        VISA_EMask_Ctrl emask,
+        ChannelMask chMask,
+        G4_Operand *surfaceOpnd,
+        VISA_Exec_Size executionSize,
+        G4_SrcRegRegion *uOffsetOpnd,
+        G4_SrcRegRegion *vOffsetOpnd,
+        G4_SrcRegRegion *rOffsetOpnd,
+        G4_SrcRegRegion *lodOpnd,
+        G4_DstRegRegion *dstOpnd);
 
-    int translateVISAScatter4TypedInst(G4_Predicate           *pred,
-                                       VISA_EMask_Ctrl emask,
-                                       ChannelMask chMask,
-                                       G4_Operand *surfaceOpnd,
-                                       VISA_Exec_Size executionSize,
-                                       G4_SrcRegRegion *uOffsetOpnd,
-                                       G4_SrcRegRegion *vOffsetOpnd,
-                                       G4_SrcRegRegion *rOffsetOpnd,
-                                       G4_SrcRegRegion *lodOpnd,
-                                       G4_SrcRegRegion *srcOpnd);
+    int translateVISAScatter4TypedInst(
+        G4_Predicate           *pred,
+        VISA_EMask_Ctrl emask,
+        ChannelMask chMask,
+        G4_Operand *surfaceOpnd,
+        VISA_Exec_Size executionSize,
+        G4_SrcRegRegion *uOffsetOpnd,
+        G4_SrcRegRegion *vOffsetOpnd,
+        G4_SrcRegRegion *rOffsetOpnd,
+        G4_SrcRegRegion *lodOpnd,
+        G4_SrcRegRegion *srcOpnd);
 
-    int translateVISAGather4ScaledInst(G4_Predicate *pred,
-                                       VISA_Exec_Size execSize,
-                                       VISA_EMask_Ctrl eMask,
-                                       ChannelMask chMask,
-                                       G4_Operand *surface,
-                                       G4_Operand *globalOffset,
-                                       G4_SrcRegRegion *offsets,
-                                       G4_DstRegRegion *dst);
+    int translateVISAGather4ScaledInst(
+        G4_Predicate *pred,
+        VISA_Exec_Size execSize,
+        VISA_EMask_Ctrl eMask,
+        ChannelMask chMask,
+        G4_Operand *surface,
+        G4_Operand *globalOffset,
+        G4_SrcRegRegion *offsets,
+        G4_DstRegRegion *dst);
 
-    int translateVISAScatter4ScaledInst(G4_Predicate *pred,
-                                        VISA_Exec_Size execSize,
-                                        VISA_EMask_Ctrl eMask,
-                                        ChannelMask chMask,
-                                        G4_Operand *surface,
-                                        G4_Operand *globalOffset,
-                                        G4_SrcRegRegion *offsets,
-                                        G4_SrcRegRegion *src);
+    int translateVISAScatter4ScaledInst(
+        G4_Predicate *pred,
+        VISA_Exec_Size execSize,
+        VISA_EMask_Ctrl eMask,
+        ChannelMask chMask,
+        G4_Operand *surface,
+        G4_Operand *globalOffset,
+        G4_SrcRegRegion *offsets,
+        G4_SrcRegRegion *src);
 
-    int translateVISAGatherScaledInst(G4_Predicate *pred,
-                                      VISA_Exec_Size execSize,
-                                      VISA_EMask_Ctrl eMask,
-                                      VISA_SVM_Block_Num numBlocks,
-                                      G4_Operand *surface,
-                                      G4_Operand *globalOffset,
-                                      G4_SrcRegRegion *offsets,
-                                      G4_DstRegRegion *dst);
+    int translateVISAGatherScaledInst(
+        G4_Predicate *pred,
+        VISA_Exec_Size execSize,
+        VISA_EMask_Ctrl eMask,
+        VISA_SVM_Block_Num numBlocks,
+        G4_Operand *surface,
+        G4_Operand *globalOffset,
+        G4_SrcRegRegion *offsets,
+        G4_DstRegRegion *dst);
 
-    int translateVISAScatterScaledInst(G4_Predicate *pred,
-                                       VISA_Exec_Size execSize,
-                                       VISA_EMask_Ctrl eMask,
-                                       VISA_SVM_Block_Num numBlocks,
-                                       G4_Operand *surface,
-                                       G4_Operand *globalOffset,
-                                       G4_SrcRegRegion *offsets,
-                                       G4_SrcRegRegion *src);
+    int translateVISAScatterScaledInst(
+        G4_Predicate *pred,
+        VISA_Exec_Size execSize,
+        VISA_EMask_Ctrl eMask,
+        VISA_SVM_Block_Num numBlocks,
+        G4_Operand *surface,
+        G4_Operand *globalOffset,
+        G4_SrcRegRegion *offsets,
+        G4_SrcRegRegion *src);
 
-    int translateByteGatherInst(G4_Predicate *pred,
-                                VISA_Exec_Size execSize,
-                                VISA_EMask_Ctrl eMask,
-                                VISA_SVM_Block_Num numBlocks,
-                                G4_Operand *surface,
-                                G4_Operand *globalOffset,
-                                G4_SrcRegRegion *offsets,
-                                G4_DstRegRegion *dst);
-    int translateByteScatterInst(G4_Predicate *pred,
-                                 VISA_Exec_Size execSize,
-                                 VISA_EMask_Ctrl eMask,
-                                 VISA_SVM_Block_Num numBlocks,
-                                 G4_Operand *surface,
-                                 G4_Operand *globalOffset,
-                                 G4_SrcRegRegion *offsets,
-                                 G4_SrcRegRegion *src);
+    int translateByteGatherInst(
+        G4_Predicate *pred,
+        VISA_Exec_Size execSize,
+        VISA_EMask_Ctrl eMask,
+        VISA_SVM_Block_Num numBlocks,
+        G4_Operand *surface,
+        G4_Operand *globalOffset,
+        G4_SrcRegRegion *offsets,
+        G4_DstRegRegion *dst);
 
-    int translateGather4Inst(G4_Predicate *pred,
-                             VISA_Exec_Size execSize,
-                             VISA_EMask_Ctrl eMask,
-                             ChannelMask chMask,
-                             G4_Operand *surface,
-                             G4_Operand *globalOffset,
-                             G4_SrcRegRegion *offsets,
-                             G4_DstRegRegion *dst);
-    int translateScatter4Inst(G4_Predicate *pred,
-                              VISA_Exec_Size execSize,
-                              VISA_EMask_Ctrl eMask,
-                              ChannelMask chMask,
-                              G4_Operand *surface,
-                              G4_Operand *globalOffset,
-                              G4_SrcRegRegion *offsets,
-                              G4_SrcRegRegion *src);
+    int translateByteScatterInst(
+        G4_Predicate *pred,
+        VISA_Exec_Size execSize,
+        VISA_EMask_Ctrl eMask,
+        VISA_SVM_Block_Num numBlocks,
+        G4_Operand *surface,
+        G4_Operand *globalOffset,
+        G4_SrcRegRegion *offsets,
+        G4_SrcRegRegion *src);
 
-    int translateVISALogicInst(ISA_Opcode opcode,
-                        G4_Predicate *pred_opnd,
-                        bool saturate,
-                        VISA_Exec_Size executionSize,
-                        VISA_EMask_Ctrl emask,
-                        G4_DstRegRegion* dst,
-                        G4_Operand* src0,
-                        G4_Operand* src1,
-                        G4_Operand* src2,
-                        G4_Operand* src3);
+    int translateGather4Inst(
+        G4_Predicate *pred,
+        VISA_Exec_Size execSize,
+        VISA_EMask_Ctrl eMask,
+        ChannelMask chMask,
+        G4_Operand *surface,
+        G4_Operand *globalOffset,
+        G4_SrcRegRegion *offsets,
+        G4_DstRegRegion *dst);
+
+    int translateScatter4Inst(
+        G4_Predicate *pred,
+        VISA_Exec_Size execSize,
+        VISA_EMask_Ctrl eMask,
+        ChannelMask chMask,
+        G4_Operand *surface,
+        G4_Operand *globalOffset,
+        G4_SrcRegRegion *offsets,
+        G4_SrcRegRegion *src);
+
+    int translateVISALogicInst(
+        ISA_Opcode opcode,
+        G4_Predicate *pred_opnd,
+        bool saturate,
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        G4_DstRegRegion* dst,
+        G4_Operand* src0,
+        G4_Operand* src1,
+        G4_Operand* src2,
+        G4_Operand* src3);
 
     int translateVISAVmeImeInst(
-                        uint8_t stream_mode,
-                        uint8_t search_ctrl,
-                        G4_Operand* surfaceOpnd,
-                        G4_Operand* uniInputOpnd,
-                        G4_Operand* imeInputOpnd,
-                        G4_Operand* ref0Opnd,
-                        G4_Operand* ref1Opnd,
-                        G4_Operand* costCenterOpnd,
-                        G4_DstRegRegion* outputOpnd);
+        uint8_t stream_mode,
+        uint8_t search_ctrl,
+        G4_Operand* surfaceOpnd,
+        G4_Operand* uniInputOpnd,
+        G4_Operand* imeInputOpnd,
+        G4_Operand* ref0Opnd,
+        G4_Operand* ref1Opnd,
+        G4_Operand* costCenterOpnd,
+        G4_DstRegRegion* outputOpnd);
 
     int translateVISAVmeSicInst(
-                        G4_Operand* surfaceOpnd,
-                        G4_Operand* uniInputOpnd,
-                        G4_Operand* sicInputOpnd,
-                        G4_DstRegRegion* outputOpnd);
+        G4_Operand* surfaceOpnd,
+        G4_Operand* uniInputOpnd,
+        G4_Operand* sicInputOpnd,
+        G4_DstRegRegion* outputOpnd);
 
     int translateVISAVmeFbrInst(
-                        G4_Operand* surfaceOpnd,
-                        G4_Operand* unitInputOpnd,
-                        G4_Operand* fbrInputOpnd,
-                        G4_Operand* fbrMbModOpnd,
-                        G4_Operand* fbrSubMbShapeOpnd,
-                        G4_Operand* fbrSubPredModeOpnd,
-                        G4_DstRegRegion* outputOpnd);
+        G4_Operand* surfaceOpnd,
+        G4_Operand* unitInputOpnd,
+        G4_Operand* fbrInputOpnd,
+        G4_Operand* fbrMbModOpnd,
+        G4_Operand* fbrSubMbShapeOpnd,
+        G4_Operand* fbrSubPredModeOpnd,
+        G4_DstRegRegion* outputOpnd);
 
     int translateVISAVmeIdmInst(
-                        G4_Operand* surfaceOpnd,
-                        G4_Operand* unitInputOpnd,
-                        G4_Operand* idmInputOpnd,
-                        G4_DstRegRegion* outputOpnd);
+        G4_Operand* surfaceOpnd,
+        G4_Operand* unitInputOpnd,
+        G4_Operand* idmInputOpnd,
+        G4_DstRegRegion* outputOpnd);
 
     int translateVISARawSendInst(
-                        G4_Predicate *predOpnd,
-                        VISA_Exec_Size executionSize,
-                        VISA_EMask_Ctrl emask,
-                        uint8_t modifiers,
-                        unsigned int exDesc,
-                        uint8_t numSrc,
-                        uint8_t numDst,
-                        G4_Operand* msgDescOpnd,
-                        G4_SrcRegRegion* msgOpnd,
-                        G4_DstRegRegion* dstOpnd);
+        G4_Predicate *predOpnd,
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        uint8_t modifiers,
+        unsigned int exDesc,
+        uint8_t numSrc,
+        uint8_t numDst,
+        G4_Operand* msgDescOpnd,
+        G4_SrcRegRegion* msgOpnd,
+        G4_DstRegRegion* dstOpnd);
 
     int translateVISARawSendsInst(
-                        G4_Predicate *predOpnd,
-                        VISA_Exec_Size executionSize,
-                        VISA_EMask_Ctrl emask,
-                        uint8_t modifiers,
-                        G4_Operand* exDesc,
-                        uint8_t numSrc0,
-                        uint8_t numSrc1,
-                        uint8_t numDst,
-                        G4_Operand* msgDescOpnd,
-                        G4_Operand* msgOpnd0,
-                        G4_Operand* msgOpnd1,
-                        G4_DstRegRegion* dstOpnd,
-                        unsigned ffid,
-                        bool hasEOT = false);
+        G4_Predicate *predOpnd,
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        uint8_t modifiers,
+        G4_Operand* exDesc,
+        uint8_t numSrc0,
+        uint8_t numSrc1,
+        uint8_t numDst,
+        G4_Operand* msgDescOpnd,
+        G4_Operand* msgOpnd0,
+        G4_Operand* msgOpnd1,
+        G4_DstRegRegion* dstOpnd,
+        unsigned ffid,
+        bool hasEOT = false);
 
     int translateVISASamplerVAGenericInst(
-                        G4_Operand*   surface,
-                        G4_Operand*   sampler,
-                        G4_Operand*   uOffOpnd,
-                        G4_Operand*   vOffOpnd,
-                        G4_Operand*   vSizeOpnd,
-                        G4_Operand*   hSizeOpnd,
-                        G4_Operand*   mmfMode,
-                        unsigned char cntrl,
-                        unsigned char msgSeq,
-                        VA_fopcode    fopcode,
-                        G4_DstRegRegion*   dstOpnd,
-                        G4_Type       dstType,
-                        unsigned      dstSize,
-                        bool isBigKernel = false);
+        G4_Operand*   surface,
+        G4_Operand*   sampler,
+        G4_Operand*   uOffOpnd,
+        G4_Operand*   vOffOpnd,
+        G4_Operand*   vSizeOpnd,
+        G4_Operand*   hSizeOpnd,
+        G4_Operand*   mmfMode,
+        unsigned char cntrl,
+        unsigned char msgSeq,
+        VA_fopcode    fopcode,
+        G4_DstRegRegion*   dstOpnd,
+        G4_Type       dstType,
+        unsigned      dstSize,
+        bool isBigKernel = false);
 
     int translateVISAAvsInst(
-                        G4_Operand* surface,
-                        G4_Operand* sampler,
-                        ChannelMask channel,
-                        unsigned numEnabledChannels,
-                        G4_Operand* deltaUOpnd,
-                        G4_Operand* uOffOpnd,
-                        G4_Operand* deltaVOpnd,
-                        G4_Operand* vOffOpnd,
-                        G4_Operand* u2dOpnd,
-                        G4_Operand* groupIDOpnd,
-                        G4_Operand* verticalBlockNumberOpnd,
-                        unsigned char cntrl,
-                        G4_Operand* v2dOpnd,
-                        unsigned char execMode,
-                        G4_Operand* eifbypass,
-                        G4_DstRegRegion* dstOpnd );
+        G4_Operand* surface,
+        G4_Operand* sampler,
+        ChannelMask channel,
+        unsigned numEnabledChannels,
+        G4_Operand* deltaUOpnd,
+        G4_Operand* uOffOpnd,
+        G4_Operand* deltaVOpnd,
+        G4_Operand* vOffOpnd,
+        G4_Operand* u2dOpnd,
+        G4_Operand* groupIDOpnd,
+        G4_Operand* verticalBlockNumberOpnd,
+        unsigned char cntrl,
+        G4_Operand* v2dOpnd,
+        unsigned char execMode,
+        G4_Operand* eifbypass,
+        G4_DstRegRegion* dstOpnd);
 
     int translateVISADataMovementInst(
-                        ISA_Opcode opcode,
-                        CISA_MIN_MAX_SUB_OPCODE subOpcode,
-                        G4_Predicate *pred_opnd,
-                        VISA_Exec_Size executionSize,
-                        VISA_EMask_Ctrl emask,
-                        bool saturate,
-                        G4_DstRegRegion *dst,
-                        G4_Operand *src0,
-                        G4_Operand *src1);
+        ISA_Opcode opcode,
+        CISA_MIN_MAX_SUB_OPCODE subOpcode,
+        G4_Predicate *pred_opnd,
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        bool saturate,
+        G4_DstRegRegion *dst,
+        G4_Operand *src0,
+        G4_Operand *src1);
 
     int translateVISASamplerInst(
-                        unsigned simdMode,
-                        G4_Operand* surface,
-                        G4_Operand* sampler,
-                        ChannelMask channel,
-                        unsigned numEnabledChannels,
-                        G4_Operand* uOffOpnd,
-                        G4_Operand* vOffOpnd,
-                        G4_Operand* rOffOpnd,
-                        G4_DstRegRegion* dstOpnd );
+        unsigned simdMode,
+        G4_Operand* surface,
+        G4_Operand* sampler,
+        ChannelMask channel,
+        unsigned numEnabledChannels,
+        G4_Operand* uOffOpnd,
+        G4_Operand* vOffOpnd,
+        G4_Operand* rOffOpnd,
+        G4_DstRegRegion* dstOpnd);
 
     int translateVISAVaSklPlusGeneralInst(
-                        ISA_VA_Sub_Opcode sub_opcode,
-                        G4_Operand* surface,
-                        G4_Operand* sampler,
-                        unsigned char mode,
-                        unsigned char functionality,
-                        G4_Operand* uOffOpnd,
-                        G4_Operand* vOffOpnd,
-                        //1pixel convolve
-                        G4_Operand * offsetsOpnd,
+        ISA_VA_Sub_Opcode sub_opcode,
+        G4_Operand* surface,
+        G4_Operand* sampler,
+        unsigned char mode,
+        unsigned char functionality,
+        G4_Operand* uOffOpnd,
+        G4_Operand* vOffOpnd,
+        //1pixel convolve
+        G4_Operand * offsetsOpnd,
 
-                        //FloodFill
-                        G4_Operand* loopCountOpnd,
-                        G4_Operand* pixelHMaskOpnd,
-                        G4_Operand* pixelVMaskLeftOpnd,
-                        G4_Operand* pixelVMaskRightOpnd,
+        //FloodFill
+        G4_Operand* loopCountOpnd,
+        G4_Operand* pixelHMaskOpnd,
+        G4_Operand* pixelVMaskLeftOpnd,
+        G4_Operand* pixelVMaskRightOpnd,
 
-                        //LBP Correlation
-                        G4_Operand* disparityOpnd,
+        //LBP Correlation
+        G4_Operand* disparityOpnd,
 
-                        //Correlation Search
-                        G4_Operand* verticalOriginOpnd,
-                        G4_Operand* horizontalOriginOpnd,
-                        G4_Operand* xDirectionSizeOpnd,
-                        G4_Operand* yDirectionSizeOpnd,
-                        G4_Operand* xDirectionSearchSizeOpnd,
-                        G4_Operand* yDirectionSearchSizeOpnd,
+        //Correlation Search
+        G4_Operand* verticalOriginOpnd,
+        G4_Operand* horizontalOriginOpnd,
+        G4_Operand* xDirectionSizeOpnd,
+        G4_Operand* yDirectionSizeOpnd,
+        G4_Operand* xDirectionSearchSizeOpnd,
+        G4_Operand* yDirectionSearchSizeOpnd,
 
-                        G4_DstRegRegion* dstOpnd,
-                        G4_Type dstType,
-                        unsigned dstSize,
+        G4_DstRegRegion* dstOpnd,
+        G4_Type dstType,
+        unsigned dstSize,
 
-                        //HDC
-                        unsigned char pixelSize,
-                        G4_Operand* dstSurfaceOpnd,
-                        G4_Operand *dstXOpnd,
-                        G4_Operand* dstYOpnd,
-                        bool hdcMode);
+        //HDC
+        unsigned char pixelSize,
+        G4_Operand* dstSurfaceOpnd,
+        G4_Operand *dstXOpnd,
+        G4_Operand* dstYOpnd,
+        bool hdcMode);
 
     int translateVISASamplerNormInst(
-                        G4_Operand* surface,
-                        G4_Operand* sampler,
-                        ChannelMask channel,
-                        unsigned numEnabledChannels,
-                        G4_Operand* deltaUOpnd,
-                        G4_Operand* uOffOpnd,
-                        G4_Operand* deltaVOpnd,
-                        G4_Operand* vOffOpnd,
-                        G4_DstRegRegion* dst_opnd );
+        G4_Operand* surface,
+        G4_Operand* sampler,
+        ChannelMask channel,
+        unsigned numEnabledChannels,
+        G4_Operand* deltaUOpnd,
+        G4_Operand* uOffOpnd,
+        G4_Operand* deltaVOpnd,
+        G4_Operand* vOffOpnd,
+        G4_DstRegRegion* dst_opnd);
 
     int translateVISAGotoInst(
-                        G4_Predicate *predOpnd,
-                        VISA_Exec_Size executionSize,
-                        VISA_EMask_Ctrl emask,
-                        G4_Label *label);
+        G4_Predicate *predOpnd,
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        G4_Label *label);
 
     int translateVISASampler3DInst(
-                        VISASampler3DSubOpCode actualop,
-                        bool pixelNullMask,
-                        bool cpsEnable,
-                        bool uniformSampler,
-                        G4_Predicate* pred,
-                        VISA_Exec_Size executionSize,
-                        VISA_EMask_Ctrl emask,
-                        ChannelMask srcChannel,
-                        G4_Operand* aoffimmi,
-                        G4_Operand *sampler,
-                        G4_Operand *surface,
-                        G4_DstRegRegion* dst,
-                        unsigned int numParms,
-                        G4_SrcRegRegion ** params);
+        VISASampler3DSubOpCode actualop,
+        bool pixelNullMask,
+        bool cpsEnable,
+        bool uniformSampler,
+        G4_Predicate* pred,
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        ChannelMask srcChannel,
+        G4_Operand* aoffimmi,
+        G4_Operand *sampler,
+        G4_Operand *surface,
+        G4_DstRegRegion* dst,
+        unsigned int numParms,
+        G4_SrcRegRegion ** params);
 
     int translateVISASampleInfoInst(
         VISA_Exec_Size executionSize,
@@ -2621,32 +2641,32 @@ public:
         ChannelMask chMask,
         G4_Operand* surface,
         G4_SrcRegRegion* lod,
-        G4_DstRegRegion* dst );
+        G4_DstRegRegion* dst);
 
 
     int translateVISAURBWrite3DInst(
-                        G4_Predicate* pred,
-                        VISA_Exec_Size executionSize,
-                        VISA_EMask_Ctrl emask,
-                        uint8_t numOut,
-                        uint16_t globalOffset,
-                        G4_SrcRegRegion* channelMask,
-                        G4_SrcRegRegion* urbHandle,
-                        G4_SrcRegRegion* perSlotOffset,
-                        G4_SrcRegRegion* vertexData );
+        G4_Predicate* pred,
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        uint8_t numOut,
+        uint16_t globalOffset,
+        G4_SrcRegRegion* channelMask,
+        G4_SrcRegRegion* urbHandle,
+        G4_SrcRegRegion* perSlotOffset,
+        G4_SrcRegRegion* vertexData);
 
     int translateVISARTWrite3DInst(
-                        G4_Predicate* pred,
-                        VISA_Exec_Size executionSize,
-                        VISA_EMask_Ctrl emask,
-                        G4_Operand *surface,
-                        G4_SrcRegRegion *r1HeaderOpnd,
-                        G4_Operand *rtIndex,
-                        vISA_RT_CONTROLS cntrls,
-                        G4_SrcRegRegion *sampleIndexOpnd,
-                        G4_Operand *cpsCounter,
-                        unsigned int numParms,
-                        G4_SrcRegRegion ** msgOpnds);
+        G4_Predicate* pred,
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        G4_Operand *surface,
+        G4_SrcRegRegion *r1HeaderOpnd,
+        G4_Operand *rtIndex,
+        vISA_RT_CONTROLS cntrls,
+        G4_SrcRegRegion *sampleIndexOpnd,
+        G4_Operand *cpsCounter,
+        unsigned int numParms,
+        G4_SrcRegRegion ** msgOpnds);
 
 
 
@@ -2690,37 +2710,42 @@ public:
         G4_SrcRegRegion* src1,
         G4_DstRegRegion* dst);
 
-    int translateSVMGather4Inst(VISA_Exec_Size      execSize,
-                                VISA_EMask_Ctrl    eMask,
-                                ChannelMask               chMask,
-                                G4_Predicate              *pred,
-                                G4_Operand                *address,
-                                G4_SrcRegRegion           *offsets,
-                                G4_DstRegRegion           *dst);
+    int translateSVMGather4Inst(
+        VISA_Exec_Size      execSize,
+        VISA_EMask_Ctrl    eMask,
+        ChannelMask               chMask,
+        G4_Predicate              *pred,
+        G4_Operand                *address,
+        G4_SrcRegRegion           *offsets,
+        G4_DstRegRegion           *dst);
 
-    int translateSVMScatter4Inst(VISA_Exec_Size     execSize,
-                                 VISA_EMask_Ctrl   eMask,
-                                 ChannelMask              chMask,
-                                 G4_Predicate             *pred,
-                                 G4_Operand               *address,
-                                 G4_SrcRegRegion          *offsets,
-                                 G4_SrcRegRegion          *src);
+    int translateSVMScatter4Inst(
+        VISA_Exec_Size     execSize,
+        VISA_EMask_Ctrl   eMask,
+        ChannelMask              chMask,
+        G4_Predicate             *pred,
+        G4_Operand               *address,
+        G4_SrcRegRegion          *offsets,
+        G4_SrcRegRegion          *src);
 
-    int translateVISASVMGather4ScaledInst(VISA_Exec_Size      execSize,
-                                          VISA_EMask_Ctrl    eMask,
-                                          ChannelMask               chMask,
-                                          G4_Predicate              *pred,
-                                          G4_Operand                *address,
-                                          G4_SrcRegRegion           *offsets,
-                                          G4_DstRegRegion           *dst);
+    int translateVISASVMGather4ScaledInst(
+        VISA_Exec_Size      execSize,
+        VISA_EMask_Ctrl    eMask,
+        ChannelMask               chMask,
+        G4_Predicate              *pred,
+        G4_Operand                *address,
+        G4_SrcRegRegion           *offsets,
+        G4_DstRegRegion           *dst);
 
-    int translateVISASVMScatter4ScaledInst(VISA_Exec_Size     execSize,
-                                           VISA_EMask_Ctrl   eMask,
-                                           ChannelMask              chMask,
-                                           G4_Predicate             *pred,
-                                           G4_Operand               *address,
-                                           G4_SrcRegRegion          *offsets,
-                                           G4_SrcRegRegion          *src);
+    int translateVISASVMScatter4ScaledInst(
+        VISA_Exec_Size     execSize,
+        VISA_EMask_Ctrl   eMask,
+        ChannelMask              chMask,
+        G4_Predicate             *pred,
+        G4_Operand               *address,
+        G4_SrcRegRegion          *offsets,
+        G4_SrcRegRegion          *src);
+
     int translateVISALifetimeInst(
         unsigned char properties,
         G4_Operand* var);
@@ -2759,9 +2784,10 @@ public:
     ///                         present).
     /// \param len              The length of the array of sources.
     ///
-    void preparePayload(G4_SrcRegRegion *msgs[2], unsigned sizes[2],
-                        unsigned batchExSize, bool splitSendEnabled,
-                        payloadSource sources[], unsigned len);
+    void preparePayload(
+        G4_SrcRegRegion *msgs[2], unsigned sizes[2],
+        unsigned batchExSize, bool splitSendEnabled,
+        payloadSource sources[], unsigned len);
 
     // Coalesce multiple payloads into a single region.  Pads each region with
     // an optional alignment argument (e.g. a GRF size).  The source region
@@ -2873,10 +2899,10 @@ private:
         G4_Operand *srcOrDst);
 
     int translateVISASLMUntypedScaledInst(
-        bool isRead,
-        G4_Predicate *pred,
-        VISA_Exec_Size   execSize,
-        VISA_EMask_Ctrl eMask,
+        bool                   isRead,
+        G4_Predicate          *pred,
+        VISA_Exec_Size         execSize,
+        VISA_EMask_Ctrl        eMask,
         ChannelMask            chMask,
         uint16_t               scale,
         G4_Operand             *globalOffset,
@@ -2887,14 +2913,16 @@ private:
 
     G4_Declare* getSamplerHeader(bool isBindlessSampler, bool samplerIndexGE16);
 
-    void buildTypedSurfaceAddressPayload(G4_SrcRegRegion* u, G4_SrcRegRegion* v, G4_SrcRegRegion* r, G4_SrcRegRegion* lod,
+    void buildTypedSurfaceAddressPayload(
+        G4_SrcRegRegion* u, G4_SrcRegRegion* v, G4_SrcRegRegion* r, G4_SrcRegRegion* lod,
         uint32_t exSize, uint32_t instOpt, payloadSource sources[], uint32_t& len);
 
     uint32_t setOwordForDesc(uint32_t desc, int numOword, bool isSLM = false) const;
 
     G4_Declare* getImmDcl(G4_Imm* val, int numElt);
 
-    int splitSampleInst(VISASampler3DSubOpCode actualop,
+    int splitSampleInst(
+        VISASampler3DSubOpCode actualop,
         bool pixelNullMask,
         bool cpsEnable,
         G4_Predicate* pred,
@@ -2912,7 +2940,8 @@ private:
         bool uniformSampler = true);
 
     // return globalOffset + offsets as a contiguous operand
-    G4_SrcRegRegion* getSVMOffset(G4_Operand* globalOffset,
+    G4_SrcRegRegion* getSVMOffset(
+        G4_Operand* globalOffset,
         G4_SrcRegRegion* offsets,
         uint16_t exSize,
         G4_Predicate* pred,

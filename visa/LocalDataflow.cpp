@@ -60,7 +60,7 @@ struct LiveNode {
         , mask(getMaskSize(Inst, OpNum), 0)
     {
         auto opnd = getOperand();
-        if(opnd)
+        if (opnd)
             getOpndFootprint(opnd, mask);
     }
 
@@ -213,7 +213,7 @@ bool LiveNode::addDefinition(G4_INST* DefInst, Gen4_Operand_Number DefOpNum,
             continue;
         G4_Operand* PrevDef = PrevDefInst->getOperand(Node.second);
         G4_Operand* CurrDef = DefInst->getOperand(DefOpNum);
-        assert((PrevDef != nullptr) && (CurrDef != nullptr) );
+        assert((PrevDef != nullptr) && (CurrDef != nullptr));
         G4_CmpRelation DefRel = compOpnd(PrevDef, CurrDef);
         if (DefRel == G4_CmpRelation::Rel_eq || DefRel == G4_CmpRelation::Rel_gt)
             return false;

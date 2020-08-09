@@ -57,9 +57,9 @@ const uint32_t SCRATCH_BINDING_TABLE_INDEX = 255;
 
 typedef enum _RegFile_
 {
-    REG_FILE_A      ,
-    REG_FILE_R      ,
-    REG_FILE_M      ,
+    REG_FILE_A,
+    REG_FILE_R,
+    REG_FILE_M,
     REG_FILE_I
 } RegFile;
 
@@ -790,7 +790,7 @@ static struct _CompactSubRegTable_
                 found[2] = true;
             }
 
-            if(found[0] && found[1] && found[2])
+            if (found[0] && found[1] && found[2])
                 return true;
         }
 

@@ -243,7 +243,7 @@ static void readExecSizeNG(unsigned& bytePos, const char* buf, VISA_Exec_Size& s
 
     mask = transformMask(container, maskVal);
 
-    size = (VISA_Exec_Size )((execSize) & 0xF);
+    size = (VISA_Exec_Size)((execSize) & 0xF);
 }
 
 template <typename T> T readPrimitiveOperandNG(unsigned& bytePos, const char* buf)
@@ -264,7 +264,7 @@ static VISA_PredOpnd* readPredicateOperandNG(unsigned& bytePos, const char* buf,
     VISAKernel* kernelBuilder = container.kernelBuilder;
     unsigned predID = (predOpnd & 0xfff);
     VISA_PREDICATE_CONTROL control = (VISA_PREDICATE_CONTROL)((predOpnd & 0x6000) >> 13);
-    VISA_PREDICATE_STATE   state   = (VISA_PREDICATE_STATE  )((predOpnd & 0x8000) >> 15);
+    VISA_PREDICATE_STATE   state   = (VISA_PREDICATE_STATE)((predOpnd & 0x8000) >> 15);
     VISA_PredVar*  decl = container.predicateVarDecls[predID];
     VISA_PredOpnd* opnd = NULL;
 
@@ -299,7 +299,7 @@ static VISA_RawOpnd* readRawOperandNG(unsigned& bytePos, const char* buf, Routin
         null register, then when CreateVisaRawOperand is called check that decl passed in is
         null register decl, and mark operand is nullReg, also create region <0;1,0>
     */
-    if(index == 0)
+    if (index == 0)
     {
        kernelBuilderImpl->CreateVISANullRawOperand(opnd, true); //dst
     }
@@ -363,7 +363,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
     uint8_t minorVersion = container.minorVersion;
 
     READ_CISA_FIELD(tag, uint8_t, bytePos, buf);
-    VISA_Modifier modifier = ((VISA_Modifier)((tag >> 3 ) & 0x7));
+    VISA_Modifier modifier = ((VISA_Modifier)((tag >> 3) & 0x7));
 
     switch ((Common_ISA_Operand_Class)(tag & 0x7)) /// getOperandClass
     {
@@ -380,8 +380,8 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
             READ_CISA_FIELD(region    , uint16_t, bytePos, buf);
 
             uint16_t v_stride = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)(region & 0xF));
-            uint16_t width    = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 4 ) & 0xF));
-            uint16_t h_stride = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 8 ) & 0xF));
+            uint16_t width    = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 4) & 0xF));
+            uint16_t h_stride = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 8) & 0xF));
 
             unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
@@ -396,7 +396,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
 
             if (isDst)
                 kernelBuilderImpl->CreateVISADstOperand(opnd, decl, h_stride, rowOffset, colOffset);
-            else if(isAddressoff)
+            else if (isAddressoff)
             {
                 VISA_Type vType = decl->genVar.getType();
                 G4_Type gType = GetGenTypeFromVISAType(vType);
@@ -463,9 +463,9 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
             READ_CISA_FIELD(bit_property   , uint8_t , bytePos, buf);
             READ_CISA_FIELD(region         , uint16_t, bytePos, buf);
 
-            uint16_t v_stride = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region      ) & 0xF));
-            uint16_t width    = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 4 ) & 0xF));
-            uint16_t h_stride = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 8 ) & 0xF));
+            uint16_t v_stride = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region) & 0xF));
+            uint16_t width    = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 4) & 0xF));
+            uint16_t h_stride = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 8) & 0xF));
 
             VISA_Modifier       mod = modifier;
             VISA_VectorOpnd*   opnd = NULL;
@@ -523,7 +523,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
             {
             case STATE_OPND_SURFACE:
                 {
-                    if(isAddressoff)
+                    if (isAddressoff)
                     {
                         VISA_SurfaceVar* decl = container.surfaceVarDecls[index];
                         unsigned int offsetB = offset * G4_Type_Table[Type_UW].byteSize;
@@ -606,7 +606,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
 
     VISAKernel* kernelBuilder = container.kernelBuilder;
 
-    switch(ISA_Inst_Table[opcode].type)
+    switch (ISA_Inst_Table[opcode].type)
     {
     case ISA_Inst_Mov:
     case ISA_Inst_Arith:
@@ -643,12 +643,12 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
 
                 if (isDst)
                 {
-                    if(ISA_Inst_Table[opcode].type == ISA_Inst_Compare)
+                    if (ISA_Inst_Table[opcode].type == ISA_Inst_Compare)
                     {
                         opnds[i] = NULL;
                         PEAK_CISA_FIELD(tag, uint8_t, bytePos, buf);
 
-                        if( (tag & 0x7) == OPERAND_GENERAL )
+                        if ((tag & 0x7) == OPERAND_GENERAL)
                         {
                             opnds[i] = readVectorOperandNG(bytePos, buf, tag, container, Get_VISA_Exec_Size(esize), true);
                             cmpHasDst = true;
@@ -661,7 +661,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                     else
                         opnds[i] = readVectorOperandNG(bytePos, buf, tag, container, exSize, isDst);
                 }
-                else if(ISA_Inst_Table[opcode].type == ISA_Inst_Address && i == 1)
+                else if (ISA_Inst_Table[opcode].type == ISA_Inst_Address && i == 1)
                 {
                     //for first source of address add instruction.
                     opnds[i] = readVectorOperandNGAddressOf(bytePos, buf, container);
@@ -676,14 +676,14 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
             opnd_count -= opnd_skip;
 
 
-            bool             saturate = (((VISA_Modifier)((tag >> 3 ) & 0x7)) == MODIFIER_SAT);
+            bool             saturate = (((VISA_Modifier)((tag >> 3) & 0x7)) == MODIFIER_SAT);
             VISA_VectorOpnd*      dst = opnds[0];
             VISA_VectorOpnd*     src0 = opnds[1];
             VISA_VectorOpnd*     src1 = opnd_count > 2 ? opnds[2] : NULL;
             VISA_VectorOpnd*     src2 = opnd_count > 3 ? opnds[3] : NULL;
             VISA_VectorOpnd*     src3 = opnd_count > 4 ? opnds[4] : NULL;
 
-            switch(ISA_Inst_Table[opcode].type)
+            switch (ISA_Inst_Table[opcode].type)
             {
             case ISA_Inst_Mov:
                 if (opcode == ISA_FMINMAX)
@@ -708,9 +708,9 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                 kernelBuilder->AppendVISAAddrAddInst(emask, esize, dst, src0, src1);
                 break;
             case ISA_Inst_Compare:
-                if(dstDcl)
+                if (dstDcl)
                     kernelBuilder->AppendVISAComparisonInst((VISA_Cond_Mod)(opSpec & 0x7), emask, esize, dstDcl, src0, src1);
-                else if(cmpHasDst)
+                else if (cmpHasDst)
                     kernelBuilder->AppendVISAComparisonInst((VISA_Cond_Mod)(opSpec & 0x7), emask, esize, dst, src0, src1);
                 else
                     ASSERT_USER(true, "DST doesn't have valid GRF or FLAG dst.");
@@ -733,7 +733,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
         }
     case ISA_Inst_Sync:
         {
-            if (opcode == ISA_WAIT )
+            if (opcode == ISA_WAIT)
             {
                 VISA_VectorOpnd* mask = NULL;
                 if (getVersionAsInt(container.majorVersion, container.minorVersion) >=
@@ -866,7 +866,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
                 esize = EXEC_SIZE_1;
                 break;
             default:
-                MUST_BE_TRUE(false, "Invalid Number of Elements for Gather/Scatter." );
+                MUST_BE_TRUE(false, "Invalid Number of Elements for Gather/Scatter.");
             }
 
             emask = transformMask(container, num_elts >> 4);
@@ -966,13 +966,13 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
 
             vector<VISA_RawOpnd*> rawOpndVector;
             if (s0a) rawOpndVector.push_back(s0a);
-            if ( oM) rawOpndVector.push_back( oM);
-            if (  R) rawOpndVector.push_back(  R);
-            if (  G) rawOpndVector.push_back(  G);
-            if (  B) rawOpndVector.push_back(  B);
-            if (  A) rawOpndVector.push_back(  A);
-            if (  Z) rawOpndVector.push_back(  Z);
-            if (  S) rawOpndVector.push_back(  S);
+            if (oM) rawOpndVector.push_back(oM);
+            if (R) rawOpndVector.push_back(R);
+            if (G) rawOpndVector.push_back(G);
+            if (B) rawOpndVector.push_back(B);
+            if (A) rawOpndVector.push_back(A);
+            if (Z) rawOpndVector.push_back(Z);
+            if (S) rawOpndVector.push_back(S);
 
             VISA_StateOpndHandle* surfaceHnd = NULL;
             kernelBuilderImpl->CreateVISAStateOperandHandle(surfaceHnd, container.surfaceVarDecls[surface]);
@@ -1218,7 +1218,7 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
         }
     case ISA_RAW_SEND:
         {
-            uint8_t modifier = readPrimitiveOperandNG<uint8_t>( bytePos, buf);
+            uint8_t modifier = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
             VISA_EMask_Ctrl emask = vISA_EMASK_M1;
             VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
@@ -1239,7 +1239,7 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
         }
     case ISA_RAW_SENDS:
         {
-            uint8_t modifier = readPrimitiveOperandNG<uint8_t>( bytePos, buf);
+            uint8_t modifier = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
             bool hasEOT = modifier & 0x2;
 
             VISA_EMask_Ctrl emask = vISA_EMASK_M1;
@@ -1363,13 +1363,13 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
         opndClass = (Common_ISA_Operand_Class)(properties >> 4);
         lifetime = (VISAVarLifetime)(properties & 0x1);
 
-        if(opndClass == OPERAND_GENERAL)
+        if (opndClass == OPERAND_GENERAL)
         {
             VISA_GenVar* decl;
 
             decl = container.generalVarDecls[varId];
 
-            if(lifetime == LIFETIME_START)
+            if (lifetime == LIFETIME_START)
             {
                 kernelBuilder->CreateVISADstOperand(opnd, decl, 1, 0, 0);
             }
@@ -1378,12 +1378,12 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
                 kernelBuilder->CreateVISASrcOperand(opnd, decl, MODIFIER_NONE, 0, 1, 0, 0, 0);
             }
         }
-        else if(opndClass == OPERAND_ADDRESS)
+        else if (opndClass == OPERAND_ADDRESS)
         {
             VISA_AddrVar* decl;
             decl = container.addressVarDecls[varId];
 
-            if(lifetime == LIFETIME_START)
+            if (lifetime == LIFETIME_START)
             {
                 kernelBuilder->CreateVISAAddressDstOperand(opnd, decl, 0);
             }
@@ -1392,7 +1392,7 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
                 kernelBuilder->CreateVISAAddressSrcOperand(opnd, decl, 0, 1);
             }
         }
-        else if(opndClass == OPERAND_PREDICATE)
+        else if (opndClass == OPERAND_PREDICATE)
         {
             VISA_PredVar* decl;
 
@@ -1595,7 +1595,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             VISA_RawOpnd* roffset = readRawOperandNG(bytePos, buf, container);
             VISA_RawOpnd*     dst = readRawOperandNG(bytePos, buf, container);
 
-            uint8_t  channel = (mode     ) & 0xF;
+            uint8_t  channel = mode & 0xF;
             bool    isSimd16 = 0x0 != ((mode >> 4) & 0x3);
 
             VISA_StateOpndHandle* surfaceHnd = NULL;
@@ -1763,7 +1763,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             VISA_StateOpndHandle* samplerHnd = NULL;
             uint8_t sampler = 0;
 
-            switch(subOpcode)
+            switch (subOpcode)
             {
                 case MINMAXFILTER_FOPCODE:
                 case Convolve_FOPCODE:
@@ -1871,8 +1871,8 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             /// subOpcode
             ISA_VA_Sub_Opcode subOpcode = (ISA_VA_Sub_Opcode)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-            if( (subOpcode < VA_OP_CODE_1D_CONVOLVE_VERTICAL) ||
-                (subOpcode >= VA_OP_CODE_UNDEFINED) )
+            if ((subOpcode < VA_OP_CODE_1D_CONVOLVE_VERTICAL) ||
+                (subOpcode >= VA_OP_CODE_UNDEFINED))
             {
                 ASSERT_USER(false, "Invalid VA sub-opcode");
                 return;
@@ -1903,38 +1903,38 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
 
             int numTotalOperands = instDesc->getSubInstDesc(subOpcode).opnd_num;
 
-            for(int i = 0; i < numTotalOperands; i++)
+            for (int i = 0; i < numTotalOperands; i++)
             {
                 const OpndDesc * opndDesc = &(instDesc->getSubInstDesc(subOpcode).opnd_desc[i]);
 
-                if(opndDesc->opnd_type == OPND_SAMPLE)
+                if (opndDesc->opnd_type == OPND_SAMPLE)
                 {
                     uint8_t sampler = readPrimitiveOperandNG<uint8_t> (bytePos, buf);
                     kernelBuilderImpl->CreateVISAStateOperandHandle(stateOpnds[numStateOpnds++], container.samplerVarDecls[sampler]);
-                } else if(opndDesc->opnd_type == OPND_SURFACE) {
+                } else if (opndDesc->opnd_type == OPND_SURFACE) {
                     uint8_t surface = readPrimitiveOperandNG<uint8_t> (bytePos, buf);
                     kernelBuilderImpl->CreateVISAStateOperandHandle(stateOpnds[numStateOpnds++], container.surfaceVarDecls[surface]);
-                } else if((opndDesc->opnd_type & OPND_SRC_GEN) == OPND_SRC_GEN)
+                } else if ((opndDesc->opnd_type & OPND_SRC_GEN) == OPND_SRC_GEN)
                 {
                     vOpnds[numVSrcs++] = readVectorOperandNG(bytePos, buf, container, false);
-                } else if(opndDesc->opnd_type == OPND_RAW_SRC)
+                } else if (opndDesc->opnd_type == OPND_RAW_SRC)
                 {
                     rawSrcs[numRawSrcs++] = readRawOperandNG(bytePos, buf, container);
-                } else if(opndDesc->opnd_type == OPND_RAW_DST)
+                } else if (opndDesc->opnd_type == OPND_RAW_DST)
                 {
                     dst = readRawOperandNG(bytePos, buf, container);
                 }
-                else if(opndDesc->opnd_type == OPND_OTHER)
+                else if (opndDesc->opnd_type == OPND_OTHER)
                 {
                     //in theory this is not necessary since all of them will be UB
                     //but to demonstrate usage model
-                    if(opndDesc->data_type == ISA_TYPE_UB)
+                    if (opndDesc->data_type == ISA_TYPE_UB)
                     {
                         miscOpnds[numMiscOpnds++] = readPrimitiveOperandNG<uint8_t> (bytePos, buf);
-                    }else if(opndDesc->data_type == ISA_TYPE_UW)
+                    }else if (opndDesc->data_type == ISA_TYPE_UW)
                     {
                         miscOpnds[numMiscOpnds++] = readPrimitiveOperandNG<uint16_t> (bytePos, buf);
-                    }else if(opndDesc->data_type == ISA_TYPE_UD)
+                    }else if (opndDesc->data_type == ISA_TYPE_UD)
                     {
                         miscOpnds[numMiscOpnds++] = readPrimitiveOperandNG<unsigned int> (bytePos, buf);
                     }else
@@ -2049,7 +2049,7 @@ void readInstructionNG(
 
     //cout << "Opcode: " << ISA_Inst_Table[opcode].str << endl;
 
-    switch(ISA_Inst_Table[opcode].type)
+    switch (ISA_Inst_Table[opcode].type)
     {
     case ISA_Inst_Mov:
     case ISA_Inst_Sync:
@@ -2186,9 +2186,9 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         unsigned declID = i;
         readVarBytes(majorVersion, minorVersion, header.variables[declID].name_index, bytePos, buf);
         READ_CISA_FIELD(header.variables[declID].bit_properties, uint8_t , bytePos, buf);
-        READ_CISA_FIELD(header.variables[declID].num_elements  , uint16_t, bytePos, buf);
+        READ_CISA_FIELD(header.variables[declID].num_elements,   uint16_t, bytePos, buf);
         readVarBytes(majorVersion, minorVersion, header.variables[declID].alias_index, bytePos, buf);
-        READ_CISA_FIELD(header.variables[declID].alias_offset  , uint16_t, bytePos, buf);
+        READ_CISA_FIELD(header.variables[declID].alias_offset,   uint16_t, bytePos, buf);
 
         READ_CISA_FIELD(header.variables[declID].alias_scope_specifier, uint8_t, bytePos, buf);
 
@@ -2201,7 +2201,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         /// VISA Builder Call
         var_info_t* var = &header.variables[declID];
         VISA_GenVar* decl = NULL;
-        VISA_Type  varType  = (VISA_Type)  ((var->bit_properties     ) & 0xF);
+        VISA_Type  varType  = (VISA_Type)  ((var->bit_properties) & 0xF);
         VISA_Align varAlign = (VISA_Align) ((var->bit_properties >> 4) & 0xF);
         uint8_t aliasScopeSpecifier = header.variables[declID].alias_scope_specifier;
         int status = VISA_SUCCESS;
@@ -2214,7 +2214,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
             uint32_t aliasIndex  = header.variables[declID].alias_index;
             if (aliasIndex > 0)
             {
-                if( aliasIndex < numPreDefinedVars )
+                if (aliasIndex < numPreDefinedVars)
                 {
                    status = kernelBuilderImpl->GetPredefinedVar(parentDecl, (PreDefined_Vars) aliasIndex);
                    ASSERT_USER(status == VISA_SUCCESS, "Invalid index for pre-defined variables");
@@ -2244,7 +2244,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
     }
 
     /// read address variables
-    READ_CISA_FIELD(header.address_count, uint16_t, bytePos, buf );
+    READ_CISA_FIELD(header.address_count, uint16_t, bytePos, buf);
     header.addresses = (addr_info_t*) mem.alloc(sizeof(addr_info_t) * header.address_count);
     container.addressVarDecls = (VISA_AddrVar**)mem.alloc(sizeof(VISA_AddrVar*) * (header.address_count));
     container.addressVarsCount = (header.address_count);
@@ -2308,15 +2308,15 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
     }
 
     // read label variables
-    READ_CISA_FIELD(header.label_count, uint16_t, bytePos, buf );
+    READ_CISA_FIELD(header.label_count, uint16_t, bytePos, buf);
     header.labels = (label_info_t*) mem.alloc(sizeof(label_info_t) * header.label_count);
     container.labelVarDecls = (VISA_LabelOpnd**)mem.alloc(sizeof(VISA_LabelOpnd*) * (header.label_count));
     container.labelVarsCount = header.label_count;
     for (unsigned i = 0; i < header.label_count; i++)
     {
-        readVarBytes(majorVersion, minorVersion, header.labels[i].name_index, bytePos, buf );
-        READ_CISA_FIELD(header.labels[i].kind, uint8_t, bytePos, buf );
-        READ_CISA_FIELD(header.labels[i].attribute_count, uint8_t, bytePos, buf );
+        readVarBytes(majorVersion, minorVersion, header.labels[i].name_index, bytePos, buf);
+        READ_CISA_FIELD(header.labels[i].kind, uint8_t, bytePos, buf);
+        READ_CISA_FIELD(header.labels[i].attribute_count, uint8_t, bytePos, buf);
         header.labels[i].attributes = (attribute_info_t*) mem.alloc(sizeof(attribute_info_t) * header.labels[i].attribute_count);
         readAttributesNG(majorVersion, minorVersion, bytePos, buf, header, header.labels[i].attributes, header.labels[i].attribute_count, mem);
 
@@ -2399,7 +2399,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         readVarBytes(majorVersion, minorVersion, header.surfaces[i].name_index, bytePos, buf);
         READ_CISA_FIELD(header.surfaces[i].num_elements, uint16_t, bytePos, buf);
         READ_CISA_FIELD(header.surfaces[i].attribute_count, uint8_t, bytePos, buf);
-        header.surfaces[i].attributes = (attribute_info_t *) mem.alloc( sizeof(attribute_info_t) * header.surfaces[i].attribute_count );
+        header.surfaces[i].attributes = (attribute_info_t *) mem.alloc(sizeof(attribute_info_t) * header.surfaces[i].attribute_count);
         readAttributesNG(majorVersion, minorVersion, bytePos, buf, header, header.surfaces[i].attributes, header.surfaces[i].attribute_count, mem);
 
         /// VISA Builder Call
@@ -2478,8 +2478,8 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         READ_CISA_FIELD(header.return_value_size, uint8_t, bytePos, buf);
 
         // Store size of arg/ret registers for stack call functions
-        kernelBuilderImpl->setInputSize( header.input_size );
-        kernelBuilderImpl->setReturnSize( header.return_value_size );
+        kernelBuilderImpl->setInputSize(header.input_size);
+        kernelBuilderImpl->setReturnSize(header.return_value_size);
     }
 
     /// read kernel attributes
@@ -2493,7 +2493,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         /// TODO: This parameter ordering is inconsistent.
         if (attribute->isInt)
         {
-            kernelBuilderImpl->AddKernelAttribute(header.strings[attribute->nameIndex], attribute->size, &attribute->value.intVal  );
+            kernelBuilderImpl->AddKernelAttribute(header.strings[attribute->nameIndex], attribute->size, &attribute->value.intVal);
         }
         else
         {
@@ -2596,7 +2596,7 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
     }
     else
     {
-        for( unsigned int k = 0; k < isaHeader.num_kernels; k++ )
+        for (unsigned int k = 0; k < isaHeader.num_kernels; k++)
         {
             bytePos = isaHeader.kernels[k].offset;
 

@@ -127,10 +127,10 @@ namespace vISA
             if (opIt != operations.end())
             {
                 auto numUses = (*opIt).second.numUses;
-                if(numUses > 0)
+                if (numUses > 0)
                     (*opIt).second.numUses = numUses - 1;
 
-                if(numUses == 1)
+                if (numUses == 1)
                 {
                     for (auto ref : (*opIt).second.def)
                     {
@@ -187,7 +187,7 @@ namespace vISA
             if (inst->getDst() && inst->getDst()->getTopDcl())
                 dcl = inst->getDst()->getTopDcl();
 
-            if(kernel.fg.builder->isPreDefArg(dcl) || kernel.fg.builder->isPreDefRet(dcl) ||
+            if (kernel.fg.builder->isPreDefArg(dcl) || kernel.fg.builder->isPreDefRet(dcl) ||
                 kernel.fg.builder->isPreDefFEStackVar(dcl))
                 return false;
 

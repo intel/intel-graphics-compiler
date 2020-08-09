@@ -223,7 +223,7 @@ void VarSplitPass::verifyOverlap()
                         {
                             MUST_BE_TRUE(false, "split src uses GRF value from non-parent");
                         }
-                        else if(dstTopDcl->getRegVar()->isRegVarTransient())
+                        else if (dstTopDcl->getRegVar()->isRegVarTransient())
                         {
                             // dst is spilled
                             auto dstOrigDcl = dstTopDcl->getRegVar()->getNonTransientBaseRegVar()->getDeclare()->getRootDeclare();
@@ -459,7 +459,7 @@ void VarSplitPass::split()
 {
     auto getIter = [](G4_INST* inst, G4_BB* bb)
     {
-        for(auto iter = bb->begin(); iter != bb->end(); iter++)
+        for (auto iter = bb->begin(); iter != bb->end(); iter++)
         {
             if (*iter == inst)
                 return iter;
@@ -471,7 +471,7 @@ void VarSplitPass::split()
     unsigned int numIntrinsicsInserted = 0;
 #endif
     // Do actual splitting
-    for(auto curDcl : kernel.Declares)
+    for (auto curDcl : kernel.Declares)
     {
         auto isCandidate = splitVars.find(curDcl);
         if (isCandidate == splitVars.end())
@@ -603,7 +603,7 @@ void VarSplitPass::replaceIntrinsics()
             {
                 inst->setOpcode(G4_mov);
 #ifdef DEBUG_VERBOSE_ON
-                if(inst->getDst()->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() !=
+                if (inst->getDst()->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() !=
                     inst->getSrc(0)->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum())
                     numSplitMovs++;
 #endif
@@ -731,7 +731,7 @@ unsigned int VarSplitPass::getIdealAllocation(G4_Declare* dcl, LiveRange** lrs)
             state.second = idealParentReg.begin()->second;
         }
 
-        for(auto arg : idealParentReg)
+        for (auto arg : idealParentReg)
         {
             if (arg.second > state.second)
             {
@@ -944,7 +944,7 @@ bool VarSplitPass::isParentChildRelation(G4_Declare* parent, G4_Declare* child)
 
     auto children = getChildren(parent);
 
-    for(auto c : *children)
+    for (auto c : *children)
     {
         if (c == child)
             return true;

@@ -144,7 +144,7 @@ public:
     VISA_Exec_Size getExecSize     () const { return (VISA_Exec_Size)
                                                            (m_cisa_instruction.execsize & 0xF); }
 
-    void *operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); }
+    void *operator new(size_t sz, vISA::Mem_Manager& m) {return m.alloc(sz); }
 
 private:
     char* m_inline_cisa;
@@ -200,10 +200,10 @@ public:
 
     void initCisaBinary(int numberKernels, int numberFunctions)
     {
-        m_header.kernels = (kernel_info_t * ) m_mem.alloc(sizeof(kernel_info_t) * numberKernels);
+        m_header.kernels = (kernel_info_t *) m_mem.alloc(sizeof(kernel_info_t) * numberKernels);
         memset(m_header.kernels, 0, sizeof(kernel_info_t) * numberKernels);
 
-        m_header.functions = (function_info_t * ) m_mem.alloc(sizeof(function_info_t) * numberFunctions);
+        m_header.functions = (function_info_t *) m_mem.alloc(sizeof(function_info_t) * numberFunctions);
         memset(m_header.functions, 0, sizeof(function_info_t) * numberFunctions);
 
         m_upper_bound_kernels = numberKernels;
@@ -218,16 +218,16 @@ public:
         genxBinariesSize = 0;
     }
 
-    void setMagicNumber ( unsigned int  v ) { m_header.magic_number  = v; }
-    void setMajorVersion( unsigned char v ) { m_header.major_version = v; }
-    void setMinorVersion( unsigned char v ) { m_header.minor_version = v; }
+    void setMagicNumber (unsigned int  v) { m_header.magic_number  = v; }
+    void setMajorVersion(unsigned char v) { m_header.major_version = v; }
+    void setMinorVersion(unsigned char v) { m_header.minor_version = v; }
     unsigned char getMajorVersion () const { return m_header.major_version; }
     unsigned char getMinorVersion () const { return m_header.minor_version; }
     unsigned int  getMagicNumber  () const { return m_header.magic_number;  }
 
     const common_isa_header& getIsaHeader() const { return m_header; }
 
-    void initKernel( int kernelIndex, VISAKernelImpl * kernel );
+    void initKernel(int kernelIndex, VISAKernelImpl * kernel);
     int finalizeCisaBinary();
     int dumpToFile(std::string binFileName);
     int dumpToStream(std::ostream *os);
@@ -235,33 +235,33 @@ public:
     unsigned       getInstId() const { return m_instId; }
     void     incrementInstId() const { m_instId++;      }
 
-    void *operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); }
+    void *operator new(size_t sz, vISA::Mem_Manager& m) {return m.alloc(sz); }
 
     void isaDumpVerify(std::list<VISAKernelImpl *>, Options *options);
     void writeIsaAsmFile(std::string filename, std::string isaasmStr) const;
 
-    unsigned long getHeaderSize(){ return m_header_size; }
-    unsigned long getKernelVisaBinarySize(int i){ return m_header.kernels[i].size; }
-    unsigned long getFunctionVisaBinarySize(int i){ return m_header.functions[i].size; }
-    unsigned short getNumberKernels(){ return m_header.num_kernels; }
-    unsigned short getNumberFunctions(){ return m_header.num_functions; }
+    unsigned long getHeaderSize() {return m_header_size; }
+    unsigned long getKernelVisaBinarySize(int i) {return m_header.kernels[i].size; }
+    unsigned long getFunctionVisaBinarySize(int i) {return m_header.functions[i].size; }
+    unsigned short getNumberKernels() {return m_header.num_kernels; }
+    unsigned short getNumberFunctions() {return m_header.num_functions; }
 
-    char * getVisaHeaderBuffer(){ return m_header_buffer; }
-    char * getKernelVisaBinaryBuffer(int i){ return m_header.kernels[i].cisa_binary_buffer; }
-    char * getFunctionVisaBinaryBuffer(int i){ return m_header.functions[i].cisa_binary_buffer; }
+    char * getVisaHeaderBuffer() {return m_header_buffer; }
+    char * getKernelVisaBinaryBuffer(int i) {return m_header.kernels[i].cisa_binary_buffer; }
+    char * getFunctionVisaBinaryBuffer(int i) {return m_header.functions[i].cisa_binary_buffer; }
 
     std::string getFilename() const { return m_filename; }
-    void setKernelVisaGenxBinaryBuffer(int i, void * buffer){ m_header.kernels[i].genx_binary_buffer = (char * )buffer; }
-    void setKernelVisaGenxBinarySize(int i, unsigned short size){ m_header.kernels[i].binary_size = size; }
+    void setKernelVisaGenxBinaryBuffer(int i, void * buffer) {m_header.kernels[i].genx_binary_buffer = (char *)buffer; }
+    void setKernelVisaGenxBinarySize(int i, unsigned short size) {m_header.kernels[i].binary_size = size; }
 
-    void setFunctionsVisaGenxBinaryBuffer(int i, void * buffer){ m_header.functions[i].genx_binary_buffer = (char * )buffer; }
-    void setFunctionsVisaGenxBinarySize(int i, unsigned short size){ m_header.functions[i].binary_size = size; }
+    void setFunctionsVisaGenxBinaryBuffer(int i, void * buffer) {m_header.functions[i].genx_binary_buffer = (char *)buffer; }
+    void setFunctionsVisaGenxBinarySize(int i, unsigned short size) {m_header.functions[i].binary_size = size; }
 
     void patchKernel(int index, unsigned int genxBufferSize, void * buffer, int platform);
     void patchFunction(int index, unsigned genxBufferSize);
     void patchFunctionWithGenBinary(int index, unsigned int genxBufferSize, char* buffer);
 
-    Options *getOptions(){ return m_options; }
+    Options *getOptions() {return m_options; }
 
 private:
     /*

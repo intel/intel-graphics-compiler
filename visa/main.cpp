@@ -276,7 +276,7 @@ DLL_EXPORT int JITCompile_v2(const char* kernelName,
         platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo, gtpin_init);
 }
 
-DLL_EXPORT void getJITVersion(unsigned int& majorV, unsigned int& minorV )
+DLL_EXPORT void getJITVersion(unsigned int& majorV, unsigned int& minorV)
 {
     majorV = COMMON_ISA_MAJOR_VER;
     minorV = COMMON_ISA_MINOR_VER;
@@ -292,7 +292,7 @@ static bool endsWith(const std::string &str, const std::string &suf)
     return 0 == str.compare(str.length() - suf.length(), suf.length(), suf);
 }
 
-int main( int argc, const char *argv[] )
+int main(int argc, const char *argv[])
 {
     char fileName[256];
     std::string testName = "F5";
@@ -301,7 +301,7 @@ int main( int argc, const char *argv[] )
     cout << endl;
 
 #if 0
-    _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+    _CrtSetDbgFlag (_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
     //_crtBreakAlloc = 4763;
 #endif
 

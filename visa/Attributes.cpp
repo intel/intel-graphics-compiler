@@ -41,30 +41,30 @@ Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
   /////////////////////////////////////
   /////      Kernel Attributes     ////
   /////////////////////////////////////
-  ATTR_ENTRY("Target",  VISA_CM) ,               /* ATTR_Target */
-  ATTR_ENTRY("SLMSIZE", 0 ) ,                    /* ATTR_SLMSize */
-  ATTR_ENTRY("SpillMemOffset",  0) ,             /* ATTR_SpillMemOffset */
-  ATTR_ENTRY("ArgSize", 0) ,                     /* ATTR_ArgSize */
-  ATTR_ENTRY("RetValSize", 0) ,                  /* ATTR_RetValSize */
-  ATTR_ENTRY("PerThreadInputSize", 0) ,          /* ATTR_PerThreadInputSize */
-  ATTR_ENTRY("Extern", 0) ,                      /* ATTR_Extern */
-  ATTR_ENTRY("NoBarrier", 0) ,                   /* ATTR_NoBarrier */
-  ATTR_ENTRY("SimdSize", 0) ,                    /* ATTR_SimdSize */
-  ATTR_ENTRY("OutputAsmPath", nullptr) ,         /* ATTR_OuputAsmPath */
-  ATTR_ENTRY("Entry", nullptr) ,                 /* ATTR_Entry */
-  ATTR_ENTRY("Callable", nullptr) ,              /* ATTR_Callable */
-  ATTR_ENTRY("Caller", nullptr) ,                /* ATTR_Caller */
-  ATTR_ENTRY("Composable", nullptr) ,            /* ATTR_Composable */
+  ATTR_ENTRY("Target",  VISA_CM),               /* ATTR_Target */
+  ATTR_ENTRY("SLMSIZE", 0),                     /* ATTR_SLMSize */
+  ATTR_ENTRY("SpillMemOffset",  0),             /* ATTR_SpillMemOffset */
+  ATTR_ENTRY("ArgSize", 0),                     /* ATTR_ArgSize */
+  ATTR_ENTRY("RetValSize", 0),                  /* ATTR_RetValSize */
+  ATTR_ENTRY("PerThreadInputSize", 0),          /* ATTR_PerThreadInputSize */
+  ATTR_ENTRY("Extern", 0),                      /* ATTR_Extern */
+  ATTR_ENTRY("NoBarrier", 0),                   /* ATTR_NoBarrier */
+  ATTR_ENTRY("SimdSize", 0),                    /* ATTR_SimdSize */
+  ATTR_ENTRY("OutputAsmPath", nullptr),         /* ATTR_OuputAsmPath */
+  ATTR_ENTRY("Entry", nullptr),                 /* ATTR_Entry */
+  ATTR_ENTRY("Callable", nullptr),              /* ATTR_Callable */
+  ATTR_ENTRY("Caller", nullptr),                /* ATTR_Caller */
+  ATTR_ENTRY("Composable", nullptr),            /* ATTR_Composable */
 
   /////////////////////////////////////////
   /////    int non-Kernel Attributes   ////
   /////////////////////////////////////////
-  ATTR_ENTRY("Input", -1) ,                      /* ATTR_Input */
-  ATTR_ENTRY("Output", -1) ,                     /* ATTR_Output */
-  ATTR_ENTRY("Scope", -1) ,                      /* ATTR_Scope */
-  ATTR_ENTRY("Input_Output", -1) ,               /* ATTR_Input_Output */
-  ATTR_ENTRY("NoWidening", -1) ,                 /* ATTR_NoWidening */
-  ATTR_ENTRY("SurfaceUsage", 0) ,                /* ATTR_SurfaceUsage */
+  ATTR_ENTRY("Input", -1),                      /* ATTR_Input */
+  ATTR_ENTRY("Output", -1),                     /* ATTR_Output */
+  ATTR_ENTRY("Scope", -1),                      /* ATTR_Scope */
+  ATTR_ENTRY("Input_Output", -1),               /* ATTR_Input_Output */
+  ATTR_ENTRY("NoWidening", -1),                 /* ATTR_NoWidening */
+  ATTR_ENTRY("SurfaceUsage", 0),                /* ATTR_SurfaceUsage */
 
   ////////////////////////////////////////////
   /////    string non-Kernel Attributes   ////
@@ -126,13 +126,13 @@ void Attributes::setIntKernelAttribute(Attributes::ID kID, int val)
 {
     // Verify kernel attribute
     switch (kID) {
-    case ATTR_SpillMemOffset :
+    case ATTR_SpillMemOffset:
     {
         assert((val & (GENX_GRF_REG_SIZ - 1)) == 0  &&
             "Kernel attribute: SpillMemOffset is mis-aligned!");
         break;
     }
-    case ATTR_SimdSize :
+    case ATTR_SimdSize:
     {
         // allow 0
         assert((val == 0 || val == 8 || val == 16 || val == 32) &&

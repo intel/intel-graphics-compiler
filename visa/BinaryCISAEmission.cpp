@@ -24,14 +24,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include <fstream>
 #include "BinaryCISAEmission.h"
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
 
+#include <fstream>
+
 #define SIZE_VALUE cisa_kernel->getBytesWritten()
 #define SIZE_VALUE_INST cisa_kernel->getBytesWritten() - cisa_kernel->getKernelDataSize()
+
 using namespace vISA;
+
 int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binarySize)
 {
     cisa_kernel->finalizeKernel();
@@ -52,7 +55,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     cisa_kernel->writeInToCisaBinaryBuffer(&kernelInfo->variable_count, sizeof(kernelInfo->variable_count));
 
-    for(uint32_t i = 0; i < kernelInfo->variable_count; i++)
+    for (uint32_t i = 0; i < kernelInfo->variable_count; i++)
     {
         emitVarInfo(cisa_kernel, &kernelInfo->variables[i]);
     }
@@ -61,7 +64,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     cisa_kernel->writeInToCisaBinaryBuffer(&kernelInfo->address_count, sizeof(kernelInfo->address_count));
 
-    for(int i = 0; i < kernelInfo->address_count; i++)
+    for (int i = 0; i < kernelInfo->address_count; i++)
     {
         emitAddressInfo(cisa_kernel, &kernelInfo->addresses[i]);
     }
@@ -70,7 +73,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     cisa_kernel->writeInToCisaBinaryBuffer(&kernelInfo->predicate_count, sizeof(kernelInfo->predicate_count));
 
-    for(int i = 0; i < kernelInfo->predicate_count; i++)
+    for (int i = 0; i < kernelInfo->predicate_count; i++)
     {
         emitPredicateInfo(cisa_kernel, &kernelInfo->predicates[i]);
     }
@@ -79,7 +82,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     cisa_kernel->writeInToCisaBinaryBuffer(&kernelInfo->label_count, sizeof(kernelInfo->label_count));
 
-    for(int i = 0; i < kernelInfo->label_count; i++)
+    for (int i = 0; i < kernelInfo->label_count; i++)
     {
         emitLabelInfo(cisa_kernel, &kernelInfo->labels[i]);
     }
@@ -88,7 +91,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     cisa_kernel->writeInToCisaBinaryBuffer(&kernelInfo->sampler_count, sizeof(kernelInfo->sampler_count));
 
-    for(int i = 0; i <kernelInfo->sampler_count; i++)
+    for (int i = 0; i <kernelInfo->sampler_count; i++)
     {
         emitStateInfo(cisa_kernel, &kernelInfo->samplers[i]);
     }
@@ -97,7 +100,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     cisa_kernel->writeInToCisaBinaryBuffer(&kernelInfo->surface_count, sizeof(kernelInfo->surface_count));
 
-    for(int i = 0; i <kernelInfo->surface_count; i++)
+    for (int i = 0; i <kernelInfo->surface_count; i++)
     {
         emitStateInfo(cisa_kernel, &kernelInfo->surfaces[i]);
     }
@@ -112,7 +115,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
     {
         cisa_kernel->writeInToCisaBinaryBuffer(&kernelInfo->input_count, sizeof(kernelInfo->input_count));
 
-        for(uint32_t i = 0; i < kernelInfo->input_count; i++)
+        for (uint32_t i = 0; i < kernelInfo->input_count; i++)
         {
             emitInputInfo(cisa_kernel, &kernelInfo->inputs[i]);
         }
@@ -139,7 +142,7 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     cisa_kernel->writeInToCisaBinaryBuffer(&kernelInfo->attribute_count, sizeof(kernelInfo->attribute_count));
 
-    for(int i = 0; i < kernelInfo->attribute_count; i++)
+    for (int i = 0; i < kernelInfo->attribute_count; i++)
     {
         this->emitAttributeInfo(cisa_kernel, &kernelInfo->attributes[i]);
     }
@@ -150,14 +153,14 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
     std::list<CisaFramework::CisaInst *>::iterator inst_iter_end = cisa_kernel->getInstructionListEnd();
 
     int status = VISA_SUCCESS;
-    for(; inst_iter != inst_iter_end; inst_iter++)
+    for (; inst_iter != inst_iter_end; inst_iter++)
     {
         CisaFramework::CisaInst * inst = *inst_iter;
 
         CISA_INST * cisa_inst = inst->getCISAInst();
         const VISA_INST_Desc * inst_desc = inst->getCISAInstDesc();
         status = emitCisaInst(cisa_kernel, cisa_inst, inst_desc);
-        if( status != VISA_SUCCESS )
+        if (status != VISA_SUCCESS)
         {
             break;
         }
@@ -237,7 +240,7 @@ void CBinaryCISAEmitter::emitVarInfo(VISAKernelImpl * cisa_kernel, var_info_t * 
 
     cisa_kernel->writeInToCisaBinaryBuffer(&var->attribute_count, sizeof(var->attribute_count));
 
-    for(int i = 0; i < var->attribute_count; i++)
+    for (int i = 0; i < var->attribute_count; i++)
     {
         emitAttributeInfo(cisa_kernel, &var->attributes[i]);
     }
@@ -249,7 +252,7 @@ void CBinaryCISAEmitter::emitStateInfo(VISAKernelImpl * cisa_kernel, state_info_
     cisa_kernel->writeInToCisaBinaryBuffer(&var->num_elements, sizeof(var->num_elements));
     cisa_kernel->writeInToCisaBinaryBuffer(&var->attribute_count, sizeof(var->attribute_count));
 
-    for(int i = 0; i < var->attribute_count; i++)
+    for (int i = 0; i < var->attribute_count; i++)
     {
         emitAttributeInfo(cisa_kernel, &var->attributes[i]);
     }
@@ -261,7 +264,7 @@ void CBinaryCISAEmitter::emitAddressInfo(VISAKernelImpl * cisa_kernel, addr_info
     cisa_kernel->writeInToCisaBinaryBuffer(&addr->num_elements, sizeof(addr->num_elements));
     cisa_kernel->writeInToCisaBinaryBuffer(&addr->attribute_count, sizeof(addr->attribute_count));
 
-    for(int i = 0; i < addr->attribute_count; i++)
+    for (int i = 0; i < addr->attribute_count; i++)
     {
         emitAttributeInfo(cisa_kernel, &addr->attributes[i]);
     }
@@ -273,7 +276,7 @@ void CBinaryCISAEmitter::emitPredicateInfo(VISAKernelImpl * cisa_kernel, pred_in
     cisa_kernel->writeInToCisaBinaryBuffer(&pred->num_elements, sizeof(pred->num_elements));
     cisa_kernel->writeInToCisaBinaryBuffer(&pred->attribute_count, sizeof(pred->attribute_count));
 
-    for(int i = 0; i < pred->attribute_count; i++)
+    for (int i = 0; i < pred->attribute_count; i++)
     {
         emitAttributeInfo(cisa_kernel, &pred->attributes[i]);
     }
@@ -285,7 +288,7 @@ void CBinaryCISAEmitter::emitLabelInfo(VISAKernelImpl * cisa_kernel, label_info_
     cisa_kernel->writeInToCisaBinaryBuffer(&lbl->kind, sizeof(lbl->kind));
     cisa_kernel->writeInToCisaBinaryBuffer(&lbl->attribute_count, sizeof(lbl->attribute_count));
 
-    for(int i = 0; i < lbl->attribute_count; i++)
+    for (int i = 0; i < lbl->attribute_count; i++)
     {
         emitAttributeInfo(cisa_kernel, &lbl->attributes[i]);
     }
@@ -309,7 +312,7 @@ void CBinaryCISAEmitter::emitAttributeInfo(VISAKernelImpl *cisa_kernel, attribut
         switch (attr->size)
         {
             case 0: break;  // Attribute without Value
-            case sizeof(int8_t ): cisa_kernel->writeInToCisaBinaryBuffer((int8_t *)(&attr->value.intVal), attr->size); break;
+            case sizeof(int8_t): cisa_kernel->writeInToCisaBinaryBuffer((int8_t *)(&attr->value.intVal), attr->size); break;
             case sizeof(int16_t): cisa_kernel->writeInToCisaBinaryBuffer((int16_t*)(&attr->value.intVal), attr->size); break;
             case sizeof(int32_t): cisa_kernel->writeInToCisaBinaryBuffer((int32_t*)(&attr->value.intVal), attr->size); break;
             default:
@@ -325,7 +328,7 @@ void CBinaryCISAEmitter::emitVectorOpnd(VISAKernelImpl * cisa_kernel, vector_opn
 {
     cisa_kernel->writeInToCisaBinaryBuffer(&cisa_opnd->tag, sizeof(cisa_opnd->tag));
 
-    switch(cisa_opnd->tag & 0x7)
+    switch (cisa_opnd->tag & 0x7)
     {
     case OPERAND_GENERAL:
         {
@@ -359,9 +362,9 @@ void CBinaryCISAEmitter::emitVectorOpnd(VISAKernelImpl * cisa_kernel, vector_opn
     case OPERAND_IMMEDIATE:
         {
             cisa_kernel->writeInToCisaBinaryBuffer(&cisa_opnd->opnd_val.const_opnd.type, sizeof(cisa_opnd->opnd_val.const_opnd.type));
-            if(cisa_opnd->opnd_val.const_opnd.type == ISA_TYPE_DF)
+            if (cisa_opnd->opnd_val.const_opnd.type == ISA_TYPE_DF)
                 cisa_kernel->writeInToCisaBinaryBuffer(&cisa_opnd->opnd_val.const_opnd._val.dval, sizeof(double));
-            else if(cisa_opnd->opnd_val.const_opnd.type == ISA_TYPE_Q || cisa_opnd->opnd_val.const_opnd.type == ISA_TYPE_UQ)
+            else if (cisa_opnd->opnd_val.const_opnd.type == ISA_TYPE_Q || cisa_opnd->opnd_val.const_opnd.type == ISA_TYPE_UQ)
                 cisa_kernel->writeInToCisaBinaryBuffer(&cisa_opnd->opnd_val.const_opnd._val.lval, sizeof(unsigned long long));
             else
                 cisa_kernel->writeInToCisaBinaryBuffer(&cisa_opnd->opnd_val.const_opnd._val.ival, sizeof(unsigned int));
@@ -376,7 +379,7 @@ void CBinaryCISAEmitter::emitVectorOpnd(VISAKernelImpl * cisa_kernel, vector_opn
         }
     default:
         {
-            MUST_BE_TRUE( 0, "Invalid Vector Operand Class. Size cannot be determined." );
+            MUST_BE_TRUE(0, "Invalid Vector Operand Class. Size cannot be determined.");
             break;
         }
     }

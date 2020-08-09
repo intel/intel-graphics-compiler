@@ -142,10 +142,10 @@ public:
 
     virtual ~VISAKernelImpl();
 
-    void *operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); };
+    void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); };
     int InitializeKernel(const char *kernel_name);
     int CISABuildPreDefinedDecls();
-    void setVersion(unsigned char major_ver, unsigned char minor_ver){
+    void setVersion(unsigned char major_ver, unsigned char minor_ver) {
         m_major_version = major_ver;
         m_minor_version = minor_ver;
     }
@@ -220,7 +220,7 @@ public:
     void addPendingLabelNames(std::string name) { m_pending_label_names.push_back(name); }
     void setIsKernel(bool isKernel) { m_isKernel = isKernel; };
     bool getIsKernel() const { return m_isKernel; }
-    unsigned long getCodeOffset(){ return m_cisa_kernel.entry; }
+    unsigned long getCodeOffset() { return m_cisa_kernel.entry; }
 
     CISA_GEN_VAR * getDeclFromName(const std::string &name);
     bool setNameIndexMap(const std::string &name, CISA_GEN_VAR *, bool unique = false);
@@ -759,9 +759,9 @@ public:
 
     int CreateDummyLabelOperand(VISA_LabelOpnd *& opnd, char *name, VISA_Label_Kind kind);
 
-    void setGenxBinaryBuffer(void *buffer, int size){ m_genx_binary_buffer = (char *)buffer; m_genx_binary_size = size; }
-    void setJitInfo(FINALIZER_INFO* jitInfo){ m_jitInfo = jitInfo; }
-    // char * getErrorMsgPtr(){ return errorMessage; }
+    void setGenxBinaryBuffer(void *buffer, int size) { m_genx_binary_buffer = (char *)buffer; m_genx_binary_size = size; }
+    void setJitInfo(FINALIZER_INFO* jitInfo) { m_jitInfo = jitInfo; }
+    // char * getErrorMsgPtr() { return errorMessage; }
 
     std::string getOutputAsmPath() const { return m_asmName; }
 

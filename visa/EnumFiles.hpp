@@ -28,9 +28,9 @@ using namespace std;
 
 #ifndef SNPRINTF
 #ifdef _WIN32
-#define SNPRINTF( dst, size, ... ) sprintf_s( (dst), (size), __VA_ARGS__ )
+#define SNPRINTF(dst, size, ...) sprintf_s((dst), (size), __VA_ARGS__)
 #else
-#define SNPRINTF( dst, size, ... ) snprintf( (dst), (size), __VA_ARGS__  )
+#define SNPRINTF(dst, size, ...) snprintf((dst), (size), __VA_ARGS__)
 #endif
 #endif
 
@@ -76,7 +76,7 @@ std::vector<std::string> split(const std::string &s, char delim)
     return split(s, delim, elems);
 }
 
-unsigned int PrepareInput(const std::string inputString, std::list<std::string> &preparedList)//char inputString, list<string> &destList )
+unsigned int PrepareInput(const std::string inputString, std::list<std::string> &preparedList)//char inputString, list<string> &destList)
 {
     std::vector<std::string> inputSeparatedList;
     inputSeparatedList = split(inputString, ',');
@@ -141,12 +141,12 @@ void dirListFiles(const char* startDir, std::list<std::string> &inputFileList)
         isDirectory = true;
         startDirStr.append("*");
         memcpy_s(path, MAX_PATH, startDirStr.c_str(), startDirStr.length());
-        //sprintf_s( path, startDirStr.length(), startDir, "*" );
+        //sprintf_s(path, startDirStr.length(), startDir, "*");
     }
     else
     {
         memcpy_s(path, MAX_PATH, startDirStr.c_str(), startDirStr.length());
-        //sprintf_s( path, startDirStr.length(), startDir, "*" );
+        //sprintf_s(path, startDirStr.length(), startDir, "*");
     }
     hFind = FindFirstFile(path, &wfd);
     if (hFind == INVALID_HANDLE_VALUE)
@@ -236,7 +236,7 @@ void ConvertPathToAbsolute(std::string &currentPath)
             cout << "IGA: Maximum path length in your environment is " << MAX_PATH << " chars" << endl;
             cout << "filename: " << currentPath.c_str() << " skipped" << endl;
         }
-        //        exit( -1 );
+        //        exit(-1);
     }
     currentPath = (char *)&pathBuffer;
 }
@@ -271,7 +271,7 @@ void dirListFiles(const char* startDir, std::list<std::string> &inputFileList)
     char temp[MAXPATHLEN];
     memset(temp, 0, MAXPATHLEN);
     struct stat path_stat;
-    if(stat(path, &path_stat) != 0)
+    if (stat(path, &path_stat) != 0)
 
     {
         perror("stat");

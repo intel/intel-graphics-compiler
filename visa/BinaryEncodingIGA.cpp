@@ -537,7 +537,7 @@ void BinaryEncodingIGA::Encode()
                     instTy = SWSB::InstType::OTHERS;
 
                 // Verify if swsb is in encode-able dist and token combination
-                if(!sw.verify(getIGASWSBEncodeMode(*kernel.fg.builder), instTy))
+                if (!sw.verify(getIGASWSBEncodeMode(*kernel.fg.builder), instTy))
                     IGA_ASSERT_FALSE("Invalid swsb dist and token combination");
                 igaInst->setSWSB(sw);
             }

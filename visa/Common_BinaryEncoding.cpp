@@ -51,7 +51,7 @@ BinaryEncodingBase::Status BinaryEncodingBase::WriteToDatFile()
     {
         BinInst *bin = binInstList[i];
 
-        if ( GetCompactCtrl(bin) )
+        if (GetCompactCtrl(bin))
         {
             os.write(reinterpret_cast<char *>(&(bin->Bytes)), BYTES_PER_INST / 2);
         }
@@ -78,7 +78,7 @@ void EncodingHelper::dumpOptReport(int totalInst,
         optReport<< fixed << endl;
         optReport<< kernel.getName() <<": "
             << numCompactedInst <<" out of " <<totalInst <<" instructions are compacted."<<endl;
-        if ( numCompacted3SrcInst>0 )
+        if (numCompacted3SrcInst>0)
         {
             optReport<< kernel.getName() <<": "
                 << numCompacted3SrcInst <<" instructions of 3 src (mad/pln) are compacted."<<endl;
@@ -123,10 +123,10 @@ G4_INST *BinaryEncodingBase::getFirstNonLabelInst(G4_BB *bb)
 
 void BinaryEncodingBase::ProduceBinaryBuf(void* &handle)
 {
-    uint32_t binarySize = GetInstCounts() * ( BYTES_PER_INST / 2 );
+    uint32_t binarySize = GetInstCounts() * (BYTES_PER_INST / 2);
     handle = allocCodeBlock(binarySize);
     char *buf = (char *)handle;
-    if ( handle == NULL )
+    if (handle == NULL)
     {
         MUST_BE_TRUE(0, "mem manager alloc failure in bin encoding");
     }
@@ -317,14 +317,14 @@ void *BinaryEncodingBase::EmitBinary(uint32_t& binarySize)
 {
     void *handle = NULL;
     //CommitRelativeAddresses();
-    binarySize = GetInstCounts() * ( BYTES_PER_INST / 2 );
+    binarySize = GetInstCounts() * (BYTES_PER_INST / 2);
 
     /*
         Simplifying this. Whatever invokes vISA builder
         should know whether to generate binary or not.
         Through dll mode, this shouldn't be set.
     */
-    if(kernel.getOption(vISA_GenerateBinary))
+    if (kernel.getOption(vISA_GenerateBinary))
     {
         WriteToDatFile();
     }

@@ -873,7 +873,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                                 break;
                             }
                         }
-                        if(end != UNMAPPABLE_VISA_INDEX)
+                        if (end != UNMAPPABLE_VISA_INDEX)
                             break;
                     }
                 }
@@ -3104,7 +3104,7 @@ void LinearScan::coalesceSplit(LocalLiveRange* lr)
         l->setHint(regnum + (siblingNum * sizePerChild));
 #ifdef _DEBUG
         int s;
-        if(l->getAssigned())
+        if (l->getAssigned())
             MUST_BE_TRUE(!l->getPhyReg(s), "split child already allocated");
 #endif
         for (unsigned int i = regnum + (siblingNum * sizePerChild); i != regnum + ((siblingNum + 1) * sizePerChild); i++)

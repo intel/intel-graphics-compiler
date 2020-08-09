@@ -53,7 +53,7 @@ const char* platformString[ALL] =
 #define VISA_SUCCESS                                  0
 #define VISA_FAILURE                                  -1
 
-int SetPlatform( const char * str ) {
+int SetPlatform(const char * str) {
 
     std::string platform(str);
 
@@ -93,7 +93,7 @@ int SetPlatform( const char * str ) {
 }
 
 // same as previous version, except that we already have the enum value
-int SetVisaPlatform( TARGET_PLATFORM vPlatform ) {
+int SetVisaPlatform(TARGET_PLATFORM vPlatform) {
 
     assert(vPlatform >= GENX_BDW && "unsupported platform");
     visaPlatform = vPlatform;
@@ -101,7 +101,7 @@ int SetVisaPlatform( TARGET_PLATFORM vPlatform ) {
     return VISA_SUCCESS;
 }
 
-TARGET_PLATFORM getGenxPlatform( void )
+TARGET_PLATFORM getGenxPlatform(void)
 {
     return visaPlatform;
 }
@@ -171,12 +171,12 @@ void InitStepping()
     stepping = Step_none;
 }
 
-int SetStepping( const char * str ) {
+int SetStepping(const char * str) {
 
     int retVal = VISA_SUCCESS;
     char upperchar = (char)std::toupper(*str);
 
-    switch( upperchar )
+    switch (upperchar)
     {
     case 'A':
         stepping = Step_A;
@@ -203,7 +203,7 @@ int SetStepping( const char * str ) {
     return retVal;
 }
 
-Stepping GetStepping( void )
+Stepping GetStepping(void)
 {
     return stepping;
 }

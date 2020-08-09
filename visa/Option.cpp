@@ -77,9 +77,9 @@ bool Options::parseOptions(int argc, const char* argv[])
         argString << argv[i] << " ";
     }
 
-    for(int i = startPos; i < argc; i++)
+    for (int i = startPos; i < argc; i++)
     {
-        if( argv[i] == NULL )
+        if (argv[i] == NULL)
         {
             return false;
         }
@@ -95,7 +95,7 @@ bool Options::parseOptions(int argc, const char* argv[])
         // Else if int32,int64, or cstr, set parse argv[i+1] and set the value.
         vISAOptions vISAOpt = it->second;
         EntryType type = m_vISAOptions.getType(vISAOpt);
-        switch(type) {
+        switch (type) {
         case ET_BOOL: {
             bool val = ! m_vISAOptions.getDefaultBool(vISAOpt);
             m_vISAOptions.setBool(vISAOpt, val);
@@ -112,7 +112,7 @@ bool Options::parseOptions(int argc, const char* argv[])
                 std::cout << errorMsg << std::endl;
                 return false;
             }
-            switch(type) {
+            switch (type) {
             case ET_INT32:
                 m_vISAOptions.setUint32(vISAOpt, atoi(argv[i]));
                 m_vISAOptions.setArgSetByUser(vISAOpt);
@@ -183,7 +183,7 @@ bool Options::parseOptions(int argc, const char* argv[])
             return false;
         }
         int status = SetStepping(stepping);
-        if( status != 0 ){
+        if (status != 0) {
             std::cout << "unrecognized stepping string: "
                       << stepping << std::endl;
             return false;
@@ -236,7 +236,7 @@ bool Options::parseOptions(int argc, const char* argv[])
         }
 
         int status = SetPlatform(platformStr);
-        if( status != 0 ){
+        if (status != 0) {
             std::cout << "unrecognized platform string: "
                       << platformStr << std::endl;
             return false;

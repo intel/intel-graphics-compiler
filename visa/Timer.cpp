@@ -51,7 +51,7 @@ static const char* timerNames[TIMER_NUM_TIMERS] =
         struct timespec  Res;
         INT              iRet;
 
-        if ( (iRet = clock_getres(CLOCK_TYPE, &Res)) != 0 )
+        if ((iRet = clock_getres(CLOCK_TYPE, &Res)) != 0)
         {
             return ERROR;
         }
@@ -72,7 +72,7 @@ static const char* timerNames[TIMER_NUM_TIMERS] =
         struct timespec     t;
         INT                 iRet;
 
-        if ( (iRet = clock_getres (CLOCK_TYPE, &Res)) != 0 )
+        if ((iRet = clock_getres (CLOCK_TYPE, &Res)) != 0)
         {
             return ERROR;
         }
@@ -80,7 +80,7 @@ static const char* timerNames[TIMER_NUM_TIMERS] =
         { // resolution (precision) can't be in seconds for current machine and OS
             return ERROR;
         }
-        if( (iRet = clock_gettime(CLOCK_TYPE, &t)) != 0)
+        if ((iRet = clock_gettime(CLOCK_TYPE, &t)) != 0)
         {
             return ERROR;
         }
@@ -121,7 +121,7 @@ void initTimer() {
         timers[i].ticks = 0;
         timers[i].started = false;
         timers[i].hits = 0;
-        createNewTimer( timerNames[i] );
+        createNewTimer(timerNames[i]);
     }
     QueryPerformanceFrequency(&proc_freq);
 #endif
@@ -165,7 +165,7 @@ void startTimer(int timer)
     if (timer < TIMER_NUM_TIMERS)
     {
 #if defined(_DEBUG) && defined(CHECK_TIMER)
-        if(timers[timer].started)
+        if (timers[timer].started)
         {
             std::cerr << "***********************************************\n";
             std::cerr << "Timer already started.\n";

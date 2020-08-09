@@ -117,7 +117,7 @@ public:
 
     LiveRange(G4_RegVar* v, GlobalRA&);
 
-    void* operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); }
+    void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 
     void setDegree(unsigned d)  {degree = d;}
     unsigned getDegree()        {return degree;}
@@ -133,7 +133,7 @@ public:
     void setActive(bool v) {active = v;}
     bool getActive() {return active;}
 
-    virtual void emit(std::ostream& output, bool symbolreg=false)
+    virtual void emit(std::ostream& output, bool symbolreg = false)
     {
         output << getVar ()->getDeclare ()->getName();
         if (reg.phyReg != NULL)

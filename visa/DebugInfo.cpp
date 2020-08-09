@@ -288,7 +288,7 @@ int DbgDecoder::ddDbg()
 
     std::cout << "=== Start of Debug Dump ===" << "\n";
     std::cout << "Magic: " << "0x" << std::hex << magic << std::dec << "\n";
-    if(magic != DEBUG_MAGIC_NUMBER)
+    if (magic != DEBUG_MAGIC_NUMBER)
     {
         std::cout << "************ Magic expected = " << "0x" << std::hex << DEBUG_MAGIC_NUMBER << std::dec << " *************" << "\n";
 
@@ -304,7 +304,7 @@ int DbgDecoder::ddDbg()
 
     std::cout << "Number of compiled objects: " << numCompiledObjects << "\n\n";
 
-    for(unsigned int i = 0; i < numCompiledObjects; i++)
+    for (unsigned int i = 0; i < numCompiledObjects; i++)
     {
         std::cout << "Current compiled object index: " << i << "\n";
 
@@ -317,7 +317,7 @@ int DbgDecoder::ddDbg()
         if (!retval)
             return -1;
 
-        if(reloc_offset == 0)
+        if (reloc_offset == 0)
         {
             std::cout << "(kernel)\n";
         }
@@ -333,7 +333,7 @@ int DbgDecoder::ddDbg()
 
         std::cout << "CISA byte offset -> Gen byte offset mapping\n";
 
-        for(unsigned int j = 0; j < numElementsCISAOffsetMap; j++)
+        for (unsigned int j = 0; j < numElementsCISAOffsetMap; j++)
         {
             uint32_t cisaOffset, genOffset;
             retval = fread(&cisaOffset, sizeof(uint32_t), 1, dbgFile);
@@ -356,7 +356,7 @@ int DbgDecoder::ddDbg()
 
         std::cout << "CISA index -> Gen byte offset mapping\n";
 
-        for(unsigned int j = 0; j < numElementsCISAIndexMap; j++)
+        for (unsigned int j = 0; j < numElementsCISAIndexMap; j++)
         {
             uint32_t cisaIndex, genOffset;
             retval = fread(&cisaIndex, sizeof(uint32_t), 1, dbgFile);
@@ -379,7 +379,7 @@ int DbgDecoder::ddDbg()
 
         std::cout << "Virtual Register -> Physical Register mapping\n";
 
-        for(unsigned int j = 0; j < numElementsVarMap; j++)
+        for (unsigned int j = 0; j < numElementsVarMap; j++)
         {
             ddName();
 
@@ -495,7 +495,7 @@ DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY int decodeAndDumpDebugInfo(char* filename
 
 void getGRF(G4_Declare* dcl, unsigned int& regNum, unsigned int& subRegNumInBytes)
 {
-    if(dcl->getRegVar()->getPhyReg() != NULL)
+    if (dcl->getRegVar()->getPhyReg() != NULL)
     {
         regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
         subRegNumInBytes = dcl->getRegVar()->getPhyRegOff() * G4_Type_Table[dcl->getElemType()].byteSize;
@@ -593,7 +593,7 @@ void KernelDebugInfo::setVISAKernel(VISAKernelImpl* k)
 void KernelDebugInfo::generateCISAByteOffsetFromOffset()
 {
     // Using map1 and map2, generate map3
-    for(std::vector<std::pair<unsigned int, unsigned int>>::iterator it = mapCISAIndexGenOffset.begin();
+    for (std::vector<std::pair<unsigned int, unsigned int>>::iterator it = mapCISAIndexGenOffset.begin();
         it != mapCISAIndexGenOffset.end();
         it++)
     {
@@ -635,11 +635,11 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
         if (kernel->fg.builder->getIsKernel())
         {
             auto entryBBend = stackCallEntryBBs.end();
-            for(auto entryBBIt = stackCallEntryBBs.begin();
+            for (auto entryBBIt = stackCallEntryBBs.begin();
                 entryBBIt != entryBBend;
                 entryBBIt++)
             {
-                if(bb == (*entryBBIt))
+                if (bb == (*entryBBIt))
                 {
                     // Since we are traversing BBs in layout
                     // order, we will parse all kernel BBs
@@ -652,7 +652,7 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
             }
         }
 
-        if(done == true)
+        if (done == true)
         {
             break;
         }
@@ -668,14 +668,14 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
                 int cisaByteIndex = inst->getCISAOff();
                 maxGenIsaOffset = (uint64_t)inst->getGenOffset() +
                                     (inst->isCompactedInst() ? 8 : 16);
-                if(cisaByteIndex == -1)
+                if (cisaByteIndex == -1)
                 {
                     continue;
                 }
 
                 maxVISAIndex = std::max(maxVISAIndex, (unsigned int)cisaByteIndex);
 
-                if(isaPrevByteOffset != cisaByteIndex)
+                if (isaPrevByteOffset != cisaByteIndex)
                 {
                     isaPrevByteOffset = cisaByteIndex;
 
@@ -762,9 +762,9 @@ void KernelDebugInfo::emitRegisterMapping()
     // GRF registers. Only general variables, ie GRF
     // candidates can be spilled to memory.
 
-    for( DECLARE_LIST_ITER dcl_it = getKernel().Declares.begin();
+    for (DECLARE_LIST_ITER dcl_it = getKernel().Declares.begin();
         dcl_it != getKernel().Declares.end();
-        dcl_it++ )
+        dcl_it++)
     {
         G4_Declare* dcl = (*dcl_it);
         if (getKernel().fg.isPseudoDcl(dcl) ||
@@ -782,15 +782,15 @@ void KernelDebugInfo::emitRegisterMapping()
         VarnameMap* varMap = (VarnameMap*)getKernel().fg.builder->mem.alloc(sizeof(struct VarnameMap));
         varMap->dcl = dcl;
 
-        if( (dcl->getRegFile() == G4_GRF || dcl->getRegFile() == G4_INPUT) &&
-            dcl->getRegVar()->isNullReg() == false )
+        if ((dcl->getRegFile() == G4_GRF || dcl->getRegFile() == G4_INPUT) &&
+            dcl->getRegVar()->isNullReg() == false)
         {
             // GRF candidate can be either in GRF or
             // spilled to memory
             bool isSpilled = dcl->isSpilled() && (dcl->getRegVar()->getPhyReg() == NULL);
             varMap->virtualType = VARMAP_VREG_FILE_GRF;
 
-            if( !isSpilled )
+            if (!isSpilled)
             {
                 unsigned int regNum, subRegNumInBytes;
                 getGRF(dcl, regNum, subRegNumInBytes);
@@ -802,7 +802,7 @@ void KernelDebugInfo::emitRegisterMapping()
             else
             {
                 unsigned int spillOffset = 0;
-                while( dcl->getAliasDeclare() != NULL )
+                while (dcl->getAliasDeclare() != NULL)
                 {
                     spillOffset += dcl->getAliasOffset();
                     dcl = dcl->getAliasDeclare();
@@ -826,7 +826,7 @@ void KernelDebugInfo::emitRegisterMapping()
             bool isSpilled = dcl->isSpilled() && (dcl->getRegVar()->getPhyReg() == NULL);
             varMap->virtualType = VARMAP_VREG_FILE_ADDRESS;
 
-            if( !isSpilled )
+            if (!isSpilled)
             {
                 unsigned int subRegNum;
                 subRegNum = dcl->getRegVar()->getPhyRegOff();
@@ -838,10 +838,10 @@ void KernelDebugInfo::emitRegisterMapping()
             else
             {
                 // Spilled to GRF
-                if( !dcl->getSpilledDeclare()->isSpilled() )
+                if (!dcl->getSpilledDeclare()->isSpilled())
                 {
                     unsigned int regNum, subRegNumInBytes;
-                    getGRF( dcl->getSpilledDeclare(), regNum, subRegNumInBytes );
+                    getGRF(dcl->getSpilledDeclare(), regNum, subRegNumInBytes);
                     varMap->physicalType = VARMAP_PREG_FILE_GRF;
                     varMap->Mapping.Register.regNum = static_cast<uint16_t>(regNum);
                     varMap->Mapping.Register.subRegNum = static_cast<uint16_t>(subRegNumInBytes);
@@ -851,7 +851,7 @@ void KernelDebugInfo::emitRegisterMapping()
                 {
                     unsigned int spillOffset = 0;
                     //G4_Declare* origDcl = dcl;
-                    while( dcl->getAliasDeclare() != NULL )
+                    while (dcl->getAliasDeclare() != NULL)
                     {
                         spillOffset += dcl->getAliasOffset();
                         dcl = dcl->getAliasDeclare();
@@ -871,12 +871,12 @@ void KernelDebugInfo::emitRegisterMapping()
                 }
             }
         }
-        else if( dcl->getRegFile() == G4_FLAG )
+        else if (dcl->getRegFile() == G4_FLAG)
         {
             bool isSpilled = dcl->isSpilled() && (dcl->getRegVar()->getPhyReg() == NULL);
             varMap->virtualType = VARMAP_VREG_FILE_FLAG;
 
-            if( !isSpilled )
+            if (!isSpilled)
             {
                 unsigned int regNum, subRegNum;
                 regNum = dcl->getRegVar()->getPhyReg()->asAreg()->getFlagNum();
@@ -889,10 +889,10 @@ void KernelDebugInfo::emitRegisterMapping()
             else
             {
                 // Spilled to GRF
-                if( !dcl->getSpilledDeclare()->isSpilled() )
+                if (!dcl->getSpilledDeclare()->isSpilled())
                 {
                     unsigned int regNum, subRegNumInBytes;
-                    getGRF( dcl->getSpilledDeclare(), regNum, subRegNumInBytes );
+                    getGRF(dcl->getSpilledDeclare(), regNum, subRegNumInBytes);
                     varMap->physicalType = VARMAP_PREG_FILE_GRF;
                     varMap->Mapping.Register.regNum = static_cast<uint16_t>(regNum);
                     varMap->Mapping.Register.subRegNum = static_cast<uint16_t>(subRegNumInBytes);
@@ -902,7 +902,7 @@ void KernelDebugInfo::emitRegisterMapping()
                 {
                     unsigned int spillOffset = 0;
                     //G4_Declare* origDcl = dcl;
-                    while( dcl->getAliasDeclare() != NULL )
+                    while (dcl->getAliasDeclare() != NULL)
                     {
                         spillOffset += dcl->getAliasOffset();
                         dcl = dcl->getAliasDeclare();
@@ -941,32 +941,32 @@ void insertData(const void* ptr, unsigned size, std::vector<unsigned char>& vec)
 unsigned int populateMapDclName(VISAKernelImpl* kernel, std::map<G4_Declare*, std::pair<const char*, unsigned int>>& mapDclName)
 {
     std::list<CISA_GEN_VAR*> dclList;
-    for(uint32_t ctr = 0; ctr < kernel->getGenVarCount(); ctr++)
+    for (uint32_t ctr = 0; ctr < kernel->getGenVarCount(); ctr++)
     {
         // Pre-defined gen vars are included in this list,
         // but we dont want to emit them to debug info.
-        if(kernel->getGenVar((unsigned int)ctr)->index >= kernel->getNumPredVars())
+        if (kernel->getGenVar((unsigned int)ctr)->index >= kernel->getNumPredVars())
         {
             dclList.push_back(kernel->getGenVar((unsigned int)ctr));
         }
     }
 
-    for(uint32_t ctr = 0; ctr < kernel->getAddrVarCount(); ctr++)
+    for (uint32_t ctr = 0; ctr < kernel->getAddrVarCount(); ctr++)
     {
         dclList.push_back(kernel->getAddrVar((unsigned int)ctr));
     }
 
-    for(uint32_t ctr = 0; ctr < kernel->getPredVarCount(); ctr++)
+    for (uint32_t ctr = 0; ctr < kernel->getPredVarCount(); ctr++)
     {
         dclList.push_back(kernel->getPredVar((unsigned int)ctr));
     }
 
-    for(uint32_t ctr = 0; ctr < kernel->getSurfaceVarCount(); ctr++)
+    for (uint32_t ctr = 0; ctr < kernel->getSurfaceVarCount(); ctr++)
     {
         dclList.push_back(kernel->getSurfaceVar((unsigned int)ctr));
     }
 
-    for(uint32_t ctr = 0; ctr < kernel->getSamplerVarCount(); ctr++)
+    for (uint32_t ctr = 0; ctr < kernel->getSamplerVarCount(); ctr++)
     {
         dclList.push_back(kernel->getSamplerVar((unsigned int)ctr));
     }
@@ -974,29 +974,29 @@ unsigned int populateMapDclName(VISAKernelImpl* kernel, std::map<G4_Declare*, st
     auto start = dclList.begin();
     auto end = dclList.end();
 
-    for(auto it = start;
+    for (auto it = start;
         it != end;
         it++)
     {
         CISA_GEN_VAR* var = (*it);
 
-        if(var->type == GENERAL_VAR)
+        if (var->type == GENERAL_VAR)
         {
             mapDclName.insert(std::make_pair(var->genVar.dcl, std::make_pair("V", var->index)));
         }
-        else if(var->type == ADDRESS_VAR)
+        else if (var->type == ADDRESS_VAR)
         {
             mapDclName.insert(std::make_pair(var->addrVar.dcl, std::make_pair("A", var->index)));
         }
-        else if(var->type == PREDICATE_VAR)
+        else if (var->type == PREDICATE_VAR)
         {
             mapDclName.insert(std::make_pair(var->predVar.dcl, std::make_pair("P", var->index)));
         }
-        else if(var->type == SURFACE_VAR)
+        else if (var->type == SURFACE_VAR)
         {
             mapDclName.insert(std::make_pair(var->stateVar.dcl, std::make_pair("T", var->index)));
         }
-        else if(var->type == SAMPLER_VAR)
+        else if (var->type == SAMPLER_VAR)
         {
             mapDclName.insert(std::make_pair(var->stateVar.dcl, std::make_pair("S", var->index)));
         }
@@ -1320,7 +1320,7 @@ void SaveRestoreManager::sieveInstructions(CallerOrCallee c)
     {
         for (auto entryIt = sr.saveRestoreMap.begin();
             entryIt != sr.saveRestoreMap.end();
-            )
+           )
         {
             auto entry = (*entryIt);
 
@@ -1378,7 +1378,7 @@ void SaveRestoreManager::sieveInstructions(CallerOrCallee c)
 
     for (auto srIt = srInfo.begin();
         srIt != srInfo.end();
-        )
+       )
     {
         auto& sr = (*srIt);
 
@@ -1606,7 +1606,7 @@ void emitData(std::list<VISAKernelImpl*>& compilationUnits, T t)
     emitDataUInt16((uint16_t)numKernels, t);
 
     auto cunitsItEnd = compilationUnits.end();
-    for(auto cunitsIt = compilationUnits.begin();
+    for (auto cunitsIt = compilationUnits.begin();
         cunitsIt != cunitsItEnd;
         cunitsIt++)
     {
@@ -1615,7 +1615,7 @@ void emitData(std::list<VISAKernelImpl*>& compilationUnits, T t)
         emitDataName(curKernel->getName(), t);
 
         uint32_t reloc_offset = 0;
-        if(curKernel->getIsKernel())
+        if (curKernel->getIsKernel())
         {
             emitDataUInt32((uint32_t)reloc_offset, t);
         }
@@ -1631,7 +1631,7 @@ void emitData(std::list<VISAKernelImpl*>& compilationUnits, T t)
         emitDataUInt32((uint32_t)numElementsCISAOffsetMap, t);
 
         // Emit out actual CISA Offset:Gen Offset mapping elements
-        for(unsigned int i = 0; i < numElementsCISAOffsetMap; i++)
+        for (unsigned int i = 0; i < numElementsCISAOffsetMap; i++)
         {
             const unsigned int cisaOffset = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAOffsetGenOffset()[i].first;
             const unsigned int genOffset = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAOffsetGenOffset()[i].second -
@@ -1648,7 +1648,7 @@ void emitData(std::list<VISAKernelImpl*>& compilationUnits, T t)
         emitDataUInt32((uint32_t)numElementsCISAIndexMap, t);
 
         // Emit out actual CISA index:Gen Offset mapping
-        for(unsigned int i = 0; i < numElementsCISAIndexMap; i++)
+        for (unsigned int i = 0; i < numElementsCISAIndexMap; i++)
         {
             const unsigned int cisaIndex = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAIndexGenOffset()[i].first;
             const unsigned int genOffset = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAIndexGenOffset()[i].second -
@@ -1673,10 +1673,10 @@ void emitData(std::list<VISAKernelImpl*>& compilationUnits, T t)
 
         const unsigned int numElementsVarMap = (uint32_t) curKernel->getKernel()->getKernelDebugInfo()->getVarsMap().size();
 
-        for(unsigned int i = 0; i < numElementsVarMap; i++)
+        for (unsigned int i = 0; i < numElementsVarMap; i++)
         {
             G4_Declare* dcl = curKernel->getKernel()->getKernelDebugInfo()->getVarsMap()[i]->dcl;
-            if(mapDclName.find(dcl) == mapDclName.end())
+            if (mapDclName.find(dcl) == mapDclName.end())
             {
                 continue;
             }
@@ -1688,10 +1688,10 @@ void emitData(std::list<VISAKernelImpl*>& compilationUnits, T t)
         emitDataUInt32((uint32_t)numItems, t);
 
         // Emit out actual Virtual Register:Physical Register mapping elements
-        for(unsigned int i = 0; i < numElementsVarMap; i++)
+        for (unsigned int i = 0; i < numElementsVarMap; i++)
         {
             G4_Declare* dcl = curKernel->getKernel()->getKernelDebugInfo()->getVarsMap()[i]->dcl;
-            if(mapDclName.find(dcl) == mapDclName.end())
+            if (mapDclName.find(dcl) == mapDclName.end())
             {
                 continue;
             }
@@ -1739,7 +1739,7 @@ void emitDebugInfoToMem(VISAKernelImpl* kernel, std::list<VISAKernelImpl*>& func
     std::list<VISAKernelImpl*> compilationUnits;
     compilationUnits.push_back(kernel);
     auto funcItEnd = functions.end();
-    for(auto funcIt = functions.begin();
+    for (auto funcIt = functions.begin();
         funcIt != funcItEnd;
         funcIt++)
     {
@@ -1791,13 +1791,13 @@ void KernelDebugInfo::updateRelocOffset()
 
     bool done = false;
     BB_LIST_ITER bbItEnd = getKernel().fg.end();
-    for(auto bbIt = getKernel().fg.begin();
+    for (auto bbIt = getKernel().fg.begin();
         bbIt != bbItEnd && done == false;
         bbIt++)
     {
         G4_BB* bb = (*bbIt);
         INST_LIST_ITER instItEnd = bb->end();
-        for(auto instIt = bb->begin();
+        for (auto instIt = bb->begin();
             instIt != instItEnd;
             instIt++)
         {
@@ -1817,7 +1817,7 @@ void emitDebugInfo(VISAKernelImpl* kernel, std::list<VISAKernelImpl*>& functions
     std::list<VISAKernelImpl*> compilationUnits;
     compilationUnits.push_back(kernel);
     auto funcItEnd = functions.end();
-    for(auto funcIt = functions.begin();
+    for (auto funcIt = functions.begin();
         funcIt != funcItEnd;
         funcIt++)
     {
@@ -1840,7 +1840,7 @@ void emitDebugInfo(VISAKernelImpl* kernel, std::list<VISAKernelImpl*>& functions
 
     FILE* dbgFile = fopen(debugFileNameStr.c_str(), "wb+");
 
-    if(dbgFile == NULL)
+    if (dbgFile == NULL)
     {
         std::cerr << "Error opening debug file " << debugFileNameStr << ". Not emitting debug info.\n";
         return;
@@ -1856,14 +1856,14 @@ void resetGenOffsets(G4_Kernel& kernel)
     // Iterate over all instructions in kernel and set gen
     // offset of BinInst instance to 0.
     auto bbItEnd = kernel.fg.end();
-    for(auto bbIt = kernel.fg.begin();
+    for (auto bbIt = kernel.fg.begin();
         bbIt != bbItEnd;
         bbIt++)
     {
         G4_BB* bb = (*bbIt);
 
         auto instItEnd = bb->end();
-        for(auto instIt = bb->begin();
+        for (auto instIt = bb->begin();
             instIt != instItEnd;
             instIt++)
         {

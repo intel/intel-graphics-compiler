@@ -904,7 +904,7 @@ void CoalesceSpillFills::removeWARFills(std::list<INST_LIST_ITER>& fills, std::l
 {
     for (auto flIt = fills.begin();
         flIt != fills.end();
-        )
+       )
     {
         if (overlap((*(*flIt)), spills))
         {
@@ -1071,7 +1071,7 @@ void CoalesceSpillFills::fills()
         // One pass to replace old fills with coalesced dcl
         for (auto instIt = bb->begin();
             instIt != bb->end();
-            )
+           )
         {
             auto inst = (*instIt);
 
@@ -1160,7 +1160,7 @@ void CoalesceSpillFills::spills()
 
                 for (auto coalIt = spillsToCoalesce.begin();
                     coalIt != spillsToCoalesce.end();
-                    )
+                   )
                 {
                     bool fullOverlap = false;
                     if (overlap(*instIter, *(*coalIt), fullOverlap))
@@ -1186,7 +1186,7 @@ void CoalesceSpillFills::spills()
             {
                 for (auto coalIt = spillsToCoalesce.begin();
                     coalIt != spillsToCoalesce.end();
-                    )
+                   )
                 {
                     bool temp = false;
                     if (overlap(*instIter, *(*coalIt), temp))
@@ -1255,7 +1255,7 @@ void CoalesceSpillFills::spills()
         // One pass to replace old fills with coalesced dcl
         for (auto instIt = bb->begin();
             instIt != bb->end();
-            )
+           )
         {
             auto inst = (*instIt);
 

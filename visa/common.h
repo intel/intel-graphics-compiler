@@ -234,9 +234,9 @@ PlatformGen getPlatformGeneration(TARGET_PLATFORM platform);
 extern "C" int getGenxPlatformEncoding();
 
 extern "C" void InitStepping();
-extern "C" int SetStepping( const char* s);
-extern "C" Stepping GetStepping( void );
-extern "C" const char * GetSteppingString( void );
+extern "C" int SetStepping(const char* s);
+extern "C" Stepping GetStepping(void);
+extern "C" const char * GetSteppingString(void);
 
 // Error types
 #define ERROR_UNKNOWN                       "ERROR: Unkown fatal internal error!"

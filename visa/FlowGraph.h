@@ -434,7 +434,7 @@ public:
     void     setBBBeforeCall(G4_BB* before)   {beforeCall = before;}
     void     setBBAfterCall(G4_BB* after)     {afterCall = after;}
     FuncInfo*  getCalleeInfo() const          {return calleeInfo;}
-    void       setCalleeInfo(FuncInfo* callee){calleeInfo = callee;}
+    void       setCalleeInfo(FuncInfo* callee) {calleeInfo = callee;}
     FuncInfo*  getFuncInfo() const            {return funcInfo;}
     void       setFuncInfo(FuncInfo* func)    {funcInfo = func;}
     int        getBBType() const              {return BBType;}
@@ -484,7 +484,7 @@ public:
         //FIXME: For now not all BBs will start with a label (e.g.,
         //a block that follows a call).  We should fix it by getting rid
         //of the g4_label instruction and associate each label with a BB
-        if( instList.size() > 0 && instList.front()->isLabel() )
+        if (instList.size() > 0 && instList.front()->isLabel())
         {
             return instList.front()->getLabel();
         }
@@ -522,7 +522,7 @@ public:
 
     void removeIntrinsics(Intrinsic intrinId)
     {
-        instList.remove_if([=](G4_INST* inst) { return inst->isIntrinsic() && inst->asIntrinsicInst()->getIntrinsicId() == intrinId;});
+        instList.remove_if ([=](G4_INST* inst) { return inst->isIntrinsic() && inst->asIntrinsicInst()->getIntrinsicId() == intrinId;});
     }
 
     void addSamplerFlushBeforeEOT();
@@ -556,7 +556,7 @@ struct StructuredCF
     StructuredCF(STRUCTURED_CF_TYPE type, vISA::G4_BB* startBB) :
         mType(type), mStartBB(startBB), mEndBB(NULL), mEndInst(NULL), enclosingCF(NULL) {}
 
-    void *operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); }
+    void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 
     void setEnd(vISA::G4_BB* endBB, vISA::G4_INST* endInst)
     {
@@ -654,9 +654,9 @@ public:
     {
     }
 
-    void addGlobalOpnd( G4_Operand *opnd);
+    void addGlobalOpnd(G4_Operand *opnd);
     // check if a def is a global variable
-    bool isOpndGlobal( G4_Operand *def );
+    bool isOpndGlobal(G4_Operand *def);
     void clearHashTable()
     {
         for (auto iter = globalOperands.begin(), end = globalOperands.end(); iter != end; ++iter)
@@ -944,15 +944,15 @@ public:
     void decoupleReturnBlock(G4_BB*);
     void decoupleInitBlock(G4_BB*, FuncInfoHashTable& funcInfoTable);
     void decoupleExitBlock(G4_BB*);
-    void normalizeSubRoutineBB( FuncInfoHashTable& funcInfoTable );
+    void normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable);
     void processGoto(bool HasSIMDCF);
     void processSCF(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable& FuncInfoMap);
-    void insertJoinToBB( G4_BB* bb, uint8_t execSize, G4_Label* jip );
+    void insertJoinToBB(G4_BB* bb, uint8_t execSize, G4_Label* jip);
 
     // functions for structure analysis
     G4_Kernel *getKernel() const { return pKernel; }
-    G4_Label* insertEndif( G4_BB* bb, unsigned char execSize, bool createLabel );
-    void setJIPForEndif( G4_INST* endif, G4_INST* target, G4_BB* targetBB);
+    G4_Label* insertEndif (G4_BB* bb, unsigned char execSize, bool createLabel);
+    void setJIPForEndif (G4_INST* endif, G4_INST* target, G4_BB* targetBB);
     void convertGotoToJmpi(G4_INST *gotoInst)
     {
         gotoInst->setOpcode(G4_jmpi);
@@ -971,7 +971,7 @@ public:
 
     FuncInfo* getFunc(unsigned int id)
     {
-        if(id < getNumFuncs())
+        if (id < getNumFuncs())
             return funcInfoTable[id];
         return nullptr;
     }
@@ -997,7 +997,7 @@ public:
 
     ~FlowGraph();
 
-    void setBuilder(IR_Builder *pBuilder )
+    void setBuilder(IR_Builder *pBuilder)
     {
         builder = pBuilder;
     }
@@ -1027,17 +1027,17 @@ public:
         MUST_BE_TRUE(pred != NULL && succ != NULL, ERROR_INTERNAL_ARGUMENT);
 
         BB_LIST_ITER lt = pred->Succs.begin();
-        for (; lt != pred->Succs.end(); ++lt){
-            if( (*lt) == succ ){
-                pred->Succs.erase( lt );
+        for (; lt != pred->Succs.end(); ++lt) {
+            if ((*lt) == succ) {
+                pred->Succs.erase(lt);
                 break;
             }
         }
 
         lt = succ->Preds.begin();
-        for (; lt != succ->Preds.end(); ++lt){
-            if( (*lt) == pred ){
-                succ->Preds.erase( lt );
+        for (; lt != succ->Preds.end(); ++lt) {
+            if ((*lt) == pred) {
+                succ->Preds.erase(lt);
                 break;
             }
         }
@@ -1105,7 +1105,7 @@ public:
         // Return NULL if multiple return instructions found
         G4_BB* uniqueReturnBlock = NULL;
 
-        for( BB_LIST_ITER bb_it = BBs.begin(); bb_it != BBs.end(); ++bb_it ) {
+        for (BB_LIST_ITER bb_it = BBs.begin(); bb_it != BBs.end(); ++bb_it) {
             G4_BB* curBB = *bb_it;
             G4_INST* last_inst = NULL;
 
@@ -1113,8 +1113,8 @@ public:
             {
                 last_inst = curBB->back();
 
-                if( last_inst->opcode() == G4_pseudo_fret ) {
-                    if( uniqueReturnBlock == NULL ) {
+                if (last_inst->opcode() == G4_pseudo_fret) {
+                    if (uniqueReturnBlock == NULL) {
                         uniqueReturnBlock = curBB;
                     }
                     else {
@@ -1184,7 +1184,7 @@ public:
         return indirectJmpTarget.count(inst) > 0;
     }
 
-    G4_Label* getLabelForEndif(G4_INST* inst) const
+    G4_Label* getLabelForEndif (G4_INST* inst) const
     {
         auto iter = endifWithLabels.find(inst);
         if (iter != endifWithLabels.end())
@@ -1283,9 +1283,9 @@ public:
         whichRAPass = FirstRAPass;
     }
 
-    void *operator new(size_t sz, Mem_Manager& m){ return m.alloc(sz); }
+    void *operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
 
-    ~gtPinData(){}
+    ~gtPinData() {}
 
     void markInst(G4_INST* i)
     {
@@ -1361,7 +1361,7 @@ class RelocationEntry
     std::string symName;       // the symbol name that it's address to be resolved
 
     RelocationEntry(G4_INST* i, int pos, RelocationType type, const std::string& symbolName) :
-        inst(i), opndPos(pos), relocType(type), symName(symbolName){}
+        inst(i), opndPos(pos), relocType(type), symName(symbolName) {}
 
 public:
     static RelocationEntry& createRelocation(G4_Kernel& kernel, G4_INST& inst,
@@ -1501,7 +1501,7 @@ public:
 
     void *operator new(size_t sz, Mem_Manager& m)    {return m.alloc(sz);}
 
-    void setBuilder(IR_Builder *pBuilder )
+    void setBuilder(IR_Builder *pBuilder)
     {
         fg.setBuilder(pBuilder);
     }
@@ -1531,7 +1531,7 @@ public:
     void setKernelID(uint64_t ID) { kernelID = ID; }
     uint64_t getKernelID() const { return kernelID; }
 
-    Options *getOptions(){ return m_options; }
+    Options *getOptions() { return m_options; }
     const Attributes* getKernelAttrs() const { return m_kernelAttrs; }
     int getIntKernelAttribute(Attributes::ID aID) const
     {
@@ -1562,7 +1562,7 @@ public:
     void evalAddrExp(void);
     void dumpDotFile(const char* appendix);
 
-    void setVersion( unsigned char major_ver, unsigned char minor_ver )
+    void setVersion(unsigned char major_ver, unsigned char minor_ver)
     {
         major_version = major_ver;
         minor_version = minor_ver;
@@ -1592,7 +1592,7 @@ public:
 
     gtPinData* getGTPinData()
     {
-        if(!gtPinInfo)
+        if (!gtPinInfo)
             allocGTPinData();
 
         return gtPinInfo;

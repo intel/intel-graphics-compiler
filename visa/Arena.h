@@ -182,15 +182,15 @@ namespace vISA
             totalMallocSize += arenaDataSize;
             currentMallocSize += arenaDataSize;
             int numArenas = 0;
-            for( ArenaHeader *tmpArena = _arenas; tmpArena != NULL; tmpArena = tmpArena->_nextArena )
+            for (ArenaHeader *tmpArena = _arenas; tmpArena != NULL; tmpArena = tmpArena->_nextArena)
             {
                 numArenas++;
             }
-            if( numArenas > maxArenaLength )
+            if (numArenas > maxArenaLength)
             {
                 maxArenaLength = numArenas;
             }
-            if( numArenas == 1 )
+            if (numArenas == 1)
             {
                 numMemManagers++;
             }

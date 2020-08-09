@@ -64,10 +64,10 @@ static bool isCompressedInst(G4_INST* inst) {
     return inst->isComprInst();
 }
 
-#define isUnitRegionRow( opnd, exec_size )      \
-        ( opnd->isImm() ||      \
+#define isUnitRegionRow(opnd, exec_size)      \
+        (opnd->isImm() ||      \
         opnd->isSrcRegRegion() && opnd->asSrcRegRegion()->getRegion()->width == exec_size || \
-        opnd->isSrcRegRegion() && opnd->asSrcRegRegion()->getRegion()->vertStride == 0 )
+        opnd->isSrcRegRegion() && opnd->asSrcRegRegion()->getRegion()->vertStride == 0)
 
 G4_SubReg_Align HWConformity::getDclAlignment(int opndBytes, G4_INST* inst, bool isScalar)
 {
@@ -1555,7 +1555,7 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
     if (!((dst_byte_offset % extypesize == 0) ||
         (byteDst &&
         (dst_byte_offset % extypesize == 1))
-        ) ||
+       ) ||
         /*
          * Dynamic offset can be odd for serialized instructions
          * or when horizontal offset is dynamic.
@@ -1564,7 +1564,7 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
         (dst_elsize < extypesize &&
             dst->getRegAccess() != Direct &&
             !(byteDst && extypesize == 2 && exec_size == 1)
-            ) ||
+           ) ||
         dstNotAlignedToExecType)
     {
         /*
@@ -2677,7 +2677,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
 
         if (src0RR->getRegion()->isScalar())
             rgnToUse = builder.getRegionScalar();
-        else if(!src0RR->isIndirect())
+        else if (!src0RR->isIndirect())
         {
             uint16_t stride = 0;
             bool legal = src0RR->getRegion()->isSingleStride(inst->getExecSize(), stride);
@@ -3178,7 +3178,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                             wd = neltsIn1stGRF / hs;
                             // Get the largest powOfTwo that can divide wd
                             wd = wd & (-wd);
-                            //MUST_BE_TRUE( wd > 1, "Cannot select non-1 width w/o crossing GRF");
+                            //MUST_BE_TRUE(wd > 1, "Cannot select non-1 width w/o crossing GRF");
                         }
                         srcAsRegion->setRegion(builder.createRegionDesc(wd * hs, wd, hs));
                     }
@@ -5325,7 +5325,7 @@ void HWConformity::avoidDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb)
         if (dstDcl != nullptr)
         {
             G4_DstRegRegion* dstRgn = dst;
-            int dstOpndNumRows = (( dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) / G4_GRF_REG_NBYTES) + 1;
+            int dstOpndNumRows = ((dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) / G4_GRF_REG_NBYTES) + 1;
             int dstLeft = dstRgn->getLinearizedStart();
             int dstRight = dstOpndNumRows > 1 ? ((dstLeft / G4_GRF_REG_NBYTES + 1) * G4_GRF_REG_NBYTES - 1) :
                 dstRgn->getLinearizedEnd();
@@ -5391,7 +5391,7 @@ void HWConformity::conformBB(G4_BB* bb)
             continue;
         }
 
-        if(builder.avoidDstSrcOverlap() &&
+        if (builder.avoidDstSrcOverlap() &&
             inst->getDst() != NULL)
         {
             avoidDstSrcOverlap(i, bb);
@@ -5454,7 +5454,7 @@ void HWConformity::conformBB(G4_BB* bb)
             if (fixMULInst(i, bb))
             {
                 // inserted mach and mov
-                // check the newly added insts later ( MUL, MACH, MOV )
+                // check the newly added insts later (MUL, MACH, MOV)
                 next_iter = i;
                 next_iter++;
             }

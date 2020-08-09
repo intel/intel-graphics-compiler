@@ -39,7 +39,7 @@ using namespace vISA;
 void*
 ArenaHeader::AllocSpace (size_t size)
 {
-    assert( WordAlign (size_t (_nextByte)) == size_t (_nextByte) );
+    assert(WordAlign (size_t (_nextByte)) == size_t (_nextByte));
     void * allocSpace = _nextByte;
 
     if (size)

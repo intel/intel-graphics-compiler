@@ -455,7 +455,7 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
     auto funcID = msgDesc->getFuncId();
     switch (funcID) {
     case SFID::DP_DC:
-        switch(msgDesc->getHdcMessageType())
+        switch (msgDesc->getHdcMessageType())
         {
         case DC_DWORD_SCATTERED_READ:
         case DC_DWORD_SCATTERED_WRITE:
@@ -465,7 +465,7 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
         }
         break;
     case SFID::DP_DC1:
-        switch(msgDesc->getHdcMessageType())
+        switch (msgDesc->getHdcMessageType())
         {
         case DC1_UNTYPED_SURFACE_READ:
         case DC1_UNTYPED_SURFACE_WRITE:
@@ -473,7 +473,7 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
         }
         break;
     case SFID::DP_DC2:
-        switch(msgDesc->getHdcMessageType())
+        switch (msgDesc->getHdcMessageType())
         {
         case DC2_BYTE_SCATTERED_READ:
         case DC2_BYTE_SCATTERED_WRITE:
@@ -628,7 +628,7 @@ bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1)
     G4_INST* I0 = *IT0;
     G4_INST* I1 = *IT1;
     G4_opcode opc = I0->opcode();
-    assert( (opc == G4_send || opc == G4_sends) && opc == I1->opcode() &&
+    assert((opc == G4_send || opc == G4_sends) && opc == I1->opcode() &&
             "Arguments to canFusion must be the same kind of Send Messages!");
 
     // Current implementation uses split send to replace two sends. For simplicity,
@@ -795,7 +795,7 @@ void SendFusion::doSink(
     {
         int j = 1;
         G4_INST *Inst = InstToBeSinked[j];
-        for (INST_LIST_ITER IT = StartIT; IT != EndIT; )
+        for (INST_LIST_ITER IT = StartIT; IT != EndIT;)
         {
             G4_INST *tmp = *IT;
             if (tmp == Inst) {
@@ -838,7 +838,7 @@ void SendFusion::doHoist(
     {
         int j = numToBeHoisted-1;
         G4_INST *Inst = InstToBeHoisted[j];
-        for (INST_LIST_ITER IT = StartIT; IT != EndIT; )
+        for (INST_LIST_ITER IT = StartIT; IT != EndIT;)
         {
             G4_INST *tmp = *IT;
             if (tmp == Inst) {
@@ -1249,7 +1249,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
             Builder->getRegionScalar(), Type_UW);
         G4_DstRegRegion* tmpDst1 = Builder->createDst(
             tmpDecl->getRegVar(), 0, 0, 1, Type_UW);
-        Inst0 = Builder->createMov( 1, tmpDst1, flagSrc, InstOpt_WriteEnable, false);
+        Inst0 = Builder->createMov(1, tmpDst1, flagSrc, InstOpt_WriteEnable, false);
         bb->insertBefore(InsertBeforePos, Inst0);
 
         // update DefUse
@@ -1614,7 +1614,7 @@ bool SendFusion::run(G4_BB* BB)
         G4_INST* inst1 = nullptr;
         INST_LIST_ITER II1 = II0;
         ++II1;
-        while(II1 != IE)
+        while (II1 != IE)
         {
             G4_INST* tmp = *II1;
             if (simplifyAndCheckCandidate(II1))

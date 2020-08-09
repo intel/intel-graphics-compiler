@@ -136,7 +136,7 @@ std::string printVariableDeclName(
         {   case STATE_OPND_SURFACE : sstr << printSurfaceName(declID); break;
             case STATE_OPND_SAMPLER : sstr << "S"   << declID; break;
             default                 :
-                if(options->getOption(vISA_easyIsaasm) == false ||
+                if (options->getOption(vISA_easyIsaasm) == false ||
                     options->getOption(vISA_PlatformIsSet) == false)
                 {
                     // If platform is not set then dcl instances are
@@ -157,7 +157,7 @@ std::string printVariableDeclName(
                 else
                 {
 
-                    if(declID < numPreDefinedVars)
+                    if (declID < numPreDefinedVars)
                     {
                         sstr << "V" << declID;
                     }
@@ -168,7 +168,7 @@ std::string printVariableDeclName(
                         std::string type =
                             G4_Type_Table[aliasDcl->getElemType()].str;
 
-                        while(aliasDcl->getAliasDeclare() != NULL)
+                        while (aliasDcl->getAliasDeclare() != NULL)
                         {
                             aliasOff += aliasDcl->getAliasOffset();
                             aliasDcl = aliasDcl->getAliasDeclare();
@@ -176,9 +176,9 @@ std::string printVariableDeclName(
 
                         // aliasDcl is top most dcl with aliasOff
                         // Lets find out declID of aliasDcl
-                        for(unsigned int i = 0; i < header->getVarCount(); i++)
+                        for (unsigned int i = 0; i < header->getVarCount(); i++)
                         {
-                            if(header->getVar(i)->dcl == aliasDcl)
+                            if (header->getVar(i)->dcl == aliasDcl)
                             {
                                 declID = i + numPreDefinedVars;
                                 break;
@@ -186,7 +186,7 @@ std::string printVariableDeclName(
                         }
 
                         sstr << "V"   << declID << "_" << type;
-                        if(aliasOff != 0)
+                        if (aliasOff != 0)
                         {
                             sstr << "_" << aliasOff;
                         }
@@ -203,8 +203,8 @@ static std::string printRegion(uint16_t region)
 {
     std::stringstream sstr;
     Common_ISA_Region_Val v_stride = (Common_ISA_Region_Val)(region & 0xF);
-    Common_ISA_Region_Val width = (Common_ISA_Region_Val)((region >> 4 ) & 0xF);
-    Common_ISA_Region_Val h_stride = (Common_ISA_Region_Val)((region >> 8 ) & 0xF);
+    Common_ISA_Region_Val width = (Common_ISA_Region_Val)((region >> 4) & 0xF);
+    Common_ISA_Region_Val h_stride = (Common_ISA_Region_Val)((region >> 8) & 0xF);
 
     if (width == REGION_NULL)
     {
@@ -806,7 +806,7 @@ static std::string printInstructionCommon(
             ISA_Inst_Address == ISA_Inst_Table[opcode].type ||
             ISA_Inst_Compare == ISA_Inst_Table[opcode].type)
         {
-            bool saturate = (((VISA_Modifier)((getVectorOperand(inst, i).tag >> 3 ) & 0x7)) == MODIFIER_SAT);
+            bool saturate = (((VISA_Modifier)((getVectorOperand(inst, i).tag >> 3) & 0x7)) == MODIFIER_SAT);
             sstr << (saturate ? ".sat" : "");
         }
 
@@ -825,7 +825,7 @@ static std::string printInstructionCommon(
             {
                 const vector_opnd& curOpnd = getVectorOperand(inst, i);
 
-                if(curOpnd.getOperandClass() == OPERAND_ADDRESS)
+                if (curOpnd.getOperandClass() == OPERAND_ADDRESS)
                 {
                     sstr << printVectorOperand(header, curOpnd, opt, true);
                 }
@@ -1309,7 +1309,7 @@ static std::string printInstructionMisc(
 
             sstr << ".";
 
-            if((VISAVarLifetime)(properties & 1) == LIFETIME_START)
+            if ((VISAVarLifetime)(properties & 1) == LIFETIME_START)
             {
                 sstr << "start ";
             }
@@ -1321,17 +1321,17 @@ static std::string printInstructionMisc(
             // Since variable id is in non-standard form, we cannot invoke
             // printOperand directly on it
             unsigned char type = (properties >> 4) & 0x3;
-            if(type == OPERAND_GENERAL)
+            if (type == OPERAND_GENERAL)
             {
                 // General variable
                 sstr << printVariableDeclName(header, varId, opt, NOT_A_STATE_OPND);
             }
-            else if(type == OPERAND_ADDRESS)
+            else if (type == OPERAND_ADDRESS)
             {
                 // Address variable
                 sstr << "A" << varId;
             }
-            else if(type == OPERAND_PREDICATE)
+            else if (type == OPERAND_PREDICATE)
             {
                 // Predicate variable
                 sstr << "P" << varId;
@@ -1390,14 +1390,14 @@ static std::string printInstructionSampler(
                 sampler = getPrimitiveOperand<uint8_t>(inst, i++);
 
             uint8_t surface   = getPrimitiveOperand<uint8_t>(inst, i++);
-            uint8_t channel   = (mod     ) & 0xF;
+            uint8_t channel   = (mod    ) & 0xF;
             uint8_t SIMD_mode = (mod >> 4) & 0x3;
 
-            if((unsigned)SIMD_mode == 0)
+            if ((unsigned)SIMD_mode == 0)
             {
                 SIMD_mode = 8;
             }
-            else if((unsigned)SIMD_mode == 1)
+            else if ((unsigned)SIMD_mode == 1)
             {
                 SIMD_mode = 16;
             }
@@ -1453,10 +1453,10 @@ static std::string printInstructionSampler(
             }
 
             uint8_t channels = getPrimitiveOperand<uint8_t>(inst, i++);
-            if( channels & 0x1) sstr << "R";
-            if( channels & 0x2) sstr << "G";
-            if( channels & 0x4) sstr << "B";
-            if( channels & 0x8) sstr << "A";
+            if (channels & 0x1) sstr << "R";
+            if (channels & 0x2) sstr << "G";
+            if (channels & 0x4) sstr << "B";
+            if (channels & 0x8) sstr << "A";
 
             sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
@@ -1495,10 +1495,10 @@ static std::string printInstructionSampler(
             }
 
             uint8_t channels = getPrimitiveOperand<uint8_t>(inst, i++);
-            if( channels & 0x1) sstr << "R";
-            if( channels & 0x2) sstr << "G";
-            if( channels & 0x4) sstr << "B";
-            if( channels & 0x8) sstr << "A";
+            if (channels & 0x1) sstr << "R";
+            if (channels & 0x2) sstr << "G";
+            if (channels & 0x4) sstr << "B";
+            if (channels & 0x8) sstr << "A";
 
             sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
@@ -1810,13 +1810,13 @@ static std::string printInstructionSampler(
                      /// v offset
                      sstr << printOperand(header, inst, i++, opt);
 
-                     uint8_t execMode   =  getPrimitiveOperand<uint8_t>(inst, i  ) & 0x3;
+                     uint8_t execMode   =  getPrimitiveOperand<uint8_t>(inst, i ) & 0x3;
                      uint8_t regionSize = (getPrimitiveOperand<uint8_t>(inst, i++) & 0xC) >> 0x2;
 
                      sstr << " "
                           << (Convolve_FOPCODE == subOpcode ?
                               conv_exec_mode [execMode]     :
-                              ed_exec_mode   [execMode]    );
+                              ed_exec_mode   [execMode]   );
 
                      if (Convolve_FOPCODE == subOpcode)
                          sstr << " " << (regionSize & 0x1 ? "31x31" : "15x15");
@@ -2034,7 +2034,7 @@ static std::string printInstructionSampler(
 
                             if (subOpcode == ISA_HDC_CONV)
                             {
-                                isBigKernel = (pixel_size & ( 1 << 4 ));
+                                isBigKernel = (pixel_size & (1 << 4));
                                 pixel_size = pixel_size & 0xF;
                             }
                             sstr << " " << pixel_size_str[pixel_size];
@@ -2093,7 +2093,7 @@ static std::string printInstructionSampler(
 
             break;
         }
-        default: ASSERT_USER( false, "illegal opcode for sampler instruction");
+        default: ASSERT_USER(false, "illegal opcode for sampler instruction");
     }
 
     return sstr.str();
@@ -2208,7 +2208,7 @@ static std::string printInstructionDataport(
 
             elt_size = getPrimitiveOperand<uint8_t>(inst, i++);
             elt_size = elt_size & 0x3;
-            switch((GATHER_SCATTER_ELEMENT_SIZE)elt_size)
+            switch ((GATHER_SCATTER_ELEMENT_SIZE)elt_size)
             {
                 case GATHER_SCATTER_BYTE:
                     elt_size = 1;
@@ -2220,7 +2220,7 @@ static std::string printInstructionDataport(
                     elt_size = 4;
                     break;
                 default:
-                    ASSERT_USER( 0, "Incorrect element size for Gather/Scatter CISA inst." );
+                    ASSERT_USER(0, "Incorrect element size for Gather/Scatter CISA inst.");
                     break;
             }
             if (ISA_GATHER == opcode)
@@ -2231,7 +2231,7 @@ static std::string printInstructionDataport(
             num_elts = getPrimitiveOperand<uint8_t>(inst, i++);
 
             // modifier
-            if ( ISA_GATHER == opcode && modifier & 0x1 )
+            if (ISA_GATHER == opcode && modifier & 0x1)
             {
                 sstr << ".mod";
             }
@@ -2355,18 +2355,18 @@ static std::string printInstructionDataport(
             uint16_t mode = getPrimitiveOperand<uint16_t>(inst, i++);
             uint8_t surface;
 
-            if( ( mode ) != 0 )
+            if ((mode) != 0)
             {
                 sstr << ".";
                 if (mode & (0x1 << 2)) sstr << "<RTI>";
-                if( mode & (0x1 << 0x3)) sstr << "<A>";
-                if( mode & (0x1 << 0x4)) sstr << "<O>";
-                if( mode & (0x1 << 0x5)) sstr << "<Z>";
-                if( mode & (0x1 << 0x6)) sstr << "<ST>";
-                if( mode & (0x1 << 0x7)) sstr << "<LRTW>";
-                if( mode & (0x1 << 0x8)) sstr << "<CPS>";
-                if( mode & (0x1 << 0x9)) sstr << "<PS>";
-                if( mode & (0x1 << 0x10)) sstr << "<CM>";
+                if (mode & (0x1 << 0x3)) sstr << "<A>";
+                if (mode & (0x1 << 0x4)) sstr << "<O>";
+                if (mode & (0x1 << 0x5)) sstr << "<Z>";
+                if (mode & (0x1 << 0x6)) sstr << "<ST>";
+                if (mode & (0x1 << 0x7)) sstr << "<LRTW>";
+                if (mode & (0x1 << 0x8)) sstr << "<CPS>";
+                if (mode & (0x1 << 0x9)) sstr << "<PS>";
+                if (mode & (0x1 << 0x10)) sstr << "<CM>";
                 if (mode & (0x1 << 0x11)) sstr << "<SI>";
                 if (mode & (0x1 << 0x12)) sstr << "<NULLRT>";
             }
@@ -2462,7 +2462,7 @@ std::string printKernelHeader(
     sstr << ".version " << (unsigned)(major_version) << "." << (unsigned)(minor_version) << "\n";
 
     std::string name = header->getString(header->getNameIndex());
-    std::replace_if(name.begin(), name.end(), [] (char c) { return c == '.'; } , ' ');
+    std::replace_if (name.begin(), name.end(), [] (char c) { return c == '.'; } , ' ');
 
     sstr << (!isKernel ? ".global_function " : ".kernel ");
     encodeStringLiteral(sstr, name.c_str());
@@ -2583,7 +2583,7 @@ std::string printInstruction(
             sstr << "    ";
         }
 
-        switch(ISA_Inst_Table[opcode].type)
+        switch (ISA_Inst_Table[opcode].type)
         {
             case ISA_Inst_Mov:
             case ISA_Inst_Sync:

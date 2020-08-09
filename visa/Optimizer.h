@@ -120,7 +120,7 @@ public:
     SubLoc(G4_BB* e, SubLoc* s) : entry(e), outter(s) {}
     G4_BB*  getEntry()       {return entry;}
     SubLoc* getOutterLevel() {return outter;}
-    void *operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); }
+    void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 };
 
 class Optimizer
@@ -134,7 +134,7 @@ class Optimizer
     //
     // optimization phases
     //
-    G4_SrcModifier mergeModifier( G4_Operand *src, G4_Operand *use );
+    G4_SrcModifier mergeModifier(G4_Operand *src, G4_Operand *use);
     void cleanMessageHeader();
     void sendFusion();
     void renameRegister();
@@ -153,7 +153,7 @@ class Optimizer
             unsigned int srcNum,
             INST_LIST_ITER lastIter,
             INST_LIST_ITER iend
-        );
+       );
     void FoldAddrImmediate();
     bool foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_II);
     bool foldPseudoNot(G4_BB *bb, INST_LIST_ITER& iter);

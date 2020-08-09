@@ -964,7 +964,7 @@ void CFGStructurizer::preProcess()
             }
         }
 
-        if (   !(isBackwardTarget && isForwardTarget)              // case 1
+        if (!(isBackwardTarget && isForwardTarget)              // case 1
             && !(isBackwardTarget && isFallThruOfBackwardGotoBB))  // case 2
         {
             // not candidate
@@ -1488,7 +1488,7 @@ void CFGStructurizer::getNewRange(
 // Node's range from this cg.
 void CFGStructurizer::extendNode(ANode *Node, ControlGraph *CG)
 {
-    if(!Node)
+    if (!Node)
     {
         return;
     }
@@ -1740,7 +1740,7 @@ void CFGStructurizer::condenseNode(ANodeHG *node)
     G4_BB *exit = node->getExitBB();
     ANList::iterator I = entryNode->preds.begin();
     ANList::iterator E = entryNode->preds.end();
-    while ( I != E)
+    while (I != E)
     {
         ANList::iterator Iter = I;
         ++I;
@@ -3068,7 +3068,7 @@ void CFGStructurizer::convertChildren(ANodeHG *nodehg, G4_BB *nextJoinBB)
     //    1. nextJoinBB
     //    2. the nodehg's exit(s).
     //       nodehg is a hammock, so it should have a single exit. However,
-    //       for something like "if(c) break endif", and nodehg is somehow
+    //       for something like "if (c) break endif", and nodehg is somehow
     //       decided to be non-SCF (ie converted to goto), nodehg will have
     //       two exits.
     //  [todo: have a simple/better way to handle this]

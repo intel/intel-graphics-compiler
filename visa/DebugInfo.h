@@ -296,7 +296,7 @@ public:
     {
         for (auto& item : mapCISAIndexGenOffset)
         {
-            if(item.first == v)
+            if (item.first == v)
                 return item.second;
         }
         return 0;
@@ -393,7 +393,7 @@ public:
         absOffset = false;
     }
 
-    std::vector<SaveRestoreInfo>& getSRInfo(){ return srInfo; }
+    std::vector<SaveRestoreInfo>& getSRInfo() { return srInfo; }
 
     void sieveInstructions(CallerOrCallee c);
 

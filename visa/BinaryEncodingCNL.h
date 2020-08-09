@@ -43,30 +43,30 @@ typedef uint32_t  UINT;
 #endif
 typedef uint64_t QWORD;
 
-#define BITFIELD_RANGE( startbit, endbit )     ((endbit)-(startbit)+1)
-#define BITFIELD_BIT( bit )                   1
+#define BITFIELD_RANGE(startbit, endbit)     ((endbit)-(startbit)+1)
+#define BITFIELD_BIT(bit)                   1
 
 #define __CONCAT(x,y)   x ## y
-#define __UNIQUENAME( a1, a2 )  __CONCAT( a1, a2 )
-#define UNIQUENAME( __text )    __UNIQUENAME( __text, __COUNTER__ )
+#define __UNIQUENAME(a1, a2)  __CONCAT(a1, a2)
+#define UNIQUENAME(__text)    __UNIQUENAME(__text, __COUNTER__)
 #define STATIC_ASSERT(e)  typedef char UNIQUENAME(STATIC_ASSERT_)[(e)?1:-1]
 
 #define C_ASSERT(e) typedef char __C_ASSERT__[(e)?1:-1]
 
-#define __CODEGEN_UNIQUE( field )   UNIQUENAME( field )
+#define __CODEGEN_UNIQUE(field)   UNIQUENAME(field)
 #define __CODEGEN_INLINE            inline
 #define __CODEGEN_PACKED            _PACKED
 #define __CODEGEN_ATTRIBUTES_STRUCTURE
 
-#define __CODEGEN_GET_MACRO( )
-#define __CODEGEN_SET_MACRO( value )
+#define __CODEGEN_GET_MACRO()
+#define __CODEGEN_SET_MACRO(value)
 
 #define __CODEGEN_DefineDebugCommand(type, ...) inline void DebugCommand(type, ...)
 #define __CODEGEN_DebugCommandEnumParam(type, ...)
 #define __CODEGEN_DebugCommandUIntParam(type, ...)
 #define __CODEGEN_DebugCommandBoolParam(type, ...)
-#define __CODEGEN_DefineEnumString( type )  inline void EnumString(type)
-#define __CODEGEN_EnumStringValue( value )
+#define __CODEGEN_DefineEnumString(type)  inline void EnumString(type)
+#define __CODEGEN_EnumStringValue(value)
 
 // Gen9 defines
 #define __CODEGEN_FILE_DIRECTIVES_OPEN
@@ -145,7 +145,7 @@ private:
         void EncodeFlagRegPredicate(G4_INST*, G9HDL::EU_INSTRUCTION_CONTROLS_A&);
         void EncodeExecSize(G4_INST*, G9HDL::EU_INSTRUCTION_CONTROLS_A&);
         void EncodeCondModifier(G4_INST*, G9HDL::EU_INSTRUCTION_CONTROLS&);
-        void EncodeAccWrCtrl(G4_INST*, G9HDL::EU_INSTRUCTION_CONTROLS& );
+        void EncodeAccWrCtrl(G4_INST*, G9HDL::EU_INSTRUCTION_CONTROLS&);
         void EncodeInstModifier(G4_INST*, G9HDL::EU_INSTRUCTION_CONTROLS&);
 
     /// 1-st DWORD of instruction, header
@@ -200,7 +200,7 @@ public:
     {
         uint32_t mod = srcRegion->getModifier();
         G9HDL::SRCMOD srcMod = G9HDL::SRCMOD_NO_MODIFICATION;
-        switch(mod)    {
+        switch (mod) {
         case Mod_Minus_Abs:
             srcMod = G9HDL::SRCMOD_NEGATE_OF_ABS;
             break;
@@ -247,7 +247,7 @@ public:
         value = FlagRegNumValue << 1;
         value = value | FlagRegSubNumValue;
 
-        opndCtl.SetFlagRegisterNumberSubregisterNumber( value );
+        opndCtl.SetFlagRegisterNumberSubregisterNumber(value);
     }
 };
 
@@ -260,8 +260,8 @@ public:
         unsigned FlagRegNumValue,
         unsigned FlagRegSubNumValue)
     {
-        opndCtl.SetFlagRegisterNumberSubregisterNumber( FlagRegSubNumValue );
-        opndCtl.SetFlagRegisterNumber( FlagRegNumValue );
+        opndCtl.SetFlagRegisterNumberSubregisterNumber(FlagRegSubNumValue);
+        opndCtl.SetFlagRegisterNumber(FlagRegNumValue);
     }
 };
 
@@ -294,13 +294,13 @@ public:
     /// This one will get template specialized, and is will call suitable field
     /// encoder method for either OPERAND_CONTROLS, three-src, send or sends type
     /// encoding
-    static void EncodeMaskCtrl( G4_INST* inst, T& opnds)
+    static void EncodeMaskCtrl(G4_INST* inst, T& opnds)
     {
-        if( inst->isWriteEnableInst() )
-            opnds.SetMaskctrl( G9HDL::MASKCTRL_WRITE_ALL_CHANNELS );
+        if (inst->isWriteEnableInst())
+            opnds.SetMaskctrl(G9HDL::MASKCTRL_WRITE_ALL_CHANNELS);
 
         if (inst->opcode()==G4_jmpi)
-            opnds.SetMaskctrl( G9HDL::MASKCTRL_WRITE_ALL_CHANNELS );
+            opnds.SetMaskctrl(G9HDL::MASKCTRL_WRITE_ALL_CHANNELS);
     }
 
     /// \brief Template based field encoder for operant destination type
@@ -353,23 +353,23 @@ public:
 
     /// \brief Template based field encoder for combined destination FlagRegNum and FlagSubRegNum
     ///
-    static void EncodeFlagReg( G4_INST* inst, T& opnds)
+    static void EncodeFlagReg(G4_INST* inst, T& opnds)
     {
         bool flagRegNumValid = false;
         unsigned FlagRegNumValue = 0;
         unsigned FlagRegSubNumValue = 0;
 
         G4_Predicate *pred = inst->getPredicate();
-        if(pred)        {
+        if (pred)        {
             FlagRegNumValue =
                 pred->getBase()->ExRegNum(flagRegNumValid);
             FlagRegSubNumValue = pred->getBase()->asRegVar()->getPhyRegOff();
         }
 
         G4_CondMod *cModifier = inst->getCondMod();
-        if(cModifier)    { // cond modifier
+        if (cModifier)    { // cond modifier
             G4_VarBase* flagReg = cModifier->getBase();
-            if(flagReg != NULL)
+            if (flagReg != NULL)
             {
                 FlagRegNumValue = flagReg->ExRegNum(flagRegNumValid);
                 FlagRegSubNumValue = flagReg->asRegVar()->getPhyRegOff();
@@ -392,7 +392,7 @@ public:
     static void EncodeDstAddrMode(G4_INST* inst, T& opnds)
     {
         G4_DstRegRegion* dst = inst->getDst();
-        switch ( EncodingHelper::GetDstAddrMode(dst) )
+        switch (EncodingHelper::GetDstAddrMode(dst))
         {
         case ADDR_MODE_IMMED:
             //same field for align16
@@ -500,7 +500,7 @@ public:
         MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceImmediateData template specialization not implemented.");
     }
 
-    static void SetSourceAddressingMode(T *EuInstructionSources,  G9HDL::ADDRMODE addrMode )
+    static void SetSourceAddressingMode(T *EuInstructionSources,  G9HDL::ADDRMODE addrMode)
     {
         MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceAddressingMode template specialization not implemented.");
     }
@@ -528,27 +528,27 @@ public:
 
     static void SetSrcChanSel_10(T *EuInstructionSources, uint32_t value)
     {
-        EuInstructionSources->SetSource0_SourceChannelSelect30( value );
+        EuInstructionSources->SetSource0_SourceChannelSelect30(value);
     }
     static void SetSrcChanSel_32(T *EuInstructionSources, uint32_t value)
     {
-        EuInstructionSources->SetSource0_SourceChannelSelect74( value );
+        EuInstructionSources->SetSource0_SourceChannelSelect74(value);
     }
-    static void SetSourceWidth(T *EuInstructionSources, G9HDL::WIDTH width )
+    static void SetSourceWidth(T *EuInstructionSources, G9HDL::WIDTH width)
     {
-        EuInstructionSources->SetSource0_SourceWidth( width );
+        EuInstructionSources->SetSource0_SourceWidth(width);
     }
-    static void SetSourceHorizontalStride(T *EuInstructionSources, G9HDL::HORZSTRIDE stride )
+    static void SetSourceHorizontalStride(T *EuInstructionSources, G9HDL::HORZSTRIDE stride)
     {
-        EuInstructionSources->SetSource0_SourceHorizontalStride ( stride );
+        EuInstructionSources->SetSource0_SourceHorizontalStride (stride);
     }
     static void SetSourceVerticalStride(T *EuInstructionSources, G9HDL::VERTSTRIDE vertStride)
     {
-        EuInstructionSources->SetSource0_SourceVerticalStride ( vertStride );
+        EuInstructionSources->SetSource0_SourceVerticalStride (vertStride);
     }
     static void SetSourceRegisterNumber(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource0_SourceRegisterNumber ( value );
+        EuInstructionSources->SetSource0_SourceRegisterNumber (value);
     }
 
     static void SetSourceSpecialAcc(T *EuInstructionSources, uint32_t value)
@@ -558,27 +558,27 @@ public:
 
     static void SetSourceSubRegisterNumber(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource0_SourceSubRegisterNumber ( value );
+        EuInstructionSources->SetSource0_SourceSubRegisterNumber (value);
     }
 
     static void SetSourceSubregisterNumber44(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource0_SourceSubregisterNumber44 ( value );
+        EuInstructionSources->SetSource0_SourceSubregisterNumber44 (value);
     }
 
     static void SetAddressSubregisterNumber(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource0_AddressSubregisterNumber_0 ( value );
+        EuInstructionSources->SetSource0_AddressSubregisterNumber_0 (value);
     }
 
     static void SetSourceAddressImmediate84(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource0_SourceAddressImmediate84 ( value );
+        EuInstructionSources->SetSource0_SourceAddressImmediate84 (value);
     }
 
     static void SetSourceAddressImmediate90(T *EuInstructionSources,  int32_t value)
     {
-        EuInstructionSources->SetSource0_SourceAddressImmediate80 ( value );
+        EuInstructionSources->SetSource0_SourceAddressImmediate80 (value);
 
         value = value >> 9;
         EuInstructionSources->SetSource0_SourceAddressImmediate9(value);
@@ -610,7 +610,7 @@ public:
 
     static void SetSrcChanSel(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc, uint32_t value)
     {
-        threeSrc->SetSource0_SourceSwizzle( value );
+        threeSrc->SetSource0_SourceSwizzle(value);
     }
 
     static void SetSourceModifier(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc, G9HDL::SRCMOD srcMod)
@@ -625,17 +625,17 @@ public:
 
     static void SetSourceRegisterNumber(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc,  uint32_t value)
     {
-        threeSrc->SetSource0_SourceRegisterNumber( value );
+        threeSrc->SetSource0_SourceRegisterNumber(value);
     }
 
     static void SetSourceSubregisterNumber42(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc,  uint32_t value)
     {
-        threeSrc->SetSource0_SourceSubregisterNumber42( value );
+        threeSrc->SetSource0_SourceSubregisterNumber42(value);
     }
 
     static void SetSourceSubregisterNumber1(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc,  uint32_t value)
     {
-        threeSrc->SetSource0_SourceSubregisterNumber1( value );
+        threeSrc->SetSource0_SourceSubregisterNumber1(value);
     }
 
 
@@ -651,7 +651,7 @@ public:
 
     static void SetSrcChanSel(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc, uint32_t value)
     {
-        threeSrc->SetSource1_SourceSwizzle( value );
+        threeSrc->SetSource1_SourceSwizzle(value);
     }
 
     static void SetSourceModifier(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc, G9HDL::SRCMOD srcMod)
@@ -666,17 +666,17 @@ public:
 
     static void SetSourceRegisterNumber(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc,  uint32_t value)
     {
-        threeSrc->SetSource1_SourceRegisterNumber( value );
+        threeSrc->SetSource1_SourceRegisterNumber(value);
     }
 
     static void SetSourceSubregisterNumber42(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc,  uint32_t value)
     {
-        threeSrc->SetSource1_SourceSubregisterNumber42( value );
+        threeSrc->SetSource1_SourceSubregisterNumber42(value);
     }
 
     static void SetSourceSubregisterNumber1(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc,  uint32_t value)
     {
-        threeSrc->SetSource1_SourceSubregisterNumber1( value );
+        threeSrc->SetSource1_SourceSubregisterNumber1(value);
     }
 
 
@@ -692,7 +692,7 @@ public:
 
     static void SetSrcChanSel(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc, uint32_t value)
     {
-        threeSrc->SetSource2_SourceSwizzle( value );
+        threeSrc->SetSource2_SourceSwizzle(value);
     }
 
     static void SetSourceModifier(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc, G9HDL::SRCMOD srcMod)
@@ -707,17 +707,17 @@ public:
 
     static void SetSourceRegisterNumber(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc,  uint32_t value)
     {
-        threeSrc->SetSource2_SourceRegisterNumber( value );
+        threeSrc->SetSource2_SourceRegisterNumber(value);
     }
 
     static void SetSourceSubregisterNumber42(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc,  uint32_t value)
     {
-        threeSrc->SetSource2_SourceSubregisterNumber42( value );
+        threeSrc->SetSource2_SourceSubregisterNumber42(value);
     }
 
     static void SetSourceSubregisterNumber1(G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC *threeSrc,  uint32_t value)
     {
-        threeSrc->SetSource2_SourceSubregisterNumber1( value );
+        threeSrc->SetSource2_SourceSubregisterNumber1(value);
     }
 
 
@@ -740,28 +740,28 @@ public:
 
     static void SetSrcChanSel_10(T *EuInstructionSources, uint32_t value)
     {
-        EuInstructionSources->SetSource1_SourceChannelSelect30( value );
+        EuInstructionSources->SetSource1_SourceChannelSelect30(value);
     }
     static void SetSrcChanSel_32(T *EuInstructionSources, uint32_t value)
     {
-        EuInstructionSources->SetSource1_SourceChannelSelect74( value );
+        EuInstructionSources->SetSource1_SourceChannelSelect74(value);
     }
-    static void SetSourceWidth(T *EuInstructionSources, G9HDL::WIDTH width )
+    static void SetSourceWidth(T *EuInstructionSources, G9HDL::WIDTH width)
     {
-        EuInstructionSources->SetSource1_SourceWidth( width );
+        EuInstructionSources->SetSource1_SourceWidth(width);
     }
-    static void SetSourceHorizontalStride(T *EuInstructionSources, G9HDL::HORZSTRIDE stride )
+    static void SetSourceHorizontalStride(T *EuInstructionSources, G9HDL::HORZSTRIDE stride)
     {
-        EuInstructionSources->SetSource1_SourceHorizontalStride( stride );
+        EuInstructionSources->SetSource1_SourceHorizontalStride(stride);
     }
     static void SetSourceVerticalStride(T *EuInstructionSources, G9HDL::VERTSTRIDE vertStride)
     {
-        EuInstructionSources->SetSource1_SourceVerticalStride ( vertStride );
+        EuInstructionSources->SetSource1_SourceVerticalStride (vertStride);
     }
 
     static void SetSourceRegisterNumber(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource1_SourceRegisterNumber ( value );
+        EuInstructionSources->SetSource1_SourceRegisterNumber (value);
     }
 
     static void SetSourceSpecialAcc(T *EuInstructionSources, uint32_t value)
@@ -771,27 +771,27 @@ public:
 
     static void SetSourceSubRegisterNumber(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource1_SourceSubRegisterNumber ( value );
+        EuInstructionSources->SetSource1_SourceSubRegisterNumber (value);
     }
 
     static void SetSourceSubregisterNumber44(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource1_SourceSubregisterNumber44 ( value );
+        EuInstructionSources->SetSource1_SourceSubregisterNumber44 (value);
     }
 
     static void SetAddressSubregisterNumber(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource1_AddressSubregisterNumber ( value );
+        EuInstructionSources->SetSource1_AddressSubregisterNumber (value);
     }
 
     static void SetSourceAddressImmediate84(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource1_SourceAddressImmediate84 ( value );
+        EuInstructionSources->SetSource1_SourceAddressImmediate84 (value);
     }
 
     static void SetSourceAddressImmediate90(T *EuInstructionSources,  uint32_t value)
     {
-        EuInstructionSources->SetSource1_SourceAddressImmediate80 ( value );
+        EuInstructionSources->SetSource1_SourceAddressImmediate80 (value);
         value = value >> 9;
         EuInstructionSources->SetSource1_SourceAddressImmediate9(value);
     }
@@ -899,8 +899,8 @@ public:
         G4_Operand *src0,
         T& sourcesReg)
     {
-        if ( EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
-             EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED )
+        if (EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
+             EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED)
         {
             uint32_t byteAddress = src0->getLinearizedStart();
 
@@ -918,10 +918,10 @@ public:
                 // regn|xxxy0
                 //dword aligned
 
-                SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, byteAddress >> 5 );
+                SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, byteAddress >> 5);
                 //it will be shifted to right within setter method
-                SrcOperandEncoder<T, SrcNum>::SetSourceSubregisterNumber42 (&sourcesReg, byteAddress & 0x1f );
-                SrcOperandEncoder<T, SrcNum>::SetSourceSubregisterNumber1 (&sourcesReg, (byteAddress >> 1) & 0x1 );
+                SrcOperandEncoder<T, SrcNum>::SetSourceSubregisterNumber42 (&sourcesReg, byteAddress & 0x1f);
+                SrcOperandEncoder<T, SrcNum>::SetSourceSubregisterNumber1 (&sourcesReg, (byteAddress >> 1) & 0x1);
             }
         }
     }
@@ -932,13 +932,13 @@ public:
     ///
     static void Encode3SrcReplicateControl(
         T *myBin,
-        G4_SrcRegRegion *srcRegion )
+        G4_SrcRegRegion *srcRegion)
     {
         const char *swizzle = srcRegion->getSwizzle();
         if (swizzle[0] == 'r')
-            SrcOperandEncoder<T, SrcNum>::SrcReplicateControl(myBin, G9HDL::REPCTRL_REPLICATE_ACROSS_ALL_CHANNELS );
+            SrcOperandEncoder<T, SrcNum>::SrcReplicateControl(myBin, G9HDL::REPCTRL_REPLICATE_ACROSS_ALL_CHANNELS);
         else
-            SrcOperandEncoder<T, SrcNum>::SrcReplicateControl(myBin, G9HDL::REPCTRL_NO_REPLICATION );
+            SrcOperandEncoder<T, SrcNum>::SrcReplicateControl(myBin, G9HDL::REPCTRL_NO_REPLICATION);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -948,7 +948,7 @@ public:
         T *myBin,
         G4_INST* inst,
         G4_Operand *src0,
-        G4_SrcRegRegion *srcRegion )
+        G4_SrcRegRegion *srcRegion)
     {
         bool ChanSelectValid = false;
 
@@ -977,7 +977,7 @@ public:
             if (ch0 != CHAN_SEL_UNDEF)
                 value = ch0;
             if (ch1 != CHAN_SEL_UNDEF)
-                value = value | ( ch1 << 2 );
+                value = value | (ch1 << 2);
 
             uint32_t value2 = 0;
 
@@ -985,13 +985,13 @@ public:
             if (ch2 != CHAN_SEL_UNDEF)
                 value2 = ch2;
             if (ch3 != CHAN_SEL_UNDEF)
-                value2 = value2 | ( ch3 << 2 );
+                value2 = value2 | (ch3 << 2);
 
-            SrcOperandEncoder<T, SrcNum>::SetSrcChanSel(myBin, value | ( value2 << 4) );
+            SrcOperandEncoder<T, SrcNum>::SetSrcChanSel(myBin, value | (value2 << 4));
         }
 
-        if ( !ChanSelectValid       &
-            inst->isAligned16Inst() )
+        if (!ChanSelectValid       &
+            inst->isAligned16Inst())
         {
             uint32_t value = 0;
             value = CHAN_SEL_X;
@@ -1002,7 +1002,7 @@ public:
             value2 = CHAN_SEL_Z;
             value2 = value2 | (CHAN_SEL_W << 2);
 
-            SrcOperandEncoder<T, SrcNum>::SetSrcChanSel(myBin, value | ( value2 << 4) );
+            SrcOperandEncoder<T, SrcNum>::SetSrcChanSel(myBin, value | (value2 << 4));
         }
     }
 
@@ -1017,7 +1017,7 @@ public:
         G4_SrcRegRegion *srcRegion = src0->asSrcRegRegion();
         {
             SrcOperandEncoder<T, SrcNum>::
-                SetSourceModifier(&sourcesReg, BinaryEncodingCNL::GetSrcHLDMod(srcRegion) );
+                SetSourceModifier(&sourcesReg, BinaryEncodingCNL::GetSrcHLDMod(srcRegion));
         }
     }
 
@@ -1037,22 +1037,22 @@ public:
                 WidthValid = true;
             }
 
-            switch(rd->width)
+            switch (rd->width)
             {
             case 1:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_1_ELEMENTS);
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_1_ELEMENTS);
                 break;
             case 2:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_2_ELEMENTS);
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_2_ELEMENTS);
                 break;
             case 4:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_4_ELEMENTS);
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_4_ELEMENTS);
                 break;
             case 8:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_8_ELEMENTS);
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_8_ELEMENTS);
                 break;
             case 16:
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_16_ELEMENTS);
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_16_ELEMENTS);
                 break;
             case UNDEFINED_SHORT: break;
             default: MUST_BE_TRUE(false, "wrong width for src0!"); break;
@@ -1065,27 +1065,27 @@ public:
         {
             if (EncodingHelper::isSrcSubRegNumValid(src))
             {
-                SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_1_ELEMENTS);
+                SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_1_ELEMENTS);
             }
             else
             {
-                switch(GetEncodeExecSize(inst))
+                switch (GetEncodeExecSize(inst))
                 {
                 case ES_1_CHANNEL:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_1_ELEMENTS);
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_1_ELEMENTS);
                     break;
                 case ES_2_CHANNELS:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_2_ELEMENTS);
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_2_ELEMENTS);
                     break;
                 case ES_4_CHANNELS:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_4_ELEMENTS);
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_4_ELEMENTS);
                     break;
                 case ES_8_CHANNELS:
                 case ES_16_CHANNELS:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_8_ELEMENTS);
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_8_ELEMENTS);
                     break;
                 case ES_32_CHANNELS:
-                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth( mybin, G9HDL::WIDTH_16_ELEMENTS);
+                    SrcOperandEncoder<T, SrcNum>::SetSourceWidth(mybin, G9HDL::WIDTH_16_ELEMENTS);
                     break;
                 }
             }
@@ -1105,12 +1105,12 @@ public:
         bool HorzStrideValid = false;  // undef
         if (inst->isAligned16Inst()) return false;
 
-        if(rd)  {
-            if ( rd->horzStride != UNDEFINED_SHORT)
+        if (rd)  {
+            if (rd->horzStride != UNDEFINED_SHORT)
             {
                 HorzStrideValid = true;
             }
-            switch(rd->horzStride)
+            switch (rd->horzStride)
             {
             case 0:
                 SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_0_ELEMENTS);
@@ -1129,12 +1129,12 @@ public:
             }
         }
         // apply default horizontal stride
-        if ( !HorzStrideValid )
+        if (!HorzStrideValid)
         {
-            if ( EncodingHelper::isSrcSubRegNumValid(src0) )
+            if (EncodingHelper::isSrcSubRegNumValid(src0))
                 SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_0_ELEMENTS);
             else {
-                switch(GetEncodeExecSize(inst))
+                switch (GetEncodeExecSize(inst))
                 {
                 case ES_1_CHANNEL:
                     SrcOperandEncoder<T, SrcNum>::SetSourceHorizontalStride(mybin, G9HDL::HORZSTRIDE_0_ELEMENTS);
@@ -1166,16 +1166,16 @@ public:
         bool VertStrideValid = false; // undef
         unsigned short VertStrideValue = UNDEFINED_SHORT, HorzStrideValue = 0;
 
-        if(rd)
+        if (rd)
         {
             VertStrideValue = rd->vertStride;
             HorzStrideValue = rd->horzStride;
-            if( VertStrideValue != UNDEFINED_SHORT)
+            if (VertStrideValue != UNDEFINED_SHORT)
             {
                 VertStrideValid = true;
             }
 
-            switch( VertStrideValue)
+            switch (VertStrideValue)
             {
             case 0:
                 SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS);
@@ -1205,21 +1205,21 @@ public:
         }
 
         //apply default vertical stride below
-        if ( !WidthValid             &&
+        if (!WidthValid             &&
             !HorzStrideValid        &&
             !VertStrideValid        &&
-            src0 )
+            src0)
         {
             VertStrideValid = true;
-            if ( EncodingHelper::isSrcSubRegNumValid(src0) )
+            if (EncodingHelper::isSrcSubRegNumValid(src0))
             {
                 SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS);
             }
             else
             {
-                if ( inst->isAligned1Inst() )
+                if (inst->isAligned1Inst())
                 {
-                    switch(GetEncodeExecSize(inst))
+                    switch (GetEncodeExecSize(inst))
                     {
                     case ES_1_CHANNEL:
                         SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(mybin, G9HDL::VERTSTRIDE_0_ELEMENTS);
@@ -1247,8 +1247,8 @@ public:
         }
 
         //Do some post processing, if none of the previous cases was true.
-        if ( VertStrideValid ) {}
-        else if ( inst->isAligned16Inst() )
+        if (VertStrideValid) {}
+        else if (inst->isAligned16Inst())
         {
             //FIXME: should this be ever valid?
             //we cannot be setting horz stride in align16 instructions!!!
@@ -1274,8 +1274,8 @@ public:
         G4_Operand *src0,
         T& sourcesReg)
     {
-        if ( EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
-             EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED )
+        if (EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
+             EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED)
         {
             //bool repControl = EncodingHelper::GetRepControl(src0);
             uint32_t byteAddress = src0->getLinearizedStart();
@@ -1308,7 +1308,7 @@ public:
                 // 9876543210
                 // regn|x0000
 
-                SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, byteAddress >> 5 );
+                SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, byteAddress >> 5);
                 SrcOperandEncoder<T, SrcNum>::SetSourceSubregisterNumber44 (&sourcesReg, (byteAddress >> 4) & 0x1);
             }
         }
@@ -1329,7 +1329,7 @@ public:
         if (EncodingHelper::GetSrcRegFile(src) == REG_FILE_A  &&
              EncodingHelper::GetSrcAddrMode(src) == ADDR_MODE_IMMED)
         {
-            if ( EncodingHelper::GetSrcArchRegType(src) != ARCH_REG_FILE_NULL )
+            if (EncodingHelper::GetSrcArchRegType(src) != ARCH_REG_FILE_NULL)
             {
                 //EncodeSrc0RegFile, SetSrc0ArchRegFile- corresponding functionality
                 bool valid;
@@ -1343,7 +1343,7 @@ public:
                 EncodedRegNum = EncodedRegNum | (RegNumValue & 0xF);
 
                 //encode 'packed' arch reg file + reg number. Both for align16 and align1, immediate mode.
-                SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, EncodedRegNum );
+                SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber (&sourcesReg, EncodedRegNum);
 
                 bool subValid;
                 unsigned short RegSubNumValue = src->ExSubRegNum(subValid);
@@ -1353,7 +1353,7 @@ public:
                 if (inst->isAligned1Inst())
                 {
                     //sub-register number: 32 byte address (5 bits encoding) within a GRF
-                    SrcOperandEncoder<T, SrcNum>::SetSourceSubRegisterNumber (&sourcesReg,regOffset );
+                    SrcOperandEncoder<T, SrcNum>::SetSourceSubRegisterNumber (&sourcesReg,regOffset);
                 } else { //align 16
                     //sub-register number: first/second 16 byte part of 32 byte address. Encoded with 1 bit.
                     // 9876543210
@@ -1420,7 +1420,7 @@ public:
             {
                 SrcBuilder<T, SrcNum>::EncodeSrcChanSelect(&sourcesReg, inst, src, srcRegion);
             }
-            SrcBuilder<T, SrcNum>::EncodeSrcModifier( inst, src, sourcesReg );
+            SrcBuilder<T, SrcNum>::EncodeSrcModifier(inst, src, sourcesReg);
             if (!inst->isSend())
             {
                 bool WidthValid =
@@ -1463,22 +1463,22 @@ public:
     {
 
         G4_Imm *isrc = (G4_Imm *)src->asImm();
-        if (  IS_WTYPE(src->getType()) )
+        if ( IS_WTYPE(src->getType()))
         {
             uint32_t val = (uint32_t) isrc->getInt();
             uint32_t data = (val << 16) | (val & 0xffff);
             SrcOperandEncoder<T, SrcNum>::
-                SetSourceImmediateData(&immSource, data );
+                SetSourceImmediateData(&immSource, data);
         }
-        else if ( src->getType() == Type_F )
+        else if (src->getType() == Type_F)
         {
             float val = (float)(isrc->getFloat());
             SrcOperandEncoder<T, SrcNum>::
-                SetSourceImmediateData(&immSource, *(uint32_t*)&(val) );
+                SetSourceImmediateData(&immSource, *(uint32_t*)&(val));
 
         } else {
             SrcOperandEncoder<T, SrcNum>::
-                SetSourceImmediateData(&immSource, (uint32_t)isrc->getInt() );
+                SetSourceImmediateData(&immSource, (uint32_t)isrc->getInt());
         }
     }
 };
@@ -1489,15 +1489,15 @@ inline void vISA::BinaryEncodingCNL::EncodeSrcImm64Data(
 
     vISA::G4_Imm *isrc = (vISA::G4_Imm *)src->asImm();
 
-    if ( src->getType() == Type_DF)
+    if (src->getType() == Type_DF)
     {
-        imm64SourceInstruction.SetSource( (uint64_t)isrc->getImm() );
+        imm64SourceInstruction.SetSource((uint64_t)isrc->getImm());
     }
-    else if ( src->getType() == Type_Q  || src->getType() == Type_UQ )
+    else if (src->getType() == Type_Q  || src->getType() == Type_UQ)
     {
         //Q/UQ immediates must be the only source
         int64_t val = isrc->getInt();
-        imm64SourceInstruction.SetSource( *(uint64_t*)&(val) );
+        imm64SourceInstruction.SetSource(*(uint64_t*)&(val));
     }
 }
 

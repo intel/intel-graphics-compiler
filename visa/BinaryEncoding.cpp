@@ -92,10 +92,10 @@ inline void BinaryEncoding::EncodeAccessMode(G4_INST* inst)
 {
     BinInst *mybin = inst->getBinInst();
 
-    if(inst->isAligned1Inst())    {
+    if (inst->isAligned1Inst()) {
         mybin->SetBits(bitsAccessMode_0, bitsAccessMode_1, ACCESS_MODE_ALIGN1);
     }
-    else if(inst->isAligned16Inst())   {
+    else if (inst->isAligned16Inst()) {
         mybin->SetBits(bitsAccessMode_0, bitsAccessMode_1, ACCESS_MODE_ALIGN16);
     }
     else
@@ -115,7 +115,7 @@ inline void BinaryEncoding::EncodeFlagRegPredicate(G4_INST* inst)
     BinInst *mybin = inst->getBinInst();
     G4_Predicate *pred = inst->getPredicate();
     uint32_t flagState = 0, flagSwizzle;
-    if(pred)
+    if (pred)
     {
         unsigned pState = (unsigned)pred->getState();
         MUST_BE_TRUE(pState <= (unsigned)PredState_undef,
@@ -140,9 +140,9 @@ inline void BinaryEncoding::EncodeFlagRegPredicate(G4_INST* inst)
     }
 }
 
-inline void SetFlagSubRegNum( BinInst *mybin, uint32_t value )
+inline void SetFlagSubRegNum(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcFlagSubRegNum[0], bits3SrcFlagSubRegNum[1], value);
     else
         mybin->SetBits(bitsFlagSubRegNum[0], bitsFlagSubRegNum[1], value);
@@ -163,9 +163,9 @@ inline void BinaryEncoding::EncodeFlagReg(G4_INST* inst)
     }
 
     G4_CondMod *cModifier = inst->getCondMod();
-    if(cModifier)    { // cond modifier
+    if (cModifier)    { // cond modifier
         G4_VarBase* flagReg = cModifier->getBase();
-        if(flagReg != NULL)
+        if (flagReg != NULL)
         {
             FlagRegNumValue = flagReg->ExRegNum(flagRegNumValid);
             FlagRegSubNumValue = flagReg->asRegVar()->getPhyRegOff();
@@ -178,7 +178,7 @@ inline void BinaryEncoding::EncodeFlagReg(G4_INST* inst)
     }
 
     if (pred || cModifier) {
-        if (flagRegNumValid ) {
+        if (flagRegNumValid) {
             switch (FlagRegNumValue)    {
                 case 0:
                     // flag reg num is always zero prior to Gen7
@@ -192,7 +192,7 @@ inline void BinaryEncoding::EncodeFlagReg(G4_INST* inst)
             }
         }
         if (FlagRegSubNumValue != UNDEFINED_SHORT) {
-            switch(FlagRegSubNumValue) {
+            switch (FlagRegSubNumValue) {
                 case 0:
                 case 1:
                     SetFlagSubRegNum(mybin, FlagRegSubNumValue);
@@ -224,7 +224,7 @@ inline void BinaryEncoding::EncodeCondModifier(G4_INST* inst)
     BinInst *mybin = inst->getBinInst();
     G4_CondMod *cModifier = inst->getCondMod();
     uint32_t value;
-    if(cModifier)    {
+    if (cModifier)    {
         value = (unsigned)cModifier->getMod();
         MUST_BE_TRUE(value < Mod_cond_undef,
                      "[Verifying]:[ERR]: Invalid conditional modifier:\t");
@@ -261,7 +261,7 @@ inline void BinaryEncoding::EncodeMathControl(G4_INST* inst)
     unsigned MathFunction = MathControlValue & 0xf;
     unsigned MathPartPrec = (MathControlValue >> 4) & 1;
 
-    if( !mybin->GetIs3Src() )     {
+    if (!mybin->GetIs3Src())     {
         mybin->SetBits(bitsMathFunction_0, bitsMathFunction_1, MathFunction);
         mybin->SetBits(bitsMathPartPrec_0, bitsMathPartPrec_1, MathPartPrec);
     }
@@ -303,53 +303,53 @@ inline void BinaryEncoding::EncodeInstOptionsString(G4_INST* inst)
     EncodeQtrControl(inst);
     EncodeAccWrCtrlInst(inst);
 
-    mybin->SetBits( bitsCompactCtrl_0, bitsCompactCtrl_1,
-        inst->isCompactedInst() );
+    mybin->SetBits(bitsCompactCtrl_0, bitsCompactCtrl_1,
+        inst->isCompactedInst());
 
-    if ( inst->opcode() == G4_if  ||
+    if (inst->opcode() == G4_if  ||
          inst->opcode() == G4_else  ||
-         inst->opcode() == G4_endif )
+         inst->opcode() == G4_endif)
     {
 
     }
     else
     {
-        mybin->SetBits( bitsThreadCtrl_0, bitsThreadCtrl_1,
+        mybin->SetBits(bitsThreadCtrl_0, bitsThreadCtrl_1,
             inst->isAtomicInst()? THREAD_CTRL_ATOMIC :
             // CHAI: Add Switch InstOpt support
-            (inst->isYieldInst()? THREAD_CTRL_SWITCH : THREAD_CTRL_NORMAL) );
+            (inst->isYieldInst()? THREAD_CTRL_SWITCH : THREAD_CTRL_NORMAL));
     }
 
 
-    if ( inst->isNoDDChkInst() )
+    if (inst->isNoDDChkInst())
     {
-        if ( inst->isNoDDClrInst() )
+        if (inst->isNoDDClrInst())
         {
-            mybin->SetBits( bitsDepCtrl[0], bitsDepCtrl[1],
-                DEP_CTRL_DIS_CHECK_CLEAR_DEST );
+            mybin->SetBits(bitsDepCtrl[0], bitsDepCtrl[1],
+                DEP_CTRL_DIS_CHECK_CLEAR_DEST);
         }   else   {
-            mybin->SetBits( bitsDepCtrl[0], bitsDepCtrl[1],
-                DEP_CTRL_DIS_CHECK );
+            mybin->SetBits(bitsDepCtrl[0], bitsDepCtrl[1],
+                DEP_CTRL_DIS_CHECK);
         }
     }
     else    {
         if (inst->isNoDDClrInst())
         {
-            mybin->SetBits( bitsDepCtrl[0], bitsDepCtrl[1],
-                DEP_CTRL_DIS_CLEAR );
+            mybin->SetBits(bitsDepCtrl[0], bitsDepCtrl[1],
+                DEP_CTRL_DIS_CLEAR);
     }   else        {
             mybin->SetBits(bitsDepCtrl[0], bitsDepCtrl[1],
                 DEP_CTRL_NORMAL);
         }
     }
 
-    if( inst->isWriteEnableInst() )
+    if (inst->isWriteEnableInst())
         mybin->SetBits(bitsWECtrl[0], bitsWECtrl[1], 1);
 
     if (inst->opcode()==G4_jmpi)
         mybin->SetBits(bitsWECtrl[0], bitsWECtrl[1], 1);
 
-    if( inst->isBreakPointInst() )
+    if (inst->isBreakPointInst())
         mybin->SetBits(bitsDebugCtrl_0, bitsDebugCtrl_1, 1);
 
     if (inst->isNoSrcDepSet())
@@ -357,9 +357,9 @@ inline void BinaryEncoding::EncodeInstOptionsString(G4_INST* inst)
         mybin->SetBits(bitsNoSrcDepSet_0, bitsNoSrcDepSet_1, 1);
     }
 
-    if( !mybin->GetIs3Src() )
+    if (!mybin->GetIs3Src())
     {
-        if( inst->isEOT() )
+        if (inst->isEOT())
             mybin->SetBits(bitsEndOfThread_0, bitsEndOfThread_1, 1);
     }
 
@@ -374,7 +374,7 @@ inline uint32_t GetOperandSrcType(G4_Operand *src)
     uint32_t type;
     G4_Type regType;
 
-    if ( src->isSrcRegRegion() )
+    if (src->isSrcRegRegion())
     {
         regType = src->asSrcRegRegion()->getType();
     }
@@ -383,7 +383,7 @@ inline uint32_t GetOperandSrcType(G4_Operand *src)
         regType = src->getType();
     }
 
-    switch ( regType ) {
+    switch (regType) {
         case Type_UD:
         case Type_D:
         case Type_UW:
@@ -481,7 +481,7 @@ inline uint32_t GetSrcMod(G4_SrcRegRegion *srcRegion)
 
 inline void SetDstRegFile(BinInst *mybin, uint32_t value)
 {
-    if( !mybin->GetIs3Src() )
+    if (!mybin->GetIs3Src())
     {
         mybin->SetBits(bitsDstRegFile[0], bitsDstRegFile[1], value);
     }
@@ -489,7 +489,7 @@ inline void SetDstRegFile(BinInst *mybin, uint32_t value)
 
 inline void SetDstType(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         // handled by Set3SrcDstType
         return;
     else
@@ -498,7 +498,7 @@ inline void SetDstType(BinInst *mybin, uint32_t value)
 
 inline void SetDstAddrMode(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsDstAddrMode_0, bitsDstAddrMode_1, value);
@@ -506,7 +506,7 @@ inline void SetDstAddrMode(BinInst *mybin, uint32_t value)
 
 inline void SetDstRegNumOWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcDstRegNumOWord_0,
         bits3SrcDstRegNumOWord_1, value);
     else
@@ -516,7 +516,7 @@ inline void SetDstRegNumOWord(BinInst *mybin, uint32_t value)
 
 inline void SetDstRegNumByte(BinInst *mybin,  uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcDstRegNumDWord_0, bits3SrcDstRegNumDWord_1, (value >> 2));
     else
         mybin->SetBits(bitsDstRegNumByte_0, bitsDstRegNumByte_1, value);
@@ -524,7 +524,7 @@ inline void SetDstRegNumByte(BinInst *mybin,  uint32_t value)
 
 inline void SetDstChanEn(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcDstChanEn_0,
          bits3SrcDstChanEn_1, value);
     else
@@ -537,7 +537,7 @@ inline void SetDstChanEn(BinInst *mybin, uint32_t value)
  */
 inline void SetDstIdxRegNum(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsDstIdxRegNum[0], bitsDstIdxRegNum[1], value);
@@ -545,7 +545,7 @@ inline void SetDstIdxRegNum(BinInst *mybin, uint32_t value)
 
 inline void SetDstIdxImmOWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
 
     mybin->SetBits(bitsDstIdxImmOWord[0], bitsDstIdxImmOWord[1], value);
@@ -554,7 +554,7 @@ inline void SetDstIdxImmOWord(BinInst *mybin, uint32_t value)
 
 inline void SetDstIdxImmByte(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
 
     mybin->SetBits(bitsDstIdxImmByte[0], bitsDstIdxImmByte[1], value);
@@ -563,7 +563,7 @@ inline void SetDstIdxImmByte(BinInst *mybin, uint32_t value)
 
 inline void SetDstArchRegFile(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsDstArchRegFile_0, bitsDstArchRegFile_1, value);
@@ -571,7 +571,7 @@ inline void SetDstArchRegFile(BinInst *mybin, uint32_t value)
 
 inline void SetDstArchRegNum(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsDstArchRegNum_0, bitsDstArchRegNum_1, value);
@@ -579,7 +579,7 @@ inline void SetDstArchRegNum(BinInst *mybin, uint32_t value)
 
 inline void SetDstArchSubRegNumOWord(BinInst *mybin,  uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsDstArchSubRegNumOWord_0, bitsDstArchSubRegNumOWord_1, value);
@@ -587,7 +587,7 @@ inline void SetDstArchSubRegNumOWord(BinInst *mybin,  uint32_t value)
 
 inline void SetDstArchSubRegNumWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsDstArchSubRegNumWord_0, bitsDstArchSubRegNumWord_1, value);
@@ -595,7 +595,7 @@ inline void SetDstArchSubRegNumWord(BinInst *mybin, uint32_t value)
 
 inline void SetDstArchSubRegNumByte(BinInst *mybin,  uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsDstArchSubRegNumByte_0, bitsDstArchSubRegNumByte_1, value);
@@ -607,7 +607,7 @@ inline void SetOperandDstType(BinInst *mybin, G4_DstRegRegion *dst)
 
     regType = dst->getType();
 
-    switch ( regType )
+    switch (regType)
     {
         case Type_UD:
         case Type_D:
@@ -656,7 +656,7 @@ inline void EncodeDstAddrMode(BinInst *mybin, G4_DstRegRegion *dst)
 
 inline void SetDstHorzStride(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsDstHorzStride_0, bitsDstHorzStride_1, value);
@@ -664,10 +664,10 @@ inline void SetDstHorzStride(BinInst *mybin, uint32_t value)
 
 inline void EncodeDstHorzStride(G4_INST *inst, BinInst *mybin, G4_DstRegRegion *dst)
 {
-    switch(dst->getHorzStride())
+    switch (dst->getHorzStride())
     {
         case 1:
-            if ( inst->isAligned16Inst())
+            if (inst->isAligned16Inst())
             {
                 SetDstHorzStride(mybin, HORZ_STRIDE_0);
             }
@@ -699,8 +699,8 @@ inline void EncodeDstChanEn(G4_INST* inst, BinInst *mybin, G4_DstRegRegion *dst)
 
 inline void BinaryEncoding::EncodeDstRegNum(G4_INST* inst, BinInst *mybin, G4_DstRegRegion *dst)
 {
-    if ( EncodingHelper::GetDstRegFile(dst) != REG_FILE_A &&
-         EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED )
+    if (EncodingHelper::GetDstRegFile(dst) != REG_FILE_A &&
+         EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED)
     {
         uint32_t byteAddress = dst->getLinearizedStart();
 
@@ -721,10 +721,10 @@ inline void EncodeDstArchRegNum(G4_INST* inst, BinInst *mybin, G4_DstRegRegion *
     bool valid, subValid;
     uint32_t regOffset;
 
-    if ( EncodingHelper::GetDstRegFile(dst) == REG_FILE_A  &&
-         EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED )
+    if (EncodingHelper::GetDstRegFile(dst) == REG_FILE_A  &&
+         EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED)
     {
-        if ( EncodingHelper::GetDstArchRegType(dst) != ARCH_REG_FILE_NULL )
+        if (EncodingHelper::GetDstArchRegType(dst) != ARCH_REG_FILE_NULL)
         {
             RegNumValue = dst->ExRegNum(valid);
             RegSubNumValue = dst->ExSubRegNum(subValid);
@@ -748,10 +748,10 @@ inline void EncodeDstIndirectRegNum(G4_INST* inst, BinInst *mybin, G4_DstRegRegi
     unsigned short IndAddrRegSubNumValue = 0;
     short IndAddrImmedValue = 0;
 
-    if ( EncodingHelper::GetDstRegFile(dst)==REG_FILE_R ||
+    if (EncodingHelper::GetDstRegFile(dst)==REG_FILE_R ||
          EncodingHelper::GetDstRegFile(dst)==REG_FILE_M)
     {
-        if ( EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_INDIR )
+        if (EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_INDIR)
         { // Indirect
             IndAddrRegSubNumValue = dst->ExIndSubRegNum(subValid);
             IndAddrImmedValue = dst->ExIndImmVal();
@@ -776,7 +776,7 @@ inline void EncodeDstIndirectRegNum(G4_INST* inst, BinInst *mybin, G4_DstRegRegi
 
 inline void SetSrc0RegFile(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcRegFile[0],bitsSrcRegFile[1],value);
@@ -784,7 +784,7 @@ inline void SetSrc0RegFile(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0Type(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         // handled by Set3SrcSrcType
         return;
     else
@@ -793,7 +793,7 @@ inline void SetSrc0Type(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0AddrMode(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcAddrMode_0,bitsSrcAddrMode_1,value);
@@ -801,7 +801,7 @@ inline void SetSrc0AddrMode(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0SrcMod(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSrcMod[0], bits3SrcSrcMod[1], value);
     else
         mybin->SetBits(bitsSrcSrcMod_0, bitsSrcSrcMod_1,value);
@@ -809,7 +809,7 @@ inline void SetSrc0SrcMod(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0RepCtrl(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcRepCtrl_0, bits3SrcRepCtrl_1, value);
     else
         return;
@@ -817,7 +817,7 @@ inline void SetSrc0RepCtrl(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0Swizzle(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSwizzle_0, bits3SrcSwizzle_1, value);
     else
         return;
@@ -825,7 +825,7 @@ inline void SetSrc0Swizzle(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0RegNumOWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSrcRegNumOWord_0,
             bits3SrcSrcRegNumOWord_1, value);
     else
@@ -841,7 +841,7 @@ inline void SetSrc0RegNumByte(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0ChanSel_0(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_0_0,
             bits3SrcChanSel_0_1, value);
     else
@@ -852,7 +852,7 @@ inline void SetSrc0ChanSel_0(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0ChanSel_1(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_1_0,
             bits3SrcChanSel_1_1, value);
     else
@@ -862,7 +862,7 @@ inline void SetSrc0ChanSel_1(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0ChanSel_2(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_2_0,
             bits3SrcChanSel_2_1, value);
     else
@@ -872,7 +872,7 @@ inline void SetSrc0ChanSel_2(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0ChanSel_3(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_3_0,
         bits3SrcChanSel_3_1, value);
     else
@@ -882,7 +882,7 @@ inline void SetSrc0ChanSel_3(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0VertStride(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcVertStride_0,bitsSrcVertStride_1,value);
@@ -890,7 +890,7 @@ inline void SetSrc0VertStride(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0Width(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcWidth_0,bitsSrcWidth_1,value);
@@ -898,7 +898,7 @@ inline void SetSrc0Width(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0HorzStride(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcHorzStride_0,bitsSrcHorzStride_1,value);
@@ -909,7 +909,7 @@ inline void SetSrc0HorzStride(BinInst *mybin, uint32_t value)
  */
 inline void SetSrc0IdxRegNum(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcIdxRegNum[0],bitsSrcIdxRegNum[1],value);
@@ -917,7 +917,7 @@ inline void SetSrc0IdxRegNum(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0IdxImmOWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     mybin->SetBits(bitsSrcIdxImmOWord[0], bitsSrcIdxImmOWord[1], value);
     mybin->SetBits(bitsSrcIdxImmMSB[0], bitsSrcIdxImmMSB[1], (value >> 5));
@@ -925,7 +925,7 @@ inline void SetSrc0IdxImmOWord(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0IdxImmByte(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     mybin->SetBits(bitsSrcIdxImmByte[0], bitsSrcIdxImmByte[1], value);
     mybin->SetBits(bitsSrcIdxImmMSB[0], bitsSrcIdxImmMSB[1], (value >> 9));
@@ -934,7 +934,7 @@ inline void SetSrc0IdxImmByte(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0ArchRegFile(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchRegFile_0,bitsSrcArchRegFile_1,value);
@@ -942,7 +942,7 @@ inline void SetSrc0ArchRegFile(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0ArchRegNum(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchRegNum_0,bitsSrcArchRegNum_1,value);
@@ -950,7 +950,7 @@ inline void SetSrc0ArchRegNum(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0ArchSubRegNumOWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchSubRegNumOWord_0,bitsSrcArchSubRegNumOWord_1,value);
@@ -958,7 +958,7 @@ inline void SetSrc0ArchSubRegNumOWord(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0ArchSubRegNumWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchSubRegNumWord_0,bitsSrcArchSubRegNumWord_1,value);
@@ -966,7 +966,7 @@ inline void SetSrc0ArchSubRegNumWord(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0ArchSubRegNumByte(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchSubRegNumByte_0,bitsSrcArchSubRegNumByte_1,value);
@@ -974,7 +974,7 @@ inline void SetSrc0ArchSubRegNumByte(BinInst *mybin, uint32_t value)
 
 inline void SetSrc0Imm32(BinInst *mybin, uint32_t value, G4_Operand* src)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcImm32_0,bitsSrcImm32_1,value);
@@ -984,8 +984,8 @@ inline void SetSrc0Imm64(BinInst *mybin, uint64_t value, G4_Operand* src)
 {
     uint32_t low = value & 0xFFFFFFFF;
     uint32_t high = value >> 32;
-    mybin->SetBits( bitsSrcImm64_2, bitsSrcImm64_3, low );
-    mybin->SetBits( bitsSrcImm64_0, bitsSrcImm64_1, high );
+    mybin->SetBits(bitsSrcImm64_2, bitsSrcImm64_3, low);
+    mybin->SetBits(bitsSrcImm64_0, bitsSrcImm64_1, high);
 }
 
 inline void EncodeSrc0RegFile(BinInst *mybin, G4_Operand *src0)
@@ -1024,7 +1024,7 @@ inline void EncodeSrc0Type(G4_INST *inst, BinInst *mybin, G4_Operand *src0)
 
 inline void SetSrc1Imm32(BinInst *mybin, uint32_t value, G4_Operand* src)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcImm32_2,bitsSrcImm32_3,value);
@@ -1033,13 +1033,13 @@ inline void SetSrc1Imm32(BinInst *mybin, uint32_t value, G4_Operand* src)
 inline void EncodeSrcImmData(BinInst *mybin, G4_Operand *src)
 {
     G4_Imm *isrc = (G4_Imm *)src->asImm();
-    if (  IS_WTYPE(src->getType()) )
+    if (IS_WTYPE(src->getType()))
     {
         uint32_t val = (uint32_t) isrc->getInt();
         uint32_t data = (val << 16) | (val & 0xffff);
         SetSrc1Imm32(mybin, data, src);
     }
-    else if ( src->getType() == Type_F )
+    else if (src->getType() == Type_F)
     {
         // Cannot use getFloat() as it will change sNAN to qNAN (bug1892)
         SetSrc1Imm32(mybin, (uint32_t)isrc->getImm(), src);
@@ -1048,7 +1048,7 @@ inline void EncodeSrcImmData(BinInst *mybin, G4_Operand *src)
     {
         SetSrc0Imm64(mybin, (uint64_t)isrc->getImm(), src);
     }
-    else if ( src->getType() == Type_Q  || src->getType() == Type_UQ )
+    else if (src->getType() == Type_Q  || src->getType() == Type_UQ)
     {
         int64_t val = isrc->getInt();
         SetSrc0Imm64(mybin, *(uint64_t*)&(val), src);
@@ -1063,15 +1063,15 @@ inline void EncodeSrc0AddrMode(BinInst *mybin, G4_Operand *src0)
     SetSrc0AddrMode(mybin, EncodingHelper::GetSrcAddrMode(src0));
 }
 
-inline void EncodeSrc0ChanSelect( G4_INST *inst,
+inline void EncodeSrc0ChanSelect(G4_INST *inst,
                                   BinInst *mybin,
                                   G4_Operand *src0,
                                   G4_SrcRegRegion *srcRegion)
 {
     // encode acc2~acc9 if it is valid
-    if ( src0->isAccRegValid() )
+    if (src0->isAccRegValid())
     {
-        if ( inst->opcode() == G4_madm ||
+        if (inst->opcode() == G4_madm ||
             (inst->isMath() && inst->asMathInst()->getMathCtrl() == MATH_INVM) ||
             (inst->isMath() && inst->asMathInst()->getMathCtrl() == MATH_RSQRTM))
         {
@@ -1137,7 +1137,7 @@ inline void EncodeSrc0RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion)
 
 inline void EncodeSrc0Modifier(BinInst *mybin, G4_Operand *src0, G4_SrcRegRegion *srcRegion)
 {
-    if( EncodingHelper::GetSrcRegFile(src0) != REG_FILE_M )
+    if (EncodingHelper::GetSrcRegFile(src0) != REG_FILE_M)
     {
         SetSrc0SrcMod(mybin, GetSrcMod(srcRegion));
     }
@@ -1165,7 +1165,7 @@ inline bool EncodeSrc0Width(
         {
             WidthValid = true;
         }
-        switch(rd->width)
+        switch (rd->width)
         {
             case 1:  SetSrc0Width(mybin, WIDTH_1); break;
             case 2:  SetSrc0Width(mybin, WIDTH_2); break;
@@ -1341,10 +1341,10 @@ inline void EncodeSrc0ArchRegNum(G4_INST* inst, BinInst *mybin, G4_SrcRegRegion 
     bool valid, subValid;
     uint32_t regOffset;
 
-    if( EncodingHelper::GetSrcRegFile(src0)==REG_FILE_A &&
-        EncodingHelper::GetSrcAddrMode(src0)==ADDR_MODE_IMMED )
+    if (EncodingHelper::GetSrcRegFile(src0)==REG_FILE_A &&
+        EncodingHelper::GetSrcAddrMode(src0)==ADDR_MODE_IMMED)
     {
-        if ( EncodingHelper::GetSrcArchRegType(src0) != ARCH_REG_FILE_NULL )
+        if (EncodingHelper::GetSrcArchRegType(src0) != ARCH_REG_FILE_NULL)
         {
             RegNumValue = src0->ExRegNum(valid);
             RegSubNumValue = src0->ExSubRegNum(subValid);
@@ -1366,8 +1366,8 @@ inline void EncodeSrc0ArchRegNum(G4_INST* inst, BinInst *mybin, G4_SrcRegRegion 
 
 inline void BinaryEncoding::EncodeSrc0RegNum(G4_INST* inst, BinInst *mybin, G4_Operand *src0)
 {
-    if ( EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
-         EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED )
+    if (EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
+         EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED)
     {
         bool repControl = EncodingHelper::GetRepControl(src0);
         uint32_t byteAddress = src0->getLinearizedStart();
@@ -1400,8 +1400,8 @@ inline void EncodeSrc0IndirectRegNum(G4_INST* inst, BinInst *mybin, G4_SrcRegReg
 
     if (EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_INDIR)
     {
-        if( !(EncodingHelper::GetSrcRegFile(src0)==REG_FILE_A &&
-              EncodingHelper::GetSrcArchRegType(src0)==ARCH_REG_FILE_NULL) )
+        if (!(EncodingHelper::GetSrcRegFile(src0)==REG_FILE_A &&
+              EncodingHelper::GetSrcArchRegType(src0)==ARCH_REG_FILE_NULL))
         {
             IndAddrRegSubNumValue = src0->ExIndSubRegNum(subValid);
             IndAddrImmedValue = src0->ExIndImmVal();
@@ -1444,13 +1444,13 @@ inline void Set3SrcSrcType(BinInst *mybin, G4_INST *inst)
             break;
     }
      mybin->SetBits(bits3SrcSrcType[0], bits3SrcSrcType[1], (uint32_t)sType);
-     if (inst->getPlatform() >= GENX_CHV )
+     if (inst->getPlatform() >= GENX_CHV)
      {
-         if ( inst->getSrc(1)->getType() == Type_HF )
+         if (inst->getSrc(1)->getType() == Type_HF)
          {
              mybin->SetBits(bits3SrcSrc1Type, bits3SrcSrc1Type, 1);
          }
-         if ( inst->getSrc(2)->getType() == Type_HF )
+         if (inst->getSrc(2)->getType() == Type_HF)
          {
              mybin->SetBits(bits3SrcSrc2Type, bits3SrcSrc2Type, 1);
          }
@@ -1497,12 +1497,12 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandDst(G4_INST* inst)
     if (mybin->GetIs3Src())
     {
         MUST_BE_TRUE(EncodingHelper::GetDstRegFile(dst) == REG_FILE_R, "Dst for 3src instruction must be GRF");
-        Set3SrcDstType( mybin, dst->getType() );
-        Set3SrcSrcType( mybin, inst );
+        Set3SrcDstType(mybin, dst->getType());
+        Set3SrcSrcType(mybin, inst);
     }
 
-    if ( inst->opcode() == G4_wait ) return SUCCESS;
-    if ( inst->opcode() == G4_jmpi )
+    if (inst->opcode() == G4_wait) return SUCCESS;
+    if (inst->opcode() == G4_jmpi)
     {
         SetDstRegFile(mybin, REG_FILE_A);
         SetDstArchRegFile(mybin, ARCH_REG_FILE_IP);
@@ -1512,7 +1512,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandDst(G4_INST* inst)
         SetDstType(mybin, DST_TYPE_UD);
         SetDstHorzStride(mybin, 1);
 
-        if ( inst->getSrc(0) )
+        if (inst->getSrc(0))
         {
             SetSrc0RegFile(mybin, REG_FILE_A);
             SetSrc0ArchRegFile(mybin, ARCH_REG_FILE_IP);
@@ -1520,7 +1520,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandDst(G4_INST* inst)
             SetSrc0AddrMode(mybin, ADDR_MODE_IMMED);
             //SetSrc0RegNumByte(mybin, 0);
             SetSrc0ArchSubRegNumByte(mybin, 0);
-            if ( !(inst->getSrc(0)->isLabel()) )
+            if (!(inst->getSrc(0)->isLabel()))
             {
                 SetSrc0Width(mybin, WIDTH_1);
                 SetDstHorzStride(mybin, 1);
@@ -1535,7 +1535,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandDst(G4_INST* inst)
         }
     }
 
-    if ( dst == NULL )
+    if (dst == NULL)
     {
         SetDstHorzStride(mybin, HORZ_STRIDE_1);
         return FAILURE;
@@ -1557,8 +1557,8 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandDst(G4_INST* inst)
 inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST* inst)
 {
     Status myStatus = SUCCESS;
-    if ( inst->isLabel()  ||
-         inst->isCall() )
+    if (inst->isLabel()  ||
+         inst->isCall())
         return myStatus;
 
     if (inst->isSplitSend())
@@ -1569,9 +1569,9 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST* inst)
     BinInst *mybin = inst->getBinInst();
     G4_Operand *src0 = inst->getSrc(0);
 
-    if ( src0 == NULL ||src0->isLabel() ) return FAILURE;
-    if ( inst->opcode() == G4_jmpi      &&
-         src0->isSrcRegRegion() )
+    if (src0 == NULL ||src0->isLabel()) return FAILURE;
+    if (inst->opcode() == G4_jmpi      &&
+         src0->isSrcRegRegion())
     {
         //will treat this src0 as src1 in EncodeOperandSrc1
         return SUCCESS;
@@ -1579,10 +1579,10 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST* inst)
 
     EncodeSrc0Type(inst, mybin, src0);
     EncodeSrc0RegFile(mybin, src0);
-    if ( src0->isImm() )
+    if (src0->isImm())
     {
-         if ( inst->opcode() != G4_mov                   &&
-              G4_Type_Table[src0->getType()].byteSize == 8 )
+         if (inst->opcode() != G4_mov                   &&
+              G4_Type_Table[src0->getType()].byteSize == 8)
         {
             MUST_BE_TRUE(false, "only Mov is allowed for 64bit immediate");
         }
@@ -1614,7 +1614,7 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST* inst)
 
 inline void SetSrc1RegFile(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcRegFile[2],bitsSrcRegFile[3],value);
@@ -1622,7 +1622,7 @@ inline void SetSrc1RegFile(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1Type(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
     // handled by Set3SrcSrcType
         return;
     else
@@ -1631,14 +1631,14 @@ inline void SetSrc1Type(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1AddrMode(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcAddrMode_2,bitsSrcAddrMode_3,value);
 }
 inline void SetSrc1SrcMod(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSrcMod[2],
             bits3SrcSrcMod[3],value);
     else
@@ -1648,7 +1648,7 @@ inline void SetSrc1SrcMod(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1RepCtrl(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcRepCtrl_2, bits3SrcRepCtrl_3, value);
     else
         return;
@@ -1656,7 +1656,7 @@ inline void SetSrc1RepCtrl(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1Swizzle(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSwizzle_2, bits3SrcSwizzle_3, value);
     else
         return;
@@ -1664,7 +1664,7 @@ inline void SetSrc1Swizzle(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1RegNumOWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSrcRegNumOWord_2,
             bits3SrcSrcRegNumOWord_3, value);
     else
@@ -1679,7 +1679,7 @@ inline void SetSrc1RegNumByte(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1ChanSel_0(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_0_2, bits3SrcChanSel_0_3, value);
     else
         mybin->SetBits(bitsSrcChanSel_0_2,bitsSrcChanSel_0_3,value);
@@ -1687,7 +1687,7 @@ inline void SetSrc1ChanSel_0(BinInst *mybin, uint32_t value)
 
 void SetSrc1ChanSel_1(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_1_2, bits3SrcChanSel_1_3, value);
     else
         mybin->SetBits(bitsSrcChanSel_1_2,bitsSrcChanSel_1_3,value);
@@ -1695,7 +1695,7 @@ void SetSrc1ChanSel_1(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1ChanSel_2(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_2_2, bits3SrcChanSel_2_3, value);
     else
         mybin->SetBits(bitsSrcChanSel_2_2,bitsSrcChanSel_2_3,value);
@@ -1703,7 +1703,7 @@ inline void SetSrc1ChanSel_2(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1ChanSel_3(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_3_2, bits3SrcChanSel_3_3, value);
     else
         mybin->SetBits(bitsSrcChanSel_3_2,bitsSrcChanSel_3_3,value);
@@ -1711,7 +1711,7 @@ inline void SetSrc1ChanSel_3(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1VertStride(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcVertStride_2,bitsSrcVertStride_3,value);
@@ -1719,7 +1719,7 @@ inline void SetSrc1VertStride(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1Width(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcWidth_2,bitsSrcWidth_3,value);
@@ -1727,7 +1727,7 @@ inline void SetSrc1Width(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1HorzStride(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcHorzStride_2,bitsSrcHorzStride_3,value);
@@ -1738,7 +1738,7 @@ inline void SetSrc1HorzStride(BinInst *mybin, uint32_t value)
  */
 inline void SetSrc1IdxRegNum(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcIdxRegNum[2],bitsSrcIdxRegNum[3],value);
@@ -1746,7 +1746,7 @@ inline void SetSrc1IdxRegNum(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1IdxImmOWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     mybin->SetBits(bitsSrcIdxImmOWord[2], bitsSrcIdxImmOWord[3], value);
     mybin->SetBits(bitsSrcIdxImmMSB[2], bitsSrcIdxImmMSB[3], (value >> 5));
@@ -1754,7 +1754,7 @@ inline void SetSrc1IdxImmOWord(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1IdxImmByte(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     mybin->SetBits(bitsSrcIdxImmByte[2], bitsSrcIdxImmByte[3], value);
     mybin->SetBits(bitsSrcIdxImmMSB[2], bitsSrcIdxImmMSB[3], (value >> 9));
@@ -1762,7 +1762,7 @@ inline void SetSrc1IdxImmByte(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1ArchRegFile(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchRegFile_2,bitsSrcArchRegFile_3,value);
@@ -1770,7 +1770,7 @@ inline void SetSrc1ArchRegFile(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1ArchRegNum(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchRegNum_2,bitsSrcArchRegNum_3,value);
@@ -1778,7 +1778,7 @@ inline void SetSrc1ArchRegNum(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1ArchSubRegNumOWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchSubRegNumOWord_2,bitsSrcArchSubRegNumOWord_3,value);
@@ -1786,7 +1786,7 @@ inline void SetSrc1ArchSubRegNumOWord(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1ArchSubRegNumWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchSubRegNumWord_2,bitsSrcArchSubRegNumWord_3,value);
@@ -1794,7 +1794,7 @@ inline void SetSrc1ArchSubRegNumWord(BinInst *mybin, uint32_t value)
 
 inline void SetSrc1ArchSubRegNumByte(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
         mybin->SetBits(bitsSrcArchSubRegNumByte_2,bitsSrcArchSubRegNumByte_3,value);
@@ -1830,7 +1830,7 @@ inline void EncodeSrc1ChanSelect(G4_INST *inst, BinInst *mybin, G4_SrcRegRegion 
     // encode acc2~acc9 if it is valid
     if (srcRegion->isAccRegValid())
     {
-        if ( inst->opcode() == G4_madm ||
+        if (inst->opcode() == G4_madm ||
             (inst->isMath() && inst->asMathInst()->getMathCtrl() == MATH_INVM) ||
             (inst->isMath() && inst->asMathInst()->getMathCtrl() == MATH_RSQRTM))
         {
@@ -1911,7 +1911,7 @@ inline bool EncodeSrc1Width(
         {
             WidthValid = true;
         }
-        switch(rd->width)
+        switch (rd->width)
         {
             case 1:  SetSrc1Width(mybin, WIDTH_1); break;
             case 2:  SetSrc1Width(mybin, WIDTH_2); break;
@@ -1949,15 +1949,15 @@ inline bool EncodeSrc1HorzStride(
     // For Align16 instruction (SIMD4), treat <HorzStride> as <VertStride>
     // For Align16 source operand disable HorzStride
     bool HorzStrideValid = false;
-    if ( inst->isAligned16Inst() ) return false;
+    if (inst->isAligned16Inst()) return false;
 
-    if(rd)
+    if (rd)
     {
         if (rd->horzStride != UNDEFINED_SHORT)
         {
             HorzStrideValid = true;
         }
-        switch(rd->horzStride)
+        switch (rd->horzStride)
         {
             case 0: SetSrc1HorzStride(mybin, HORZ_STRIDE_0); break;
             case 1: SetSrc1HorzStride(mybin, HORZ_STRIDE_1); break;
@@ -1969,9 +1969,9 @@ inline bool EncodeSrc1HorzStride(
 
     }
     // apply default horizontal stride
-    if ( !HorzStrideValid )
+    if (!HorzStrideValid)
     {
-        if ( EncodingHelper::isSrcSubRegNumValid(src1) )
+        if (EncodingHelper::isSrcSubRegNumValid(src1))
             SetSrc1HorzStride(mybin, HORZ_STRIDE_0);
         else
         {
@@ -1998,14 +1998,14 @@ inline void EncodeSrc1VertStride(G4_INST *inst,
     unsigned short VertStrideValue= UNDEFINED_SHORT;
     unsigned short HorzStrideValue= UNDEFINED_SHORT;
 
-    if(rd)  {
+    if (rd)  {
         VertStrideValue = rd->vertStride;
         HorzStrideValue = rd->horzStride;
-        if ( VertStrideValue != UNDEFINED_SHORT )
+        if (VertStrideValue != UNDEFINED_SHORT)
         {
             VertStrideValid = true;
         }
-        switch(VertStrideValue)
+        switch (VertStrideValue)
         {
             case 0:   SetSrc1VertStride(mybin, VERT_STRIDE_0); break;
             case 1:   SetSrc1VertStride(mybin, VERT_STRIDE_1); break;
@@ -2021,19 +2021,19 @@ inline void EncodeSrc1VertStride(G4_INST *inst,
     }
 
         //apply default vertical stride below
-    if ( !WidthValid             &&
+    if (!WidthValid             &&
          !HorzStrideValid        &&
          !VertStrideValid        &&
-         src1 )
+         src1)
     {
         VertStrideValid = true;
-        if ( EncodingHelper::isSrcSubRegNumValid(src1) )
+        if (EncodingHelper::isSrcSubRegNumValid(src1))
         {
             SetSrc1VertStride(mybin, VERT_STRIDE_0);
         }
         else
         {
-            if ( inst->isAligned1Inst() )
+            if (inst->isAligned1Inst())
             {
                 uint32_t execSize = GetEncodeExecSize(inst);
                 MUST_BE_TRUE(execSize <= (uint32_t)ES_32_CHANNELS,
@@ -2047,11 +2047,11 @@ inline void EncodeSrc1VertStride(G4_INST *inst,
         } // fi
     } // fi
 
-    if ( VertStrideValid ) {}
-    else if ( inst->isAligned16Inst() )
+    if (VertStrideValid) {}
+    else if (inst->isAligned16Inst())
     {
-        if ( HorzStrideValid == 1   &&
-             HorzStrideValue == 4 )
+        if (HorzStrideValid == 1   &&
+             HorzStrideValue == 4)
         {
             SetSrc1HorzStride(mybin, HORZ_STRIDE_1);
             SetSrc1VertStride(mybin, VERT_STRIDE_4);
@@ -2065,8 +2065,8 @@ inline void EncodeSrc1VertStride(G4_INST *inst,
 
 inline void BinaryEncoding::EncodeSrc1RegNum(G4_INST *inst, BinInst *mybin, G4_Operand *src1)
 {
-    if( EncodingHelper::GetSrcRegFile(src1) != REG_FILE_A &&
-        EncodingHelper::GetSrcAddrMode(src1)==ADDR_MODE_IMMED )
+    if (EncodingHelper::GetSrcRegFile(src1) != REG_FILE_A &&
+        EncodingHelper::GetSrcAddrMode(src1)==ADDR_MODE_IMMED)
     {
         bool repControl = EncodingHelper::GetRepControl(src1);
         uint32_t byteAddress = src1->getLinearizedStart();
@@ -2075,8 +2075,8 @@ inline void BinaryEncoding::EncodeSrc1RegNum(G4_INST *inst, BinInst *mybin, G4_O
         if (mybin->GetIs3Src())
         {
             // src1 subregnum crosses dword boundary, which SetBits can't handle, so we have to break it into two (sigh)
-            mybin->SetBits(bits3SrcSrc1RegDWord1_H, bits3SrcSrc1RegDWord1_L, byteAddress >> 4 );
-            mybin->SetBits(bits3SrcSrc1RegDWord2_H, bits3SrcSrc1RegDWord2_L, (byteAddress >> 2) & 0x3 );
+            mybin->SetBits(bits3SrcSrc1RegDWord1_H, bits3SrcSrc1RegDWord1_L, byteAddress >> 4);
+            mybin->SetBits(bits3SrcSrc1RegDWord2_H, bits3SrcSrc1RegDWord2_L, (byteAddress >> 2) & 0x3);
             mybin->SetBits(bits3SrcSrc1SubRegNumW_H, bits3SrcSrc1SubRegNumW_L, (byteAddress >> 1) & 0x1);
         }
         else if (inst->isAligned1Inst() || repControl)
@@ -2096,10 +2096,10 @@ inline void EncodeSrc1ArchRegNum(G4_INST *inst, BinInst *mybin, G4_SrcRegRegion 
     bool valid, subValid;
     uint32_t regOffset;
 
-    if( EncodingHelper::GetSrcRegFile(src1)==REG_FILE_A &&
-        EncodingHelper::GetSrcAddrMode(src1) == ADDR_MODE_IMMED )
+    if (EncodingHelper::GetSrcRegFile(src1)==REG_FILE_A &&
+        EncodingHelper::GetSrcAddrMode(src1) == ADDR_MODE_IMMED)
     {
-        if ( EncodingHelper::GetSrcArchRegType(src1) != ARCH_REG_FILE_NULL )
+        if (EncodingHelper::GetSrcArchRegType(src1) != ARCH_REG_FILE_NULL)
         {
             RegNumValue = src1->ExRegNum(valid);
             RegSubNumValue = src1->ExSubRegNum(subValid);
@@ -2124,10 +2124,10 @@ inline void EncodeSrc1IndirectRegNum(G4_INST* inst, BinInst *mybin, G4_SrcRegReg
     unsigned short IndAddrRegSubNumValue = 0;
     short IndAddrImmedValue = 0;
 
-    if ( EncodingHelper::GetSrcAddrMode(src1)==ADDR_MODE_INDIR )
+    if (EncodingHelper::GetSrcAddrMode(src1)==ADDR_MODE_INDIR)
     {
-        if(! (EncodingHelper::GetSrcRegFile(src1)==REG_FILE_A &&
-              EncodingHelper::GetSrcArchRegType(src1)==ARCH_REG_FILE_NULL) )
+        if (! (EncodingHelper::GetSrcRegFile(src1)==REG_FILE_A &&
+              EncodingHelper::GetSrcArchRegType(src1)==ARCH_REG_FILE_NULL))
         {
             IndAddrRegSubNumValue = src1->ExIndSubRegNum(subValid);
             IndAddrImmedValue = src1->ExIndImmVal();
@@ -2176,9 +2176,9 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendDst(G4_INST* inst)
         {
             // must be GRF
             uint32_t byteAddress = dst->getLinearizedStart();
-            MUST_BE_TRUE( byteAddress % 16 == 0, "dst for sends/sendsc must be oword-aligned");
+            MUST_BE_TRUE(byteAddress % 16 == 0, "dst for sends/sendsc must be oword-aligned");
             mybin->SetBits(bitsSendsDstRegNum_0, bitsSendsDstRegNum_1, byteAddress >> 5);
-            mybin->SetBits(bitsSendsDstSubRegNum_0, bitsSendsDstSubRegNum_1, (byteAddress >> 4) & 0x1 );
+            mybin->SetBits(bitsSendsDstSubRegNum_0, bitsSendsDstSubRegNum_1, (byteAddress >> 4) & 0x1);
         }
     }
 
@@ -2200,7 +2200,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc2(G4_INST* inst)
         mybin->SetBits(bitsSendsSelReg32Desc_0, bitsSendsSelReg32Desc_0, 0);
         mybin->SetBits(bitsSrcImm32_2,bitsSrcImm32_3, (uint32_t) src2->asImm()->getInt());
     }
-    else if (src2->isSrcRegRegion() && src2->asSrcRegRegion()->isA0() )
+    else if (src2->isSrcRegRegion() && src2->asSrcRegRegion()->isA0())
     {
         mybin->SetBits(bitsSendsSelReg32Desc_0, bitsSendsSelReg32Desc_0, 1);
     }
@@ -2270,7 +2270,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc0(G4_INST* inst)
     {
         mybin->SetBits(bitsSendsSrc0AddrMode_0, bitsSendsSrc0AddrMode_1, ADDR_MODE_IMMED);
         uint32_t byteAddress = src0->getLinearizedStart();
-        MUST_BE_TRUE( byteAddress % 32 == 0, "src1 for sends/sendsc must be GRF-aligned");
+        MUST_BE_TRUE(byteAddress % 32 == 0, "src1 for sends/sendsc must be GRF-aligned");
         mybin->SetBits(bitsSendsSrc0RegNum_0, bitsSendsSrc0RegNum_1, byteAddress >> 5);
     }
 
@@ -2320,11 +2320,11 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST* inst)
 
     G4_Operand *src0 = inst->getSrc(0);
     bool isSrc0Region = false;
-    if( src0 )
+    if (src0)
         isSrc0Region = src0->isSrcRegRegion();
 
-    if ( inst->opcode() == G4_jmpi &&
-         isSrc0Region )
+    if (inst->opcode() == G4_jmpi &&
+         isSrc0Region)
     {
         src1 = src0;
     }
@@ -2334,7 +2334,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST* inst)
     }
 
     if (inst->isLabel())  {
-        if ( isSrc0Region )
+        if (isSrc0Region)
         {
             //Gen4_IR has src1 operand on src0's place
             src1 = src0;
@@ -2347,9 +2347,9 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST* inst)
 
     EncodeSrc1RegFile(mybin, src1);
     EncodeSrc1Type(mybin, src1);
-    if ( src1->isImm() )
+    if (src1->isImm())
     {
-        if ( G4_Type_Table[src1->getType()].byteSize == 8 )
+        if (G4_Type_Table[src1->getType()].byteSize == 8)
         {
             MUST_BE_TRUE(false, "64bit immediate must be src0");
         }
@@ -2380,7 +2380,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST* inst)
 
 inline void SetSrc2SrcMod(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSrcMod[4], bits3SrcSrcMod[5], value);
     else
         return;
@@ -2388,7 +2388,7 @@ inline void SetSrc2SrcMod(BinInst *mybin, uint32_t value)
 
 inline void SetSrc2RepCtrl(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcRepCtrl_4, bits3SrcRepCtrl_5, value);
     else
         return;
@@ -2397,7 +2397,7 @@ inline void SetSrc2RepCtrl(BinInst *mybin, uint32_t value)
 
 inline void SetSrc2Swizzle(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSwizzle_4, bits3SrcSwizzle_5, value);
     else
         return;
@@ -2405,7 +2405,7 @@ inline void SetSrc2Swizzle(BinInst *mybin, uint32_t value)
 
 inline void SetSrc2ChanSel_0(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_0_4, bits3SrcChanSel_0_5, value);
     else
         return;
@@ -2413,7 +2413,7 @@ inline void SetSrc2ChanSel_0(BinInst *mybin, uint32_t value)
 
 inline void SetSrc2ChanSel_1(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_1_4, bits3SrcChanSel_1_5, value);
     else
         return;
@@ -2421,7 +2421,7 @@ inline void SetSrc2ChanSel_1(BinInst *mybin, uint32_t value)
 
 inline void SetSrc2ChanSel_2(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_2_4, bits3SrcChanSel_2_5, value);
     else
         return;
@@ -2429,7 +2429,7 @@ inline void SetSrc2ChanSel_2(BinInst *mybin, uint32_t value)
 
 inline void SetSrc2ChanSel_3(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcChanSel_3_4, bits3SrcChanSel_3_5, value);
     else
         return;
@@ -2437,7 +2437,7 @@ inline void SetSrc2ChanSel_3(BinInst *mybin, uint32_t value)
 
 inline void SetSrc2RegNumHWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSrcRegNumHWord_4, bits3SrcSrcRegNumHWord_5, value);
     else
         return;
@@ -2445,7 +2445,7 @@ inline void SetSrc2RegNumHWord(BinInst *mybin, uint32_t value)
 
 inline void SetSrc2RegNumOWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSrcRegNumOWord_4, bits3SrcSrcRegNumOWord_5, value);
     else
         return;
@@ -2453,20 +2453,20 @@ inline void SetSrc2RegNumOWord(BinInst *mybin, uint32_t value)
 
 inline void SetSrc2RegNumDWord(BinInst *mybin, uint32_t value)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         mybin->SetBits(bits3SrcSrcRegNumDWord_4, bits3SrcSrcRegNumDWord_5, value);
     else
         return;
 }
 
-inline void EncodeSrc2ChanSelect( G4_INST *inst,
+inline void EncodeSrc2ChanSelect(G4_INST *inst,
                                   BinInst *mybin,
                                   G4_SrcRegRegion *srcRegion,
-                                  G4_Operand *src2 )
+                                  G4_Operand *src2)
 {
-    if ( src2->isAccRegValid() )
+    if (src2->isAccRegValid())
     {
-        if ( inst->opcode() == G4_madm )
+        if (inst->opcode() == G4_madm)
         {
             uint32_t value = src2->getAccRegSel();
             SetSrc2ChanSel_0(mybin, value & 0x3);
@@ -2521,7 +2521,7 @@ inline void EncodeSrc2RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion)
 
 inline void EncodeSrc2Modifier(BinInst *mybin, G4_SrcRegRegion *srcRegion, G4_Operand *src2)
 {
-    if( EncodingHelper::GetSrcRegFile(src2) != REG_FILE_M)
+    if (EncodingHelper::GetSrcRegFile(src2) != REG_FILE_M)
     {
         SetSrc2SrcMod(mybin, GetSrcMod(srcRegion));
     }
@@ -2529,8 +2529,8 @@ inline void EncodeSrc2Modifier(BinInst *mybin, G4_SrcRegRegion *srcRegion, G4_Op
 
 inline void BinaryEncoding::EncodeSrc2RegNum(G4_INST* inst, BinInst *mybin, G4_Operand *src2)
 {
-    if( EncodingHelper::GetSrcRegFile(src2) != REG_FILE_A &&
-        EncodingHelper::GetSrcAddrMode(src2) == ADDR_MODE_IMMED )
+    if (EncodingHelper::GetSrcRegFile(src2) != REG_FILE_A &&
+        EncodingHelper::GetSrcAddrMode(src2) == ADDR_MODE_IMMED)
     {
         uint32_t byteAddress = src2->getLinearizedStart();
         MUST_BE_TRUE(byteAddress < kernel.getNumRegTotal() * GENX_GRF_REG_SIZ, "src2 exceeds total GRF number");
@@ -2557,7 +2557,7 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc2(G4_INST* inst)
         return EncodeSplitSendSrc2(inst);
     }
 
-    if ( !src2->isImm() )
+    if (!src2->isImm())
     {
         G4_SrcRegRegion *srcRegion = src2->asSrcRegRegion();
         EncodeSrc2ChanSelect(inst, mybin, srcRegion, src2);
@@ -2644,9 +2644,9 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperands(G4_INST* inst)
             break;
     }
 
-    if ( inst->opcode() == G4_jmpi      &&
+    if (inst->opcode() == G4_jmpi      &&
          inst->getSrc(0)                &&
-         inst->getSrc(0)->isSrcRegRegion() )
+         inst->getSrc(0)->isSrcRegRegion())
     {
         EncodeOperandSrc1(inst);
     }
@@ -2660,7 +2660,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperands(G4_INST* inst)
 void BinaryEncoding::insertWaitDst(G4_INST *inst)
 {
     BinInst *mybin = inst->getBinInst();
-    if ( inst->opcode()==G4_wait )
+    if (inst->opcode()==G4_wait)
     {  // The wait instruction needs src0 inserted as dst operand
         G4_Operand *src0 = inst->getSrc(0);
 
@@ -2673,8 +2673,8 @@ void BinaryEncoding::insertWaitDst(G4_INST *inst)
         SetDstAddrMode(mybin, EncodingHelper::GetSrcAddrMode(src0));
 
         // set dst's RegNum and RegSubNum according to its src0's.
-        if( EncodingHelper::GetSrcRegFile(src0)!=REG_FILE_A &&
-            EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED )
+        if (EncodingHelper::GetSrcRegFile(src0)!=REG_FILE_A &&
+            EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED)
         {
             bool repControl = EncodingHelper::GetRepControl(src0);
             uint32_t byteAddress = src0->getLinearizedStart();
@@ -2724,9 +2724,9 @@ BinaryEncoding::Status BinaryEncoding::DoAllEncoding(G4_INST* inst)
     Status myStatus = SUCCESS;
     bool isFCCall = false, isFCRet = false;
 
-    if(inst->opcode() == G4_label) return myStatus;
+    if (inst->opcode() == G4_label) return myStatus;
 
-    if(inst->opcode() == G4_illegal)
+    if (inst->opcode() == G4_illegal)
          return FAILURE;
 
     EncodingHelper::mark3Src(inst);
@@ -2796,7 +2796,7 @@ BinaryEncoding::Status BinaryEncoding::DoAllEncoding(G4_INST* inst)
 //        optReport<< fixed << endl;
 //        optReport<< kernel.getName() <<": "
 //            << numCompactedInst <<" out of " <<totalInst <<" instructions are compacted."<<endl;
-//        if ( numCompacted3SrcInst>0 )
+//        if (numCompacted3SrcInst>0)
 //        {
 //            optReport<< kernel.getName() <<": "
 //            << numCompacted3SrcInst <<" instructions of 3 src (mad/pln) are compacted."<<endl;
@@ -2824,7 +2824,7 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
 
     if (doCompaction())
     {
-        for ( uint8_t i=0; i<(int)COMPACT_TABLE_SIZE; i++ )
+        for (uint8_t i=0; i<(int)COMPACT_TABLE_SIZE; i++)
         {
             BDWCompactControlTable.AddIndex(IVBCompactControlTable[i], i);
             BDWCompactSourceTable.AddIndex(IVBCompactSourceTable[i], i);
@@ -2838,7 +2838,7 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
      /**
      * Traverse the flow graph basic block
      */
-    for(ib = kernel.fg.begin(); ib != bend; ++ib)
+    for (ib = kernel.fg.begin(); ib != bend; ++ib)
     {
         G4_BB *bb = *ib;
         int localInstNum = 0;
@@ -2866,7 +2866,7 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
                 myStatus = DoAllEncoding(inst);
 
 
-                if (inst->opcode() == G4_nop )
+                if (inst->opcode() == G4_nop)
                 {
                     binInstList.push_back(inst->getBinInst());
                     BuildLabelMap(inst, localHalfInstNum, localInstNum,
@@ -2877,12 +2877,12 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
 
                 EncodeOperandDst(inst);
 
-                if ( !EncodingHelper::hasLabelString(inst) )
+                if (!EncodingHelper::hasLabelString(inst))
                 {
                     EncodeOperands(inst);
                 }
 
-                if(inst->opcode() == G4_pseudo_fc_call ||
+                if (inst->opcode() == G4_pseudo_fc_call ||
                     inst->opcode() == G4_pseudo_fc_ret)
                 {
                     inst->getBinInst()->SetDontCompactFlag(true);
@@ -2906,7 +2906,7 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
                         if (kernel.getOption(vISA_OptReport))
                         {
                             numCompactedInst++;
-                            if ( inst->getBinInst()->GetIs3Src() )
+                            if (inst->getBinInst()->GetIs3Src())
                                 numCompacted3SrcInst++;
                         }
                         inst->setCompacted();
@@ -2947,14 +2947,14 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
 
 void BinaryEncoding::DoAll()
 {
-    InitPlatform( getGenxPlatform() );
+    InitPlatform(getGenxPlatform());
     FixInst();
     ProduceBinaryInstructions();
 }
 
 inline void SetBranchJIP(BinInst *mybin, uint32_t JIP)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
     {
@@ -2965,7 +2965,7 @@ inline void SetBranchJIP(BinInst *mybin, uint32_t JIP)
 
 inline void SetBranchJIPUIP(BinInst *mybin, uint32_t JIP, uint32_t UIP)
 {
-    if( mybin->GetIs3Src() )
+    if (mybin->GetIs3Src())
         return;
     else
     {
@@ -2987,16 +2987,16 @@ void BinaryEncoding::SetBranchOffsets(G4_INST* inst,
         //Not needed for instructions with JIP only
         //and over written by UIP
 
-        if( opc == G4_if            ||
+        if (opc == G4_if            ||
             opc == G4_break         ||
             opc == G4_cont          ||
             opc == G4_halt          ||
             opc == G4_goto          ||
             opc == G4_else)
         {
-            SetSrc0RegFile( mybin, REG_FILE_I );
+            SetSrc0RegFile(mybin, REG_FILE_I);
             SetSrc0Type(mybin, SRC_IMM_TYPE_D);
-            SetBranchJIPUIP( mybin, JIP, UIP );
+            SetBranchJIPUIP(mybin, JIP, UIP);
         }
         else
         {
@@ -3008,7 +3008,7 @@ void BinaryEncoding::SetBranchOffsets(G4_INST* inst,
                 SetSrc1RegFile(mybin, REG_FILE_I);
                 SetSrc1Type(mybin, SRC_IMM_TYPE_D);
             }
-            SetBranchJIP( mybin, JIP );
+            SetBranchJIP(mybin, JIP);
         }
     }
 }
@@ -3020,7 +3020,7 @@ inline bool isValidIPOffset(int32_t ipOffset)
 
 void BinaryEncoding::SetCmpSrc1Imm32(BinInst *mybin, uint32_t immediateData, G4_Operand* src)
 {
-    if ( GetCompactCtrl(mybin) )
+    if (GetCompactCtrl(mybin))
     {
         SetCmpSrc1RegNum(mybin, immediateData & 0xff);          // 63:56
         SetCmpSrc1Index(mybin, (immediateData >> 8)& 0x1f);
@@ -3045,7 +3045,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
 
     // while and case only have JIP for all platforms
     // break, cont and halt have both JIP and UIP for all platforms
-    if ( op == G4_if    ||
+    if (op == G4_if    ||
          op == G4_while ||
          op == G4_else  ||
          op == G4_break ||
@@ -3053,7 +3053,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
          op == G4_halt ||
          op == G4_goto ||
          op == G4_endif ||
-         op == G4_join )
+         op == G4_join)
     {
         G4_Label* jip = inst->asCFInst()->getJip();
         if (jip)
@@ -3084,12 +3084,12 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
 
     // halt has both JIP and UIP on all platforms
     // else has JIP for all platforms; else has UIP for BDW only
-    if ( op == G4_break                 ||
+    if (op == G4_break                 ||
          op == G4_cont                  ||
          op == G4_halt                  ||
          op == G4_if                    ||
          op == G4_else                  ||
-         op == G4_goto )
+         op == G4_goto)
     {
         G4_Label* uip = inst->asCFInst()->getUip();
         if (uip)
@@ -3108,19 +3108,19 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
         }
     }
 
-    if ( op == G4_endif && jipOffset == 0 )
+    if (op == G4_endif && jipOffset == 0)
     {
         jipOffset = INST_SIZE; // Next instruction ...
     }
 
-    if ( jipOffset != 0 || uipOffset != 0 )
+    if (jipOffset != 0 || uipOffset != 0)
     {
         SetBranchOffsets(inst, jipOffset, uipOffset);
     }
 
-    if ( op == G4_jmpi              &&
+    if (op == G4_jmpi              &&
          inst->getSrc(0)            &&
-         inst->getSrc(0)->isLabel() )
+         inst->getSrc(0)->isLabel())
     {
         // find the label's IP count
         G4_Label *opnd = inst->getSrc(0)->asLabel();
@@ -3134,7 +3134,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
             return false;
         }
         int32_t jmpOffset = info - insOffset;
-        if ( GetCompactCtrl(mybin) )
+        if (GetCompactCtrl(mybin))
             jmpOffset -= 1;
         else
             jmpOffset -= 2;
@@ -3154,7 +3154,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
             jmpOffset += 16;
         }
 
-        if ( GetCompactCtrl(mybin) )
+        if (GetCompactCtrl(mybin))
         {
             SetCmpSrc1RegNum(mybin, jmpOffset & 0xff);          // 63:56
             SetCmpSrc1Index(mybin, (jmpOffset >> 8)& 0x1f);
@@ -3167,7 +3167,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
         }
     }
 
-    if ( op == G4_call && inst->getSrc(0))
+    if (op == G4_call && inst->getSrc(0))
     {
 
         if (inst->getSrc(0)->isLabel())

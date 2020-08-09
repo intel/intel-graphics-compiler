@@ -100,42 +100,42 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define Opcode_define_cond_mod(opc)        \
                                  ((opc == G4_add)  || \
                                   (opc == G4_mul)  || \
-                                  (opc == G4_addc)  || \
+                                  (opc == G4_addc) || \
                                   (opc == G4_cmp)  || \
-                                  (opc == G4_cmpn)  || \
+                                  (opc == G4_cmpn) || \
                                   (opc == G4_and)  || \
-                                  (opc == G4_or)  || \
-                                  (opc == G4_xor) || \
+                                  (opc == G4_or)   || \
+                                  (opc == G4_xor)  || \
                                   (opc == G4_not)  || \
                                   (opc == G4_asr)  || \
                                   (opc == G4_avg)  || \
-                                  (opc == G4_smov)  || \
+                                  (opc == G4_smov) || \
                                   (opc == G4_dp2)  || \
                                   (opc == G4_dp3)  || \
                                   (opc == G4_dp4)  || \
                                   (opc == G4_dph)  || \
                                   (opc == G4_frc)  || \
-                                  (opc == G4_line)  || \
+                                  (opc == G4_line) || \
                                   (opc == G4_lzd)  || \
                                   (opc == G4_fbh)  || \
                                   (opc == G4_fbl)  || \
-                                  (opc == G4_cbit)  || \
+                                  (opc == G4_cbit) || \
                                   (opc == G4_lrp)  || \
                                   (opc == G4_mac)  || \
                                   (opc == G4_mad)  || \
                                   (opc == G4_mov)  || \
-                                  (opc == G4_movi)  || \
+                                  (opc == G4_movi) || \
                                   (opc == G4_pln)  || \
-                                  (opc == G4_rndd)  || \
-                                  (opc == G4_rndu)  || \
-                                  (opc == G4_rnde)  || \
-                                  (opc == G4_rndz)  || \
-                                  (opc == G4_sad2)  || \
-                                  (opc == G4_sada2)  || \
+                                  (opc == G4_rndd) || \
+                                  (opc == G4_rndu) || \
+                                  (opc == G4_rnde) || \
+                                  (opc == G4_rndz) || \
+                                  (opc == G4_sad2) || \
+                                  (opc == G4_sada2)|| \
                                   (opc == G4_shl)  || \
                                   (opc == G4_shr)  || \
                                   (opc == G4_subb) || \
-                                  (opc == G4_pseudo_mad ))
+                                  (opc == G4_pseudo_mad))
 
 #define Opcode_can_use_cond_mod(opc)        \
                                  (opc == G4_sel)
@@ -149,6 +149,22 @@ enum class BankAlign
     Odd2GRF = 5,          // 2GRF old align, 0011
     Align_NUM = 6        // Num of alignment
 };
+
+
+// phase 1 of G4_ExecSize inclusion
+// (ultimately this will be a proper data type)
+using G4_ExecSize = unsigned char;
+static const G4_ExecSize G4_SIMD1 = 1;
+static const G4_ExecSize G4_SIMD2 = 2;
+static const G4_ExecSize G4_SIMD4 = 4;
+static const G4_ExecSize G4_SIMD8 = 8;
+static const G4_ExecSize G4_SIMD16 = 16;
+static const G4_ExecSize G4_SIMD32 = 32;
+
+// saturation
+// (TODO: make a proper data type)
+using G4_Sat = bool;
+
 
 // To support sub register alignment
 enum G4_SubReg_Align
@@ -260,7 +276,6 @@ enum G4_RegFileKind
 //
 // multiple options can coexist so we define one bit for each option
 //
-
 enum G4_InstOption
 {
     InstOpt_NoOpt       = 0x0,
@@ -296,6 +311,9 @@ enum G4_InstOption
     (InstOpt_M0 | InstOpt_M4 | InstOpt_M8 | InstOpt_M12 | InstOpt_M16 | InstOpt_M20 | InstOpt_M24 | InstOpt_M28)
 #define InstOpt_Masks (InstOpt_QuarterMasks | InstOpt_WriteEnable)
 
+// TODO: to a more proper data type
+using G4_InstOpts = G4_InstOption;
+
 typedef struct _G4_InstOptInfo
 {
     G4_InstOption optMask;
@@ -303,6 +321,8 @@ typedef struct _G4_InstOptInfo
 } G4_InstOptInfo;
 
 extern G4_InstOptInfo InstOptInfo[];
+
+
 
 //various attributes for the Gen opcodes
 #define ATTR_COMMUTATIVE        0x00000010
@@ -314,7 +334,7 @@ extern G4_InstOptInfo InstOptInfo[];
 
 #define         GENX_MAX_H_STRIDE           4
 
-#define HANDLE_INST( op, nsrc, ndst, type, plat, attr ) G4_ ## op,
+#define HANDLE_INST(op, nsrc, ndst, type, plat, attr) G4_ ## op,
 enum G4_opcode
 {
 #include "G4Instruction.def"

@@ -212,9 +212,9 @@ G9HDL::EU_OPCODE BinaryEncodingCNL::getEUOpcode(G4_opcode g4opc)
 
 /// \brief (Helper) Converts v-isa execution size to HDL exec size enumeration
 ///
-static inline G9HDL::EXECSIZE GetHDLExecSizeFromVISAExecSize( uint32_t execSize )
+static inline G9HDL::EXECSIZE GetHDLExecSizeFromVISAExecSize(uint32_t execSize)
 {
-    switch(execSize)
+    switch (execSize)
     {
         case ES_1_CHANNEL:
             return G9HDL::EXECSIZE_1_CHANNEL_SCALAR_OPERATION;
@@ -240,7 +240,7 @@ void BinaryEncodingCNL::EncodeExecSize(G4_INST* inst,
                                        G9HDL::EU_INSTRUCTION_CONTROLS_A& controls)
 {
     G9HDL::EXECSIZE exSz;
-    exSz = GetHDLExecSizeFromVISAExecSize( GetEncodeExecSize( inst ) );
+    exSz = GetHDLExecSizeFromVISAExecSize(GetEncodeExecSize(inst));
     controls.SetExecsize(exSz);
 }
 
@@ -250,11 +250,11 @@ void BinaryEncodingCNL::EncodeExecSize(G4_INST* inst,
 void BinaryEncodingCNL::EncodeAccessMode(G4_INST* inst,
                                          G9HDL::EU_INSTRUCTION_CONTROLS_A& controls)
 {
-    if( inst->isAligned1Inst() )  {
-        controls.SetAccessmode( G9HDL::ACCESSMODE_ALIGN1 );
+    if (inst->isAligned1Inst())  {
+        controls.SetAccessmode(G9HDL::ACCESSMODE_ALIGN1);
     }
-    else if( inst->isAligned16Inst() )   {
-        controls.SetAccessmode( G9HDL::ACCESSMODE_ALIGN16 );
+    else if (inst->isAligned16Inst())   {
+        controls.SetAccessmode(G9HDL::ACCESSMODE_ALIGN16);
     }
 }
 
@@ -311,21 +311,21 @@ void BinaryEncodingCNL::EncodeQtrControl(G4_INST* inst,
 inline void BinaryEncodingCNL::EncodeDepControl(G4_INST* inst,
                                                 G9HDL::EU_INSTRUCTION_CONTROLS_A& controlsA)
 {
-    if ( inst->isNoDDChkInst() )
+    if (inst->isNoDDChkInst())
     {
-        if ( inst->isNoDDClrInst() )
+        if (inst->isNoDDClrInst())
         {
-            controlsA.SetDepctrl( G9HDL::DEPCTRL_NODDCLR_NODDCHK );
+            controlsA.SetDepctrl(G9HDL::DEPCTRL_NODDCLR_NODDCHK);
         }   else   {
-            controlsA.SetDepctrl( G9HDL::DEPCTRL_NODDCHK );
+            controlsA.SetDepctrl(G9HDL::DEPCTRL_NODDCHK);
         }
     }
     else    {
         if (inst->isNoDDClrInst())
         {
-            controlsA.SetDepctrl( G9HDL::DEPCTRL_NODDCLR );
+            controlsA.SetDepctrl(G9HDL::DEPCTRL_NODDCLR);
         }   else        {
-            controlsA.SetDepctrl( G9HDL::DEPCTRL_NONE );
+            controlsA.SetDepctrl(G9HDL::DEPCTRL_NONE);
         }
     }
 }
@@ -335,9 +335,9 @@ inline void BinaryEncodingCNL::EncodeDepControl(G4_INST* inst,
 inline void BinaryEncodingCNL::EncodeThreadControl(G4_INST* inst,
                                                    G9HDL::EU_INSTRUCTION_CONTROLS_A& controlsA)
 {
-    if ( inst->opcode() == G4_if  ||
+    if (inst->opcode() == G4_if  ||
          inst->opcode() == G4_else  ||
-         inst->opcode() == G4_endif )
+         inst->opcode() == G4_endif)
     {
 
     }
@@ -347,9 +347,9 @@ inline void BinaryEncodingCNL::EncodeThreadControl(G4_INST* inst,
         controlsA.SetThreadControl(
             inst->isAtomicInst()? G9HDL::THREADCTRL_ATOMIC :
             // CHAI: Add Switch InstOpt support
-            ( inst->isYieldInst() ? G9HDL::THREADCTRL_SWITCH :
-              ( inst->isNoPreemptInst() ? G9HDL::THREADCTRL_NOPREEMPT :
-                G9HDL::THREADCTRL_NORMAL ) ) );
+            (inst->isYieldInst() ? G9HDL::THREADCTRL_SWITCH :
+              (inst->isNoPreemptInst() ? G9HDL::THREADCTRL_NOPREEMPT :
+                G9HDL::THREADCTRL_NORMAL)));
     }
 }
 
@@ -359,7 +359,7 @@ void BinaryEncodingCNL::EncodeAccWrCtrl(G4_INST* inst,
 {
     if (inst->isAccWrCtrlInst() || (inst->isFlowControl() && inst->opcode() != G4_jmpi && inst->asCFInst()->isBackward()))
     {
-        instructionControls.SetControlsB_Accwrctrl( G9HDL::ACCWRCTRL_UPDATE_ACC );
+        instructionControls.SetControlsB_Accwrctrl(G9HDL::ACCWRCTRL_UPDATE_ACC);
     }
 }
 
@@ -371,7 +371,7 @@ void BinaryEncodingCNL::EncodeInstModifier(G4_INST* inst,
     if (inst->getSaturate()) {
         instructionControls.SetControlsB_Saturate(G9HDL::SATURATE_SAT);
     } else {
-        instructionControls.SetControlsB_Saturate( G9HDL::SATURATE_NO_DESTINATION_MODIFICATION );
+        instructionControls.SetControlsB_Saturate(G9HDL::SATURATE_NO_DESTINATION_MODIFICATION);
     }
 }
 
@@ -382,21 +382,21 @@ void BinaryEncodingCNL::EncodeFlagRegPredicate(
     G9HDL::EU_INSTRUCTION_CONTROLS_A& instructionControlsA)
 {
     G4_Predicate *pred = inst->getPredicate();
-    if(pred)
+    if (pred)
     {
-        switch(pred->getState())
+        switch (pred->getState())
         {
             // plus and undef are normal
         case PredState_Plus:
         case PredState_undef:
             instructionControlsA.SetPredinv(G9HDL::PREDINV_POSITIVE);
-            //instructionHeader.SetControl_Predinv( G9HDL::PREDINV_POSITIVE );
+            //instructionHeader.SetControl_Predinv(G9HDL::PREDINV_POSITIVE);
             //flagState = PREDICATE_STATE_NORMAL;
             break;
             // minus is invert
         case PredState_Minus:
             instructionControlsA.SetPredinv(G9HDL::PREDINV_NEGATIVE);
-            //instructionHeader.SetControl_Predinv( G9HDL::PREDINV_NEGATIVE );
+            //instructionHeader.SetControl_Predinv(G9HDL::PREDINV_NEGATIVE);
             //flagState = PREDICATE_STATE_INVERT<<4;
             break;
         }
@@ -405,7 +405,7 @@ void BinaryEncodingCNL::EncodeFlagRegPredicate(
 
         if (inst->isAligned16Inst())
         {
-            switch( pred->getAlign16PredicateControl() )
+            switch (pred->getAlign16PredicateControl())
             {
             case PRED_ALIGN16_DEFAULT:
                 predCtrl = G9HDL::PREDCTRL_SEQUENTIAL_FLAG_CHANNEL_MAPPING;
@@ -432,14 +432,14 @@ void BinaryEncodingCNL::EncodeFlagRegPredicate(
                 MUST_BE_TRUE(false, "invalid align16 predicate control");
             }
             instructionControlsA.SetPredctrl(predCtrl);
-            //instructionHeader.SetControl_Predctrl( predCtrl );
+            //instructionHeader.SetControl_Predctrl(predCtrl);
         }
         else
         {
             auto pc = pred->getControl();
             if (pc != PRED_DEFAULT)
                 predCtrl = (G9HDL::PREDCTRL)GetAlign1PredCtrl(pc);
-            instructionControlsA.SetPredctrl( predCtrl );
+            instructionControlsA.SetPredctrl(predCtrl);
         }
     }
 }
@@ -463,7 +463,7 @@ static const unsigned CONDITION_MODIIFER[11] =
 void BinaryEncodingCNL::EncodeCondModifier(G4_INST* inst, G9HDL::EU_INSTRUCTION_CONTROLS& instructionControls)
 {
     G4_CondMod *cModifier = inst->getCondMod();
-    if(cModifier)    {
+    if (cModifier)    {
         G9HDL::CONDMODIFIER value;
 
         unsigned mod = (unsigned)cModifier->getMod();
@@ -499,10 +499,10 @@ inline void BinaryEncodingCNL::EncodeInstHeader(G4_INST *inst,
 
     controls.SetControlsB_Cmptctrl(
         inst->isCompactedInst() ?
-        G9HDL::CMPTCTRL_COMPACTED :G9HDL::CMPTCTRL_NOCOMPACTION );
+        G9HDL::CMPTCTRL_COMPACTED :G9HDL::CMPTCTRL_NOCOMPACTION);
 
-    if( inst->isBreakPointInst() )
-        controls.SetControlsB_Debugctrl( G9HDL::DEBUGCTRL_BREAKPOINT );
+    if (inst->isBreakPointInst())
+        controls.SetControlsB_Debugctrl(G9HDL::DEBUGCTRL_BREAKPOINT);
 
 }
 
@@ -521,27 +521,27 @@ inline void BinaryEncodingCNL::EncodeInstHeader(G4_INST *inst,
 inline void BinaryEncodingCNL::EncodeDstHorzStride(G4_INST *inst, G4_DstRegRegion *dst,
                                                    G9HDL::EU_INSTRUCTION_OPERAND_CONTROLS& opnds)
 {
-    switch(dst->getHorzStride())
+    switch (dst->getHorzStride())
     {
     case 1:
         //NOTE: not sure if this is correct?
-        if ( inst->isAligned16Inst())
+        if (inst->isAligned16Inst())
         {
             //NOTE: use align1 union, even if setting align16 field. Masks are equal.
             //note: Although Dst.HorzStride is a don't care for Align16, HW needs this to be programmed as '01'.
-            opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride( G9HDL::HORZSTRIDE_4_ELEMENTS );
+            opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride(G9HDL::HORZSTRIDE_4_ELEMENTS);
         } else {
-            opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride( G9HDL::HORZSTRIDE_1_ELEMENTS );
+            opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride(G9HDL::HORZSTRIDE_1_ELEMENTS);
         }
         break;
     case 2:
-        opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride( G9HDL::HORZSTRIDE_2_ELEMENTS );
+        opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride(G9HDL::HORZSTRIDE_2_ELEMENTS);
         break;
     case 4:
-        opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride( G9HDL::HORZSTRIDE_4_ELEMENTS );
+        opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride(G9HDL::HORZSTRIDE_4_ELEMENTS);
         break;
     case UNDEFINED_SHORT:
-        opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride( G9HDL::HORZSTRIDE_1_ELEMENTS );
+        opnds.GetDestinationRegisterRegion_Align1().SetDestinationHorizontalStride(G9HDL::HORZSTRIDE_1_ELEMENTS);
         break;
     default:  MUST_BE_TRUE(false, "wrong dst horizontal stride"); break;
     }
@@ -575,14 +575,14 @@ void BinaryEncodingCNL::EncodeDstRegFile(G4_INST* inst,
                                          G9HDL::EU_INSTRUCTION_OPERAND_CONTROLS& opnds)
 {
     G4_DstRegRegion* dst = inst->getDst();
-    switch( EncodingHelper::GetDstRegFile(dst) )
+    switch (EncodingHelper::GetDstRegFile(dst))
     {   //Bug Line 846, bitrange: 3-4, should be: 35-36
     case REG_FILE_A:
         opnds.SetDestinationRegisterFile(G9HDL::REGFILE_ARF); break;
     case REG_FILE_R:
         opnds.SetDestinationRegisterFile(G9HDL::REGFILE_GRF); break;
     case REG_FILE_M:
-        MUST_BE_TRUE( 0 ," Memory is invalid register file on CNL");
+        MUST_BE_TRUE(0 ," Memory is invalid register file on CNL");
         //opnds.SetDestinationRegisterFile(G9HDL::REGFILE_IMM); break;
     default:
         break;
@@ -597,12 +597,12 @@ void BinaryEncodingCNL::EncodeDstRegNum(G4_INST* inst,
 {
     G4_DstRegRegion* dst = inst->getDst();
 
-    if ( EncodingHelper::GetDstRegFile(dst) != REG_FILE_A &&
-         EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED )
+    if (EncodingHelper::GetDstRegFile(dst) != REG_FILE_A &&
+         EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED)
     {
         uint32_t byteAddress = dst->getLinearizedStart();
 
-        if( inst->isAligned1Inst() )
+        if (inst->isAligned1Inst())
         {
             //register number: 256 bit (32 byte) aligned part of an address
             //sub-register number: 32 byte address (5 bits encoding) within a GRF
@@ -656,10 +656,10 @@ void BinaryEncodingCNL::EncodeDstArchRegNum(G4_INST* inst,
 {
     G4_DstRegRegion* dst = inst->getDst();
 
-    if ( EncodingHelper::GetDstRegFile(dst) == REG_FILE_A  &&
-         EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED )
+    if (EncodingHelper::GetDstRegFile(dst) == REG_FILE_A  &&
+         EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED)
     {
-        if ( EncodingHelper::GetDstArchRegType(dst) != ARCH_REG_FILE_NULL )
+        if (EncodingHelper::GetDstArchRegType(dst) != ARCH_REG_FILE_NULL)
         {
             bool valid;
 
@@ -704,10 +704,10 @@ void BinaryEncodingCNL::EncodeDstIndirectRegNum(G4_INST* inst,
 {
     G4_DstRegRegion* dst = inst->getDst();
 
-    if ( EncodingHelper::GetDstRegFile(dst)==REG_FILE_R ||
+    if (EncodingHelper::GetDstRegFile(dst)==REG_FILE_R ||
          EncodingHelper::GetDstRegFile(dst)==REG_FILE_M)
     {
-        if ( EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_INDIR )
+        if (EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_INDIR)
         { // Indirect
             bool subValid;
             unsigned short IndAddrRegSubNumValue = 0;
@@ -726,13 +726,13 @@ void BinaryEncodingCNL::EncodeDstIndirectRegNum(G4_INST* inst,
                 //bits [0-8]
                 opnds.GetDestinationRegisterRegion_Align1().SetDestinationAddressImmediate(IndAddrImmedValue);
                 //bit[9:9]
-                opnds.SetDestinationAddressImmediate99( IndAddrImmedValue >> 9 );
+                opnds.SetDestinationAddressImmediate99(IndAddrImmedValue >> 9);
             }  else  { //here we are setting align16
                 //bits [4-8]
                 opnds.GetDestinationRegisterRegion_Align16().
-                    SetDestinationAddressImmediate84( (IndAddrImmedValue >> 4) & 0x1F );
+                    SetDestinationAddressImmediate84((IndAddrImmedValue >> 4) & 0x1F);
                 //bit[9:9], originally: (IndAddrImmedValue / BYTES_PER_OWORD)  >> 5
-                opnds.SetDestinationAddressImmediate99( IndAddrImmedValue >> 9 );
+                opnds.SetDestinationAddressImmediate99(IndAddrImmedValue >> 9);
             }
         }
     }
@@ -749,7 +749,7 @@ inline void BinaryEncodingCNL::EncodeOperandDst(G4_INST* inst,
     DstBuilder<G9HDL::EU_INSTRUCTION_OPERAND_CONTROLS>::EncodeFlagReg(inst, opnds);
     DstBuilder<G9HDL::EU_INSTRUCTION_OPERAND_CONTROLS>::EncodeMaskCtrl(inst, opnds);
 
-    if ( dst == NULL )
+    if (dst == NULL)
     {
         return;
     }
@@ -773,12 +773,12 @@ inline void BinaryEncodingCNL::EncodeOperandDst(G4_INST* inst,
 
 
 //EU_INSTRUCTION_BASIC_ONE_SRC
-//  ( EU_INSTRUCTION_SOURCES_REG
+//  (EU_INSTRUCTION_SOURCES_REG
 //      EU_INSTRUCTION_OPERAND_SRC_REG_ALIGN1
 //          or
-//      EU_INSTRUCTION_OPERAND_SRC_REG_ALIGN16 )
+//      EU_INSTRUCTION_OPERAND_SRC_REG_ALIGN16)
 //    or
-//  ( EU_INSTRUCTION_SOURCES_IMM32
+//  (EU_INSTRUCTION_SOURCES_IMM32
 
 
 
@@ -789,7 +789,7 @@ inline void BinaryEncodingCNL::EncodeOneSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
     G4_Operand *src0 = inst->getSrc(0);
 
     //EncodeSrc0RegFile
-    oneSrc.GetOperandControls().SetSrc0Regfile( TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(src0) ));
+    oneSrc.GetOperandControls().SetSrc0Regfile(TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(src0)));
 
     //EncodeSrc0Type
     if (src0->isImm())
@@ -801,30 +801,29 @@ inline void BinaryEncodingCNL::EncodeOneSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
         oneSrc.GetOperandControls().SetSrc0Srctype(GetOperandSrcHDLType(src0->getType()));
     }
 
-    if ( src0->isImm() )
+    if (src0->isImm())
     {
         //this should be compiled as dead code in non-debug mode
-        if ( inst->opcode() != G4_mov                   &&
-            G4_Type_Table[src0->getType()].byteSize == 8 )
+        if (inst->opcode() != G4_mov                   &&
+            G4_Type_Table[src0->getType()].byteSize == 8)
         {
             MUST_BE_TRUE(false, "only Mov is allowed for 64bit immediate");
         }
-        if ( G4_Type_Table[src0->getType()].byteSize == 8 ) {
+        if (G4_Type_Table[src0->getType()].byteSize == 8) {
             G9HDL::EU_INSTRUCTION_IMM64_SRC* ptr = (G9HDL::EU_INSTRUCTION_IMM64_SRC*) &oneSrc;
             EncodeSrcImm64Data(*ptr, src0);
         }
         else
         {
-            //EncodeSrcImmData( oneSrc.GetImmsource(), src0 );
+            //EncodeSrcImmData(oneSrc.GetImmsource(), src0);
             SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_IMM32,0>::EncodeSrcImmData(
-                oneSrc.GetImmsource(), src0 );
+                oneSrc.GetImmsource(), src0);
         }
     }
     else
     {
         SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG,0>::EncodeEuInstructionSourcesReg(
-            inst, src0, oneSrc. GetRegsource() //by reference
-            );
+            inst, src0, oneSrc. GetRegsource()); // by reference
     }
 
 }
@@ -862,16 +861,15 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
     if (src0->isImm())
     {
         MUST_BE_TRUE(G4_Type_Table[src0->getType()].byteSize < 8, "only Mov is allowed for 64bit immediate");
-        //FIXME: feels like this should be 0 here, but it gives a type mismatch as the headers assume src0
-        //must be REG
+        // FIXME: feels like this should be 0 here, but it gives a type mismatch as the headers assume src0
+        // must be REG
         SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_IMM, 1>::EncodeSrcImmData(
             twoSrc.GetImmsource(), src0);
     }
     else
     {
         SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG, 0>::EncodeEuInstructionSourcesReg(
-            inst, src0, twoSrc.GetRegsource() //by reference
-            );
+            inst, src0, twoSrc.GetRegsource()); // by reference
     }
 
     //no need to encode one src math instruction
@@ -881,7 +879,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
         return;
     }
 
-    twoSrc.GetRegsource().SetSrc1Regfile( TranslateVisaToHDLRegFile( EncodingHelper::GetSrcRegFile(src1) ) );
+    twoSrc.GetRegsource().SetSrc1Regfile(TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(src1)));
     if (src1->isImm())
     {
         twoSrc.GetImmsource().SetSrc1Srctype(GetOperandSrcHDLImmType(src1->getType()));
@@ -892,16 +890,16 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
         twoSrc.GetRegsource().SetSrc1Srctype(GetOperandSrcHDLType(src1->getType()));
     }
 
-    if ( src1->isImm() )
+    if (src1->isImm())
     {
-        if ( inst->opcode() != G4_mov                   &&
-            G4_Type_Table[src1->getType()].byteSize == 8 )
+        if (inst->opcode() != G4_mov                   &&
+            G4_Type_Table[src1->getType()].byteSize == 8)
         {
             MUST_BE_TRUE(false, "only Mov is allowed for 64bit immediate");
         }
 
         SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_IMM,1>::EncodeSrcImmData(
-            twoSrc.GetImmsource(), src1 );
+            twoSrc.GetImmsource(), src1);
     }
     else
     {
@@ -913,8 +911,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
         else
         {
             SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG, 1>::EncodeEuInstructionSourcesReg(
-                inst, src1, twoSrc.GetRegsource() //by reference
-                );
+                inst, src1, twoSrc.GetRegsource()); //by reference
         }
     }
 
@@ -922,7 +919,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
 
 /// \brief Given a two-src mask, apply a patch for send instruction
 ///
-void PatchSend( G4_INST* inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* twoSrc )
+void PatchSend(G4_INST* inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* twoSrc)
 {
     uint32_t msgDesc = inst->getMsgDesc()->getExtendedDesc();
     EncExtMsgDescriptor emd;
@@ -931,7 +928,7 @@ void PatchSend( G4_INST* inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* twoSrc )
     G9HDL::EU_INSTRUCTION_SEND* sendInstruction = (G9HDL::EU_INSTRUCTION_SEND*) twoSrc;
     G9HDL::SFID sfid = (G9HDL::SFID) emd.ExtMsgDescriptor.TargetUnitId;
 
-    sendInstruction->SetSharedFunctionIdSfid( sfid );
+    sendInstruction->SetSharedFunctionIdSfid(sfid);
     sendInstruction->SetExdesc1111(msgDesc);
 
     //this is a hack, but:
@@ -948,7 +945,7 @@ void PatchSend( G4_INST* inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* twoSrc )
 
 /// \brief EncodeMathControl
 ///
-void PatchMath( G4_INST* inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* twoSrc )
+void PatchMath(G4_INST* inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* twoSrc)
 {
     MUST_BE_TRUE(inst->isMath(), "PatchMath must be called on math instruction.");
 
@@ -960,7 +957,7 @@ void PatchMath( G4_INST* inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* twoSrc )
     mathInstruction->SetFunctionControlFc(mathFunctionControl);
 
     //fixme: what about partial precision bit?
-    //if( !mybin->GetIs3Src() )     {
+    //if (!mybin->GetIs3Src())     {
     //    mybin->SetBits(bitsMathFunction_0, bitsMathFunction_1, MathFunction);
     //    mybin->SetBits(bitsMathPartPrec_0, bitsMathPartPrec_1, MathPartPrec);
     //}
@@ -1100,8 +1097,8 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInst(G4_INST* inst, G9HDL::EU_INSTR
             threeSrc.SetDestinationChannelEnable(dstRegion->getWriteMask());
         }
 
-        if ( EncodingHelper::GetDstRegFile(dst) != REG_FILE_A &&
-             EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED )
+        if (EncodingHelper::GetDstRegFile(dst) != REG_FILE_A &&
+             EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED)
         {
             uint32_t byteAddress = dst->getLinearizedStart();
 
@@ -1126,23 +1123,23 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInst(G4_INST* inst, G9HDL::EU_INSTR
             //    threeSrc.SetSource0_SourceReplicateControl(G9HDL::REPCTRL_NO_REPLICATION);
 
             //source modifiers:
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::EncodeSrcModifier( inst, src0, threeSrc );
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 1>::EncodeSrcModifier( inst, src1, threeSrc );
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 2>::EncodeSrcModifier( inst, src2, threeSrc );
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::EncodeSrcModifier(inst, src0, threeSrc);
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 1>::EncodeSrcModifier(inst, src1, threeSrc);
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 2>::EncodeSrcModifier(inst, src2, threeSrc);
 
             //rep control:
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::Encode3SrcReplicateControl( &threeSrc, src0Region );
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 1>::Encode3SrcReplicateControl( &threeSrc, src1Region );
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 2>::Encode3SrcReplicateControl( &threeSrc, src2Region );
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::Encode3SrcReplicateControl(&threeSrc, src0Region);
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 1>::Encode3SrcReplicateControl(&threeSrc, src1Region);
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 2>::Encode3SrcReplicateControl(&threeSrc, src2Region);
 
             //chan select:
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::EncodeSrcChanSelect( &threeSrc, inst, src0, src0Region );
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 1>::EncodeSrcChanSelect( &threeSrc, inst, src1, src1Region );
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 2>::EncodeSrcChanSelect( &threeSrc, inst, src2, src2Region );
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::EncodeSrcChanSelect(&threeSrc, inst, src0, src0Region);
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 1>::EncodeSrcChanSelect(&threeSrc, inst, src1, src1Region);
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 2>::EncodeSrcChanSelect(&threeSrc, inst, src2, src2Region);
 
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::EncodeSrcRegNum3Src( inst, src0, threeSrc );
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 1>::EncodeSrcRegNum3Src( inst, src1, threeSrc );
-            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 2>::EncodeSrcRegNum3Src( inst, src2, threeSrc );
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::EncodeSrcRegNum3Src(inst, src0, threeSrc);
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 1>::EncodeSrcRegNum3Src(inst, src1, threeSrc);
+            SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 2>::EncodeSrcRegNum3Src(inst, src2, threeSrc);
             //register
             //sub-register
         }
@@ -1589,12 +1586,12 @@ void BinaryEncodingCNL::SetBranchOffsets(G4_INST* inst,
     G4_opcode opc = inst->opcode();
 
     {
-        if( opc == G4_if            ||
+        if (opc == G4_if            ||
             opc == G4_break         ||
             opc == G4_cont          ||
             opc == G4_halt          ||
             opc == G4_goto          ||
-            opc == G4_else  )
+            opc == G4_else)
         {
             //cast binary as branch two src
             //note: if an instruction has both JIP and UIP, then
@@ -1607,7 +1604,7 @@ void BinaryEncodingCNL::SetBranchOffsets(G4_INST* inst,
             twoSrc->GetOperandControl().SetSrc0Srctype_Imm(GetOperandSrcHDLImmType(Type_D));
             twoSrc->SetJip(JIP);
             twoSrc->SetUip(UIP);
-            //SetBranchJIPUIP( mybin, JIP, UIP );
+            //SetBranchJIPUIP(mybin, JIP, UIP);
         }
         else
         {
@@ -1617,7 +1614,7 @@ void BinaryEncodingCNL::SetBranchOffsets(G4_INST* inst,
             oneSrc->SetSrc1Regfile(G9HDL::REGFILE_IMM);
             oneSrc->SetSrc1Srctype(GetOperandSrcHDLImmType(Type_D));
             oneSrc->SetJip(JIP);
-            //SetBranchJIP( mybin, JIP );
+            //SetBranchJIP(mybin, JIP);
         }
     }
 }
@@ -1638,7 +1635,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
 
     // while and case only have JIP for all platforms
     // break, cont and halt have both JIP and UIP for all platforms
-    if ( op == G4_if    ||
+    if (op == G4_if    ||
          op == G4_else  ||
          op == G4_endif ||
          op == G4_while ||
@@ -1646,7 +1643,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
          op == G4_cont  ||
          op == G4_halt ||
          op == G4_goto ||
-         op == G4_join )
+         op == G4_join)
     {
         G4_Label *jip = inst->asCFInst()->getJip();
         if (jip)
@@ -1681,7 +1678,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
         op == G4_halt                  ||
         op == G4_if                    ||
         op == G4_else                  ||
-        op == G4_goto )
+        op == G4_goto)
     {
         G4_Label* uip = inst->asCFInst()->getUip();
         if (uip)
@@ -1696,19 +1693,19 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
         }
     }
 
-    if ( op == G4_endif && jipOffset == 0 )
+    if (op == G4_endif && jipOffset == 0)
     {
         jipOffset = INST_SIZE;
     }
 
-    if ( jipOffset != 0 || uipOffset != 0 )
+    if (jipOffset != 0 || uipOffset != 0)
     {
         SetBranchOffsets(inst, jipOffset, uipOffset);
     }
 
-    if ( op == G4_jmpi &&
+    if (op == G4_jmpi &&
         inst->getSrc(0) &&
-        inst->getSrc(0)->isLabel() )
+        inst->getSrc(0)->isLabel())
     {
         // find the label's IP count
         G4_Operand *opnd = inst->getSrc(0);
@@ -1722,7 +1719,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
             return false;
         }
         int32_t jmpOffset = info - insOffset;
-        if ( GetCompactCtrl(mybin) )
+        if (GetCompactCtrl(mybin))
             jmpOffset -= 1;
         else
             jmpOffset -= 2;
@@ -1730,7 +1727,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
         jmpOffset *= (int32_t)JUMP_INST_COUNT_SIZE;
 
         //FIXME: add compaction support
-        //if ( GetCompactCtrl(mybin) )
+        //if (GetCompactCtrl(mybin))
         //{
         //    SetCmpSrc1RegNum(mybin, jmpOffset & 0xff);          // 63:56
         //    SetCmpSrc1Index(mybin, (jmpOffset >> 8)& 0x1f);
@@ -1747,9 +1744,9 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
         }
     }
 
-    if ( op == G4_call              &&
+    if (op == G4_call              &&
          inst->getSrc(0)            &&
-         inst->getSrc(0)->isLabel() )
+         inst->getSrc(0)->isLabel())
     {
         G4_Operand *opnd = inst->getSrc(0);
         int32_t info = GetLabelInfo(opnd->asLabel());
@@ -1783,7 +1780,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
 
 /// \brief initializes auto-header generated structure for split send instruction
 ///
-BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend( G4_INST* inst, G9HDL::EU_INSTRUCTION_SENDS& sends)
+BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend(G4_INST* inst, G9HDL::EU_INSTRUCTION_SENDS& sends)
 {
     Status myStatus = SUCCESS;
 
@@ -1805,14 +1802,14 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend( G4_INST* inst, G9H
         //encode dst reg file
         //note: for sends, we have only one bit available for dst reg file
         {
-            switch( EncodingHelper::GetDstRegFile(dst) )
+            switch (EncodingHelper::GetDstRegFile(dst))
             {
             case REG_FILE_R:
                 sends.SetDestinationRegisterFile(G9HDL::REGFILE_GRF); break;
             case REG_FILE_A:
                 sends.SetDestinationRegisterFile(G9HDL::REGFILE_ARF); break;
             default:
-                MUST_BE_TRUE( 0 ," Invalid register file for split-send.");
+                MUST_BE_TRUE(0 ," Invalid register file for split-send.");
                 break;
             }
         }
@@ -1831,10 +1828,10 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend( G4_INST* inst, G9H
         }
         else
         {
-            if (EncodingHelper::GetDstRegFile(dst) != REG_FILE_A )
+            if (EncodingHelper::GetDstRegFile(dst) != REG_FILE_A)
             {
                 uint32_t byteAddress = dst->getLinearizedStart();
-                MUST_BE_TRUE( byteAddress % 16 == 0, "dst for sends/sendsc must be oword-aligned");
+                MUST_BE_TRUE(byteAddress % 16 == 0, "dst for sends/sendsc must be oword-aligned");
 
                 sends.SetDestinationRegisterNumber(byteAddress >> 5);
                 sends.SetDestinationSubregisterNumber4((byteAddress >> 4) & 0x1);
@@ -1848,14 +1845,14 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend( G4_INST* inst, G9H
         G4_Operand *src1 = inst->getSrc(1);
 
         //src1 reg file - 1 bit
-        switch( EncodingHelper::GetSrcRegFile(src1) )
+        switch (EncodingHelper::GetSrcRegFile(src1))
         {
         case REG_FILE_R:
             sends.SetSrc1Regfile(G9HDL::REGFILE_GRF); break;
         case REG_FILE_A:
             sends.SetSrc1Regfile(G9HDL::REGFILE_ARF); break;
         default:
-            MUST_BE_TRUE( 0 ," Invalid register file for split-send.");
+            MUST_BE_TRUE(0 ," Invalid register file for split-send.");
             break;
         }
 
@@ -1875,7 +1872,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend( G4_INST* inst, G9H
         else
         {
             uint32_t byteAddress = src1->getLinearizedStart();
-            MUST_BE_TRUE( byteAddress % 32 == 0, "src1 for sends/sendsc must be GRF-aligned");
+            MUST_BE_TRUE(byteAddress % 32 == 0, "src1 for sends/sendsc must be GRF-aligned");
             sends.SetSource1_SourceRegisterNumber(byteAddress >> 5);
             //mybin->SetBits(bitsSendsSrc1RegNum_0, bitsSendsSrc1RegNum_1, byteAddress >> 5);
 
@@ -1902,7 +1899,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend( G4_INST* inst, G9H
         else
         {
             uint32_t byteAddress = src0->getLinearizedStart();
-            MUST_BE_TRUE( byteAddress % 32 == 0, "src1 for sends/sendsc must be GRF-aligned");
+            MUST_BE_TRUE(byteAddress % 32 == 0, "src1 for sends/sendsc must be GRF-aligned");
             sends.SetSource0_SourceRegisterNumber(byteAddress >> 5);
             //mybin->SetBits(bitsSendsSrc1RegNum_0, bitsSendsSrc1RegNum_1, byteAddress >> 5);
 
@@ -1922,7 +1919,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend( G4_INST* inst, G9H
             sends.SetSelreg32desc(0);
             sends.GetMessage().GetDWORD(0) = (uint32_t) src2->asImm()->getInt();
         }
-        else if (src2->isSrcRegRegion() && src2->asSrcRegRegion()->isA0() )
+        else if (src2->isSrcRegRegion() && src2->asSrcRegRegion()->isA0())
         {
             sends.SetSelreg32desc(1);
         }
@@ -1935,7 +1932,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend( G4_INST* inst, G9H
         emd.ulData = msgDesc;
 
         G9HDL::SFID sfid = (G9HDL::SFID) emd.ExtMsgDescriptor.TargetUnitId;
-        sends.SetSharedFunctionIdSfid( sfid );
+        sends.SetSharedFunctionIdSfid(sfid);
 
         G9HDL::EOT eot = (G9HDL::EOT) emd.ExtMsgDescriptor.EndOfThread;
         sends.GetMessage().SetEot(eot);
@@ -1969,29 +1966,28 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingWAIT(G4_INST* inst)
 
     oneSrc.Init();
 
-    EncodeInstHeader(inst, oneSrc.Common.Header );
+    EncodeInstHeader(inst, oneSrc.Common.Header);
     EncodeOperandDst(inst, oneSrc.Common.OperandControls);
     G4_Operand *src0 = inst->getSrc(0);
 
     //EncodeSrc0RegFile
-    oneSrc.GetOperandControls().SetSrc0Regfile( TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(src0) ));
+    oneSrc.GetOperandControls().SetSrc0Regfile(TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(src0)));
 
     //EncodeSrc0Type
-    MUST_BE_TRUE( !src0->isImm(), "src0 must not be immediate in WAIT instruction!" );
+    MUST_BE_TRUE(!src0->isImm(), "src0 must not be immediate in WAIT instruction!");
     {
         oneSrc.GetOperandControls().SetSrc0Srctype(GetOperandSrcHDLType(src0->getType()));
     }
 
     SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG,0>::EncodeEuInstructionSourcesReg(
-        inst, src0, oneSrc. GetRegsource() //by reference
-        );
+        inst, src0, oneSrc. GetRegsource()); // by reference
 
     //Dst patching:
 
     RegFile regFile = EncodingHelper::GetSrcRegFile(src0);
-    MUST_BE_TRUE( regFile == REG_FILE_A, "WAIT instruction source has reg file different than ARF!" );
+    MUST_BE_TRUE(regFile == REG_FILE_A, "WAIT instruction source has reg file different than ARF!");
     oneSrc.Common.OperandControls.SetDestinationRegisterFile(
-        TranslateVisaToHDLRegFile(regFile ) );
+        TranslateVisaToHDLRegFile(regFile));
 
     if (regFile == REG_FILE_A)
     {
@@ -1999,7 +1995,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingWAIT(G4_INST* inst)
         G4_SrcRegRegion* src0Region = src0->asSrcRegRegion();
         unsigned short RegFile = (unsigned short)EncodingHelper::GetSrcArchRegType(src0); //4 bits
         unsigned short RegNumValue = src0Region->ExRegNum(valid);
-        unsigned short EncodedRegNum = PackArchRegTypeAndArchRegFile( RegFile, RegNumValue );
+        unsigned short EncodedRegNum = PackArchRegTypeAndArchRegFile(RegFile, RegNumValue);
 
         oneSrc.Common.OperandControls.GetDestinationRegisterRegion_Align1().
             SetDestinationRegisterNumber_DestinationRegisterNumber(EncodedRegNum);
@@ -2030,13 +2026,13 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingWAIT(G4_INST* inst)
 
     oneSrc.Common.OperandControls.
         GetDestinationRegisterRegion_Align1().
-        SetDestinationHorizontalStride( G9HDL::HORZSTRIDE_1_ELEMENTS );
+        SetDestinationHorizontalStride(G9HDL::HORZSTRIDE_1_ELEMENTS);
 
     oneSrc.Common.OperandControls.SetDestinationAddressingMode(
-        TranslateVisaToHDLAddrMode(EncodingHelper::GetSrcAddrMode(src0)) );
+        TranslateVisaToHDLAddrMode(EncodingHelper::GetSrcAddrMode(src0)));
 
-    //if( EncodingHelper::GetSrcRegFile(src0)!=REG_FILE_A &&
-    //    EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED )
+    //if (EncodingHelper::GetSrcRegFile(src0)!=REG_FILE_A &&
+    //    EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED)
     //{
     //    bool repControl = EncodingHelper::GetRepControl(src0);
     //    uint32_t byteAddress = src0->getLinearizedStart();
@@ -2098,16 +2094,16 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingJMPI(G4_INST* inst)
 
     brOneSrc.GetOperandControl().
         GetDestinationRegisterRegion_Align1().
-        SetDestinationHorizontalStride( G9HDL::HORZSTRIDE_1_ELEMENTS );
+        SetDestinationHorizontalStride(G9HDL::HORZSTRIDE_1_ELEMENTS);
 
     //src0, but belongs to opndCtl dword
-    brOneSrc.GetOperandControl().SetSrc0Regfile( G9HDL::REGFILE_ARF );
+    brOneSrc.GetOperandControl().SetSrc0Regfile(G9HDL::REGFILE_ARF);
     brOneSrc.GetOperandControl().SetSrc0Srctype(GetOperandSrcHDLType(Type_UD));
 
     //END: OPND CONTROL WORD
 
     //BEGIN: src0
-    if ( inst->getSrc(0) )
+    if (inst->getSrc(0))
     {
         SrcOperandEncoder<G9HDL::EU_INSTRUCTION_BRANCH_ONE_SRC,0>::
             SetSourceAddressingMode(&brOneSrc,G9HDL::ADDRMODE_DIRECT);
@@ -2124,7 +2120,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingJMPI(G4_INST* inst)
             SetSourceSubRegisterNumber(&brOneSrc,0);
 
         brOneSrc.SetSource0_SourceWidth(G9HDL::WIDTH_1_ELEMENTS);
-        if ( inst->getSrc(0)->isLabel() )
+        if (inst->getSrc(0)->isLabel())
         {
             brOneSrc.SetSource0_SourceVerticalStride(G9HDL::VERTSTRIDE_0_ELEMENTS);
             brOneSrc.SetSource0_SourceHorizontalStride(G9HDL::HORZSTRIDE_0_ELEMENTS);
@@ -2132,17 +2128,16 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingJMPI(G4_INST* inst)
         }
     }
 
-    if ( inst->getSrc(0)                &&
-         inst->getSrc(0)->isSrcRegRegion() )
+    if (inst->getSrc(0)                &&
+         inst->getSrc(0)->isSrcRegRegion())
     {
 
         G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* ptr = (G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC*)&brOneSrc;
 
         SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG,1>::EncodeEuInstructionSourcesReg(
-            inst, inst->getSrc(0), ptr->GetRegsource() //by reference
-            );
+            inst, inst->getSrc(0), ptr->GetRegsource()); // by reference
 
-        ptr->GetRegsource().SetSrc1Regfile( TranslateVisaToHDLRegFile( EncodingHelper::GetSrcRegFile(inst->getSrc(0)) ) );
+        ptr->GetRegsource().SetSrc1Regfile(TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(inst->getSrc(0))));
 
         if (!inst->getSrc(0)->isImm())
         {
@@ -2181,8 +2176,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingCALL(G4_INST* inst)
         G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* ptr = (G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC*)&oneSrc;
 
         SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG, 1>::EncodeEuInstructionSourcesReg(
-            inst, inst->getSrc(0), ptr->GetRegsource() //by reference
-        );
+            inst, inst->getSrc(0), ptr->GetRegsource()); // by reference
 
         ptr->GetRegsource().SetSrc1Regfile(TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(inst->getSrc(0))));
 
@@ -2241,7 +2235,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingSplitSEND(G4_INST* ins
     G9HDL::EU_INSTRUCTION_SENDS sends;
     sends.Init();
 
-    EncodeSplitSend( inst, sends );
+    EncodeSplitSend(inst, sends);
 
     bin->DWords[0] = sends.GetDWORD(0);
     bin->DWords[1] = sends.GetDWORD(1);
@@ -2252,7 +2246,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingSplitSEND(G4_INST* ins
     G4_Operand *src3 = inst->getSrc(3);
     // additional extended msg desc to be encoded
     // FIXME: does it apply to regular SKL+ sends too?
-    if ( src3 && src3->isSrcRegRegion() && src3->asSrcRegRegion()->isA0() )
+    if (src3 && src3->isSrcRegRegion() && src3->asSrcRegRegion()->isA0())
     {
         bin->SetBits(bitsSendsSelReg32ExDesc_0, bitsSendsSelReg32ExDesc_1, 1);
         bin->SetBits(bitsSendsExDescRegNum_0, bitsSendsExDescRegNum_1,
@@ -2268,7 +2262,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingRegular(G4_INST* inst)
 {
     Status myStatus = SUCCESS;
 
-    MUST_BE_TRUE( !inst->isSplitSend(), "Improper instruction type called with DoAllEncodingRegular: sends or sendsc");
+    MUST_BE_TRUE(!inst->isSplitSend(), "Improper instruction type called with DoAllEncodingRegular: sends or sendsc");
 
     BinInst *bin = inst->getBinInst();
     int i=inst->getNumSrc();
@@ -2301,12 +2295,12 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingRegular(G4_INST* inst)
         EncodeTwoSrcInst(inst, twoSrc);
         if (inst->isSend())
         {
-            PatchSend( inst, &twoSrc );
+            PatchSend(inst, &twoSrc);
         }
-        else if(inst->isMath())
+        else if (inst->isMath())
         {
             //fixme: math is only for two-src encoding?
-            PatchMath( inst, &twoSrc );
+            PatchMath(inst, &twoSrc);
         }
 
         bin->DWords[0] = twoSrc.GetDWord(0);
@@ -2316,7 +2310,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingRegular(G4_INST* inst)
         break;
     case 3:
         {
-            if(inst->isAligned1Inst())
+            if (inst->isAligned1Inst())
             {
                 G9HDL::EU_INSTRUCTION_ALIGN1_THREE_SRC threeSrcAlign1;
                 threeSrcAlign1.Init();
@@ -2353,9 +2347,9 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncoding(G4_INST* inst)
     Status myStatus = SUCCESS;
     bool isFCCall = false, isFCRet = false;
 
-    if(inst->opcode() == G4_label) return myStatus;
+    if (inst->opcode() == G4_label) return myStatus;
 
-    if(inst->opcode() == G4_illegal)
+    if (inst->opcode() == G4_illegal)
         return FAILURE;
 
     EncodingHelper::mark3Src(inst);
@@ -2375,15 +2369,15 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncoding(G4_INST* inst)
             isFCRet = true;
         }
 
-        if( inst->opcode() == G4_jmpi )
+        if (inst->opcode() == G4_jmpi)
         {
-            DoAllEncodingJMPI( inst );
+            DoAllEncodingJMPI(inst);
         }
-        else if( inst->opcode() == G4_wait )
+        else if (inst->opcode() == G4_wait)
         {
-            DoAllEncodingWAIT( inst );
+            DoAllEncodingWAIT(inst);
         }
-        else if( inst->opcode() == G4_if ||
+        else if (inst->opcode() == G4_if ||
             inst->opcode() == G4_endif ||
             inst->opcode() == G4_else  ||
             inst->opcode() == G4_while ||
@@ -2391,28 +2385,28 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncoding(G4_INST* inst)
             inst->opcode() == G4_cont ||
             inst->opcode() == G4_halt ||
             inst->opcode() == G4_goto ||
-            inst->opcode() == G4_join )
+            inst->opcode() == G4_join)
         {
-            DoAllEncodingCF( inst );
+            DoAllEncodingCF(inst);
         }
-        else if ( inst->opcode() == G4_call )
+        else if (inst->opcode() == G4_call)
         {
-            DoAllEncodingCALL( inst );
+            DoAllEncodingCALL(inst);
         }
-        else if(inst->isSplitSend()) {
-            DoAllEncodingSplitSEND( inst );
+        else if (inst->isSplitSend()) {
+            DoAllEncodingSplitSEND(inst);
         }
-        else if ( !EncodingHelper::hasLabelString(inst) )  {
-            DoAllEncodingRegular( inst );
+        else if (!EncodingHelper::hasLabelString(inst))  {
+            DoAllEncodingRegular(inst);
         }
 
         //Epilog:
-        if(isFCCall == true)
+        if (isFCCall == true)
         {
             inst->setOpcode(G4_pseudo_fc_call);
         }
 
-        if(isFCRet == true)
+        if (isFCRet == true)
         {
             inst->setOpcode(G4_pseudo_fc_ret);
         }
@@ -2430,7 +2424,7 @@ void BinaryEncodingCNL::DoAll()
     FixInst();
     BinaryEncodingBase::InitPlatform();
     // BDW/CHV/SKL/BXT/CNL use the same compaction tables except from 3src.
-    for ( uint8_t i=0; i<(int)COMPACT_TABLE_SIZE; i++ )
+    for (uint8_t i=0; i<(int)COMPACT_TABLE_SIZE; i++)
     {
         BDWCompactControlTable.AddIndex(IVBCompactControlTable[i], i);
         BDWCompactSourceTable.AddIndex(IVBCompactSourceTable[i], i);
@@ -2453,7 +2447,7 @@ void BinaryEncodingCNL::DoAll()
     int numCompacted3SrcInst = 0;
 
     BB_LIST_ITER ib, bend(kernel.fg.end());
-    for(ib = kernel.fg.begin(); ib != bend; ++ib)
+    for (ib = kernel.fg.begin(); ib != bend; ++ib)
     {
         G4_BB *bb = *ib;
         int localInstNum = 0;
@@ -2482,9 +2476,9 @@ void BinaryEncodingCNL::DoAll()
                 bin->DWords[2] = 0;
                 bin->DWords[3] = 0;
 
-                DoAllEncoding( inst );
+                DoAllEncoding(inst);
 
-                if(inst->opcode() == G4_pseudo_fc_call ||
+                if (inst->opcode() == G4_pseudo_fc_call ||
                    inst->opcode() == G4_pseudo_fc_ret)
                 {
                     inst->getBinInst()->SetDontCompactFlag(true);
@@ -2507,7 +2501,7 @@ void BinaryEncodingCNL::DoAll()
                         if (kernel.getOption(vISA_OptReport))
                         {
                             numCompactedInst++;
-                            if ( inst->getBinInst()->GetIs3Src() )
+                            if (inst->getBinInst()->GetIs3Src())
                                 numCompacted3SrcInst++;
                         }
                         inst->setCompacted();

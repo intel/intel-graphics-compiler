@@ -39,7 +39,7 @@ namespace vISA
     {
     public:
         CISALabelInfo(int name_index, int label_table_index, bool kind) :m_name_index(name_index),
-            m_label_table_index(label_table_index), m_kind(kind){}
+            m_label_table_index(label_table_index), m_kind(kind) {}
 
         int m_name_index;
         int m_label_table_index;

@@ -3643,10 +3643,10 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
             {
                 G4_BB* predBB = *iter;
                 G4_INST* lastInst = predBB->back();
-                if ( (lastInst->opcode() == G4_while &&
+                if ((lastInst->opcode() == G4_while &&
                       lastInst->asCFInst()->getJip() == BB->getLabel()) ||
                      (lastInst->opcode() == G4_goto && lastInst->asCFInst()->isBackward() &&
-                      lastInst->asCFInst()->getUip() == BB->getLabel()) )
+                      lastInst->asCFInst()->getUip() == BB->getLabel()))
                 {
                     // joinBB is the BB right after goto/while
                     BB_LIST_ITER predIter = std::find(BBs.begin(), BBs.end(), predBB);
@@ -6249,7 +6249,7 @@ void G4_Kernel::calculateSimdSize()
         }
     }
 
-    if(GlobalRA::useGenericAugAlign())
+    if (GlobalRA::useGenericAugAlign())
         computeChannelSlicing();
 }
 

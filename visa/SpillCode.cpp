@@ -123,7 +123,7 @@ G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl, uint16_t num
                  type == Type_D, "addr reg's type should be UW or UD");
     MUST_BE_TRUE(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
     MUST_BE_TRUE(dcl->getNumElems() <= getNumAddrRegisters(), "Temp_ADDR exceeds 16 bytes");
-    G4_Declare* sp = builder.createDeclareNoLookup( name,
+    G4_Declare* sp = builder.createDeclareNoLookup(name,
                                             G4_ADDRESS,
                                             num_reg,
                                             1, // 1 row
@@ -165,16 +165,16 @@ void SpillManager::genRegMov(G4_BB* bb,
             G4_Type type = Type_W;
             const RegionDesc* srcRgn = NULL;
             unsigned execSize = i;
-            if(src->isFlag() || dst->isFlag())
+            if (src->isFlag() || dst->isFlag())
             {
 
                 type = Type_UW;
-                if(i == 2)
+                if (i == 2)
                 {
                     type = Type_UD;
                     execSize = 1;
                 }
-                else if(i > 2)
+                else if (i > 2)
                 {
                     ASSERT_USER(false, "unsupported flag width");
                 }
@@ -250,12 +250,12 @@ void SpillManager::replaceSpilledDst(G4_BB* bb,
         {
 
             G4_DstRegRegion rgn(*dst, spDcl->getRegVar()); // using spDcl as new base
-            if( rgn.getHorzStride() == UNDEFINED_SHORT &&
-                dst->isFlag() )
+            if (rgn.getHorzStride() == UNDEFINED_SHORT &&
+                dst->isFlag())
             {
                 // Flag as destination has undefined hstride
                 // For replacing it with spill range, make hstride 1
-                rgn.setHorzStride( 1 );
+                rgn.setHorzStride(1);
             }
             G4_DstRegRegion* d = builder.createDstRegRegion(rgn);
             inst->setDest(d);
@@ -273,20 +273,20 @@ void SpillManager::replaceSpilledDst(G4_BB* bb,
             G4_Declare* tmpDcl = NULL;
             bool match_found = false;
 
-            for(unsigned int j = 0; j < G4_MAX_SRCS; j++)
+            for (unsigned int j = 0; j < G4_MAX_SRCS; j++)
             {
                 G4_SrcRegRegion* analyzed_src = (G4_SrcRegRegion*) operands_analyzed[j];
-                if( analyzed_src != NULL &&
+                if (analyzed_src != NULL &&
                     analyzed_src->getBase()->asRegVar()->getDeclare() == dst->getBase()->asRegVar()->getDeclare() &&
                     analyzed_src->getSubRegOff() == dst->getSubRegOff() &&
-                    !analyzed_src->getRegion()->isRegionWH() )
+                    !analyzed_src->getRegion()->isRegionWH())
                 {
                     tmpDcl = declares_created[j];
                     match_found = true;
                 }
             }
 
-            if( !match_found )
+            if (!match_found)
             {
                 tmpDcl = createNewTempAddrDeclare(spDcl);
                 //
@@ -555,11 +555,11 @@ void SpillManager::createSpillLocations(G4_Kernel& kernel)
 
 bool isSpillCandidateForLifetimeOpRemoval(G4_INST* inst)
 {
-    if(inst->isPseudoKill())
+    if (inst->isPseudoKill())
     {
         return inst->getDst()->isSpilled();
     }
-    else if(inst->isLifeTimeEnd())
+    else if (inst->isLifeTimeEnd())
     {
         return inst->getSrc(0)->asSrcRegRegion()->isSpilled();
     }
@@ -586,7 +586,7 @@ void SpillManager::insertSpillCode()
         // In one iteration remove all spilled lifetime.start/end
         // ops.
         bb->erase(
-            std::remove_if(bb->begin(), bb->end(), isSpillCandidateForLifetimeOpRemoval),
+            std::remove_if (bb->begin(), bb->end(), isSpillCandidateForLifetimeOpRemoval),
             bb->end());
 
         for (INST_LIST_ITER inst_it = bb->begin(); inst_it != bb->end();)
@@ -608,7 +608,7 @@ void SpillManager::insertSpillCode()
             // Process predicate
             //
             G4_Predicate* predicate = inst->getPredicate();
-            if(predicate != NULL) {
+            if (predicate != NULL) {
                 replaceSpilledPredicate(bb, inst_it, inst);
             }
 
@@ -616,8 +616,8 @@ void SpillManager::insertSpillCode()
             // Process condMod
             //
             G4_CondMod* mod = inst->getCondMod();
-            if( mod != NULL &&
-                mod->getBase() != NULL ) {
+            if (mod != NULL &&
+                mod->getBase() != NULL) {
                 replaceSpilledFlagDst(bb, inst_it, inst);
             }
             inst_it++;

@@ -3528,7 +3528,7 @@ bool Augmentation::markNonDefaultMaskDef()
                 checkLRAAlign = true;
         }
 
-        if(checkLRAAlign)
+        if (checkLRAAlign)
         {
             auto dclLR = gra.getLocalLR(dcl);
             if (dclLR)
@@ -4359,9 +4359,9 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
         {
             G4_Declare* retVar = retIter->second;
             G4_Declare* otherDcl = kernel.fg.isPseudoVCADcl(firstDcl) ? secondDcl : firstDcl;
-            if(otherDcl->getRegVar()->isRegAllocPartaker())
+            if (otherDcl->getRegVar()->isRegAllocPartaker())
                 intf.checkAndSetIntf(otherDcl->getRegVar()->getId(), retVar->getRegVar()->getId());
-            else if((otherDclLR = gra.getLocalLR(otherDcl)) &&
+            else if ((otherDclLR = gra.getLocalLR(otherDcl)) &&
                 otherDclLR->getAssigned() &&
                 !otherDclLR->isEOT())
             {
@@ -5993,7 +5993,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         auto lr = (*iter);
 
         // in case child/parent was already spilled earlier, dont recolor
-        if(lr->isSpilled())
+        if (lr->isSpilled())
             continue;
 
         bool ret = assignColor(lr);
@@ -9760,8 +9760,7 @@ int GlobalRA::coloringRegAlloc()
     (inst->getDst() && inst->getSrc(0)) && \
     (inst->getDst()->getTopDcl() && inst->getSrc(0)->getTopDcl()) && \
     ((inst->getDst()->getTopDcl()->getRegFile() == G4_FLAG && inst->getSrc(0)->getTopDcl()->getRegFile() == G4_GRF) || \
-    (inst->getDst()->getTopDcl()->getRegFile() == G4_GRF && inst->getSrc(0)->getTopDcl()->getRegFile() == G4_FLAG)) \
-    )
+    (inst->getDst()->getTopDcl()->getRegFile() == G4_GRF && inst->getSrc(0)->getTopDcl()->getRegFile() == G4_FLAG)))
 
 #define IS_SPILL_KILL_CANDIDATE(preScratchAccess) \
     (preScratchAccess->isSpill && !preScratchAccess->fillInUse) \
@@ -9807,7 +9806,8 @@ void  FlagSpillCleanup::FlagLineraizedStartAndEnd(G4_Declare*  topdcl,
 /*
  * Reuse previous register
  */
-bool FlagSpillCleanup::replaceWithPreDcl(IR_Builder&     builder,
+bool FlagSpillCleanup::replaceWithPreDcl(
+    IR_Builder&     builder,
     SCRATCH_ACCESS* scratchAccess,
     SCRATCH_ACCESS* preScratchAccess)
 {
@@ -9921,7 +9921,8 @@ bool FlagSpillCleanup::replaceWithPreDcl(IR_Builder&     builder,
  *  2) and the corresponding scracth memory range is overlap with the memory of current scratch access.
  *  In both cases, the current fill can not be removed
  */
-bool FlagSpillCleanup::scratchKilledByPartial(SCRATCH_ACCESS* scratchAccess,
+bool FlagSpillCleanup::scratchKilledByPartial(
+    SCRATCH_ACCESS* scratchAccess,
     SCRATCH_ACCESS* preScratchAccess)
 {
     bool killed = false;
@@ -9955,7 +9956,8 @@ bool FlagSpillCleanup::scratchKilledByPartial(SCRATCH_ACCESS* scratchAccess,
  *  Record all killed GRF ranges.
  *  do merging of ranges when possible.
  */
-bool FlagSpillCleanup::addKilledGRFRanges(unsigned int    linearizedStart,
+bool FlagSpillCleanup::addKilledGRFRanges(
+    unsigned int    linearizedStart,
     unsigned int    linearizedEnd,
     SCRATCH_ACCESS* scratchAccess,
     G4_Predicate*   predicate)
@@ -10021,7 +10023,8 @@ bool FlagSpillCleanup::addKilledGRFRanges(unsigned int    linearizedStart,
 /*
  * Check if the register in previous scratch access is fully killed by current register define
  */
-bool FlagSpillCleanup::regFullyKilled(SCRATCH_ACCESS* scratchAccess,
+bool FlagSpillCleanup::regFullyKilled(
+    SCRATCH_ACCESS* scratchAccess,
     unsigned int        linearizedStart,
     unsigned int        linearizedEnd,
     unsigned short      maskFlag)
@@ -10049,7 +10052,8 @@ bool FlagSpillCleanup::regFullyKilled(SCRATCH_ACCESS* scratchAccess,
  *  Check only part of scratch register is killed, at the same time no overlap.
  *  This is to make sure if the associated fill is removed, the define register can be replaced with reuse register or not.
  */
-bool FlagSpillCleanup::inRangePartialKilled(SCRATCH_ACCESS* scratchAccess,
+bool FlagSpillCleanup::inRangePartialKilled(
+    SCRATCH_ACCESS* scratchAccess,
     unsigned int    linearizedStart,
     unsigned int    linearizedEnd,
     unsigned short  maskFlag)
@@ -10076,7 +10080,8 @@ bool FlagSpillCleanup::inRangePartialKilled(SCRATCH_ACCESS* scratchAccess,
 /*
  * Register kill analysis
  */
-bool FlagSpillCleanup::regDefineAnalysis(SCRATCH_ACCESS* scratchAccess,
+bool FlagSpillCleanup::regDefineAnalysis(
+    SCRATCH_ACCESS* scratchAccess,
     unsigned int       linearizedStart,
     unsigned int       linearizedEnd,
     unsigned short     maskFlag,
@@ -10101,7 +10106,8 @@ bool FlagSpillCleanup::regDefineAnalysis(SCRATCH_ACCESS* scratchAccess,
     return false;
 }
 
-void FlagSpillCleanup::regDefineFlag(SCRATCH_PTR_LIST* scratchTraceList,
+void FlagSpillCleanup::regDefineFlag(
+    SCRATCH_PTR_LIST* scratchTraceList,
     G4_INST*          inst,
     G4_Operand*       opnd)
 {
@@ -10189,7 +10195,8 @@ void FlagSpillCleanup::regDefineFlag(SCRATCH_PTR_LIST* scratchTraceList,
  *  Analysis the use of register to determine if the scratchAccess can be removed or not
  *
  */
-bool FlagSpillCleanup::regUseAnalysis(SCRATCH_ACCESS* scratchAccess,
+bool FlagSpillCleanup::regUseAnalysis(
+    SCRATCH_ACCESS* scratchAccess,
     unsigned int    linearizedStart,
     unsigned int    linearizedEnd)
 {
@@ -10234,7 +10241,8 @@ bool FlagSpillCleanup::regUseAnalysis(SCRATCH_ACCESS* scratchAccess,
     return false;
 }
 
-void FlagSpillCleanup::regUseFlag(SCRATCH_PTR_LIST*  scratchTraceList,
+void FlagSpillCleanup::regUseFlag(
+    SCRATCH_PTR_LIST*  scratchTraceList,
     G4_INST*           inst,
     G4_Operand*        opnd,
     int                opndIndex)
@@ -10286,7 +10294,8 @@ void FlagSpillCleanup::regUseFlag(SCRATCH_PTR_LIST*  scratchTraceList,
     }
 }
 
-void FlagSpillCleanup::regUseScratch(SCRATCH_PTR_LIST*  scratchTraceList,
+void FlagSpillCleanup::regUseScratch(
+    SCRATCH_PTR_LIST*  scratchTraceList,
     G4_INST*           inst,
     G4_Operand*        opnd,
     Gen4_Operand_Number opndNum)
@@ -10318,7 +10327,8 @@ void FlagSpillCleanup::regUseScratch(SCRATCH_PTR_LIST*  scratchTraceList,
     }
 }
 
-void FlagSpillCleanup::initializeScratchAccess(SCRATCH_ACCESS *scratchAccess, INST_LIST_ITER inst_it)
+void FlagSpillCleanup::initializeScratchAccess(
+    SCRATCH_ACCESS *scratchAccess, INST_LIST_ITER inst_it)
 {
 #ifdef _DEBUG
     scratchAccess->regNum = -1;
@@ -10359,7 +10369,8 @@ void FlagSpillCleanup::initializeScratchAccess(SCRATCH_ACCESS *scratchAccess, IN
     return;
 }
 
-bool FlagSpillCleanup::initializeFlagScratchAccess(SCRATCH_PTR_VEC* scratchAccessList,
+bool FlagSpillCleanup::initializeFlagScratchAccess(
+    SCRATCH_PTR_VEC* scratchAccessList,
     SCRATCH_ACCESS*   &scratchAccess,
     INST_LIST_ITER    inst_it)
 {
@@ -10442,7 +10453,8 @@ void FlagSpillCleanup::freeScratchAccess(SCRATCH_PTR_VEC *scratchAccessList)
 }
 
 //Check the flag define instruction.
-void FlagSpillCleanup::flagDefine(SCRATCH_PTR_LIST& scratchTraceList,
+void FlagSpillCleanup::flagDefine(
+    SCRATCH_PTR_LIST& scratchTraceList,
     G4_INST*          inst)
 {
     G4_DstRegRegion* dst = inst->getDst();
@@ -10630,7 +10642,8 @@ void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst
     return;
 }
 
-bool FlagSpillCleanup::flagScratchDefineUse(G4_BB* bb,
+bool FlagSpillCleanup::flagScratchDefineUse(
+    G4_BB* bb,
     SCRATCH_PTR_LIST*  scratchTraceList,
     SCRATCH_PTR_VEC*  candidateList,
     SCRATCH_ACCESS*    scratchAccess,
@@ -10700,7 +10713,8 @@ bool FlagSpillCleanup::flagScratchDefineUse(G4_BB* bb,
     return false;
 }
 
-void FlagSpillCleanup::flagSpillFillClean(G4_BB* bb,
+void FlagSpillCleanup::flagSpillFillClean(
+    G4_BB* bb,
     INST_LIST_ITER     inst_it,
     SCRATCH_PTR_VEC&  scratchAccessList,
     SCRATCH_PTR_LIST&  scratchTraceList,
@@ -10751,7 +10765,8 @@ void FlagSpillCleanup::flagSpillFillClean(G4_BB* bb,
 #define SPILL_DEBUG_THRESHOLD 0xffffffff //25
 #endif
 
-void FlagSpillCleanup::regFillClean(IR_Builder&        builder,
+void FlagSpillCleanup::regFillClean(
+    IR_Builder&        builder,
     G4_BB*             bb,
     SCRATCH_PTR_VEC&  candidateList,
     CLEAN_NUM_PROFILE* clean_num_profile)
@@ -10849,7 +10864,8 @@ void FlagSpillCleanup::regFillClean(IR_Builder&        builder,
     return;
 }
 
-void FlagSpillCleanup::regSpillClean(IR_Builder&        builder,
+void FlagSpillCleanup::regSpillClean(
+    IR_Builder&        builder,
     G4_BB*             bb,
     SCRATCH_PTR_VEC&  candidateList,
     CLEAN_NUM_PROFILE* clean_num_profile)
@@ -10894,7 +10910,8 @@ void FlagSpillCleanup::regSpillClean(IR_Builder&        builder,
 
 // Replace Scratch Block Read/Write message with OWord Block Read/Write message
 // For spill code clean up, clean target may exist in all WAW, RAR, RAW, WAR.
-void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
+void FlagSpillCleanup::spillFillCodeCleanFlag(
+    IR_Builder&        builder,
     G4_Kernel&         kernel,
     CLEAN_NUM_PROFILE* clean_num_profile)
 {
@@ -10986,7 +11003,8 @@ void GlobalRA::insertPhyRegDecls()
         if (grfUsed[i] == true)
         {
             const char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
-            G4_Declare* phyRegDcl = builder.createDeclareNoLookup(dclName, G4_GRF, NUM_DWORDS_PER_GRF, 1, Type_D, Regular, NULL, NULL, 0);
+            G4_Declare* phyRegDcl = builder.createDeclareNoLookup(
+                dclName, G4_GRF, NUM_DWORDS_PER_GRF, 1, Type_D, Regular, NULL, NULL, 0);
             G4_Greg* phyReg = builder.phyregpool.getGreg(i);
             phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
             GRFDclsForHRA[i] = phyRegDcl;
@@ -11034,7 +11052,9 @@ void GlobalRA::computePhyReg()
             for (unsigned j = 0, size = inst->getNumSrc(); j < size; j++)
             {
                 G4_Operand *curr_src = inst->getSrc(j);
-                if (!curr_src || curr_src->isImm() || (inst->opcode() == G4_math && j == 1 && curr_src->isNullReg()) || curr_src->isLabel())
+                if (!curr_src || curr_src->isImm() ||
+                    (inst->opcode() == G4_math && j == 1 && curr_src->isNullReg()) ||
+                    curr_src->isLabel())
                 {
                     continue;
                 }
@@ -11637,7 +11657,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
             printf("\t$%d\n", inst->getCISAOff());
         }
         // process all reaching defs
-        for (auto rid = rd.begin(); rid != rd.end(); )
+        for (auto rid = rd.begin(); rid != rd.end();)
         {
             auto& reachingDef = (*rid);
 
@@ -11661,7 +11681,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
         for (auto rid = rd.begin(); rid != rd.end();)
         {
             auto ridBB = std::get<1>(*rid);
-            for (auto rid1 = rd.begin(); rid1 != rd.end(); )
+            for (auto rid1 = rd.begin(); rid1 != rd.end();)
             {
                 if (*rid == *rid1)
                 {
@@ -12390,7 +12410,7 @@ bool Interference::dumpIntf(const char* s) const
 
 void LiveRange::setAllocHint(unsigned int h)
 {
-    if((h + dcl->getNumRows()) <= gra.kernel.getNumRegTotal())
+    if ((h + dcl->getNumRows()) <= gra.kernel.getNumRegTotal())
         allocHint = h;
 }
 

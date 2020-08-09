@@ -70,7 +70,7 @@ void Optimizer::LVN()
         numInstsRemoved += ::LVN::removeRedundantSamplerMovs(kernel, bb);
     }
 
-    if(kernel.getOption(vISA_OptReport))
+    if (kernel.getOption(vISA_OptReport))
     {
         std::ofstream optreport;
         getOptReportStream(optreport, kernel.getOptions());
@@ -82,7 +82,7 @@ void Optimizer::LVN()
 
 // helper functions
 
-static int getDstSubReg( G4_DstRegRegion *dst )
+static int getDstSubReg(G4_DstRegRegion *dst)
 {
     int dstSubReg;
     if (dst->getBase()->isPhyReg())
@@ -98,9 +98,9 @@ static int getDstSubReg( G4_DstRegRegion *dst )
     return dstSubReg;
 }
 
-static int getSrcSubReg( G4_Operand *src )
+static int getSrcSubReg(G4_Operand *src)
 {
-    MUST_BE_TRUE( src->isSrcRegRegion(), "expect Src Reg Region" );
+    MUST_BE_TRUE(src->isSrcRegRegion(), "expect Src Reg Region");
     int srcSubReg;
     if (src->asSrcRegRegion()->getBase()->isPhyReg())
     {
@@ -191,7 +191,7 @@ void Optimizer::countBankConflicts()
 
     for (auto curBB : kernel.fg)
     {
-        for(INST_LIST_ITER inst_it = curBB->begin();
+        for (INST_LIST_ITER inst_it = curBB->begin();
             inst_it != curBB->end();
             inst_it++)
         {
@@ -363,19 +363,19 @@ void Optimizer::insertHashMovs()
     // mov (16) null<1>:d        lo32 {NoMask}
     // mov (16) null<1>:d        hi32 {NoMask}
     //
-    for(BB_LIST_ITER bb_it = kernel.fg.begin();
+    for (BB_LIST_ITER bb_it = kernel.fg.begin();
         bb_it != kernel.fg.end();
         bb_it++)
     {
         G4_BB* bb = (*bb_it);
 
-        for(INST_LIST_ITER inst_it = bb->begin();
+        for (INST_LIST_ITER inst_it = bb->begin();
             inst_it != bb->end();
             inst_it++)
         {
             G4_INST* inst = (*inst_it);
 
-            if(inst->isEOT())
+            if (inst->isEOT())
             {
                 // We have to insert new instructions after EOT.
                 // Lexically, EOT could even be in the middle
@@ -414,7 +414,7 @@ void Optimizer::insertHashMovs()
 
 bool isLifetimeOpRemovalCandidate(G4_INST* inst)
 {
-    if( inst->isPseudoKill() || inst->isLifeTimeEnd() )
+    if (inst->isPseudoKill() || inst->isLifeTimeEnd())
     {
         return true;
     }
@@ -439,13 +439,13 @@ void Optimizer::removeLifetimeOps()
     // Remove all pseudo_kill and lifetime.end
     // instructions.
     // Also remove pseudo_use instructions.
-    for( BB_LIST_ITER bbs = kernel.fg.begin();
+    for (BB_LIST_ITER bbs = kernel.fg.begin();
         bbs != fg.end();
-        bbs++ )
+        bbs++)
     {
         G4_BB* bb = *bbs;
         bb->erase(
-            std::remove_if(bb->begin(), bb->end(),
+            std::remove_if (bb->begin(), bb->end(),
             [](G4_INST* inst) { return inst->isPseudoKill() || inst->isLifeTimeEnd() || inst->isPseudoUse(); }),
             bb->end());
     }
@@ -1172,28 +1172,28 @@ int Optimizer::optimization()
 //
 void Optimizer::insertInstLabels()
 {
-    for( BB_LIST_CITER iter = fg.cbegin(), bend = fg.cend(); iter != bend; ++iter )
+    for (BB_LIST_CITER iter = fg.cbegin(), bend = fg.cend(); iter != bend; ++iter)
     {
         G4_BB* bb = *iter;
         INST_LIST_ITER iter2 = bb->begin();
         INST_LIST_ITER iend  = bb->end();
-        while( iter2 != iend )
+        while (iter2 != iend)
         {
             INST_LIST_ITER currIter = iter2;
             ++iter2;
 
             G4_INST* inst = *currIter;
-            G4_Label* endifLabel = fg.getLabelForEndif(inst);
+            G4_Label* endifLabel = fg.getLabelForEndif (inst);
             if (endifLabel)
             {
-                G4_INST* labelInst = fg.createNewLabelInst( endifLabel, inst->getLineNo(), inst->getCISAOff() );
-                bb->insertBefore( currIter, labelInst );
+                G4_INST* labelInst = fg.createNewLabelInst(endifLabel, inst->getLineNo(), inst->getCISAOff());
+                bb->insertBefore(currIter, labelInst);
             }
         }
     }
 
     // Patch labels if necessary.
-    for(auto iter = fg.begin(), iend = fg.end(); iter != iend; ++iter)
+    for (auto iter = fg.begin(), iend = fg.end(); iter != iend; ++iter)
     {
         G4_BB *bb = *iter;
         if (bb->empty())
@@ -1280,9 +1280,9 @@ void Optimizer::reverseOffsetProp(
     unsigned int srcNum,
     INST_LIST_ITER lastIter,
     INST_LIST_ITER iend
-    )
+   )
 {
-    if( addrRegInfo[subReg].usedImmed && addrRegInfo[subReg].canUseImmed )
+    if (addrRegInfo[subReg].usedImmed && addrRegInfo[subReg].canUseImmed)
     {
         INST_LIST_ITER iter;
         G4_INST *inst;
@@ -1290,65 +1290,65 @@ void Optimizer::reverseOffsetProp(
         G4_DstRegRegion *inst_dst;
         for (iter = addrRegInfo[subReg].iter; iter != lastIter; ++iter)
         {
-            if( iter == lastIter )
+            if (iter == lastIter)
                 break;
             inst = *iter;
-            if( inst->isDead())
+            if (inst->isDead())
                 continue;
             inst_dst = inst->getDst();
-            if( inst_dst &&
-                inst_dst->getRegAccess() != Direct )
+            if (inst_dst &&
+                inst_dst->getRegAccess() != Direct)
             {
-                int subReg1 = getDstSubReg( inst_dst );
+                int subReg1 = getDstSubReg(inst_dst);
 
                 short currOff = inst_dst->getAddrImm();
-                if( subReg1 == subReg )
+                if (subReg1 == subReg)
                 {
                     // create a new dst
-                    G4_DstRegRegion tmpRgn( *inst_dst );
+                    G4_DstRegRegion tmpRgn(*inst_dst);
                     G4_DstRegRegion *newDst = &tmpRgn;
-                    newDst->setImmAddrOff( short(currOff - addrRegInfo[subReg].immAddrOff) );
-                    inst->setDest( builder.createDstRegRegion(*newDst) );
+                    newDst->setImmAddrOff(short(currOff - addrRegInfo[subReg].immAddrOff));
+                    inst->setDest(builder.createDstRegRegion(*newDst));
                 }
             }
             for (int i = 0; i < inst->getNumSrc(); i++)
             {
                 inst_src = inst->getSrc(i);
-                if( inst_src && inst_src->isSrcRegRegion() &&
-                    inst_src->asSrcRegRegion()->getRegAccess() != Direct )
+                if (inst_src && inst_src->isSrcRegRegion() &&
+                    inst_src->asSrcRegRegion()->getRegAccess() != Direct)
                 {
-                    int subReg1 = getSrcSubReg( inst_src );
+                    int subReg1 = getSrcSubReg(inst_src);
 
                     short currOff = inst_src->asSrcRegRegion()->getAddrImm();
-                    if( subReg1 == subReg )
+                    if (subReg1 == subReg)
                     {
                         G4_SrcRegRegion tmpRgn(*inst_src->asSrcRegRegion());
                         G4_SrcRegRegion *newSrc = &tmpRgn;
-                        newSrc->setImmAddrOff( short(currOff - addrRegInfo[subReg].immAddrOff) );
-                        inst->setSrc( builder.createSrcRegRegion(*newSrc) , i );
+                        newSrc->setImmAddrOff(short(currOff - addrRegInfo[subReg].immAddrOff));
+                        inst->setSrc(builder.createSrcRegRegion(*newSrc) , i);
                     }
                 }
             }
         }
         // Immed has been propagated to srcs before this src in *ii, also reverse this
-        if( srcNum > 0 )
+        if (srcNum > 0)
         {
             inst = *lastIter;
             for (unsigned i = 0; i < srcNum; i++)
             {
                 inst_src = inst->getSrc(i);
-                if( inst_src && inst_src->isSrcRegRegion() &&
-                    inst_src->asSrcRegRegion()->getRegAccess() != Direct )
+                if (inst_src && inst_src->isSrcRegRegion() &&
+                    inst_src->asSrcRegRegion()->getRegAccess() != Direct)
                 {
-                    int subReg1 = getSrcSubReg( inst_src );
+                    int subReg1 = getSrcSubReg(inst_src);
 
                     short currOff = inst_src->asSrcRegRegion()->getAddrImm();
-                    if( subReg1 == subReg )
+                    if (subReg1 == subReg)
                     {
                         G4_SrcRegRegion tmpRgn(*inst_src->asSrcRegRegion());
                         G4_SrcRegRegion *newSrc = &tmpRgn;
-                        newSrc->setImmAddrOff( short(currOff - addrRegInfo[subReg].immAddrOff) );
-                        inst->setSrc( builder.createSrcRegRegion(*newSrc) , i );
+                        newSrc->setImmAddrOff(short(currOff - addrRegInfo[subReg].immAddrOff));
+                        inst->setSrc(builder.createSrcRegRegion(*newSrc) , i);
                     }
                 }
             }
@@ -1371,12 +1371,12 @@ void Optimizer::FoldAddrImmediate()
     G4_Operand *src0, *src1;
     unsigned num_srcs;
 
-    for(ib = fg.begin(); ib != bend; ++ib)
+    for (ib = fg.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = (*ib);
         INST_LIST_ITER ii, iend(bb->end());
         // reset address offset info
-        for(unsigned i = 0; i < getNumAddrRegisters(); i++)
+        for (unsigned i = 0; i < getNumAddrRegisters(); i++)
         {
             addrRegInfo[i].subReg = 0;
             addrRegInfo[i].immAddrOff = 0;
@@ -1388,7 +1388,7 @@ void Optimizer::FoldAddrImmediate()
         for (ii = bb->begin(); ii != iend; ii++)
         {
             G4_INST *inst = *ii;
-            if(inst->isDead())
+            if (inst->isDead())
             {
                 continue;
             }
@@ -1396,12 +1396,12 @@ void Optimizer::FoldAddrImmediate()
             dst = inst->getDst();
             if (dst)
             {
-                dst_subReg = getDstSubReg( dst );
+                dst_subReg = getDstSubReg(dst);
             }
             src0 = inst->getSrc(0);
-            if( src0 && src0->isSrcRegRegion() )
+            if (src0 && src0->isSrcRegRegion())
             {
-                src0_subReg = getSrcSubReg( src0 );
+                src0_subReg = getSrcSubReg(src0);
             }
             src1 = inst->getSrc(1);
 
@@ -1421,17 +1421,17 @@ void Optimizer::FoldAddrImmediate()
                 src0 && src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegAccess() == Direct &&
                 dst->isAreg() && dst->isA0() &&
                 src0->isAreg() && src0->asSrcRegRegion()->isA0() &&
-                dst_subReg == src0_subReg )
+                dst_subReg == src0_subReg)
             {
                 // since there is use of a0.x here, we can not remove the former def of a0.x
                 // reverse immed offset propagation
-                reverseOffsetProp( addrRegInfo, dst_subReg, 0, ii, iend );
+                reverseOffsetProp(addrRegInfo, dst_subReg, 0, ii, iend);
 
                 int64_t offset = src1->asImm()->getImm();
-                if( offset >= -512 && offset <= 511 && offset%0x20 == 0)
+                if (offset >= -512 && offset <= 511 && offset%0x20 == 0)
                 {
                     // this kills the previous def on a0.x
-                    if( addrRegInfo[dst_subReg].canRemoveInst && addrRegInfo[dst_subReg].iter != iend )
+                    if (addrRegInfo[dst_subReg].canRemoveInst && addrRegInfo[dst_subReg].iter != iend)
                     {
                         // mark dead
                         (*(addrRegInfo[dst_subReg].iter))->markDead();
@@ -1451,53 +1451,53 @@ void Optimizer::FoldAddrImmediate()
                 for (unsigned i = 0; i < num_srcs; i++)
                 {
                     src = inst->getSrc(i);
-                    if( src && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() == Direct &&
+                    if (src && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() == Direct &&
                         src->asSrcRegRegion()->isAreg() && src->asSrcRegRegion()->isA0())
                     {
                         // TODO: show if an inst is generated for spill code
                         // if there is no regVar for this srcRegion, the physical register is hard-wired in input or generated by spillCode.
                         // in this case, the subregister info is in the subRegOff of G4_SrcRegRegion
                         // this also applies to dst register
-                        int subReg = getSrcSubReg( src );
+                        int subReg = getSrcSubReg(src);
 
                         // it is possible that several elements are used
                         int width, hstride, vstride, outerloop = 1;
                         width = src->asSrcRegRegion()->getRegion()->width;
                         hstride = src->asSrcRegRegion()->getRegion()->horzStride;
                         vstride = src->asSrcRegRegion()->getRegion()->vertStride;
-                        if( vstride != 0 )
+                        if (vstride != 0)
                         {
                             outerloop = inst->getExecSize() / vstride;
                         }
 
-                        for( int k = 0; k < outerloop; k++ )
+                        for (int k = 0; k < outerloop; k++)
                         {
-                            for( int j = 0; j < width; j++ )
+                            for (int j = 0; j < width; j++)
                             {
                                 int currSubreg = subReg + k * vstride + j * hstride;
                                 // there may be inst whose src or dst addr immediate offset are already changed
                                 // reverse the change
-                                reverseOffsetProp( addrRegInfo, currSubreg, i, ii, iend );
+                                reverseOffsetProp(addrRegInfo, currSubreg, i, ii, iend);
                             }
                         }
                     }
                 }
                 // use of address register in index region
-                for(unsigned i = 0; i < num_srcs; i++)
+                for (unsigned i = 0; i < num_srcs; i++)
                 {
                     src = inst->getSrc(i);
-                    if( src && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() != Direct)
+                    if (src && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() != Direct)
                     {
-                        int subReg = getSrcSubReg( src );
+                        int subReg = getSrcSubReg(src);
 
                         // if VxH is used and more than one sub registers are used in addressing
                         // do not fold the immediate even though they have the same immediate value
                         unsigned short vertStride = src->asSrcRegRegion()->getRegion()->vertStride;
-                        if( vertStride == UNDEFINED_SHORT ||
-                            (vertStride > 0 && (unsigned short)inst->getExecSize() / vertStride > 1 ))
+                        if (vertStride == UNDEFINED_SHORT ||
+                            (vertStride > 0 && (unsigned short)inst->getExecSize() / vertStride > 1))
                         {
                             int numSubReg = 0;
-                            if( vertStride == UNDEFINED_SHORT )
+                            if (vertStride == UNDEFINED_SHORT)
                             {
                                 numSubReg = inst->getExecSize()/src->asSrcRegRegion()->getRegion()->width;
                             }
@@ -1505,32 +1505,32 @@ void Optimizer::FoldAddrImmediate()
                             {
                                 numSubReg = 1; //inst->getExecSize()/vertStride;
                             }
-                            for( int j = subReg; j < subReg + numSubReg; j++ )
+                            for (int j = subReg; j < subReg + numSubReg; j++)
                             {
-                                reverseOffsetProp( addrRegInfo, j, i, ii, iend );
+                                reverseOffsetProp(addrRegInfo, j, i, ii, iend);
                             }
                         }
                         else
                         {
                             // we check the existing address reg imm offset.
                             short currOff = src->asSrcRegRegion()->getAddrImm();
-                            if( addrRegInfo[subReg].canUseImmed )
+                            if (addrRegInfo[subReg].canUseImmed)
                             {
-                                if( currOff % 0x20 == 0 &&
+                                if (currOff % 0x20 == 0 &&
                                     (currOff + addrRegInfo[subReg].immAddrOff) <= 511 &&
                                     (currOff + addrRegInfo[subReg].immAddrOff) >= -512)
                                 {
                                     G4_SrcRegRegion tmpRgn(*src->asSrcRegRegion());
                                     G4_SrcRegRegion* newSrc = &tmpRgn;
-                                    newSrc->setImmAddrOff( short(currOff + addrRegInfo[subReg].immAddrOff) );
-                                    inst->setSrc( builder.createSrcRegRegion(*newSrc), i );
+                                    newSrc->setImmAddrOff(short(currOff + addrRegInfo[subReg].immAddrOff));
+                                    inst->setSrc(builder.createSrcRegRegion(*newSrc), i);
 
                                     addrRegInfo[subReg].usedImmed = true;
                                 }
                                 else
                                 {
                                     // if the offset can not be folded into all uses of a0.0, reverse the former folding
-                                    reverseOffsetProp( addrRegInfo, subReg, i, ii, iend );
+                                    reverseOffsetProp(addrRegInfo, subReg, i, ii, iend);
                                 }
                             }
                         }
@@ -1540,17 +1540,17 @@ void Optimizer::FoldAddrImmediate()
                 {
                     // make sure the addr reg is not redefined
                     // direct access to a0.x
-                    if( dst->isAreg() && dst->getRegAccess() == Direct && dst->isA0() )
+                    if (dst->isAreg() && dst->getRegAccess() == Direct && dst->isA0())
                     {
                         int width, hstride;
                         width = inst->getExecSize();
                         hstride = dst->getHorzStride();
 
-                        for( int j = 0; j < width; j++ )
+                        for (int j = 0; j < width; j++)
                         {
                             int currSubreg = dst_subReg + j * hstride;
                             // this kills the previous def on a0.x
-                            if( addrRegInfo[currSubreg].iter != iend && addrRegInfo[currSubreg].canRemoveInst )
+                            if (addrRegInfo[currSubreg].iter != iend && addrRegInfo[currSubreg].canRemoveInst)
                             {
                                 // mark dead
                                 (*(addrRegInfo[currSubreg].iter))->markDead();
@@ -1563,26 +1563,26 @@ void Optimizer::FoldAddrImmediate()
                         }
                     }
                     // check if dst is indirectly addressed
-                    else if( dst->getRegAccess() != Direct )
+                    else if (dst->getRegAccess() != Direct)
                     {
                         short currOff = dst->getAddrImm();
-                        if( addrRegInfo[dst_subReg].canUseImmed )
+                        if (addrRegInfo[dst_subReg].canUseImmed)
                         {
-                            if( currOff % 0x20 == 0 &&
+                            if (currOff % 0x20 == 0 &&
                                 (currOff + addrRegInfo[dst_subReg].immAddrOff) <= 511 &&
-                                (currOff + addrRegInfo[dst_subReg].immAddrOff) >= -512 )
+                                (currOff + addrRegInfo[dst_subReg].immAddrOff) >= -512)
                             {
                                 // create a new dst
-                                G4_DstRegRegion tmpRgn( *dst );
+                                G4_DstRegRegion tmpRgn(*dst);
                                 G4_DstRegRegion *newDst = &tmpRgn;
-                                newDst->setImmAddrOff( short(currOff + addrRegInfo[dst_subReg].immAddrOff) );
-                                inst->setDest( builder.createDstRegRegion( *newDst ) );
+                                newDst->setImmAddrOff(short(currOff + addrRegInfo[dst_subReg].immAddrOff));
+                                inst->setDest(builder.createDstRegRegion(*newDst));
                                 addrRegInfo[dst_subReg].usedImmed = true;
                             }
                             else
                             {
                                 // if the offset can not be folded into all uses of a0.0, reverse the former folding
-                                reverseOffsetProp( addrRegInfo, dst_subReg, 0, ii, iend );
+                                reverseOffsetProp(addrRegInfo, dst_subReg, 0, ii, iend);
                             }
                         }
                     }
@@ -1594,14 +1594,14 @@ void Optimizer::FoldAddrImmediate()
         for (unsigned i = 0; i < getNumAddrRegisters(); i++)
         {
             // reverse immed offset propagation
-            reverseOffsetProp( addrRegInfo, i, 0, iend, iend );
+            reverseOffsetProp(addrRegInfo, i, 0, iend, iend);
         }
         // remove the ADD instructions that marked as dead
-        for(ii = bb->begin(); ii != bb->end();)
+        for (ii = bb->begin(); ii != bb->end();)
         {
             G4_INST *inst = *ii;
             INST_LIST_ITER curr = ii++;
-            if( inst->isDead() )
+            if (inst->isDead())
             {
                 bb->erase(curr);
             }
@@ -1610,25 +1610,25 @@ void Optimizer::FoldAddrImmediate()
 
     delete [] addrRegInfo;
 }
-G4_SrcModifier Optimizer::mergeModifier( G4_Operand *src, G4_Operand *use )
+G4_SrcModifier Optimizer::mergeModifier(G4_Operand *src, G4_Operand *use)
 {
-    if( ( src == NULL || !src->isSrcRegRegion() )  && use && use->isSrcRegRegion() ){
+    if ((src == NULL || !src->isSrcRegRegion())  && use && use->isSrcRegRegion()) {
         return use->asSrcRegRegion()->getModifier();
-    }else if( ( use == NULL || !use->isSrcRegRegion() ) && src && src->isSrcRegRegion() ){
+    }else if ((use == NULL || !use->isSrcRegRegion()) && src && src->isSrcRegRegion()) {
         return src->asSrcRegRegion()->getModifier();
-    }else if( src && src->isSrcRegRegion() && use && use->isSrcRegRegion() ){
+    }else if (src && src->isSrcRegRegion() && use && use->isSrcRegRegion()) {
         G4_SrcModifier mod1 = src->asSrcRegRegion()->getModifier(), mod2 = use->asSrcRegRegion()->getModifier();
-        if( mod2 == Mod_Abs || mod2 == Mod_Minus_Abs ){
+        if (mod2 == Mod_Abs || mod2 == Mod_Minus_Abs) {
             return mod2;
-        }else if( mod2 == Mod_src_undef ){
+        }else if (mod2 == Mod_src_undef) {
             return mod1;
         }else{
             // mod2 == Minus
-            if( mod1 == Mod_Minus ){
+            if (mod1 == Mod_Minus) {
                 return Mod_src_undef;
-            }else if( mod1 == Mod_Abs ){
+            }else if (mod1 == Mod_Abs) {
                 return Mod_Minus_Abs;
-            }else if( mod1 == Mod_Minus_Abs ){
+            }else if (mod1 == Mod_Minus_Abs) {
                 return Mod_Abs;
             }else{
                 return mod2;
@@ -2138,7 +2138,7 @@ void Optimizer::newLocalDefHoisting()
 //
 //  returns Type_UNDEF if no appropriate type can be found
 //
-static G4_Type findConstFoldCommonType( G4_Type type1, G4_Type type2 )
+static G4_Type findConstFoldCommonType(G4_Type type1, G4_Type type2)
 {
     if (IS_TYPE_INT(type1) && IS_TYPE_INT(type2))
     {
@@ -2436,7 +2436,7 @@ void Optimizer::reassociateConst()
                 }
             }
         }
-        BB->erase(std::remove_if(BB->begin(), BB->end(), [](G4_INST* inst) { return inst->isDead(); }),
+        BB->erase(std::remove_if (BB->begin(), BB->end(), [](G4_INST* inst) { return inst->isDead(); }),
             BB->end());
     }
 
@@ -2548,7 +2548,7 @@ G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
 // Restrictions:
 // - operand type cannot be float or Q/UQ
 // - saturation is not allowed
-void Optimizer::doConsFolding( G4_INST *inst )
+void Optimizer::doConsFolding(G4_INST *inst)
 {
     G4_Operand *src0, *src1;
 
@@ -2567,9 +2567,9 @@ void Optimizer::doConsFolding( G4_INST *inst )
     if (newSrc != NULL)
     {
         // change instruction into a MOV
-        inst->setOpcode( G4_mov );
-        inst->setSrc( newSrc, 0 );
-        inst->setSrc( NULL, 1 );
+        inst->setOpcode(G4_mov);
+        inst->setSrc(newSrc, 0);
+        inst->setSrc(NULL, 1);
     }
 }
 
@@ -2578,30 +2578,30 @@ static void hoistUseInst(G4_BB *bb, G4_INST *inst , INST_LIST_ITER forwardIter, 
     // check if we can move the use inst up.
     // currently we do not handle multiple use for this optimization
     G4_INST* useInst = inst->use_front().first;
-    if( inst->hasOneUse() )
+    if (inst->hasOneUse())
     {
         forwardIter--;
         INST_LIST_ITER backwardIter = forwardIter;
         INST_LIST_ITER instListEnd = bb->end();
-        while( backwardIter != instListEnd &&
-               *backwardIter != useInst )
+        while (backwardIter != instListEnd &&
+               *backwardIter != useInst)
         {
             backwardIter++;
         }
 
         INST_LIST_ITER useInstIter = backwardIter;
         backwardIter--;
-        while( backwardIter != forwardIter )
+        while (backwardIter != forwardIter)
         {
-            if( useInst->isWAWdep(*backwardIter) ||
+            if (useInst->isWAWdep(*backwardIter) ||
                 useInst->isRAWdep(*backwardIter) ||
-                useInst->isWARdep(*backwardIter) )
+                useInst->isWARdep(*backwardIter))
             {
                 break;
             }
             backwardIter--;
         }
-        if( backwardIter != forwardIter )
+        if (backwardIter != forwardIter)
         {
             canRemove = false;
         }
@@ -2609,8 +2609,8 @@ static void hoistUseInst(G4_BB *bb, G4_INST *inst , INST_LIST_ITER forwardIter, 
         {
             // hoisting
             backwardIter++;
-            bb->insertBefore( backwardIter, useInst );
-            bb->erase( useInstIter );
+            bb->insertBefore(backwardIter, useInst);
+            bb->erase(useInstIter);
         }
     }
     else
@@ -2897,7 +2897,7 @@ void Optimizer::newLocalCopyPropagation()
                     {
                         break;
                     }
-                    G4_SrcModifier new_mod = mergeModifier( src, use );
+                    G4_SrcModifier new_mod = mergeModifier(src, use);
 
                     unsigned use_elsize = G4_Type_Table[use->getType()].byteSize;
                     unsigned dstElSize = G4_Type_Table[inst->getDst()->getType()].byteSize;
@@ -3075,7 +3075,7 @@ void Optimizer::cselPeepHoleOpt()
     BB_LIST_ITER ib, bend(fg.end());
     G4_SrcRegRegion *cmpSrc0 = NULL;
     G4_Operand *cmpSrc1 = NULL;
-    for(ib = fg.begin(); ib != bend; ++ib)
+    for (ib = fg.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = (*ib);
         INST_LIST_ITER ii;
@@ -3115,7 +3115,7 @@ void Optimizer::cselPeepHoleOpt()
             G4_CondMod *cModifier = inst->getCondMod();
 
                 // check if dst is global
-            if( fg.globalOpndHT.isOpndGlobal( cModifier ) )
+            if (fg.globalOpndHT.isOpndGlobal(cModifier))
             {
                 continue;
             }
@@ -3126,7 +3126,7 @@ void Optimizer::cselPeepHoleOpt()
             no predication
             */
 
-            if(!cmpSrc1->isImm()                                                                            ||
+            if (!cmpSrc1->isImm()                                                                            ||
                 (cmpSrc1->asImm()->getImm() != 0 &&
                     (cmpSrc1->asImm()->getType() != Type_F || cmpSrc1->asImm()->getFloat()!= -0.0f))        ||
                 cmpSrc0->getType() != Type_F                                                                ||
@@ -3150,11 +3150,11 @@ void Optimizer::cselPeepHoleOpt()
                 not capturing opportunities can revisit.
             */
 
-            if(inst->useEmpty())
+            if (inst->useEmpty())
                 continue;
 
             int execSize = inst->getExecSize();
-            if( execSize == 2)
+            if (execSize == 2)
                 continue;
 
             USE_EDGE_LIST_ITER iter = inst->use_begin();
@@ -3163,7 +3163,7 @@ void Optimizer::cselPeepHoleOpt()
             bool canOpt = true;
             int maxInstID = 0;
 
-            for(; iter != endUseList; ++iter)
+            for (; iter != endUseList; ++iter)
             {
                 G4_INST* useInst = (*iter).first;
 
@@ -3178,7 +3178,7 @@ void Optimizer::cselPeepHoleOpt()
                 G4_Operand *selSrc0 = useInst->getSrc(0);
                 G4_Operand *selSrc1 = useInst->getSrc(1);
 
-                if( useInst->opcode() != G4_sel     ||
+                if (useInst->opcode() != G4_sel     ||
                     selSrc0->isImm()                ||
                     selSrc1->isImm()                ||
                     selSrc0->getType() != Type_F    ||
@@ -3195,7 +3195,7 @@ void Optimizer::cselPeepHoleOpt()
 
                 //   if inst is NoMask use inst can be anything.
                 //   if inst is not NoMask then useInst needs to be subset of inst.
-                if(!(inst->getMaskOption() & InstOpt_WriteEnable))
+                if (!(inst->getMaskOption() & InstOpt_WriteEnable))
                 {
                     auto isInclusive = [](int lb1, int rb1, int lb2, int rb2)
                     {
@@ -3214,9 +3214,9 @@ void Optimizer::cselPeepHoleOpt()
                 DEF_EDGE_LIST_ITER iterEnd = useInst->def_end();
 
                 //    Just in case some weird code is generated with partial writes to predicate
-                for(; useIter != iterEnd; ++useIter)
+                for (; useIter != iterEnd; ++useIter)
                 {
-                    if((*useIter).second == Opnd_pred)
+                    if ((*useIter).second == Opnd_pred)
                         ++numPredDefs;
 
                     // Check whether pseudo_kill for dst exists between cmp and sel
@@ -3229,11 +3229,11 @@ void Optimizer::cselPeepHoleOpt()
 
                     INST_LIST_ITER cselOptIt = ii;
                     cselOptIt++;
-                    while((*cselOptIt) != useInst)
+                    while ((*cselOptIt) != useInst)
                     {
-                        if((*cselOptIt)->isLifeTimeEnd())
+                        if ((*cselOptIt)->isLifeTimeEnd())
                         {
-                            if(GetTopDclFromRegRegion((*cselOptIt)->getDst()) ==
+                            if (GetTopDclFromRegRegion((*cselOptIt)->getDst()) ==
                                 GetTopDclFromRegRegion(useInst->getDst()))
                             {
                                 canOpt = false;
@@ -3245,7 +3245,7 @@ void Optimizer::cselPeepHoleOpt()
                     }
                 }
 
-                if(numPredDefs > 1)
+                if (numPredDefs > 1)
                 {
                     canOpt = false;
                     break;
@@ -3255,7 +3255,7 @@ void Optimizer::cselPeepHoleOpt()
             INST_LIST_ITER tempInstIter = nextIter;
             //explicit check that cmp sr0 is not over written or partially writen to
             //between cmp and sel.
-            for( ;tempInstIter != iiEnd; ++tempInstIter)
+            for (;tempInstIter != iiEnd; ++tempInstIter)
             {
                 G4_INST *tempInst = *tempInstIter;
 
@@ -3264,19 +3264,19 @@ void Optimizer::cselPeepHoleOpt()
                     break;
                 }
 
-                if(!tempInst->getDst())
+                if (!tempInst->getDst())
                     continue;
 
                 //also checks for indirect, will return inerference.
                 G4_CmpRelation rel = tempInst->getDst()->compareOperand(cmpSrc0);
-                if(rel != Rel_disjoint)
+                if (rel != Rel_disjoint)
                 {
                     canOpt = false;
                     break;
                 }
             }
 
-            if(canOpt)
+            if (canOpt)
             {
                 for (auto iter = inst->use_begin(); iter != inst->use_end(); /*empty*/)
                 {
@@ -3328,9 +3328,9 @@ void Optimizer::cselPeepHoleOpt()
                 }
                 ASSERT_USER(inst->useEmpty(), "all predicate uses are removed.");
                 inst->removeAllDefs();
-                bb->erase( ii );
+                bb->erase(ii);
             }
-        }while( nextIter != iiEnd );
+        }while (nextIter != iiEnd);
     }
 }
 
@@ -3508,7 +3508,7 @@ static void expandPseudoLogic(IR_Builder& builder,
             inst->getOption(),  // keep the original instruction emask
             inst->getLineNo(),
             inst->getCISAOff(),
-            inst->getSrcFilename() );
+            inst->getSrcFilename());
 
         // Fix def-use
         if (Sel0 != nullptr)
@@ -3796,10 +3796,10 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
 //        false : no folding is performed.
 bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_II)
 {
-    MUST_BE_TRUE( (selInst->opcode() == G4_sel &&
+    MUST_BE_TRUE((selInst->opcode() == G4_sel &&
                    selInst->getPredicate() &&
                    selInst->getCondMod() == NULL),
-                  "foldCmpSel: Inst should be a sel with predicate and without cmod." );
+                  "foldCmpSel: Inst should be a sel with predicate and without cmod.");
     G4_Predicate *pred = selInst->getPredicate();
 
     // global predicates are not eligible since folding the cmp removes the def
@@ -4115,11 +4115,11 @@ void Optimizer::optimizeLogicOperation()
         return;
     }
 
-    for(ib = fg.begin(); ib != bend; ++ib)
+    for (ib = fg.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = (*ib);
         INST_LIST_ITER ii;
-        if( ( bb->begin() == bb->end() ) ){
+        if ((bb->begin() == bb->end())) {
             continue;
         }
         resetLocalIds =  false;
@@ -4146,12 +4146,12 @@ void Optimizer::optimizeLogicOperation()
 
             INST_LIST_ITER next_iter = ii, pred_iter = ii;
             next_iter++;
-            if( ii != bb->begin() )
+            if (ii != bb->begin())
             {
                 pred_iter--;
             }
 
-            if(!resetLocalIds)
+            if (!resetLocalIds)
             {
                 bb->resetLocalId();
                 resetLocalIds =  true;
@@ -4258,7 +4258,7 @@ void Optimizer::optimizeLogicOperation()
                 inst->getSrc(0)->isImm() &&
                 inst->getDst()->isFlag() &&
                 next_iter != bb->end() &&
-                (*next_iter)->opcode() == G4_mov )
+                (*next_iter)->opcode() == G4_mov)
             {
                 // case 4
                 G4_INST *next_inst = *next_iter;
@@ -4280,7 +4280,7 @@ void Optimizer::optimizeLogicOperation()
                 // case 2
                 foldCmpToCondMod(bb, ii);
             }
-            else if (inst->getPredicate() == NULL && inst->isPseudoLogic() )
+            else if (inst->getPredicate() == NULL && inst->isPseudoLogic())
             {
                 bool merged = false;
 
@@ -4296,7 +4296,7 @@ void Optimizer::optimizeLogicOperation()
                 }
             }
         }
-        while( ii != bb->begin() );
+        while (ii != bb->begin());
     }
 }
 
@@ -4627,7 +4627,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         if (dest==NULL) return;
         if (source != NULL)
         {
-            dest->setDest( builder.duplicateOperand( source->getDst() ) );
+            dest->setDest(builder.duplicateOperand(source->getDst()));
         }
         else
         {
@@ -4725,14 +4725,14 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     */
     bool Optimizer::isHeaderOptCandidate(G4_INST *dst, G4_INST *src)
     {
-        if ( !dst   ||
-            !src )
+        if (!dst   ||
+            !src)
         {
             return true;
         }
 
         // Compare instructions
-        if ( dst->opcode() != src->opcode()             ||
+        if (dst->opcode() != src->opcode()             ||
             dst->getOption() != src->getOption()       ||
             dst->getExecSize() != src->getExecSize()   ||
             dst->getPredicate() != src->getPredicate() ||
@@ -4741,7 +4741,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             return false;
         }
 
-        if ( dst->getNumSrc() != src->getNumSrc() )
+        if (dst->getNumSrc() != src->getNumSrc())
         {
             return false;
         }
@@ -4749,8 +4749,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // Compare destination args
         G4_Operand *dst_dest = dst->getDst();
         G4_Operand *src_dest = src->getDst();
-        if ( !dst_dest   ||
-            !src_dest   )
+        if (!dst_dest   ||
+            !src_dest  )
         {
             return false;
         }
@@ -4766,22 +4766,22 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     */
     bool Optimizer::isHeaderOptReuse(G4_INST *dst, G4_INST *src)
     {
-        if ( !dst   &&
-            !src )
+        if (!dst   &&
+            !src)
         {
             return true;
         }
-        if ( !dst   ||
-            !src   )
+        if (!dst   ||
+            !src  )
         {
             return false;
         }
 
-        for ( unsigned int i = 0; i < G4_MAX_SRCS; i++)
+        for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
         {
             G4_Operand* opnd = dst->getSrc(i);
 
-            if ( opnd != NULL && opnd->compareOperand( src->getSrc(i) ) != Rel_eq )
+            if (opnd != NULL && opnd->compareOperand(src->getSrc(i)) != Rel_eq)
             {
                 return false;
             }
@@ -4820,57 +4820,57 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     bool Optimizer::headerOptValidityCheck(MSGTable *dest, MSGTable *source)
     {
-        if ( !isHeaderOptCandidate(dest->a0Dot0, source->a0Dot0)   ||
+        if (!isHeaderOptCandidate(dest->a0Dot0, source->a0Dot0)   ||
             !isHeaderOptCandidate(dest->mDot0,  source->mDot0)    ||
             !isHeaderOptCandidate(dest->m,      source->m)        ||
             !isHeaderOptCandidate(dest->mDot1,  source->mDot1)    ||
-            !isHeaderOptCandidate(dest->mDot2, source->mDot2) )
+            !isHeaderOptCandidate(dest->mDot2, source->mDot2))
         {
             return false;
         }
 
-        if ( dest->m )
+        if (dest->m)
         {
-            if ( !(dest->m->hasOneUse() && dest->m->use_front().first == dest->send) )
+            if (!(dest->m->hasOneUse() && dest->m->use_front().first == dest->send))
             {
                 return false;
             }
         }
-        if ( dest->mDot0 )
+        if (dest->mDot0)
         {
-            if ( !(dest->mDot0->hasOneUse() && dest->mDot0->use_front().first == dest->send) )
+            if (!(dest->mDot0->hasOneUse() && dest->mDot0->use_front().first == dest->send))
             {
                 return false;
             }
         }
-        if ( dest->mDot1 )
+        if (dest->mDot1)
         {
-            if ( !(dest->mDot1->hasOneUse() && dest->mDot1->use_front().first == dest->send) )
+            if (!(dest->mDot1->hasOneUse() && dest->mDot1->use_front().first == dest->send))
             {
                 return false;
             }
         }
-        if ( dest->mDot2 )
+        if (dest->mDot2)
         {
-            if ( !(dest->mDot2->hasOneUse() && dest->mDot2->use_front().first == dest->send) )
+            if (!(dest->mDot2->hasOneUse() && dest->mDot2->use_front().first == dest->send))
             {
                 return false;
             }
         }
 
-        if ( dest->send                         &&
+        if (dest->send                         &&
             dest->send->getSrc(0)              &&
             dest->send->getSrc(0)->getTopDcl() &&
             source->send                       &&
             source->send->getSrc(0)            &&
-            source->send->getSrc(0)->getTopDcl() )
+            source->send->getSrc(0)->getTopDcl())
         {
             unsigned short dstSize, sourceSize;
             dstSize    = dest->send->getSrc(0)->getTopDcl()->getTotalElems() *
                 dest->send->getSrc(0)->getTopDcl()->getElemSize();
             sourceSize = source->send->getSrc(0)->getTopDcl()->getTotalElems() *
                 source->send->getSrc(0)->getTopDcl()->getElemSize();
-            if ( dstSize != sourceSize )
+            if (dstSize != sourceSize)
             {
                 return false;
             }
@@ -4949,7 +4949,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             };
             if (dst != nullptr)
             {
-                values.remove_if(interferes);
+                values.remove_if (interferes);
             }
         }
 
@@ -5161,7 +5161,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 }
             }
             bb->erase(
-                std::remove_if(bb->begin(), bb->end(), [](G4_INST* inst) { return inst->isDead(); }),
+                std::remove_if (bb->begin(), bb->end(), [](G4_INST* inst) { return inst->isDead(); }),
                 bb->end());
         }
 
@@ -5292,13 +5292,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         MSGTable *dest, *source;
         MSGTable_ITER iter=msgList.begin();
 
-        if(iter == msgList.end())
+        if (iter == msgList.end())
         {
             return;
         }
         dest = *iter;   // dest is the front
         iter++;
-        if(iter == msgList.end())
+        if (iter == msgList.end())
         {
             return;
         }
@@ -5309,8 +5309,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             return;
         }
 
-        if ( isHeaderOptReuse(dest->a0Dot0, myA0.pred)  &&
-            !myA0.isA0Redef )
+        if (isHeaderOptReuse(dest->a0Dot0, myA0.pred)  &&
+            !myA0.isA0Redef)
         {
             // Transfer uses of dstDot0 to myA0.pred. This removes uses from
             // dest->a0Dot0 and add to myA0.pred. dest->a0Dot0 to be deleted.
@@ -5329,21 +5329,21 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         isSameSize = isHeaderOptReuse(dest->mDot2, source->mDot2)   &&
             !source->isSizeRedef;
 
-        if ( isSameX && dest->mDot0 )
+        if (isSameX && dest->mDot0)
         {
             redundancyCount++;
         }
-        if ( isSameY && dest->mDot1 )
+        if (isSameY && dest->mDot1)
         {
             redundancyCount++;
         }
-        if ( isSameSize && dest->mDot2 )
+        if (isSameSize && dest->mDot2)
         {
             redundancyCount++;
         }
 
-        if ( payLoadSize > 1                    &&
-            redundancyCount < MESSAGE_HEADER_THRESHOLD )
+        if (payLoadSize > 1                    &&
+            redundancyCount < MESSAGE_HEADER_THRESHOLD)
         {
             return; // don't delete if redunant insts >=THRESHold
         };
@@ -5359,68 +5359,68 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         {   // always remove "mov(8) Mx<1>, r0.0<8;8,1>:ud{Align1}"
             dest->m->markDead();
-            if ( !replaceOldHeader )
+            if (!replaceOldHeader)
             {
                 dest->m->transferUse(source->m, /*keepExisting*/true);
                 dest->m=source->m;
             }
         }
 
-        if ( isSameX && dest->mDot0 )
+        if (isSameX && dest->mDot0)
         {
             dest->mDot0->markDead();
-            if ( !replaceOldHeader )
+            if (!replaceOldHeader)
             {
                 dest->mDot0->transferUse(source->mDot0, /*keepExisting*/true);
                 dest->mDot0 = source->mDot0;
             }
         }
-        else if ( payLoadSize==1 && dest->mDot0 )
+        else if (payLoadSize==1 && dest->mDot0)
         {
             dest->reusePreviousHeader(dest->mDot0, source->mDot0, source->mDot2, builder);
-            if ( !replaceOldHeader )
+            if (!replaceOldHeader)
             {
                 source->mDot0 = dest->mDot0;
             }
         }
 
-        if ( isSameY && dest->mDot1 )
+        if (isSameY && dest->mDot1)
         {
             dest->mDot1->markDead();
-            if ( !replaceOldHeader )
+            if (!replaceOldHeader)
             {
                 dest->mDot1->transferUse(source->mDot1, /*keepExisting*/true);
                 dest->mDot1 = source->mDot1;
             }
         }
-        else if ( payLoadSize==1 && dest->mDot1 )
+        else if (payLoadSize==1 && dest->mDot1)
         {
             dest->reusePreviousHeader(dest->mDot1, source->mDot1, source->mDot2, builder);
-            if ( !replaceOldHeader )
+            if (!replaceOldHeader)
             {
                 source->mDot1 = dest->mDot1;
             }
         }
 
-        if ( isSameSize && dest->mDot2 )
+        if (isSameSize && dest->mDot2)
         {
             dest->mDot2->markDead();
-            if ( !replaceOldHeader )
+            if (!replaceOldHeader)
             {
                 dest->mDot2->transferUse(source->mDot2, /*keepExisting*/true);
                 dest->mDot2 = source->mDot2;
             }
         }
-        else if ( payLoadSize==1 && dest->mDot2 )
+        else if (payLoadSize==1 && dest->mDot2)
         {
             dest->reusePreviousHeader(dest->mDot2, source->mDot2, source->mDot2, builder);
-            if ( !replaceOldHeader )
+            if (!replaceOldHeader)
             {
                 source->mDot2 = dest->mDot2;
             }
         }
 
-        if ( payLoadSize==1 )
+        if (payLoadSize==1)
         {
             // Check this function's comments for why no def-use changes
             // should be made on resetting src(0).
@@ -5440,12 +5440,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             return true;
         }
 
-        if ( inst->useEmpty() )
+        if (inst->useEmpty())
         {
             return false;
         }
 
-        for(USE_EDGE_LIST_ITER iter = inst->use_begin(), iend = inst->use_end(); iter != iend; ++iter )
+        for (USE_EDGE_LIST_ITER iter = inst->use_begin(), iend = inst->use_end(); iter != iend; ++iter)
         {
             if ((*iter).first->isSend())
             {
@@ -5460,16 +5460,16 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     inst->getDst()->getBase()->asRegVar() ==
                     builder.getBuiltinA0()->getRegVar()                         &&
                     inst->getDst()->getRegOff() == 0            &&
-                    inst->getDst()->getSubRegOff() == 0         )
+                    inst->getDst()->getSubRegOff() == 0        )
                 {
                     return true;
                 }
 
                 // make sure that dst of the current inst is header, not payload
                 // header is hard-coded to be 32 bytes
-                if ( header->getTopDcl()    == dst->getTopDcl()         &&
+                if (header->getTopDcl()    == dst->getTopDcl()         &&
                     dst->getLeftBound() >= header->getLeftBound()      &&
-                    dst->getRightBound() <= header->getLeftBound() + GENX_GRF_REG_SIZ -1 )
+                    dst->getRightBound() <= header->getLeftBound() + GENX_GRF_REG_SIZ -1)
                 {
                     return true;
                 }
@@ -5513,7 +5513,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     0,
                     0,
                     barrierSrc0->getRegion(),
-                    barrierSrc0->getTopDcl()->getElemType() );
+                    barrierSrc0->getTopDcl()->getElemType());
             sendInst->setSrc(src, 0);
             andInst->markDead();
         }
@@ -5634,8 +5634,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         msgList.unique();
 
         // check SIMD8 VxH region everytime
-        if ( inst->getDst()                         &&
-            inst->getDst()->isAddress() )
+        if (inst->getDst()                         &&
+            inst->getDst()->isAddress())
         {
             isDef = myA0.isA0Redef = true;
         }
@@ -5644,7 +5644,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             for (int i = 0; i < inst->getNumSrc(); i++)
             {
                 if (inst->getSrc(i)                     &&
-                    inst->getSrc(i)->isAddress() )
+                    inst->getSrc(i)->isAddress())
                 {
                     isDef = myA0.isA0Redef = true;
                     break;
@@ -5652,59 +5652,59 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             }
         }
 
-        if ( msgList.size() < 2 )
+        if (msgList.size() < 2)
         {
             return false;
         }
         MSGTable_ITER ii = msgList.begin();
-        if(ii == msgList.end())
+        if (ii == msgList.end())
         {
             return false;
         }
 
         ii++;
 
-        if(ii == msgList.end())
+        if (ii == msgList.end())
         {
             return false;
         }
 
         MSGTable* last = *(ii);
-        if ( last == NULL       ||
-            last->send == NULL )
+        if (last == NULL       ||
+            last->send == NULL)
         {
             return false;
         }
         G4_Operand *def = inst->getDst();
-        if ( def == NULL)
+        if (def == NULL)
         {
             return false;
         }
-        if ( last->mDot0                                        &&
-             ( def->compareOperand(last->mDot0->getSrc(0)) == Rel_eq ||
-               ( last->mDot0->getSrc(1) && def->compareOperand(last->mDot0->getSrc(1)) == Rel_eq ) ||
-                ( last->mDot0->getSrc(2) && def->compareOperand(last->mDot0->getSrc(2)) == Rel_eq ) ) )
+        if (last->mDot0                                        &&
+             (def->compareOperand(last->mDot0->getSrc(0)) == Rel_eq ||
+               (last->mDot0->getSrc(1) && def->compareOperand(last->mDot0->getSrc(1)) == Rel_eq) ||
+                (last->mDot0->getSrc(2) && def->compareOperand(last->mDot0->getSrc(2)) == Rel_eq)))
         {
             isDef = last->isXRedef = true;
         }
-        else if ( last->mDot1                                   &&
-             ( def->compareOperand(last->mDot1->getSrc(0)) == Rel_eq ||
-               ( last->mDot1->getSrc(1) && def->compareOperand(last->mDot1->getSrc(1)) == Rel_eq ) ||
-               ( last->mDot1->getSrc(2) && def->compareOperand(last->mDot1->getSrc(2)) == Rel_eq ) ) )
+        else if (last->mDot1                                   &&
+             (def->compareOperand(last->mDot1->getSrc(0)) == Rel_eq ||
+               (last->mDot1->getSrc(1) && def->compareOperand(last->mDot1->getSrc(1)) == Rel_eq) ||
+               (last->mDot1->getSrc(2) && def->compareOperand(last->mDot1->getSrc(2)) == Rel_eq)))
         {
             isDef = last->isYRedef = true;
         }
-        else if ( last->mDot2                                   &&
-             ( def->compareOperand(last->mDot2->getSrc(0)) == Rel_eq  ||
-               ( last->mDot2->getSrc(1) && def->compareOperand(last->mDot2->getSrc(1)) == Rel_eq ) ||
-               ( last->mDot2->getSrc(2) && def->compareOperand(last->mDot2->getSrc(2)) == Rel_eq ) ) )
+        else if (last->mDot2                                   &&
+             (def->compareOperand(last->mDot2->getSrc(0)) == Rel_eq  ||
+               (last->mDot2->getSrc(1) && def->compareOperand(last->mDot2->getSrc(1)) == Rel_eq) ||
+               (last->mDot2->getSrc(2) && def->compareOperand(last->mDot2->getSrc(2)) == Rel_eq)))
         {
              isDef = last->isSizeRedef = true;
         }
-        else if ( last->m                                       &&
-            ( def->compareOperand(last->m->getSrc(0)) == Rel_eq ||
-              ( last->m->getSrc(1) && def->compareOperand(last->m->getSrc(1)) == Rel_eq ) ||
-              ( last->m->getSrc(2) && def->compareOperand(last->m->getSrc(2)) == Rel_eq ) ) )
+        else if (last->m                                       &&
+            (def->compareOperand(last->m->getSrc(0)) == Rel_eq ||
+              (last->m->getSrc(1) && def->compareOperand(last->m->getSrc(1)) == Rel_eq) ||
+              (last->m->getSrc(2) && def->compareOperand(last->m->getSrc(2)) == Rel_eq)))
         {
             isDef = last->isR0Dot0Redef = true;
         }
@@ -5722,7 +5722,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         DEFA0 &myA0)
     {
         MSGTable *item = msgList.front();
-        if ( inst->isSend() )
+        if (inst->isSend())
         {
             item->send = inst;
             item->opt           = false;
@@ -5738,10 +5738,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             else if (item->a0Dot0 != NULL &&   // only def a0.0
                  (item->m == NULL  || item->mDot2 == NULL))
             {
-                if ( isHeaderOptCandidate(item->a0Dot0, myA0.pred) )
+                if (isHeaderOptCandidate(item->a0Dot0, myA0.pred))
                 {
-                    if ( isHeaderOptReuse(item->a0Dot0, myA0.pred)  &&
-                        !myA0.isA0Redef )
+                    if (isHeaderOptReuse(item->a0Dot0, myA0.pred)  &&
+                        !myA0.isA0Redef)
                     {
                         // Transfer uses of a0Dot0 to myA0.pred. This removes uses from
                         // a0Dot0 and add to myA0.pred. item->a0Dot0 to be deleted.
@@ -5759,7 +5759,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     optMessageHeaders(msgList, bb, myA0);
                     if (msgList.front()->opt                                    &&
-                        msgList.front()->send->getMsgDesc()->MessageLength() == 1 )
+                        msgList.front()->send->getMsgDesc()->MessageLength() == 1)
                     {
                         // keep the oldest send for subsequent read operations
                         // but the instruction to define a0.0 needs to be latest
@@ -5767,7 +5767,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         msgList.pop_front(); // delete first element
                     }
                     else if (msgList.front()->opt                               &&
-                        msgList.front()->send->getMsgDesc()->MessageLength() >= 1 )
+                        msgList.front()->send->getMsgDesc()->MessageLength() >= 1)
                     {
                         // keep the latest send for subsequent write operations
                         msgList.pop_back();
@@ -5785,19 +5785,19 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 msgList.pop_front();
             }
         }
-        else if ( inst->getDst()                                          &&
+        else if (inst->getDst()                                          &&
             inst->getDst()->getBase()                   &&
             inst->getDst()->getBase()->isRegVar()       &&
             inst->getDst()->getBase()->asRegVar() ==
             builder.getBuiltinA0()->getRegVar()                           &&
             inst->getDst()->getRegOff() == 0            &&
-            inst->getDst()->getSubRegOff() == 0         )
+            inst->getDst()->getSubRegOff() == 0        )
         {
             // is builtInA0.0
             item->a0Dot0 = inst;
             item->a0Dot0_it = ii;
 
-            if ( myA0.curr == NULL )
+            if (myA0.curr == NULL)
             {
                 myA0.pred = NULL;
                 myA0.isA0Redef      = false;
@@ -5811,7 +5811,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             myA0.currIt = ii;
             myA0.curr = inst;
         }
-       else if ( inst->getSrc(0) )
+       else if (inst->getSrc(0))
        {
             G4_DstRegRegion *dst = inst->getDst();
             if (dst)
@@ -5820,7 +5820,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     // mov(8) m.0, builtInR0.0
                     G4_Operand *src = inst->getSrc(0);
-                    if( dst->getSubRegOff() == 0          &&
+                    if (dst->getSubRegOff() == 0          &&
                         inst->getExecSize() == 8                            &&
                         src                                                 &&
                         src->isSrcRegRegion()                               &&
@@ -5829,7 +5829,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         src->asSrcRegRegion()->getBase()->asRegVar()  ==
                         builder.getBuiltinR0()->getRegVar()            &&
                         src->asSrcRegRegion()->getRegOff() == 0             &&
-                        src->asSrcRegRegion()->getSubRegOff() == 0 )
+                        src->asSrcRegRegion()->getSubRegOff() == 0)
                     {
                         if (item->first == HEADER_UNDEF)
                             item->first = HEADER_FULL_REGISTER;
@@ -5837,8 +5837,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         item->m_it = ii;
                     }
                     // mov(1) m.0
-                    else if(dst->getSubRegOff() == 0  &&
-                        inst->getExecSize() == 1                        )
+                    else if (dst->getSubRegOff() == 0  &&
+                        inst->getExecSize() == 1                       )
                     {
                         if (item->first == HEADER_UNDEF)
                             item->first = HEADER_X;
@@ -5846,8 +5846,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         item->mDot0_it = ii;
                     }
                     // mov(1) m.1
-                    else if(dst->getSubRegOff() == 1  &&
-                        inst->getExecSize() == 1                        )
+                    else if (dst->getSubRegOff() == 1  &&
+                        inst->getExecSize() == 1                       )
                     {
                         if (item->first == HEADER_UNDEF)
                             item->first = HEADER_Y;
@@ -5855,8 +5855,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         item->mDot1_it = ii;
                     }
                     // mov(1) m0.2
-                    else if(dst->getSubRegOff() == 2  &&
-                        inst->getExecSize() == 1                        )
+                    else if (dst->getSubRegOff() == 2  &&
+                        inst->getExecSize() == 1                       )
                     {
                         if (item->first == HEADER_UNDEF)
                             item->first = HEADER_SIZE;
@@ -5878,7 +5878,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         size_t ic_after,
         G4_Kernel& kernel)
     {
-        if ( builder.getOption(vISA_OptReport))
+        if (builder.getOption(vISA_OptReport))
         {
             std::ofstream optReport;
             getOptReportStream(optReport, builder.getOptions());
@@ -5913,7 +5913,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         bool isRedundantBarrier = false;
         G4_SrcRegRegion *barrierSendSrc0 = NULL;
 
-        for(ib = fg.begin(); ib != bend; ++ib)
+        for (ib = fg.begin(); ib != bend; ++ib)
         {
 
             msgList.clear();
@@ -5933,16 +5933,16 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             myA0.pred      = NULL;
             myA0.isA0Redef = false;
 
-            for (; ii != iend; ii++ )
+            for (; ii != iend; ii++)
             {
                 G4_INST *inst = *ii;
-                if ( isHeaderCachingCandidate( inst ) )
+                if (isHeaderCachingCandidate(inst))
                 {
-                    if ( inst->opcode() == G4_send && isRedundantBarrier )
+                    if (inst->opcode() == G4_send && isRedundantBarrier)
                     {
                         removeRedundantBarrierHeaders(inst, barrierSendSrc0, false);
                     }
-                    else if ( inst->opcode() == G4_send && !isRedundantBarrier )
+                    else if (inst->opcode() == G4_send && !isRedundantBarrier)
                     {
                         isRedundantBarrier = isBarrierPattern(inst, barrierSendSrc0);
                         if (isRedundantBarrier)
@@ -5952,7 +5952,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     }
 
                     addEntryToMessageTable(inst, msgList, bb, ii, myA0);
-                    if ( inst->isSend() )
+                    if (inst->isSend())
                     {
                         MSGTable * item = (MSGTable *)mem.alloc(sizeof(MSGTable));
                         toDelete.push(item);
@@ -5968,11 +5968,11 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             }
 
             // Dead code elimination
-            for(ii = bb->begin(); ii != bb->end();)
+            for (ii = bb->begin(); ii != bb->end();)
             {
                 G4_INST *inst = *ii;
                 INST_LIST_ITER curr = ii++;
-                if( inst->isDead() )
+                if (inst->isDead())
                 {
                     inst->removeUseOfInst();
                     bb->erase(curr);
@@ -5992,7 +5992,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //
         // Destroy STL iterators allocated using mem manager
         //
-        while( toDelete.size() > 0 )
+        while (toDelete.size() > 0)
         {
             toDelete.top()->~MSGTable();
             toDelete.pop();
@@ -6007,7 +6007,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         const char *asmFileName;
         opt->getOption(VISA_AsmFileName, asmFileName);
         SNPRINTF(optReportFileName, MAX_OPTION_STR_LENGTH, "%s_optreport.txt", asmFileName);
-        reportStream.open(optReportFileName, ios::out | ios::app  );
+        reportStream.open(optReportFileName, ios::out | ios::app );
         MUST_BE_TRUE(reportStream, "Fail to open " << optReportFileName);
     }
 
@@ -6075,17 +6075,17 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             G4_Operand *src = inst->getSrc(0);
             const RegionDesc *rd = src->isSrcRegRegion() ? src->asSrcRegRegion()->getRegion() : NULL;
-            MUST_BE_TRUE( rd != NULL, " Src0 of line inst is not regregion. " );
+            MUST_BE_TRUE(rd != NULL, " Src0 of line inst is not regregion. ");
             if (rd->isScalar())
             {
                 return;
             }
-            MUST_BE_TRUE(( rd->vertStride == 0 || rd->vertStride == 4 ) && rd->width == 4,
-                "Unexpected region for the first line operand." );
+            MUST_BE_TRUE((rd->vertStride == 0 || rd->vertStride == 4) && rd->width == 4,
+                "Unexpected region for the first line operand.");
 
             // create a new rd for src0
             const RegionDesc *new_rd = builder.getRegionScalar();
-            src->asSrcRegRegion()->setRegion( new_rd );
+            src->asSrcRegRegion()->setRegion(new_rd);
         }
     }
 
@@ -6611,7 +6611,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // set physical pred/succ as it's needed for the call WA
         fg.setPhysicalPredSucc();
         BB_LIST_ITER ib, bend(fg.end());
-        for(ib = fg.begin(); ib != bend; ++ib)
+        for (ib = fg.begin(); ib != bend; ++ib)
         {
             G4_BB* bb = (*ib);
             INST_LIST_ITER ii = bb->begin();
@@ -7101,7 +7101,7 @@ private:
                              "Ending bucket less than starting bucket");
                 int numBuckets = endingBucket - startingBucket + 1;
                 for (int j = startingBucket;
-                     j < (startingBucket + numBuckets); j++ ) {
+                     j < (startingBucket + numBuckets); j++) {
                     BDVec.push_back(BucketDescr(j, rwType));
                 }
             }
@@ -8307,17 +8307,17 @@ public:
 
         INST_LIST_ITER forwardIter = startIter;
         forwardIter++;
-        while( forwardIter != endIter )
+        while (forwardIter != endIter)
         {
-            if( (*forwardIter)->isWAWdep(startInst) ||
-                (*forwardIter)->isWARdep(startInst) )
+            if ((*forwardIter)->isWAWdep(startInst) ||
+                (*forwardIter)->isWARdep(startInst))
             {
                 break;
             }
             forwardIter++;
         }
 
-        if( forwardIter != endIter )
+        if (forwardIter != endIter)
         {
             return true;
         }
@@ -8351,17 +8351,17 @@ public:
 
         INST_LIST_ITER backwardIter = endIter;
         backwardIter--;
-        while( backwardIter != startIter )
+        while (backwardIter != startIter)
         {
-            if( endInst->isWAWdep(*backwardIter) ||
-                endInst->isWARdep(*backwardIter) )
+            if (endInst->isWAWdep(*backwardIter) ||
+                endInst->isWARdep(*backwardIter))
             {
                 break;
             }
             backwardIter--;
         }
 
-        if( backwardIter != startIter )
+        if (backwardIter != startIter)
         {
             return true;
         }
@@ -8379,13 +8379,13 @@ public:
         backwardIter--;
         while (*backwardIter != startInst)
         {
-            if( endInst->isWAWdep(*backwardIter) ||
+            if (endInst->isWAWdep(*backwardIter) ||
                 /*
                     Makes sure there is not WAR conflict between this instruction and instruction preceding it:
                     ... grf1(use preceding inst)
                     grf1 <---- def this inst
                 */
-                endInst->isWARdep(*backwardIter) )
+                endInst->isWARdep(*backwardIter))
             {
                 break;
             }
@@ -8474,7 +8474,7 @@ public:
 
         BB_LIST_ITER ib, bend(fg.end());
 
-        for(ib = fg.begin(); ib != bend; ++ib)
+        for (ib = fg.begin(); ib != bend; ++ib)
         {
             G4_BB* bb = (*ib);
 
@@ -8482,15 +8482,15 @@ public:
             std::unordered_set<G4_INST *> Seen;
 
             INST_LIST_ITER ii = bb->begin(), iend(bb->end());
-            while ( ii != iend )
+            while (ii != iend)
             {
                 G4_INST *inst = *ii;
 
-                if( !inst->isRawMov() ||
+                if (!inst->isRawMov() ||
                     inst->getPredicate() ||
                     Seen.count(inst) > 0 ||
                     inst->def_size() != 1 ||
-                    !inst->canHoist(!bb->isAllLaneActive(), fg.builder->getOptions()) )
+                    !inst->canHoist(!bb->isAllLaneActive(), fg.builder->getOptions()))
                 {
                     ii++;
                     continue;
@@ -8518,8 +8518,8 @@ public:
 
                 G4_INST *defInst = inst->def_front().first;
                 G4_Declare *defDstDcl = GetTopDclFromRegRegion(defInst->getDst());
-                if( ( dstDcl && dstDcl->getAddressed() ) ||
-                    ( defDstDcl && defDstDcl->getAddressed() ) )
+                if ((dstDcl && dstDcl->getAddressed()) ||
+                    (defDstDcl && defDstDcl->getAddressed()))
                 {
                     ii++;
                     continue;
@@ -8527,7 +8527,7 @@ public:
 
                 G4_DstRegRegion* defDstRegion = defInst->getDst();
                 if (Seen.count(defInst) > 0 ||
-                    src->compareOperand( defDstRegion ) != Rel_eq )
+                    src->compareOperand(defDstRegion) != Rel_eq)
                 {
                     ii++;
                     continue;
@@ -8549,9 +8549,9 @@ public:
                 {
                     G4_INST* useInst = (*iter).first;
 
-                    if( useInst == inst ||
-                        ( (useInst->getLocalId() - inst->getLocalId()) > MAX_REG_RENAME_DIST &&
-                           sizeRatio > MAX_REG_RENAME_SIZE ) )
+                    if (useInst == inst ||
+                        ((useInst->getLocalId() - inst->getLocalId()) > MAX_REG_RENAME_DIST &&
+                           sizeRatio > MAX_REG_RENAME_SIZE))
                     {
                         continue;
                     }
@@ -8573,10 +8573,10 @@ public:
 
                         Disallow replication?
                     */
-                    if( useInst->getLocalId() < inst->getLocalId() ||
+                    if (useInst->getLocalId() < inst->getLocalId() ||
                         !useInst->isRawMov() ||
                         inst->getExecSize() != useInst->getExecSize() ||
-                        (useInst->getSrc(0))->compareOperand( defDstRegion ) != Rel_eq ||
+                        (useInst->getSrc(0))->compareOperand(defDstRegion) != Rel_eq ||
                         useInst->def_size() > 1 ||
                         (!(inst->isWriteEnableInst()) &&
                         useInst->getMaskOption() != instMaskOption) ||
@@ -8585,14 +8585,14 @@ public:
                         !inst->isWriteEnableInst() &&
                         !(inst->getExecSize() == defInst->getExecSize() &&
                                 inst->getExecSize() == useInst->getExecSize())
-                        )
-                      )
+                       )
+                     )
                     {
                         canRename = false;
                         break;
                     }
 
-                    if( useInst->getLocalId() > lastUse->getLocalId() )
+                    if (useInst->getLocalId() > lastUse->getLocalId())
                     {
                         lastUse = useInst;
                     }
@@ -8604,7 +8604,7 @@ public:
                     Seen.insert(useInst);
                 }
 
-                if( !canRename )
+                if (!canRename)
                 {
                     ii++;
                     continue;
@@ -8612,12 +8612,12 @@ public:
 
                 INST_LIST_ITER forwardIter = ii;
                 forwardIter++;
-                while( canRename &&
+                while (canRename &&
                        *forwardIter != lastUse &&
-                       ( ((*forwardIter)->getLocalId() - inst->getLocalId()) <= MAX_REG_RENAME_DIST ||
-                          sizeRatio <= MAX_REG_RENAME_SIZE ) )
+                       (((*forwardIter)->getLocalId() - inst->getLocalId()) <= MAX_REG_RENAME_DIST ||
+                          sizeRatio <= MAX_REG_RENAME_SIZE))
                 {
-                    if( (*forwardIter)->isWAWdep( inst ) )
+                    if ((*forwardIter)->isWAWdep(inst))
                     {
                         canRename = false;
                         break;
@@ -8625,7 +8625,7 @@ public:
                     forwardIter++;
                 }
 
-                if( !canRename )
+                if (!canRename)
                 {
                     ii++;
                     continue;
@@ -8635,9 +8635,9 @@ public:
                 {
                     G4_INST* useInst = (*useIter).first;
 
-                    if( useInst == inst ||
-                        ( (useInst->getLocalId() - inst->getLocalId()) > MAX_REG_RENAME_DIST &&
-                          sizeRatio > MAX_REG_RENAME_SIZE ) )
+                    if (useInst == inst ||
+                        ((useInst->getLocalId() - inst->getLocalId()) > MAX_REG_RENAME_DIST &&
+                          sizeRatio > MAX_REG_RENAME_SIZE))
                     {
                         useIter++;
                         continue;
@@ -8648,7 +8648,7 @@ public:
                     unsigned short dstHS = dst->getHorzStride();
                     const RegionDesc *newSrcRd;
 
-                    if( useSrc->asSrcRegRegion()->isScalar() )
+                    if (useSrc->asSrcRegRegion()->isScalar())
                     {
                         newSrcRd = builder.getRegionScalar();
                     }
@@ -8674,10 +8674,10 @@ public:
                         dst->getRegOff(),
                         dst->getSubRegOff(),
                         newSrcRd,
-                        useSrc->getType() );
+                        useSrc->getType());
                     if (dst->getRegAccess() != Direct)
                     {
-                        newSrcOpnd->asSrcRegRegion()->setImmAddrOff( dst->getAddrImm() );
+                        newSrcOpnd->asSrcRegRegion()->setImmAddrOff(dst->getAddrImm());
                     }
 
                     useInst->getSrc(0)->~G4_Operand();
@@ -9062,7 +9062,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
         for (int srcNum = 0, numSrc = instToDelete->getNumSrc(); srcNum < numSrc; ++srcNum)
         {
             Gen4_Operand_Number opndPos = instToDelete->getSrcOperandNum(srcNum);
-            instToDelete->transferDef( newInst, opndPos, opndPos );
+            instToDelete->transferDef(newInst, opndPos, opndPos);
         }
 
         iter = bb->erase(iter);
@@ -10983,7 +10983,7 @@ void Optimizer::dce()
             }
         }
         bb->erase(
-            std::remove_if(bb->begin(), bb->end(), [](G4_INST* Inst) { return Inst->isDead(); }),
+            std::remove_if (bb->begin(), bb->end(), [](G4_INST* Inst) { return Inst->isDead(); }),
             bb->end());
     }
 }

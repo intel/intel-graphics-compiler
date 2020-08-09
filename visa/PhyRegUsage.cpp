@@ -532,7 +532,7 @@ bool PhyRegUsage::findContiguousNoWrapGRF(bool availRegs[],
                 i++;
             }
             else if (occupiedBundles & (1 << gra.get_bundle(i, 0)) ||
-                     occupiedBundles & (1 << gra.get_bundle(i, 1)) )
+                     occupiedBundles & (1 << gra.get_bundle(i, 1)))
             {
                 i++;
             }
@@ -1011,7 +1011,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
 
     auto getAlignToUse = [](BankAlign align, BankAlign bankAlign)
     {
-        if(GlobalRA::useGenericAugAlign())
+        if (GlobalRA::useGenericAugAlign())
             return (align != BankAlign::Either ? align : bankAlign);
         else
             return (bankAlign != BankAlign::Either ? bankAlign : align);

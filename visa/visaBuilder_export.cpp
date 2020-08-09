@@ -55,7 +55,7 @@ extern "C"
 VISA_BUILDER_API int DestroyVISABuilder(VISABuilder *&builder)
 {
     CISA_IR_Builder *cisa_builder = (CISA_IR_Builder *) builder;
-    if( cisa_builder == NULL )
+    if (cisa_builder == NULL)
     {
         return VISA_FAILURE;
     }

@@ -84,7 +84,7 @@ private:
     // original regvar ptrs
     REGVAR_VECTOR regVars;
 
-    void resizePointsToSet( unsigned int newsize )
+    void resizePointsToSet(unsigned int newsize)
     {
         // Allocate larger new sets, copy over data from old sets,
         // deallocate old sets, change numAddrs.
@@ -93,18 +93,18 @@ private:
         REGVAR_VECTOR* newPointsToSets = new REGVAR_VECTOR[newsize];
         unsigned int* newAddrPointsToSetIndex = new unsigned[newsize];
 
-        for( unsigned int i = 0; i < numAddrs; i++ )
+        for (unsigned int i = 0; i < numAddrs; i++)
         {
             REGVAR_VECTOR& vec = pointsToSets[i];
 
-            for( unsigned int j = 0; j < pointsToSets[i].size(); j++ )
+            for (unsigned int j = 0; j < pointsToSets[i].size(); j++)
             {
                 newPointsToSets[i].push_back(vec[j]);
             }
             newAddrPointsToSetIndex[i] = addrPointsToSetIndex[i];
         }
 
-        for( int unsigned i = numAddrs; i < newsize; i++ )
+        for (int unsigned i = numAddrs; i < newsize; i++)
         {
             newAddrPointsToSetIndex[i] = i;
         }
@@ -118,55 +118,55 @@ private:
         numAddrs = newsize;
     }
 
-    void addPointsToSetToBB( int bbId, G4_RegVar* addr )
+    void addPointsToSetToBB(int bbId, G4_RegVar* addr)
     {
-        MUST_BE_TRUE( addr->getDeclare()->getRegFile() == G4_ADDRESS,
-            "expect address variable" );
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+            "expect address variable");
         REGVAR_VECTOR& addrTakens = pointsToSets[addrPointsToSetIndex[addr->getId()]];
-        for( unsigned int i = 0; i < addrTakens.size(); i++ )
+        for (unsigned int i = 0; i < addrTakens.size(); i++)
         {
-            addIndirectUseToBB( bbId, addrTakens[i] );
+            addIndirectUseToBB(bbId, addrTakens[i]);
         }
     }
 
-    void addIndirectUseToBB( unsigned int bbId, G4_RegVar* var )
+    void addIndirectUseToBB(unsigned int bbId, G4_RegVar* var)
     {
-        MUST_BE_TRUE( bbId < numBBs, "invalid basic blokc id" );
+        MUST_BE_TRUE(bbId < numBBs, "invalid basic blokc id");
         REGVAR_VECTOR& vec = indirectUses[bbId];
         bool isPresent = false;
-        for( unsigned int i = 0; i < vec.size(); i++ )
+        for (unsigned int i = 0; i < vec.size(); i++)
         {
-            if( vec[i] == var )
+            if (vec[i] == var)
             {
                 isPresent = true;
                 break;
             }
         }
-        if( !isPresent )
+        if (!isPresent)
         {
-            vec.push_back( var );
+            vec.push_back(var);
         }
     }
 
-    void addToPointsToSet( G4_RegVar* addr, G4_RegVar* var )
+    void addToPointsToSet(G4_RegVar* addr, G4_RegVar* var)
     {
-        MUST_BE_TRUE( addr->getDeclare()->getRegFile() == G4_ADDRESS,
-            "expect address variable" );
-        MUST_BE_TRUE( addr->getId() < numAddrs, "addr id is not set" );
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+            "expect address variable");
+        MUST_BE_TRUE(addr->getId() < numAddrs, "addr id is not set");
         int addrPTIndex = addrPointsToSetIndex[addr->getId()];
         REGVAR_VECTOR& vec = pointsToSets[addrPTIndex];
         bool isPresent = false;
-        for( unsigned i = 0; i < vec.size(); i++ )
+        for (unsigned i = 0; i < vec.size(); i++)
         {
-            if( vec[i] == var )
+            if (vec[i] == var)
             {
                 isPresent = true;
                 break;
             }
         }
-        if( !isPresent )
+        if (!isPresent)
         {
-            vec.push_back( var );
+            vec.push_back(var);
             DEBUG_VERBOSE("Addr " << addr->getId() << " <-- " << var->getDeclare()->getName() << "\n");
         }
     }
@@ -174,23 +174,23 @@ private:
     // Merge addr2's points-to set into addr1's
     // basically we copy the content of addr2's points-to to addr1,
     // and have addr2 point to addr1's points-to set
-    void mergePointsToSet( G4_RegVar* addr1, G4_RegVar* addr2 )
+    void mergePointsToSet(G4_RegVar* addr1, G4_RegVar* addr2)
     {
-         MUST_BE_TRUE( addr1->getDeclare()->getRegFile() == G4_ADDRESS &&
+         MUST_BE_TRUE(addr1->getDeclare()->getRegFile() == G4_ADDRESS &&
              addr2->getDeclare()->getRegFile() == G4_ADDRESS,
-             "expect address variable" );
+             "expect address variable");
          int addr2PTIndex = addrPointsToSetIndex[addr2->getId()];
          REGVAR_VECTOR& vec = pointsToSets[addr2PTIndex];
-         for( unsigned i = 0; i < vec.size(); i++ )
+         for (unsigned i = 0; i < vec.size(); i++)
          {
-             addToPointsToSet( addr1, vec[i] );
+             addToPointsToSet(addr1, vec[i]);
          }
          int addr1PTIndex = addrPointsToSetIndex[addr1->getId()];
          addrPointsToSetIndex[addr2->getId()] = addr1PTIndex;
-         DEBUG_VERBOSE("merge Addr " << addr1->getId() << " with Addr " << addr2->getId() );
+         DEBUG_VERBOSE("merge Addr " << addr1->getId() << " with Addr " << addr2->getId());
     }
 
-    unsigned int getIndexOfRegVar( G4_RegVar* r )
+    unsigned int getIndexOfRegVar(G4_RegVar* r)
     {
       unsigned int id = UINT_MAX;
 
@@ -198,9 +198,9 @@ private:
         // found. This function is useful when regvar ids
         // are reset.
 
-        for( unsigned int i = 0; i < regVars.size(); i++ )
+        for (unsigned int i = 0; i < regVars.size(); i++)
         {
-            if( regVars[i] == r )
+            if (regVars[i] == r)
             {
                 id = i;
                 break;
@@ -211,36 +211,36 @@ private:
     }
 
 public:
-    PointsToAnalysis(DECLARE_LIST& declares, unsigned numBBs );
+    PointsToAnalysis(DECLARE_LIST& declares, unsigned numBBs);
     ~PointsToAnalysis();
 
     void doPointsToAnalysis(FlowGraph& fg);
 
-    const REGVAR_VECTOR& getIndrUseVectorForBB( unsigned int bbId ) const
+    const REGVAR_VECTOR& getIndrUseVectorForBB(unsigned int bbId) const
     {
-        MUST_BE_TRUE( bbId < numBBs, "invalid basic block id" );
+        MUST_BE_TRUE(bbId < numBBs, "invalid basic block id");
         return indirectUses[bbId];
     }
 
-    const REGVAR_VECTOR* getIndrUseVectorPtrForBB( unsigned int bbId ) const
+    const REGVAR_VECTOR* getIndrUseVectorPtrForBB(unsigned int bbId) const
     {
-        MUST_BE_TRUE( bbId < numBBs, "invalid basic block id" );
+        MUST_BE_TRUE(bbId < numBBs, "invalid basic block id");
         return &(indirectUses[bbId]);
     }
 
     // Following methods were added to support address taken spill/fill
     // Since ids of addr regvars will be reset, we fall back to using
     // the regvar ptr
-    void insertAndMergeFilledAddr( G4_RegVar* addr1, G4_RegVar* addr2 )
+    void insertAndMergeFilledAddr(G4_RegVar* addr1, G4_RegVar* addr2)
     {
         unsigned int oldid = addr2->getId();
         addr2->setId(numAddrs);
-        MUST_BE_TRUE( regVars.size() == numAddrs, "Inconsistency found between size of regvars and number of addr vars");
+        MUST_BE_TRUE(regVars.size() == numAddrs, "Inconsistency found between size of regvars and number of addr vars");
 
-        if( addr2->getId() >= numAddrs )
+        if (addr2->getId() >= numAddrs)
             resizePointsToSet(numAddrs+1);
 
-        regVars.push_back( addr2 );
+        regVars.push_back(addr2);
 
         mergePointsToSet(addr1, addr2);
         addr2->setId(oldid);
@@ -260,38 +260,38 @@ public:
         return vec;
     }
 
-    G4_RegVar* getPointsTo( G4_RegVar* addr, int idx )
+    G4_RegVar* getPointsTo(G4_RegVar* addr, int idx)
     {
-        MUST_BE_TRUE( addr->getDeclare()->getRegFile() == G4_ADDRESS,
-            "expect address variable" );
-        unsigned int id = getIndexOfRegVar( addr );
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+            "expect address variable");
+        unsigned int id = getIndexOfRegVar(addr);
 
-        if( id == UINT_MAX )
+        if (id == UINT_MAX)
             return NULL;
 
         REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
 
-        if( idx < (int)vec.size() )
+        if (idx < (int)vec.size())
             return vec[idx];
         else
             return NULL;
     }
 
-    bool isPresentInPointsTo( G4_RegVar* addr, G4_RegVar* var )
+    bool isPresentInPointsTo(G4_RegVar* addr, G4_RegVar* var)
     {
-        MUST_BE_TRUE( addr->getDeclare()->getRegFile() == G4_ADDRESS,
-            "expect address variable" );
-        unsigned int id = getIndexOfRegVar( addr );
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+            "expect address variable");
+        unsigned int id = getIndexOfRegVar(addr);
 
-        if( id == UINT_MAX )
+        if (id == UINT_MAX)
             return false;
 
         REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
         bool present = false;
 
-        for( unsigned int i = 0; i < vec.size(); i++ )
+        for (unsigned int i = 0; i < vec.size(); i++)
         {
-            if( vec[i]->getId() == var->getId() )
+            if (vec[i]->getId() == var->getId())
             {
                 present = true;
                 break;
@@ -301,72 +301,72 @@ public:
         return present;
     }
 
-    void addFillToPointsTo( unsigned int bbid, G4_RegVar* addr, G4_RegVar* newvar )
+    void addFillToPointsTo(unsigned int bbid, G4_RegVar* addr, G4_RegVar* newvar)
     {
         // Adds to points to as well as indirect use in basic block
-        MUST_BE_TRUE( addr->getDeclare()->getRegFile() == G4_ADDRESS,
-            "expect address variable" );
-        unsigned int id = getIndexOfRegVar( addr );
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+            "expect address variable");
+        unsigned int id = getIndexOfRegVar(addr);
 
-        if( id == UINT_MAX )
+        if (id == UINT_MAX)
         {
-            MUST_BE_TRUE( false, "Could not find addr in points to set");
+            MUST_BE_TRUE(false, "Could not find addr in points to set");
         }
 
         REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
-        vec.push_back( newvar );
+        vec.push_back(newvar);
 
-        addIndirectUseToBB( bbid, newvar );
+        addIndirectUseToBB(bbid, newvar);
     }
 
-    void removeFromPointsTo( G4_RegVar* addr, G4_RegVar* vartoremove )
+    void removeFromPointsTo(G4_RegVar* addr, G4_RegVar* vartoremove)
     {
-        MUST_BE_TRUE( addr->getDeclare()->getRegFile() == G4_ADDRESS,
-            "expect address variable" );
-        unsigned int id = getIndexOfRegVar( addr );
+        MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+            "expect address variable");
+        unsigned int id = getIndexOfRegVar(addr);
 
-        if( id == UINT_MAX )
+        if (id == UINT_MAX)
         {
-            MUST_BE_TRUE( false, "Could not find addr in points to set");
+            MUST_BE_TRUE(false, "Could not find addr in points to set");
         }
 
         REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
         bool removed = false;
 
-        for( REGVAR_VECTOR::iterator it = vec.begin();
+        for (REGVAR_VECTOR::iterator it = vec.begin();
             it != vec.end();
-            it++ )
+            it++)
         {
             G4_RegVar* cur = (*it);
 
-            if( cur->getId() == vartoremove->getId() )
+            if (cur->getId() == vartoremove->getId())
             {
-                vec.erase( it );
+                vec.erase(it);
                 removed = true;
                 break;
             }
         }
 
-        MUST_BE_TRUE( removed == true, "Could not find spilled ref from points to");
+        MUST_BE_TRUE(removed == true, "Could not find spilled ref from points to");
 
         // If an addr taken live-range is spilled then any basic block that has
         // an indirect use of it will no longer have it because we would have
         // inserted addr taken spill/fill code. So remove any indirect uses of
         // the var from all basic blocks. Currently this set is used when
         // constructing liveness sets before RA.
-        for( unsigned int i = 0; i < numBBs; i++ )
+        for (unsigned int i = 0; i < numBBs; i++)
         {
             REGVAR_VECTOR& vec = indirectUses[i];
 
-            for( REGVAR_VECTOR::iterator it = vec.begin();
+            for (REGVAR_VECTOR::iterator it = vec.begin();
                 it != vec.end();
-                it++ )
+                it++)
             {
                 G4_RegVar* cur = (*it);
 
-                if( cur->getId() == vartoremove->getId() )
+                if (cur->getId() == vartoremove->getId())
                 {
-                    vec.erase( it );
+                    vec.erase(it);
                     break;
                 }
             }
@@ -468,7 +468,7 @@ public:
     bool isLiveAtExit(G4_BB* bb, unsigned var_id) const;
     bool isAddressSensitive (unsigned num) const  // returns true if the variable is address taken and also has indirect access
     {
-        return addr_taken.isSet( num );
+        return addr_taken.isSet(num);
     }
     bool livenessClass(G4_RegFileKind regKind) const
     {
