@@ -1106,6 +1106,14 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
     {
         GII_id = GII->getIntrinsicID();
     }
+
+    const llvm::IntrinsicInst* llvmintrin = dyn_cast<llvm::IntrinsicInst>(inst);
+    if (llvmintrin != nullptr &&
+        (llvmintrin->getIntrinsicID() == llvm::Intrinsic::stacksave ||
+         llvmintrin->getIntrinsicID() == llvm::Intrinsic::stackrestore)) {
+        return WIAnalysis::UNIFORM;
+    }
+
     if (IsMathIntrinsic(intrinsic_name) ||
         intrinsic_name == llvm_input ||
         intrinsic_name == llvm_sgv ||

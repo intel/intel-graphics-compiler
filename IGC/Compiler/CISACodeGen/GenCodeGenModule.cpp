@@ -528,6 +528,26 @@ bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function* F)
     return (F->hasFnAttribute("visaStackCall"));
 }
 
+void GenXFunctionGroupAnalysis::setHasVariableLengthAlloca(llvm::Module* pModule)
+{
+    // check all functions in the group to see if there's an vla alloca
+    // function attribute "hasVLA" should be set at ProcessFuncAttributes pass
+    for (auto GI = begin(), GE = end(); GI != GE; ++GI) {
+        for (auto SubGI = (*GI)->Functions.begin(), SubGE = (*GI)->Functions.end();
+            SubGI != SubGE; ++SubGI) {
+            for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI) {
+                Function* F = *FI;
+                if (F->hasFnAttribute("hasVLA")) {
+                    (*GI)->m_hasVaribleLengthAlloca = true;
+                    break;
+                }
+            }
+            if ((*GI)->m_hasVaribleLengthAlloca)
+                break;
+        }
+    }
+}
+
 void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pModule)
 {
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -625,6 +645,9 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
 
     // Re-add all indirect functions to the default kernel group
     addIndirectFuncsToKernelGroup(Mod);
+
+    // Once FGs are formed, set FG's HasVariableLengthAlloca
+    setHasVariableLengthAlloca(Mod);
 
     // Verification.
     if (!verify())

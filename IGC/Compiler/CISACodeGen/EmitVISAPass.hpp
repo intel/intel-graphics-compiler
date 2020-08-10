@@ -247,6 +247,7 @@ public:
     void emitSurfaceInfo(llvm::GenIntrinsicInst* intrinsic);
 
     void emitStackAlloca(llvm::GenIntrinsicInst* intrinsic);
+    void emitVLAStackAlloca(llvm::GenIntrinsicInst* intrinsic);
 
     void emitUAVSerialize();
 
@@ -433,6 +434,9 @@ public:
 
     void emitLLVMbswap(llvm::IntrinsicInst* inst);
     void emitDP4A(llvm::GenIntrinsicInst* GII);
+
+    void emitLLVMStackSave(llvm::IntrinsicInst* inst);
+    void emitLLVMStackRestore(llvm::IntrinsicInst* inst);
     // Debug Built-Ins
     void emitStateRegID(uint64_t and_imm, uint64_t shr_imm);
     void emitThreadPause(llvm::GenIntrinsicInst* inst);
