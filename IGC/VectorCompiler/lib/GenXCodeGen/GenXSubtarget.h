@@ -108,8 +108,6 @@ private:
 
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
-  // Limit in bytes for stack purposes
-  unsigned StackSurfMaxSize;
 
 public:
   // This constructor initializes the data members to match that
@@ -260,10 +258,6 @@ public:
 
   /// * stackSurface - return a surface that should be used for stack.
   PreDefined_Surface stackSurface() const { return StackSurf; }
-
-  /// * stackSurfaceMaxSize - return available space in bytes for stack
-  /// purposes.
-  unsigned stackSurfaceMaxSize() const { return StackSurfMaxSize; }
 };
 
 } // End llvm namespace

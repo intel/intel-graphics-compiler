@@ -47,7 +47,7 @@ char GenXOCLRuntimeInfo::ID = 0;
 // Just perform linear instructions scan to find usage stats.
 // Intrinsic set copied from igcmc.
 void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
-    FunctionGroup &FG, const GenXSubtarget &ST) {
+    FunctionGroup &FG, const GenXBackendConfig &BC) {
   for (Function *F : FG) {
     for (BasicBlock &BB : *F) {
       for (Instruction &I : BB) {
@@ -73,7 +73,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
         case GenXIntrinsic::genx_uudp4a_sat:
           break;
         case GenXIntrinsic::genx_alloca:
-          ThreadPrivateMemSize = ST.stackSurfaceMaxSize();
+          ThreadPrivateMemSize = BC.getStackSurfaceMaxSize();
           break;
         }
       }
@@ -130,8 +130,9 @@ void GenXOCLRuntimeInfo::KernelInfo::setPrintStrings(
 }
 
 GenXOCLRuntimeInfo::KernelInfo::KernelInfo(FunctionGroup &FG,
-                                           const GenXSubtarget &ST) {
-  setInstructionUsageProperties(FG, ST);
+                                           const GenXSubtarget &ST,
+                                           const GenXBackendConfig &BC) {
+  setInstructionUsageProperties(FG, BC);
 
   GRFSizeInBytes = ST.getGRFWidth();
 

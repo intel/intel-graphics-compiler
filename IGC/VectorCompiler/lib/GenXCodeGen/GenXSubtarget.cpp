@@ -51,9 +51,6 @@ static cl::opt<bool>
     StackScratchMem("stack-scratch-mem",
                     cl::desc("Specify what surface should be used for stack"),
                     cl::init(true));
-static cl::opt<unsigned> StackMemSize("stack-mem-size",
-                                      cl::desc("Available space for stack"),
-                                      cl::init(8 * 1024));
 
 void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
 
@@ -69,7 +66,6 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_T255;
   else
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_STACK;
-  StackSurfMaxSize = StackMemSize;
 
   GenXVariant = llvm::StringSwitch<GenXTag>(CPU)
     .Case("HSW", GENX_HSW)

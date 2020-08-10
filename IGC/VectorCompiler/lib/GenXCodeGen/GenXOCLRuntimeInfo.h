@@ -28,11 +28,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define VCOPT_LIB_GENXCODEGEN_GENXOCLRUNTIMEINFO_H
 
 #include "FunctionGroup.h"
-#include "JitterDataStruct.h"
+#include "GenXBackendConfig.h"
+
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+
 #include "llvm/ADT/Optional.h"
 #include "llvm/Pass.h"
 
+#include "JitterDataStruct.h"
 #include "RelocationInfo.h"
 
 #include <cassert>
@@ -154,7 +157,7 @@ public:
 
   private:
     void setInstructionUsageProperties(FunctionGroup &FG,
-                                       const GenXSubtarget &ST);
+                                       const GenXBackendConfig &BC);
     void setMetadataProperties(genx::KernelMetadata &KM,
                                const GenXSubtarget &ST);
     void setArgumentProperties(const Function &Kernel,
@@ -168,7 +171,8 @@ public:
 
   public:
     // Creates kernel info for given function group.
-    KernelInfo(FunctionGroup &FG, const GenXSubtarget &ST);
+    KernelInfo(FunctionGroup &FG, const GenXSubtarget &ST,
+               const GenXBackendConfig &BC);
 
     const std::string &getName() const { return Name; }
 

@@ -13,6 +13,7 @@ set(CODEGEN_SOURCES
   GenXAlignmentInfo.cpp
   GenXAnalysisDumper.cpp
   GenXArgIndirection.cpp
+  GenXBackendConfig.cpp
   GenXBaling.cpp
   GenXCategory.cpp
   GenXCFSimplification.cpp

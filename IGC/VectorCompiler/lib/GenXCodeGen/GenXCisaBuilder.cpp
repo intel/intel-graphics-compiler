@@ -43,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 
 #include "GenX.h"
+#include "GenXBackendConfig.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
 #include "GenXOCLRuntimeInfo.h"
@@ -52,18 +53,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisaRegAlloc.h"
-#include "common.h"
+
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+
+#include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
+
+#include "common.h"
 #include "visaBuilder_interface.h"
+
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/ScopedPrinter.h"
@@ -552,6 +558,7 @@ public:
   GenXModule *GM = nullptr;
   DominatorTreeGroupWrapperPass *DTs = nullptr;
   const GenXSubtarget *Subtarget = nullptr;
+  const GenXBackendConfig *BackendConfig = nullptr;
   GenXBaling *Baling = nullptr;
   VISABuilder *CisaBuilder = nullptr;
 
@@ -787,6 +794,8 @@ INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
 INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
 INITIALIZE_PASS_DEPENDENCY(GenXVisaRegAlloc)
 INITIALIZE_PASS_DEPENDENCY(GenXModule)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXCisaBuilder, "GenXCisaBuilderPass",
                     "GenXCisaBuilderPass", false, false)
 
@@ -803,6 +812,7 @@ void GenXCisaBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXModule>();
   AU.addRequired<FunctionGroupAnalysis>();
   AU.addRequired<TargetPassConfig>();
+  AU.addRequired<GenXBackendConfig>();
   AU.setPreservesAll();
 }
 
@@ -819,6 +829,7 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
   KernelBuilder->Subtarget = &getAnalysis<TargetPassConfig>()
                                   .getTM<GenXTargetMachine>()
                                   .getGenXSubtarget();
+  KernelBuilder->BackendConfig = &getAnalysis<GenXBackendConfig>();
 
   std::string KernelName;
   KernelBuilder->run(KernelName);
@@ -5142,8 +5153,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
     CISA_CALL(Kernel->AppendVISADataMovementInst(
         ISA_MOV, nullptr, false, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
         EXEC_SIZE_1, FpOpDst, SpOpSrc));
-    // use the max available for now
-    unsigned SMO = Subtarget ? Subtarget->stackSurfaceMaxSize() : 8192;
+    unsigned SMO = BackendConfig->getStackSurfaceMaxSize();
     Kernel->AddKernelAttribute("SpillMemOffset", 4, &SMO);
   } else if (Func->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
              Func->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
@@ -5596,11 +5606,13 @@ public:
     AU.addRequired<GenXModule>();
     AU.addRequired<FunctionGroupAnalysis>();
     AU.addRequired<TargetPassConfig>();
+    AU.addRequired<GenXBackendConfig>();
     AU.setPreservesAll();
   }
 
   void fillOCLRuntimeInfo(GenXOCLRuntimeInfo &Info, GenXModule &GM,
-                          FunctionGroupAnalysis &FGA, const GenXSubtarget &ST);
+                          FunctionGroupAnalysis &FGA, const GenXSubtarget &ST,
+                          const GenXBackendConfig &BC);
 
   bool runOnModule(Module &M) {
     Ctx = &M.getContext();
@@ -5611,6 +5623,7 @@ public:
     const GenXSubtarget &ST = getAnalysis<TargetPassConfig>()
                                   .getTM<GenXTargetMachine>()
                                   .getGenXSubtarget();
+    const GenXBackendConfig &BC = getAnalysis<GenXBackendConfig>();
 
     std::stringstream ss;
     auto *CisaBuilder = GM.GetCisaBuilder();
@@ -5620,7 +5633,7 @@ public:
     } else
       CISA_CALL(CisaBuilder->Compile("genxir", &ss, EmitVisa));
     if (OCLInfo)
-      fillOCLRuntimeInfo(*OCLInfo, GM, FGA, ST);
+      fillOCLRuntimeInfo(*OCLInfo, GM, FGA, ST, BC);
     dbgs() << CisaBuilder->GetCriticalMsg();
     GM.DestroyCISABuilder();
     GM.DestroyVISAAsmReader();
@@ -5690,13 +5703,14 @@ constructSymbolTable(FunctionGroup &FG, GenXModule &GM,
 void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
                                        GenXModule &GM,
                                        FunctionGroupAnalysis &FGA,
-                                       const GenXSubtarget &ST) {
+                                       const GenXSubtarget &ST,
+                                       const GenXBackendConfig &BC) {
   using KernelInfo = GenXOCLRuntimeInfo::KernelInfo;
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
   using TableInfo = GenXOCLRuntimeInfo::TableInfo;
   for (auto *FG : FGA) {
     // Compiler info.
-    KernelInfo Info{*FG, ST};
+    KernelInfo Info{*FG, ST, BC};
 
     // Finalizer info (jitter struct and gen binary).
     VISAKernel *BuiltKernel = GM.getVISAKernel(FG->getHead());

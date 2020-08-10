@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <inc/common/sku_wa.h>
 
 #include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/Optional.h>
 #include <llvm/Support/Error.h>
 
 #include <memory>
@@ -144,6 +145,7 @@ struct CompileOptions {
   // Api accessible options.
   bool NoVecDecomp = false;
   OptimizerLevel OptLevel = OptimizerLevel::Full;
+  llvm::Optional<unsigned> StackMemSize;
 
   // Internal options.
   std::string FeaturesString; // format is: [+-]<feature1>,[+-]<feature2>,...

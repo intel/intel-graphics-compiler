@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <dlfcn.h>
 #endif
 
+#include "GenXBackendConfig.h"
 #include "GenXOCLRuntimeInfo.h"
 #include "GenXWATable.h"
 
@@ -414,11 +415,21 @@ static void dumpFinalOutput(const vc::CompileOptions &Opts, const Module &M,
     dumpDataToTemp(IsaBinary, "final.isa");
 }
 
+// Create backend options for immutable config pass. Override default
+// values with provided ones.
+static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
+  GenXBackendOptions BackendOpts;
+  if (Opts.StackMemSize)
+    BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
+  return BackendOpts;
+}
+
 static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
                                        TargetMachine &TM, raw_pwrite_stream &OS,
                                        legacy::PassManager &PM) {
   TargetLibraryInfoImpl TLII{TM.getTargetTriple()};
   PM.add(new TargetLibraryInfoWrapperPass(TLII));
+  PM.add(new GenXBackendConfig(createBackendOptions(Opts)));
   // Non-constant pointer.
   WA_TABLE *WaTable = Opts.WATable.get();
   PM.add(new GenXWATable(WaTable));
@@ -585,6 +596,12 @@ parseInternalOptions(StringSaver &Saver, StringRef InternalOptions) {
   return parseOptions(Argv, vc::options::InternalOption);
 }
 
+static Error makeOptionError(const opt::Arg &A, const opt::ArgList &Opts,
+                             bool IsInternal) {
+  const std::string BadOpt = A.getAsString(Opts);
+  return make_error<vc::OptionError>(BadOpt, IsInternal);
+}
+
 static Error fillApiOptions(const opt::ArgList &ApiOptions,
                             vc::CompileOptions &Opts) {
   if (ApiOptions.hasArg(vc::options::OPT_igcmc))
@@ -598,11 +615,17 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
                           .Case("none", vc::OptimizerLevel::None)
                           .Case("full", vc::OptimizerLevel::Full)
                           .Default(None);
-    if (!MaybeLevel) {
-      const std::string BadOpt = A->getAsString(ApiOptions);
-      return make_error<vc::OptionError>(BadOpt, /*IsInternal=*/false);
-    }
+    if (!MaybeLevel)
+      return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
     Opts.OptLevel = MaybeLevel.getValue();
+  }
+
+  if (opt::Arg *A = ApiOptions.getLastArg(vc::options::OPT_igcmc_stack_size)) {
+    StringRef Val = A->getValue();
+    unsigned Result;
+    if (Val.getAsInteger(/*Radix=*/0, Result))
+      return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
+    Opts.StackMemSize = Result;
   }
 
   return Error::success();
@@ -623,10 +646,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
                            .Case("ocl", vc::BinaryKind::OpenCL)
                            .Case("ze", vc::BinaryKind::ZE)
                            .Default(None);
-    if (!MaybeBinary) {
-      const std::string BadOpt = A->getAsString(InternalOptions);
-      return make_error<vc::OptionError>(BadOpt, /*IsInternal=*/true);
-    }
+    if (!MaybeBinary)
+      return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
     Opts.Binary = MaybeBinary.getValue();
   }
 
@@ -713,13 +734,6 @@ composeLLVMArgs(const opt::InputArgList &ApiArgs,
     UpdatedArgs.AddSeparateArg(ApiArgs.getLastArg(OptID), LLVMOpt, WrappedOpts);
   }
 
-
-  // Stack memory size.
-  if (opt::Arg *StackMemSizeArg =
-          ApiArgs.getLastArg(vc::options::OPT_igcmc_stack_size)) {
-    StringRef MemSizeRef = Saver.save(StackMemSizeArg->getAsString(ApiArgs));
-    UpdatedArgs.AddSeparateArg(StackMemSizeArg, LLVMOpt, MemSizeRef);
-  }
 
 
   return UpdatedArgs;
