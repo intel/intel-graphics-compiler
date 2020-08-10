@@ -31,12 +31,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 //===----------------------------------------------------------------------===//
 
+#define DEBUG_TYPE "GENX_EMULATION"
+
 #include "GenX.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
+#include "GenXUtil.h"
+#include "llvm/Analysis/TargetFolder.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
 
@@ -45,11 +50,14 @@ using namespace genx;
 
 namespace {
 
+using IRBuilder = IRBuilder<TargetFolder>;
+
 class GenXEmulate : public ModulePass {
   // Maps <opcode, type> to its corresponding emulation function.
   using OpType = std::pair<unsigned, Type *>;
+  std::vector<Instruction *> ToErase;
   std::map<OpType, Function *> EmulationFuns;
-  const GenXSubtarget * ST = nullptr;
+  const GenXSubtarget *ST = nullptr;
 
 public:
   static char ID;
@@ -57,9 +65,10 @@ public:
   virtual StringRef getPassName() const { return "GenX emulation"; }
   void getAnalysisUsage(AnalysisUsage &AU) const;
   bool runOnModule(Module &M);
-  bool runOnFunction(Function &F);
+  void runOnFunction(Function &F);
+
 private:
-  bool emulateInst(Instruction *Inst);
+  Value *emulateInst(Instruction *Inst);
   Function *getEmulationFunction(Instruction *Inst);
   // Check if a function is to emulate instructions.
   static bool isEmulationFunction(const Function* F) {
@@ -100,11 +109,16 @@ bool GenXEmulate ::runOnModule(Module &M) {
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
 
+  // TODO: consider just an iteration over instructions
+
   // Process non-builtin functions.
   for (auto &F : M.getFunctionList()) {
     if (!isEmulationFunction(&F))
-      Changed |= runOnFunction(F);
+      runOnFunction(F);
   }
+  Changed |= !ToErase.empty();
+  for (auto *I : ToErase)
+    I->eraseFromParent();
 
   // Delete unuse builtins or make used builtins internal.
   for (auto I = M.begin(); I != M.end();) {
@@ -121,15 +135,19 @@ bool GenXEmulate ::runOnModule(Module &M) {
   return Changed;
 }
 
-bool GenXEmulate::runOnFunction(Function &F) {
-  bool Changed = false;
+void GenXEmulate::runOnFunction(Function &F) {
   for (auto &BB : F.getBasicBlockList()) {
-    for (auto I = BB.begin(); I != BB.end();) {
-      Instruction *Inst = &*I++;
-      Changed |= emulateInst(Inst);
+    for (auto I = BB.begin(); I != BB.end(); ++I) {
+
+      Instruction *Inst = &*I;
+      auto *NewVal = emulateInst(Inst);
+      if (NewVal) {
+        Inst->replaceAllUsesWith(NewVal);
+        ToErase.push_back(Inst);
+      }
     }
   }
-  return Changed;
+  return;
 }
 
 Function *GenXEmulate::getEmulationFunction(Instruction *Inst) {
@@ -163,16 +181,14 @@ Function *GenXEmulate::getEmulationFunction(Instruction *Inst) {
   return nullptr;
 }
 
-bool GenXEmulate::emulateInst(Instruction *Inst) {
+Value *GenXEmulate::emulateInst(Instruction *Inst) {
   Function *EmuFn = getEmulationFunction(Inst);
-  if (!EmuFn)
-    return false;
+  if (EmuFn) {
+    assert(!isa<CallInst>(Inst) && "call emulation not supported yet");
+    llvm::IRBuilder<> Builder(Inst);
+    SmallVector<Value *, 8> Args(Inst->operands());
+    return Builder.CreateCall(EmuFn, Args);
+  }
 
-  assert(!isa<CallInst>(Inst) && "call emulation not supported yet");
-  IRBuilder<> Builder(Inst);
-  SmallVector<Value *, 8> Args(Inst->operands());
-  Value *EmuInst = Builder.CreateCall(EmuFn, Args);
-  Inst->replaceAllUsesWith(EmuInst);
-  Inst->eraseFromParent();
-  return true;
+  return nullptr;
 }
