@@ -1939,7 +1939,7 @@ namespace IGC
                     ISA_ADDC, Pred, EMask, ToExecSize,
                     L, AccOut, S0L, S1L));
 
-                if (H1)
+                if (H1 && !(H1->IsImmediate() && H1->GetImmediateValue() == 0))
                 {
                     SModifier NewS1HMod = SplitVariable(FromExecSize, ToExecSize, ThePart, H1, m_encoderState.m_srcOperand[3], true);
                     VISA_VectorOpnd* S1H = GetSourceOperand(H1, NewS1HMod);
@@ -1990,7 +1990,7 @@ namespace IGC
                 ISA_ADDC, Pred, ExecMask, ExecSize,
                 L, AccOut, S0L, S1L));
 
-            if (H1)
+            if (H1 && !(H1->IsImmediate() && H1->GetImmediateValue() == 0))
             {
                 VISA_VectorOpnd* S1H = GetSourceOperand(H1, m_encoderState.m_srcOperand[3]);
                 V(vKernel->AppendVISAArithmeticInst(
