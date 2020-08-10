@@ -1816,6 +1816,17 @@ VISA_Type CShader::GetType(llvm::Type* type)
     return IGC::GetType(type, GetContext());
 }
 
+uint32_t CShader::GetNumElts(llvm::Type* type, bool isUniform)
+{
+    uint32_t numElts = isUniform ? 1 : numLanes(m_SIMDSize);
+    if (type->isVectorTy())
+    {
+        IGC_ASSERT(type->getVectorElementType()->isIntegerTy() || type->getVectorElementType()->isFloatingPointTy());
+        numElts *= (uint16_t)type->getVectorNumElements();
+    }
+    return numElts;
+}
+
 uint64_t IGC::GetImmediateVal(llvm::Value* Const)
 {
     // Constant integer
@@ -2129,15 +2140,10 @@ CVariable* CShader::getOrCreateReturnSymbol(llvm::Function* F)
 
     IGC_ASSERT(retType->isSingleValueType());
     VISA_Type type = GetType(retType);
-    uint16_t nElts = numLanes(m_SIMDSize);
-    if (retType->isVectorTy())
-    {
-        nElts *= (uint16_t)cast<VectorType>(retType)->getNumElements();
-    }
+    uint16_t nElts = (uint16_t)GetNumElts(retType, false);
     e_alignment align = getGRFAlignment();
-    static const bool nonUniform = false;
     CVariable* var = GetNewVariable(
-        nElts, type, align, nonUniform, m_numberInstance,
+        nElts, type, align, false, m_numberInstance,
         CName(F->getName(), "_RETVAL"));
     globalSymbolMapping.insert(std::make_pair(F, var));
     return var;
@@ -2157,31 +2163,34 @@ CVariable* CShader::getOrCreateArgumentSymbol(
         return it->second;
     }
 
-    // An explicit argument is not uniform, and for an implicit argument, it
-    // is predefined. Note that it is not necessarily uniform.
-    Function* F = Arg->getParent();
-    ImplicitArgs implicitArgs(*F, m_pMdUtils);
-    unsigned numImplicitArgs = implicitArgs.size();
-    unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-    unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) && !isNonEntryMultirateShader(F) ? numPushArgsEntry : 0);
-    unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs - numPushArgs;
-
     CVariable* var = nullptr;
-    llvm::Function::arg_iterator arg = F->arg_begin();
-    std::advance(arg, numFuncArgs);
-    for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg)
-    {
-        Argument* argVal = &(*arg);
-        if (argVal == Arg)
-        {
-            ImplicitArg implictArg = implicitArgs[i];
-            auto ArgType = implictArg.getArgType();
 
-            // Just reuse the kernel arguments for the following.
-            // Note that for read only general arguments, we may do similar
-            // optimization, with some advanced analysis.
-            if (!useStackCall &&
-                (ArgType == ImplicitArg::ArgType::R0 ||
+    // Stack call does not use implicit args
+    if (!useStackCall)
+    {
+        // An explicit argument is not uniform, and for an implicit argument, it
+        // is predefined. Note that it is not necessarily uniform.
+        Function* F = Arg->getParent();
+        ImplicitArgs implicitArgs(*F, m_pMdUtils);
+        unsigned numImplicitArgs = implicitArgs.size();
+        unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+        unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) && !isNonEntryMultirateShader(F) ? numPushArgsEntry : 0);
+        unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs - numPushArgs;
+
+        llvm::Function::arg_iterator arg = F->arg_begin();
+        std::advance(arg, numFuncArgs);
+        for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg)
+        {
+            Argument* argVal = &(*arg);
+            if (argVal == Arg)
+            {
+                ImplicitArg implictArg = implicitArgs[i];
+                auto ArgType = implictArg.getArgType();
+
+                // Just reuse the kernel arguments for the following.
+                // Note that for read only general arguments, we may do similar
+                // optimization, with some advanced analysis.
+                if (ArgType == ImplicitArg::ArgType::R0 ||
                     ArgType == ImplicitArg::ArgType::PAYLOAD_HEADER ||
                     ArgType == ImplicitArg::ArgType::WORK_DIM ||
                     ArgType == ImplicitArg::ArgType::NUM_GROUPS ||
@@ -2191,37 +2200,38 @@ CVariable* CShader::getOrCreateArgumentSymbol(
                     ArgType == ImplicitArg::ArgType::CONSTANT_BASE ||
                     ArgType == ImplicitArg::ArgType::GLOBAL_BASE ||
                     ArgType == ImplicitArg::ArgType::PRIVATE_BASE ||
-                    ArgType == ImplicitArg::ArgType::PRINTF_BUFFER))
-            {
-                Function& K = *m_FGA->getSubGroupMap(F);
-                ImplicitArgs IAs(K, m_pMdUtils);
-                uint32_t nIAs = (uint32_t)IAs.size();
-                uint32_t iArgIx = IAs.getArgIndex(ArgType);
-                uint32_t argIx = (uint32_t)IGCLLVM::GetFuncArgSize(K) - nIAs + iArgIx;
-                if (isEntryFunc(m_pMdUtils, &K) && !isNonEntryMultirateShader(&K)) {
-                    argIx = argIx - numPushArgsEntry;
+                    ArgType == ImplicitArg::ArgType::PRINTF_BUFFER)
+                {
+                    Function& K = *m_FGA->getSubGroupMap(F);
+                    ImplicitArgs IAs(K, m_pMdUtils);
+                    uint32_t nIAs = (uint32_t)IAs.size();
+                    uint32_t iArgIx = IAs.getArgIndex(ArgType);
+                    uint32_t argIx = (uint32_t)IGCLLVM::GetFuncArgSize(K) - nIAs + iArgIx;
+                    if (isEntryFunc(m_pMdUtils, &K) && !isNonEntryMultirateShader(&K)) {
+                        argIx = argIx - numPushArgsEntry;
+                    }
+                    Function::arg_iterator arg = K.arg_begin();
+                    for (uint32_t j = 0; j < argIx; ++j, ++arg);
+                    Argument* kerArg = &(*arg);
+
+                    // Pre-condition: all kernel arguments have been created already.
+                    IGC_ASSERT(pSymMap->count(kerArg));
+                    return (*pSymMap)[kerArg];
                 }
-                Function::arg_iterator arg = K.arg_begin();
-                for (uint32_t j = 0; j < argIx; ++j, ++arg);
-                Argument* kerArg = &(*arg);
+                else
+                {
+                    bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
+                    uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
 
-                // Pre-condition: all kernel arguments have been created already.
-                IGC_ASSERT(pSymMap->count(kerArg));
-                return (*pSymMap)[kerArg];
+
+                    var = GetNewVariable(nbElements,
+                        implictArg.getVISAType(*m_DL),
+                        implictArg.getAlignType(*m_DL), isUniform,
+                        isUniform ? 1 : m_numberInstance,
+                        argVal->getName());
+                }
+                break;
             }
-            else
-            {
-                bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
-                uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
-
-
-                var = GetNewVariable(nbElements,
-                    implictArg.getVISAType(*m_DL),
-                    implictArg.getAlignType(*m_DL), isUniform,
-                    isUniform ? 1 : m_numberInstance,
-                    argVal->getName());
-            }
-            break;
         }
     }
 
@@ -2240,16 +2250,16 @@ CVariable* CShader::getOrCreateArgumentSymbol(
         }
 
         VISA_Type type = GetType(Arg->getType());
-        uint16_t nElts = numLanes(m_SIMDSize);
-        if (Arg->getType()->isVectorTy())
-        {
-            IGC_ASSERT((Arg->getType()->getVectorElementType()->isIntegerTy()) || (Arg->getType()->getVectorElementType()->isFloatingPointTy()));
-            nElts *= (uint16_t)cast<VectorType>(Arg->getType())->getNumElements();
-        }
+        uint16_t nElts = (uint16_t)GetNumElts(Arg->getType(), isUniform);
         var = GetNewVariable(nElts, type, align, isUniform, m_numberInstance, Arg->getName());
     }
     pSymMap->insert(std::make_pair(Arg, var));
     return var;
+}
+
+void CShader::UpdateSymbolMap(llvm::Value* v, CVariable* CVar)
+{
+    symbolMapping[v] = CVar;
 }
 
 // Reuse a varable in the following case

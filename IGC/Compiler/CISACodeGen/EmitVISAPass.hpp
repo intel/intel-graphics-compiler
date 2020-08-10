@@ -141,7 +141,6 @@ public:
     void emitStackCall(llvm::CallInst* inst);
     void emitStackFuncEntry(llvm::Function* F);
     void emitStackFuncExit(llvm::ReturnInst* inst);
-    uint stackCallArgumentAlignment(CVariable* argv);
     uint emitStackArgumentLoadOrStore(std::vector<CVariable*>& Args, bool isWrite);
     void InitializeKernelStack(llvm::Function* pKernel);
 

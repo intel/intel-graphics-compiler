@@ -343,7 +343,9 @@ public:
         llvm::Argument* Arg,
         bool ArgInCallee, // true if Arg isn't in current func
         bool useStackCall = false);
+    void UpdateSymbolMap(llvm::Value* v, CVariable* CVar);
     VISA_Type GetType(llvm::Type* type);
+    uint32_t GetNumElts(llvm::Type* type, bool isUniform = false);
 
     /// Evaluate constant expression and return the result immediate value.
     uint64_t GetConstantExpr(llvm::ConstantExpr* C);

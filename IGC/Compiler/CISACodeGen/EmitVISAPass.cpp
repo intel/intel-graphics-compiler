@@ -9489,32 +9489,6 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     emitPushToStack(m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
 }
 
-/// This function is NOT about the alignment-rule for storing argv into GRF!
-/// It is about the alignment-rule when we pack the arguments into a block for stack-call!
-uint EmitPass::stackCallArgumentAlignment(CVariable* argv)
-{
-    if (argv->IsUniform())
-    {
-        IGC_ASSERT(argv->GetType() != ISA_TYPE_BOOL);
-        if (argv->GetSize() > SIZE_OWORD)
-        {
-            return getGRFSize();
-        }
-        else if (argv->GetSize() > SIZE_DWORD)
-        {
-            return SIZE_OWORD;
-        }
-        else
-        {
-            return SIZE_DWORD;
-        }
-    }
-    else
-    {
-        return getGRFSize();
-    }
-}
-
 // Either do a block load or store to the stack-pointer given a vector of function arguments
 uint EmitPass::emitStackArgumentLoadOrStore(std::vector<CVariable*>& Args, bool isWrite)
 {
@@ -9652,44 +9626,13 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
 
     for (uint32_t i = 0; i < inst->getNumArgOperands(); i++)
     {
-        CVariable* ArgCV = nullptr;
-        CVariable* Src = nullptr;
-        Type* argType = nullptr;
+        Value* operand = inst->getArgOperand(i);
+        CVariable* Src = GetSymbol(operand);
+        Type* argType = operand->getType();
 
-        if (!isIndirectFCall)
-        {
-            IGC_ASSERT(inst->getNumArgOperands() == F->arg_size());
-            auto Arg = F->arg_begin();
-            std::advance(Arg, i);
-
-            // Skip unused arguments if any.
-            if (Arg->use_empty())
-            {
-                continue;
-            }
-            ArgCV = m_currShader->getOrCreateArgumentSymbol(&*Arg, true, true);
-            Src = GetSymbol(inst->getArgOperand(i));
-            argType = Arg->getType();
-        }
-        else
-        {
-            // Indirect function call
-            Value* operand = inst->getArgOperand(i);
-            argType = operand->getType();
-            Src = GetSymbol(operand);
-
-            uint16_t nElts = numLanes(m_currShader->m_SIMDSize);
-            if (argType->isVectorTy())
-            {
-                IGC_ASSERT(cast<VectorType>(argType)->getElementType()->isIntegerTy() || cast<VectorType>(argType)->getElementType()->isFloatingPointTy());
-                nElts *= (uint16_t)cast<VectorType>(argType)->getNumElements();
-            }
-            ArgCV = m_currShader->GetNewVariable(nElts, m_currShader->GetType(argType), m_currShader->getGRFAlignment(), false, 1, CName::NONE);
-        }
         if (Src->GetType() == ISA_TYPE_BOOL)
         {
             // bool args are treated as a vector of WORDs
-            IGC_ASSERT(ArgCV->GetType() == ISA_TYPE_BOOL);
             uint nElts = numLanes(m_currShader->m_dispatchSize);
             CVariable* ReplaceArg = m_currShader->GetNewVariable(
                 nElts,
@@ -9699,27 +9642,36 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             CVariable* one = m_currShader->ImmToVariable(1, ISA_TYPE_W);
             CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_W);
             m_encoder->Select(Src, ReplaceArg, one, zero);
+
+            argType = IntegerType::getInt16Ty(inst->getContext());
             Src = ReplaceArg;
-            argType = VectorType::get(IntegerType::getInt16Ty(inst->getContext()), nElts);
-        }
-        else
-        {
-            emitCopyAll(ArgCV, Src, argType);
-            Src = ArgCV;
         }
 
         // adjust offset for alignment
-        uint align = stackCallArgumentAlignment(Src);
+        uint align = getGRFSize();
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));
         // check if an argument can be written to ARGV based upon offset + arg-size
-        bool overflow = ((offsetA + Src->GetSize()) > ArgBlkVar->GetSize());
+        unsigned argSize = Src->GetSize();
+        if (Src->IsUniform())
+        {
+            argSize = Src->GetSize() * numLanes(m_currShader->m_dispatchSize);
+        }
+        bool overflow = ((offsetA + argSize) > ArgBlkVar->GetSize());
         if (!overflow)
         {
             argsOnRegister.push_back(std::make_tuple(Src, argType, offsetA));
-            offsetA += Src->GetSize();
+            offsetA += argSize;
         }
         else
         {
+            // Vectorize, then push to stack
+            if (Src->IsUniform())
+            {
+                uint16_t nElts = (uint16_t)m_currShader->GetNumElts(argType, false);
+                CVariable* SrcVec = m_currShader->GetNewVariable(nElts, Src->GetType(), m_currShader->getGRFAlignment(), false, Src->getName());
+                emitCopyAll(SrcVec, Src, argType);
+                Src = SrcVec;
+            }
             argsOnStack.push_back(Src);
         }
     }
@@ -9753,12 +9705,9 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             CVariable * Src = std::get<0>(I);
             Type* argType = std::get<1>(I);
             uint32_t offset = std::get<2>(I);
-            CVariable* Dst = ArgBlkVar;
 
-            if (Dst->GetType() != Src->GetType() || offset != 0 || Src->IsUniform() != Dst->IsUniform())
-            {
-                Dst = m_currShader->GetNewAlias(ArgBlkVar, Src->GetType(), (uint16_t)offset, Src->GetNumberElement(), Src->IsUniform());
-            }
+            uint16_t nElts = (uint16_t)m_currShader->GetNumElts(argType, false);
+            CVariable* Dst = m_currShader->GetNewAlias(ArgBlkVar, m_currShader->GetType(argType), offset, nElts, false);
             emitCopyAll(Dst, Src, argType);
         }
     };
@@ -9901,7 +9850,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
         CVariable* Dst = m_currShader->getOrCreateArgumentSymbol(&Arg, false, true);
         // adjust offset for alignment
-        uint align = stackCallArgumentAlignment(Dst);
+        uint align = getGRFSize();
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));
         uint argSize = Dst->GetSize();
         if (Dst->GetType() == ISA_TYPE_BOOL)
@@ -9922,13 +9871,9 @@ void EmitPass::emitStackFuncEntry(Function* F)
                 }
                 else
                 {
-                    if (Src->GetType() != Dst->GetType() ||
-                        offsetA != 0 ||
-                        Src->IsUniform() != Dst->IsUniform())
-                    {
-                        Src = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
-                    }
-                    emitCopyAll(Dst, Src, Arg.getType());
+                    // Directly map the dst register to an alias of ArgBlkVar, and update symbol mapping for future uses
+                    Dst = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
+                    m_currShader->UpdateSymbolMap(&Arg, Dst);
                 }
             }
             offsetA += argSize;
