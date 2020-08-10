@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/PassSupport.h"
+#include <llvm/Pass.h>
 #include "llvm/IR/Instructions.h"
 #include <llvm/IR/Function.h>
 #include "llvm/IR/Module.h"

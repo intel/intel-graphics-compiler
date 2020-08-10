@@ -79,7 +79,7 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
 
     if (ValType->isVectorTy())
     {
-        auto VecCount = ValType->getVectorNumElements();
+        auto VecCount = cast<VectorType>(ValType)->getNumElements();
         if (VecCount == 2 || VecCount == 3 || VecCount == 4 || VecCount == 8 || VecCount == 16)
         {
             VecStr = "v" + std::to_string(VecCount);

@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
@@ -375,7 +376,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
 
                 Value* selW = m_builder->CreateSelect(cmpInst, valueW, one);
 
-                llvm::Value* newValue = llvm::UndefValue::get(llvm::VectorType::get(m_builder->getFloatTy(), 4));
+                llvm::Value* newValue = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(m_builder->getFloatTy(), 4));
                 newValue = m_builder->CreateInsertElement(newValue, valueX, m_builder->getInt32(0));
                 newValue = m_builder->CreateInsertElement(newValue, valueY, m_builder->getInt32(1));
                 newValue = m_builder->CreateInsertElement(newValue, valueZ, m_builder->getInt32(2));

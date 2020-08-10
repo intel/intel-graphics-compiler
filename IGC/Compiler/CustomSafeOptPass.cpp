@@ -76,6 +76,7 @@ instead if the structure is small.
 #include "common/IGCConstantFolder.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "WrapperLLVM/Utils.h"
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/IR/IRBuilder.h>
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include <llvm/ADT/Statistic.h>
@@ -543,7 +544,7 @@ void CustomSafeOptPass::visitf32tof16(llvm::CallInst* inst)
 
     IRBuilder<> builder(lastValue);
     Type* funcType[] = { Type::getHalfTy(builder.getContext()), Type::getFloatTy(builder.getContext()) };
-    Type* halfx2 = VectorType::get(Type::getHalfTy(builder.getContext()), 2);
+    Type* halfx2 =IGCLLVM::FixedVectorType::get(Type::getHalfTy(builder.getContext()), 2);
 
     if (extInstLo && extInstHi &&
         extInstLo->getOperand(0)->getType()->isHalfTy() &&
@@ -883,8 +884,8 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
     extractElementOrderOpt(ArrA);
     extractElementOrderOpt(ArrB);
 
-    Value* VectorA = UndefValue::get(VectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
-    Value* VectorB = UndefValue::get(VectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
+    Value* VectorA = UndefValue::get(IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
+    Value* VectorB = UndefValue::get(IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(), NUM_DP4A_COMPONENTS));
     for (int i = 0; i < NUM_DP4A_COMPONENTS; ++i) {
       VectorA = Builder.CreateInsertElement(VectorA, ArrA[i], i);
       VectorB = Builder.CreateInsertElement(VectorB, ArrB[i], i);
@@ -1254,8 +1255,8 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
     if (inst->getType() != pNewCallInst->getType())
     {
         IGC_ASSERT_MESSAGE(inst->getType()->isVectorTy(), "expect int4 here");
-        IGC_ASSERT_MESSAGE(inst->getType()->getVectorElementType()->isIntegerTy(32), "expect int4 here");
-        IGC_ASSERT_MESSAGE(inst->getType()->getVectorNumElements() == 4, "expect int4 here");
+        IGC_ASSERT_MESSAGE(cast<VectorType>(inst->getType())->getElementType()->isIntegerTy(32), "expect int4 here");
+        IGC_ASSERT_MESSAGE(cast<VectorType>(inst->getType())->getNumElements() == 4, "expect int4 here");
         auto bitCastInst = builder.CreateBitCast(pNewCallInst, inst->getType());
         inst->replaceAllUsesWith(bitCastInst);
     }
@@ -1569,13 +1570,13 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
             if (bitShift != 0)
             {
                 Type* vecType = I.getVectorOperand()->getType();
-                unsigned int eltSize = (unsigned int)vecType->getVectorElementType()->getPrimitiveSizeInBits();
+                unsigned int eltSize = (unsigned int)cast<VectorType>(vecType)->getElementType()->getPrimitiveSizeInBits();
                 if (bitShift % eltSize == 0)
                 {
                     int elOffset = (int)(bitShift / eltSize);
                     elOffset = rightShift ? elOffset : -elOffset;
                     unsigned int newIndex = (unsigned int)((int)cstIndex->getZExtValue() + elOffset);
-                    if (newIndex < vecType->getVectorNumElements())
+                    if (newIndex < cast<VectorType>(vecType)->getNumElements())
                     {
                         IRBuilder<> builder(&I);
                         Value* newBitCast = builder.CreateBitCast(binOp->getOperand(0), vecType);
@@ -1918,7 +1919,7 @@ void GenSpecificPattern::matchReverse(BinaryOperator& I)
         }
         else
         { // bitWidth == 64
-            Value* int32Source = builder.CreateBitCast(nextOrShl, llvm::VectorType::get(builder.getInt32Ty(), 2));
+            Value* int32Source = builder.CreateBitCast(nextOrShl, IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2));
             Value* extractElement0 = builder.CreateExtractElement(int32Source, builder.getInt32(0));
             Value* extractElement1 = builder.CreateExtractElement(int32Source, builder.getInt32(1));
             Value* bfrevLow = builder.CreateCall(bfrevFunc, extractElement0);
@@ -1949,7 +1950,7 @@ void GenSpecificPattern::matchReverse(BinaryOperator& I)
 void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Value* OpLow, Value* OpHi, unsigned extractNum1, unsigned extractNum2)
 {
     llvm::IRBuilder<> builder(&I);
-    auto vec2 = VectorType::get(builder.getInt32Ty(), 2);
+    auto vec2 =IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
     Value* vec = UndefValue::get(vec2);
     Value* elemLow = nullptr;
     Value* elemHi = nullptr;
@@ -1967,7 +1968,7 @@ void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Va
         else if (auto IEIInst = dyn_cast<InsertElementInst>(Op))
         {
             auto opType = IEIInst->getType();
-            if (opType->isVectorTy() && opType->getVectorElementType()->isIntegerTy(32) && opType->getVectorNumElements() == 2)
+            if (opType->isVectorTy() && cast<VectorType>(opType)->getElementType()->isIntegerTy(32) && cast<VectorType>(opType)->getNumElements() == 2)
             {
                 elem = IEIInst->getOperand(1);
             }
@@ -2193,7 +2194,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
             BitCastInst* opBC = cast<BitCastInst>(op);
 
             auto opType = opBC->getType();
-            if (!(opType->isVectorTy() && opType->getVectorElementType()->isIntegerTy(32) && opType->getVectorNumElements() == 2))
+            if (!(opType->isVectorTy() && cast<VectorType>(opType)->getElementType()->isIntegerTy(32) && cast<VectorType>(opType)->getNumElements() == 2))
                 return nullptr;
 
             if (opBC->getSrcTy()->isDoubleTy())
@@ -2235,7 +2236,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
             if (src && match(src, fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
             {
                 llvm::IRBuilder<> builder(&I);
-                VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
+                VectorType* vec2 =IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
                 Value* BC = builder.CreateBitCast(src_of_FNeg, vec2);
                 Value* EE = builder.CreateExtractElement(BC, builder.getInt32(1));
                 Value* AI = builder.CreateAnd(EE, builder.getInt32(0x7FFFFFFF));
@@ -2279,7 +2280,7 @@ void GenSpecificPattern::visitCmpInst(CmpInst& I)
         Val1->getType()->isIntegerTy(64))
     {
         llvm::IRBuilder<> builder(&I);
-        VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
+        VectorType* vec2 =IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
         Value* BC = builder.CreateBitCast(Val1, vec2);
         Value* EE = builder.CreateExtractElement(BC, builder.getInt32(1));
         Value* AI = builder.CreateAnd(EE, builder.getInt32(const_int1 >> 32));
@@ -2613,8 +2614,8 @@ void GenSpecificPattern::visitBitCastInst(BitCastInst& I)
                 if (zExtInst->getOperand(0)->getType()->isIntegerTy(32) &&
                     isa<InsertElementInst>(bitCastInst->getOperand(0)) &&
                     bitCastInst->getOperand(0)->getType()->isVectorTy() &&
-                    bitCastInst->getOperand(0)->getType()->getVectorElementType()->isIntegerTy(32) &&
-                    bitCastInst->getOperand(0)->getType()->getVectorNumElements() == 2)
+                    cast<VectorType>(bitCastInst->getOperand(0)->getType())->getElementType()->isIntegerTy(32) &&
+                    cast<VectorType>(bitCastInst->getOperand(0)->getType())->getNumElements() == 2)
                 {
                     InsertElementInst* insertElementInst = cast<InsertElementInst>(bitCastInst->getOperand(0));
 
@@ -2680,7 +2681,7 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
     {
         auto new_shift_size = (unsigned)CI->getZExtValue() - 32;
         llvm::IRBuilder<> builder(&I);
-        VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
+        VectorType* vec2 =IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
         Value* new_Val = builder.CreateBitCast(LHS, vec2);
         new_Val = builder.CreateExtractElement(new_Val, builder.getInt32(1));
         if (new_shift_size > 0)
@@ -2712,7 +2713,7 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
     }
     else
     {
-        uint32_t vectorSize = I.getType()->getVectorNumElements();
+        uint32_t vectorSize = cast<VectorType>(I.getType())->getNumElements();
         fsub = llvm::UndefValue::get(I.getType());
 
         for (uint32_t i = 0; i < vectorSize; ++i)
@@ -2825,8 +2826,8 @@ Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
                 char* offset = &(modMD->immConstant.data[0]);
                 if (inst->getType()->isVectorTy())
                 {
-                    Type* srcEltTy = inst->getType()->getVectorElementType();
-                    uint32_t srcNElts = inst->getType()->getVectorNumElements();
+                    Type* srcEltTy = cast<VectorType>(inst->getType())->getElementType();
+                    uint32_t srcNElts = (uint32_t)cast<VectorType>(inst->getType())->getNumElements();
                     uint32_t eltSize_in_bytes = (unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8;
                     IRBuilder<> builder(inst);
                     Value* vectorValue = UndefValue::get(inst->getType());
@@ -3028,7 +3029,7 @@ Constant* IGCConstProp::ConstantFoldCmpInst(CmpInst* CI)
     {
         bool AllTrue = true, AllFalse = true;
         auto VecOpnd = cast<Constant>(EEI->getVectorOperand());
-        unsigned N = VecOpnd->getType()->getVectorNumElements();
+        unsigned N = (unsigned)cast<VectorType>(VecOpnd->getType())->getNumElements();
         for (unsigned i = 0; i < N; ++i)
         {
             Constant* const Opnd = VecOpnd->getAggregateElement(i);
@@ -3514,7 +3515,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
                         unsigned int size_in_bytes = (unsigned int)inst->getType()->getPrimitiveSizeInBits() / 8;
                         if (size_in_bytes)
                         {
-                            Value* ICBbuffer = UndefValue::get(VectorType::get(inst->getType(), maxImmConstantSizePushed / size_in_bytes));
+                            Value* ICBbuffer = UndefValue::get(IGCLLVM::FixedVectorType::get(inst->getType(), maxImmConstantSizePushed / size_in_bytes));
                             if (inst->getType()->isFloatTy())
                             {
                                 float returnConstant = 0;

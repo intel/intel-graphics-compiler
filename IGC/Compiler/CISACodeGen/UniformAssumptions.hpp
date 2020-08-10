@@ -1,6 +1,6 @@
 #pragma once
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/PassSupport.h"
+#include "llvm/Pass.h"
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 

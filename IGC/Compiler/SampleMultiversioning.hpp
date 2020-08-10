@@ -38,7 +38,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Instructions.h>
 #include <llvm/ADT/SmallSet.h>
 #include <llvm/Pass.h>
-#include <llvm/PassAnalysisSupport.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;

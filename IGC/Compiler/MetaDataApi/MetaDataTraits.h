@@ -109,7 +109,7 @@ namespace IGC
 
             llvm::MDString* mdStr = llvm::dyn_cast<llvm::MDString>(pNode);
             IGC_ASSERT_MESSAGE(mdStr, "can't load string, wrong node type");
-            return mdStr->getString();
+            return value_type(mdStr->getString());
         }
 
         static llvm::MDString* generateValue(llvm::LLVMContext& context, const value_type& val)

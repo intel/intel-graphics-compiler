@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
@@ -360,7 +361,7 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
         return false;
     }
 
-    Type* EltTy = SrcTy->getVectorElementType();
+    Type* EltTy = cast<VectorType>(SrcTy)->getElementType();
     auto match1 = [=](Value* V, BinaryOperator*& BO, TruncInst*& TI,
         BitCastInst*& BI, int& Index)
     {
@@ -584,7 +585,7 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
             uint vecSize = srcSize / dstSize;
 
             Builder->SetInsertPoint(TI);
-            Value* BC = Builder->CreateBitCast(I.getOperand(0), VectorType::get(castType, vecSize));
+            Value* BC = Builder->CreateBitCast(I.getOperand(0),IGCLLVM::FixedVectorType::get(castType, vecSize));
             Value* EE = Builder->CreateExtractElement(BC, ConstantInt::get(Type::getInt32Ty(I.getContext()), Index));
 
             // BO and TI are dead
@@ -683,7 +684,7 @@ void Legalization::visitBitCastInst(llvm::BitCastInst& I)
             return;
 
         uint numElt = (unsigned int)pX->getType()->getPrimitiveSizeInBits() / (unsigned int)pEltTy->getPrimitiveSizeInBits();
-        auto* pBCType = VectorType::get(pEltTy, numElt);
+        auto* pBCType =IGCLLVM::FixedVectorType::get(pEltTy, numElt);
 
         SmallVector<uint32_t, 4> maskVals;
         for (uint i = 0; i < pVecTy->getNumElements(); i++)
@@ -741,7 +742,7 @@ void Legalization::visitSelectInst(SelectInst& I)
         Value* lo[2];
         Value* hi[2];
         Type* intTy = Type::getInt32Ty(I.getContext());
-        VectorType* vec2Ty = VectorType::get(intTy, 2);
+        VectorType* vec2Ty =IGCLLVM::FixedVectorType::get(intTy, 2);
         Constant* Zero = ConstantInt::get(intTy, 0);
         Constant* One = ConstantInt::get(intTy, 1);
         m_builder->SetInsertPoint(&I);
@@ -764,7 +765,7 @@ void Legalization::visitSelectInst(SelectInst& I)
     }
     else if (I.getType()->isVectorTy())
     {
-        unsigned int vecSize = I.getType()->getVectorNumElements();
+        unsigned int vecSize = (unsigned)cast<VectorType>(I.getType())->getNumElements();
         Value* newVec = UndefValue::get(I.getType());
         m_builder->SetInsertPoint(&I);
         for (unsigned int i = 0; i < vecSize; i++)
@@ -1146,7 +1147,7 @@ void Legalization::visitStoreInst(StoreInst& I)
     if (ConstantDataVector * vec = dyn_cast<ConstantDataVector>(I.getOperand(0)))
     {
         Value* newVec = UndefValue::get(vec->getType());
-        unsigned int nbElement = vec->getType()->getVectorNumElements();
+        unsigned int nbElement = (unsigned)cast<VectorType>(vec->getType())->getNumElements();
         for (unsigned int i = 0; i < nbElement; i++)
         {
             Constant* cst = vec->getElementAsConstant(i);
@@ -1167,7 +1168,7 @@ void Legalization::visitStoreInst(StoreInst& I)
     else if (ConstantVector * vec = dyn_cast<ConstantVector>(I.getOperand(0)))
     {
         Value* newVec = UndefValue::get(vec->getType());
-        unsigned int nbElement = vec->getType()->getVectorNumElements();
+        unsigned int nbElement = (unsigned)cast<VectorType>(vec->getType())->getNumElements();
         for (unsigned int i = 0; i < nbElement; i++)
         {
             Constant* cst = vec->getOperand(i);
@@ -1188,7 +1189,7 @@ void Legalization::visitStoreInst(StoreInst& I)
     else if (ConstantAggregateZero * vec = dyn_cast<ConstantAggregateZero>(I.getOperand(0)))
     {
         Value* newVec = UndefValue::get(vec->getType());
-        unsigned int nbElement = vec->getType()->getVectorNumElements();
+        unsigned int nbElement = (unsigned)cast<VectorType>(vec->getType())->getNumElements();
         for (unsigned int i = 0; i < nbElement; i++)
         {
             Constant* cst = vec->getElementValue(i);
@@ -1240,7 +1241,7 @@ void Legalization::visitStoreInst(StoreInst& I)
         if (intSize == 0) // unaligned sizes not supported
             return;
 
-        Type* legalTy = VectorType::get(Type::getIntNTy(I.getContext(), intSize), srcWidth / intSize);
+        Type* legalTy =IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), intSize), srcWidth / intSize);
         Value* storeVal = BitCastInst::Create(Instruction::BitCast, I.getOperand(0), legalTy, "", &I);
         Value* storePtr = I.getPointerOperand();
 
@@ -1339,7 +1340,7 @@ void Legalization::visitInsertElementInst(InsertElementInst& I)
     if (ConstantDataVector * vec = dyn_cast<ConstantDataVector>(I.getOperand(0)))
     {
         Value* newVec = UndefValue::get(vec->getType());
-        unsigned int nbElement = vec->getType()->getVectorNumElements();
+        unsigned int nbElement = (unsigned)cast<VectorType>(vec->getType())->getNumElements();
         for (unsigned int i = 0; i < nbElement; i++)
         {
             Constant* cst = vec->getElementAsConstant(i);
@@ -1359,7 +1360,7 @@ void Legalization::visitInsertElementInst(InsertElementInst& I)
     else if (ConstantVector * vec = dyn_cast<ConstantVector>(I.getOperand(0)))
     {
         Value* newVec = UndefValue::get(I.getType());
-        unsigned int nbElement = vec->getType()->getVectorNumElements();
+        unsigned int nbElement = (unsigned)cast<VectorType>(vec->getType())->getNumElements();
         for (unsigned int i = 0; i < nbElement; i++)
         {
             Constant* cst = vec->getOperand(i);
@@ -1379,7 +1380,7 @@ void Legalization::visitInsertElementInst(InsertElementInst& I)
     else if (ConstantAggregateZero * vec = dyn_cast<ConstantAggregateZero>(I.getOperand(0)))
     {
         Value* newVec = UndefValue::get(I.getType());
-        unsigned int nbElement = vec->getType()->getVectorNumElements();
+        unsigned int nbElement = (unsigned)cast<VectorType>(vec->getType())->getNumElements();
         for (unsigned int i = 0; i < nbElement; i++)
         {
             Constant* cst = vec->getElementValue(i);
@@ -1396,8 +1397,8 @@ void Legalization::visitInsertElementInst(InsertElementInst& I)
     else if (I.getOperand(1)->getType()->isIntegerTy(1))
     {
         // This promotes i1 insertelement to i32
-        unsigned int nbElement = I.getOperand(0)->getType()->getVectorNumElements();
-        Value* newVec = UndefValue::get(VectorType::get(m_builder->getInt32Ty(), nbElement));
+        unsigned int nbElement = (unsigned)cast<VectorType>(I.getOperand(0)->getType())->getNumElements();
+        Value* newVec = UndefValue::get(IGCLLVM::FixedVectorType::get(m_builder->getInt32Ty(), nbElement));
         PromoteInsertElement(&I, newVec);
     }
 }
@@ -1586,13 +1587,13 @@ Type* Legalization::LegalAllocaType(Type* type) const
         break;
     case Type::ArrayTyID:
         legalType = ArrayType::get(
-            LegalAllocaType(type->getSequentialElementType()),
+            LegalAllocaType(cast<ArrayType>(type)->getElementType()),
             type->getArrayNumElements());
         break;
     case Type::VectorTyID:
-        legalType = VectorType::get(
-            LegalAllocaType(type->getSequentialElementType()),
-            type->getVectorNumElements());
+        legalType =IGCLLVM::FixedVectorType::get(
+            LegalAllocaType(cast<VectorType>(type)->getElementType()),
+            (unsigned)cast<VectorType>(type)->getNumElements());
         break;
     case Type::StructTyID:
         return LegalStructAllocaType(type);
@@ -2201,7 +2202,7 @@ void GenOptLegalizer::visitLoadInst(LoadInst& I) {
         // (RAUW)
         //
         m_Builder->SetInsertPoint(&I);
-        Type* I8x3Ty = VectorType::get(m_Builder->getInt8Ty(), 3);
+        Type* I8x3Ty =IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
         Type* I8x3PtrTy = PointerType::get(I8x3Ty, I.getPointerAddressSpace());
         Value* NewPtr = m_Builder->CreateBitCast(I.getPointerOperand(), I8x3PtrTy);
         Value* NewLD = IGC::cloneLoad(&I, NewPtr);
@@ -2248,7 +2249,7 @@ void GenOptLegalizer::visitStoreInst(StoreInst& I) {
             // %newdst = bitcast i24* %dst to <3 x i8>*
             // %1 = store <3 x i8> %0, <3 x i8>* %newdst
             //
-            Type* I8x3Ty = VectorType::get(m_Builder->getInt8Ty(), 3);
+            Type* I8x3Ty =IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
             Type* I8x3PtrTy = PointerType::get(I8x3Ty, LD->getPointerAddressSpace());
             // Replace load of i24 to load of <3 x i8>
             m_Builder->SetInsertPoint(LD);
@@ -2284,13 +2285,13 @@ void GenOptLegalizer::visitStoreInst(StoreInst& I) {
                 // store <3 x i8> %2, <3 x i8>* %0
                 //
                 m_Builder->SetInsertPoint(&I);
-                Type* I8x3Ty = VectorType::get(m_Builder->getInt8Ty(), 3);
+                Type* I8x3Ty =IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
                 Type* I8x3PtrTy = PointerType::get(I8x3Ty, I.getPointerAddressSpace());
 
                 // Convert i32 to <4 x i8>
                 Type* SrcTy = SV->getOperand(0)->getType();
                 unsigned numElements = (unsigned int)SrcTy->getPrimitiveSizeInBits() / 8;
-                Type* NewVecTy = VectorType::get(m_Builder->getInt8Ty(), numElements);
+                Type* NewVecTy =IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), numElements);
                 Value* NewVec = m_Builder->CreateBitCast(SV->getOperand(0), NewVecTy);
                 // Create shufflevector to select elements for <3 x i8>
                 SmallVector<uint32_t, 3> maskVals = { 0, 1, 2 };

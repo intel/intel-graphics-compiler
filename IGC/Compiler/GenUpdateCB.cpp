@@ -386,7 +386,7 @@ bool GenUpdateCB::runOnFunction(Function& F)
                     isResInfo(dyn_cast<GenIntrinsicInst>(inst,
                         GenISAIntrinsic::GenISA_resinfoptr), texId, lod, isUAV))
                 {
-                    unsigned nelems = inst->getType()->getVectorNumElements();
+                    unsigned nelems = (unsigned)cast<VectorType>(inst->getType())->getNumElements();
                     SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(nelems);
                     if (VectorUsedByConstExtractOnly(inst, extracts))
                     {

@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ThreadCombining.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/LLVMUtils.h"
@@ -180,7 +181,7 @@ void ThreadCombining::CreateLoopKernel(
     for (auto& liveInst : m_aliveAcrossBarrier)
     {
         llvm::Instruction* aliveInst = dyn_cast<Instruction>(liveInst);
-        llvm::VectorType* pVecType = llvm::VectorType::get(aliveInst->getType(), totalSize);
+        llvm::VectorType* pVecType = IGCLLVM::FixedVectorType::get(aliveInst->getType(), totalSize);
         llvm::Value* inst = builder.CreateAlloca(pVecType);
         regToAllocaMap[aliveInst] = inst;
     }

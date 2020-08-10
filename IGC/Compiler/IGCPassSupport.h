@@ -41,7 +41,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/InitializePasses.h"
 #include <llvm/Pass.h>
-#include "llvm/PassSupport.h"
 #include "llvm/Support/Threading.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <functional>

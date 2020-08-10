@@ -5367,7 +5367,7 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
     auto* pDataType = isRead ? pFunc->getReturnType() : inst->getOperand(6)->getType();
 
     uint typeSize = isa<VectorType>(pDataType) ?
-        (uint)m_DL->getTypeSizeInBits(cast<VectorType>(pDataType)->getVectorElementType()) / 8 :
+        (uint)m_DL->getTypeSizeInBits(cast<VectorType>(pDataType)->getElementType()) / 8 :
         (uint)m_DL->getTypeSizeInBits(pDataType) / 8;
 
     uint widthInBytes = blockWidth * typeSize;
@@ -5418,7 +5418,7 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
         };
 
         uint nElts = isa<VectorType>(pDataType) ?
-            cast<VectorType>(pDataType)->getVectorNumElements() :
+            (uint)cast<VectorType>(pDataType)->getNumElements() :
             1;
 
         // Now, do the copies.
@@ -5504,7 +5504,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     uint32_t nbElements = 1;
     if (inst->getType()->isVectorTy())
     {
-        nbElements = inst->getType()->getVectorNumElements();
+        nbElements = (uint32_t)cast<VectorType>(inst->getType())->getNumElements();
     }
     IGC_ASSERT_MESSAGE(nbElements <= 8, "InValid Vector Size");
 
@@ -5747,7 +5747,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     uint32_t nbElements = 1;
     if (dataPtr->getType()->isVectorTy())
     {
-        nbElements = dataPtr->getType()->getVectorNumElements();
+        nbElements = (uint32_t)cast<VectorType>(dataPtr->getType())->getNumElements();
     }
     IGC_ASSERT_MESSAGE(nbElements <= 8, "InValid Vector Size");
 
@@ -8438,8 +8438,8 @@ void EmitPass::emitBitCast(llvm::BitCastInst* btCst)
 {
     Type* srcType = btCst->getOperand(0)->getType();
     Type* dstType = btCst->getType();
-    unsigned int numSrcElement = srcType->isVectorTy() ? srcType->getVectorNumElements() : 1;
-    unsigned int numDstElement = dstType->isVectorTy() ? dstType->getVectorNumElements() : 1;
+    unsigned int numSrcElement = srcType->isVectorTy() ? (unsigned)cast<VectorType>(srcType)->getNumElements() : 1;
+    unsigned int numDstElement = dstType->isVectorTy() ? (unsigned)cast<VectorType>(dstType)->getNumElements() : 1;
 
     if (srcType->isPointerTy())
     {
@@ -8938,7 +8938,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
     {
         IGC_ASSERT_MESSAGE(predDefSurface != ESURFACE_STATELESS, "scratch cannot be uniform");
         Type* loadType = inst->getType();
-        uint numElement = loadType->isVectorTy() ? loadType->getVectorNumElements() : 1;
+        uint numElement = loadType->isVectorTy() ? (uint)cast<VectorType>(loadType)->getNumElements() : 1;
         if (predDefSurface == ESURFACE_SLM)
         {
             IGC_ASSERT(numElement <= 4);
@@ -9676,8 +9676,8 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             uint16_t nElts = numLanes(m_currShader->m_SIMDSize);
             if (argType->isVectorTy())
             {
-                IGC_ASSERT(argType->getVectorElementType()->isIntegerTy() || argType->getVectorElementType()->isFloatingPointTy());
-                nElts *= (uint16_t)argType->getVectorNumElements();
+                IGC_ASSERT(cast<VectorType>(argType)->getElementType()->isIntegerTy() || cast<VectorType>(argType)->getElementType()->isFloatingPointTy());
+                nElts *= (uint16_t)cast<VectorType>(argType)->getNumElements();
             }
             ArgCV = m_currShader->GetNewVariable(nElts, m_currShader->GetType(argType), m_currShader->getGRFAlignment(), false, 1, CName::NONE);
         }
@@ -10306,7 +10306,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
         const uint vectorEntrySimdWidth = pInstVar->IsUniform() ?
             1 : numLanes(m_currShader->m_SIMDSize);
 
-        const uint vecTypeSize = (unsigned int)pVecType->getVectorElementType()->getPrimitiveSizeInBits() / 8;
+        const uint vecTypeSize = (unsigned int)cast<VectorType>(pVecType)->getElementType()->getPrimitiveSizeInBits() / 8;
 
         const uint offset = vectorEntrySimdWidth * vecTypeSize;
 
@@ -14500,8 +14500,8 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
 
     if (srcTy->isVectorTy())
     {
-        srcEltTy = srcTy->getVectorElementType();
-        srcNElts = srcTy->getVectorNumElements();
+        srcEltTy = cast<VectorType>(srcTy)->getElementType();
+        srcNElts = (uint32_t)cast<VectorType>(srcTy)->getNumElements();
     }
     else
     {
@@ -14510,8 +14510,8 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     }
     if (dstTy->isVectorTy())
     {
-        dstEltTy = dstTy->getVectorElementType();
-        dstNElts = dstTy->getVectorNumElements();
+        dstEltTy = cast<VectorType>(dstTy)->getElementType();
+        dstNElts = (uint32_t)cast<VectorType>(dstTy)->getNumElements();
     }
     else
     {
@@ -16318,7 +16318,7 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
     }
     else if (Ty->isVectorTy())
     {
-        unsigned NElts = Ty->getVectorNumElements();
+        unsigned NElts = (unsigned)cast<VectorType>(Ty)->getNumElements();
         emitVectorCopy(Dst, Src, NElts);
     }
     else

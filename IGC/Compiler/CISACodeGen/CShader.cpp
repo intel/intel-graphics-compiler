@@ -1163,7 +1163,7 @@ uint32_t CShader::GetExtractMask(llvm::Value* vecVal)
     {
         return it->second;
     }
-    const unsigned int numChannels = vecVal->getType()->isVectorTy() ? vecVal->getType()->getVectorNumElements() : 1;
+    const unsigned int numChannels = vecVal->getType()->isVectorTy() ? (unsigned)cast<VectorType>(vecVal->getType())->getNumElements() : 1;
     IGC_ASSERT_MESSAGE(numChannels <= 32, "Mask has 32 bits maximally!");
     return (1ULL << numChannels) - 1;
 }
@@ -1171,7 +1171,7 @@ uint32_t CShader::GetExtractMask(llvm::Value* vecVal)
 uint16_t CShader::AdjustExtractIndex(llvm::Value* vecVal, uint16_t index)
 {
     uint16_t result = index;
-    if (vecVal->getType()->getVectorNumElements() < 32)
+    if (cast<VectorType>(vecVal->getType())->getNumElements() < 32)
     {
         uint32_t mask = GetExtractMask(vecVal);
         for (uint i = 0; i < index; ++i)
@@ -2121,7 +2121,7 @@ CVariable* CShader::getOrCreateReturnSymbol(llvm::Function* F)
     uint16_t nElts = numLanes(m_SIMDSize);
     if (retType->isVectorTy())
     {
-        nElts *= (uint16_t)retType->getVectorNumElements();
+        nElts *= (uint16_t)cast<VectorType>(retType)->getNumElements();
     }
     e_alignment align = getGRFAlignment();
     static const bool nonUniform = false;
@@ -2233,7 +2233,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
         if (Arg->getType()->isVectorTy())
         {
             IGC_ASSERT((Arg->getType()->getVectorElementType()->isIntegerTy()) || (Arg->getType()->getVectorElementType()->isFloatingPointTy()));
-            nElts *= (uint16_t)Arg->getType()->getVectorNumElements();
+            nElts *= (uint16_t)cast<VectorType>(Arg->getType())->getNumElements();
         }
         var = GetNewVariable(nElts, type, align, isUniform, m_numberInstance, Arg->getName());
     }
@@ -2495,7 +2495,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
                 if (isVecType)
                 {
                     // Map the entire vector value to the CVar
-                    unsigned numElements = value->getType()->getVectorNumElements();
+                    unsigned numElements = (unsigned)cast<VectorType>(value->getType())->getNumElements();
                     var = GetNewVariable(numElements, ISA_TYPE_UQ, (GetContext()->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD, true, 1, valName);
                     symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
 
@@ -3011,8 +3011,8 @@ bool CShader::isUnpacked(llvm::Value* value)
     {
         if (isa<SampleIntrinsic>(value) || isa<LdmcsInstrinsic>(value))
         {
-            if (value->getType()->getVectorElementType()->isHalfTy() ||
-                value->getType()->getVectorElementType()->isIntegerTy(16))
+            if (cast<VectorType>(value->getType())->getElementType()->isHalfTy() ||
+                cast<VectorType>(value->getType())->getElementType()->isIntegerTy(16))
             {
                 isUnpacked = true;
                 auto uses = value->user_begin();

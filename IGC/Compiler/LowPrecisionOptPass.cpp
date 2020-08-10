@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Instructions.h>
@@ -174,7 +175,7 @@ void LowPrecisionOpt::visitFPTruncInst(llvm::FPTruncInst& I)
 // try to propagate the type in the sampler
 bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
 {
-    if (IGC_IS_FLAG_DISABLED(UpConvertF16Sampler) && I.getType()->getVectorElementType()->isHalfTy())
+    if (IGC_IS_FLAG_DISABLED(UpConvertF16Sampler) && cast<VectorType>(I.getType())->getElementType()->isHalfTy())
     {
         return false;
     }
@@ -185,12 +186,12 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
         return false;
     }
 
-    Type* eltTy = I.getType()->getVectorElementType();
+    Type* eltTy = cast<VectorType>(I.getType())->getElementType();
     Type* newDstType = nullptr;
     if (eltTy->isFloatingPointTy())
     {
         // check that all uses are extractelement followed by fpext
-        newDstType = I.getType()->getVectorElementType()->isFloatTy() ?
+        newDstType = cast<VectorType>(I.getType())->getElementType()->isFloatTy() ?
             m_builder->getHalfTy() : m_builder->getFloatTy();
         for (auto use = I.user_begin(); use != I.user_end(); ++use)
         {
@@ -255,7 +256,7 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
 
     VectorType* oldTy = cast<VectorType>(I.getType());
     llvm::SmallVector<llvm::Type*, 4> overloadTys;
-    auto retTy = VectorType::get(newDstType, int_cast<unsigned int>(oldTy->getNumElements()));
+    auto retTy = IGCLLVM::FixedVectorType::get(newDstType, int_cast<unsigned int>(oldTy->getNumElements()));
     overloadTys.push_back(retTy);
     auto ID = I.getIntrinsicID();
     switch (ID)

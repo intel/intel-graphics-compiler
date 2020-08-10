@@ -41,8 +41,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Pass.h"
-#include "llvm/PassAnalysisSupport.h"
 #include "llvm/Analysis/TargetFolder.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -132,7 +132,7 @@ namespace {
         bool isArg64Cast(BitCastInst* BC) const { return Arg64Casts.count(BC) != 0; }
 
         Type* getV2Int32Ty(unsigned NumElts = 1) const {
-            return VectorType::get(IRB->getInt32Ty(), NumElts * 2);
+            return IGCLLVM::FixedVectorType::get(IRB->getInt32Ty(), NumElts * 2);
         }
 
         ValuePair getExpandedValues(Value* V);
@@ -2055,7 +2055,7 @@ bool InstExpander::visitExtractElement(ExtractElementInst& EEI) {
     // later.
 
     Value* V = EEI.getVectorOperand();
-    unsigned NumElts = V->getType()->getVectorNumElements();
+    unsigned NumElts = (unsigned)cast<VectorType>(V->getType())->getNumElements();
     V = IRB->CreateBitCast(V, Emu->getV2Int32Ty(NumElts));
     // Re-calculate indices to Lo and Hi parts.
     Value* Idx = EEI.getIndexOperand();
@@ -2092,7 +2092,7 @@ bool InstExpander::visitInsertElement(InsertElementInst& IEI) {
 
     // Create the emulated vector.
     Value* NewVal = IEI.getOperand(0);
-    unsigned NumElts = NewVal->getType()->getVectorNumElements();
+    unsigned NumElts = (unsigned)cast<VectorType>(NewVal->getType())->getNumElements();
     NewVal = IRB->CreateBitCast(NewVal, Emu->getV2Int32Ty(NumElts));
     // Re-calculate indices to Lo and Hi parts.
     Value* Idx = IEI.getOperand(2);

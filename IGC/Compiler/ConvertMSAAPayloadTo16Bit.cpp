@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMUtils.h"
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
@@ -84,7 +85,7 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
             IGC_ASSERT(ldmcs != NULL);
             Type* coordType = m_builder->getInt32Ty();
             Type* types_ldmcs[] = {
-                VectorType::get(m_builder->getInt16Ty(), 4),
+                IGCLLVM::FixedVectorType::get(m_builder->getInt16Ty(), 4),
                 coordType,
                 ldmcs->getOperand(4)->getType() };
 

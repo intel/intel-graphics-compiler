@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -68,7 +69,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
 
     if (I.getType()->isDoubleTy() ||
         (I.getType()->isVectorTy() &&
-            I.getType()->getVectorElementType()->isDoubleTy()))
+            cast<VectorType>(I.getType())->getElementType()->isDoubleTy()))
     {
         // scalar/vector double instruction
         // Found an instruction of type
@@ -78,8 +79,8 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
 
         if (I.getType()->isVectorTy())
         {
-            numVectorElements = I.getType()->getVectorNumElements();
-            doubleDstType = llvm::VectorType::get(builder.getDoubleTy(), numVectorElements);
+            numVectorElements = (uint32_t)cast<VectorType>(I.getType())->getNumElements();
+            doubleDstType = IGCLLVM::FixedVectorType::get(builder.getDoubleTy(), numVectorElements);
         }
         uint as = ptrv->getType()->getPointerAddressSpace();
         BufferType bufType = GetBufferType(as);
@@ -106,7 +107,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
                 }
             }
 
-            Value* vec = UndefValue::get(llvm::VectorType::get(builder.getFloatTy(), numVectorElements * 2));
+            Value* vec = UndefValue::get(IGCLLVM::FixedVectorType::get(builder.getFloatTy(), numVectorElements * 2));
             for (unsigned int i = 0; i < numVectorElements * 2; ++i)
             {
                 Value* offset = builder.getInt32(i * 4);
@@ -126,7 +127,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
         else
         {
             // double to <floatx2> ; <doublex2> to <floatx4>
-            llvm::Type* dataType = llvm::VectorType::get(builder.getFloatTy(), numVectorElements * 2);
+            llvm::Type* dataType = IGCLLVM::FixedVectorType::get(builder.getFloatTy(), numVectorElements * 2);
             llvm::PointerType* ptrType = llvm::PointerType::get(dataType, ptrv->getType()->getPointerAddressSpace());
             ptrv = mutatePtrType(ptrv, ptrType, builder);
             Value* newLoad = builder.CreateLoad(ptrv);
@@ -157,19 +158,19 @@ void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst& I)
     llvm::Value* ptrv = llvm::cast<llvm::StoreInst>(I).getPointerOperand();
     if (I.getValueOperand()->getType()->isDoubleTy() ||
         (I.getValueOperand()->getType()->isVectorTy() &&
-            I.getValueOperand()->getType()->getVectorElementType()->isDoubleTy()))
+            cast<VectorType>(I.getValueOperand()->getType())->getElementType()->isDoubleTy()))
     {
         // scalar/vector double instruction
         uint32_t numVectorElements = 1;
 
         if (I.getValueOperand()->getType()->isVectorTy())
         {
-            numVectorElements = I.getValueOperand()->getType()->getVectorNumElements();
+            numVectorElements = (uint32_t)cast<VectorType>(I.getValueOperand()->getType())->getNumElements();
         }
 
 
         // %9 = bitcast double addrspace(8519681)* %8 to <2 x float> addrspace(8519681)*
-        llvm::Type* floatDatType = llvm::VectorType::get(builder.getFloatTy(), numVectorElements * 2);
+        llvm::Type* floatDatType = IGCLLVM::FixedVectorType::get(builder.getFloatTy(), numVectorElements * 2);
         llvm::PointerType* floatPtrType = llvm::PointerType::get(floatDatType, ptrv->getType()->getPointerAddressSpace());
         ptrv = mutatePtrType(ptrv, floatPtrType, builder);
 
