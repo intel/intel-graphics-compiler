@@ -337,6 +337,10 @@ const Argument* VISAModule::GetTracedArgument64Ops(const Value* pVal) const
     }
     auto callinst = cast<const CallInst>(pBaseValue);
 
+    if (!isa<const Argument>(callinst->getArgOperand(0)))
+    {
+        return arg;
+    }
     arg = cast<const Argument>(callinst->getArgOperand(0));
 
     return arg;
