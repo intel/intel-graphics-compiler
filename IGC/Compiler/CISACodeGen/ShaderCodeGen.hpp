@@ -584,6 +584,7 @@ public:
     ~CShaderProgram();
     CShader* GetOrCreateShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
     CShader* GetShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
+    void DeleteShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
     CodeGenContext* GetContext() { return m_context; }
     void FillProgram(SVertexShaderKernelProgram* pKernelProgram);
     void FillProgram(SHullShaderKernelProgram* pKernelProgram);

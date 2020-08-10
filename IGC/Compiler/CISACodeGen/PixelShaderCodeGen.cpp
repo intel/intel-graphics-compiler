@@ -1204,7 +1204,8 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
         ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
         return false;
     }
-    if (m_phase != PSPHASE_LEGACY && simdMode == SIMDMode::SIMD32)
+    if (m_phase != PSPHASE_LEGACY &&
+        simdMode == SIMDMode::SIMD32)
     {
         // Coarse pixel shader doesn't support SIMD32
         ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
@@ -1409,10 +1410,12 @@ void CodeGen(PixelShaderContext* ctx)
         }
         pMdUtils = ctx->getMetaDataUtils();
     }
-    CShaderProgram::KernelShaderMap shaders;
 
     if (coarsePhase && pixelPhase)
-    {
+   {
+        CShaderProgram::KernelShaderMap coarseShaders;
+        CShaderProgram::KernelShaderMap pixelShaders;
+
         // Cancelling staged compilation for multi stage PS.
         ctx->m_CgFlag = FLAG_CG_ALL_SIMDS;
 
@@ -1425,13 +1428,12 @@ void CodeGen(PixelShaderContext* ctx)
         pixelFI = pMdUtils->getFunctionsInfoItem(pixelPhase);
 
         memset(&outputs, 0, 2 * sizeof(SPixelShaderKernelProgram));
+
         for (unsigned int i = 0; i < numStage; i++)
         {
             Function* phaseFunc = (i == 0) ? coarsePhase : pixelPhase;
             FunctionInfoMetaDataHandle phaseFI = (i == 0) ? coarseFI : pixelFI;
-
-            shaders.clear();
-
+            CShaderProgram::KernelShaderMap& shaders = (i == 0) ? coarseShaders : pixelShaders;
 
             pMdUtils->clearFunctionsInfo();
             pMdUtils->setFunctionsInfoItem(phaseFunc, phaseFI);
@@ -1439,12 +1441,24 @@ void CodeGen(PixelShaderContext* ctx)
             CodeGen(ctx, shaders, &signature);
 
             // Read the phase function from metadata again as it could be changed in the PushAnalysis pass
-            coarseNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
-            pixelNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
+            if (i == 0)
+            {
+                coarseNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
+            }
+            else
+            {
+                pixelNode = ctx->getModule()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
+            }
+        }
 
-            phaseFunc = ( i == 0) ?
+
+        for (unsigned int i = 0; i < numStage; i++)
+        {
+            Function* phaseFunc = (i == 0) ?
                 mdconst::dyn_extract<Function>(coarseNode->getOperand(0)->getOperand(0)) :
                 mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
+
+            CShaderProgram::KernelShaderMap& shaders = (i == 0) ? coarseShaders : pixelShaders;
 
             shaders[phaseFunc]->FillProgram(&outputs[i]);
             COMPILER_SHADER_STATS_PRINT(shaders[phaseFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");
@@ -1452,6 +1466,7 @@ void CodeGen(PixelShaderContext* ctx)
             COMPILER_SHADER_STATS_DEL(shaders[phaseFunc]->m_shaderStats);
             delete shaders[phaseFunc];
         }
+
         linkCPS(outputs, ctx->programOutput, numStage);
         // Kernels allocated in CISABuilder.cpp (Compile())
         // are freed in CompilerOutputOGL.hpp (DeleteShaderCompilerOutputOGL())
@@ -1467,6 +1482,8 @@ void CodeGen(PixelShaderContext* ctx)
     }
     else
     {
+        CShaderProgram::KernelShaderMap shaders;
+
         // Single PS
         CodeGen(ctx, shaders);
         // Assuming single shader information in metadata

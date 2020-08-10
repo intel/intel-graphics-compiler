@@ -3351,6 +3351,13 @@ CShader* CShaderProgram::CreateNewShader(SIMDMode simd)
     return pShader;
 }
 
+void CShaderProgram::DeleteShader(SIMDMode simd, ShaderDispatchMode mode)
+{
+    CShader*& pShader = GetShaderPtr(simd, mode);
+    delete pShader;
+    pShader = nullptr;
+}
+
 unsigned int CShader::GetSamplerCount(unsigned int samplerCount)
 {
     if (samplerCount > 0)
