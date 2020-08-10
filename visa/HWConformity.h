@@ -76,6 +76,22 @@ namespace vISA
         G4_DstRegRegion* insertMovAfter(INST_LIST_ITER& it, G4_DstRegRegion* dst, G4_Type type, G4_BB *bb, G4_SubReg_Align dstAlign = Any);
         G4_Operand* insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4_Type type, G4_BB *bb,
             G4_SubReg_Align tmpAlign = Any);
+
+        // replace src <srcNum> for inst <*it> with a temp variable of type <type>
+        // This is used to satisfy various HW restrictions on src type/alignment/region/modifier/etc.
+        void replaceSrc(INST_LIST_ITER it, uint32_t srcNum, G4_Type type, G4_BB* bb, G4_SubReg_Align tmpAlign = Any)
+        {
+            G4_INST* inst = *it;
+            inst->setSrc(insertMovBefore(it, srcNum, type, bb, tmpAlign), srcNum);
+        }
+        // replace dst for inst <*it> with a temp variable of type <type>
+        // This is used to satisfy various HW restrictions on dst type/alignment/etc.
+        void replaceDst(INST_LIST_ITER it, G4_Type type, G4_BB* bb, G4_SubReg_Align dstAlign = Any)
+        {
+            G4_INST* inst = *it;
+            inst->setDest(insertMovAfter(it, inst->getDst(), type, bb, dstAlign));
+        }
+
         G4_SrcRegRegion* insertCopyBefore(INST_LIST_ITER it, uint32_t srcNum, G4_SubReg_Align tmpAlign, G4_BB *bb);
         G4_SrcRegRegion* insertCopyAtBBEntry(G4_BB* bb, uint8_t newExecSize, G4_Operand* src);
         void broadcast(G4_BB* bb, INST_LIST_ITER it, int srcPos, G4_SubReg_Align subAlign);

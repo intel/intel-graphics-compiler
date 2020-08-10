@@ -512,6 +512,27 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
         return false;
     }
 
+    if (builder.getOption(vISA_DisableHFMath))
+    {
+        auto src0 = inst->getSrc(0);
+        auto src1 = inst->getSrc(1);
+        auto dst = inst->getDst();
+        if (src0 && src0->getType() == Type_HF)
+        {
+            replaceSrc(it, 0, Type_F, bb);
+        }
+
+        if (src1 && src1->getType() == Type_HF)
+        {
+            replaceSrc(it, 1, Type_F, bb);
+        }
+
+        if (dst && dst->getType() == Type_HF)
+        {
+            replaceDst(it, Type_F, bb);
+        }
+    }
+
     // covers MATH_INT_DIV, MATH_INT_DIV_QUOT, MATH_INT_DIV_REM
     bool isIntDivide = inst->asMathInst()->isMathIntDiv();
     bool hasSameOffset = hasSameSubregOffset(inst);
@@ -6943,30 +6964,8 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
     {
         G4_INST* inst = *instIter;
 
-        if (inst->mayExceedTwoGRF())
+        if (inst->mayExceedTwoGRF() || !inst->getDst())
         {
-            continue;
-        }
-
-        if (inst->isMath() && builder.getOption(vISA_DisableHFMath))
-        {
-            auto src0 = inst->getSrc(0);
-            auto src1 = inst->getSrc(1);
-            auto dst = inst->getDst();
-            if (src0 && src0->getType() == Type_HF)
-            {
-                inst->setSrc(insertMovBefore(instIter, 0, Type_F, bb), 0);
-            }
-
-            if (src1 && src1->getType() == Type_HF)
-            {
-                inst->setSrc(insertMovBefore(instIter, 1, Type_F, bb), 1);
-            }
-
-            if (dst && dst->getType() == Type_HF)
-            {
-                inst->setDest(insertMovAfter(instIter, dst, inst->getExecType2(), bb));
-            }
             continue;
         }
 
@@ -6981,6 +6980,7 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
 
         if (builder.hasPartialMixMode() && inst->getNumSrc() > 1)
         {
+
             // no HF on mad src2 or mul src1
             if (inst->isMixedMode())
             {
