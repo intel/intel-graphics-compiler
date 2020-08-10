@@ -320,7 +320,7 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
       bool Enabled = Feature.consume_front("+");
       if (!Enabled) {
         bool Disabled = Feature.consume_front("-");
-        assert(!Disabled && "unexpected feature format");
+        assert(Disabled && "unexpected feature format");
       }
       Features.AddFeature(Feature.str(), Enabled);
     }
