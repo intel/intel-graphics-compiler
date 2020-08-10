@@ -950,9 +950,8 @@ void CFGStructurizer::preProcess()
                 continue;
             }
             // P is a BB before B
-            G4_INST *gotoInst = getGotoInst(B);
             G4_INST* gotoInstP = getGotoInst(P);
-            if (gotoInst && P->getPhysicalSucc() != B)
+            if (gotoInstP && P->getPhysicalSucc() != B)
             {
                 isForwardTarget = true;
             }
