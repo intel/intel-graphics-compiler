@@ -320,7 +320,7 @@ namespace vISA
 
             for (auto instIt = bb->begin(), instItEnd = bb->end();
                 instIt != instItEnd;
-               )
+                )
             {
                 auto inst = (*instIt);
 

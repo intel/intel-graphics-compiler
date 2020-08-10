@@ -586,7 +586,7 @@ void SpillManager::insertSpillCode()
         // In one iteration remove all spilled lifetime.start/end
         // ops.
         bb->erase(
-            std::remove_if (bb->begin(), bb->end(), isSpillCandidateForLifetimeOpRemoval),
+            std::remove_if(bb->begin(), bb->end(), isSpillCandidateForLifetimeOpRemoval),
             bb->end());
 
         for (INST_LIST_ITER inst_it = bb->begin(); inst_it != bb->end();)

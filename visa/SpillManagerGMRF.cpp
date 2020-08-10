@@ -1723,8 +1723,7 @@ SpillManagerGRF::createMRangeDeclare (
     unsigned writePayloadHeight = cdiv (regionByteSize, REG_BYTE_SIZE);
     unsigned msgType = getMsgType (region, execSize);
     unsigned payloadHeaderHeight =
-        (msgType == owordMask () ||
-          msgType == hwordMask ())?
+        (msgType == owordMask () || msgType == hwordMask ()) ?
         OWORD_PAYLOAD_HEADER_MAX_HEIGHT: DWORD_PAYLOAD_HEADER_MAX_HEIGHT;
 
     // We should not find ourselves using dword scattered write

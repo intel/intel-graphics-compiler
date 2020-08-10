@@ -154,10 +154,9 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
         fixPackedSource(i, bb, extype);
         extype = inst->getOpExecType(extypesize);
     }
-    /*
-        fixes opernds including
-        swapping sel,
-    */
+
+    // fixes opernds including
+    // swapping sel,
     fixOpnds(i, bb, extype);
 
     extype = inst->getOpExecType(extypesize);
@@ -166,7 +165,7 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
         if (extypesize < G4_GRF_REG_NBYTES/2)
         {
             uint32_t dst_elsize = G4_Type_Table[inst->getDst()->getType()].byteSize;
-            if (dst_elsize < (unsigned int) extypesize)
+            if (dst_elsize < (unsigned int)extypesize)
             {
                 if (fixDstAlignment(i, bb, extype, dst_elsize))
                 {

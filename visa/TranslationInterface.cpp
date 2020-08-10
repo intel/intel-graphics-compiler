@@ -6825,9 +6825,9 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     else
         dcl = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ , Type_UD);
 
-    G4_Declare *dcl_payload_UD = createSendPayloadDcl(GENX_DATAPORT_IO_SZ                      , Type_UD);
-    G4_Declare *dcl_payload_F = createSendPayloadDcl(GENX_DATAPORT_IO_SZ                      , Type_F);
-    G4_Declare *dcl_payload_UW = createSendPayloadDcl(GENX_DATAPORT_IO_SZ * 2                      , Type_UW);
+    G4_Declare *dcl_payload_UD = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+    G4_Declare *dcl_payload_F = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_F);
+    G4_Declare *dcl_payload_UW = createSendPayloadDcl(GENX_DATAPORT_IO_SZ * 2, Type_UW);
 
     dcl_payload_UD->setAliasDeclare (dcl,  GENX_GRF_REG_SIZ);
     dcl_payload_F->setAliasDeclare (dcl, GENX_GRF_REG_SIZ);
@@ -7151,7 +7151,8 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         if ((dstSize %  GENX_GRF_REG_SIZ) != 0)
         {
             reg_to_receive = (unsigned int) std::ceil((double)dstSize/GENX_GRF_REG_SIZ);
-        }else
+        }
+        else
         {
             reg_to_receive = dstSize/GENX_GRF_REG_SIZ;
         }

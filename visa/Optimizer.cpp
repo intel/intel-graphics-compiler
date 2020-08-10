@@ -3330,7 +3330,7 @@ void Optimizer::cselPeepHoleOpt()
                 inst->removeAllDefs();
                 bb->erase(ii);
             }
-        }while (nextIter != iiEnd);
+        } while (nextIter != iiEnd);
     }
 }
 
@@ -5758,7 +5758,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 if (msgList.size() >= 2)
                 {
                     optMessageHeaders(msgList, bb, myA0);
-                    if (msgList.front()->opt                                    &&
+                    if (msgList.front()->opt &&
                         msgList.front()->send->getMsgDesc()->MessageLength() == 1)
                     {
                         // keep the oldest send for subsequent read operations
@@ -5766,7 +5766,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         //msgList.back()->a0Dot0 = msgList.front()->a0Dot0;
                         msgList.pop_front(); // delete first element
                     }
-                    else if (msgList.front()->opt                               &&
+                    else if (msgList.front()->opt &&
                         msgList.front()->send->getMsgDesc()->MessageLength() >= 1)
                     {
                         // keep the latest send for subsequent write operations
@@ -5785,13 +5785,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 msgList.pop_front();
             }
         }
-        else if (inst->getDst()                                          &&
-            inst->getDst()->getBase()                   &&
-            inst->getDst()->getBase()->isRegVar()       &&
-            inst->getDst()->getBase()->asRegVar() ==
-            builder.getBuiltinA0()->getRegVar()                           &&
-            inst->getDst()->getRegOff() == 0            &&
-            inst->getDst()->getSubRegOff() == 0        )
+        else if (inst->getDst() &&
+            inst->getDst()->getBase() &&
+            inst->getDst()->getBase()->isRegVar() &&
+            inst->getDst()->getBase()->asRegVar() == builder.getBuiltinA0()->getRegVar() &&
+            inst->getDst()->getRegOff() == 0 &&
+            inst->getDst()->getSubRegOff() == 0)
         {
             // is builtInA0.0
             item->a0Dot0 = inst;
@@ -5820,15 +5819,14 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     // mov(8) m.0, builtInR0.0
                     G4_Operand *src = inst->getSrc(0);
-                    if (dst->getSubRegOff() == 0          &&
-                        inst->getExecSize() == 8                            &&
-                        src                                                 &&
-                        src->isSrcRegRegion()                               &&
-                        src->asSrcRegRegion()->getBase()                    &&
-                        src->asSrcRegRegion()->getBase()->isRegVar()        &&
-                        src->asSrcRegRegion()->getBase()->asRegVar()  ==
-                        builder.getBuiltinR0()->getRegVar()            &&
-                        src->asSrcRegRegion()->getRegOff() == 0             &&
+                    if (dst->getSubRegOff() == 0 &&
+                        inst->getExecSize() == 8 &&
+                        src &&
+                        src->isSrcRegRegion() &&
+                        src->asSrcRegRegion()->getBase() &&
+                        src->asSrcRegRegion()->getBase()->isRegVar() &&
+                        src->asSrcRegRegion()->getBase()->asRegVar() == builder.getBuiltinR0()->getRegVar() &&
+                        src->asSrcRegRegion()->getRegOff() == 0 &&
                         src->asSrcRegRegion()->getSubRegOff() == 0)
                     {
                         if (item->first == HEADER_UNDEF)
@@ -5837,8 +5835,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         item->m_it = ii;
                     }
                     // mov(1) m.0
-                    else if (dst->getSubRegOff() == 0  &&
-                        inst->getExecSize() == 1                       )
+                    else if (dst->getSubRegOff() == 0 &&
+                        inst->getExecSize() == 1)
                     {
                         if (item->first == HEADER_UNDEF)
                             item->first = HEADER_X;
@@ -5846,8 +5844,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         item->mDot0_it = ii;
                     }
                     // mov(1) m.1
-                    else if (dst->getSubRegOff() == 1  &&
-                        inst->getExecSize() == 1                       )
+                    else if (dst->getSubRegOff() == 1 &&
+                        inst->getExecSize() == 1)
                     {
                         if (item->first == HEADER_UNDEF)
                             item->first = HEADER_Y;
@@ -5856,7 +5854,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     }
                     // mov(1) m0.2
                     else if (dst->getSubRegOff() == 2  &&
-                        inst->getExecSize() == 1                       )
+                        inst->getExecSize() == 1)
                     {
                         if (item->first == HEADER_UNDEF)
                             item->first = HEADER_SIZE;
@@ -5898,9 +5896,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
     }
 
-    /**
-    *  optimizer for removal of redundant message header instructions
-    */
+    //
+    // optimizer for removal of redundant message header instructions
+    //
     void Optimizer::cleanMessageHeader()
     {
         MSGTableList msgList;
@@ -5999,7 +5997,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
         msgList.clear();
     }
-    /***  The end of message header optimization  ***/
+    //  The end of message header optimization
 
     void getOptReportStream(std::ofstream& reportStream, const Options *opt)
     {
@@ -6061,16 +6059,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     void Optimizer::linePlaneWA(G4_INST* inst)
     {
-
-        /*
-        Putting it here instead of in HW confomrity because we need original src0 region
-        in scheduler to calculate RB correctly. Otherwise setup moves for src0 get scheduled after instruction
-
-        *  HW check #12: Check and correct the first operand for line instruction
-        *  Actually it must be a replicated stream of 4 contiguous elements.
-        *  That means <0;4,1> region. But in asm code it must be presented as
-        *  replicated scalar - <0;1,0>.
-        */
+        // Putting it here instead of in HW confomrity because we need original src0 region
+        // in scheduler to calculate RB correctly. Otherwise setup moves for src0 get scheduled after instruction
+        //
+        // HW check #12: Check and correct the first operand for line instruction
+        // Actually it must be a replicated stream of 4 contiguous elements.
+        // That means <0;4,1> region. But in asm code it must be presented as
+        // replicated scalar - <0;1,0>.
         if (inst->opcode() == G4_line || inst->opcode() == G4_pln)
         {
             G4_Operand *src = inst->getSrc(0);
@@ -6163,14 +6158,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 }
             }
 
-            if (unusedFlagLocal[0] &&
-                unusedFlag[0] == false)
+            if (unusedFlagLocal[0] && unusedFlag[0] == false)
             {
                 unusedFlag[0] = true;
             }
 
-            if (unusedFlagLocal[1] &&
-                unusedFlag[1] == false)
+            if (unusedFlagLocal[1] && unusedFlag[1] == false)
             {
                 unusedFlag[1] = true;
             }
@@ -6251,19 +6244,19 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         int regs[3] = { -1 };
         int bundles[3] = { -1 };
 
-        //Three source only
+        // Three source only
         if (inst->getNumSrc() != 3 || inst->isSend())
         {
             return false;
         }
 
-        //SIMD16
+        // SIMD16
         if (inst->getExecSize() < 16)
         {
             return false;
         }
 
-        //Source 0 is scalar
+        // Source 0 is scalar
         G4_Operand* srcOpnd = inst->getSrc(0);
         if (!srcOpnd || !srcOpnd->isSrcRegRegion() || !srcOpnd->asSrcRegRegion()->isScalar())
         {
@@ -6585,19 +6578,18 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         insertFenceAtEntry();
     }
 
-    /*
-    some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
-    [DevBDW:A]: A goto instruction must not be followed by any instruction requiring register indirect access on source operands.
-    [DevBDW:A]: A join instruction must not be followed by any instruction requiring register indirect access on source operands.
-    [DevBDW]: A POW/FDIV operation must not be followed by an instruction that requires two destination registers.
-    For BDW A-stepping, we need a WA to prevent the following instructions:
-    Send r10  (read from data port to r10)
-    Send null r10 (write dataport from r10)
-    Insert a dummy mov from r10
-    [BDW+]: call/return's execution size must be set to 16/32 so that the emask will be passed correctly to the callee
-    [BDW,CHV,SKL]: A call instruction must be followed by an instruction that supports Switch.
-                   When call takes a jump, the first instruction must have a Switch.
-    */
+
+    // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
+    // [DevBDW:A]: A goto instruction must not be followed by any instruction requiring register indirect access on source operands.
+    // [DevBDW:A]: A join instruction must not be followed by any instruction requiring register indirect access on source operands.
+    // [DevBDW]: A POW/FDIV operation must not be followed by an instruction that requires two destination registers.
+    // For BDW A-stepping, we need a WA to prevent the following instructions:
+    // Send r10  (read from data port to r10)
+    // Send null r10 (write dataport from r10)
+    // Insert a dummy mov from r10
+    // [BDW+]: call/return's execution size must be set to 16/32 so that the emask will be passed correctly to the callee
+    // [BDW,CHV,SKL]: A call instruction must be followed by an instruction that supports Switch.
+    //                When call takes a jump, the first instruction must have a Switch.
     void Optimizer::HWWorkaround()
     {
         // Ensure the first instruction of a stack function has switch option.
@@ -8298,9 +8290,7 @@ public:
         }
     }
 
-    /*
-    * Check if there is WAR/WAW dependency between end inst and the preceding instruction
-    */
+    // Check if there is WAR/WAW dependency between end inst and the preceding instruction
     bool Optimizer::chkFwdOutputHazard(INST_LIST_ITER& startIter, INST_LIST_ITER& endIter)
     {
         G4_INST *startInst = *startIter;
@@ -8380,11 +8370,9 @@ public:
         while (*backwardIter != startInst)
         {
             if (endInst->isWAWdep(*backwardIter) ||
-                /*
-                    Makes sure there is not WAR conflict between this instruction and instruction preceding it:
-                    ... grf1(use preceding inst)
-                    grf1 <---- def this inst
-                */
+                //    Makes sure there is not WAR conflict between this instruction and instruction preceding it:
+                //    ... grf1(use preceding inst)
+                //    grf1 <---- def this inst
                 endInst->isWARdep(*backwardIter))
             {
                 break;
@@ -8419,11 +8407,9 @@ public:
                 continue;
             }
 
-            /*
-            Makes sure there is not WAR conflict between this instruction and instruction preceding it:
-            ... grf1(use preceding inst)
-            grf1 <---- def this inst
-            */
+            // Makes sure there is not WAR conflict between this instruction and instruction preceding it:
+            // ... grf1(use preceding inst)
+            // grf1 <---- def this inst
             if (endInst->isWARdep(*backwardIter) ||
                 endInst->isWAWdep(*backwardIter))
             {
@@ -10983,7 +10969,7 @@ void Optimizer::dce()
             }
         }
         bb->erase(
-            std::remove_if (bb->begin(), bb->end(), [](G4_INST* Inst) { return Inst->isDead(); }),
+            std::remove_if(bb->begin(), bb->end(), [](G4_INST* Inst) { return Inst->isDead(); }),
             bb->end());
     }
 }
@@ -11077,7 +11063,7 @@ static void retireSends(std::vector<G4_INST*>& LiveSends, G4_INST* Inst)
     }
     // Remove nullptr values when there are changes.
     if (Changed) {
-        auto Iter = std::remove(LiveSends.begin(), LiveSends.end(), (G4_INST*)0);
+        auto Iter = std::remove(LiveSends.begin(), LiveSends.end(), (G4_INST*)nullptr);
         LiveSends.erase(Iter, LiveSends.end());
     }
 }
