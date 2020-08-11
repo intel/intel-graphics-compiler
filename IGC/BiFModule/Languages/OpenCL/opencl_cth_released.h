@@ -80,6 +80,24 @@ typedef size_t uintptr_t;
 #define FP_FAST_FMA
 #endif
 
+// OCL 3.0 feature macros. Define them for OCL-C 2.0
+#if (__OPENCL_C_VERSION__ == CL_VERSION_2_0)
+
+#define __opencl_c_pipes
+#define __opencl_c_3d_image_writes
+#define __opencl_c_atomic_order_acq_rel
+#define __opencl_c_atomic_order_seq_cst
+#define __opencl_c_atomic_scope_device
+#define __opencl_c_atomic_scope_all_devices
+#define __opencl_c_device_enqueue
+#define __opencl_c_generic_address_space
+#define __opencl_c_program_scope_global_variables
+#define __opencl_c_read_write_images
+#define __opencl_c_subgroups
+#define __opencl_c_work_group_collective_functions
+
+#endif // (__OPENCL_C_VERSION__ == CL_VERSION_2_0)
+
 // Async copies from global to local memory, local to global memory, and prefetch
 
 /**
@@ -366,23 +384,21 @@ void __attribute__((overloadable)) prefetch(const __global void *p, size_t num_e
 //
 //Maximum supported size of a program scope global variable
 //
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_program_scope_global_variables
 
 #define CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE 0x10000
 
-#endif
+#endif // __opencl_c_program_scope_global_variables
 
 // Pipes
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
+#ifdef __opencl_c_pipes
 #define INTEL_PIPE_RESERVE_ID_VALID_BIT (1U << 30)
 #define CLK_NULL_RESERVE_ID (__builtin_astype(((void*)(~INTEL_PIPE_RESERVE_ID_VALID_BIT)), reserve_id_t))
 bool __attribute__((overloadable)) is_valid_reserve_id(reserve_id_t reserve_id);
-
-#endif
+#endif // __opencl_c_pipes
 
 // OpenCL 2.0 - Execution Model
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_device_enqueue
 ndrange_t __attribute__((overloadable)) ndrange_1D(size_t);
 ndrange_t __attribute__((overloadable)) ndrange_1D(size_t, size_t );
 ndrange_t __attribute__((overloadable)) ndrange_1D(size_t, size_t, size_t );
@@ -403,12 +419,12 @@ void __attribute__((overloadable)) set_user_event_status( clk_event_t e, int sta
 
 void __attribute__((overloadable)) capture_event_profiling_info(clk_event_t, clk_profiling_info, __global void* value);
 
-#endif
+#endif // __opencl_c_device_enqueue
 
 //
 // c1x atomics definitions
 //
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_generic_address_space
 
 #define ATOMIC_VAR_INIT(x) (x)
 
@@ -434,10 +450,18 @@ void __attribute__((overloadable)) atomic_work_item_fence(cl_mem_fence_flags fla
 
 // atomic_fetch()
 
-#define atomic_fetch_prototype_addrspace(KEY, TYPE, OPTYPE, ADDRSPACE) \
-TYPE __attribute__((overloadable)) atomic_fetch_##KEY(volatile ADDRSPACE atomic_##TYPE *object, OPTYPE operand); \
+#define atomic_fetch_explicit_prototype_addrspace(KEY, TYPE, OPTYPE, ADDRSPACE) \
 TYPE __attribute__((overloadable)) atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##TYPE *object, OPTYPE operand, memory_order order); \
 TYPE __attribute__((overloadable)) atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##TYPE *object, OPTYPE operand, memory_order order, memory_scope scope);
+
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_fetch_prototype_addrspace(KEY, TYPE, OPTYPE, ADDRSPACE) \
+TYPE __attribute__((overloadable)) atomic_fetch_##KEY(volatile ADDRSPACE atomic_##TYPE *object, OPTYPE operand); \
+atomic_fetch_explicit_prototype_addrspace(KEY, TYPE, OPTYPE, ADDRSPACE)
+#else // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_fetch_prototype_addrspace(KEY, TYPE, OPTYPE, ADDRSPACE) \
+atomic_fetch_explicit_prototype_addrspace(KEY, TYPE, OPTYPE, ADDRSPACE)
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
 
 #define atomic_fetch_prototype(KEY, TYPE, OPTYPE) \
 atomic_fetch_prototype_addrspace(KEY, TYPE, OPTYPE, generic)
@@ -457,36 +481,47 @@ atomic_fetch_supported_prototype(and)
 
 // atomic_fetch_min/max() [min and max are not c11 functions]
 
-int __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_int *object, int operand);
 int __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_int *object, int operand, memory_order order);
 int __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_int *object, int operand, memory_order order, memory_scope scope);
 
-uint __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_uint *object, uint operand);
 uint __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_uint *object, uint operand, memory_order order);
 uint __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_uint *object, uint operand, memory_order order, memory_scope scope);
 
-uint __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_uint *object, int operand);
 uint __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_uint *object, int operand, memory_order order);
 uint __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_uint *object, int operand, memory_order order, memory_scope scope);
 
-int __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_int *object, int operand);
 int __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_int *object, int operand, memory_order order);
 int __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_int *object, int operand, memory_order order, memory_scope scope);
 
-uint __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_uint *object, uint operand);
 uint __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_uint *object, uint operand, memory_order order);
 uint __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_uint *object, uint operand, memory_order order, memory_scope scope);
 
-uint __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_uint *object, int operand);
 uint __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_uint *object, int operand, memory_order order);
 uint __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_uint *object, int operand, memory_order order, memory_scope scope);
 
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+int __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_int *object, int operand);
+uint __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_uint *object, uint operand);
+uint __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_uint *object, int operand);
+int __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_int *object, int operand);
+uint __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_uint *object, uint operand);
+uint __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_uint *object, int operand);
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+
 // atomic_store()
 
-#define atomic_store_prototype_addrspace(TYPE, ADDRSPACE) \
-void __attribute__((overloadable)) atomic_store(volatile ADDRSPACE atomic_##TYPE *object, TYPE desired); \
+#define atomic_store_explicit_prototype_addrspace(TYPE, ADDRSPACE) \
 void __attribute__((overloadable)) atomic_store_explicit(volatile ADDRSPACE atomic_##TYPE *object, TYPE desired, memory_order order); \
 void __attribute__((overloadable)) atomic_store_explicit(volatile ADDRSPACE atomic_##TYPE *object, TYPE desired, memory_order order, memory_scope scope);
+
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_store_prototype_addrspace(TYPE, ADDRSPACE) \
+void __attribute__((overloadable)) atomic_store(volatile ADDRSPACE atomic_##TYPE *object, TYPE desired); \
+atomic_store_explicit_prototype_addrspace(TYPE, ADDRSPACE)
+#else // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_store_prototype_addrspace(TYPE, ADDRSPACE) \
+atomic_store_explicit_prototype_addrspace(TYPE, ADDRSPACE)
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
 
 #define atomic_store_prototype(TYPE) \
 atomic_store_prototype_addrspace(TYPE, generic)
@@ -497,10 +532,18 @@ atomic_store_prototype(float)
 
 // atomic_load()
 
-#define atomic_load_prototype_addrspace(TYPE, ADDRSPACE) \
-TYPE __attribute__((overloadable)) atomic_load(volatile ADDRSPACE atomic_##TYPE *object); \
+#define atomic_load_explicit_prototype_addrspace(TYPE, ADDRSPACE) \
 TYPE __attribute__((overloadable)) atomic_load_explicit(volatile ADDRSPACE atomic_##TYPE *object, memory_order order); \
 TYPE __attribute__((overloadable)) atomic_load_explicit(volatile ADDRSPACE atomic_##TYPE *object, memory_order order, memory_scope scope);
+
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_load_prototype_addrspace(TYPE, ADDRSPACE) \
+TYPE __attribute__((overloadable)) atomic_load(volatile ADDRSPACE atomic_##TYPE *object); \
+atomic_load_explicit_prototype_addrspace(TYPE, ADDRSPACE)
+#else // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_load_prototype_addrspace(TYPE, ADDRSPACE) \
+atomic_load_explicit_prototype_addrspace(TYPE, ADDRSPACE)
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
 
 #define atomic_load_prototype(TYPE) \
 atomic_load_prototype_addrspace(TYPE, generic)
@@ -511,10 +554,18 @@ atomic_load_prototype(float)
 
 // atomic_exchange()
 
-#define atomic_exchange_prototype_addrspace(TYPE, ADDRSPACE) \
-TYPE __attribute__((overloadable)) atomic_exchange(volatile ADDRSPACE atomic_##TYPE *object, TYPE desired); \
+#define atomic_exchange_explicit_prototype_addrspace(TYPE, ADDRSPACE) \
 TYPE __attribute__((overloadable)) atomic_exchange_explicit(volatile ADDRSPACE atomic_##TYPE *object, TYPE desired, memory_order order); \
 TYPE __attribute__((overloadable)) atomic_exchange_explicit(volatile ADDRSPACE atomic_##TYPE *object, TYPE desired, memory_order order, memory_scope scope);
+
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_exchange_prototype_addrspace(TYPE, ADDRSPACE) \
+TYPE __attribute__((overloadable)) atomic_exchange(volatile ADDRSPACE atomic_##TYPE *object, TYPE desired); \
+atomic_exchange_explicit_prototype_addrspace(TYPE, ADDRSPACE)
+#else // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_exchange_prototype_addrspace(TYPE, ADDRSPACE) \
+atomic_exchange_explicit_prototype_addrspace(TYPE, ADDRSPACE)
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
 
 #define atomic_exchange_prototype(TYPE) \
 atomic_exchange_prototype_addrspace(TYPE, generic)
@@ -525,12 +576,18 @@ atomic_exchange_prototype(float)
 
 // atomic_compare_exchange_strong() and atomic_compare_exchange_weak()
 
+#define atomic_compare_exchange_strength_explicit_prototype_addrspace(TYPE, ADDRSPACE, ADDRSPACE2, STRENGTH) \
+bool __attribute__((overloadable)) atomic_compare_exchange_##STRENGTH##_explicit(volatile ADDRSPACE atomic_##TYPE *object, ADDRSPACE2 TYPE *expected, TYPE desired, memory_order success, memory_order failure); \
+bool __attribute__((overloadable)) atomic_compare_exchange_##STRENGTH##_explicit(volatile ADDRSPACE atomic_##TYPE *object, ADDRSPACE2 TYPE *expected, TYPE desired, memory_order success, memory_order failure, memory_scope scope);
+
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
 #define atomic_compare_exchange_strength_prototype_addrspace(TYPE, ADDRSPACE, ADDRSPACE2, STRENGTH) \
 bool __attribute__((overloadable)) atomic_compare_exchange_##STRENGTH(volatile ADDRSPACE atomic_##TYPE *object, ADDRSPACE2 TYPE *expected, TYPE desired); \
-bool __attribute__((overloadable)) atomic_compare_exchange_##STRENGTH##_explicit(volatile ADDRSPACE atomic_##TYPE *object, ADDRSPACE2 TYPE *expected, \
-                                                                                 TYPE desired, memory_order success, memory_order failure); \
-bool __attribute__((overloadable)) atomic_compare_exchange_##STRENGTH##_explicit(volatile ADDRSPACE atomic_##TYPE *object, ADDRSPACE2 TYPE *expected, \
-                                                                                 TYPE desired, memory_order success, memory_order failure, memory_scope scope);
+atomic_compare_exchange_strength_explicit_prototype_addrspace(TYPE, ADDRSPACE, ADDRSPACE2, STRENGTH)
+#else // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_compare_exchange_strength_prototype_addrspace(TYPE, ADDRSPACE, ADDRSPACE2, STRENGTH) \
+atomic_compare_exchange_strength_explicit_prototype_addrspace(TYPE, ADDRSPACE, ADDRSPACE2, STRENGTH)
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
 
 #define atomic_compare_exchange_strength_prototype(TYPE, STRENGTH) \
 atomic_compare_exchange_strength_prototype_addrspace(TYPE, generic, generic, STRENGTH)
@@ -544,10 +601,18 @@ atomic_compare_exchange_strength_prototype(float, weak)
 
 // atomic_flag_test_and_set() and atomic_flag_clear()
 
-#define atomic_flag_prototype_addrspace(ADDRSPACE, FUNCTYPE, RET) \
-RET __attribute__((overloadable)) atomic_flag_##FUNCTYPE(volatile ADDRSPACE atomic_flag *object); \
+#define atomic_flag_explicit_prototype_addrspace(ADDRSPACE, FUNCTYPE, RET) \
 RET __attribute__((overloadable)) atomic_flag_##FUNCTYPE##_explicit(volatile ADDRSPACE atomic_flag *object, memory_order order); \
 RET __attribute__((overloadable)) atomic_flag_##FUNCTYPE##_explicit(volatile ADDRSPACE atomic_flag *object, memory_order order, memory_scope scope);
+
+#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_flag_prototype_addrspace(ADDRSPACE, FUNCTYPE, RET) \
+RET __attribute__((overloadable)) atomic_flag_##FUNCTYPE(volatile ADDRSPACE atomic_flag *object); \
+atomic_flag_explicit_prototype_addrspace(ADDRSPACE, FUNCTYPE, RET)
+#else // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
+#define atomic_flag_prototype_addrspace(ADDRSPACE, FUNCTYPE, RET) \
+atomic_flag_explicit_prototype_addrspace(ADDRSPACE, FUNCTYPE, RET)
+#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
 
 #define atomic_flag_prototype(FUNCTYPE, RET) \
 atomic_flag_prototype_addrspace(generic, FUNCTYPE, RET)
@@ -571,7 +636,8 @@ atomic_flag_prototype(clear, void)
 #undef atomic_init_prototype
 #undef atomic_init_prototype_addrspace
 
-#endif
+#endif // __opencl_c_generic_address_space
+
 
 #if defined(cl_intel_64bit_global_atomics_placeholder)
 long __attribute__((overloadable)) atomic_add(volatile __global long *p, long val);
@@ -618,9 +684,9 @@ DECL_GROUP_ADD_MIN_MAX(prefix##_reduce, type) \
 DECL_GROUP_ADD_MIN_MAX(prefix##_scan_exclusive, type) \
 DECL_GROUP_ADD_MIN_MAX(prefix##_scan_inclusive, type)
 
-/// OCL 2.0 built-ins
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 // Workgroup builtins
+#ifdef __opencl_c_work_group_collective_functions
+
 int __attribute__((overloadable)) work_group_all(int predicate);
 int __attribute__((overloadable)) work_group_any(int predicate);
 
@@ -660,11 +726,19 @@ DECL_GROUP_REDUCE_SCAN(work_group, float)
 DECL_GROUP_REDUCE_SCAN(work_group, double)
 #endif
 
+#endif // __opencl_c_work_group_collective_functions
+
+/// OCL 2.0 built-ins
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 // Workitem builtins
 size_t __attribute__((overloadable)) get_enqueued_local_size(uint dimindx);
 size_t __attribute__((overloadable)) get_global_linear_id(void);
 size_t __attribute__((overloadable)) get_local_linear_id(void);
 
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+
+#ifdef __opencl_c_generic_address_space
 /**
  * Queue a memory fence to ensure correct ordering of memory
  * operations between work-items of a work-group to
@@ -675,7 +749,7 @@ size_t __attribute__((overloadable)) get_local_linear_id(void);
 cl_mem_fence_flags __attribute__((overloadable)) get_fence (const void *ptr);
 cl_mem_fence_flags __attribute__((overloadable)) get_fence (void *ptr);
 
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#endif // __opencl_c_generic_address_space
 
 
 // vload
@@ -702,7 +776,7 @@ cl_mem_fence_flags __attribute__((overloadable)) get_fence (void *ptr);
     __CLFN_DECL_F_VLOAD_VECTOR_HELPER(F,  8, addressSpace, rtype, itype)    \
     __CLFN_DECL_F_VLOAD_VECTOR_HELPER(F, 16, addressSpace, rtype, itype)
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_generic_address_space
     // OpenCL 2.0 must generate declarations for the generic address space in
     // addition to the explicit address spaces.
 
@@ -742,7 +816,8 @@ cl_mem_fence_flags __attribute__((overloadable)) get_fence (void *ptr);
 
 #endif
 
-#else // #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#else // __opencl_c_generic_address_space
+
     // Pre-OpenCL 2.0 must only generate declarations for the explicit address
     // spaces.
 
@@ -760,7 +835,7 @@ cl_mem_fence_flags __attribute__((overloadable)) get_fence (void *ptr);
         __CLFN_DECL_F_VLOAD_SCALAR_ALLN_HELPER(F, __local,    rtype, itype) \
         __CLFN_DECL_F_VLOAD_SCALAR_ALLN_HELPER(F, __private,  rtype, itype)
 
-#endif // #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#endif // __opencl_c_generic_address_space
 
 // vload gentypes are char, uchar, short, ushort, int, uint, long, ulong, float
 __CLFN_DECL_F_VLOADN(vload, char, char)
@@ -827,7 +902,7 @@ __CLFN_DECL_F_VLOADN_HALF(vloada_half, float, half)
     __CLFN_DECL_F_VSTOREN_ALLROUND_HELPER(F,  8, addressSpace, itype, rtype)    \
     __CLFN_DECL_F_VSTOREN_ALLROUND_HELPER(F, 16, addressSpace, itype, rtype)
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_generic_address_space
     // OpenCL 2.0 must generate declarations for the generic address space in
     // addition to the explicit address spaces.
 
@@ -845,7 +920,7 @@ __CLFN_DECL_F_VLOADN_HALF(vloada_half, float, half)
         __CLFN_DCL_VSTORE_SCALAR_ALLN_ALLROUND_HELPER(F, __local,    itype, rtype)  \
         __CLFN_DCL_VSTORE_SCALAR_ALLN_ALLROUND_HELPER(F, __private,  itype, rtype)
 
-#else // #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#else // __opencl_c_generic_address_space
     // Pre-OpenCL 2.0 must only generate declarations for the explicit address
     // spaces.
 
@@ -861,7 +936,7 @@ __CLFN_DECL_F_VLOADN_HALF(vloada_half, float, half)
         __CLFN_DCL_VSTORE_SCALAR_ALLN_ALLROUND_HELPER(F, __local,    itype, rtype)  \
         __CLFN_DCL_VSTORE_SCALAR_ALLN_ALLROUND_HELPER(F, __private,  itype, rtype)
 
-#endif // #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#endif // __opencl_c_generic_address_space
 
 // vstore gentypes are char, uchar, short, ushort, int, uint, long, ulong, float
 __CLFN_DECL_F_VSTOREN(vstore, char, char)
@@ -931,11 +1006,11 @@ __CLFN_DECL_F_VSTOREN_HALF(vstorea_half, double, half)
  * 1, 0 ... image height - 1), respectively, is undefined.
  */
 
-#ifdef cl_khr_3d_image_writes
+#if defined(__opencl_c_3d_image_writes) || defined(cl_khr_3d_image_writes)
 void __attribute__((overloadable)) write_imagef(write_only image3d_t image, int4 coord, float4 color);
 void __attribute__((overloadable)) write_imagei(write_only image3d_t image, int4 coord, int4 color);
 void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int4 coord, uint4 color);
-#endif
+#endif // defined(__opencl_c_3d_image_writes) || defined(cl_khr_3d_image_writes)
 #endif
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_1_2)
@@ -3423,9 +3498,11 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
    * values that are not in the range (0 ... image width -
    * 1, 0 ... image height - 1), respectively, is undefined.
    */
+#if defined(__opencl_c_3d_image_writes) || defined(cl_khr_3d_image_writes)
   void __attribute__((overloadable)) write_imagef(write_only image3d_t image, int4 coord, int lod, float4 color);
   void __attribute__((overloadable)) write_imagei(write_only image3d_t image, int4 coord, int lod, int4 color);
   void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int4 coord, int lod, uint4 color);
+#endif // defined(__opencl_c_3d_image_writes) || defined(cl_khr_3d_image_writes)
 
   /**
    * Return the image miplevels.
@@ -5748,7 +5825,7 @@ double16 __attribute__((overloadable)) convert_double16_rtp(half16);
 double16 __attribute__((overloadable)) convert_double16_rtz(half16);
 #endif
 
-#if defined(cl_intel_simd_operations_placeholder) || defined(cl_intel_subgroups) || defined(cl_khr_subgroups)
+#if defined(cl_intel_simd_operations_placeholder) || defined(cl_intel_subgroups) || defined(cl_khr_subgroups) || defined(__opencl_c_subgroups)
 // Shared Sub Group Functions
 uint    __attribute__((overloadable)) get_sub_group_size( void );
 uint    __attribute__((overloadable)) get_max_sub_group_size( void );
@@ -6030,7 +6107,7 @@ void    __attribute__((overloadable)) intel_sub_group_block_write2(write_only im
 void    __attribute__((overloadable)) intel_sub_group_block_write4(write_only image2d_t image, int2 coord, uint4 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write8(write_only image2d_t image, int2 coord, uint8 data);
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_read_write_images
 uint    __attribute__((overloadable)) intel_sub_group_block_read(read_write image2d_t image, int2 coord);
 uint2   __attribute__((overloadable)) intel_sub_group_block_read2(read_write image2d_t image, int2 coord);
 uint4   __attribute__((overloadable)) intel_sub_group_block_read4(read_write image2d_t image, int2 coord);
@@ -6040,7 +6117,7 @@ void    __attribute__((overloadable)) intel_sub_group_block_write(read_write ima
 void    __attribute__((overloadable)) intel_sub_group_block_write2(read_write image2d_t image, int2 coord, uint2 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write4(read_write image2d_t image, int2 coord, uint4 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write8(read_write image2d_t image, int2 coord, uint8 data);
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#endif // __opencl_c_read_write_images
 
 void    __attribute__((overloadable)) intel_sub_group_block_write( __global uint* p, uint data );
 void    __attribute__((overloadable)) intel_sub_group_block_write2( __global uint* p, uint2 data );
@@ -6054,7 +6131,7 @@ ushort4  __attribute__((overloadable)) intel_sub_group_block_read4_half(read_onl
 ushort8  __attribute__((overloadable)) intel_sub_group_block_read8_half(read_only image2d_t image, int2 coord);
 ushort16 __attribute__((overloadable)) intel_sub_group_block_read16_half(read_only image2d_t image, int2 coord);
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_read_write_images
 ushort   __attribute__((overloadable)) intel_sub_group_block_read_half(read_write image2d_t image, int2 coord);
 ushort2  __attribute__((overloadable)) intel_sub_group_block_read2_half(read_write image2d_t image, int2 coord);
 ushort4  __attribute__((overloadable)) intel_sub_group_block_read4_half(read_write image2d_t image, int2 coord);
@@ -6066,7 +6143,7 @@ void    __attribute__((overloadable)) intel_sub_group_block_write2(read_write im
 void    __attribute__((overloadable)) intel_sub_group_block_write4(read_write image2d_t image, int2 coord, ushort4 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write8(read_write image2d_t image, int2 coord, ushort8 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write16(read_write image2d_t image, int2 coord, ushort16 data);
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#endif // __opencl_c_read_write_images
 
 ushort   __attribute__((overloadable)) intel_sub_group_block_read(const __global ushort* p);
 ushort2  __attribute__((overloadable)) intel_sub_group_block_read2(const __global ushort* p);
@@ -6162,7 +6239,7 @@ ushort2  __attribute__((overloadable)) intel_sub_group_block_read_us2( read_only
 ushort4  __attribute__((overloadable)) intel_sub_group_block_read_us4( read_only image2d_t image, int2 coord );
 ushort8  __attribute__((overloadable)) intel_sub_group_block_read_us8( read_only image2d_t image, int2 coord );
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_read_write_images
 ushort   __attribute__((overloadable)) intel_sub_group_block_read_us(read_write image2d_t image, int2 coord);
 ushort2  __attribute__((overloadable)) intel_sub_group_block_read_us2(read_write image2d_t image, int2 coord);
 ushort4  __attribute__((overloadable)) intel_sub_group_block_read_us4(read_write image2d_t image, int2 coord);
@@ -6172,7 +6249,7 @@ void    __attribute__((overloadable)) intel_sub_group_block_write_us(read_write 
 void    __attribute__((overloadable)) intel_sub_group_block_write_us2(read_write image2d_t image, int2 coord, ushort2 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_us4(read_write image2d_t image, int2 coord, ushort4 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_us8(read_write image2d_t image, int2 coord, ushort8 data);
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#endif // __opencl_c_read_write_images
 
 ushort    __attribute__((overloadable)) intel_sub_group_block_read_us(  const __global ushort* p );
 ushort2   __attribute__((overloadable)) intel_sub_group_block_read_us2( const __global ushort* p );
@@ -6268,7 +6345,7 @@ uchar4  __attribute__((overloadable)) intel_sub_group_block_read_uc4(read_only i
 uchar8  __attribute__((overloadable)) intel_sub_group_block_read_uc8(read_only image2d_t image, int2 coord);
 uchar16  __attribute__((overloadable)) intel_sub_group_block_read_uc16(read_only image2d_t image, int2 coord);
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_read_write_images
 uchar   __attribute__((overloadable)) intel_sub_group_block_read_uc(read_write image2d_t image, int2 coord);
 uchar2  __attribute__((overloadable)) intel_sub_group_block_read_uc2(read_write image2d_t image, int2 coord);
 uchar4  __attribute__((overloadable)) intel_sub_group_block_read_uc4(read_write image2d_t image, int2 coord);
@@ -6280,7 +6357,7 @@ void    __attribute__((overloadable)) intel_sub_group_block_write_uc2(read_write
 void    __attribute__((overloadable)) intel_sub_group_block_write_uc4(read_write image2d_t image, int2 coord, uchar4 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_uc8(read_write image2d_t image, int2 coord, uchar8 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_uc16(read_write image2d_t image, int2 coord, uchar16 data);
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#endif // __opencl_c_read_write_images
 
 uchar    __attribute__((overloadable)) intel_sub_group_block_read_uc(const __global uchar* p);
 uchar2   __attribute__((overloadable)) intel_sub_group_block_read_uc2(const __global uchar* p);
@@ -6309,7 +6386,7 @@ ulong2  __attribute__((overloadable)) intel_sub_group_block_read_ul2(read_only i
 ulong4  __attribute__((overloadable)) intel_sub_group_block_read_ul4(read_only image2d_t image, int2 coord);
 ulong8  __attribute__((overloadable)) intel_sub_group_block_read_ul8(read_only image2d_t image, int2 coord);
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_read_write_images
 ulong   __attribute__((overloadable)) intel_sub_group_block_read_ul(read_write image2d_t image, int2 coord);
 ulong2  __attribute__((overloadable)) intel_sub_group_block_read_ul2(read_write image2d_t image, int2 coord);
 ulong4  __attribute__((overloadable)) intel_sub_group_block_read_ul4(read_write image2d_t image, int2 coord);
@@ -6319,7 +6396,7 @@ void    __attribute__((overloadable)) intel_sub_group_block_write_ul(read_write 
 void    __attribute__((overloadable)) intel_sub_group_block_write_ul2(read_write image2d_t image, int2 coord, ulong2 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_ul4(read_write image2d_t image, int2 coord, ulong4 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_ul8(read_write image2d_t image, int2 coord, ulong8 data);
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#endif // __opencl_c_read_write_images
 
 ulong    __attribute__((overloadable)) intel_sub_group_block_read_ul(const __global ulong* p);
 ulong2   __attribute__((overloadable)) intel_sub_group_block_read_ul2(const __global ulong* p);
@@ -6490,7 +6567,7 @@ uint2 __attribute__((overloadable)) intel_sub_group_media_block_read_ui2(int2 sr
 uint4 __attribute__((overloadable)) intel_sub_group_media_block_read_ui4(int2 src_offset, int width, int height, read_only image2d_t image);
 uint8 __attribute__((overloadable)) intel_sub_group_media_block_read_ui8(int2 src_offset, int width, int height, read_only image2d_t image);
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_read_write_images
 uchar __attribute__((overloadable)) intel_sub_group_media_block_read_uc(int2 src_offset, int width, int height, read_write image2d_t image);
 uchar2 __attribute__((overloadable)) intel_sub_group_media_block_read_uc2(int2 src_offset, int width, int height, read_write image2d_t image);
 uchar4 __attribute__((overloadable)) intel_sub_group_media_block_read_uc4(int2 src_offset, int width, int height, read_write image2d_t image);
@@ -6507,7 +6584,7 @@ uint __attribute__((overloadable)) intel_sub_group_media_block_read_ui(int2 src_
 uint2 __attribute__((overloadable)) intel_sub_group_media_block_read_ui2(int2 src_offset, int width, int height, read_write image2d_t image);
 uint4 __attribute__((overloadable)) intel_sub_group_media_block_read_ui4(int2 src_offset, int width, int height, read_write image2d_t image);
 uint8 __attribute__((overloadable)) intel_sub_group_media_block_read_ui8(int2 src_offset, int width, int height, read_write image2d_t image);
-#endif // __OPENCL_C_VERSION__
+#endif // __opencl_c_read_write_images
 
 // write
 
@@ -6528,7 +6605,7 @@ void __attribute__((overloadable)) intel_sub_group_media_block_write_ui2(int2 sr
 void __attribute__((overloadable)) intel_sub_group_media_block_write_ui4(int2 src_offset, int width, int height, uint4 pixels, write_only image2d_t image);
 void __attribute__((overloadable)) intel_sub_group_media_block_write_ui8(int2 src_offset, int width, int height, uint8 pixels, write_only image2d_t image);
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_read_write_images
 void __attribute__((overloadable)) intel_sub_group_media_block_write_uc(int2 src_offset, int width, int height, uchar pixels, read_write image2d_t image);
 void __attribute__((overloadable)) intel_sub_group_media_block_write_uc2(int2 src_offset, int width, int height, uchar2 pixels, read_write image2d_t image);
 void __attribute__((overloadable)) intel_sub_group_media_block_write_uc4(int2 src_offset, int width, int height, uchar4 pixels, read_write image2d_t image);
@@ -6545,7 +6622,7 @@ void __attribute__((overloadable)) intel_sub_group_media_block_write_ui(int2 src
 void __attribute__((overloadable)) intel_sub_group_media_block_write_ui2(int2 src_offset, int width, int height, uint2 pixels, read_write image2d_t image);
 void __attribute__((overloadable)) intel_sub_group_media_block_write_ui4(int2 src_offset, int width, int height, uint4 pixels, read_write image2d_t image);
 void __attribute__((overloadable)) intel_sub_group_media_block_write_ui8(int2 src_offset, int width, int height, uint8 pixels, read_write image2d_t image);
-#endif // __OPENCL_C_VERSION__
+#endif // __opencl_c_read_write_images
 
 #endif // cl_intel_media_block_io
 

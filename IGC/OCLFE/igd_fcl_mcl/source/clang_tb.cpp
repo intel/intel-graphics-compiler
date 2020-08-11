@@ -1026,16 +1026,17 @@ namespace TC
         return output.str();
     }
 
-    std::string GetListOfExtensionsFromInternalOptions(const std::string& internalOptions) {
+    // Extracts a substring starting with "prefix" and ending with space.
+    std::string GetSubstring(const std::string& str, const std::string& prefix) {
         size_t start_pos = 0, end_pos = 0;
-        std::string clextString = "";
+        std::string returnString = "";
 
-        while ((start_pos = internalOptions.find("-cl-ext=", end_pos)) != std::string::npos) {
-          end_pos = internalOptions.find(' ', start_pos);
-          clextString += internalOptions.substr(start_pos, end_pos - start_pos) + " ";
+        while ((start_pos = str.find(prefix, end_pos)) != std::string::npos) {
+          end_pos = str.find(' ', start_pos);
+          returnString += str.substr(start_pos, end_pos - start_pos) + " ";
         }
 
-        return clextString;
+        return returnString;
     }
 
     std::string GetCDefinesFromInternalOptions(const char *pInternalOptions) {
@@ -1076,26 +1077,26 @@ namespace TC
 
     // The expected extensions input string is in a form:
     // -cl-ext=-all,+supported_ext_name,+second_supported_ext_name
-    std::string GetCDefinesForExtensions(llvm::StringRef extensions, unsigned int oclStd) {
+    // -cl-feature=+__opencl_c_3d_image_writes,+__opencl_c_atomic_order_acq_rel
+    std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int oclStd, const StringRef prefix) {
 
-      std::string extDefines;
+      std::string definesStr;
 
-      // check for the last occurence of -all, as it invalidates previous occurances.
-      const StringRef clExtPrefix = "-cl-ext=-all,";
-      size_t pos = extensions.rfind(clExtPrefix);
+      // check for the last occurence of prefix, as it invalidates previous occurances.
+      size_t pos = enableListStr.rfind(prefix);
       if (pos == llvm::StringRef::npos) {
         // If this string does not exist the input string does not contain valid extension list
         // or it has all extensions disabled (-all without colon afterwards).
-        return extDefines;
+        return definesStr;
       }
 
-      extensions = extensions.substr(pos+clExtPrefix.size());
+      enableListStr = enableListStr.substr(pos+prefix.size());
 
       // string with defines should be similar in size, ",+" will change to "-D".
-      extDefines.reserve(extensions.size());
+      definesStr.reserve(enableListStr.size());
 
       llvm::SmallVector<StringRef, 0> v;
-      extensions.split(v, ',');
+      enableListStr.split(v, ',');
 
       for (auto ext : v) {
         if (ext.consume_front("+")) {
@@ -1104,11 +1105,11 @@ namespace TC
             // This is because clang will not allow declarations of extension's functions which use avc types otherwise.
             if (!(oclStd >= 120 || oclStd == 0)) continue;
           }
-          extDefines.append(" -D").append(ext);
+          definesStr.append(" -D").append(ext);
         }
       }
 
-      return extDefines;
+      return definesStr;
     }
 
     /*****************************************************************************\
@@ -1492,7 +1493,8 @@ namespace TC
             optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
         }
 
-        std::string extensionsFromInternalOptions = GetListOfExtensionsFromInternalOptions(pInternalOptions);
+        std::string extensionsFromInternalOptions = GetSubstring(pInternalOptions, "-cl-ext=");
+
         std::string extensions;
 
         // if extensions list is passed in via internal options, it will override the default ones.
@@ -1510,7 +1512,24 @@ namespace TC
         unsigned int oclStd = GetOclCVersionFromOptions(pInputArgs->options.data(), nullptr, pInputArgs->oclVersion, exceptString);
         // get additional -D flags from internal options
         optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
-        optionsEx += " " + GetCDefinesForExtensions(extensions, oclStd);
+        optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
+
+        if (oclStd >= 300) {
+          auto featureMacrosFromInternalOptions = GetSubstring(pInternalOptions, "-cl-feature=");
+
+          // Workaround for Clang issue.
+          // For write_imagef with image3d_t OpenCL 3.0 spec says:
+          // "Requires support for OpenCL C 2.0, the __opencl_c_3d_image_writes feature macro, or the cl_khr_3d_image_writes extension".
+          // In case only cl_khr_3d_image_writes is enabled, Clang triggers error for write_imagef declaration.
+          // TODO: remove when Clang is fixed.
+          if (extensions.find("+cl_khr_3d_image_writes") != std::string::npos) {
+              featureMacrosFromInternalOptions += ",+__opencl_c_3d_image_writes";
+          }
+
+          optionsEx += " " + GetCDefinesForEnableList(featureMacrosFromInternalOptions, oclStd, "-cl-feature=");
+          optionsEx += " " + featureMacrosFromInternalOptions;
+        }
+
         optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
 
         IOCLFEBinaryResult *pResultPtr = NULL;

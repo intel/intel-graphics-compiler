@@ -7,7 +7,7 @@
 //
 #if defined (float_atomics_enable)
 
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifdef __opencl_c_generic_address_space
 float __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_float *object, float operand);
 float __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_float *object, float operand, memory_order order);
 float __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_float *object, float operand, memory_order order, memory_scope scope);
@@ -15,7 +15,7 @@ float __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic a
 float __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_float *object, float operand);
 float __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_float *object, float operand, memory_order order);
 float __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_float *object, float operand, memory_order order, memory_scope scope);
-#endif // CL_VERSION_2_0
+#endif // __opencl_c_generic_address_space
 
 // atom_min
 float __attribute__((overloadable)) atom_min(volatile __global float *p, float val);
