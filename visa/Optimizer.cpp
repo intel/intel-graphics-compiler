@@ -544,6 +544,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(mapOrphans,              vISA_EnableAlways,            TIMER_MISC_OPTS);
     INITIALIZE_PASS(varSplit,                vISA_EnableAlways,            TIMER_OPTIMIZER);
     INITIALIZE_PASS(legalizeType,            vISA_EnableAlways,            TIMER_MISC_OPTS);
+    INITIALIZE_PASS(analyzeMove,             vISA_analyzeMove,             TIMER_MISC_OPTS);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1128,6 +1129,8 @@ int Optimizer::optimization()
     runPass(PI_insertDummyCompactInst);
 
     runPass(PI_mapOrphans);
+
+    runPass(PI_analyzeMove);
 
     return VISA_SUCCESS;
 }
@@ -10813,6 +10816,133 @@ void Optimizer::legalizeType()
             }
         }
     }
+}
+
+
+//
+// Categorize move instructions to help with performance analysis
+//
+void Optimizer::analyzeMove()
+{
+
+    #define MOVE_TYPE(DO) \
+    DO(Total) \
+    DO(SatOrMod) \
+    DO(Imm32) \
+    DO(Imm64) \
+    DO(FPConvert) \
+    DO(Trunc) \
+    DO(Extend) \
+    DO(Broadcast) \
+    DO(UNPACK) \
+    DO(PACK) \
+    DO(Copy) \
+    DO(Misc) \
+    DO(LAST)
+
+    enum MovTypes {
+        MOVE_TYPE(MAKE_ENUM)
+    };
+
+    static const char* moveNames[] =
+    {
+        MOVE_TYPE(STRINGIFY)
+    };
+
+    std::array<int, MovTypes::LAST> moveCount = {0};
+
+    for (auto bb : kernel.fg)
+    {
+        for (auto inst : *bb)
+        {
+            if (!inst->isMov())
+            {
+                continue;
+            }
+            moveCount[MovTypes::Total]++;
+
+            if (inst->getSaturate())
+            {
+                moveCount[MovTypes::SatOrMod]++;
+                continue;
+            }
+            auto dstTy = inst->getDst()->getType();
+            auto srcTy = inst->getSrc(0)->getType();
+            if (inst->getSrc(0)->isImm())
+            {
+                moveCount[getTypeSize(srcTy) == 8 ? MovTypes::Imm64 : MovTypes::Imm32]++;
+            }
+            else if (inst->getSrc(0)->isSrcRegRegion())
+            {
+                auto srcRR = inst->getSrc(0)->asSrcRegRegion();
+                if (srcRR->getModifier() != Mod_src_undef)
+                {
+                    moveCount[SatOrMod]++;
+                    continue;
+                }
+                bool signChange = false;
+                if (dstTy != srcTy)
+                {
+                    if (IS_FTYPE(srcTy) || IS_FTYPE(dstTy))
+                    {
+                        // distinguish inttofp and fpconvert?
+                        moveCount[MovTypes::FPConvert]++;
+                    }
+                    else if (getTypeSize(dstTy) > getTypeSize(srcTy))
+                    {
+                        moveCount[MovTypes::Extend]++;
+                    }
+                    else if (getTypeSize(srcTy) > getTypeSize(dstTy))
+                    {
+                        moveCount[MovTypes::Trunc]++;
+                    }
+                    else
+                    {
+                        signChange = true;
+                    }
+                }
+                if (dstTy == srcTy || signChange)
+                {
+                    if (srcRR->isScalar())
+                    {
+                        moveCount[inst->getExecSize() > 1 ? MovTypes::Broadcast : MovTypes::Copy]++;
+                    }
+                    else if (srcRR->getRegion()->isContiguous(inst->getExecSize()))
+                    {
+                        moveCount[inst->getDst()->getHorzStride() == 1 ? MovTypes::Copy : MovTypes::UNPACK]++;
+                    }
+                    else
+                    {
+                        bool singleStride = srcRR->getRegion()->isSingleStride(inst->getExecSize());
+                        if (singleStride && inst->getDst()->getHorzStride() == 1)
+                        {
+                            moveCount[MovTypes::PACK]++;
+                        }
+                        else
+                        {
+                            // give up
+                            moveCount[MovTypes::Misc]++;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                moveCount[MovTypes::Misc]++;
+            }
+        }
+    }
+
+    std::cerr << "Move classification:\n";
+    for (int i = 0; i < MovTypes::LAST; ++i)
+    {
+        if (moveCount[i] > 0)
+        {
+            std::cerr << "\t" << moveNames[i] << ":\t" << moveCount[i] << "\n";
+        }
+    }
+
+    #undef MOVE_TYPE
 }
 
 //

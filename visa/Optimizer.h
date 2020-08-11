@@ -222,6 +222,7 @@ private:
     void changeMoveType();
     void split4GRFVars();
     void legalizeType();
+    void analyzeMove();
 
     void countBankConflicts();
     unsigned int numBankConflicts;
@@ -349,6 +350,7 @@ public:
         PI_mapOrphans,
         PI_varSplit,
         PI_legalizeType,
+        PI_analyzeMove,
         PI_NUM_PASSES
     };
 
