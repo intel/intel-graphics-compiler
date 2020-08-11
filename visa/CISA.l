@@ -178,7 +178,6 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
 ".version"          {TRACE("\n** VERSION "); return DIRECTIVE_VERSION;}
 ".decl"             {TRACE("\n** DECLARE "); return DIRECTIVE_DECL;}
 ".funcdecl"         {TRACE("\n** FUNCTION DECLARE "); return DIRECTIVE_FUNCDECL;}
-".attr"             {TRACE("\n** ATTR "); return DIRECTIVE_ATTR;}
 ".kernel_attr"      {TRACE("\n** KERNEL ATTR "); return DIRECTIVE_KERNEL_ATTR;}
 ".input"            {TRACE("\n** INPUT "); return DIRECTIVE_INPUT;}
 "."implicit[a-zA-Z0-9_\-$@?]* {
@@ -853,7 +852,7 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
 
 [ \n\t]+"\\"\n {TRACE("\n** Multiple instructions in a line");}
 
-    /* <<EOF>> {TRACE("\n** EOF_TOKEN"); return EOF_TOKEN;} */
+
 %%
 
 int yywrap() { return 1;}
