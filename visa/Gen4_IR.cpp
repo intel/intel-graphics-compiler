@@ -7478,54 +7478,93 @@ void LiveIntervalInfo::addLiveInterval(uint32_t start, uint32_t end)
     {
         liveIntervals.push_back(std::make_pair(start, end));
     }
+    else if (start - liveIntervals.back().second <= 1)
+    {
+        liveIntervals.back().second = end;
+    }
+    else if (liveIntervals.back().second < start)
+    {
+        liveIntervals.push_back(std::make_pair(start, end));
+    }
+    else if (liveIntervals.front().first >= start && liveIntervals.back().second <= end)
+    {
+        liveIntervals.clear();
+        liveIntervals.push_back(std::make_pair(start, end));
+    }
     else
     {
-        bool done = false, firstcheck = false;
-        // Check if a new live-interval can be pushed independently of others
-        for (auto lr_it = liveIntervals.begin();
-            lr_it != liveIntervals.end();
-            lr_it++)
+        bool inserted = false;
+        uint32_t newEnd = end;
+        for (auto liveIt = liveIntervals.begin(); liveIt != liveIntervals.end();)
         {
-            auto& lr = (*lr_it);
+            auto& lr = (*liveIt);
 
-            if (firstcheck)
+            if (!inserted)
             {
-                if (lr.first > end)
+                if (lr.first <= start && lr.second >= newEnd)
                 {
-                    done = true;
-                    liveIntervals.insert(lr_it, std::make_pair(start, end));
+                    inserted = true;
                     break;
                 }
-                firstcheck = false;
-                break;
+                else if (lr.first <= start && lr.second > start && lr.second <= newEnd)
+                {
+                    // Extend existing sub-interval
+                    lr.second = newEnd;
+                    inserted = true;
+                    ++liveIt;
+                    continue;
+                }
+                else if ((start - lr.second) <= 1u)
+                {
+                    lr.second = newEnd;
+                    inserted = true;
+                    ++liveIt;
+                    continue;
+                }
+                else if (lr.first > start)
+                {
+                    // Insert new sub-interval
+                    liveIntervals.insert(liveIt, std::make_pair(start, newEnd));
+                    inserted = true;
+                    continue;
+                }
             }
-
-            if (lr.second < start)
+            else
             {
-                firstcheck = true;
+                if (lr.first > newEnd)
+                    break;
+                else if (lr.first == newEnd)
+                {
+                    newEnd = lr.second;
+                    auto newLRIt = liveIt;
+                    --newLRIt;
+                    (*newLRIt).second = newEnd;
+                    liveIt = liveIntervals.erase(liveIt);
+                    continue;
+                }
+                else if (lr.second <= newEnd)
+                {
+                    liveIt = liveIntervals.erase(liveIt);
+                    continue;
+                }
+                else if(lr.first < newEnd && lr.second > newEnd)
+                {
+                    auto newLRIt = liveIt;
+                    --newLRIt;
+                    (*newLRIt).second = lr.second;
+                    liveIntervals.erase(liveIt);
+                    break;
+                }
             }
-
-            if (lr.first <= start && lr.second >= end)
-            {
-                return;
-            }
+            ++liveIt;
         }
 
-        if (firstcheck && !done)
+        if (!inserted)
         {
             if (start - liveIntervals.back().second <= 1)
-            {
                 liveIntervals.back().second = end;
-                done = true;
-            }
-        }
-
-        if (!done)
-        {
-            for (unsigned int i = start; i <= end; i++)
-            {
-                liveAt(i);
-            }
+            else
+                liveIntervals.push_back(std::make_pair(start, end));
         }
     }
 }

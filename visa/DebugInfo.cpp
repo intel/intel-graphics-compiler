@@ -2023,10 +2023,7 @@ void updateDebugInfo(G4_Kernel& kernel, std::vector<std::tuple<G4_Declare*, G4_I
         if (start != UNMAPPABLE_VISA_INDEX &&
             end != UNMAPPABLE_VISA_INDEX)
         {
-            for (uint32_t i = start; i <= end; i++)
-            {
-                lrInfo->liveAt(i);
-            }
+            lrInfo->addLiveInterval(start, end);
         }
     }
 }
