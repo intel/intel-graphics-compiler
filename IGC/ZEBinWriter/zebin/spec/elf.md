@@ -11,7 +11,8 @@
 | .rel.{*kernel_name*} | Relocation table (if any) | SHT_REL |
 | .spv | Spir-v of the module (if required) | SHT_ZEBIN_SPIRV |
 | .debug_info | the debug information (if required) | SHT_PROGBITS |
-| .ze_info | the metadata section | SHT_ZEBIN_ZEINFO |
+| .ze_info | the metadata section for runtime information | SHT_ZEBIN_ZEINFO |
+| .gtpin_info | the metadata section for gtpin information (if any) | SHT_ZEBIN_GTPIN_INFO |
 | .strtab | the string table for section/symbol names | SHT_STRTAB |
 
 An ZE binary contains information of one compiled module.
@@ -110,8 +111,9 @@ All others fields in ELF header follow what are defined in the standard.
 ~~~
 enum SHT_ZEBIN : uint32_t
 {
-    SHT_ZEBIN_SPIRV  = 0xff000009, // .spv.kernel section, value the same as SHT_OPENCL_SPIRV
-    SHT_ZEBIN_ZEINFO = 0xff000011  // .ze_info section
+    SHT_ZEBIN_SPIRV      = 0xff000009, // .spv.kernel section, value the same as SHT_OPENCL_SPIRV
+    SHT_ZEBIN_ZEINFO     = 0xff000011, // .ze_info section
+    SHT_ZEBIN_GTPIN_INFO = 0xff000012  // .gtpin_info section
 }
 ~~~
 
@@ -119,9 +121,10 @@ enum SHT_ZEBIN : uint32_t
 Relocation type for **ELF32_R_TYPE** or **ELF64_R_TYPE**
 ~~~
 enum GenRelocType {
-    R_ZE_NONE           = 0,
-    R_ZE_SYM_ADDR       = 1, // 64-bit address
-    R_ZE_SYM_ADDR_32    = 2, // 32-bit address or lower 32-bit of a 64-bit address
-    R_ZE_SYM_ADDR_32_HI = 3  // higher 32bits of a 64-bit address
+    R_ZE_NONE                      = 0,
+    R_ZE_SYM_ADDR                  = 1, // 64-bit address
+    R_ZE_SYM_ADDR_32               = 2, // 32-bit address or lower 32-bit of a 64-bit address
+    R_ZE_SYM_ADDR_32_HI            = 3  // higher 32bits of a 64-bit address
+    R_PER_THREAD_PAYLOAD_OFFSET_32 = 4  // 32-bit field of payload offset of per-thread data
 };
 ~~~

@@ -136,6 +136,17 @@ public:
     //   ZEELFObjectBuilder
     void addSectionSpirv(std::string name, const uint8_t* data, uint64_t size);
 
+    // add .gtpin_info section
+    // - name: section name. Do not includes leading .gtpin_info in the given
+    //         name. For example, giving "func", the section name will be
+    //         ".gtpin_info.func"
+    // - size in byte
+    // - Note that the alignment requirement of the section should be satisfied
+    //   by the given data and size
+    // - Note that the given data buffer have to be alive through
+    //   ZEELFObjectBuilder
+    void addSectionGTPinInfo(std::string name, const uint8_t* data, uint64_t size);
+
     // .debug_info section in DWARF format
     // - name: section name. The default name is .debug_info
     // - size in byte
@@ -296,6 +307,8 @@ private:
     typedef std::vector<RelocSection> RelocSectionListTy;
 
 private:
+    // name: The given name added by addSection* APIs
+    // secName: The full name that will be represented in section header
     Section& addStandardSection(
         std::string name, std::string sectName, const uint8_t* data, uint64_t size,
         unsigned type, uint32_t padding, uint32_t align, StandardSectionListTy& sections);
@@ -306,14 +319,15 @@ private:
 
 private:
     // place holder for section default name
-    const std::string m_TextName   = ".text";
-    const std::string m_DataName   = ".data";
-    const std::string m_SymTabName = ".symtab";
-    const std::string m_RelName    = ".rel";
-    const std::string m_SpvName    = ".spv";
-    const std::string m_DebugName  = ".debug_info";
-    const std::string m_ZEInfoName = ".ze_info";
-    const std::string m_StrTabName = ".strtab";
+    const std::string m_TextName      = ".text";
+    const std::string m_DataName      = ".data";
+    const std::string m_SymTabName    = ".symtab";
+    const std::string m_RelName       = ".rel";
+    const std::string m_SpvName       = ".spv";
+    const std::string m_DebugName     = ".debug_info";
+    const std::string m_ZEInfoName    = ".ze_info";
+    const std::string m_GTPinInfoName = ".gtpin_info";
+    const std::string m_StrTabName    = ".strtab";
 
 private:
     // 32 or 64 bit object

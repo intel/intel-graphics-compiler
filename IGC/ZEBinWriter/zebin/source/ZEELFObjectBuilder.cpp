@@ -220,6 +220,20 @@ ZEELFObjectBuilder::addSectionData(
 }
 
 void
+ZEELFObjectBuilder::addSectionGTPinInfo(std::string name, const uint8_t* data, uint64_t size)
+{
+    // adjust the section name
+    std::string sectName;
+    if (name != "")
+        sectName = m_GTPinInfoName + "." + name;
+    else
+        sectName = m_GTPinInfoName;
+
+    addStandardSection(name, sectName,
+        data, size, SHT_ZEBIN_GTPIN_INFO, 0, 0, m_otherStdSections);
+}
+
+void
 ZEELFObjectBuilder::addSectionSpirv(std::string name, const uint8_t* data, uint64_t size)
 {
     if (name.empty())

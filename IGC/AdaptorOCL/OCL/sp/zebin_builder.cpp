@@ -37,7 +37,8 @@ using namespace iOpenCL;
 using namespace zebin;
 
 ZEBinaryBuilder::ZEBinaryBuilder(
-    const PLATFORM plat, bool is64BitPointer, const IGC::SOpenCLProgramInfo& programInfo)
+    const PLATFORM plat, bool is64BitPointer, const IGC::SOpenCLProgramInfo& programInfo,
+    const uint8_t* spvData, uint32_t spvSize)
     : mPlatform(plat), mBuilder(is64BitPointer)
 {
     G6HWC::InitializeCapsGen8(&mHWCaps);
@@ -56,6 +57,9 @@ ZEBinaryBuilder::ZEBinaryBuilder(
     mBuilder.setTargetFlag(tf);
 
     addProgramScopeInfo(programInfo);
+
+    if (spvData != nullptr)
+        addSPIRV(spvData, spvSize);
 }
 
 void ZEBinaryBuilder::createKernel(
@@ -83,6 +87,35 @@ void ZEBinaryBuilder::createKernel(
     }
     addPayloadArgsAndBTI(annotations, zeKernel);
     addMemoryBuffer(annotations, zeKernel);
+    addGTPinInfo(annotations);
+}
+
+void ZEBinaryBuilder::addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations)
+{
+    const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
+    uint8_t* buffer = nullptr;
+    uint32_t size = 0;
+    switch (annotations.m_executionEnivronment.CompiledSIMDSize) {
+    case 1:
+        buffer = (uint8_t*)program->simd1.m_gtpinBuffer;
+        size = program->simd1.m_gtpinBufferSize;
+        break;
+    case 8:
+        buffer = (uint8_t*)program->simd8.m_gtpinBuffer;
+        size = program->simd8.m_gtpinBufferSize;
+        break;
+    case 16:
+        buffer = (uint8_t*)program->simd16.m_gtpinBuffer;
+        size = program->simd16.m_gtpinBufferSize;
+        break;
+    case 32:
+        buffer = (uint8_t*)program->simd32.m_gtpinBuffer;
+        size = program->simd32.m_gtpinBufferSize;
+        break;
+    }
+
+    if (buffer != nullptr && size)
+        mBuilder.addSectionGTPinInfo(annotations.m_kernelName, buffer, size);
 }
 
 void ZEBinaryBuilder::addProgramScopeInfo(const IGC::SOpenCLProgramInfo& programInfo)
@@ -119,6 +152,7 @@ bool ZEBinaryBuilder::hasGlobals(const IGC::SOpenCLProgramInfo& annotations)
     return false;
 }
 
+
 ZEELFObjectBuilder::SectionID ZEBinaryBuilder::addGlobals(
     const IGC::SOpenCLProgramInfo& annotations)
 {
@@ -129,6 +163,11 @@ ZEELFObjectBuilder::SectionID ZEBinaryBuilder::addGlobals(
     auto& ca = annotations.m_initGlobalAnnotation.front();
     return mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
         ca->InlineData.size());
+}
+
+void ZEBinaryBuilder::addSPIRV(const uint8_t* data, uint32_t size)
+{
+    mBuilder.addSectionSpirv("", data, size);
 }
 
 ZEELFObjectBuilder::SectionID ZEBinaryBuilder::addKernelBinary(const std::string& kernelName,

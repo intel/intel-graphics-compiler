@@ -54,7 +54,7 @@ public:
     // Setup ZEBin platform, and ELF header information. The program scope information
     // is also be parsed from SOpenCLProgramInfo in the constructor
     ZEBinaryBuilder(const PLATFORM plat, bool is64BitPointer,
-        const IGC::SOpenCLProgramInfo& programInfo);
+        const IGC::SOpenCLProgramInfo& programInfo, const uint8_t* spvData, uint32_t spvSize);
 
     /// add kernel information. Also create kernel metadata inforamtion for .ze_info
     /// This function can be called several times for adding different kernel information
@@ -94,6 +94,9 @@ private:
     zebin::ZEELFObjectBuilder::SectionID addGlobals(
         const IGC::SOpenCLProgramInfo& annotations);
     bool hasGlobals(const IGC::SOpenCLProgramInfo& annotations);
+
+    /// add spir-v section
+    void addSPIRV(const uint8_t* data, uint32_t size);
 
     /// ------------ kernel scope helper functions ------------
     /// add gen binary
@@ -139,6 +142,11 @@ private:
     void addMemoryBuffer(
         const IGC::SOpenCLKernelInfo& annotations,
         zebin::zeInfoKernel& zeinfoKernel);
+
+    /// add gtpin_info section
+    /// Add everything used to be in patch token iOpenCL::PATCH_TOKEN_GTPIN_INFO
+    /// into gtpin_info section
+    void addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations);
 
     /// ------------ Verifier sub-functions ------------
     bool hasSystemKernel(

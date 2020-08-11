@@ -231,14 +231,16 @@ void overrideOCLKernelBinary(
 
 
 void CGen8OpenCLProgram::GetZEBinary(
-    llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes)
+    llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes,
+    const char* spv, uint32_t spvSize)
 {
     auto isValidShader = [&](IGC::COpenCLKernel* shader)->bool
     {
         return (shader && shader->ProgramOutput()->m_programSize > 0);
     };
 
-    ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8, m_pContext->m_programInfo);
+    ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
+        m_pContext->m_programInfo, (const uint8_t*)spv, spvSize);
 
     for (auto pKernel : m_ShaderProgramList)
     {
@@ -407,7 +409,7 @@ void CGen8CMProgram::CreateKernelBinaries()
 void CGen8CMProgram::GetZEBinary(
     llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes)
 {
-    ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8, *m_programInfo};
+    ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8, *m_programInfo, nullptr, 0};
 
     for (auto *kernel : m_kernels)
     {

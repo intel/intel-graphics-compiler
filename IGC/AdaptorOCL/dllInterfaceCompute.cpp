@@ -1190,7 +1190,14 @@ bool TranslateBuild(
         // ze binary foramt
         llvm::SmallVector<char, 64> buf;
         llvm::raw_svector_ostream llvm_os(buf);
-        oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes);
+        const char* spv_data = nullptr;
+        uint32_t spv_size = 0;
+        if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V) {
+            spv_data = pInputArgs->pInput;
+            spv_size = pInputArgs->InputSize;
+        }
+        oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes,
+            spv_data, spv_size);
 
         // FIXME: try to avoid memory copy here
         binarySize = buf.size();
