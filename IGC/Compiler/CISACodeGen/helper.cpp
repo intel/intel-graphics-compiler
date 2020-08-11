@@ -1352,7 +1352,8 @@ namespace IGC
         return (opcode == llvm_waveAll ||
             opcode == llvm_waveClustered ||
             opcode == llvm_wavePrefix ||
-            opcode == llvm_waveShuffleIndex);
+            opcode == llvm_waveShuffleIndex ||
+            opcode == llvm_simdShuffleDown);
     }
 
 
