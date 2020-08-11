@@ -52,6 +52,7 @@ struct IDriverInvocation {
   enum class InputTypeT { SourceCM, LLVM_IR, SPIRV, NONE, OTHER };
   enum class OutputTypeT { S, SPIRV, LLVM_IR, LLVM_BC, PREPROC, OTHER };
   enum class TargetRuntimeT { CM, OCL, L0 };
+  enum class BinaryFormatT { CM, OCL, ZE };
 
   virtual const SeqStrT& getFEArgs() const = 0;
   virtual const SeqStrT& getBEArgs() const = 0;
@@ -59,6 +60,7 @@ struct IDriverInvocation {
   virtual const InputTypeT& getInputType() const = 0;
   virtual const OutputTypeT& getOutputType() const = 0;
   virtual const TargetRuntimeT& getTargetRuntime() const = 0;
+  virtual BinaryFormatT getBinaryFormat() const = 0;
 
   virtual const StrT& getTargetArch() const = 0;
   virtual const StrT& getInputFilename() const = 0;
@@ -72,7 +74,7 @@ struct IDriverInvocation {
 };
 
 // this number should be increased whenever the public interface changes
-static const int InterfaceVersion = 6;
+static const int InterfaceVersion = 7;
 
 } // namespace ClangFE
 } // namespace CM
