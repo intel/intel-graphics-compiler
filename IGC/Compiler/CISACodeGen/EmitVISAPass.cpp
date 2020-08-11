@@ -450,10 +450,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall);
         initDefaultRoundingMode();
         m_currShader->PreCompile();
-
-        // initialize stack if having stack usage
-        bool hasVLA = (m_FGA && m_FGA->getGroup(&F)->hasVariableLengthAlloca()) || F.hasFnAttribute("hasVLA");
-        if (hasStackCall || hasVLA)
+        if (hasStackCall)
         {
             m_encoder->InitFuncAttribute(&F, true);
             InitializeKernelStack(&F);
@@ -7958,9 +7955,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_StackAlloca:
         emitStackAlloca(inst);
         break;
-    case GenISAIntrinsic::GenISA_VLAStackAlloca:
-        emitVLAStackAlloca(inst);
-        break;
     case GenISAIntrinsic::GenISA_WaveBallot:
         emitWaveBallot(inst);
         break;
@@ -8028,18 +8022,12 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
     {
     case Intrinsic::lifetime_start:
     case Intrinsic::lifetime_end:
+    case Intrinsic::stacksave:
+    case Intrinsic::stackrestore:
     case Intrinsic::fabs:
     case Intrinsic::trap:
         // do nothing
         break;
-    case Intrinsic::stacksave:
-        emitLLVMStackSave(inst);
-        break;
-
-    case Intrinsic::stackrestore:
-        emitLLVMStackRestore(inst);
-        break;
-
     case Intrinsic::bswap:
         emitLLVMbswap(inst);
         break;
@@ -9244,47 +9232,6 @@ void EmitPass::emitPairToPtr(GenIntrinsicInst* GII) {
     m_encoder->Push();
 }
 
-void EmitPass::emitLLVMStackSave(llvm::IntrinsicInst* inst) {
-    // save current SP
-    CVariable* pSP = m_currShader->GetSP();
-    m_encoder->Copy(m_destination, pSP);
-    m_encoder->Push();
-}
-
-void EmitPass::emitLLVMStackRestore(llvm::IntrinsicInst* inst) {
-    // restore the SP to arg(0)
-    CVariable* pSP = m_currShader->GetSP();
-    CVariable* savedSP = m_currShader->GetSymbol(inst->getOperand(0));
-    // stacksave and stackrestore are forced to be uniform in WIAnalysis.
-    // While here we still set to scalar region just in case
-    m_encoder->SetSrcRegion(0, 0, 1, 0);
-    m_encoder->Copy(pSP, savedSP);
-    m_encoder->Push();
-}
-
-void EmitPass::emitVLAStackAlloca(llvm::GenIntrinsicInst* intrinsic)
-{
-    CVariable* pSP = m_currShader->GetSP();
-    CVariable* lane_off = m_currShader->GetSymbol(intrinsic->getOperand(0));
-    // m_destination = curr_SP + lane_offset
-    emitAddSP(m_destination, pSP, lane_off);
-    m_encoder->Push();
-
-    if (m_currShader->m_numberInstance == 1 || m_encoder->IsSecondHalf()) {
-        // SP = SP + vla_size * simdWidth
-        CVariable* vla_size = m_currShader->GetSymbol(intrinsic->getOperand(1));
-        // vla_size must be uniform, if it's not uniform, set region to take only <0;1,0>
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->Mul(vla_size, vla_size,
-            m_currShader->ImmToVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW));
-        m_encoder->Push();
-
-        m_encoder->SetSrcRegion(1, 0, 1, 0);
-        emitAddSP(pSP, pSP, vla_size);
-        m_encoder->Push();
-    }
-}
-
 void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 {
     CVariable* pSP = m_currShader->GetSP();
@@ -9405,7 +9352,7 @@ void EmitPass::emitReturn(llvm::ReturnInst* inst)
 /// Initializes the kernel for stack call by initializing the SP and FP
 void EmitPass::InitializeKernelStack(Function* pKernel)
 {
-    m_currShader->CreateFPAndSP();
+    m_currShader->CreateSP();
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto pModuleMetadata = pCtx->getModuleMetaData();
 
@@ -9416,7 +9363,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     CVariable* pSize = nullptr;
 
     // Maximun private size in byte, per-workitem
-    // When there's stack call or vla, we don't know the actual stack size being used,
+    // When there's stack call, we don't know the actual stack size being used,
     // so set a conservative max stack size.
     uint32_t MaxPrivateSize = m_currShader->GetMaxPrivateMem();
     if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
@@ -9872,7 +9819,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
 void EmitPass::emitStackFuncEntry(Function* F)
 {
     m_encoder->SetDispatchSimdSize();
-    m_currShader->CreateFPAndSP();
+    m_currShader->CreateSP();
 
     if (F->hasFnAttribute("IndirectlyCalled"))
     {
