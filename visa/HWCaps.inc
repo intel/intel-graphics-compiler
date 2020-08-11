@@ -632,6 +632,11 @@
         return !noFP64();
     }
 
+    bool hasFixedCycleMathPipeline()
+    {
+        return false;
+    }
+
 
     bool hasByteALU() const
     {
