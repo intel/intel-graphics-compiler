@@ -8993,7 +8993,6 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
     {
         dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
         dcl->setCapableOfReuse();
-        Create_MOVR0_Inst(dcl, 0, 0, true);
         if (hasBindlessSampler() && !isBindlessSampler)
         {
             // make sure we set bit 0 of M0.3:ud to be 0
