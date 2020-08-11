@@ -933,7 +933,7 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
     }
     *Inst->use_begin() = Extended;
   }
-  // Erase Inst. Its operands may now become unused, in which case remove 
+  // Erase Inst. Its operands may now become unused, in which case remove
   // those too.
   auto Opnd0Inst = dyn_cast<Instruction>(Inst->getOperand(0));
   Instruction *Opnd1Inst = nullptr;
@@ -992,7 +992,8 @@ GenXReduceIntSize::ValueNumBits GenXReduceIntSize::getValueNumBits(
       if (Val >= 0)
         return ValueNumBits(64 - countLeadingZeros((uint64_t)Val, ZB_Width)
             + PreferSigned, /*IsSignExtended=*/PreferSigned);
-      return ValueNumBits(63 - countLeadingZeros((uint64_t)-Val, ZB_Undefined),
+      assert(Val != std::numeric_limits<int64_t>::min());
+      return ValueNumBits(64 - countLeadingZeros((uint64_t)-Val, ZB_Undefined),
             /*IsSignExtended=*/true);
     }
     return NumBits;
