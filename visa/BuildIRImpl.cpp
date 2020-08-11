@@ -954,16 +954,7 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
     }
     else
     {
-        auto addInst = createBinOp(G4_add, 1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable, true);
-#ifdef _DEBUG
-        // bit[6:10] has src1 length
-        stringstream ss;
-        ss << "Src1 len = " << ((exdesc >> 6) & 0x1F);
-        addInst->setComments(ss.str());
-#else
-        (void) addInst;
-#endif // _DEBUG
-
+        createBinOp(G4_add, 1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable, true);
     }
     return Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar());
 }
