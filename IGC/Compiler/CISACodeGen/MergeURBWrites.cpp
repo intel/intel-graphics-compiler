@@ -191,7 +191,7 @@ void MergeURBWrites::FillWriteList(BasicBlock& BB)
 
         auto it = m_writeList.find(baseAndOffset);
         // we encountered an instruction writing at the same offset,
-        // most likely we write RTAI, VAI or PSIZE to vertex header
+        // most likely we write RTAI, VPAI or PSIZE to vertex header
         // or we overwrite the old value
         if (it != m_writeList.end())
         {

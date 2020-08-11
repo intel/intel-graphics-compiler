@@ -188,7 +188,7 @@ bool GeometryShaderLowering::runOnFunction(llvm::Function& function)
 
     //URB Padding to 32 byte offset only when both vertex index and attribute index
     //are always directly accessed else will bail out from this optimization
-    bool urbPadding = true;
+    bool addURBPaddingTo32Bytes = true;
 
     for (auto I = function.begin(), E = function.end(); I != E; ++I)
     {
@@ -213,7 +213,7 @@ bool GeometryShaderLowering::runOnFunction(llvm::Function& function)
             {
                 bool immediateAccess = false;
                 lowerOutputGS(pInst, offsetInst, immediateAccess);
-                urbPadding = urbPadding && immediateAccess;
+                addURBPaddingTo32Bytes = addURBPaddingTo32Bytes && immediateAccess;
                 break;
             }
             case llvm_gs_cut_control_header: //fall-through since we want to handle both
@@ -235,7 +235,7 @@ bool GeometryShaderLowering::runOnFunction(llvm::Function& function)
 
     //URB Padding to 32 byte offset only when both vertex index and attribute index
     //are always directly accessed else will bail out from this optimization
-    if (urbPadding)
+    if (addURBPaddingTo32Bytes)
     {
         Value* undef = llvm::UndefValue::get(Type::getFloatTy(function.getContext()));
         Value* data[8] = { undef, undef, undef, undef, undef, undef, undef, undef };

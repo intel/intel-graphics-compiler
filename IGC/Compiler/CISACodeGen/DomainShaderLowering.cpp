@@ -275,8 +275,11 @@ namespace IGC
                 }
             }
         }
+
+        const CPlatform& platform = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform;
+
         Value* undef = llvm::UndefValue::get(Type::getFloatTy(F.getContext()));
-        if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.WaForceDSToWriteURB())
+        if (platform.WaForceDSToWriteURB())
         {
             unsigned int numPhaseWritten = 0;
             for (unsigned int i = 0; i < m_maxNumOfOutput + m_headerSize.Count(); i += 2)
@@ -314,7 +317,8 @@ namespace IGC
             }
         }
         //URB padding to 32Byte offsets
-        for (unsigned int i = 0; i < m_maxNumOfOutput + m_headerSize.Count(); i++)
+        bool addURBPaddingTo32Bytes = true;
+        for (unsigned int i = 0; addURBPaddingTo32Bytes && i < m_maxNumOfOutput + m_headerSize.Count(); i++)
         {
             //If not aligned to 32Byte offset and has valid data
             if (offsetInst[i])

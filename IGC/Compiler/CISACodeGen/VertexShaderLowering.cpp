@@ -362,7 +362,8 @@ namespace IGC
         }
 
         //URB padding to 32Byte offsets
-        for (unsigned int i = 0; i < MaxNumOfOutput + m_headerSize.Count(); i++)
+        bool addURBPaddingTo32Bytes = true;
+        for (unsigned int i = 0; addURBPaddingTo32Bytes && i < MaxNumOfOutput + m_headerSize.Count(); i++)
         {
             //If not aligned to 32Byte offset and has valid data
             if (offsetInst[i])
