@@ -507,24 +507,14 @@ namespace IGC
         {
             return GetConstantOffsetForDynamicUniformBuffer(bufferId, bitCast->getOperand(0), relativeOffsetInBytes);
         }
-        else if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(offsetValue))
-        {
-            if (genIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
-            {
-                if (MDNode * bufIdMd = genIntr->getMetadata("dynamicBufferOffset.bufferId"))
-                {
-                    ConstantInt* bufIdMdVal = mdconst::extract<ConstantInt>(bufIdMd->getOperand(0));
-                    if (bufferId == int_cast<uint>(bufIdMdVal->getZExtValue()))
-                    {
-                        relativeOffsetInBytes = 0;
-                        return true;
-                    }
-                }
-            }
-        }
         else if (IntToPtrInst * i2p = dyn_cast<IntToPtrInst>(offsetValue))
         {
             return GetConstantOffsetForDynamicUniformBuffer(bufferId, i2p->getOperand(0), relativeOffsetInBytes);
+        }
+        else if (m_dynamicBufferOffsetArgs.find(offsetValue) != m_dynamicBufferOffsetArgs.end())
+        {
+            relativeOffsetInBytes = 0;
+            return true;
         }
 
         return false;
@@ -1314,7 +1304,7 @@ namespace IGC
         }
     }
 
-    // process runtimve value, update PushInfo.constantReg
+    // process runtime value, update PushInfo.constantReg
     void PushAnalysis::processRuntimeValue(GenIntrinsicInst* intrinsic)
     {
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
@@ -1336,6 +1326,15 @@ namespace IGC
                 VALUE_NAME(std::string("runtime_value_") + to_string(index)),
                 WIAnalysis::UNIFORM);
             pushInfo.constantReg[index] = m_argIndex;
+
+            if (m_context->m_DriverInfo.SupportsDynamicUniformBuffers() &&
+                IGC_IS_FLAG_DISABLED(DisableSimplePushWithDynamicUniformBuffers) &&
+                pushInfo.dynamicBufferInfo.numOffsets > 0 &&
+                index >= pushInfo.dynamicBufferInfo.firstIndex &&
+                index < pushInfo.dynamicBufferInfo.firstIndex + pushInfo.dynamicBufferInfo.numOffsets)
+            {
+                m_dynamicBufferOffsetArgs.insert(arg);
+            }
         }
         else
         {

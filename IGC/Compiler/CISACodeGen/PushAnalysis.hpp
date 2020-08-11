@@ -84,6 +84,9 @@ namespace IGC
         uint    m_maxStatelessOffset;
         int    m_argIndex;
         std::vector < llvm::Value* > m_argList;
+        // List of all arguments (promoted runtime values) that contain dynamic
+        // buffer offsets.
+        std::set <llvm::Value*> m_dynamicBufferOffsetArgs;
         FunctionUpgrader m_pFuncUpgrade;
 
         // Helper function
