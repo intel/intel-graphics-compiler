@@ -21,6 +21,7 @@ set(CODEGEN_SOURCES
   GenXConstants.cpp
   GenXCoalescing.cpp
   GenXDeadVectorRemoval.cpp
+  GenXDebugInfo.cpp
   GenXDepressurizer.cpp
   GenXExtractVectorizer.cpp
   GenXFuncPtrsLowering.cpp

@@ -143,3 +143,16 @@ bool GenXModule::runOnModule(Module &M) {
 
   return ModuleModified;
 }
+void GenXModule::updateVisaDebugInfo(const Function *F,
+                                     const Instruction *Inst) {
+  auto &DebugInfo = VisaDebugMap[F];
+  if (Inst) {
+    DebugInfo.Locations.insert(std::make_pair(DebugInfo.visaCounter, Inst));
+  }
+  // Always advance visa counter
+  ++DebugInfo.visaCounter;
+}
+const genx::VisaDebugInfo *
+GenXModule::getVisaDebugInfo(const Function *F) const {
+  return &VisaDebugMap.at(F);
+}

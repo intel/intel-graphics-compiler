@@ -115,6 +115,13 @@ namespace llvm {
       virtual void writeBody(raw_pwrite_stream &Out) = 0;
     };
 
+    struct VisaDebugInfo {
+      unsigned visaCounter = 0;
+      typedef std::map<unsigned, const Instruction *> VisaLocations;
+
+      VisaLocations Locations;
+    };
+
   } // end namespace genx
 
 
@@ -143,6 +150,7 @@ namespace llvm {
     bool CheckForInlineAsm(Module &M) const;
 
     std::map<const Function *, VISAKernel *> VisaKernelMap;
+    std::map<const Function *, genx::VisaDebugInfo> VisaDebugMap;
 
   public:
     static char ID;
@@ -178,6 +186,9 @@ namespace llvm {
     VISAKernel *getVISAKernel(const Function *F) const {
       return VisaKernelMap.at(F);
     }
+
+    void updateVisaDebugInfo(const Function *F, const Instruction *Inst);
+    const genx::VisaDebugInfo *getVisaDebugInfo(const Function *F) const;
   };
 
   void initializeGenXModulePass(PassRegistry &);

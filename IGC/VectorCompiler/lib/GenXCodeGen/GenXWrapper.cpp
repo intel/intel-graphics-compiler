@@ -506,6 +506,9 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
   llvm::initializeTarget(Registry);
 
+  if (Opts.DumpIR)
+    dumpDataToTemp({Input.data(), Input.size()}, "vc-input.spv");
+
   auto ExpModule = getModule(Input, Context);
   if (!ExpModule)
     return ExpModule.takeError();
@@ -735,6 +738,18 @@ composeLLVMArgs(const opt::InputArgList &ApiArgs,
     UpdatedArgs.AddSeparateArg(ApiArgs.getLastArg(OptID), LLVMOpt, WrappedOpts);
   }
 
+
+  if (opt::Arg *DbgArg = ApiArgs.getLastArg(vc::options::OPT_vc_emit_debug)) {
+
+    UpdatedArgs.AddSeparateArg(DbgArg, LLVMOpt,
+                               "-finalizer-opts='-generateDebugInfo'");
+    UpdatedArgs.AddSeparateArg(DbgArg, LLVMOpt, "-emit-debug-info");
+
+    // TODO: turn off the debug when debug information is stabilized
+    UpdatedArgs.AddSeparateArg(
+        nullptr, LLVMOpt,
+        "-finalizer-opts='-dumpcommonisa -dumpvisa -output -binary'");
+  }
 
 
   return UpdatedArgs;

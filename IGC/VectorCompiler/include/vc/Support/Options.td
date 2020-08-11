@@ -56,6 +56,10 @@ let Flags = [ApiOption] in {
 def vc_codegen : Flag<["-"], "vc-codegen">,
   HelpText<"Enable vector codegenerator">;
 
+// Generate debug info
+def vc_emit_debug : Flag<["-"], "g">,
+  HelpText<"Enable generation of debug information">;
+
 def optimize : Separate<["-"], "optimize">,
   HelpText<"Set optimization level to either 'none' or 'full'">,
   MetaVarName<"<level>">;

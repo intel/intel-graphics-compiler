@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GenX.h"
 #include "GenXBackendConfig.h"
+#include "GenXDebugInfo.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
 #include "GenXOCLRuntimeInfo.h"
@@ -70,6 +71,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/InitializePasses.h"
+#include "llvm/Support/Error.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/ScopedPrinter.h"
@@ -101,11 +103,16 @@ using namespace genx;
 
 #define DEBUG_TYPE "GENX_CISA_BUILDER"
 
-static cl::opt<bool> EmitVisa("emit-visa", cl::init(false), cl::Hidden,
-                              cl::desc("Generate Visa instead of fat binary."));
 static cl::list<std::string>
     FinalizerOpts("finalizer-opts", cl::Hidden, cl::ZeroOrMore,
                   cl::desc("Additional options for finalizer."));
+
+static cl::opt<bool> EmitVisa("emit-visa", cl::init(false), cl::Hidden,
+                              cl::desc("Generate Visa instead of fat binary."));
+
+static cl::opt<bool> GenerateDebugInfo(
+    "emit-debug-info", cl::init(false), cl::Hidden,
+    cl::desc("Generate DWARF debug info for each compiled kernel"));
 
 static cl::opt<std::string> AsmNameOpt("asm-name", cl::init(""), cl::Hidden,
     cl::desc("Output assembly code to this file during compilation."));
@@ -549,6 +556,7 @@ class GenXKernelBuilder {
   bool NoMask = false;
 
   genx::AlignmentInfo AI;
+  const Instruction *CurrentInst = nullptr;
 
 public:
   FunctionGroup *FG = nullptr;
@@ -1339,6 +1347,7 @@ bool GenXKernelBuilder::buildInstruction(Instruction *Inst) {
   // Make the source location pending, so it is output as vISA FILE and LOC
   // instructions next time an opcode is written.
   const DebugLoc &DL = Inst->getDebugLoc();
+  CurrentInst = Inst;
   if (DL) {
     StringRef Filename = DL->getFilename();
     if (Filename != "") {
@@ -4437,11 +4446,13 @@ void GenXKernelBuilder::addDebugInfo() {
       LastFilename = PendingFilename;
     }
     if (PendingLine != LastLine) {
+      LLVM_DEBUG(dbgs() << "LOC instruction appended:" << PendingLine << "\n");
       CISA_CALL(Kernel->AppendVISAMiscLOC(PendingLine));
       LastLine = PendingLine;
       PendingLine = 0;
     }
   }
+  GM->updateVisaDebugInfo(KernFunc, CurrentInst);
 }
 
 void GenXKernelBuilder::emitOptimizationHints() {
@@ -4470,6 +4481,7 @@ void GenXKernelBuilder::emitOptimizationHints() {
  * addLabelInst : add a label instruction for a basic block or join
  */
 void GenXKernelBuilder::addLabelInst(Value *BB) {
+  GM->updateVisaDebugInfo(KernFunc, nullptr);
   // Skip this for now, because we don't know how to patch labels of branches.
   if (0) { // LastLabel >= 0) {
     // There has been no code since the last label, so use the same label
@@ -5614,6 +5626,10 @@ public:
                           FunctionGroupAnalysis &FGA, const GenXSubtarget &ST,
                           const GenXBackendConfig &BC);
 
+  void emitDebugInformation(const GenXModule &GM,
+                            const FunctionGroupAnalysis &FGA,
+                            const GenXSubtarget &ST);
+
   bool runOnModule(Module &M) {
     Ctx = &M.getContext();
 
@@ -5634,7 +5650,12 @@ public:
       CISA_CALL(CisaBuilder->Compile("genxir", &ss, EmitVisa));
     if (OCLInfo)
       fillOCLRuntimeInfo(*OCLInfo, GM, FGA, ST, BC);
+
     dbgs() << CisaBuilder->GetCriticalMsg();
+
+    if (GenerateDebugInfo)
+      emitDebugInformation(GM, FGA, ST);
+
     GM.DestroyCISABuilder();
     GM.DestroyVISAAsmReader();
     Out << ss.str();
@@ -5751,6 +5772,29 @@ void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
     OCLInfo.saveCompiledKernel(std::move(FullInfo));
 
     freeBlock(GenBin);
+  }
+}
+void GenXFinalizer::emitDebugInformation(const GenXModule &GM,
+                                         const FunctionGroupAnalysis &FGA,
+                                         const GenXSubtarget &ST) {
+  for (const auto *FG : FGA) {
+    const auto *KF = FG->getHead();
+    llvm::SmallVector<char, 1000> ElfImage;
+
+    auto Err =
+        genx::generateDebugInfo(ElfImage, GM, *KF, ST.getTargetTriple().str());
+    if (Err)
+      llvm::report_fatal_error(toString(std::move(Err)));
+
+    std::error_code EC;
+    llvm::raw_fd_ostream OS(("dbg_" + KF->getName() + ".elf").str(), EC);
+    if (!EC) {
+      OS << StringRef(ElfImage.data(), ElfImage.size());
+      OS.close();
+    }
+
+    if (EC)
+      llvm::report_fatal_error(EC.message());
   }
 }
 
