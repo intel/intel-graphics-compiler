@@ -191,7 +191,7 @@ public:
     CVariable* GetFP();
     CVariable* GetARGV();
     CVariable* GetRETV();
-    CVariable* CreateSP();
+    CVariable* CreateFPAndSP();
     CVariable* GetPrivateBase();
     void SaveStackState();
     void RestoreStackState();

@@ -98,6 +98,10 @@ namespace IGC {
         bool hasStackCall() {
             return m_hasStackCall;
         }
+        /// \brief Function group has a variable length alloca
+        bool hasVariableLengthAlloca() {
+            return m_hasVaribleLengthAlloca;
+        }
 
         void replaceGroupHead(llvm::Function* OH, llvm::Function* NH) {
             auto headSG = Functions[0];
@@ -108,6 +112,7 @@ namespace IGC {
 
     private:
         bool m_hasStackCall = false;
+        bool m_hasVaribleLengthAlloca = false;
     };
 
     class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
@@ -183,6 +188,9 @@ namespace IGC {
                 FG->m_hasStackCall = (FG->Functions.size() > 1);
             }
         }
+
+        /// \brief Check whether a group contains variable length alloca
+        void setHasVariableLengthAlloca(llvm::Module* pModule);
 
         /// \brief Check whether this is a group header.
         bool isGroupHead(llvm::Function* F) {

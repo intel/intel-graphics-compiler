@@ -237,7 +237,7 @@ void CShader::AddEpilogue(llvm::ReturnInst* ret)
     encoder.Push();
 }
 
-CVariable* CShader::CreateSP()
+CVariable* CShader::CreateFPAndSP()
 {
     // create argument-value register, limited to 12 GRF
     m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, getGRFAlignment(), false, 1, "ARGV");

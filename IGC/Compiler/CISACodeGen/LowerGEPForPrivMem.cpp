@@ -77,7 +77,9 @@ namespace IGC {
 
         void visitAllocaInst(llvm::AllocaInst& I);
 
-        unsigned int extractAllocaSize(llvm::AllocaInst* pAlloca);
+        unsigned int extractConstAllocaSize(llvm::AllocaInst* pAlloca);
+
+        static bool IsVariableSizeAlloca(llvm::AllocaInst& pAlloca);
 
     private:
         llvm::AllocaInst* createVectorForAlloca(
@@ -89,6 +91,7 @@ namespace IGC {
         bool IsNativeType(Type* type);
         /// Conservatively check if a store allow an Alloca to be uniform
         bool IsUniformStore(llvm::StoreInst* pStore);
+
     public:
         static char ID;
 
@@ -141,16 +144,20 @@ llvm::AllocaInst* LowerGEPForPrivMem::createVectorForAlloca(
     llvm::AllocaInst* pAlloca,
     llvm::Type* pBaseType)
 {
+    IGC_ASSERT(pAlloca != nullptr);
     IGCLLVM::IRBuilder<> IRB(pAlloca);
+    AllocaInst* pAllocaValue = nullptr;
+    if (IsVariableSizeAlloca(*pAlloca)) {
+        pAllocaValue = IRB.CreateAlloca(pBaseType, pAlloca->getArraySize());
 
-    IGC_ASSERT(nullptr != m_pDL);
-    const unsigned int denominator = int_cast<unsigned int>(m_pDL->getTypeAllocSize(pBaseType));
-    IGC_ASSERT(0 < denominator);
-    const unsigned int totalSize = extractAllocaSize(pAlloca) / denominator;
+    } else {
+        IGC_ASSERT(nullptr != m_pDL);
+        const unsigned int denominator = int_cast<unsigned int>(m_pDL->getTypeAllocSize(pBaseType));
+        IGC_ASSERT(0 < denominator);
+        const unsigned int totalSize = extractConstAllocaSize(pAlloca) / denominator;
+        pAllocaValue = IRB.CreateAlloca(llvm::VectorType::get(pBaseType, totalSize));
+    }
 
-    llvm::VectorType* pVecType = llvm::VectorType::get(pBaseType, totalSize);
-
-    AllocaInst* pAllocaValue = IRB.CreateAlloca(pVecType);
     return pAllocaValue;
 }
 
@@ -207,7 +214,15 @@ void TransposeHelper::EraseDeadCode()
     }
 }
 
-unsigned int LowerGEPForPrivMem::extractAllocaSize(llvm::AllocaInst* pAlloca)
+bool LowerGEPForPrivMem::IsVariableSizeAlloca(llvm::AllocaInst& pAlloca)
+{
+    IGC_ASSERT(nullptr != pAlloca.getArraySize());
+    if (isa<ConstantInt>(pAlloca.getArraySize()))
+        return false;
+    return true;
+}
+
+unsigned int LowerGEPForPrivMem::extractConstAllocaSize(llvm::AllocaInst* pAlloca)
 {
     IGC_ASSERT(nullptr != m_pDL);
     IGC_ASSERT(nullptr != pAlloca);
@@ -250,8 +265,13 @@ bool LowerGEPForPrivMem::IsNativeType(Type* type)
 
 bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 {
+    // vla is not promotable
+    IGC_ASSERT(pAlloca != nullptr);
+    if (IsVariableSizeAlloca(*pAlloca))
+        return false;
+
     bool isUniformAlloca = pAlloca->getMetadata("uniform") != nullptr;
-    unsigned int allocaSize = extractAllocaSize(pAlloca);
+    unsigned int allocaSize = extractConstAllocaSize(pAlloca);
     unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 4;
 
     // scale alloc size based on the number of GRFs we have
@@ -435,6 +455,12 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
 
 bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base)
 {
+    // Do not allow SOA layout for vla which will be stored on the stack.
+    // We don't support SOA layout for privates on stack at all so this is just to make
+    // the implementation simpler.
+    if (LowerGEPForPrivMem::IsVariableSizeAlloca(*I))
+        return false;
+
     // Don't even look at non-array allocas.
     // (extractAllocaDim can not handle them anyway, causing a crash)
     llvm::Type* pType = I->getType()->getPointerElementType();
