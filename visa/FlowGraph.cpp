@@ -244,6 +244,16 @@ G4_BB* FlowGraph::createNewBB(bool insertInFG)
     return bb;
 }
 
+G4_BB* FlowGraph::createNewBBWithLabel(const char* LabelPrefix, int Lineno, int CISAoff)
+{
+    G4_BB* newBB = createNewBB(true);
+    std::string name = LabelPrefix + std::to_string(newBB->getId());
+    G4_Label* lbl = builder->createLabel(name, LABEL_BLOCK);
+    G4_INST* inst = createNewLabelInst(lbl, Lineno, CISAoff);
+    newBB->push_back(inst);
+    return newBB;
+}
+
 static int globalCount = 1;
 int64_t FlowGraph::insertDummyUUIDMov()
 {
@@ -833,7 +843,8 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         mergeFReturns();
     }
 
-    removeUnreachableBlocks();
+    setPhysicalPredSucc();
+    removeUnreachableBlocks(funcInfoHashTable);
 
     if (builder->getOption(vISA_DumpDotAll))
     {
@@ -852,7 +863,6 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         funcInfoTable[funcInfo->getId()] = funcInfo;
     }
 
-    setPhysicalPredSucc();
     if (hasGoto)
     {
         // Structurizer requires that the last BB has no goto (ie, the
@@ -1206,10 +1216,9 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
 
 //
 // This phase iterates each BB and checks if the last inst of a BB is a "call foo".  If yes,
-// the algorith traverses from the block of foo to search for RETURN and link the block of
+// the algorithm traverses from the block of foo to search for RETURN and link the block of
 // RETURN with the block of the return address
 //
-
 void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable& funcInfoHashTable)
 {
     for (std::list<G4_BB*>::iterator it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
@@ -1233,6 +1242,23 @@ void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHa
                 // the fall through BB must be the front
                 //
                 G4_BB* retAddr = bb->Succs.front();
+                if (retAddr->Preds.size() > 1)
+                {
+                    // Create an empty BB as a new RETURN BB as we want RETURN BB
+                    // to be reached only by CALL BB.  Note that at this time, call
+                    // return edge has not been added yet.
+                    G4_INST* I0 = retAddr->getFirstInst();
+                    if (I0 == nullptr) I0 = last;
+                    G4_BB* newRetBB = createNewBBWithLabel("Label_return_BB", I0->getLineNo(), I0->getCISAOff());
+                    bb->removeSuccEdge(retAddr);
+                    retAddr->removePredEdge(bb);
+                    addPredSuccEdges(bb, newRetBB, true);
+                    addPredSuccEdges(newRetBB, retAddr, true);
+
+                    BBs.insert(std::next(it), newRetBB);
+                    retAddr = newRetBB;
+                }
+                // Add EXIT->RETURN edge.
                 linkReturnAddr(subBB, retAddr);
 
                 // set callee info for CALL
@@ -1701,11 +1727,9 @@ void doDFS(G4_BB* startBB, unsigned int p)
 // blocks with return/pseudo_fret will be removed is when the header of that function itself
 // is deemed unreachable.
 //
-void FlowGraph::removeUnreachableBlocks()
+void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
 {
     unsigned preId = 0;
-    std::vector<bool> canRemove(BBs.size(), false);
-
     //
     // initializations
     //
@@ -1718,54 +1742,111 @@ void FlowGraph::removeUnreachableBlocks()
     //
     doDFS(getEntryBB(), preId);
 
-    for (BB_LIST_ITER it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
-    {
-        if ((*it)->getPreId() == UINT_MAX)
-        {
-            // Entire function is unreachable. So it should be ok
-            // to delete the return as well.
-            canRemove[(*it)->getId()] = true;
-        }
-
-    }
-
     //
-    // Basic blocks with preId/rpostId set to UINT_MAX are unreachable
-    //
+    // Basic blocks with preId/rpostId set to UINT_MAX are unreachable.
+    // Special handling:
+    //   1. If CALL_BB isn't dead, don't remove RETURN_BB;
+    //   2. If INIT_BB isn't dead, don't remove EXIT_BB.
+    //   3. For BB with EOT, don't remove it.
+    // (Note that in BB list (BBs), CALL_BB appears before RETURN_BB and INIT_BB
+    //  appears before EXIT_BB. The algo works under this assumpion.)
     BB_LIST_ITER it = BBs.begin();
     while (it != BBs.end())
     {
         G4_BB* bb = (*it);
-
         if (bb->getPreId() == UINT_MAX)
         {
-            //leaving dangling BBs with return/EOT in for now.
-            //workaround to handle unreachable return
-            //for example return after infinite loop.
-            if (((bb->isEndWithFRet() || (bb->size() > 0 && (G4_INST*)bb->back()->isReturn()))) ||
-                (bb->size() > 0 && bb->back()->isEOT()))
+            if (bb->getBBType() & G4_BB_INIT_TYPE)
             {
-                it++;
+                // Remove it from funcInfoHT.
+                int funcId = bb->getId();
+                unsigned numErased = funcInfoHT.erase(funcId);
+                assert(numErased == 1);
+            }
+            else if (bb->getBBType() & G4_BB_CALL_TYPE)
+            {
+                // If call bb is removed, its return BB shuld be removed as well.
+                G4_BB* retBB = bb->getPhysicalSucc();
+                assert(retBB && "vISA ICE: missing Return BB");
+                if (retBB->getPreId() != UINT_MAX)
+                {
+                    retBB->setPreId(UINT_MAX);
+                }
+            }
+
+            // EOT should be in entry function, we keep it for now.
+            if (bb->size() > 0 && bb->back()->isEOT())
+            {
+                ++it;
                 continue;
             }
 
+            // Now, remove bb.
             while (bb->Succs.size() > 0)
             {
                 removePredSuccEdges(bb, bb->Succs.front());
             }
+            if (bb->getBBType() & G4_BB_RETURN_TYPE)
+            {
+                // As callee may be live, need to remove pred edges from exit BB.
+                for (auto& II : bb->Preds)
+                {
+                    G4_BB* exitBB = II;
+                    if (exitBB->getBBType() & G4_BB_EXIT_TYPE)
+                    {
+                        removePredSuccEdges(exitBB, bb);
+                        break;
+                    }
+                }
+            }
 
             BB_LIST_ITER prev = it;
-            prev++;
-            BBs.erase(it);
-            it = prev;
+            ++it;
+            BBs.erase(prev);
         }
         else
         {
+            if (bb->getBBType() & G4_BB_CALL_TYPE)
+            {
+                // CALL BB isn't dead, don't remove return BB.
+                G4_BB* retBB = bb->getPhysicalSucc();
+                assert(retBB && (retBB->getBBType() & G4_BB_RETURN_TYPE) &&
+                       "vISA ICE: missing RETURN BB");
+                if (retBB->getPreId() == UINT_MAX)
+                {
+                    // For example,
+                    //    CALL_BB  : call A   succ: init_BB
+                    //    RETURN_BB: pred: exit_BB
+                    //
+                    //    // subroutine A
+                    //    init_BB:
+                    //       while (true) ...;  // inifinite loop
+                    //    exit_BB:  succ : RETURN_BB
+                    // Both RETURN_BB and exit_BB are unreachable, but
+                    // we keep both!
+                    retBB->setPreId(UINT_MAX - 1);
+                }
+            }
+            else if (bb->getBBType() & G4_BB_INIT_TYPE)
+            {
+                // function isn't dead, don't remove exit BB.
+                int funcId = bb->getId();
+                auto entry = funcInfoHT.find(funcId);
+                assert(entry != funcInfoHT.end());
+                FuncInfo* finfo = entry->second;
+                G4_BB* exitBB = finfo->getExitBB();
+                assert(exitBB && "vISA ICE: missing exit BB");
+                if (exitBB->getPreId() == UINT_MAX)
+                {
+                    // See the example above for G4_BB_CALL_TYPE
+                    exitBB->setPreId(UINT_MAX - 1);
+                }
+            }
             it++;
         }
     }
-
     reassignBlockIDs();
+    setPhysicalPredSucc();
 }
 
 void FlowGraph::AssignDFSBasedIds(G4_BB* bb, unsigned &preId, unsigned &postId, std::list<G4_BB*>& rpoBBList)

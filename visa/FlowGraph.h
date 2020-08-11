@@ -1049,6 +1049,7 @@ public:
     G4_INST* createNewLabelInst(G4_Label* label, int lineNo = 0, int CISAOff = -1);
 
     G4_BB* createNewBB(bool insertInFG = true);
+    G4_BB* createNewBBWithLabel(const char* LabelPrefix, int Lineno = 0, int CISAoff = -1);
     int64_t insertDummyUUIDMov();
     //
     // Increase by one so that all BBs' traversal are less than traversalNum
@@ -1085,7 +1086,7 @@ public:
     //
     // Remove blocks that are unreachable via control flow of program
     //
-    void removeUnreachableBlocks();
+    void removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT);
 
     void constructFlowGraph(INST_LIST& instlist);
     bool matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it);
