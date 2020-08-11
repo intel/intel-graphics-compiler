@@ -1262,7 +1262,6 @@ namespace vISA
         //Assign Token
         void assignToken(SBNode *node, unsigned short token, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
         void assignDepToken(SBNode *node);
-        bool insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst, INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens, BitSet *srcTokens, bool removeAllTokens);
         void insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
         void insertTest();
 
@@ -1272,6 +1271,8 @@ namespace vISA
         G4_INST * insertSyncInstructionAfter(G4_BB * bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
         G4_INST* insertSyncAllRDInstruction(G4_BB *bb, unsigned int SBIDs, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
         G4_INST *insertSyncAllWRInstruction(G4_BB *bb, unsigned int SBIDs, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
+
+        bool insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens, bool& keepDst, bool removeAllToken);
 
         void SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets &LB, LiveGRFBuckets &globalSendsLB);
         void handleIndirectCall();

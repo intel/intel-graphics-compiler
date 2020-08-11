@@ -3137,7 +3137,7 @@ G4_INST* SWSB::insertSyncAllWRInstruction(G4_BB* bb, unsigned int SBIDs, INST_LI
     return syncInst;
 }
 
-bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens, bool removeAllToken)
+bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens, bool& keepDst, bool removeAllToken)
 {
     //Non-test instruction can only have
     // 1. non-send: one Dst Token with distance, or
@@ -3146,7 +3146,6 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
     // 3. one Src token
     unsigned short dst = 0;
     unsigned short src = 0;
-    bool keepDst = false;
     bool multipleDst = false;
     bool multipleSrc = false;
     unsigned short token = (unsigned short)-1;
@@ -3300,6 +3299,7 @@ void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER ins
 {
     //The inst after arch register instruction.
     bool insertedSync = false;
+    bool keepDst = false;
     INST_LIST_ITER prevIt = inst_it;
     if (node->followDistOneAreg())
     {
@@ -3324,7 +3324,7 @@ void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER ins
     }
 
     {
-        insertedSync = insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, false);
+        insertedSync = insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, keepDst, false);
     }
 
     if (node->followDistOneAreg() && insertedSync)
