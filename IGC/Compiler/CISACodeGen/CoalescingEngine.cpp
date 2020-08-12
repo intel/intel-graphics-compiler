@@ -200,8 +200,7 @@ namespace IGC
                 {
                     GenISAIntrinsic::ID IID = intrinsic->getIntrinsicID();
                     if ((isURBWriteIntrinsic(intrinsic) && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_URB))) ||
-                        (IID == GenISAIntrinsic::GenISA_RTWrite && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT))) ||
-                        (IID == GenISAIntrinsic::GenISA_RTDualBlendSource && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT))))
+                        (IID == GenISAIntrinsic::GenISA_RTWrite && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT))))
                     {
                         ProcessTuple(DefMI);
                     }
@@ -1314,8 +1313,7 @@ namespace IGC
         if (isSampleInstruction(inst) ||
             isLdInstruction(inst) ||
             isURBWriteIntrinsic(inst) ||
-            IID == GenISAIntrinsic::GenISA_RTWrite ||
-            IID == GenISAIntrinsic::GenISA_RTDualBlendSource)
+            IID == GenISAIntrinsic::GenISA_RTWrite)
         {
             uint numOperands = inst->getNumOperands();
             for (uint i = 0; i < numOperands; i++)
