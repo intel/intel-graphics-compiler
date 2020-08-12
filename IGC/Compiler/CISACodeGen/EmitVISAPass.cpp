@@ -3728,7 +3728,6 @@ void EmitPass::emitDSInput(llvm::Instruction* pInst)
         elmIdx = int_cast<uint32_t>(cast<llvm::ConstantInt>(pConstIntPayloadVar)->getZExtValue());
 
         CVariable* inputVar = dsProgram->GetInputDelta(elmIdx);
-
         if (dsProgram->GetShaderDispatchMode() == ShaderDispatchMode::DUAL_PATCH)
         {
             m_encoder->SetSrcSubReg(0, elmIdx % 4);

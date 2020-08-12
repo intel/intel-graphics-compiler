@@ -507,7 +507,7 @@ namespace IGC
         }
         else
         {
-            return 1; // For DualPatch mode instance count is always 1
+            return 1;
         }
     }
 

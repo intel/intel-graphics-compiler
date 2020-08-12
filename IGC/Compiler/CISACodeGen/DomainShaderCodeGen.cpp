@@ -144,7 +144,8 @@ namespace IGC
 
     OctEltUnit CDomainShader::GetVertexURBEntryReadLength() const
     {
-        return  GetShaderDispatchMode() == ShaderDispatchMode::DUAL_PATCH ?
+        return
+            GetShaderDispatchMode() == ShaderDispatchMode::DUAL_PATCH ?
             OctEltUnit(setup.size()) : round_up<OctElement>(EltUnit(setup.size()));
     }
 
@@ -235,7 +236,9 @@ namespace IGC
                 AllocateInput(setup[i], offset);
             }
 
-            offset += (m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH) ? getGRFSize() : SIZE_DWORD;
+            offset +=
+                (m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH) ?
+                getGRFSize() : SIZE_DWORD;
         }
         offset = iSTD::Align(offset, getGRFSize());
     }

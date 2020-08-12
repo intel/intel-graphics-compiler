@@ -1766,6 +1766,7 @@ namespace IGC
             IGC_IS_FLAG_DISABLED(DisableDSDualPatch);
     }
 
+
     Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils* pM, IGC::ModuleMetaData* pModMD)
     {
         Function* entryFunc = nullptr;

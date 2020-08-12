@@ -249,7 +249,9 @@ namespace IGC
                             default:
                                 break;
                             }
-                            e_interpolation interpolant = DSDualPatchEnabled(pCtx) ? EINTERPOLATION_UNDEFINED : EINTERPOLATION_CONSTANT;
+                            const e_interpolation interpolant =
+                                DSDualPatchEnabled(pCtx) ?
+                            EINTERPOLATION_UNDEFINED : EINTERPOLATION_CONSTANT;
                             Value* arguments[] =
                             {
                                 builder.getInt32(index),
@@ -447,8 +449,9 @@ namespace IGC
         {
             Value* index = builder.getInt32(currentElementIndex + i);
             auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-            e_interpolation interpolant =
-                DSDualPatchEnabled(pCtx) ? EINTERPOLATION_UNDEFINED : EINTERPOLATION_CONSTANT;
+            const e_interpolation interpolant =
+                DSDualPatchEnabled(pCtx) ?
+                EINTERPOLATION_UNDEFINED : EINTERPOLATION_CONSTANT;
             Value* interpolation = builder.getInt32(interpolant);
             channels[i] = builder.CreateCall2(shaderInputVecFn, index, interpolation);
         }

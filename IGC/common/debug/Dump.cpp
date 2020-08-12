@@ -368,7 +368,7 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
                 << "SinglePatch";
             underscore = true;
         }
-        if(m_ShaderMode.getValue() == ShaderDispatchMode::DUAL_PATCH)
+        if (m_ShaderMode.getValue() == ShaderDispatchMode::DUAL_PATCH)
         {
             ss << (underscore ? "_" : "")
                 << "DualPatch";

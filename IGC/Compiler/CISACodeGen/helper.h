@@ -368,6 +368,7 @@ namespace IGC
 
     bool DSDualPatchEnabled(class CodeGenContext* ctx);
 
+
     /// \brief Check whether inst precedes given position in one basic block
     inline bool isInstPrecede(
         const llvm::Instruction* inst,
