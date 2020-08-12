@@ -91,11 +91,348 @@ struct AccInterval
     }
 };
 
+#define setInValidReg(x)   (x = -1)
+#define isValidReg(x)  (x != -1)
+
+static void setBundleConflict(int i, unsigned short& BC)
+{
+    unsigned short bc = 0x1 << (i * 3);
+    BC |= bc;
+}
+
+static void setBankConflict(int i, unsigned short& BC)
+{
+    unsigned short bc = 0x2 << (i * 3);
+    BC |= bc;
+}
+
+static void setSuppression(int i, unsigned short& BC)
+{
+    unsigned short bc = 0x4 << (i * 3);
+    BC |= bc;
+}
+
+/*
+ * Bank conflict types:
+ *  1. any two from same bundle and same bank
+ *  2. all three from same bank
+ */
+static void getConflictTimesForTGL(int* firstRegCandidate, unsigned int& sameBankConflicts, unsigned short& BC)
+{
+    int bundles[G4_MAX_SRCS];
+    int bankSrcs[G4_MAX_SRCS];
+
+    for (int i = 0; i < G4_MAX_SRCS; i++)
+    {
+        bundles[i] = -1;
+        bankSrcs[i] = -1;
+        if (isValidReg(firstRegCandidate[i]))
+        {
+            bundles[i] = (firstRegCandidate[i] % 64) / 4;
+            bankSrcs[i] = (firstRegCandidate[i] % 4) / 2;
+        }
+    }
+
+    int sameBankNum = 0;
+    bool setBundle = false;
+    for (int i = 0; i < G4_MAX_SRCS; i++)
+    {
+        if (bundles[i] != -1)
+        {
+            for (int j = i + 1; j < G4_MAX_SRCS; j++)
+            {
+                if (bundles[j] != -1)
+                {
+                    if (bundles[i] == bundles[j] && bankSrcs[i] == bankSrcs[j])  //same bank and same bundle
+                    {
+                        //setBankConflict(i, BC);
+                        setBundleConflict(i, BC);
+                        setBundleConflict(j, BC);
+                        setBundle = true;
+                    }
+                    else if (bankSrcs[i] == bankSrcs[j])  //Different bundle and same bank
+                    {
+                        if (!sameBankNum)
+                        {
+                            sameBankNum += 2;
+                        }
+                        else
+                        {
+                            sameBankNum++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (!setBundle && sameBankNum > 2)
+    {
+        for (int i = 0; i < G4_MAX_SRCS; i++)
+        {
+            if (bundles[i] != -1)
+            {
+                setBankConflict(i, BC);
+            }
+        }
+    }
+
+    return;
+}
+
+void bankConflictAnalysisTGL(G4_INST* inst, int* suppressRegs, std::map<G4_INST*, unsigned int>* BCInfo)
+{
+    if (inst->isSend() || inst->isMath() ||
+        inst->isSWSBSync() || inst->isLabel() ||
+        inst->isWait() ||
+        inst->isReturn() || inst->isCall())
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            setInValidReg(suppressRegs[i]);
+        }
+        setInValidReg(suppressRegs[3]);
+
+        return;
+    }
+
+    int dstRegs[2];
+    int dstExecSize = 0;
+    int srcRegs[2][G4_MAX_SRCS];
+    int srcExecSize[G4_MAX_SRCS];
+    bool isScalar[G4_MAX_SRCS];
+
+    int firstRegCandidate[G4_MAX_SRCS];
+    int secondRegCandidate[G4_MAX_SRCS];
+
+    int candidateNum = 0;
+    unsigned int sameBankConflictTimes = 0;
+
+    //Initialization
+    for (int i = 0; i < G4_MAX_SRCS; i++)
+    {
+        setInValidReg(firstRegCandidate[i]);
+        setInValidReg(secondRegCandidate[i]);
+        setInValidReg(srcRegs[0][i]);
+        setInValidReg(srcRegs[1][i]);
+        isScalar[i] = false;
+    }
+    setInValidReg(dstRegs[0]);
+    setInValidReg(dstRegs[1]);
+
+    bool instSplit = false;
+
+    //Get Dst registers
+    G4_DstRegRegion* dstOpnd = inst->getDst();
+    if (dstOpnd && !dstOpnd->isIndirect() && dstOpnd->isGreg())
+    {
+        dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
+        uint32_t byteAddress = dstOpnd->getLinearizedStart();
+        dstRegs[0] = byteAddress / GENX_GRF_REG_SIZ;
+        if (dstExecSize > 32)
+        {
+            dstRegs[1] = dstRegs[0] + (dstExecSize + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+            instSplit = true;
+        }
+    }
+
+    //Get src
+    for (unsigned i = 0, size = inst->getNumSrc(); i < size; i++)
+    {
+        G4_Operand* srcOpnd = inst->getSrc(i);
+        if (srcOpnd)
+        {
+            if (srcOpnd->isSrcRegRegion() &&
+                srcOpnd->asSrcRegRegion()->getBase() &&
+                srcOpnd->asSrcRegRegion()->getBase()->isRegVar())
+            {
+                G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
+                srcExecSize[i] = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
+                if (baseVar->isGreg()) {
+                    uint32_t byteAddress = srcOpnd->getLinearizedStart();
+                    srcRegs[0][i] = byteAddress / GENX_GRF_REG_SIZ;
+
+                    if (srcExecSize[i] > 32)
+                    {
+                        srcRegs[1][i] = srcRegs[0][i] + (srcExecSize[i] + GENX_GRF_REG_SIZ - 1) / GENX_GRF_REG_SIZ - 1;
+                        instSplit = true;
+                    }
+                    else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src
+                    {
+                        srcRegs[1][i] = srcRegs[0][i];
+                        isScalar[i] = true;
+                    }
+                    else
+                    {
+                        setInValidReg(srcRegs[1][i]);
+                    }
+                }
+            }
+        }
+    }
+
+    //Read Suppression for current instruction
+    for (int i = 0; i < 3; i++)
+    {
+        unsigned short BC = 0;
+
+        if (isValidReg(suppressRegs[i]) &&
+            srcRegs[0][i] == suppressRegs[i] && !isScalar[i])
+        {
+            if (inst->opcode() == G4_mad && i == 1)
+            {
+                setSuppression(i, BC);
+                (*BCInfo)[inst] |= BC;
+            }
+            setInValidReg(srcRegs[0][i]);
+        }
+        else
+        {
+            suppressRegs[i] = srcRegs[0][i];
+        }
+
+        if (i == 1) //src1
+        {
+            if (isValidReg(suppressRegs[3]) &&
+                srcRegs[1][i] == suppressRegs[3] && !isScalar[i])
+            {
+                setInValidReg(srcRegs[1][i]);
+            }
+            else
+            {
+                suppressRegs[3] = srcRegs[1][i];
+            }
+        }
+
+    }
+
+    //Kill all previous read suppression candiadte if it wrote in DST
+    if (isValidReg(dstRegs[0]))
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (suppressRegs[i] == dstRegs[0])
+            {
+                setInValidReg(suppressRegs[i]);
+            }
+        }
+    }
+
+    if (isValidReg(dstRegs[1]))
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (suppressRegs[i] == dstRegs[0])
+            {
+                setInValidReg(suppressRegs[i]);
+            }
+        }
+    }
+
+
+    for (int i = 0; i < G4_MAX_SRCS; i++)
+    {
+        if (isValidReg(srcRegs[0][i]))
+        {
+            firstRegCandidate[i] = srcRegs[0][i];
+            candidateNum++;
+        }
+    }
+
+    unsigned short BC0 = 0;
+    if (candidateNum > 1)
+    {
+        getConflictTimesForTGL(firstRegCandidate, sameBankConflictTimes, BC0);
+        (*BCInfo)[inst] |= BC0;
+    }
+
+    if (instSplit)
+    {
+        candidateNum = 0;
+        for (int i = 0; i < G4_MAX_SRCS; i++)
+        {
+            if (isValidReg(srcRegs[1][i]))
+            {
+                secondRegCandidate[i] = srcRegs[1][i];
+                candidateNum++;
+            }
+        }
+
+        if (candidateNum > 1)
+        {
+            unsigned short BC = 0;
+            getConflictTimesForTGL(secondRegCandidate, sameBankConflictTimes, BC);
+            if (BC != 0)
+            {
+                (*BCInfo)[inst] |= ((unsigned int)BC) << 16;
+            }
+        }
+    }
+
+    return;
+}
+
+/*
+ *   for unsigned integer info BC
+ *   The first unsigned short provide the conflict info of GRF of a 1GRF size operands, or the first GRF of a 2GRF size operands.
+ *   The second unsigned short provide the conflict info the second GRF of a 2GRF size operands.
+ *   For each operands (from 0 to 3), 2 bits are used.
+ *   Odd bit represents the bundle conflict and the even bit represents the bank conflict
+ */
+static unsigned getSuppression(int srcOpndIdx, unsigned int BC)
+{
+    unsigned short bc0 = (unsigned short)(0x0000FFFF & BC);
+    unsigned short bc1 = (unsigned short)(BC >> 16);
+    unsigned suppression = 0;
+    if (((bc0 >> (srcOpndIdx * 3)) & 0x4) != 0)
+    {
+        suppression++;
+    }
+    if (((bc1 >> (srcOpndIdx * 3)) & 0x4) != 0)
+    {
+        suppression++;
+    }
+
+    return suppression;
+}
+
+static unsigned getBundleConflicts(int srcOpndIdx, unsigned int BC)
+{
+    unsigned short bc0 = (unsigned short)(0x0000FFFF & BC);
+    unsigned short bc1 = (unsigned short)(BC >> 16);
+    unsigned conflicts = 0;
+    if (((bc0 >> (srcOpndIdx * 3)) & 0x1) != 0)
+    {
+        conflicts++;
+    }
+    if (((bc1 >> (srcOpndIdx * 3)) & 0x1) != 0)
+    {
+        conflicts++;
+    }
+
+    return conflicts;
+}
+
+static unsigned getBankConflicts(int srcOpndIdx, unsigned int BC)
+{
+    unsigned short bc0 = (unsigned short)(0x0000FFFF & BC);
+    unsigned short bc1 = (unsigned short)(BC >> 16);
+    unsigned conflicts = 0;
+    if (((bc0 >> (srcOpndIdx * 3)) & 0x2) != 0)
+    {
+        conflicts++;
+    }
+    if (((bc1 >> (srcOpndIdx * 3)) & 0x2) != 0)
+    {
+        conflicts++;
+    }
+
+    return conflicts;
+}
 
 // returns true if the inst is a candidate for acc substitution
 // lastUse is also update to point to the last use id of the inst
-bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0)
-
+bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, int& readSuppressionSrcs, int& bundleBC, int& bankBC, std::map<G4_INST*, unsigned int>* BCInfo)
 {
     mustBeAcc0 = false;
     G4_DstRegRegion* dst = inst->getDst();
@@ -125,6 +462,13 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0)
         // ToDo: may swap source here
         if (useInst->getNumSrc() == 3)
         {
+            unsigned int BC = 0;
+            if (BCInfo != nullptr)
+            {
+                auto itR = BCInfo->find(useInst);
+                if (itR != BCInfo->end())
+                    BC = itR->second;
+            }
 
             if (!kernel.fg.builder->relaxedACCRestrictions() &&
                 std::find(threeSrcUses.begin(), threeSrcUses.end(), useInst) != threeSrcUses.end())
@@ -136,9 +480,21 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0)
             switch (opndNum)
             {
             case Opnd_src1:
+                if (BC)
+                {
+                    bundleBC += getBundleConflicts(1, BC);
+                    bankBC += getBankConflicts(1, BC);
+                    readSuppressionSrcs += getSuppression(1, BC);
+                }
                 break;  //OK
 
             case Opnd_src0:
+                if (BC)
+                {
+                    bundleBC += getBundleConflicts(0, BC);
+                    bankBC += getBankConflicts(0, BC);
+                    readSuppressionSrcs += getSuppression(0, BC);
+                }
 
                 if (kernel.fg.builder->canMadHaveSrc0Acc())
                 {
@@ -492,6 +848,7 @@ void AccSubPass::multiAccSub(G4_BB* bb)
 
     std::vector<AccInterval*> intervals;
 
+    std::map<G4_INST*, unsigned int> BCInfo;
 
     //build intervals for potential acc candidates as well as pre-existing acc uses from mac/mach/addc/etc
     for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd; ++instIter)
@@ -513,7 +870,7 @@ void AccSubPass::multiAccSub(G4_BB* bb)
             int bundleBCTimes = 0;
             int bankBCTimes = 0;
             int readSuppressionSrcs = 0;
-            if (isAccCandidate(inst, lastUseId, mustBeAcc0))
+            if (isAccCandidate(inst, lastUseId, mustBeAcc0, readSuppressionSrcs, bundleBCTimes, bankBCTimes, &BCInfo))
             {
                 // this is a potential candidate for acc substitution
                 AccInterval* newInterval = new AccInterval(inst, lastUseId);
@@ -527,98 +884,97 @@ void AccSubPass::multiAccSub(G4_BB* bb)
         }
     }
 
+    //modified linear scan to assign free accs to intervals
+    AccAssignment accAssign(numGeneralAcc, builder);
 
-        //modified linear scan to assign free accs to intervals
-        AccAssignment accAssign(numGeneralAcc, builder);
+    for (auto interval : intervals)
+    {
+        // expire intervals
+        accAssign.expireIntervals(interval);
 
-        for (auto interval : intervals)
+        // assign interval
+        bool foundFreeAcc = accAssign.assignAcc(interval);
+
+        //Spill
+        if (!foundFreeAcc && accAssign.activeIntervals.size() != 0)
         {
-            // expire intervals
-            accAssign.expireIntervals(interval);
-
-            // assign interval
-            bool foundFreeAcc = accAssign.assignAcc(interval);
-
-            //Spill
-            if (!foundFreeAcc && accAssign.activeIntervals.size() != 0)
+            // check if we should spill one of the active intervals
+            auto spillCostCmp = [interval](AccInterval* intv1, AccInterval* intv2)
             {
-                // check if we should spill one of the active intervals
-                auto spillCostCmp = [interval](AccInterval* intv1, AccInterval* intv2)
+                if (!interval->mustBeAcc0)
                 {
-                    if (!interval->mustBeAcc0)
-                    {
-                        return intv1->getSpillCost() < intv2->getSpillCost();
-                    }
+                    return intv1->getSpillCost() < intv2->getSpillCost();
+                }
 
-                    // different compr function if interval must use acc0
-                    if (intv1->assignedAcc == 0 && intv2->assignedAcc == 0)
-                    {
-                        return intv1->getSpillCost() < intv2->getSpillCost();
-                    }
-                    else if (intv1->assignedAcc == 0)
-                    {
-                        return true;
-                    }
-                    return false;
-                };
-                auto spillIter = std::min_element(accAssign.activeIntervals.begin(), accAssign.activeIntervals.end(),
-                    spillCostCmp);
-                auto spillCandidate = *spillIter;
-                if (interval->getSpillCost() > spillCandidate->getSpillCost() &&
-                    !spillCandidate->isPreAssigned &&
-                    !(interval->mustBeAcc0 && spillCandidate->assignedAcc != 0))
+                // different compr function if interval must use acc0
+                if (intv1->assignedAcc == 0 && intv2->assignedAcc == 0)
                 {
-                    bool tmpAssignValue[2];
+                    return intv1->getSpillCost() < intv2->getSpillCost();
+                }
+                else if (intv1->assignedAcc == 0)
+                {
+                    return true;
+                }
+                return false;
+            };
+            auto spillIter = std::min_element(accAssign.activeIntervals.begin(), accAssign.activeIntervals.end(),
+                spillCostCmp);
+            auto spillCandidate = *spillIter;
+            if (interval->getSpillCost() > spillCandidate->getSpillCost() &&
+                !spillCandidate->isPreAssigned &&
+                !(interval->mustBeAcc0 && spillCandidate->assignedAcc != 0))
+            {
+                bool tmpAssignValue[2];
 
-                    tmpAssignValue[0] = accAssign.freeAccs[spillCandidate->assignedAcc];
-                    accAssign.freeAccs[spillCandidate->assignedAcc] = true;
+                tmpAssignValue[0] = accAssign.freeAccs[spillCandidate->assignedAcc];
+                accAssign.freeAccs[spillCandidate->assignedAcc] = true;
+                if (spillCandidate->needBothAcc(builder))
+                {
+                    tmpAssignValue[1] = accAssign.freeAccs[spillCandidate->assignedAcc + 1];
+                    accAssign.freeAccs[spillCandidate->assignedAcc + 1] = true;
+                }
+
+                if (accAssign.assignAcc(interval))
+                {
+                    spillCandidate->assignedAcc = -1;
+                    accAssign.activeIntervals.erase(spillIter);
+                }
+                else
+                {
+                    accAssign.freeAccs[spillCandidate->assignedAcc] = tmpAssignValue[0];
                     if (spillCandidate->needBothAcc(builder))
                     {
-                        tmpAssignValue[1] = accAssign.freeAccs[spillCandidate->assignedAcc + 1];
-                        accAssign.freeAccs[spillCandidate->assignedAcc + 1] = true;
-                    }
-
-                    if (accAssign.assignAcc(interval))
-                    {
-                        spillCandidate->assignedAcc = -1;
-                        accAssign.activeIntervals.erase(spillIter);
-                    }
-                    else
-                    {
-                        accAssign.freeAccs[spillCandidate->assignedAcc] = tmpAssignValue[0];
-                        if (spillCandidate->needBothAcc(builder))
-                        {
-                            accAssign.freeAccs[spillCandidate->assignedAcc + 1] = tmpAssignValue[1];
-                        }
+                        accAssign.freeAccs[spillCandidate->assignedAcc + 1] = tmpAssignValue[1];
                     }
                 }
             }
         }
+    }
 
-        for (auto interval : intervals)
+    for (auto interval : intervals)
+    {
+        if (!interval->isPreAssigned && interval->assignedAcc != -1)
         {
-            if (!interval->isPreAssigned && interval->assignedAcc != -1)
-            {
-                G4_INST* inst = interval->inst;
-                replaceDstWithAcc(inst, interval->assignedAcc);
+            G4_INST* inst = interval->inst;
+            replaceDstWithAcc(inst, interval->assignedAcc);
 
-                numAccSubDef++;
-                numAccSubUse += (int)inst->use_size();
+            numAccSubDef++;
+            numAccSubUse += (int)inst->use_size();
 #if 0
-                std::cout << "Acc sub def inst: \n";
-                inst->emit(std::cout);
-                std::cout << "[" << inst->getLocalId() << "]\n";
-                std::cout << "Uses:\n";
-                for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
-                {
-                    auto&& use = *I;
-                    std::cout << "\t";
-                    use.first->emit(std::cout);
-                    std::cout << "[" << use.first->getLocalId() << "]\n";
-                }
-#endif
+            std::cout << "Acc sub def inst: \n";
+            inst->emit(std::cout);
+            std::cout << "[" << inst->getLocalId() << "]\n";
+            std::cout << "Uses:\n";
+            for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
+            {
+                auto&& use = *I;
+                std::cout << "\t";
+                use.first->emit(std::cout);
+                std::cout << "[" << use.first->getLocalId() << "]\n";
             }
+#endif
         }
+    }
 
 
     for (int i = 0, end = (int)intervals.size(); i < end; ++i)
@@ -662,7 +1018,10 @@ void AccSubPass::accSub(G4_BB* bb)
 
         int lastUseId = 0;
         bool mustBeAcc0 = false; //ignored
-        if (!isAccCandidate(inst, lastUseId, mustBeAcc0))
+        int bundleC = 0;
+        int bankC = 0;
+        int suppression = 0;
+        if (!isAccCandidate(inst, lastUseId, mustBeAcc0, suppression, bundleC, bankC, nullptr))
         {
             continue;
         }

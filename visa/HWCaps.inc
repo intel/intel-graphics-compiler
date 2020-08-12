@@ -577,6 +577,7 @@
         return SFID::SPAWNER;
     }
 
+    // EU native execution size for 32-bit types
     uint32_t getNativeExecSize() const
     {
         return 8;
@@ -636,7 +637,6 @@
     {
         return false;
     }
-
 
     bool hasByteALU() const
     {
