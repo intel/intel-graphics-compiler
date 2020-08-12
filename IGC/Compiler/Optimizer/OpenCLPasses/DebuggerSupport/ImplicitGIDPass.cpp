@@ -103,14 +103,10 @@ bool ImplicitGlobalId::runOnFunction(Function& F)
     return true;
 }
 
-std::vector<llvm::Value*> ImplicitGlobalId::runOnBasicBlock(llvm::Instruction* insertBefore, GlobalOrLocal wi)
+std::vector<llvm::Value*> ImplicitGlobalId::runOnBasicBlock(llvm::Instruction* insertBefore, GlobalOrLocal wi, DebugLoc loc)
 {
     IRBuilder<> B(insertBefore);
-    // **********************************************************************
-    // DO NOT ADD DEBUG INFO TO THE CODE WHICH GENERATES GET_GLOBAL_ID AND THE
-    // STORE, OR THE DEBUGGER WILL NOT BREAK AT A GIVEN GLOBAL_ID
-    B.SetCurrentDebugLocation(DebugLoc());
-    // **********************************************************************
+    B.SetCurrentDebugLocation(loc);
 
     Value* id_at_dim = CreateGetId(B, wi);
 
@@ -124,11 +120,16 @@ std::vector<llvm::Value*> ImplicitGlobalId::runOnBasicBlock(llvm::Instruction* i
         name = "__ocl_dbg_grid";
     }
 
-    const uint64_t dims[] = { 0, 1, 2 };
     std::vector<llvm::Value*> vec;
-    vec.push_back(B.CreateExtractElement(id_at_dim, dims[0], Twine(name) + Twine(dims[0])));
-    vec.push_back(B.CreateExtractElement(id_at_dim, dims[1], Twine(name) + Twine(dims[1])));
-    vec.push_back(B.CreateExtractElement(id_at_dim, dims[2], Twine(name) + Twine(dims[2])));
+    for (unsigned int i = 0; i != 3; i++)
+    {
+        auto extractElem = B.CreateExtractElement(id_at_dim, i, Twine(name) + Twine(i));
+        if (isa<Instruction>(extractElem))
+        {
+            cast<Instruction>(extractElem)->setDebugLoc(B.getCurrentDebugLocation());
+        }
+        vec.push_back(extractElem);
+    }
 
     return vec;
 }
@@ -153,7 +154,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     llvm::DIType* gid_di_type = getOrCreateIntDIType();
     SmallVector<uint64_t, 1> NewDIExpr;
 
-    auto gidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Global);
+    auto gidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Global, loc);
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the gids
@@ -166,7 +167,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
 
     // Similar code for local id
     llvm::DIType* lid_di_type = getOrCreateIntDIType();
-    auto lidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Local);
+    auto lidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Local, loc);
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the gids
@@ -179,7 +180,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
 
     // Similar code for work item id
     llvm::DIType* grid_di_type = getOrCreateIntDIType();
-    auto gridVals = runOnBasicBlock(insert_before, GlobalOrLocal::WorkItem);
+    auto gridVals = runOnBasicBlock(insert_before, GlobalOrLocal::WorkItem, loc);
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the work item ids
@@ -192,21 +193,14 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
 
 bool ImplicitGlobalId::getBBScope(const BasicBlock& BB, llvm::DIScope*& scope_out, DebugLoc& loc_out)
 {
-    for (BasicBlock::const_iterator BI = BB.begin(), BE = BB.end(); BI != BE; ++BI)
-    {
-        DebugLoc loc = BI->getDebugLoc();
-        if (!loc)
-            continue;
-        auto scope = loc.getScope();
-        if (llvm::isa<llvm::DILexicalBlock>(scope) ||
-            llvm::isa<DISubprogram>(scope))
-        {
-            scope_out = llvm::cast<llvm::DIScope>(scope);
-            loc_out = loc;
-            return true;
-        }
-    }
-    return false;
+    auto F = BB.getParent();
+    if (!F->getSubprogram())
+        return false;
+
+    scope_out = F->getSubprogram();
+    loc_out = DILocation::get(F->getContext(), F->getSubprogram()->getLine(), 0, scope_out);
+
+    return true;
 }
 
 llvm::DIType* ImplicitGlobalId::getOrCreateIntDIType()
@@ -270,7 +264,11 @@ Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
     }
     // Create call instruction
     std::vector<Value*> args;
-    return B.CreateCall(getFunc, args, nameCall);
+    auto callInst = B.CreateCall(getFunc, args, nameCall);
+
+    callInst->setDebugLoc(B.getCurrentDebugLocation());
+
+    return callInst;
 }
 
 CleanImplicitIds::CleanImplicitIds() : ModulePass(ID)

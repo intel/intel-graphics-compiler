@@ -92,8 +92,9 @@ namespace IGC
         /// @brief execute pass on given basic block
         /// @param insertBefore Instruction to insert other instructions before
         /// @param wi chooses the particular pre-defined variable to emit
+        /// @param loc is DebugLoc to use for inserted instructions
         /// @returns vector of values. Vector size is equal to 3, which is number of dimensions.
-        std::vector<llvm::Value*> runOnBasicBlock(llvm::Instruction* insertBefore, GlobalOrLocal wi);
+        std::vector<llvm::Value*> runOnBasicBlock(llvm::Instruction* insertBefore, GlobalOrLocal wi, llvm::DebugLoc loc);
 
         /// @brief Adds instructions to the beginning of the given function to compute the
         ///  global/local IDs for 3 dimensions. Fills in the FunctionContext.
