@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -138,7 +139,7 @@ findNearestInsertPt(DominatorTree *DT, ArrayRef<Instruction *> Users) {
     MI->second = &*BI;
   }
 
-  assert(BBs.size() != 0 && "At least one BB should be found!");
+  IGC_ASSERT(BBs.size() != 0 && "At least one BB should be found!");
 
   auto MI = BBs.begin();
   if (BBs.size() == 1)
@@ -266,7 +267,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
   // whether 'A' dominates 'B'.
   auto dominates = [](const Instruction *A, const Instruction *B) {
     const BasicBlock *BB = A->getParent();
-    assert(BB == B->getParent());
+    IGC_ASSERT(BB == B->getParent());
 
     BasicBlock::const_iterator BI = BB->begin();
     for (; &*BI != A && &*BI != B; ++BI)
@@ -285,7 +286,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
     if (!OutB.getMainInst())
       continue;
     auto CandidateInsn = OutB.getMainInst()->Inst;
-    assert(CandidateInsn);
+    IGC_ASSERT(CandidateInsn);
     if (GenXIntrinsic::getAnyIntrinsicID(CandidateInsn) != Intrinsic::fma)
       continue;
     // Skip if it's already handled.
@@ -362,7 +363,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
       if (!InB.getMainInst())
         break;
       auto CandidateInst = InB.getMainInst()->Inst;
-      assert(CandidateInst);
+      IGC_ASSERT(CandidateInst);
       if (GenXIntrinsic::getAnyIntrinsicID(CandidateInst) != Intrinsic::fma)
         break;
       FMAs.insert(CandidateInst);

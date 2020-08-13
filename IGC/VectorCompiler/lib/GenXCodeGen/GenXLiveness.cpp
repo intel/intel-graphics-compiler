@@ -54,6 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 
 #include <unordered_set>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -120,7 +121,7 @@ void GenXLiveness::clear()
  */
 void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR)
 {
-  assert(LiveRangeMap.find(V) == LiveRangeMap.end() && "Attempting to set LiveRange for Value that already has one");
+  IGC_ASSERT(LiveRangeMap.find(V) == LiveRangeMap.end() && "Attempting to set LiveRange for Value that already has one");
   LR->addValue(V);
   LiveRangeMap[V] = LR;
   LR->setAlignmentFromValue(V, Subtarget ? Subtarget->getGRFWidth()
@@ -410,7 +411,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
 	for (Value::use_iterator i = BB->use_begin(), e = BB->use_end();
 	  i != e; ++i) {
 	  Instruction *TI = dyn_cast<Instruction>(i->getUser());
-      assert(TI);
+      IGC_ASSERT(TI);
 	  if (TI->isTerminator())
 	    Stack.push_back(TI->getParent());
 	}
@@ -436,7 +437,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
 	  for (Value::use_iterator i = BB->use_begin(), e = BB->use_end();
  	    i != e; ++i) {
 		Instruction *TI = dyn_cast<Instruction>(i->getUser());
-        assert(TI);
+        IGC_ASSERT(TI);
 		if (TI->isTerminator())
 		  Stack.push_back(TI->getParent());
 	  }
@@ -537,7 +538,7 @@ LiveRange *GenXLiveness::removeValueNoDelete(SimpleValue V)
   // Remove V from LR.
   unsigned j;
   for (j = 0; LR->Values[j].get() != V; ++j) {
-    assert(j != LR->Values.size());
+    IGC_ASSERT(j != LR->Values.size());
   }
   if (&LR->Values[j] != &LR->Values.back())
     LR->Values[j] = LR->Values.back();
@@ -570,14 +571,14 @@ void GenXLiveness::replaceValue(Value *OldVal, Value *NewVal)
 void GenXLiveness::replaceValue(SimpleValue OldVal, SimpleValue NewVal)
 {
   LiveRangeMap_t::iterator i = LiveRangeMap.find(OldVal);
-  assert(i != LiveRangeMap.end());
+  IGC_ASSERT(i != LiveRangeMap.end());
   LiveRange *LR = i->second;
   LiveRangeMap.erase(i);
   LiveRangeMap[NewVal] = LR;
   unsigned j = 0;
-  assert(!LR->Values.empty());
+  IGC_ASSERT(!LR->Values.empty());
   for (j = 0; LR->Values[j].get() != OldVal; ++j)
-    assert(j != LR->Values.size());
+    IGC_ASSERT(j != LR->Values.size());
   LR->Values[j] = NewVal;
 }
 
@@ -692,7 +693,7 @@ LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V)
 LiveRange *GenXLiveness::getLiveRange(SimpleValue V)
 {
   LiveRange *LR = getLiveRangeOrNull(V);
-  assert(LR && "no live range found");
+  IGC_ASSERT(LR && "no live range found");
   return LR;
 }
 
@@ -724,18 +725,18 @@ Value *GenXLiveness::getUnifiedRet(Function *F)
  * one of the return instructions.
  */
 Value *GenXLiveness::createUnifiedRet(Function *F) {
-  assert(!F->isDeclaration() && "must be a function definition");
-  assert(UnifiedRets.find(F) == UnifiedRets.end() &&
+  IGC_ASSERT(!F->isDeclaration() && "must be a function definition");
+  IGC_ASSERT(UnifiedRets.find(F) == UnifiedRets.end() &&
          "Unified ret must not have been already created");
   Type *Ty = F->getReturnType();
-  assert(!Ty->isVoidTy());
+  IGC_ASSERT(!Ty->isVoidTy());
   auto URet = genx::createUnifiedRet(Ty, "", F->getParent());
   // Find some return inst.
   ReturnInst *Ret = nullptr;
   for (auto fi = F->begin(), fe = F->end(); fi != fe; ++fi)
     if ((Ret = dyn_cast<ReturnInst>(fi->getTerminator())))
       break;
-  assert(Ret && "must find return instruction");
+  IGC_ASSERT(Ret && "must find return instruction");
   Value *RetVal = Ret->getOperand(0);
   // Use the categories of its operand to set the categories of the unified
   // return value.
@@ -813,7 +814,7 @@ LiveRange::iterator LiveRange::find(unsigned Pos)
     else
       I += Mid + 1, Len -= Mid + 1;
   } while (Len);
-  assert(I->getEnd() >= Pos);
+  IGC_ASSERT(I->getEnd() >= Pos);
   return I;
 }
 
@@ -828,7 +829,7 @@ unsigned LiveRange::getOrDefaultCategory()
   unsigned Cat = getCategory();
   if (Cat != RegCategory::NONE)
     return Cat;
-  assert(!value_empty());
+  IGC_ASSERT(!value_empty());
   SimpleValue SV = *value_begin();
   Type *Ty = IndexFlattener::getElementType(
       SV.getValue()->getType(), SV.getIndex());
@@ -1034,7 +1035,7 @@ bool GenXLiveness::checkIfOverlappingSegmentsInterfere(
   // S1 is phicpy. If its corresponding phi cpy insertion point is for a phi
   // node in LR1 and an incoming in LR2, then this does not cause interference.
   auto PhiIncoming = Numbering->getPhiIncomingFromNumber(S1->getStart());
-  assert(PhiIncoming.first && "phi incoming not found");
+  IGC_ASSERT(PhiIncoming.first && "phi incoming not found");
   if (getLiveRange(PhiIncoming.first) != LR1)
     return true; // phi not in LR1, interferes
   if (getLiveRangeOrNull(
@@ -1057,8 +1058,8 @@ bool GenXLiveness::checkIfOverlappingSegmentsInterfere(
 LiveRange *GenXLiveness::coalesce(LiveRange *LR1, LiveRange *LR2,
     bool DisallowCASC)
 {
-  assert(LR1 != LR2 && "cannot coalesce an LR to itself");
-  assert(LR1->Category == LR2->Category && "cannot coalesce two LRs with different categories");
+  IGC_ASSERT(LR1 != LR2 && "cannot coalesce an LR to itself");
+  IGC_ASSERT(LR1->Category == LR2->Category && "cannot coalesce two LRs with different categories");
   // Make LR1 the one with the longer list of segments.
   if (LR2->Segments.size() > LR1->Segments.size()) {
     LiveRange *temp = LR1;
@@ -1080,7 +1081,7 @@ LiveRange *GenXLiveness::coalesce(LiveRange *LR1, LiveRange *LR2,
   // Use the largest alignment from the two LRs.
   LR1->LogAlignment = std::max(LR1->LogAlignment, LR2->LogAlignment);
   // If either LR has a non-zero offset, use it.
-  assert(!LR1->Offset || !LR2->Offset);
+  IGC_ASSERT(!LR1->Offset || !LR2->Offset);
   LR1->Offset |= LR2->Offset;
   // Set DisallowCASC.
   LR1->DisallowCASC |= LR2->DisallowCASC | DisallowCASC;
@@ -1171,7 +1172,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
                                       Instruction *InsertBefore,
                                       const Twine &Name, unsigned Number,
                                       const GenXSubtarget *ST) {
-  assert(!isa<Constant>(InputVal));
+  IGC_ASSERT(!isa<Constant>(InputVal));
   bool AdjustLRs = LR != nullptr;
   LiveRange *SourceLR = nullptr;
   if (AdjustLRs)
@@ -1410,7 +1411,7 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
     if (Head && isa<StoreInst>(Head)) {
       Value *V = Head->getOperand(1);
       V = getUnderlyingGlobalVariable(V);
-      assert(V && "null base not expected");
+      IGC_ASSERT(V && "null base not expected");
       return V;
     }
     return user;
@@ -1418,7 +1419,7 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
   // The above scheme does not work for an address conversion added by
   // GenXArgIndirection. Instead we have AddressBaseMap to provide the mapping.
   auto i = ArgAddressBaseMap.find(Addr);
-  assert(i != ArgAddressBaseMap.end() && "base register not found for address");
+  IGC_ASSERT(i != ArgAddressBaseMap.end() && "base register not found for address");
   Value *BaseV = i->second;
   LiveRange *LR = getLiveRange(BaseV);
   // Find a SimpleValue in the live range that is not a struct member.
@@ -1472,7 +1473,7 @@ void GenXLiveness::print(raw_ostream &OS) const
 
 #ifndef NDEBUG
 /***********************************************************************
- * LiveRange::assertOk : assert that no segments abut or overlap or are
+ * LiveRange::assertOk : assertion test that if no segments abut or overlap or are
  *                       in the wrong order
  */
 void LiveRange::assertOk()
@@ -1481,7 +1482,7 @@ void LiveRange::assertOk()
   iterator Idx1 = begin(), End1 = end();
   Idx1++;
   for (; Idx1 != End1; ++Idx1)
-    assert(((Idx1 - 1)->Strength != Idx1->Strength ||
+    IGC_ASSERT(((Idx1 - 1)->Strength != Idx1->Strength ||
             (Idx1 - 1)->getEnd() < Idx1->getStart()) &&
            "invalid live range");
 }
@@ -1636,7 +1637,7 @@ void LiveRange::prepareFuncs(FunctionGroupAnalysis *FGA) {
   // Funcs must be empty as it's being filled immediately
   // before it's required in VisaRegAlloc (because most of the passes
   // invalidate this set) once for every LR
-  assert(Funcs.empty());
+  IGC_ASSERT(Funcs.empty());
   for (auto &Val : getValues()) {
     auto Inst = dyn_cast<Instruction>(Val.getValue());
     Function *DefFunc = nullptr;
@@ -1679,7 +1680,7 @@ unsigned LiveRange::getLength(bool WithWeak)
 void LiveRange::print(raw_ostream &OS) const
 {
   auto vi = Values.begin(), ve = Values.end();
-  assert(vi != ve);
+  IGC_ASSERT(vi != ve);
   for (;;) {
     vi->printName(OS);
     if (++vi == ve)

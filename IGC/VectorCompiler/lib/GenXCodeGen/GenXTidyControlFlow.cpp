@@ -91,6 +91,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/PassRegistry.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -187,7 +188,7 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F)
     auto Succ = BI->getSuccessor(0);
     adjustPhiNodesForBlockRemoval(Succ, BB);
     // Change all of BB's uses to use its successor instead.
-    assert(BB->getSinglePredecessor() != BB && "self loop");
+    IGC_ASSERT(BB->getSinglePredecessor() != BB && "self loop");
     BB->replaceAllUsesWith(BI->getSuccessor(0));
     BI->eraseFromParent();
     BB->eraseFromParent();

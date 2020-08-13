@@ -50,6 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/PassSupport.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/CommandLine.h>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -91,7 +92,7 @@ static Value &getWriteOldValueOperand(Instruction &Inst) {
 // \p ToProcess output iterator.
 template <typename OutIter>
 void processWriteWithUndefInput(Instruction &Inst, OutIter ToProcess) {
-  assert(isWriteWithUndefInput(Inst) &&
+  IGC_ASSERT(isWriteWithUndefInput(Inst) &&
          "wrong argument: write intrinsic with undef input was expected");
   Inst.replaceAllUsesWith(&getWriteOldValueOperand(Inst));
   // As a result of operand promotion we can get new suitable instructions.

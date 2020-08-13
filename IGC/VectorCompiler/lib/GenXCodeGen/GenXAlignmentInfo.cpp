@@ -48,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
 #include <set>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -262,7 +263,7 @@ Alignment AlignmentInfo::get(Value *V)
     }
   }
   MapEntry = &InstMap[Inst];
-  assert(!MapEntry->isUncomputed());
+  IGC_ASSERT(!MapEntry->isUncomputed());
   LLVM_DEBUG(dbgs() << "AlignmentInfo::get: returning " << *MapEntry << "\n");
   return *MapEntry;
 }
@@ -325,7 +326,7 @@ Alignment Alignment::merge(Alignment Other) const
  */
 Alignment Alignment::add(Alignment Other) const
 {
-  assert(!isUncomputed() && !Other.isUncomputed());
+  IGC_ASSERT(!isUncomputed() && !Other.isUncomputed());
   // Take the minimum of the two logaligns, then chop off some more for
   // disagreeing extrabits.
   unsigned MinLogAlign = std::min(LogAlign, Other.LogAlign);
@@ -344,7 +345,7 @@ Alignment Alignment::add(Alignment Other) const
 */
 Alignment Alignment::mul(Alignment Other) const
 {
-  assert(!isUncomputed() && !Other.isUncomputed());
+  IGC_ASSERT(!isUncomputed() && !Other.isUncomputed());
   // Take the minimum of the two logaligns, then chop off some more for
   // disagreeing extrabits.
   unsigned MinLogAlign = std::min(LogAlign, Other.LogAlign);

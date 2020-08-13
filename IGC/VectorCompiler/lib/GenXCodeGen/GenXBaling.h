@@ -238,6 +238,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/Hashing.h"
 #include "llvm/Pass.h"
 #include <string>
+#include "Probe/Assertion.h"
 
 namespace llvm {
   class BranchInst;
@@ -313,7 +314,7 @@ public:
   // getIteratorPos : get 0..31 unsigned representing position of
   // Bale::iterator.
   unsigned getIteratorPos(iterator i) {
-    assert((unsigned)(i - Insts.rbegin()) < 32);
+    IGC_ASSERT((unsigned)(i - Insts.rbegin()) < 32);
     return i - Insts.rbegin();
   }
   // Reverse iterator: gives an instruction after any use of it, with the

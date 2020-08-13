@@ -173,6 +173,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/ValueHandle.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -577,7 +578,7 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
       else
         InsidePile.push_back(SV);
     }
-    assert(!InsidePile.empty());
+    IGC_ASSERT(!InsidePile.empty());
     if (!OutsidePile.empty()) {
       Liveness->removeValuesNoDelete(ArgLR);
       LiveRange *OutsideLR = Liveness->getOrCreateLiveRange(OutsidePile[0]);
@@ -717,7 +718,7 @@ Indirectability SubroutineArg::checkIndirectability()
   // Create an object of some subclass of CallSite for each call site.
   for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui) {
     auto CI = cast<CallInst>(ui->getUser());
-    assert(ui->getOperandNo() == CI->getNumArgOperands());
+    IGC_ASSERT(ui->getOperandNo() == CI->getNumArgOperands());
     auto CallSite = createCallSite(CI);
     if (!CallSite)
       return Indirectability::CANNOT_INDIRECT;
@@ -862,14 +863,14 @@ CallSite *SubroutineArg::createCallSite(CallInst *CI)
         if (RetOldValC->getType()->getScalarType()
             != Input->getType()->getScalarType()) {
           Type *ElTy = RetOldValC->getType()->getScalarType();
-          assert(ElTy->getPrimitiveSizeInBits());
+          IGC_ASSERT(ElTy->getPrimitiveSizeInBits());
           Input = ConstantExpr::getBitCast(Input,
               VectorType::get(ElTy,
                 Input->getType()->getPrimitiveSizeInBits()
                   / ElTy->getPrimitiveSizeInBits()));
         }
         // Construct the constant that needs to be loaded.
-        assert(RetOldValC->getType()->getScalarType() == Input->getType()->getScalarType());
+        IGC_ASSERT(RetOldValC->getType()->getScalarType() == Input->getType()->getScalarType());
         auto LdConst = RetRWS.WrR.evaluateConstantWrRegion(RetOldValC, Input);
         // Create the ConstArgRetCallSite object.
         return new ConstArgRetCallSite(CI, LdConst, RetRWS.EndWr,
@@ -1340,7 +1341,7 @@ Value *ConstArgRetCallSite::process(GenXArgIndirection *Pass,
   SmallVector<Instruction *, 4> AddedInsts;
   ConstantLoader CL(LdConst, nullptr, &AddedInsts);
   auto LoadedConst = CL.loadBig(InsertBefore);
-  assert(LoadedConst);
+  IGC_ASSERT(LoadedConst);
   if (LoadedConst->getType() != RetEndWr->getType()) {
     LoadedConst = CastInst::Create(Instruction::BitCast, LoadedConst,
           RetEndWr->getType(), LoadedConst->getName() + ".bitcast",
@@ -1542,7 +1543,7 @@ void SubroutineArg::coalesceAddressArgs()
     // subroutine where we are indirecting the arg -- the new address args
     // for each subroutine should coalesce together.
     LLVM_DEBUG(dbgs() << "Failed to coalesce:\n " << *AddressLR << "\n " << *CallArgLR << "\n");
-    assert(!Pass->FuncMap[CallSite->CI->getParent()->getParent()]
+    IGC_ASSERT(!Pass->FuncMap[CallSite->CI->getParent()->getParent()]
         && "new address args should coalesce together");
     // We need to insert a copy, in the address arg's pre-copy slot. An address
     // copy is done with a genx.convert, even though it is not actually doing a
@@ -1714,7 +1715,7 @@ void GenXArgIndirection::indirectRegion(Use *U, Value *AddressArg,
     }
     break;
   }
-  assert(GenXIntrinsic::getGenXIntrinsicID(Addr) ==
+  IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(Addr) ==
          GenXIntrinsic::genx_convert_addr);
   auto AddrInst = cast<Instruction>(Addr);
   auto AddrSrc = AddrInst->getOperand(0);
@@ -1765,7 +1766,7 @@ Value *SubroutineArg::getRetVal(CallInst *CI, unsigned RetNum)
 {
   auto ST = dyn_cast<StructType>(CI->getType());
   if (!ST) {
-    assert(!RetNum);
+    IGC_ASSERT(!RetNum);
     return CI;
   }
   Value *RetVal = UndefValue::get(ST->getElementType(RetNum));

@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Cloning.h"
 
 #include <set>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -124,7 +125,7 @@ bool GenXModule::runOnModule(Module &M) {
         }
         // recursive funcs must use stack
         if (Inst->getFunction() == &F)
-          assert(F.hasFnAttribute(genx::FunctionMD::CMStackCall) &&
+          IGC_ASSERT(F.hasFnAttribute(genx::FunctionMD::CMStackCall) &&
                  "Found recursive function without CMStackCall attribute");
       }
     }

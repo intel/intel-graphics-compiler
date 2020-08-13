@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/MathExtras.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -61,7 +62,7 @@ CMRegion::CMRegion(Type *Ty, const DataLayout *DL)
       Stride(1), Offset(0), Indirect(0), IndirectIdx(0), Mask(0),
       ParentWidth(0)
 {
-  assert(!Ty->isAggregateType() &&
+  IGC_ASSERT(!Ty->isAggregateType() &&
          "cannot create region based on an aggregate type");
   ElementTy = Ty;
   if (VectorType *VT = dyn_cast<VectorType>(ElementTy)) {
@@ -75,7 +76,7 @@ CMRegion::CMRegion(Type *Ty, const DataLayout *DL)
   } else {
     unsigned BitSize = ElementTy->getPrimitiveSizeInBits();
     ElementBytes = alignTo<8>(BitSize) / 8;
-    assert(ElementBytes && "Cannot compute element size without data layout");
+    IGC_ASSERT(ElementBytes && "Cannot compute element size without data layout");
   }
 }
 
@@ -99,7 +100,7 @@ CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
   // the region parameters start at.
   unsigned ArgIdx = 0;
   Value *Subregion = 0;
-  assert(isa<CallInst>(Inst));
+  IGC_ASSERT(isa<CallInst>(Inst));
   switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_rdpredregion:
       NumElements = Inst->getType()->getVectorNumElements();
@@ -134,10 +135,10 @@ CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
           Mask = 0;
       break;
     default:
-      assert(0);
+      IGC_ASSERT(0);
   }
   // Get the region parameters.
-  assert(Subregion);
+  IGC_ASSERT(Subregion);
   ElementTy = Subregion->getType();
   if (VectorType *VT = dyn_cast<VectorType>(ElementTy)) {
     ElementTy = VT->getElementType();
@@ -152,13 +153,13 @@ CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
   ArgIdx += 3;
   // Get the start index.
   Value *V = Inst->getOperand(ArgIdx);
-  assert(V->getType()->getScalarType()->isIntegerTy(16) &&
+  IGC_ASSERT(V->getType()->getScalarType()->isIntegerTy(16) &&
          "region index must be i16 or vXi16 type");
 
 #if 0 // _DEBUG
   // In one transform, this check does not work in the middle of transformation
   if (VectorType *VT = dyn_cast<VectorType>(V->getType()))
-    assert(VT->getNumElements() * Width == NumElements &&
+    IGC_ASSERT(VT->getNumElements() * Width == NumElements &&
            "vector region index size mismatch");
 #endif
 
@@ -224,7 +225,7 @@ CMRegion::CMRegion(unsigned Bits, unsigned ElementBytes)
     : ElementBytes(ElementBytes), ElementTy(0), NumElements(1), VStride(1),
       Width(1), Stride(1), Offset(0), Indirect(0), IndirectIdx(0), Mask(0)
 {
-  assert(Bits);
+  IGC_ASSERT(Bits);
   Offset = countTrailingZeros(Bits, ZB_Undefined);
   Bits >>= Offset;
   Offset *= ElementBytes;
@@ -284,10 +285,10 @@ void CMRegion::getSubregion(unsigned StartIdx, unsigned Size)
 Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
     Instruction *InsertBefore, const DebugLoc &DL, bool AllowScalar)
 {
-  assert(ElementBytes && "not expecting i1 element type");
+  IGC_ASSERT(ElementBytes && "not expecting i1 element type");
   auto OffsetInElem = Offset / ElementBytes;
   (void)OffsetInElem;
-  assert(OffsetInElem >= 0 &&
+  IGC_ASSERT(OffsetInElem >= 0 &&
          OffsetInElem < Input->getType()->getVectorNumElements() &&
          "initial offset is out of range of input vector");
 
@@ -346,9 +347,9 @@ Value *CMRegion::createWrRegion(Value *OldVal, Value *Input,
 Value *CMRegion::createWrConstRegion(Value *OldVal, Value *Input,
     const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
 {
-  assert(!Indirect);
-  assert(!Mask);
-  assert(isa<Constant>(Input));
+  IGC_ASSERT(!Indirect);
+  IGC_ASSERT(!Mask);
+  IGC_ASSERT(isa<Constant>(Input));
   return createWrCommonRegion(GenXIntrinsic::genx_wrconstregion, OldVal, Input,
       Name, InsertBefore, DL);
 }
@@ -356,13 +357,13 @@ Value *CMRegion::createWrConstRegion(Value *OldVal, Value *Input,
 Value *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID, Value *OldVal, Value *Input,
     const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
 {
-  assert(ElementBytes && "not expecting i1 element type");
+  IGC_ASSERT(ElementBytes && "not expecting i1 element type");
   if (isa<VectorType>(Input->getType()))
-    assert(NumElements == Input->getType()->getVectorNumElements() &&
+    IGC_ASSERT(NumElements == Input->getType()->getVectorNumElements() &&
            "input value and region are inconsistent");
   else
-    assert(NumElements == 1 && "input value and region are inconsistent");
-  assert(OldVal->getType()->getScalarType() ==
+    IGC_ASSERT(NumElements == 1 && "input value and region are inconsistent");
+  IGC_ASSERT(OldVal->getType()->getScalarType() ==
              Input->getType()->getScalarType() &&
          "scalar type mismatch");
   Value *StartIdx = getStartIdx(Name, InsertBefore, DL);
@@ -657,7 +658,7 @@ BitVector CMRegion::getAccessBitMap(int MinTrackingOffset) const {
     BitMap = std::move(RowBitMap);
   // Adjust mask according to min tracking
   // offset for comparison
-  assert(Offset >= MinTrackingOffset);
+  IGC_ASSERT(Offset >= MinTrackingOffset);
   unsigned Diff = Offset - MinTrackingOffset;
   if (Diff) {
     BitMap.resize(BitMap.size() + Diff);
@@ -710,7 +711,7 @@ bool CMRegion::isWhole(Type *Ty) const
  */
 Constant *CMRegion::evaluateConstantRdRegion(Constant *Input, bool AllowScalar)
 {
-  assert(!Indirect);
+  IGC_ASSERT(!Indirect);
   if (NumElements != 1)
     AllowScalar = false;
   if (Constant *SV = Input->getSplatValue()) {
@@ -753,7 +754,7 @@ Constant *CMRegion::evaluateConstantRdRegion(Constant *Input, bool AllowScalar)
  */
 Constant *CMRegion::evaluateConstantWrRegion(Constant *OldVal, Constant *NewVal)
 {
-  assert(!Indirect);
+  IGC_ASSERT(!Indirect);
   SmallVector<Constant *, 8> Vec;
   for (unsigned i = 0, e = OldVal->getType()->getVectorNumElements();
       i != e; ++i)
@@ -784,7 +785,7 @@ Constant *CMRegion::evaluateConstantWrRegion(Constant *OldVal, Constant *NewVal)
  */
 bool CMRegion::changeElementType(Type *NewElementType)
 {
-  assert(Offset % ElementBytes == 0 && "Impossible offset (in bytes) for data type");
+  IGC_ASSERT(Offset % ElementBytes == 0 && "Impossible offset (in bytes) for data type");
   unsigned NewElementBytes = NewElementType->getPrimitiveSizeInBits() / 8U;
   if (NewElementType->getPrimitiveSizeInBits())
     NewElementBytes = NewElementBytes ? NewElementBytes : 1;
@@ -853,7 +854,7 @@ bool CMRegion::changeElementType(Type *NewElementType)
  */
 bool CMRegion::append(CMRegion AR)
 {
-  assert(AR.isWholeNumRows());
+  IGC_ASSERT(AR.isWholeNumRows());
   if (Indirect != AR.Indirect)
     return false;
   unsigned ARNumRows = AR.NumElements / AR.Width;

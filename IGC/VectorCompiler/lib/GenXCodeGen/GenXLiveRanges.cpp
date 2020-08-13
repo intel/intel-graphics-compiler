@@ -52,6 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -127,7 +128,7 @@ bool GenXLiveRanges::runOnFunctionGroup(FunctionGroup &ArgFG)
   // in instruction.
   for (GenXLiveness::iterator i = Liveness->begin(), e = Liveness->end(); i != e; ++i) {
     LiveRange *LR = i->second;
-    assert(LR->size()); // Check the LR has at least one segment.
+    IGC_ASSERT(LR->size()); // Check the LR has at least one segment.
   }
 #endif // ndef NDEBUG
   return false;

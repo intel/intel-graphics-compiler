@@ -73,6 +73,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <queue>
 #include <set>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -106,7 +107,7 @@ private:
   }
   // setExternal : set the external pointer
   void setExternal(uintptr_t *P) {
-    assert(!getExternal());
+    IGC_ASSERT(!getExternal());
     V = (uintptr_t)P >> 1 | (uintptr_t)1U << (sizeof(uintptr_t) * 8 - 1);
   }
 public:
@@ -141,7 +142,7 @@ public:
   unsigned getNumElements() const { return NumElements; }
   // get : get a bit value
   bool get(unsigned Idx) const {
-    assert(Idx < NumElements);
+    IGC_ASSERT(Idx < NumElements);
     return P[Idx / BitsPerWord] >> (Idx % BitsPerWord) & 1;
   }
   // isAllZero : return true if all bits zero
@@ -185,7 +186,7 @@ private:
   void clear() {
     InstMap.clear();
     WorkListSet.clear();
-    assert(WorkList.empty());
+    IGC_ASSERT(WorkList.empty());
     WrRegionsWithUsedOldInput.clear();
     WorkListPhase = false;
   }
@@ -315,7 +316,7 @@ bool GenXDeadVectorRemoval::nullOutInstructions(Function *F)
         if (!Inst->use_empty()) {
           auto *SI = dyn_cast<StoreInst>(Inst->user_back());
           if (SI && genx::isGlobalStore(SI)) {
-            assert(Inst->hasOneUse() &&
+            IGC_ASSERT(Inst->hasOneUse() &&
                    "Wrregion in gstore bale has more than one use");
             continue;
           }
@@ -545,14 +546,14 @@ void GenXDeadVectorRemoval::processBitCast(Instruction *Inst, LiveBits LB)
   if (InLB.getNumElements() == LB.getNumElements())
     Modified = InLB.orBits(LB);
   else if (InLB.getNumElements() > LB.getNumElements()) {
-    assert((InLB.getNumElements() % LB.getNumElements()) == 0);
+    IGC_ASSERT((InLB.getNumElements() % LB.getNumElements()) == 0);
     int Scale = InLB.getNumElements() / LB.getNumElements();
     // Input element is smaller than result element.
     for (unsigned Idx = 0, End = LB.getNumElements(); Idx != End; ++Idx)
       if (LB.get(Idx))
         Modified |= InLB.setRange(Idx * Scale, Scale);
   } else {
-    assert((LB.getNumElements() % InLB.getNumElements()) == 0);
+    IGC_ASSERT((LB.getNumElements() % InLB.getNumElements()) == 0);
     int Scale = LB.getNumElements() / InLB.getNumElements();
     // Input element is bigger than result element.
     for (unsigned Idx = 0, End = InLB.getNumElements(); Idx != End; ++Idx) {
@@ -685,7 +686,7 @@ bool LiveBits::isAllZero() const
  */
 bool LiveBits::set(unsigned Idx, bool Val)
 {
-  assert(Idx < NumElements);
+  IGC_ASSERT(Idx < NumElements);
   uintptr_t *Ptr = P + Idx / BitsPerWord;
   uintptr_t Bit = 1ULL << (Idx % BitsPerWord);
   uintptr_t Entry = *Ptr;
@@ -703,7 +704,7 @@ bool LiveBits::set(unsigned Idx, bool Val)
  */
 bool LiveBits::copy(LiveBits Src)
 {
-  assert(NumElements == Src.NumElements);
+  IGC_ASSERT(NumElements == Src.NumElements);
   bool Modified = false;
   for (unsigned Idx = 0, End = (NumElements + BitsPerWord - 1) / BitsPerWord;
       Idx != End; ++Idx) {
@@ -718,7 +719,7 @@ bool LiveBits::copy(LiveBits Src)
  */
 bool LiveBits::orBits(LiveBits Src)
 {
-  assert(NumElements == Src.NumElements);
+  IGC_ASSERT(NumElements == Src.NumElements);
   bool Modified = false;
   for (unsigned Idx = 0, End = (NumElements + BitsPerWord - 1) / BitsPerWord;
       Idx != End; ++Idx) {
@@ -736,7 +737,7 @@ bool LiveBits::setRange(unsigned Start, unsigned Len)
 {
   bool Modified = false;
   unsigned End = Start + Len;
-  assert(End <= NumElements);
+  IGC_ASSERT(End <= NumElements);
   while (Start != End) {
     unsigned ThisLen = BitsPerWord - (Start & (BitsPerWord - 1));
     if (ThisLen > End - Start)

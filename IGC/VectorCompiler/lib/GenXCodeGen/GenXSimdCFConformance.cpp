@@ -233,6 +233,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/IR/InstrTypes.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -708,9 +709,9 @@ void GenXSimdCFConformance::gatherRMVals()
 Value *GenXSimdCFConformance::findGotoJoinVal(int Cat, BasicBlock *Loc, Instruction *GotoJoinEV,
   BasicBlockEdge &TrueEdge, BasicBlockEdge &FalseEdge, Value *TrueVal, Value *FalseVal, std::map<BasicBlock *, Value *>& foundVals)
 {
-  assert(TrueEdge.getStart() == FalseEdge.getStart());
-  assert(TrueEdge.getEnd() != FalseEdge.getEnd());
-  assert((Cat == RegCategory::EM || Cat == RegCategory::PREDICATE) && "Handling only EM and Cond!");
+  IGC_ASSERT(TrueEdge.getStart() == FalseEdge.getStart());
+  IGC_ASSERT(TrueEdge.getEnd() != FalseEdge.getEnd());
+  IGC_ASSERT((Cat == RegCategory::EM || Cat == RegCategory::PREDICATE) && "Handling only EM and Cond!");
 
   LLVM_DEBUG(dbgs() << "Entering " << Loc->getName() << "\n");
 
@@ -736,7 +737,7 @@ Value *GenXSimdCFConformance::findGotoJoinVal(int Cat, BasicBlock *Loc, Instruct
   // already in the final block
   auto Node = DomTree->getNode(Loc);
   auto IDom = Node->getIDom();
-  assert(IDom && "No IDom found!");
+  IGC_ASSERT(IDom && "No IDom found!");
   BasicBlock *PhiLoc = nullptr;
   PhiLoc = IDom->getBlock();
   if (IDom->getBlock() == GotoJoinEV->getParent())
@@ -798,7 +799,7 @@ void GenXSimdCFConformance::collectCondEVUsers(ExtractValueInst *CondEV, std::ve
       LLVM_DEBUG(dbgs() << "Found bad CondEV user:\n" << *ui->getUser() << "\n");
       BadUsers.push_back(ui->getUser());
     } else if (Br) {
-      assert(!CorrectUser && "Found another correct user!");
+      IGC_ASSERT(!CorrectUser && "Found another correct user!");
       LLVM_DEBUG(dbgs() << "Found correct user:\n" << *Br << "\n");
       CorrectUser = Br;
     }
@@ -815,7 +816,7 @@ void GenXSimdCFConformance::updateBadCondEVUsers(GenXSimdCFConformance::GotoJoin
   std::vector<Value *> &BadUsers, BasicBlock *TrueSucc, BasicBlock *FalseSucc)
 {
   ExtractValueInst *CondEV = GotoJoinData.getCondEV();
-  assert(CondEV && "Expected valid CondEV!");
+  IGC_ASSERT(CondEV && "Expected valid CondEV!");
 
   BasicBlockEdge TrueEdge(CondEV->getParent(), TrueSucc);
   BasicBlockEdge FalseEdge(CondEV->getParent(), FalseSucc);
@@ -870,7 +871,7 @@ void GenXSimdCFConformance::addNewPhisIncomings(BasicBlock *BranchingBlock, Basi
  */
 void GenXSimdCFConformance::handleNoCondEVCase(GenXSimdCFConformance::GotoJoinEVs &GotoJoinData)
 {
-  assert(!GotoJoinData.getCondEV() && "Unexpected CondEV!");
+  IGC_ASSERT(!GotoJoinData.getCondEV() && "Unexpected CondEV!");
 
   // Handle only goto
   if (GotoJoinData.isJoin())
@@ -958,7 +959,7 @@ void GenXSimdCFConformance::handleOptimizedBranchCase(GenXSimdCFConformance::Got
   auto SplitPoint = GotoJoinData.getSplitPoint();
 
   ExtractValueInst *CondEV = GotoJoinData.getCondEV();
-  assert(CondEV && "Expected valid CondEV!");
+  IGC_ASSERT(CondEV && "Expected valid CondEV!");
 
   // Split: this is true succ which is join point (at least we assume that)
   TrueSucc = CondEV->getParent()->splitBasicBlock(SplitPoint, "cond_ev_true_split");
@@ -989,8 +990,8 @@ void GenXSimdCFConformance::handleExistingBranchCase(GenXSimdCFConformance::Goto
   BasicBlock *&TrueSucc, BasicBlock *&FalseSucc, BranchInst *ExistingBranch)
 {
   ExtractValueInst *CondEV = GotoJoinData.getCondEV();
-  assert(CondEV && "Expected valid CondEV!");
-  assert(ExistingBranch->isConditional() && "Expected conditional branch!");
+  IGC_ASSERT(CondEV && "Expected valid CondEV!");
+  IGC_ASSERT(ExistingBranch->isConditional() && "Expected conditional branch!");
 
   TrueSucc = ExistingBranch->getSuccessor(0);
   FalseSucc = ExistingBranch->getSuccessor(1);
@@ -1141,7 +1142,7 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto, uns
       auto Br = dyn_cast<BranchInst>(u.getUser());
       return (Br && Br->getParent() == Goto->getParent() && Br->isConditional());
     });
-  assert(BrIt != CondEV->use_end() && "All gotos should become branching earlier!");
+  IGC_ASSERT(BrIt != CondEV->use_end() && "All gotos should become branching earlier!");
 
   BranchInst *Br = cast<BranchInst>(BrIt->getUser());
   BasicBlock *TrueSucc = Br->getSuccessor(0);
@@ -1260,7 +1261,7 @@ void GenXSimdCFConformance::moveCodeInGotoBlocks(bool hoistGotoUsers)
       auto Inst = NextInst;
       if (Inst->isTerminator())
         break;
-      assert(Inst);
+      IGC_ASSERT(Inst);
       NextInst = Inst->getNextNode();
       if (auto Extract = dyn_cast<ExtractValueInst>(Inst))
         if (Extract->getOperand(0) == Goto)
@@ -1429,7 +1430,7 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks()
                 for (auto ui2 = PredBlock->use_begin(),
                     ue2 = PredBlock->use_end(); ui2 != ue2; ++ui2) {
                   Instruction *Term = dyn_cast<Instruction>(ui2->getUser());
-                  assert(Term);
+                  IGC_ASSERT(Term);
                   if (Term->isTerminator()) {
                     auto PredPred = Term->getParent();
                     if (Idx >= 0) {
@@ -1459,7 +1460,7 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks()
             for (auto ui = JoinBlock->use_begin(), ue = JoinBlock->use_end();
                 ui != ue; ++ui) {
               auto Term = dyn_cast<Instruction>(ui->getUser());
-              assert(Term);
+              IGC_ASSERT(Term);
               if (!Term->isTerminator())
                 continue;
               auto TermBB = Term->getParent();
@@ -1536,9 +1537,9 @@ void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join)
       // Lazy determination of the insert point. If it is a branching goto/join
       // block, insert before the goto/join.
       auto DomTree = getDomTree(BB->getParent());
-      assert(DomTree);
+      IGC_ASSERT(DomTree);
       auto BBNode = DomTree->getNode(BB);
-      assert(BBNode);
+      IGC_ASSERT(BBNode);
       auto InsertBB = BBNode->getIDom()->getBlock();
       InsertBefore = GotoJoin::isBranchingGotoJoinBlock(InsertBB);
       if (!InsertBefore)
@@ -2561,13 +2562,13 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
     if (auto CI = dyn_cast<CallInst>(User)) {
       switch (GenXIntrinsic::getAnyIntrinsicID(CI)) {
         case GenXIntrinsic::genx_simdcf_get_em:
-          assert(Cat == RegCategory::EM);
+          IGC_ASSERT(Cat == RegCategory::EM);
           // Skip it if the category is right. This
           // intrinsic doesn't produce EM
           break;
         case GenXIntrinsic::genx_simdcf_unmask:
         case GenXIntrinsic::genx_simdcf_remask:
-          assert(Cat == RegCategory::EM);
+          IGC_ASSERT(Cat == RegCategory::EM);
           ConnectedVals->push_back(SimpleValue(CI, 0));
           break;
         case GenXIntrinsic::genx_simdcf_goto:
@@ -2614,7 +2615,7 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
         case GenXIntrinsic::not_any_intrinsic: {
           // Use in subroutine call. Add the corresponding function arg.
           Function *CalledFunc = CI->getCalledFunction();
-          assert(CalledFunc);
+          IGC_ASSERT(CalledFunc);
           auto ai = CalledFunc->arg_begin();
           for (unsigned Count = ui->getOperandNo(); Count; --Count, ++ai)
             ;
@@ -2736,7 +2737,7 @@ void GenXSimdCFConformance::handleEVs()
   gatherGotoJoinEMVals(false);
   for (auto val : EMVals) {
     Value *GotoJoin = val.getValue();
-    assert(GenXIntrinsic::getGenXIntrinsicID(GotoJoin) == GenXIntrinsic::genx_simdcf_goto ||
+    IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(GotoJoin) == GenXIntrinsic::genx_simdcf_goto ||
       GenXIntrinsic::getGenXIntrinsicID(GotoJoin) == GenXIntrinsic::genx_simdcf_join);
     GotoJoinEVsMap[GotoJoin] = GotoJoinEVs(GotoJoin);
   }
@@ -2761,12 +2762,12 @@ Value *GenXSimdCFConformance::eliminateBitCastPreds(Value *Val, std::set<Value *
   Visited.insert(Val);
 
   if (auto BCI = dyn_cast<BitCastInst>(Val)) {
-    assert(EMProducers[BCI] == BCI->getOperand(0) && "Bad EM producer was saved!");
+    IGC_ASSERT(EMProducers[BCI] == BCI->getOperand(0) && "Bad EM producer was saved!");
 
     DeadInst.insert(BCI);
     return eliminateBitCastPreds(BCI->getOperand(0), DeadInst, Visited);
   } else if (auto PN = dyn_cast<PHINode>(Val)) {
-    assert(EMProducers[PN] == PN && "Bad EM producer was saved!");
+    IGC_ASSERT(EMProducers[PN] == PN && "Bad EM producer was saved!");
 
     PHINode *NewPN = nullptr;
     if (PN->getType() != EMType) {
@@ -2793,13 +2794,13 @@ Value *GenXSimdCFConformance::eliminateBitCastPreds(Value *Val, std::set<Value *
 
     return NewPN ? NewPN : PN;
   } else if (auto C = dyn_cast<Constant>(Val)) {
-    assert(C->isAllOnesValue() && "Should be checked before!");
-    assert(EMProducers[C] == C && "Bad EM producer was saved!");
+    IGC_ASSERT(C->isAllOnesValue() && "Should be checked before!");
+    IGC_ASSERT(EMProducers[C] == C && "Bad EM producer was saved!");
 
     return Constant::getAllOnesValue(EMType);
   } else {
-    assert(Val && EMProducers[Val] == Val && "Bad EM producer was saved!");
-    assert(Val->getType() == EMType && "Unexpected final EM producer!");
+    IGC_ASSERT(Val && EMProducers[Val] == Val && "Bad EM producer was saved!");
+    IGC_ASSERT(Val->getType() == EMType && "Unexpected final EM producer!");
 
     return Val;
   }
@@ -2938,7 +2939,7 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
   LLVM_DEBUG(dbgs() << "Lowering EVI use:\n" << *EVI << "\n");
 
   CallInst *GotoJoin = dyn_cast<CallInst>(EVI->getOperand(0));
-  assert(GotoJoin &&
+  IGC_ASSERT(GotoJoin &&
          (GenXIntrinsic::getGenXIntrinsicID(GotoJoin) ==
               GenXIntrinsic::genx_simdcf_goto ||
           GenXIntrinsic::getGenXIntrinsicID(GotoJoin) ==
@@ -2967,7 +2968,7 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
   }
 
   // Non-branching case: must be join. Insert get_em right after join's EM
-  assert(GenXIntrinsic::getGenXIntrinsicID(GotoJoin) ==
+  IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(GotoJoin) ==
              GenXIntrinsic::genx_simdcf_join &&
          "Gotos should be turned into branching earlier!");
 
@@ -3511,7 +3512,7 @@ void GenXLateSimdCFConformance::setCategories()
               }
             }
             // now BB should be truely empty
-            assert(TrueSucc->front().isTerminator() &&
+            IGC_ASSERT(TrueSucc->front().isTerminator() &&
                    "BB is not empty for removal");
             // For a branching goto/join where the "true" successor is an empty
             // critical edge splitter block, remove the empty block, to ensure
@@ -3550,7 +3551,7 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
     for (auto ui = EM->use_begin(), ue = EM->use_end(); ui != ue; ++ui) {
       auto User = cast<Instruction>(ui->getUser());
       if (auto Sel = dyn_cast<SelectInst>(User)) {
-        assert(!ui->getOperandNo());
+        IGC_ASSERT(!ui->getOperandNo());
         Selects.push_back(Sel);
       } else switch (GenXIntrinsic::getAnyIntrinsicID(User)) {
         case GenXIntrinsic::genx_rdpredregion:
@@ -3564,7 +3565,7 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
           break;
         case GenXIntrinsic::genx_wrregioni:
         case GenXIntrinsic::genx_wrregionf:
-          assert(ui->getOperandNo() == GenXIntrinsic::GenXRegion::PredicateOperandNum);
+          IGC_ASSERT(ui->getOperandNo() == GenXIntrinsic::GenXRegion::PredicateOperandNum);
           break;
         case GenXIntrinsic::genx_wrpredpredregion:
           break;
@@ -3572,11 +3573,11 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
           if (isa<ReturnInst>(User) || isa<InsertValueInst>(User)
             || isa<ExtractValueInst>(User))
             break;
-          assert(!cast<CallInst>(User)->getCalledFunction()->doesNotAccessMemory()
+          IGC_ASSERT(!cast<CallInst>(User)->getCalledFunction()->doesNotAccessMemory()
             && "unexpected ALU intrinsic use of EM");
           break;
         case GenXIntrinsic::not_any_intrinsic:
-          assert((isa<PHINode>(User) || isa<InsertValueInst>(User) ||
+          IGC_ASSERT((isa<PHINode>(User) || isa<InsertValueInst>(User) ||
                   isa<CallInst>(User) || isa<ReturnInst>(User) ||
                   isa<ShuffleVectorInst>(User)) &&
                  "unexpected use of EM");
@@ -3608,7 +3609,7 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
       // but sometimes we may have more due to both
       // NoCondEV cases and critical edge splitting,
       // and that should not affect correctness of the transformation
-      // assert(PhiUser->getNumIncomingValues() == 2);
+      // IGC_ASSERT(PhiUser->getNumIncomingValues() == 2);
       if (auto *DomBB = DomTree->findNearestCommonDominator(
               SelPhiUser->getIncomingBlock(0),
               SelPhiUser->getIncomingBlock(1))) {
@@ -3649,7 +3650,7 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
     }
     Region R(Sel);
     R.Mask = Sel->getCondition();
-    assert(FalseVal);
+    IGC_ASSERT(FalseVal);
     Value *Wr = R.createWrRegion(FalseVal, Sel->getTrueValue(),
           Sel->getName(), Sel, Sel->getDebugLoc());
     Sel->replaceAllUsesWith(Wr);
@@ -3677,7 +3678,7 @@ GenXSimdCFConformance::GotoJoinEVs::GotoJoinEVs(Value* GJ) {
     IsGoto = false;
     break;
   default:
-    assert(false && "Expected goto or join!");
+    IGC_ASSERT(false && "Expected goto or join!");
     break;
   }
 
@@ -3688,7 +3689,7 @@ GenXSimdCFConformance::GotoJoinEVs::GotoJoinEVs(Value* GJ) {
  * GotoJoinEVs::getEMEV : get EV for goto/join Execution Mask
  */
 ExtractValueInst *GenXSimdCFConformance::GotoJoinEVs::getEMEV() const {
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
   return EVs[EMPos];
 }
 
@@ -3696,8 +3697,8 @@ ExtractValueInst *GenXSimdCFConformance::GotoJoinEVs::getEMEV() const {
  * GotoJoinEVs::getRMEV : get EV for goto/join Resume Mask
  */
 ExtractValueInst *GenXSimdCFConformance::GotoJoinEVs::getRMEV() const {
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
-  assert(IsGoto && "Only goto returns RM!");
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT(IsGoto && "Only goto returns RM!");
   return EVs[RMPos];
 }
 
@@ -3705,12 +3706,12 @@ ExtractValueInst *GenXSimdCFConformance::GotoJoinEVs::getRMEV() const {
  * GotoJoinEVs::getCondEV : get EV for goto/join condition
  */
 ExtractValueInst *GenXSimdCFConformance::GotoJoinEVs::getCondEV() const {
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
   return IsGoto ? EVs[GotoCondPos] : EVs[JoinCondPos];
 }
 
 Value *GenXSimdCFConformance::GotoJoinEVs::getGotoJoin() const {
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
   return GotoJoin;
 }
 
@@ -3720,7 +3721,7 @@ Value *GenXSimdCFConformance::GotoJoinEVs::getGotoJoin() const {
  * in a correct IR - BB terminator is a such instruction.
  */
  Instruction *GenXSimdCFConformance::GotoJoinEVs::getSplitPoint() const {
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
   Instruction *SplitPoint = cast<Instruction>(GotoJoin)->getNextNode();
   for (; isa<ExtractValueInst>(SplitPoint) && SplitPoint->getOperand(0) == GotoJoin;
     SplitPoint = SplitPoint->getNextNode());
@@ -3732,8 +3733,8 @@ Value *GenXSimdCFConformance::GotoJoinEVs::getGotoJoin() const {
  * needed on basic block splitting to handle bad Cond EV user.
  */
 void GenXSimdCFConformance::GotoJoinEVs::setCondEV(ExtractValueInst *CondEV) {
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
-  assert(!getCondEV() && "CondEV is already set!");
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT(!getCondEV() && "CondEV is already set!");
   if (IsGoto)
     EVs[GotoCondPos] = CondEV;
   else
@@ -3744,7 +3745,7 @@ void GenXSimdCFConformance::GotoJoinEVs::setCondEV(ExtractValueInst *CondEV) {
  * GotoJoinEVs::isGoto : check wether this EVs info belongs to goto
  */
 bool GenXSimdCFConformance::GotoJoinEVs::isGoto() const {
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
   return IsGoto;
 }
 
@@ -3752,7 +3753,7 @@ bool GenXSimdCFConformance::GotoJoinEVs::isGoto() const {
  * GotoJoinEVs::isJoin : check wether this EVs info belongs to join
  */
 bool GenXSimdCFConformance::GotoJoinEVs::isJoin() const {
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
   return !IsGoto;
 }
 
@@ -3766,8 +3767,8 @@ bool GenXSimdCFConformance::GotoJoinEVs::isJoin() const {
  *    interference analysis.
  */
 void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
-  assert((GenXIntrinsic::getGenXIntrinsicID(GotoJoin) == GenXIntrinsic::genx_simdcf_goto ||
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT((GenXIntrinsic::getGenXIntrinsicID(GotoJoin) == GenXIntrinsic::genx_simdcf_goto ||
     GenXIntrinsic::getGenXIntrinsicID(GotoJoin) == GenXIntrinsic::genx_simdcf_join) &&
     "Expected goto or join!");
 
@@ -3779,8 +3780,8 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
     auto EV = dyn_cast<ExtractValueInst>(ui->getUser());
     ++ui;
 
-    assert(EV && "Bad user of goto/join!");
-    assert(EV->getNumIndices() == 1 && "Expected 1 index in Extract Value for goto/join!");
+    IGC_ASSERT(EV && "Bad user of goto/join!");
+    IGC_ASSERT(EV->getNumIndices() == 1 && "Expected 1 index in Extract Value for goto/join!");
 
     unsigned idx = EV->getIndices()[0];
 #ifndef NDEBUG
@@ -3792,7 +3793,7 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
       if (IsGoto)
         break;
     default:
-      assert(false && "Bad index in ExtractValue for goto/join!");
+      IGC_ASSERT(false && "Bad index in ExtractValue for goto/join!");
       break;
     }
 #endif
@@ -3838,7 +3839,7 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
  * GotoJoinEVs::hoistEVs : move EVs right after goto/join
  */
 void GenXSimdCFConformance::GotoJoinEVs::hoistEVs() const{
-  assert(GotoJoin && "Uninitialized GotoJoinEVs Data!");
+  IGC_ASSERT(GotoJoin && "Uninitialized GotoJoinEVs Data!");
 
   LLVM_DEBUG(dbgs() << "Moving EV users after:\n" << *GotoJoin << "\n");
 

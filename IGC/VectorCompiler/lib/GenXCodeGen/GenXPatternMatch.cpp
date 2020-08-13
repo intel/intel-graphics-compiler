@@ -93,6 +93,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <functional>
 #include <limits>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -228,7 +229,7 @@ class MadMatcher {
 public:
   explicit MadMatcher(Instruction *I)
       : AInst(I), MInst(nullptr), ID(GenXIntrinsic::not_any_intrinsic), NegIndex(-1) {
-    assert(I && "null instruction");
+    IGC_ASSERT(I && "null instruction");
     Srcs[0] = Srcs[1] = Srcs[2] = nullptr;
   }
 
@@ -301,7 +302,7 @@ class MinMaxMatcher {
 public:
   explicit MinMaxMatcher(Instruction *I)
       : SelInst(I), CmpInst(nullptr), ID(GenXIntrinsic::not_any_intrinsic) {
-    assert(I && "null instruction");
+    IGC_ASSERT(I && "null instruction");
     Srcs[0] = Srcs[1] = nullptr;
     Annotation = 0;
   }
@@ -466,7 +467,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
       if (DstTy) {
         Type *InEltTy = Ty->getVectorElementType();
         Type *OutEltTy = DstTy->getVectorElementType();
-        assert(OutEltTy->getPrimitiveSizeInBits());
+        IGC_ASSERT(OutEltTy->getPrimitiveSizeInBits());
         unsigned Stride = InEltTy->getPrimitiveSizeInBits() /
                           OutEltTy->getPrimitiveSizeInBits();
         // Create the new bitcast.
@@ -484,7 +485,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
         Value *LHS = R.createRdRegion(BC, "", &I /*InsertBefore*/,
                                       I.getDebugLoc(), false /*AllowScalar*/);
         Value *RHS = Builder.CreateTrunc(C2, DstTy);
-        assert(isa<Constant>(RHS));
+        IGC_ASSERT(isa<Constant>(RHS));
         Value *NewICmp = Builder.CreateICmp(Pred, LHS, RHS);
         if (auto Inst = dyn_cast<Instruction>(NewICmp))
           Inst->setDebugLoc(I.getDebugLoc());
@@ -543,27 +544,27 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
         }
         Value *LHS, *RHS;
         if (match(V, m_Or(m_Value(LHS), m_Value(RHS)))) {
-          assert(OpStack.size() >= 2);
+          IGC_ASSERT(OpStack.size() >= 2);
           RHS = OpStack.pop_back_val();
           LHS = OpStack.pop_back_val();
           OpStack.push_back(Builder.CreateOr(LHS, RHS));
           continue;
         }
         if (match(V, m_And(m_Value(LHS), m_Value(RHS)))) {
-          assert(OpStack.size() >= 2);
+          IGC_ASSERT(OpStack.size() >= 2);
           RHS = OpStack.pop_back_val();
           LHS = OpStack.pop_back_val();
           OpStack.push_back(Builder.CreateAnd(LHS, RHS));
           continue;
         }
         if (match(V, m_Not(m_Value(LHS)))) {
-          assert(OpStack.size() >= 1);
+          IGC_ASSERT(OpStack.size() >= 1);
           LHS = OpStack.pop_back_val();
           OpStack.push_back(Builder.CreateNot(LHS));
         }
-        assert(false && "Unhandled logic op!");
+        IGC_ASSERT(false && "Unhandled logic op!");
       }
-      assert(OpStack.size() == 1);
+      IGC_ASSERT(OpStack.size() == 1);
       I.replaceAllUsesWith(OpStack.pop_back_val());
       Changed = true;
       return;
@@ -1016,7 +1017,7 @@ public:
 std::tuple<Value *, bool>
 MadMatcher::getNarrowI16Vector(IRBuilder<> &Builder, Instruction *AInst,
                                Value *V, unsigned NumElts) const {
-  assert(V->getType()->getScalarType()->isIntegerTy(32) && "I32 is expected!");
+  IGC_ASSERT(V->getType()->getScalarType()->isIntegerTy(32) && "I32 is expected!");
   if (auto Ext = dyn_cast<ExtOperator>(V)) {
     V = Ext->getOperand(0);
     if (V->getType()->getScalarType()->isIntegerTy(8)) {
@@ -1052,7 +1053,7 @@ MadMatcher::getNarrowI16Vector(IRBuilder<> &Builder, Instruction *AInst,
 
 // The floating point case is relatively simple. Only need to match with fmul.
 bool MadMatcher::matchFpMad() {
-  assert(AInst->getOpcode() == Instruction::FAdd ||
+  IGC_ASSERT(AInst->getOpcode() == Instruction::FAdd ||
          AInst->getOpcode() == Instruction::FSub);
   Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
 
@@ -1097,7 +1098,7 @@ bool MadMatcher::matchFpMad() {
 }
 
 bool MadMatcher::matchIntegerMad() {
-  assert(AInst->getOpcode() == Instruction::Add ||
+  IGC_ASSERT(AInst->getOpcode() == Instruction::Add ||
          AInst->getOpcode() == Instruction::Sub);
   Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
 
@@ -1171,7 +1172,7 @@ bool MadMatcher::matchIntegerMad() {
 }
 
 bool MadMatcher::matchIntegerMad(unsigned IID) {
-  assert((GenXIntrinsic::getAnyIntrinsicID(AInst) == IID) && "input out of sync");
+  IGC_ASSERT((GenXIntrinsic::getAnyIntrinsicID(AInst) == IID) && "input out of sync");
   Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
 
   // TODO: handle cases like: cm_add(cm_mul(u, v), w).
@@ -1413,7 +1414,7 @@ bool MinMaxMatcher::valuesMatch(llvm::Value *Op1, llvm::Value *Op2) {
 }
 
 bool MinMaxMatcher::matchMinMax() {
-  assert(SelInst->getOpcode() == Instruction::Select && "expected SelectInst");
+  IGC_ASSERT(SelInst->getOpcode() == Instruction::Select && "expected SelectInst");
   if ((CmpInst = dyn_cast<llvm::CmpInst>(SelInst->getOperand(0)))) {
     Srcs[0] = SelInst->getOperand(1);
     Srcs[1] = SelInst->getOperand(2);
@@ -1522,7 +1523,7 @@ bool MinMaxMatcher::emit() {
 static std::tuple<BasicBlock *, Instruction *>
 findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
                         std::function<bool(Instruction *)> IsSimilar) {
-  assert(!isa<PHINode>(Ref) && "PHINode is not expected!");
+  IGC_ASSERT(!isa<PHINode>(Ref) && "PHINode is not expected!");
 
   // Shortcut case. If it's single-used, insert just before that user.
   if (I->hasOneUse())
@@ -1546,7 +1547,7 @@ findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
     MI->second = &*BI;
   }
 
-  assert(BBs.size() != 0 && "Must find at least one BB!");
+  IGC_ASSERT(BBs.size() != 0 && "Must find at least one BB!");
 
   auto MI = BBs.begin();
   // Another shortcut case. If it's only used in a single BB,
@@ -1563,14 +1564,14 @@ findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
     BB = MI->first;
     Pos = MI->second;
   }
-  assert(BB);
+  IGC_ASSERT(BB);
   return std::make_tuple(BB, Pos);
 }
 
 // For the specified constant, calculate its reciprocal if it's safe;
 // otherwise, return null.
 static Constant *getReciprocal(Constant *C, bool HasAllowReciprocal) {
-  assert(C->getType()->isFPOrFPVectorTy() &&
+  IGC_ASSERT(C->getType()->isFPOrFPVectorTy() &&
          "Floating point value is expected!");
 
   // TODO: remove this and use ConstantExpr::getFDiv.
@@ -1865,14 +1866,14 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
 //   RAUW %1
 //
 bool GenXPatternMatch::simplifyPredRegion(CallInst *CI) {
-  assert(GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_rdpredregion);
+  IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_rdpredregion);
   bool Changed = false;
 
   unsigned NElts = CI->getType()->getVectorNumElements();
   ConstantInt *C = dyn_cast<ConstantInt>(CI->getArgOperand(1));
-  assert(C && "constant integer expected");
+  IGC_ASSERT(C && "constant integer expected");
   unsigned Offset = (unsigned)C->getZExtValue();
-  assert(Offset % NElts == 0);
+  IGC_ASSERT(Offset % NElts == 0);
 
   // The number of actual bits required.
   unsigned NBits = NElts + Offset;
@@ -1895,7 +1896,7 @@ bool GenXPatternMatch::simplifyPredRegion(CallInst *CI) {
 }
 
 bool GenXPatternMatch::simplifyRdRegion(CallInst* Inst) {
-  assert(GenXIntrinsic::isRdRegion(Inst));
+  IGC_ASSERT(GenXIntrinsic::isRdRegion(Inst));
   auto NewVTy = Inst->getType();
   // rewrite indirect rdregion with constant offsets
   auto R = Region::getWithOffset(Inst, false /*ParentWidth*/);
@@ -1919,7 +1920,7 @@ bool GenXPatternMatch::simplifyRdRegion(CallInst* Inst) {
 }
 
 bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
-  assert(GenXIntrinsic::isWrRegion(Inst));
+  IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst));
   Value *NewV = Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
   Type *NewVTy = NewV->getType();
 
@@ -1987,7 +1988,7 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
 // destination has the same type, it's incorrect to fold them into V directly
 // as the saturation is necessary.
 bool GenXPatternMatch::simplifyTruncSat(CallInst *Inst) {
-  assert(GenXIntrinsic::isIntegerSat(Inst) && "Unexpected integer saturation intrinsic!");
+  IGC_ASSERT(GenXIntrinsic::isIntegerSat(Inst) && "Unexpected integer saturation intrinsic!");
 
   GenXIntrinsicInst *II = cast<GenXIntrinsicInst>(Inst);
   ExtOperator *Ext = dyn_cast<ExtOperator>(Inst->getOperand(0));
@@ -2289,7 +2290,7 @@ bool GenXPatternMatch::distributeIntegerMul(Function *F) {
       if (collect(RHS, Ops))
         continue;
 
-      assert(!Ops.empty() && "There's no operands collected!");
+      IGC_ASSERT(!Ops.empty() && "There's no operands collected!");
 
       IRBuilder<> Builder(cast<Instruction>(Mul));
       Value *Sum = nullptr;
@@ -2471,7 +2472,7 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
 }
 
 static Instruction *insertConstantLoad(Constant *C, Instruction *InsertBefore) {
-  assert(!C->getType()->getScalarType()->isIntegerTy(1));
+  IGC_ASSERT(!C->getType()->getScalarType()->isIntegerTy(1));
   Value *Args[] = {C};
   Type *Ty[] = {C->getType()};
   auto IntrinsicID = GenXIntrinsic::genx_constanti;
@@ -2553,7 +2554,7 @@ bool GenXPatternMatch::placeConstants(Function *F) {
         }
 
         // It is profitable to use a common constant pool in register.
-        assert(ConstantUses.size() >= 2);
+        IGC_ASSERT(ConstantUses.size() >= 2);
         BasicBlock *InsertBB = nullptr;
         for (auto U : ConstantUses) {
           auto UseInst = cast<Instruction>(U->getUser());
@@ -2586,7 +2587,7 @@ bool GenXPatternMatch::placeConstants(Function *F) {
           }
         }
       Found:
-        assert(!isa<PHINode>(InsertBefore));
+        IGC_ASSERT(!isa<PHINode>(InsertBefore));
         Value *Val = insertConstantLoad(C, InsertBefore);
         for (auto U : ConstantUses)
           U->set(Val);

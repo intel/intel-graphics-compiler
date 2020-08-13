@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
+#include "Probe/Assertion.h"
 
 namespace llvm {
 namespace genx {
@@ -117,7 +118,7 @@ public:
     MDNode *InputOutputKinds = dyn_cast<MDNode>(Node->getOperand(KernelMDOp::ArgIOKinds));
     MDNode *ArgDescNode = dyn_cast<MDNode>(Node->getOperand(KernelMDOp::ArgTypeDescs));
 
-    assert(KindsNode);
+    IGC_ASSERT(KindsNode);
 
     for (unsigned i = 0, e = KindsNode->getNumOperands(); i != e; ++i) {
       ArgKinds.push_back(
@@ -126,22 +127,22 @@ public:
       if (OffsetsNode == nullptr)
         ArgOffsets.push_back(0);
       else {
-        assert(OffsetsNode->getNumOperands() == e && "out of sync");
+        IGC_ASSERT(OffsetsNode->getNumOperands() == e && "out of sync");
         ArgOffsets.push_back(
             getValueAsMetadata<ConstantInt>(OffsetsNode->getOperand(i))
                 ->getZExtValue());
       }
     }
-    assert(InputOutputKinds &&
+    IGC_ASSERT(InputOutputKinds &&
            KindsNode->getNumOperands() >= InputOutputKinds->getNumOperands());
     for (unsigned i = 0, e = InputOutputKinds->getNumOperands(); i != e; ++i)
       ArgIOKinds.push_back(
           getValueAsMetadata<ConstantInt>(InputOutputKinds->getOperand(i))
               ->getZExtValue());
-    assert(ArgDescNode);
+    IGC_ASSERT(ArgDescNode);
     for (unsigned i = 0, e = ArgDescNode->getNumOperands(); i < e; ++i) {
       MDString *MDS = dyn_cast<MDString>(ArgDescNode->getOperand(i));
-      assert(MDS);
+      IGC_ASSERT(MDS);
       ArgTypeDescs.push_back(MDS->getString());
     }
   }
@@ -190,7 +191,7 @@ public:
   int32_t getBTI(unsigned Index) {
     if (BTIs.empty())
       computeBTIs();
-    assert(Index < BTIs.size());
+    IGC_ASSERT(Index < BTIs.size());
     return BTIs[Index];
   }
 

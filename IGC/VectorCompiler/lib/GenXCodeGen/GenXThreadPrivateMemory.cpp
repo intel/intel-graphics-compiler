@@ -48,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Local.h"
 #include <queue>
 #include <utility>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -164,11 +165,11 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
   Type *I32Ty = Type::getInt32Ty(InsertBefore->getContext());
   Value *Res = From;
   Type *FromTy = From->getType();
-  assert(isa<VectorType>(FromTy));
+  IGC_ASSERT(isa<VectorType>(FromTy));
   unsigned NumElts = FromTy->getVectorNumElements();
   unsigned EltSz =
       m_DL->getTypeSizeInBits(FromTy->getScalarType()) / genx::ByteBits;
-  assert(EltSz > 0);
+  IGC_ASSERT(EltSz > 0);
   if (To->getScalarType()->isPointerTy() &&
       To->getScalarType()->getPointerElementType()->isFunctionTy()) {
     Type *I64Ty = Type::getInt64Ty(InsertBefore->getContext());
@@ -200,7 +201,7 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
                                                          Type *To) {
   Instruction *Restored = From;
   unsigned EltSz = m_DL->getTypeSizeInBits(To->getScalarType());
-  assert(EltSz > 0);
+  IGC_ASSERT(EltSz > 0);
   if (To->getScalarType()->isPointerTy() &&
       To->getScalarType()->getPointerElementType()->isFunctionTy()) {
     Restored = PtrToIntInst::Create(Instruction::IntToPtr, From, To);
@@ -210,7 +211,7 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
              !(m_useGlobalMem && To->getScalarType()->isIntegerTy(64))) {
     if (!From->getType()->getScalarType()->isPointerTy() &&
         To->getScalarType()->isPointerTy()) {
-      assert(From->getType()->getScalarType()->isIntegerTy(genx::DWordBits));
+      IGC_ASSERT(From->getType()->getScalarType()->isIntegerTy(genx::DWordBits));
       Type *NewTy =
           VectorType::get(Type::getInt64Ty(*m_ctx),
                           From->getType()->getVectorNumElements() / 2);
@@ -273,7 +274,7 @@ static Value *FormEltsOffsetVectorForSVM(unsigned NumElts,
     OffsetTy = Type::getInt64Ty(InsertBefore->getContext());
   Value *EltsOffset = UndefValue::get(VectorType::get(OffsetTy, NumElts));
   if (Offset->getType()->isVectorTy()) {
-    assert(Offset->getType()->getVectorNumElements() == 1);
+    IGC_ASSERT(Offset->getType()->getVectorNumElements() == 1);
     Offset = CastInst::CreateZExtOrBitCast(Offset, OffsetTy, "", InsertBefore);
   }
   for (unsigned CurElt = 0; CurElt < NumElts; ++CurElt) {
@@ -285,7 +286,7 @@ static Value *FormEltsOffsetVectorForSVM(unsigned NumElts,
 }
 
 Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
-  assert(Ptr->getType()->isPtrOrPtrVectorTy());
+  IGC_ASSERT(Ptr->getType()->isPtrOrPtrVectorTy());
 
   if (auto BC = dyn_cast<BitCastInst>(Ptr))
     return lookForPtrReplacement(BC->getOperand(0));
@@ -293,7 +294,7 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
     return ITP->getOperand(0);
   else if (auto AI = dyn_cast<AllocaInst>(Ptr)) {
     auto AllocaIntr = m_allocaToIntrinsic.find(AI);
-    assert(AllocaIntr != m_allocaToIntrinsic.end() &&
+    IGC_ASSERT(AllocaIntr != m_allocaToIntrinsic.end() &&
            "Each alloca must be here");
     return AllocaIntr->second;
   } else if (isa<Argument>(Ptr)) {
@@ -321,13 +322,13 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
       return Ptr;
     } else {
       // FIXME: unify the return paths for failure cases
-      assert(0 && "Cannot find pointer replacement");
+      IGC_ASSERT(0 && "Cannot find pointer replacement");
       return nullptr;
     }
   } else if (isa<ConstantPointerNull>(Ptr))
     return ConstantInt::get(Type::getInt32Ty(*m_ctx), 0);
   else {
-    assert(0 && "Cannot find pointer replacement");
+    IGC_ASSERT(0 && "Cannot find pointer replacement");
     return nullptr;
   }
 }
@@ -399,7 +400,7 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
   if (m_useGlobalMem && NumEltsToLoad > 1) {
-    assert(Offset->getType()->getScalarType()->isIntegerTy(64));
+    IGC_ASSERT(Offset->getType()->getScalarType()->isIntegerTy(64));
     auto *BaseOff = FormEltsOffsetVectorForSVM(NumEltsToLoad, LdI, Offset);
     auto *ZextOff = CastInst::CreateZExtOrBitCast(
         EltsOffset,
@@ -448,7 +449,7 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
     ValueOp = Builder.CreateVectorSplat(1, ValueOp);
     ValueOpTy = ValueOp->getType();
   }
-  assert(ValueOp->getType()->isVectorTy());
+  IGC_ASSERT(ValueOp->getType()->isVectorTy());
 
   unsigned ValueEltSz = 0;
   std::tie(ValueOp, ValueEltSz) = NormalizeVector(ValueOp, ValueOpTy, StI);
@@ -470,7 +471,7 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
   Value *EltsOffset = FormEltsOffsetVector(ValueNumElts, ValueEltSz, StI);
 
   if (m_useGlobalMem && ValueNumElts > 1) {
-    assert(Offset->getType()->getScalarType()->isIntegerTy(64));
+    IGC_ASSERT(Offset->getType()->getScalarType()->isIntegerTy(64));
     auto *BaseOff = FormEltsOffsetVectorForSVM(ValueNumElts, StI, Offset);
     auto *ZextOff = CastInst::CreateZExtOrBitCast(
         EltsOffset,
@@ -554,14 +555,14 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
                             : llvm::GenXIntrinsic::genx_gather_scaled;
 
   Type *OrigDstTy = CI->getType();
-  assert(isa<VectorType>(OrigDstTy));
+  IGC_ASSERT(isa<VectorType>(OrigDstTy));
   Type *NewDstTy = OrigDstTy;
   Value *OldValue = CI->getArgOperand(3);
   unsigned ValueEltSz =
       m_DL->getTypeSizeInBits(NewDstTy->getScalarType()) / genx::ByteBits;
 
   // Check gather.private invariant.
-  assert(NewDstTy == OldValue->getType());
+  IGC_ASSERT(NewDstTy == OldValue->getType());
 
   // Cast data type to legal.
   // Consider i64 legal for SVM cases
@@ -575,7 +576,7 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
   if (!m_useGlobalMem &&
       OrigDstTy->getVectorElementType()->getPrimitiveSizeInBits() ==
           genx::QWordBits) {
-    assert(ValueNumElts == EltsOffset->getType()->getVectorNumElements() * 2);
+    IGC_ASSERT(ValueNumElts == EltsOffset->getType()->getVectorNumElements() * 2);
     EltsOffset = DoubleVector(EltsOffset, ValueEltSz, CI);
     Pred = DoubleVector(Pred, 0, CI);
   }
@@ -646,7 +647,7 @@ bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
                  : llvm::GenXIntrinsic::genx_scatter_scaled;
   Value *ValueOp = CI->getArgOperand(3);
   Type *OrigValueTy = ValueOp->getType();
-  assert(isa<VectorType>(OrigValueTy));
+  IGC_ASSERT(isa<VectorType>(OrigValueTy));
   unsigned EltSz = 0;
   std::tie(ValueOp, EltSz) = NormalizeVector(ValueOp, ValueOp->getType(), CI);
 
@@ -695,7 +696,7 @@ bool GenXThreadPrivateMemory::replacePhi(PHINode *Phi) {
   for (auto &IncVal : Phi->incoming_values())
     PhiOps.push_back(lookForPtrReplacement(static_cast<Value *>(IncVal.get())));
 
-  assert(!PhiOps.empty());
+  IGC_ASSERT(!PhiOps.empty());
 
   // first we need to synchronize operands of types T and <1 x T> =>
   // make all of them scalar T
@@ -711,13 +712,13 @@ bool GenXThreadPrivateMemory::replacePhi(PHINode *Phi) {
       else if (V->getType()->getScalarType() == NonVecTy->getScalarType() &&
                V->getType()->isVectorTy() != NonVecTy->isVectorTy()) {
         if (V->getType()->isVectorTy()) {
-          assert(V->getType()->getVectorNumElements() == 1);
+          IGC_ASSERT(V->getType()->getVectorNumElements() == 1);
           auto *VCast = CastInst::Create(CastInst::BitCast, V, NonVecTy->getScalarType());
           VCast->insertAfter(cast<Instruction>(V));
           V = VCast;
         }
       } else {
-        assert(0 && "New phi types mismatch");
+        IGC_ASSERT(0 && "New phi types mismatch");
       }
     };
     std::for_each(PhiOps.begin(), PhiOps.end(), TypeFixer);
@@ -725,7 +726,7 @@ bool GenXThreadPrivateMemory::replacePhi(PHINode *Phi) {
 
   Type *OffsetTy = PhiOps[0]->getType();
   auto TypeChecker = [OffsetTy](Value *V) { return OffsetTy == V->getType(); };
-  assert(std::all_of(PhiOps.begin(), PhiOps.end(), TypeChecker));
+  IGC_ASSERT(std::all_of(PhiOps.begin(), PhiOps.end(), TypeChecker));
 
   PHINode *NewPhi = PHINode::Create(OffsetTy, PhiOps.size());
   for (unsigned i = 0; i < PhiOps.size(); ++i)
@@ -735,7 +736,7 @@ bool GenXThreadPrivateMemory::replacePhi(PHINode *Phi) {
 
   // Create temporary cast instruction to satisfy old phi users. Types must be
   // different due to replacement pointer by integer offset.
-  assert(NewPhi->getType() != Phi->getType());
+  IGC_ASSERT(NewPhi->getType() != Phi->getType());
   CastInst *TempCast = CastInst::CreateBitOrPointerCast(NewPhi, Phi->getType());
   TempCast->insertAfter(NewPhi->getParent()->getFirstNonPHI());
 
@@ -833,11 +834,11 @@ SplitVec(Value *Vec, unsigned NumElts, Instruction *InsertBefore,
 }
 
 void SplitScatter(CallInst *CI) {
-  assert(GenXIntrinsic::getAnyIntrinsicID(CI) ==
+  IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI) ==
          llvm::GenXIntrinsic::genx_scatter_scaled);
   Type *DataTy = CI->getArgOperand(5)->getType();
   unsigned NumElts = DataTy->getVectorNumElements();
-  assert(NumElts % 2 == 0);
+  IGC_ASSERT(NumElts % 2 == 0);
 
   Type *I32Ty = Type::getInt32Ty(CI->getContext());
   std::pair<Value *, Value *> Splitters = GetUndefPair(I32Ty, NumElts / 2);
@@ -880,11 +881,11 @@ void SplitScatter(CallInst *CI) {
 }
 
 void SplitGather(CallInst *CI) {
-  assert(GenXIntrinsic::getAnyIntrinsicID(CI) ==
+  IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI) ==
          llvm::GenXIntrinsic::genx_gather_scaled);
   Type *DstTy = CI->getType();
   unsigned NumElts = DstTy->getVectorNumElements();
-  assert(NumElts % 2 == 0);
+  IGC_ASSERT(NumElts % 2 == 0);
 
   Type *I32Ty = Type::getInt32Ty(CI->getContext());
   std::pair<Value *, Value *> Splitters = GetUndefPair(I32Ty, NumElts / 2);
@@ -973,7 +974,7 @@ public:
 };
 
 void GenXThreadPrivateMemory::addUsers(Value *V) {
-  assert(isa<Instruction>(V) || isa<Argument>(V));
+  IGC_ASSERT(isa<Instruction>(V) || isa<Argument>(V));
   for (const auto &Usr : V->users()) {
     Instruction *ToAdd = cast<Instruction>(Usr);
     auto Found = m_AlreadyAdded.find(ToAdd);
@@ -985,12 +986,12 @@ void GenXThreadPrivateMemory::addUsers(Value *V) {
 }
 
 void GenXThreadPrivateMemory::collectEachPossibleTPMUsers() {
-  assert(m_AIUsers.empty());
+  IGC_ASSERT(m_AIUsers.empty());
   // At first collect every alloca user
   for (auto B = m_allocaToIntrinsic.begin(), E = m_allocaToIntrinsic.end();
        B != E; ++B) {
     Instruction *I = dyn_cast<Instruction>(B->first);
-    assert(I);
+    IGC_ASSERT(I);
     addUsers(I);
   }
   // Then collect all pointer args - they may be used
@@ -1146,10 +1147,10 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   for (auto AllocaPair : m_allocaToIntrinsic) {
     while (!AllocaPair.first->user_empty()) {
       const auto &U = AllocaPair.first->user_back();
-      assert(U->getNumUses() == 0);
+      IGC_ASSERT(U->getNumUses() == 0);
       cast<Instruction>(U)->eraseFromParent();
     }
-    assert(AllocaPair.first->use_empty() &&
+    IGC_ASSERT(AllocaPair.first->use_empty() &&
            "uses of replaced alloca aren't empty");
     AllocaPair.first->eraseFromParent();
   }

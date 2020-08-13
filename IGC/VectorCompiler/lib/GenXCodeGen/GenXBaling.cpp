@@ -52,6 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/Local.h"
+#include "Probe/Assertion.h"
 
 // Part of the bodge to allow abs to bale in to sext/zext. This needs to be set
 // to some arbitrary value that does not clash with any
@@ -435,7 +436,7 @@ GenXBaling::operandIsBaled(Instruction *Inst,
 void GenXBaling::processWrPredRegion(Instruction *Inst)
 {
   Value *V = Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
-  assert(isa<CmpInst>(V) || isa<Constant>(V));
+  IGC_ASSERT(isa<CmpInst>(V) || isa<Constant>(V));
   BaleInfo BI(BaleInfo::WRPREDREGION);
   if (isa<CmpInst>(V)) {
     setOperandBaled(Inst, GenXIntrinsic::GenXRegion::NewValueOperandNum, &BI);
@@ -455,12 +456,12 @@ void GenXBaling::processWrPredRegion(Instruction *Inst)
  */
 void GenXBaling::processWrPredPredRegion(Instruction *Inst)
 {
-  assert(isa<CmpInst>(Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum)));
+  IGC_ASSERT(isa<CmpInst>(Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum)));
   BaleInfo BI(BaleInfo::WRPREDPREDREGION);
   setOperandBaled(Inst, GenXIntrinsic::GenXRegion::NewValueOperandNum, &BI);
   Value *Cond = Inst->getOperand(3);
   if (GenXIntrinsic::getGenXIntrinsicID(Cond) == GenXIntrinsic::genx_rdpredregion) {
-    assert(cast<Constant>(cast<CallInst>(Cond)->getOperand(1))->isNullValue());
+    IGC_ASSERT(cast<Constant>(cast<CallInst>(Cond)->getOperand(1))->isNullValue());
     setOperandBaled(Inst, 3, &BI);
   }
   setBaleInfo(Inst, BI);
@@ -594,13 +595,13 @@ void GenXBaling::processStore(StoreInst *Inst) {
 
 // We can bale in shufflevector of predicate if it is replicated slice.
 bool GenXBaling::processShufflePred(Instruction *Inst) {
-  assert(Inst->getType()->getScalarSizeInBits() == 1 &&
+  IGC_ASSERT(Inst->getType()->getScalarSizeInBits() == 1 &&
          "Expected bool shuffle");
   auto *SI = dyn_cast<ShuffleVectorInst>(Inst);
   if (!SI)
     return false;
 
-  assert(ShuffleVectorAnalyzer(SI).isReplicatedSlice() &&
+  IGC_ASSERT(ShuffleVectorAnalyzer(SI).isReplicatedSlice() &&
          "Predicate shuffle is not replicated slice!");
   BaleInfo BI(BaleInfo::SHUFFLEPRED);
   setBaleInfo(SI, BI);
@@ -658,7 +659,7 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
         unsigned MinSize = Inst->getType()->getScalarType()->getPrimitiveSizeInBits() == 64 ? 4 : 8;
         unsigned NElems = Mask->getType()->getVectorNumElements();
         unsigned Offset = dyn_cast<ConstantInt>(Mask->getOperand(1))->getZExtValue();
-        assert(exactLog2(NElems) >= 0 && (Offset & (std::min(NElems, MinSize) - 1)) == 0 &&
+        IGC_ASSERT(exactLog2(NElems) >= 0 && (Offset & (std::min(NElems, MinSize) - 1)) == 0 &&
                "illegal offset and/or width in rdpredregion");
 #endif
       }
@@ -764,7 +765,7 @@ void GenXBaling::processRdRegion(Instruction *Inst)
  */
 void GenXBaling::processInlineAsm(Instruction *Inst) {
   auto CI = dyn_cast<CallInst>(Inst);
-  assert((CI && CI->isInlineAsm()) && "Inline Asm expected");
+  IGC_ASSERT((CI && CI->isInlineAsm()) && "Inline Asm expected");
 
   BaleInfo BI(BaleInfo::MAININST);
   for (unsigned I = 0; I < CI->getNumArgOperands(); I++)
@@ -800,7 +801,7 @@ void GenXBaling::processFuncPointer(PtrToIntInst *Inst) {
       //      \             /
       //          |select|
       //          b3=select
-      assert(Inst->hasOneUse());
+      IGC_ASSERT(Inst->hasOneUse());
       auto &DL = Inst->getModule()->getDataLayout();
       Region R(IntegerType::get(Inst->getContext(), 64), &DL);
       auto NewWrr = R.createWrRegion(
@@ -810,7 +811,7 @@ void GenXBaling::processFuncPointer(PtrToIntInst *Inst) {
     } else if (isa<BitCastInst>(U)) {
       // only bitcast -> rdregion are allowed
       // this is typical for vector selects
-      assert(Inst->hasOneUse() && U->hasOneUse() &&
+      IGC_ASSERT(Inst->hasOneUse() && U->hasOneUse() &&
              isa<CallInst>(U->user_back()) &&
              GenXIntrinsic::isRdRegion(U->user_back()));
       setBaleInfo(Inst, BI);
@@ -818,7 +819,7 @@ void GenXBaling::processFuncPointer(PtrToIntInst *Inst) {
     }
   }
 
-  assert(Inst->hasOneUse() && isa<CallInst>(Inst->use_begin()->getUser()) &&
+  IGC_ASSERT(Inst->hasOneUse() && isa<CallInst>(Inst->use_begin()->getUser()) &&
          GenXIntrinsic::isWrRegion(Inst->use_begin()->getUser()));
 
   setBaleInfo(Inst, BI);
@@ -829,7 +830,7 @@ void GenXBaling::processFuncPointer(PtrToIntInst *Inst) {
  *                       which was a result of inline assembly call with multiple outputs.
  */
 void GenXBaling::processExtractValue(ExtractValueInst *EV) {
-  assert(EV);
+  IGC_ASSERT(EV);
   if (auto CI = dyn_cast<CallInst>(EV->getAggregateOperand()))
     if (CI->isInlineAsm())
       setBaleInfo(EV, BaleInfo(BaleInfo::MAININST, 0));
@@ -959,7 +960,7 @@ bool GenXBaling::isBalableIndexOr(Value *V)
   int Offset;
   if (!getIndexOr(V, Offset))
     return false;
-  assert(Offset >=0 && "Offset in or appears to be less than zero");
+  IGC_ASSERT(Offset >=0 && "Offset in or appears to be less than zero");
   // It is a constant or. Check the constant is in range.
   return (Offset  <= G4_MAX_ADDR_IMM);
 }
@@ -1286,7 +1287,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
       }
     }
     if (Simplified) {
-      assert(isa<Constant>(Simplified) && "expecting a constant when simplifying a modifier");
+      IGC_ASSERT(isa<Constant>(Simplified) && "expecting a constant when simplifying a modifier");
       Inst->replaceAllUsesWith(Simplified);
       Inst->eraseFromParent();
       return;
@@ -1340,10 +1341,10 @@ void GenXBaling::processBranch(BranchInst *Branch)
 void GenXBaling::processTwoAddrSend(CallInst *CI)
 {
   unsigned TwoAddrOperandNum = CI->getNumArgOperands() - 1;
-  assert(GenXIntrinsicInfo(GenXIntrinsic::getAnyIntrinsicID(CI))
+  IGC_ASSERT(GenXIntrinsicInfo(GenXIntrinsic::getAnyIntrinsicID(CI))
       .getArgInfo(TwoAddrOperandNum)
       .getCategory() == GenXIntrinsicInfo::TWOADDR);
-  assert(GenXIntrinsicInfo(GenXIntrinsic::getAnyIntrinsicID(CI))
+  IGC_ASSERT(GenXIntrinsicInfo(GenXIntrinsic::getAnyIntrinsicID(CI))
       .getRetInfo()
       .getCategory() == GenXIntrinsicInfo::RAW);
   // First check the case where legalization did not need to split the rdregion
@@ -1458,7 +1459,7 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
       auto NextWr = dyn_cast<Instruction>(Wr->getOperand(0));
       Liveness->eraseLiveRange(Wr);
       Wr->eraseFromParent();
-      assert(Rd);
+      IGC_ASSERT(Rd);
       if (Rd->use_empty()) {
         Liveness->eraseLiveRange(Rd);
         Rd->eraseFromParent();
@@ -1476,7 +1477,7 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
  */
 void GenXBaling::setBaleInfo(const Instruction *Inst, genx::BaleInfo BI)
 {
-  assert(BI.Bits < 1 << Inst->getNumOperands());
+  IGC_ASSERT(BI.Bits < 1 << Inst->getNumOperands());
   InstMap[static_cast<const llvm::Value *>(Inst)] = BI;
 }
 
@@ -1555,7 +1556,7 @@ void GenXBaling::doClones()
         getAddrOperandNum(GenXIntrinsic::getGenXIntrinsicID(NC.Inst)) != (int)NC.OperandNum)
       continue;
     // Clone it.
-    assert(!isa<PHINode>(Opnd));
+    IGC_ASSERT(!isa<PHINode>(Opnd));
     Instruction *Cloned = Opnd->clone();
     Cloned->setName(Opnd->getName());
     // Change the use.
@@ -1756,7 +1757,7 @@ Instruction *GenXBaling::getBaleHead(Instruction *Inst)
  */
 void GenXBaling::buildBale(Instruction *Inst, Bale *B, bool IncludeAddr) const
 {
-  assert(!B->size());
+  IGC_ASSERT(!B->size());
   buildBaleSub(Inst, B, IncludeAddr);
 }
 
@@ -1775,14 +1776,14 @@ void GenXBaling::buildBaleSub(Instruction *Inst, Bale *B, bool IncludeAddr) cons
       // IncludeAddr: pretend that the address calculation is baled in, as long
       // as it is an instruction.
       if (auto OpndInst = dyn_cast<Instruction>(Inst->getOperand(AddrOperandNum))) {
-        assert(OpndInst->hasOneUse()); (void)OpndInst;
+        IGC_ASSERT(OpndInst->hasOneUse()); (void)OpndInst;
         BI.setOperandBaled(AddrOperandNum);
         B->front().Info = BI;
       }
     }
   }
 
-  assert(BI.Bits < (1 << Inst->getNumOperands()) || Inst->getNumOperands() > 16);
+  IGC_ASSERT(BI.Bits < (1 << Inst->getNumOperands()) || Inst->getNumOperands() > 16);
 
   while (BI.Bits) {
     unsigned Idx = genx::log2(BI.Bits);
@@ -1831,7 +1832,7 @@ int GenXBaling::getAddrOperandNum(unsigned IID) const
  */
 void GenXBaling::store(BaleInst BI)
 {
-  assert(BI.Info.Bits < 1<< BI.Inst->getNumOperands());
+  IGC_ASSERT(BI.Info.Bits < 1<< BI.Inst->getNumOperands());
   InstMap[BI.Inst] = BI.Info;
 }
 
@@ -2028,7 +2029,7 @@ bool GenXBaling::prologue(Function *F) {
         auto NewV = R.createRdRegion(Inst, "split", Inst, Inst->getDebugLoc(),
                                      /*AllowScalar*/ !V->getType()->isVectorTy());
 
-        assert(NewV->getType() == V->getType());
+        IGC_ASSERT(NewV->getType() == V->getType());
         Inst->moveBefore(NewV);
         for (auto UI = V->use_begin(); UI != V->use_end(); /*Empty*/) {
           Use &U = *UI++;
@@ -2072,7 +2073,7 @@ bool GenXBaling::prologue(Function *F) {
       // Delete Trivially dead store instructions.
       if (auto ST = dyn_cast<StoreInst>(Inst)) {
         Value *Val = ST->getValueOperand();
-        assert(Val);
+        IGC_ASSERT(Val);
         if (auto LI = dyn_cast<LoadInst>(Val)) {
           Value *Ptr = ST->getPointerOperand();
           auto GV1 = getUnderlyingGlobalVariable(Ptr);
@@ -2231,7 +2232,7 @@ void Bale::eraseFromParent()
  */
 int Bale::compare(const Bale &Other) const
 {
-  assert(Hash && Other.Hash);
+  IGC_ASSERT(Hash && Other.Hash);
   if (Hash != Other.Hash)
     return Hash < Other.Hash ? -1 : 1;
   if (size() != Other.size())
@@ -2260,7 +2261,7 @@ int Bale::compare(const Bale &Other) const
         // bother.)
         unsigned BaledInst;
         for (BaledInst = 0; Insts[BaledInst].Inst != Opnd; ++BaledInst) {
-          assert(BaledInst != size());
+          IGC_ASSERT(BaledInst != size());
         }
         if (Other.Insts[BaledInst].Inst != OtherInst->getOperand(j))
           return Other.Insts[BaledInst].Inst < OtherInst->getOperand(j) ? -1 : 1;
@@ -2298,7 +2299,7 @@ void Bale::hash()
         // bother.)
         Bale::iterator BaledInst;
         for (BaledInst = begin(); BaledInst->Inst != Opnd; ++BaledInst) {
-          assert(BaledInst != i);
+          IGC_ASSERT(BaledInst != i);
         }
         Hash = hash_combine(Hash, BaledInst - begin());
       }
@@ -2307,7 +2308,7 @@ void Bale::hash()
 }
 
 bool Bale::isGStoreBaleLegal() const {
-  assert(isGstoreBale());
+  IGC_ASSERT(isGstoreBale());
   auto ST = cast<StoreInst>(getHead()->Inst);
   if (!isGlobalStore(ST))
     return false;

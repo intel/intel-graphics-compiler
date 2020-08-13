@@ -43,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Module.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -98,7 +99,7 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
     getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
   auto FlatAddrSpace = TTI.getFlatAddressSpace();
 
-  assert(DL && "null datalayout");
+  IGC_ASSERT(DL && "null datalayout");
 #if 0
   // a good place to fix block layout
   if (LI->empty())
@@ -148,10 +149,10 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
 
 bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
                                              BasicBlock::iterator &BBI) const {
-  assert(Builder);
+  IGC_ASSERT(Builder);
   Value *PtrOp = GEP->getPointerOperand();
   PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
-  assert(PtrTy && "Only accept scalar pointer!");
+  IGC_ASSERT(PtrTy && "Only accept scalar pointer!");
 
   unsigned PtrSizeInBits = DL->getPointerSizeInBits(PtrTy->getAddressSpace());
   unsigned PtrMathSizeInBits = PtrSizeInBits;
@@ -253,7 +254,7 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
 }
 
 Value *GenXGEPLowering::getSExtOrTrunc(Value *Val, Type *NewTy) const {
-  assert(Builder);
+  IGC_ASSERT(Builder);
   Type *OldTy = Val->getType();
   unsigned OldWidth = OldTy->getIntegerBitWidth();
   unsigned NewWidth = NewTy->getIntegerBitWidth();
@@ -266,7 +267,7 @@ Value *GenXGEPLowering::getSExtOrTrunc(Value *Val, Type *NewTy) const {
 }
 
 Value *GenXGEPLowering::truncExpr(Value *Val, Type *NewTy) const {
-  assert(Builder);
+  IGC_ASSERT(Builder);
   // Truncation on Gen could be as cheap as NOP by creating proper regions.
   // Instead of truncating the value itself, truncate how it's calculated.
   if (Constant *C = dyn_cast<Constant>(Val))

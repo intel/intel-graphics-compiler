@@ -54,6 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <set>
 #include <stack>
 #include <unordered_set>
+#include "Probe/Assertion.h"
 
 using namespace pktz;
 
@@ -174,7 +175,7 @@ bool GenXPacketize::runOnModule(Module &Module) {
       uint32_t Width = 0;
       F.getFnAttribute("CMGenxSIMT").getValueAsString().getAsInteger(0, Width);
       if (Width > 1) {
-        assert(Width == 8 || Width == 16 || Width == 32);
+        IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
         ForkFuncs.push_back(&F);
       }
     }
@@ -242,7 +243,7 @@ bool GenXPacketize::runOnModule(Module &Module) {
  * vectorize a functions that is used in the fork-region
  */
 Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
-  assert(!F->hasFnAttribute("CMGenxSIMT"));
+  IGC_ASSERT(!F->hasFnAttribute("CMGenxSIMT"));
   B->SetTargetWidth(Width);
 
   // vectorize the argument and return types
@@ -263,7 +264,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
   }
   Type *RetTy = B->GetVectorType(F->getReturnType());
   // Create a new function type...
-  assert(!F->isVarArg());
+  IGC_ASSERT(!F->isVarArg());
   FunctionType *FTy = FunctionType::get(RetTy, ArgTypes, false);
 
   // Create the vector function prototype
@@ -325,7 +326,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
  * vectorize a SIMT-entry function
  */
 bool GenXPacketize::vectorizeSIMTEntry(Function &F) {
-  assert(F.hasFnAttribute("CMGenxSIMT"));
+  IGC_ASSERT(F.hasFnAttribute("CMGenxSIMT"));
 
   // find uniform instructions related to uniform arguments
   findUniformInsts(F);
@@ -705,7 +706,7 @@ static bool IsLLVMIntrinsic(Instruction *pInst) {
   if (isa<CallInst>(pInst)) {
     CallInst *call = cast<CallInst>(pInst);
     Function *f = call->getCalledFunction();
-    assert(f);
+    IGC_ASSERT(f);
     return f->isIntrinsic();
   }
   return false;
@@ -730,7 +731,7 @@ Value *GenXPacketize::packetizeLLVMIntrinsic(Instruction *pInst) {
   B->IRB()->SetInsertPoint(pInst);
   CallInst *pCall = cast<CallInst>(pInst);
   Function *f = pCall->getCalledFunction();
-  assert(f && f->isIntrinsic());
+  IGC_ASSERT(f && f->isIntrinsic());
   auto id = GenXIntrinsic::getAnyIntrinsicID(f);
 
   // packetize intrinsic operands
@@ -779,7 +780,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
       pReplacedInst = CallInst::Create(VF, ArgOps, CI->getName(), CI);
       return pReplacedInst;
     } else
-      assert(false);
+      IGC_ASSERT(false);
   }
   uint32_t opcode = pInst->getOpcode();
 
@@ -880,7 +881,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     if (pVecSrc == pSrc)
       pReplacedInst = pInst;
     else if (pVecSrc->getType()->isVectorTy()) {
-      assert(pVecSrc->getType()->getVectorElementType()->isPointerTy());
+      IGC_ASSERT(pVecSrc->getType()->getVectorElementType()->isPointerTy());
       auto Align = LI->getAlignment();
       pReplacedInst = B->MASKED_GATHER(pVecSrc, Align);
     } else {
@@ -895,7 +896,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     Value *pVecDstPtrs = getPacketizeValue(pStoreInst->getPointerOperand());
     Value *pVecSrc = getPacketizeValue(pStoreInst->getOperand(0));
     if (pVecDstPtrs->getType()->isVectorTy()) {
-      assert(pVecDstPtrs->getType()->getVectorElementType()->isPointerTy());
+      IGC_ASSERT(pVecDstPtrs->getType()->getVectorElementType()->isPointerTy());
       auto Align = cast<StoreInst>(pInst)->getAlignment();
       pReplacedInst = B->MASKED_SCATTER(pVecSrc, pVecDstPtrs, Align);
     } else {
@@ -1090,7 +1091,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       auto IID = GenXIntrinsic::getGenXIntrinsicID(Callee);
       Value *replacement = nullptr;
       // some intrinsics are uniform therefore should not get here
-      assert(!isUniformIntrinsic(IID));
+      IGC_ASSERT(!isUniformIntrinsic(IID));
       switch (IID) {
       case GenXIntrinsic::genx_line:
       case GenXIntrinsic::genx_pln:
@@ -1233,7 +1234,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_svm_gather: {
         Value *Predicate = getPacketizeValue(CI->getOperand(0));
         Value *NBlk = CI->getOperand(1);
-        assert(isa<Constant>(NBlk));
+        IGC_ASSERT(isa<Constant>(NBlk));
         Value *Addr = getPacketizeValue(CI->getOperand(2));
         Value *Src3 = getPacketizeValue(CI->getOperand(3));
         Value *Args[] = {Predicate, NBlk, Addr, Src3};
@@ -1247,7 +1248,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_svm_scatter: {
         Value *Predicate = getPacketizeValue(CI->getOperand(0));
         Value *NBlk = CI->getOperand(1);
-        assert(isa<Constant>(NBlk));
+        IGC_ASSERT(isa<Constant>(NBlk));
         Value *Addr = getPacketizeValue(CI->getOperand(2));
         Value *Src3 = getPacketizeValue(CI->getOperand(3));
         Value *Args[] = {Predicate, NBlk, Addr, Src3};
@@ -1261,9 +1262,9 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_svm_gather4_scaled: {
         Value *Predicate = getPacketizeValue(CI->getOperand(0));
         Value *ChMask = CI->getOperand(1);
-        assert(isa<Constant>(ChMask));
+        IGC_ASSERT(isa<Constant>(ChMask));
         Value *Scale = CI->getOperand(2);
-        assert(isa<Constant>(Scale));
+        IGC_ASSERT(isa<Constant>(Scale));
         Value *Addr = getUniformValue(CI->getOperand(3));
         Value *Src4 = getPacketizeValue(CI->getOperand(4));
         Value *Src5 = getPacketizeValue(CI->getOperand(5));
@@ -1278,9 +1279,9 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_svm_scatter4_scaled: {
         Value *Predicate = getPacketizeValue(CI->getOperand(0));
         Value *ChMask = CI->getOperand(1);
-        assert(isa<Constant>(ChMask));
+        IGC_ASSERT(isa<Constant>(ChMask));
         Value *Scale = CI->getOperand(2);
-        assert(isa<Constant>(Scale));
+        IGC_ASSERT(isa<Constant>(Scale));
         Value *Addr = getUniformValue(CI->getOperand(3));
         Value *Src4 = getPacketizeValue(CI->getOperand(4));
         Value *Src5 = getPacketizeValue(CI->getOperand(5));
@@ -1295,7 +1296,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       } break;
       case GenXIntrinsic::genx_gather4_typed: {
         Value *ChMask = CI->getOperand(0);
-        assert(isa<Constant>(ChMask));
+        IGC_ASSERT(isa<Constant>(ChMask));
         Value *Predicate = getPacketizeValue(CI->getOperand(1));
         Value *BTI = getUniformValue(CI->getOperand(2));
         Value *Src3 = getPacketizeValue(CI->getOperand(3));
@@ -1312,7 +1313,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       } break;
       case GenXIntrinsic::genx_scatter4_typed: {
         Value *ChMask = CI->getOperand(0);
-        assert(isa<Constant>(ChMask));
+        IGC_ASSERT(isa<Constant>(ChMask));
         Value *Predicate = getPacketizeValue(CI->getOperand(1));
         Value *BTI = getUniformValue(CI->getOperand(2));
         Value *Src3 = getPacketizeValue(CI->getOperand(3));
@@ -1331,9 +1332,9 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_scatter_scaled: {
         Value *Predicate = getPacketizeValue(CI->getOperand(0));
         Value *NBlk = CI->getOperand(1); // or channel mask for scatter4
-        assert(isa<Constant>(NBlk));
+        IGC_ASSERT(isa<Constant>(NBlk));
         Value *Scale = CI->getOperand(2);
-        assert(isa<Constant>(Scale));
+        IGC_ASSERT(isa<Constant>(Scale));
         Value *BTI = getUniformValue(CI->getOperand(3));
         Value *GOff = getUniformValue(CI->getOperand(4));
         Value *ElemOffsets = getPacketizeValue(CI->getOperand(5));
@@ -1352,9 +1353,9 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_gather_scaled: {
         Value *Predicate = getPacketizeValue(CI->getOperand(0));
         Value *NBlk = CI->getOperand(1); // or channel mask for gather4
-        assert(isa<Constant>(NBlk));
+        IGC_ASSERT(isa<Constant>(NBlk));
         Value *Scale = CI->getOperand(2);
-        assert(isa<Constant>(Scale));
+        IGC_ASSERT(isa<Constant>(Scale));
         Value *BTI = getUniformValue(CI->getOperand(3));
         Value *GOff = getUniformValue(CI->getOperand(4));
         Value *ElemOffsets = getPacketizeValue(CI->getOperand(5));
@@ -1371,9 +1372,9 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_gather4_scaled2:
       case GenXIntrinsic::genx_gather_scaled2: {
         Value *NBlk = CI->getOperand(0);
-        assert(isa<Constant>(NBlk));
+        IGC_ASSERT(isa<Constant>(NBlk));
         Value *Scale = CI->getOperand(1);
-        assert(isa<Constant>(Scale));
+        IGC_ASSERT(isa<Constant>(Scale));
         Value *BTI = getUniformValue(CI->getOperand(2));
         Value *GOff = getUniformValue(CI->getOperand(3));
         Value *ElemOffsets = getPacketizeValue(CI->getOperand(4));
@@ -1386,7 +1387,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         return replacement;
       }
       case GenXIntrinsic::genx_lane_id: {
-        assert((CI->getType()->getIntegerBitWidth() == 32) &&
+        IGC_ASSERT((CI->getType()->getIntegerBitWidth() == 32) &&
                "Expected to return 32-bit integer.");
         if (B->mVWidth == 8) {
           std::initializer_list<uint32_t> l = {0, 1, 2, 3, 4, 5, 6, 7};
@@ -1401,7 +1402,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
               16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
           replacement = B->C(l);
         } else
-          assert(false);
+          IGC_ASSERT(false);
         return replacement;
       } break;
       case GenXIntrinsic::genx_rdregionf:
@@ -1410,7 +1411,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         const DebugLoc &DL = CI->getDebugLoc();
         auto OrigV0 = CI->getOperand(0);
         CMRegion R(CI);
-        assert(R.Width == 1);
+        IGC_ASSERT(R.Width == 1);
         if (OrigV0->getType()->getVectorNumElements() == 1) {
           replacement = getPacketizeValue(OrigV0);
         } else {
@@ -1428,8 +1429,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         auto NewV0 = CI->getOperand(1);
         const DebugLoc &DL = CI->getDebugLoc();
         CMRegion R(CI);
-        assert(isa<VectorType>(NewV0->getType()));
-        assert(NewV0->getType()->getVectorNumElements() == 1);
+        IGC_ASSERT(isa<VectorType>(NewV0->getType()));
+        IGC_ASSERT(NewV0->getType()->getVectorNumElements() == 1);
         auto NewV1 = getPacketizeValue(NewV0);
         R.NumElements = B->mVWidth;
         if (R.Indirect) {

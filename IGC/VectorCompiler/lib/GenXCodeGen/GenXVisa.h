@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 #include "GenXModule.h"
+#include "Probe/Assertion.h"
 
 namespace llvm {
   namespace visa {
@@ -103,7 +104,7 @@ namespace llvm {
     }
 
     inline PreDefined_Surface getReservedSurface(int SurfaceIndex) {
-      assert(isReservedSurfaceIndex(SurfaceIndex));
+      IGC_ASSERT(isReservedSurfaceIndex(SurfaceIndex));
       switch(SurfaceIndex) {
       case RSI_Stack:
         return PreDefined_Surface::PREDEFINED_SURFACE_STACK;

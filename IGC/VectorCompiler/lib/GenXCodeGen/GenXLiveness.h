@@ -185,6 +185,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <set>
 #include <string>
 #include <vector>
+#include "Probe/Assertion.h"
 
 namespace llvm {
 
@@ -320,22 +321,22 @@ public:
   Segment() :  Strength(STRONG), Start(0), End(0) {}
   Segment(unsigned S, unsigned E, unsigned Strength = STRONG)
       : Strength(Strength) {
-    assert(E >= S);
+    IGC_ASSERT(E >= S);
     Start = S;
     End = E;
   }
   unsigned getStart() const noexcept { return Start; }
   void setStart(unsigned S) noexcept {
-    assert(End >= S);
+    IGC_ASSERT(End >= S);
     Start = S;
   }
   unsigned getEnd() const noexcept{ return End; }
   void setEnd(unsigned E) noexcept{
-    assert(E >= Start);
+    IGC_ASSERT(E >= Start);
     End = E;
   }
   void setStartEnd(unsigned S, unsigned E) noexcept{
-    assert(E >= S);
+    IGC_ASSERT(E >= S);
     Start = S;
     End = E;
   }
@@ -449,7 +450,7 @@ public:
 private:
   void value_clear() { Values.clear(); }
 #ifndef NDEBUG
-  // assertOk : assert that live range's segments are well formed
+  // assertOk : assertion tests that live range's segments are well formed
   void assertOk();
 #else
   void assertOk() {}

@@ -59,6 +59,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -179,8 +180,8 @@ bool GenXInlineAsmLowering::runOnFunction(Function &F) {
 // where this information is needed.
 MDNode *GenXInlineAsmLowering::createInlineAsmMetadata(
     CallInst *CI, const ConstraintInfoVector &ConstraintsInfo) const {
-  assert(!ConstraintsInfo.empty() && "Non empty constraints expected");
-  assert(CI->isInlineAsm() && "Inline asm expected");
+  IGC_ASSERT(!ConstraintsInfo.empty() && "Non empty constraints expected");
+  IGC_ASSERT(CI->isInlineAsm() && "Inline asm expected");
 
   Type *Int1Ty = Type::getInt1Ty(*Context);
   Type *Int32Ty = Type::getInt32Ty(*Context);
@@ -220,7 +221,7 @@ Type *GenXInlineAsmLowering::rewriteTypeForConstraintIfNeeded(
 }
 
 Type *GenXInlineAsmLowering::rewriteTypeForCR(Type *CRType) const {
-  assert(CRType->isIntOrIntVectorTy() &&
+  IGC_ASSERT(CRType->isIntOrIntVectorTy() &&
          "Expected integer inputs for 'cr' constraint");
   Type *Int1Ty = Type::getInt1Ty(*Context);
   return CRType->isVectorTy()
@@ -308,8 +309,8 @@ void GenXInlineAsmLowering::replaceInlineAsmUses(
 // truncations for inputs and zero extensions for outputs.
 CallInst *GenXInlineAsmLowering::recreateInlineAsmWithCR(
     CallInst *CI, const GenXConstraintInfoVector &ConstraintsInfo) {
-  assert(!ConstraintsInfo.empty() && "Non empty constraints expected");
-  assert(CI->isInlineAsm() && "Inline asm expected");
+  IGC_ASSERT(!ConstraintsInfo.empty() && "Non empty constraints expected");
+  IGC_ASSERT(CI->isInlineAsm() && "Inline asm expected");
 
   // If there exist 'cr' output a new result type must be constructed
   FunctionType *NewFTy =

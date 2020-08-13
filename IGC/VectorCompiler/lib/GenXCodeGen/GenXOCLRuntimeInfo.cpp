@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cctype>
 #include <functional>
 #include <iterator>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -93,7 +94,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
 
 void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
     const Function &Kernel, genx::KernelMetadata &KM) {
-  assert(Kernel.arg_size() == KM.getNumArgs() &&
+  IGC_ASSERT(Kernel.arg_size() == KM.getNumArgs() &&
          "Expected same number of arguments");
   // Some arguments are part of thread payload and do not require
   // entries in arguments info for OCL runtime.
@@ -137,7 +138,7 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(FunctionGroup &FG,
   GRFSizeInBytes = ST.getGRFWidth();
 
   genx::KernelMetadata KM{FG.getHead()};
-  assert(KM.isKernel() && "Expected kernel as head of function group");
+  IGC_ASSERT(KM.isKernel() && "Expected kernel as head of function group");
   setMetadataProperties(KM, ST);
   setArgumentProperties(*FG.getHead(), KM);
   setPrintStrings(*FG.getHead()->getParent());

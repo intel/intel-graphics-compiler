@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 
 #include "llvmWrapper/IR/InstrTypes.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -243,7 +244,7 @@ unsigned GenXNumbering::getArgIndirectionNumber(CallInst *CI, unsigned OperandNu
  */
 unsigned GenXNumbering::getKernelArgCopyNumber(Argument *Arg)
 {
-  assert(isKernel(Arg->getParent()));
+  IGC_ASSERT(isKernel(Arg->getParent()));
   return Numbers[&Arg->getParent()->front()] + 1 + Arg->getArgNo();
 }
 

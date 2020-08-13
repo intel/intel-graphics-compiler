@@ -25,15 +25,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "PacketBuilder.h"
-
 #include <cstdarg>
+#include "Probe/Assertion.h"
 
 namespace pktz
 {
     void PacketBuilder::AssertMemoryUsageParams(Value* ptr, JIT_MEM_CLIENT usage)
     {
-        assert(
-            ptr->getType() != mInt64Ty &&
+        IGC_ASSERT(ptr->getType() != mInt64Ty &&
             "Address appears to be GFX access.  Requires translation through BuilderGfxMem.");
     }
 

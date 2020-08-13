@@ -59,6 +59,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GenX.h"
 #include "IgnoreRAUWValueMap.h"
+#include "Probe/Assertion.h"
 
 namespace llvm {
   class raw_ostream;
@@ -107,9 +108,9 @@ public:
   bool isUncomputed() const { return LogAlign == 0xffffffff; }
   bool isUnknown() const { return LogAlign == 0 && ConstBits == 0x7fffffff; }
   bool isConstant() const { return !isUncomputed() && ConstBits != 0x7fffffff; }
-  unsigned getLogAlign() const { assert(!isUncomputed()); return LogAlign; }
-  unsigned getExtraBits() const { assert(!isUncomputed()); return ExtraBits; }
-  int64_t getConstBits() const { assert(isConstant()); return ConstBits; }
+  unsigned getLogAlign() const { IGC_ASSERT(!isUncomputed()); return LogAlign; }
+  unsigned getExtraBits() const { IGC_ASSERT(!isUncomputed()); return ExtraBits; }
+  int64_t getConstBits() const { IGC_ASSERT(isConstant()); return ConstBits; }
   // comparison
   bool operator==(const Alignment &Rhs) const {
     return (LogAlign == Rhs.LogAlign &&

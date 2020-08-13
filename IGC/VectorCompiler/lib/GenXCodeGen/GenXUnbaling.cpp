@@ -293,6 +293,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 
 #include <numeric>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -496,7 +497,7 @@ void GenXUnbaling::shortenLiveRanges(Function *F) {
         // Unbale and hoist
         for (User *U : ToHoist) {
           auto RdR = dyn_cast<CallInst>(U);
-          assert(RdR && GenXIntrinsic::isRdRegion(RdR));
+          IGC_ASSERT(RdR && GenXIntrinsic::isRdRegion(RdR));
           Instruction *InsertBefore = DstRegion;
           if (auto UnbaleFrom = Baling->getBaleParent(RdR)) {
             BaleInfo BI = Baling->getBaleInfo(UnbaleFrom);
@@ -512,8 +513,8 @@ void GenXUnbaling::shortenLiveRanges(Function *F) {
 }
 
 bool GenXUnbaling::interfere(Value *V1, Value *V2) {
-  assert(V1);
-  assert(V2);
+  IGC_ASSERT(V1);
+  IGC_ASSERT(V2);
 
   LiveRange *V1LR = Liveness->getLiveRangeOrNull(V1);
   LiveRange *V2LR = Liveness->getLiveRangeOrNull(V2);
@@ -789,7 +790,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
                 if (bi->Inst->getOperand(0) == *ri)
                   ++UseCount;
           }
-          assert(UseCount >= 1);
+          IGC_ASSERT(UseCount >= 1);
           if (UseCount <= 1) {
             // Did not get multiple uses. Just unbale the rdregion use.
             if (Unbale != User) {

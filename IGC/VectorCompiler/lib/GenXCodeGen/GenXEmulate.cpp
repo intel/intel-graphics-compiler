@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -160,7 +161,7 @@ Function *GenXEmulate::getEmulationFunction(Instruction *Inst) {
   if (Iter != EmulationFuns.end())
     return Iter->second;
 
-  assert(ST && "subtarget expected");
+  IGC_ASSERT(ST && "subtarget expected");
   StringRef EmuFnName = ST->getEmulateFunction(Inst);
   if (EmuFnName.empty())
     return nullptr;
@@ -184,7 +185,7 @@ Function *GenXEmulate::getEmulationFunction(Instruction *Inst) {
 Value *GenXEmulate::emulateInst(Instruction *Inst) {
   Function *EmuFn = getEmulationFunction(Inst);
   if (EmuFn) {
-    assert(!isa<CallInst>(Inst) && "call emulation not supported yet");
+    IGC_ASSERT(!isa<CallInst>(Inst) && "call emulation not supported yet");
     llvm::IRBuilder<> Builder(Inst);
     SmallVector<Value *, 8> Args(Inst->operands());
     return Builder.CreateCall(EmuFn, Args);

@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/SmallVector.h"
 
 #include <queue>
+#include "Probe/Assertion.h"
 
 #define MAX_ALLOCA_PROMOTE_GRF_NUM 96
 
@@ -242,8 +243,8 @@ bool TransformPrivMem::replaceAggregatedStore(StoreInst *StI) {
   auto *ST = dyn_cast<StructType>(ValueOpTy);
   auto *AT = dyn_cast<ArrayType>(ValueOpTy);
 
-  assert(StI->isSimple());
-  assert(AT || ST);
+  IGC_ASSERT(StI->isSimple());
+  IGC_ASSERT(AT || ST);
 
   uint64_t Count = ST ? ST->getNumElements() : AT->getNumElements();
   if (Count == 1) {
@@ -345,7 +346,7 @@ static Type *GetBaseType(Type *pType, Type *pBaseType) {
     } else if (pType->isVectorTy()) {
       pType = pType->getVectorElementType();
     } else {
-      assert(0);
+      IGC_ASSERT(0);
     }
   }
   if (pType->isPointerTy() && pType->getPointerElementType()->isFunctionTy())
@@ -386,7 +387,7 @@ static bool CheckAllocaUsesInternal(Instruction *I) {
           GetBaseType(pBitCast->getType()->getPointerElementType(), nullptr);
       Type *sourceType = GetBaseType(
           pBitCast->getOperand(0)->getType()->getPointerElementType(), nullptr);
-      assert(sourceType);
+      IGC_ASSERT(sourceType);
       // either the point-to-element-type is the same or 
       // the point-to-element-type is the byte or a function pointer
       if (baseT != nullptr &&
@@ -531,7 +532,7 @@ void TransposeHelper::HandleAllocaSources(Instruction *v, Value *idx) {
           GetBaseType(bitcast->getType()->getPointerElementType(), nullptr);
       Type *sourceType = GetBaseType(
           bitcast->getOperand(0)->getType()->getPointerElementType(), nullptr);
-      assert(baseT && sourceType);
+      IGC_ASSERT(baseT && sourceType);
       // either the point-to-element-type is the same or
       // the point-to-element-type is the byte
       if (baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
@@ -539,7 +540,7 @@ void TransposeHelper::HandleAllocaSources(Instruction *v, Value *idx) {
       else if (baseT->isPointerTy() && baseT->getPointerElementType()->isFunctionTy())
         HandleAllocaSources(bitcast, idx);
       else {
-        assert(baseT->getScalarSizeInBits() == 8);
+        IGC_ASSERT(baseT->getScalarSizeInBits() == 8);
         IRBuilder<> IRB(bitcast);
         auto ElementSize =
             sourceType->getScalarSizeInBits() / baseT->getScalarSizeInBits();
@@ -582,7 +583,7 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *GEP,
   m_toBeRemoved.push_back(GEP);
   Value *PtrOp = GEP->getPointerOperand();
   PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
-  assert(PtrTy && "Only accept scalar pointer!");
+  IGC_ASSERT(PtrTy && "Only accept scalar pointer!");
   int IdxWidth = 1;
   for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI) {
     Value * Idx = *OI;
@@ -592,7 +593,7 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *GEP,
         if (IdxWidth <= 1)
           IdxWidth = Width;
         else
-          assert(IdxWidth == Width && "GEP has inconsistent vector-index width");
+          IGC_ASSERT(IdxWidth == Width && "GEP has inconsistent vector-index width");
       }
     }
   }
@@ -636,7 +637,7 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *GEP,
         Value * NewIdx = nullptr;
         auto ElementSize = m_pDL->getTypeAllocSize(Ty) / m_baseTypeAllocSize;
         if (Idx->getType()->isVectorTy()) {
-          assert(Idx->getType()->getVectorNumElements() == IdxWidth);
+          IGC_ASSERT(Idx->getType()->getVectorNumElements() == IdxWidth);
           NewIdx = IRB.CreateZExtOrTrunc(Idx, pScalarizedIdx->getType());
           NewIdx = IRB.CreateMul(NewIdx,
             ConstantVector::getSplat(IdxWidth, IRB.getInt32(ElementSize)));
@@ -655,7 +656,7 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *GEP,
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
   }
   else if (idx->getType()->isVectorTy()) {
-    assert(idx->getType()->getVectorNumElements() == IdxWidth);
+    IGC_ASSERT(idx->getType()->getVectorNumElements() == IdxWidth);
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
   }
   else {
@@ -683,7 +684,7 @@ void TransposeHelper::handlePHINode(PHINode *pPhi, Value *idx,
 
 void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad,
                                             Value *pScalarizedIdx) {
-  assert(pLoad->isSimple());
+  IGC_ASSERT(pLoad->isSimple());
   IRBuilder<> IRB(pLoad);
   Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
   auto LdTy = pLoad->getType()->getScalarType();
@@ -695,8 +696,8 @@ void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad,
   // do the type-casting if necessary
   if (VETy != LdTy && !IsFuncPointer) {
     auto VLen = pLoadVecAlloca->getType()->getVectorNumElements();
-    assert(VETy->getScalarSizeInBits() >= LdTy->getScalarSizeInBits());
-    assert((VETy->getScalarSizeInBits() % LdTy->getScalarSizeInBits()) == 0);
+    IGC_ASSERT(VETy->getScalarSizeInBits() >= LdTy->getScalarSizeInBits());
+    IGC_ASSERT((VETy->getScalarSizeInBits() % LdTy->getScalarSizeInBits()) == 0);
     VLen = VLen * (VETy->getScalarSizeInBits() / LdTy->getScalarSizeInBits());
     ReadIn = IRB.CreateBitCast(ReadIn, VectorType::get(LdTy, VLen));
   }
@@ -751,7 +752,7 @@ void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad,
 void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore,
                                              llvm::Value *pScalarizedIdx) {
   // Add Store instruction to remove list
-  assert(pStore->isSimple());
+  IGC_ASSERT(pStore->isSimple());
   IRBuilder<> IRB(pStore);
   llvm::Value *pStoreVal = pStore->getValueOperand();
   llvm::Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
@@ -766,14 +767,14 @@ void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore,
         pStoreVal->getType()->getPointerElementType()->isFunctionTy()));
   if (VETy != StTy && !IsFuncPointerStore) {
     auto VLen = pLoadVecAlloca->getType()->getVectorNumElements();
-    assert(VETy->getScalarSizeInBits() >= StTy->getScalarSizeInBits());
-    assert((VETy->getScalarSizeInBits() % StTy->getScalarSizeInBits()) == 0);
+    IGC_ASSERT(VETy->getScalarSizeInBits() >= StTy->getScalarSizeInBits());
+    IGC_ASSERT((VETy->getScalarSizeInBits() % StTy->getScalarSizeInBits()) == 0);
     VLen = VLen * (VETy->getScalarSizeInBits() / StTy->getScalarSizeInBits());
     WriteOut = IRB.CreateBitCast(WriteOut, VectorType::get(StTy, VLen));
   }
   if (IsFuncPointerStore) {
     auto *NewStoreVal = pStoreVal;
-    assert(pVecAlloca->getType()
+    IGC_ASSERT(pVecAlloca->getType()
                ->getPointerElementType()
                ->getVectorElementType()
                ->isIntegerTy(64));
@@ -820,7 +821,7 @@ void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore,
 void TransposeHelperPromote::handlePrivateGather(IntrinsicInst *pInst,
                                           Value *pScalarizedIdx) {
   IRBuilder<> IRB(pInst);
-  assert(pInst->getType()->isVectorTy());
+  IGC_ASSERT(pInst->getType()->isVectorTy());
   Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
   auto N = pInst->getType()->getVectorNumElements();
   auto ElemType = pInst->getType()->getVectorElementType();
@@ -840,7 +841,7 @@ void TransposeHelperPromote::handlePrivateGather(IntrinsicInst *pInst,
       dyn_cast<PointerType>(pInst->getArgOperand(1)->getType());
   // pScalarizedIdx is an indice of element, so
   // count byte offset depending on the type of pointer in gather
-  assert(GatherPtrTy);
+  IGC_ASSERT(GatherPtrTy);
   unsigned GatherPtrNumBytes =
       GatherPtrTy->getElementType()->getPrimitiveSizeInBits() / 8;
   if (CI != nullptr &&
@@ -899,7 +900,7 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
   llvm::Value *pStoreVal = pInst->getArgOperand(3);
   llvm::Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
   if (pStoreVal->getType()->isVectorTy() == false) {
-    assert(false);
+    IGC_ASSERT(false);
     return;
   }
   auto N = pStoreVal->getType()->getVectorNumElements();
@@ -920,7 +921,7 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
 	  dyn_cast<PointerType>(pInst->getArgOperand(1)->getType());
   // pScalarizedIdx is an indice of element, so
   // count byte offset depending on the type of pointer in scatter
-  assert(ScatterPtrTy);
+  IGC_ASSERT(ScatterPtrTy);
   unsigned ScatterPtrNumBytes =
       ScatterPtrTy->getElementType()->getPrimitiveSizeInBits() / 8;
   if (CI != nullptr && IsLinearVectorConstantInts(pInst->getArgOperand(2), v0, diff)) {
@@ -962,7 +963,7 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
 void TransposeHelperPromote::handleLLVMGather(IntrinsicInst *pInst,
   Value *pScalarizedIdx) {
   IRBuilder<> IRB(pInst);
-  assert(pInst->getType()->isVectorTy());
+  IGC_ASSERT(pInst->getType()->isVectorTy());
   Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
   auto N = pInst->getType()->getVectorNumElements();
   auto ElemType = pInst->getType()->getVectorElementType();
@@ -1030,7 +1031,7 @@ void TransposeHelperPromote::handleLLVMScatter(llvm::IntrinsicInst *pInst,
   llvm::Value *pStoreVal = pInst->getArgOperand(3);
   llvm::Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
   if (pStoreVal->getType()->isVectorTy() == false) {
-    assert(false);
+    IGC_ASSERT(false);
     return;
   }
   auto N = pStoreVal->getType()->getVectorNumElements();

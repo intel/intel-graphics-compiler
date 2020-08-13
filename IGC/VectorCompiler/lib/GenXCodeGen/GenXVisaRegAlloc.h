@@ -64,6 +64,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <string>
 #include <vector>
+#include "Probe/Assertion.h"
 
 namespace llvm {
 
@@ -113,12 +114,12 @@ namespace llvm {
           : Category(Category), Num(Num), AliasTo(AliasTo), Signed(Signed),
             Ty(Ty), Alignment(LogAlignment) {
         static const char* Prefix[] = { "ERR", "V", "A", "P", "S", "T", "VME" };
-        assert(Category && Category < genx::RegCategory::NUMREALCATEGORIES);
+        IGC_ASSERT(Category && Category < genx::RegCategory::NUMREALCATEGORIES);
         NameStr = Prefix[Category] + std::to_string(Num);
       }
 
       // Get VISA variable assigned to register.
-      // Template T is just cast for return Type. Normally, we need to assert
+      // Template T is just cast for return Type. Normally, we need to do an assertion test
       // here that required Var type is equal of real type in GenVar.
       template<class T>
       T* GetVar(VISAKernel* F) {
@@ -172,12 +173,12 @@ namespace llvm {
     std::list<Reg>& getRegStorage() {
       return RegStorage;
     }
-    // Get the vISA virtual register for a value (assert if none)
+    // Get the vISA virtual register for a value (assertion failure if none).
     Reg* getRegForValue(const Function *kernel, genx::SimpleValue V,
         genx::Signedness Signed = genx::DONTCARESIGNED, Type *OverrideType = 0)
     {
       Reg* R = getRegForValueOrNull(kernel, V, Signed, OverrideType);
-      assert(R && "no register allocated for this value");
+      IGC_ASSERT(R && "no register allocated for this value");
       return R;
     }
     // Get the vISA virtual register for a value or nullptr if there is no

@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/Local.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -116,10 +117,10 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
   // Do promotions. This is a tree rewrite, with candidates as root,
   // comparisions or constants as leaf nodes.
   for (auto Inst : Candidates) {
-    assert(Inst->hasOneUse());
+    IGC_ASSERT(Inst->hasOneUse());
     Instruction *UI = Inst->user_back();
     Value *V = rewriteTree(Inst);
-    assert(isa<Instruction>(V));
+    IGC_ASSERT(isa<Instruction>(V));
     auto TI = TruncInst::Create(CastInst::Trunc, V, Inst->getType());
     TI->insertAfter(cast<Instruction>(V));
     TI->setDebugLoc(Inst->getDebugLoc());

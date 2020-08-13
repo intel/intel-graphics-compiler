@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GENXINTRINSICS_H
 #include "GenX.h"
 #include "GenXVisa.h"
+#include "Probe/Assertion.h"
 
 #define GENX_ITR_CATVAL(v) ((v) << CATBASE)
 #define GENX_ITR_FLAGENUM(o, v) ((v) << ((o) + FLAGBASE))
@@ -224,7 +225,7 @@ public:
       return false;
     }
     bool rawNullAllowed() {
-      assert(isRaw());
+      IGC_ASSERT(isRaw());
       return Info & RAW_NULLALLOWED;
     }
     // isArgOrRet : test whether this field has an arg index
@@ -244,12 +245,12 @@ public:
     }
     // getArgCountMin : return minimum number of arguments
     int getArgCountMin() {
-      assert(getCategory() == ARGCOUNT);
+      IGC_ASSERT(getCategory() == ARGCOUNT);
       return (Info & ARGCOUNTMASK) >> FLAGBASE;
     }
     // getArgIdx : return argument index for this field, or -1 for return value
     //  (assuming isArgOrRet())
-    int getArgIdx() { assert(isArgOrRet()); return (Info & OPNDMASK) - 1; }
+    int getArgIdx() { IGC_ASSERT(isArgOrRet()); return (Info & OPNDMASK) - 1; }
     // getLiteral : for a LITERAL or EXECSIZE field, return the literal value
     unsigned getLiteral() { return Info & LITMASK; }
     // isRet : test whether this is the field for the return value
@@ -265,7 +266,7 @@ public:
     // isImmediateDisallowed : test whether immediate disallowed
     //  (assuming isArgOrRet())
     bool isImmediateDisallowed() {
-      assert(isArgOrRet());
+      IGC_ASSERT(isArgOrRet());
       if (isGeneral())
         return Info & NOIMM;
       if (isRaw())
@@ -283,7 +284,7 @@ public:
     }
     // getModifier : get what source modifier is allowed
     unsigned getModifier() {
-      assert(isGeneral() && isArgOrRet() && !isRet());
+      IGC_ASSERT(isGeneral() && isArgOrRet() && !isRet());
       return Info & MODIFIER;
     }
   };
@@ -297,7 +298,7 @@ public:
     bool operator!=(iterator i) { return p != i.p; }
   };
   iterator begin() {
-    assert(isNotNull() && "iterating an intrinsic without info");
+    IGC_ASSERT(isNotNull() && "iterating an intrinsic without info");
     return iterator(Args);
   }
   iterator end() { return iterator(0); }

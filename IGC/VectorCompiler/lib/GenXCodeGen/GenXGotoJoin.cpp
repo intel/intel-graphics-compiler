@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/ADT/SetVector.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -131,7 +132,7 @@ CallInst *GotoJoin::findJoin(CallInst *Goto)
  */
 bool GotoJoin::isValidJoin(CallInst *Join)
 {
-  assert(GenXIntrinsic::getGenXIntrinsicID(Join) == GenXIntrinsic::genx_simdcf_join);
+  IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(Join) == GenXIntrinsic::genx_simdcf_join);
   auto BB = Join->getParent();
   // If this block has a goto/join predecessor of which it is "true" successor,
   // check that this block starts with a join -- not necessarily the join we
@@ -305,9 +306,9 @@ Instruction *GotoJoin::getLegalInsertionPoint(Instruction *InsertBefore,
   auto *InsertBB = InsertBefore->getParent();
   while (isBranchingJoinLabelBlock(InsertBB)) {
     auto Node = DomTree->getNode(InsertBB);
-    assert(Node);
+    IGC_ASSERT(Node);
     auto IDom = Node->getIDom();
-    assert(IDom);
+    IGC_ASSERT(IDom);
     InsertBB = IDom->getBlock();
     InsertPoint = InsertBB->getTerminator();
   }

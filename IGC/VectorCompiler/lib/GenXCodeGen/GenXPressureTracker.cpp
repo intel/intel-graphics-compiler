@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXLiveness.h"
 #include "GenXRegion.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -101,14 +102,14 @@ void PressureTracker::decreasePressure(LiveRange *LR) {
 
 #if _DEBUG
   auto I = std::find(WidenCandidates.begin(), WidenCandidates.end(), LR);
-  assert(I != WidenCandidates.end());
+  IGC_ASSERT(I != WidenCandidates.end());
 #endif
 
   unsigned Bytes = getSizeInBytes(LR, /*AllowWidening*/ false);
   for (auto SI = LR->begin(), SE = LR->end(); SI != SE; ++SI) {
     for (unsigned i = SI->getStart(); i != SI->getEnd(); ++i) {
-      assert(i < Pressure.size());
-      assert(Pressure[i] >= Bytes);
+      IGC_ASSERT(i < Pressure.size());
+      IGC_ASSERT(Pressure[i] >= Bytes);
       Pressure[i] -= Bytes;
     }
   }

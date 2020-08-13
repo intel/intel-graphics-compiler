@@ -133,6 +133,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <iterator>
 #include <numeric>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -282,7 +283,7 @@ bool GenXLowering::processTwoAddressOpnd(CallInst *CI) {
   // Skip write regions whose OpNum is 0.
   if (OpNum > 0) {
     Type *Ty = CI->getArgOperand(OpNum)->getType();
-    assert(Ty == CI->getType() && "two address op type out of sync");
+    IGC_ASSERT(Ty == CI->getType() && "two address op type out of sync");
 
     for (unsigned i = 0; i < CI->getNumArgOperands(); ++i) {
       auto Op = dyn_cast<Constant>(CI->getArgOperand(i));
@@ -318,7 +319,7 @@ static bool isNewLoadInst(CallInst *Inst) {
 // Find single wrregion user of load instruction.
 // Returns nullptr on failure.
 static CallInst *getLoadWrregion(CallInst *Inst) {
-  assert(isNewLoadInst(Inst) && "Expected new load intrinsics");
+  IGC_ASSERT(isNewLoadInst(Inst) && "Expected new load intrinsics");
   if (Inst->getNumUses() != 1)
     return nullptr;
 
@@ -332,7 +333,7 @@ static CallInst *getLoadWrregion(CallInst *Inst) {
 // Returns nullptr on failure.
 // TODO: maybe just lower every select to wrregion in lowerSelect?
 static SelectInst *getLoadSelect(CallInst *Inst) {
-  assert(isNewLoadInst(Inst) && "Expected new load intrinsics");
+  IGC_ASSERT(isNewLoadInst(Inst) && "Expected new load intrinsics");
   if (Inst->getNumUses() != 1)
     return nullptr;
 
@@ -749,9 +750,9 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   unsigned TargetWidth = IsTyped ? 8 : 16;
   if (Width <= TargetWidth)
     return false;
-  assert((Width % TargetWidth) == 0);
+  IGC_ASSERT((Width % TargetWidth) == 0);
   auto NumSplits = Width / TargetWidth;
-  assert(NumSplits == 2 || NumSplits == 4);
+  IGC_ASSERT(NumSplits == 2 || NumSplits == 4);
   unsigned NumChannels = 1;
   if (MaskIdx != NONEED) {
     NumChannels = (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))
@@ -901,8 +902,8 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
         NewResult = WrR.createWrRegion(NewResult, Gather, "join", CI, DL);
       }
     } else {
-      assert(CI->use_empty());
-      assert(DataIdx != NONEED);
+      IGC_ASSERT(CI->use_empty());
+      IGC_ASSERT(DataIdx != NONEED);
       // Create the target-wide scatter instructions.
       Type *Tys[] = {Args[PredIdx]->getType(), Args[AddrIdx]->getType(),
                      Args[DataIdx]->getType()};
@@ -974,7 +975,7 @@ bool GenXLowering::processInst(Instruction *Inst) {
     unsigned IntrinsicID = GenXIntrinsic::not_any_intrinsic;
     if (Function *Callee = CI->getCalledFunction()) {
       IntrinsicID = GenXIntrinsic::getAnyIntrinsicID(Callee);
-      assert(CI->getNumArgOperands() < GenXIntrinsicInfo::OPNDMASK);
+      IGC_ASSERT(CI->getNumArgOperands() < GenXIntrinsicInfo::OPNDMASK);
     }
        // split gather/scatter/atomic into the width legal to the target
     if (splitGatherScatter(CI, IntrinsicID))
@@ -1231,7 +1232,7 @@ bool GenXLowering::lowerInsertElement(Instruction *Inst) {
   // worry about what the original vector is (usually undef) since it will be
   // overwritten or undef
   VectorType *VT = dyn_cast<VectorType>(Inst->getType());
-  assert(VT);
+  IGC_ASSERT(VT);
   unsigned NumElements = VT->getNumElements();
   const DebugLoc &DL = Inst->getDebugLoc();
   if (NumElements == 1) {
@@ -1420,7 +1421,7 @@ bool GenXLowering::lowerTrunc(Instruction *Inst) {
     return true;
   }
 
-  assert(OutElementTy->getPrimitiveSizeInBits());
+  IGC_ASSERT(OutElementTy->getPrimitiveSizeInBits());
   unsigned Stride = InElementTy->getPrimitiveSizeInBits() /
                     OutElementTy->getPrimitiveSizeInBits();
   // Create the new bitcast.
@@ -1466,7 +1467,7 @@ bool GenXLowering::lowerCast(Instruction *Inst) {
       OneVal = 1;
       break;
     default:
-      assert(0 && "unknown opcode in lowerCast");
+      IGC_ASSERT(0 && "unknown opcode in lowerCast");
     }
 
     Instruction *NewInst;
@@ -1496,7 +1497,7 @@ bool GenXLowering::lowerCast(Instruction *Inst) {
  *          if we can bale into resulting wrr later
  */
 bool GenXLowering::lowerSelect(SelectInst *SI) {
-  assert(SI);
+  IGC_ASSERT(SI);
 
   if (!isa<VectorType>(SI->getOperand(0)->getType()))
     return false; // scalar selector
@@ -1976,7 +1977,7 @@ void GenXLowering::lowerShuffleToMove(ShuffleVectorInst *SI) {
                        MaskVals.end())) {
     int Idx = It - MaskVals.begin();
     auto OpRegion = Analyzer.getMaskRegionPrefix(Idx);
-    assert(OpRegion.R.NumElements > 0 &&
+    IGC_ASSERT(OpRegion.R.NumElements > 0 &&
            "should've match at least 1 element region");
     Region WrRegion(SI);
     WrRegion.Offset = Idx * WrRegion.ElementBytes;
@@ -2438,7 +2439,7 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
     return false;
 
   // For UNO and UEQ we have replacement in lowerFCmpInst.
-  assert(Pred != CmpInst::FCMP_UNO && Pred != CmpInst::FCMP_UEQ);
+  IGC_ASSERT(Pred != CmpInst::FCMP_UNO && Pred != CmpInst::FCMP_UEQ);
 
   CmpInst *InverseFCmp = CmpInst::Create(
       Inst->getOpcode(), CmpInst::getInversePredicate(Pred),
@@ -3012,7 +3013,7 @@ bool LoadStoreResolver::emitScatter() {
 //
 static unsigned getBlockCount(Type *Ty) {
   unsigned NumBytes = Ty->getPrimitiveSizeInBits() / 8;
-  assert(NumBytes <= 8 && "out of sync");
+  IGC_ASSERT(NumBytes <= 8 && "out of sync");
 
   // If this is N = 2 byte data, use 2 blocks;
   // otherwise, use 1 block of N bytes.

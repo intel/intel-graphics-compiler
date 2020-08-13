@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "PacketBuilder.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -74,7 +75,7 @@ namespace pktz
         }
         else
         {
-            assert(sizeof(uint32_t*) == 8);
+            IGC_ASSERT(sizeof(uint32_t*) == 8);
             mIntPtrTy       = mInt64Ty;
             mSimd16IntPtrTy = mSimd16Int64Ty;
         }
@@ -99,7 +100,7 @@ namespace pktz
         }
         else
         {
-          assert(sizeof(uint32_t*) == 8);
+          IGC_ASSERT(sizeof(uint32_t*) == 8);
           mSimdIntPtrTy = mSimdInt64Ty;
         }
     }
@@ -108,7 +109,7 @@ namespace pktz
     void PacketBuilder::SetTempAlloca(Value* inst)
     {
         AllocaInst* pAlloca = dyn_cast<AllocaInst>(inst);
-        assert(pAlloca && "Unexpected non-alloca instruction");
+        IGC_ASSERT(pAlloca && "Unexpected non-alloca instruction");
         MDNode* N = MDNode::get(getContext(), MDString::get(getContext(), "is_temp_alloca"));
         pAlloca->setMetadata("is_temp_alloca", N);
     }
@@ -116,7 +117,7 @@ namespace pktz
     bool PacketBuilder::IsTempAlloca(Value* inst)
     {
         AllocaInst* pAlloca = dyn_cast<AllocaInst>(inst);
-        assert(pAlloca && "Unexpected non-alloca instruction");
+        IGC_ASSERT(pAlloca && "Unexpected non-alloca instruction");
 
         return (pAlloca->getMetadata("is_temp_alloca") != nullptr);
     }

@@ -46,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -239,7 +240,7 @@ void GenXVisaRegAlloc::extraCoalescing()
         for (auto ui = Inst->use_begin(), ue = Inst->use_end();
             ui != ue && !UseInNonAluIntrinsic; ++ui) {
           auto user = dyn_cast<Instruction>(ui->getUser());
-          assert(user);
+          IGC_ASSERT(user);
           if (user->getType()->isVoidTy()) {
             UseInNonAluIntrinsic = true;
             break;
@@ -328,10 +329,10 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   if (auto GV = dyn_cast<GlobalVariable>(V.getValue()))
     if (GV->hasAttribute(genx::FunctionMD::GenXVolatile))
       Ty = Ty->getPointerElementType();
-  assert(!Ty->isVoidTy());
+  IGC_ASSERT(!Ty->isVoidTy());
   if (LR->Category == RegCategory::PREDICATE) {
     VectorType *VT = dyn_cast<VectorType>(Ty);
-    assert((!VT || genx::exactLog2(VT->getNumElements()) >= 0) &&
+    IGC_ASSERT((!VT || genx::exactLog2(VT->getNumElements()) >= 0) &&
            "invalid predicate width");
     (void)VT;
   }
@@ -344,11 +345,11 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
        vi != ve; ++vi) {
     for (auto &F : LR->Funcs) {
       if (FGA->getGroup(F) == FG) {
-        assert(RegMap.count(F) > 0);
+        IGC_ASSERT(RegMap.count(F) > 0);
         LLVM_DEBUG(dbgs() << "Allocating reg " << NewReg->Num << " for "
                           << *(vi->getValue()) << " in func " << F->getName()
                           << "\n");
-        assert(RegMap.at(F).find(*vi) == RegMap.at(F).end());
+        IGC_ASSERT(RegMap.at(F).find(*vi) == RegMap.at(F).end());
         RegMap.at(F)[*vi] = NewReg;
       }
     }
@@ -377,8 +378,8 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *k
       return nullptr;
     auto CI = cast<CallInst>(V.getValue());
     unsigned Id = cast<ConstantInt>(CI->getArgOperand(0))->getZExtValue();
-    assert(Id < 4 && "Invalid predefined surface ID!");
-    assert(PredefinedSurfaceRegs.size() == VISA_NUM_RESERVED_SURFACES &&
+    IGC_ASSERT(Id < 4 && "Invalid predefined surface ID!");
+    IGC_ASSERT(PredefinedSurfaceRegs.size() == VISA_NUM_RESERVED_SURFACES &&
         "Predefined surface registers have not been initialized");
     return PredefinedSurfaceRegs[Id];
   }
@@ -498,7 +499,7 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed)
     else
       report_fatal_error("unsupported pointer type size");
   } else {
-    assert(ElementTy->isDoubleTy());
+    IGC_ASSERT(ElementTy->isDoubleTy());
     VisaType = ISA_TYPE_DF;
     BytesPerElement = 8;
   }
@@ -536,7 +537,7 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const Module *M) const
     LiveRange *LR = i->LR;
     SimpleValue SV = *LR->value_begin();
     Reg* RN = getRegForValueUntyped(&(*(M->begin())), SV);
-    assert(RN);
+    IGC_ASSERT(RN);
     OS << "[";
     RN->print(OS);
     Type *ElTy = IndexFlattener::getElementType(SV.getValue()->getType(),

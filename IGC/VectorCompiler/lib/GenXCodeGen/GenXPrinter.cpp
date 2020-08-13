@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/raw_ostream.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -143,7 +144,7 @@ static void printFunction(raw_ostream &OS, Function &F, GenXBaling *Baling,
               auto BaseReg = RA->getRegForValueUntyped(&F, SimpleValue(Inst, i));
               if (BaseReg != Reg) {
                 OS << "{";
-                assert(BaseReg);
+                IGC_ASSERT(BaseReg);
                 BaseReg->print(OS);
                 OS << "}";
               }

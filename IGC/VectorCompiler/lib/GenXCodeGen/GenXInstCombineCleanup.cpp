@@ -46,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Instructions.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -82,7 +83,7 @@ void GenXInstCombineCleanup::getAnalysisUsage(AnalysisUsage &AU) const
 }
 
 bool typeMustBeChanged(Type *Ty) {
-  assert(Ty);
+  IGC_ASSERT(Ty);
   if (!Ty->isIntegerTy())
     return false;
   unsigned Size = Ty->getPrimitiveSizeInBits();
@@ -113,7 +114,7 @@ bool GenXInstCombineCleanup::runOnFunction(Function &F)
       continue;
 
     unsigned CondSize = CondTy->getPrimitiveSizeInBits();
-    assert(CondSize != genx::BoolBits &&
+    IGC_ASSERT(CondSize != genx::BoolBits &&
            "CondSize == 1 is not expected here. See typeMustBeChanged");
     // Round up to the next power of 2 skipping i2 and i4 (i3 -> i8, i2 -> i8,
     // etc)

@@ -68,6 +68,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/Local.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -174,7 +175,7 @@ static bool lowerTrunc(TruncInst *Inst) {
     NumElements = VT->getNumElements();
   }
   unsigned OutBitSize = OutElementTy->getPrimitiveSizeInBits();
-  assert(OutBitSize);
+  IGC_ASSERT(OutBitSize);
   // Do not touch truncations to i1 or vector of i1 types.
   if (OutBitSize == 1)
     return false;
@@ -205,7 +206,7 @@ static bool lowerTrunc(TruncInst *Inst) {
 void GenXRegionCollapsing::runOnBasicBlock(BasicBlock *BB) {
   // Code simplification in block first.
   for (auto BI = BB->begin(), E = --BB->end(); BI != E;) {
-    assert(!BI->isTerminator());
+    IGC_ASSERT(!BI->isTerminator());
     Instruction *Inst = &*BI++;
     if (Inst->use_empty())
       continue;
@@ -349,7 +350,7 @@ static Value *createBitCastToElementType(Value *Input, Type *ElementTy,
                                          const DebugLoc &DbgLoc) {
   unsigned ElBytes = ElementTy->getPrimitiveSizeInBits() / 8U;
   if (!ElBytes) {
-    assert(ElementTy->isPointerTy() && ElementTy->getPointerElementType()->isFunctionTy());
+    IGC_ASSERT(ElementTy->isPointerTy() && ElementTy->getPointerElementType()->isFunctionTy());
     ElBytes = DL->getTypeSizeInBits(ElementTy) / 8;
   }
   unsigned InputBytes = Input->getType()->getPrimitiveSizeInBits() / 8U;
@@ -357,10 +358,10 @@ static Value *createBitCastToElementType(Value *Input, Type *ElementTy,
     Type *T = Input->getType();
     if (T->isVectorTy())
       T = T->getVectorElementType();
-    assert(T->isPointerTy() && T->getPointerElementType()->isFunctionTy());
+    IGC_ASSERT(T->isPointerTy() && T->getPointerElementType()->isFunctionTy());
     InputBytes = DL->getTypeSizeInBits(T) / 8;
   }
-  assert(!(InputBytes & (ElBytes - 1)) && "non-integral number of elements");
+  IGC_ASSERT(!(InputBytes & (ElBytes - 1)) && "non-integral number of elements");
   auto Ty = VectorType::get(ElementTy, InputBytes / ElBytes);
   return createBitCast(Input, Ty, Name, InsertBefore, DbgLoc);
 }
@@ -431,7 +432,7 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC)
     return;
 
   // skip call above shall check for RdRegion among other things
-  assert(Rd && GenXIntrinsic::isRdRegion(Rd));
+  IGC_ASSERT(Rd && GenXIntrinsic::isRdRegion(Rd));
 
   // We have a single use rdregion as the input to the bitcast.
   // Adjust the region parameters if possible so the element type is that of
@@ -451,7 +452,7 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC)
     return;
 
   // Create the new bitcast.
-  assert(ElTy->getPrimitiveSizeInBits());
+  IGC_ASSERT(ElTy->getPrimitiveSizeInBits());
   auto Input = Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
   auto NewBCTy = VectorType::get(ElTy,
       Input->getType()->getPrimitiveSizeInBits() / ElTy->getPrimitiveSizeInBits());
@@ -717,7 +718,7 @@ void GenXRegionCollapsing::processWrRegionElim(Instruction *OuterWr)
     return;
   // Only perform this optimisation if the only use is with outer - otherwise
   // this seems to make the code spill more
-  assert(InnerWr);
+  IGC_ASSERT(InnerWr);
   if (!InnerWr->hasOneUse())
     return;
   Region InnerR(InnerWr, BaleInfo(), /*WantParentWidth=*/true);
@@ -752,7 +753,7 @@ void GenXRegionCollapsing::processWrRegionElim(Instruction *OuterWr)
  */
 Instruction *GenXRegionCollapsing::processWrRegionBitCast(Instruction *WrRegion)
 {
-  assert(GenXIntrinsic::isWrRegion(WrRegion));
+  IGC_ASSERT(GenXIntrinsic::isWrRegion(WrRegion));
   if (auto BC = dyn_cast<BitCastInst>(WrRegion->getOperand(
           GenXIntrinsic::GenXRegion::NewValueOperandNum))) {
     if (BC->getType()->getScalarType()
@@ -831,7 +832,7 @@ static bool hasMemoryDeps(CallInst *L1, CallInst *L2, Value *Addr,
     BasicBlock::iterator I = L1->getParent()->begin();
     for (; &*I != L1 && &*I != L2; ++I)
       /*empty*/;
-    assert(&*I == L1 || &*I == L2);
+    IGC_ASSERT(&*I == L1 || &*I == L2);
     auto IEnd = (&*I == L1) ? L2->getIterator() : L1->getIterator();
     return std::any_of(I->getIterator(), IEnd, isKill);
   }
@@ -892,7 +893,7 @@ static bool hasMemoryDeps(CallInst *L1, CallInst *L2, Value *Addr,
 
 // Check whether two values are bitwise identical.
 static bool isBitwiseIdentical(Value *V1, Value *V2, DominatorTree *DT) {
-  assert(V1 && V2 && "null value");
+  IGC_ASSERT(V1 && V2 && "null value");
   if (V1 == V2)
     return true;
   if (BitCastInst *BI = dyn_cast<BitCastInst>(V1))
@@ -953,7 +954,7 @@ static bool isBitwiseIdentical(Value *V1, Value *V2, DominatorTree *DT) {
  */
 Instruction *GenXRegionCollapsing::processWrRegion(Instruction *OuterWr)
 {
-  assert(OuterWr);
+  IGC_ASSERT(OuterWr);
   // Find the inner wrregion, skipping bitcasts.
   auto InnerWr = dyn_cast<Instruction>(
       OuterWr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
@@ -966,13 +967,13 @@ Instruction *GenXRegionCollapsing::processWrRegion(Instruction *OuterWr)
   // Now process this one.
   // Find the associated rdregion of the outer region, skipping bitcasts,
   // and check it has the right region parameters.
-  assert(InnerWr);
+  IGC_ASSERT(InnerWr);
   auto OuterRd = dyn_cast<Instruction>(InnerWr->getOperand(0));
   while (OuterRd && isa<BitCastInst>(OuterRd))
     OuterRd = dyn_cast<Instruction>(OuterRd->getOperand(0));
   if (!GenXIntrinsic::isRdRegion(OuterRd))
     return OuterWr;
-  assert(OuterRd);
+  IGC_ASSERT(OuterRd);
   if (!isBitwiseIdentical(OuterRd->getOperand(0), OuterWr->getOperand(0), DT))
     return OuterWr;
   Region InnerR = Region::getWithOffset(InnerWr, /*WantParentWidth=*/true);
@@ -1049,7 +1050,7 @@ Instruction *GenXRegionCollapsing::processWrRegion(Instruction *OuterWr)
  */
 Instruction *GenXRegionCollapsing::processWrRegionSplat(Instruction *OuterWr)
 {
-  assert(OuterWr);
+  IGC_ASSERT(OuterWr);
   // Find the inner wrregion, skipping bitcasts.
   auto InnerWr = dyn_cast<Instruction>(
       OuterWr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));

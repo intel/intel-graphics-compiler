@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "genx-constantfolding"
 
@@ -83,7 +84,7 @@ static Constant *constantFoldRdRegion(Type *RetTy,
     return nullptr;
   int RetElemSize = RetTy->getScalarType()->getPrimitiveSizeInBits() / 8;
   if (!RetElemSize) {
-    assert(RetTy->getScalarType()->isPointerTy() &&
+    IGC_ASSERT(RetTy->getScalarType()->isPointerTy() &&
            RetTy->getScalarType()->getPointerElementType()->isFunctionTy());
     RetElemSize = DL->getTypeSizeInBits(RetTy) / 8;
   }
@@ -91,7 +92,7 @@ static Constant *constantFoldRdRegion(Type *RetTy,
   if (!isa<VectorType>(OffsetC->getType()))
     Offset = dyn_cast<ConstantInt>(OffsetC)->getZExtValue() / RetElemSize;
   else
-    assert(OffsetC->getType()->getVectorNumElements() == R.NumElements);
+    IGC_ASSERT(OffsetC->getType()->getVectorNumElements() == R.NumElements);
   if (Offset >= WholeNumElements)
     return UndefValue::get(RetTy); // out of range index
   if (!isa<VectorType>(RetTy))
@@ -137,14 +138,14 @@ static Constant *constantFoldWrRegion(Type *RetTy,
   // CallAnalyzer.
   if (isa<ConstantExpr>(OldValue) || isa<ConstantExpr>(NewValue))
     return nullptr;
-  assert(RetTy == OldValue->getType());
+  IGC_ASSERT(RetTy == OldValue->getType());
   auto OffsetC =
       dyn_cast<ConstantInt>(Operands[GenXIntrinsic::GenXRegion::WrIndexOperandNum]);
   if (!OffsetC)
     return nullptr; // allow for but do not const fold when index is vector
   int RetElemSize = RetTy->getScalarType()->getPrimitiveSizeInBits() / 8;
   if (!RetElemSize) {
-    assert(RetTy->getScalarType()->isPointerTy() &&
+    IGC_ASSERT(RetTy->getScalarType()->isPointerTy() &&
            RetTy->getScalarType()->getPointerElementType()->isFunctionTy());
     RetElemSize = DL->getTypeSizeInBits(RetTy) / 8;
   }

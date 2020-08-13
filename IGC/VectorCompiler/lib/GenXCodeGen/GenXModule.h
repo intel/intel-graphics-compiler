@@ -67,6 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <string>
 #include <vector>
+#include "Probe/Assertion.h"
 
 class VISABuilder;
 class VISAKernel;
@@ -91,7 +92,7 @@ namespace llvm {
       unsigned size() { return V.size(); }
       void write(raw_pwrite_stream &Out);
       void setData(unsigned Offset, const void *Data, unsigned Size) {
-        assert(Offset + Size <= size());
+        IGC_ASSERT(Offset + Size <= size());
         std::copy_n((const unsigned char *)Data, Size, V.begin() + Offset);
       }
     };
@@ -170,7 +171,7 @@ namespace llvm {
 
     // Save and retrieve VISAKernels for given function.
     void saveVisaKernel(const Function *F, VISAKernel *Kernel) {
-      assert(VisaKernelMap.count(F) == 0 && "Attempt to save kernel twice");
+      IGC_ASSERT(VisaKernelMap.count(F) == 0 && "Attempt to save kernel twice");
       VisaKernelMap[F] = Kernel;
     }
     // Valid only on GenXFinalizer stage until visa builder destructors called.

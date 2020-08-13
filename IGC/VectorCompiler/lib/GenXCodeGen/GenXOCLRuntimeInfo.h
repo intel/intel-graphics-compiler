@@ -38,7 +38,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "JitterDataStruct.h"
 #include "RelocationInfo.h"
 
-#include <cassert>
 #include <map>
 
 namespace llvm {

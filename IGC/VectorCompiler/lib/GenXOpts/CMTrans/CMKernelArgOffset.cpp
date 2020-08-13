@@ -91,6 +91,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -169,7 +170,7 @@ private:
 
   // Check whether there is an input/output argument attribute.
   void checkArgKinds(Function *F) {
-    assert(KM && KM->isKernel());
+    IGC_ASSERT(KM && KM->isKernel());
     for (unsigned i = 0, e = KM->getNumArgs(); i != e; ++i) {
       auto IOKind = KM->getArgInputOutputKind(i);
       // If there is input/output attribute, compiler will not freely reorder
@@ -187,14 +188,14 @@ private:
   // Update offset MD node
   void updateOffsetMD(MDNode *KernelMD,
                       SmallDenseMap<Argument *, unsigned> &PlacedArgs) {
-    assert(KM);
+    IGC_ASSERT(KM);
     Function *F = dyn_cast_or_null<Function>(
         getValue(KernelMD->getOperand(genx::KernelMDOp::FunctionRef)));
-    assert(F && "nullptr kernel");
+    IGC_ASSERT(F && "nullptr kernel");
 
     // All arguments now have offsets. Update the metadata node containing the
     // offsets.
-    assert(F->arg_size() == KM->getNumArgs() &&
+    IGC_ASSERT(F->arg_size() == KM->getNumArgs() &&
            "Mismatch between metadata for kernel and number of args");
     SmallVector<Metadata *, 8> ArgOffsets;
     auto I32Ty = Type::getInt32Ty(F->getContext());
@@ -373,7 +374,7 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
           break;
       }
 
-      assert(zi != ze &&
+      IGC_ASSERT(zi != ze &&
              "unable to allocate argument offset (too many arguments?)");
 
       // Exclude the found block from the free zones list. This may require
@@ -484,7 +485,7 @@ void DiagnosticInfoCMKernelArgOffset::emit(Instruction *Inst, StringRef Msg,
 }
 
 void CMKernelArgOffset::processKernelOnOCLRT(MDNode *Node, Function *F) {
-  assert(KM);
+  IGC_ASSERT(KM);
   // Assign BTI values.
   {
     unsigned Idx = 0;
@@ -494,15 +495,15 @@ void CMKernelArgOffset::processKernelOnOCLRT(MDNode *Node, Function *F) {
       if (*Kind == genx::KernelMetadata::AK_SAMPLER ||
           *Kind == genx::KernelMetadata::AK_SURFACE) {
         int32_t BTI = KM->getBTI(Idx);
-        assert(BTI >= 0 && "unassigned BTI");
+        IGC_ASSERT(BTI >= 0 && "unassigned BTI");
 
         Type *ArgTy = Arg.getType();
         if (ArgTy->isPointerTy()) {
           SmallVector<Instruction *, 8> ToErase;
 
-          assert(Arg.hasOneUse() && "invalid surface input");
+          IGC_ASSERT(Arg.hasOneUse() && "invalid surface input");
           auto ArgUse = Arg.use_begin()->getUser();
-          assert(isa<PtrToIntInst>(ArgUse) && "invalid surface input usage");
+          IGC_ASSERT(isa<PtrToIntInst>(ArgUse) && "invalid surface input usage");
           ToErase.push_back(cast<Instruction>(ArgUse));
 
           for (auto ui = ArgUse->use_begin(), ue = ArgUse->use_end(); ui != ue;

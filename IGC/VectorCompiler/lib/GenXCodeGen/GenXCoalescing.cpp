@@ -207,6 +207,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 #include <algorithm>
 #include <vector>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -546,7 +547,7 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
                 // anything here.
                 //
                 // it may also be baled into a g_store.
-                // assert(Baling->getBaleInfo(CI).isOperandBaled(OperandNum) &&
+                // IGC_ASSERT(Baling->getBaleInfo(CI).isOperandBaled(OperandNum) &&
                 // "expecting rdregion to be baled in to the two addr operand");
                 continue;
               }
@@ -556,8 +557,8 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
             }
           }
         } else if (isa<BitCastInst>(Inst) || isa<AddrSpaceCastInst>(Inst)) {
-          assert(!isa<StructType>(Inst->getType()) && "not expecting bitcast to struct");
-          assert(!isa<StructType>(Inst->getOperand(0)->getType()) && "not expecting bitcast from struct");
+          IGC_ASSERT(!isa<StructType>(Inst->getType()) && "not expecting bitcast to struct");
+          IGC_ASSERT(!isa<StructType>(Inst->getOperand(0)->getType()) && "not expecting bitcast from struct");
           // The source and destination of a bitcast can copy coalesce,
           // but only if it is not the case that the source is a phi and
           // the destination has a use in a phi node in the same block and
@@ -792,7 +793,7 @@ void GenXCoalescing::recordCandidate(SimpleValue Dest, Use *UseInDest,
 {
   if (UseInDest && isa<UndefValue>(*UseInDest))
     return;
-  assert(!UseInDest || !isa<Constant>(*UseInDest));
+  IGC_ASSERT(!UseInDest || !isa<Constant>(*UseInDest));
   Candidates->push_back(Candidate(Dest, UseInDest, SourceIndex, Priority,
         Candidates->size()));
 }
@@ -841,9 +842,9 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
   // Source should not be a constant (but could be undef) because
   // GenXLowering ensured that all our two address operands and phi incomings
   // are not constant.
-  assert(!Cand->UseInDest || !isa<Constant>(Source.getValue()) || isa<UndefValue>(Source.getValue()));
+  IGC_ASSERT(!Cand->UseInDest || !isa<Constant>(Source.getValue()) || isa<UndefValue>(Source.getValue()));
   SourceLR = Liveness->getLiveRange(Source);
-  assert(DestLR);
+  IGC_ASSERT(DestLR);
   if (SourceLR == DestLR)
     return; // already coalesced
   if (SourceLR && SourceLR->Category == DestLR->Category) {
@@ -1052,7 +1053,7 @@ void GenXCoalescing::analysePhiCopies(PHINode *Phi,
     // constant.
     if (isa<UndefValue>(Incoming))
       continue; // undef, no copy needed
-    assert(!isa<Constant>(Incoming));
+    IGC_ASSERT(!isa<Constant>(Incoming));
     if (Liveness->getLiveRange(Incoming) == DestLR)
       continue; // coalesced, no copy needed
     // A phi copy is needed
@@ -1073,10 +1074,10 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
   Value *Incoming = Phi->getIncomingValue(Inc);
   auto *IncomingBlock = Phi->getIncomingBlock(Inc);
   // Should be checked in analysePhiCopies
-  assert(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES &&
+  IGC_ASSERT(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES &&
          "Should be checked earlier!");
-  assert(!isa<UndefValue>(Incoming) && "Should be checked earlier!");
-  assert(!isa<Constant>(Incoming) && "Should be checked earlier!");
+  IGC_ASSERT(!isa<UndefValue>(Incoming) && "Should be checked earlier!");
+  IGC_ASSERT(!isa<Constant>(Incoming) && "Should be checked earlier!");
   // Check it again: something could change
   if (Liveness->getLiveRange(Incoming) == DestLR) {
     LLVM_DEBUG(dbgs() << "Already coalesced " << Incoming->getName() << " -> "
@@ -1105,7 +1106,7 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
   if (auto *I = dyn_cast<Instruction>(Incoming)) {
     // This should not happen for good BBs (not join blocks)
     // if DFG is correct.
-    assert(DomTree->dominates(I->getParent(), InsertPoint->getParent()) &&
+    IGC_ASSERT(DomTree->dominates(I->getParent(), InsertPoint->getParent()) &&
            "Dominance corrupted!");
   }
 
@@ -1129,14 +1130,14 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
   Value *Incoming = Phi->getIncomingValue(Inc);
   auto *IncomingBlock = Phi->getIncomingBlock(Inc);
   // Should be checked in analysePhiCopies
-  assert(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES &&
+  IGC_ASSERT(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES &&
          "Should be checked earlier!");
-  assert(!isa<UndefValue>(Incoming) && "Should be checked earlier!");
-  assert(!isa<Constant>(Incoming) && "Should be checked earlier!");
+  IGC_ASSERT(!isa<UndefValue>(Incoming) && "Should be checked earlier!");
+  IGC_ASSERT(!isa<Constant>(Incoming) && "Should be checked earlier!");
   // Should be checked in processPhiCopy
-  assert(Liveness->getLiveRange(Incoming) != DestLR &&
+  IGC_ASSERT(Liveness->getLiveRange(Incoming) != DestLR &&
          "Should be checked earlier!");
-  assert(GotoJoin::isBranchingJoinLabelBlock(IncomingBlock) &&
+  IGC_ASSERT(GotoJoin::isBranchingJoinLabelBlock(IncomingBlock) &&
          "Should be checked earlier!");
 
   LLVM_DEBUG(dbgs() << "Handling branching join label block case\n");
@@ -1159,7 +1160,7 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
     // This situation is detected via corrupted dominance.
     if (!DomTree->dominates(PhiPred->getParent(), InsertPoint->getParent())) {
       auto *PhiCopy = copyNonCoalescedPhi(PhiPred, Phi);
-      assert(PhiCopy && "Invalid phi copy!");
+      IGC_ASSERT(PhiCopy && "Invalid phi copy!");
       Phis.push_back(PhiCopy);
       return;
     }
@@ -1172,7 +1173,7 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
     // For join block, def must be somewhere before it
     // because of SIMD CF Conformance. Case for Phi is
     // described and handled above.
-    assert(DomTree->dominates(I->getParent(), InsertPoint->getParent()) &&
+    IGC_ASSERT(DomTree->dominates(I->getParent(), InsertPoint->getParent()) &&
            "Dominance corrupted!");
   }
 
@@ -1254,7 +1255,7 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
           for (unsigned StructIdx = 0,
                         se = IndexFlattener::getNumElements(Arg->getType());
                StructIdx != se; ++StructIdx) {
-            assert(!StructIdx &&
+            IGC_ASSERT(!StructIdx &&
                    "coalesce failure on struct call arg not tested");
             auto FuncArgSV = SimpleValue(Arg, StructIdx);
             auto CallArgSV = SimpleValue(CallArg, StructIdx);
@@ -1327,7 +1328,7 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
           auto SourceLR = Liveness->getLiveRange(UnifiedSV);
           if (DestLR == SourceLR)
             continue; // coalesced
-          assert(SourceLR);
+          IGC_ASSERT(SourceLR);
           if (SourceLR->getCategory() >= RegCategory::NUMREALCATEGORIES)
             continue; // Unified return value is EM, ignore.
           // Remove (the element of) CI, the actual return value, from its
@@ -1343,7 +1344,7 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
           Instruction *NewCopy =
               insertCopy(SimpleValue(CI, StructIdx), DestLR, InsertBefore,
                          "retval.postcopy", Num);
-          assert(NewCopy);
+          IGC_ASSERT(NewCopy);
           if (AllUsesAreExtract) {
             // For a struct ret value where all the uses are non-struct
             // extractvalue, replace uses of the extractvalues with NewCopy.
@@ -1561,7 +1562,7 @@ void GenXCoalescing::coalesceCallables() {
       CI->getContext().diagnose(Err);
     }
     Function *F = CI->getParent()->getParent();
-    assert(isKernel(F));
+    IGC_ASSERT(isKernel(F));
     KernelMetadata KM(F);
     unsigned Idx = 0; // kernel argument index
     unsigned i = 0;   // call argument index
@@ -1617,7 +1618,7 @@ void GenXCoalescing::coalesceGlobalLoads(FunctionGroup *FG) {
     std::set<Instruction *> LoadsInGroup;
     for (auto UI : GV.users()) {
       if (auto LI = dyn_cast<LoadInst>(UI)) {
-        assert(LI->getPointerOperand() == &GV);
+        IGC_ASSERT(LI->getPointerOperand() == &GV);
         auto Fn = LI->getParent()->getParent();
         // Check this load is inside the group.
         if (std::find(FG->begin(), FG->end(), Fn) != FG->end())
@@ -1660,7 +1661,7 @@ void GenXCoalescing::coalesceGlobalLoads(FunctionGroup *FG) {
 Instruction *GenXCoalescing::insertCopy(SimpleValue Input, LiveRange *LR,
     Instruction *InsertBefore, StringRef Name, unsigned Number)
 {
-  assert(!isa<Constant>(Input.getValue()));
+  IGC_ASSERT(!isa<Constant>(Input.getValue()));
   if (auto ST = dyn_cast<StructType>(Input.getValue()->getType())) {
     // Input is a struct element. First extract it. This
     // extract is created coalesced by adding it to the live
@@ -1671,7 +1672,7 @@ Instruction *GenXCoalescing::insertCopy(SimpleValue Input, LiveRange *LR,
     Instruction *Extract = ExtractValueInst::Create(Input.getValue(), Indices,
         "twoaddr.extract", InsertBefore);
     auto SourceLR = Liveness->getLiveRange(Input);
-    assert(SourceLR);
+    IGC_ASSERT(SourceLR);
     Liveness->setLiveRange(SimpleValue(Extract), SourceLR);
     Input = SimpleValue(Extract);
   }

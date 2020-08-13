@@ -80,6 +80,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <string>
 #include <vector>
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -321,7 +322,7 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
       bool Enabled = Feature.consume_front("+");
       if (!Enabled) {
         bool Disabled = Feature.consume_front("-");
-        assert(Disabled && "unexpected feature format");
+        IGC_ASSERT(Disabled && "unexpected feature format");
       }
       Features.AddFeature(Feature.str(), Enabled);
     }
@@ -347,7 +348,7 @@ createTargetMachine(const vc::CompileOptions &Opts, Triple &TheTriple) {
   std::string Error;
   const Target *TheTarget =
       TargetRegistry::lookupTarget(TheTriple.getArchName(), TheTriple, Error);
-  assert(TheTarget && "vc target was not registered");
+  IGC_ASSERT(TheTarget && "vc target was not registered");
 
   const std::string FeaturesStr = getSubtargetFeatureString(Opts);
   // These ones do not look useful for now. Maybe will be adjusted
@@ -437,7 +438,7 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
   auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
   bool AddPasses =
       TM.addPassesToEmitFile(PM, OS, nullptr, FileType, /*NoVerify*/ true);
-  assert(!AddPasses && "Bad filetype for vc-codegen");
+  IGC_ASSERT(!AddPasses && "Bad filetype for vc-codegen");
 }
 
 static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,

@@ -50,6 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Pass.h"
 
 #include <list>
+#include "Probe/Assertion.h"
 
 namespace llvm {
 
@@ -86,7 +87,7 @@ public:
   size_t size() { return Functions.size(); }
   // accessors
   Function *getHead() {
-    assert(size());
+    IGC_ASSERT(size());
     return *begin();
   }
   StringRef getName() { return getHead()->getName(); }

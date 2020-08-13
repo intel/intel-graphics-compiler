@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
+#include "Probe/Assertion.h"
 
 namespace llvm {
 namespace genx {
@@ -216,7 +217,7 @@ public:
   // from first and last elements of mask. This function decomposes
   // replicated slice to its parameters.
   ReplicatedSlice getReplicatedSliceDescriptor() const {
-    assert(isReplicatedSlice() && "Expected replicated slice");
+    IGC_ASSERT(isReplicatedSlice() && "Expected replicated slice");
     const unsigned TotalSize = SI->getType()->getVectorNumElements();
     const unsigned SliceStart = SI->getMaskValue(0);
     const unsigned SliceEnd = SI->getMaskValue(TotalSize - 1);
@@ -422,8 +423,8 @@ template <
         int>::type = 0>
 CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst, ConstIter FirstType,
                                        ConstIter LastType) {
-  assert(Inst && "wrong argument");
-  assert(std::all_of(FirstType, LastType,
+  IGC_ASSERT(Inst && "wrong argument");
+  IGC_ASSERT(std::all_of(FirstType, LastType,
                      [Inst](Type *Ty) {
                        return Ty == Inst->getType() ||
                               Ty == getCorrespondingVectorOrScalar(

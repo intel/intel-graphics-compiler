@@ -139,6 +139,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -860,7 +861,7 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
       continue;
     }
     Superbale *SB = &Superbales[Inst];
-    assert(SB->Bales.empty());
+    IGC_ASSERT(SB->Bales.empty());
     if (!fillSuperbale(SB, Inst, IsFlag))
       continue;
     // Check whether the sink of this SB will cross its operands' two-addr
@@ -985,7 +986,7 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
       if (i->Benefit <= 0 || i->SB == nullptr)
         break;
       bool status = sink(InsertBefore, i->SB);
-      assert(status);
+      IGC_ASSERT(status);
       (void)status;
     }
   }
@@ -1074,7 +1075,7 @@ bool GenXDepressurizer::sink(Instruction *InsertBefore, Superbale *SB,
       LLVM_DEBUG(dbgs() << "  rejecting: less than CurNumber " << CurNumber << '\n');
       // This code was originally designed to cope with some uses not being
       // dominated by the sink site by cloning the superbale. But this gives an
-      // assert on frc_iteration6_4x8_ipa. So I am disabling the cloning
+      // assertion test on frc_iteration6_4x8_ipa. So I am disabling the cloning
       // functionality for now by rejecting the whole sink unless all uses are
       // dominated by the sink site. This also gives a few minor code size
       // improvements in examples too.
@@ -1086,7 +1087,7 @@ bool GenXDepressurizer::sink(Instruction *InsertBefore, Superbale *SB,
     return false;
   // Do the sinking.
   BasicBlock *DefBB = sinkOnce(InsertBefore, SB, UsesDominatedByHere);
-  assert(DefBB == InsertBefore->getParent());
+  IGC_ASSERT(DefBB == InsertBefore->getParent());
   (void)DefBB;
   // We need to modify liveness at the current point.
   modifyLiveness(Live, SB);
@@ -1125,7 +1126,7 @@ BasicBlock *GenXDepressurizer::sinkOnce(Instruction *InsertBefore,
   // Insert after the current instruction.
   BasicBlock *InsertBB = InsertBefore->getParent();
   unsigned InsertNum = InstNumbers[InsertBefore];
-  assert(InsertNum != 0);
+  IGC_ASSERT(InsertNum != 0);
   LLVM_DEBUG(dbgs() << "InsertBefore: " << InsertBefore->getName() << '\n');
   // Remove this group of uses from the superbale.
   auto Undef = UndefValue::get(SB->getHead()->getType());
@@ -1568,7 +1569,7 @@ void PseudoCFG::compute(Function *F, DominatorTree *DT,
   for (unsigned i = 0, e = Backedges.size(); i != e; ++i) {
     BasicBlock *BB = Backedges[i];
     auto BBNode = getNode(BB);
-    assert(BBNode->Succs.size() == 1 &&
+    IGC_ASSERT(BBNode->Succs.size() == 1 &&
            "expecting backedge to have one successor "
            "as we have split critical edges");
     BasicBlock *Header = BBNode->Succs[0];
@@ -1577,7 +1578,7 @@ void PseudoCFG::compute(Function *F, DominatorTree *DT,
     getNode(Header)->removePred(BB);
     Loop *L = LI->getLoopFor(Header);
     SmallVector<BasicBlock *, 4> ExitBlocks;
-    assert(L);
+    IGC_ASSERT(L);
     L->getExitBlocks(ExitBlocks);
     for (unsigned j = 0, je = ExitBlocks.size(); j != je; ++j) {
       BasicBlock *Exit = ExitBlocks[j];

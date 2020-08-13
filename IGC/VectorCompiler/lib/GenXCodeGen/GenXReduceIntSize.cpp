@@ -80,6 +80,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 
 using namespace llvm;
@@ -401,7 +402,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
     NewInst->takeName(Inst);
     NewVal = NewInst;
   }
-  assert(NewVal);
+  IGC_ASSERT(NewVal);
   // NewVal is the replacement for Inst with a smaller int size.
   LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewVal: " << *NewVal << "\n");
   // Replace the uses of Inst, which we know are all things that
@@ -443,7 +444,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
         if (ThisTruncBits != TruncBits) {
           // Need to trunc or extend our new instruction's result to match
           // the result of the "and".
-          assert(ThisNewVal);
+          IGC_ASSERT(ThisNewVal);
           auto NewCast = CastInst::Create(
               ThisTruncBits > TruncBits ? Instruction::ZExt : Instruction::Trunc,
               ThisNewVal, user->getType(), "", user);
@@ -460,7 +461,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
       }
       break;
     default:
-      assert(0 && "unexpected use");
+      IGC_ASSERT(0 && "unexpected use");
       break;
     }
   }

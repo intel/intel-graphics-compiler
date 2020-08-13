@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 namespace {
 
@@ -157,7 +158,7 @@ SmallVectorImpl<Instruction *> *KillAnalysis::getKills(Value *V)
         // Push predecessors onto stack.
         for (auto bui = BB->use_begin(), bue = BB->use_end(); bui != bue; ++bui) {
 	      Instruction *Inst = cast<Instruction>(bui->getUser());
-          assert(Inst && Inst->isTerminator() && "cannot cope with computed goto");
+          IGC_ASSERT(Inst && Inst->isTerminator() && "cannot cope with computed goto");
           Stack.push_back(Inst->getParent());
         }
       }

@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -437,7 +438,7 @@ void VectorDecomposer::setNotDecomposing(Instruction *Inst, const char *Text)
   }
   if (!Inst)
     Inst = NotDecomposingReportInst;
-  assert(Inst);
+  IGC_ASSERT(Inst);
   if (Inst->getDebugLoc())
     Inst = Inst->getParent()->getFirstNonPHI();
   reportLocation(Inst->getContext(), Inst->getDebugLoc(), dbgs());
@@ -500,7 +501,7 @@ void VectorDecomposer::decompose()
       while (!Phi->use_empty())
         decomposeTree(&*Phi->use_begin(), Parts);
     } else {
-      assert (GenXIntrinsic::isWrRegion(Inst) && isa<Constant>(Inst->getOperand(0)));
+      IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst) && isa<Constant>(Inst->getOperand(0)));
       decomposeTree(&Inst->getOperandUse(0), nullptr);
     }
   }
@@ -536,7 +537,7 @@ void VectorDecomposer::decomposeTree(Use *U,
     decomposePhiIncoming(Phi, U->getOperandNo(), PartsIn);
     return;
   }
-  assert(!U->getOperandNo());
+  IGC_ASSERT(!U->getOperandNo());
   if (GenXIntrinsic::isRdRegion(Inst)) {
     decomposeRdRegion(Inst, PartsIn);
     return;
@@ -555,7 +556,7 @@ void VectorDecomposer::decomposeTree(Use *U,
     return;
   }
   // Handle wrregion.
-  assert(GenXIntrinsic::isWrRegion(Inst));
+  IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst));
   decomposeWrRegion(Inst, &Parts);
 }
 
@@ -634,7 +635,7 @@ void VectorDecomposer::decomposeRdRegion(Instruction *RdRegion,
       /*AllowScalar=*/!isa<VectorType>(RdRegion->getType()));
   NewRdRegion->takeName(RdRegion);
   RdRegion->replaceAllUsesWith(NewRdRegion);
-  assert(Seen.find(RdRegion) == Seen.end());
+  IGC_ASSERT(Seen.find(RdRegion) == Seen.end());
   eraseInst(RdRegion);
 }
 
@@ -929,7 +930,7 @@ template <typename T> bool isGlobalVarOperand(const Value *V) {
 
 bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
   auto SI = dyn_cast<SelectInst>(Inst);
-  assert(SI && "select expected");
+  IGC_ASSERT(SI && "select expected");
   VectorType *Ty = dyn_cast<VectorType>(SI->getCondition()->getType());
   if (!Ty)
     return false;
@@ -1032,8 +1033,8 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
   }
 #if _DEBUG
   unsigned NumParts = (NumElts + Width - 1) / Width;
-  assert(NumParts == Decomposition.size());
-  assert(NumParts == Offsets.size());
+  IGC_ASSERT(NumParts == Decomposition.size());
+  IGC_ASSERT(NumParts == Offsets.size());
 #endif
 
   return true;
@@ -1061,7 +1062,7 @@ void SelectDecomposer::decompose(Instruction *Inst) {
   else if (isa<CmpInst>(Inst))
     decomposeCmp(Inst);
   else {
-    assert(Inst->getOpcode() == Instruction::And ||
+    IGC_ASSERT(Inst->getOpcode() == Instruction::And ||
            Inst->getOpcode() == Instruction::Or ||
            Inst->getOpcode() == Instruction::Xor);
     decomposeBinOp(Inst);
@@ -1148,7 +1149,7 @@ Value *SelectDecomposer::getPart(Value *Whole, unsigned PartIndex,
                                  Instruction *Inst) const {
   auto I = DMap.find(Whole);
   if (I != DMap.end()) {
-    assert(I->second.size() > PartIndex);
+    IGC_ASSERT(I->second.size() > PartIndex);
     return I->second[PartIndex];
   }
 
@@ -1157,7 +1158,7 @@ Value *SelectDecomposer::getPart(Value *Whole, unsigned PartIndex,
 
   if (Whole->getType()->getScalarType()->isIntegerTy(1)) {
     auto C = dyn_cast<Constant>(Whole);
-    assert(C && "constant expected");
+    IGC_ASSERT(C && "constant expected");
     if (Constant *V = C->getSplatValue())
       return ConstantVector::getSplat(NumElts, V);
     SmallVector<Constant *, 8> Values;

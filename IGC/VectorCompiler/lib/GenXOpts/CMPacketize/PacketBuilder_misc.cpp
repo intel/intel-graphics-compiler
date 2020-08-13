@@ -24,8 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "PacketBuilder.h"
-
-//#include <cstdarg>
+#include "Probe/Assertion.h"
 
 namespace pktz
 {
@@ -139,14 +138,14 @@ namespace pktz
 
     uint32_t PacketBuilder::IMMED(Value* v)
     {
-        assert(isa<ConstantInt>(v));
+        IGC_ASSERT(isa<ConstantInt>(v));
         ConstantInt* pValConst = cast<ConstantInt>(v);
         return pValConst->getZExtValue();
     }
 
     int32_t PacketBuilder::S_IMMED(Value* v)
     {
-        assert(isa<ConstantInt>(v));
+        IGC_ASSERT(isa<ConstantInt>(v));
         ConstantInt* pValConst = cast<ConstantInt>(v);
         return pValConst->getSExtValue();
     }
@@ -237,7 +236,7 @@ namespace pktz
     /// @brief Convert <Nxi1> llvm mask to integer
     Value* PacketBuilder::VMOVMSK(Value* mask)
     {
-        assert(mask->getType()->getVectorElementType() == mInt1Ty);
+        IGC_ASSERT(mask->getType()->getVectorElementType() == mInt1Ty);
         uint32_t numLanes = mask->getType()->getVectorNumElements();
         Value*   i32Result;
         if (numLanes == 8)
@@ -250,7 +249,7 @@ namespace pktz
         }
         else
         {
-            assert("Unsupported vector width");
+            IGC_ASSERT(0 && "Unsupported vector width");
             i32Result = BITCAST(mask, mInt8Ty);
         }
         return Z_EXT(i32Result, mInt32Ty);
@@ -268,7 +267,7 @@ namespace pktz
     {
         Value* res;
         Constant* cB = dyn_cast<Constant>(b);
-        assert(cB);
+        IGC_ASSERT(cB);
         // number of 8 bit elements in b
         uint32_t numElms = cast<VectorType>(cB->getType())->getNumElements();
         // output vector
@@ -497,7 +496,7 @@ namespace pktz
             return 8;
         }
 
-        assert(false && "Unimplemented type.");
+        IGC_ASSERT(false && "Unimplemented type.");
         return 0;
     }
 }

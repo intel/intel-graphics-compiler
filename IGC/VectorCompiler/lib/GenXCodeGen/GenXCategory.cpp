@@ -161,6 +161,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Metadata.h"
 #include "llvm/PassAnalysisSupport.h"
 #include "llvm/Support/Debug.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -266,7 +267,7 @@ namespace {
 
   private:
     void validate() const {
-      assert((ShiftedMask_ % 2 == 1 || CurCat_ == RegCategory::NUMCATEGORIES) &&
+      IGC_ASSERT((ShiftedMask_ % 2 == 1 || CurCat_ == RegCategory::NUMCATEGORIES) &&
              "invalid state");
     }
   };
@@ -331,7 +332,7 @@ namespace {
     // When there's no real category uses (real is anything but NONE)
     // behavior is undefined.
     unsigned getMostUsedCat() const {
-      assert(!empty() && !allHaveCat(RegCategory::NONE) &&
+      IGC_ASSERT(!empty() && !allHaveCat(RegCategory::NONE) &&
              "works only for cases when there are uses with real categories");
       return MostUsedCat_;
     }
@@ -346,7 +347,7 @@ namespace {
       Conv->insertAfter(Inst);
       Conv->setDebugLoc(Inst->getDebugLoc());
     } else {
-      assert(isa<Argument>(Def) && "must be an argument if not an instruction");
+      IGC_ASSERT(isa<Argument>(Def) && "must be an argument if not an instruction");
       // Original value is a function argument. Insert at the start of the
       // function.
       Conv->insertBefore(&*Func->begin()->begin());
@@ -433,7 +434,7 @@ bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG)
       if (!processValue(NoCategory[i]))
         NoCategory2.push_back(NoCategory[i]);
     }
-    assert(NoCategory2.size() < NoCategory.size() && "not making any progess");
+    IGC_ASSERT(NoCategory2.size() < NoCategory.size() && "not making any progess");
     NoCategory.clear();
     if (!NoCategory2.size())
       break;
@@ -579,7 +580,7 @@ bool GenXCategory::fixCircularPhis(Function *F)
       for (auto ui = Phi->use_begin(), ue = Phi->use_end(); ui != ue; ++ui)
         Uses.push_back(&*ui);
       // A phi node is never a struct -- GenXLowering removed struct phis.
-      assert(!isa<StructType>(Phi->getType()));
+      IGC_ASSERT(!isa<StructType>(Phi->getType()));
       // Insert a copy, split as required to be legal.
       auto NewCopy =
           Liveness->insertCopy(Phi, nullptr, BB->getFirstNonPHI(),
@@ -635,7 +636,7 @@ bool GenXCategory::processValue(Value *V)
       // The "no categories at all" case can only happen for a value that is
       // defined by a function argument or a phi node and used only in phi
       // nodes or subroutine call args.
-      assert((isa<Argument>(V) || isa<PHINode>(V)) && "no register category");
+      IGC_ASSERT((isa<Argument>(V) || isa<PHINode>(V)) && "no register category");
       return false;
     }
     // Value defined with a category but only used in phi nodes.
@@ -667,7 +668,7 @@ bool GenXCategory::processValue(Value *V)
       }
       else
         Conv = Convs[UseInfo.Cat];
-      assert(Conv && "must have such conversion");
+      IGC_ASSERT(Conv && "must have such conversion");
       UseInfo.user->setOperand(UseInfo.OperandNum, Conv);
     }
   }
@@ -690,7 +691,7 @@ bool GenXCategory::processValue(Value *V)
  */
 Instruction *GenXCategory::createConversion(Value *V, unsigned Cat)
 {
-  assert(V->getType()->getScalarType()->isIntegerTy() && "createConversion expects int type");
+  IGC_ASSERT(V->getType()->getScalarType()->isIntegerTy() && "createConversion expects int type");
   if (Cat == RegCategory::ADDRESS) {
     Value *Input = V;
     int Offset = 0;
@@ -837,7 +838,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
       unsigned IntrinsicID = GenXIntrinsic::getAnyIntrinsicID(Callee);
       // We should not see genx_convert, as it is inserted into a value after
       // using this function to determine its category.
-      assert(IntrinsicID != GenXIntrinsic::genx_convert);
+      IGC_ASSERT(IntrinsicID != GenXIntrinsic::genx_convert);
       if (IntrinsicID == GenXIntrinsic::genx_convert_addr)
         return RegCategory::ADDRESS;
       if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IntrinsicID) && !GenXIntrinsic::isRdRegion(IntrinsicID)
@@ -876,9 +877,9 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
 unsigned GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI,
                                                           unsigned ArgNo,
                                                           bool IsOutput) const {
-  assert(CI->isInlineAsm() && "Inline asm expected");
+  IGC_ASSERT(CI->isInlineAsm() && "Inline asm expected");
   InlineAsm *IA = dyn_cast<InlineAsm>(CI->getCalledValue());
-  assert(!IA->getConstraintString().empty() && "Here should be constraints");
+  IGC_ASSERT(!IA->getConstraintString().empty() && "Here should be constraints");
 
   auto ConstraintsInfo = genx::getGenXInlineAsmInfo(CI);
 
@@ -941,7 +942,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
         IntrinID = GenXIntrinsic::getAnyIntrinsicID(Callee);
       // We should not see genx_convert, as it is inserted into a value after
       // using this function to determine its category.
-      assert(IntrinID != GenXIntrinsic::genx_convert);
+      IGC_ASSERT(IntrinID != GenXIntrinsic::genx_convert);
       // For a read or write region or element intrisic, where the use we have
       // is the address, mark as needing an address register.
       switch (IntrinID) {
@@ -1037,7 +1038,7 @@ unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const
  */
 unsigned GenXCategory::getCategoryForCallArg(Function *Callee, unsigned ArgNo) const
 {
-  assert(Callee);
+  IGC_ASSERT(Callee);
   // First try the subroutine arg.
   auto ai = Callee->arg_begin();
   for (unsigned i = 0; i != ArgNo; ++i, ++ai)

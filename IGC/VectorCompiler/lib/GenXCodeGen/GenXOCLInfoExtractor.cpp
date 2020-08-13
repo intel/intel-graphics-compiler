@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenX.h"
 #include "GenXOCLRuntimeInfo.h"
 #include "llvm/Pass.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -56,7 +57,7 @@ public:
   }
 
   bool runOnModule(Module &M) override {
-    assert(Dest && "Expected dest to be initialized");
+    IGC_ASSERT(Dest && "Expected dest to be initialized");
     auto &Info = getAnalysis<GenXOCLRuntimeInfo>();
     *Dest = Info.stealCompiledKernels();
     return false;

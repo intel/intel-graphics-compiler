@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXPressureTracker.h"
 #include "GenXUtil.h"
 #include "llvm/Pass.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -122,7 +123,7 @@ void GenXRematerialization::remat(Function *F, PressureTracker &RP) {
         LiveRange *LR = Liveness->getLiveRangeOrNull(CI);
         if (!LR || LR->value_size() != 1)
           continue;
-        assert(*LR->value_begin() == CI);
+        IGC_ASSERT(*LR->value_begin() == CI);
         unsigned B = Numbering->getNumber(CI);
         for (auto &U : CI->uses()) {
           auto UI = U.getUser();
