@@ -40,6 +40,1161 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 
 using namespace vISA;
+
+DeclarePool::~DeclarePool()
+{
+    for (unsigned i = 0, size = (unsigned)dcllist.size(); i < size; i++) {
+        G4_Declare* dcl = dcllist[i];
+        dcl->~G4_Declare();
+    }
+    dcllist.clear();
+}
+
+G4_Declare* DeclarePool::createDeclare(
+    const char*    name,
+    G4_RegFileKind regFile,
+    unsigned short nElems,
+    unsigned short nRows,
+    G4_Type        ty,
+    DeclareType    kind,
+    G4_RegVar *    base,
+    G4_Operand *   repRegion,
+    unsigned       execSize)
+{
+    G4_Declare* dcl = new (mem) G4_Declare(name, regFile, nElems * nRows, ty, dcllist);
+    G4_RegVar * regVar;
+    if (kind == DeclareType::Regular)
+        regVar = new (mem) G4_RegVar(dcl, G4_RegVar::RegVarType::Default);
+    else if (kind == DeclareType::AddrSpill)
+        regVar = new (mem) G4_RegVarAddrSpillLoc(dcl, addrSpillLocCount);
+    else if (kind == DeclareType::Tmp)
+        regVar = new (mem) G4_RegVarTmp(dcl, base);
+    else if (kind == DeclareType::Spill)
+        regVar = new (mem) G4_RegVarTransient(dcl, base, repRegion->asDstRegRegion (), execSize, G4_RegVarTransient::TransientType::Spill);
+    else if (kind == DeclareType::Fill)
+        regVar = new (mem)G4_RegVarTransient(dcl, base, repRegion->asSrcRegRegion(), execSize, G4_RegVarTransient::TransientType::Fill);
+    else if (kind == DeclareType::CoalescedFill || kind == DeclareType::CoalescedSpill)
+        regVar = new (mem)G4_RegVarCoalesced(dcl, kind == DeclareType::CoalescedFill);
+    else
+    {
+        MUST_BE_TRUE(false, ERROR_INTERNAL_ARGUMENT);
+        regVar = NULL;
+    }
+    dcl->setRegVar(regVar);
+
+    if (regFile == G4_ADDRESS)
+    {
+        dcl->setSubRegAlign(Any);
+    }
+    else if (regFile != G4_FLAG)
+    {
+        if (nElems * nRows * G4_Type_Table[ty].byteSize >= G4_GRF_REG_NBYTES)
+        {
+            dcl->setSubRegAlign(GRFALIGN);
+        }
+        else
+        {
+            // at a minimum subRegAlign has to be at least the type size
+            dcl->setSubRegAlign(Get_G4_SubRegAlign_From_Type(ty));
+        }
+    }
+    else
+    {
+        if (dcl->getNumberFlagElements() == 32)
+        {
+            dcl->setSubRegAlign(Even_Word);
+        }
+    }
+
+    return dcl;
+}
+
+
+G4_Declare* IR_Builder::GlobalImmPool::addImmVal(G4_Imm* imm, int numElt)
+{
+    ImmVal val = { imm, numElt };
+    for (int i = 0; i < curSize; ++i)
+    {
+        if (val == immArray[i])
+        {
+            return dclArray[i];
+        }
+    }
+    if (curSize == MAX_POOL_SIZE)
+    {
+        return nullptr;
+    }
+    immArray[curSize] = val;
+    dclArray[curSize] = builder.createTempVar(numElt, imm->getType(), Any);
+    return dclArray[curSize++];
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// IR_Builder functions (except translateXXXX, which should be in VisaToG4)
+//
+
+void IR_Builder::dump(std::ostream &os)
+{
+    os << "DECLARES:\n";
+    for (const G4_Declare *dcl : kernel.Declares) {
+        dcl->emit(os);
+        os  << "\n";
+    }
+    os << "\n";
+    os << "INSTS:\n";
+    for (G4_INST *i : instList) {
+        i->emit(os, false, false);
+        os << "\n";
+    }
+}
+
+
+// bind a vISA input variable <dcl> to the GRF byte offset <offset>
+void IR_Builder::bindInputDecl(G4_Declare* dcl, int offset)
+{    // decide the physical register number and sub register number
+    unsigned int regNum = offset / getGRFSize();
+    unsigned int subRegNum = (offset % getGRFSize()) / dcl->getElemSize();
+    dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
+    dcl->setRegFile(G4_INPUT);
+    unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
+    if (regNum + dcl->getNumRows() > kernel.getNumRegTotal() - reservedGRFNum) {
+        MUST_BE_TRUE(false, "INPUT payload execeeds the regsiter number");
+    }
+}
+
+// check if an operand is aligned to <align_byte>
+bool IR_Builder::isOpndAligned(
+    G4_Operand *opnd, unsigned short &offset, int align_byte) const
+{
+    offset = 0;
+    bool isAligned = true;
+
+    switch (opnd->getKind())
+    {
+    case G4_Operand::immediate:
+    case G4_Operand::addrExp:
+    case G4_Operand::label:
+    case G4_Operand::condMod:
+    case G4_Operand::predicate:
+    {
+        isAligned = true;
+        break;
+    }
+    case G4_Operand::srcRegRegion:
+    case G4_Operand::dstRegRegion:
+    {
+        int type_size = G4_Type_Table[opnd->getType()].byteSize;
+        G4_Declare *dcl = NULL;
+        if (opnd->getBase()->isRegVar())
+        {
+            dcl = opnd->getBase()->asRegVar()->getDeclare();
+            while (dcl && dcl->getAliasDeclare())
+            {
+                if (dcl->getSubRegAlign() != Any &&
+                    (((dcl->getSubRegAlign() * 2) >= align_byte && (dcl->getSubRegAlign() * 2) % align_byte != 0) ||
+                    ((dcl->getSubRegAlign() * 2) < align_byte && align_byte % (dcl->getSubRegAlign() * 2) != 0)))
+                {
+                    isAligned = false;
+                    break;
+                }
+                offset += (unsigned short) dcl->getAliasOffset();
+                dcl = dcl->getAliasDeclare();
+            }
+
+            if (dcl && dcl->getRegVar() && dcl->getRegVar()->isPhyRegAssigned())
+            {
+                offset += static_cast<unsigned short>(dcl->getRegVar()->getByteAddr());
+            }
+        }
+        if (!isAligned)
+        {
+            return isAligned;
+        }
+
+        if (opnd->isDstRegRegion())
+        {
+            if (opnd->asDstRegRegion()->getRegAccess() != Direct)
+            {
+                isAligned = false;
+            }
+            offset += opnd->asDstRegRegion()->getRegOff() * G4_GRF_REG_NBYTES + opnd->asDstRegRegion()->getSubRegOff() * type_size;
+        }
+        else if (opnd->isSrcRegRegion())
+        {
+            if (opnd->asSrcRegRegion()->getRegAccess() != Direct)
+            {
+                isAligned = false;
+            }
+            offset += opnd->asSrcRegRegion()->getRegOff() * G4_GRF_REG_NBYTES + opnd->asSrcRegRegion()->getSubRegOff() * type_size;
+        }
+        if (offset % align_byte != 0)
+        {
+            return false;
+        }
+        // Only alignment of the top dcl can be changed.
+        if (dcl && dcl->getRegFile() == G4_GRF)
+        {
+            if (dcl->getSubRegAlign() == Any ||
+                ((dcl->getSubRegAlign() * 2) < align_byte && align_byte % (dcl->getSubRegAlign() * 2) == 0))
+            {
+                dcl->setSubRegAlign(G4_SubReg_Align(align_byte / 2));
+            }
+            else if ((dcl->getSubRegAlign() * 2) < align_byte || (dcl->getSubRegAlign() * 2) % align_byte != 0)
+            {
+                isAligned = false;
+            }
+        }
+        else if (opnd->getKind() == G4_Operand::dstRegRegion &&
+            // Only care about GRF or half-GRF alignment.
+            (align_byte == G4_GRF_REG_NBYTES || align_byte == G4_GRF_REG_NBYTES / 2) &&
+            dcl && dcl->getRegFile() == G4_ADDRESS)
+        {
+
+            // Get the single definition of the specified operand from the use
+            // inst.
+            auto getSingleDefInst = [](G4_INST *UI, Gen4_Operand_Number OpndNum)
+                -> G4_INST * {
+                G4_INST *Def = nullptr;
+                for (DEF_EDGE_LIST_ITER I = UI->defInstList.begin(),
+                    E = UI->defInstList.end();
+                    I != E; ++I) {
+                    if (I->second != OpndNum)
+                        continue;
+                    if (Def) {
+                        // Not single defined, bail out
+                        Def = nullptr;
+                        break;
+                    }
+                    Def = I->first;
+                }
+                return Def;
+            };
+
+            G4_INST *inst = opnd->getInst();
+            if (inst) {
+                // Check address calculation like:
+                //
+                //    shl (1) V1  V0          imm
+                //    add (1) a0  $V2 + off   V1
+                //    ...
+                //    (use)... r[a0, disp] ...
+                //
+                // need to check both disp, off, and V1 are aligned.
+                //
+                // Check acc_use_op's def-list.
+                G4_INST *LEA = getSingleDefInst(inst, Opnd_dst);
+                if (LEA && LEA->opcode() == G4_add && LEA->getExecSize() == 1) {
+                    isAligned = true;
+                    G4_Operand *Op0 = LEA->getSrc(0);
+                    G4_Operand *Op1 = LEA->getSrc(1);
+                    if (Op0->isSrcRegRegion()) {
+                        // TODO: Consider MUL as well.
+                        G4_INST *Def = getSingleDefInst(LEA, Opnd_src0);
+                        if (Def && Def->opcode() == G4_shl &&
+                            Def->getSrc(1)->isImm()) {
+                            G4_Imm *Imm = Def->getSrc(1)->asImm();
+                            unsigned Factor = (1U << Imm->getInt());
+                            // TODO: We only perform alignment checking on
+                            // component wise and may need to consider checking
+                            // the accumulated result.
+                            if (Factor % align_byte != 0)
+                                isAligned = false;
+                        } else if (Def && Def->opcode() == G4_and &&
+                            Def->getSrc(1)->isImm()) {
+                            G4_Imm *Imm = Def->getSrc(1)->asImm();
+                            uint64_t Mask = uint64_t(Imm->getInt());
+                            // align_byte could be 32 or 16 guarded previsouly.
+                            uint64_t AlignMask = align_byte - 1;
+                            if ((Mask & AlignMask) != 0)
+                                isAligned = false;
+                        } else
+                            isAligned = false;
+                    }
+                    if (isAligned && Op1->isAddrExp()) {
+                        G4_AddrExp *AE = Op1->asAddrExp();
+                        G4_Declare *Dcl = AE->getRegVar()->getDeclare();
+                        unsigned AliasOffset = 0;
+                        while (Dcl && Dcl->getAliasDeclare()) {
+                            AliasOffset += Dcl->getAliasOffset();
+                            Dcl = Dcl->getAliasDeclare();
+                        }
+                        // TODO: We only perform alignment checking on
+                        // component wise and may need to consider checking
+                        // the accumulated result.
+                        if ((AliasOffset % align_byte) != 0 ||
+                            (Dcl && Dcl->getSubRegAlign() != GRFALIGN &&
+                                Dcl->getSubRegAlign() != Sixteen_Word &&
+                                Dcl->getSubRegAlign() != Eight_Word) ||
+                            AE->getOffset() % align_byte != 0) {
+                            isAligned = false;
+                        }
+                    } else
+                        isAligned = false;
+                    if (isAligned) {
+                        // TODO: We only perform alignment checking on
+                        // component wise and may need to consider checking
+                        // the accumulated result.
+                        if (opnd->asDstRegRegion()->getAddrImm() % align_byte != 0)
+                            isAligned = false;
+                    }
+                }
+            }
+        }
+        else if (dcl && dcl->getRegFile() == G4_FLAG)
+        {
+            // need to make flag even-word aligned if it's used in a setp with dword source
+            // ToDo: should we fix input to use 16-bit value instead
+            if (align_byte == 4)
+            {
+                dcl->setSubRegAlign(Even_Word);
+            }
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    return isAligned;
+}
+
+
+bool IR_Builder::isOpndAligned(G4_Operand* opnd, int alignByte) const
+{
+    uint16_t offset = 0; // ignored
+    return isOpndAligned(opnd, offset, alignByte);
+}
+
+
+void IR_Builder::predefinedVarRegAssignment(uint8_t inputSize)
+{
+    uint32_t preDefinedStart = ((inputSize + G4_DSIZE - 1) / G4_DSIZE) * G4_DSIZE;
+    if (preDefinedStart == 0)
+    {
+        preDefinedStart = GENX_GRF_REG_SIZ;
+    }
+    for (PreDefinedVarsInternal i : allPreDefVars)
+    {
+        if (!predefinedVarNeedGRF(i))
+        {
+            continue;
+        }
+
+        G4_Type ty = GetGenTypeFromVISAType(getPredefinedVarType(i));
+        G4_Declare *dcl = preDefVars.getPreDefinedVar((PreDefinedVarsInternal)i);
+        if (!isPredefinedVarInR0((PreDefinedVarsInternal)i))
+        {
+            unsigned short new_offset = preDefinedStart + getPredefinedVarByteOffset(i);
+            unsigned int regNum = new_offset / GENX_GRF_REG_SIZ;
+            unsigned int subRegNum = (new_offset % GENX_GRF_REG_SIZ) / G4_Type_Table[ty].byteSize;
+            dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
+        }
+        else
+        {
+            unsigned int regNum = 0;
+            unsigned int subRegNum = getPredefinedVarByteOffset(i) / G4_Type_Table[ty].byteSize;
+            dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
+        }
+    }
+}
+
+// Expand some of the pre-defined variables at kernel entry
+// -- replace pre-defined V17 (hw_tid)
+// -- replace pre-defined V22 (color)
+// -- replace pre-defined V1 (thread_x)
+// -- replace pre-defined V2 (thread_y)
+void IR_Builder::expandPredefinedVars()
+{
+
+    // Use FFTID from msg header
+    // and (1) hw_tid, r0.5, 0x3ff
+    //
+    // 9:0     FFTID. This ID is assigned by TS and is a unique identifier for the thread in
+    // comparison to other concurrent root threads. It is used to free up resources used
+    // by the thread upon thread completion.
+    //
+    // [Pre-DevBDW]: Format = U8. Bits 9:8 are Reserved, MBZ.
+    //
+    // [0:8] For Pre-Gen9
+    // [0:9] For Gen10+
+    //
+
+    // first non-label instruction
+    auto iter = std::find_if(instList.begin(), instList.end(), [](G4_INST* inst) { return !inst->isLabel(); });
+
+    if (preDefVars.isHasPredefined(PreDefinedVarsInternal::HW_TID))
+    {
+        const unsigned fftid_mask = getPlatform() >= GENX_CNL ? 0x3FF : 0x1FF;
+        G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, realR0->getRegVar(),
+            0, 5, getRegionScalar(), Type_UD);
+        G4_Imm* mask1 = this->createImm(fftid_mask, Type_UD);
+        G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinHWTID, 1);
+        G4_INST* inst = this->createBinOp(G4_and, 1, dst, src, mask1, InstOpt_WriteEnable, false);
+        instList.insert(iter, inst);
+    }
+
+    if (preDefVars.isHasPredefined(PreDefinedVarsInternal::X))
+    {
+        if (useNewR0Format())
+        {
+            // x -> and (1) thread_x<1>:uw r0.1:ud 0xFFF
+            G4_SrcRegRegion* r0Dot1UD = createSrcRegRegion(Mod_src_undef, Direct,
+                realR0->getRegVar(), 0, 1, getRegionScalar(), Type_UD);
+            G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::X), 1);
+            G4_INST* inst = createBinOp(G4_and, 1, dst, r0Dot1UD,
+                createImm(0xFFF, Type_UW), InstOpt_WriteEnable, false);
+            instList.insert(iter, inst);
+        }
+        else
+        {
+            //  We insert the new instruction
+            //  and (1) thread_x<1>:uw, r0.2:uw, 0x01FF
+            G4_SrcRegRegion* r0Dot2UW = createSrcRegRegion(Mod_src_undef, Direct,
+                realR0->getRegVar(), 0, 2, getRegionScalar(), Type_UW);
+            int64_t mask = getThreadIDMask();
+            G4_Imm* src1 = createImm(mask, Type_UW);
+            G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::X), 1);
+            G4_INST* inst = createBinOp(G4_and, 1, dst, r0Dot2UW, src1, InstOpt_WriteEnable, false);
+            instList.insert(iter, inst);
+        }
+    }
+
+    if (preDefVars.isHasPredefined(PreDefinedVarsInternal::Y))
+    {
+        if (useNewR0Format())
+        {
+            // y -> shr (1) thread_y<1>:uw r0.1:ud 12
+            //      and (1) thread_y<1>:uw thread_y:uw 0xFFF
+            G4_SrcRegRegion* r0Dot1UD = createSrcRegRegion(Mod_src_undef, Direct,
+                realR0->getRegVar(), 0, 1, getRegionScalar(), Type_UD);
+
+            G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
+            G4_INST* inst1 = createBinOp(G4_shr, 1, dst, r0Dot1UD,
+                createImm(12, Type_UW), InstOpt_WriteEnable, false);
+            instList.insert(iter, inst1);
+            dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
+            G4_INST* inst2 = createBinOp(G4_and, 1, dst,
+                Create_Src_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), getRegionScalar()),
+                createImm(0xFFF, Type_UW), InstOpt_WriteEnable, false);
+            instList.insert(iter, inst2);
+        }
+        else
+        {
+            //  We insert the new instruction
+            //  and (1) thread_y<1>:uw, r0.3:uw, 0x01FF
+            G4_SrcRegRegion* r0Dot3UW = createSrcRegRegion(Mod_src_undef, Direct,
+                realR0->getRegVar(), 0, 3, getRegionScalar(), Type_UW);
+            int64_t mask = getThreadIDMask();
+            G4_Imm* src1 = createImmWithLowerType(mask, Type_UW);
+            G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
+            G4_INST* inst = createBinOp(G4_and, 1, dst, r0Dot3UW, src1, InstOpt_WriteEnable, false);
+            instList.insert(iter, inst);
+        }
+    }
+
+    // color bit
+    if (preDefVars.isHasPredefined(PreDefinedVarsInternal::COLOR))
+    {
+        if (useNewR0Format())
+        {
+            // r0.1[31:24]
+            // shr (1) color<2>:uw r0.1<0;1,0>:ud 24
+            G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, realR0->getRegVar(),
+                0, 1, getRegionScalar(), Type_UD);
+            G4_Imm* shift = createImm(24, Type_UW);
+            G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::COLOR), 2);
+            G4_INST* inst = createBinOp(G4_shr, 1, dst, src, shift,
+                InstOpt_WriteEnable, false);
+            instList.insert(iter, inst);
+        }
+        else
+        {
+            // else: r0.2[3:0]
+            // and (1) color<2>:uw r0.2<0;1,0>:ud 0xF
+            G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, realR0->getRegVar(),
+                0, 2, getRegionScalar(), Type_UD);
+            G4_Imm* mask = createImm(0xF, Type_UW);
+            G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::COLOR), 2);
+            G4_INST* inst = createBinOp(G4_and, 1, dst, src, mask,
+                InstOpt_WriteEnable, false);
+            instList.insert(iter, inst);
+        }
+    }
+}
+
+FCPatchingInfo* IR_Builder::getFCPatchInfo()
+{
+    // Create new instance of FC patching class if one is not
+    // yet created.
+    if (fcPatchInfo == NULL)
+    {
+        FCPatchingInfo* instance;
+        instance = (FCPatchingInfo*)mem.alloc(sizeof(FCPatchingInfo));
+        fcPatchInfo = new (instance) FCPatchingInfo();
+    }
+
+    return fcPatchInfo;
+}
+
+const char* IR_Builder::getNameString(
+    Mem_Manager& mem, size_t size, const char* format, ...)
+{
+#ifdef _DEBUG
+    char* name = (char*) mem.alloc(size);
+    va_list args;
+    va_start(args, format);
+    std::vsnprintf(name, size, format, args);
+    va_end(args);
+    return name;
+#else
+    const char* name = "";
+    return const_cast<char*>(name);
+#endif
+}
+
+G4_FCALL* IR_Builder::getFcallInfo(G4_INST* inst) const {
+    std::map<G4_INST *, G4_FCALL *>::const_iterator it;
+    it = m_fcallInfo.find(inst);
+    if (m_fcallInfo.end() == it) {
+            return nullptr;
+    } else {
+        return it->second;
+    }
+}
+
+void IR_Builder::createPreDefinedVars()
+{
+    for (PreDefinedVarsInternal i : allPreDefVars)
+    {
+        G4_Declare* dcl = nullptr;
+
+        if (predefinedVarNeedGRF(i))
+        {
+            // work item id variables are handled uniformly
+            G4_Type ty = GetGenTypeFromVISAType(getPredefinedVarType((PreDefinedVarsInternal)i));
+            dcl = createPreVar(getPredefinedVarID((PreDefinedVarsInternal)i), 1, ty);
+        }
+        else
+        {
+            const char* name = getPredefinedVarString(i);
+            switch (i)
+            {
+            case PreDefinedVarsInternal::VAR_NULL:
+                dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UD);
+                dcl->getRegVar()->setPhyReg(phyregpool.getNullReg(), 0);
+                break;
+            case PreDefinedVarsInternal::TSC:
+            {
+                G4_Declare* tscDcl = createPreVar(i, 5, Type_UD);
+                tscDcl->getRegVar()->setPhyReg(phyregpool.getTm0Reg(), 0);
+                dcl = tscDcl;
+                break;
+            }
+            case PreDefinedVarsInternal::R0:
+            {
+                dcl = getBuiltinR0();
+                break;
+            }
+            case PreDefinedVarsInternal::SR0:
+            {
+                G4_Declare* sr0Dcl = createPreVar(i, 4, Type_UD);
+                sr0Dcl->getRegVar()->setPhyReg(phyregpool.getSr0Reg(), 0);
+                dcl = sr0Dcl;
+                break;
+            }
+            case PreDefinedVarsInternal::CR0:
+            {
+                G4_Declare* cr0Dcl = createPreVar(i, 3, Type_UD);
+                cr0Dcl->getRegVar()->setPhyReg(phyregpool.getCr0Reg(), 0);
+                dcl = cr0Dcl;
+                break;
+            }
+            case PreDefinedVarsInternal::CE0:
+            {
+                G4_Declare* ce0Dcl = createPreVar(i, 1, Type_UD);
+                ce0Dcl->getRegVar()->setPhyReg(phyregpool.getMask0Reg(), 0);
+                dcl = ce0Dcl;
+                break;
+            }
+            case PreDefinedVarsInternal::DBG:
+            {
+                G4_Declare* dbgDcl = createPreVar(i, 2, Type_UD);
+                dbgDcl->getRegVar()->setPhyReg(phyregpool.getDbgReg(), 0);
+                dcl = dbgDcl;
+                break;
+            }
+            case PreDefinedVarsInternal::ARG:
+            {
+                dcl = createDeclareNoLookup(name, G4_INPUT, NUM_DWORDS_PER_GRF, 32, Type_UD);
+                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(28), 0);
+                break;
+            }
+            case PreDefinedVarsInternal::RET:
+            {
+                dcl = createDeclareNoLookup(name, G4_GRF, NUM_DWORDS_PER_GRF, 12, Type_UD);
+                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(16), 0);
+                dcl->setLiveOut();
+                break;
+            }
+            case PreDefinedVarsInternal::FE_SP:
+            {
+                unsigned int startReg = kernel.getStackCallStartReg();
+                dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
+                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_SP);
+                break;
+            }
+            case PreDefinedVarsInternal::FE_FP:
+            {
+                // PREDEFINED_FE_FP
+                unsigned int startReg = kernel.getStackCallStartReg();
+                dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
+                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_FP);
+                break;
+            }
+            case PreDefinedVarsInternal::HW_TID:
+            {
+                // PREDEFINED_HW_TID
+                dcl = getBuiltinHWTID();
+                break;
+            }
+            case PreDefinedVarsInternal::X:
+            case PreDefinedVarsInternal::Y:
+            case PreDefinedVarsInternal::COLOR:
+            {
+                // these three are size 1 UW
+                dcl = createDeclareNoLookup(name, G4_GRF, 1, 1,
+                    GetGenTypeFromVISAType(getPredefinedVarType(i)));
+                break;
+            }
+            default:
+            {
+                break;
+            }
+            }
+        }
+        preDefVars.setPredefinedVar(i, dcl);
+    }
+}
+
+void IR_Builder::createBuiltinDecls()
+{
+
+    builtinR0 = createDeclareNoLookup(
+        "BuiltinR0",
+        G4_INPUT,
+        GENX_GRF_REG_SIZ / G4_Type_Table[Type_UD].byteSize,
+        1,
+        Type_UD);
+    builtinR0->getRegVar()->setPhyReg(phyregpool.getGreg(0), 0);
+    realR0 = builtinR0;
+
+    if (m_options->getOption(vISA_enablePreemption))
+    {
+        G4_Declare *R0CopyDcl = createTempVar(8, Type_UD, GRFALIGN);
+        builtinR0 = R0CopyDcl;
+        R0CopyDcl->setDoNotSpill();
+    }
+
+
+    builtinA0 = createDeclareNoLookup(
+        "BuiltinA0",
+        G4_ADDRESS,
+        1,
+        1,
+        Type_UD);
+    builtinA0->getRegVar()->setPhyReg(phyregpool.getAddrReg(), 0);
+    builtinA0Dot2 = createDeclareNoLookup(
+        "BuiltinA0Dot2",  //a0.2
+        G4_ADDRESS,
+        1,
+        1,
+        Type_UD);
+    builtinA0Dot2->getRegVar()->setPhyReg(phyregpool.getAddrReg(), 2);
+
+    builtinHWTID = createDeclareNoLookup("hw_tid", G4_GRF, 1, 1, Type_UD);
+
+    builtinT252 = createDeclareNoLookup(vISAPreDefSurf[PREDEFINED_SURFACE_T252].name, G4_GRF, 1, 1, Type_UD);
+    builtinBindlessSampler = createDeclareNoLookup("B_S", G4_GRF, 1, 1, Type_UD);
+
+    builtinSamplerHeader = createDeclareNoLookup("samplerHeader", G4_GRF, NUM_DWORDS_PER_GRF, 1, Type_UD);
+
+}
+
+
+G4_Declare* IR_Builder::getSpillFillHeader()
+{
+    if (!spillFillHeader)
+    {
+        spillFillHeader = createDeclareNoLookup("spillHeader", G4_GRF, getGRFSize() / sizeof(int), 1, Type_UD);
+    }
+    return spillFillHeader;
+}
+
+IR_Builder::IR_Builder(
+    TARGET_PLATFORM genPlatform,
+    INST_LIST_NODE_ALLOCATOR &alloc,
+    G4_Kernel &k,
+    Mem_Manager &m,
+    Options *options,
+    CISA_IR_Builder* parent,
+    FINALIZER_INFO *jitInfo,
+    PWA_TABLE pWaTable)
+    : platform(genPlatform), curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), metaData(jitInfo),
+    isKernel(false), parentBuilder(parent),
+    builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
+    CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
+    mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m),
+    instList(alloc), kernel(k), metadataMem(4096)
+{
+    m_inst = nullptr;
+    num_temp_dcl = 0;
+    kernel.setBuilder(this); // kernel needs pointer to the builder
+    createBuiltinDecls();
+
+    sampler8x8_group_id = 0;
+
+    be_sp = be_fp = tmpFCRet = nullptr;
+
+    arg_size = 0;
+    return_var_size = 0;
+
+    if (metaData != NULL)
+    {
+        memset(metaData, 0, sizeof(FINALIZER_INFO));
+    }
+
+    fcPatchInfo = NULL;
+
+    createPreDefinedVars();
+
+    igaModel = iga::Model::LookupModel(
+        BinaryEncodingIGA::getIGAInternalPlatform(getPlatform()));
+}
+
+
+IR_Builder::~IR_Builder()
+{
+    // We need to invoke the destructor of every instruction ever allocated
+    // so that its members will be freed.
+    // Note that we don't delete the instruction itself as it's allocated from
+    // the memory manager's pool
+    for (unsigned i = 0, size = (unsigned)instAllocList.size(); i != size; i++)
+    {
+        G4_INST* inst = instAllocList[i];
+        inst->~G4_INST();
+    }
+    instAllocList.clear();
+
+    for (auto MD : allMDs)
+    {
+        MD->~Metadata();
+    }
+
+    for (auto node : allMDNodes)
+    {
+        node->~MDNode();
+    }
+
+    if (fcPatchInfo)
+    {
+        fcPatchInfo->~FCPatchingInfo();
+    }
+}
+
+G4_Declare* IR_Builder::createDeclareNoLookup(
+    const char*     name,
+    G4_RegFileKind  regFile,
+    unsigned short  n_elems,
+    unsigned short  n_rows,
+    G4_Type         ty,
+    DeclareType     kind,
+    G4_RegVar *     base,
+    G4_Operand *    repRegion,
+    unsigned        execSize)
+{
+    if (regFile == G4_FLAG)
+    {
+        MUST_BE_TRUE(ty == Type_UW, "flag decl must have type UW");
+    }
+
+    G4_Declare* dcl = dclpool.createDeclare(name, regFile, n_elems,
+        n_rows, ty, kind, base, repRegion, execSize);
+
+    kernel.Declares.push_back(dcl);
+
+    return dcl;
+}
+
+
+uint32_t IR_Builder::getSplitEMask(unsigned execSize, uint32_t eMask, bool isLo)
+{
+    const uint32_t qhMasks = InstOpt_M0 | InstOpt_M8 |
+        InstOpt_M16 | InstOpt_M24;
+    uint32_t other = eMask & ~qhMasks;
+    uint32_t qh = eMask & qhMasks;
+
+    switch (execSize) {
+    case 16: // Split SIMD16 into SIMD8
+        switch (qh) {
+        case 0: // instOpt not specified, treat as 1H
+        case InstOpt_M0:
+            return (isLo ? InstOpt_M0 : InstOpt_M8) | other;
+        case InstOpt_M16:
+            return (isLo ? InstOpt_M16 : InstOpt_M24) | other;
+        }
+        break;
+    case 32: // Split SIMD32 into SIMD16.
+        switch (qh) {
+        case 0:
+            return (isLo ? InstOpt_M0 : InstOpt_M16) | other;
+        }
+        break;
+    }
+
+    ASSERT_USER(false, "Unhandled cases for EMask splitting!");
+    return ~0U;
+}
+
+
+
+G4_Declare* IR_Builder::createTempVar(
+    unsigned int numElements, G4_Type type, G4_SubReg_Align subAlign,
+    const char* prefix, bool appendIdToName)
+{
+    const char* name = appendIdToName ?
+        getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++) :
+        getNameString(mem, 20, "%s", prefix);
+
+    unsigned short dcl_width = 0, dcl_height = 1;
+    int totalByteSize = numElements * G4_Type_Table[type].byteSize;
+    if (totalByteSize <= G4_GRF_REG_NBYTES)
+    {
+        dcl_width = totalByteSize / G4_Type_Table[type].byteSize;
+    }
+    else
+    {
+        // here we assume that the start point of the var is the beginning of a GRF?
+        // so subregister must be 0?
+        dcl_width = G4_GRF_REG_NBYTES / G4_Type_Table[type].byteSize;
+        dcl_height = totalByteSize / G4_GRF_REG_NBYTES;
+        if (totalByteSize % G4_GRF_REG_NBYTES != 0)
+        {
+            dcl_height++;
+        }
+    }
+
+    G4_Declare* dcl = createDeclareNoLookup(name, G4_GRF, dcl_width, dcl_height, type);
+    dcl->setSubRegAlign(subAlign);
+    return dcl;
+}
+
+G4_Declare* IR_Builder::createAddrFlagSpillLoc(G4_Declare* dcl)
+{
+    const char* name = getNameString(mem, 16, "SP_LOC_%d", numAddrFlagSpillLoc++);
+    G4_Declare* spillLoc = createDeclareNoLookup(name,
+        G4_GRF,
+        dcl->getNumElems(),
+        1,
+        dcl->getElemType(),
+        DeclareType::AddrSpill);
+    dcl->setSpilledDeclare(spillLoc);
+    spillLoc->setSubRegAlign(dcl->getSubRegAlign()); // for simd32 flag the spill loc has to be 2-word aligned since it's accessed as dw
+    return spillLoc;
+}
+
+G4_Declare* IR_Builder::createHardwiredDeclare(
+    uint32_t numElements, G4_Type type, uint32_t regNum, uint32_t regOff)
+{
+    G4_Declare* dcl = createTempVar(numElements, type, Any);
+    unsigned int linearizedStart = (regNum * G4_GRF_REG_NBYTES) + (regOff * getTypeSize(type));
+    // since it's called post RA (specifically post computePReg) we have to manually set the GRF's byte offset
+    dcl->setGRFBaseOffset(linearizedStart);
+    dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), regOff);
+    return dcl;
+}
+
+G4_INST* IR_Builder::createPseudoKills(
+    std::initializer_list<G4_Declare*> dcls, PseudoKillType ty)
+{
+    G4_INST* inst = nullptr;
+    for (auto dcl : dcls)
+    {
+        inst = createPseudoKill(dcl, ty);
+    }
+
+    return inst;
+}
+
+G4_INST* IR_Builder::createPseudoKill(G4_Declare* dcl, PseudoKillType ty)
+{
+    auto dstRgn = createDst(dcl->getRegVar(), 0, 0, 1, Type_UD);
+    G4_INST* inst = createIntrinsicInst(nullptr, Intrinsic::PseudoKill, 1,
+        dstRgn, createImm((unsigned int)ty, Type_UD), nullptr, nullptr, InstOpt_WriteEnable);
+
+    return inst;
+}
+
+static const unsigned int HWORD_BYTE_SIZE = 32;
+
+G4_INST* IR_Builder::createSpill(
+    G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
+    unsigned int execSize,
+    uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option)
+{
+    G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
+        header, payload, nullptr, option);
+    spill->asSpillIntrinsic()->setFP(fp);
+    spill->asSpillIntrinsic()->setOffset((uint32_t)
+        (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
+    spill->asSpillIntrinsic()->setNumRows(numRows);
+    return spill;
+}
+
+G4_INST* IR_Builder::createSpill(
+    G4_DstRegRegion* dst, G4_SrcRegRegion* payload,
+    unsigned int execSize, uint16_t numRows, uint32_t offset,
+    G4_Declare* fp, G4_InstOption option)
+{
+    auto builtInR0 = getBuiltinR0();
+    auto rd = getRegionStride1();
+    auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
+    G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
+        srcRgnr0, payload, nullptr, option);
+    spill->asSpillIntrinsic()->setFP(fp);
+    spill->asSpillIntrinsic()->setOffset((uint32_t)
+        (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
+    spill->asSpillIntrinsic()->setNumRows(numRows);
+    return spill;
+}
+
+G4_INST* IR_Builder::createFill(
+    G4_SrcRegRegion* header, G4_DstRegRegion* dstData, unsigned int execSize,
+    uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option)
+{
+    G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
+        header, nullptr, nullptr, option);
+    fill->asFillIntrinsic()->setFP(fp);
+    fill->asFillIntrinsic()->setOffset((uint32_t)
+        (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
+    fill->asFillIntrinsic()->setNumRows(numRows);
+    return fill;
+}
+
+G4_INST* IR_Builder::createFill(
+    G4_DstRegRegion* dstData, unsigned int execSize,
+    uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option)
+{
+    auto builtInR0 = getBuiltinR0();
+    auto rd = getRegionStride1();
+    auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
+    G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
+        srcRgnr0, nullptr, nullptr, option);
+
+    fill->asFillIntrinsic()->setFP(fp);
+    fill->asFillIntrinsic()->setOffset((uint32_t)
+        (((uint64_t)offset * HWORD_BYTE_SIZE) / G4_GRF_REG_NBYTES));
+    fill->asFillIntrinsic()->setNumRows(numRows);
+    return fill;
+}
+
+
+G4_Declare* IR_Builder::createTempFlag(unsigned short numberOfFlags, const char* prefix)
+{
+    const char* name = getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++);
+
+    G4_Declare* dcl = createDeclareNoLookup(name, G4_FLAG, numberOfFlags, 1, Type_UW);
+
+    return dcl;
+}
+
+G4_Declare* IR_Builder::createFlag(uint16_t numFlagElements, const char* name)
+{
+    uint32_t numWords = (numFlagElements + 15) / 16;
+    G4_Declare* dcl = createDeclareNoLookup(name, G4_FLAG, numWords, 1, Type_UW);
+    dcl->setNumberFlagElements((uint8_t) numFlagElements);
+    return dcl;
+}
+
+G4_Declare* IR_Builder::createPreVar(
+    PreDefinedVarsInternal preDefVar_index, unsigned short numElements, G4_Type type)
+{
+    MUST_BE_TRUE(preDefVar_index < PreDefinedVarsInternal::VAR_LAST, "illegal predefined var index");
+    unsigned short dcl_width = 0, dcl_height = 1;
+    int totalByteSize = numElements * G4_Type_Table[type].byteSize;
+    if (totalByteSize <= G4_GRF_REG_NBYTES)
+    {
+        dcl_width = totalByteSize / G4_Type_Table[type].byteSize;
+    }
+    else
+    {
+        // here we assume that the start point of the var is the beginning of a GRF?
+        // so subregister must be 0?
+        dcl_width = G4_GRF_REG_NBYTES / G4_Type_Table[type].byteSize;
+        dcl_height = totalByteSize / G4_GRF_REG_NBYTES;
+        if (totalByteSize % G4_GRF_REG_NBYTES != 0)
+        {
+            dcl_height++;
+        }
+    }
+
+    G4_Declare* dcl = createPreVarDeclareNoLookup(preDefVar_index, dcl_width, dcl_height, type);
+    // subAlign has to be type size at the minimum
+    dcl->setSubRegAlign(Get_G4_SubRegAlign_From_Type(type));
+    return dcl;
+}
+
+
+G4_SrcRegRegion* IR_Builder::createSrcWithNewRegOff(G4_SrcRegRegion* old, short newRegOff)
+{
+    if (old->getRegAccess() == Direct)
+    {
+        return createSrcRegRegion(old->getModifier(), Direct, old->getBase(), newRegOff,
+            old->getSubRegOff(), old->getRegion(), old->getType(), old->getAccRegSel());
+    }
+    else
+    {
+        return createIndirectSrc(old->getModifier(), old->getBase(), newRegOff, old->getSubRegOff(),
+            old->getRegion(), old->getType(), old->getAddrImm());
+    }
+}
+
+
+G4_SrcRegRegion* IR_Builder::createSrcWithNewSubRegOff(G4_SrcRegRegion* old, short newSubRegOff)
+{
+    if (old->getRegAccess() == Direct)
+    {
+        return createSrcRegRegion(old->getModifier(), old->getRegAccess(), old->getBase(), old->getRegOff(),
+            newSubRegOff, old->getRegion(), old->getType(), old->getAccRegSel());
+    }
+    else
+    {
+        return createIndirectSrc(old->getModifier(), old->getBase(), old->getRegOff(), newSubRegOff,
+            old->getRegion(), old->getType(), old->getAddrImm());
+    }
+}
+
+
+G4_SrcRegRegion* IR_Builder::createSrcWithNewBase(G4_SrcRegRegion* old, G4_VarBase* newBase)
+{
+    if (old->getRegAccess() == Direct)
+    {
+        return createSrcRegRegion(old->getModifier(), Direct, newBase, old->getRegOff(),
+            old->getSubRegOff(), old->getRegion(), old->getType(), old->getAccRegSel());
+    }
+    else
+    {
+        return createIndirectSrc(old->getModifier(), newBase, old->getRegOff(), old->getSubRegOff(),
+            old->getRegion(), old->getType(), old->getAddrImm());
+    }
+}
+
+G4_DstRegRegion* IR_Builder::createDstWithNewSubRegOff(G4_DstRegRegion* old, short newSubRegOff)
+{
+    if (old->getRegAccess() == Direct)
+    {
+        return createDst(old->getBase(), old->getRegOff(), newSubRegOff, old->getHorzStride(), old->getType(), old->getAccRegSel());
+    }
+    else
+    {
+        return createIndirectDst(old->getBase(), newSubRegOff, old->getHorzStride(), old->getType(), old->getAddrImm());
+    }
+}
+
+
+G4_Imm* IR_Builder::createImm(float fp)
+{
+    uint32_t imm = *((uint32_t*) &fp);
+    G4_Type immType = Type_F;
+    if (getPlatform() >= GENX_CHV && m_options->getOption(vISA_FImmToHFImm) &&
+        !VISA_WA_CHECK(getPWaTable(), WaSrc1ImmHfNotAllowed))
+    {
+        // we may be able to lower it to HF
+        // ieee32 format: 23-8-1
+        // ieee16 format: 10-5-1
+        // bit0-22 are fractions
+        uint32_t fraction = imm & 0x7FFFFF;
+        // bit23-30 are exponents
+        uint32_t exponent = (imm >> 23) & 0xFF;
+        uint32_t sign = (imm >> 31) & 0x1;
+        int expVal = ((int) exponent) - 127;
+
+        if (exponent == 0 && fraction == 0)
+        {
+            // 0 and -0
+            immType = Type_HF;
+            imm = sign << 15;
+        }
+        else if ((fraction & 0x1FFF) == 0 && (expVal <= 15 && expVal >= -16))
+        {
+            // immediate can be exactly represented in HF.
+            // we exclude denormal, infinity, and NaN.
+            immType = Type_HF;
+            uint32_t newExp = (expVal + 15) & 0x1F;
+            imm = (sign << 15) | (newExp << 10) | (fraction >> 13);
+        }
+    }
+    G4_Imm* i = hashtable.lookupImm(imm, immType);
+    return (i != NULL)? i : hashtable.createImm(imm, immType);
+}
+
+G4_Imm* IR_Builder::createDFImm(double fp)
+{
+    int64_t val = (int64_t)(*(uint64_t*)&fp);
+    G4_Imm* i = hashtable.lookupImm(val, Type_DF);
+    return (i != NULL)? i : hashtable.createImm(val, Type_DF);
+}
+
+G4_Type IR_Builder::getNewType(int64_t imm, G4_Type ty)
+{
+    switch (ty)
+    {
+    case Type_Q:
+    case Type_D:
+        // It is legal to change a positive imm's type from signed to unsigned if it fits
+        // in the unsigned type. We do prefer signed type however for readability.
+        if (imm >= MIN_WORD_VALUE && imm <= MAX_WORD_VALUE)
+        {
+            return Type_W;
+        }
+        else if (imm >= MIN_UWORD_VALUE && imm <= MAX_UWORD_VALUE)
+        {
+            return Type_UW;
+        }
+        else if (imm >= int(MIN_DWORD_VALUE) && imm <= int(MAX_DWORD_VALUE))
+        {
+            return Type_D;
+        }
+        else if (imm >= unsigned(MIN_UDWORD_VALUE) && imm <= unsigned(MAX_UDWORD_VALUE))
+        {
+            return Type_UD;
+        }
+        break;
+    case Type_UQ:
+    case Type_UD:
+    {
+        // unsigned imm must stay as unsigned
+        uint64_t immU = static_cast<uint64_t>(imm);
+        if (immU <= MAX_UWORD_VALUE)
+        {
+            return Type_UW;
+        }
+        else if (immU <= unsigned(MAX_UDWORD_VALUE))
+        {
+            return Type_UD;
+        }
+        break;
+    }
+    case Type_UB:
+        return Type_UW;
+    case Type_B:
+        return Type_W;
+    default:
+        return ty;
+    }
+    return ty;
+}
+
+
 //
 // look up an imm operand
 //
@@ -906,6 +2061,27 @@ void IR_Builder::resizePredefinedStackVars()
     getStackCallRet()->resizeNumRows(this->getRetVarSize());
 }
 
+G4_Operand* IR_Builder::duplicateOpndImpl(G4_Operand* opnd)
+{
+    if (!opnd || opnd->isImm())
+        return opnd;
+    if (opnd->isSrcRegRegion()) {
+        return createSrcRegRegion(*(opnd->asSrcRegRegion()));
+    }
+    else if (opnd->isDstRegRegion()) {
+        return createDstRegRegion(*(opnd->asDstRegRegion()));
+    }
+    else if (opnd->isPredicate()) {
+        return createPredicate(*(opnd->asPredicate()));
+    }
+    else if (opnd->isCondMod()) {
+        return createCondMod(*(opnd->asCondMod()));
+    }
+    else {
+        return opnd;
+    }
+}
+
 /*
 * Create send instruction for specified GenX architecture.
 * bti: surface id
@@ -958,6 +2134,33 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
     }
     return Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar());
 }
+
+
+/*
+ *
+ *  this does two things:
+ *  -- If send has exec size 16, its destination must have Type W.
+ *  -- avoid using Q/UQ type on CHV/BXT
+ */
+static void fixSendDstType(G4_DstRegRegion* dst, uint8_t execSize)
+{
+    MUST_BE_TRUE(dst->getRegAccess() == Direct, "Send dst must be a direct operand");
+
+    MUST_BE_TRUE(dst->getSubRegOff() == 0, "dst may not have a non-zero subreg offset");
+
+    // normally we should create a new alias for dst's declare, but since it's a send
+    // type mismatch between operand and decl should not matter
+    if (execSize == 16 && dst->getType() != Type_W && dst->getType() != Type_UW)
+    {
+        dst->setType(Type_W);
+    }
+
+    if (dst->getType() == Type_HF)
+    {
+        dst->setType(Type_W);
+    }
+}
+
 
 G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
     G4_Predicate *pred,
@@ -1638,200 +2841,6 @@ input_info_t *IR_Builder::getRetIPArg() {
     return RetIP;
 }
 
-// check if an operand is aligned to <align_byte>
-bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset, int align_byte)
-{
-    offset = 0;
-    bool isAligned = true;
-
-    switch (opnd->getKind())
-    {
-    case G4_Operand::immediate:
-    case G4_Operand::addrExp:
-    case G4_Operand::label:
-    case G4_Operand::condMod:
-    case G4_Operand::predicate:
-    {
-        isAligned = true;
-        break;
-    }
-    case G4_Operand::srcRegRegion:
-    case G4_Operand::dstRegRegion:
-    {
-        int type_size = G4_Type_Table[opnd->getType()].byteSize;
-        G4_Declare *dcl = NULL;
-        if (opnd->getBase()->isRegVar())
-        {
-            dcl = opnd->getBase()->asRegVar()->getDeclare();
-            while (dcl && dcl->getAliasDeclare())
-            {
-                if (dcl->getSubRegAlign() != Any &&
-                    (((dcl->getSubRegAlign() * 2) >= align_byte && (dcl->getSubRegAlign() * 2) % align_byte != 0) ||
-                    ((dcl->getSubRegAlign() * 2) < align_byte && align_byte % (dcl->getSubRegAlign() * 2) != 0)))
-                {
-                        isAligned = false;
-                        break;
-                }
-                offset += (unsigned short) dcl->getAliasOffset();
-                dcl = dcl->getAliasDeclare();
-            }
-
-            if (dcl && dcl->getRegVar() && dcl->getRegVar()->isPhyRegAssigned())
-            {
-                offset += static_cast<unsigned short>(dcl->getRegVar()->getByteAddr());
-            }
-        }
-        if (!isAligned)
-        {
-            return isAligned;
-        }
-
-        if (opnd->isDstRegRegion())
-        {
-            if (opnd->asDstRegRegion()->getRegAccess() != Direct)
-            {
-                isAligned = false;
-            }
-            offset += opnd->asDstRegRegion()->getRegOff() * G4_GRF_REG_NBYTES + opnd->asDstRegRegion()->getSubRegOff() * type_size;
-        }
-        else if (opnd->isSrcRegRegion())
-        {
-            if (opnd->asSrcRegRegion()->getRegAccess() != Direct)
-            {
-                isAligned = false;
-            }
-            offset += opnd->asSrcRegRegion()->getRegOff() * G4_GRF_REG_NBYTES + opnd->asSrcRegRegion()->getSubRegOff() * type_size;
-        }
-        if (offset % align_byte != 0)
-        {
-            return false;
-        }
-        // Only alignment of the top dcl can be changed.
-        if (dcl && dcl->getRegFile() == G4_GRF)
-        {
-            if (dcl->getSubRegAlign() == Any ||
-                ((dcl->getSubRegAlign() * 2) < align_byte && align_byte % (dcl->getSubRegAlign() * 2) == 0))
-            {
-                dcl->setSubRegAlign(G4_SubReg_Align(align_byte / 2));
-            }
-            else if ((dcl->getSubRegAlign() * 2) < align_byte || (dcl->getSubRegAlign() * 2) % align_byte != 0)
-            {
-                    isAligned = false;
-            }
-        }
-        else if (opnd->getKind() == G4_Operand::dstRegRegion &&
-            // Only care about GRF or half-GRF alignment.
-            (align_byte == G4_GRF_REG_NBYTES || align_byte == G4_GRF_REG_NBYTES / 2) &&
-            dcl && dcl->getRegFile() == G4_ADDRESS)
-        {
-
-            // Get the single definition of the specified operand from the use
-            // inst.
-            auto getSingleDefInst = [](G4_INST *UI, Gen4_Operand_Number OpndNum)
-                -> G4_INST * {
-                G4_INST *Def = nullptr;
-                for (DEF_EDGE_LIST_ITER I = UI->defInstList.begin(),
-                                        E = UI->defInstList.end();
-                                        I != E; ++I) {
-                    if (I->second != OpndNum)
-                        continue;
-                    if (Def) {
-                        // Not single defined, bail out
-                        Def = nullptr;
-                        break;
-                    }
-                    Def = I->first;
-                }
-                return Def;
-            };
-
-            G4_INST *inst = opnd->getInst();
-            if (inst) {
-                // Check address calculation like:
-                //
-                //    shl (1) V1  V0          imm
-                //    add (1) a0  $V2 + off   V1
-                //    ...
-                //    (use)... r[a0, disp] ...
-                //
-                // need to check both disp, off, and V1 are aligned.
-                //
-                // Check acc_use_op's def-list.
-                G4_INST *LEA = getSingleDefInst(inst, Opnd_dst);
-                if (LEA && LEA->opcode() == G4_add && LEA->getExecSize() == 1) {
-                    isAligned = true;
-                    G4_Operand *Op0 = LEA->getSrc(0);
-                    G4_Operand *Op1 = LEA->getSrc(1);
-                    if (Op0->isSrcRegRegion()) {
-                        // TODO: Consider MUL as well.
-                        G4_INST *Def = getSingleDefInst(LEA, Opnd_src0);
-                        if (Def && Def->opcode() == G4_shl &&
-                            Def->getSrc(1)->isImm()) {
-                            G4_Imm *Imm = Def->getSrc(1)->asImm();
-                            unsigned Factor = (1U << Imm->getInt());
-                            // TODO: We only perform alignment checking on
-                            // component wise and may need to consider checking
-                            // the accumulated result.
-                            if (Factor % align_byte != 0)
-                                isAligned = false;
-                        } else if (Def && Def->opcode() == G4_and &&
-                                   Def->getSrc(1)->isImm()) {
-                            G4_Imm *Imm = Def->getSrc(1)->asImm();
-                            uint64_t Mask = uint64_t(Imm->getInt());
-                            // align_byte could be 32 or 16 guarded previsouly.
-                            uint64_t AlignMask = align_byte - 1;
-                            if ((Mask & AlignMask) != 0)
-                                isAligned = false;
-                        } else
-                            isAligned = false;
-                    }
-                    if (isAligned && Op1->isAddrExp()) {
-                        G4_AddrExp *AE = Op1->asAddrExp();
-                        G4_Declare *Dcl = AE->getRegVar()->getDeclare();
-                        unsigned AliasOffset = 0;
-                        while (Dcl && Dcl->getAliasDeclare()) {
-                            AliasOffset += Dcl->getAliasOffset();
-                            Dcl = Dcl->getAliasDeclare();
-                        }
-                        // TODO: We only perform alignment checking on
-                        // component wise and may need to consider checking
-                        // the accumulated result.
-                        if ((AliasOffset % align_byte) != 0 ||
-                            (Dcl && Dcl->getSubRegAlign() != GRFALIGN &&
-                             Dcl->getSubRegAlign() != Sixteen_Word &&
-                             Dcl->getSubRegAlign() != Eight_Word) ||
-                            AE->getOffset() % align_byte != 0) {
-                            isAligned = false;
-                        }
-                    } else
-                        isAligned = false;
-                    if (isAligned) {
-                        // TODO: We only perform alignment checking on
-                        // component wise and may need to consider checking
-                        // the accumulated result.
-                        if (opnd->asDstRegRegion()->getAddrImm() % align_byte != 0)
-                            isAligned = false;
-                    }
-                }
-            }
-        }
-        else if (dcl && dcl->getRegFile() == G4_FLAG)
-        {
-            // need to make flag even-word aligned if it's used in a setp with dword source
-            // ToDo: should we fix input to use 16-bit value instead
-            if (align_byte == 4)
-            {
-                dcl->setSubRegAlign(Even_Word);
-            }
-        }
-        break;
-    }
-    default:
-        break;
-    }
-    return isAligned;
-}
-
 G4_Predicate_Control IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control, int size)
 {
     switch (control)
@@ -1894,17 +2903,5 @@ G4_Predicate_Control IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTR
     }
 }
 
-// bind a vISA input variable <dcl> to the GRF byte offset <offset>
-void IR_Builder::bindInputDecl(G4_Declare* dcl, int offset)
-{    // decide the physical register number and sub register number
-    unsigned int regNum = offset / getGRFSize();
-    unsigned int subRegNum = (offset % getGRFSize()) / dcl->getElemSize();
-    dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
-    dcl->setRegFile(G4_INPUT);
-    unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
-    if (regNum + dcl->getNumRows() > kernel.getNumRegTotal() - reservedGRFNum) {
-        MUST_BE_TRUE(false, "INPUT payload execeeds the regsiter number");
-    }
-}
 
 

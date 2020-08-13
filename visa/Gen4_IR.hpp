@@ -252,13 +252,13 @@ typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR >::iterator DEF_EDGE_LIST_ITER
 
 namespace vISA
 {
+enum class SendAccess
+{
+    READ_ONLY,
+    WRITE_ONLY,
+    READ_WRITE
+};
 
-    enum class SendAccess
-    {
-        READ_ONLY,
-        WRITE_ONLY,
-        READ_WRITE
-    };
 class G4_SendMsgDescriptor
 {
 private:

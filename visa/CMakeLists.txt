@@ -152,47 +152,69 @@ set_source_files_properties( CISA.tab.cpp lex.CISA.cpp PROPERTIES LANGUAGE CXX )
     )
 
 # Set up some common source files used in all the projects so they only need to be defined once
-set(GenX_Common_Sources_External
+set(GenX_Common_Sources_VisaToG4
+  VisaToG4/TranslateALU.cpp
+  VisaToG4/TranslateBranches.cpp
+  VisaToG4/TranslateMath.cpp
+  VisaToG4/TranslateMisc.cpp
+  VisaToG4/TranslateSend3D.cpp
+  VisaToG4/TranslateSendLdStLegacy.cpp
+  VisaToG4/TranslateSendMedia.cpp
+  VisaToG4/TranslateSendRaw.cpp
+  VisaToG4/TranslateSendSync.cpp
+  )
+
+set(GenX_Common_Sources_G4_IRBuilder
+  BuildIRImpl.cpp)
+
+
+
+set(GenX_Common_Sources_External_Other
+  AccSubstitution.cpp
+  Attributes.cpp
   BinaryCISAEmission.cpp
   BinaryEncoding.cpp
-  Common_BinaryEncoding.cpp
   BinaryEncodingCNL.cpp
   BinaryEncodingIGA.cpp
   BuildCISAIRImpl.cpp
-  BuildIRImpl.cpp
   ByteCodeReaderNG.cpp
+  CFGStructurizer.cpp
+  Common_BinaryEncoding.cpp
   DebugInfo.cpp
   FlowGraph.cpp
-  CFGStructurizer.cpp
+  G4Verifier.cpp
   Gen4_IR.cpp
   GraphColor.cpp
   HWConformity.cpp
-  SendFusion.cpp
+  InstSplit.cpp
+  LVN.cpp
   LocalDataflow.cpp
   LocalRA.cpp
   Lowered_IR.cpp
-  main.cpp
   Optimizer.cpp
   PhyRegCompute.cpp
   PhyRegUsage.cpp
+  PreDefinedVars.cpp
+  RPE.cpp
   ReduceExecSize.cpp
   RegAlloc.cpp
+  Rematerialization.cpp
+  SendFusion.cpp
+  SpillCleanup.cpp
   SpillCode.cpp
   SpillManagerGMRF.cpp
   TranslationInterface.cpp
   VISAKernelImpl.cpp
-  G4Verifier.cpp
-  LVN.cpp
-  ifcvt.cpp
-  PreDefinedVars.cpp
-  SpillCleanup.cpp
-  Rematerialization.cpp
-  RPE.cpp
-  InstSplit.cpp
   VarSplit.cpp
-  Attributes.cpp
-  AccSubstitution.cpp
+  ifcvt.cpp
+  main.cpp
   ${LocalScheduler_SOURCES}
+)
+
+set(GenX_Common_Sources_External
+  ${GenX_Common_Sources_External_Other}
+  ${GenX_Common_Sources_VisaToG4}
+  ${GenX_Common_Sources_G4_IRBuilder}
 )
 
 set(GenX_Common_Sources
@@ -230,49 +252,49 @@ set(GenX_Utility_Files
   )
 
 set(GenX_Common_Headers
+  AccSubstitution.h
+  Attributes.hpp
   BinaryCISAEmission.h
   BinaryEncoding.h
-  Common_BinaryEncoding.h
   BinaryEncodingCNL.h
   BinaryEncodingIGA.h
-  IGfxHwEuIsaCNL.h
   BuildCISAIR.h
   BuildIR.h
-  include/VISADefines.h
+  CFGStructurizer.h
+  Common_BinaryEncoding.h
   Common_GEN.h
   DebugInfo.h
   FlowGraph.h
-  CFGStructurizer.h
+  G4Verifier.h
   G4_Opcode.h
+  GTGPU_RT_ASM_Interface.h
   Gen4_IR.hpp
   GraphColor.h
-  GTGPU_RT_ASM_Interface.h
   HWConformity.h
-  include/JitterDataStruct.h
-  SendFusion.h
+  IGfxHwEuIsaCNL.h
+  InstSplit.h
+  LVN.h
+  LocalDataflow.h
   LocalRA.h
+  Metadata.h
   Optimizer.h
   PhyRegUsage.h
+  PreDefinedVars.h
+  RPE.h
   RegAlloc.h
-  include/RT_Jitter_Interface.h
+  Rematerialization.h
+  SendFusion.h
+  SpillCleanup.h
   SpillCode.h
   SpillManagerGMRF.h
-  include/visa_igc_common_header.h
-  include/VISABuilderAPIDefinition.h
   VISAKernel.h
-  G4Verifier.h
-  LVN.h
-  PreDefinedVars.h
-  SpillCleanup.h
-  Rematerialization.h
-  Metadata.h
-  RPE.h
-  include/gtpin_IGC_interface.h
-  InstSplit.h
   VarSplit.h
-  Attributes.hpp
-  LocalDataflow.h
-  AccSubstitution.h
+  include/JitterDataStruct.h
+  include/RT_Jitter_Interface.h
+  include/VISABuilderAPIDefinition.h
+  include/VISADefines.h
+  include/gtpin_IGC_interface.h
+  include/visa_igc_common_header.h
   ${LocalScheduler_HEADERS}
 )
 set(GenX_CISA_dis_Common_Headers
@@ -336,6 +358,8 @@ if (UNIX OR WIN32)
 
   source_group("Utility Files" FILES ${GenX_IR_EXE_UTILITY} )
   source_group("Header Files" FILES ${GenX_IR_EXE_HEADERS} )
+  source_group("G4 IR Builder" FILES ${GenX_Common_Sources_G4_IRBuilder} )
+  source_group("Visa to G4 IR Translation" FILES ${GenX_Common_Sources_VisaToG4} )
   source_group("Lex Yacc Files" FILES ${GenX_IR_EXE_lex_yacc} )
   target_link_libraries(GenX_IR_Exe IGA_SLIB IGA_ENC_LIB)
 
