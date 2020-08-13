@@ -7888,7 +7888,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_readsurfaceinfoptr:
         emitSurfaceInfo(inst);
         break;
-    case GenISAIntrinsic::GenISA_mov_identity: {
+    case GenISAIntrinsic::GenISA_mov_identity:
+    {
       // Use Or instead of a Copy, as VISA will remove redundant movs.
       auto Var = GetSymbol(inst->getOperand(0));
       CVariable* Zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
@@ -7896,23 +7897,27 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
       m_encoder->Push();
       break;
     }
-    case GenISAIntrinsic::GenISA_source_value: {
+    case GenISAIntrinsic::GenISA_source_value:
+    {
         m_encoder->Copy(m_currShader->GetNULL(), GetSymbol(inst->getOperand(0)));
         m_encoder->Push();
         break;
     }
-    case GenISAIntrinsic::GenISA_movcr: {
+    case GenISAIntrinsic::GenISA_movcr:
+    {
         m_encoder->SetSrcSubReg(0, static_cast<uint16_t>(GetImmediateVal(inst->getOperand(0))));
         m_encoder->Copy(m_destination, m_currShader->GetCR0());
         m_encoder->Push();
         break;
     }
-    case GenISAIntrinsic::GenISA_hw_thread_id: {
+    case GenISAIntrinsic::GenISA_hw_thread_id:
+    {
         m_encoder->Copy(m_destination, m_currShader->GetHWTID());
         m_encoder->Push();
         break;
     }
-    case GenISAIntrinsic::GenISA_slice_id: {
+    case GenISAIntrinsic::GenISA_slice_id:
+    {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
             emitStateRegID(0x0000C000, 0x0000000E);
@@ -7920,7 +7925,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(0x00007000, 0x0000000C);
         break;
     }
-    case GenISAIntrinsic::GenISA_subslice_id: {
+    case GenISAIntrinsic::GenISA_subslice_id:
+    {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
             emitStateRegID(0x00003000, 0x0000000C);
@@ -7928,7 +7934,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(0x00000100, 0x00000008);
         break;
     }
-    case GenISAIntrinsic::GenISA_eu_id: {
+    case GenISAIntrinsic::GenISA_eu_id:
+    {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
             emitStateRegID(0x00000F00, 0x00000008);
@@ -7936,7 +7943,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(0x000000F0, 0x00000004);
         break;
     }
-    case GenISAIntrinsic::GenISA_getSR0: {
+    case GenISAIntrinsic::GenISA_getSR0:
+    {
         m_encoder->SetNoMask();
         m_encoder->SetSrcSubReg(0, static_cast<uint16_t>(GetImmediateVal(inst->getOperand(0))));
         m_encoder->Copy(m_destination, m_currShader->GetSR0());

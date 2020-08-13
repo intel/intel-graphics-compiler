@@ -3076,6 +3076,7 @@ namespace IGC
             {
                 return GENX_BDW;
             }
+            // fall-through
         case IGFX_GEN9_CORE:
         case IGFX_GENNEXT_CORE:
             if (platform->getPlatformInfo().eProductFamily == IGFX_BROXTON ||
@@ -3087,6 +3088,7 @@ namespace IGC
             {
                 return GENX_SKL;
             }
+            // fall-through
         case IGFX_GEN11_CORE:
             return GENX_ICLLP;
         case IGFX_GEN12_CORE:
@@ -3097,6 +3099,7 @@ namespace IGC
             {
                 return GENX_TGLLP;
             }
+            // fall-through
         default:
             IGC_ASSERT_MESSAGE(0, "unsupported platform");
             break;

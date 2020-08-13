@@ -125,6 +125,7 @@ bool supportSimd32PerPixelPSWithNumSamples16() const
     return false;
 }
 
+
 bool supportDisableMidThreadPreemptionSwitch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
 bool needSWStencil() const
@@ -321,7 +322,7 @@ bool supportsStencil(SIMDMode simdMode) const
 
 bool hasFDIV() const {
     if (IGC_IS_FLAG_ENABLED(DisableFDIV))
-    return false;
+        return false;
     return (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE);
 }
 
@@ -361,12 +362,14 @@ bool HDCCoalesceSLMAtomicINCWithNoReturn() const
 {
     return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE;
 }
+
 bool HDCCoalesceAtomicCounterAccess() const
 {
     return (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE) && IGC_IS_FLAG_DISABLED(ForceSWCoalescingOfAtomicCounter);
 }
 
 bool supportsMCSNonCompressedFix() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
+
 bool hasHWDp4AddSupport() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
 
 bool useOnlyEightPatchDispatchHS() const
