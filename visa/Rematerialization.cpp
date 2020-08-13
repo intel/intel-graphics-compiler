@@ -477,6 +477,11 @@ namespace vISA
             uniqueDef->first->getCondMod())
             return false;
 
+        // It is illegal to rematerialize intrinsic.split instruction as it
+        // is dependent on an earlier send.
+        if (uniqueDef->first->isSplitIntrinsic())
+            return false;
+
         ref = uniqueDef;
 
         // Check whether op1 can be recomputed
