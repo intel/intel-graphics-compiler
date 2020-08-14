@@ -532,6 +532,9 @@ namespace IGC
 
         bool                                DispatchAlongY;
 
+        unsigned int                        ThreadGroupModifier_X;
+        unsigned int                        ThreadGroupModifier_Y;
+
         /* Output related to only the PingPong Textures */
         bool                                SecondCompile;
         bool                                IsRowMajor;

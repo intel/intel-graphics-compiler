@@ -46,6 +46,8 @@ namespace IGC
         , m_hasSLM(false)
         , m_tileY(false)
         , m_walkOrder(WO_XYZ)
+        , m_threadGroupModifier_X(0)
+        , m_threadGroupModifier_Y(0)
     {
     }
 
@@ -321,6 +323,9 @@ namespace IGC
 
         pKernelProgram->ThreadGroupSize = m_threadGroupSize;
 
+        pKernelProgram->ThreadGroupModifier_X = m_threadGroupModifier_X;
+        pKernelProgram->ThreadGroupModifier_Y = m_threadGroupModifier_Y;
+
         pKernelProgram->CSHThreadDispatchChannel = 0;
 
         pKernelProgram->CompiledForIndirectPayload = 0;
@@ -351,6 +356,15 @@ namespace IGC
         m_threadGroupSize_Z = int_cast<uint>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
 
         m_threadGroupSize = m_threadGroupSize_X * m_threadGroupSize_Y * m_threadGroupSize_Z;
+
+        pGlobal = module->getGlobalVariable("ThreadGroupModifier_X");
+        if ((pGlobal != nullptr) && pGlobal->hasInitializer()) {
+            m_threadGroupModifier_X = int_cast<uint>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
+        }
+        pGlobal = module->getGlobalVariable("ThreadGroupModifier_Y");
+        if ((pGlobal != nullptr) && pGlobal->hasInitializer()) {
+            m_threadGroupModifier_Y = int_cast<uint>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
+        }
     }
 
     void CComputeShader::PreCompile()

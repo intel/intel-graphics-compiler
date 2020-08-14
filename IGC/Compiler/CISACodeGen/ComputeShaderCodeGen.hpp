@@ -66,6 +66,9 @@ namespace IGC
         bool                   m_dispatchAlongY;
         bool                   m_disableMidThreadPreemption;
         bool                   m_hasSLM;
+
+        uint                   m_threadGroupModifier_X;
+        uint                   m_threadGroupModifier_Y;
     private:
         enum WALK_ORDER {
             WO_XYZ,

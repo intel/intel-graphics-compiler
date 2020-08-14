@@ -337,6 +337,8 @@ DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the 
 DECLARE_IGC_REGKEY(DWORD, OCLInlineThreshold,           512,  "Setting OCL inline thershold", false)
 DECLARE_IGC_REGKEY(bool, DisableAddingAlwaysAttribute,  false, "Disable adding always attribute", true)
 DECLARE_IGC_REGKEY(bool, EnableForceGroupSize,          false, "Enable forcing thread Group Size ForceGroupSizeX and ForceGroupSizeY", false)
+DECLARE_IGC_REGKEY(bool, EnableForceThreadCombining,    false, "Enable forcing Thread Combining with thread Group Size ForceGroupSizeX and ForceGroupSizeY", false)
+DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeShaderHash,     0, "Shader hash for forcing thread group size or thread combining (lower 8 hex digits)", false)
 DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeX,              8, "force group size along X", false)
 DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeY,              8, "force group size along Y", false)
 DECLARE_IGC_REGKEY(bool, EnableThreadCombiningWithNoSLM, false, "Enable thread combining opt for shader without SLM", false)

@@ -23,7 +23,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "ThreadCombining.hpp"
 #include "Compiler/IGCPassSupport.h"
@@ -366,15 +365,14 @@ bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
     unsigned int threadGroupSize_Y = GetthreadGroupSize(M, ThreadGroupSize_Y);
     unsigned int threadGroupSize_Z = GetthreadGroupSize(M, ThreadGroupSize_Z);
 
-    if (threadGroupSize_X == 1 ||
-        threadGroupSize_Y == 1 ||
-        threadGroupSize_Z != 1)
-    {
-        return false;
-    }
-
     std::vector<llvm::Instruction*> barriers;
     PreAnalysis(m_kernel, M, barriers);
+
+    // Explicit thread group size shrinking works only for no-barrier no-SLM case
+    if (IGC_IS_FLAG_ENABLED(EnableForceGroupSize))
+    {
+        return barriers.empty() && !m_SLMUsed && (threadGroupSize_Z == 1);
+    }
 
     PostDominatorTree* PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_kernel).getPostDomTree();
     // Check if any of the barriers are within control flow
@@ -387,13 +385,23 @@ bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
         }
     }
 
-    if ((!m_SLMUsed && IGC_IS_FLAG_DISABLED(EnableThreadCombiningWithNoSLM)) ||
-        anyBarrierWithinControlFlow)
+    if (anyBarrierWithinControlFlow)
     {
         return false;
     }
 
-    FindRegistersAliveAcrossBarriers(m_kernel, M);
+    if (threadGroupSize_X == 1 ||
+        threadGroupSize_Y == 1 ||
+        threadGroupSize_Z != 1)
+    {
+        return false;
+    }
+
+    if (!m_SLMUsed && IGC_IS_FLAG_DISABLED(EnableThreadCombiningWithNoSLM)
+        && !IGC_IS_FLAG_ENABLED(EnableForceThreadCombining))
+    {
+        return false;
+    }
 
     return true;
 }
@@ -621,6 +629,83 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
     }
 }
 
+// Remap ThreadIDs and GroupIDs to old values
+void ThreadCombining::remapThreads(
+    llvm::Module& M,
+    unsigned int newSizeX,
+    unsigned int newSizeY,
+    unsigned int threadGroupSize_X,
+    unsigned int threadGroupSize_Y,
+    llvm::IRBuilder<> builder)
+{
+    unsigned int threadGroupSizeModifier_X = threadGroupSize_X / newSizeX;
+    unsigned int threadGroupSizeModifier_Y = threadGroupSize_Y / newSizeY;
+
+    BasicBlock* oldEntry = &(m_kernel->getEntryBlock());
+    BasicBlock* newEntry = BasicBlock::Create(M.getContext(), "ThreadID_remap", m_kernel, oldEntry);
+
+    builder.SetInsertPoint(newEntry);
+
+    Function* ThreadIDFN = GenISAIntrinsic::getDeclaration(&M, GenISAIntrinsic::GenISA_DCL_SystemValue, builder.getFloatTy());
+    Value* threadID_X = builder.CreateCall(ThreadIDFN, builder.getInt32(THREAD_ID_IN_GROUP_X));
+    Value* threadID_Y = builder.CreateCall(ThreadIDFN, builder.getInt32(THREAD_ID_IN_GROUP_Y));
+    Value* groupID_X = builder.CreateCall(ThreadIDFN, builder.getInt32(THREAD_GROUP_ID_X));
+    Value* groupID_Y = builder.CreateCall(ThreadIDFN, builder.getInt32(THREAD_GROUP_ID_Y));
+
+    threadID_X = builder.CreateBitCast(threadID_X, builder.getInt32Ty());
+    threadID_Y = builder.CreateBitCast(threadID_Y, builder.getInt32Ty());
+    groupID_X = builder.CreateBitCast(groupID_X, builder.getInt32Ty());
+    groupID_Y = builder.CreateBitCast(groupID_Y, builder.getInt32Ty());
+
+    Value* oldGroupID_X = builder.CreateUDiv(groupID_X, builder.getInt32(threadGroupSizeModifier_X));
+    Value* oldGroupID_Y = builder.CreateUDiv(groupID_Y, builder.getInt32(threadGroupSizeModifier_Y));
+
+    Value* oldThreadID_X = builder.CreateURem(groupID_X, builder.getInt32(threadGroupSizeModifier_X));
+    oldThreadID_X = builder.CreateAdd(threadID_X, builder.CreateMul(builder.getInt32(newSizeX), oldThreadID_X));
+    Value* oldThreadID_Y = builder.CreateURem(groupID_Y, builder.getInt32(threadGroupSizeModifier_Y));
+    oldThreadID_Y = builder.CreateAdd(threadID_Y, builder.CreateMul(builder.getInt32(newSizeY), oldThreadID_Y));
+
+    for (auto& BI : *m_kernel)
+    {
+        for (auto& inst : BI)
+        {
+            if (&BI == newEntry)
+            {
+                continue;
+            }
+            if (GenIntrinsicInst * b = dyn_cast<GenIntrinsicInst>(&inst))
+            {
+                if (b->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_SystemValue)
+                {
+                    switch (cast<ConstantInt>(b->getOperand(0))->getZExtValue())
+                    {
+                    case THREAD_ID_IN_GROUP_X:
+                        b->replaceAllUsesWith(builder.CreateBitCast(oldThreadID_X, b->getType()));
+                        break;
+                    case THREAD_ID_IN_GROUP_Y:
+                        b->replaceAllUsesWith(builder.CreateBitCast(oldThreadID_Y, b->getType()));
+                        break;
+                    case THREAD_GROUP_ID_X:
+                        b->replaceAllUsesWith(builder.CreateBitCast(oldGroupID_X, b->getType()));
+                        break;
+                    case THREAD_GROUP_ID_Y:
+                        b->replaceAllUsesWith(builder.CreateBitCast(oldGroupID_Y, b->getType()));
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    builder.CreateBr(oldEntry);
+
+    // Set in global variable, how many times thread group size was reduced
+    // It will be used by UMD for increasing dispatch size in the same amount
+    M.getGlobalVariable("ThreadGroupModifier_X")->setInitializer(builder.getInt32(threadGroupSizeModifier_X));
+    M.getGlobalVariable("ThreadGroupModifier_Y")->setInitializer(builder.getInt32(threadGroupSizeModifier_Y));
+}
+
 bool ThreadCombining::runOnModule(llvm::Module& M)
 {
     llvm::IRBuilder<>  builder(M.getContext());
@@ -634,6 +719,8 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
     {
         return false;
     }
+
+    FindRegistersAliveAcrossBarriers(m_kernel, M);
 
     unsigned int threadGroupSize_X = GetthreadGroupSize(M, ThreadGroupSize_X);
     unsigned int threadGroupSize_Y = GetthreadGroupSize(M, ThreadGroupSize_Y);
@@ -680,15 +767,20 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
 
     unsigned int newSizeX = threadGroupSize_X;
     unsigned int newSizeY = threadGroupSize_Y;
-    // Heuristic for Threadcombining based on EU Occupancy, if EU occupancy increases with the new
-    // size then combine threads, otherwise skip it
-    if (IGC_IS_FLAG_ENABLED(EnableForceGroupSize))
+    if (IGC_IS_FLAG_ENABLED(EnableForceGroupSize) || IGC_IS_FLAG_ENABLED(EnableForceThreadCombining))
     {
+        if (IGC_GET_FLAG_VALUE(ForceGroupSizeShaderHash) &&
+            (IGC_GET_FLAG_VALUE(ForceGroupSizeShaderHash) != (DWORD)csCtx->hash.getAsmHash()))
+        {
+            return false;
+        }
         newSizeX = IGC_GET_FLAG_VALUE(ForceGroupSizeX);
         newSizeY = IGC_GET_FLAG_VALUE(ForceGroupSizeY);
     }
     else if (x * y >= minTGSizeHeuristic && newThreadOccupancy > currentThreadOccupancy)
     {
+        // Heuristic for Threadcombining based on EU Occupancy, if EU occupancy increases with the new
+        // size then combine threads, otherwise skip it
         newSizeX = x;
         newSizeY = y;
         currentThreadOccupancy = newThreadOccupancy;
@@ -706,12 +798,31 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
         return false;
     }
 
-    IGC_ASSERT(newSizeX <= threadGroupSize_X);
-    IGC_ASSERT(newSizeY <= threadGroupSize_Y);
+    if ((newSizeX > threadGroupSize_X) ||
+        (newSizeY > threadGroupSize_Y) ||
+        ((threadGroupSize_X % newSizeX) != 0) ||
+        ((threadGroupSize_Y % newSizeY) != 0))
+    {
+        return false;
+    }
 
     SetthreadGroupSize(M, builder.getInt32(newSizeX), ThreadGroupSize_X);
     SetthreadGroupSize(M, builder.getInt32(newSizeY), ThreadGroupSize_Y);
 
+    if (IGC_IS_FLAG_ENABLED(EnableForceGroupSize))
+    {
+        // Don't perform thread combining, just remap threads as if thread group size hasn't been changed
+        remapThreads(
+            M,
+            newSizeX,
+            newSizeY,
+            threadGroupSize_X,
+            threadGroupSize_Y,
+            builder);
+        return true;
+    }
+
+    // Perform Thread Combining
     // Create a new function with function arguments, New threadIDX, threadIDY,
     // a bool variable to indicate if it is kernel section before last barrier or after
     // last barrier and all the live variables
@@ -759,6 +870,5 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
         builder);
 
     context->m_threadCombiningOptDone = true;
-
     return true;
 }

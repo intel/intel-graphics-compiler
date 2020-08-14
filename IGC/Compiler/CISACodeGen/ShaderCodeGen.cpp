@@ -1422,8 +1422,11 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createIPConstantPropagationPass());
         }
 
+
         // enable this only when Pooled EU is not supported
-        if (IGC_IS_FLAG_ENABLED(EnableThreadCombiningOpt) &&
+        if ((IGC_IS_FLAG_ENABLED(EnableThreadCombiningOpt) ||
+             IGC_IS_FLAG_ENABLED(EnableForceThreadCombining) ||
+             IGC_IS_FLAG_ENABLED(EnableForceGroupSize)) &&
             (pContext->type == ShaderType::COMPUTE_SHADER) &&
             !pContext->platform.supportPooledEU() &&
             pContext->platform.supportsThreadCombining())
