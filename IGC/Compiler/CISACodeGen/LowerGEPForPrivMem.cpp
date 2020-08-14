@@ -272,10 +272,10 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         return false;
 
     bool isUniformAlloca = pAlloca->getMetadata("uniform") != nullptr;
-    unsigned int allocaSizeInBytes = extractConstAllocaSize(pAlloca);
+    unsigned int allocaSize = extractConstAllocaSize(pAlloca);
     unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 4;
 
-    // scale alloc size based on the number of GRFs we have.
+    // scale alloc size based on the number of GRFs we have
     float grfRatio = m_ctx->getNumGRFPerThread() / 128.0f;
     allowedAllocaSizeInBytes = (uint32_t)(allowedAllocaSizeInBytes * grfRatio);
 
@@ -296,30 +296,23 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     {
         return false;
     }
+    if (isUniformAlloca)
+    {
+        // Heuristic: for uniform alloca we divide the size by 8 to adjust the pressure
+        // as they will be allocated as uniform array
+        allocaSize = iSTD::Round(allocaSize, 8) / 8;
+    }
 
-    const unsigned int hwRegSizeInBytes = 32;
-    unsigned int hwRegsPerAlloca = iSTD::Round( allocaSizeInBytes, hwRegSizeInBytes) / hwRegSizeInBytes;
-
-    if (allocaSizeInBytes <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
+    if (allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
     {
         return true;
     }
 
     // if alloca size exceeds alloc size threshold, return false
-    if (isUniformAlloca)
-    {
-        unsigned int allocaUniform = iSTD::Round(allocaSizeInBytes, 8) / 8;
-
-        if (allocaUniform > allowedAllocaSizeInBytes)
-        {
-            return false;
-        }
-    }
-    else if (allocaSizeInBytes > allowedAllocaSizeInBytes)
+    if (allocaSize > allowedAllocaSizeInBytes)
     {
         return false;
     }
-
     // if no live range info
     if (!m_pRegisterPressureEstimate->isAvailable())
     {
@@ -352,14 +345,14 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         }
     }
 
-    if (hwRegsPerAlloca + pressure > maxGRFPressure)
+    if (allocaSize + pressure > maxGRFPressure)
     {
         return false;
     }
     PromotedLiverange liverange;
     liverange.lowId = lowestAssignedNumber;
     liverange.highId = highestAssignedNumber;
-    liverange.varSize = hwRegsPerAlloca;
+    liverange.varSize = allocaSize;
     m_promotedLiveranges.push_back(liverange);
     return true;
 }
