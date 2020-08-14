@@ -54,7 +54,6 @@ struct zeInfoExecutionEnv
     zeinfo_bool_t has_global_atomics = false;
     zeinfo_bool_t has_multi_scratch_spaces = false;
     zeinfo_bool_t has_no_stateless_write = false;
-    zeinfo_int32_t hw_preemption_mode = -1;
     zeinfo_int32_t offset_to_skip_per_thread_data_load = 0;
     zeinfo_int32_t offset_to_skip_set_ffid_gp = 0;
     zeinfo_int32_t required_sub_group_size = 0;
@@ -114,7 +113,9 @@ struct PreDefinedAttrGetter{
         packed_local_ids,
         local_id,
         local_size,
-        group_size,
+        group_count,
+        global_size,
+        enqueued_local_size,
         global_id_offset,
         private_base_stateless,
         arg_byvalue,
@@ -156,8 +157,12 @@ struct PreDefinedAttrGetter{
             return "local_id";
         case ArgType::local_size:
             return "local_size";
-        case ArgType::group_size:
-            return "group_size";
+        case ArgType::group_count:
+            return "group_count";
+        case ArgType::global_size:
+            return "global_size";
+        case ArgType::enqueued_local_size:
+            return "enqueued_local_size";
         case ArgType::global_id_offset:
             return "global_id_offset";
         case ArgType::private_base_stateless:

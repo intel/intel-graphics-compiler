@@ -623,9 +623,8 @@ namespace IGC
             break;
 
         case KernelArg::ArgType::IMPLICIT_NUM_GROUPS:
-            // FIXME: num_groups is group_size?
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
-                zebin::PreDefinedAttrGetter::ArgType::group_size,
+                zebin::PreDefinedAttrGetter::ArgType::group_count,
                 payloadPosition, iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
             break;
 
@@ -635,6 +634,18 @@ namespace IGC
                 zebin::PreDefinedAttrGetter::ArgType::local_size,
                 payloadPosition, iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
             break;
+
+         case KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE:
+             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                 zebin::PreDefinedAttrGetter::ArgType::enqueued_local_size,
+                 payloadPosition, iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
+             break;
+
+         case KernelArg::ArgType::IMPLICIT_GLOBAL_SIZE:
+             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                 zebin::PreDefinedAttrGetter::ArgType::global_size,
+                 payloadPosition, iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
+             break;
 
         // pointer args
         case KernelArg::ArgType::PTR_GLOBAL:
@@ -720,12 +731,10 @@ namespace IGC
         // We don't need these in ZEBinary
         case KernelArg::ArgType::IMPLICIT_R0:
         case KernelArg::ArgType::R1:
-        // FIXME: Seen this in a simple test case, should be supported?
-        case KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE:
             break;
+        // FIXME: should these be supported?
         case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
         case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE:
-        case KernelArg::ArgType::IMPLICIT_GLOBAL_SIZE:
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN:
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE:
         default:

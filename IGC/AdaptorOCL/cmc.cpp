@@ -66,7 +66,7 @@ static zebin::PreDefinedAttrGetter::ArgType getZEArgType(iOpenCL::DATA_PARAMETER
         return zebin::PreDefinedAttrGetter::ArgType::global_id_offset;
     case iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS:
         // copied from OCL behavior
-        return zebin::PreDefinedAttrGetter::ArgType::group_size;
+        return zebin::PreDefinedAttrGetter::ArgType::group_count;
     default:
         IGC_ASSERT_MESSAGE(0, "unsupported argument type");
         return zebin::PreDefinedAttrGetter::ArgType::arg_byvalue;

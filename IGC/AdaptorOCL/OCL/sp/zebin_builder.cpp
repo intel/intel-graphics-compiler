@@ -409,7 +409,7 @@ void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize,
     int32_t per_id_size = 2 * simdSize;
     // byte size for one id have to be grf align
     per_id_size = (per_id_size % grfSize) == 0 ?
-        per_id_size : (per_id_size / grfSize) + 1;
+        per_id_size : ((per_id_size / grfSize) + 1) * grfSize;
     // total_size = num_of_ids * per_id_size
     int32_t total_size = per_id_size * ((has_local_id_x ? 1 : 0) +
         (has_local_id_y ? 1 : 0) + (has_local_id_z ? 1 : 0));

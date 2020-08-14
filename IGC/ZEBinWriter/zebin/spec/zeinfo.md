@@ -85,7 +85,6 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | has_global_atomics | bool | Optional | false | |
 | has_multi_scratch_spaces | bool | Optional | false | |
 | has_no_stateless_write | bool | Optional | false | |
-| hw_preemption_mode | int32 | Optional | -1 | |
 | offset_to_skip_per_thread_data_load | int32 | Optional | 0 | |
 | offset_to_skip_set_ffid_gp | int32 | Optional | 0 | |
 | required_sub_group_size | int32 | Optional | 0 | The value is given by users in kernel attributes "intel_reqd_sub_group_size" |
@@ -134,10 +133,12 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 
 | Argument Type | Size | Description |
 | ----- | ------ | ------ |
-| packed_local_ids | int32x3 | Compacted local id x, y, z for simd1 kernel |
+| packed_local_ids | int16x3 | Compacted local id x, y, z for simd1 kernel |
 | local_id | int16 x N x n | N is the simd_size <br> n is the number of dimensions derived from work_group_walk_order_dimensions <br> Per id have to be GRF aligned |
-| local_size | int32x3 | |
-| group_size | int32x3 | |
+| local_size | int32x3 | Nnmber of work-items in a group |
+| group_count | int32x3 | Number of group |
+| global_size | int32x3 | OpenCL specific. The total number of work-items in each dimension |
+| enqueued_local_size | int32x3 | OpenCL specific. The size returned by OCL get_enqueued_local_size API  |
 | global_id_offset | int32x3 | |
 | private_base_stateless | int64 | |
 | arg_byvalue | | |
