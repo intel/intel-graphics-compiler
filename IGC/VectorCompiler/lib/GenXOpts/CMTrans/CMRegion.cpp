@@ -58,9 +58,9 @@ const DataLayout *GetDL(Value *V) {
  * Region constructor from a type
  */
 CMRegion::CMRegion(Type *Ty, const DataLayout *DL)
-    : ElementBytes(0), NumElements(1), VStride(0), Width(1),
-      Stride(1), Offset(0), Indirect(0), IndirectIdx(0), Mask(0),
-      ParentWidth(0)
+    : ElementBytes(0), ElementTy(0), NumElements(1), VStride(0), Width(1),
+      Stride(1), Offset(0), Indirect(0), IndirectIdx(0), IndirectAddrOffset(0),
+      Mask(0), ParentWidth(0)
 {
   IGC_ASSERT(!Ty->isAggregateType() &&
          "cannot create region based on an aggregate type");
@@ -92,9 +92,9 @@ CMRegion::CMRegion(Value *V, const DataLayout *DL)
  * bits rather than bytes, and with ElementBytes set to 1.
  */
 CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
-    : ElementBytes(0), NumElements(1), VStride(1), Width(1),
-      Stride(1), Offset(0), Indirect(0), IndirectIdx(0), Mask(0),
-      ParentWidth(0)
+    : ElementBytes(0), ElementTy(0), NumElements(1), VStride(1), Width(1),
+      Stride(1), Offset(0), Indirect(0), IndirectIdx(0), IndirectAddrOffset(0),
+      Mask(0), ParentWidth(0)
 {
   // Determine where to get the subregion value from and which arg index
   // the region parameters start at.
@@ -223,7 +223,8 @@ CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
  */
 CMRegion::CMRegion(unsigned Bits, unsigned ElementBytes)
     : ElementBytes(ElementBytes), ElementTy(0), NumElements(1), VStride(1),
-      Width(1), Stride(1), Offset(0), Indirect(0), IndirectIdx(0), Mask(0)
+      Width(1), Stride(1), Offset(0), Indirect(0), IndirectIdx(0),
+      IndirectAddrOffset(0), Mask(0), ParentWidth(0)
 {
   IGC_ASSERT(Bits);
   Offset = countTrailingZeros(Bits, ZB_Undefined);
