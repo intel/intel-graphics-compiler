@@ -10016,6 +10016,18 @@ bool MadSequenceInfo::checkMadSequence()
             }
         }
 
+        if (builder.avoidAccDstWithIndirectSource())
+        {
+            if (src0->isSrcRegRegion() && src0->asSrcRegRegion()->isIndirect())
+            {
+                return false;
+            }
+            if (src1->isSrcRegRegion() && src1->asSrcRegRegion()->isIndirect())
+            {
+                return false;
+            }
+        }
+
         // If there is a modifier for src2, or src2 is accessed somewhere
         // indirectly then we will not generate a MAC.
         if (!src2->isSrcRegRegion())
@@ -10185,6 +10197,18 @@ void MadSequenceInfo::populateSrc2Def()
             }
         }
     }
+
+    if (builder.avoidAccDstWithIndirectSource())
+    {
+        for (int i = 0; i < src2Def->getNumSrc(); ++i)
+        {
+            if (src2Def->getSrc(i)->isSrcRegRegion() && src2Def->getSrc(i)->asSrcRegRegion()->isIndirect())
+            {
+                return setNotSafe();
+            }
+        }
+    }
+
 
     // Check if there is any ACC dependency.
     if (!checkACCDependency(src2Def, firstMad))
