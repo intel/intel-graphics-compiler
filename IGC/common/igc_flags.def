@@ -314,7 +314,8 @@ DECLARE_IGC_REGKEY(bool, EnableIndirectCallOptimization, true, "Enables inlining
 DECLARE_IGC_REGKEY(bool, ForceFFIDOverwrite,            false, "Force overwriting ffid in sr0.0", false)
 DECLARE_IGC_REGKEY(bool, EnableReadGTPinInput,          true,  "Enables setting GTPin context flags by reading the input to the compiler adapters", false)
 DECLARE_IGC_REGKEY(bool, EnableRuntimeFuncAttributePatching, false,  "Creates a relocation entry to let runtime calculate the max call depth and patch required scratch space usage", true)
-DECLARE_IGC_REGKEY(DWORD, OverrideRevId,                 0,     "Enable this to override the stepping/RevId, default a0(0), b0(1), c0(2), so on...", false)
+DECLARE_IGC_REGKEY(DWORD, OverrideRevIdForWA,             0,   "Enable this to override the stepping/RevId, default is a0 = 0, b0 = 1, c0 = 2, so on...", false)
+DECLARE_IGC_REGKEY(DWORD, OverrideProductFamilyForWA,     0,   "Enable this to override the product family, get the correct enum from igfxfmid.h", false)
 
 
 DECLARE_IGC_GROUP("Performance experiments")

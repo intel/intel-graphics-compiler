@@ -38,12 +38,14 @@ namespace IGC
         memset(&waTable, 0, sizeof(WA_TABLE));
         WA_INIT_PARAM      stWaInitParam = {};
         stWaInitParam.ePlatformType = platform->getPlatformInfo().ePlatformType;
-        if (IGC_GET_FLAG_VALUE(OverrideRevId))
-            platform->OverrideRevId(IGC_GET_FLAG_VALUE(OverrideRevId));
+        if (IGC_GET_FLAG_VALUE(OverrideRevIdForWA))
+            platform->OverrideRevId(IGC_GET_FLAG_VALUE(OverrideRevIdForWA));
         stWaInitParam.usRevId = platform->getPlatformInfo().usRevId;
         stWaInitParam.usRevId_PCH = platform->getPlatformInfo().usRevId_PCH;
         GT_SYSTEM_INFO sysInfo = platform->GetGTSystemInfo();
         stWaInitParam.pGtSysInfo = &sysInfo;
+        if (IGC_GET_FLAG_VALUE(OverrideProductFamilyForWA))
+            platform->OverrideProductFamily(IGC_GET_FLAG_VALUE(OverrideProductFamilyForWA));
 
         switch (platform->getPlatformInfo().eProductFamily)
         {

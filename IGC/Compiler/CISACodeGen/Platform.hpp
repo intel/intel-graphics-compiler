@@ -61,6 +61,12 @@ void OverrideRevId(unsigned short newRevId)
 {
     m_platformInfo.usRevId = newRevId;
 }
+void OverrideProductFamily(unsigned int productID)
+{
+    PRODUCT_FAMILY eProd = static_cast<PRODUCT_FAMILY>(productID);
+    if(eProd > IGFX_UNKNOWN && eProd < IGFX_MAX_PRODUCT)
+        m_platformInfo.eProductFamily = (PRODUCT_FAMILY)productID;
+}
 
     WA_TABLE const& getWATable() const { return m_WaTable; }
 SKU_FEATURE_TABLE const& getSkuTable() const { return m_SkuTable; }
