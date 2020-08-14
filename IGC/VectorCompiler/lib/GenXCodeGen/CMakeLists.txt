@@ -27,6 +27,7 @@ set(CODEGEN_SOURCES
   GenXGotoJoin.cpp
   GenXGEPLowering.cpp
   GenXIMadPostLegalization.cpp
+  GenXImportBiF.cpp
   GenXInlineAsmLowering.cpp
   GenXIntrinsics.cpp
   GenXLayoutBlocks.cpp
