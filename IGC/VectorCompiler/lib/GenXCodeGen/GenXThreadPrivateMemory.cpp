@@ -1072,7 +1072,11 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
     Type *AllocaTy = Alloca->getAllocatedType();
 
     auto IID = llvm::GenXIntrinsic::genx_alloca;
-    Function *IntrDecl = GenXIntrinsic::getGenXDeclaration(Alloca->getModule(), IID, AllocaTy);
+    Function *IntrDecl = GenXIntrinsic::getGenXDeclaration(
+        Alloca->getModule(), IID,
+        {IntegerType::get(*m_ctx,
+                          (m_useGlobalMem ? genx::QWordBits : genx::DWordBits)),
+         AllocaTy});
     CallInst *AllocaIntr =
         IntrinsicInst::Create(IntrDecl, {Constant::getNullValue(AllocaTy)});
     AllocaIntr->insertAfter(Alloca);
