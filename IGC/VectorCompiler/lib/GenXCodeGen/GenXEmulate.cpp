@@ -120,6 +120,7 @@ bool GenXEmulate ::runOnModule(Module &M) {
   Changed |= !ToErase.empty();
   for (auto *I : ToErase)
     I->eraseFromParent();
+  ToErase.clear();
 
   // Delete unuse builtins or make used builtins internal.
   for (auto I = M.begin(); I != M.end();) {
