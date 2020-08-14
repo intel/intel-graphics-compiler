@@ -413,6 +413,24 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function* F) {
     return false;
 }
 
+bool EstimateFunctionSize::funcIsGoodtoTrim( llvm::Function* F)
+{
+    FunctionNode* func = get<FunctionNode>( F );
+    if ( func->InitialSize < IGC_GET_FLAG_VALUE( ControlInlineTinySize ) )
+        return false; /* tiny function */
+    if ( func->F->hasFnAttribute( llvm::Attribute::AlwaysInline ) )
+        return false; /* user specified alwaysInline */
+    if ( !func->ToBeInlined ) /* already trimmed by other kernels */
+        return false;
+    for( auto C : func->CallerList )
+    {
+        FunctionNode* caller = get<FunctionNode>( C );
+        if( caller->KernelNum != func->KernelNum )
+            return false; // always inline if there is a caller outside this kernel
+    }
+    return true;
+}
+
 /*
 For all F: F->ToBeInlined = True
 For each kernel K
@@ -434,7 +452,7 @@ For each kernel K
 void EstimateFunctionSize::reduceKernelSize() {
     auto MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
     auto pMdUtils = MdWrapper->getMetaDataUtils();
-    std::vector<llvm::Function*> kernels;
+    std::vector<FunctionNode*> kernels;
 
     uint32_t uniqKn = 0; // unique kernel number
     uint32_t uniqProc = 0; // unique processed number (Processed already updated in EstimateFunctionSize::analyze()
@@ -451,19 +469,19 @@ void EstimateFunctionSize::reduceKernelSize() {
         if (isEntryFunc(pMdUtils, Node->F)) {
             if( Node->Size > IGC_GET_FLAG_VALUE( KernelTotalSizeThreshold ) )
             {
-                kernels.push_back( Node->F );
-                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
+                kernels.push_back( Node);
+                /* if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
                 {
                     std::cout << "Enqueue kernel " << Node->F->getName().str() << " expanded size=" << Node->Size << std::endl;
-                }
+                } */
             }
             else
             {
-                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
+                /* if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
                 {
                     std::cout << "Notenqueue kernel " << Node->F->getName().str() << " expanded size=" << Node->Size << std::endl;
-                }
-            }  
+                } */
+            }
         }
     }
 
@@ -488,16 +506,19 @@ void EstimateFunctionSize::reduceKernelSize() {
         }
     }
 
+    std::sort( kernels.begin(), kernels.end(),
+        [&]( const FunctionNode* LHS, const FunctionNode* RHS ) { return LHS->Size > RHS->Size; });
+
     // Iterate over kernels
     for (auto Kernel : kernels) {
 
         uniqKn++; // get a unique number for this kernel
 
         if ( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 ) {
-            std::cout << "Trimming Kernel named " << Kernel->getName().str() << " expSize= " << get<FunctionNode>( Kernel )->Size << std::endl;
+            std::cout << "Trimming Kernel " << Kernel->F->getName().str() << " expSize= " << Kernel->Size << std::endl;
         }
 
-        size_t KernelSize = findKernelTotalSize(Kernel, uniqKn, uniqProc );
+        size_t KernelSize = findKernelTotalSize(Kernel->F, uniqKn, uniqProc );
         if ( (IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize) & 0x2) != 0) {
             std::cout << "findKernelTotalSize  " << KernelSize << std::endl;
         }
@@ -505,19 +526,23 @@ void EstimateFunctionSize::reduceKernelSize() {
         if (KernelSize <= IGC_GET_FLAG_VALUE(KernelTotalSizeThreshold)) {
             if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x2 ) != 0 )
             {
-                std::cout << "Kernel " << Kernel->getName().str() << " ok size " << KernelSize << std::endl;
+                std::cout << "Kernel " << Kernel->F->getName().str() << " ok size " << KernelSize << std::endl;
             }
             continue;
         }
 
         if ( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x2 ) != 0 ) {
-            std::cout << "Kernel size is bigger than the threshold " << std::endl;
+            std::cout << "Kernel size is bigger than threshold " << std::endl;
+            if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x10 ) != 0 )
+            {
+                continue; // dump collected kernels only
+            }
         }
 
         std::vector<FunctionNode*> SortedKernelFunctions;
 
         std::deque<FunctionNode*> Queue;
-        Queue.push_back(get<FunctionNode>(Kernel));
+        Queue.push_back(Kernel);
 
         uniqProc++;
         // top down traversal to find non-tiny-functions and sort them from large to small
@@ -526,9 +551,9 @@ void EstimateFunctionSize::reduceKernelSize() {
             Node->Size = Node->InitialSize;
             Node->Processed = uniqProc;
             Node->KernelNum = uniqKn;
-            if (Node->Size >= IGC_GET_FLAG_VALUE(ControlInlineTinySize) && /* not tiny function */
-                Node != get<FunctionNode>(Kernel) && /* not kernel itself */
-                !Node->F->hasFnAttribute( llvm::Attribute::AlwaysInline)) { /* not user specified alwaysInline */
+            if ( Node != Kernel && /* not kernel itself */
+                 funcIsGoodtoTrim(Node->F)) /* and other criterias */
+            {
                SortedKernelFunctions.push_back(Node);
             }
             //std::cout << "Node       " << Node->F->getName().str() << std::endl;
@@ -547,7 +572,7 @@ void EstimateFunctionSize::reduceKernelSize() {
         {
             if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
             {
-                std::cout << "Kernel " << Kernel->getName().str() << " size " << KernelSize << " has no sorted list " << std::endl;
+                std::cout << "Kernel " << Kernel->F->getName().str() << " size " << KernelSize << " has no sorted list " << std::endl;
             }
             continue; // all functions are tiny.
         }
@@ -560,7 +585,7 @@ void EstimateFunctionSize::reduceKernelSize() {
 
         if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
         {
-            std::cout << "Kernel " << Kernel->getName().str() << " has " << SortedKernelFunctions.size() << " to consider for trimming" << std::endl;
+            std::cout << "Kernel " << Kernel->F->getName().str() << " has " << SortedKernelFunctions.size() << " funcs to consider for trimming" << std::endl;
         }
         uint32_t AdjustInterval = 1; //  SortedKernelFunctions.size() / 20;
         uint32_t cnt = 0;
@@ -572,16 +597,16 @@ void EstimateFunctionSize::reduceKernelSize() {
             FunctionToRemove->ToBeInlined = false;
             // TrimmingCandidates[FunctionToRemove->F] = true;
             if ( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 ) {
-                std::cout << "FunctionToRemove " << FunctionToRemove->F->getName().str() << "Size "<< FunctionToRemove->Size << std::endl;
+                std::cout << "FunctionToRemove " << FunctionToRemove->F->getName().str() <<  " initSize "<< FunctionToRemove->InitialSize << " #callers " << FunctionToRemove->CallerList.size() << std::endl;
             }
 
             if( ++cnt == AdjustInterval )
             {
                 cnt = 0;
-                KernelSize = findKernelTotalSize(Kernel, uniqKn, uniqProc);
+                KernelSize = findKernelTotalSize(Kernel->F, uniqKn, uniqProc);
                 if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
                 {
-                    std::cout << "Precise size after trimming " << KernelSize << FunctionToRemove->F->getName().str() << std::endl;
+                    std::cout << "Precise size after trimming " << FunctionToRemove->F->getName().str() << " is " << KernelSize << std::endl;
                 }
             } else {
                 KernelSize -= (FunctionToRemove->CallerList.size()- 1) * FunctionToRemove->Size; // #caller is underestimated
@@ -596,8 +621,8 @@ void EstimateFunctionSize::reduceKernelSize() {
         }
         if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
         {
-            size_t ks = findKernelTotalSize(Kernel, uniqKn, uniqProc);
-            std::cout << "Kernel " << Kernel->getName().str() << " final size " << KernelSize << " real size "<< ks << std::endl;
+            size_t ks = findKernelTotalSize(Kernel->F, uniqKn, uniqProc);
+            std::cout << "Kernel " << Kernel->F->getName().str() << " final size " << KernelSize << " real size "<< ks << std::endl;
         }
     }
 }
@@ -628,10 +653,11 @@ size_t EstimateFunctionSize::findKernelTotalSize(llvm::Function* Kernel, uint32_
             if( CalleeNode->Processed != UP )  // Not processed yet
             {
                 if( CalleeNode->isLeaf() ) {
+                    CalleeNode->Size = CalleeNode->InitialSize;
                     LeafNodes.push_back( CalleeNode );
                     if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x8 ) != 0 )
                     {
-                        std::cout << "found leaf node " << CalleeNode->F->getName().str() << " size " << CalleeNode->Size << std::endl;
+                        std::cout << "found leaf node " << CalleeNode->F->getName().str() << " initSize=Size " << CalleeNode->Size << std::endl;
                     }
                 }
                 else
@@ -702,6 +728,6 @@ size_t EstimateFunctionSize::findKernelTotalSize(llvm::Function* Kernel, uint32_
     return k->Size;
 }
 
-bool EstimateFunctionSize::isTrimmingCandidate( llvm::Function* F) {
+bool EstimateFunctionSize::isTrimmedFunction( llvm::Function* F) {
     return get<FunctionNode>(F)->ToBeInlined == false;
 }

@@ -462,11 +462,11 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 {
                     if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize) &&
                         pCtx->m_enableSubroutine &&
-                        efs.isTrimmingCandidate(F))
+                        efs.isTrimmedFunction(F))
                     {
                         if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
                         {
-                            std::cout << "Trimming Candidate " << F->getName().str() << std::endl;
+                            std::cout << "Trimmed function " << F->getName().str() << std::endl;
                         }
 
                         if (IGC_IS_FLAG_ENABLED(AddNoInlineToTrimmedFunctions))
