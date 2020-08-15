@@ -172,6 +172,7 @@ typedef INT_PTR (*FARPROC)();
     #define DUMMYSTRUCTNAME
 
 #ifndef __MEDIA_PORTABLE_DATAYPE_DEFINED__
+#ifndef __LARGE_INTEGER_STRUCT_DEFINED__
 typedef union _LARGE_INTEGER {
     struct {
         DWORD LowPart;
@@ -183,7 +184,9 @@ typedef union _LARGE_INTEGER {
     } u;
     LONGLONG QuadPart;
 } LARGE_INTEGER, *PLARGE_INTEGER;
-#endif
+#define __LARGE_INTEGER_STRUCT_DEFINED__
+#endif // __LARGE_INTEGER_STRUCT_DEFINED__
+#endif // __MEDIA_PORTABLE_DATAYPE_DEFINED__
 
 typedef union _ULARGE_INTEGER {
     struct {

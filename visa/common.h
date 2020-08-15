@@ -85,7 +85,7 @@ typedef uint16_t WORD;
 typedef double DOUBLE;
 typedef float FLOAT;
 
-#ifndef __LARGE_INTEGER_STRUCT_DEFINED
+#ifndef __LARGE_INTEGER_STRUCT_DEFINED__
 union LARGE_INTEGER {
     struct dummy {
         DWORD LowPart;
@@ -99,8 +99,8 @@ union LARGE_INTEGER {
 
     LONGLONG QuadPart;
 };
-#define __LARGE_INTEGER_STRUCT_DEFINED
-#endif /* __LARGE_INTEGER_STRUCT_DEFINED */
+#define __LARGE_INTEGER_STRUCT_DEFINED__
+#endif // __LARGE_INTEGER_STRUCT_DEFINED__
 
 #endif /* Windows types for non-Windows end */
 
