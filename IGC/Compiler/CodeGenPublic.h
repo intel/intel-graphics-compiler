@@ -265,6 +265,7 @@ namespace IGC
         unsigned int numLoopInsts;
         unsigned int numOfLoop;
         unsigned int numInsts;    //<! measured after optimization, used as a compiler heuristic
+        unsigned int numPsInputs;
         bool sampleCmpToDiscardOptimizationPossible;
         unsigned int sampleCmpToDiscardOptimizationSlot;
     };

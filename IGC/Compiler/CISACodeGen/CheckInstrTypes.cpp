@@ -249,6 +249,10 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_simdShuffleDown:
             g_InstrTypes->hasWaveIntrinsics = true;
             break;
+        case GenISAIntrinsic::GenISA_DCL_inputVec:
+        case GenISAIntrinsic::GenISA_DCL_ShaderInputVec:
+            g_InstrTypes->numPsInputs++;
+            break;
         default:
             break;
         }
