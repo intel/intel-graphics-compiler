@@ -8023,7 +8023,7 @@ VISAKernelImpl::~VISAKernelImpl()
     }
 }
 
-int VISAKernelImpl::GetGenxBinary(void *&buffer, int &size)
+int VISAKernelImpl::GetGenxBinary(void *&buffer, int &size) const
 {
     buffer = this->m_genx_binary_buffer;
     size = this->m_genx_binary_size;

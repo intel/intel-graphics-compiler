@@ -735,7 +735,7 @@ public:
     /// This function may only be called after Compile() is called
     /// If finalization fails, buffer will be set to NULL and size will be set to 0
     /// buffer must be de-allocated using freeBLock API.
-    VISA_BUILDER_API virtual int GetGenxBinary(void *&buffer, int &size) = 0;
+    VISA_BUILDER_API virtual int GetGenxBinary(void *&buffer, int &size) const = 0;
 
     /// GetJitInfo -- returns auxiliary information collected during finalization
     /// This function may only be called after Compile() is called
