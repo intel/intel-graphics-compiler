@@ -56,7 +56,6 @@ PromoteStatelessToBindless::PromoteStatelessToBindless()
 
 bool PromoteStatelessToBindless::runOnFunction(Function& F)
 {
-    m_AccessToSrcPtrMap.clear();
     visit(F);
     PromoteStatelessToBindlessBuffers(F);
 

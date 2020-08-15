@@ -484,10 +484,6 @@ static void CommonOCLBasedPasses(
     // "false" to createScalarizerPass() means that vector load/stores are NOT scalarized
     mpm.add(createScalarizerPass(false));
 
-    // Create a dummy kernel to attach the symbol table if necessary
-    // Only needed if function pointers, externally linked functions, or relocatable global variables are present
-    mpm.add(createInsertDummyKernelForSymbolTablePass());
-
     // Add SetFastMathFalgs pass at the end so that we don't need to worry about previous passes that
     // forget setting math flags. We expect the generic llvm optimizations after the unification
     // (optimizeIR()) will fully take advantage of the flags.

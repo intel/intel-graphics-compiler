@@ -182,7 +182,6 @@ namespace IGC
 
         /// Need to know if the driver can accept more than one SIMD mode for compute shaders
         virtual bool sendMultipleSIMDModes() const { return false; }
-
         /// pick behavior whether we need to keep discarded helper pixels to calculate
         /// gradient correctly for sampler or we need to force early out discarded pixels
         virtual bool KeepDiscardHelperPixels() const { return false; }
