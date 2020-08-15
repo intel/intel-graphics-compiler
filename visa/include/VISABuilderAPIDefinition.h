@@ -234,7 +234,7 @@ public:
     /// AppendVISAArithmeticTwoDstInst -- append a two-dst, two-source vISA arithmetic instruction to this kernel
     /// [pred] op (emask, execSize) dst0 dst1 src0 src1
     /// This is used by addc and subb
-    VISA_BUILDER_API virtual int AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+    VISA_BUILDER_API virtual int AppendVISATwoDstArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
                                           VISA_Exec_Size executionSize, VISA_VectorOpnd *dst1, VISA_VectorOpnd *carry_borrow, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
 
 

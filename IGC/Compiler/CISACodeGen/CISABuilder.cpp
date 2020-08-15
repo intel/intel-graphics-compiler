@@ -1935,7 +1935,7 @@ namespace IGC
                 VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, m_encoderState.m_dstOperand);
 
                 VISA_EMask_Ctrl EMask = SplitEMask(FromExecSize, ToExecSize, ThePart, ExecMask);
-                V(vKernel->AppendVISAArithmeticInst(
+                V(vKernel->AppendVISATwoDstArithmeticInst(
                     ISA_ADDC, Pred, EMask, ToExecSize,
                     L, AccOut, S0L, S1L));
 
@@ -1987,7 +1987,7 @@ namespace IGC
             VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, MidMod);
 
             VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
-            V(vKernel->AppendVISAArithmeticInst(
+            V(vKernel->AppendVISATwoDstArithmeticInst(
                 ISA_ADDC, Pred, ExecMask, ExecSize,
                 L, AccOut, S0L, S1L));
 
@@ -2079,7 +2079,7 @@ namespace IGC
                 VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, AccMod);
 
                 VISA_EMask_Ctrl EMask = SplitEMask(FromExecSize, ToExecSize, ThePart, ExecMask);
-                V(vKernel->AppendVISAArithmeticInst(
+                V(vKernel->AppendVISATwoDstArithmeticInst(
                     ISA_SUBB, Pred, EMask, ToExecSize,
                     L, AccOut, S0L, S1L));
                 {
@@ -2126,7 +2126,7 @@ namespace IGC
             VISA_VectorOpnd* AccIn = GetSourceOperand(Carry, AccMod);
 
             VISA_EMask_Ctrl ExecMask = GetAluEMask(Lo);
-            V(vKernel->AppendVISAArithmeticInst(
+            V(vKernel->AppendVISATwoDstArithmeticInst(
                 ISA_SUBB, Pred, ExecMask, ExecSize,
                 L, AccOut, S0L, S1L));
             {
@@ -2167,7 +2167,7 @@ namespace IGC
     VISA_VectorOpnd* carryBorrowOpnd = GetDestinationOperand(dst, carryOperand);
     IGC_ASSERT_MESSAGE(m_encoderState.m_dstOperand.mod == EMOD_NONE, "addc/subb doesn't support saturate");
 
-    V(vKernel->AppendVISAArithmeticInst(
+    V(vKernel->AppendVISATwoDstArithmeticInst(
         opcode,
         predOpnd,
         GetAluEMask(dst),

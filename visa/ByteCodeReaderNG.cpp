@@ -694,7 +694,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
             case ISA_Inst_Arith:
                 if (opcode == ISA_ADDC || opcode == ISA_SUBB)
                 {
-                    kernelBuilder->AppendVISAArithmeticInst(opcode, pred, emask, esize, dst, src0, src1, src2);
+                    kernelBuilder->AppendVISATwoDstArithmeticInst(opcode, pred, emask, esize, dst, src0, src1, src2);
                 }
                 else
                 {

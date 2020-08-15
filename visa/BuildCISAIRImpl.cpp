@@ -1249,7 +1249,7 @@ bool CISA_IR_Builder::CISA_create_arith_instruction2(VISA_opnd * pred,
                                                      int line_no)
 {
     VISA_Exec_Size executionSize =  Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    int status = m_kernel->AppendVISAArithmeticInst(opcode, (VISA_PredOpnd *)pred, emask, executionSize,
+    int status = m_kernel->AppendVISATwoDstArithmeticInst(opcode, (VISA_PredOpnd *)pred, emask, executionSize,
         (VISA_VectorOpnd *)dst_cisa, (VISA_VectorOpnd *)carry_borrow, (VISA_VectorOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa);
     MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Could not create CISA arithmetic instruction.");
     return true;

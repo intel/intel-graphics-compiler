@@ -3759,8 +3759,7 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
         Opcode, Pred, Mod, ExecMask, ExecSize, Dst, Src0, Src1, NULL, NULL));
   } else {
     if (Opcode == ISA_ADDC || Opcode == ISA_SUBB) {
-      CISA_CALL(Kernel->AppendVISAArithmeticInst(
-          Opcode, Pred, ExecMask, ExecSize, Dst, Src0, Src1, NULL));
+        IGC_ASSERT(false);
     } else {
       CISA_CALL(Kernel->AppendVISAArithmeticInst(
           Opcode, Pred, Mod, ExecMask, ExecSize, Dst, Src0, Src1, NULL));
