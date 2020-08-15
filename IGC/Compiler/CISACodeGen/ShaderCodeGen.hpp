@@ -90,7 +90,7 @@ public:
     virtual void PreAnalysisPass();
     virtual void ExtractGlobalVariables() {}
     void         EOTURBWrite();
-    void         EOTRenderTarget(CVariable* r1);
+    void         EOTRenderTarget();
     virtual void AddEpilogue(llvm::ReturnInst* ret);
 
     virtual CVariable* GetURBOutputHandle()
