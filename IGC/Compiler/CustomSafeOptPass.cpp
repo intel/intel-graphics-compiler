@@ -1609,7 +1609,7 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
         }
     }
 
-    dp4WithIdentityMatrix(I);
+    // dp4WithIdentityMatrix(I);
 }
 
 #if LLVM_VERSION_MAJOR >= 7
