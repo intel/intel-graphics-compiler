@@ -584,7 +584,7 @@ static Expected<opt::InputArgList> parseApiOptions(StringSaver &Saver,
   // Deprecated -cmc parsing just for compatibility.
   const std::string IgcmcOptName =
       Options.getOption(vc::options::OPT_igcmc).getPrefixedName();
-  if (!sys::Process::GetEnv("IGC_VCAvoidCmcFlag") && HasOption(IgcmcOptName))
+  if (HasOption(IgcmcOptName))
     return parseOptions(Argv, vc::options::IgcmcApiOption);
 
   return make_error<vc::NotVCError>();
