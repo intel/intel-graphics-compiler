@@ -621,7 +621,7 @@ std::vector<VISAVariableLocation> VISAModule::GetVariableLocation(const llvm::In
             return ret;
         }
         ret.push_back(VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this));
-        if (GetSIMDSize() == 32 && pVar->visaGenVariable[1])
+        if (GetSIMDSize() == 32 && pVar->visaGenVariable[1] && !pVar->IsUniform())
         {
             reg2 = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[1]);
             ret.push_back(VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg2, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this));
