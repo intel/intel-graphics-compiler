@@ -3813,15 +3813,15 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         jitInfo->numBytesScratchGtpin = kernel.getGTPinData()->getNumBytesScratchUse();
     }
 
-    if (auto sp = kernel.getVarSplitPass())
-    {
-        sp->replaceIntrinsics();
-    }
-
     recordRAStats(builder, kernel, status);
     if (status != VISA_SUCCESS)
     {
         return status;
+    }
+
+    if (auto sp = kernel.getVarSplitPass())
+    {
+        sp->replaceIntrinsics();
     }
 
     if (builder.getOption(vISA_VerifyRA))

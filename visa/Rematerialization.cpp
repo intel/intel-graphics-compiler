@@ -900,7 +900,7 @@ namespace vISA
                 MUST_BE_TRUE(ops != operations.end(), "Didnt find record in map");
                 MUST_BE_TRUE((*ops).second.numUses == 1, "Expecting src0 to be used only in sampler");
 
-                auto newSrc0Dcl = kernel.fg.builder->createTempVar(src0TopDcl->getNumElems(),
+                auto newSrc0Dcl = kernel.fg.builder->createTempVar(src0TopDcl->getTotalElems(),
                     src0TopDcl->getElemType(), gra.getSubRegAlign(src0TopDcl));
 
                 // Clone all defining instructions for sampler's msg header
