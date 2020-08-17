@@ -101,7 +101,8 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
             return;
     }
 
-    Value* srcPtr = IGC::TracePointerSource(resourcePtr);
+    std::vector<Value*> tempList;
+    Value* srcPtr = IGC::TracePointerSource(resourcePtr, false, true, true, tempList);
 
     if (!srcPtr ||
         !srcPtr->getType()->isPointerTy() ||
@@ -111,31 +112,41 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
         IGC_ASSERT_MESSAGE(0, "Stateless buffer pointer not traceable, cannot promote stateless to bindless");
         return;
     }
-
+    // Save the instruction, which makes access (load/store/intrinsic) to the buffer
     m_AccessToSrcPtrMap[inst] = srcPtr;
+    // Save the instruction, which generate an address of the buffer. This is the
+    // instruction right before the last one. The last one has to be the buffer itself.
+    if (tempList.size() > 1)
+    {
+        m_AddressUsedSrcPtrMap[tempList[tempList.size()-2]] = srcPtr;
+    }
+    else
+    {
+        m_AddressUsedSrcPtrMap[inst] = srcPtr;
+    }
 }
 
 void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) const
 {
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    for (auto inst : m_AccessToSrcPtrMap)
+    // Modify the reference to the buffer not through all users but only in instructions
+    // which are used in accesing (load/store) the buffer.
+    for (auto inst : m_AddressUsedSrcPtrMap)
     {
+        Instruction* accessInst = cast<Instruction>(inst.first);
         Argument* srcPtr = cast<Argument>(inst.second);
-        if (!srcPtr->use_empty())
+        Value* nullSrcPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
+        accessInst->replaceUsesOfWith(srcPtr, nullSrcPtr);
+        if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
         {
-            Value* nullSrcPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
-            srcPtr->replaceAllUsesWith(nullSrcPtr);
-            if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
+            FunctionMetaData* funcMD = &modMD->FuncMD[&F];
+            ResourceAllocMD* resourceAlloc = &funcMD->resAllocMD;
+            ArgAllocMD* argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
+            IGC_ASSERT_MESSAGE((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size(), "ArgAllocMD List Out of Bounds");
+            if (argInfo->type == ResourceTypeEnum::UAVResourceType)
             {
-                FunctionMetaData* funcMD = &modMD->FuncMD[&F];
-                ResourceAllocMD* resourceAlloc = &funcMD->resAllocMD;
-                ArgAllocMD* argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
-                IGC_ASSERT_MESSAGE((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size(), "ArgAllocMD List Out of Bounds");
-                if (argInfo->type == ResourceTypeEnum::UAVResourceType)
-                {
-                    // Update metadata to show bindless resource type
-                    argInfo->type = ResourceTypeEnum::BindlessUAVResourceType;
-                }
+                // Update metadata to show bindless resource type
+                argInfo->type = ResourceTypeEnum::BindlessUAVResourceType;
             }
         }
     }

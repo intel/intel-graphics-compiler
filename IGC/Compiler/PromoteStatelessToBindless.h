@@ -63,6 +63,7 @@ namespace IGC
         void PromoteStatelessToBindlessBuffers(llvm::Function& F) const;
 
         std::unordered_map<llvm::Value*, llvm::Value*> m_AccessToSrcPtrMap;
+        std::unordered_map<llvm::Value*, llvm::Value*> m_AddressUsedSrcPtrMap;
     };
 
 } // namespace IGC
