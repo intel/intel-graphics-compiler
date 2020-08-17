@@ -99,6 +99,9 @@ static cl::opt<bool>
     EnableKernelArgReordering("enable-kernel-arg-reordering", cl::init(true),
                               cl::Hidden,
                               cl::desc("Enable kernel argument reordering"));
+static cl::opt<bool> BTIIndexCommoning("make-bti-index-common", cl::init(false),
+                                       cl::Hidden,
+                                       cl::desc("Enable BTI index commoning"));
 
 namespace llvm {
 void initializeCMKernelArgOffsetPass(PassRegistry &);
@@ -527,7 +530,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(MDNode *Node, Function *F) {
           // register pressure and the number of instructions. But if there is
           // only one use, it will be okay to wait for the replacement until
           // category conv do it.
-          if (Arg.getNumUses() > 1) {
+          if (BTIIndexCommoning && Arg.getNumUses() > 1) {
             auto ID = ArgTy->isFPOrFPVectorTy() ? GenXIntrinsic::genx_constantf
                                                 : GenXIntrinsic::genx_constanti;
             Module *M = F->getParent();
