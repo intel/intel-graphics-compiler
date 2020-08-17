@@ -1103,7 +1103,9 @@ void CPixelShader::AddEpilogue(llvm::ReturnInst* ret)
         encoder.Push();
         encoder.Jump(flag, m_pixelPhaseLabel);
         encoder.Push();
-        EOTRenderTarget();
+        const bool isPerCoarse = true;
+        EOTRenderTarget(GetR1(), isPerCoarse);
+        m_hasEOT = true;
     }
     if (IsLastPhase())
     {
