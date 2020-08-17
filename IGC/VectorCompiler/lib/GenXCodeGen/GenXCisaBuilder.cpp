@@ -94,10 +94,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "VISAKernel.h"
 #endif
 
-#ifndef COMMON_ISA_MAX_FILENAME_LENGTH
-#define COMMON_ISA_MAX_FILENAME_LENGTH 1023
-#endif
-
 using namespace llvm;
 using namespace genx;
 
@@ -786,7 +782,7 @@ public:
     Loops.clear();
   }
 
-  bool run(std::string &KernelNameBuf);
+  bool run();
 
   LLVMContext &getContext() { return Ctx; }
 
@@ -841,8 +837,7 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
                                   .getGenXSubtarget();
   KernelBuilder->BackendConfig = &getAnalysis<GenXBackendConfig>();
 
-  std::string KernelName;
-  KernelBuilder->run(KernelName);
+  KernelBuilder->run();
 
   GenXModule *GM = KernelBuilder->GM;
   VISABuilder *VisaBuilder = GM->GetCisaBuilder();
@@ -855,11 +850,11 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
     CISA_CALL(VISAAsmTextReader->ParseVISAText(VISATextHeader, VISAText, ""));
     VisaBuilder = VISAAsmTextReader;
   }
+
+  // TODO: remove saving kernels to GenXModule and just retrive them
+  // from builder in finalizer pass.
   for (auto &F : FG) {
-    if (genx::isKernel(F)) {
-      VISAKernel *BuiltKernel = VisaBuilder->GetVISAKernel(KernelName.c_str());
-      GM->saveVisaKernel(F, BuiltKernel);
-    } else if (F->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
+    if (genx::isKernel(F) || F->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
       VISAKernel *BuiltKernel = VisaBuilder->GetVISAKernel(F->getName());
       GM->saveVisaKernel(F, BuiltKernel);
     }
@@ -1002,34 +997,19 @@ std::string GenXKernelBuilder::buildAsmName() const {
   return AsmName;
 }
 
-
-bool GenXKernelBuilder::run(std::string &KernelNameBuf) {
+bool GenXKernelBuilder::run() {
   GrfByteSize = Subtarget ? Subtarget->getGRFWidth() : 32;
   StackSurf = Subtarget ? Subtarget->stackSurface() : PREDEFINED_SURFACE_STACK;
-  StringRef Name = TheKernelMetadata.getName();
-  if (!Name.size()) {
-    // If it is not a kernel, or no metadata was found, then set the
-    // name to the IR name.
-    Name = FG->getHead()->getName();
-  }
 
-  // Cut kernel name to fit vISA name size
-  auto Size = (Name.size() > COMMON_ISA_MAX_FILENAME_LENGTH)
-                  ? (COMMON_ISA_MAX_FILENAME_LENGTH)
-                  : Name.size();
-  KernelNameBuf.insert(0, Name.begin(), Size);
-  KernelNameBuf[Size] = 0;
-  if (TheKernelMetadata.isKernel()) {
-    CisaBuilder->AddKernel(MainKernel, KernelNameBuf.c_str());
-    Kernel = static_cast<VISAFunction *>(MainKernel);
-    Func2Kern[FG->getHead()] = Kernel;
-  } else {
-    CisaBuilder->AddFunction(Kernel, KernelNameBuf.c_str());
-  }
+  IGC_ASSERT_MESSAGE(TheKernelMetadata.isKernel(),
+                     "Expected kernel as a head of function group");
+  const std::string KernelName = TheKernelMetadata.getName();
+  CisaBuilder->AddKernel(MainKernel, KernelName.c_str());
+  Kernel = static_cast<VISAFunction *>(MainKernel);
+  Func2Kern[FG->getHead()] = Kernel;
 
   IGC_ASSERT(Kernel && "Kernel initialization failed!");
-  LLVM_DEBUG(dbgs() << "=== PROCESS KERNEL(" << TheKernelMetadata.getName()
-                    << ") ===\n");
+  LLVM_DEBUG(dbgs() << "=== PROCESS KERNEL(" << KernelName << ") ===\n");
 
   IGC_ASSERT(Subtarget);
   addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget);
@@ -1100,12 +1080,14 @@ bool GenXKernelBuilder::run(std::string &KernelNameBuf) {
   // Build input variables
   buildInputs(FG->getHead(), NeedRetIP);
 
+  std::string FuncName;
   for (auto &F : *FG) {
     Func = F;
     if (F->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
         F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
       VISAFunction *stackFunc = nullptr;
-      CisaBuilder->AddFunction((VISAFunction *&)stackFunc, F->getName().data());
+      FuncName = F->getName();
+      CisaBuilder->AddFunction(stackFunc, FuncName.c_str());
       IGC_ASSERT(stackFunc);
       Func2Kern[F] = stackFunc;
       Kernel = stackFunc;
