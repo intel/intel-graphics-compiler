@@ -148,6 +148,7 @@ class GenXLowering : public FunctionPass {
   DominatorTree *DT = nullptr;
   const GenXSubtarget *ST = nullptr;
   SmallVector<Instruction *, 8> ToErase;
+  const DataLayout *DL = nullptr;
 
 public:
   static char ID;
@@ -234,6 +235,7 @@ bool GenXLowering::runOnFunction(Function &F) {
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
+  DL = &F.getParent()->getDataLayout();
   // First split any phi nodes with struct type.
   splitStructPhis(&F);
   // Create a list of basic blocks in the order we want to process them, before
@@ -1338,7 +1340,7 @@ bool GenXLowering::lowerExtractElement(Instruction *Inst) {
 Value *GenXLowering::scaleInsertExtractElementIndex(Value *IdxVal, Type *ElTy,
                                                     Instruction *InsertBefore) {
   // Do the cast and multiply.
-  unsigned ElementBytes = ElTy->getPrimitiveSizeInBits() / 8;
+  unsigned ElementBytes = DL->getTypeSizeInBits(ElTy) / genx::ByteBits;
   IntegerType *I16Ty = Type::getInt16Ty(IdxVal->getContext());
   if (ConstantInt *CI = dyn_cast<ConstantInt>(IdxVal))
     return ConstantInt::get(I16Ty, CI->getSExtValue() * ElementBytes);
