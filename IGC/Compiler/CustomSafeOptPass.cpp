@@ -44,6 +44,7 @@ The passes are
     CustomLoopInfo
     GenStrengthReduction
     FlattenSmallSwitch
+    SplitIndirectEEtoSel
 
 CustomSafeOptPass does peephole optimizations
 For example, reduce the alloca size so there is a chance to promote indexed temp.
@@ -64,6 +65,9 @@ GenStrengthReduction performs a fdiv optimization.
 
 FlattenSmallSwitch flatten the if/else or switch structure and use cmp+sel
 instead if the structure is small.
+
+SplitIndirectEEtoSel splits extractelements with very small vec to a series of
+cmp+sel to avoid expensive VxH mov.
 
 =============================================================================*/
 
@@ -4449,6 +4453,205 @@ void FCmpPaternMatch::visitSelectInst(SelectInst& I)
 
 IGC_INITIALIZE_PASS_BEGIN(FlattenSmallSwitch, "flattenSmallSwitch", "flattenSmallSwitch", false, false)
 IGC_INITIALIZE_PASS_END(FlattenSmallSwitch, "flattenSmallSwitch", "flattenSmallSwitch", false, false)
+
+
+
+/*======================== SplitIndirectEEtoSel =============================
+
+This class changes extract element for small vectors to series of cmp+sel to avoid VxH mov.
+before:
+  %268 = mul nuw i32 %res.i2.i, 3
+  %269 = extractelement <12 x float> %234, i32 %268
+  %270 = add i32 %268, 1
+  %271 = extractelement <12 x float> %234, i32 %270
+  %272 = add i32 %268, 2
+  %273 = extractelement <12 x float> %234, i32 %272
+  %274 = extractelement <12 x float> %198, i32 %268
+  %275 = extractelement <12 x float> %198, i32 %270
+  %276 = extractelement <12 x float> %198, i32 %272
+
+after:
+  %250 = icmp eq i32 %res.i2.i, i16 1
+  %251 = select i1 %250, float %206, float %200
+  %252 = select i1 %250, float %208, float %202
+  %253 = select i1 %250, float %210, float %204
+  %254 = select i1 %250, float %48, float %32
+  %255 = select i1 %250, float %49, float %33
+  %256 = select i1 %250, float %50, float %34
+  %257 = icmp eq i32 %res.i2.i, i16 2
+  %258 = select i1 %257, float %214, float %251
+  %259 = select i1 %257, float %215, float %252
+  %260 = select i1 %257, float %216, float %253
+  %261 = select i1 %257, float %64, float %254
+  %262 = select i1 %257, float %65, float %255
+  %263 = select i1 %257, float %66, float %256
+
+  It is a bit similar to SimplifyConstant::isCmpSelProfitable for OCL,
+  but not restricted to api.
+===========================================================================*/
+namespace {
+    class SplitIndirectEEtoSel : public FunctionPass, public llvm::InstVisitor<SplitIndirectEEtoSel>
+    {
+    public:
+        static char ID;
+        SplitIndirectEEtoSel() : FunctionPass(ID)
+        {
+            initializeSplitIndirectEEtoSelPass(*PassRegistry::getPassRegistry());
+        }
+        virtual llvm::StringRef getPassName() const { return "Split Indirect EE to ICmp Plus Sel"; }
+        virtual bool runOnFunction(Function& F);
+        void visitExtractElementInst(llvm::ExtractElementInst& I);
+    private:
+        bool isProfitableToSplit(int num, int mul, int add);
+        bool didSomething;
+    };
+
+} // namespace
+
+
+char SplitIndirectEEtoSel::ID = 0;
+FunctionPass* IGC::createSplitIndirectEEtoSelPass() { return new SplitIndirectEEtoSel(); }
+
+bool SplitIndirectEEtoSel::runOnFunction(Function& F)
+{
+    didSomething = false;
+    visit(F);
+    return didSomething;
+}
+
+bool SplitIndirectEEtoSel::isProfitableToSplit(int num, int mul, int add)
+{
+    /* Assumption:
+       Pass is profitable when: (X * cmp + Y * sel) < (ExecSize * mov VxH).
+    */
+
+    const int assumedVXHCost = IGC_GET_FLAG_VALUE(SplitIndirectEEtoSelThreshold);
+    int possibleCost = 0;
+
+    /* for: extractelement <4 x float> , %index
+       cost is (4 - 1)  * (icmp + sel) = 6;
+    */
+    possibleCost = (num-1) * 2;
+    if (possibleCost < assumedVXHCost)
+        return true;
+
+    /* for: extractelement <12 x float> , (mul %real_index, 3)
+       cost is ((12/3) - 1) * (icmp + sel) = 6;
+    */
+    if (mul)
+    {
+        possibleCost = ((num / mul) -1 ) * 2;
+
+        if (possibleCost < assumedVXHCost)
+            return true;
+    }
+
+    return false;
+}
+
+void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst& I)
+{
+    using namespace llvm::PatternMatch;
+
+    VectorType* vecTy = I.getVectorOperandType();
+    uint64_t num = vecTy->getNumElements();
+    Type* eleType = vecTy->getElementType();
+
+    Value* vec = I.getVectorOperand();
+    Value* index = I.getIndexOperand();
+
+    // ignore constant index
+    if (dyn_cast<ConstantInt>(index))
+    {
+        return;
+    }
+
+    // ignore others for now (did not yet evaluate perf. impact)
+    if (!(eleType->isIntegerTy(32) || eleType->isFloatTy()))
+    {
+        return;
+    }
+
+    // used to calculate offsets
+    int64_t add = 0;
+    int64_t mul = 1;
+
+
+    /* strip mul/add from index calculation and remember it for later:
+       %268 = mul nuw i32 %res.i2.i, 3
+       %270 = add i32 %268, 1
+       %271 = extractelement <12 x float> %234, i32 %270
+    */
+    Value* Val1 = nullptr;
+    uint64_t pat_add = 0, pat_mul = 1;
+
+    auto pat1 = m_Add(m_Mul(m_Value(Val1), m_ConstantInt(pat_mul)), m_ConstantInt(pat_add));
+    auto pat2 = m_Mul(m_Value(Val1), m_ConstantInt(pat_mul));
+    if (match(index, pat1) || match(index, pat2))
+    {
+        add = int64_t(pat_add);
+        mul = int64_t(pat_mul);
+        index = Val1;
+    }
+
+    // Some code shows `shl+or` instead of mul+add.
+    auto pat21 = m_Or(m_Shl(m_Value(Val1), m_ConstantInt(pat_mul)), m_ConstantInt(pat_add));
+    auto pat22 = m_Shl(m_Value(Val1), m_ConstantInt(pat_mul));
+    if (match(index, pat21) || match(index, pat22))
+    {
+        add = int64_t(pat_add);
+        mul = (1LL << int64_t(pat_mul));
+        index = Val1;
+    }
+
+    if (!isProfitableToSplit((int)num, (int)mul, (int)add))
+        return;
+
+    Value* vTemp = llvm::UndefValue::get(eleType);
+    IRBuilder<> builder(I.getNextNode());
+
+    // returns true if we can skip this icmp, such as:
+    auto canSafelySkipThis = [&](int64_t add, int64_t mul, int64_t & index) {
+
+        if (mul)
+        {
+            // icmp eq (add (mul %index, 3), 2), 1
+            if ((add && mul > 1) && (index - add) < 0)
+                return true;
+            index -= add;
+
+            // icmp eq (mul %index, 3), 1
+            if ((index % mul) > 0)
+                return true;
+            index = index / mul;
+        }
+        return false;
+    };
+
+    // Generate combinations
+    for (uint64_t n = 0; n < num; n++)
+    {
+        int64_t calcIndex = n;
+
+        if (canSafelySkipThis(add, mul, calcIndex))
+            continue;
+
+        // Those 2 might be different, when cmp will get altered by it's operands, but EE index stays the same
+        ConstantInt* cmpIndex = llvm::ConstantInt::get(builder.getInt32Ty(), (uint64_t)calcIndex);
+        ConstantInt* eeiIndex = llvm::ConstantInt::get(builder.getInt32Ty(), (uint64_t)n);
+
+        Value* cmp = builder.CreateICmp(CmpInst::Predicate::ICMP_EQ, index, cmpIndex);
+        Value* subcaseEE = builder.CreateExtractElement(vec, eeiIndex);
+        Value* sel = builder.CreateSelect(cmp, subcaseEE, vTemp);
+        vTemp = sel;
+    }
+    I.replaceAllUsesWith(vTemp);
+    didSomething = true;
+}
+
+
+IGC_INITIALIZE_PASS_BEGIN(SplitIndirectEEtoSel, "SplitIndirectEEtoSel", "SplitIndirectEEtoSel", false, false)
+IGC_INITIALIZE_PASS_END(SplitIndirectEEtoSel, "SplitIndirectEEtoSel", "SplitIndirectEEtoSel", false, false)
 
 ////////////////////////////////////////////////////////////////////////
 // LogicalAndToBranch trying to find logical AND like below:
