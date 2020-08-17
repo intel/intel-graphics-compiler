@@ -277,6 +277,7 @@ static Value *FormEltsOffsetVectorForSVM(unsigned NumElts,
     IGC_ASSERT(Offset->getType()->getVectorNumElements() == 1);
     Offset = CastInst::CreateZExtOrBitCast(Offset, OffsetTy, "", InsertBefore);
   }
+  // FIXME: replace with shufflevector
   for (unsigned CurElt = 0; CurElt < NumElts; ++CurElt) {
     Value *Idx = ConstantInt::get(I32Ty, CurElt);
     EltsOffset = Builder.CreateInsertElement(EltsOffset, Offset, Idx);
@@ -310,7 +311,7 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
                  cast<ExtractElementInst>(Ptr)->getVectorOperand())) {
     if (Ptr->getType()->isPointerTy()) {
       auto *PTI = CastInst::Create(Instruction::PtrToInt, Ptr,
-                              Type::getInt32Ty(*m_ctx));
+                              IntegerType::get(*m_ctx, (m_useGlobalMem ? 64 : 32)));
       PTI->insertAfter(cast<Instruction>(Ptr));
       return PTI;
     } else
@@ -530,7 +531,7 @@ static Value *lookForTruncOffset(Value *V) {
     if (auto *I = dyn_cast<BinaryOperator>(V)) {
       for (unsigned i = 0; i < I->getNumOperands(); ++i) {
         auto *Op = I->getOperand(i);
-        if (auto *Off = lookForTruncOffset(Op)) {
+        if (Value *Off = lookForTruncOffset(Op); Off != Op) {
           if (I->getType() != Off->getType()) {
             auto *OtherOp = I->getOperand((i + 1) % 2);
             OtherOp = ZExtOrTruncIfNeeded(OtherOp, Off->getType(), I);
@@ -545,7 +546,7 @@ static Value *lookForTruncOffset(Value *V) {
         }
       }
     }
-    return nullptr;
+    return V;
   }
 }
 
@@ -587,12 +588,15 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
   Value *Offset = lookForPtrReplacement(PointerOp);
   Offset = ZExtOrTruncIfNeeded(Offset, I32Ty, CI);
 
-  if (m_useGlobalMem) {
-    if (!(Offset = lookForTruncOffset(EltsOffset)))
-      Offset = CastInst::CreateZExtOrBitCast(
+  if (m_useGlobalMem && ValueNumElts > 1) {
+    Offset = FormEltsOffsetVectorForSVM(ValueNumElts, CI,
+                                        lookForTruncOffset(Offset));
+    if (!EltsOffset->getType()->getScalarType()->isIntegerTy(64))
+      EltsOffset = CastInst::CreateZExtOrBitCast(
           EltsOffset,
           VectorType::get(I64Ty, EltsOffset->getType()->getVectorNumElements()),
           "", CI);
+    Offset = BinaryOperator::CreateAdd(Offset, EltsOffset, "", CI);
   }
 
   Function *F = GenXIntrinsic::getGenXDeclaration(
