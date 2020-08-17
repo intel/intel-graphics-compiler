@@ -2770,6 +2770,11 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     sources[len].instOpt = InstOpt_WriteEnable;
     ++len;
 
+    if (src->getElemSize() < getTypeSize(Type_UD))
+    {
+        // use D for size computation. Src is guaranteed to be GRF-aligend per vISA spec
+        src->setType(Type_UD);
+    }
     sources[len].opnd = src;
 
     uint32_t movExecSize = 0;
@@ -2777,12 +2782,6 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     auto scale = getGRFSize() / src->getElemSize();
     switch (src->getElemSize())
     {
-    case 1:
-    case 2:
-        scale = getGRFSize() / G4_Type_Table[Type_UW].byteSize;
-        sources[len].execSize = scale * srcNumGRF;
-        movExecSize = scale;
-        break;
     case 4:
         sources[len].execSize = scale * srcNumGRF;
         movExecSize = scale;
