@@ -394,6 +394,8 @@ namespace IGC
 
         llvm::DenseMap<VISAModule*, llvm::Function*> VISAModToFunc;
 
+        llvm::DenseMap<LexicalScope*, DIE*> AbsLexicalScopeDIEMap;
+
     private:
 
         void addScopeVariable(::IGC::LexicalScope* LS, DbgVariable* Var);

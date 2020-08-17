@@ -473,7 +473,8 @@ bool DwarfDebug::isLexicalScopeDIENull(LexicalScope* Scope)
 }
 
 // Construct new DW_TAG_lexical_block for this scope and attach
-// DW_AT_low_pc/DW_AT_high_pc labels as well as DW_AT_INTEL_simd_width
+// DW_AT_low_pc/DW_AT_high_pc labels as well as DW_AT_INTEL_simd_width.
+// Also add DW_AT_abstract_origin when lexical scope is from inlined code.
 DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scope)
 {
     if (isLexicalScopeDIENull(Scope))
@@ -481,13 +482,30 @@ DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
 
     DIE* ScopeDIE = new DIE(dwarf::DW_TAG_lexical_block);
     if (Scope->isAbstractScope())
+    {
+        AbsLexicalScopeDIEMap.insert(std::make_pair(Scope, ScopeDIE));
         return ScopeDIE;
+    }
 
     const SmallVectorImpl<InsnRange>& Ranges = Scope->getRanges();
     IGC_ASSERT_MESSAGE(Ranges.empty() == false, "LexicalScope does not have instruction markers!");
 
     if (m_pModule->isDirectElfInput)
     {
+        if (Scope->getInlinedAt())
+        {
+            auto abstractScope = LScopes.findAbstractScope(dyn_cast_or_null<DILocalScope>(Scope->getScopeNode()));
+            if (abstractScope)
+            {
+                auto AbsDIE = AbsLexicalScopeDIEMap.lookup(abstractScope);
+                if (AbsDIE)
+                {
+                    // Point to corresponding abstract instance of DW_TAG_lexical_block
+                    TheCU->addDIEEntry(ScopeDIE, dwarf::DW_AT_abstract_origin, AbsDIE);
+                }
+            }
+        }
+
         if (IGC_IS_FLAG_ENABLED(EmitDebugRanges))
         {
             encodeRange(TheCU, ScopeDIE, &Ranges);
