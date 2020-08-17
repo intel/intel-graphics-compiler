@@ -588,6 +588,7 @@ protected:
     unsigned char depDistance = 0;
     unsigned short SBToken = -1;
     bool operandTypeIndicated = true;
+    bool isClosestALUType_ = false;
 
     struct DepToken {
         unsigned short token;
@@ -598,6 +599,7 @@ protected:
 public:
     void setDistance(unsigned char dep_distance) {depDistance = dep_distance;}
     void setOperandTypeIndicated(bool indicated) { operandTypeIndicated = indicated; }
+    void setIsClosestALUType(bool indicated) { isClosestALUType_ = indicated; }
     void setToken(unsigned short token) {SBToken = token;}
 
     void setDepToken(unsigned short token, SWSBTokenType type)
@@ -630,6 +632,7 @@ public:
     }
 
     bool isOperandTypeIndicated() {return operandTypeIndicated;}
+    bool isClosestALUType() { return isClosestALUType_; }
     unsigned char getDistance() { return depDistance; }
     unsigned short getToken() { return SBToken; }
 
