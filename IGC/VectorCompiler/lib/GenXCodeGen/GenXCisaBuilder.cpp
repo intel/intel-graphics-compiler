@@ -517,6 +517,7 @@ class GenXKernelBuilder {
   std::map<Function *, LoopInfoBase<BasicBlock, Loop> *> Loops;
   ValueMap<Function *, bool> IsInLoopCache;
 
+  // whether kernel has barrier or sbarrier instruction
   bool HasBarrier = false;
   bool HasCallable = false;
   bool HasStackcalls = false;
@@ -2643,9 +2644,6 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
           return false; // Omit llvm.genx.constantpred that is EM or RM and so
                         // does not have a register allocated.
                         // fall through...
-      case GenXIntrinsic::genx_barrier:
-      case GenXIntrinsic::genx_sbarrier:
-        HasBarrier = true;
       default:
         if (!(CI->user_empty() &&
               GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
@@ -2954,7 +2952,8 @@ void GenXKernelBuilder::collectKernelInfo() {
             continue;
           if (GenXIntrinsicInst *II = dyn_cast<GenXIntrinsicInst>(CI)) {
             auto IID = II->getIntrinsicID();
-            if (IID == GenXIntrinsic::genx_barrier)
+            if (IID == GenXIntrinsic::genx_barrier ||
+                IID == GenXIntrinsic::genx_sbarrier)
               HasBarrier = true;
             else if (IID == GenXIntrinsic::genx_alloca)
               HasAlloca = true;
