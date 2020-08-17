@@ -6546,7 +6546,15 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     CVariable* flag = nullptr;
     bool zeroLOD = m_currShader->m_Platform->supportSampleAndLd_lz() && inst->ZeroLOD();
     bool needLoop = ResourceLoopHeader(resource, sampler, flag, label);
-    m_encoder->SetPredicate(flag);
+
+    if (m_currShader->m_Platform->getWATable().Wa_22011157800 && !IGC_IS_FLAG_DISABLED(DiableWaSamplerNoMask))
+    {
+        m_encoder->SetNoMask();
+    }
+    else
+    {
+        m_encoder->SetPredicate(flag);
+    }
     m_encoder->Sample(
         opCode, writeMask, immOffset, resource, sampler,
         numSources, dst, payload,
