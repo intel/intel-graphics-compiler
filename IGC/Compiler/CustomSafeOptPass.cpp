@@ -1184,8 +1184,7 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
 void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
 {
     if (!IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTextures) &&
-        !IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTypedBuffers) &&
-        !IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllNonTemporalTextures))
+        !IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTypedBuffers))
     {
         return;
     }
@@ -1208,49 +1207,10 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
 
     // if only doing the opt on buffers, make sure src1 is zero too
     if (!IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTextures) &&
-        IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTypedBuffers) &&
-        !IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllNonTemporalTextures))
+        IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTypedBuffers))
     {
         if (!src1 || !src1->isZeroValue())
             return;
-    }
-
-    // for UseHDCTypedReadForAllNonTemporalTextures, check if the ld uses threadid for index
-    if (IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllNonTemporalTextures))
-    {
-        Instruction* AddInst0 = dyn_cast<Instruction>(inst->getOperand(0));
-        Instruction* AddInst1 = dyn_cast<Instruction>(inst->getOperand(1));
-        if (!AddInst0 || !AddInst1 ||
-            AddInst0->getOpcode() != Instruction::Add ||
-            AddInst1->getOpcode() != Instruction::Add)
-        {
-            return;
-        }
-
-        Instruction* ShlInst0 = dyn_cast<Instruction>(AddInst0->getOperand(0));
-        Instruction* ShlInst1 = dyn_cast<Instruction>(AddInst1->getOperand(0));
-        if (!ShlInst0 || !ShlInst1 ||
-            ShlInst0->getOpcode() != Instruction::Shl ||
-            ShlInst1->getOpcode() != Instruction::Shl)
-        {
-            return;
-        }
-
-        BitCastInst* bitcastInst0 = dyn_cast<BitCastInst>(ShlInst0->getOperand(0));
-        BitCastInst* bitcastInst1 = dyn_cast<BitCastInst>(ShlInst1->getOperand(0));
-        if (!bitcastInst0 || !bitcastInst1)
-        {
-            return;
-        }
-
-        GenIntrinsicInst* CI0 = dyn_cast<GenIntrinsicInst>(bitcastInst0->getOperand(0));
-        GenIntrinsicInst* CI1 = dyn_cast<GenIntrinsicInst>(bitcastInst1->getOperand(0));
-        if (!CI0 || !CI1 ||
-            CI0->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_SystemValue ||
-            CI1->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_SystemValue)
-        {
-            return;
-        }
     }
 
     // do the transformation
