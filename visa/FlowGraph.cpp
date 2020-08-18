@@ -3844,7 +3844,7 @@ void FlowGraph::addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool)
     if (scratchRegDcl == NULL)
     {
         scratchRegDcl = builder.createDeclareNoLookup("SR", G4_GRF, 8, 2, Type_UD);
-        scratchRegDcl->getRegVar()->setPhyReg(regPool.getGreg(builder.kernel.getStackCallStartReg() + 1), 0);
+        scratchRegDcl->getRegVar()->setPhyReg(regPool.getGreg(builder.kernel.getSpillHeaderGRF()), 0);
     }
 }
 
@@ -7380,18 +7380,18 @@ unsigned int G4_Kernel::calleeSaveStart()
     return getCallerSaveLastGRF() + 1;
 }
 
-unsigned int G4_Kernel::getStackCallStartReg()
+unsigned int G4_Kernel::getStackCallStartReg() const
 {
     // Last 3 GRFs to be used as scratch
     unsigned int totalGRFs = getNumRegTotal();
-    unsigned int startReg = totalGRFs - getNumScratchRegs();
+    unsigned int startReg = totalGRFs - numReservedABIGRF();
     return startReg;
 }
 
 unsigned int G4_Kernel::getNumCalleeSaveRegs()
 {
     unsigned int totalGRFs = getNumRegTotal();
-    return totalGRFs - calleeSaveStart() - getNumScratchRegs();
+    return totalGRFs - calleeSaveStart() - numReservedABIGRF();
 }
 
 void RelocationEntry::doRelocation(const G4_Kernel& kernel, void* binary, uint32_t binarySize)

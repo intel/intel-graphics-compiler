@@ -43,7 +43,6 @@ using namespace vISA;
 #define SPLIT_USE_CNT_THRESHOLD 2
 #define SPLIT_USE_DISTANCE_THRESHOLD 100
 
-extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
 extern void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel& kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
 extern void getCallerSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel);
 
@@ -183,7 +182,7 @@ void LocalRA::preLocalRAAnalysis()
     numRegLRA = numGRF - numRowsReserved;
 
     bool isStackCall = (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc());
-    unsigned int stackCallRegSize = getStackCallRegSize(isStackCall);
+    unsigned int stackCallRegSize = isStackCall ? kernel.numReservedABIGRF() : 0;
     unsigned int reservedGRFNum = builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum);
 
     if (isStackCall || reservedGRFNum || builder.getOption(vISA_Debug))

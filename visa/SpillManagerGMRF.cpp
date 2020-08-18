@@ -106,8 +106,6 @@ static const unsigned SCRATCH_MSG_DESC_BLOCK_SIZE            = 12;
 #define LIMIT_SEND_EXEC_SIZE(EXEC_SIZE)(((EXEC_SIZE) > 16)? 16: (EXEC_SIZE))
 #define SPILL_PAYLOAD_HEIGHT_LIMIT 4
 
-extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
-
 static void splice(G4_BB* bb, INST_LIST_ITER iter, INST_LIST& instList, unsigned int CISAOff)
 {
     // Update CISA offset of all instructions in instList before splicing
@@ -191,7 +189,8 @@ SpillManagerGRF::SpillManagerGRF(
     indrSpillRegStart_ = spillRegStart_;
     spillRegOffset_ = spillRegStart_;
     if (failSafeSpill) {
-        unsigned int stackCallRegSize = getStackCallRegSize(builder_->kernel.fg.getHasStackCalls() || builder_->kernel.fg.getIsStackCallFunc());
+        bool isStackCall = builder_->kernel.fg.getHasStackCalls() || builder_->kernel.fg.getIsStackCallFunc();
+        unsigned int stackCallRegSize = isStackCall ? builder_->kernel.numReservedABIGRF() : 0;
         indrSpillRegStart_ -= (stackCallRegSize + indrSpillRegSize);
         spillRegStart_ = indrSpillRegStart_ - spillRegSize;
     }

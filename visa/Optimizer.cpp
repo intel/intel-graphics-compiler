@@ -1115,8 +1115,7 @@ int Optimizer::optimization()
 
     // Create a copy of R0 at the top of kernel.
     // This must be done after all other optimizer
-    // passes, except initializePayload, to avoid
-    // potential code ordering issue.
+    // passes except for loadThreadPlayoad
     runPass(PI_createR0Copy);
 
     runPass(PI_initializePayload);
@@ -7555,24 +7554,16 @@ public:
         {
             return;
         }
-        bool needSwitch = (fg.getIsStackCallFunc() && VISA_WA_CHECK(builder.getPWaTable(), WaThreadSwitchAfterCall));
 
         // Skip copying of ``copy of R0'' if it's never assigned, a case where
         // ``copy of R0'' is never used. As EOT always use ``copy of R0'', that
         // case only happens for synthetic tests where no practical code is
         // generated.
-        if (!builder.getBuiltinR0()->getRegVar()->isPhyRegAssigned() && !needSwitch)
+        if (!builder.getBuiltinR0()->getRegVar()->isPhyRegAssigned() )
             return;
 
         G4_Declare *R0Dcl = builder.getRealR0();
-        G4_SrcRegRegion* R0Opnd = builder.createSrcRegRegion(
-            Mod_src_undef,
-            Direct,
-            R0Dcl->getRegVar(),
-            0,
-            0,
-            builder.getRegionStride1(),
-            Type_UD);
+        G4_SrcRegRegion* R0Opnd = builder.Create_Src_Opnd_From_Dcl(R0Dcl, builder.getRegionStride1());
 
         G4_DstRegRegion* R0CopyOpnd = builder.createDst(
             builder.getBuiltinR0()->getRegVar(),
@@ -7583,8 +7574,6 @@ public:
         R0CopyOpnd->computePReg();
 
         unsigned int options = InstOpt_WriteEnable;
-        if (needSwitch)
-            options |= InstOpt_Switch;
         G4_INST *movInst =
             builder.createMov(8, R0CopyOpnd, R0Opnd, options, false);
 

@@ -1610,10 +1610,37 @@ public:
 
     // This function returns starting register number to use
     // for allocating FE/BE stack/frame ptrs.
-    unsigned int getStackCallStartReg();
+    unsigned int getStackCallStartReg() const;
     unsigned int calleeSaveStart();
-    static unsigned int getNumScratchRegs() { return 3; }
     unsigned int getNumCalleeSaveRegs();
+
+    // return the number of reserved GRFs for stack call ABI
+    // the reserved registers are at the end of the GRF file (e.g., r125-r127)
+    uint32_t numReservedABIGRF() const
+    {
+        return 3;
+    }
+
+    // purpose of the GRFs reserved for stack call ABI
+    const int FPSPGRF = 0;
+    const int SpillHeaderGRF = 1;
+    const int ThreadHeaderGRF = 2;
+
+    uint32_t getFPSPGRF() const
+    {
+        return getStackCallStartReg() + FPSPGRF;
+    }
+
+    uint32_t getSpillHeaderGRF() const
+    {
+        return getStackCallStartReg() + SpillHeaderGRF;
+    }
+
+    uint32_t getThreadHeaderGRF() const
+    {
+        return getStackCallStartReg() + ThreadHeaderGRF;
+    }
+
 
     void renameAliasDeclares();
 

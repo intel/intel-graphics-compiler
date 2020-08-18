@@ -6818,9 +6818,9 @@ void GraphColor::stackCallProlog()
 {
     // mov (8) r126.0<1>:ud    r0.0<8;8,1>:ud
     // This sets up the header for oword block r/w used for caller/callee-save
-
+    // ToDo: check if this move is actually necessary
     auto dstRgn = builder.Create_Dst_Opnd_From_Dcl(builder.kernel.fg.scratchRegDcl, 1);
-    auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getRealR0(), builder.getRegionStride1());
+    auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
 
     G4_INST* mov = builder.createMov(8, dstRgn, srcRgn, InstOpt_WriteEnable, false);
 
@@ -9254,6 +9254,12 @@ int GlobalRA::coloringRegAlloc()
         {
             addCalleeSavePseudoCode();
             addStoreRestoreForFP();
+        }
+
+        //bind builtinR0 to the reserved stack call ABI GRF so that caller and callee can agree on which GRF to use for r0
+        if (builder.getOption(vISA_enablePreemption))
+        {
+            builder.getBuiltinR0()->getRegVar()->setPhyReg(builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
         }
     }
     if (builder.getOption(vISA_LocalRA) && !isReRAPass() && canDoLRA(kernel) && !hasStackCall)

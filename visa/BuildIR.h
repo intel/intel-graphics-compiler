@@ -494,7 +494,7 @@ public:
         if (be_sp == NULL)
         {
             be_sp = createDeclareNoLookup("be_sp", G4_GRF, 1, 1, Type_UD);
-            be_sp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getStackCallStartReg()), SubRegs_SP_FP::BE_SP);
+            be_sp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_SP_FP::BE_SP);
         }
 
         return be_sp;
@@ -505,7 +505,7 @@ public:
         if (be_fp == NULL)
         {
             be_fp = createDeclareNoLookup("be_fp", G4_GRF, 1, 1, Type_UD);
-            be_fp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getStackCallStartReg()), SubRegs_SP_FP::BE_FP);
+            be_fp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_SP_FP::BE_FP);
         }
 
         return be_fp;

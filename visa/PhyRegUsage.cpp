@@ -1218,18 +1218,6 @@ void LiveRange::allocForbiddenVector(Mem_Manager& mem)
     }
 }
 
-unsigned int getStackCallRegSize(bool reserveStackCallRegs)
-{
-    if (reserveStackCallRegs)
-    {
-        return 3;
-    }
-    else
-    {
-        return 0;
-    }
-}
-
 void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel &kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned rerservedRegNum)
 {
     // Push forbidden register numbers to vector regNum
@@ -1312,7 +1300,7 @@ void LiveRange::allocForbidden(Mem_Manager& mem, bool reserveStackCallRegs, unsi
     if (regKind == G4_GRF)
     {
         vector<unsigned int> forbiddenGRFs;
-        unsigned int stackCallRegSize = getStackCallRegSize(reserveStackCallRegs);
+        unsigned int stackCallRegSize = reserveStackCallRegs ? gra.kernel.numReservedABIGRF() : 0;
         getForbiddenGRFs(forbiddenGRFs, gra.kernel, stackCallRegSize, reserveSpillSize, rerservedRegNum);
 
         for (unsigned int i = 0; i < forbiddenGRFs.size(); i++)

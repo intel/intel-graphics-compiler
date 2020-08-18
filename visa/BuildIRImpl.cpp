@@ -638,7 +638,7 @@ void IR_Builder::createPreDefinedVars()
             }
             case PreDefinedVarsInternal::FE_SP:
             {
-                unsigned int startReg = kernel.getStackCallStartReg();
+                unsigned int startReg = kernel.getFPSPGRF();
                 dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
                 dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_SP);
                 break;
@@ -646,7 +646,7 @@ void IR_Builder::createPreDefinedVars()
             case PreDefinedVarsInternal::FE_FP:
             {
                 // PREDEFINED_FE_FP
-                unsigned int startReg = kernel.getStackCallStartReg();
+                unsigned int startReg = kernel.getFPSPGRF();
                 dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
                 dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_FP);
                 break;
@@ -679,10 +679,11 @@ void IR_Builder::createPreDefinedVars()
 void IR_Builder::createBuiltinDecls()
 {
 
+    auto numR0DW = getGRFSize() / getTypeSize(Type_UD);
     builtinR0 = createDeclareNoLookup(
         "BuiltinR0",
         G4_INPUT,
-        GENX_GRF_REG_SIZ / G4_Type_Table[Type_UD].byteSize,
+        numR0DW,
         1,
         Type_UD);
     builtinR0->getRegVar()->setPhyReg(phyregpool.getGreg(0), 0);
@@ -690,11 +691,10 @@ void IR_Builder::createBuiltinDecls()
 
     if (m_options->getOption(vISA_enablePreemption))
     {
-        G4_Declare *R0CopyDcl = createTempVar(8, Type_UD, GRFALIGN);
+        G4_Declare *R0CopyDcl = createTempVar(numR0DW, Type_UD, GRFALIGN);
         builtinR0 = R0CopyDcl;
         R0CopyDcl->setDoNotSpill();
     }
-
 
     builtinA0 = createDeclareNoLookup(
         "BuiltinA0",
