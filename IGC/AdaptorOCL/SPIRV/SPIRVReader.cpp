@@ -3671,12 +3671,20 @@ static bool transKernelArgTypeMedataFromString(
     return true;
 }
 
-// Some of the metadata may disappera when linking LLVM modules; attributes are much more permament.
+// Some of the metadata may disappear when linking LLVM modules; attributes are much more permament.
 static void convertAnnotaionsToAttributes(llvm::Function *F, const std::vector<std::string> &annotations)
 {
-  if (std::find(annotations.begin(), annotations.end(), "igc-force-stackcall") != annotations.end()) {
-    F->addFnAttr("igc-force-stackcall");
-  }
+    for (const std::string &annotation : annotations)
+    {
+        if (annotation == "igc-force-stackcall")
+        {
+            F->addFnAttr("igc-force-stackcall");
+        }
+        else if (annotation == "sycl-unmasked")
+        {
+            F->addFnAttr("sycl-unmasked");
+        }
+    }
 }
 
 bool

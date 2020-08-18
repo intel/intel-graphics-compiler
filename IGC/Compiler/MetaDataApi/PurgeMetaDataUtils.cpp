@@ -97,6 +97,9 @@ bool PurgeMetaDataUtils::runOnModule(Module& M)
                 return false;
             }
 
+            if (IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) && F->hasFnAttribute("sycl-unmasked"))
+                return false;
+
             F->eraseFromParent();
             return true;
         }

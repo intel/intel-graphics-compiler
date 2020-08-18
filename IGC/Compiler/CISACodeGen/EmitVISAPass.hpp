@@ -436,6 +436,8 @@ public:
 
     void emitLLVMStackSave(llvm::IntrinsicInst* inst);
     void emitLLVMStackRestore(llvm::IntrinsicInst* inst);
+
+    void emitUnmaskedRegionBoundary(bool start);
     // Debug Built-Ins
     void emitStateRegID(uint64_t and_imm, uint64_t shr_imm);
     void emitThreadPause(llvm::GenIntrinsicInst* inst);

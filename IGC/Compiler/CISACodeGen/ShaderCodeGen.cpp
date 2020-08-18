@@ -74,6 +74,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderLowering.hpp"
 #include "Compiler/CISACodeGen/CrossPhaseConstProp.hpp"
+
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
@@ -88,6 +89,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/UndefinedReferences/UndefinedReferencesPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DisableLoopUnrollOnRetry/DisableLoopUnrollOnRetry.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
@@ -1762,6 +1764,11 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(new PurgeMetaDataUtils());
         }
         // mpm.add(llvm::createDeadCodeEliminationPass()); // this should be done both before/after constant propagation
+
+        if(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions))
+        {
+            mpm.add(new InlineUnmaskedFunctionsPass());
+        }
 
         if (pContext->m_instrTypes.hasLoop)
         {

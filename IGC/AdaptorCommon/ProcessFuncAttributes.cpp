@@ -274,6 +274,11 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             continue;
         }
+        // Do not reset attributes for SYCL unmasked functions.
+        if (IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) && F->hasFnAttribute("sycl-unmasked"))
+        {
+            continue;
+        }
 
         // Go through call sites and remove NoInline atrributes.
         for (auto I : F->users()) {

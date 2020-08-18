@@ -239,6 +239,8 @@ namespace IGC
         bool matchMulPair(llvm::ExtractValueInst*);
         bool matchPtrToPair(llvm::ExtractValueInst*);
 
+        bool MatchUnmaskedRegionBoundary(llvm::Instruction& I, bool start);
+
         void AddPattern(Pattern* P)
         {
             m_currentPattern = P;
