@@ -882,6 +882,12 @@ VcPayloadInfo tryExtractPayload(char* pInput, size_t inputSize) {
 }
 #endif //  !defined(WDDM_LINUX)
 
+static std::unique_ptr<llvm::MemoryBuffer> GetGenericModuleBuffer() {
+    char Resource[5] = {'-'};
+    _snprintf(Resource, sizeof(Resource), "#%d", OCL_BC);
+    return std::unique_ptr<llvm::MemoryBuffer>{llvm::LoadBufferFromResource(Resource, "BC")};
+}
+
 bool TranslateBuild(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
@@ -1047,10 +1053,7 @@ bool TranslateBuild(
             {
                 COMPILER_TIME_START(&oclContext, TIME_OCL_LazyBiFLoading);
 
-                char Resource[5] = { '-' };
-                _snprintf(Resource, sizeof(Resource), "#%d", OCL_BC);
-
-                pGenericBuffer.reset(llvm::LoadBufferFromResource(Resource, "BC"));
+                pGenericBuffer = GetGenericModuleBuffer();
 
                 if (pGenericBuffer == NULL)
                 {
@@ -1540,6 +1543,13 @@ static std::error_code getErrorVC(llvm::Error Err,
     return Status;
 }
 
+static std::error_code getErrorVC(std::error_code Err,
+                                  STB_TranslateOutputArgs* pOutputArgs)
+{
+    SetErrorMessage(Err.message(), *pOutputArgs);
+    return Err;
+}
+
 static void outputBinaryVC(llvm::StringRef Binary,
                            STB_TranslateOutputArgs* pOutputArgs)
 {
@@ -1586,8 +1596,13 @@ static std::error_code TranslateBuildVC(
     vc::CompileOptions& Opts = ExpOptions.get();
     adjustOptionsVC(IGCPlatform, inputDataFormatTemp, Opts);
 
+    std::unique_ptr<llvm::MemoryBuffer> OCLGenericBIFModule = GetGenericModuleBuffer();
+    if (!OCLGenericBIFModule)
+        return getErrorVC(vc::make_error_code(vc::errc::generic_bif_load_fail),
+                          pOutputArgs);
+    vc::ExternalData ExtData{std::move(OCLGenericBIFModule)};
     llvm::ArrayRef<char> Input{pInput, InputSize};
-    auto ExpOutput = vc::Compile(Input, Opts);
+    auto ExpOutput = vc::Compile(Input, Opts, ExtData);
     if (!ExpOutput)
         return getErrorVC(ExpOutput.takeError(), pOutputArgs);
     vc::CompileOutput& Res = ExpOutput.get();

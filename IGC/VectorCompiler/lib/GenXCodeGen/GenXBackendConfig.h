@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef LIB_GENXCODEGEN_GENXBACKENDCONFIG_H
 #define LIB_GENXCODEGEN_GENXBACKENDCONFIG_H
 
+#include "llvmWrapper/Support/MemoryBuffer.h"
 #include "llvm/Pass.h"
 #include "llvm/PassRegistry.h"
 
@@ -61,16 +62,27 @@ struct GenXBackendOptions {
   GenXBackendOptions();
 };
 
+struct GenXBackendData {
+  MemoryBufferRef OCLGenericBiFModule;
+
+  GenXBackendData() = default;
+  GenXBackendData(const MemoryBuffer &OCLGenericBiFModuleBuffer)
+      : OCLGenericBiFModule{
+            IGCLLVM::makeMemoryBufferRef(OCLGenericBiFModuleBuffer)} {}
+};
+
 class GenXBackendConfig : public ImmutablePass {
 public:
   static char ID;
 
 private:
   GenXBackendOptions Options;
+  GenXBackendData Data;
 
 public:
   GenXBackendConfig();
-  explicit GenXBackendConfig(GenXBackendOptions &&Options_);
+  explicit GenXBackendConfig(GenXBackendOptions OptionsIn,
+                             GenXBackendData DataIn);
 
   // Return whether regalloc results should be printed.
   bool enableRegAllocDump() const { return Options.DumpRegAlloc; }
@@ -78,6 +90,10 @@ public:
   // Return maximum available space in bytes for stack purposes.
   unsigned getStackSurfaceMaxSize() const {
     return Options.StackSurfaceMaxSize;
+  }
+
+  MemoryBufferRef getOCLGenericBiFModule() const {
+    return Data.OCLGenericBiFModule;
   }
 };
 } // namespace llvm

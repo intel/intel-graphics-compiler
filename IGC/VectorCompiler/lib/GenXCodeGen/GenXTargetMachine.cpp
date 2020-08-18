@@ -134,6 +134,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeTransformPrivMemPass(registry);
   initializeGenXFunctionPointersLoweringPass(registry);
   initializeGenXBackendConfigPass(registry);
+  initializeGenXImportBiFPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -498,6 +499,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // Packetize.
   auto AddPacketize = [](const PassManagerBuilder &Builder,
                          PassManagerBase &PM) {
+    PM.add(createGenXImportBiFPass());
     PM.add(createGenXPacketizePass());
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createGlobalDCEPass());

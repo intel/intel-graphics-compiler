@@ -68,6 +68,8 @@ std::string vc_error_category::message(int condition) const {
     return ErrorTraits<errc::invalid_api_option>::getMessage();
   case errc::invalid_internal_option:
     return ErrorTraits<errc::invalid_internal_option>::getMessage();
+  case errc::generic_bif_load_fail:
+    return ErrorTraits<errc::generic_bif_load_fail>::getMessage();
   }
   llvm_unreachable("Unknown error code");
 }

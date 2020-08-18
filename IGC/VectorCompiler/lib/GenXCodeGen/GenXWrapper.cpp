@@ -364,13 +364,30 @@ createTargetMachine(const vc::CompileOptions &Opts, Triple &TheTriple) {
   return {std::move(TM)};
 }
 
-static void optimizeIR(const vc::CompileOptions &Opts, TargetMachine &TM,
+// Create backend options for immutable config pass. Override default
+// values with provided ones.
+static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
+  GenXBackendOptions BackendOpts;
+  if (Opts.StackMemSize)
+    BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
+  return BackendOpts;
+}
+
+static GenXBackendData createBackendData(const vc::ExternalData &Data) {
+  GenXBackendData BackendData{Data.getOCLGenericBIFModule()};
+  return BackendData;
+}
+
+static void optimizeIR(const vc::CompileOptions &Opts,
+                       const vc::ExternalData &ExtData, TargetMachine &TM,
                        Module &M) {
   legacy::PassManager PerModulePasses;
   legacy::FunctionPassManager PerFunctionPasses(&M);
 
   PerModulePasses.add(
       createTargetTransformInfoWrapperPass(TM.getTargetIRAnalysis()));
+  PerModulePasses.add(new GenXBackendConfig{createBackendOptions(Opts),
+                                            createBackendData(ExtData)});
   PerFunctionPasses.add(
       createTargetTransformInfoWrapperPass(TM.getTargetIRAnalysis()));
 
@@ -416,21 +433,14 @@ static void dumpFinalOutput(const vc::CompileOptions &Opts, const Module &M,
     dumpDataToTemp(IsaBinary, "final.isa");
 }
 
-// Create backend options for immutable config pass. Override default
-// values with provided ones.
-static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
-  GenXBackendOptions BackendOpts;
-  if (Opts.StackMemSize)
-    BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
-  return BackendOpts;
-}
-
 static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
+                                       const vc::ExternalData &ExtData,
                                        TargetMachine &TM, raw_pwrite_stream &OS,
                                        legacy::PassManager &PM) {
   TargetLibraryInfoImpl TLII{TM.getTargetTriple()};
   PM.add(new TargetLibraryInfoWrapperPass(TLII));
-  PM.add(new GenXBackendConfig(createBackendOptions(Opts)));
+  PM.add(new GenXBackendConfig{createBackendOptions(Opts),
+                               createBackendData(ExtData)});
   // Non-constant pointer.
   WA_TABLE *WaTable = Opts.WATable.get();
   PM.add(new GenXWATable(WaTable));
@@ -442,6 +452,7 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
 }
 
 static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
+                                            const vc::ExternalData &ExtData,
                                             TargetMachine &TM, Module &M) {
   legacy::PassManager PM;
 
@@ -449,9 +460,9 @@ static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
   raw_svector_ostream OS(IsaBinary);
   raw_null_ostream NullOS;
   if (Opts.DumpIsa)
-    populateCodeGenPassManager(Opts, TM, OS, PM);
+    populateCodeGenPassManager(Opts, ExtData, TM, OS, PM);
   else
-    populateCodeGenPassManager(Opts, TM, NullOS, PM);
+    populateCodeGenPassManager(Opts, ExtData, TM, NullOS, PM);
 
   std::vector<GenXOCLRuntimeInfo::CompiledKernel> CompiledKernels;
   PM.add(createGenXOCLInfoExtractorPass(CompiledKernels));
@@ -466,11 +477,12 @@ static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
 }
 
 static vc::cm::CompileOutput runCmCodeGen(const vc::CompileOptions &Opts,
+                                          const vc::ExternalData &ExtData,
                                           TargetMachine &TM, Module &M) {
   legacy::PassManager PM;
   SmallString<32> IsaBinary;
   raw_svector_ostream OS(IsaBinary);
-  populateCodeGenPassManager(Opts, TM, OS, PM);
+  populateCodeGenPassManager(Opts, ExtData, TM, OS, PM);
   PM.run(M);
   dumpFinalOutput(Opts, M, IsaBinary);
   vc::cm::CompileOutput Output;
@@ -479,19 +491,21 @@ static vc::cm::CompileOutput runCmCodeGen(const vc::CompileOptions &Opts,
 }
 
 static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
+                                    const vc::ExternalData &ExtData,
                                     TargetMachine &TM, Module &M) {
   switch (Opts.Binary) {
   case vc::BinaryKind::CM:
-    return runCmCodeGen(Opts, TM, M);
+    return runCmCodeGen(Opts, ExtData, TM, M);
   case vc::BinaryKind::OpenCL:
   case vc::BinaryKind::ZE:
-    return runOclCodeGen(Opts, TM, M);
+    return runOclCodeGen(Opts, ExtData, TM, M);
   }
   llvm_unreachable("Unknown runtime kind");
 }
 
 Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
-                                        const vc::CompileOptions &Opts) {
+                                        const vc::CompileOptions &Opts,
+                                        const vc::ExternalData &ExtData) {
   // Environment variable for additional options for debug purposes.
   // This will exit with error if options is incorrect and should not
   // be used to pass meaningful options required for compilation.
@@ -531,12 +545,12 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   if (Opts.DumpIR)
     dumpModuleToTemp(M, "start.ll");
 
-  optimizeIR(Opts, TM, M);
+  optimizeIR(Opts, ExtData, TM, M);
 
   if (Opts.DumpIR)
     dumpModuleToTemp(M, "optimized.ll");
 
-  return runCodeGen(Opts, TM, M);
+  return runCodeGen(Opts, ExtData, TM, M);
 }
 
 static Expected<opt::InputArgList>

@@ -24,55 +24,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef VC_SUPPORT_STATUSCODE_H
-#define VC_SUPPORT_STATUSCODE_H
+#ifndef IGCLLVM_SUPPORT_MEMORYBUFFER_H
+#define IGCLLVM_SUPPORT_MEMORYBUFFER_H
 
-#include <system_error>
+#include <llvm/Support/MemoryBuffer.h>
 
-namespace vc {
-
-enum class errc {
-  // DynamicLibrary::getPermanentLibrary failure.
-  dynamic_load_fail = 1,
-
-  // DynamicLibrary::getAddressOfSymbol failure.
-  symbol_not_found,
-
-  // Spirv read failure.
-  bad_spirv,
-
-  // Parse bitcode failure.
-  bad_bitcode,
-
-  // Module verification failure.
-  invalid_module,
-
-  // Target machine allocation failure.
-  target_machine_not_created,
-
-  // VC codegen not specified in options.
-  not_vc_codegen,
-
-  // Bad option in api options.
-  invalid_api_option,
-
-  // Bad option in internal options.
-  invalid_internal_option,
-
-  // loading OCL generic BiF module failed
-  generic_bif_load_fail,
-};
-
-const std::error_category &err_category() noexcept;
-
-inline std::error_code make_error_code(vc::errc e) noexcept {
-  return std::error_code(static_cast<int>(e), vc::err_category());
-}
-
-} // namespace vc
-
-namespace std {
-template <> struct is_error_code_enum<vc::errc> : std::true_type {};
-} // namespace std
-
+namespace IGCLLVM {
+#if LLVM_VERSION_MAJOR < 9
+    // There's only MemoryBufferRef::MemoryBufferRef(MemoryBuffer&) prior to LLVM-9.
+    // Though inconstancy is not required.
+    static inline llvm::MemoryBufferRef makeMemoryBufferRef(const llvm::MemoryBuffer &Buffer) {
+        return llvm::MemoryBufferRef{Buffer.getBuffer(), Buffer.getBufferIdentifier()};
+    }
+#else
+    static inline llvm::MemoryBufferRef makeMemoryBufferRef(const llvm::MemoryBuffer &Buffer) {
+        return llvm::MemoryBufferRef{Buffer};
+    }
+#endif
+} // namespace IGCLLVM
 #endif

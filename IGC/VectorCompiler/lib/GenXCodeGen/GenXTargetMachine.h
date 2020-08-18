@@ -181,6 +181,7 @@ void initializeGenXUnbalingPass(PassRegistry &);
 void initializeGenXVisaRegAllocPass(PassRegistry &);
 void initializeTransformPrivMemPass(PassRegistry &);
 void initializeGenXFunctionPointersLoweringPass(PassRegistry &);
+void initializeGenXImportBiFPass(PassRegistry &);
 } // End llvm namespace
 
 #endif

@@ -37,7 +37,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DEBUG_TYPE "cmimportbif"
 
+#include "GenX.h"
+#include "GenXBackendConfig.h"
+
 #include <llvm/ADT/SmallPtrSet.h>
+#include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/InstIterator.h>
@@ -49,6 +53,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
+#include <algorithm>
+#include <sstream>
 #include <vector>
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
@@ -559,4 +565,82 @@ bool CMImportBiF(llvm::Module *MainModule,
   BIConvert CVT;
   CVT.runOnModule(*MainModule);
   return true;
+}
+
+class GenXImportBiF final : public ModulePass {
+
+public:
+  static char ID;
+  GenXImportBiF() : ModulePass(ID) {}
+  StringRef getPassName() const override { return "GenX import BiF"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnModule(Module &M) override;
+
+private:
+  std::unique_ptr<Module> getBiFModule(LLVMContext &Ctx);
+};
+
+char GenXImportBiF::ID = 0;
+namespace llvm {
+void initializeGenXImportBiFPass(PassRegistry &);
+}
+
+INITIALIZE_PASS_BEGIN(GenXImportBiF, "GenXImportBiF", "GenXImportBiF", false,
+                      false)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
+INITIALIZE_PASS_END(GenXImportBiF, "GenXImportBiF", "GenXImportBiF", false,
+                    false)
+
+ModulePass *llvm::createGenXImportBiFPass() {
+  initializeGenXImportBiFPass(*PassRegistry::getPassRegistry());
+  return new GenXImportBiF;
+}
+
+void GenXImportBiF::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<GenXBackendConfig>();
+}
+
+static bool isOCLBuiltinDecl(const Function &F) {
+  if (!F.isDeclaration())
+    return false;
+  if (F.isIntrinsic() || GenXIntrinsic::isGenXIntrinsic(&F))
+    return false;
+  // presuming that the only declarations left are from OCL header
+  return true;
+}
+
+// Whether module has uresolved calls to OpenCL builtins.
+static bool OCLBuiltinsRequired(const Module &M) {
+  return std::any_of(M.begin(), M.end(),
+                     [](const Function &F) { return isOCLBuiltinDecl(F); });
+}
+
+bool GenXImportBiF::runOnModule(Module &M) {
+  if (!OCLBuiltinsRequired(M))
+    return false;
+
+  std::unique_ptr<Module> GenericBiFModule = getBiFModule(M.getContext());
+  GenericBiFModule->setDataLayout(M.getDataLayout());
+  GenericBiFModule->setTargetTriple(M.getTargetTriple());
+  CMImportBiF(&M, std::move(GenericBiFModule));
+  return true;
+}
+
+std::unique_ptr<Module> GenXImportBiF::getBiFModule(LLVMContext &Ctx) {
+  MemoryBufferRef GenericBiFModuleBuffer =
+      getAnalysis<GenXBackendConfig>().getOCLGenericBiFModule();
+  llvm::Expected<std::unique_ptr<llvm::Module>> GenericBiFModule =
+      getLazyBitcodeModule(GenericBiFModuleBuffer, Ctx);
+  if (!GenericBiFModule) {
+    auto Err = GenericBiFModule.takeError();
+    std::stringstream ErrStream;
+    ErrStream << "GenXImportBiF failed to decode OCL generic BiF module "
+                 "because of following errors:\n";
+    handleAllErrors(std::move(Err),
+                    [&ErrStream](const llvm::ErrorInfoBase &EI) {
+                      ErrStream << EI.message() << std::endl;
+                    });
+    report_fatal_error(ErrStream.str());
+  }
+  return std::move(GenericBiFModule.get());
 }

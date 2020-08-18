@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/Optional.h>
 #include <llvm/Support/Error.h>
+#include <llvm/Support/MemoryBuffer.h>
 
 #include <memory>
 #include <string>
@@ -154,8 +155,24 @@ struct CompileOptions {
   bool DumpIR = false;
 };
 
+class ExternalData {
+  std::unique_ptr<llvm::MemoryBuffer> OCLGenericBIFModule;
+
+public:
+  explicit ExternalData(std::unique_ptr<llvm::MemoryBuffer> GenericModule)
+      : OCLGenericBIFModule{std::move(GenericModule)} {
+    IGC_ASSERT_MESSAGE(OCLGenericBIFModule,
+                       "wrong argument: no memory buffer was provided");
+  }
+
+  const llvm::MemoryBuffer &getOCLGenericBIFModule() const {
+    return *OCLGenericBIFModule;
+  }
+};
+
 llvm::Expected<CompileOutput> Compile(llvm::ArrayRef<char> Input,
-                                      const CompileOptions &Opts);
+                                      const CompileOptions &Opts,
+                                      const ExternalData &ExtData);
 
 llvm::Expected<CompileOptions> ParseOptions(llvm::StringRef ApiOptions,
                                             llvm::StringRef InternalOptions);
