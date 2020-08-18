@@ -1909,6 +1909,52 @@ _SPIRV_OP(SubgroupBallotKHR, true /*HasId*/, 4 /*WC*/, false /*VariWC*/)
 _SPIRV_OP(SubgroupFirstInvocationKHR, true /*HasId*/, 4 /*WC*/, false /*VariWC*/)
 #undef _SPIRV_OP
 
+class SPIRVAssumeTrueINTEL : public SPIRVInstruction {
+public:
+  static const Op OC = OpAssumeTrueINTEL;
+  static const SPIRVWord FixedWordCount = 2;
+
+  SPIRVAssumeTrueINTEL(SPIRVId TheCondition, SPIRVBasicBlock* BB)
+    : SPIRVInstruction(FixedWordCount, OC, BB), ConditionId(TheCondition) {
+    validate();
+    setHasNoId();
+    setHasNoType();
+    IGC_ASSERT_MESSAGE(BB, "Invalid BB");
+  }
+
+  SPIRVAssumeTrueINTEL() : SPIRVInstruction(OC), ConditionId(SPIRVID_MAX) {
+    setHasNoId();
+    setHasNoType();
+  }
+
+  CapVec getRequiredCapability() const override {
+    return getVec(CapabilityOptimizationHintsINTEL);
+  }
+
+  SPIRVValue* getCondition() const { return getValue(ConditionId); }
+
+  void setWordCount(SPIRVWord TheWordCount) override {
+    SPIRVEntry::setWordCount(TheWordCount);
+  }
+  _SPIRV_DEF_DEC1_OVERRIDE(ConditionId)
+
+protected:
+    SPIRVId ConditionId;
+};
+
+class SPIRVExpectINTELInstBase : public SPIRVInstTemplateBase {
+protected:
+  CapVec getRequiredCapability() const override {
+    return getVec(CapabilityOptimizationHintsINTEL);
+  }
+};
+
+#define _SPIRV_OP(x, ...)                                                      \
+  typedef SPIRVInstTemplate<SPIRVExpectINTELInstBase, Op##x, __VA_ARGS__>      \
+      SPIRV##x;
+_SPIRV_OP(ExpectINTEL, true, 5)
+#undef _SPIRV_OP
+
 class SPIRVSubgroupShuffleINTELInstBase : public SPIRVInstTemplateBase {
 protected:
   CapVec getRequiredCapability() const override {

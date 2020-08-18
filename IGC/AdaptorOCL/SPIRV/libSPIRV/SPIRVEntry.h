@@ -125,6 +125,8 @@ class SPIRVExtInst;
     void decode(std::istream &I) {}
 #define _SPIRV_DEF_DEC1(x)                                                               \
     void decode(std::istream &I) { getDecoder(I) >> x;}
+#define _SPIRV_DEF_DEC1_OVERRIDE(x)                                                      \
+    void decode(std::istream &I) override { getDecoder(I) >> x;}
 #define _SPIRV_DEF_DEC2(x,y)                                                             \
     void decode(std::istream &I) override { getDecoder(I) >> x >> y;}
 #define _SPIRV_DEF_DEC3(x,y,z)                                                           \

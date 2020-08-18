@@ -379,6 +379,9 @@ _SPIRV_OP(SubgroupImageMediaBlockWriteINTEL, 5581)
 _SPIRV_OP(AsmTargetINTEL, 5609)
 _SPIRV_OP(AsmINTEL, 5610)
 _SPIRV_OP(AsmCallINTEL, 5611)
+// optimization_hints
+_SPIRV_OP(AssumeTrueINTEL, 5630)
+_SPIRV_OP(ExpectINTEL, 5631)
 // Function pointers
 _SPIRV_OP(FunctionPointerINTEL, 5600)
 _SPIRV_OP(FunctionPointerCallINTEL, 5601)
