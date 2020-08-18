@@ -551,10 +551,12 @@ void GenXFunctionGroupAnalysis::setHasVariableLengthAlloca(llvm::Module* pModule
 void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pModule)
 {
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
-    Function* defaultKernel = getUniqueEntryFunc(pMdUtils, modMD);
-    IGC_ASSERT_MESSAGE(nullptr != defaultKernel, "kernel does not exist in this group");
+    Function* defaultKernel = IGC::getIntelSymbolTableVoidProgram(pModule);
+    if (!defaultKernel)
+    {
+        return;
+    }
 
     FunctionGroup* defaultFG = getGroupForHead(defaultKernel);
     IGC_ASSERT_MESSAGE(nullptr != defaultFG, "default kernel group does not exist");
@@ -568,7 +570,9 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
         if (F->hasFnAttribute("IndirectlyCalled"))
         {
             if (!F->isDeclaration())
+            {
                 addToFunctionGroup(F, defaultFG, F);
+            }
         }
     }
 
@@ -577,9 +581,13 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
     for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
     {
         Function* F = &(*I);
-        auto FG = getGroup(F);
-        if (FG && !FG->m_hasStackCall)
+        if (auto FG = getGroup(F))
         {
+            // Already set for this group
+            if (FG->m_hasStackCall) continue;
+            // Don't set it for the dummy kernel group
+            if (FG == defaultFG) continue;
+            // Set hasStackCall if there are any indirect calls
             for (auto ii = inst_begin(F), ei = inst_end(F); ii != ei; ii++)
             {
                 if (CallInst* call = dyn_cast<CallInst>(&*ii))

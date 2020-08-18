@@ -65,6 +65,8 @@ namespace IGC
     class CodeGenContext;
     struct SProgramOutput;
 
+    static const std::string INTEL_SYMBOL_TABLE_VOID_PROGRAM = "Intel_Symbol_Table_Void_Program";
+
 #ifdef _DEBUG
     template<typename T, size_t N>
     using smallvector = std::vector<T>;
@@ -205,6 +207,15 @@ namespace IGC
 
     // isA64Ptr - Queries whether given pointer type requires 64-bit representation in vISA
     bool isA64Ptr(llvm::PointerType* PT, CodeGenContext* pContext);
+
+    inline llvm::Function* getIntelSymbolTableVoidProgram(llvm::Module* pM)
+    {
+        return pM->getFunction(INTEL_SYMBOL_TABLE_VOID_PROGRAM);
+    }
+    inline bool isIntelSymbolTableVoidProgram(llvm::Function* pF)
+    {
+        return (pF == getIntelSymbolTableVoidProgram(pF->getParent()));
+    }
 
     /// Return true if F is an entry function of a kernel or a shader.
     ///    A entry function must have an entry in FunctionInfoMetaData

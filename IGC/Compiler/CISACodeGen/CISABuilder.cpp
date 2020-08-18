@@ -4826,15 +4826,7 @@ namespace IGC
             // Otherwise check if relocation is required
             if (!needSymbol)
             {
-                for (auto ui = pGlobal->user_begin(), ue = pGlobal->user_end(); ui != ue; ui++)
-                {
-                    Instruction* inst = dyn_cast<Instruction>(*ui);
-                    if (inst && inst->getParent()->getParent()->hasFnAttribute("visaStackCall"))
-                    {
-                        needSymbol = true;
-                        break;
-                    }
-                }
+                needSymbol = pGlobal->getNumUses() > 0;
             }
 
             if (needSymbol)

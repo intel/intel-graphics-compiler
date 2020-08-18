@@ -281,6 +281,38 @@ bool EmitPass::setCurrentShader(llvm::Function* F)
     return true;
 }
 
+bool EmitPass::compileSymbolTableKernel(llvm::Function* F)
+{
+    IGC_ASSERT(IGC::isIntelSymbolTableVoidProgram(F));
+
+    // Has external functions attached
+    if ((m_FGA && !m_FGA->getGroup(F)->isSingle()))
+    {
+        return true;
+    }
+    else if (!m_moduleMD->inlineProgramScopeOffsets.empty())
+    {
+        for (auto it : m_moduleMD->inlineProgramScopeOffsets)
+        {
+            GlobalVariable* pGlobal = it.first;
+            // Export the symbol if global is external/common linkage
+            if (m_moduleMD->compOpt.EnableTakeGlobalAddress && (pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage()))
+            {
+                return true;
+            }
+            // Otherwise check if relocation is required by checking uses
+            for (auto user : pGlobal->users())
+            {
+                if (Instruction* inst = dyn_cast<Instruction>(user))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 void EmitPass::CreateKernelShaderMap(CodeGenContext* ctx, MetaDataUtils* pMdUtils, llvm::Function& F)
 {
     /* Moving CShaderProgram instantiation to EmitPass from codegen*/
@@ -393,6 +425,15 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             simd16Program->ProgramOutput()->m_programBin != 0 &&
             simd16Program->ProgramOutput()->m_scratchSpaceUsedBySpills == 0)
             return false;
+    }
+
+    // Dummy program is only used for symbol table info, check if compilation is required
+    if (IGC::isIntelSymbolTableVoidProgram(&F))
+    {
+        if (!compileSymbolTableKernel(&F))
+        {
+            return false;
+        }
     }
 
     if (!setCurrentShader(&F))
@@ -690,10 +731,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         destroyVISABuilder = true;
         // We only need one symbol table per module. If there are multiple entry functions, only create a symbol
-        // table for the unique entry function
-        Function* uniqueEntry = getUniqueEntryFunc(pMdUtils, m_moduleMD);
+        // for the dummy kernel with indirect functions attached.
+        bool compileWithSymbolTable = false;
         Function* currHead = m_FGA ? m_FGA->getGroupHead(&F) : &F;
-        bool compileWithSymbolTable = (currHead == uniqueEntry);
+        if (IGC::isIntelSymbolTableVoidProgram(currHead))
+        {
+            compileWithSymbolTable = true;
+        }
         m_encoder->Compile(compileWithSymbolTable);
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa

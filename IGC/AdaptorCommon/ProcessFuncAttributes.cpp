@@ -598,6 +598,7 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
         }
         Changed = true;
     }
+
     return Changed;
 }
 
@@ -619,4 +620,110 @@ void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function* pFunc
         funcMD->m_OpenCLArgBaseTypes.push_back(x.str());
     }
     m_pMdUtil->setFunctionsInfoItem(pFunc, fHandle);
+}
+
+
+//
+// InsertDummyKernelForSymbolTable
+//
+namespace {
+
+    class InsertDummyKernelForSymbolTable : public ModulePass
+    {
+    public:
+        static char ID;
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+        {
+            AU.setPreservesCFG();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
+
+        InsertDummyKernelForSymbolTable();
+
+        ~InsertDummyKernelForSymbolTable() {}
+
+        virtual bool runOnModule(Module& M);
+
+        virtual llvm::StringRef getPassName() const
+        {
+            return "InsertDummyKernelForSymbolTable";
+        }
+    private:
+    };
+
+} // namespace
+
+// Register pass to igc-opt
+#define PASS_FLAG3 "igc-insert-dummy-kernel-for-symbol-table"
+#define PASS_DESCRIPTION3 "If symbol table is needed, insert a dummy kernel to attach it to"
+#define PASS_CFG_ONLY3 false
+#define PASS_ANALYSIS3 false
+IGC_INITIALIZE_PASS_BEGIN(InsertDummyKernelForSymbolTable, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY3, PASS_ANALYSIS3)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(InsertDummyKernelForSymbolTable, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY3, PASS_ANALYSIS3)
+
+char InsertDummyKernelForSymbolTable::ID = 0;
+
+InsertDummyKernelForSymbolTable::InsertDummyKernelForSymbolTable() : ModulePass(ID)
+{
+    initializeInsertDummyKernelForSymbolTablePass(*PassRegistry::getPassRegistry());
+}
+
+ModulePass* createInsertDummyKernelForSymbolTablePass()
+{
+    return new InsertDummyKernelForSymbolTable();
+}
+
+bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
+{
+    MetaDataUtilsWrapper& mduw = getAnalysis<MetaDataUtilsWrapper>();
+    MetaDataUtils* pMdUtils = mduw.getMetaDataUtils();
+    ModuleMetaData* modMD = mduw.getModuleMetaData();
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    bool needDummyKernel = false;
+
+    // Creates an empty dummy kernel.
+    // This kernel will only be used for creating the symbol table.
+    // All indirectly called functions will also be attached to this kernel's binary.
+    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) &&
+        pCtx->type == ShaderType::OPENCL_SHADER)
+    {
+        if (pCtx->m_enableFunctionPointer)
+        {
+            // Symbols are needed for external functions and function pointers
+            needDummyKernel = true;
+        }
+        else if (!modMD->inlineProgramScopeOffsets.empty())
+        {
+            // Create one also if global variables are present and require symbols
+            needDummyKernel = true;
+        }
+    }
+
+    if (needDummyKernel)
+    {
+        // Create empty kernel function
+        IGC_ASSERT(IGC::getIntelSymbolTableVoidProgram(&M) == nullptr);
+        Type* voidTy = Type::getVoidTy(M.getContext());
+        FunctionType* fTy = FunctionType::get(voidTy, false);
+        Function* pNewFunc = Function::Create(fTy, GlobalValue::ExternalLinkage, IGC::INTEL_SYMBOL_TABLE_VOID_PROGRAM, &M);
+        BasicBlock* entry = BasicBlock::Create(M.getContext(), "entry", pNewFunc);
+        IRBuilder<> builder(entry);
+        builder.CreateRetVoid();
+
+        // Set spirv calling convention and kernel metadata
+        pNewFunc->setCallingConv(llvm::CallingConv::SPIR_KERNEL);
+        IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
+        FunctionMetaData* funcMD = &modMD->FuncMD[pNewFunc];
+        funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
+        fHandle->setType(FunctionTypeMD::KernelFunction);
+        pMdUtils->setFunctionsInfoItem(pNewFunc, fHandle);
+        pMdUtils->save(M.getContext());
+
+        return true;
+    }
+    return false;
 }
