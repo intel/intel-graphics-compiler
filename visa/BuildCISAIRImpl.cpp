@@ -500,16 +500,18 @@ static void Stitch_Compiled_Units(
                 G4_INST* calleeLabel = callee->fg.getEntryBB()->front();
                 ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
 
-                auto callInst = builder->createInternalInst(fcall->getPredicate(), G4_call, nullptr, false, fcall->getExecSize(), fcall->getDst(),
-                    calleeLabel->getSrc(0), fcall->getSrc(0), fcall->getOption());
+                auto callInst = builder->createInternalInst(
+                    fcall->getPredicate(), G4_call, nullptr, g4::NOSAT, fcall->getExecSize(),
+                    fcall->getDst(), calleeLabel->getSrc(0), fcall->getSrc(0), fcall->getOption());
                 cur->pop_back();
                 cur->push_back(callInst);
             }
             else
             {
                 // src0 is dont care for indirect call as long it's not a label
-                auto callInst = builder->createInternalInst(fcall->getPredicate(), G4_call, nullptr, false, fcall->getExecSize(), fcall->getDst(),
-                    fcall->getSrc(0), fcall->getSrc(0), fcall->getOption());
+                auto callInst = builder->createInternalInst(
+                    fcall->getPredicate(), G4_call, nullptr, g4::NOSAT, fcall->getExecSize(),
+                    fcall->getDst(), fcall->getSrc(0), fcall->getSrc(0), fcall->getOption());
                 cur->pop_back();
                 cur->push_back(callInst);
             }
@@ -523,8 +525,9 @@ static void Stitch_Compiled_Units(
         if (cur->isEndWithFRet())
         {
             G4_INST* fret = cur->back();
-            auto retInst = builder->createInternalInst(fret->getPredicate(), G4_return, nullptr, false, fret->getExecSize(), builder->createNullDst(Type_UD),
-                fret->getSrc(0), fret->getSrc(1), fret->getOption());
+            auto retInst = builder->createInternalInst(
+                fret->getPredicate(), G4_return, nullptr, g4::NOSAT, fret->getExecSize(),
+                builder->createNullDst(Type_UD), fret->getSrc(0), fret->getSrc(1), fret->getOption());
             cur->pop_back();
             cur->push_back(retInst);
             FCallRetMap[cur] = fret;

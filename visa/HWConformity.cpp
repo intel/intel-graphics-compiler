@@ -198,11 +198,11 @@ G4_DstRegRegion* HWConformity::insertMovAfter(INST_LIST_ITER& it, G4_DstRegRegio
 
     if (type == dst->getType())
     {
-        newInst->setSaturate(false);
+        newInst->setSaturate(g4::NOSAT);
     }
     else if (type == Type_F || type == Type_DF)
     {
-        inst->setSaturate(false);
+        inst->setSaturate(g4::NOSAT);
     }
 
     inst->setExecSize(newExecSize);
@@ -1784,7 +1784,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB* bb)
         if (dst != new_dst &&
             (IS_FTYPE(dst->getType()) || IS_DFTYPE(dst->getType())))
         {
-            inst->setSaturate(false);
+            inst->setSaturate(g4::NOSAT);
         }
     }
     return spill_dst;
@@ -1959,7 +1959,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
 
     // sat cannot be used at all in the macro sequence
     // this effectivly means sat is broken for mul D D D
-    mulInst->setSaturate(false);
+    mulInst->setSaturate(g4::NOSAT);
 
     G4_DstRegRegion* origDst = mulInst->getDst();
     G4_Type accType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
@@ -2186,8 +2186,8 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
         }
     }
 
-    bool sat_mod = inst->getSaturate();
-    inst->setSaturate(false);
+    auto satMod = inst->getSaturate();
+    inst->setSaturate(g4::NOSAT);
 
     G4_DstRegRegion* acc_dst_opnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, tmp_type);
     inst->setDest(acc_dst_opnd);
@@ -2255,7 +2255,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
         bb->insertBefore(iter, movInst);
 
         G4_DstRegRegion* origDst = dst;
-        bool needsExtraMov = origDst->getHorzStride() > 1 || condmod != NULL || sat_mod;
+        bool needsExtraMov = origDst->getHorzStride() > 1 || condmod != NULL || satMod;
 
         G4_Declare* dstAlias = builder.createTempVar(exec_size * 2, Type_D, Any);
         if (!needsExtraMov)
@@ -2287,7 +2287,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
             G4_INST* moveInst = builder.createMov(exec_size, dst, builder.Create_Src_Opnd_From_Dcl(dstAliasAsQ, builder.getRegionStride1()),
                 inst_opt, false);
             moveInst->setCondMod(condmod);
-            moveInst->setSaturate(sat_mod);
+            moveInst->setSaturate(satMod);
             bb->insertBefore(iter, moveInst);
         }
 
@@ -2296,7 +2296,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
 
     INST_LIST_ITER last_iter;
     // create a mov inst
-    if (sat_mod == false)
+    if (satMod == g4::NOSAT)
     {
         bool extra_mov = dst &&
             dst->getExecTypeSize() > G4_Type_Table[Type_D].byteSize;
@@ -2346,7 +2346,8 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
 
         G4_SrcRegRegion* tmp_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 0, rd, tmp_type);
 
-        G4_INST* newInst2 = builder.createInternalInst(pred, G4_mov, condmod, sat_mod, exec_size, dst, tmp_src_opnd, NULL, inst_opt,
+        G4_INST* newInst2 = builder.createInternalInst(
+            pred, G4_mov, condmod, satMod, exec_size, dst, tmp_src_opnd, NULL, inst_opt,
             inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
 
         newInst->transferUse(newInst2);
@@ -2684,7 +2685,10 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
         auto addrSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, var->getBase(), regOff, sregOff,
             builder.getRegionStride1(), Type_UW);
         auto incrementImm = builder.createImm(increment, Type_W);
-        auto addrAddInst = builder.createInternalInst(nullptr, G4_add, nullptr, false, inst->getExecSize()/width, addrDst, addrSrc, incrementImm, InstOpt_WriteEnable);
+        auto addrAddInst = builder.createInternalInst(
+            nullptr, G4_add, nullptr, g4::NOSAT,
+            inst->getExecSize()/width,
+            addrDst, addrSrc, incrementImm, InstOpt_WriteEnable);
         return addrAddInst;
     };
 
@@ -3296,8 +3300,8 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                         movInst->setOptionOn(InstOpt_WriteEnable);
                         if (movInst->getSaturate())
                         {
-                            movInst->setSaturate(false);
-                            inst->setSaturate(true);
+                            movInst->setSaturate(g4::NOSAT);
+                            inst->setSaturate(g4::SAT);
                         }
                         G4_Predicate* pred = movInst->getPredicate();
                         if (pred)
@@ -4798,7 +4802,7 @@ void HWConformity::convertMAD2MulAdd(INST_LIST_ITER iter, G4_BB* bb)
     bb->insertBefore(tIter, addOp);
 
     // predicate/condmod/saturate, if they exist, are propagated to the add instruction
-    inst->setSaturate(false);
+    inst->setSaturate(g4::NOSAT);
     inst->setPredicate(NULL);
     inst->setCondMod(nullptr);
 
@@ -5068,7 +5072,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
             // The sad2 op should not have the SAT attribute set,
             // as this is intended only for the final result of the
             // SADA2 (and thus the add op will keep the SAT attribute).
-            inst->setSaturate(false);
+            inst->setSaturate(g4::NOSAT);
             inst->setPredicate(NULL);
 
             {
@@ -6564,8 +6568,10 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
     G4_DstRegRegion* accDst = builder.hasNFType() ?
         builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, Type_NF) :
         builder.Create_Dst_Opnd_From_Dcl(tmpVal, 1);
-    G4_INST* madInst = builder.createInternalInst(nullptr, G4_mad, nullptr, false, 8, accDst,
-        srcR, u, srcP, options | InstOpt_WriteEnable)->InheritLLVMInst(inst);
+    G4_INST* madInst = builder.createInternalInst(
+        nullptr, G4_mad, nullptr, g4::NOSAT, 8,
+        accDst, srcR, u, srcP,
+        options | InstOpt_WriteEnable)->InheritLLVMInst(inst);
     bb->insertBefore(it, madInst);
 
     G4_Predicate* pred = inst->getPredicate() ? builder.duplicateOperand(inst->getPredicate()) : nullptr;
@@ -7308,9 +7314,12 @@ void HWConformity::fixPredCtrl(INST_LIST_ITER it, G4_BB* bb)
 
             G4_Imm* immVal = builder.createImm(pred->getControl() == PRED_ANY_WHOLE ? 0 : allOneMask, flagType);
             // cmp needs to be as wide as the original inst but is uniform and NoMask otherwise
-            auto cmpInst = builder.createInternalInst(nullptr, G4_cmp, condMod, false, inst->getExecSize(), builder.createNullDst(flagType),
+            auto cmpInst = builder.createInternalInst(
+                nullptr, G4_cmp, condMod, g4::NOSAT, inst->getExecSize(),
+                builder.createNullDst(flagType),
                 builder.createSrcRegRegion(Mod_src_undef, Direct, cmpSrc0Flag->getRegVar(), 0, 0, builder.getRegionScalar(), flagType),
-                immVal, InstOpt_WriteEnable);
+                immVal,
+                InstOpt_WriteEnable);
             bb->insertBefore(it, cmpInst);
             inst->setPredicate(builder.createPredicate(pred->getState(), tmpFlag->getRegVar(), 0));
         }

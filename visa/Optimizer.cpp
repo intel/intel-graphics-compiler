@@ -3433,7 +3433,7 @@ static void expandPseudoLogic(IR_Builder& builder,
     }
     else
     {
-        uint8_t tmpSize = inst->getExecSize();
+        G4_ExecSize tmpSize = inst->getExecSize();
         auto LowerOpnd = [=, &builder](Gen4_Operand_Number opNum, G4_INST* &SI) -> G4_Operand *
         {
             G4_Operand *Opnd = inst->getOperand(opNum);
@@ -3443,13 +3443,15 @@ static void expandPseudoLogic(IR_Builder& builder,
                 auto newDcl = builder.createTempVar(tmpSize, Type_UW, Any);
                 auto newDst = builder.createDst(newDcl->getRegVar(), 0, 0, 1, Type_UW);
                 auto newPred = builder.createPredicate(PredState_Plus, src->getBase(), src->getSubRegOff());
-                auto newSel = builder.createInternalInst(newPred, G4_sel, nullptr, false, tmpSize, newDst,
-                                                         builder.createImm(1, Type_UW),
-                                                         builder.createImm(0, Type_UW),
-                                                         inst->getOption(),
-                                                         inst->getLineNo(),
-                                                         inst->getCISAOff(),
-                                                         inst->getSrcFilename());
+                auto newSel = builder.createInternalInst(
+                    newPred, G4_sel, nullptr, g4::NOSAT, tmpSize,
+                    newDst,
+                    builder.createImm(1, Type_UW),
+                    builder.createImm(0, Type_UW),
+                    inst->getOption(),
+                    inst->getLineNo(),
+                    inst->getCISAOff(),
+                    inst->getSrcFilename());
                 inst->transferDef(newSel, opNum, Gen4_Operand_Number::Opnd_pred);
                 bb->insertBefore(newIter, newSel);
                 SI = newSel;
@@ -3502,7 +3504,7 @@ static void expandPseudoLogic(IR_Builder& builder,
             NULL,
             newOpcode,
             newCondMod,
-            false,
+            g4::NOSAT,
             tmpSize,
             nullDst,
             logicSrc0,
@@ -6525,7 +6527,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
     }
 
-    G4_INST* IR_Builder::makeSplittingInst(G4_INST* inst, uint8_t ExSize)
+    G4_INST* IR_Builder::makeSplittingInst(G4_INST* inst, G4_ExecSize ExSize)
     {
         // Instruction's option is reused. Call sites should reset this field
         // properly. FIXME: fix all call sites.
@@ -7676,7 +7678,7 @@ public:
                 G4_Declare* tempDclSrc = builder.createHardwiredDeclare(1, Type_UD, 126, 0);
                 G4_SrcRegRegion *src0 = builder.createSrcRegRegion(Mod_src_undef, Direct, tempDclSrc->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UB);
 
-                G4_INST* initInst = builder.createMov((uint8_t)exec_size, dst, src0, InstOpt_WriteEnable, false);
+                G4_INST* initInst = builder.createMov((G4_ExecSize)exec_size, dst, src0, InstOpt_WriteEnable, false);
                 bb->insertBefore(iter, initInst);
             }
             //caluclates bytes that remain to be initialized
@@ -7744,7 +7746,7 @@ public:
         // (W) jmpi (1|M0) label
         auto createJmpi = [this](G4_Label* label)
         {
-            return builder.createInternalInst(nullptr, G4_jmpi, nullptr, false, 1,
+            return builder.createInternalInst(nullptr, G4_jmpi, nullptr, g4::NOSAT, g4::SIMD1,
                 nullptr, label, nullptr, InstOpt_WriteEnable);
         };
 
@@ -8906,7 +8908,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
         }
     }
 
-    uint8_t execSize = (uint8_t) Round_Up_Pow2(size);
+    G4_ExecSize execSize = (G4_ExecSize)Round_Up_Pow2(size);
     G4_INST* newInst = inst[0]; //reuse inst[0] as the new merged inst
 
     // at this point merge will definitely succeed
@@ -9068,7 +9070,9 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
 // exceeds GRF size. If so returns false.
 //
 //
-static bool checkContiguous(unsigned offset1, unsigned offset2, G4_Type type, OPND_PATTERN& pattern, unsigned origOffset)
+static bool checkContiguous(
+    unsigned offset1, unsigned offset2,
+    G4_Type type, OPND_PATTERN& pattern, unsigned origOffset)
 {
     if (origOffset + GENX_GRF_REG_SIZ <= offset2)
         return false;
@@ -9514,7 +9518,9 @@ bool BUNDLE_INFO::canMerge(G4_INST* inst)
 //
 // iter is advanced to the next instruction not belonging to the handle
 //
-static void findInstructionToMerge(BUNDLE_INFO* bundle, INST_LIST_ITER& iter, const INST_LIST_ITER& lastInst, const IR_Builder& builder, bool isInSimdFlow)
+static void findInstructionToMerge(
+    BUNDLE_INFO* bundle, INST_LIST_ITER& iter,
+    const INST_LIST_ITER& lastInst, const IR_Builder& builder, bool isInSimdFlow)
 {
 
     for (; iter != lastInst && bundle->size < bundle->sizeLimit; ++iter)
@@ -9644,7 +9650,7 @@ void Optimizer::mergeScalarInst()
                 }
                 ii = nextIter;
             }
-           else
+            else
             {
                 ++ii;
             }
@@ -11402,7 +11408,8 @@ void Optimizer::doNoMaskWA()
         G4_CondMod* flagCM = builder.createCondMod(Mod_e, flagVar, 0);
         G4_DstRegRegion* nullDst = builder.createNullDst(Type_UW);
         G4_INST* I1 = builder.createInternalInst(
-            NULL, G4_cmp, flagCM, false, simdsize, nullDst, r0_0, r0_1, InstOpt_M0);
+            NULL, G4_cmp, flagCM, g4::NOSAT, simdsize,
+            nullDst, r0_0, r0_1, InstOpt_M0);
         BB->insertBefore(II, I1);
 
         if (useAnyh)
@@ -11476,8 +11483,8 @@ void Optimizer::doNoMaskWA()
         G4_Predicate* flag0 = builder.createPredicate(
             PredState_Plus, flagVar, 0, getPredCtrl(useAnyh));
         G4_INST* I0 = builder.createInternalInst(
-            flag0, G4_sel, nullptr, false,
-            1, tDst, Src0, Src1, InstOpt_WriteEnable);
+            flag0, G4_sel, nullptr, g4::NOSAT, 1,
+            tDst, Src0, Src1, InstOpt_WriteEnable);
         currBB->insertBefore(currII, I0);
         flag0->setSameAsNoMask(true);
 

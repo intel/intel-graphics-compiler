@@ -42,6 +42,20 @@ bool IR_Builder::isNoMask(VISA_EMask_Ctrl eMask) {
     }
 }
 
+G4_ExecSize IR_Builder::toExecSize(VISA_Exec_Size execSize)
+{
+    switch (execSize) {
+    case EXEC_SIZE_1: return g4::SIMD1;
+    case EXEC_SIZE_2: return g4::SIMD2;
+    case EXEC_SIZE_4: return g4::SIMD4;
+    case EXEC_SIZE_8: return g4::SIMD8;
+    case EXEC_SIZE_16: return g4::SIMD16;
+    case EXEC_SIZE_32: return g4::SIMD32;
+    default:
+        MUST_BE_TRUE(false, "illegal common ISA execsize (should be 0..5).");
+        return 0;
+    }
+}
 
 // vector scatter messages are either SIMD8/16, so we have to round up
 // the exec size
@@ -53,8 +67,6 @@ VISA_Exec_Size IR_Builder::roundUpExecSize(VISA_Exec_Size execSize)
     }
     return execSize;
 }
-
-
 
 G4_Declare* IR_Builder::getImmDcl(G4_Imm* val, int numElt)
 {

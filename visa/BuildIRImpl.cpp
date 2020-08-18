@@ -1011,7 +1011,7 @@ G4_Declare* IR_Builder::createFlag(uint16_t numFlagElements, const char* name)
 {
     uint32_t numWords = (numFlagElements + 15) / 16;
     G4_Declare* dcl = createDeclareNoLookup(name, G4_FLAG, numWords, 1, Type_UW);
-    dcl->setNumberFlagElements((uint8_t) numFlagElements);
+    dcl->setNumberFlagElements((uint8_t)numFlagElements);
     return dcl;
 }
 
@@ -1411,30 +1411,32 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
     return samplerIdx;
 }
 
-G4_INST* IR_Builder::createInst(G4_Predicate* prd,
-                                G4_opcode op,
-                                G4_CondMod* mod,
-                                bool sat,
-                                unsigned char size,
-                                G4_DstRegRegion* dst,
-                                G4_Operand* src0,
-                                G4_Operand* src1,
-                                unsigned int option,
-                                bool addToInstList)
+G4_INST* IR_Builder::createInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    G4_CondMod* mod,
+    G4_Sat sat,
+    G4_ExecSize size,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_InstOpts options,
+    bool addToInstList)
 {
-    return createInst(prd, op, mod, sat, size, dst, src0, src1, option, 0, addToInstList);
+    return createInst(prd, op, mod, sat, size, dst, src0, src1, options, 0, addToInstList);
 }
-G4_INST* IR_Builder::createInst(G4_Predicate* prd,
-                                G4_opcode op,
-                                G4_CondMod* mod,
-                                bool sat,
-                                unsigned char size,
-                                G4_DstRegRegion* dst,
-                                G4_Operand* src0,
-                                G4_Operand* src1,
-                                unsigned int option,
-                                int lineno,
-                                bool addToInstList)
+G4_INST* IR_Builder::createInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    G4_CondMod* mod,
+    G4_Sat sat,
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_InstOpts options,
+    int lineno,
+    bool addToInstList)
 {
     MUST_BE_TRUE(op != G4_math, "IR_Builder::createInst should not be used to create math instructions");
     G4_INST* i = NULL;
@@ -1442,11 +1444,13 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
     // ToDo: have separate functions to create call/jmp/ret
     if (G4_Inst_Table[op].instType == InstTypeFlow)
     {
-        i = new (mem)G4_InstCF(*this, prd, op, mod, sat, size, dst, src0, option);
+        // TODO: remove this path
+        MUST_BE_TRUE(!sat, "saturation not defined on branching")
+        i = new (mem)G4_InstCF(*this, prd, op, mod, execSize, dst, src0, options);
     }
     else
     {
-        i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, option);
+        i = new (mem)G4_INST(*this, prd, op, mod, sat, execSize, dst, src0, src1, options);
     }
 
     if (addToInstList)
@@ -1467,34 +1471,36 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
 }
 
 // same as above, except we don't add it to the Builder's instList
-G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
-                                        G4_opcode op,
-                                        G4_CondMod* mod,
-                                        bool sat,
-                                        unsigned char size,
-                                        G4_DstRegRegion* dst,
-                                        G4_Operand* src0,
-                                        G4_Operand* src1,
-                                        unsigned int option)
+G4_INST* IR_Builder::createInternalInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    G4_CondMod* mod,
+    G4_Sat sat,
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_InstOpts options)
 {
-    return createInternalInst(prd, op, mod, sat, size, dst, src0, src1, option, 0, UNMAPPABLE_VISA_INDEX, NULL);
+    return createInternalInst(prd, op, mod, sat, execSize, dst, src0, src1, options, 0, UNMAPPABLE_VISA_INDEX, NULL);
 }
 
-G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
-                                        G4_opcode op,
-                                        G4_CondMod* mod,
-                                        bool sat,
-                                        unsigned char size,
-                                        G4_DstRegRegion* dst,
-                                        G4_Operand* src0,
-                                        G4_Operand* src1,
-                                        unsigned int option,
-                                        int lineno, int CISAoff,
-                                        const char* srcFilename)
+G4_INST* IR_Builder::createInternalInst(
+    G4_Predicate* prd,
+    G4_opcode op,
+    G4_CondMod* mod,
+    G4_Sat sat,
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_InstOpts options,
+    int lineno, int CISAoff,
+    const char* srcFilename)
 {
     MUST_BE_TRUE(op != G4_math, "IR_Builder::createInternalInst should not be used to create math instructions");
 
-    auto ii = createInst(prd, op, mod, sat, size, dst, src0, src1, option, false);
+    auto ii = createInst(prd, op, mod, sat, execSize, dst, src0, src1, options, false);
 
     ii->setCISAOff(CISAoff);
 
@@ -1506,55 +1512,74 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
     return ii;
 }
 
-G4_INST* IR_Builder::createNop(uint32_t instOpt)
+G4_INST* IR_Builder::createNop(G4_InstOpts instOpt)
 {
-    return createInternalInst(nullptr, G4_nop, nullptr, false, 1, nullptr, nullptr, nullptr, instOpt);
+    return createInternalInst(
+        nullptr, G4_nop, nullptr, g4::NOSAT, g4::SIMD1,
+        nullptr, nullptr, nullptr, instOpt);
 }
 
-// sync inst are always internal, so no option to append it to instList. Also currently don't take any InstOpt
+// sync inst are always internal, so no option to append it to instList.
+// Also currently don't take any InstOpt
 G4_INST* IR_Builder::createSync(G4_opcode syncOp, G4_Operand* src)
 {
     assert(G4_INST::isSyncOpcode(syncOp) && "expect a sync op");
-    return createInternalInst(nullptr, syncOp, nullptr, false, 1, nullptr, src, nullptr, InstOpt_NoOpt);
+    return createInternalInst(
+        nullptr, syncOp, nullptr, g4::NOSAT, g4::SIMD1,
+        nullptr, src, nullptr, InstOpt_NoOpt);
 }
 
-G4_INST* IR_Builder::createMov(uint8_t execSize, G4_DstRegRegion* dst,
-    G4_Operand* src0, uint32_t option, bool appendToInstList)
+G4_INST* IR_Builder::createMov(
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst, G4_Operand* src0, G4_InstOpts options,
+    bool appendToInstList)
 {
     G4_INST* newInst = nullptr;
     if (appendToInstList)
     {
-        newInst = createInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
+        newInst = createInst(
+            nullptr, G4_mov, nullptr, g4::NOSAT, execSize,
+            dst, src0, nullptr, options);
     }
     else
     {
-        newInst = createInternalInst(nullptr, G4_mov, nullptr, false, execSize, dst, src0, nullptr, option);
+        newInst = createInternalInst(
+            nullptr, G4_mov, nullptr, g4::NOSAT, execSize,
+            dst, src0, nullptr, options);
     }
     return newInst;
 }
 
 G4_INST* IR_Builder::createBinOp(
-    G4_Predicate *pred,
-    G4_opcode op, uint8_t execSize,
+    G4_Predicate *pred, G4_opcode op, G4_ExecSize execSize,
     G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
-    uint32_t option, bool appendToInstList)
+    G4_InstOpts options,
+    bool appendToInstList)
 {
     if (appendToInstList)
     {
-        return createInst(pred, op, nullptr, false, execSize, dst, src0, src1, option);
+        return createInst(
+            pred, op, nullptr, g4::NOSAT, execSize,
+            dst, src0, src1, options);
     }
     else
     {
-        return createInternalInst(pred, op, nullptr, false, execSize, dst, src0, src1, option);
+        return createInternalInst(
+            pred, op, nullptr, g4::NOSAT, execSize,
+            dst, src0, src1, options);
     }
 }
 
 // mach creates both implicit acc and src using the supplied accType. AccWrCtrl is turned on.
 // acc0.0 is always used
-G4_INST* IR_Builder::createMach(uint8_t execSize, G4_DstRegRegion* dst,
-    G4_Operand* src0, G4_Operand* src1, uint32_t option, G4_Type accType)
+G4_INST* IR_Builder::createMach(
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
+    G4_InstOpts options, G4_Type accType)
 {
-    auto machInst = createInternalInst(nullptr, G4_mach, nullptr, false, execSize, dst, src0, src1, option);
+    auto machInst = createInternalInst(
+        nullptr, G4_mach, nullptr, g4::NOSAT, execSize,
+        dst, src0, src1, options);
     const RegionDesc* rd = execSize > 1 ? getRegionStride1() : getRegionScalar();
     auto accSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getAcc0Reg(), 0, 0, rd, accType);
     machInst->setImplAccSrc(accSrc);
@@ -1566,31 +1591,34 @@ G4_INST* IR_Builder::createMach(uint8_t execSize, G4_DstRegRegion* dst,
 
 // macl creates an implicit src using the supplied the accType. AccWrCtrl is not set.
 // acc0.0 is always used
-G4_INST* IR_Builder::createMacl(uint8_t execSize, G4_DstRegRegion* dst,
-    G4_Operand* src0, G4_Operand* src1, uint32_t option, G4_Type accType)
+G4_INST* IR_Builder::createMacl(
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
+    G4_InstOpts options, G4_Type accType)
 {
-    auto maclInst = createInternalInst(nullptr, G4_mach, nullptr, false, execSize, dst, src0, src1, option);
+    auto maclInst = createInternalInst(
+        nullptr, G4_mach, nullptr, g4::NOSAT, execSize, dst, src0, src1, options);
     const RegionDesc* rd = execSize > 1 ? getRegionStride1() : getRegionScalar();
     auto accSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getAcc0Reg(), 0, 0, rd, accType);
     maclInst->setImplAccSrc(accSrc);
     return maclInst;
 }
 
-G4_INST* IR_Builder::createIf(G4_Predicate* prd, uint8_t size, uint32_t option)
+G4_INST* IR_Builder::createIf(G4_Predicate* prd, G4_ExecSize execSize, G4_InstOpts options)
 {
-    auto inst = createCFInst(prd, G4_if, size, nullptr, nullptr, option);
+    auto inst = createCFInst(prd, G4_if, execSize, nullptr, nullptr, options);
     return inst;
 }
 
-G4_INST* IR_Builder::createElse(uint8_t size, uint32_t option)
+G4_INST* IR_Builder::createElse(G4_ExecSize execSize, G4_InstOpts options)
 {
-    auto inst = createCFInst(nullptr, G4_else, size, nullptr, nullptr, option);
+    auto inst = createCFInst(nullptr, G4_else, execSize, nullptr, nullptr, options);
     return inst;
 }
 
-G4_INST* IR_Builder::createEndif (uint8_t size, uint32_t option)
+G4_INST* IR_Builder::createEndif(G4_ExecSize execSize, G4_InstOpts options)
 {
-    auto inst = createCFInst(nullptr, G4_endif, size, nullptr, nullptr, option);
+    auto inst = createCFInst(nullptr, G4_endif, execSize, nullptr, nullptr, options);
     return inst;
 }
 
@@ -1598,42 +1626,47 @@ G4_INST* IR_Builder::createLabelInst(G4_Label* label, bool appendToInstList)
 {
     if (appendToInstList)
     {
-        return createInst(nullptr, G4_label, nullptr, false, UNDEFINED_EXEC_SIZE, nullptr, label, nullptr, 0, 0);
+        return createInst(nullptr, G4_label, nullptr, g4::NOSAT, g4::SIMD_UNDEFINED,
+            nullptr, label, nullptr,
+            0, 0);
     }
     else
     {
-        return createInternalInst(nullptr, G4_label, nullptr, false, UNDEFINED_EXEC_SIZE, nullptr, label, nullptr, 0, 0);
+        return createInternalInst(
+            nullptr, G4_label, nullptr, g4::NOSAT, g4::SIMD_UNDEFINED,
+            nullptr, label, nullptr, 0,
+            0);
     }
 }
 
 // jmpTarget may be either a label (direct jmp) or scalar operand (indirect jmp)
-G4_INST* IR_Builder::createJmp(G4_Predicate* pred, G4_Operand* jmpTarget, uint32_t option, bool appendToInstList)
+G4_INST* IR_Builder::createJmp(
+    G4_Predicate* pred,
+    G4_Operand* jmpTarget, G4_InstOpts options,
+    bool appendToInstList)
 {
     if (appendToInstList)
     {
-        return createInst(pred, G4_jmpi, nullptr, false, 1, nullptr, jmpTarget, nullptr, option);
+        return createInst(pred, G4_jmpi, nullptr, g4::NOSAT, g4::SIMD1,
+            nullptr, jmpTarget, nullptr, options);
     }
     else
     {
-        return createInternalInst(pred, G4_jmpi, nullptr, false, 1, nullptr, jmpTarget, nullptr, option);
+        return createInternalInst(pred, G4_jmpi, nullptr, g4::NOSAT, g4::SIMD1,
+            nullptr, jmpTarget, nullptr, options);
     }
 }
 
 G4_INST* IR_Builder::createInternalCFInst(
-    G4_Predicate* prd,
-    G4_opcode op,
-    unsigned char size,
-    G4_Label* jip,
-    G4_Label* uip,
-    unsigned int option,
-    int lineno,
-    int CISAoff,
-    const char* srcFilename)
+    G4_Predicate* prd, G4_opcode op, G4_ExecSize execSize,
+    G4_Label* jip, G4_Label* uip,
+    G4_InstOpts options,
+    int lineno, int CISAoff, const char* srcFilename)
 {
     MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
         "IR_Builder::createInternalCFInst must be used with InstTypeFlow instruction class");
 
-    auto ii = createCFInst(prd, op, size, jip, uip, option, lineno, false);
+    auto ii = createCFInst(prd, op, execSize, jip, uip, options, lineno, false);
 
     ii->setCISAOff(CISAoff);
 
@@ -1646,19 +1679,15 @@ G4_INST* IR_Builder::createInternalCFInst(
 }
 
 G4_INST* IR_Builder::createCFInst(
-    G4_Predicate* prd,
-    G4_opcode op,
-    unsigned char size,
-    G4_Label* jip,
-    G4_Label* uip,
-    unsigned int option,
-    int lineno,
-    bool addToInstList)
+    G4_Predicate* prd, G4_opcode op, G4_ExecSize execSize,
+    G4_Label* jip, G4_Label* uip,
+    G4_InstOpts options,
+    int lineno, bool addToInstList)
 {
     MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
         "IR_Builder::createCFInst must be used with InstTypeFlow instruction class");
 
-    G4_InstCF* ii = new (mem)G4_InstCF(*this, prd, op, size, jip, uip, option);
+    G4_InstCF* ii = new (mem)G4_InstCF(*this, prd, op, execSize, jip, uip, options);
 
     if (addToInstList)
     {
@@ -1681,28 +1710,28 @@ G4_INST* IR_Builder::createInst(
     G4_Predicate* prd,
     G4_opcode op,
     G4_CondMod* mod,
-    bool sat,
-    unsigned char size,
+    G4_Sat sat,
+    G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_Operand* src0,
     G4_Operand* src1,
     G4_Operand* src2,
-    unsigned int option,
+    G4_InstOpts options,
     bool addToInstList)
 {
-    return createInst(prd, op, mod, sat, size, dst, src0, src1, src2, option, 0);
+    return createInst(prd, op, mod, sat, execSize, dst, src0, src1, src2, options, 0);
 }
 G4_INST* IR_Builder::createInst(
     G4_Predicate* prd,
     G4_opcode op,
     G4_CondMod* mod,
-    bool sat,
-    unsigned char size,
+    G4_Sat sat,
+    G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_Operand* src0,
     G4_Operand* src1,
     G4_Operand* src2,
-    unsigned int option,
+    G4_InstOpts options,
     int lineno,
     bool addToInstList)
 {
@@ -1711,7 +1740,7 @@ G4_INST* IR_Builder::createInst(
 
     G4_INST* i = NULL;
 
-    i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
+    i = new (mem)G4_INST(*this, prd, op, mod, sat, execSize, dst, src0, src1, src2, options);
 
     if (addToInstList)
     {
@@ -1735,31 +1764,33 @@ G4_INST* IR_Builder::createInternalInst(
     G4_Predicate* prd,
     G4_opcode op,
     G4_CondMod* mod,
-    bool sat,
-    unsigned char size,
+    G4_Sat sat,
+    G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_Operand* src0,
     G4_Operand* src1,
     G4_Operand* src2,
-    unsigned int option)
+    G4_InstOpts options)
 {
-    return createInternalInst(prd, op, mod, sat, size, dst, src0, src1, src2, option, 0, UNMAPPABLE_VISA_INDEX, NULL);
+    return createInternalInst(prd, op, mod, sat, execSize, dst, src0, src1, src2, options, 0, UNMAPPABLE_VISA_INDEX, NULL);
 }
 G4_INST* IR_Builder::createInternalInst(
     G4_Predicate* prd,
     G4_opcode op,
     G4_CondMod* mod,
-    bool sat,
-    unsigned char size,
+    G4_Sat sat,
+    G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_Operand* src0,
     G4_Operand* src1,
     G4_Operand* src2,
-    unsigned int option,
+    G4_InstOpts options,
     int lineno, int CISAoff,
     const char* srcFilename)
 {
-    auto ii = createInst(prd, op, mod, sat, size, dst, src0, src1, src2, option,
+    auto ii = createInst(
+        prd, op, mod, sat, execSize,
+        dst, src0, src1, src2, options,
         lineno, false);
 
     ii->setCISAOff(CISAoff);
@@ -1775,11 +1806,11 @@ G4_INST* IR_Builder::createInternalInst(
 G4_InstSend* IR_Builder::createSendInst(
     G4_Predicate* prd,
     G4_opcode op,
-    unsigned char size,
+    G4_ExecSize execSize,
     G4_DstRegRegion* postDst,
     G4_SrcRegRegion* currSrc,
     G4_Operand* msg,
-    unsigned int option,
+    G4_InstOpts options,
     G4_SendMsgDescriptor *msgDesc,
     int lineno,
     bool addToInstList)
@@ -1787,7 +1818,7 @@ G4_InstSend* IR_Builder::createSendInst(
 
     assert (msgDesc && "msgDesc must not be null");
     G4_InstSend* m = new (mem)G4_InstSend(
-        *this, prd, op, size, postDst, currSrc, msg, (G4_InstOpts)option, msgDesc);
+        *this, prd, op, execSize, postDst, currSrc, msg, options, msgDesc);
 
     if (addToInstList)
     {
@@ -1809,18 +1840,19 @@ G4_InstSend* IR_Builder::createSendInst(
 G4_InstSend* IR_Builder::createInternalSendInst(
     G4_Predicate* prd,
     G4_opcode op,
-    unsigned char size,
+    G4_ExecSize execSize,
     G4_DstRegRegion* postDst,
     G4_SrcRegRegion* currSrc,
     G4_Operand* msg,
-    unsigned int option,
+    G4_InstOpts options,
     G4_SendMsgDescriptor *msgDesc,
     int lineno,
     int CISAoff,
     const char* srcFilename)
 {
-    auto ii = createSendInst(prd, op, size, postDst, currSrc,
-        msg, option, msgDesc, lineno, false);
+    auto ii = createSendInst(prd, op, execSize,
+        postDst, currSrc,
+        msg, options, msgDesc, lineno, false);
 
     ii->setCISAOff(CISAoff);
 
@@ -1840,12 +1872,12 @@ G4_InstSend* IR_Builder::createInternalSendInst(
 G4_InstSend* IR_Builder::createSplitSendInst(
     G4_Predicate* prd,
     G4_opcode op,
-    unsigned char size,
+    G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_SrcRegRegion* src0, // can be header
     G4_SrcRegRegion* src1,
     G4_Operand* msg,       // msg descriptor: imm or vec
-    unsigned int option,
+    G4_InstOpts options,
     G4_SendMsgDescriptor *msgDesc,
     G4_Operand* src3,      // ext msg desciptor: imm or vec
     int lineno,
@@ -1863,7 +1895,7 @@ G4_InstSend* IR_Builder::createSplitSendInst(
         src3 = createImm(msgDesc->getExtendedDesc(), Type_UD);
     }
     G4_InstSend* m = new (mem) G4_InstSend(
-        *this, prd, op, size, dst, src0, src1, msg, src3, (G4_InstOpts)option, msgDesc);
+        *this, prd, op, execSize, dst, src0, src1, msg, src3, options, msgDesc);
 
     if (addToInstList)
     {
@@ -1883,19 +1915,19 @@ G4_InstSend* IR_Builder::createSplitSendInst(
 
 G4_InstSend* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
     G4_opcode op,
-    unsigned char size,
+    G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_SrcRegRegion* src0, // can be header
     G4_SrcRegRegion* src1,
     G4_Operand* msg,       // msg descriptor: imm or vec
-    unsigned int option,
+    G4_InstOpts options,
     G4_SendMsgDescriptor *msgDesc,
     G4_Operand* src3,      // ext msg desciptor: imm or vec
     int lineno,
     int CISAoff,
     const char* srcFilename)
 {
-    auto ii = createSplitSendInst(prd, op, size, dst, src0, src1, msg, option,
+    auto ii = createSplitSendInst(prd, op, execSize, dst, src0, src1, msg, options,
         msgDesc, src3, lineno, false);
 
     ii->setCISAOff(CISAoff);
@@ -1916,17 +1948,18 @@ G4_InstSend* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
 //
 G4_INST* IR_Builder::createMathInst(
     G4_Predicate* prd,
-    bool sat,
-    unsigned char size,
+    G4_Sat sat,
+    G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_Operand* src0,
     G4_Operand* src1,
     G4_MathOp mathOp,
-    unsigned int option,
+    G4_InstOpts options,
     int lineno,
     bool addToInstList)
 {
-    G4_INST* i = new (mem)G4_InstMath(*this, prd, G4_math, NULL, sat, size, dst, src0, src1, option, mathOp);
+    G4_INST* i = new (mem)G4_InstMath(
+        *this, prd, G4_math, NULL, sat, execSize, dst, src0, src1, options, mathOp);
 
     if (addToInstList)
     {
@@ -1946,18 +1979,18 @@ G4_INST* IR_Builder::createMathInst(
 
 G4_INST* IR_Builder::createInternalMathInst(
     G4_Predicate* prd,
-    bool sat,
-    unsigned char size,
+    G4_Sat sat,
+    G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_Operand* src0,
     G4_Operand* src1,
     G4_MathOp mathOp,
-    unsigned int option,
+    G4_InstOpts options,
     int lineno,
     int CISAoff,
     const char* srcFilename)
 {
-    auto ii = createMathInst(prd, sat, size, dst, src0, src1, mathOp, option, lineno, false);
+    auto ii = createMathInst(prd, sat, execSize, dst, src0, src1, mathOp, options, lineno, false);
 
     ii->setCISAOff(CISAoff);
 
@@ -1971,9 +2004,9 @@ G4_INST* IR_Builder::createInternalMathInst(
 
 G4_INST* IR_Builder::createIntrinsicInst(
     G4_Predicate* prd, Intrinsic intrinId,
-    uint8_t size, G4_DstRegRegion* dst,
-    G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-    unsigned int options, int lineno, bool addToInstList)
+    G4_ExecSize size,
+    G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
+    G4_InstOpts options, int lineno, bool addToInstList)
 {
     G4_INST* i = nullptr;
 
@@ -2005,11 +2038,11 @@ G4_INST* IR_Builder::createIntrinsicInst(
 }
 
 G4_INST* IR_Builder::createInternalIntrinsicInst(
-    G4_Predicate* prd, Intrinsic intrinId, uint8_t size,
+    G4_Predicate* prd, Intrinsic intrinId, G4_ExecSize execSize,
     G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-    unsigned int option, int lineno, int CISAoff, const char* srcFilename)
+    G4_InstOpts options, int lineno, int CISAoff, const char* srcFilename)
 {
-    auto ii = createIntrinsicInst(prd, intrinId, size, dst, src0, src1, src2, option,
+    auto ii = createIntrinsicInst(prd, intrinId, execSize, dst, src0, src1, src2, options,
         lineno, false);
 
     ii->setCISAOff(CISAoff);
@@ -2093,23 +2126,24 @@ G4_InstSend* IR_Builder::Create_Send_Inst_For_CISA(
     G4_SrcRegRegion *payload,
     unsigned regs2snd,
     unsigned regs2rcv,
-    unsigned execsize,
+    G4_ExecSize execSize,
     unsigned fc,
     SFID tf_id,
     bool header_present,
     SendAccess access,
     G4_Operand* bti,
     G4_Operand* sti,
-    unsigned int option,
+    G4_InstOpts options,
     bool is_sendc)
 {
     G4_SendMsgDescriptor* msgDesc =
-        createSendMsgDesc(fc, regs2rcv, regs2snd, tf_id,
-                          0, 0, access, bti, sti);
+        createSendMsgDesc(fc, regs2rcv, regs2snd, tf_id, 0, 0, access,
+            bti, sti);
 
     msgDesc->setHeaderPresent(header_present);
 
-    return Create_Send_Inst_For_CISA(pred, postDst, payload, execsize, msgDesc, option, is_sendc);
+    return Create_Send_Inst_For_CISA(
+        pred, postDst, payload, execSize, msgDesc, options, is_sendc);
 }
 
 //bindless surfaces, write the content of T252 to extended message descriptor
@@ -2142,7 +2176,7 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
  *  -- If send has exec size 16, its destination must have Type W.
  *  -- avoid using Q/UQ type on CHV/BXT
  */
-static void fixSendDstType(G4_DstRegRegion* dst, uint8_t execSize)
+static void fixSendDstType(G4_DstRegRegion* dst, G4_ExecSize execSize)
 {
     MUST_BE_TRUE(dst->getRegAccess() == Direct, "Send dst must be a direct operand");
 
@@ -2166,14 +2200,14 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
     G4_Predicate *pred,
     G4_DstRegRegion *postDst,
     G4_SrcRegRegion *payload,
-    unsigned execsize,
+    G4_ExecSize execsize,
     G4_SendMsgDescriptor *msgDesc,
-    unsigned option,
+    G4_InstOpts option,
     bool is_sendc)
 {
     G4_opcode send_opcode= is_sendc ? G4_sendc : G4_send;
 
-    fixSendDstType(postDst, (uint8_t) execsize);
+    fixSendDstType(postDst, execsize);
 
     uint32_t desc = msgDesc->getDesc();
     G4_Operand *bti = msgDesc->getBti();
@@ -2253,7 +2287,7 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
     return createSendInst(
         pred,
         send_opcode,
-        (uint8_t)execsize,
+        execsize,
         postDst,
         payload,
         descOpnd,
@@ -2276,14 +2310,14 @@ G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
     G4_SrcRegRegion *src2,
     unsigned regs2snd2,
     unsigned regs2rcv,
-    unsigned execsize,
+    G4_ExecSize execSize,
     unsigned fc,
     SFID tf_id,
     bool header_present,
     SendAccess access,
     G4_Operand* bti,
     G4_Operand* sti,
-    unsigned int option,
+    G4_InstOpts options,
     bool is_sendc)
 {
     G4_SendMsgDescriptor *msgDesc =
@@ -2292,8 +2326,8 @@ G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
 
     msgDesc->setHeaderPresent(header_present);
 
-    return Create_SplitSend_Inst(pred, dst, src1, src2, execsize,
-        msgDesc, option, is_sendc);
+    return Create_SplitSend_Inst(pred, dst, src1, src2, execSize,
+        msgDesc, options, is_sendc);
 }
 
 // desc, if indirect, is constructed from the BTI/STI values in msgDesc and is always a0.0
@@ -2302,14 +2336,14 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
     G4_DstRegRegion *dst,
     G4_SrcRegRegion *src1,
     G4_SrcRegRegion *src2,
-    unsigned execsize,
+    G4_ExecSize execsize,
     G4_SendMsgDescriptor *msgDesc,
-    unsigned option,
+    G4_InstOpts option,
     bool is_sendc)
 {
     G4_opcode send_opcode = is_sendc ? G4_sendsc : G4_sends;
 
-    fixSendDstType(dst, (uint8_t) execsize);
+    fixSendDstType(dst, execsize);
 
     uint32_t desc = msgDesc->getDesc();
     uint32_t exdesc = msgDesc->getExtendedDesc();
@@ -2362,11 +2396,11 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
             // (W) and (1) (nz)f0.0 null S31 0x10:uw
             G4_Declare* tmpFlag = createTempFlag(1);
             G4_CondMod* condMod = createCondMod(Mod_nz, tmpFlag->getRegVar(), 0);
-            createInst(nullptr, G4_and, condMod, false, 1, createNullDst(Type_UD),
+            createInst(nullptr, G4_and, condMod, g4::NOSAT, 1, createNullDst(Type_UD),
                 createSrcRegRegion(*(sti->asSrcRegRegion())), createImm(0x10, Type_UW), InstOpt_WriteEnable);
             // (W) (f0.0) sel (1) tmp:ud 0x100 0x0
             G4_Predicate* pred = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0);
-            createInst(pred, G4_sel, nullptr, false, 1, Create_Dst_Opnd_From_Dcl(dcl1, 1),
+            createInst(pred, G4_sel, nullptr, g4::NOSAT, 1, Create_Dst_Opnd_From_Dcl(dcl1, 1),
                 createImm(0x100, Type_UW), createImm(0x0, Type_UW), InstOpt_WriteEnable);
         }
         else
@@ -2414,7 +2448,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
         // do nothing as the extended msg desc will just be a null operand
     }
 
-    return createSplitSendInst(pred, send_opcode, (uint8_t)execsize,
+    return createSplitSendInst(pred, send_opcode, execsize,
         dst, src1, src2,
         descOpnd,
         option, msgDesc, extDescOpnd, 0);
@@ -2431,13 +2465,13 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(
     G4_SrcRegRegion *src1,
     G4_SrcRegRegion *src2,
     G4_SrcRegRegion *extDescOpnd,
-    unsigned execsize,
+    G4_ExecSize execSize,
     G4_SendMsgDescriptor *msgDesc,
-    unsigned option)
+    G4_InstOpts option)
 {
     G4_opcode send_opcode = G4_sendsc;
 
-    fixSendDstType(dst, (uint8_t)execsize);
+    fixSendDstType(dst, execSize);
 
     uint32_t desc = msgDesc->getDesc();
     G4_Operand* descOpnd = nullptr;
@@ -2456,7 +2490,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(
         descOpnd = createImm(desc, Type_UD);
     }
 
-    return createSplitSendInst(pred, send_opcode, (uint8_t)execsize,
+    return createSplitSendInst(pred, send_opcode, execSize,
         dst, src1, src2, descOpnd,
         option, msgDesc, extDescOpnd);
 }
@@ -2497,7 +2531,7 @@ void IR_Builder::Create_MOVR0_Inst(G4_Declare* dcl, short regOff, short subregOf
 }
 
 void IR_Builder::Create_ADD_Inst(
-    G4_Declare* dcl, short regOff, short subregOff, uint8_t execsize,
+    G4_Declare* dcl, short regOff, short subregOff, G4_ExecSize execsize,
     G4_Predicate* pred, G4_CondMod* condMod,
     G4_Operand* src0_opnd, G4_Operand* src1_opnd, G4_InstOption options)
 {
@@ -2505,19 +2539,19 @@ void IR_Builder::Create_ADD_Inst(
 
     if (src0_opnd->isImm() && src0_opnd->asImm()->isZero())
     {
-        createInst(pred, G4_mov, condMod, false, execsize, dst, src1_opnd, NULL, options);
+        createInst(pred, G4_mov, condMod, g4::NOSAT, execsize, dst, src1_opnd, NULL, options);
     }
     else if (src1_opnd->isImm() && src1_opnd->asImm()->isZero())
     {
-        createInst(pred, G4_mov, condMod, false, execsize, dst, src0_opnd, NULL, options);
+        createInst(pred, G4_mov, condMod, g4::NOSAT, execsize, dst, src0_opnd, NULL, options);
     }
     else if (src0_opnd->isImm() && !src1_opnd->isImm())
     {
-        createInst(pred, G4_add, condMod, false, execsize, dst, src1_opnd, src0_opnd, options);
+        createInst(pred, G4_add, condMod, g4::NOSAT, execsize, dst, src1_opnd, src0_opnd, options);
     }
     else
     {
-        createInst(pred, G4_add, condMod, false, execsize, dst, src0_opnd, src1_opnd, options);
+        createInst(pred, G4_add, condMod, g4::NOSAT, execsize, dst, src0_opnd, src1_opnd, options);
     }
 }
 
@@ -2528,7 +2562,7 @@ void IR_Builder::Create_MOV_Inst(
     G4_Declare* dcl,
     short regOff,
     short subregOff,
-    unsigned execsize,
+    G4_ExecSize execSize,
     G4_Predicate* pred,
     G4_CondMod* condMod,
     G4_Operand* src_opnd,
@@ -2545,12 +2579,12 @@ void IR_Builder::Create_MOV_Inst(
         pred,
         G4_mov,
         condMod,
-        false,
-        (uint8_t) execsize,
+        g4::NOSAT,
+        execSize,
         dst2_opnd,
         src_opnd,
         NULL,
-        (use_nomask ? InstOpt_WriteEnable : 0),
+        use_nomask ? InstOpt_WriteEnable : InstOpt_NoOpt,
         0);
 }
 
@@ -2564,14 +2598,14 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
     short subregoff,
     unsigned num_dword,
     G4_Operand* src_opnd,
-    unsigned int option)
+    G4_InstOpts options)
 {
     // since src_opnd is raw source in CISA, it is aligned to GRF, so there is no subRegOff.
     unsigned remained_dword = num_dword;
     // if data type of src_opnd is not UD, change it to UD
     // assumption: size of src_opnd is multiple of UD
     short dst_regoff = regoff, dst_subregoff = subregoff;
-    unsigned char execsize = 1;
+    G4_ExecSize execsize = g4::SIMD1;
     G4_DstRegRegion* dst = NULL;
     //G4_SrcRegRegion* src = NULL;
     G4_Operand* src = NULL;
@@ -2615,7 +2649,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
             return 32;
         }
     };
-    int maxEsize = getMaxEsize(option);
+    int maxEsize = getMaxEsize(options);
 
     // here remained_dword is not the number of DW, but the number of dst data type.
     while (remained_dword)
@@ -2624,19 +2658,19 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
         {
             if (remained_dword >= 32)
             {
-                execsize = 32;
+                execsize = g4::SIMD32;
             }
             else if (remained_dword >= 16)
             {
-                execsize = 16;
+                execsize = g4::SIMD16;
             }
             else
             {
-                execsize = (uint8_t) Round_Down_Pow2(remained_dword);
+                execsize = (uint8_t)Round_Down_Pow2(remained_dword);
             }
 
             execsize = (execsize > maxEsize) ? maxEsize :  execsize;
-            if (execsize == 1)
+            if (execsize == g4::SIMD1)
             {
                 rd = getRegionScalar();
             }
@@ -2649,18 +2683,18 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
         {
             if (remained_dword >= 16)
             {
-                execsize = 16;
+                execsize = g4::SIMD16;
             }
             else if (remained_dword >= 8)
             {
-                execsize = 8;
+                execsize = g4::SIMD8;
             }
             else
             {
-                execsize = (uint8_t) Round_Down_Pow2(remained_dword);
+                execsize = (uint8_t)Round_Down_Pow2(remained_dword);
             }
             execsize = (execsize > maxEsize) ? maxEsize :  execsize;
-            if (execsize == 1)
+            if (execsize == g4::SIMD1)
             {
                 rd = getRegionScalar();
             }
@@ -2683,7 +2717,6 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
         }
         else
         {
-
             src = createSrcRegRegion(
                 Mod_src_undef,
                 Direct,
@@ -2698,7 +2731,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
             execsize,
             dst,
             src,
-            option,
+            options,
             true);
 
         // update offset in decl
@@ -2734,7 +2767,8 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
     }
 }
 // create an opnd without regpoff and subregoff
-G4_DstRegRegion* IR_Builder::Create_Dst_Opnd_From_Dcl(G4_Declare* dcl, unsigned short hstride)
+G4_DstRegRegion* IR_Builder::Create_Dst_Opnd_From_Dcl(
+    G4_Declare* dcl, unsigned short hstride)
 {
     return createDst(
         dcl->getRegVar(),
@@ -2778,11 +2812,11 @@ G4_SrcRegRegion* IR_Builder::createNullSrc(G4_Type srcType)
                                srcType);
 }
 
-/*check if the dst opnd align to GRF.
-* if it is not aligned to GRF
-1. change align of var dcl to GRF if the dst size is smaller than GRF size, no alias or alias offset is 0.
-2. otherwise, create a temp operand and return it.
-*/
+// check if the dst opnd align to GRF.
+// if it is not aligned to GRF
+// 1. change align of var dcl to GRF if the dst size is smaller than GRF size,
+//    no alias or alias offset is 0.
+// 2. otherwise, create a temp operand and return it.
 G4_DstRegRegion* IR_Builder::Check_Send_Dst(G4_DstRegRegion *dst_opnd)
 {
     //FIXME: This function seems to be bogus
@@ -2826,7 +2860,7 @@ input_info_t * IR_Builder::getInputArg(unsigned int index)
 
 unsigned int IR_Builder::getInputCount()
 {
-    return (uint32_t) m_inputVect.size();
+    return (uint32_t)m_inputVect.size();
 }
 
 input_info_t *IR_Builder::getRetIPArg() {
@@ -2841,7 +2875,8 @@ input_info_t *IR_Builder::getRetIPArg() {
     return RetIP;
 }
 
-G4_Predicate_Control IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control, int size)
+G4_Predicate_Control IR_Builder::vISAPredicateToG4Predicate(
+    VISA_PREDICATE_CONTROL control, G4_ExecSize execSize)
 {
     switch (control)
     {
@@ -2853,20 +2888,14 @@ G4_Predicate_Control IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTR
         {
             return PRED_ANY_WHOLE;
         }
-        switch (size)
+        switch (execSize)
         {
-        case 1:
-            return PRED_DEFAULT;
-        case 2:
-            return PRED_ANY2H;
-        case 4:
-            return PRED_ANY4H;
-        case 8:
-            return PRED_ANY8H;
-        case 16:
-            return PRED_ANY16H;
-        case 32:
-            return PRED_ANY32H;
+        case 1: return PRED_DEFAULT;
+        case 2: return PRED_ANY2H;
+        case 4: return PRED_ANY4H;
+        case 8: return PRED_ANY8H;
+        case 16: return PRED_ANY16H;
+        case 32: return PRED_ANY32H;
         default:
             MUST_BE_TRUE(0, "Invalid predicate control group size.");
             return PRED_DEFAULT;
@@ -2878,20 +2907,14 @@ G4_Predicate_Control IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTR
         {
             return PRED_ALL_WHOLE;
         }
-        switch (size)
+        switch (execSize)
         {
-        case 1:
-            return PRED_DEFAULT;
-        case 2:
-            return PRED_ALL2H;
-        case 4:
-            return PRED_ALL4H;
-        case 8:
-            return PRED_ALL8H;
-        case 16:
-            return PRED_ALL16H;
-        case 32:
-            return PRED_ALL32H;
+        case 1: return PRED_DEFAULT;
+        case 2: return PRED_ALL2H;
+        case 4: return PRED_ALL4H;
+        case 8: return PRED_ALL8H;
+        case 16: return PRED_ALL16H;
+        case 32: return PRED_ALL32H;
         default:
             MUST_BE_TRUE(0, "Invalid predicate control group size.");
             return PRED_DEFAULT;

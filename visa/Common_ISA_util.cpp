@@ -771,7 +771,7 @@ G4_opcode Get_Pseudo_Opcode(ISA_Opcode op)
     return G4_illegal;
 }
 
-VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, int execSize)
+VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, G4_ExecSize execSize)
 {
     switch (execSize) {
     default: // Next eMask is only valid for SIMD4, SIMD8, and SIMD16.
@@ -818,7 +818,7 @@ VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, int execSize)
     return vISA_NUM_EMASK;
 }
 
-unsigned int Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, int exec_size)
+G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size)
 {
 
     switch (exec_size)

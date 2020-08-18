@@ -1239,7 +1239,8 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
         G4_CondMod* flagCM = Builder->createCondMod(Mod_e, flagVar, 0);
         G4_DstRegRegion *nullDst = Builder->createNullDst(Type_UW);
         // Hard-coded simd8 here!
-        G4_INST* I1 = Builder->createInternalInst(NULL, G4_cmp, flagCM, false, 8,
+        G4_INST* I1 = Builder->createInternalInst(
+            NULL, G4_cmp, flagCM, g4::NOSAT, 8,
             nullDst, r0_0, r0_1, InstOpt_M0);
         bb->insertBefore(InsertBeforePos, I1);
 

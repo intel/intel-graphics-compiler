@@ -109,12 +109,12 @@ int IR_Builder::translateVISACFCallInst(
     createInst(
         predOpnd,
         callOpToUse,
-        NULL,
-        false,
+        nullptr,
+        g4::NOSAT,
         execSize,
         dstOpndToUse,
         srcLabel,
-        NULL,
+        nullptr,
         instOpt,
         0);
 
@@ -133,8 +133,8 @@ int IR_Builder::translateVISACFJumpInst(G4_Predicate *predOpnd, G4_Label* lab)
         predOpnd,
         GetGenOpcodeFromVISAOpcode((ISA_Opcode)ISA_JMP),
         NULL,
-        false,
-        1,
+        g4::NOSAT,
+        g4::SIMD1,
         NULL,
         lab,
         NULL,
@@ -172,7 +172,7 @@ int IR_Builder::translateVISACFFCallInst(
         predOpnd,
         G4_pseudo_fcall,
         nullptr,
-        false,
+        g4::NOSAT,
         exsize,
         nullptr,
         createLabel(funcName, LABEL_FUNCTION),  //src0 is a fake label containing callee's name
@@ -198,14 +198,14 @@ int IR_Builder::translateVISACFIFCallInst(
     kernel.fg.setHasStackCalls();
     kernel.setHasIndirectCall();
 
-    if (this->getArgSize() < argSize)
+    if (getArgSize() < argSize)
     {
-        this->setArgSize(argSize);
+        setArgSize(argSize);
     }
 
-    if (this->getRetVarSize() < returnSize)
+    if (getRetVarSize() < returnSize)
     {
-        this->setRetVarSize(returnSize);
+        setRetVarSize(returnSize);
     }
 
     uint8_t exsize = (uint8_t)Get_VISA_Exec_Size(execsize);
@@ -232,7 +232,7 @@ int IR_Builder::translateVISACFIFCallInst(
     auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, false, exsize,
         nullptr, Create_Src_Opnd_From_Dcl(callOffset, getRegionScalar()), nullptr, 0, 0);
 */
-    auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, false, exsize,
+    auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, g4::NOSAT, exsize,
         nullptr, src0, nullptr, 0, 0);
 
     m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
@@ -273,7 +273,6 @@ int IR_Builder::translateVISACFSymbolInst(
 
         RelocationEntry::createRelocation(kernel, *movLo, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
         RelocationEntry::createRelocation(kernel, *movHi, 0, symbolName, GenRelocType::R_SYM_ADDR_32_HI);
-
     }
     else
     {
@@ -306,7 +305,7 @@ int IR_Builder::translateVISACFFretInst(
         predOpnd,
         G4_pseudo_fret,
         NULL,
-        false,
+        g4::NOSAT,
         exsize,
         NULL,
         NULL, //src0Opnd
@@ -342,8 +341,8 @@ int IR_Builder::translateVISACFRetInst(
         createInst(predOpnd,
             G4_pseudo_fc_ret,
             NULL,
-            false,
-            2,
+            g4::NOSAT,
+            g4::SIMD2,
             createNullDst(Type_UD),
             srcOpndToUse,
             NULL,
@@ -378,7 +377,7 @@ int IR_Builder::translateVISAGotoInst(
         predOpnd,
         G4_goto,
         nullptr,
-        false,
+        g4::NOSAT,
         exsize,
         nullptr,
         nullptr,

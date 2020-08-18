@@ -79,11 +79,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MAKE_ENUM(X) X,
 #define STRINGIFY(X) #X,
 
-/*
- * For Gen6, only the following instructions can have
- * interger sources and float destination:
- * MOV, ADD, MUL, MAC, MAD, LINE
- */
+// For Gen6, only the following instructions can have
+// interger sources and float destination:
+// MOV, ADD, MUL, MAC, MAD, LINE
 #define Opcode_int_src_float_dst_OK(opc)        \
                                  ((opc == G4_mov)  || \
                                   (opc == G4_add)  || \
@@ -142,28 +140,42 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum class BankAlign
 {
-    Either = 1,          // either
-    Even = 2,            // even align
-    Odd = 3,             // old align
-    Even2GRF = 4,        // 2GRF even align 1100
-    Odd2GRF = 5,          // 2GRF old align, 0011
-    Align_NUM = 6        // Num of alignment
+    Either    = 1, // either
+    Even      = 2, // even align
+    Odd       = 3, // old align
+    Even2GRF  = 4, // 2-GRF even align 1100
+    Odd2GRF   = 5, // 2-GRF old align, 0011
+    Align_NUM = 6  // Num of alignment
 };
 
 
 // phase 1 of G4_ExecSize inclusion
 // (ultimately this will be a proper data type)
 using G4_ExecSize = unsigned char;
-static const G4_ExecSize G4_SIMD1 = 1;
-static const G4_ExecSize G4_SIMD2 = 2;
-static const G4_ExecSize G4_SIMD4 = 4;
-static const G4_ExecSize G4_SIMD8 = 8;
-static const G4_ExecSize G4_SIMD16 = 16;
-static const G4_ExecSize G4_SIMD32 = 32;
+namespace g4{
+static const G4_ExecSize SIMD1 = 1;
+static const G4_ExecSize SIMD2 = 2;
+static const G4_ExecSize SIMD4 = 4;
+static const G4_ExecSize SIMD8 = 8;
+static const G4_ExecSize SIMD16 = 16;
+static const G4_ExecSize SIMD32 = 32;
+static const G4_ExecSize SIMD_UNDEFINED = UNDEFINED_EXEC_SIZE;
+}
 
 // saturation
-// (TODO: make a proper data type)
-using G4_Sat = bool;
+// (typesafe enum value with operators and conversions)
+//
+// use g4::SAT or g4::NOSAT to reference the two values
+struct G4_Sat {
+    const enum class Value {NOSAT = 0, SAT} value;
+    constexpr G4_Sat(Value _value) : value(_value) { }
+    operator bool () const {return value == Value::SAT;}
+};
+namespace g4 {
+    // enables g4::SAT as a symbol for a short-hand saturation
+    constexpr G4_Sat SAT(G4_Sat::Value::SAT);
+    constexpr G4_Sat NOSAT(G4_Sat::Value::NOSAT);
+}
 
 
 // To support sub register alignment
@@ -267,9 +279,9 @@ enum G4_InstType
 enum G4_RegFileKind
 {
     G4_UndefinedRF = 0x0,
-    G4_GRF        = 0x1,            // general register file
-    G4_ADDRESS = 0x2,            // architectural register file
-    G4_INPUT    = 0x4,            // input payload register
+    G4_GRF         = 0x1,   // general register file
+    G4_ADDRESS     = 0x2,   // architectural register file
+    G4_INPUT       = 0x4,   // input payload register
     G4_FLAG        = 0x20,
 };
 
@@ -312,7 +324,16 @@ enum G4_InstOption
 #define InstOpt_Masks (InstOpt_QuarterMasks | InstOpt_WriteEnable)
 
 // TODO: to a more proper data type
-using G4_InstOpts = G4_InstOption;
+// ==> step 1: use uint32_t so all the untyped uses still compile
+//             but replace all uint32_t (and other int types with G4_InstOpts)
+//     step 2: make G4_InstOpts a typesafe enum;
+//             #define old unscoped enum names to new typesafe enum
+//             (define various set operators so |, &, and ~ still work)
+//             remove the few magic number uses with valid type enumes
+//     step 3: mechanically (find and replace) old unscoped enums with
+//             typesafe symbols and remove #defines
+using G4_InstOpts = uint32_t;
+
 
 typedef struct _G4_InstOptInfo
 {

@@ -741,7 +741,7 @@ G4_INST::G4_INST(
     G4_Predicate* prd,
     G4_opcode o,
     G4_CondMod* m,
-    bool s,
+    G4_Sat s,
     G4_ExecSize size,
     G4_DstRegRegion* d,
     G4_Operand* s0,
@@ -752,7 +752,7 @@ G4_INST::G4_INST(
     defInstList(irb.getAllocator()),
     local_id(0),
     srcCISAoff(UndefinedCisaOffset),
-    sat(s),
+    sat(s ? 1 : 0),
     evenlySplitInst(false),
     execSize(size),
     bin(nullptr),
@@ -796,7 +796,7 @@ G4_INST::G4_INST(
     defInstList(irb.getAllocator()),
     local_id(0),
     srcCISAoff(UndefinedCisaOffset),
-    sat(s),
+    sat(s ? 1 : 0),
     evenlySplitInst(false),
     execSize(size),
     bin(nullptr),
@@ -837,7 +837,7 @@ G4_InstSend::G4_InstSend(
     G4_Operand* desc,
     G4_InstOpts opt,
     G4_SendMsgDescriptor* md) :
-    G4_INST(builder, prd, o, nullptr, false, size, dst, payload, desc, opt),
+    G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, payload, desc, opt),
     msgDesc(md)
 {
 
@@ -855,7 +855,7 @@ G4_InstSend::G4_InstSend(
     G4_Operand* extDesc,
     G4_InstOpts opt,
     G4_SendMsgDescriptor* md) :
-    G4_INST(builder, prd, o, nullptr, false, size, dst, payload, src1, desc, opt),
+    G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, payload, src1, desc, opt),
     msgDesc(md)
 {
     setSrc(extDesc, 3);
@@ -8205,8 +8205,10 @@ G4_INST* G4_InstMath::cloneInst()
     auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
     auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
 
-    return nonConstBuilder->createInternalMathInst(prd, getSaturate(), getExecSize(), dst,
-        src0, src1, getMathCtrl(), option, getLineNo(), getCISAOff(), getSrcFilename());
+    return nonConstBuilder->createInternalMathInst(
+        prd, getSaturate(), getExecSize(),
+        dst, src0, src1, getMathCtrl(), option,
+        getLineNo(), getCISAOff(), getSrcFilename());
 }
 
 

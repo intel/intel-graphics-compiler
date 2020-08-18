@@ -60,7 +60,7 @@ int IR_Builder::translateVISAAddrInst(
             NULL,
             GetGenOpcodeFromVISAOpcode((ISA_Opcode)opcode),
             NULL,
-            false,
+            g4::NOSAT,
             exsize,
             dstOpnd,
             src0Opnd,
@@ -76,7 +76,7 @@ int IR_Builder::translateVISAAddrInst(
 
 int IR_Builder::translateVISAArithmeticInst(
     ISA_Opcode opcode, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-    G4_Predicate *predOpnd, bool saturate, G4_CondMod* condMod,
+    G4_Predicate *predOpnd, G4_Sat saturate, G4_CondMod* condMod,
     G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd,
     G4_Operand *src2Opnd, G4_DstRegRegion *carryBorrow)
 {
@@ -84,7 +84,7 @@ int IR_Builder::translateVISAArithmeticInst(
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
     unsigned int instOpt = 0;
-    uint8_t exsize = (uint8_t)Get_VISA_Exec_Size(executionSize);
+    G4_ExecSize exsize = toExecSize(executionSize);
     instOpt |= Get_Gen4_Emask(emask, exsize);
 
     if (IsMathInst(opcode))
@@ -245,7 +245,7 @@ int IR_Builder::translateVISACompareInst(
         NULL,
         GetGenOpcodeFromVISAOpcode((ISA_Opcode)opcode),
         condMod,
-        false,
+        g4::NOSAT,
         exsize,
         dstOpnd,
         src0Opnd,
@@ -268,9 +268,7 @@ int IR_Builder::translateVISACompareInst(
 
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(execsize);
     unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
-    /*
-    If it's mix mode HF,F, it will be split down the road anyway, so behavior doesn't change.
-    */
+    // If it's mix mode HF,F, it will be split down the road anyway, so behavior doesn't change.
     G4_Type src0Type = src0Opnd->getType();
     G4_Type src1Type = src1Opnd->getType();
     G4_Type dstType = (exsize == 16 && !(src0Type == Type_HF || src1Type == Type_HF)) ? Type_W :
@@ -289,7 +287,7 @@ int IR_Builder::translateVISACompareInst(
         NULL,
         GetGenOpcodeFromVISAOpcode(opcode),
         condMod,
-        false,
+        g4::NOSAT,
         exsize,
         null_dst_opnd,
         src0Opnd,
@@ -305,7 +303,7 @@ int IR_Builder::translateVISACompareInst(
 
 int IR_Builder::translateVISALogicInst(
     ISA_Opcode opcode, G4_Predicate *predOpnd,
-    bool saturate, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
+    G4_Sat saturate, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
     G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
     G4_Operand* src2, G4_Operand* src3)
 {
@@ -438,7 +436,7 @@ int IR_Builder::translateVISADataMovementInst(
     G4_Predicate *predOpnd,
     VISA_Exec_Size executionSize,
     VISA_EMask_Ctrl emask,
-    bool saturate,
+    G4_Sat saturate,
     G4_DstRegRegion *dstOpnd,
     G4_Operand *src0Opnd,
     G4_Operand *src1Opnd)
@@ -455,11 +453,13 @@ int IR_Builder::translateVISADataMovementInst(
         if (src0Opnd->isSrcRegRegion())
             src0Opnd->asSrcRegRegion()->setType(Type_UD);
         dstOpnd->setType(Type_UD);
+        MUST_BE_TRUE(saturate == g4::NOSAT,
+            "saturation forbidden on this instruction");
         createInst(
             predOpnd,
             G4_mov,
             NULL,
-            false,
+            g4::NOSAT,
             exsize,
             dstOpnd,
             src0Opnd,
@@ -511,7 +511,7 @@ int IR_Builder::translateVISADataMovementInst(
                 G4_mov,
                 NULL,
                 saturate,
-                1,
+                g4::SIMD1,
                 dstOpnd,
                 src0Opnd,
                 NULL,

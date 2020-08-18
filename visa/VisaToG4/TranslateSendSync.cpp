@@ -103,7 +103,8 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
         G4_Predicate* predOpnd = createPredicate(PredState_Plus, tmpFlagDcl->getRegVar(), 0, PRED_DEFAULT);
         G4_DstRegRegion* TDROpnd = createDst(phyregpool.getTDRReg(), 0, 0, 1, Type_UW);
         G4_SrcRegRegion* TDRSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getTDRReg(), 0, 0, getRegionStride1(), Type_UW);
-        createInst(predOpnd, G4_and, NULL, false, 8, TDROpnd, TDRSrc, createImm(0x7FFF, Type_UW), InstOpt_WriteEnable, 0);
+        createInst(predOpnd, G4_and, NULL, g4::NOSAT, g4::SIMD8,
+            TDROpnd, TDRSrc, createImm(0x7FFF, Type_UW), InstOpt_WriteEnable, 0);
     }
 
     createIntrinsicInst(nullptr, Intrinsic::Wait, 1, nullptr, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
@@ -178,8 +179,8 @@ void IR_Builder::generateBarrierWait()
             waitSrc = createNullSrc(Type_UD);
         }
     }
-    createInst(nullptr, G4_wait, nullptr, false, 1, nullptr, waitSrc, nullptr,
-        InstOpt_WriteEnable);
+    createInst(nullptr, G4_wait, nullptr, g4::NOSAT, g4::SIMD1,
+        nullptr, waitSrc, nullptr, InstOpt_WriteEnable);
 }
 
 int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)

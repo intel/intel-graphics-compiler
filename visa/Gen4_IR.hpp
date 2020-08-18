@@ -690,11 +690,15 @@ public:
 
     uint32_t getLexicalId() const { return global_id; }
     void setLexicalId(uint32_t id) { global_id = id; }
+
     void setPredicate(G4_Predicate* p);
-    G4_Predicate* getPredicate() const { return predicate; }
-    void setSaturate(G4_Sat s) { sat = s; }
-    bool getSaturate() const { return sat; }
-    G4_opcode opcode()  const { return op; }
+    G4_Predicate* getPredicate() const {return predicate;}
+
+    void setSaturate(G4_Sat s) {sat = s == g4::SAT ? 1 : 0;}
+    void setSaturate(bool z) {sat = z ? 1 : 0;}
+    G4_Sat getSaturate() const {return sat ? g4::SAT : g4::NOSAT;}
+
+    G4_opcode opcode()  const {return op;}
 
     void setOpcode(G4_opcode opcd);
 
@@ -1219,7 +1223,7 @@ public:
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
-        bool sat,
+        G4_Sat sat,
         unsigned char size,
         G4_DstRegRegion* d,
         G4_Operand* s0,
@@ -1288,7 +1292,7 @@ public:
         G4_Label* jipLabel,
         G4_Label* uipLabel,
         uint32_t instOpt) :
-        G4_INST(builder, prd, op, nullptr, false, size, nullptr, nullptr, nullptr, instOpt),
+        G4_INST(builder, prd, op, nullptr, g4::NOSAT, size, nullptr, nullptr, nullptr, instOpt),
         jip(jipLabel), uip(uipLabel), isBackwardBr(op == G4_while), isUniformBr(false)
     {
         isUniformBr = (op == G4_jmpi ||
@@ -1301,12 +1305,11 @@ public:
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
-        bool sat,
         unsigned char size,
         G4_DstRegRegion* d,
         G4_Operand* s0,
         unsigned int opt) :
-        G4_INST(builder, prd, o, m, sat, size, d, s0, nullptr, opt),
+        G4_INST(builder, prd, o, m, g4::NOSAT, size, d, s0, nullptr, opt),
         jip(NULL), uip(NULL), isBackwardBr(o == G4_while), isUniformBr(false)
     {
         isUniformBr = (op == G4_jmpi ||
@@ -1493,12 +1496,8 @@ public:
     void emit_send(std::ostream& output, bool dotStyle = false);
     void emit_send_desc(std::ostream& output);
 
-    void setSerialize()
-    {
-        option = option | InstOpt_Serialize;
-    }
-    bool isSerializedInst() const { return (option & InstOpt_Serialize) ? true : false; }
-
+    void setSerialize() {option = option | InstOpt_Serialize;}
+    bool isSerializedInst() const { return (option & InstOpt_Serialize) != 0; }
 };
 
 
@@ -1603,7 +1602,7 @@ public:
         G4_Operand* s1,
         G4_Operand* s2,
         G4_InstOpts opt) :
-        G4_INST(builder, prd, G4_intrinsic, nullptr, false, execSize, d, s0, s1, s2, opt),
+        G4_INST(builder, prd, G4_intrinsic, nullptr, g4::NOSAT, execSize, d, s0, s1, s2, opt),
         intrinsicId(intrinId), tmpGRFStart(-1), tmpAddrStart(-1), tmpFlagStart(-1)
     {
 

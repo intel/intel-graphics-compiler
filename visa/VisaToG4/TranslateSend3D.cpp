@@ -739,7 +739,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                     getRegionStride1(), Type_UW);
                 G4_DstRegRegion* nullDst = createNullDst(Type_UW);
                 G4_CondMod* flagCM = createCondMod(Mod_e, flagVar, 0);
-                createInst(NULL, G4_cmp, flagCM, false, 16, nullDst,
+                createInst(NULL, G4_cmp, flagCM, g4::NOSAT, g4::SIMD16, nullDst,
                     r0_0, r0_1, Option);
 
                 G4_SrcRegRegion* flagSrc = createSrcRegRegion(
@@ -1377,7 +1377,7 @@ int IR_Builder::splitSampleInst(
     // Now, depending on message type emit out parms to payload
     unsigned regOff = (useHeader ? 1 : 0);
     G4_SrcRegRegion* temp = nullptr;
-    uint8_t execSize = getNativeExecSize();
+    G4_ExecSize execSize = getNativeExecSize();
     uint16_t numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
     G4_Declare* payloadF = createSendPayloadDcl(numElts, Type_F);
     G4_Declare* payloadUD = createTempVar(numElts, Type_UD, GRFALIGN);
@@ -1650,8 +1650,9 @@ int IR_Builder::splitSampleInst(
                 G4_Predicate* pred2 = dupPredicate(pred);
 
                 // Copy the write mask message W4.0 into the dst. (No mask?)
-                createInst(pred2, G4_mov, NULL, false, 1, origDstPtr, src0Ptr,
-                    NULL, NULL, InstOpt_WriteEnable, 0, true);
+                createInst(pred2, G4_mov, NULL, g4::NOSAT, g4::SIMD1,
+                    origDstPtr, src0Ptr, NULL, NULL,
+                    InstOpt_WriteEnable, 0, true);
                 // Skip the remaining part of the loop.
                 break;
             }
@@ -1688,7 +1689,8 @@ int IR_Builder::splitSampleInst(
 
                 G4_Predicate* pred2 = dupPredicate(pred);
                 // write to dst.0[8:15]
-                createInst(pred2, G4_mov, NULL, false, 1, origDstPtr, src0Ptr, NULL, InstOpt_WriteEnable);
+                createInst(pred2, G4_mov, NULL, g4::NOSAT, g4::SIMD1,
+                    origDstPtr, src0Ptr, NULL, InstOpt_WriteEnable);
 
                 // Skip the remaining part of the loop.
                 break;

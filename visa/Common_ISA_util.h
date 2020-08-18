@@ -63,8 +63,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  unsigned Round_Up_Pow2(unsigned n);
  unsigned Round_Down_Pow2(unsigned n);
  G4_opcode Get_Pseudo_Opcode(ISA_Opcode op);
- VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, int execSize);
- unsigned int Get_Gen4_Emask( VISA_EMask_Ctrl cisa_emask, int exec_size );
+ VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, G4_ExecSize execSize);
+ G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size);
  Common_ISA_Operand_Class CISA_Opnd_Class( vector_opnd opnd );
  unsigned Get_Atomic_Op(VISAAtomicOps op);
  uint16_t Get_VISA_Type_Size(VISA_Type type);

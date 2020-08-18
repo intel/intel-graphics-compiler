@@ -228,8 +228,9 @@ G4_BB* FlowGraph::beginBB(Label_BB_Map& map, G4_INST* first)
 G4_INST* FlowGraph::createNewLabelInst(G4_Label* label, int lineNo, int CISAOff)
 {
     //srcFileName is NULL
+    // TODO: remove this (use createLabelInst)
     return builder->createInternalInst(NULL, G4_label,
-        NULL, false, 1, NULL, label, NULL, 0, lineNo, CISAOff, NULL);
+        NULL, g4::NOSAT, g4::SIMD1, NULL, label, NULL, 0, lineNo, CISAOff, NULL);
 }
 
 G4_BB* FlowGraph::createNewBB(bool insertInFG)
