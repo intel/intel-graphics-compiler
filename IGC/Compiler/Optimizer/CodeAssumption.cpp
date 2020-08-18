@@ -84,65 +84,46 @@ void CodeAssumption::uniformHelper(Module* M)
     for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I)
     {
         Function* F = &(*I);
-        if (F->isDeclaration())
+
+        StringRef FN = F->getName();
+
+        // sub_group_id
+        if (!FN.equals("__builtin_spirv_BuiltInSubgroupId") &&
+            !FN.equals("_Z16get_sub_group_idv"))
             continue;
+        // find all the callees
+        for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui) {
+            auto CI = dyn_cast<CallInst>(ui->getUser());
+            if (!CI) continue;
+            auto BB = CI->getParent();
+            auto KF = BB->getParent();
 
+            if (!IGC_IS_FLAG_ENABLED(DispatchOCLWGInLinearOrder) &&
+                !IsSGIdUniform(m_pMDUtils, modMD, KF))
+                continue;
 
+            // The value must be uniform. Using shuffle with index=0 to
+            // enforce it. assuming lane-0 is active
+            Type* int32Ty = Type::getInt32Ty(M->getContext());
+            Value* args[3];
+            args[0] = CI;
+            args[1] = ConstantInt::getNullValue(int32Ty);
+            args[2] = ConstantInt::get(int32Ty, 0);
 
-        if (!IGC_IS_FLAG_ENABLED(DispatchOCLWGInLinearOrder) &&
-            !IsSGIdUniform(m_pMDUtils, modMD, F))
-        {
-            continue;
-        }
+            Type* ITys[3] = { args[0]->getType(), int32Ty, int32Ty};
+            Function* shuffleIntrin = GenISAIntrinsic::getDeclaration(
+                M,
+                GenISAIntrinsic::GenISA_WaveShuffleIndex,
+                ITys);
 
-        // Entry BB and its unique successors if any
-        BasicBlock* BB = &F->getEntryBlock();
-        while (BB)
-        {
-            auto NI = BB->begin();
-            for (auto II = NI, IE = BB->end(); II != IE; II = NI)
-            {
-                ++NI;
-                CallInst* CallI = dyn_cast<CallInst>(II);
-                if (!CallI)
-                    continue;
+            Instruction* shuffleCall = CallInst::Create(shuffleIntrin, args, "sgid", CI->getNextNode());
 
-                Function* callee = CallI->getCalledFunction();
-                if(!callee)
-                    continue;
+            shuffleCall->setDebugLoc(CI->getDebugLoc());
 
-                StringRef FN = callee->getName();
+            CI->replaceAllUsesWith(shuffleCall);
+            shuffleCall->setOperand(0, CI);
 
-                // sub_group_id
-                if (FN.equals("__builtin_spirv_BuiltInSubgroupId") ||
-                    FN.equals("_Z16get_sub_group_idv"))
-                {
-                    // The value must be uniform. Using shuffle with index=0 to
-                    // enforce it. (This is entry BB, thus lane 0 must be active.)
-                    Type* int32Ty = Type::getInt32Ty(M->getContext());
-                    Value* args[3];
-                    args[0] = CallI;
-                    args[1] = ConstantInt::getNullValue(int32Ty);
-                    args[2] = ConstantInt::get(int32Ty, 0);
-
-                    Type* ITys[3] = { args[0]->getType(), int32Ty, int32Ty};
-                    Function* shuffleIntrin = GenISAIntrinsic::getDeclaration(
-                        M,
-                        GenISAIntrinsic::GenISA_WaveShuffleIndex,
-                        ITys);
-
-                    Instruction* shuffleCall = CallInst::Create(shuffleIntrin, args, "sgid", &*NI);
-
-                    shuffleCall->setDebugLoc(CallI->getDebugLoc());
-
-                    CallI->replaceAllUsesWith(shuffleCall);
-                    shuffleCall->setOperand(0, CallI);
-
-                    m_changed = true;
-                }
-            }
-
-            BB = BB->getUniqueSuccessor();
+            m_changed = true;
         }
     }
 }
