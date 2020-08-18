@@ -275,9 +275,11 @@ namespace IGC
         // addBindlessSamplerLocation - add a sequence of attributes to calculate bindless sampler location of variable
         void addBindlessSamplerLocation(DIEBlock* Block, VISAVariableLocation* Loc);
 
+
         // addScratchLocation - add a sequence of attributes to emit scratch space location
         // of variable
         void addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varInfo, int32_t vectorOffset);
+
 
         // addSLMLocation - add a sequence of attributes to emit SLM location of variable
         void addSLMLocation(DIEBlock* Block, VISAVariableLocation* Loc);
