@@ -1971,17 +1971,16 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
     bool dstOpndNumRows = false;
 
     G4_DstRegRegion* dst = inst->getDst();
-    if (dst->getBase()->isRegVar())
+    if (dst->getBase()->isRegVar() && (dst->getTopDcl()->getRegFile() == G4_GRF))
     {
-        G4_Declare* dstDcl = dst->getBase()->asRegVar()->getDeclare();
-        int dstOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) / G4_GRF_REG_NBYTES;
-
+        G4_Declare* dstDcl = dst->getTopDcl();
+        int dstOffset = dst->getLeftBound() / G4_GRF_REG_NBYTES;
+        bool isDstEvenAlign = gra.isEvenAligned(dstDcl);
         if (dst->getBase()->isRegAllocPartaker())
         {
-            G4_DstRegRegion* dstRgn = dst;
             isDstRegAllocPartaker = true;
-            dstId = ((G4_RegVar*)dstRgn->getBase())->getId();
-            dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+            dstId = ((G4_RegVar*)dst->getBase())->getId();
+            dstOpndNumRows = dst->getLinearizedEnd() - dst->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
         }
         else if (kernel.getOption(vISA_LocalRA))
         {
@@ -1990,7 +1989,6 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
 
             if (topdcl)
                 localLR = gra.getLocalLR(topdcl);
-
             if (localLR && localLR->getAssigned())
             {
                 int sreg;
@@ -2001,8 +1999,8 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
                 isDstLocallyAssigned = true;
                 dstPreg = preg->asGreg()->getRegNum();
                 dstNumRows = localLR->getTopDcl()->getNumRows();
-                G4_DstRegRegion* dstRgn = dst;
-                dstOpndNumRows = dstRgn->getSubRegOff() + dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+                dstOpndNumRows = dst->getLinearizedEnd() - dst->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+                isDstEvenAlign = (dstPreg % 2 == 0);
             }
         }
 
@@ -2013,16 +2011,45 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
                 G4_Operand* src = inst->getSrc(j);
                 if (src != NULL &&
                     src->isSrcRegRegion() &&
-                    src->asSrcRegRegion()->getBase()->isRegVar())
+                    src->asSrcRegRegion()->getBase()->isRegVar() &&
+                    (src->getTopDcl()->getRegFile() == G4_GRF || src->getTopDcl()->getRegFile() == G4_INPUT))
                 {
                     G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
-                    G4_Declare* srcDcl = src->getBase()->asRegVar()->getDeclare();
-                    int srcOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
-                    bool srcOpndNumRows = srcRgn->getSubRegOff() + srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+                    G4_Declare* srcDcl = src->getTopDcl();
+                    int srcOffset = src->getLeftBound() / G4_GRF_REG_NBYTES;
+                    bool srcOpndNumRows = srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+
+                    int srcReg = 0;
+                    bool isSrcEvenAlign = gra.isEvenAligned(srcDcl);
+                    if (!src->asSrcRegRegion()->getBase()->isRegAllocPartaker() &&
+                        kernel.getOption(vISA_LocalRA))
+                    {
+                        int sreg;
+                        LocalLiveRange* localLR = NULL;
+                        G4_Declare* topdcl = GetTopDclFromRegRegion(src);
+
+                        if (topdcl)
+                            localLR = gra.getLocalLR(topdcl);
+                        if (localLR && localLR->getAssigned())
+                        {
+                            G4_VarBase* preg = localLR->getPhyReg(sreg);
+
+                            MUST_BE_TRUE(preg->isGreg(), "Register in src was not GRF");
+                            srcReg = preg->asGreg()->getRegNum();
+                            isSrcEvenAlign = (srcReg % 2 == 0);
+                        }
+                    }
+
+                    if (srcDcl->getRegFile() == G4_INPUT &&
+                        srcDcl->getRegVar()->getPhyReg() != NULL)
+                    {
+                        srcReg = srcDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+                        isSrcEvenAlign = (srcReg % 2 == 0);
+                    }
 
                     if (dstOpndNumRows || srcOpndNumRows)
                     {
-                        if (!(gra.isEvenAligned(dstDcl) && gra.isEvenAligned(srcDcl) &&
+                        if (!(isDstEvenAlign && isSrcEvenAlign &&
                             srcOffset % 2 == dstOffset % 2 &&
                             dstOpndNumRows && srcOpndNumRows))
                         {
