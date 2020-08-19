@@ -180,7 +180,11 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
     EltSz = I32Ty->getPrimitiveSizeInBits() / genx::ByteBits;
     Res = CastInst::Create(Instruction::BitCast, Res, To, "", InsertBefore);
   } else if (To->getVectorElementType()->getPrimitiveSizeInBits() <
-             genx::DWordBits) {
+                 genx::DWordBits
+             // this is required for correct generation of svm.gather/scatter
+             // of data of type which size is < i32 because these intrinsics
+             // infer their block size from the type of the data they handle
+             && !m_useGlobalMem) {
     To = VectorType::get(I32Ty, NumElts);
 
     Res = CastInst::Create(Instruction::ZExt, From, To, "", InsertBefore);
