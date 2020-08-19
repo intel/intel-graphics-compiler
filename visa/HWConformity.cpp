@@ -682,14 +682,22 @@ static G4_Type findConstFoldCommonType(G4_Type type1, G4_Type type2)
     return Type_UNDEF;
 }
 
+
+bool HWConformity::hasSameSubregOffset(G4_INST* inst) const
+{
+    uint32_t offset;
+    return hasSameSubregOffset(inst, offset);
+}
+
 //
 // returns true if all sources and dst in this inst have the same fixed subreg offset
 // null src/dst, scalar sources and immediates are excluded from the check
+// If true, return the common byte offset in byteOffset
 //
-bool HWConformity::hasSameSubregOffset(G4_INST* inst) const
+bool HWConformity::hasSameSubregOffset(G4_INST* inst, uint32_t& byteOffset) const
 {
     bool anyOffset = true; // true means offset is not fixed yet
-    uint32_t byteOffset = 0;
+    byteOffset = 0;
     if (inst->getDst())
     {
         G4_DstRegRegion* dst = inst->getDst();

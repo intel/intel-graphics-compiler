@@ -199,6 +199,7 @@ namespace vISA
         bool generateFPMad(G4_BB* bb, INST_LIST_ITER iter);
         bool generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter);
         bool hasSameSubregOffset(G4_INST* inst) const;
+        bool hasSameSubregOffset(G4_INST* inst, uint32_t& byteOffset) const;
 
         void fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb);
         void generateMacl(INST_LIST_ITER it, G4_BB *bb);

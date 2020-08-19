@@ -5235,7 +5235,8 @@ static bool regionHasFixedSubreg(G4_Operand* opnd, uint32_t& offset)
 
     if (base->asRegVar()->isPhyRegAssigned())
     {
-        offset = base->asRegVar()->getPhyRegOff() * G4_Type_Table[opnd->getType()].byteSize;
+        offset = (subRegOff + base->asRegVar()->getPhyRegOff()) * getTypeSize(opnd->getType());
+        offset %= getGRFSize();
         return true;
     }
 
