@@ -2897,10 +2897,11 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
                     /**
                      * handling switch/case for gen6: jump table should not be compacted
                      */
-                    startTimer(TIMER_ENCODE_COMPACTION);
-                    bool compacted = compactOneInstruction(inst);
-                    stopTimer(TIMER_ENCODE_COMPACTION);
-
+                    bool compacted = false;
+                    {
+                        TIME_SCOPE(ENCODE_COMPACTION);
+                        compacted = compactOneInstruction(inst);
+                    }
                     if (compacted)
                     {
                         if (kernel.getOption(vISA_OptReport))

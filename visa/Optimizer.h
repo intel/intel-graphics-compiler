@@ -287,14 +287,14 @@ private:
 
         /// Corresponding timer for this pass. When it is not a concrete
         /// timer i.e. TIMER_NUM_TIMERS, then no time will be recorded.
-        TIMERS Timer;
+        TimerID Timer;
 
         PassInfo(PassType P, const char *N, vISAOptions O,
-                 TIMERS T = TIMER_NUM_TIMERS)
+                 TimerID T = TimerID::NUM_TIMERS)
             : Pass(P), Name(N), Option(O), Timer(T) {}
 
         PassInfo() : Pass(0), Name(0), Option(vISA_EnableAlways),
-            Timer(TIMER_NUM_TIMERS) {}
+            Timer(TimerID::NUM_TIMERS) {}
     };
 
     bool foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& iter);

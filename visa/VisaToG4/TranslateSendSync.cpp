@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "BuildIR.h"
+#include "../Timer.h"
 
 
 
@@ -39,7 +40,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //              bit 6 -- L1 flush
 //              bit 7 -- SW fence only; a scheduling barrier but does not generate any code
 // bit 7, if set, takes precedence over other bits
-G4_INST* IR_Builder::createFenceInstruction(uint8_t flushParam, bool commitEnable, bool globalMemFence,
+G4_INST* IR_Builder::createFenceInstruction(
+    uint8_t flushParam, bool commitEnable, bool globalMemFence,
     bool isSendc = false)
 {
 #define L1_FLUSH_MASK 0x40
@@ -87,9 +89,7 @@ G4_INST* IR_Builder::createSLMFence()
 
 int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     // clear TDR if mask is not null and not zero
     if (mask != NULL && !(mask->isImm() && mask->asImm()->getInt() == 0))
@@ -109,9 +109,6 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
 
     createIntrinsicInst(nullptr, Intrinsic::Wait, 1, nullptr, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -185,9 +182,8 @@ void IR_Builder::generateBarrierWait()
 
 int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     switch (opcode)
     {
     case ISA_BARRIER:
@@ -282,17 +278,13 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
     default:
         return VISA_FAILURE;
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISASplitBarrierInst(bool isSignal)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     if (isSignal)
     {
@@ -302,8 +294,6 @@ int IR_Builder::translateVISASplitBarrierInst(bool isSignal)
     {
         generateBarrierWait();
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }

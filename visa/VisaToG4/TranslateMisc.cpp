@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "BuildIR.h"
 
+
 bool IR_Builder::isNoMask(VISA_EMask_Ctrl eMask) {
     switch (eMask) {
     case vISA_EMASK_M1_NM:
@@ -154,7 +155,6 @@ static void Copy_Source_To_Payload(
     ASSERT_USER(batchExSize == 1 || batchExSize == 2 || batchExSize == 4 ||
         batchExSize == 8 || batchExSize == 16 || batchExSize == 32,
         "Invalid execution size for message payload copy!");
-
 
     unsigned srcRegOff = 0;
     unsigned batchSize = std::min(batchExSize, execSize);

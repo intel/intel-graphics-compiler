@@ -2492,9 +2492,11 @@ void BinaryEncodingCNL::DoAll()
                     /**
                      * handling switch/case for gen6: jump table should not be compacted
                      */
-                    startTimer(TIMER_ENCODE_COMPACTION);
-                    bool compacted = BinaryEncodingBase::compactOneInstruction(inst);
-                    stopTimer(TIMER_ENCODE_COMPACTION);
+                    bool compacted;
+                    {
+                        TIME_SCOPE(ENCODE_COMPACTION);
+                        compacted = BinaryEncodingBase::compactOneInstruction(inst);
+                    }
 
                     if (compacted)
                     {

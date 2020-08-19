@@ -25,15 +25,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "BuildIR.h"
-
+#include "../Timer.h"
 
 
 int IR_Builder::translateVISACFSwitchInst(
     G4_Operand *indexOpnd, uint8_t numLabels, G4_Label ** labels)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     // offsets are in bytes so we have to multiply everything by 16
     // FIXME: this assumes the jmpi instructions will never be compacted.
@@ -55,17 +53,14 @@ int IR_Builder::translateVISACFSwitchInst(
     {
         indirectJmp->asCFInst()->addIndirectJmpLabel(labels[i]);
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFLabelInst(G4_Label* lab)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     createLabelInst(lab, true);
 
     if (lab->isFuncLabel())
@@ -73,9 +68,6 @@ int IR_Builder::translateVISACFLabelInst(G4_Label* lab)
         subroutineId++;
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -83,9 +75,8 @@ int IR_Builder::translateVISACFCallInst(
     VISA_Exec_Size execsize, VISA_EMask_Ctrl emask,
     G4_Predicate *predOpnd, G4_Label* lab)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     G4_opcode callOpToUse = GetGenOpcodeFromVISAOpcode(ISA_CALL);
     G4_DstRegRegion* dstOpndToUse = NULL;
     unsigned char execSize = (uint8_t) Get_VISA_Exec_Size(execsize);
@@ -118,17 +109,13 @@ int IR_Builder::translateVISACFCallInst(
         instOpt,
         0);
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFJumpInst(G4_Predicate *predOpnd, G4_Label* lab)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     createInst(
         predOpnd,
         GetGenOpcodeFromVISAOpcode((ISA_Opcode)ISA_JMP),
@@ -140,9 +127,7 @@ int IR_Builder::translateVISACFJumpInst(G4_Predicate *predOpnd, G4_Label* lab)
         NULL,
         0,
         0);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -151,19 +136,18 @@ int IR_Builder::translateVISACFFCallInst(
     VISA_Exec_Size execsize, VISA_EMask_Ctrl emask, G4_Predicate *predOpnd,
     std::string funcName, uint8_t argSize, uint8_t returnSize)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     kernel.fg.setHasStackCalls();
 
-    if (this->getArgSize() < argSize)
+    if (getArgSize() < argSize)
     {
-        this->setArgSize(argSize);
+        setArgSize(argSize);
     }
 
-    if (this->getRetVarSize() < returnSize)
+    if (getRetVarSize() < returnSize)
     {
-        this->setRetVarSize(returnSize);
+        setRetVarSize(returnSize);
     }
 
     uint8_t exsize = (uint8_t)Get_VISA_Exec_Size(execsize);
@@ -182,9 +166,6 @@ int IR_Builder::translateVISACFFCallInst(
 
     m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -192,9 +173,8 @@ int IR_Builder::translateVISACFIFCallInst(
     VISA_Exec_Size execsize, VISA_EMask_Ctrl emask,
     G4_Predicate *predOpnd, G4_Operand* funcAddr, uint8_t argSize, uint8_t returnSize)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     kernel.fg.setHasStackCalls();
     kernel.setHasIndirectCall();
 
@@ -237,18 +217,13 @@ int IR_Builder::translateVISACFIFCallInst(
 
     m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFSymbolInst(
     const std::string& symbolName, G4_DstRegRegion* dst)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     if (symbolName.compare("INTEL_PATCH_PRIVATE_MEMORY_SIZE") == 0)
     {
@@ -283,18 +258,14 @@ int IR_Builder::translateVISACFSymbolInst(
         RelocationEntry::createRelocation(kernel, *movInst, 0, symbolName, GenRelocType::R_SYM_ADDR);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFFretInst(
     VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, G4_Predicate *predOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     unsigned int instOpt = 0;
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     instOpt |= Get_Gen4_Emask(emask, exsize);
@@ -312,18 +283,15 @@ int IR_Builder::translateVISACFFretInst(
         NULL,
         instOpt,
         0);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISACFRetInst(
     VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, G4_Predicate *predOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     unsigned int instOpt = InstOpt_NoOpt;
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     instOpt |= Get_Gen4_Emask(emask, exsize);
@@ -357,9 +325,6 @@ int IR_Builder::translateVISACFRetInst(
             nullptr, nullptr, instOpt);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -367,9 +332,8 @@ int IR_Builder::translateVISAGotoInst(
     G4_Predicate* predOpnd,
     VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, G4_Label* label)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
 
@@ -384,11 +348,7 @@ int IR_Builder::translateVISAGotoInst(
         nullptr,
         instOpt,
         0);
-
     cfInst->asCFInst()->setUip(label);
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }

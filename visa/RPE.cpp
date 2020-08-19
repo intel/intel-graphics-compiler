@@ -41,7 +41,7 @@ namespace vISA
 
     void RPE::run()
     {
-        startTimer(TIMER_RPE);
+        TIME_SCOPE(RPE);
         if (!vars.empty())
         {
             for (auto& bb : gra.kernel.fg)
@@ -49,7 +49,6 @@ namespace vISA
                 runBB(bb);
             }
         }
-        stopTimer(TIMER_RPE);
     }
 
     void RPE::runBB(G4_BB* bb)

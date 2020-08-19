@@ -2460,8 +2460,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
 
 void Interference::computeInterference()
 {
-
-    startTimer(TIMER_INTERFERENCE);
+    startTimer(TimerID::INTERFERENCE);
     //
     // create bool vector, live, to track live ranges that are currently live
     //
@@ -2595,7 +2594,7 @@ void Interference::generateSparseIntfGraph()
         std::cout << "\t--max # neighbors: " << maxNeighbor << " (" << lrs[maxIndex]->getDcl()->getName() << ")\n";
     }
 
-    stopTimer(TIMER_INTERFERENCE);
+    stopTimer(TimerID::INTERFERENCE);
 }
 
 // This function can be invoked before local RA or after augmentation.
@@ -6473,7 +6472,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     //    intf.interferenceVerificationForSplit();
 #endif
 
-    startTimer(TIMER_COLORING);
+    TIME_SCOPE(COLORING);
     //
     // compute degree and spill costs for each live range
     //
@@ -6543,7 +6542,6 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
             // RA may succeed even when RP is > total #GRF. We should investigate these cases and fix RPE
             assignColors(FIRST_FIT, false, false);
             //assert(requireSpillCode() && "inaccurate GRF pressure estimate");
-            stopTimer(TIMER_COLORING);
             return !requireSpillCode();
         }
 
@@ -6556,7 +6554,6 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
 
                 if (!success && doBankConflictReduction && isHybrid)
                 {
-                    stopTimer(TIMER_COLORING);
                     return false;
                 }
 
@@ -6598,7 +6595,6 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
         assignColors(FIRST_FIT, false, false);
     }
 
-    stopTimer(TIMER_COLORING);
     return (requireSpillCode() == false);
 }
 
@@ -9260,11 +9256,13 @@ int GlobalRA::coloringRegAlloc()
     // this needs to be called before addr/flag RA since it changes their alignment as well
     fixAlignment();
 
-    startTimer(TIMER_ADDR_FLAG_RA);
-    addrRegAlloc();
+    {
+        TIME_SCOPE(ADDR_FLAG_RA);
 
-    flagRegAlloc();
-    stopTimer(TIMER_ADDR_FLAG_RA);
+        addrRegAlloc();
+
+        flagRegAlloc();
+    }
 
     //
     // If the graph has stack calls, then add the caller-save/callee-save pseudo declares and code.
@@ -9291,19 +9289,19 @@ int GlobalRA::coloringRegAlloc()
     }
     if (builder.getOption(vISA_LocalRA) && !isReRAPass() && canDoLRA(kernel) && !hasStackCall)
     {
-        startTimer(TIMER_LOCAL_RA);
+        startTimer(TimerID::LOCAL_RA);
         copyMissingAlignment();
         BankConflictPass bc(*this);
         LocalRA lra(bc, *this);
         bool success = lra.localRA();
-        stopTimer(TIMER_LOCAL_RA);
+        stopTimer(TimerID::LOCAL_RA);
         if (!success)
         {
             if (canDoHRA(kernel))
             {
-                startTimer(TIMER_HYBRID_RA);
+                startTimer(TimerID::HYBRID_RA);
                 success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
-                stopTimer(TIMER_HYBRID_RA);
+                stopTimer(TimerID::HYBRID_RA);
             }
             else
             {
@@ -9323,7 +9321,7 @@ int GlobalRA::coloringRegAlloc()
         }
     }
 
-    startTimer(TIMER_GRF_GLOBAL_RA);
+    startTimer(TimerID::GRF_GLOBAL_RA);
     unsigned maxRAIterations = 10;
     unsigned iterationNo = 0;
 
@@ -9541,7 +9539,7 @@ int GlobalRA::coloringRegAlloc()
 
                     // Early exit when -abortonspill is passed, instead of
                     // spending time inserting spill code and then aborting.
-                    stopTimer(TIMER_GRF_GLOBAL_RA);
+                    stopTimer(TimerID::GRF_GLOBAL_RA);
                     return VISA_SPILL;
                 }
 
@@ -9562,7 +9560,7 @@ int GlobalRA::coloringRegAlloc()
                     }
                 }
 
-                startTimer(TIMER_SPILL);
+                startTimer(TimerID::SPILL);
                 SpillManagerGRF spillGRF(*this,
                     nextSpillOffset,
                     liveAnalysis.getNumSelectedVar(),
@@ -9617,7 +9615,7 @@ int GlobalRA::coloringRegAlloc()
                     }
                 }
 
-                stopTimer(TIMER_SPILL);
+                stopTimer(TimerID::SPILL);
             }
 
             // RA successfully allocates regs
@@ -9689,7 +9687,7 @@ int GlobalRA::coloringRegAlloc()
     assignRegForAliasDcl();
     computePhyReg();
 
-    stopTimer(TIMER_GRF_GLOBAL_RA);
+    stopTimer(TimerID::GRF_GLOBAL_RA);
 
     //
     // Report failure to allocate due to excessive register pressure.

@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "BuildIR.h"
+#include "../Timer.h"
 
 static const unsigned MESSAGE_PRECISION_SUBTYPE_OFFSET  = 30;
 static const unsigned SIMD_MODE_2_OFFSET  = 29;
@@ -84,6 +85,8 @@ int IR_Builder::translateVISASampleInfoInst(
     G4_Operand* surface,
     G4_DstRegRegion* dst)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     uint8_t execSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     uint32_t instOpt = Get_Gen4_Emask(emask, execSize);
     VISAChannelMask channels = chMask.getAPI();
@@ -174,6 +177,8 @@ int IR_Builder::translateVISAResInfoInst(
     G4_SrcRegRegion* lod,
     G4_DstRegRegion* dst)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     uint8_t execSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     uint32_t instOpt = Get_Gen4_Emask(emask, execSize);
     //For SKL if channels are continuous don't need header
@@ -315,6 +320,8 @@ int IR_Builder::translateVISAURBWrite3DInst(
     G4_SrcRegRegion* perSlotOffset,
     G4_SrcRegRegion* vertexData)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     uint8_t execSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     uint32_t instOpt = Get_Gen4_Emask(emask, execSize);
 
@@ -512,6 +519,8 @@ int IR_Builder::translateVISARTWrite3DInst(
     unsigned int numParms,
     G4_SrcRegRegion ** msgOpnds)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     uint8_t execSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     uint32_t instOpt = Get_Gen4_Emask(emask, execSize);
     bool useHeader = false;
@@ -1245,7 +1254,6 @@ static G4_Operand* createSampleHeader(
     IR_Builder* builder, G4_Declare* header, VISASampler3DSubOpCode actualop,
     bool pixelNullMask, G4_Operand* aoffimmi, ChannelMask srcChannel, G4_Operand* sampler)
 {
-
     G4_Operand* retSampler = sampler;
     uint16_t aoffimmiVal = aoffimmi->isImm() ? (uint16_t)aoffimmi->asImm()->getInt() : 0;
 
@@ -1838,6 +1846,7 @@ int IR_Builder::translateVISASampler3DInst(
     unsigned int numParms,
     G4_SrcRegRegion ** params)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     uint8_t execSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     uint32_t instOpt = Get_Gen4_Emask(emask, execSize);
@@ -1969,6 +1978,8 @@ int IR_Builder::translateVISALoad3DInst(
     uint8_t numParms,
     G4_SrcRegRegion ** opndArray)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     bool useHeader = false;
 
     uint8_t execSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
@@ -2091,6 +2102,8 @@ int IR_Builder::translateVISAGather3dInst(
     unsigned int numOpnds,
     G4_SrcRegRegion ** opndArray)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     bool useHeader = false;
 
     uint8_t execSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
@@ -2244,9 +2257,8 @@ int IR_Builder::translateVISASamplerNormInst(
     G4_Operand* vOffOpnd,
     G4_DstRegRegion* dst_opnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     // mov (8)      VX(0,0)<1>,  r0:ud
     // add dcl for VX
     G4_Declare *dcl = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ, Type_UD);
@@ -2295,9 +2307,7 @@ int IR_Builder::translateVISASamplerNormInst(
         sampler,
         0,
         false);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -2345,9 +2355,8 @@ int IR_Builder::translateVISASamplerInst(
     G4_Operand* rOffOpnd,
     G4_DstRegRegion* dstOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     // mov (8)      VX(0,0)<1>,  r0:ud
     // add dcl for VX
     unsigned num_payload_elt = simdMode/2 * GENX_GRF_REG_SIZ/G4_Type_Table[Type_UD].byteSize;
@@ -2461,8 +2470,5 @@ int IR_Builder::translateVISASamplerInst(
         sampler,
         0,
         false);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }

@@ -25,15 +25,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "BuildIR.h"
+#include "../Timer.h"
 
 
 int IR_Builder::translateVISAAddrInst(
     ISA_Opcode opcode, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
     G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     unsigned int instOpt = 0;
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     instOpt |= Get_Gen4_Emask(emask, exsize);
@@ -68,9 +68,7 @@ int IR_Builder::translateVISAAddrInst(
             instOpt,
             0);
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -80,9 +78,8 @@ int IR_Builder::translateVISAArithmeticInst(
     G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd,
     G4_Operand *src2Opnd, G4_DstRegRegion *carryBorrow)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     unsigned int instOpt = 0;
     G4_ExecSize exsize = toExecSize(executionSize);
     instOpt |= Get_Gen4_Emask(emask, exsize);
@@ -178,9 +175,7 @@ int IR_Builder::translateVISAArithmeticInst(
         }
 
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -206,9 +201,7 @@ int IR_Builder::translateVISACompareInst(
     ISA_Opcode opcode, VISA_Exec_Size execsize, VISA_EMask_Ctrl emask, VISA_Cond_Mod relOp,
     G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     G4_CondMod* condMod = NULL;
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(execsize);
@@ -252,9 +245,7 @@ int IR_Builder::translateVISACompareInst(
         src1Opnd,
         inst_opt,
         0);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -262,9 +253,7 @@ int IR_Builder::translateVISACompareInst(
     ISA_Opcode opcode, VISA_Exec_Size execsize, VISA_EMask_Ctrl emask, VISA_Cond_Mod relOp,
     G4_Declare* predDst, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(execsize);
     unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
@@ -294,9 +283,7 @@ int IR_Builder::translateVISACompareInst(
         src1Opnd,
         inst_opt,
         0);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -307,9 +294,8 @@ int IR_Builder::translateVISALogicInst(
     G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1,
     G4_Operand* src2, G4_Operand* src3)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
     G4_Operand *g4Srcs[COMMON_ISA_MAX_NUM_SRC] = {src0, src1, src2, src3};
@@ -326,10 +312,10 @@ int IR_Builder::translateVISALogicInst(
 
     for (int i = 0; i < ISA_Inst_Table[opcode].n_srcs; i++)
     {
-
         if (g4Srcs[i]->isSrcRegRegion() &&
             !isShiftOp(opcode) &&
-            (g4Srcs[i]->asSrcRegRegion()->getModifier() == Mod_Minus || g4Srcs[i]->asSrcRegRegion()->getModifier() == Mod_Minus_Abs))
+            (g4Srcs[i]->asSrcRegRegion()->getModifier() == Mod_Minus ||
+                g4Srcs[i]->asSrcRegRegion()->getModifier() == Mod_Minus_Abs))
         {
             G4_Type tmpType = g4Srcs[i]->asSrcRegRegion()->getType();
             G4_Declare *tempDcl = createTempVar(exsize, tmpType, Any);
@@ -423,9 +409,6 @@ int IR_Builder::translateVISALogicInst(
             0);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -441,9 +424,8 @@ int IR_Builder::translateVISADataMovementInst(
     G4_Operand *src0Opnd,
     G4_Operand *src1Opnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
     G4_CondMod* condMod = NULL;
@@ -573,9 +555,7 @@ int IR_Builder::translateVISADataMovementInst(
             inst_opt,
             0);
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 

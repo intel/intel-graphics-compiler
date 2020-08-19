@@ -247,8 +247,8 @@ int CISA_IR_Builder::CreateBuilder(
         return VISA_FAILURE;
     }
 
-    startTimer(TIMER_TOTAL);
-    startTimer(TIMER_BUILDER);  // builder time ends with we call compile (i.e., it covers the IR construction time)
+    startTimer(TimerID::TOTAL);
+    startTimer(TimerID::BUILDER);  // builder time ends with we call compile (i.e., it covers the IR construction time)
     //this must be called before any other API.
     SetVisaPlatform(platform);
 
@@ -660,8 +660,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaFile)
 #define KERNEL_MEM_SIZE    (4*1024*1024)
 int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_visa_only)
 {
-
-    stopTimer(TIMER_BUILDER);   // TIMER_BUILDER is started when builder is created
+    stopTimer(TimerID::BUILDER);   // TIMER_BUILDER is started when builder is created
     int status = VISA_SUCCESS;
 
     std::string name = std::string(nameInput);
@@ -769,7 +768,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             int status =  kernel->compileFastPath();
             if (status != VISA_SUCCESS)
             {
-                stopTimer(TIMER_TOTAL);
+                stopTimer(TimerID::TOTAL);
                 return status;
             }
         }
@@ -889,7 +888,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             status = m_cisaBinary->dumpToFile(name);
     }
 
-    stopTimer(TIMER_TOTAL); // have to record total time before dump the timer
+    stopTimer(TimerID::TOTAL); // have to record total time before dump the timer
     if (m_options.getOption(vISA_dumpTimer))
     {
         const char *asmName = nullptr;

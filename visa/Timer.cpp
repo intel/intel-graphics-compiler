@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #undef DEF_TIMER
 #define DEF_TIMER(ENUM, DESCR) DESCR,
-static const char* timerNames[TIMER_NUM_TIMERS] =
+static const char* timerNames[static_cast<int>(TimerID::NUM_TIMERS)] =
 {
     #include "Timer.def"
 };
@@ -72,7 +72,7 @@ static const char* timerNames[TIMER_NUM_TIMERS] =
         struct timespec     t;
         INT                 iRet;
 
-        if ((iRet = clock_getres (CLOCK_TYPE, &Res)) != 0)
+        if ((iRet = clock_getres(CLOCK_TYPE, &Res)) != 0)
         {
             return ERROR;
         }
@@ -104,16 +104,16 @@ struct Timer {
     unsigned int hits;
 };
 
-static _THREAD Timer timers[TIMER_NUM_TIMERS];
+static _THREAD Timer timers[static_cast<int>(TimerID::NUM_TIMERS)];
 static _THREAD char kernelAsmName[256] = "";
 static _THREAD LARGE_INTEGER proc_freq;
-static _THREAD int numTimers = TIMER_NUM_TIMERS;
+static _THREAD int numTimers = static_cast<int>(TimerID::NUM_TIMERS);
 
 void initTimer() {
 
 #ifdef MEASURE_COMPILATION_TIME
     numTimers = 0;
-    for (int i = 0; i < TIMER_NUM_TIMERS; i++)
+    for (int i = 0; i < static_cast<int>(TimerID::NUM_TIMERS); i++)
     {
         timers[i].time = 0;
         timers[i].currentStart = 0;
@@ -129,14 +129,15 @@ void initTimer() {
 
 void resetPerKernel()
 {
-    for (int i = 0; i < TIMER_NUM_TIMERS; i++)
+    for (int i = 0; i < static_cast<int>(TimerID::NUM_TIMERS); i++)
     {
-        if (i == TIMER_TOTAL                            ||
-            i == TIMER_BUILDER                          ||
-            i == TIMER_VISA_BUILDER_APPEND_INST         ||
-            i == TIMER_VISA_BUILDER_CREATE_VAR          ||
-            i == TIMER_VISA_BUILDER_CREATE_OPND         ||
-            i == TIMER_VISA_BUILDER_IR_CONSTRUCTION)
+        TimerID ti = static_cast<TimerID>(i);
+        if (ti == TimerID::TOTAL ||
+            ti == TimerID::BUILDER ||
+            ti == TimerID::VISA_BUILDER_APPEND_INST ||
+            ti == TimerID::VISA_BUILDER_CREATE_VAR ||
+            ti == TimerID::VISA_BUILDER_CREATE_OPND ||
+            ti == TimerID::VISA_BUILDER_IR_CONSTRUCTION)
         {
             continue;
         }
@@ -150,7 +151,7 @@ void resetPerKernel()
 
 void setKernelName(const char *name)
 {
-    SNPRINTF(kernelAsmName, 256, "%s", name);
+    SNPRINTF(kernelAsmName, sizeof(kernelAsmName), "%s", name);
 }
 
 int createNewTimer(const char* name)
@@ -159,10 +160,11 @@ int createNewTimer(const char* name)
     return numTimers++;
 }
 
-void startTimer(int timer)
+void startTimer(TimerID timerId)
 {
+    int timer = static_cast<int>(timerId);
 #ifdef MEASURE_COMPILATION_TIME
-    if (timer < TIMER_NUM_TIMERS)
+    if (timer < static_cast<int>(TimerID::NUM_TIMERS))
     {
 #if defined(_DEBUG) && defined(CHECK_TIMER)
         if (timers[timer].started)
@@ -190,14 +192,15 @@ void startTimer(int timer)
 #endif
 }
 
-void stopTimer(int timer)
+void stopTimer(TimerID timerId)
 {
+    int timer = static_cast<int>(timerId);
 #ifdef MEASURE_COMPILATION_TIME
-    if (timer < TIMER_NUM_TIMERS)
+    if (timer < static_cast<int>(TimerID::NUM_TIMERS))
     {
         LARGE_INTEGER stop;
         QueryPerformanceCounter(&stop);
-        timers[timer].time += (stop.QuadPart - timers[timer].currentStart) / (double) proc_freq.QuadPart;
+        timers[timer].time += (stop.QuadPart - timers[timer].currentStart) / (double)proc_freq.QuadPart;
         timers[timer].ticks += (stop.QuadPart - timers[timer].currentStart);
         timers[timer].currentStart = 0;
 #if defined(_DEBUG) && defined(CHECK_TIMER)
@@ -234,10 +237,10 @@ extern "C" unsigned int getTimerHits(unsigned int idx)
     return timers[idx].hits;
 }
 
-double getTimerUS(unsigned int idx)
-{
-    return (timers[idx].ticks * 1000000) / (double)proc_freq.QuadPart;
-}
+// static double getTimerUS(unsigned int idx)
+// {
+//     return (timers[idx].ticks * 1000000) / (double)proc_freq.QuadPart;
+// }
 
 void dumpAllTimers(const char *asmFileName, bool outputTime)
 {
@@ -248,12 +251,15 @@ void dumpAllTimers(const char *asmFileName, bool outputTime)
     krnlOutput.open("jit_time.txt", ios_base::app);
     krnlOutput << kernelAsmName << "\n";
 
-    double totalTime = timers[TIMER_TOTAL].time;
+    double totalTime = timers[static_cast<int>(TimerID::TOTAL)].time;
     for (unsigned int i = 0; i < getTotalTimers(); i++)
     {
 #ifndef TIME_BUILDER
-        if (i == TIMER_VISA_BUILDER_APPEND_INST || i == TIMER_VISA_BUILDER_IR_CONSTRUCTION ||
-            i == TIMER_VISA_BUILDER_CREATE_VAR || i == TIMER_VISA_BUILDER_CREATE_OPND)
+        TimerID ti = static_cast<TimerID>(i);
+        if (ti == TimerID::VISA_BUILDER_APPEND_INST ||
+            ti == TimerID::VISA_BUILDER_IR_CONSTRUCTION ||
+            ti == TimerID::VISA_BUILDER_CREATE_VAR ||
+            ti == TimerID::VISA_BUILDER_CREATE_OPND)
         {
             continue;
         }

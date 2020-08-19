@@ -461,13 +461,13 @@ void Optimizer::runPass(PassIndex Index)
 
     std::string Name = PI.Name;
 
-    if (PI.Timer != TIMER_NUM_TIMERS)
+    if (PI.Timer != TimerID::NUM_TIMERS)
         startTimer(PI.Timer);
 
     // Execute pass.
     (this->*(PI.Pass))();
 
-    if (PI.Timer != TIMER_NUM_TIMERS)
+    if (PI.Timer != TimerID::NUM_TIMERS)
         stopTimer(PI.Timer);
 
     if (builder.getOption(vISA_DumpDotAll))
@@ -496,55 +496,55 @@ void Optimizer::initOptimizations()
     // The third argument is the intended timer for this pass. If no timing
     // is necessary, then TIMER_NUM_TIMERS can be used.
     //
-    INITIALIZE_PASS(cleanMessageHeader,      vISA_LocalCleanMessageHeader, TIMER_OPTIMIZER);
-    INITIALIZE_PASS(sendFusion,              vISA_EnableSendFusion,        TIMER_OPTIMIZER);
-    INITIALIZE_PASS(renameRegister,          vISA_LocalRenameRegister,     TIMER_OPTIMIZER);
-    INITIALIZE_PASS(newLocalDefHoisting,     vISA_LocalDefHoist,           TIMER_OPTIMIZER);
-    INITIALIZE_PASS(newLocalCopyPropagation, vISA_LocalCopyProp,           TIMER_OPTIMIZER);
-    INITIALIZE_PASS(cselPeepHoleOpt,         vISA_enableCSEL,              TIMER_OPTIMIZER);
-    INITIALIZE_PASS(optimizeLogicOperation,  vISA_EnableAlways,            TIMER_OPTIMIZER);
-    INITIALIZE_PASS(HWConformityChk,         vISA_EnableAlways,            TIMER_HW_CONFORMITY);
-    INITIALIZE_PASS(preRA_Schedule,          vISA_preRA_Schedule,          TIMER_PRERA_SCHEDULING);
-    INITIALIZE_PASS(preRA_HWWorkaround,      vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(regAlloc,                vISA_EnableAlways,            TIMER_TOTAL_RA);
-    INITIALIZE_PASS(removeLifetimeOps,       vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(countBankConflicts,      vISA_OptReport,               TIMER_MISC_OPTS);
-    INITIALIZE_PASS(removeRedundMov,         vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(removeEmptyBlocks,       vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(insertFallThroughJump,   vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(reassignBlockIDs,        vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(evalAddrExp,             vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(FoldAddrImmediate,       vISA_FoldAddrImmed,           TIMER_MISC_OPTS);
-    INITIALIZE_PASS(localSchedule,           vISA_LocalScheduling,         TIMER_SCHEDULING);
-    INITIALIZE_PASS(HWWorkaround,            vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(insertInstLabels,        vISA_EnableAlways,            TIMER_NUM_TIMERS);
-    INITIALIZE_PASS(insertHashMovs,          vISA_InsertHashMovs,          TIMER_NUM_TIMERS);
-    INITIALIZE_PASS(insertDummyCompactInst,  vISA_InsertDummyCompactInst,  TIMER_NUM_TIMERS);
-    INITIALIZE_PASS(mergeScalarInst,         vISA_MergeScalar,             TIMER_OPTIMIZER);
-    INITIALIZE_PASS(lowerMadSequence,        vISA_EnableMACOpt,            TIMER_OPTIMIZER);
-    INITIALIZE_PASS(LVN,                     vISA_LVN,                     TIMER_OPTIMIZER);
-    INITIALIZE_PASS(ifCvt,                   vISA_ifCvt,                   TIMER_OPTIMIZER);
-    INITIALIZE_PASS(dumpPayload,             vISA_dumpPayload,             TIMER_MISC_OPTS);
-    INITIALIZE_PASS(normalizeRegion,         vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(collectStats,            vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(createR0Copy,            vISA_enablePreemption,        TIMER_MISC_OPTS);
-    INITIALIZE_PASS(initializePayload,       vISA_InitPayload,             TIMER_NUM_TIMERS);
-    INITIALIZE_PASS(cleanupBindless,         vISA_enableCleanupBindless,   TIMER_OPTIMIZER);
-    INITIALIZE_PASS(countGRFUsage,           vISA_PrintRegUsage,           TIMER_MISC_OPTS);
-    INITIALIZE_PASS(changeMoveType,          vISA_ChangeMoveType,          TIMER_MISC_OPTS);
-    INITIALIZE_PASS(reRAPostSchedule,        vISA_ReRAPostSchedule,        TIMER_OPTIMIZER);
-    INITIALIZE_PASS(accSubPostSchedule,      vISA_accSubstitution,         TIMER_OPTIMIZER);
-    INITIALIZE_PASS(dce,                     vISA_EnableDCE,               TIMER_OPTIMIZER);
-    INITIALIZE_PASS(reassociateConst,        vISA_reassociate,             TIMER_OPTIMIZER);
-    INITIALIZE_PASS(split4GRFVars,           vISA_split4GRFVar,            TIMER_OPTIMIZER);
-    INITIALIZE_PASS(addFFIDProlog,           vISA_addFFIDProlog,           TIMER_MISC_OPTS);
-    INITIALIZE_PASS(loadThreadPayload,       vISA_loadThreadPayload,       TIMER_MISC_OPTS);
-    INITIALIZE_PASS(insertFenceBeforeEOT,    vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT, TIMER_MISC_OPTS);
-    INITIALIZE_PASS(mapOrphans,              vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(varSplit,                vISA_EnableAlways,            TIMER_OPTIMIZER);
-    INITIALIZE_PASS(legalizeType,            vISA_EnableAlways,            TIMER_MISC_OPTS);
-    INITIALIZE_PASS(analyzeMove,             vISA_analyzeMove,             TIMER_MISC_OPTS);
+    INITIALIZE_PASS(cleanMessageHeader,      vISA_LocalCleanMessageHeader, TimerID::OPTIMIZER);
+    INITIALIZE_PASS(sendFusion,              vISA_EnableSendFusion,        TimerID::OPTIMIZER);
+    INITIALIZE_PASS(renameRegister,          vISA_LocalRenameRegister,     TimerID::OPTIMIZER);
+    INITIALIZE_PASS(newLocalDefHoisting,     vISA_LocalDefHoist,           TimerID::OPTIMIZER);
+    INITIALIZE_PASS(newLocalCopyPropagation, vISA_LocalCopyProp,           TimerID::OPTIMIZER);
+    INITIALIZE_PASS(cselPeepHoleOpt,         vISA_enableCSEL,              TimerID::OPTIMIZER);
+    INITIALIZE_PASS(optimizeLogicOperation,  vISA_EnableAlways,            TimerID::OPTIMIZER);
+    INITIALIZE_PASS(HWConformityChk,         vISA_EnableAlways,            TimerID::HW_CONFORMITY);
+    INITIALIZE_PASS(preRA_Schedule,          vISA_preRA_Schedule,          TimerID::PRERA_SCHEDULING);
+    INITIALIZE_PASS(preRA_HWWorkaround,      vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(regAlloc,                vISA_EnableAlways,            TimerID::TOTAL_RA);
+    INITIALIZE_PASS(removeLifetimeOps,       vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(countBankConflicts,      vISA_OptReport,               TimerID::MISC_OPTS);
+    INITIALIZE_PASS(removeRedundMov,         vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(removeEmptyBlocks,       vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(insertFallThroughJump,   vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(reassignBlockIDs,        vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(evalAddrExp,             vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(FoldAddrImmediate,       vISA_FoldAddrImmed,           TimerID::MISC_OPTS);
+    INITIALIZE_PASS(localSchedule,           vISA_LocalScheduling,         TimerID::SCHEDULING);
+    INITIALIZE_PASS(HWWorkaround,            vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(insertInstLabels,        vISA_EnableAlways,            TimerID::NUM_TIMERS);
+    INITIALIZE_PASS(insertHashMovs,          vISA_InsertHashMovs,          TimerID::NUM_TIMERS);
+    INITIALIZE_PASS(insertDummyCompactInst,  vISA_InsertDummyCompactInst,  TimerID::NUM_TIMERS);
+    INITIALIZE_PASS(mergeScalarInst,         vISA_MergeScalar,             TimerID::OPTIMIZER);
+    INITIALIZE_PASS(lowerMadSequence,        vISA_EnableMACOpt,            TimerID::OPTIMIZER);
+    INITIALIZE_PASS(LVN,                     vISA_LVN,                     TimerID::OPTIMIZER);
+    INITIALIZE_PASS(ifCvt,                   vISA_ifCvt,                   TimerID::OPTIMIZER);
+    INITIALIZE_PASS(dumpPayload,             vISA_dumpPayload,             TimerID::MISC_OPTS);
+    INITIALIZE_PASS(normalizeRegion,         vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(collectStats,            vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(createR0Copy,            vISA_enablePreemption,        TimerID::MISC_OPTS);
+    INITIALIZE_PASS(initializePayload,       vISA_InitPayload,             TimerID::NUM_TIMERS);
+    INITIALIZE_PASS(cleanupBindless,         vISA_enableCleanupBindless,   TimerID::OPTIMIZER);
+    INITIALIZE_PASS(countGRFUsage,           vISA_PrintRegUsage,           TimerID::MISC_OPTS);
+    INITIALIZE_PASS(changeMoveType,          vISA_ChangeMoveType,          TimerID::MISC_OPTS);
+    INITIALIZE_PASS(reRAPostSchedule,        vISA_ReRAPostSchedule,        TimerID::OPTIMIZER);
+    INITIALIZE_PASS(accSubPostSchedule,      vISA_accSubstitution,         TimerID::OPTIMIZER);
+    INITIALIZE_PASS(dce,                     vISA_EnableDCE,               TimerID::OPTIMIZER);
+    INITIALIZE_PASS(reassociateConst,        vISA_reassociate,             TimerID::OPTIMIZER);
+    INITIALIZE_PASS(split4GRFVars,           vISA_split4GRFVar,            TimerID::OPTIMIZER);
+    INITIALIZE_PASS(addFFIDProlog,           vISA_addFFIDProlog,           TimerID::MISC_OPTS);
+    INITIALIZE_PASS(loadThreadPayload,       vISA_loadThreadPayload,       TimerID::MISC_OPTS);
+    INITIALIZE_PASS(insertFenceBeforeEOT,    vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT, TimerID::MISC_OPTS);
+    INITIALIZE_PASS(mapOrphans,              vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(varSplit,                vISA_EnableAlways,            TimerID::OPTIMIZER);
+    INITIALIZE_PASS(legalizeType,            vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(analyzeMove,             vISA_analyzeMove,             TimerID::MISC_OPTS);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG

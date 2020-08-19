@@ -25,8 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "BuildIR.h"
+#include "../Timer.h"
 
 #include <cmath>
+
 
 #define SET_DATAPORT_MESSAGE_TYPE(dest, value)\
     dest |= value << 14;
@@ -78,9 +80,8 @@ int IR_Builder::translateVISAMediaLoadInst(
     G4_Operand* yOffOpnd,
     G4_DstRegRegion* dstOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     unsigned temp;
 
     unsigned objWidth = 0;
@@ -245,9 +246,6 @@ int IR_Builder::translateVISAMediaLoadInst(
         }
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -285,9 +283,8 @@ int IR_Builder::translateVISAMediaStoreInst(
     G4_Operand* yOffOpnd,
     G4_SrcRegRegion* srcOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     int objWidth = 0;
     if (blockWidth != 0)
     {
@@ -393,9 +390,7 @@ int IR_Builder::translateVISAMediaStoreInst(
             InstOpt_WriteEnable,
             false);
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -412,9 +407,8 @@ int IR_Builder::translateVISAVmeImeInst(
     G4_DstRegRegion* outputOpnd)
 
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     // add dcl for VX
     unsigned input_size_dw;
 
@@ -523,9 +517,7 @@ int IR_Builder::translateVISAVmeImeInst(
         NULL,
         InstOpt_WriteEnable,
         false);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -535,9 +527,8 @@ int IR_Builder::translateVISAVmeSicInst(
     G4_Operand* sicInputOpnd,
     G4_DstRegRegion* outputOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     unsigned uni_input_size;
 
     uni_input_size = 4;
@@ -592,9 +583,7 @@ int IR_Builder::translateVISAVmeSicInst(
         NULL,
         InstOpt_WriteEnable,
         false);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -607,9 +596,8 @@ int IR_Builder::translateVISAVmeFbrInst(
     G4_Operand* fbrSubPredModeOpnd,
     G4_DstRegRegion* outputOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     unsigned uni_input_size;
 
     uni_input_size = 4;
@@ -696,9 +684,7 @@ int IR_Builder::translateVISAVmeFbrInst(
         NULL,
         InstOpt_WriteEnable,
         false);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -708,9 +694,8 @@ int IR_Builder::translateVISAVmeIdmInst(
     G4_Operand* idmInputOpnd,
     G4_DstRegRegion* outputOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     unsigned uni_input_size;
 
     uni_input_size = 4;
@@ -753,9 +738,7 @@ int IR_Builder::translateVISAVmeIdmInst(
         NULL,
         InstOpt_WriteEnable,
         false);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -770,9 +753,8 @@ int IR_Builder::translateVISASamplerVAGenericInst(
     unsigned      dstSize,
     bool isBigKernel)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     G4_Declare* dcl  = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ, Type_UD);
     G4_Declare *dcl1 = createSendPayloadDcl(8,                      Type_UD);
     G4_Declare *dclF = createSendPayloadDcl(8,                      Type_F);
@@ -886,9 +868,7 @@ int IR_Builder::translateVISASamplerVAGenericInst(
         reg_receive = 1;
     Create_Send_Inst_For_CISA(NULL, post_dst, payload, 2, reg_receive, 8,
         msg_descriptor, SFID::SAMPLER, 1, SendAccess::READ_ONLY, surface, sampler, InstOpt_WriteEnable, false);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -959,9 +939,8 @@ int IR_Builder::translateVISAAvsInst(
     G4_Operand* eifbypass,
     G4_DstRegRegion* dstOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
 
     {
         /*
@@ -1122,9 +1101,7 @@ int IR_Builder::translateVISAAvsInst(
             InstOpt_WriteEnable,
             false);
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -1157,9 +1134,8 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     G4_Operand *dstXOpnd,    G4_Operand* dstYOpnd,
     bool hdcMode)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     G4_Declare* dcl  = NULL;
     G4_Declare *dcl_offsets = NULL;
 
@@ -1402,8 +1378,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         {
             shift_immed = createImm(pixelVMaskRightOpnd->asImm()->getInt() << 10,Type_UD);
             createMov(1, createDstRegRegion(m1_0_dst), shift_immed, InstOpt_NoOpt, true);
-        }else
-        {
+        } else {
 
             createBinOp(G4_shl, 1, createDstRegRegion(temp_dst), pixelVMaskRightOpnd, createImm(10, Type_UD), InstOpt_WriteEnable, true);
             shift_immed = createSrcRegRegion(temp_src);
@@ -1413,8 +1388,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         if (loopCountOpnd->isImm())
         {
             shift_immed = createImm(loopCountOpnd->asImm()->getInt() << 24, Type_UD);
-        }else
-        {
+        } else {
             createBinOp(G4_shl, 1, createDstRegRegion(temp_dst), loopCountOpnd, createImm(24, Type_UD), InstOpt_WriteEnable, true);
             shift_immed = createSrcRegRegion(temp_src);
         }
@@ -1465,8 +1439,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         if (xDirectionSearchSizeOpnd->isImm())
         {
             shift_immed = createImm(xDirectionSearchSizeOpnd->asImm()->getInt() << 8, Type_UD);
-        }else
-        {
+        } else {
             createBinOp(G4_shl, 1, createDstRegRegion(temp_dst), xDirectionSearchSizeOpnd, createImm(8, Type_UD), InstOpt_WriteEnable, true);
             shift_immed = createSrcRegRegion(temp_src);
         }
@@ -1476,8 +1449,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         if (yDirectionSearchSizeOpnd->isImm())
         {
             shift_immed = createImm(yDirectionSearchSizeOpnd->asImm()->getInt() << 16, Type_UD);
-        }else
-        {
+        } else {
             createBinOp(G4_shl, 1, createDstRegRegion(temp_dst), yDirectionSearchSizeOpnd, createImm(16, Type_UD), InstOpt_WriteEnable, true);
             shift_immed = createSrcRegRegion(temp_src);
         }
@@ -1505,8 +1477,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         {
             reg_to_receive = dstSize/GENX_GRF_REG_SIZ;
         }
-    }else
-    {
+    } else {
         post_dst = createNullDst(Type_UD);
     }
 
@@ -1515,8 +1486,6 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     unsigned msg_descriptor = (0x3 << 17) + (0xB  << 12);
     Create_Send_Inst_For_CISA(NULL, post_dst, payload, reg_to_send, reg_to_receive, 8,
         msg_descriptor, SFID::SAMPLER, 1, SendAccess::READ_ONLY, surface, sampler, 0, false);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }

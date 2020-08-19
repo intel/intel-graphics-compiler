@@ -823,7 +823,7 @@ void LivenessAnalysis::computeLiveness()
         return;
     }
 
-    startTimer(TIMER_LIVENESS);
+    startTimer(TimerID::LIVENESS);
 
 #ifdef DEBUG_VERBOSE_ON
     std::vector<FuncInfo*>& fns = fg.funcInfoTable;
@@ -960,7 +960,7 @@ void LivenessAnalysis::computeLiveness()
     if (performIPA() && fg.builder->getOption(vISA_hierarchicaIPA))
     {
         hierarchicalIPA(inputDefs, outputUses);
-        stopTimer(TIMER_LIVENESS);
+        stopTimer(TimerID::LIVENESS);
         return;
     }
 
@@ -1453,7 +1453,7 @@ void LivenessAnalysis::computeLiveness()
     }
 #endif
 
-    stopTimer(TIMER_LIVENESS);
+    stopTimer(TimerID::LIVENESS);
 }
 
 //

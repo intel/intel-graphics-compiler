@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "BuildIR.h"
+#include "../Timer.h"
 
 
 #define FIX_OWORD_SEND_EXEC_SIZE(BLOCK_SIZE)(((BLOCK_SIZE) > 2)? 16: (BLOCK_SIZE*4))
@@ -167,9 +168,7 @@ int IR_Builder::translateVISAOwordLoadInst(
     G4_Operand* offOpnd,
     G4_DstRegRegion* dstOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     surface = lowerSurface255To253(surface, *this);
 
@@ -283,9 +282,6 @@ int IR_Builder::translateVISAOwordLoadInst(
             false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -326,9 +322,7 @@ int IR_Builder::translateVISAOwordStoreInst(
     G4_Operand* offOpnd,
     G4_SrcRegRegion* srcOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     surface = lowerSurface255To253(surface, *this);
 
@@ -417,9 +411,7 @@ int IR_Builder::translateVISAOwordStoreInst(
             InstOpt_WriteEnable,
             false);
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -465,6 +457,8 @@ int IR_Builder::translateVISAGatherInst(
     G4_SrcRegRegion* eltOffOpnd,
     G4_DstRegRegion* dstOpnd)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     surface = lowerSurface255To253(surface, *this);
 
     // Before GEN10, we translate DWORD GATHER on SLM to untyped GATHER4 on
@@ -476,10 +470,6 @@ int IR_Builder::translateVISAGatherInst(
             executionSize, surface, gOffOpnd,
             eltOffOpnd, dstOpnd);
     }
-
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
 
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
@@ -671,9 +661,6 @@ int IR_Builder::translateVISAGatherInst(
             false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -720,7 +707,6 @@ int IR_Builder::translateVISAScatterInst(
     G4_SrcRegRegion* eltOffOpnd,
     G4_SrcRegRegion* srcOpnd)
 {
-    surface = lowerSurface255To253(surface, *this);
     // Before GEN10, we translate DWORD SCATTER on SLM to untyped GATHER4 on
     // SLM with only R channel enabled. The later is considered more
     // efficient without recalculating offsets in BYTE.
@@ -730,9 +716,10 @@ int IR_Builder::translateVISAScatterInst(
             executionSize, surface, gOffOpnd,
             eltOffOpnd, srcOpnd);
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+    surface = lowerSurface255To253(surface, *this);
+
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
     G4_Predicate *pred = NULL;
@@ -890,9 +877,7 @@ int IR_Builder::translateVISAScatterInst(
         NULL,
         instOpt,
         false);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -952,9 +937,7 @@ int IR_Builder::translateVISAGather4Inst(
     G4_SrcRegRegion* eltOffOpnd,
     G4_DstRegRegion* dstOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     surface = lowerSurface255To253(surface, *this);
 
@@ -1094,9 +1077,7 @@ int IR_Builder::translateVISAGather4Inst(
             instOpt,
             false);
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -1138,9 +1119,7 @@ int IR_Builder::translateVISAScatter4Inst(
     G4_SrcRegRegion* eltOffOpnd,
     G4_SrcRegRegion* srcOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     surface = lowerSurface255To253(surface, *this);
 
@@ -1320,9 +1299,7 @@ int IR_Builder::translateVISAScatter4Inst(
             instOpt,
             false);
     }
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -1371,9 +1348,7 @@ int IR_Builder::translateVISADwordAtomicInst(
     G4_SrcRegRegion* src1,
     G4_DstRegRegion* dst)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     ASSERT_USER(!IsFloatAtomicOps(atomicOp) || hasFloatAtomics(),
         "Float atomic operations are only supported on SKL+ devices");
@@ -1486,9 +1461,6 @@ int IR_Builder::translateVISADwordAtomicInst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -1576,9 +1548,7 @@ int IR_Builder::translateVISAGather4TypedInst(
     G4_SrcRegRegion *lodOpnd,
     G4_DstRegRegion *dstOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     unsigned exSize = executionSize == EXEC_SIZE_16 ? 16 : 8;
     assert((exSize == 8 || hasSIMD16TypedRW()) && "only simd8 is supported");
@@ -1647,9 +1617,6 @@ int IR_Builder::translateVISAGather4TypedInst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -1667,10 +1634,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
     G4_SrcRegRegion *lodOpnd,
     G4_SrcRegRegion *srcOpnd)
 {
-
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     unsigned exSize = executionSize == EXEC_SIZE_16 ? 16 : 8;
     assert((exSize == 8 || hasSIMD16TypedRW()) && "only simd8 is supported");
@@ -1751,16 +1715,13 @@ int IR_Builder::translateVISAScatter4TypedInst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
 int IR_Builder::translateVISATypedAtomicInst(
     VISAAtomicOps atomicOp,
     bool is16Bit,
-    G4_Predicate           *pred,
+    G4_Predicate *pred,
     VISA_EMask_Ctrl emask,
     VISA_Exec_Size execSize,
     G4_Operand *surface,
@@ -1772,6 +1733,7 @@ int IR_Builder::translateVISATypedAtomicInst(
     G4_SrcRegRegion *src1,
     G4_DstRegRegion *dst)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     VISA_Exec_Size instExecSize = execSize;
     assert(execSize <= (getNativeExecSize() == 8 ? EXEC_SIZE_8 : EXEC_SIZE_16) &&
@@ -1955,6 +1917,8 @@ int IR_Builder::translateVISASLMUntypedScaledInst(
     G4_SrcRegRegion *offsets,
     G4_Operand *srcOrDst)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     unsigned exSize = Get_VISA_Exec_Size(execSize);
     unsigned instOpt = Get_Gen4_Emask(eMask, exSize);
 
@@ -2025,9 +1989,7 @@ int IR_Builder::translateVISAGather4ScaledInst(
     G4_SrcRegRegion  *offsets,
     G4_DstRegRegion  *dst)
 {
-
     surface = lowerSurface255To253(surface, *this);
-
     return translateGather4Inst(pred, execSize, eMask, chMask, surface,
         globalOffset, offsets, dst);
 }
@@ -2057,9 +2019,7 @@ int IR_Builder::translateGather4Inst(
     G4_SrcRegRegion  *offsets,
     G4_DstRegRegion  *dst)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
         execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
@@ -2145,9 +2105,6 @@ int IR_Builder::translateGather4Inst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -2162,9 +2119,7 @@ int IR_Builder::translateScatter4Inst(
     G4_SrcRegRegion        *offsets,
     G4_SrcRegRegion        *src)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     ASSERT_USER(
         execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
@@ -2255,9 +2210,6 @@ int IR_Builder::translateScatter4Inst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -2335,6 +2287,7 @@ int IR_Builder::translateVISASLMByteScaledInst(
     G4_SrcRegRegion *offsets,
     G4_Operand *srcOrDst)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     unsigned exSize = Get_VISA_Exec_Size(execSize);
     unsigned instOpt = Get_Gen4_Emask(eMask, exSize);
@@ -2421,9 +2374,7 @@ int IR_Builder::translateByteGatherInst(
     G4_SrcRegRegion *offsets,
     G4_DstRegRegion *dst)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
         execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
@@ -2520,9 +2471,6 @@ int IR_Builder::translateByteGatherInst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -2536,9 +2484,7 @@ int IR_Builder::translateByteScatterInst(
     G4_SrcRegRegion *offsets,
     G4_SrcRegRegion *src)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
         execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
@@ -2639,9 +2585,6 @@ int IR_Builder::translateByteScatterInst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -2662,9 +2605,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
     G4_Operand* address,
     G4_DstRegRegion* dst)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     unsigned numOword = Get_VISA_Oword_Num(size);
     G4_Declare* dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
@@ -2711,9 +2652,6 @@ int IR_Builder::translateVISASVMBlockReadInst(
     Create_Send_Inst_For_CISA(NULL, dst, src, 1, rspLength, sendExecSize, desc,
         SFID::DP_DC1, true, SendAccess::READ_ONLY, NULL, NULL, InstOpt_WriteEnable, false);
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -2722,9 +2660,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     G4_Operand* address,
     G4_SrcRegRegion* src)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     unsigned numOword = Get_VISA_Oword_Num(size);
     unsigned srcNumGRF = (numOword * 16 + getGRFSize() - 1) / getGRFSize();
@@ -2833,9 +2769,6 @@ int IR_Builder::translateVISASVMBlockWriteInst(
             InstOpt_WriteEnable, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -2848,9 +2781,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
     G4_SrcRegRegion* addresses,
     G4_DstRegRegion* dst)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
         execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
@@ -2912,9 +2843,6 @@ int IR_Builder::translateVISASVMScatterReadInst(
     Create_Send_Inst_For_CISA(pred, dst, addresses, messageLength, responseLength, instExSize, desc,
         SFID::DP_DC1, false, SendAccess::READ_ONLY, NULL, NULL, instOpt, false);
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -2927,9 +2855,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
     G4_SrcRegRegion* addresses,
     G4_SrcRegRegion* src)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
         execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
@@ -3018,9 +2944,6 @@ int IR_Builder::translateVISASVMScatterWriteInst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -3069,11 +2992,10 @@ int IR_Builder::translateVISASVMAtomicInst(
     G4_SrcRegRegion* src1,
     G4_DstRegRegion* dst)
 {
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     MUST_BE_TRUE(bitwidth == 16 || bitwidth == 32 || bitwidth == 64,
         "bitwidth must be 16/32/64");
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
 
 
     VISA_Exec_Size instExecSize = execSize;
@@ -3156,9 +3078,6 @@ int IR_Builder::translateVISASVMAtomicInst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -3191,9 +3110,7 @@ int IR_Builder::translateSVMGather4Inst(
     G4_SrcRegRegion         *offsets,
     G4_DstRegRegion         *dst)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     ASSERT_USER(execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
         "Only support SIMD8 or SIMD16!");
@@ -3257,9 +3174,6 @@ int IR_Builder::translateSVMGather4Inst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 
@@ -3272,9 +3186,7 @@ int IR_Builder::translateSVMScatter4Inst(
     G4_SrcRegRegion        *offsets,
     G4_SrcRegRegion        *src)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     ASSERT_USER(execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
         "Only support SIMD8 or SIMD16!");
@@ -3340,9 +3252,6 @@ int IR_Builder::translateSVMScatter4Inst(
             instOpt, false);
     }
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
 

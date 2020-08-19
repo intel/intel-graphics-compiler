@@ -564,7 +564,6 @@ void BinaryEncodingIGA::Encode()
 
     kernel.setAsmCount(IGAInstId);
 
-
     if (m_kernelBuffer)
     {
         m_kernelBufferSize = 0;
@@ -572,29 +571,25 @@ void BinaryEncodingIGA::Encode()
         m_kernelBuffer = nullptr;
     }
 
-    //Will compact only if Compaction flag is present
-    startTimer(TIMER_IGA_ENCODER);
-    bool autoCompact = true;
 
-    if (kernel.getOption(vISA_Compaction) == false)
-    {
-        autoCompact = false;
+    { // time the encoding
+        TIME_SCOPE(IGA_ENCODER);
+        bool autoCompact = kernel.getOption(vISA_Compaction);
+        KernelEncoder encoder(IGAKernel, autoCompact);
+        encoder.setSWSBEncodingMode(getIGASWSBEncodeMode(*kernel.fg.builder));
+
+        if (kernel.getOption(vISA_EnableIGASWSB))
+        {
+            encoder.enableIGAAutoDeps();
+        }
+
+        encoder.encode();
+
+        m_kernelBufferSize = encoder.getBinarySize();
+        m_kernelBuffer = allocCodeBlock(m_kernelBufferSize);
+        memcpy_s(m_kernelBuffer, m_kernelBufferSize, encoder.getBinary(), m_kernelBufferSize);
     }
 
-    KernelEncoder encoder(IGAKernel, autoCompact);
-    encoder.setSWSBEncodingMode(getIGASWSBEncodeMode(*kernel.fg.builder));
-
-    if (kernel.getOption(vISA_EnableIGASWSB))
-    {
-        encoder.enableIGAAutoDeps();
-    }
-
-    encoder.encode();
-
-    stopTimer(TIMER_IGA_ENCODER);
-    m_kernelBufferSize = encoder.getBinarySize();
-    m_kernelBuffer = allocCodeBlock(m_kernelBufferSize);
-    memcpy_s(m_kernelBuffer, m_kernelBufferSize, encoder.getBinary(), m_kernelBufferSize);
 
     // encodedPC is available after encoding
     for (auto&& inst : encodedInsts)

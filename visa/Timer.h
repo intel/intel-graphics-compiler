@@ -48,22 +48,36 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // or invoke other extern functions in Timer.cpp
 // to get individual timer name, ticks, time count.
 //
+#define DEF_TIMER(ENUM, DESCR) ENUM,
+enum class TimerID
+{
+#include "Timer.def"
+    NUM_TIMERS
+};
+
 int createNewTimer(const char *timerName);
 void initTimer();
-void startTimer(int timer);
-void stopTimer(int timer);
+void startTimer(TimerID timer);
+void stopTimer(TimerID timer);
 void setKernelName(const char *name);
 void dumpAllTimers(const char *asmFileName, bool outputTime = false);
 void dumpEncoderStats(Options *opt, std::string &asmName);
 void resetPerKernel();
-double getTimerUS(unsigned idx);
+// double getTimerUS(unsigned idx);
 
-#define DEF_TIMER(ENUM, DESCR) ENUM,
-typedef enum TIMERS
-{
-    #include "Timer.def"
-    TIMER_NUM_TIMERS
-} TIMERS;
+
+struct TimerScope {
+    const TimerID timerId;
+    TimerScope(const TimerID _timerId) : timerId(_timerId) {startTimer(timerId);}
+    ~TimerScope() {stopTimer(timerId);}
+};
+
+#if defined(MEASURE_COMPILATION_TIME)
+#define  TIME_SCOPE(TIMER_ID) TimerScope __timerScope(TimerID::TIMER_ID);
+#else
+#define  TIME_SCOPE(TIMER_ID)
+#endif
+
 #undef DEF_TIMER
 
 #endif

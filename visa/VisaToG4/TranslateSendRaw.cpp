@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "BuildIR.h"
+#include "../Timer.h"
 
 
 
@@ -40,9 +41,8 @@ int IR_Builder::translateVISARawSendInst(
     VISA_EMask_Ctrl emask, uint8_t modifiers, unsigned int exDesc, uint8_t numSrc,
     uint8_t numDst, G4_Operand* msgDescOpnd, G4_SrcRegRegion* msgOpnd, G4_DstRegRegion* dstOpnd)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
 
@@ -88,9 +88,7 @@ int IR_Builder::translateVISARawSendInst(
         inst_opt,
         sendMsgDesc,
         0);
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+
     return VISA_SUCCESS;
 }
 
@@ -101,9 +99,7 @@ int IR_Builder::translateVISARawSendsInst(
     G4_Operand* msgDescOpnd, G4_Operand* src0, G4_Operand* src1, G4_DstRegRegion* dstOpnd,
     unsigned ffid, bool hasEOT)
 {
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
     unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
@@ -180,8 +176,5 @@ int IR_Builder::translateVISARawSendsInst(
         temp_exdesc_src,
         0);
 
-#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
-    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
-#endif
     return VISA_SUCCESS;
 }
