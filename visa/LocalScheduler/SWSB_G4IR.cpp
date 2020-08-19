@@ -620,7 +620,8 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     BBVector.resize(numBBId);
 
     //Set distance 1 at the first instruction in case there are runtime inserted instructions at prolog
-    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D)
+    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
+        fg.builder->getOptions()->getOption(vISA_SWSBStitch) )
     {
         setDefaultDistanceAtFirstInstruction();
     }

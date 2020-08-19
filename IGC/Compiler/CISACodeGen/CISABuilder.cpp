@@ -4273,6 +4273,11 @@ namespace IGC
             SaveOption(vISA_EnableIGASWSB, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableSWSBStitch))
+        {
+            SaveOption(vISA_SWSBStitch, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB) ||
             IGC_IS_FLAG_ENABLED(EnableSWSBInstStall) ||
             IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))

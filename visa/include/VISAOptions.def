@@ -173,6 +173,7 @@ DEF_VISA_OPTION(vISA_SWSBTokenNum,        ET_INT32, "-SWSBTokenNum",      "USAGE
 DEF_VISA_OPTION(vISA_EnableSendTokenReduction,      ET_BOOL,  "-SendTokenReduction",    UNUSED, false)
 DEF_VISA_OPTION(vISA_GlobalTokenAllocation,      ET_BOOL,  "-globalTokenAllocation",    UNUSED, false)
 DEF_VISA_OPTION(vISA_DistPropTokenAllocation,      ET_BOOL,  "-distPropTokenAllocation",    UNUSED, false)
+DEF_VISA_OPTION(vISA_SWSBStitch,      ET_BOOL,  "-SWSBStitch",    UNUSED, false)
 
 
 //=== binary emission options ===
