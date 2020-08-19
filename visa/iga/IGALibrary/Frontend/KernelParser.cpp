@@ -63,7 +63,7 @@ static const IdentMap<FlagModifier> FLAGMODS_LEGACY {
     {"u", FlagModifier::UN},
     {"z", FlagModifier::EQ},
 };
-static const IdentMap<Type> SRC_TYPES {
+static const IdentMap<Type> SRC_TYPES = {
     {"b",  Type::B},
     {"ub", Type::UB},
     {"w",  Type::W},
@@ -93,7 +93,7 @@ static const IdentMap<Type> SRC_TYPES {
     {"f32", Type::F},
     {"f64", Type::DF},
 };
-static const IdentMap<Type> DST_TYPES {
+static const IdentMap<Type> DST_TYPES = {
     {"b",  Type::B},
     {"ub", Type::UB},
     {"w",  Type::W},
@@ -805,8 +805,6 @@ class KernelParser : GenParser
 
     Loc                   m_mnemonicLoc;
     Loc                   m_srcLocs[3];
-    int                   m_sendSrcLens[2]; // send message lengths
-    Loc                   m_sendSrcLenLocs[2]; // locations so we can referee
 
 public:
     KernelParser(
@@ -992,13 +990,6 @@ public:
         for (size_t i = 0; i < sizeof(m_srcKinds)/sizeof(m_srcKinds[0]); i++) {
             m_srcLocs[i] = Loc::INVALID;
             m_srcKinds[i] = Operand::Kind::INVALID;
-        }
-        for (size_t i = 0;
-            i < sizeof(m_sendSrcLens)/sizeof(m_sendSrcLens[0]);
-            i++)
-        {
-            m_sendSrcLens[i] = -1;
-            m_sendSrcLenLocs[i] = Loc::INVALID;
         }
 
         // (W&~f0) mov (8|M0) r1 r2
@@ -1186,7 +1177,7 @@ public:
     }
 
 
-    // Original binary send <=GEN12P1 (sends, sendsc)
+    // Original binary send <=GEN12P1
     void ParseSendInstructionLegacy() {
         ParseSendDstOp();
         ParseSendSrcOp(0, false);
@@ -1195,7 +1186,6 @@ public:
             m_opts.supportLegacyDirectives);
         ParseSendDescsLegacy();
     }
-
 
 
 
@@ -1225,7 +1215,7 @@ public:
 
     // Pred = '~'? FlagReg ('.' PreCtrl?)
     void ParsePred() {
-        static const IdentMap<PredCtrl> PREDCTRLS {
+        static const IdentMap<PredCtrl> PREDCTRLS = {
             {"xyzw", PredCtrl::SEQ}, // lack of a specific pred control defaults to SEQ
             {"anyv", PredCtrl::ANYV},
             {"allv", PredCtrl::ALLV},
@@ -1238,7 +1228,7 @@ public:
             {"any16h", PredCtrl::ANY16H},
             {"all16h", PredCtrl::ALL16H},
             {"any32h", PredCtrl::ANY32H},
-            {"all32h", PredCtrl::ALL32H},
+            {"all32h", PredCtrl::ALL32H}
         };
 
         const Loc prLoc = NextLoc(0);
@@ -3039,6 +3029,10 @@ public:
             freg.regNum = 0;
         } else if (ConsumeIdentEq("f1")) {
             freg.regNum = 1;
+        } else if (ConsumeIdentEq("f2")) {
+            freg.regNum = 2;
+        } else if (ConsumeIdentEq("f3")) {
+            freg.regNum = 3;
         } else {
             Fail("unexpected flag register number");
         }

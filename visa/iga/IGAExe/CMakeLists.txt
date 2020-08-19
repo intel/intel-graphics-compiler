@@ -136,7 +136,7 @@ set_target_properties( IGA_EXE PROPERTIES
     LINK_FLAGS                                 "${IGA_EXE_LINK_FLAGS}"
   )
 
-target_include_directories(IGA_EXE PUBLIC "../IGALibrary" "../include")
+include_directories("../IGALibrary")
 
 if(NOT WIN32)
   set_target_properties(IGA_EXE PROPERTIES PREFIX "")

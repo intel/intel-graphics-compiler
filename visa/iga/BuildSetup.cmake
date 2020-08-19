@@ -17,7 +17,7 @@ else()
   message(FATAL_ERROR "unexpected platform")
 endif()
 
-if (${CMAKE_GENERATOR} MATCHES "Unix Makefiles" OR ${CMAKE_GENERATOR} MATCHES "MSYS Makefiles" OR ${CMAKE_GENERATOR} MATCHES "MinGW Makefiles" OR  ${CMAKE_GENERATOR} MATCHES "Ninja")
+if (${CMAKE_GENERATOR} MATCHES "Unix Makefiles" OR ${CMAKE_GENERATOR} MATCHES "MSYS Makefiles" OR ${CMAKE_GENERATOR} MATCHES "MinGW Makefiles")
   set(UNIX_MAKEFILE_GENERATOR 1)
 elseif(${CMAKE_GENERATOR} MATCHES "Visual Studio")
   set(MSVC_GENERATOR 1)
@@ -62,7 +62,7 @@ elseif(MSVC_GENERATOR)
   # Need release build to create pdb at obj creation (e.g. c/c++ phase rather than link)
   # /Zi does this
   # Also need /FS as multiple cl commands write to the same pdb simultaneously
-  set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_CXX_FLAGS_DEBUG}   /Zi     /Od /sdl /GR-")
+  set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_CXX_FLAGS_DEBUG}   /Zi /Gm /Od /sdl /GR-")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi /Gy /Oi /sdl /GR-")
 
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Zi /FS")

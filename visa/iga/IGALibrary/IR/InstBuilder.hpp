@@ -911,13 +911,6 @@ public:
     }
 
 
-    void InstSendSrc0Length(int src0Length) {
-        m_sendSrc0Len = src0Length;
-    }
-    void InstSendSrc1Length(int src1Length) {
-        m_sendSrc1Len = src1Length;
-    }
-
     ///////////////////////////////////////////////////////////////////////////
     // instruction option callbacks
     void InstOptsAdd(const InstOptSet &instOpts) {

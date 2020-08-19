@@ -87,8 +87,9 @@ static inline std::string ToSymbol(PredCtrl x) {
 
 
 static inline std::string ToSymbol(Op op) {
+    // TODO: expand this manually, this is a crude approximation
     std::stringstream ss;
-    ss << "Op::0x" << std::hex << std::uppercase << (int)op;
+    ss << "op#" << (int)op;
     return ss.str();
 }
 
@@ -677,7 +678,6 @@ template <> SFID FromSyntax<SFID>(std::string str);
 
 std::string ToSyntax(SyncFC sfc);
 template <> SyncFC FromSyntax<SyncFC>(std::string str);
-
 
 
 

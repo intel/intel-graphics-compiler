@@ -37,12 +37,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-#include <cstdint>
+#include <stdint.h>
 #include <string>
+#include "Timer.hpp"
 #include <fstream>
 #include <iostream>
-
-#include "Timer.hpp"
 
 // actually do real timing
 #ifdef _MSC_VER
@@ -59,7 +58,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 
-static const char* timerNames[TIMER_NUM_TIMERS] {"Total", "GED"};
+static const char* timerNames[TIMER_NUM_TIMERS] = {"Total", "GED"};
 
 #ifdef _WIN32
 static int64_t CurrTicks() {
@@ -126,14 +125,14 @@ void setIGAKernelName(const char *name)
 }
 
 
-int createIGANewTimer(const char* name)
+int createIGANewTimer( const char* name )
 {
     timers[numTimers].name = name;
     return numTimers++;
 }
 
 
-void startIGATimer(int timer)
+void startIGATimer( int timer )
 {
 #ifdef MEASURE_COMPILATION_TIME
     if (timer < TIMER_NUM_TIMERS)
@@ -161,7 +160,7 @@ void startIGATimer(int timer)
 #endif
 }
 
-void stopIGATimer(int timer)
+void stopIGATimer( int timer )
 {
 #ifdef MEASURE_COMPILATION_TIME
     if (timer < TIMER_NUM_TIMERS)

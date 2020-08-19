@@ -68,19 +68,19 @@ template <> MathFC iga::FromSyntax<MathFC>(std::string syn)
 std::string iga::ToSyntax(SFID sfid)
 {
     switch (sfid) {
-    case SFID::CRE:   return "cre";
-    case SFID::DC0:   return "dc0";
-    case SFID::DC1:   return "dc1";
-    case SFID::DC2:   return "dc2";
-    case SFID::DCRO:  return "dcro";
-    case SFID::GTWY:  return "gtwy";
+    case SFID::CRE:  return "cre";
+    case SFID::DC0:  return "dc0";
+    case SFID::DC1:  return "dc1";
+    case SFID::DC2:  return "dc2";
+    case SFID::DCRO: return "dcro";
+    case SFID::GTWY: return "gtwy";
     case SFID::NULL_: return "null";
-    case SFID::RC:    return "rc";
-    case SFID::PIXI:  return "pixi";
-    case SFID::SMPL:  return "smpl";
-    case SFID::TS:    return "ts";
-    case SFID::URB:   return "urb";
-    case SFID::VME:   return "vme";
+    case SFID::RC:   return "rc";
+    case SFID::PIXI: return "pixi";
+    case SFID::SMPL: return "smpl";
+    case SFID::TS:   return "ts";
+    case SFID::URB:  return "urb";
+    case SFID::VME:  return "vme";
     default:
         std::stringstream ss;
         ss << "SFID::0x" << std::hex << static_cast<int>(sfid) << "?";
