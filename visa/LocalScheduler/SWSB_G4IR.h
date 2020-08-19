@@ -1031,6 +1031,8 @@ namespace vISA
         void setDistance(SBFootprint * footprint, SBNode *node, SBNode *liveNode);
         void footprintMerge(SBNode * node, SBNode * nextNode);
 
+        void pushItemToQueue(std::vector<unsigned>* nodeIDQueue, unsigned nodeID);
+
         //Local distance dependence analysis and assignment
         void SBDDD(G4_BB* bb,
             LiveGRFBuckets* &LB,

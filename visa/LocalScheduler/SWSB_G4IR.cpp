@@ -4445,6 +4445,16 @@ void G4_BB_SB::footprintMerge(SBNode* node, SBNode* nextNode)
 }
 
 
+void G4_BB_SB::pushItemToQueue(std::vector<unsigned> *nodeIDQueue, unsigned nodeID)
+{
+    nodeIDQueue->push_back(nodeID);
+
+    if (nodeIDQueue->size() > SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE)
+    {
+        nodeIDQueue->erase(nodeIDQueue->begin());
+    }
+}
+
 void G4_BB_SB::SBDDD(G4_BB* bb,
     LiveGRFBuckets*& LB,
     LiveGRFBuckets*& globalSendsLB,
