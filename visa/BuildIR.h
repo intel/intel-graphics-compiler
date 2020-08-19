@@ -549,9 +549,9 @@ public:
 
     // FIXME: Why is this needed, should not leak IGA internals into vISA!
     const iga::Model* getIGAModel() const { return igaModel; }
-
-    uint32_t getPerThreadInputSize() const {
-        return kernel.getIntKernelAttribute(Attributes::ATTR_PerThreadInputSize);
+    uint32_t getPerThreadInputSize() const
+    {
+        return kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
     }
 
     bool getHasPerThreadProlog() const { return hasPerThreadProlog; }

@@ -746,7 +746,7 @@ namespace vISA
                     auto srcOpndUniqueDef = findUniqueDef(srcOpndRefs, srcOpndRgn);
 
                     bool isSrcAvailble = false;
-                    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM &&
+                    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM &&
                         uniqueDefBB == bb)
                     {
                         isSrcAvailble = checkLocalWAR(uniqueDefInst, bb, instIter);
@@ -1043,7 +1043,7 @@ namespace vISA
 
         for (auto bb : kernel.fg)
         {
-            if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISATarget::VISA_3D)
+            if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISATarget::VISA_3D)
             {
                 // For Cm, assume cr0 def is live across BBs
                 // For IGC, assume cr0 is reset at each BB entry

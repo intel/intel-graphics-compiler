@@ -2483,7 +2483,7 @@ void Interference::computeInterference()
         buildInterferenceWithinBB((*it), live);
     }
 
-    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D ||
+    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
         kernel.fg.builder->getOption(vISA_enablePreemption) ||
         kernel.fg.getHasStackCalls() ||
         kernel.fg.getIsStackCallFunc())
@@ -4814,7 +4814,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
 
 void Augmentation::augmentIntfGraph()
 {
-    if (!(kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
+    if (!(kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
         !liveAnalysis.livenessClass(G4_ADDRESS) &&
         kernel.fg.size() > 2))
     {
@@ -5396,7 +5396,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
         {
             float spillCost = 0.0f;
             // NOTE: Add 1 to degree to avoid divide-by-0, as a live range may have no neighbors
-            if (builder.kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D)
+            if (builder.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D)
             {
                 if (useSplitLLRHeuristic)
                 {
@@ -6532,7 +6532,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     {
         bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
-        bool willSpill = kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
+        bool willSpill = kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
             rpe->getMaxRP() >= kernel.getNumRegTotal() + 24;
         if (willSpill)
         {
@@ -7402,7 +7402,7 @@ void GraphColor::addCalleeSaveRestoreCode()
 //
 void GraphColor::addGenxMainStackSetupCode()
 {
-    uint32_t fpInitVal = (uint32_t)kernel.getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
+    uint32_t fpInitVal = (uint32_t)kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
     // FIXME: a potential failure here is that frameSizeInOword is already the offset based on
     // GlobalSratchOffset, which is the value of fpInitVal. So below we generate code to do
     // SP = fpInitVal + frameSize, which does not make sense. It is correct now since when there's stack call,
@@ -8442,7 +8442,7 @@ bool VarSplit::canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t
     }
 
     if (!builder.getOption(vISA_Debug) &&               //Not work in debug mode
-        kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&   //Only works for 3D/OCL/OGL
+        kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&   //Only works for 3D/OCL/OGL
         sendSpillRefCount)
     {
         return true;
@@ -9157,7 +9157,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
         RPE rpe(*this, &liveAnalysis);
         rpe.run();
 
-        bool spillLikely = kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
+        bool spillLikely = kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
             rpe.getMaxRP() >= kernel.getNumRegTotal() - 16;
         if (spillLikely)
         {
@@ -9327,7 +9327,7 @@ int GlobalRA::coloringRegAlloc()
 
     std::vector<SpillManagerGRF::EDGE> prevIntfEdges;
 
-    int globalScratchOffset = kernel.getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
+    int globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
     bool useScratchMsgForSpill = globalScratchOffset < (int) (SCRATCH_MSG_LIMIT * 0.6) && !hasStackCall;
     bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
 
@@ -9394,7 +9394,7 @@ int GlobalRA::coloringRegAlloc()
             !kernel.getHasAddrTaken();
         bool reserveSpillReg = false;
         if (builder.getOption(vISA_FailSafeRA) &&
-            kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
+            kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
             !hasStackCall &&
             allowAddrTaken &&
             iterationNo == failSafeRAIteration)
@@ -9444,7 +9444,7 @@ int GlobalRA::coloringRegAlloc()
                     return VISA_SPILL;
                 }
 
-                bool runRemat = kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM
+                bool runRemat = kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM
                     ? true :  kernel.getSimdSize() < G4_GRF_REG_NBYTES;
                 // -noremat takes precedence over -forceremat
                 bool rematOff = !kernel.getOption(vISA_Debug) &&
@@ -9545,7 +9545,7 @@ int GlobalRA::coloringRegAlloc()
 
                 if (iterationNo == 0 &&
                     enableSpillSpaceCompression &&
-                    kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D &&
+                    kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
                     !hasStackCall)
                 {
                     unsigned int spillSize = 0;

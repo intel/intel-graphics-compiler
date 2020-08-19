@@ -2094,7 +2094,7 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned& bytePos, co
         memcpy_s(valueBuffer, attributes[i].size, &buf[bytePos], attributes[i].size);
         bytePos += attributes[i].size;
         vISA::Attributes::ID attrID = vISA::Attributes::getAttributeID(attrName);
-        if (vISA::Attributes::isIntAttribute(attrID))
+        if (vISA::Attributes::isInt32(attrID) || vISA::Attributes::isBool(attrID))
         {
             attributes[i].isInt = true;
             switch (attributes[i].size)
@@ -2117,7 +2117,7 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned& bytePos, co
                 break;
             }
         }
-        else if (vISA::Attributes::isStringAttribute(attrID))
+        else if (vISA::Attributes::isCStr(attrID))
         {
             attributes[i].isInt = false;    //by default assume attributes have string value
             attributes[i].value.stringVal = valueBuffer;
@@ -2500,7 +2500,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
             kernelBuilderImpl->AddKernelAttribute(header.strings[attribute->nameIndex], attribute->size, attribute->value.stringVal);
         }
     }
-    if (!kernelBuilderImpl->getKernelAttributes()->isSet(vISA::Attributes::ATTR_Target))
+    if (!kernelBuilderImpl->getKernelAttributes()->isKernelAttrSet(vISA::Attributes::ATTR_Target))
     {
         VISATarget target = kernelBuilderImpl->getOptions()->getTarget();
         kernelBuilderImpl->AddKernelAttribute("Target", 1, &target);
