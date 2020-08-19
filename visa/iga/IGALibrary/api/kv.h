@@ -75,7 +75,7 @@ typedef enum {
     KV_NON_SEND_INSTRUCTION   = 20, /* underlying inst isn't a send */
     KV_DESCRIPTOR_INDIRECT    = 21, /* a send message with a reg desc */
     KV_DESCRIPTOR_INVALID     = 22, /* an unrecognized send descriptor */
-    KV_NO_SUBFUNCTION         = 23, /* underlyting inst has no sub-function*/
+    KV_NO_SUBFUNCTION         = 23, /* underlying inst has no sub-function */
 
     KV_INCAPABLE_PLATFORM     = 30  /* the called-api is incapable on the platform*/
 } kv_status_t;
