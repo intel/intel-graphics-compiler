@@ -532,11 +532,11 @@ static void populateKernelInfo_v2(const cmc_kernel_info_v2* info,
     std::memset(static_cast<char*>(kernelBin) + size, 0, padding);
 
     // Update program info.
-    std::memset(&kernel.m_prog, 0, sizeof(IGC::SProgramOutput));
-    kernel.m_prog.m_programBin = kernelBin;
-    kernel.m_prog.m_programSize = size + padding;
-    kernel.m_prog.m_unpaddedProgramSize = size;
-    kernel.m_prog.m_InstructionCount = JITInfo.numAsmCount;
+    std::memset(&kernel.getProgramOutput(), 0, sizeof(IGC::SProgramOutput));
+    kernel.getProgramOutput().m_programBin = kernelBin;
+    kernel.getProgramOutput().m_programSize = size + padding;
+    kernel.getProgramOutput().m_unpaddedProgramSize = size;
+    kernel.getProgramOutput().m_InstructionCount = JITInfo.numAsmCount;
 
 
     // Iterate kernel arguments (This should stay in sync with cmc on resource type.)

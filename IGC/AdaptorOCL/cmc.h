@@ -171,9 +171,19 @@ public:
 
     PLATFORM m_platform;
     IGC::SOpenCLKernelInfo m_kernelInfo;
-    IGC::SProgramOutput m_prog;
     IGC::COCLBTILayout m_btiLayout;
     uint32_t m_GRFSizeInBytes;
+
+    // getter for convenience
+    const IGC::SProgramOutput &getProgramOutput() const {
+        return m_kernelInfo.m_kernelProgram.simd1;
+    }
+
+    // getter for convenience
+    IGC::SProgramOutput &getProgramOutput() {
+        return const_cast<IGC::SProgramOutput&>(
+            static_cast<const CMKernel*>(this)->getProgramOutput());
+    }
 
     // General argument
     void createConstArgumentAnnotation(unsigned argNo,

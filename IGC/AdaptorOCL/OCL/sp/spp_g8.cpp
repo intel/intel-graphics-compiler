@@ -387,20 +387,20 @@ CGen8CMProgram::~CGen8CMProgram()
 
 void CGen8CMProgram::CreateKernelBinaries()
 {
-    for (auto kernel : m_kernels) {
+    for (auto *kernel : m_kernels) {
         // Create the kernel binary streams.
         KernelData data;
         data.kernelBinary = new Util::BinaryStream;
 
         m_StateProcessor.CreateKernelBinary(
-            (const char*)kernel->m_prog.m_programBin,
-            kernel->m_prog.m_programSize,
+            reinterpret_cast<const char*>(kernel->getProgramOutput().m_programBin),
+            kernel->getProgramOutput().m_programSize,
             kernel->m_kernelInfo,
             *m_programInfo,
             kernel->m_btiLayout,
             *(data.kernelBinary),
             m_pSystemThreadKernelOutput,
-            kernel->m_prog.m_unpaddedProgramSize);
+            kernel->getProgramOutput().m_unpaddedProgramSize);
 
         m_KernelBinaries.push_back(data);
     }
@@ -414,8 +414,8 @@ void CGen8CMProgram::GetZEBinary(
     for (auto *kernel : m_kernels)
     {
         zebuilder.createKernel(
-            reinterpret_cast<const char*>(kernel->m_prog.m_programBin),
-            kernel->m_prog.m_programSize,
+            reinterpret_cast<const char*>(kernel->getProgramOutput().m_programBin),
+            kernel->getProgramOutput().m_programSize,
             kernel->m_kernelInfo,
             kernel->m_GRFSizeInBytes);
     }
