@@ -2042,7 +2042,8 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
                     }
 
                     if (srcDcl->getRegFile() == G4_INPUT &&
-                        srcDcl->getRegVar()->getPhyReg() != NULL)
+                        srcDcl->getRegVar()->getPhyReg() != NULL &&
+                        srcDcl->getRegVar()->getPhyReg()->isGreg())
                     {
                         srcReg = srcDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
                         isSrcEvenAlign = (srcReg % 2 == 0);
