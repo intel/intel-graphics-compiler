@@ -2103,7 +2103,10 @@ namespace IGC
         if (ctx->m_retryManager.IsFirstTry())
         {
             CollectProgramInfo(ctx);
-            ctx->m_programOutput.CreateProgramScopePatchStream(ctx->m_programInfo);
+            if (IGC_IS_FLAG_DISABLED(EnableZEBinary))
+            {
+                ctx->m_programOutput.CreateProgramScopePatchStream(ctx->m_programInfo);
+            }
         }
 
         MetaDataUtils* pMdUtils = ctx->getMetaDataUtils();

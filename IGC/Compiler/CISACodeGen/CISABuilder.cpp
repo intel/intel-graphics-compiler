@@ -4826,14 +4826,10 @@ namespace IGC
         {
             GlobalVariable* pGlobal = global.first;
 
-            // Export the symbol if global is external/common linkage
-            bool needSymbol = modMD->compOpt.EnableTakeGlobalAddress && (pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage());
-
-            // Otherwise check if relocation is required
-            if (!needSymbol)
-            {
-                needSymbol = pGlobal->getNumUses() > 0;
-            }
+            // Export the symbol if global is external/common linkage, or has uses in the module
+            bool needSymbol = pGlobal->use_empty()
+                ? (modMD->compOpt.EnableTakeGlobalAddress && (pGlobal->hasCommonLinkage() || pGlobal->hasExternalLinkage()))
+                : true;
 
             if (needSymbol)
             {

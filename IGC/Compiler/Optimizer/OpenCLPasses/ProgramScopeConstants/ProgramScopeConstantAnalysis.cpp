@@ -195,38 +195,42 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         IGC::appendToUsed(M, globalArray);
     }
 
-    if (hasInlineConstantBuffer)
+    // Always rely on relocation for ZEBinary
+    if (IGC_IS_FLAG_DISABLED(EnableZEBinary))
     {
-        // Just add the implicit argument to each function if a constant
-        // buffer has been created.  This will technically burn a patch
-        // token on kernels that don't actually use the buffer but it saves
-        // us having to walk the def-use chain (we can't just check if a
-        // constant is used in the kernel; for example, a global buffer
-        // may contain pointers that in turn point into the constant
-        // address space).
-        for (auto& pFunc : M)
+        if (hasInlineConstantBuffer)
         {
-            if (pFunc.isDeclaration()) continue;
-            // Don't add implicit arg if doing relocation
-            if (pFunc.hasFnAttribute("visaStackCall")) continue;
+            // Just add the implicit argument to each function if a constant
+            // buffer has been created.  This will technically burn a patch
+            // token on kernels that don't actually use the buffer but it saves
+            // us having to walk the def-use chain (we can't just check if a
+            // constant is used in the kernel; for example, a global buffer
+            // may contain pointers that in turn point into the constant
+            // address space).
+            for (auto& pFunc : M)
+            {
+                if (pFunc.isDeclaration()) continue;
+                // Don't add implicit arg if doing relocation
+                if (pFunc.hasFnAttribute("visaStackCall")) continue;
 
-            SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
-            implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
-            ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
+                SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
+                implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
+                ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
+            }
         }
-    }
 
-    if (hasInlineGlobalBuffer)
-    {
-        for (auto& pFunc : M)
+        if (hasInlineGlobalBuffer)
         {
-            if (pFunc.isDeclaration()) continue;
-            // Don't add implicit arg if doing relocation
-            if (pFunc.hasFnAttribute("visaStackCall")) continue;
+            for (auto& pFunc : M)
+            {
+                if (pFunc.isDeclaration()) continue;
+                // Don't add implicit arg if doing relocation
+                if (pFunc.hasFnAttribute("visaStackCall")) continue;
 
-            SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
-            implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);
-            ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
+                SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
+                implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);
+                ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
+            }
         }
     }
 

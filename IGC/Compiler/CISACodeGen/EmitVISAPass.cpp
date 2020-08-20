@@ -300,10 +300,14 @@ bool EmitPass::compileSymbolTableKernel(llvm::Function* F)
             {
                 return true;
             }
-            // Otherwise check if relocation is required by checking uses
+
+            // Remove dead users at this point
+            pGlobal->removeDeadConstantUsers();
+
+            // Check if relocation is required by checking uses
             for (auto user : pGlobal->users())
             {
-                if (Instruction* inst = dyn_cast<Instruction>(user))
+                if (isa<Instruction>(user))
                 {
                     return true;
                 }
@@ -10042,6 +10046,7 @@ void EmitPass::emitSymbolRelocation(Function& F)
         return false;
     };
 
+    // Create relocation symbols for functions
     SmallSet<Function*, 16> funcAddrSymbols;
     for (auto& FI : pModule->getFunctionList())
     {
@@ -10059,25 +10064,23 @@ void EmitPass::emitSymbolRelocation(Function& F)
         m_currShader->CreateFunctionSymbol(pFunc);
     }
 
-    if (F.hasFnAttribute("visaStackCall"))
+    // Create relocation symbols for global variables
+    SmallSet<GlobalVariable*, 16> globalAddrSymbols;
+    for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
     {
-        SmallSet<GlobalVariable*, 16> globalAddrSymbols;
-        for (auto gi = pModule->global_begin(), ge = pModule->global_end(); gi != ge; gi++)
+        // Create relocation instruction for global variables
+        GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
+        if (pGlobal &&
+            pGlobal->getNumUses() > 0 &&
+            m_moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0 &&
+            ValueUsedInFunction(pGlobal, &F))
         {
-            // Create relocation instruction for global variables
-            GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
-            if (pGlobal &&
-                pGlobal->getNumUses() > 0 &&
-                m_moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0 &&
-                ValueUsedInFunction(pGlobal, &F))
-            {
-                globalAddrSymbols.insert(pGlobal);
-            }
+            globalAddrSymbols.insert(pGlobal);
         }
-        for (auto pGlobal : globalAddrSymbols)
-        {
-            m_currShader->CreateGlobalSymbol(pGlobal);
-        }
+    }
+    for (auto pGlobal : globalAddrSymbols)
+    {
+        m_currShader->CreateGlobalSymbol(pGlobal);
     }
 }
 

@@ -149,8 +149,11 @@ ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)
     // FIXME: not sure in what cases there will be more than one global constant buffer
     IGC_ASSERT(annotations.m_initConstantAnnotation.size() == 1);
     auto& ca = annotations.m_initConstantAnnotation.front();
+    uint32_t dataSize = ca->InlineData.size();
+    uint32_t paddingSize = ca->AllocSize - dataSize;
+    uint32_t alignment = ca->Alignment;
     return mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
-        ca->InlineData.size());
+        dataSize, paddingSize, alignment);
 }
 
 bool ZEBinaryBuilder::hasGlobals(const IGC::SOpenCLProgramInfo& annotations)
@@ -169,8 +172,11 @@ ZEELFObjectBuilder::SectionID ZEBinaryBuilder::addGlobals(
     // FIXME: not sure in what cases there will be more than one global buffer
     IGC_ASSERT(annotations.m_initGlobalAnnotation.size() == 1);
     auto& ca = annotations.m_initGlobalAnnotation.front();
+    uint32_t dataSize = ca->InlineData.size();
+    uint32_t paddingSize = ca->AllocSize - dataSize;
+    uint32_t alignment = ca->Alignment;
     return mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
-        ca->InlineData.size());
+        dataSize, paddingSize, alignment);
 }
 
 void ZEBinaryBuilder::addSPIRV(const uint8_t* data, uint32_t size)
