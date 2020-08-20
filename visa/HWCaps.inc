@@ -643,4 +643,9 @@
         return true;
     }
 
+    bool supportsSampler() const
+    {
+        return true;
+    }
+
     // end HW capabilities
