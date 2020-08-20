@@ -5623,12 +5623,10 @@ public:
     const GenXBackendConfig &BC = getAnalysis<GenXBackendConfig>();
 
     std::stringstream ss;
-    auto *CisaBuilder = GM.GetCisaBuilder();
-    if (GM.HasInlineAsm()) {
-      auto VISAAsmTextReader = GM.GetVISAAsmReader();
-      CISA_CALL(VISAAsmTextReader->Compile("genxir", &ss, EmitVisa));
-    } else
-      CISA_CALL(CisaBuilder->Compile("genxir", &ss, EmitVisa));
+    VISABuilder *CisaBuilder = GM.GetCisaBuilder();
+    if (GM.HasInlineAsm())
+      CisaBuilder = GM.GetVISAAsmReader();
+    CISA_CALL(CisaBuilder->Compile("genxir", &ss, EmitVisa));
     if (OCLInfo)
       fillOCLRuntimeInfo(*OCLInfo, GM, FGA, ST, BC);
 
