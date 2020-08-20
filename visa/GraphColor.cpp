@@ -325,7 +325,7 @@ void BankConflictPass::setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegN
 
         regNum[i] = dcls[i]->getNumRows();
         refNum[i] = gra.getNumRefs(dcls[i]);
-        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
+        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / numEltPerGRF(Type_UB);
         srcBC[i] = gra.getBankConflict(dcls[i]);
 
         if (src->getBase()->asRegVar()->isPhyRegAssigned())
@@ -543,7 +543,7 @@ void BankConflictPass::getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare *
         }
         opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
 
-        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
+        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / numEltPerGRF(Type_UB);
         srcBC[i] = gra.getBankConflict(dcls[i]);
 
         if (src->getBase()->asRegVar()->isPhyRegAssigned())
@@ -594,7 +594,7 @@ void BankConflictPass::getPrevBanks(G4_INST* inst, BankConflict *srcBC, G4_Decla
 
         opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
 
-        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
+        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / numEltPerGRF(Type_UB);
         srcBC[i] = gra.getBankConflict(dcls[i]);
 
         if (src->getBase()->asRegVar()->isPhyRegAssigned())
@@ -699,7 +699,7 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
         opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
 
         refNum[i] = gra.getNumRefs(dcls[i]);
-        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
+        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / numEltPerGRF(Type_UB);
         srcBC[i] = gra.getBankConflict(dcls[i]);
 
         if (src->getBase()->asRegVar()->isPhyRegAssigned())
@@ -843,7 +843,7 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
 
         dcls[i] = GetTopDclFromRegRegion(src);
         opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
-        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
+        offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / numEltPerGRF(Type_UB);
         srcBC[i] = gra.getBankConflict(dcls[i]);
 
         if (srcBC[i] != BANK_CONFLICT_NONE)
@@ -1974,13 +1974,14 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
     if (dst->getBase()->isRegVar() && (dst->getTopDcl()->getRegFile() == G4_GRF))
     {
         G4_Declare* dstDcl = dst->getTopDcl();
-        int dstOffset = dst->getLeftBound() / G4_GRF_REG_NBYTES;
+        int dstOffset = dst->getLeftBound() / numEltPerGRF(Type_UB);
         bool isDstEvenAlign = gra.isEvenAligned(dstDcl);
+
         if (dst->getBase()->isRegAllocPartaker())
         {
             isDstRegAllocPartaker = true;
             dstId = ((G4_RegVar*)dst->getBase())->getId();
-            dstOpndNumRows = dst->getLinearizedEnd() - dst->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+            dstOpndNumRows = dst->getLinearizedEnd() - dst->getLinearizedStart() + 1 > numEltPerGRF(Type_UB);
         }
         else if (kernel.getOption(vISA_LocalRA))
         {
@@ -1999,7 +2000,7 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
                 isDstLocallyAssigned = true;
                 dstPreg = preg->asGreg()->getRegNum();
                 dstNumRows = localLR->getTopDcl()->getNumRows();
-                dstOpndNumRows = dst->getLinearizedEnd() - dst->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+                dstOpndNumRows = dst->getLinearizedEnd() - dst->getLinearizedStart() + 1 > numEltPerGRF(Type_UB);
                 isDstEvenAlign = (dstPreg % 2 == 0);
             }
         }
@@ -2016,8 +2017,8 @@ void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
                 {
                     G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
                     G4_Declare* srcDcl = src->getTopDcl();
-                    int srcOffset = src->getLeftBound() / G4_GRF_REG_NBYTES;
-                    bool srcOpndNumRows = srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > G4_GRF_REG_NBYTES;
+                    int srcOffset = src->getLeftBound() / numEltPerGRF(Type_UB);
+                    bool srcOpndNumRows = srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart() + 1 > numEltPerGRF(Type_UB);
 
                     int srcReg = 0;
                     bool isSrcEvenAlign = gra.isEvenAligned(srcDcl);
@@ -2642,8 +2643,8 @@ bool GlobalRA::evenAlignNeeded(G4_Declare* dcl)
                 elemSizeToUse = 8;
 
             if (// Even align if size is between 1-2 GRFs, for >2GRF sizes use weak edges
-                (elemSizeToUse * kernelSimdSizeToUse) > (unsigned int)GENX_GRF_REG_SIZ &&
-                (elemSizeToUse * kernelSimdSizeToUse) <= (unsigned int)(2 * GENX_GRF_REG_SIZ) &&
+                (elemSizeToUse * kernelSimdSizeToUse) > (unsigned int)numEltPerGRF(Type_UB) &&
+                (elemSizeToUse * kernelSimdSizeToUse) <= (unsigned int)(2 * numEltPerGRF(Type_UB)) &&
                 !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                     dcl == kernel.fg.builder->getBuiltinR0()))
             {
@@ -2663,7 +2664,7 @@ bool GlobalRA::evenAlignNeeded(G4_Declare* dcl)
                 topdclAugMask != AugmentationMasks::Default64Bit)
             {
                 if ((topdcl->getElemSize() >= 4 || topdclAugMask == AugmentationMasks::Default32Bit) &&
-                    topdcl->getByteSize() >= GENX_GRF_REG_SIZ &&
+                    topdcl->getByteSize() >= numEltPerGRF(Type_UB) &&
                     !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                         dcl == kernel.fg.builder->getBuiltinR0()))
                 {
@@ -2865,7 +2866,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         unsigned int respLength = msgDesc->ResponseLength();
         unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
         elemSize = msgDesc->is16BitReturn() ? 2 : 4;
-        unsigned int warpNum = respLength * G4_GRF_REG_NBYTES / (execSize * elemSize);
+        unsigned int warpNum = respLength * numEltPerGRF(Type_UB) / (execSize * elemSize);
         if (inst->isWriteEnableInst())
         {
             curEMBit = NOMASK_BYTE;
@@ -3550,7 +3551,7 @@ bool Augmentation::markNonDefaultMaskDef()
             if ((GlobalRA::useGenericAugAlign() && gra.evenAlignNeeded(dcl)))
                 checkLRAAlign = true;
             else if (gra.getAugmentationMask(dcl) == AugmentationMasks::Default32Bit &&
-                kernel.getSimdSize() > NUM_DWORDS_PER_GRF)
+                kernel.getSimdSize() > numEltPerGRF(Type_UD))
                 checkLRAAlign = true;
         }
 
@@ -4611,12 +4612,12 @@ bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask, Augmentation
     {
         // Weak edge needed in case #GRF exceeds 2
         if (newDclMask == AugmentationMasks::Default64Bit)
-            return (G4_Type_Table[Type_Q].byteSize * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * GENX_GRF_REG_SIZ);
+            return (G4_Type_Table[Type_Q].byteSize * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * numEltPerGRF(Type_UB));
 
         if (newDclMask == AugmentationMasks::Default32Bit)
         {
             // Even align up to 2 GRFs size variable, use weak edges beyond
-            return (G4_Type_Table[Type_D].byteSize * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * GENX_GRF_REG_SIZ);
+            return (G4_Type_Table[Type_D].byteSize * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * numEltPerGRF(Type_UB));
         }
     }
     else
@@ -4869,8 +4870,8 @@ void Augmentation::augmentIntfGraph()
 
         if (liveAnalysis.livenessClass(G4_GRF))
         {
-            if ((GlobalRA::useGenericAugAlign() && kernel.getSimdSize() >= NUM_DWORDS_PER_GRF) ||
-                (!GlobalRA::useGenericAugAlign() && kernel.getSimdSize() > NUM_DWORDS_PER_GRF))
+            if ((GlobalRA::useGenericAugAlign() && kernel.getSimdSize() >= numEltPerGRF(Type_UD)) ||
+                (!GlobalRA::useGenericAugAlign() && kernel.getSimdSize() > numEltPerGRF(Type_UD)))
             {
                 // Set alignment of all GRF candidates
                 // to 2GRF except for NoMask variables
@@ -4968,7 +4969,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                     // so we still need to pessimistically mark last range as
                     // busy. Because some other src opnd that is live may still
                     // be using the remaining GRF.
-                    if (localLR->getSizeInWords() % NUM_WORDS_PER_GRF != 0)
+                    if (localLR->getSizeInWords() % numEltPerGRF(Type_UW) != 0)
                         numrows--;
 
                     for (int j = reg, sum = reg + numrows; j < sum; j++)
@@ -6181,7 +6182,7 @@ unsigned GlobalRA::getRegionDisp(
     REGION_TYPE * region
 )
 {
-    unsigned rowOffset = G4_GRF_REG_NBYTES * region->getRegOff();
+    unsigned rowOffset = numEltPerGRF(Type_UB) * region->getRegOff();
     unsigned columnOffset = region->getSubRegOff() * region->getElemSize();
     return rowOffset + columnOffset;
 }
@@ -6223,12 +6224,12 @@ bool GlobalRA::isUnalignedRegion(
     unsigned regionDisp = getRegionDisp(region);
     unsigned regionByteSize = getRegionByteSize(region, execSize);
 
-    if (regionDisp%G4_GRF_REG_NBYTES == 0 && regionByteSize%G4_GRF_REG_NBYTES == 0)
+    if (regionDisp%numEltPerGRF(Type_UB) == 0 && regionByteSize%numEltPerGRF(Type_UB) == 0)
     {
         return
-            regionByteSize / G4_GRF_REG_NBYTES != 1 &&
-            regionByteSize / G4_GRF_REG_NBYTES != 2 &&
-            regionByteSize / G4_GRF_REG_NBYTES != 4;
+            regionByteSize / numEltPerGRF(Type_UB) != 1 &&
+            regionByteSize / numEltPerGRF(Type_UB) != 2 &&
+            regionByteSize / numEltPerGRF(Type_UB) != 4;
     }
     return true;
 
@@ -6819,7 +6820,7 @@ G4_Imm* GlobalRA::createMsgDesc(unsigned owordSize, bool writeType, bool isSplit
         unsigned messageLength = 1;
         if (!isSplitSend)
         {
-            messageLength += owordToGRFSize(ROUND(owordSize, G4_GRF_REG_NBYTES/OWORD_BYTE_SIZE));
+            messageLength += owordToGRFSize(ROUND(owordSize, numEltPerGRF(Type_UB)/OWORD_BYTE_SIZE));
         }
         message |= messageLength << SEND_MSG_LENGTH_BIT_OFFSET;
     }
@@ -6827,7 +6828,7 @@ G4_Imm* GlobalRA::createMsgDesc(unsigned owordSize, bool writeType, bool isSplit
     {
         unsigned messageType = SEND_OWORD_READ_TYPE;
         message |= messageType << SEND_MSG_TYPE_BIT_OFFSET;
-        unsigned responseLength = owordToGRFSize(ROUND(owordSize, G4_GRF_REG_NBYTES / OWORD_BYTE_SIZE));
+        unsigned responseLength = owordToGRFSize(ROUND(owordSize, numEltPerGRF(Type_UB) / OWORD_BYTE_SIZE));
         message |= responseLength << SEND_RSP_LENGTH_BIT_OFFSET;
         unsigned messageLength = 1;
         message |= messageLength << SEND_MSG_LENGTH_BIT_OFFSET;
@@ -6845,7 +6846,7 @@ void GraphColor::stackCallProlog()
     auto dstRgn = builder.Create_Dst_Opnd_From_Dcl(builder.kernel.fg.scratchRegDcl, 1);
     auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
 
-    G4_INST* mov = builder.createMov(8, dstRgn, srcRgn, InstOpt_WriteEnable, false);
+    G4_INST* mov = builder.createMov(numEltPerGRF(Type_UD), dstRgn, srcRgn, InstOpt_WriteEnable, false);
 
     G4_BB* entryBB = builder.kernel.fg.getEntryBB();
     auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
@@ -7740,7 +7741,7 @@ void GlobalRA::addCallerSavePseudoCode()
             if (retSize > 0)
             {
                 const char* name = builder.getNameString(builder.mem, 32, "FCALL_RETVAL_%d", retID++);
-                G4_Declare* retDcl = builder.createDeclareNoLookup(name, G4_GRF, 8, retSize, Type_UD);
+                G4_Declare* retDcl = builder.createDeclareNoLookup(name, G4_GRF, numEltPerGRF(Type_UD), retSize, Type_UD);
                 retDcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(16), 0);
                 fcallRetMap.insert(std::pair<G4_Declare*, G4_Declare*>(pseudoVCADcl, retDcl));
             }
@@ -8276,16 +8277,16 @@ void VarSplit::getHeightWidth(G4_Type type, unsigned int numberElements, unsigne
 {
     dclWidth = 1, dclHeight = 1;
     totalByteSize = numberElements * G4_Type_Table[type].byteSize;
-    if (totalByteSize <= G4_GRF_REG_NBYTES)
+    if (totalByteSize <= (int)numEltPerGRF(Type_UB))
     {
         dclWidth = (uint16_t)numberElements;
     }
     else {
         // here we assume that the start point of the var is the beginning of a GRF?
         // so subregister must be 0?
-        dclWidth = G4_GRF_REG_NBYTES / G4_Type_Table[type].byteSize;
-        dclHeight = totalByteSize / G4_GRF_REG_NBYTES;
-        if (totalByteSize % G4_GRF_REG_NBYTES != 0) {
+        dclWidth = numEltPerGRF(Type_UB) / G4_Type_Table[type].byteSize;
+        dclHeight = totalByteSize / numEltPerGRF(Type_UB);
+        if (totalByteSize % numEltPerGRF(Type_UB) != 0) {
             dclHeight++;
         }
     }
@@ -8294,17 +8295,17 @@ void VarSplit::getHeightWidth(G4_Type type, unsigned int numberElements, unsigne
 
 void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<G4_Declare*> &splitDclList)
 {
-    if (oldDcl->getByteSize() <= G4_GRF_REG_NBYTES || oldDcl->getByteSize() % G4_GRF_REG_NBYTES)
+    if (oldDcl->getByteSize() <= numEltPerGRF(Type_UB) || oldDcl->getByteSize() % numEltPerGRF(Type_UB))
     {
         return;
     }
 
     int splitVarSize = kernel.getSimdSize() == 8 ? 1 : 2;
-    for (unsigned int i = 0, bSizePerGRFSize = (oldDcl->getByteSize() / G4_GRF_REG_NBYTES); i < bSizePerGRFSize; i += splitVarSize)
+    for (unsigned int i = 0, bSizePerGRFSize = (oldDcl->getByteSize() / numEltPerGRF(Type_UB)); i < bSizePerGRFSize; i += splitVarSize)
     {
         G4_Declare* splitDcl = NULL;
-        unsigned leftBound = i * G4_GRF_REG_NBYTES;
-        unsigned rightBound = (i + splitVarSize) * G4_GRF_REG_NBYTES - 1;
+        unsigned leftBound = i * numEltPerGRF(Type_UB);
+        unsigned rightBound = (i + splitVarSize) * numEltPerGRF(Type_UB) - 1;
         unsigned short dclWidth = 0;
         unsigned short dclHeight = 0;
         int dclTotalSize = 0;
@@ -8344,7 +8345,7 @@ void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Ope
             unsigned maskFlag = (inst->getOption() & 0xFFF010C);
             G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(subDcl, 1);
             auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, oldDcl->getRegVar(),
-                (gra.getSubOffset(subDcl)) / G4_GRF_REG_NBYTES, 0, builder.getRegionStride1(), oldDcl->getElemType());
+                (gra.getSubOffset(subDcl)) / numEltPerGRF(Type_UB), 0, builder.getRegionStride1(), oldDcl->getElemType());
             G4_INST* splitInst = builder.createMov((uint8_t)subDcl->getTotalElems(), dst, src, maskFlag, false);
             bb->insertBefore(iter, splitInst);
         }
@@ -8357,8 +8358,8 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
 {
     G4_INST *inst = (*instIter);
 
-    int sizeInGRF = (srcOpnd->getRightBound() - srcOpnd->getLeftBound() + G4_GRF_REG_NBYTES - 1) /
-        G4_GRF_REG_NBYTES;
+    int sizeInGRF = (srcOpnd->getRightBound() - srcOpnd->getLeftBound() + numEltPerGRF(Type_UB) - 1) /
+        numEltPerGRF(Type_UB);
     int splitSize = kernel.getSimdSize() == 8 ? 1 : 2;
     if (sizeInGRF != splitSize)
     {
@@ -8385,7 +8386,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
 
                 G4_DstRegRegion* dst = kernel.fg.builder->createDst(
                     newDcl->getRegVar(),
-                    newLeftBound / G4_GRF_REG_NBYTES,
+                    newLeftBound / numEltPerGRF(Type_UB),
                     0,
                     1,
                     oldSrc->getType());
@@ -8488,7 +8489,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
                     !topdcl->getAddressed() &&
                     topdcl->getRegFile() != G4_INPUT &&
                     (dstrgn->getRightBound() - dstrgn->getLeftBound() + 1) == topdcl->getByteSize() &&
-                    (dstrgn->getRightBound() - dstrgn->getLeftBound()) > G4_GRF_REG_NBYTES)
+                    (dstrgn->getRightBound() - dstrgn->getLeftBound()) > numEltPerGRF(Type_UB))
                 {
                     //The tuple<G4_BB*, G4_Operand*, int pos, unsigned instIndex, INST_LIST_ITER>,
                     //these info are tuning and split operand/instruction generation
@@ -8549,7 +8550,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
         SPLIT_DECL_OPERANDS_ITER succIt = it;
         succIt++;
         G4_Declare * topDcl = (*it).first->getDeclare();
-        if (topDcl->getByteSize() <= G4_GRF_REG_NBYTES * 2u)
+        if (topDcl->getByteSize() <= numEltPerGRF(Type_UB) * 2u)
         {
             splitDcls.erase(it);
             it = succIt;
@@ -8767,7 +8768,7 @@ void VarSplit::localSplit(IR_Builder& builder,
         }
 
         //If total GRF size divides partial number is less than 16 bytes (half GRF), remove it
-        if (((*(*it).second.list.rbegin())->rightBound - (*(*it).second.list.begin())->leftBound) / (*it).second.list.size() < G4_GRF_REG_SIZE * 2 / 2)
+        if (((*(*it).second.list.rbegin())->rightBound - (*(*it).second.list.begin())->leftBound) / (*it).second.list.size() < numEltPerGRF(Type_UW) * 2 / 2)
         {
             varRanges.erase(it);
             it = succ_it;
@@ -8790,7 +8791,7 @@ void VarSplit::localSplit(IR_Builder& builder,
             }
 
             //TODO: we can merge serveral unaligned sub declares into one aligned.  Such as [0-1], [2-63]  --> [0-63]
-            if (leftBound % G4_GRF_REG_SIZE || (rightBound + 1) % G4_GRF_REG_SIZE)
+            if (leftBound % numEltPerGRF(Type_UW) || (rightBound + 1) % numEltPerGRF(Type_UW))
             {
                 aligned = false;
                 break;
@@ -9084,15 +9085,15 @@ void GlobalRA::assignRegForAliasDcl()
                 if (CurrentRegVar->getDeclare()->useGRF())
                 {
                     // if the tempoffset is one grf
-                    if (tempoffset < G4_GRF_REG_SIZE * 2u)
+                    if (tempoffset < numEltPerGRF(Type_UW) * 2u)
                     {
                         CurrentRegVar->setPhyReg(AliasRegVar->getPhyReg(), tempoffset / CurrentRegVar->getDeclare()->getElemSize());
                     }
                     // tempoffset covers several GRFs
                     else
                     {
-                        unsigned addtionalrow = tempoffset / (G4_GRF_REG_SIZE * 2);
-                        unsigned actualoffset = tempoffset % (G4_GRF_REG_SIZE * 2);
+                        unsigned addtionalrow = tempoffset / (numEltPerGRF(Type_UW) * 2);
+                        unsigned actualoffset = tempoffset % (numEltPerGRF(Type_UW) * 2);
                         bool valid = false;
                         unsigned orignalrow = AliasRegVar->ExRegNum(valid);
                         MUST_BE_TRUE(valid == true, ERROR_REGALLOC);
@@ -9445,7 +9446,7 @@ int GlobalRA::coloringRegAlloc()
                 }
 
                 bool runRemat = kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM
-                    ? true :  kernel.getSimdSize() < G4_GRF_REG_NBYTES;
+                    ? true :  kernel.getSimdSize() < numEltPerGRF(Type_UB);
                 // -noremat takes precedence over -forceremat
                 bool rematOff = !kernel.getOption(vISA_Debug) &&
                     (!kernel.getOption(vISA_NoRemat) || kernel.getOption(vISA_FastSpill)) &&
@@ -9913,7 +9914,7 @@ bool FlagSpillCleanup::replaceWithPreDcl(
         else if (renameOpnd.second == -1)  //GRF dst
         {
             G4_DstRegRegion *orgDstRegion = inst->getDst();
-            int regOff = preRegOff + (scratchAccess->leftOff - preScratchAccess->leftOff) / G4_GRF_REG_NBYTES + payloadHeaderSize / G4_GRF_REG_NBYTES;
+            int regOff = preRegOff + (scratchAccess->leftOff - preScratchAccess->leftOff) / numEltPerGRF(Type_UB) + payloadHeaderSize / numEltPerGRF(Type_UB);
             G4_DstRegRegion * dstOpnd = builder.createDstRegRegion(orgDstRegion->getRegAccess(),
                 dcl->getRegVar(),
                 (short)regOff,
@@ -9926,7 +9927,7 @@ bool FlagSpillCleanup::replaceWithPreDcl(
             G4_Operand *opnd = inst->getSrc(renameOpnd.second);
             G4_SrcRegRegion *orgSrcRegion = opnd->asSrcRegRegion();
 
-            int regOff = preRegOff + (scratchAccess->leftOff - preScratchAccess->leftOff) / G4_GRF_REG_NBYTES + payloadHeaderSize / G4_GRF_REG_NBYTES;
+            int regOff = preRegOff + (scratchAccess->leftOff - preScratchAccess->leftOff) / numEltPerGRF(Type_UB) + payloadHeaderSize / numEltPerGRF(Type_UB);
             G4_Operand * srcOpnd = builder.createSrcRegRegion(orgSrcRegion->getModifier(),
                 orgSrcRegion->getRegAccess(),
                 dcl->getRegVar(),
@@ -11030,7 +11031,7 @@ void GlobalRA::insertPhyRegDecls()
         {
             const char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
             G4_Declare* phyRegDcl = builder.createDeclareNoLookup(
-                dclName, G4_GRF, NUM_DWORDS_PER_GRF, 1, Type_D, Regular, NULL, NULL, 0);
+                dclName, G4_GRF, numEltPerGRF(Type_UD), 1, Type_D, Regular, NULL, NULL, 0);
             G4_Greg* phyReg = builder.phyregpool.getGreg(i);
             phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
             GRFDclsForHRA[i] = phyRegDcl;
@@ -11211,9 +11212,9 @@ void VerifyAugmentation::verifyAlign(G4_Declare* dcl)
     if (it == masks.end())
         return;
 
-    if (dcl->getByteSize() >= NUM_DWORDS_PER_GRF * G4_Type_Table[Type_UD].byteSize &&
-        dcl->getByteSize() <= 2 * NUM_DWORDS_PER_GRF * G4_Type_Table[Type_UD].byteSize &&
-        kernel->getSimdSize() > NUM_DWORDS_PER_GRF)
+    if (dcl->getByteSize() >= numEltPerGRF(Type_UD) * G4_Type_Table[Type_UD].byteSize &&
+        dcl->getByteSize() <= 2 * numEltPerGRF(Type_UD) * G4_Type_Table[Type_UD].byteSize &&
+        kernel->getSimdSize() > numEltPerGRF(Type_UD))
     {
         auto assignment = dcl->getRegVar()->getPhyReg();
         if (assignment && assignment->isGreg())
@@ -11314,7 +11315,7 @@ unsigned int getGRFBaseOffset(G4_Declare* dcl)
     unsigned int regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
     unsigned int regOff = dcl->getRegVar()->getPhyRegOff();
     auto type = dcl->getElemType();
-    return (regNum * G4_GRF_REG_NBYTES) + (regOff * getTypeSize(type));
+    return (regNum * numEltPerGRF(Type_UB)) + (regOff * getTypeSize(type));
 }
 
 bool VerifyAugmentation::interfereBetween(G4_Declare* dcl1, G4_Declare* dcl2)
@@ -11619,7 +11620,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
             if (src && src->isSrcRegRegion() && src->asSrcRegRegion()->getTopDcl() == lr->getDcl())
             {
                 unsigned int lb = 0, rb = 0;
-                lb = lr->getPhyReg()->asGreg()->getRegNum() * G4_GRF_REG_NBYTES + (lr->getPhyRegOff()*lr->getDcl()->getElemSize());
+                lb = lr->getPhyReg()->asGreg()->getRegNum() * numEltPerGRF(Type_UB) + (lr->getPhyRegOff()*lr->getDcl()->getElemSize());
                 lb += src->getLeftBound();
                 rb = lb + src->getRightBound() - src->getLeftBound();
 
@@ -11637,7 +11638,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
                         if (oiLR && !oiLR->getPhyReg())
                             continue;
 
-                        oilb = oiLR->getPhyReg()->asGreg()->getRegNum()*G4_GRF_REG_NBYTES +
+                        oilb = oiLR->getPhyReg()->asGreg()->getRegNum()*numEltPerGRF(Type_UB) +
                             (oiLR->getPhyRegOff()*oiLR->getDcl()->getElemSize());
                         oilb += oiDst->getLeftBound();
                         oirb = oilb + oiDst->getRightBound() - oiDst->getLeftBound();

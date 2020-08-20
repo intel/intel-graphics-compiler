@@ -249,27 +249,27 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(G4_Operand* opnd,
         RB = (unsigned short)opnd->getLinearizedEnd();
         if (inst->isSend())
         {
-            assert((LB % GENX_GRF_REG_SIZ) == 0);
+            assert((LB % numEltPerGRF(Type_UB)) == 0);
             //For the operands of the send instructions,
             //we are using the message length to avoid the in-consistence with the HW requirement.
             //
             if (opnd_num == Opnd_src0)
             {
-                RB = LB + G4_GRF_REG_NBYTES * inst->getMsgDesc()->MessageLength() - 1;
+                RB = LB + numEltPerGRF(Type_UB) * inst->getMsgDesc()->MessageLength() - 1;
             }
 
             if (inst->isSplitSend() &&
                 opnd_num == Opnd_src1)
             {
-                RB = LB + G4_GRF_REG_NBYTES * inst->getMsgDesc()->extMessageLength() - 1;
+                RB = LB + numEltPerGRF(Type_UB) * inst->getMsgDesc()->extMessageLength() - 1;
             }
 
             if (opnd_num == Opnd_dst)
             {
-                RB = LB + G4_GRF_REG_NBYTES * inst->getMsgDesc()->ResponseLength() - 1;
+                RB = LB + numEltPerGRF(Type_UB) * inst->getMsgDesc()->ResponseLength() - 1;
             }
 
-            assert(RB < (G4_GRF_REG_NBYTES * aregOffset) && "Out of register bound");
+            assert(RB < (numEltPerGRF(Type_UB) * aregOffset) && "Out of register bound");
         }
         break;
     default:
@@ -280,16 +280,16 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(G4_Operand* opnd,
     SBFootprint* footprint = nullptr;
     if (startingBucket >= aregOffset)
     {
-        LB = startingBucket * G4_GRF_REG_NBYTES + LB;
-        RB = startingBucket * G4_GRF_REG_NBYTES + RB;
+        LB = startingBucket * numEltPerGRF(Type_UB) + LB;
+        RB = startingBucket * numEltPerGRF(Type_UB) + RB;
     }
 
     //This is WA which assumes whole GRF will be touched in send instruction, not matter the occupation of real valid value.
     //FIXME: But this is not true in media block read/write, which can specify the byte level size in descriptor, no GRF align required.
     if (mustBeWholeGRF)
     {
-        LB = (LB / G4_GRF_REG_NBYTES) * G4_GRF_REG_NBYTES;
-        RB = ((RB / G4_GRF_REG_NBYTES) + 1) * G4_GRF_REG_NBYTES - 1;
+        LB = (LB / numEltPerGRF(Type_UB)) * numEltPerGRF(Type_UB);
+        RB = ((RB / numEltPerGRF(Type_UB)) + 1) * numEltPerGRF(Type_UB) - 1;
     }
 
     footprint = new(allocedMem)SBFootprint(GRF_T, type, LB, RB, inst);
@@ -327,8 +327,8 @@ SBFootprint* G4_BB_SB::getFootprintForACC(G4_Operand* opnd,
     else if (opnd->isSrcRegRegion())
         regNum += opnd->asSrcRegRegion()->getRegOff();
 
-    LB += regNum * G4_GRF_REG_NBYTES;
-    RB += regNum * G4_GRF_REG_NBYTES;
+    LB += regNum * numEltPerGRF(Type_UB);
+    RB += regNum * numEltPerGRF(Type_UB);
 
     void* allocedMem = mem.alloc(sizeof(SBFootprint));
     SBFootprint* footprint = nullptr;
@@ -349,14 +349,14 @@ SBFootprint* G4_BB_SB::getFootprintForFlag(G4_Operand* opnd,
     unsigned short LB = 0;
     unsigned short RB = 0;
     G4_Type type = opnd->getType();
-    unsigned short bitToBytes = G4_GRF_REG_NBYTES / 16;
+    unsigned short bitToBytes = numEltPerGRF(Type_UB) / 16;
     bool valid = true;
     unsigned subRegOff = opnd->getBase()->ExSubRegNum(valid);
     LB = (unsigned short)(opnd->getLeftBound() + subRegOff * 16) * bitToBytes;
     RB = (unsigned short)(opnd->getRightBound() + subRegOff * 16) * bitToBytes;
 
-    LB += (builder.kernel.getNumRegTotal() + builder.kernel.getNumAcc()) * G4_GRF_REG_NBYTES;
-    RB += (builder.kernel.getNumRegTotal() + builder.kernel.getNumAcc()) * G4_GRF_REG_NBYTES;
+    LB += (builder.kernel.getNumRegTotal() + builder.kernel.getNumAcc()) * numEltPerGRF(Type_UB);
+    RB += (builder.kernel.getNumRegTotal() + builder.kernel.getNumAcc()) * numEltPerGRF(Type_UB);
 
     void* allocedMem = mem.alloc(sizeof(SBFootprint));
     SBFootprint* footprint = nullptr;
@@ -885,8 +885,8 @@ static unsigned getRegAccessPipe(G4_INST* Inst) {
 static void updateRegAccess(FCPatchingInfo* FCPI, SBNode* Node,
     Gen4_Operand_Number OpndNo, unsigned NumRegs) {
     for (auto F = Node->getFirstFootprint(OpndNo); F != nullptr; F = F->next) {
-        unsigned L = F->LeftB / G4_GRF_REG_NBYTES;
-        unsigned R = F->RightB / G4_GRF_REG_NBYTES;
+        unsigned L = F->LeftB / numEltPerGRF(Type_UB);
+        unsigned R = F->RightB / numEltPerGRF(Type_UB);
         if (F->fType != GRF_T)
         {
             continue;
@@ -4228,7 +4228,7 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
 
         if (dcl->isSpilled()) //FIXME: Lost point analysis tracking due to spill, assume all registers are touched
         {
-            linearizedEnd = totalGRFNum * G4_GRF_REG_NBYTES - 1;
+            linearizedEnd = totalGRFNum * numEltPerGRF(Type_UB) - 1;
         }
         else
         {
@@ -4240,16 +4240,16 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
             uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
             uint32_t regOff = var->getPhyRegOff();
 
-            linearizedStart = regNum * G4_GRF_REG_NBYTES + regOff * G4_Type_Table[dcl->getElemType()].byteSize;
-            linearizedEnd = regNum * G4_GRF_REG_NBYTES + regOff * G4_Type_Table[dcl->getElemType()].byteSize + dcl->getByteSize() - 1;
+            linearizedStart = regNum * numEltPerGRF(Type_UB) + regOff * G4_Type_Table[dcl->getElemType()].byteSize;
+            linearizedEnd = regNum * numEltPerGRF(Type_UB) + regOff * G4_Type_Table[dcl->getElemType()].byteSize + dcl->getByteSize() - 1;
         }
 
         void* allocedMem = mem.alloc(sizeof(SBFootprint));
         footprint = new(allocedMem)SBFootprint(GRF_T, type, (unsigned short)linearizedStart, (unsigned short)linearizedEnd, node->GetInstruction());
         node->setFootprint(footprint, opnd_num);
 #ifdef DEBUG_VERBOSE_ON
-        int startingBucket = linearizedStart / G4_GRF_REG_NBYTES;
-        int endingBucket = linearizedEnd / G4_GRF_REG_NBYTES;
+        int startingBucket = linearizedStart / numEltPerGRF(Type_UB);
+        int endingBucket = linearizedEnd / numEltPerGRF(Type_UB);
         std::cerr << dcl->getName() << "<" << startingBucket << "," << endingBucket << ">";
 #endif
     }
@@ -4277,8 +4277,8 @@ void G4_BB_SB::getGRFBuckets(SBNode* node,
         }
 
         int aregOffset = totalGRFNum;
-        int startingBucket = curFootprint->LeftB / G4_GRF_REG_NBYTES;
-        int endingBucket = curFootprint->RightB / G4_GRF_REG_NBYTES;
+        int startingBucket = curFootprint->LeftB / numEltPerGRF(Type_UB);
+        int endingBucket = curFootprint->RightB / numEltPerGRF(Type_UB);
         if (curFootprint->fType == ACC_T)
         {
             startingBucket = startingBucket + aregOffset;
@@ -5213,8 +5213,8 @@ void G4_BB_SB::getLiveBucketsFromFootprint(SBFootprint* firstFootprint, SBBucket
 
     while (footprint)
     {
-        int startBucket = footprint->LeftB / G4_GRF_REG_NBYTES;
-        int endBucket = footprint->RightB / G4_GRF_REG_NBYTES;
+        int startBucket = footprint->LeftB / numEltPerGRF(Type_UB);
+        int endBucket = footprint->RightB / numEltPerGRF(Type_UB);
         if (footprint->fType == ACC_T)
         {
             startBucket = startBucket + aregOffset;
@@ -5946,7 +5946,7 @@ void G4_BB::emitRegInfo(std::ostream& output, G4_INST* inst, int offset)
         dstOpnd->isGreg())
     {
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
-        unsigned dstReg0 = byteAddress / GENX_GRF_REG_SIZ;
+        unsigned dstReg0 = byteAddress / numEltPerGRF(Type_UB);
         output << " {";
         output << "D:" << dstReg0;
         output << "}";
@@ -5965,7 +5965,7 @@ void G4_BB::emitRegInfo(std::ostream& output, G4_INST* inst, int offset)
                 G4_RegVar* baseVar = static_cast<G4_RegVar*>(srcOpnd->asSrcRegRegion()->getBase());
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    unsigned srcReg = byteAddress / GENX_GRF_REG_SIZ;
+                    unsigned srcReg = byteAddress / numEltPerGRF(Type_UB);
                     output << " {";
                     output << "S" << i;
                     output << ":" << srcReg;

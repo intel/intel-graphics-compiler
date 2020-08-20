@@ -322,7 +322,7 @@ int IR_Builder::translateVISALogicInst(
             G4_DstRegRegion* tmp_dst_opnd = createDst(tempDcl->getRegVar(), 0, 0, 1, tmpType);
 
             uint16_t vs = exsize;
-            if (exsize * G4_Type_Table[g4Srcs[i]->asSrcRegRegion()->getType()].byteSize > GENX_GRF_REG_SIZ)
+            if (exsize * G4_Type_Table[g4Srcs[i]->asSrcRegRegion()->getType()].byteSize > numEltPerGRF(Type_UB))
             {
                 vs /= 2;
             }

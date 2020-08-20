@@ -209,8 +209,8 @@ void VarSplitPass::verifyOverlap()
 
                 numSplitLeft++;
 
-                auto srcDclRegNum = srcLS / G4_GRF_REG_NBYTES;
-                auto srcDclNumRows = ((srcLE + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES) - srcDclRegNum;
+                auto srcDclRegNum = srcLS / numEltPerGRF(Type_UB);
+                auto srcDclNumRows = ((srcLE + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB)) - srcDclRegNum;
 
                 // check whether src GRF# is written by parent of dst split dcl
                 for (unsigned int i = srcDclRegNum; i != (srcDclRegNum + srcDclNumRows); i++)
@@ -247,7 +247,7 @@ void VarSplitPass::verifyOverlap()
                     dstRgn->getTopDcl()->getRegVar()->getPhyReg()->isGreg())
                 {
                     auto grf = dstRgn->getTopDcl()->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-                    auto numRows = (dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES;
+                    auto numRows = (dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB);
                     for (unsigned int i = grf; i != (grf + numRows); i++)
                     {
                         regToDcl[i] = dstRgn->getTopDcl();
@@ -340,7 +340,7 @@ void VarSplitPass::findSplitCandidates()
         for (auto& srcpair : item.second.srcs)
         {
             auto src = srcpair.first;
-            auto numRows = (src->getRightBound() - src->getLeftBound() + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES;
+            auto numRows = (src->getRightBound() - src->getLeftBound() + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB);
             auto regOff = src->getRegOff();
 
             if (item.first->getByteSize() < src->getRightBound())
@@ -505,7 +505,7 @@ void VarSplitPass::split()
 
             auto name = kernel.fg.builder->getNameString(kernel.fg.mem, 50, "%s_%d_%d_%d", dstDcl->getName(), i, lb, rb);
             auto splitDcl = kernel.fg.builder->createDeclareNoLookup((const char*)name,
-                G4_RegFileKind::G4_GRF, getGRFSize() / G4_Type_Table[Type_UD].byteSize, numRows, Type_UD);
+                G4_RegFileKind::G4_GRF, numEltPerGRF(Type_UD), numRows, Type_UD);
             splitParentDcl.insert(std::make_pair(splitDcl, dstDcl));
             splitChildren[dstDcl].push_back(splitDcl);
 
@@ -568,7 +568,7 @@ void VarSplitPass::split()
             auto dcl = std::get<2>(item);
             MUST_BE_TRUE(dcl, "Didnt find split dcl");
 
-            unsigned int regNum = (lb - item_lb)/G4_GRF_REG_NBYTES;
+            unsigned int regNum = (lb - item_lb)/numEltPerGRF(Type_UB);
 
             auto newSrc = kernel.fg.builder->createSrcRegRegion(srcRgn->getModifier(), srcRgn->getRegAccess(), dcl->getRegVar(), regNum, srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
             auto opndNum = getOpndNum(srcRgn);
@@ -908,7 +908,7 @@ bool VarSplitPass::reallocParent(G4_Declare* child, LiveRange** lrs)
             if (nextRegNumExpected == UnInit)
             {
                 baseRegNum = phyReg->asGreg()->getRegNum();
-                nextRegNumExpected = baseRegNum + (child->getByteSize() / G4_GRF_REG_NBYTES);
+                nextRegNumExpected = baseRegNum + (child->getByteSize() / numEltPerGRF(Type_UB));
                 continue;
             }
             else if (nextRegNumExpected != phyReg->asGreg()->getRegNum())

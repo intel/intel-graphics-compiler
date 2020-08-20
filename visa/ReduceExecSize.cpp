@@ -149,7 +149,7 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
     int extypesize = 0;
     G4_Type extype = inst->getOpExecType(extypesize);
 
-    if (extypesize == G4_GRF_REG_NBYTES/2 && inst->opcode() != G4_mov)
+    if (extypesize == numEltPerGRF(Type_UB)/2 && inst->opcode() != G4_mov)
     {
         fixPackedSource(i, bb, extype);
         extype = inst->getOpExecType(extypesize);
@@ -162,7 +162,7 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
     extype = inst->getOpExecType(extypesize);
     if (inst->getDst() && !(inst->isSend()) && !(inst->isRawMov()))
     {
-        if (extypesize < G4_GRF_REG_NBYTES/2)
+        if (extypesize < (int)numEltPerGRF(Type_UB)/2)
         {
             uint32_t dst_elsize = G4_Type_Table[inst->getDst()->getType()].byteSize;
             if (dst_elsize < (unsigned int)extypesize)
@@ -228,11 +228,11 @@ bool HWConformity::checkSrcCrossGRF(INST_LIST_ITER& iter, G4_BB* bb)
             if (src->getRegAccess() == Direct && src->crossGRF())
             {
                 int elementSize = G4_Type_Table[src->getType()].byteSize;
-                int startOffset = src->getLeftBound() % GENX_GRF_REG_SIZ;
+                int startOffset = src->getLeftBound() % numEltPerGRF(Type_UB);
                 for (int row = 0; row < exSize / wd; row++)
                 {
-                    int rowOffset = (startOffset + row * vs * elementSize) % GENX_GRF_REG_SIZ;
-                    if (rowOffset + (wd - 1) * hs * elementSize >= GENX_GRF_REG_SIZ)
+                    int rowOffset = (startOffset + row * vs * elementSize) % numEltPerGRF(Type_UB);
+                    if (rowOffset + (wd - 1) * hs * elementSize >= (int)numEltPerGRF(Type_UB))
                     {
                         widthCrossingGRF = true;
                         break;
@@ -449,7 +449,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                                 {
                                     // If we can align dst to its size, it must fit in one OWord
                                     // if we can't, it may still be in OWord (e.g., for size < 16)
-                                    dstOffset %= GENX_GRF_REG_SIZ;
+                                    dstOffset %= numEltPerGRF(Type_UB);
                                     bool fitInOword = !(dstOffset < 16 && (dstOffset + dstRegionSize) > 16);
                                     if (!fitInOword)
                                     {
@@ -752,9 +752,9 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
             uint8_t scale = G4_Type_Table[instExecType].byteSize / G4_Type_Table[dst->getType()].byteSize;
 
             if (scale > 1 &&
-                G4_Type_Table[instExecType].byteSize * execSize > G4_GRF_REG_NBYTES)
+                G4_Type_Table[instExecType].byteSize * execSize > numEltPerGRF(Type_UB))
             {
-                scale = G4_GRF_REG_NBYTES / G4_Type_Table[dst->getType()].byteSize / execSize;
+                scale = numEltPerGRF(Type_UB) / G4_Type_Table[dst->getType()].byteSize / execSize;
             }
             else if (scale == 0)
             {
@@ -1498,7 +1498,7 @@ void HWConformity::moveSrcToGRF(INST_LIST_ITER it, uint32_t srcNum, uint16_t num
 
     G4_Operand *src = inst->getSrc(srcNum);
     uint32_t srcTypeSize = G4_Type_Table[src->getType()].byteSize;
-    uint16_t dclSize = (G4_GRF_REG_NBYTES * numGRF) / srcTypeSize;
+    uint16_t dclSize = (numEltPerGRF(Type_UB) * numGRF) / srcTypeSize;
     uint16_t hs = dclSize / execSize;
     uint16_t wd = execSize;
     uint16_t vs = hs * wd;

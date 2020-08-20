@@ -1773,6 +1773,13 @@ typedef enum class AugmentationMasks
 
 namespace vISA
 {
+
+inline unsigned int numEltPerGRF(G4_Type t)
+{
+    auto typeSize = G4_Type_Table[t].byteSize;
+    return getGRFSize() / typeSize;
+}
+
 class G4_Declare
 {
     friend class IR_Builder;
@@ -1918,7 +1925,7 @@ public:
 
     void resizeNumRows(unsigned int numrows)
     {
-        int byteSize = numrows * GENX_GRF_REG_SIZ;
+        int byteSize = numrows * numEltPerGRF(Type_UB);
         setTotalElems(byteSize / getElemSize());
     }
 
@@ -2028,11 +2035,11 @@ public:
     // returns number of elements per row
     unsigned short getNumElems() const
     {
-        return getNumRows() > 1 ? G4_GRF_REG_NBYTES / getElemSize() : numElements;
+        return getNumRows() > 1 ? numEltPerGRF(Type_UB) / getElemSize() : numElements;
     }
     unsigned short getNumRows() const
     {
-        return (getByteSize() + (G4_GRF_REG_NBYTES - 1))/G4_GRF_REG_NBYTES;
+        return (getByteSize() + (numEltPerGRF(Type_UB) - 1))/numEltPerGRF(Type_UB);
     }
     unsigned short getTotalElems() const
     {
@@ -2339,8 +2346,8 @@ public:
 
     bool crossGRF()
     {
-        return getRightBound() / G4_GRF_REG_NBYTES !=
-               getLeftBound() / G4_GRF_REG_NBYTES;
+        return getRightBound() / numEltPerGRF(Type_UB) !=
+               getLeftBound() / numEltPerGRF(Type_UB);
     }
 
     unsigned getLeftBound()
@@ -3216,7 +3223,7 @@ public:
         if (isNullReg())
         {
             return inst != NULL &&
-                inst->getExecSize() * G4_Type_Table[type].byteSize * horzStride > G4_GRF_REG_NBYTES;
+                inst->getExecSize() * G4_Type_Table[type].byteSize * horzStride > numEltPerGRF(Type_UB);
         }
         if (isRightBoundSet() == false)
         {
@@ -3224,7 +3231,7 @@ public:
             getInst()->computeRightBound(this);
         }
 
-        return (left_bound / GENX_GRF_REG_SIZ) != right_bound / GENX_GRF_REG_SIZ;
+        return (left_bound / numEltPerGRF(Type_UB)) != right_bound / numEltPerGRF(Type_UB);
     }
     unsigned short getHorzStride() const { return horzStride; }
     ChannelEnable  getWriteMask() const { return writeMask; }
@@ -4057,7 +4064,7 @@ static void computeSpillFillOperandBound(G4_Operand* opnd, unsigned int LB, int 
 
     // read/write in units of GRF.
     unsigned RB = std::min(opnd->getTopDcl()->getByteSize(),
-        LB + numReg * G4_GRF_REG_NBYTES) - 1;
+        LB + numReg * numEltPerGRF(Type_UB)) - 1;
 
     unsigned NBytes = RB - LB + 1;
     opnd->setBitVecFromSize(NBytes);

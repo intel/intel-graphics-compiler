@@ -116,7 +116,7 @@ void Attributes::setKernelAttr(ID kID, int32_t v)
     switch (kID) {
     case ATTR_SpillMemOffset:
     {
-        assert((v & (GENX_GRF_REG_SIZ - 1)) == 0 &&
+        assert((v & (getGRFSize() - 1)) == 0 &&
             "Kernel attribute: SpillMemOffset is mis-aligned!");
         break;
     }

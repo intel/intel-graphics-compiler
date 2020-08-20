@@ -1325,7 +1325,7 @@ public:
 
     void setScratchNextFree(unsigned int next)
     {
-        nextScratchFree = ((next + G4_GRF_REG_NBYTES - 1) / G4_GRF_REG_NBYTES) * G4_GRF_REG_NBYTES;
+        nextScratchFree = ((next + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB)) * numEltPerGRF(Type_UB);
     }
     uint8_t getNumBytesScratchUse();
 

@@ -256,13 +256,6 @@ extern "C" const char * GetSteppingString(void);
 #define ERROR_DATA_RANGE( x )           "ERROR: Out of boundary or invalid data value in " << x << "!"
 // end of Error Message
 
-#define G4_GRF_REG_SIZE    (getGRFSize() / 2u)
-#define G4_GRF_REG_NBYTES  getGRFSize()
-#define GENX_GRF_REG_SIZ   getGRFSize()
-#define NUM_WORDS_PER_GRF  (getGRFSize() / 2)
-#define NUM_DWORDS_PER_GRF (getGRFSize() / 4u)
-
-
 // Target should be specified as follows
 // - VISA builder mode in CreateBuilder API through fast-path
 // - Kernel target attribute in VISA binarary or ISAASM

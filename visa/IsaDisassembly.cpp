@@ -852,7 +852,7 @@ static std::string printInstructionCommon(
                         sstr << "&" << printVariableDeclName(header, opnd_index, opt);
                         int offset =
                             curOpnd.opnd_val.gen_opnd.col_offset * CISATypeTable[type].typeSize +
-                            curOpnd.opnd_val.gen_opnd.row_offset * G4_GRF_REG_NBYTES;
+                            curOpnd.opnd_val.gen_opnd.row_offset * numEltPerGRF(Type_UB);
                         if (offset) {
                             sstr << "[" << offset << "]";
                         }

@@ -179,8 +179,8 @@ struct Mask {
     }
 
     bool killsBucket(unsigned int bucket) const {
-        unsigned short bucketLB = bucket * G4_GRF_REG_NBYTES;
-        unsigned short bucketRB = (bucket + 1) * G4_GRF_REG_NBYTES - 1;
+        unsigned short bucketLB = bucket * numEltPerGRF(Type_UB);
+        unsigned short bucketRB = (bucket + 1) * numEltPerGRF(Type_UB) - 1;
         return !nonContiguousStride && !withSpecialAcc() &&
                LeftB <= bucketLB && RightB >= bucketRB;
     }
