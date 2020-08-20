@@ -678,11 +678,13 @@ Indirectability SubroutineArg::checkIndirectability()
     if (Pass->Liveness->getLiveRange(
           SimpleValue(Pass->Liveness->getUnifiedRet(F), ri)) == ArgLR) {
       if (CoalescedRetIdx >= 0) {
-        for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui) {
-          auto CI = cast<CallInst>(ui->getUser());
-          DiagnosticInfoArgIndirection Warn(CI, Arg,
-              "Argument coalesced with multiple return values", DS_Warning);
-          CI->getContext().diagnose(Warn);
+        for (auto *U: F->users()) {
+          if (auto *CI = checkFunctionCall(U, F)) {
+            DiagnosticInfoArgIndirection Warn(
+                CI, Arg, "Argument coalesced with multiple return values",
+                DS_Warning);
+            CI->getContext().diagnose(Warn);
+          }
         }
         return Indirectability::CANNOT_INDIRECT;
       }
@@ -716,14 +718,15 @@ Indirectability SubroutineArg::checkIndirectability()
   }
 
   // Create an object of some subclass of CallSite for each call site.
-  for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui) {
-    auto CI = cast<CallInst>(ui->getUser());
-    IGC_ASSERT(ui->getOperandNo() == CI->getNumArgOperands());
-    auto CallSite = createCallSite(CI);
-    if (!CallSite)
-      return Indirectability::CANNOT_INDIRECT;
-    CallSites.push_back(CallSite);
-    LLVM_DEBUG(dbgs() << "  " << *CallSite << "\n");
+  for (auto &U: F->uses()) {
+    if (auto *CI = checkFunctionCall(U.getUser(), F)) {
+      IGC_ASSERT(U.getOperandNo() == CI->getNumArgOperands());
+      auto CallSite = createCallSite(CI);
+      if (!CallSite)
+        return Indirectability::CANNOT_INDIRECT;
+      CallSites.push_back(CallSite);
+      LLVM_DEBUG(dbgs() << "  " << *CallSite << "\n");
+    }
   }
   // Check indirection state for each call site.
   unsigned States = 0;

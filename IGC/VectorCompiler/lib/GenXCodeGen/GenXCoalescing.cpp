@@ -676,8 +676,8 @@ void GenXCoalescing::recordCallCandidates(FunctionGroup *FG)
     Function *F = *fgi;
     // Gather the call sites.
     SmallVector<Instruction *, 8> CallSites;
-    for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui)
-      if (auto CI = dyn_cast<CallInst>(ui->getUser()))
+    for (auto *U: F->users())
+      if (auto *CI = checkFunctionCall(U, F))
         CallSites.push_back(CI);
     // For each arg...
     unsigned ArgIdx = 0;
@@ -1230,8 +1230,8 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
   for (auto fgi = FG->begin() + 1, fge = FG->end(); fgi != fge; ++fgi) {
     Function *F = *fgi;
     // For each call site...
-    for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui) {
-      if (auto *CI = dyn_cast<CallInst>(ui->getUser())) {
+    for (auto *U: F->users()) {
+      if (auto *CI = genx::checkFunctionCall(U, F)) {
         // For each func arg...
         unsigned ArgIdx = 0;
         for (auto ai = F->arg_begin(), ae = F->arg_end(); ai != ae;

@@ -1667,3 +1667,12 @@ bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
     return Offset == 0;
   return Offset == 0 || Offset == 16;
 }
+
+CallInst *genx::checkFunctionCall(Value *V, Function *F) {
+  if (!V || !F)
+    return nullptr;
+  auto *CI = dyn_cast<CallInst>(V);
+  if (CI && CI->getCalledFunction() == F)
+    return CI;
+  return nullptr;
+}

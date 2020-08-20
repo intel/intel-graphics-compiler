@@ -1050,8 +1050,8 @@ unsigned GenXCategory::getCategoryForCallArg(Function *Callee, unsigned ArgNo) c
   }
   // Then try the arg at each call site.
   bool UseUndef = true;
-  for (auto ui = Callee->use_begin(), ue = Callee->use_end(); ui != ue; ++ui) {
-    if (auto CI = dyn_cast<CallInst>(ui->getUser())) {
+  for (auto *U: Callee->users()) {
+    if (auto *CI = checkFunctionCall(U, Callee)) {
       auto ArgV = CI->getArgOperand(ArgNo);
       if (!isa<UndefValue>(ArgV)) {
         UseUndef = false;

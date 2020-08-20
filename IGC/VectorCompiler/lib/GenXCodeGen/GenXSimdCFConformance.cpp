@@ -2345,8 +2345,8 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
     if (IncludeOptional) {
       // With IncludeOptional, also add the corresponding arg at each call
       // site.
-      for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui)
-        if (auto CI = dyn_cast<CallInst>(ui->getUser()))
+      for (auto *U : F->users())
+        if (auto *CI = checkFunctionCall(U, F))
           ConnectedVals->push_back(
               SimpleValue(CI->getArgOperand(Arg->getArgNo()), Val.getIndex()));
     }
@@ -2528,8 +2528,8 @@ bool GenXSimdCFConformance::getConnectedVals(SimpleValue Val, int Cat,
       if (IncludeOptional && !Lower) {
         // With IncludeOptional, also add the values connected by being the
         // return value at each call site.
-        for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui)
-          if (auto CI = dyn_cast<CallInst>(ui->getUser()))
+        for (auto *U : F->users())
+          if (auto *CI = checkFunctionCall(U, F))
             ConnectedVals->push_back(SimpleValue(CI, Val.getIndex()));
       }
       continue;

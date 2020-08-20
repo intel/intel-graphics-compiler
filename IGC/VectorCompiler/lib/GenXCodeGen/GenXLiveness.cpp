@@ -279,10 +279,10 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     // range is from the call to where its post-copy would go just afterwards
     // for each call site, also from the site of the pre-copy to the return
     // instruction.
-    for (auto ui = Func->use_begin(), ue = Func->use_end(); ui != ue; ++ui) {
-      if (auto CI = dyn_cast<CallInst>(ui->getUser()))
-      LR->push_back(Numbering->getNumber(CI),
-          Numbering->getRetPostCopyNumber(CI, SV.getIndex()));
+    for (auto *U: Func->users()) {
+      if (auto *CI = genx::checkFunctionCall(U, Func))
+        LR->push_back(Numbering->getNumber(CI),
+                      Numbering->getRetPostCopyNumber(CI, SV.getIndex()));
     }
     for (auto fi = Func->begin(), fe = Func->end(); fi != fe; ++fi)
       if (auto RI = dyn_cast<ReturnInst>(fi->getTerminator()))
@@ -487,12 +487,11 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     // within args.
     Function *F = Arg->getParent();
     if (*FG->begin() != F) { // is a subroutine
-      for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui) {
-        if (auto CI = dyn_cast<CallInst>(ui->getUser())) {
-        LR->push_back(
-            Numbering->getArgPreCopyNumber(CI, Arg->getArgNo(), SV.getIndex()),
-            Numbering->getNumber(CI));
-        }
+      for (auto *U : F->users()) {
+        if (auto *CI = genx::checkFunctionCall(U, F))
+          LR->push_back(Numbering->getArgPreCopyNumber(CI, Arg->getArgNo(),
+                                                       SV.getIndex()),
+                        Numbering->getNumber(CI));
       }
     }
   }

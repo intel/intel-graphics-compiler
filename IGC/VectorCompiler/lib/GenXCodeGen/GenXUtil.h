@@ -494,6 +494,15 @@ Type &fixDegenerateVectorType(Type &Ty);
 // as legal SETP instruction.
 bool isWrPredRegionLegalSetP(const CallInst &WrPredRegion);
 
+// Cheks if V is a CallInst representing a direct call to F
+// Many of our analyzes do not check whether a function F's user
+// which is a CallInst calls exactly F. This may not be true
+// when a function pointer is passed as an argument of a call to
+// another function, e.g. genx.faddr intrinsic.
+// Returns V casted to CallInst if the check is true,
+// nullptr otherwise
+CallInst *checkFunctionCall(Value *V, Function *F);
+
 } // namespace genx
 } // namespace llvm
 
