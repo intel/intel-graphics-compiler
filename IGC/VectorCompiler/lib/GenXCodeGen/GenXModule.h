@@ -58,6 +58,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GenX.h"
 #include "GenXBaling.h"
+#include "GenXDebugInfo.h"
+
 #include "llvm/ADT/Twine.h"
 #include "llvm/Pass.h"
 #include "llvm/PassRegistry.h"
@@ -115,13 +117,6 @@ namespace llvm {
       virtual void writeBody(raw_pwrite_stream &Out) = 0;
     };
 
-    struct VisaDebugInfo {
-      unsigned visaCounter = 0;
-      typedef std::map<unsigned, const Instruction *> VisaLocations;
-
-      VisaLocations Locations;
-    };
-
   } // end namespace genx
 
 
@@ -149,7 +144,6 @@ namespace llvm {
     bool InlineAsm = false;
     bool CheckForInlineAsm(Module &M) const;
 
-    std::map<const Function *, VISAKernel *> VisaKernelMap;
     std::map<const Function *, genx::VisaDebugInfo> VisaDebugMap;
 
   public:
@@ -176,16 +170,6 @@ namespace llvm {
     void DestroyCISABuilder();
     void DestroyVISAAsmReader();
     LLVMContext &getContext();
-
-    // Save and retrieve VISAKernels for given function.
-    void saveVisaKernel(const Function *F, VISAKernel *Kernel) {
-      IGC_ASSERT(VisaKernelMap.count(F) == 0 && "Attempt to save kernel twice");
-      VisaKernelMap[F] = Kernel;
-    }
-    // Valid only on GenXFinalizer stage until visa builder destructors called.
-    VISAKernel *getVISAKernel(const Function *F) const {
-      return VisaKernelMap.at(F);
-    }
 
     void updateVisaDebugInfo(const Function *F, const Instruction *Inst);
     const genx::VisaDebugInfo *getVisaDebugInfo(const Function *F) const;

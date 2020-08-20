@@ -840,7 +840,6 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
   KernelBuilder->run();
 
   GenXModule *GM = KernelBuilder->GM;
-  VISABuilder *VisaBuilder = GM->GetCisaBuilder();
   if (GM->HasInlineAsm()) {
     CISA_CALL(KernelBuilder->CisaBuilder->WriteVISAHeader());
     auto VISAAsmTextReader = GM->GetVISAAsmReader();
@@ -848,16 +847,6 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
         KernelBuilder->CisaBuilder->GetAsmTextHeaderStream().str();
     auto VISAText = KernelBuilder->CisaBuilder->GetAsmTextStream().str();
     CISA_CALL(VISAAsmTextReader->ParseVISAText(VISATextHeader, VISAText, ""));
-    VisaBuilder = VISAAsmTextReader;
-  }
-
-  // TODO: remove saving kernels to GenXModule and just retrive them
-  // from builder in finalizer pass.
-  for (auto &F : FG) {
-    if (genx::isKernel(F) || F->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
-      VISAKernel *BuiltKernel = VisaBuilder->GetVISAKernel(F->getName());
-      GM->saveVisaKernel(F, BuiltKernel);
-    }
   }
 
   return false;
@@ -5603,11 +5592,11 @@ public:
     AU.setPreservesAll();
   }
 
-  void fillOCLRuntimeInfo(GenXOCLRuntimeInfo &Info, GenXModule &GM,
+  void fillOCLRuntimeInfo(GenXOCLRuntimeInfo &Info, VISABuilder &VB,
                           FunctionGroupAnalysis &FGA, const GenXSubtarget &ST,
                           const GenXBackendConfig &BC);
 
-  void emitDebugInformation(const GenXModule &GM,
+  void emitDebugInformation(VISABuilder &VB, const GenXModule &GM,
                             const FunctionGroupAnalysis &FGA,
                             const GenXSubtarget &ST);
 
@@ -5628,12 +5617,12 @@ public:
       CisaBuilder = GM.GetVISAAsmReader();
     CISA_CALL(CisaBuilder->Compile("genxir", &ss, EmitVisa));
     if (OCLInfo)
-      fillOCLRuntimeInfo(*OCLInfo, GM, FGA, ST, BC);
+      fillOCLRuntimeInfo(*OCLInfo, *CisaBuilder, FGA, ST, BC);
 
     dbgs() << CisaBuilder->GetCriticalMsg();
 
     if (GenerateDebugInfo)
-      emitDebugInformation(GM, FGA, ST);
+      emitDebugInformation(*CisaBuilder, GM, FGA, ST);
 
     GM.DestroyCISABuilder();
     GM.DestroyVISAAsmReader();
@@ -5650,7 +5639,7 @@ ModulePass *llvm::createGenXFinalizerPass(raw_pwrite_stream &o) {
 }
 
 static void constructFunctionSymbols(
-    FunctionGroup &FG, GenXModule &GM, GenXOCLRuntimeInfo::TableInfo &TI,
+    FunctionGroup &FG, VISABuilder &VB, GenXOCLRuntimeInfo::TableInfo &TI,
     GenXOCLRuntimeInfo::ZEBinaryInfo::SymbolsInfo::ZESymEntrySeq &FuncSymbols,
     const std::map<VISAKernel *, uint32_t> &Offsets) {
   TI.Entries = std::count_if(FG.begin(), FG.end(), [](Function *F) {
@@ -5665,7 +5654,8 @@ static void constructFunctionSymbols(
       IGC_ASSERT(F->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
       strcpy_s(Entry->s_name, vISA::MAX_SYMBOL_NAME_LENGTH,
                F->getName().str().c_str());
-      VISAFunction *Func = static_cast<VISAFunction *>(GM.getVISAKernel(F));
+      VISAFunction *Func =
+          static_cast<VISAFunction *>(VB.GetVISAKernel(F->getName()));
       Entry->s_type = vISA::GenSymType::S_FUNC;
       Entry->s_offset = Offsets.at(Func);
       Entry->s_size = Func->getGenSize();
@@ -5691,17 +5681,17 @@ static void constructLocalSymbols(
 }
 
 static void
-constructSymbolTable(FunctionGroup &FG, GenXModule &GM,
+constructSymbolTable(FunctionGroup &FG, VISABuilder &VB,
                      const VISAKernel &BuiltKernel,
                      GenXOCLRuntimeInfo::TableInfo &TI,
                      GenXOCLRuntimeInfo::ZEBinaryInfo::SymbolsInfo &ZESymbols,
                      const std::map<VISAKernel *, uint32_t> &Offsets) {
-  constructFunctionSymbols(FG, GM, TI, ZESymbols.Functions, Offsets);
+  constructFunctionSymbols(FG, VB, TI, ZESymbols.Functions, Offsets);
   constructLocalSymbols(BuiltKernel, *FG.getHead(), ZESymbols.Local);
 }
 
 void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
-                                       GenXModule &GM,
+                                       VISABuilder &VB,
                                        FunctionGroupAnalysis &FGA,
                                        const GenXSubtarget &ST,
                                        const GenXBackendConfig &BC) {
@@ -5713,24 +5703,26 @@ void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
     KernelInfo Info{*FG, ST, BC};
 
     // Finalizer info (jitter struct and gen binary).
-    VISAKernel *BuiltKernel = GM.getVISAKernel(FG->getHead());
-    IGC_ASSERT(BuiltKernel);
+    VISAKernel *BuiltKernel = VB.GetVISAKernel(FG->getHead()->getName());
+    IGC_ASSERT_MESSAGE(BuiltKernel, "Kernel is null");
     FINALIZER_INFO *JitInfo = nullptr;
     BuiltKernel->GetJitInfo(JitInfo);
-    IGC_ASSERT(JitInfo && "Jit info is not set by finalizer");
+    IGC_ASSERT_MESSAGE(JitInfo, "Jit info is not set by finalizer");
     std::vector<ArrayRef<char>> GenBins;
     void *GenBin = nullptr;
     int GenBinSize = 0; // Finalizer uses signed int for size...
     BuiltKernel->GetGenxBinary(GenBin, GenBinSize);
     size_t GlobalOffset = GenBinSize;
-    IGC_ASSERT(GenBin && GenBinSize &&
-           "Unexpected null buffer or zero-sized kernel (compilation failed?)");
+    IGC_ASSERT_MESSAGE(
+        GenBin && GenBinSize,
+        "Unexpected null buffer or zero-sized kernel (compilation failed?)");
     GenBins.push_back(ArrayRef<char>{static_cast<char *>(GenBin),
                                      static_cast<size_t>(GenBinSize)});
     std::map<VISAKernel *, uint32_t> Offsets;
     for (auto &F : *FG) {
       if (F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
-        VISAKernel *ExtKernel = GM.getVISAKernel(F);
+        VISAKernel *ExtKernel = VB.GetVISAKernel(F->getName());
+        IGC_ASSERT_MESSAGE(ExtKernel, "Kernel is null");
         ExtKernel->GetGenxBinary(GenBin, GenBinSize);
         GenBins.push_back(ArrayRef<char>{static_cast<char *>(GenBin),
                                          static_cast<size_t>(GenBinSize)});
@@ -5743,7 +5735,7 @@ void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
                                                   RTable.Entries));
     // EnableZEBinary: this is requred by ZEBinary
     CISA_CALL(BuiltKernel->GetRelocations(Info.ZEBinInfo.Relocations));
-    constructSymbolTable(*FG, GM, *BuiltKernel, Info.getSymbolTable(),
+    constructSymbolTable(*FG, VB, *BuiltKernel, Info.getSymbolTable(),
                          Info.ZEBinInfo.Symbols, Offsets);
 
     // Save it all here.
@@ -5753,15 +5745,19 @@ void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
     freeBlock(GenBin);
   }
 }
-void GenXFinalizer::emitDebugInformation(const GenXModule &GM,
+
+void GenXFinalizer::emitDebugInformation(VISABuilder &VB, const GenXModule &GM,
                                          const FunctionGroupAnalysis &FGA,
                                          const GenXSubtarget &ST) {
   for (const auto *FG : FGA) {
     const auto *KF = FG->getHead();
     llvm::SmallVector<char, 1000> ElfImage;
 
-    auto Err =
-        genx::generateDebugInfo(ElfImage, GM, *KF, ST.getTargetTriple().str());
+    const genx::VisaDebugInfo &DbgInfo = *GM.getVisaDebugInfo(KF);
+    VISAKernel *VK = VB.GetVISAKernel(KF->getName());
+    IGC_ASSERT_MESSAGE(VK, "Kernel is null");
+    auto Err = genx::generateDebugInfo(ElfImage, *VK, DbgInfo, *KF,
+                                       ST.getTargetTriple().str());
     if (Err)
       llvm::report_fatal_error(toString(std::move(Err)));
 

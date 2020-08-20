@@ -24,9 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "GenXDebugInfo.h"
+
 #include "GenX.h"
-#include "GenXModule.h"
-#include "GenXSubtarget.h"
 
 #include "common.h"
 #include "common/igc_regkeys.hpp"
@@ -85,15 +85,13 @@ struct Gen2VisaIdx {
 
 struct FinalizerDbgInfo {
 
-  FinalizerDbgInfo(const llvm::GenXModule &GM, const llvm::Function &F,
+  FinalizerDbgInfo(VISAKernel &VK, const llvm::Function &F,
                    bool FinalizerDbgDump = true) {
-
-    auto *VK = GM.getVISAKernel(&F);
     void *GenXdbgInfo = nullptr;
     void *VISAMap = nullptr;
     unsigned int DbgSize = 0;
     unsigned int NumElems = 0;
-    if (VK->GetGenxDebugInfo(GenXdbgInfo, DbgSize, VISAMap, NumElems) !=
+    if (VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize, VISAMap, NumElems) !=
         VISA_SUCCESS) {
       ErrMsg = "visa info decode error";
       return;
@@ -128,7 +126,7 @@ struct FinalizerDbgInfo {
     // Extract Gen Binary (will need it for line table generation)
     void *GenBin = nullptr;
     int GenBinSize = 0; // Finalizer uses signed int for size...
-    VK->GetGenxBinary(GenBin, GenBinSize);
+    VK.GetGenxBinary(GenBin, GenBinSize);
     assert(GenBinSize >= 0);
     const auto *GenBinBytes = reinterpret_cast<const char *>(GenBin);
     GenBinary.insert(GenBinary.end(), GenBinBytes, GenBinBytes + GenBinSize);
@@ -254,11 +252,11 @@ bool generateLineTable(IGC::StreamEmitter &SE, const FinalizerDbgInfo &GenDbg,
 namespace llvm {
 namespace genx {
 
-llvm::Error generateDebugInfo(SmallVectorImpl<char> &ElfImage,
-                              const GenXModule &GM, const Function &F,
-                              const std::string &TripleStr) {
+llvm::Error generateDebugInfo(SmallVectorImpl<char> &ElfImage, VISAKernel &VK,
+                              const genx::VisaDebugInfo &DbgInfo,
+                              const Function &F, const std::string &TripleStr) {
 
-  FinalizerDbgInfo GenDbg(GM, F);
+  FinalizerDbgInfo GenDbg(VK, F);
   if (!GenDbg.ErrMsg.empty()) {
     return make_error<DbgInfoError>(GenDbg.ErrMsg);
   }
@@ -276,10 +274,8 @@ llvm::Error generateDebugInfo(SmallVectorImpl<char> &ElfImage,
   auto *Sym_FBegin = SE->GetTempSymbol("func_begin", 1);
   SE->EmitLabel(Sym_FBegin);
 
-  const auto *GenXDbg = GM.getVisaDebugInfo(&F);
-
   // Dump known Locs
-  for (const auto &Item : GenXDbg->Locations) {
+  for (const auto &Item : DbgInfo.Locations) {
     LLVM_DEBUG(llvm::dbgs() << "visa_idx: " << Item.first << " inst: ";
                if (Item.second) {
                  Item.second->print(llvm::dbgs(), true);
@@ -287,8 +283,8 @@ llvm::Error generateDebugInfo(SmallVectorImpl<char> &ElfImage,
                << "\n";);
   }
 
-  const auto &FileScopes = generateFileScopes(*SE, *GenXDbg);
-  generateLineTable(*SE, GenDbg, *GenXDbg, FileScopes);
+  const auto &FileScopes = generateFileScopes(*SE, DbgInfo);
+  generateLineTable(*SE, GenDbg, DbgInfo, FileScopes);
 
   // Terminate
   SE->EmitInt8(0);

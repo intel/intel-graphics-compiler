@@ -28,21 +28,29 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define LIB_GENXCODEGEN_DEBUG_INFO_H
 
 #include <llvm/ADT/APFloat.h>
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/Error.h>
 
+#include <map>
 #include <string>
-#include <vector>
 
 class VISAKernel;
 
 namespace llvm {
 
 class Function;
-class GenXModule;
+class Instruction;
 
 namespace genx {
-llvm::Error generateDebugInfo(SmallVectorImpl<char> &ElfImage,
-                              const GenXModule &GM, const Function &F,
+struct VisaDebugInfo {
+  unsigned visaCounter = 0;
+  typedef std::map<unsigned, const Instruction *> VisaLocations;
+
+  VisaLocations Locations;
+};
+
+llvm::Error generateDebugInfo(SmallVectorImpl<char> &ElfImage, VISAKernel &VK,
+                              const VisaDebugInfo &DbgInfo, const Function &F,
                               const std::string &TripleStr);
 } // namespace genx
 } // namespace llvm
