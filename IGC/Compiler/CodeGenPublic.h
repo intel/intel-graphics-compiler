@@ -1222,6 +1222,10 @@ namespace IGC
                     PreferBindlessImages = true;
                     PromoteStatelessToBindless = true;
                 }
+                if (strstr(options, "-intel-use-bindless-printf"))
+                {
+                    UseBindlessPrintf = true;
+                }
                 if (strstr(options, "-intel-force-global-mem-allocation"))
                 {
                     IntelForceGlobalMemoryAllocation = true;
@@ -1262,6 +1266,7 @@ namespace IGC
             bool PromoteStatelessToBindless = false;
             bool PreferBindlessImages = false;
             bool UseBindlessMode = false;
+            bool UseBindlessPrintf = false;
             bool IntelForceGlobalMemoryAllocation = false;
             bool hasNoLocalToGeneric = false;
 

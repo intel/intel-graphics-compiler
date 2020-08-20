@@ -403,6 +403,20 @@ namespace IGC
             {
                 baseValue = inst->getOperand(0);
             }
+            else if (BinaryOperator* inst = dyn_cast<BinaryOperator>(baseValue))
+            {
+                // Assume this is pointer arithmetic, which allows add/sub only.
+                // Follow the first operand assuming it's pointer base.
+                // Do not check the operand is pointer type now, leave the check
+                // until the leaf instruction is found.
+                Instruction::BinaryOps Opcode = inst->getOpcode();
+                if (Opcode == Instruction::Add || Opcode == Instruction::Sub)
+                {
+                    baseValue = inst->getOperand(0);
+                }
+                else
+                    break;
+            }
             else if (PHINode * inst = dyn_cast<PHINode>(baseValue))
             {
                 if (visitedPHIs.count(inst) != 0)

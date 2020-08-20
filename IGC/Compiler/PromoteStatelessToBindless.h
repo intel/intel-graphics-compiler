@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include <unordered_map>
@@ -52,6 +53,7 @@ namespace IGC
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<IGC::MetaDataUtilsWrapper>();
+            AU.addRequired<IGC::CodeGenContextWrapper>();
             AU.setPreservesCFG();
         }
 
@@ -61,9 +63,11 @@ namespace IGC
     private:
         void GetAccessInstToSrcPointerMap(llvm::Instruction* inst, llvm::Value* resourcePtr);
         void PromoteStatelessToBindlessBuffers(llvm::Function& F) const;
+        void CheckPrintfBuffer(llvm::Function& F);
 
         std::unordered_map<llvm::Value*, llvm::Value*> m_AccessToSrcPtrMap;
         std::unordered_map<llvm::Value*, llvm::Value*> m_AddressUsedSrcPtrMap;
+        llvm::Argument* m_PrintfBuffer;
     };
 
 } // namespace IGC

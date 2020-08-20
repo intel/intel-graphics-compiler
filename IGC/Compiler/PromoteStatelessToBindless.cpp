@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "PromoteStatelessToBindless.h"
+#include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Constants.h>
@@ -33,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Probe/Assertion.h"
+using namespace IGC::IGCMD;
 
 using namespace llvm;
 using namespace IGC;
@@ -44,19 +46,29 @@ using namespace GenISAIntrinsic;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(PromoteStatelessToBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(PromoteStatelessToBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char PromoteStatelessToBindless::ID = 0;
 
 PromoteStatelessToBindless::PromoteStatelessToBindless()
-    : FunctionPass(ID)
+    : FunctionPass(ID),
+    m_PrintfBuffer(nullptr)
 {
     initializePromoteStatelessToBindlessPass(*PassRegistry::getPassRegistry());
 }
 
 bool PromoteStatelessToBindless::runOnFunction(Function& F)
 {
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto ClContext = static_cast<OpenCLProgramContext*>(ctx);
+
     m_AccessToSrcPtrMap.clear();
+    m_AddressUsedSrcPtrMap.clear();
+    if (!ClContext->m_InternalOptions.UseBindlessPrintf)
+    {
+        CheckPrintfBuffer(F);
+    }
     visit(F);
     PromoteStatelessToBindlessBuffers(F);
 
@@ -70,6 +82,21 @@ void PromoteStatelessToBindless::visitInstruction(Instruction& I)
     if (bufptr && bufptr->getType()->isPointerTy())
     {
         GetAccessInstToSrcPointerMap(&I, bufptr);
+    }
+}
+
+void PromoteStatelessToBindless::CheckPrintfBuffer(Function& F)
+{
+    MetaDataUtils* MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ImplicitArgs implicitArgs(F, MdUtils);
+
+    if (implicitArgs.isImplicitArgExist(ImplicitArg::PRINTF_BUFFER))
+    {
+        m_PrintfBuffer = implicitArgs.getArgInFunc(F, ImplicitArg::PRINTF_BUFFER);
+    }
+    else
+    {
+        m_PrintfBuffer = nullptr;
     }
 }
 
@@ -93,6 +120,9 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
             case GenISAIntrinsic::GenISA_simdBlockRead:
             case GenISAIntrinsic::GenISA_simdBlockWrite:
                 break;
+            case GenISAIntrinsic::GenISA_intatomicrawA64:
+                // Ignore a buffer in this intrinsic, keep it stateless.
+                return;
             default:
                 IGC_ASSERT_MESSAGE(0, "Unsupported Instruction");
                 return;
@@ -113,6 +143,16 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
         IGC_ASSERT_MESSAGE(0, "Stateless buffer pointer not traceable, cannot promote stateless to bindless");
         return;
     }
+
+    if (m_PrintfBuffer && srcPtr == m_PrintfBuffer)
+    {
+        // Process PrintfBuffer separately. Printf implementation required operations with
+        // printf buffer address (through atomic add), see printf implementation in
+        // OpenCLPrintfResolution.cpp. Currently keep printf implementation as stateless and
+        // thus skip printf buffer for now.
+        return;
+    }
+
     // Save the instruction, which makes access (load/store/intrinsic) to the buffer
     m_AccessToSrcPtrMap[inst] = srcPtr;
     // Save the instruction, which generate an address of the buffer. This is the
