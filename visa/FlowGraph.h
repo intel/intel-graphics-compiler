@@ -1537,13 +1537,9 @@ public:
 
     Options *getOptions() { return m_options; }
     const Attributes* getKernelAttrs() const { return m_kernelAttrs; }
-    bool getBoolKernelAttr(Attributes::ID aID) const
+    int getIntKernelAttribute(Attributes::ID aID) const
     {
-        return getKernelAttrs()->getBoolKernelAttr(aID);
-    }
-    int32_t getInt32KernelAttr(Attributes::ID aID) const
-    {
-        return getKernelAttrs()->getInt32KernelAttr(aID);
+        return getKernelAttrs()->getIntKernelAttribute(aID);
     }
     bool getOption(vISAOptions opt) const { return m_options->getOption(opt); }
     void computeChannelSlicing();

@@ -157,8 +157,8 @@ int VISAKernelImpl::compileFastPath()
     // make sure attributes for kernel/function are correct
     assert(
         (getIsKernel() ||
-         (m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_ArgSize) &&
-          m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_RetValSize))) &&
+         (m_kernelAttrs->isSet(Attributes::ATTR_ArgSize) &&
+          m_kernelAttrs->isSet(Attributes::ATTR_RetValSize))) &&
         "vISA: input for function must have attributes ArgSize and RetValSize!");
 
     if (getIsKernel())
@@ -1323,9 +1323,8 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
 int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const void *valueBuffer)
 {
     attribute_info_t* attr = (attribute_info_t*)m_mem.alloc(sizeof(attribute_info_t));
-    Attributes::ID attrID = Attributes::getAttributeID(attrName);
 
-    ASSERT_USER(Attributes::isKernelAttr(attrID), "Not a kernel attribute");
+    Attributes::ID attrID = Attributes::getAttributeID(attrName);
 
     /*
     if set through NG path it stores wrong name .isa file
@@ -1373,10 +1372,10 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         }
     }
 
-    attr->size = (uint8_t)size;
-    if (Attributes::isInt32(attrID))
+    attr->size  = (uint8_t)size;
+    attr->isInt = Attributes::isIntAttribute(attrID);
+    if (attr->isInt)
     {
-        attr->isInt = true;
         switch (attr->size)
         {
         case 0: attr->value.intVal = 1; break;
@@ -1387,15 +1386,13 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             ASSERT_USER(false, "Unsupported attribute size");
             break;
         }
-        m_kernelAttrs->setKernelAttr(attrID, attr->value.intVal);
+
+        if (Attributes::isIntKernelAttribute(attrID))
+        {
+            m_kernelAttrs->setIntKernelAttribute(attrID, attr->value.intVal);
+        }
     }
-    else if (Attributes::isBool(attrID))
-    {
-        attr->isInt = true;  // treat bool as int internally
-        attr->value.intVal = 1;
-        m_kernelAttrs->setKernelAttr(attrID, true);
-    }
-    else if (Attributes::isCStr(attrID))
+    else
     {
         // Should be valid attribute of string type!
         if (size > 0)
@@ -1405,13 +1402,14 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         }
         else
         {
-            attr->value.stringVal = (char*)"";
+            attr->value.stringVal = (char*) "";
         }
-        m_kernelAttrs->setKernelAttr(attrID, attr->value.stringVal);
-    }
-    else
-    {
-        MUST_BE_TRUE(false, "Unsupported kernel attribute!");
+        if (Attributes::isStringKernelAttribute(attrID))
+        {
+            m_kernelAttrs->setStringKernelAttribute(attrID, attr->value.stringVal);
+        }
+
+        MUST_BE_TRUE(Attributes::isStringAttribute(attrID), "Unsupported attribute!");
     }
 
     if (attrID == Attributes::ATTR_Target)
@@ -1490,30 +1488,19 @@ int VISAKernelImpl::AddAttributeToVarGeneric(
     //memset(attr,0,sizeof(attribute_info_t));
 
     attr->nameIndex = addStringPool(std::string(varName));
-    Attributes::ID aID = Attributes::getAttributeID(varName);
-    ASSERT_USER(Attributes::isVarAttr(aID), "ERROR: unknown var attribute");
+    attr->isInt = Attributes::isIntNonKernelAttribute(Attributes::getAttributeID(varName));
 
     attr->size = (uint8_t)size;
-    if (Attributes::isInt32(aID))
+    if (attr->isInt)
     {
-        attr->isInt = true;
         attr->value.intVal = val ? *((int*)val) : 0;
-        assert(attr->size <= 4 && "Int32 attribute has a value of 4 bytes at most!");
+        assert(attr->size <= 4 && "Int attribute has a value of 4 bytes at most!");
     }
-    else if (Attributes::isBool(aID))
-    {
-        attr->isInt = true;
-        attr->value.intVal = 1;
-    }
-    else if (Attributes::isCStr(aID))
+    else
     {
         void* temp = m_mem.alloc(size);
         memcpy_s(temp, size, val, size);
         attr->value.stringVal = (char*)temp;
-    }
-    else
-    {
-        MUST_BE_TRUE(false, "ERROR: unexpected variable attribute");
     }
 
     switch (decl->type)
@@ -7530,7 +7517,7 @@ void VISAKernelImpl::patchLabels()
 */
 void VISAKernelImpl::finalizeAttributes()
 {
-    if (!m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_Target))
+    if (!m_kernelAttrs->isSet(Attributes::ATTR_Target))
     {
         VISATarget target = m_options->getTarget();
         uint8_t val = (uint8_t)target;
@@ -8534,6 +8521,25 @@ int VISAKernelImpl::AppendVISALLVMInst(void *inst)
 }
 
 extern "C" void freeBlock(void* ptr);
+
+bool VISAKernelImpl::getIntKernelAttributeValue(const char* attrName, int& value)
+{
+    // Iterate over all kernel attributes and return true if name found and is
+    // of type int. Return value if found.
+    for (auto it : m_attribute_info_list)
+    {
+        if (it->isInt)
+        {
+            if (strcmp(m_string_pool[it->nameIndex].c_str(), attrName) == 0)
+            {
+                value = it->value.intVal;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 
 // buf contains instance of gtpin_init_t
 bool enableSrcLine(void* buf)

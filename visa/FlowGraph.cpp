@@ -894,7 +894,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     reassignBlockIDs();
     findBackEdges();
 
-    if (hasSIMDCF && pKernel->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+    if (hasSIMDCF && pKernel->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
     {
         processSCF(labelMap, funcInfoHashTable);
         addSIMDEdges();
@@ -6040,7 +6040,7 @@ void G4_BB::resetLocalId()
 bool G4_BB::isAllLaneActive() const
 {
     G4_Kernel* pK = parent->getKernel();
-    if (pK->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM && !isDivergent())
+    if (pK->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM && !isDivergent())
     {
         // CM: if BB isn't divergent, all lanes (32) must be active (dmask = 0xFFFFFFFF)
         return true;
@@ -6300,7 +6300,7 @@ void G4_Kernel::calculateSimdSize()
 
     // First, get simdsize from attribute (0 : not given)
     // If not 0|8|16|32, wrong value from attribute.
-    simdSize = m_kernelAttrs->getInt32KernelAttr(Attributes::ATTR_SimdSize);
+    simdSize = m_kernelAttrs->getIntKernelAttribute(Attributes::ATTR_SimdSize);
     if (simdSize != 8 && simdSize != 16 && simdSize != 32)
     {
         assert(simdSize == 0 && "vISA: wrong value for SimdSize attribute");
