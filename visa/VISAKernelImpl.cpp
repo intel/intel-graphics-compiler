@@ -8191,7 +8191,7 @@ G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(
     case PreDefinedVarsInternal::DBG:
     case PreDefinedVarsInternal::COLOR:
         {
-        G4_Type type = GetGenTypeFromVISAType(getPredefinedVarType(internalIndex));
+            G4_Type type = GetGenTypeFromVISAType(getPredefinedVarType(internalIndex));
             G4_Declare *preVarDcl = getGenVar(index)->genVar.dcl;
             tmpsrc = m_builder->createSrcRegRegion(
                 GetGenSrcModFromVISAMod(modifier),

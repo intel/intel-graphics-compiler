@@ -496,9 +496,12 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <cisa_region> SrcRegionDirect
 %type <cisa_region> SrcRegionIndirect
 
-%type <regAccess> IndirectVarAccess
-%type <regAccess> AddrVarAccess
-%type <vISADecl>  PredVar
+%type <regAccess>    IndirectVarAccess
+%type <offset>       TwoDimOffset
+%type <vISADecl>     PredVar
+%type <regAccess>    AddrVarAccess
+%type <regAccess>    AddrVarAccessWithWidth
+// %type <vISADecl>     AddrVar
 
 %type <vmeOpndIvb> VMEOpndIME
 %type <vmeOpndFbr> VMEOpndFBR
@@ -507,7 +510,6 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <align>               AlignAttrOpt
 %type <emask_exec_size>     ExecSize
 %type <intval>              ExecSizeInt
-%type <offset>              TwoDimOffset
 %type <type>                DataType
 %type <type>                DataTypeIntOrVector
 %type <src_mod>             SrcModifier
@@ -715,7 +717,7 @@ DirectiveAttr:
 // ----- .function -----
 DirectiveFunc: DIRECTIVE_FUNC IdentOrStringLit
     {
-        ABORT_ON_FAIL(pBuilder->CISA_function_directive($2));
+        ABORT_ON_FAIL(pBuilder->CISA_function_directive($2, CISAlineno));
     }
 
 
@@ -1102,13 +1104,13 @@ ScatterScaledInstruction:
 
 SynchronizationInstruction:
     BARRIER_OP {
-        pBuilder->CISA_create_sync_instruction($1);
+        pBuilder->CISA_create_sync_instruction($1, CISAlineno);
     }
     | SBARRIER_SIGNAL {
-        pBuilder->CISA_create_sbarrier_instruction(true);
+        pBuilder->CISA_create_sbarrier_instruction(true, CISAlineno);
     }
     | SBARRIER_WAIT {
-        pBuilder->CISA_create_sbarrier_instruction(false);
+        pBuilder->CISA_create_sbarrier_instruction(false, CISAlineno);
     }
 
 //                      1         2               3             4           5         6     7          8          9          10
@@ -1382,12 +1384,12 @@ BranchInstruction: Predicate BRANCH_OP ExecSize IdentOrStringLit
 
 FILE: FILE_OP STRING_LIT
     {
-        pBuilder->CISA_create_FILE_instruction($1, $2);
+        pBuilder->CISA_create_FILE_instruction($1, $2, CISAlineno);
     }
 
 LOC: LOC_OP DEC_LIT
     {
-        pBuilder->CISA_create_LOC_instruction($1, (unsigned)$2);
+        pBuilder->CISA_create_LOC_instruction($1, (unsigned)$2, CISAlineno);
     }
 RawSendInstruction:
     //    1             2            3       4      5       6           7                8         9
@@ -1450,37 +1452,44 @@ RawSendsInstruction:
     }
 
 NullaryInstruction:
-      CACHE_FLUSH_OP
+    CACHE_FLUSH_OP
     {
-        pBuilder->CISA_create_NO_OPND_instruction($1);
+        pBuilder->CISA_create_NO_OPND_instruction($1, CISAlineno);
     }
-    | WAIT_OP VecSrcOperand_G_IMM
+    |
+    WAIT_OP VecSrcOperand_G_IMM
     {
-        pBuilder->CISA_create_wait_instruction($2.cisa_gen_opnd);
+        pBuilder->CISA_create_wait_instruction($2.cisa_gen_opnd, CISAlineno);
     }
-    | YIELD_OP
+    |
+    YIELD_OP
     {
-        pBuilder->CISA_create_yield_instruction($1);
+        pBuilder->CISA_create_yield_instruction($1, CISAlineno);
     }
-    | FENCE_GLOBAL_OP
+    |
+    FENCE_GLOBAL_OP
     {
-        pBuilder->CISA_create_fence_instruction($1, 0x0);
+        pBuilder->CISA_create_fence_instruction($1, 0x0, CISAlineno);
     }
-    | FENCE_GLOBAL_OP FENCE_OPTIONS
+    |
+    FENCE_GLOBAL_OP FENCE_OPTIONS
     {
-        pBuilder->CISA_create_fence_instruction($1, $2);
+        pBuilder->CISA_create_fence_instruction($1, $2, CISAlineno);
     }
-    | FENCE_LOCAL_OP
+    |
+    FENCE_LOCAL_OP
     {
-        pBuilder->CISA_create_fence_instruction($1, 0x20);
+        pBuilder->CISA_create_fence_instruction($1, 0x20, CISAlineno);
     }
-    | FENCE_LOCAL_OP FENCE_OPTIONS
+    |
+    FENCE_LOCAL_OP FENCE_OPTIONS
     {
-        pBuilder->CISA_create_fence_instruction($1, $2 | 0x20);
+        pBuilder->CISA_create_fence_instruction($1, $2 | 0x20, CISAlineno);
     }
-    | FENCE_SW_OP
+    |
+    FENCE_SW_OP
     {
-        pBuilder->CISA_create_fence_instruction($1, 0x80);
+        pBuilder->CISA_create_fence_instruction($1, 0x80, CISAlineno);
     }
 
 OwordModifier: %empty {$$ = false;} | OWORD_MODIFIER;
@@ -1664,9 +1673,11 @@ RawOperandArray:
 
 
 // ------  Dst Operands -----
-DstAddrOperand: AddrVarAccess
+DstAddrOperand: AddrVarAccessWithWidth
     {
-        $$.cisa_gen_opnd = pBuilder->CISA_set_address_operand($1.cisa_decl, $1.elem, $1.row, true);
+        ABORT_ON_FAIL($$.cisa_gen_opnd =
+          pBuilder->CISA_set_address_operand(
+            $1.cisa_decl, $1.elem, $1.row, true, CISAlineno));
     }
 
 DstGeneralOperand:
@@ -1684,7 +1695,7 @@ DstGeneralOperand:
 DstIndirectOperand: IndirectVarAccess DstRegion DataType
     {
         ABORT_ON_FAIL($$.cisa_gen_opnd = pBuilder->CISA_create_indirect_dst(
-            $1.cisa_decl, MODIFIER_NONE, $1.row, $1.elem, $1.immOff, (unsigned short)$2, $3));
+            $1.cisa_decl, MODIFIER_NONE, $1.row, $1.elem, $1.immOff, (unsigned short)$2, $3, CISAlineno));
     }
 
 
@@ -1704,12 +1715,12 @@ SrcAddrOfOperand:
     // 2.  &V127       -16-32:d
     //
     AddrOfVar {
-         $$.cisa_gen_opnd = pBuilder->CISA_set_address_expression($1.cisa_decl, 0);
+         $$.cisa_gen_opnd = pBuilder->CISA_set_address_expression($1.cisa_decl, 0, CISAlineno);
     }
     |
     AddrOfVar LBRACK IntExp RBRACK {
          MUST_HOLD((short)$3 == $3, "variable address offset is too large");
-         $$.cisa_gen_opnd = pBuilder->CISA_set_address_expression($1.cisa_decl, (short)$3);
+         $$.cisa_gen_opnd = pBuilder->CISA_set_address_expression($1.cisa_decl, (short)$3, CISAlineno);
     }
 
 AddrOfVar:
@@ -1723,10 +1734,11 @@ AddrOfVar:
     }
 
 
-SrcAddrOperand: AddrVarAccess
+SrcAddrOperand: AddrVarAccessWithWidth
     {
         ABORT_ON_FAIL($$.cisa_gen_opnd =
-            pBuilder->CISA_set_address_operand($1.cisa_decl, $1.elem, $1.row, false));
+            pBuilder->CISA_set_address_operand(
+                $1.cisa_decl, $1.elem, $1.row, false, CISAlineno));
     }
 
 SrcGeneralOperand: Var TwoDimOffset SrcRegionDirect
@@ -1815,7 +1827,7 @@ SrcIndirectOperand: IndirectVarAccess SrcRegionDirect DataType
         ABORT_ON_FAIL($$.cisa_gen_opnd =
             pBuilder->CISA_create_indirect(
                 $1.cisa_decl, MODIFIER_NONE, $1.row, $1.elem, $1.immOff,
-                $2.v_stride, $2.width, $2.h_stride, $3));
+                $2.v_stride, $2.width, $2.h_stride, $3, CISAlineno));
     }
 
 SrcIndirectOperand_1: SrcModifier IndirectVarAccess SrcRegionIndirect DataType
@@ -1823,7 +1835,7 @@ SrcIndirectOperand_1: SrcModifier IndirectVarAccess SrcRegionIndirect DataType
         ABORT_ON_FAIL($$.cisa_gen_opnd =
             pBuilder->CISA_create_indirect(
                 $2.cisa_decl, $1.mod, $2.row, $2.elem, $2.immOff,
-                $3.v_stride, $3.width, $3.h_stride, $4));
+                $3.v_stride, $3.width, $3.h_stride, $4, CISAlineno));
     }
 
 // -------- regions -----------
@@ -1859,8 +1871,9 @@ SrcRegionDirect:
     }
 
 SrcRegionIndirect:
-      SrcRegionDirect
-    | LANGLE IntExp COMMA IntExpNRA RANGLE   // <Width,HorzStride>
+    SrcRegionDirect
+    |
+    LANGLE IntExp COMMA IntExpNRA RANGLE   // <Width,HorzStride>
     {
         MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16),
                  "Width must be 0, 1, 2, 4, 8 or 16");
@@ -1870,7 +1883,8 @@ SrcRegionIndirect:
         $$.width = (unsigned)$2;
         $$.h_stride = (unsigned)$4;
     }
-    | LANGLE IntExpNRA RANGLE   // <HorzStride>
+    |
+    LANGLE IntExpNRA RANGLE   // <HorzStride>
     {
         MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4),
              "HorzStride must be 0, 1, 2, or 4");
@@ -1881,12 +1895,12 @@ SrcRegionIndirect:
 
 
 IndirectVarAccess:
-      IND_LBRACK AddrVarAccess COMMA IntExp RBRACK {
-          $$ = $2;
-          $$.immOff = (int)$4;
-      }
-
-    | IND_LBRACK AddrVarAccess              RBRACK {
+    IND_LBRACK AddrVarAccess COMMA IntExp RBRACK {
+        $$ = $2;
+        $$.immOff = (int)$4;
+    }
+    |
+    IND_LBRACK AddrVarAccess              RBRACK {
           $$ = $2;
           $$.immOff = 0;
     }
@@ -1899,41 +1913,44 @@ TwoDimOffset: LPAREN IntExp COMMA IntExp RPAREN {
     }
 
 PredVar:
-    Var
-    {
+    Var {
         $$ = pBuilder->CISA_find_decl($1);
-        if (!$$ || $$->type != PREDICATE_VAR)
+        if ($$ == nullptr)
             PARSE_ERROR($1, ": undefined predicate variable");
+        if ($$->type != PREDICATE_VAR)
+            PARSE_ERROR($1, ": not a predicate variable");
     }
 
 AddrVarAccess:
     Var LPAREN IntExp RPAREN {
         $$.cisa_decl = pBuilder->CISA_find_decl($1);
-        if (!$$.cisa_decl)
-            PARSE_ERROR("unbound variable");
+        if ($$.cisa_decl == nullptr) {
+            PARSE_ERROR($1, ": unbound variable");
+        } else if ($$.cisa_decl->type != ADDRESS_VAR) {
+            PARSE_ERROR($1, ": not an address variable");
+        }
         $$.row = 1;
         $$.elem = (int)$3;
     }
-    | Var LPAREN IntExp RPAREN LANGLE IntExpNRA RANGLE {
+
+AddrVarAccessWithWidth:
+    Var LPAREN IntExp RPAREN LANGLE IntExpNRA RANGLE {
         $$.cisa_decl = pBuilder->CISA_find_decl($1);
-        if (!$$.cisa_decl)
-            PARSE_ERROR("unbound variable");
+        if ($$.cisa_decl == nullptr) {
+            PARSE_ERROR($1, ": unbound variable");
+        } else if ($$.cisa_decl->type != ADDRESS_VAR) {
+            PARSE_ERROR($1, ": not an address variable");
+        }
         $$.row = (int)$6;
         $$.elem = (int)$3;
     }
-    | Var LPAREN IntExp COMMA IntExp RPAREN {
-        $$.cisa_decl = pBuilder->CISA_find_decl($1);
-        if (!$$.cisa_decl)
-            PARSE_ERROR("unbound variable");
-        $$.row = (int)$3;
-        $$.elem = (int)$5;
-    }
 
 
-/* -----------register size ------------------------------*/
+// -----------register size ------------------------------
 SIMDMode:
     %empty {$$ = 0;}
-    | LPAREN DEC_LIT RPAREN
+    |
+    LPAREN DEC_LIT RPAREN
     {
        MUST_HOLD(($2 == 8 || $2 == 16 || $2 == 32),
                  "SIMD mode can only be 8, 16, or 32");
@@ -1942,7 +1959,7 @@ SIMDMode:
 
 
 
-/* ----------- Execution size -------------- */
+// ----------- Execution size --------------
 
 ElemNum: DOT DEC_LIT
     {
@@ -1978,7 +1995,7 @@ ExecSizeInt: DEC_LIT
         $$ = (unsigned short)$1;
     }
 
-/* ------ imm values ----------------------------------- */
+// ------ imm values -----------------------------------
 Var: VarNonNull | BUILTIN_NULL
 VarNonNull: IDENT | BUILTIN
 

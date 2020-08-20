@@ -320,7 +320,7 @@ int CISA_IR_Builder::DestroyBuilder(CISA_IR_Builder *builder)
 }
 
 bool CISA_IR_Builder::CISA_IR_initialization(
-    const char *kernel_name, int line_no)
+    const char *kernel_name, int lineNum)
 {
     m_kernel->InitializeKernel(kernel_name);
     return true;
@@ -906,26 +906,26 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
     return status;
 }
 
-bool CISA_IR_Builder::CISA_lookup_builtin_constant(int line, const char *symbol, int64_t &val)
+bool CISA_IR_Builder::CISA_lookup_builtin_constant(int lineNum, const char *symbol, int64_t &val)
 {
     std::string sym(symbol);
     if (sym == "%DispatchSimd") {
         if (m_dispatchSimdSize <= 0) {
             m_dispatchSimdSize = -1;
-            RecordParseError(line,
+            RecordParseError(lineNum,
                 "symbol cannot be used before .kernel_attr DispatchSimd=... is set");
             return false;
         }
         val = m_dispatchSimdSize;
         return true;
     } else {
-        RecordParseError(line, sym, ": invalid built-in symbol");
+        RecordParseError(lineNum, sym, ": invalid built-in symbol");
         val = -1;
         return false;
     }
 }
 
-bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNo, const char *var, int64_t &val)
+bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNum, const char *var, int64_t &val)
 {
     auto *decl =  (VISA_GenVar*)m_kernel->getDeclFromName(var);
     if (!decl) {
@@ -933,18 +933,86 @@ bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNo, const char *var, int64_t
             val = getGRFSize();
             return true;
         }
-        RecordParseError(lineNo, var, ": unbound variable");
+        RecordParseError(lineNum, var, ": unbound variable");
         return false;
     }
     switch (decl->type) {
     case GENERAL_VAR: val = (int64_t)decl->genVar.getSize(); break;
     case ADDRESS_VAR: val = (int64_t)decl->addrVar.num_elements * 2; break;
     default:
-        RecordParseError(lineNo, var, ": unsupported operator on this variable kind");
+        RecordParseError(lineNum, var, ": unsupported operator on this variable kind");
         return false;
     }
     return true;
 }
+
+// Use in a function returning bool (returns false on failure)
+// requires: int lineNum
+//
+// TODO: the long term goal is to have the vISA builder class store a
+// "last error" of some sort and then we can just change this macro.
+//
+// Note: this is exactly what C++ exceptions are for.  This ugliness is the cost.
+#define VISA_CALL_TO_BOOL(FUNC, ...) \
+    do { \
+        int __status = m_kernel->FUNC(__VA_ARGS__); \
+        if (__status != VISA_SUCCESS) { \
+            RecordParseError(lineNum, #FUNC, ": unknown error (internal line: ", __LINE__, ")"); \
+            return false; \
+        } \
+    } while (0)
+// similar to above, but returns nullptr on failure.
+#define VISA_CALL_TO_NULLPTR(FUNC, ...) \
+    do { \
+        int __status = m_kernel->FUNC(__VA_ARGS__); \
+        if (__status != VISA_SUCCESS) { \
+            RecordParseError(lineNum, #FUNC, ": unknown error (internal line: ", __LINE__, ")"); \
+            return nullptr; \
+        } \
+    } while (0)
+#define VISA_CALL_TO_BOOL_NOLINE(FUNC, ...) \
+    do { \
+        int lineNum = 0; \
+        VISA_CALL_TO_BOOL(FUNC, __VA_ARGS__); \
+    } while (0)
+
+
+VISA_StateOpndHandle *CISA_IR_Builder::CISA_get_surface_variable(
+    const char *varName, int lineNum)
+{
+    VISA_StateOpndHandle * surface = nullptr;
+    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(varName);
+    if (!surfaceVar) {
+        RecordParseError(lineNum, varName, ": undefined surface variable");
+    } else if (surfaceVar->type != SURFACE_VAR && surfaceVar->type != SAMPLER_VAR) {
+        RecordParseError(lineNum, varName, ": not a surface variable");
+    } else {
+        if (m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar) != VISA_SUCCESS) {
+            RecordParseError(lineNum, varName, ": internal error: creating surface variable");
+            surface = nullptr;
+        }
+    }
+    return surface;
+}
+
+VISA_StateOpndHandle *CISA_IR_Builder::CISA_get_sampler_variable(
+    const char *varName, int lineNum)
+{
+    VISA_StateOpndHandle * surface = nullptr;
+    VISA_SamplerVar *samplerVar = (VISA_SamplerVar*)m_kernel->getDeclFromName(varName);
+    if (!samplerVar) {
+        RecordParseError(lineNum, varName, ": undefined sampler variable");
+    } else if (samplerVar->type != SURFACE_VAR && samplerVar->type != SAMPLER_VAR) {
+        RecordParseError(lineNum, varName, ": not a sampler variable");
+    } else {
+        if (m_kernel->CreateVISAStateOperandHandle(surface, samplerVar) != VISA_SUCCESS) {
+            RecordParseError(lineNum, varName, ": internal error: creating sampler variable");
+            surface = nullptr;
+        }
+    }
+    return surface;
+}
+
 
 bool CISA_IR_Builder::CISA_general_variable_decl(
     const char * var_name,
@@ -954,14 +1022,14 @@ bool CISA_IR_Builder::CISA_general_variable_decl(
     const char * var_alias_name,
     int var_alias_offset,
     attr_gen_struct scope,
-    int line_no)
+    int lineNum)
 {
     VISA_GenVar * genVar = NULL;
 
     VISA_GenVar *parentDecl = NULL;
 
     if (m_kernel->getDeclFromName(var_name) != nullptr) {
-        RecordParseError(line_no, var_name, ": variable redeclaration");
+        RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
 
@@ -969,7 +1037,7 @@ bool CISA_IR_Builder::CISA_general_variable_decl(
     {
         parentDecl = (VISA_GenVar *)m_kernel->getDeclFromName(var_alias_name);
         if (parentDecl == nullptr) {
-            RecordParseError(line_no, var_alias_name, ": unbound alias referent");
+            RecordParseError(lineNum, var_alias_name, ": unbound alias referent");
             return false;
         }
     }
@@ -988,10 +1056,10 @@ bool CISA_IR_Builder::CISA_general_variable_decl(
 
 bool CISA_IR_Builder::CISA_addr_variable_decl(
     const char *var_name, unsigned int var_elements,
-    VISA_Type data_type, attr_gen_struct scope, int line_no)
+    VISA_Type data_type, attr_gen_struct scope, int lineNum)
 {
     if (m_kernel->getDeclFromName(var_name) != nullptr) {
-        RecordParseError(line_no, var_name, ": variable redeclaration");
+        RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
 
@@ -1005,10 +1073,10 @@ bool CISA_IR_Builder::CISA_addr_variable_decl(
 }
 
 bool CISA_IR_Builder::CISA_predicate_variable_decl(
-    const char *var_name, unsigned int var_elements, attr_gen_struct reg, int line_no)
+    const char *var_name, unsigned int var_elements, attr_gen_struct reg, int lineNum)
 {
     if (m_kernel->getDeclFromName(var_name) != nullptr) {
-        RecordParseError(line_no, var_name, ": variable redeclaration");
+        RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
 
@@ -1027,10 +1095,10 @@ bool CISA_IR_Builder::CISA_predicate_variable_decl(
 }
 
 bool CISA_IR_Builder::CISA_sampler_variable_decl(
-    const char *var_name, int num_elts, const char* name, int line_no)
+    const char *var_name, int num_elts, const char* name, int lineNum)
 {
     if (m_kernel->getDeclFromName(var_name) != nullptr) {
-        RecordParseError(line_no, var_name, ": variable redeclaration");
+        RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
 
@@ -1041,10 +1109,10 @@ bool CISA_IR_Builder::CISA_sampler_variable_decl(
 
 bool CISA_IR_Builder::CISA_surface_variable_decl(
     const char *var_name, int num_elts, const char* name,
-    attr_gen_struct attr_val, int line_no)
+    attr_gen_struct attr_val, int lineNum)
 {
     if (m_kernel->getDeclFromName(var_name) != nullptr) {
-        RecordParseError(line_no, var_name, ": variable redeclaration");
+        RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
 
@@ -1063,7 +1131,7 @@ bool CISA_IR_Builder::CISA_surface_variable_decl(
 
 bool CISA_IR_Builder::CISA_implicit_input_directive(
     const char * argName, const char *varName,
-    short offset, unsigned short size, int line_no)
+    short offset, unsigned short size, int lineNum)
 {
     std::string implicitArgName = argName;
     auto pos = implicitArgName.find("UNDEFINED_");
@@ -1089,45 +1157,46 @@ bool CISA_IR_Builder::CISA_implicit_input_directive(
     int status = VISA_SUCCESS;
     CISA_GEN_VAR *temp = m_kernel->getDeclFromName(varName);
     if (!temp) {
-        RecordParseError(line_no, varName, ": undefined variable");
+        RecordParseError(lineNum, varName, ": undefined variable");
         return false;
     }
     status = m_kernel->CreateVISAImplicitInputVar((VISA_GenVar *)temp, offset, size, numVal);
     if (status != VISA_SUCCESS)
     {
-        RecordParseError(line_no, "failed to create input variable");
+        RecordParseError(lineNum, "failed to create input variable");
         return false;
     }
     return true;
 }
+
 bool CISA_IR_Builder::CISA_input_directive(
-    const char* var_name, short offset, unsigned short size, int line_no)
+    const char* var_name, short offset, unsigned short size, int lineNum)
 {
     int status = VISA_SUCCESS;
     CISA_GEN_VAR *var = m_kernel->getDeclFromName(var_name);
     if (var == nullptr) {
-        RecordParseError(line_no, var_name, ": unbound identifier");
+        RecordParseError(lineNum, var_name, ": unbound identifier");
         return false;
     }
 
     status = m_kernel->CreateVISAInputVar((VISA_GenVar *)var, offset, size);
     if (status != VISA_SUCCESS)
     {
-        RecordParseError(line_no, "Unknown error: failed to create input variable");
+        RecordParseError(lineNum, var_name, ": internal error: failed to create input variable");
         return false;
     }
     return true;
 }
 
 bool CISA_IR_Builder::CISA_attr_directive(
-    const char* input_name, const char* input_var, int line_no)
+    const char* input_name, const char* input_var, int lineNum)
 {
     Attributes::ID attrID = Attributes::getAttributeID(input_name);
     if (!m_options.getOption(VISA_AsmFileNameUser) &&
         attrID == Attributes::ATTR_OutputAsmPath)
     {
         if (strcmp(input_name, "AsmName") == 0) {
-            RecordParseWarning(line_no,
+            RecordParseWarning(lineNum,
                 "AsmName deprecated (replace with OutputAsmPath)");
         }
         input_name = "OutputAsmPath"; // normalize to new name
@@ -1146,7 +1215,7 @@ bool CISA_IR_Builder::CISA_attr_directive(
     if (attrID == Attributes::ATTR_Target) {
         unsigned char visa_target;
         if (input_var == nullptr) {
-            RecordParseError(line_no,
+            RecordParseError(lineNum,
                 ".kernel_attr Target=.. must be \"cm\", \"3d\", or \"cs\"");
             return false;
         }
@@ -1163,7 +1232,7 @@ bool CISA_IR_Builder::CISA_attr_directive(
         }
         else
         {
-            RecordParseError(line_no, "invalid kernel target attribute");
+            RecordParseError(lineNum, "invalid kernel target attribute");
             return false;
         }
         m_kernel->AddKernelAttribute(input_name, 1, &visa_target);
@@ -1178,16 +1247,18 @@ bool CISA_IR_Builder::CISA_attr_directive(
 }
 
 bool CISA_IR_Builder::CISA_attr_directiveNum(
-    const char* input_name, uint32_t input_var, int line_no)
+    const char* input_name, uint32_t input_var, int lineNum)
 {
-    if (std::string(input_name) == "SimdSize" || std::string(input_name) == "DispatchSimdSize") {
+    if (std::string(input_name) == "SimdSize" ||
+        std::string(input_name) == "DispatchSimdSize")
+    {
         m_dispatchSimdSize = (int)input_var;
     }
-    m_kernel->AddKernelAttribute(input_name, sizeof(uint32_t), &input_var);
+    VISA_CALL_TO_BOOL(AddKernelAttribute, input_name, sizeof(uint32_t), &input_var);
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_label(const char *label_name, int line_no)
+bool CISA_IR_Builder::CISA_create_label(const char *label_name, int lineNum)
 {
     VISA_LabelOpnd *opnd[1] = {NULL};
 
@@ -1199,106 +1270,115 @@ bool CISA_IR_Builder::CISA_create_label(const char *label_name, int line_no)
         if (opnd[0] == NULL)
         {
             // forward jump
-            m_kernel->CreateVISALabelVar(opnd[0], label_name, LABEL_BLOCK);
+            VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[0], label_name, LABEL_BLOCK);
         }
-        m_kernel->AppendVISACFLabelInst(opnd[0]);
+        VISA_CALL_TO_BOOL(AppendVISACFLabelInst, opnd[0]);
     }
 
     return true;
 }
 
 
-bool CISA_IR_Builder::CISA_function_directive(const char* func_name)
+bool CISA_IR_Builder::CISA_function_directive(const char* func_name, int lineNum)
 {
     VISA_LabelOpnd *opnd[1] = {NULL};
     opnd[0] = m_kernel->getLabelOperandFromFunctionName(std::string(func_name));
     if (opnd[0] == NULL)
     {
-        m_kernel->CreateVISALabelVar(opnd[0], func_name, LABEL_SUBROUTINE);
+        VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[0], func_name, LABEL_SUBROUTINE);
     }
 
-    m_kernel->AppendVISACFLabelInst(opnd[0]);
+    VISA_CALL_TO_BOOL(AppendVISACFLabelInst, opnd[0]);
     return true;
 }
 
 
-bool CISA_IR_Builder::CISA_create_arith_instruction(VISA_opnd * pred,
-                                                    ISA_Opcode opcode,
-                                                    bool  sat,
-                                                    VISA_EMask_Ctrl emask,
-                                                    unsigned exec_size,
-                                                    VISA_opnd * dst_cisa,
-                                                    VISA_opnd * src0_cisa,
-                                                    VISA_opnd * src1_cisa,
-                                                    VISA_opnd * src2_cisa,
-                                                    int line_no)
+bool CISA_IR_Builder::CISA_create_arith_instruction(
+    VISA_opnd * pred,
+    ISA_Opcode opcode,
+    bool  sat,
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    VISA_opnd * dst_cisa,
+    VISA_opnd * src0_cisa,
+    VISA_opnd * src1_cisa,
+    VISA_opnd * src2_cisa,
+    int lineNum)
 {
     VISA_Exec_Size executionSize =  Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    int status = m_kernel->AppendVISAArithmeticInst(opcode, (VISA_PredOpnd *)pred, sat, emask, executionSize,
-        (VISA_VectorOpnd *)dst_cisa, (VISA_VectorOpnd *)src0_cisa, (VISA_VectorOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa);
-    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Could not create CISA arithmetic instruction.");
+    VISA_CALL_TO_BOOL(AppendVISAArithmeticInst,
+        opcode, (VISA_PredOpnd *)pred, sat, emask, executionSize,
+        (VISA_VectorOpnd *)dst_cisa, (VISA_VectorOpnd *)src0_cisa,
+        (VISA_VectorOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa);
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_arith_instruction2(VISA_opnd * pred,
-                                                     ISA_Opcode opcode,
-                                                     VISA_EMask_Ctrl emask,
-                                                     unsigned exec_size,
-                                                     VISA_opnd * dst_cisa,
-                                                     VISA_opnd * carry_borrow,
-                                                     VISA_opnd * src1_cisa,
-                                                     VISA_opnd * src2_cisa,
-                                                     int line_no)
+bool CISA_IR_Builder::CISA_create_arith_instruction2(
+    VISA_opnd * pred,
+    ISA_Opcode opcode,
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    VISA_opnd * dst_cisa,
+    VISA_opnd * carry_borrow,
+    VISA_opnd * src1_cisa,
+    VISA_opnd * src2_cisa,
+    int lineNum)
 {
     VISA_Exec_Size executionSize =  Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    int status = m_kernel->AppendVISATwoDstArithmeticInst(opcode, (VISA_PredOpnd *)pred, emask, executionSize,
-        (VISA_VectorOpnd *)dst_cisa, (VISA_VectorOpnd *)carry_borrow, (VISA_VectorOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa);
-    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Could not create CISA arithmetic instruction.");
-    return true;
-}
-
-bool CISA_IR_Builder::CISA_create_mov_instruction(VISA_opnd *pred,
-                                                  ISA_Opcode opcode,
-                                                  VISA_EMask_Ctrl emask,
-                                                  unsigned exec_size,
-                                                  bool  sat,
-                                                  VISA_opnd *dst,
-                                                  VISA_opnd *src0,
-                                                  int line_no)
-{
-    VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISADataMovementInst(opcode, (VISA_PredOpnd*) pred, sat, emask, executionSize, (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0);
+    VISA_CALL_TO_BOOL(AppendVISATwoDstArithmeticInst,
+        opcode, (VISA_PredOpnd *)pred, emask, executionSize,
+        (VISA_VectorOpnd *)dst_cisa, (VISA_VectorOpnd *)carry_borrow,
+        (VISA_VectorOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa);
     return true;
 }
 
 bool CISA_IR_Builder::CISA_create_mov_instruction(
-    VISA_opnd* dst, CISA_GEN_VAR* src0, int line_no)
+    VISA_opnd *pred,
+    ISA_Opcode opcode,
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    bool  sat,
+    VISA_opnd *dst,
+    VISA_opnd *src0,
+    int lineNum)
 {
-    MUST_BE_TRUE1(src0 != NULL, line_no, "The source operand of a move instruction was null");
-    m_kernel->AppendVISAPredicateMove((VISA_VectorOpnd*)dst, (VISA_PredVar*)src0);
+    VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
+    VISA_CALL_TO_BOOL(AppendVISADataMovementInst,
+        opcode, (VISA_PredOpnd*) pred, sat, emask, executionSize, (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0);
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_movs_instruction(VISA_EMask_Ctrl emask,
-                                                   ISA_Opcode opcode,
-                                                   unsigned exec_size,
-                                                   VISA_opnd *dst,
-                                                   VISA_opnd *src0,
-                                                   int line_no)
+bool CISA_IR_Builder::CISA_create_mov_instruction(
+    VISA_opnd* dst, CISA_GEN_VAR* src0, int lineNum)
+{
+    MUST_BE_TRUE1(src0 != NULL, lineNum, "The source operand of a move instruction was null");
+    VISA_CALL_TO_BOOL(AppendVISAPredicateMove,
+        (VISA_VectorOpnd*)dst, (VISA_PredVar*)src0);
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_movs_instruction(
+    VISA_EMask_Ctrl emask,
+    ISA_Opcode opcode,
+    unsigned exec_size,
+    VISA_opnd *dst,
+    VISA_opnd *src0,
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISADataMovementInst(
+    VISA_CALL_TO_BOOL(AppendVISADataMovementInst,
         ISA_MOVS, NULL, false, emask, executionSize,
         (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0);
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_branch_instruction(VISA_opnd *pred,
-                                                     ISA_Opcode opcode,
-                                                     VISA_EMask_Ctrl emask,
-                                                     unsigned exec_size,
-                                                     const char *target_label,
-                                                     int line_no)
+bool CISA_IR_Builder::CISA_create_branch_instruction(
+    VISA_opnd *pred,
+    ISA_Opcode opcode,
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    const char *target_label,
+    int lineNum)
 {
     VISA_LabelOpnd * opnd[1];
     int i = 0;
@@ -1310,16 +1390,17 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(VISA_opnd *pred,
             //need second path over instruction stream to
             //determine correct IDs since function directive might not have been
             //encountered yet
-
             opnd[i] = m_kernel->getLabelOperandFromFunctionName(std::string(target_label));
             if (opnd[i] == NULL)
             {
-                m_kernel->CreateVISALabelVar(opnd[i], target_label, LABEL_SUBROUTINE);
+                VISA_CALL_TO_BOOL(CreateVISALabelVar,
+                    opnd[i], target_label, LABEL_SUBROUTINE);
                 opnd[i]->tag = ISA_SUBROUTINE;
             }
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-            m_kernel->AppendVISACFCallInst((VISA_PredOpnd *) pred, emask, executionSize, opnd[i]);
-            m_kernel->patchLastInst(opnd[i]);
+            VISA_CALL_TO_BOOL(AppendVISACFCallInst,
+                (VISA_PredOpnd *)pred, emask, executionSize, opnd[i]);
+            VISA_CALL_TO_BOOL(patchLastInst, opnd[i]);
             return true;
         }
     case ISA_JMP:
@@ -1329,11 +1410,12 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(VISA_opnd *pred,
             //forward jump label: create the label optimistically
             if (opnd[i] == NULL)
             {
-                m_kernel->CreateVISALabelVar(opnd[i], target_label, LABEL_BLOCK);
+                VISA_CALL_TO_BOOL(CreateVISALabelVar,
+                    opnd[i], target_label, LABEL_BLOCK);
             }
 
-            m_kernel->AppendVISACFJmpInst((VISA_PredOpnd *) pred, opnd[i]);
-            m_kernel->patchLastInst(opnd[i]);
+            VISA_CALL_TO_BOOL(AppendVISACFJmpInst, (VISA_PredOpnd *) pred, opnd[i]);
+            VISA_CALL_TO_BOOL(patchLastInst, opnd[i]);
             return true;
         }
     case ISA_GOTO:
@@ -1343,11 +1425,14 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(VISA_opnd *pred,
             //forward jump label: create the label optimistically
             if (opnd[i] == nullptr)
             {
-                m_kernel->CreateVISALabelVar(opnd[i], target_label, LABEL_BLOCK);
+                VISA_CALL_TO_BOOL(CreateVISALabelVar,
+                    opnd[i], target_label, LABEL_BLOCK);
             }
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-            m_kernel->AppendVISACFGotoInst((VISA_PredOpnd*)pred, emask, executionSize, opnd[i]);
-            m_kernel->patchLastInst(opnd[i]);
+            VISA_CALL_TO_BOOL(AppendVISACFGotoInst,
+                (VISA_PredOpnd*)pred, emask, executionSize, opnd[i]);
+            VISA_CALL_TO_BOOL(patchLastInst,
+                opnd[i]);
             return true;
         }
     default:
@@ -1367,10 +1452,10 @@ bool CISA_IR_Builder::CISA_create_cmp_instruction(
     CISA_GEN_VAR *decl,
     VISA_opnd *src0,
     VISA_opnd *src1,
-    int line_no)
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISAComparisonInst(
+    VISA_CALL_TO_BOOL(AppendVISAComparisonInst,
         sub_op, emask, executionSize,
         (VISA_PredVar *)decl, (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1);
     return true;
@@ -1384,10 +1469,10 @@ bool CISA_IR_Builder::CISA_create_cmp_instruction(
     VISA_opnd *dst,
     VISA_opnd *src0,
     VISA_opnd *src1,
-    int line_no)
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISAComparisonInst(
+    VISA_CALL_TO_BOOL(AppendVISAComparisonInst,
         sub_op, emask, executionSize,
         (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1);
     return true;
@@ -1400,29 +1485,24 @@ bool CISA_IR_Builder::CISA_create_media_instruction(
     int block_width,
     int block_height,
     unsigned int plane_ID,
-    const char * surface_name,
+    const char * surfaceName,
     VISA_opnd *xOffset,
     VISA_opnd *yOffset,
     VISA_opnd *raw_dst,
-    int line_no)
+    int lineNum)
 {
     unsigned char mod;
     mod = media_mod & 0x7;
     if (mod >= MEDIA_LD_Mod_NUM) {
-        RecordParseError(line_no, "ISA_MEDIA_LD uses illegal exec size");
-    }
-
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (surfaceVar == nullptr) {
-        RecordParseError(line_no, surfaceVar, ": surface not found");
+        RecordParseError(lineNum, "ISA_MEDIA_LD uses illegal exec size");
         return false;
     }
 
-    VISA_StateOpndHandle * surface = NULL;
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (surface == nullptr)
+        return false; // error already reported
 
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-
-    m_kernel->AppendVISASurfAccessMediaLoadStoreInst(
+    VISA_CALL_TO_BOOL(AppendVISASurfAccessMediaLoadStoreInst,
         opcode, media_mod, surface,
         (unsigned char)block_width, (unsigned char)block_height,
         (VISA_VectorOpnd *)xOffset, (VISA_VectorOpnd *)yOffset,
@@ -1439,17 +1519,19 @@ bool CISA_IR_Builder::CISA_Create_Ret(
     ISA_Opcode opcode,
     VISA_EMask_Ctrl emask,
     unsigned int exec_size,
-    int line_no)
+    int lineNum)
 {
     if (opcode == ISA_RET)
     {
         VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-        m_kernel->AppendVISACFRetInst((VISA_PredOpnd *)pred_opnd, emask, executionSize);
+        VISA_CALL_TO_BOOL(AppendVISACFRetInst,
+            (VISA_PredOpnd *)pred_opnd, emask, executionSize);
     }
     else
     {
         VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-        m_kernel->AppendVISACFFunctionRetInst((VISA_PredOpnd *)pred_opnd, emask, executionSize);
+        VISA_CALL_TO_BOOL(AppendVISACFFunctionRetInst,
+            (VISA_PredOpnd *)pred_opnd, emask, executionSize);
     }
 
     return true;
@@ -1459,19 +1541,16 @@ bool CISA_IR_Builder::CISA_create_oword_instruction(
     ISA_Opcode opcode,
     bool media_mod,
     unsigned int size,
-    const char *surface_name,
+    const char *surfaceName,
     VISA_opnd *offset_opnd,
     VISA_opnd *raw_dst_src,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, surface_name, ": undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-    m_kernel->AppendVISASurfAccessOwordLoadStoreInst(
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
+
+    VISA_CALL_TO_BOOL(AppendVISASurfAccessOwordLoadStoreInst,
         opcode, vISA_EMASK_M1, surface,
         Get_VISA_Oword_Num_From_Number(size),
         (VISA_VectorOpnd*)offset_opnd, (VISA_RawOpnd*)raw_dst_src);
@@ -1484,17 +1563,17 @@ bool CISA_IR_Builder::CISA_create_svm_block_instruction(
     bool          unaligned,
     VISA_opnd*    address,
     VISA_opnd*    srcDst,
-    int           line_no)
+    int           lineNum)
 {
     switch (subopcode)
     {
     case SVM_BLOCK_LD:
-        m_kernel->AppendVISASvmBlockLoadInst(
+        VISA_CALL_TO_BOOL(AppendVISASvmBlockLoadInst,
             Get_VISA_Oword_Num_From_Number(owords), unaligned,
             (VISA_VectorOpnd*)address, (VISA_RawOpnd*)srcDst);
         return true;
     case SVM_BLOCK_ST:
-        m_kernel->AppendVISASvmBlockStoreInst(
+        VISA_CALL_TO_BOOL(AppendVISASvmBlockStoreInst,
             Get_VISA_Oword_Num_From_Number(owords), unaligned,
             (VISA_VectorOpnd*)address, (VISA_RawOpnd*)srcDst);
         return true;
@@ -1514,19 +1593,19 @@ bool CISA_IR_Builder::CISA_create_svm_scatter_instruction(
     unsigned      numBlocks,
     VISA_opnd*    addresses,
     VISA_opnd*    srcDst,
-    int           line_no)
+    int           lineNum)
 {
     VISA_SVM_Block_Type blockType = valueToVISASVMBlockType(blockSize);
     VISA_SVM_Block_Num blockNum = valueToVISASVMBlockNum(numBlocks);
     switch (subopcode)
     {
     case SVM_SCATTER:
-        m_kernel->AppendVISASvmScatterInst(
+        VISA_CALL_TO_BOOL(AppendVISASvmScatterInst,
             (VISA_PredOpnd*)pred, emask, Get_VISA_Exec_Size_From_Raw_Size(exec_size),
             blockType, blockNum, (VISA_RawOpnd*)addresses, (VISA_RawOpnd*)srcDst);
         return true;
     case SVM_GATHER:
-        m_kernel->AppendVISASvmGatherInst(
+        VISA_CALL_TO_BOOL(AppendVISASvmGatherInst,
             (VISA_PredOpnd*)pred, emask, Get_VISA_Exec_Size_From_Raw_Size(exec_size),
             blockType, blockNum, (VISA_RawOpnd*)addresses, (VISA_RawOpnd*)srcDst);
         return true;
@@ -1549,17 +1628,16 @@ CISA_IR_Builder::CISA_create_svm_gather4_scaled(
     VISA_opnd               *dst,
     int                     lineNum)
 {
-    int ret
-        = m_kernel->AppendVISASvmGather4ScaledInst(
-            static_cast<VISA_PredOpnd *>(pred),
-            eMask,
-            Get_VISA_Exec_Size_From_Raw_Size(execSize),
-            chMask.getAPI(),
-            static_cast<VISA_VectorOpnd *>(address),
-            static_cast<VISA_RawOpnd *>(offsets),
-            static_cast<VISA_RawOpnd *>(dst));
+    VISA_CALL_TO_BOOL(AppendVISASvmGather4ScaledInst,
+        static_cast<VISA_PredOpnd *>(pred),
+        eMask,
+        Get_VISA_Exec_Size_From_Raw_Size(execSize),
+        chMask.getAPI(),
+        static_cast<VISA_VectorOpnd *>(address),
+        static_cast<VISA_RawOpnd *>(offsets),
+        static_cast<VISA_RawOpnd *>(dst));
 
-    return ret == VISA_SUCCESS;
+    return true;
 }
 
 bool CISA_IR_Builder::CISA_create_svm_scatter4_scaled(
@@ -1572,17 +1650,16 @@ bool CISA_IR_Builder::CISA_create_svm_scatter4_scaled(
     VISA_opnd              *src,
     int                    lineNum)
 {
-    int ret
-        = m_kernel->AppendVISASvmScatter4ScaledInst(
-            static_cast<VISA_PredOpnd *>(pred),
-            eMask,
-            Get_VISA_Exec_Size_From_Raw_Size(execSize),
-            chMask.getAPI(),
-            static_cast<VISA_VectorOpnd *>(address),
-            static_cast<VISA_RawOpnd *>(offsets),
-            static_cast<VISA_RawOpnd *>(src));
+    VISA_CALL_TO_BOOL(AppendVISASvmScatter4ScaledInst,
+        static_cast<VISA_PredOpnd *>(pred),
+        eMask,
+        Get_VISA_Exec_Size_From_Raw_Size(execSize),
+        chMask.getAPI(),
+        static_cast<VISA_VectorOpnd *>(address),
+        static_cast<VISA_RawOpnd *>(offsets),
+        static_cast<VISA_RawOpnd *>(src));
 
-    return ret == VISA_SUCCESS;
+    return true;
 }
 
 bool CISA_IR_Builder::CISA_create_svm_atomic_instruction(
@@ -1595,10 +1672,10 @@ bool CISA_IR_Builder::CISA_create_svm_atomic_instruction(
     VISA_opnd* src0,
     VISA_opnd* src1,
     VISA_opnd* dst,
-    int line_no)
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISASvmAtomicInst(
+    VISA_CALL_TO_BOOL(AppendVISASvmAtomicInst,
         (VISA_PredOpnd *)pred, emask, executionSize, op, bitwidth,
         (VISA_RawOpnd *)addresses, (VISA_RawOpnd *)src0, (VISA_RawOpnd *)src1,
         (VISA_RawOpnd *)dst);
@@ -1611,10 +1688,10 @@ bool CISA_IR_Builder::CISA_create_address_instruction(ISA_Opcode opcode,
                                                       VISA_opnd *dst,
                                                       VISA_opnd *src0,
                                                       VISA_opnd *src1,
-                                                      int line_no)
+                                                      int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISAAddrAddInst(
+    VISA_CALL_TO_BOOL(AppendVISAAddrAddInst,
         emask, executionSize,
         (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1);
     return true;
@@ -1631,21 +1708,21 @@ bool CISA_IR_Builder::CISA_create_logic_instruction(
     VISA_opnd *src1,
     VISA_opnd *src2,
     VISA_opnd *src3,
-    int line_no)
+    int lineNum)
 {
     if (opcode != ISA_SHR &&
         opcode != ISA_SHL &&
         opcode != ISA_ASR)
     {
         if (sat) {
-            RecordParseError(line_no, "saturation is not supported on this op");
+            RecordParseError(lineNum, "saturation is not supported on this op");
         }
         sat = false;
         // fallthrough
     }
 
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISALogicOrShiftInst(
+    VISA_CALL_TO_BOOL(AppendVISALogicOrShiftInst,
         opcode, (VISA_PredOpnd *)pred, sat, emask, executionSize,
         (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1,
         (VISA_VectorOpnd *)src2, (VISA_VectorOpnd *)src3);
@@ -1659,30 +1736,30 @@ bool CISA_IR_Builder::CISA_create_logic_instruction(
     CISA_GEN_VAR *dst,
     CISA_GEN_VAR *src0,
     CISA_GEN_VAR *src1,
-    int line_no)
+    int lineNum)
 {
     if (opcode != ISA_AND &&
         opcode != ISA_OR  &&
         opcode != ISA_NOT &&
         opcode != ISA_XOR)
     {
-        RecordParseError(line_no, "prediate variables are not supported for this op");
+        RecordParseError(lineNum, "prediate variables are not supported for this op");
         return false;
     }
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
     if (!dst) {
-        RecordParseError(line_no, "null dst in logic op");
+        RecordParseError(lineNum, "null dst in logic op");
     }
     if (!src0) {
-        RecordParseError(line_no, "null src0 in logic op");
+        RecordParseError(lineNum, "null src0 in logic op");
     }
     if (opcode != ISA_NOT)
     {
         if (!src1) {
-            RecordParseError(line_no, "null src1 in logic op");
+            RecordParseError(lineNum, "null src1 in logic op");
         }
     }
-    m_kernel->AppendVISALogicOrShiftInst(
+    VISA_CALL_TO_BOOL(AppendVISALogicOrShiftInst,
         opcode, emask, executionSize,
         (VISA_PredVar *)dst, (VISA_PredVar *)src0, (VISA_PredVar *)src1);
     return true;
@@ -1697,10 +1774,10 @@ bool CISA_IR_Builder::CISA_create_math_instruction(
     VISA_opnd *dst,
     VISA_opnd *src0,
     VISA_opnd *src1,
-    int line_no)
+    int lineNum)
 {
     VISA_Exec_Size executionSize =  Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISAArithmeticInst(
+    VISA_CALL_TO_BOOL(AppendVISAArithmeticInst,
         opcode, (VISA_PredOpnd *)pred, sat, emask, executionSize,
         (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1, NULL);
     return true;
@@ -1712,10 +1789,11 @@ bool CISA_IR_Builder::CISA_create_setp_instruction(
     unsigned exec_size,
     CISA_GEN_VAR * dst,
     VISA_opnd *src0,
-    int line_no)
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISASetP(emask, executionSize, (VISA_PredVar *)dst, (VISA_VectorOpnd *)src0);
+    VISA_CALL_TO_BOOL(AppendVISASetP,
+        emask, executionSize, (VISA_PredVar *)dst, (VISA_VectorOpnd *)src0);
     return true;
 }
 
@@ -1728,10 +1806,10 @@ bool CISA_IR_Builder::CISA_create_sel_instruction(
     VISA_opnd *dst,
     VISA_opnd *src0,
     VISA_opnd *src1,
-    int line_no)
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISADataMovementInst(
+    VISA_CALL_TO_BOOL(AppendVISADataMovementInst,
         opcode, (VISA_PredOpnd*)pred, sat, emask, executionSize,
         (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1);
     return true;
@@ -1747,10 +1825,10 @@ bool CISA_IR_Builder::CISA_create_fminmax_instruction(
     VISA_opnd *dst,
     VISA_opnd *src0,
     VISA_opnd *src1,
-    int line_no)
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISAMinMaxInst(
+    VISA_CALL_TO_BOOL(AppendVISAMinMaxInst,
         (minmax ? CISA_DM_FMAX : CISA_DM_FMIN), sat, emask, executionSize,
         (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1);
     return true;
@@ -1762,29 +1840,24 @@ bool CISA_IR_Builder::CISA_create_scatter_instruction(
     VISA_EMask_Ctrl emask,
     unsigned elemNum,
     bool modifier,
-    const char *surface_name,
+    const char *surfaceName,
     VISA_opnd *global_offset, //global_offset
     VISA_opnd *element_offset, //element_offset
     VISA_opnd *raw_dst_src, //dst/src
-    int line_no)
+    int lineNum)
 {
-    //GATHER  0x39 (GATHER)  Elt_size   Is_modified Num_elts    Surface Global_Offset   Element_Offset  Dst
-    //SCATTER 0x3A (SCATTER) Elt_size               Num_elts    Surface Global_Offset   Element_Offset  Src
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, "undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    // GATHER  0x39 (GATHER)  Elt_size   Is_modified Num_elts    Surface Global_Offset   Element_Offset  Dst
+    // SCATTER 0x3A (SCATTER) Elt_size               Num_elts    Surface Global_Offset   Element_Offset  Src
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
     if (elemNum != 16 && elemNum != 8 && elemNum != 1) {
-        RecordParseError(line_no,
+        RecordParseError(lineNum,
             "unsupported number of elements for gather/scatter instruction.");
     }
 
     VISA_Exec_Size executionSize = EXEC_SIZE_16;
-
     if (elemNum == 16)
     {
         executionSize = EXEC_SIZE_16;
@@ -1810,9 +1883,10 @@ bool CISA_IR_Builder::CISA_create_scatter_instruction(
         elementSize = GATHER_SCATTER_DWORD;
     }
 
-    m_kernel->AppendVISASurfAccessGatherScatterInst(
+    VISA_CALL_TO_BOOL(AppendVISASurfAccessGatherScatterInst,
         opcode, emask, elementSize, executionSize, surface,
-        (VISA_VectorOpnd *)global_offset, (VISA_RawOpnd *)element_offset, (VISA_RawOpnd *)raw_dst_src);
+        (VISA_VectorOpnd *)global_offset, (VISA_RawOpnd *)element_offset,
+        (VISA_RawOpnd *)raw_dst_src);
     return true;
 }
 
@@ -1828,17 +1902,14 @@ bool CISA_IR_Builder::CISA_create_scatter4_typed_instruction(
     VISA_opnd *rOffset,
     VISA_opnd *lod,
     VISA_opnd *dst,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surfaceName);
-    if (!surfaceVar) {
-        RecordParseError(line_no, "undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
+
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(execSize);
-    m_kernel->AppendVISASurfAccessGather4Scatter4TypedInst(
+    VISA_CALL_TO_BOOL(AppendVISASurfAccessGather4Scatter4TypedInst,
         opcode, (VISA_PredOpnd *)pred, ch_mask.getAPI(), emask, executionSize, surface,
         (VISA_RawOpnd *)uOffset, (VISA_RawOpnd *)vOffset, (VISA_RawOpnd *)rOffset,
         (VISA_RawOpnd *)lod, (VISA_RawOpnd*)dst);
@@ -1855,28 +1926,22 @@ bool CISA_IR_Builder::CISA_create_scatter4_scaled_instruction(
     VISA_opnd                 *globalOffset,
     VISA_opnd                 *offsets,
     VISA_opnd                 *dstSrc,
-    int                       lineNo)
+    int                       lineNum)
 {
-    VISA_SurfaceVar *surfaceVar =
-        (VISA_SurfaceVar*)m_kernel->getDeclFromName(surfaceName);
-    if (!surfaceVar) {
-        RecordParseError(lineNo, "undefined surface");
-        return false;
-    }
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    VISA_StateOpndHandle *surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_CALL_TO_BOOL(AppendVISASurfAccessGather4Scatter4ScaledInst,
+        opcode, static_cast<VISA_PredOpnd *>(pred),
+        eMask, Get_VISA_Exec_Size_From_Raw_Size(execSize),
+        chMask.getAPI(),
+        surface,
+        static_cast<VISA_VectorOpnd *>(globalOffset),
+        static_cast<VISA_RawOpnd *>(offsets),
+        static_cast<VISA_RawOpnd *>(dstSrc));
 
-    int ret = m_kernel->AppendVISASurfAccessGather4Scatter4ScaledInst(
-                opcode, static_cast<VISA_PredOpnd *>(pred),
-                eMask, Get_VISA_Exec_Size_From_Raw_Size(execSize),
-                chMask.getAPI(),
-                surface,
-                static_cast<VISA_VectorOpnd *>(globalOffset),
-                static_cast<VISA_RawOpnd *>(offsets),
-                static_cast<VISA_RawOpnd *>(dstSrc));
-
-    return ret == VISA_SUCCESS;
+    return true;
 }
 
 bool CISA_IR_Builder::CISA_create_scatter_scaled_instruction(
@@ -1889,19 +1954,13 @@ bool CISA_IR_Builder::CISA_create_scatter_scaled_instruction(
     VISA_opnd              *globalOffset,
     VISA_opnd              *offsets,
     VISA_opnd              *dstSrc,
-    int                    lineNo)
+    int                    lineNum)
 {
-    VISA_SurfaceVar *surfaceVar =
-        (VISA_SurfaceVar*)m_kernel->getDeclFromName(surfaceName);
-    if (!surfaceVar) {
-        RecordParseError(lineNo, "undefined surface");
-        return false;
-    }
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    VISA_StateOpndHandle *surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-
-    int ret = m_kernel->AppendVISASurfAccessScatterScaledInst(
+    VISA_CALL_TO_BOOL(AppendVISASurfAccessScatterScaledInst,
                 opcode, static_cast<VISA_PredOpnd *>(pred),
                 eMask, Get_VISA_Exec_Size_From_Raw_Size(execSize),
                 valueToVISASVMBlockNum(numBlocks),
@@ -1910,10 +1969,10 @@ bool CISA_IR_Builder::CISA_create_scatter_scaled_instruction(
                 static_cast<VISA_RawOpnd *>(offsets),
                 static_cast<VISA_RawOpnd *>(dstSrc));
 
-    return ret == VISA_SUCCESS;
+    return true;
 }
 
-bool CISA_IR_Builder::CISA_create_sync_instruction(ISA_Opcode opcode)
+bool CISA_IR_Builder::CISA_create_sync_instruction(ISA_Opcode opcode, int lineNum)
 {
     VISA_INST_Desc *inst_desc = NULL;
     inst_desc = &CISA_INST_table[opcode];
@@ -1925,32 +1984,35 @@ bool CISA_IR_Builder::CISA_create_sync_instruction(ISA_Opcode opcode)
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_sbarrier_instruction(bool isSignal)
+bool CISA_IR_Builder::CISA_create_sbarrier_instruction(bool isSignal, int lineNum)
 {
-    int ret = m_kernel->AppendVISASplitBarrierInst(isSignal);
-    return ret == VISA_SUCCESS;
-}
-
-bool CISA_IR_Builder::CISA_create_FILE_instruction(ISA_Opcode opcode, const char * file_name)
-{
-    m_kernel->AppendVISAMiscFileInst(file_name);
+    VISA_CALL_TO_BOOL(AppendVISASplitBarrierInst, isSignal);
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_LOC_instruction(ISA_Opcode opcode, unsigned int loc)
+bool CISA_IR_Builder::CISA_create_FILE_instruction(
+    ISA_Opcode opcode, const char * file_name, int lineNum)
 {
-    m_kernel->AppendVISAMiscLOC(loc);
+    VISA_CALL_TO_BOOL(AppendVISAMiscFileInst, file_name);
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_invtri_inst(VISA_opnd *pred,
-                                              ISA_Opcode opcode,
-                                              bool  sat,
-                                              VISA_EMask_Ctrl emask,
-                                              unsigned exec_size,
-                                              VISA_opnd *dst,
-                                              VISA_opnd *src0,
-                                              int line_no)
+bool CISA_IR_Builder::CISA_create_LOC_instruction(
+    ISA_Opcode opcode, unsigned int loc, int lineNum)
+{
+    VISA_CALL_TO_BOOL(AppendVISAMiscLOC, loc);
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_invtri_inst(
+    VISA_opnd *pred,
+    ISA_Opcode opcode,
+    bool  sat,
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    VISA_opnd *dst,
+    VISA_opnd *src0,
+    int lineNum)
 {
     int num_operands = 0;
     VISA_INST_Desc *inst_desc = NULL;
@@ -2000,30 +2062,24 @@ bool CISA_IR_Builder::CISA_create_dword_atomic_instruction(
     VISA_opnd *src0,
     VISA_opnd *src1,
     VISA_opnd *dst,
-    int lineNo)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar =
-        (VISA_SurfaceVar*)m_kernel->getDeclFromName(surfaceName);
-    if (!surfaceVar) {
-        RecordParseError(lineNo, "undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle *surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    int ret =
-        m_kernel->AppendVISASurfAccessDwordAtomicInst(
-                static_cast<VISA_PredOpnd *>(pred),
-                subOpc,
-                is16Bit,
-                eMask, Get_VISA_Exec_Size_From_Raw_Size(execSize),
-                surface,
-                static_cast<VISA_RawOpnd *>(offsets),
-                static_cast<VISA_RawOpnd *>(src0),
-                static_cast<VISA_RawOpnd *>(src1),
-                static_cast<VISA_RawOpnd *>(dst));
+    VISA_CALL_TO_BOOL(AppendVISASurfAccessDwordAtomicInst,
+        static_cast<VISA_PredOpnd *>(pred),
+        subOpc,
+        is16Bit,
+        eMask, Get_VISA_Exec_Size_From_Raw_Size(execSize),
+        surface,
+        static_cast<VISA_RawOpnd *>(offsets),
+        static_cast<VISA_RawOpnd *>(src0),
+        static_cast<VISA_RawOpnd *>(src1),
+        static_cast<VISA_RawOpnd *>(dst));
 
-    return ret == VISA_SUCCESS;
+    return true;
 }
 
 bool CISA_IR_Builder::CISA_create_typed_atomic_instruction(
@@ -2040,19 +2096,13 @@ bool CISA_IR_Builder::CISA_create_typed_atomic_instruction(
     VISA_opnd *src0,
     VISA_opnd *src1,
     VISA_opnd *dst,
-    int lineNo)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar =
-        (VISA_SurfaceVar*)m_kernel->getDeclFromName(surfaceName);
-    if (!surfaceVar) {
-        RecordParseError(lineNo, "undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle *surface = nullptr;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    int ret =
-        m_kernel->AppendVISA3dTypedAtomic(
+    VISA_CALL_TO_BOOL(AppendVISA3dTypedAtomic,
         subOpc,
         is16Bit,
         static_cast<VISA_PredOpnd *>(pred),
@@ -2066,13 +2116,13 @@ bool CISA_IR_Builder::CISA_create_typed_atomic_instruction(
         static_cast<VISA_RawOpnd *>(src1),
         static_cast<VISA_RawOpnd *>(dst));
 
-    return ret == VISA_SUCCESS;
+    return true;
 }
 
 bool CISA_IR_Builder::CISA_create_avs_instruction(
     ChannelMask channel,
-    const char* surface_name,
-    const char* sampler_name,
+    const char* surfaceName,
+    const char* samplerName,
     VISA_opnd *u_offset,
     VISA_opnd *v_offset,
     VISA_opnd *deltaU,
@@ -2085,25 +2135,17 @@ bool CISA_IR_Builder::CISA_create_avs_instruction(
     AVSExecMode execMode,
     VISA_opnd *iefbypass,
     VISA_opnd *dst,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, "undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    VISA_SamplerVar *samplerVar = (VISA_SamplerVar *) m_kernel->getDeclFromName(sampler_name);
-    if (!samplerVar) {
-        RecordParseError(line_no, "undefined sampler");
-        return false;
-    }
+    VISA_StateOpndHandle *sampler = CISA_get_sampler_variable(samplerName, lineNum);
+    if (!sampler)
+        return false; // error already reported
 
-    VISA_StateOpndHandle *sampler = NULL;
-    m_kernel->CreateVISAStateOperandHandle(sampler, samplerVar);
-    m_kernel->AppendVISAMEAVS(
+    VISA_CALL_TO_BOOL(AppendVISAMEAVS,
         surface, sampler, channel.getAPI(),
         (VISA_VectorOpnd *)u_offset, (VISA_VectorOpnd *)v_offset, (VISA_VectorOpnd *)deltaU,
         (VISA_VectorOpnd *)deltaV, (VISA_VectorOpnd *)u2d, (VISA_VectorOpnd *)v2d,
@@ -2112,19 +2154,20 @@ bool CISA_IR_Builder::CISA_create_avs_instruction(
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_urb_write_3d_instruction(VISA_opnd* pred,
-                                                           VISA_EMask_Ctrl emask,
-                                                           unsigned exec_size,
-                                                           unsigned int num_out,
-                                                           unsigned int global_offset,
-                                                           VISA_opnd* channel_mask,
-                                                           VISA_opnd* urb_handle,
-                                                           VISA_opnd* per_slot_offset,
-                                                           VISA_opnd* vertex_data,
-                                                           int line_no)
+bool CISA_IR_Builder::CISA_create_urb_write_3d_instruction(
+    VISA_opnd* pred,
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    unsigned int num_out,
+    unsigned int global_offset,
+    VISA_opnd* channel_mask,
+    VISA_opnd* urb_handle,
+    VISA_opnd* per_slot_offset,
+    VISA_opnd* vertex_data,
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISA3dURBWrite(
+    VISA_CALL_TO_BOOL(AppendVISA3dURBWrite,
         (VISA_PredOpnd*)pred, emask, executionSize, (unsigned char)num_out,
         (VISA_RawOpnd*) channel_mask, (unsigned short)global_offset,
         (VISA_RawOpnd*)urb_handle, (VISA_RawOpnd*)per_slot_offset, (VISA_RawOpnd*)vertex_data);
@@ -2136,9 +2179,9 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(
     const char* mode,
     VISA_EMask_Ctrl emask,
     unsigned exec_size,
-    const char* surface_name,
+    const char* surfaceName,
     const std::vector<VISA_opnd*> &operands,
-    int line_no)
+    int lineNum)
 {
     vISA_RT_CONTROLS cntrls;
 
@@ -2234,14 +2277,9 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(
         A = operands[counter++];
     }
 
-
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, "undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
     uint8_t numMsgSpecificOpnd = 0;
     VISA_RawOpnd* rawOpnds[20];
@@ -2261,7 +2299,7 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(
     APPEND_NON_NULL_RAW_OPND(Z);
     APPEND_NON_NULL_RAW_OPND(Stencil);
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISA3dRTWriteCPS(
+    VISA_CALL_TO_BOOL(AppendVISA3dRTWriteCPS,
         (VISA_PredOpnd*)pred, emask, executionSize, (VISA_VectorOpnd*)rti,
         cntrls, surface, (VISA_RawOpnd*)r1Header, (VISA_VectorOpnd*)SamplerIndex,
         (VISA_VectorOpnd*)CPSCounter, numMsgSpecificOpnd, rawOpnds);
@@ -2275,20 +2313,17 @@ bool CISA_IR_Builder::CISA_create_info_3d_instruction(
     VISA_EMask_Ctrl emask,
     unsigned exec_size,
     ChannelMask channel,
-    const char* surface_name,
+    const char* surfaceName,
     VISA_opnd* lod,
     VISA_opnd* dst,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar* surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, "undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle* surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
+
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISA3dInfo(
+    VISA_CALL_TO_BOOL(AppendVISA3dInfo,
         subOpcode, emask, executionSize, channel.getAPI(), surface, (VISA_RawOpnd*)lod, (VISA_RawOpnd*)dst);
     return true;
 }
@@ -2301,36 +2336,28 @@ bool CISA_IR_Builder::createSample4Instruction(
     VISA_EMask_Ctrl emask,
     unsigned exec_size,
     VISA_opnd* aoffimmi,
-    const char* sampler_name,
-    const char* surface_name,
+    const char* samplerName,
+    const char* surfaceName,
     VISA_opnd* dst,
     unsigned int numParameters,
     VISA_RawOpnd** params,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, "undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle *surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    VISA_SamplerVar *samplerVar = (VISA_SamplerVar*)m_kernel->getDeclFromName(sampler_name);
-    if (!samplerVar) {
-        RecordParseError(line_no, "undefined sampler");
-        return false;
-    }
-    VISA_StateOpndHandle * sampler = NULL;
-    m_kernel->CreateVISAStateOperandHandle(sampler, samplerVar);
+    VISA_StateOpndHandle *sampler = CISA_get_sampler_variable(samplerName, lineNum);
+    if (!sampler)
+        return false; // error already reported
 
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
 
     if (channel.getNumEnabledChannels() != 1) {
-        RecordParseError(line_no, "one one of R,G,B,A may be specified for sample4 instruction");
+        RecordParseError(lineNum, "one one of R,G,B,A may be specified for sample4 instruction");
         return false;
     }
-    m_kernel->AppendVISA3dGather4(
+    VISA_CALL_TO_BOOL(AppendVISA3dGather4,
         subOpcode, pixelNullMask, (VISA_PredOpnd*)pred, emask,
         executionSize, channel.getSingleChannel(), (VISA_VectorOpnd*) aoffimmi,
         sampler, surface, (VISA_RawOpnd*) dst, numParameters, params);
@@ -2346,23 +2373,18 @@ bool CISA_IR_Builder::create3DLoadInstruction(
     VISA_EMask_Ctrl emask,
     unsigned exec_size,
     VISA_opnd *aoffimmi,
-    const char* surface_name,
+    const char* surfaceName,
     VISA_opnd* dst,
     unsigned int numParameters,
     VISA_RawOpnd** params,
-    int line_no)
+    int lineNum)
 {
-
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, "undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISA3dLoad(
+    VISA_CALL_TO_BOOL(AppendVISA3dLoad,
         subOpcode, pixelNullMask, (VISA_PredOpnd*)pred, emask,
         executionSize, channels.getAPI(), (VISA_VectorOpnd*) aoffimmi,
         surface, (VISA_RawOpnd*)dst, numParameters, params);
@@ -2379,85 +2401,69 @@ bool CISA_IR_Builder::create3DSampleInstruction(
     VISA_EMask_Ctrl emask,
     unsigned exec_size,
     VISA_opnd* aoffimmi,
-    const char* sampler_name,
-    const char* surface_name,
+    const char* samplerName,
+    const char* surfaceName,
     VISA_opnd* dst,
     unsigned int numParameters,
     VISA_RawOpnd** params,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, surface_name, ": undefined surface");
-        return false;
+    VISA_StateOpndHandle *surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface) {
+        return false; // error already reported
     }
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
 
-    VISA_SamplerVar *samplerVar = (VISA_SamplerVar*)m_kernel->getDeclFromName(sampler_name);
-    if (!samplerVar) {
-        RecordParseError(line_no, sampler_name, ": undefined sampler");
-        return false;
+    VISA_StateOpndHandle *sampler = CISA_get_sampler_variable(samplerName, lineNum);
+    if (!sampler) {
+        return false; // error already reported
     }
-    VISA_StateOpndHandle * sampler = NULL;
-    m_kernel->CreateVISAStateOperandHandle(sampler, samplerVar);
 
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISA3dSampler(
-        subOpcode, pixelNullMask, cpsEnable, uniformSampler, (VISA_PredOpnd*)pred, emask,
-        executionSize, channels.getAPI(), (VISA_VectorOpnd*) aoffimmi,
+
+    VISA_CALL_TO_BOOL(AppendVISA3dSampler,
+        subOpcode, pixelNullMask, cpsEnable, uniformSampler,
+        (VISA_PredOpnd*)pred, emask, executionSize, channels.getAPI(),
+        (VISA_VectorOpnd*)aoffimmi,
         sampler, surface, (VISA_RawOpnd*)dst, numParameters, params);
     return true;
-
 }
 
 bool CISA_IR_Builder::CISA_create_sample_instruction(
     ISA_Opcode opcode,
     ChannelMask channel,
     int simd_mode,
-    const char* sampler_name,
-    const char* surface_name,
+    const char* samplerName,
+    const char* surfaceName,
     VISA_opnd *u_opnd,
     VISA_opnd *v_opnd,
     VISA_opnd *r_opnd,
     VISA_opnd *dst,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar* surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, surface_name, ": undefined surface");
-        return false;
-    }
-    VISA_StateOpndHandle* surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-
-    int status = VISA_SUCCESS;
+    VISA_StateOpndHandle* surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
     if (opcode == ISA_SAMPLE)
     {
-        VISA_SamplerVar* samplerVar = (VISA_SamplerVar*)m_kernel->getDeclFromName(sampler_name);
-        if (!samplerVar) {
-            RecordParseError(line_no, sampler_name, ": undefined sampler");
-            return false;
-        }
-        VISA_StateOpndHandle* sampler = NULL;
-        m_kernel->CreateVISAStateOperandHandle(sampler, samplerVar);
+        VISA_StateOpndHandle* sampler = CISA_get_sampler_variable(samplerName, lineNum);
+        if (!sampler)
+            return false; // error recorded
 
-        status = m_kernel->AppendVISASISample(
+        VISA_CALL_TO_BOOL(AppendVISASISample,
             vISA_EMASK_M1, surface, sampler, channel.getAPI(), simd_mode == 16,
             (VISA_RawOpnd*)u_opnd, (VISA_RawOpnd*)v_opnd, (VISA_RawOpnd*)r_opnd, (VISA_RawOpnd*)dst);
 
     } else if (opcode == ISA_LOAD) {
-        status = m_kernel->AppendVISASILoad(
+        VISA_CALL_TO_BOOL(AppendVISASILoad,
             surface, channel.getAPI(), simd_mode == 16,
             (VISA_RawOpnd*)u_opnd, (VISA_RawOpnd*)v_opnd,
             (VISA_RawOpnd*)r_opnd, (VISA_RawOpnd*)dst);
     } else {
-        MUST_BE_TRUE1(false, line_no, "unsupported sampler mnemonic");
+        RecordParseError(lineNum, (int)opcode, ": unsupported sampler mnemonic");
         return false;
     }
 
-    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Failed to create SAMPLE or LOAD instruction.");
     return true;
 }
 
@@ -2465,35 +2471,28 @@ bool CISA_IR_Builder::CISA_create_sampleunorm_instruction(
     ISA_Opcode opcode,
     ChannelMask channel,
     CHANNEL_OUTPUT_FORMAT out,
-    const char* sampler_name,
-    const char* surface_name,
+    const char* samplerName,
+    const char* surfaceName,
     VISA_opnd *src0,
     VISA_opnd *src1,
     VISA_opnd *src2,
     VISA_opnd *src3,
     VISA_opnd *dst,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, surface_name, ": undefined surface");
-        return false;
-    }
+    VISA_StateOpndHandle* surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
+    VISA_StateOpndHandle* sampler = CISA_get_sampler_variable(samplerName, lineNum);
+    if (!sampler)
+        return false; // error recorded
 
-    VISA_SamplerVar *samplerVar = (VISA_SamplerVar *)m_kernel->getDeclFromName(sampler_name);
-    if (!samplerVar) {
-        RecordParseError(line_no, "undefined sampler");
-        return false;
-    }
-    VISA_StateOpndHandle *sampler = NULL;
-    m_kernel->CreateVISAStateOperandHandle(sampler, samplerVar);
-    m_kernel->AppendVISASISampleUnorm(
+    VISA_CALL_TO_BOOL(AppendVISASISampleUnorm,
         surface, sampler, channel.getAPI(),
         (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1, (VISA_VectorOpnd *)src2,
         (VISA_VectorOpnd *)src3, (VISA_RawOpnd *)dst, out);
+
     return true;
 }
 
@@ -2503,22 +2502,18 @@ bool CISA_IR_Builder::CISA_create_vme_ime_instruction(
     unsigned char searchCtrl,
     VISA_opnd *input_opnd,
     VISA_opnd *ime_input_opnd,
-    const char* surface_name,
+    const char* surfaceName,
     VISA_opnd *ref0_opnd,
     VISA_opnd *ref1_opnd,
     VISA_opnd *costCenter_opnd,
     VISA_opnd *dst_opnd,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, surface_name, ": undefined surface");
-        return false;
-    }
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-    m_kernel->AppendVISAMiscVME_IME(
+    VISA_CALL_TO_BOOL(AppendVISAMiscVME_IME,
         surface, stream_mode, searchCtrl, (VISA_RawOpnd *)input_opnd,
         (VISA_RawOpnd *)ime_input_opnd, (VISA_RawOpnd *)ref0_opnd,
         (VISA_RawOpnd *)ref1_opnd, (VISA_RawOpnd *)costCenter_opnd,
@@ -2531,20 +2526,19 @@ bool CISA_IR_Builder::CISA_create_vme_sic_instruction(
     ISA_Opcode opcode,
     VISA_opnd *input_opnd,
     VISA_opnd *sic_input_opnd,
-    const char* surface_name,
+    const char* surfaceName,
     VISA_opnd *dst,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, surface_name, ": undefined surface");
-        return false;
-    }
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-    m_kernel->AppendVISAMiscVME_SIC(
-        surface, (VISA_RawOpnd *)input_opnd, (VISA_RawOpnd *)sic_input_opnd, (VISA_RawOpnd *)dst);
+    VISA_CALL_TO_BOOL(AppendVISAMiscVME_SIC,
+        surface,
+        (VISA_RawOpnd *)input_opnd,
+        (VISA_RawOpnd *)sic_input_opnd,
+        (VISA_RawOpnd *)dst);
     return true;
 }
 
@@ -2552,31 +2546,28 @@ bool CISA_IR_Builder::CISA_create_vme_fbr_instruction(
     ISA_Opcode opcode,
     VISA_opnd *input_opnd,
     VISA_opnd *fbr_input_opnd,
-    const char* surface_name,
+    const char* surfaceName,
     VISA_opnd* fbrMbMode,
     VISA_opnd* fbrSubMbShape,
     VISA_opnd* fbrSubPredMode,
     VISA_opnd *dst,
-    int line_no)
+    int lineNum)
 {
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    if (!surfaceVar) {
-        RecordParseError(line_no, surface_name, ": undefined surface");
-        return false;
-    }
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
 
-    VISA_StateOpndHandle * surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-    m_kernel->AppendVISAMiscVME_FBR(surface,
+    VISA_CALL_TO_BOOL(AppendVISAMiscVME_FBR,
+        surface,
         (VISA_RawOpnd *)input_opnd, (VISA_RawOpnd *)fbr_input_opnd,
         (VISA_VectorOpnd *)fbrMbMode, (VISA_VectorOpnd *)fbrSubMbShape,
         (VISA_VectorOpnd *)fbrSubPredMode, (VISA_RawOpnd *)dst);
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_NO_OPND_instruction(ISA_Opcode opcode)
+bool CISA_IR_Builder::CISA_create_NO_OPND_instruction(ISA_Opcode opcode, int lineNum)
 {
-    m_kernel->AppendVISASyncInst(opcode);
+    VISA_CALL_TO_BOOL(AppendVISASyncInst, opcode);
     return true;
 }
 
@@ -2586,7 +2577,7 @@ bool CISA_IR_Builder::CISA_create_switch_instruction(
     VISA_opnd *indexOpnd,
     int numLabels,
     char ** labels,
-    int line_no)
+    int lineNum)
 {
     VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
     VISA_opnd *opnd[35];
@@ -2596,8 +2587,8 @@ bool CISA_IR_Builder::CISA_create_switch_instruction(
     opnd[num_operands] = (VISA_opnd *)m_mem.alloc(sizeof(VISA_opnd));
     opnd[num_operands]->_opnd.other_opnd = numLabels; //real ID will be set during kernel finalization
     opnd[num_operands]->opnd_type = CISA_OPND_OTHER;
-    opnd[num_operands]->size = (unsigned short) Get_VISA_Type_Size((VISA_Type)inst_desc->opnd_desc[num_pred_desc_operands].data_type);
-    opnd[num_operands]->tag = (unsigned char) inst_desc->opnd_desc[num_pred_desc_operands].opnd_type;
+    opnd[num_operands]->size = (unsigned short)Get_VISA_Type_Size((VISA_Type)inst_desc->opnd_desc[num_pred_desc_operands].data_type);
+    opnd[num_operands]->tag = (unsigned char)inst_desc->opnd_desc[num_pred_desc_operands].opnd_type;
     num_operands++;
 
     //global offset
@@ -2609,7 +2600,7 @@ bool CISA_IR_Builder::CISA_create_switch_instruction(
 
     for (int i = numLabels - 1; i >= 0; i--)
     {
-        //TODO: FIX
+        //TODO: FIX (fix what??)
         //m_kernel->string_pool_lookup_and_insert_branch_targets(labels[i], LABEL_VAR, ISA_TYPE_UW); //Will be checked after whole analysis of the text
         opnd[num_operands] = m_kernel->CreateOtherOpndHelper(
             num_pred_desc_operands, 2, inst_desc,
@@ -2617,7 +2608,10 @@ bool CISA_IR_Builder::CISA_create_switch_instruction(
         num_operands++;
     }
 
-    m_kernel->AppendVISACFSwitchJMPInst((VISA_VectorOpnd *)indexOpnd, (unsigned char)numLabels, (VISA_LabelOpnd **)opnd);
+    VISA_CALL_TO_BOOL(AppendVISACFSwitchJMPInst,
+        (VISA_VectorOpnd *)indexOpnd,
+        (unsigned char)numLabels,
+        (VISA_LabelOpnd **)opnd);
 
     for (int i = 0; i< numLabels; i++)
     {
@@ -2640,10 +2634,10 @@ bool CISA_IR_Builder::CISA_create_fcall_instruction(
     const char* funcName,
     unsigned arg_size,
     unsigned return_size,
-    int line_no) //last index
+    int lineNum) //last index
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISACFFunctionCallInst(
+    VISA_CALL_TO_BOOL(AppendVISACFFunctionCallInst,
         (VISA_PredOpnd *)pred_opnd,emask, executionSize, std::string(funcName),
         (unsigned char)arg_size, (unsigned char)return_size);
     return true;
@@ -2655,18 +2649,19 @@ bool CISA_IR_Builder::CISA_create_ifcall_instruction(VISA_opnd *pred_opnd,
     VISA_opnd* funcAddr,
     unsigned arg_size,
     unsigned return_size,
-    int line_no) //last index
+    int lineNum) //last index
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISACFIndirectFuncCallInst((VISA_PredOpnd *)pred_opnd, emask, executionSize,
+    VISA_CALL_TO_BOOL(AppendVISACFIndirectFuncCallInst,
+        (VISA_PredOpnd *)pred_opnd, emask, executionSize,
         (VISA_VectorOpnd*) funcAddr, (uint8_t) arg_size, (uint8_t) return_size);
     return true;
 }
 
 bool CISA_IR_Builder::CISA_create_faddr_instruction(
-    const char* sym_name, VISA_opnd* dst, int line_no)
+    const char* sym_name, VISA_opnd* dst, int lineNum)
 {
-    m_kernel->AppendVISACFSymbolInst(std::string(sym_name), (VISA_VectorOpnd*) dst);
+    VISA_CALL_TO_BOOL(AppendVISACFSymbolInst, std::string(sym_name), (VISA_VectorOpnd*) dst);
     return true;
 }
 
@@ -2682,42 +2677,43 @@ bool CISA_IR_Builder::CISA_create_raw_send_instruction(
     VISA_opnd *Desc,
     VISA_opnd *Src,
     VISA_opnd *Dst,
-    int line_no)
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISAMiscRawSend(
+    VISA_CALL_TO_BOOL(AppendVISAMiscRawSend,
         (VISA_PredOpnd *) pred_opnd, emask, executionSize, modifier, exMsgDesc, srcSize, dstSize,
         (VISA_VectorOpnd *)Desc, (VISA_RawOpnd *)Src, (VISA_RawOpnd *)Dst);
     return true;
 }
 
 bool CISA_IR_Builder::CISA_create_lifetime_inst(
-    unsigned char startOrEnd, const char *src, int line_no)
+    unsigned char startOrEnd, const char *src, int lineNum)
 {
     // src is a string representation of variable.
     // Scan entire symbol table to find variable whose name
     // corresponds to src.
     CISA_GEN_VAR *cisaVar = m_kernel->getDeclFromName(src);
     if (!cisaVar) {
-        RecordParseError(line_no, "lifetime operand not found");
+        RecordParseError(lineNum, "lifetime operand not found");
         return false;
     }
 
     VISA_opnd *var = NULL;
-    if (cisaVar->type == GENERAL_VAR)
-    {
-        var = CISA_create_gen_src_operand(src, 0, 1, 0, 0, 0, MODIFIER_NONE, line_no);
+    if (cisaVar->type == GENERAL_VAR) {
+        var = CISA_create_gen_src_operand(src, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
     }
-    else if (cisaVar->type == ADDRESS_VAR)
-    {
-        var = CISA_set_address_operand(cisaVar, 0, 1, (startOrEnd == 0));
+    else if (cisaVar->type == ADDRESS_VAR) {
+        var = CISA_set_address_operand(cisaVar, 0, 1, (startOrEnd == 0), lineNum);
     }
-    else if (cisaVar->type == PREDICATE_VAR)
-    {
-        var = CISA_create_predicate_operand(cisaVar, PredState_NO_INVERSE, PRED_CTRL_NON, line_no);
+    else if (cisaVar->type == PREDICATE_VAR) {
+        var = CISA_create_predicate_operand(cisaVar, PredState_NO_INVERSE, PRED_CTRL_NON, lineNum);
+    } else {
+        RecordParseError(lineNum, src, ": invalid variable type for lifetime");
+        return false;
     }
-    m_kernel->AppendVISALifetime((VISAVarLifetime)startOrEnd, (VISA_VectorOpnd*)var);
 
+    VISA_CALL_TO_BOOL(AppendVISALifetime,
+        (VISAVarLifetime)startOrEnd, (VISA_VectorOpnd*)var);
     return true;
 }
 
@@ -2737,78 +2733,87 @@ bool CISA_IR_Builder::CISA_create_raw_sends_instruction(
     VISA_opnd *Src0,
     VISA_opnd *Src1,
     VISA_opnd *Dst,
-    int line_no)
+    int lineNum)
 {
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISAMiscRawSends(
+
+    VISA_CALL_TO_BOOL(AppendVISAMiscRawSends,
         (VISA_PredOpnd *) pred_opnd, emask, executionSize, modifier, ffid,
         (VISA_VectorOpnd *)exMsgDesc, src0Size, src1Size, dstSize,
         (VISA_VectorOpnd *)Desc, (VISA_RawOpnd *)Src0, (VISA_RawOpnd *)Src1,
         (VISA_RawOpnd *)Dst, hasEOT);
+
     return true;
 }
 /*
 Should be only called from CISA 2.4+
 */
-bool CISA_IR_Builder::CISA_create_fence_instruction(ISA_Opcode opcode, unsigned char mode)
+bool CISA_IR_Builder::CISA_create_fence_instruction(ISA_Opcode opcode, unsigned char mode, int lineNum)
 {
-     m_kernel->AppendVISASyncInst(opcode, mode);
+    VISA_CALL_TO_BOOL(AppendVISASyncInst, opcode, mode);
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_wait_instruction(VISA_opnd* mask)
+bool CISA_IR_Builder::CISA_create_wait_instruction(VISA_opnd* mask, int lineNum)
 {
-    m_kernel->AppendVISAWaitInst((VISA_VectorOpnd*) mask);
+    VISA_CALL_TO_BOOL(AppendVISAWaitInst, (VISA_VectorOpnd*) mask);
     return true;
 }
 
 
 /*** CISA 3.0 and later ***/
-bool CISA_IR_Builder::CISA_create_yield_instruction(ISA_Opcode opcode)
+bool CISA_IR_Builder::CISA_create_yield_instruction(ISA_Opcode opcode, int lineNum)
 {
-    m_kernel->AppendVISASyncInst(opcode);
+    VISA_CALL_TO_BOOL(AppendVISASyncInst, opcode);
     return true;
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_create_gen_src_operand(
     const char* var_name, short v_stride, short width, short h_stride,
-    unsigned char row_offset, unsigned char col_offset, VISA_Modifier mod, int line_no)
+    unsigned char row_offset, unsigned char col_offset, VISA_Modifier mod, int lineNum)
 {
-    VISA_VectorOpnd *cisa_opnd = NULL;
-    int status = VISA_SUCCESS;
     auto *decl =  (VISA_GenVar*)m_kernel->getDeclFromName(var_name);
     if (!decl) {
-        RecordParseError(line_no, var_name, ": unbound identifier");
+        RecordParseError(lineNum, var_name, ": unbound identifier");
+        return nullptr;
+    } else if (decl->type != GENERAL_VAR) {
+        RecordParseError(lineNum, var_name, ": not a general register variable");
         return nullptr;
     }
-    status = m_kernel->CreateVISASrcOperand(cisa_opnd, decl, mod, v_stride, width, h_stride, row_offset, col_offset);
-    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Failed to create cisa src operand.");
+
+    VISA_VectorOpnd *cisa_opnd = nullptr;
+    int status = m_kernel->CreateVISASrcOperand(cisa_opnd, decl, mod, v_stride, width, h_stride, row_offset, col_offset);
+    if (status != VISA_SUCCESS)
+        RecordParseError(lineNum, "unknown error creating src operand");
     return (VISA_opnd *)cisa_opnd;
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_dst_general_operand(
     const char * var_name,
     unsigned char roff, unsigned char sroff,
-    unsigned short hstride, int line_no)
+    unsigned short hstride, int lineNum)
 {
-    VISA_VectorOpnd *cisa_opnd = NULL;
-    int status = VISA_SUCCESS;
     auto *decl = (VISA_GenVar *)m_kernel->getDeclFromName(var_name);
     if (!decl) {
-        RecordParseError(line_no, var_name, ": unbound identifier");
+        RecordParseError(lineNum, var_name, ": unbound identifier");
+        return nullptr;
+    } else if (decl->type != GENERAL_VAR) {
+        RecordParseError(lineNum, var_name, ": not a general register variable");
         return nullptr;
     }
-    status = m_kernel->CreateVISADstOperand(cisa_opnd, decl, hstride, roff, sroff);
-    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Failed to create cisa dst operand.");
+
+    VISA_VectorOpnd *cisa_opnd = nullptr;
+    int status = m_kernel->CreateVISADstOperand(cisa_opnd, decl, hstride, roff, sroff);
+    if (status != VISA_SUCCESS)
+        RecordParseError(lineNum, "unknown error creating dst operand");
     return (VISA_opnd *)cisa_opnd;
 }
 
-VISA_opnd * CISA_IR_Builder::CISA_create_immed(uint64_t value, VISA_Type type, int line_no)
+VISA_opnd * CISA_IR_Builder::CISA_create_immed(uint64_t value, VISA_Type type, int lineNum)
 {
     VISA_VectorOpnd *cisa_opnd = NULL;
-    int status = VISA_SUCCESS;
-    status =  m_kernel->CreateVISAImmediate(cisa_opnd, &value, type);
-    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "could not create immediate");
+
+    VISA_CALL_TO_NULLPTR(CreateVISAImmediate, cisa_opnd, &value, type);
     if (type == ISA_TYPE_Q || type == ISA_TYPE_UQ)
     {
         cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.lval = value;
@@ -2820,17 +2825,17 @@ VISA_opnd * CISA_IR_Builder::CISA_create_immed(uint64_t value, VISA_Type type, i
     return (VISA_opnd *)cisa_opnd;
 }
 
-VISA_opnd * CISA_IR_Builder::CISA_create_float_immed(double value, VISA_Type type, int line_no)
+VISA_opnd * CISA_IR_Builder::CISA_create_float_immed(double value, VISA_Type type, int lineNum)
 {
-    VISA_VectorOpnd *cisa_opnd = NULL;
+    VISA_VectorOpnd *cisa_opnd = nullptr;
     if (type == ISA_TYPE_F)
     {
         float temp = (float)value;
-        m_kernel->CreateVISAImmediate(cisa_opnd, &temp, type);
+        VISA_CALL_TO_NULLPTR(CreateVISAImmediate, cisa_opnd, &temp, type);
     }
     else
     {
-        m_kernel->CreateVISAImmediate(cisa_opnd, &value, type);
+        VISA_CALL_TO_NULLPTR(CreateVISAImmediate, cisa_opnd, &value, type);
     }
 
     return (VISA_opnd *)cisa_opnd;
@@ -2842,64 +2847,59 @@ CISA_GEN_VAR * CISA_IR_Builder::CISA_find_decl(const char *var_name)
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_set_address_operand(
-    CISA_GEN_VAR * cisa_decl, unsigned char offset, short width, bool isDst)
+    CISA_GEN_VAR * cisa_decl, unsigned char offset, short width, bool isDst, int lineNum)
 {
-    VISA_VectorOpnd *cisa_opnd = NULL;
-    int status = VISA_SUCCESS;
-    status = m_kernel->CreateVISAAddressOperand(cisa_opnd, (VISA_AddrVar *)cisa_decl, offset, width, isDst);
-    if (status != VISA_SUCCESS)
-    {
-        assert(0);
-        return NULL;
-    }
+    VISA_VectorOpnd *cisa_opnd = nullptr;
+    VISA_CALL_TO_NULLPTR(CreateVISAAddressOperand,
+        cisa_opnd, (VISA_AddrVar *)cisa_decl, offset, width, isDst);
 
     return (VISA_opnd *)cisa_opnd;
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_set_address_expression(
-    CISA_GEN_VAR *cisa_decl, short offset)
+    CISA_GEN_VAR *cisa_decl, short offset, int lineNum)
 {
     VISA_VectorOpnd *cisa_opnd = NULL;
-    m_kernel->CreateVISAAddressOfOperand(cisa_opnd, (VISA_GenVar *)cisa_decl, offset);
+    VISA_CALL_TO_NULLPTR(CreateVISAAddressOfOperand,
+        cisa_opnd, (VISA_GenVar *)cisa_decl, offset);
     return (VISA_opnd *)cisa_opnd;
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_create_indirect(
-    CISA_GEN_VAR * cisa_decl,VISA_Modifier mod, unsigned short row_offset,
+    CISA_GEN_VAR * cisa_decl, VISA_Modifier mod, unsigned short row_offset,
     unsigned char col_offset, unsigned short immedOffset,
     unsigned short vertical_stride, unsigned short width,
-    unsigned short horizontal_stride, VISA_Type type)
+    unsigned short horizontal_stride, VISA_Type type, int lineNum)
 {
     VISA_VectorOpnd *cisa_opnd = NULL;
-    m_kernel->CreateVISAIndirectSrcOperand(
+    VISA_CALL_TO_NULLPTR(CreateVISAIndirectSrcOperand,
         cisa_opnd, (VISA_AddrVar*)cisa_decl, mod, col_offset,
         immedOffset, vertical_stride, width, horizontal_stride, type);
     return cisa_opnd;
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_create_indirect_dst(
-    CISA_GEN_VAR * cisa_decl,VISA_Modifier mod, unsigned short row_offset,
+    CISA_GEN_VAR * cisa_decl, VISA_Modifier mod, unsigned short row_offset,
     unsigned char col_offset, unsigned short immedOffset,
-    unsigned short horizontal_stride, VISA_Type type)
+    unsigned short horizontal_stride, VISA_Type type, int lineNum)
 {
-    VISA_VectorOpnd *cisa_opnd = NULL;
-    m_kernel->CreateVISAIndirectDstOperand(
+    MUST_BE_TRUE(cisa_decl->type == ADDRESS_VAR, "predication variable type is wrong"); // grammar enforced
+    VISA_VectorOpnd *cisa_opnd = nullptr;
+    VISA_CALL_TO_NULLPTR(CreateVISAIndirectDstOperand,
         cisa_opnd, (VISA_AddrVar*)cisa_decl, col_offset, immedOffset, horizontal_stride, type);
     return (VISA_opnd *)cisa_opnd;
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_create_state_operand(
-    const char * var_name, unsigned char offset, int line_no, bool isDst)
+    const char * var_name, unsigned char offset, int lineNum, bool isDst)
 {
-
-    CISA_GEN_VAR *decl = m_kernel->getDeclFromName(std::string(var_name));
-    if (!decl) {
-        RecordParseError(line_no, "undefined state operand");
+    CISA_GEN_VAR *decl = m_kernel->getDeclFromName(var_name);
+    if (decl == nullptr) {
+        RecordParseError(lineNum, var_name, ": undefined state operand");
         return nullptr;
     }
 
-    VISA_VectorOpnd * cisa_opnd = NULL;
-
+    VISA_VectorOpnd * cisa_opnd = nullptr;
     int status = VISA_SUCCESS;
     switch (decl->type)
     {
@@ -2910,45 +2910,56 @@ VISA_opnd * CISA_IR_Builder::CISA_create_state_operand(
         status = m_kernel->CreateVISAStateOperand(cisa_opnd, (VISA_SamplerVar *)decl, offset, isDst);
         break;
     default:
-        MUST_BE_TRUE1(false, line_no, "Incorrect declaration type.");
+        RecordParseError(lineNum, var_name, ": invalid variable type for state operand");
+        break;
     }
 
-    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Was not able to create State Operand.");
+    if (status != VISA_SUCCESS) {
+        RecordParseError(lineNum, "unknown error creating state operand");
+    }
+
     return (VISA_opnd *)cisa_opnd;
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_create_predicate_operand(
     CISA_GEN_VAR *decl, VISA_PREDICATE_STATE state,
-    VISA_PREDICATE_CONTROL control, int line_no)
+    VISA_PREDICATE_CONTROL control, int lineNum)
 {
+    MUST_BE_TRUE1(decl->type == PREDICATE_VAR, lineNum, "predication variable type is wrong"); // parser enforces type
     VISA_PredOpnd *cisa_opnd = nullptr;
-    int status = VISA_SUCCESS;
-    m_kernel->CreateVISAPredicateOperand(cisa_opnd, (VISA_PredVar *)decl, state, control);
-    MUST_BE_TRUE1((status == VISA_SUCCESS), line_no, "Failed to create predicate operand.");
+    int status = m_kernel->CreateVISAPredicateOperand(cisa_opnd, (VISA_PredVar *)decl, state, control);
+    MUST_BE_TRUE1((status == VISA_SUCCESS), lineNum, "Failed to create predicate operand.");
+    if (status != VISA_SUCCESS) {
+        RecordParseError(lineNum, "unknown error creating predicate operand");
+    }
     return (VISA_opnd *)cisa_opnd;
 }
 
-VISA_opnd * CISA_IR_Builder::CISA_create_RAW_NULL_operand(int line_no)
+VISA_opnd * CISA_IR_Builder::CISA_create_RAW_NULL_operand(int lineNum)
 {
-    VISA_RawOpnd *cisa_opnd = NULL;
-    int status = VISA_SUCCESS;
-    status = m_kernel->CreateVISANullRawOperand(cisa_opnd, true);
-    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Was not able to create NULL RAW operand.");
+    VISA_RawOpnd *cisa_opnd = nullptr;
+    int status = m_kernel->CreateVISANullRawOperand(cisa_opnd, true);
+    MUST_BE_TRUE1(status == VISA_SUCCESS, lineNum, "Was not able to create NULL RAW operand.");
+    if (status != VISA_SUCCESS) {
+        RecordParseError(lineNum, "unknown error creating raw null operand");
+    }
     return (VISA_opnd *)cisa_opnd;
 }
 
 VISA_opnd * CISA_IR_Builder::CISA_create_RAW_operand(
-    const char * var_name, unsigned short offset, int line_no)
+    const char * var_name, unsigned short offset, int lineNum)
 {
     VISA_RawOpnd *cisa_opnd = NULL;
     auto *decl = (VISA_GenVar *)m_kernel->getDeclFromName(var_name);
     if (decl == nullptr) {
-        RecordParseError(line_no, "undefined raw operand variable");
+        RecordParseError(lineNum, var_name, ": undefined raw operand variable");
         return nullptr;
     }
     int status = m_kernel->CreateVISARawOperand(cisa_opnd, decl, offset);
-    MUST_BE_TRUE1(status == VISA_SUCCESS, line_no, "Was not able to create RAW operand.");
-    return (VISA_opnd *)cisa_opnd; //delay the decision of src or dst until translate stage
+    if (status != VISA_SUCCESS) {
+        RecordParseError(lineNum, "unknown error creating raw operand");
+    }
+    return (VISA_opnd *)cisa_opnd; // delay the decision of src or dst until translate stage
 }
 
 void CISA_IR_Builder::CISA_push_decl_scope()

@@ -351,8 +351,7 @@ int CisaBinary::dumpToFile(std::string binFileName)
     std::ofstream os(binFileName.c_str(), ios::binary|ios::out);
     if (!os)
     {
-        assert(0);
-        std::cerr<<"Could not open %s"<< binFileName.c_str()<<std::endl;
+        std::cerr << binFileName << ": unable to open output file\n";
         return VISA_FAILURE;
     }
     int result = dumpToStream(&os);
