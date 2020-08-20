@@ -409,10 +409,14 @@ void restoreFCallState(
     for (auto&& iter : savedFCallState)
     {
         auto curBB = iter.first;
+        auto genOffset = curBB->back()->getGenOffset();
         curBB->pop_back();
         auto origInst = iter.second;
         assert(origInst->isFCall() || origInst->isFReturn());
         curBB->push_back(origInst);
+        // set the genOffset in case of GenOffset being used when creating symbol table
+        origInst->setGenOffset(genOffset);
+
         if (origInst->isFCall() && !origInst->asCFInst()->isIndirectCall())
         {
             // curBB must have a physical successor as we don't allow calls that do not return
