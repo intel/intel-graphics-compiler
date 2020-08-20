@@ -806,7 +806,69 @@ void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
     V_PRINT(scalarizer, "\t\tGEP instruction\n");
     IGC_ASSERT_MESSAGE(GI, "instruction type dynamic cast failed");
 
-    return recoverNonScalarizableInst(GI);
+    // If it has more than one index, leave it as is.
+    if (GI->getNumIndices() != 1)
+    {
+        return recoverNonScalarizableInst(GI);
+    }
+    Value* baseValue = GI->getOperand(0);
+    Value* indexValue = GI->getOperand(1);
+
+    // If it's not a vector instruction, leave it as is.
+    if (!baseValue->getType()->isVectorTy() && !indexValue->getType()->isVectorTy())
+    {
+        return recoverNonScalarizableInst(GI);
+    }
+    SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand1;
+    SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand2;
+    Type* ptrTy;
+    unsigned width = 1;
+
+    if (baseValue->getType()->isVectorTy())
+    {
+        width = int_cast<unsigned>(dyn_cast<VectorType>(baseValue->getType())->getNumElements());
+        // Obtain the scalarized operands
+        obtainScalarizedValues(operand1, NULL, baseValue, GI);
+        ptrTy = dyn_cast<VectorType>(baseValue->getType())->getElementType();
+    }
+    else
+    {
+        ptrTy = baseValue->getType();
+    }
+    if (indexValue->getType()->isVectorTy())
+    {
+        width = int_cast<unsigned>(dyn_cast<VectorType>(indexValue->getType())->getNumElements());
+        // Obtain the scalarized operands
+        obtainScalarizedValues(operand2, NULL, indexValue, GI);
+    }
+    IGC_ASSERT_MESSAGE(width > 1, "expected vector instruction");
+    SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>scalarValues;
+    scalarValues.resize(width);
+
+    Value* assembledVector = UndefValue::get(llvm::VectorType::get(ptrTy, width));
+    for (unsigned i = 0; i < width; ++i)
+    {
+        auto op1 = baseValue->getType()->isVectorTy() ? operand1[i] : baseValue;
+        auto op2 = indexValue->getType()->isVectorTy() ? operand2[i] : indexValue;
+
+        Value* newGEP = GetElementPtrInst::Create(nullptr, op1, op2, "", GI);
+        Value* constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
+        Instruction* insert = InsertElementInst::Create(assembledVector,
+            newGEP, constIndex, "assembled.vect", GI);
+        assembledVector = insert;
+        scalarValues[i] = newGEP;
+
+        V_PRINT(scalarizer,
+            "\t\t\tCreated vector assembly inst:" << *assembledVector << "\n");
+    }
+    // Prepare empty SCM entry for the new instruction
+    SCMEntry* newEntry = getSCMEntry(assembledVector);
+    // Add new value/s to SCM
+    updateSCMEntryWithValues(newEntry, &(scalarValues[0]), assembledVector, true);
+    GI->replaceAllUsesWith(assembledVector);
+
+    // Remove original instruction
+    m_removedInsts.insert(GI);
 }
 
 void ScalarizeFunction::scalarizeInstruction(LoadInst* LI)

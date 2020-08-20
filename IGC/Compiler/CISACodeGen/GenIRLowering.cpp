@@ -448,8 +448,18 @@ bool GEPLowering::runOnFunction(Function& F) {
 
 Value* GEPLowering::getSExtOrTrunc(Value* Val, Type* NewTy) const {
     Type* OldTy = Val->getType();
-    unsigned OldWidth = OldTy->getIntegerBitWidth();
-    unsigned NewWidth = NewTy->getIntegerBitWidth();
+    unsigned OldWidth;
+    unsigned NewWidth;
+
+    IGC_ASSERT_MESSAGE(OldTy->isIntOrIntVectorTy(), "Index should be Integer or vector of Integer!");
+    if (OldTy->isVectorTy()) {
+        OldWidth = OldTy->getVectorNumElements() * OldTy->getVectorElementType()->getIntegerBitWidth();
+        NewWidth = OldTy->getVectorNumElements() * NewTy->getIntegerBitWidth();
+    }
+    else {
+        OldWidth = OldTy->getIntegerBitWidth();
+        NewWidth = NewTy->getIntegerBitWidth();
+    }
 
     if (OldWidth < NewWidth) { // SExt
         return Builder->CreateSExt(Val, NewTy);
@@ -794,6 +804,13 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP) const
                 }
                 else
                 {
+                    if (NewIdx->getType()->isVectorTy()) {
+                        Value* result = llvm::UndefValue::get(llvm::VectorType::get(PtrMathTy, NewIdx->getType()->getVectorNumElements()));
+                        for (uint32_t j = 0; j < NewIdx->getType()->getVectorNumElements(); j++) {
+                            result = Builder->CreateInsertElement(result, PointerValue, Builder->getInt32(j));
+                        }
+                        PointerValue = result;
+                    }
                     PointerValue = Builder->CreateAdd(PointerValue, NewIdx);
                     if (COffset)
                     {
