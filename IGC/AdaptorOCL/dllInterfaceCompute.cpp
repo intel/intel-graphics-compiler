@@ -236,7 +236,9 @@ bool CIGCTranslationBlock::Translate(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs )
 {
-  // Create a copy of input arguments that can be modified
+    LoadRegistryKeys();
+
+    // Create a copy of input arguments that can be modified
     STB_TranslateInputArgs InputArgsCopy = *pInputArgs;
 
     IGC::CPlatform IGCPlatform(m_Platform);
@@ -265,9 +267,6 @@ bool CIGCTranslationBlock::Translate(
     pOutputArgs->ErrorStringSize = 0;
     pOutputArgs->pDebugData = nullptr;
     pOutputArgs->DebugDataSize = 0;
-
-
-    LoadRegistryKeys();
 
     if (m_DataFormatInput == TB_DATA_FORMAT_ELF)
     {
