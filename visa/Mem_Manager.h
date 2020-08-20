@@ -42,7 +42,12 @@ namespace vISA
 
         void* alloc(size_t size)
         {
-            return _arenaManager.AllocDataSpace(size);
+            return _arenaManager.AllocDataSpace(size, ArenaHeader::defaultAlign);
+        }
+
+        void* alloc(size_t size, std::align_val_t al)
+        {
+            return _arenaManager.AllocDataSpace(size, static_cast<size_t>(al));
         }
 
     private:

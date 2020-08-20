@@ -36,20 +36,21 @@ int maxArenaLength = 0;
 int currentMallocSize = 0;
 #endif
 using namespace vISA;
+
 void*
-ArenaHeader::AllocSpace (size_t size)
+ArenaHeader::AllocSpace(size_t size, size_t al)
 {
-    assert(WordAlign (size_t (_nextByte)) == size_t (_nextByte));
-    void * allocSpace = _nextByte;
+    assert(DefaultAlign(size_t(_nextByte)) == size_t(_nextByte));
+
+    void* allocSpace = (void*) AlignAddr((size_t) _nextByte, al);
 
     if (size)
     {
-        size = WordAlign (size);
+        size = DefaultAlign(size);  // round up size so that next address is at least max aligned
 
         if (_nextByte + size <= _lastByte) {
             _nextByte += size;
         }
-
         else {
             allocSpace = 0;
         }
@@ -61,6 +62,7 @@ ArenaHeader::AllocSpace (size_t size)
 
     return allocSpace;
 }
+
 
 void
 ArenaManager::FreeArenas()

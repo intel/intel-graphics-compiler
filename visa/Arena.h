@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <assert.h>
 #include <stdlib.h>
 #include <iostream>
+#include <cstddef>
 
 #include "Option.h"
 
@@ -58,22 +59,32 @@ namespace vISA
 
     public:
 
-        // Functions
+        // FIXME: Currently there should be no type that needs 16-byte alignment.
+        // If such types exist in the future, either change this to __STDCPP_DEFAULT_NEW_ALIGNMENT__
+        // or use the overloaded alloc with align_val_t arg
+        // We avoid using std::max_align_t here as it's 16 on some implementations and thus may waste memory
+        static const size_t defaultAlign = 8;
 
-        static size_t WordAlign(size_t addr)
+        // Functions
+        static size_t DefaultAlign(size_t addr)
         {
-            return (addr + 0x3) & ~0x3;
+            return (addr + (defaultAlign - 1)) & ~(defaultAlign - 1);
         }
 
+        static size_t AlignAddr(size_t addr, size_t al)
+        {
+            assert((al & (al - 1)) == 0);
+            return (addr + (al - 1)) & ~(al - 1);
+        }
         static size_t GetArenaSize(size_t dataSize)
         {
-            return WordAlign(sizeof (ArenaHeader)) + dataSize;
+            return DefaultAlign(sizeof (ArenaHeader)) + dataSize;
         }
 
         unsigned char* GetArenaData() const
         {
-            assert(WordAlign(size_t(this)) == size_t(this));
-            return (unsigned char*)(WordAlign(size_t(this) + sizeof(ArenaHeader)));
+            assert(DefaultAlign(size_t(this)) == size_t(this));
+            return (unsigned char*)(DefaultAlign(size_t(this) + sizeof(ArenaHeader)));
         }
 
         void* operator new (size_t, unsigned char* memory)
@@ -81,9 +92,9 @@ namespace vISA
             return memory;
         }
 
-            void operator delete (void*, unsigned char*)
+        void operator delete (void*, unsigned char*)
         {
-                // Do nothing
+            // Do nothing
         }
 
     private:
@@ -101,7 +112,7 @@ namespace vISA
             _nextArena = 0;
         }
 
-        void* AllocSpace(size_t size);
+        void* AllocSpace(size_t size, size_t align);
 
         // Data
 
@@ -131,23 +142,23 @@ namespace vISA
             FreeArenas();
         }
 
-        void* AllocDataSpace(size_t size)
+        void* AllocDataSpace(size_t size, size_t al)
         {
             // Do separate memory allocations of debugMemAlloc is set, to allow
             // valgrind/drmemory to find more buffer over-reads/writes
 #if !defined(NDEBUG) && defined(vISA_DEBUG_MEM_ALLOC)
             return size == 0 ? 0 : malloc(size);
 #endif
-            void* space = 0;
+            void* space = nullptr;
 
             if (size)
             {
-                space = _arenas->AllocSpace(size);
+                space = _arenas->AllocSpace(size, al);
 
                 if (space == 0)
                 {
                     CreateArena(size);
-                    space = _arenas->AllocSpace(size);
+                    space = _arenas->AllocSpace(size, al);
                 }
 
                 assert(space);
@@ -164,7 +175,7 @@ namespace vISA
         ArenaHeader* CreateArena(size_t size)
         {
             size_t arenaDataSize = (size > _defaultArenaSize) ? size : _defaultArenaSize;
-            arenaDataSize = ArenaHeader::WordAlign(arenaDataSize);
+            arenaDataSize = ArenaHeader::DefaultAlign(arenaDataSize);
             unsigned char * arena =
                 new unsigned char[ArenaHeader::GetArenaSize(arenaDataSize)];
 
