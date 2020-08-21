@@ -5036,6 +5036,7 @@ namespace IGC
                     std::string output;
                     raw_string_ostream S(output);
                     S << "parsing vISA inline assembly failed:\t" << vAsmTextBuilder->GetCriticalMsg();
+                    S.flush();
                     context->EmitError(output.c_str());
                     vISAAsmParseError = true;
                 }

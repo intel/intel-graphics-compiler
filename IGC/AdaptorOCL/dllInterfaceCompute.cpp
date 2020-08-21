@@ -1170,6 +1170,17 @@ bool TranslateBuild(
         }
     } while (retry);
 
+    if (!(oclContext.oclErrorMessage.empty()))
+    {
+        //The error buffer returned will be deleted when the module is unloaded so
+        //a copy is necessary
+        if (const char* pErrorMsg = oclContext.oclErrorMessage.c_str())
+        {
+            SetErrorMessage(oclContext.oclErrorMessage, *pOutputArgs);
+        }
+        return false;
+    }
+
     // Prepare and set program binary
     unsigned int pointerSizeInBytes = (PtrSzInBits == 64) ? 8 : 4;
 
