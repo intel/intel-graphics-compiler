@@ -2091,10 +2091,11 @@ SPIRVToLLVM::oclTransConstantSampler(spv::SPIRVConstantSampler* BCS) {
   return ConstantInt::get(Ty, Lit);
 }
 
-static void insertCastAfter(Instruction* I, Instruction* Cast, BasicBlock* BB)
+static void insertCastAfter(Instruction* I, Instruction* Cast)
 {
     if (I->getOpcode() == Instruction::PHI) // put cast after last phi in BB
     {
+        auto BB = I->getParent();
         if (auto nonPhi = BB->getFirstNonPHI())
             Cast->insertBefore(nonPhi);
         else // BB contains only phi instructions
@@ -2144,7 +2145,7 @@ Value *SPIRVToLLVM::promoteBool(Value *pVal, BasicBlock *BB)
 
     auto *pInst = cast<Instruction>(pVal);
     auto *Cast = CastInst::CreateZExtOrBitCast(pInst, PromoType, "i1promo");
-    insertCastAfter(pInst, Cast, BB);
+    insertCastAfter(pInst, Cast);
     return Cast;
 }
 
@@ -2190,7 +2191,7 @@ Value *SPIRVToLLVM::truncBool(Value *pVal, BasicBlock *BB)
 
     auto *pInst = cast<Instruction>(pVal);
     auto *Cast = CastInst::CreateTruncOrBitCast(pInst, TruncType, "i1trunc");
-    insertCastAfter(pInst, Cast, BB);
+    insertCastAfter(pInst, Cast);
     return Cast;
 }
 
