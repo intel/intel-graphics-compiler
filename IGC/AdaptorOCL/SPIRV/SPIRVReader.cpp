@@ -3124,6 +3124,11 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
   mapFunction(BF, F);
   if (BF->hasDecorate(DecorationReferencedIndirectlyINTEL))
     F->addFnAttr("referenced-indirectly");
+  // WA for exporting import functions with no body
+  if (BF->getLinkageType() == LinkageTypeImport &&
+      F->isDeclaration()) {
+    F->addFnAttr("referenced-indirectly");
+  }
   if (!F->isIntrinsic()) {
     F->setCallingConv(IsKernel ? CallingConv::SPIR_KERNEL :
         CallingConv::SPIR_FUNC);
