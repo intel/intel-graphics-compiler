@@ -62,6 +62,14 @@ ZEBinaryBuilder::ZEBinaryBuilder(
         addSPIRV(spvData, spvSize);
 }
 
+void ZEBinaryBuilder::setGfxCoreFamilyToELFMachine(uint32_t value)
+{
+    TargetFlags tf = mBuilder.getTargetFlag();
+    tf.machineEntryUsesGfxCoreInsteadOfProductFamily = true;
+    mBuilder.setTargetFlag(tf);
+    mBuilder.setMachine(value);
+}
+
 void ZEBinaryBuilder::createKernel(
     const char*  rawIsaBinary,
     unsigned int rawIsaBinarySize,

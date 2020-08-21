@@ -98,6 +98,10 @@ public:
     void setTargetFlag(TargetFlags flags)
     { m_flags = flags; }
 
+    /// Get elfFileHeader::e_flags
+    TargetFlags getTargetFlag() const
+    { return m_flags; }
+
     // add a text section contains gen binary
     // - name: section name. This is usually the kernel or function name of
     //         this text section. Do not includes leading .text in given
