@@ -89,6 +89,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->mayHaveIndirectOperands = false;
     instrList->hasUniformAssumptions = false;
     instrList->hasWaveIntrinsics = false;
+    instrList->numPsInputs = 0;
     instrList->numSample = 0;
     instrList->numBB = 0;
     instrList->numLoopInsts = 0;
