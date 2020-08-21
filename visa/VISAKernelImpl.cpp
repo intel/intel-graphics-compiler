@@ -390,8 +390,11 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     {
         auto getFirstNonLabelInst = [this]()
         {
+            unsigned int skip = 0, skipCount = 0;
             for (auto bb : m_kernel->fg)
             {
+                if (skipCount++ < skip)
+                    continue;
                 for (auto inst : *bb)
                 {
                     if (inst->isLabel())
