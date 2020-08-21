@@ -269,6 +269,20 @@ namespace {
         : Phi(Phi), IncomingIdx(IncomingIdx) {}
   };
 
+  enum CopyType { PHICOPY, PHICOPY_BRANCHING_JP, TWOADDRCOPY };
+
+  struct CopyData {
+    SimpleValue Dest;
+    SimpleValue Source;
+    Use *UseInDest;
+    Instruction *InsertPoint;
+    CopyType CopyT;
+    CopyData(SimpleValue Dest, SimpleValue Source, Use *UseInDest,
+             Instruction *InsertPoint, CopyType CopyT)
+        : Dest(Dest), Source(Source), UseInDest(UseInDest),
+          InsertPoint(InsertPoint), CopyT(CopyT) {}
+  };
+
   // GenX coalescing pass
   class GenXCoalescing : public FunctionGroupPass {
   private:
@@ -280,6 +294,7 @@ namespace {
     std::vector<Candidate> CopyCandidates;
     std::vector<Candidate> NormalCandidates;
     std::vector<CallInst*> Callables;
+    std::vector<CopyData> ToCopy;
   public:
     static char ID;
     explicit GenXCoalescing() : FunctionGroupPass(ID) {}
@@ -360,6 +375,8 @@ namespace {
                                   Instruction *InsertBefore);
     void showCoalesceFail(SimpleValue V, const DebugLoc &DL, const char *Intro,
                           LiveRange *DestLR, LiveRange *SourceLR);
+    void applyCopies();
+    void applyCopy(CopyData &CD);
     // Helpers
     DominatorTree *getDomTree(Function *F) { return DTWrapper->getDomTree(F); }
   };
@@ -436,9 +453,12 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
   coalesceCallables();
   coalesceOutputArgs(&FG);
 
+  applyCopies();
+
   CopyCandidates.clear();
   NormalCandidates.clear();
   Callables.clear();
+  ToCopy.clear();
   return true;
 }
 
@@ -965,20 +985,11 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
     // Otherwise, it is a bitcast of size more than 1 GRF or non-power-of-two,
     // so we insert a copy.
   }
-  // Insert the copy now for a two address op. Give it the number of the
-  // pre-copy slot, which is one less than the number of the two address
-  // instruction.
+
+  // Store info for two address op copy
   Instruction *DestInst = cast<Instruction>(Dest.getValue());
-  showCoalesceFail(Dest, DestInst->getDebugLoc(), "two address",
-      DestLR, SourceLR);
-  Instruction *NewCopy = insertCopy(Source, DestLR, DestInst, "twoaddr",
-      Numbering->getNumber(DestInst) - 1);
-  NewCopy = insertIntoStruct(Dest.getValue()->getType(),
-      Dest.getIndex(), *Cand->UseInDest, NewCopy, DestInst);
-  // Replace the use of the old source.
-  *Cand->UseInDest = NewCopy;
-  // No need to extend the live range, as the result of the two address op was
-  // already marked as defined at the pre-copy slot.
+  ToCopy.push_back(
+      CopyData(Dest, Source, Cand->UseInDest, DestInst, TWOADDRCOPY));
 }
 
 /***********************************************************************
@@ -1100,9 +1111,6 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
   Instruction *InsertPoint = IncomingBlock->getTerminator();
   InsertPoint = GotoJoin::getLegalInsertionPoint(InsertPoint, DomTree);
 
-  // Give the copy the number allocated to the phi incoming
-  unsigned Num = Numbering->getPhiNumber(Phi, IncomingBlock);
-
   if (auto *I = dyn_cast<Instruction>(Incoming)) {
     // This should not happen for good BBs (not join blocks)
     // if DFG is correct.
@@ -1110,14 +1118,9 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
            "Dominance corrupted!");
   }
 
-  showCoalesceFail(SimpleValue(Incoming), InsertPoint->getDebugLoc(), "phi",
-                   DestLR, Liveness->getLiveRange(Incoming));
-  Instruction *NewCopy =
-      insertCopy(SimpleValue(Incoming), DestLR, InsertPoint, "phicopy", Num);
-  Phi->setIncomingValue(Inc, NewCopy);
-  // No need to extend the live range like we do in the two address op case
-  // in processCandidate(). The live range of a phi node already starts at
-  // each point where a copy might need to be inserted.
+  // Store info for copy
+  ToCopy.push_back(CopyData(SimpleValue(Phi), SimpleValue(Incoming),
+                            &Phi->getOperandUse(Inc), InsertPoint, PHICOPY));
 }
 
 /***********************************************************************
@@ -1145,9 +1148,6 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
   DominatorTree *DomTree = getDomTree(IncomingBlock->getParent());
   Instruction *InsertPoint = IncomingBlock->getTerminator();
   InsertPoint = GotoJoin::getLegalInsertionPoint(InsertPoint, DomTree);
-
-  // Give the copy the number of term to make proper liverange
-  unsigned Num = Numbering->getNumber(InsertPoint);
 
   if (auto *PhiPred = dyn_cast<PHINode>(Incoming)) {
     // In case when pred is Phi, it is possible to meet Phi in
@@ -1177,14 +1177,10 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
            "Dominance corrupted!");
   }
 
-  showCoalesceFail(SimpleValue(Incoming), InsertPoint->getDebugLoc(), "phi",
-                   DestLR, Liveness->getLiveRange(Incoming));
-  Instruction *NewCopy =
-      insertCopy(SimpleValue(Incoming), DestLR, InsertPoint, "phicopy", Num);
-  Phi->setIncomingValue(Inc, NewCopy);
-
-  // Extend liverange: we skipped some basic blocks
-  Liveness->rebuildLiveRange(DestLR);
+  // Store info for copy
+  ToCopy.push_back(CopyData(SimpleValue(Phi), SimpleValue(Incoming),
+                            &Phi->getOperandUse(Inc), InsertPoint,
+                            PHICOPY_BRANCHING_JP));
 }
 
 /***********************************************************************
@@ -1728,6 +1724,73 @@ void GenXCoalescing::showCoalesceFail(SimpleValue V, const DebugLoc &DL,
 }
 
 /***********************************************************************
+ * applyCopies : insert copies according to collected data.
+ *
+ * Postponed insertion is possible during coalescing because all
+ * liveranges already contains insertion points. The only possible
+ * exception is Branching Join Blocks copy: the copy will be
+ * created on joins falling path.
+ */
+void GenXCoalescing::applyCopies() {
+  for (auto &CD : ToCopy) {
+    applyCopy(CD);
+  }
+}
+
+/***********************************************************************
+ * applyCopy : insert copy according to collected data.
+ *
+ * Only twoaddr and phi copies are handled now.
+ */
+void GenXCoalescing::applyCopy(CopyData &CD) {
+  LiveRange *DestLR = Liveness->getLiveRange(CD.Dest);
+  LiveRange *SourceLR = Liveness->getLiveRange(CD.Source);
+  switch (CD.CopyT) {
+  case PHICOPY:
+  case PHICOPY_BRANCHING_JP: {
+    PHINode *Phi = dyn_cast<PHINode>(CD.Dest.getValue());
+    IGC_ASSERT(Phi && "Expected PHI");
+    unsigned Num =
+        (CD.CopyT == PHICOPY)
+            ? Numbering->getPhiNumber(
+                  Phi, Phi->getIncomingBlock(CD.UseInDest->getOperandNo()))
+            : Numbering->getNumber(CD.InsertPoint);
+    showCoalesceFail(CD.Dest, CD.InsertPoint->getDebugLoc(), "phi", DestLR,
+                     SourceLR);
+    Instruction *NewCopy =
+        insertCopy(CD.Source, DestLR, CD.InsertPoint, "phicopy", Num);
+    Phi->setIncomingValue(CD.UseInDest->getOperandNo(), NewCopy);
+    break;
+  }
+  case TWOADDRCOPY: {
+    // Insert the copy now for a two address op. Give it the number of the
+    // pre-copy slot, which is one less than the number of the two address
+    // instruction.
+    Instruction *DestInst = cast<Instruction>(CD.Dest.getValue());
+    showCoalesceFail(CD.Dest, DestInst->getDebugLoc(), "two address", DestLR,
+                     SourceLR);
+    Instruction *NewCopy = insertCopy(CD.Source, DestLR, DestInst, "twoaddr",
+                                      Numbering->getNumber(DestInst) - 1);
+    NewCopy =
+        insertIntoStruct(CD.Dest.getValue()->getType(), CD.Dest.getIndex(),
+                         *CD.UseInDest, NewCopy, DestInst);
+    // Replace the use of the old source.
+    *CD.UseInDest = NewCopy;
+    // No need to extend the live range, as the result of the two address op was
+    // already marked as defined at the pre-copy slot.
+    break;
+  }
+  default:
+    llvm_unreachable("Unknown copy type!");
+  }
+
+  if (CD.CopyT == PHICOPY_BRANCHING_JP) {
+    // Extend liverange: we skipped some basic blocks
+    Liveness->rebuildLiveRange(DestLR);
+  }
+}
+
+/***********************************************************************
 * DiagnosticInfoFastComposition initializer from Instruction
 *
 * If the Instruction has a DebugLoc, then that is used for the error
@@ -1761,5 +1824,4 @@ void DiagnosticInfoFastComposition::print(DiagnosticPrinter &DP) const
     .str());
   DP << Loc << Description;
 }
-
 
