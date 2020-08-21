@@ -1496,7 +1496,7 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
     }
 
     // start the conversion
-    IRBuilder<> builder(&I);
+    IRBuilder<> builder(addI[2]);
 
     Value* cond0 = builder.CreateICmp(ICmpInst::ICMP_EQ, offset[0]->getOperand(0), ConstantInt::get(offset[0]->getOperand(0)->getType(), 0));
     Value* cond1 = builder.CreateICmp(ICmpInst::ICMP_EQ, offset[0]->getOperand(0), ConstantInt::get(offset[0]->getOperand(0)->getType(), 1));
@@ -1573,7 +1573,7 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
         }
     }
 
-    // dp4WithIdentityMatrix(I);
+    dp4WithIdentityMatrix(I);
 }
 
 #if LLVM_VERSION_MAJOR >= 7
