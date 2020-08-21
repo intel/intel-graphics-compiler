@@ -262,18 +262,21 @@ void CPixelShader::AllocatePSPayload()
     AllocateConstants3DShader(offset);
 
 
+    // Allocate size for attributes coming from VS
     IGC_ASSERT(offset % getGRFSize() == 0);
     unsigned int payloadEnd = offset;
-    //Allocate size for values coming from VS
     for (uint i = 0; i < setup.size(); i++)
     {
+
         if (setup[i] && setup[i]->GetAlias() == NULL)
         {
             uint subRegOffset = 0;
-            // PS uniform inputs are stored in the 3rd subreg
+            // PS uniform (constant interpolation) inputs
             if (setup[i]->GetSize() == SIZE_DWORD)
             {
-                subRegOffset = 3 * SIZE_DWORD;
+                {
+                    subRegOffset = 3 * SIZE_DWORD;
+                }
             }
             AllocateInput(setup[i], offset + subRegOffset);
             if (m_Signature)
@@ -282,6 +285,7 @@ void CPixelShader::AllocatePSPayload()
             }
             payloadEnd = offset;
         }
+
         else
         {
             offset += 4 * SIZE_DWORD;
@@ -830,27 +834,15 @@ void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     // PS packed attributes
     for (uint i = 0; i < setup.size(); i = i + 4)
     {
-        bool useComponent = true;
-        if (((i + 3) < setup.size()) && setup[i + 3])
-        {
-            pKernelProgram->attributeActiveComponent[i / 4] = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZW;
-        }
-        else if (((i + 2) < setup.size()) && setup[i + 2])
-        {
-            pKernelProgram->attributeActiveComponent[i / 4] = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZ;
-        }
-        else if ((((i + 1) < setup.size()) && setup[i + 1]) || setup[i])
-        {
-            pKernelProgram->attributeActiveComponent[i / 4] = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XY;
-        }
-        else
-        {
-            useComponent = false;
-            pKernelProgram->attributeActiveComponent[i / 4] = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED;
-        }
+        const uint attribute = i / 4;
+
+        pKernelProgram->attributeActiveComponent[attribute] = GetActiveComponents(attribute);
+
+        const bool useComponent = pKernelProgram->attributeActiveComponent[attribute] !=
+            USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED;
         if (useComponent)
         {
-            pKernelProgram->nbOfSFOutput = i / 4 + 1;
+            pKernelProgram->nbOfSFOutput = attribute + 1;
         }
     }
 
@@ -1675,4 +1667,27 @@ void CPixelShader::MarkConstantInterpolation(unsigned int index)
 {
     m_ConstantInterpolationMask |= BIT(index / 4);
 }
+
+// Take PS attribute and return active components within, encoded as HW expects.
+USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT CPixelShader::GetActiveComponents(uint attribute) const
+{
+    // First component in the attrib
+    const uint component = 4 * attribute;
+    IGC_ASSERT(component < setup.size());
+
+    if (((component + 3) < setup.size()) && setup[component + 3])
+    {
+        return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZW;
+    }
+    else if (((component + 2) < setup.size()) && setup[component + 2])
+    {
+        return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZ;
+    }
+    else if ((((component + 1) < setup.size()) && setup[component + 1]) || setup[component])
+    {
+        return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XY;
+    }
+    return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED;
+}
+
 } // namespace IGC
