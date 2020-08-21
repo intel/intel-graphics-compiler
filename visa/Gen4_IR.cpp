@@ -7890,6 +7890,8 @@ bool G4_INST::canDstBeAcc() const
     case G4_shr:
     case G4_smov:
     case G4_xor:
+    case G4_rol:
+    case G4_ror:
         return true;
     case G4_cmp:
     case G4_cmpn:
@@ -8018,6 +8020,8 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     case G4_shl:
     case G4_shr:
     case G4_smov:
+    case G4_rol:
+    case G4_ror:
         return true;
     case G4_mov:
         return builder.relaxedACCRestrictions() || !getDst()->isAccReg();
