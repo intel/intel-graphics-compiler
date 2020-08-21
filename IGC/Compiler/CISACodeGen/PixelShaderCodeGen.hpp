@@ -130,7 +130,6 @@ protected:
 
 private:
     PSSignature::DispatchSignature& GetDispatchSignature();
-    USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT GetActiveComponents(uint attribute) const;
 
     CVariable* m_R1;
     CVariable* m_CoarseR1;
