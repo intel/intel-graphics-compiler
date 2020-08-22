@@ -6572,7 +6572,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //              1 - simple insertion of "emask flag". A new flag is created
         //                  each time it is needed, that is, created per each inst.
         //  (See comments for more details at doNoMaskWA().
-        if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM &&
+        if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_CM &&
             ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
              builder.getOption(vISA_forceNoMaskWA)))
         {
@@ -6806,7 +6806,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
 
         if (builder.needReplaceIndirectCallWithJmpi() &&
-            kernel.getBoolKernelAttr(Attributes::ATTR_Extern))
+            kernel.getIntKernelAttribute(Attributes::ATTR_Extern) != 0)
         {
             // replace ret in the external functions with jmpi. That we will
             // also return the call with jmpi in VISAKernelImpl::compilePostOptimize
@@ -7948,7 +7948,7 @@ public:
     // ensure that all outstanding scratch writes are globally observed
     void Optimizer::insertScratchReadBeforeEOT()
     {
-        int globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
+        int globalScratchOffset = kernel.getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
         if (builder.needFenceBeforeEOT() ||
             (globalScratchOffset == 0 && builder.getJitInfo()->spillMemUsed == 0))
         {
@@ -9613,7 +9613,7 @@ void Optimizer::mergeScalarInst()
 {
 
     int bundleSizeLimit = MAX_BUNDLE_SIZE;
-    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) == VISA_3D)
     {
         bundleSizeLimit = 4;
     }
@@ -10454,7 +10454,7 @@ void Optimizer::lowerMadSequence()
 {
 
     // Only enable CM for now.
-    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_CM)
         return;
 
     for (G4_BB *bb : fg)
@@ -10588,7 +10588,7 @@ void Optimizer::split4GRFVars()
     // map each split candidate to their replacement split variables
     std::unordered_map<const G4_Declare *, DclMapInfo *> DclMap;
 
-    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D)
+    if (kernel.getIntKernelAttribute(Attributes::ATTR_Target) != VISA_3D)
     {
         return;
     }

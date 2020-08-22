@@ -195,7 +195,7 @@ SpillManagerGRF::SpillManagerGRF(
         spillRegStart_ = indrSpillRegStart_ - spillRegSize;
     }
     curInst = NULL;
-    globalScratchOffset = gra.kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
+    globalScratchOffset = gra.kernel.getIntKernelAttribute(Attributes::ATTR_SpillMemOffset);
 
 }
 
