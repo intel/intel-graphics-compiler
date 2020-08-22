@@ -407,10 +407,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                 uint32_t libSize = m_libModInfos[i].ModSize;
 
                 // Load the module we want to compile and link it to existing module
-                //StringRef BitRef((char*)preCompiledFunctionLibrary, preCompiledFunctionLibrarySize);
                 StringRef BitRef(pLibraryModule, libSize);
-                //llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                //    llvm::getLazyBitcodeModule(MemoryBufferRef(BitRef.str(), ""), M.getContext());
                 llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
                     llvm::parseBitcodeFile(MemoryBufferRef(BitRef.str(), ""), M.getContext());
                 if (llvm::Error EC = ModuleOrErr.takeError())
@@ -550,7 +547,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
             }
 
             // Don't want to subroutine functions that are called only once
-            if (Func->getNumUses() == 1)
+            if (Func->hasOneUse())
             {
                 // Add AlwaysInline attribute to force inlining all calls.
                 Func->addFnAttr(llvm::Attribute::AlwaysInline);
@@ -693,8 +690,8 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator& I)
                     }
                     if (isI32DivRem())
                     {
-                    processInt32Divide(*newInst, FUNCTION_32_UDIVREM);
-                }
+                        processInt32Divide(*newInst, FUNCTION_32_UDIVREM);
+                    }
                     else
                     {
                         processInt32Divide(*newInst, FUNCTION_32_UDIVREM_SP);
@@ -712,8 +709,8 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator& I)
                     }
                     if (isI32DivRem())
                     {
-                    processInt32Divide(*newInst, FUNCTION_32_SDIVREM);
-                }
+                        processInt32Divide(*newInst, FUNCTION_32_SDIVREM);
+                    }
                     else
                     {
                         processInt32Divide(*newInst, FUNCTION_32_SDIVREM_SP);
@@ -848,13 +845,12 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator& inst, Int32Emulat
 
 
     //Create a call to emulation function
-    Constant* One = ConstantInt::get(intTy, 1);
     Value* args[3];
     args[0] = inst.getOperand(0);
     args[1] = inst.getOperand(1);
     IRBuilder<> builder(
         &*inst.getFunction()->getEntryBlock().getFirstInsertionPt());
-    AllocaInst* pRem = builder.CreateAlloca(intTy, One, "Remainder");
+    AllocaInst* pRem = builder.CreateAlloca(intTy, nullptr, "Remainder");
     builder.SetInsertPoint(&inst);
     args[2] = pRem;
     CallInst* funcCall = CallInst::Create(func, args, inst.getName(), &inst);
@@ -863,7 +859,7 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator& inst, Int32Emulat
     {
         if (isI32DivRem())
         {
-        m_libModuleToBeImported[LIBMOD_UINT32_DIV_REM] = true;
+            m_libModuleToBeImported[LIBMOD_UINT32_DIV_REM] = true;
         }
         else
         {
@@ -874,8 +870,8 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator& inst, Int32Emulat
     {
         if (isI32DivRem())
         {
-        m_libModuleToBeImported[LIBMOD_SINT32_DIV_REM] = true;
-    }
+            m_libModuleToBeImported[LIBMOD_SINT32_DIV_REM] = true;
+        }
         else
         {
             m_libModuleToBeImported[LIBMOD_SINT32_DIV_REM_SP] = true;
@@ -1624,7 +1620,6 @@ LLVM before opt:
   store i32 %rem5, i32 addrspace(1)* %d, align 4
   ret void
 LLVM after opt:
-  %Remainder3 = alloca i32
   %Remainder = alloca i32
   %div2 = call i32 @precompiled_s32divrem_sp(i32 %a, i32 %b, i32* %Remainder)
   store i32 %div2, i32 addrspace(1)* %c, align 4
@@ -1636,16 +1631,20 @@ As a result, we reduce 2x necessary work
 */
     Function* fn = I.getCalledFunction();
     if (fn && (fn->getName() == "precompiled_s32divrem_sp"
-        || fn->getName() == "precompiled_u32divrem_sp"))
+            || fn->getName() == "precompiled_u32divrem_sp"))
     {
         for (CallInst* InstCompare : m_CallRemDiv)
         {
             if (I.getArgOperand(0) == InstCompare->getArgOperand(0) &&
-                I.getArgOperand(1) == InstCompare->getArgOperand(1))
+                I.getArgOperand(1) == InstCompare->getArgOperand(1) &&
+                I.getParent() == InstCompare->getParent())
             {
                 Value* remValue = I.getArgOperand(2);
                 Value* remValueCompare = InstCompare->getArgOperand(2);
                 remValue->replaceAllUsesWith(remValueCompare);
+
+                if (auto* AI = dyn_cast<AllocaInst>(remValue))
+                    AI->eraseFromParent();
 
                 I.replaceAllUsesWith(InstCompare);
                 I.eraseFromParent();
@@ -1655,6 +1654,7 @@ As a result, we reduce 2x necessary work
         }
         m_CallRemDiv.push_back(&I);
     }
+
     if (!isDPEmu()) {
         return;
     }
