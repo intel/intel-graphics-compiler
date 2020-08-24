@@ -713,7 +713,7 @@ static Instruction* hoistInsEltConst(InsertElementInst& InsElt2,
     return nullptr;
 }
 
-/// insertelt (shufflevector X, CVec, Mask|insertelt X, C1, CIndex1), C, CIndex
+/// insertelt (shufflevector X, CVec, Mask), C, CIndex
 /// --> shufflevector X, CVec', Mask'
 static Instruction* foldConstantInsEltIntoShuffle(InsertElementInst& InsElt) {
     auto* Inst = dyn_cast<Instruction>(InsElt.getOperand(0));
@@ -770,47 +770,7 @@ static Instruction* foldConstantInsEltIntoShuffle(InsertElementInst& InsElt) {
             ConstantVector::get(NewShufElts),
             ConstantVector::get(NewMaskElts));
     }
-    else if (auto * IEI = dyn_cast<InsertElementInst>(Inst)) {
-        // Transform sequences of insertelements ops with constant data/indexes into
-        // a single shuffle op.
-        unsigned NumElts = InsElt.getType()->getNumElements();
 
-        uint64_t InsertIdx[2];
-        Constant* Val[2];
-        if (!match(InsElt.getOperand(2), m_ConstantInt(InsertIdx[0])) ||
-            !match(InsElt.getOperand(1), m_Constant(Val[0])) ||
-            !match(IEI->getOperand(2), m_ConstantInt(InsertIdx[1])) ||
-            !match(IEI->getOperand(1), m_Constant(Val[1])))
-            return nullptr;
-        SmallVector<Constant*, 16> Values(NumElts);
-        SmallVector<Constant*, 16> Mask(NumElts);
-        auto ValI = std::begin(Val);
-        // Generate new constant vector and mask.
-        // We have 2 values/masks from the insertelements instructions. Insert them
-        // into new value/mask vectors.
-        for (uint64_t I : InsertIdx) {
-            if (!Values[I]) {
-                IGC_ASSERT(!Mask[I]);
-                Values[I] = *ValI;
-                Mask[I] = ConstantInt::get(Type::getInt32Ty(InsElt.getContext()),
-                    NumElts + I);
-            }
-            ++ValI;
-        }
-        // Remaining values are filled with 'undef' values.
-        for (unsigned I = 0; I < NumElts; ++I) {
-            if (!Values[I]) {
-                IGC_ASSERT(!Mask[I]);
-                Values[I] = UndefValue::get(InsElt.getType()->getElementType());
-                Mask[I] = ConstantInt::get(Type::getInt32Ty(InsElt.getContext()), I);
-            }
-        }
-        // Create new operands for a shuffle that includes the constant of the
-        // original insertelt.
-        return new ShuffleVectorInst(IEI->getOperand(0),
-            ConstantVector::get(Values),
-            ConstantVector::get(Mask));
-    }
     return nullptr;
 }
 
