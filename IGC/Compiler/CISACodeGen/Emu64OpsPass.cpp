@@ -158,20 +158,20 @@ namespace {
         }
 
         void dupMemoryAttribute(LoadInst* NewLD, LoadInst* RefLD, unsigned Off) const {
-            unsigned Align = getAlignment(RefLD);
+            unsigned alignment = getAlignment(RefLD);
 
             NewLD->setVolatile(RefLD->isVolatile());
-            NewLD->setAlignment(MaybeAlign(unsigned(MinAlign(Align, Off))));
+            NewLD->setAlignment(IGCLLVM::getAlign(unsigned(MinAlign(alignment, Off))));
             NewLD->setOrdering(RefLD->getOrdering());
             IGCLLVM::CopySyncScopeID(NewLD, RefLD);
             copyKnownMetadata(NewLD, RefLD);
         }
 
         void dupMemoryAttribute(StoreInst* NewST, StoreInst* RefST, unsigned Off) const {
-            unsigned Align = getAlignment(RefST);
+            unsigned alignment = getAlignment(RefST);
 
             NewST->setVolatile(RefST->isVolatile());
-            NewST->setAlignment(MaybeAlign(unsigned(MinAlign(Align, Off))));
+            NewST->setAlignment(IGCLLVM::getAlign(unsigned(MinAlign(alignment, Off))));
             NewST->setOrdering(RefST->getOrdering());
             IGCLLVM::CopySyncScopeID(NewST, RefST);
             copyKnownMetadata(NewST, RefST);

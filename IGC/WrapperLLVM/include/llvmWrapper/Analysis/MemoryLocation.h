@@ -28,7 +28,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGCLLVM_ANALYSIS_MEMORYLOCATION_H
 
 #include <llvm/Analysis/MemoryLocation.h>
+
+#if LLVM_VERSION_MAJOR <= 10
 #include <llvm/IR/CallSite.h>
+#else
+#include <llvm/IR/Instructions.h>
+#endif
 
 namespace IGCLLVM
 {

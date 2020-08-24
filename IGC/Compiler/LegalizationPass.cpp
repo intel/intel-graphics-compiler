@@ -585,7 +585,7 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
             uint vecSize = srcSize / dstSize;
 
             Builder->SetInsertPoint(TI);
-            Value* BC = Builder->CreateBitCast(I.getOperand(0),IGCLLVM::FixedVectorType::get(castType, vecSize));
+            Value* BC = Builder->CreateBitCast(I.getOperand(0), IGCLLVM::FixedVectorType::get(castType, vecSize));
             Value* EE = Builder->CreateExtractElement(BC, ConstantInt::get(Type::getInt32Ty(I.getContext()), Index));
 
             // BO and TI are dead
@@ -684,7 +684,7 @@ void Legalization::visitBitCastInst(llvm::BitCastInst& I)
             return;
 
         uint numElt = (unsigned int)pX->getType()->getPrimitiveSizeInBits() / (unsigned int)pEltTy->getPrimitiveSizeInBits();
-        auto* pBCType =IGCLLVM::FixedVectorType::get(pEltTy, numElt);
+        auto* pBCType = IGCLLVM::FixedVectorType::get(pEltTy, numElt);
 
         SmallVector<uint32_t, 4> maskVals;
         for (uint i = 0; i < pVecTy->getNumElements(); i++)
@@ -742,7 +742,7 @@ void Legalization::visitSelectInst(SelectInst& I)
         Value* lo[2];
         Value* hi[2];
         Type* intTy = Type::getInt32Ty(I.getContext());
-        VectorType* vec2Ty =IGCLLVM::FixedVectorType::get(intTy, 2);
+        VectorType* vec2Ty = IGCLLVM::FixedVectorType::get(intTy, 2);
         Constant* Zero = ConstantInt::get(intTy, 0);
         Constant* One = ConstantInt::get(intTy, 1);
         m_builder->SetInsertPoint(&I);
@@ -1241,7 +1241,7 @@ void Legalization::visitStoreInst(StoreInst& I)
         if (intSize == 0) // unaligned sizes not supported
             return;
 
-        Type* legalTy =IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), intSize), srcWidth / intSize);
+        Type* legalTy = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), intSize), srcWidth / intSize);
         Value* storeVal = BitCastInst::Create(Instruction::BitCast, I.getOperand(0), legalTy, "", &I);
         Value* storePtr = I.getPointerOperand();
 
@@ -1627,7 +1627,7 @@ Type* Legalization::LegalAllocaType(Type* type) const
             type->getArrayNumElements());
         break;
     case Type::VectorTyID:
-        legalType =IGCLLVM::FixedVectorType::get(
+        legalType = IGCLLVM::FixedVectorType::get(
             LegalAllocaType(cast<VectorType>(type)->getElementType()),
             (unsigned)cast<VectorType>(type)->getNumElements());
         break;
@@ -1894,7 +1894,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
             // demote back.
             Value* Val = Builder.CreateFPExt(I.getOperand(0), Builder.getFloatTy());
             Value* Callee = Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), intrinsicID, Builder.getFloatTy());
-            Val = Builder.CreateCall(Callee, Val);
+            Val = Builder.CreateCall(Callee, ArrayRef<Value*>(Val));
             Val = Builder.CreateFPTrunc(Val, I.getType());
             I.replaceAllUsesWith(Val);
             I.eraseFromParent();
@@ -2238,7 +2238,7 @@ void GenOptLegalizer::visitLoadInst(LoadInst& I) {
         // (RAUW)
         //
         m_Builder->SetInsertPoint(&I);
-        Type* I8x3Ty =IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
+        Type* I8x3Ty = IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
         Type* I8x3PtrTy = PointerType::get(I8x3Ty, I.getPointerAddressSpace());
         Value* NewPtr = m_Builder->CreateBitCast(I.getPointerOperand(), I8x3PtrTy);
         Value* NewLD = IGC::cloneLoad(&I, NewPtr);
@@ -2285,7 +2285,7 @@ void GenOptLegalizer::visitStoreInst(StoreInst& I) {
             // %newdst = bitcast i24* %dst to <3 x i8>*
             // %1 = store <3 x i8> %0, <3 x i8>* %newdst
             //
-            Type* I8x3Ty =IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
+            Type* I8x3Ty = IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
             Type* I8x3PtrTy = PointerType::get(I8x3Ty, LD->getPointerAddressSpace());
             // Replace load of i24 to load of <3 x i8>
             m_Builder->SetInsertPoint(LD);
@@ -2321,13 +2321,13 @@ void GenOptLegalizer::visitStoreInst(StoreInst& I) {
                 // store <3 x i8> %2, <3 x i8>* %0
                 //
                 m_Builder->SetInsertPoint(&I);
-                Type* I8x3Ty =IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
+                Type* I8x3Ty = IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
                 Type* I8x3PtrTy = PointerType::get(I8x3Ty, I.getPointerAddressSpace());
 
                 // Convert i32 to <4 x i8>
                 Type* SrcTy = SV->getOperand(0)->getType();
                 unsigned numElements = (unsigned int)SrcTy->getPrimitiveSizeInBits() / 8;
-                Type* NewVecTy =IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), numElements);
+                Type* NewVecTy = IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), numElements);
                 Value* NewVec = m_Builder->CreateBitCast(SV->getOperand(0), NewVecTy);
                 // Create shufflevector to select elements for <3 x i8>
                 SmallVector<uint32_t, 3> maskVals = { 0, 1, 2 };

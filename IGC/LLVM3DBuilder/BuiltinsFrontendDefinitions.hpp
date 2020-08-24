@@ -27,6 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/DebugMacros.hpp" // VALUE_NAME() definition.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/AsmParser/Parser.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include <llvm/Support/Casting.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -4922,7 +4924,7 @@ void LLVM3DBuilder<preserveNames, T, Inserter>::VectorToScalars(
     IGC_ASSERT(nullptr != vector->getType());
     IGC_ASSERT(vector->getType()->isVectorTy());
 
-    const unsigned count = vector->getType()->getVectorNumElements();
+    const unsigned count = (unsigned)llvm::cast<llvm::VectorType>(vector->getType())->getNumElements();
     IGC_ASSERT(1 < count);
     IGC_ASSERT(count <= 4);
     IGC_ASSERT(count <= maxSize);
@@ -4957,7 +4959,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::ScalarsToVector(
     IGC_ASSERT(nullptr != resultType);
     llvm::Value* result = llvm::UndefValue::get(resultType);
 
-    for (unsigned i = 0; i < resultType->getVectorNumElements(); i++)
+    for (unsigned i = 0; i < llvm::cast<llvm::VectorType>(resultType)->getNumElements(); i++)
     {
         IGC_ASSERT(nullptr != scalars[i]);
         IGC_ASSERT(resultType->getVectorElementType() == scalars[i]->getType());

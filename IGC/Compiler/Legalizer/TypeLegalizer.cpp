@@ -142,7 +142,7 @@ TypeLegalizer::getTypeLegalizeAction(Type* Ty) const {
 
     // Vector type!
     if (Ty->isVectorTy())
-        return getTypeLegalizeAction(Ty->getVectorElementType());
+        return getTypeLegalizeAction(cast<VectorType>(Ty)->getElementType());
 
     // Floating point types always need native support; otherwise, they needs
     // software emulation.
@@ -287,12 +287,12 @@ TypeSeq* TypeLegalizer::getScalarizedTypeSeq(Type* Ty) {
     TypeMapTy::iterator TMI; bool New;
     std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New) {
-        IGC_ASSERT(TMI->second.size() == Ty->getVectorNumElements());
+        IGC_ASSERT(TMI->second.size() == cast<VectorType>(Ty)->getNumElements());
         return &TMI->second;
     }
 
-    Type* EltTy = Ty->getVectorElementType();
-    for (unsigned i = 0, e = Ty->getVectorNumElements(); i != e; ++i)
+    Type* EltTy = cast<VectorType>(Ty)->getElementType();
+    for (unsigned i = 0, e = (unsigned)cast<VectorType>(Ty)->getNumElements(); i != e; ++i)
         TMI->second.push_back(EltTy);
 
     return &TMI->second;

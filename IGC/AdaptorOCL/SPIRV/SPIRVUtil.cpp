@@ -159,8 +159,8 @@ std::string recursive_mangle(const Type* pType)
             return "i" + utostr(pType->getIntegerBitWidth());
         case Type::VectorTyID:
         {
-            unsigned int vecLen = pType->getVectorNumElements();
-            Type* pEltType = pType->getVectorElementType();
+            unsigned vecLen = (unsigned)cast<VectorType>(pType)->getNumElements();
+            Type* pEltType = cast<VectorType>(pType)->getElementType();
             return "v" + utostr(vecLen) + recursive_mangle(pEltType);
         }
         case Type::PointerTyID:

@@ -166,7 +166,7 @@ bool GenSimplification::simplifyVectorPHINodeCase2(PHINode& PN) const {
 
     Type* Ty = PN.getType();
     Type* EltTy = Ty->getScalarType();
-    unsigned NumElts = Ty->getVectorNumElements();
+    unsigned NumElts = (unsigned)cast<VectorType>(Ty)->getNumElements();
 
     SmallVector<Value*, 8> Lanes;
     SmallVector<SmallVector<Value*, 8>, 4> Values;

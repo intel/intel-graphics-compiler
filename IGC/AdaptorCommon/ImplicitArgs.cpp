@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/DerivedTypes.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
@@ -113,7 +113,7 @@ Type* ImplicitArg::getLLVMType(LLVMContext& context) const
     }
     else
     {
-        return VectorType::get(baseType, m_nbElement);
+        return IGCLLVM::FixedVectorType::get(baseType, m_nbElement);
     }
 }
 

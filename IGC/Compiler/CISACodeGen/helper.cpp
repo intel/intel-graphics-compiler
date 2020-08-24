@@ -29,11 +29,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/GetElementPtrTypeIterator.h>
-#include <llvm/Analysis/ValueTracking.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/Support/KnownBits.h>
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvmWrapper/Support/Alignment.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
+#include <llvm/Analysis/ValueTracking.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -240,7 +241,7 @@ namespace IGC
     {
         llvm::LoadInst* LI = new llvm::LoadInst(Ptr, "", Orig);
         LI->setVolatile(Orig->isVolatile());
-        LI->setAlignment(MaybeAlign(Orig->getAlignment()));
+        LI->setAlignment(IGCLLVM::getAlign(Orig->getAlignment()));
         if (LI->isAtomic())
         {
             LI->setAtomic(Orig->getOrdering(), IGCLLVM::getSyncScopeID(Orig));
@@ -260,7 +261,7 @@ namespace IGC
     {
         llvm::StoreInst* SI = new llvm::StoreInst(Val, Ptr, Orig);
         SI->setVolatile(Orig->isVolatile());
-        SI->setAlignment(MaybeAlign(Orig->getAlignment()));
+        SI->setAlignment(IGCLLVM::getAlign(Orig->getAlignment()));
         if (SI->isAtomic())
         {
             SI->setAtomic(Orig->getOrdering(), IGCLLVM::getSyncScopeID(Orig));
@@ -1455,7 +1456,7 @@ namespace IGC
 
     llvm::Value* ElementToVector(llvm::Value* elem[], llvm::Type* int32Ty, llvm::Instruction* insert_before, int vsize)
     {
-        llvm::VectorType* vt = llvm::VectorType::get(elem[0]->getType(), vsize);
+        llvm::VectorType* vt = IGCLLVM::FixedVectorType::get(elem[0]->getType(), vsize);
         llvm::Value* vecValue = llvm::UndefValue::get(vt);
 
         for (int i = 0; i < vsize; ++i)
@@ -1482,7 +1483,7 @@ namespace IGC
         }else if (32 == dataSize){
             ret = builder.CreateBitCast(val, builder.getFloatTy());
         }else if (64 == dataSize){
-            llvm::Type* vecType = llvm::VectorType::get(builder.getFloatTy(), 2);
+            llvm::Type* vecType = IGCLLVM::FixedVectorType::get(builder.getFloatTy(), 2);
             ret = builder.CreateBitCast(val, vecType);
         }else{
             IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported type in ConvertToFloat of helper.");
@@ -1500,7 +1501,7 @@ namespace IGC
             {
                 instList[i] = builder.CreateExtractElement(val, static_cast<uint64_t>(0));
                 size_t iOld = i;
-                for (unsigned j = 1; j < val->getType()->getVectorNumElements(); j++)
+                for (unsigned j = 1; j < cast<VectorType>(val->getType())->getNumElements(); j++)
                 {
                     instList.insert(instList.begin()+ iOld +j, builder.CreateExtractElement(val, j));
                     i++;
@@ -1533,7 +1534,7 @@ namespace IGC
             }
             break;
         case llvm::Type::VectorTyID:
-            num = type->getVectorNumElements();
+            num = (unsigned)cast<VectorType>(type)->getNumElements();
             for (unsigned i = 0; i < num; i++)
             {
                 ScalarizeAggregateMembers(builder, builder.CreateExtractElement(val, i), instList);
@@ -1573,11 +1574,11 @@ namespace IGC
             }
             break;
         case llvm::Type::VectorTyID:
-            num = type->getVectorNumElements();
+            num = (unsigned)cast<VectorType>(type)->getNumElements();
             for (unsigned i = 0; i < num; i++)
             {
                 indices.push_back(builder.getInt32(i));
-                ScalarizeAggregateMemberAddresses(builder, type->getVectorElementType(), val, instList, indices);
+                ScalarizeAggregateMemberAddresses(builder, cast<VectorType>(type)->getElementType(), val, instList, indices);
                 indices.pop_back();
             }
             break;

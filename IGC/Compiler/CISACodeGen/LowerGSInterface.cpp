@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/IGCIRBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Function.h>
@@ -299,7 +300,7 @@ namespace IGC
         Value* orVal = b.CreateShl(isNonZeroCount_i32, modulus, VALUE_NAME("orVal"));
 
         // Load the cut instruction bits and create a vector of values
-        Value* tempVector = UndefValue::get(VectorType::get(b.getInt32Ty(), m_maxControlHeaderIndex));
+        Value* tempVector = UndefValue::get(IGCLLVM::FixedVectorType::get(b.getInt32Ty(), m_maxControlHeaderIndex));
         for (uint32_t i = 0; i < m_maxControlHeaderIndex; ++i)
         {
             llvm::Value* pLoadedCutDword = b.CreateLoad(m_CutBits[i]);
@@ -366,7 +367,7 @@ namespace IGC
         Value* orVal = builder.CreateShl(streamID, modulus, "orVal");
 
         // Load the streamID bits and create a vector of values
-        Value* tempVector = UndefValue::get(VectorType::get(builder.getInt32Ty(), m_maxControlHeaderIndex));
+        Value* tempVector = UndefValue::get(IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), m_maxControlHeaderIndex));
         for (unsigned int i = 0; i < m_maxControlHeaderIndex; ++i)
         {
             llvm::Value* pLoadedStreamIdDword = builder.CreateLoad(m_StreamIdBits[i]);

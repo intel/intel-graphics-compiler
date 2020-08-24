@@ -24,28 +24,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef IGCLLVM_SUPPORT_ALIGNMENT_H
-#define IGCLLVM_SUPPORT_ALIGNMENT_H
+#ifndef IGCLLVM_IR_CFG_H
+#define IGCLLVM_IR_CFG_H
 
-#if LLVM_VERSION_MAJOR >= 10
-#include <llvm/Support/Alignment.h>
-using namespace llvm;
-#endif
-
-#if LLVM_VERSION_MAJOR < 10
-#include <cstdint>
-#define MaybeAlign(n) (n)
-#endif
+#include <llvm/IR/CFG.h>
 
 namespace IGCLLVM {
-#if LLVM_VERSION_MAJOR < 10
-    inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
-    inline unsigned getAlign(uint64_t Val) { return (unsigned)Val; }
+#if LLVM_VERSION_MAJOR >= 11
+    using llvm::const_succ_iterator;
 #else
-    inline uint64_t getAlignmentValue(llvm::Align A) { return A.value(); }
-    inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
-    inline llvm::Align getAlign(uint64_t Val) { return llvm::Align{Val}; }
+    using const_succ_iterator = llvm::succ_const_iterator;
 #endif
-} // namespace IGCLLVM
+}
 
 #endif

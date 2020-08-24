@@ -290,7 +290,7 @@ bool TypeDemote::demoteOnBasicBlock(BasicBlock* BB) const {
             CastInst* CI = dyn_cast<CastInst>(Index);
             if (CI && (CI->getOpcode() == Instruction::ZExt ||
                 CI->getOpcode() == Instruction::SExt)) {
-                unsigned VS = EEI->getVectorOperandType()->getVectorNumElements();
+                unsigned VS = (unsigned)cast<VectorType>(EEI->getVectorOperandType())->getNumElements();
                 unsigned N = (unsigned int)CI->getSrcTy()->getPrimitiveSizeInBits();
                 unsigned Bound = (N < 32) ? (1U << N) : UINT32_MAX;
                 if (VS <= Bound) {

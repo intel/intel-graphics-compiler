@@ -1302,7 +1302,7 @@ namespace IGC
         };
 
         if (I.getType()->isIntegerTy(64) && I.getOperand(0)->getType()->isVectorTy() &&
-            I.getOperand(0)->getType()->getVectorElementType()->isIntegerTy(32))
+            cast<VectorType>(I.getOperand(0)->getType())->getElementType()->isIntegerTy(32))
         {
             if (auto IEI = dyn_cast<InsertElementInst>(I.getOperand(0)))
             {
@@ -2893,8 +2893,8 @@ namespace IGC
                 llvm::Type* srcTy = bTInst->getOperand(0)->getType();
                 llvm::Type* dstTy = bTInst->getType();
 
-                srcNElts = (srcTy->isVectorTy()) ? srcTy->getVectorNumElements() : 1;
-                dstNElts = (dstTy->isVectorTy()) ? dstTy->getVectorNumElements() : 1;
+                srcNElts = (srcTy->isVectorTy()) ? (uint32_t)cast<VectorType>(srcTy)->getNumElements() : 1;
+                dstNElts = (dstTy->isVectorTy()) ? (uint32_t)cast<VectorType>(dstTy)->getNumElements() : 1;
 
                 if (srcNElts < dstNElts && srcTy->getScalarSizeInBits() < 64)
                 {

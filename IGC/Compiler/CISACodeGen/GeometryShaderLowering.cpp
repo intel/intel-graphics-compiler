@@ -508,7 +508,7 @@ void GeometryShaderLowering::AddURBRead(
     {
         Value* vec = UndefValue::get(inst->getType());
         IRBuilder<> builder(inst);
-        for (unsigned int i = 0; i < inst->getType()->getVectorNumElements(); i++)
+        for (unsigned int i = 0; i < cast<VectorType>(inst->getType())->getNumElements(); i++)
         {
             Value* vecElement = builder.CreateExtractElement(urbRead, builder.getInt32(i));
             vec = builder.CreateInsertElement(vec, vecElement, builder.getInt32(i));

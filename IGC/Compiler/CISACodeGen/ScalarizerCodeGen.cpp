@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/InitializePasses.h"
 #include "common/Types.hpp"
 #include "ScalarizerCodeGen.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -84,11 +85,11 @@ void ScalarizerCodeGen::visitBinaryOperator(llvm::BinaryOperator& I)
                 // Check the suitable vector type to cast to, inorder to minimize the number of instructions
                 isNewTypeVector = true;
                 if (newScalarBits % 32 == 0)
-                    newType = VectorType::get(m_builder->getInt32Ty(), newScalarBits / 32);
+                    newType = IGCLLVM::FixedVectorType::get(m_builder->getInt32Ty(), newScalarBits / 32);
                 else if (newScalarBits % 16 == 0)
-                    newType = VectorType::get(m_builder->getInt16Ty(), newScalarBits / 16);
+                    newType = IGCLLVM::FixedVectorType::get(m_builder->getInt16Ty(), newScalarBits / 16);
                 else if (newScalarBits % 8 == 0)
-                    newType = VectorType::get(m_builder->getInt8Ty(), newScalarBits / 8);
+                    newType = IGCLLVM::FixedVectorType::get(m_builder->getInt8Ty(), newScalarBits / 8);
                 else
                     isNewTypeVector = false;
             }

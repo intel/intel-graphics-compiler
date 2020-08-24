@@ -288,8 +288,8 @@ namespace IGC {
                 if (!Ty->isVectorTy())
                     return false;
 
-                unsigned NumElts = Ty->getVectorNumElements();
-                Type* EltTy = Ty->getVectorElementType();
+                unsigned NumElts = (unsigned)cast<VectorType>(Ty)->getNumElements();
+                Type* EltTy = cast<VectorType>(Ty)->getElementType();
                 const auto& ProfitLengths = getProfitLoadVectorLength(EltTy);
 
                 return std::any_of(ProfitLengths.begin(), ProfitLengths.end(),

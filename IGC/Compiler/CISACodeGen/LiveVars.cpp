@@ -52,6 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "common/debug/Debug.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/CFG.h"
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/ADT/DepthFirstIterator.h>
@@ -566,7 +567,7 @@ bool LiveVars::isLiveOut(Value* VL, const BasicBlock& MBB) {
     // Loop over all of the successors of the basic block, checking to see if
     // the value is either live in the block, or if it is killed in the block.
     SmallVector<const BasicBlock*, 8> OpSuccBlocks;
-    for (succ_const_iterator SI = succ_begin(&MBB), E = succ_end(&MBB); SI != E; ++SI) {
+    for (IGCLLVM::const_succ_iterator SI = succ_begin(&MBB), E = succ_end(&MBB); SI != E; ++SI) {
         const BasicBlock* SuccMBB = *SI;
         // Is it alive in this successor?
         if (VI.AliveBlocks.count((BasicBlock*)SuccMBB))

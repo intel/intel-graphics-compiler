@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -536,8 +537,8 @@ namespace IGC
 
         if (inst->getType()->isVectorTy())
         {
-            if (!(inst->getType()->getVectorElementType()->isFloatTy() ||
-                inst->getType()->getVectorElementType()->isIntegerTy(32)))
+            if (!(cast<VectorType>(inst->getType())->getElementType()->isFloatTy() ||
+                cast<VectorType>(inst->getType())->getElementType()->isIntegerTy(32)))
                 return false;
         }
         else
@@ -872,11 +873,11 @@ namespace IGC
 
         if (pTypeToPush->isVectorTy())
         {
-            num_elms = pTypeToPush->getVectorNumElements();
-            pTypeToPush = pTypeToPush->getVectorElementType();
-            llvm::Type* pVecTy = llvm::VectorType::get(pTypeToPush, num_elms);
+            num_elms = (unsigned)cast<VectorType>(pTypeToPush)->getNumElements();
+            pTypeToPush = cast<VectorType>(pTypeToPush)->getElementType();
+            llvm::Type* pVecTy = IGCLLVM::FixedVectorType::get(pTypeToPush, num_elms);
             pReplacedInst = llvm::UndefValue::get(pVecTy);
-            pScalarTy = pVecTy->getVectorElementType();
+            pScalarTy = cast<VectorType>(pVecTy)->getElementType();
         }
 
         SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(num_elms);
@@ -1046,8 +1047,8 @@ namespace IGC
             return;
         }
 
-        unsigned int num_elms =
-            inst->getType()->isVectorTy() ? inst->getType()->getVectorNumElements() : 1;
+        unsigned num_elms =
+            inst->getType()->isVectorTy() ? (unsigned)cast<VectorType>(inst->getType())->getNumElements() : 1;
         llvm::Type* pTypeToPush = inst->getType();
         llvm::Value* replaceVector = nullptr;
         unsigned int numberChannelReplaced = 0;
@@ -1056,7 +1057,7 @@ namespace IGC
         if (inst->getType()->isVectorTy())
         {
             allExtract = LoadUsedByConstExtractOnly(cast<LoadInst>(inst), extracts);
-            pTypeToPush = inst->getType()->getVectorElementType();
+            pTypeToPush = cast<VectorType>(inst->getType())->getElementType();
         }
 
         for (unsigned int i = 0; i < num_elms; ++i)

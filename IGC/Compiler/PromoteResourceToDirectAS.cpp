@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
+#include <llvmWrapper/Support/Alignment.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CISACodeGen/helper.h"
@@ -627,7 +628,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
             // Promote ldraw back to load
             pNewBufferAccessInst = builder.CreateAlignedLoad(
                 pBuffer,
-                ldRawIntr->getAlignment(),
+                IGCLLVM::getAlign(ldRawIntr->getAlignment()),
                 ldRawIntr->isVolatile());
             break;
         }
@@ -645,7 +646,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
             pNewBufferAccessInst = builder.CreateAlignedStore(
                 storeVal,
                 pBuffer,
-                storeRawIntr->getAlignment(),
+                IGCLLVM::getAlign(storeRawIntr->getAlignment()),
                 storeRawIntr->isVolatile());
             break;
         }

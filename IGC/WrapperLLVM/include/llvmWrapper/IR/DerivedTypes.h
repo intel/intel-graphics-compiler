@@ -35,7 +35,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR <= 10
     using FixedVectorType = llvm::VectorType;
 #else
-    using llvm::VectorType;
+    using FixedVectorType = llvm::FixedVectorType;
 #endif
 
 }

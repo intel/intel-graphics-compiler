@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Value.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "common/Types.hpp"
@@ -426,7 +427,7 @@ static bool checkSize(GlobalVariable* GV, VectorType*& DataType,
     unsigned ThresholdInBits = IGC_GET_FLAG_VALUE(ConstantPromotionSize) * 256;
     unsigned TotalSzInBits = (unsigned int)BaseTy->getPrimitiveSizeInBits() * VS;
     if (TotalSzInBits <= ThresholdInBits) {
-        DataType = VectorType::get(BaseTy, VS);
+        DataType = IGCLLVM::FixedVectorType::get(BaseTy, VS);
         return true;
     }
 
@@ -457,8 +458,8 @@ static Value* extractNElts(unsigned N, Value* VectorData, Value* Offset,
     if (N == 1)
         return IRB.CreateExtractElement(VectorData, Offset);
 
-    Type* Ty = VectorData->getType()->getVectorElementType();
-    Ty = VectorType::get(Ty, N);
+    Type* Ty = cast<VectorType>(VectorData->getType())->getElementType();
+    Ty = IGCLLVM::FixedVectorType::get(Ty, N);
     Value* Result = UndefValue::get(Ty);
     for (unsigned i = 0; i < N; ++i) {
         Value* VectorIdx = ConstantInt::get(Offset->getType(), i);
@@ -508,7 +509,7 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
             Constant* const Elt = CA->getAggregateElement(i);
             IGC_ASSERT_MESSAGE(nullptr != Elt, "Null AggregateElement");
             if (auto EltTy = dyn_cast<VectorType>(Elt->getType())) {
-                unsigned VectorSize = EltTy->getVectorNumElements();
+                unsigned VectorSize = (unsigned)cast<VectorType>(EltTy)->getNumElements();
                 for (unsigned j = 0; j < VectorSize; ++j) {
                     Constant* V = Elt->getAggregateElement(j);
                     Vals[i * VectorSize + j] = getConstantVal(VEltTy, V, IsSigned);
@@ -550,7 +551,7 @@ static void promote(GlobalVariable* GV, VectorType* AllocaType, bool IsSigned,
             unsigned N = 1;
             Value* Offset = Index;
             if (Ty->isVectorTy()) {
-                N = Ty->getVectorNumElements();
+                N = (unsigned)cast<VectorType>(Ty)->getNumElements();
                 Offset = Builder.CreateMul(Offset, ConstantInt::get(Offset->getType(), N));
             }
             Value* Val = extractNElts(N, VectorData, Offset, Builder);

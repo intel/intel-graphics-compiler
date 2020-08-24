@@ -24,28 +24,44 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef IGCLLVM_SUPPORT_ALIGNMENT_H
-#define IGCLLVM_SUPPORT_ALIGNMENT_H
+#ifndef IGCLLVM_IR_PATTERNMATCH_H
+#define IGCLLVM_IR_PATTERNMATCH_H
 
-#if LLVM_VERSION_MAJOR >= 10
-#include <llvm/Support/Alignment.h>
-using namespace llvm;
+#include <llvm/IR/PatternMatch.h>
+
+namespace llvm {
+namespace PatternMatch {
+#if LLVM_VERSION_MAJOR < 8
+
+    template <typename Val_t, typename Idx_t>
+    inline ExtractElementClass_match<Val_t, Idx_t>
+    m_ExtractElt(const Val_t &Val, const Idx_t &Idx) {
+        return m_ExtractElement<Val_t, Idx_t>(Val, Idx);
+    }
+
+    template <typename Val_t, typename Elt_t, typename Idx_t>
+    inline InsertElementClass_match<Val_t, Elt_t, Idx_t>
+    m_InsertElt(const Val_t &Val, const Elt_t &Elt, const Idx_t &Idx) {
+        return m_InsertElement<Val_t, Elt_t, Idx_t>(Val, Elt, Idx);
+    }
+
+#elif LLVM_VERSION_MAJOR < 11
+
+    template <typename Val_t, typename Elt_t, typename Idx_t>
+    inline ThreeOps_match<Val_t, Elt_t, Idx_t, Instruction::InsertElement>
+    m_InsertElt(const Val_t &Val, const Elt_t &Elt, const Idx_t &Idx) {
+      return m_InsertElement<Val_t, Elt_t, Idx_t>(Val, Elt, Idx);
+    }
+
+    template <typename Val_t, typename Idx_t>
+    inline TwoOps_match<Val_t, Idx_t, Instruction::ExtractElement>
+    m_ExtractElt(const Val_t &Val, const Idx_t &Idx) {
+      return m_ExtractElement<Val_t, Idx_t>(Val, Idx);
+    }
+
 #endif
 
-#if LLVM_VERSION_MAJOR < 10
-#include <cstdint>
-#define MaybeAlign(n) (n)
-#endif
-
-namespace IGCLLVM {
-#if LLVM_VERSION_MAJOR < 10
-    inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
-    inline unsigned getAlign(uint64_t Val) { return (unsigned)Val; }
-#else
-    inline uint64_t getAlignmentValue(llvm::Align A) { return A.value(); }
-    inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
-    inline llvm::Align getAlign(uint64_t Val) { return llvm::Align{Val}; }
-#endif
-} // namespace IGCLLVM
+}
+}
 
 #endif

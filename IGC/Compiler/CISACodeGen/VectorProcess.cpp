@@ -651,9 +651,9 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
     bool forceByteScatteredRW)
 {
     VectorType* VTy = dyn_cast<VectorType>(Ty);
-    Type* eTy = VTy ? VTy->getVectorElementType() : Ty;
+    Type* eTy = VTy ? cast<VectorType>(VTy)->getElementType() : Ty;
     unsigned eltSize = m_emitter->GetScalarTypeSizeInRegister(eTy);
-    unsigned nElts = VTy ? VTy->getVectorNumElements() : 1;
+    unsigned nElts = VTy ? (unsigned)cast<VectorType>(VTy)->getNumElements() : 1;
     // total bytes
     const unsigned TBytes = nElts * eltSize;
 

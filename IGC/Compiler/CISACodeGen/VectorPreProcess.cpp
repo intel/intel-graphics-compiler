@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/Support/Alignment.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
@@ -1296,11 +1297,11 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         //
         // TODO: further optimize this load into a message with channel masks
         // for cases in which use indices are sparse like {0, 2}.
-        unsigned N = Inst->getType()->getVectorNumElements();
+        unsigned N = (unsigned)cast<VectorType>(Inst->getType())->getNumElements();
         if (N == MaxIndex + 1)
             return Inst;
 
-        Type* NewVecTy = VectorType::get(Inst->getType()->getVectorElementType(),
+        Type* NewVecTy = IGCLLVM::FixedVectorType::get(cast<VectorType>(Inst->getType())->getElementType(),
             MaxIndex + 1);
         IRBuilder<> Builder(Inst);
         Instruction* NewLI = ALI.Create(NewVecTy);
@@ -1353,7 +1354,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
     if (NBits < 32)
         return Inst;
 
-    unsigned N = Val->getType()->getVectorNumElements();
+    unsigned N = (unsigned)cast<VectorType>(Val->getType())->getNumElements();
     if (auto CV = dyn_cast<ConstantVector>(Val))
     {
         unsigned MaxIndex = 0;
@@ -1412,7 +1413,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
     if (MaxIndex >= 0 && MaxIndex + 1 < (int)N && isa<UndefValue>(ChainVal))
     {
         IRBuilder<> Builder(ASI.getInst());
-        Type* NewVecTy = VectorType::get(Val->getType()->getVectorElementType(),
+        Type* NewVecTy = VectorType::get(cast<VectorType>(Val->getType())->getElementType(),
             MaxIndex + 1);
         Value* SVal = UndefValue::get(NewVecTy);
         for (int i = 0; i <= MaxIndex; ++i)
@@ -1571,7 +1572,7 @@ bool VectorPreProcess::runOnFunction(Function& F)
                     // If this is a 3-element vector load, remove it
                     // from m_Vector3List as well.
                     if (isAbstractLoadInst(tInst) && tInst->getType()->isVectorTy() &&
-                        tInst->getType()->getVectorNumElements() == 3)
+                        cast<VectorType>(tInst->getType())->getNumElements() == 3)
                     {
                         InstWorkVector::iterator
                             tI = m_Vector3List.begin(),

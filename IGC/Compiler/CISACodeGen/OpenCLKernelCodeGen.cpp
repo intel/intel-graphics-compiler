@@ -521,8 +521,8 @@ namespace IGC
         unsigned int numElements = 1;
         if (baseType->isVectorTy())
         {
-            numElements = baseType->getVectorNumElements();
-            baseType = baseType->getVectorElementType();
+            numElements = (unsigned)cast<VectorType>(baseType)->getNumElements();
+            baseType = cast<VectorType>(baseType)->getElementType();
         }
 
         // Integer types need to be qualified with a "u" if they are unsigned

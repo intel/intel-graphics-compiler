@@ -608,7 +608,7 @@ std::vector<VISAVariableLocation> VISAModule::GetVariableLocation(const llvm::In
 
         if (pType->isVectorTy())
         {
-            vectorNumElements = pType->getVectorNumElements();
+            vectorNumElements = (unsigned)cast<VectorType>(pType)->getNumElements();
         }
         else if (!pVar->IsUniform())
         {

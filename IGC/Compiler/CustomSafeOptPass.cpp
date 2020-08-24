@@ -78,6 +78,7 @@ instead if the structure is small.
 #include "WrapperLLVM/Utils.h"
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/IR/IRBuilder.h>
+#include <llvmWrapper/IR/PatternMatch.h>
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/SetVector.h>
@@ -87,7 +88,6 @@ instead if the structure is small.
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/InstIterator.h>
-#include <llvm/IR/PatternMatch.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Analysis/ValueTracking.h>
@@ -544,7 +544,7 @@ void CustomSafeOptPass::visitf32tof16(llvm::CallInst* inst)
 
     IRBuilder<> builder(lastValue);
     Type* funcType[] = { Type::getHalfTy(builder.getContext()), Type::getFloatTy(builder.getContext()) };
-    Type* halfx2 =IGCLLVM::FixedVectorType::get(Type::getHalfTy(builder.getContext()), 2);
+    Type* halfx2 = IGCLLVM::FixedVectorType::get(Type::getHalfTy(builder.getContext()), 2);
 
     if (extInstLo && extInstHi &&
         extInstLo->getOperand(0)->getType()->isHalfTy() &&
@@ -865,7 +865,7 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
       for (int i = 0; i < NUM_DP4A_COMPONENTS; ++i) {
         ConstantInt* IndexVal = nullptr;
         Value* OriginVal = nullptr;
-        auto P = m_ExtractElement(m_Value(OriginVal), m_ConstantInt(IndexVal));
+        auto P = m_ExtractElt(m_Value(OriginVal), m_ConstantInt(IndexVal));
         if (!match(Arr[i], P)) {
           CanOptOrder = false;
           break;
@@ -1929,7 +1929,7 @@ void CustomSafeOptPass::matchReverse(BinaryOperator& I)
 void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Value* OpLow, Value* OpHi, unsigned extractNum1, unsigned extractNum2)
 {
     llvm::IRBuilder<> builder(&I);
-    auto vec2 =IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
+    auto vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
     Value* vec = UndefValue::get(vec2);
     Value* elemLow = nullptr;
     Value* elemHi = nullptr;
@@ -2000,7 +2000,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
         Value * AndOp2 = nullptr, *EltOp2 = nullptr, *VecOp = nullptr;
         auto pattern2 = m_Or(
             m_And(m_Value(AndOp2), m_SpecificInt(0xFFFFFFFF)),
-            m_BitCast(m_InsertElement(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
+            m_BitCast(m_InsertElt(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
 #endif // LLVM_VERSION_MAJOR >= 7
         if (match(&I, pattern1) && AndOp1->getType()->isIntegerTy(64))
         {
@@ -2174,7 +2174,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
         Value* src_of_FNeg = nullptr;
         Instruction* inst = nullptr;
 
-        auto fabs_on_int_pattern1 = m_And(m_ExtractElement(m_Instruction(inst), m_SpecificInt(1)), m_SpecificInt(0x7FFFFFFF));
+        auto fabs_on_int_pattern1 = m_And(m_ExtractElt(m_Instruction(inst), m_SpecificInt(1)), m_SpecificInt(0x7FFFFFFF));
         auto fabs_on_int_pattern2 = m_And(m_Instruction(inst), m_SpecificInt(0x7FFFFFFF00000000));
         auto fneg_pattern = m_FNeg(m_Value(src_of_FNeg));
 
@@ -2198,7 +2198,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
             if (src && match(src, fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
             {
                 llvm::IRBuilder<> builder(&I);
-                VectorType* vec2 =IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
+                VectorType* vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
                 Value* BC = builder.CreateBitCast(src_of_FNeg, vec2);
                 Value* EE = builder.CreateExtractElement(BC, builder.getInt32(1));
                 Value* AI = builder.CreateAnd(EE, builder.getInt32(0x7FFFFFFF));
@@ -2242,7 +2242,7 @@ void GenSpecificPattern::visitCmpInst(CmpInst& I)
         Val1->getType()->isIntegerTy(64))
     {
         llvm::IRBuilder<> builder(&I);
-        VectorType* vec2 =IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
+        VectorType* vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
         Value* BC = builder.CreateBitCast(Val1, vec2);
         Value* EE = builder.CreateExtractElement(BC, builder.getInt32(1));
         Value* AI = builder.CreateAnd(EE, builder.getInt32(const_int1 >> 32));
@@ -2643,7 +2643,7 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
     {
         auto new_shift_size = (unsigned)CI->getZExtValue() - 32;
         llvm::IRBuilder<> builder(&I);
-        VectorType* vec2 =IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
+        VectorType* vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
         Value* new_Val = builder.CreateBitCast(LHS, vec2);
         new_Val = builder.CreateExtractElement(new_Val, builder.getInt32(1));
         if (new_shift_size > 0)

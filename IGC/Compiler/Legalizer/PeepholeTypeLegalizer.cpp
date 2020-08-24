@@ -157,7 +157,7 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction& I)
 
     if (quotient > 1)
     {
-        unsigned numElements = I.getType()->isVectorTy() ? I.getType()->getVectorNumElements() : 1;
+        unsigned numElements = I.getType()->isVectorTy() ? (unsigned)cast<VectorType>(I.getType())->getNumElements() : 1;
         Type* newType = VectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
 
         PHINode* newPhi = m_builder->CreatePHI(newType, oldPhi->getNumIncomingValues());
@@ -833,7 +833,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         }
 
         unsigned ipElmtSize = prevInst->getOperand(0)->getType()->getScalarSizeInBits();
-        unsigned ipVecSize = prevInst->getOperand(0)->getType()->getVectorNumElements();
+        unsigned ipVecSize = (unsigned)cast<VectorType>(prevInst->getOperand(0)->getType())->getNumElements();
         unsigned convFactor = promoteToInt / ipElmtSize;
 
         Value* vecRes = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));

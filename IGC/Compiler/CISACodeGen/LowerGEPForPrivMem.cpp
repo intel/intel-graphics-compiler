@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -155,7 +156,7 @@ llvm::AllocaInst* LowerGEPForPrivMem::createVectorForAlloca(
         const unsigned int denominator = int_cast<unsigned int>(m_pDL->getTypeAllocSize(pBaseType));
         IGC_ASSERT(0 < denominator);
         const unsigned int totalSize = extractConstAllocaSize(pAlloca) / denominator;
-        pAllocaValue = IRB.CreateAlloca(llvm::VectorType::get(pBaseType, totalSize));
+        pAllocaValue = IRB.CreateAlloca(IGCLLVM::FixedVectorType::get(pBaseType, totalSize));
     }
 
     return pAllocaValue;
@@ -631,9 +632,9 @@ void TransposeHelper::handleGEPInst(
             }
             else
             {
-                arr_sz = T->getVectorNumElements();
+                arr_sz = (unsigned)cast<VectorType>(T)->getNumElements();
             }
-            T = T->getVectorElementType();
+            T = cast<VectorType>(T)->getElementType();
         }
 
         pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, GepOpnd);
@@ -667,7 +668,7 @@ static Value* loadEltsFromVecAlloca(
     // %v1 = extractelement <32 x float> %w, i32 %idx+1
     // replace all uses of %v with <%v0, %v1>
     IGC_ASSERT_MESSAGE((N > 1), "out of sync");
-    Type* Ty = VectorType::get(scalarType, N);
+    Type* Ty = IGCLLVM::FixedVectorType::get(scalarType, N);
     Value* Result = UndefValue::get(Ty);
 
     for (unsigned i = 0; i < N; ++i)
@@ -690,7 +691,7 @@ void TransposeHelperPromote::handleLoadInst(
     IRBuilder<> IRB(pLoad);
     IGC_ASSERT(nullptr != pLoad->getType());
     unsigned N = pLoad->getType()->isVectorTy()
-        ? pLoad->getType()->getVectorNumElements()
+        ? (unsigned)cast<VectorType>(pLoad->getType())->getNumElements()
         : 1;
     Value* Val = loadEltsFromVecAlloca(N, pVecAlloca, pScalarizedIdx, IRB, pLoad->getType()->getScalarType());
     pLoad->replaceAllUsesWith(Val);
@@ -722,7 +723,7 @@ void TransposeHelperPromote::handleStoreInst(
         // %v1 = extractelement <2 x float> %v, i32 1
         // %w1 = insertelement <32 x float> %w0, float %v1, i32 %idx+1
         // store <32 x float> %w1, <32 x float>* %ptr1
-        for (unsigned i = 0, e = pStoreVal->getType()->getVectorNumElements(); i < e; ++i)
+        for (unsigned i = 0, e = (unsigned)cast<VectorType>(pStoreVal->getType())->getNumElements(); i < e; ++i)
         {
             Value* VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
             auto Val = IRB.CreateExtractElement(pStoreVal, VectorIdx);

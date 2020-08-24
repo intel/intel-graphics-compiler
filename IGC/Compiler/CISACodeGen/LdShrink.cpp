@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvmWrapper/Support/Alignment.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Support/raw_ostream.h>
@@ -153,11 +154,11 @@ bool LdShrink::runOnFunction(Function& F) {
             if (Offset)
                 ScalarPtr = Builder.CreateInBoundsGEP(ScalarPtr, Builder.getInt32(Offset));
 
-            unsigned Align
+            unsigned alignment
                 = int_cast<unsigned int>(MinAlign(LI->getAlignment(),
                     DL->getTypeStoreSize(ScalarTy) * Offset));
 
-            LoadInst* NewLoad = Builder.CreateAlignedLoad(ScalarPtr, Align);
+            LoadInst* NewLoad = Builder.CreateAlignedLoad(ScalarPtr, IGCLLVM::getAlign(alignment));
             NewLoad->setDebugLoc(LI->getDebugLoc());
 
             ExtractElementInst* EEI = cast<ExtractElementInst>(*LI->user_begin());

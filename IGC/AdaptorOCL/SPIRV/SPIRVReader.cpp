@@ -64,6 +64,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/DIBuilder.h"
 #include "llvmWrapper/IR/Module.h"
@@ -2110,7 +2111,7 @@ Value *SPIRVToLLVM::promoteBool(Value *pVal, BasicBlock *BB)
 
     auto *PromoType = isa<VectorType>(pVal->getType()) ?
         cast<Type>(VectorType::get(Type::getInt8Ty(pVal->getContext()),
-            pVal->getType()->getVectorNumElements())) :
+        (unsigned)cast<VectorType>(pVal->getType())->getNumElements())) :
         Type::getInt8Ty(pVal->getContext());
 
     if (auto *C = dyn_cast<Constant>(pVal))
@@ -2151,8 +2152,8 @@ Value *SPIRVToLLVM::truncBool(Value *pVal, BasicBlock *BB)
         return pVal;
 
     auto *TruncType = isa<VectorType>(pVal->getType()) ?
-        cast<Type>(VectorType::get(Type::getInt1Ty(pVal->getContext()),
-            pVal->getType()->getVectorNumElements())) :
+        cast<Type>(IGCLLVM::FixedVectorType::get(Type::getInt1Ty(pVal->getContext()),
+            (unsigned)cast<VectorType>(pVal->getType())->getNumElements())) :
         Type::getInt1Ty(pVal->getContext());
 
     if (auto *C = dyn_cast<Constant>(pVal))
@@ -2198,7 +2199,7 @@ Type *SPIRVToLLVM::truncBoolType(SPIRVType *SPVType, Type *LLType)
 
     return isa<VectorType>(LLType) ?
         cast<Type>(VectorType::get(Type::getInt1Ty(LLType->getContext()),
-                                   LLType->getVectorNumElements())) :
+                                   (unsigned)cast<VectorType>(LLType)->getNumElements())) :
         Type::getInt1Ty(LLType->getContext());
 }
 
@@ -2351,7 +2352,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       {
         if(CV[i]->getType()->isVectorTy())
         {
-          for(uint32_t j = 0; j < CV[i]->getType()->getVectorNumElements(); j++)
+          for(uint32_t j = 0; j < cast<VectorType>(CV[i]->getType())->getNumElements(); j++)
           {
             Value *v = ExtractElementInst::Create( CV[i],ConstantInt::get( *Context,APInt( 32,j ) ),BCC->getName(),BB );
             elm1 = CreateCompositeConstruct( elm1,v,pos++ );
@@ -3026,7 +3027,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
           a->getType()->getScalarType(),
           a->getType()->getScalarSizeInBits() - 1);
       auto *ShiftOp = isa<VectorType>(a->getType()) ?
-          ConstantVector::getSplat(a->getType()->getVectorNumElements(), ShiftAmt) :
+          ConstantVector::getSplat((unsigned)cast<VectorType>(a->getType())->getNumElements(), ShiftAmt) :
           ShiftAmt;
 
       // OCL C:
@@ -3370,15 +3371,15 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
               "",
               BB);
       }
-      else if (coordType->getVectorNumElements() != 4)
+      else if (cast<VectorType>(coordType)->getNumElements() != 4)
       {
           Value *undef = UndefValue::get(coordType);
 
           SmallVector<Constant*, 4> shuffleIdx;
-          for (unsigned i = 0; i < coordType->getVectorNumElements(); i++)
+          for (unsigned i = 0; i < cast<VectorType>(coordType)->getNumElements(); i++)
               shuffleIdx.push_back(ConstantInt::get(Type::getInt32Ty(*Context), i));
 
-          for (unsigned i = coordType->getVectorNumElements(); i < 4; i++)
+          for (uint64_t i = (unsigned)cast<VectorType>(coordType)->getNumElements(); i < 4; i++)
               shuffleIdx.push_back(ConstantInt::get(Type::getInt32Ty(*Context), 0));
 
           imageCoordinateWiden = new ShuffleVectorInst(
