@@ -1417,41 +1417,6 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst& I)
     Value* src1 = I.getOperand(1);
     // The mask is guaranteed by the LLVM IR spec to be constant
     Constant* mask = cast<Constant>(I.getOperand(2));
-    // The two inputs are guaranteed to be of the same type
-    VectorType* inType = cast<VectorType>(src0->getType());
-    int inCount = int_cast<int>(inType->getNumElements());
-    int inBase = 2;  // 2 means using undef
-    // if inType == resType, use src0/src1 as the input
-    if (inType == resType)
-    {
-        int srcMatch0 = 0;
-        int srcMatch1 = 0;
-        for (unsigned int dstIndex = 0; dstIndex < resType->getNumElements(); ++dstIndex)
-        {
-            // The mask value can be either an integer or undef.
-            // If it's undef, do nothing.
-            // Otherwise, create an insert with the appropriate value.
-            ConstantInt* index = dyn_cast<ConstantInt>(mask->getAggregateElement(dstIndex));
-            if (index)
-            {
-                int indexVal = int_cast<int>(index->getZExtValue());
-                if (indexVal == dstIndex)
-                    srcMatch0++;
-                else if (indexVal == inCount + dstIndex)
-                    srcMatch1++;
-            }
-        }
-        if (srcMatch0 > srcMatch1 && srcMatch0 > 0)
-        {
-            newVec = src0;
-            inBase = 0;
-        }
-        else if (srcMatch1 > srcMatch0 && srcMatch1 > 0)
-        {
-            inBase = 1;
-            newVec = src1;
-        }
-    }
 
     for (unsigned int dstIndex = 0; dstIndex < resType->getNumElements(); ++dstIndex)
     {
@@ -1463,10 +1428,9 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst& I)
         {
             int indexVal = int_cast<int>(index->getZExtValue());
 
-            if (inBase == 0 && indexVal == dstIndex)
-                continue;
-            else if (inBase == 1 && indexVal == dstIndex + inCount)
-                continue;
+            // The two inputs are guaranteed to be of the same type
+            VectorType* inType = cast<VectorType>(src0->getType());
+            int inCount = int_cast<int>(inType->getNumElements());
 
             Value* srcVector = nullptr;
             int srcIndex = 0;
