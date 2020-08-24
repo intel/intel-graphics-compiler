@@ -3719,6 +3719,11 @@ Instruction* InstCombiner::visitCallInst(CallInst& CI) {
             }
         }
 
+        // If no non-constant size vla in this function and no function call, we can
+        // remove this stackrestore
+        if (!CannotRemove && (!CI.getParent()->getParent()->hasFnAttribute("hasVLA")))
+            return eraseInstFromFunction(CI);
+
         // If the stack restore is in a return, resume, or unwind block and if there
         // are no allocas or calls between the restore and the return, nuke the
         // restore.
