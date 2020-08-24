@@ -544,7 +544,6 @@ ValuePair Emu64Ops::getExpandedValues(Value* V) {
         return VMI->second;
     }
 
-    errs() << "V = " << *V << '\n';
     IGC_ASSERT_EXIT_MESSAGE(0, "TODO: NOT IMPLEMENTED!");
 }
 
@@ -661,10 +660,7 @@ bool InstExpander::expand(Instruction* I) {
 }
 
 bool InstExpander::visitInstruction(Instruction& I) {
-#if 1
-    errs() << "I = " << I << '\n';
-#endif
-    llvm_unreachable("UNKNOWN INSTRUCTION is BEING EXPANDED!");
+    IGC_ASSERT_MESSAGE(0, "UNKNOWN INSTRUCTION is BEING EXPANDED!");
     return false;
 }
 
@@ -673,8 +669,7 @@ bool InstExpander::visitRet(ReturnInst& RI) {
     {
         // TODO: Add 64-bit return value support when function/subroutine call is supported.
         IGC_ASSERT(nullptr != Emu);
-        if (Emu->isInt64(V))
-            llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+        IGC_ASSERT_MESSAGE(false == Emu->isInt64(V), "TODO: NOT IMPLEMENTED YET!");
     }
     return false;
 }
@@ -744,29 +739,25 @@ bool InstExpander::visitMul(BinaryOperator& BinOp) {
 
 bool InstExpander::visitSDiv(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
-    if (Emu->isInt64(&BinOp))
-        llvm_unreachable("There should not be `sdiv` which is already emulated by library call.");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(&BinOp), "There should not be `sdiv` which is already emulated by library call.");
     return false;
 }
 
 bool InstExpander::visitUDiv(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
-    if (Emu->isInt64(&BinOp))
-        llvm_unreachable("There should not be `udiv` which is already emulated by library call.");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(&BinOp), "There should not be `udiv` which is already emulated by library call.");
     return false;
 }
 
 bool InstExpander::visitSRem(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
-    if (Emu->isInt64(&BinOp))
-        llvm_unreachable("There should not be `srem` which is already emulated by library call.");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(&BinOp), "There should not be `srem` which is already emulated by library call.");
     return false;
 }
 
 bool InstExpander::visitURem(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
-    if (Emu->isInt64(&BinOp))
-        llvm_unreachable("There should not be `urem` which is already emulated by library call.");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(&BinOp), "There should not be `urem` which is already emulated by library call.");
     return false;
 }
 
@@ -1231,15 +1222,14 @@ bool InstExpander::visitAtomicCmpXchg(AtomicCmpXchgInst& ACXI) {
     Value* V = ACXI.getCompareOperand();
     IGC_ASSERT(nullptr != V);
     IGC_ASSERT(nullptr != Emu);
-    if (Emu->isInt64(V))
-        llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(V), "TODO: NOT IMPLEMENTED YET!");
+
     return false;
 }
 
 bool InstExpander::visitAtomicRMW(AtomicRMWInst& RMW) {
     IGC_ASSERT(nullptr != Emu);
-    if (Emu->isInt64(&RMW))
-        llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(&RMW), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
 
@@ -2033,8 +2023,7 @@ bool InstExpander::visitSelect(SelectInst& SI) {
 bool InstExpander::visitVAArg(VAArgInst& VAAI) {
     // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
-    if (Emu->isInt64(&VAAI))
-        llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(&VAAI), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
 
@@ -2111,8 +2100,7 @@ bool InstExpander::visitInsertElement(InsertElementInst& IEI) {
 bool InstExpander::visitExtractValue(ExtractValueInst& EVI) {
     // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
-    if (Emu->isInt64(&EVI))
-        llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(&EVI), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
 
@@ -2120,8 +2108,7 @@ bool InstExpander::visitInsertValue(InsertValueInst& IVI) {
     // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
     IGC_ASSERT(0 < IVI.getNumOperands());
-    if (Emu->isInt64(IVI.getOperand(1)))
-        llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(IVI.getOperand(1)), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
 
@@ -2129,7 +2116,6 @@ bool InstExpander::visitLandingPad(LandingPadInst& LPI) {
     // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
     IGC_ASSERT(0 < LPI.getNumOperands());
-    if (Emu->isInt64(LPI.getOperand(1)))
-        llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
+    IGC_ASSERT_MESSAGE(false == Emu->isInt64(LPI.getOperand(1)), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
