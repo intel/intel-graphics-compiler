@@ -1044,10 +1044,16 @@ private:
     //memory managed by the entity that creates vISA Kernel object
     Options *m_options;
 
-    bool getIntKernelAttributeValue(const char* attrName, int& value);
     void createKernelAttributes() {
         void* pmem = m_mem.alloc(sizeof(vISA::Attributes));
         m_kernelAttrs = new (pmem) vISA::Attributes();
+    }
+    void destroyKernelAttributes() {
+        // Even though attributes is allocated from m_mem, need to invoke dtor.
+        if (m_kernelAttrs) {
+            m_kernelAttrs->~Attributes();
+            m_kernelAttrs = nullptr;
+        }
     }
 
     // Shared with G4_kernel

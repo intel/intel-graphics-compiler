@@ -27,85 +27,66 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _ATTRIBUTES_H_
 #define _ATTRIBUTES_H_
 
+#include <unordered_map>
+
 namespace vISA
 {
     class Attributes
     {
     public:
-        // Attribute's value
-        union SAttrVal {
-            int          m_intVal;
-            const char* m_stringVal;
+        /// <summary>
+        /// Attribute kind, allow an attribute to be of multiple kinds.
+        /// </summary>
+        enum AttrKind
+        {
+            AK_KERNEL = 0x1,
+            AK_VAR    = 0x2,
+            AK_MASK   = 0x3
+        };
 
-            SAttrVal() : m_intVal(0) {}
-            SAttrVal(int v) : m_intVal(v) {}
-            SAttrVal(const char* p) : m_stringVal(p) {}
+        /// <summary>
+        ///  Attribute value Types
+        /// </summary>
+        enum class AttrType : uint16_t
+        {
+            Bool, Int32, Int64, CString
+        };
+
+        struct SAttrVal {
+            AttrType m_attrType;
+            union {
+                uint64_t     m_mem;  // WA to designated initialization
+                int64_t      m_i64;
+                int32_t      m_i32;
+                const char*  m_cstr;
+                bool         m_bool;
+            } u;
         };
 
         struct SAttrInfo
         {
-            const char* m_attrName;
-            const uint32_t m_attrNameBytes;  // strlen(m_attrName)
-            SAttrVal   m_defaultVal;
+            // Attribute kind : one bit to denote one kind.
+            // An attr can be of multiple kinds, for example, both kernel and var.
+            uint16_t       m_attrKind;
+            const char*    m_attrName;
+            SAttrVal       m_defaultVal;     // type and default value
+            const char*    m_description;
         };
 
+        /// <summary>
+        /// Attribute ID
+        /// </summary>
         enum ID
         {
-            // Keep the following order for all attributes:
-            //   1. kernel (and function) attributes of int value
-            //   2. kernel (and function) attributes of string value
-            //   3. other non-kernel (non-function) attributes of int value (or no value)
-            //   4. other non-kernel attributes of string value.
+            #define DEF_ATTR(E, N, K, I, D)   E,
+            #include "VISAAttributes.def"
 
-            /****************************************/
-            /*     int-typed kernel attributes      */
-            /****************************************/
-            ATTR_START_INT_KERNEL_ATTR,
-            ATTR_Target = ATTR_START_INT_KERNEL_ATTR,
-            ATTR_SLMSize,
-            ATTR_SpillMemOffset,       // Offset at which spill/fill starts
-            ATTR_ArgSize,
-            ATTR_RetValSize,
-            ATTR_PerThreadInputSize,
-            ATTR_Extern,
-            ATTR_NoBarrier,
-            ATTR_SimdSize,
-
-
-            /********************************************/
-            /*      string-typed kernel attributes      */
-            /********************************************/
-            ATTR_START_STRING_KERNEL_ATTR,
-            ATTR_OutputAsmPath = ATTR_START_STRING_KERNEL_ATTR,
-            ATTR_Entry,
-            ATTR_Callable,
-            ATTR_Caller,
-            ATTR_Composable,
-
-            /******************************************************/
-            /*    int non-kernel attributes, such as variables'   */
-            /******************************************************/
-            ATTR_START_INT_NON_KERNEL_ATTR,
-            ATTR_Input = ATTR_START_INT_NON_KERNEL_ATTR,
-            ATTR_Output,
-            ATTR_Scope,
-            ATTR_Input_Output,
-            ATTR_NoWidening,
-            ATTR_SurfaceUsage,
-
-            /********************************************************/
-            /*    string non-kernel attributes, such as variables'  */
-            /********************************************************/
-            ATTR_START_STRING_NON_KERNEL_ATTR,
-
-            // key enum values
-            ATTR_TOTAL_NUM = ATTR_START_STRING_NON_KERNEL_ATTR,
-            ATTR_NUM_KERNEL_ATTRS = ATTR_START_INT_NON_KERNEL_ATTR,
-
+            ATTR_TOTAL_NUM,
             ATTR_INVALID
         };
 
-        struct SKernelAttrVal {
+        // Used for current Attribute Value
+        struct SAttrValue {
             SAttrVal m_val;
             bool     m_isSet;
         };
@@ -113,62 +94,121 @@ namespace vISA
         /// Given an attribute name, return its ID
         static ID getAttributeID(const char* AttrName);
 
+        static bool isValid(ID aID) { return (aID >= 0 && aID < ATTR_TOTAL_NUM); }
+
         /// Given an attribute ID, return its name
-        static const char* getAttributeName(ID aID);
+        static const char* getAttributeName(ID aID)
+        {
+            assert(isValid(aID));
+            return AttrsInfo[(int)aID].m_attrName;
+        }
 
         /// Return true if the given AttrName's ID == aID
-        static bool isAttribute(ID aID, const char* AttrName);
-
-        static bool isIntKernelAttribute(ID aID)
+        static bool isAttribute(ID aID, const char* AttrName)
         {
-            return aID >= ATTR_START_INT_KERNEL_ATTR &&
-                aID < ATTR_START_STRING_KERNEL_ATTR;
-        }
-        static bool isStringKernelAttribute(ID aID)
-        {
-            return aID >= ATTR_START_STRING_KERNEL_ATTR &&
-                aID < ATTR_NUM_KERNEL_ATTRS;
+            return aID == getAttributeID(AttrName);
         }
 
-        static bool isIntNonKernelAttribute(ID aID)
+        static bool isBool(ID aID)
         {
-            return aID >= ATTR_START_INT_NON_KERNEL_ATTR &&
-                aID < ATTR_START_STRING_NON_KERNEL_ATTR;
+            assert(isValid(aID));
+            return AttrsInfo[(int)aID].m_defaultVal.m_attrType == AttrType::Bool;
         }
+        static bool isInt32(ID aID)
+        {
+            assert(isValid(aID));
+            return AttrsInfo[(int)aID].m_defaultVal.m_attrType == AttrType::Int32;
+        }
+        static bool isInt64(ID aID)
+        {
+            assert(isValid(aID));
+            return AttrsInfo[(int)aID].m_defaultVal.m_attrType == AttrType::Int64;
+        }
+        static bool isCStr(ID aID)
+        {
+            assert(isValid(aID));
+            return AttrsInfo[(int)aID].m_defaultVal.m_attrType == AttrType::CString;
+        }
+        static bool isInt(ID aID) { return isInt32(aID) || isInt64(aID); }
+        static bool isKernelAttr(ID aID)
+        {
+            assert(isValid(aID));
+            return (AttrsInfo[(int)aID].m_attrKind & AK_KERNEL) != 0;
+        }
+        static bool isVarAttr(ID aID)
+        {
+            assert(isValid(aID));
+            return (AttrsInfo[(int)aID].m_attrKind & AK_VAR) != 0;
+        }
+        static bool isIntKernelAttr(ID aID) { return isKernelAttr(aID) && isInt(aID); }
+        static bool isStringKernelAttr(ID aID) { return isKernelAttr(aID) && isCStr(aID); }
+        static bool isIntVarAttr(ID aID) { return isVarAttr(aID) && isInt(aID); }
+        static bool isStringVarAttr(ID aID) { return isVarAttr(aID) && isCStr(aID); }
 
-        static bool isStringNonKernelAttribute(ID aID)
+        // default attribute value
+        static int32_t getInt32AttrDefault(ID aID)
         {
-            return aID >= ATTR_START_STRING_NON_KERNEL_ATTR &&
-                aID < ATTR_TOTAL_NUM;
-        }
-
-        static bool isIntAttribute(ID aID)
-        {
-            return isIntKernelAttribute(aID) || isIntNonKernelAttribute(aID);
-        }
-        static bool isStringAttribute(ID aID)
-        {
-            return aID != ATTR_INVALID && !isIntAttribute(aID);
+            assert(isValid(aID));
+            return AttrsInfo[(int)aID].m_defaultVal.u.m_i32;
         }
 
         Attributes();
+        ~Attributes() {};
 
-        void setIntKernelAttribute(ID kID, int val);
-        int getIntKernelAttribute(ID kID) const
+        // Set attribute's value
+        void setKernelAttr(ID kID, bool v);
+        void setKernelAttr(ID kID, int32_t v);
+        void setKernelAttr(ID kID, int64_t v);
+        void setKernelAttr(ID kID, const char* v);
+
+        // Get Attribute's value
+        bool getBoolKernelAttr(ID kID) const
         {
-            return m_kernelAttrs[kID].m_val.m_intVal;
+            SAttrValue* pAV = getKernelAttrValue(kID);
+            assert(pAV->m_val.m_attrType == AttrType::Bool);
+            return pAV->m_val.u.m_bool;
         }
-        void setStringKernelAttribute(ID kID, const char* val);
-        const char* getStringKernelAttribute(ID kID) const
+        int32_t getInt32KernelAttr(ID kID) const
         {
-            return m_kernelAttrs[kID].m_val.m_stringVal;
+            SAttrValue* pAV = getKernelAttrValue(kID);
+            assert(pAV->m_val.m_attrType == AttrType::Int32);
+            return pAV->m_val.u.m_i32;
         }
-        bool isSet(ID aID) const { return m_kernelAttrs[aID].m_isSet; }
+        int64_t getInt64KernelAttr(ID kID) const
+        {
+            SAttrValue* pAV = getKernelAttrValue(kID);
+            assert(pAV->m_val.m_attrType == AttrType::Int64);
+            return pAV->m_val.u.m_i64;
+        }
+        const char* getCStrKernelAttr(ID kID) const
+        {
+            SAttrValue* pAV = getKernelAttrValue(kID);
+            assert(pAV->m_val.m_attrType == AttrType::CString);
+            return pAV->m_val.u.m_cstr;
+        }
+        bool isKernelAttrSet(ID kID) const
+        {
+            SAttrValue* pAV = getKernelAttrValue(kID);
+            return pAV->m_isSet;
+        }
 
     private:
-        SKernelAttrVal m_kernelAttrs[ATTR_NUM_KERNEL_ATTRS];
-
+        /// <summary>
+        /// Attribute meta info
+        /// </summary>
         static SAttrInfo AttrsInfo[ATTR_TOTAL_NUM];
+
+        SAttrValue* getKernelAttrValue(ID kID) const
+        {
+            auto II = m_kernelAttrs.find(kID);
+            assert(II != m_kernelAttrs.end());
+            SAttrValue* pAV = II->second;
+            return pAV;
+        }
+
+        // Storage for holding per-kernel attr.
+        SAttrValue m_attrValueStorage[ATTR_TOTAL_NUM];
+        std::unordered_map<int, SAttrValue*> m_kernelAttrs;
     };
 };
 #endif // _ATTRIBUTES_H_

@@ -27,115 +27,103 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.h"
 #include "Attributes.hpp"
 
-#include <string.h>
+#include <string>
+#include <utility>
 
 using namespace vISA;
 
-#define  ATTR_ENTRY(S, default)  { S, sizeof(S) - 1, default }
-
-// The entry of this array must match to its corresponding attribute enum !
 Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
 {
-  /* ATTR_ENTRY(AttrName, DefaultValue) */       /* Attribute Enum */
-
-  /////////////////////////////////////
-  /////      Kernel Attributes     ////
-  /////////////////////////////////////
-  ATTR_ENTRY("Target",  VISA_CM),               /* ATTR_Target */
-  ATTR_ENTRY("SLMSIZE", 0),                     /* ATTR_SLMSize */
-  ATTR_ENTRY("SpillMemOffset",  0),             /* ATTR_SpillMemOffset */
-  ATTR_ENTRY("ArgSize", 0),                     /* ATTR_ArgSize */
-  ATTR_ENTRY("RetValSize", 0),                  /* ATTR_RetValSize */
-  ATTR_ENTRY("PerThreadInputSize", 0),          /* ATTR_PerThreadInputSize */
-  ATTR_ENTRY("Extern", 0),                      /* ATTR_Extern */
-  ATTR_ENTRY("NoBarrier", 0),                   /* ATTR_NoBarrier */
-  ATTR_ENTRY("SimdSize", 0),                    /* ATTR_SimdSize */
-  ATTR_ENTRY("OutputAsmPath", nullptr),         /* ATTR_OuputAsmPath */
-  ATTR_ENTRY("Entry", nullptr),                 /* ATTR_Entry */
-  ATTR_ENTRY("Callable", nullptr),              /* ATTR_Callable */
-  ATTR_ENTRY("Caller", nullptr),                /* ATTR_Caller */
-  ATTR_ENTRY("Composable", nullptr),            /* ATTR_Composable */
-
-  /////////////////////////////////////////
-  /////    int non-Kernel Attributes   ////
-  /////////////////////////////////////////
-  ATTR_ENTRY("Input", -1),                      /* ATTR_Input */
-  ATTR_ENTRY("Output", -1),                     /* ATTR_Output */
-  ATTR_ENTRY("Scope", -1),                      /* ATTR_Scope */
-  ATTR_ENTRY("Input_Output", -1),               /* ATTR_Input_Output */
-  ATTR_ENTRY("NoWidening", -1),                 /* ATTR_NoWidening */
-  ATTR_ENTRY("SurfaceUsage", 0),                /* ATTR_SurfaceUsage */
-
-  ////////////////////////////////////////////
-  /////    string non-Kernel Attributes   ////
-  ////////////////////////////////////////////
+#if 1
+#define DEF_ATTR_BOOL(E, N, K, I, D)  { K, N, { AttrType::Bool,    (uint64_t) I }, D },
+#define DEF_ATTR_INT32(E, N, K, I, D) { K, N, { AttrType::Int32,   (uint64_t) I }, D },
+#define DEF_ATTR_INT64(E, N, K, I, D) { K, N, { AttrType::Int64,   (uint64_t) I }, D },
+#define DEF_ATTR_CSTR(E, N, K, I, D)  { K, N, { AttrType::CString, (uint64_t)(size_t) I }, D },
+#else
+// vs2019 : designated initializer is a preview feature. Don't use it until the feature is offical.
+#define DEF_ATTR_BOOL(E, N, K, I, D)  { K, N, { AttrType::Bool,    { .m_bool = I }}, D },
+#define DEF_ATTR_INT32(E, N, K, I, D) { K, N, { AttrType::Int32,   { .m_i32  = I }}, D },
+#define DEF_ATTR_INT64(E, N, K, I, D) { K, N, { AttrType::Int64,   { .m_i64  = I }}, D },
+#define DEF_ATTR_CSTR(E, N, K, I, D)  { K, N, { AttrType::CString, { .m_cstr = I }}, D },
+#endif
+#include "VISAAttributes.def"
 };
-
-#undef ATTR_ENTRY
 
 Attributes::Attributes()
 {
-    for (int i = 0; i < ATTR_NUM_KERNEL_ATTRS; ++i)
+    /// <summary>
+    /// Initialize per-kernel attribute map m_kernelAttrs.
+    /// </summary>
+    for (int i = 0; i < ATTR_TOTAL_NUM; ++i)
     {
-        m_kernelAttrs[i].m_isSet = false;
-        m_kernelAttrs[i].m_val = AttrsInfo[i].m_defaultVal;
+        if (AttrsInfo[i].m_attrKind == AK_KERNEL)
+        {
+            SAttrValue* pAV = &m_attrValueStorage[i];
+            pAV->m_isSet = false;
+            pAV->m_val.m_attrType = AttrsInfo[i].m_defaultVal.m_attrType;
+            if (pAV->m_val.m_attrType == AttrType::Bool)
+                pAV->m_val.u.m_bool = AttrsInfo[i].m_defaultVal.u.m_bool;
+            else if (pAV->m_val.m_attrType == AttrType::Int32)
+                pAV->m_val.u.m_i32 = AttrsInfo[i].m_defaultVal.u.m_i32;
+            else if (pAV->m_val.m_attrType == AttrType::Int64)
+                pAV->m_val.u.m_i64 = AttrsInfo[i].m_defaultVal.u.m_i64;
+            else if (pAV->m_val.m_attrType == AttrType::CString)
+                pAV->m_val.u.m_cstr = AttrsInfo[i].m_defaultVal.u.m_cstr;
+            m_kernelAttrs.insert(std::make_pair(i, pAV));
+        }
     }
 }
 
 Attributes::ID Attributes::getAttributeID(const char* AttrName)
 {
-    uint32_t AttrLen = strlen(AttrName);
-    for (int i = 0; i < ATTR_TOTAL_NUM; ++i)
+    std::string aName(AttrName);
+    for (int i=0; i < ATTR_TOTAL_NUM; ++i)
     {
-        if (AttrLen == AttrsInfo[i].m_attrNameBytes &&
-            strcmp(AttrName, AttrsInfo[i].m_attrName) == 0)
+        if (aName == AttrsInfo[i].m_attrName)
         {
             return (ID)i;
         }
     }
 
     // temporary. Once upstream components change them, remove the code.
-    if (AttrLen == 7 && !strcmp(AttrName, "AsmName"))
+    if (aName == "AsmName")
     {   // "AsmName" deprecated
         return ATTR_OutputAsmPath;
     }
-    if (AttrLen == 18 && !strcmp(AttrName, "perThreadInputSize"))
+    if (aName == "perThreadInputSize")
+    {   // start with a lower case 'p'
+        return ATTR_PerThreadInputSize;
+    }
+    if (aName == "perThreadInputSize")
     {   // start with a lower case 'p'
         return ATTR_PerThreadInputSize;
     }
     return ATTR_INVALID;
 }
 
-const char* Attributes::getAttributeName(Attributes::ID aID)
+void Attributes::setKernelAttr(ID kID, bool v)
 {
-    assert(aID >= ATTR_START_INT_KERNEL_ATTR && aID < ATTR_TOTAL_NUM &&
-        "vISA: Invalid attribute ID!");
-    return AttrsInfo[(int)aID].m_attrName;
+    SAttrValue* pAV = getKernelAttrValue(kID);
+    assert(pAV->m_val.m_attrType == AttrType::Bool);
+    pAV->m_val.u.m_bool = v;
 }
-
-bool Attributes::isAttribute(ID aID, const char* AttrName)
+void Attributes::setKernelAttr(ID kID, int32_t v)
 {
-    assert(aID >= ATTR_START_INT_KERNEL_ATTR && aID < ATTR_TOTAL_NUM &&
-        "vISA: Invalid attribute ID!");
-    const char* aIDName = getAttributeName(aID);
-    uint32_t bytes = AttrsInfo[(int)aID].m_attrNameBytes;
-    return strcmp(AttrName, aIDName) == 0 && strlen(AttrName) == bytes;
-}
+    SAttrValue* pAV = getKernelAttrValue(kID);
+    assert(pAV->m_val.m_attrType == AttrType::Int32);
 
-void Attributes::setIntKernelAttribute(Attributes::ID kID, int val)
-{
     // Verify kernel attribute
     switch (kID) {
     case ATTR_SpillMemOffset:
     {
-        assert((val & (getGRFSize() - 1)) == 0 &&
+        assert((v & (getGRFSize() - 1)) == 0 &&
             "Kernel attribute: SpillMemOffset is mis-aligned!");
         break;
     }
     case ATTR_SimdSize:
     {
         // allow 0
-        assert((val == 0 || val == 8 || val == 16 || val == 32) &&
+        assert((v == 0 || v == 8 || v == 16 || v == 32) &&
             "Kernel attribute: SimdSize must be 0|8|16|32!");
         break;
     }
@@ -143,12 +131,17 @@ void Attributes::setIntKernelAttribute(Attributes::ID kID, int val)
         break;
     }
 
-    m_kernelAttrs[kID].m_val.m_intVal = val;
-    m_kernelAttrs[kID].m_isSet = true;
+    pAV->m_val.u.m_i32 = v;
 }
-
-void Attributes::setStringKernelAttribute(Attributes::ID kID, const char* val)
+void Attributes::setKernelAttr(ID kID, int64_t v)
 {
-    m_kernelAttrs[kID].m_val.m_stringVal = val;
-    m_kernelAttrs[kID].m_isSet = true;
+    SAttrValue* pAV = getKernelAttrValue(kID);
+    assert(pAV->m_val.m_attrType == AttrType::Int64);
+    pAV->m_val.u.m_i64 = v;
+}
+void Attributes::setKernelAttr(ID kID, const char* v)
+{
+    SAttrValue* pAV = getKernelAttrValue(kID);
+    assert(pAV->m_val.m_attrType == AttrType::CString);
+    pAV->m_val.u.m_cstr = v;
 }

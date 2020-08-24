@@ -407,7 +407,7 @@
 
     bool useIGAEncoder() const
     {
-        return true;
+        return getOption(vISA_IGAEncoder) || getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
     }
 
     bool needReplaceIndirectCallWithJmpi() const

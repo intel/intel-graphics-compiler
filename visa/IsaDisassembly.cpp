@@ -404,16 +404,23 @@ std::string printAttribute(
     bool isKernelAttr)
 {
     std::stringstream sstr;
+    const char* attrName = kernel->getString(attr->nameIndex);
+    Attributes::ID aID = Attributes::getAttributeID(attrName);
+    MUST_BE_TRUE(aID != Attributes::ATTR_INVALID, "Invalid Attribute names!");
 
-    if (attr->isInt && attr->size == 1 && attr->value.intVal == 0)
+    // Sanity check. If attribute's value is default, ignore this attr.
+    if (attr->isInt && Attributes::isInt32(aID))
     {
-        return sstr.str();
+        if (Attributes::getInt32AttrDefault(aID) == attr->value.intVal)
+        {
+            return sstr.str();
+        }
     }
 
-    const char* attrName = kernel->getString(attr->nameIndex);
-    sstr << "." << (isKernelAttr ? "kernel_" : "") << "attr " << attrName << "=";
-    if (attr->isInt) {
-        if (isKernelAttr && Attributes::isAttribute(Attributes::ATTR_Target, attrName)) {
+    sstr << "." << (isKernelAttr ? "kernel_" : "") << "attr " << attrName;
+    if (attr->isInt && Attributes::isInt32(aID)) {
+        sstr << "=";
+        if (Attributes::isAttribute(Attributes::ATTR_Target, attrName)) {
             switch (attr->value.intVal) {
             case VISA_CM: sstr << "\"cm\""; break;
             case VISA_3D: sstr << "\"3d\""; break;
@@ -424,7 +431,8 @@ std::string printAttribute(
         } else {
             sstr << attr->value.intVal;
         }
-    } else if (attr->size > 0) {
+    } else if (Attributes::isCStr(aID) && attr->size > 0) {
+        sstr << "=";
         encodeStringLiteral(sstr, attr->value.stringVal);
     }
 

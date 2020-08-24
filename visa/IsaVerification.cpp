@@ -2889,7 +2889,8 @@ void vISAVerifier::verifyKernelAttributes()
     {
         auto attr = header->getAttr(i);
         const char* attrName = header->getString(attr->nameIndex);
-        if (Attributes::isAttribute(Attributes::ATTR_SLMSize, attrName))
+        Attributes::ID aID = Attributes::getAttributeID(attrName);
+        if (aID == Attributes::ATTR_SLMSize)
         {
             numSLMSize++;
         }

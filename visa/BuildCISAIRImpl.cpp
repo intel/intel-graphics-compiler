@@ -804,7 +804,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                     subFunctionsNameMap[std::string(func->getName())] = func->getKernel();
                 } else {
                     // Policy 2: external functions will be stitched, non-external functions will stitch to others
-                    if (func->getKernel()->getIntKernelAttribute(Attributes::ATTR_Extern) != 0)
+                    if (func->getKernel()->getBoolKernelAttr(Attributes::ATTR_Extern))
                     {
                         mainFunctions.push_back(func);
                     }
@@ -875,7 +875,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                     // calling CisaBinary::dumpToStream, and avoid the assert in dumpToStream. But when
                     // parsing the emited .isa file, our parser may not correctly support this case.
                     if (m_options.getOption(vISA_noStitchExternFunc) &&
-                        func->getKernel()->getIntKernelAttribute(Attributes::ATTR_Extern) != 0) {
+                        func->getKernel()->getBoolKernelAttr(Attributes::ATTR_Extern)) {
                         m_cisaBinary->patchFunctionWithGenBinary(functionCount, func->getGenxBinarySize(),
                             func->getGenxBinaryBuffer());
                     } else {
