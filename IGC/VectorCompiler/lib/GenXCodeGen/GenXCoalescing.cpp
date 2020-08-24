@@ -1781,7 +1781,7 @@ void GenXCoalescing::applyCopy(CopyData &CD) {
     break;
   }
   default:
-    llvm_unreachable("Unknown copy type!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unknown copy type!");
   }
 
   if (CD.CopyT == PHICOPY_BRANCHING_JP) {

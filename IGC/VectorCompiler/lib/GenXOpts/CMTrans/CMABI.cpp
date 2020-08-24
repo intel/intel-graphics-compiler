@@ -959,7 +959,7 @@ CallGraphNode *CMABI::TransformNode(Function *F,
     }
 
     if (isa<InvokeInst>(Call))
-      llvm_unreachable("InvokeInst not supported");
+      IGC_ASSERT_EXIT_MESSAGE(0, "InvokeInst not supported");
 
     CallInst *New = CallInst::Create(NF, Args, "", Call);
     New->setCallingConv(CS.getCallingConv());

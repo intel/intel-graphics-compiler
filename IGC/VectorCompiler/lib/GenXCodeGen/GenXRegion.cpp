@@ -73,7 +73,7 @@ Region Region::getWithOffset(Instruction *Inst, bool WantParentWidth)
       OperandNum = GenXIntrinsic::GenXRegion::WrIndexOperandNum;
       break;
     default:
-      llvm_unreachable("not rdregion or wrregion");
+      IGC_ASSERT_EXIT_MESSAGE(0, "not rdregion or wrregion");
       break;
   }
   BaleInfo BI;

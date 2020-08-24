@@ -584,7 +584,7 @@ Function *CMRegion::getGenXRegionDeclaration(Module *M,
       return GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
     }
     default:
-      llvm_unreachable("unrecognized region intrinsic ID");
+      IGC_ASSERT_EXIT_MESSAGE(0, "unrecognized region intrinsic ID");
   }
   return nullptr;
 }

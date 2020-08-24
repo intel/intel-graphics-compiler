@@ -95,7 +95,7 @@ namespace llvm {
         // other types of prefefined surfaces are not used by CM backend
         break;
       }
-      llvm_unreachable("unsupported predefined surface");
+      IGC_ASSERT_EXIT_MESSAGE(0, "unsupported predefined surface");
     }
 
     inline bool isReservedSurfaceIndex(int SurfaceIndex) {
@@ -113,7 +113,7 @@ namespace llvm {
       case RSI_Stateless:
         return PreDefined_Surface::PREDEFINED_SURFACE_T255;
       }
-      llvm_unreachable("unexpected surface index");
+      IGC_ASSERT_EXIT_MESSAGE(0, "unexpected surface index");
     }
 
     enum { VISA_MAX_GENERAL_REGS = 65536 * 256 - 1,

@@ -150,7 +150,7 @@ static Expected<std::unique_ptr<llvm::Module>> getModule(ArrayRef<char> Input,
     return llvm::handleExpected(
         std::move(ExpModule),
         []() -> llvm::Error {
-          llvm_unreachable("Should create new error");
+          IGC_ASSERT_EXIT_MESSAGE(0, "Should create new error");
           // Without this dead return MSVC fails with ICE in release-32bit.
           return llvm::Error::success();
         },
@@ -500,7 +500,7 @@ static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
   case vc::BinaryKind::ZE:
     return runOclCodeGen(Opts, ExtData, TM, M);
   }
-  llvm_unreachable("Unknown runtime kind");
+  IGC_ASSERT_EXIT_MESSAGE(0, "Unknown runtime kind");
 }
 
 Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,

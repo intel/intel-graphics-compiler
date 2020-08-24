@@ -179,7 +179,7 @@ Value *GenXPromotePredicate::rewriteTree(Instruction *Inst) {
       else if (auto I = dyn_cast<Instruction>(Op))
         Ops[i] = rewriteTree(I);
       else
-        llvm_unreachable("out of sync");
+        IGC_ASSERT_EXIT_MESSAGE(0, "out of sync");
     }
 
     Value *V = Builder.CreateBinOp(Instruction::BinaryOps(Opc), Ops[0], Ops[1]);
@@ -201,5 +201,5 @@ Value *GenXPromotePredicate::rewriteTree(Instruction *Inst) {
     break;
   }
 
-  llvm_unreachable("out of sync");
+  IGC_ASSERT_EXIT_MESSAGE(0, "out of sync");
 }

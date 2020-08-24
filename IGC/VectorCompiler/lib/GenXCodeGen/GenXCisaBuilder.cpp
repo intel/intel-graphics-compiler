@@ -243,7 +243,7 @@ VISAChannelMask convertChannelMaskToVisaType(unsigned Mask) {
   case 15:
     return CHANNEL_MASK_RGBA;
   default:
-    llvm_unreachable("Wrong mask");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Wrong mask");
   }
 }
 
@@ -1514,7 +1514,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createState(Register *Reg, unsigned Offset,
                                              Size, Offset, IsDst));
     break;
   default:
-    llvm_unreachable("unknown state operand");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unknown state operand");
   }
 
   return Op;
@@ -2026,7 +2026,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     Signed = SIGNED;
     break;
   default:
-    llvm_unreachable("unknown bale type");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unknown bale type");
     break;
   }
   return createSource(Inst->getOperand(Idx), Signed, BI.isOperandBaled(Idx),
@@ -2041,7 +2041,7 @@ std::string GenXKernelBuilder::createInlineAsmOperand(
   VISA_VectorOpnd *ResultOperand = nullptr;
   switch (Ty) {
   default:
-    llvm_unreachable("constraint unhandled");
+    IGC_ASSERT_EXIT_MESSAGE(0, "constraint unhandled");
   case ConstraintType::Constraint_cr: {
     IGC_ASSERT(Reg && Reg->Category == RegCategory::PREDICATE);
     VISA_PredVar *PredVar = getPredicateVar(Reg);
@@ -2760,7 +2760,7 @@ static VISA_EMask_Ctrl getVisaEMOffset(unsigned PredOffset) {
   case 28:
     return vISA_EMASK_M8;
   }
-  llvm_unreachable("Unexpected EM offset");
+  IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected EM offset");
 }
 
 /***********************************************************************
@@ -4790,7 +4790,7 @@ StringRef GenXKernelBuilder::getStringByIndex(unsigned Val) {
     if (it.second == Val)
       return it.first;
   }
-  llvm_unreachable("Can't find string by index.");
+  IGC_ASSERT_EXIT_MESSAGE(0, "Can't find string by index.");
 }
 
 /***********************************************************************

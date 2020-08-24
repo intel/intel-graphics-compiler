@@ -1205,7 +1205,7 @@ bool MadMatcher::matchIntegerMad(unsigned IID) {
 
   switch (IID) {
   default:
-    llvm_unreachable("unexpected intrinsic ID");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unexpected intrinsic ID");
   case GenXIntrinsic::genx_ssadd_sat:
     ID = GenXIntrinsic::genx_ssmad_sat;
     break;
@@ -2017,7 +2017,7 @@ bool GenXPatternMatch::simplifyTruncSat(CallInst *Inst) {
                  : GenXIntrinsic::genx_ustrunc_sat;
     break;
   default:
-    llvm_unreachable("Unknown intrinsic!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unknown intrinsic!");
   }
 
   Module *M = Inst->getParent()->getParent()->getParent();

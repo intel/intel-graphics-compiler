@@ -617,7 +617,7 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
   // Run gatherBalesToModify again, as the list it made last time is now invalid
   // due to code being changed.
   if (!gatherBalesToModify(ArgLR, Align))
-    llvm_unreachable("not expecting indirection to have become invalid in second run");
+    IGC_ASSERT_EXIT_MESSAGE(0, "not expecting indirection to have become invalid in second run");
   // Indirect the bales.
   for (auto bi = BalesToModify.begin(), be = BalesToModify.end();
       bi != be; ++bi) {
@@ -1714,7 +1714,7 @@ void GenXArgIndirection::indirectRegion(Use *U, Value *AddressArg,
       // we've found what we wanted
       break;
     default:
-      llvm_unreachable("unsupported instruction");
+      IGC_ASSERT_EXIT_MESSAGE(0, "unsupported instruction");
     }
     break;
   }

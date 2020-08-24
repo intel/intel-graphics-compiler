@@ -204,7 +204,7 @@ inline raw_ostream &operator<<(raw_ostream &OS,
     OS << "Subgroup";
     break;
   default:
-    llvm_unreachable("Invalid FG type");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Invalid FG type");
     break;
   }
   return OS;

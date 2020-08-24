@@ -40,7 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Instruction.h>
 #include <llvm/Support/Errc.h>
 #include <llvm/Support/Error.h>
-
+#include "Probe/Assertion.h"
 #define DEBUG_TYPE "GENX_DEBUG_INFO"
 
 namespace {
@@ -96,7 +96,7 @@ struct FinalizerDbgInfo {
       ErrMsg = "visa info decode error";
       return;
     }
-    assert(GenXdbgInfo);
+    IGC_ASSERT(GenXdbgInfo);
 
     if (FinalizerDbgDump) {
       debugDump("dbg_raw_" + F.getName() + ".dump",
@@ -127,7 +127,7 @@ struct FinalizerDbgInfo {
     void *GenBin = nullptr;
     int GenBinSize = 0; // Finalizer uses signed int for size...
     VK.GetGenxBinary(GenBin, GenBinSize);
-    assert(GenBinSize >= 0);
+    IGC_ASSERT(GenBinSize >= 0);
     const auto *GenBinBytes = reinterpret_cast<const char *>(GenBin);
     GenBinary.insert(GenBinary.end(), GenBinBytes, GenBinBytes + GenBinSize);
 

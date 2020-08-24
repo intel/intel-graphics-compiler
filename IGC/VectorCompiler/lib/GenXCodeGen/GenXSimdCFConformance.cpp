@@ -1689,7 +1689,7 @@ void GenXSimdCFConformance::ensureConformance()
   // transformed the code in an unexpected way that has made the simd CF
   // non-conformant. Give an error here if this has happened.
   if (isLatePass() && (!GotosToLower.empty() || !JoinsToLower.empty()))
-    llvm_unreachable("unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
   // Lower gotos and joins that turned out to be non-conformant.
   for (auto i = GotosToLower.begin(), e = GotosToLower.end(); i != e; ++i)
     lowerGoto(*i);
@@ -3051,7 +3051,7 @@ void GenXSimdCFConformance::replaceUseWithLoweredEM(Instruction *Val, unsigned o
     LoweredEM = lowerArgumentUse(Arg);
   } else
     // All other instructions should not be EM producers with correct DF
-    llvm_unreachable("Failed to lower EM!");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Failed to lower EM!");
 
   if (LoweredEM)
     Val->setOperand(operandNo, LoweredEM);

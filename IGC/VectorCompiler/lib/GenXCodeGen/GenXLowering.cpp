@@ -747,7 +747,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   else if (AddrIdx != NONEED)
     WidthOperand = AddrIdx;
   else
-    llvm_unreachable("Cannot infer execution width of intrinsic (checked pred and addr operands)");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Cannot infer execution width of intrinsic (checked pred and addr operands)");
   auto Width = CI->getArgOperand(WidthOperand)->getType()->getVectorNumElements();
   unsigned TargetWidth = IsTyped ? 8 : 16;
   if (Width <= TargetWidth)
@@ -2626,7 +2626,7 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
   else if (isa<SelectInst>(Inst))
     NewInst = SelectInst::Create(Opnds[0], Opnds[1], Opnds[2], "", Inst);
   else
-    llvm_unreachable("unhandled instruction in widenByteOp");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unhandled instruction in widenByteOp");
   NewInst->takeName(Inst);
   NewInst->setDebugLoc(Inst->getDebugLoc());
   if (ExtendedIsZero) {

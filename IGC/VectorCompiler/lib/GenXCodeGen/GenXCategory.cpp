@@ -889,7 +889,7 @@ unsigned GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI,
 
   switch (Info.getConstraintType()) {
   default:
-    llvm_unreachable("unreachable while setting category in constraints");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unreachable while setting category in constraints");
   case ConstraintType::Constraint_a:
   case ConstraintType::Constraint_rw:
   case ConstraintType::Constraint_r:

@@ -1427,7 +1427,7 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
     if (!isa<StructType>(V->getType()))
       return V;
   }
-  llvm_unreachable("non-struct value not found");
+  IGC_ASSERT_EXIT_MESSAGE(0, "non-struct value not found");
 }
 
 /***********************************************************************

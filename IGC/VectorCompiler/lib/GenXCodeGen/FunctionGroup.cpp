@@ -167,7 +167,7 @@ static StringRef TypeToAttr(FunctionGroupAnalysis::FGType Type) {
   case FunctionGroupAnalysis::FGType::SUBGROUP:
     return genx::FunctionMD::CMStackCall;
   default:
-    llvm_unreachable("Can't gen attribute for nox-existent FG type");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Can't gen attribute for nox-existent FG type");
     break;
   }
   return "";

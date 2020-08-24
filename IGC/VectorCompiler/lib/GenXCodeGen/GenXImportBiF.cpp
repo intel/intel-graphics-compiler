@@ -58,6 +58,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -197,8 +198,8 @@ void BIConvert::runOnModule(Module &M) {
           // convert this to genx_ldz, but genx_lzd only support 32-bit input
           auto Src = InstCall->getOperand(0);
           auto SrcTy = Src->getType();
-          assert(SrcTy->isIntegerTy());
-          assert(SrcTy->getPrimitiveSizeInBits() == 32);
+          IGC_ASSERT(SrcTy->isIntegerTy());
+          IGC_ASSERT(SrcTy->getPrimitiveSizeInBits() == 32);
           Type *tys[1];
           SmallVector<llvm::Value *, 1> args;
           // build type-list for the 1st intrinsic
@@ -516,7 +517,7 @@ bool CMImportBiF(llvm::Module *MainModule,
             errs() << "===> Materialize Failure: " << EIB.message().c_str()
                    << '\n';
           });
-          assert(0 && "Failed to materialize Global Variables");
+          IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
         } else {
           pFunc->setCallingConv(pRoot->getCallingConv());
           Explore(pFunc);
@@ -545,11 +546,11 @@ bool CMImportBiF(llvm::Module *MainModule,
   Linker ld(*MainModule);
 
   if (Error err = BiFModule->materializeAll()) {
-    assert(0 && "materializeAll failed for generic builtin module");
+    IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
   }
 
   if (ld.linkInModule(std::move(BiFModule))) {
-    assert(0 && "Error linking generic builtin module");
+    IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
   }
 
   InitializeBIFlags(*MainModule);

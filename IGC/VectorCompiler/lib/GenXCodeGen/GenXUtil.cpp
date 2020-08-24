@@ -803,7 +803,7 @@ Region IVSplitter::createSplitRegion(Type *Ty, IVSplitter::RegionType RT) {
     R.Offset = (RT == RegionType::FirstHalf) ? 0 : 4 * Len;
   }
   else {
-    llvm_unreachable("incorrect region type");
+    IGC_ASSERT_EXIT_MESSAGE(0, "incorrect region type");
   }
   return R;
 }

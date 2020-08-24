@@ -77,7 +77,7 @@ static bool isWriteWithUndefInput(const Instruction &Inst) {
 static Value &getWriteOldValueOperand(Instruction &Inst) {
   switch (GenXIntrinsic::getAnyIntrinsicID(&Inst)) {
   default:
-    llvm_unreachable("wrong argument: write region intrinsics are expected");
+    IGC_ASSERT_EXIT_MESSAGE(0, "wrong argument: write region intrinsics are expected");
   case GenXIntrinsic::genx_wrregioni:
   case GenXIntrinsic::genx_wrregionf:
     return *Inst.getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);

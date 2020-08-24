@@ -1718,7 +1718,7 @@ Value *GenXLegalization::joinAnyWrRegion(Value *PrevSliceRes, BaleInst BInst,
                                 InsertBefore);
     break;
   default:
-    llvm_unreachable("unexpected/unsupported instruction");
+    IGC_ASSERT_EXIT_MESSAGE(0, "unexpected/unsupported instruction");
   }
 }
 
@@ -1744,7 +1744,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   case BaleInfo::GSTORE:
   case BaleInfo::WRREGION:
   case BaleInfo::WRPREDPREDREGION:
-    llvm_unreachable("these instructions must be processed in join functions");
+    IGC_ASSERT_EXIT_MESSAGE(0, "these instructions must be processed in join functions");
     break;
   case BaleInfo::RDREGION: {
     // Allow for this being a rdregion baled in to a TWICEWIDTH operand.

@@ -25,14 +25,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "vc/Support/Status.h"
-
 #include "vc/Support/StatusCode.h"
 #include "vc/Support/StatusTraits.h"
-
-#include "llvm/Support/ErrorHandling.h"
-
 #include <string>
 #include <system_error>
+#include "Probe/Assertion.h"
 
 namespace {
 class vc_error_category : public std::error_category {
@@ -71,7 +68,7 @@ std::string vc_error_category::message(int condition) const {
   case errc::generic_bif_load_fail:
     return ErrorTraits<errc::generic_bif_load_fail>::getMessage();
   }
-  llvm_unreachable("Unknown error code");
+  IGC_ASSERT_EXIT_MESSAGE(0, "Unknown error code");
 }
 
 static vc_error_category vc_err_category;
