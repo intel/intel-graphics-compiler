@@ -65,7 +65,7 @@ public:
         m_header.minor_version = minorVersion;
         m_header.magic_number = COMMON_ISA_MAGIC_NUM;
 
-        m_cisaBinary = new (m_mem) CisaFramework::CisaBinary(&m_options);
+        m_cisaBinary = new (m_mem) CisaFramework::CisaBinary(this);
     }
 
     virtual ~CISA_IR_Builder();
@@ -822,6 +822,8 @@ public:
 
     void setGtpinInit(void* buf) { gtpin_init = buf; }
     void* getGtpinInit() { return gtpin_init; }
+
+    Options* getOptions() { return &m_options; }
 
 
 

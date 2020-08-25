@@ -148,6 +148,19 @@ int CisaInst::createCisaInstruction(
     return VISA_SUCCESS;
 }
 
+CisaBinary::CisaBinary(CISA_IR_Builder* builder) :
+    m_mem(4096),
+    m_header_size(0),
+    m_total_size(0),
+    m_bytes_written_cisa_buffer(0),
+    m_header_buffer(NULL),
+    m_options(builder->getOptions()),
+    parent(builder)
+{
+    memset(&m_header, 0, sizeof(common_isa_header));
+}
+
+
 void CisaBinary::initKernel(int kernelIndex, VISAKernelImpl * kernel)
 {
     unsigned functionIndex = 0; // separating function and kernel index
@@ -432,7 +445,7 @@ void CisaBinary::patchFunction(int index, unsigned genxBufferSize)
     this->genxBinariesSize += genxBufferSize;
 }
 
-void CisaBinary::isaDumpVerify(
+int CisaBinary::isaDumpVerify(
     std::list<VISAKernelImpl*> m_kernels, Options* options)
 {
 #ifdef IS_RELEASE_DLL
@@ -442,7 +455,7 @@ void CisaBinary::isaDumpVerify(
     // disable verification in isaasm mode
     bool verify = !m_options->getOption(vISA_NoVerifyvISA); // && !m_options->getOption(vISA_isParseMode);
     if (!(dump || verify))
-        return;
+        return VISA_SUCCESS;
 
     struct ScopedFile
     {
@@ -460,18 +473,18 @@ void CisaBinary::isaDumpVerify(
         {
             const char* isaasmNamesFile = nullptr;
             options->getOption(vISA_ISAASMNamesFile, isaasmNamesFile);
-            if (isaasmNamesFile != nullptr && (ILFile.isaasmListFile = fopen(isaasmNamesFile, "w")) == nullptr)
+            if (isaasmNamesFile && (ILFile.isaasmListFile = fopen(isaasmNamesFile, "w")) == nullptr)
             {
-                fprintf(stderr, "Cannot open file %s\n", isaasmNamesFile);
-                exit(1);
+                std::cerr << "Cannot open file " << isaasmNamesFile << "\n";
+                return VISA_FAILURE;
             }
         }
         else
         {
             if ((ILFile.isaasmListFile = fopen("isaasmListFile.txt", "w")) == nullptr)
             {
-                fprintf(stderr, "Cannot open file %s\n", "isaasmListFile.txt");
-                exit(1);
+                std::cerr << "Cannot open isaasmListFile.txt\n";
+                return VISA_FAILURE;
             }
         }
     }
@@ -502,6 +515,7 @@ void CisaBinary::isaDumpVerify(
         }
     }
 
+    std::vector<std::string> failedFiles;
     for (iter = m_kernels.begin(); iter != end; iter++)
     {
         VISAKernelImpl * kTemp = *iter;
@@ -558,7 +572,7 @@ void CisaBinary::isaDumpVerify(
                     verifierName << kTemp->getOutputAsmPath();
                 }
                 else
-                {   // test9_genx_f0.errors.txt in above example, for func 0
+                {
                     kTemp->GetFunctionId(funcId);
                     verifierName << testName;
                     verifierName << "_f";
@@ -566,18 +580,28 @@ void CisaBinary::isaDumpVerify(
                 }
                 verifierName << ".errors.txt";
                 verifier.writeReport(verifierName.str().c_str());
+                failedFiles.push_back(verifierName.str());
                 hasErrors = true;
                 totalErrors += (uint32_t) verifier.getNumErrors();
-                cerr << "Found " << verifier.getNumErrors() << " errors in vISA files.\n";
-                cerr << "Please see error report written to the file "<< verifierName.str() << "\n";
             }
         }
-        if (hasErrors)
-        {
-            cerr << "Found a total of " << totalErrors << " errors in vISA files." << endl;
-            exit(EXIT_FAILURE);
-        }
     }
+    if (hasErrors)
+    {
+        stringstream ss;
+        ss << "Found a total of " << totalErrors << " errors in vISA input.\n";
+        ss << "Please check\n";
+        for (auto&& name : failedFiles)
+        {
+            ss << "\t" << name << "\n";
+        }
+        ss << "for the exact error messages\n";
+        std::cerr << ss.str();
+        parent->criticalMsgStream() << ss.str();
+        return VISA_FAILURE;
+    }
+
+    return VISA_SUCCESS;
 #endif // IS_RELEASE_DLL
 }
 

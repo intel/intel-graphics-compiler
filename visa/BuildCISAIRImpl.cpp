@@ -706,7 +706,11 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         // We call the verifier and dumper directly.
         if (m_options.getOption(vISA_GenerateISAASM) || !m_options.getOption(vISA_NoVerifyvISA))
         {
-            m_cisaBinary->isaDumpVerify(m_kernelsAndFunctions, &m_options);
+            status = m_cisaBinary->isaDumpVerify(m_kernelsAndFunctions, &m_options);
+            if (status != VISA_SUCCESS)
+            {
+                return status;
+            }
         }
     }
 

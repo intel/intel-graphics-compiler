@@ -581,6 +581,7 @@ void vISAVerifier::verifyRegion(
 
                     if (region_offset > var_size)
                     {
+#ifndef DLL_MODE
                         std::cout << "WARNING: CISA region and offset cause an out of bounds byte access: "<< region_offset << "\n";
                         std::cout << "An access should not exceed the declared allocation size: " << var_size << "\n";
                         std::cout << "  The access fails the following check to determine correct bounds (see CISA manual section 5.1 Region-based Addressing):\n";
@@ -591,18 +592,8 @@ void vISAVerifier::verifyRegion(
                         std::cout << "Violating Instruction: "
                             << printInstruction(header, inst, options)
                             << endl;
+#endif // DLL_MODE
                     }
-
-#if 0
-                    if (region_offset > var_size)
-                    {
-                        cerr << "i = " << i << " j = " << j << endl;
-                        cerr << "Violating Instruction: "
-                            << ((CisaInst*)this->getParent())->toString()
-                            << endl;
-                        exit(0);
-                    }
-#endif
                 }
             }
         }

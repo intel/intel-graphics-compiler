@@ -5011,8 +5011,10 @@ namespace IGC
             TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
             V(CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, VISA_BUILDER_BOTH, VISAPlatform,
                 params.size(), params.data(), &m_vISAWaTable));
-            // Use the same build options as before
+            // Use the same build options as before, except that we enable vISA verifier to catch
+            // potential errors in user inline assembly
             SetBuilderOptions(vAsmTextBuilder);
+            vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, false);
 
             bool vISAAsmParseError = false;
             // Parse the generated VISA text

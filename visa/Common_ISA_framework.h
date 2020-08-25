@@ -79,16 +79,10 @@ typedef struct _VISA_StateOpndHandle : VISA_opnd {} VISA_StateOpndHandle;
 
 class VISAKernel;
 class VISAKernelImpl;
-namespace vISA
-{
-    class IR_Builder;
-}
+class CISA_IR_Builder;
 
 namespace CisaFramework
 {
-
-class  CisaInst;
-class  CisaBinary;
 
 class CisaInst
 {
@@ -151,8 +145,6 @@ private:
 
     vISA::Mem_Manager &m_mem;
     short m_size;
-    friend class vISA::IR_Builder;
-    friend class CISA_IR_Builder;
 
     // during emition to determin what the labelID is.
     std::string m_label_name;
@@ -164,37 +156,7 @@ class CisaBinary
 {
 public:
 
-    CisaBinary(std::string filename, Options *options) :
-        m_mem(4096),
-        m_header_size(0),
-        m_total_size(0),
-        m_bytes_written_cisa_buffer(0),
-        m_header_buffer(NULL),
-        m_filename(filename),
-        m_instId(0),
-        m_options(options)
-    {
-        memset(&m_header, 0, sizeof(common_isa_header));
-    }
-
-    CisaBinary(Options *options) :
-        m_mem(4096),
-        m_filename(""),
-        m_instId(0),
-        m_options(options)
-    {
-        memset(&m_header, 0, sizeof(common_isa_header));
-
-        m_header.num_kernels = 0;
-        m_header.num_functions = 0;
-        m_upper_bound_kernels = 0;
-        m_upper_bound_functions = 0;
-
-        m_header_size = 0;
-        m_total_size = 0;
-        m_bytes_written_cisa_buffer = 0;
-        m_header_buffer = NULL;
-    }
+    CisaBinary(CISA_IR_Builder* builder);
 
     virtual ~CisaBinary() { }
 
@@ -232,12 +194,9 @@ public:
     int dumpToFile(std::string binFileName);
     int dumpToStream(std::ostream *os);
 
-    unsigned       getInstId() const { return m_instId; }
-    void     incrementInstId() const { m_instId++;      }
-
     void *operator new(size_t sz, vISA::Mem_Manager& m) {return m.alloc(sz); }
 
-    void isaDumpVerify(std::list<VISAKernelImpl *>, Options *options);
+    int isaDumpVerify(std::list<VISAKernelImpl *>, Options *options);
     void writeIsaAsmFile(std::string filename, std::string isaasmStr) const;
 
     unsigned long getHeaderSize() {return m_header_size; }
@@ -250,7 +209,6 @@ public:
     char * getKernelVisaBinaryBuffer(int i) {return m_header.kernels[i].cisa_binary_buffer; }
     char * getFunctionVisaBinaryBuffer(int i) {return m_header.functions[i].cisa_binary_buffer; }
 
-    std::string getFilename() const { return m_filename; }
     void setKernelVisaGenxBinaryBuffer(int i, void * buffer) {m_header.kernels[i].genx_binary_buffer = (char *)buffer; }
     void setKernelVisaGenxBinarySize(int i, unsigned short size) {m_header.kernels[i].binary_size = size; }
 
@@ -286,9 +244,9 @@ private:
     int m_upper_bound_kernels;
     int m_upper_bound_functions;
 
-    std::string m_filename;
-    mutable unsigned m_instId;
     Options *m_options;
+
+    CISA_IR_Builder* parent;
 };
 
 }

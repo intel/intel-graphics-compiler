@@ -65,7 +65,6 @@ public:
     VISAKernelImpl(CISA_IR_Builder* cisaBuilder, VISA_BUILDER_OPTION buildOption, Options *option)
         : m_mem(4096), m_CISABuilder(cisaBuilder), m_options(option)
     {
-        //CisaBinary* module = NULL;
         mBuildOption = buildOption;
         m_magic_number = COMMON_ISA_MAGIC_NUM;
         m_major_version = 0;
