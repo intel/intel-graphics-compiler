@@ -67,6 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/StringSaver.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/IPO.h"
@@ -545,6 +546,11 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   TargetMachine &TM = *ExpTargetMachine.get();
   M.setDataLayout(TM.createDataLayout());
 
+  // Save old value and restore at the end.
+  bool TimePassesIsEnabledLocal = TimePassesIsEnabled;
+  if (Opts.TimePasses)
+    TimePassesIsEnabled = true;
+
   if (Opts.DumpIR)
     dumpModuleToTemp(M, "start.ll");
 
@@ -553,7 +559,13 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   if (Opts.DumpIR)
     dumpModuleToTemp(M, "optimized.ll");
 
-  return runCodeGen(Opts, ExtData, TM, M);
+  vc::CompileOutput Output = runCodeGen(Opts, ExtData, TM, M);
+
+  // Print timers if any and restore old TimePassesIsEnabled value.
+  TimerGroup::printAll(llvm::errs());
+  TimePassesIsEnabled = TimePassesIsEnabledLocal;
+
+  return Output;
 }
 
 static Expected<opt::InputArgList>
@@ -658,6 +670,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.DumpIsa = true;
   if (InternalOptions.hasArg(vc::options::OPT_dump_llvm_ir))
     Opts.DumpIR = true;
+  if (InternalOptions.hasArg(vc::options::OPT_ftime_report))
+    Opts.TimePasses = true;
 
   if (opt::Arg *A =
           InternalOptions.getLastArg(vc::options::OPT_binary_format)) {

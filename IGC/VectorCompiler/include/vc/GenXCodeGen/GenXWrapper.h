@@ -157,6 +157,7 @@ struct CompileOptions {
   BinaryKind Binary = BinaryKind::OpenCL;
   bool DumpIsa = false;
   bool DumpIR = false;
+  bool TimePasses = false;
 };
 
 class ExternalData {

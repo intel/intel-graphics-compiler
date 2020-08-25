@@ -141,5 +141,8 @@ def runtime : Separate<["-"], "runtime">, Alias<binary_format>,
 def runtime_eq : Joined<["-"], "runtime=">,
   Alias<binary_format>, HelpText<"Alias for -runtime <value>">;
 
+def ftime_report : Flag<["-"], "ftime-report">,
+  HelpText<"Print timing summary of each stage of compilation">;
+
 }
 // }} Internal options
