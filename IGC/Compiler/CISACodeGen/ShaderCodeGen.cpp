@@ -616,6 +616,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     if (!isOptDisabled)
     {
         mpm.add(createGenStrengthReductionPass());
+        mpm.add(createVectorBitCastOptPass());
     }
 
     if (ctx.m_instrTypes.hasUniformAssumptions) {

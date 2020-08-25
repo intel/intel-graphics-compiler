@@ -42,6 +42,7 @@ The passes are
     IGCConstProp
     IGCIndirectICBPropagaion
     CustomLoopInfo
+    VectorBitCastOpt
     GenStrengthReduction
     FlattenSmallSwitch
 
@@ -59,6 +60,9 @@ IGCIndirectICBPropagaion reads the immediate constant buffer from meta data and
 use them as immediates instead of using send messages to read from buffer.
 
 CustomLoopInfo returns true if there is any sampleL in a loop for the driver.
+
+VectorBitCastOpt preprocesses vector bitcasts to be after extractelement
+instructions.
 
 GenStrengthReduction performs a fdiv optimization.
 
@@ -3738,6 +3742,100 @@ void NanHandling::visitBranchInst(llvm::BranchInst& I)
 IGC_INITIALIZE_PASS_BEGIN(NanHandling, "NanHandling", "NanHandling", false, false)
 IGC_INITIALIZE_PASS_END(NanHandling, "NanHandling", "NanHandling", false, false)
 
+namespace IGC
+{
+
+    class VectorBitCastOpt: public FunctionPass
+    {
+    public:
+        static char ID;
+
+        VectorBitCastOpt() : FunctionPass(ID)
+        {
+            initializeVectorBitCastOptPass(*PassRegistry::getPassRegistry());
+        };
+        ~VectorBitCastOpt() {}
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "VectorBitCastOptPass";
+        }
+
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.setPreservesCFG();
+        }
+
+        virtual bool runOnFunction(llvm::Function& F) override;
+
+    private:
+        // Transform (extractelement (bitcast %vector) ...) to
+        // (bitcast (extractelement %vector) ...) in order to help coalescing
+        // in DeSSA and enable memory operations simplification
+        // in VectorPreProcess.
+        bool optimizeVectorBitCast(Function& F) const;
+    };
+
+    bool VectorBitCastOpt::runOnFunction(Function& F)
+    {
+        bool Changed = optimizeVectorBitCast(F);
+        return Changed;
+    }
+
+    bool VectorBitCastOpt::optimizeVectorBitCast(Function& F) const {
+        IRBuilder<> Builder(F.getContext());
+
+        bool Changed = false;
+        for (auto& BB : F) {
+            for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*EMPTY*/) {
+                BitCastInst* BC = dyn_cast<BitCastInst>(&*BI++);
+                if (!BC) continue;
+                // Skip non-element-wise bitcast.
+                VectorType* DstVTy = dyn_cast<VectorType>(BC->getType());
+                VectorType* SrcVTy = dyn_cast<VectorType>(BC->getOperand(0)->getType());
+                if (!DstVTy || !SrcVTy || DstVTy->getNumElements() != SrcVTy->getNumElements())
+                    continue;
+                // Skip if it's not used only all extractelement.
+                bool ExactOnly = true;
+                for (auto User : BC->users()) {
+                    if (isa<ExtractElementInst>(User)) continue;
+                    ExactOnly = false;
+                    break;
+                }
+                if (!ExactOnly)
+                    continue;
+                // Autobots, transform and roll out!
+                Value* Src = BC->getOperand(0);
+                Type* DstEltTy = DstVTy->getElementType();
+                for (auto UI = BC->user_begin(), UE = BC->user_end(); UI != UE;
+                    /*EMPTY*/) {
+                    auto EEI = cast<ExtractElementInst>(*UI++);
+                    Builder.SetInsertPoint(EEI);
+                    auto NewVal = Builder.CreateExtractElement(Src, EEI->getIndexOperand());
+                    NewVal = Builder.CreateBitCast(NewVal, DstEltTy);
+                    EEI->replaceAllUsesWith(NewVal);
+                    EEI->eraseFromParent();
+                }
+                BI = BC->eraseFromParent();
+                Changed = true;
+            }
+        }
+
+        return Changed;
+    }
+
+    char VectorBitCastOpt::ID = 0;
+    FunctionPass* createVectorBitCastOptPass() { return new VectorBitCastOpt(); }
+
+} // namespace IGC
+
+#define VECTOR_BITCAST_OPT_PASS_FLAG "igc-vector-bitcast-opt"
+#define VECTOR_BITCAST_OPT_PASS_DESCRIPTION "Preprocess vector bitcasts to be after extractelement instructions."
+#define VECTOR_BITCAST_OPT_PASS_CFG_ONLY true
+#define VECTOR_BITCAST_OPT_PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(VectorBitCastOpt, VECTOR_BITCAST_OPT_PASS_FLAG, VECTOR_BITCAST_OPT_PASS_DESCRIPTION, VECTOR_BITCAST_OPT_PASS_CFG_ONLY, VECTOR_BITCAST_OPT_PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(VectorBitCastOpt, VECTOR_BITCAST_OPT_PASS_FLAG, VECTOR_BITCAST_OPT_PASS_DESCRIPTION, VECTOR_BITCAST_OPT_PASS_CFG_ONLY, VECTOR_BITCAST_OPT_PASS_ANALYSIS)
+
 namespace {
 
     class GenStrengthReduction : public FunctionPass
@@ -3753,9 +3851,6 @@ namespace {
 
     private:
         bool processInst(Instruction* Inst);
-        // Transform (extract-element (bitcast %vector) ...) to
-        // (bitcast (extract-element %vector) ...) in order to help coalescing in DeSSA.
-        bool optimizeVectorBitCast(Function& F) const;
     };
 
 } // namespace
@@ -3780,9 +3875,6 @@ bool GenStrengthReduction::runOnFunction(Function& F)
             Changed |= processInst(Inst);
         }
     }
-
-    Changed |= optimizeVectorBitCast(F);
-
     return Changed;
 }
 
@@ -3970,48 +4062,6 @@ bool GenStrengthReduction::processInst(Instruction* Inst)
     }
 
     return false;
-}
-
-bool GenStrengthReduction::optimizeVectorBitCast(Function& F) const {
-    IRBuilder<> Builder(F.getContext());
-
-    bool Changed = false;
-    for (auto& BB : F) {
-        for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*EMPTY*/) {
-            BitCastInst* BC = dyn_cast<BitCastInst>(&*BI++);
-            if (!BC) continue;
-            // Skip non-element-wise bitcast.
-            VectorType* DstVTy = dyn_cast<VectorType>(BC->getType());
-            VectorType* SrcVTy = dyn_cast<VectorType>(BC->getOperand(0)->getType());
-            if (!DstVTy || !SrcVTy || DstVTy->getNumElements() != SrcVTy->getNumElements())
-                continue;
-            // Skip if it's not used only all extract-element.
-            bool ExactOnly = true;
-            for (auto User : BC->users()) {
-                if (dyn_cast<ExtractElementInst>(User)) continue;
-                ExactOnly = false;
-                break;
-            }
-            if (!ExactOnly)
-                continue;
-            // Autobots, transform and roll out!
-            Value* Src = BC->getOperand(0);
-            Type* DstEltTy = DstVTy->getElementType();
-            for (auto UI = BC->user_begin(), UE = BC->user_end(); UI != UE;
-                /*EMPTY*/) {
-                auto EEI = cast<ExtractElementInst>(*UI++);
-                Builder.SetInsertPoint(EEI);
-                auto NewVal = Builder.CreateExtractElement(Src, EEI->getIndexOperand());
-                NewVal = Builder.CreateBitCast(NewVal, DstEltTy);
-                EEI->replaceAllUsesWith(NewVal);
-                EEI->eraseFromParent();
-            }
-            BI = BC->eraseFromParent();
-            Changed = true;
-        }
-    }
-
-    return Changed;
 }
 
 IGC_INITIALIZE_PASS_BEGIN(GenStrengthReduction, "GenStrengthReduction",

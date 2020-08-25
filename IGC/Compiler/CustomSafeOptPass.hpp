@@ -246,6 +246,7 @@ namespace IGC
         llvm::TargetLibraryInfo* m_TLI;
     };
 
+    llvm::FunctionPass* createVectorBitCastOptPass();
     llvm::FunctionPass* createGenStrengthReductionPass();
     llvm::FunctionPass* createNanHandlingPass();
     llvm::FunctionPass* createFlattenSmallSwitchPass();
