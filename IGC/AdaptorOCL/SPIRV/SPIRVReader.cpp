@@ -1396,55 +1396,51 @@ SPIRVToLLVM::transOCLKernelArgTypeName(SPIRVFunctionParameter *Arg) {
 
 // Variable like GlobalInvocationId[x] -> get_global_id(x).
 // Variable like WorkDim -> get_work_dim().
-bool
-SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
-    SPIRVBuiltinVariableKind Kind)
-{
+bool SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
+                                              SPIRVBuiltinVariableKind Kind) {
   std::string FuncName;
   if (!SPIRSPIRVBuiltinVariableMap::find(Kind, &FuncName))
-      return false;
+    return false;
 
   decorateSPIRVBuiltin(FuncName);
   Function *Func = M->getFunction(FuncName);
-  if (!Func)
-  {
-      Type *ReturnTy = GV->getType()->getPointerElementType();
-      FunctionType *FT = FunctionType::get(ReturnTy, false);
-      Func = Function::Create(FT, GlobalValue::ExternalLinkage, FuncName, M);
-      Func->setCallingConv(CallingConv::SPIR_FUNC);
-      Func->addFnAttr(Attribute::NoUnwind);
-      Func->addFnAttr(Attribute::ReadNone);
+  if (!Func) {
+    Type *ReturnTy = GV->getType()->getPointerElementType();
+    FunctionType *FT = FunctionType::get(ReturnTy, false);
+    Func = Function::Create(FT, GlobalValue::ExternalLinkage, FuncName, M);
+    Func->setCallingConv(CallingConv::SPIR_FUNC);
+    Func->addFnAttr(Attribute::NoUnwind);
+    Func->addFnAttr(Attribute::ReadNone);
   }
 
-  SmallVector<Instruction*, 4> Deletes;
-  SmallVector<Instruction*, 4> Users;
-  for (auto UI : GV->users())
-  {
-      LoadInst *LD = nullptr;
-      AddrSpaceCastInst* ASCast = dyn_cast<AddrSpaceCastInst>(&*UI);
-      if (ASCast) {
-        LD = cast<LoadInst>(*ASCast->user_begin());
-      } else {
-        LD = cast<LoadInst>(&*UI);
+  SmallVector<Instruction *, 4> Deletes;
+  SmallVector<Instruction *, 4> Users;
+  for (auto UI : GV->users()) {
+    LoadInst *LD = nullptr;
+    if (auto ASCast = dyn_cast<AddrSpaceCastInst>(&*UI)) {
+      for (auto ASCastUser : ASCast->users()) {
+        LD = cast<LoadInst>(&*ASCastUser);
+        Users.push_back(LD);
+        Deletes.push_back(LD);
       }
+      Deletes.push_back(ASCast);
+    } else {
+      LD = cast<LoadInst>(&*UI);
       Users.push_back(LD);
       Deletes.push_back(LD);
-      if (ASCast)
-        Deletes.push_back(ASCast);
+    }
   }
-  for (auto &I : Users)
-  {
-      auto Call = CallInst::Create(Func, "", I);
-      Call->takeName(I);
-      setAttrByCalledFunc(Call);
-      I->replaceAllUsesWith(Call);
+  for (auto &I : Users) {
+    auto Call = CallInst::Create(Func, "", I);
+    Call->takeName(I);
+    setAttrByCalledFunc(Call);
+    I->replaceAllUsesWith(Call);
   }
-  for (auto &I : Deletes)
-  {
-      if (I->use_empty())
-          I->eraseFromParent();
-      else
-          IGC_ASSERT(0);
+  for (auto &I : Deletes) {
+    if (I->use_empty())
+      I->eraseFromParent();
+    else
+      IGC_ASSERT(0);
   }
 
   return true;
