@@ -4161,8 +4161,7 @@ namespace IGC
         {
             SaveOption(vISA_dumpNewSyntax, false);
         }
-        if (IGC_IS_FLAG_ENABLED(disableCompaction)
-            )
+        if (IGC_IS_FLAG_ENABLED(disableCompaction))
         {
             SaveOption(vISA_Compaction, false);
         }
