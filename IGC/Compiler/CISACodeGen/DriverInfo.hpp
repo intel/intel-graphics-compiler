@@ -225,9 +225,6 @@ namespace IGC
         /// disable some optimizations for front end which sends IR with unresolved NOS function when optimizing
         virtual bool WaNOSNotResolved() const { return false; }
 
-        /// Temporarary disable GS attr const interpolation promotion
-        virtual bool WADisableConstInterpolationPromotion() const { return false; }
-
         /// WA for APIs where frc generates a different precision than x - rndd(x) for small negative values
         /// Needs to switch to use fast math flags
         virtual bool DisableMatchFrcPatternMatch() const { return false; }
