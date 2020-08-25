@@ -2706,6 +2706,20 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
       Goto, 2 /*OperandNum*/, Baling->getBaleInfo(Goto), Control, State, &Mask);
   IGC_ASSERT(!Mask && "cannot have rdpredregion baled into goto");
 
+  Instruction *Not = dyn_cast<Instruction>(Pred);
+  if (Not && isPredNot(Not) && StateInvert == PredState_INVERSE) {
+    // Eliminate excess NOT
+    // %P1 = ...
+    // %P2 = not %P1
+    // (!%P2) goto
+    // Transforms into
+    // (%P1) goto
+    StateInvert = PredState_NO_INVERSE;
+    Pred = getPredicateOperand(Not, 0 /*OperandNum*/, Baling->getBaleInfo(Not),
+                               Control, State, &Mask);
+    IGC_ASSERT(!Mask && "cannot have rdpredregion baled into goto");
+  }
+
   Register *PredReg = nullptr;
   if (auto C = dyn_cast<Constant>(Pred)) {
     (void)C;
@@ -3776,6 +3790,19 @@ void GenXKernelBuilder::buildBoolBinaryOperator(BinaryOperator *BO) {
     report_fatal_error(
         "buildBoolBinaryOperator: unimplemented binary operator");
     break;
+  }
+
+  if (isPredNot(BO) && BO->hasOneUse()) {
+    // If this NOT predicate is a goto operand and it has only one use, then we
+    // won't emit it. %P1 = ... %P2 = not %P1
+    // (!%P2) goto
+    // Transforms into
+    // (%P1) goto
+
+    auto Goto = dyn_cast<CallInst>(*BO->user_begin());
+    if (Goto && GenXIntrinsic::getGenXIntrinsicID(Goto) ==
+                    GenXIntrinsic::genx_simdcf_goto)
+      return;
   }
 
   VISA_PredVar *Dst = getPredicateVar(BO);
