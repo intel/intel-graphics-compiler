@@ -106,6 +106,7 @@ void Attributes::setKernelAttr(ID kID, bool v)
     SAttrValue* pAV = getKernelAttrValue(kID);
     assert(pAV->m_val.m_attrType == AttrType::Bool);
     pAV->m_val.u.m_bool = v;
+    pAV->m_isSet = true;
 }
 void Attributes::setKernelAttr(ID kID, int32_t v)
 {
@@ -132,16 +133,19 @@ void Attributes::setKernelAttr(ID kID, int32_t v)
     }
 
     pAV->m_val.u.m_i32 = v;
+    pAV->m_isSet = true;
 }
 void Attributes::setKernelAttr(ID kID, int64_t v)
 {
     SAttrValue* pAV = getKernelAttrValue(kID);
     assert(pAV->m_val.m_attrType == AttrType::Int64);
     pAV->m_val.u.m_i64 = v;
+    pAV->m_isSet = true;
 }
 void Attributes::setKernelAttr(ID kID, const char* v)
 {
     SAttrValue* pAV = getKernelAttrValue(kID);
     assert(pAV->m_val.m_attrType == AttrType::CString);
     pAV->m_val.u.m_cstr = v;
+    pAV->m_isSet = true;
 }
