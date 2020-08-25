@@ -651,9 +651,15 @@ void Encoder::encodeBranchingInstruction(const Instruction& inst)
             // <2;2,1> restriction for CALL and CALLA restriction is only for
             // IVB+HSW, but simulator has it until CNL.  So we have to support it
             // until we get CNL HW validation moves to it
-            if (callNeedsSrcRegion221(inst)) {
+            if (callNeedsSrc0Region221(inst)) {
                 GED_ENCODE(Src0VertStride, 2);
                 GED_ENCODE(Src0Width,      2);
+                GED_ENCODE(Src0HorzStride, 1);
+            }
+            // though it's not state in the spec, ICL requires src0 region be set to <2;4,1>
+            else if (callNeedsSrc0Region241(inst)) {
+                GED_ENCODE(Src0VertStride, 2);
+                GED_ENCODE(Src0Width,      4);
                 GED_ENCODE(Src0HorzStride, 1);
             }
         }
@@ -1826,14 +1832,20 @@ bool Encoder::arePcsInQWords(const OpSpec &os) const
         os.op != Op::CALLA;
 }
 
-bool Encoder::callNeedsSrcRegion221(const Instruction &inst) const
+
+bool Encoder::callNeedsSrc0Region221(const Instruction &inst) const
 {
-    // [call]: "Restriction: The src0 regioning control must be <2;2,1>" [IVB,HSW]
+    // [call]: "Restriction: The src0 regioning control must be <2;2,1>"
     // [calla]: "Restriction: The src0 regioning control must be <2;2,1>"
     return (inst.getOp() == Op::CALL && platform() < Platform::GEN8) ||
+        (inst.getOp() == Op::CALL && platform() == Platform::GEN9) ||
         (inst.getOp() == Op::CALLA && platform() <= Platform::GEN10);
 }
 
+bool Encoder::callNeedsSrc0Region241(const Instruction &inst) const
+{
+    return (inst.getOp() == Op::CALL && platform() == Platform::GEN11);
+}
 
 void Encoder::encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v) {
     if (S == SourceIndex::SRC0) {

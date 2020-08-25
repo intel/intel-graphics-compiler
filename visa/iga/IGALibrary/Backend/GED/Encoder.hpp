@@ -264,9 +264,13 @@ static inline GED_RETURN_VALUE GED_PrintFieldBitLocation(
         //
         // GEN7p5 implicitly scales PC offsets by QW except for a few instructions
         bool arePcsInQWords(const OpSpec &os) const;
-        // Older GENs need a <2;2,1> on the src operand.
+
+        // Call need to have src0 region be set to:
+        // SKL and before: <2;2,1>
+        // ICL: <2;4,1>
         // Later GENs ignore the region completely
-        bool callNeedsSrcRegion221(const Instruction &inst) const;
+        bool callNeedsSrc0Region221(const Instruction &inst) const;
+        bool callNeedsSrc0Region241(const Instruction &inst) const;
 
         /////////////////////////////////////////////////////////////
         // state valid over encodeKernel()
