@@ -34,13 +34,10 @@ uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offset);
 
 namespace vISA
 {
-G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(unsigned int scratchOffset, unsigned int payloadSize,
+G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(G4_SrcRegRegion* header, unsigned int scratchOffset, unsigned int payloadSize,
     bool useNoMask, G4_InstOption mask, int srcCISAOff, G4_Declare* spillDcl, unsigned int row)
 {
     // Generate split send instruction with specified payload size and offset
-    auto header = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
-        kernel.fg.builder->getBuiltinR0()->getRegVar(), 0, 0,
-        kernel.fg.builder->getRegionStride1(), Type_UD);
     auto spillSrcPayload = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct, spillDcl->getRegVar(),
         row, 0, kernel.fg.builder->getRegionStride1(), Type_UD);
 
@@ -63,7 +60,7 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(unsigned int scratch
     return spillSrcPayload;
 }
 
-G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchOffset, unsigned int payloadSize,
+G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(G4_SrcRegRegion* header, unsigned int scratchOffset, unsigned int payloadSize,
     unsigned int dclSize, int srcCISAOff, bool evenAlignDst)
 {
     // Generate split send instruction with specified payload size and offset
@@ -82,9 +79,6 @@ G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchO
 
     auto fillDst = kernel.fg.builder->createDst(fillDcl->getRegVar(), 0,
         0, 1, Type_UW);
-    auto header = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
-        kernel.fg.builder->getBuiltinR0()->getRegVar(), 0, 0,
-        kernel.fg.builder->getRegionStride1(), Type_UD);
 
     G4_Declare* fp = nullptr;
     if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
@@ -189,8 +183,8 @@ void CoalesceSpillFills::coalesceSpills(std::list<INST_LIST_ITER>& coalesceableS
         minRow = 0;
     }
 
-    auto coalescedSpillSrc = generateCoalescedSpill(min,
-        payloadSize, useNoMask, mask, srcCISAOff, dcl, minRow);
+    auto coalescedSpillSrc = generateCoalescedSpill(kernel.fg.builder->duplicateOperand((*coalesceableSpills.front())->asSpillIntrinsic()->getHeader()),
+        min, payloadSize, useNoMask, mask, srcCISAOff, dcl, minRow);
 
     if (declares.size() != 1)
     {
@@ -198,8 +192,6 @@ void CoalesceSpillFills::coalesceSpills(std::list<INST_LIST_ITER>& coalesceableS
         {
             unsigned int scratchOffset, scratchSize;
             getScratchMsgInfo((*c), scratchOffset, scratchSize);
-            MUST_BE_TRUE((*c)->getSrc(0)->asSrcRegRegion()->getTopDcl() == kernel.fg.builder->getBuiltinR0(),
-                "Unexpected src0");
 
             unsigned int rowOff = scratchOffset - min;
             replaceMap.insert(std::make_pair((*c)->getSrc(1)->getTopDcl(),
@@ -254,8 +246,8 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
 
     auto leadInst = *coalesceableFills.front();
 
-    auto coalescedFillDst = generateCoalescedFill(min, payloadSize, dclSize,
-        srcCISAOff, gra.isEvenAligned(leadInst->getDst()->getTopDcl()));
+    auto coalescedFillDst = generateCoalescedFill(kernel.fg.builder->duplicateOperand(leadInst->asFillIntrinsic()->getHeader()),
+        min, payloadSize, dclSize, srcCISAOff, gra.isEvenAligned(leadInst->getDst()->getTopDcl()));
 
     for (auto c : coalesceableFills)
     {

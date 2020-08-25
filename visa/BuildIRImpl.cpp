@@ -725,7 +725,8 @@ G4_Declare* IR_Builder::getSpillFillHeader()
 {
     if (!spillFillHeader)
     {
-        spillFillHeader = createDeclareNoLookup("spillHeader", G4_GRF, numEltPerGRF(Type_UD), 1, Type_UD);
+        spillFillHeader = createTempVar(2, Type_UD, GRFALIGN, "spillHeader");
+        spillFillHeader->setLiveOut();
     }
     return spillFillHeader;
 }

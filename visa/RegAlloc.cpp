@@ -837,30 +837,45 @@ void LivenessAnalysis::computeLiveness()
 
     for (unsigned i = 0; i < numVarId; i++)
     {
+        bool setLiveIn = false, setLiveOut = false;
+
         G4_Declare *decl = vars[i]->getDeclare();
-        if (((decl->isInput() == true &&
-             !(fg.builder->getFCPatchInfo() &&
-               fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
-               !decl->isLiveIn())) &&
-             !(fg.builder->isPreDefArg(decl) &&
-               (fg.builder->getIsKernel() ||
-                (fg.getIsStackCallFunc() &&
-                 fg.builder->getArgSize() == 0)))) ||
-            (fg.builder->getOption(vISA_enablePreemption) &&
-             decl == fg.builder->getBuiltinR0()))
+
+        if ((decl->isInput() == true &&
+            !(fg.builder->getFCPatchInfo() &&
+                fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
+                !decl->isLiveIn())) &&
+            !(fg.builder->isPreDefArg(decl) &&
+                (fg.builder->getIsKernel() ||
+                    (fg.getIsStackCallFunc() &&
+                        fg.builder->getArgSize() == 0))))
+            setLiveIn = true;
+
+        if (fg.builder->getOption(vISA_enablePreemption) &&
+            decl == fg.builder->getBuiltinR0())
+            setLiveIn = true;
+
+        if(setLiveIn)
         {
             inputDefs.set(i, true);
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("First def input = " << decl->getName() << std::endl);
 #endif
         }
-        if ((decl->isOutput() == true &&
+
+        if (decl->isOutput() == true &&
             !(fg.builder->isPreDefRet(decl) &&
-               (fg.builder->getIsKernel() ||
-                (fg.getIsStackCallFunc() &&
-                 fg.builder->getRetVarSize() == 0)))) ||
-            (fg.builder->getOption(vISA_enablePreemption) &&
-              decl == fg.builder->getBuiltinR0()))
+                (fg.builder->getIsKernel() ||
+                    (fg.getIsStackCallFunc() &&
+                        fg.builder->getRetVarSize() == 0))))
+            setLiveOut = true;
+
+        if (fg.builder->getOption(vISA_enablePreemption) &&
+            decl == fg.builder->getBuiltinR0())
+            setLiveOut = true;
+
+
+        if(setLiveOut)
         {
             outputUses.set(i, true);
 #ifdef DEBUG_VERBOSE_ON

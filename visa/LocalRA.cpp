@@ -926,7 +926,8 @@ void GlobalRA::removeUnreferencedDcls()
             getNumRefs(dcl) == 0 &&
             dcl->getRegVar()->isPhyRegAssigned() == false &&
             !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
-                dcl == kernel.fg.builder->getBuiltinR0());
+                dcl == kernel.fg.builder->getBuiltinR0())
+            ;
     };
 
     kernel.Declares.erase(

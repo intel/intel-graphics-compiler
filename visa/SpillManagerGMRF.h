@@ -830,6 +830,7 @@ private:
 
     bool useScratchMsg_;
 
+
     bool headerNeeded()
     {
         bool needed = true;
@@ -840,6 +841,7 @@ private:
         if (builder_->kernel.fg.getHasStackCalls() ||
             builder_->kernel.fg.getIsStackCallFunc())
             needed = false;
+
 
         return needed;
     }
@@ -880,5 +882,7 @@ bool isPartialRegion (
         return false;
     }
 }
+
+G4_SrcRegRegion* getSpillFillHeader(IR_Builder& builder, G4_Declare* decl);
 
 #endif // __SPILLMANAGERGMRF_H__

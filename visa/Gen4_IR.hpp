@@ -4095,6 +4095,7 @@ public:
 
     uint32_t getNumRows() const { return numRows; }
     uint32_t getOffset() const { return offset; }
+    uint32_t getOffsetInBytes() const { return offset * getGRFSize(); }
     G4_Declare* getFP() const { return fp; }
     G4_SrcRegRegion* getHeader() const { return getSrc(0)->asSrcRegRegion(); }
     G4_SrcRegRegion* getPayload() const { return getSrc(1)->asSrcRegRegion(); }
@@ -4149,6 +4150,7 @@ public:
 
     uint32_t getNumRows() const { return numRows; }
     uint32_t getOffset() const { return offset; }
+    uint32_t getOffsetInBytes() const { return offset * getGRFSize(); }
     G4_Declare* getFP() const { return fp; }
     G4_SrcRegRegion* getHeader() const { return getSrc(0)->asSrcRegRegion(); }
 

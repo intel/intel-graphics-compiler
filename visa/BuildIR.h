@@ -599,7 +599,6 @@ public:
 
     G4_Declare* getSpillFillHeader();
 
-
     IR_Builder(
         TARGET_PLATFORM genPlatform,
         INST_LIST_NODE_ALLOCATOR &alloc,

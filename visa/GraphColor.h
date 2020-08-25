@@ -803,6 +803,7 @@ namespace vISA
         PointsToAnalysis& pointsToAnalysis;
         FCALL_RET_MAP fcallRetMap;
 
+
         VarSplitPass* getVarSplitPass() { return kernel.getVarSplitPass(); }
 
         unsigned int getSubRetLoc(G4_BB* bb)

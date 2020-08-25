@@ -197,6 +197,7 @@ SpillManagerGRF::SpillManagerGRF(
     curInst = NULL;
     globalScratchOffset = gra.kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
 
+
 }
 
 // Compute the interference graph for intereference of the memory segments
@@ -2615,7 +2616,7 @@ void SpillManagerGRF::preloadSpillRange (
     }
 }
 
-static G4_SrcRegRegion* getSpillFillHeader(IR_Builder& builder, G4_Declare* decl)
+G4_SrcRegRegion* getSpillFillHeader(IR_Builder& builder, G4_Declare* decl)
 {
     return builder.Create_Src_Opnd_From_Dcl(decl, builder.getRegionStride1());
 }
@@ -2668,7 +2669,8 @@ SpillManagerGRF::createSpillSendInstr (
             off = (messageDescImm->getInt() & 0xfff);
         else
         {
-            if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+            if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls()
+                )
             {
                 G4_RegVar* r = spillRangeDcl->getRegVar();
                 G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
@@ -2676,7 +2678,8 @@ SpillManagerGRF::createSpillSendInstr (
                 getSpillOffset(offset);
                 // message expects offsets to be in HWord
                 off = (offset + spillOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
-                fp = builder_->kernel.fg.getFramePtrDcl();
+                if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+                    fp = builder_->kernel.fg.getFramePtrDcl();
             }
         }
         sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, fp, InstOpt_WriteEnable);
@@ -2705,12 +2708,11 @@ SpillManagerGRF::createSpillSendInstr (
     unsigned          option
 )
 {
-    G4_Imm * messageDescImm =
-        createSpillSendMsgDesc (spilledRangeRegion, execSize);
-
 #ifdef _DEBUG
     if (useScratchMsg_)
     {
+        G4_Imm* messageDescImm =
+            createSpillSendMsgDesc(spilledRangeRegion, execSize);
         int offset = (messageDescImm->getInt() & 0xFFF) * numEltPerGRF(Type_UB);
         MUST_BE_TRUE(offset >= globalScratchOffset, "incorrect offset");
     }
@@ -2729,10 +2731,15 @@ SpillManagerGRF::createSpillSendInstr (
         auto off = G4_SpillIntrinsic::InvalidOffset;
         G4_Declare* fp = nullptr;
         if (useScratchMsg_)
+        {
+            G4_Imm* messageDescImm =
+                createSpillSendMsgDesc(spilledRangeRegion, execSize);
             off = (messageDescImm->getInt() & 0xfff);
+        }
         else
         {
-            if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+            if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls()
+                )
             {
                 G4_RegVar* r = spillRangeDcl->getRegVar();
                 G4_RegVarTmp* rvar = static_cast<G4_RegVarTmp*> (r);
@@ -2741,7 +2748,8 @@ SpillManagerGRF::createSpillSendInstr (
                 // message expects offsets to be in HWord
                 auto regOff = spilledRangeRegion->getRegOff();
                 off = (offset + regOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
-                fp = builder_->kernel.fg.getFramePtrDcl();
+                if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+                    fp = builder_->kernel.fg.getFramePtrDcl();
             }
         }
         sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, (uint16_t)extMsgLength,
@@ -2751,6 +2759,8 @@ SpillManagerGRF::createSpillSendInstr (
     }
     else
     {
+        G4_Imm* messageDescImm =
+            createSpillSendMsgDesc(spilledRangeRegion, execSize);
         G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
             mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
         sendInst = createSendInst((unsigned char)execSize, postDst, payload, messageDescImm, SFID::DP_DC, true, static_cast<G4_InstOption>(option));
@@ -2980,7 +2990,8 @@ SpillManagerGRF::createFillSendInstr (
         off = (messageDescImm->getInt() & 0xfff);
     else
     {
-        if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+        if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls()
+            )
         {
             // compute hword offset to emit later when expanding spill/fill intrinsic
             G4_RegVar* r = fillRangeDcl->getRegVar();
@@ -2989,7 +3000,8 @@ SpillManagerGRF::createFillSendInstr (
             getSpillOffset(offset);
             // message expects offsets to be in HWord
             off = (offset + spillOff * getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
-            fp = builder_->kernel.fg.getFramePtrDcl();
+            if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+                fp = builder_->kernel.fg.getFramePtrDcl();
         }
     }
     auto fillInst = builder_->createFill(payload, postDst, execSize, height, off, fp, InstOpt_WriteEnable);
@@ -3011,8 +3023,6 @@ SpillManagerGRF::createFillSendInstr (
 )
 {
     auto oldExecSize = execSize;
-    G4_Imm * messageDescImm =
-        createFillSendMsgDesc (filledRangeRegion, execSize);
 
     if (useScratchMsg_)
     {
@@ -3030,6 +3040,9 @@ SpillManagerGRF::createFillSendInstr (
     G4_Declare* fp = nullptr;
     if (useScratchMsg_)
     {
+        G4_Imm* messageDescImm =
+            createFillSendMsgDesc(filledRangeRegion, execSize);
+
         off = (messageDescImm->getInt() & 0xfff);
         if (filledRangeRegion->crossGRF())
         {
@@ -3038,13 +3051,15 @@ SpillManagerGRF::createFillSendInstr (
     }
     else
     {
-        if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+        if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls()
+            )
         {
             // compute hword offset to emit later when expanding spill/fill intrinsic
             int offset = getRegionDisp(filledRangeRegion);
             getSpillOffset(offset);
             off = offset >> SCRATCH_SPACE_ADDRESS_UNIT;
-            fp = builder_->kernel.fg.getFramePtrDcl();
+            if (builder_->kernel.fg.getIsStackCallFunc() || builder_->kernel.fg.getHasStackCalls())
+                fp = builder_->kernel.fg.getFramePtrDcl();
         }
     }
 
@@ -4273,7 +4288,6 @@ void GlobalRA::expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& 
 void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
 {
     // spill (1) null:ud   bitmask:ud   r0:ud   payload:ud
-    auto& builder = kernel.fg.builder;
     for (auto instIt = bb->begin(); instIt != bb->end();)
     {
         auto inst = (*instIt);
@@ -4448,7 +4462,6 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
 void GlobalRA::expandFillIntrinsic(G4_BB* bb)
 {
     // fill (1) fill_var:ud     bitmask:ud     offset:ud
-    auto& builder = kernel.fg.builder;
     for (auto instIt = bb->begin(); instIt != bb->end();)
     {
         auto inst = (*instIt);

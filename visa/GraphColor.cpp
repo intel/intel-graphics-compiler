@@ -6869,14 +6869,15 @@ void GraphColor::saveRegs(
         // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
         // sends (8) null<1>:ud    r126.0    r1.0 ...
         uint8_t execSize = (owordSize > 2) ? 16 : 8;
-        unsigned messageLength = owordSize / 2;
+        unsigned messageLength = GlobalRA::owordToGRFSize(owordSize);
         G4_Declare* msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
             builder.getRegionStride1(), Type_UD);
         G4_DstRegRegion* dst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
-        auto spillIntrinsic = builder.createSpill(dst, sendSrc2, execSize, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable);
+        G4_INST* spillIntrinsic = nullptr;
+        spillIntrinsic = builder.createSpill(dst, sendSrc2, execSize, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable);
         bb->insertBefore(insertIt, spillIntrinsic);
     }
     else if (owordSize > 8)
@@ -6952,12 +6953,13 @@ void GraphColor::restoreRegs(
     if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
         uint8_t execSize = (owordSize > 2) ? 16 : 8;
-        unsigned responseLength = ROUND(owordSize, 2) / 2;
+        unsigned responseLength = GlobalRA::owordToGRFSize(owordSize);
         G4_Declare* dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, GraphColor::StackCallStr);
         dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         G4_DstRegRegion* dstRgn = builder.createDst(dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
-        auto fillIntrinsic = builder.createFill(dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
+        G4_INST* fillIntrinsic = nullptr;
+        fillIntrinsic = builder.createFill(dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
         bb->insertBefore(insertIt, fillIntrinsic);
     }
     //
@@ -7410,6 +7412,7 @@ void GraphColor::addGenxMainStackSetupCode()
     // SP = fpInitVal + frameSize, which does not make sense. It is correct now since when there's stack call,
     // IGC will not use scratch, so fpInitVal will be 0.
     unsigned frameSize = builder.kernel.fg.frameSizeInOWord;
+    uint16_t factor = 1;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
     G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
 
@@ -7435,7 +7438,7 @@ void GraphColor::addGenxMainStackSetupCode()
     //
     {
         G4_DstRegRegion* dst = builder.createDst(stackPtr->getRegVar(), 0, 0, 1, Type_UD);
-        G4_Imm * src = builder.createImm(fpInitVal + frameSize, Type_UD);
+        G4_Imm * src = builder.createImm(fpInitVal + frameSize*factor, Type_UD);
         G4_INST* spIncInst = builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
         entryBB->insertBefore(++insertIt, spIncInst);
     }
@@ -7455,6 +7458,7 @@ void GraphColor::addGenxMainStackSetupCode()
 void GraphColor::addCalleeStackSetupCode()
 {
     int frameSize = (int)builder.kernel.fg.frameSizeInOWord;
+    uint16_t factor = 1;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
     G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
 
@@ -7484,7 +7488,7 @@ void GraphColor::addCalleeStackSetupCode()
         G4_Operand* src0 = builder.createSrcRegRegion(
             Mod_src_undef, Direct, stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_Operand* sp_src = builder.createSrcRegRegion(Mod_src_undef, Direct, stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
-        G4_Imm * src1 = builder.createImm(frameSize, Type_UD);
+        G4_Imm * src1 = builder.createImm(frameSize*factor, Type_UD);
         auto createBEFP = builder.createMov(1, fp_dst, sp_src, InstOpt_WriteEnable, false);
         auto addInst = builder.createBinOp(G4_add, 1,
             dst, src0, src1, InstOpt_WriteEnable, false);
@@ -9273,6 +9277,7 @@ int GlobalRA::coloringRegAlloc()
     //
     if (hasStackCall)
     {
+
         addCallerSavePseudoCode();
 
         // Only GENX sub-graphs require callee-save code.
@@ -9600,8 +9605,9 @@ int GlobalRA::coloringRegAlloc()
                 scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
 
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||
-                    builder.getOption(vISA_FastSpill) || builder.getOption(vISA_Debug) ||
-                    !useScratchMsgForSpill;
+                    builder.getOption(vISA_FastSpill) || builder.getOption(vISA_Debug) || hasStackCall ||
+                    (!useScratchMsgForSpill
+                        );
 
                 if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends())
                 {
