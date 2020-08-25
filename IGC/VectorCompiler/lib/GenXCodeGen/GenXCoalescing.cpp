@@ -976,7 +976,7 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
     if ((int)genx::exactLog2(
           Dest.getValue()->getType()->getPrimitiveSizeInBits()) <= 8) {
       // This is a bitcast with a legal size for a single copy. We do not
-      // insert a copy, because GenXVisaFuncWriter will generate one.
+      // insert a copy, because GenXCisaBuilder will generate one.
       // (GenXLegalization does not legalize a bitcast, so it can be
       // illegal size here. We do that on the basis that a bitcast is
       // normally copy coalesced.)

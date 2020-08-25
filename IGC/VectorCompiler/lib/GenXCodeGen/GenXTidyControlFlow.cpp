@@ -43,26 +43,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 /// 3. fixGotoOverBranch: The pass spots where there is a SIMD CF goto over an
 ///    unconditional branch, and turns the combination into a backwards goto.
-/// 
-///    After reordering blocks, we know that any simd goto has its "false" successor as
-///    the following block. If all of the following are true:
-/// 
+///
+///    After reordering blocks, we know that any simd goto has its "false"
+///    successor as the following block. If all of the following are true:
+///
 ///    a. its "true" successor just branches over that same block;
-/// 
+///
 ///    b. that block contains only an unconditional branch;
-/// 
+///
 ///    c. the UIP of the goto (the join whose RM it updates) is the same as the
 ///       "true" successor;
-/// 
+///
 ///    d. the goto condition is not constant 0 (this condition is because we
-///       cannot represent a backwards simd goto with this, and it is too late to
-///       allocate it a register);
-/// 
+///       cannot represent a backwards simd goto with this, and it is too late
+///       to allocate it a register);
+///
 ///    then we have the end of a simd do..while loop, and we can optimize to a
 ///    backwards simd goto.
-/// 
+///
 ///    We represent a backwards simd goto in the IR by having the "true"
-///    successor as the following block. GenXVisaFuncWriter can then spot that it
+///    successor as the following block. GenXCisaBuilder can then spot that it
 ///    is a backwards simd goto, and it needs its condition inverting.
 ///
 /// 4. Ensure that there is a single return block and it is the last block.

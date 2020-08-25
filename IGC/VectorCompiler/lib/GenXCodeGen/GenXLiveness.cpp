@@ -378,7 +378,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
             }
             break;
           case GenXIntrinsic::genx_simdcf_goto:
-            // Use in a goto. Treat it as at the branch, as GenXVisaFuncWriter
+            // Use in a goto. Treat it as at the branch, as GenXCisaBuilder
             // writes the goto just before the branch, after any intervening IR.
             Num = Numbering->getNumber(CI->getParent()->getTerminator());
             break;

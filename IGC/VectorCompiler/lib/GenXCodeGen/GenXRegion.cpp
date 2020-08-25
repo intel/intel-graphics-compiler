@@ -355,7 +355,7 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
         // region, a row cannot cross a GRF, unless the region is contiguous.
         // Pending a proper fix, we have a temporary fix here that we disallow
         // GRF crossing completely unless the original region is a destination
-        // operand or is a 1D source operand (so GenXVisaFuncWriter can turn it
+        // operand or is a 1D source operand (so GenXCisaBuilder can turn it
         // into Nx1 instead of 1xN).  We use Allow2D as a proxy for "is source
         // operand".
         unsigned GRFsPerIndirect = 1;

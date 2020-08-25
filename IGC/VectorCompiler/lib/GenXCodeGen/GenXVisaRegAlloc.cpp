@@ -393,7 +393,7 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *k
  *          Signed = request for signed or unsigned
  *          OverrideType = 0 else override type of value (used for bitcast)
  *
- * Called from GenXVisaFunctionWriter to get the register for an
+ * Called from GenXCisaBuilder to get the register for an
  * operand. The operand type might not match the register type (say a
  * bitcast has been coalesced, or the same integer value is used
  * unsigned in one place and signed in another), in which case we
