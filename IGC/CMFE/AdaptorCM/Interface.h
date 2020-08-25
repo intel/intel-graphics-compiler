@@ -61,6 +61,7 @@ struct IDriverInvocation {
   virtual const OutputTypeT& getOutputType() const = 0;
   virtual const TargetRuntimeT& getTargetRuntime() const = 0;
   virtual BinaryFormatT getBinaryFormat() const = 0;
+  virtual bool getTimePasses() const = 0;
 
   virtual const StrT& getTargetArch() const = 0;
   virtual const StrT& getInputFilename() const = 0;
@@ -74,7 +75,7 @@ struct IDriverInvocation {
 };
 
 // this number should be increased whenever the public interface changes
-static const int InterfaceVersion = 7;
+static const int InterfaceVersion = 8;
 
 } // namespace ClangFE
 } // namespace CM
