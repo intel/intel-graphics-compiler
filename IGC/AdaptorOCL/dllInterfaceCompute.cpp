@@ -855,8 +855,9 @@ VcPayloadInfo tryExtractPayload(char* pInput, size_t inputSize) {
     uint64_t PayloadSize;
     const char* pIrSizeBuff = pInputEnd - CodegenMarker.size() - 2 * sizeof(uint64_t);
     const char* pPayloadSizeBuff = pInputEnd - CodegenMarker.size() - 1 * sizeof(uint64_t);
-    std::memcpy(&IrSize, pIrSizeBuff, sizeof(IrSize));
-    std::memcpy(&PayloadSize, pPayloadSizeBuff, sizeof(PayloadSize));
+    memcpy_s(&IrSize, sizeof(IrSize), pIrSizeBuff, sizeof(IrSize));
+    memcpy_s(&PayloadSize, sizeof(PayloadSize), pPayloadSizeBuff,
+             sizeof(PayloadSize));
     if (inputSize != (PayloadSize + IrSize))
         return {};
 
