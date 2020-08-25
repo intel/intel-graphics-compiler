@@ -410,6 +410,7 @@ void CGen8CMProgram::GetZEBinary(
     llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes)
 {
     ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8, *m_programInfo, nullptr, 0};
+    zebuilder.setGfxCoreFamilyToELFMachine(m_Platform.eRenderCoreFamily);
 
     for (auto *kernel : m_kernels)
     {
