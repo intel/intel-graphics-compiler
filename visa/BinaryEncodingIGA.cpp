@@ -207,9 +207,18 @@ iga::MathFC BinaryEncodingIGA::getMathFC(const G4_INST *inst)
     }
 }
 
+//
+// Return the IGA op for the given vISA instruction <op> for platform p.
+// <inst> is sometimes necessary to compute the subopcode (e.g., send)
+// As vISA may call this function to access instruction properties such as
+// saturation and conditional modifier and this may happen before all pseudo
+// opperations are lowered, <allowUnknownOp> may be used to suppress assert;
+// an invalid will be returned in this case.
+//
 std::pair<iga::Op,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
-    G4_opcode op, const G4_INST *inst, iga::Platform p)
+    G4_opcode op, const G4_INST *inst, iga::Platform p, bool allowUnknownOp)
 {
+
     iga::Op igaOp = iga::Op::INVALID;
     iga::Subfunction sf = iga::InvalidFC::INVALID;
     switch (op)
@@ -325,10 +334,10 @@ std::pair<iga::Op,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
         break;
     case G4_pseudo_mad: igaOp = iga::Op::MAD; break;
     case G4_do:
-        ASSERT_USER(false, "G4_do is not GEN ISA OPCODE.");
+        ASSERT_USER(!allowUnknownOp, "G4_do is not GEN ISA OPCODE.");
         break;
     case G4_mulh:
-        ASSERT_USER(false, "G4_mulh is not GEN ISA OPCODE.");
+        ASSERT_USER(!allowUnknownOp, "G4_mulh is not GEN ISA OPCODE.");
         break;
     case G4_pseudo_and:   igaOp = iga::Op::AND; break;
     case G4_pseudo_or:    igaOp = iga::Op::OR; break;
@@ -338,12 +347,12 @@ std::pair<iga::Op,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_pseudo_fret:  igaOp = iga::Op::RET; break;
     case G4_pseudo_sada2: igaOp = iga::Op::SADA2; break;
     case G4_pseudo_exit:
-        ASSERT_USER(false, "G4_pseudo_exit not GEN ISA OPCODE.");
+        ASSERT_USER(!allowUnknownOp, "G4_pseudo_exit not GEN ISA OPCODE.");
         break;
     case G4_pseudo_fc_call: igaOp = iga::Op::CALL; break;
     case G4_pseudo_fc_ret:  igaOp = iga::Op::RET; break;
     case G4_intrinsic:
-        ASSERT_USER(false, "G4_intrinsic not GEN ISA OPCODE.");
+        ASSERT_USER(!allowUnknownOp, "G4_intrinsic not GEN ISA OPCODE.");
         break;
     case G4_sync_nop:
         igaOp = iga::Op::SYNC;
@@ -358,8 +367,10 @@ std::pair<iga::Op,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
         sf = iga::SyncFC::ALLWR;
         break;
     case G4_NUM_OPCODE:
+        assert(false);
+        break;
     default:
-        ASSERT_USER(false, "INVALID opcode.");
+        ASSERT_USER(!allowUnknownOp, "INVALID opcode.");
         break;
     }
 
@@ -628,7 +639,7 @@ iga::Instruction *BinaryEncodingIGA::translateInstruction(
     G4_INST *g4inst, iga::Block*& bbNew)
 {
     iga::Instruction *igaInst = nullptr;
-    auto opinfo = getIgaOpInfo(g4inst->opcode(), g4inst, platformModel->platform);
+    auto opinfo = getIgaOpInfo(g4inst->opcode(), g4inst, platformModel->platform, false);
     iga::Op igaOp = opinfo.first;
     iga::Subfunction sf = opinfo.second;
     // common fields: op, predicate, flag reg, exec size, exec mask offset,

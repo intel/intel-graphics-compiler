@@ -7009,9 +7009,7 @@ void G4_INST::dump() const
 
 bool G4_INST::canSupportSaturate() const
 {
-    switch (op)
-    {
-    case G4_mul:
+    if (op == G4_mul || op == G4_pseudo_mad)
     {
         for (int i = 0, numSrc = getNumSrc(); i < numSrc; ++i)
         {
@@ -7022,30 +7020,21 @@ bool G4_INST::canSupportSaturate() const
         }
         return true;
     }
-    case G4_addc:
-    case G4_bfe:
-    case G4_bfi1:
-    case G4_bfi2:
-    case G4_bfrev:
-    case G4_cmp:
-    case G4_cbit:
-    case G4_fbh:
-    case G4_fbl:
-    case G4_frc:
-    case G4_and:
-    case G4_not:
-    case G4_or:
-    case G4_xor:
-    case G4_rol:
-    case G4_ror:
-    case G4_dp4a:
-    case G4_smov:
+
+    if (isIntrinsic() || op == G4_mulh)
+    {
         return false;
-    default:
-        return true;
     }
 
-    return true;
+    // note that IGA will return false for any opcode it does not recognize
+    // If your psuedo opcode needs to support saturation you must add explicit check before this
+    const iga::Model* igaModel = builder.getIGAModel();
+    assert(igaModel != nullptr);
+
+    const auto opInfo =
+        BinaryEncodingIGA::getIgaOpInfo(op, this, igaModel->platform, true);
+    const iga::OpSpec& opSpec = igaModel->lookupOpSpec(opInfo.first);
+    return opSpec.supportsSaturation();
 }
 
 bool G4_INST::canSupportCondMod() const
@@ -7126,7 +7115,7 @@ bool G4_INST::canSupportSrcModifier() const
     assert(igaModel != nullptr);
 
     const auto opInfo =
-        BinaryEncodingIGA::getIgaOpInfo(op, this, igaModel->platform);
+        BinaryEncodingIGA::getIgaOpInfo(op, this, igaModel->platform, true);
     const iga::OpSpec& opSpec = igaModel->lookupOpSpec(opInfo.first);
     return opSpec.supportsSourceModifiers();
 }

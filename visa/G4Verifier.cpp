@@ -989,5 +989,10 @@ void G4Verifier::verifyOpcode(G4_INST* inst)
         assert(!inst->isPseudoLogic() && "pseudo logic inst should be lowered before RA");
     }
 
+    if (inst->getSaturate())
+    {
+        assert(inst->canSupportSaturate() && "saturate is set to true but instruction does not support saturation");
+    }
+
 }
 

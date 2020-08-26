@@ -93,7 +93,7 @@ public:
     static iga::SWSB_ENCODE_MODE getIGASWSBEncodeMode(const IR_Builder& builder);
 
     static std::pair<iga::Op,iga::Subfunction> getIgaOpInfo(
-        G4_opcode op, const G4_INST *inst, iga::Platform p);
+        G4_opcode op, const G4_INST *inst, iga::Platform p, bool allowUnknownOp);
 private:
     static iga::PredCtrl getIGAPredCtrl(G4_Predicate_Control g4PredCntrl);
     static iga::Predication getIGAPredication(G4_Predicate* predG4);
