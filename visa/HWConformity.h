@@ -142,11 +142,7 @@ namespace vISA
         void insertMovAfter(INST_LIST_ITER& it, uint16_t stride, G4_BB* bb);
         void removeBadSrc(INST_LIST_ITER& it, G4_BB *bb, bool crossGRFDst, bool oneGRFSrc[3], bool badTwoGRFSrc[3]);
         uint8_t checkMinExecSize(G4_opcode op);
-        bool convertMAD2MAC(INST_LIST_ITER it, std::vector<G4_INST*> &madList, G4_BB *bb);
         void convertMAD2MulAdd(INST_LIST_ITER iter, G4_BB *bb);
-        G4_Type getAccType(G4_Type ty);
-        bool findHoistLocation(INST_LIST_ITER start, INST_LIST_ITER &end, uint16_t &movDist, G4_INST *boundary);
-        void addACCOpnd(G4_INST *inst, bool needACCSrc, int stride, G4_Type accTy);
         void maintainDU4TempMov(G4_INST *inst, G4_INST *movInst);
         void fixImm64(INST_LIST_ITER i, G4_BB* bb);
         bool checkSrcCrossGRF(INST_LIST_ITER &i, G4_BB* bb);

@@ -1104,8 +1104,6 @@ public:
     bool isSignSensitive(Gen4_Operand_Number opndNum) const;
     bool canHoist(bool simdBB, const Options *opt) const;
     bool isCommutative() const;
-    bool canUseACCOpt(bool handleComprInst, bool checkRegion,
-        uint16_t &hs, bool allowTypeDemotion, bool insertMov = false);
 
     bool hasNULLDst() const;
     bool goodTwoGRFDst(bool& evenSplitDst);
