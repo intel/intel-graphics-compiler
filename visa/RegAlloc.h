@@ -438,7 +438,7 @@ class LivenessAnalysis
 
     void updateKillSetForDcl(G4_Declare* dcl, BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill,
         G4_BB* entryBB, unsigned scopeID);
-    void footprintDst(G4_BB* bb, G4_INST* i, G4_Operand* opnd, BitSet* dstfootprint, bool isLocal);
+    void footprintDst(G4_BB* bb, G4_INST* i, G4_Operand* opnd, BitSet* dstfootprint);
     void footprintSrc(G4_INST* i, G4_Operand *opnd, BitSet* srcfootprint);
     void detectNeverDefinedVarRows();
 

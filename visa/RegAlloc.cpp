@@ -1948,13 +1948,11 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
 void LivenessAnalysis::footprintDst(G4_BB* bb,
     G4_INST* i,
     G4_Operand* opnd,
-    BitSet* dstfootprint,
-    bool isLocal)
+    BitSet* dstfootprint)
 {
     if (dstfootprint &&
         !(i->isPartialWrite()) &&
-        ((isLocal ||
-            bb->isAllLaneActive() ||
+        ((bb->isAllLaneActive() ||
             i->isWriteEnableInst() == true) ||
             gra.kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D))
     {
@@ -2104,7 +2102,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     }
                     else
                     {
-                        footprintDst(bb, i, dstrgn, dstfootprint, gra.isBlockLocal(topdcl));
+                        footprintDst(bb, i, dstrgn, dstfootprint);
 
                         use_gen.set(id, true);
                     }
@@ -2276,7 +2274,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     }
                     else
                     {
-                        footprintDst(bb, i, mod, dstfootprint, gra.isBlockLocal(topdcl));
+                        footprintDst(bb, i, mod, dstfootprint);
                         use_gen.set(id, true);
                     }
                 }
