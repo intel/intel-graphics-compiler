@@ -575,6 +575,8 @@ void BinaryEncodingIGA::Encode()
     { // time the encoding
         TIME_SCOPE(IGA_ENCODER);
         bool autoCompact = kernel.getOption(vISA_Compaction);
+
+
         KernelEncoder encoder(IGAKernel, autoCompact);
         encoder.setSWSBEncodingMode(getIGASWSBEncodeMode(*kernel.fg.builder));
 
