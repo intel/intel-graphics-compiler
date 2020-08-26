@@ -244,7 +244,8 @@ static std::vector<const char*>
         [](const auto& Arg) { return std::strcmp(Arg, "--") == 0; });
     auto CmArchPresent = std::any_of(userArgs.begin(), ItArchScanEnd,
         [](const auto& Arg) {
-          return std::strcmp(Arg, "-march") == 0 || std::strcmp(Arg, "-mcpu") == 0;
+          llvm::StringRef S = Arg;
+          return S.startswith("-march=") || S.startswith("-mcpu=");
         });
     if (!CmArchPresent) {
       // Pass the default architecture if user hasn't specified one
