@@ -151,8 +151,6 @@ static Expected<std::unique_ptr<llvm::Module>> getModule(ArrayRef<char> Input,
         std::move(ExpModule),
         []() -> llvm::Error {
           IGC_ASSERT_EXIT_MESSAGE(0, "Should create new error");
-          // Without this dead return MSVC fails with ICE in release-32bit.
-          return llvm::Error::success();
         },
         [](const llvm::ErrorInfoBase &E) {
           return make_error<vc::BadBitcodeError>(E.message());

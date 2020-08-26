@@ -958,10 +958,10 @@ CallGraphNode *CMABI::TransformNode(Function *F,
       NewAttrVec = NewAttrVec.addAttributes(Context, AttributeList::FunctionIndex, B);
     }
 
-    if (isa<InvokeInst>(Call))
-      IGC_ASSERT_EXIT_MESSAGE(0, "InvokeInst not supported");
+    IGC_ASSERT_EXIT_MESSAGE(false == isa<InvokeInst>(Call), "InvokeInst not supported");
 
-    CallInst *New = CallInst::Create(NF, Args, "", Call);
+    CallInst* const New = CallInst::Create(NF, Args, "", Call);
+    IGC_ASSERT(nullptr != New);
     New->setCallingConv(CS.getCallingConv());
     New->setAttributes(NewAttrVec);
     if (cast<CallInst>(Call)->isTailCall())

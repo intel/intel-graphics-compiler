@@ -351,7 +351,7 @@ protected:
   }
   DominatorTree *getDomTree(Function *F);
 private:
-  bool isLatePass() { return FG != nullptr; }
+  bool isLatePass() const { return FG != nullptr; }
   void emptyBranchingJoinBlocksInFunc(Function *F);
   void emptyBranchingJoinBlock(CallInst *Join);
   bool hoistJoin(CallInst *Join);
@@ -1683,13 +1683,19 @@ void GenXSimdCFConformance::ensureConformance()
       break;
     }
   }
-  // In the late pass, we are not expecting to have found any non-conformant
-  // gotos and joins that need lowering. All such gotos and joins should have
-  // been identified in the early pass, unless passes in between have
-  // transformed the code in an unexpected way that has made the simd CF
-  // non-conformant. Give an error here if this has happened.
-  if (isLatePass() && (!GotosToLower.empty() || !JoinsToLower.empty()))
-    IGC_ASSERT_EXIT_MESSAGE(0, "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
+
+  if (isLatePass()) {
+    // In the late pass, we are not expecting to have found any non-conformant
+    // gotos and joins that need lowering. All such gotos and joins should have
+    // been identified in the early pass, unless passes in between have
+    // transformed the code in an unexpected way that has made the simd CF
+    // non-conformant. Give an error here if this has happened.
+    IGC_ASSERT_EXIT_MESSAGE(GotosToLower.empty(),
+      "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
+    IGC_ASSERT_EXIT_MESSAGE(JoinsToLower.empty(),
+      "unexpected non-conformant SIMD CF in late SIMD CF conformance pass");
+  }
+
   // Lower gotos and joins that turned out to be non-conformant.
   for (auto i = GotosToLower.begin(), e = GotosToLower.end(); i != e; ++i)
     lowerGoto(*i);
