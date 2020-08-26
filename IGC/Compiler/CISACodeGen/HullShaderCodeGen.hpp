@@ -103,6 +103,6 @@ namespace IGC
         bool                   m_HasPrimitiveIDInstruction;
         uint32_t               m_pNumURBReadHandleGRF;
         HullShaderProperties   m_properties;
-        bool                   m_pBarrierEncountered;
+        bool                   m_BarrierEncountered;
     };
 }

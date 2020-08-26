@@ -55,7 +55,7 @@ namespace IGC
         m_pURBReadHandlesReg(nullptr),
         m_HasPrimitiveIDInstruction(false),
         m_pNumURBReadHandleGRF(0),
-        m_pBarrierEncountered(false)
+        m_BarrierEncountered(false)
     {
     }
 
@@ -297,7 +297,7 @@ namespace IGC
         pKernelProgram->IncludePrimitiveIDEnable = m_HasPrimitiveIDInstruction ? 1 : 0;
         pKernelProgram->DispatchMode = GetShaderDispatchMode();
         pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
-        pKernelProgram->InstanceCount = m_pBarrierEncountered ? DetermineInstanceCount() : 1;
+        pKernelProgram->InstanceCount = m_BarrierEncountered ? DetermineInstanceCount() : 1;
         pKernelProgram->isMessageTargetDataCacheDataPort = isMessageTargetDataCacheDataPort;
         pKernelProgram->bindingTableEntryCount = this->GetMaxUsedBindingTableEntryCount();
         pKernelProgram->BindingTableEntryBitmap = this->GetBindingTableEntryBitmap();
@@ -492,7 +492,7 @@ namespace IGC
 
     void CHullShader::SetBarrierEncountered()
     {
-        m_pBarrierEncountered = true;
+        m_BarrierEncountered = true;
     }
 
     uint32_t CHullShader::DetermineInstanceCount()
