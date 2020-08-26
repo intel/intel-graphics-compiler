@@ -86,15 +86,14 @@ namespace llvm {
     LLVMContext *Ctx = nullptr;
     WA_TABLE *WaTable = nullptr;
 
-    void collectFinalizerArgs(std::vector<const char*> &Owner) const;
-    void clearFinalizerArgs(std::vector<const char*>& Owner) const;
+    // Visa option parser contains code that just stores c-strings as
+    // pointers without copying. Store all strings here.
+    BumpPtrAllocator ArgStorage;
 
     VISABuilder *CisaBuilder = nullptr;
-    std::vector<const char*> CISA_Args;
     void InitCISABuilder();
 
     VISABuilder *VISAAsmTextReader = nullptr;
-    std::vector<const char*> VISA_Args;
     void InitVISAAsmReader();
 
     bool InlineAsm = false;
@@ -106,8 +105,8 @@ namespace llvm {
     static char ID;
     explicit GenXModule() : ModulePass(ID) {}
     ~GenXModule() {
-      clearFinalizerArgs(VISA_Args);
-      clearFinalizerArgs(CISA_Args);
+      DestroyCISABuilder();
+      DestroyVISAAsmReader();
     }
     virtual StringRef getPassName() const { return "GenX module"; }
     void getAnalysisUsage(AnalysisUsage &AU) const;

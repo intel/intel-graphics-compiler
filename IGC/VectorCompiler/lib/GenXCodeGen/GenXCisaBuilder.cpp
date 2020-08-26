@@ -75,6 +75,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/ScopedPrinter.h"
+#include "llvm/Support/StringSaver.h"
 
 #include "llvmWrapper/IR/InstrTypes.h"
 
@@ -284,13 +285,15 @@ void handleCisaCallError(int CallResult, const Twine &Call, LLVMContext &Ctx) {
 
 } // namespace
 
-#define CISA_CALL(c)                                                           \
+#define CISA_CALL_CTX(c, ctx)                                                  \
   do {                                                                         \
     auto result = c;                                                           \
     if (result != VISA_SUCCESS) {                                              \
-      handleCisaCallError(result, #c, getContext());                           \
+      handleCisaCallError(result, #c, (ctx));                                  \
     }                                                                          \
   } while (0);
+
+#define CISA_CALL(c) CISA_CALL_CTX(c, getContext())
 
 namespace llvm {
 
@@ -5773,32 +5776,28 @@ void GenXFinalizer::emitDebugInformation(VISABuilder &VB, const GenXModule &GM,
   }
 }
 
-void GenXModule::clearFinalizerArgs(std::vector<const char*>& Owner) const {
-  std::for_each(Owner.begin(), Owner.end(), [](const char* a) { delete []a; });
-  Owner.clear();
-}
-
-void GenXModule::collectFinalizerArgs(std::vector<const char*> &Owner) const {
-  clearFinalizerArgs(Owner);
-
-  auto grantArgument = [](const std::string& ArgString,
-                          std::vector<const char*> &Owner) {
-    const size_t BufferSize = ArgString.size() + 1;
-    char* ArgCopyBuff = new char [BufferSize];
-    std::copy(ArgString.data(), ArgString.data() + BufferSize, ArgCopyBuff);
-    Owner.push_back(ArgCopyBuff);
+static SmallVector<const char *, 8>
+collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST) {
+  SmallVector<const char *, 8> Argv;
+  auto addArgument = [&Argv, &Saver](StringRef Arg) {
+    // String saver guarantees that string is null-terminated.
+    Argv.push_back(Saver.save(Arg).data());
   };
 
-  grantArgument("-dumpvisa", Owner);
-  for (const auto& Fos: FinalizerOpts) {
-    // Add additional arguments if specified
-    std::istringstream f(Fos);
-    std::string s;
-    while (getline(f, s, ' ')) {
-      grantArgument(s, Owner);
-    }
-  }
-  Owner.push_back(nullptr);
+  addArgument("-dumpvisa");
+  for (const auto &Fos : FinalizerOpts)
+    cl::TokenizeGNUCommandLine(Fos, Saver, Argv);
+  return Argv;
+}
+
+static void dumpFinalizerArgs(const SmallVectorImpl<const char *> &Argv,
+                              StringRef CPU) {
+  // CPU actually is a lie. Finalizer platform names differ from ours.
+  outs() << "Finalizer Parameters:\n\t"
+         << " -platform " << CPU;
+  std::for_each(Argv.begin(), Argv.end(),
+                [](const char *Arg) { outs() << " " << Arg; });
+  outs() << "\n";
 }
 
 LLVMContext &GenXModule::getContext() {
@@ -5806,29 +5805,35 @@ LLVMContext &GenXModule::getContext() {
   return *Ctx;
 }
 
-void GenXModule::InitCISABuilder() {
-  IGC_ASSERT(ST);
-  auto Platform = ST->getVisaPlatform();
+static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
+                                      vISABuilderMode Mode, WA_TABLE *WaTable,
+                                      LLVMContext &Ctx,
+                                      BumpPtrAllocator &Alloc) {
+  auto Platform = ST.getVisaPlatform();
   // Use SKL for unknown platforms
   if (Platform == GENX_NONE)
     Platform = GENX_SKL;
 
   // Prepare array of arguments for Builder API.
-  collectFinalizerArgs(CISA_Args);
+  StringSaver Saver{Alloc};
+  SmallVector<const char *, 8> Argv = collectFinalizerArgs(Saver, ST);
 
-  if (PrintFinalizerOptions.getValue()) {
-    outs() << "Finalizer Parameters:\n\t" << " -platform " << ST->getCPU();
-    std::for_each(CISA_Args.begin(), CISA_Args.end(),
-                  [](const char* Arg) { outs() << " " << Arg; });
-    outs() << "\n";
-  }
+  if (PrintFinalizerOptions)
+    dumpFinalizerArgs(Argv, ST.getCPU());
 
-  CISA_CALL(CreateVISABuilder(CisaBuilder,
-                              HasInlineAsm() ? vISA_ASM_WRITER : vISA_MEDIA,
-                              EmitVisa ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH,
-                              Platform, CISA_Args.size() - 1, CISA_Args.data(),
-                              WaTable));
-  IGC_ASSERT(CisaBuilder && "Failed to create VISABuilder!");
+  VISABuilder *VB = nullptr;
+  CISA_CALL_CTX(CreateVISABuilder(
+                    VB, Mode, EmitVisa ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH,
+                    Platform, Argv.size(), Argv.data(), WaTable),
+                Ctx);
+  IGC_ASSERT_MESSAGE(VB, "Failed to create VISABuilder!");
+  return VB;
+}
+
+void GenXModule::InitCISABuilder() {
+  IGC_ASSERT(ST);
+  const vISABuilderMode Mode = HasInlineAsm() ? vISA_ASM_WRITER : vISA_MEDIA;
+  CisaBuilder = createVISABuilder(*ST, Mode, WaTable, getContext(), ArgStorage);
 }
 
 VISABuilder *GenXModule::GetCisaBuilder() {
@@ -5846,27 +5851,8 @@ void GenXModule::DestroyCISABuilder() {
 
 void GenXModule::InitVISAAsmReader() {
   IGC_ASSERT(ST);
-  auto Platform = ST->getVisaPlatform();
-  // Use SKL for unknown platforms
-  if (Platform == GENX_NONE)
-    Platform = GENX_SKL;
-
-  // Prepare array of arguments for Builder API.
-  collectFinalizerArgs(VISA_Args);
-
-  // Prepare array of arguments for Builder API.
-  if (PrintFinalizerOptions.getValue()) {
-    outs() << "Finalizer Parameters:\n\t" << " -platform " << ST->getCPU();
-    std::for_each(VISA_Args.begin(), VISA_Args.end(),
-                  [](const char* Arg) { outs() << " " << Arg; });
-    outs() << "\n";
-  }
-
-  CISA_CALL(CreateVISABuilder(VISAAsmTextReader, vISA_ASM_READER,
-                              VISA_BUILDER_BOTH, Platform,
-                              VISA_Args.size() - 1, VISA_Args.data(),
-                              WaTable));
-  IGC_ASSERT(VISAAsmTextReader && "Failed to create VISAAsmTextReader!");
+  VISAAsmTextReader = createVISABuilder(*ST, vISA_ASM_READER, WaTable,
+                                        getContext(), ArgStorage);
 }
 
 VISABuilder *GenXModule::GetVISAAsmReader() {
