@@ -224,6 +224,7 @@ namespace IGC
         bool FastVISACompile                            = false;
         bool MatchSinCosPi                              = false;
         bool CaptureCompilerStats                       = false;
+        bool EnableZEBinary                             = false;
     };
 
     struct ComputeShaderInfo

@@ -1248,6 +1248,10 @@ namespace IGC
                         }
                     }
                 }
+                if (strstr(options, "-allow-zebin"))
+                {
+                    EnableZEBinary = true;
+                }
             }
 
 
@@ -1269,6 +1273,7 @@ namespace IGC
             bool UseBindlessPrintf = false;
             bool IntelForceGlobalMemoryAllocation = false;
             bool hasNoLocalToGeneric = false;
+            bool EnableZEBinary = false;
 
             // -1 : initial value that means it is not set from cmdline
             // 0-5: valid values set from the cmdline

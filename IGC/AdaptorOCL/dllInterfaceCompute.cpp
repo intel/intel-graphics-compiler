@@ -1192,7 +1192,9 @@ bool TranslateBuild(
     // into it
     int binarySize = 0;
     char* binaryOutput = nullptr;
-    if (!IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+
+    if (!IGC_IS_FLAG_ENABLED(EnableZEBinary) &&
+        !oclContext.getModuleMetaData()->compOpt.EnableZEBinary) {
         Util::BinaryStream programBinary;
         // Patch token based binary format
         oclContext.m_programOutput.CreateKernelBinaries();

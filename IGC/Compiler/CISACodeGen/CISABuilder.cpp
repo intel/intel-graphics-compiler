@@ -4889,7 +4889,8 @@ namespace IGC
         void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
         SProgramOutput::RelocListTy& relocations)
     {
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
+            m_program->GetContext()->getCompilerOption().EnableZEBinary) {
             // for ZEBinary format
             V(vMainKernel->GetRelocations(relocations));
             IGC_ASSERT(sizeof(vISA::GenRelocEntry) * tableEntries == bufferSize);
@@ -5276,7 +5277,8 @@ namespace IGC
                 pOutput->m_funcSymbolTableEntries,
                 pOutput->m_symbols);
         }
-        if(IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
+            m_program->GetContext()->getCompilerOption().EnableZEBinary)
         {
             // cretae symbols for kernel. Symbols have name the same as the kernels, and offset to the
             // start of that kernel

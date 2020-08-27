@@ -85,7 +85,8 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
         // There are no constants, or no constants are used, so we have nothing to do.
         return false;
     }
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+    if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
+        modMD->compOpt.EnableZEBinary)
     {
         // ZEBinary always relies on relocation, so we can ignore this pass
         return false;

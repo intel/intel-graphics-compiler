@@ -263,6 +263,9 @@ static void CommonOCLBasedPasses(
     CompilerOpts.EnableTakeGlobalAddress =
         pContext->m_Options.EnableTakeGlobalAddress;
 
+    CompilerOpts.EnableZEBinary =
+        pContext->m_InternalOptions.EnableZEBinary;
+
     // right now we don't support any standard function in the code gen
     // maybe we want to support some at some point to take advantage of LLVM optimizations
     TargetLibraryInfoImpl TLI;

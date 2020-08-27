@@ -1677,7 +1677,8 @@ namespace IGC
                 // Create annotations for the kernel argument
                 // If an arg is unused, don't generate patch token for it.
                 CreateAnnotations(&arg, offset - constantBufferStart);
-                if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+                if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
+                    m_Context->getCompilerOption().EnableZEBinary) {
                     // FIXME: once we transit to zebin completely, we don't need to do
                     // CreateAnnotations. Only CreateZEPayloadArguments is required
                     CreateZEPayloadArguments(&arg, offset - constantBufferStart);
@@ -2103,7 +2104,8 @@ namespace IGC
         if (ctx->m_retryManager.IsFirstTry())
         {
             CollectProgramInfo(ctx);
-            if (IGC_IS_FLAG_DISABLED(EnableZEBinary))
+            if (IGC_IS_FLAG_DISABLED(EnableZEBinary) &&
+                !ctx->getCompilerOption().EnableZEBinary)
             {
                 ctx->m_programOutput.CreateProgramScopePatchStream(ctx->m_programInfo);
             }

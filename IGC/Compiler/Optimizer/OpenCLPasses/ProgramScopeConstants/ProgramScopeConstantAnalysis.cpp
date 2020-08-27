@@ -196,7 +196,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     }
 
     // Always rely on relocation for ZEBinary
-    if (IGC_IS_FLAG_DISABLED(EnableZEBinary))
+    if (IGC_IS_FLAG_DISABLED(EnableZEBinary) &&
+        !modMd->compOpt.EnableZEBinary)
     {
         if (hasInlineConstantBuffer)
         {
