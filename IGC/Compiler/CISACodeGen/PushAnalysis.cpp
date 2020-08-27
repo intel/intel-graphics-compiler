@@ -313,16 +313,38 @@ namespace IGC
         }
 
         llvm::GenIntrinsicInst* pRuntimeVal = llvm::dyn_cast<llvm::GenIntrinsicInst>(pAddress);
+        uint runtimeval0;
 
-        if (pRuntimeVal == nullptr ||
-            pRuntimeVal->getIntrinsicID() != llvm::GenISAIntrinsic::GenISA_RuntimeValue)
+        bool isRuntimeValFound = false;
+        if (pRuntimeVal == nullptr)
+        {
+            auto it = std::find(m_argList.begin(), m_argList.end(), pAddress);
+            if (it != m_argList.end())
+            {
+                int argIndex = (int) std::distance(m_argList.begin(), it);
+                PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
+                for (auto index_it = pushInfo.constantReg.begin(); index_it != pushInfo.constantReg.end(); ++index_it)
+                {
+                    if (index_it->second == argIndex)
+                    {
+                        runtimeval0 = index_it->first;
+                        isRuntimeValFound = true;
+                    }
+                }
+            }
+            if (!isRuntimeValFound)
+                return false;
+        }
+        else if(pRuntimeVal->getIntrinsicID() != llvm::GenISAIntrinsic::GenISA_RuntimeValue)
             return false;
+        if (!isRuntimeValFound)
+            runtimeval0 = (uint)llvm::cast<llvm::ConstantInt>(pRuntimeVal->getOperand(0))->getZExtValue();
 
-        IGC_ASSERT(32 == GetSizeInBits(pRuntimeVal->getType()) ||
-            64 == GetSizeInBits(pRuntimeVal->getType()));
-        const bool is64Bit = 64 == GetSizeInBits(pRuntimeVal->getType());
+        uint runtimevalSize = GetSizeInBits(pAddress->getType());
+        IGC_ASSERT(32 == runtimevalSize ||
+            64 == runtimevalSize);
+        const bool is64Bit = 64 == runtimevalSize;
 
-        uint runtimeval0 = (uint)llvm::cast<llvm::ConstantInt>(pRuntimeVal->getOperand(0))->getZExtValue();
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
         // then check for static flag so that we can do push safely
@@ -1473,6 +1495,7 @@ namespace IGC
         {
             BlockPushConstants();
         }
+
         // WA: Gen11+ HW doesn't work correctly if doubles are on vertex shader input and the input has unused components,
         // so ElementComponentEnableMask is not full => packing occurs
         // Code below fills gaps in inputs, so the ElementComponentEnableMask if full even if we don't use all
