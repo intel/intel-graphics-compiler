@@ -117,6 +117,7 @@ typedef struct _SUscSkuFeatureTable
     unsigned int   FtrPooledEuEnabled : 1;
 
     unsigned int   FtrResourceStreamer : 1;
+    unsigned int   FtrLocalMemory : 1;
 } SUscSkuFeatureTable;
 
 USC_PARAM()
@@ -166,8 +167,8 @@ Function:
     InitializeUscAdapterInfo
 
 Description:
-    Initializes the USC (slim) adapter info structure by coping required fields 
-    from the big sku table and gtSystemInfo structure. 
+    Initializes the USC (slim) adapter info structure by coping required fields
+    from the big sku table and gtSystemInfo structure.
     This is a helper function for USC clients.
 
 Input:
@@ -188,15 +189,15 @@ inline void InitializeUscAdapterInfo(
     SUscAdapterInfo &uscAdpaterInfo )
 {
     uscAdpaterInfo.UscSkuFeatureTable.FtrDesktop         = bigSkuTable.FtrDesktop;          // Whether Desktop
-        
+
     uscAdpaterInfo.UscSkuFeatureTable.FtrGtBigDie        = bigSkuTable.FtrGtBigDie;         // Indicates Big Die Silicon.
     uscAdpaterInfo.UscSkuFeatureTable.FtrGtMediumDie     = bigSkuTable.FtrGtMediumDie;      // Indicates Medium Die Silicon.
     uscAdpaterInfo.UscSkuFeatureTable.FtrGtSmallDie      = bigSkuTable.FtrGtSmallDie;       // Indicates Small Die Silicon.
     uscAdpaterInfo.UscSkuFeatureTable.FtrGT1             = bigSkuTable.FtrGT1;              // Indicates GT1 part.
     uscAdpaterInfo.UscSkuFeatureTable.FtrGT1_5           = bigSkuTable.FtrGT1_5;            // Indicates GT1.5 part.
-    uscAdpaterInfo.UscSkuFeatureTable.FtrGT2             = bigSkuTable.FtrGT2;              // Indicates GT2 part.    
-    uscAdpaterInfo.UscSkuFeatureTable.FtrGT3             = bigSkuTable.FtrGT3;              // Indicates GT3 part.  
-    uscAdpaterInfo.UscSkuFeatureTable.FtrGT4             = bigSkuTable.FtrGT4;              // Indicates GT4 part.  
+    uscAdpaterInfo.UscSkuFeatureTable.FtrGT2             = bigSkuTable.FtrGT2;              // Indicates GT2 part.
+    uscAdpaterInfo.UscSkuFeatureTable.FtrGT3             = bigSkuTable.FtrGT3;              // Indicates GT3 part.
+    uscAdpaterInfo.UscSkuFeatureTable.FtrGT4             = bigSkuTable.FtrGT4;              // Indicates GT4 part.
     uscAdpaterInfo.UscSkuFeatureTable.FtrGTL             = bigSkuTable.FtrGT1;              // Indicates GT Low-end performance part.
     uscAdpaterInfo.UscSkuFeatureTable.FtrGTM             = bigSkuTable.FtrGT2;              // Indicates GT Medium performance part.
     uscAdpaterInfo.UscSkuFeatureTable.FtrGTH             = bigSkuTable.FtrGT3;              // Indicates GT High-end performance part.
@@ -205,12 +206,13 @@ inline void InitializeUscAdapterInfo(
     uscAdpaterInfo.UscSkuFeatureTable.FtrGTC             = bigSkuTable.FtrGTC;            // Indicates a Gen9 based LCLP Broxton platform C.
     uscAdpaterInfo.UscSkuFeatureTable.FtrGTX             = bigSkuTable.FtrGTX;            // Indicates a Gen9 based LCLP Broxton platform X.
     uscAdpaterInfo.UscSkuFeatureTable.Ftr5Slice          = bigSkuTable.Ftr5Slice;       // Indicates KBL 15x8 SKU  HALO Sku
-    uscAdpaterInfo.UscSkuFeatureTable.FtrGpGpuMidThreadLevelPreempt = bigSkuTable.FtrGpGpuMidThreadLevelPreempt; //Indicates if preEmption is enabled (HSW+) 
-    uscAdpaterInfo.UscSkuFeatureTable.FtrIoMmuPageFaulting = bigSkuTable.FtrIoMmuPageFaulting; //Indicates if page faulting is enabled. 
+    uscAdpaterInfo.UscSkuFeatureTable.FtrGpGpuMidThreadLevelPreempt = bigSkuTable.FtrGpGpuMidThreadLevelPreempt; //Indicates if preEmption is enabled (HSW+)
+    uscAdpaterInfo.UscSkuFeatureTable.FtrIoMmuPageFaulting = bigSkuTable.FtrIoMmuPageFaulting; //Indicates if page faulting is enabled.
     uscAdpaterInfo.UscSkuFeatureTable.FtrWddm2Svm = bigSkuTable.FtrWddm2Svm;
     uscAdpaterInfo.UscSkuFeatureTable.FtrPooledEuEnabled = bigSkuTable.FtrPooledEuEnabled;
     uscAdpaterInfo.UscSkuFeatureTable.FtrResourceStreamer = bigSkuTable.FtrResourceStreamer;
-    
+    uscAdpaterInfo.UscSkuFeatureTable.FtrLocalMemory = bigSkuTable.FtrLocalMemory;
+
     uscAdpaterInfo.UscGTSystemInfo.EUCount = bigGTSystemInfo.EUCount;
     uscAdpaterInfo.UscGTSystemInfo.ThreadCount = bigGTSystemInfo.ThreadCount;
     uscAdpaterInfo.UscGTSystemInfo.SliceCount = bigGTSystemInfo.SliceCount;
@@ -236,7 +238,7 @@ Function:
     InitializeUscSkuTable
 
 Description:
-    Initializes the USC (slim) sku table by coping required fields from the big 
+    Initializes the USC (slim) sku table by coping required fields from the big
     sku table. This is a helper function for USC clients.
 
 Input:
@@ -260,15 +262,15 @@ inline void InitializeUscSkuTable(
 {
     uscSkuTable.FtrDesktop         = bigSkuTable.FtrDesktop;          // Whether Desktop
     uscSkuTable.FtrChannelSwizzlingXOREnabled = bigSkuTable.FtrChannelSwizzlingXOREnabled; // Indicates Channel Swizzling XOR feature support
-        
+
     uscSkuTable.FtrGtBigDie        = bigSkuTable.FtrGtBigDie;         // Indicates Big Die Silicon.
     uscSkuTable.FtrGtMediumDie     = bigSkuTable.FtrGtMediumDie;      // Indicates Medium Die Silicon.
     uscSkuTable.FtrGtSmallDie      = bigSkuTable.FtrGtSmallDie;       // Indicates Small Die Silicon.
     uscSkuTable.FtrGT1             = bigSkuTable.FtrGT1;              // Indicates GT1 part.
     uscSkuTable.FtrGT1_5           = bigSkuTable.FtrGT1_5;            // Indicates GT1.5 part.
-    uscSkuTable.FtrGT2             = bigSkuTable.FtrGT2;              // Indicates GT2 part.    
-    uscSkuTable.FtrGT3             = bigSkuTable.FtrGT3;              // Indicates GT3 part.  
-    uscSkuTable.FtrGT4             = bigSkuTable.FtrGT4;              // Indicates GT4 part.  
+    uscSkuTable.FtrGT2             = bigSkuTable.FtrGT2;              // Indicates GT2 part.
+    uscSkuTable.FtrGT3             = bigSkuTable.FtrGT3;              // Indicates GT3 part.
+    uscSkuTable.FtrGT4             = bigSkuTable.FtrGT4;              // Indicates GT4 part.
     uscSkuTable.FtrGTL             = bigSkuTable.FtrGT1;              // Indicates GT Low-end performance part.
     uscSkuTable.FtrGTM             = bigSkuTable.FtrGT2;              // Indicates GT Medium performance part.
     uscSkuTable.FtrGTH             = bigSkuTable.FtrGT3;              // Indicates GT High-end performance part.
@@ -277,8 +279,9 @@ inline void InitializeUscSkuTable(
     uscSkuTable.FtrGTC            = bigSkuTable.FtrGTC;            // Indicates a Gen9 based LCLP Broxton platform C.
     uscSkuTable.FtrGTX            = bigSkuTable.FtrGTX;            // Indicates a Gen9 based LCLP Broxton platform X.
     uscSkuTable.Ftr5Slice         = bigSkuTable.Ftr5Slice;       // Indicates KBL 15x8 SKU  HALO Sku
-    uscSkuTable.FtrGpGpuMidThreadLevelPreempt = bigSkuTable.FtrGpGpuMidThreadLevelPreempt; //Indicates if preEmption is enabled (HSW+) 
-    uscSkuTable.FtrIoMmuPageFaulting = bigSkuTable.FtrIoMmuPageFaulting; //Indicates if page faulting is enabled. 
+    uscSkuTable.FtrGpGpuMidThreadLevelPreempt = bigSkuTable.FtrGpGpuMidThreadLevelPreempt; //Indicates if preEmption is enabled (HSW+)
+    uscSkuTable.FtrIoMmuPageFaulting = bigSkuTable.FtrIoMmuPageFaulting; //Indicates if page faulting is enabled.
+    uscSkuTable.FtrLocalMemory = bigSkuTable.FtrLocalMemory;
 }
 
 
@@ -314,7 +317,7 @@ enum SHADER_TYPE
 };
 
 enum SIMD_MODE
-{    
+{
     SIMD_MODE_8 = 0,
     SIMD_MODE_16,
     SIMD_MODE_32,
@@ -331,8 +334,8 @@ enum PS_DISPATCH_TYPES
 };
 
 enum USC_CLIENT_TYPE
-{    
-    USC_CLIENT_D3D9,    
+{
+    USC_CLIENT_D3D9,
     USC_CLIENT_D3D10,
     USC_CLIENT_D3D12,
     USC_CLIENT_OGL,
@@ -366,13 +369,13 @@ struct SShaderStageBTLayout
     unsigned int   TPMIdx;
     unsigned int   surfaceScratchIdx;
     unsigned int   maxBTsize;
-   
+
     // Three following fields are offsets from minConstantBufferIdx:
     // NULL CB offset should be programmed right after the
     // last constant buffer index. Such programming will allow USC
-    // to correctly clamp indexable CB indexes (when relative constant 
-    // buffer addressing is used in a shader) and out of 
-    // bounds reads will return 0. Incorrect programming of this 
+    // to correctly clamp indexable CB indexes (when relative constant
+    // buffer addressing is used in a shader) and out of
+    // bounds reads will return 0. Incorrect programming of this
     // field may cause out of bounds accesses not to return 0.
     unsigned int   constantBufferNullBoundOffset;
     unsigned int   immediateConstantBufferOffset;
@@ -381,9 +384,9 @@ struct SShaderStageBTLayout
     // Following field is an offset from minResourceIdx:
     // NULL resource offset should be programmed right after the
     // last shader resource index. Such programming will allow USC
-    // to correctly clamp indexable resource indexes (when relative 
-    // shader resource addressing is used in a shader )and out of 
-    // bounds reads will return 0. Incorrect programming of this 
+    // to correctly clamp indexable resource indexes (when relative
+    // shader resource addressing is used in a shader )and out of
+    // bounds reads will return 0. Incorrect programming of this
     // field may cause out of bounds accesses not to return 0.
     unsigned int   resourceNullBoundOffset;
 
@@ -407,19 +410,19 @@ const SBindingTableLayout  g_cZeroBindingTableLayout  = {};
 const SShaderStageBTLayout g_cZeroShaderStageBTLayout = {};
 
 /*****************************************************************************\
-DEFINE: GTDI_MAX_KI_OFFSETS                                                 
+DEFINE: GTDI_MAX_KI_OFFSETS
 \*****************************************************************************/
 #define GTDI_MAX_KI_OFFSETS 26
 
 /*****************************************************************************\
-DEFINE: GTDI_MAX_KI_AGGREGATED_OFFSETS                                                 
+DEFINE: GTDI_MAX_KI_AGGREGATED_OFFSETS
 \*****************************************************************************/
 #define GTDI_MAX_KI_AGGREGATED_OFFSETS 20
 
 /*****************************************************************************\
-ENUM: GTDI_KI_BUILD_TYPE_ENUM                                                 
+ENUM: GTDI_KI_BUILD_TYPE_ENUM
 \*****************************************************************************/
-typedef enum GTDI_KI_BUILD_TYPE_ENUM                                                    
+typedef enum GTDI_KI_BUILD_TYPE_ENUM
 {
     GTDI_KERNEL_REGULAR                 = 0,   //use that value to switch off kernel build override
     GTDI_KERNEL_TRACE                   = 1,
@@ -434,7 +437,7 @@ typedef enum GTDI_KI_BUILD_TYPE_ENUM
 } GTDI_KI_BUILD_TYPE;
 
 /*****************************************************************************\
-ENUM: GTDI_PROFILING_POINT_TYPE_ENUM                                           
+ENUM: GTDI_PROFILING_POINT_TYPE_ENUM
 \*****************************************************************************/
 typedef enum GTDI_KERNEL_PROFILING_POINT_TYPE_ENUM 
 {
@@ -542,9 +545,9 @@ enum GFX3DSTATE_PROGRAM_FLOW
 /*****************************************************************************\
 ENUM: GFX3DSTATE_FLOATING_POINT_MODE
 
-Description: 
+Description:
     Indicates the floating point mode to be used by the hardware when running 
-    compiled kernel program. 
+    compiled kernel program.
 \*****************************************************************************/
 enum GFX3DSTATE_FLOATING_POINT_MODE
 {
@@ -691,8 +694,8 @@ enum INPUT_COVERAGE_MASK_MODE
 ENUM: SYSTEM_THREAD_MODE
 
 Description:
-    Enum type bitmask describing the System Thread mode. The System Thread might 
-    support shader debugging and/or the Context Save Restore (CSR) subroutine 
+    Enum type bitmask describing the System Thread mode. The System Thread might
+    support shader debugging and/or the Context Save Restore (CSR) subroutine
     called GPGPU preemption.
 \*****************************************************************************/
 typedef enum SYSTEM_THREAD_MODE_ENUM
@@ -803,7 +806,7 @@ enum USC_KERNEL_COMPILER_CONTROLS
     Reduce64To32ALUBottomUpPassBitEnable,
     Reduce64To32ALUSplitPassBitEnable,
     MergeSplitJoinDpEnable,
-    FoldUnpacksEnable,    
+    FoldUnpacksEnable,
     ConstantFoldingEnable,
     LoopInvariantCodeMotionEnable,
     InputMarkingEnable,
@@ -844,14 +847,14 @@ enum USC_KERNEL_COMPILER_CONTROLS
     ShaderHWInputPackingEnable,
     ShaderDeclarationPackingEnable,
     TPMPromotionEnable,
-    SSAAllocatorEnable, 
-    SSAAllocator1BBOnly, 
-    SSAAllocatorSIMD8Only, 
+    SSAAllocatorEnable,
+    SSAAllocator1BBOnly,
+    SSAAllocatorSIMD8Only,
     GotoJoinOptEnable,
     GotoAroundGotoMergeEnable,
     StatefulCompilationEnable,
     AtomicDstRemovalEnable,
-    MergeSimd8SamplerCBLoadsToSimd16Enable,        
+    MergeSimd8SamplerCBLoadsToSimd16Enable,
     SoftwareFp16PayloadEnable,
     SplitQuadTo32bitForALUEnable,
     SIMD32DivergentLoopHeuristicEnable,

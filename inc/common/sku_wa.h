@@ -268,6 +268,8 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrOSManagedAllocations  : 1;
         unsigned int   FtrCsResponseEventOptimization : 1;
         unsigned int   FtrRuntimeLogBuffer            : 1;
+        unsigned int   FtrLocalMemory                 : 1;
+
     };
 
     struct

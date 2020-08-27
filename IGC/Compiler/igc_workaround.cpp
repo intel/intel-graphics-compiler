@@ -135,6 +135,7 @@ namespace IGC
         SkuFeatureTable.FtrIoMmuPageFaulting = pUSCSkuFeatureTable->FtrIoMmuPageFaulting;
         SkuFeatureTable.FtrWddm2Svm = pUSCSkuFeatureTable->FtrWddm2Svm;
         SkuFeatureTable.FtrPooledEuEnabled = pUSCSkuFeatureTable->FtrPooledEuEnabled;
+        SkuFeatureTable.FtrLocalMemory = pUSCSkuFeatureTable->FtrLocalMemory;
     }
 
     void SetWorkaroundTable(const SUscSkuFeatureTable* pSkuFeatureTable, CPlatform* platform)
