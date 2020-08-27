@@ -330,10 +330,14 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         {
             ss << "FastStage1";
         }
+        else if (m_cgFlag.getValue() == FLAG_CG_STAGE1_BEST_PERF)
+        {
+            ss << "BestStage1";
+        }
         else
         {
-            IGC_ASSERT(m_cgFlag.getValue() == FLAG_CG_STAGE1_BEST_PERF);
-            ss << "BestStage1";
+            IGC_ASSERT(m_cgFlag.getValue() == FLAG_CG_STAGE1_FASTEST_COMPILE);
+            ss << "FastestStage1";
         }
 
         underscore = true;

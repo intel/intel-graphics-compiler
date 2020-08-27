@@ -844,7 +844,8 @@ static void PSCodeGen(
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
     }
-    else if (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx))
+    else if (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
+             IsStage1FastestCompile(ctx->m_CgFlag, ctx->m_StagingCtx))
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;

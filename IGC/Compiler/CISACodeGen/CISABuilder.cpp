@@ -4383,6 +4383,14 @@ namespace IGC
 
         // Set to stitch all functions to all kernels in a VISABuidler
         SaveOption(vISA_noStitchExternFunc, false);
+
+        // Turning off optimizations as much as possible to have the fastest compilation
+        if (IsStage1FastestCompile(context->m_CgFlag, context->m_StagingCtx))
+        {
+            SaveOption(vISA_FastSpill, true);
+            SaveOption(vISA_LocalScheduling, false);
+            SaveOption(vISA_preRA_Schedule, false);
+        }
     }
 
     void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall)

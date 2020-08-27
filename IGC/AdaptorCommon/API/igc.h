@@ -108,12 +108,14 @@ typedef enum {
     FLAG_CG_ALL_SIMDS = 0,
     FLAG_CG_STAGE1_FAST_COMPILE = 1,
     FLAG_CG_STAGE1_BEST_PERF = 2,
+    FLAG_CG_STAGE1_FASTEST_COMPILE = 3,
 } CG_FLAG_t;
 
 #define IsStage2Available(ctx_ptr) (ctx_ptr != nullptr)
 
 #define IsStage2RestSIMDs(prev_ctx_ptr) (prev_ctx_ptr != nullptr)
 #define IsStage1FastCompile(flag, prev_ctx_ptr) (!IsStage2RestSIMDs(prev_ctx_ptr) && flag == FLAG_CG_STAGE1_FAST_COMPILE)
+#define IsStage1FastestCompile(flag, prev_ctx_ptr) (!IsStage2RestSIMDs(prev_ctx_ptr) && flag == FLAG_CG_STAGE1_FASTEST_COMPILE)
 #define IsStage1BestPerf(flag, prev_ctx_ptr)    (!IsStage2RestSIMDs(prev_ctx_ptr) && flag == FLAG_CG_STAGE1_BEST_PERF)
 #define IsAllSIMDs(flag, prev_ctx_ptr)          (!IsStage2RestSIMDs(prev_ctx_ptr) && flag == FLAG_CG_ALL_SIMDS)
 #define IsStage1(pCtx)   (IsStage1BestPerf(pCtx->m_CgFlag, pCtx->m_StagingCtx) || \
