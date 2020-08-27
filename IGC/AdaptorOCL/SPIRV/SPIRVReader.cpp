@@ -241,7 +241,47 @@ public:
       if (auto n = getExistingNode<DIExpression*>(inst))
           return n;
 
-      return addMDNode(inst, Builder.createExpression());
+      OpDebugExpression dbgExpr(inst);
+
+      auto numOperations = dbgExpr.getNumOperations();
+
+      llvm::SmallVector<uint64_t, 5> Exprs;
+      for (unsigned int i = 0; i != numOperations; ++i)
+      {
+          OpDebugOperation operation(BM->get<SPIRVExtInst>(dbgExpr.getOperation(i)));
+          switch (operation.getOperation())
+          {
+          case SPIRVDebug::ExpressionOpCode::Deref:
+              Exprs.push_back(llvm::dwarf::DW_OP_deref); break;
+          case SPIRVDebug::ExpressionOpCode::Plus:
+              Exprs.push_back(llvm::dwarf::DW_OP_plus); break;
+          case SPIRVDebug::ExpressionOpCode::Minus:
+              Exprs.push_back(llvm::dwarf::DW_OP_minus); break;
+          case SPIRVDebug::ExpressionOpCode::PlusUconst:
+              Exprs.push_back(llvm::dwarf::DW_OP_plus_uconst); break;
+          case SPIRVDebug::ExpressionOpCode::BitPiece:
+              Exprs.push_back(llvm::dwarf::DW_OP_bit_piece); break;
+          case SPIRVDebug::ExpressionOpCode::Swap:
+              Exprs.push_back(llvm::dwarf::DW_OP_swap); break;
+          case SPIRVDebug::ExpressionOpCode::Xderef:
+              Exprs.push_back(llvm::dwarf::DW_OP_xderef); break;
+          case SPIRVDebug::ExpressionOpCode::StackValue:
+              Exprs.push_back(llvm::dwarf::DW_OP_stack_value); break;
+          case SPIRVDebug::ExpressionOpCode::Constu:
+              Exprs.push_back(llvm::dwarf::DW_OP_constu); break;
+          case SPIRVDebug::ExpressionOpCode::Fragment:
+              Exprs.push_back(llvm::dwarf::DW_OP_LLVM_fragment); break;
+          default:
+              break;
+          }
+
+          for (unsigned int j = 0; j != operation.getNumLiterals(); ++j)
+          {
+              Exprs.push_back(operation.getLiteral(j));
+          }
+      }
+
+      return addMDNode(inst, Builder.createExpression(Exprs));
   }
 
   DIType* createTypeBasic(SPIRVExtInst* inst)

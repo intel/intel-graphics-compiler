@@ -871,5 +871,22 @@ namespace spv {
         SPIRVWord getLine() { return arg<SPIRVWord>(SPIRVDebug::Operand::TemplateTemplateParameter::LineIdx); }
         SPIRVWord getColumn() { return arg<SPIRVWord>(SPIRVDebug::Operand::TemplateTemplateParameter::ColumnIdx); }
     };
+
+    class OpDebugExpression : OpDebugInfoBase
+    {
+    public:
+        OpDebugExpression(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
+        SPIRVId getOperation(unsigned int idx) { return arg<SPIRVId>(idx); }
+        unsigned int getNumOperations() { return getNumArgs(); }
+    };
+
+    class OpDebugOperation : OpDebugInfoBase
+    {
+    public:
+        OpDebugOperation(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
+        unsigned int getNumLiterals() { return getNumArgs() - SPIRVDebug::Operand::Operation::OpCodeIdx - 1; }
+        unsigned int getLiteral(unsigned int idx) { return arg<SPIRVWord>(idx + SPIRVDebug::Operand::Operation::OpCodeIdx + 1); }
+        SPIRVWord getOperation() { return arg<SPIRVWord>(SPIRVDebug::Operand::Operation::OpCodeIdx); }
+    };
 }
 #endif
