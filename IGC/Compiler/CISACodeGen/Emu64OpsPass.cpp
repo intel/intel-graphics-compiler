@@ -665,11 +665,23 @@ bool InstExpander::visitInstruction(Instruction& I) {
 }
 
 bool InstExpander::visitRet(ReturnInst& RI) {
-    if (Value * V = RI.getReturnValue())
+    if (Value* V = RI.getReturnValue())
     {
-        // TODO: Add 64-bit return value support when function/subroutine call is supported.
         IGC_ASSERT(nullptr != Emu);
-        IGC_ASSERT_MESSAGE(false == Emu->isInt64(V), "TODO: NOT IMPLEMENTED YET!");
+        if (Emu->isInt64(V))
+        {
+            Value* Lo = nullptr, *Hi = nullptr;
+            std::tie(Lo, Hi) = Emu->getExpandedValues(V);
+            Type* V2I32Ty = Emu->getV2Int32Ty();
+            Value* NewVal = UndefValue::get(V2I32Ty);
+            NewVal = IRB->CreateInsertElement(NewVal, Lo, IRB->getInt32(0));
+            NewVal = IRB->CreateInsertElement(NewVal, Hi, IRB->getInt32(1));
+            NewVal = IRB->CreateBitCast(NewVal, IRB->getInt64Ty());
+
+            IRB->SetInsertPoint(&RI);
+            (void) IRB->CreateRet(NewVal);
+            return true;
+        }
     }
     return false;
 }
@@ -1969,7 +1981,9 @@ Emu64BitCall:
         }
     }
     // Support for stack/indirect/subroutine calls
-    else if (!F || F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("UserSubroutine"))
+    // Note: should use enableFunctionCall() without using attr checking.
+    else if (   !F || F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("UserSubroutine")
+             || Emu->CGC->enableFunctionCall())
     {
         auto* CallCopy = Call.clone();
         IGC_ASSERT(nullptr != CallCopy);
