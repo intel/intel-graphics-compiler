@@ -499,6 +499,7 @@ typedef struct {
 } kernel_format_t;
 typedef kernel_format_t function_format_t;
 
+
 class print_format_provider_t {
 public:
     virtual uint32_t getNameIndex() const = 0;

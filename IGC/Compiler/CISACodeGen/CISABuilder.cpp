@@ -6292,6 +6292,7 @@ namespace IGC
     }
 
 
+
     std::string CEncoder::GetVariableName(CVariable* var)
     {
         IGC_ASSERT(nullptr != var);

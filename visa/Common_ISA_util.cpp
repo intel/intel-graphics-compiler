@@ -62,6 +62,7 @@ const char* Common_ISA_Get_Align_Name(VISA_Align align)
     return common_ISA_align_name[align];
 }
 
+
 const char* Common_ISA_Get_Modifier_Name(VISA_Modifier modifier)
 {
     switch (modifier)
