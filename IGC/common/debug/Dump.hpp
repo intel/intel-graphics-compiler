@@ -92,6 +92,7 @@ public:
     std::string overridePath() const;
     std::string RelativePath() const;
     std::string AbsolutePath(OutputFolderName folder) const;
+    std::string GetKernelName() const;
 
 private:
     class CPassDescriptor

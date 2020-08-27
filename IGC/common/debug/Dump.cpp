@@ -413,6 +413,16 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
     return ss.str();
 }
 
+std::string DumpName::GetKernelName() const
+{
+    std::string kernelName = "";
+    if (m_postfixStr.hasValue() && !m_postfixStr.getValue().empty())
+    {
+        kernelName = m_postfixStr.getValue();
+    }
+    return kernelName;
+}
+
 std::string DumpName::str() const
 {
     return AbsolutePath(IGC::Debug::GetShaderOutputFolder());

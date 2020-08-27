@@ -829,6 +829,9 @@ public:
 
     /// getGenOffset -- Get gen binary offset of this function
     VISA_BUILDER_API virtual int64_t getGenOffset() const = 0;
+
+    /// getFunctionName -- Get function name.
+    VISA_BUILDER_API virtual const char* getFunctionName() const = 0;
 };
 
 typedef enum

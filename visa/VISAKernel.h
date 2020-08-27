@@ -702,6 +702,9 @@ public:
     ///Gets gen binary size within instruction heap
     VISA_BUILDER_API int64_t getGenSize() const;
 
+    /// Get global function name
+    VISA_BUILDER_API const char* getFunctionName() const;
+
     //Gets the VISA string format for the variable
     VISA_BUILDER_API std::string getVarName(VISA_GenVar* decl) const;
     VISA_BUILDER_API std::string getVarName(VISA_PredVar* decl) const;

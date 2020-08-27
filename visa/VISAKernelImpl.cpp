@@ -8548,6 +8548,11 @@ int64_t VISAKernelImpl::getGenSize() const
     return size;
 }
 
+const char* VISAKernelImpl::getFunctionName() const
+{
+    return m_kernel->getName();
+}
+
 void VISAKernelImpl::computeAndEmitDebugInfo(VISAKernelImplListTy& functions)
 {
     std::list<VISAKernelImpl*> compilationUnitsForDebugInfo;

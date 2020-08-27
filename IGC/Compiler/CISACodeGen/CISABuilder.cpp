@@ -4989,18 +4989,54 @@ namespace IGC
         VISAKernel* pMainKernel = nullptr;
 
         // ShaderOverride for .visaasm files
-        std::string visaAsmOverrideFile = "";
+        std::vector<std::string> visaOverrideFiles;
         bool visaAsmOverride = false;
+        std::string kernelName;
         if (IGC_IS_FLAG_ENABLED(ShaderOverride))
         {
+            // Kernel count is one per visaBuilder
+            // Function count depends on stackFuncMap size
+            int kernelCount = 1;
+            int functionCount = stackFuncMap.size();
+            int count = kernelCount + functionCount;
+            IGC::Debug::OutputFolderName folder = IGC::Debug::GetShaderOverridePath();
             Debug::DumpName name = IGC::Debug::GetDumpNameObj(m_program, "visaasm");
-            visaAsmOverrideFile = name.overridePath();
-            // Check if the override file can be opened
-            FILE* tempFile = fopen(visaAsmOverrideFile.c_str(), "r");
-            if (tempFile)
+            kernelName = name.GetKernelName();
+
+            visaOverrideFiles.push_back(name.AbsolutePath(folder));
+
+            for (int i = 0; i < functionCount; i++)
             {
-                visaAsmOverride = true;
-                fclose(tempFile);
+                std::string tmpVisaFile = name.AbsolutePath(folder);
+                std::string::size_type asmNameEnd = tmpVisaFile.find_last_of("_");
+                tmpVisaFile = tmpVisaFile.substr(0, asmNameEnd);
+                std::stringstream asmName;
+                asmName << tmpVisaFile;
+                asmName << "_f";
+                asmName << i;
+                asmName << ".visaasm";
+                visaOverrideFiles.push_back(asmName.str());
+            }
+
+            if (visaOverrideFiles.size() == count)
+            {
+                for (const std::string& file : visaOverrideFiles)
+                {
+                    FILE*  tempFile = fopen(file.c_str(), "r");
+                    if (tempFile)
+                    {
+                        visaAsmOverride = true;
+                        fclose(tempFile);
+                    }
+                    else
+                    {
+                        visaAsmOverride = false;
+                        std::string message = "Cannot open overridden file! Put all .visaasm files in ShaderOverride dir.";
+                        appendToShaderOverrideLogFile(message, "WARNING: ");
+                        break;
+
+                    }
+                }
             }
         }
 
@@ -5032,15 +5068,48 @@ namespace IGC
             // Parse the generated VISA text
             if (visaAsmOverride)
             {
-                // Manually set the asm file path instead of using the path provided in the override shader file
-                std::string asmName = GetDumpFileName("");
-                asmName.pop_back();
-                vAsmTextBuilder->SetOption(VISA_AsmFileNameUser, true);
-                vAsmTextBuilder->SetOption(VISA_AsmFileName, asmName.c_str());
-                auto result = vAsmTextBuilder->ParseVISAText(visaAsmOverrideFile);
-                asmName = asmName + ".visaasm";
-                appendToShaderOverrideLogFile(asmName, "OVERRIDEN: ");
-                vISAAsmParseError = (result != 0);
+                for (const std::string& tmpVisaFile : visaOverrideFiles)
+                {
+                    std::string asmName = GetDumpFileName("");
+                    size_t asmNamedBegin = asmName.find_last_of("\\");
+                    size_t asmNameEnd = tmpVisaFile.find_last_of("/");
+                    std::string asmPreName = asmName.substr(0, asmNamedBegin);
+                    std::string asmPostName = tmpVisaFile.substr(asmNameEnd, asmName.length());
+                    asmName = asmPreName + asmPostName;
+                    size_t asmNamed = asmName.find_last_of(".");
+                    asmName = asmName.substr(0, asmNamed);
+                    vAsmTextBuilder->SetOption(VISA_AsmFileNameUser, true);
+                    vAsmTextBuilder->SetOption(VISA_AsmFileName, asmName.c_str());
+                    auto result = vAsmTextBuilder->ParseVISAText(tmpVisaFile.c_str());
+                    asmName = asmName + ".visaasm";
+                    appendToShaderOverrideLogFile(asmName, "OVERRIDEN: ");
+                    vISAAsmParseError = (result != 0);
+                    if (vISAAsmParseError) {
+                        IGC_ASSERT_MESSAGE(0, "visaasm file parse error!");
+                        break;
+                    }
+                }
+
+                // We need to update stackFuncMap for the symbol table for the overridden object,
+                // because stackFuncMap contains information about functions for original object.
+                // Only the IndirectlyCalled functions should be updated,
+                // because these functions can be used in CreateSymbolTable.
+                // Other normal stack call functions aren't used in CreateSymbolTable.
+                if (hasSymbolTable && stackFuncMap.size() > 0)
+                {
+                    Module* pModule = m_program->GetContext()->getModule();
+                    for (auto& F : pModule->getFunctionList())
+                    {
+                        if (F.hasFnAttribute("IndirectlyCalled") && (!F.isDeclaration() || F.getNumUses() > 0))
+                        {
+                            auto Iter = stackFuncMap.find(&F);
+                            IGC_ASSERT_MESSAGE(Iter != stackFuncMap.end(), "vISA function not found");
+
+                            VISAFunction* original = Iter->second;
+                            stackFuncMap[&F] = static_cast<VISAFunction*>(vAsmTextBuilder->GetVISAKernel(original->getFunctionName()));
+                        }
+                    }
+                }
             }
             else
             {
@@ -5064,7 +5133,7 @@ namespace IGC
             }
             else
             {
-                pMainKernel = vAsmTextBuilder->GetVISAKernel();
+                pMainKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
                 vIsaCompile = vAsmTextBuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
             }
         }
