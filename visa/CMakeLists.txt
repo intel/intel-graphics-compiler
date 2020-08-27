@@ -105,7 +105,7 @@ endif()
 # Set up the bison and flex targets. These commands will set up commands to generate the appropriate
 # source files from the input grammars. It will also set up the dependencies correctly for any
 # library or executable that uses the generated source
-BISON_TARGET(CISAParser CISA.y ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.cpp COMPILE_FLAGS "-vt -p CISA")
+BISON_TARGET(CISAParser CISA.y ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.cpp COMPILE_FLAGS "-vt -p CISA --no-lines")
 FLEX_TARGET(CISAScanner CISA.l ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.cpp COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
 ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
 
