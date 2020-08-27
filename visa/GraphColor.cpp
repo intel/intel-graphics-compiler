@@ -6869,7 +6869,7 @@ void GraphColor::saveRegs(
         // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
         // sends (8) null<1>:ud    r126.0    r1.0 ...
         uint8_t execSize = (owordSize > 2) ? 16 : 8;
-        unsigned messageLength = GlobalRA::owordToGRFSize(owordSize);
+        unsigned messageLength = ROUND(owordSize, 2) / 2;
         G4_Declare* msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
@@ -6953,7 +6953,7 @@ void GraphColor::restoreRegs(
     if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
         uint8_t execSize = (owordSize > 2) ? 16 : 8;
-        unsigned responseLength = GlobalRA::owordToGRFSize(owordSize);
+        unsigned responseLength = ROUND(owordSize, 2) / 2;
         G4_Declare* dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, GraphColor::StackCallStr);
         dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
