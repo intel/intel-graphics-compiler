@@ -7,7 +7,7 @@ using namespace vISA;
 using namespace std;
 
 static const unsigned SMALL_BLOCK_SIZE = 10;
-static const unsigned LARGE_BLOCK_SIZE = 20000;
+static const unsigned LARGE_BLOCK_SIZE = 32000;
 static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
