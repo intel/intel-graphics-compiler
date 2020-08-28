@@ -229,7 +229,9 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
                 id == GenISAIntrinsic::GenISA_vaBoolSum ||
                 id == GenISAIntrinsic::GenISA_vaBoolCentroid ||
                 id == GenISAIntrinsic::GenISA_MediaBlockWrite ||
-                id == GenISAIntrinsic::GenISA_eu_thread_pause)
+                id == GenISAIntrinsic::GenISA_eu_thread_pause ||
+                id == GenISAIntrinsic::GenISA_simdBlockWrite ||
+                id == GenISAIntrinsic::GenISA_simdBlockWriteBindless)
             {
                 numInstance = 1;
                 slicing = false;
@@ -5127,8 +5129,66 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
     uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
     uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
 
-    // Special case for uniform data. data is expected to be non-uniform.
-    data = BroadcastIfUniform(data);
+    bool isSeparated = m_SimdMode == SIMDMode::SIMD32 &&
+        m_encoder->GetSimdSize() == SIMDMode::SIMD16;
+
+    // Data has other layout than expecting one by block write instructions in case of multiple instances.
+    // The expected layout:
+    //  |0th component of data from thread 0-15 |0th component of data from thread 16-31|
+    //  |1st component of data from thread 0-15 |1st component of data from thread 16-31|
+    // The current layout:
+    //  |0th component of data from thread 0-15 |1st component of data from thread 0-15 |
+    //  |0th component of data from thread 16-31|1st component of data from thread 16-31|
+    if (isSeparated)
+    {
+        IGC_ASSERT_MESSAGE(!m_encoder->IsSecondHalf(), "This emitter must be called only once for simd32!");
+        const uint32_t numVectorElementsPerSimd = numLanes(m_encoder->GetSimdSize());
+        CVariable* copiedData = m_currShader->GetNewVariable(
+            data->GetNumberElement() * data->GetNumberInstance(),
+            data->GetType(),
+            data->GetAlign(),
+            "");
+
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            if (i == 1)
+            {
+                m_encoder->SetSecondHalf(true);
+            }
+
+            for (uint32_t elementIndex = 0; elementIndex < nbElements; elementIndex++)
+            {
+                // Offsets can be deduced from the upper comment.
+                CVariable* destinationAlias = m_currShader->GetNewAlias(
+                    copiedData,
+                    copiedData->GetType(),
+                    numVectorElementsPerSimd * (nbElements * elementIndex + i) * m_encoder->GetCISADataTypeSize(copiedData->GetType()),
+                    numVectorElementsPerSimd);
+                CVariable* sourceAlias = data;
+                if (!data->IsUniform())
+                {
+                    sourceAlias = m_currShader->GetNewAlias(
+                        data,
+                        data->GetType(),
+                        numVectorElementsPerSimd * elementIndex * m_encoder->GetCISADataTypeSize(data->GetType()),
+                        numVectorElementsPerSimd);
+                }
+
+                m_encoder->SetSimdSize(m_encoder->GetSimdSize());
+                m_encoder->SetNoMask();
+                m_encoder->Copy(destinationAlias, sourceAlias);
+                m_encoder->Push();
+            }
+        }
+
+        m_encoder->SetSecondHalf(false);
+        data = copiedData;
+    }
+    else
+    {
+        // Special case for uniform data. data is expected to be non-uniform.
+        data = BroadcastIfUniform(data);
+    }
 
 
     // Special case for simd8 char block write, in which the total bytes = 8.
@@ -5316,6 +5376,16 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
     uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
 
 
+    bool needsTempDst = m_SimdMode == SIMDMode::SIMD32 &&
+        m_encoder->GetSimdSize() == SIMDMode::SIMD16;
+    CVariable* dest = needsTempDst ?
+        m_currShader->GetNewVariable(
+            m_destination->GetNumberElement() * m_destination->GetNumberInstance(),
+            m_destination->GetType(),
+            m_destination->GetAlign(),
+            "") :
+        m_destination;
+
     // Special case for simd8 char block read, in which the total bytes = 8.
     // (All the other cases, the total bytes is multiple of 16 (OW).
     if (totalBytes == 8)
@@ -5327,7 +5397,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
         bool useQW = false;
         uint32_t blkBits = useQW ? 64 : 8;
         uint32_t nBlks = useQW ? 1 : 4;
-        CVariable* gatherDst = m_destination;
+        CVariable* gatherDst = dest;
 
         uint16_t activelanes = useQW ? 1 : 2;
         // lanesToSIMDMode(activelanes);
@@ -5399,7 +5469,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
         {
             bytesToRead = getBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxBlockMsgSize(false));
             bytesRemaining -= bytesToRead;
-            m_encoder->OWLoadA64(m_destination, pTempVar, bytesToRead, dstOffset);
+            m_encoder->OWLoadA64(dest, pTempVar, bytesToRead, dstOffset);
             m_encoder->Push();
             dstOffset += bytesToRead;
 
@@ -5456,7 +5526,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
             bytesRemaining -= bytesToRead;
 
             bool useSrc = isFirstIter && !isToSLM;
-            m_encoder->OWLoad(m_destination, resource, useSrc ? src : pTempVar, isToSLM, bytesToRead, dstOffset);
+            m_encoder->OWLoad(dest, resource, useSrc ? src : pTempVar, isToSLM, bytesToRead, dstOffset);
             m_encoder->Push();
             dstOffset += bytesToRead;
 
@@ -5471,6 +5541,49 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
             }
             isFirstIter = false;
         }
+    }
+
+    // Destination has other layout than expecting one by block write instructions in case of multiple instances.
+    // The expected layout:
+    //  |0th component of data from thread 0-15 |1st component of data from thread 0-15 |
+    //  |0th component of data from thread 16-31|1st component of data from thread 16-31|
+    // The current layout:
+    //  |0th component of data from thread 0-15 |0th component of data from thread 16-31|
+    //  |1st component of data from thread 0-15 |1st component of data from thread 16-31|
+    if (needsTempDst)
+    {
+        IGC_ASSERT_MESSAGE(!m_encoder->IsSecondHalf(), "This emitter must be called only once for simd32!");
+        const uint32_t numVectorElementsPerSimd = numLanes(m_encoder->GetSimdSize());
+
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            if (i == 1)
+            {
+                m_encoder->SetSecondHalf(true);
+            }
+
+            for (uint32_t elementIndex = 0; elementIndex < nbElements; elementIndex++)
+            {
+                // Offsets can be deduced from the upper comment.
+                CVariable* destinationAlias = m_currShader->GetNewAlias(
+                    m_destination,
+                    m_destination->GetType(),
+                    numVectorElementsPerSimd * elementIndex * m_encoder->GetCISADataTypeSize(m_destination->GetType()),
+                    numVectorElementsPerSimd);
+                CVariable* sourceAlias = m_currShader->GetNewAlias(
+                    dest,
+                    dest->GetType(),
+                    numVectorElementsPerSimd * (nbElements * elementIndex + i) * m_encoder->GetCISADataTypeSize(dest->GetType()),
+                    numVectorElementsPerSimd);
+
+                m_encoder->SetSimdSize(m_encoder->GetSimdSize());
+                m_encoder->SetNoMask();
+                m_encoder->Copy(destinationAlias, sourceAlias);
+                m_encoder->Push();
+            }
+        }
+
+        m_encoder->SetSecondHalf(false);
     }
 }
 
