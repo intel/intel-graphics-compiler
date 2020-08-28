@@ -1047,10 +1047,11 @@ void CFGStructurizer::preProcess()
             }
             G4_INST* gotoInst = getGotoInst(P);
             G4_INST* jmpiInst = getJmpiInst(P);
-            if (!gotoInst && !jmpiInst)
+            if (   !gotoInst && !jmpiInst       // not jump to B
+                && P->getPhysicalSucc() != B)   // not fall-thru to B
             {
-                // Shouldn't happen, but if so, keep the branch unchanged.
-                continue;
+                // Shouldn't happen.
+                assert(false && "unknown control-flow instruction!");
             }
 
             // forward branching/fall-thru "P->B" is changed to "P->newBB"
