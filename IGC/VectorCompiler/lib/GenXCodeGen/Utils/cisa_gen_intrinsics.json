@@ -2975,6 +2975,34 @@
         ]
       ]
     ],
+    "ISA_ADDC": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISATwoDstArithmeticInst",
+          "opc",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxAddc_Add)",
+          "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxAddc_Carry)",
+          "src0",
+          "src1"
+        ]
+      ]
+    ],
+    "ISA_SUBB": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISATwoDstArithmeticInst",
+          "opc",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxSubb_Sub)",
+          "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxSubb_Borrow)",
+          "src0",
+          "src1"
+        ]
+      ]
+    ],
     "ISA_RAW_SEND": [
       [ "CISA_CALL",
         [ "Kernel->AppendVISAMiscRawSend",

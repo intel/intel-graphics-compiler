@@ -3475,6 +3475,32 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return src;
   };
 
+  auto MakeSubbAddcDestination =
+      [&](GenXIntrinsic::GenXResult::ResultIndexes MemberIdx) {
+        IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(CI) ==
+                       llvm::GenXIntrinsic::genx_addc ||
+                   GenXIntrinsic::getGenXIntrinsicID(CI) ==
+                       llvm::GenXIntrinsic::genx_subb);
+        IGC_ASSERT(IndexFlattener::getNumElements(CI->getType()) == 2);
+
+        auto SV = SimpleValue(CI, MemberIdx);
+        auto *DstType = SV.getType();
+
+        IGC_ASSERT(DstType->getScalarType()->isIntegerTy(genx::DWordBits));
+
+        auto *Reg = RegAlloc->getRegForValue(KernFunc, SV, UNSIGNED);
+
+        const auto TypeSize = CISATypeTable[ISA_TYPE_UD].typeSize;
+        auto Elements = 1;
+        if (auto *VT = dyn_cast<VectorType>(DstType))
+          Elements = VT->getNumElements();
+
+        Region R(VectorType::get(
+            IntegerType::get(Ctx, TypeSize * genx::ByteBits), Elements));
+        return createRegionOperand(&R, Reg->GetVar<VISA_GenVar>(Kernel),
+                                   UNSIGNED, Mod, true /* Dst */);
+      };
+
 
   VISA_EMask_Ctrl exec_mask;
   addDebugInfo();
