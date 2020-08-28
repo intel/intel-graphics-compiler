@@ -112,7 +112,7 @@ struct KernelInfo {
 struct CompileInfo {
   KernelInfo KernelInfo;
   FINALIZER_INFO JitInfo;
-  std::string GenBinary;
+  std::vector<char> GenBinary;
 };
 
 struct CompileOutput {

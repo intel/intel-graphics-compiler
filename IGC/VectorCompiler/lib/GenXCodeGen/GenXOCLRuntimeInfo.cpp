@@ -281,13 +281,11 @@ GenXOCLRuntimeInfo::KernelArgInfo::KernelArgInfo(const Argument &Arg,
 // Compiled kernel implementation.
 //
 //===----------------------------------------------------------------------===//
-GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(
-    KernelInfo &&KI, const FINALIZER_INFO &JI,
-    std::vector<ArrayRef<char>> &GenBins)
-    : CompilerInfo(std::move(KI)), JitterInfo(JI)
-{
-  for (auto &GenBin : GenBins)
-    GenBinary.append(GenBin.begin(), GenBin.end());
+GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(KernelInfo &&KI,
+                                                   const FINALIZER_INFO &JI,
+                                                   std::vector<char> GenBinIn)
+    : CompilerInfo(std::move(KI)), JitterInfo(JI),
+      GenBinary{std::move(GenBinIn)} {
 }
 
 INITIALIZE_PASS_BEGIN(GenXOCLRuntimeInfo, "GenXOCLRuntimeInfo",

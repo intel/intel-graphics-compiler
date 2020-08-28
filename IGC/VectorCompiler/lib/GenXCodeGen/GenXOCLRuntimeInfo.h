@@ -220,15 +220,15 @@ public:
   class CompiledKernel {
     KernelInfo CompilerInfo;
     FINALIZER_INFO JitterInfo;
-    std::string GenBinary;
+    std::vector<char> GenBinary;
 
   public:
     CompiledKernel(KernelInfo &&KI, const FINALIZER_INFO &JI,
-                   std::vector<ArrayRef<char>> &GenBin);
+                   std::vector<char> GenBin);
 
     const KernelInfo &getKernelInfo() const { return CompilerInfo; }
     const FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }
-    const std::string &getGenBinary() const { return GenBinary; }
+    const std::vector<char> &getGenBinary() const { return GenBinary; }
   };
 
 public:
