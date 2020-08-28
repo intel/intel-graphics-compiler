@@ -101,16 +101,24 @@ namespace llvm {
 
     std::map<const Function *, genx::VisaDebugInfo> VisaDebugMap;
 
-  public:
-    static char ID;
-    explicit GenXModule() : ModulePass(ID) {}
-    ~GenXModule() {
+  private:
+    void cleanup() {
       DestroyCISABuilder();
       DestroyVISAAsmReader();
+      ArgStorage.Reset();
     }
-    virtual StringRef getPassName() const { return "GenX module"; }
-    void getAnalysisUsage(AnalysisUsage &AU) const;
-    bool runOnModule(Module &M);
+
+  public:
+    static char ID;
+
+    explicit GenXModule() : ModulePass(ID) {}
+    ~GenXModule() { cleanup(); }
+
+    StringRef getPassName() const override { return "GenX module"; }
+    void getAnalysisUsage(AnalysisUsage &AU) const override;
+    bool runOnModule(Module &M) override;
+    void releaseMemory() override { cleanup(); }
+
     const GenXSubtarget *getSubtarget() { return ST; }
     bool HasInlineAsm() const { return InlineAsm; }
     VISABuilder *GetCisaBuilder();

@@ -5655,8 +5655,6 @@ public:
     if (GenerateDebugInfo)
       emitDebugInformation(*CisaBuilder, GM, FGA, ST);
 
-    GM.DestroyCISABuilder();
-    GM.DestroyVISAAsmReader();
     Out << ss.str();
     return false;
   }
