@@ -68,6 +68,7 @@ void initializeGenUpdateCBPass(llvm::PassRegistry&);
 void initializeGenStrengthReductionPass(llvm::PassRegistry&);
 void initializeNanHandlingPass(llvm::PassRegistry&);
 void initializeFlattenSmallSwitchPass(llvm::PassRegistry&);
+void initializeSplitIndirectEEtoSelPass(llvm::PassRegistry&);
 void initializeGenXFunctionGroupAnalysisPass(llvm::PassRegistry&);
 void initializeGenXCodeGenModulePass(llvm::PassRegistry&);
 void initializeEstimateFunctionSizePass(llvm::PassRegistry&);
