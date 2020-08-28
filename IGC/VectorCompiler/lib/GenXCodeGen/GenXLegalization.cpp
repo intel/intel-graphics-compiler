@@ -565,10 +565,13 @@ bool GenXLegalization::processInst(Instruction *Inst) {
   if (isa<PHINode>(Inst))
     return false; // ignore phi node
   // Sanity check for illegal operand type
-  if ((Inst->getType()->getScalarType()->getPrimitiveSizeInBits() == 64) &&
-      !(ST->hasLongLong()))
-    report_fatal_error(
-        "'double' and 'long long' type are not supported by this target");
+  const auto *ScalarType = Inst->getType()->getScalarType();
+  if ((ScalarType->getPrimitiveSizeInBits() == 64) && !ST->hasLongLong()) {
+    if (!ScalarType->isIntegerTy())
+      report_fatal_error("'double' type is not supported by this target");
+    if (ScalarType->isIntegerTy())
+      report_fatal_error("'long long' type is not supported by this target");
+  }
   if (ST->isICLLP() || ST->isTGLLP()) {
     switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_ssad2:
