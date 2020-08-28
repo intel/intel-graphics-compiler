@@ -204,7 +204,7 @@ namespace IGC {
         void ResolveAlias();
 
         union {
-            VISA_GenVar* visaGenVariable[2];
+            VISA_GenVar* visaGenVariable[2]{ nullptr, nullptr };
             VISA_SurfaceVar* visaSurfVariable;
             VISA_PredVar* visaPredVariable;
             VISA_AddrVar* visaAddrVariable;
