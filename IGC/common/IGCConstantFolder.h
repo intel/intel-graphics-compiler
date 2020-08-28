@@ -264,10 +264,17 @@ public:
         return m_baseConstantFolder.CreateInsertElement(Vec, NewElt, Idx);
     }
 
+#if LLVM_VERSION_MAJOR < 11
     inline llvm::Constant* CreateShuffleVector(llvm::Constant* V1, llvm::Constant* V2,
         llvm::Constant* Mask) const {
         return m_baseConstantFolder.CreateShuffleVector(V1, V2, Mask);
     }
+#else
+    inline llvm::Constant* CreateShuffleVector(llvm::Constant* V1, llvm::Constant* V2,
+        llvm::ArrayRef<int> Mask) const {
+        return m_baseConstantFolder.CreateShuffleVector(V1, V2, Mask);
+    }
+#endif
 
     inline llvm::Constant* CreateExtractValue(llvm::Constant* Agg,
         llvm::ArrayRef<unsigned> IdxList) const {
