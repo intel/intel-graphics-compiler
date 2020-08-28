@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include <llvmWrapper/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include "llvm/IR/InstIterator.h"
@@ -410,7 +411,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(CallInst* callInst)
             }
             Type* retType = returnPtr ? Type::getVoidTy(callInst->getContext()) : callInst->getType();
             FunctionType* newFnTy = FunctionType::get(retType, argTypes, false);
-            Value* calledValue = callInst->getCalledValue();
+            Value* calledValue = IGCLLVM::getCalledValue(callInst);
             newCalledValue = m_pBuilder->CreatePointerCast(calledValue, PointerType::get(newFnTy, 0));
         }
         else

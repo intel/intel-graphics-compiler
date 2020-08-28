@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Module.h>
 #include <llvmWrapper/IR/Function.h>
 #include <llvmWrapper/ADT/STLExtras.h>
+#include <llvmWrapper/IR/Instructions.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DerivedTypes.h>
 #include "llvm/IR/DIBuilder.h"
@@ -362,7 +363,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
 
         if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
         {
-            if (!cInst || cInst->getCalledValue() != old_func)
+            if (!cInst || IGCLLVM::getCalledValue(cInst) != old_func)
             {
                 // Support indirect function pointer usages
                 if (Instruction* userInst = dyn_cast<Instruction>(U))

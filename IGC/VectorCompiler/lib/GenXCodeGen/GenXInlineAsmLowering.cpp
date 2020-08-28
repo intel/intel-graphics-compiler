@@ -59,6 +59,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -134,7 +135,7 @@ bool GenXInlineAsmLowering::runOnFunction(Function &F) {
         auto *CI = dyn_cast<CallInst>(&I);
         // No need to process inline asm with empty constraint string
         return CI && CI->isInlineAsm() &&
-               !cast<InlineAsm>(CI->getCalledValue())
+               !cast<InlineAsm>(IGCLLVM::getCalledValue(CI))
                     ->getConstraintString()
                     .empty();
       });
@@ -148,7 +149,7 @@ bool GenXInlineAsmLowering::runOnFunction(Function &F) {
 
   Context = &InlineAsms[0]->getContext();
   for (auto *CI : InlineAsms) {
-    auto *IA = cast<InlineAsm>(CI->getCalledValue());
+    auto *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
     InlineAsm::ConstraintInfoVector ConstraintsInfo = IA->ParseConstraints();
     MDNode *ConstraintsMD = createInlineAsmMetadata(CI, ConstraintsInfo);
     GenXConstraintInfoVector GenXConstraintsInfo =
@@ -331,7 +332,7 @@ CallInst *GenXInlineAsmLowering::recreateInlineAsmWithCR(
                  });
 
   // Create exactly the same inline assembly but with new function type
-  auto *IA = cast<InlineAsm>(CI->getCalledValue());
+  auto *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
   InlineAsm *NewIA = InlineAsm::get(
       NewFTy, IA->getAsmString(), IA->getConstraintString(),
       IA->hasSideEffects(), IA->isAlignStack(), IA->getDialect());

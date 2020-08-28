@@ -51,6 +51,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/Support/Path.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -239,7 +240,7 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& s
     if (CallInst * callInst = dyn_cast<CallInst>(sdag.m_root))
     {
         // Disable slicing for function calls
-        Function* F = dyn_cast<Function>(callInst->getCalledValue());
+        Function* F = dyn_cast<Function>(IGCLLVM::getCalledValue(callInst));
         if (!F || F->hasFnAttribute("visaStackCall"))
         {
             numInstance = 1;
@@ -8204,7 +8205,7 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
 bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<StringRef, 8> & constraints)
 {
     IGC_ASSERT(inst->isInlineAsm());
-    InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
+    InlineAsm* IA = cast<InlineAsm>(IGCLLVM::getCalledValue(inst));
     StringRef constraintStr(IA->getConstraintString());
     if (constraintStr.empty()) return true;
 
@@ -8277,7 +8278,7 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
 void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
 {
     std::stringstream& str = m_encoder->GetVISABuilder()->GetAsmTextStream();
-    InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
+    InlineAsm* IA = cast<InlineAsm>(IGCLLVM::getCalledValue(inst));
     string asmStr = IA->getAsmString();
     smallvector<CVariable*, 8> opnds;
     SmallVector<StringRef, 8> constraints;
@@ -9874,7 +9875,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         }
     };
 
-    CVariable* funcAddr = GetSymbol(inst->getCalledValue());
+    CVariable* funcAddr = GetSymbol(IGCLLVM::getCalledValue(inst));
     if (!isIndirectFCall)
     {
         CopyArgBlkVariables();

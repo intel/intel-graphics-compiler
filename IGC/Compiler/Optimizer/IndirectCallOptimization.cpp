@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "common/IGCIRBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/Instructions.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
@@ -173,7 +174,7 @@ namespace IGC
         IGCIRBuilder<> IRB(pModule->getContext());
         IRB.SetInsertPoint(&CI);
 
-        Value* calledAddr = IRB.CreatePtrToInt(CI.getCalledValue(), IRB.getInt64Ty());
+        Value* calledAddr = IRB.CreatePtrToInt(IGCLLVM::getCalledValue(CI), IRB.getInt64Ty());
 
         BasicBlock* beginBlock = CI.getParent();
         BasicBlock* endBlock = beginBlock->splitBasicBlock(&CI, "endIndirectCallBB");

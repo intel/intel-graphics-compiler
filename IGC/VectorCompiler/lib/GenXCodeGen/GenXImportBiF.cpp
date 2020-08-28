@@ -52,6 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/Error.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
+#include <llvmWrapper/IR/Instructions.h>
 
 #include <algorithm>
 #include <sstream>
@@ -386,7 +387,7 @@ static void removeFunctionBitcasts(llvm::Module &M) {
         if (!pInstCall || pInstCall->getCalledFunction())
           continue;
         if (auto constExpr =
-                dyn_cast<llvm::ConstantExpr>(pInstCall->getCalledValue())) {
+                dyn_cast<llvm::ConstantExpr>(IGCLLVM::getCalledValue(pInstCall))) {
           if (auto funcTobeChanged =
                   dyn_cast<llvm::Function>(constExpr->stripPointerCasts())) {
             if (funcTobeChanged->isDeclaration())

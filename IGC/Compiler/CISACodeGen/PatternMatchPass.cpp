@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/PatternMatch.h>
+#include <llvmWrapper/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
@@ -2993,7 +2994,7 @@ namespace IGC
             // Mark the function pointer in indirect calls as a source
             if (!callinst->getCalledFunction())
             {
-                MarkAsSource(callinst->getCalledValue());
+                MarkAsSource(IGCLLVM::getCalledValue(callinst));
             }
         }
         AddPattern(pattern);

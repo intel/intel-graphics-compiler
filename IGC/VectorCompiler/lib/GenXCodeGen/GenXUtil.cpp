@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include <iterator>
 #include "Probe/Assertion.h"
@@ -1481,7 +1482,7 @@ std::vector<GenXInlineAsmInfo> genx::getGenXInlineAsmInfo(CallInst *CI) {
   MDNode *MD = CI->getMetadata(genx::MD_genx_inline_asm_info);
   // empty constraint info
   if (!MD) {
-    auto *IA = cast<InlineAsm>(CI->getCalledValue());
+    auto *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
     IGC_ASSERT(IA->getConstraintString().empty() &&
            "No info only for empty constraint string");
     (void)IA;

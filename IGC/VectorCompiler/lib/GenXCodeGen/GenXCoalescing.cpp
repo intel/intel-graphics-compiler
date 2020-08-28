@@ -191,6 +191,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
@@ -495,7 +496,7 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
         } else if (IGCLLVM::CallInst *CI = dyn_cast<IGCLLVM::CallInst>(Inst)) {
           if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CI)) {
             if (CI->isInlineAsm()) {
-              InlineAsm *IA = cast<InlineAsm>(CI->getCalledValue());
+              InlineAsm *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
               // Do not process if no constraints provided or it's baled
               // (the coalescing actually needs to be done at the wrregion).
               if (IA->getConstraintString().empty() || Baling->isBaled(CI))

@@ -144,6 +144,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -878,7 +879,7 @@ unsigned GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI,
                                                           unsigned ArgNo,
                                                           bool IsOutput) const {
   IGC_ASSERT(CI->isInlineAsm() && "Inline asm expected");
-  InlineAsm *IA = dyn_cast<InlineAsm>(CI->getCalledValue());
+  InlineAsm *IA = dyn_cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
   IGC_ASSERT(!IA->getConstraintString().empty() && "Here should be constraints");
 
   auto ConstraintsInfo = genx::getGenXInlineAsmInfo(CI);

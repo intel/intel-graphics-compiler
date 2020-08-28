@@ -76,6 +76,33 @@ namespace IGCLLVM
         return I->getDestAlignment();
 #endif
     }
+
+    inline llvm::Value* getCalledValue(llvm::CallInst& CI)
+    {
+#if LLVM_VERSION_MAJOR <= 10
+        return CI.getCalledValue();
+#else
+        return CI.getCalledOperand();
+#endif
+    }
+	
+	inline llvm::Value* getCalledValue(llvm::CallInst* CI)
+	{ 
+#if LLVM_VERSION_MAJOR <= 10
+		return CI->getCalledValue();
+#else
+		return CI->getCalledOperand();
+#endif
+	}
+
+    inline const llvm::Value* getCalledValue(const llvm::CallInst* CI)
+    {
+#if LLVM_VERSION_MAJOR <= 10
+        return CI->getCalledValue();
+#else
+        return CI->getCalledOperand();
+#endif
+    }
 }
 
 #endif

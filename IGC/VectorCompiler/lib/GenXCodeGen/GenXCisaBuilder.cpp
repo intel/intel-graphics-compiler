@@ -77,6 +77,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/ScopedPrinter.h"
 #include "llvm/Support/StringSaver.h"
 
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 
 #include <map>
@@ -4556,7 +4557,7 @@ unsigned GenXKernelBuilder::getOrCreateLabel(Value *V, int Kind) {
 
 void GenXKernelBuilder::buildInlineAsm(CallInst *CI) {
   IGC_ASSERT(CI->isInlineAsm() && "Inline asm expected");
-  InlineAsm *IA = dyn_cast<InlineAsm>(CI->getCalledValue());
+  InlineAsm *IA = dyn_cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
   std::string AsmStr(IA->getAsmString());
   std::stringstream &AsmTextStream = CisaBuilder->GetAsmTextStream();
 
@@ -5555,7 +5556,7 @@ void GenXKernelBuilder::buildStackCall(IGCLLVM::CallInst *CI,
         Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), EXEC_SIZE_16,
         Callee->getName(), NoStackSize, RetSize));
   } else {
-    auto *FuncAddr = createSource(CI->getCalledValue(), DONTCARESIGNED);
+    auto *FuncAddr = createSource(IGCLLVM::getCalledValue(CI), DONTCARESIGNED);
     IGC_ASSERT(FuncAddr);
     CISA_CALL(Kernel->AppendVISACFIndirectFuncCallInst(
         Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), EXEC_SIZE_16,

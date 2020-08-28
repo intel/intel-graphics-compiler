@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Attributes.h"
 #include <llvmWrapper/IR/Function.h>
+#include <llvmWrapper/IR/Instructions.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
@@ -691,7 +692,7 @@ void BIImport::removeFunctionBitcasts(Module& M)
             {
                 CallInst* pInstCall = dyn_cast<CallInst>(I);
                 if (!pInstCall || pInstCall->getCalledFunction()) continue;
-                if (auto constExpr = dyn_cast<llvm::ConstantExpr>(pInstCall->getCalledValue()))
+                if (auto constExpr = dyn_cast<llvm::ConstantExpr>(IGCLLVM::getCalledValue(pInstCall)))
                 {
                     if (auto funcTobeChanged = dyn_cast<llvm::Function>(constExpr->stripPointerCasts()))
                     {

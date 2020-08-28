@@ -48,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/CommandLine.h"
 
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/ADT/STLExtras.h"
 
@@ -161,7 +162,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
                 auto inst = &*UI_BB;
                 if (auto CI = dyn_cast<CallInst>(inst))
                 {
-                    auto val = CI->getCalledValue();
+                    auto val = IGCLLVM::getCalledValue(CI);
                     auto *I2 = dyn_cast<llvm::Function>(val->stripPointerCasts());
 
                     Function *NF2 = cast<Function>(New.get()->getOrInsertFunction(

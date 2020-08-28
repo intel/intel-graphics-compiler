@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvmWrapper/IR/Attributes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
@@ -351,7 +352,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             {
                 CallInst* call = dyn_cast<CallInst>(*u);
 
-                if (!call || call->getCalledValue() != F)
+                if (!call || IGCLLVM::getCalledValue(call) != F)
                 {
                     isIndirect = true;
                 }
