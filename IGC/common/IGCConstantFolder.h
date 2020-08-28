@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/ConstantFolder.h>
+#include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
 
 
@@ -267,7 +268,26 @@ public:
 #if LLVM_VERSION_MAJOR < 11
     inline llvm::Constant* CreateShuffleVector(llvm::Constant* V1, llvm::Constant* V2,
         llvm::Constant* Mask) const {
+
+        //===-------------
+        // FIXME:
+        //   To adhere to LLVM 11 practices the cast from Constant* to ArrayRef<int>
+        //   should happen before this function's calls and ArrayRef<int> should be
+        //   passed as the argument.
+
+#if LLVM_VERSION_MAJOR < 11
         return m_baseConstantFolder.CreateShuffleVector(V1, V2, Mask);
+#else
+        using namespace llvm;
+
+        ShuffleVectorInst* shuffleVector = cast<ShuffleVectorInst>(m_baseConstantFolder.CreateShuffleVector(V1, V2, /* Dummy mask */ { 0 } ));
+
+        SmallVector<int, 16> maskArr;
+        shuffleVector->getShuffleMask(cast<Constant>(Mask), maskArr);
+        shuffleVector->setShuffleMask(maskArr);
+
+        return cast<Constant>(shuffleVector);
+#endif
     }
 #else
     inline llvm::Constant* CreateShuffleVector(llvm::Constant* V1, llvm::Constant* V2,

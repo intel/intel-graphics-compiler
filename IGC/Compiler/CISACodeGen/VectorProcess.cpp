@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "common/IGCIRBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
@@ -349,7 +350,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     if (LI)
     {
         LoadInst* load = Builder.CreateAlignedLoad(newPtr,
-            LI->getAlignment(),
+            IGCLLVM::getAlign(LI->getAlignment()),
             LI->isVolatile(),
             "vCastload");
         load->copyMetadata(*LI);
@@ -449,7 +450,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
                 V = Builder.CreateBitCast(StoreVal, newVTy);
             }
             StoreInst* store = Builder.CreateAlignedStore(V, newPtr,
-                SI->getAlignment(),
+                IGCLLVM::getAlign(SI->getAlignment()),
                 SI->isVolatile());
             store->copyMetadata(*SI);
             SI->eraseFromParent();

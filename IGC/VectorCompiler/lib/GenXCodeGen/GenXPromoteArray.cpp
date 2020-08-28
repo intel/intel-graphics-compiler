@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
+#include "llvmWrapper/Support/Alignment.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/IRBuilder.h"
@@ -229,7 +230,7 @@ bool TransformPrivMem::replaceSingleAggrStore(StoreInst *StI) {
 
   StoreInst *NewStI = Builder.CreateAlignedStore(ValToStore,
     Builder.CreateBitCast(Ptr, ValToStore->getType()->getPointerTo(AS)),
-    StI->getAlignment(), StI->isVolatile());
+    IGCLLVM::getAlign(StI->getAlignment()), StI->isVolatile());
   m_StoresToHandle.push(NewStI);
   StI->eraseFromParent();
 

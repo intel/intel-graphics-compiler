@@ -159,7 +159,7 @@ namespace
             {
                 Type* newPtrType = PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
                 ptr = m_builder.CreateBitCast(ptr, newPtrType);
-                return m_builder.CreateAlignedLoad(ptr, alignment, isVolatile);
+                return m_builder.CreateAlignedLoad(ptr, IGCLLVM::getAlign(alignment), isVolatile);
             }
             else
             {
@@ -260,7 +260,7 @@ namespace
             {
                 Type* newPtrType = PointerType::get(newType, ptr->getType()->getPointerAddressSpace());
                 ptr = m_builder.CreateBitCast(ptr, newPtrType);
-                return m_builder.CreateAlignedStore(storedValue, ptr, alignment, isVolatile);
+                return m_builder.CreateAlignedStore(storedValue, ptr, IGCLLVM::getAlign(alignment), isVolatile);
             }
             else
             {

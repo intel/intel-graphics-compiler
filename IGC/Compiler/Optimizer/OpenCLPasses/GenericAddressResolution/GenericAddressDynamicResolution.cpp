@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DataLayout.h>
@@ -39,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace llvm;
 using namespace IGC;
+using IGCLLVM::getAlign;
 
 namespace {
     class GenericAddressAnalysis : public FunctionPass {
@@ -301,11 +303,11 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
 
         if (LoadInst* LI = dyn_cast<LoadInst>(&I))
         {
-            privateLoad = privateBuilder.CreateAlignedLoad(privatePtr, LI->getAlignment(), LI->isVolatile(), "privateLoad");
+            privateLoad = privateBuilder.CreateAlignedLoad(privatePtr, getAlign(LI->getAlignment()), LI->isVolatile(), "privateLoad");
         }
         else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
         {
-            privateBuilder.CreateAlignedStore(I.getOperand(0), privatePtr, SI->getAlignment(), SI->isVolatile());
+            privateBuilder.CreateAlignedStore(I.getOperand(0), privatePtr, getAlign(SI->getAlignment()), SI->isVolatile());
         }
         privateBuilder.CreateBr(convergeBlock);
     }
@@ -321,11 +323,11 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
             Value* localPtr = localBuilder.CreateAddrSpaceCast(pointerOperand, localPtrType);
             if (LoadInst* LI = dyn_cast<LoadInst>(&I))
             {
-                localLoad = localBuilder.CreateAlignedLoad(localPtr, LI->getAlignment(), LI->isVolatile(), "localLoad");
+                localLoad = localBuilder.CreateAlignedLoad(localPtr, getAlign(LI->getAlignment()), LI->isVolatile(), "localLoad");
             }
             else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
             {
-                localBuilder.CreateAlignedStore(I.getOperand(0), localPtr, SI->getAlignment(), SI->isVolatile());
+                localBuilder.CreateAlignedStore(I.getOperand(0), localPtr, getAlign(SI->getAlignment()), SI->isVolatile());
             }
             localBuilder.CreateBr(convergeBlock);
         }
@@ -340,11 +342,11 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
 
         if (LoadInst* LI = dyn_cast<LoadInst>(&I))
         {
-            globalLoad = globalBuilder.CreateAlignedLoad(globalPtr, LI->getAlignment(), LI->isVolatile(), "globalLoad");
+            globalLoad = globalBuilder.CreateAlignedLoad(globalPtr, getAlign(LI->getAlignment()), LI->isVolatile(), "globalLoad");
         }
         else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
         {
-            globalBuilder.CreateAlignedStore(I.getOperand(0), globalPtr, SI->getAlignment(), SI->isVolatile());
+            globalBuilder.CreateAlignedStore(I.getOperand(0), globalPtr, getAlign(SI->getAlignment()), SI->isVolatile());
         }
         globalBuilder.CreateBr(convergeBlock);
     }
@@ -401,11 +403,11 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, 
 
     if (LoadInst* LI = dyn_cast<LoadInst>(&I))
     {
-        nonLocalLoad = builder.CreateAlignedLoad(globalPtr, LI->getAlignment(), LI->isVolatile(), "globalOrPrivateLoad");
+        nonLocalLoad = builder.CreateAlignedLoad(globalPtr, getAlign(LI->getAlignment()), LI->isVolatile(), "globalOrPrivateLoad");
     }
     else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
     {
-        builder.CreateAlignedStore(I.getOperand(0), globalPtr, SI->getAlignment(), SI->isVolatile());
+        builder.CreateAlignedStore(I.getOperand(0), globalPtr, getAlign(SI->getAlignment()), SI->isVolatile());
     }
 
     if (nonLocalLoad != nullptr)

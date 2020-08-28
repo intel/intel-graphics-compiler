@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#include "llvmWrapper/Support/Alignment.h"
 #include "TypesLegalizationPass.hpp"
 #include "../Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
@@ -222,7 +223,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
     unsigned alignment = ld->getAlignment();
     unsigned pointerTypeSize = gep->getType()->getPointerElementType()->getScalarSizeInBits() / 8;
     if ( alignment && pointerTypeSize == alignment )
-      return builder.CreateAlignedLoad( gep, alignment );
+      return builder.CreateAlignedLoad( gep, IGCLLVM::getAlign(alignment) );
     return builder.CreateLoad( gep );
   }
   else if(Constant *c = dyn_cast<Constant>(val)) {

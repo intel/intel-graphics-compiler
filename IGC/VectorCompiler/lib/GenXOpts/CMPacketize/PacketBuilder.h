@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Module.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include <deque>
 #include <unordered_map>
@@ -318,14 +319,24 @@ namespace pktz
           JIT_MEM_CLIENT                         usage = MEM_CLIENT_INTERNAL);
 
         virtual CallInst* MASKED_LOAD(Value*         Ptr,
-          unsigned       Align,
+          unsigned       Alignment,
           Value*         Mask,
           Value*         PassThru = nullptr,
           const Twine&   Name = "",
           Type*          Ty = nullptr,
           JIT_MEM_CLIENT usage = MEM_CLIENT_INTERNAL)
         {
-          return IRB()->CreateMaskedLoad(Ptr, Align, Mask, PassThru, Name);
+#if LLVM_VERSION_MAJOR < 11
+            return IRB()->CreateMaskedLoad(Ptr, Alignment, Mask, PassThru, Name);
+#else
+            return IRB()->CreateMaskedLoad(Ptr, Align(Alignment), Mask, PassThru, Name);
+#endif
+
+          // FIXME:
+          //    Use llvm::Align objects in invocations, not here,
+          //    and change 'Align' argument's type to llvm::Align.
+          //    Since LLVM10 passing alignment as unsigned has been deprecated, and since LLVM11
+          //    support for unsigned has been removed completely.
         }
 
         LoadInst*  LOADV(Value* BasePtr, const std::initializer_list<Value*>& offset, const llvm::Twine& name = "");
