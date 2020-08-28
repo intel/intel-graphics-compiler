@@ -85,7 +85,9 @@ namespace IGC
         void CreateAnnotations(IGC::KernelArg* kernelArg, uint payloadPosition);
 
         // Fill SOpenCLKernelInfo::m_zePayloadArgs
-        void CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition);
+        // Return true: if the argument is supported in ZEBinary and it's created successfully
+        // Return false: if the argument cannot be supported by ZEBinary
+        bool CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition);
 
         // Creates annotations for inline sampler_t objects
         void CreateInlineSamplerAnnotations();

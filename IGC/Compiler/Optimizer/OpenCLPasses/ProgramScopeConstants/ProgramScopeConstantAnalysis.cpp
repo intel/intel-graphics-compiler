@@ -195,7 +195,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         IGC::appendToUsed(M, globalArray);
     }
 
-    // Always rely on relocation for ZEBinary
+    // Always rely on relocation for ZEBinary, so only need to generate these
+    // implcit args when disabling ZEBinary
     if (IGC_IS_FLAG_DISABLED(EnableZEBinary) &&
         !modMd->compOpt.EnableZEBinary)
     {

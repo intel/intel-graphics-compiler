@@ -598,7 +598,7 @@ namespace IGC
         }
     }
 
-    void COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition)
+    bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition)
     {
         switch (kernelArg->getArgType()) {
 
@@ -724,23 +724,30 @@ namespace IGC
                 payloadPosition, kernelArg->getAllocateSize(),
                 kernelArg->getAssociatedArgNo());
             break;
+
         // Local ids are supported in per-thread payload arguments
         case KernelArg::ArgType::IMPLICIT_LOCAL_IDS:
             break;
 
-        // We don't need these in ZEBinary
+        // We don't need these in ZEBinary, can safely skip them
         case KernelArg::ArgType::IMPLICIT_R0:
         case KernelArg::ArgType::R1:
             break;
+
         // FIXME: should these be supported?
+        // CONSTANT_BASE and GLOBAL_BASE are not required that we should export
+        // all globals and constants and let the runtime relocate them when enabling
+        // ZEBinary
         case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
         case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE:
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN:
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE:
         default:
-            IGC_ASSERT_MESSAGE(0, "ZEBin: unsupported KernelArg Type");
+            return false;
             break;
         } // end switch (kernelArg->getArgType())
+
+        return true;
     }
 
     void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition)
@@ -1680,8 +1687,20 @@ namespace IGC
                 if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
                     m_Context->getCompilerOption().EnableZEBinary) {
                     // FIXME: once we transit to zebin completely, we don't need to do
-                    // CreateAnnotations. Only CreateZEPayloadArguments is required
-                    CreateZEPayloadArguments(&arg, offset - constantBufferStart);
+                    // CreateAnnotations above. Only CreateZEPayloadArguments is required
+
+                    // During the transition, we disable ZEBinary if there are unsupported
+                    // arguments
+                    bool success = CreateZEPayloadArguments(&arg, offset - constantBufferStart);
+                    if (!success) {
+                        // assert if we force to EnableZEBinary but encounter unsupported features
+                        IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary),
+                            "ZEBin: unsupported KernelArg Type");
+
+                        // fall back to patch-token if ZEBinary is enabled by CodeGenContext::CompOptions
+                        if (m_Context->getCompilerOption().EnableZEBinary)
+                            m_Context->getCompilerOption().EnableZEBinary = false;
+                    }
                 }
                 if (arg.needsAllocation())
                 {
