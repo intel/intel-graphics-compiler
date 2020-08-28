@@ -157,18 +157,36 @@ namespace {
             if (V->getType() == DestTy)
                 return V;
 
-            if (V->getType()->isPointerTy() && DestTy->isIntegerTy())
-                return Builder.CreatePtrToInt(V, DestTy);
-
-            if (V->getType()->isIntegerTy() && DestTy->isPointerTy())
-                return Builder.CreateIntToPtr(V, DestTy);
-
             if (V->getType()->isPointerTy() && DestTy->isPointerTy()) {
                 PointerType* SrcPtrTy = cast<PointerType>(V->getType());
                 PointerType* DstPtrTy = cast<PointerType>(DestTy);
                 if (SrcPtrTy->getPointerAddressSpace() !=
                     DstPtrTy->getPointerAddressSpace())
                     return Builder.CreateAddrSpaceCast(V, DestTy);
+            }
+
+            if (V->getType()->isPointerTy()) {
+                if (DestTy->isIntegerTy()) {
+                    return Builder.CreatePtrToInt(V, DestTy);
+                }
+                else if (DestTy->isFloatingPointTy()) {
+                    uint32_t Size = DestTy->getPrimitiveSizeInBits();
+                    Value* Cast = Builder.CreatePtrToInt(
+                        V, Builder.getIntNTy(Size));
+                    return Builder.CreateBitCast(Cast, DestTy);
+                }
+            }
+
+            if (DestTy->isPointerTy()) {
+                if (V->getType()->isIntegerTy()) {
+                    return Builder.CreateIntToPtr(V, DestTy);
+                }
+                else if (V->getType()->isFloatingPointTy()) {
+                    uint32_t Size = V->getType()->getPrimitiveSizeInBits();
+                    Value* Cast = Builder.CreateBitCast(
+                        V, Builder.getIntNTy(Size));
+                    return Builder.CreateIntToPtr(Cast, DestTy);
+                }
             }
 
             return Builder.CreateBitCast(V, DestTy);
