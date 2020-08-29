@@ -146,11 +146,24 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             inlineProgramScopeBuffer = &modMd->inlineConstantBuffers.back().Buffer;
         }
 
-        // For zero initialized values, we dont need to copy the data, just tell driver how much to allocate
         if (initializer->isZeroValue())
         {
-            zeroInitializedGlobals.push_back(globalVar);
-            continue;
+            // For zero initialized values, we dont need to copy the data, just tell driver how much to allocate
+            // However, if it's used as a pointer value, we need to do patching and therefore cannot defer the offset calculation
+            bool hasPointerUser = false;
+            for (auto UI : globalVar->users())
+            {
+                if (isa<Constant>(UI) && UI->getType()->isPointerTy())
+                {
+                    hasPointerUser = true;
+                    break;
+                }
+            }
+            if (!hasPointerUser)
+            {
+                zeroInitializedGlobals.push_back(globalVar);
+                continue;
+            }
         }
 
         // Align the buffer.
