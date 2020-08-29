@@ -355,7 +355,7 @@ namespace IGC
                 continue;
             }
 
-            if (IGC_IS_FLAG_ENABLED(DisableStaticCheck) ||
+            if (IGC_IS_FLAG_ENABLED(DisableStaticCheckStateless) ||
                 it.isStatic ||
                 IsSafeToPushNonStaticBufferLoad(inst))
             {
