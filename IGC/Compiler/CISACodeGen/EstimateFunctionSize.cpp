@@ -302,7 +302,9 @@ void EstimateFunctionSize::checkSubroutine() {
     if (pContext->type != ShaderType::OPENCL_SHADER &&
         pContext->type != ShaderType::COMPUTE_SHADER)
         EnableSubroutine = false;
-    else if (pContext->m_instrTypes.hasIndirectCall)
+    else if (pContext->m_instrTypes.hasIndirectCall &&
+        (IGC_IS_FLAG_DISABLED( AllowSubroutineAndInirectdCalls ) ||  // NOT allow subroutine with indirect call
+         IGC_GET_FLAG_VALUE( FunctionControl ) == FLAG_FCALL_FORCE_INDIRECTCALL ) ) // or NOT allow converting icall to direct call
         EnableSubroutine = false;
 
     // Enable subroutine if function has the "UserSubroutine" attribute
@@ -420,7 +422,7 @@ bool EstimateFunctionSize::funcIsGoodtoTrim( llvm::Function* F)
         return false; /* tiny function */
     if ( func->F->hasFnAttribute( llvm::Attribute::AlwaysInline ) )
         return false; /* user specified alwaysInline */
-    if ( !func->ToBeInlined ) /* already trimmed by other kernels */
+    if ( isTrimmedFunction( F ) ) /* already trimmed by other kernels */
         return false;
     for( auto C : func->CallerList )
     {
