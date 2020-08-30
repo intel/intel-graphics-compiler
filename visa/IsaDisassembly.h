@@ -102,10 +102,15 @@ std::string printFuncInput(
     const Options* options);
 const char* printAsmName(
     const print_format_provider_t* header);
-std::string printAttribute(
-    const attribute_info_t* attr,
+std::string printOneAttribute(
     const print_format_provider_t* kernel,
-    bool isKernelAttr = false);
+    const attribute_info_t* attr);
+// Used for printing non-kernel attributes
+// format:  attrs={attr0,attr1,......attrn}, where  each attr is AttrName|AttrName=<V>
+std::string printAttributes(
+    const print_format_provider_t* header,
+    const int attr_count,
+    const attribute_info_t* attrs);
 
 /// Exposing these for inline asm code generation
 std::string printVectorOperand(

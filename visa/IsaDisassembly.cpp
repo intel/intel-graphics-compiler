@@ -398,26 +398,37 @@ static void encodeStringLiteral(std::stringstream &ss, const char *str) {
   ss << '"';
 }
 
-std::string printAttribute(
-    const attribute_info_t* attr,
+std::string printAttributes(
+    const print_format_provider_t* header,
+    const int attr_count,
+    const attribute_info_t* attrs)
+{
+    std::stringstream sstr;
+
+    if (attr_count > 0)
+    {
+        // decl's attr in the form: attr=<attr0, attr1, ...>
+        sstr << " attrs={" << printOneAttribute(header, &attrs[0]);
+        for (int j = 1; j < attr_count; j++)
+        {
+            sstr << ", " << printOneAttribute(header, &attrs[j]);
+        }
+        sstr << "}";
+    }
+
+    return sstr.str();
+}
+
+std::string printOneAttribute(
     const print_format_provider_t* kernel,
-    bool isKernelAttr)
+    const attribute_info_t* attr)
 {
     std::stringstream sstr;
     const char* attrName = kernel->getString(attr->nameIndex);
     Attributes::ID aID = Attributes::getAttributeID(attrName);
     MUST_BE_TRUE(aID != Attributes::ATTR_INVALID, "Invalid Attribute names!");
 
-    // Sanity check. If attribute's value is default, ignore this attr.
-    if (attr->isInt && Attributes::isInt32(aID))
-    {
-        if (Attributes::getInt32AttrDefault(aID) == attr->value.intVal)
-        {
-            return sstr.str();
-        }
-    }
-
-    sstr << "." << (isKernelAttr ? "kernel_" : "") << "attr " << attrName;
+    sstr << attrName;
     if (attr->isInt && Attributes::isInt32(aID)) {
         sstr << "=";
         if (Attributes::isAttribute(Attributes::ATTR_Target, attrName)) {
@@ -452,11 +463,7 @@ std::string printPredicateDecl(
          << "v_type=P "
          << "num_elts=" << pred->num_elements;
 
-    for (unsigned j = 0; j < pred->attribute_count; j++)
-    {
-        sstr << " " << printAttribute(&pred->attributes[j], header);
-    }
-
+    sstr << printAttributes(header, pred->attribute_count, pred->attributes);
     return sstr.str();
 }
 
@@ -475,10 +482,7 @@ std::string printAddressDecl(
          << "v_type=A "
          << "num_elts=" << addr->num_elements;
 
-    for (unsigned j = 0; j < addr->attribute_count; j++)
-    {
-        sstr << " " << printAttribute(&addr->attributes[j], header);
-    }
+    sstr << printAttributes(header, addr->attribute_count, addr->attributes);
 
     return sstr.str();
 }
@@ -493,10 +497,7 @@ std::string printSamplerDecl(
     sstr << ".decl S" << declID << " v_type=S";
     sstr << " num_elts=" << info->num_elements;
     sstr << " v_name=" << header->getString(info->name_index);
-    for (unsigned j = 0; j < info->attribute_count; j++)
-    {
-        sstr << " " << printAttribute(&info->attributes[j], header);
-    }
+    sstr << printAttributes(header, info->attribute_count, info->attributes);
     return sstr.str();
 }
 
@@ -512,10 +513,7 @@ std::string printSurfaceDecl(
     sstr << ".decl T" << declID + numPredefinedSurfaces << " v_type=T";
     sstr << " num_elts=" << info->num_elements;
     sstr << " v_name=" << header->getString(info->name_index);
-    for (unsigned j = 0; j < info->attribute_count; j++)
-    {
-        sstr << " " << printAttribute(&info->attributes[j], header);
-    }
+    sstr << printAttributes(header, info->attribute_count, info->attributes);
     return sstr.str();
 }
 
@@ -589,10 +587,7 @@ std::string printVariableDecl(
         sstr << ", " << var->alias_offset << ">";
     }
 
-    for (unsigned j = 0; j < var->attribute_count; j++)
-    {
-        sstr << " " << printAttribute(&var->attributes[j], header);
-    }
+    sstr << printAttributes(header, var->attribute_count, var->attributes);
 
     return sstr.str();
 }
@@ -2552,7 +2547,7 @@ std::string printKernelHeader(
     bool isTargetSet = false;
     for (unsigned i = 0; i < header->getAttrCount(); i++)
     {
-        sstr << "\n" << printAttribute(header->getAttr(i), header, true);
+        sstr << "\n.kernel_attr " << printOneAttribute(header, header->getAttr(i));
         const char* attrName = header->getString(header->getAttr(i)->nameIndex);
         if (Attributes::isAttribute(Attributes::ATTR_Target, attrName))
         {

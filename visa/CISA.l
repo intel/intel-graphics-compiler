@@ -196,7 +196,7 @@ align[ ]*=    {TRACE("\n** ALIGN_EQ ");    return ALIGN_EQ;}
 offset[ ]*=   {TRACE("\n** OFFSET_EQ ");   return OFFSET_EQ;}
 size[ ]*=     {TRACE("\n** SIZE_EQ ");     return SIZE_EQ;}
 alias[ ]*=    {TRACE("\n** ALIAS_EQ ");    return ALIAS_EQ;}
-attr[ ]*=     {TRACE("\n** ATTR_EQ ");     return ATTR_EQ;}
+attrs[ ]*=     {TRACE("\n** ATTR_EQ ");     return ATTR_EQ;}
 v_name[ ]*=   {TRACE("\n** V_NAME_EQ ");   return V_NAME_EQ;}
 
 v_type[ ]*=[ ]*G {TRACE("\n** V_TYPE_EQ_G "); return V_TYPE_EQ_G;}

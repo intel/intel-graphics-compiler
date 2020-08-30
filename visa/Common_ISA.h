@@ -105,12 +105,10 @@ struct ISA_Inst_Type_Info {
 typedef enum {
     GENERAL_VAR,
     ADDRESS_VAR,
-    IMMEDIATE_VAR,
     PREDICATE_VAR,
     SAMPLER_VAR,
     SURFACE_VAR,
     LABEL_VAR,
-    ATTR_VAR,
     NUM_VAR_CLASS
 } Common_ISA_Var_Class;
 
@@ -243,7 +241,7 @@ typedef struct {
     bool isInt;
     union {
         int intVal;
-        char* stringVal;
+        const char* stringVal;
     } value;
 } attribute_info_t;
 
@@ -254,6 +252,7 @@ typedef struct {
     uint32_t alias_index;
     unsigned short alias_offset;
     unsigned char alias_scope_specifier;
+    unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
     vISA::G4_Declare* dcl;
@@ -302,6 +301,7 @@ typedef struct {
 typedef struct {
     uint32_t name_index;
     unsigned short num_elements;
+    unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
     vISA::G4_Declare* dcl;
@@ -310,6 +310,7 @@ typedef struct {
 typedef struct {
     uint32_t name_index;
     unsigned short num_elements;
+    unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
     vISA::G4_Declare* dcl;
@@ -318,6 +319,7 @@ typedef struct {
 typedef struct {
     uint32_t name_index;
     unsigned char kind;
+    unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
     vISA::G4_Label * label;
@@ -326,6 +328,7 @@ typedef struct {
 typedef struct {
     uint32_t name_index;
     unsigned short num_elements;
+    unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
     vISA::G4_Declare* dcl;

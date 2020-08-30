@@ -62,10 +62,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 struct attr_gen_struct {
-    char* name;
+    const char* name;
     bool  isInt;
     int   value;
-    char* string_val;
+    const char* string_val;
     bool  attr_set;
 };
 

@@ -746,7 +746,16 @@ public:
         unsigned int numMsgSpecificOpnds,
         VISA_RawOpnd **opndArray);
 
-    int AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* varName, unsigned int size, void *val);
+    attribute_info_t* allocAttribute(CISA_GEN_VAR* Dcl)
+    {
+        return allocAttributeImpl(Dcl, 0);
+    }
+    attribute_info_t* resizeAttribute(CISA_GEN_VAR* Dcl, uint32_t AllocMaxNum)
+    {
+        return allocAttributeImpl(Dcl, AllocMaxNum);
+    }
+
+    int AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* varName, unsigned int size, const void *val);
 
     int CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class type, const char* name, unsigned int numberElements);
 
@@ -1054,6 +1063,7 @@ private:
             m_kernelAttrs = nullptr;
         }
     }
+    attribute_info_t* allocAttributeImpl(CISA_GEN_VAR* Dcl, uint32_t AllocNum);
 
     // Shared with G4_kernel
     vISA::Attributes* m_kernelAttrs;

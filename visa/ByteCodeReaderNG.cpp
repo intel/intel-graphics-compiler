@@ -2119,9 +2119,9 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned& bytePos, co
         }
         else if (vISA::Attributes::isCStr(attrID))
         {
+            valueBuffer[attributes[i].size] = '\0';
             attributes[i].isInt = false;    //by default assume attributes have string value
             attributes[i].value.stringVal = valueBuffer;
-            attributes[i].value.stringVal[attributes[i].size] = '\0';
         }
         else
         {
@@ -2142,6 +2142,23 @@ static string getDeclLabelString(const char* prefix, uint32_t index, kernel_form
         return sstr.str();
     }
     return prefix;
+}
+
+static void addAllAttributesNG(
+    kernel_format_t& Header, VISAKernelImpl* KBImpl,
+    CISA_GEN_VAR* GenVar, const uint32_t AttrsCount, attribute_info_t* Attrs)
+{
+    if (AttrsCount > 0)
+    {
+        KBImpl->resizeAttribute(GenVar, AttrsCount);
+
+        for (unsigned ai = 0; ai < AttrsCount; ai++)
+        {
+            attribute_info_t* attribute = &Attrs[ai];
+            KBImpl->AddAttributeToVarGeneric(GenVar, Header.strings[attribute->nameIndex], attribute->size,
+                attribute->isInt ? (const char*)&attribute->value.intVal : attribute->value.stringVal);
+        }
+    }
 }
 
 static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager& mem, RoutineContainer& container)
@@ -2233,13 +2250,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
                 "Failed to add VISA general variable.");
         }
 
-        for (unsigned ai = 0; ai < var->attribute_count; ai++)
-        {
-            attribute_info_t* attribute = &var->attributes[ai];
-            kernelBuilderImpl->AddAttributeToVar(decl, header.strings[attribute->nameIndex], attribute->size,
-                attribute->isInt ? (char *)&attribute->value.intVal : attribute->value.stringVal);
-        }
-
+        addAllAttributesNG(header, kernelBuilderImpl, decl, var->attribute_count, var->attributes);
         container.generalVarDecls[i] = decl;
     }
 
@@ -2266,12 +2277,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         ASSERT_USER(VISA_SUCCESS == status,
             "Failed to add VISA address variable.");
 
-        for (unsigned ai = 0; ai < var->attribute_count; ai++)
-        {
-            attribute_info_t* attribute = &var->attributes[ai];
-            kernelBuilderImpl->AddAttributeToVar(decl, header.strings[attribute->nameIndex], attribute->size, attribute->value.stringVal);
-        }
-
+        addAllAttributesNG(header, kernelBuilderImpl, decl, var->attribute_count, var->attributes);
         container.addressVarDecls[i] = decl;
     }
 
@@ -2298,12 +2304,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         ASSERT_USER(VISA_SUCCESS == status,
             "Failed to add VISA predicate vairable.");
 
-        for (unsigned ai = 0; ai < var->attribute_count; ai++)
-        {
-            attribute_info_t* attribute = &var->attributes[ai];
-            kernelBuilderImpl->AddAttributeToVar(decl, header.strings[attribute->nameIndex], attribute->size, attribute->value.stringVal);
-        }
-
+        addAllAttributesNG(header, kernelBuilderImpl, decl, var->attribute_count, var->attributes);
         container.predicateVarDecls[i] = decl;
     }
 
@@ -2364,12 +2365,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         ASSERT_USER(VISA_SUCCESS == status,
             "Failed to add VISA sampler variable.");
 
-        for (unsigned ai = 0; ai < var->attribute_count; ai++)
-        {
-            attribute_info_t* attribute = &var->attributes[ai];
-            kernelBuilderImpl->AddAttributeToVarGeneric(decl, header.strings[attribute->nameIndex], attribute->size, attribute->value.stringVal);
-        }
-
+        addAllAttributesNG(header, kernelBuilderImpl, decl, var->attribute_count, var->attributes);
         container.samplerVarDecls[i] = decl;
     }
 
@@ -2411,6 +2407,8 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         ASSERT_USER(VISA_SUCCESS == status,
             "Failed to add VISA surface variable.");
 
+        addAllAttributesNG(header, kernelBuilderImpl, decl, var->attribute_count, var->attributes);
+
         for (unsigned ai = 0; ai < var->attribute_count; ai++)
         {
             attribute_info_t* attribute = &var->attributes[ai];
@@ -2422,8 +2420,6 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
                 header.surface_attrs[i] = (attribute->value.intVal == 2);
                 break;
             }
-
-            kernelBuilderImpl->AddAttributeToVar(decl, attrName, attribute->size, attribute->value.stringVal);
         }
 
         container.surfaceVarDecls[i] = decl;
@@ -2491,14 +2487,8 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
     {
         attribute_info_t* attribute = &header.attributes[ai];
         /// TODO: This parameter ordering is inconsistent.
-        if (attribute->isInt)
-        {
-            kernelBuilderImpl->AddKernelAttribute(header.strings[attribute->nameIndex], attribute->size, &attribute->value.intVal);
-        }
-        else
-        {
-            kernelBuilderImpl->AddKernelAttribute(header.strings[attribute->nameIndex], attribute->size, attribute->value.stringVal);
-        }
+        kernelBuilderImpl->AddKernelAttribute(header.strings[attribute->nameIndex], attribute->size,
+            attribute->isInt ? (char*)&attribute->value.intVal : attribute->value.stringVal);
     }
     if (!kernelBuilderImpl->getKernelAttributes()->isKernelAttrSet(vISA::Attributes::ATTR_Target))
     {

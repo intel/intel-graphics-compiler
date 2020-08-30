@@ -1021,7 +1021,6 @@ VISA_StateOpndHandle *CISA_IR_Builder::CISA_get_sampler_variable(
     return surface;
 }
 
-
 bool CISA_IR_Builder::CISA_general_variable_decl(
     const char * var_name,
     unsigned int var_elemts_num,
@@ -1029,7 +1028,7 @@ bool CISA_IR_Builder::CISA_general_variable_decl(
     VISA_Align var_align,
     const char * var_alias_name,
     int var_alias_offset,
-    attr_gen_struct scope,
+    std::vector<attr_gen_struct*>& scope,
     int lineNum)
 {
     VISA_GenVar * genVar = NULL;
@@ -1054,17 +1053,16 @@ bool CISA_IR_Builder::CISA_general_variable_decl(
         genVar, var_name, var_elemts_num, data_type, var_align,
         parentDecl, var_alias_offset);
 
-    if (scope.attr_set)
+    if (!addAllVarAttributes((CISA_GEN_VAR*)genVar, scope, lineNum))
     {
-        m_kernel->AddAttributeToVar(genVar, scope.name, 1, &scope.value);
+        return false;
     }
-
     return true;
 }
 
 bool CISA_IR_Builder::CISA_addr_variable_decl(
     const char *var_name, unsigned int var_elements,
-    VISA_Type data_type, attr_gen_struct scope, int lineNum)
+    VISA_Type data_type, std::vector<attr_gen_struct *>& scope, int lineNum)
 {
     if (m_kernel->getDeclFromName(var_name) != nullptr) {
         RecordParseError(lineNum, var_name, ": variable redeclaration");
@@ -1073,31 +1071,26 @@ bool CISA_IR_Builder::CISA_addr_variable_decl(
 
     VISA_AddrVar *decl = NULL;
     m_kernel->CreateVISAAddrVar(decl, var_name, var_elements);
-    if (scope.attr_set)
+    if (!addAllVarAttributes((CISA_GEN_VAR*)decl, scope, lineNum))
     {
-        m_kernel->AddAttributeToVar(decl, scope.name, 1, &scope.value);
+        return false;
     }
     return true;
 }
 
 bool CISA_IR_Builder::CISA_predicate_variable_decl(
-    const char *var_name, unsigned int var_elements, attr_gen_struct reg, int lineNum)
+    const char *var_name, unsigned int var_elements, std::vector<attr_gen_struct*>& attrs, int lineNum)
 {
     if (m_kernel->getDeclFromName(var_name) != nullptr) {
         RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
 
-    int reg_id = reg.value;
-    char value[2]; // AddAttributeToVar will perform a copy, so we can stack allocate value
-    value[0] = '0'+reg_id;
-    value[1] = '\0';
-
     VISA_PredVar *decl = NULL;
     m_kernel->CreateVISAPredVar(decl, var_name, (unsigned short)var_elements);
-    if (reg.attr_set)
+    if (!addAllVarAttributes((CISA_GEN_VAR*)decl, attrs, lineNum))
     {
-        m_kernel->AddAttributeToVar(decl, reg.name, 2, value);
+        return false;
     }
     return true;
 }
@@ -1117,22 +1110,22 @@ bool CISA_IR_Builder::CISA_sampler_variable_decl(
 
 bool CISA_IR_Builder::CISA_surface_variable_decl(
     const char *var_name, int num_elts, const char* name,
-    attr_gen_struct attr_val, int lineNum)
+    std::vector<attr_gen_struct*>& attrs, int lineNum)
 {
     if (m_kernel->getDeclFromName(var_name) != nullptr) {
         RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
 
-    int reg_id = attr_val.value;
-    char * value = (char *)m_mem.alloc(1);
-    *value = (char)reg_id;
+    //int reg_id = attr_val.value;
+    //char * value = (char *)m_mem.alloc(1);
+    //*value = (char)reg_id;
 
     VISA_SurfaceVar *decl = NULL;
     m_kernel->CreateVISASurfaceVar(decl, var_name, num_elts);
-    if (attr_val.attr_set)
+    if (!addAllVarAttributes((CISA_GEN_VAR*)decl, attrs, lineNum))
     {
-        m_kernel->AddAttributeToVar(decl, attr_val.name, 1, value);
+        return false;
     }
     return true;
 }
@@ -2817,6 +2810,27 @@ VISA_opnd * CISA_IR_Builder::CISA_dst_general_operand(
     return (VISA_opnd *)cisa_opnd;
 }
 
+attr_gen_struct* CISA_IR_Builder::CISA_Create_Attr(const char* AttrName, int64_t I64Val, const char* CStrVal)
+{
+    attr_gen_struct* newAttr = (attr_gen_struct*)m_mem.alloc(sizeof(attr_gen_struct));
+    Attributes::ID aID = Attributes::getAttributeID(AttrName);
+    MUST_BE_TRUE(Attributes::isValid(aID), "vISA: unknown attribute!");
+    if (Attributes::isInt32(aID) || Attributes::isBool(aID))
+    {
+        newAttr->isInt = true;
+        // No i64 attribute value yet
+        newAttr->value = (int32_t)I64Val;
+    }
+    else if (Attributes::isCStr(aID))
+    {
+        newAttr->isInt = false;
+        newAttr->string_val = CStrVal;
+    }
+    newAttr->name = AttrName;
+    newAttr->attr_set = true;
+    return newAttr;
+}
+
 VISA_opnd * CISA_IR_Builder::CISA_create_immed(uint64_t value, VISA_Type type, int lineNum)
 {
     VISA_VectorOpnd *cisa_opnd = NULL;
@@ -3013,6 +3027,40 @@ string_pool_entry * CISA_IR_Builder::string_pool_lookup(
     }
 
     return NULL;
+}
+
+bool CISA_IR_Builder::addAllVarAttributes(
+    CISA_GEN_VAR* GenVar, std::vector<attr_gen_struct*>& Attrs, int lineNum)
+{
+    if (Attrs.size() > 0)
+    {
+        (void)m_kernel->resizeAttribute(GenVar, (uint32_t)Attrs.size());
+    }
+
+    for (int i = 0, e = (int)Attrs.size(); i < e; ++i)
+    {
+        attr_gen_struct* pAttr = Attrs[i];
+        Attributes::ID aID = Attributes::getAttributeID(pAttr->name);
+        if (Attributes::isBool(aID))
+        {
+            m_kernel->AddAttributeToVarGeneric(GenVar, pAttr->name, 0, nullptr);
+        }
+        else if (Attributes::isInt32(aID))
+        {
+            m_kernel->AddAttributeToVarGeneric(GenVar, pAttr->name, 4, &pAttr->value);
+        }
+        else if (Attributes::isCStr(aID))
+        {
+            unsigned int sz = (unsigned)strlen(pAttr->string_val);
+            m_kernel->AddAttributeToVarGeneric(GenVar, pAttr->name, sz, &pAttr->string_val);
+        }
+        else
+        {
+            RecordParseError(lineNum, pAttr->name, ": unknown attribute");
+            return false;
+        }
+    }
+    return true;
 }
 
 bool CISA_IR_Builder::string_pool_lookup_and_insert(

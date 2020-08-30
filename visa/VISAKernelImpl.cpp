@@ -964,6 +964,7 @@ int VISAKernelImpl::CreateVISAGenVar(
         info->alias_index = parentDecl->index;
     }
 
+    info->attribute_capacity = 0;
     info->attribute_count = 0;
     info->attributes = NULL;
 
@@ -1055,6 +1056,7 @@ int VISAKernelImpl::CreateVISAAddrVar(
     }
 
     addr->num_elements = (uint16_t)numberElements;
+    addr->attribute_capacity = 0;
     addr->attribute_count = 0;
     addr->attributes = NULL;
 
@@ -1097,7 +1099,10 @@ int VISAKernelImpl::CreateVISAPredVar(
     pred_info_t * pred = &decl->predVar;
 
     decl->index = COMMON_ISA_NUM_PREDEFINED_PRED + m_pred_info_count++;
+    pred->num_elements = numberElements;
+    pred->attribute_capacity = 0;
     pred->attribute_count = 0;
+    pred->attributes = NULL;
     if (IS_GEN_BOTH_PATH)
     {
         pred->dcl = m_builder->createFlag(numberElements, createStringCopy(varName, m_mem));
@@ -1108,9 +1113,6 @@ int VISAKernelImpl::CreateVISAPredVar(
         pred->name_index = addStringPool(std::string(varName));
         addPredToList(decl);
     }
-    pred->num_elements = numberElements;
-    pred->attribute_count = 0;
-    pred->attributes = NULL;
 
     if (IsAsmWriterMode())
     {
@@ -1140,6 +1142,7 @@ int VISAKernelImpl::CreateStateVar(
     m_GenVarToNameMap[decl] = varName;
 
     state_info_t * state = &decl->stateVar;
+    state->attribute_capacity = 0;
     state->attribute_count = 0;
     state->attributes = NULL;
     state->num_elements = (uint16_t)numberElements;
@@ -1314,6 +1317,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
         opnd->opnd_type = CISA_OPND_OTHER;
         opnd->size = (uint16_t)Get_VISA_Type_Size((VISA_Type)inst_desc->opnd_desc[0].data_type);
         //opnd->tag = inst_desc->opnd_desc[0].opnd_type;
+        lbl->attribute_capacity = 0;
         lbl->attribute_count = 0;
         lbl->attributes = NULL;
 
@@ -1403,12 +1407,13 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         attr->isInt = false;
         if (size > 0)
         {
-            attr->value.stringVal = (char*)m_mem.alloc(size + 1);
-            memcpy_s(attr->value.stringVal, size + 1, valueBuffer, size + 1);
+            char *tmp = (char*)m_mem.alloc(size + 1);
+            memcpy_s(tmp, size+1, valueBuffer, size+1);
+            attr->value.stringVal = tmp;
         }
         else
         {
-            attr->value.stringVal = (char*)"";
+            attr->value.stringVal = (const char*)"";
         }
         m_kernelAttrs->setKernelAttr(attrID, attr->value.stringVal);
     }
@@ -1484,14 +1489,89 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     return VISA_SUCCESS;
 }
 
+// If AllocMaxNum == 0, return pointer to next attribute and advance attribute count;
+// otherwise,  resize attributes with AllocMaxNum and return the base of the whole attributes.
+attribute_info_t* VISAKernelImpl::allocAttributeImpl(CISA_GEN_VAR* Dcl, uint32_t AllocMaxNum)
+{
+    const uint32_t DefaultCapInc = 4;  // default size for capacity
+
+    unsigned char* pCap = nullptr;
+    unsigned char* pCnt = nullptr;
+    attribute_info_t** pAttributes = nullptr;
+    switch (Dcl->type)
+    {
+    case GENERAL_VAR:
+        pCap = &(Dcl->genVar.attribute_capacity);
+        pCnt = &(Dcl->genVar.attribute_count);
+        pAttributes = &(Dcl->genVar.attributes);
+        break;
+    case ADDRESS_VAR:
+        pCap = &(Dcl->addrVar.attribute_capacity);
+        pCnt = &(Dcl->addrVar.attribute_count);
+        pAttributes = &(Dcl->addrVar.attributes);
+        break;
+    case PREDICATE_VAR:
+        pCap = &(Dcl->predVar.attribute_capacity);
+        pCnt = &(Dcl->predVar.attribute_count);
+        pAttributes = &(Dcl->predVar.attributes);
+        break;
+    case SAMPLER_VAR:
+        pCap = &(Dcl->stateVar.attribute_capacity);
+        pCnt = &(Dcl->stateVar.attribute_count);
+        pAttributes = &(Dcl->stateVar.attributes);
+        break;
+    case SURFACE_VAR:
+        pCap = &(Dcl->stateVar.attribute_capacity);
+        pCnt = &(Dcl->stateVar.attribute_count);
+        pAttributes = &(Dcl->stateVar.attributes);
+        break;
+    case LABEL_VAR:
+        pCap = &(Dcl->labelVar.attribute_capacity);
+        pCnt = &(Dcl->labelVar.attribute_count);
+        pAttributes = &(Dcl->labelVar.attributes);
+        break;
+    default:
+        assert(0);
+        return nullptr;
+    }
+
+    uint32_t currCap = (*pCap);
+    uint32_t currCnt = (*pCnt);
+    attribute_info_t* currAttr = (*pAttributes);
+    if (AllocMaxNum == 0 && currCap > currCnt)
+    {
+        (*pCnt) = currCnt + 1;
+        return &currAttr[currCnt];
+    }
+    else if (AllocMaxNum > 0 && currCap >= AllocMaxNum)
+    {
+        return currAttr;
+    }
+
+    uint32_t newCap = (AllocMaxNum == 0) ? (currCap + DefaultCapInc) : AllocMaxNum;
+    attribute_info_t* newAttr = (attribute_info_t*)m_mem.alloc(sizeof(attribute_info_t) * newCap);
+    if (currCnt > 0)
+    {
+        uint32_t bytesToCopy = sizeof(attribute_info_t) * currCnt;
+        memcpy_s(newAttr, bytesToCopy, currAttr, bytesToCopy);
+    }
+
+    (*pCap) = newCap;
+    (*pAttributes) = newAttr;
+    if (AllocMaxNum > 0)
+    {
+        return newAttr;
+    }
+    (*pCnt) = currCnt + 1;
+    return &newAttr[currCnt];
+}
+
 int VISAKernelImpl::AddAttributeToVarGeneric(
-    CISA_GEN_VAR *decl, const char* varName, unsigned int size, void *val)
+    CISA_GEN_VAR *decl, const char* varName, unsigned int size, const void *val)
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_VAR);
 
-    attribute_info_t *attr = (attribute_info_t *) m_mem.alloc(sizeof(attribute_info_t));
-    //memset(attr,0,sizeof(attribute_info_t));
-
+    attribute_info_t* attr = allocAttribute(decl);
     attr->nameIndex = addStringPool(std::string(varName));
     Attributes::ID aID = Attributes::getAttributeID(varName);
     ASSERT_USER(Attributes::isVarAttr(aID), "ERROR: unknown var attribute");
@@ -1511,9 +1591,10 @@ int VISAKernelImpl::AddAttributeToVarGeneric(
     else if (Attributes::isCStr(aID))
     {
         attr->isInt = false;
-        void* temp = m_mem.alloc(size);
+        char* temp = (char *)m_mem.alloc(size+1);  // null-ending C-string
         memcpy_s(temp, size, val, size);
-        attr->value.stringVal = (char*)temp;
+        temp[size] = 0;
+        attr->value.stringVal = (const char*)temp;
     }
     else
     {
@@ -1524,8 +1605,6 @@ int VISAKernelImpl::AddAttributeToVarGeneric(
     {
     case GENERAL_VAR:
         {
-            decl->genVar.attribute_count++;
-            decl->genVar.attributes = attr;
             //calculated during emission
             //m_var_info_size += Get_Size_Attribute_Info(attr);
             if (IS_GEN_BOTH_PATH)
@@ -1549,40 +1628,25 @@ int VISAKernelImpl::AddAttributeToVarGeneric(
         }
     case ADDRESS_VAR:
         {
-            decl->addrVar.attribute_count++;
-            decl->addrVar.attributes = attr;
             m_adress_info_size += Get_Size_Attribute_Info(attr);
             break;
         }
     case PREDICATE_VAR:
         {
-            decl->predVar.attribute_count++;
-            decl->predVar.attributes = attr;
             m_predicate_info_size += Get_Size_Attribute_Info(attr);
             break;
         }
     case SAMPLER_VAR:
         {
-            decl->stateVar.attribute_count++;
-            decl->stateVar.attributes = attr;
             m_sampler_info_size += Get_Size_Attribute_Info(attr);
             break;
         }
     case SURFACE_VAR:
         {
-            if (!strcmp(varName,""))
-            {
-                decl->stateVar.attribute_count++;
-                decl->stateVar.attributes = attr;
-                //calculated during emission
-                //m_surface_info_size += Get_Size_Attribute_Info(attr);
-            }
             break;
         }
     case LABEL_VAR:
         {
-            decl->labelVar.attribute_count++;
-            decl->labelVar.attributes = attr;
             m_label_info_size += Get_Size_Attribute_Info(attr);
             break;
         }

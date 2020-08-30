@@ -82,6 +82,9 @@ int num_parameters;
 
 VISA_RawOpnd* rawOperandArray[16];
 
+// global var for non-kernel attribute option.
+// The var needs to be cleared before each use.
+std::vector<attr_gen_struct*> AttrOptVar;
 
 #ifdef _MSC_VER
 #pragma warning(disable:4065; disable:4267)
@@ -205,7 +208,7 @@ VISA_RawOpnd* rawOperandArray[16];
         int exec_size;
     } emask_exec_size;
 
-    struct attr_gen_struct attr_gen;
+    struct attr_gen_struct*  pattr_gen;
 
 
 
@@ -526,7 +529,9 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <pixel_null_mask>     PixelNullMaskEnableOpt
 %type <cps>                 CPSEnableOpt
 %type <non_uniform_sampler> NonUniformSamplerEnableOpt
-%type <attr_gen>            GenAttrOpt
+%type <pattr_gen>           OneAttr
+%type <intval>              AttrOpt
+%type <intval>              GenAttrOpt
 %type <flag>                Atomic16Opt
 %type <intval>              AtomicBitwidthOpt
 
@@ -621,20 +626,23 @@ DeclVariable:
     DIRECTIVE_DECL IDENT V_TYPE_EQ_G DECL_DATA_TYPE NUM_ELTS_EQ IntExp AlignAttrOpt AliasAttrOpt GenAttrOpt
     {
        ABORT_ON_FAIL(pBuilder->CISA_general_variable_decl(
-           $2, (unsigned int)$6, $4, $7, $8.aliasname, $8.offset, $9, CISAlineno));
+           $2, (unsigned int)$6, $4, $7, $8.aliasname, $8.offset, AttrOptVar, CISAlineno));
+       AttrOptVar.clear();
     }
 
                //     1       2        3         4         5        6
 DeclAddress: DIRECTIVE_DECL IDENT V_TYPE_EQ_A NUM_ELTS_EQ IntExp GenAttrOpt
    {
        ABORT_ON_FAIL(
-           pBuilder->CISA_addr_variable_decl($2, (unsigned int)$5, ISA_TYPE_UW, $6, CISAlineno));
+           pBuilder->CISA_addr_variable_decl($2, (unsigned int)$5, ISA_TYPE_UW, AttrOptVar, CISAlineno));
+       AttrOptVar.clear();
    }
 
                //     1         2         3        4          5       6
 DeclPredicate: DIRECTIVE_DECL IDENT V_TYPE_EQ_P NUM_ELTS_EQ IntExp GenAttrOpt
    {
-       ABORT_ON_FAIL(pBuilder->CISA_predicate_variable_decl($2, (unsigned int)$5, $6, CISAlineno));
+       ABORT_ON_FAIL(pBuilder->CISA_predicate_variable_decl($2, (unsigned int)$5, AttrOptVar, CISAlineno));
+       AttrOptVar.clear();
    }
 
                //     1       2         3       4          5         6          7
@@ -647,7 +655,8 @@ VNameEqOpt: %empty  {$$ = "";} | V_NAME_EQ IDENT {$$ = $2;};
                //     1       2         3          4         5         6          7
 DeclSurface: DIRECTIVE_DECL IDENT V_TYPE_EQ_T  NUM_ELTS_EQ IntExp  VNameEqOpt GenAttrOpt
    {
-       ABORT_ON_FAIL(pBuilder->CISA_surface_variable_decl($2, (int)$5, $6, $7, CISAlineno));
+       ABORT_ON_FAIL(pBuilder->CISA_surface_variable_decl($2, (int)$5, $6, AttrOptVar, CISAlineno));
+       AttrOptVar.clear();
    }
 
 // ----- .input ------
@@ -762,35 +771,39 @@ AliasAttrOpt:
        PARSE_ERROR("syntax error in alias attribute");
     }
 
+OneAttr:
+    IDENT EQUALS IntExpNRA
+    {
+      $$ = pBuilder->CISA_Create_Attr($1, $3, nullptr);
+    }
+    | IDENT EQUALS STRING_LIT
+    {
+      $$ = pBuilder->CISA_Create_Attr($1, 0, $3);
+    }
+    | IDENT
+    {
+      $$ = pBuilder->CISA_Create_Attr($1, 0, nullptr);
+    }
+
+AttrOpt:
+    AttrOpt COMMA OneAttr
+    {
+      AttrOptVar.push_back($3);
+    }
+    |
+    OneAttr
+    {
+      AttrOptVar.push_back($1);
+    }
 
 GenAttrOpt:
     %empty
     {
-        $$.name = "";
-        $$.value = 0;
-        $$.attr_set = false;
+        $$ = 0;
     }
-    | ATTR_EQ IDENT EQUALS IntExp
+    | ATTR_EQ LBRACE AttrOpt RBRACE
     {
-      $$.name = $2;
-      $$.isInt = true;
-      $$.value = (int)$4;
-      $$.attr_set = true;
-    }
-    | ATTR_EQ IDENT EQUALS
-    {
-      $$.name = $2;
-      $$.isInt = false;
-      $$.string_val = "";
-      $$.attr_set = true;
-    }
-    //  1        2     3        4
-    | ATTR_EQ IDENT EQUALS STRING_LIT
-    {
-      $$.name = $2;
-      $$.isInt = false;
-      $$.string_val = $4;
-      $$.attr_set = true;
+        $$ = 1;
     }
 
 // ----------------------------------------------------------

@@ -189,20 +189,20 @@ public:
         VISA_Align var_align,
         const char * var_alias_name,
         int var_alias_offset,
-        attr_gen_struct scope,
+        std::vector<attr_gen_struct*>& scope,
         int lineNum);
 
     bool CISA_addr_variable_decl(
         const char *var_name,
         unsigned int var_elements,
         VISA_Type data_type,
-        attr_gen_struct scope,
+        std::vector<attr_gen_struct*>& scope,
         int lineNum);
 
     bool CISA_predicate_variable_decl(
         const char *var_name,
         unsigned int var_elements,
-        attr_gen_struct reg,
+        std::vector<attr_gen_struct*>& attrs,
         int lineNum);
 
     bool CISA_sampler_variable_decl(
@@ -210,7 +210,7 @@ public:
 
     bool CISA_surface_variable_decl(
         const char *var_name, int num_elts, const char* name,
-        attr_gen_struct attr, int lineNum);
+        std::vector<attr_gen_struct*>& attrs, int lineNum);
 
     bool CISA_input_directive(
         const char* var_name, short offset, unsigned short size, int lineNum);
@@ -777,6 +777,7 @@ public:
         const char * var_name, unsigned char roff, unsigned char sroff,
         unsigned short hstride,
         int lineNum);
+    attr_gen_struct* CISA_Create_Attr(const char* AttrName, int64_t I64Val, const char* CStrVal);
     VISA_opnd * CISA_create_immed(uint64_t value, VISA_Type type, int lineNum);
     VISA_opnd * CISA_create_float_immed(double value, VISA_Type type, int lineNum);
     CISA_GEN_VAR * CISA_find_decl(const char * var_name);
@@ -800,6 +801,9 @@ public:
     VISA_opnd * CISA_create_RAW_NULL_operand(int lineNum);
     VISA_opnd * CISA_create_RAW_operand(
         const char * var_name, unsigned short offset, int lineNum);
+
+    bool addAllVarAttributes(
+        CISA_GEN_VAR* GenVar, std::vector<attr_gen_struct*>& Attrs, int linueNum);
 
     void CISA_push_decl_scope();
     void CISA_pop_decl_scope();
