@@ -94,10 +94,10 @@ namespace IGC
             unsigned int threadGroupSize_X,
             unsigned int threadGroupSize_Y,
             llvm::Function* newFunc,
-            llvm::IRBuilder<> builder);
+            llvm::IRBuilder<>& builder);
 
         void CreateNewKernel(llvm::Module& M,
-            llvm::IRBuilder<> builder,
+            llvm::IRBuilder<>& builder,
             llvm::Function* newFunc);
 
         bool canDoOptimization(llvm::Function* m_kernel, llvm::Module& M);

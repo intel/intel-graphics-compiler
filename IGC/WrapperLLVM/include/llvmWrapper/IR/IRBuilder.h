@@ -217,6 +217,16 @@ namespace IGCLLVM
                                                                      RHS, Name);
 #endif
         }
+
+#if LLVM_VERSION_MAJOR >= 11
+      inline llvm::CallInst* CreateCall(llvm::Value* Callee, llvm::ArrayRef<llvm::Value*> Args = llvm::None,
+                                           const llvm::Twine& Name = "", llvm::MDNode* FPMathTag = nullptr) {
+            return llvm::IRBuilder<T, Inserter>::CreateCall(
+                                                           llvm::cast<llvm::FunctionType>(Callee->getType()->getPointerElementType()), Callee,
+            Args, Name, FPMathTag);
+        }
+#endif
+
     };
 #endif
 }

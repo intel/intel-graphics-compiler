@@ -481,7 +481,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
     }
 }
 
-void PixelShaderLowering::EmitMemoryFence(IRBuilder<> builder)
+void PixelShaderLowering::EmitMemoryFence(IRBuilder<>& builder)
 {
     Value* trueValue = builder.getInt1(true);
     Value* falseValue = builder.getInt1(false);

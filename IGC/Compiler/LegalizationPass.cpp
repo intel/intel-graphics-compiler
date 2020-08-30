@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
@@ -1626,7 +1627,11 @@ Type* Legalization::LegalAllocaType(Type* type) const
             LegalAllocaType(cast<ArrayType>(type)->getElementType()),
             type->getArrayNumElements());
         break;
+#if LLVM_VERSION_MAJOR >= 11
+    case Type::FixedVectorTyID:
+#else
     case Type::VectorTyID:
+#endif
         legalType = IGCLLVM::FixedVectorType::get(
             LegalAllocaType(cast<VectorType>(type)->getElementType()),
             (unsigned)cast<VectorType>(type)->getNumElements());
@@ -1662,7 +1667,7 @@ void Legalization::visitAlloca(AllocaInst& I)
 void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
 {
     m_ctx->m_instrTypes.numInsts++;
-    IRBuilder<> Builder(&I);
+    IGCLLVM::IRBuilder<> Builder(&I);
 
     auto intrinsicID = I.getIntrinsicID();
 
@@ -1929,7 +1934,8 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         Value* newValue = nullptr;
         if (srcType->isVectorTy())
         {
-            const unsigned int numElements = srcType->getVectorNumElements();
+            auto sourceVT = cast<VectorType>(srcType);
+            const unsigned int numElements = (uint32_t)sourceVT->getNumElements();
             Value* dstVec = UndefValue::get(srcType);
             for (unsigned int i = 0; i < numElements; ++i)
             {

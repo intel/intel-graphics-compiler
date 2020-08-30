@@ -364,8 +364,9 @@ namespace llvm {
         if (MDNode * LoopID = L->getLoopID())
         {
             const llvm::StringRef maxIterMetadataNames = "spv.loop.iterations.max";
+#if LLVM_VERSION_MAJOR < 11
             const llvm::StringRef peelCountMetadataNames = "spv.loop.peel.count";
-
+#endif
             for (unsigned i = 0; i < LoopID->getNumOperands(); ++i)
             {
                 if (MDNode * MD = llvm::dyn_cast<MDNode>(LoopID->getOperand(i)))
@@ -377,17 +378,50 @@ namespace llvm {
                             UP.MaxCount = static_cast<unsigned>(
                                 mdconst::extract<ConstantInt>(MD->getOperand(1))->getZExtValue());
                         }
+#if LLVM_VERSION_MAJOR < 11
                         else if (peelCountMetadataNames.equals(S->getString()))
                         {
                             UP.AllowPeeling = true;
                             UP.PeelCount = static_cast<unsigned>(
                                 mdconst::extract<ConstantInt>(MD->getOperand(1))->getZExtValue());
                         }
+#endif
                     }
                 }
             }
         }
     }
+
+#if LLVM_VERSION_MAJOR >= 11
+// [LLVM-UPGRADE] Peeling information was separated
+// https://github.com/llvm/llvm-project/commit/e541e1b757237172c247904b670c9894d6b3759d
+
+        void GenIntrinsicsTTIImpl::getPeelingPreferences(Loop* L, ScalarEvolution& SE,
+                                  llvm::TargetTransformInfo::PeelingPreferences& PP)
+       {
+        if (MDNode * LoopID = L->getLoopID())
+        {
+            const llvm::StringRef peelCountMetadataNames = "spv.loop.peel.count";
+
+            for (unsigned i = 0; i < LoopID->getNumOperands(); ++i)
+            {
+                if (MDNode * MD = llvm::dyn_cast<MDNode>(LoopID->getOperand(i)))
+                {
+                    if (MDString * S = llvm::dyn_cast<MDString>(MD->getOperand(0)))
+                    {
+                        if (peelCountMetadataNames.equals(S->getString()))
+                        {
+                            PP.AllowPeeling = true;
+                            PP.PeelCount = static_cast<unsigned>(
+                                mdconst::extract<ConstantInt>(MD->getOperand(1))->getZExtValue());
+                        }
+                    }
+                }
+            }
+        }
+
+       }
+#endif
 
     bool GenIntrinsicsTTIImpl::isProfitableToHoist(Instruction* I)
     {
@@ -407,6 +441,7 @@ namespace llvm {
         return BaseT::isProfitableToHoist(I);
     }
 
+#if LLVM_VERSION_MAJOR <= 10
     unsigned GenIntrinsicsTTIImpl::getCallCost(const Function* F, ArrayRef<const Value*> Arguments
 #if LLVM_VERSION_MAJOR >= 9
         , const User * U
@@ -434,6 +469,35 @@ namespace llvm {
 #endif
         );
     }
+#else
+  // [LLVM-UPGRADE] moved from getCallCost to getUserCost
+  // https://github.com/llvm/llvm-project/commit/2641a19981e71c887bece92074e00d1af3e716c9#diff-dd4bd65dc55d754674d9a945a0d22911
+
+  int GenIntrinsicsTTIImpl::getUserCost(const User *U, ArrayRef<const Value *> Operands, TTI::TargetCostKind CostKind)
+  {
+      const Function* F = dyn_cast<Function>(U);
+      if(F != nullptr)
+      {
+       IGC::CodeGenContext* CGC = this->ctx;
+        if (!CGC->enableFunctionCall() && !GenISAIntrinsic::isIntrinsic(F) &&
+            !F->isIntrinsic()) {
+            // If subroutine call is not enabled but we have function call. They
+            // are not inlined. e.g. due to two-phase inlining. Return function
+            // size instead of to avoid under-estimating the cost of function call.
+            //
+            // FIXME: We need to collect the cost following calling graph. However,
+            // as LLVM's ininer only support bottom-up inlining currently. That's
+            // not a big issue so far.
+            //
+            // FIXME: We also need to consider the case where sub-routine call is
+            // enabled.
+            unsigned FuncSize = countTotalInstructions(F, false);
+            return TargetTransformInfo::TCC_Basic * FuncSize;
+        }
+      }
+      return BaseT::getUserCost(U, Operands, CostKind);
+  }
+#endif
 
 } // namespace llvm
 // Register the basic pass.

@@ -1336,8 +1336,10 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
 bool CustomSafeOptPass::isIdentityMatrix(ExtractElementInst& I)
 {
     bool found = false;
-    if (I.getVectorOperandType()->getVectorNumElements() == 20 ||
-        I.getVectorOperandType()->getVectorNumElements() == 16)
+    auto extractType = cast<VectorType>(I.getVectorOperandType());
+    auto extractTypeVecSize = (uint32_t)extractType->getNumElements();
+    if (extractTypeVecSize == 20 ||
+        extractTypeVecSize == 16)
     {
         if (Constant * C = dyn_cast<Constant>(I.getVectorOperand()))
         {
@@ -1350,7 +1352,7 @@ bool CustomSafeOptPass::isIdentityMatrix(ExtractElementInst& I)
             //     float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00,
             //     float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00,
             //     float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00>, i32 %188
-            for (unsigned int i = 0; i < I.getVectorOperandType()->getVectorNumElements(); i++)
+            for (unsigned int i = 0; i < extractTypeVecSize; i++)
             {
                 if (i == 0 || i == 5 || i == 10 || i == 15)
                 {
