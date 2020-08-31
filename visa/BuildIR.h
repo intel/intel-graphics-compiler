@@ -361,6 +361,8 @@ private:
     // and we want to use a common header
     G4_Declare* spillFillHeader = nullptr;
 
+    G4_Declare* oldA0Dot2Temp = nullptr;
+
 
     // Indicates that sampler header cache (builtinSamplerHeader) is correctly
     // initialized with r0 contents.
@@ -599,6 +601,9 @@ public:
 
     G4_Declare* getSpillFillHeader();
 
+    G4_Declare* getOldA0Dot2Temp();
+    bool hasValidOldA0Dot2() { return oldA0Dot2Temp; }
+
     IR_Builder(
         TARGET_PLATFORM genPlatform,
         INST_LIST_NODE_ALLOCATOR &alloc,
@@ -650,6 +655,7 @@ public:
     G4_Declare* getBuiltinT252() const {return builtinT252;}
     G4_Declare* getBuiltinBindlessSampler() const {return builtinBindlessSampler; }
     G4_Declare* getBuiltinSamplerHeader() const { return builtinSamplerHeader; }
+    G4_Declare* getOldA0Dot2Temp() const { return oldA0Dot2Temp; }
 
     bool isBindlessSampler(const G4_Operand* sampler) const {
         return sampler->isSrcRegRegion() && sampler->getTopDcl() == getBuiltinBindlessSampler();

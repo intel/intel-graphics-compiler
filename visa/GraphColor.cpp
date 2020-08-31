@@ -9338,6 +9338,7 @@ int GlobalRA::coloringRegAlloc()
     bool useScratchMsgForSpill = globalScratchOffset < (int) (SCRATCH_MSG_LIMIT * 0.6) && !hasStackCall;
     bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
 
+
     uint32_t nextSpillOffset = 0;
     uint32_t scratchOffset = 0;
 

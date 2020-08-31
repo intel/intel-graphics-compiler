@@ -874,7 +874,6 @@ void LivenessAnalysis::computeLiveness()
             decl == fg.builder->getBuiltinR0())
             setLiveOut = true;
 
-
         if(setLiveOut)
         {
             outputUses.set(i, true);

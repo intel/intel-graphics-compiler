@@ -725,10 +725,22 @@ G4_Declare* IR_Builder::getSpillFillHeader()
 {
     if (!spillFillHeader)
     {
-        spillFillHeader = createTempVar(2, Type_UD, GRFALIGN, "spillHeader");
+        spillFillHeader = createTempVar(1, Type_UD, GRFALIGN, "spillHeader");
         spillFillHeader->setLiveOut();
     }
     return spillFillHeader;
+}
+
+G4_Declare* IR_Builder::getOldA0Dot2Temp()
+{
+    if (!oldA0Dot2Temp)
+    {
+        oldA0Dot2Temp = createTempVar(1, Type_UD, Any, "OldA0Dot2");
+        oldA0Dot2Temp->setLiveOut();
+        oldA0Dot2Temp->setLiveIn();
+        oldA0Dot2Temp->setDoNotSpill();
+    }
+    return oldA0Dot2Temp;
 }
 
 IR_Builder::IR_Builder(

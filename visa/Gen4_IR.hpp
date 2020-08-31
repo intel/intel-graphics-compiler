@@ -4087,7 +4087,7 @@ public:
 
     }
 
-    const static unsigned int InvalidOffset = 0xffffffff;
+    const static unsigned int InvalidOffset = 0xfffffffe;
 
     bool isOffBP() const { return getFP() != nullptr; }
 
@@ -4142,7 +4142,7 @@ public:
 
     }
 
-    const static unsigned int InvalidOffset = 0xffffffff;
+    const static unsigned int InvalidOffset = 0xfffffffe;
 
     bool isOffBP() const { return getFP() != nullptr; }
 

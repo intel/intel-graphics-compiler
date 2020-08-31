@@ -739,7 +739,6 @@ namespace vISA
         static bool owordAligned(unsigned offset);
         template <class REGION_TYPE> bool isUnalignedRegion(REGION_TYPE * region, unsigned execSize);
         bool shouldPreloadDst(G4_INST* instContext, G4_BB* curBB);
-        static unsigned sendBlockSizeCode(unsigned owordSize);
         void updateDefSet(std::set<G4_Declare*>& defs, G4_Declare* referencedDcl);
         void detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& kernel);
         void markBlockLocalVar(G4_RegVar* var, unsigned bbId);
@@ -795,6 +794,9 @@ namespace vISA
         void expandSpillNonStackcall(uint32_t& numRows, uint32_t& offset, short& rowOffset, G4_SrcRegRegion* header, G4_SrcRegRegion* payload, G4_BB* bb, INST_LIST_ITER& instIt);
         void expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& rowOffset, G4_SrcRegRegion* header, G4_DstRegRegion* resultRgn, G4_BB* bb, INST_LIST_ITER& instIt);
         void expandSpillStackcall(uint32_t& numRows, uint32_t& offset, short& rowOffset, G4_SrcRegRegion* payload, G4_BB* bb, INST_LIST_ITER& instIt);
+
+    public:
+        static unsigned sendBlockSizeCode(unsigned owordSize);
 
     public:
         G4_Kernel& kernel;
