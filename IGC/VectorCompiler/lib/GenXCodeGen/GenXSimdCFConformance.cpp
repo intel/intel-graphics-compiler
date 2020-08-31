@@ -322,9 +322,9 @@ private:
   };
 
   SetVector<SimpleValue> EMValsStack;
+  MapVector<Value *, GotoJoinEVs> GotoJoinEVsMap;
   std::map<CallInst *, CallInst *> GotoJoinMap;
   std::map<Value *, Value *> EMProducers;
-  std::map<Value *, GotoJoinEVs> GotoJoinEVsMap;
   std::map<Value *, Value *> LoweredEMValsMap;
 
 protected:
