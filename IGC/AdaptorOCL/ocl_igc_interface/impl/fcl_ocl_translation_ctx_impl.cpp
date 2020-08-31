@@ -47,9 +47,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 
-#if !defined(WDDM_LINUX)
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 #include "CMFE/AdaptorCM/cm_args.h"
-#endif // !defined(WDDM_LINUX)
+#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 #include "cif/macros/enable.h"
 
@@ -86,7 +86,7 @@ llvm::Optional<std::vector<char>> readBinaryFile(const std::string& fileName) {
     return binary;
 }
 
-#if !defined(WDDM_LINUX)
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 using InvocationInfo = IGC::AdaptorCM::Frontend::IDriverInvocation;
 using PathT = llvm::SmallVector<char, 1024>;
@@ -316,7 +316,7 @@ static llvm::Optional<std::string> MakeTemporaryCMSource(
     return strPath;
 }
 
-#endif // !defined(WDDM_LINUX)
+#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     CIF::Version_t outVersion,
@@ -333,9 +333,9 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     if (outputInterface == nullptr)
         return nullptr;
 
-#if !defined(WDDM_LINUX)
     OclTranslationOutputBase& Out = *outputInterface.get();
 
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
     IGC::AdaptorCM::Frontend::AbiCompatibilityInfo AbiInfo;
     if (!IGC::AdaptorCM::Frontend::validateABICompatibility(&AbiInfo)) {
         const auto &ErrMsg =
@@ -365,7 +365,10 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     else
         Out.GetImpl()->SetError(TranslationErrorType::Internal,
                                 "could not create CM fronend invocation");
-#endif // !defined(WDDM_LINUX)
+#else
+    Out.GetImpl()->SetError(TranslationErrorType::Internal,
+                            "CM compilation is not supported in this configuration");
+#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
     return outputInterface.release();
 }

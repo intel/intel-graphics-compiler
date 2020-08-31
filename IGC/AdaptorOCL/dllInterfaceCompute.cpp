@@ -819,14 +819,14 @@ void dumpOCLProgramBinary(OpenCLProgramContext &Ctx, char *binaryOutput, int bin
 #endif
 }
 
-#if !defined(WDDM_LINUX)
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 static std::error_code TranslateBuildVC(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs, TB_DATA_FORMAT inputDataFormatTemp,
     const IGC::CPlatform& IGCPlatform, float profilingTimerResolution);
-#endif //  !defined(WDDM_LINUX)
+#endif //  !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
-#if !defined(WDDM_LINUX)
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 struct VcPayloadInfo {
     bool IsValid = false;
     uint64_t VcOptsOffset = 0;
@@ -881,7 +881,7 @@ VcPayloadInfo tryExtractPayload(char* pInput, size_t inputSize) {
 
     return Result;
 }
-#endif //  !defined(WDDM_LINUX)
+#endif //  !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 static std::unique_ptr<llvm::MemoryBuffer> GetGenericModuleBuffer() {
     char Resource[5] = {'-'};
@@ -896,8 +896,8 @@ bool TranslateBuild(
     const IGC::CPlatform& IGCPlatform,
     float profilingTimerResolution)
 {
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED) 
     if (pInputArgs->pOptions) {
-#if !defined(WDDM_LINUX)
         std::error_code Status =
             TranslateBuildVC(pInputArgs, pOutputArgs, inputDataFormatTemp,
                              IGCPlatform, profilingTimerResolution);
@@ -906,8 +906,8 @@ bool TranslateBuild(
         // If vc codegen option was not specified, then vc was not called.
         if (static_cast<vc::errc>(Status.value()) != vc::errc::not_vc_codegen)
             return false;
-#endif // !defined(WDDM_LINUX)
     }
+#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
     // Disable code sinking in instruction combining.
     // This is a workaround for a performance issue caused by code sinking
@@ -1484,7 +1484,7 @@ static void getvISACompileOpts(const STB_TranslateInputArgs* pInputArgs,
 }
 
 
-#if !defined(WDDM_LINUX)
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 static void adjustPlatformVC(const IGC::CPlatform& IGCPlatform,
                              vc::CompileOptions& Opts)
@@ -1568,11 +1568,6 @@ static std::error_code TranslateBuildVC(
     STB_TranslateOutputArgs* pOutputArgs, TB_DATA_FORMAT inputDataFormatTemp,
     const IGC::CPlatform& IGCPlatform, float profilingTimerResolution)
 {
-#if IGC_VC_DISABLED
-    SetErrorMessage("IGC VC explicitly disabled in build", *pOutputArgs);
-    return false;
-#else
-
     llvm::StringRef ApiOptions{pInputArgs->pOptions, pInputArgs->OptionsSize};
     llvm::StringRef InternalOptions{pInputArgs->pInternalOptions,
                                     pInputArgs->InternalOptionsSize};
@@ -1647,8 +1642,7 @@ static std::error_code TranslateBuildVC(
     }
 
     return {};
-#endif
 }
-#endif // !defined(WDDM_LINUX)
+#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 } // namespace TC
