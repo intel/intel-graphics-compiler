@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXUtil.h"
 #include "llvm/Analysis/TargetFolder.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstVisitor.h"
@@ -51,6 +52,9 @@ using namespace genx;
 
 namespace {
 
+static cl::opt<bool> OptIcmpEnable("genx-i64emu-icmp-enable", cl::init(true),
+                                   cl::Hidden,
+                                   cl::desc("enable icmp emulation"));
 using IRBuilder = IRBuilder<TargetFolder>;
 
 class GenXEmulate : public ModulePass {
@@ -59,6 +63,61 @@ class GenXEmulate : public ModulePass {
   std::vector<Instruction *> ToErase;
   std::map<OpType, Function *> EmulationFuns;
   const GenXSubtarget *ST = nullptr;
+
+  class Emu64Expander : public InstVisitor<Emu64Expander, Value *> {
+
+    friend InstVisitor<Emu64Expander, Value *>;
+
+    const GenXSubtarget &ST;
+    IVSplitter SplitBuilder;
+    Instruction &Inst;
+
+    Value *expandBitwiseOp(BinaryOperator &);
+    Value *visitAdd(BinaryOperator &);
+    Value *visitSub(BinaryOperator &);
+    Value *visitAnd(BinaryOperator &);
+    Value *visitOr(BinaryOperator &);
+    Value *visitXor(BinaryOperator &);
+    Value *visitSelectInst(SelectInst &I);
+    Value *visitICmp(ICmpInst &);
+
+    Value *visitInstruction(Instruction &I) { return nullptr; }
+
+    static bool isI64Cmp(const Instruction &I);
+    static Value *detectBitwiseNot(BinaryOperator &);
+
+    bool needsEmulation() const {
+      return (SplitBuilder.IsI64Operation() || isI64Cmp(Inst));
+    }
+
+    IRBuilder getIRBuilder() {
+      return IRBuilder(Inst.getParent(), BasicBlock::iterator(&Inst),
+                       TargetFolder(Inst.getModule()->getDataLayout()));
+    }
+
+  public:
+    Emu64Expander(const GenXSubtarget &ST, Instruction &I)
+        : ST(ST), SplitBuilder(I), Inst(I) {}
+
+    Value *tryExpand() {
+      if (!needsEmulation())
+        return nullptr;
+      LLVM_DEBUG(dbgs() << "i64-emu: trying " << Inst << "\n");
+      auto *Result = visit(Inst);
+
+      if (Result)
+        LLVM_DEBUG(dbgs() << "i64-emu: emulated with " << *Result << "\n");
+
+      return Result;
+    }
+    using LHSplit = IVSplitter::LoHiSplit;
+    Value *buildTernaryAddition(IRBuilder &Builder, Value &A, Value &B,
+                                Value &C, const Twine &Name) const;
+    static Value *buildGeneralICmp(IRBuilder &B, CmpInst::Predicate P,
+                                   const LHSplit &L, const LHSplit &R);
+    static Value *buildICmpEQ(IRBuilder &B, const LHSplit &L, const LHSplit &R);
+    static Value *buildICmpNE(IRBuilder &B, const LHSplit &L, const LHSplit &R);
+  };
 
 public:
   static char ID;
@@ -85,6 +144,224 @@ private:
 };
 
 } // end namespace
+bool GenXEmulate::Emu64Expander::isI64Cmp(const Instruction &I) {
+  if (Instruction::ICmp != I.getOpcode())
+    return false;
+  return I.getOperand(0)->getType()->getScalarType()->isIntegerTy(64);
+}
+
+Value *GenXEmulate::Emu64Expander::detectBitwiseNot(BinaryOperator &Op) {
+  if (Instruction::Xor != Op.getOpcode())
+    return nullptr;
+
+  auto isAllOnes = [](const Value *V) {
+    if (auto *C = dyn_cast<Constant>(V))
+      return C->isAllOnesValue();
+    return false;
+  };
+
+  if (isAllOnes(Op.getOperand(1)))
+    return Op.getOperand(0);
+  if (isAllOnes(Op.getOperand(0)))
+    return Op.getOperand(1);
+
+  return nullptr;
+}
+Value *GenXEmulate::Emu64Expander::expandBitwiseOp(BinaryOperator &Op) {
+  auto Src0 = SplitBuilder.splitOperandHalf(0);
+  auto Src1 = SplitBuilder.splitOperandHalf(1);
+
+  auto Builder = getIRBuilder();
+
+  Value *Part1 = Builder.CreateBinOp(Op.getOpcode(), Src0.Left, Src1.Left,
+                                     Inst.getName() + ".part1");
+  Value *Part2 = Builder.CreateBinOp(Op.getOpcode(), Src0.Right, Src1.Right,
+                                     Inst.getName() + ".part2");
+  return SplitBuilder.combineHalfSplit({Part1, Part2}, Op.getOpcodeName(),
+                                       Inst.getType()->isIntegerTy());
+}
+Value *GenXEmulate::Emu64Expander::visitAdd(BinaryOperator &Op) {
+  auto Src0 = SplitBuilder.splitOperandLoHi(0);
+  auto Src1 = SplitBuilder.splitOperandLoHi(1);
+
+  auto *AddcFunct = GenXIntrinsic::getGenXDeclaration(
+      Inst.getModule(), GenXIntrinsic::genx_addc,
+      {Src0.Lo->getType(), Src1.Lo->getType()});
+
+  auto Builder = getIRBuilder();
+  // add64 transforms as:
+  //    [add_lo, carry] = genx_addc(src0.l0, src1.lo)
+  //    add_hi = add(carry, add(src0.hi, src1.hi))
+  //    add64  = combine(add_lo,add_hi)
+  using namespace GenXIntrinsic::GenXResult;
+  auto *AddcVal = Builder.CreateCall(AddcFunct, {Src0.Lo, Src1.Lo}, "addc");
+  auto *AddLo = Builder.CreateExtractValue(AddcVal, {IdxAddc_Add}, "addc.add");
+  auto *Carry =
+      Builder.CreateExtractValue(AddcVal, {IdxAddc_Carry}, "addc.carry");
+  auto *AddHi =
+      buildTernaryAddition(Builder, *Carry, *Src0.Hi, *Src1.Hi, "add_hi");
+  return SplitBuilder.combineLoHiSplit({AddLo, AddHi}, Op.getOpcodeName(),
+                                       Inst.getType()->isIntegerTy());
+}
+Value *GenXEmulate::Emu64Expander::visitSub(BinaryOperator &Op) {
+  auto Src0 = SplitBuilder.splitOperandLoHi(0);
+  auto Src1 = SplitBuilder.splitOperandLoHi(1);
+
+  auto *SubbFunct = GenXIntrinsic::getGenXDeclaration(
+      Inst.getModule(), GenXIntrinsic::genx_subb,
+      {Src0.Lo->getType(), Src1.Lo->getType()});
+
+  auto Builder = getIRBuilder();
+  // sub64 transforms as:
+  //    [sub_lo, borrow] = genx_subb(src0.l0, src1.lo)
+  //    sub_hi = add(src0.hi, add(-borrow, -src1.hi))
+  //    sub64  = combine(sub_lo, sub_hi)
+  using namespace GenXIntrinsic::GenXResult;
+  auto *SubbVal = Builder.CreateCall(SubbFunct, {Src0.Lo, Src1.Lo}, "subb");
+  auto *SubLo = Builder.CreateExtractValue(SubbVal, {IdxSubb_Sub}, "subb.sub");
+  auto *Borrow =
+      Builder.CreateExtractValue(SubbVal, {IdxSubb_Borrow}, "subb.borrow");
+  auto *MinusBorrow = Builder.CreateNeg(Borrow, "borrow.negate");
+  auto *MinusS1Hi = Builder.CreateNeg(Src1.Hi, "negative.src1_hi");
+  auto *SubHi = buildTernaryAddition(Builder, *Src0.Hi, *MinusBorrow,
+                                     *MinusS1Hi, "sub_hi");
+  return SplitBuilder.combineLoHiSplit({SubLo, SubHi}, Op.getOpcodeName(),
+                                       Inst.getType()->isIntegerTy());
+}
+Value *GenXEmulate::Emu64Expander::visitAnd(BinaryOperator &Op) {
+  return expandBitwiseOp(Op);
+}
+Value *GenXEmulate::Emu64Expander::visitOr(BinaryOperator &Op) {
+  return expandBitwiseOp(Op);
+}
+Value *GenXEmulate::Emu64Expander::visitXor(BinaryOperator &Op) {
+  if (auto *NotOperand = detectBitwiseNot(Op)) {
+    unsigned OperandIdx = NotOperand == Op.getOperand(0) ? 0 : 1;
+    auto Src0 = SplitBuilder.splitOperandHalf(OperandIdx);
+    auto *Part1 = BinaryOperator::CreateNot(Src0.Left, ".part1_not", &Inst);
+    auto *Part2 = BinaryOperator::CreateNot(Src0.Right, ".part2_not", &Inst);
+    return SplitBuilder.combineHalfSplit({Part1, Part2}, ".not",
+                                         Op.getType()->isIntegerTy());
+  }
+  return expandBitwiseOp(Op);
+}
+Value *GenXEmulate::Emu64Expander::visitSelectInst(SelectInst &I) {
+  auto SrcTrue = SplitBuilder.splitOperandLoHi(1);
+  auto SrcFalse = SplitBuilder.splitOperandLoHi(2);
+  auto *Cond = I.getCondition();
+
+  auto Builder = getIRBuilder();
+  // sel from 64-bit values transforms as:
+  //    split TrueVal and FalseVal on lo/hi parts
+  //    lo_part = self(cond, src0.l0, src1.lo)
+  //    hi_part = self(cond, src0.hi, src1.hi)
+  //    result  = combine(lo_part, hi_part)
+  auto *SelLo = Builder.CreateSelect(Cond, SrcTrue.Lo, SrcFalse.Lo, "sel.lo");
+  auto *SelHi = Builder.CreateSelect(Cond, SrcTrue.Hi, SrcFalse.Hi, "sel.hi");
+  return SplitBuilder.combineLoHiSplit({SelLo, SelHi}, I.getOpcodeName(),
+                                       I.getType()->isIntegerTy());
+}
+Value *GenXEmulate::Emu64Expander::visitICmp(ICmpInst &Cmp) {
+  if (!OptIcmpEnable)
+    return nullptr;
+
+  auto Builder = getIRBuilder();
+
+  unsigned BaseOperand = 0;
+  IVSplitter Splitter(Cmp, &BaseOperand);
+  auto Src0 = Splitter.splitOperandLoHi(0);
+  auto Src1 = Splitter.splitOperandLoHi(1);
+
+  LLVM_DEBUG(dbgs() << "processing: " << Cmp << "\n");
+
+  Value *Result = buildGeneralICmp(Builder, Cmp.getPredicate(), Src0, Src1);
+
+  if (Cmp.getType()->isIntegerTy() && !Result->getType()->isIntegerTy()) {
+    // we expect this cast to be possible
+    IGC_ASSERT(Cmp.getType() == Result->getType()->getScalarType());
+    Result = Builder.CreateBitCast(Result, Cmp.getType(),
+                                   Result->getName() + ".toi");
+  }
+  return Result;
+}
+Value *GenXEmulate::Emu64Expander::buildTernaryAddition(
+    IRBuilder &Builder, Value &A, Value &B, Value &C, const Twine &Name) const {
+  auto *SubH = Builder.CreateAdd(&A, &B, Name + ".part");
+  return Builder.CreateAdd(SubH, &C, Name);
+}
+Value *GenXEmulate::Emu64Expander::buildICmpEQ(IRBuilder &Builder,
+                                               const LHSplit &Src0,
+                                               const LHSplit &Src1) {
+  auto *T0 = Builder.CreateICmpEQ(Src0.Lo, Src1.Lo);
+  auto *T1 = Builder.CreateICmpEQ(Src0.Hi, Src1.Hi);
+  return Builder.CreateAnd(T0, T1, "emulated_icmp_eq");
+}
+Value *GenXEmulate::Emu64Expander::buildICmpNE(IRBuilder &Builder,
+                                               const LHSplit &Src0,
+                                               const LHSplit &Src1) {
+  auto *T0 = Builder.CreateICmpNE(Src0.Lo, Src1.Lo);
+  auto *T1 = Builder.CreateICmpNE(Src0.Hi, Src1.Hi);
+  return Builder.CreateOr(T1, T0, "emulated_icmp_ne");
+}
+Value *GenXEmulate::Emu64Expander::buildGeneralICmp(IRBuilder &Builder,
+                                                    CmpInst::Predicate P,
+                                                    const LHSplit &Src0,
+                                                    const LHSplit &Src1) {
+
+  auto getEmulateCond1 = [](const CmpInst::Predicate P) {
+    // For the unsigned predicate the first condition stays the same
+    if (CmpInst::isUnsigned(P))
+      return P;
+    switch (P) {
+    // transform signed predicate to an unsigned one
+    case CmpInst::ICMP_SGT:
+      return CmpInst::ICMP_UGT;
+    case CmpInst::ICMP_SGE:
+      return CmpInst::ICMP_UGE;
+    case CmpInst::ICMP_SLT:
+      return CmpInst::ICMP_ULT;
+    case CmpInst::ICMP_SLE:
+      return CmpInst::ICMP_ULE;
+    default:
+      llvm_unreachable("unexpected ICMP predicate for first condition");
+    }
+  };
+  auto getEmulateCond2 = [](const CmpInst::Predicate P) {
+    // discard EQ part
+    switch (P) {
+    case CmpInst::ICMP_SGT:
+    case CmpInst::ICMP_SGE:
+      return CmpInst::ICMP_SGT;
+    case CmpInst::ICMP_SLT:
+    case CmpInst::ICMP_SLE:
+      return CmpInst::ICMP_SLT;
+    case CmpInst::ICMP_UGT:
+    case CmpInst::ICMP_UGE:
+      return CmpInst::ICMP_UGT;
+    case CmpInst::ICMP_ULT:
+    case CmpInst::ICMP_ULE:
+      return CmpInst::ICMP_ULT;
+    default:
+      llvm_unreachable("unexpected ICMP predicate for second condition");
+    }
+  };
+
+  switch (P) {
+  case CmpInst::ICMP_EQ:
+    return buildICmpEQ(Builder, Src0, Src1);
+  case CmpInst::ICMP_NE:
+    return buildICmpNE(Builder, Src0, Src1);
+  default: {
+    CmpInst::Predicate EmuP1 = getEmulateCond1(P);
+    CmpInst::Predicate EmuP2 = getEmulateCond2(P);
+    auto *T0 = Builder.CreateICmp(EmuP1, Src0.Lo, Src1.Lo);
+    auto *T1 = Builder.CreateICmpEQ(Src0.Hi, Src1.Hi);
+    auto *T2 = Builder.CreateAnd(T1, T0);
+    auto *T3 = Builder.CreateICmp(EmuP2, Src0.Hi, Src1.Hi);
+    return Builder.CreateOr(T2, T3, "emu_" + CmpInst::getPredicateName(P));
+  }
+  }
+}
 
 char GenXEmulate::ID = 0;
 namespace llvm {
@@ -103,7 +380,7 @@ void GenXEmulate::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
 }
 
-bool GenXEmulate ::runOnModule(Module &M) {
+bool GenXEmulate::runOnModule(Module &M) {
   bool Changed = false;
   EmulationFuns.clear();
   ST = &getAnalysis<TargetPassConfig>()
@@ -191,6 +468,8 @@ Value *GenXEmulate::emulateInst(Instruction *Inst) {
     SmallVector<Value *, 8> Args(Inst->operands());
     return Builder.CreateCall(EmuFn, Args);
   }
-
+  IGC_ASSERT(ST);
+  if (ST->emulateLongLong())
+    return Emu64Expander(*ST, *Inst).tryExpand();
   return nullptr;
 }

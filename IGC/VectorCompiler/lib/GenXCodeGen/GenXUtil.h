@@ -311,7 +311,7 @@ public:
                           bool Scalarize);
 
   // convinence method for quick sanity checking
-  bool IsI64Operation() { return ETy->isIntegerTy(64); }
+  bool IsI64Operation() const { return ETy->isIntegerTy(64); }
 };
 
 // adjustPhiNodesForBlockRemoval : adjust phi nodes when removing a block

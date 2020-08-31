@@ -102,6 +102,8 @@ private:
 
   // Only generate warning when callable is used in the middle of the kernel
   bool WarnCallable;
+  // Some targets do not support i64 ops natively, we have an option to emulate
+  bool EmulateLongLong;
 
   // True if codegenerating for OCL runtime.
   bool OCLRuntime;
@@ -115,9 +117,6 @@ public:
   //
   GenXSubtarget(const Triple &TT, const std::string &CPU,
                 const std::string &FS);
-
-  // hasLongLong - true for Gen8+
-  bool hasLongLong() { return HasLongLong; }
 
   unsigned getGRFWidth() const { return 32; }
 
@@ -170,7 +169,8 @@ public:
   bool isICLLP() const { return GenXVariant == GENX_ICLLP; }
   /// * isTGLLP - true if target is TGL LP
   bool isTGLLP() const { return GenXVariant == GENX_TGLLP; }
-
+  /// * emulateLongLong - true if i64 emulation is requested
+  bool emulateLongLong() const { return EmulateLongLong; }
   /// * emulateIDivRem - true if emulates integer division and reminder.
   bool emulateIDivRem() const { return GenXVariant >= GENX_TGLLP; }
 

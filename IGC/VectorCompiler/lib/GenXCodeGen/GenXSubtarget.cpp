@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -59,6 +60,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   DisableJmpi = false;
   DisableVectorDecomposition = false;
   WarnCallable = false;
+  EmulateLongLong = false;
   OCLRuntime = false;
 
   if (StackScratchMem)

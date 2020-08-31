@@ -569,7 +569,7 @@ bool GenXLegalization::processInst(Instruction *Inst) {
   if ((ScalarType->getPrimitiveSizeInBits() == 64) && !ST->hasLongLong()) {
     if (!ScalarType->isIntegerTy())
       report_fatal_error("'double' type is not supported by this target");
-    if (ScalarType->isIntegerTy())
+    if (ScalarType->isIntegerTy() && !ST->emulateLongLong())
       report_fatal_error("'long long' type is not supported by this target");
   }
   if (ST->isICLLP() || ST->isTGLLP()) {

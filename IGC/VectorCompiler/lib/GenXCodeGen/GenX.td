@@ -44,8 +44,13 @@ def DumpRegAlloc: SubtargetFeature<"dump_regalloc", "DumpRegAlloc",
 // GenX Subtarget state - these are typically inferred from the Proc
 //===----------------------------------------------------------------------===//
 
-def FeatureLongLong : SubtargetFeature<"longlong","HasLongLong", "true",
+def FeatureLongLong : SubtargetFeature<"longlong", "HasLongLong", "true",
                                        "supports long long">;
+
+def FeatureLongLongEmulation : SubtargetFeature<"emulate_i64",
+                                        "EmulateLongLong",
+                                        "true",
+                                        "emulate 64-bit operations">;
 
 def FeatureNoJmpi : SubtargetFeature<"disable_jmpi", "DisableJmpi",
                                        "true", "disable jmpi">;
