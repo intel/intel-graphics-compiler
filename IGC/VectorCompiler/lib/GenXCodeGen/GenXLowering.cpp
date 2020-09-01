@@ -102,6 +102,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 //===----------------------------------------------------------------------===//
 
+#include "GenXLowering.h"
 #include "GenX.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
@@ -1359,8 +1360,12 @@ Value *GenXLowering::scaleInsertExtractElementIndex(Value *IdxVal, Type *ElTy,
   return IdxInst;
 }
 
+bool GenXLowering::lowerTrunc(Instruction *Inst) {
+  return genx::lowerTruncImpl(Inst, ToErase);
+}
+
 /***********************************************************************
- * lowerTrunc : lower a TruncInst
+ * lowerTruncImpl : lower a TruncInst
  *
  * Return:  whether any change was made, and thus the current instruction
  *          is now marked for erasing
@@ -1369,7 +1374,8 @@ Value *GenXLowering::scaleInsertExtractElementIndex(Value *IdxVal, Type *ElTy,
  * GenXCoalescing will coalesce the bitcast, so this will hopefully save
  * an instruction.
  */
-bool GenXLowering::lowerTrunc(Instruction *Inst) {
+bool genx::lowerTruncImpl(Instruction *Inst,
+                          SmallVectorImpl<Instruction *> &ToErase) {
   Value *InValue = Inst->getOperand(0);
   // Check for the trunc's input being a sext/zext where the original element
   // size is the same as the result of the trunc. We can just remove the
@@ -2455,8 +2461,13 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
   return true;
 }
 
-// Lower cmp instructions that GenX cannot deal with.
 bool GenXLowering::lowerMul64(Instruction *Inst) {
+  return genx::lowerMul64Impl(Inst, ToErase);
+}
+
+// Lower mul instructions that GenX cannot deal with.
+bool genx::lowerMul64Impl(Instruction *Inst,
+                          SmallVectorImpl<Instruction *> &ToErase) {
 
   IVSplitter SplitBuilder(*Inst);
   if (!SplitBuilder.IsI64Operation())
