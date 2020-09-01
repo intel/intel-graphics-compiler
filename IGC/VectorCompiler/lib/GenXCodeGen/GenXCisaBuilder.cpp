@@ -2590,6 +2590,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       case Intrinsic::dbg_declare:
       case GenXIntrinsic::genx_predefined_surface:
       case GenXIntrinsic::genx_output:
+      case GenXIntrinsic::genx_output_1:
         // ignore
         break;
       case GenXIntrinsic::genx_simdcf_goto:
