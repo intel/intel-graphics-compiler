@@ -1433,13 +1433,7 @@ namespace iga {
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
         /* Op::80 */ {Op::SHR, Platform::GEN10, "shr", 0x8, "Shift Right",
-            "Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count.\n"
-            "\n"
-            "src0 and dst can have different types and can be signed or unsigned.\n"
-            "\n"
-            "Note: For word and DWord operands, the accumulators have 33 bits.\n"
-            "\n"
-            "Note: For unsigned src0 types, shr and asr produce the same result.\n"
+            "Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count. Note: For word and DWord operands, the accumulators have 33 bits. Note: For unsigned src0 types, shr and asr produce the same result.\n"
             "\n"
             "\n"
             "In QWord mode, the shift count is taken from the low six bits of src1 regardless of the src1 type and treated as an unsigned integer in the range 0 to 63. Otherwise the shift count is taken from the low five bits of src1 regardless of the src1 type and treated as an unsigned integer in the range 0 to 31. The operation uses QWord mode if src0 or dst has the Q or UQ type but not if src1 is the only operand with the Q or UQ type.\n"
@@ -1491,7 +1485,8 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::82 */ {Op::SUBB, Platform::GEN10, "subb", 0x4f, "Integer Subtraction with Borrow",
+        /* Op::82 */ {Op::INVALID, Platform::GEN10, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::83 */ {Op::SUBB, Platform::GEN10, "subb", 0x4f, "Integer Subtraction with Borrow",
             "The subb instruction performs component-wise subtraction of src0 and src1 and stores the results in dst, it also stores the borrow into acc.\n"
             "\n"
             "If the operation produces a borrow (src0 < src1), write 0x00000001 to acc, else write 0x00000000 to acc.\n"
@@ -1505,8 +1500,8 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
         },
-        /* Op::83 */ {Op::INVALID, Platform::GEN10, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::84 */ {Op::WAIT, Platform::GEN10, "wait", 0x30, "Wait Notification",
+        /* Op::84 */ {Op::INVALID, Platform::GEN10, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::85 */ {Op::WAIT, Platform::GEN10, "wait", 0x30, "Wait Notification",
             "The wait instruction evaluates the value of the notification count register nreg. If nreg is zero, thread execution is suspended and the thread is put in \'wait_for_notification\' state. If nreg is not zero (i.e., one or more notifications have been received), nreg is decremented by one and the thread continues executing on the next instruction. If a thread is in the \'wait_for_notification\' state, when a notification arrives, the notification count register is incremented by one. As the notification count register becomes nonzero, the thread wakes up to continue execution and at the same time the notification register is decremented by one. If only one notification arrived, the notification register value becomes zero. However, during the above mentioned time period, it is possible that more notifications may arrive, making the notification register nonzero again.\n"
             "\n"
             "When multiple notifications are received, software must use wait instructions to decrement notification count registers for each notification.\n"
@@ -1522,7 +1517,7 @@ namespace iga {
             },
             OpSpec::Attr::NONE
         },
-        /* Op::85 */ {Op::WHILE, Platform::GEN10, "while", 0x27, "While",
+        /* Op::86 */ {Op::WHILE, Platform::GEN10, "while", 0x27, "While",
             "The while instruction marks the end of a do-while block. The instruction first evaluates the loop termination condition for each channel based on the current channel enables and the predication flags specified in the instruction. If any channel has not terminated, a branch is taken to a destination address specified in the instruction, and the loop continues for those channels. Otherwise, execution continues to the next instruction.ld point to the first instruction with the do label of the do-while block of code. It should be a negative number for the backward referencing.\n"
             "\n"
             "If SPF is ON, none of the PcIP are updated.\n"
@@ -1533,7 +1528,7 @@ namespace iga {
             OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::86 */ {Op::XOR, Platform::GEN10, "xor", 0x7, "Logic Xor",
+        /* Op::87 */ {Op::XOR, Platform::GEN10, "xor", 0x7, "Logic Xor",
             "The xor instruction performs component-wise logic XOR operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"

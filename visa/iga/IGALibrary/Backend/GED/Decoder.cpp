@@ -107,13 +107,11 @@ static Region macroDefaultSourceRegion(
 Decoder::Decoder(const Model &model, ErrorHandler &errHandler) :
     GEDBitProcessor(model,errHandler),
     m_gedModel(lowerPlatform(model.platform)),
+    m_SWSBEncodeMode(model.getSWSBEncodeMode()),
     m_kernel(nullptr),
     m_opSpec(nullptr),
     m_binary(nullptr)
 {
-    // Derived the swsb mode from plaform
-    if (m_SWSBEncodeMode == SWSB_ENCODE_MODE::SWSBInvalidMode)
-        m_SWSBEncodeMode = model.getSWSBEncodeMode();
     IGA_ASSERT(m_gedModel != GED_MODEL_INVALID, "invalid GED model");
 }
 

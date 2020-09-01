@@ -173,7 +173,7 @@ namespace iga
     enum class AddrType {
         // stateless
         FLAT,
-        // stateless
+        // stateful: binding table interface
         BTI,
     };
 
@@ -181,14 +181,6 @@ namespace iga
     // Generic processing of basic buffer messages.   This includes data port
     // vector reads and writes as well block and atomic messages.  There may be
     // certain obscure or legacy operations that are unsupported.
-    //
-    // usage:
-    //   const G4_SendMsgDescriptor *msgDesc = ...
-    //   if (auto sgi = msgDesc->getMessageInfo()) {
-    //     process message e.g. sgi.hasAttr(MessageInfo::LOADS)
-    //   } else {
-    //     unsupported/unrecognized message type (e.g. sampler, gateway, ...)
-    //   }
     //
     struct MessageInfo {
         enum Attr {

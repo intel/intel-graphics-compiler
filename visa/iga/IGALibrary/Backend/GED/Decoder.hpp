@@ -146,7 +146,10 @@ namespace iga
         // Set the SWSB endcoding mode, if not set, derived from platform
         void setSWSBEncodingMode(SWSB_ENCODE_MODE mode)
         {
-            m_SWSBEncodeMode = mode;
+            if (mode != SWSB_ENCODE_MODE::SWSBInvalidMode)
+            {
+                m_SWSBEncodeMode = mode;
+            }
         }
 
         bool isMacro() const;

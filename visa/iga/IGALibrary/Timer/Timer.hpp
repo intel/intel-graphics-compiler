@@ -56,7 +56,7 @@ void initIGATimer();
 void startIGATimer(int timer);
 void stopIGATimer(int timer);
 void setIGAKernelName(const char *name);
-void dumpIGAAllTimers(bool outputTime = false);
+void dumpAllIGATimers(bool outputTime = false);
 std::string getIGATimerNames(unsigned int idx);
 int64_t getIGATimerTicks(unsigned int idx);
 double getIGATimerCounts(unsigned int idx);

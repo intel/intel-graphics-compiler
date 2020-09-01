@@ -868,25 +868,25 @@ namespace iga {
             "Message descriptor field <desc> can be a 32-bit immediate, imm32, or a 32-bit scalar register, <reg32a>. GEN restricts that the 32-bit scalar register <reg32a> must be the leading dword of the address register.  It should be in the form of a0.0.\n"
             "\n"
             "\n"
-            "<src0> is a 256-bit aligned GRF register. It serves as the leading GRF register of the request.\n"
+            "<src0> is a GRF register. It serves as the leading GRF register of the request.\n"
             "\n"
             "\n"
-            "<src1> is a 256-bit aligned GRF register or a null register. It serves as the leading GRF register for the second block of the request when it is not a null register. It is required that the second block of GRFs does not overlap with the first block. If it is a null register the Extended Message Length must be 0. The sum of Message Length and Extended Message Length must not be greater than 15 on SKL.\n"
+            "<src1> is a GRF register or a null register. It serves as the leading GRF register for the second block of the request when it is not a null register. It is required that the second block of GRFs does not overlap with the first block. If it is a null register the Extended Message Length must be 0. The sum of Message Length and Extended Message Length must not be greater than 15 on SKL.\n"
             "\n"
             "\n"
             "<dest> serves for two purposes: to provide the leading GRF register location for the response message if present, and to provide parameters to form the channel-enable sideband signals.\n"
             "\n"
             "\n"
-            "<dest> signals whether there is a response to the message request.  It can be either a null register or a GRF register.\n"
+            "<dest> signals whether there is a response to the message request. It can be either a null register or a GRF register.\n"
             "\n"
             "\n"
-            "If <dest> is null, there is no response to the request.  Meanwhile, the Response Length field in <desc> must be 0.  Certain types of message requests, such as memory write (store) through the Data Port, do not want response data from the function unit.  If so, the posted destination operand can be null.\n"
+            "If <dest> is null, there is no response to the request. Meanwhile, the Response Length field in <desc> must be 0. Certain types of message requests, such as memory write (store) through the Data Port, do not want response data from the function unit. If so, the posted destination operand can be null.\n"
             "\n"
             "\n"
-            "If <dest> is a GRF register, the register number is forwarded to the shared function. In this case, the target function unit must send one or more response message phases back to the requesting thread.  The number of response message phases must match the Response Length field in <desc>, which of course cannot be zero. For some cases, it could be an empty return message.  An empty return message is defined as a single phase message with all channel enables turned off.\n"
+            "If <dest> is a GRF register, the register number is forwarded to the shared function. In this case, the target function unit must send one or more response message phases back to the requesting thread. The number of response message phases must match the Response Length field in <desc>, which of course cannot be zero. For some cases, it could be an empty return message. An empty return message is defined as a single phase message with all channel enables turned off.\n"
             "\n"
             "\n"
-            "The 16-bit channel enables of the message sideband are formed based on the WrEn.  Interpretation of the channel-enable sideband signals is subject to the target external function.  In general for a \'send\' instruction with return messages, they are used as the destination dword write mask for the GRF registers starting at <dest>. For a message that has multiple return phases, the same set of channel enable signals applies to all the return phases.\n"
+            "The 16-bit channel enables of the message sideband are formed based on the WrEn. Interpretation of the channel-enable sideband signals is subject to the target external function. In general for a \'send\' instruction with return messages, they are used as the destination dword write mask for the GRF registers starting at <dest>. For a message that has multiple return phases, the same set of channel enable signals applies to all the return phases.\n"
             "\n"
             "\n"
             "Send a message stored in GRF locations starting at <src0> followed by <src1> to a shared function identified by <ex_desc> along with control from <desc> and <ex_desc> with a GRF writeback location at <dest>.\n"
@@ -937,7 +937,7 @@ namespace iga {
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
         /* Op::80 */ {Op::SHR, Platform::GEN12P1, "shr", 0x68, "Shift Right",
-            "Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count.         src0 and dst can have different types and can be signed or unsigned.         Note: For word and DWord operands, the accumulators have 33 bits.         Note: For unsigned src0 types, shr and asr produce the same result.\n"
+            "Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count. Note: For word and DWord operands, the accumulators have 33 bits. Note: For unsigned src0 types, shr and asr produce the same result.\n"
             "\n"
             "\n"
             "In QWord mode, the shift count is taken from the low six bits of src1 regardless of the src1 type and treated as an unsigned integer in the range 0 to 63. Otherwise the shift count is taken from the low five bits of src1 regardless of the src1 type and treated as an unsigned integer in the range 0 to 31. The operation uses QWord mode if src0 or dst has the Q or UQ type but not if src1 is the only operand with the Q or UQ type.\n"
@@ -951,18 +951,22 @@ namespace iga {
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
         /* Op::81 */ {Op::INVALID, Platform::GEN12P1, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::82 */ {Op::SUBB, Platform::GEN12P1, "subb", 0x4f, "Subtraction with Borrow",
+        /* Op::82 */ {Op::INVALID, Platform::GEN12P1, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::83 */ {Op::SUBB, Platform::GEN12P1, "subb", 0x4f, "Subtraction with Borrow",
             "The subb instruction performs component-wise subtraction of src0 and src1 and stores the results in dst, it also stores the borrow into acc.         If the operation produces a borrow (src0 < src1), write 0x00000001 to acc, else write 0x00000000 to acc.\n"
             "\n"
             "\n"
-            "Format:         [(pred)] subb[.cmod] (exec_size) dst src0 src1\n",
+            "Format:         [(pred)] subb[.cmod] (exec_size) dst src0 src1\n"
+            "\n"
+            "\n"
+            "The accumulator is an implicit destination and thus cannot be an explicit destination operand.\n",
             OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
         },
-        /* Op::83 */ {Op::SYNC, Platform::GEN12P1, "sync", 0x1, "Synchronize",
+        /* Op::84 */ {Op::SYNC, Platform::GEN12P1, "sync", 0x1, "Synchronize",
             "Wait on Dependency performs various operations related to synchronization such as waiting on registers (barriers/debug registers) or for software scoreboarding (SWSB), which is used to specify pipeline hazards to the EU.\n"
             "\n"
             "\n"
@@ -999,8 +1003,8 @@ namespace iga {
             },
             OpSpec::Attr::NONE
         },
-        /* Op::84 */ {Op::INVALID, Platform::GEN12P1, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::85 */ {Op::WHILE, Platform::GEN12P1, "while", 0x27, "While",
+        /* Op::85 */ {Op::INVALID, Platform::GEN12P1, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        /* Op::86 */ {Op::WHILE, Platform::GEN12P1, "while", 0x27, "While",
             "The while instruction marks the end of a do-while block. The instruction first evaluates the loop termination condition for each channel based on the current channel enables and the predication flags specified in the instruction. If any channel has not terminated, a branch is taken to a destination address specified in the instruction, and the loop continues for those channels. Otherwise, execution continues to the next instruction.ld point to the first instruction with the do label of the do-while block of code. It should be a negative number for the backward referencing.                  If SPF is ON, none of the PcIP are updated.\n"
             "\n"
             "\n"
@@ -1008,7 +1012,7 @@ namespace iga {
             OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::86 */ {Op::XOR, Platform::GEN12P1, "xor", 0x67, "Logic Xor",
+        /* Op::87 */ {Op::XOR, Platform::GEN12P1, "xor", 0x67, "Logic Xor",
             "The xor instruction performs component-wise logic XOR operation between src0 and src1 and stores the results in dst.                  This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
             "\n"
             "\n"

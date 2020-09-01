@@ -111,6 +111,9 @@ static inline std::tuple<uint32_t, uint32_t>
     uint32_t shl = 0, shr = 0; // by default no scaling
 
     switch (type) {
+
+
+
     // 1-byte types
     case Type::UB:
     case Type::B:
