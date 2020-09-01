@@ -2149,6 +2149,12 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             buffer = program->simd32.m_gtpinBuffer;
             size = program->simd32.m_gtpinBufferSize;
         }
+        // CM kernels are dispatched with CompiledSIMDSize == 1
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        {
+            buffer = program->simd1.m_gtpinBuffer;
+            size = program->simd1.m_gtpinBufferSize;
+        }
 
         if (size > 0)
         {

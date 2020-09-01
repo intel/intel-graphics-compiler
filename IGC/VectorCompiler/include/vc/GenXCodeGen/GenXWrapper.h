@@ -108,10 +108,14 @@ struct KernelInfo {
   ZEBinaryInfo ZEBinInfo;
 };
 
+struct GTPinInfo {
+  std::vector<char> GTPinBuffer;
+};
 
 struct CompileInfo {
   KernelInfo KernelInfo;
   FINALIZER_INFO JitInfo;
+  GTPinInfo GtpinInfo;
   std::vector<char> GenBinary;
 };
 

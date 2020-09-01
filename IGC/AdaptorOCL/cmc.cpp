@@ -368,6 +368,7 @@ static void generateSymbols(const vc::ocl::KernelInfo& info,
 }
 
 static void generatePatchTokens_v2(const vc::ocl::KernelInfo& info,
+                                   const vc::ocl::GTPinInfo* ginfo,
                                    CMKernel& kernel)
 {
     llvm::transform(
@@ -491,11 +492,21 @@ static void generatePatchTokens_v2(const vc::ocl::KernelInfo& info,
 
     generateSymbols(info, kernelProgram);
 
+    // GTPin
+    if (ginfo && ginfo->GTPinBuffer.size() > 0) {
+        size_t bufSize = ginfo->GTPinBuffer.size();
+        void *gtpinBuffer = IGC::aligned_malloc(bufSize, 16);
+        memcpy_s(gtpinBuffer, bufSize, ginfo->GTPinBuffer.data(), bufSize);
+
+        kernelProgram.m_gtpinBufferSize = bufSize;
+        kernelProgram.m_gtpinBuffer = gtpinBuffer;
+    }
 }
 
 // Combine vc compiler metadata with jitter info.
 static void populateKernelInfo_v2(const vc::ocl::KernelInfo& info,
                                   const FINALIZER_INFO& JITInfo,
+                                  const vc::ocl::GTPinInfo* GtpinInfo,
                                   llvm::ArrayRef<uint8_t> genBin,
                                   CMKernel& kernel)
 {
@@ -558,6 +569,10 @@ static void populateKernelInfo_v2(const vc::ocl::KernelInfo& info,
     kernel.getProgramOutput().m_unpaddedProgramSize = size;
     kernel.getProgramOutput().m_InstructionCount = JITInfo.numAsmCount;
 
+    if (JITInfo.numBytesScratchGtpin > 0) {
+        kernel.getProgramOutput().m_scratchSpaceUsedByGtpin = JITInfo.numBytesScratchGtpin;
+        kInfo.m_executionEnivronment.PerThreadScratchSpace += JITInfo.numBytesScratchGtpin;
+    }
 
     // Iterate kernel arguments (This should stay in sync with cmc on resource type.)
     int numUAVs = 0;
@@ -602,7 +617,7 @@ static void populateKernelInfo_v2(const vc::ocl::KernelInfo& info,
     kernel.RecomputeBTLayout(numUAVs, numResources);
 
     // Generate OCL patch tokens.
-    generatePatchTokens_v2(info, kernel);
+    generatePatchTokens_v2(info, GtpinInfo, kernel);
 }
 
 void vc::createBinary(
@@ -616,6 +631,7 @@ void vc::createBinary(
         llvm::ArrayRef<uint8_t> GenBin{
             reinterpret_cast<const uint8_t*>(Info.GenBinary.data()),
             Info.GenBinary.size()};
-        populateKernelInfo_v2(Info.KernelInfo, Info.JitInfo, GenBin, *K);
+        populateKernelInfo_v2(Info.KernelInfo, Info.JitInfo, &(Info.GtpinInfo),
+                              GenBin, *K);
     }
 }

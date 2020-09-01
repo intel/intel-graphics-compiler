@@ -283,8 +283,10 @@ GenXOCLRuntimeInfo::KernelArgInfo::KernelArgInfo(const Argument &Arg,
 //===----------------------------------------------------------------------===//
 GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(KernelInfo &&KI,
                                                    const FINALIZER_INFO &JI,
+                                                   const GTPinInfo &GI,
                                                    std::vector<char> GenBinIn)
     : CompilerInfo(std::move(KI)), JitterInfo(JI),
+      GtpinInfo(GI),
       GenBinary{std::move(GenBinIn)} {
 }
 

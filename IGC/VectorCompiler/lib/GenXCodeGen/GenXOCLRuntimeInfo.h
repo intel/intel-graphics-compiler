@@ -216,18 +216,28 @@ public:
     const TableInfo &getSymbolTable() const { return SymbolTable; }
   };
 
+  class GTPinInfo {
+    std::vector<char> gtpinBuffer;
+  public:
+    GTPinInfo(std::vector<char>&& buf): gtpinBuffer(std::move(buf)) {}
+    unsigned getGTPinBufferSize() const { return gtpinBuffer.size(); }
+    const std::vector<char> &getGTPinBuffer() const { return gtpinBuffer; }
+  };
 
   class CompiledKernel {
     KernelInfo CompilerInfo;
     FINALIZER_INFO JitterInfo;
+    GTPinInfo GtpinInfo;
     std::vector<char> GenBinary;
 
   public:
     CompiledKernel(KernelInfo &&KI, const FINALIZER_INFO &JI,
+                   const GTPinInfo &GI,
                    std::vector<char> GenBin);
 
     const KernelInfo &getKernelInfo() const { return CompilerInfo; }
     const FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }
+    const GTPinInfo &getGTPinInfo() const { return GtpinInfo; }
     const std::vector<char> &getGenBinary() const { return GenBinary; }
   };
 

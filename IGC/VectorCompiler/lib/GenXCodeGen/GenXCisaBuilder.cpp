@@ -5836,6 +5836,7 @@ void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
                                        const GenXSubtarget &ST,
                                        const GenXBackendConfig &BC) {
   using KernelInfo = GenXOCLRuntimeInfo::KernelInfo;
+  using GTPinInfo = GenXOCLRuntimeInfo::GTPinInfo;
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
   using TableInfo = GenXOCLRuntimeInfo::TableInfo;
   for (auto *FG : FGA) {
@@ -5860,8 +5861,14 @@ void GenXFinalizer::fillOCLRuntimeInfo(GenXOCLRuntimeInfo &OCLInfo,
     Info.getSymbolTable() = STBuilder.emitLegacySymbolTable();
     Info.ZEBinInfo.Symbols = std::move(STBuilder).emitZESymbolTable();
 
-    // Save it all here.
-    CompiledKernel FullInfo{std::move(Info), *JitInfo,
+    void *GTPinBuffer = nullptr;
+    unsigned GTPinBufferSize = 0;
+    BuiltKernel->GetGTPinBuffer(GTPinBuffer, GTPinBufferSize);
+
+    auto *GTPinBytes = static_cast<char *>(GTPinBuffer);
+    GTPinInfo gtpin{{GTPinBytes, GTPinBytes + GTPinBufferSize}};
+
+    CompiledKernel FullInfo{std::move(Info), *JitInfo, std::move(gtpin),
                             std::move(GenBinary).emitConsolidatedData()};
     OCLInfo.saveCompiledKernel(std::move(FullInfo));
   }

@@ -79,6 +79,17 @@ def no_vector_decomposition_old : Flag<["-"], "no_vector_decomposition">,
 def Xfinalizer : Separate<["-"], "Xfinalizer">,
   HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
 
+def gtpin_rera : Flag<["-"], "ze-gtpin-rera">,
+  HelpText<"Enables vISA re_ra interface for gtpin structure generation">;
+
+def gtpin_grf_info : Flag<["-"], "ze-gtpin-grf-info">,
+  HelpText<"Enable vISA grf-info interface for gtpin structure generation">;
+
+def gtpin_scratch_area_size : Separate<["-"], "ze-gtpin-scratch-area-size">,
+  HelpText<"Set gtpin scratch area size">;
+
+def gtpin_scratch_area_size_eq : Joined<["-"], "ze-gtpin-scratch-area-size=">,
+  Alias<gtpin_scratch_area_size>, HelpText<"Alias for -ze-gtpin-scratch-area-size">;
 }
 // }} Api options
 

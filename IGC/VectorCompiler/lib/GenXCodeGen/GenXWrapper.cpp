@@ -287,6 +287,10 @@ static void convertOCLKernelInfo(vc::ocl::KernelInfo &Converted,
   Converted.ZEBinInfo.Symbols.Local = Info.ZEBinInfo.Symbols.Local;
 }
 
+static void convertOCLGTPinInfo(vc::ocl::GTPinInfo &Converted,
+                                const GenXOCLRuntimeInfo::GTPinInfo &Info) {
+  Converted.GTPinBuffer = Info.getGTPinBuffer();
+}
 
 static std::vector<vc::ocl::CompileInfo> convertInternalOCLInfo(
     const std::vector<GenXOCLRuntimeInfo::CompiledKernel> &CompiledKernels) {
@@ -295,6 +299,7 @@ static std::vector<vc::ocl::CompileInfo> convertInternalOCLInfo(
     auto &Conv = Converted[i];
     auto &Orig = CompiledKernels[i];
     convertOCLKernelInfo(Conv.KernelInfo, Orig.getKernelInfo());
+    convertOCLGTPinInfo(Conv.GtpinInfo, Orig.getGTPinInfo());
     Conv.JitInfo = Orig.getJitterInfo();
     Conv.GenBinary = Orig.getGenBinary();
   }
@@ -765,6 +770,23 @@ composeLLVMArgs(const opt::InputArgList &ApiArgs,
         "-finalizer-opts='-dumpcommonisa -dumpvisa -output -binary'");
   }
 
+  if (opt::Arg *GTPinReRa = ApiArgs.getLastArg(vc::options::OPT_gtpin_rera)) {
+    UpdatedArgs.AddSeparateArg(GTPinReRa, LLVMOpt,
+                               "-finalizer-opts='-GTPinReRA'");
+  }
+  if (opt::Arg *GTPinFreeGRFInfo =
+          ApiArgs.getLastArg(vc::options::OPT_gtpin_grf_info)) {
+    UpdatedArgs.AddSeparateArg(GTPinFreeGRFInfo, LLVMOpt,
+                               "-finalizer-opts='-getfreegrfinfo -rerapostschedule'");
+  }
+  if (opt::Arg *GTPinScratchAreaSize =
+          ApiArgs.getLastArg(vc::options::OPT_gtpin_scratch_area_size)) {
+    StringRef ScratchRef =
+        Saver.save(GTPinScratchAreaSize->getAsString(ApiArgs));
+    auto s = "-finalizer-opts='-GTPinScratchAreaSize " +
+             std::string(GTPinScratchAreaSize->getValue()) + "'";
+    UpdatedArgs.AddSeparateArg(GTPinScratchAreaSize, LLVMOpt, s);
+  }
 
   return UpdatedArgs;
 }
