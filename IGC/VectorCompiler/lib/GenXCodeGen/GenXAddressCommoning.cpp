@@ -220,6 +220,9 @@ private:
   bool vectorizeAddrsFromOneVector(ArrayRef<Instruction *> Addrs);
   DominatorTree *getDominatorTree();
   bool isValueInCurrentFunc(Value *V);
+  unsigned getNumberElementsInAddrReg() const {
+    return 8;
+  }
 };
 
 } // end anonymous namespace
@@ -918,9 +921,9 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
   for (unsigned Idx = 0, Num = 1, End = Extracts.size();
       Idx < End - 2; Idx += Num) {
     // See how many extracts we can take in one go that have evenly spaced
-    // offsets, max 8.
+    // offsets, max is the number of elements in address register.
     int Diff = Extracts[Idx + 1].Offset - Extracts[Idx].Offset;
-    for (Num = 2; Num != 8 && Num != End - Idx; ++Num)
+    for (Num = 2; Num != getNumberElementsInAddrReg() && Num != End - Idx; ++Num)
       if (Extracts[Idx + Num].Offset - Extracts[Idx + Num - 1].Offset != Diff)
         break;
     if (Num == 1)
