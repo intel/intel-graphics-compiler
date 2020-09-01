@@ -9543,9 +9543,10 @@ void EmitPass::emitVLAStackAlloca(llvm::GenIntrinsicInst* intrinsic)
 
 void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 {
-    CVariable* pSP = m_currShader->GetSP();
+    // Static private mem access is done through the FP
+    CVariable* pFP = m_currShader->GetFP();
     CVariable* pOffset = m_currShader->GetSymbol(GII->getOperand(0));
-    emitAddSP(m_destination, pSP, pOffset);
+    emitAddSP(m_destination, pFP, pOffset);
 }
 
 void EmitPass::emitCall(llvm::CallInst* inst)

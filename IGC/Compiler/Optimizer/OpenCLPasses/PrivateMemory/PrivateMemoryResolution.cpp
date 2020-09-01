@@ -884,9 +884,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             else
             {
                 Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
-                // SP will be adjusted to include all the alloca space, therefore offset need to be adjusted back
-                // FIXME: Considering VLA
-                int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI) - totalPrivateMemPerWI;
+
+                int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
                 unsigned int bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
 
                 Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
