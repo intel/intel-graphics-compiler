@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/Function.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -1347,7 +1348,7 @@ uint CShader::GetNbElementAndMask(llvm::Value* value, uint32_t& mask)
             nbElement = numLanes(m_SIMDSize);
         }
         break;
-    case llvm::Type::VectorTyID:
+    case IGCLLVM::VectorTyID:
     {
         uint nElem = GetNbVectorElementAndMask(value, mask);
         nbElement = GetIsUniform(value) ? nElem : (nElem * numLanes(m_SIMDSize));
@@ -1773,7 +1774,7 @@ VISA_Type IGC::GetType(llvm::Type* type, CodeGenContext* pContext)
             break;
         }
         break;
-    case llvm::Type::VectorTyID:
+    case IGCLLVM::VectorTyID:
         return GetType(type->getContainedType(0), pContext);
     case llvm::Type::PointerTyID:
     {
@@ -1811,7 +1812,8 @@ uint32_t CShader::GetNumElts(llvm::Type* type, bool isUniform)
     if (type->isVectorTy())
     {
         IGC_ASSERT(type->getVectorElementType()->isIntegerTy() || type->getVectorElementType()->isFloatingPointTy());
-        numElts *= (uint16_t)type->getVectorNumElements();
+        auto VT = cast<VectorType>(type);
+        numElts *= (uint16_t)VT->getNumElements();
     }
     return numElts;
 }
