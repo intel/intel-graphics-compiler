@@ -239,9 +239,7 @@ namespace IGC
 
     llvm::LoadInst* cloneLoad(llvm::LoadInst* Orig, llvm::Value* Ptr)
     {
-        llvm::LoadInst* LI = new llvm::LoadInst(
-            cast<PointerType>(Ptr->getType())->getElementType(),
-            Ptr, "", Orig);
+        llvm::LoadInst* LI = new llvm::LoadInst(Ptr, "", Orig);
         LI->setVolatile(Orig->isVolatile());
         LI->setAlignment(IGCLLVM::getAlign(Orig->getAlignment()));
         if (LI->isAtomic())
@@ -1537,7 +1535,7 @@ namespace IGC
                 ScalarizeAggregateMembers(builder, builder.CreateExtractValue(val, i), instList);
             }
             break;
-        case IGCLLVM::VectorTyID:
+        case llvm::Type::VectorTyID:
             num = (unsigned)cast<VectorType>(type)->getNumElements();
             for (unsigned i = 0; i < num; i++)
             {
@@ -1577,7 +1575,7 @@ namespace IGC
                 indices.pop_back();
             }
             break;
-        case IGCLLVM::VectorTyID:
+        case llvm::Type::VectorTyID:
             num = (unsigned)cast<VectorType>(type)->getNumElements();
             for (unsigned i = 0; i < num; i++)
             {

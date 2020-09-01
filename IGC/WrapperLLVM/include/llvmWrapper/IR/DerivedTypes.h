@@ -32,22 +32,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGCLLVM
 {
 
- #if LLVM_VERSION_MAJOR <= 10
-     using FixedVectorType = llvm::VectorType;
-     const uint32_t VectorTyID = llvm::Type::VectorTyID;
- #else
-     using FixedVectorType = llvm::FixedVectorType;
-     const uint32_t VectorTyID = llvm::Type::FixedVectorTyID;
- #endif
-
-    inline uint32_t GetVectorTypeBitWidth(llvm::Type* pType)
-    {
 #if LLVM_VERSION_MAJOR <= 10
-        return llvm::cast<llvm::VectorType>(pType)->getBitWidth();
+    using FixedVectorType = llvm::VectorType;
 #else
-        return pType->getPrimitiveSizeInBits().getFixedSize();
+    using FixedVectorType = llvm::FixedVectorType;
 #endif
-    }
+
 }
 
 #endif

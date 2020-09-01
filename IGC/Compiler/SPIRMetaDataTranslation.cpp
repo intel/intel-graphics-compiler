@@ -135,7 +135,7 @@ bool SPIRMetaDataTranslation::isDoubleMathFunctionUsed(Module& M)
             if (auto CI = dyn_cast<CallInst>(&*i)) {
 
                 if (CI->getType()->isDoubleTy() ||
-                    (CI->getType()->isVectorTy() && CI->getType()->getContainedType(0)->isDoubleTy()))
+                    (CI->getType()->isVectorTy() && CI->getType()->getVectorElementType()->isDoubleTy()))
                 {
                     StringRef functionName = CI->getCalledFunction()->getName();
 
