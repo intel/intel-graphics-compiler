@@ -120,6 +120,15 @@ iga::InstOptSet BinaryEncodingIGA::getIGAInstOptSet(G4_INST* inst) const
             options.add(iga::InstOpt::SERIALIZE);
         }
     }
+
+    // Force instruction to be compacted if InstOpt::COMPACTED is given
+    // even if autoCompact is not given to IGA
+    if (inst->isCompactedInst())
+    {
+        options.add(iga::InstOpt::COMPACTED);
+    }
+
+    // Force instruction to be nocompacted
     if (inst->isNoCompactedInst())
     {
         options.add(iga::InstOpt::NOCOMPACT);
