@@ -719,11 +719,13 @@ void GenXCoalescing::recordCallCandidates(FunctionGroup *FG)
  * For each struct element, this adds a coalesce candidate for each unique LR
  * used as a call arg or return value.
  */
-namespace { struct CallArg {
+namespace {
+struct CallArg {
   Use *U;
   LiveRange *LR;
   CallArg(Use *U, LiveRange *LR) : U(U), LR(LR) {}
-}; }
+};
+} // namespace
 void GenXCoalescing::recordCallArgCandidates(Value *Dest, unsigned ArgNum,
     ArrayRef<Instruction *> Insts)
 {
@@ -1612,7 +1614,7 @@ void GenXCoalescing::coalesceGlobalLoads(FunctionGroup *FG) {
       continue;
 
     // Collect all loads.
-    std::set<Instruction *> LoadsInGroup;
+    SetVector<Instruction *> LoadsInGroup;
     for (auto UI : GV.users()) {
       if (auto LI = dyn_cast<LoadInst>(UI)) {
         IGC_ASSERT(LI->getPointerOperand() == &GV);
