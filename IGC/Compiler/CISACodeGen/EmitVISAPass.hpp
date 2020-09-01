@@ -40,6 +40,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 
+#include <functional>
+
 namespace llvm
 {
     class GenIntrinsicInst;
