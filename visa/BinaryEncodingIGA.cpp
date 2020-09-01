@@ -612,7 +612,6 @@ void BinaryEncodingIGA::Encode()
         memcpy_s(m_kernelBuffer, m_kernelBufferSize, encoder.getBinary(), m_kernelBufferSize);
     }
 
-
     // encodedPC is available after encoding
     for (auto&& inst : encodedInsts)
     {

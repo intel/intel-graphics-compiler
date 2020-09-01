@@ -41,7 +41,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/SIPKernels/Gen9SIPDebug.h"
 #include "common/SIPKernels/Gen9SIPDebugBindless.h"
 #include "common/SIPKernels/Gen9GLVSIPCSR.h"
-#include "common/SIPKernels/Gen11HPSIPCSR.h"
 #include "common/SIPKernels/Gen11SIPCSR.h"
 #include "common/SIPKernels/Gen11SIPCSRDebug.h"
 #include "common/SIPKernels/Gen11LKFSIPCSR.h"
@@ -193,8 +192,6 @@ void populateSIPKernelInfo(std::map< unsigned char, std::pair<void*, unsigned in
 
     SIPKernelInfo[GEN11_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen11SIPCSRDebug, (int)sizeof(Gen11SIPCSRDebug));
 
-    SIPKernelInfo[GEN11_HP_SIP_CSR] = std::make_pair((void*)&Gen11HPSIPCSR, (int)sizeof(Gen11HPSIPCSR));
-
     SIPKernelInfo[GEN11_LKF_SIP_CSR] = std::make_pair((void*)&Gen11LKFSIPCSR, (int)sizeof(Gen11LKFSIPCSR));
 
     SIPKernelInfo[GEN12_LP_CSR] = std::make_pair((void*)&Gen12LPSIPCSR, (int)sizeof(Gen12LPSIPCSR));
@@ -295,10 +292,6 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             if (platform.getPlatformInfo().eProductFamily == IGFX_ICELAKE_LP)
             {
                 SIPIndex = GEN11_SIP_CSR;
-            }
-            if (platform.getPlatformInfo().eProductFamily == IGFX_ICELAKE)
-            {
-                SIPIndex = GEN11_HP_SIP_CSR;
             }
             if ((platform.getPlatformInfo().eProductFamily == IGFX_LAKEFIELD)
              || (platform.getPlatformInfo().eProductFamily == IGFX_ELKHARTLAKE)
