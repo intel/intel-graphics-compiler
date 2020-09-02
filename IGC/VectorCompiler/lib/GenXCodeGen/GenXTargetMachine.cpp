@@ -256,12 +256,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(PassConfig);
   const GenXBackendConfig &BackendConfig = PassConfig->getBackendConfig();
 
-  // Wrapper structure for collecting information related to OCL runtime.
-  // Can be used by external caller by adding extractor pass in the end
-  // of compilation pipeline.
-  if (Subtarget.isOCLRuntime())
-    PM.add(new GenXOCLRuntimeInfo());
-
   // Install GenX-specific TargetTransformInfo for passes such as
   // LowerAggrCopies and InfoAddressSpace
   PM.add(createTargetTransformInfoWrapperPass(getTargetIRAnalysis()));
@@ -484,6 +478,15 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXCisaBuilder.cpp
   PM.add(createGenXCisaBuilderPass());
   PM.add(createGenXFinalizerPass(o));
+
+  // Analysis for collecting information related to OCL runtime. Can
+  // be used by external caller by adding extractor pass in the end of
+  // compilation pipeline.
+  // Explicit construction can be omitted because adding of extractor
+  // pass will create runtime info analysis. Leaving it exlicit for
+  // clarity.
+  if (Subtarget.isOCLRuntime())
+    PM.add(new GenXOCLRuntimeInfo());
 
   return false;
 }

@@ -57,7 +57,7 @@ template <typename Ty = llvm::Value> Ty *getValueAsMetadata(Metadata *M) {
 
 /// KernelMetadata : class to parse kernel metadata
 class KernelMetadata {
-  Function *F = nullptr;
+  const Function *F = nullptr;
   bool IsKernel = false;
   StringRef Name;
   unsigned SLMSize = 0;
@@ -83,7 +83,7 @@ public:
    * Enter:   F = Function that purports to be a CM kernel
    *
    */
-  KernelMetadata(Function *F) {
+  KernelMetadata(const Function *F) {
     if (!genx::isKernel(F))
       return;
     NamedMDNode *Named =

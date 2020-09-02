@@ -46,10 +46,7 @@ class GenXSubtarget;
 
 void initializeGenXOCLRuntimeInfoPass(PassRegistry &PR);
 
-// This is an immutable pass to allow it creation once in the beginning of
-// pipeline since creating it before actual place of need (cisa builder)
-// will invalidate every other analyses required by builder.
-class GenXOCLRuntimeInfo : public ImmutablePass {
+class GenXOCLRuntimeInfo : public ModulePass {
 public:
   class KernelArgInfo {
   public:
@@ -155,7 +152,7 @@ public:
     TableInfo SymbolTable;
 
   private:
-    void setInstructionUsageProperties(FunctionGroup &FG,
+    void setInstructionUsageProperties(const FunctionGroup &FG,
                                        const GenXBackendConfig &BC);
     void setMetadataProperties(genx::KernelMetadata &KM,
                                const GenXSubtarget &ST);
@@ -170,7 +167,7 @@ public:
 
   public:
     // Creates kernel info for given function group.
-    KernelInfo(FunctionGroup &FG, const GenXSubtarget &ST,
+    KernelInfo(const FunctionGroup &FG, const GenXSubtarget &ST,
                const GenXBackendConfig &BC);
 
     const std::string &getName() const { return Name; }
@@ -254,14 +251,16 @@ private:
 public:
   static char ID;
 
-  GenXOCLRuntimeInfo() : ImmutablePass(ID) {
+  GenXOCLRuntimeInfo() : ModulePass(ID) {
     initializeGenXOCLRuntimeInfoPass(*PassRegistry::getPassRegistry());
   }
 
-  // Save kernel info and jit info for given function in this pass.
-  void saveCompiledKernel(CompiledKernel &&KD) {
-    Kernels.push_back(std::move(KD));
-  }
+  StringRef getPassName() const override { return "GenX OCL Runtime Info"; }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnModule(Module &M) override;
+
+  void releaseMemory() override { Kernels.clear(); }
 
   // Move compiled kernels out of this pass.
   KernelStorageTy stealCompiledKernels() { return std::move(Kernels); }
