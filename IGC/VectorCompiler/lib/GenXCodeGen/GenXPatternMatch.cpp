@@ -62,7 +62,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEBUG_TYPE "GENX_PATTERN_MATCH"
 #include "GenX.h"
 #include "GenXConstants.h"
-#include "GenXLowering.h"
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXSubtarget.h"
@@ -80,7 +79,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
@@ -180,8 +178,6 @@ private:
   bool simplifyNullDst(CallInst *Inst);
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
-
-  bool decomposeSdiv(Function *F);
 };
 
 } // namespace
@@ -225,8 +221,6 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
   Changed |= simplifySelect(&F);
   // Break big predicate variables and run after min/max pattern match.
   Changed |= decomposeSelect(&F);
-
-  Changed |= decomposeSdiv(&F);
 
   return Changed;
 }
@@ -2138,190 +2132,6 @@ bool GenXPatternMatch::simplifyVolatileGlobals(Function *F) {
     }
   }
   return Changed;
-}
-
-// a helper routine for decomposeSdivPow2
-// return a new ConstantVector with the same type as input vector, that consists
-// of log2 of original vector;
-// input vector consists of only positive integer
-static Constant *getLog2Vector(const ConstantDataVector &C) {
-  VectorType *Ty = C.getType();
-  SmallVector<Constant *, 4> Elts;
-  for (int V = 0; V != C.getNumElements(); ++V) {
-    ConstantInt *Elt = dyn_cast<ConstantInt>(C.getElementAsConstant(V));
-    Constant *Log2 =
-        ConstantInt::get(Ty->getScalarType(), Elt->getValue().logBase2());
-    Elts.push_back(Log2);
-  }
-  return ConstantVector::get(Elts);
-}
-
-// optimization path if second operand of sdiv is power of 2
-// input:
-// Sdiv - only sdiv binary operator, second operand of which is ConstantVector
-// Optimization for positive y:
-// x / y = ashr( x + lshr( ashr(x, 31), 32 - log2(y)), log2(y))
-static void decomposeSdivPow2(Instruction &Sdiv,
-                              llvm::SmallVectorImpl<Instruction *> &ToErase) {
-  const llvm::Twine Name = "genxSdivOpt";
-  Value *Op0 = Sdiv.getOperand(0);
-  ConstantDataVector *Op1 = dyn_cast<ConstantDataVector>(Sdiv.getOperand(1));
-  IGC_ASSERT(Op1 != nullptr && "Error: Sdiv operand not const");
-  IGC_ASSERT(!PatternMatch::match(Op1, PatternMatch::m_Negative()) &&
-             "Error: Sdiv operand non-positive");
-  IGC_ASSERT(Sdiv.getType()->isVectorTy() && "Error: Sdiv operand not vector");
-  IGC_ASSERT(Sdiv.getType()->getVectorElementType()->isIntegerTy() &&
-             "Error: Sdiv operand not vector of int");
-  IGC_ASSERT(Op1->getType()->getVectorElementType()->getIntegerBitWidth() ==
-                 32 &&
-             "Error: Sdiv vector element width not 32, may be wrong");
-  IGC_ASSERT(PatternMatch::match(Op1, PatternMatch::m_Power2()) &&
-             "Error: Sdiv operand not power of 2");
-
-  IRBuilder<> Builder(&Sdiv);
-  Builder.SetCurrentDebugLocation(Sdiv.getDebugLoc());
-  unsigned OperandWidth = Op1->getType()->getVectorNumElements();
-  Constant *VecSignBit = ConstantDataVector::getSplat(
-      OperandWidth,
-      ConstantInt::get(
-          Op1->getType()->getVectorElementType(),
-          Op0->getType()->getVectorElementType()->getIntegerBitWidth() - 1));
-  IGC_ASSERT(VecSignBit != nullptr && "Creating ConstantVector error");
-  Constant *VecBitWidth = ConstantVector::getSplat(
-      OperandWidth,
-      ConstantInt::get(
-          Op1->getType()->getVectorElementType(),
-          Op0->getType()->getVectorElementType()->getIntegerBitWidth()));
-  IGC_ASSERT(VecBitWidth != nullptr && "Creating ConstantVector error");
-  Constant *Log2Op1 = getLog2Vector(*Op1);
-  IGC_ASSERT(Log2Op1 != nullptr && "getLog2Vector return null");
-
-  Value *ShiftSize = Builder.CreateSub(VecBitWidth, Log2Op1, Name);
-  // if op0 is negative, Signdetect all ones, else all zeros
-  Value *SignDetect = Builder.CreateAShr(Op0, VecSignBit, Name);
-  Value *Addition = Builder.CreateLShr(SignDetect, ShiftSize, Name);
-  Value *NewRhs = Builder.CreateAdd(Op0, Addition, Name);
-  Value *Answer = Builder.CreateAShr(NewRhs, Log2Op1, Name);
-  Sdiv.replaceAllUsesWith(Answer);
-  ToErase.push_back(&Sdiv);
-}
-
-// optimization path if second operand of sdiv is not power of 2
-// Warning: earlier must check that machine support int64 type
-// input:
-// Sdiv - only sdiv binary operator, second operand of which is ConstantVector
-// Optimization for positive y and positive x:
-// x / y  = (x *(0xFFFFFFFF / y + 1))>>32
-// if positive y and negative x:
-// x / y  = (x * (0xFFFFFFFF / y + 1))>>32 + 1
-// 0xFFFFFFFF =  2^32 -1
-// The optimization can be found in Hackers Delight, chapter 10
-static void
-decomposeSdivNotPow2(Instruction &Sdiv,
-                     llvm::SmallVectorImpl<Instruction *> &ToErase) {
-  const llvm::Twine Name = "genxSdivOpt";
-
-  Value *Op0 = Sdiv.getOperand(0);
-  ConstantDataVector *Op1 = dyn_cast<ConstantDataVector>(Sdiv.getOperand(1));
-  IGC_ASSERT(Op1 != nullptr && "Error: Sdiv operand not const");
-  IGC_ASSERT(Sdiv.getType()->isVectorTy() && "Error: Sdiv operand not vector");
-  IGC_ASSERT(Sdiv.getType()->getVectorElementType()->isIntegerTy() &&
-             "Error: Sdiv operand not vector of int");
-  IGC_ASSERT(Op1->getType()->getVectorElementType()->getIntegerBitWidth() ==
-                 32 &&
-             "Error: Sdiv vector element width not 32, optimization error");
-  IGC_ASSERT(!PatternMatch::match(Op1, PatternMatch::m_Negative()) &&
-             "Error: Sdiv operand non-positive");
-  IGC_ASSERT(!PatternMatch::match(Op1, PatternMatch::m_Power2()) &&
-             "Error: Sdiv operand wrong optimization path");
-  IRBuilder<> Builder(&Sdiv);
-  Builder.SetCurrentDebugLocation(Sdiv.getDebugLoc());
-  unsigned OperandWidth = Op1->getType()->getVectorNumElements();
-
-  VectorType *Vec64ty = VectorType::get(Builder.getInt64Ty(), OperandWidth);
-  VectorType *Vec32ty = VectorType::get(Builder.getInt32Ty(), OperandWidth);
-  Value *Op0Wide = Builder.CreateSExt(Op0, Vec64ty, Name);
-  Value *Op1Wide = Builder.CreateSExt(Op1, Vec64ty, Name);
-
-  Constant *Vec1 = ConstantVector::getSplat(
-      OperandWidth, ConstantInt::get(Builder.getInt64Ty(), 1));
-  // max uint32 value
-  Constant *Vecmax32u = ConstantVector::getSplat(
-      OperandWidth, ConstantInt::get(Builder.getInt64Ty(), (1ull << 32) - 1));
-  Constant *Vec32 = ConstantVector::getSplat(
-      OperandWidth, ConstantInt::get(Builder.getInt64Ty(), 32));
-  Constant *Vec31 = ConstantVector::getSplat(
-      OperandWidth, ConstantInt::get(Builder.getInt32Ty(), 31));
-  // calculations
-  // should be a constant
-  Constant *Quotient =
-      dyn_cast<Constant>(Builder.CreateSDiv(Vecmax32u, Op1Wide, Name));
-  IGC_ASSERT(Quotient != nullptr && "Error: non-constant result");
-  Value *SecondMultiplier = Builder.CreateAdd(Quotient, Vec1, Name);
-  Instruction *MulResult =
-      dyn_cast<Instruction>(Builder.CreateMul(Op0Wide, SecondMultiplier, Name));
-  Value *PositiveAnswer = Builder.CreateAShr(MulResult, Vec32, Name);
-  // narror back to 32 bits
-  Instruction *Narrow =
-      dyn_cast<Instruction>(Builder.CreateTrunc(PositiveAnswer, Vec32ty, Name));
-  // if the value is negative, we need to add 1
-  Value *Sign = Builder.CreateLShr(Op0, Vec31, Name);
-  Value *Answer = Builder.CreateAdd(Narrow, Sign, Name);
-  // genx is not support trunc and mul64 from GenXLowering,
-  // need to call GenXLowering functions that work with mul65 and trunc
-  genx::lowerMul64Impl(MulResult, ToErase);
-  genx::lowerTruncImpl(Narrow, ToErase);
-  Sdiv.replaceAllUsesWith(Answer);
-  ToErase.push_back(&Sdiv);
-}
-
-static bool
-decomposeSdivInstruction(Instruction &Inst, const GenXSubtarget &ST,
-                         llvm::SmallVectorImpl<Instruction *> &ToErase) {
-  if (!isa<SDivOperator>(Inst))
-    return false; // not interesting
-  // from this point operands are signed
-  Value *Op1 = Inst.getOperand(1);
-  if (!isa<Constant>(Op1))
-    return false;
-  if (PatternMatch::match(Op1, PatternMatch::m_Negative())) {
-    return false; // the second operand is negative
-  }
-  if (!Inst.getType()->isVectorTy()) // not vector
-    return false;
-  if (!Inst.getType()
-           ->getVectorElementType()
-           ->isIntegerTy()) // not vector of int
-    return false;
-  // wrong BitWidth, no ability to optimize
-  if (Inst.getType()->getVectorElementType()->getIntegerBitWidth() != 32)
-    return false;
-  if (PatternMatch::match(Op1, PatternMatch::m_Power2())) {
-    decomposeSdivPow2(Inst, ToErase);
-    return true;
-  }
-  // no support long long, need for optimization
-  if (!ST.hasLongLong())
-    return false;
-  decomposeSdivNotPow2(Inst, ToErase);
-  return true;
-}
-
-bool GenXPatternMatch::decomposeSdiv(Function *F) {
-  bool changed = false;
-  const GenXSubtarget &ST = getAnalysis<TargetPassConfig>()
-                                .getTM<GenXTargetMachine>()
-                                .getGenXSubtarget();
-
-  llvm::SmallVector<Instruction *, 8> ToErase;
-  for (auto &I : llvm::instructions(F)) {
-    changed |= decomposeSdivInstruction(I, ST, ToErase);
-  }
-  // remove all ToErase inst
-  for (auto &Deleted : ToErase) {
-    Deleted->eraseFromParent();
-  }
-  return changed;
 }
 
 // Decompose predicate operand for large vector selects.
