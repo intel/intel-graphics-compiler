@@ -540,8 +540,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     {
         mpm.add(createPruneUnusedArgumentsPass());
 
-        if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT &&
-            IGC_IS_FLAG_DISABLED(EnableOCLNoInlineAttr))
+        if (!ctx.enableFunctionCall())
         {
             // Don't run IPConstantProp when debugging function calls, to avoid folding function arg/ret constants
             mpm.add(createIPConstantPropagationPass());

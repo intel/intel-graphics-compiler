@@ -649,12 +649,7 @@ namespace IGC
 
     bool CodeGenContext::enableFunctionCall() const
     {
-        if (m_enableSubroutine || m_enableStackCall || m_enableFunctionPointer)
-            return true;
-
-        int FCtrol = IGC_GET_FLAG_VALUE(FunctionControl);
-        return FCtrol == FLAG_FCALL_FORCE_SUBROUTINE ||
-            FCtrol == FLAG_FCALL_FORCE_STACKCALL;
+        return (m_enableSubroutine || m_enableStackCall || m_enableFunctionPointer);
     }
 
     void CodeGenContext::InitVarMetaData() {}

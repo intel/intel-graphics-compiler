@@ -332,7 +332,6 @@ DECLARE_IGC_REGKEY(bool, ForceDisableSrc0Alpha,         false, "Force the compil
 DECLARE_IGC_REGKEY(bool, EnableLTO,                     true,  "Enable link time optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableLTODebug,                false, "Enable debug information for LTO", true)
 DECLARE_IGC_REGKEY(DWORD, FunctionControl,              0,     "Control function inlining/subroutine/stackcall. See value defs in igc_flags.hpp.", false)
-DECLARE_IGC_REGKEY(bool, EnableOCLNoInlineAttr,         false, "If set, OCL kernel with noinline attribute is honored (only for user function). Thus, function call is enabled.", false)
 DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", false)
 DECLARE_IGC_REGKEY(DWORD, OCLInlineThreshold,           512,  "Setting OCL inline thershold", false)
 DECLARE_IGC_REGKEY(bool, DisableAddingAlwaysAttribute,  false, "Disable adding always attribute", true)

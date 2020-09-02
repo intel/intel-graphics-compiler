@@ -877,7 +877,6 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
             return IGCLLVM::InlineCost::getAlways();
 
         if (pCtx->type == ShaderType::OPENCL_SHADER &&
-            IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
             Callee->hasFnAttribute(llvm::Attribute::NoInline))
             return IGCLLVM::InlineCost::getNever();
 

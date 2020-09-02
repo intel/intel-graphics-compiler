@@ -341,13 +341,13 @@ void EstimateFunctionSize::checkSubroutine() {
         }
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableOCLNoInlineAttr) &&
-        pContext->type == ShaderType::OPENCL_SHADER)
+    if (pContext->type == ShaderType::OPENCL_SHADER)
     {
         for (Function& F : *M)
         {
             if (F.hasFnAttribute(llvm::Attribute::NoInline) &&
-                !F.hasFnAttribute(llvm::Attribute::Builtin)) {
+                !F.hasFnAttribute(llvm::Attribute::Builtin) &&
+                !F.hasFnAttribute("visaStackCall")) {
                 EnableSubroutine = true;
                 break;
             }
