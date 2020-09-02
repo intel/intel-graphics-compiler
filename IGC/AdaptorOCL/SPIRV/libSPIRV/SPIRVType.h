@@ -176,7 +176,7 @@ protected:
   void validate()const {
     SPIRVEntry::validate();
     IGC_ASSERT_EXIT_MESSAGE(1 < BitWidth, "Invalid bit width");
-    IGC_ASSERT_EXIT_MESSAGE(BitWidth <= 64, "Invalid bit width");
+    IGC_ASSERT_EXIT_MESSAGE(BitWidth <= 1024, "Invalid bit width");
   }
 private:
   unsigned BitWidth;    // Bit width
