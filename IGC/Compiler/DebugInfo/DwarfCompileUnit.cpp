@@ -193,6 +193,11 @@ void CompileUnit::addUInt(DIE* Die, dwarf::Attribute Attribute,
 
 void CompileUnit::addUInt(DIEBlock* Block, dwarf::Form Form, uint64_t Integer)
 {
+    IGC_ASSERT_MESSAGE((Form == dwarf::Form::DW_FORM_data1 && Integer <= std::numeric_limits<unsigned char>::max()) ||
+        (Form == dwarf::Form::DW_FORM_data2 && Integer <= std::numeric_limits<unsigned short>::max()) ||
+        (Form == dwarf::Form::DW_FORM_data4 && Integer <= std::numeric_limits<unsigned int>::max() ||
+        (Form != dwarf::Form::DW_FORM_data1 && Form != dwarf::Form::DW_FORM_data2 && Form != dwarf::Form::DW_FORM_data4)),
+        "Insufficient bits in form for encoding");
     addUInt(Block, (dwarf::Attribute)0, Form, Integer);
 }
 
@@ -211,6 +216,11 @@ void CompileUnit::addSInt(DIE* Die, dwarf::Attribute Attribute,
 
 void CompileUnit::addSInt(DIEBlock* Die, Optional<dwarf::Form> Form, int64_t Integer)
 {
+    IGC_ASSERT_MESSAGE((Form == dwarf::Form::DW_FORM_data1 && Integer >= std::numeric_limits<signed char>::min() && Integer <= std::numeric_limits<signed char>::max()) ||
+        (Form == dwarf::Form::DW_FORM_data2 && Integer >= std::numeric_limits<short>::min() && Integer <= std::numeric_limits<short>::max()) ||
+        (Form == dwarf::Form::DW_FORM_data4 && Integer >= std::numeric_limits<int>::min() && Integer <= std::numeric_limits<int>::max()) ||
+        (Form != dwarf::Form::DW_FORM_data1 && Form != dwarf::Form::DW_FORM_data2 && Form != dwarf::Form::DW_FORM_data4),
+        "Insufficient bits in form for encoding");
     addSInt(Die, (dwarf::Attribute)0, Form, Integer);
 }
 
@@ -1254,11 +1264,11 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
             }
 
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
-            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-            addUInt(Block, dwarf::DW_FORM_data1, bitsUsedByVar);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
+            addUInt(Block, dwarf::DW_FORM_data2, bitsUsedByVar);
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);
-            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-            addUInt(Block, dwarf::DW_FORM_data1, varSizeInBits);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
+            addUInt(Block, dwarf::DW_FORM_data2, varSizeInBits);
 
             if (isa<llvm::DbgDeclareInst>(DV.getDbgInst()))
             {
