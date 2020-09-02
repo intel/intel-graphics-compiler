@@ -39,7 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Analysis/ValueTracking.h"
-#include "llvm/IR/CallSite.h"
+#include "llvmWrapper/IR/CallSite.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
@@ -815,7 +815,7 @@ namespace {
             : LegacyInlinerBase(ID, /*InsertLifetime*/ false),
             FSA(nullptr) {}
 
-        InlineCost getInlineCost(CallSite CS) override;
+        InlineCost getInlineCost(IGCLLVM::CallSiteRef CS) override;
 
         void getAnalysisUsage(AnalysisUsage& AU) const override;
         bool runOnSCC(CallGraphSCC& SCC) override;
@@ -850,7 +850,7 @@ bool SubroutineInliner::runOnSCC(CallGraphSCC& SCC)
 
 /// \brief Get the inline cost for the subroutine-inliner.
 ///
-InlineCost SubroutineInliner::getInlineCost(CallSite CS)
+InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
 {
     Function* Callee = CS.getCalledFunction();
     Function* Caller = CS.getCaller();
@@ -858,7 +858,11 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
 
     // Inline direct calls to functions with always inline attribute or a function
     // whose estimated size is under certain predefined limit.
-    if (Callee && !Callee->isDeclaration() && isInlineViable(*Callee))
+    if (Callee && !Callee->isDeclaration() && isInlineViable(*Callee)
+#if LLVM_VERSION_MAJOR >= 11
+        .isSuccess()
+#endif
+        )
     {
         if (CS.hasFnAttr(llvm::Attribute::AlwaysInline))
             return IGCLLVM::InlineCost::getAlways();

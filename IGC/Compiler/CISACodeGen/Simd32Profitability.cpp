@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Operator.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -1011,7 +1012,7 @@ static bool hasLongStridedLdStInLoop(Function* F, LoopInfo* LI, WIAnalysis* WI) 
         for (auto I = BB->begin(), E = BB->end(); I != E; ++I) {
             if (auto LD = dyn_cast<LoadInst>(&*I)) {
                 VectorType* VTy = dyn_cast<VectorType>(LD->getType());
-                if (!VTy || VTy->getBitWidth() <= 128)
+                if (!VTy || IGCLLVM::GetVectorTypeBitWidth(VTy) <= 128)
                     continue;
                 if (WI->whichDepend(LD) == WIAnalysis::UNIFORM)
                     continue;
@@ -1021,7 +1022,7 @@ static bool hasLongStridedLdStInLoop(Function* F, LoopInfo* LI, WIAnalysis* WI) 
                 Value* Ptr = ST->getPointerOperand();
                 Value* Val = ST->getValueOperand();
                 VectorType* VTy = dyn_cast<VectorType>(Val->getType());
-                if (!VTy || VTy->getBitWidth() <= 128)
+                if (!VTy || IGCLLVM::GetVectorTypeBitWidth(VTy) <= 128)
                     continue;
                 if (WI->whichDepend(Ptr) == WIAnalysis::UNIFORM)
                     continue;

@@ -91,9 +91,9 @@ namespace IGC
     void CodeGenPatternMatch::CodeGenNode(llvm::DomTreeNode* node)
     {
         // Process blocks by processing the dominance tree depth first
-        for (uint i = 0; i < node->getNumChildren(); i++)
+        for (auto child = node->begin(); child != node->end(); ++child)
         {
-            CodeGenNode(node->getChildren()[i]);
+            CodeGenNode(*child);
         }
         llvm::BasicBlock* bb = node->getBlock();
         CodeGenBlock(bb);

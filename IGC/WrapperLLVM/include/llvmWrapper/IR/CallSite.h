@@ -24,30 +24,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef IGCLLVM_IR_DERIVEDTYPES_H
-#define IGCLLVM_IR_DERIVEDTYPES_H
+#ifndef IGCLLVM_IR_CALLSITE_H
+#define IGCLLVM_IR_CALLSITE_H
 
-#include <llvm/IR/DerivedTypes.h>
+#if LLVM_VERSION_MAJOR <= 10
+#include "llvm/IR/CallSite.h"
+#else
+#include "llvm/IR/InstrTypes.h"
+#endif
 
 namespace IGCLLVM
 {
-
- #if LLVM_VERSION_MAJOR <= 10
-     using FixedVectorType = llvm::VectorType;
-     const uint32_t VectorTyID = llvm::Type::VectorTyID;
- #else
-     using FixedVectorType = llvm::FixedVectorType;
-     const uint32_t VectorTyID = llvm::Type::FixedVectorTyID;
- #endif
-
-    inline uint32_t GetVectorTypeBitWidth(llvm::Type* pType)
-    {
 #if LLVM_VERSION_MAJOR <= 10
-        return llvm::cast<llvm::VectorType>(pType)->getBitWidth();
+    using llvm::CallSite;
+    using CallSiteRef = IGCLLVM::CallSite;
 #else
-        return pType->getPrimitiveSizeInBits().getFixedSize();
+    using CallSite = llvm::CallBase;
+    using CallSiteRef = IGCLLVM::CallSite&;
 #endif
-    }
 }
 
 #endif
+
