@@ -2367,6 +2367,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, std::vector<VISAVaria
                 addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit16);
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_ge);
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bra);
                 addUInt(Block, dwarf::DW_FORM_data2, 0xf00d);
                 secondHalfOff = Block->getValues().back();
                 IGC_ASSERT_MESSAGE(isa<DIEInteger>(secondHalfOff), "Expecting DIEInteger");
