@@ -119,35 +119,6 @@ const char* vme_op_mode_str[VME_OP_MODE_NUM] =
     "both"
 };
 
-const char* vme_stream_mode_str[4] =
-{
-    "00",
-    "01",
-    "10",
-    "11"
-};
-
-const char* vme_search_ctrl_str[4] =
-{
-    "000",
-    "001",
-    "011",
-    "111"
-};
-
-const char* pred_ctrl_str[9] =
-{
-    "",
-    "any2h",
-    "any4h",
-    "any8h",
-    "any16h",
-    "all2h",
-    "all4h",
-    "all8h",
-    "all16h"
-};
-
 const char* emask_str[vISA_NUM_EMASK+1] =
 {
     "M1",

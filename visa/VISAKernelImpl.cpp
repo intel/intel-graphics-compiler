@@ -1281,8 +1281,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
     {
         label_info_t *lbl = (label_info_t *)m_mem.alloc(sizeof(label_info_t));
         lbl->name_index = addStringPool(std::string(name));
-        lbl->label = NULL;
-        lbl->kind = kind; //for now
+        lbl->kind = kind;
         m_label_info_list.push_back(lbl);
 
         opnd->_opnd.other_opnd = m_label_count++;
@@ -1321,7 +1320,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
         lbl->attribute_count = 0;
         lbl->attributes = NULL;
 
-        m_label_info_size += Get_Size_Label_Info(lbl);
+        m_label_info_size += lbl->getSizeInBinary();
     }
 
     return VISA_SUCCESS;
@@ -1628,17 +1627,17 @@ int VISAKernelImpl::AddAttributeToVarGeneric(
         }
     case ADDRESS_VAR:
         {
-            m_adress_info_size += Get_Size_Attribute_Info(attr);
+            m_address_info_size += attr->getSizeInBinary();
             break;
         }
     case PREDICATE_VAR:
         {
-            m_predicate_info_size += Get_Size_Attribute_Info(attr);
+            m_predicate_info_size += attr->getSizeInBinary();
             break;
         }
     case SAMPLER_VAR:
         {
-            m_sampler_info_size += Get_Size_Attribute_Info(attr);
+            m_sampler_info_size += attr->getSizeInBinary();
             break;
         }
     case SURFACE_VAR:
@@ -1647,7 +1646,7 @@ int VISAKernelImpl::AddAttributeToVarGeneric(
         }
     case LABEL_VAR:
         {
-            m_label_info_size += Get_Size_Attribute_Info(attr);
+            m_label_info_size += attr->getSizeInBinary();
             break;
         }
     default:
@@ -1690,7 +1689,7 @@ void VISAKernelImpl::addVarInfoToList(CISA_GEN_VAR * t)
 void VISAKernelImpl::addSampler(CISA_GEN_VAR * state)
 {
     m_sampler_info_list.push_back(state);
-    m_sampler_info_size += Get_Size_State_Info(&state->stateVar);
+    m_sampler_info_size += state->stateVar.getSizeInBinary();
 }
 
 void VISAKernelImpl::addSurface(CISA_GEN_VAR * state)
@@ -1701,13 +1700,13 @@ void VISAKernelImpl::addSurface(CISA_GEN_VAR * state)
 void VISAKernelImpl::addAddrToList(CISA_GEN_VAR * addr)
 {
     m_addr_info_list.push_back(addr);
-    m_adress_info_size += Get_Size_Addr_Info(&addr->addrVar);
+    m_address_info_size += addr->addrVar.getSizeInBinary();
 }
 
 void VISAKernelImpl::addPredToList(CISA_GEN_VAR * pred)
 {
     m_pred_info_list.push_back(pred);
-    m_predicate_info_size += Get_Size_Pred_Info(&pred->predVar);
+    m_predicate_info_size += pred->predVar.getSizeInBinary();
 }
 
 void VISAKernelImpl::addAttribute(const char *inputName, attribute_info_t *attrTemp)
@@ -1715,7 +1714,7 @@ void VISAKernelImpl::addAttribute(const char *inputName, attribute_info_t *attrT
     attrTemp->nameIndex = addStringPool(std::string(inputName));
     m_attribute_info_list.push_back(attrTemp);
     m_attribute_count++;
-    m_attribute_info_size += Get_Size_Attribute_Info(attrTemp);
+    m_attribute_info_size += attrTemp->getSizeInBinary();
 }
 
 Common_ISA_Input_Class VISAKernelImpl::GetInputClass(Common_ISA_Var_Class var_class)
@@ -1787,7 +1786,7 @@ int VISAKernelImpl::CreateVISAInputVar(
         {
             m_input_info_list.push_back(input);
             m_input_count++;
-            m_input_info_size += Get_Size_Input_Info(input);
+            m_input_info_size += input->getSizeInBinary();
 
             if (IsAsmWriterMode())
             {
@@ -1882,7 +1881,7 @@ int VISAKernelImpl::CreateVISAAddressOperand(
         cisa_opnd->_opnd.v_opnd.opnd_val.addr_opnd.offset = (uint8_t)offset;
         cisa_opnd->_opnd.v_opnd.opnd_val.addr_opnd.width =
             Get_VISA_Exec_Size_From_Raw_Size(width & 0x1F);
-        cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
+        cisa_opnd->size = (uint16_t)cisa_opnd->_opnd.v_opnd.getSizeInBinary();
 
     }
 
@@ -1981,7 +1980,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(
 
         cisa_opnd->opnd_type = CISA_OPND_VECTOR;
         cisa_opnd->index = decl->index;
-        cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
+        cisa_opnd->size = (uint16_t)cisa_opnd->_opnd.v_opnd.getSizeInBinary();
     }
     return status;
 }
@@ -2063,7 +2062,7 @@ int VISAKernelImpl::CreateVISAIndirectGeneralOperand(
                 Get_CISA_Region_Val(horizontalStride) << 8;
         }
 
-        cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
+        cisa_opnd->size = (uint16_t)cisa_opnd->_opnd.v_opnd.getSizeInBinary();
     }
 
     return VISA_SUCCESS;
@@ -2174,7 +2173,7 @@ int VISAKernelImpl::CreateVISAPredicateOperandvISA(
     cisa_opnd->index += cntrl <<13;
     cisa_opnd->index += state << 15;
     cisa_opnd->_opnd.v_opnd.opnd_val.pred_opnd.index = (unsigned short)(cisa_opnd->index);
-    cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
+    cisa_opnd->size = (uint16_t)cisa_opnd->_opnd.v_opnd.getSizeInBinary();
     return status;
 }
 
@@ -2252,7 +2251,7 @@ int VISAKernelImpl::CreateVISASrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_GenV
 
         cisa_opnd->_opnd.v_opnd.tag += mod<<3;
 
-        cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
+        cisa_opnd->size = (uint16_t)cisa_opnd->_opnd.v_opnd.getSizeInBinary();
     }
 
     return VISA_SUCCESS;
@@ -2284,7 +2283,7 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
         cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.col_offset = colOffset;
         cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.region = Get_CISA_Region_Val(hStride) <<8;
 
-        cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
+        cisa_opnd->size = (uint16_t)cisa_opnd->_opnd.v_opnd.getSizeInBinary();
     }
 
     return VISA_SUCCESS;
@@ -2360,7 +2359,7 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd*& cisa_opnd, const void*
             int64_t tmpValue = typecastVals(value, isaType);
             cisa_opnd->_opnd.v_opnd.opnd_val.const_opnd._val.lval = tmpValue;
         }
-        cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
+        cisa_opnd->size = (uint16_t)cisa_opnd->_opnd.v_opnd.getSizeInBinary();
     }
 
     return VISA_SUCCESS;
@@ -2430,7 +2429,7 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
         cisa_opnd->_opnd.v_opnd.opnd_val.state_opnd.index = (unsigned short)(cisa_opnd->index);
         cisa_opnd->_opnd.v_opnd.opnd_val.state_opnd.offset = offset;
         cisa_opnd->_opnd.v_opnd.opnd_val.state_opnd.opnd_class = opndClass;
-        cisa_opnd->size = (uint16_t)Get_Size_Vector_Operand(&cisa_opnd->_opnd.v_opnd);
+        cisa_opnd->size = (uint16_t)cisa_opnd->_opnd.v_opnd.getSizeInBinary();
     }
 
     return VISA_SUCCESS;
@@ -7646,7 +7645,7 @@ void VISAKernelImpl::finalizeKernel()
     {
         var_info_t * temp = &m_var_info_list.at(i + m_num_pred_vars)->genVar;
         m_cisa_kernel.variables[i] = *temp;
-        m_var_info_size += Get_Size_Var_Info_CISA3(temp);
+        m_var_info_size += temp->getSizeInBinary();
     }
     m_kernel_data_size += sizeof(m_cisa_kernel.variable_count);
     m_kernel_data_size += m_var_info_size;
@@ -7667,7 +7666,7 @@ void VISAKernelImpl::finalizeKernel()
     }
 
     m_kernel_data_size += sizeof(m_cisa_kernel.address_count);
-    m_kernel_data_size += m_adress_info_size;
+    m_kernel_data_size += m_address_info_size;
 
     DEBUG_PRINT_SIZE("size after addresses: ", SIZE_VALUE);
 
@@ -7731,7 +7730,7 @@ void VISAKernelImpl::finalizeKernel()
     {
         state_info_t * temp = &m_surface_info_list.at(j)->stateVar;
         m_cisa_kernel.surfaces[i] = *temp;
-        m_surface_info_size += Get_Size_State_Info(temp);
+        m_surface_info_size += temp->getSizeInBinary();
     }
 
     m_kernel_data_size += sizeof(m_cisa_kernel.surface_count);

@@ -531,7 +531,7 @@ void vISAVerifier::verifyRegion(
         if (operand_class == OPERAND_GENERAL)
         {
             const var_info_t*      var      = header->getVar(vect.getOperandIndex()-numPreDefinedVars);
-            VISA_Type  isa_type = getVectorOperandType(isaHeader, header, vect);
+            VISA_Type  isa_type = getVectorOperandType(header, vect);
             unsigned         VN_size  = CISATypeTable[isa_type].typeSize;
 
             uint16_t num_elements = var->num_elements;
@@ -608,7 +608,7 @@ void vISAVerifier::verifyRegion(
                     "the destination operand's horizontal stride must be 1.");
         }
 
-        VISA_Type opnd_type = getVectorOperandType(isaHeader, header, vect);
+        VISA_Type opnd_type = getVectorOperandType(header, vect);
         REPORT_INSTRUCTION(options, opnd_type == ISA_TYPE_F, "LRP instruction only supports sources and destination of type F.");
 
         if (dstIndex != i)
@@ -818,7 +818,7 @@ void vISAVerifier::verifyVectorOperand(
     if (operand_class == OPERAND_IMMEDIATE)
     {
         /// Do checks for immediate operands here
-        REPORT_INSTRUCTION(options,getVectorOperandType(isaHeader, header, opnd) != ISA_TYPE_BOOL,
+        REPORT_INSTRUCTION(options,getVectorOperandType(header, opnd) != ISA_TYPE_BOOL,
             "Boolean types for immediate (constant literals) operands are disallowed.");
     }
 
@@ -904,8 +904,8 @@ void vISAVerifier::verifyInstructionMove(
     {
         case ISA_MOV:
         {
-             VISA_Type     dstType     = getVectorOperandType(isaHeader, header, dst);
-             VISA_Type     src0Type    = getVectorOperandType(isaHeader, header, src0);
+             VISA_Type     dstType     = getVectorOperandType(header, dst);
+             VISA_Type     src0Type    = getVectorOperandType(header, src0);
              VISA_Modifier dstModifier = dst.getOperandModifier();
 
              if (OPERAND_PREDICATE == operand_class_src0)
@@ -1069,16 +1069,6 @@ void vISAVerifier::verifyInstructionControlFlow(
         }
         case ISA_SWITCHJMP:
         {
-             /// TODO: Reenable this check if possible.
-             #if 0
-             ASSERT_USER(numLabels > 0 && numLabels < 33, "Number of labels in SWITCHJMP must be between 1 and 32");
-             ASSERT_USER(IS_UNSIGNED_INT(indexOpnd->getType()), "index for SWITCHJMP must have unsigned type");
-             ASSERT_USER(CISA_Opnd_Class(index) == OPERAND_GENERAL || CISA_Opnd_Class(index) == OPERAND_INDIRECT ||
-                     CISA_Opnd_Class(index) == OPERAND_IMMEDIATE,
-                     "index for SWITCHJMP must be one of general/indirect/immediate operand.");
-             ASSERT_USER(indexOpnd->isImm() || indexOpnd->isSrcRegRegion() && indexOpnd->asSrcRegRegion()->isScalar(),
-                     "index for SWITCHJMP must be a scalar value");
-             #endif
              break;
         }
         default: REPORT_INSTRUCTION(options,false, "Illegal Scalar Control Flow Instruction Opcode: %d, %s.", opcode, ISA_Inst_Table[opcode].str);
@@ -1390,7 +1380,7 @@ void vISAVerifier::verifyInstructionArith(
 
     unsigned i = 0;
     const vector_opnd& dst = getVectorOperand(inst, i);
-    VISA_Type         dstType = getVectorOperandType(isaHeader, header, dst);
+    VISA_Type         dstType = getVectorOperandType(header, dst);
     VISA_Modifier dstModifier = dst.getOperandModifier();
     auto platform = getGenxPlatform();
 
@@ -1505,7 +1495,7 @@ void vISAVerifier::verifyInstructionArith(
     for (unsigned i = 0; i < ISA_Inst_Table[opcode].n_srcs; i++)
     {
         const vector_opnd& src = getVectorOperand(inst, i + ISA_Inst_Table[opcode].n_dsts); /// dst is at index 0, addc/subbb have two destinations
-        VISA_Type         srcType = getVectorOperandType(isaHeader, header, src);
+        VISA_Type         srcType = getVectorOperandType(header, src);
         VISA_Modifier srcModifier = src.getOperandModifier();
 
         REPORT_INSTRUCTION(options, srcModifier != MODIFIER_SAT && srcModifier != MODIFIER_NOT,
@@ -1638,7 +1628,7 @@ void vISAVerifier::verifyInstructionLogic(
     for (unsigned i = 0; i < opend_count; i++)
     {
         const vector_opnd& opnd = getVectorOperand(inst, i);
-        VISA_Type opnd_type = getVectorOperandType(isaHeader, header, opnd);
+        VISA_Type opnd_type = getVectorOperandType(header, opnd);
 
         REPORT_INSTRUCTION(options,opnd.getOperandClass() != OPERAND_ADDRESS,
                           "Common ISA Logic instrutions are not allowed to have address operands.");
@@ -1777,7 +1767,7 @@ void vISAVerifier::verifyInstructionAddress(
 
         if (2 == i)
         {
-            VISA_Type opnd_type = getVectorOperandType(isaHeader, header, getVectorOperand(inst, i));
+            VISA_Type opnd_type = getVectorOperandType(header, getVectorOperand(inst, i));
             REPORT_INSTRUCTION(options,opnd_type == ISA_TYPE_B || opnd_type == ISA_TYPE_UB ||
                               opnd_type == ISA_TYPE_W || opnd_type == ISA_TYPE_UW,
                               "Data type of the second source of ADDR_ADD should be WORD or BYTE.");

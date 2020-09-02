@@ -131,7 +131,6 @@ std::vector<attr_gen_struct*> AttrOptVar;
         unsigned int v_stride;
         unsigned int h_stride;
         unsigned int width;
-        //RegionDesc*              rgn;
     } cisa_region;
 
     struct {
@@ -140,36 +139,12 @@ std::vector<attr_gen_struct*> AttrOptVar;
     } offset;
 
     struct {
-        //G4_Operand*        opnd;
-        Common_ISA_Operand_Class type;
-       // VISA_opnd * cisa_gen_opnd;
-    } dstOpnd;
-
-    struct {
-        //G4_Operand*        opnd;
-        Common_ISA_Operand_Class type;
-       // VISA_opnd * cisa_gen_opnd;
-    } srcOpnd;
-
-    struct {
-        //G4_Operand*        opnd;
         Common_ISA_Operand_Class type;
         VISA_opnd * cisa_gen_opnd;
     } genOperand;
 
     struct {
-        //G4_Operand*        opnd;
-        Common_ISA_Operand_Class type;
-        Common_ISA_Function_Parameters_Kind kind;
-        char * var_name; //for Surface, VME, Sampler
-        //for raw operand
-        //G4_Declare *dcl;
-        unsigned short offset;
-    } srcFuncOpnd;
-
-    struct {
         char * var_name;
-        //G4_Operand*        opnd;
         VISA_opnd * cisa_gen_opnd;
         unsigned char streamMode;
         unsigned char searchCtrl;
@@ -197,7 +172,6 @@ std::vector<attr_gen_struct*> AttrOptVar;
     VISA_opnd * RawVar;
 
     struct {
-        //G4_Declare *dcl;
         Common_ISA_State_Opnd type;
         unsigned char offset;
         VISA_opnd * cisa_gen_opnd;

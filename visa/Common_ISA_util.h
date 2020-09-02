@@ -36,12 +36,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
  const char* Common_ISA_Get_Align_Name( VISA_Align );
  const char* Common_ISA_Get_Modifier_Name( VISA_Modifier );
- short Common_ISA_Get_Region_Name( Common_ISA_Region_Val );
  G4_opcode GetGenOpcodeFromVISAOpcode( ISA_Opcode );
  VISA_Type Get_Common_ISA_Type_From_G4_Type( G4_Type );
  G4_Type GetGenTypeFromVISAType( VISA_Type );
- G4_SubReg_Align Get_G4_SubRegAlign_From_Type( G4_Type ty );
- G4_SubReg_Align Get_G4_SubRegAlign_From_Size( uint16_t size );
  G4_SrcModifier GetGenSrcModFromVISAMod( VISA_Modifier );
  G4_CondModifier Get_G4_CondModifier_From_Common_ISA_CondModifier( VISA_Cond_Mod );
  bool hasPredicate(ISA_Opcode op);
@@ -65,23 +62,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  G4_opcode Get_Pseudo_Opcode(ISA_Opcode op);
  VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, G4_ExecSize execSize);
  G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size);
- Common_ISA_Operand_Class CISA_Opnd_Class( vector_opnd opnd );
  unsigned Get_Atomic_Op(VISAAtomicOps op);
  uint16_t Get_VISA_Type_Size(VISA_Type type);
-
- int Get_Size_Attribute_Info(attribute_info_t * attr);
- int Get_Size_Label_Info(label_info_t * lbl);
- int Get_Size_Var_Info_CISA3(var_info_t * t);
- int Get_Size_State_Info(state_info_t * t);
- int Get_Size_Addr_Info(addr_info_t * addr);
- int Get_Size_Pred_Info(pred_info_t * pred);
- int Get_Size_Input_Info(input_info_t * input);
- int Get_Size_Vector_Operand(vector_opnd * cisa_opnd);
- unsigned long get_Size_Isa_Header( common_isa_header * m_header, int major_version, int minor_version );
  Common_ISA_Region_Val Get_CISA_Region_Val( short val );
  short Common_ISA_Get_Region_Value( Common_ISA_Region_Val val );
- unsigned long get_Size_Kernel_Info(kernel_info_t * kernel_info, int major_version, int minor_version );
- unsigned long getSizeFunctionInfo(kernel_info_t * kernel_info);
  VISA_Cond_Mod Get_Common_ISA_CondModifier_From_G4_CondModifier(G4_CondModifier  cmod );
  VISA_Exec_Size Get_VISA_Exec_Size_From_Raw_Size( unsigned int size );
  VISA_Oword_Num Get_VISA_Oword_Num_From_Number( unsigned num );
@@ -128,7 +112,7 @@ getSendHeaderPresentBitOffset ()
     return SEND_GT_MSG_HEADER_PRESENT_BIT_OFFSET;
 }
 
-VISA_Type getVectorOperandType(const common_isa_header& isaHeader, const print_format_provider_t* header, const vector_opnd& opnd);
+VISA_Type getVectorOperandType(const print_format_provider_t* header, const vector_opnd& opnd);
 
 template <typename T> T getPrimitiveOperand(const CISA_INST* inst, unsigned i)
 {

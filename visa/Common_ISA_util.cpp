@@ -327,60 +327,6 @@ VISA_Type Get_Common_ISA_Type_From_G4_Type(G4_Type type)
     }
 }
 
-G4_SubReg_Align Get_G4_SubRegAlign_From_Type(G4_Type ty)
-{
-    switch (ty)
-    {
-    case Type_B:
-    case Type_UB:
-    case Type_W:
-    case Type_UW:
-        return Any;
-    case Type_UD:
-    case Type_D:
-    case Type_F:
-        return Even_Word;
-    case Type_DF:
-        return Four_Word;
-    case Type_V:
-    case Type_VF:
-    case Type_UV:
-        return Eight_Word;
-    case Type_Q:
-    case Type_UQ:
-        return Four_Word;
-    default:
-        return Any;
-    }
-}
-
-// size is the number of byte
-G4_SubReg_Align Get_G4_SubRegAlign_From_Size(uint16_t size)
-{
-    switch (size)
-    {
-    case 1:
-    case 2:
-        return Any;
-    case 4:
-        return Even_Word;
-    case 8:
-        if (getGenxPlatform() != GENX_BXT)
-          return Four_Word;
-        // FALL THROUGH
-        // WA: It's a workaround where a potential HW issue needs
-        // identifying.
-    case 16:
-        return Eight_Word;
-    case 32:
-        return Sixteen_Word;
-    case 64:
-        return ThirtyTwo_Word;
-    default:
-        return GRFALIGN;
-    }
-}
-
 G4_SrcModifier GetGenSrcModFromVISAMod(VISA_Modifier mod)
 {
     switch (mod)
@@ -710,20 +656,21 @@ Common_ISA_Region_Val Get_CISA_Region_Val(short val)
 {
     if (val == (short)0x8000) {
         return REGION_NULL;
-    }else{
+    }
+    else {
         switch (val) {
-            case 0: return REGION_0;
-            case 1: return REGION_1;
-            case 2: return REGION_2;
-            case 4: return REGION_4;
-            case 8: return REGION_8;
-            case 16: return REGION_16;
-            case 32: return REGION_32;
-            case -1:
-                return REGION_NULL;
-            default:
-                MUST_BE_TRUE(0, "Invalid Region value.");
-                return REGION_NULL;
+        case 0: return REGION_0;
+        case 1: return REGION_1;
+        case 2: return REGION_2;
+        case 4: return REGION_4;
+        case 8: return REGION_8;
+        case 16: return REGION_16;
+        case 32: return REGION_32;
+        case -1:
+            return REGION_NULL;
+        default:
+            MUST_BE_TRUE(0, "Invalid Region value.");
+            return REGION_NULL;
         }
     }
 }
@@ -928,11 +875,6 @@ G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size)
     }
 }
 
-Common_ISA_Operand_Class CISA_Opnd_Class(vector_opnd opnd)
-{
-    return (Common_ISA_Operand_Class)(opnd.tag & 0x7);
-}
-
 unsigned Get_Atomic_Op(VISAAtomicOps op) {
 
     switch (op) {
@@ -991,23 +933,23 @@ uint16_t Get_VISA_Type_Size(VISA_Type type)
     }
 }
 
-int Get_Size_Attribute_Info(attribute_info_t * attr)
+int attribute_info_t::getSizeInBinary() const
 {
-    return sizeof(attr->nameIndex) + sizeof(attr->size) + attr->size;
+    return sizeof(nameIndex) + sizeof(size) + size;
 }
 
-int Get_Size_Label_Info(label_info_t * lbl)
+int label_info_t::getSizeInBinary() const
 {
-    int size = sizeof(lbl->name_index) + sizeof(lbl->kind) + sizeof(lbl->attribute_count);
+    int size = sizeof(name_index) + sizeof(kind) + sizeof(attribute_count);
 
-    for (int i = 0; i< lbl->attribute_count; i++)
+    for (int i = 0; i < attribute_count; i++)
     {
-        size += Get_Size_Attribute_Info(&lbl->attributes[i]);
+        size += attributes[i].getSizeInBinary();
     }
     return size;
 }
 
-int Get_Size_Var_Info_CISA3(var_info_t * t)
+int var_info_t::getSizeInBinary() const
 {
     /*
         var_info {
@@ -1020,17 +962,17 @@ int Get_Size_Var_Info_CISA3(var_info_t * t)
     attribute_info[attribute_count];
     }
     */
-    int size = sizeof(t->name_index) + sizeof(t->bit_properties) + sizeof(t->num_elements) +
-        sizeof(t->alias_index) + sizeof(t->alias_offset) + sizeof(t->alias_scope_specifier) +sizeof(t->attribute_count);
+    int size = sizeof(name_index) + sizeof(bit_properties) + sizeof(num_elements) +
+        sizeof(alias_index) + sizeof(alias_offset) + sizeof(alias_scope_specifier) + sizeof(attribute_count);
 
-    for (int i = 0; i< t->attribute_count; i++)
+    for (int i = 0; i < attribute_count; i++)
     {
-        size += Get_Size_Attribute_Info(&t->attributes[i]);
+        size += attributes[i].getSizeInBinary();
     }
     return size;
 }
 
-int Get_Size_Addr_Info(addr_info_t * addr)
+int addr_info_t::getSizeInBinary() const
 {
     /*
     address_info {
@@ -1040,15 +982,15 @@ int Get_Size_Addr_Info(addr_info_t * addr)
     attribute_info[attribute_count];
     }
     */
-    int size = sizeof(addr->name_index) + sizeof(addr->num_elements) + sizeof(addr->attribute_count);
-    for (int i = 0; i< addr->attribute_count; i++)
+    int size = sizeof(name_index) + sizeof(num_elements) + sizeof(attribute_count);
+    for (int i = 0; i < attribute_count; i++)
     {
-        size += Get_Size_Attribute_Info(&addr->attributes[i]);
+        size += attributes[i].getSizeInBinary();
     }
     return size;
 }
 
-int Get_Size_Pred_Info(pred_info_t * pred)
+int pred_info_t::getSizeInBinary() const
 {
     /*
     predicate_info {
@@ -1058,15 +1000,15 @@ int Get_Size_Pred_Info(pred_info_t * pred)
     attribute_info[attribute_count];
     }
     */
-    int size = sizeof(pred->name_index) + sizeof(pred->num_elements) + sizeof(pred->attribute_count);
-    for (int i = 0; i< pred->attribute_count; i++)
+    int size = sizeof(name_index) + sizeof(num_elements) + sizeof(attribute_count);
+    for (int i = 0; i < attribute_count; i++)
     {
-        size += Get_Size_Attribute_Info(&pred->attributes[i]);
+        size += attributes[i].getSizeInBinary();
     }
     return size;
 }
 
-int Get_Size_Input_Info(input_info_t * input)
+int input_info_t::getSizeInBinary() const
 {
     /*
     input_info {
@@ -1076,42 +1018,42 @@ int Get_Size_Input_Info(input_info_t * input)
     uw size;
     }
     */
-    return sizeof(input->kind) + sizeof(input->index) + sizeof(input->offset) + sizeof(input->size);
+    return sizeof(kind) + sizeof(index) + sizeof(offset) + sizeof(size);
 }
 
-int Get_Size_Vector_Operand(vector_opnd * cisa_opnd)
+int vector_opnd::getSizeInBinary() const
 {
     int size = 0;
 
-    switch (cisa_opnd->tag & 0x7)
+    switch (tag & 0x7)
     {
     case OPERAND_GENERAL:
         {
-            size = sizeof(cisa_opnd->opnd_val.gen_opnd.index) + sizeof(cisa_opnd->opnd_val.gen_opnd.col_offset) +
-                sizeof(cisa_opnd->opnd_val.gen_opnd.row_offset) + sizeof(cisa_opnd->opnd_val.gen_opnd.region);
+            size = sizeof(opnd_val.gen_opnd.index) + sizeof(opnd_val.gen_opnd.col_offset) +
+                sizeof(opnd_val.gen_opnd.row_offset) + sizeof(opnd_val.gen_opnd.region);
             break;
         }
     case OPERAND_ADDRESS:
         {
-            size = sizeof(cisa_opnd->opnd_val.addr_opnd.index) + sizeof(cisa_opnd->opnd_val.addr_opnd.offset) +
-                sizeof(cisa_opnd->opnd_val.addr_opnd.width);
+            size = sizeof(opnd_val.addr_opnd.index) + sizeof(opnd_val.addr_opnd.offset) +
+                sizeof(opnd_val.addr_opnd.width);
             break;
         }
     case OPERAND_INDIRECT:
         {
-            size = sizeof(cisa_opnd->opnd_val.indirect_opnd.index) + sizeof(cisa_opnd->opnd_val.indirect_opnd.addr_offset) +
-                sizeof(cisa_opnd->opnd_val.indirect_opnd.indirect_offset) + sizeof(cisa_opnd->opnd_val.indirect_opnd.bit_property) +
-                sizeof(cisa_opnd->opnd_val.indirect_opnd.region);
+            size = sizeof(opnd_val.indirect_opnd.index) + sizeof(opnd_val.indirect_opnd.addr_offset) +
+                sizeof(opnd_val.indirect_opnd.indirect_offset) + sizeof(opnd_val.indirect_opnd.bit_property) +
+                sizeof(opnd_val.indirect_opnd.region);
             break;
         }
     case OPERAND_PREDICATE:
         {
-            size = sizeof(cisa_opnd->opnd_val.pred_opnd.index);
+            size = sizeof(opnd_val.pred_opnd.index);
             break;
         }
     case OPERAND_IMMEDIATE:
         {
-            switch (cisa_opnd->opnd_val.const_opnd.type) {
+            switch (opnd_val.const_opnd.type) {
             default:
                 size = sizeof(unsigned int);
                 break;
@@ -1122,13 +1064,13 @@ int Get_Size_Vector_Operand(vector_opnd * cisa_opnd)
                 break;
             }
 
-            size += sizeof(cisa_opnd->opnd_val.const_opnd.type);
+            size += sizeof(opnd_val.const_opnd.type);
             break;
         }
     case OPERAND_STATE:
         {
-            size = sizeof(cisa_opnd->opnd_val.state_opnd.index) + sizeof(cisa_opnd->opnd_val.state_opnd.offset) +
-                sizeof(cisa_opnd->opnd_val.state_opnd.opnd_class);
+            size = sizeof(opnd_val.state_opnd.index) + sizeof(opnd_val.state_opnd.offset) +
+                sizeof(opnd_val.state_opnd.opnd_class);
             break;
         }
     default:
@@ -1138,14 +1080,12 @@ int Get_Size_Vector_Operand(vector_opnd * cisa_opnd)
         }
     }
 
-    size += sizeof(cisa_opnd->tag);
+    size += sizeof(tag);
 
     return size;
 }
 
-
 /*
-cisa3.0
 function_info {
     ub linkage; // MBZ
     ub name_len;
@@ -1156,17 +1096,17 @@ function_info {
     uw num_syms_function; // MBZ
 }
 */
-//for cisa 3.0
-unsigned long getSizeFunctionInfo(kernel_info_t * kernel_info)
+unsigned long function_info_t::getSizeInBinary() const
 {
-    unsigned int size = sizeof(kernel_info->linkage) + sizeof(kernel_info->name_len) +
-        kernel_info->name_len + sizeof(kernel_info->offset) + sizeof(kernel_info->size);
+    unsigned int size = sizeof(linkage) + sizeof(name_len) +
+        name_len + sizeof(offset) + sizeof(size);
 
-    size += sizeof(kernel_info->variable_reloc_symtab.num_syms);
-    size += sizeof(kernel_info->function_reloc_symtab.num_syms);
+    size += sizeof(variable_reloc_symtab.num_syms);
+    size += sizeof(function_reloc_symtab.num_syms);
 
     return size;
 }
+
 /*
     kernel_info {
     ub name_len;
@@ -1180,35 +1120,35 @@ unsigned long getSizeFunctionInfo(kernel_info_t * kernel_info)
     gen_binary_info gen_binaries[num_gen_binaries];
 }
 */
-unsigned long get_Size_Kernel_Info(kernel_info_t * kernel_info, int major_version, int minor_version)
+unsigned long kernel_info_t::getSizeInBinary() const
 {
-    unsigned long size = sizeof(kernel_info->name_len) + kernel_info->name_len
-        + sizeof(kernel_info->offset) + sizeof(kernel_info->size)
-        + sizeof(kernel_info->input_offset);
+    unsigned long size = sizeof(name_len) + name_len
+        + sizeof(offset) + sizeof(size)
+        + sizeof(input_offset);
 
-    size += sizeof(kernel_info->variable_reloc_symtab.num_syms);
-    size += sizeof(kernel_info->function_reloc_symtab.num_syms);
+    size += sizeof(variable_reloc_symtab.num_syms);
+    size += sizeof(function_reloc_symtab.num_syms);
 
-    size += sizeof(kernel_info->num_gen_binaries);
+    size += sizeof(num_gen_binaries);
 
-    for (int i = 0; i < kernel_info->num_gen_binaries; i++)
+    for (int i = 0; i < num_gen_binaries; i++)
     {
-        size += sizeof(kernel_info->gen_binaries->platform);
-        size += sizeof(kernel_info->gen_binaries->binary_offset);
-        size += sizeof(kernel_info->gen_binaries->binary_size);
+        size += sizeof(gen_binaries->platform);
+        size += sizeof(gen_binaries->binary_offset);
+        size += sizeof(gen_binaries->binary_size);
     }
 
     return size;
 }
 
-unsigned long get_Size_Isa_Header(common_isa_header * m_header, int major_version, int minor_version)
+unsigned long common_isa_header::getSizeInBinary() const
 {
-    unsigned long size = sizeof(m_header->magic_number) + sizeof(m_header->major_version)
-        + sizeof(m_header->minor_version) + sizeof(m_header->num_kernels);
+    unsigned long size = sizeof(magic_number) + sizeof(major_version)
+        + sizeof(minor_version) + sizeof(num_kernels);
 
-    for (int i = 0; i < m_header->num_kernels; i++)
+    for (int i = 0; i < num_kernels; i++)
     {
-        size += get_Size_Kernel_Info(&m_header->kernels[i], major_version, minor_version);
+        size += kernels[i].getSizeInBinary();
     }
     /*
     common_isa_header {
@@ -1228,11 +1168,11 @@ unsigned long get_Size_Isa_Header(common_isa_header * m_header, int major_versio
     // file-scope variables are no longer supported
     size += sizeof(uint16_t);
 
-    size += sizeof(m_header->num_functions);
+    size += sizeof(num_functions);
 
-    for (int i = 0; i < m_header->num_functions; i++)
+    for (int i = 0; i < num_functions; i++)
     {
-        size += getSizeFunctionInfo(&m_header->functions[i]);
+        size += functions[i].getSizeInBinary();
     }
 
     return size;
@@ -1289,13 +1229,14 @@ VISA_Exec_Size Get_VISA_Exec_Size_From_Raw_Size(unsigned int size)
             return EXEC_SIZE_ILLEGAL;
     }
 }
-int Get_Size_State_Info(state_info_t * t)
-{
-    int size = sizeof(t->name_index) + sizeof(t->num_elements) + sizeof(t->attribute_count);
 
-    for (int i = 0; i< t->attribute_count; i++)
+int state_info_t::getSizeInBinary() const
+{
+    int size = sizeof(name_index) + sizeof(num_elements) + sizeof(attribute_count);
+
+    for (int i = 0; i < attribute_count; i++)
     {
-        size += Get_Size_Attribute_Info(&t->attributes[i]);
+        size += attributes[i].getSizeInBinary();
     }
     return size;
 }
@@ -1340,7 +1281,7 @@ VISA_Modifier Get_Common_ISA_SrcMod_From_G4_Mod(G4_SrcModifier mod)
 }
 
 
-VISA_Type getVectorOperandType(const common_isa_header& isaHeader, const print_format_provider_t* header, const vector_opnd& opnd)
+VISA_Type getVectorOperandType(const print_format_provider_t* header, const vector_opnd& opnd)
 {
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     switch (opnd.getOperandClass())

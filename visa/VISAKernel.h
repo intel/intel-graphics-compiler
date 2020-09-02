@@ -80,7 +80,7 @@ public:
 
         m_string_pool_size = 0;
         m_var_info_size = 0;
-        m_adress_info_size = 0;
+        m_address_info_size = 0;
         m_predicate_info_size = 0;
         m_label_info_size = 0;
         m_input_info_size = 0;
@@ -921,14 +921,14 @@ private:
     unsigned int m_num_pred_vars;
     //size of various arrays in kernel header.
     //used for buffer size allocation.
-    unsigned int m_string_pool_size; //done
-    unsigned int m_var_info_size; //done
-    unsigned int m_adress_info_size;
-    unsigned int m_predicate_info_size; //done
-    unsigned int m_label_info_size; //done
-    unsigned int m_input_info_size; //done
-    unsigned int m_attribute_info_size; //done
-    unsigned int m_instruction_size; //done
+    unsigned int m_string_pool_size;
+    unsigned int m_var_info_size;
+    unsigned int m_address_info_size;
+    unsigned int m_predicate_info_size;
+    unsigned int m_label_info_size;
+    unsigned int m_input_info_size;
+    unsigned int m_attribute_info_size;
+    unsigned int m_instruction_size;
     unsigned int m_surface_info_size;
     unsigned int m_sampler_info_size;
 

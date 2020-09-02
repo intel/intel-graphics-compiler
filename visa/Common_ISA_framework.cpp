@@ -238,7 +238,7 @@ int CisaBinary::finalizeCisaBinary()
 {
     m_bytes_written_cisa_buffer = 0;
 
-    m_total_size = m_header_size = get_Size_Isa_Header(&m_header, getMajorVersion(), this->getMinorVersion());
+    m_total_size = m_header_size = m_header.getSizeInBinary();
 
     m_header_buffer  = (char *)this->m_mem.alloc(m_header_size);
 

@@ -132,15 +132,60 @@ uint8_t roundDownPow2(uint8_t n)
     return (i>>1);
 }
 
-bool isPow2(uint8_t n)
+/* Return the base rank for the input type ignoring the signed/unsigned
+ * aspect of types.
+ *    - Types of higher precision have higher ranks.
+ *    - Floating types have higher precision than all integer types.
+ */
+static short Operand_Type_Base_Rank(G4_Type type)
 {
-    uint8_t i = 1;
-    while (n > i) i <<= 1;
-    return (n == i);
+    short type_size = (short)G4_Type_Table[type].byteSize;
+    short type_rank = type_size * 2;
+
+    if (type == Type_V || type == Type_UV)
+    {
+        type_rank = (short)G4_Type_Table[Type_W].byteSize;
+    }
+    else if (type == Type_VF)
+    {
+        type_rank = (short)G4_Type_Table[Type_F].byteSize;
+    }
+    else if (IS_TYPE_FLOAT_ALL(type))
+    {
+        type_rank += 2;
+    }
+
+    return type_rank;
+}
+
+/* Return the rank for the input type.
+ *    - Types of higher precision have higher ranks.
+ *    - Floating types have higher precision than all integer types.
+ *    - Unsigned types have a higher rank than a signed type with the same
+ *      precision.
+ */
+static short Operand_Type_Rank(G4_Type type)
+{
+    short type_rank = Operand_Type_Base_Rank(type);
+
+    switch (type) {
+    case Type_UB:
+    case Type_UW:
+    case Type_UD: {
+        type_rank++;
+        break;
+    }
+    default: {
+        // No nothing.
+        break;
+    }
+    }
+
+    return type_rank;
 }
 
 // check if type1 can be represented by type2
-bool Is_Type_Included(G4_Type type1, G4_Type type2, const IR_Builder& builder)
+static bool Is_Type_Included(G4_Type type1, G4_Type type2, const IR_Builder& builder)
 {
     if (type1 == type2)
     {
@@ -180,58 +225,6 @@ bool Is_Type_Included(G4_Type type1, G4_Type type2, const IR_Builder& builder)
         }
     }
     return false;
-}
-
-/* Return the base rank for the input type ignoring the signed/unsigned
- * aspect of types.
- *    - Types of higher precision have higher ranks.
- *    - Floating types have higher precision than all integer types.
- */
-short Operand_Type_Base_Rank(G4_Type type)
-{
-    short type_size = (short) G4_Type_Table[type].byteSize;
-    short type_rank = type_size * 2;
-
-    if (type == Type_V || type == Type_UV)
-    {
-        type_rank = (short) G4_Type_Table[Type_W].byteSize;
-    }
-    else if (type == Type_VF)
-    {
-        type_rank = (short) G4_Type_Table[Type_F].byteSize;
-    }
-    else if (IS_TYPE_FLOAT_ALL(type))
-    {
-        type_rank += 2;
-    }
-
-    return type_rank;
-}
-
-/* Return the rank for the input type.
- *    - Types of higher precision have higher ranks.
- *    - Floating types have higher precision than all integer types.
- *    - Unsigned types have a higher rank than a signed type with the same
- *      precision.
- */
-short Operand_Type_Rank(G4_Type type)
-{
-    short type_rank = Operand_Type_Base_Rank(type);
-
-    switch (type) {
-        case Type_UB:
-        case Type_UW:
-        case Type_UD: {
-            type_rank++;
-            break;
-        }
-        default: {
-            // No nothing.
-            break;
-        }
-    }
-
-    return type_rank;
 }
 
 G4_SendMsgDescriptor::G4_SendMsgDescriptor(

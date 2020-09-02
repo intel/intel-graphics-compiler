@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define COMMON_ISA_OPCODE_INCLUDED
 namespace vISA
 {
-class G4_Label;
 class G4_Operand;
 class G4_Declare;
 }
@@ -87,22 +86,6 @@ class G4_Declare;
 #define SEND_GT_MSG_HEADER_PRESENT_BIT_OFFSET       19
 
 typedef enum {
-    CN = 0x0,   //Consistent
-    UC = 0x1,   //Unconsistent
-    DS_CN = 0x2, //Dst and Src consistent
-    DS_UC = 0x3, //Dst and Src unconsistent
-    UN          //Unknown
-} Operand_Type_Limits;
-
-struct ISA_Inst_Type_Info {
-    ISA_Opcode         op;
-    unsigned int       data_type;
-    Operand_Type_Limits cons_type;
-    bool complex_inst;
-};
-
-
-typedef enum {
     GENERAL_VAR,
     ADDRESS_VAR,
     PREDICATE_VAR,
@@ -142,26 +125,6 @@ typedef enum {
     NUM_OPERAND_CLASS
 } Common_ISA_Operand_Class;
 
-
-typedef enum {
-    PARAMETER_KIND_GENERAL  = 0x0,
-    PARAMETER_KIND_RAW      = 0x1,
-    PARAMETER_KIND_SAMPLER  = 0x2,
-    PARAMETER_KIND_SURFACE  = 0x3,
-    NUM_PARAMETER_KIND
-} Common_ISA_Function_Parameters_Kind;
-
-typedef struct Common_ISA_Function_Parameters
-{
-    vISA::G4_Operand*        opnd;
-    Common_ISA_Operand_Class type;
-    Common_ISA_Function_Parameters_Kind kind;
-    char * var_name; //for Surface, Sampler
-    //for raw operand
-    vISA::G4_Declare *dcl;
-    unsigned short offset;
-} Common_ISA_Function_Parameters_t;
-
 typedef enum {
     REGION_NULL = 0x0,
     REGION_0 = 0x1,
@@ -198,18 +161,12 @@ extern const char* sampler_channel_output_str[4];
 
 extern const char* vme_op_mode_str[VME_OP_MODE_NUM];
 
-extern const char* vme_stream_mode_str[4];
-
-extern const char* vme_search_ctrl_str[4];
-
 typedef enum {
     S_OPND_ERROR = 0x0,
     S_OPND_SAMPLER = 0x1,
     S_OPND_SURFACE = 0x2,
     S_OPND_NUM = 0x3
 } Common_ISA_State_Opnd;
-
-extern const char* pred_ctrl_str[9];
 
 extern const char* emask_str[];
 
@@ -220,22 +177,11 @@ typedef enum {
     STATE_OPND_NUM
 } Common_ISA_State_Opnd_Class;
 
-typedef enum {
-    CISA_LINKAGE_EXTERN = 0,
-    CISA_LINKAGE_STATIC = 1,
-    CISA_LINKAGE_GLOBAL = 2
-} Common_ISA_Linkages;
-
-//forward declaration
-namespace vISA
-{
-class G4_Declare;
-}
 /*
  *  Pseudo-strcutures describing the format of the symbol tables and kernel metadata in the common ISA
  */
 
-typedef struct {
+struct attribute_info_t {
     uint32_t nameIndex;
     unsigned char size;
     bool isInt;
@@ -243,9 +189,11 @@ typedef struct {
         int intVal;
         const char* stringVal;
     } value;
-} attribute_info_t;
 
-typedef struct {
+    int getSizeInBinary() const;
+};
+
+struct var_info_t {
     uint32_t name_index;
     unsigned char bit_properties;
     unsigned short num_elements;
@@ -255,7 +203,7 @@ typedef struct {
     unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
-    vISA::G4_Declare* dcl;
+    vISA::G4_Declare* dcl;  // ToDo: remove this, vISA variables should not have access to internal Gen declares
 
     VISA_Type getType() const
     {
@@ -296,43 +244,52 @@ typedef struct {
     {
         return num_elements * CISATypeTable[getType()].typeSize;
     }
-} var_info_t;
 
-typedef struct {
+    int getSizeInBinary() const;
+};
+
+struct addr_info_t {
     uint32_t name_index;
     unsigned short num_elements;
     unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
     vISA::G4_Declare* dcl;
-} addr_info_t;
 
-typedef struct {
+    int getSizeInBinary() const;
+};
+
+struct pred_info_t {
     uint32_t name_index;
     unsigned short num_elements;
     unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
     vISA::G4_Declare* dcl;
-} pred_info_t;
 
-typedef struct {
+    int getSizeInBinary() const;
+};
+
+struct label_info_t {
     uint32_t name_index;
     unsigned char kind;
     unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
-    vISA::G4_Label * label;
-} label_info_t;
 
-typedef struct {
+    int getSizeInBinary() const;
+};
+
+struct state_info_t {
     uint32_t name_index;
     unsigned short num_elements;
     unsigned char attribute_capacity;
     unsigned char attribute_count;
     attribute_info_t* attributes;
     vISA::G4_Declare* dcl;
-} state_info_t;
+
+    int getSizeInBinary() const;
+};
 
 //work around for g++
 namespace patch
@@ -345,7 +302,7 @@ namespace patch
     }
 }
 
-typedef struct {
+struct input_info_t {
     // bits 0-2, category kind
     // bits 3-7, implicit argument kind
     //   0x00 explicit (default)
@@ -405,7 +362,9 @@ typedef struct {
         uint32_t kind = getImplicitKind();
         return getImplicitKindString(kind);
     }
-} input_info_t;
+
+    int getSizeInBinary() const;
+};
 
 typedef struct {
     char kind;
@@ -430,7 +389,7 @@ typedef struct {
     unsigned int binary_size;
 } gen_binary_info;
 
-typedef struct {
+struct kernel_info_t {
     unsigned char linkage;
     unsigned char name_len;
     char name[COMMON_ISA_MAX_FILENAME_LENGTH];
@@ -451,9 +410,34 @@ typedef struct {
     //   for cisa binary emmission
     char * cisa_binary_buffer;
     char * genx_binary_buffer;
-} compiled_unit_info_t;
-typedef compiled_unit_info_t kernel_info_t;
-typedef compiled_unit_info_t function_info_t;
+
+    unsigned long getSizeInBinary() const;
+};
+
+struct function_info_t {
+    unsigned char linkage;
+    unsigned char name_len;
+    char name[COMMON_ISA_MAX_FILENAME_LENGTH];
+    unsigned int offset;
+    unsigned int size;
+    union {
+        unsigned int input_offset;
+        unsigned int param_offset;
+    };
+    unsigned int code_offset;
+    unsigned int binary_offset;            // This is not used for function_info_t.
+    unsigned int binary_size;              // This is not used for function_info_t.
+    reloc_symtab variable_reloc_symtab;
+    reloc_symtab function_reloc_symtab;
+    unsigned char num_gen_binaries;
+    gen_binary_info* gen_binaries;
+    // Auxillary data
+    //   for cisa binary emmission
+    char* cisa_binary_buffer;
+    char* genx_binary_buffer;
+
+    unsigned long getSizeInBinary() const;
+};
 
 /*
  *  Format of the common ISA kernel binary.
@@ -461,7 +445,7 @@ typedef compiled_unit_info_t function_info_t;
  *  with no padding and alignment for the fields, and because the tables have dynamic length
  *
  */
-typedef struct {
+struct common_isa_header {
     unsigned int          magic_number;
     unsigned char         major_version;
     unsigned char         minor_version;
@@ -470,7 +454,9 @@ typedef struct {
     unsigned short        num_filescope_variables;
     unsigned short        num_functions;
     function_info_t*      functions;
-} common_isa_header;
+
+    unsigned long getSizeInBinary() const;
+};
 
 typedef struct {
     uint32_t        string_count;
@@ -547,7 +533,7 @@ struct print_decl_index_t {
     unsigned input_index = 0;
 };
 
-typedef struct {
+struct vector_opnd {
     unsigned char tag;
     union {
         struct {
@@ -641,7 +627,9 @@ typedef struct {
            default:                return 0; ///OPERAND_IMMEDIATE
        }
     }
-} vector_opnd;
+
+    int getSizeInBinary() const;
+};
 
 typedef struct {
     uint32_t index;
@@ -660,7 +648,7 @@ typedef enum
 typedef struct _CISA_GEN_VAR
 {
     Common_ISA_Var_Class type;
-    unsigned int index; //index in to respective symbol tables
+    unsigned int index; //index into respective symbol tables
     union
     {
         var_info_t genVar;
@@ -754,9 +742,8 @@ typedef enum {
     GEN_ATOMIC_FMAX                    = 0x1,  // FOP_FMAX
     GEN_ATOMIC_FMIN                    = 0x2,  // FOP_FMIN
     GEN_ATOMIC_FCMPWR                  = 0x3,  // FOP_FCMPWR
-    //
     GEN7_ATOMIC_UNDEF                   = 0xFF
-} Gen7CISAAtomicOpType;
+} GenAtomicOp;
 
 extern const char* va_sub_names[26];
 

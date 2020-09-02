@@ -451,11 +451,15 @@ enum G4_AccRegSel
     ACC_UNDEFINED = 0xff
 };
 
+#define GRFALIGN (Sixteen_Word)
+#define HALFGRFALIGN (Eight_Word)
+
 // global functions
 inline unsigned int getNumAddrRegisters(void) { return 16; }
-extern short Operand_Type_Rank(G4_Type type);
 uint8_t roundDownPow2(uint8_t n);
-bool isPow2(uint8_t n);
+
+// G4_type related global functions
+// ToDo: consider making G4_Type a class instead to encapsulate these functions
 inline uint32_t getTypeSize(G4_Type ty) { return G4_Type_Table[ty].byteSize; }
 inline bool isLowPrecisionFloatTy(G4_Type ty)
 {
@@ -481,6 +485,57 @@ inline G4_Type floatToSameWidthIntType(G4_Type floatTy)
     }
 }
 
-#define GRFALIGN (Sixteen_Word)
-#define HALFGRFALIGN (Eight_Word)
+// size is the number of byte
+inline G4_SubReg_Align Get_G4_SubRegAlign_From_Size(uint16_t size)
+{
+    switch (size)
+    {
+    case 1:
+    case 2:
+        return Any;
+    case 4:
+        return Even_Word;
+    case 8:
+        if (getGenxPlatform() != GENX_BXT)
+            return Four_Word;
+        // FALL THROUGH
+        // WA: It's a workaround where a potential HW issue needs
+        // identifying.
+    case 16:
+        return Eight_Word;
+    case 32:
+        return Sixteen_Word;
+    case 64:
+        return ThirtyTwo_Word;
+    default:
+        return GRFALIGN;
+    }
+}
+
+inline G4_SubReg_Align Get_G4_SubRegAlign_From_Type(G4_Type ty)
+{
+    switch (ty)
+    {
+    case Type_B:
+    case Type_UB:
+    case Type_W:
+    case Type_UW:
+        return Any;
+    case Type_UD:
+    case Type_D:
+    case Type_F:
+        return Even_Word;
+    case Type_DF:
+        return Four_Word;
+    case Type_V:
+    case Type_VF:
+    case Type_UV:
+        return Eight_Word;
+    case Type_Q:
+    case Type_UQ:
+        return Four_Word;
+    default:
+        return Any;
+    }
+}
 #endif  // _G4_OPCODE_H_
