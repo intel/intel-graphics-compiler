@@ -988,9 +988,9 @@ void CompileUnit::addBindlessSamplerLocation(DIEBlock* Block, VISAVariableLocati
 
 // addScratchLocation - add a sequence of attributes to emit scratch space location
 // of variable
-void CompileUnit::addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varInfo, int32_t vectorOffset)
+void CompileUnit::addScratchLocation(DIEBlock* Block, DbgDecoder::LiveIntervalsVISA* lr, int32_t vectorOffset)
 {
-    uint32_t offset = varInfo->lrs.front().getSpillOffset().memoryOffset + vectorOffset;
+    uint32_t offset = lr->getSpillOffset().memoryOffset + vectorOffset;
 
     IGC_ASSERT_MESSAGE(IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging), "SIMD lane expressions support only");
 
@@ -1110,7 +1110,7 @@ void CompileUnit::addSLMLocation(DIEBlock* Block, VISAVariableLocation* Loc)
 // 12 DW_OP_INTEL_bit_piece_stack
 //
 void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc,
-    DbgDecoder::VarInfo* varInfo, uint16_t simdWidthOffset, bool isPacked, bool isSecondHalf)
+    DbgDecoder::LiveIntervalsVISA * lr, uint16_t simdWidthOffset, bool isPacked, bool isSecondHalf)
 {
     auto EmitPushSimdLane = [this](DIEBlock* Block, bool isSecondHalf)
     {
@@ -1130,7 +1130,7 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
         uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
         IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
 
-        if (varInfo->lrs.front().isSpill())
+        if (lr->isSpill())
         {
             // CASE 1: Example of expression generated for 64-bit or 32-bit ptr to a variable,
             // which is located in scratch:
@@ -1276,11 +1276,11 @@ void CompileUnit::addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLoca
 
 // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
 // e.g. a GRF subregister.
-void CompileUnit::addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation* Loc, DbgDecoder::VarInfo* varInfo, uint16_t subRegInBytes)
+void CompileUnit::addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation* Loc, DbgDecoder::LiveIntervalsVISA* lr, uint16_t subRegInBytes)
 {
     if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
     {
-        IGC_ASSERT_MESSAGE(varInfo->lrs.front().isSpill() == false, "Scalar spilled in scratch space");
+        IGC_ASSERT_MESSAGE(lr->isSpill() == false, "Scalar spilled in scratch space");
 
         // addRegisterOffset(Block, varInfo.lrs.front().getGRF().regNum, 0);
         uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
@@ -2082,16 +2082,19 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
             addBlock(VariableDie, dwarf::DW_AT_segment, Block);
         }
 
+        DIEBlock* locationAT = nullptr;
         if (FirstLoc.IsSLM())
-            buildSLM(DV, VariableDie, &FirstLoc);
+            locationAT = buildSLM(DV, &FirstLoc);
         else if (FirstLoc.IsSampler())
-            buildSampler(DV, VariableDie, &FirstLoc);
+            locationAT = buildSampler(DV, &FirstLoc);
         else if (FirstLoc.HasSurface() &&
             (DV.getType() && DV.getType()->getTag() == dwarf::DW_TAG_pointer_type))
-            buildPointer(DV, VariableDie, &FirstLoc);
+            locationAT = buildPointer(DV, &FirstLoc);
         else
-            buildGeneral(DV, VariableDie, &Locs);
+            locationAT = buildGeneral(DV, &Locs, nullptr);
 
+        if (locationAT)
+            addBlock(VariableDie, dwarf::DW_AT_location, locationAT);
         addDecoration = true;
     }
     else
@@ -2175,7 +2178,7 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
     }
 }
 
-void CompileUnit::buildPointer(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
+DIEBlock* CompileUnit::buildPointer(DbgVariable& var, VISAVariableLocation* loc)
 {
     auto bti = loc->GetSurface() - VISAModule::TEXTURE_REGISTER_BEGIN;
 
@@ -2215,10 +2218,10 @@ void CompileUnit::buildPointer(DbgVariable& var, DIE* die, VISAVariableLocation*
     addUInt(Block, dwarf::DW_FORM_data1, 8);
     addUInt(Block, dwarf::DW_FORM_data1, 0);
 
-    addBlock(die, dwarf::DW_AT_location, Block);
+    return Block;
 }
 
-void CompileUnit::buildSampler(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
+DIEBlock* CompileUnit::buildSampler(DbgVariable& var, VISAVariableLocation* loc)
 {
     DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
 
@@ -2235,19 +2238,20 @@ void CompileUnit::buildSampler(DbgVariable& var, DIE* die, VISAVariableLocation*
         addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
     }
 
-    addBlock(die, dwarf::DW_AT_location, Block);
+    return Block;
 }
 
-void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
+DIEBlock* CompileUnit::buildSLM(DbgVariable& var, VISAVariableLocation* loc)
 {
     auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
-    DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
     DbgDecoder::VarInfo varInfo;
     auto regNum = loc->GetRegister();
     VISAMod->getVarInfo("V", regNum, varInfo);
 
     if (varInfo.lrs.size() == 0)
-        return;
+        return nullptr;
+
+    DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
 
     if (loc->IsRegister())
     {
@@ -2278,17 +2282,15 @@ void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc
             addSLMLocation(Block, loc); // Emit SLM location expression
         }
 
-        addSimdLane(Block, var, loc, &varInfo, 0, false, false); // Emit SIMD lane for SLM (unpacked)
+        addSimdLane(Block, var, loc, &varInfo.lrs.front(), 0, false, false); // Emit SIMD lane for SLM (unpacked)
+
         if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
         {
             IGC_ASSERT(loc->GetVectorNumElements() <= 1);
         }
-
-        addBlock(die, dwarf::DW_AT_location, Block);
     }
     else
     {
-       DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
        if (!IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging))
         {
             // Immediate offset in to SLM
@@ -2304,17 +2306,17 @@ void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc
             addSLMLocation(Block, loc); // Emit SLM location expression
         }
 
-        addSimdLane(Block, var, loc, &varInfo, 0, false, false); // Emit SIMD lane for SLM (unpacked)
+        addSimdLane(Block, var, loc, &varInfo.lrs.front(), 0, false, false); // Emit SIMD lane for SLM (unpacked)
+
         if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
         {
             IGC_ASSERT(loc->GetVectorNumElements() <= 1);
         }
-
-        addBlock(die, dwarf::DW_AT_location, Block);
     }
+    return Block;
 }
 
-void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, std::vector<VISAVariableLocation>* locs)
+DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVariableLocation>* locs, std::vector<DbgDecoder::LiveIntervalsVISA>* vars)
 {
     DIEBlock* Block = new (DIEValueAllocator)DIEBlock();
     bool emitLocation = false;
@@ -2385,23 +2387,29 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, std::vector<VISAVaria
         }
 
         DbgDecoder::VarInfo varInfo;
-        auto regNum = loc->GetRegister();
-        VISAMod->getVarInfo("V", regNum, varInfo);
-
-        if (varInfo.lrs.size() > 0)
+        if (!vars)
         {
+            // When vars is valid, use it to encode location directly, otherwise
+            // rely on getVarInfo result here.
+            auto regNum = loc->GetRegister();
+            VISAMod->getVarInfo("V", regNum, varInfo);
+        }
+
+        if (varInfo.lrs.size() > 0 || (vars && vars->size() >= (firstHalf ? 1u : 2u)))
+        {
+            auto& lrToUse = vars ? vars->at(firstHalf ? 0 : 1) : varInfo.lrs.front();
             emitLocation = true;
-            if (varInfo.lrs.front().isGRF())
+            if (lrToUse.isGRF())
             {
-                uint16_t regNum = varInfo.lrs.front().getGRF().regNum;
+                uint16_t regNum = lrToUse.getGRF().regNum;
 
                 if (!IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
                 {
-                    addRegisterLoc(Block, varInfo.lrs.front().getGRF().regNum, offset, var.getDbgInst());
+                    addRegisterLoc(Block, lrToUse.getGRF().regNum, offset, var.getDbgInst());
 
-                    if (varInfo.lrs.front().getGRF().subRegNum != 0)
+                    if (lrToUse.getGRF().subRegNum != 0)
                     {
-                        unsigned int subReg = varInfo.lrs.front().getGRF().subRegNum;
+                        unsigned int subReg = lrToUse.getGRF().subRegNum;
                         auto offsetInBits = subReg * 8;
                         auto sizeInBits = (VISAMod->m_pShader->getGRFSize() * 8) - offsetInBits;
 
@@ -2416,12 +2424,12 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, std::vector<VISAVaria
 
                     if (loc->IsVectorized() == false)
                     {
-                        unsigned int subReg = varInfo.lrs.front().getGRF().subRegNum;
+                        unsigned int subReg = lrToUse.getGRF().subRegNum;
                         addRegisterLoc(Block, regNum, 0, var.getDbgInst());
 
                         addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
 
-                        addSimdLaneScalar(Block, var, loc, &varInfo, subReg); // Emit subregister for GRF (unpacked)
+                        addSimdLaneScalar(Block, var, loc, &lrToUse, subReg); // Emit subregister for GRF (unpacked)
 
                         break;
                     }
@@ -2439,20 +2447,20 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, std::vector<VISAVaria
 
                             addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
 
-                            addSimdLane(Block, var, loc, &varInfo, (uint16_t)(DD->simdWidth * vectorElem), false, !firstHalf); // Emit SIMD lane for GRF (unpacked)
+                            addSimdLane(Block, var, loc, &lrToUse, (uint16_t)(DD->simdWidth * vectorElem), false, !firstHalf); // Emit SIMD lane for GRF (unpacked)
 
                             // regNum = regNum + numOfRegs;
                         }
                     }
                 }
             }
-            else if (varInfo.lrs.front().isSpill())
+            else if (lrToUse.isSpill())
             {
                 // handle spill
                 if (!IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
                 {
                     Address addr;
-                    addr.Set(Address::Space::eScratch, 0, varInfo.lrs.front().getSpillOffset().memoryOffset);
+                    addr.Set(Address::Space::eScratch, 0, lrToUse.getSpillOffset().memoryOffset);
 
                     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
                     addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
@@ -2462,7 +2470,7 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, std::vector<VISAVaria
                 {
                     if (loc->IsVectorized() == false)
                     {
-                        addScratchLocation(Block, &varInfo, 0);
+                        addScratchLocation(Block, &lrToUse, 0);
                     }
                     else
                     {
@@ -2474,8 +2482,8 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, std::vector<VISAVaria
 
                         for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                         {
-                            addScratchLocation(Block, &varInfo, vectorElem * numOfRegs * grfSize);
-                            addSimdLane(Block, var, loc, &varInfo, 0, false, !firstHalf); // Emit SIMD lane for spill (unpacked)
+                            addScratchLocation(Block, &lrToUse, vectorElem * numOfRegs * grfSize);
+                            addSimdLane(Block, var, loc, &lrToUse, 0, false, !firstHalf); // Emit SIMD lane for spill (unpacked)
                         }
                     }
                 }
@@ -2494,8 +2502,10 @@ void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, std::vector<VISAVaria
         cast<DIEInteger>(skipOff)->setValue(offsetEnd - offsetTaken);
     }
 
-    if (emitLocation)
-        addBlock(die, dwarf::DW_AT_location, Block);
+    if (!emitLocation)
+        return nullptr;
+
+    return Block;
 }
 
 /// constructMemberDIE - Construct member DIE from DIDerivedType.

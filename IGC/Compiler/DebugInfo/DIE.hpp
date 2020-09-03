@@ -571,6 +571,10 @@ namespace IGC
         ///
         unsigned ComputeSizeOnTheFly(StreamEmitter* AP) const;
 
+        /// EmitToRawBuffer - emit data to raw buffer for encoding in debug_loc
+        ///
+        void EmitToRawBuffer(std::vector<unsigned char>& buffer);
+
         /// BestForm - Choose the best form for data.
         ///
         llvm::dwarf::Form BestForm() const

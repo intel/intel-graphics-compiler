@@ -278,7 +278,7 @@ namespace IGC
 
         // addScratchLocation - add a sequence of attributes to emit scratch space location
         // of variable
-        void addScratchLocation(DIEBlock* Block, DbgDecoder::VarInfo* varInfo, int32_t vectorOffset);
+        void addScratchLocation(DIEBlock* Block, DbgDecoder::LiveIntervalsVISA* lr, int32_t vectorOffset);
 
 
         // addSLMLocation - add a sequence of attributes to emit SLM location of variable
@@ -286,12 +286,12 @@ namespace IGC
 
         // addSimdLane - add a sequence of attributes to calculate location of variable
         // among SIMD lanes, e.g. a GRF subregister.
-        void addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc, DbgDecoder::VarInfo* varInfo,
+        void addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc, DbgDecoder::LiveIntervalsVISA * lr,
             uint16_t regOffset, bool isPacked, bool isSecondHalf);
 
         // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
         // e.g. a GRF subregister.
-        void addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation* Loc, DbgDecoder::VarInfo* varInfo, uint16_t subRegInBytes);
+        void addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation* Loc, DbgDecoder::LiveIntervalsVISA* lr, uint16_t subRegInBytes);
 
         /// getOrCreateNameSpace - Create a DIE for DINameSpace.
         DIE* getOrCreateNameSpace(llvm::DINamespace* NS);
@@ -414,12 +414,13 @@ namespace IGC
         }
 #endif
 
+     public:
         // Added for 1-step elf
         void buildLocation(const llvm::Instruction*, IGC::DbgVariable&, IGC::DIE*);
-        void buildPointer(DbgVariable&, DIE*, VISAVariableLocation*);
-        void buildSampler(DbgVariable&, DIE*, VISAVariableLocation*);
-        void buildSLM(DbgVariable&, DIE*, VISAVariableLocation*);
-        void buildGeneral(DbgVariable&, DIE*, std::vector<VISAVariableLocation>*);
+        DIEBlock* buildPointer(DbgVariable&, VISAVariableLocation*);
+        DIEBlock* buildSampler(DbgVariable&, VISAVariableLocation*);
+        DIEBlock* buildSLM(DbgVariable&, VISAVariableLocation*);
+        DIEBlock* buildGeneral(DbgVariable&, std::vector<VISAVariableLocation>*, std::vector<DbgDecoder::LiveIntervalsVISA>*);
     };
 
 } // namespace IGC

@@ -520,6 +520,61 @@ unsigned DIEBlock::ComputeSizeOnTheFly(StreamEmitter* AP) const
     return S;
 }
 
+/// EmitToRawBuffer - emit data to raw buffer for encoding in debug_loc.
+void DIEBlock::EmitToRawBuffer(std::vector<unsigned char>& buffer)
+{
+    auto insertData = [](const void* ptr, unsigned size, std::vector<unsigned char>& vec)
+    {
+        for (unsigned i = 0; i < size; ++i)
+        {
+            vec.push_back(*(((const unsigned char*)ptr) + i));
+        }
+    };
+
+    const SmallVectorImpl<DIEAbbrevData>& AbbrevData = Abbrev.getData();
+    for (unsigned i = 0, N = Values.size(); i < N; ++i)
+    {
+        uint64_t intVal = 0;
+        switch (Values[i]->getType())
+        {
+        case DIEValue::isInteger:
+            intVal = cast<DIEInteger>(Values[i])->getValue();
+            if (AbbrevData[i].getForm() == dwarf::DW_FORM_data1)
+                insertData(&intVal, sizeof(uint8_t), buffer);
+            else if(AbbrevData[i].getForm() == dwarf::DW_FORM_data2)
+                insertData(&intVal, sizeof(uint16_t), buffer);
+            else if (AbbrevData[i].getForm() == dwarf::DW_FORM_data4)
+                insertData(&intVal, sizeof(uint32_t), buffer);
+            else if (AbbrevData[i].getForm() == dwarf::DW_FORM_data8)
+                insertData(&intVal, sizeof(uint64_t), buffer);
+            else if (AbbrevData[i].getForm() == dwarf::DW_FORM_sdata)
+            {
+                auto slebsize = getSLEB128Size(intVal);
+                auto sleb = malloc(slebsize);
+                encodeSLEB128((int64_t)intVal, (uint8_t*)sleb);
+                insertData(sleb, slebsize, buffer);
+                free(sleb);
+            }
+            else if (AbbrevData[i].getForm() == dwarf::DW_FORM_udata)
+            {
+                auto ulebsize = getULEB128Size(intVal);
+                auto uleb = malloc(ulebsize);
+                encodeULEB128(intVal, (uint8_t*)uleb);
+                insertData(&intVal, ulebsize, buffer);
+                free(uleb);
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(false, "Unexpected dwarf encoding form");
+            }
+            break;
+        default:
+            IGC_ASSERT_MESSAGE(false, "Unexpected condition");
+            break;
+        }
+    }
+}
+
 /// EmitValue - Emit block data.
 ///
 void DIEBlock::EmitValue(StreamEmitter* Asm, dwarf::Form Form) const
