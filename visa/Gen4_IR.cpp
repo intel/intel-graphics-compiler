@@ -2805,6 +2805,23 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         }
     }
 
+    // As dst's type of shl inst decides what shifting amt should be used,
+    // make sure shifting amt would not be changed after doing hoisting.
+    //    shl (1) V00(0,0)<1>:q V101(0,0):w  V102(0,0)<0;1,0>:q
+    //    mov(1) V103(0, 0)<1>:b V100(0, 0)<0;1,0 >:q
+    // Cannot do it for this case.
+    if (defInst->opcode() == G4_shl || defInst->opcode() == G4_shr || defInst->opcode() == G4_asr)
+    {
+        uint32_t defSrc0Bytes = G4_Type_Table[defInst->getSrc(0)->getType()].byteSize;
+        bool QMode = (defDstElSize == 8 || defSrc0Bytes == 8);
+        if ((QMode && defSrc0Bytes != 8 && dstElSize != 8) ||
+            (!QMode && dstElSize == 8))
+        {
+            // Disable it; otherwise shift's mode is changed illegally!
+            return false;
+        }
+    }
+
     return true;
 }
 
