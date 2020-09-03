@@ -196,9 +196,7 @@ public:
   bool isConstant() { return true; }
 protected:
   void recalculateWordCount() {
-    NumWords = Type->getBitWidth()/32;
-    if (NumWords < 1)
-      NumWords = 1;
+    NumWords = (Type->getBitWidth() + 31) / 32;
     WordCount = 3 + NumWords;
   }
   void validate() const {
