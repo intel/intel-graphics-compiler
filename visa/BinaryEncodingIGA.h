@@ -85,7 +85,7 @@ public:
     static iga::ChannelOffset  getIGAChannelOffset(int offset);
     static iga::MaskCtrl       getIGAMaskCtrl(bool noMask);
     static iga::RegName        getIGAARFName(G4_ArchRegKind areg);
-    static iga::Type           getIGAType(G4_Type type);
+    static iga::Type           getIGAType(G4_Type type, TARGET_PLATFORM genxPlatform);
 
     /// getIGAInternalPlatform - a helper function to transform visa platform to iga platform
     static iga::Platform       getIGAInternalPlatform(TARGET_PLATFORM genxPlatform);
