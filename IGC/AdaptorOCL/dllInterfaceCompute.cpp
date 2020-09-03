@@ -832,7 +832,8 @@ struct VcPayloadInfo {
     uint64_t VcOptsOffset = 0;
     uint64_t IrSize = 0;
 };
-VcPayloadInfo tryExtractPayload(char* pInput, size_t inputSize) {
+VcPayloadInfo tryExtractPayload(const char* pInput, size_t inputSize)
+{
 
     // Payload format:
     // |-vc-codegen|c-str llvm-opts|i64(IR size)|i64(Payload size)|-vc-codegen|
@@ -1571,15 +1572,13 @@ static std::error_code TranslateBuildVC(
     llvm::StringRef ApiOptions{pInputArgs->pOptions, pInputArgs->OptionsSize};
     llvm::StringRef InternalOptions{pInputArgs->pInternalOptions,
                                     pInputArgs->InternalOptionsSize};
-    auto pInput = pInputArgs->pInput;
-    size_t InputSize = pInputArgs->InputSize;
+    llvm::ArrayRef<char> Input{pInputArgs->pInput, pInputArgs->InputSize};
 
-    auto NewPathPayload = tryExtractPayload(pInputArgs->pInput,
-                                            pInputArgs->InputSize);
+    auto NewPathPayload = tryExtractPayload(Input.data(), Input.size());
     if (NewPathPayload.IsValid) {
         ApiOptions = "-vc-codegen";
         InternalOptions = pInputArgs->pInput + NewPathPayload.VcOptsOffset;
-        InputSize = static_cast<size_t>(NewPathPayload.IrSize);
+        Input = Input.take_front(static_cast<size_t>(NewPathPayload.IrSize));
     }
 
     auto ExpOptions = vc::ParseOptions(ApiOptions, InternalOptions);
@@ -1599,7 +1598,6 @@ static std::error_code TranslateBuildVC(
         return getErrorVC(vc::make_error_code(vc::errc::generic_bif_load_fail),
                           pOutputArgs);
     vc::ExternalData ExtData{std::move(OCLGenericBIFModule)};
-    llvm::ArrayRef<char> Input{pInput, InputSize};
     auto ExpOutput = vc::Compile(Input, Opts, ExtData);
     if (!ExpOutput)
         return getErrorVC(ExpOutput.takeError(), pOutputArgs);
