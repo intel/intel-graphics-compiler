@@ -216,7 +216,8 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager& m, G4_BB* block,
 
     DDD ddd(mem, bb, LT, k);
     // Generate pairs of TypedWrites
-    bool doMessageFuse = (k->fg.builder->fuseTypedWrites() && k->getSimdSize() >= 16) ||
+    bool doMessageFuse =
+        (k->fg.builder->fuseTypedWrites() && k->getSimdSize() >= g4::SIMD16) ||
         k->fg.builder->fuseURBMessage();
 
     if (doMessageFuse)
@@ -1545,7 +1546,7 @@ static bool canAvoidDepCycles(Node *firstNode, Node *secondNode, bool isFirstLev
 // Return TRUE if INST is the the partN'th part {0,1,2,3} of a typedWrite
 static bool isTypedWritePart(G4_INST* inst, int partN) {
     return inst->isSend()
-        && inst->getExecSize() == 8
+        && inst->getExecSize() == g4::SIMD8
         && inst->getMsgDesc()->isHdcTypedSurfaceWrite()
         && inst->getMaskOffset() == partN * 8;
 };
@@ -2051,7 +2052,7 @@ uint32_t DDD::listScheduleForSuppression(G4_BB_Schedule* schedule)
                     G4_INST* scheduledInst = scheduled->getInstructions()->front();
                     if (!((scheduledInst->opcode() == G4_mad ||
                         scheduledInst->opcode() == G4_dp4a) &&
-                        hasReadSuppression(inst, scheduledInst, inst->getExecSize() == 8)))
+                        hasReadSuppression(inst, scheduledInst, inst->getExecSize() == g4::SIMD8)))
                     {
                         for (int i = 0; i < searchSize; ++i)
                         {
@@ -2062,7 +2063,7 @@ uint32_t DDD::listScheduleForSuppression(G4_BB_Schedule* schedule)
                                 readyList.pop();
                                 if ((nextInst->opcode() == G4_mad ||
                                     nextInst->opcode() == G4_dp4a) &&
-                                    hasReadSuppression(inst, nextInst, inst->getExecSize() == 8))
+                                    hasReadSuppression(inst, nextInst, inst->getExecSize() == g4::SIMD8))
                                 {
                                     readyList.push(scheduled);
                                     scheduled = next;

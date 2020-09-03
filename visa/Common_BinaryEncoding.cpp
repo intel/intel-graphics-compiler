@@ -189,7 +189,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
     }
 
     bool isDoubleInst = (dst->getType() == Type_DF);
-    if (inst->getExecSize() == 1)
+    if (inst->getExecSize() == g4::SIMD1)
     {
         int subRegOffset = dst->getLinearizedStart() % 16;
         if (inst->getCondMod())
@@ -221,7 +221,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
         dst->setWriteMask(writeMask);
         dst->setLeftBound(dst->getLeftBound() - subRegOffset);
         dst->setRightBound(dst->getLeftBound() + 16);
-        inst->setExecSize(isDoubleInst ? 2 : 4);
+        inst->setExecSize(isDoubleInst ? g4::SIMD2 : g4::SIMD4);
         G4_Predicate* pred = inst->getPredicate();
         if (pred != NULL)
         {
@@ -261,7 +261,7 @@ void BinaryEncodingBase::FixMathInst(G4_INST* inst)
         {
             G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
             const RegionDesc* region = srcRegion->getRegion();
-            if (inst->getExecSize() > 1 &&
+            if (inst->getExecSize() > g4::SIMD1 &&
                 region->vertStride == 1 && region->width == 1 && region->horzStride == 0)
             {
                 // rewrite <1;1,0> to <2;2,1> to avoid simulator warning

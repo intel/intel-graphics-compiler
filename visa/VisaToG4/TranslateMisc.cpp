@@ -54,7 +54,7 @@ G4_ExecSize IR_Builder::toExecSize(VISA_Exec_Size execSize)
     case EXEC_SIZE_32: return g4::SIMD32;
     default:
         MUST_BE_TRUE(false, "illegal common ISA execsize (should be 0..5).");
-        return 0;
+        return G4_ExecSize(0);
     }
 }
 
@@ -77,7 +77,7 @@ G4_Declare* IR_Builder::getImmDcl(G4_Imm* val, int numElt)
         return dcl;
     }
     dcl = createTempVarWithNoSpill(numElt, val->getType(), Any);
-    createMov(numElt, Create_Dst_Opnd_From_Dcl(dcl, 1), val,
+    createMov(G4_ExecSize(numElt), Create_Dst_Opnd_From_Dcl(dcl, 1), val,
         InstOpt_WriteEnable, true);
     return dcl;
 }
@@ -91,7 +91,7 @@ G4_Declare* IR_Builder::getImmDcl(G4_Imm* val, int numElt)
 /// the size of power-of-2 multiple GRFs.
 static void CopySrcToMsgPayload(
     IR_Builder *IRB,
-    unsigned execSize, uint32_t eMask,
+    G4_ExecSize execSize, uint32_t eMask,
     G4_Declare *msg, unsigned msgRegOff,
     G4_SrcRegRegion *src, unsigned srcRegOff)
 {
@@ -116,7 +116,7 @@ static void CopySrcToMsgPayload(
         // <16 x i64> -> 2 * < 8 x i64>
         // <32 x i64> -> 2 * <16 x i64> -> 4 * < 8 x i64>
         //
-        unsigned newExecSize = execSize >> 1;
+        G4_ExecSize newExecSize {execSize / 2};
         unsigned splitOff = numRegs >> 1;
         uint32_t loEMask = IR_Builder::getSplitLoEMask(execSize, eMask);
         uint32_t hiEMask = IR_Builder::getSplitHiEMask(execSize, eMask);
@@ -147,9 +147,9 @@ static void CopySrcToMsgPayload(
 }
 
 static void Copy_Source_To_Payload(
-    IR_Builder *IRB, unsigned batchExSize,
+    IR_Builder *IRB, G4_ExecSize batchExSize,
     G4_Declare *msg, unsigned &regOff,
-    G4_SrcRegRegion *source, unsigned execSize,
+    G4_SrcRegRegion *source, G4_ExecSize execSize,
     uint32_t eMask)
 {
     ASSERT_USER(batchExSize == 1 || batchExSize == 2 || batchExSize == 4 ||
@@ -157,7 +157,7 @@ static void Copy_Source_To_Payload(
         "Invalid execution size for message payload copy!");
 
     unsigned srcRegOff = 0;
-    unsigned batchSize = std::min(batchExSize, execSize);
+    G4_ExecSize batchSize = std::min(batchExSize, execSize);
     uint32_t numSrcRegs = (source->getElemSize() * batchSize) /
         COMMON_ISA_GRF_REG_SIZE;
     if (numSrcRegs == 0)
@@ -179,9 +179,9 @@ static void Copy_Source_To_Payload(
 void IR_Builder::preparePayload(
     G4_SrcRegRegion *msgs[2],
     unsigned sizes[2],
-    unsigned batchExSize,
+    G4_ExecSize batchExSize,
     bool splitSendEnabled,
-    payloadSource srcs[], unsigned len)
+    PayloadSource srcs[], unsigned len)
 {
     const G4_Declare *dcls[2] = {0, 0};
     unsigned msgSizes[2] = {0, 0};
@@ -390,7 +390,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
                 [&] (G4_Type type) {
                 uint32_t numMoves = std::max(1u, totalSize / (2 * getGRFSize()));
                 auto moveMask = emask;
-                unsigned MAX_SIMD = std::min(srcSize, getNativeExecSize() * (laneSize == 8 ? 1 : 2));
+                G4_ExecSize MAX_SIMD {std::min(srcSize, getNativeExecSize() * (laneSize == 8 ? 1u : 2u))};
                 for (unsigned i = 0; i < numMoves; i++) {
                     auto rowOffset = i * 2;
                     unsigned int instOpt = Get_Gen4_Emask(moveMask, MAX_SIMD);
@@ -424,13 +424,13 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
 
 void IR_Builder::Copy_SrcRegRegion_To_Payload(
     G4_Declare* payload, unsigned int& regOff, G4_SrcRegRegion* src,
-    unsigned int exec_size, uint32_t emask)
+    G4_ExecSize execSize, uint32_t emask)
 {
     auto payloadDstRgn = createDst(payload->getRegVar(), (short)regOff, 0, 1, payload->getElemType());
 
     G4_SrcRegRegion* srcRgn = createSrcRegRegion(*src);
     srcRgn->setType(payload->getElemType());
-    createMov(exec_size, payloadDstRgn, srcRgn, emask, true);
+    createMov(execSize, payloadDstRgn, srcRgn, emask, true);
     if (getTypeSize(payload->getElemType()) == 2)
     {
         // for half float each source occupies 1 GRF regardless of execution size
@@ -438,7 +438,7 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload(
     }
     else
     {
-        regOff += exec_size / getNativeExecSize();
+        regOff += execSize / getNativeExecSize();
     }
 }
 
@@ -467,18 +467,18 @@ unsigned int IR_Builder::getByteOffsetSrcRegion(G4_SrcRegRegion* srcRegion)
 }
 
 bool IR_Builder::checkIfRegionsAreConsecutive(
-    G4_SrcRegRegion* first, G4_SrcRegRegion* second, unsigned int exec_size)
+    G4_SrcRegRegion* first, G4_SrcRegRegion* second, G4_ExecSize execSize)
 {
     if (first == NULL || second == NULL)
     {
         return true;
     }
 
-    return checkIfRegionsAreConsecutive(first, second, exec_size, first->getType());
+    return checkIfRegionsAreConsecutive(first, second, execSize, first->getType());
 }
 
 bool IR_Builder::checkIfRegionsAreConsecutive(
-    G4_SrcRegRegion* first, G4_SrcRegRegion* second, unsigned int exec_size, G4_Type type)
+    G4_SrcRegRegion* first, G4_SrcRegRegion* second, G4_ExecSize execSize, G4_Type type)
 {
     bool isConsecutive = false;
 
@@ -496,7 +496,7 @@ bool IR_Builder::checkIfRegionsAreConsecutive(
 
         if (firstDcl == secondDcl)
         {
-            if ((firstOff + (exec_size * G4_Type_Table[type].byteSize)) == secondOff)
+            if ((firstOff + (execSize * G4_Type_Table[type].byteSize)) == secondOff)
             {
                 isConsecutive = true;
             }
@@ -521,13 +521,16 @@ int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand* var)
     if ((properties & 0x1) == LIFETIME_START)
     {
         G4_DstRegRegion* varDstRgn = createDst(var->getBase(), 0, 0, 1, Type_UD);
-        createIntrinsicInst(nullptr, Intrinsic::PseudoKill, 1, varDstRgn, createImm((unsigned int)PseudoKillType::Src),
+        createIntrinsicInst(
+            nullptr, Intrinsic::PseudoKill, g4::SIMD1,
+            varDstRgn, createImm((unsigned int)PseudoKillType::Src),
             nullptr, nullptr, InstOpt_WriteEnable);
     }
     else
     {
-        G4_SrcRegRegion* varSrcRgn = createSrcRegRegion(Mod_src_undef, Direct, var->getBase(), 0, 0, getRegionScalar(), Type_UD);
-        createIntrinsicInst(nullptr, Intrinsic::PseudoUse, 1, nullptr, varSrcRgn,
+        G4_SrcRegRegion* varSrcRgn = createSrcRegRegion(
+            Mod_src_undef, Direct, var->getBase(), 0, 0, getRegionScalar(), Type_UD);
+        createIntrinsicInst(nullptr, Intrinsic::PseudoUse, g4::SIMD1, nullptr, varSrcRgn,
             nullptr, nullptr, InstOpt_WriteEnable);
     }
 

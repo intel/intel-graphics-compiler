@@ -149,17 +149,57 @@ enum class BankAlign
 };
 
 
-// phase 1 of G4_ExecSize inclusion
-// (ultimately this will be a proper data type)
-using G4_ExecSize = unsigned char;
-namespace g4{
-static const G4_ExecSize SIMD1 = 1;
-static const G4_ExecSize SIMD2 = 2;
-static const G4_ExecSize SIMD4 = 4;
-static const G4_ExecSize SIMD8 = 8;
-static const G4_ExecSize SIMD16 = 16;
-static const G4_ExecSize SIMD32 = 32;
-static const G4_ExecSize SIMD_UNDEFINED = UNDEFINED_EXEC_SIZE;
+// An instruction's execution width
+struct G4_ExecSize {
+    unsigned char value;
+
+    // goal is to keep constructors "explicit" so they
+    // better distingushed in parameter lists for overload resolution
+    explicit constexpr G4_ExecSize(unsigned char _value) : value(_value) { }
+    // we could provide a non-const version of these that asserts on SIMD sizes
+    explicit G4_ExecSize(int _value) : value((unsigned)_value) { }
+    explicit G4_ExecSize(unsigned int _value) : value(_value) { }
+    // the default constructor can be implicit
+    constexpr G4_ExecSize() : value(0) { }
+
+    G4_ExecSize(const G4_ExecSize &) = default;
+    G4_ExecSize &operator =(const G4_ExecSize &) = default;
+
+    G4_ExecSize &operator *=(unsigned char s) {value *= s; return *this;}
+    G4_ExecSize &operator /=(unsigned char s) {value /= s; return *this;}
+
+    bool operator < (G4_ExecSize rhs) const {return value < rhs.value;}
+    bool operator <=(G4_ExecSize rhs) const {return value <= rhs.value;}
+    bool operator ==(G4_ExecSize rhs) const {return value == rhs.value;}
+    bool operator !=(G4_ExecSize rhs) const {return value != rhs.value;}
+    bool operator >=(G4_ExecSize rhs) const {return value >= rhs.value;}
+    bool operator > (G4_ExecSize rhs) const {return value > rhs.value;}
+
+    bool operator < (unsigned rhs) const {return value < (unsigned char)rhs;}
+    bool operator <=(unsigned rhs) const {return value <= (unsigned char)rhs;}
+    bool operator ==(unsigned rhs) const {return value == (unsigned char)rhs;}
+    bool operator !=(unsigned rhs) const {return value != (unsigned char)rhs;}
+    bool operator >=(unsigned rhs) const {return value >= (unsigned char)rhs;}
+    bool operator > (unsigned rhs) const {return value > (unsigned char)rhs;}
+
+    bool operator < (int rhs) const {return value < (unsigned char)rhs;}
+    bool operator <=(int rhs) const {return value <= (unsigned char)rhs;}
+    bool operator ==(int rhs) const {return value == (unsigned char)rhs;}
+    bool operator !=(int rhs) const {return value != (unsigned char)rhs;}
+    bool operator >=(int rhs) const {return value >= (unsigned char)rhs;}
+    bool operator > (int rhs) const {return value > (unsigned char)rhs;}
+
+    operator unsigned char() const {return value;}
+};
+namespace g4 {
+constexpr G4_ExecSize SIMD1((unsigned char)1);
+constexpr G4_ExecSize SIMD2((unsigned char)2);
+constexpr G4_ExecSize SIMD4((unsigned char)4);
+constexpr G4_ExecSize SIMD8((unsigned char)8);
+constexpr G4_ExecSize SIMD16((unsigned char)16);
+constexpr G4_ExecSize SIMD32((unsigned char)32);
+// TODO: remove/merge with G4_ExecSize(0) uses
+constexpr G4_ExecSize SIMD_UNDEFINED((unsigned char)UNDEFINED_EXEC_SIZE);
 }
 
 // saturation

@@ -249,7 +249,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
         {
             if (lb != use_lb ||
                 rb != use_rb ||
-                (hs != use_hs && defInst->getExecSize() > 1))
+                (hs != use_hs && defInst->getExecSize() > g4::SIMD1))
             {
                 canReplace = false;
                 break;
@@ -430,7 +430,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
     }
 
     if (canReplace &&
-        defInst->getExecSize() > 1)
+        defInst->getExecSize() > g4::SIMD1)
     {
         // Check whether alignment matches for vectors
         // mov (8) V2(0,6)    V1(0,1) ... <-- lvnInst
@@ -927,7 +927,7 @@ LVNItemInfo* LVN::getOpndValue(G4_Operand* opnd, bool create)
     }
     else if (opnd->isDstRegRegion())
     {
-        isScalar = (opnd->getInst()->getExecSize() == 1);
+        isScalar = opnd->getInst()->getExecSize() == g4::SIMD1;
         if (!isScalar)
         {
             hs = opnd->asDstRegRegion()->getHorzStride();
@@ -1348,7 +1348,7 @@ bool LVN::computeValue(G4_INST* inst, bool negate, bool& canNegate, bool& isGlob
                 item->hstride = inst->getDst()->getHorzStride();
                 item->inst = inst;
                 item->opnd = inst->getDst();
-                item->isScalar = (inst->getExecSize() == 1);
+                item->isScalar = inst->getExecSize() == g4::SIMD1;
                 item->lb = inst->getDst()->getLeftBound();
                 item->rb = inst->getDst()->getRightBound();
                 item->value = value;
@@ -1363,7 +1363,7 @@ bool LVN::computeValue(G4_INST* inst, bool negate, bool& canNegate, bool& isGlob
         item->hstride = inst->getDst()->getHorzStride();
         item->inst = inst;
         item->opnd = inst->getDst();
-        item->isScalar = (inst->getExecSize() == 1);
+        item->isScalar = inst->getExecSize() == g4::SIMD1;
         item->lb = inst->getDst()->getLeftBound();
         item->rb = inst->getDst()->getRightBound();
         item->value = value;
@@ -1759,7 +1759,7 @@ void LVN::populateDuTable(INST_LIST_ITER inst_it)
                             if (activeDst->getInst()->getPredicate() == NULL &&
                                 (lb_dst <= lb && rb_dst >= rb &&
                                 (hs_dst == hs ||
-                                    (hs_dst == 1 && hs == 0 && activeDst->getInst()->getExecSize() == 1))))
+                                    (hs_dst == 1 && hs == 0 && activeDst->getInst()->getExecSize() == g4::SIMD1))))
                             {
                                 // Active def (in bottom-up order)
                                 // fully defines use of current inst. So no

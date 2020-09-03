@@ -68,11 +68,11 @@ struct AccInterval
         switch (inst->getDst()->getType())
         {
         case Type_F:
-            return inst->getExecSize() == (builder.getNativeExecSize() * 2);
+            return inst->getExecSize() == G4_ExecSize(builder.getNativeExecSize() * 2);
         case Type_HF:
             return false;
         case Type_DF:
-            return inst->getExecSize() > (builder.getNativeExecSize() / 2);
+            return inst->getExecSize() > G4_ExecSize(builder.getNativeExecSize() / 2);
         default:
             return true;
         }

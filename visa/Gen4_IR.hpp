@@ -840,7 +840,7 @@ public:
     }
 
     void setDest(G4_DstRegRegion* opnd);
-    void setExecSize(unsigned char s);
+    void setExecSize(G4_ExecSize s);
 
     void computeARFRightBound();
 
@@ -897,7 +897,7 @@ public:
         }
     }
 
-    bool is1QInst() const { return execSize == 8 && getMaskOffset() == 0; }
+    bool is1QInst() const { return execSize == g4::SIMD8 && getMaskOffset() == 0; }
     bool isWriteEnableInst() const { return (option & InstOpt_WriteEnable) ? true : false; }
     bool isYieldInst() const { return (option & InstOpt_Switch) ? true : false; }
     bool isNoPreemptInst() const { return (option & InstOpt_NoPreempt) ? true : false; }
@@ -913,8 +913,8 @@ public:
     // get simd lane mask for this instruction. For example,
     //      add  (8|M8) ...
     // will have 0xFF00, which lane 8-15
-    unsigned getExecLaneMask() const;
-    unsigned char  getExecSize() const {return execSize;}
+    uint32_t getExecLaneMask() const;
+    G4_ExecSize getExecSize() const {return execSize;}
     const G4_CondMod*    getCondMod() const {return mod;}
           G4_CondMod*    getCondMod()       {return mod;}
     const G4_VarBase*    getCondModBase() const;
@@ -924,7 +924,7 @@ public:
     void setCondMod(G4_CondMod* m);
 
     bool isDead() const {return dead;}
-    void markDead()        {dead = true;}
+    void markDead() {dead = true;}
 
     bool isAligned1Inst() const { return !isAligned16Inst(); }
     bool isAligned16Inst() const { return (option & InstOpt_Align16)    ? true : false; }
@@ -1225,13 +1225,13 @@ public:
         G4_opcode o,
         G4_CondMod* m,
         G4_Sat sat,
-        unsigned char size,
+        G4_ExecSize execSize,
         G4_DstRegRegion* d,
         G4_Operand* s0,
         G4_Operand* s1,
         unsigned int opt,
         G4_MathOp mOp = MATH_RESERVED) :
-        G4_INST(builder, prd, o, m, sat, size, d, s0, s1, opt),
+        G4_INST(builder, prd, o, m, sat, execSize, d, s0, s1, opt),
         mathOp(mOp)
     {
 
@@ -1289,7 +1289,7 @@ public:
     G4_InstCF(const IR_Builder& builder,
         G4_Predicate* prd,
         G4_opcode op,
-        unsigned char size,
+        G4_ExecSize size,
         G4_Label* jipLabel,
         G4_Label* uipLabel,
         uint32_t instOpt) :
@@ -1297,7 +1297,7 @@ public:
         jip(jipLabel), uip(uipLabel), isBackwardBr(op == G4_while), isUniformBr(false)
     {
         isUniformBr = (op == G4_jmpi ||
-                       (op == G4_goto && (size == 1 || prd == nullptr)));
+                       (op == G4_goto && (size == g4::SIMD1 || prd == nullptr)));
     }
 
     // used by jump/call/ret
@@ -1306,7 +1306,7 @@ public:
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
-        unsigned char size,
+        G4_ExecSize size,
         G4_DstRegRegion* d,
         G4_Operand* s0,
         unsigned int opt) :
@@ -1314,7 +1314,7 @@ public:
         jip(NULL), uip(NULL), isBackwardBr(o == G4_while), isUniformBr(false)
     {
         isUniformBr = (op == G4_jmpi ||
-            (op == G4_goto && (size == 1 || prd == nullptr)));
+            (op == G4_goto && (size == g4::SIMD1 || prd == nullptr)));
     }
 
     bool isCFInst() const override { return true; }
@@ -2906,12 +2906,12 @@ namespace vISA
     private:
         G4_RegVar*  baseRegVar;
         G4_Operand* repRegion;
-        unsigned    execSize;
+        G4_ExecSize  execSize;
         TransientType type;
 
     public:
         G4_RegVarTransient(G4_Declare* d, G4_RegVar* base, G4_Operand* reprRegion,
-            unsigned eSize, TransientType t) :
+            G4_ExecSize eSize, TransientType t) :
             G4_RegVar(d, Transient), baseRegVar(base), repRegion(reprRegion),
             execSize(eSize), type(t)
         {
@@ -2924,7 +2924,7 @@ namespace vISA
         G4_Operand * getRepRegion() const { return repRegion; }
         G4_RegVar * getAbsBaseRegVar();
         G4_RegVar * getNonTransientBaseRegVar();
-        unsigned getExecSize() const { return execSize; }
+        G4_ExecSize getExecSize() const { return execSize; }
 
         bool isRegVarSpill() const { return type == TransientType::Spill; }
         bool isRegVarFill() const { return type == TransientType::Fill; }
@@ -2938,7 +2938,8 @@ namespace vISA
         G4_RegVar * baseRegVar;
 
     public:
-        G4_RegVarTmp(G4_Declare * d, G4_RegVar * base) : G4_RegVar(d, RegVarType::GRFSpillTmp), baseRegVar(base)
+        G4_RegVarTmp(G4_Declare * d, G4_RegVar * base) :
+            G4_RegVar(d, RegVarType::GRFSpillTmp), baseRegVar(base)
         {
             assert(base->isRegVarTransient() == false);
             assert(base == base->getBaseRegVar());
@@ -4024,7 +4025,7 @@ inline bool G4_InstCF::isUniformGoto(unsigned KernelSimdSize) const
 {
     assert(op == G4_goto);
     const G4_Predicate *pred = getPredicate();
-    if (getExecSize() == 1 || pred == nullptr)
+    if (getExecSize() == g4::SIMD1 || pred == nullptr)
         return true;
 
     // This is uniform if group size equals to the kernel simd size.

@@ -125,7 +125,7 @@ public:
 
     static unsigned int createSpillSendMsgDescOWord(
         unsigned int height,
-        unsigned int& execSize);
+        G4_ExecSize& execSize);
 
 private:
 
@@ -137,9 +137,7 @@ private:
         G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid);
     void prunePointsTo( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis );
 
-    void
-    computeSpillIntf (
-    );
+    void computeSpillIntf();
 
     unsigned
     getMaxExecSize (
@@ -237,165 +235,79 @@ private:
     ) const;
 
     template <class REGION_TYPE>
-    G4_RegFileKind
-    getRFType (
-        REGION_TYPE * region
-    ) const;
+    G4_RegFileKind getRFType(REGION_TYPE * region) const;
 
     template <class REGION_TYPE>
-    unsigned
-    getRegionOriginOffset (
-        REGION_TYPE * region
-    ) const;
+    unsigned getRegionOriginOffset(REGION_TYPE * region) const;
 
-    unsigned
-    grfMask() const;
+    unsigned grfMask() const;
 
-    unsigned
-    hwordMask () const;
+    unsigned hwordMask() const;
 
-    unsigned
-    owordMask () const;
+    unsigned owordMask() const;
 
-    unsigned
-    dwordMask () const;
+    unsigned dwordMask() const;
 
-    bool
-    owordAligned (
-        unsigned offset
-    ) const;
+    bool owordAligned(unsigned offset) const;
 
-    bool
-    dwordAligned (
-        unsigned offset
-    ) const;
+    bool dwordAligned(unsigned offset) const;
 
-    static unsigned
-    cdiv (
-        unsigned dvd,
-        unsigned dvr
-    );
+    static unsigned cdiv(unsigned dvd, unsigned dvr);
 
-    G4_RegVar *
-    getRegVar (
-        unsigned id
-    ) const;
+    G4_RegVar *getRegVar(unsigned id) const;
 
-    bool
-    shouldSpillRegister (
-        G4_RegVar * regVar
-    ) const;
+    bool shouldSpillRegister(G4_RegVar * regVar) const;
 
-    unsigned
-    getByteSize (
-        G4_RegVar * regVar
-    ) const;
+    unsigned getByteSize(G4_RegVar * regVar) const;
 
     template <class REGION_TYPE>
-    unsigned
-    getSegmentDisp (
+    unsigned getSegmentDisp(REGION_TYPE * region, G4_ExecSize   execSize);
+
+    unsigned getDisp(G4_RegVar *   lRange);
+
+    template <class REGION_TYPE>
+    unsigned getRegionDisp(REGION_TYPE * region);
+
+    bool spillMemLifetimeInterfere(unsigned i, unsigned j) const;
+
+    unsigned calculateSpillDisp(G4_RegVar * lRange) const;
+
+    template <class REGION_TYPE>
+    unsigned getMsgType(REGION_TYPE * region, G4_ExecSize   execSize);
+
+    template <class REGION_TYPE>
+    bool isUnalignedRegion(REGION_TYPE * region, G4_ExecSize   execSize);
+
+    template <class REGION_TYPE>
+    void calculateEncAlignedSegment(
         REGION_TYPE * region,
-        unsigned      execSize
-    ) ;
-
-    unsigned
-    getDisp (
-        G4_RegVar *   lRange
-    ) ;
-
-    template <class REGION_TYPE>
-    unsigned
-    getRegionDisp (
-        REGION_TYPE * region
-    ) ;
-
-    bool
-    spillMemLifetimeInterfere (
-        unsigned i,
-        unsigned j
-    ) const;
-
-    unsigned
-    calculateSpillDisp (
-        G4_RegVar * lRange
-    ) const;
-
-    template <class REGION_TYPE>
-    unsigned
-    getMsgType (
-        REGION_TYPE * region,
-        unsigned      execSize
-    );
-
-    template <class REGION_TYPE>
-    bool
-    isUnalignedRegion (
-        REGION_TYPE * region,
-        unsigned      execSize
-    );
-
-    template <class REGION_TYPE>
-    void
-    calculateEncAlignedSegment (
-        REGION_TYPE * region,
-        unsigned      execSize,
+        G4_ExecSize   execSize,
         unsigned &    start,
         unsigned &    end,
-        unsigned &    type
-    );
+        unsigned &    type);
 
     template <class REGION_TYPE>
-    unsigned
-    getEncAlignedSegmentByteSize (
-        REGION_TYPE * region,
-        unsigned      execSize
-    );
+    unsigned getEncAlignedSegmentByteSize(REGION_TYPE * region, G4_ExecSize   execSize);
 
     template <class REGION_TYPE>
-    unsigned
-    getEncAlignedSegmentDisp (
-        REGION_TYPE * region,
-        unsigned      execSize
-    );
+    unsigned getEncAlignedSegmentDisp(REGION_TYPE * region, G4_ExecSize   execSize);
 
     template <class REGION_TYPE>
-    unsigned
-    getEncAlignedSegmentMsgType (
-        REGION_TYPE * region,
-        unsigned      execSize
-    );
+    unsigned getEncAlignedSegmentMsgType(REGION_TYPE * region, G4_ExecSize   execSize);
 
     template <class REGION_TYPE>
-    unsigned
-    getSegmentByteSize (
-        REGION_TYPE * region,
-        unsigned      execSize
-    );
+    unsigned getSegmentByteSize(REGION_TYPE * region, G4_ExecSize   execSize);
 
-    unsigned
-    getRegionByteSize (
-        G4_DstRegRegion * region,
-        unsigned          execSize
-    ) const;
+    unsigned getRegionByteSize (G4_DstRegRegion * region, G4_ExecSize execSize) const;
 
-    unsigned
-    getRegionByteSize (
-        G4_SrcRegRegion * region,
-        unsigned          execSize
-    ) const;
+    unsigned getRegionByteSize(G4_SrcRegRegion * region, G4_ExecSize execSize) const;
 
-    bool
-    isScalarReplication (
-        G4_SrcRegRegion * region
-    ) const;
+    bool isScalarReplication(G4_SrcRegRegion * region) const;
 
-    bool
-    repeatSIMD16or32Source (
-        G4_SrcRegRegion * region
-    ) const;
+    bool repeatSIMD16or32Source(G4_SrcRegRegion * region) const;
 
     G4_Declare *
-    createRangeDeclare (
+    createRangeDeclare(
         const char*    name,
         G4_RegFileKind regFile,
         unsigned short nElems,
@@ -404,35 +316,31 @@ private:
         DeclareType    kind,
         G4_RegVar *    base,
         G4_Operand *   repRegion,
-        unsigned       execSize
-    );
+        G4_ExecSize    execSize);
 
     template <class REGION_TYPE>
     G4_Declare *
-    createTransientGRFRangeDeclare (
+    createTransientGRFRangeDeclare(
         REGION_TYPE * region,
         const char  * name,
         unsigned      index,
-        unsigned      execSize,
+        G4_ExecSize   execSize,
         G4_INST     * inst
     );
 
     G4_Declare *
-    createPostDstSpillRangeDeclare (
-        G4_INST *         sendOut
-    );
+    createPostDstSpillRangeDeclare(G4_INST * sendOut);
 
     G4_Declare *
-    createSpillRangeDeclare (
+    createSpillRangeDeclare(
         G4_DstRegRegion * spillRegion,
-        unsigned          execSize,
-        G4_INST         * inst
-    );
+        G4_ExecSize       execSize,
+        G4_INST         * inst);
 
     G4_Declare *
     createGRFFillRangeDeclare (
         G4_SrcRegRegion * fillRegion,
-        unsigned          execSize,
+        G4_ExecSize       execSize,
         G4_INST         * inst
     );
 
@@ -443,126 +351,93 @@ private:
     );
 
     G4_Declare *
-    createTemporaryRangeDeclare (
+    createTemporaryRangeDeclare(
         G4_DstRegRegion * fillRegion,
-        unsigned          execSize,
-        bool              forceSegmentAlignment = false
-    );
+        G4_ExecSize       execSize,
+        bool              forceSegmentAlignment = false);
 
     G4_DstRegRegion *
-    createSpillRangeDstRegion (
+    createSpillRangeDstRegion(
         G4_RegVar *       spillRangeRegVar,
         G4_DstRegRegion * spilledRegion,
-        unsigned          execSize,
-        unsigned          regOff = 0
-    );
+        G4_ExecSize       execSize,
+        unsigned          regOff = 0);
 
     G4_SrcRegRegion *
-    createFillRangeSrcRegion (
+    createFillRangeSrcRegion(
         G4_RegVar *       fillRangeRegVar,
         G4_SrcRegRegion * filledRegion,
-        unsigned          execSize
-    );
+        G4_ExecSize       execSize);
 
     G4_SrcRegRegion *
-    createTemporaryRangeSrcRegion (
+    createTemporaryRangeSrcRegion(
         G4_RegVar *       tmpRangeRegVar,
         G4_DstRegRegion * spilledRegion,
-        uint16_t          execSize,
-        unsigned          regOff = 0
-    );
+        G4_ExecSize       execSize,
+        unsigned          regOff = 0);
 
     G4_SrcRegRegion *
-    createBlockSpillRangeSrcRegion (
+    createBlockSpillRangeSrcRegion(
         G4_RegVar *       spillRangeRegVar,
-        unsigned          regOff            = 0,
-        unsigned          subregOff         = 0
-    );
+        unsigned          regOff = 0,
+        unsigned          subregOff = 0);
 
     G4_Declare *
-    createMRangeDeclare (
-        G4_RegVar *          regVar
-    );
+    createMRangeDeclare(G4_RegVar * regVar);
 
     G4_Declare *
-    createMRangeDeclare (
-        G4_DstRegRegion * region,
-        unsigned          execSize
-    );
+    createMRangeDeclare(G4_DstRegRegion * region, G4_ExecSize execSize);
 
     G4_Declare *
-    createMRangeDeclare (
-        G4_SrcRegRegion * region,
-        unsigned          execSize
-    );
+    createMRangeDeclare(G4_SrcRegRegion * region, G4_ExecSize execSize);
 
     G4_DstRegRegion *
-    createMPayloadBlockWriteDstRegion (
+    createMPayloadBlockWriteDstRegion(
         G4_RegVar *       grfRange,
         unsigned          regOff = 0,
-        unsigned          subregOff = 0
-    );
+        unsigned          subregOff = 0);
 
     G4_DstRegRegion *
-    createMHeaderInputDstRegion (
+    createMHeaderInputDstRegion(
         G4_RegVar *       grfRange,
-        unsigned          subregOff = 0
-    );
+        unsigned          subregOff = 0);
 
     G4_DstRegRegion *
-    createMHeaderBlockOffsetDstRegion (
-        G4_RegVar *          grfRange
-    );
+    createMHeaderBlockOffsetDstRegion(G4_RegVar * grfRange);
 
 
-    G4_SrcRegRegion *
-    createInputPayloadSrcRegion ();
+    G4_SrcRegRegion * createInputPayloadSrcRegion();
 
-    G4_Declare *
-    initMHeader (
-        G4_Declare *      mRangeDcl
-    );
+    G4_Declare * initMHeader(G4_Declare * mRangeDcl);
 
-    G4_Declare *
-    createAndInitMHeader (
-        G4_RegVar *          regVar
-    );
+    G4_Declare * createAndInitMHeader(G4_RegVar * regVar);
 
     template <class REGION_TYPE>
-    G4_Declare *
-    initMHeader (
+    G4_Declare * initMHeader(
         G4_Declare *      mRangeDcl,
-        REGION_TYPE *      region,
-        unsigned          execSize
-    );
+        REGION_TYPE *     region,
+        G4_ExecSize       execSize);
 
     template <class REGION_TYPE>
-    G4_Declare *
-    createAndInitMHeader (
+    G4_Declare * createAndInitMHeader(
         REGION_TYPE *      region,
-        unsigned          execSize
-    );
+        G4_ExecSize        execSize);
 
-    void
-    sendInSpilledRegVarPortions (
+    void sendInSpilledRegVarPortions(
         G4_Declare *      fillRangeDcl,
         G4_Declare *      mRangeDcl,
         unsigned          regOff,
         unsigned          height,
-        unsigned          srcRegOff = 0
-    );
+        unsigned          srcRegOff = 0);
 
-    void
-    sendOutSpilledRegVarPortions (
+    void sendOutSpilledRegVarPortions(
         G4_Declare *      spillRangeDcl,
         G4_Declare *      mRangeDcl,
         unsigned          regOff,
         unsigned          height,
-        unsigned          srcRegOff = 0
-    );
+        unsigned          srcRegOff = 0);
 
-    void
-    initMWritePayload (
+    void initMWritePayload(
         G4_Declare *      spillRangeDcl,
         G4_Declare *      mRangeDcl,
         unsigned          regOff,
@@ -574,179 +449,136 @@ private:
         G4_Declare *      spillRangeDcl,
         G4_Declare *      mRangeDcl,
         G4_DstRegRegion * spilledRangeRegion,
-        unsigned          execSize,
-        unsigned          regOff = 0
-    );
+        G4_ExecSize       execSize,
+        unsigned          regOff = 0);
 
-    static unsigned
-    blockSendBlockSizeCode (
-        unsigned        regOff
-    );
+    static unsigned blockSendBlockSizeCode(unsigned regOff);
 
-    unsigned
-    scatterSendBlockSizeCode (
-        unsigned        regOff
-    ) const;
+    unsigned scatterSendBlockSizeCode(unsigned regOff) const;
 
-    G4_Imm *
-    createSpillSendMsgDesc (
+    G4_Imm * createSpillSendMsgDesc(
         unsigned        regOff,
         unsigned        height,
-        unsigned &      execSize,
-        G4_RegVar* base = NULL
-    );
+        G4_ExecSize &   execSize,
+        G4_RegVar*      base = NULL);
 
-    G4_Imm *
-    createSpillSendMsgDesc (
+    G4_Imm * createSpillSendMsgDesc(
         G4_DstRegRegion * spilledRangeRegion,
-        unsigned &        execSize
-    );
+        G4_ExecSize &     execSize);
 
-    G4_Imm *
-        createSpillSendMsgDesc(
-        int size,
-        int offset
-        );
+    G4_Imm * createSpillSendMsgDesc(int size, int offset);
 
-    G4_INST *
-    createAddFPInst (
-        unsigned char      execSize,
-        G4_DstRegRegion *      dst,
+    G4_INST * createAddFPInst(
+        G4_ExecSize       execSize,
+        G4_DstRegRegion * dst,
         G4_Operand *      src
     );
 
-    G4_INST *
-    createMovInst (
-        unsigned char      execSize,
-        G4_DstRegRegion *      dst,
+    G4_INST * createMovInst(
+        G4_ExecSize       execSize,
+        G4_DstRegRegion * dst,
         G4_Operand *      src,
         G4_Predicate *    predicate = NULL,
-        unsigned int      options = InstOpt_WriteEnable
+        G4_InstOpts       options = InstOpt_WriteEnable
     );
 
-    G4_INST *
-        createSendInst(
-        unsigned char      execSize,
+    G4_INST * createSendInst(
+        G4_ExecSize       execSize,
         G4_DstRegRegion * postDst,
         G4_SrcRegRegion * payload,
         G4_Imm *          desc,
-        SFID funcID,
+        SFID              funcID,
         bool              isWrite,
-        unsigned          option
-        );
+        G4_InstOpts       option);
 
     bool shouldPreloadSpillRange(
         G4_INST* instContext,
-        G4_BB* parentBB
-    );
+        G4_BB* parentBB);
 
-    void
-    preloadSpillRange (
+    void preloadSpillRange(
         G4_Declare *      spillRangeDcl,
         G4_Declare *      mRangeDcl,
         G4_DstRegRegion * spilledRangeRegion,
-        uint8_t     execSize
-    );
+        G4_ExecSize       execSize);
 
-    G4_INST *
-    createSpillSendInstr (
+    G4_INST * createSpillSendInstr(
         G4_Declare *      spillRangeDcl,
         G4_Declare *      mRangeDcl,
         unsigned          regOff,
         unsigned          height,
-        unsigned          spillOff
-    );
+        unsigned          spillOff);
 
-    G4_INST *
-    createSpillSendInstr (
+    G4_INST *createSpillSendInstr (
         G4_Declare *      spillRangeDcl,
         G4_Declare *      mRangeDcl,
         G4_DstRegRegion * spilledRangeRegion,
-        unsigned          execSize,
-        unsigned          option
-    );
+        G4_ExecSize       execSize,
+        unsigned          option);
 
-    G4_Imm *
-    createFillSendMsgDesc (
+    G4_Imm *createFillSendMsgDesc (
         unsigned          regOff,
         unsigned          height,
-        unsigned &        execSize,
-        G4_RegVar* base = NULL
-    );
+        G4_ExecSize &     execSize,
+        G4_RegVar* base = NULL);
 
     template <class REGION_TYPE>
-    G4_Imm *
-    createFillSendMsgDesc (
+    G4_Imm * createFillSendMsgDesc (
         REGION_TYPE *     filledRangeRegion,
-        unsigned &        execSize
+        G4_ExecSize &     execSize
     );
 
-    G4_Imm*
-        createFillSendMsgDesc(
+    G4_Imm * createFillSendMsgDesc(
         int size,
         int memOffset);
 
-    G4_INST *
-        createFillSendInstr (
+    G4_INST * createFillSendInstr (
         G4_Declare *      fillRangeDcl,
         G4_Declare *      mRangeDcl,
         unsigned          regOff,
         unsigned          height,
-        unsigned          spillOff
-    );
+        unsigned          spillOff);
 
-    G4_INST *
-    createFillSendInstr (
+    G4_INST * createFillSendInstr(
         G4_Declare *       fillRangeDcl,
         G4_Declare *       mRangeDcl,
         G4_SrcRegRegion *  filledRangeRegion,
-        unsigned           execSize
-    );
+        G4_ExecSize        execSize);
 
-    G4_INST* createFillInstr(G4_Declare* fillRangeDcl, G4_Declare* mRangeDcl, unsigned regOff, unsigned height, unsigned srcRegOff);
+    G4_INST* createFillInstr(
+        G4_Declare* fillRangeDcl,
+        G4_Declare* mRangeDcl,
+        unsigned regOff,
+        unsigned height,
+        unsigned srcRegOff);
 
-    void
-    replaceSpilledRange (
+    void replaceSpilledRange(
         G4_Declare *      spillRangeDcl,
         G4_DstRegRegion * spilledRegion,
-        G4_INST *         spilledInst
-    );
+        G4_INST *         spilledInst);
 
-    void
-    replaceFilledRange (
+    void replaceFilledRange(
         G4_Declare *      fillRangeDcl,
         G4_SrcRegRegion * filledRegion,
-        G4_INST *         filledInst
-    );
+        G4_INST *         filledInst);
 
-    INST_LIST::iterator
-    insertSpillRangeCode (
+    INST_LIST::iterator insertSpillRangeCode(
         INST_LIST::iterator spilledInstIter,
         G4_BB* bb
     );
 
-    INST_LIST::iterator
-    insertSendFillRangeCode (
+    INST_LIST::iterator insertSendFillRangeCode(
         G4_SrcRegRegion *   filledRegion,
         INST_LIST::iterator filledInstIter,
-        G4_BB* bb
-    );
+        G4_BB* bb);
 
-    INST_LIST::iterator
-    insertFillGRFRangeCode (
+    INST_LIST::iterator insertFillGRFRangeCode(
         G4_SrcRegRegion *   filledRegion,
         INST_LIST::iterator filledInstIter,
-        G4_BB* bb
-    );
+        G4_BB* bb);
 
-    void *
-    allocMem (
-        unsigned size
-    ) const;
+    void *allocMem (unsigned size) const;
 
-    SpillManagerGRF (
-        const SpillManagerGRF & other
-    );
+    SpillManagerGRF(const SpillManagerGRF & other);
 
     bool useSplitSend() const;
 

@@ -43,14 +43,14 @@ int IR_Builder::translateVISARawSendInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
+    G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
 
     if (msgDescOpnd->isSrcRegRegion())
     {
         // mov (1) a0.0<1>:ud src<0;1,0>:ud {NoMask}
         G4_DstRegRegion *dstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
-        createMov(1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true);
+        createMov(g4::SIMD1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true);
         msgDescOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
     }
 
@@ -101,14 +101,14 @@ int IR_Builder::translateVISARawSendsInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
+    const G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
 
     if (msgDescOpnd->isSrcRegRegion())
     {
         // mov (1) a0.0<1>:ud src<0;1,0>:ud {NoMask}
         G4_DstRegRegion* dstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
-        createMov(1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true);
+        createMov(g4::SIMD1, dstOpnd, msgDescOpnd, InstOpt_WriteEnable, true);
         msgDescOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
     }
 
@@ -126,7 +126,7 @@ int IR_Builder::translateVISARawSendsInst(
         // mov (1) a0.2<1>:ud src<0;1,0>:ud {NoMask}
         // to hold the dynamic ext msg descriptor
         G4_DstRegRegion* exDescDst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
-        createMov(1, exDescDst, ex, InstOpt_WriteEnable, true);
+        createMov(g4::SIMD1, exDescDst, ex, InstOpt_WriteEnable, true);
         temp_exdesc_src = Create_Src_Opnd_From_Dcl(getBuiltinA0Dot2(), getRegionScalar());
 
         if (exDescVal == 0)

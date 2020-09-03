@@ -2343,7 +2343,7 @@ void SaveRestoreManager::addInst(G4_INST* inst)
     if (inst->opcode() == G4_mov &&
         inst->getSrc(0) &&
         inst->getSrc(0)->isImm() &&
-        inst->getExecSize() == 1 &&
+        inst->getExecSize() == g4::SIMD1 &&
         inst->getDst() &&
         inst->getDst()->getLinearizedStart() % numEltPerGRF(Type_UB) == 8)
     {

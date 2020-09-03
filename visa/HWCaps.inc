@@ -578,9 +578,9 @@
     }
 
     // EU native execution size for 32-bit types
-    uint32_t getNativeExecSize() const
+    G4_ExecSize getNativeExecSize() const
     {
-        return 8;
+        return g4::SIMD8;
     }
 
     bool noScalarByteToFloat() const

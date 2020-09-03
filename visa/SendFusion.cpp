@@ -316,7 +316,7 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
     // If needed, more messages can be handled later.
     G4_opcode opc = I->opcode();
     if ((opc != G4_send && opc != G4_sends) ||
-        I->getExecSize() > 8 ||
+        I->getExecSize() > g4::SIMD8 ||
         I->getPredicate() != nullptr ||
         !(I->is1QInst() || I->isWriteEnableInst()))
     {
@@ -354,7 +354,7 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
     uint16_t msgLen = msgDesc->MessageLength();
     uint16_t rspLen = msgDesc->ResponseLength();
     uint16_t extMsgLen = msgDesc->extMessageLength();
-    if (I->getExecSize() < 8 &&
+    if (I->getExecSize() < g4::SIMD8 &&
         !(I->isWriteEnableInst() &&
           ((msgDesc->isDataPortWrite() && (msgLen + extMsgLen) == 2) ||
            (msgDesc->isDataPortRead() && msgLen == 1 && rspLen == 1))))
@@ -535,7 +535,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
 
     if (nDefs != 1 || addI->opcode() != G4_add ||
         !addI->getSrc(1)->isImm() || !addI->isWriteEnableInst() ||
-        addI->getExecSize() != 1) {
+        addI->getExecSize() != g4::SIMD1) {
         return;
     }
 
@@ -551,7 +551,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
     }
     if (nDefs != 1 || movI->opcode() != G4_mov ||
         !movI->getSrc(0)->isImm() || !movI->isWriteEnableInst() ||
-        movI->getExecSize() != 1) {
+        movI->getExecSize() != g4::SIMD1) {
         return;
     }
 
@@ -891,7 +891,7 @@ void SendFusion::packPayload(
     G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 {
     // Both Send0 and Send1 have the same MsgDesc.
-    unsigned char ExecSize = Send0->getExecSize();
+    G4_ExecSize execSize = Send0->getExecSize();
     G4_SendMsgDescriptor* origDesc = Send0->getMsgDesc();
     int option = Send0->getOption();
     int16_t msgLen = origDesc->MessageLength();
@@ -900,7 +900,7 @@ void SendFusion::packPayload(
     // mov (ES) DVar<D_regoff, D_sregoff>:Ty<1> SVar<S_regoff, S_sregoff>:Ty(1;1,0)
     auto copyRegOpnd = [&](
         G4_VarBase* DVar, G4_VarBase* SVar,
-        G4_Type Ty, unsigned char ES,
+        G4_Type Ty, G4_ExecSize ES,
         int16_t D_regoff, int16_t D_sregoff,
         int16_t S_regoff, int16_t S_sregoff) -> G4_INST*
     {
@@ -926,7 +926,7 @@ void SendFusion::packPayload(
     int16_t s1_roff = S1->getRegOff();
 
     // Special case for exec_size = 1|2|4
-    if (ExecSize < 8)
+    if (execSize < g4::SIMD8)
     {
         assert((origDesc->isDataPortWrite() ||
                 (msgLen == 1 && origDesc->ResponseLength() == 1)) &&
@@ -935,15 +935,15 @@ void SendFusion::packPayload(
             "Internal Error (SendFusion): unexpected write message!");
 
         /// Address payload size (in unit of GRF)
-        //    A64: 2*ExecSize UQ (1 GRF for ExecSize=1|2; 2 GRF for ExecSize=4)
-        //    Otherwise: 2*ExecSize DW, which is 1 GRF.
-        G4_INST* Inst0 = copyRegOpnd(Dst0, V0, Ty, ExecSize, d_roff, 0, s0_roff, 0);
+        //    A64: 2*execSize UQ (1 GRF for execSize=1|2; 2 GRF for execSize=4)
+        //    Otherwise: 2*execSize DW, which is 1 GRF.
+        G4_INST* Inst0 = copyRegOpnd(Dst0, V0, Ty, execSize, d_roff, 0, s0_roff, 0);
         G4_INST* Inst1;
-        if (origDesc->isA64Message() && ExecSize == 4) {
-            Inst1 = copyRegOpnd(Dst0, V1, Ty, ExecSize, d_roff + 1, 0, s1_roff, 0);
+        if (origDesc->isA64Message() && execSize == 4) {
+            Inst1 = copyRegOpnd(Dst0, V1, Ty, execSize, d_roff + 1, 0, s1_roff, 0);
         }
         else {
-            Inst1 = copyRegOpnd(Dst0, V1, Ty, ExecSize, d_roff, ExecSize, s1_roff, 0);
+            Inst1 = copyRegOpnd(Dst0, V1, Ty, execSize, d_roff, execSize, s1_roff, 0);
         }
 
         // Update DefUse
@@ -959,7 +959,7 @@ void SendFusion::packPayload(
         }
 
         // Source payload
-        //    Either in src0 or src1, but not both as ExecSize <= 4
+        //    Either in src0 or src1, but not both as execSize <= 4
         Ty = Type_UD; // source payload
         Gen4_Operand_Number opn = (msgLen > 1) ? Opnd_src0 : Opnd_src1;
         G4_SrcRegRegion* Reg0 = Send0->getOperand(opn)->asSrcRegRegion();
@@ -972,13 +972,13 @@ void SendFusion::packPayload(
         s1_roff = Reg1->getRegOff();
         if (opn == Opnd_src0) {
             // source payload follows address payload in Opnd_src0.
-            d_roff += ((origDesc->isA64Message() && ExecSize == 4) ? 2 : 1);
+            d_roff += ((origDesc->isA64Message() && execSize == 4) ? 2 : 1);
             s0_roff += 1;
             s1_roff += 1;
         }
 
-        Inst0 = copyRegOpnd(Dst, Var0, Ty, ExecSize, d_roff, 0, s0_roff, 0);
-        Inst1 = copyRegOpnd(Dst, Var1, Ty, ExecSize, d_roff, ExecSize, s1_roff, 0);
+        Inst0 = copyRegOpnd(Dst, Var0, Ty, execSize, d_roff, 0, s0_roff, 0);
+        Inst1 = copyRegOpnd(Dst, Var1, Ty, execSize, d_roff, execSize, s1_roff, 0);
 
         // Update DefUse
         Inst0->addDefUse(FusedSend, opn);
@@ -989,15 +989,15 @@ void SendFusion::packPayload(
         return;
     }
 
-    // Now, ExecSize = 8
+    // Now, execSize = 8
     // the number of grf for address payload in the original send
     const int16_t addrLen = (origDesc->isA64Message() ? 2 : 1);
 
     ///
     /// 1. copy address payload
     ///
-    G4_INST* Inst0 = copyRegOpnd(Dst0, V0, Ty, ExecSize, d_roff,   0, s0_roff, 0);
-    G4_INST* Inst1 = copyRegOpnd(Dst0, V1, Ty, ExecSize, d_roff+addrLen, 0, s1_roff, 0);
+    G4_INST* Inst0 = copyRegOpnd(Dst0, V0, Ty, execSize, d_roff,   0, s0_roff, 0);
+    G4_INST* Inst1 = copyRegOpnd(Dst0, V1, Ty, execSize, d_roff+addrLen, 0, s1_roff, 0);
 
     // Update DefUse
     Inst0->addDefUse(FusedSend, Opnd_src0);
@@ -1042,8 +1042,8 @@ void SendFusion::packPayload(
         for (int i = 0; i < nMov; ++i)
         {
             // copy operands of both send0 and send1 to Dst
-            G4_INST* I0 = copyRegOpnd(Dst, Var0, Ty, ExecSize, Off + 2 * i, 0, Off0 + i, 0);
-            G4_INST* I1 = copyRegOpnd(Dst, Var1, Ty, ExecSize, Off + 2 * i + 1, 0, Off1 + i, 0);
+            G4_INST* I0 = copyRegOpnd(Dst, Var0, Ty, execSize, Off + 2 * i, 0, Off0 + i, 0);
+            G4_INST* I1 = copyRegOpnd(Dst, Var1, Ty, execSize, Off + 2 * i + 1, 0, Off1 + i, 0);
 
             // Update DefUse
             I0->addDefUse(FusedSend, opn);
@@ -1078,7 +1078,7 @@ void SendFusion::unpackPayload(
     assert(G4_Type_Table[Ty].byteSize == 4 && "Unexpected Type!");
 
     // Use the original option for mov instructions
-    unsigned char ExecSize = Send0->getExecSize();
+    G4_ExecSize execSize = Send0->getExecSize();
     int option = Send0->getOption();
     int32_t nMov = Send0->getMsgDesc()->ResponseLength();
 
@@ -1087,7 +1087,7 @@ void SendFusion::unpackPayload(
     // Note that the code is designed for exec_size=8. It also
     // works for exec_size=1|2|4 with minor change (keep in mind
     // that nMov = 1 for exec_size=1|2|4)
-    assert((ExecSize == 8 || nMov == 1) &&
+    assert((execSize == g4::SIMD8 || nMov == 1) &&
            "Internal Error(SendFusion) : unexpected message response length!");
 
     G4_VarBase* Payload = FusedSend->getDst()->getBase();
@@ -1106,7 +1106,7 @@ void SendFusion::unpackPayload(
             Mod_src_undef, Direct, Payload, 2*i, 0, stride1, Ty);
         D = Builder->createDst(
             Dst0, Off0 + i, 0, 1, Ty);
-        G4_INST* Inst0 = Builder->createMov(ExecSize, D, S, option, false);
+        G4_INST* Inst0 = Builder->createMov(execSize, D, S, option, false);
         bb->insertBefore(InsertBeforePos, Inst0);
 
         // Update DefUse
@@ -1119,11 +1119,11 @@ void SendFusion::unpackPayload(
     {
         S = Builder->createSrcRegRegion(
             Mod_src_undef, Direct, Payload,
-            (ExecSize == 8 ? 2*i + 1 : 2*i),
-            (ExecSize == 8) ? 0 : ExecSize,
+            (execSize == 8 ? 2*i + 1 : 2*i),
+            (execSize == 8) ? 0 : execSize,
             stride1, Ty);
         D = Builder->createDst(Dst1, Off1 + i, 0, 1, Ty);
-        G4_INST* Inst1 = Builder->createMov(ExecSize, D, S, option, false);
+        G4_INST* Inst1 = Builder->createMov(execSize, D, S, option, false);
         bb->insertBefore(InsertBeforePos, Inst1);
 
         // Update DefUse
@@ -1168,7 +1168,7 @@ void SendFusion::createDMask(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
         Mod_src_undef, Direct, sr0, 0, 2, Builder->getRegionScalar(), Type_UD);
     G4_DstRegRegion* Dst = Builder->createDst(
         dmaskDecl->getRegVar(), 0, 0, 1, Type_UD);
-    G4_INST* Inst = Builder->createMov(1, Dst, Src, InstOpt_WriteEnable, false);
+    G4_INST* Inst = Builder->createMov(g4::SIMD1, Dst, Src, InstOpt_WriteEnable, false);
     bb->insertBefore(InsertBeforePos, Inst);
 
     // update DefUse info
@@ -1189,7 +1189,7 @@ void SendFusion::createDMask(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
             Mod_src_undef, Direct, sr0, 0, 2, Builder->getRegionScalar(), Type_UD);
         G4_DstRegRegion* D = Builder->createDst(
             dmaskDecl->getRegVar(), 0, 0, 1, Type_UD);
-        G4_INST* Inst = Builder->createMov(1, D, S, InstOpt_WriteEnable, false);
+        G4_INST* Inst = Builder->createMov(g4::SIMD1, D, S, InstOpt_WriteEnable, false);
         BB->insertBefore(InsertPos, Inst);
     }
 }
@@ -1224,7 +1224,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
         G4_DstRegRegion* flag = Builder->createDst(
             flagVar, 0, 0, 1, Type_UW);
 
-        G4_INST* I0 = Builder->createMov(1, flag,
+        G4_INST* I0 = Builder->createMov(g4::SIMD1, flag,
             Builder->createImm(0, Type_UW), InstOpt_WriteEnable, false);
         bb->insertBefore(InsertBeforePos, I0);
 
@@ -1240,7 +1240,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
         G4_DstRegRegion *nullDst = Builder->createNullDst(Type_UW);
         // Hard-coded simd8 here!
         G4_INST* I1 = Builder->createInternalInst(
-            NULL, G4_cmp, flagCM, g4::NOSAT, 8,
+            NULL, G4_cmp, flagCM, g4::NOSAT, g4::SIMD8,
             nullDst, r0_0, r0_1, InstOpt_M0);
         bb->insertBefore(InsertBeforePos, I1);
 
@@ -1250,7 +1250,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
             Builder->getRegionScalar(), Type_UW);
         G4_DstRegRegion* tmpDst1 = Builder->createDst(
             tmpDecl->getRegVar(), 0, 0, 1, Type_UW);
-        Inst0 = Builder->createMov(1, tmpDst1, flagSrc, InstOpt_WriteEnable, false);
+        Inst0 = Builder->createMov(g4::SIMD1, tmpDst1, flagSrc, InstOpt_WriteEnable, false);
         bb->insertBefore(InsertBeforePos, Inst0);
 
         // update DefUse
@@ -1267,7 +1267,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
         G4_DstRegRegion* tmpDst = Builder->createDst(
             tmpDecl->getRegVar(), 0, 0, 1, Type_UD);
         Inst0 = Builder->createBinOp(
-            G4_and, 1, tmpDst, ce0Src, dmaskSrc, InstOpt_WriteEnable, false);
+            G4_and, g4::SIMD1, tmpDst, ce0Src, dmaskSrc, InstOpt_WriteEnable, false);
         bb->insertBefore(InsertBeforePos, Inst0);
     }
 
@@ -1279,7 +1279,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
         Mod_src_undef, Direct, tmpUBDecl->getRegVar(), 0, 0, scalar, Type_UB);
     G4_DstRegRegion* D = Builder->createDst(
         tmpUBDecl->getRegVar(), 0, 0, 1, Type_UB);
-    G4_INST* Inst1 = Builder->createMov(2, D, S, InstOpt_WriteEnable, false);
+    G4_INST* Inst1 = Builder->createMov(g4::SIMD2, D, S, InstOpt_WriteEnable, false);
     bb->insertBefore(InsertBeforePos, Inst1);
 
     // update DefUse
@@ -1292,7 +1292,7 @@ void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
         Mod_src_undef, Direct, tmpUW->getRegVar(), 0, 0, scalar, Type_UW);
     G4_DstRegRegion* flag = Builder->createDst(
         FlagPerBB, 0, 0, 1, Type_UW);
-    FlagDefPerBB = Builder->createMov(1, flag, Src, InstOpt_WriteEnable, false);
+    FlagDefPerBB = Builder->createMov(g4::SIMD1, flag, Src, InstOpt_WriteEnable, false);
     bb->insertBefore(InsertBeforePos, FlagDefPerBB);
 
     // update DefUse
@@ -1339,7 +1339,7 @@ void SendFusion::doFusion(
 
     // Use I0 as both I0 and I1 have the same properties
     G4_SendMsgDescriptor* desc = I0->getMsgDesc();
-    unsigned char ExecSize = I0->getExecSize();
+    G4_ExecSize execSize = I0->getExecSize();
     bool isWrtEnable = I0->isWriteEnableInst();
     bool isSplitSend = I0->isSplitSend();
 
@@ -1383,10 +1383,10 @@ void SendFusion::doFusion(
     uint32_t newMsgLen = 2*msgLen;
     uint32_t newRspLen = 2*rspLen;
     uint32_t newExtMsgLen = 2*extMsgLen;
-    if (ExecSize < 8)
+    if (execSize < 8)
     {
         // Re-adjust length, note that msgLen should be > 0
-        if (ExecSize == 4 && desc->isA64Message() && msgLen > 0)
+        if (execSize == 4 && desc->isA64Message() && msgLen > 0)
         {
             // addr : 2 GRF; source : 1 GRF
             newMsgLen = (msgLen == 1 ? 2 : 3);
@@ -1428,7 +1428,7 @@ void SendFusion::doFusion(
     // safely set bti to nullptr here.
     //G4_Operand* bti = (desc->getBti() ? Builder->duplicateOperand(desc->getBti()) : nullptr);
     G4_Operand* bti = nullptr;
-    uint32_t newFC = (ExecSize < 8 ? desc->getFuncCtrl()
+    uint32_t newFC = (execSize < 8 ? desc->getFuncCtrl()
                                    : getFuncCtrlWithSimd16(desc));
 
     // In general, we have the following
@@ -1456,7 +1456,7 @@ void SendFusion::doFusion(
     //           <O1>
 
     // Special case of two reads whose payloads can be concatenated using split send.
-    if (!isSplitSend && ExecSize == 8 && rspLen > 0 &&
+    if (!isSplitSend && execSize == 8 && rspLen > 0 &&
         (msgLen == 1 || (msgLen == 2 && desc->isA64Message())) &&
         extMsgLen == 0)
     {
@@ -1473,7 +1473,7 @@ void SendFusion::doFusion(
         G4_SrcRegRegion* Src0 = Builder->createSrcRegRegion(*s0);
         G4_SrcRegRegion* Src1 = Builder->createSrcRegRegion(*s1);
         G4_INST* sendInst = Builder->createSplitSendInst(
-            Pred, G4_sends, 16, Dst, Src0, Src1,
+            Pred, G4_sends, g4::SIMD16, Dst, Src0, Src1,
             Builder->createImm(newDesc->getDesc(), Type_UD),
             InstOpt_WriteEnable, newDesc, nullptr, 0);
 
@@ -1539,14 +1539,14 @@ void SendFusion::doFusion(
         P1 = Builder->createTempVar(newExtMsgLen * 8, P1Ty, Any, "payload1");
         G4_SrcRegRegion* Src1 = Builder->Create_Src_Opnd_From_Dcl(P1, region);
         sendInst = Builder->createSplitSendInst(
-            Pred, G4_sends, ExecSize*2, Dst, Src0, Src1,
+            Pred, G4_sends, G4_ExecSize(execSize*2), Dst, Src0, Src1,
             Builder->createImm(newDesc->getDesc(), Type_UD),
             InstOpt_WriteEnable, newDesc, nullptr, 0);
     }
     else
     {
         sendInst = Builder->createSendInst(
-            Pred, G4_send, ExecSize*2, Dst, Src0,
+            Pred, G4_send, G4_ExecSize(execSize*2), Dst, Src0,
             Builder->createImm(newDesc->getDesc(), Type_UD),
             InstOpt_WriteEnable,
             newDesc);

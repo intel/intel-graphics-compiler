@@ -1950,7 +1950,7 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
     }
 
     G4_Declare* decl = flagReg->asRegVar()->getDeclare();
-    if (inst->getExecSize() != decl->getNumberFlagElements())
+    if (inst->getExecSize() != G4_ExecSize(decl->getNumberFlagElements()))
     {
         return false;
     }
@@ -3102,10 +3102,10 @@ void FlowGraph::setABIForStackCallFunctionCalls()
             r1_src->getRegVar()->setPhyReg(builder->phyregpool.getGreg(1), 0);
             G4_Operand* srcRgn = builder->createSrcRegRegion(Mod_src_undef, Direct, r1_src->getRegVar(), 0, 0, rd, Type_UD);
             fret->setSrc(srcRgn, 0);
-            if (fret->getExecSize() == 1)
+            if (fret->getExecSize() == g4::SIMD1)
             {
-                //due to <2;2,1> regioning we must update exec size as well
-                fret->setExecSize(2);
+                // due to <2;2,1> regioning we must update exec size as well
+                fret->setExecSize(g4::SIMD2);
             }
             if (builder->getOption(vISA_GenerateDebugInfo))
             {

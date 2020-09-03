@@ -279,7 +279,7 @@ int64_t FlowGraph::insertDummyUUIDMov()
             G4_DstRegRegion* nullDst = builder->createNullDst(Type_UD);
             int64_t uuID = (int64_t)mt_rand();
             G4_Operand* randImm = (G4_Operand*)builder->createImm(uuID, Type_UD);
-            G4_INST* movInst = builder->createMov(1, nullDst, randImm, InstOpt_NoOpt, false);
+            G4_INST* movInst = builder->createMov(g4::SIMD1, nullDst, randImm, InstOpt_NoOpt, false);
 
             auto instItEnd = bb->end();
             for (auto it = bb->begin();
@@ -956,7 +956,8 @@ void IR_Builder::materializeGlobalImm(G4_BB* entryBB)
     {
         auto&& immVal = immPool.getImmVal(i);
         auto dcl = immPool.getImmDcl(i);
-        G4_INST* inst = createMov(immVal.numElt,
+        G4_INST* inst = createMov(
+            G4_ExecSize((unsigned)immVal.numElt),
             Create_Dst_Opnd_From_Dcl(dcl, 1), immVal.imm, InstOpt_WriteEnable, false);
         auto iter = std::find_if(entryBB->begin(), entryBB->end(),
             [](G4_INST* inst) { return !inst->isLabel(); });
@@ -1033,8 +1034,9 @@ void G4_BB::addSamplerFlushBeforeEOT()
         builder->getBuiltinR0(),
         builder->getRegionStride1());
     auto msgDesc = builder->createSyncMsgDesc(SFID::SAMPLER, desc);
-    G4_INST* samplerFlushInst = builder->createSendInst(nullptr, G4_send,
-        8, builder->createNullDst(Type_UD), sendMsgOpnd,
+    G4_INST* samplerFlushInst = builder->createSendInst(
+        nullptr, G4_send, g4::SIMD8,
+        builder->createNullDst(Type_UD), sendMsgOpnd,
         builder->createImm(desc, Type_UD),
         0, msgDesc, 0);
     auto iter = std::prev(this->end());
@@ -1073,8 +1075,8 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
         G4_INST* lastInst = bb->back();
         if (lastInst->opcode() == G4_pseudo_exit)
         {
-            if (lastInst->getExecSize() == 1 &&
-                !(builder->getFCPatchInfo() && builder->getFCPatchInfo()->getFCComposableKernel() == true))
+            if (lastInst->getExecSize() == g4::SIMD1 &&
+                !(builder->getFCPatchInfo() && builder->getFCPatchInfo()->getFCComposableKernel()))
             {
                 //uniform return
                 if (lastInst->getPredicate() != NULL)
@@ -1180,7 +1182,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                 }
             }
 
-            if (retInst->getExecSize() == 1)
+            if (retInst->getExecSize() == g4::SIMD1)
             {
                 G4_INST* jmpInst = builder->createJmp(retInst->getPredicate(), exitLabel, InstOpt_NoOpt, false);
                 retBB->push_back(jmpInst);
@@ -2499,7 +2501,8 @@ void FlowGraph::mergeFReturns()
             dumLabel = builder->createLabel(str, LABEL_BLOCK);
             G4_INST* label = createNewLabelInst(dumLabel);
             newExit->push_back(label);
-            G4_INST* fret = builder->createInternalCFInst(nullptr, G4_pseudo_fret, 1, nullptr, nullptr, InstOpt_NoOpt);
+            G4_INST* fret = builder->createInternalCFInst(
+                nullptr, G4_pseudo_fret, g4::SIMD1, nullptr, nullptr, InstOpt_NoOpt);
             newExit->push_back(fret);
             BBs.push_back(newExit);
             candidateFretBB = newExit;
@@ -2516,7 +2519,7 @@ void FlowGraph::mergeFReturns()
 
                 last->setOpcode(G4_jmpi);
                 last->setSrc(dumLabel, 0);
-                last->setExecSize(1);
+                last->setExecSize(g4::SIMD1);
             }
         }
     }
@@ -3178,7 +3181,7 @@ void FlowGraph::markDivergentBBs()
 * Insert a join at the beginning of this basic block, immediately after the label
 * If a join is already present, nothing will be done
 */
-void FlowGraph::insertJoinToBB(G4_BB* bb, uint8_t execSize, G4_Label* jip)
+void FlowGraph::insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip)
 {
     MUST_BE_TRUE(bb->size() > 0, "empty block");
     INST_LIST_ITER iter = bb->begin();
@@ -3215,9 +3218,9 @@ void FlowGraph::insertJoinToBB(G4_BB* bb, uint8_t execSize, G4_Label* jip)
     }
 }
 
-typedef std::pair<G4_BB*, int> BlockSizePair;
+typedef std::pair<G4_BB*, G4_ExecSize> BlockSizePair;
 
-static void addBBToActiveJoinList(std::list<BlockSizePair>& activeJoinBlocks, G4_BB* bb, int execSize)
+static void addBBToActiveJoinList(std::list<BlockSizePair>& activeJoinBlocks, G4_BB* bb, G4_ExecSize execSize)
 {
     // add goto target to list of active blocks that need a join
     std::list<BlockSizePair>::iterator listIter;
@@ -3269,7 +3272,7 @@ void FlowGraph::setPhysicalPredSucc()
     }
 }
 
-G4_Label* FlowGraph::insertEndif(G4_BB* bb, unsigned char execSize, bool createLabel)
+G4_Label* FlowGraph::insertEndif(G4_BB* bb, G4_ExecSize execSize, bool createLabel)
 {
     // endif is placed immediately after the label
     G4_INST* endifInst = builder->createInternalCFInst(NULL, G4_endif, execSize, NULL, NULL, InstOpt_NoOpt);
@@ -3388,7 +3391,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
             {
                 // This block is the target of one or more forward goto,
                 // or the fall-thru of a backward goto, needs to insert a join
-                int execSize = activeJoinBlocks.front().second;
+                G4_ExecSize execSize = activeJoinBlocks.front().second;
                 G4_Label* joinJIP = NULL;
 
                 activeJoinBlocks.pop_front();
@@ -3399,7 +3402,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     joinJIP = joinBlock->getLabel();
                 }
 
-                insertJoinToBB(bb, (uint8_t)execSize, joinJIP);
+                insertJoinToBB(bb, execSize, joinJIP);
             }
         }
 
@@ -3414,7 +3417,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                 lastInst->asCFInst()->getUip() == bb->getLabel())
             {
                 // backward goto
-                bool isUniform = lastInst->getExecSize() == 1 || lastInst->getPredicate() == NULL;
+                bool isUniform = lastInst->getExecSize() == g4::SIMD1 || lastInst->getPredicate() == NULL;
                 if (isUniform && doScalarJmp)
                 {
                     // can always convert a uniform backward goto into a jmp
@@ -3447,8 +3450,9 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                 }
                 else
                 {
-                    uint8_t eSize = lastInst->getExecSize() > 1 ? lastInst->getExecSize() : pKernel->getSimdSize();
-                    if (lastInst->getExecSize() == 1)
+                    G4_ExecSize eSize = lastInst->getExecSize() > g4::SIMD1 ?
+                        lastInst->getExecSize() : pKernel->getSimdSize();
+                    if (lastInst->getExecSize() == g4::SIMD1)
                     {   // For simd1 goto, convert it to a goto with the right execSize.
                         lastInst->setExecSize(eSize);
                         // This should have noMask removed if any
@@ -3470,7 +3474,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
             // forward goto
             // the last Succ BB is our goto target
             G4_BB* gotoTargetBB = bb->Succs.back();
-            bool isUniform = lastInst->getExecSize() == 1 || lastInst->getPredicate() == NULL;
+            bool isUniform = lastInst->getExecSize() == g4::SIMD1 || lastInst->getPredicate() == NULL;
 
             if (isUniform && doScalarJmp &&
                 (activeJoinBlocks.size() == 0 || activeJoinBlocks.front().first->getId() > gotoTargetBB->getId()))
@@ -3481,11 +3485,12 @@ void FlowGraph::processGoto(bool HasSIMDCF)
             }
             else
             {
-                //set goto JIP to the first active block
-                uint8_t eSize = lastInst->getExecSize() > 1 ? lastInst->getExecSize() : pKernel->getSimdSize();
+                // set goto JIP to the first active block
+                G4_ExecSize eSize = lastInst->getExecSize() > g4::SIMD1 ?
+                    lastInst->getExecSize() : pKernel->getSimdSize();
                 addBBToActiveJoinList(activeJoinBlocks, gotoTargetBB, eSize);
                 G4_BB* joinBlock = activeJoinBlocks.front().first;
-                if (lastInst->getExecSize() == 1)
+                if (lastInst->getExecSize() == g4::SIMD1)
                 {   // For simd1 goto, convert it to a goto with the right execSize.
                     lastInst->setExecSize(eSize);
                     lastInst->setOptions(InstOpt_M0);
@@ -3505,10 +3510,11 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     {
                         // if there is no predicate, generate a predicate with all 0s.
                         // if predicate is SIMD32, we have to use a :ud dst type for the move
-                        uint8_t execSize = lastInst->getExecSize() > 16 ? 2 : 1;
+                        G4_ExecSize execSize = lastInst->getExecSize() > g4::SIMD16 ? g4::SIMD2 : g4::SIMD1;
                         G4_Declare* tmpFlagDcl = builder->createTempFlag(execSize);
-                        G4_DstRegRegion* newPredDef = builder->createDst(tmpFlagDcl->getRegVar(), 0, 0, 1, execSize == 2 ? Type_UD : Type_UW);
-                        G4_INST* predInst = builder->createMov(1, newPredDef, builder->createImm(0, Type_UW),
+                        G4_DstRegRegion* newPredDef = builder->createDst(
+                            tmpFlagDcl->getRegVar(), 0, 0, 1, execSize == g4::SIMD2 ? Type_UD : Type_UW);
+                        G4_INST* predInst = builder->createMov(g4::SIMD1, newPredDef, builder->createImm(0, Type_UW),
                             InstOpt_WriteEnable, false);
                         INST_LIST_ITER iter = bb->end();
                         iter--;
@@ -4779,7 +4785,8 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     G4_DstRegRegion* movDst = builder->Create_Dst_Opnd_From_Dcl(dcl, 1);
     G4_SrcRegRegion* r0Src = builder->Create_Src_Opnd_From_Dcl(
         builder->getBuiltinR0(), builder->getRegionStride1());
-    G4_INST *movInst = builder->createMov(numEltPerGRF(Type_UD), movDst, r0Src, InstOpt_WriteEnable, false);
+    G4_INST *movInst = builder->createMov(
+        G4_ExecSize(numEltPerGRF(Type_UD)), movDst, r0Src, InstOpt_WriteEnable, false);
     if (lastInst)
     {
         movInst->setCISAOff(lastInst->getCISAOff());
@@ -4802,7 +4809,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     G4_INST* sendInst = builder->createSendInst(
         NULL,
         G4_send,
-        8,
+        g4::SIMD8,
         sendDst,
         sendSrc,
         builder->createImm(desc, Type_UD),
@@ -6210,10 +6217,10 @@ void GlobalOpndHashTable::dump()
 
 void G4_Kernel::computeChannelSlicing()
 {
-    unsigned int simdSize = getSimdSize();
+    G4_ExecSize simdSize = getSimdSize();
     channelSliced = true;
 
-    if (simdSize == 8 || simdSize == 16)
+    if (simdSize == g4::SIMD8 || simdSize == g4::SIMD16)
     {
         // SIMD8/16 kernels are not sliced
         channelSliced = false;
@@ -6293,18 +6300,18 @@ void G4_Kernel::calculateSimdSize()
     // to use for GRF candidates.
 
     // only do it once per kernel, as we should not introduce inst with larger simd size than in the input
-    if (simdSize != 0)
+    if (simdSize.value != 0)
     {
         return;
     }
 
     // First, get simdsize from attribute (0 : not given)
     // If not 0|8|16|32, wrong value from attribute.
-    simdSize = m_kernelAttrs->getInt32KernelAttr(Attributes::ATTR_SimdSize);
-    if (simdSize != 8 && simdSize != 16 && simdSize != 32)
+    simdSize = G4_ExecSize((unsigned)m_kernelAttrs->getInt32KernelAttr(Attributes::ATTR_SimdSize));
+    if (simdSize != g4::SIMD8 && simdSize != g4::SIMD16 && simdSize != g4::SIMD32)
     {
-        assert(simdSize == 0 && "vISA: wrong value for SimdSize attribute");
-        simdSize = 8;
+        assert(simdSize.value == 0 && "vISA: wrong value for SimdSize attribute");
+        simdSize = g4::SIMD8;
 
         for (auto bb : fg)
         {
@@ -6317,16 +6324,16 @@ void G4_Kernel::calculateSimdSize()
                     uint32_t size = inst->getMaskOffset() + inst->getExecSize();
                     if (size > 16)
                     {
-                        simdSize = 32;
+                        simdSize = g4::SIMD32;
                         break;
                     }
                     else if (size > 8)
                     {
-                        simdSize = 16;
+                        simdSize = g4::SIMD16;
                     }
                 }
             }
-            if (simdSize == 32)
+            if (simdSize == g4::SIMD32)
                 break;
         }
     }
@@ -7016,7 +7023,7 @@ bool FlowGraph::convertJmpiToGoto()
                         // P = P & 1
                         auto pSrc1 = builder->createImm(1, Type_UW);
                         auto pInst = builder->createBinOp(
-                            G4_and, 1, pDst, pSrc0, pSrc1,
+                            G4_and, g4::SIMD1, pDst, pSrc0, pSrc1,
                             InstOpt_M0 | InstOpt_WriteEnable, false);
                         bb->insertBefore(I, pInst);
                     }
@@ -7026,7 +7033,7 @@ bool FlowGraph::convertJmpiToGoto()
                         uint32_t mask = getFlagMask(pCtrl);
                         auto pSrc1 = builder->createImm(truncMask(mask, DstTy), DstTy);
                         auto pInst = builder->createBinOp(
-                            G4_and, 1, pDst, pSrc0, pSrc1,
+                            G4_and, g4::SIMD1, pDst, pSrc0, pSrc1,
                             InstOpt_M0 | InstOpt_WriteEnable, false);
                         bb->insertBefore(I, pInst);
                     }
@@ -7037,7 +7044,7 @@ bool FlowGraph::convertJmpiToGoto()
                         uint32_t mask = getFlagMask(pCtrl);
                         auto pSrc1 = builder->createImm(truncMask(mask, DstTy), DstTy);
                         auto pInst = builder->createBinOp(
-                            G4_or, 1, pDst, pSrc0, pSrc1,
+                            G4_or, g4::SIMD1, pDst, pSrc0, pSrc1,
                             InstOpt_M0 | InstOpt_WriteEnable, false);
                         bb->insertBefore(I, pInst);
                     }
@@ -7055,7 +7062,7 @@ bool FlowGraph::convertJmpiToGoto()
             // P = P & MASK
             // (!P.anyN) goto (N) L
             inst->setOpcode(G4_goto);
-            inst->setExecSize((unsigned char)predSize);
+            inst->setExecSize(G4_ExecSize(predSize));
             if (newPred)
                 inst->setPredicate(newPred);
             inst->asCFInst()->setUip(inst->getSrc(0)->asLabel());

@@ -950,11 +950,11 @@ public:
     void normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable);
     void processGoto(bool HasSIMDCF);
     void processSCF(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable& FuncInfoMap);
-    void insertJoinToBB(G4_BB* bb, uint8_t execSize, G4_Label* jip);
+    void insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip);
 
     // functions for structure analysis
     G4_Kernel *getKernel() const { return pKernel; }
-    G4_Label* insertEndif (G4_BB* bb, unsigned char execSize, bool createLabel);
+    G4_Label* insertEndif (G4_BB* bb, G4_ExecSize execSize, bool createLabel);
     void setJIPForEndif (G4_INST* endif, G4_INST* target, G4_BB* targetBB);
     void convertGotoToJmpi(G4_INST *gotoInst)
     {
@@ -962,7 +962,7 @@ public:
         gotoInst->setSrc(gotoInst->asCFInst()->getUip(), 0);
         gotoInst->asCFInst()->setJip(NULL);
         gotoInst->asCFInst()->setUip(NULL);
-        gotoInst->setExecSize(1);
+        gotoInst->setExecSize(g4::SIMD1);
         gotoInst->setOptions(InstOpt_NoOpt | InstOpt_WriteEnable);
     }
     bool convertJmpiToGoto();
@@ -1424,7 +1424,7 @@ class G4_Kernel
     unsigned int numThreads;
     unsigned int numSWSBTokens;
     unsigned int numAcc;
-    unsigned int simdSize;
+    G4_ExecSize simdSize {0u}; // must start as 0
     bool channelSliced = true;
     bool hasAddrTaken;
     bool sharedRegisters;
@@ -1484,7 +1484,6 @@ public:
 
         name = NULL;
         numThreads = 0;
-        simdSize = 0;
         hasAddrTaken = false;
         kernelDbgInfo = nullptr;
         if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
@@ -1548,7 +1547,7 @@ public:
     bool getOption(vISAOptions opt) const { return m_options->getOption(opt); }
     void computeChannelSlicing();
     void calculateSimdSize();
-    unsigned int getSimdSize() { return simdSize; }
+    G4_ExecSize getSimdSize() { return simdSize; }
     bool getChannelSlicing() { return channelSliced; }
     unsigned int getSimdSizeWithSlicing() { return channelSliced ? simdSize/2 : simdSize; }
 

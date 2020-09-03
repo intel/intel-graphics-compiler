@@ -59,7 +59,7 @@ G4_Declare* DeclarePool::createDeclare(
     DeclareType    kind,
     G4_RegVar *    base,
     G4_Operand *   repRegion,
-    unsigned       execSize)
+    G4_ExecSize    execSize)
 {
     G4_Declare* dcl = new (mem) G4_Declare(name, regFile, nElems * nRows, ty, dcllist);
     G4_RegVar * regVar;
@@ -70,7 +70,7 @@ G4_Declare* DeclarePool::createDeclare(
     else if (kind == DeclareType::Tmp)
         regVar = new (mem) G4_RegVarTmp(dcl, base);
     else if (kind == DeclareType::Spill)
-        regVar = new (mem) G4_RegVarTransient(dcl, base, repRegion->asDstRegRegion (), execSize, G4_RegVarTransient::TransientType::Spill);
+        regVar = new (mem) G4_RegVarTransient(dcl, base, repRegion->asDstRegRegion(), execSize, G4_RegVarTransient::TransientType::Spill);
     else if (kind == DeclareType::Fill)
         regVar = new (mem)G4_RegVarTransient(dcl, base, repRegion->asSrcRegRegion(), execSize, G4_RegVarTransient::TransientType::Fill);
     else if (kind == DeclareType::CoalescedFill || kind == DeclareType::CoalescedSpill)
@@ -110,7 +110,7 @@ G4_Declare* DeclarePool::createDeclare(
 }
 
 
-G4_Declare* IR_Builder::GlobalImmPool::addImmVal(G4_Imm* imm, int numElt)
+G4_Declare * IR_Builder::GlobalImmPool::addImmVal(G4_Imm* imm, int numElt)
 {
     ImmVal val = { imm, numElt };
     for (int i = 0; i < curSize; ++i)
@@ -284,7 +284,7 @@ bool IR_Builder::isOpndAligned(
                 //
                 // Check acc_use_op's def-list.
                 G4_INST *LEA = getSingleDefInst(inst, Opnd_dst);
-                if (LEA && LEA->opcode() == G4_add && LEA->getExecSize() == 1) {
+                if (LEA && LEA->opcode() == G4_add && LEA->getExecSize() == g4::SIMD1) {
                     isAligned = true;
                     G4_Operand *Op0 = LEA->getSrc(0);
                     G4_Operand *Op1 = LEA->getSrc(1);
@@ -427,9 +427,9 @@ void IR_Builder::expandPredefinedVars()
         const unsigned fftid_mask = getPlatform() >= GENX_CNL ? 0x3FF : 0x1FF;
         G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, realR0->getRegVar(),
             0, 5, getRegionScalar(), Type_UD);
-        G4_Imm* mask1 = this->createImm(fftid_mask, Type_UD);
+        G4_Imm* mask1 = createImm(fftid_mask, Type_UD);
         G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinHWTID, 1);
-        G4_INST* inst = this->createBinOp(G4_and, 1, dst, src, mask1, InstOpt_WriteEnable, false);
+        G4_INST* inst = createBinOp(G4_and, g4::SIMD1, dst, src, mask1, InstOpt_WriteEnable, false);
         instList.insert(iter, inst);
     }
 
@@ -441,7 +441,7 @@ void IR_Builder::expandPredefinedVars()
             G4_SrcRegRegion* r0Dot1UD = createSrcRegRegion(Mod_src_undef, Direct,
                 realR0->getRegVar(), 0, 1, getRegionScalar(), Type_UD);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::X), 1);
-            G4_INST* inst = createBinOp(G4_and, 1, dst, r0Dot1UD,
+            G4_INST* inst = createBinOp(G4_and, g4::SIMD1, dst, r0Dot1UD,
                 createImm(0xFFF, Type_UW), InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
@@ -454,7 +454,7 @@ void IR_Builder::expandPredefinedVars()
             int64_t mask = getThreadIDMask();
             G4_Imm* src1 = createImm(mask, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::X), 1);
-            G4_INST* inst = createBinOp(G4_and, 1, dst, r0Dot2UW, src1, InstOpt_WriteEnable, false);
+            G4_INST* inst = createBinOp(G4_and, g4::SIMD1, dst, r0Dot2UW, src1, InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
     }
@@ -469,11 +469,11 @@ void IR_Builder::expandPredefinedVars()
                 realR0->getRegVar(), 0, 1, getRegionScalar(), Type_UD);
 
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
-            G4_INST* inst1 = createBinOp(G4_shr, 1, dst, r0Dot1UD,
+            G4_INST* inst1 = createBinOp(G4_shr, g4::SIMD1, dst, r0Dot1UD,
                 createImm(12, Type_UW), InstOpt_WriteEnable, false);
             instList.insert(iter, inst1);
             dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
-            G4_INST* inst2 = createBinOp(G4_and, 1, dst,
+            G4_INST* inst2 = createBinOp(G4_and, g4::SIMD1, dst,
                 Create_Src_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), getRegionScalar()),
                 createImm(0xFFF, Type_UW), InstOpt_WriteEnable, false);
             instList.insert(iter, inst2);
@@ -487,7 +487,7 @@ void IR_Builder::expandPredefinedVars()
             int64_t mask = getThreadIDMask();
             G4_Imm* src1 = createImmWithLowerType(mask, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
-            G4_INST* inst = createBinOp(G4_and, 1, dst, r0Dot3UW, src1, InstOpt_WriteEnable, false);
+            G4_INST* inst = createBinOp(G4_and, g4::SIMD1, dst, r0Dot3UW, src1, InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
     }
@@ -503,7 +503,7 @@ void IR_Builder::expandPredefinedVars()
                 0, 1, getRegionScalar(), Type_UD);
             G4_Imm* shift = createImm(24, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::COLOR), 2);
-            G4_INST* inst = createBinOp(G4_shr, 1, dst, src, shift,
+            G4_INST* inst = createBinOp(G4_shr, g4::SIMD1, dst, src, shift,
                 InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
@@ -515,7 +515,7 @@ void IR_Builder::expandPredefinedVars()
                 0, 2, getRegionScalar(), Type_UD);
             G4_Imm* mask = createImm(0xF, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::COLOR), 2);
-            G4_INST* inst = createBinOp(G4_and, 1, dst, src, mask,
+            G4_INST* inst = createBinOp(G4_and, g4::SIMD1, dst, src, mask,
                 InstOpt_WriteEnable, false);
             instList.insert(iter, inst);
         }
@@ -823,7 +823,7 @@ G4_Declare* IR_Builder::createDeclareNoLookup(
     DeclareType     kind,
     G4_RegVar *     base,
     G4_Operand *    repRegion,
-    unsigned        execSize)
+    G4_ExecSize     execSize)
 {
     if (regFile == G4_FLAG)
     {
@@ -941,7 +941,7 @@ G4_INST* IR_Builder::createPseudoKills(
 G4_INST* IR_Builder::createPseudoKill(G4_Declare* dcl, PseudoKillType ty)
 {
     auto dstRgn = createDst(dcl->getRegVar(), 0, 0, 1, Type_UD);
-    G4_INST* inst = createIntrinsicInst(nullptr, Intrinsic::PseudoKill, 1,
+    G4_INST* inst = createIntrinsicInst(nullptr, Intrinsic::PseudoKill, g4::SIMD1,
         dstRgn, createImm((unsigned int)ty, Type_UD), nullptr, nullptr, InstOpt_WriteEnable);
 
     return inst;
@@ -951,7 +951,7 @@ static const unsigned int HWORD_BYTE_SIZE = 32;
 
 G4_INST* IR_Builder::createSpill(
     G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
-    unsigned int execSize,
+    G4_ExecSize execSize,
     uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option)
 {
     G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
@@ -965,7 +965,7 @@ G4_INST* IR_Builder::createSpill(
 
 G4_INST* IR_Builder::createSpill(
     G4_DstRegRegion* dst, G4_SrcRegRegion* payload,
-    unsigned int execSize, uint16_t numRows, uint32_t offset,
+    G4_ExecSize execSize, uint16_t numRows, uint32_t offset,
     G4_Declare* fp, G4_InstOption option)
 {
     auto builtInR0 = getBuiltinR0();
@@ -981,7 +981,8 @@ G4_INST* IR_Builder::createSpill(
 }
 
 G4_INST* IR_Builder::createFill(
-    G4_SrcRegRegion* header, G4_DstRegRegion* dstData, unsigned int execSize,
+    G4_SrcRegRegion* header, G4_DstRegRegion* dstData,
+    G4_ExecSize execSize,
     uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option)
 {
     G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
@@ -994,7 +995,8 @@ G4_INST* IR_Builder::createFill(
 }
 
 G4_INST* IR_Builder::createFill(
-    G4_DstRegRegion* dstData, unsigned int execSize,
+    G4_DstRegRegion* dstData,
+    G4_ExecSize execSize,
     uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option)
 {
     auto builtInR0 = getBuiltinR0();
@@ -1395,10 +1397,10 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
 
     // calculate the sampler state base pointer offset based on
     // sample index, for putting to msg header M0.3
-    createBinOp(G4_shr, 1,
+    createBinOp(G4_shr, g4::SIMD1,
         t0Dst, sampler, createImm(4, Type_UD),
         InstOpt_WriteEnable, true);
-    createBinOp(G4_shl, 1,
+    createBinOp(G4_shl, g4::SIMD1,
         baseAdjDst, t0Src, createImm(8, Type_UD),
         InstOpt_WriteEnable, true);
 
@@ -1406,7 +1408,7 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
     G4_SrcRegRegion* sampler2Src
         = createSrcRegRegion(Mod_src_undef, Direct,
         sampler->getTopDcl()->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
-    createBinOp(G4_and, 1,
+    createBinOp(G4_and, g4::SIMD1,
         idxLowDst, sampler2Src, createImm(0xf, Type_UD),
         InstOpt_WriteEnable, true);
     samplerIdx = idxLowSrc;
@@ -1418,7 +1420,7 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
     G4_SrcRegRegion* src0
         = createSrcRegRegion(Mod_src_undef, Direct,
             builtinR0->getRegVar(), 0, 3, getRegionScalar(), Type_UD);
-    createBinOp(G4_add, 1, stateBaseRgn,
+    createBinOp(G4_add, g4::SIMD1, stateBaseRgn,
         src0, baseAdjSrc, InstOpt_WriteEnable, true);
 
     return samplerIdx;
@@ -1593,7 +1595,7 @@ G4_INST* IR_Builder::createMach(
     auto machInst = createInternalInst(
         nullptr, G4_mach, nullptr, g4::NOSAT, execSize,
         dst, src0, src1, options);
-    const RegionDesc* rd = execSize > 1 ? getRegionStride1() : getRegionScalar();
+    const RegionDesc* rd = execSize > g4::SIMD1 ? getRegionStride1() : getRegionScalar();
     auto accSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getAcc0Reg(), 0, 0, rd, accType);
     machInst->setImplAccSrc(accSrc);
     auto accDSt = createDst(phyregpool.getAcc0Reg(), 0, 0, 1, accType);
@@ -1611,7 +1613,7 @@ G4_INST* IR_Builder::createMacl(
 {
     auto maclInst = createInternalInst(
         nullptr, G4_mach, nullptr, g4::NOSAT, execSize, dst, src0, src1, options);
-    const RegionDesc* rd = execSize > 1 ? getRegionStride1() : getRegionScalar();
+    const RegionDesc* rd = execSize > g4::SIMD1 ? getRegionStride1() : getRegionScalar();
     auto accSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getAcc0Reg(), 0, 0, rd, accType);
     maclInst->setImplAccSrc(accSrc);
     return maclInst;
@@ -2173,11 +2175,11 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
     G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(exDescDecl, 1);
     if (useNewExtDescFormat())
     {
-        createMov(1, dst, T252, InstOpt_WriteEnable, true);
+        createMov(g4::SIMD1, dst, T252, InstOpt_WriteEnable, true);
     }
     else
     {
-        createBinOp(G4_add, 1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable, true);
+        createBinOp(G4_add, g4::SIMD1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable, true);
     }
     return Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar());
 }
@@ -2197,7 +2199,7 @@ static void fixSendDstType(G4_DstRegRegion* dst, G4_ExecSize execSize)
 
     // normally we should create a new alias for dst's declare, but since it's a send
     // type mismatch between operand and decl should not matter
-    if (execSize == 16 && dst->getType() != Type_W && dst->getType() != Type_UW)
+    if (execSize == g4::SIMD16 && dst->getType() != Type_W && dst->getType() != Type_UW)
     {
         dst->setType(Type_W);
     }
@@ -2240,7 +2242,7 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
             // create source for bti
             createBinOp(
                 G4_add,
-                1,
+                g4::SIMD1,
                 addr_dst_opnd,
                 bti,
                 createImm(desc, Type_UD),
@@ -2255,7 +2257,7 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
 
             createBinOp(
                 G4_shl,
-                1,
+                g4::SIMD1,
                 tmp_dst_opnd,
                 sti,
                 createImm(8, Type_UD),
@@ -2268,7 +2270,7 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
             {
                 createBinOp(
                     G4_add,
-                    1,
+                    g4::SIMD1,
                     addr_dst_opnd,
                     tmp_src_opnd,
                     createImm(desc, Type_UD),
@@ -2281,7 +2283,7 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
 
                 createBinOp(
                     G4_add,
-                    1,
+                    g4::SIMD1,
                     duplicateOperand(addr_dst_opnd),
                     addr_src_opnd,
                     tmp_src_opnd,
@@ -2394,7 +2396,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
         //add (1) a0.0:ud bti:ud desc:ud
         G4_DstRegRegion* addrDstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
 
-        createBinOp(G4_add, 1, addrDstOpnd, bti,
+        createBinOp(G4_add, g4::SIMD1, addrDstOpnd, bti,
             createImm(desc, Type_UD), InstOpt_WriteEnable, true);
     }
 
@@ -2420,7 +2422,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
         {
             // shl (1) tmp:ud sti:ud 0x8:uw
             G4_DstRegRegion* tmpDstOpnd = Create_Dst_Opnd_From_Dcl(dcl1, 1);
-            createBinOp(G4_shl, 1, tmpDstOpnd, sti,
+            createBinOp(G4_shl, g4::SIMD1, tmpDstOpnd, sti,
                 createImm(8, Type_UD), InstOpt_WriteEnable, true);
         }
 
@@ -2429,7 +2431,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
         if (!needsSurfaceMove)
         {
             // add (1) a0.0 tmp:ud desc:ud
-            createBinOp(G4_add, 1, addrDstOpnd, tmpSrcOpnd,
+            createBinOp(G4_add, g4::SIMD1, addrDstOpnd, tmpSrcOpnd,
                 createImm(desc, Type_UD),
                 InstOpt_WriteEnable,
                 true);
@@ -2438,7 +2440,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
         {
             // add (1) a0.0 a0.0:ud tmp:ud
             G4_SrcRegRegion* addrSrcOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
-            createBinOp(G4_add, 1, addrDstOpnd, addrSrcOpnd,
+            createBinOp(G4_add, g4::SIMD1, addrDstOpnd, addrSrcOpnd,
                 tmpSrcOpnd, InstOpt_WriteEnable, true);
         }
     }
@@ -2494,7 +2496,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(
     {
         //add (1) a0.0:ud bti:ud desc:ud
         G4_DstRegRegion* addrDstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
-        createBinOp(G4_add, 1, addrDstOpnd, bti,
+        createBinOp(G4_add, g4::SIMD1, addrDstOpnd, bti,
             createImm(desc, Type_UD), InstOpt_WriteEnable, true);
         descOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
     }
@@ -2536,7 +2538,7 @@ void IR_Builder::Create_MOVR0_Inst(G4_Declare* dcl, short regOff, short subregOf
     G4_SrcRegRegion* r0_src_opnd = Create_Src_Opnd_From_Dcl(builtinR0, getRegionStride1());
     // create inst
     createMov(
-        GENX_DATAPORT_IO_SZ,
+        G4_ExecSize(GENX_DATAPORT_IO_SZ),
         dst1_opnd,
         r0_src_opnd,
         (use_nomask ? InstOpt_WriteEnable : 0),
@@ -2662,7 +2664,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
             return 32;
         }
     };
-    int maxEsize = getMaxEsize(options);
+    G4_ExecSize maxEsize(getMaxEsize(options));
 
     // here remained_dword is not the number of DW, but the number of dst data type.
     while (remained_dword)
@@ -2679,7 +2681,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
             }
             else
             {
-                execsize = (uint8_t)Round_Down_Pow2(remained_dword);
+                execsize = G4_ExecSize((uint8_t)Round_Down_Pow2(remained_dword));
             }
 
             execsize = (execsize > maxEsize) ? maxEsize :  execsize;
@@ -2704,7 +2706,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
             }
             else
             {
-                execsize = (uint8_t)Round_Down_Pow2(remained_dword);
+                execsize = G4_ExecSize(Round_Down_Pow2(remained_dword));
             }
             execsize = (execsize > maxEsize) ? maxEsize :  execsize;
             if (execsize == g4::SIMD1)

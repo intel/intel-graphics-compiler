@@ -34,9 +34,8 @@ int IR_Builder::translateVISAAddrInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    unsigned int instOpt = 0;
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    instOpt |= Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = toExecSize(executionSize);
+    G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
 
     if (src1Opnd && src0Opnd->isAddrExp() && src1Opnd->isImm())
     {
@@ -204,8 +203,8 @@ int IR_Builder::translateVISACompareInst(
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     G4_CondMod* condMod = NULL;
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(execsize);
-    unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = toExecSize(execsize);
+    G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
     const char *varName = "";
 
 #ifdef _DEBUG
@@ -255,8 +254,8 @@ int IR_Builder::translateVISACompareInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(execsize);
-    unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = toExecSize(execsize);
+    G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
     // If it's mix mode HF,F, it will be split down the road anyway, so behavior doesn't change.
     G4_Type src0Type = src0Opnd->getType();
     G4_Type src1Type = src1Opnd->getType();
@@ -296,8 +295,8 @@ int IR_Builder::translateVISALogicInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = toExecSize(executionSize);
+    G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
     G4_Operand *g4Srcs[COMMON_ISA_MAX_NUM_SRC] = {src0, src1, src2, src3};
 
     G4_opcode g4_op = GetGenOpcodeFromVISAOpcode(opcode);
@@ -426,8 +425,8 @@ int IR_Builder::translateVISADataMovementInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    unsigned int inst_opt = Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = toExecSize(executionSize);
+    G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
     G4_CondMod* condMod = NULL;
 
     if (opcode == ISA_MOVS)

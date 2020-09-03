@@ -307,7 +307,7 @@ namespace {
         // it is the same as the input CFG->BBs. As the algo goes, new BBs
         // can be inserted in the list.
         BB_LIST* BBs;               // ptr to CFG->BBs
-        uint8_t kernelExecSize;     // default execSize
+        G4_ExecSize kernelExecSize;     // default execSize
 
         void init();
         void fini();
@@ -1117,7 +1117,7 @@ void CFGStructurizer::init()
     BBs = &(CFG->getBBList());
     numOfBBs = CFG->getNumBB();
     numOfANodes = 0;
-    kernelExecSize = (uint8_t)CFG->getKernel()->getSimdSize();
+    kernelExecSize = CFG->getKernel()->getSimdSize();
 
     // caching the flags
     doScalarJmp = !CFG->builder->noScalarJmp();
@@ -1410,7 +1410,7 @@ bool CFGStructurizer::getCGBegin(G4_BB *bb, CGList &cgs)
 inline bool CFGStructurizer::isGotoScalarJmp(G4_INST *gotoInst)
 {
     MUST_BE_TRUE(gotoInst->opcode() == G4_goto, "It should be a goto inst");
-    return gotoInst->getExecSize() == 1 ||
+    return gotoInst->getExecSize() == g4::SIMD1 ||
            gotoInst->getPredicate() == nullptr ||
            gotoInst->asCFInst()->isUniform();
 }
@@ -2060,13 +2060,13 @@ ANodeBB* CFGStructurizer::addLandingBB(
         if (lastInst)
         {
             gotoInst = CFG->builder->createInternalCFInst(
-                NULL, G4_goto, 1, NULL, targetLabel, InstOpt_NoOpt,
+                NULL, G4_goto, g4::SIMD1, NULL, targetLabel, InstOpt_NoOpt,
                 lastInst->getLineNo(), lastInst->getCISAOff(), lastInst->getSrcFilename());
         }
         else
         {
             gotoInst = CFG->builder->createInternalCFInst(
-                NULL, G4_goto, 1, NULL, targetLabel, InstOpt_NoOpt);
+                NULL, G4_goto, g4::SIMD1, NULL, targetLabel, InstOpt_NoOpt);
         }
         newBB->push_back(gotoInst);
     }
@@ -3190,7 +3190,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
     G4_Label *nextJoinLabel = nextJoinBB ? nextJoinBB->getLabel() : nullptr;
     G4_BB *begin = node->getBeginBB();
     G4_INST *gotoInst = begin->back();
-    uint8_t execSize = gotoInst->getExecSize();
+    G4_ExecSize execSize = gotoInst->getExecSize();
     execSize = execSize > 1 ? execSize : kernelExecSize;
     ANList::iterator II = node->children.begin();
     ANode *thenNode = *(++II);  // children[1]
@@ -3478,8 +3478,8 @@ void CFGStructurizer::convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB)
 
     G4_BB *end = node->getEndBB();
     G4_INST *gotoInst = end->back();
-    uint8_t execSize = gotoInst->getExecSize();
-    execSize = execSize > 1 ? execSize : kernelExecSize;
+    G4_ExecSize execSize = gotoInst->getExecSize();
+    execSize = execSize > g4::SIMD1 ? execSize : kernelExecSize;
     G4_BB *head = node->getBeginBB();
     G4_BB *exit = node->getExitBB();
 
@@ -3563,10 +3563,10 @@ void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinB
     MUST_BE_TRUE(gotoInst && gotoInst->opcode() == G4_goto,
                  "gotoBB should have goto instruction");
     G4_Label *nextJoinLabel = jibBB ? jibBB->getLabel() : nullptr;
-    uint8_t execSize = gotoInst->getExecSize();
-    execSize = execSize > 1 ? execSize : kernelExecSize;
+    G4_ExecSize execSize = gotoInst->getExecSize();
+    execSize = execSize > g4::SIMD1 ? execSize : kernelExecSize;
 
-    if (gotoInst->getExecSize() == 1)
+    if (gotoInst->getExecSize() == g4::SIMD1)
     {   // For simd1 goto, convert it to a goto with the right execSize.
         gotoInst->setExecSize(execSize);
         gotoInst->setOptions(InstOpt_M0);
@@ -3588,11 +3588,12 @@ void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinB
         {
             // if there is no predicate, generate a predicate with all 0s.
             // if predicate is SIMD32, we have to use a :ud dst type for the move
-            uint8_t numFlags = gotoInst->getExecSize() > 16 ? 2 : 1;
+            uint8_t numFlags = gotoInst->getExecSize() > g4::SIMD16 ? 2 : 1;
             G4_Declare* tmpFlagDcl = CFG->builder->createTempFlag(numFlags);
             G4_DstRegRegion* newPredDef = CFG->builder->createDst(tmpFlagDcl->getRegVar(), 0, 0, 1,
                 numFlags == 2 ? Type_UD : Type_UW);
-            G4_INST *predInst = CFG->builder->createMov(1,
+            G4_INST *predInst = CFG->builder->createMov(
+                g4::SIMD1,
                 newPredDef,
                 CFG->builder->createImm(0, Type_UW),
                 InstOpt_WriteEnable, false);
@@ -3646,8 +3647,8 @@ void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
     //
     // generate goto/join
     //
-    uint8_t execSize = gotoInst->getExecSize();
-    execSize = execSize > 1 ? execSize : kernelExecSize;
+    G4_ExecSize execSize = gotoInst->getExecSize();
+    execSize = execSize > g4::SIMD1 ? execSize : kernelExecSize;
 
     if (kind == ANKIND_JMPI)
     {

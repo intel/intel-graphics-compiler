@@ -164,7 +164,7 @@ void SpillManager::genRegMov(G4_BB* bb,
             */
             G4_Type type = Type_W;
             const RegionDesc* srcRgn = NULL;
-            unsigned execSize = i;
+            G4_ExecSize execSize {i};
             if (src->isFlag() || dst->isFlag())
             {
 
@@ -172,7 +172,7 @@ void SpillManager::genRegMov(G4_BB* bb,
                 if (i == 2)
                 {
                     type = Type_UD;
-                    execSize = 1;
+                    execSize = g4::SIMD1;
                 }
                 else if (i > 2)
                 {
@@ -186,22 +186,18 @@ void SpillManager::genRegMov(G4_BB* bb,
                 srcRgn = (i== 1) ? builder.getRegionScalar() : builder.getRegionStride1();
             }
 
-            G4_SrcRegRegion* s = builder.createSrcRegRegion(Mod_src_undef,
-                    Direct,
-                    src,
-                    0,
-                    sSubRegOff,
-                    srcRgn,
-                    type);
+            G4_SrcRegRegion* s = builder.createSrcRegRegion(
+                Mod_src_undef,
+                Direct,
+                src,
+                0,
+                sSubRegOff,
+                srcRgn,
+                type);
             //
             // create a0.aOff<1>
             //
-            G4_DstRegRegion* d = builder.createDst(
-                                dst,
-                                0,
-                                dSubRegOff,
-                                1,
-                                type);
+            G4_DstRegRegion* d = builder.createDst(dst, 0, dSubRegOff, 1, type);
 
             if (execSize != kernel.getSimdSize())
             {
@@ -209,7 +205,7 @@ void SpillManager::genRegMov(G4_BB* bb,
                 useNoMask = true;
             }
             // mov (nRegs)  a0.aOff<1>  loc(0,locOff)<4;4,1>
-            builder.createMov((uint8_t) execSize, d, s,
+            builder.createMov(execSize, d, s,
                 useNoMask ? InstOpt_WriteEnable : InstOpt_NoOpt, true);
 
             sSubRegOff += i;
@@ -349,7 +345,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                 // (W) mov (1) tmpDcl<1>:ud spDcl<0;1,0>:ud
                 auto movSrc = builder.Create_Src_Opnd_From_Dcl(spDcl, builder.getRegionScalar());
                 auto movDst = builder.Create_Dst_Opnd_From_Dcl(tmpDcl, 1);
-                G4_INST* movInst = builder.createMov(1, movDst, movSrc, InstOpt_WriteEnable, false);
+                G4_INST* movInst = builder.createMov(g4::SIMD1, movDst, movSrc, InstOpt_WriteEnable, false);
                 bb->insertBefore(it, movInst);
 
                 s = builder.createSrcRegRegion(

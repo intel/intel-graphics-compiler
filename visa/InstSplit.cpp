@@ -70,13 +70,14 @@ void InstSplitPass::run()
     {
         G4_INST* inst = *it;
 
-        if (inst->getExecSize() == 1)
+        if (inst->getExecSize() == g4::SIMD1)
         {
             continue;
         }
 
-        if (inst->isSend() || inst->opcode() == G4_label || inst->opcode() == G4_pln
-            || inst->opcode() == G4_return || inst->isFlowControl() || inst->isPseudoLogic())
+        if (inst->isSend() || inst->opcode() == G4_label ||
+            inst->opcode() == G4_pln || inst->opcode() == G4_return ||
+            inst->isFlowControl() || inst->isPseudoLogic())
         {
             continue;
         }
@@ -102,7 +103,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
 {
     G4_INST* inst = *it;
     bool doSplit = false;
-    uint8_t execSize = inst->getExecSize();
+    G4_ExecSize execSize = inst->getExecSize();
 
     auto cross2GRF = [this](G4_Operand* opnd)
     {
@@ -149,7 +150,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
 
     G4_opcode op = inst->opcode();
     int numSrc = inst->getNumSrc();
-    uint8_t newExecSize = execSize >> 1;
+    G4_ExecSize newExecSize {execSize / 2};
 
     G4_DstRegRegion* dst = inst->getDst();
     bool nullDst = dst && inst->hasNULLDst();

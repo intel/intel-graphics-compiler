@@ -42,7 +42,7 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
             if (srcRegion->getRegion()->isRegionWH() && newSize > oldSize)
             {
                 // for VxH regions we can't directly broadcast if new exec size is wider
-                if (oldSize == 1)
+                if (oldSize == g4::SIMD1)
                 {
                     srcRegion->setRegion(builder.getRegionScalar());
                     builder.createMov(newSize, builder.Create_Dst_Opnd_From_Dcl(dcl, 1), srcRegion,
@@ -181,9 +181,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    G4_INST* inst;
-    uint8_t instExecSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    uint8_t exsize = 4;
+    G4_INST* inst = nullptr;
+    G4_ExecSize instExecSize = toExecSize(executionSize);
+    G4_ExecSize exsize = g4::SIMD4;
     const RegionDesc *srcRegionDesc = getRegionStride1();
     const RegionDesc *rdAlign16 = getRegionStride1();
     uint8_t element_size;       // element_size is set according to instExecSize
@@ -203,11 +203,11 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     else
     {
         element_size = instExecSize;
-        exsize = std::min((int) instExecSize, getFP64MadmExecSize());
+        exsize = std::min(instExecSize, G4_ExecSize(getFP64MadmExecSize()));
         loopCount = instExecSize / exsize;
     }
 
-    unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
+    G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
 
     // pred and conModifier
     G4_Declare *tmpFlag = createTempFlag(1);
@@ -253,8 +253,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         noDstMove = false;
     }
 
-    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
-    G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, element_size, instExecSize);
+    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, G4_ExecSize(element_size), instExecSize);
+    G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, G4_ExecSize(element_size), instExecSize);
 
     // src operand registers
     G4_DstRegRegion tdst_src0(Direct, t6->getRegVar(), 0, 0, 1, Type_DF);
@@ -266,7 +266,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         if (opcode == ISA_DIV || opcode == ISA_DIVM)
         {
             G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(tdst_src0);
-            inst = createMov(element_size, t6_dst_src0_opnd, src0RR,
+            inst = createMov(G4_ExecSize(element_size), t6_dst_src0_opnd, src0RR,
                 instOpt, true); // mov (element_size) t6_dst_src0_opnd, src0RR {Q1/N1}
         }
     }
@@ -274,7 +274,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     if (needsSrc1Move)
     {
         G4_DstRegRegion *t7_dst_src1_opnd = createDstRegRegion(tdst_src1);
-        inst = createMov(element_size, t7_dst_src1_opnd, src1RR,
+        inst = createMov(G4_ExecSize(element_size), t7_dst_src1_opnd, src1RR,
             instOpt, true); // mov (element_size) t7_dst_src1_opnd, src1RR {Q1/N1}
     }
 
@@ -369,15 +369,15 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             auto tmpDstRegOpndForCR0 = Create_Dst_Opnd_From_Dcl(regCR0, 1);
 
             // save cr0.0
-            inst = createMov(1, tmpDstRegOpndForCR0, cr0SrcRegOpndForSaveInst,
+            inst = createMov(g4::SIMD1, tmpDstRegOpndForCR0, cr0SrcRegOpndForSaveInst,
                 InstOpt_WriteEnable, true);
 
             // set rounding mod in CR0 to RNE
-            inst = createBinOp(G4_and, 1, cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
+            inst = createBinOp(G4_and, g4::SIMD1, cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
                 createImm(0xffffffcf, Type_UD), InstOpt_WriteEnable, true);
 
             // set double precision denorm mode to 1
-            inst = createBinOp(G4_or, 1, cr0DstRegOpndForOrInst, cr0SrcRegOpndForOrInst,
+            inst = createBinOp(G4_or, g4::SIMD1, cr0DstRegOpndForOrInst, cr0SrcRegOpndForOrInst,
                 createImm(0x40, Type_UD), InstOpt_WriteEnable, true);
         }
 
@@ -533,7 +533,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
                 G4_DstRegRegion *cr0DstRegOpndForRestoreIfInst = createDstRegRegion(regDstCR0);
                 auto tmpSrcOpndForCR0OnIf = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
                 // restore cr0.0
-                inst = createMov(1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
+                inst = createMov(g4::SIMD1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
                     InstOpt_WriteEnable, true);
             }
 
@@ -555,7 +555,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             // restore cr0.0 {NoMask}
             G4_DstRegRegion *cr0DstRegOpndForRestoreElseInst = createDstRegRegion(regDstCR0);
             auto tmpSrcOpndForCR0OnElse = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
-            inst = createMov(1, cr0DstRegOpndForRestoreElseInst, tmpSrcOpndForCR0OnElse,
+            inst = createMov(g4::SIMD1, cr0DstRegOpndForRestoreElseInst, tmpSrcOpndForCR0OnElse,
                 InstOpt_WriteEnable, true);
         }
 
@@ -592,14 +592,12 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     G4_INST* inst;
-    unsigned int instOpt = 0;
-    unsigned madmInstOpt = 0;
-    uint8_t instExecSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
+    G4_ExecSize instExecSize = toExecSize(executionSize);
     uint8_t element_size = 8; // element_size is changed according to insstExecSize
-    uint8_t exsize = getNativeExecSize(); // exsize is a constant and never changed
+    G4_ExecSize exsize = getNativeExecSize(); // exsize is a constant and never changed
     unsigned int loopCount = 1;
-    instOpt |= Get_Gen4_Emask(emask, exsize); // for those execution size: element_size before the loop
-    madmInstOpt |= Get_Gen4_Emask(emask, exsize); // only used in the loop
+    G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize); // for those execution size: element_size before the loop
+    G4_InstOpts madmInstOpt = Get_Gen4_Emask(emask, exsize); // only used in the loop
     const RegionDesc *srcRegionDesc = getRegionStride1();
 
     G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
@@ -650,20 +648,20 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         src0Opnd = valueOneOpnd;
     }
 
-    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
-    G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, element_size, instExecSize);
+    G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, G4_ExecSize(element_size), instExecSize);
+    G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, G4_ExecSize(element_size), instExecSize);
 
     if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef)
     {
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(t6, 1);
-        inst = createMov(element_size, tmp, src0RR,
+        inst = createMov(G4_ExecSize(element_size), tmp, src0RR,
             instOpt, true); // mov (element_size) t6, src0RR {Q1/H1}
         src0RR = Create_Src_Opnd_From_Dcl(t6, getRegionStride1());
     }
     if (src1RR->isScalar() || src1RR->getModifier() != Mod_src_undef)
     {
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(t4, 1);
-        inst = createMov(element_size, tmp, src1RR,
+        inst = createMov(G4_ExecSize(element_size), tmp, src1RR,
             instOpt, true); // mov (element_size) t4, src1RR {Q1/H1}
         src1RR = Create_Src_Opnd_From_Dcl(t4, getRegionStride1());
     }
@@ -746,7 +744,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
             G4_SrcRegRegion *cr0SrcRegOpndForAndInst = createSrcRegRegion(regSrcCR0);
 
             // save cr0.0: mov (1) r116.2<1>:ud cr0.0<0;1,0>:ud {NoMask}
-            inst = createMov(1, Create_Dst_Opnd_From_Dcl(regCR0, 1),
+            inst = createMov(g4::SIMD1, Create_Dst_Opnd_From_Dcl(regCR0, 1),
                 cr0SrcRegOpndForSaveInst, InstOpt_WriteEnable, true);
 
             // set rounding mod in CR0 to RNE: and (1) cr0.0<1>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
@@ -857,7 +855,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         if (!hasDefaultRoundDenorm)
         {
             // restore cr0.0: mov (1) cr0.0<1>:ud r116.1<0;1,0>:ud {NoMask}
-            inst = createMov(1, createDstRegRegion(regDstCR0),
+            inst = createMov(g4::SIMD1, createDstRegRegion(regDstCR0),
                 Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar()), InstOpt_WriteEnable, true);
         }
 
@@ -876,7 +874,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
             inst = createElse(exsize, instOpt);
 
             // restore cr0.0: mov (1) cr0.0<1>:ud r116.2<0;1,0>:ud {NoMask}
-            inst = createMov(1, createDstRegRegion(regDstCR0),
+            inst = createMov(g4::SIMD1, createDstRegRegion(regDstCR0),
                 Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar()), InstOpt_WriteEnable, true);
         }
 
@@ -901,13 +899,12 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     G4_INST* inst;
-    unsigned int instOpt = 0;
     unsigned madmInstOpt = 0;
-    uint8_t instExecSize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    uint8_t element_size = 8; // element_size is dynamic, changed according to instExecSize
-    const uint8_t exsize = getNativeExecSize(); // // exsize is a constant and never changed
+    G4_ExecSize instExecSize = toExecSize(executionSize);
+    G4_ExecSize element_size = g4::SIMD8; // element_size is dynamic, changed according to instExecSize
+    const G4_ExecSize exsize = getNativeExecSize();
     unsigned int loopCount = 1;
-    instOpt |= Get_Gen4_Emask(emask, exsize); // for those insts of execution size of element_size
+    G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize); // for those insts of execution size of element_size
     const RegionDesc *srcRegionDesc = getRegionStride1();
     G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
 
@@ -1032,14 +1029,14 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
             G4_SrcRegRegion *cr0SrcRegOpndForAndInst = createSrcRegRegion(regSrcCR0);
 
             // save cr0.0: mov (1) r116.2<1>:ud cr0.0<0;1,0>:ud {NoMask}
-            inst = createMov(1, Create_Dst_Opnd_From_Dcl(regCR0, 1),
+            inst = createMov(g4::SIMD1, Create_Dst_Opnd_From_Dcl(regCR0, 1),
                 cr0SrcRegOpndForSaveInst, InstOpt_WriteEnable, true);
 
             // set rounding mod in CR0 to RNE: and (1) cr0.0<1>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
-            inst = createBinOp(G4_and, 1, cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
+            inst = createBinOp(G4_and, g4::SIMD1, cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
                 createImm(0xffffffcf, Type_UD), InstOpt_WriteEnable, true);
             // set single denorm to 1: (W) or (1|M0) cr0.0<1>:ud cr0.0<0;1,0>:ud 0x80:ud
-            inst = createBinOp(G4_or, 1, createDstRegRegion(regDstCR0),
+            inst = createBinOp(G4_or, g4::SIMD1, createDstRegRegion(regDstCR0),
                 createSrcRegRegion(regSrcCR0), createImm(0x80, Type_UW), InstOpt_WriteEnable, true);
         }
 
@@ -1141,7 +1138,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         if (!hasDefaultRoundDenorm)
         {
             // restore cr0.0: mov (1) cr0.0<1>:ud r116.1<0;1,0>:ud {NoMask}
-            inst = createMov(1, createDstRegRegion(regDstCR0),
+            inst = createMov(g4::SIMD1, createDstRegRegion(regDstCR0),
                 Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar()), InstOpt_WriteEnable, true);
         }
 
@@ -1159,7 +1156,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
             inst = createElse(exsize, instOpt);
 
             // restore cr0.0: mov (1) cr0.0<1>:ud r116.2<0;1,0>:ud {NoMask}
-            inst = createMov(1, createDstRegRegion(regDstCR0),
+            inst = createMov(g4::SIMD1, createDstRegRegion(regDstCR0),
                 Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar()), InstOpt_WriteEnable, true);
         }
 
@@ -1186,13 +1183,13 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     G4_INST* inst;
-    uint8_t instExecSize = (uint8_t)Get_VISA_Exec_Size(executionSize);
-    uint8_t exsize = 4;
+    G4_ExecSize instExecSize = toExecSize(executionSize);
+    G4_ExecSize exsize = g4::SIMD4;
 
     const RegionDesc *srcRegionDesc = getRegionStride1();
     const RegionDesc *rdAlign16 = getRegionStride1();
     unsigned int loopCount;
-    uint8_t element_size;   // element_size is set according to instExecSize
+    G4_ExecSize element_size {0};   // element_size is set according to instExecSize
 
     G4_DstRegRegion *dst0 = nullptr;
     G4_SrcRegRegion *src0 = nullptr;
@@ -1208,13 +1205,13 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
     if (instExecSize == 1 || instExecSize == 4)
     {
-        element_size = 4;
+        element_size = g4::SIMD4;
         loopCount = 1;
     }
     else
     {
         element_size = instExecSize;
-        exsize = std::min((int)instExecSize, getFP64MadmExecSize());
+        exsize = std::min(instExecSize, G4_ExecSize(getFP64MadmExecSize()));
         loopCount = instExecSize / exsize;
     }
 
@@ -1314,7 +1311,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             dst0 = Create_Dst_Opnd_From_Dcl(tmpRegCR0, 1);
             src0 = createSrcRegRegion(regSrcCR0);
             // mov (1) r108.0<1>:ud cr0.0<0;1,0>:ud {NoMask}
-            inst = createMov(1, dst0, src0, InstOpt_WriteEnable, true);
+            inst = createMov(g4::SIMD1, dst0, src0, InstOpt_WriteEnable, true);
 
 
             // set rounding mod in CR0 to RNE
@@ -1322,7 +1319,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0 = createSrcRegRegion(regSrcCR0);
             immData = createImm(0xffffffcf, Type_UD);
             // and (1) cr0.0<0;1,0>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
-            inst = createBinOp(G4_and, 1, dst0, src0, immData, InstOpt_WriteEnable, true);
+            inst = createBinOp(G4_and, g4::SIMD1, dst0, src0, immData, InstOpt_WriteEnable, true);
 
 
             // set double precision denorm mode to 1
@@ -1330,7 +1327,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0 = createSrcRegRegion(regSrcCR0);
             immData = createImm(0x40, Type_UD);
             // or (1) cr0.0<0;1,0>:ud cr0.0<0;1,0>:ud 0x40:ud {NoMask}
-            inst = createBinOp(G4_or, 1, dst0, src0, immData, InstOpt_WriteEnable, true);
+            inst = createBinOp(G4_or, g4::SIMD1, dst0, src0, immData, InstOpt_WriteEnable, true);
         }
 
         // math.e0.f0.0 (4) r7.acc2 r6.noacc NULL 0xf {Align16, N1/N2}
@@ -1473,7 +1470,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
                 dst0 = createDstRegRegion(regDstCR0);
                 src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
                 // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
-                inst = createMov(1, dst0, src0, InstOpt_WriteEnable, true);
+                inst = createMov(g4::SIMD1, dst0, src0, InstOpt_WriteEnable, true);
             }
 
             // madm (4) r7.noacc r7.acc8 r9.acc3 r8.acc7 {Align16, N1/N2}
@@ -1497,7 +1494,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             dst0 = createDstRegRegion(regDstCR0);
             src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
             // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
-            inst = createMov(1, dst0, src0, InstOpt_WriteEnable, true);
+            inst = createMov(g4::SIMD1, dst0, src0, InstOpt_WriteEnable, true);
         }
 
         if (generateIf)

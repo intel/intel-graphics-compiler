@@ -873,7 +873,7 @@ void HWConformity::splitSIMD32Inst(INST_LIST_ITER iter, G4_BB* bb)
     // if half-GRF boundary is crossed.
     G4_DstRegRegion *dst = inst->getDst();
     bool nullDst = dst && inst->hasNULLDst();
-    uint8_t instExSize = inst->getExecSize(), currExSize = instExSize >> 1;
+    G4_ExecSize instExSize = inst->getExecSize(), currExSize = G4_ExecSize(instExSize / 2);
     for (int i = 0; i < instExSize; i += currExSize)
     {
         // create new Oprands. Acc should not be split since we generate it in jitter and
@@ -983,7 +983,8 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
     // if half-GRF boundary is crossed.
     G4_DstRegRegion *dst = inst->getDst();
     bool nullDst = inst->hasNULLDst();
-    uint8_t instExSize = inst->getExecSize(), currExSize;
+    G4_ExecSize instExSize = inst->getExecSize();
+    G4_ExecSize currExSize;
     uint16_t vs[3] = { 0 }, wd[3] = { 0 };
 
     G4_Predicate *instPred = inst->getPredicate();
@@ -1018,7 +1019,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
     {
         if (compOpt && i == 0)
         {
-            currExSize = numInFirstMov;
+            currExSize = G4_ExecSize(numInFirstMov);
             G4_INST *newInst = builder.makeSplittingInst(inst, instExSize);
             newInst->setDest(builder.duplicateOperand(inst->getDst()));
             newInst->setPredicate(builder.duplicateOperand(inst->getPredicate()));
@@ -1036,7 +1037,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
 
         // this stores the max allowed exec size for each operand (0 -- dst, 1 -- src0, and so on)
         uint8_t opndExSize[4] = { 0, 0, 0, 0 };
-        currExSize = roundDownPow2(instExSize - i);
+        currExSize = G4_ExecSize(roundDownPow2(instExSize - i));
 
         bool crossGRFsrc = false;
         for (int j = 0; j < numSrcs; j++)
@@ -1058,7 +1059,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             crossGRFsrc |= twoGRFsrc;
             if (minExSize == 1)
             {
-                currExSize = opndExSize[j+1];
+                currExSize = G4_ExecSize(opndExSize[j + 1]);
             }
         }
 
@@ -1077,7 +1078,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
 
         if (minExSize == 1)
         {
-            currExSize = opndExSize[0];
+            currExSize = G4_ExecSize(opndExSize[0]);
         }
 
         bool needMov = false;
@@ -1087,13 +1088,13 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             // to avoid dependency
             // FIXME: optimize this part by avoiding MOVs
             uint8_t currMinExSize = 64;
-            currExSize = 0;
+            currExSize = G4_ExecSize(0);
             for (int j = 0; j <= numSrcs; j++)
             {
                 // use max possible exsize
                 if (opndExSize[j] > currExSize)
                 {
-                    currExSize = opndExSize[j];
+                    currExSize = G4_ExecSize(opndExSize[j]);
                 }
                 if (opndExSize[j] != 0 && opndExSize[j] < currMinExSize)
                 {
@@ -1103,7 +1104,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
 
             if (currMinExSize >= minExSize)
             {
-                currExSize = currMinExSize;
+                currExSize = G4_ExecSize(currMinExSize);
             }
             else
             {
@@ -1280,7 +1281,7 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb, bool checkOve
 
     G4_DstRegRegion* dst = inst->getDst();
     bool nullDst = dst && inst->hasNULLDst();
-    uint8_t instExSize = inst->getExecSize(), currExSize = instExSize >> 1;
+    G4_ExecSize instExSize = inst->getExecSize(), currExSize = G4_ExecSize(instExSize / 2);
 
     G4_Predicate* newPred = NULL;
     if (inst->getPredicate())
@@ -1494,7 +1495,7 @@ bool HWConformity::checkSrcDstOverlap(INST_LIST_ITER iter, G4_BB* bb, bool compO
 void HWConformity::moveSrcToGRF(INST_LIST_ITER it, uint32_t srcNum, uint16_t numGRF, G4_BB *bb)
 {
     G4_INST* inst = *it;
-    uint8_t execSize = inst->getExecSize();
+    G4_ExecSize execSize = inst->getExecSize();
 
     G4_Operand *src = inst->getSrc(srcNum);
     uint32_t srcTypeSize = G4_Type_Table[src->getType()].byteSize;
@@ -1570,7 +1571,7 @@ void HWConformity::saveDst(INST_LIST_ITER& it, uint8_t stride, G4_BB *bb)
 {
     G4_INST* inst = *it;
     G4_DstRegRegion *dst = inst->getDst();
-    unsigned char execSize = inst->getExecSize();
+    G4_ExecSize execSize = inst->getExecSize();
     G4_Type dstType = dst->getType();
     uint16_t dstWidthBytes = execSize * G4_Type_Table[dstType].byteSize * stride;
 
@@ -1599,7 +1600,7 @@ void HWConformity::restoreDst(INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_B
 {
     G4_INST* inst = *it;
     G4_DstRegRegion *dst = inst->getDst();
-    uint8_t execSize = inst->getExecSize();
+    G4_ExecSize execSize = inst->getExecSize();
 
     uint16_t hs = dst->getHorzStride();
     const RegionDesc *region = builder.createRegionDesc(hs * execSize, execSize, hs);
@@ -1630,7 +1631,7 @@ void HWConformity::insertMovAfter(INST_LIST_ITER& it, uint16_t stride, G4_BB* bb
 {
     G4_INST* inst = *it;
     G4_DstRegRegion *dst = inst->getDst();
-    unsigned char execSize = inst->getExecSize();
+    G4_ExecSize execSize = inst->getExecSize();
     G4_Type execType = inst->getExecType(), dstType = dst->getType();
     uint16_t opExecWidthBytes = execSize * G4_Type_Table[execType].byteSize;
     uint16_t dstWidthBytes = execSize * G4_Type_Table[dstType].byteSize * stride;

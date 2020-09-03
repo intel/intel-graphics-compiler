@@ -43,7 +43,7 @@ int IR_Builder::translateVISACFSwitchInst(
     {
         G4_Declare *tmpVar = createTempVar(1, Type_D, Any);
         G4_DstRegRegion* dstOpnd = Create_Dst_Opnd_From_Dcl(tmpVar, 1);
-        createBinOp(G4_shl, 1, dstOpnd, indexOpnd,
+        createBinOp(G4_shl, g4::SIMD1, dstOpnd, indexOpnd,
             createImm(4, Type_UW), InstOpt_NoOpt, true);
         indexOpnd = Create_Src_Opnd_From_Dcl(tmpVar, getRegionScalar());
     }
@@ -79,7 +79,7 @@ int IR_Builder::translateVISACFCallInst(
 
     G4_opcode callOpToUse = GetGenOpcodeFromVISAOpcode(ISA_CALL);
     G4_DstRegRegion* dstOpndToUse = NULL;
-    unsigned char execSize = (uint8_t) Get_VISA_Exec_Size(execsize);
+    G4_ExecSize execSize = toExecSize(execsize);
     G4_Label* srcLabel = lab;
 
     if (lab->isFCLabel() == true)
@@ -92,11 +92,10 @@ int IR_Builder::translateVISACFCallInst(
         FCRet->setAliasDeclare(RetIP->dcl, 0);
         dstOpndToUse = Create_Dst_Opnd_From_Dcl(FCRet, 1);
 
-        execSize = 2;
+        execSize = g4::SIMD2;
     }
 
-    unsigned int instOpt = 0;
-    instOpt |= Get_Gen4_Emask(emask, execSize);
+    G4_InstOpts instOpts = Get_Gen4_Emask(emask, execSize);
     createInst(
         predOpnd,
         callOpToUse,
@@ -106,7 +105,7 @@ int IR_Builder::translateVISACFCallInst(
         dstOpndToUse,
         srcLabel,
         nullptr,
-        instOpt,
+        instOpts,
         0);
 
     return VISA_SUCCESS;
@@ -195,7 +194,7 @@ int IR_Builder::translateVISACFIFCallInst(
         (src0->isSrcRegRegion() && (src0->asSrcRegRegion()->getModifier() != Mod_src_undef)))
     {
         auto tmpSrc0 = createTempVar(1, Type_D, Any);
-        createMov(1, Create_Dst_Opnd_From_Dcl(tmpSrc0, 1), src0, InstOpt_WriteEnable, true);
+        createMov(g4::SIMD1, Create_Dst_Opnd_From_Dcl(tmpSrc0, 1), src0, InstOpt_WriteEnable, true);
         src0 = Create_Src_Opnd_From_Dcl(tmpSrc0, getRegionScalar());
     }
     // FIXME: Remove the "add" instruction here that this instruction must be right before
@@ -230,7 +229,7 @@ int IR_Builder::translateVISACFSymbolInst(
         // Relocation for runtime-calculated private memory size
         auto* privateMemPatch = createRelocImm(Type_UD);
         dst->setType(Type_UD);
-        G4_INST* mov = createMov(1, dst, privateMemPatch, InstOpt_WriteEnable, true);
+        G4_INST* mov = createMov(g4::SIMD1, dst, privateMemPatch, InstOpt_WriteEnable, true);
         RelocationEntry::createRelocation(kernel, *mov, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
     }
     else if (noInt64() || needSwap64ImmLoHi())
@@ -241,10 +240,10 @@ int IR_Builder::translateVISACFSymbolInst(
         assert(!dst->isIndirect());
         // change type from uq to ud, adjust the subRegOff
         auto dstLo = createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2, 1, Type_UD);
-        G4_INST* movLo = createMov(1, dstLo, funcAddrLow, InstOpt_WriteEnable, true);
+        G4_INST* movLo = createMov(g4::SIMD1, dstLo, funcAddrLow, InstOpt_WriteEnable, true);
         // subRegOff will be right following dst's sub-reg
         auto dstHi = createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2 + 1, 1, Type_UD);
-        G4_INST* movHi = createMov(1, dstHi, funcAddrHigh, InstOpt_WriteEnable, true);
+        G4_INST* movHi = createMov(g4::SIMD1, dstHi, funcAddrHigh, InstOpt_WriteEnable, true);
 
         RelocationEntry::createRelocation(kernel, *movLo, 0, symbolName, GenRelocType::R_SYM_ADDR_32);
         RelocationEntry::createRelocation(kernel, *movHi, 0, symbolName, GenRelocType::R_SYM_ADDR_32_HI);
@@ -253,7 +252,7 @@ int IR_Builder::translateVISACFSymbolInst(
     {
         // symbolic imm representing symbol's address
         auto funcAddr = createRelocImm(Type_UQ);
-        auto movInst = createMov(1, dst, funcAddr, InstOpt_WriteEnable, true);
+        auto movInst = createMov(g4::SIMD1, dst, funcAddr, InstOpt_WriteEnable, true);
 
         RelocationEntry::createRelocation(kernel, *movInst, 0, symbolName, GenRelocType::R_SYM_ADDR);
     }
@@ -266,9 +265,8 @@ int IR_Builder::translateVISACFFretInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    unsigned int instOpt = 0;
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    instOpt |= Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = toExecSize(executionSize);
+    G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize);
 
     kernel.fg.setIsStackCallFunc();
 
@@ -281,7 +279,7 @@ int IR_Builder::translateVISACFFretInst(
         NULL,
         NULL, //src0Opnd
         NULL,
-        instOpt,
+        instOpts,
         0);
 
     return VISA_SUCCESS;
@@ -292,9 +290,9 @@ int IR_Builder::translateVISACFRetInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    unsigned int instOpt = InstOpt_NoOpt;
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    instOpt |= Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = toExecSize(executionSize);
+    G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize);
+
     if (getFCPatchInfo()->getIsCallableKernel() == true)
     {
         if (tmpFCRet == nullptr) {
@@ -314,7 +312,7 @@ int IR_Builder::translateVISACFRetInst(
             createNullDst(Type_UD),
             srcOpndToUse,
             NULL,
-            instOpt,
+            instOpts,
             0);
     }
     else
@@ -322,7 +320,7 @@ int IR_Builder::translateVISACFRetInst(
         createCFInst(predOpnd,
             subroutineId == 0 ? G4_pseudo_exit : GetGenOpcodeFromVISAOpcode(ISA_RET),
             exsize,
-            nullptr, nullptr, instOpt);
+            nullptr, nullptr, instOpts);
     }
 
     return VISA_SUCCESS;
@@ -334,8 +332,8 @@ int IR_Builder::translateVISAGotoInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    uint8_t exsize = (uint8_t) Get_VISA_Exec_Size(executionSize);
-    unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
+    G4_ExecSize exsize = toExecSize(executionSize);
+    G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize);
 
     auto cfInst = createInst(
         predOpnd,
@@ -346,7 +344,7 @@ int IR_Builder::translateVISAGotoInst(
         nullptr,
         nullptr,
         nullptr,
-        instOpt,
+        instOpts,
         0);
     cfInst->asCFInst()->setUip(label);
 

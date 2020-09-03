@@ -260,10 +260,10 @@ public:
         unsigned short nElems,
         unsigned short nRows,
         G4_Type        ty,
-        DeclareType kind = Regular,
+        DeclareType    kind = Regular,
         G4_RegVar *    base = nullptr,
         G4_Operand *   repRegion = nullptr,
-        unsigned       execSize = 0);
+        G4_ExecSize    execSize = G4_ExecSize(0));
 
     G4_Declare* createPreVarDeclare(
                               PreDefinedVarsInternal index,
@@ -633,7 +633,7 @@ public:
         DeclareType    kind = Regular,
         G4_RegVar *    base = NULL,
         G4_Operand *   repRegion = NULL,
-        unsigned       execSize = 0);
+        G4_ExecSize    execSize = G4_ExecSize(0));
 
 
     G4_Declare* createPreVarDeclareNoLookup(
@@ -743,21 +743,21 @@ public:
     // offset is in hword units
     G4_INST* createSpill(
         G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
-        unsigned int execSize,
+        G4_ExecSize execSize,
         uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option);
 
     G4_INST* createSpill(
         G4_DstRegRegion* dst, G4_SrcRegRegion* payload,
-        unsigned int execSize, uint16_t numRows, uint32_t offset,
+        G4_ExecSize execSize, uint16_t numRows, uint32_t offset,
         G4_Declare* fp, G4_InstOption option);
 
 
     G4_INST* createFill(
         G4_SrcRegRegion* header,
-        G4_DstRegRegion* dstData, unsigned int execSize,
+        G4_DstRegRegion* dstData, G4_ExecSize execSize,
         uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option);
     G4_INST* createFill(
-        G4_DstRegRegion* dstData, unsigned int execSize,
+        G4_DstRegRegion* dstData, G4_ExecSize execSize,
         uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option);
 
 
@@ -1131,7 +1131,7 @@ public:
          G4_InstOpts options,
          int lineno, bool addToInstList = true)
      {
-         G4_ExecSize sz = static_cast<G4_ExecSize>(execSize);
+         G4_ExecSize sz((unsigned char)execSize);
          return createInst(prd, op, mod, sat, sz, dst, src0, src1, options, lineno);
      }
 
@@ -1145,7 +1145,7 @@ public:
          G4_InstOpts options,
          bool addToInstList = true)
      {
-         G4_ExecSize sz = static_cast<G4_ExecSize>(execSize);
+         G4_ExecSize sz((unsigned char)execSize);
          return createInst(prd, op, mod, sat, sz, dst, src0, src1, options);
      }
 
@@ -1174,7 +1174,7 @@ public:
          G4_InstOpts option,
          bool addToInstList = true)
      {
-         G4_ExecSize sz = static_cast<G4_ExecSize>(execSize);
+         G4_ExecSize sz((unsigned char)execSize);
          return createInst(prd, op, mod, sat, sz, dst, src0, src1, src2, option);
      }
 
@@ -1187,7 +1187,7 @@ public:
          G4_InstOpts option,
          int lineno, bool addToInstList = true)
      {
-         G4_ExecSize sz = static_cast<G4_ExecSize>(execSize);
+         G4_ExecSize sz((unsigned char)execSize);
          return createInst(prd, op, mod, sat, sz, dst, src0, src1, src2, option, lineno);
      }
 
@@ -1664,11 +1664,10 @@ public:
 
     G4_Declare* getImmDcl(G4_Imm* val, int numElt);
 
-    // TODO: rename PayloadSource
-    struct payloadSource {
-        G4_SrcRegRegion *opnd;
-        unsigned        execSize;
-        unsigned        instOpt;
+    struct PayloadSource {
+        G4_SrcRegRegion  *opnd;
+        G4_ExecSize       execSize;
+        G4_InstOpts       instOpt;
     };
 
     /// preparePayload - This method prepares payload from the specified header
@@ -1692,8 +1691,8 @@ public:
     ///
     void preparePayload(
         G4_SrcRegRegion *msgs[2], unsigned sizes[2],
-        unsigned batchExSize, bool splitSendEnabled,
-        payloadSource sources[], unsigned len);
+        G4_ExecSize batchExSize, bool splitSendEnabled,
+        PayloadSource sources[], unsigned len);
 
     // Coalesce multiple payloads into a single region.  Pads each region with
     // an optional alignment argument (e.g. a GRF size).  The source region
@@ -1732,7 +1731,7 @@ public:
         G4_Declare* payload,
         unsigned int& regOff,
         G4_SrcRegRegion* src,
-        unsigned int exec_size,
+        G4_ExecSize execSize,
         uint32_t emask);
     unsigned int getByteOffsetSrcRegion(G4_SrcRegRegion* srcRegion);
 
@@ -1741,11 +1740,11 @@ public:
     bool checkIfRegionsAreConsecutive(
         G4_SrcRegRegion* first,
         G4_SrcRegRegion* second,
-        unsigned int exec_size);
+        G4_ExecSize execSize);
     bool checkIfRegionsAreConsecutive(
         G4_SrcRegRegion* first,
         G4_SrcRegRegion* second,
-        unsigned int exec_size,
+        G4_ExecSize execSize,
         G4_Type type);
 
     int generateDebugInfoPlaceholder(); // TODO: move to BuildIRImpl.cpp?
@@ -1968,7 +1967,7 @@ public:
 
     void buildTypedSurfaceAddressPayload(
         G4_SrcRegRegion* u, G4_SrcRegRegion* v, G4_SrcRegRegion* r, G4_SrcRegRegion* lod,
-        uint32_t exSize, uint32_t instOpt, payloadSource sources[], uint32_t& len);
+        G4_ExecSize execSize, G4_InstOpts instOpt, PayloadSource sources[], uint32_t& len);
 
     int translateVISAGather4TypedInst(
         G4_Predicate   *pred,

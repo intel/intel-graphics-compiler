@@ -93,7 +93,7 @@ namespace vISA
         }
 
         G4_SrcRegRegion* insertCopyBefore(INST_LIST_ITER it, uint32_t srcNum, G4_SubReg_Align tmpAlign, G4_BB *bb);
-        G4_SrcRegRegion* insertCopyAtBBEntry(G4_BB* bb, uint8_t newExecSize, G4_Operand* src);
+        G4_SrcRegRegion* insertCopyAtBBEntry(G4_BB* bb, G4_ExecSize newExecSize, G4_Operand* src);
         void broadcast(G4_BB* bb, INST_LIST_ITER it, int srcPos, G4_SubReg_Align subAlign);
 
         G4_INST *splitInstWithByteDst(G4_INST *expand_op);

@@ -2198,7 +2198,7 @@ int VISAKernelImpl::CreateVISAPredicateOperand(
         // number of elements. Except it thinks each element is a two bytes.
         // we want each element in as a boolean.
         G4_Predicate_Control predCtrl =
-            m_builder->vISAPredicateToG4Predicate(cntrl, (G4_ExecSize)dcl->getNumberFlagElements());
+            m_builder->vISAPredicateToG4Predicate(cntrl, G4_ExecSize(dcl->getNumberFlagElements()));
 
         cisa_opnd->g4opnd = m_builder->createPredicate(
             (state == PredState_INVERSE) ? PredState_Minus : PredState_Plus,

@@ -2697,7 +2697,7 @@ void GlobalRA::evenAlign()
 void GlobalRA::getBankAlignment(LiveRange* lr, BankAlign &align)
 {
     G4_Declare *dcl = lr->getDcl();
-    if (kernel.getSimdSize() < 16)
+    if (kernel.getSimdSize() < g4::SIMD16)
     {
         return;
     }
@@ -3418,8 +3418,8 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
                 else if (isDefaultMaskDcl(dcl, kernel.getSimdSize(), AugmentationMasks::Default64Bit))
                 {
                     bool useNonDefault = false;
-                    useNonDefault |= (kernel.getSimdSize() >= 16 && dcl->getTotalElems() > 8);
-                    useNonDefault |= (kernel.getSimdSize() == 8 && dcl->getTotalElems() > 4);
+                    useNonDefault |= (kernel.getSimdSize() >= g4::SIMD16 && dcl->getTotalElems() > 8);
+                    useNonDefault |= (kernel.getSimdSize() == g4::SIMD8 && dcl->getTotalElems() > 4);
 
                     if (useNonDefault)
                     {
@@ -5747,7 +5747,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     bool allocFromBanks = liveAnalysis.livenessClass(G4_GRF) && builder.lowHighBundle() &&
         !builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum) &&
         doBankConflict &&
-        ((oneGRFBankDivision && gra.kernel.getSimdSize() >= 16) || (!oneGRFBankDivision && highInternalConflict));
+        ((oneGRFBankDivision && gra.kernel.getSimdSize() >= g4::SIMD16) || (!oneGRFBankDivision && highInternalConflict));
 
     if (allocFromBanks &&
         (colorHeuristicGRF == ROUND_ROBIN))
@@ -6847,7 +6847,7 @@ void GraphColor::stackCallProlog()
     auto dstRgn = builder.Create_Dst_Opnd_From_Dcl(builder.kernel.fg.scratchRegDcl, 1);
     auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
 
-    G4_INST* mov = builder.createMov(numEltPerGRF(Type_UD), dstRgn, srcRgn, InstOpt_WriteEnable, false);
+    G4_INST* mov = builder.createMov(G4_ExecSize(numEltPerGRF(Type_UD)), dstRgn, srcRgn, InstOpt_WriteEnable, false);
 
     G4_BB* entryBB = builder.kernel.fg.getEntryBB();
     auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
@@ -6868,7 +6868,7 @@ void GraphColor::saveRegs(
     {
         // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
         // sends (8) null<1>:ud    r126.0    r1.0 ...
-        uint8_t execSize = (owordSize > 2) ? 16 : 8;
+        G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
         unsigned messageLength = ROUND(owordSize, 2) / 2;
         G4_Declare* msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, StackCallStr);
@@ -6952,7 +6952,7 @@ void GraphColor::restoreRegs(
     //
     if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
-        uint8_t execSize = (owordSize > 2) ? 16 : 8;
+        G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
         unsigned responseLength = ROUND(owordSize, 2) / 2;
         G4_Declare* dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, GraphColor::StackCallStr);
@@ -7424,7 +7424,7 @@ void GraphColor::addGenxMainStackSetupCode()
     {
         G4_DstRegRegion* dst = builder.createDst(framePtr->getRegVar(), 0, 0, 1, Type_UD);
         G4_Imm * src = builder.createImm(fpInitVal, Type_UD);
-        G4_INST* fpInst = builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
+        G4_INST* fpInst = builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
         insertIt = entryBB->insertBefore(insertIt, fpInst);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
@@ -7439,7 +7439,7 @@ void GraphColor::addGenxMainStackSetupCode()
     {
         G4_DstRegRegion* dst = builder.createDst(stackPtr->getRegVar(), 0, 0, 1, Type_UD);
         G4_Imm * src = builder.createImm(fpInitVal + frameSize*factor, Type_UD);
-        G4_INST* spIncInst = builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
+        G4_INST* spIncInst = builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
         entryBB->insertBefore(++insertIt, spIncInst);
     }
 
@@ -7489,8 +7489,8 @@ void GraphColor::addCalleeStackSetupCode()
             Mod_src_undef, Direct, stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_Operand* sp_src = builder.createSrcRegRegion(Mod_src_undef, Direct, stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_Imm * src1 = builder.createImm(frameSize*factor, Type_UD);
-        auto createBEFP = builder.createMov(1, fp_dst, sp_src, InstOpt_WriteEnable, false);
-        auto addInst = builder.createBinOp(G4_add, 1,
+        auto createBEFP = builder.createMov(g4::SIMD1, fp_dst, sp_src, InstOpt_WriteEnable, false);
+        auto addInst = builder.createBinOp(G4_add, g4::SIMD1,
             dst, src0, src1, InstOpt_WriteEnable, false);
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
         auto insertIt = std::find(entryBB->begin(), entryBB->end(), gra.getSaveBE_FPInst());
@@ -7517,7 +7517,7 @@ void GraphColor::addCalleeStackSetupCode()
         const RegionDesc* rDesc = builder.getRegionScalar();
         G4_Operand* fp_src = builder.createSrcRegRegion(
             Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, rDesc, Type_UD);
-        G4_INST* spRestore = builder.createMov(1, sp_dst, fp_src, InstOpt_WriteEnable, false);
+        G4_INST* spRestore = builder.createMov(g4::SIMD1, sp_dst, fp_src, InstOpt_WriteEnable, false);
         INST_LIST_ITER insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
         for (--insertIt; (*insertIt) != gra.getRestoreBE_FPInst(); --insertIt);
 
@@ -7571,7 +7571,8 @@ void GraphColor::addA0SaveRestoreCode()
                     const RegionDesc* rDesc = builder.getRegionStride1();
                     G4_Operand* src = builder.createSrcRegRegion(
                         Mod_src_undef, Direct, regPool.getAddrReg(), 0, 0, rDesc, Type_UW);
-                    G4_INST* saveInst = builder.createMov(numA0Elements, dst, src, InstOpt_WriteEnable, false);
+                    G4_INST* saveInst = builder.createMov(
+                        G4_ExecSize(numA0Elements), dst, src, InstOpt_WriteEnable, false);
                     INST_LIST_ITER insertIt = std::prev(bb->end());
                     bb->insertBefore(insertIt, saveInst);
                 }
@@ -7584,7 +7585,8 @@ void GraphColor::addA0SaveRestoreCode()
                     const RegionDesc* rDesc = builder.getRegionStride1();
                     G4_Operand* src = builder.createSrcRegRegion(
                         Mod_src_undef, Direct, savedDcl->getRegVar(), 0, 0, rDesc, Type_UW);
-                    G4_INST* restoreInst = builder.createMov(numA0Elements, dst, src, InstOpt_WriteEnable, false);
+                    G4_INST* restoreInst = builder.createMov(
+                        G4_ExecSize(numA0Elements), dst, src, InstOpt_WriteEnable, false);
                     auto insertIt = std::find_if(succ->begin(), succ->end(), [](G4_INST* inst) { return !inst->isLabel(); });
                     succ->insertBefore(insertIt, restoreInst);
                 }
@@ -7637,7 +7639,7 @@ void GraphColor::addFlagSaveRestoreCode()
                         G4_DstRegRegion* dst = builder.createDst(savedDcl1->getRegVar(), 0, index, 1, Type_UD);
                         G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, flagDcl->getRegVar(), 0, 0,
                             builder.getRegionScalar(), Type_UD);
-                        return builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
+                        return builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
                     };
 
                     auto iter = std::prev(bb->end());
@@ -7660,7 +7662,7 @@ void GraphColor::addFlagSaveRestoreCode()
                         const RegionDesc* rDesc = builder.getRegionScalar();
                         G4_Operand* src = builder.createSrcRegRegion(
                             Mod_src_undef, Direct, savedDcl1->getRegVar(), 0, index, rDesc, Type_UD);
-                        return builder.createMov(1, dst, src, InstOpt_WriteEnable, false);
+                        return builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
                     };
                     auto insertIt = std::find_if(succ->begin(), succ->end(), [](G4_INST* inst) { return !inst->isLabel(); });
                     for (int i = 0; i < num32BitFlags; ++i)
@@ -7736,7 +7738,8 @@ void GlobalRA::addCallerSavePseudoCode()
             auto fcallInst = bb->back()->asCFInst();
             G4_Declare* pseudoVCADcl = bb->getParent().fcallToPseudoDclMap[fcallInst].VCA;
             G4_DstRegRegion* dst = builder.createDst(pseudoVCADcl->getRegVar(), 0, 0, 1, Type_UD);
-            G4_INST* saveInst = builder.createInternalIntrinsicInst(nullptr, Intrinsic::CallerSave, 1, dst, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
+            G4_INST* saveInst = builder.createInternalIntrinsicInst(
+                nullptr, Intrinsic::CallerSave, g4::SIMD1, dst, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
             INST_LIST_ITER callBBIt = bb->end();
             bb->insertBefore(--callBBIt, saveInst);
 
@@ -7759,7 +7762,8 @@ void GlobalRA::addCallerSavePseudoCode()
             INST_LIST_ITER retBBIt = retBB->begin();
             for (; retBBIt != retBB->end() && (*retBBIt)->isLabel(); ++retBBIt);
             G4_INST* restoreInst =
-                builder.createInternalIntrinsicInst(nullptr, Intrinsic::CallerRestore, 1, nullptr, src, nullptr, nullptr, InstOpt_WriteEnable);
+                builder.createInternalIntrinsicInst(
+                    nullptr, Intrinsic::CallerRestore, g4::SIMD1, nullptr, src, nullptr, nullptr, InstOpt_WriteEnable);
             retBB->insertBefore(retBBIt, restoreInst);
         }
     }
@@ -7776,7 +7780,8 @@ void GlobalRA::addCalleeSavePseudoCode()
     G4_Declare* pseudoVCEDcl = builder.kernel.fg.pseudoVCEDcl;
 
     G4_DstRegRegion* dst = builder.createDst(pseudoVCEDcl->getRegVar(), 0, 0, 1, Type_UD);
-    auto saveInst = builder.createInternalIntrinsicInst(nullptr, Intrinsic::CalleeSave, 1, dst, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
+    auto saveInst = builder.createInternalIntrinsicInst(
+        nullptr, Intrinsic::CalleeSave, g4::SIMD1, dst, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
     INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
     for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
         ++insertIt)
@@ -7789,7 +7794,8 @@ void GlobalRA::addCalleeSavePseudoCode()
     G4_Operand* src = builder.createSrcRegRegion(
         Mod_src_undef, Direct, pseudoVCEDcl->getRegVar(), 0, 0, rDesc, Type_UD);
     G4_INST* restoreInst =
-        builder.createInternalIntrinsicInst(nullptr, Intrinsic::CalleeRestore, 1, nullptr, src, nullptr, nullptr, InstOpt_WriteEnable);
+        builder.createInternalIntrinsicInst(
+            nullptr, Intrinsic::CalleeRestore, g4::SIMD1, nullptr, src, nullptr, nullptr, InstOpt_WriteEnable);
     INST_LIST_ITER exitBBIt = exitBB->end();
     --exitBBIt;
     MUST_BE_TRUE((*exitBBIt)->isFReturn(), ERROR_REGALLOC);
@@ -7812,9 +7818,10 @@ void GlobalRA::addStoreRestoreForFP()
 
     G4_DstRegRegion* FPdst = builder.createDst(builder.kernel.fg.framePtrDcl->getRegVar(), 0, 0, 1, Type_UD);
     rd = builder.getRegionScalar();
-    G4_Operand* FPsrc = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.kernel.fg.framePtrDcl->getRegVar(), 0, 0, rd, Type_UD);
+    G4_Operand* FPsrc = builder.createSrcRegRegion(
+        Mod_src_undef, Direct, builder.kernel.fg.framePtrDcl->getRegVar(), 0, 0, rd, Type_UD);
 
-    saveBE_FPInst = builder.createMov(1, oldFPDst, FPsrc, InstOpt_WriteEnable, false);
+    saveBE_FPInst = builder.createMov(g4::SIMD1, oldFPDst, FPsrc, InstOpt_WriteEnable, false);
     INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
     for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
         ++insertIt)
@@ -7822,7 +7829,7 @@ void GlobalRA::addStoreRestoreForFP()
     };
     builder.kernel.fg.getEntryBB()->insertBefore(insertIt, saveBE_FPInst);
 
-    restoreBE_FPInst = builder.createMov(1, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
+    restoreBE_FPInst = builder.createMov(g4::SIMD1, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
     insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
     for (--insertIt; (*insertIt)->isFReturn() == false; --insertIt)
     {   /*  void */
@@ -7838,7 +7845,9 @@ void GlobalRA::addStoreRestoreForFP()
     }
 }
 
-void GlobalRA::reportUndefinedUses(LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl, std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum)
+void GlobalRA::reportUndefinedUses(
+    LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl,
+    std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum)
 {
     // Get topmost dcl
     while (referencedDcl->getAliasDeclare() != NULL)
@@ -8306,7 +8315,7 @@ void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<
         return;
     }
 
-    int splitVarSize = kernel.getSimdSize() == 8 ? 1 : 2;
+    int splitVarSize = kernel.getSimdSize() == g4::SIMD8 ? 1 : 2;
     for (unsigned int i = 0, bSizePerGRFSize = (oldDcl->getByteSize() / numEltPerGRF(Type_UB)); i < bSizePerGRFSize; i += splitVarSize)
     {
         G4_Declare* splitDcl = NULL;
@@ -8334,7 +8343,9 @@ void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<
     return;
 }
 
-void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
+void VarSplit::insertMovesToTemp(
+    IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, G4_BB* bb,
+    INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
 {
     G4_INST *inst = (*instIter);
     INST_LIST_ITER iter = instIter;
@@ -8352,7 +8363,7 @@ void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Ope
             G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(subDcl, 1);
             auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, oldDcl->getRegVar(),
                 (gra.getSubOffset(subDcl)) / numEltPerGRF(Type_UB), 0, builder.getRegionStride1(), oldDcl->getElemType());
-            G4_INST* splitInst = builder.createMov((uint8_t)subDcl->getTotalElems(), dst, src, maskFlag, false);
+            G4_INST* splitInst = builder.createMov(G4_ExecSize(subDcl->getTotalElems()), dst, src, maskFlag, false);
             bb->insertBefore(iter, splitInst);
         }
     }
@@ -8366,7 +8377,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
 
     int sizeInGRF = (srcOpnd->getRightBound() - srcOpnd->getLeftBound() + numEltPerGRF(Type_UB) - 1) /
         numEltPerGRF(Type_UB);
-    int splitSize = kernel.getSimdSize() == 8 ? 1 : 2;
+    int splitSize = kernel.getSimdSize() == g4::SIMD8 ? 1 : 2;
     if (sizeInGRF != splitSize)
     {
         unsigned short dclWidth = 0;
@@ -8406,7 +8417,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
                     kernel.fg.builder->getRegionStride1(),
                     oldSrc->getType());
                 G4_INST* movInst = kernel.fg.builder->createMov(
-                    (unsigned char)subDcl->getTotalElems(), dst, src, InstOpt_WriteEnable, false);
+                    G4_ExecSize(subDcl->getTotalElems()), dst, src, InstOpt_WriteEnable, false);
                 bb->insertBefore(instIter, movInst);
             }
         }
@@ -8425,7 +8436,8 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
             if (!(srcOpnd->getRightBound() < leftBound || rightBound < srcOpnd->getLeftBound()))
             {
                 G4_SrcRegRegion* oldSrc = srcOpnd->asSrcRegRegion();
-                G4_SrcRegRegion* newSrc = kernel.fg.builder->createSrcRegRegion(oldSrc->getModifier(),
+                G4_SrcRegRegion* newSrc = kernel.fg.builder->createSrcRegRegion(
+                    oldSrc->getModifier(),
                     Direct,
                     subDcl->getRegVar(),
                     0,
@@ -8467,7 +8479,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
 
     SPLIT_DECL_OPERANDS splitDcls;
     unsigned int instIndex = 0;
-    int splitSize = kernel.getSimdSize() == 8 ? 1 : 2;
+    int splitSize = kernel.getSimdSize() == g4::SIMD8 ? 1 : 2;
     for (auto bb : kernel.fg)
     {
         for (INST_LIST_ITER it = bb->begin(), iend = bb->end(); it != iend; ++it, ++instIndex)
@@ -11040,7 +11052,7 @@ void GlobalRA::insertPhyRegDecls()
         {
             const char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
             G4_Declare* phyRegDcl = builder.createDeclareNoLookup(
-                dclName, G4_GRF, numEltPerGRF(Type_UD), 1, Type_D, Regular, NULL, NULL, 0);
+                dclName, G4_GRF, numEltPerGRF(Type_UD), 1, Type_D, Regular, NULL, NULL);
             G4_Greg* phyReg = builder.phyregpool.getGreg(i);
             phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
             GRFDclsForHRA[i] = phyRegDcl;
@@ -11158,7 +11170,7 @@ void GlobalRA::fixAlignment()
     // Rest of RA shouldnt have to read/modify alignment of G4_RegVar
     copyAlignment();
 
-    if (kernel.getSimdSize() == 32)
+    if (kernel.getSimdSize() == g4::SIMD32)
     {
         // we have to force all flags to be 32-bit aligned even if they are < 32-bit,
         // due to potential emask usage.
@@ -12210,7 +12222,7 @@ void  GlobalRA::insertSaveAddr(G4_BB* bb)
 
         last->setDest(builder.createDst(dcl->getRegVar(), 0, 0, 1, Type_UD)); // RET__loc12<1>:ud
 
-        last->setExecSize(2);
+        last->setExecSize(g4::SIMD2);
     }
 }
 
@@ -12237,7 +12249,7 @@ void  GlobalRA::insertRestoreAddr(G4_BB* bb)
         last->setSrc(new_src, 0);
         last->setDest(builder.createNullDst(Type_UD));
 
-        last->setExecSize(2);
+        last->setExecSize(g4::SIMD2);
     }
 }
 

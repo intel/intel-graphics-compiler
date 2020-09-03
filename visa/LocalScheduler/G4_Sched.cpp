@@ -660,8 +660,8 @@ public:
     }
     void setCurrTupleLead(preNode* N)
     {
-        assert(N->getInst()->getExecSize() == 8 ||
-               N->getInst()->getExecSize() == 16);
+        assert(N->getInst()->getExecSize() == g4::SIMD8 ||
+               N->getInst()->getExecSize() == g4::SIMD16);
         TheCurrTupleLead = N->getTupleLead();
         TheCurrTupleParts = N->getTupleParts();
     }
@@ -869,7 +869,7 @@ bool SethiUllmanQueue::compare(preNode* N1, preNode* N2)
 preNode* SethiUllmanQueue::scheduleClusteringNode()
 {
     // Clustering does not work well for SIMD32 kernels.
-    if (ddd.getKernel().getSimdSize() == 32)
+    if (ddd.getKernel().getSimdSize() == g4::SIMD32)
         return nullptr;
 
     // Schedule clustering nodes first.
@@ -1569,7 +1569,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
         // For reducing rpe.
         if (NewRPE + PRESSURE_REDUCTION_MIN_BENEFIT <= MaxRPE) {
             bool AbortOnSpill = kernel.getOptions()->getOption(vISA_AbortOnSpill);
-            if (kernel.getSimdSize() == 32 && AbortOnSpill) {
+            if (kernel.getSimdSize() == g4::SIMD32 && AbortOnSpill) {
                 // It turns out that simd32 kernels may be scheduled like slicing, which
                 // in general hurts latency hidding. If not insist to compile for simd32,
                 // make rp reduction conservative.
@@ -2028,13 +2028,13 @@ void preDDD::reset(bool ReassignNodeID)
 
     auto isHalfN = [](G4_INST* Inst, unsigned N) -> bool {
         return Inst->isSend() &&
-               Inst->getExecSize() == 16 &&
+               Inst->getExecSize() == g4::SIMD16 &&
                Inst->getMaskOffset() == N * 16;
     };
 
     auto isQuadN = [](G4_INST* Inst, unsigned N) -> bool {
         return Inst->isSend() &&
-               Inst->getExecSize() == 8 &&
+               Inst->getExecSize() == g4::SIMD8 &&
                Inst->getMaskOffset() == N * 8;
     };
 

@@ -539,9 +539,10 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             {
                 // For pln, src1 uses 2 GRFs if exec size <= 8
                 // and 4 GRFs if exec size == 16
-                newRgn.computeRightBound(inst->getExecSize() > 8 ? inst->getExecSize() : inst->getExecSize() * 2);
+                newRgn.computeRightBound(inst->getExecSize() > g4::SIMD8 ?
+                    inst->getExecSize() : G4_ExecSize(inst->getExecSize() * 2));
 
-                if (inst->getExecSize() > 8)
+                if (inst->getExecSize() > g4::SIMD8)
                 {
                     newRgn.setRightBound(newRgn.getRightBound() * 2 - newRgn.getLeftBound() + 1);
                 }
@@ -759,7 +760,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             // alignment checks that can only be performed post RA
             bool threeSrcAlign16 = (inst->getNumSrc() == 3) && !inst->isSend() && !kernel.fg.builder->hasAlign1Ternary();
             bool nonScalar = (opnd->isSrcRegRegion() && !opnd->asSrcRegRegion()->isScalar()) ||
-                (opnd->isDstRegRegion() && inst->getExecSize() > 2);
+                (opnd->isDstRegRegion() && inst->getExecSize() > g4::SIMD2);
             bool isAssigned = opnd->isRegRegion() && opnd->getBase()->isRegVar() &&
                 opnd->getBase()->asRegVar()->isPhyRegAssigned();
             // allow replicated DF source opnd with <2;2,0> region

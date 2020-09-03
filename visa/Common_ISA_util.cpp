@@ -769,7 +769,7 @@ VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, G4_ExecSize execSize)
 G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size)
 {
 
-    switch (exec_size)
+    switch (exec_size.value)
     {
     case 32:
         switch (cisa_emask)

@@ -400,7 +400,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR)
 
         if (builder.oneGRFBankDivision())
         {
-            twoBanksAssign = highInternalConflict || (kernel.getSimdSize() == 16);
+            twoBanksAssign = highInternalConflict || kernel.getSimdSize() == g4::SIMD16;
         }
         else
         {
@@ -2931,8 +2931,10 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     // See the last condition of this if-stmt.
                                     G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(splitDcl, 1);
                                     G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(oldDcl, builder.getRegionStride1());
+                                    G4_ExecSize splitInstExecSize (oldDcl->getTotalElems() > 16 ? 16 : oldDcl->getTotalElems());
                                     G4_INST* splitInst = builder.createMov(
-                                        (uint8_t) (oldDcl->getTotalElems() > 16 ? 16 : oldDcl->getTotalElems()), dst, src, InstOpt_WriteEnable, false);
+                                        splitInstExecSize,
+                                        dst, src, InstOpt_WriteEnable, false);
                                     bb->insertBefore(iter, splitInst);
 
                                     unsigned int idx = 0;
@@ -2945,7 +2947,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     {
                                         G4_DstRegRegion* dst = builder.createDst(splitDcl->getRegVar(), 2, 0, 1, oldDcl->getElemType());
                                         auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, oldDcl->getRegVar(), 2, 0, builder.getRegionStride1(), oldDcl->getElemType());
-                                        G4_INST* splitInst2 = builder.createMov(16, dst, src, InstOpt_WriteEnable, false);
+                                        G4_INST* splitInst2 = builder.createMov(g4::SIMD16, dst, src, InstOpt_WriteEnable, false);
                                         bb->insertBefore(iter, splitInst2);
                                     }
 
@@ -2961,7 +2963,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     dst = builder.Create_Dst_Opnd_From_Dcl(newDcl, 1);
                                     src = builder.Create_Src_Opnd_From_Dcl(splitDcl, builder.getRegionStride1());
                                     G4_INST* movInst = builder.createMov(
-                                        (uint8_t) (splitDcl->getTotalElems() > 16 ? 16 : splitDcl->getTotalElems()),
+                                        G4_ExecSize(splitDcl->getTotalElems() > 16 ? 16 : splitDcl->getTotalElems()),
                                         dst, src, InstOpt_WriteEnable, false);
                                     bb->insertBefore(iter, movInst);
 
@@ -2975,7 +2977,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     {
                                         G4_DstRegRegion* dst = builder.createDst(newDcl->getRegVar(), 2, 0, 1, splitDcl->getElemType());
                                         auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, splitDcl->getRegVar(), 2, 0, builder.getRegionStride1(), splitDcl->getElemType());
-                                        G4_INST* movInst2 = builder.createMov(16, dst, src, InstOpt_WriteEnable, false);
+                                        G4_INST* movInst2 = builder.createMov(g4::SIMD16, dst, src, InstOpt_WriteEnable, false);
                                         bb->insertBefore(iter, movInst2);
                                     }
 

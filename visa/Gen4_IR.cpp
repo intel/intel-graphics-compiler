@@ -1838,7 +1838,7 @@ G4_INST::MovType G4_INST::canPropagate() const
     // only support flag propagation for simd1 copy moves
     if (src->isFlag())
     {
-        if (getExecSize() != 1 || src->getType() != dst->getType())
+        if (getExecSize() != g4::SIMD1 || src->getType() != dst->getType())
         {
             return SuperMov;
         }
@@ -2187,7 +2187,7 @@ bool G4_INST::canPropagateTo(
     if (isMixedMode())
     {
         // FIXME: what's this for?
-        if (execSize < 16 && MT == FPDownConvSafe && useInst->execSize == 16 &&
+        if (execSize < g4::SIMD16 && MT == FPDownConvSafe && useInst->execSize == g4::SIMD16 &&
             !useInst->isMixedMode())
         {
             return false;
@@ -2287,7 +2287,7 @@ bool G4_INST::canPropagateTo(
     }
 
     bool isVxHSrc = indirectSrc && src->asSrcRegRegion()->getRegion()->isRegionWH();
-    if (isVxHSrc && (useInst->getExecSize() != execSize || execSize >= 8))
+    if (isVxHSrc && (useInst->getExecSize() != execSize || execSize >= g4::SIMD8))
     {
         // copy propagating VxH region may result in address spills later so it's usually a net loss
         return false;
@@ -2372,7 +2372,7 @@ bool G4_INST::canPropagateTo(
 
     const RegionDesc *rd =
         src->isSrcRegRegion() ? src->asSrcRegRegion()->getRegion() : nullptr;
-    unsigned char new_exec_size = useInst->getExecSize();
+    G4_ExecSize newExecSize = useInst->getExecSize();
     if (useElSize != dstElSize &&
         (!src->isSrcRegRegion()
          || rd->isRepeatRegion(execSize)
@@ -2392,10 +2392,10 @@ bool G4_INST::canPropagateTo(
 
     // Check repeat region
     bool sameDefUseELSize = (dstElSize == useElSize);
-    bool sameExecSize = (execSize == new_exec_size);
+    bool sameExecSize = (execSize == newExecSize);
     const RegionDesc *useRd =
         use->isSrcRegRegion() ? use->asSrcRegRegion()->getRegion() : nullptr;
-    bool repeatUseRegion = useRd && useRd->isRepeatRegion(new_exec_size);
+    bool repeatUseRegion = useRd && useRd->isRepeatRegion(newExecSize);
     bool scalarUse = useRd && useRd->isScalar();
     bool repeatSrcRegion = (rd && rd->isRepeatRegion(execSize));
     if (!sameExecSize &&
@@ -2458,10 +2458,10 @@ bool G4_INST::canPropagateTo(
                 rd->isSingleNonUnitStride(execSize, stride1);
 
             uint16_t stride2 = UndefVal;
-            if (useRd->isContiguous(new_exec_size))
+            if (useRd->isContiguous(newExecSize))
                 stride2 = 1;
             else
-                useRd->isSingleNonUnitStride(new_exec_size, stride2);
+                useRd->isSingleNonUnitStride(newExecSize, stride2);
 
             if (!isComposable(dstStride, stride1, stride2))
                 return false;
@@ -2471,7 +2471,7 @@ bool G4_INST::canPropagateTo(
     // check data type alignment
     if ((srcElSize < useElSize) &&
         (dstElSize == srcElSize) &&
-        (execSize > 1) &&
+        (execSize > g4::SIMD1) &&
         (!src->isImm()) &&
         ((src->getByteOffset() % useElSize) != 0))
     {
@@ -2535,7 +2535,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const
         (defInstList.size() > 1 &&
         (Operand_Type_Rank(srcType) != Operand_Type_Rank(dstType) ||
         // if multidef and used as a scalar, execution size should be one.
-        (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar() && execSize > 1))))
+        (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar() && execSize > g4::SIMD1))))
     {
         return false;
     }
@@ -2545,7 +2545,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const
     if ((src_wd != execSize &&
         (src->asSrcRegRegion()->getRegion()->vertStride < (src_wd * src->asSrcRegRegion()->getRegion()->horzStride))) ||
         // actually we can hoist if src is a scalar and target inst has no pred or cond mod.
-        (execSize > 1 && src->asSrcRegRegion()->isScalar()))
+        (execSize > g4::SIMD1 && src->asSrcRegRegion()->isScalar()))
     {
         return false;
     }
@@ -2715,7 +2715,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     bool same_type_size = G4_Type_Table[def_dst->getType()].byteSize == G4_Type_Table[srcType].byteSize;
     bool scalarSrc = srcs[0]->asSrcRegRegion()->isScalar();
     // handle predicated MOV and float def
-    if ((getPredicate() && (execSize > 1) && !same_type_size) ||
+    if ((getPredicate() && (execSize > g4::SIMD1) && !same_type_size) ||
         (IS_FTYPE(defDstType) && (defDstType != srcType) && (dstType != srcType)))
     {
         return false;
@@ -2725,7 +2725,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     // add(2) v2<1>:w v3 v4
     // mov(2) v5<2>:d  V2<0;1,0>:d
     if (scalarSrc && !same_type_size &&
-        (execSize > 1) && (dst->getHorzStride() != 1))
+        (execSize > g4::SIMD1) && (dst->getHorzStride() != 1))
     {
         return false;
     }
@@ -3036,7 +3036,7 @@ bool G4_INST::detectComprInst() const
 
     // Compressed instructions must have a minimum execution size of
     // at least 8.
-    if (execSize < 8)
+    if (execSize < g4::SIMD8)
     {
         comprInst = ComprInstStates::F;
     }
@@ -3682,25 +3682,25 @@ G4_INST::emit_options(std::ostream& output) const
     switch (getMaskOffset())
     {
     case 0:
-        output << (execSize == 4 ? "N1" : (execSize == 16 ? "H1" : "Q1"));
+        output << (execSize == g4::SIMD4 ? "N1" : (execSize == g4::SIMD16 ? "H1" : "Q1"));
         break;
     case 4:
         output << "N2";
         break;
     case 8:
-        output << (execSize == 4 ? "N3" : "Q2");
+        output << (execSize == g4::SIMD4 ? "N3" : "Q2");
         break;
     case 12:
         output << "N4";
         break;
     case 16:
-        output << (execSize == 4 ? "N5" : (execSize == 16 ? "H2" : "Q3"));
+        output << (execSize == g4::SIMD4 ? "N5" : (execSize == g4::SIMD16 ? "H2" : "Q3"));
         break;
     case 20:
         output << "N6";
         break;
     case 24:
-        output << (execSize == 4 ? "N7" : "Q4");
+        output << (execSize == g4::SIMD4 ? "N7" : "Q4");
         break;
     case 28:
         output << "N8";
@@ -6705,8 +6705,8 @@ void G4_INST::computeRightBound(G4_Operand* opnd)
 
         if (done == false && op == G4_pln && opnd == srcs[1])
         {
-            opnd->computeRightBound(execSize > 8 ? execSize : execSize * 2);
-            if (execSize > 8)
+            opnd->computeRightBound(execSize > g4::SIMD8 ? execSize : execSize * 2);
+            if (execSize > g4::SIMD8)
             {
                 opnd->setRightBound(opnd->right_bound * 2 - opnd->getLeftBound() + 1);
             }
@@ -7503,7 +7503,7 @@ bool G4_INST::isAlign1Ternary() const
 // 1)   add (16)    r1.0<1>:hf   r2.0<8;8,1>:hf   r3.0<8;8,1>:hf    { Align1, H1 }
 // 2)   add (16)    r1.0<1>:hf   r2.0<8;8,1>:hf   r3.0<0;1,0>:hf    { Align1, H1 }
 bool G4_INST::isFastHFInstruction(void) const {
-    if (getExecSize() < 16) {
+    if (getExecSize() < g4::SIMD16) {
         return false;
     }
     bool isHF = false;
@@ -7588,15 +7588,15 @@ bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const
     case Type_HF:
         if (builder.relaxedACCRestrictions())
         {
-            if (!((isMixedMode() && getExecSize() == 8) ||
-                (getExecSize() == 16)))
+            if (!((isMixedMode() && getExecSize() == g4::SIMD8) ||
+                (getExecSize() == g4::SIMD16)))
             {
                 return false;
             }
         }
         else
         {
-            if (getExecSize() != (builder.getNativeExecSize() * 2))
+            if (getExecSize() != G4_ExecSize(builder.getNativeExecSize() * 2))
             {
                 return false;
             }
@@ -7604,13 +7604,14 @@ bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const
         break;
     case Type_W:
     case Type_UW:
-        if (getExecSize() != (builder.getNativeExecSize() * 2))
+        if (getExecSize() != G4_ExecSize(builder.getNativeExecSize() * 2))
         {
             return false;
         }
         break;
     case Type_F:
-        if (getExecSize() != (builder.getNativeExecSize() * 2) && getExecSize() != builder.getNativeExecSize())
+        if (getExecSize() != G4_ExecSize(builder.getNativeExecSize() * 2) &&
+            getExecSize() != builder.getNativeExecSize())
         {
             return false;
         }
@@ -7620,7 +7621,8 @@ bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const
         {
             return false;
         }
-        if (getExecSize() != builder.getNativeExecSize() && getExecSize() != (builder.getNativeExecSize() / 2))
+        if (getExecSize() != builder.getNativeExecSize() &&
+            getExecSize() != G4_ExecSize(builder.getNativeExecSize() / 2))
         {
             return false;
         }
