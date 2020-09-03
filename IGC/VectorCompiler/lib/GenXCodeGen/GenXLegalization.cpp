@@ -341,6 +341,7 @@ private:
     TwiceWidth = nullptr;
   }
   unsigned getExecSizeAllowedBits(Instruction *Inst);
+  bool checkIfLongLongSupportNeeded(Instruction *Inst) const;
   bool processInst(Instruction *Inst);
   bool processBale(Instruction *InsertBefore);
   bool noSplitProcessing();
@@ -548,6 +549,44 @@ unsigned GenXLegalization::getExecSizeAllowedBits(Instruction *Inst) {
   }
   return 0x3f;
 }
+/***********************************************************************
+ * checkIfLongLongSupportNeeded: checks if an instruction requires
+ *  target to support 64-bit integer operations
+ *
+ * Some operations like bitcasts or ptrtoint do not really need any HW support
+ * to generate a compliant VISA
+ */
+bool GenXLegalization::checkIfLongLongSupportNeeded(Instruction *Inst) const {
+  // for now, we expect that the inspected instruction results in a value
+  // 64-bit type (scalar or vector)
+  IGC_ASSERT(Inst && Inst->getType()->getScalarType()->isIntegerTy(64));
+  auto CheckGenXIntrinsic = [](const Instruction *Inst) {
+    // wrregion/rdregion by themselves should not require any HW support
+    // since finalizer should handle the respected VISA mov instructions.
+    // On the other hand, if the respected intrinsic is baled into something
+    // intresting - such situations should be filtered-out by scanning
+    // other instructions
+    if (GenXIntrinsic::isWrRegion(Inst) || GenXIntrinsic::isRdRegion(Inst)) {
+      LLVM_DEBUG(dbgs() << "i64_support - RELAXED, GenX: " << *Inst << "\n");
+      return false;
+    }
+    LLVM_DEBUG(dbgs() << "i64_support - REQUIRED, GenX: " << *Inst << "\n");
+    return true;
+  };
+  if (GenXIntrinsic::isGenXNonTrivialIntrinsic(Inst)) {
+    return CheckGenXIntrinsic(Inst);
+  }
+  // TODO: if number of such llvm instructions increases, consider implementing
+  // instruction visitor
+  switch (Inst->getOpcode()) {
+  case Instruction::PtrToInt:
+  case Instruction::IntToPtr:
+    LLVM_DEBUG(dbgs() << "i64_support - RELAXED, instr: " << *Inst << "\n");
+    return false;
+  }
+  LLVM_DEBUG(dbgs() << "i64_support - REQUIRED, instr: " << *Inst << "\n");
+  return true;
+}
 
 /***********************************************************************
  * processInst : process one instruction to legalize execution width and GRF
@@ -569,7 +608,7 @@ bool GenXLegalization::processInst(Instruction *Inst) {
   if ((ScalarType->getPrimitiveSizeInBits() == 64) && !ST->hasLongLong()) {
     if (!ScalarType->isIntegerTy())
       report_fatal_error("'double' type is not supported by this target");
-    if (ScalarType->isIntegerTy() && !ST->emulateLongLong())
+    if (!ST->emulateLongLong() && checkIfLongLongSupportNeeded(Inst))
       report_fatal_error("'long long' type is not supported by this target");
   }
   if (ST->isICLLP() || ST->isTGLLP()) {
