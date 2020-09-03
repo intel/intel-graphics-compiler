@@ -143,16 +143,16 @@ int IR_Builder::translateVISASampleInfoInst(
 
     fc |= ((unsigned int) VISA_3D_SAMPLEINFO & 0x1f) << 12;
 
-    if (execSize == 8)
+    if (execSize == getNativeExecSize())
     {
         fc |= (1 << 17);
     }
-    else if (execSize == 16)
+    else
     {
         fc |= (2 << 17);
     }
 
-    uint32_t retSize = (execSize == 8 ? chMask.getNumEnabledChannels() : chMask.getNumEnabledChannels() * 2);
+    uint32_t retSize = (execSize == getNativeExecSize() ? chMask.getNumEnabledChannels() : chMask.getNumEnabledChannels() * 2);
 
     if (forceSplitSend)
     {
@@ -189,13 +189,13 @@ int IR_Builder::translateVISAResInfoInst(
         (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG && channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
 
     // Setup number of rows = (header + lod) by default
-    unsigned int numRows = (execSize == 8 ? 1 : 2);
+    unsigned int numRows = (execSize == getNativeExecSize() ? 1 : 2);
     if (useHeader)
     {
         numRows++;
     }
     unsigned int regOff = 0;
-    uint32_t returnLength = (execSize == 8 ? chMask.getNumEnabledChannels() : chMask.getNumEnabledChannels() * 2);
+    uint32_t returnLength = (execSize == getNativeExecSize() ? chMask.getNumEnabledChannels() : chMask.getNumEnabledChannels() * 2);
 
     bool useSplitSend = useSends();
 
@@ -257,11 +257,11 @@ int IR_Builder::translateVISAResInfoInst(
 
     fc |= ((unsigned int) VISA_3D_RESINFO & 0x1f) << 12;
 
-    if (execSize == 8)
+    if (execSize == getNativeExecSize())
     {
         fc |= (1 << 17);
     }
-    else if (execSize == 16)
+    else
     {
         fc |= (2 << 17);
     }
