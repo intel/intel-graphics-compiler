@@ -47,8 +47,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Module.h"
 #include "llvmWrapper/IR/Instructions.h"
 
-#include <iterator>
 #include "Probe/Assertion.h"
+#include <iterator>
 
 using namespace llvm;
 using namespace genx;
@@ -591,10 +591,15 @@ ShuffleVectorAnalyzer::getMaskRegionPrefix(int StartIdx) {
   if (StartIdx == MaskVals.size() - 1)
     return Res;
 
-  makeSVIIndexesOperandIndexes(*SI, *Res.Op, StartIt, MaskVals.end(), StartIt);
+  std::vector<int>
+      SubMask;
+  makeSVIIndexesOperandIndexes(*SI, *Res.Op, StartIt, MaskVals.end(),
+                               std::back_inserter(SubMask));
 
-  Res.R = matchVectorRegionByIndexes(std::move(Res.R), StartIt, MaskVals.end());
-  Res.R = matchMatrixRegionByIndexes(std::move(Res.R), StartIt, MaskVals.end());
+  Res.R = matchVectorRegionByIndexes(std::move(Res.R), SubMask.begin(),
+                                     SubMask.end());
+  Res.R = matchMatrixRegionByIndexes(std::move(Res.R), SubMask.begin(),
+                                     SubMask.end());
   return Res;
 }
 

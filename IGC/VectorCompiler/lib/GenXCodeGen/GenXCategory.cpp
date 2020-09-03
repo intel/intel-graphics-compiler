@@ -160,7 +160,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Metadata.h"
-#include "llvm/PassAnalysisSupport.h"
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
 

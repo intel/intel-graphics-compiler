@@ -1022,7 +1022,8 @@ GenXReduceIntSize::ValueNumBits GenXReduceIntSize::getValueNumBits(
 }
 
 Value *GenXReduceIntSize::getSplatValue(ShuffleVectorInst *SVI) const {
-  if (!SVI->getMask()->isNullValue())
+  auto ShuffleMask = SVI->getShuffleMask();
+  if (std::any_of(ShuffleMask.begin(), ShuffleMask.end(), [](int V) { return V != 0; }))
     return nullptr;
 
   Value *Src = SVI->getOperand(0);

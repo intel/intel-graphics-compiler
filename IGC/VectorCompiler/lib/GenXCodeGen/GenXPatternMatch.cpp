@@ -1372,9 +1372,9 @@ bool MinMaxMatcher::valuesMatch(llvm::Value *Op1, llvm::Value *Op2) {
       return false;
     Type *C1Ty = C1->getType();
     Type *C2Ty = C2->getType();
-    if (C1Ty->isVectorTy()) {
-      C1Ty = C1Ty->getSequentialElementType();
-      C2Ty = C2Ty->getSequentialElementType();
+    if (auto C1VTy = dyn_cast<VectorType>(C1Ty)) {
+      C1Ty = C1VTy->getElementType();
+      C2Ty = cast<VectorType>(C2Ty)->getElementType();
     }
 
     return (C1Ty->isIntegerTy() && C2Ty->isIntegerTy()) ||

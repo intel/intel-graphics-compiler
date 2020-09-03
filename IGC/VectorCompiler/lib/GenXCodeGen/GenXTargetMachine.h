@@ -114,7 +114,12 @@ public:
   bool shouldBuildLookupTables() { return false; }
   unsigned getFlatAddressSpace() { return 4; }
 
-  int getUserCost(const User *U, ArrayRef<const Value *> Operands) {
+  int getUserCost(const User *U, ArrayRef<const Value *> Operands
+#if LLVM_VERSION_MAJOR >= 11
+                  ,
+                  TTI::TargetCostKind CostKind
+#endif
+  ) {
     if (auto EV = dyn_cast<ExtractValueInst>(U)) {
       switch(GenXIntrinsic::getGenXIntrinsicID(EV->getOperand(0))) {
         case GenXIntrinsic::genx_simdcf_goto:
@@ -126,7 +131,12 @@ public:
       }
     }
 
-    return BaseT::getUserCost(U, Operands);
+    return BaseT::getUserCost(U, Operands
+#if LLVM_VERSION_MAJOR >= 11
+                              ,
+                              CostKind
+#endif
+    );
   }
 
   bool isProfitableToHoist(Instruction *I) const {

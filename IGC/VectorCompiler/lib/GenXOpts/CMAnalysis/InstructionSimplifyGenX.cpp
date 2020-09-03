@@ -47,7 +47,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Instructions.h>
 #include <llvm/InitializePasses.h>
 #include <llvm/Pass.h>
-#include <llvm/PassSupport.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/CommandLine.h>
 #include "Probe/Assertion.h"

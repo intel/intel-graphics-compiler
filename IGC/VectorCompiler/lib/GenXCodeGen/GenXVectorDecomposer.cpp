@@ -120,7 +120,10 @@ int DiagnosticVectorDecomposition::KindID = 0;
 bool VectorDecomposer::run(DominatorTree *ArgDT)
 {
   DT = ArgDT;
-  DL = &DT->getRoots().front()->getModule()->getDataLayout();
+  DL = &DT->
+        getRoot()
+            ->getModule()
+            ->getDataLayout();
   bool Modified = false;
   // Process each start wrregion added with addStartWrRegion().
   for (auto swi = StartWrRegions.begin(), swe = StartWrRegions.end();
