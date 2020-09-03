@@ -13073,6 +13073,10 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
+        if (resource.m_surfaceType == ESURFACE_BINDLESS && !exDesc->IsUniform())
+        {
+            exDesc = UniformCopy(exDesc);
+        }
         if (resource.m_surfaceType == ESURFACE_NORMAL && !resource.m_resource->IsImmediate())
         {
             CVariable* indirectMess = m_currShader->GetNewVariable(
