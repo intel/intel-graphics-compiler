@@ -6843,7 +6843,12 @@ void GraphColor::stackCallProlog()
 {
     // mov (8) r126.0<1>:ud    r0.0<8;8,1>:ud
     // This sets up the header for oword block r/w used for caller/callee-save
-    // ToDo: check if this move is actually necessary
+
+    // Kernel should've already setup r0 in r126.
+    // Useful data in r126 is expected to be preserved by all functions.
+    if (kernel.fg.getIsStackCallFunc())
+        return;
+
     auto dstRgn = builder.Create_Dst_Opnd_From_Dcl(builder.kernel.fg.scratchRegDcl, 1);
     auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
 
@@ -7802,7 +7807,6 @@ void GlobalRA::addCalleeSavePseudoCode()
     exitBB->insertBefore(exitBBIt, restoreInst);
     builder.instList.clear();
 }
-
 
 //
 // Insert pseudo operation to store fp at entry and restore before return.
