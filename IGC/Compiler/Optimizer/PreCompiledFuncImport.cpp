@@ -326,6 +326,36 @@ bool PreCompiledFuncImport::preProcessDouble()
                     toBeDeleted.push_back(CallI);
                 }
             }
+#if LLVM_VERSION_MAJOR >= 10
+            else if (Inst->getOpcode() == Instruction::FNeg)
+            {
+                if (Inst->getType()->isDoubleTy())
+                {
+                    IRBuilder<> builder(Inst);
+                    Value* fsub = nullptr;
+
+                    if (!Inst->getType()->isVectorTy())
+                    {
+                        fsub = builder.CreateFSub(ConstantFP::get(Inst->getType(), 0.0f), Inst->getOperand(0));
+                    }
+                    else
+                    {
+                        uint32_t vectorSize = cast<VectorType>(Inst->getType())->getNumElements();
+                        fsub = llvm::UndefValue::get(Inst->getType());
+
+                        for (uint32_t i = 0; i < vectorSize; ++i)
+                        {
+                            Value* extract = builder.CreateExtractElement(Inst->getOperand(0), i);
+                            Value* extract_fsub = builder.CreateFSub(ConstantFP::get(extract->getType(), 0.0f), extract);
+                            fsub = builder.CreateInsertElement(fsub, extract_fsub, i);
+                        }
+                    }
+
+                    Inst->replaceAllUsesWith(fsub);
+                    toBeDeleted.push_back(Inst);
+                }
+            }
+#endif
         }
     }
 
