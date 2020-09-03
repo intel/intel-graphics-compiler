@@ -63,6 +63,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
        vsnprintf(B, BLEN, __VA_ARGS__)
 #endif
 
+
+#define IGA_MODEL_STRING(X) X
+
+
 namespace iga {
     // takes a printf-style pattern and converts it to a string
     std::string format(const char *pat, ...);

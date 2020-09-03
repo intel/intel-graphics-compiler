@@ -1,8 +1,11 @@
 #include "Models.hpp"
 
+// this must precede model*.hpp inclusion below
+#include "../strings.hpp"
+
 // for bxml/Model operand type mappings
 #define TYPE(T) \
-    ENUM_BITSET_VALUE(T,uint32_t)
+    ENUM_BITSET_VALUE(T, uint32_t)
 
 #include "bxml/Model7P5.hpp"
 #include "bxml/Model8.hpp"
@@ -17,7 +20,6 @@
 #include <iostream>
 
 using namespace iga;
-
 
 
 // full "constructor"

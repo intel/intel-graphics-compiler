@@ -370,8 +370,7 @@ extern "C" int iga_main(int argc, const char **argv)
     xGrp.defineFlag(
         "ldst-syntax",
         nullptr,
-        "emits an experimental load/store syntax; "
-            "WARNING: this will likely be removed at some point",
+        "emits an experimental load/store syntax",
         nullptr,
         opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
