@@ -383,7 +383,7 @@ _SPIRV_OP(AsmCallINTEL, 5611)
 _SPIRV_OP(AssumeTrueINTEL, 5630)
 _SPIRV_OP(ExpectINTEL, 5631)
 // Function pointers
-_SPIRV_OP(FunctionPointerINTEL, 5600)
+_SPIRV_OP(ConstFunctionPointerINTEL, 5600)
 _SPIRV_OP(FunctionPointerCallINTEL, 5601)
 // device_side_avc_motion_estimation extension
 _SPIRV_OP(VmeImageINTEL, 5699)

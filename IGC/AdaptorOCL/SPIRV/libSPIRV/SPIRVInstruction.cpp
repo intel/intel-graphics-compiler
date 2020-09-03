@@ -136,19 +136,6 @@ void SPIRVFunctionPointerCallINTEL::validate() const {
   SPIRVFunctionCallGeneric::validate();
 }
 
-SPIRVFunctionPointerINTEL::SPIRVFunctionPointerINTEL(SPIRVId TheId,
-  SPIRVType * TheType,
-  SPIRVFunction * TheFunction,
-  SPIRVBasicBlock * BB)
-  : SPIRVInstruction(FixedWordCount, OC, TheType, TheId, BB),
-  TheFunction(TheFunction->getId()) {
-  validate();
-}
-
-void SPIRVFunctionPointerINTEL::validate() const {
-  SPIRVInstruction::validate();
-}
-
 //Each instruction should implement this function
 std::vector<SPIRVValue*>
 SPIRVInstruction::getOperands() {
