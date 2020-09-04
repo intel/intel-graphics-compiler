@@ -8267,7 +8267,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_dp4a_uu:
     case GenISAIntrinsic::GenISA_dp4a_su:
     case GenISAIntrinsic::GenISA_dp4a_us:
-        // nothing to do
+        emitDP4A(inst);
         break;
     case GenISAIntrinsic::GenISA_evaluateSampler:
         // nothing to do
@@ -17494,13 +17494,12 @@ void EmitPass::emitWaveClustered(llvm::GenIntrinsicInst* inst)
     emitReductionClustered(opCode, identity, type, false, clusterSize, src, dst);
 }
 
-void EmitPass::emitDP4A(GenIntrinsicInst* GII, const SSource* Sources, const DstModifier& modifier) {
+void EmitPass::emitDP4A(GenIntrinsicInst* GII) {
     GenISAIntrinsic::ID GIID = GII->getIntrinsicID();
     CVariable* dst = m_destination;
-    CVariable* src0 = GetSrcVariable(Sources[0]);
-    CVariable* src1 = GetSrcVariable(Sources[1]);
-    CVariable* src2 = GetSrcVariable(Sources[2]);
-
+    CVariable* src0 = GetSymbol(GII->getOperand(0));
+    CVariable* src1 = GetSymbol(GII->getOperand(1));
+    CVariable* src2 = GetSymbol(GII->getOperand(2));
     // Set correct signedness of src1.
     if (GIID == GenISAIntrinsic::GenISA_dp4a_ss ||
         GIID == GenISAIntrinsic::GenISA_dp4a_su)
@@ -17515,13 +17514,6 @@ void EmitPass::emitDP4A(GenIntrinsicInst* GII, const SSource* Sources, const Dst
     if (GIID == GenISAIntrinsic::GenISA_dp4a_uu ||
         GIID == GenISAIntrinsic::GenISA_dp4a_su)
         src2 = m_currShader->BitCast(src2, ISA_TYPE_UD);
-
-    // Check if region was set in PatternMatch
-    if (Sources[1].region_set)
-    {
-        m_encoder->SetSrcRegion(1, Sources[1].region[0], Sources[1].region[1], Sources[1].region[2]);
-    }
-
     // Emit dp4a.
     m_encoder->dp4a(dst, src0, src1, src2);
     m_encoder->Push();
