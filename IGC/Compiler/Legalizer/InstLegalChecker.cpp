@@ -262,7 +262,13 @@ LegalizeAction InstLegalChecker::visitShuffleVectorInst(ShuffleVectorInst& I) {
     if ((Act = TL->getTypeLegalizeAction(I.getOperand(0)->getType())) != Legal)
         return Act;
     // Check the constant mask.
-    return TL->getTypeLegalizeAction(I.getMask()->getType());
+    return TL->getTypeLegalizeAction(I.
+#if LLVM_VERSION_MAJOR <= 10
+        getMask
+#else
+        getShuffleMaskForBitcode
+#endif
+        ()->getType());
 }
 
 LegalizeAction InstLegalChecker::visitExtractValueInst(ExtractValueInst& I) {

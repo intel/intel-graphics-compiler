@@ -612,7 +612,7 @@ namespace IGC {
             unsigned Align = getAlignment(RefLd);
 
             NewLd->setVolatile(RefLd->isVolatile());
-            NewLd->setAlignment(MaybeAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
+            NewLd->setAlignment(IGCLLVM::getCorrectAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
             NewLd->setOrdering(RefLd->getOrdering());
             IGCLLVM::CopySyncScopeID(NewLd, RefLd);
         }
@@ -624,7 +624,7 @@ namespace IGC {
             unsigned Align = getAlignment(RefSt);
 
             NewSt->setVolatile(RefSt->isVolatile());
-            NewSt->setAlignment(MaybeAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
+            NewSt->setAlignment(IGCLLVM::getCorrectAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
             NewSt->setOrdering(RefSt->getOrdering());
             IGCLLVM::CopySyncScopeID(NewSt, RefSt);
         }

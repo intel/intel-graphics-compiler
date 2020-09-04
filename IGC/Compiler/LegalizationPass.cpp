@@ -381,7 +381,7 @@ LegalizeGVNBitCastPattern(IRBuilder<>* Builder, const DataLayout* DL,
 
             // The shift amount shall be a multiple of base element.
             uint64_t ShAmt = CI->getZExtValue();
-            const unsigned int denominator = EltTy->getPrimitiveSizeInBits();
+            const unsigned int denominator = (const unsigned int)EltTy->getPrimitiveSizeInBits();
             IGC_ASSERT(denominator);
 
             if (ShAmt % denominator != 0)
@@ -1917,7 +1917,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
 
         auto cpySign = [&Builder](Value* const src0, Value* const src1) {
             Type* const srcType = src0->getType();
-            const unsigned int srcTypeSize = srcType->getPrimitiveSizeInBits();
+            const unsigned int srcTypeSize = (const unsigned int)srcType->getPrimitiveSizeInBits();
             const uint64_t signMask = (uint64_t)0x1 << (srcTypeSize - 1);
 
             Value* const src0Int = Builder.CreateBitCast(src0, Builder.getIntNTy(srcTypeSize));

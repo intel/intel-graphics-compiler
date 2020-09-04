@@ -2071,10 +2071,14 @@ void DwarfDebug::endFunction(const Function* MF)
     for (ScopeVariablesMap::iterator
         I = ScopeVariables.begin(), E = ScopeVariables.end(); I != E; ++I)
     {
-        DeleteContainerPointers(I->second);
+        for (auto V : I->second)
+            delete V;
+        I->second.clear();
     }
     ScopeVariables.clear();
-    DeleteContainerPointers(CurrentFnArguments);
+    for (auto V : CurrentFnArguments)
+        delete V;
+    CurrentFnArguments.clear();
     UserVariables.clear();
     DbgValues.clear();
     AbstractVariables.clear();
@@ -2666,7 +2670,7 @@ void DwarfDebug::writeFDESubroutine(VISAModule* m)
     auto co = m->getCompileUnit();
     for (auto& s : co->subs)
     {
-        if (s.name.compare(funcName) == 0)
+        if (s.name.compare(funcName.str()) == 0)
         {
             sub = &s;
             break;

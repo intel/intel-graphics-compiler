@@ -48,6 +48,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/ValueHandle.h"
 #include "llvmWrapper/Transforms/Utils.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "llvm/Pass.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/IRBuilder.h"
@@ -505,7 +507,8 @@ namespace //Anonymous
             if (dest->getType() != sourceType->getPointerTo())
                 destPtr = _builder.CreatePointerCast(dest, sourceType->getPointerTo(), "casted_ptr");
 
-            _builder.CreateStore(source, destPtr)->setAlignment(MaybeAlign(align));
+            _builder.CreateStore(source, destPtr)->setAlignment(
+                IGCLLVM::getCorrectAlign(align));
             return _DL->getTypeAllocSize(sourceType);
         }
 
@@ -981,7 +984,7 @@ namespace //Anonymous
 
             auto allocaInst = new AllocaInst(expectedNdrangeTy, 0, "converted_ndrange", &(*_deviceExecCall->getCallerFunc()->getEntryBlock().getFirstInsertionPt()));
             //TODO: fix bug in later IGC passes
-            allocaInst->setAlignment(MaybeAlign(4));
+            allocaInst->setAlignment(IGCLLVM::getCorrectAlign(4));
 
             auto newName = "__builtin_IB_copyNDRangeTondrange";
             llvm::Value* args[2] = { allocaInst, nDRange };
@@ -1409,7 +1412,7 @@ namespace //Anonymous
                 if (auto callInst = dyn_cast<llvm::CallInst>(user))
                 {
                     llvm::InlineFunctionInfo IFI;
-                    inlined = llvm::InlineFunction(callInst, IFI, nullptr, false) || inlined;
+                    inlined = IGCLLVM::InlineFunction(callInst, IFI, nullptr, false) || inlined;
                 }
             }
 
@@ -1574,7 +1577,7 @@ namespace //Anonymous
                                             callInst->setCalledFunction(blockInvokeFunc);
                                             changed = true;
                                             llvm::InlineFunctionInfo IFI;
-                                            inlined = llvm::InlineFunction(callInst, IFI, nullptr, false);
+                                            inlined = IGCLLVM::InlineFunction(callInst, IFI, nullptr, false);
                                             IGC_ASSERT_MESSAGE(inlined, "failed inlining block invoke function");
                                         }
                                     }
@@ -1691,11 +1694,14 @@ namespace //Anonymous
                     default:
                         return os << "int";
                     }
-                case Type::VectorTyID:
+                case IGCLLVM::VectorTyID:
+                {
                     // this generates <element_type><num_elements> string. Ie for char2 element_type is char and num_elements is 2
                     // that is done by callin BaseTypeName on vector element type, this recursive call has only a depth of one since
                     // there are no compound vectors in OpenCL.
-                    return BaseTypeName(type->getVectorElementType(), os) << type->getVectorNumElements();
+                    auto vType = llvm::dyn_cast<VectorType>(type);
+                    return BaseTypeName(type->getContainedType(0), os) << vType->getNumElements();
+                }
                 default:
                     IGC_ASSERT_MESSAGE(0, "Unknown basic type found");
                     return os << "unknown_type";
@@ -1743,8 +1749,8 @@ namespace //Anonymous
             }
             else if (KindQuery::isImageType(argType, &nameFractions))
             {
-                typeName = nameFractions[1];
-                accessQual = nameFractions.size() > 2 ? nameFractions[2] : "read_write";
+                typeName = nameFractions[1].str();
+                accessQual = nameFractions.size() > 2 ? nameFractions[2].str() : "read_write";
             }
             else
             {
@@ -1757,7 +1763,7 @@ namespace //Anonymous
             funcMD->m_OpenCLArgTypes.push_back(typeName);
             funcMD->m_OpenCLArgTypeQualifiers.push_back("");
             funcMD->m_OpenCLArgBaseTypes.push_back(typeName);
-            funcMD->m_OpenCLArgNames.push_back(arg.getName());
+            funcMD->m_OpenCLArgNames.push_back(arg.getName().str());
         }
         _pMdUtils->save(kernelFunc->getContext());
 
@@ -2286,7 +2292,7 @@ namespace //Anonymous
             block_descriptor_val = builder.CreateAlloca(_captureStructType, nullptr, ".block_struct");
             auto dl = getFunction()->getParent()->getDataLayout();
             auto blockStructAlign = getPrefStructAlignment(_captureStructType, &dl);
-            cast<AllocaInst>(block_descriptor_val)->setAlignment(MaybeAlign(blockStructAlign));
+            cast<AllocaInst>(block_descriptor_val)->setAlignment(IGCLLVM::getCorrectAlign(blockStructAlign));
             //IRBuilder: store arguments to structure
             StoreInstBuilder storeBuilder(builder);
             for (unsigned argIdx = 0; argIdx < getCaptureIndicies().size(); ++argIdx)
@@ -2527,7 +2533,7 @@ namespace //Anonymous
         auto arrayType = llvm::ArrayType::get(type, arrSize);
         auto allocaInst = new AllocaInst(arrayType, 0, name, &(*_deviceExecCall->getCallerFunc()->getEntryBlock().getFirstInsertionPt()));
         //TODO: fix bug in later IGC passes
-        allocaInst->setAlignment(MaybeAlign(8));
+        allocaInst->setAlignment(IGCLLVM::getCorrectAlign(8));
         return allocaInst;
     }
 

@@ -2094,7 +2094,7 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
 
       builder.SetInsertPoint(&*FBegin);
       auto Alloca = builder.CreateAlloca(T);
-      Alloca->setAlignment(MaybeAlign(ptrSize));
+      Alloca->setAlignment(IGCLLVM::getCorrectAlign(ptrSize));
 
       auto size = DL.getTypeAllocSize(T);
       builder.SetInsertPoint(CI);
@@ -2479,7 +2479,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
           GlobalVariable::ThreadLocalMode::NotThreadLocal,
           SPIRAS_Global);
 
-      pGV->setAlignment(MaybeAlign(std::max(4U, packetAlign)));
+      pGV->setAlignment(IGCLLVM::getCorrectAlign(std::max(4U, packetAlign)));
 
       auto *pStorageTy = transType(CPS->getType());
       return mapValue(CPS, ConstantExpr::getBitCast(pGV, pStorageTy));
@@ -2717,7 +2717,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       pValue,
       pPointer,
       isVolatile,
-      MaybeAlign(alignment),
+      IGCLLVM::getCorrectAlign(alignment),
       BB));
   }
   break;
@@ -2729,7 +2729,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       transValue(BL->getSrc(), F, BB),
       BV->getName(),
       BL->hasDecorate(DecorationVolatile) || BL->SPIRVMemoryAccess::getVolatile() != 0,
-      MaybeAlign(BL->SPIRVMemoryAccess::getAlignment()),
+      IGCLLVM::getCorrectAlign(BL->SPIRVMemoryAccess::getAlignment()),
       BB));
     }
     break;
@@ -2762,7 +2762,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
                   newDst = llvm::BitCastInst::CreatePointerCast(Dst,
                       Int8PointerTy, "", BB);
               }
-              CI = Builder.CreateMemSet(newDst, Src, Size, MaybeAlign(Align), IsVolatile);
+              CI = Builder.CreateMemSet(newDst, Src, Size, IGCLLVM::getCorrectAlign(Align), IsVolatile);
           }
         }
       }
@@ -3885,13 +3885,13 @@ SPIRVToLLVM::transAlign(SPIRVValue *BV, Value *V) {
   if (auto AL = dyn_cast<AllocaInst>(V)) {
     SPIRVWord Align = 0;
     if (BV->hasAlignment(&Align))
-      AL->setAlignment(MaybeAlign(Align));
+      AL->setAlignment(IGCLLVM::getCorrectAlign(Align));
     return true;
   }
   if (auto GV = dyn_cast<GlobalVariable>(V)) {
     SPIRVWord Align = 0;
     if (BV->hasAlignment(&Align))
-      GV->setAlignment(MaybeAlign(Align));
+      GV->setAlignment(IGCLLVM::getCorrectAlign(Align));
     return true;
   }
   return true;

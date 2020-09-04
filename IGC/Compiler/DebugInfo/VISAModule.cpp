@@ -200,7 +200,7 @@ unsigned VISAModule::GetFunctionNumber(const llvm::Function* F)
 
         if (match != llvm::StringRef::npos)
         {
-            std::string origFuncName = funcName.substr(0, match);
+            std::string origFuncName = funcName.substr(0, match).str();
 
             return GetFunctionNumber(origFuncName.data());
         }
@@ -593,7 +593,7 @@ std::vector<VISAVariableLocation> VISAModule::GetVariableLocation(const llvm::In
         pVar = m_pShader->GetSymbol(pValue);
     IGC_ASSERT_MESSAGE(false == pVar->IsImmediate(), "Do not expect an immediate value at this level");
 
-    std::string varName = cast<DIVariable>(pNode)->getName();
+    std::string varName = cast<DIVariable>(pNode)->getName().str();
     unsigned int reg = 0, reg2 = 0;
     unsigned int vectorNumElements = 0;
 
@@ -666,7 +666,10 @@ void VISAModule::GetConstantData(const Constant* pConstVal, DataVector& rawData)
     // If this is an sequential type which is not a CDS or zero, have to collect the values
     // element by element. Note that this is not exclusive with the two cases above, so the
     // order of ifs is meaningful.
-    else if (dyn_cast<CompositeType>(pConstVal->getType()))
+    else if (
+        pConstVal->getType()->isVectorTy() ||
+        pConstVal->getType()->isArrayTy() ||
+        pConstVal->getType()->isStructTy())
     {
         const int numElts = pConstVal->getNumOperands();
         for (int i = 0; i < numElts; ++i)

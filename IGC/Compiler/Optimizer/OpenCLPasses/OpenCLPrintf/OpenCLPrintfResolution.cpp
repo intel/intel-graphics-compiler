@@ -435,7 +435,7 @@ static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtE
 {
     bool isVolatile = false;
     unsigned Align = 4;
-    auto SI = new llvm::StoreInst(Val, Ptr, isVolatile, MaybeAlign(Align), InsertAtEnd);
+    auto SI = new llvm::StoreInst(Val, Ptr, isVolatile, IGCLLVM::getCorrectAlign(Align), InsertAtEnd);
     SI->setDebugLoc(DL);
     return SI;
 }

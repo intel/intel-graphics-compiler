@@ -38,6 +38,22 @@ namespace IGCLLVM
         return llvm::CloneModule(*M);
     }
 #endif
+
+    inline bool InlineFunction(llvm::CallInst* CB, llvm::InlineFunctionInfo& IFI,
+        llvm::AAResults* CalleeAAR = nullptr,
+        bool InsertLifetime = true,
+        llvm::Function* ForwardVarArgsTo = nullptr)
+    {
+        return llvm::InlineFunction(
+#if LLVM_VERSION_MAJOR >= 11
+            *
+#endif
+            CB, IFI, CalleeAAR, InsertLifetime, ForwardVarArgsTo)
+#if LLVM_VERSION_MAJOR >= 11
+            .isSuccess()
+#endif
+            ;
+    }
 }
 
 #endif

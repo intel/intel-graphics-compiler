@@ -1059,7 +1059,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     }
 
     const Type* LoadEltTy = load->getType()->getScalarType();
-    const uint scalarSizeInBytes = LoadEltTy->getPrimitiveSizeInBits() / 8;
+    const uint scalarSizeInBytes = (const uint)(LoadEltTy->getPrimitiveSizeInBits() / 8);
 
     IGC_ASSERT(isPowerOf2_32(alignment));
     IGC_ASSERT(0 != scalarSizeInBytes);

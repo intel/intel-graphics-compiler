@@ -170,7 +170,7 @@ namespace {
                     return Builder.CreatePtrToInt(V, DestTy);
                 }
                 else if (DestTy->isFloatingPointTy()) {
-                    uint32_t Size = DestTy->getPrimitiveSizeInBits();
+                    uint32_t Size = (uint32_t)DestTy->getPrimitiveSizeInBits();
                     Value* Cast = Builder.CreatePtrToInt(
                         V, Builder.getIntNTy(Size));
                     return Builder.CreateBitCast(Cast, DestTy);
@@ -182,7 +182,7 @@ namespace {
                     return Builder.CreateIntToPtr(V, DestTy);
                 }
                 else if (V->getType()->isFloatingPointTy()) {
-                    uint32_t Size = V->getType()->getPrimitiveSizeInBits();
+                    uint32_t Size = (uint32_t)V->getType()->getPrimitiveSizeInBits();
                     Value* Cast = Builder.CreateBitCast(
                         V, Builder.getIntNTy(Size));
                     return Builder.CreateIntToPtr(Cast, DestTy);

@@ -1809,7 +1809,7 @@ namespace IGC
         m_kernelInfo.m_executionEnivronment.IsSingleProgramFlow = false;
         //m_kernelInfo.m_executionEnivronment.PerSIMDLanePrivateMemorySize = m_perWIStatelessPrivateMemSize;
         m_kernelInfo.m_executionEnivronment.HasFixedWorkGroupSize = false;
-        m_kernelInfo.m_kernelName = entry->getName();
+        m_kernelInfo.m_kernelName = entry->getName().str();
         m_kernelInfo.m_ShaderHashCode = m_Context->hash.getAsmHash();
 
         FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
@@ -2005,7 +2005,7 @@ namespace IGC
             for (auto i : FuncMap)
             {
                 std::unique_ptr<iOpenCL::KernelTypeProgramBinaryInfo> initConstant(new iOpenCL::KernelTypeProgramBinaryInfo());
-                initConstant->KernelName = i.first->getName();
+                initConstant->KernelName = i.first->getName().str();
                 if (i.second.IsFinalizer)
                 {
 

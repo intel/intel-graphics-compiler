@@ -4474,7 +4474,7 @@ namespace IGC
                         auto second = dyn_cast_or_null<MDString>(mdOpnd->getOperand(0));
                         if (second)
                         {
-                            kernelName = second->getString();
+                            kernelName = second->getString().str();
                         }
                     }
                 }

@@ -28,13 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGCLLVM_SUPPORT_ALIGNMENT_H
 
 #include <llvm/Config/llvm-config.h>
+#include <cstdint>
 
 #if LLVM_VERSION_MAJOR >= 10
 #include <llvm/Support/Alignment.h>
 using namespace llvm;
-#else
-#include <cstdint>
-#define MaybeAlign(n) (n)
 #endif
 
 namespace IGCLLVM {
@@ -46,6 +44,21 @@ namespace IGCLLVM {
     inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
     inline llvm::Align getAlign(uint64_t Val) { return llvm::Align{Val}; }
 #endif
+
+    template<typename T =
+#if LLVM_VERSION_MAJOR < 10
+        uint32_t
+#elif LLVM_VERSION_MAJOR == 10
+        llvm::MaybeAlign
+#elif LLVM_VERSION_MAJOR >= 11
+        llvm::Align
+#endif
+    >
+    inline T getCorrectAlign(uint32_t Val)
+    {
+        return T{ Val };
+    }
+
 } // namespace IGCLLVM
 
 #endif

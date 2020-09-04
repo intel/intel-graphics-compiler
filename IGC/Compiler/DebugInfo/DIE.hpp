@@ -494,7 +494,7 @@ namespace IGC
         DIEInlinedString(const llvm::StringRef S)
             : DIEValue(isInlinedString)
         {
-            Str = S;
+            Str = S.str();
         }
 
         /// getString - Grab the string out of the object.

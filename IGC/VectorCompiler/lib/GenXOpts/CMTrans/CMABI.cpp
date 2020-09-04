@@ -535,7 +535,7 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
     Type *ElemTy = GV->getType()->getElementType();
     AllocaInst *Alloca = new AllocaInst(ElemTy, 0 /*AddressSpace*/,
                                         GV->getName() + ".local", &FirstI);
-    Alloca->setAlignment(MaybeAlign(GV->getAlignment()));
+    Alloca->setAlignment(IGCLLVM::getCorrectAlign(GV->getAlignment()));
     if (!isa<UndefValue>(GV->getInitializer()))
       new StoreInst(GV->getInitializer(), Alloca, &FirstI);
 

@@ -434,7 +434,8 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
                 {
                     auto mask = inst->getShuffleMask();
                     uint shuffleidx = int_cast<uint>(mask[(uint)idx]);
-                    baseValue = (shuffleidx < inst->getOperand(0)->getType()->getVectorNumElements()) ?
+                    auto vType = dyn_cast<VectorType>(inst->getOperand(0)->getType());
+                    baseValue = (shuffleidx < vType->getNumElements()) ?
                         inst->getOperand(0) : inst->getOperand(1);
                 }
                 else

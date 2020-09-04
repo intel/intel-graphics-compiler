@@ -29,10 +29,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/IRBuilder.h>
 #include "llvmWrapper/IR/Attributes.h"
 #include <llvmWrapper/IR/Function.h>
 #include <llvmWrapper/IR/Instructions.h>
-#include <llvm/IR/CallSite.h>
+#include <llvmWrapper/IR/CallSite.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/InstIterator.h>
@@ -258,7 +259,7 @@ void IGC::BIImport::supportOldManglingSchemes(Module& M)
             }
             else
             {
-                NewFuncName = FuncName;
+                NewFuncName = FuncName.str();
             }
             // Current workaround to support binaries compiled with < 3.8 clang
             // This is for dealing with constant (K) and volatile (V) types
@@ -513,7 +514,7 @@ bool BIImport::runOnModule(Module& M)
             }
             else
             {
-                NewFuncName = FuncName;
+                NewFuncName = FuncName.str();
             }
             // Current workaround to support binaries compiled with < 3.8 clang
             // This is for dealing with constant (K) and volatile (V) types

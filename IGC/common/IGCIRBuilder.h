@@ -21,25 +21,25 @@
 //===--------------------------------------------------------------------===
 namespace llvm {
 
-    template<typename T = ConstantFolder, typename Inserter = IRBuilderDefaultInserter >
-    class IGCIRBuilder : public IGCLLVM::IRBuilder<T, Inserter>
+    template<typename T = ConstantFolder, typename InserterTyDef() = IRBuilderDefaultInserter >
+    class IGCIRBuilder : public IGCLLVM::IRBuilder<T, InserterTyDef()>
     {
     public:
-        IGCIRBuilder(LLVMContext &C, const T &F, Inserter I = Inserter(),
+        IGCIRBuilder(LLVMContext &C, const T &F, InserterTyDef() I = InserterTyDef()(),
             MDNode *FPMathTag = nullptr,
             ArrayRef<OperandBundleDef> OpBundles = None)
-            : IGCLLVM::IRBuilder<T, Inserter>(C, F, I, FPMathTag, OpBundles){}
+            : IGCLLVM::IRBuilder<T, InserterTyDef()>(C, F, I, FPMathTag, OpBundles){}
 
         explicit IGCIRBuilder(LLVMContext &C, MDNode *FPMathTag = nullptr,
             ArrayRef<OperandBundleDef> OpBundles = None)
-            : IGCLLVM::IRBuilder<T, Inserter>(C, FPMathTag, OpBundles){}
+            : IGCLLVM::IRBuilder<T, InserterTyDef()>(C, FPMathTag, OpBundles){}
 
         explicit IGCIRBuilder(BasicBlock *TheBB, MDNode *FPMathTag = nullptr)
-            : IGCLLVM::IRBuilder<T, Inserter>(TheBB, FPMathTag){}
+            : IGCLLVM::IRBuilder<T, InserterTyDef()>(TheBB, FPMathTag){}
 
         explicit IGCIRBuilder(Instruction *IP, MDNode *FPMathTag = nullptr,
             ArrayRef<OperandBundleDef> OpBundles = None)
-            : IGCLLVM::IRBuilder<T, Inserter>(IP, FPMathTag, OpBundles) {}
+            : IGCLLVM::IRBuilder<T, InserterTyDef()>(IP, FPMathTag, OpBundles) {}
 
         CallInst *CreateCall2(Value *Callee, Value *Arg1, Value *Arg2,
             const Twine &Name = "") {

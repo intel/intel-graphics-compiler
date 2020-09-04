@@ -126,7 +126,7 @@ bool AggregateArgumentsAnalysis::runOnModule(Module& M)
     return changed;
 }
 
-static uint64_t getNumElements(SequentialType* type)
+static uint64_t getNumElements(Type* type)
 {
     if (ArrayType * arrayType = dyn_cast<ArrayType>(type))
     {
@@ -162,11 +162,10 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type* type, uint64_t baseAllocaO
     }
     else if (isa<ArrayType>(type) || isa<VectorType>(type))
     {
-        SequentialType* seqType = cast<SequentialType>(type);
-        uint64_t numElements = getNumElements(seqType);
+        uint64_t numElements = getNumElements(type);
         IGC_ASSERT(numElements < UINT_MAX);
 
-        Type* elementType = seqType->getElementType();
+        Type* elementType = type->getContainedType(0);
         uint64_t elementSize = m_pDL->getTypeStoreSize(elementType);
 
         // build the implicit arguments forwards for all elements of the

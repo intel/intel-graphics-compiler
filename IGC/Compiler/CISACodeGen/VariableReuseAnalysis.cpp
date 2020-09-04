@@ -150,7 +150,7 @@ bool VariableReuseAnalysis::runOnFunction(Function& F)
                 .Hash(m_pCtx->hash)
                 .Type(m_pCtx->type)
                 .Pass("VariableAlias")
-                .PostFix(F.getName())
+                .PostFix(F.getName().str())
                 .Extension("txt");
             printAlias(Debug::Dump(name, Debug::DumpType::DBG_MSG_TEXT).stream(), m_F);
         }

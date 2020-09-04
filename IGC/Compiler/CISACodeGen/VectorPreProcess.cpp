@@ -135,7 +135,7 @@ namespace
         {
             if (isa<LoadInst>(m_inst))
             {
-                getLoad()->setAlignment(MaybeAlign(alignment));
+                getLoad()->setAlignment(IGCLLVM::getCorrectAlign(alignment));
             }
             else
             {
@@ -239,7 +239,7 @@ namespace
         {
             if (isa<StoreInst>(m_inst))
             {
-                getStore()->setAlignment(MaybeAlign(alignment));
+                getStore()->setAlignment(IGCLLVM::getCorrectAlign(alignment));
             }
         }
         Value* getValueOperand() const
@@ -633,7 +633,7 @@ bool VectorPreProcess::splitStore(
         unsigned int alignment = ASI.getAlignment();
         if (isStoreInst && alignment < 4)
         {
-            uint32_t newAlign = getKnownAlignment(ASI.getPointerOperand(), *m_DL);
+            uint32_t newAlign = (uint32_t)IGCLLVM::getAlignmentValue(getKnownAlignment(ASI.getPointerOperand(), *m_DL));
             if (newAlign > alignment)
             {
                 // For the same reason as Load, use DW-aligned for OCL stateful.
@@ -803,7 +803,7 @@ bool VectorPreProcess::splitLoad(
         unsigned int alignment = ALI.getAlignment();
         if (!isLdRaw && alignment < 4)
         {
-            uint32_t newAlign = getKnownAlignment(ALI.getPointerOperand(), *m_DL);
+            uint32_t newAlign = (uint32_t)IGCLLVM::getAlignmentValue(getKnownAlignment(ALI.getPointerOperand(), *m_DL));
             if (newAlign > alignment)
             {
                 //  For OCL stateful, the base can be as little as DW-aligned. To be safe,

@@ -224,14 +224,14 @@ void AlignmentAnalysis::SetInstAlignment(LoadInst& I)
 {
     // Set the align attribute of the load according to the detected
     // alignment of its operand.
-    I.setAlignment(MaybeAlign(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand()))));
+    I.setAlignment(IGCLLVM::getCorrectAlign(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand()))));
 }
 
 void AlignmentAnalysis::SetInstAlignment(StoreInst& I)
 {
     // Set the align attribute of the store according to the detected
     // alignment of its operand.
-    I.setAlignment(MaybeAlign(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand()))));
+    I.setAlignment(IGCLLVM::getCorrectAlign(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand()))));
 }
 
 unsigned int AlignmentAnalysis::visitAdd(BinaryOperator& I)

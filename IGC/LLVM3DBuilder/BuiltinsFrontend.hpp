@@ -154,12 +154,12 @@ public:
 
 
 template<bool preserveNames = true, typename T = llvm::ConstantFolder,
-    typename Inserter = llvm::IRBuilderDefaultInserter>
-class LLVM3DBuilder : public llvm::IGCIRBuilder<T, Inserter>
+    typename InserterTyDef() = llvm::IRBuilderDefaultInserter>
+class LLVM3DBuilder : public llvm::IGCIRBuilder<T, InserterTyDef()>
 {
 public:
     LLVM3DBuilder(llvm::LLVMContext &pCtx, const PLATFORM &pPlatform)
-        : llvm::IGCIRBuilder<T, Inserter>(pCtx),
+        : llvm::IGCIRBuilder<T, InserterTyDef()>(pCtx),
         m_Platform(new genplatform(&pPlatform))
     {
             Init();

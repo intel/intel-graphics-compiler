@@ -309,7 +309,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
                 GlobalVariable::ThreadLocalMode::NotThreadLocal,
                 ADDRESS_SPACE_LOCAL);
 
-            m_pGV->setAlignment(MaybeAlign(maxAlignOnModule));
+            m_pGV->setAlignment(IGCLLVM::getCorrectAlign(maxAlignOnModule));
 
             for (auto call : callsToReplace)
             {

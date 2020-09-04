@@ -385,9 +385,15 @@ namespace IGC
         BasicBlock* retBB = m_PDT->getRootNode()->getBlock();
         if (!retBB)
         {
+#if LLVM_VERSION_MAJOR <= 10
             auto& roots = m_PDT->getRoots();
             IGC_ASSERT_MESSAGE(roots.size() == 1, "Unexpected multiple roots");
             retBB = roots[0];
+#else
+            auto roots = m_PDT->root_begin();
+            IGC_ASSERT_MESSAGE(m_PDT->root_size() == 1, "Unexpected multiple roots");
+            retBB = *roots;
+#endif
         }
 
         for (auto& II : m_pFunction->getEntryBlock())
@@ -767,7 +773,7 @@ namespace IGC
 
     unsigned int PushAnalysis::GetSizeInBits(Type* type) const
     {
-        unsigned int size = type->getPrimitiveSizeInBits();
+        unsigned int size = (unsigned int)type->getPrimitiveSizeInBits();
         if (type->isPointerTy())
         {
             size = m_DL->getPointerSizeInBits(type->getPointerAddressSpace());

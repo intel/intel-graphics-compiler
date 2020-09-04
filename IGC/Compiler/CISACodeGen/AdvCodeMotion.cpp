@@ -147,7 +147,7 @@ void WorkItemSetting::collect(Function* F) {
     for (auto AI = F->arg_begin(), AE = F->arg_end(); AI != AE; ++AI) {
         if (!AI->hasName())
             continue;
-        auto Name = AI->getName();
+        auto Name = AI->getName().str();
         if (Name == "r0")
             GroupId = getXYZ(&*AI, 1, 6, 7);
         else if (Name == "payloadHeader")

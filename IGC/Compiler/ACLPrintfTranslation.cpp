@@ -78,7 +78,7 @@ void ACLPrintfTranslation::visitCallInst(llvm::CallInst& CI)
     {
         Value* V = CI.getOperand(i);
         // we found one printf function
-        if (V->getName() == "printf")
+        if (V->getName().str() == "printf")
         {
             for (unsigned int i = 0; i < CI.getNumOperands(); i++)
             {
