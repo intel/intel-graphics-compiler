@@ -2935,7 +2935,7 @@ SpillManagerGRF::createFillSendInstr(
     if (useScratchMsg_)
     {
         G4_Imm* messageDescImm =
-            createFillSendMsgDesc(filledRangeRegion, execSize);
+            createFillSendMsgDesc(filledRangeRegion, oldExecSize);
 
         off = (messageDescImm->getInt() & 0xfff);
         if (filledRangeRegion->crossGRF())
