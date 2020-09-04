@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace llvm;
 using namespace IGC;
+using IGCLLVM::FixedVectorType;
 
 //
 // Description of VectorPreProcess Pass
@@ -562,7 +563,7 @@ void VectorPreProcess::createSplitVectorTypes(
     uint32_t M = N / E;  // the number of subvectors for split size E
     if (M > 0)
     {
-        Type* Ty = (E == 1) ? ETy : VectorType::get(ETy, E);
+        Type* Ty = (E == 1) ? ETy : FixedVectorType::get(ETy, E);
         SplitInfo.push_back(std::make_pair(Ty, M));
     }
     N = N % E;
@@ -576,7 +577,7 @@ void VectorPreProcess::createSplitVectorTypes(
         M = N / E;  // the number of subvectors for split size E
         if (M > 0)
         {
-            SplitInfo.push_back(std::make_pair(VectorType::get(ETy, E), M));
+            SplitInfo.push_back(std::make_pair(FixedVectorType::get(ETy, E), M));
         }
         // The remaining elts are to be split for next iteration.
         N = N % E;
@@ -586,7 +587,7 @@ void VectorPreProcess::createSplitVectorTypes(
     // 3. A vector of 1|2|3|4 elements. No further splitting!
     if (N > 0)
     {
-        Type* Ty = (N == 1) ? ETy : VectorType::get(ETy, N);
+        Type* Ty = (N == 1) ? ETy : FixedVectorType::get(ETy, N);
         SplitInfo.push_back(std::make_pair(Ty, 1));
     }
 }
@@ -682,7 +683,7 @@ bool VectorPreProcess::splitStore(
                 std::vector<Value*> splitScalars;
                 IGC_ASSERT(Ty1->getScalarSizeInBits());
                 const uint32_t vectorSize = (unsigned int)ETy->getPrimitiveSizeInBits() / Ty1->getScalarSizeInBits();
-                Type* splitType = llvm::VectorType::get(Ty1, vectorSize);
+                Type* splitType = FixedVectorType::get(Ty1, vectorSize);
                 for (uint32_t i = 0; i < nelts; i++)
                 {
                     Value* splitInst = aBuilder.CreateBitCast(scalars[i], splitType);
@@ -883,7 +884,7 @@ bool VectorPreProcess::splitLoad(
             {
                 builder.SetInsertPoint(nextInst);
             }
-            Value* undef = UndefValue::get(VectorType::get(svals[0]->getType(), scalarsPerElement));
+            Value* undef = UndefValue::get(FixedVectorType::get(svals[0]->getType(), scalarsPerElement));
             for (uint32_t i = 0; i < svals.size() / scalarsPerElement; i++)
             {
                 Value* newElement = undef;
@@ -1000,7 +1001,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
             if (ALI->getAlignment() >= 4 * etyBytes)
             {
                 // Make it 4-element load
-                Type* newVTy = VectorType::get(eTy, 4);
+                Type* newVTy = FixedVectorType::get(eTy, 4);
                 Value* V = ALI->Create(newVTy);
 
                 Elt0 = Builder.CreateExtractElement(V, Builder.getInt32(0), "elt0");
@@ -1010,7 +1011,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
             else
             {
                 // One 2-element vector load + one scalar load
-                Type* newVTy = VectorType::get(eTy, 2);
+                Type* newVTy = FixedVectorType::get(eTy, 2);
                 Value* offsetAddr = ALI->CreateConstScalarGEP(eTy, ALI->getPointerOperand(), 2);
                 Value* V2 = ALI->Create(newVTy);
                 Elt0 = Builder.CreateExtractElement(V2, Builder.getInt32(0), "elt0");
@@ -1058,7 +1059,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
         {
             Value* Ptr = ASI->getPointerOperand();
             // Split 3-element into 2-element + 1 scalar
-            Type* newVTy = VectorType::get(eTy, 2);
+            Type* newVTy = FixedVectorType::get(eTy, 2);
             Value* StoredVal = ASI->getValueOperand();
             Value* offsetAddr = ASI->CreateConstScalarGEP(StoredVal->getType(), Ptr, 2);
             InsertElementInst* IEInsts[3];
@@ -1301,7 +1302,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         if (N == MaxIndex + 1)
             return Inst;
 
-        Type* NewVecTy = IGCLLVM::FixedVectorType::get(cast<VectorType>(Inst->getType())->getElementType(),
+        Type* NewVecTy = FixedVectorType::get(cast<VectorType>(Inst->getType())->getElementType(),
             MaxIndex + 1);
         IRBuilder<> Builder(Inst);
         Instruction* NewLI = ALI.Create(NewVecTy);
@@ -1413,7 +1414,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
     if (MaxIndex >= 0 && MaxIndex + 1 < (int)N && isa<UndefValue>(ChainVal))
     {
         IRBuilder<> Builder(ASI.getInst());
-        Type* NewVecTy = VectorType::get(cast<VectorType>(Val->getType())->getElementType(),
+        Type* NewVecTy = FixedVectorType::get(cast<VectorType>(Val->getType())->getElementType(),
             MaxIndex + 1);
         Value* SVal = UndefValue::get(NewVecTy);
         for (int i = 0; i <= MaxIndex; ++i)

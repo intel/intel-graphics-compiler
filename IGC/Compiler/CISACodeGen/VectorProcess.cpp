@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/IGCIRBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
@@ -41,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace llvm;
 using namespace IGC;
+using IGCLLVM::FixedVectorType;
 
 //
 // Description of VectorProcess Pass
@@ -334,7 +336,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     }
     else
     {
-        newVTy = VectorType::get(new_eTy, new_nelts);
+        newVTy = FixedVectorType::get(new_eTy, new_nelts);
     }
     Type* newPtrTy = PointerType::get(newVTy, PtrTy->getPointerAddressSpace());
     Value* newPtr;
@@ -365,7 +367,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             //        with int-element type.
             // second, IntToPtr cast to the original vector type.
             Type* int_eTy = Type::getIntNTy(*m_C, eTyBits);
-            Type* new_intTy = VTy ? VectorType::get(int_eTy, nelts) : int_eTy;
+            Type* new_intTy = VTy ? FixedVectorType::get(int_eTy, nelts) : int_eTy;
             V = Builder.CreateBitCast(V, new_intTy);
             if (VTy)
             {
@@ -405,7 +407,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
                 if (VTy)
                 {
                     // If we need a vector inttoptr, scalarize it here.
-                    V = UndefValue::get(VectorType::get(int_eTy, nelts));
+                    V = UndefValue::get(FixedVectorType::get(int_eTy, nelts));
                     for (unsigned i = 0; i < nelts; i++)
                     {
                         auto* EE = Builder.CreateExtractElement(StoreVal, i);

@@ -1809,9 +1809,11 @@ VISA_Type CShader::GetType(llvm::Type* type)
 uint32_t CShader::GetNumElts(llvm::Type* type, bool isUniform)
 {
     uint32_t numElts = isUniform ? 1 : numLanes(m_SIMDSize);
+
     if (type->isVectorTy())
     {
-        IGC_ASSERT(type->getVectorElementType()->isIntegerTy() || type->getVectorElementType()->isFloatingPointTy());
+        IGC_ASSERT(type->getContainedType(0)->isIntegerTy() || type->getContainedType(0)->isFloatingPointTy());
+
         auto VT = cast<VectorType>(type);
         numElts *= (uint16_t)VT->getNumElements();
     }

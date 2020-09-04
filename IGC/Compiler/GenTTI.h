@@ -68,7 +68,7 @@ namespace llvm
 
 #if LLVM_VERSION_MAJOR >= 11
         void getPeelingPreferences(Loop* L, ScalarEvolution& SE,
-            llvm::TargetTransformInfo::PeelingPreferences& PP);
+            TTI::PeelingPreferences& PP);
 #endif
 
         bool isProfitableToHoist(Instruction* I);
