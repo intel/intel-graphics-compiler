@@ -75,7 +75,7 @@ class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, NoItineraries, Features>;
 
 def : Proc<"generic",         []>;
-def : Proc<"HSW",             []>;
+def : Proc<"HSW",             [FeatureLongLongEmulation]>;
 def : Proc<"BDW",             [FeatureLongLong]>;
 def : Proc<"CHV",             [FeatureLongLong]>;
 def : Proc<"SKL",             [FeatureLongLong]>;
@@ -84,8 +84,8 @@ def : Proc<"KBL",             [FeatureLongLong]>;
 def : Proc<"GLK",             [FeatureLongLong]>;
 def : Proc<"CNL",             [FeatureLongLong]>;
 def : Proc<"ICL",             [FeatureLongLong]>;
-def : Proc<"ICLLP",           []>;
-def : Proc<"TGLLP",           []>;
+def : Proc<"ICLLP",           [FeatureLongLongEmulation]>;
+def : Proc<"TGLLP",           [FeatureLongLongEmulation]>;
 
 def GenX : Target {
   // Nothing here (yet?)
