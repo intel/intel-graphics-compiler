@@ -2132,11 +2132,15 @@ static void insertCastAfter(Instruction* I, Instruction* Cast)
 {
     if (I->getOpcode() == Instruction::PHI) // put cast after last phi in BB
     {
-        auto BB = I->getParent();
-        if (auto nonPhi = BB->getFirstNonPHI())
-            Cast->insertBefore(nonPhi);
-        else // BB contains only phi instructions
-            Cast->insertAfter(&BB->back());
+        BasicBlock* BB = I->getParent();
+        IGC_ASSERT_MESSAGE(BB, "Invalid parent");
+        BasicBlock::iterator BBI = BB->end();
+        do {
+            --BBI;
+        } while (!isa<PHINode>(BBI));
+        Instruction* lastPhi = &(*BBI);
+        IGC_ASSERT_MESSAGE(lastPhi, "BasicBlock most contain at least one PHI");
+        Cast->insertAfter(lastPhi);
     }
     else
     {
