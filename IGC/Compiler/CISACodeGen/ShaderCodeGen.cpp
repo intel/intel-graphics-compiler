@@ -951,6 +951,8 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
         static const int SIMD16_NUM_TEMPREG_THRESHOLD = 92;
         static const int SIMD16_SLM_NUM_TEMPREG_THRESHOLD = 128;
 
+        static const int SIMD32_NUM_TEMPREG_THRESHOLD = 40;
+
         switch (simdModeAllowed)
         {
         case SIMDMode::SIMD8:
@@ -991,7 +993,7 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
                 ctx->m_tempCount <= tempThreshold16;
 
             bool cgSimd32 = maxSimdMode == SIMDMode::SIMD32 &&
-                ctx->m_tempCount <= tempThreshold16;
+                ctx->m_tempCount <= SIMD32_NUM_TEMPREG_THRESHOLD;
 
             if (ctx->m_enableSubroutine || !cgSimd16)
             {
