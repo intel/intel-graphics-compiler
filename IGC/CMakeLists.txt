@@ -3767,7 +3767,21 @@ list(APPEND _targetLinkLineCommon zebinlib)
   if(IGC_BUILD__VC_ENABLED)
     list(APPEND _targetLinkLineCommon
       ${IGC_BUILD__PROJ_VC_LIBS_TO_LINK}
-    )
+      )
+    if(_targetIsStatic)
+      # Add some VC headers for static library manually since there is
+      # no private target_link_libraries for static igc library and
+      # include directories are not propagated.
+      target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}"
+          PRIVATE
+            VCHeaders
+        )
+      get_target_property(VC_IGCDEPS_HEADERS VCIGCDeps INTERFACE_INCLUDE_DIRECTORIES)
+      target_include_directories("${IGC_BUILD__PROJ${_libBuildSuffix}}"
+          PRIVATE
+            ${VC_IGCDEPS_HEADERS}
+        )
+    endif()
   endif()
 
   list(APPEND _targetLinkLineCommon

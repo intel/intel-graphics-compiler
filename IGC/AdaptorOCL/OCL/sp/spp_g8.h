@@ -121,6 +121,7 @@ private:
     IGC::OpenCLProgramContext* m_pContext = nullptr;
 };
 
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 class CGen8CMProgram : public CGen8OpenCLProgramBase {
 public:
     explicit CGen8CMProgram(PLATFORM platform);
@@ -138,6 +139,7 @@ public:
     // Data structure to create patch token based binaries.
     std::unique_ptr<IGC::SOpenCLProgramInfo> m_programInfo;
 };
+#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 }
 
 #endif //SPP_G8_H

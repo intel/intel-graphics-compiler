@@ -10,7 +10,6 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
   set(IGC_BUILD__SRC__AdaptorOCL
       "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/cmc.cpp"
     )
 
 if(IGC_BUILD__SPIRV_ENABLED)
@@ -106,7 +105,6 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/CommandStream/SamplerTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/CommandStream/SurfaceTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/DriverInfoOCL.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmc.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.h"
 
@@ -137,6 +135,14 @@ add_library("${IGC_BUILD__PROJ__AdaptorOCL}" STATIC
 
 add_dependencies("${IGC_BUILD__PROJ__AdaptorOCL}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
 set_property(TARGET "${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__AdaptorOCL}")
+
+if(IGC_BUILD__VC_ENABLED AND NOT CMAKE_WDDM_LINUX)
+  target_link_libraries("${IGC_BUILD__PROJ__AdaptorOCL}"
+      PUBLIC
+        VCCodeGen
+        VCIGCDeps
+    )
+endif()
 
 
 igc_sg_register(

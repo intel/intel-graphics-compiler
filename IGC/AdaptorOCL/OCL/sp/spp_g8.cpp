@@ -32,7 +32,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../../common/Types.hpp"
 #include "../../../common/shaderOverride.hpp"
 #include "../../../Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
-#include "cmc.h"
+
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#include "common/LLVMWarningsPush.hpp"
+#include "vc/igcdeps/cmc.h"
+#include "common/LLVMWarningsPop.hpp"
+#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 #include <iomanip>
 #include <fstream>
@@ -372,6 +377,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
     }
 }
 
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 // Implementation of CGen8CMProgram.
 CGen8CMProgram::CGen8CMProgram(PLATFORM platform)
     : CGen8OpenCLProgramBase(platform)
@@ -422,5 +428,6 @@ void CGen8CMProgram::GetZEBinary(
     }
     zebuilder.getBinaryObject(programBinary);
 }
+#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 } // namespace iOpenCL

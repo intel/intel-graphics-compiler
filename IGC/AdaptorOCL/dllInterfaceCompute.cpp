@@ -53,12 +53,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "usc.h"
 
 #include "AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
-#include "AdaptorOCL/cmc.h"
+
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/ScopeExit.h>
-#include "VectorCompiler/include/vc/Support/StatusCode.h"
-#include "VectorCompiler/include/vc/GenXCodeGen/GenXWrapper.h"
+#include "vc/igcdeps/cmc.h"
+#include "vc/Support/StatusCode.h"
+#include "vc/GenXCodeGen/GenXWrapper.h"
 #include "common/LLVMWarningsPop.hpp"
+#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 #include <iStdLib/MemCopy.h>
 
@@ -1389,101 +1392,6 @@ TRANSLATION_BLOCK_API void Delete(
 
     CIGCTranslationBlock::Delete(pIGCTranslationBlock);
 }
-
-// Generate cmc compile options.
-static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
-    TB_DATA_FORMAT inputDataFormatTemp,
-    const IGC::CPlatform& IGCPlatform)
-{
-    std::string cmd;
-
-    // Set the input file type.
-    if (inputDataFormatTemp == TB_DATA_FORMAT::TB_DATA_FORMAT_SPIR_V)
-        cmd.append(" -filetype=spv");
-    else
-        llvm_unreachable("not implemented yet");
-
-    // Set the HW platform.
-    std::string platform = " -platform=";
-    platform += cmc::getPlatformStr(IGCPlatform.getPlatformInfo());
-    cmd.append(platform);
-
-    // Option to dump vISA
-    if (strstr(pInputArgs->pInternalOptions, "-dumpvisa") != nullptr)
-        cmd.append(" -dumpvisa");
-
-    if (strstr(pInputArgs->pOptions, "-no_vector_decomposition") != nullptr)
-        cmd.append(" -no_vector_decomposition");
-
-    const char StackMemSzOpt[] = "-stack-mem-size=";
-    if (const char *OptBegin = strstr(pInputArgs->pOptions, StackMemSzOpt)) {
-        const char *OptEnd = strstr(OptBegin, " ");
-        unsigned Count = 0;
-        if (OptEnd)
-            Count = static_cast<unsigned>(OptEnd - OptBegin);
-        else
-            Count = strlen(OptBegin);
-        cmd += " ";
-        cmd.append(OptBegin, Count);
-    }
-
-    return move(cmd);
-}
-
-// Generate vISA compile options from the input option string
-//
-// -visaopts='-dumpcommonisa,-noschedule'
-//
-static void getvISACompileOpts(const STB_TranslateInputArgs* pInputArgs,
-    std::vector<std::string>& optstrings,
-    std::vector<const char*>& opts)
-{
-    do {
-        llvm::StringRef Opts(pInputArgs->pOptions, pInputArgs->OptionsSize);
-        size_t pos = Opts.find_first_of("-visaopts");
-        if (pos == llvm::StringRef::npos)
-            break;
-
-        size_t beginPos = Opts.find_first_of("'", pos);
-        if (beginPos == llvm::StringRef::npos)
-            break;
-        ++beginPos;
-        size_t endPos = Opts.find_first_of("'", beginPos);
-        if (endPos == llvm::StringRef::npos)
-            break;
-
-        // vISA options are in a form '-dumpcommonisa,-noschedule'
-        llvm::StringRef vISAOpts = Opts.substr(beginPos, endPos - beginPos);
-        const char* delim = ", ";
-
-        // vISA crashes on illegal options.
-        size_t curPos = 0, nextPos = 0;
-        do {
-            nextPos = vISAOpts.find_first_of(delim, curPos);
-            if (nextPos == llvm::StringRef::npos) {
-                // last argument
-                llvm::StringRef O = vISAOpts.substr(curPos);
-                O = O.trim();
-                if (!O.empty())
-                    optstrings.push_back(O);
-                break;
-            } else {
-                llvm::StringRef O = vISAOpts.substr(curPos, nextPos - curPos);
-                O = O.trim();
-                if (!O.empty())
-                    optstrings.push_back(O);
-                curPos = nextPos + 1;
-            }
-        } while (curPos != llvm::StringRef::npos);
-    } while (false /* dummy loop to allow break inside */);
-
-    for (auto& s : optstrings) {
-        // Make sure this s.data() can be used as a c-string.
-        s.push_back('\0');
-        opts.push_back(s.data());
-    }
-}
-
 
 #if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 

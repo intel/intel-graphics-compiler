@@ -24,14 +24,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringSwitch.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Path.h>
-#include "common/LLVMWarningsPop.hpp"
 
-#include "cmc.h"
+#include "vc/igcdeps/cmc.h"
 #include "RT_Jitter_Interface.h"
 #include "inc/common/igfxfmid.h"
 #include "AdaptorOCL/OCL/sp/spp_g8.h"

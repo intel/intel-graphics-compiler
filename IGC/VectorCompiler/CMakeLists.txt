@@ -33,7 +33,7 @@
 # - VC_INTRINSICS_SRC
 set(IGC_BUILD__PROJ__VectorCompiler "${IGC_BUILD__PROJ_NAME_PREFIX}VectorCompiler")
 set(IGC_BUILD__PROJ__VectorCompiler "${IGC_BUILD__PROJ__VectorCompiler}" PARENT_SCOPE)
-set(IGC_BUILD__PROJ_VC_LIBS_TO_LINK VCCodeGen PARENT_SCOPE)
+set(IGC_BUILD__PROJ_VC_LIBS_TO_LINK VCCodeGen VCIGCDeps PARENT_SCOPE)
 
 set(IGC_BUILD__PROJ_LABEL__VectorCompiler "${IGC_BUILD__PROJ__VectorCompiler}")
 
@@ -156,4 +156,9 @@ include(${IGC_SOURCE_DIR}/cmake/utils.cmake)
 
 add_subdirectory(include)
 add_subdirectory(lib)
+
+# Common utilities that depend on other IGC components.
+# These have to be separated because of circular dependencies between
+# some components in IGC.
+add_subdirectory(igcdeps)
 

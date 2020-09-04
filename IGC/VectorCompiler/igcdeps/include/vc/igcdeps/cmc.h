@@ -28,15 +28,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <type_traits>
 
-#include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/Support/DynamicLibrary.h>
-#include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CodeGenPublic.h"
-#include "common/LLVMWarningsPush.hpp"
-#include "VectorCompiler/include/vc/GenXCodeGen/GenXWrapper.h"
-#include "common/LLVMWarningsPop.hpp"
+
+#include "vc/GenXCodeGen/GenXWrapper.h"
 
 namespace iOpenCL {
   class CGen8CMProgram;
