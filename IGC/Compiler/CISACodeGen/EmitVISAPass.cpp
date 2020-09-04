@@ -9536,7 +9536,7 @@ void EmitPass::emitVLAStackAlloca(llvm::GenIntrinsicInst* intrinsic)
     CVariable* pSP = m_currShader->GetSP();
     CVariable* lane_off = m_currShader->GetSymbol(intrinsic->getOperand(0));
     // m_destination = curr_SP + lane_offset
-    emitAddSP(m_destination, pSP, lane_off);
+    emitAddPointer(m_destination, pSP, lane_off);
     m_encoder->Push();
 
     if (m_currShader->m_numberInstance == 1 || m_encoder->IsSecondHalf()) {
@@ -9549,7 +9549,7 @@ void EmitPass::emitVLAStackAlloca(llvm::GenIntrinsicInst* intrinsic)
         m_encoder->Push();
 
         m_encoder->SetSrcRegion(1, 0, 1, 0);
-        emitAddSP(pSP, pSP, vla_size);
+        emitAddPointer(pSP, pSP, vla_size);
         m_encoder->Push();
     }
 }
@@ -9558,8 +9558,16 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 {
     // Static private mem access is done through the FP
     CVariable* pFP = m_currShader->GetFP();
+    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+    {
+        // If we have written the previous FP to the current frame's start, the start of
+        // private memory will be offset by 16 bytes
+        CVariable* tempFP = m_currShader->GetNewVariable(pFP);
+        emitAddPointer(tempFP, pFP, m_currShader->ImmToVariable(SIZE_OWORD, ISA_TYPE_UD));
+        pFP = tempFP;
+    }
     CVariable* pOffset = m_currShader->GetSymbol(GII->getOperand(0));
-    emitAddSP(m_destination, pFP, pOffset);
+    emitAddPointer(m_destination, pFP, pOffset);
 }
 
 void EmitPass::emitCall(llvm::CallInst* inst)
@@ -9708,12 +9716,6 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     unsigned totalAllocaSize = 0;
 
-    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
-    {
-        // reserve space for kernel FP
-        totalAllocaSize += SIZE_OWORD;
-    }
-
     // reserve space for alloca
     auto funcMDItr = pModuleMetadata->FuncMD.find(pKernel);
     if (funcMDItr != pModuleMetadata->FuncMD.end())
@@ -9730,9 +9732,6 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
         }
     }
 
-    // Set the total alloca size for the entry function
-    m_encoder->SetFunctionAllocaStackSize(pKernel, totalAllocaSize);
-
     if (!IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
     {
         // If we don't return per-function private memory size,
@@ -9743,15 +9742,13 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     // Initialize SP to per-thread kernel stack base
     CVariable* pSP = m_currShader->GetSP();
-    emitAddSP(pSP, pStackBufferBase, pThreadOffset);
+    emitAddPointer(pSP, pStackBufferBase, pThreadOffset);
 
-    // Init FP to 0. When doing stack-walk, a zero-value FP indicates stack base
-    CVariable* pFP = m_currShader->GetFP();
-    m_encoder->Copy(pFP, m_currShader->ImmToVariable(0, ISA_TYPE_UQ));
-    m_encoder->Push();
+    // Push a new stack frame
+    emitPushFrameToStack(totalAllocaSize);
 
-    // Update FP and SP
-    emitPushToStack(m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
+    // Set the total alloca size for the entry function
+    m_encoder->SetFunctionAllocaStackSize(pKernel, totalAllocaSize);
 }
 
 // Either do a block load or store to the stack-pointer given a vector of function arguments
@@ -9804,7 +9801,7 @@ uint EmitPass::emitStackArgumentLoadOrStore(std::vector<CVariable*>& Args, bool 
         {
             // If storing to stack, first push SP by total store bytes
             CVariable* pPushSize = m_currShader->ImmToVariable(offsetS, ISA_TYPE_UD);
-            emitAddSP(pSP, pSP, pPushSize);
+            emitAddPointer(pSP, pSP, pPushSize);
         }
 
         // Load or store each OWORD block to stack
@@ -9819,7 +9816,7 @@ uint EmitPass::emitStackArgumentLoadOrStore(std::vector<CVariable*>& Args, bool 
             CVariable* pStackOffset = m_currShader->ImmToVariable(StackOffset - offsetS, ISA_TYPE_D);
 
             CVariable* pTempSP = m_currShader->GetNewVariable(pSP);
-            emitAddSP(pTempSP, pSP, pStackOffset);
+            emitAddPointer(pTempSP, pSP, pStackOffset);
 
             if (isWrite)
             {
@@ -10084,7 +10081,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         //  pop stack pointer after the call
         CVariable* pSP = m_currShader->GetSP();
         CVariable* pPopSize = m_currShader->ImmToVariable((uint64_t)(~offsetS + 1), ISA_TYPE_D);
-        emitAddSP(pSP, pSP, pPopSize);
+        emitAddPointer(pSP, pSP, pPopSize);
     }
 }
 
@@ -10155,12 +10152,6 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
     unsigned totalAllocaSize = 0;
 
-    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
-    {
-        // reserve space for caller's FP
-        totalAllocaSize += SIZE_OWORD;
-    }
-
     // reserve space for all the alloca in the function subgroup
     auto funcMDItr = m_currShader->m_ModuleMetadata->FuncMD.find(F);
     if (funcMDItr != m_currShader->m_ModuleMetadata->FuncMD.end())
@@ -10179,8 +10170,8 @@ void EmitPass::emitStackFuncEntry(Function* F)
     // save FP before allocation
     m_currShader->SaveStackState();
 
-    // Update SP and FP
-    emitPushToStack(m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
+    // Push a new stack frame
+    emitPushFrameToStack(totalAllocaSize);
 
     // Set the per-function private mem size
     m_encoder->SetFunctionAllocaStackSize(F, totalAllocaSize);
@@ -16382,31 +16373,55 @@ void EmitPass::emitGenISACopy(GenIntrinsicInst* GenCopyInst)
     emitCopyAll(Dst, Src, Ty);
 }
 
-// Puts FP on stack, update FP to SP, then update SP by pushOffset
-void EmitPass::emitPushToStack(CVariable* pushOffset)
+// Push a new frame onto the stack by:
+//  Update FP to the current SP
+//  Increment SP by pushSize
+//  Store value of previous frame's FP to the address of updated FP (for stack-walk)
+void EmitPass::emitPushFrameToStack(unsigned& pushSize)
 {
     CVariable* pFP = m_currShader->GetFP();
     CVariable* pSP = m_currShader->GetSP();
 
-    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
-    {
-        // Store FP value into current SP
-        bool is64BitAddr = (pSP->GetSize() > 4);
-        if (is64BitAddr)
-            m_encoder->OWStoreA64(pFP, pSP, SIZE_OWORD, 0);
-        else
-            m_encoder->OWStore(pFP, ESURFACE_STATELESS, nullptr, pSP, SIZE_OWORD, 0);
-        m_encoder->Push();
-    }
     // Set FP = SP
     m_encoder->Copy(pFP, pSP);
     m_encoder->Push();
 
-    // Update SP by pushOffset
-    emitAddSP(pSP, pSP, pushOffset);
+    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+    {
+        // Allocate 1 extra oword to store previous frame's FP
+        pushSize += SIZE_OWORD;
+    }
+
+    // Update SP by pushSize
+    emitAddPointer(pSP, pSP, m_currShader->ImmToVariable(pushSize, ISA_TYPE_UD));
+
+    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+    {
+        // Store old FP value to current FP
+        bool is64BitAddr = (pFP->GetSize() > 4);
+        CVariable* pOldFP = m_currShader->GetPrevFP();
+        // If previous FP is null (for kernel frame), we initialize it to 0
+        if (pOldFP == nullptr)
+        {
+            pOldFP = m_currShader->GetNewVariable(pFP);
+            m_encoder->Copy(pOldFP, m_currShader->ImmToVariable(0, ISA_TYPE_UQ));
+            m_encoder->Push();
+        }
+        // Align current FP to GRF
+        CVariable* pCurrFP = m_currShader->GetNewVariable(1, ISA_TYPE_UQ, EALIGN_GRF, true, 1, "currFP");
+        m_encoder->Copy(pCurrFP, pFP);
+        m_encoder->Push();
+        {
+            if (is64BitAddr)
+                m_encoder->OWStoreA64(pOldFP, pCurrFP, SIZE_OWORD, 0);
+            else
+                m_encoder->OWStore(pOldFP, ESURFACE_STATELESS, nullptr, pCurrFP, SIZE_OWORD, 0);
+        }
+        m_encoder->Push();
+    }
 }
 
-void EmitPass::emitAddSP(CVariable* Dst, CVariable* Src, CVariable* offset)
+void EmitPass::emitAddPointer(CVariable* Dst, CVariable* Src, CVariable* offset)
 {
     if (m_currShader->m_Platform->hasNoInt64Inst() &&
         (Dst->GetType() == ISA_TYPE_Q || Dst->GetType() == ISA_TYPE_UQ) &&

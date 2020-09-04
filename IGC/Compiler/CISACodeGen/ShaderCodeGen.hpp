@@ -189,6 +189,7 @@ public:
     CVariable* GetHWTID();
     CVariable* GetSP();
     CVariable* GetFP();
+    CVariable* GetPrevFP();
     CVariable* GetARGV();
     CVariable* GetRETV();
     CVariable* CreateFPAndSP();

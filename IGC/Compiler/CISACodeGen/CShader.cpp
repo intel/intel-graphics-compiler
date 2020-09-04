@@ -797,6 +797,10 @@ CVariable* CShader::GetFP()
     IGC_ASSERT(m_FP);
     return m_FP;
 }
+CVariable* CShader::GetPrevFP()
+{
+    return m_SavedFP;
+}
 CVariable* CShader::GetSP()
 {
     IGC_ASSERT(m_SP);
