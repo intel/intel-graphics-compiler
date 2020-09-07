@@ -24,6 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include "PacketBuilder.h"
 #include "Probe/Assertion.h"
 
@@ -56,17 +58,17 @@ namespace pktz
         mInt32PtrTy = PointerType::get(mInt32Ty, 0);
         mInt64Ty    = Type::getInt64Ty(Ctx);
 
-        mSimd4FP64Ty = VectorType::get(mDoubleTy, 4);
+        mSimd4FP64Ty = IGCLLVM::FixedVectorType::get(mDoubleTy, 4);
 
         // Built in types: simd16
-        mSimd16Int1Ty     = VectorType::get(mInt1Ty, mVWidth16);
-        mSimd16Int16Ty    = VectorType::get(mInt16Ty, mVWidth16);
-        mSimd16Int32Ty    = VectorType::get(mInt32Ty, mVWidth16);
-        mSimd16Int64Ty    = VectorType::get(mInt64Ty, mVWidth16);
-        mSimd16FP16Ty     = VectorType::get(mFP16Ty, mVWidth16);
-        mSimd16FP32Ty     = VectorType::get(mFP32Ty, mVWidth16);
+        mSimd16Int1Ty = IGCLLVM::FixedVectorType::get(mInt1Ty, mVWidth16);
+        mSimd16Int16Ty = IGCLLVM::FixedVectorType::get(mInt16Ty, mVWidth16);
+        mSimd16Int32Ty = IGCLLVM::FixedVectorType::get(mInt32Ty, mVWidth16);
+        mSimd16Int64Ty = IGCLLVM::FixedVectorType::get(mInt64Ty, mVWidth16);
+        mSimd16FP16Ty = IGCLLVM::FixedVectorType::get(mFP16Ty, mVWidth16);
+        mSimd16FP32Ty = IGCLLVM::FixedVectorType::get(mFP32Ty, mVWidth16);
 
-        mSimd32Int8Ty = VectorType::get(mInt8Ty, 32);
+        mSimd32Int8Ty = IGCLLVM::FixedVectorType::get(mInt8Ty, 32);
 
         if (sizeof(uint32_t*) == 4)
         {
@@ -88,12 +90,12 @@ namespace pktz
     {
         mVWidth = width;
 
-        mSimdInt1Ty      = VectorType::get(mInt1Ty, mVWidth);
-        mSimdInt16Ty     = VectorType::get(mInt16Ty, mVWidth);
-        mSimdInt32Ty     = VectorType::get(mInt32Ty, mVWidth);
-        mSimdInt64Ty     = VectorType::get(mInt64Ty, mVWidth);
-        mSimdFP16Ty      = VectorType::get(mFP16Ty, mVWidth);
-        mSimdFP32Ty      = VectorType::get(mFP32Ty, mVWidth);
+        mSimdInt1Ty = IGCLLVM::FixedVectorType::get(mInt1Ty, mVWidth);
+        mSimdInt16Ty = IGCLLVM::FixedVectorType::get(mInt16Ty, mVWidth);
+        mSimdInt32Ty = IGCLLVM::FixedVectorType::get(mInt32Ty, mVWidth);
+        mSimdInt64Ty = IGCLLVM::FixedVectorType::get(mInt64Ty, mVWidth);
+        mSimdFP16Ty = IGCLLVM::FixedVectorType::get(mFP16Ty, mVWidth);
+        mSimdFP32Ty = IGCLLVM::FixedVectorType::get(mFP32Ty, mVWidth);
         if (sizeof(uint32_t*) == 4)
         {
           mSimdIntPtrTy = mSimdInt32Ty;
@@ -170,12 +172,12 @@ namespace pktz
         if (pType->isVoidTy())
             return pType;
 
-        if (pType->isVectorTy())
-        {
-            uint32_t vectorSize = pType->getVectorNumElements();
-            Type*    pElemType = pType->getVectorElementType();
-            Type*    pVecType = VectorType::get(pElemType, vectorSize*mVWidth);
-            return pVecType;
+        if (auto VecpType = dyn_cast<VectorType>(pType)) {
+          uint32_t vectorSize = VecpType->getNumElements();
+          Type *pElemType = VecpType->getElementType();
+          Type *pVecType =
+              IGCLLVM::FixedVectorType::get(pElemType, vectorSize * mVWidth);
+          return pVecType;
         }
 
         // [N x float] should packetize to [N x <8 x float>]
@@ -204,7 +206,7 @@ namespace pktz
         }
 
         // <ty> should packetize to <8 x <ty>>
-        Type* vecType = VectorType::get(pType, mVWidth);
+        Type *vecType = IGCLLVM::FixedVectorType::get(pType, mVWidth);
         return vecType;
     }
 } // end of namespace pktz

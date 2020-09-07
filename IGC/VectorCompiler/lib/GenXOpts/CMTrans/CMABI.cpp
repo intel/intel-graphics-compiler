@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEBUG_TYPE "cmabi"
 
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "llvm/ADT/DenseMap.h"
 #include "vc/GenXOpts/GenXOpts.h"
@@ -699,7 +700,8 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
     if (ArgTy->getScalarType()->isIntegerTy(1)) {
       Type *Ty = IntegerType::get(F->getContext(), 8);
       if (ArgTy->isVectorTy())
-        ArgTys.push_back(VectorType::get(Ty, ArgTy->getVectorNumElements()));
+        ArgTys.push_back(IGCLLVM::FixedVectorType::get(
+            Ty, cast<VectorType>(ArgTy)->getNumElements()));
       else
         ArgTys.push_back(Ty);
     } else {
@@ -929,7 +931,9 @@ CallGraphNode *CMABI::TransformNode(Function *F,
         }
         Args.push_back(*AI);
       } else if (!I->use_empty()) {
-        LoadInst *Load = new LoadInst(*AI, (*AI)->getName() + ".val", Call);
+        LoadInst *Load = new LoadInst((*AI)->getType()->getPointerElementType(),
+                                      *AI, (*AI)->getName() + ".val",
+                                      /* isVolatile */ false, Call);
         Args.push_back(Load);
       }
     }
@@ -948,7 +952,9 @@ CallGraphNode *CMABI::TransformNode(Function *F,
     for (IteratorTy I = LI.getGlobals().begin(), E = LI.getGlobals().end();
          I != E; ++I) {
       GlobalVariable *GV = *I;
-      LoadInst *Load = new LoadInst(GV, GV->getName() + ".val", Call);
+      LoadInst *Load =
+          new LoadInst(GV->getType()->getPointerElementType(), GV,
+                       GV->getName() + ".val", /* isVolatile */ false, Call);
       Args.push_back(Load);
     }
 
@@ -1138,7 +1144,7 @@ static void breakConstantVector(unsigned i, Instruction *CurInst,
     auto Inst = S->getAsInstruction();
     Inst->setDebugLoc(CurInst->getDebugLoc());
     Inst->insertBefore(InsertPt);
-    Type *NewTy = VectorType::get(Inst->getType(), 1);
+    Type *NewTy = IGCLLVM::FixedVectorType::get(Inst->getType(), 1);
     Inst = CastInst::Create(Instruction::BitCast, Inst, NewTy, "", CurInst);
     Inst->setDebugLoc(CurInst->getDebugLoc());
 
@@ -1434,7 +1440,8 @@ void CMABI::diagnoseOverlappingArgs(CallInst *CI)
               Entry->clear();
               Entry->insert(Entry->begin(), OpndEntry->begin(), OpndEntry->end());
               // Then copy the "new value" elements according to the region.
-              TempVector.resize(CI->getType()->getVectorNumElements(), 0);
+              TempVector.resize(
+                  cast<VectorType>(CI->getType())->getNumElements(), 0);
               int VStride = cast<ConstantInt>(CI->getOperand(
                     GenXIntrinsic::GenXRegion::WrVStrideOperandNum))->getSExtValue();
               unsigned Width = cast<ConstantInt>(CI->getOperand(

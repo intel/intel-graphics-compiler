@@ -117,8 +117,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
 
-#include "llvmWrapper/Support/MathExtras.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/Support/MathExtras.h"
+#include "llvmWrapper/Support/TypeSize.h"
 
 using namespace llvm;
 using namespace genx;
@@ -704,7 +705,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
   if (!isLegalSize())
     return loadBig(Inst);
   if (PackedFloat) {
-    unsigned NumElts = C->getType()->getVectorNumElements();
+    unsigned NumElts = cast<VectorType>(C->getType())->getNumElements();
     SmallVector<Instruction *, 4> Quads;
     for (unsigned i = 0, e = NumElts; i != e; i += 4) {
       SmallVector<Constant *, 4> Quad;
@@ -732,8 +733,8 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
       PackTy = Type::getInt32Ty(Inst->getContext());
     // Load as a packed int vector with scale and/or adjust.
     SmallVector<Constant *, 8> PackedVals;
-    for (unsigned i = 0, e = C->getType()->getVectorNumElements();
-        i != e; ++i) {
+    for (unsigned i = 0, e = cast<VectorType>(C->getType())->getNumElements();
+         i != e; ++i) {
       int64_t Val = 0;
       if (auto CI = dyn_cast<ConstantInt>(C->getAggregateElement(i))) {
         Val = CI->getSExtValue();
@@ -747,15 +748,23 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
     ConstantLoader Packed(ConstantVector::get(PackedVals));
     auto LoadPacked = Packed.load(Inst);
     if (PackedIntScale != 1)
-      LoadPacked = BinaryOperator::Create(Instruction::Mul, LoadPacked,
-          ConstantVector::getSplat(C->getType()->getVectorNumElements(),
-            ConstantInt::get(PackTy, PackedIntScale,
-            /*isSigned=*/true)), "constantscale", Inst);
+      LoadPacked = BinaryOperator::Create(
+          Instruction::Mul, LoadPacked,
+          ConstantVector::getSplat(
+              IGCLLVM::getElementCount(
+                  cast<VectorType>(C->getType())->getNumElements()),
+              ConstantInt::get(PackTy, PackedIntScale,
+                               /*isSigned=*/true)),
+          "constantscale", Inst);
     if (PackedIntAdjust)
-      LoadPacked = BinaryOperator::Create(Instruction::Add, LoadPacked,
-          ConstantVector::getSplat(C->getType()->getVectorNumElements(),
-            ConstantInt::get(PackTy, PackedIntAdjust,
-            /*isSigned=*/true)), "constantadjust", Inst);
+      LoadPacked = BinaryOperator::Create(
+          Instruction::Add, LoadPacked,
+          ConstantVector::getSplat(
+              IGCLLVM::getElementCount(
+                  cast<VectorType>(C->getType())->getNumElements()),
+              ConstantInt::get(PackTy, PackedIntAdjust,
+                               /*isSigned=*/true)),
+          "constantadjust", Inst);
     if (PackTy->getPrimitiveSizeInBits() < 
 		C->getType()->getScalarType()->getPrimitiveSizeInBits()) {
       LoadPacked = CastInst::CreateSExtOrBitCast(
@@ -928,17 +937,18 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
     if (!Result) {
       // For the first time round the loop, just splat the whole vector,
       // whatever BestSplatBits says.
-      Result =
-          loadConstant(ConstantVector::getSplat(NumElements, BestSplatSetConst),
-                       Inst, AddedInstructions, Subtarget);
+      Result = loadConstant(
+          ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements),
+                                   BestSplatSetConst),
+          Inst, AddedInstructions, Subtarget);
       Result->setDebugLoc(Inst->getDebugLoc());
     } else {
       // Not the first time round the loop. Set up the splatted subvector,
       // and write it as a region.
       Region R(BestSplatSetBits,
           VT->getElementType()->getPrimitiveSizeInBits() / 8);
-      Constant *NewConst = ConstantVector::getSplat(R.NumElements,
-          BestSplatSetConst);
+      Constant *NewConst = ConstantVector::getSplat(
+          IGCLLVM::getElementCount(R.NumElements), BestSplatSetConst);
       Result = cast<Instruction>(R.createWrConstRegion(Result, NewConst, "constant",
             Inst, Inst->getDebugLoc()));
       if (AddedInstructions)
@@ -1379,7 +1389,8 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
   }
   if (Elements.size() == 1) {
     // All but one element undef. Turn into a splat constant.
-    NewC = ConstantVector::getSplat(NumElements, SomeDefinedElement);
+    NewC = ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements),
+                                    SomeDefinedElement);
     return;
   }
   int64_t ResArith;

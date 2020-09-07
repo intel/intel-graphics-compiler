@@ -63,7 +63,8 @@ unsigned PressureTracker::getSizeInBytes(LiveRange *LR, bool AllowWidening) {
   // - all uses are in the same block (local variables only)
   //
   auto toWiden = [=]() -> bool {
-    if (!Ty->isVectorTy() || !Ty->getVectorElementType()->isIntegerTy(8))
+    if (!Ty->isVectorTy() ||
+        !cast<VectorType>(Ty)->getElementType()->isIntegerTy(8))
       return false;
 
     BasicBlock *DefBB = nullptr;

@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "gtest/gtest.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include <strstream>
 #include <memory>
@@ -61,7 +62,7 @@ Type *generateAnyType(Intrinsic::IITDescriptor::ArgKind AK, LLVMContext &Ctx) {
   case IITDescriptor::AK_AnyPointer:
     return Type::getInt32PtrTy(Ctx);
   case IITDescriptor::AK_AnyVector:
-    return VectorType::get(Type::getInt32Ty(Ctx), 8);
+    return IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx), 8);
   }
   llvm_unreachable("All types should be handled");
 }

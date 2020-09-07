@@ -457,7 +457,7 @@ static bool commonUpPredicate(BasicBlock *BB) {
     if (GenXIntrinsic::getGenXIntrinsicID(&Inst) == GenXIntrinsic::genx_constantpred) {
       Constant *V = cast<Constant>(Inst.getOperand(0));
       if (auto VT = dyn_cast<VectorType>(V->getType())) {
-        unsigned NElts = VT->getVectorNumElements();
+        unsigned NElts = cast<VectorType>(VT)->getNumElements();
         if (NElts > 64)
           continue;
         uint64_t Bits = 0;

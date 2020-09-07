@@ -70,6 +70,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Local.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 using namespace llvm;
 using namespace genx;
 
@@ -182,10 +184,10 @@ static bool lowerTrunc(TruncInst *Inst) {
   unsigned Stride = InElementTy->getPrimitiveSizeInBits() / OutBitSize;
 
   // Create the new bitcast.
-  Instruction *BC =
-      CastInst::Create(Instruction::BitCast, InValue,
-                       VectorType::get(OutElementTy, Stride * NumElements),
-                       Inst->getName(), Inst /*InsertBefore*/);
+  Instruction *BC = CastInst::Create(
+      Instruction::BitCast, InValue,
+      IGCLLVM::FixedVectorType::get(OutElementTy, Stride * NumElements),
+      Inst->getName(), Inst /*InsertBefore*/);
   BC->setDebugLoc(Inst->getDebugLoc());
 
   // Create the new rdregion.
@@ -226,7 +228,8 @@ void GenXRegionCollapsing::runOnBasicBlock(BasicBlock *BB) {
     //
     if (auto EEI = dyn_cast<ExtractElementInst>(Inst)) {
       Value *Src = EEI->getVectorOperand();
-      if (GenXIntrinsic::isRdRegion(Src) && Src->getType()->getVectorNumElements() == 1) {
+      if (GenXIntrinsic::isRdRegion(Src) &&
+          cast<VectorType>(Src->getType())->getNumElements() == 1) {
         // Create a new region with scalar output.
         Region R(Inst);
         Instruction *NewInst =
@@ -357,12 +360,12 @@ static Value *createBitCastToElementType(Value *Input, Type *ElementTy,
   if (!InputBytes) {
     Type *T = Input->getType();
     if (T->isVectorTy())
-      T = T->getVectorElementType();
+      T = cast<VectorType>(T)->getElementType();
     IGC_ASSERT(T->isPointerTy() && T->getPointerElementType()->isFunctionTy());
     InputBytes = DL->getTypeSizeInBits(T) / 8;
   }
   IGC_ASSERT(!(InputBytes & (ElBytes - 1)) && "non-integral number of elements");
-  auto Ty = VectorType::get(ElementTy, InputBytes / ElBytes);
+  auto Ty = IGCLLVM::FixedVectorType::get(ElementTy, InputBytes / ElBytes);
   return createBitCast(Input, Ty, Name, InsertBefore, DbgLoc);
 }
 
@@ -454,8 +457,9 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC)
   // Create the new bitcast.
   IGC_ASSERT(ElTy->getPrimitiveSizeInBits());
   auto Input = Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
-  auto NewBCTy = VectorType::get(ElTy,
-      Input->getType()->getPrimitiveSizeInBits() / ElTy->getPrimitiveSizeInBits());
+  auto NewBCTy = IGCLLVM::FixedVectorType::get(
+      ElTy, Input->getType()->getPrimitiveSizeInBits() /
+                ElTy->getPrimitiveSizeInBits());
   auto NewBC = CastInst::Create(Instruction::BitCast, Input, NewBCTy, "", Rd);
   NewBC->takeName(BC);
   NewBC->setDebugLoc(BC->getDebugLoc());

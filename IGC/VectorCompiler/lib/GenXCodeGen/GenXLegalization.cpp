@@ -193,6 +193,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Debug.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include <set>
 #include "Probe/Assertion.h"
 
@@ -831,7 +833,7 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
                                      Instruction *InsertBefore) {
   // See if the all/any is already legally sized.
   Value *Pred = Inst->getOperand(0);
-  unsigned WholeSize = Pred->getType()->getVectorNumElements();
+  unsigned WholeSize = cast<VectorType>(Pred->getType())->getNumElements();
   if (getPredPart(Pred, 0).Size == WholeSize) {
     // Already legally sized. We need to check whether it is used just in a
     // branch or select, possibly via a not; if not we need to convert the
@@ -851,7 +853,7 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
     // Do that conversion.
     const DebugLoc &DL = Inst->getDebugLoc();
     auto I16Ty = Type::getInt16Ty(Inst->getContext());
-    auto V1I16Ty = VectorType::get(I16Ty, 1);
+    auto V1I16Ty = IGCLLVM::FixedVectorType::get(I16Ty, 1);
     Region R(V1I16Ty);
     R.Mask = Inst;
     auto NewWr = cast<Instruction>(R.createWrRegion(
@@ -932,7 +934,7 @@ bool GenXLegalization::processBitCastFromPredicate(Instruction *Inst,
   if (SplitWidth == 0)
     return false;
 #if _DEBUG
-  unsigned WholeWidth = Pred->getType()->getVectorNumElements();
+  unsigned WholeWidth = cast<VectorType>(Pred->getType())->getNumElements();
   IGC_ASSERT(!(WholeWidth % SplitWidth) && "does not handle odd predicate sizes");
 #endif
   // Bitcast each split predicate into an element of an int vector.
@@ -943,7 +945,7 @@ bool GenXLegalization::processBitCastFromPredicate(Instruction *Inst,
   if (NumSplits == 1)
     return false;
   const DebugLoc &DL = Inst->getDebugLoc();
-  Type *IntVecTy = VectorType::get(IntTy, NumSplits);
+  Type *IntVecTy = IGCLLVM::FixedVectorType::get(IntTy, NumSplits);
   Value *Result = UndefValue::get(IntVecTy);
   // For each split...
   for (unsigned i = 0; i != NumSplits; ++i) {
@@ -978,7 +980,7 @@ bool GenXLegalization::processBitCastFromPredicate(Instruction *Inst,
  */
 bool GenXLegalization::processBitCastToPredicate(Instruction *Inst,
                                                  Instruction *InsertBefore) {
-  unsigned WholeWidth = Inst->getType()->getVectorNumElements();
+  unsigned WholeWidth = cast<VectorType>(Inst->getType())->getNumElements();
   unsigned SplitWidth = getPredPart(Inst, 0).Size;
   IGC_ASSERT(!(WholeWidth % SplitWidth) && "does not handle odd predicate sizes");
   unsigned NumSplits = WholeWidth / SplitWidth;
@@ -987,14 +989,14 @@ bool GenXLegalization::processBitCastToPredicate(Instruction *Inst,
   // Bitcast the scalar int input to a vector of ints each with a number of
   // bits matching the predicate split size.
   const DebugLoc &DL = Inst->getDebugLoc();
-  auto IVTy = VectorType::get(Type::getIntNTy(Inst->getContext(), SplitWidth),
-                              WholeWidth / SplitWidth);
+  auto IVTy = IGCLLVM::FixedVectorType::get(
+      Type::getIntNTy(Inst->getContext(), SplitWidth), WholeWidth / SplitWidth);
   auto IntVec = CastInst::Create(Instruction::BitCast, Inst->getOperand(0),
                                  IVTy, Inst->getName() + ".cast", InsertBefore);
   IntVec->setDebugLoc(DL);
   Value *Result = UndefValue::get(Inst->getType());
-  Type *SplitPredTy =
-      VectorType::get(Inst->getType()->getScalarType(), SplitWidth);
+  Type *SplitPredTy = IGCLLVM::FixedVectorType::get(
+      Inst->getType()->getScalarType(), SplitWidth);
   // For each predicate split...
   for (unsigned i = 0; i != NumSplits; ++i) {
     // Get the element of the vector using rdregion.
@@ -1102,10 +1104,10 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       // Get the max legal size for the wrregion.
       ThisWidth = std::min(
           ThisWidth,
-          R.getLegalSize(
-              StartIdx, false /*Allow2D*/,
-              i->Inst->getOperand(0)->getType()->getVectorNumElements(), ST,
-              &(Baling->AlignInfo)));
+          R.getLegalSize(StartIdx, false /*Allow2D*/,
+                         cast<VectorType>(i->Inst->getOperand(0)->getType())
+                             ->getNumElements(),
+                         ST, &(Baling->AlignInfo)));
       if (!Unbale && R.Mask && PredMinWidth > ThisWidth) {
         // The min predicate size (from this wrregion) is bigger than the
         // legal size for this wrregion. We have to rewrite the wrregion as:
@@ -1167,8 +1169,8 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         ModifiedStartIdx = 0;
       ThisWidth = R.getLegalSize(
           ModifiedStartIdx, true /*Allow2D*/,
-          i->Inst->getOperand(0)->getType()->getVectorNumElements(), ST,
-          &(Baling->AlignInfo));
+          cast<VectorType>(i->Inst->getOperand(0)->getType())->getNumElements(),
+          ST, &(Baling->AlignInfo));
       if (ThisWidth == 1 &&
           R.Indirect && !R.isMultiIndirect()) {
         // This is a single indirect rdregion where we failed to make the
@@ -1281,9 +1283,11 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       if (Pred && isa<VectorType>(Pred->getType())) {
         // For a select (with a vector predicate) or cmp, we need to take the
         // predicate into account. Get the min and max legal predicate size.
-        auto PredWidths = getLegalPredSize(
-            Pred, i->Inst->getOperand(1)->getType()->getVectorElementType(),
-            StartIdx);
+        auto PredWidths =
+            getLegalPredSize(Pred,
+                             cast<VectorType>(i->Inst->getOperand(1)->getType())
+                                 ->getElementType(),
+                             StartIdx);
         // If the min legal predicate size is more than the remaining size in
         // the predicate that the rdpredregion extracts, ignore it. This results
         // in an illegal rdpredregion from splitInst, which then has to be
@@ -1499,7 +1503,7 @@ LegalPredSize GenXLegalization::getLegalPredSize(Value *Pred, Type *ElementTy,
  * predicate registers P1,P2,P3 (for example).
  */
 PredPart GenXLegalization::getPredPart(Value *V, unsigned Offset) {
-  unsigned WholeSize = V->getType()->getVectorNumElements();
+  unsigned WholeSize = cast<VectorType>(V->getType())->getNumElements();
   PredPart Ret;
   if (Offset == WholeSize && !(WholeSize & (MaxPredSize - 1))) {
     Ret.Offset = Offset;
@@ -1617,7 +1621,7 @@ Value *GenXLegalization::joinBaleResult(Value *PrevSliceRes,
     // wrpredregion trees need to be in IllegalPredicates.)
     if (!StartIdx) {
       auto PredSize = getLegalPredSize(NewWr, nullptr, 0);
-      if (PredSize.Max != NewWr->getType()->getVectorNumElements())
+      if (PredSize.Max != cast<VectorType>(NewWr->getType())->getNumElements())
         IllegalPredicates.insert(NewWr);
     }
     return NewWr;
@@ -1698,7 +1702,8 @@ Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
     Instruction *ST = B.getHead()->Inst;
     IGC_ASSERT(isa<StoreInst>(ST));
     Value *GV = ST->getOperand(1);
-    In = new LoadInst(GV, ".gload", /*volatile*/ true, InsertBefore);
+    In = new LoadInst(GV->getType()->getPointerElementType(), GV, ".gload",
+                      /*volatile*/ true, InsertBefore);
   }
   Value *NewWrRegion =
       R.createWrRegion(In,
@@ -1801,10 +1806,10 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     // indirect.
     bool ConvertToMulti =
         R.Indirect && Width != 1 &&
-        R.getLegalSize(
-            StartIdx, true /*Allow2D*/,
-            BInst.Inst->getOperand(0)->getType()->getVectorNumElements(), ST,
-            &(Baling->AlignInfo)) == 1;
+        R.getLegalSize(StartIdx, true /*Allow2D*/,
+                       cast<VectorType>(BInst.Inst->getOperand(0)->getType())
+                           ->getNumElements(),
+                       ST, &(Baling->AlignInfo)) == 1;
 
     R.getSubregion(StartIdx, Width);
     // The region to read from. This is normally from the input region baled
@@ -1855,7 +1860,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   // Splitting non-region instruction.
   IGC_ASSERT(!isa<PHINode>(BInst.Inst) && "not expecting to split phi node");
   if (CastInst *CI = dyn_cast<CastInst>(BInst.Inst)) {
-    Type *CastToTy = VectorType::get(
+    Type *CastToTy = IGCLLVM::FixedVectorType::get(
         cast<VectorType>(CI->getType())->getElementType(), Width);
     Instruction *NewInst = CastInst::Create(
         CI->getOpcode(),
@@ -1922,9 +1927,9 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   // Some other splittable intrinsic.
   SmallVector<Value *, 2> Args;
   SmallVector<Type *, 2> OverloadedTypes;
-  OverloadedTypes.push_back(
-      VectorType::get(cast<VectorType>(BInst.Inst->getType())->getElementType(),
-                      Width)); // RetTy
+  OverloadedTypes.push_back(IGCLLVM::FixedVectorType::get(
+      cast<VectorType>(BInst.Inst->getType())->getElementType(),
+      Width)); // RetTy
   for (unsigned i = 0, e = CI->getNumArgOperands(); i != e; ++i) {
     Use *U = &CI->getOperandUse(i);
     if (U == Fixed4) {
@@ -2019,9 +2024,10 @@ GenXLegalization::convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
 
   // 1. Splat the address. (We will get multiple copies of this
   // instruction, one per split, but they will be CSEd away.)
-  Instruction *SplattedIndirect = CastInst::Create(
-      Instruction::BitCast, Indirect, VectorType::get(Indirect->getType(), 1),
-      Twine(Indirect->getName()) + ".splat", InsertBefore);
+  Instruction *SplattedIndirect =
+      CastInst::Create(Instruction::BitCast, Indirect,
+                       IGCLLVM::FixedVectorType::get(Indirect->getType(), 1),
+                       Twine(Indirect->getName()) + ".splat", InsertBefore);
   SplattedIndirect->setDebugLoc(DL);
   Region AddrR(SplattedIndirect);
   AddrR.Stride = 0;
@@ -2110,9 +2116,10 @@ Instruction *GenXLegalization::transformByteMove(Bale *B) {
   } else
     RdR = Region(Wr->getOperand(0)); // representing just the value being
                                      // written in to the region
-  unsigned InNumElements = In->getType()->getVectorNumElements();
+  unsigned InNumElements = cast<VectorType>(In->getType())->getNumElements();
   IGC_ASSERT(Wr || Rd);
-  unsigned OutNumElements = (Wr ? Wr : Rd)->getType()->getVectorNumElements();
+  unsigned OutNumElements =
+      cast<VectorType>((Wr ? Wr : Rd)->getType())->getNumElements();
   unsigned Misalignment = InNumElements | OutNumElements | RdR.NumElements |
                           RdR.Width | RdR.VStride | RdR.Offset |
                           WrR.NumElements | WrR.Width | WrR.VStride |
@@ -2120,9 +2127,9 @@ Instruction *GenXLegalization::transformByteMove(Bale *B) {
   if (Misalignment & 1)
     return nullptr;
   unsigned LogAlignment = Misalignment & 2 ? 1 : 2;
-  auto InTy =
-      VectorType::get(Type::getIntNTy(Head->getContext(), 8 << LogAlignment),
-                      InNumElements >> LogAlignment);
+  auto InTy = IGCLLVM::FixedVectorType::get(
+      Type::getIntNTy(Head->getContext(), 8 << LogAlignment),
+      InNumElements >> LogAlignment);
   // Create the bitcast of the input if necessary. (We do that even if the input
   // is constant, on the basis that EarlyCSE will simplify it.)
   Value *BCIn = nullptr;
@@ -2155,7 +2162,7 @@ Instruction *GenXLegalization::transformByteMove(Bale *B) {
     if (In != Wr->getOperand(0)) {
       Value *OV = Wr->getOperand(0);
       BCOld = nullptr;
-      auto ResTy = VectorType::get(
+      auto ResTy = IGCLLVM::FixedVectorType::get(
           Type::getIntNTy(Head->getContext(), 8 << LogAlignment),
           OutNumElements >> LogAlignment);
       if (BitCastInst *OVCast = dyn_cast<BitCastInst>(OV)) {
@@ -2264,8 +2271,8 @@ Value *GenXLegalization::splatPredicateIfNecessary(Value *V, unsigned Width,
   // instruction).
   Instruction *Res = CastInst::Create(
       Instruction::BitCast, Sel,
-      VectorType::get(Type::getInt1Ty(InsertBefore->getContext()),
-                      RoundedWidth),
+      IGCLLVM::FixedVectorType::get(Type::getInt1Ty(InsertBefore->getContext()),
+                                    RoundedWidth),
       InsertBefore->getName() + ".splatpredicate", InsertBefore);
   Res->setDebugLoc(DL);
   // If the required size is smaller, do an rdpredregion.
@@ -2333,7 +2340,8 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
         // Create a split phi node.
         PP = getPredPart(Phi, StartIdx);
         auto NewPhi = PHINode::Create(
-            VectorType::get(Phi->getType()->getScalarType(), PP.Size),
+            IGCLLVM::FixedVectorType::get(Phi->getType()->getScalarType(),
+                                          PP.Size),
             NumIncoming, Phi->getName() + ".split" + Twine(StartIdx), Phi);
         // Do a rdpredregion for each incoming.
         for (unsigned ii = 0; ii != NumIncoming; ++ii) {
@@ -2380,7 +2388,8 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
     IGC_ASSERT(isa<UndefValue>(Root->getOperand(0)) &&
            "expecting undef input to root of tree");
     // See if it really is illegally sized.
-    if (getPredPart(Root, 0).Size == Root->getType()->getVectorNumElements())
+    if (getPredPart(Root, 0).Size ==
+        cast<VectorType>(Root->getType())->getNumElements())
       continue;
     // For traversing the tree, create a stack where each entry represents a
     // value in the tree, and contains the values of the parts.  Create an
@@ -2402,11 +2411,11 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
       if (!Entry->Parent) {
         // No parent. All parts are undef.
         auto Ty = Entry->Wr->getType();
-        unsigned WholeSize = Ty->getVectorNumElements();
+        unsigned WholeSize = cast<VectorType>(Ty)->getNumElements();
         for (unsigned Offset = 0; Offset != WholeSize;) {
           auto PP = getPredPart(Entry->Wr, Offset);
-          Entry->Parts.push_back(
-              UndefValue::get(VectorType::get(Ty->getScalarType(), PP.Size)));
+          Entry->Parts.push_back(UndefValue::get(
+              IGCLLVM::FixedVectorType::get(Ty->getScalarType(), PP.Size)));
           Offset += PP.Size;
         }
       } else {
@@ -2420,8 +2429,8 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
       // because getLegalPredSize ensured that all splits were within parts.)
       unsigned WrOffset =
           cast<ConstantInt>(Entry->Wr->getOperand(2))->getZExtValue();
-      unsigned WrSize =
-          Entry->Wr->getOperand(1)->getType()->getVectorNumElements();
+      unsigned WrSize = cast<VectorType>(Entry->Wr->getOperand(1)->getType())
+                            ->getNumElements();
       auto PP = getPredPart(Entry->Wr, WrOffset);
       IGC_ASSERT(WrOffset + WrSize <= PP.Offset + PP.Size &&
              "overlaps multiple parts");
@@ -2453,7 +2462,7 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
         Instruction *Rd = *ri;
         unsigned RdOffset =
             cast<ConstantInt>(Rd->getOperand(1))->getZExtValue();
-        unsigned RdSize = Rd->getType()->getVectorNumElements();
+        unsigned RdSize = cast<VectorType>(Rd->getType())->getNumElements();
         auto PP = getPredPart(Entry->Wr, RdOffset);
         IGC_ASSERT(RdOffset + RdSize <= PP.Offset + PP.Size &&
                "overlaps multiple parts");

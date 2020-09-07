@@ -350,8 +350,8 @@ static CodeGenOpt::Level getCodeGenOptLevel(const vc::CompileOptions &Opts) {
 static Expected<std::unique_ptr<TargetMachine>>
 createTargetMachine(const vc::CompileOptions &Opts, Triple &TheTriple) {
   std::string Error;
-  const Target *TheTarget =
-      TargetRegistry::lookupTarget(TheTriple.getArchName(), TheTriple, Error);
+  const Target *TheTarget = TargetRegistry::lookupTarget(
+      TheTriple.getArchName().str(), TheTriple, Error);
   IGC_ASSERT(TheTarget && "vc target was not registered");
 
   const std::string FeaturesStr = getSubtargetFeatureString(Opts);

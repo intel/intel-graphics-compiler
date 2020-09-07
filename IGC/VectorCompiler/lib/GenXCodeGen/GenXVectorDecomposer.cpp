@@ -51,6 +51,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/raw_ostream.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/TypeSize.h"
+
 using namespace llvm;
 using namespace genx;
 using namespace GenXIntrinsic::GenXRegion;
@@ -758,7 +761,8 @@ unsigned VectorDecomposer::getPartNumElements(Type *WholeTy, unsigned PartIndex)
 VectorType *VectorDecomposer::getPartType(Type *WholeTy, unsigned PartIndex)
 {
   Type *ElementTy = WholeTy->getScalarType();
-  return VectorType::get(ElementTy, getPartNumElements(WholeTy, PartIndex));
+  return IGCLLVM::FixedVectorType::get(ElementTy,
+                                       getPartNumElements(WholeTy, PartIndex));
 }
 
 /***********************************************************************
@@ -985,7 +989,7 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
       Region R(CI, BaleInfo());
       unsigned LegalSize = R.getLegalSize(
           0, true /*Allow2D*/,
-          CI->getOperand(0)->getType()->getVectorNumElements(), ST);
+          cast<VectorType>(CI->getOperand(0)->getType())->getNumElements(), ST);
       if (LegalSize < 32)
         Width = 16;
     }
@@ -1163,7 +1167,7 @@ Value *SelectDecomposer::getPart(Value *Whole, unsigned PartIndex,
     auto C = dyn_cast<Constant>(Whole);
     IGC_ASSERT(C && "constant expected");
     if (Constant *V = C->getSplatValue())
-      return ConstantVector::getSplat(NumElts, V);
+      return ConstantVector::getSplat(IGCLLVM::getElementCount(NumElts), V);
     SmallVector<Constant *, 8> Values;
     for (unsigned Idx = Offset; Idx < Offset + NumElts; ++Idx)
       Values.push_back(C->getAggregateElement(Idx));

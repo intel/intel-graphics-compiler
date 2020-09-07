@@ -41,6 +41,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXSubtarget.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
+#include "Probe/Assertion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "visa_igc_common_header.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallSet.h"
@@ -59,8 +62,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvmWrapper/IR/Instructions.h"
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -226,7 +227,8 @@ Type *GenXInlineAsmLowering::rewriteTypeForCR(Type *CRType) const {
          "Expected integer inputs for 'cr' constraint");
   Type *Int1Ty = Type::getInt1Ty(*Context);
   return CRType->isVectorTy()
-             ? VectorType::get(Int1Ty, CRType->getVectorNumElements())
+             ? IGCLLVM::FixedVectorType::get(
+                   Int1Ty, cast<VectorType>(CRType)->getNumElements())
              : Int1Ty;
 }
 

@@ -175,6 +175,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 using namespace llvm;
 using namespace genx;
 
@@ -867,10 +869,10 @@ CallSite *SubroutineArg::createCallSite(CallInst *CI)
             != Input->getType()->getScalarType()) {
           Type *ElTy = RetOldValC->getType()->getScalarType();
           IGC_ASSERT(ElTy->getPrimitiveSizeInBits());
-          Input = ConstantExpr::getBitCast(Input,
-              VectorType::get(ElTy,
-                Input->getType()->getPrimitiveSizeInBits()
-                  / ElTy->getPrimitiveSizeInBits()));
+          Input = ConstantExpr::getBitCast(
+              Input, IGCLLVM::FixedVectorType::get(
+                         ElTy, Input->getType()->getPrimitiveSizeInBits() /
+                                   ElTy->getPrimitiveSizeInBits()));
         }
         // Construct the constant that needs to be loaded.
         IGC_ASSERT(RetOldValC->getType()->getScalarType() == Input->getType()->getScalarType());

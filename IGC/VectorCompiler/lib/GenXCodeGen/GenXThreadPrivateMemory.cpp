@@ -36,6 +36,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
+#include "Probe/Assertion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
@@ -48,7 +50,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Local.h"
 #include <queue>
 #include <utility>
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -144,9 +145,10 @@ static Value *ZExtOrTruncIfNeeded(Value *From, Type *To,
   unsigned ToTySz = To->getPrimitiveSizeInBits();
   Value *Res = From;
   if (From->getType()->isVectorTy() &&
-      From->getType()->getVectorNumElements() == 1) {
+      cast<VectorType>(From->getType())->getNumElements() == 1) {
     auto *TmpRes = CastInst::CreateBitOrPointerCast(
-        Res, From->getType()->getVectorElementType(), "", InsertBefore);
+        Res, cast<VectorType>(From->getType())->getElementType(), "",
+        InsertBefore);
     Res = TmpRes;
   }
   if (FromTySz < ToTySz)
@@ -166,33 +168,33 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
   Value *Res = From;
   Type *FromTy = From->getType();
   IGC_ASSERT(isa<VectorType>(FromTy));
-  unsigned NumElts = FromTy->getVectorNumElements();
+  unsigned NumElts = cast<VectorType>(FromTy)->getNumElements();
   unsigned EltSz =
       m_DL->getTypeSizeInBits(FromTy->getScalarType()) / genx::ByteBits;
   IGC_ASSERT(EltSz > 0);
   if (To->getScalarType()->isPointerTy() &&
       To->getScalarType()->getPointerElementType()->isFunctionTy()) {
     Type *I64Ty = Type::getInt64Ty(InsertBefore->getContext());
-    To = VectorType::get(I64Ty, NumElts);
+    To = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
     Res = CastInst::Create(Instruction::PtrToInt, From, To, "", InsertBefore);
     NumElts *= 2;
-    To = VectorType::get(I32Ty, NumElts);
+    To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
     EltSz = I32Ty->getPrimitiveSizeInBits() / genx::ByteBits;
     Res = CastInst::Create(Instruction::BitCast, Res, To, "", InsertBefore);
-  } else if (To->getVectorElementType()->getPrimitiveSizeInBits() <
+  } else if (cast<VectorType>(To)->getElementType()->getPrimitiveSizeInBits() <
                  genx::DWordBits
              // this is required for correct generation of svm.gather/scatter
              // of data of type which size is < i32 because these intrinsics
              // infer their block size from the type of the data they handle
              && !m_useGlobalMem) {
-    To = VectorType::get(I32Ty, NumElts);
+    To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
 
     Res = CastInst::Create(Instruction::ZExt, From, To, "", InsertBefore);
-  } else if (To->getVectorElementType()->getPrimitiveSizeInBits() ==
+  } else if (cast<VectorType>(To)->getElementType()->getPrimitiveSizeInBits() ==
              genx::QWordBits) {
     NumElts *= 2;
     EltSz = I32Ty->getPrimitiveSizeInBits() / genx::ByteBits;
-    To = VectorType::get(I32Ty, NumElts);
+    To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
 
     Res = CastInst::Create(Instruction::BitCast, From, To, "", InsertBefore);
   }
@@ -216,9 +218,9 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
     if (!From->getType()->getScalarType()->isPointerTy() &&
         To->getScalarType()->isPointerTy()) {
       IGC_ASSERT(From->getType()->getScalarType()->isIntegerTy(genx::DWordBits));
-      Type *NewTy =
-          VectorType::get(Type::getInt64Ty(*m_ctx),
-                          From->getType()->getVectorNumElements() / 2);
+      Type *NewTy = IGCLLVM::FixedVectorType::get(
+          Type::getInt64Ty(*m_ctx),
+          cast<VectorType>(From->getType())->getNumElements() / 2);
       auto *NewFrom = CastInst::CreateBitOrPointerCast(From, NewTy);
       NewFrom->insertAfter(From);
       From = NewFrom;
@@ -235,9 +237,12 @@ static Value *DoubleVector(Value *OrigVector, unsigned ShiftVal,
                            Instruction *InsertPoint) {
   IRBuilder<> Builder(InsertPoint);
   Type *I32Ty = Type::getInt32Ty(InsertPoint->getContext());
-  unsigned NumElts = OrigVector->getType()->getVectorNumElements() * 2;
-  Type *OrigVectorEltTy = OrigVector->getType()->getVectorElementType();
-  Value *NewElts = UndefValue::get(VectorType::get(OrigVectorEltTy, NumElts));
+  unsigned NumElts =
+      cast<VectorType>(OrigVector->getType())->getNumElements() * 2;
+  Type *OrigVectorEltTy =
+      cast<VectorType>(OrigVector->getType())->getElementType();
+  Value *NewElts =
+      UndefValue::get(IGCLLVM::FixedVectorType::get(OrigVectorEltTy, NumElts));
   for (unsigned CurEltNum = 0; CurEltNum * 2 < NumElts; ++CurEltNum) {
     Value *OldIdx = ConstantInt::get(I32Ty, CurEltNum);
     Value *NewIdx = ConstantInt::get(I32Ty, CurEltNum * 2);
@@ -258,7 +263,8 @@ static Value *FormEltsOffsetVector(unsigned NumElts, unsigned TySz,
                                    Instruction *InsertBefore) {
   IRBuilder<> Builder(InsertBefore);
   Type *I32Ty = Type::getInt32Ty(InsertBefore->getContext());
-  Value *EltsOffset = UndefValue::get(VectorType::get(I32Ty, NumElts));
+  Value *EltsOffset =
+      UndefValue::get(IGCLLVM::FixedVectorType::get(I32Ty, NumElts));
   for (unsigned CurElt = 0; CurElt < NumElts; ++CurElt) {
     Value *Idx = ConstantInt::get(I32Ty, CurElt);
     Value *EltOffset = ConstantInt::get(I32Ty, CurElt * TySz);
@@ -276,9 +282,10 @@ static Value *FormEltsOffsetVectorForSVM(unsigned NumElts,
   Type *I32Ty = Type::getInt32Ty(InsertBefore->getContext());
   if (!OffsetTy)
     OffsetTy = Type::getInt64Ty(InsertBefore->getContext());
-  Value *EltsOffset = UndefValue::get(VectorType::get(OffsetTy, NumElts));
+  Value *EltsOffset =
+      UndefValue::get(IGCLLVM::FixedVectorType::get(OffsetTy, NumElts));
   if (Offset->getType()->isVectorTy()) {
-    IGC_ASSERT(Offset->getType()->getVectorNumElements() == 1);
+    IGC_ASSERT(cast<VectorType>(Offset->getType())->getNumElements() == 1);
     Offset = CastInst::CreateZExtOrBitCast(Offset, OffsetTy, "", InsertBefore);
   }
   // FIXME: replace with shufflevector
@@ -361,11 +368,11 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
   Type *LdTy = LdI->getType();
   Type *LdEltTy = LdTy;
   if (isa<VectorType>(LdEltTy))
-    LdEltTy = LdEltTy->getVectorElementType();
+    LdEltTy = cast<VectorType>(LdEltTy)->getElementType();
   else
-    LdTy = VectorType::get(LdTy, 1);
+    LdTy = IGCLLVM::FixedVectorType::get(LdTy, 1);
 
-  unsigned NumEltsToLoad = LdTy->getVectorNumElements();
+  unsigned NumEltsToLoad = cast<VectorType>(LdTy)->getNumElements();
   unsigned LdEltTySz = m_DL->getTypeSizeInBits(LdEltTy);
   if (!(m_useGlobalMem && LdEltTy->isIntegerTy(64)) &&
       LdEltTySz == genx::QWordBits)
@@ -409,7 +416,8 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
     auto *BaseOff = FormEltsOffsetVectorForSVM(NumEltsToLoad, LdI, Offset);
     auto *ZextOff = CastInst::CreateZExtOrBitCast(
         EltsOffset,
-        VectorType::get(I64Ty, EltsOffset->getType()->getVectorNumElements()),
+        IGCLLVM::FixedVectorType::get(
+            I64Ty, cast<VectorType>(EltsOffset->getType())->getNumElements()),
         "", LdI);
     Offset = BinaryOperator::CreateAdd(BaseOff, ZextOff, "", LdI);
   }
@@ -458,7 +466,8 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
 
   unsigned ValueEltSz = 0;
   std::tie(ValueOp, ValueEltSz) = NormalizeVector(ValueOp, ValueOpTy, StI);
-  unsigned ValueNumElts = ValueOp->getType()->getVectorNumElements();
+  unsigned ValueNumElts =
+      cast<VectorType>(ValueOp->getType())->getNumElements();
 
   Value *PointerOp = StI->getPointerOperand();
   Value *Offset = lookForPtrReplacement(PointerOp);
@@ -480,7 +489,8 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
     auto *BaseOff = FormEltsOffsetVectorForSVM(ValueNumElts, StI, Offset);
     auto *ZextOff = CastInst::CreateZExtOrBitCast(
         EltsOffset,
-        VectorType::get(I64Ty, EltsOffset->getType()->getVectorNumElements()),
+        IGCLLVM::FixedVectorType::get(
+            I64Ty, cast<VectorType>(EltsOffset->getType())->getNumElements()),
         "", StI);
     Offset = BinaryOperator::CreateAdd(BaseOff, ZextOff, "", StI);
   }
@@ -574,14 +584,15 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
   if (!(m_useGlobalMem && CI->getType()->getScalarType()->isIntegerTy(64)))
     std::tie(OldValue, ValueEltSz) = NormalizeVector(OldValue, NewDstTy, CI);
   NewDstTy = OldValue->getType();
-  unsigned ValueNumElts = NewDstTy->getVectorNumElements();
+  unsigned ValueNumElts = cast<VectorType>(NewDstTy)->getNumElements();
 
   Value *Pred = CI->getArgOperand(0);
   Value *EltsOffset = CI->getArgOperand(2);
   if (!m_useGlobalMem &&
-      OrigDstTy->getVectorElementType()->getPrimitiveSizeInBits() ==
+      cast<VectorType>(OrigDstTy)->getElementType()->getPrimitiveSizeInBits() ==
           genx::QWordBits) {
-    IGC_ASSERT(ValueNumElts == EltsOffset->getType()->getVectorNumElements() * 2);
+    IGC_ASSERT(ValueNumElts ==
+               cast<VectorType>(EltsOffset->getType())->getNumElements() * 2);
     EltsOffset = DoubleVector(EltsOffset, ValueEltSz, CI);
     Pred = DoubleVector(Pred, 0, CI);
   }
@@ -598,7 +609,8 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
     if (!EltsOffset->getType()->getScalarType()->isIntegerTy(64))
       EltsOffset = CastInst::CreateZExtOrBitCast(
           EltsOffset,
-          VectorType::get(I64Ty, EltsOffset->getType()->getVectorNumElements()),
+          IGCLLVM::FixedVectorType::get(
+              I64Ty, cast<VectorType>(EltsOffset->getType())->getNumElements()),
           "", CI);
     Offset = BinaryOperator::CreateAdd(Offset, EltsOffset, "", CI);
   }
@@ -661,8 +673,9 @@ bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
 
   Value *Pred = CI->getArgOperand(0);
   Value *EltsOffset = CI->getArgOperand(2);
-  if (OrigValueTy->getVectorElementType()->getPrimitiveSizeInBits() ==
-      genx::QWordBits) {
+  if (cast<VectorType>(OrigValueTy)
+          ->getElementType()
+          ->getPrimitiveSizeInBits() == genx::QWordBits) {
     EltsOffset = DoubleVector(EltsOffset, EltSz, CI);
     Pred = DoubleVector(Pred, 0, CI);
   }
@@ -720,7 +733,7 @@ bool GenXThreadPrivateMemory::replacePhi(PHINode *Phi) {
       else if (V->getType()->getScalarType() == NonVecTy->getScalarType() &&
                V->getType()->isVectorTy() != NonVecTy->isVectorTy()) {
         if (V->getType()->isVectorTy()) {
-          IGC_ASSERT(V->getType()->getVectorNumElements() == 1);
+          IGC_ASSERT(cast<VectorType>(V->getType())->getNumElements() == 1);
           auto *VCast = CastInst::Create(CastInst::BitCast, V, NonVecTy->getScalarType());
           VCast->insertAfter(cast<Instruction>(V));
           V = VCast;
@@ -805,7 +818,7 @@ bool GenXThreadPrivateMemory::replaceSelect(SelectInst *Sel) {
 }
 
 static Value *GetUndefVec(Type *Ty, unsigned NumElts) {
-  return UndefValue::get(VectorType::get(Ty, NumElts));
+  return UndefValue::get(IGCLLVM::FixedVectorType::get(Ty, NumElts));
 }
 
 static std::pair<Value *, Value *> GetUndefPair(Type *Ty, unsigned NumElts) {
@@ -818,7 +831,7 @@ static Value *FillVecWithSeqVals(Value *Vec, unsigned Start,
   Builder.SetInsertPoint(InsertBefore);
 
   Type *I32Ty = Type::getInt32Ty(InsertBefore->getContext());
-  unsigned NumElts = Vec->getType()->getVectorNumElements();
+  unsigned NumElts = cast<VectorType>(Vec->getType())->getNumElements();
   for (unsigned i = 0; i < NumElts; ++i) {
     Value *Idx = ConstantInt::get(I32Ty, i);
     Value *Val = ConstantInt::get(I32Ty, i + Start);
@@ -833,7 +846,7 @@ SplitVec(Value *Vec, unsigned NumElts, Instruction *InsertBefore,
   IRBuilder<> Builder(InsertBefore);
   Builder.SetInsertPoint(InsertBefore);
 
-  Type *EltTy = Vec->getType()->getVectorElementType();
+  Type *EltTy = cast<VectorType>(Vec->getType())->getElementType();
   Value *First = Builder.CreateShuffleVector(Vec, GetUndefVec(EltTy, NumElts),
                                              Splitters.first);
   Value *Second = Builder.CreateShuffleVector(Vec, GetUndefVec(EltTy, NumElts),
@@ -845,7 +858,7 @@ void SplitScatter(CallInst *CI) {
   IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI) ==
          llvm::GenXIntrinsic::genx_scatter_scaled);
   Type *DataTy = CI->getArgOperand(5)->getType();
-  unsigned NumElts = DataTy->getVectorNumElements();
+  unsigned NumElts = cast<VectorType>(DataTy)->getNumElements();
   IGC_ASSERT(NumElts % 2 == 0);
 
   Type *I32Ty = Type::getInt32Ty(CI->getContext());
@@ -892,7 +905,7 @@ void SplitGather(CallInst *CI) {
   IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI) ==
          llvm::GenXIntrinsic::genx_gather_scaled);
   Type *DstTy = CI->getType();
-  unsigned NumElts = DstTy->getVectorNumElements();
+  unsigned NumElts = cast<VectorType>(DstTy)->getNumElements();
   IGC_ASSERT(NumElts % 2 == 0);
 
   Type *I32Ty = Type::getInt32Ty(CI->getContext());
@@ -1171,8 +1184,9 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   // 16 and 32.
   for (auto CI : m_gather) {
     Type *DstTy = CI->getType();
-    unsigned NumElts = DstTy->getVectorNumElements();
-    unsigned EltSz = DstTy->getVectorElementType()->getPrimitiveSizeInBits();
+    unsigned NumElts = cast<VectorType>(DstTy)->getNumElements();
+    unsigned EltSz =
+        cast<VectorType>(DstTy)->getElementType()->getPrimitiveSizeInBits();
     unsigned ExecSz = NumElts * EltSz;
 
     if (ExecSz > 2 * genx::GRFBits || NumElts > 32)
@@ -1182,8 +1196,9 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   for (auto CI : m_scatter) {
     Type *DataTy =
         CI->getArgOperand(m_useGlobalMem ? 3 : 5)->getType();
-    unsigned NumElts = DataTy->getVectorNumElements();
-    unsigned EltSz = DataTy->getVectorElementType()->getPrimitiveSizeInBits();
+    unsigned NumElts = cast<VectorType>(DataTy)->getNumElements();
+    unsigned EltSz =
+        cast<VectorType>(DataTy)->getElementType()->getPrimitiveSizeInBits();
     unsigned ExecSz = NumElts * EltSz;
 
     if (ExecSz > 2 * genx::GRFBits || NumElts > 32)

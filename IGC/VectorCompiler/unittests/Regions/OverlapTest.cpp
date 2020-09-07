@@ -13,6 +13,8 @@
 
 #include "GenXRegion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include "gtest/gtest.h"
 
 using namespace llvm;
@@ -21,12 +23,13 @@ namespace {
 TEST(GenXCodeGen, RegionOverlapping) {
   LLVMContext Context;
 
-  genx::Region R1(VectorType::get(Type::getDoubleTy(Context), 16));
+  genx::Region R1(
+      IGCLLVM::FixedVectorType::get(Type::getDoubleTy(Context), 16));
   R1.VStride = 0;
   R1.NumElements = R1.Width = 16;
   R1.Stride = 1;
   R1.Offset = 128;
-  genx::Region R2(VectorType::get(Type::getDoubleTy(Context), 8));
+  genx::Region R2(IGCLLVM::FixedVectorType::get(Type::getDoubleTy(Context), 8));
   R2.VStride = 0;
   R2.NumElements = R2.Width = 8;
   R2.Stride = 1;
@@ -35,7 +38,7 @@ TEST(GenXCodeGen, RegionOverlapping) {
   R2.Offset = 256;
   EXPECT_EQ(R2.overlap(R1), false);
 
-  genx::Region R3(VectorType::get(Type::getInt32Ty(Context), 4));
+  genx::Region R3(IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Context), 4));
   R3.VStride = 2;
   R3.NumElements = 8;
   R3.Width = 1;
@@ -50,7 +53,7 @@ TEST(GenXCodeGen, RegionOverlapping) {
   R4.Offset = 6;
   EXPECT_EQ(R3.overlap(R4), true);
 
-  genx::Region R5(VectorType::get(Type::getInt16Ty(Context), 4));
+  genx::Region R5(IGCLLVM::FixedVectorType::get(Type::getInt16Ty(Context), 4));
   R5.VStride = 8;
   R5.NumElements = 4;
   R5.Width = 2;
@@ -62,13 +65,15 @@ TEST(GenXCodeGen, RegionOverlapping) {
   R6.Offset = R6.ElementBytes * 2;
   EXPECT_EQ(R5.overlap(R6), false);
 
-  genx::Region R7(VectorType::get(Type::getDoubleTy(Context), 128));
+  genx::Region R7(
+      IGCLLVM::FixedVectorType::get(Type::getDoubleTy(Context), 128));
   R7.VStride = 32;
   R7.NumElements = 128;
   R7.Width = 8;
   R7.Stride = 2;
   R7.Offset = 0;
-  genx::Region R8(VectorType::get(Type::getInt32Ty(Context), 256));
+  genx::Region R8(
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Context), 256));
   R8.VStride = 1;
   R8.Width = R8.NumElements = 128;
   R8.Stride = 4;

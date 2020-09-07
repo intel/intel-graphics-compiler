@@ -41,6 +41,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Local.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 using namespace llvm;
 using namespace genx;
 
@@ -103,7 +105,7 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
       auto Cond = dyn_cast<Instruction>(SI->getCondition());
       if (!Cond || !Cond->getType()->isVectorTy())
         continue;
-      if (Cond->getType()->getVectorNumElements() < 32)
+      if (cast<VectorType>(Cond->getType())->getNumElements() < 32)
         continue;
 
       // TODO: analyze when it is benefial to promote.
@@ -164,8 +166,8 @@ bool GenXPromotePredicate::matchOpnds(llvm::BasicBlock *UseBB, Value *V,
 }
 Value *GenXPromotePredicate::rewriteTree(Instruction *Inst) {
   IRBuilder<> Builder(Inst);
-  unsigned N = Inst->getType()->getVectorNumElements();
-  VectorType *VT = VectorType::get(Builder.getInt16Ty(), N);
+  unsigned N = cast<VectorType>(Inst->getType())->getNumElements();
+  VectorType *VT = IGCLLVM::FixedVectorType::get(Builder.getInt16Ty(), N);
   unsigned Opc = Inst->getOpcode();
   switch (Opc) {
   case Instruction::And:

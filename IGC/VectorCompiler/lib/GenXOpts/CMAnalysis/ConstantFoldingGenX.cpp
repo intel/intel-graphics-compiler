@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/Support/TypeSize.h"
 
 #define DEBUG_TYPE "genx-constantfolding"
 
@@ -77,7 +78,8 @@ static Constant *constantFoldRdRegion(Type *RetTy,
   if (isa<UndefValue>(Input))
     return UndefValue::get(RetTy);
   // Parse the region parameters.
-  unsigned WholeNumElements = Input->getType()->getVectorNumElements();
+  unsigned WholeNumElements =
+      cast<VectorType>(Input->getType())->getNumElements();
   auto OffsetC = dyn_cast<Constant>(
       Operands[GenXIntrinsic::GenXRegion::RdIndexOperandNum]);
   if (!OffsetC)
@@ -92,7 +94,8 @@ static Constant *constantFoldRdRegion(Type *RetTy,
   if (!isa<VectorType>(OffsetC->getType()))
     Offset = dyn_cast<ConstantInt>(OffsetC)->getZExtValue() / RetElemSize;
   else
-    IGC_ASSERT(OffsetC->getType()->getVectorNumElements() == R.NumElements);
+    IGC_ASSERT(cast<VectorType>(OffsetC->getType())->getNumElements() ==
+               R.NumElements);
   if (Offset >= WholeNumElements)
     return UndefValue::get(RetTy); // out of range index
   if (!isa<VectorType>(RetTy))
@@ -158,12 +161,14 @@ static Constant *constantFoldWrRegion(Type *RetTy,
       Splat = NewValue->getSplatValue();
     if (Splat)
       if (RetTy->getPrimitiveSizeInBits() <= 2 * 32 * 8)
-        return ConstantVector::getSplat(RetTy->getVectorNumElements(), Splat);
+        return ConstantVector::getSplat(
+            IGCLLVM::getElementCount(cast<VectorType>(RetTy)->getNumElements()),
+            Splat);
     // If new value fills the whole vector, just return the new value.
     if (NewValue->getType() == RetTy)
       return NewValue;
   }
-  unsigned WholeNumElements = RetTy->getVectorNumElements();
+  unsigned WholeNumElements = cast<VectorType>(RetTy)->getNumElements();
   // Gather the elements of the old value.
   SmallVector<Constant *, 8> Values;
   for (unsigned i = 0; i != WholeNumElements; ++i)

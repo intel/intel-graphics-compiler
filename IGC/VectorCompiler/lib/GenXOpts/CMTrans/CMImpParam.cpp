@@ -80,6 +80,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 //===----------------------------------------------------------------------===//
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #define DEBUG_TYPE "cmimpparam"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
@@ -287,9 +289,11 @@ private:
       case GenXIntrinsic::genx_local_id:
       case GenXIntrinsic::genx_local_size:
       case GenXIntrinsic::genx_group_count:
-        return llvm::VectorType::get(llvm::Type::getInt32Ty(Context), 3);
+        return IGCLLVM::FixedVectorType::get(llvm::Type::getInt32Ty(Context),
+                                             3);
       case GenXIntrinsic::genx_local_id16:
-        return llvm::VectorType::get(llvm::Type::getInt16Ty(Context), 3);
+        return IGCLLVM::FixedVectorType::get(llvm::Type::getInt16Ty(Context),
+                                             3);
       default:
         // Should be able to extract the type from the intrinsic
         // directly as no overloading is required (if it is then
@@ -365,7 +369,9 @@ bool CMImpParam::runOnModule(Module &M) {
 // Replace the given instruction with a load from a global
 void CMImpParam::replaceWithGlobal(CallInst *CI, unsigned IID) {
   GlobalVariable *GV = getIIDGlobal(CI->getParent()->getParent(), IID);
-  LoadInst *Load = new LoadInst(GV, GV->getName() + ".val", CI);
+  LoadInst *Load =
+      new LoadInst(GV->getType()->getPointerElementType(), GV,
+                   GV->getName() + ".val", /* isVolatile */ false, CI);
   CI->replaceAllUsesWith(Load);
 }
 
@@ -461,8 +467,10 @@ bool CMImpParam::ConvertToOCLPayload(Module &M) {
   };
 
   // Convert genx_local_id -> zext(genx_local_id16)
-  Type *Ty32 = VectorType::get(Type::getInt32Ty(M.getContext()), 3);
-  Type *Ty16 = VectorType::get(Type::getInt16Ty(M.getContext()), 3);
+  Type *Ty32 =
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(M.getContext()), 3);
+  Type *Ty16 =
+      IGCLLVM::FixedVectorType::get(Type::getInt16Ty(M.getContext()), 3);
   if (auto LIDFn = getFn(GenXIntrinsic::genx_local_id, Ty32)) {
     Function *LID16 = GenXIntrinsic::getGenXDeclaration(
         &M, GenXIntrinsic::genx_local_id16, Ty16);

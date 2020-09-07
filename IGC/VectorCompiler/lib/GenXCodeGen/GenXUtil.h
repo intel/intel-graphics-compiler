@@ -224,7 +224,7 @@ public:
   // replicated slice to its parameters.
   ReplicatedSlice getReplicatedSliceDescriptor() const {
     IGC_ASSERT(isReplicatedSlice() && "Expected replicated slice");
-    const unsigned TotalSize = SI->getType()->getVectorNumElements();
+    const unsigned TotalSize = (SI->getType())->getNumElements();
     const unsigned SliceStart = SI->getMaskValue(0);
     const unsigned SliceEnd = SI->getMaskValue(TotalSize - 1);
     const unsigned SliceSize = SliceEnd - SliceStart + 1;
@@ -342,7 +342,7 @@ static inline bool isMaskPacking(const Value *V) {
     auto SrcTy = dyn_cast<VectorType>(BC->getSrcTy());
     if (!SrcTy || !SrcTy->getScalarType()->isIntegerTy(1))
       return false;
-    unsigned NElts = SrcTy->getVectorNumElements();
+    unsigned NElts = cast<VectorType>(SrcTy)->getNumElements();
     if (NElts != 8 && NElts != 16 && NElts != 32)
       return false;
     return V->getType()->getScalarType()->isIntegerTy(NElts);
@@ -439,7 +439,7 @@ CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst, ConstIter FirstType,
          "wrong arguments: type of instructions must correspond");
 
   if (Inst->getType()->isVectorTy() &&
-      Inst->getType()->getVectorNumElements() > 1)
+      cast<VectorType>(Inst->getType())->getNumElements() > 1)
     return nullptr;
   bool needBitCast = std::any_of(
       FirstType, LastType, [Inst](Type *Ty) { return Ty != Inst->getType(); });

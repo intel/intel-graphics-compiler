@@ -82,6 +82,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -343,7 +344,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
         if (TruncBits > NewBits)
           Opcode = Inst->getOpcode();
         auto ElTy = Type::getIntNTy(InsertBefore->getContext(), TruncBits);
-        auto Ty = VectorType::get(ElTy, NumElements);
+        auto Ty = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
         NewInst = CastInst::Create((Instruction::CastOps)Opcode, NewVal,
             Ty, "", InsertBefore);
       }
@@ -377,7 +378,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
                 ->getNumElements();
             auto ElTy = Type::getIntNTy(InsertBefore->getContext(),
                   TruncBits);
-            auto Ty = VectorType::get(ElTy, NumElements);
+            auto Ty = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
             auto NewScalar = CastInst::Create(Instruction::Trunc,
                 IE->getOperand(1), ElTy,
                 IE->getOperand(1)->getName() + ".reduceintsize", InsertBefore);
@@ -501,7 +502,7 @@ Value *GenXReduceIntSize::truncValue(Value *V, unsigned NumBits,
 {
   unsigned NumElements = cast<VectorType>(V->getType())->getNumElements();
   auto ElTy = Type::getIntNTy(InsertBefore->getContext(), NumBits);
-  auto Ty = VectorType::get(ElTy, NumElements);
+  auto Ty = IGCLLVM::FixedVectorType::get(ElTy, NumElements);
   if (Ty == V->getType())
     return V;
   if (auto C = dyn_cast<Constant>(V)) {
@@ -642,13 +643,14 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
     if (Value *V = getSplatValue(cast<ShuffleVectorInst>(Inst))) {
       // Transform "splat (ext v)" to "ext (splat v)".
       if (auto Ext = dyn_cast<ExtOperator>(V)) {
-        unsigned NumElts = Inst->getType()->getVectorNumElements();
+        unsigned NumElts = cast<VectorType>(Inst->getType())->getNumElements();
         IntegerType *I32Ty = Type::getInt32Ty(Inst->getContext());
-        VectorType *MaskTy = VectorType::get(I32Ty, NumElts);
+        VectorType *MaskTy = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
         Value *Mask = Constant::getNullValue(MaskTy);
         Value *Src = Ext->getOperand(0);
         if (!isa<VectorType>(Src->getType())) {
-          VectorType *VTy = VectorType::get(Src->getType(), NumElts);
+          VectorType *VTy =
+              IGCLLVM::FixedVectorType::get(Src->getType(), NumElts);
           Src =
               InsertElementInst::Create(UndefValue::get(VTy), Src,
                                         Constant::getNullValue(I32Ty), "",

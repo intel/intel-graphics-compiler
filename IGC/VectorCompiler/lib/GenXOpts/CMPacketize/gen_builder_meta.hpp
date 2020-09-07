@@ -149,7 +149,7 @@ Value* VCVTPD2PS(Value* a, const llvm::Twine& name = "")
 {
     SmallVector<Type*, 1> argTypes;
     argTypes.push_back(a->getType());
-    FunctionType* pFuncTy = FunctionType::get(VectorType::get(mFP32Ty, a->getType()->getVectorNumElements()), argTypes, false);
+    FunctionType* pFuncTy = FunctionType::get(IGCLLVM::FixedVectorType::get(mFP32Ty, cast<VectorType>(a->getType())->getNumElements()), argTypes, false);
     Function* pFunc = cast<Function>(mpModule->getOrInsertFunction("meta.intrinsic.VCVTPD2PS", pFuncTy));
     return CALL(pFunc, std::initializer_list<Value*>{a}, name);
 }
@@ -158,7 +158,7 @@ Value* VCVTPH2PS(Value* a, const llvm::Twine& name = "")
 {
     SmallVector<Type*, 1> argTypes;
     argTypes.push_back(a->getType());
-    FunctionType* pFuncTy = FunctionType::get(VectorType::get(mFP32Ty, a->getType()->getVectorNumElements()), argTypes, false);
+    FunctionType* pFuncTy = FunctionType::get(IGCLLVM::FixedVectorType::get(mFP32Ty, cast<VectorType>(a->getType())->getNumElements()), argTypes, false);
     Function* pFunc = cast<Function>(mpModule->getOrInsertFunction("meta.intrinsic.VCVTPH2PS", pFuncTy));
     return CALL(pFunc, std::initializer_list<Value*>{a}, name);
 }

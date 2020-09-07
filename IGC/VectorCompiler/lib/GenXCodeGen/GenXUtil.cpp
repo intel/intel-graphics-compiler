@@ -32,6 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenX.h"
 #include "GenXIntrinsics.h"
 #include "GenXRegion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -45,7 +47,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
-#include "llvmWrapper/IR/Instructions.h"
 
 #include "Probe/Assertion.h"
 #include <iterator>
@@ -162,7 +163,7 @@ Constant *genx::getConstantSubvector(Constant *V,
     unsigned StartIdx, unsigned Size)
 {
   Type *ElTy = cast<VectorType>(V->getType())->getElementType();
-  Type *RegionTy = VectorType::get(ElTy, Size);
+  Type *RegionTy = IGCLLVM::FixedVectorType::get(ElTy, Size);
   if (isa<UndefValue>(V))
     V = UndefValue::get(RegionTy);
   else if (isa<ConstantAggregateZero>(V))
@@ -354,9 +355,10 @@ bool genx::isIntNot(Instruction *Inst)
  */
 int ShuffleVectorAnalyzer::getAsSlice()
 {
-  unsigned WholeWidth = SI->getOperand(0)->getType()->getVectorNumElements();
+  unsigned WholeWidth =
+      cast<VectorType>(SI->getOperand(0)->getType())->getNumElements();
   Constant *Selector = cast<Constant>(SI->getOperand(2));
-  unsigned Width = SI->getType()->getVectorNumElements();
+  unsigned Width = cast<VectorType>(SI->getType())->getNumElements();
   unsigned StartIdx = cast<ConstantInt>(
       Selector->getAggregateElement((unsigned)0))->getZExtValue();
   if (StartIdx >= WholeWidth)
@@ -390,7 +392,8 @@ bool ShuffleVectorAnalyzer::isReplicatedSlice() const {
 
   // Slice should not touch second operand.
   auto MaxIndex = static_cast<size_t>(MaskVals.back());
-  if (MaxIndex >= SI->getOperand(0)->getType()->getVectorNumElements())
+  if (MaxIndex >=
+      cast<VectorType>(SI->getOperand(0)->getType())->getNumElements())
     return false;
 
   // Find first non-one difference.
@@ -420,11 +423,13 @@ bool ShuffleVectorAnalyzer::isReplicatedSlice() const {
 static Value *getOperandByMaskValue(const ShuffleVectorInst &SI,
                                     int MaskValue) {
   IGC_ASSERT(MaskValue >= 0 && "invalid index");
-  int FirstOpSize = SI.getOperand(0)->getType()->getVectorNumElements();
+  int FirstOpSize =
+      cast<VectorType>(SI.getOperand(0)->getType())->getNumElements();
   if (MaskValue < FirstOpSize)
     return SI.getOperand(0);
   else {
-    int SecondOpSize = SI.getOperand(1)->getType()->getVectorNumElements();
+    int SecondOpSize =
+        cast<VectorType>(SI.getOperand(1)->getType())->getNumElements();
     IGC_ASSERT(MaskValue < FirstOpSize + SecondOpSize && "invalid index");
     return SI.getOperand(1);
   }
@@ -451,7 +456,8 @@ matchOneElemRegion(const ShuffleVectorInst &SI, int MaskVal) {
   if (Init.Op == SI.getOperand(0))
     Init.R.Offset = MaskVal * Init.R.ElementBytes;
   else {
-    auto FirstOpSize = SI.getOperand(0)->getType()->getVectorNumElements();
+    auto FirstOpSize =
+        cast<VectorType>(SI.getOperand(0)->getType())->getNumElements();
     Init.R.Offset = (MaskVal - FirstOpSize) * Init.R.ElementBytes;
   }
   return Init;
@@ -465,7 +471,8 @@ template <typename ForwardIter, typename OutputIter>
 void makeSVIIndexesOperandIndexes(const ShuffleVectorInst &SI,
                                   const Value &Operand, ForwardIter FirstIt,
                                   ForwardIter LastIt, OutputIter OutIt) {
-  int FirstOpSize = SI.getOperand(0)->getType()->getVectorNumElements();
+  int FirstOpSize =
+      cast<VectorType>(SI.getOperand(0)->getType())->getNumElements();
   if (&Operand == SI.getOperand(0)) {
     std::transform(FirstIt, LastIt, OutIt, [FirstOpSize](int MaskVal) {
       if (MaskVal >= FirstOpSize)
@@ -617,8 +624,9 @@ int ShuffleVectorAnalyzer::getAsUnslice()
     return -1;
   Constant *MaskVec = cast<Constant>(SI->getOperand(2));
   // Find prefix of undef or elements from operand 0.
-  unsigned OldWidth = SI2->getType()->getVectorNumElements(); 
-  unsigned NewWidth = SI2->getOperand(0)->getType()->getVectorNumElements(); 
+  unsigned OldWidth = cast<VectorType>(SI2->getType())->getNumElements();
+  unsigned NewWidth =
+      cast<VectorType>(SI2->getOperand(0)->getType())->getNumElements();
   unsigned Prefix = 0;
   for (;; ++Prefix) {
     if (Prefix == OldWidth - NewWidth)
@@ -676,7 +684,8 @@ ShuffleVectorAnalyzer::SplatInfo ShuffleVectorAnalyzer::getAsSplat()
   // The mask is a splat. Work out which element of which input vector
   // it refers to.
   unsigned ShuffleIdx = IdxVal->getSExtValue();
-  unsigned InVec1NumElements = InVec1->getType()->getVectorNumElements();
+  unsigned InVec1NumElements =
+      cast<VectorType>(InVec1->getType())->getNumElements();
   if (ShuffleIdx >= InVec1NumElements) {
     ShuffleIdx -= InVec1NumElements;
     InVec1 = InVec2;
@@ -708,14 +717,14 @@ Value *ShuffleVectorAnalyzer::serialize() {
     V = Op1;
 
   // Expand or shink the initial value if sizes mismatch.
-  unsigned NElts = SI->getType()->getVectorNumElements();
-  unsigned M = V->getType()->getVectorNumElements();
+  unsigned NElts = cast<VectorType>(SI->getType())->getNumElements();
+  unsigned M = cast<VectorType>(V->getType())->getNumElements();
   bool SkipBase = true;
   if (M != NElts) {
     if (auto C = dyn_cast<Constant>(V)) {
       SmallVector<Constant *, 16> Vals;
       for (unsigned i = 0; i < NElts; ++i) {
-        Type *Ty = C->getType()->getVectorElementType();
+        Type *Ty = cast<VectorType>(C->getType())->getElementType();
         Constant *Elt =
             (i < M) ? C->getAggregateElement(i) : UndefValue::get(Ty);
         Vals.push_back(Elt);
@@ -757,16 +766,16 @@ unsigned ShuffleVectorAnalyzer::getSerializeCost(unsigned i) {
   unsigned Cost = 0;
   Value *Op = SI->getOperand(i);
   if (!isa<Constant>(Op) && Op->getType() != SI->getType())
-    Cost += Op->getType()->getVectorNumElements();
+    Cost += cast<VectorType>(Op->getType())->getNumElements();
 
-  unsigned NElts = SI->getType()->getVectorNumElements();
+  unsigned NElts = cast<VectorType>(SI->getType())->getNumElements();
   for (unsigned j = 0; j < NElts; ++j) {
     // Undef index returns -1.
     int idx = SI->getMaskValue(j);
     if (idx < 0)
       continue;
     // Count the number of elements out of place.
-    unsigned M = Op->getType()->getVectorNumElements();
+    unsigned M = cast<VectorType>(Op->getType())->getNumElements();
     if ((i == 0 && idx != j) || (i == 1 && idx != j + M))
       Cost++;
   }
@@ -783,11 +792,12 @@ IVSplitter::IVSplitter(Instruction &Inst, unsigned* BaseOpIdx) : Inst(Inst) {
 
   Len = 1;
   if (ETy->isVectorTy()) {
-    Len = ETy->getVectorNumElements();
-    ETy = ETy->getVectorElementType();
+    Len = cast<VectorType>(ETy)->getNumElements();
+    ETy = cast<VectorType>(ETy)->getElementType();
   }
 
-  VI32Ty = VectorType::get(ETy->getInt32Ty(Inst.getContext()), Len * 2);
+  VI32Ty = IGCLLVM::FixedVectorType::get(ETy->getInt32Ty(Inst.getContext()),
+                                         Len * 2);
 }
 
 Region IVSplitter::createSplitRegion(Type *Ty, IVSplitter::RegionType RT) {
@@ -857,7 +867,7 @@ Value* IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
   const auto &DL = Inst.getDebugLoc();
 
   IGC_ASSERT(V1.getType() == V2.getType() && V1.getType()->isVectorTy() &&
-         V1.getType()->getVectorElementType()->isIntegerTy(32));
+             cast<VectorType>(V1.getType())->getElementType()->isIntegerTy(32));
 
   // create the write-regions
   auto R1 = createSplitRegion(VI32Ty, RT1);
@@ -867,12 +877,13 @@ Value* IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
   auto R2 = createSplitRegion(VI32Ty, RT2);
   auto *W2 = R2.createWrRegion(W1, &V2, Name + ".joined", &Inst, DL);
 
-  auto *V64Ty = VectorType::get(ETy->getInt64Ty(Inst.getContext()), Len);
+  auto *V64Ty =
+      IGCLLVM::FixedVectorType::get(ETy->getInt64Ty(Inst.getContext()), Len);
   auto *Result = new BitCastInst(W2, V64Ty, Name, &Inst);
   Result->setDebugLoc(DL);
 
   if (Scalarize) {
-    IGC_ASSERT(Result->getType()->getVectorNumElements() == 1);
+    IGC_ASSERT(cast<VectorType>(Result->getType())->getNumElements() == 1);
     Result = new BitCastInst(Result, ETy->getInt64Ty(Inst.getContext()),
                              Name + ".recast", &Inst);
   }
@@ -1283,7 +1294,7 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
     if (auto CI = dyn_cast<BitCastInst>(LI->user_back())) {
       auto NewPtrTy = PointerType::get(CI->getType(), LI->getPointerAddressSpace());
       auto NewPtr = ConstantExpr::getBitCast(GV, NewPtrTy);
-      auto NewLI = new LoadInst(NewPtr, "",
+      auto NewLI = new LoadInst(NewPtrTy->getPointerElementType(), NewPtr, "",
                                 /*volatile*/ LI->isVolatile(), Inst);
       NewLI->takeName(LI);
       NewLI->setDebugLoc(LI->getDebugLoc());
@@ -1522,11 +1533,11 @@ unsigned genx::getInlineAsmNumOutputs(CallInst *CI) {
  */
 Type *genx::getCorrespondingVectorOrScalar(Type *Ty) {
   if (Ty->isVectorTy()) {
-    IGC_ASSERT(Ty->getVectorNumElements() == 1 &&
-      "wrong argument: scalar or degenerate vector is expected");
+    IGC_ASSERT(cast<VectorType>(Ty)->getNumElements() == 1 &&
+               "wrong argument: scalar or degenerate vector is expected");
     return Ty->getScalarType();
   }
-  return VectorType::get(Ty, 1);
+  return IGCLLVM::FixedVectorType::get(Ty, 1);
 }
 
 // info is at main template function
@@ -1662,7 +1673,7 @@ bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
          "wrong argument: wrpredregion intrinsic was expected");
   auto &NewValue = *WrPredRegion.getOperand(WrPredRegionOperand::NewValue);
   auto ExecSize = NewValue.getType()->isVectorTy()
-                      ? NewValue.getType()->getVectorNumElements()
+                      ? cast<VectorType>(NewValue.getType())->getNumElements()
                       : 1;
   auto Offset =
       cast<ConstantInt>(WrPredRegion.getOperand(WrPredRegionOperand::Offset))

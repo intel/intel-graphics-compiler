@@ -51,6 +51,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Debug.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 using namespace llvm;
 using namespace genx;
 
@@ -263,7 +265,8 @@ void GenXExtractVectorizer::processBucket(const BucketIndex *BIdx,
         Extract0->Inst->getName() + ".histogrammed", InsertBefore);
   } else {
     // Create the vectorized trunc/zext/sext.
-    auto VT = VectorType::get(Extract0->Inst->getType(), B->size());
+    auto VT =
+        IGCLLVM::FixedVectorType::get(Extract0->Inst->getType(), B->size());
     NewInst = CastInst::Create((Instruction::CastOps)Extract0->Inst->getOpcode(),
         NewRdRegion, VT,
         Extract0->Inst->getName() + ".histogrammed", InsertBefore);

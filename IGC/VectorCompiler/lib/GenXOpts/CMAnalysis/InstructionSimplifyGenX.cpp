@@ -50,6 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/CommandLine.h>
 #include "Probe/Assertion.h"
+#include "llvmWrapper/Support/TypeSize.h"
 
 using namespace llvm;
 
@@ -148,7 +149,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
       // Identity rdregion can be simplified to its "old value" input.
       if (RetTy
           == ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum]->getType()) {
-        unsigned NumElements = RetTy->getVectorNumElements();
+        unsigned NumElements = cast<VectorType>(RetTy)->getNumElements();
         unsigned Width = cast<ConstantInt>(
               ArgBegin[GenXIntrinsic::GenXRegion::RdWidthOperandNum])
             ->getZExtValue();
@@ -175,7 +176,8 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
             ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum]))
         if (auto Splat = C->getSplatValue()) {
           if (auto VT = dyn_cast<VectorType>(RetTy))
-            return ConstantVector::getSplat(VT->getNumElements(), Splat);
+            return ConstantVector::getSplat(
+                IGCLLVM::getElementCount(VT->getNumElements()), Splat);
           return Splat;
         }
       break;
@@ -188,7 +190,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
         if (auto CMask = dyn_cast<Constant>(ArgBegin[
               GenXIntrinsic::GenXRegion::PredicateOperandNum])) {
           if (CMask->isAllOnesValue()) {
-            unsigned NumElements = RetTy->getVectorNumElements();
+            unsigned NumElements = cast<VectorType>(RetTy)->getNumElements();
             unsigned Width = cast<ConstantInt>(
                   ArgBegin[GenXIntrinsic::GenXRegion::WrWidthOperandNum])
                 ->getZExtValue();

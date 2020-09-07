@@ -449,11 +449,11 @@ appendFuncBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
 static genx::BinaryDataAccumulator<const Function *>
 getGenBinary(const FunctionGroup &FG, VISABuilder &VB) {
   genx::BinaryDataAccumulator<const Function *> GenBinary;
-  VISAKernel *BuiltKernel = VB.GetVISAKernel(FG.getHead()->getName());
+  VISAKernel *BuiltKernel = VB.GetVISAKernel(FG.getHead()->getName().str());
   appendFuncBinary(GenBinary, *FG.getHead(), *BuiltKernel);
   for (Function *F : FG) {
     if (F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
-      VISAKernel *ExtKernel = VB.GetVISAKernel(F->getName());
+      VISAKernel *ExtKernel = VB.GetVISAKernel(F->getName().str());
       IGC_ASSERT_MESSAGE(ExtKernel, "Kernel is null");
       appendFuncBinary(GenBinary, *F, *ExtKernel);
     }
@@ -507,7 +507,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   // Compiler info.
   KernelInfo Info{FG, ST, BC};
 
-  VISAKernel *VK = VB.GetVISAKernel(FG.getHead()->getName());
+  VISAKernel *VK = VB.GetVISAKernel(FG.getHead()->getName().str());
   IGC_ASSERT_MESSAGE(VK, "Kernel is null");
   FINALIZER_INFO *JitInfo = nullptr;
   CISA_CALL(VK->GetJitInfo(JitInfo));

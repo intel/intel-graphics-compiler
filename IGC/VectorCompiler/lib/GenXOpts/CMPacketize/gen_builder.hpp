@@ -279,12 +279,28 @@ IndirectBrInst* INDIRECT_BR(Value *Addr, unsigned NumDests = 10)
 
 InvokeInst* INVOKE(Value *Callee, BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Value *> Args = None, const Twine &Name = "")
 {
-    return IRB()->CreateInvoke(Callee, NormalDest, UnwindDest, Args, Name);
+#if LLVM_VERSION_MAJOR >= 11
+    auto *PTy = cast<PointerType>(Callee->getType());
+    auto *FTy = cast<FunctionType>(PTy->getElementType());
+#endif
+    return IRB()->CreateInvoke(
+#if LLVM_VERSION_MAJOR >= 11
+	    FTy,
+#endif
+	    Callee, NormalDest, UnwindDest, Args, Name);
 }
 
 InvokeInst* INVOKE(Value *Callee, BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Value *> Args, ArrayRef<OperandBundleDef> OpBundles, const Twine &Name = "")
 {
-    return IRB()->CreateInvoke(Callee, NormalDest, UnwindDest, Args, OpBundles, Name);
+#if LLVM_VERSION_MAJOR >= 11
+    auto *PTy = cast<PointerType>(Callee->getType());
+    auto *FTy = cast<FunctionType>(PTy->getElementType());
+#endif
+    return IRB()->CreateInvoke(
+#if LLVM_VERSION_MAJOR >= 11
+	    FTy,
+#endif
+	    Callee, NormalDest, UnwindDest, Args, OpBundles, Name);
 }
 
 ResumeInst* RESUME(Value *Exn)
@@ -974,7 +990,8 @@ Value* VSHUFFLE(Value *V1, Value *V2, Value *Mask, const Twine &Name = "")
 
 Value* VSHUFFLE(Value *V1, Value *V2, ArrayRef<uint32_t> IntMask, const Twine &Name = "")
 {
-    return IRB()->CreateShuffleVector(V1, V2, IntMask, Name);
+    Value *Mask = ConstantDataVector::get(getContext(), IntMask);
+    return IRB()->CreateShuffleVector(V1, V2, Mask, Name);
 }
 
 Value* EXTRACT_VALUE(Value *Agg, ArrayRef<unsigned> Idxs, const Twine &Name = "")

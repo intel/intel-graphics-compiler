@@ -81,7 +81,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
     .Case("TGLLP", GENX_TGLLP)
     .Default(GENX_SKL);
 
-  std::string CPUName = CPU;
+  std::string CPUName(CPU);
   if (CPUName.empty())
     CPUName = "generic";
 

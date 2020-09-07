@@ -232,8 +232,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/Local.h"
 
-#include "llvmWrapper/IR/InstrTypes.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/Support/TypeSize.h"
 
 using namespace llvm;
 using namespace genx;
@@ -554,9 +556,9 @@ void GenXSimdCFConformance::gatherGotoJoinEMVals(bool IncludeIncoming)
   // than scanning the whole IR.
   Type *I1Ty = Type::getInt1Ty(M->getContext());
   for (auto IID : { GenXIntrinsic::genx_simdcf_goto, GenXIntrinsic::genx_simdcf_join }) {
-    Type *EMTy = VectorType::get(I1Ty, 32);
+    Type *EMTy = IGCLLVM::FixedVectorType::get(I1Ty, 32);
     for (unsigned Width = 1; Width <= 32; Width <<= 1) {
-      Type *Tys[] = { EMTy, VectorType::get(I1Ty, Width) };
+      Type *Tys[] = {EMTy, IGCLLVM::FixedVectorType::get(I1Ty, Width)};
       auto GotoJoinFunc = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
       for (auto ui = GotoJoinFunc->use_begin(), ue = GotoJoinFunc->use_end();
           ui != ue; ++ui) {
@@ -586,7 +588,7 @@ void GenXSimdCFConformance::gatherEMVals()
   gatherGotoJoinEMVals(true);
 
   Type *I1Ty = Type::getInt1Ty(M->getContext());
-  Type *EMTy = VectorType::get(I1Ty, 32);
+  Type *EMTy = IGCLLVM::FixedVectorType::get(I1Ty, 32);
   Type *Tys[] = { EMTy };
   auto SavemaskFunc = GenXIntrinsic::getGenXDeclaration(
       M, GenXIntrinsic::genx_simdcf_savemask, Tys);
@@ -1829,8 +1831,9 @@ Value *GenXSimdCFConformance::getEMProducer(Value *User, std::set<Value *> &Visi
 void GenXSimdCFConformance::lowerUnsuitableGetEMs()
 {
   Type *I1Ty = Type::getInt1Ty(M->getContext());
-  Function *GetEMDecl = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_simdcf_get_em,
-    { VectorType::get(I1Ty, 32) });
+  Function *GetEMDecl = GenXIntrinsic::getGenXDeclaration(
+      M, GenXIntrinsic::genx_simdcf_get_em,
+      {IGCLLVM::FixedVectorType::get(I1Ty, 32)});
   for (auto ui = GetEMDecl->use_begin(); ui != GetEMDecl->use_end();) {
     std::set<Value *> Visited;
     auto GetEM = dyn_cast<Instruction>(ui->getUser());
@@ -2251,12 +2254,13 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V)
       // Turn zext/sext to select.
       if (CI->getOpcode() == Instruction::CastOps::ZExt ||
           CI->getOpcode() == Instruction::CastOps::SExt) {
-        unsigned NElts = V->getType()->getVectorNumElements();
+        unsigned NElts = cast<VectorType>(V->getType())->getNumElements();
         unsigned NBits = CI->getType()->getScalarSizeInBits();
         int Val = (CI->getOpcode() == Instruction::CastOps::ZExt) ? 1 : -1;
         APInt One(NBits, Val);
         Constant *LHS = ConstantVector::getSplat(
-            NElts, ConstantInt::get(CI->getType()->getScalarType(), One));
+            IGCLLVM::getElementCount(NElts),
+            ConstantInt::get(CI->getType()->getScalarType(), One));
         Constant *AllNul = Constant::getNullValue(CI->getType());
         auto SI = SelectInst::Create(V, LHS, AllNul, ".revsel", CI, CI);
         CI->replaceAllUsesWith(SI);
@@ -2758,7 +2762,8 @@ void GenXSimdCFConformance::handleEVs()
  */
 Value *GenXSimdCFConformance::eliminateBitCastPreds(Value *Val, std::set<Value *> &DeadInst, std::set<Value *> &Visited)
 {
-  Type *EMType = VectorType::get(Type::getInt1Ty(M->getContext()), 32);
+  Type *EMType =
+      IGCLLVM::FixedVectorType::get(Type::getInt1Ty(M->getContext()), 32);
 
   if (Visited.count(Val))
   {
@@ -3258,8 +3263,8 @@ void GenXSimdCFConformance::checkInterference(SetVector<SimpleValue> *Vals,
 Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
     const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
 {
-  unsigned OldWidth = OldVal->getType()->getVectorNumElements();
-  unsigned NewWidth = NewVal->getType()->getVectorNumElements();
+  unsigned OldWidth = cast<VectorType>(OldVal->getType())->getNumElements();
+  unsigned NewWidth = cast<VectorType>(NewVal->getType())->getNumElements();
   if (OldWidth == NewWidth)
     return NewVal;
   // Do the insert with shufflevector. We need two shufflevectors, one to extend
@@ -3304,8 +3309,8 @@ Value *GenXSimdCFConformance::insertCond(Value *OldVal, Value *NewVal,
 Value *GenXSimdCFConformance::truncateCond(Value *In, Type *Ty,
     const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
 {
-  unsigned InWidth = In->getType()->getVectorNumElements();
-  unsigned TruncWidth = Ty->getVectorNumElements();
+  unsigned InWidth = cast<VectorType>(In->getType())->getNumElements();
+  unsigned TruncWidth = cast<VectorType>(Ty)->getNumElements();
   if (InWidth == TruncWidth)
     return In;
   // Do the truncate with shufflevector. GenXLowering lowers it to rdpredregion.

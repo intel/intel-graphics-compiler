@@ -657,7 +657,7 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
 #if _DEBUG
         // Sanity check the offset and number of elements being accessed.
         unsigned MinSize = Inst->getType()->getScalarType()->getPrimitiveSizeInBits() == 64 ? 4 : 8;
-        unsigned NElems = Mask->getType()->getVectorNumElements();
+        unsigned NElems = cast<VectorType>(Mask->getType())->getNumElements();
         unsigned Offset = dyn_cast<ConstantInt>(Mask->getOperand(1))->getZExtValue();
         IGC_ASSERT(exactLog2(NElems) >= 0 && (Offset & (std::min(NElems, MinSize) - 1)) == 0 &&
                "illegal offset and/or width in rdpredregion");
@@ -1904,8 +1904,9 @@ static bool skipTransform(Instruction *DefI, Instruction *UseI) {
 // w = wrr x, StoreVal
 // gstore w, G
 static void normalizeGStore(StoreInst &SI) {
-  auto LI =
-      new LoadInst(SI.getPointerOperand(), ".gload", true /*volatile*/, &SI);
+  Value *PointerOp = SI.getPointerOperand();
+  auto LI = new LoadInst(PointerOp->getType()->getPointerElementType(),
+                         PointerOp, ".gload", true /*volatile*/, &SI);
   Value *StoreOp = SI.getValueOperand();
   Region R(StoreOp);
   auto WrR =

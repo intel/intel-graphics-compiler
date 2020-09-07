@@ -110,6 +110,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/Support/TypeSize.h"
+
 using namespace llvm;
 using namespace genx;
 
@@ -537,7 +539,8 @@ bool GenXAddressCommoning::processCommonAddrs(ArrayRef<Instruction *> Addrs)
         Constant *C = ConstantInt::get(CommonOffsetVal->getType(),
               AdjustedOffset);
         if (auto VT = dyn_cast<VectorType>(Addr->getType()))
-          C = ConstantVector::getSplat(VT->getNumElements(), C);
+          C = ConstantVector::getSplat(
+              IGCLLVM::getElementCount(VT->getNumElements()), C);
         auto CI = createAddAddr(Addr, C,
             Addr->getName() + ".addaddr", AddAddr);
         *U = CI;
@@ -551,7 +554,8 @@ bool GenXAddressCommoning::processCommonAddrs(ArrayRef<Instruction *> Addrs)
         Constant *C = ConstantInt::get(CommonOffsetVal->getType(),
               AdjustedOffset);
         if (auto VT = dyn_cast<VectorType>(AddAddr->getOperand(1)->getType()))
-          C = ConstantVector::getSplat(VT->getNumElements(), C);
+          C = ConstantVector::getSplat(
+              IGCLLVM::getElementCount(VT->getNumElements()), C);
         AddAddr->setOperand(1, C);
         // Ensure the add_addr is baled in to the rdregion/wrregion that uses
         // it. (It was not if we have just created it, or if its offset was out
@@ -875,7 +879,8 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
   Instruction *VecDef = cast<Instruction>(FirstRdR->getOperand(0));
   IGC_ASSERT(VecDef);
 
-  unsigned InputNumElements = VecDef->getType()->getVectorNumElements();
+  unsigned InputNumElements =
+      cast<VectorType>(VecDef->getType())->getNumElements();
 
   if (HasVector) {
     if (InputNumElements == 2 || InputNumElements == 4 ||
@@ -938,8 +943,8 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
     R.NumElements = R.Width = Num;
     R.Stride = Diff / R.ElementBytes;
     // See how big we can legally make the region.
-    unsigned InputNumElements = FirstRdR
-          ->getOperand(0)->getType()->getVectorNumElements();
+    unsigned InputNumElements =
+        cast<VectorType>(FirstRdR->getOperand(0)->getType())->getNumElements();
     Num = R.getLegalSize(0, /*Allow2D=*/true, InputNumElements, ST);
     if (Num == 1)
       continue;

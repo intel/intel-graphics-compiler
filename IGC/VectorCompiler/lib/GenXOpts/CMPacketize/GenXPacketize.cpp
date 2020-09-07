@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "PacketBuilder.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 
 #include "vc/GenXOpts/Utils/CMRegion.h"
@@ -801,8 +802,9 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
         // <N x Ty*>
         Type *pDstPtrTy = PointerType::get(
             pDstScalarTy, pInst->getType()->getPointerAddressSpace());
-        uint32_t numElems = pPacketizedSrcTy->getVectorNumElements();
-        pReturnTy = VectorType::get(pDstPtrTy, numElems);
+        uint32_t numElems =
+            cast<VectorType>(pPacketizedSrcTy)->getNumElements();
+        pReturnTy = IGCLLVM::FixedVectorType::get(pDstPtrTy, numElems);
       } else {
         // <N x Ty>*
         pReturnTy =
@@ -881,7 +883,9 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     if (pVecSrc == pSrc)
       pReplacedInst = pInst;
     else if (pVecSrc->getType()->isVectorTy()) {
-      IGC_ASSERT(pVecSrc->getType()->getVectorElementType()->isPointerTy());
+      IGC_ASSERT(cast<VectorType>(pVecSrc->getType())
+                     ->getElementType()
+                     ->isPointerTy());
       auto Align = LI->getAlignment();
       pReplacedInst = B->MASKED_GATHER(pVecSrc, Align);
     } else {
@@ -896,7 +900,9 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     Value *pVecDstPtrs = getPacketizeValue(pStoreInst->getPointerOperand());
     Value *pVecSrc = getPacketizeValue(pStoreInst->getOperand(0));
     if (pVecDstPtrs->getType()->isVectorTy()) {
-      IGC_ASSERT(pVecDstPtrs->getType()->getVectorElementType()->isPointerTy());
+      IGC_ASSERT(cast<VectorType>(pVecDstPtrs->getType())
+                     ->getElementType()
+                     ->isPointerTy());
       auto Align = cast<StoreInst>(pInst)->getAlignment();
       pReplacedInst = B->MASKED_SCATTER(pVecSrc, pVecDstPtrs, Align);
     } else {
@@ -909,9 +915,9 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     auto OldVec = pInst->getOperand(0);
     auto Vec = getPacketizeValue(OldVec);
     auto Idx = pInst->getOperand(1);
-    auto N = OldVec->getType()->getVectorNumElements();
+    auto N = cast<VectorType>(OldVec->getType())->getNumElements();
     auto ElemType = pInst->getType();
-    auto VecDstTy = VectorType::get(ElemType, B->mVWidth);
+    auto VecDstTy = IGCLLVM::FixedVectorType::get(ElemType, B->mVWidth);
     // create an read-region
     CMRegion R(VecDstTy);
     if (ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
@@ -940,7 +946,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     auto Vec = getPacketizeValue(OldVec);
     auto ElmVec = getPacketizeValue(pInst->getOperand(1));
     auto Idx = pInst->getOperand(2);
-    auto N = OldVec->getType()->getVectorNumElements();
+    auto N = cast<VectorType>(OldVec->getType())->getNumElements();
     auto ElemType = pInst->getOperand(1)->getType();
     // create an write-region
     CMRegion R(Vec->getType());
@@ -1002,8 +1008,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     auto Src1 = pInst->getOperand(0);
     auto Src2 = pInst->getOperand(1);
     auto Mask = pInst->getOperand(2);
-    if (Src1->getType()->getVectorNumElements() == 1 &&
-        Mask->getType()->getVectorNumElements() == 1) {
+    if (cast<VectorType>(Src1->getType())->getNumElements() == 1 &&
+        cast<VectorType>(Mask->getType())->getNumElements() == 1) {
       if (cast<Constant>(Mask)->isAllOnesValue())
         pReplacedInst = getPacketizeValue(Src2);
       else
@@ -1017,7 +1023,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
   case Instruction::IntToPtr: {
     IntToPtrInst *pIntToPtrInst = cast<IntToPtrInst>(pInst);
     Value *pVecSrc = getPacketizeValue(pInst->getOperand(0));
-    Type *pVecDestTy = VectorType::get(pIntToPtrInst->getDestTy(), B->mVWidth);
+    Type *pVecDestTy =
+        IGCLLVM::FixedVectorType::get(pIntToPtrInst->getDestTy(), B->mVWidth);
     pReplacedInst = B->INT_TO_PTR(pVecSrc, pVecDestTy);
     break;
   }
@@ -1412,7 +1419,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         auto OrigV0 = CI->getOperand(0);
         CMRegion R(CI);
         IGC_ASSERT(R.Width == 1);
-        if (OrigV0->getType()->getVectorNumElements() == 1) {
+        if (cast<VectorType>(OrigV0->getType())->getNumElements() == 1) {
           replacement = getPacketizeValue(OrigV0);
         } else {
           R.NumElements = B->mVWidth;
@@ -1430,7 +1437,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         const DebugLoc &DL = CI->getDebugLoc();
         CMRegion R(CI);
         IGC_ASSERT(isa<VectorType>(NewV0->getType()));
-        IGC_ASSERT(NewV0->getType()->getVectorNumElements() == 1);
+        IGC_ASSERT(cast<VectorType>(NewV0->getType())->getNumElements() == 1);
         auto NewV1 = getPacketizeValue(NewV0);
         R.NumElements = B->mVWidth;
         if (R.Indirect) {
@@ -1689,9 +1696,9 @@ GlobalVariable *GenXPacketize::findGlobalExecMask() {
   // look for the global EMask variable if exists
   for (auto &Global : M->getGlobalList()) {
     auto Ty = Global.getType()->getElementType();
-    if (Ty->isVectorTy() &&
-        Ty->getVectorNumElements() == CMSimdCFLower::MAX_SIMD_CF_WIDTH) {
-      auto ElemTy = Ty->getVectorElementType();
+    if (Ty->isVectorTy() && cast<VectorType>(Ty)->getNumElements() ==
+                                CMSimdCFLower::MAX_SIMD_CF_WIDTH) {
+      auto ElemTy = cast<VectorType>(Ty)->getElementType();
       if (ElemTy->isIntegerTy() && ElemTy->getIntegerBitWidth() == 1) {
         // so far the type is right, then check the use
         for (auto EMUI = Global.use_begin(), EMUE = Global.use_end();
@@ -1722,8 +1729,8 @@ void GenXPacketize::lowerControlFlowAfter(std::vector<Function *> &SIMTFuncs) {
   auto EMVar = findGlobalExecMask();
   // create one if we cannot find one.
   if (!EMVar) {
-    auto EMTy = VectorType::get(Type::getInt1Ty(M->getContext()),
-                                CMSimdCFLower::MAX_SIMD_CF_WIDTH);
+    auto EMTy = IGCLLVM::FixedVectorType::get(Type::getInt1Ty(M->getContext()),
+                                              CMSimdCFLower::MAX_SIMD_CF_WIDTH);
     EMVar = new GlobalVariable(*M, EMTy, false /*isConstant*/,
                                GlobalValue::InternalLinkage,
                                Constant::getAllOnesValue(EMTy), "EM");

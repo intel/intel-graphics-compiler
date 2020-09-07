@@ -79,6 +79,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include <algorithm>
 #include <map>
@@ -343,8 +344,9 @@ static VISA_Type llvmToVisaType(Type *Type,
   auto T = Type;
   IGC_ASSERT(!T->isAggregateType());
   VISA_Type Result = ISA_TYPE_NUM;
-  if (T->isVectorTy() && T->getVectorElementType()->isIntegerTy(1)) {
-    switch (Type->getVectorNumElements()) {
+  if (T->isVectorTy() &&
+      cast<VectorType>(T)->getElementType()->isIntegerTy(1)) {
+    switch (cast<VectorType>(Type)->getNumElements()) {
     case 8:
       Result = (Sign == SIGNED) ? ISA_TYPE_B : ISA_TYPE_UB;
       break;
@@ -360,7 +362,7 @@ static VISA_Type llvmToVisaType(Type *Type,
     }
   } else {
     if (T->isVectorTy())
-      T = T->getVectorElementType();
+      T = cast<VectorType>(T)->getElementType();
     if (T->isPointerTy() && T->getPointerElementType()->isFunctionTy()) {
       // we might have used DL to get the type size but that'd
       // overcomplicate this function's type unnecessarily
@@ -964,7 +966,7 @@ std::string GenXKernelBuilder::buildAsmName() const {
   std::string AsmName;
   auto UserAsmName = AsmNameOpt.getValue();
   if (UserAsmName.empty()) {
-    AsmName = legalizeName(TheKernelMetadata.getName());
+    AsmName = legalizeName(TheKernelMetadata.getName().str());
   } else {
     int idx = -1;
     auto *KernelMDs =
@@ -996,7 +998,7 @@ bool GenXKernelBuilder::run() {
 
   IGC_ASSERT_MESSAGE(TheKernelMetadata.isKernel(),
                      "Expected kernel as a head of function group");
-  const std::string KernelName = TheKernelMetadata.getName();
+  const std::string KernelName = TheKernelMetadata.getName().str();
   CisaBuilder->AddKernel(MainKernel, KernelName.c_str());
   Kernel = static_cast<VISAFunction *>(MainKernel);
   Func2Kern[FG->getHead()] = Kernel;
@@ -1527,7 +1529,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createState(Register *Reg, unsigned Offset,
 VISA_VectorOpnd *GenXKernelBuilder::createDestination(CisaVariable *Dest,
                                                       genx::Signedness Signed,
                                                       unsigned *Offset) {
-  Region R(VectorType::get(
+  Region R(IGCLLVM::FixedVectorType::get(
       IntegerType::get(Ctx, CISATypeTable[Dest->getType()].typeSize * CHAR_BIT),
       Dest->getNumElements()));
   if (Offset)
@@ -1918,7 +1920,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(CisaVariable *V,
                                                  Signedness Signed,
                                                  unsigned MaxWidth,
                                                  unsigned *Offset) {
-  Region R(VectorType::get(
+  Region R(IGCLLVM::FixedVectorType::get(
       IntegerType::get(Ctx, CISATypeTable[V->getType()].typeSize * CHAR_BIT),
       V->getNumElements()));
   if (Offset)
@@ -2348,7 +2350,7 @@ void GenXKernelBuilder::buildFunctionAddr(Instruction *Inst,
   auto *Dst = createDestination(Inst, DONTCARESIGNED, MODIFIER_NONE, DstDesc);
   IGC_ASSERT(Dst);
   auto *F = cast<Function>(cast<PtrToIntInst>(Inst)->getPointerOperand());
-  CISA_CALL(Kernel->AppendVISACFSymbolInst(F->getName(), Dst));
+  CISA_CALL(Kernel->AppendVISACFSymbolInst(F->getName().str(), Dst));
 }
 
 /***********************************************************************
@@ -2464,8 +2466,8 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
 static unsigned getResultedTypeSize(Type *Ty) {
   unsigned TySz = 0;
   if (Ty->isVectorTy())
-    TySz = Ty->getVectorNumElements() *
-           getResultedTypeSize(Ty->getVectorElementType());
+    TySz = cast<VectorType>(Ty)->getNumElements() *
+           getResultedTypeSize(cast<VectorType>(Ty)->getElementType());
   else if (Ty->isArrayTy())
     TySz = Ty->getArrayNumElements() *
            getResultedTypeSize(Ty->getArrayElementType());
@@ -2736,7 +2738,8 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
     IGC_ASSERT(PredReg && PredReg->Category == RegCategory::PREDICATE);
   }
 
-  uint8_t execSize = genx::log2(Pred->getType()->getVectorNumElements());
+  uint8_t execSize =
+      genx::log2(cast<VectorType>(Pred->getType())->getNumElements());
 
   // Visa decoder part
   VISA_EMask_Ctrl emask =
@@ -3216,7 +3219,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       if (AI.getRestriction() == II::TWICEWIDTH) {
         // For a TWICEWIDTH operand, do not allow width bigger than the
         // execution size.
-        MaxWidth = CI->getType()->getVectorNumElements();
+        MaxWidth = cast<VectorType>(CI->getType())->getNumElements();
       }
       ResultOperand = createSourceOperand(CI, Signed, AI.getArgIdx(), BI, 0,
                                           nullptr, MaxWidth);
@@ -3495,7 +3498,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         if (auto *VT = dyn_cast<VectorType>(DstType))
           Elements = VT->getNumElements();
 
-        Region R(VectorType::get(
+        Region R(IGCLLVM::FixedVectorType::get(
             IntegerType::get(Ctx, TypeSize * genx::ByteBits), Elements));
         return createRegionOperand(&R, Reg->GetVar<VISA_GenVar>(Kernel),
                                    UNSIGNED, Mod, true /* Dst */);
@@ -4067,8 +4070,9 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
       BaseTy->getScalarType()->getPrimitiveSizeInBits() >> 3;
   int Offset = cast<ConstantInt>(CI->getArgOperand(1))->getSExtValue();
   if ((ElementBytes - 1) & Offset) {
-    OverrideTy = VectorType::get(Type::getInt8Ty(CI->getContext()),
-                                 BaseTy->getVectorNumElements() * ElementBytes);
+    OverrideTy = IGCLLVM::FixedVectorType::get(
+        Type::getInt8Ty(CI->getContext()),
+        cast<VectorType>(BaseTy)->getNumElements() * ElementBytes);
     ElementBytes = 1;
   }
   Register *BaseReg =
@@ -4387,7 +4391,8 @@ void GenXKernelBuilder::addWriteRegionLifetimeStartInst(Instruction *WrRegion) {
   // that is what legalization does if the original write was to the whole
   // register.
   unsigned NumElementsSoFar = 0;
-  unsigned TotalNumElements = WrRegion->getType()->getVectorNumElements();
+  unsigned TotalNumElements =
+      cast<VectorType>(WrRegion->getType())->getNumElements();
   Instruction *ThisWr = WrRegion;
   for (;;) {
     Region R(ThisWr, BaleInfo());
@@ -4547,7 +4552,7 @@ unsigned GenXKernelBuilder::getOrCreateLabel(Value *V, int Kind) {
       // For a kernel/function name, fix illegal characters. The jitter uses
       // the same name for the label in the .asm file, and aubload does not
       // like the illegal characters.
-      NameBuf = legalizeName(N);
+      NameBuf = legalizeName(N.str());
       N = NameBuf;
     }
     CISA_CALL(Kernel->CreateVISALabelVar(
@@ -4721,7 +4726,8 @@ void GenXKernelBuilder::buildCall(IGCLLVM::CallInst *CI,
     CISA_CALL(Kernel->AppendVISACFCallInst(
         PredicateOpnd, vISA_EMASK_M1,
         getExecSizeFromValue(
-            CI->getArgOperand(EMOperandNum)->getType()->getVectorNumElements()),
+            cast<VectorType>(CI->getArgOperand(EMOperandNum)->getType())
+                ->getNumElements()),
         Labels[getOrCreateLabel(Callee, LabelKind)]));
   }
 }
@@ -5381,7 +5387,9 @@ void GenXKernelBuilder::buildExtractRetv(ExtractValueInst *Inst) {
 
   auto Index = Inst->getIndices().front();
   if (T->getContainedType(Index)->isVectorTy() &&
-      T->getContainedType(Index)->getVectorElementType()->isIntegerTy(1))
+      cast<VectorType>(T->getContainedType(Index))
+          ->getElementType()
+          ->isIntegerTy(1))
     // elements of <N x i1> type should be ignored
     return;
 
@@ -5414,7 +5422,9 @@ void GenXKernelBuilder::buildInsertRetv(InsertValueInst *Inst) {
 
   auto Index = Inst->getIndices().front();
   if (T->getContainedType(Index)->isVectorTy() &&
-      T->getContainedType(Index)->getVectorElementType()->isIntegerTy(1)) {
+      cast<VectorType>(T->getContainedType(Index))
+          ->getElementType()
+          ->isIntegerTy(1)) {
     // elements of <N x i1> type should be ignored
     return;
   }
@@ -5559,16 +5569,18 @@ void GenXKernelBuilder::buildStackCall(IGCLLVM::CallInst *CI,
   if (EMOperandNum >= 0) {
     Pred = createPred(CI, BaleInfo(), EMOperandNum);
     Esz = getExecSizeFromValue(
-        CI->getArgOperand(EMOperandNum)->getType()->getVectorNumElements());
+        cast<VectorType>(CI->getArgOperand(EMOperandNum)->getType())
+            ->getNumElements());
   }
   addDebugInfo();
 
   auto *RetVar = &CisaVars[Kernel].at("retv");
-  bool ProcessRet =
-      !FuncTy->getReturnType()->isVoidTy() &&
-      !FuncTy->getReturnType()->isAggregateType() &&
-      !(FuncTy->getReturnType()->isVectorTy() &&
-        FuncTy->getReturnType()->getVectorElementType()->isIntegerTy(1));
+  bool ProcessRet = !FuncTy->getReturnType()->isVoidTy() &&
+                    !FuncTy->getReturnType()->isAggregateType() &&
+                    !(FuncTy->getReturnType()->isVectorTy() &&
+                      cast<VectorType>(FuncTy->getReturnType())
+                          ->getElementType()
+                          ->isIntegerTy(1));
 
   // cannot use processRet here since aggr/em args should be co
   int RetSize =
@@ -5580,7 +5592,7 @@ void GenXKernelBuilder::buildStackCall(IGCLLVM::CallInst *CI,
   if (Callee) {
     CISA_CALL(Kernel->AppendVISACFFunctionCallInst(
         Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), EXEC_SIZE_16,
-        Callee->getName(), NoStackSize, RetSize));
+        Callee->getName().str(), NoStackSize, RetSize));
   } else {
     auto *FuncAddr = createSource(IGCLLVM::getCalledValue(CI), DONTCARESIGNED);
     IGC_ASSERT(FuncAddr);
@@ -5693,7 +5705,7 @@ void GenXFinalizer::emitDebugInformation(VISABuilder &VB, const GenXModule &GM,
     llvm::SmallVector<char, 1000> ElfImage;
 
     const genx::VisaDebugInfo &DbgInfo = *GM.getVisaDebugInfo(KF);
-    VISAKernel *VK = VB.GetVISAKernel(KF->getName());
+    VISAKernel *VK = VB.GetVISAKernel(KF->getName().str());
     IGC_ASSERT_MESSAGE(VK, "Kernel is null");
     auto Err = genx::generateDebugInfo(ElfImage, *VK, DbgInfo, *KF,
                                        ST.getTargetTriple().str());

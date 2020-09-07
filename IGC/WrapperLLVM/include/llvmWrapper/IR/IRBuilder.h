@@ -233,6 +233,26 @@ namespace IGCLLVM
                                                            llvm::cast<llvm::FunctionType>(Callee->getType()->getPointerElementType()), Callee,
             Args, Name, FPMathTag);
         }
+
+        inline llvm::CallInst *
+        CreateCall(llvm::Value *Callee, llvm::ArrayRef<llvm::Value *> Args,
+                   llvm::ArrayRef<llvm::OperandBundleDef> OpBundles,
+                   const llvm::Twine &Name = "",
+                   llvm::MDNode *FPMathTag = nullptr) {
+          return llvm::IRBuilder<T, Inserter>::CreateCall(
+              llvm::cast<llvm::FunctionType>(
+                  Callee->getType()->getPointerElementType()),
+              Callee, Args, OpBundles, Name, FPMathTag);
+        }
+
+        inline llvm::CallInst *
+        CreateCall(llvm::FunctionType *FTy, llvm::Value *Callee,
+                   llvm::ArrayRef<llvm::Value *> Args = llvm::None,
+                   const llvm::Twine &Name = "",
+                   llvm::MDNode *FPMathTag = nullptr) {
+          return llvm::IRBuilder<T, Inserter>::CreateCall(FTy, Callee, Args,
+                                                          Name, FPMathTag);
+        }
 #endif
 
     };

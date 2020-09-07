@@ -47,6 +47,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Pass.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 using namespace llvm;
 using namespace genx;
 
@@ -298,17 +300,19 @@ void GenXFunctionPointersLowering::reconstructSelect(SelectInst *SI) {
   auto *BCT = BitCastInst::CreateBitOrPointerCast(
       transformFuncPtrVec(SI->getTrueValue()), Type::getInt64Ty(*Ctx), "", SI);
   BCT = BitCastInst::CreateBitOrPointerCast(
-      BCT, VectorType::get(Type::getInt64Ty(*Ctx), 1), "", SI);
+      BCT, IGCLLVM::FixedVectorType::get(Type::getInt64Ty(*Ctx), 1), "", SI);
   auto *BCF = BitCastInst::CreateBitOrPointerCast(
       transformFuncPtrVec(SI->getFalseValue()), Type::getInt64Ty(*Ctx), "", SI);
   BCF = BitCastInst::CreateBitOrPointerCast(
-      BCF, VectorType::get(Type::getInt64Ty(*Ctx), 1), "", SI);
-  R1.Width = (SI->getTrueValue()->getType()->isVectorTy())
-                 ? SI->getTrueValue()->getType()->getVectorNumElements()
-                 : 1;
-  R1.Width = (SI->getFalseValue()->getType()->isVectorTy())
-                 ? SI->getFalseValue()->getType()->getVectorNumElements()
-                 : 1;
+      BCF, IGCLLVM::FixedVectorType::get(Type::getInt64Ty(*Ctx), 1), "", SI);
+  R1.Width =
+      (SI->getTrueValue()->getType()->isVectorTy())
+          ? cast<VectorType>(SI->getTrueValue()->getType())->getNumElements()
+          : 1;
+  R1.Width =
+      (SI->getFalseValue()->getType()->isVectorTy())
+          ? cast<VectorType>(SI->getFalseValue()->getType())->getNumElements()
+          : 1;
   R1.Stride = 0, R1.VStride = 0;
   R2.Stride = 0, R2.VStride = 0;
   TVal = R1.createRdRegion(BCT, SI->getName(), SI, SI->getDebugLoc(), true);
@@ -329,8 +333,8 @@ Value *GenXFunctionPointersLowering::transformFuncPtrVec(Value *V) {
     if (V->getType()->getScalarType()->isIntegerTy(64))
       return V;
     else if (V->getType()->isVectorTy())
-      return UndefValue::get(
-          VectorType::get(Int64Ty, V->getType()->getVectorNumElements()));
+      return UndefValue::get(IGCLLVM::FixedVectorType::get(
+          Int64Ty, cast<VectorType>(V->getType())->getNumElements()));
     else
       return UndefValue::get(Int64Ty);
   }

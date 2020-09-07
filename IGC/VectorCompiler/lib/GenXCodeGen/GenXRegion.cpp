@@ -46,6 +46,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/Support/TypeSize.h"
+
 using namespace llvm;
 using namespace genx;
 
@@ -99,13 +101,14 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
   IGC_ASSERT(CallI->getCalledFunction());
   switch (GenXIntrinsic::getGenXIntrinsicID(CallI->getCalledFunction())) {
     case GenXIntrinsic::genx_rdpredregion:
-      NumElements = Inst->getType()->getVectorNumElements();
+      NumElements = cast<VectorType>(Inst->getType())->getNumElements();
       Width = NumElements;
       Offset = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
       ElementBytes = 1;
       return;
     case GenXIntrinsic::genx_wrpredregion:
-      NumElements = Inst->getOperand(1)->getType()->getVectorNumElements();
+      NumElements =
+          cast<VectorType>(Inst->getOperand(1)->getType())->getNumElements();
       Width = NumElements;
       Offset = cast<ConstantInt>(Inst->getOperand(2))->getZExtValue();
       ElementBytes = 1;
@@ -807,7 +810,9 @@ static Value *simplifyRegionRead(Instruction *Inst) {
     if (auto Splat = C->getSplatValue()) {
       Type *Ty = Inst->getType();
       if (Ty->isVectorTy())
-        Splat = ConstantVector::getSplat(Ty->getVectorNumElements(), Splat);
+        Splat = ConstantVector::getSplat(
+            IGCLLVM::getElementCount(cast<VectorType>(Ty)->getNumElements()),
+            Splat);
       return Splat;
     }
   } else if (GenXIntrinsic::isWrRegion(Input) && Input->hasOneUse()) {
@@ -915,7 +920,7 @@ llvm::genx::IsLinearVectorConstantInts(Value* v, int64_t& start, int64_t& stride
         return false;
     // Flatten the vector out into the elements array
     llvm::SmallVector<llvm::Constant*, 16> elements;
-    auto vectorLength = cv->getType()->getVectorNumElements();
+    auto vectorLength = cast<VectorType>(cv->getType())->getNumElements();
     for (unsigned i = 0; i < vectorLength; ++i)
         elements.push_back(cv->getElementAsConstant(i));
 
