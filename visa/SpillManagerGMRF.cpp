@@ -140,7 +140,6 @@ SpillManagerGRF::SpillManagerGRF(
     const LivenessAnalysis* lvInfo,
     LiveRange** lrInfo,
     Interference* intf,
-    std::vector<EDGE>& prevIntfEdges,
     LR_LIST& spilledLRs,
     unsigned iterationNo,
     bool failSafeSpill,
@@ -154,7 +153,6 @@ SpillManagerGRF::SpillManagerGRF(
     , latestImplicitVarIdCount_(0)
     , lvInfo_(lvInfo)
     , lrInfo_(lrInfo)
-    , prevIntfEdges_(prevIntfEdges)
     , spilledLRs_(spilledLRs)
     , nextSpillOffset_(spillAreaOffset)
     , iterationNo_(iterationNo)
@@ -180,9 +178,6 @@ SpillManagerGRF::SpillManagerGRF(
     msgFillRangeCount_ = (unsigned*)allocMem(size);
     memset(msgFillRangeCount_, 0, size);
     spillAreaOffset_ = spillAreaOffset;
-    if (enableSpillSpaceCompression) {
-        computeSpillIntf();
-    }
     builder_->instList.clear();
     spillRegStart_ = g.kernel.getNumRegTotal();
     indrSpillRegStart_ = spillRegStart_;
@@ -197,42 +192,6 @@ SpillManagerGRF::SpillManagerGRF(
     globalScratchOffset = gra.kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
 
 
-}
-
-// Compute the interference graph for intereference of the memory segments
-// occupied by the spilled live ranges.
-
-void
-SpillManagerGRF::computeSpillIntf (
-)
-{
-    // Apply previous interferences that are relevant for this iteration.
-
-    for (auto& edge : prevIntfEdges_)
-    {
-
-        if (shouldSpillRegister (getRegVar (edge.first)) ||
-            shouldSpillRegister (getRegVar (edge.second))) {
-            spillIntf_->checkAndSetIntf(edge.first, edge.second);
-        }
-    }
-
-    LR_LIST::const_iterator ltEnd = spilledLRs_.end();
-    for (LR_LIST::const_iterator lt = spilledLRs_.begin();
-        lt != ltEnd; ++lt)
-    {
-        LiveRange* lr = (*lt);
-        unsigned int i = lr->getVar()->getId();
-
-        std::vector<unsigned int>& intfs = spillIntf_->getSparseIntfForVar(i);
-        for (auto it : intfs)
-        {
-            EDGE tempEdge;
-            tempEdge.first = it;
-            tempEdge.second = i;
-            prevIntfEdges_.push_back(tempEdge);
-        }
-    }
 }
 
 // Get the base regvar for the source or destination region.
@@ -559,8 +518,9 @@ SpillManagerGRF::calculateSpillDisp (
     }
 
     // Find a spill slot for lRange within the locList.
-    // we always start searching from 0 to facilitate cross-iteration reuse
-    unsigned regVarLocDisp = 0;
+    // we always start searching from nextSpillOffset_ to facilitate intra-iteration reuse.
+    // cross iteration reuse is not done in interest of compile time.
+    unsigned regVarLocDisp = ROUND(nextSpillOffset_, numEltPerGRF(Type_UB));
     unsigned regVarSize = getByteSize (regVar);
 
     for (LocList::iterator curLoc = locList.begin (), end = locList.end(); curLoc != end;

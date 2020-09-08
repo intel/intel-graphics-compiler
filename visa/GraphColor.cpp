@@ -9349,8 +9349,6 @@ int GlobalRA::coloringRegAlloc()
     unsigned maxRAIterations = 10;
     unsigned iterationNo = 0;
 
-    std::vector<SpillManagerGRF::EDGE> prevIntfEdges;
-
     int globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
     bool useScratchMsgForSpill = globalScratchOffset < (int) (SCRATCH_MSG_LIMIT * 0.6) && !hasStackCall;
     bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
@@ -9591,7 +9589,7 @@ int GlobalRA::coloringRegAlloc()
                     liveAnalysis.getNumSelectedVar(),
                     &liveAnalysis,
                     coloring.getLiveRanges(),
-                    coloring.getIntf(), prevIntfEdges,
+                    coloring.getIntf(),
                     (LIVERANGE_LIST&)coloring.getSpilledLiveRanges(),
                     iterationNo++,
                     reserveSpillReg,

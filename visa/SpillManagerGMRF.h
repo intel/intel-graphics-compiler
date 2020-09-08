@@ -83,7 +83,6 @@ public:
         const LivenessAnalysis * lvInfo,
         LiveRange **             lrInfo,
         Interference *           intf,
-        std::vector<EDGE> &      prevIntfEdges,
         LR_LIST &                spilledLRs,
         unsigned                 iterationNo,
         bool                     useSpillReg,
@@ -624,7 +623,6 @@ private:
     unsigned                 latestImplicitVarIdCount_;
     const LivenessAnalysis * lvInfo_;
     LiveRange **             lrInfo_;
-    std::vector<EDGE> &      prevIntfEdges_;
     LR_LIST &                spilledLRs_;
     unsigned *               spillRangeCount_;
     unsigned *               fillRangeCount_;
