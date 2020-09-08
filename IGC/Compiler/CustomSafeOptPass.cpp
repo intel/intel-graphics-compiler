@@ -804,6 +804,10 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
     Value* AccVal = nullptr;
     IRBuilder<> Builder(&I);
 
+    // Enum to check if given branch is signed or unsigned, e.g.
+    // comes from SExt or ZExt value.
+    enum class OriginSignedness { originSigned, originUnsigned };
+
     // Note: the returned pattern from this lambda doesn't use m_ZExtOrSExt pattern on purpose -
     // There is no way to bind to both instruction and it's arguments, so we bind to instruction and
     // check the opcode later.
@@ -826,41 +830,100 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
       }
     }
 
-    // Check if values in A and B all have the same extension type (sext/zext) and that they come from i8 type.
-    // A and B extension types can be different.
-    auto checkExt = [](auto &range) {
-      IGC_ASSERT_MESSAGE((range.begin() != range.end()), "Cannot check empty collection.");
-      const unsigned OP = range[0]->getOpcode();
-      return (OP == Instruction::SExt || OP == Instruction::ZExt) &&
-             std::all_of(range.begin(), range.end(), [&](Instruction *I) {
-               return I->getOpcode() == OP &&
-                      I->getOperand(0)->getType()->isIntegerTy(8);
-             });
+
+    // Check if values in A and B all have the same extension type (sext/zext)
+    // and that they come from i8 type. A and B extension types can be
+    // different.
+    auto checkIfValuesComeFromCharType = [](auto &range,
+                                            OriginSignedness &retSign) {
+      IGC_ASSERT_MESSAGE((range.begin() != range.end()),
+                         "Cannot check empty collection.");
+
+      auto shr24Pat = m_Shr(m_Value(), m_SpecificInt(24));
+      auto and255Pat = m_And(m_Value(), m_SpecificInt(255));
+
+      IGC_ASSERT_MESSAGE(range.size() == NUM_DP4A_COMPONENTS,
+                         "Range too big in dp4a pattern match!");
+      std::array<OriginSignedness, NUM_DP4A_COMPONENTS> signs;
+      int counter = 0;
+      for (auto I : range) {
+        if (!I->getType()->isIntegerTy(32)) {
+          return false;
+        }
+
+        switch (I->getOpcode()) {
+        case Instruction::SExt:
+        case Instruction::ZExt:
+          if (!I->getOperand(0)->getType()->isIntegerTy(8)) {
+            return false;
+          }
+          signs[counter] = (I->getOpcode() == Instruction::SExt)
+                               ? OriginSignedness::originSigned
+                               : OriginSignedness::originUnsigned;
+          break;
+        case Instruction::AShr:
+        case Instruction::LShr:
+          if (!match(I, shr24Pat)) {
+            return false;
+          }
+          signs[counter] = (I->getOpcode() == Instruction::AShr)
+                               ? OriginSignedness::originSigned
+                               : OriginSignedness::originUnsigned;
+          break;
+        case Instruction::And:
+          if (!match(I, and255Pat)) {
+            return false;
+          }
+          signs[counter] = OriginSignedness::originUnsigned;
+          break;
+        default:
+          return false;
+        }
+
+        counter++;
+      }
+
+      // check if all have the same sign.
+      retSign = signs[0];
+      return std::all_of(
+          signs.begin(), signs.end(),
+          [&signs](OriginSignedness v) { return v == signs[0]; });
     };
 
-    bool canMatch = AccVal->getType()->isIntegerTy(32) && checkExt(ExtA) && checkExt(ExtB);
+    OriginSignedness ABranch, BBranch;
+    bool canMatch = AccVal->getType()->isIntegerTy(32) && checkIfValuesComeFromCharType(ExtA, ABranch) && checkIfValuesComeFromCharType(ExtB, BBranch);
     if (!canMatch) return;
 
-    auto AOpc = ExtA[0]->getOpcode(), BOpc = ExtB[0]->getOpcode();
     GenISAIntrinsic::ID IntrinsicID{};
 
-    if (AOpc == BOpc) {
-      if (AOpc == Instruction::SExt) {
-        IntrinsicID = GenISAIntrinsic::GenISA_dp4a_ss;
-      } else {
-        IntrinsicID = GenISAIntrinsic::GenISA_dp4a_uu;
-      }
-    } else {
-      if (AOpc == Instruction::SExt) {
-        IntrinsicID = GenISAIntrinsic::GenISA_dp4a_su;
-      } else {
-        IntrinsicID = GenISAIntrinsic::GenISA_dp4a_us;
-      }
-    }
-
     static_assert(ExtA.size() == ArrA.size() && ExtB.size() == ArrB.size() && ExtA.size() == NUM_DP4A_COMPONENTS, "array sizes must match!");
-    std::transform(ExtA.begin(), ExtA.end(), ArrA.begin(), [](Instruction* ExtInst) { return ExtInst->getOperand(0); });
-    std::transform(ExtB.begin(), ExtB.end(), ArrB.begin(), [](Instruction* ExtInst) { return ExtInst->getOperand(0); });
+
+    auto getInt8Origin = [&](Instruction *I) {
+      if (I->getOpcode() == Instruction::SExt ||
+          I->getOpcode() == Instruction::ZExt) {
+        return I->getOperand(0);
+      }
+      Builder.SetInsertPoint(I->getNextNode());
+      return Builder.CreateTrunc(I, Builder.getInt8Ty());
+    };
+
+    std::transform(ExtA.begin(), ExtA.end(), ArrA.begin(), getInt8Origin);
+    std::transform(ExtB.begin(), ExtB.end(), ArrB.begin(), getInt8Origin);
+
+    switch (ABranch) {
+    case OriginSignedness::originSigned:
+      IntrinsicID = (BBranch == OriginSignedness::originSigned)
+                        ? GenISAIntrinsic::GenISA_dp4a_ss
+                        : GenISAIntrinsic::GenISA_dp4a_su;
+      break;
+    case OriginSignedness::originUnsigned:
+      IntrinsicID = (BBranch == OriginSignedness::originSigned)
+                        ? GenISAIntrinsic::GenISA_dp4a_us
+                        : GenISAIntrinsic::GenISA_dp4a_uu;
+      break;
+    default:
+      IGC_ASSERT(0);
+    }
 
     // Additional optimisation: check if the values come from an ExtractElement instruction.
     // If this is the case, reorder the elements in the array to match the ExtractElement pattern.
