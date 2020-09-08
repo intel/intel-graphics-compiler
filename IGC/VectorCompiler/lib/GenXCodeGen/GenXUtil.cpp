@@ -359,8 +359,10 @@ int ShuffleVectorAnalyzer::getAsSlice()
       cast<VectorType>(SI->getOperand(0)->getType())->getNumElements();
   Constant *Selector = cast<Constant>(SI->getOperand(2));
   unsigned Width = cast<VectorType>(SI->getType())->getNumElements();
-  unsigned StartIdx = cast<ConstantInt>(
-      Selector->getAggregateElement((unsigned)0))->getZExtValue();
+  auto *Aggr = Selector->getAggregateElement(0u);
+  if (isa<UndefValue>(Aggr))
+    return -1; // operand 0 is undef value
+  unsigned StartIdx = cast<ConstantInt>(Aggr)->getZExtValue();
   if (StartIdx >= WholeWidth)
     return -1; // start index beyond operand 0
   unsigned SliceWidth;
@@ -669,6 +671,24 @@ int ShuffleVectorAnalyzer::getAsUnslice()
   return Prefix;
 }
 
+constexpr int UndefMaskElem = -1;
+
+/***********************************************************************
+ * extension of ShuffleVectorInst::isZeroEltSplatMask method
+ */
+static int nEltSplatMask(ArrayRef<int> Mask) {
+  int Elt = UndefMaskElem;
+  for (int i = 0, NumElts = Mask.size(); i < NumElts; ++i) {
+    if (Mask[i] == UndefMaskElem)
+      continue;
+    if ((Elt != UndefMaskElem) && (Mask[i] != Mask[Elt]))
+      return UndefMaskElem;
+    if ((Mask[i] != UndefMaskElem) && (Elt == UndefMaskElem))
+      Elt = i;
+  }
+  return Elt;
+}
+
 /***********************************************************************
  * ShuffleVectorAnalyzer::getAsSplat : if shufflevector is a splat, get the
  *      splatted input, with its vector index if the input is a vector
@@ -677,14 +697,15 @@ ShuffleVectorAnalyzer::SplatInfo ShuffleVectorAnalyzer::getAsSplat()
 {
   Value *InVec1 = SI->getOperand(0);
   Value *InVec2 = SI->getOperand(1);
-  Constant *MaskVec = cast<Constant>(SI->getOperand(2));
-  ConstantInt *IdxVal = dyn_cast_or_null<ConstantInt>(MaskVec->getSplatValue());
-  if (!IdxVal)
-    return SplatInfo(0, 0);
+
+  SmallVector<int, 16> MaskAsInts;
+  SI->getShuffleMask(MaskAsInts);
+  int ShuffleIdx = nEltSplatMask(MaskAsInts);
+  if (ShuffleIdx == UndefMaskElem)
+    return SplatInfo(nullptr, 0);
   // The mask is a splat. Work out which element of which input vector
   // it refers to.
-  unsigned ShuffleIdx = IdxVal->getSExtValue();
-  unsigned InVec1NumElements =
+  int InVec1NumElements =
       cast<VectorType>(InVec1->getType())->getNumElements();
   if (ShuffleIdx >= InVec1NumElements) {
     ShuffleIdx -= InVec1NumElements;
