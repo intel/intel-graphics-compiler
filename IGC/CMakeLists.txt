@@ -2434,7 +2434,7 @@ elseif(_igc_compiler_is_gnu)
       ALIAS OptimizeDisabled           "-O0"
       ALIAS OptimizeSize               "-Os"
       ALIAS OptimizeSpeed              "-O2"
-      ALIAS OptimizeFull               "-03"
+      ALIAS OptimizeFull               "-O3"
       ALIAS RtMultiThreadedStatic
       ALIAS RtMultiThreadedShared
       ALIAS RtMultiThreadedStaticDebug
