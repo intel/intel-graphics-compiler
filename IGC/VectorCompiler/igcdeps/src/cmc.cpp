@@ -378,9 +378,12 @@ static void generatePatchTokens_v2(const vc::ocl::KernelInfo& info,
             const std::string& printString = EnumStr.value();
             const unsigned stringSize = printString.size();
             stringAnnotation->StringSize = stringSize;
-            stringAnnotation->StringData = new char[stringSize];
-            std::copy(printString.begin(), printString.end(),
-                      stringAnnotation->StringData);
+            // Though string size is present in annotation, string
+            // should be null terminated: patchtokens processor
+            // ignores size field for some reason.
+            stringAnnotation->StringData = new char[stringSize + 1];
+            std::copy_n(printString.c_str(), stringSize + 1,
+                        stringAnnotation->StringData);
             return stringAnnotation;
         });
 
