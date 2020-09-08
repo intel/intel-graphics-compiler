@@ -1522,7 +1522,8 @@ namespace TC
           // "Requires support for OpenCL C 2.0, the __opencl_c_3d_image_writes feature macro, or the cl_khr_3d_image_writes extension".
           // In case only cl_khr_3d_image_writes is enabled, Clang triggers error for write_imagef declaration.
           // TODO: remove when Clang is fixed.
-          if (extensions.find("+cl_khr_3d_image_writes") != std::string::npos) {
+          if (extensions.find("+cl_khr_3d_image_writes") != std::string::npos &&
+              featureMacrosFromInternalOptions.find("+__opencl_c_3d_image_writes") == std::string::npos) {
               featureMacrosFromInternalOptions += ",+__opencl_c_3d_image_writes";
           }
 
