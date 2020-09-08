@@ -54,42 +54,42 @@ GlobalVariable* GLOBAL_STRING(StringRef Str, const Twine &Name = "", unsigned Ad
 
 CallInst* MEMSET(Value *Ptr, Value *Val, uint64_t Size, unsigned Align, bool isVolatile = false, MDNode *TBAATag = nullptr, MDNode *ScopeTag = nullptr, MDNode *NoAliasTag = nullptr)
 {
-    return IRB()->CreateMemSet(Ptr, Val, Size, Align, isVolatile, TBAATag, ScopeTag, NoAliasTag);
+    return IRB()->CreateMemSet(Ptr, Val, Size, IGCLLVM::getCorrectAlign(Align), isVolatile, TBAATag, ScopeTag, NoAliasTag);
 }
 
 CallInst* MEMSET(Value *Ptr, Value *Val, Value *Size, unsigned Align, bool isVolatile = false, MDNode *TBAATag = nullptr, MDNode *ScopeTag = nullptr, MDNode *NoAliasTag = nullptr)
 {
-    return IRB()->CreateMemSet(Ptr, Val, Size, Align, isVolatile, TBAATag, ScopeTag, NoAliasTag);
+    return IRB()->CreateMemSet(Ptr, Val, Size, IGCLLVM::getCorrectAlign(Align), isVolatile, TBAATag, ScopeTag, NoAliasTag);
 }
 
 CallInst* MEMCOPY(Value *Dst, Value *Src, uint64_t Size, unsigned Align, bool isVolatile = false, MDNode *TBAATag = nullptr, MDNode *TBAAStructTag = nullptr, MDNode *ScopeTag = nullptr, MDNode *NoAliasTag = nullptr)
 {
-    return IRB()->CreateMemCpy(Dst, Align, Src, Align, Size, isVolatile, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+    return IRB()->CreateMemCpy(Dst, IGCLLVM::getCorrectAlign(Align), Src, IGCLLVM::getCorrectAlign(Align), Size, isVolatile, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
 }
 
 CallInst* MEMCOPY(Value *Dst, Value *Src, Value *Size, unsigned Align, bool isVolatile = false, MDNode *TBAATag = nullptr, MDNode *TBAAStructTag = nullptr, MDNode *ScopeTag = nullptr, MDNode *NoAliasTag = nullptr)
 {
-    return IRB()->CreateMemCpy(Dst, Align, Src, Align, Size, isVolatile, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+    return IRB()->CreateMemCpy(Dst, IGCLLVM::getCorrectAlign(Align), Src, IGCLLVM::getCorrectAlign(Align), Size, isVolatile, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
 }
 
 CallInst* ELEMENT_UNORDERED_ATOMIC_MEM_CPY(Value *Dst, unsigned DstAlign, Value *Src, unsigned SrcAlign, uint64_t Size, uint32_t ElementSize, MDNode *TBAATag = nullptr, MDNode *TBAAStructTag = nullptr, MDNode *ScopeTag = nullptr, MDNode *NoAliasTag = nullptr)
 {
-    return IRB()->CreateElementUnorderedAtomicMemCpy(Dst, DstAlign, Src, SrcAlign, Size, ElementSize, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+    return IRB()->CreateElementUnorderedAtomicMemCpy(Dst, IGCLLVM::getAlignmentValueIfNeeded(IGCLLVM::getAlign(DstAlign)), Src, IGCLLVM::getAlignmentValueIfNeeded(IGCLLVM::getAlign(SrcAlign)), IRB()->getInt64(Size), ElementSize, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
 }
 
 CallInst* ELEMENT_UNORDERED_ATOMIC_MEM_CPY(Value *Dst, unsigned DstAlign, Value *Src, unsigned SrcAlign, Value *Size, uint32_t ElementSize, MDNode *TBAATag = nullptr, MDNode *TBAAStructTag = nullptr, MDNode *ScopeTag = nullptr, MDNode *NoAliasTag = nullptr)
 {
-    return IRB()->CreateElementUnorderedAtomicMemCpy(Dst, DstAlign, Src, SrcAlign, Size, ElementSize, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+    return IRB()->CreateElementUnorderedAtomicMemCpy(Dst, IGCLLVM::getAlignmentValueIfNeeded(IGCLLVM::getAlign(DstAlign)), Src, IGCLLVM::getAlignmentValueIfNeeded(IGCLLVM::getAlign(SrcAlign)), Size, ElementSize, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
 }
 
 CallInst* MEMMOVE(Value *Dst, Value *Src, uint64_t Size, unsigned Align, bool isVolatile = false, MDNode *TBAATag = nullptr, MDNode *ScopeTag = nullptr, MDNode *NoAliasTag = nullptr)
 {
-	return IRB()->CreateMemMove(Dst, Align, Src, Align, Size, isVolatile, TBAATag, ScopeTag, NoAliasTag);
+    return IRB()->CreateMemMove(Dst, IGCLLVM::getCorrectAlign(Align), Src, IGCLLVM::getCorrectAlign(Align), Size, isVolatile, TBAATag, ScopeTag, NoAliasTag);
 }
 
 CallInst* MEMMOVE(Value *Dst, Value *Src, Value *Size, unsigned Align, bool isVolatile = false, MDNode *TBAATag = nullptr, MDNode *ScopeTag = nullptr, MDNode *NoAliasTag = nullptr)
 {
-    return IRB()->CreateMemMove(Dst, Align, Src, Align, Size, isVolatile, TBAATag, ScopeTag, NoAliasTag);
+    return IRB()->CreateMemMove(Dst, IGCLLVM::getCorrectAlign(Align), Src, IGCLLVM::getCorrectAlign(Align), Size, isVolatile, TBAATag, ScopeTag, NoAliasTag);
 }
 
 CallInst* FADD_REDUCE(Value *Acc, Value *Src)
@@ -164,17 +164,17 @@ CallInst* INVARIANT_START(Value *Ptr, ConstantInt *Size = nullptr)
 
 CallInst* MASKED_STORE(Value *Val, Value *Ptr, unsigned Align, Value *Mask)
 {
-    return IRB()->CreateMaskedStore(Val, Ptr, Align, Mask);
+    return IRB()->CreateMaskedStore(Val, Ptr, IGCLLVM::getAlignmentValueIfNeeded(IGCLLVM::getAlign(Align)), Mask);
 }
 
 CallInst* MASKED_GATHER(Value *Ptrs, unsigned Align, Value *Mask = nullptr, Value *PassThru = nullptr, const Twine& Name = "")
 {
-    return IRB()->CreateMaskedGather(Ptrs, Align, Mask, PassThru, Name);
+    return IRB()->CreateMaskedGather(Ptrs, IGCLLVM::getAlignmentValueIfNeeded(IGCLLVM::getAlign(Align)), Mask, PassThru, Name);
 }
 
 CallInst* MASKED_SCATTER(Value *Val, Value *Ptrs, unsigned Align, Value *Mask = nullptr)
 {
-    return IRB()->CreateMaskedScatter(Val, Ptrs, Align, Mask);
+    return IRB()->CreateMaskedScatter(Val, Ptrs, IGCLLVM::getAlignmentValueIfNeeded(IGCLLVM::getAlign(Align)), Mask);
 }
 
 CallInst* ASSUMPTION(Value *Cond)
@@ -575,22 +575,22 @@ StoreInst* STORE(Value *Val, Value *Ptr, bool isVolatile = false)
 
 LoadInst* ALIGNED_LOAD(Value *Ptr, unsigned Align, const char *Name)
 {
-    return IRB()->CreateAlignedLoad(Ptr, Align, Name);
+    return IRB()->CreateAlignedLoad(Ptr, IGCLLVM::getAlign(Align), Name);
 }
 
 LoadInst* ALIGNED_LOAD(Value *Ptr, unsigned Align, const Twine &Name = "")
 {
-    return IRB()->CreateAlignedLoad(Ptr, Align, Name);
+    return IRB()->CreateAlignedLoad(Ptr, IGCLLVM::getAlign(Align), Name);
 }
 
 LoadInst* ALIGNED_LOAD(Value *Ptr, unsigned Align, bool isVolatile, const Twine &Name = "")
 {
-    return IRB()->CreateAlignedLoad(Ptr, Align, isVolatile, Name);
+    return IRB()->CreateAlignedLoad(Ptr, IGCLLVM::getAlign(Align), isVolatile, Name);
 }
 
 StoreInst* ALIGNED_STORE(Value *Val, Value *Ptr, unsigned Align, bool isVolatile = false)
 {
-    return IRB()->CreateAlignedStore(Val, Ptr, Align, isVolatile);
+    return IRB()->CreateAlignedStore(Val, Ptr, IGCLLVM::getAlign(Align), isVolatile);
 }
 
 FenceInst* FENCE(AtomicOrdering Ordering, SyncScope::ID SSID = SyncScope::System, const Twine &Name = "")
