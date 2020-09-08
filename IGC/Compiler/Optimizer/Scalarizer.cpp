@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
@@ -651,7 +652,8 @@ void ScalarizeFunction::scalarizeInstruction(ExtractElementInst* EI)
 
     // Connect the "extracted" value to all its consumers
     uint64_t scalarIndex = cast<ConstantInt>(scalarIndexVal)->getZExtValue();
-    if (static_cast<unsigned int>(scalarIndex) < vectorValue->getType()->getVectorNumElements())
+    auto valueVType = cast<VectorType>(vectorValue->getType());
+    if (static_cast<unsigned int>(scalarIndex) < (unsigned)valueVType->getNumElements())
     {
         IGC_ASSERT_MESSAGE(NULL != operand[static_cast<unsigned int>(scalarIndex)], "SCM error");
 
@@ -661,7 +663,7 @@ void ScalarizeFunction::scalarizeInstruction(ExtractElementInst* EI)
     else
     {
         IGC_ASSERT_MESSAGE(0, "The instruction extractElement is out of bounds.");
-        EI->replaceAllUsesWith(UndefValue::get(vectorValue->getType()->getVectorElementType()));
+        EI->replaceAllUsesWith(UndefValue::get(valueVType->getElementType()));
     }
 
     // Remove original instruction
@@ -845,7 +847,7 @@ void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>scalarValues;
     scalarValues.resize(width);
 
-    Value* assembledVector = UndefValue::get(llvm::VectorType::get(ptrTy, width));
+    Value* assembledVector = UndefValue::get(IGCLLVM::FixedVectorType::get(ptrTy, width));
     for (unsigned i = 0; i < width; ++i)
     {
         auto op1 = baseValue->getType()->isVectorTy() ? operand1[i] : baseValue;

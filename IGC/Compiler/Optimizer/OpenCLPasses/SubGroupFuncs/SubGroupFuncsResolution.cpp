@@ -926,7 +926,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
     const llvm::DataLayout* DL = &F->getParent()->getDataLayout();
 
     uint typeSize = isa<VectorType>(pDataType) ?
-        (uint)DL->getTypeSizeInBits(cast<VectorType>(pDataType)->getVectorElementType()) / 8 :
+        (uint)DL->getTypeSizeInBits(cast<VectorType>(pDataType)->getElementType()) / 8 :
         (uint)DL->getTypeSizeInBits(pDataType) / 8;
 
     uint widthInBytes = blockWidth * typeSize;

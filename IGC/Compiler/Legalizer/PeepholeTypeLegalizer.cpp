@@ -36,6 +36,7 @@ FIXME? ::
 #define DEBUG_TYPE "type-legalizer"
 #include "PeepholeTypeLegalizer.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
@@ -158,7 +159,7 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction& I)
     if (quotient > 1)
     {
         unsigned numElements = I.getType()->isVectorTy() ? (unsigned)cast<VectorType>(I.getType())->getNumElements() : 1;
-        Type* newType = VectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
+        Type* newType = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
 
         PHINode* newPhi = m_builder->CreatePHI(newType, oldPhi->getNumIncomingValues());
         for (unsigned i = 0; i < oldPhi->getNumIncomingValues(); i++)
@@ -225,11 +226,11 @@ void PeepholeTypeLegalizer::legalizeExtractElement(Instruction& I)
         m_builder->SetInsertPoint(&I);
 
         // Bitcast the illegal vector type to legal type
-        Type* newVecTy = VectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
+        Type* newVecTy = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
         Value* legalVector = m_builder->CreateBitCast(extract->getOperand(0), newVecTy);
 
         unsigned extractIndex = (unsigned)cast<ConstantInt>(extract->getOperand(1))->getZExtValue();
-        Value* extractedVec = UndefValue::get(VectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+        Value* extractedVec = UndefValue::get(IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient));
 
         for (unsigned i = 0; i < quotient; i++)
         {
@@ -329,10 +330,10 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
     if (quotient > 1)
     {
         Value* NewLargeSrc1VecForm = m_builder->CreateBitCast(NewLargeSrc1,
-            llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+            IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
         Value* NewLargeSrc2VecForm = m_builder->CreateBitCast(NewLargeSrc2,
-            llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
-        Value* NewLargeResVecForm = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+            IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+        Value* NewLargeResVecForm = UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
 
         bool instSupported = true;
         for (unsigned Idx = 0; Idx < quotient; Idx++)
@@ -503,7 +504,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
 
             if (quotient > 1)
             {
-                Type* I8xXTy = VectorType::get(m_builder->getInt8Ty(), quotient);
+                Type* I8xXTy = IGCLLVM::FixedVectorType::get(m_builder->getInt8Ty(), quotient);
                 Type* I8xXPtrTy = PointerType::get(I8xXTy, I.getType()->getPointerAddressSpace());
 
                 Value* newBitCastToVec = m_builder->CreateBitCast(I.getOperand(0), I8xXPtrTy);
@@ -563,7 +564,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
         promoteInt(loadSrcWidth, loadQuotient, loadPromoteToInt, 8); // hard coded to 8 since our hardware is bte addressable.
 
         if (loadQuotient > 1) {
-            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
+            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
             Value* newLoadInst = m_builder->CreateLoad(newBitCast);
             // mask the extra bits loaded for type legalization
             unsigned maskCnt = (loadPromoteToInt * loadQuotient) - loadSrcWidth;
@@ -586,7 +587,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
             I.eraseFromParent();
         }
         else {
-            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
+            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
             Value* newLoadInst = m_builder->CreateLoad(newBitCast);
             // mask the extra bits loaded for type legalization
             unsigned maskCnt = (loadPromoteToInt * loadQuotient) - loadSrcWidth;
@@ -662,8 +663,8 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
 
         unsigned numSrcElements = srcSize / promotedInt;
         unsigned numDstElements = dstSize / promotedInt;
-        Type* srcVecTy = VectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numSrcElements);
-        Type* dstVecTy = VectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numDstElements);
+        Type* srcVecTy = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numSrcElements);
+        Type* dstVecTy = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numDstElements);
 
         // Bitcast the illegal src type to a legal vector
         Value* srcVec = m_builder->CreateBitCast(I.getOperand(0), srcVecTy);
@@ -747,8 +748,8 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
                 */
                 if ((promoteToInt * quotient) == I.getType()->getScalarSizeInBits()) { // rhis is the case for all trunc-zext pairs generated by first step of this legalization pass
                     Value* truncSrcAsVec = m_builder->CreateBitCast(prevInst->getOperand(0),
-                        llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
-                    Value* vecRes = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+                        IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+                    Value* vecRes = UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
                     Value* Elmt;
                     Value* maskedElmt;
 
@@ -836,7 +837,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         unsigned ipVecSize = (unsigned)cast<VectorType>(prevInst->getOperand(0)->getType())->getNumElements();
         unsigned convFactor = promoteToInt / ipElmtSize;
 
-        Value* vecRes = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+        Value* vecRes = UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
         Type* resElmtTy = Type::getIntNTy(I.getContext(), promoteToInt);
         unsigned Idx = 0;
 

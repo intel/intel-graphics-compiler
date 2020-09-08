@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/DerivedTypes.h>
@@ -292,21 +293,21 @@ namespace {
         Type* TyI8 = Type::getInt8Ty(C);
 
         uint32_t n = 0;
-        Vecs[n++] = VectorType::get(TyI32, 8);
+        Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI32, 8);
         // CntI32 range [0, 7]
         if (CntI32 >= 4)
         {
-            Vecs[n++] = VectorType::get(TyI32, 4);
+            Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI32, 4);
             CntI32 -= 4;
         }
         if (CntI32 == 3 && Align >= 4)
         {
-            Vecs[n++] = VectorType::get(TyI32, 3);
+            Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI32, 3);
             CntI32 -= 3;
         }
         if (CntI32 >= 2)
         {
-            Vecs[n++] = VectorType::get(TyI32, 2);
+            Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI32, 2);
             CntI32 -= 2;
         }
         if (CntI32 > 0)
@@ -319,7 +320,7 @@ namespace {
         // CntI8 range [0, 3]
         if (CntI8 >= 2)
         {
-            Vecs[n++] = VectorType::get(TyI8, 2);
+            Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI8, 2);
             CntI8 -= 2;
         }
         if (CntI8 > 0)
@@ -792,8 +793,8 @@ namespace {
         IRBuilder<> Builder(I);
         unsigned sizeInBits = I->getArgOperand(0)->getType()->getScalarSizeInBits();
         Value* numBits = Builder.getIntN(sizeInBits, sizeInBits);
-        if (I->getType()->isVectorTy()) {
-            numBits = ConstantVector::getSplat(I->getType()->getVectorNumElements(), cast<Constant>(numBits));
+        if (auto IVT = dyn_cast<VectorType>(I->getType())) {
+            numBits = ConstantVector::getSplat(IVT->getNumElements(), cast<Constant>(numBits));
         }
         auto shiftModulo = Builder.CreateURem(I->getArgOperand(2), numBits);
         auto negativeShift = Builder.CreateSub(numBits, shiftModulo);

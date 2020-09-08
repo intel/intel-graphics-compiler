@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -146,7 +147,7 @@ void CImagesBI::prepareColor(Value* Color)
         Instruction* tmp = BitCastInst::Create(
             Instruction::BitCast,
             Color,
-            VectorType::get(m_pFloatType, 4),
+            IGCLLVM::FixedVectorType::get(m_pFloatType, 4),
             "floatColor",
             m_pCallInst);
         tmp->setDebugLoc(m_DL);
@@ -1114,7 +1115,7 @@ public:
         m_args.push_back(CoordZ);
         Value* pDstBuffer = createGetBufferPtr();
         prepareZeroOffsets();
-        Type* types[] = { llvm::VectorType::get(m_pFloatType, 4), pDstBuffer->getType() };
+        Type* types[] = { IGCLLVM::FixedVectorType::get(m_pFloatType, 4), pDstBuffer->getType() };
         replaceGenISACallInst(GenISAIntrinsic::GenISA_ldptr, llvm::ArrayRef<llvm::Type*>(types, 2));
     }
 };
@@ -1134,7 +1135,7 @@ public:
         m_args.push_back(m_pIntZero);   // LOD
         prepareImageBTI();
         prepareZeroOffsets();
-        Type* types[] = { llvm::VectorType::get(m_pFloatType, 4), m_pIntType, m_args[7]->getType() };
+        Type* types[] = { IGCLLVM::FixedVectorType::get(m_pFloatType, 4), m_pIntType, m_args[7]->getType() };
         replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmcsptr, types);
     }
 };
@@ -1182,7 +1183,7 @@ public:
         m_args.push_back(m_pIntZero); // LOD
         prepareImageBTI();
         prepareZeroOffsets();
-        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, { VectorType::get(m_pIntType, 4), m_args[7]->getType() });
+        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, { IGCLLVM::FixedVectorType::get(m_pIntType, 4), m_args[7]->getType() });
     }
 };
 
@@ -1203,7 +1204,7 @@ public:
         m_args.push_back(m_pIntZero); // LOD
         prepareImageBTI();
         prepareZeroOffsets();
-        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, { VectorType::get(m_pIntType, 4), m_args[7]->getType() });
+        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, { IGCLLVM::FixedVectorType::get(m_pIntType, 4), m_args[7]->getType() });
     }
 };
 

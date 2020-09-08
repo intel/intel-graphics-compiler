@@ -1652,7 +1652,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
     return mapType(T, PointerType::get(transType(T->getPointerElementType()),
       SPIRSPIRVAddrSpaceMap::rmap(T->getPointerStorageClass())));
   case OpTypeVector:
-    return mapType(T, VectorType::get(transType(T->getVectorComponentType()),
+    return mapType(T, IGCLLVM::FixedVectorType::get(transType(T->getVectorComponentType()),
         T->getVectorComponentCount()));
   case OpTypeOpaque:
     return mapType(T, StructType::create(*Context, T->getName()));
@@ -1674,7 +1674,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
   case OpTypeSampledImage:
   case OpTypeVmeImageINTEL: {
      //ulong3 __builtin_spirv_OpSampledImage
-     return mapType(T, VectorType::get(Type::getInt64Ty(*Context), 3));
+     return mapType(T, IGCLLVM::FixedVectorType::get(Type::getInt64Ty(*Context), 3));
   }
   case OpTypeStruct: {
     auto ST = static_cast<SPIRVTypeStruct *>(T);
@@ -2154,7 +2154,7 @@ Value *SPIRVToLLVM::promoteBool(Value *pVal, BasicBlock *BB)
         return pVal;
 
     auto *PromoType = isa<VectorType>(pVal->getType()) ?
-        cast<Type>(VectorType::get(Type::getInt8Ty(pVal->getContext()),
+        cast<Type>(IGCLLVM::FixedVectorType::get(Type::getInt8Ty(pVal->getContext()),
         (unsigned)cast<VectorType>(pVal->getType())->getNumElements())) :
         Type::getInt8Ty(pVal->getContext());
 
@@ -2242,7 +2242,7 @@ Type *SPIRVToLLVM::truncBoolType(SPIRVType *SPVType, Type *LLType)
         return LLType;
 
     return isa<VectorType>(LLType) ?
-        cast<Type>(VectorType::get(Type::getInt1Ty(LLType->getContext()),
+        cast<Type>(IGCLLVM::FixedVectorType::get(Type::getInt1Ty(LLType->getContext()),
                                    (unsigned)cast<VectorType>(LLType)->getNumElements())) :
         Type::getInt1Ty(LLType->getContext());
 }
@@ -3407,7 +3407,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       Value *imageCoordinateWiden = nullptr;
       if (!isa<VectorType>(coordType))
       {
-          Value *undef = UndefValue::get(VectorType::get(coordType, 4));
+          Value *undef = UndefValue::get(IGCLLVM::FixedVectorType::get(coordType, 4));
 
           imageCoordinateWiden = InsertElementInst::Create(
               undef,
@@ -3632,7 +3632,7 @@ SPIRVToLLVM::decodeVecTypeHint(LLVMContext &C, unsigned code) {
     }
     if (VecWidth < 1)
         return ST;
-    return VectorType::get(ST, VecWidth);
+    return IGCLLVM::FixedVectorType::get(ST, VecWidth);
 }
 
 // Information of types of kernel arguments may be additionally stored in

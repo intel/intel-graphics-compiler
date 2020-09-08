@@ -647,7 +647,8 @@ public:
             Type* scalarptrTy = PointerType::get(scalarType, pLoad->getPointerAddressSpace());
             IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
             Value* vec = UndefValue::get(pLoad->getType());
-            for (unsigned i = 0, e = pLoad->getType()->getVectorNumElements(); i < e; ++i)
+            auto pLoadVT = cast<VectorType>(pLoad->getType());
+            for (unsigned i = 0, e = (unsigned)pLoadVT->getNumElements(); i < e; ++i)
             {
                 Value* ptr = IRB.CreateIntToPtr(address, scalarptrTy);
                 Value* v = IRB.CreateLoad(ptr);
@@ -684,7 +685,9 @@ public:
             Type* scalarptrTy = PointerType::get(scalarType, pStore->getPointerAddressSpace());
             IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
             Value* vec = pStore->getValueOperand();
-            for (unsigned i = 0, e = pStore->getValueOperand()->getType()->getVectorNumElements(); i < e; ++i)
+
+            unsigned vecNumElts = (unsigned)cast<VectorType>(vec->getType())->getNumElements();
+            for (unsigned i = 0; i < vecNumElts; ++i)
             {
                 Value* ptr = IRB.CreateIntToPtr(address, scalarptrTy);
                 IRB.CreateStore(IRB.CreateExtractElement(vec, IRB.getInt32(i)), ptr);
@@ -747,7 +750,8 @@ bool PrivateMemoryResolution::testTransposedMemory(const Type* pTmpType, const T
         }
         else if(pTmpType->isVectorTy())
         {
-            tmpAllocaSize *= pTmpType->getVectorNumElements();
+            auto pTmpVType = cast<VectorType>(pTmpType);
+            tmpAllocaSize *= pTmpVType->getNumElements();
             pTmpType = pTmpType->getSequentialElementType();
             ok = (nullptr != pTmpType);
             IGC_ASSERT(ok);

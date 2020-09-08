@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "InstScalarizer.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Support/Debug.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "common/Types.hpp"
@@ -153,7 +154,7 @@ bool InstScalarizer::visitLoadInst(LoadInst& I) {
                         Twine(OldPtr->getName(), getSuffix()) + Twine(Elt));
                 if (PL != 1) {
                     // Load <PL x EltTy>
-                    Type* VecTy = VectorType::get(EltTy, PL);
+                    Type* VecTy = IGCLLVM::FixedVectorType::get(EltTy, PL);
                     Type* VecPtrTy = PointerType::get(VecTy, AS);
                     NewPtr =
                         IRB->CreatePointerCast(NewPtr, VecPtrTy,
@@ -291,7 +292,7 @@ bool InstScalarizer::visitStoreInst(StoreInst& I) {
                         Twine(OldPtr->getName(), getSuffix()) + Twine(Elt));
                 if (PL != 1) {
                     // Store <PL x EltTy>
-                    Type* VecTy = VectorType::get(EltTy, PL);
+                    Type* VecTy = IGCLLVM::FixedVectorType::get(EltTy, PL);
                     // Prepare the shorter vector.
                     Value* Vec = UndefValue::get(VecTy);
                     for (unsigned i = 0; i != PL; ++i) {

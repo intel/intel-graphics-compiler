@@ -233,7 +233,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_resinfoptr
     // %depth_s = udiv i32 %src_s.chan2, %src1_s_ch0
     llvm::Value* int32_depth = this->CreateUDiv(int32_info_s_ch2, int32_numberOfSamples, VALUE_NAME("depth_s"));
 
-    llvm::Value *resinfo = llvm::UndefValue::get(llvm::VectorType::get(llvm::Type::getInt32Ty(module->getContext()), 4));
+    llvm::Value *resinfo = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getInt32Ty(module->getContext()), 4));
 
     resinfo = this->CreateInsertElement(
         resinfo,
@@ -914,7 +914,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SamplePos(
     */
     llvm::Value* float_y = nullptr;
     {
-        llvm::Value* temp = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 32));
+        llvm::Value* temp = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 32));
         temp = this->CreateInsertElement(temp, this->getFloat( 0.0f), this->getInt32(0));
         temp = this->CreateInsertElement(temp, this->getFloat( 0.0f), this->getInt32(1));
         temp = this->CreateInsertElement(temp, this->getFloat( 4.0f / 16.0f), this->getInt32(2));
@@ -962,7 +962,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SamplePos(
     */
     llvm::Value* float_x = nullptr;
     {
-        llvm::Value* temp = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 32));
+        llvm::Value* temp = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 32));
         temp = this->CreateInsertElement(temp, this->getFloat( 0.0f), this->getInt32(0));
         temp = this->CreateInsertElement(temp, this->getFloat( 0.0f), this->getInt32(1));
         temp = this->CreateInsertElement(temp, this->getFloat( 4.0f / 16.0f), this->getInt32(2));
@@ -998,7 +998,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SamplePos(
         float_x = this->CreateExtractElement(temp, int32_selIndex);
     }
 
-    llvm::Value* packed_ret_value = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+    llvm::Value* packed_ret_value = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
     packed_ret_value = this->CreateInsertElement(packed_ret_value, float_x, this->getInt32(0));
     packed_ret_value = this->CreateInsertElement(packed_ret_value, float_y, this->getInt32(1));
     packed_ret_value = this->CreateInsertElement(packed_ret_value, this->getFloat(0.0f), this->getInt32(2));
@@ -1043,10 +1043,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLE(
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), coordinate_u->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), coordinate_u->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
     if (feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1092,10 +1092,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
     if (feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1135,7 +1135,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
     llvm::Function* func_llvm_GenISA_sampleLCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleLCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleLCptr_v4f32_f32, packed_tex_params);
@@ -1174,10 +1174,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
     if (feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleLCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleLCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1217,10 +1217,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
     if (feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_gather4Cptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_gather4Cptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1262,10 +1262,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_src_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_src_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
     if (feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_gather4POCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_gather4POCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1305,10 +1305,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_address_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_address_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
     if (feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_gather4POptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_gather4POptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1331,7 +1331,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
-    llvm::Value *gatherReturn = llvm::UndefValue::get(llvm::VectorType::get(llvm::Type::getFloatTy(module->getContext()), 4));
+    llvm::Value *gatherReturn = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4));
     for (int i = 0, j = 0; i < 7; i = i + 2, j++)
     {
         llvm::Value * packed_tex_params[] = {
@@ -1348,7 +1348,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
             int32_srcChannel
         };
 
-        llvm::Type* types[] = { llvm::VectorType::get(llvm::Type::getFloatTy(module->getContext()), 4), float_address_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+        llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4), float_address_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
 
         llvm::Function* func_llvm_GenISA_gather4POptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
             (module, llvm::GenISAIntrinsic::GenISA_gather4POptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1381,7 +1381,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
-    llvm::Value *gatherReturn = llvm::UndefValue::get(llvm::VectorType::get(llvm::Type::getFloatTy(module->getContext()), 4));
+    llvm::Value *gatherReturn = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4));
     for (int i = 0, j = 0; i < 7; i = i + 2, j++)
     {
         llvm::Value * packed_tex_params[] = {
@@ -1401,7 +1401,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
 
         //CallInst* packed_tex_1527_call = cast<CallInst>(this->CreateCall(this->llvm_GenISA_gather4POC_v4f32_f32(), packed_tex_params));
 
-        llvm::Type* types[] = { llvm::VectorType::get(llvm::Type::getFloatTy(module->getContext()), 4), float_reference_0->getType(), int32_textureIdx_356->getType(), int32_sampler_357->getType() };
+        llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4), float_reference_0->getType(), int32_textureIdx_356->getType(), int32_sampler_357->getType() };
 
         llvm::Function* func_llvm_GenISA_gather4POCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
             (module, llvm::GenISAIntrinsic::GenISA_gather4POCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1457,10 +1457,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_bias_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_bias_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
     if (feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleB_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleBptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1500,10 +1500,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_lod_0->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_lod_0->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
     if (feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleL_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleLptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1590,10 +1590,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_src1_s_chan0->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_src1_s_chan0->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
     if(feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
 
     llvm::Function* func_llvm_GenISA_sampleDptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
@@ -1649,7 +1649,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_ref->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_ref->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
 
     llvm::Function* func_llvm_GenISA_sampleDCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleDCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1681,7 +1681,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_lod(
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_address_0->getType(), int32_textureIdx_356->getType(), int32_sampler_357->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_address_0->getType(), int32_textureIdx_356->getType(), int32_sampler_357->getType() };
 
     llvm::Function* func_llvm_GenISA_lodptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_lodptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1722,10 +1722,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_address_0->getType(), int32_textureIdx_356->getType(), int32_sampler_357->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_address_0->getType(), int32_textureIdx_356->getType(), int32_sampler_357->getType() };
     if (feedback_enabled)
     {
-        types[0] = llvm::VectorType::get(dstType, 5);
+        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_gather4ptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_gather4ptr, llvm::ArrayRef<llvm::Type*>(types, 4));
@@ -1762,7 +1762,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_load(
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, feedback_enabled ? 5 : 4), ptr_textureIdx->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, feedback_enabled ? 5 : 4), ptr_textureIdx->getType() };
 
     llvm::Function* func_llvm_GenISA_ldptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_ldptr, llvm::ArrayRef<llvm::Type*>(types, 2));
@@ -1798,7 +1798,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_ldms(
 
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
-    llvm::Type* types[] = { llvm::VectorType::get(this->getInt32Ty(), 2), this->getInt32Ty(), int32_textureIdx->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(this->getInt32Ty(), 2), this->getInt32Ty(), int32_textureIdx->getType() };
     llvm::Function* func_llvm_GenISA_ldmcsptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_ldmcsptr, llvm::ArrayRef<llvm::Type*>(types, 3));
     llvm::CallInst* packed_mcs_call = this->CreateCall(func_llvm_GenISA_ldmcsptr_v4f32_f32, packed_mcs_params);
@@ -1822,10 +1822,10 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_ldms(
     };
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types_ldms[] = { llvm::VectorType::get(dstType, 4), int32_textureIdx->getType()};
+    llvm::Type* types_ldms[] = { IGCLLVM::FixedVectorType::get(dstType, 4), int32_textureIdx->getType()};
     if (feedback_enabled)
     {
-        types_ldms[0] = llvm::VectorType::get(dstType, 5);
+        types_ldms[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
 
     llvm::Function* func_llvm_GenISA_ldmsptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
@@ -2682,7 +2682,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
     {
     case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_UNORM:
     {
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
         llvm::Value* pConstFloat = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(this->getFloatTy(), (1.0f / 65535.0f)));
         llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
         llvm::Value* pTempInt16 = llvm::UndefValue::get(this->getInt32Ty());
@@ -2743,7 +2743,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
     }
     case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_SNORM:
     {
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
         llvm::Value* pScalingFactor = this->getFloat(1.0f / 32767.0f);
         llvm::Value* pTempInt32;
         llvm::Value* pTempInt16;
@@ -2827,7 +2827,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         llvm::Value* pMaskW = this->getInt32(0x00000003);
         llvm::Value* pShiftData = this->getInt32(10);
 
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
         llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
         llvm::Value* pTempIntWithMask = llvm::UndefValue::get(this->getInt32Ty());
         llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
@@ -2909,7 +2909,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         llvm::Value* pTempInt;
         llvm::Value* pTempInt0;
 
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat0 = pLdUAVTypedResult[0];
         pTempFloat0 = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -2965,7 +2965,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
         llvm::Value* pTempIntRes = llvm::UndefValue::get(this->getInt32Ty());
 
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat = pLdUAVTypedResult[0];
         pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -3025,7 +3025,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
         llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
         llvm::Value* pTempInt32Res = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat = pLdUAVTypedResult[0];
         pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -3094,7 +3094,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         llvm::Value* pInputAsInt32 = this->CreateBitCast(pTempFloat, this->getInt32Ty());
 
         // create 4-component output vector
-        llvm::Value* pOutputVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pOutputVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // for each of the four channels
         for (unsigned int ch = 0; ch < 4; ++ch)
@@ -3140,7 +3140,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
         llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
         llvm::Value* pTempInt32Res = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat = pLdUAVTypedResult[0];
         pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -3182,7 +3182,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         // SEL_rFlag.xy rOutput.xy, rTemp.xy, -1.0f
         // MOV rOutput.zw, rImm.zw
         llvm::Value* pScalingFactor = getFloat(1.0f / 32767.0f);
-        llvm::Value* pOutVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pOutVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat = pLdUAVTypedResult[0];
         llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -3241,7 +3241,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
         llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
         llvm::Value* pTempInt32Res = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat = pLdUAVTypedResult[0];
         pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -3284,7 +3284,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         // MOV rOutput.zw, rImm.zw
         llvm::Value* pScalingFactor = getFloat(1.0f / 127.0f);
 
-        llvm::Value* pOutVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pOutVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         llvm::Value* fieldWidth = this->getInt32(8);
 
@@ -3333,7 +3333,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         llvm::Value* pScalingFactor = getFloat(1.0f / 65535.0f);
         llvm::Value* pTempFloat = llvm::UndefValue::get(this->getFloatTy());
         llvm::Value* pTempInt32 = llvm::UndefValue::get(this->getInt32Ty());
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat = pLdUAVTypedResult[0];
         pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -3363,7 +3363,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         // MOV rOutput.yzw, rImm.yzw
         llvm::Value* pFPZero = getFloat(0.0f);
         llvm::Value* pScalingFactor = getFloat(1.0f / 32767.0f);
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat = pLdUAVTypedResult[0];
         llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -3398,7 +3398,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         // UBTOF        ro.x, ri.x;
         llvm::Value* fpZero = this->getFloat(0.0f);
         llvm::Value* pScalingFactor = getFloat(1.0f / 255.0f);
-        llvm::Value* pTempVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pTempVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat = pLdUAVTypedResult[0];
         llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -3427,7 +3427,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
         llvm::Value* pFpZero = getFloat(0.0f);
         llvm::Value* pFpNegOne = getFloat(-1.0f);
         llvm::Value* pScalingFactor = getFloat(1.0f / 127.0f);
-        llvm::Value* pOutVec4 = llvm::UndefValue::get(llvm::VectorType::get(this->getFloatTy(), 4));
+        llvm::Value* pOutVec4 = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(this->getFloatTy(), 4));
 
         // pTempFloat = pLdUAVTypedResult[0];
         llvm::Value* pTempFloat = this->CreateExtractElement(pLdUAVTypedResult, this->getInt32(0));
@@ -4175,7 +4175,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { llvm::VectorType::get(dstType, 4), float_ref_value->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_ref_value->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
     llvm::Function* func_llvm_GenISA_sampleBCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
         (module, llvm::GenISAIntrinsic::GenISA_sampleBCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
 
@@ -4955,14 +4955,14 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::ScalarsToVector(
     llvm::Value* (&scalars)[4],
     unsigned vectorElementCnt)
 {
-    llvm::Type* const resultType = llvm::VectorType::get(scalars[0]->getType(), vectorElementCnt);
+    llvm::Type* const resultType = IGCLLVM::FixedVectorType::get(scalars[0]->getType(), vectorElementCnt);
     IGC_ASSERT(nullptr != resultType);
     llvm::Value* result = llvm::UndefValue::get(resultType);
 
     for (unsigned i = 0; i < llvm::cast<llvm::VectorType>(resultType)->getNumElements(); i++)
     {
         IGC_ASSERT(nullptr != scalars[i]);
-        IGC_ASSERT(resultType->getVectorElementType() == scalars[i]->getType());
+        IGC_ASSERT(llvm::cast<llvm::VectorType>(resultType)->getElementType() == scalars[i]->getType());
 
         result = this->CreateInsertElement(
             result,

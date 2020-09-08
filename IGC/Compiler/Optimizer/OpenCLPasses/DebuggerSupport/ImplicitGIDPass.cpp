@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/IR/Attributes.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
@@ -244,7 +245,7 @@ Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
     {
         //Create one
         // Create parameters and return values
-        Type* pResult = VectorType::get(IntegerType::get(m_pModule->getContext(), m_uiSizeT), 3);
+        Type* pResult = IGCLLVM::FixedVectorType::get(IntegerType::get(m_pModule->getContext(), m_uiSizeT), 3);
         std::vector<Type*> funcTyArgs;
 
         // Create function declaration

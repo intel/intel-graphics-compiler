@@ -252,10 +252,10 @@ bool VerificationPass::verifyVectorInst(llvm::Instruction& inst)
     {
         Value* val = inst.getOperand(i);
         Type* T = val->getType();
-        if (T->isVectorTy())
+        if (auto VT = dyn_cast<VectorType>(T))
         {
             // Insert and extract element support relaxed vector type
-            T = T->getVectorElementType();
+            T = VT->getElementType();
         }
         if (!verifyType(T, val))
         {
@@ -303,14 +303,15 @@ bool VerificationPass::verifyType(Type* type, Value* val)
 
     case Type::VectorTyID:
     {
-        unsigned int typeSize = type->getVectorNumElements();
+        auto VType = cast<VectorType>(type);
+        unsigned typeSize = (unsigned)VType->getNumElements();
         if (!m_IGC_IR_spec.vectorTypeSizes.count(typeSize))
         {
             m_messagesToDump << "Unexpected vector size found in value:\n";
             printValue(val);
             success = false;
         }
-        success &= verifyType(type->getVectorElementType(), val);
+        success &= verifyType(VType->getElementType(), val);
         break;
     }
 

@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Attributes.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/Module.h>
@@ -713,16 +714,16 @@ Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, 
                 // If this is a fpcast, use the origin value.
                 Type* srcType = fpCastVal->getSrcTy();
                 if (srcType->isFloatTy() ||
-                    (srcType->isVectorTy() && srcType->getVectorElementType()->isFloatTy()))
+                    (srcType->isVectorTy() && cast<VectorType>(srcType)->getElementType()->isFloatTy()))
                 {
                     return fpCastVal->getOperand(0);
                 }
             }
 
             Type* newType = Type::getFloatTy(arg->getContext());
-            if (arg->getType()->isVectorTy())
+            if (auto argVT = dyn_cast<VectorType>(arg->getType()))
             {
-                newType = VectorType::get(newType, arg->getType()->getVectorNumElements());
+                newType = IGCLLVM::FixedVectorType::get(newType, (unsigned)argVT->getNumElements());
             }
 
             Instruction* tmp = CastInst::CreateFPCast(arg,
@@ -750,8 +751,8 @@ void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst& printfCall)
         IGC::SHADER_PRINTF_TYPE argDataType = getPrintfArgDataType(arg);
         arg = fixupPrintfArg(printfCall, arg, argDataType);
         uint vecSize = 0;
-        if (argType->isVectorTy()) {
-            vecSize = argType->getVectorNumElements();
+        if (auto argVType = dyn_cast<VectorType>(argType)) {
+            vecSize = (uint)argVType->getNumElements();
         }
         m_argDescriptors.push_back(SPrintfArgDescriptor(argDataType, arg, vecSize));
     }
@@ -839,9 +840,9 @@ IGC::SHADER_PRINTF_TYPE OpenCLPrintfResolution::getPrintfArgDataType(Value* prin
 {
     Type* argType = printfArg->getType();
 
-    if (argType->isVectorTy())
+    if (auto argVType = dyn_cast<VectorType>(argType))
     {
-        Type* elemType = argType->getVectorElementType();
+        Type* elemType = argVType->getElementType();
         if (elemType->isFloatingPointTy())
         {
             if (elemType->isDoubleTy())

@@ -26,9 +26,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
-#include "llvm/ADT/SmallSet.h"
+#include <llvm/ADT/SmallSet.h>
 #include <llvm/IR/Module.h>
-#include <llvmWrapper/IR/Function.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/GenericDomTree.h>
@@ -931,9 +932,9 @@ void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunction
 
     Type* argumentType = inst.getOperand(0)->getType();
 
-    if (argumentType->isVectorTy())
+    if (auto argumentVType = dyn_cast<VectorType>(argumentType))
     {
-        numElements = argumentType->getVectorNumElements();
+        numElements = (unsigned)argumentVType->getNumElements();
     }
 
     switch (numElements)
@@ -1081,7 +1082,7 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction& I, FunctionIDs 
     {
         Type* intTy = Type::getInt32Ty(m_pModule->getContext());
         Type* DoubleTy = Type::getDoubleTy(m_pModule->getContext());
-        VectorType* vec2Ty = VectorType::get(intTy, 2);
+        VectorType* vec2Ty = IGCLLVM::FixedVectorType::get(intTy, 2);
 
         Instruction* twoI32 = CastInst::Create(
             Instruction::BitCast, I.getOperand(1), vec2Ty, "", &I);
@@ -1739,7 +1740,7 @@ As a result, we reduce 2x necessary work
     if (resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fabs)
     {
         // bit 63 is sign bit, set it to zero. Don't use int64.
-        VectorType* vec2Ty = VectorType::get(intTy, 2);
+        VectorType* vec2Ty = IGCLLVM::FixedVectorType::get(intTy, 2);
         Instruction* twoI32 =  CastInst::Create(
             Instruction::BitCast, I.getOperand(0), vec2Ty, "", &I);
         twoI32->setDebugLoc(I.getDebugLoc());
