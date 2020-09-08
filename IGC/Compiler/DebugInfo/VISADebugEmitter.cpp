@@ -32,11 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
 #include "llvm/Config/llvm-config.h"
-#include "Compiler/DebugInfo/VISADebugEmitter.hpp"
-#include "Compiler/DebugInfo/DwarfDebug.hpp"
-#include "Compiler/DebugInfo/StreamEmitter.hpp"
-#include "Compiler/DebugInfo/VISAModule.hpp"
-#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/DIBuilder.h"
@@ -48,10 +43,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/BinaryFormat/ELF.h"
 #endif
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/DebugInfo/DebugInfoUtils.hpp"
-#include "common/secure_mem.h"
-#include "Compiler/CISACodeGen/DriverInfo.hpp"
+
+#include "DebugInfoUtils.hpp"
+#include "VISADebugEmitter.hpp"
+#include "DwarfDebug.hpp"
+#include "StreamEmitter.hpp"
+#include "VISAModule.hpp"
+
 #include "Probe/Assertion.h"
+#include "secure_mem.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -94,69 +94,9 @@ void DebugEmitter::Reset()
     m_initialized = false;
 }
 
-// OpenCL keyword constant is used as qualifier to variables whose values remain the
-// same throughout the program. clang inlines constants in to LLVM IR and no metadata
-// is emitted to LLVM IR for such constants. This function iterates over all globals
-// and constants to emit metadata per function.
-void IGC::insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
-{
-    Module* M = ctx->getModule();
-    bool fullDebugInfo, lineNumbersOnly;
-    DebugMetadataInfo::hasAnyDebugInfo(ctx, fullDebugInfo, lineNumbersOnly);
 
-    if (!fullDebugInfo)
-    {
-        return;
-    }
-
-    for (auto& func : *M)
-    {
-        if (func.isDeclaration())
-            continue;
-
-        for (auto global_it = M->global_begin();
-            global_it != M->global_end();
-            global_it++)
-        {
-            auto g = &*global_it;//(global_it.operator llvm::GlobalVariable *());
-
-            if (g->isConstant())
-            {
-                auto init = g->getInitializer();
-
-                bool isConstForThisFunc = false;
-                llvm::SmallVector<llvm::DIGlobalVariableExpression*, 1> GVs;
-                g->getDebugInfo(GVs);
-                for (unsigned int j = 0; j < GVs.size(); j++)
-                {
-                    auto GVExp = llvm::dyn_cast_or_null<llvm::DIGlobalVariableExpression>(GVs[j]);
-                    if (GVExp)
-                    {
-                        auto GV = GVExp->getVariable();
-                        auto gblNodeScope = GV->getScope();
-                        if (isa<DISubprogram>(gblNodeScope))
-                        {
-                            auto subprogramName = cast<DISubprogram>(gblNodeScope)->getName().data();
-
-                            if (subprogramName == func.getName())
-                            {
-                                isConstForThisFunc = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (!GlobalValue::isLocalLinkage(g->getLinkage()) || isConstForThisFunc)
-                {
-                    DebugInfoUtils::UpdateGlobalVarDebugInfo(g, init, &func.getEntryBlock().getInstList().front(), false);
-                }
-            }
-        }
-    }
-}
-
-void DebugEmitter::Initialize(CShader* pShader, bool debugEnabled)
+void DebugEmitter::Initialize(VISAModule* visaModule, const DebugEmitterOpts& Opts,
+                              bool debugEnabled)
 {
     IGC_ASSERT_MESSAGE(false == m_initialized, "DebugEmitter is already initialized!");
     m_initialized = true;
@@ -165,7 +105,7 @@ void DebugEmitter::Initialize(CShader* pShader, bool debugEnabled)
     // VISA module will be initialized even when debugger is disabled.
     // Its overhead is minimum and it will be used in debug mode to
     // assertion test on calling DebugEmitter in the right order.
-    m_pVISAModule = VISAModule::BuildNew(pShader);
+    m_pVISAModule = visaModule;
     toFree.push_back(m_pVISAModule);
 
     if (!m_debugEnabled)
@@ -174,7 +114,10 @@ void DebugEmitter::Initialize(CShader* pShader, bool debugEnabled)
     }
 
     std::string dataLayout = m_pVISAModule->GetDataLayout();
-    m_pStreamEmitter = new StreamEmitter(m_outStream, dataLayout, m_pVISAModule->GetTargetTriple(), m_pVISAModule->isDirectElfInput);
+
+    m_pStreamEmitter = new StreamEmitter(m_outStream, dataLayout,
+                                         m_pVISAModule->GetTargetTriple(),
+                                         Opts);
     m_pDwarfDebug = new DwarfDebug(m_pStreamEmitter, m_pVISAModule);
 }
 
@@ -194,7 +137,7 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
 
     if (m_pVISAModule->isDirectElfInput)
     {
-        auto decodedDbg = new DbgDecoder(m_pVISAModule->m_pShader->ProgramOutput()->m_debugDataGenISA);
+        auto decodedDbg = new DbgDecoder((void*)m_pVISAModule->getGenDebug());
         m_pDwarfDebug->setDecodedDbg(decodedDbg);
     }
 
@@ -224,7 +167,7 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
         unsigned int prevLastGenOff = lastGenOff;
         m_pDwarfDebug->lowPc = lastGenOff;
 
-        if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
+        if (m_pStreamEmitter->GetEmitterSettings().EnableSIMDLaneDebugging)
         {
             // SIMD width
             m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
@@ -257,7 +200,7 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
             }
         }
 
-        auto genxISA = static_cast<const unsigned char*>(m_pVISAModule->m_pShader->ProgramOutput()->m_programBin);
+        auto genxISA = m_pVISAModule->getGenBinary();
         DebugLoc prevSrcLoc = DebugLoc();
         unsigned int pc = prevLastGenOff;
         for (auto item : GenISAToVISAIndex)
@@ -320,7 +263,7 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
 
             if (emptyLoc && prevSrcLoc)
             {
-              if (IGC_IS_FLAG_ENABLED(FillMissingDebugLocations))
+              if (m_pStreamEmitter->GetEmitterSettings().FillMissingDebugLocations)
               {
                 if (auto scope = pFunc->getSubprogram())
                 {
@@ -521,107 +464,12 @@ void DebugEmitter::Free(void* pBuffer)
 
 void DebugEmitter::ResetVISAModule()
 {
-    m_pVISAModule = VISAModule::BuildNew(m_pVISAModule->m_pShader);
+    m_pVISAModule = m_pVISAModule->makeNew();
     toFree.push_back(m_pVISAModule);
     m_pVISAModule->Reset();
     m_pVISAModule->setDISPToFuncMap(m_pDwarfDebug->getDISPToFunction());
     m_pVISAModule->SetDwarfDebug(m_pDwarfDebug);
 }
-
-/*static*/ bool DebugMetadataInfo::hasDashgOption(CodeGenContext* ctx)
-{
-    return ctx->getModuleMetaData()->compOpt.DashGSpecified;
-}
-
-/*static*/ bool DebugMetadataInfo::hasAnyDebugInfo(CodeGenContext* ctx, bool& fullDebugInfo, bool& lineNumbersOnly)
-{
-    Module* module = ctx->getModule();
-    bool hasFullDebugInfo = false;
-    fullDebugInfo = false;
-    lineNumbersOnly = false;
-
-    if (DebugInfoUtils::HasDebugInfo(*ctx->getModule()))
-    {
-        bool hasDbgIntrinsic = false;
-        bool hasDbgLoc = false;
-
-        // Return true if LLVM IR has dbg.declare/dbg.value intrinsic calls.
-        // And also !dbgloc data.
-        auto& funcList = module->getFunctionList();
-
-        for (auto funcIt = funcList.begin();
-            funcIt != funcList.end() && !hasFullDebugInfo;
-            funcIt++)
-        {
-            auto& func = (*funcIt);
-
-            for (auto bbIt = func.begin();
-                bbIt != func.end() && !hasFullDebugInfo;
-                bbIt++)
-            {
-                auto& bb = (*bbIt);
-
-                for (auto instIt = bb.begin();
-                    instIt != bb.end() && !hasFullDebugInfo;
-                    instIt++)
-                {
-                    auto& inst = (*instIt);
-
-                    if (dyn_cast_or_null<DbgInfoIntrinsic>(&inst))
-                    {
-                        hasDbgIntrinsic = true;
-                    }
-
-                    auto& loc = inst.getDebugLoc();
-
-                    if (loc)
-                    {
-                        hasDbgLoc = true;
-                    }
-
-                    hasFullDebugInfo = hasDbgIntrinsic & hasDbgLoc;
-
-                    fullDebugInfo |= hasFullDebugInfo;
-                    lineNumbersOnly |= hasDbgLoc;
-                }
-            }
-        }
-    }
-
-    return (fullDebugInfo | lineNumbersOnly);
-}
-
-std::string DebugMetadataInfo::getUniqueFuncName(Function& F)
-{
-    // Find number of clones of function F. For n clones,
-    // generate name like $dup$n.
-    auto M = F.getParent();
-    unsigned int numClones = 0;
-    std::string funcName(F.getName().data());
-
-    for (auto funcIt = M->begin(); funcIt != M->end(); funcIt++)
-    {
-        std::string funcItName((*funcIt).getName().data());
-
-        auto found = funcItName.find("$dup");
-        if (found == funcName.length() &&
-            funcName.compare(0, funcName.length(), funcName) == 0)
-        {
-            numClones++;
-        }
-    }
-
-    return F.getName().str() + "$dup" + "$" + std::to_string(numClones);
-}
-
-/* static */ bool VISAModule::isLineTableOnly(CShader* s)
-{
-    bool lineTableOnly = false, fullDebugInfo = false;
-    DebugMetadataInfo::hasAnyDebugInfo(s->GetContext(), fullDebugInfo, lineTableOnly);
-
-    return lineTableOnly && !fullDebugInfo;
-}
-
 void DebugEmitter::AddVISAModFunc(IGC::VISAModule* v, llvm::Function* f)
 {
     m_pDwarfDebug->AddVISAModToFunc(v, f);

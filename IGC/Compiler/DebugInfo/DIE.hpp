@@ -39,15 +39,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "common/igc_regkeys.hpp"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Compiler.h"
 #include "llvmWrapper/BinaryFormat/Dwarf.h"
 #include "llvm/ADT/StringRef.h"
 #include "common/LLVMWarningsPop.hpp"
-#include <vector>
+
 #include "Probe/Assertion.h"
+
+#include <vector>
 
 
 namespace llvm
@@ -73,7 +74,6 @@ namespace llvm
 #ifndef DW_OP_INTEL_bit_piece_stack
 #define DW_OP_INTEL_bit_piece_stack 0xef
 #endif
-
 
     class MCSymbol;
     class raw_ostream;
@@ -104,9 +104,9 @@ namespace IGC
     // for regx and bregx operations. For eg, if GRF to encode in regx is
     // 10 then invoke method as GetEncodedRegNum<RegisterNumbering::GRFBase>(10).
     template<unsigned int T>
-    unsigned int GetEncodedRegNum(unsigned int i)
+    unsigned int GetEncodedRegNum(unsigned int i, bool UseNewEncoding)
     {
-        if (IGC_IS_FLAG_ENABLED(UseNewRegEncoding))
+        if (UseNewEncoding)
         {
             return (T + i);
         }

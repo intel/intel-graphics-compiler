@@ -27,8 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#include "Compiler/DebugInfo/VISAIDebugEmitter.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -41,6 +39,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Casting.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "VISAIDebugEmitter.hpp"
 
 #include <set>
 #include <map>
@@ -57,18 +57,6 @@ namespace IGC
     class DwarfDebug;
     class CodeGenContext;
 
-    void insertOCLMissingDebugConstMetadata(CodeGenContext* ctx);
-
-    // Helper functions to analyze Debug info metadata present in LLVM IR
-    class DebugMetadataInfo
-    {
-    public:
-        static bool hasDashgOption(CodeGenContext* ctx);
-        static bool hasAnyDebugInfo(CodeGenContext* ctx, bool& fullDebugInfo, bool& lineNumbersOnly);
-        static std::string getUniqueFuncName(llvm::Function& F);
-        static std::string getOrigFuncName(std::string cloneName);
-    };
-
     class DebugEmitter : public IDebugEmitter
     {
     public:
@@ -83,7 +71,8 @@ namespace IGC
         ~DebugEmitter();
 
         // IDebugEmitter interface methods
-        void Initialize(CShader* pShader, bool debugEnabled);
+        void Initialize(VISAModule *visaModule, const DebugEmitterOpts& Opts,
+                        bool debugEnabled);
         void Finalize(void*& pBuffer, unsigned int& size, bool finalize);
         void BeginInstruction(llvm::Instruction* pInst);
         void EndInstruction(llvm::Instruction* pInst);

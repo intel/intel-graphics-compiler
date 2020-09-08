@@ -193,6 +193,7 @@ generateFileScopes(IGC::StreamEmitter &SE,
   return std::move(ScopeIDMap);
 }
 
+/*
 bool generateLineTable(IGC::StreamEmitter &SE, const FinalizerDbgInfo &GenDbg,
                        const llvm::genx::VisaDebugInfo &GenXDbg,
                        const std::map<std::string, unsigned> &FileScopes) {
@@ -246,6 +247,7 @@ bool generateLineTable(IGC::StreamEmitter &SE, const FinalizerDbgInfo &GenDbg,
 
   return true;
 }
+*/
 
 } // namespace
 
@@ -264,6 +266,8 @@ llvm::Error generateDebugInfo(SmallVectorImpl<char> &ElfImage, VISAKernel &VK,
   llvm::raw_svector_ostream OS(ElfImage);
 
   const auto *Module = F.getParent();
+  (void)Module;
+  /*
   auto SE = std::make_unique<IGC::StreamEmitter>(
       OS, Module->getDataLayout().getStringRepresentation(), TripleStr, true);
 
@@ -295,6 +299,7 @@ llvm::Error generateDebugInfo(SmallVectorImpl<char> &ElfImage, VISAKernel &VK,
   SE->EmitELFDiffSize(Sym_FBegin, Sym_FEnd, Sym_FBegin);
   SE->SetDwarfCompileUnitID(0);
   SE->Finalize();
+  */
 
   return Error::success();
 }

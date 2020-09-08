@@ -138,7 +138,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define Opcode_can_use_cond_mod(opc)        \
                                  (opc == G4_sel)
 
-
 enum class BankAlign
 {
     Either    = 1, // either

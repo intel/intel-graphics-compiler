@@ -36,9 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "llvm/Config/llvm-config.h"
-#define DEBUG_TYPE "lexicalscopes"
-#include "Compiler/DebugInfo/LexicalScopes.hpp"
-#include "Compiler/DebugInfo/VISAModule.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/DebugInfo.h"
@@ -48,7 +45,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "LexicalScopes.hpp"
+#include "VISAModule.hpp"
+
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "lexicalscopes"
 
 using namespace llvm;
 using namespace IGC;

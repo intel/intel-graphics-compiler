@@ -37,16 +37,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "llvm/Config/llvm-config.h"
-#define DEBUG_TYPE "dwarfdebug"
-#include "Compiler/DebugInfo/DwarfDebug.hpp"
-#include "Compiler/DebugInfo/DIE.hpp"
-#include "Compiler/DebugInfo/DwarfCompileUnit.hpp"
-#include "Compiler/DebugInfo/StreamEmitter.hpp"
-#include "Compiler/DebugInfo/VISAModule.hpp"
-#include "Compiler/DebugInfo/Version.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Support/Debug.h"
-#include <llvmWrapper/IR/Function.h>
+#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/BinaryFormat/Dwarf.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
@@ -65,8 +58,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/MC/MCDwarf.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "DwarfDebug.hpp"
+#include "DIE.hpp"
+#include "DwarfCompileUnit.hpp"
+#include "StreamEmitter.hpp"
+#include "VISAModule.hpp"
+#include "Version.hpp"
+
+#include <unordered_set>
+
 #include "Probe/Assertion.h"
-#include "Compiler/CISACodeGen/messageEncoding.hpp"
+
+#define DEBUG_TYPE "dwarfdebug"
 
 using namespace llvm;
 using namespace IGC;
@@ -273,7 +277,8 @@ static unsigned getDwarfVersionFromModule(const Module* M)
 }
 
 DwarfDebug::DwarfDebug(StreamEmitter* A, VISAModule* M) :
-    Asm(A), m_pModule(M), FirstCU(0),
+    Asm(A), EmitSettings(Asm->GetEmitterSettings()),
+    m_pModule(M), FirstCU(0),
     //AbbreviationsSet(InitAbbreviationsSetSize),
     SourceIdMap(DIEValueAllocator),
     PrevLabel(NULL), GlobalCUIndexCount(0),
@@ -426,7 +431,7 @@ DIE* DwarfDebug::updateSubprogramScopeDIE(CompileUnit* SPCU, DISubprogram* SP)
         SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
             Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP->getName().data())));
 
-        if (IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging))
+        if (EmitSettings.EnableSIMDLaneDebugging)
         {
             // Emit SIMD width
             SPCU->addUInt(SPDie, (dwarf::Attribute)DW_AT_INTEL_simd_width, dwarf::DW_FORM_data2,
@@ -506,7 +511,7 @@ DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
             }
         }
 
-        if (IGC_IS_FLAG_ENABLED(EmitDebugRanges))
+        if (EmitSettings.EmitDebugRanges)
         {
             encodeRange(TheCU, ScopeDIE, &Ranges);
         }
@@ -655,7 +660,7 @@ DIE* DwarfDebug::constructInlinedScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
         // .debug_range section has not been laid out yet. Emit offset in
         // .debug_range as a uint, size 4, for now. emitDIE will handle
         // DW_AT_ranges appropriately.
-        if (IGC_IS_FLAG_ENABLED(EmitDebugRanges))
+        if (EmitSettings.EmitDebugRanges)
         {
             encodeRange(TheCU, ScopeDIE, &Ranges);
         }
@@ -1339,7 +1344,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
     };
 
     unsigned int offset = 0;
-    unsigned int pointerSize = getPointerSize((llvm::Module&) * MF->getParent());
+    unsigned int pointerSize = m_pModule->getPointerSize();
     for (SmallVectorImpl<const MDNode*>::const_iterator UVI = UserVariables.begin(),
         UVE = UserVariables.end(); UVI != UVE; ++UVI)
     {
@@ -1417,7 +1422,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 AbsVar->setDbgInst(pInst);
             }
 
-            if (!m_pModule->isDirectElfInput || IGC_IS_FLAG_DISABLED(EmitDebugLoc))
+            if (!m_pModule->isDirectElfInput || EmitSettings.NoEmitDebugLoc)
                 continue;
 
             // assume that VISA preserves location thoughout its lifetime
@@ -1637,7 +1642,7 @@ unsigned int DwarfDebug::CopyDebugLoc(unsigned int o)
     // returned.
     unsigned int offset = 0, index = 0;
     bool found = false, done = false;
-    unsigned int pointerSize = getPointerSize(*const_cast<llvm::Module*>(m_pModule->GetModule()));
+    unsigned int pointerSize = m_pModule->getPointerSize();
 
     // Compute offset in DotDebugLocEntries
     for (auto& item : DotDebugLocEntries)
@@ -2713,7 +2718,7 @@ void DwarfDebug::writeFDESubroutine(VISAModule* m)
 
     // assume ret var is live throughout sub-routine and it is contained
     // in same GRF.
-    uint32_t linearAddr = (retvarLR.front().var.mapping.r.regNum * m_pModule->m_pShader->getGRFSize()) +
+    uint32_t linearAddr = (retvarLR.front().var.mapping.r.regNum * m_pModule->getGRFSize()) +
         retvarLR.front().var.mapping.r.subRegNum;
 
     // initial location
@@ -2859,7 +2864,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
     {
         for (unsigned int idx = 0; idx != item.data.size(); ++idx)
         {
-            auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->m_pShader->getGRFSize());
+            auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->getGRFSize());
             uniqueCalleeSave.insert(regNum);
         }
     }
@@ -2910,7 +2915,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
         {
             for (unsigned int idx = 0; idx != item.data.size(); ++idx)
             {
-                auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->m_pShader->getGRFSize());
+                auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->getGRFSize());
                 if (calleeSaveRegsSaved.find(regNum) == calleeSaveRegsSaved.end())
                 {
                     writeRegToMem(cfaOps[item.genIPOffset], regNum, item.data[idx].dst);
@@ -2929,7 +2934,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
                 bool found = false;
                 for (unsigned int idx = 0; idx != item.data.size(); ++idx)
                 {
-                    auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->m_pShader->getGRFSize());
+                    auto regNum = (uint32_t)item.data[idx].srcRegOff / (m_pModule->getGRFSize());
                     if ((*it) == regNum)
                     {
                         found = true;

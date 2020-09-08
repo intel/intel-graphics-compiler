@@ -28,9 +28,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Config/llvm-config.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Instruction.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "common/Types.hpp"
+
 #include <string>
+#include <vector>
 
 namespace llvm
 {
@@ -43,6 +46,7 @@ namespace IGC
     // Forward declaration
     class CShader;
     class VISAModule;
+    struct DebugEmitterOpts;
 
     /// @brief IDebugEmitter is an interface for debug info emitter class.
     ///        It can be used by IGC VISA emitter pass to emit debug info.
@@ -64,7 +68,8 @@ namespace IGC
         /// @brief Initialize debug emitter for processing the given shader.
         /// @param pShader shader to process, and emit debug info for.
         /// @param debugEnabled indicator for emitting debug info or not.
-        virtual void Initialize(CShader* pShader, bool debugEnabled) = 0;
+        virtual void Initialize(VISAModule *visaModule, const DebugEmitterOpts& Opts,
+                                bool debugEnabled) = 0;
 
         /// @brief Emit debug info to given buffer and reset debug emitter.
         /// @param pBuffer [OUT] object buffer conatins the emitted debug info.

@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGCLLVM_IR_GLOBALVALUE_H
 
 #include <llvm/IR/Argument.h>
+#include <llvm/IR/GlobalValue.h>
 
 namespace IGCLLVM
 {

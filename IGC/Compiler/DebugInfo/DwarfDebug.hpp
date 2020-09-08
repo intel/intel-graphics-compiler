@@ -38,9 +38,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "llvm/Config/llvm-config.h"
-#include "Compiler/DebugInfo/DIE.hpp"
-#include "Compiler/DebugInfo/LexicalScopes.hpp"
-#include "Compiler/DebugInfo/Version.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Instruction.h"
 #include "llvm/ADT/DenseMap.h"
@@ -51,8 +48,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Allocator.h"
 #include "llvmWrapper/IR/DebugInfoMetadata.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/DebugInfo/VISAModule.hpp"
-#include "Compiler/DebugInfo/LexicalScopes.hpp"
+
+#include "VISAModule.hpp"
+#include "DIE.hpp"
+#include "LexicalScopes.hpp"
+#include "Version.hpp"
+
+#include "EmitterOpts.hpp"
+
 #include <set>
 #include "Probe/Assertion.h"
 
@@ -256,6 +259,7 @@ namespace IGC
     {
         // Target of Dwarf emission.
         IGC::StreamEmitter* Asm;
+        const IGC::DebugEmitterOpts& EmitSettings;
 
         ::IGC::VISAModule* m_pModule;
 

@@ -32,9 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
 #include "llvm/Config/llvm-config.h"
-#include "Compiler/DebugInfo/DIE.hpp"
-#include "Compiler/DebugInfo/StreamEmitter.hpp"
-#include "Compiler/DebugInfo/Version.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalValue.h"
@@ -55,6 +52,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/SourceMgr.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "DIE.hpp"
+#include "StreamEmitter.hpp"
+#include "Version.hpp"
+
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -480,8 +482,12 @@ namespace IGC
 
 } // namespace IGC
 
-StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& dataLayout, const std::string& targetTriple, bool isDirectElf) :
-    m_targetTriple(targetTriple), m_setCounter(0)
+StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream,
+                             const std::string& dataLayout,
+                             const std::string& targetTriple,
+                             const StreamEmitter::Settings &Options) :
+    m_targetTriple(targetTriple), m_setCounter(0),
+    StreamOptions(Options)
 {
 #if LLVM_VERSION_MAJOR == 4
     m_pDataLayout = new DataLayout(dataLayout);
@@ -533,7 +539,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
     // the enum so its value in inlined.
 #define EM_INTEL_GEN 182
     uint16_t eMachine =
-        isDirectElf ? EM_INTEL_GEN :
+        StreamOptions.isDirectElf ? EM_INTEL_GEN :
         is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
     bool hasRelocationAddend = is64Bit;
     std::unique_ptr<MCAsmBackend> pAsmBackend
@@ -885,7 +891,8 @@ void StreamEmitter::EmitSectionOffset(const MCSymbol* pLabel, const MCSymbol* pS
 
 void StreamEmitter::EmitDwarfRegOp(unsigned reg, unsigned offset, bool indirect) const
 {
-    auto regEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(reg);
+    auto regEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
+        reg, StreamOptions.UseNewRegisterEncoding);
     if (indirect)
     {
         if (regEncoded < 32)

@@ -34,7 +34,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "llvm/Config/llvm-config.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/DataTypes.h"
 #include "llvm/Support/raw_ostream.h"
@@ -43,6 +42,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 
 #include <string>
+
+#include "EmitterOpts.hpp"
 
 namespace llvm
 {
@@ -55,21 +56,25 @@ namespace llvm
 
 namespace IGC
 {
-
     /// @brief StreamEmitter provides API methods for emitting elf object.
     ///        It will be used to emit the debug info sections in dwarf format.
     class StreamEmitter
     {
     public:
+        typedef DebugEmitterOpts Settings;
         /// @brief Constructor.
         /// @param raw_ostream instance of raw_ostream to emit all bitcode into.
         /// @param dataLayout data layout string.
         /// @param targetTriple target triple string.
         /// @param isDirectElf set to true when using 1-step elf
-        StreamEmitter(llvm::raw_pwrite_stream&, const std::string& dataLayout, const std::string& targetTriple, bool isDirectElf);
+        StreamEmitter(llvm::raw_pwrite_stream&, const std::string& dataLayout,
+                      const std::string& targetTriple,
+                      const Settings& EmitterOptions);
 
         /// @brief Destructor.
         ~StreamEmitter();
+
+        const Settings& GetEmitterSettings() const { return StreamOptions; };
 
         /// @brief Get pointer size.
         /// @return pointer size in bits.
@@ -222,6 +227,7 @@ namespace IGC
         llvm::MCObjectFileInfo* m_pObjFileInfo;
         const llvm::DataLayout* m_pDataLayout;
         const std::string& m_targetTriple;
+        Settings StreamOptions;
 
         mutable unsigned int m_setCounter;
     };

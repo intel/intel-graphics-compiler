@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
+#include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "LLVM3DBuilder/MetadataBuilder.h"
 #include "common/LLVMWarningsPush.hpp"

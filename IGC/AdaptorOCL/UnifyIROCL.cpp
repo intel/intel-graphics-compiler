@@ -126,6 +126,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
+#include "Compiler/DebugInfo/ScalarVISAModule.h"
+#include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
 
 #include <string>
@@ -547,4 +549,5 @@ void UnifyIRSPIR(
 {
     CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
 }
+
 }

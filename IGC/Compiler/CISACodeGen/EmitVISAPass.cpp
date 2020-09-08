@@ -45,9 +45,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/igc_regkeys.hpp"
 #include "common/Stats.hpp"
 #include "Compiler/CISACodeGen/helper.h"
+#include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "common/secure_mem.h"
 #include "iStdLib/File.h"
 #include "Compiler/DebugInfo/VISAIDebugEmitter.hpp"
+#include "Compiler/DebugInfo/EmitterOpts.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -528,8 +530,19 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_VRA->BeginFunction(&F, numLanes(m_SimdMode));
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
+        IGC::VISAModule* vMod = new IGC::ScalarVisaModule(m_currShader);
+        IGC::DebugEmitterOpts DebugOpts;
+        DebugOpts.isDirectElf = vMod->isDirectElfInput;
+        DebugOpts.UseNewRegisterEncoding = IGC_IS_FLAG_ENABLED(UseNewRegEncoding);
+        DebugOpts.FillMissingDebugLocations = IGC_IS_FLAG_ENABLED(FillMissingDebugLocations);
+        DebugOpts.EnableSIMDLaneDebugging = IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging);
+        DebugOpts.EnableGTLocationDebugging = IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging);
+        DebugOpts.EmitDebugRanges = IGC_IS_FLAG_ENABLED(EmitDebugRanges);
+        DebugOpts.NoEmitDebugLoc = IGC_IS_FLAG_DISABLED(EmitDebugLoc);
+        DebugOpts.EmitOffsetInDbgLoc = IGC_IS_FLAG_ENABLED(EmitOffsetInDbgLoc);
         IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
-            IF_DEBUG_INFO(m_pDebugEmitter->Initialize(m_currShader, DebugInfoData::hasDebugInfo(m_currShader));)
+        IF_DEBUG_INFO(m_pDebugEmitter->Initialize(
+            vMod, DebugOpts, DebugInfoData::hasDebugInfo(m_currShader));)
     }
 
     if (DebugInfoData::hasDebugInfo(m_currShader))

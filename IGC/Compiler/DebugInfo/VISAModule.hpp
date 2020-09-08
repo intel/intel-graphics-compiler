@@ -28,15 +28,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/DataTypes.h"
+#include "llvm/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "VISAIDebugEmitter.hpp"
+#include "LexicalScopes.hpp"
+
 #include <vector>
 #include <map>
 #include <string>
-#include <unordered_set>
-#include <unordered_map>
-#include "Compiler/DebugInfo/VISAIDebugEmitter.hpp"
-#include "Compiler/DebugInfo/LexicalScopes.hpp"
-#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+
 #include "Probe/Assertion.h"
 
 namespace llvm
@@ -55,8 +56,6 @@ namespace llvm
 
 namespace IGC
 {
-    class CShader;
-    class CVariable;
     class VISAModule;
     class DwarfDebug;
 
@@ -344,12 +343,9 @@ namespace IGC
         typedef InstList::const_iterator const_iterator;
         typedef std::vector<unsigned char> DataVector;
     public:
-        /// @brief Constructor.
-        /// @param m_pShader holds the processed entry point function and generated VISA code.
-        explicit VISAModule(CShader* m_pShader);
-
+        VISAModule(llvm::Function * Entry);
         /// @brief Destructor.
-        ~VISAModule();
+        virtual ~VISAModule();
 
         /// @brief Return first instruction to process.
         /// @return iterator to first instruction in the entry point function.
@@ -399,13 +395,6 @@ namespace IGC
         /// @return debug info variable.
         const llvm::MDNode* GetDebugVariable(const llvm::Instruction*) const;
 
-        /// @brief Return variable location in VISA for from given debug info instruction.
-        /// Return type is a vector since for SIMD32 a single src variable may map to 2
-        /// VISA variables. In case of SIMD32, each entry is treated to be one half of SIMD16.
-        /// @param Instruction to query.
-        /// @return variable location in VISA.
-        std::vector<VISAVariableLocation> GetVariableLocation(const llvm::Instruction*) const;
-
         /// @brief Return raw data of given LLVM constant value.
         /// @param pConstVal constant value to process.
         /// @param rawData output buffer to append processed raw data to.
@@ -431,8 +420,21 @@ namespace IGC
         /// @return target triple string.
         const std::string& GetTargetTriple() const;
 
+        /// @brief Return variable location in VISA for from given debug info instruction.
+        /// Return type is a vector since for SIMD32 a single src variable may map to 2
+        /// VISA variables. In case of SIMD32, each entry is treated to be one half of SIMD16.
+        /// @param Instruction to query.
+        /// @return variable location in VISA.
+        virtual std::vector<VISAVariableLocation>
+            GetVariableLocation(const llvm::Instruction* pInst) const = 0;
+
+        /// @brief Updates VISA instruction id to current instruction number.
+        virtual void UpdateVisaId() = 0;
+        /// @brief Validate that VISA instruction id is updated to current instruction number.
+        virtual void ValidateVisaId() = 0;
         /// @brief Return SIMD size of kernel
-        uint16_t GetSIMDSize() const;
+        virtual uint16_t GetSIMDSize() const = 0;
+
 
         void SetEntryFunction(llvm::Function* F, bool c)
         {
@@ -440,10 +442,6 @@ namespace IGC
             isCloned = c;
         }
         void Reset();
-
-        std::string m_triple = "vISA_64";
-
-        CShader* m_pShader;
 
         void setDISPToFuncMap(std::map<llvm::DISubprogram*, const llvm::Function*>* d)
         {
@@ -482,37 +480,27 @@ namespace IGC
 
         std::vector<std::pair<unsigned int, unsigned int>> getGenISARange(const InsnRange& Range);
 
-        unsigned int getUnpaddedProgramSize()
-        {
-            return m_pShader->ProgramOutput()->m_unpaddedProgramSize;
-        }
+        virtual unsigned getUnpaddedProgramSize() const = 0;
+        virtual bool isLineTableOnly() const = 0;
+        virtual unsigned getPrivateBaseReg() const = 0;
+        virtual unsigned getGRFSize() const = 0;
+        virtual unsigned getPointerSize() const = 0;
+        virtual VISAModule* makeNew() const = 0;
+
+        // TODO: Replace on std::vector
+        virtual const void* getGenDebug() const = 0;
+        virtual const unsigned char* getGenBinary() const = 0;
 
         const InstInfoMap* GetInstInfoMap() { return &m_instInfoMap; }
 
-        static bool isLineTableOnly(CShader* s);
 
         VISAModule& operator=(VISAModule& other) = default;
 
-        static VISAModule* BuildNew(CShader* s)
-        {
-            auto n = new VISAModule(s);
-
-            if (n->m_pShader->GetContext()->m_DriverInfo.SupportElfFormat() ||
-                isLineTableOnly(s) ||
-                IGC_GET_FLAG_VALUE(EnableOneStepElf))
-            {
-                n->isDirectElfInput = true;
-            }
-
-            return n;
-        }
 
         unsigned int GetCurrentVISAId() { return m_currentVisaId; }
+        void SetVISAId(unsigned ID) { m_currentVisaId = ID; }
 
-        void SetDwarfDebug(DwarfDebug* d)
-        {
-            dd = d;
-        }
+        void SetDwarfDebug(DwarfDebug* d) { dd = d; }
 
         DwarfDebug* GetDwarfDebug() { return dd; }
 
@@ -528,40 +516,20 @@ namespace IGC
         void SetType(ObjectType t) { m_objectType = t; }
 
     private:
-        /// @brief Default Constructor.
-        ///        Defined as private to prevent creation of default constructor.
-        VISAModule();
-
-        /// @brief Updates VISA instruction id to current instruction number.
-        void UpdateVisaId();
-
-        /// @brief Validate that VISA instruction id is updated to current instruction number.
-        void ValidateVisaId();
-
-        /// @brief Trace given value to its origin value, searching for LLVM Argument.
-        /// @param pVal value to process.
-        /// @param isAddress indecates if the value represents an address.
-        /// @param LLVM Argument if the origin value is an argument, nullptr otherwsie.
-        const llvm::Argument* GetTracedArgument(const llvm::Value* pVal, bool isAddress) const;
-        const llvm::Argument* GetTracedArgument64Ops(const llvm::Value* pVal) const;
-
-    private:
-        // Triple to use for debug info
-        //std::string m_triple = "vISA_64";
-        const llvm::Module* m_pModule;
+        std::string m_triple = "vISA_64";
+        const llvm::Module* m_pModule = nullptr;
         // m_pEntryFunction points to llvm::Function that resulted in this VISAModule instance.
         // There is a 1:1 mapping between the two.
         // Its value is setup in DebugInfo pass, prior to it this is undefined.
         const llvm::Function* m_pEntryFunc;
         InstList m_instList;
         std::map<const llvm::Function*, unsigned int> FuncIDMap;
-        mutable std::unordered_set<const CVariable*> m_outputVals;
         std::map<llvm::DISubprogram*, const llvm::Function*>* DISPToFunc = nullptr;
         DwarfDebug* dd = nullptr;
 
-        unsigned int m_currentVisaId;
+        unsigned int m_currentVisaId = 0;
 
-        bool isCloned;
+        bool isCloned = false;
 
         InstInfoMap m_instInfoMap;
 

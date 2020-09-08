@@ -47,8 +47,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "common/LLVMWarningsPop.hpp"
+
 #include <utility>
 #include <unordered_map>
+
 #include "Probe/Assertion.h"
 
 namespace IGC

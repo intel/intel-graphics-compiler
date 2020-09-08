@@ -40,16 +40,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#include "Compiler/DebugInfo/DIE.hpp"
-#include "Compiler/DebugInfo/DwarfDebug.hpp"
-#include "Compiler/DebugInfo/Version.hpp"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/IR/DebugInfo.h"
+#include "llvm/IR/GlobalValue.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "DIE.hpp"
+#include "DwarfDebug.hpp"
+#include "Version.hpp"
+
+#include "EmitterOpts.hpp"
 
 namespace llvm
 {
@@ -80,6 +83,8 @@ namespace IGC
 
         /// Asm - Target of Dwarf emission.
         StreamEmitter* Asm;
+
+        const DebugEmitterOpts& EmitSettings;
 
         // Holders for some common dwarf information.
         IGC::DwarfDebug* DD;

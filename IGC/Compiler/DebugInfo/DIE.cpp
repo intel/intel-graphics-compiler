@@ -37,9 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "llvm/Config/llvm-config.h"
-#include "Compiler/DebugInfo/DIE.hpp"
-#include "Compiler/DebugInfo/DwarfDebug.hpp"
-#include "Compiler/DebugInfo/StreamEmitter.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/Twine.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -52,6 +49,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "DIE.hpp"
+#include "DwarfDebug.hpp"
+#include "StreamEmitter.hpp"
+
 #include "Probe/Assertion.h"
 
 using namespace llvm;
