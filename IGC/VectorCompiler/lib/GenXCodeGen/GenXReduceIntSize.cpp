@@ -666,22 +666,9 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
       }
     }
     break;
-  case Instruction::LShr: {
-      // LShr can just truncate as long as it does not need sign extending.
-      auto VNB0 = getValueNumBits(Inst->getOperand(0));
-      if (!VNB0.IsSignExtended)
-        TruncBits = VNB0.NumBits;
-    }
-    goto binop;
-  case Instruction::AShr: {
-      // AShr can just truncate as long as it does need sign extending.
-      auto VNB0 = getValueNumBits(Inst->getOperand(0),
-          /*PreferSigned=*/true);
-      if (VNB0.IsSignExtended) {
-        TruncBits = VNB0.NumBits;
-        NeedSignExtend = true;
-      }
-    }
+  case Instruction::LShr:
+    /*fallthrough*/
+  case Instruction::AShr:
     goto binop;
   case Instruction::And:
     {
