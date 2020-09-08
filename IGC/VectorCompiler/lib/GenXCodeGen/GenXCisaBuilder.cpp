@@ -2711,14 +2711,15 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
   IGC_ASSERT(!Mask && "cannot have rdpredregion baled into goto");
 
   Instruction *Not = dyn_cast<Instruction>(Pred);
-  if (Not && isPredNot(Not) && StateInvert == PredState_INVERSE) {
+  if (Not && isPredNot(Not)) {
     // Eliminate excess NOT
     // %P1 = ...
     // %P2 = not %P1
     // (!%P2) goto
     // Transforms into
     // (%P1) goto
-    StateInvert = PredState_NO_INVERSE;
+    StateInvert = (StateInvert == PredState_NO_INVERSE) ? PredState_INVERSE
+                                                        : PredState_NO_INVERSE;
     Pred = getPredicateOperand(Not, 0 /*OperandNum*/, Baling->getBaleInfo(Not),
                                Control, State, &Mask);
     IGC_ASSERT(!Mask && "cannot have rdpredregion baled into goto");
