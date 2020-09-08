@@ -6506,18 +6506,19 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 }
             }
 
-            uint16_t newSubRegOff = dst->getSubRegOff() + start * hs;
-            bool crossGRF = newSubRegOff * G4_Type_Table[dstType].byteSize >= numEltPerGRF(Type_UB);
-            if (crossGRF)
-            {
-                regOff = dst->getRegOff() + 1;
-                subRegOff = newSubRegOff - numEltPerGRF(Type_UB) / G4_Type_Table[dstType].byteSize;
-            }
-            else
-            {
-                regOff = dst->getRegOff();
-                subRegOff = newSubRegOff;
-            }
+            // Linearize offsets into bytes to verify potential GRF crossing
+            uint16_t newSubRegOff, newSubRegOffByte, crossGRF;
+
+            newSubRegOff = dst->getSubRegOff() + start * hs;
+            newSubRegOffByte = newSubRegOff * G4_Type_Table[dstType].byteSize;
+
+            crossGRF = newSubRegOffByte / numEltPerGRF(Type_UB);
+            newSubRegOffByte = newSubRegOffByte - crossGRF * numEltPerGRF(Type_UB);
+
+            // Compute final reg and subreg offsets
+            regOff = dst->getRegOff() + crossGRF;
+            subRegOff = newSubRegOffByte / G4_Type_Table[dstType].byteSize;
+
             // create a new one
             return createDst(dst->getBase(), regOff, subRegOff, hs, dst->getType(),
                 dst->getAccRegSel());
