@@ -1,6 +1,7 @@
 set(SUPPORT_SOURCES
   Status.cpp
   Options.cpp
+  ShaderDump.cpp
   )
 
 add_library(VCSupport ${SUPPORT_SOURCES})

@@ -163,32 +163,6 @@ static Expected<std::unique_ptr<llvm::Module>> getModule(ArrayRef<char> Input,
   return ExpModule;
 }
 
-static void dumpModuleToTemp(const Module &M, const char *Name) {
-  int FD = -1;
-  auto EC = sys::fs::openFileForWrite(
-        Name, FD, sys::fs::CD_CreateAlways, sys::fs::F_None);
-  if (EC) {
-    llvm::errs() << "Can not open file: " << Name << "\n";
-    return;
-  }
-
-  raw_fd_ostream O(FD, /*shouldClose=*/true);
-  M.print(O, nullptr);
-}
-
-static void dumpDataToTemp(StringRef S, const char *Name) {
-  int FD = -1;
-  auto EC = sys::fs::openFileForWrite(
-        Name, FD, sys::fs::CD_CreateAlways, sys::fs::F_None);
-  if (EC) {
-    llvm::errs() << "Can not open file: " << Name << "\n";
-    return;
-  }
-
-  raw_fd_ostream O(FD, /*shouldClose=*/true);
-  O << S;
-}
-
 static vc::ocl::ArgInfo
 convertOCLArgInfo(const GenXOCLRuntimeInfo::KernelArgInfo &Info) {
   vc::ocl::ArgInfo Converted;
@@ -374,6 +348,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   GenXBackendOptions BackendOpts;
   if (Opts.StackMemSize)
     BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
+  BackendOpts.Dumper = Opts.Dumper.get();
   return BackendOpts;
 }
 
@@ -431,10 +406,10 @@ static void optimizeIR(const vc::CompileOptions &Opts,
 
 static void dumpFinalOutput(const vc::CompileOptions &Opts, const Module &M,
                             StringRef IsaBinary) {
-  if (Opts.DumpIR)
-    dumpModuleToTemp(M, "final.ll");
-  if (Opts.DumpIsa)
-    dumpDataToTemp(IsaBinary, "final.isa");
+  if (Opts.DumpIR && Opts.Dumper)
+    Opts.Dumper->dumpModule(M, "final.ll");
+  if (Opts.DumpIsa && Opts.Dumper)
+    Opts.Dumper->dumpBinary({IsaBinary.data(), IsaBinary.size()}, "final.isa");
 }
 
 static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
@@ -518,19 +493,22 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   cl::ParseEnvironmentOptions("vc-codegen", DebugEnvVarName);
 #endif
 
+  if (Opts.DumpIR && Opts.Dumper)
+    Opts.Dumper->dumpBinary(Input, "input.spv");
+
   LLVMContext Context;
   LLVMInitializeGenXTarget();
   LLVMInitializeGenXTargetInfo();
   llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
   llvm::initializeTarget(Registry);
 
-  if (Opts.DumpIR)
-    dumpDataToTemp({Input.data(), Input.size()}, "vc-input.spv");
-
   auto ExpModule = getModule(Input, Context);
   if (!ExpModule)
     return ExpModule.takeError();
   Module &M = *ExpModule.get();
+
+  if (Opts.DumpIR && Opts.Dumper)
+    Opts.Dumper->dumpModule(M, "after_spirv_reader.ll");
 
   legacy::PassManager PerModulePasses;
   PerModulePasses.add(createGenXSPIRVReaderAdaptorPass());
@@ -551,13 +529,13 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   if (Opts.TimePasses)
     TimePassesIsEnabled = true;
 
-  if (Opts.DumpIR)
-    dumpModuleToTemp(M, "start.ll");
+  if (Opts.DumpIR && Opts.Dumper)
+    Opts.Dumper->dumpModule(M, "after_ir_adaptors.ll");
 
   optimizeIR(Opts, ExtData, TM, M);
 
-  if (Opts.DumpIR)
-    dumpModuleToTemp(M, "optimized.ll");
+  if (Opts.DumpIR && Opts.Dumper)
+    Opts.Dumper->dumpModule(M, "optimized.ll");
 
   vc::CompileOutput Output = runCodeGen(Opts, ExtData, TM, M);
 

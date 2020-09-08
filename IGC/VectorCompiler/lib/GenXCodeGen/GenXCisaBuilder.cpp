@@ -989,7 +989,14 @@ std::string GenXKernelBuilder::buildAsmName() const {
       idx = E - idx - 1;
     AsmName = (UserAsmName + llvm::Twine('_') + llvm::Twine(idx)).str();
   }
-  return AsmName;
+
+  // Currently installed shader dumper can provide its own path for
+  // dumps. Prepend it to generated asm name.
+  if (!BackendConfig->hasShaderDumper())
+    return AsmName;
+
+  vc::ShaderDumper &Dumper = BackendConfig->getShaderDumper();
+  return Dumper.getDumpPathPrefix() + AsmName;
 }
 
 bool GenXKernelBuilder::run() {

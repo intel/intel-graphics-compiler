@@ -42,9 +42,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef LIB_GENXCODEGEN_GENXBACKENDCONFIG_H
 #define LIB_GENXCODEGEN_GENXBACKENDCONFIG_H
 
+#include "vc/Support/ShaderDump.h"
+
 #include "llvmWrapper/Support/MemoryBuffer.h"
-#include "llvm/Pass.h"
-#include "llvm/PassRegistry.h"
+
+#include "Probe/Assertion.h"
+
+#include <llvm/Pass.h>
+#include <llvm/PassRegistry.h>
 
 namespace llvm {
 
@@ -58,6 +63,9 @@ struct GenXBackendOptions {
 
   // Maximum available memory for stack (in bytes).
   unsigned StackSurfaceMaxSize;
+
+  // Non-owning pointer to abstract shader dumper for debug dumps.
+  vc::ShaderDumper *Dumper = nullptr;
 
   GenXBackendOptions();
 };
@@ -94,6 +102,17 @@ public:
 
   MemoryBufferRef getOCLGenericBiFModule() const {
     return Data.OCLGenericBiFModule;
+  }
+
+  // Return whether shader dumper is installed.
+  bool hasShaderDumper() const { return Options.Dumper; }
+
+  // Get reference to currently installed dumper.
+  // Precondition: hasShaderDumper() == true.
+  vc::ShaderDumper &getShaderDumper() const {
+    IGC_ASSERT_MESSAGE(hasShaderDumper(),
+                       "Attempt to query not installed dumper");
+    return *Options.Dumper;
   }
 };
 } // namespace llvm

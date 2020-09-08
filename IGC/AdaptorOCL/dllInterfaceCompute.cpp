@@ -58,6 +58,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/ScopeExit.h>
 #include "vc/igcdeps/cmc.h"
+#include "vc/Support/ShaderDump.h"
 #include "vc/Support/StatusCode.h"
 #include "vc/GenXCodeGen/GenXWrapper.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -1499,6 +1500,7 @@ static std::error_code TranslateBuildVC(
         llvm::make_scope_exit([]() { llvm::cl::ResetAllOptionOccurrences(); });
 
     vc::CompileOptions& Opts = ExpOptions.get();
+    Opts.Dumper = vc::createDefaultShaderDumper();
     adjustOptionsVC(IGCPlatform, inputDataFormatTemp, Opts);
 
     std::unique_ptr<llvm::MemoryBuffer> OCLGenericBIFModule = GetGenericModuleBuffer();

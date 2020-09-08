@@ -26,9 +26,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "RelocationInfo.h"
+#include "vc/Support/ShaderDump.h"
 
 #include <JitterDataStruct.h>
+#include <RelocationInfo.h>
+
 #include <inc/common/sku_wa.h>
 
 #include <llvm/ADT/ArrayRef.h>
@@ -146,6 +148,8 @@ struct CompileOptions {
   FileType FType = FileType::SPIRV;
   std::string CPUStr;
   std::unique_ptr<WA_TABLE> WATable = nullptr;
+  // Optional shader dumper.
+  std::unique_ptr<ShaderDumper> Dumper = nullptr;
 
   // Api accessible options.
   bool NoVecDecomp = false;
