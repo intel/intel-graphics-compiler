@@ -7243,7 +7243,7 @@ unsigned int getBinOffsetNextBB(G4_Kernel& kernel, G4_BB* bb)
     return (unsigned int)(*iter)->getGenOffset();
 }
 
-uint8_t gtPinData::getNumBytesScratchUse()
+uint32_t gtPinData::getNumBytesScratchUse()
 {
     if (gtpin_init)
     {
@@ -7282,7 +7282,7 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     memset(&t, 0, sizeof(t));
 
     t.version = gtpin::igc::GTPIN_IGC_INTERFACE_VERSION;
-    //t.igc_init_size = sizeof(t);
+    t.igc_init_size = sizeof(t);
     if (gtpinInitFromL0)
     {
         if (kernel.getOption(vISA_GetFreeGRFInfo))
@@ -7336,6 +7336,9 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     // For payload offsets
     numTokens++;
 
+    // Report #GRFs
+    numTokens++;
+
     writeBuffer(buffer, bufferSize, &t, sizeof(t));
     writeBuffer(buffer, bufferSize, &numTokens, sizeof(uint32_t));
 
@@ -7371,13 +7374,24 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
         writeBuffer(buffer, bufferSize, &scratchSlotData, sizeof(scratchSlotData));
     }
 
-    // Write payload offsets
-    gtpin::igc::igc_token_kernel_start_info_t offsets;
-    offsets.token = gtpin::igc::GTPIN_IGC_TOKEN_KERNEL_START_INFO;
-    offsets.per_thread_prolog_size = getPerThreadNextOff();
-    offsets.cross_thread_prolog_size = getCrossThreadNextOff() - offsets.per_thread_prolog_size;
-    offsets.token_size = sizeof(offsets);
-    writeBuffer(buffer, bufferSize, &offsets, sizeof(offsets));
+    {
+        // Write payload offsets
+        gtpin::igc::igc_token_kernel_start_info_t offsets;
+        offsets.token = gtpin::igc::GTPIN_IGC_TOKEN_KERNEL_START_INFO;
+        offsets.per_thread_prolog_size = getPerThreadNextOff();
+        offsets.cross_thread_prolog_size = getCrossThreadNextOff() - offsets.per_thread_prolog_size;
+        offsets.token_size = sizeof(offsets);
+        writeBuffer(buffer, bufferSize, &offsets, sizeof(offsets));
+    }
+
+    {
+        // Report num GRFs
+        gtpin::igc::igc_token_num_grf_regs_t numGRFs;
+        numGRFs.token = gtpin::igc::GTPIN_IGC_TOKEN_NUM_GRF_REGS;
+        numGRFs.token_size = sizeof(numGRFs);
+        numGRFs.num_grf_regs = kernel.getNumRegTotal();
+        writeBuffer(buffer, bufferSize, &numGRFs, sizeof(numGRFs));
+    }
 
     void* gtpinBuffer = allocCodeBlock(bufferSize);
 

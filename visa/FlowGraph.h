@@ -1327,7 +1327,7 @@ public:
     {
         nextScratchFree = ((next + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB)) * numEltPerGRF(Type_UB);
     }
-    uint8_t getNumBytesScratchUse();
+    uint32_t getNumBytesScratchUse();
 
     void setPerThreadPayloadBB(G4_BB* bb) { perThreadPayloadBB = bb; }
     void setCrossThreadPayloadBB(G4_BB* bb) { crossThreadPayloadBB = bb; }
