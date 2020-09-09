@@ -3731,13 +3731,6 @@ static void recordRAStats(IR_Builder& builder,
 
 int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 {
-    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
-    {
-        if (kernel.getNumRegTotal() < G4_DEFAULT_GRF_NUM)
-        {
-            MUST_BE_TRUE(false, "total GRF number <128, cannot handle stack call!");
-        }
-    }
 
     if (builder.getOption(vISA_DumpDotAll))
     {

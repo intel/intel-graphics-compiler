@@ -549,6 +549,7 @@ static int getNumEnabledChannels(uint32_t chDisableBits)
     return 0;
 }
 
+#define MSG_BLOCK_SIZE_OFFSET   8
 unsigned int G4_SendMsgDescriptor::getEnabledChannelNum() const
 {
     // TODO: should further scope this to typed/untyped
@@ -563,6 +564,7 @@ unsigned int G4_SendMsgDescriptor::getBlockNum() const
 
     uint32_t funcCtrl = getFuncCtrl();
 
+#define MSG_BLOCK_NUMBER_OFFSET 10
     funcCtrl =  (funcCtrl >> MSG_BLOCK_NUMBER_OFFSET) & 0x3;
     switch (funcCtrl)
     {
@@ -600,6 +602,7 @@ bool G4_SendMsgDescriptor::isOwordLoad() const
     }
     uint32_t funcCtrl = getFuncCtrl();
     auto funcID = getFuncId();
+#define IVB_MSG_TYPE_OFFSET    14
     uint16_t msgType = (funcCtrl >> IVB_MSG_TYPE_OFFSET) & 0xF;
     //SFID = data cache, bit 14-17= 0 or 1
     return funcID == SFID::DP_DC && (msgType == 0 || msgType == 1);
@@ -7085,6 +7088,7 @@ bool G4_INST::canSupportCondMod() const
     }
 
 
+    // ToDo: replace with IGA model
     return ((op == G4_add) ||
         (op == G4_and) ||
         (op == G4_addc) ||
@@ -7093,8 +7097,10 @@ bool G4_INST::canSupportCondMod() const
         (op == G4_dp2) ||
         (op == G4_dp3) ||
         (op == G4_dp4) ||
+        (op == G4_dp4a) ||
         (op == G4_dph) ||
         (op == G4_dp4a) ||
+        (op == G4_frc) ||
         (op == G4_line) ||
         (op == G4_lrp) ||
         (op == G4_lzd) ||

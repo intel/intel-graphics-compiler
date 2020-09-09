@@ -5358,6 +5358,9 @@ bool HWConformity::hasBadRegion(G4_INST* inst)
     if (inst->getImplAccDst() || inst->getImplAccSrc())
         return false;
     bool badRegion = false;
+
+#define G4_MAX_ADDR_IMM        511
+#define         GENX_MAX_H_STRIDE           4
     for (unsigned int srcNum = 0, n_srcs = inst->getNumSrc(); srcNum < n_srcs; srcNum++)
     {
         if (!(inst->getSrc(srcNum)->isSrcRegRegion()))

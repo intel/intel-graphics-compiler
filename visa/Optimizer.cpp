@@ -4123,7 +4123,7 @@ void Optimizer::optimizeLogicOperation()
 
     for (ib = fg.begin(); ib != bend; ++ib)
     {
-        G4_BB* bb = (*ib);
+        G4_BB* bb = *ib;
         INST_LIST_ITER ii;
         if ((bb->begin() == bb->end())) {
             continue;
@@ -4143,19 +4143,13 @@ void Optimizer::optimizeLogicOperation()
                 dcl = dst->getTopDcl();
             }
 
-            if ((!Opcode_can_use_cond_mod(op) && !Opcode_define_cond_mod(op) &&
-                !inst->isPseudoLogic()) ||
+            if ((op != G4_sel && op != G4_cmp && !inst->canSupportCondMod() && !inst->isPseudoLogic()) ||
                 !dst || nullDst || (dcl && dcl->isOutput()))
             {
                 continue;
             }
 
-            INST_LIST_ITER next_iter = ii, pred_iter = ii;
-            next_iter++;
-            if (ii != bb->begin())
-            {
-                pred_iter--;
-            }
+            INST_LIST_ITER next_iter = std::next(ii);
 
             if (!resetLocalIds)
             {
@@ -4175,7 +4169,7 @@ void Optimizer::optimizeLogicOperation()
             }
 
             // case 1
-            if (pred_iter != ii && op == G4_sel && inst->getPredicate() && !inst->getCondMod())
+            if (ii != bb->begin() && op == G4_sel && inst->getPredicate() && !inst->getCondMod())
             {
                 if (!foldCmpSel(bb, inst, ii)) {
                     // Compare two operands with special simple checking on
@@ -4275,7 +4269,7 @@ void Optimizer::optimizeLogicOperation()
                 }
                 continue;
             }
-            else if (inst->getPredicate() == NULL && inst->canSupportCondMod())
+            else if (!inst->getPredicate() && inst->canSupportCondMod())
             {
                 // FIXME: why this condition?
                 if (op == G4_pseudo_mad && inst->getExecSize() == g4::SIMD1)
