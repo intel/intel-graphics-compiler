@@ -3,6 +3,7 @@
 // this must precede model*.hpp inclusion below
 #include "../strings.hpp"
 
+
 // for bxml/Model operand type mappings
 #define TYPE(T) \
     ENUM_BITSET_VALUE(T, uint32_t)

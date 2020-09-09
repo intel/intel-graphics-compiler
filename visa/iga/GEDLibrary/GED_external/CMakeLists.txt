@@ -68,8 +68,10 @@ set_property( TARGET GEDLibrary APPEND PROPERTY
     COMPILE_DEFINITIONS                        $<$<CONFIG:Debug>:GED_DEBUG>
   )
 
-# hidden visibility suppresses PLT entries from being created for GED and functions and trims the interface down to a minimal size
-#Was manifested when IGA was used in GT-PIN which also uses GED. IGA ended up using GED library linked with GT-PIN not IGA one
+# Hidden visibility suppresses PLT entries from being created for GED and
+# functions and trims the interface down to a minimal size
+# This was manifested when IGA was used in GT-PIN which also uses GED.
+# IGA ended up using GED library linked with GT-PIN not IGA one
 #https://gcc.gnu.org/wiki/Visibility
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
