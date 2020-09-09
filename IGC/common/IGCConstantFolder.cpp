@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/IGCConstantFolder.h"
 #include <cfenv>
 #include "Probe/Assertion.h"
+#include "Types.hpp"
 
 namespace IGC
 {
@@ -182,6 +183,128 @@ llvm::Constant* IGCConstantFolder::CreateCanonicalize(llvm::Constant* C0, bool f
         APF = llvm::APFloat::getZero(APF.getSemantics(), APF.isNegative());
     }
     return llvm::ConstantFP::get(C0->getContext(), APF);
+}
+
+llvm::Constant* IGCConstantFolder::CreateFirstBitLo(llvm::Constant* C0) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || C0->getType()->getIntegerBitWidth() > 32)
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0);
+    uint32_t result = CI0->getValue().countTrailingZeros();
+    return llvm::ConstantInt::get(C0->getType(), result);
+}
+
+llvm::Constant* IGCConstantFolder::CreateFirstBitHi(llvm::Constant* C0) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || C0->getType()->getIntegerBitWidth() > 32)
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0);
+    uint32_t result = CI0->getValue().getActiveBits();
+    return llvm::ConstantInt::get(C0->getType(), result);
+}
+
+llvm::Constant* IGCConstantFolder::CreateFirstBitShi(llvm::Constant* C0) const
+{
+    return CreateFirstBitHi(C0);
+}
+
+llvm::Constant* IGCConstantFolder::CreateBfrev(llvm::Constant* C0) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || C0->getType()->getIntegerBitWidth() != 32)
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0);
+    llvm::APInt result = CI0->getValue();
+    result.flipAllBits();
+    return llvm::ConstantInt::get(C0->getContext(), result);
+}
+
+llvm::Constant* IGCConstantFolder::CreateUbfe(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1) || llvm::isa<llvm::UndefValue>(C2) || C2->getType()->getIntegerBitWidth() != 32)
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0); // width
+    llvm::ConstantInt* CI1 = llvm::cast<llvm::ConstantInt>(C1); // offset
+    llvm::ConstantInt* CI2 = llvm::cast<llvm::ConstantInt>(C2); // the number to shift
+    uint32_t width = int_cast<uint32_t>(CI0->getZExtValue()) & 0x1F;
+    uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue()) & 0x1F;
+    uint32_t bitwidth = CI2->getType()->getBitWidth();
+    if (CI0->isZero())
+    {
+        return llvm::ConstantInt::get(C0->getType(), 0);
+    }
+    else if((width + offset) < bitwidth)
+    {
+        llvm::APInt result = CI2->getValue();
+        result = result.shl(bitwidth - (width + offset));
+        result = result.lshr(bitwidth - width);
+        return llvm::ConstantInt::get(C0->getContext(), result);
+    }
+    else
+    {
+        llvm::APInt result = CI2->getValue();
+        result = result.lshr(bitwidth - offset);
+        return llvm::ConstantInt::get(C0->getContext(), result);
+    }
+}
+
+llvm::Constant* IGCConstantFolder::CreateIbfe(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1) || llvm::isa<llvm::UndefValue>(C2) || C2->getType()->getIntegerBitWidth() != 32)
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0); // width
+    llvm::ConstantInt* CI1 = llvm::cast<llvm::ConstantInt>(C1); // offset
+    llvm::ConstantInt* CI2 = llvm::cast<llvm::ConstantInt>(C2); // the number to shift
+    uint32_t width = int_cast<uint32_t>(CI0->getZExtValue()) & 0x1F;
+    uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue()) & 0x1F;
+    uint32_t bitwidth = CI2->getType()->getBitWidth();
+    if (CI0->isZero())
+    {
+        return llvm::ConstantInt::get(C0->getType(), 0);
+    }
+    else if ((width + offset) < bitwidth)
+    {
+        llvm::APInt result = CI2->getValue();
+        result = result.shl(bitwidth - (width + offset));
+        result = result.ashr(bitwidth - width);
+        return llvm::ConstantInt::get(C0->getContext(), result);
+    }
+    else
+    {
+        llvm::APInt result = CI2->getValue();
+        result = result.ashr(bitwidth - offset);
+        return llvm::ConstantInt::get(C0->getContext(), result);
+    }
+}
+
+llvm::Constant* IGCConstantFolder::CreateBfi(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2, llvm::Constant* C3) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1) || llvm::isa<llvm::UndefValue>(C2) ||
+        llvm::isa<llvm::UndefValue>(C3) || C2->getType()->getIntegerBitWidth() != 32 || C3->getType()->getIntegerBitWidth() != 32)
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0); // width
+    llvm::ConstantInt* CI1 = llvm::cast<llvm::ConstantInt>(C1); // offset
+    llvm::ConstantInt* CI2 = llvm::cast<llvm::ConstantInt>(C2); // the number the bits are taken from.
+    llvm::ConstantInt* CI3 = llvm::cast<llvm::ConstantInt>(C3); // the number with bits to be replaced.
+    uint32_t width = int_cast<uint32_t>(CI0->getZExtValue());
+    uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue());
+    uint32_t bitwidth = CI2->getType()->getBitWidth();
+    llvm::APInt bitmask = llvm::APInt::getBitsSet(bitwidth, offset, offset + width);
+    llvm::APInt result = CI2->getValue();
+    result = result.shl(offset);
+    result = (result & bitmask) | (CI3->getValue() & !bitmask);
+    return llvm::ConstantInt::get(C0->getContext(), result);
 }
 
 llvm::Constant* IGCConstantFolder::CreateGradient(llvm::Constant* C0) const

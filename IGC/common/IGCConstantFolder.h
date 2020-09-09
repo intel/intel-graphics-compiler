@@ -54,6 +54,13 @@ public:
     llvm::Constant* CreateFMul(llvm::Constant* C0, llvm::Constant* C1, llvm::APFloatBase::roundingMode roundingMode) const;
     llvm::Constant* CreateFPTrunc(llvm::Constant* C0, llvm::Type* dstType, llvm::APFloatBase::roundingMode roundingMode) const;
     llvm::Constant* CreateCanonicalize(llvm::Constant* C0, bool flushDenorms = true) const;
+    llvm::Constant* CreateFirstBitLo(llvm::Constant* C0) const;
+    llvm::Constant* CreateFirstBitHi(llvm::Constant* C0) const;
+    llvm::Constant* CreateFirstBitShi(llvm::Constant* C0) const;
+    llvm::Constant* CreateBfrev(llvm::Constant* C0) const;
+    llvm::Constant* CreateUbfe(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2) const;
+    llvm::Constant* CreateIbfe(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2) const;
+    llvm::Constant* CreateBfi(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2, llvm::Constant* C3) const;
 
 
     //===-------------
