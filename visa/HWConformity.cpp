@@ -3474,7 +3474,9 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST* inst) const
         return false;
     }
 
-    int alignInBytes = 8;
+    auto dstTySize = getTypeSize(dst->getType());
+
+    int alignInBytes = std::max((int) dstTySize, builder.get3SrcDstAlign());
     // if src2 is not a scalar, then align it to 32 bytes.
     if (builder.noSrc2Regioning())
     {
@@ -3488,16 +3490,16 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST* inst) const
 
     if (!builder.isOpndAligned(dst, alignInBytes))
     {
-        // dst must be 8 byte aligned due to encoding issues
+        // dst may have special alignment due to encoding issues
         return false;
     }
 
     uint32_t effectiveStride = dst->getHorzStride();
-    if (G4_Type_Table[dst->getType()].byteSize < G4_Type_Table[execType].byteSize)
+    if (dstTySize < getTypeSize(execType))
     {
         if (IS_TYPE_INT(dst->getType()))
         {
-            effectiveStride *= G4_Type_Table[execType].byteSize / G4_Type_Table[dst->getType()].byteSize;
+            effectiveStride *= getTypeSize(execType) / dstTySize;
         }
         else
         {

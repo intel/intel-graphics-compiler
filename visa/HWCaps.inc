@@ -648,4 +648,10 @@
         return true;
     }
 
+
+    int get3SrcDstAlign() const
+    {
+        return 8;
+    }
+
     // end HW capabilities
