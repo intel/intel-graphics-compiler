@@ -2841,7 +2841,7 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
     Constant* C = nullptr;
     if (inst)
     {
-        Constant* C0 = dyn_cast<Constant>(inst->getOperand(0));
+        ConstantFP* C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
         EOPCODE igcop = GetOpCode(inst);
 
         switch (igcop)
@@ -2971,81 +2971,6 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
                 flushVal = flushVal || (pCodeGenContext->m_floatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
                 flushVal = flushVal || (pCodeGenContext->m_floatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
                 C = constantFolder.CreateCanonicalize(C0, flushVal);
-            }
-        }
-        break;
-        case llvm_fbh:
-        {
-            if (C0)
-            {
-                C = constantFolder.CreateFirstBitHi(C0);
-            }
-        }
-        break;
-        case llvm_fbh_shi:
-        {
-            if (C0)
-            {
-                C = constantFolder.CreateFirstBitShi(C0);
-            }
-        }
-        break;
-        case llvm_fbl:
-        {
-            if (C0)
-            {
-                C = constantFolder.CreateFirstBitLo(C0);
-            }
-        }
-        break;
-        case llvm_ubfe:
-        {
-            Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
-            Constant* C2 = dyn_cast<Constant>(inst->getOperand(2));
-            if (C0 && C1 && C2)
-            {
-                C = constantFolder.CreateUbfe(C0, C1, C2);
-            }
-            else if (C1 && C1->isZeroValue())
-            {
-                C = llvm::ConstantInt::get(C2->getType(), 0);
-            }
-        }
-        break;
-        case llvm_ibfe:
-        {
-            Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
-            Constant* C2 = dyn_cast<Constant>(inst->getOperand(2));
-            if (C0 && C1 && C2)
-            {
-                C = constantFolder.CreateIbfe(C0, C1, C2);
-            }
-            else if (C1 && C1->isZeroValue())
-            {
-                C = llvm::ConstantInt::get(C2->getType(), 0);
-            }
-        }
-        break;
-        case llvm_bfi:
-        {
-            Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
-            Constant* C2 = dyn_cast<Constant>(inst->getOperand(2));
-            Constant* C3 = dyn_cast<Constant>(inst->getOperand(3));
-            if (C0 && C1 && C2 && C3)
-            {
-                C = constantFolder.CreateBfi(C0, C1, C2, C3);
-            }
-            else if (C1 && C1->isZeroValue() && C3)
-            {
-                C = C3;
-            }
-        }
-        break;
-        case llvm_bfrev:
-        {
-            if (C0)
-            {
-                C = constantFolder.CreateBfrev(C0);
             }
         }
         break;
