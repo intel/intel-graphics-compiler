@@ -264,7 +264,10 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
         }
 
         // Set new mask
-        bool needsMaskOffset = newCondMod || newPred;
+        // FIXME: To update the mask in a CM kernel, the inst's BB should be divergent.
+        //        However, at this stage BBs are not constructed yet.
+        bool isCMKernel = m_builder->kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM;
+        bool needsMaskOffset = newCondMod || newPred || (!isCMKernel && !inst->isWriteEnableInst());
         if (needsMaskOffset)
         {
             int newMaskOffset = inst->getMaskOffset() + (i == 0 ? 0 : newExecSize);
