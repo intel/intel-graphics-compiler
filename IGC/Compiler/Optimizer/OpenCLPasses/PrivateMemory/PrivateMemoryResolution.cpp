@@ -860,6 +860,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         // Creates intrinsics that will be lowered in the CodeGen and will handle the stack-pointer
         Instruction* simdLaneId16 = entryBuilder.CreateCall(simdLaneIdFunc, llvm::None, VALUE_NAME("simdLaneId16"));
         Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
+        Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
         for (auto pAI : allocaInsts)
         {
             bool isUniform = pAI->getMetadata("uniform") != nullptr;
@@ -887,8 +888,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             }
             else
             {
-                Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
-
                 int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
                 unsigned int bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
 
