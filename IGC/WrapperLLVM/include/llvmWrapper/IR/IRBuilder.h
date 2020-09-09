@@ -239,7 +239,7 @@ namespace IGCLLVM
                    llvm::ArrayRef<llvm::OperandBundleDef> OpBundles,
                    const llvm::Twine &Name = "",
                    llvm::MDNode *FPMathTag = nullptr) {
-          return llvm::IRBuilder<T, Inserter>::CreateCall(
+          return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(
               llvm::cast<llvm::FunctionType>(
                   Callee->getType()->getPointerElementType()),
               Callee, Args, OpBundles, Name, FPMathTag);
@@ -250,7 +250,7 @@ namespace IGCLLVM
                    llvm::ArrayRef<llvm::Value *> Args = llvm::None,
                    const llvm::Twine &Name = "",
                    llvm::MDNode *FPMathTag = nullptr) {
-          return llvm::IRBuilder<T, Inserter>::CreateCall(FTy, Callee, Args,
+          return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(FTy, Callee, Args,
                                                           Name, FPMathTag);
         }
 #endif
