@@ -1028,7 +1028,7 @@ namespace vISA
             std::vector<SBBucketDescr>& BDvec,
             bool GRFOnly);
 
-        void setDistance(SBFootprint * footprint, SBNode *node, SBNode *liveNode);
+        void setDistance(SBFootprint * footprint, SBNode *node, SBNode *liveNode, bool dstDep);
         void footprintMerge(SBNode * node, SBNode * nextNode);
 
         void pushItemToQueue(std::vector<unsigned>* nodeIDQueue, unsigned nodeID);

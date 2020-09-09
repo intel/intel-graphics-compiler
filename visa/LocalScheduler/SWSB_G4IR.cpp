@@ -4414,7 +4414,7 @@ void G4_BB_SB::clearKilledBucketNodeGen12LP(LiveGRFBuckets* LB, int ALUID)
 }
 
 
-void G4_BB_SB::setDistance(SBFootprint* footprint, SBNode* node, SBNode* liveNode)
+void G4_BB_SB::setDistance(SBFootprint* footprint, SBNode* node, SBNode* liveNode, bool dstDep)
 {
     {
         auto dist = node->getALUID() - liveNode->getALUID();
@@ -4704,7 +4704,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                         curBucket < totalGRFNum)
                     {//Only need track GRF RAW dependence
                         LB->killOperand(bn_it);
-                        setDistance(curFootprint, node, liveNode);
+                        setDistance(curFootprint, node, liveNode, false);
                         liveNode->setInstKilled(true);  //Instrtuction level kill
                         instKill = true;
                         continue;
@@ -4728,7 +4728,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                                     LB->killOperand(bn_it);
                                     killed = true;
                                 }
-                                setDistance(curFootprint, node, liveNode);
+                                setDistance(curFootprint, node, liveNode, true);
                                 liveNode->setInstKilled(true); //Instrtuction level kill
                                 instKill = true;
                             }
@@ -4755,7 +4755,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                                     LB->killOperand(bn_it);
                                     killed = true;
                                 }
-                                setDistance(curFootprint, node, liveNode);
+                                setDistance(curFootprint, node, liveNode, true);
                                 liveNode->setSourceKilled(true);
                             }
                         if (killed)
