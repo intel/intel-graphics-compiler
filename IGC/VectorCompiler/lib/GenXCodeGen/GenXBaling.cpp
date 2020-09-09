@@ -283,9 +283,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
     // fall through...
   case GenXIntrinsicInfo::FIXED4:
   case GenXIntrinsicInfo::CONTIGUOUS:
-    if (R.Stride != 1 || R.Width != R.NumElements)
-      return false;
-    break;
+    return R.isContiguous();
   case GenXIntrinsicInfo::STRIDE1:
     // For the dot product instructions, the vISA spec just says that the
     // horizontal stride must be 1. It doesn't say anything about the
