@@ -79,7 +79,7 @@ endif()
 set(SPIRV_REV_PATCH 7c8443e3d2032af05b46571c12c7de1b5209f7fe)
 set(SPRIV_PATCHES ${CMAKE_CURRENT_SOURCE_DIR}/spirv-patches-new/)
 set(SPRIV_BRANCH_PATCH spirvdll_100)
-find_program(MAKE_EXEC NAMES make gmake)
+set(MAKE_EXEC ${CMAKE_MAKE_PROGRAM})
 
 if(NOT EXISTS ${SPIRV_COPY})
   message(STATUS "[VC] : Copying stock SPIRV-Translator sources to ${SPIRV_COPY}")
