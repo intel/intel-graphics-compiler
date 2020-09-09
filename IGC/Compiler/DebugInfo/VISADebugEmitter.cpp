@@ -126,18 +126,16 @@ void DebugEmitter::setFunction(llvm::Function* F, bool isCloned)
     m_pVISAModule->SetEntryFunction(F, isCloned);
 }
 
-void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
+std::vector<char> DebugEmitter::Finalize(bool finalize)
 {
-    pBuffer = nullptr;
-    size = 0;
     if (!m_debugEnabled)
     {
-        return;
+        return {};
     }
 
     if (m_pVISAModule->isDirectElfInput)
     {
-        auto decodedDbg = new DbgDecoder((void*)m_pVISAModule->getGenDebug());
+        auto decodedDbg = new DbgDecoder(m_pVISAModule->getGenDebug().data());
         m_pDwarfDebug->setDecodedDbg(decodedDbg);
     }
 
@@ -345,26 +343,25 @@ void DebugEmitter::Finalize(void*& pBuffer, unsigned int& size, bool finalize)
 
         m_pStreamEmitter->Finalize();
 
-        size = m_outStream.str().size();
-
         // Add program header table to satisfy latest gdb
-        unsigned int is64Bit = (GetVISAModule()->GetModule()->getDataLayout().getPointerSize() == 8);
+        unsigned int is64Bit = (GetVISAModule()->getPointerSize() == 8);
         unsigned int phtSize = sizeof(llvm::ELF::Elf32_Phdr);
         if (is64Bit)
             phtSize = sizeof(llvm::ELF::Elf64_Phdr);
 
-        pBuffer = (char*)malloc((size + phtSize) * sizeof(char));
-        memcpy_s(pBuffer, size * sizeof(char), m_outStream.str().data(), size);
+        std::vector<char> Result(m_str.size() + phtSize);
+        std::copy(m_str.begin(), m_str.end(), Result.begin());
 
-        writeProgramHeaderTable(is64Bit, pBuffer, size);
+        writeProgramHeaderTable(is64Bit, Result.data(), m_str.size());
         if (m_pVISAModule->isDirectElfInput)
-            setElfType(is64Bit, pBuffer);
-
-        size += phtSize;
+            setElfType(is64Bit, Result.data());
 
         // Reset all members and prepare for next beginModule() call.
         Reset();
+
+        return std::move(Result);
     }
+    return {};
 }
 
 void DebugEmitter::setElfType(bool is64Bit, void* pBuffer)
@@ -452,14 +449,6 @@ void DebugEmitter::BeginEncodingMark()
 void DebugEmitter::EndEncodingMark()
 {
     m_pVISAModule->EndEncodingMark();
-}
-
-void DebugEmitter::Free(void* pBuffer)
-{
-    if (pBuffer)
-    {
-        free(pBuffer);
-    }
 }
 
 void DebugEmitter::ResetVISAModule()

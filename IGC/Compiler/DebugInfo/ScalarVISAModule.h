@@ -48,11 +48,13 @@ public:
 
     unsigned getPointerSize() const override;
 
-    const void* getGenDebug() const override {
-      return (const void*)m_pShader->ProgramOutput()->m_debugDataGenISA;
+    llvm::ArrayRef<char> getGenDebug() const override {
+      const auto& PO = *m_pShader->ProgramOutput();
+      return llvm::ArrayRef<char>((const char*)PO.m_debugDataGenISA, PO.m_debugDataGenISASize);
     }
-    const unsigned char* getGenBinary() const override {
-      return (unsigned char*)m_pShader->ProgramOutput()->m_programBin;
+    llvm::ArrayRef<char> getGenBinary() const override {
+      const auto& PO = *m_pShader->ProgramOutput();
+      return llvm::ArrayRef<char>((const char*)PO.m_programBin, PO.m_programSize);
     }
     std::vector<VISAVariableLocation>
         GetVariableLocation(const llvm::Instruction* pInst) const override;

@@ -72,10 +72,9 @@ namespace IGC
                                 bool debugEnabled) = 0;
 
         /// @brief Emit debug info to given buffer and reset debug emitter.
-        /// @param pBuffer [OUT] object buffer conatins the emitted debug info.
-        /// @param size [OUT] size of debug info buffer.
-        // @param finalize [IN] indicates whether this is last function in group.
-        virtual void Finalize(void*& pBuffer, unsigned int& size, bool finalize) = 0;
+        /// @param finalize [IN] indicates whether this is last function in group.
+        /// @return memory buffer which contains the emitted debug info.
+        virtual std::vector<char> Finalize(bool finalize) = 0;
 
         /// @brief Process instruction before emitting its VISA code.
         /// @param pInst instruction to process.
@@ -91,10 +90,6 @@ namespace IGC
         /// @brief Mark end of VISA code emitting section.
         virtual void EndEncodingMark() = 0;
 
-        /// @brief Free given buffer memory.
-        /// @param pBuffer buffer allocated by debug emiiter component.
-        virtual void Free(void* pBuffer) = 0;
-
         virtual void setFunction(llvm::Function* F, bool c) = 0;
 
         virtual void ResetVISAModule() = 0;
@@ -106,7 +101,7 @@ namespace IGC
         virtual void AddVISAModFunc(IGC::VISAModule*, llvm::Function*) = 0;
     };
 
-    template<typename T> T read(void*& dbg)
+    template<typename T> T read(const void*& dbg)
     {
         T* dbgT = (T*)dbg;
         T data = *dbgT;
@@ -328,7 +323,7 @@ namespace IGC
             return data;
         }
 
-        void* dbg;
+        const void* dbg;
         uint16_t numCompiledObj = 0;
         uint32_t magic = 0;
 
@@ -462,7 +457,8 @@ namespace IGC
         }
 
     public:
-        DbgDecoder(void* buf) : dbg(buf)
+        // TODO: we should pass the size too
+        DbgDecoder(const void* buf) : dbg(buf)
         {
             if (buf)
                 decode();

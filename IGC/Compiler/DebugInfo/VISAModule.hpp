@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/DataTypes.h"
 #include "llvm/IR/Function.h"
+#include "llvm/ADT/APInt.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "VISAIDebugEmitter.hpp"
@@ -487,9 +488,8 @@ namespace IGC
         virtual unsigned getPointerSize() const = 0;
         virtual VISAModule* makeNew() const = 0;
 
-        // TODO: Replace on std::vector
-        virtual const void* getGenDebug() const = 0;
-        virtual const unsigned char* getGenBinary() const = 0;
+        virtual llvm::ArrayRef<char> getGenDebug() const = 0;
+        virtual llvm::ArrayRef<char> getGenBinary() const = 0;
 
         const InstInfoMap* GetInstInfoMap() { return &m_instInfoMap; }
 

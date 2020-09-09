@@ -73,12 +73,11 @@ namespace IGC
         // IDebugEmitter interface methods
         void Initialize(VISAModule *visaModule, const DebugEmitterOpts& Opts,
                         bool debugEnabled);
-        void Finalize(void*& pBuffer, unsigned int& size, bool finalize);
+        std::vector<char> Finalize(bool finalize);
         void BeginInstruction(llvm::Instruction* pInst);
         void EndInstruction(llvm::Instruction* pInst);
         void BeginEncodingMark();
         void EndEncodingMark();
-        void Free(void* pBuffer);
         void setFunction(llvm::Function* F, bool isCloned);
         void ResetVISAModule();
         VISAModule* GetVISAModule() { return m_pVISAModule; }

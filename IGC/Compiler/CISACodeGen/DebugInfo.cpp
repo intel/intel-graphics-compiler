@@ -261,42 +261,36 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
 
 void DebugInfoPass::EmitDebugInfo(bool finalize)
 {
-    unsigned int dbgSize = 0;
-    void* dbgInfo = nullptr;
-    void* buffer = nullptr;
+    std::vector<char> buffer;
 
-    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->Finalize(buffer, dbgSize, finalize);)
+    IF_DEBUG_INFO_IF(m_pDebugEmitter, buffer = m_pDebugEmitter->Finalize(finalize);)
 
-        if (dbgSize != 0)
+    if (!buffer.empty())
+    {
+        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
         {
-            IGC_ASSERT_MESSAGE(nullptr != buffer, "Failed to generate VISA debug info");
+            std::string debugFileNameStr = IGC::Debug::GetDumpName(m_currShader, "elf");
 
-            dbgInfo = IGC::aligned_malloc(dbgSize, sizeof(void*));
-
-            memcpy_s(dbgInfo, dbgSize, buffer, dbgSize);
-
-            IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->Free(buffer);)
-
-                if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+            // Try to create the directory for the file (it might not already exist).
+            if (iSTD::ParentDirectoryCreate(debugFileNameStr.c_str()) == 0)
+            {
+                void* dbgFile = iSTD::FileOpen(debugFileNameStr.c_str(), "wb+");
+                if (dbgFile != nullptr)
                 {
-                    std::string debugFileNameStr = IGC::Debug::GetDumpName(m_currShader, "elf");
-
-                    // Try to create the directory for the file (it might not already exist).
-                    if (iSTD::ParentDirectoryCreate(debugFileNameStr.c_str()) == 0)
-                    {
-                        void* dbgFile = iSTD::FileOpen(debugFileNameStr.c_str(), "wb+");
-                        if (dbgFile != nullptr)
-                        {
-                            iSTD::FileWrite(dbgInfo, dbgSize, 1, dbgFile);
-                            iSTD::FileClose(dbgFile);
-                        }
-                    }
+                    iSTD::FileWrite(buffer.data(), buffer.size(), 1, dbgFile);
+                    iSTD::FileClose(dbgFile);
                 }
+            }
         }
+    }
+
+    void* dbgInfo = IGC::aligned_malloc(buffer.size(), sizeof(void*));
+    if (dbgInfo)
+        memcpy_s(dbgInfo, buffer.size(), buffer.data(), buffer.size());
 
     SProgramOutput* pOutput = m_currShader->ProgramOutput();
     pOutput->m_debugDataVISA = dbgInfo;
-    pOutput->m_debugDataVISASize = dbgSize;
+    pOutput->m_debugDataVISASize = dbgInfo ? buffer.size() : 0;
 }
 
 void DebugInfoData::markOutput(llvm::Function& F, CShader* m_currShader)
