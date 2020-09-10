@@ -9217,8 +9217,6 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
             coloring.addSaveRestoreCode(0);
         }
 
-        expandSpillFillIntrinsics();
-
         if (verifyAugmentation)
         {
             assignRegForAliasDcl();
@@ -9287,6 +9285,7 @@ int GlobalRA::coloringRegAlloc()
         flagRegAlloc();
     }
 
+
     //
     // If the graph has stack calls, then add the caller-save/callee-save pseudo declares and code.
     // This currently must be done after flag/addr RA due to the assumption about the location
@@ -9294,7 +9293,6 @@ int GlobalRA::coloringRegAlloc()
     //
     if (hasStackCall)
     {
-
         addCallerSavePseudoCode();
 
         // Only GENX sub-graphs require callee-save code.
@@ -9350,9 +9348,9 @@ int GlobalRA::coloringRegAlloc()
     unsigned iterationNo = 0;
 
     int globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
-    bool useScratchMsgForSpill = globalScratchOffset < (int) (SCRATCH_MSG_LIMIT * 0.6) && !hasStackCall;
+    bool useScratchMsgForSpill = !hasStackCall && (globalScratchOffset < (int)(SCRATCH_MSG_LIMIT * 0.6)
+    );
     bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
-
 
     uint32_t nextSpillOffset = 0;
     uint32_t scratchOffset = 0;
@@ -9601,6 +9599,7 @@ int GlobalRA::coloringRegAlloc()
                 bool success = spillGRF.insertSpillFillCode(&kernel, pointsToAnalysis);
                 nextSpillOffset = spillGRF.getNextOffset();
 
+
                 if (builder.getOption(vISA_RATrace))
                 {
                     std::cout << "\t--# variables spilled: " << coloring.getSpilledLiveRanges().size() << "\n";
@@ -9664,7 +9663,7 @@ int GlobalRA::coloringRegAlloc()
                     regChart->dumpRegChart(std::cerr);
                 }
 
-                expandSpillFillIntrinsics();
+                expandSpillFillIntrinsics(nextSpillOffset);
 
                 if (builder.getOption(vISA_OptReport))
                 {
