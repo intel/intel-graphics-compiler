@@ -4491,7 +4491,6 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
             return;
         }
         bindingTableIndex = m_currShader->m_pBtiLayout->GetNullSurfaceIdx();
-      
         isNullRT = true;
     }
 
