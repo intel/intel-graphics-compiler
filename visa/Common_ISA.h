@@ -390,20 +390,15 @@ typedef struct {
 } gen_binary_info;
 
 struct kernel_info_t {
-    unsigned char linkage;
     unsigned char name_len;
     char name[COMMON_ISA_MAX_FILENAME_LENGTH];
     unsigned int offset;
     unsigned int size;
-    union {
-        unsigned int input_offset;
-        unsigned int param_offset;
-    };
-    unsigned int code_offset;
-    unsigned int binary_offset;            // This is not used for function_info_t.
-    unsigned int binary_size;              // This is not used for function_info_t.
-    reloc_symtab variable_reloc_symtab;
-    reloc_symtab function_reloc_symtab;
+    unsigned int input_offset;
+    unsigned int binary_offset;
+    unsigned int binary_size;
+    reloc_symtab variable_reloc_symtab; // ded, but leave here to avoid breaking old vISA binary
+    reloc_symtab function_reloc_symtab; // ded, but leave here to avoid breaking old vISA binary
     unsigned char num_gen_binaries;
     gen_binary_info* gen_binaries;
     // Auxillary data
@@ -411,7 +406,7 @@ struct kernel_info_t {
     char * cisa_binary_buffer;
     char * genx_binary_buffer;
 
-    unsigned long getSizeInBinary() const;
+    uint32_t getSizeInBinary() const;
 };
 
 struct function_info_t {
@@ -420,23 +415,14 @@ struct function_info_t {
     char name[COMMON_ISA_MAX_FILENAME_LENGTH];
     unsigned int offset;
     unsigned int size;
-    union {
-        unsigned int input_offset;
-        unsigned int param_offset;
-    };
-    unsigned int code_offset;
-    unsigned int binary_offset;            // This is not used for function_info_t.
-    unsigned int binary_size;              // This is not used for function_info_t.
-    reloc_symtab variable_reloc_symtab;
-    reloc_symtab function_reloc_symtab;
-    unsigned char num_gen_binaries;
-    gen_binary_info* gen_binaries;
+    reloc_symtab variable_reloc_symtab; // ded, but leave here to avoid breaking old vISA binary
+    reloc_symtab function_reloc_symtab; // ded, but leave here to avoid breaking old vISA binary
     // Auxillary data
     //   for cisa binary emmission
     char* cisa_binary_buffer;
     char* genx_binary_buffer;
 
-    unsigned long getSizeInBinary() const;
+    uint32_t getSizeInBinary() const;
 };
 
 /*
@@ -455,7 +441,7 @@ struct common_isa_header {
     unsigned short        num_functions;
     function_info_t*      functions;
 
-    unsigned long getSizeInBinary() const;
+    uint32_t getSizeInBinary() const;
 };
 
 typedef struct {

@@ -241,6 +241,7 @@ int CisaBinary::finalizeCisaBinary()
     m_total_size = m_header_size = m_header.getSizeInBinary();
 
     m_header_buffer  = (char *)this->m_mem.alloc(m_header_size);
+    memset(m_header_buffer, 0, m_header_size);
 
     writeInToCisaHeaderBuffer(&m_header.magic_number, sizeof(m_header.magic_number));
 
@@ -249,8 +250,6 @@ int CisaBinary::finalizeCisaBinary()
     uint8_t minor = COMMON_ISA_MINOR_VER;
     writeInToCisaHeaderBuffer(&major, sizeof(uint8_t));
     writeInToCisaHeaderBuffer(&minor, sizeof(uint8_t));
-    //writeInToCisaHeaderBuffer(&m_header.major_version, sizeof(m_header.major_version));
-    //writeInToCisaHeaderBuffer(&m_header.minor_version, sizeof(m_header.minor_version));
 
     writeInToCisaHeaderBuffer(&m_header.num_kernels, sizeof(m_header.num_kernels));
 
@@ -350,7 +349,6 @@ int CisaBinary::dumpToStream(std::ostream * os)
     for (int i = 0; i < m_header.num_functions; i++)
     {
         os->write(m_header.functions[i].cisa_binary_buffer, m_header.functions[i].size);
-        os->write(m_header.functions[i].genx_binary_buffer, m_header.functions[i].binary_size);
     }
     return VISA_SUCCESS;
 }
@@ -429,7 +427,6 @@ void CisaBinary::patchFunctionWithGenBinary(int index, unsigned int genxBufferSi
     size_t copySize = sizeof(m_header.functions[index].offset);
     memcpy_s(&m_header_buffer[this->m_functionOffsetLocationsArray[index]], copySize, &m_header.functions[index].offset, copySize);
 
-    m_header.functions[index].binary_size = genxBufferSize;
     m_header.functions[index].genx_binary_buffer = buffer;
 
     this->genxBinariesSize += genxBufferSize;
@@ -441,7 +438,6 @@ void CisaBinary::patchFunction(int index, unsigned genxBufferSize)
     size_t copySize = sizeof(m_header.functions[index].offset);
     memcpy_s(&m_header_buffer[this->m_functionOffsetLocationsArray[index]], copySize, &m_header.functions[index].offset, copySize);
 
-    m_header.functions[index].binary_size = genxBufferSize;
     this->genxBinariesSize += genxBufferSize;
 }
 

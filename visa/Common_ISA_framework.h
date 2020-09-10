@@ -199,21 +199,12 @@ public:
     int isaDump(std::list<VISAKernelImpl *>, Options *options);
     void writeIsaAsmFile(std::string filename, std::string isaasmStr) const;
 
-    unsigned long getHeaderSize() {return m_header_size; }
     unsigned long getKernelVisaBinarySize(int i) {return m_header.kernels[i].size; }
     unsigned long getFunctionVisaBinarySize(int i) {return m_header.functions[i].size; }
     unsigned short getNumberKernels() {return m_header.num_kernels; }
     unsigned short getNumberFunctions() {return m_header.num_functions; }
 
     char * getVisaHeaderBuffer() {return m_header_buffer; }
-    char * getKernelVisaBinaryBuffer(int i) {return m_header.kernels[i].cisa_binary_buffer; }
-    char * getFunctionVisaBinaryBuffer(int i) {return m_header.functions[i].cisa_binary_buffer; }
-
-    void setKernelVisaGenxBinaryBuffer(int i, void * buffer) {m_header.kernels[i].genx_binary_buffer = (char *)buffer; }
-    void setKernelVisaGenxBinarySize(int i, unsigned short size) {m_header.kernels[i].binary_size = size; }
-
-    void setFunctionsVisaGenxBinaryBuffer(int i, void * buffer) {m_header.functions[i].genx_binary_buffer = (char *)buffer; }
-    void setFunctionsVisaGenxBinarySize(int i, unsigned short size) {m_header.functions[i].binary_size = size; }
 
     void patchKernel(int index, unsigned int genxBufferSize, void * buffer, int platform);
     void patchFunction(int index, unsigned genxBufferSize);
@@ -237,8 +228,8 @@ private:
 
     common_isa_header m_header;
     vISA::Mem_Manager m_mem;
-    unsigned long m_header_size;
-    unsigned long m_total_size;
+    uint32_t m_header_size;
+    uint32_t m_total_size;
     unsigned long m_bytes_written_cisa_buffer;
     char * m_header_buffer;
     int m_upper_bound_kernels;

@@ -1096,10 +1096,10 @@ function_info {
     uw num_syms_function; // MBZ
 }
 */
-unsigned long function_info_t::getSizeInBinary() const
+uint32_t function_info_t::getSizeInBinary() const
 {
-    unsigned int size = sizeof(linkage) + sizeof(name_len) +
-        name_len + sizeof(offset) + sizeof(size);
+    uint32_t size = sizeof(linkage) + sizeof(name_len) +
+        name_len + sizeof(offset) + sizeof(this->size);
 
     size += sizeof(variable_reloc_symtab.num_syms);
     size += sizeof(function_reloc_symtab.num_syms);
@@ -1120,10 +1120,10 @@ unsigned long function_info_t::getSizeInBinary() const
     gen_binary_info gen_binaries[num_gen_binaries];
 }
 */
-unsigned long kernel_info_t::getSizeInBinary() const
+uint32_t kernel_info_t::getSizeInBinary() const
 {
-    unsigned long size = sizeof(name_len) + name_len
-        + sizeof(offset) + sizeof(size)
+    uint32_t size = sizeof(name_len) + name_len
+        + sizeof(offset) + sizeof(this->size)
         + sizeof(input_offset);
 
     size += sizeof(variable_reloc_symtab.num_syms);
@@ -1141,9 +1141,9 @@ unsigned long kernel_info_t::getSizeInBinary() const
     return size;
 }
 
-unsigned long common_isa_header::getSizeInBinary() const
+uint32_t common_isa_header::getSizeInBinary() const
 {
-    unsigned long size = sizeof(magic_number) + sizeof(major_version)
+    uint32_t size = sizeof(magic_number) + sizeof(major_version)
         + sizeof(minor_version) + sizeof(num_kernels);
 
     for (int i = 0; i < num_kernels; i++)
