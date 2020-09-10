@@ -108,14 +108,14 @@ Create struct code in ZEInfo.hpp
 """
 def format_zeinfo_struct(row):
     if "vector" in row["Type"]:
-        return "    " + row["Type"] + " "+ row[row.index[0]] + ";\n"
+        return "    " + row["Type"] + " " + row[row.index[0]] + ";\n"
     if row["Required/Optional"] == "Optional" and row["Default"] != "":
-        return "    " + row["Type"] + " "+ row[row.index[0]] + " = " + row["Default"] + ";\n"
+        return "    " + row["Type"] + " " + row[row.index[0]] + " = " + row["Default"] + ";\n"
     if "bool" in row["Type"]:
-        return "    " + row["Type"] + " "+ row[row.index[0]] + " = false;\n"
+        return "    " + row["Type"] + " " + row[row.index[0]] + " = false;\n"
     if "str" in row["Type"]:
-        return "    " + row["Type"] + " "+ row[row.index[0]] + ";\n"
-    return "    " + row["Type"] + " "+ row[row.index[0]] + " = 0;\n"
+        return "    " + row["Type"] + " " + row[row.index[0]] + ";\n"
+    return "    " + row["Type"] + " " + row[row.index[0]] + " = 0;\n"
 
 
 """
@@ -123,14 +123,18 @@ Create YAML mappings in ZEInfoYAML.cpp
 """
 def format_zeinfoyaml_cpp_mapping(row):
     first = row[row.index[0]]
-    if "str" in row["Type"] and row["Required/Optional"] == "Optional":
-        return "    io.map" + row["Required/Optional"] + "(" + '"' + first + '"' + ", info." + first + ", std::string());\n"
-    if "vector" in row["Type"] or "vector" in row["Description"]:
+    if row["Required/Optional"] == "Required":
+        return "    io.mapRequired(" + '"' + first + '"' + ", info." + first + ");\n"
+
+    if "str" in row["Type"]:
+        return "    io.mapOptional(" + '"' + first + '"' + ", info." + first + ", std::string());\n"
+    if "vector" in row["Type"]:
         return "    io.mapOptional(" + '"' + first + '"' + ", info." + first + ");\n"
-    if row["Required/Optional"] == "Optional":
-        default_val = row.Default
-        return "    io.mapOptional(" + '"' + first + '"' + ", info." + first + ", " + default_val + ");\n"
-    return "    io.mapRequired(" + '"' + first + '"' + ", info." + first + ");\n"
+
+    default_val = row.Default
+    if default_val == "":
+        return "    io.mapOptional(" + '"' + first + '"' + ", info." + first + ");\n"
+    return "    io.mapOptional(" + '"' + first + '"' + ", info." + first + ", " + default_val + ");\n"
 
 
 """
@@ -208,10 +212,10 @@ Write YAML lines to ZEInfoYAML.cpp
 def pandas_create_zeinfoyaml_cpp(df, struct_name, types, output_file):
     if "Required/Optional" not in df.columns:
         df["Required/Optional"] = "Required"
+    if "Default" not in df.columns:
         df["Default"] = ""
 
     df["Type"] = df.apply(convert_types, axis=1, args=(types,))
-
     df["Code"] = df.apply(format_zeinfoyaml_cpp_mapping, axis=1)
     struct_line = "void MappingTraits<zeInfo" + struct_name + ">::mapping(IO& io, zeInfo" + struct_name + "& info)\n{\n"
     output_file.write(struct_line)
@@ -227,12 +231,13 @@ Stores all struct names and whether they are a vector in yaml_hpp_args
 def pandas_parse_top_layers(df, types, output_file, struct_name, check_vectors):
 
     for index, row in df.iterrows():
-        descript = row["Description"]
-        if descript != None and "vector" in descript.split(" ")[0]:
-            if row["Type"][:-2] in check_vectors.keys():
-                vector_str = "typedef std::vector<zeInfo" + \
-                check_vectors[row["Type"][:-2]] + "> " + row["Type"] + ";\n"
-                output_file.write(vector_str)
+        if "vector" in row["Description"]:
+            type = row["Type"][:-2]
+            if type in check_vectors.keys():
+                if check_vectors[type] != "":
+                    vector_str = "typedef std::vector<zeInfo" + check_vectors[type] + "> " + row["Type"] + ";\n"
+                    check_vectors[type] = ""
+                    output_file.write(vector_str)
             else:
                 sys.exit(row["Type"][:-2] + " not correctly declared as vector")
 
@@ -329,7 +334,7 @@ def create_zeinfo_hpp_yaml_cpp(src_lines, folder):
             else:
                 pandas_attr_getter(df, comment.split(" ")[2], enum_lines, static_lines)
 
-
+    yaml_hpp_vectors = check_vectors.copy()
     for pair in top_layers_df + container_df:
         df, struct_name = pair
         pandas_parse_top_layers(df, valid_types, zeinfo_hpp, struct_name, check_vectors)
@@ -348,26 +353,27 @@ def create_zeinfo_hpp_yaml_cpp(src_lines, folder):
 
     zeinfo_hpp.close()
 
-    return check_vectors
+    return yaml_hpp_vectors
 
 
 """
 Writes to ZEInfoYAML.hpp
 """
-def create_yaml_hpp(check_vectors, folder):
+def create_yaml_hpp(yaml_hpp_vectors, folder):
     file = os.path.join(folder, ZEINFOYAML_HPP)
     output_file = open(file, "a")
     output_file.write(YAML_HPP_HEADER)
 
-    for item in check_vectors.keys():
-        singular = check_vectors[item]
+    for item in yaml_hpp_vectors.keys():
+        singular = yaml_hpp_vectors[item]
         if singular != "":
             output_file.write("LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfo" + singular + ")\n")
 
     output_file.write("namespace llvm {\n    namespace yaml{\n")
 
-    for item in check_vectors.keys():
-        singular = check_vectors[item]
+    #yaml_hpp_args.append(["Container", ""])
+    for item in yaml_hpp_vectors.keys():
+        singular = yaml_hpp_vectors[item]
         if singular != "":
             struct = "zeInfo" + singular
         else:

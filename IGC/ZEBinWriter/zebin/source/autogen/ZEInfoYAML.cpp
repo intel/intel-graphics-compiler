@@ -35,7 +35,7 @@ using namespace llvm::yaml;
 
 void MappingTraits<zeInfoContainer>::mapping(IO& io, zeInfoContainer& info)
 {
-    io.mapOptional("kernels", info.kernels);
+    io.mapRequired("kernels", info.kernels);
 }
 void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
 {
