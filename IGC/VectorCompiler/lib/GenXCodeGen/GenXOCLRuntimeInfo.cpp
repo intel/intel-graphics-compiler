@@ -310,10 +310,12 @@ GenXOCLRuntimeInfo::KernelArgInfo::KernelArgInfo(const Argument &Arg,
 GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(KernelInfo &&KI,
                                                    const FINALIZER_INFO &JI,
                                                    const GTPinInfo &GI,
-                                                   std::vector<char> GenBinIn)
+                                                   std::vector<char> GenBinIn,
+                                                   std::vector<char> DbgInfoIn)
     : CompilerInfo(std::move(KI)), JitterInfo(JI),
       GtpinInfo(GI),
-      GenBinary{std::move(GenBinIn)} {
+      GenBinary{std::move(GenBinIn)},
+      DebugInfo{std::move(DbgInfoIn)} {
 }
 
 //===----------------------------------------------------------------------===//
@@ -469,6 +471,7 @@ class RuntimeInfoCollector final {
   VISABuilder &VB;
   const GenXSubtarget &ST;
   const Module &M;
+  const GenXDebugInfo &DBG;
 
 public:
   using KernelStorageTy = GenXOCLRuntimeInfo::KernelStorageTy;
@@ -477,8 +480,9 @@ public:
 public:
   RuntimeInfoCollector(const FunctionGroupAnalysis &InFGA,
                        const GenXBackendConfig &InBC, VISABuilder &InVB,
-                       const GenXSubtarget &InST, const Module &InM)
-      : FGA{InFGA}, BC{InBC}, VB{InVB}, ST{InST}, M{InM} {}
+                       const GenXSubtarget &InST, const Module &InM,
+                       const GenXDebugInfo &InDbg)
+      : FGA{InFGA}, BC{InBC}, VB{InVB}, ST{InST}, M{InM}, DBG{InDbg} {}
 
   KernelStorageTy run() &&;
 
@@ -507,7 +511,9 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   // Compiler info.
   KernelInfo Info{FG, ST, BC};
 
-  VISAKernel *VK = VB.GetVISAKernel(FG.getHead()->getName().str());
+  const Function *KernelFunction = FG.getHead();
+  const std::string KernelName = KernelFunction->getName().str();
+  VISAKernel *VK = VB.GetVISAKernel(KernelName);
   IGC_ASSERT_MESSAGE(VK, "Kernel is null");
   FINALIZER_INFO *JitInfo = nullptr;
   CISA_CALL(VK->GetJitInfo(JitInfo));
@@ -515,6 +521,13 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   genx::BinaryDataAccumulator<const Function *> GenBinary =
       getGenBinary(FG, VB);
 
+  const auto& Dbg = DBG.getModuleDebug();
+  auto DbgIt = Dbg.find(KernelFunction);
+  std::vector<char> DebugData;
+  if (DbgIt != std::end(Dbg)) {
+    const auto &ElfImage = DbgIt->second;
+    DebugData = {ElfImage.begin(), ElfImage.end()};
+  }
   TableInfo &RTable = Info.getRelocationTable();
   CISA_CALL(
       VK->GetGenRelocEntryBuffer(RTable.Buffer, RTable.Size, RTable.Entries));
@@ -533,13 +546,15 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   GTPinInfo gtpin{{GTPinBytes, GTPinBytes + GTPinBufferSize}};
 
   return CompiledKernel{std::move(Info), *JitInfo, std::move(gtpin),
-                        std::move(GenBinary).emitConsolidatedData()};
+                        std::move(GenBinary).emitConsolidatedData(),
+                        std::move(DebugData)};
 }
 
 void GenXOCLRuntimeInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<FunctionGroupAnalysis>();
   AU.addRequired<GenXBackendConfig>();
   AU.addRequired<GenXModule>();
+  AU.addRequired<GenXDebugInfo>();
   AU.addRequired<TargetPassConfig>();
   AU.setPreservesAll();
 }
@@ -552,11 +567,12 @@ bool GenXOCLRuntimeInfo::runOnModule(Module &M) {
   const auto &ST = getAnalysis<TargetPassConfig>()
                        .getTM<GenXTargetMachine>()
                        .getGenXSubtarget();
+  const auto &DBG = getAnalysis<GenXDebugInfo>();
 
   VISABuilder &VB =
       *(GM.HasInlineAsm() ? GM.GetVISAAsmReader() : GM.GetCisaBuilder());
 
-  Kernels = RuntimeInfoCollector{FGA, BC, VB, ST, M}.run();
+  Kernels = RuntimeInfoCollector{FGA, BC, VB, ST, M, DBG}.run();
   return false;
 }
 

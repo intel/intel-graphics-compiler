@@ -119,7 +119,7 @@ namespace llvm {
     bool runOnModule(Module &M) override;
     void releaseMemory() override { cleanup(); }
 
-    const GenXSubtarget *getSubtarget() { return ST; }
+    const GenXSubtarget *getSubtarget() const { return ST; }
     bool HasInlineAsm() const { return InlineAsm; }
     VISABuilder *GetCisaBuilder();
     VISABuilder *GetVISAAsmReader();

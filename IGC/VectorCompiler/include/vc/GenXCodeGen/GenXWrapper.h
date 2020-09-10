@@ -119,6 +119,7 @@ struct CompileInfo {
   FINALIZER_INFO JitInfo;
   GTPinInfo GtpinInfo;
   std::vector<char> GenBinary;
+  std::vector<char> DebugInfo;
 };
 
 struct CompileOutput {

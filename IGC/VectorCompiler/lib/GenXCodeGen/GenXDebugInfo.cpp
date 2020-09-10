@@ -25,13 +25,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "GenXDebugInfo.h"
+#include "FunctionGroup.h"
+#include "GenXTargetMachine.h"
 
-#include "GenX.h"
-
-#include "common.h"
-#include "common/igc_regkeys.hpp"
-
-#include "visaBuilder_interface.h"
+#include "visa/include/visaBuilder_interface.h"
+#include "visa/common.h"
 
 #include "DebugInfo/StreamEmitter.hpp"
 #include "DebugInfo/VISAIDebugEmitter.hpp"
@@ -39,85 +37,79 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/Instruction.h>
+#include <llvm/IR/Function.h>
+#include <llvm/CodeGen/TargetPassConfig.h>
 #include <llvm/Support/Errc.h>
 #include <llvm/Support/Error.h>
+#include <llvm/Support/CommandLine.h>
 #include "Probe/Assertion.h"
+
 #define DEBUG_TYPE "GENX_DEBUG_INFO"
+
+using namespace llvm;
+
+static cl::opt<bool> GenerateDebugInfo(
+    "emit-debug-info", cl::init(false), cl::Hidden,
+    cl::desc("Generate DWARF debug info for each compiled kernel"));
+
+static cl::opt<bool> DebugInfoDumpGendbg(
+    "debug-info-dump-gendbg", cl::init(false), cl::Hidden,
+    cl::desc("Dump raw gendbg .dump file produced by finalizer"));
+static cl::opt<std::string> DebugInfoGendbgName("deubg-info-gendbg-output-name",
+                                                cl::Hidden);
+
+static cl::opt<bool>
+    DebugInfoDumpsElf("debug-info-dump-elf", cl::init(false), cl::Hidden,
+                      cl::desc("Dump raw elf file containing debug info"));
+static cl::opt<std::string> DebugInfoElfName("debug-info-elf-output-name",
+                                             cl::Hidden);
 
 namespace {
 
-class DbgInfoError final : public llvm::ErrorInfo<DbgInfoError> {
-public:
-  static char ID;
-
-private:
-  std::string Msg;
-
-public:
-  DbgInfoError(llvm::StringRef ErrString) : Msg(ErrString.str()) {}
-
-  void log(llvm::raw_ostream &OS) const override { OS << Msg; }
-  std::error_code convertToErrorCode() const override {
-    return llvm::make_error_code(llvm::errc::io_error);
-  }
-};
-
-char DbgInfoError::ID = 0;
-
-static void debugDump(const llvm::Twine &Name, const char *Content,
-                      size_t Size) {
+static void debugDump(const Twine &Name, const char *Content, size_t Size) {
   std::error_code EC;
   // no error handling since this is debug output
-  llvm::raw_fd_ostream OS(Name.str(), EC);
-  OS << llvm::StringRef(Content, Size);
-  OS.close();
+  raw_fd_ostream OS(Name.str(), EC);
+  OS << StringRef(Content, Size);
 }
-
-static std::string generateScopeUID(const llvm::DIScope &scope) {
-  return std::string(scope.getDirectory().str())
-      .append("/")
-      .append(scope.getFilename().str());
-}
-
-struct Gen2VisaIdx {
-  unsigned GenOffset;
-  unsigned VisaIdx;
-};
 
 struct FinalizerDbgInfo {
 
-  FinalizerDbgInfo(VISAKernel &VK, const llvm::Function &F,
-                   bool FinalizerDbgDump = true) {
+  struct Gen2VisaIdx {
+    unsigned GenOffset;
+    unsigned VisaIdx;
+  };
+
+  FinalizerDbgInfo(const Function &F, const VISAKernel &VK) {
     void *GenXdbgInfo = nullptr;
     void *VISAMap = nullptr;
     unsigned int DbgSize = 0;
     unsigned int NumElems = 0;
-    if (VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize, VISAMap, NumElems) !=
-        VISA_SUCCESS) {
+    if (const_cast<VISAKernel &>(VK).GetGenxDebugInfo(
+            GenXdbgInfo, DbgSize, VISAMap, NumElems) != VISA_SUCCESS) {
       ErrMsg = "visa info decode error";
       return;
     }
     IGC_ASSERT(GenXdbgInfo);
 
-    if (FinalizerDbgDump) {
-      debugDump("dbg_raw_" + F.getName() + ".dump",
-                static_cast<const char *>(GenXdbgInfo), DbgSize);
-    }
+    const char *DbgBlobBytes = static_cast<const char *>(GenXdbgInfo);
+    BinaryDump = std::vector<char>(DbgBlobBytes, DbgBlobBytes + DbgSize);
 
     DecodedInfo = std::make_unique<IGC::DbgDecoder>(GenXdbgInfo);
 
+    std::vector<Gen2VisaIdx> Gen2Visa;
     if (NumElems > 0 && VISAMap) {
-      LLVM_DEBUG(llvm::dbgs() << "---\n");
+      LLVM_DEBUG(dbgs() << "---\n");
 
       unsigned int *VisaMapUI = reinterpret_cast<unsigned int *>(VISAMap);
       for (unsigned int i = 0; i < NumElems * 2; i += 2) {
         auto GenISAOffset = VisaMapUI[i];
         auto VISAIndex = VisaMapUI[i + 1];
         Gen2Visa.push_back({GenISAOffset, VISAIndex});
-        LLVM_DEBUG(llvm::dbgs() << "GenOffset: " << GenISAOffset
-                                << " -> VisaIdx: " << VISAIndex << "\n");
+        LLVM_DEBUG(dbgs() << "GenOffset: " << GenISAOffset
+                          << " -> VisaIdx: " << VISAIndex << "\n");
       }
-      LLVM_DEBUG(llvm::dbgs() << "---\n");
+      LLVM_DEBUG(dbgs() << "---\n");
     }
 
     if (VISAMap)
@@ -161,149 +153,173 @@ struct FinalizerDbgInfo {
   }
 
   std::unique_ptr<IGC::DbgDecoder> DecodedInfo;
-  std::vector<Gen2VisaIdx> Gen2Visa;
   std::vector<char> GenBinary;
   std::string ErrMsg;
+
+  std::vector<char> BinaryDump;
 };
 
-std::map<std::string, unsigned>
-generateFileScopes(IGC::StreamEmitter &SE,
-                   const llvm::genx::VisaDebugInfo &GenXDbg) {
+class GenXVisaModule final : public IGC::VISAModule {
 
-  std::map<std::string, unsigned> ScopeIDMap;
+public:
+  GenXVisaModule(const Function &F, const genx::VisaDebugInfo &VisaDebugIn,
+                 const FinalizerDbgInfo &GenDbgIn)
+      : F{F}, VisaDebug{VisaDebugIn}, GenDbg{GenDbgIn},
+        VISAModule(const_cast<Function *>(&F)) {
 
-  LLVM_DEBUG(llvm::dbgs() << "\nSource Info - start\n");
-  for (const auto &Item : GenXDbg.Locations) {
-    if (!Item.second)
-      continue;
-    const auto &DL = Item.second->getDebugLoc();
-    if (!DL)
-      continue;
-    const auto &Scope = *llvm::cast<llvm::DIScope>(DL.getScope());
-    const auto &StrUID = generateScopeUID(Scope);
-
-    unsigned NewId = ScopeIDMap.size() + 1;
-    if (ScopeIDMap.find(StrUID) == ScopeIDMap.end()) {
-      LLVM_DEBUG(llvm::dbgs() << "   " << StrUID << "\n");
-      ScopeIDMap.insert(std::make_pair(StrUID, NewId));
-      SE.EmitDwarfFileDirective(NewId, Scope.getDirectory(),
-                                Scope.getFilename());
-    }
+    isDirectElfInput = true;
   }
 
-  return std::move(ScopeIDMap);
-}
-
-/*
-bool generateLineTable(IGC::StreamEmitter &SE, const FinalizerDbgInfo &GenDbg,
-                       const llvm::genx::VisaDebugInfo &GenXDbg,
-                       const std::map<std::string, unsigned> &FileScopes) {
-
-  // now iterate over GEN->VISA mapping and find corresponding llvm debug info
-  unsigned PC = 0;
-  unsigned PrevSrcID = -1;
-  unsigned PrevSrcLine = -1;
-
-  LLVM_DEBUG(llvm::dbgs() << "\nline table generation:\n");
-  for (const auto &Gen2Visa : GenDbg.Gen2Visa) {
-
-    for (unsigned i = PC; i != Gen2Visa.GenOffset; ++i)
-      SE.EmitInt8(GenDbg.GenBinary[i]);
-
-    PC = Gen2Visa.GenOffset;
-    auto VisaIdx = Gen2Visa.VisaIdx;
-    auto ItLocation = GenXDbg.Locations.find(VisaIdx);
-
-    if (ItLocation == GenXDbg.Locations.end()) {
-      LLVM_DEBUG(llvm::dbgs()
-                 << "Warning: no debug info for VISA@" << VisaIdx << "\n");
-      continue;
-    }
-    const auto *Inst = ItLocation->second;
-    const auto &DL = Inst->getDebugLoc();
-    if (!DL) {
-      LLVM_DEBUG(llvm::dbgs()
-                 << "Warning: no debug location attached to " << *Inst << "\n");
-      continue;
-    }
-    const auto &Scope = *llvm::cast<llvm::DIScope>(DL.getScope());
-    const auto &StrUID = generateScopeUID(Scope);
-    unsigned SrcID = FileScopes.at(StrUID);
-
-    if (SrcID != PrevSrcID) {
-      PrevSrcLine = -1;
-    }
-    if (DL.getLine() != PrevSrcLine) {
-      LLVM_DEBUG(llvm::dbgs()
-                 << "emitting new LocDirective: [" << Scope.getFilename()
-                 << "] "
-                 << "#" << DL.getLine() << " |" << DL.getCol() << "\n");
-      SE.EmitDwarfLocDirective(SrcID, DL.getLine(), DL.getCol(), 1, 0, 0,
-                               Scope.getFilename());
-    }
-
-    PrevSrcID = SrcID;
-    PrevSrcLine = DL.getLine();
+  unsigned int getUnpaddedProgramSize() const override {
+    return GenDbg.GenBinary.size();
+  }
+  bool isLineTableOnly() const override {
+    IGC_ASSERT_MESSAGE(0, "isLineTableOnly()");
+    return false;
+  }
+  unsigned getPrivateBaseReg() const override {
+    IGC_ASSERT_MESSAGE(0, "getPrivateBaseReg() - not implemented");
+    return 0;
+  }
+  unsigned getGRFSize() const override {
+    IGC_ASSERT_MESSAGE(0, "getGRFSize() - not implemented");
+    return 0;
   }
 
-  return true;
-}
-*/
+  unsigned getPointerSize() const override {
+    return F.getParent()->getDataLayout().getPointerSize();
+  }
+
+  ArrayRef<char> getGenDebug() const override { return GenDbg.BinaryDump; }
+  ArrayRef<char> getGenBinary() const override { return GenDbg.GenBinary; }
+  std::vector<IGC::VISAVariableLocation>
+  GetVariableLocation(const Instruction *pInst) const override {
+    return {};
+  }
+
+  VISAModule *makeNew() const override {
+    return new GenXVisaModule(F, VisaDebug, GenDbg);
+  }
+  void UpdateVisaId() override {
+    SetVISAId(GetCurrentVISAId() + 1);
+    LLVM_DEBUG(dbgs() << "updateVisaId() called, CurrentID = "
+                      << GetCurrentVISAId() << "\n");
+  }
+  void ValidateVisaId() override {
+    LLVM_DEBUG(dbgs() << "validateIsID() called, CurrentID = "
+                      << GetCurrentVISAId() << "\n");
+  }
+  uint16_t GetSIMDSize() const override { return 1; }
+
+private:
+  const Function &F;
+  const genx::VisaDebugInfo &VisaDebug;
+  const FinalizerDbgInfo &GenDbg;
+};
 
 } // namespace
 
 namespace llvm {
-namespace genx {
 
-llvm::Error generateDebugInfo(SmallVectorImpl<char> &ElfImage, VISAKernel &VK,
-                              const genx::VisaDebugInfo &DbgInfo,
-                              const Function &F, const std::string &TripleStr) {
+void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
+                                  const genx::VisaDebugInfo &DbgInfo) {
 
-  FinalizerDbgInfo GenDbg(VK, F);
-  if (!GenDbg.ErrMsg.empty()) {
-    return make_error<DbgInfoError>(GenDbg.ErrMsg);
-  }
+  FinalizerDbgInfo GenDbg(KF, VK);
+  if (!GenDbg.ErrMsg.empty())
+    report_fatal_error(GenDbg.ErrMsg);
 
-  llvm::raw_svector_ostream OS(ElfImage);
+  IGC_ASSERT(DebugInfo.count(&KF) == 0);
+  raw_svector_ostream OS(DebugInfo[&KF]);
 
-  const auto *Module = F.getParent();
-  (void)Module;
-  /*
-  auto SE = std::make_unique<IGC::StreamEmitter>(
-      OS, Module->getDataLayout().getStringRepresentation(), TripleStr, true);
+  IGC::DebugEmitterOpts DebugOpts;
+  DebugOpts.isDirectElf = true;
 
-  SE->SwitchSection(SE->GetTextSection());
+  auto Deleter = [](IGC::IDebugEmitter *Emitter) {
+    IGC::IDebugEmitter::Release(Emitter);
+  };
+  using EmitterHolder = std::unique_ptr<IGC::IDebugEmitter, decltype(Deleter)>;
+  EmitterHolder Emitter(IGC::IDebugEmitter::Create(), Deleter);
+  // Onwership of GenXVisaModule object is transfered to IDebugEmitter
+  auto *VM = new GenXVisaModule(KF, DbgInfo, GenDbg);
+  Emitter->Initialize(VM, DebugOpts, true);
 
-  // Function Start
-  SE->SetDwarfCompileUnitID(0);
-  auto *Sym_FBegin = SE->GetTempSymbol("func_begin", 1);
-  SE->EmitLabel(Sym_FBegin);
+  Emitter->AddVISAModFunc(VM, const_cast<Function *>(&KF));
+  Emitter->SetVISAModule(VM);
+  Emitter->setFunction(const_cast<Function *>(&KF), false /*cloned*/);
 
-  // Dump known Locs
   for (const auto &Item : DbgInfo.Locations) {
-    LLVM_DEBUG(llvm::dbgs() << "visa_idx: " << Item.first << " inst: ";
-               if (Item.second) {
-                 Item.second->print(llvm::dbgs(), true);
-               } llvm::dbgs()
-               << "\n";);
+    VM->SetVISAId(Item.first);
+    Emitter->BeginInstruction((Instruction *)Item.second);
+    Emitter->EndInstruction((Instruction *)Item.second);
   }
 
-  const auto &FileScopes = generateFileScopes(*SE, DbgInfo);
-  generateLineTable(*SE, GenDbg, DbgInfo, FileScopes);
+  const auto &ElfBin = Emitter->Finalize(true /* really finalize :)*/);
+  if (ElfBin.empty())
+    report_fatal_error("could not emit .elf image");
 
-  // Terminate
-  SE->EmitInt8(0);
+  OS.write(ElfBin.data(), ElfBin.size());
 
-  // Function End
-  auto *Sym_FEnd = SE->GetTempSymbol("func_end", 1);
-  SE->EmitLabel(Sym_FEnd);
-  SE->EmitELFDiffSize(Sym_FBegin, Sym_FEnd, Sym_FBegin);
-  SE->SetDwarfCompileUnitID(0);
-  SE->Finalize();
-  */
-
-  return Error::success();
+  const auto &KernelName = KF.getName();
+  LLVM_DEBUG(dbgs() << "got Debug Info for <" << KernelName << "> "
+                    << "- " << ElfBin.size() << " bytes\n");
+  if (DebugInfoDumpsElf) {
+    std::string DumpName = DebugInfoElfName.empty()
+                               ? ("dbg_" + KernelName + ".elf").str()
+                               : DebugInfoElfName;
+    debugDump(DumpName, ElfBin.data(), ElfBin.size());
+  }
+  if (DebugInfoDumpGendbg) {
+    std::string DumpName = DebugInfoGendbgName.empty()
+                               ? ("gendbg_" + KernelName + ".dump").str()
+                               : DebugInfoGendbgName;
+    debugDump(DumpName, GenDbg.BinaryDump.data(), GenDbg.BinaryDump.size());
+  }
+  return;
 }
 
-} // namespace genx
+void GenXDebugInfo::cleanup() { DebugInfo.clear(); }
+
+void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<FunctionGroupAnalysis>();
+  AU.addRequired<GenXModule>();
+  AU.setPreservesAll();
+}
+bool GenXDebugInfo::runOnModule(Module &M) {
+
+  if (!GenerateDebugInfo)
+    return false;
+
+  const FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
+  auto &GM = getAnalysis<GenXModule>();
+
+  VISABuilder *VB = GM.GetCisaBuilder();
+  if (GM.HasInlineAsm())
+    VB = GM.GetVISAAsmReader();
+
+  for (const auto *FG : FGA) {
+    const auto *KF = FG->getHead();
+
+    const genx::VisaDebugInfo &VisaDbgInfo = *GM.getVisaDebugInfo(KF);
+    VISAKernel *VK = VB->GetVISAKernel(KF->getName().str());
+    IGC_ASSERT_MESSAGE(VK, "Kernel is null");
+
+    processKernel(*KF, *VK, VisaDbgInfo);
+  }
+  return false;
+}
+
+char GenXDebugInfo::ID = 0;
+
+ModulePass *createGenXDebugInfoPass() {
+  initializeGenXDebugInfoPass(*PassRegistry::getPassRegistry());
+  return new GenXDebugInfo;
+}
+
 } // namespace llvm
+
+INITIALIZE_PASS_BEGIN(GenXDebugInfo, "GenXDebugInfo", "GenXDebugInfo", false,
+                      true /*analysis*/)
+INITIALIZE_PASS_END(GenXDebugInfo, "GenXDebugInfo", "GenXDebugInfo", false,
+                    true /*analysis*/)
+
+

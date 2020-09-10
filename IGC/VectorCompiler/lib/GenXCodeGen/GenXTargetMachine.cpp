@@ -55,6 +55,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXBackendConfig.h"
+#include "GenXDebugInfo.h"
 #include "GenXModule.h"
 #include "GenXOCLRuntimeInfo.h"
 
@@ -478,6 +479,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXCisaBuilder.cpp
   PM.add(createGenXCisaBuilderPass());
   PM.add(createGenXFinalizerPass(o));
+  PM.add(createGenXDebugInfoPass());
 
   // Analysis for collecting information related to OCL runtime. Can
   // be used by external caller by adding extractor pass in the end of

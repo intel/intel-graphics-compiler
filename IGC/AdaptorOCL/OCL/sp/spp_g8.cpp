@@ -393,7 +393,8 @@ CGen8CMProgram::~CGen8CMProgram()
 
 void CGen8CMProgram::CreateKernelBinaries()
 {
-    for (auto *kernel : m_kernels) {
+    for (auto *kernel : m_kernels)
+    {
         // Create the kernel binary streams.
         KernelData data;
         data.kernelBinary = new Util::BinaryStream;
@@ -408,6 +409,17 @@ void CGen8CMProgram::CreateKernelBinaries()
             m_pSystemThreadKernelOutput,
             kernel->getProgramOutput().m_unpaddedProgramSize);
 
+        if (kernel->getProgramOutput().m_debugDataVISASize)
+        {
+            data.kernelDebugData = new Util::BinaryStream();
+            m_StateProcessor.CreateKernelDebugData(
+                reinterpret_cast<const char*>(kernel->getProgramOutput().m_debugDataVISA),
+                kernel->getProgramOutput().m_debugDataVISASize,
+                reinterpret_cast<const char*>(kernel->getProgramOutput().m_debugDataGenISA),
+                kernel->getProgramOutput().m_debugDataGenISASize,
+                kernel->m_kernelInfo.m_kernelName,
+                *(data.kernelDebugData));
+        }
         m_KernelBinaries.push_back(data);
     }
 }

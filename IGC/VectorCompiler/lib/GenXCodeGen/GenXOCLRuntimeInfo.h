@@ -226,16 +226,19 @@ public:
     FINALIZER_INFO JitterInfo;
     GTPinInfo GtpinInfo;
     std::vector<char> GenBinary;
+    std::vector<char> DebugInfo;
 
   public:
     CompiledKernel(KernelInfo &&KI, const FINALIZER_INFO &JI,
                    const GTPinInfo &GI,
-                   std::vector<char> GenBin);
+                   std::vector<char> GenBin,
+                   std::vector<char> DebugInfo);
 
     const KernelInfo &getKernelInfo() const { return CompilerInfo; }
     const FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }
     const GTPinInfo &getGTPinInfo() const { return GtpinInfo; }
     const std::vector<char> &getGenBinary() const { return GenBinary; }
+    const std::vector<char> &getDebugInfo() const { return DebugInfo; }
   };
 
 public:

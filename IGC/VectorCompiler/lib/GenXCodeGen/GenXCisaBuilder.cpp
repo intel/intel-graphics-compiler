@@ -58,8 +58,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 
-#include "common.h"
-#include "visaBuilder_interface.h"
+#include "visa/include/visaBuilder_interface.h"
+#include "visa/common.h"
 
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/ADT/StringExtras.h"
@@ -108,10 +108,6 @@ static cl::list<std::string>
 
 static cl::opt<bool> EmitVisa("emit-visa", cl::init(false), cl::Hidden,
                               cl::desc("Generate Visa instead of fat binary."));
-
-static cl::opt<bool> GenerateDebugInfo(
-    "emit-debug-info", cl::init(false), cl::Hidden,
-    cl::desc("Generate DWARF debug info for each compiled kernel"));
 
 static cl::opt<std::string> AsmNameOpt("asm-name", cl::init(""), cl::Hidden,
     cl::desc("Output assembly code to this file during compilation."));
@@ -5667,19 +5663,10 @@ public:
     AU.setPreservesAll();
   }
 
-  void emitDebugInformation(VISABuilder &VB, const GenXModule &GM,
-                            const FunctionGroupAnalysis &FGA,
-                            const GenXSubtarget &ST);
-
   bool runOnModule(Module &M) {
     Ctx = &M.getContext();
 
     GenXModule &GM = getAnalysis<GenXModule>();
-    FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
-    const GenXSubtarget &ST = getAnalysis<TargetPassConfig>()
-                                  .getTM<GenXTargetMachine>()
-                                  .getGenXSubtarget();
-
     std::stringstream ss;
     VISABuilder *CisaBuilder = GM.GetCisaBuilder();
     if (GM.HasInlineAsm())
@@ -5687,9 +5674,6 @@ public:
     CISA_CALL(CisaBuilder->Compile("genxir", &ss, EmitVisa));
 
     dbgs() << CisaBuilder->GetCriticalMsg();
-
-    if (GenerateDebugInfo)
-      emitDebugInformation(*CisaBuilder, GM, FGA, ST);
 
     Out << ss.str();
     return false;
@@ -5701,33 +5685,6 @@ char GenXFinalizer::ID = 0;
 
 ModulePass *llvm::createGenXFinalizerPass(raw_pwrite_stream &o) {
   return new GenXFinalizer(o);
-}
-
-void GenXFinalizer::emitDebugInformation(VISABuilder &VB, const GenXModule &GM,
-                                         const FunctionGroupAnalysis &FGA,
-                                         const GenXSubtarget &ST) {
-  for (const auto *FG : FGA) {
-    const auto *KF = FG->getHead();
-    llvm::SmallVector<char, 1000> ElfImage;
-
-    const genx::VisaDebugInfo &DbgInfo = *GM.getVisaDebugInfo(KF);
-    VISAKernel *VK = VB.GetVISAKernel(KF->getName().str());
-    IGC_ASSERT_MESSAGE(VK, "Kernel is null");
-    auto Err = genx::generateDebugInfo(ElfImage, *VK, DbgInfo, *KF,
-                                       ST.getTargetTriple().str());
-    if (Err)
-      llvm::report_fatal_error(toString(std::move(Err)));
-
-    std::error_code EC;
-    llvm::raw_fd_ostream OS(("dbg_" + KF->getName() + ".elf").str(), EC);
-    if (!EC) {
-      OS << StringRef(ElfImage.data(), ElfImage.size());
-      OS.close();
-    }
-
-    if (EC)
-      llvm::report_fatal_error(EC.message());
-  }
 }
 
 static SmallVector<const char *, 8>

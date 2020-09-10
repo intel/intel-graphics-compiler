@@ -275,6 +275,7 @@ static std::vector<vc::ocl::CompileInfo> convertInternalOCLInfo(
     convertOCLGTPinInfo(Conv.GtpinInfo, Orig.getGTPinInfo());
     Conv.JitInfo = Orig.getJitterInfo();
     Conv.GenBinary = Orig.getGenBinary();
+    Conv.DebugInfo = Orig.getDebugInfo();
   }
   return Converted;
 }

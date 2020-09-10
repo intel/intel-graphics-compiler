@@ -509,6 +509,7 @@ static void populateKernelInfo_v2(const vc::ocl::KernelInfo& info,
                                   const FINALIZER_INFO& JITInfo,
                                   const vc::ocl::GTPinInfo* GtpinInfo,
                                   llvm::ArrayRef<uint8_t> genBin,
+                                  llvm::ArrayRef<uint8_t> dbgInfo,
                                   CMKernel& kernel)
 {
     kernel.m_GRFSizeInBytes = info.GRFSizeInBytes;
@@ -570,7 +571,17 @@ static void populateKernelInfo_v2(const vc::ocl::KernelInfo& info,
     kernel.getProgramOutput().m_unpaddedProgramSize = size;
     kernel.getProgramOutput().m_InstructionCount = JITInfo.numAsmCount;
 
-    if (JITInfo.numBytesScratchGtpin > 0) {
+    const size_t DbgSize = dbgInfo.size();
+    if (DbgSize)
+    {
+        void* debugInfo = IGC::aligned_malloc(DbgSize, sizeof(void*));
+        memcpy_s(debugInfo, DbgSize, dbgInfo.data(), DbgSize);
+        kernel.getProgramOutput().m_debugDataVISA = debugInfo;
+        kernel.getProgramOutput().m_debugDataVISASize = DbgSize;
+    }
+
+    if (JITInfo.numBytesScratchGtpin > 0)
+    {
         kernel.getProgramOutput().m_scratchSpaceUsedByGtpin = JITInfo.numBytesScratchGtpin;
         kInfo.m_executionEnivronment.PerThreadScratchSpace += JITInfo.numBytesScratchGtpin;
     }
@@ -632,7 +643,10 @@ void vc::createBinary(
         llvm::ArrayRef<uint8_t> GenBin{
             reinterpret_cast<const uint8_t*>(Info.GenBinary.data()),
             Info.GenBinary.size()};
+        llvm::ArrayRef<uint8_t> DbgInfo{
+            reinterpret_cast<const uint8_t*>(Info.DebugInfo.data()),
+            Info.DebugInfo.size()};
         populateKernelInfo_v2(Info.KernelInfo, Info.JitInfo, &(Info.GtpinInfo),
-                              GenBin, *K);
+                              GenBin, DbgInfo, *K);
     }
 }

@@ -1475,13 +1475,21 @@ static std::error_code getErrorVC(std::error_code Err,
 }
 
 static void outputBinaryVC(llvm::StringRef Binary,
+                           llvm::StringRef DebugInfo,
                            STB_TranslateOutputArgs* pOutputArgs)
 {
-    size_t BinarySize = static_cast<size_t>(Binary.size());
+    size_t BinarySize = Binary.size();
     char* pBinaryOutput = new char[BinarySize];
     memcpy_s(pBinaryOutput, BinarySize, Binary.data(), BinarySize);
     pOutputArgs->OutputSize = static_cast<uint32_t>(BinarySize);
     pOutputArgs->pOutput = pBinaryOutput;
+    if (DebugInfo.size())
+    {
+        char* pDebugInfo = new char[DebugInfo.size()];
+        memcpy_s(pDebugInfo, DebugInfo.size(), DebugInfo.data(), DebugInfo.size());
+        pOutputArgs->pDebugData = pDebugInfo;
+        pOutputArgs->DebugDataSize = DebugInfo.size();
+    }
 }
 
 // Similar to ShaderHashOCL though reinterpretation is hidden inside
@@ -1564,7 +1572,7 @@ static std::error_code TranslateBuildVC(
     case vc::BinaryKind::CM:
     {
         auto &CompileResult = std::get<vc::cm::CompileOutput>(Res);
-        outputBinaryVC(CompileResult.IsaBinary, pOutputArgs);
+        outputBinaryVC(CompileResult.IsaBinary, llvm::StringRef(), pOutputArgs);
         break;
     }
     case vc::BinaryKind::OpenCL:
@@ -1578,7 +1586,13 @@ static std::error_code TranslateBuildVC(
                                    CompileResult.PointerSizeInBytes);
         llvm::StringRef BinaryRef{ProgramBinary.GetLinearPointer(),
             static_cast<std::size_t>(ProgramBinary.Size())};
-        outputBinaryVC(BinaryRef, pOutputArgs);
+
+        Util::BinaryStream ProgramDebugData;
+        CMProgram.GetProgramDebugData(ProgramDebugData);
+        llvm::StringRef DebugInfoRef{ProgramDebugData.GetLinearPointer(),
+            static_cast<std::size_t>(ProgramDebugData.Size())};
+
+        outputBinaryVC(BinaryRef, DebugInfoRef, pOutputArgs);
         break;
     }
     case vc::BinaryKind::ZE:
@@ -1590,7 +1604,13 @@ static std::error_code TranslateBuildVC(
         llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};
         CMProgram.GetZEBinary(ProgramBinaryOS, CompileResult.PointerSizeInBytes);
         llvm::StringRef BinaryRef{ProgramBinary.data(), ProgramBinary.size()};
-        outputBinaryVC(BinaryRef, pOutputArgs);
+
+        Util::BinaryStream ProgramDebugData;
+        CMProgram.GetProgramDebugData(ProgramDebugData);
+        llvm::StringRef DebugInfoRef{ProgramDebugData.GetLinearPointer(),
+            static_cast<std::size_t>(ProgramDebugData.Size())};
+
+        outputBinaryVC(BinaryRef, DebugInfoRef, pOutputArgs);
         break;
     }
     }
