@@ -54,13 +54,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FENCE_PRE_OP(Scope, Semantics, isGlobal)                                  \
   if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                     \
   {                                                                               \
-      __builtin_IB_memfence(true, false, false, false, false, isGlobal, false);   \
+      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice); \
+      __builtin_IB_memfence(true, flushL3, false, false, false, isGlobal, false); \
   }
 
 #define FENCE_POST_OP(Scope, Semantics, isGlobal)                                 \
   if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                   \
   {                                                                               \
-      __builtin_IB_memfence(true, false, false, false, false, isGlobal, false);   \
+      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice); \
+      __builtin_IB_memfence(true, flushL3, false, false, false, isGlobal, false); \
   }
 
 // This fencing scheme allows us to obey the memory model when coherency is
