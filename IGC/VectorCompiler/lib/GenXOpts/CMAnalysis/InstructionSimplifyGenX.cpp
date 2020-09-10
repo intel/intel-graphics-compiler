@@ -32,6 +32,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DEBUG_TYPE "genx-simplify"
 
+#include "llvmWrapper/Analysis/CallGraph.h"
+#include "llvmWrapper/IR/CallSite.h"
+#include "llvmWrapper/IR/Instructions.h"
+
 #include "vc/GenXOpts/GenXAnalysis.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/CMRegion.h"
@@ -40,7 +44,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Analysis/PostDominators.h>
-#include <llvm/IR/CallSite.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstIterator.h>
@@ -264,8 +267,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
  * If this instruction could not be simplified, returns null.
  */
 Value *llvm::SimplifyGenX(CallInst *I) {
-  CallSite CS{I};
-  Value *V = CS.getCalledValue();
+  Value *V = IGCLLVM::getCalledValue(I);
   Type *Ty = V->getType();
   if (auto *PTy = dyn_cast<PointerType>(Ty))
     Ty = PTy->getElementType();
@@ -277,7 +279,7 @@ Value *llvm::SimplifyGenX(CallInst *I) {
   LLVM_DEBUG(dbgs() << "Trying to simplify " << *I << "\n");
   auto GenXID = GenXIntrinsic::getGenXIntrinsicID(F);
   if (Value *Ret = SimplifyGenXIntrinsic(GenXID, FTy->getReturnType(),
-                                         CS.arg_begin(), CS.arg_end())) {
+                                         I->arg_begin(), I->arg_end())) {
     LLVM_DEBUG(dbgs() << "Simplified to " << *Ret << "\n");
     return Ret;
   }

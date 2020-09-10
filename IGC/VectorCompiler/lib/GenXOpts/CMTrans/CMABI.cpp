@@ -41,12 +41,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DEBUG_TYPE "cmabi"
 
+#include "llvmWrapper/IR/CallSite.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 
-#include "llvm/ADT/DenseMap.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/GenXSTLExtras.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/STLExtras.h"
@@ -57,7 +58,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/CFG.h"
-#include "llvm/IR/CallSite.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
@@ -909,16 +909,16 @@ CallGraphNode *CMABI::TransformNode(Function *F,
   // Loop over all of the callers of the function, transforming the call sites
   // to pass in the loaded pointers.
   for (auto U: DirectUsers) {
-    CallSite CS(U);
+    auto &CS = *cast<CallInst>(U);
     IGC_ASSERT(CS.getCalledFunction() == F);
-    Instruction *Call = CS.getInstruction();
+    auto *Call = &CS;
     const AttributeList &CallPAL = CS.getAttributes();
 
     SmallVector<Value*, 16> Args;
     AttributeList NewAttrVec;
 
     // Loop over the operands, inserting loads in the caller.
-    CallSite::arg_iterator AI = CS.arg_begin();
+    auto AI = CS.arg_begin();
     ArgIndex = 0;
     for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E;
          ++I, ++AI, ++ArgIndex) {
@@ -939,7 +939,8 @@ CallGraphNode *CMABI::TransformNode(Function *F,
     }
 
     // Push any varargs arguments on the list.
-    for (; AI != CS.arg_end(); ++AI, ++ArgIndex) {
+    auto AE = CS.arg_end();
+    for (; AI != AE; ++AI, ++ArgIndex) {
       AttributeSet attrs = CallPAL.getParamAttributes(ArgIndex);
       if (attrs.hasAttributes()) {
         AttrBuilder B(attrs);
@@ -977,7 +978,13 @@ CallGraphNode *CMABI::TransformNode(Function *F,
     // Update the callgraph to know that the callsite has been transformed.
     auto CalleeNode = static_cast<IGCLLVM::CallGraphNode *>(
         CG[Call->getParent()->getParent()]);
-    CalleeNode->replaceCallEdge(CallSite(Call), New, NF_CGN);
+    CalleeNode->replaceCallEdge(
+#if LLVM_VERSION_MAJOR <= 10
+        CallSite(Call), New,
+#else
+        *Call, *New,
+#endif
+        NF_CGN);
 
     unsigned Index = 0;
     IRBuilder<> Builder(Call);

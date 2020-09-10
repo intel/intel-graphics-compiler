@@ -631,7 +631,8 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
       (m_useGlobalMem)
           ? genx::log2(m_DL->getTypeSizeInBits(NewDstTy) /
                        (genx::ByteBits *
-                        std::min(32u, NewDstTy->getVectorNumElements()) *
+                        std::min<unsigned>(
+                            32u, cast<VectorType>(NewDstTy)->getNumElements()) *
                         (m_DL->getTypeSizeInBits(NewDstTy->getScalarType()) /
                          genx::ByteBits)))
           : genx::log2(ValueEltSz);

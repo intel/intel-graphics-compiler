@@ -64,7 +64,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/IR/CallSite.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
@@ -77,6 +76,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/StringSaver.h"
 
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/CallSite.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -4194,8 +4194,7 @@ void GenXKernelBuilder::buildPrintIndex(CallInst *CI, unsigned IntrinID,
 
   // access string
   LLVMContext& Context = CI->getContext();
-  ImmutableCallSite CallSite(CI);
-  const Value *Val = CallSite.getArgument(0);
+  const Value *Val = CI->getArgOperand(0);
   const Instruction *Gep = cast<Instruction>(Val);
   Val = Gep->getOperand(0);
   StringRef UnderlyingCStr =

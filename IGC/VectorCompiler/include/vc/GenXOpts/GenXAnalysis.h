@@ -55,7 +55,7 @@ bool canConstantFoldGenXIntrinsic(unsigned IID);
 /// unsuccessful.
 Constant *ConstantFoldGenXIntrinsic(unsigned IID, Type *RetTy,
                                     ArrayRef<Constant *> Operands,
-                                    ImmutableCallSite CS, const DataLayout *DL);
+                                    Instruction *CSInst, const DataLayout *DL);
 
 /// ConstantFoldGenX - Attempt to constant fold genx-related instruction (intrinsic).
 /// This function tries to fold operands and then tries to fold instruction
