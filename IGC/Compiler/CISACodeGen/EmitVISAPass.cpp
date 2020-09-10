@@ -530,7 +530,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_VRA->BeginFunction(&F, numLanes(m_SimdMode));
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
-        IGC::VISAModule* vMod = new IGC::ScalarVisaModule(m_currShader);
+        // owned by m_pDebugEmitter 
+        IGC::VISAModule* vMod = IGC::ScalarVisaModule::BuildNew(m_currShader);
         IGC::DebugEmitterOpts DebugOpts;
         DebugOpts.isDirectElf = vMod->isDirectElfInput;
         DebugOpts.UseNewRegisterEncoding = IGC_IS_FLAG_ENABLED(UseNewRegEncoding);

@@ -26,9 +26,6 @@ public:
 class ScalarVisaModule final : public IGC::VISAModule {
 
 public:
-    /// @brief Constructor.
-    /// @param m_pShader holds the processed entry point function and generated VISA code.
-    explicit ScalarVisaModule (CShader* m_pShader);
     static VISAModule* BuildNew(CShader* s);
 
     unsigned int getUnpaddedProgramSize() const override {
@@ -74,6 +71,9 @@ public:
     }
 
 private:
+    /// @brief Constructor.
+    /// @param m_pShader holds the processed entry point function and generated VISA code.
+    explicit ScalarVisaModule (CShader* m_pShader);
     /// @brief Trace given value to its origin value, searching for LLVM Argument.
     /// @param pVal value to process.
     /// @param isAddress indecates if the value represents an address.
