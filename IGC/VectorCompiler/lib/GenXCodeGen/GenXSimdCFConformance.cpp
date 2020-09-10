@@ -323,8 +323,22 @@ private:
 
   };
 
+  class JoinPointOptData {
+  private:
+    BasicBlock *FalsePred;
+    Instruction *EM;
+
+  public:
+    JoinPointOptData(BasicBlock *FalsePred = nullptr, Instruction *EM = nullptr)
+        : FalsePred(FalsePred), EM(EM) {}
+    BasicBlock *getTruePred() const { return EM->getParent(); }
+    BasicBlock *getFalsePred() const { return FalsePred; }
+    Instruction *getRealEM() const { return EM; }
+  };
+
   SetVector<SimpleValue> EMValsStack;
   MapVector<Value *, GotoJoinEVs> GotoJoinEVsMap;
+  MapVector<BasicBlock *, JoinPointOptData> BlocksToOptimize;
   std::map<CallInst *, CallInst *> GotoJoinMap;
   std::map<Value *, Value *> EMProducers;
   std::map<Value *, Value *> LoweredEMValsMap;
@@ -342,6 +356,7 @@ protected:
   void canonicalizeEM();
   void splitGotoJoinBlocks();
   void lowerUnsuitableGetEMs();
+  void optimizeRestoredSIMDCF();
   void clear() {
     DTs.clear();
     EMVals.clear();
@@ -350,6 +365,7 @@ protected:
     GotoJoinEVsMap.clear();
     EMProducers.clear();
     LoweredEMValsMap.clear();
+    BlocksToOptimize.clear();
   }
   DominatorTree *getDomTree(Function *F);
 private:
@@ -382,6 +398,7 @@ private:
   Value *findGotoJoinVal(int Cat, BasicBlock *Loc, Instruction *CondEV, BasicBlockEdge &TrueEdge, BasicBlockEdge &FalseEdge, Value *TrueVal,
     Value *FalseVal, std::map<BasicBlock *, Value *> &foundVals);
   bool canUseLoweredEM(Instruction *Val);
+  bool canUseRealEM(Instruction *Inst, unsigned opNo);
   void replaceUseWithLoweredEM(Instruction *Val, unsigned opNo, SetVector<Value *> &ToRemove);
   Value *findLoweredEMValue(Value *Val);
   Value *buildLoweringViaGetEM(Value *Val, Instruction *InsertBefore);
@@ -394,6 +411,13 @@ private:
   void lowerGoto(CallInst *Goto);
   void lowerJoin(CallInst *Join);
   void replaceGotoJoinUses(CallInst *GotoJoin, ArrayRef<Value *> Vals);
+  void optimizeLinearization(BasicBlock *BB, JoinPointOptData &JPData);
+  bool isActualStoredEM(Instruction *Inst, JoinPointOptData &JPData);
+  bool canBeMovedUnderSIMDCF(Value *Val, BasicBlock *CurrBB,
+                             JoinPointOptData &JPData,
+                             std::set<Instruction *> &Visited);
+  bool isSelectConditionCondEV(SelectInst *Sel, JoinPointOptData &JPData);
+  void replaceGetEMUse(Instruction *Inst, JoinPointOptData &JPData);
 };
 
 // GenX early SIMD control flow conformance pass
@@ -499,6 +523,7 @@ bool GenXEarlySimdCFConformance::runOnModule(Module &ArgM)
     // Repeatedly check the code for conformance and lower non-conformant gotos
     // and joins until the code stabilizes.
     ensureConformance();
+  optimizeRestoredSIMDCF();
   // Perform check for genx_simdcf_get_em intrinsics and remove redundant ones.
   lowerUnsuitableGetEMs();
   clear();
@@ -974,6 +999,10 @@ void GenXSimdCFConformance::handleOptimizedBranchCase(GenXSimdCFConformance::Got
   // Link blocks
   BranchInst::Create(TrueSucc, FalseSucc, CondEV, CondEV->getParent());
   BranchInst::Create(TrueSucc, FalseSucc);
+
+  // Store info for possible optimization
+  BlocksToOptimize[TrueSucc] =
+      JoinPointOptData(FalseSucc, GotoJoinData.getEMEV());
 
   // CFG changed: update DomTree.
   // TODO: there must be workaround to do it in a more optimal way
@@ -1834,17 +1863,27 @@ void GenXSimdCFConformance::lowerUnsuitableGetEMs()
   Function *GetEMDecl = GenXIntrinsic::getGenXDeclaration(
       M, GenXIntrinsic::genx_simdcf_get_em,
       {IGCLLVM::FixedVectorType::get(I1Ty, 32)});
+  std::vector<Instruction *> ToDelete;
   for (auto ui = GetEMDecl->use_begin(); ui != GetEMDecl->use_end();) {
     std::set<Value *> Visited;
     auto GetEM = dyn_cast<Instruction>(ui->getUser());
     ++ui;
     auto GetEMPred = GetEM->getOperand(0);
 
+    if (GetEM->use_empty()) {
+      ToDelete.push_back(GetEM);
+      continue;
+    }
+
     // Constants and non-EM values should be used directly
     if (dyn_cast<Constant>(GetEMPred) || !getEMProducer(dyn_cast<Instruction>(GetEMPred), Visited)) {
       GetEM->replaceAllUsesWith(GetEM->getOperand(0));
-      GetEM->eraseFromParent();
+      ToDelete.push_back(GetEM);
     }
+  }
+
+  for (auto *Inst : ToDelete) {
+    Inst->eraseFromParent();
   }
 }
 
@@ -3099,6 +3138,49 @@ bool GenXSimdCFConformance::canUseLoweredEM(Instruction *Val)
 }
 
 /***********************************************************************
+ * canUseRealEM : check whether instruction can use real EM that is
+ * passed via #opNo operand.
+ *
+ * This is used to check if instruction can use real EM.
+ *
+ * TODO: It is used only by linearized fragment optimization now.
+ * This function should be extended and put into getConnectedVals
+ * algorithm in order to make the last one simplier. For now,
+ * this check will be passed only by selects, shufflevectors and wrregions
+ * because these instructions movement makes sence during the
+ * optimization.
+ */
+bool GenXSimdCFConformance::canUseRealEM(Instruction *Inst, unsigned opNo) {
+  if (auto *Select = dyn_cast<SelectInst>(Inst)) {
+    // Real EM can be condition only
+    return opNo == 0;
+  }
+
+  if (auto *SVI = dyn_cast<ShuffleVectorInst>(Inst)) {
+    // TODO: getConnectedVals checks only this, but
+    // there is no check for idxs correctness.
+    // They should be 0, 1, 2, ..., EXEC_SIZE - 1 for
+    // EM truncation.
+    if (!ShuffleVectorAnalyzer::isReplicatedSlice(SVI))
+      return false;
+
+    return checkAllUsesAreSelectOrWrRegion(SVI);
+  }
+
+  // Left switch for further extensions
+  switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
+  case GenXIntrinsic::genx_wrregionf:
+  case GenXIntrinsic::genx_wrregioni:
+    // Real EM can be wrrregion predicate only
+    return opNo == GenXIntrinsic::GenXRegion::PredicateOperandNum;
+  default:
+    break;
+  }
+
+  return false;
+}
+
+/***********************************************************************
  * checkInterference : check for a list of values interfering with each other
  *
  * Enter:   Vals = values to check (not constants)
@@ -3668,6 +3750,335 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
     Liveness->eraseLiveRange(Sel);
     Sel->eraseFromParent();
     Modified = true;
+  }
+}
+
+/***********************************************************************
+ * optimizeRestoredSIMDCF : perform optimization on restored SIMD CF
+ *
+ * Restored SIMD CF is built from linear code blocks that came from
+ * llvm transformations. Some code could be moved from SIMD CF after
+ * join point during this transformations. This function tries to
+ * put such code back.
+ *
+ * TODO: some other transformations could be applied after SIMD CF was
+ * linearized. Maybe this function should be updated in future.
+ */
+void GenXSimdCFConformance::optimizeRestoredSIMDCF() {
+  for (auto Data : BlocksToOptimize) {
+    // Skip blocks with lowered EM values
+    if (!EMVals.count(SimpleValue(Data.second.getRealEM(), 0))) {
+      LLVM_DEBUG(dbgs() << "optimizeRestoredSIMDCF: skipping "
+                        << Data.first->getName() << "\n");
+      continue;
+    }
+    optimizeLinearization(Data.first, Data.second);
+  }
+}
+
+/***********************************************************************
+ * isActualStoredEM : check if Inst is a actual stored EM
+ *
+ * This function is called during linear fragment optimization.
+ * The actual stored EM is a PHI node with const/getEM inputs here.
+ * Actuallity is checked via EM-getEM map.
+ */
+bool GenXSimdCFConformance::isActualStoredEM(Instruction *Inst,
+                                             JoinPointOptData &JPData) {
+  LLVM_DEBUG(dbgs() << "isActualStoredEM: visiting\n" << *Inst << "\n");
+  PHINode *PN = dyn_cast<PHINode>(Inst);
+
+  // Linearized block should be turned into a hammock: stored EM
+  // must come via PHI with two preds. Go through shufflevector
+  // in case of truncated EM.
+  if (auto *SVI = dyn_cast<ShuffleVectorInst>(Inst)) {
+    LLVM_DEBUG(dbgs() << "Truncated EM detected\n");
+
+    // Check SVI trunc correctness
+    if (!canUseRealEM(Inst, 0)) {
+      LLVM_DEBUG(dbgs() << "Bad trunc via SVI: not an actual EM\n");
+      return false;
+    }
+
+    PN = dyn_cast<PHINode>(SVI->getOperand(0));
+  }
+  if (!PN || PN->getNumIncomingValues() != 2) {
+    LLVM_DEBUG(dbgs() << "Incompatable inst: not an actual EM\n");
+    return false;
+  }
+
+  Value *ExpectedGetEM = PN->getIncomingValueForBlock(JPData.getFalsePred());
+  Value *ExpectedConstEM = PN->getIncomingValueForBlock(JPData.getTruePred());
+
+  assert(ExpectedGetEM && ExpectedConstEM && "Bad phi in hammock!");
+
+  // Find stored value
+  auto It = LoweredEMValsMap.find(JPData.getRealEM());
+  if (It == LoweredEMValsMap.end()) {
+    LLVM_DEBUG(dbgs() << "No EM was stored: not an actual EM\n");
+    return false;
+  }
+
+  // Check if the val from SIMD BB is a stored via get.em EM
+  if (ExpectedGetEM != It->second) {
+    LLVM_DEBUG(
+        dbgs() << "SIMD BB value is not a correct get.em: not an actual EM\n");
+    return false;
+  }
+
+  // Check if the val from True BB is an all null constant
+  if (ExpectedConstEM != Constant::getNullValue(ExpectedConstEM->getType())) {
+    LLVM_DEBUG(
+        dbgs()
+        << "True BB value is not a correct constant: not an actual EM\n");
+    return false;
+  }
+
+  LLVM_DEBUG(dbgs() << "All checks passed\n");
+  return true;
+}
+
+/***********************************************************************
+ * canBeMovedUnderSIMDCF : check if Instruction can be moved under
+ * SIMD CF
+ *
+ * This function is called during linear fragment optimization.
+ * We can move instruction if such movement does not corrupt
+ * dominance. Sometimes we can meet several instruction that
+ * should be moved. There is a recursive call, all instructions
+ * in chain are stored in Visited set.
+ */
+bool GenXSimdCFConformance::canBeMovedUnderSIMDCF(
+    Value *Val, BasicBlock *CurrBB, JoinPointOptData &JPData,
+    std::set<Instruction *> &Visited) {
+  Instruction *Inst = dyn_cast<Instruction>(Val);
+
+  // Can be non-inst. In this case we have nothing to check.
+  if (!Inst)
+    return true;
+
+  LLVM_DEBUG(dbgs() << "canBeMovedUnderSIMDCF: visiting\n" << *Inst << "\n");
+
+  // Mark instruction as visited. Return if it was already added to set:
+  // we don't expect it to be here.
+  if (!Visited.insert(Inst).second) {
+    LLVM_DEBUG(dbgs() << "Instruction was already visited: do not move\n");
+    return false;
+  }
+
+  // Instruction is not located in linearized fragment
+  if (Inst->getParent() != CurrBB) {
+    LLVM_DEBUG(dbgs() << "Out of linearized fragment: do not move\n");
+    return false;
+  }
+
+  // Do not move join instruction
+  if (GenXIntrinsic::getGenXIntrinsicID(Inst) ==
+      GenXIntrinsic::genx_simdcf_join) {
+    LLVM_DEBUG(dbgs() << "Join instruction: do not move\n");
+    return false;
+  }
+
+  // TODO: current assumption is that nothing except linearization was applied
+  // Skip instruction that has more than one user
+  if (!Inst->hasOneUse()) {
+    LLVM_DEBUG(dbgs() << "More than one user: do not move\n");
+    return false;
+  }
+
+  // Check operands
+  for (unsigned i = 0, e = Inst->getNumOperands(); i < e; ++i) {
+    Instruction *Pred = dyn_cast<Instruction>(Inst->getOperand(i));
+
+    // Not an instruction: not blocking moving
+    if (!Pred)
+      continue;
+
+    // Check for dominance
+    DominatorTree *DomTree = getDomTree(CurrBB->getParent());
+    if (DomTree->dominates(Pred, JPData.getFalsePred()))
+      continue;
+
+    // Check for actual saved EM: it is a phi located in current BB,
+    // so the dominance check failed
+    if (isActualStoredEM(Pred, JPData))
+      continue;
+
+    // Dominance check and EM check failed: instruction is inside this block
+    LLVM_DEBUG(dbgs() << "Recursive call for operand #" << i << "\n");
+    if (canBeMovedUnderSIMDCF(Pred, CurrBB, JPData, Visited))
+      continue;
+
+    // Recursive call failed: do not move
+    LLVM_DEBUG(dbgs() << "canBeMovedUnderSIMDCF: bad operand: do not move\n");
+    return false;
+  }
+
+  LLVM_DEBUG(dbgs() << "canBeMovedUnderSIMDCF: move\n" << *Inst << "\n");
+  return true;
+}
+
+/***********************************************************************
+ * isSelectConditionCondEV : check if Select's condition is a stored
+ * Cond EV value.
+ *
+ * This function is called during linear fragment optimization.
+ * Linear fragment optimization bases on the fact that LLVM performed
+ * code movement with PHI -> select transformation. This function
+ * checks if the select condition is a CondEV from previous SIMD
+ * branching instruction.
+ *
+ * This function also can handle constant vectorization if it
+ * was applied: it doesn't break SIMD CF CondEV semantics.
+ */
+bool GenXSimdCFConformance::isSelectConditionCondEV(SelectInst *Sel,
+                                                    JoinPointOptData &JPData) {
+  PHINode *PN = dyn_cast<PHINode>(Sel->getCondition());
+  if (!PN)
+    return false;
+
+  Value *TrueBlockValue = PN->getIncomingValueForBlock(JPData.getTruePred());
+  Value *FalseBlockValue = PN->getIncomingValueForBlock(JPData.getFalsePred());
+
+  assert(TrueBlockValue && FalseBlockValue && "Bad phi in hammock!");
+
+  Constant *TrueBlockConst = dyn_cast<Constant>(TrueBlockValue);
+  Constant *FalseBlockConst = dyn_cast<Constant>(FalseBlockValue);
+
+  if (!TrueBlockConst || !FalseBlockConst)
+    return false;
+
+  // It is not necessary to check constant type due CondEV semantics
+  if (!TrueBlockConst->isOneValue() || !FalseBlockConst->isNullValue())
+    return false;
+
+  return true;
+}
+
+/***********************************************************************
+ * replaceGetEMUse : find and replace GetEM uses with real EM in Inst
+ *
+ * This function is called during linear fragment optimization.
+ * After we moved Inst to SIMD, we can link it with Real EM.
+ * GetEM may become redundant - it will be removed later in this pass.
+ *
+ * Note: SIMD CF will be non-conformant if Inst is left at the point
+ * where new EM was generated. Inst is moved after that replacement
+ * in linearized fragment optimization so conformance is not broken.
+ */
+void GenXSimdCFConformance::replaceGetEMUse(Instruction *Inst,
+                                            JoinPointOptData &JPData) {
+  for (unsigned i = 0, e = Inst->getNumOperands(); i < e; ++i) {
+    Instruction *Pred = dyn_cast<Instruction>(Inst->getOperand(i));
+
+    if (!Pred || !canUseRealEM(Inst, i))
+      continue;
+
+    // EM must be in the same BB
+    if (Pred->getParent() != Inst->getParent())
+      continue;
+
+    if (!isActualStoredEM(Pred, JPData))
+      continue;
+
+    // Replace operand
+    Instruction *NewOp = JPData.getRealEM();
+    Instruction *FullEM = nullptr;
+    if (isa<ShuffleVectorInst>(Pred)) {
+      // Copy truncation via SVI
+      NewOp = Pred->clone();
+      NewOp->insertBefore(JPData.getFalsePred()->getTerminator());
+      NewOp->setOperand(0, JPData.getRealEM());
+      FullEM = cast<Instruction>(Pred->getOperand(0));
+    }
+    Inst->setOperand(i, NewOp);
+
+    // Remove Pred if it is not needed anymore.
+    // Do the same for FullEM.
+    // GetEM that was used here will be handled later.
+    if (Pred->use_empty()) {
+      Pred->eraseFromParent();
+    }
+    if (FullEM && FullEM->use_empty()) {
+      FullEM->eraseFromParent();
+    }
+  }
+}
+
+/***********************************************************************
+ * optimizeLinearization : optimize linearized fragment
+ *
+ * This optimization restores SIMD CF for linearized fragment.
+ * To detect code that can be moved under SIMD CF, we need to find
+ * a the following select inst:
+ *    Val = select CondEV, OldVal, NewVal
+ * Details can be found below.
+ */
+void GenXSimdCFConformance::optimizeLinearization(BasicBlock *BB,
+                                                  JoinPointOptData &JPData) {
+  std::set<Instruction *> InstsToMove;
+  std::vector<SelectInst *> SelectsToOptimize;
+  for (Instruction *Inst = BB->getTerminator()->getPrevNode();
+       Inst && !dyn_cast<PHINode>(Inst); Inst = Inst->getPrevNode()) {
+    // We are looking for "Val = select CondEV, OldVal, NewVal" instruction.
+    //
+    // Linearization put NewVal calculations after JP. OldVal came from True BB
+    // via PHI instruction. We can move NewVal calculations under SIMD CF and
+    // place a PHINode instead of this select. Val, OldVal and NewVal will be
+    // coalesced and allocated on the same register later.
+    SelectInst *Select = dyn_cast<SelectInst>(Inst);
+    if (!Select || !isSelectConditionCondEV(Select, JPData))
+      continue;
+
+    // Check if OldVal came from outside. Also it can be a constant.
+    // TODO: current assumption is that nothing except linearization was
+    // applied. It is possible that OldVal was moved down after it. We also can
+    // move it back but some analysis is required to avoid possible overhead.
+    // Not done now.
+    Value *OldVal = Select->getTrueValue();
+    if (Instruction *OldValInst = dyn_cast<Instruction>(OldVal)) {
+      DominatorTree *DomTree = getDomTree(BB->getParent());
+      // Must dominate this BB and SIMD BB
+      if (!DomTree->dominates(OldValInst, BB) ||
+          !DomTree->dominates(OldValInst, JPData.getFalsePred()))
+        continue;
+    }
+
+    // Check NewVal
+    Value *NewVal = Select->getFalseValue();
+    std::set<Instruction *> Visited;
+    if (!canBeMovedUnderSIMDCF(NewVal, BB, JPData, Visited))
+      continue;
+
+    // We can optimize this select
+    InstsToMove.insert(Visited.begin(), Visited.end());
+    SelectsToOptimize.push_back(Select);
+  }
+
+  // Move instructions
+  // FIXME: there must be a way to do it in a better manner
+  // The idea of this is to save the instructions' order so we don't brake
+  // dominance when movement is performed.
+  std::vector<Instruction *> OrderedInstsToMove;
+  for (Instruction *Inst = BB->getFirstNonPHI(); Inst;
+       Inst = Inst->getNextNode()) {
+    if (InstsToMove.find(Inst) == InstsToMove.end())
+      continue;
+    OrderedInstsToMove.push_back(Inst);
+  }
+  for (auto *Inst : OrderedInstsToMove) {
+    replaceGetEMUse(Inst, JPData);
+    Inst->moveBefore(JPData.getFalsePred()->getTerminator());
+  }
+
+  // Handle selects
+  for (auto *Select : SelectsToOptimize) {
+    PHINode *PN = PHINode::Create(Select->getType(), 2, "optimized_sel",
+                                  BB->getFirstNonPHI());
+    PN->addIncoming(Select->getTrueValue(), JPData.getTruePred());
+    PN->addIncoming(Select->getFalseValue(), JPData.getFalsePred());
+    Select->replaceAllUsesWith(PN);
+    Select->eraseFromParent();
   }
 }
 
