@@ -36,4 +36,5 @@ target_link_libraries(VCBackendPlugin
   ${CODEGEN_LIBS_FILES}
   # GenX_IR actually should be linked to LLVMGenXCodeGen.
   GenX_IR
+  LibDebugInfo
   )

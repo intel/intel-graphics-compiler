@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
-#include "Compiler/DebugInfo/DebugInfoUtils.hpp"
+#include "DebugInfo/DebugInfoUtils.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"

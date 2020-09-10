@@ -50,7 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/DebugInfo/VISADebugEmitter.hpp"
+#include "DebugInfo/VISADebugEmitter.hpp"
 #include <numeric>
 #include <utility>
 #include "Probe/Assertion.h"

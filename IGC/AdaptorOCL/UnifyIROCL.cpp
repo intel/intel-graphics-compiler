@@ -124,11 +124,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <iStdLib/utility.h>
 
-#include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
-#include "Compiler/DebugInfo/ScalarVISAModule.h"
-#include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
+#include "Compiler/DebugInfo/ScalarVISAModule.h"
+#include "DebugInfo/VISADebugEmitter.hpp"
+#include "DebugInfo/DebugInfoUtils.hpp"
 
 #include <string>
 #include <algorithm>

@@ -33,8 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "visaBuilder_interface.h"
 
-#include "Compiler/DebugInfo/StreamEmitter.hpp"
-#include "Compiler/DebugInfo/VISAIDebugEmitter.hpp"
+#include "DebugInfo/StreamEmitter.hpp"
+#include "DebugInfo/VISAIDebugEmitter.hpp"
+#include "DebugInfo/VISAModule.hpp"
 
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/Instruction.h>

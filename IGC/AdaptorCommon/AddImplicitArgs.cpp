@@ -41,8 +41,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/DerivedTypes.h>
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "common/debug/Debug.hpp"
+#include "DebugInfo/VISADebugEmitter.hpp"
 #include <map>
 #include <utility>
 #include "Probe/Assertion.h"

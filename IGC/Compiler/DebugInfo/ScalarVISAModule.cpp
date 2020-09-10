@@ -1,8 +1,9 @@
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
-#include "Compiler/DebugInfo/DebugInfoUtils.hpp"
-#include "Compiler/CodeGenPublic.h"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
+#include "Compiler/CodeGenPublic.h"
 #include "common/debug/Debug.hpp"
+
+#include "DebugInfo/DebugInfoUtils.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Function.h"

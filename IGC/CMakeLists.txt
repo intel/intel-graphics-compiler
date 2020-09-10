@@ -3474,6 +3474,7 @@ if(IGC_BUILD__VC_ENABLED AND NOT CMAKE_WDDM_LINUX)
 endif()
 
 add_subdirectory(Compiler)
+add_subdirectory(DebugInfo)
 add_subdirectory(DriverInterface)
 igc_sg_define(IGC__DriverInterface)
 

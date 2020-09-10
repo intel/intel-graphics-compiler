@@ -158,7 +158,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
 #include "Compiler/GenTTI.h"
 #include "Compiler/Optimizer/SetMathPrecisionForPositionOutput.hpp"
-#include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Compiler/SampleCmpToDiscard.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 #include "DebugInfo.hpp"

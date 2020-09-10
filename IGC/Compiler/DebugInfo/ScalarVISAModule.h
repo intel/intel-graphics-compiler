@@ -2,8 +2,8 @@
 #define SCALAR_VISAMODULE_HPP_1YOTGOUE
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/DebugInfo/VISAModule.hpp"
 #include "common/debug/Debug.hpp"
+#include "DebugInfo/VISAModule.hpp"
 
 namespace IGC {
 

@@ -47,7 +47,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/secure_mem.h"
 #include "common/MDFrameWork.h"
 #include <iStdLib/utility.h>
-#include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Probe/Assertion.h"
 #include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
 
