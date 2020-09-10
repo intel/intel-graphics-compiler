@@ -45,12 +45,6 @@ void InstSplitPass::run()
 {
     auto hasIndirectAccess = [](G4_INST* inst)
     {
-        G4_Operand* dst = inst->getDst();
-
-        if (dst && dst->getRegAccess() == IndirGRF)
-        {
-            return true;
-        }
         for (int i = 0, srcNum = inst->getNumSrc(); i < srcNum; i++)
         {
             G4_Operand* src = inst->getSrc(i);
