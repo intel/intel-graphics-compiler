@@ -5119,7 +5119,7 @@ namespace IGC
                 {
                     std::string output;
                     raw_string_ostream S(output);
-                    S << "parsing vISA inline assembly failed:\t" << vAsmTextBuilder->GetCriticalMsg();
+                    S << "parsing vISA inline assembly failed:\n" << vAsmTextBuilder->GetCriticalMsg();
                     S.flush();
                     context->EmitError(output.c_str());
                     vISAAsmParseError = true;
@@ -5133,6 +5133,11 @@ namespace IGC
             }
             else
             {
+                if (!visaAsmOverride)
+                {
+                    // vISA verifier is already invoked in ParseVISAText earlier
+                    vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, true);
+                }
                 pMainKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
                 vIsaCompile = vAsmTextBuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
             }

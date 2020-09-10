@@ -445,16 +445,14 @@ void CisaBinary::patchFunction(int index, unsigned genxBufferSize)
     this->genxBinariesSize += genxBufferSize;
 }
 
-int CisaBinary::isaDumpVerify(
+int CisaBinary::isaDump(
     std::list<VISAKernelImpl*> m_kernels, Options* options)
 {
 #ifdef IS_RELEASE_DLL
-    return;
+    return VISA_SUCCESS;
 #else
     bool dump =  m_options->getOption(vISA_GenerateISAASM);
-    // disable verification in isaasm mode
-    bool verify = !m_options->getOption(vISA_NoVerifyvISA); // && !m_options->getOption(vISA_isParseMode);
-    if (!(dump || verify))
+    if (!dump)
         return VISA_SUCCESS;
 
     struct ScopedFile
@@ -491,8 +489,6 @@ int CisaBinary::isaDumpVerify(
 
     std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
     std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
-    bool hasErrors = false;
-    unsigned totalErrors = 0;
     std::string testName; // base kernel name saved for function's isaasm file name
 
     for (; iter != end; iter++)
@@ -523,7 +519,7 @@ int CisaBinary::isaDumpVerify(
         std::list<CisaFramework::CisaInst *>::iterator inst_iter_end = kTemp->getInstructionListEnd();
 
         unsigned funcId = 0;
-        if (dump && !(m_options->getOption(vISA_GeneratevISABInary)  && m_options->getOption(vISA_IsaasmNamesFileUsed)))
+        if (!(m_options->getOption(vISA_GeneratevISABInary) && m_options->getOption(vISA_IsaasmNamesFileUsed)))
         {
             stringstream sstr;
             stringstream asmName;
@@ -555,50 +551,6 @@ int CisaBinary::isaDumpVerify(
 
             writeIsaAsmFile(asmName.str(), sstr.str());
         }
-
-        if (verify)
-        {
-            VISAKernel_format_provider fmt(kTemp);
-
-            vISAVerifier verifier(m_header, &fmt, m_options);
-            verifier.run(kTemp);
-
-            if (verifier.hasErrors())
-            {
-                stringstream verifierName;
-
-                if (kTemp->getIsKernel())
-                {
-                    verifierName << kTemp->getOutputAsmPath();
-                }
-                else
-                {
-                    kTemp->GetFunctionId(funcId);
-                    verifierName << testName;
-                    verifierName << "_f";
-                    verifierName << funcId;
-                }
-                verifierName << ".errors.txt";
-                verifier.writeReport(verifierName.str().c_str());
-                failedFiles.push_back(verifierName.str());
-                hasErrors = true;
-                totalErrors += (uint32_t) verifier.getNumErrors();
-            }
-        }
-    }
-    if (hasErrors)
-    {
-        stringstream ss;
-        ss << "Found a total of " << totalErrors << " errors in vISA input.\n";
-        ss << "Please check\n";
-        for (auto&& name : failedFiles)
-        {
-            ss << "\t" << name << "\n";
-        }
-        ss << "for the exact error messages\n";
-        std::cerr << ss.str();
-        parent->criticalMsgStream() << ss.str();
-        return VISA_FAILURE;
     }
 
     return VISA_SUCCESS;

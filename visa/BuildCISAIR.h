@@ -117,6 +117,8 @@ public:
         return criticalMsg.str();
     }
 
+    int verifyVISAIR();
+
 
     static void cat(std::stringstream &ss) { }
     template <typename T, typename...Ts>

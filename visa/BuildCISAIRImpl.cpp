@@ -48,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Gen4_IR.hpp"
 #include "FlowGraph.h"
 #include "DebugInfo.h"
+#include "IsaVerification.h"
 
 using namespace std;
 using namespace vISA;
@@ -583,6 +584,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
     CISAout = fopen("/dev/null", "w");
 #endif
 
+    int status = VISA_SUCCESS;
     std::stringstream ss;
     ss << visaHeader << "\n" << visaText << "\n";
     std::string visaListing = ss.str();
@@ -600,16 +602,15 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
     YY_BUFFER_STATE visaBuf = CISA_scan_string(visaListing.c_str());
     if (CISAparse(this) != 0)
     {
-#if defined(_DEBUG) || defined(_INTERNAL)
-        // how do we detect offline IGCBuild?
+#ifndef DLL_MODE
         std::cerr << "Parsing visa text failed.";
         if (!visaTextFile.empty())
         {
             std::cerr << " Please examine " << visaTextFile << " and fix the error";
         }
         std::cerr << "\n" << criticalMsg.str();
-#endif
-        return VISA_FAILURE;
+#endif //DLL_MODE
+        status = VISA_FAILURE;
     }
     CISA_delete_buffer(visaBuf);
 
@@ -618,7 +619,14 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
         fclose(CISAout);
     }
 
-    return VISA_SUCCESS;
+    // run vISA verifier to cath any additional errors.
+    // the subsequent vISABuilder::Compile() call is assumed to always succeed after verifier checks.
+    if (status == VISA_SUCCESS)
+    {
+        status = verifyVISAIR();
+    }
+
+    return status;
 #else
     assert(0 && "vISA asm parsing not supported on this platform");
     return VISA_FAILURE;
@@ -703,10 +711,18 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             return status;
         }
 
-        // We call the verifier and dumper directly.
-        if (m_options.getOption(vISA_GenerateISAASM) || !m_options.getOption(vISA_NoVerifyvISA))
+        if (m_options.getOption(vISA_GenerateISAASM))
         {
-            status = m_cisaBinary->isaDumpVerify(m_kernelsAndFunctions, &m_options);
+            status = m_cisaBinary->isaDump(m_kernelsAndFunctions, &m_options);
+            if (status != VISA_SUCCESS)
+            {
+                return status;
+            }
+        }
+
+        if (!m_options.getOption(vISA_NoVerifyvISA))
+        {
+            status = verifyVISAIR();
             if (status != VISA_SUCCESS)
             {
                 return status;
@@ -909,9 +925,92 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
     {
         std::cerr << "[vISA Finalizer Messsages]\n" << criticalMsg.str();
     }
-#endif
+#endif //DLL_MODE
 
     return status;
+}
+
+int CISA_IR_Builder::verifyVISAIR()
+{
+
+#ifdef IS_RELEASE_DLL
+    return VISA_SUCCESS;
+#endif
+
+    bool hasErrors = false;
+    unsigned totalErrors = 0;
+    std::string testName; // base kernel name saved for function's isaasm file name
+
+    for (auto kTemp : m_kernelsAndFunctions)
+    {
+        if (kTemp->getIsKernel())
+        {
+            //if asmName is test9_genx_0.asm, the testName is test9_genx.
+            std::string asmName = kTemp->getOutputAsmPath();
+            std::string::size_type asmNameEnd = asmName.find_last_of("_");
+            if (asmNameEnd != std::string::npos)
+            {
+                testName = asmName.substr(0, asmNameEnd);
+            }
+            else
+            {
+                testName = asmName;
+            }
+            break;
+        }
+    }
+
+    std::vector<std::string> failedFiles;
+    for (auto kTemp : m_kernelsAndFunctions)
+    {
+        unsigned funcId = 0;
+
+        VISAKernel_format_provider fmt(kTemp);
+
+        vISAVerifier verifier(m_header, &fmt, getOptions());
+        verifier.run(kTemp);
+
+        if (verifier.hasErrors())
+        {
+            stringstream verifierName;
+
+            if (kTemp->getIsKernel())
+            {
+                verifierName << kTemp->getOutputAsmPath();
+            }
+            else
+            {
+                kTemp->GetFunctionId(funcId);
+                verifierName << testName;
+                verifierName << "_f";
+                verifierName << funcId;
+            }
+            verifierName << ".errors.txt";
+            verifier.writeReport(verifierName.str().c_str());
+            failedFiles.push_back(verifierName.str());
+            hasErrors = true;
+            totalErrors += (uint32_t)verifier.getNumErrors();
+        }
+    }
+    if (hasErrors)
+    {
+        stringstream ss;
+        ss << "Found a total of " << totalErrors << " errors in vISA input.\n";
+        ss << "Please check\n";
+        for (auto&& name : failedFiles)
+        {
+            ss << "\t" << name << "\n";
+        }
+        ss << "for the exact error messages\n";
+#ifndef  DLL_MODE
+        std::cerr << ss.str();
+#endif //DLL_MODE
+        criticalMsgStream() << ss.str();
+        return VISA_FAILURE;
+    }
+
+    return VISA_SUCCESS;
+
 }
 
 bool CISA_IR_Builder::CISA_lookup_builtin_constant(int lineNum, const char *symbol, int64_t &val)

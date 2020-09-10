@@ -196,7 +196,7 @@ public:
 
     void *operator new(size_t sz, vISA::Mem_Manager& m) {return m.alloc(sz); }
 
-    int isaDumpVerify(std::list<VISAKernelImpl *>, Options *options);
+    int isaDump(std::list<VISAKernelImpl *>, Options *options);
     void writeIsaAsmFile(std::string filename, std::string isaasmStr) const;
 
     unsigned long getHeaderSize() {return m_header_size; }
