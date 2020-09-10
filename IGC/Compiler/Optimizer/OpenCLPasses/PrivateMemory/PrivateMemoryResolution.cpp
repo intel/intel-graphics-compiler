@@ -744,7 +744,7 @@ bool PrivateMemoryResolution::testTransposedMemory(const Type* pTmpType, const T
         else if(pTmpType->isArrayTy())
         {
             tmpAllocaSize *= pTmpType->getArrayNumElements();
-            pTmpType = pTmpType->getSequentialElementType();
+            pTmpType = pTmpType->getContainedType(0);
             ok = (nullptr != pTmpType);
             IGC_ASSERT(ok);
         }
@@ -752,7 +752,7 @@ bool PrivateMemoryResolution::testTransposedMemory(const Type* pTmpType, const T
         {
             auto pTmpVType = cast<VectorType>(pTmpType);
             tmpAllocaSize *= pTmpVType->getNumElements();
-            pTmpType = pTmpType->getSequentialElementType();
+            pTmpType = pTmpType->getContainedType(0);
             ok = (nullptr != pTmpType);
             IGC_ASSERT(ok);
         }

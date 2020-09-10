@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Module.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvmWrapper/IR/Intrinsics.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -301,7 +302,7 @@ bool VerificationPass::verifyType(Type* type, Value* val)
         // All integer types are valide
         break;
 
-    case Type::VectorTyID:
+    case IGCLLVM::VectorTyID:
     {
         auto VType = cast<VectorType>(type);
         unsigned typeSize = (unsigned)VType->getNumElements();

@@ -505,7 +505,11 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     // If this is an sequential type which is not a CDS or zero, have to collect the values
     // element by element. Note that this is not exclusive with the two cases above, so the
     // order of ifs is meaningful.
-    else if (dyn_cast<CompositeType>(initializer->getType()))
+    else if (
+        initializer->getType()->isArrayTy() ||
+        initializer->getType()->isStructTy() ||
+        initializer->getType()->isVectorTy()
+    )
     {
         const int numElts = initializer->getNumOperands();
         for (int i = 0; i < numElts; ++i)

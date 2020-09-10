@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/Support/TypeSize.h"
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -92,7 +93,7 @@ namespace {
 
         Type* Tys[] = { Dst->getType(), Src->getType(), Size->getType() };
         auto* M = MM->getParent()->getParent()->getParent();
-        Value* TheFn = Intrinsic::getDeclaration(M, Intrinsic::memcpy, Tys);
+        auto TheFn = Intrinsic::getDeclaration(M, Intrinsic::memcpy, Tys);
 
         return cast<MemCpyInst>(MemCpyInst::Create(TheFn, args));
     }
@@ -794,7 +795,7 @@ namespace {
         unsigned sizeInBits = I->getArgOperand(0)->getType()->getScalarSizeInBits();
         Value* numBits = Builder.getIntN(sizeInBits, sizeInBits);
         if (auto IVT = dyn_cast<VectorType>(I->getType())) {
-            numBits = ConstantVector::getSplat(IVT->getNumElements(), cast<Constant>(numBits));
+            numBits = ConstantVector::getSplat(IGCLLVM::getElementCount(IVT->getNumElements()), cast<Constant>(numBits));
         }
         auto shiftModulo = Builder.CreateURem(I->getArgOperand(2), numBits);
         auto negativeShift = Builder.CreateSub(numBits, shiftModulo);

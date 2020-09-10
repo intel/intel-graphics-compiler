@@ -125,8 +125,14 @@ bool KernelFunctionCloning::runOnModule(Module& M) {
             continue;
         // Check this kernell function is called.
         for (auto* U : F.users()) {
-            ImmutableCallSite CS(U);
-            if (!CS)
+            IGCLLVM::CallSite* call = nullptr;
+#if LLVM_VERSION_MAJOR < 11
+            IGCLLVM::CallSite callSite(U);
+            call = &callSite;
+#else
+            call = dyn_cast<IGCLLVM::CallSite>(U);
+#endif
+            if (!call)
                 continue;
             KernelsToClone.push_back(&F);
             break;
@@ -142,10 +148,16 @@ bool KernelFunctionCloning::runOnModule(Module& M) {
         if (!F->getParent()->getFunction(NewF->getName()))
             F->getParent()->getFunctionList().push_back(NewF);
         for (auto* U : F->users()) {
-            CallSite CS(U);
-            if (!CS)
+            IGCLLVM::CallSite* call = nullptr;
+#if LLVM_VERSION_MAJOR < 11
+            IGCLLVM::CallSite callSite(U);
+            call = &callSite;
+#else
+            call = dyn_cast<IGCLLVM::CallSite>(U);
+#endif
+            if (!call)
                 continue;
-            CS.setCalledFunction(NewF);
+            call->setCalledFunction(NewF);
         }
         Changed = true;
     }

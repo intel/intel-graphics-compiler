@@ -92,7 +92,7 @@ namespace IGC
             unsigned int newSizeY,
             unsigned int threadGroupSize_X,
             unsigned int threadGroupSize_Y,
-            llvm::IRBuilder<> builder);
+            llvm::IRBuilder<>& builder);
 
         void CreateLoopKernel(
             llvm::Module& M,

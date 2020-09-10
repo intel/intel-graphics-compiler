@@ -908,7 +908,7 @@ void ScalarizeFunction::scalarizeInstruction(LoadInst* LI)
         {
             Constant* laneVal = ConstantInt::get(indexType, dup);
             Value* pGEP = GetElementPtrInst::Create(nullptr, operandBase, laneVal, "GEP_lane", LI);
-            newScalarizedInsts[dup] = new LoadInst(pGEP, LI->getName(), LI);
+            newScalarizedInsts[dup] = new LoadInst(pGEP->getType()->getPointerElementType(), pGEP, LI->getName(), LI);
         }
 #else
         GetElementPtrInst* operand = dyn_cast<GetElementPtrInst>(LI->getOperand(0));
@@ -1093,7 +1093,7 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value*>& retValue
         for (unsigned i = 0; i < width; i++)
         {
             // Generate dummy "load" instruction (but don't really place in function)
-            retValues[i + destIdx] = new LoadInst(dummyPtr);
+            retValues[i + destIdx] = new LoadInst(dummyPtr->getType()->getPointerElementType(), dummyPtr, "", (llvm::Instruction*)nullptr);
             newDRLEntry.dummyVals[i] = retValues[i + destIdx];
         }
         // Copy the data into DRL structure

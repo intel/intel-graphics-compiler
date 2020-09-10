@@ -636,7 +636,7 @@ void ThreadCombining::remapThreads(
     unsigned int newSizeY,
     unsigned int threadGroupSize_X,
     unsigned int threadGroupSize_Y,
-    llvm::IRBuilder<> builder)
+    llvm::IRBuilder<>& builder)
 {
     unsigned int threadGroupSizeModifier_X = threadGroupSize_X / newSizeX;
     unsigned int threadGroupSizeModifier_Y = threadGroupSize_Y / newSizeY;

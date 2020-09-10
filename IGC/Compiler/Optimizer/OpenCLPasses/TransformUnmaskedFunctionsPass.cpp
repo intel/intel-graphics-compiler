@@ -33,13 +33,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 
-#include "WrapperLLVM/include/llvmWrapper/IR/Constant.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SetVector.h>
-#include <llvm/Transforms/Utils/Cloning.h>
+#include <llvmWrapper/IR/Constant.h>
+#include <llvmWrapper/Transforms/Utils/Cloning.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -61,12 +60,6 @@ using namespace IGC::IGCMD;
 IGC_INITIALIZE_PASS_BEGIN(TransformUnmaskedFunctionsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_END(TransformUnmaskedFunctionsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-#if LLVM_VERSION_MAJOR <= 7
-using IGCCallBase = llvm::CallInst;
-#else
-using IGCCallBase = llvm::CallBase;
-#endif
-
 char TransformUnmaskedFunctionsPass::ID = 0;
 
 TransformUnmaskedFunctionsPass::TransformUnmaskedFunctionsPass()
@@ -75,7 +68,7 @@ TransformUnmaskedFunctionsPass::TransformUnmaskedFunctionsPass()
 {
 }
 
-static void annotateUnmaskedCallSite(IGCCallBase *CI) {
+static void annotateUnmaskedCallSite(CallInst *CI) {
     IRBuilder<> builder(CI);
 
     Module* M = CI->getModule();
@@ -168,7 +161,7 @@ static TrivialUniformity checkCallInst(const CallInst* CI, UniformityCache *Cach
     }
 
     if (F->isDeclaration() && isKnownUniformLibraryFunction(CI->getCalledFunction()) == false) {
-        const std::string name = CI->getCalledFunction()->getName();
+        const std::string name = CI->getCalledFunction()->getName().str();
         return TrivialUniformity::NonUnifrom("Expression depends on function result "
                                              "that isn't a known uniform function: '" + name + "'.");
     }
@@ -315,7 +308,7 @@ bool InlineUnmaskedFunctionsPass::runOnModule(llvm::Module& M)
         return false;
 
     auto& FuncMD = pContext->getModuleMetaData()->FuncMD;
-    llvm::SmallSetVector<IGCCallBase *, 16> Calls;
+    llvm::SmallSetVector<CallInst *, 16> Calls;
 
     for (Function *F : Funcs) {
         F->removeFnAttr(llvm::Attribute::NoInline);
@@ -332,7 +325,7 @@ bool InlineUnmaskedFunctionsPass::runOnModule(llvm::Module& M)
         }
 
         for (User *U : F->users()) {
-            if (auto *CB = dyn_cast<IGCCallBase>(U)) {
+            if (auto *CB = dyn_cast<CallInst>(U)) {
                 if (CB->getCalledFunction() == F) {
                     Calls.insert(CB);
                     annotateUnmaskedCallSite(CB);
@@ -341,9 +334,9 @@ bool InlineUnmaskedFunctionsPass::runOnModule(llvm::Module& M)
         }
     }
 
-    InlineFunctionInfo IFI;
-    for (IGCCallBase *CB : Calls)
-        InlineFunction(CB, IFI);
+    llvm::InlineFunctionInfo IFI;
+    for (auto *CB : Calls)
+        IGCLLVM::InlineFunction(CB, IFI);
 
     for (Function *F : Funcs) {
         F->removeDeadConstantUsers();
