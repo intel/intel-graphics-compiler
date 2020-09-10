@@ -92,122 +92,6 @@ getZEArgAccessType(vc::ocl::ArgAccessKind accessKind)
     }
 }
 
-namespace {
-class KernelArgInfoBuilder
-{
-    struct AccessQualifiers
-    {
-        static constexpr const char* None = "NONE";
-        static constexpr const char* ReadOnly = "read_only";
-        static constexpr const char* WriteOnly = "write_only";
-        static constexpr const char* ReadWrite = "read_write";
-
-        static const char* get(vc::ocl::ArgAccessKind AccessKindID)
-        {
-            switch (AccessKindID)
-            {
-                case vc::ocl::ArgAccessKind::None:
-                    return None;
-                case vc::ocl::ArgAccessKind::ReadOnly:
-                    return ReadOnly;
-                case vc::ocl::ArgAccessKind::WriteOnly:
-                    return WriteOnly;
-                case vc::ocl::ArgAccessKind::ReadWrite:
-                default:
-                    return ReadWrite;
-            }
-        }
-    };
-    struct AddressQualifiers
-    {
-        static constexpr const char* Global = "__global";
-        static constexpr const char* Local = "__local";
-        static constexpr const char* Private = "__private";
-        static constexpr const char* Constant = "__constant";
-        static constexpr const char* NotSpecified = "not_specified";
-
-        static const char* get(vc::ocl::ArgKind ArgKindID)
-        {
-            switch (ArgKindID)
-            {
-                case vc::ocl::ArgKind::General:
-                    return Local;
-                case vc::ocl::ArgKind::Buffer:
-                case vc::ocl::ArgKind::SVM:
-                case vc::ocl::ArgKind::Image1d:
-                case vc::ocl::ArgKind::Image2d:
-                case vc::ocl::ArgKind::Image3d:
-                    return Global;
-                case vc::ocl::ArgKind::Sampler:
-                    return Constant;
-                default:
-                    IGC_ASSERT_EXIT_MESSAGE(0, "implicit args cannot appear in kernel arg info");
-            }
-        }
-    };
-    struct TypeQualifiers
-    {
-        static constexpr const char* None = "NONE";
-        static constexpr const char* Const = "const";
-        static constexpr const char* Volatile = "volatile";
-        static constexpr const char* Restrict = "restrict";
-        static constexpr const char* Pipe = "pipe";
-    };
-    using ArgInfoSeq = std::vector<iOpenCL::KernelArgumentInfoAnnotation*>;
-    ArgInfoSeq ArgInfos;
-
-public:
-    void insert(int Index, vc::ocl::ArgKind ArgKindID, vc::ocl::ArgAccessKind AccessKindID)
-    {
-        resizeStorageIfRequired(Index + 1);
-        ArgInfos[Index] = get(ArgKindID, AccessKindID);
-    }
-
-    // It is users responsibility to delete the annotation.
-    static iOpenCL::KernelArgumentInfoAnnotation* get(vc::ocl::ArgKind ArgKindID,
-            vc::ocl::ArgAccessKind AccessKind = vc::ocl::ArgAccessKind::None)
-    {
-        auto* Annotation = new iOpenCL::KernelArgumentInfoAnnotation;
-        Annotation->AddressQualifier = AddressQualifiers::get(ArgKindID);
-        Annotation->AccessQualifier = AccessQualifiers::get(AccessKind);
-        Annotation->ArgumentName = "";
-        Annotation->TypeName = "";
-        Annotation->TypeQualifier = TypeQualifiers::None;
-        return Annotation;
-    }
-
-    ArgInfoSeq emit() const &
-    {
-        IGC_ASSERT_MESSAGE(checkArgInfosCorrectness(),
-                           "arg info token is incorrect");
-        return ArgInfos;
-    }
-
-    ArgInfoSeq emit() &&
-    {
-        IGC_ASSERT_MESSAGE(checkArgInfosCorrectness(),
-                           "arg info token is incorrect");
-        return std::move(ArgInfos);
-    }
-
-private:
-    void resizeStorageIfRequired(int RequiredSize)
-    {
-        IGC_ASSERT_MESSAGE(RequiredSize > 0, "invalid required size");
-        if (RequiredSize <= static_cast<int>(ArgInfos.size()))
-            return;
-        ArgInfos.resize(RequiredSize, nullptr);
-    }
-
-    // Returns whether arg infos are correct.
-    bool checkArgInfosCorrectness() const
-    {
-        return std::none_of(ArgInfos.begin(), ArgInfos.end(),
-            [](iOpenCL::KernelArgumentInfoAnnotation* ArgInfo){ return ArgInfo == nullptr; });
-    }
-};
-} // anonymous namespace
-
 void CMKernel::createConstArgumentAnnotation(unsigned argNo, unsigned sizeInBytes, unsigned payloadPosition)
 {
     iOpenCL::ConstantArgumentAnnotation* constInput = new iOpenCL::ConstantArgumentAnnotation;
@@ -481,28 +365,6 @@ static void generateSymbols(const vc::ocl::KernelInfo& info,
     kernelProgram.m_symbols.local = info.ZEBinInfo.Symbols.Local;
 }
 
-void generateKernelArgInfo(const std::vector<vc::ocl::ArgInfo> &Args,
-                           std::vector<iOpenCL::KernelArgumentInfoAnnotation*> &ArgsAnnotation)
-{
-    KernelArgInfoBuilder ArgsAnnotationBuilder;
-    for (auto &Arg : Args)
-        switch(Arg.Kind)
-        {
-          case vc::ocl::ArgKind::General:
-          case vc::ocl::ArgKind::Buffer:
-          case vc::ocl::ArgKind::SVM:
-          case vc::ocl::ArgKind::Sampler:
-          case vc::ocl::ArgKind::Image1d:
-          case vc::ocl::ArgKind::Image2d:
-          case vc::ocl::ArgKind::Image3d:
-              ArgsAnnotationBuilder.insert(Arg.Index, Arg.Kind, Arg.AccessKind);
-              break;
-          default:
-              continue;
-        }
-    ArgsAnnotation = std::move(ArgsAnnotationBuilder).emit();
-}
-
 static void generatePatchTokens_v2(const vc::ocl::KernelInfo& info,
                                    const vc::ocl::GTPinInfo* ginfo,
                                    CMKernel& kernel)
@@ -612,7 +474,6 @@ static void generatePatchTokens_v2(const vc::ocl::KernelInfo& info,
             break;
         }
     }
-    generateKernelArgInfo(info.Args, kernel.m_kernelInfo.m_kernelArgInfo);
 
     const unsigned maxArgEnd = std::accumulate(
         info.Args.begin(), info.Args.end(), constantPayloadStart,
