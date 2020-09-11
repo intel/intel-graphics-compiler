@@ -9,7 +9,7 @@ namespace IGC
     bool EnableSIMDLaneDebugging = true;
     bool EnableGTLocationDebugging = false;
     bool EmitDebugRanges = false;
-    bool NoEmitDebugLoc = true;
+    bool EmitDebugLoc = false;
     bool EmitOffsetInDbgLoc = false;
   };
 }

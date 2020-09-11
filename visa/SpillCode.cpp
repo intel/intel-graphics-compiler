@@ -36,6 +36,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace vISA;
 
+void splice(G4_BB* bb, INST_LIST_ITER iter, INST_LIST& instList, unsigned int CISAOff);
+
 //
 // create a declare to hold the spill value of var
 //
@@ -219,7 +221,7 @@ void SpillManager::genRegMov(G4_BB* bb,
     //
     // insert newly created insts from builder to instList
     //
-    bb->splice(it,builder.instList);
+    splice(bb, it, builder.instList, currCISAOffset);
 }
 //
 // check if dst is spilled & insert spill code
@@ -589,6 +591,7 @@ void SpillManager::insertSpillCode()
         {
             G4_INST* inst = *inst_it;
 
+            currCISAOffset = inst->getCISAOff();
 
             G4_Operand * operands_analyzed[G4_MAX_SRCS] = {NULL, NULL, NULL};
             G4_Declare * declares_created[G4_MAX_SRCS] = {NULL, NULL, NULL};

@@ -121,12 +121,22 @@ namespace IGC
             public:
                 uint16_t regNum;
                 uint16_t subRegNum; // for GRF, in byte offset
+
+                bool operator==(const Register& rhs)
+                {
+                    return (regNum == rhs.regNum && subRegNum == rhs.subRegNum);
+                }
             };
             class Memory
             {
             public:
                 uint32_t isBaseOffBEFP : 1; // MSB of 32-bit field denotes whether base if off BE_FP (0) or absolute (1)
                 int32_t memoryOffset : 31; // memory offset
+
+                bool operator==(const Memory& rhs)
+                {
+                    return (isBaseOffBEFP == rhs.isBaseOffBEFP && memoryOffset == rhs.memoryOffset);
+                }
             };
             union {
                 Register r;

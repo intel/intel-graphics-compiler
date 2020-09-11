@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/GlobalValue.h"
+#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Constants.h"
@@ -2551,6 +2552,19 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             else
             {
                 //IGC_ASSERT_MESSAGE(false, "\nVariable neither in GRF nor spilled\n");
+            }
+
+            // Emit DIExpression if it exists
+            if (auto dbgInst = dyn_cast_or_null<IGCLLVM::DbgVariableIntrinsic>(var.getDbgInst()))
+            {
+                if (auto expr = dbgInst->getExpression())
+                {
+                    for (auto elem : expr->getElements())
+                    {
+                        auto BF = DIEInteger::BestForm(false, elem);
+                        addUInt(Block, BF, elem);
+                    }
+                }
             }
         }
         firstHalf = false;

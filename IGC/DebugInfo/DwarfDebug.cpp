@@ -67,6 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Version.hpp"
 
 #include <unordered_set>
+#include <list>
 
 #include "Probe/Assertion.h"
 
@@ -1324,7 +1325,6 @@ void writeULEB128(std::vector<unsigned char>& vec, uint64_t data)
     free(buf);
 }
 
-
 // Find variables for each lexical scope.
 void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNode*, 16> & Processed)
 {
@@ -1341,6 +1341,45 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 return std::get<2>(item);
         }
         return (DbgVariable*)nullptr;
+    };
+
+    auto encodeImm = [&](IGC::DotDebugLocEntry& dotLoc, uint64_t rangeStart, uint64_t rangeEnd,
+        uint32_t pointerSize, DbgVariable* RegVar, const ConstantInt* pConstInt)
+    {
+        auto op = llvm::dwarf::DW_OP_implicit_value;
+        const unsigned int lebSize = 8;
+        write(dotLoc.loc, (unsigned char*)&rangeStart, pointerSize);
+        write(dotLoc.loc, (unsigned char*)&rangeEnd, pointerSize);
+        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + sizeof(const unsigned char) + lebSize));
+        write(dotLoc.loc, (uint8_t)op);
+        write(dotLoc.loc, (const unsigned char*)&lebSize, 1);
+        if (isUnsignedDIType(this, RegVar->getType()))
+        {
+            uint64_t constValue = pConstInt->getZExtValue();
+            write(dotLoc.loc, (unsigned char*)&constValue, lebSize);
+        }
+        else
+        {
+            int64_t constValue = pConstInt->getSExtValue();
+            write(dotLoc.loc, (unsigned char*)&constValue, lebSize);
+        }
+    };
+
+    auto encodeReg = [&](IGC::DotDebugLocEntry& dotLoc, uint64_t startRange, uint64_t endRange,
+        uint32_t pointerSize, DbgVariable* RegVar, std::vector<VISAVariableLocation>& Locs,
+        DbgDecoder::LiveIntervalsVISA& genIsaRange)
+    {
+        write(dotLoc.loc, (unsigned char*)&startRange, pointerSize);
+        write(dotLoc.loc, (unsigned char*)&endRange, pointerSize);
+
+        std::vector<DbgDecoder::LiveIntervalsVISA> vars = { genIsaRange };
+        auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars);
+        std::vector<unsigned char> buffer;
+        if (block)
+            block->EmitToRawBuffer(buffer);
+        write(dotLoc.loc, (uint16_t)buffer.size());
+        write(dotLoc.loc, buffer.data(), buffer.size());
+
     };
 
     unsigned int offset = 0;
@@ -1366,6 +1405,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         // longer part of variable metadata node. This causes auto variable nodes of all inlined functions
         // to collapse in to a single metadata node. Following loop iterates over all dbg.declare instances
         // for inlined functions and creates new DbgVariable instances for each.
+        std::list<std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>> DbgValuesWithGenIP;
         for (auto HI = History.begin(), HE = History.end(); HI != HE; HI++)
         {
             auto H = (*HI);
@@ -1422,7 +1462,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 AbsVar->setDbgInst(pInst);
             }
 
-            if (!m_pModule->isDirectElfInput || EmitSettings.NoEmitDebugLoc)
+            if (!m_pModule->isDirectElfInput || !EmitSettings.EmitDebugLoc)
                 continue;
 
             // assume that VISA preserves location thoughout its lifetime
@@ -1453,8 +1493,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             IGC::InsnRange InsnRange(start, end);
             auto GenISARange = m_pModule->getGenISARange(InsnRange);
 
-            if ((History.size() == 1 && GenISARange.size() == 1) ||
-                GenISARange.size() == 0)
+            if (History.size() == 1 && GenISARange.size() == 1)
             {
                 // Emit location within the DIE
                 continue;
@@ -1462,154 +1501,176 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
             for (auto range : GenISARange)
             {
-                DotDebugLocEntry dotLoc(range.first, range.second, pInst, DV);
-                dotLoc.setOffset(offset);
+                DbgValuesWithGenIP.push_back(std::make_tuple(range.first, range.second, RegVar, pInst));
+            }
+        }
 
-                if (Loc.IsImmediate())
+        DIVariable* DV = cast<DIVariable>(const_cast<MDNode*>(Var));
+        DbgValuesWithGenIP.sort([](std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>& first,
+            std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>& second)
+            {
+                return std::get<0>(first) < std::get<0>(second);
+            });
+
+        struct PrevLoc
+        {
+            enum class Type
+            {
+                Empty = 0,
+                Imm = 1,
+                Reg = 2
+            };
+            Type t = Type::Empty;
+            uint64_t start = 0;
+            uint64_t end = 0;
+            DbgVariable* dbgVar = nullptr;
+            const llvm::Instruction* pInst = nullptr;
+            const ConstantInt* imm = nullptr;
+
+            std::vector<VISAVariableLocation> Locs;
+            DbgDecoder::LiveIntervalsVISA genIsaRange;
+        };
+
+        PrevLoc p;
+        auto encodePrevLoc = [&](DotDebugLocEntry& dotLoc, unsigned int& offset)
+        {
+            if (p.dbgVar->getDotDebugLocOffset() == ~0U)
+            {
+                p.dbgVar->setDotDebugLocOffset(offset);
+            }
+            auto oldSize = dotLoc.loc.size();
+            if (p.t == PrevLoc::Type::Imm)
+            {
+                encodeImm(dotLoc, p.start, p.end, pointerSize, p.dbgVar, p.imm);
+            }
+            else
+            {
+                encodeReg(dotLoc, p.start, p.end, pointerSize, p.dbgVar, p.Locs, p.genIsaRange);
+            }
+            offset += dotLoc.loc.size() - oldSize;
+            p.t = PrevLoc::Type::Empty;
+        };
+        for (auto& range : DbgValuesWithGenIP)
+        {
+            auto startIp = std::get<0>(range);
+            auto endIp = std::get<1>(range);
+            auto RegVar = std::get<2>(range);
+            auto pInst = std::get<3>(range);
+
+            auto Locs = m_pModule->GetVariableLocation(pInst);
+            auto& Loc = Locs.front();
+
+            DotDebugLocEntry dotLoc(startIp, endIp, pInst, DV);
+            dotLoc.setOffset(offset);
+
+            if (Loc.IsImmediate())
+            {
+                const Constant* pConstVal = Loc.GetImmediate();
+                if (const ConstantInt* pConstInt = dyn_cast<ConstantInt>(pConstVal))
                 {
-                    const Constant* pConstVal = Loc.GetImmediate();
-                    if (const ConstantInt * pConstInt = dyn_cast<ConstantInt>(pConstVal))
+                    // Always emit an 8-byte value
+                    uint64_t rangeStart = startIp;
+                    uint64_t rangeEnd = endIp;
+
+                    if (p.t != PrevLoc::Type::Empty &&
+                        p.end == rangeStart &&
+                        p.t == PrevLoc::Type::Imm &&
+                        p.imm == pConstInt)
                     {
-                        auto op = llvm::dwarf::DW_OP_implicit_value;
-                        // Always emit an 8-byte value
-                        const unsigned int lebSize = 8;
-                        uint64_t rangeStart = range.first;
-                        uint64_t rangeEnd = range.second;
+                        // extend
+                        p.end = rangeEnd;
+                        continue;
+                    }
 
-                        // Emit location to debug_loc
-                        if (RegVar->getDotDebugLocOffset() == ~0U)
-                        {
-                            RegVar->setDotDebugLocOffset(offset);
-                        }
+                    if(p.t != PrevLoc::Type::Empty)
+                    {
+                        // Emit previous location to debug_loc
+                        encodePrevLoc(dotLoc, offset);
+                        TempDotDebugLocEntries.push_back(dotLoc);
+                    }
 
-                        write(dotLoc.loc, (unsigned char*)& rangeStart, pointerSize);
-                        write(dotLoc.loc, (unsigned char*)& rangeEnd, pointerSize);
-                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + sizeof(const unsigned char) + lebSize));
-                        write(dotLoc.loc, (uint8_t)op);
-                        write(dotLoc.loc, (const unsigned char*)& lebSize, 1);
-                        if (isUnsignedDIType(this, RegVar->getType()))
+                    p.t = PrevLoc::Type::Imm;
+                    p.start = rangeStart;
+                    p.end = rangeEnd;
+                    p.imm = pConstInt;
+                    p.dbgVar = RegVar;
+                    p.pInst = pInst;
+                }
+                RegVar->getDecorations().append("u ");
+            }
+            else if (Loc.IsRegister())
+            {
+                DbgDecoder::VarInfo varInfo;
+                auto regNum = Loc.GetRegister();
+                m_pModule->getVarInfo("V", regNum, varInfo);
+                for (auto& genIsaRange : varInfo.lrs)
+                {
+                    auto startIt = m_pModule->VISAIndexToAllGenISAOff.find(genIsaRange.start);
+                    if (startIt == m_pModule->VISAIndexToAllGenISAOff.end())
+                        continue;
+                    uint64_t startRange = (*startIt).second.front();
+                    auto endIt = m_pModule->VISAIndexToAllGenISAOff.find(genIsaRange.end);
+                    if (endIt == m_pModule->VISAIndexToAllGenISAOff.end())
+                        continue;
+                    uint64_t endRange = (*endIt).second.back();
+
+                    if (endRange < startIp)
+                        continue;
+                    if (startRange > endIp)
+                        continue;
+
+                    startRange = std::max(startRange, (uint64_t)startIp);
+                    endRange = std::min(endRange, (uint64_t)endIp);
+
+                    if (p.t != PrevLoc::Type::Empty &&
+                        p.end == startRange &&
+                        p.t == PrevLoc::Type::Reg)
+                    {
+                        if ((p.genIsaRange.isGRF() && genIsaRange.isGRF() &&
+                            p.genIsaRange.getGRF() == genIsaRange.getGRF()) ||
+                            (p.genIsaRange.isSpill() && genIsaRange.isSpill() &&
+                                p.genIsaRange.getSpillOffset() == genIsaRange.getSpillOffset()))
                         {
-                            uint64_t constValue = pConstInt->getZExtValue();
-                            write(dotLoc.loc, (unsigned char*)& constValue, lebSize);
-                        }
-                        else
-                        {
-                            int64_t constValue = pConstInt->getSExtValue();
-                            write(dotLoc.loc, (unsigned char*)& constValue, lebSize);
+                            // extend
+                            p.end = endRange;
+                            continue;
                         }
                     }
-                    RegVar->getDecorations().append("u ");
-                }
-                else if (Loc.IsRegister())
-                {
-                    DbgDecoder::VarInfo varInfo;
-                    auto regNum = Loc.GetRegister();
-                    m_pModule->getVarInfo("V", regNum, varInfo);
-                    for(auto& genIsaRange : varInfo.lrs)
+
+                    if (p.t != PrevLoc::Type::Empty)
                     {
-                        auto startIt = m_pModule->VISAIndexToAllGenISAOff.find(genIsaRange.start);
-                        if (startIt == m_pModule->VISAIndexToAllGenISAOff.end())
-                            continue;
-                        uint64_t startRange = (*startIt).second.front();
-                        auto endIt = m_pModule->VISAIndexToAllGenISAOff.find(genIsaRange.end);
-                        if (endIt == m_pModule->VISAIndexToAllGenISAOff.end())
-                            continue;
-                        uint64_t endRange = (*endIt).second.back();
-
-                        if (endRange < range.first)
-                            continue;
-                        if (startRange > range.second)
-                            continue;
-
-                        startRange = std::max(startRange, (uint64_t)range.first);
-                        endRange = std::min(endRange, (uint64_t)range.second);
-
-                        // Emit location to debug_loc
-                        if (RegVar->getDotDebugLocOffset() == ~0U)
-                        {
-                            RegVar->setDotDebugLocOffset(offset);
-                        }
-
-                        write(dotLoc.loc, (unsigned char*)& startRange, pointerSize);
-                        write(dotLoc.loc, (unsigned char*)& endRange, pointerSize);
-
-                        std::vector<DbgDecoder::LiveIntervalsVISA> vars = { genIsaRange };
-                        auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars);
-                        std::vector<unsigned char> buffer;
-                        if(block)
-                            block->EmitToRawBuffer(buffer);
-                        write(dotLoc.loc, (uint16_t)buffer.size());
-                        write(dotLoc.loc, buffer.data(), buffer.size());
-
-                        if (Loc.IsVectorized())
-                            RegVar->getDecorations().append("v ");
-                        else
-                            RegVar->getDecorations().append("u ");
+                        encodePrevLoc(dotLoc, offset);
+                        TempDotDebugLocEntries.push_back(dotLoc);
                     }
-                }
-                if (RegVar->getDotDebugLocOffset() != ~0U)
-                {
-                    offset += dotLoc.loc.size();
-                    TempDotDebugLocEntries.push_back(dotLoc);
+                    p.t = PrevLoc::Type::Reg;
+                    p.start = startRange;
+                    p.end = endRange;
+                    p.dbgVar = RegVar;
+                    p.Locs = Locs;
+                    p.genIsaRange = genIsaRange;
+                    p.pInst = pInst;
+
+                    if (Loc.IsVectorized())
+                        RegVar->getDecorations().append("v ");
+                    else
+                        RegVar->getDecorations().append("u ");
                 }
             }
         }
+
+        if (p.t != PrevLoc::Type::Empty)
+        {
+            DotDebugLocEntry dotLoc(p.start, p.end, p.pInst, DV);
+            dotLoc.setOffset(offset);
+            encodePrevLoc(dotLoc, offset);
+            TempDotDebugLocEntries.push_back(dotLoc);
+        }
+
         if (TempDotDebugLocEntries.size() > origLocSize)
         {
             TempDotDebugLocEntries.push_back(DotDebugLocEntry());
             offset += pointerSize * 2;
         }
-
-#if 0
-        // Simplify ranges that are fully coalesced.
-        if (History.size() <= 1 || (History.size() == 2 && pInst->isIdenticalTo(History.back())))
-        {
-            RegVar->setDbgInst(pInst);
-            continue;
-        }
-
-        // Handle multiple DBG_VALUE instructions describing one variable.
-        RegVar->setDotDebugLocOffset(DotDebugLocEntries.size());
-
-        for (SmallVectorImpl<const Instruction*>::const_iterator
-            HI = History.begin(), HE = History.end(); HI != HE; ++HI)
-        {
-            const Instruction* Begin = *HI;
-            IGC_ASSERT_MESSAGE(m_pModule->IsDebugValue(Begin), "Invalid History entry");
-
-            // Compute the range for a register location.
-            const MCSymbol* FLabel = getLabelBeforeInsn(Begin);
-            const MCSymbol* SLabel = 0;
-
-            if (HI + 1 == HE)
-            {
-                // If Begin is the last instruction in History then its value is valid
-                // until the end of the function.
-                SLabel = FunctionEndSym;
-            }
-            else
-            {
-                const Instruction* End = HI[1];
-                DEBUG(dbgs() << "DotDebugLoc Pair:\n" << "\t" << *Begin << "\t" << *End << "\n");
-                if (m_pModule->IsDebugValue(End))
-                {
-                    SLabel = getLabelBeforeInsn(End);
-                }
-                else
-                {
-                    // End is a normal instruction clobbering the range.
-                    SLabel = getLabelAfterInsn(End);
-                    IGC_ASSERT_MESSAGE(SLabel, "Forgot label after clobber instruction");
-                    ++HI;
-                }
-            }
-
-            // The value is valid until the next DBG_VALUE or clobber.
-            const MDNode* Var = m_pModule->GetDebugVariable(Begin);
-            DotDebugLocEntries.push_back(DotDebugLocEntry(FLabel, SLabel, Begin, Var));
-        }
-        DotDebugLocEntries.push_back(DotDebugLocEntry());
-#endif
     }
 
     // Collect info for variables that were optimized out.

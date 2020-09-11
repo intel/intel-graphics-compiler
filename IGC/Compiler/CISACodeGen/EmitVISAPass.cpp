@@ -538,7 +538,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         DebugOpts.EnableSIMDLaneDebugging = IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging);
         DebugOpts.EnableGTLocationDebugging = IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging);
         DebugOpts.EmitDebugRanges = IGC_IS_FLAG_ENABLED(EmitDebugRanges);
-        DebugOpts.NoEmitDebugLoc = IGC_IS_FLAG_DISABLED(EmitDebugLoc);
+        DebugOpts.EmitDebugLoc = IGC_IS_FLAG_ENABLED(EmitDebugLoc);
         DebugOpts.EmitOffsetInDbgLoc = IGC_IS_FLAG_ENABLED(EmitOffsetInDbgLoc);
         IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
         IF_DEBUG_INFO(m_pDebugEmitter->Initialize(

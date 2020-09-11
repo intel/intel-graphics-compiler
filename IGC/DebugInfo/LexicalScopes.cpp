@@ -119,8 +119,8 @@ extractLexicalScopes(SmallVectorImpl<InsnRange>& MIRanges,
         }
 
         // Ignore DBG_VALUE. It does not contribute to any instruction in output.
-        if (VisaM->IsDebugValue(MInsn))
-            continue;
+        //if (VisaM->IsDebugValue(MInsn))
+            //continue;
 
         if (RangeBeginMI)
         {

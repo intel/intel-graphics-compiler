@@ -62,6 +62,8 @@ class SpillManager
     // The number of flag spill load inserted.
     unsigned numFlagSpillLoad;
 
+    unsigned int currCISAOffset;
+
     void genRegMov(G4_BB* bb,
                    INST_LIST_ITER it,
                    G4_VarBase*    src,
