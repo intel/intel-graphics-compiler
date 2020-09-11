@@ -312,12 +312,10 @@ extern G4_InstOptInfo InstOptInfo[];
 
 
 //various attributes for the Gen opcodes
-#define ATTR_PSEUDO             0x00000001
-#define ATTR_COMMUTATIVE        0x00000002
-#define ATTR_FLOAT_SRC_ONLY     0x00000004
+#define ATTR_COMMUTATIVE        0x00000010
+#define ATTR_FLOAT_SRC_ONLY     0x00000040
 #define ATTR_NONE               0x00000000
 
-#define INST_PSEUDO(inst)           (G4_Inst_Table[inst].attributes & ATTR_PSEUDO)
 #define INST_COMMUTATIVE(inst)      (G4_Inst_Table[inst].attributes & ATTR_COMMUTATIVE)
 #define INST_FLOAT_SRC_ONLY(inst)   (G4_Inst_Table[inst].attributes & ATTR_FLOAT_SRC_ONLY)
 

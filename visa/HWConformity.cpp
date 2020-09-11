@@ -1641,7 +1641,6 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
         }
 
 
-
         if (splitInstListForByteDst(i, bb, (uint16_t)extypesize))
         {
             return true;
