@@ -1233,8 +1233,14 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, VISAVariabl
             uint32_t variablesInSingleGRF = (VISAMod->getGRFSize() * 8) / bitsUsedByVar;
             uint32_t valForSubRegLit = (uint32_t)log2(variablesInSingleGRF);
 
-            auto DWRegEncoded =  GetEncodedRegNum<RegisterNumbering::GRFBase>(
-                lr->getGRF().regNum, EmitSettings.UseNewRegisterEncoding);
+            // TODO: missing case lr->getGRF().subRegNum > 0
+            // unsigned int subReg = lr->getGRF().subRegNum;
+            // auto offsetInBits = subReg * 8;
+            uint32_t regNumOffset = (variablesInSingleGRF == 0 || simdWidthOffset < variablesInSingleGRF) ?
+                0 : (simdWidthOffset / variablesInSingleGRF);
+            uint32_t regNum = lr->getGRF().regNum + regNumOffset;
+            auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
+                regNum, EmitSettings.UseNewRegisterEncoding);
 
             // 1 var fits the whole GRF then set litForSubReg=dwarf::DW_OP_lit0 and litForSIMDlane=dwarf::DW_OP_lit0,
             // 2 vars   - dwarf::DW_OP_lit1 and dwarf::DW_OP_lit1,
@@ -2498,22 +2504,12 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     }
                     else
                     {
-                        // uint16_t grfSize = (uint16_t)VISAMod->m_pShader->getGRFSize();
-                        // uint16_t varSizeInBits = loc->IsInMemory() ? (uint16_t)Asm->GetPointerSize() * 8 : (uint16_t)var.getBasicSize(DD);
-                        // uint16_t varSizeInReg = (uint16_t)(loc->IsInMemory() && varSizeInBits < 32) ? 32 : varSizeInBits;
-                        // uint16_t numOfRegs = ((varSizeInReg * (uint16_t)DD->simdWidth) > (grfSize * 8)) ?
-                        //    ((varSizeInReg * (uint16_t)DD->simdWidth) / (grfSize * 8)) : 1;
-
                         for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                         {
-                            // addRegisterLoc(Block, regNum, offset, var.getDbgInst());
-
                             addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
 
                             // Emit SIMD lane for GRF (unpacked)
                             addSimdLane(Block, var, loc, &lrToUse, (uint16_t)(DD->simdWidth * vectorElem), false, !firstHalf);
-
-                            // regNum = regNum + numOfRegs;
                         }
                     }
                 }
