@@ -234,7 +234,6 @@ std::vector<char> DebugEmitter::Finalize(bool finalize)
                 }
             }
 
-            bool emptyLoc = true;
             if (instIt != VISAIndexToInst.end())
             {
                 auto loc = instIt->second->getDebugLoc();
@@ -254,33 +253,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize)
 
                         prevSrcLoc = loc;
                     }
-
-                    emptyLoc = false;
                 }
-            }
-
-            if (emptyLoc && prevSrcLoc)
-            {
-              if (m_pStreamEmitter->GetEmitterSettings().FillMissingDebugLocations)
-              {
-                if (auto scope = pFunc->getSubprogram())
-                {
-                  auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
-
-                  // Emit func top as line# for unattributed lines
-                  m_pStreamEmitter->EmitDwarfLocDirective(src, scope->getLine(), 0, 0, 0, 0, scope->getFilename());
-                }
-              }
-              else
-              {
-                auto scope = prevSrcLoc->getScope();
-                auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
-
-                // Emit 0 as line# for unattributed lines
-                m_pStreamEmitter->EmitDwarfLocDirective(src, 0, 0, 0, 0, 0, scope->getFilename());
-              }
-
-                prevSrcLoc = DebugLoc();
             }
         }
 

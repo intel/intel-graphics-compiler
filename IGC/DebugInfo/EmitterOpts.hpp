@@ -6,7 +6,6 @@ namespace IGC
   struct DebugEmitterOpts {
     bool isDirectElf = false;
     bool UseNewRegisterEncoding = true;
-    bool FillMissingDebugLocations = false;
     bool EnableSIMDLaneDebugging = true;
     bool EnableGTLocationDebugging = false;
     bool EmitDebugRanges = false;

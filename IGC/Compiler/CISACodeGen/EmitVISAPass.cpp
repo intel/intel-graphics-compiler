@@ -535,7 +535,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         IGC::DebugEmitterOpts DebugOpts;
         DebugOpts.isDirectElf = vMod->isDirectElfInput;
         DebugOpts.UseNewRegisterEncoding = IGC_IS_FLAG_ENABLED(UseNewRegEncoding);
-        DebugOpts.FillMissingDebugLocations = IGC_IS_FLAG_ENABLED(FillMissingDebugLocations);
         DebugOpts.EnableSIMDLaneDebugging = IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging);
         DebugOpts.EnableGTLocationDebugging = IGC_IS_FLAG_ENABLED(EnableGTLocationDebugging);
         DebugOpts.EmitDebugRanges = IGC_IS_FLAG_ENABLED(EmitDebugRanges);
@@ -4492,6 +4491,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
             return;
         }
         bindingTableIndex = m_currShader->m_pBtiLayout->GetNullSurfaceIdx();
+
         isNullRT = true;
     }
 
