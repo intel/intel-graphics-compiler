@@ -1264,6 +1264,7 @@ private:
   DO(GRAPH_COLORING_SPILL_FF_BC_RA)                                            \
   DO(GRAPH_COLORING_SPILL_RR_RA)                                               \
   DO(GRAPH_COLORING_SPILL_FF_RA)                                               \
+  DO(GLOBAL_LINEAR_SCAN_RA)                                                    \
   DO(UNKNOWN_RA)
 
 enum RA_Type

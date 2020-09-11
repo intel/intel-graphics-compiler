@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <algorithm>
 #include "LocalRA.h"
+#include "LinearScanRA.h"
 #include "DebugInfo.h"
 #include "SpillCleanup.h"
 #include "Rematerialization.h"
@@ -3915,7 +3916,6 @@ void Augmentation::buildLiveIntervals()
         if (liveAnalysis.isLiveAtEntry(entryBB, i))
         {
             G4_Declare* dcl = lrs[i]->getDcl();
-
             while (dcl->getAliasDeclare() != NULL)
             {
                 dcl = dcl->getAliasDeclare();
@@ -5163,6 +5163,46 @@ void Interference::interferenceVerificationForSplit() const
         }
         std::cout << "\n";
     }
+}
+
+bool Interference::linearScanVerify()
+{
+    for (unsigned i = 0; i < maxId; i++)
+    {
+        G4_VarBase* phyReg_i = lrs[i]->getVar()->getPhyReg();
+        if (!phyReg_i || !phyReg_i->isGreg() || gra.isUndefinedDcl(lrs[i]->getDcl()) || lrs[i]->getDcl()->getRegVar()->isNullReg())
+        {
+            continue;
+        }
+        unsigned regOff_i = lrs[i]->getVar()->getPhyRegOff() * lrs[i]->getVar()->getDeclare()->getElemSize();
+        unsigned GRFStart_i = phyReg_i->asGreg()->getRegNum() * numEltPerGRF(Type_UB) + regOff_i;
+        unsigned elemsSize_i = lrs[i]->getVar()->getDeclare()->getNumElems() * lrs[i]->getVar()->getDeclare()->getElemSize();
+        unsigned GRFEnd_i = GRFStart_i + elemsSize_i - 1;
+
+        for (unsigned j = 0; j < maxId; j++)
+        {
+            if (interfereBetween(i, j))
+            {
+                if (gra.isUndefinedDcl(lrs[j]->getDcl()) || builder.kernel.fg.isPseudoDcl(lrs[j]->getDcl()) || lrs[j]->getDcl()->getRegVar()->isNullReg())
+                {
+                    continue;
+                }
+
+                G4_VarBase* phyReg_j = lrs[j]->getVar()->getPhyReg();
+                unsigned regOff_j = lrs[j]->getVar()->getPhyRegOff() * lrs[j]->getVar()->getDeclare()->getElemSize();
+                unsigned GRFStart_j = phyReg_j->asGreg()->getRegNum() * numEltPerGRF(Type_UB) + regOff_j;
+                unsigned elemsSize_j = lrs[j]->getVar()->getDeclare()->getNumElems() * lrs[j]->getVar()->getDeclare()->getElemSize();
+                unsigned GRFEnd_j = GRFStart_j + elemsSize_j - 1;
+                if (!(GRFEnd_i < GRFStart_j || GRFEnd_j < GRFStart_i))
+                {
+                    std::cout << lrs[i]->getDcl()->getName() << "(" << GRFStart_i << ":" << GRFEnd_i << ") vs "
+                        << lrs[j]->getDcl()->getName() << "(" << GRFStart_i << ":" << GRFEnd_j << ")\n";
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 void Interference::dumpInterference() const
@@ -6471,7 +6511,6 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     intf.computeInterference();
 #ifdef DEBUG_VERBOSE_ON
     intf.dumpInterference();
-    //    intf.interferenceVerificationForSplit();
 #endif
 
     TIME_SCOPE(COLORING);
@@ -9311,37 +9350,72 @@ int GlobalRA::coloringRegAlloc()
             builder.getBuiltinR0()->getRegVar()->setPhyReg(builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
         }
     }
-    if (builder.getOption(vISA_LocalRA) && !isReRAPass() && canDoLRA(kernel) && !hasStackCall)
+
+    if (!isReRAPass() && canDoLRA(kernel))
     {
-        startTimer(TimerID::LOCAL_RA);
-        copyMissingAlignment();
-        BankConflictPass bc(*this);
-        LocalRA lra(bc, *this);
-        bool success = lra.localRA();
-        stopTimer(TimerID::LOCAL_RA);
-        if (!success)
+        //Global linear scan RA
+        if (builder.getOption(vISA_LinearScan))
         {
-            if (canDoHRA(kernel))
+            copyMissingAlignment();
+            BankConflictPass bc(*this);
+            LinearScanRA lra(bc, *this);
+            bool success = lra.doLinearScanRA();
+
+            if (success)
             {
-                startTimer(TimerID::HYBRID_RA);
-                success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
-                stopTimer(TimerID::HYBRID_RA);
-            }
-            else
-            {
-                if (builder.getOption(vISA_RATrace))
+                assignRegForAliasDcl();
+                computePhyReg();
+                expandSpillFillIntrinsics();
+                //kernel.dump();
+                if (builder.getOption(vISA_verifyLinearScan))
                 {
-                    std::cout << "\t--skip HRA due to var split. undo LRA results." << "\n";
+                    resetGlobalRAStates();
+                    markGraphBlockLocalVars();
+                    LivenessAnalysis live(*this, G4_GRF | G4_INPUT, false, true);
+                    live.computeLiveness();
+                    GraphColor coloring(live, kernel.getNumRegTotal(), false, false);
+                    vISA::Mem_Manager mem(GRAPH_COLOR_MEM_SIZE);
+                    coloring.createLiveRanges(0);
+                    LiveRange** lrs = coloring.getLRs();
+                    Interference intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(), live.getNumSplitVar(), *this);
+                    intf.init(mem);
+                    intf.computeInterference();
+#ifdef DEBUG_VERBOSE_ON
+                    intf.dumpInterference();
+#endif
+                    intf.linearScanVerify();
                 }
-                lra.undoLocalRAAssignments(false);
+                return VISA_SUCCESS;
             }
         }
-        if (success)
+        else if (builder.getOption(vISA_LocalRA) && !hasStackCall)
         {
-            // either local or hybrid RA succeeds
-            assignRegForAliasDcl();
-            computePhyReg();
-            return VISA_SUCCESS;
+            copyMissingAlignment();
+            BankConflictPass bc(*this);
+            LocalRA lra(bc, *this);
+            bool success = lra.localRA();
+            if (!success)
+            {
+                if (canDoHRA(kernel))
+                {
+                    success = hybridRA(lra.doHybridBCR(), lra.hasHighInternalBC(), lra);
+                }
+                else
+                {
+                    if (builder.getOption(vISA_RATrace))
+                    {
+                        std::cout << "\t--skip HRA due to var split. undo LRA results." << "\n";
+                    }
+                    lra.undoLocalRAAssignments(false);
+                }
+            }
+            if (success)
+            {
+                // either local or hybrid RA succeeds
+                assignRegForAliasDcl();
+                computePhyReg();
+                return VISA_SUCCESS;
+            }
         }
     }
 
@@ -9590,7 +9664,7 @@ int GlobalRA::coloringRegAlloc()
                     &liveAnalysis,
                     coloring.getLiveRanges(),
                     coloring.getIntf(),
-                    (LIVERANGE_LIST&)coloring.getSpilledLiveRanges(),
+                    &(LIVERANGE_LIST&)coloring.getSpilledLiveRanges(),
                     iterationNo++,
                     reserveSpillReg,
                     spillRegSize,

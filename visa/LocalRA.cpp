@@ -1594,7 +1594,7 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
             }
         }
 
-        if (G4_Inst_Table[curInst->opcode()].n_dst == 1  ||
+        if (G4_Inst_Table[curInst->opcode()].n_dst == 1 ||
             curInst->isSplitIntrinsic())
         {
             // Scan dst
@@ -1908,6 +1908,7 @@ void PhyRegsLocalRA::setGRFBusy(int which)
     }
 }
 
+// ********* PhyRegsLocalRA class implementation *********
 void PhyRegsLocalRA::setGRFBusy(int which, int howmany)
 {
     for (int i = 0; i < howmany; i++)
@@ -1950,6 +1951,7 @@ void PhyRegsLocalRA::setWordBusy(int whichgrf, int word, int howmany)
 void PhyRegsLocalRA::setGRFNotBusy(int which, int instID)
 {
     MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
+
     regBusyVector[which] = 0;
 
     if (twoBanksRA)

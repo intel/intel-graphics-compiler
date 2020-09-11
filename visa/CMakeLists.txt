@@ -208,6 +208,7 @@ set(GenX_Common_Sources_External_Other
   VarSplit.cpp
   ifcvt.cpp
   main.cpp
+  LinearScanRA.cpp
   ${LocalScheduler_SOURCES}
 )
 
@@ -276,6 +277,7 @@ set(GenX_Common_Headers
   LVN.h
   LocalDataflow.h
   LocalRA.h
+  LinearScanRA.h
   Metadata.h
   Optimizer.h
   PhyRegUsage.h

@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "BitSet.h"
 #include "LocalRA.h"
+#include "LinearScanRA.h"
 
 //
 // Indirect tracking type

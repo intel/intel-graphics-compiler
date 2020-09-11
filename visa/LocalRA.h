@@ -103,7 +103,6 @@ namespace vISA
         void printLocalLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& liveIntervals);
         void printInputLiveIntervals();
         bool countLiveIntervals();
-        void clearStaleLiveRanges();
 
         // scratch fields used for parameter passing
         G4_BB* curBB = nullptr;
@@ -329,11 +328,15 @@ public:
     void findRegisterCandiateWithAlignBackward(int& i, BankAlign align, bool evenAlign);
 
     void setGRFBusy(int which);
+    void setGRFBusy(int which, bool isInput);
+    void setGRFBusy(int which, int howmany, bool isInput);
     void setGRFBusy(int which, int howmany);
+    void setWordBusy(int whichgrf, int word, bool isInput);
     void setGRFNotBusy(int which, int instID);
     void setH1GRFBusy(int which);
     void setH2GRFBusy(int which);
     void setWordBusy(int whichgrf, int word);
+    void setWordBusy(int whichgrf, int word, int howmany, bool isInput);
     void setWordBusy(int whichgrf, int word, int howmany);
     void setWordNotBusy(int whichgrf, int word, int instID);
 
@@ -494,11 +497,10 @@ private:
     unsigned short getOccupiedBundle(G4_Declare* dcl);
     void expireAllActive();
     bool allocateRegsFromBanks(LocalLiveRange*);
-    bool allocateRegs(LocalLiveRange*, G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);
+    bool allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);
     void coalesceSplit(LocalLiveRange* lr);
     void freeAllocedRegs(LocalLiveRange*, bool);
     void updateActiveList(LocalLiveRange*);
-    void updateBitset(LocalLiveRange*);
 
     BitSet pregs;
     unsigned int simdSize;

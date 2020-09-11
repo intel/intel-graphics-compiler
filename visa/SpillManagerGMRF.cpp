@@ -140,7 +140,7 @@ SpillManagerGRF::SpillManagerGRF(
     const LivenessAnalysis* lvInfo,
     LiveRange** lrInfo,
     Interference* intf,
-    LR_LIST& spilledLRs,
+    LR_LIST* spilledLRs,
     unsigned iterationNo,
     bool failSafeSpill,
     unsigned spillRegSize,
@@ -191,6 +191,45 @@ SpillManagerGRF::SpillManagerGRF(
     curInst = NULL;
     globalScratchOffset = gra.kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
 
+
+}
+
+SpillManagerGRF::SpillManagerGRF(
+    GlobalRA& g,
+    unsigned spillAreaOffset,
+    unsigned varIdCount,
+    const LivenessAnalysis* lvInfo,
+    bool useScratchMsg)
+    : gra(g)
+    , builder_(g.kernel.fg.builder)
+    , varIdCount_(varIdCount)
+    , latestImplicitVarIdCount_(0)
+    , lvInfo_(lvInfo)
+    , nextSpillOffset_(spillAreaOffset)
+    , bbId_(UINT_MAX)
+    , doSpillSpaceCompression(false)
+    , failSafeSpill_(false)
+    , mem_(1024)
+    , numGRFSpill(0)
+    , numGRFFill(0)
+    , numGRFMove(0)
+    , useScratchMsg_(useScratchMsg)
+{
+    const unsigned size = sizeof(unsigned) * varIdCount;
+    spillRangeCount_ = (unsigned*)allocMem(size);
+    memset(spillRangeCount_, 0, size);
+    fillRangeCount_ = (unsigned*)allocMem(size);
+    memset(fillRangeCount_, 0, size);
+    tmpRangeCount_ = (unsigned*)allocMem(size);
+    memset(tmpRangeCount_, 0, size);
+    msgSpillRangeCount_ = (unsigned*)allocMem(size);
+    memset(msgSpillRangeCount_, 0, size);
+    msgFillRangeCount_ = (unsigned*)allocMem(size);
+    memset(msgFillRangeCount_, 0, size);
+    spillAreaOffset_ = spillAreaOffset;
+    builder_->instList.clear();
+    curInst = NULL;
+    globalScratchOffset = gra.kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
 
 }
 
@@ -3414,7 +3453,7 @@ bool SpillManagerGRF::handleAddrTakenSpills(G4_Kernel * kernel, PointsToAnalysis
     bool success = true;
     unsigned int numAddrTakenSpills = 0;
 
-    for (LR_LIST::const_iterator lt = spilledLRs_.begin (), end = spilledLRs_.end();
+    for (LR_LIST::const_iterator lt = spilledLRs_->begin (), end = spilledLRs_->end();
         lt != end; ++lt)
     {
         LiveRange* lr = (*lt);
@@ -3440,8 +3479,8 @@ bool SpillManagerGRF::handleAddrTakenSpills(G4_Kernel * kernel, PointsToAnalysis
     if (success)
     {
         // Verify that each spilled address taken has a spill/fill registers assigned
-        for (LR_LIST::const_iterator lt = spilledLRs_.begin ();
-            lt != spilledLRs_.end (); ++lt)
+        for (LR_LIST::const_iterator lt = spilledLRs_->begin ();
+            lt != spilledLRs_->end (); ++lt)
         {
             if ((*lt)->getDcl()->getAddressed())
                 MUST_BE_TRUE((*lt)->getDcl()->getAddrTakenSpillFill() != NULL, "Spilled addr taken does not have assigned spill/fill GRF");
@@ -3463,8 +3502,8 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
     inst_it--;
 
     // Check whether spill operand points to any spilled range
-    for (LR_LIST::const_iterator lr_it = spilledLRs_.begin ();
-        lr_it != spilledLRs_.end (); ++lr_it) {
+    for (LR_LIST::const_iterator lr_it = spilledLRs_->begin ();
+        lr_it != spilledLRs_->end (); ++lr_it) {
         LiveRange* lr = (*lr_it);
         G4_RegVar* var = NULL;
 
@@ -3722,8 +3761,8 @@ void SpillManagerGRF::prunePointsTo(G4_Kernel* kernel, PointsToAnalysis& pointsT
                 st.pop();
 
                 // Check whether spill operand points to any spilled range
-                for (LR_LIST::const_iterator lr_it = spilledLRs_.begin ();
-                lr_it != spilledLRs_.end (); ++lr_it) {
+                for (LR_LIST::const_iterator lr_it = spilledLRs_->begin ();
+                lr_it != spilledLRs_->end (); ++lr_it) {
                     LiveRange* lr = (*lr_it);
                     G4_RegVar* var = NULL;
 
@@ -3754,13 +3793,101 @@ void SpillManagerGRF::prunePointsTo(G4_Kernel* kernel, PointsToAnalysis& pointsT
 // returns false if spill fails somehow
 
 bool
+SpillManagerGRF::spillLiveRange(
+    G4_BB* bb, INST_LIST_ITER it
+)
+{
+    G4_INST* inst = *it;
+    curInst = inst;
+
+    G4_RegVar* regVar = nullptr;
+    if (inst->getDst()->getBase()->isRegVar())
+    {
+        regVar = getRegVar(inst->getDst());
+    }
+
+    if (regVar)
+    {
+        if (regVar->getDeclare()->getAddressed())
+        {
+            assert(0);
+        }
+        insertSpillRangeCode(it, bb);
+
+        while (regVar->isAliased()) {
+            G4_Declare* regVarDcl = regVar->getDeclare();
+            regVar = regVarDcl->getAliasDeclare()->getRegVar();
+        }
+        unsigned disp = regVar->getDisp();
+        if (disp != UINT_MAX)
+        {
+            nextSpillOffset_ = std::max(nextSpillOffset_, disp + getByteSize(regVar));
+        }
+        regVar->getDeclare()->setSpillFlag();
+    }
+    else
+    {
+        assert(0);
+    }
+
+    return true;
+}
+
+bool
+SpillManagerGRF::fillLiveRange(
+    G4_BB* bb, INST_LIST_ITER it, Gen4_Operand_Number opndNum
+)
+{
+    G4_INST* inst = *it;
+    int i = inst->getSrcNum(opndNum);
+    curInst = inst;
+
+    if (inst->getSrc(i) &&
+        inst->getSrc(i)->isSrcRegRegion())
+    {
+        auto srcRR = inst->getSrc(i)->asSrcRegRegion();
+        G4_RegVar* regVar = nullptr;
+        if (srcRR->getBase()->isRegVar())
+        {
+            regVar = getRegVar(srcRR);
+        }
+
+        if (regVar)
+        {
+            if (regVar->getDeclare()->getAddressed())
+            {
+                assert(0);
+            }
+            bool mayExceedTwoGRF = (inst->isSend() && i == 0) ||
+                (inst->isSplitSend() && i == 1);
+
+            if (mayExceedTwoGRF)
+            {
+                insertSendFillRangeCode(srcRR, it, bb);
+            }
+            else if (getRFType(regVar) == G4_GRF)
+                insertFillGRFRangeCode(srcRR, it, bb);
+            else
+                assert(0);
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+
+    return true;
+}
+
+
+bool
 SpillManagerGRF::insertSpillFillCode (
     G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis
 )
 {
     // Set the spill flag of all spilled regvars.
-    for (LR_LIST::const_iterator lt = spilledLRs_.begin ();
-        lt != spilledLRs_.end (); ++lt) {
+    for (LR_LIST::const_iterator lt = spilledLRs_->begin ();
+        lt != spilledLRs_->end (); ++lt) {
 
         // Ignore request to spill/fill the spill/fill ranges
         // as it does not help the allocator.
@@ -3900,7 +4027,7 @@ SpillManagerGRF::insertSpillFillCode (
 
     // Calculate the spill memory used in this iteration
 
-    for (auto spill : spilledLRs_)
+    for (auto spill : (*spilledLRs_))
     {
         unsigned disp = spill->getVar ()->getDisp ();
 

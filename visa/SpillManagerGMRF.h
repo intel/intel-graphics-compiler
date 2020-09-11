@@ -83,7 +83,7 @@ public:
         const LivenessAnalysis * lvInfo,
         LiveRange **             lrInfo,
         Interference *           intf,
-        LR_LIST &                spilledLRs,
+        LR_LIST *                spilledLRs,
         unsigned                 iterationNo,
         bool                     useSpillReg,
         unsigned                 spillRegSize,
@@ -92,7 +92,19 @@ public:
         bool                     useScratchMsg
     );
 
+    SpillManagerGRF(
+        GlobalRA& g,
+        unsigned spillAreaOffset,
+        unsigned varIdCount,
+        const LivenessAnalysis* lvInfo,
+        bool useScratchMsg);
+
     ~SpillManagerGRF () {}
+
+
+    bool spillLiveRange(G4_BB* bb, INST_LIST_ITER it);
+
+    bool fillLiveRange(G4_BB* bb, INST_LIST_ITER it, Gen4_Operand_Number opndNum);
 
     bool
     insertSpillFillCode    (
@@ -135,8 +147,6 @@ private:
     void insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB* bb, INST_LIST::iterator inst_it,
         G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid);
     void prunePointsTo( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis );
-
-    void computeSpillIntf();
 
     unsigned
     getMaxExecSize (
@@ -623,7 +633,7 @@ private:
     unsigned                 latestImplicitVarIdCount_;
     const LivenessAnalysis * lvInfo_;
     LiveRange **             lrInfo_;
-    LR_LIST &                spilledLRs_;
+    LR_LIST *                spilledLRs_;
     unsigned *               spillRangeCount_;
     unsigned *               fillRangeCount_;
     unsigned *               tmpRangeCount_;
