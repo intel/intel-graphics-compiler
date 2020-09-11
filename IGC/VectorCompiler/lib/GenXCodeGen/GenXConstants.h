@@ -104,6 +104,11 @@ inline bool opMustBeConstant(Instruction *I, unsigned OpNum) {
   return false;
 }
 
+// Check whether types of two contsants are bitcastable and
+// then check constants' contents. Most part of implementation is taken
+// from FunctionComparator::cmpConstants
+bool areConstantsEqual(Constant *C1, Constant *C2);
+
 // Load a constant using the llvm.genx.constant intrinsic.
 inline Instruction *
 loadConstant(Constant *C, Instruction *InsertBefore,

@@ -111,6 +111,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/ValueMap.h"
@@ -494,6 +495,88 @@ bool genx::loadConstants(Instruction *Inst,
   return Modified;
 }
 
+bool genx::areConstantsEqual(Constant *C1, Constant *C2) {
+  // If these are same constants then it's obviously true
+  if (C1 == C2)
+    return true;
+
+  Type *C1Ty = C1->getType();
+  Type *C2Ty = C2->getType();
+
+  bool SameType = C1Ty == C2Ty;
+  // If types are not the same then compare if types are bitcastable
+  if (!SameType) {
+    if (!C1Ty->canLosslesslyBitCastTo(C2Ty))
+      return false;
+  }
+
+  // Most common case: check for zero initializers
+  if (C1->isZeroValue() && C2->isZeroValue())
+    return true;
+
+  auto *GC1 = dyn_cast<GlobalValue>(C1);
+  auto *GC2 = dyn_cast<GlobalValue>(C2);
+  // TODO: check for specific versions of each global
+  if (GC1 || GC2)
+    return false;
+
+  if (C1->getValueID() != C2->getValueID())
+    return false;
+
+  // Check contents
+
+  if (const auto *C1Seq = dyn_cast<ConstantDataSequential>(C1)) {
+    const auto *C2Seq = cast<ConstantDataSequential>(C2);
+    StringRef C1RawData = C1Seq->getRawDataValues();
+    StringRef C2RawData = C2Seq->getRawDataValues();
+    if (C1RawData.size() == C2RawData.size())
+      return C1RawData.compare(C2RawData);
+    return false;
+  }
+
+  switch (C1->getValueID()) {
+  default:
+    // Otherwise be conservative
+    return false;
+  case Value::ConstantIntVal: {
+    const APInt &C1Int = cast<ConstantInt>(C1)->getValue();
+    const APInt &C2Int = cast<ConstantInt>(C2)->getValue();
+    return C1Int == C2Int;
+  }
+  case Value::ConstantFPVal: {
+    const APFloat &C1FP = cast<ConstantFP>(C1)->getValueAPF();
+    const APFloat &C2FP = cast<ConstantFP>(C2)->getValueAPF();
+    return C1FP.bitcastToAPInt() == C2FP.bitcastToAPInt();
+  }
+  case Value::ConstantVectorVal: {
+    const ConstantVector *C1CV = cast<ConstantVector>(C1);
+    const ConstantVector *C2CV = cast<ConstantVector>(C2);
+    unsigned NumElementsC1 = cast<VectorType>(C1Ty)->getNumElements();
+    unsigned NumElementsC2 = cast<VectorType>(C2Ty)->getNumElements();
+    if (NumElementsC1 != NumElementsC2)
+      return false;
+    for (uint64_t i = 0; i < NumElementsC1; ++i)
+      if (!areConstantsEqual(cast<Constant>(C1CV->getOperand(i)),
+                             cast<Constant>(C2CV->getOperand(i))))
+        return false;
+    return true;
+  }
+  case Value::ConstantArrayVal: {
+    const ConstantArray *C1A = cast<ConstantArray>(C1);
+    const ConstantArray *C2A = cast<ConstantArray>(C2);
+    uint64_t NumElementsC1 = cast<ArrayType>(C1Ty)->getNumElements();
+    uint64_t NumElementsC2 = cast<ArrayType>(C2Ty)->getNumElements();
+    if (NumElementsC1 != NumElementsC2)
+      return false;
+    for (uint64_t i = 0; i < NumElementsC1; ++i)
+      if (!areConstantsEqual(cast<Constant>(C1A->getOperand(i)),
+                             cast<Constant>(C2A->getOperand(i))))
+        return false;
+    return true;
+  }
+  }
+}
+
 /***********************************************************************
  * loadPhiConstants : load constant incomings in phi nodes, commoning up
  *      if appropriate
@@ -530,9 +613,15 @@ bool genx::loadPhiConstants(Function *F, DominatorTree *DT,
           // Phi node: process each incoming.
           oe = Phi->getNumIncomingValues();
         } else {
-          // Two address instruction: process just the two address operand.
-          oi = getTwoAddressOperandNum(cast<CallInst>(Inst));
-          oe = oi + 1;
+          if (auto *CI = dyn_cast<CallInst>(Inst)) {
+            // Two address instruction: process just the two address operand.
+            oi = getTwoAddressOperandNum(CI);
+            oe = oi + 1;
+          } else {
+            IGC_ASSERT(isa<CastInst>(Inst));
+            oi = 0;
+            oe = 1;
+          }
         }
 
         auto IsPhiOrTwoAddress = [=](Value *V) {
@@ -558,7 +647,11 @@ bool genx::loadPhiConstants(Function *F, DominatorTree *DT,
             for (auto ui = Incoming->use_begin(), ue = Incoming->use_end();
                 ui != ue; ++ui) {
               auto User = cast<Instruction>(ui->getUser());
-              if (IsPhiOrTwoAddress(User))
+              // Add bitcasts into the web to process their users too
+              if (IsPhiOrTwoAddress(User) ||
+                  (isa<CastInst>(User) &&
+                   cast<CastInst>(User)->isNoopCast(
+                       User->getModule()->getDataLayout())))
                 if (Done.insert(User).second)
                   Web.push_back(User);
             }
@@ -584,10 +677,21 @@ bool genx::loadPhiConstants(Function *F, DominatorTree *DT,
       // node.
       std::map<Constant *, SmallVector<Use *, 4>> ConstantUses;
       SmallVector<Constant *, 8> DistinctConstants;
-      for (unsigned wi = 0, we = Web.size(); wi != we; ++wi) {
-        auto Phi = dyn_cast<PHINode>(Web[wi]);
-        if (!Phi)
-          continue;
+
+      // Fill ConstantUses map
+      // Process phis with larger types first to make sure that wider
+      // constant goes to ConstantUses map first
+      auto WebPhisRange = make_filter_range(
+          Web, [](Instruction *I) { return isa<PHINode>(I); });
+      SmallVector<Instruction *, 4> WebPhis(WebPhisRange);
+      std::sort(WebPhis.begin(), WebPhis.end(),
+                [](Instruction *I1, Instruction *I2) {
+                  return I1->getType()->getPrimitiveSizeInBits() >
+                         I2->getType()->getPrimitiveSizeInBits();
+                });
+
+      for (auto *Inst : WebPhis) {
+        auto *Phi = cast<PHINode>(Inst);
         for (unsigned oi = 0, oe = Phi->getNumIncomingValues(); oi != oe; ++oi) {
           Use *U = &Phi->getOperandUse(oi);
           auto *C = dyn_cast<Constant>(*U);
@@ -603,6 +707,13 @@ bool genx::loadPhiConstants(Function *F, DominatorTree *DT,
             if (GotoJoin::isBranchingJoinLabelBlock(IncomingBlock))
               continue;
           }
+
+          // Merge uses if constants are bitcastable.
+          auto EqualC = llvm::find_if(DistinctConstants, [&C](Constant *C2) {
+            return genx::areConstantsEqual(C, C2);
+          });
+          if (EqualC != DistinctConstants.end())
+            C = *EqualC;
 
           auto Entry = &ConstantUses[C];
           if (!Entry->size())
@@ -656,8 +767,27 @@ bool genx::loadPhiConstants(Function *F, DominatorTree *DT,
           Load = CL.load(InsertBefore);
         Modified = true;
         // Modify the uses.
-        for (unsigned ei = 0, ee = Entry->size(); ei != ee; ++ei)
-          *(*Entry)[ei] = Load;
+
+        SmallDenseMap<Type *, Value *, 4> CastMap;
+        // Create cast of specific type of given value or reuse it
+        // if exists
+        auto CreateOrReuseCast = [&CastMap](Value *V, Type *Ty,
+                                            Instruction *InsertBefore) {
+          // No cast needed
+          if (V->getType() == Ty)
+            return V;
+          // Assume bitcastable for now
+          if (!CastMap.count(Ty))
+            CastMap[Ty] =
+                CastInst::Create(Instruction::BitCast, V, Ty,
+                                 V->getName() + ".cast", InsertBefore);
+          return CastMap[Ty];
+        };
+
+        for (unsigned ei = 0, ee = Entry->size(); ei != ee; ++ei) {
+          auto *U = (*Entry)[ei];
+          *U = CreateOrReuseCast(Load, U->get()->getType(), InsertBefore);
+        }
         // replace other non-phi uses that are also dominated by the InsertBB
         for (unsigned wi = 0, we = Web.size(); wi != we; ++wi) {
           if (isa<PHINode>(Web[wi]))
@@ -669,7 +799,7 @@ bool genx::loadPhiConstants(Function *F, DominatorTree *DT,
             auto *UC = dyn_cast<Constant>(*U);
             if (UC && UC == C) {
               if (CI->getParent() != InsertBB && DT->dominates(InsertBB, CI->getParent()))
-                *U = Load;
+                *U = CreateOrReuseCast(Load, U->get()->getType(), InsertBefore);
             }
           }
         }
