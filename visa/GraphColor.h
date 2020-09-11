@@ -753,7 +753,7 @@ namespace vISA
         void fixAlignment();
         void expandSpillIntrinsic(G4_BB*);
         void expandFillIntrinsic(G4_BB*);
-        void expandSpillFillIntrinsics();
+        void expandSpillFillIntrinsics(unsigned int);
 
         RAVarInfo defaultValues;
         std::vector<RAVarInfo> vars;
