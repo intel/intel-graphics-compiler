@@ -441,12 +441,48 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
 
 void StatelessToStatefull::visitCallInst(CallInst& I)
 {
+    auto doPromoteUntypedAtomics = [](const GenISAIntrinsic::ID intrinID, const GenIntrinsicInst* Inst)-> bool
+    {
+        // Only promote if oprand0 and oprand1 are the same for 64bit-pointer atomics
+        if (intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
+            intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
+            intrinID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
+            intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
+        {
+            if (Inst->getOperand(0) != Inst->getOperand(1))
+            {
+                return false;
+            }
+        }
+
+        // Qword untyped atomic int only support A64, so can't promote to statefull
+        if (Inst->getType()->isIntegerTy() && Inst->getType()->getScalarSizeInBits() == 64)
+        {
+            return false;
+        }
+
+        return true;
+    };
+
+    auto isUntypedAtomics = [](const GenISAIntrinsic::ID intrinID)-> bool
+    {
+        return (intrinID == GenISAIntrinsic::GenISA_intatomicraw ||
+            intrinID == GenISAIntrinsic::GenISA_floatatomicraw ||
+            intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
+            intrinID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
+            intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicraw ||
+            intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
+            intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
+            intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64);
+    };
+
     if (auto Inst = dyn_cast<GenIntrinsicInst>(&I))
     {
         GenISAIntrinsic::ID const intrinID = Inst->getIntrinsicID();
 
         if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead ||
-            intrinID == GenISAIntrinsic::GenISA_simdBlockWrite)
+            intrinID == GenISAIntrinsic::GenISA_simdBlockWrite ||
+            (isUntypedAtomics(intrinID) && doPromoteUntypedAtomics(intrinID, Inst)))
         {
             Module* M = Inst->getParent()->getParent()->getParent();
             Function* F = Inst->getParent()->getParent();
@@ -485,6 +521,34 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                     Instruction* simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, { pPtrToInt }, "", Inst);
                     simdMediaBlockRead->setDebugLoc(DL);
                     Inst->replaceAllUsesWith(simdMediaBlockRead);
+                    Inst->eraseFromParent();
+                }
+                else if (isUntypedAtomics(intrinID))
+                {
+                    PointerType* pTy = PointerType::get(dyn_cast<PointerType>(ptr->getType())->getElementType(), addrSpace);
+                    Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
+                    Instruction* pIntrinInst = nullptr;
+                    if (intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
+                        intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
+                        intrinID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
+                        intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
+                    {
+                        pIntrinInst = CallInst::Create(
+                            GenISAIntrinsic::getDeclaration(M, intrinID, { Inst->getType(), pTy, pTy }),
+                            { pPtrToInt, pPtrToInt, Inst->getOperand(2), Inst->getOperand(3) },
+                            "",
+                            Inst);
+                    }
+                    else
+                    {
+                        pIntrinInst = CallInst::Create(
+                            GenISAIntrinsic::getDeclaration(M, intrinID, { Inst->getType(), pTy }),
+                            { pPtrToInt, offset, Inst->getOperand(2), Inst->getOperand(3) },
+                            "",
+                            Inst);
+                    }
+                    pIntrinInst->setDebugLoc(DL);
+                    Inst->replaceAllUsesWith(pIntrinInst);
                     Inst->eraseFromParent();
                 }
                 else
