@@ -36,9 +36,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
+
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
+
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -48,6 +51,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/Local.h"
+
 #include <queue>
 #include <utility>
 
@@ -327,8 +331,8 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
       return PTI;
     } else
       return Ptr;
-  } else if (auto *CI = dyn_cast<IGCLLVM::CallInst>(Ptr)) {
-    if (!CI->isIndirectCall() &&
+  } else if (auto *CI = dyn_cast<CallInst>(Ptr)) {
+    if (!IGCLLVM::isIndirectCall(*CI) &&
         GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
             GenXIntrinsic::genx_svm_block_ld) {
       return Ptr;

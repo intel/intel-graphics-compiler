@@ -929,11 +929,11 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
     return getCategoryForPhiIncomings(Phi);
   }
   unsigned Category = RegCategory::GENERAL;
-  if (IGCLLVM::CallInst *CI = dyn_cast<IGCLLVM::CallInst>(user)) {
+  if (CallInst *CI = dyn_cast<CallInst>(user)) {
     if (CI->isInlineAsm())
       Category = getCategoryForInlasmConstraintedOp(CI, U->getOperandNo(),
                                                     false /*IsOutput*/);
-    else if (CI->isIndirectCall())
+    else if (IGCLLVM::isIndirectCall(*CI))
       Category = RegCategory::GENERAL;
     else {
       Function *Callee = CI->getCalledFunction();

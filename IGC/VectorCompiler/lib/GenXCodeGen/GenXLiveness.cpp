@@ -40,8 +40,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
-#include "llvmWrapper/IR/InstrTypes.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
+
+#include "Probe/Assertion.h"
+#include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
+
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/BasicBlock.h"
@@ -54,7 +58,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 
 #include <unordered_set>
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -352,8 +355,8 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
       Instruction *UserHead = Baling->getBaleHead(user);
       BB = UserHead->getParent();
       Num = Numbering->getNumber(UserHead);
-      if (auto CI = dyn_cast<IGCLLVM::CallInst>(user)) {
-        if (CI->isInlineAsm() || CI->isIndirectCall())
+      if (auto CI = dyn_cast<CallInst>(user)) {
+        if (CI->isInlineAsm() || IGCLLVM::isIndirectCall(*CI))
           Num = Numbering->getNumber(UserHead);
         else {
         switch (GenXIntrinsic::getAnyIntrinsicID(CI)) {

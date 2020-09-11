@@ -191,9 +191,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
-#include "llvmWrapper/IR/Instructions.h"
-#include "llvmWrapper/IR/InstrTypes.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+
+#include "Probe/Assertion.h"
+#include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
+
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -206,9 +209,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+
 #include <algorithm>
 #include <vector>
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -493,7 +496,7 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
               recordPhiCandidate(Phi, &Phi->getOperandUse(i), Priority);
             }
           }
-        } else if (IGCLLVM::CallInst *CI = dyn_cast<IGCLLVM::CallInst>(Inst)) {
+        } else if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
           if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CI)) {
             if (CI->isInlineAsm()) {
               InlineAsm *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
@@ -528,7 +531,7 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
                       getPriority(CI->getType(), CI->getParent()));
                 }
               }
-            } else if (CI->isIndirectCall())
+            } else if (IGCLLVM::isIndirectCall(*CI))
               continue;
             // This is a non-intrinsic call. If it returns a value, mark
             // (elements of) the return value for coalescing with the

@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
-#include "llvmWrapper/IR/InstrTypes.h"
+
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -45,9 +45,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
-#include "Probe/Assertion.h"
 
+#include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace genx;
@@ -78,7 +80,7 @@ class GenXFunctionPointersLowering : public ModulePass {
   bool IsFuncPointerVec(Value *V, SetVector<Function *> *Funcs = nullptr);
 
   void collectFuncUsers(User *U);
-  void collectFuncUsers(IGCLLVM::CallInst *CI);
+  void collectFuncUsers(CallInst *CI);
   void collectFuncUsers(PHINode *Phi);
   void collectFuncUsers(CastInst *Phi);
   void collectFuncUsers(SelectInst *SI);
@@ -176,8 +178,8 @@ void GenXFunctionPointersLowering::collectFuncUsers(User *U) {
   }
 }
 
-void GenXFunctionPointersLowering::collectFuncUsers(IGCLLVM::CallInst *CI) {
-  if (!CI->isIndirectCall() &&
+void GenXFunctionPointersLowering::collectFuncUsers(CallInst *CI) {
+  if (!IGCLLVM::isIndirectCall(*CI) &&
       (GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
            GenXIntrinsic::genx_rdregioni ||
        GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
@@ -215,16 +217,16 @@ void GenXFunctionPointersLowering::replaceAllUsersCommon(Instruction *Old,
                                                          Instruction *New) {
   while (!Old->use_empty()) {
     auto *U = Old->user_back();
-    if (auto *CIU = dyn_cast<IGCLLVM::CallInst>(U)) {
-      if (CIU->getCalledOperand() == Old) {
+    if (auto *CIU = dyn_cast<CallInst>(U)) {
+      if (IGCLLVM::getCalledValue(CIU) == Old) {
         auto *IntToPtr = CastInst::CreateBitOrPointerCast(
-            New, CIU->getCalledOperand()->getType(), "", CIU);
+            New, IGCLLVM::getCalledValue(CIU)->getType(), "", CIU);
         CIU->replaceUsesOfWith(Old, IntToPtr);
       } else if (GenXIntrinsic::getAnyIntrinsicID(CIU->getCalledFunction()) ==
                      GenXIntrinsic::genx_rdregioni ||
                  GenXIntrinsic::getAnyIntrinsicID(CIU->getCalledFunction()) ==
                      GenXIntrinsic::genx_wrregioni ||
-                 CIU->getCalledOperand() != Old) {
+                 IGCLLVM::getCalledValue(CIU) != Old) {
         CIU->replaceUsesOfWith(Old, New);
       } else
         IGC_ASSERT(0 && "unsupported call of a function pointer");

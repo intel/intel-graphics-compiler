@@ -618,8 +618,8 @@ private:
   void addLabelInst(Value *BB);
   void buildPhiNode(PHINode *Phi);
   void buildGoto(CallInst *Goto, BranchInst *Branch);
-  void buildCall(IGCLLVM::CallInst *CI, const DstOpndDesc &DstDesc);
-  void buildStackCall(IGCLLVM::CallInst *CI, const DstOpndDesc &DstDesc);
+  void buildCall(CallInst *CI, const DstOpndDesc &DstDesc);
+  void buildStackCall(CallInst *CI, const DstOpndDesc &DstDesc);
   void buildInlineAsm(CallInst *CI);
   void buildPrintIndex(CallInst *CI, unsigned IntrinID, unsigned Mod,
                        const DstOpndDesc &DstDesc);
@@ -1279,7 +1279,7 @@ void GenXKernelBuilder::buildInstructions() {
           // successor and it is the header of a loop, for any vector of at
           // least four GRFs with a phi node where our incoming value is
           // undef, insert a lifetime.start here.
-          auto TI = cast<IGCLLVM::TerminatorInst>(Inst);
+          auto *TI = cast<IGCLLVM::TerminatorInst>(Inst);
           if (TI->getNumSuccessors() == 1) {
             auto Succ = TI->getSuccessor(0);
             if (getLoops(Succ->getParent())->isLoopHeader(Succ)) {
@@ -2540,11 +2540,11 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       buildBoolBinaryOperator(BO);
     }
   } else if (auto EVI = dyn_cast<ExtractValueInst>(Inst)) {
-    if (auto *CI = dyn_cast<IGCLLVM::CallInst>(Inst->getOperand(0)))
+    if (auto *CI = dyn_cast<CallInst>(Inst->getOperand(0)))
       // translate extraction of structured type from retv
       if (!CI->isInlineAsm() && (CI->getCalledFunction()->hasFnAttribute(
                                      genx::FunctionMD::CMStackCall) ||
-                                 CI->isIndirectCall()))
+                                 IGCLLVM::isIndirectCall(*CI)))
         buildExtractRetv(EVI);
     // no code generated
   } else if (auto IVI = dyn_cast<InsertValueInst>(Inst)) {
@@ -2582,10 +2582,10 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
   } else if (UnaryOperator *UO = dyn_cast<UnaryOperator>(Inst)) {
     buildUnaryOperator(UO, BI, Mod, DstDesc);
 #endif
-  } else if (auto *CI = dyn_cast<IGCLLVM::CallInst>(Inst)) {
+  } else if (auto *CI = dyn_cast<CallInst>(Inst)) {
     if (CI->isInlineAsm())
       buildInlineAsm(CI);
-    else if (CI->isIndirectCall()) {
+    else if (IGCLLVM::isIndirectCall(*CI)) {
       IGC_ASSERT(!Mod && !DstDesc.WrRegion &&
              "cannot bale subroutine call into anything");
       buildCall(CI, DstDesc);
@@ -4693,8 +4693,7 @@ void GenXKernelBuilder::buildInlineAsm(CallInst *CI) {
                 << std::endl;
 }
 
-void GenXKernelBuilder::buildCall(IGCLLVM::CallInst *CI,
-                                  const DstOpndDesc &DstDesc) {
+void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
   LLVM_DEBUG(dbgs() << CI << "\n");
   Function *Callee = CI->getCalledFunction();
 
@@ -5460,13 +5459,13 @@ void GenXKernelBuilder::buildInsertRetv(InsertValueInst *Inst) {
                    getValueSize(Inst->getOperand(1)));
 }
 
-void GenXKernelBuilder::buildStackCall(IGCLLVM::CallInst *CI,
+void GenXKernelBuilder::buildStackCall(CallInst *CI,
                                        const DstOpndDesc &DstDesc) {
   LLVM_DEBUG(dbgs() << "Build stack call\n"; CI->print(dbgs()); dbgs() << "\n");
   Function *Callee = CI->getCalledFunction();
   auto *FuncTy = CI->getFunctionType();
   auto *StackCallee = Func2Kern[Callee];
-  IGC_ASSERT(CI->isIndirectCall() || StackCallee);
+  IGC_ASSERT(IGCLLVM::isIndirectCall(*CI) || StackCallee);
 
   // Check whether the called function has a predicate arg that is EM.
   int EMOperandNum = -1, EMIdx = -1;
@@ -5642,7 +5641,6 @@ void GenXKernelBuilder::buildStackCall(IGCLLVM::CallInst *CI,
       ISA_ADD, nullptr, false, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
       EXEC_SIZE_1, SpOpDst, SpOpSrc, Imm));
 }
-
 
 namespace {
 

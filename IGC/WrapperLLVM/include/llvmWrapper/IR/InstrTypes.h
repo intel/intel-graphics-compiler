@@ -28,8 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGCLLVM_IR_INSTRTYPES_H
 
 #include <llvm/IR/InstrTypes.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/Support/Casting.h>
 #if LLVM_VERSION_MAJOR >= 8
 #include <llvm/IR/PatternMatch.h>
 #endif
@@ -38,39 +36,21 @@ namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR <= 7
     using llvm::TerminatorInst;
-    using llvm::BinaryOperator;
-    class CallInst : public llvm::CallInst {
-      static constexpr int CalledOperandOpEndIdx = -1;
-
-    public:
-      bool isIndirectCall() const {
-        const llvm::Value *V = getCalledValue();
-        if (llvm::isa<llvm::Function>(V) || llvm::isa<llvm::Constant>(V))
-          return false;
-        if (const llvm::CallInst *CI = llvm::dyn_cast<llvm::CallInst>(this))
-          if (CI->isInlineAsm())
-            return false;
-        return true;
-      }
-
-      llvm::Value *getCalledOperand() const {
-        return Op<CalledOperandOpEndIdx>();
-      }
-    };
-#elif LLVM_VERSION_MAJOR >= 8
+#else
     using TerminatorInst = llvm::Instruction;
-
-    class BinaryOperator : public llvm::BinaryOperator
-    {
-    public:
-         static inline bool isNot(const llvm::Value *V)
-         {
-             return llvm::PatternMatch::match(V, llvm::PatternMatch::m_Not(llvm::PatternMatch::m_Value()));
-         }
-    };
-
-    using CallInst = llvm::CallInst;
 #endif
+
+    namespace BinaryOperator
+    {
+        inline bool isNot(const llvm::Value *V)
+        {
+#if LLVM_VERSION_MAJOR <= 7
+            return llvm::BinaryOperator::isNot(V);
+#else
+            return llvm::PatternMatch::match(V, llvm::PatternMatch::m_Not(llvm::PatternMatch::m_Value()));
+#endif
+        }
+    }
 }
 
 #endif

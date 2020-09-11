@@ -28,6 +28,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGCLLVM_IR_INSTRUCTIONS_H
 
 #include <llvm/IR/Instructions.h>
+#if LLVM_VERSION_MAJOR <= 7
+#include <llvm/Support/Casting.h>
+#endif
 
 namespace IGCLLVM
 {
@@ -101,6 +104,20 @@ namespace IGCLLVM
         return CI->getCalledValue();
 #else
         return CI->getCalledOperand();
+#endif
+    }
+
+    inline bool isIndirectCall(const llvm::CallInst& CI)
+    {
+#if LLVM_VERSION_MAJOR <= 7
+        const llvm::Value *V = CI.getCalledValue();
+        if (llvm::isa<llvm::Function>(V) || llvm::isa<llvm::Constant>(V))
+            return false;
+        if (CI.isInlineAsm())
+            return false;
+        return true;
+#else
+      return CI.isIndirectCall();
 #endif
     }
 }
