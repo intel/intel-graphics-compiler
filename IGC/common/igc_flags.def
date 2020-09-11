@@ -297,7 +297,6 @@ DECLARE_IGC_REGKEY(bool, Enable64BitEmulationOnSelectedPlatform, true, "Enable 6
 DECLARE_IGC_REGKEY(DWORD, EnableConstIntDivReduction,   0x1,   "Enables strength reduction on integer division/remainder with constant divisors/moduli", true)
 DECLARE_IGC_REGKEY(DWORD, EnableIntDivRemCombine,       0x0,   "Given div/rem pairs with same operands merged; replace rem with mul+sub on quotient; 0x3 (set bit[1]) forces this on constant power of two divisors as well", true)
 DECLARE_IGC_REGKEY(bool, EnableRecursionOpenCL,         false, "Enable recursion with OpenCL user functions", false)
-DECLARE_IGC_REGKEY(bool, DisableBufferToResPromotionAir,true,  "Disable promoting beffers to resources", false)
 DECLARE_IGC_REGKEY(bool, ForceDPEmulation,              false, "Force double emulation for testing purpose", false)
 DECLARE_IGC_REGKEY(bool, EnableDPEmulation,             false, "Enforce double precision floating point operations emulation on platforms that do not support it natively", true)
 DECLARE_IGC_REGKEY(bool, DPEmuNeedI64Emu,               true,  "Double Emulation needs I64 emulation. Unsetting it to disable I64 Emulation for testing.", false)

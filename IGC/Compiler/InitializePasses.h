@@ -59,7 +59,6 @@ void initializeDynamicTextureFoldingPass(llvm::PassRegistry&);
 void initializeExtensionArgAnalysisPass(llvm::PassRegistry&);
 void initializeExtensionFuncsAnalysisPass(llvm::PassRegistry&);
 void initializeExtensionFuncsResolutionPass(llvm::PassRegistry&);
-void initializeFindInterestingConstantsPass(llvm::PassRegistry&);
 void initializeGenericAddressAnalysisPass(llvm::PassRegistry&);
 void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry&);
 void initializeGenIRLoweringPass(llvm::PassRegistry&);
