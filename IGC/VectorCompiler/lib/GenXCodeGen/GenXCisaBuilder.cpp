@@ -996,7 +996,7 @@ std::string GenXKernelBuilder::buildAsmName() const {
     return AsmName;
 
   vc::ShaderDumper &Dumper = BackendConfig->getShaderDumper();
-  return Dumper.getDumpPathPrefix() + AsmName;
+  return Dumper.composeDumpPath(AsmName);
 }
 
 bool GenXKernelBuilder::run() {

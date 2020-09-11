@@ -58,7 +58,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/ScopeExit.h>
 #include "vc/igcdeps/cmc.h"
-#include "vc/Support/ShaderDump.h"
+#include "vc/igcdeps/ShaderDump.h"
 #include "vc/Support/StatusCode.h"
 #include "vc/GenXCodeGen/GenXWrapper.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -1431,6 +1431,15 @@ static void adjustBinaryFormat(vc::BinaryKind &Binary)
         Binary = vc::BinaryKind::ZE;
 }
 
+static void adjustDumpOptions(vc::CompileOptions& Opts)
+{
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+    {
+        Opts.DumpIR = true;
+        Opts.DumpIsa = true;
+    }
+}
+
 static void adjustOptionsVC(const IGC::CPlatform& IGCPlatform,
                             TB_DATA_FORMAT DataFormat, vc::CompileOptions& Opts)
 {
@@ -1438,6 +1447,7 @@ static void adjustOptionsVC(const IGC::CPlatform& IGCPlatform,
     adjustFileTypeVC(DataFormat, Opts);
     adjustOptLevelVC(Opts);
     adjustBinaryFormat(Opts.Binary);
+    adjustDumpOptions(Opts);
 }
 
 static std::error_code getErrorVC(llvm::Error Err,
@@ -1473,6 +1483,15 @@ static void outputBinaryVC(llvm::StringRef Binary,
     pOutputArgs->pOutput = pBinaryOutput;
 }
 
+// Similar to ShaderHashOCL though reinterpretation is hidden inside
+// iStdLib so probably it will be safer (to use more specialized things).
+static ShaderHash GetShaderHash(llvm::ArrayRef<char> Input)
+{
+    ShaderHash Hash;
+    Hash.asmHash = iSTD::HashFromBuffer(Input.data(), Input.size());
+    return Hash;
+}
+
 static std::error_code TranslateBuildVC(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs, TB_DATA_FORMAT inputDataFormatTemp,
@@ -1483,11 +1502,36 @@ static std::error_code TranslateBuildVC(
                                     pInputArgs->InternalOptionsSize};
     llvm::ArrayRef<char> Input{pInputArgs->pInput, pInputArgs->InputSize};
 
+    std::unique_ptr<vc::ShaderDumper> Dumper;
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+    {
+        const ShaderHash Hash = GetShaderHash(Input);
+        Dumper = vc::createVC_IGCFileDumper(Hash);
+    }
+    else
+    {
+        Dumper = vc::createDefaultShaderDumper();
+    }
+
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+    {
+        Dumper->dumpText(ApiOptions, "options_raw.txt");
+        Dumper->dumpText(InternalOptions, "internal_options_raw.txt");
+        Dumper->dumpBinary(Input, "igc_input_raw.spv");
+    }
+
     auto NewPathPayload = tryExtractPayload(Input.data(), Input.size());
     if (NewPathPayload.IsValid) {
         ApiOptions = "-vc-codegen";
         InternalOptions = pInputArgs->pInput + NewPathPayload.VcOptsOffset;
         Input = Input.take_front(static_cast<size_t>(NewPathPayload.IrSize));
+    }
+
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+    {
+        Dumper->dumpText(ApiOptions, "options.txt");
+        Dumper->dumpText(InternalOptions, "internal_options.txt");
+        Dumper->dumpBinary(Input, "igc_input.spv");
     }
 
     auto ExpOptions = vc::ParseOptions(ApiOptions, InternalOptions);
@@ -1500,8 +1544,9 @@ static std::error_code TranslateBuildVC(
         llvm::make_scope_exit([]() { llvm::cl::ResetAllOptionOccurrences(); });
 
     vc::CompileOptions& Opts = ExpOptions.get();
-    Opts.Dumper = vc::createDefaultShaderDumper();
     adjustOptionsVC(IGCPlatform, inputDataFormatTemp, Opts);
+
+    Opts.Dumper = std::move(Dumper);
 
     std::unique_ptr<llvm::MemoryBuffer> OCLGenericBIFModule = GetGenericModuleBuffer();
     if (!OCLGenericBIFModule)

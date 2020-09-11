@@ -24,42 +24,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef VC_SUPPORT_SHADERDUMP_H
-#define VC_SUPPORT_SHADERDUMP_H
+#ifndef VC_IGCDEPS_SHADERDUMP_H
+#define VC_IGCDEPS_SHADERDUMP_H
 
-#include <llvm/ADT/ArrayRef.h>
-#include <llvm/ADT/StringRef.h>
+#include "vc/Support/ShaderDump.h"
+
+#include <iStdLib/types.h>
+
+#include <common/shaderHash.hpp>
 
 #include <memory>
-#include <string>
-
-namespace llvm {
-class Module;
-}
 
 namespace vc {
-
-class ShaderDumper {
-public:
-  // Main methods, just dump either binary data or text.
-  virtual void dumpBinary(llvm::ArrayRef<char> Binary,
-                          llvm::StringRef DumpName) = 0;
-  virtual void dumpText(llvm::StringRef Text, llvm::StringRef DumpName) = 0;
-
-  // Convenience method to dump module.
-  virtual void dumpModule(const llvm::Module &M, llvm::StringRef DumpName) = 0;
-
-  // Hack required for finalizer dumps since it can dump only to
-  // specified file and not to generic stream.
-  // Return the same string by default.
-  virtual std::string composeDumpPath(llvm::StringRef DumpName) const {
-    return DumpName.str();
-  }
-
-  virtual ~ShaderDumper() = default;
-};
-
-std::unique_ptr<ShaderDumper> createDefaultShaderDumper();
+std::unique_ptr<ShaderDumper> createVC_IGCFileDumper(const ShaderHash &Hash);
 } // namespace vc
 
 #endif
