@@ -848,7 +848,14 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     }
     else
     {
-        tokenAllocation();
+        if (fg.builder->getOptions()->getOption(vISA_QuickTokenAllocation))
+        {
+            quickTokenAllocation();
+        }
+        else
+        {
+            tokenAllocation();
+        }
     }
 
     //Insert test instruction in case the dependences are more than token field in the instruction.
@@ -2237,6 +2244,55 @@ void SWSB::calculateDist()
 }
 
 
+/* Quick token allocation, allocate the token in round robin.
+ */
+void SWSB::quickTokenAllocation()
+{
+    uint32_t token = 0;
+
+    //Linear scan
+    for (auto node_it = SBSendNodes.begin();
+        node_it != SBSendNodes.end();
+        node_it++)
+    {
+        SBNode* node = *node_it;
+
+        if (node->getLastInstruction()->isEOT())
+        {
+            continue;
+        }
+
+        assert(node->getLastInstruction()->getToken() == (unsigned short)UNKNOWN_TOKEN);
+        node->getLastInstruction()->setToken(token);
+        if (token >= totalTokenNum - 1)
+        {
+            token = 0;
+        }
+        else
+        {
+            token ++;
+        }
+    }
+
+    for (auto node_it = SBSendNodes.begin();
+        node_it != SBSendNodes.end();
+        node_it++)
+    {
+        SBNode* node = *node_it;
+        G4_INST* inst = node->getLastInstruction();
+
+        if (inst->isEOT())
+        {
+            continue;
+        }
+
+        unsigned short token = node->getLastInstruction()->getToken();
+        if (token != (unsigned short)-1)
+        {
+            assignDepToken(node);
+        }
+    }
+}
 
 /* Linear scan algorithm is used for the token allocation.
  * Based on the assumption that instruction scheduling has scheduled the instruction to the best.

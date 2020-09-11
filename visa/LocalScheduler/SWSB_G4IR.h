@@ -1237,6 +1237,8 @@ namespace vISA
 
         void setDefaultDistanceAtFirstInstruction();
 
+        void quickTokenAllocation();
+
         //Token allocation
         void tokenAllocation();
         void buildLiveIntervals();

@@ -4278,6 +4278,11 @@ namespace IGC
             SaveOption(vISA_EnableIGASWSB, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableQuickTokenAlloc))
+        {
+            SaveOption(vISA_QuickTokenAllocation, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableSWSBStitch) ||
             (context->type == ShaderType::PIXEL_SHADER &&
              static_cast<CPixelShader*>(m_program)->GetPhase() == PSPHASE_PIXEL))

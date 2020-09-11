@@ -172,6 +172,7 @@ DEF_VISA_OPTION(vISA_EnableGroupScheduleForBC,      ET_BOOL,  "-groupScheduleFor
 DEF_VISA_OPTION(vISA_SWSBTokenNum,        ET_INT32, "-SWSBTokenNum",      "USAGE: -SWSBTokenNum <tokenNum>\n", 0)
 DEF_VISA_OPTION(vISA_EnableSendTokenReduction,      ET_BOOL,  "-SendTokenReduction",    UNUSED, false)
 DEF_VISA_OPTION(vISA_GlobalTokenAllocation,      ET_BOOL,  "-globalTokenAllocation",    UNUSED, false)
+DEF_VISA_OPTION(vISA_QuickTokenAllocation,      ET_BOOL,  "-quickTokenAllocation",    UNUSED, false)
 DEF_VISA_OPTION(vISA_DistPropTokenAllocation,      ET_BOOL,  "-distPropTokenAllocation",    UNUSED, false)
 DEF_VISA_OPTION(vISA_SWSBStitch,      ET_BOOL,  "-SWSBStitch",    UNUSED, false)
 
