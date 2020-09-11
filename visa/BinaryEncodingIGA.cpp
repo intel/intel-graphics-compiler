@@ -768,7 +768,8 @@ void BinaryEncodingIGA::translateInstructionDst(
     G4_DstRegRegion* dst = g4inst->getDst();
     DstModifier dstModifier = getIGADstModifier(g4inst->getSaturate());
     Region::Horz hstride = getIGAHorz(dst->getHorzStride());
-    Type type = getIGAType(dst->getType(), platform);
+    Type type;
+    type = getIGAType(dst->getType(), platform);
 
     // workaround for SKL bug
     // not all bits are copied from immediate descriptor
@@ -797,7 +798,6 @@ void BinaryEncodingIGA::translateInstructionDst(
     }
     else if (dst->getRegAccess() == Direct)
     {
-
         igaInst->setDirectDestination(
             dstModifier,
             getIGARegName(dst),
@@ -1167,6 +1167,7 @@ iga::RegName BinaryEncodingIGA::getIGAARFName(G4_ArchRegKind areg)
     }
 }
 
+
 iga::Type BinaryEncodingIGA::getIGAType(G4_Type type, TARGET_PLATFORM genxPlatform)
 {
     switch (type)
@@ -1186,7 +1187,6 @@ iga::Type BinaryEncodingIGA::getIGAType(G4_Type type, TARGET_PLATFORM genxPlatfo
     case Type_V:    return iga::Type::V;
     case Type_VF:   return iga::Type::VF;
     case Type_NF:   return iga::Type::NF;
-
     default:
         assert(false && "illegal type");
         return iga::Type::INVALID;
