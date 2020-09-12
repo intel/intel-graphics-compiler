@@ -1674,48 +1674,26 @@ namespace IGC
             else {
                 if (Need64BitEmu) {
                     if (Is64BitSrc && Is64BitDst) {
+                        // Generate data movement on Lo part.
+                        SModifier LoDstMod = EmulateVariable(dst, m_encoderState.m_dstOperand, false, false);
+                        SModifier LoSrcMod = EmulateVariable(src, m_encoderState.m_srcOperand[0], false, true);
+                        VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dstAlias, LoDstMod);
+                        VISA_VectorOpnd* srcOpnd = srcImmLo ? srcImmLo : GetSourceOperand(srcAlias, LoSrcMod);
                         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-                        if (!predOpnd && !IsSat() && dst->IsUniform() && src->IsUniform() && !src->IsImmediate())
-                        {
-                            // special handling for uniform 64b copy by generating SIMD2 move instead of 2xSIMD1
-                            // technically we need to check for src modifier and whether dst/src are indirect operand as well,
-                            // but it doesn't look like the original code below is doing it anyway..
-                            SModifier dstAsUDMod = m_encoderState.m_dstOperand;
-                            dstAsUDMod.subReg *= 2;
-                            SModifier srcAsUDMod = m_encoderState.m_srcOperand[0];
-                            srcAsUDMod.region[0] = 2;
-                            srcAsUDMod.region[1] = 2;
-                            srcAsUDMod.region[2] = 1;
-                            srcAsUDMod.specialRegion = true;
-                            srcAsUDMod.subReg *= 2;
-                            auto dstOpnd = GetDestinationOperand(dstAlias, dstAsUDMod);
-                            auto srcOpnd = srcImmLo ? srcImmLo : GetSourceOperand(srcAlias, srcAsUDMod);
-                            V(vKernel->AppendVISADataMovementInst(opcode, nullptr, false, vISA_EMASK_M1_NM, EXEC_SIZE_2,
-                                dstOpnd, srcOpnd));
-                        }
-                        else
-                        {
-                            // Generate data movement on Lo part.
-                            SModifier LoDstMod = EmulateVariable(dst, m_encoderState.m_dstOperand, false, false);
-                            SModifier LoSrcMod = EmulateVariable(src, m_encoderState.m_srcOperand[0], false, true);
-                            VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dstAlias, LoDstMod);
-                            VISA_VectorOpnd* srcOpnd = srcImmLo ? srcImmLo : GetSourceOperand(srcAlias, LoSrcMod);
-
-                            V(vKernel->AppendVISADataMovementInst(opcode, predOpnd, IsSat(),
-                                GetAluEMask(dst),
-                                GetAluExecSize(dst),
-                                dstOpnd, srcOpnd));
-                            // Generate data movement on Hi part.
-                            SModifier HiDstMod = EmulateVariable(dst, m_encoderState.m_dstOperand, true, false);
-                            SModifier HiSrcMod = EmulateVariable(src, m_encoderState.m_srcOperand[0], true, true);
-                            dstOpnd = GetDestinationOperand(dstAlias, HiDstMod);
-                            srcOpnd = srcImmHi ? srcImmHi : GetSourceOperand(srcAlias, HiSrcMod);
-                            predOpnd = GetFlagOperand(m_encoderState.m_flag);
-                            V(vKernel->AppendVISADataMovementInst(opcode, predOpnd, IsSat(),
-                                GetAluEMask(dst),
-                                GetAluExecSize(dst),
-                                dstOpnd, srcOpnd));
-                        }
+                        V(vKernel->AppendVISADataMovementInst(opcode, predOpnd, IsSat(),
+                            GetAluEMask(dst),
+                            GetAluExecSize(dst),
+                            dstOpnd, srcOpnd));
+                        // Generate data movement on Hi part.
+                        SModifier HiDstMod = EmulateVariable(dst, m_encoderState.m_dstOperand, true, false);
+                        SModifier HiSrcMod = EmulateVariable(src, m_encoderState.m_srcOperand[0], true, true);
+                        dstOpnd = GetDestinationOperand(dstAlias, HiDstMod);
+                        srcOpnd = srcImmHi ? srcImmHi : GetSourceOperand(srcAlias, HiSrcMod);
+                        predOpnd = GetFlagOperand(m_encoderState.m_flag);
+                        V(vKernel->AppendVISADataMovementInst(opcode, predOpnd, IsSat(),
+                            GetAluEMask(dst),
+                            GetAluExecSize(dst),
+                            dstOpnd, srcOpnd));
                     }
                     else if (Is64BitSrc) {
                         IGC_ASSERT_MESSAGE(!Is64BitDst, "Expect non 64-bit dst!");
