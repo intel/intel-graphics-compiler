@@ -2934,6 +2934,14 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             }
         }
         break;
+        case llvm_f32tof16_rtz:
+        {
+            if (C0)
+            {
+                C = constantFolder.CreateFPTrunc(C0, inst->getType(), llvm::APFloatBase::rmTowardZero);
+            }
+        }
+        break;
         case llvm_fadd_rtz:
         {
             Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
