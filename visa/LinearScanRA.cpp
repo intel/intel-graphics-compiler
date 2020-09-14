@@ -1607,6 +1607,11 @@ bool LinearScanRA::doLinearScanRA()
         reduceBCInRR = bc.setupBankConflictsForKernel(false, reduceBCInTAandFF, numRegLRA, highInternalConflict);
     }
 
+    if (reduceBCInTAandFF || reduceBCInRR)
+    {
+        doBCR = true;
+    }
+
     //Initial pregs which will be used in the preRAAnalysis
     PhyRegsLocalRA phyRegs(&builder, kernel.getNumRegTotal());
     pregs = &phyRegs;
@@ -1614,7 +1619,14 @@ bool LinearScanRA::doLinearScanRA()
 
     bool success = linearScanRA();
 
-    kernel.setRAType(RA_Type::GLOBAL_LINEAR_SCAN_RA);
+    if (doBCR)
+    {
+        kernel.setRAType(RA_Type::GLOBAL_LINEAR_SCAN_BC_RA);
+    }
+    else
+    {
+        kernel.setRAType(RA_Type::GLOBAL_LINEAR_SCAN_RA);
+    }
     //kernel.dump();
     return success;
 }

@@ -3761,6 +3761,7 @@ static void recordRAStats(IR_Builder& builder,
         case RA_Type::GRAPH_COLORING_SPILL_RR_BC_RA:
         case RA_Type::GRAPH_COLORING_SPILL_FF_BC_RA:
         case RA_Type::GLOBAL_LINEAR_SCAN_RA:
+        case RA_Type::GLOBAL_LINEAR_SCAN_BC_RA:
             Stats.SetFlag("IsGlobalRA", SimdSize);
             break;
         case RA_Type::UNKNOWN_RA:
