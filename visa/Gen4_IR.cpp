@@ -939,6 +939,7 @@ G4_Type G4_INST::getExecType() const
         return Type_D;
     }
 
+
     for (unsigned i = 0; i < G4_MAX_SRCS; i++)
     {
         if (srcs[i] != NULL)
@@ -2261,6 +2262,7 @@ bool G4_INST::canPropagateTo(
     {
         return false;
     }
+
 
     if (src->isImm())
     {
