@@ -1,10 +1,9 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: nrudenko <nikita.rudenko@intel.com>
 Date: Thu, 4 Jun 2020 16:34:15 +0300
-Subject: [PATCH 2/4] Add DecorationFuncParamKindINTEL and
+Subject: [PATCH 2/7] Add DecorationFuncParamKindINTEL and
  DecorationFuncParamDescINTEL
 
-Change-Id: Ic90237386532736588c558c7479370e48af7ce87
 ---
  lib/SPIRV/SPIRVReader.cpp             | 12 ++++++++++++
  lib/SPIRV/SPIRVWriter.cpp             | 13 +++++++++++++
@@ -18,7 +17,7 @@ Change-Id: Ic90237386532736588c558c7479370e48af7ce87
  9 files changed, 56 insertions(+)
 
 diff --git a/lib/SPIRV/SPIRVReader.cpp b/lib/SPIRV/SPIRVReader.cpp
-index 67c8812..436cb3c 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/SPIRVReader.cpp
 +++ b/lib/SPIRV/SPIRVReader.cpp
 @@ -3366,6 +3366,18 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
@@ -41,7 +40,7 @@ index 67c8812..436cb3c 100644
  
    // Do not add float control if there is no any
 diff --git a/lib/SPIRV/SPIRVWriter.cpp b/lib/SPIRV/SPIRVWriter.cpp
-index 34500b7..dd3d715 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/SPIRVWriter.cpp
 +++ b/lib/SPIRV/SPIRVWriter.cpp
 @@ -576,6 +576,19 @@ void LLVMToSPIRV::transVectorComputeMetadata(Function *F) {
@@ -65,7 +64,7 @@ index 34500b7..dd3d715 100644
  }
  
 diff --git a/lib/SPIRV/VectorComputeUtil.h b/lib/SPIRV/VectorComputeUtil.h
-index 39255ad..772d682 100755
+index 0000000..0000000 100755
 --- a/lib/SPIRV/VectorComputeUtil.h
 +++ b/lib/SPIRV/VectorComputeUtil.h
 @@ -117,6 +117,8 @@ const static char VCGlobalVariable[] = "VCGlobalVariable";
@@ -78,7 +77,7 @@ index 39255ad..772d682 100755
  
  ///////////////////////////////////////////////////////////////////////////////
 diff --git a/lib/SPIRV/libSPIRV/SPIRVDecorate.cpp b/lib/SPIRV/libSPIRV/SPIRVDecorate.cpp
-index 4af7e2c..3e8d4fe 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVDecorate.cpp
 +++ b/lib/SPIRV/libSPIRV/SPIRVDecorate.cpp
 @@ -104,6 +104,9 @@ void SPIRVDecorate::encode(spv_ostream &O) const {
@@ -122,7 +121,7 @@ index 4af7e2c..3e8d4fe 100644
      Decoder >> Literals;
    }
 diff --git a/lib/SPIRV/libSPIRV/SPIRVDecorate.h b/lib/SPIRV/libSPIRV/SPIRVDecorate.h
-index ea816ba..23eca12 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVDecorate.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVDecorate.h
 @@ -407,6 +407,15 @@ public:
@@ -142,7 +141,7 @@ index ea816ba..23eca12 100644
  public:
    // Complete constructor for MergeINTEL decoration
 diff --git a/lib/SPIRV/libSPIRV/SPIRVEnum.h b/lib/SPIRV/libSPIRV/SPIRVEnum.h
-index 043d53b..c6cf08d 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVEnum.h
 @@ -393,6 +393,8 @@ template <> inline void SPIRVMap<Decoration, SPIRVCapVec>::init() {
@@ -155,7 +154,7 @@ index 043d53b..c6cf08d 100644
  
  template <> inline void SPIRVMap<BuiltIn, SPIRVCapVec>::init() {
 diff --git a/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h b/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h
-index aa7c8b4..ecd4ab5 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h
 @@ -422,6 +422,8 @@ inline bool isValid(spv::Decoration V) {
@@ -168,7 +167,7 @@ index aa7c8b4..ecd4ab5 100644
    case DecorationGlobalVariableOffsetINTEL:
    case DecorationFuncParamIOKind:
 diff --git a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
-index 72a7260..3b5ce77 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 @@ -361,6 +361,8 @@ template <> inline void SPIRVMap<Decoration, std::string>::init() {
@@ -181,7 +180,7 @@ index 72a7260..3b5ce77 100644
    add(DecorationGlobalVariableOffsetINTEL, "GlobalVariableOffsetINTEL");
    add(DecorationFuncParamIOKind, "FuncParamIOKind");
 diff --git a/lib/SPIRV/libSPIRV/spirv.hpp b/lib/SPIRV/libSPIRV/spirv.hpp
-index 4950255..aa970f8 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/spirv.hpp
 +++ b/lib/SPIRV/libSPIRV/spirv.hpp
 @@ -476,6 +476,8 @@ enum Decoration {

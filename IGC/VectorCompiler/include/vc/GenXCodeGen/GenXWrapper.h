@@ -183,7 +183,9 @@ public:
 
 llvm::Expected<CompileOutput> Compile(llvm::ArrayRef<char> Input,
                                       const CompileOptions &Opts,
-                                      const ExternalData &ExtData);
+                                      const ExternalData &ExtData,
+                                      llvm::ArrayRef<uint32_t> SpecConstIds,
+                                      llvm::ArrayRef<uint64_t> SpecConstValues);
 
 llvm::Expected<CompileOptions> ParseOptions(llvm::StringRef ApiOptions,
                                             llvm::StringRef InternalOptions);

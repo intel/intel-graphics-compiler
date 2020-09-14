@@ -1,9 +1,8 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: nrudenko <nikita.rudenko@intel.com>
 Date: Thu, 4 Jun 2020 15:20:43 +0300
-Subject: [PATCH 2/3] Add SPIRVDLL and VCExport
+Subject: [PATCH 2/6] Add SPIRVDLL and VCExport
 
-Change-Id: I8a541ad383b18fd1b14e75f431e034dc10db6817
 ---
  lib/SPIRV/CMakeLists.txt | 41 +++++++++++++++++-
  lib/SPIRV/VCExport.cpp   | 89 ++++++++++++++++++++++++++++++++++++++++
@@ -16,7 +15,7 @@ Change-Id: I8a541ad383b18fd1b14e75f431e034dc10db6817
 diff --git a/lib/SPIRV/CMakeLists.txt b/lib/SPIRV/CMakeLists.txt
 old mode 100644
 new mode 100755
-index 92ba12a..5f5b072
+index 0000000..0000000
 --- a/lib/SPIRV/CMakeLists.txt
 +++ b/lib/SPIRV/CMakeLists.txt
 @@ -1,4 +1,5 @@
@@ -84,7 +83,7 @@ index 92ba12a..5f5b072
 +)
 diff --git a/lib/SPIRV/VCExport.cpp b/lib/SPIRV/VCExport.cpp
 new file mode 100755
-index 0000000..e8893e1
+index 0000000..0000000
 --- /dev/null
 +++ b/lib/SPIRV/VCExport.cpp
 @@ -0,0 +1,89 @@
@@ -179,7 +178,7 @@ index 0000000..e8893e1
 +}
 diff --git a/lib/SPIRV/VCExport.h b/lib/SPIRV/VCExport.h
 new file mode 100755
-index 0000000..3b989ed
+index 0000000..0000000
 --- /dev/null
 +++ b/lib/SPIRV/VCExport.h
 @@ -0,0 +1,28 @@

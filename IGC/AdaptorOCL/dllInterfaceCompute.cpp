@@ -1563,7 +1563,12 @@ static std::error_code TranslateBuildVC(
         return getErrorVC(vc::make_error_code(vc::errc::generic_bif_load_fail),
                           pOutputArgs);
     vc::ExternalData ExtData{std::move(OCLGenericBIFModule)};
-    auto ExpOutput = vc::Compile(Input, Opts, ExtData);
+    llvm::ArrayRef<uint32_t> SpecConstIds{pInputArgs->pSpecConstantsIds,
+                                          pInputArgs->SpecConstantsSize};
+    llvm::ArrayRef<uint64_t> SpecConstValues{pInputArgs->pSpecConstantsValues,
+                                             pInputArgs->SpecConstantsSize};
+    auto ExpOutput =
+        vc::Compile(Input, Opts, ExtData, SpecConstIds, SpecConstValues);
     if (!ExpOutput)
         return getErrorVC(ExpOutput.takeError(), pOutputArgs);
     vc::CompileOutput& Res = ExpOutput.get();

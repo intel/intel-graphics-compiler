@@ -85,7 +85,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace llvm;
 
-static Expected<std::vector<char>> translateSPIRVToIR(ArrayRef<char> Input) {
+static Expected<std::vector<char>>
+translateSPIRVToIR(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
+                   ArrayRef<uint64_t> SpecConstValues) {
+  IGC_ASSERT(SpecConstIds.size() == SpecConstValues.size());
 #if defined(_WIN64)
  //TODO: rename to SPIRVDLL64.dll when binary components are fixed
   constexpr char *SpirvLibName = "SPIRVDLL.dll";
@@ -96,7 +99,8 @@ static Expected<std::vector<char>> translateSPIRVToIR(ArrayRef<char> Input) {
 #endif
   constexpr char *SpirvReadVerifyName = "spirv_read_verify_module";
   using SpirvReadVerifyType =
-      int(const char *pIn, size_t InSz,
+      int(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
+          const uint64_t *SpecConstVals, unsigned SpecConstSz,
           void (*OutSaver)(const char *pOut, size_t OutSize, void *OutUserData),
           void *OutUserData,
           void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
@@ -128,17 +132,19 @@ static Expected<std::vector<char>> translateSPIRVToIR(ArrayRef<char> Input) {
   };
 
   std::vector<char> Result;
-  int Status = SpirvReadVerifyFunc(Input.data(), Input.size(), OutSaver,
-                                   &Result, ErrSaver, &ErrMsg);
+  int Status = SpirvReadVerifyFunc(
+      Input.data(), Input.size(), SpecConstIds.data(), SpecConstValues.data(),
+      SpecConstValues.size(), OutSaver, &Result, ErrSaver, &ErrMsg);
   if (Status != 0)
     return make_error<vc::BadSpirvError>(ErrMsg);
 
   return {std::move(Result)};
 }
 
-static Expected<std::unique_ptr<llvm::Module>> getModule(ArrayRef<char> Input,
-                                                         LLVMContext &C) {
-  auto ExpIR = translateSPIRVToIR(Input);
+static Expected<std::unique_ptr<llvm::Module>>
+getModule(ArrayRef<char> Input, LLVMContext &C, ArrayRef<uint32_t> SpecConstIds,
+          ArrayRef<uint64_t> SpecConstValues) {
+  auto ExpIR = translateSPIRVToIR(Input, SpecConstIds, SpecConstValues);
   if (!ExpIR)
     return ExpIR.takeError();
 
@@ -486,7 +492,9 @@ static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
 
 Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
                                         const vc::CompileOptions &Opts,
-                                        const vc::ExternalData &ExtData) {
+                                        const vc::ExternalData &ExtData,
+                                        ArrayRef<uint32_t> SpecConstIds,
+                                        ArrayRef<uint64_t> SpecConstValues) {
   // Environment variable for additional options for debug purposes.
   // This will exit with error if options is incorrect and should not
   // be used to pass meaningful options required for compilation.
@@ -504,7 +512,7 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
   llvm::initializeTarget(Registry);
 
-  auto ExpModule = getModule(Input, Context);
+  auto ExpModule = getModule(Input, Context, SpecConstIds, SpecConstValues);
   if (!ExpModule)
     return ExpModule.takeError();
   Module &M = *ExpModule.get();

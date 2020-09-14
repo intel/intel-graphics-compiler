@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: nrudenko <nikita.rudenko@intel.com>
 Date: Thu, 9 Jul 2020 16:42:01 +0300
-Subject: [PATCH 1/4] Add SIMTCallINTEL decoration of SPV_INTEL_vector_compute
+Subject: [PATCH 1/7] Add SIMTCallINTEL decoration of SPV_INTEL_vector_compute
  extension
 
 Extension is published at https://github.com/intel/llvm/pull/1612
@@ -18,7 +18,7 @@ Extension is published at https://github.com/intel/llvm/pull/1612
  create mode 100755 test/transcoding/decoration_simt_call.ll
 
 diff --git a/lib/SPIRV/SPIRVReader.cpp b/lib/SPIRV/SPIRVReader.cpp
-index b2b636b..67c8812 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/SPIRVReader.cpp
 +++ b/lib/SPIRV/SPIRVReader.cpp
 @@ -3352,6 +3352,10 @@ bool SPIRVToLLVM::transVectorComputeMetadata(SPIRVFunction *BF) {
@@ -33,7 +33,7 @@ index b2b636b..67c8812 100644
         ++I) {
      auto ArgNo = I->getArgNo();
 diff --git a/lib/SPIRV/SPIRVWriter.cpp b/lib/SPIRV/SPIRVWriter.cpp
-index 34c258a..34500b7 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/SPIRVWriter.cpp
 +++ b/lib/SPIRV/SPIRVWriter.cpp
 @@ -557,6 +557,14 @@ void LLVMToSPIRV::transVectorComputeMetadata(Function *F) {
@@ -52,7 +52,7 @@ index 34c258a..34500b7 100644
         ++I) {
      auto ArgNo = I->getArgNo();
 diff --git a/lib/SPIRV/VectorComputeUtil.h b/lib/SPIRV/VectorComputeUtil.h
-index 08d2129..39255ad 100755
+index 0000000..0000000 100755
 --- a/lib/SPIRV/VectorComputeUtil.h
 +++ b/lib/SPIRV/VectorComputeUtil.h
 @@ -116,6 +116,7 @@ const static char VCSLMSize[] = "VCSLMSize";
@@ -64,7 +64,7 @@ index 08d2129..39255ad 100755
  
  ///////////////////////////////////////////////////////////////////////////////
 diff --git a/lib/SPIRV/libSPIRV/SPIRVEnum.h b/lib/SPIRV/libSPIRV/SPIRVEnum.h
-index 0b65093..043d53b 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVEnum.h
 @@ -392,6 +392,7 @@ template <> inline void SPIRVMap<Decoration, SPIRVCapVec>::init() {
@@ -76,7 +76,7 @@ index 0b65093..043d53b 100644
  
  template <> inline void SPIRVMap<BuiltIn, SPIRVCapVec>::init() {
 diff --git a/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h b/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h
-index 09b9b8a..aa7c8b4 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVIsValidEnum.h
 @@ -425,6 +425,7 @@ inline bool isValid(spv::Decoration V) {
@@ -88,7 +88,7 @@ index 09b9b8a..aa7c8b4 100644
    default:
      return false;
 diff --git a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
-index 867c9c1..72a7260 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 +++ b/lib/SPIRV/libSPIRV/SPIRVNameMapEnum.h
 @@ -364,6 +364,7 @@ template <> inline void SPIRVMap<Decoration, std::string>::init() {
@@ -100,7 +100,7 @@ index 867c9c1..72a7260 100644
  SPIRV_DEF_NAMEMAP(Decoration, SPIRVDecorationNameMap)
  
 diff --git a/lib/SPIRV/libSPIRV/spirv.hpp b/lib/SPIRV/libSPIRV/spirv.hpp
-index d0f5f75..4950255 100644
+index 0000000..0000000 100644
 --- a/lib/SPIRV/libSPIRV/spirv.hpp
 +++ b/lib/SPIRV/libSPIRV/spirv.hpp
 @@ -475,6 +475,7 @@ enum Decoration {
@@ -113,7 +113,7 @@ index d0f5f75..4950255 100644
    DecorationVectorComputeVariableINTEL = 5624,
 diff --git a/test/transcoding/decoration_simt_call.ll b/test/transcoding/decoration_simt_call.ll
 new file mode 100755
-index 0000000..0bd687e
+index 0000000..0000000
 --- /dev/null
 +++ b/test/transcoding/decoration_simt_call.ll
 @@ -0,0 +1,35 @@

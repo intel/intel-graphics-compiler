@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: nrudenko <nikita.rudenko@intel.com>
 Date: Thu, 11 Jun 2020 15:58:34 +0300
-Subject: [PATCH 3/3] Remove LLVMSPIRVLib from targets Rename tool llvm-spirv
+Subject: [PATCH 3/6] Remove LLVMSPIRVLib from targets Rename tool llvm-spirv
  to llvm-spirv-vc
 
 ---
@@ -11,7 +11,7 @@ Subject: [PATCH 3/3] Remove LLVMSPIRVLib from targets Rename tool llvm-spirv
  3 files changed, 2 insertions(+), 39 deletions(-)
 
 diff --git a/lib/SPIRV/CMakeLists.txt b/lib/SPIRV/CMakeLists.txt
-index 5f5b072..7a54f61 100755
+index 0000000..0000000 100755
 --- a/lib/SPIRV/CMakeLists.txt
 +++ b/lib/SPIRV/CMakeLists.txt
 @@ -37,18 +37,6 @@ set(SPIRV_SOURCES
@@ -50,7 +50,7 @@ index 5f5b072..7a54f61 100755
    PRIVATE
      ${LLVM_INCLUDE_DIRS}
 diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
-index 3348c03..99c3a63 100644
+index 0000000..0000000 100644
 --- a/test/CMakeLists.txt
 +++ b/test/CMakeLists.txt
 @@ -66,14 +66,6 @@ if(NOT LLVM_SPIRV_BUILD_EXTERNAL)
@@ -79,7 +79,7 @@ index 3348c03..99c3a63 100644
    cmake_policy(POP)
  endif(LLVM_SPIRV_BUILD_EXTERNAL)
 diff --git a/tools/llvm-spirv/CMakeLists.txt b/tools/llvm-spirv/CMakeLists.txt
-index 9aa96d9..3130b92 100644
+index 0000000..0000000 100644
 --- a/tools/llvm-spirv/CMakeLists.txt
 +++ b/tools/llvm-spirv/CMakeLists.txt
 @@ -8,17 +8,13 @@ set(LLVM_LINK_COMPONENTS
