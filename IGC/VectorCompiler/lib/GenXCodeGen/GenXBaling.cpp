@@ -965,6 +965,58 @@ bool GenXBaling::isBalableIndexOr(Value *V)
   return (Offset  <= G4_MAX_ADDR_IMM);
 }
 
+// Returns true if instruction uses same mask as operand. Possible cases:
+// same mask uses as operand of intrinsic directly; mask value is a replicated
+// slice of the mask operand of intrinsic.
+static bool usesSameMaskAsOperand(Instruction *Inst, Value *Mask) {
+  auto *CI = dyn_cast<CallInst>(Inst);
+  if (!CI)
+    return false;
+
+  auto MaskOpIt = llvm::find_if(CI->operands(), [](Use &U) {
+    Value *Operand = U.get();
+    if (auto *VT = dyn_cast<VectorType>(Operand->getType()))
+      return VT->getElementType()->isIntegerTy(1);
+    return false;
+  });
+  // No mask. Nothing to check.
+  if (MaskOpIt == CI->op_end())
+    return false;
+
+  Value *MaskOperand = *MaskOpIt;
+
+  // Easy case, same mask as operand
+  if (MaskOperand == Mask)
+    return true;
+
+  auto *SI = dyn_cast<ShuffleVectorInst>(Mask);
+  if (!SI)
+    return false;
+
+  ShuffleVectorAnalyzer SIAnalyzer(SI);
+  if (!SIAnalyzer.isReplicatedSlice())
+    return false;
+
+  // If shufflevector replicates mask operand then we can bale
+  if (SI->getOperand(0) == MaskOperand) {
+    IGC_ASSERT(!SIAnalyzer.getReplicatedSliceDescriptor().InitialOffset &&
+           "Expected zero initial offset");
+    return true;
+  }
+
+  // If operand is rdpredregion result then check for same initial offset
+  // of shufflevector and rdpredregion's offset
+  if (GenXIntrinsic::getGenXIntrinsicID(MaskOperand) ==
+      GenXIntrinsic::genx_rdpredregion) {
+    auto *PredRdR = cast<CallInst>(MaskOperand);
+    return cast<ConstantInt>(PredRdR->getArgOperand(1))->getZExtValue() ==
+           SIAnalyzer.getReplicatedSliceDescriptor().InitialOffset;
+  }
+
+  return false;
+}
+
+
 /***********************************************************************
  * static isBalableNewValueIntoWrr : check whether the new val operand can
  *  be baled into wrr instruction
@@ -1007,7 +1059,8 @@ bool GenXBaling::isBalableNewValueIntoWrr(Value *V, const Region &WrrR,
     // supports a predicate mask.
     GenXIntrinsicInfo II(ValIntrinID);
 
-    if (WrrR.Mask == 0 || II.getPredAllowed()) {
+    if (WrrR.Mask == 0 || II.getPredAllowed() ||
+        usesSameMaskAsOperand(Inst, WrrR.Mask)) {
       // Check that its return value is suitable for baling.
       GenXIntrinsicInfo::ArgInfo AI = II.getRetInfo();
       switch (AI.getCategory()) {

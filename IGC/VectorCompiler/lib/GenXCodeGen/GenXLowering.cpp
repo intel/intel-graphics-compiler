@@ -196,6 +196,7 @@ private:
   bool lowerLoadStore(Instruction *Inst);
   bool lowerMul64(Instruction *Inst);
   bool lowerTrap(CallInst *CI);
+  bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
 } // end namespace
@@ -390,6 +391,20 @@ static Value *generatePredicateForLoadWrregion(
   return Res;
 }
 
+static Value *generatePredicatedWrregion(Value *OldVal, Value *NewVal,
+                                         Value *Pred, unsigned Offset,
+                                         Instruction *InsertBefore,
+                                         const llvm::Twine &Name = "") {
+  Type *NewValType = NewVal->getType();
+
+  Region WrR(NewValType);
+  WrR.Mask = Pred;
+  WrR.Offset = Offset;
+  return WrR.createWrRegion(OldVal, NewVal, Name, InsertBefore,
+                            InsertBefore->getDebugLoc());
+}
+
+
 // Generate partial write for result of splitted 1-channel load instruction.
 // Initially we could have following sequence for illegal load (on gather_scaled example):
 //   res = gather_scaled <32>
@@ -581,6 +596,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   unsigned AtomicSrcIdx = NONEED;
   bool IsTyped = false;
   int AtomicNumSrc = (-1); // -1 means not-an-atomic
+  unsigned NumVectorElements = 1;
 
   switch (IID) {
   case GenXIntrinsic::genx_typed_atomic_add:
@@ -760,7 +776,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   IGC_ASSERT((Width % TargetWidth) == 0);
   auto NumSplits = Width / TargetWidth;
   IGC_ASSERT(NumSplits == 2 || NumSplits == 4);
-  unsigned NumChannels = 1;
+  unsigned NumChannels = NumVectorElements;
   if (MaskIdx != NONEED) {
     NumChannels = (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))
                       ->getZExtValue();
@@ -933,6 +949,28 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
 
 
 /***********************************************************************
+ * generatePrecicatedWrrForNewLoad : Generate predicated wrr if result
+ *                                   of a load that needs no splits
+ * Return: true if predicated wrr was generated
+ */
+
+bool GenXLowering::generatePredicatedWrrForNewLoad(CallInst *CI) {
+  IGC_ASSERT(isNewLoadInst(CI) && "New load expected");
+  // Generate predicated wrr if result of a load is predicated with a select
+  if (auto *SI = getLoadSelect(CI)) {
+    Value *NewResult = UndefValue::get(CI->getType());
+    Value *LoadPred = SI->getCondition();
+    NewResult =
+        generatePredicatedWrregion(NewResult, CI, LoadPred, 0 /* Offset */,
+                                   SI->getNextNode(), "lowerpred");
+    SI->replaceAllUsesWith(NewResult);
+    ToErase.push_back(SI);
+    return true;
+  }
+  return false;
+}
+
+/***********************************************************************
  * processInst : process one instruction in GenXLowering
  *
  * Return:  whether any change was made, and thus the current instruction
@@ -988,6 +1026,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
        // split gather/scatter/atomic into the width legal to the target
     if (splitGatherScatter(CI, IntrinsicID))
       return true;
+    else if (isNewLoadInst(CI))
+      return generatePredicatedWrrForNewLoad(CI);
+
     switch (IntrinsicID) {
     case GenXIntrinsic::genx_rdregioni:
     case GenXIntrinsic::genx_rdregionf:
