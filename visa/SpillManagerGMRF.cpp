@@ -530,7 +530,7 @@ SpillManagerGRF::calculateSpillDisp (
     // Locate the blocked locations calculated from the interfering
     // spilled live ranges and put them into a list in ascending order.
 
-    typedef std::list < G4_RegVar * > LocList;
+    typedef std::deque < G4_RegVar * > LocList;
     LocList locList;
     unsigned lrId =
         (regVar->getId () >= varIdCount_)?
