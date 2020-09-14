@@ -67,6 +67,9 @@ struct GenXBackendOptions {
   // Non-owning pointer to abstract shader dumper for debug dumps.
   vc::ShaderDumper *Dumper = nullptr;
 
+  // Whether to enable finalizer dumps.
+  bool EnableAsmDumps;
+
   GenXBackendOptions();
 };
 
@@ -114,6 +117,8 @@ public:
                        "Attempt to query not installed dumper");
     return *Options.Dumper;
   }
+
+  bool asmDumpsEnabled() const { return Options.EnableAsmDumps; }
 };
 } // namespace llvm
 

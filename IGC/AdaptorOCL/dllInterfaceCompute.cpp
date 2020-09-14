@@ -1438,6 +1438,7 @@ static void adjustDumpOptions(vc::CompileOptions& Opts)
     {
         Opts.DumpIR = true;
         Opts.DumpIsa = true;
+        Opts.DumpAsm = true;
     }
 }
 

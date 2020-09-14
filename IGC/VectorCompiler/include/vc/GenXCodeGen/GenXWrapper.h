@@ -162,6 +162,7 @@ struct CompileOptions {
   BinaryKind Binary = BinaryKind::OpenCL;
   bool DumpIsa = false;
   bool DumpIR = false;
+  bool DumpAsm = false;
   bool TimePasses = false;
 };
 

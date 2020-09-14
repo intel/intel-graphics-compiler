@@ -89,6 +89,7 @@ namespace llvm {
     // Visa option parser contains code that just stores c-strings as
     // pointers without copying. Store all strings here.
     BumpPtrAllocator ArgStorage;
+    bool AsmDumpsEnabled = false;
 
     VISABuilder *CisaBuilder = nullptr;
     void InitCISABuilder();

@@ -115,6 +115,10 @@ def dump_llvm_ir : Flag<["-"], "dump-llvm-ir">,
   HelpText<"Dump llvm IR after SPIRV reading, optimizations and codegen">;
 def dump_isa_binary : Flag<["-"], "dump-isa-binary">,
   HelpText<"Dump isa binary after finalization pass">;
+def dump_asm : Flag<["-"], "dump-asm">,
+  HelpText<"Dump assembly (visaasm, asm, etc.)">;
+def mdump_asm : Flag<["-"], "mdump_asm">,
+  Alias<dump_asm>, HelpText<"Alias for -dump-asm">;
 
 def help : Flag<["-"], "help">,
   HelpText<"Display available API options">;

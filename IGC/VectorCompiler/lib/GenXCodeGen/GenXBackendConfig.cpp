@@ -46,6 +46,11 @@ static cl::opt<unsigned> StackMemSizeOpt("stack-mem-size",
                                          cl::desc("Available space for stack"),
                                          cl::init(8 * 1024));
 
+static cl::opt<bool>
+    EnableAsmDumpsOpt("genx-enable-asm-dumps",
+                      cl::desc("Enable finalizer assembly dumps"),
+                      cl::init(false));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -54,7 +59,8 @@ static cl::opt<unsigned> StackMemSizeOpt("stack-mem-size",
 char GenXBackendConfig::ID = 0;
 
 GenXBackendOptions::GenXBackendOptions()
-    : DumpRegAlloc(DumpRegAllocOpt), StackSurfaceMaxSize(StackMemSizeOpt) {}
+    : DumpRegAlloc(DumpRegAllocOpt), StackSurfaceMaxSize(StackMemSizeOpt),
+      EnableAsmDumps(EnableAsmDumpsOpt) {}
 
 GenXBackendConfig::GenXBackendConfig() : ImmutablePass(ID) {
   initializeGenXBackendConfigPass(*PassRegistry::getPassRegistry());

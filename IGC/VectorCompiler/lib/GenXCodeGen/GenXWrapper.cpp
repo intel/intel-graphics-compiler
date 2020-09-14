@@ -349,6 +349,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   GenXBackendOptions BackendOpts;
   if (Opts.StackMemSize)
     BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
+  BackendOpts.EnableAsmDumps = Opts.DumpAsm;
   BackendOpts.Dumper = Opts.Dumper.get();
   return BackendOpts;
 }
@@ -649,6 +650,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.DumpIsa = true;
   if (InternalOptions.hasArg(vc::options::OPT_dump_llvm_ir))
     Opts.DumpIR = true;
+  if (InternalOptions.hasArg(vc::options::OPT_dump_asm))
+    Opts.DumpAsm = true;
   if (InternalOptions.hasArg(vc::options::OPT_ftime_report))
     Opts.TimePasses = true;
 

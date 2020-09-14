@@ -32,11 +32,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEBUG_TYPE "GENX_MODULE"
 
 #include "GenXModule.h"
+
 #include "FunctionGroup.h"
 #include "GenX.h"
+#include "GenXBackendConfig.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXWATable.h"
+
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/Function.h"
@@ -53,6 +56,7 @@ char GenXModule::ID = 0;
 INITIALIZE_PASS_BEGIN(GenXModule, "GenXModule", "GenXModule", false,
                       true /*analysis*/)
 INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_DEPENDENCY(GenXWATable)
 INITIALIZE_PASS_END(GenXModule, "GenXModule", "GenXModule", false,
                     true /*analysis*/)
@@ -64,6 +68,7 @@ ModulePass *llvm::createGenXModulePass() {
 
 void GenXModule::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<FunctionGroupAnalysis>();
+  AU.addRequired<GenXBackendConfig>();
   AU.addRequired<GenXWATable>();
   AU.addRequired<TargetPassConfig>();
   AU.setPreservesAll();
@@ -98,6 +103,11 @@ bool GenXModule::runOnModule(Module &M) {
             .getGenXSubtarget();
   WaTable = getAnalysis<GenXWATable>().getWATable();
   Ctx = &M.getContext();
+
+  // Remember required config variables here. Getting other analysis
+  // after runOnModule looks dangerous.
+  const auto &BC = getAnalysis<GenXBackendConfig>();
+  AsmDumpsEnabled = BC.asmDumpsEnabled();
 
   InlineAsm = CheckForInlineAsm(M);
 
