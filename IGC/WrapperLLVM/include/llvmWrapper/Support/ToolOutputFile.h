@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_SUPPORT_TOOLOUTPUTFILE_H
 #define IGCLLVM_SUPPORT_TOOLOUTPUTFILE_H
 
-#include <llvm/Support/ToolOutputFile.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Support/ToolOutputFile.h"
 
 namespace IGCLLVM
 {

@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_ANALYSIS_TARGETLIBRARYINFO_H
 #define IGCLLVM_ANALYSIS_TARGETLIBRARYINFO_H
 
-#include <llvm/Analysis/TargetLibraryInfo.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 
 #if LLVM_VERSION_MAJOR >= 10
 #define getTLI() getTLI(F)

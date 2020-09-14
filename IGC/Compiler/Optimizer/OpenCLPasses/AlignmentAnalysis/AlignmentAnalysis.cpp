@@ -28,10 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/InstIterator.h>
-#include <llvm/Support/MathExtras.h>
-#include <llvm/IR/GetElementPtrTypeIterator.h>
-#include <llvmWrapper/Support/Alignment.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/Support/MathExtras.h"
+#include "llvm/IR/GetElementPtrTypeIterator.h"
+#include "llvmWrapper/Support/Alignment.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <deque>
 #include <set>

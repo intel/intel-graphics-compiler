@@ -27,8 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_ARGUMENT_H
 #define IGCLLVM_IR_ARGUMENT_H
 
+#include "llvm/Config/llvm-config.h"
 #include "Attributes.h"
-#include <llvm/IR/Argument.h>
+#include "llvm/IR/Argument.h"
 
 namespace IGCLLVM
 {

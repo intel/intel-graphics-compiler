@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_CALLSITE_H
 #define IGCLLVM_IR_CALLSITE_H
 
+#include "llvm/Config/llvm-config.h"
 #if LLVM_VERSION_MAJOR <= 10
 #include "llvm/IR/CallSite.h"
 #else

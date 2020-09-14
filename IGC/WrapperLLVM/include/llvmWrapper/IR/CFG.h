@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_CFG_H
 #define IGCLLVM_IR_CFG_H
 
-#include <llvm/IR/CFG.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/CFG.h"
 
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR >= 11

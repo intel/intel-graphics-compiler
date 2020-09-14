@@ -27,8 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_PASS_TIMING_INFO_H
 #define IGCLLVM_PASS_TIMING_INFO_H
 
+#include "llvm/Config/llvm-config.h"
 #if LLVM_VERSION_MAJOR > 7
-#include <llvm/IR/PassTimingInfo.h>
+#include "llvm/IR/PassTimingInfo.h"
 #endif
 
 #endif

@@ -27,11 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_SUPPORT_ALIGNMENT_H
 #define IGCLLVM_SUPPORT_ALIGNMENT_H
 
-#include <llvm/Config/llvm-config.h>
 #include <cstdint>
-
+#include "llvm/Config/llvm-config.h"
 #if LLVM_VERSION_MAJOR >= 10
-#include <llvm/Support/Alignment.h>
+#include "llvm/Support/Alignment.h"
 using namespace llvm;
 #endif
 

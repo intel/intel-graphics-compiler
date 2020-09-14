@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_ANALYSIS_INLINECOST_H
 #define IGCLLVM_ANALYSIS_INLINECOST_H
 
-#include <llvm/Analysis/InlineCost.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Analysis/InlineCost.h"
 
 namespace IGCLLVM
 {

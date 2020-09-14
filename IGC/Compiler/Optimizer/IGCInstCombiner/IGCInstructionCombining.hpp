@@ -23,10 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #ifndef IGC_INSTCOMBINE_INSTCOMBINE_H
 #define IGC_INSTCOMBINE_INSTCOMBINE_H
 
-#include <llvm/PassRegistry.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/PassRegistry.h"
 #include "llvm/Transforms/InstCombine/InstCombineWorklist.h"
 #include "llvm/IR/PassManager.h"
 #include "Compiler/InitializePasses.h"

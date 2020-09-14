@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Debug.hpp"
 
 #include "IGC/common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
 #if LLVM_VERSION_MAJOR >= 10
 #include "llvm/Support/TypeSize.h"
 #endif

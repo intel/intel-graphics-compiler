@@ -27,9 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_TARGET_TARGETMACHINE_H
 #define IGCLLVM_TARGET_TARGETMACHINE_H
 
-#include <llvm/CodeGen/MachineModuleInfo.h>
-#include <llvm/Support/CodeGen.h>
-#include <llvm/Target/TargetMachine.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/CodeGen/MachineModuleInfo.h"
+#include "llvm/Support/CodeGen.h"
+#include "llvm/Target/TargetMachine.h"
 
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR < 10

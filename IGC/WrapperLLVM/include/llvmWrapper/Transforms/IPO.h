@@ -27,8 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_TRANSFORMS_UTILS_INSTSIMPLIFYPASS_H
 #define IGCLLVM_TRANSFORMS_UTILS_INSTSIMPLIFYPASS_H
 
+#include "llvm/Config/llvm-config.h"
+
 #if LLVM_VERSION_MAJOR >= 7
-#include <llvm/Transforms/IPO.h>
+#include "llvm/Transforms/IPO.h"
 #endif
 
 #endif

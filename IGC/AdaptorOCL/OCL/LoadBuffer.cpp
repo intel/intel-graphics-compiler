@@ -27,8 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/OCL/LoadBuffer.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Config/llvm-config.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Support/MemoryBuffer.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <cstdlib>

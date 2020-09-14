@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "../headers/LoadBuffer.h"
-#include <llvm/Config/llvm-config.h>
+#include "llvm/Config/llvm-config.h"
 #include <cstdlib>
 #include <stdio.h>
 #include <fstream>

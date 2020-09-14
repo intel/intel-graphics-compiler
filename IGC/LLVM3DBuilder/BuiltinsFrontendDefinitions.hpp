@@ -24,11 +24,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#ifndef BUILTINS_FRONTEND_DEFINITIONS_HPP
+#define BUILTINS_FRONTEND_DEFINITIONS_HPP
+
 #include "common/debug/DebugMacros.hpp" // VALUE_NAME() definition.
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/AsmParser/Parser.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include <llvm/Support/Casting.h>
+#include "llvm/Support/Casting.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -5307,3 +5311,5 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateCPSActualCo
 }
 
 
+
+#endif // BUILTINS_FRONTEND_DEFINITIONS_HPP

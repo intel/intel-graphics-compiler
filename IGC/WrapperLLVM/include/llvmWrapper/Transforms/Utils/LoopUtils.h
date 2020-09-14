@@ -27,7 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_TRANSFORMS_UTILS_LOOPUTILS_H
 #define IGCLLVM_TRANSFORMS_UTILS_LOOPUTILS_H
 
-#include <llvm/Transforms/Utils/LoopUtils.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Transforms/Utils/LoopUtils.h"
+
 namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR <= 8

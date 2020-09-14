@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_BINARYFORMAT_DWARF_H
 #define IGCLLVM_BINARYFORMAT_DWARF_H
 
+#include "llvm/Config/llvm-config.h"
 #if LLVM_VERSION_MAJOR == 4
 #include "llvm/Support/Dwarf.h"
 #elif LLVM_VERSION_MAJOR >= 7

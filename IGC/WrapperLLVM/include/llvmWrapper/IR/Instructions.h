@@ -27,9 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_INSTRUCTIONS_H
 #define IGCLLVM_IR_INSTRUCTIONS_H
 
-#include <llvm/IR/Instructions.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/Instructions.h"
 #if LLVM_VERSION_MAJOR <= 7
-#include <llvm/Support/Casting.h>
+#include "llvm/Support/Casting.h"
 #endif
 
 namespace IGCLLVM
@@ -88,15 +89,15 @@ namespace IGCLLVM
         return CI.getCalledOperand();
 #endif
     }
-	
-	inline llvm::Value* getCalledValue(llvm::CallInst* CI)
-	{ 
+
+    inline llvm::Value* getCalledValue(llvm::CallInst* CI)
+    {
 #if LLVM_VERSION_MAJOR <= 10
-		return CI->getCalledValue();
+        return CI->getCalledValue();
 #else
-		return CI->getCalledOperand();
+        return CI->getCalledOperand();
 #endif
-	}
+    }
 
     inline const llvm::Value* getCalledValue(const llvm::CallInst* CI)
     {

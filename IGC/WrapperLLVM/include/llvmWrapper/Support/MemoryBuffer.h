@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_SUPPORT_MEMORYBUFFER_H
 #define IGCLLVM_SUPPORT_MEMORYBUFFER_H
 
-#include <llvm/Support/MemoryBuffer.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Support/MemoryBuffer.h"
 
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR < 9

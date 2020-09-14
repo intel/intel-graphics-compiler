@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_DERIVEDTYPES_H
 #define IGCLLVM_IR_DERIVEDTYPES_H
 
-#include <llvm/IR/DerivedTypes.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/DerivedTypes.h"
 
 namespace IGCLLVM
 {

@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_DEBUGINFOMETADATA_H
 #define IGCLLVM_IR_DEBUGINFOMETADATA_H
 
-#include <llvm/IR/DebugInfoMetadata.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 
 namespace IGCLLVM
 {

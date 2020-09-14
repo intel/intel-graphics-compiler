@@ -23,12 +23,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#pragma once
+
+#ifndef IGC_CONSTANT_FOLDER_H
+#define IGC_CONSTANT_FOLDER_H
+
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/ConstantFolder.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/ConstantFolder.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
-
 
 namespace IGC
 {
@@ -314,3 +317,5 @@ private:
 };
 
 }
+
+#endif // IGC_CONSTANT_FOLDER_H

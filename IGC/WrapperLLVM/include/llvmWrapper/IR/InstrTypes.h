@@ -27,9 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_INSTRTYPES_H
 #define IGCLLVM_IR_INSTRTYPES_H
 
-#include <llvm/IR/InstrTypes.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/InstrTypes.h"
 #if LLVM_VERSION_MAJOR >= 8
-#include <llvm/IR/PatternMatch.h>
+#include "llvm/IR/PatternMatch.h"
 #endif
 
 namespace IGCLLVM

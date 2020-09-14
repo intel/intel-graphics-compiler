@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "llvm/Config/llvm-config.h"
 #include "FunctionUpgrader.h"
 #include "IGCIRBuilder.h"
 #include "Probe/Assertion.h"

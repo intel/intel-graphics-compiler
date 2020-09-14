@@ -27,8 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_TRANSFORMS_UTILS_H
 #define IGCLLVM_TRANSFORMS_UTILS_H
 
+#include "llvm/Config/llvm-config.h"
+
 #if LLVM_VERSION_MAJOR >= 7
-#include <llvm/Transforms/Utils.h>
+#include "llvm/Transforms/Utils.h"
 #endif
 
 #endif

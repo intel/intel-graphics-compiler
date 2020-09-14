@@ -24,8 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "llvm/Config/llvm-config.h"
 #include "spp_g8.h"
-
 #include "../../../Compiler/CodeGenPublic.h"
 #include "program_debug_data.h"
 #include "../../../common/SystemThread.h"

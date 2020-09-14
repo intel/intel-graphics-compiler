@@ -83,6 +83,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/IGCConstantFolder.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
 #include "WrapperLLVM/Utils.h"
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/IR/IRBuilder.h>
@@ -122,19 +123,6 @@ CustomSafeOptPass::CustomSafeOptPass() : FunctionPass(ID)
 {
     initializeCustomSafeOptPassPass(*PassRegistry::getPassRegistry());
 }
-
-#if 0
-// In some cases we link LLVM with NDEBUG set with IGC without NDEBUG set, this causes this function to not be missing during linking
-// Once we switch to CMAKE this code can be removed
-#if (defined(_INTERNAL) && defined(NDEBUG)) && ( !defined( LLVM_ENABLE_THREADS ) || LLVM_ENABLE_THREADS == 0 || ( defined( IGC_CMAKE ) && defined( NDEBUG ) ) || ( !defined( IGC_CMAKE ) && !defined( NDEBUG ) ) )
-void AnnotateHappensBefore(const char* file, int line,
-    const volatile void* cv) {}
-void AnnotateHappensAfter(const char* file, int line,
-    const volatile void* cv) {}
-void AnnotateIgnoreWritesBegin(const char* file, int line) {}
-void AnnotateIgnoreWritesEnd(const char* file, int line) {}
-#endif
-#endif
 
 #define DEBUG_TYPE "CustomSafeOptPass"
 

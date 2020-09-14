@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_IRBUILDER_H
 #define IGCLLVM_IR_IRBUILDER_H
 
-#include <llvm/IR/IRBuilder.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/IRBuilder.h"
 
 namespace IGCLLVM
 {
@@ -36,7 +37,7 @@ namespace IGCLLVM
 #define InserterTyDef() Inserter
 #else
 #define InserterTyDef() InserterTy
-#endif 
+#endif
 
 
 #if LLVM_VERSION_MAJOR == 4

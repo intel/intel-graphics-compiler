@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_ADT_STLEXTRAS_H
 #define IGCLLVM_ADT_STLEXTRAS_H
 
-#include <llvm/ADT/STLExtras.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/ADT/STLExtras.h"
 #if LLVM_VERSION_MAJOR > 9
 #include <memory>
 #endif

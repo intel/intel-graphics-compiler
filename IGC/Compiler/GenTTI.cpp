@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-
+#include "llvm/Config/llvm-config.h"
 #include "WrapperLLVM/Utils.h"
 
 #include "llvm/Analysis/CodeMetrics.h"

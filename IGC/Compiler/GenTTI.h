@@ -23,8 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
+#pragma once
+
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/TargetTransformInfoImpl.h"
 #include "common/LLVMWarningsPop.hpp"

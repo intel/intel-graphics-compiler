@@ -124,6 +124,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/MemStats.h"
 #include <iStdLib/utility.h>
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Verifier.h>

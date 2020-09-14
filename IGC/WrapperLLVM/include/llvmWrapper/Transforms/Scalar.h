@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_TRANSFORMS_SCALAR_H
 #define IGCLLVM_TRANSFORMS_SCALAR_H
 
-#include <llvm/Transforms/Scalar.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Transforms/Scalar.h"
 
 namespace IGCLLVM
 {

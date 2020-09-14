@@ -24,13 +24,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-// vim:ts=2:sw=2:et:
-
 #ifndef LEGALIZER_INSTCHECKER_H
 #define LEGALIZER_INSTCHECKER_H
 
 #include "TypeLegalizer.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/IR/InstVisitor.h"
 #include "common/LLVMWarningsPop.hpp"
 

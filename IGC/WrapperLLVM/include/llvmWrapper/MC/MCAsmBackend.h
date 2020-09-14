@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_MC_MCASMBACKEND_H
 #define IGCLLVM_MC_MCASMBACKEND_H
 
+#include "llvm/Config/llvm-config.h"
 #include "llvm/MC/MCAsmBackend.h"
 
 namespace IGCLLVM

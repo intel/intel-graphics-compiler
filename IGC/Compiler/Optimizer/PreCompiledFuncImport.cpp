@@ -25,19 +25,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/Support/ScaledNumber.h>
-#include <llvm/ADT/SmallSet.h>
-#include <llvm/IR/Module.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Support/ScaledNumber.h"
+#include "llvm/ADT/SmallSet.h"
+#include "llvm/IR/Module.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
-#include <llvm/IR/InstIterator.h>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/GenericDomTree.h>
-#include <llvm/Bitcode/BitcodeReader.h>
-#include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/Linker/Linker.h>
-#include <llvm/Support/SourceMgr.h>
-#include <llvm/IRReader/IRReader.h>
+#include "llvm/IR/InstIterator.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/GenericDomTree.h"
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Linker/Linker.h"
+#include "llvm/Support/SourceMgr.h"
+#include "llvm/IRReader/IRReader.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"

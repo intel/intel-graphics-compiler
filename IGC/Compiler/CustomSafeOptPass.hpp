@@ -23,17 +23,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "common/MDFrameWork.h"
-
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/Pass.h>
-#include <llvm/IR/InstVisitor.h>
-#include <llvm/Analysis/TargetLibraryInfo.h>
-#include <llvm/Analysis/LoopPass.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/ConstantFolder.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Pass.h"
+#include "llvm/IR/InstVisitor.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Analysis/LoopPass.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/ConstantFolder.h"
 #include "common/LLVMWarningsPop.hpp"
 
 namespace llvm

@@ -27,8 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_INSTVISITOR_H
 #define IGCLLVM_IR_INSTVISITOR_H
 
-#include <llvm/IR/InstVisitor.h>
-
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/InstVisitor.h"
 
 #if LLVM_VERSION_MAJOR == 8
 

@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/Analysis/InlineCost.h"

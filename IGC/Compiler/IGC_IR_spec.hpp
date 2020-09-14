@@ -30,6 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // and VerificationPass.cpp.
 //
 
+#include "llvm/Config/llvm-config.h"
+
 //=======================================================================================
 // TYPES
 

@@ -25,8 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/Support/ScaledNumber.h>
-#include <llvm/Support/CommandLine.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Support/ScaledNumber.h"
+#include "llvm/Support/CommandLine.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <cstring>
@@ -901,7 +902,7 @@ bool TranslateBuild(
     const IGC::CPlatform& IGCPlatform,
     float profilingTimerResolution)
 {
-#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED) 
+#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
     if (pInputArgs->pOptions) {
         std::error_code Status =
             TranslateBuildVC(pInputArgs, pOutputArgs, inputDataFormatTemp,

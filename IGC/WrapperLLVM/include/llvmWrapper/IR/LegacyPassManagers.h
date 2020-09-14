@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_LEGACY_PASS_MANAGERS_H
 #define IGCLLVM_LEGACY_PASS_MANAGERS_H
 
-#include <llvm/IR/LegacyPassManagers.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/LegacyPassManagers.h"
 
 namespace IGCLLVM
 {

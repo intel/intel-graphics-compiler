@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_SUPPORT_MATHEXTRAS_H
 #define IGCLLVM_SUPPORT_MATHEXTRAS_H
 
-#include <llvm/Support/MathExtras.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Support/MathExtras.h"
 
 namespace IGCLLVM
 {

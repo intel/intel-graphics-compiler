@@ -32,11 +32,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/ADT/PostOrderIterator.h>
-#include <llvm/Analysis/LoopInfo.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/Pass.h>
-#include <llvm/Transforms/Scalar.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/Pass.h"
+#include "llvm/Transforms/Scalar.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"

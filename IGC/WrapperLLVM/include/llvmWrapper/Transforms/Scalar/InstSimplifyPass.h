@@ -27,10 +27,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_TRANSFORMS_UTILS_INSTSIMPLIFYPASS_H
 #define IGCLLVM_TRANSFORMS_UTILS_INSTSIMPLIFYPASS_H
 
+#include "llvm/Config/llvm-config.h"
+
 #if LLVM_VERSION_MAJOR == 4
-#include <llvm/Transforms/Scalar.h>
+#include "llvm/Transforms/Scalar.h"
 #elif LLVM_VERSION_MAJOR >= 7
-#include <llvm/Transforms/Scalar/InstSimplifyPass.h>
+#include "llvm/Transforms/Scalar/InstSimplifyPass.h"
 #endif
 
 namespace IGCLLVM

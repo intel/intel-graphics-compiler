@@ -27,8 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_SUPPORT_KNOWNBITS_H
 #define IGCLLVM_SUPPORT_KNOWNBITS_H
 
+#include "llvm/Config/llvm-config.h"
+
 #if LLVM_VERSION_MAJOR >= 7
-#include <llvm/Support/KnownBits.h>
+#include "llvm/Support/KnownBits.h"
 #endif
 
 #endif

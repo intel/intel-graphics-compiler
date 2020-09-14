@@ -27,8 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_BITCODE_BITCODEWRITER_H
 #define IGCLLVM_BITCODE_BITCODEWRITER_H
 
-#include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvmWrapper/IR/Module.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvmWrapper/IR/Module.h"
 
 namespace IGCLLVM
 {

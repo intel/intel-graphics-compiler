@@ -27,8 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_IR_DIBUILDER_H
 #define IGCLLVM_IR_DIBUILDER_H
 
-#include <llvm/IR/DIBuilder.h>
-#include <llvmWrapper/IR/DebugInfoMetadata.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/DIBuilder.h"
+#include "llvmWrapper/IR/DebugInfoMetadata.h"
 
 namespace IGCLLVM
 {

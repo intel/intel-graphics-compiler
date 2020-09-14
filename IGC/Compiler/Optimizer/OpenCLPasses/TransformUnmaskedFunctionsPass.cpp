@@ -34,11 +34,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Function.h>
-#include <llvm/ADT/SetVector.h>
-#include <llvmWrapper/IR/Constant.h>
-#include <llvmWrapper/Transforms/Utils/Cloning.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Function.h"
+#include "llvm/ADT/SetVector.h"
+#include "llvmWrapper/IR/Constant.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;

@@ -30,17 +30,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorCommon/customApi.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/DiagnosticInfo.h>
-#include <llvm/IR/DiagnosticPrinter.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Value.h>
-#include <llvm/IR/Module.h>
-#include <llvm/ADT/StringExtras.h>
-#include <llvm/Support/ErrorHandling.h>
-#include <llvm/Support/Debug.h>
-#include <llvm/Support/FormattedStream.h>
-#include <llvm/Support/ManagedStatic.h>
-#include <llvm/Support/SourceMgr.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/DiagnosticInfo.h"
+#include "llvm/IR/DiagnosticPrinter.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Value.h"
+#include "llvm/IR/Module.h"
+#include "llvm/ADT/StringExtras.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/ManagedStatic.h"
+#include "llvm/Support/SourceMgr.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #if defined( _WIN32 ) || defined( _WIN64 )

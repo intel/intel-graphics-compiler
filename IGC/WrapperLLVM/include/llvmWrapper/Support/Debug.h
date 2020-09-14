@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_SUPPORT_DEBUG_H
 #define IGCLLVM_SUPPORT_DEBUG_H
 
-#include <llvm/Support/Debug.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Support/Debug.h"
 
 #if LLVM_VERSION_MAJOR == 4
 #define LLVM_DEBUG(X) DEBUG(X)

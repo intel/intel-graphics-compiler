@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_ASMPARSER_PARSER_H
 #define IGCLLVM_ASMPARSER_PARSER_H
 
-#include <llvm/AsmParser/Parser.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/AsmParser/Parser.h"
 
 namespace IGCLLVM
 {

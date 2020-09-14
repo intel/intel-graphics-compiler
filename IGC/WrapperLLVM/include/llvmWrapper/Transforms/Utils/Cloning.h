@@ -27,7 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGCLLVM_TRANSFORMS_UTILS_CLONING_H
 #define IGCLLVM_TRANSFORMS_UTILS_CLONING_H
 
-#include <llvm/Transforms/Utils/Cloning.h>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/Transforms/Utils/Cloning.h"
+
 namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
