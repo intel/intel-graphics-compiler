@@ -703,6 +703,10 @@ ShuffleVectorAnalyzer::SplatInfo ShuffleVectorAnalyzer::getAsSplat()
   int ShuffleIdx = nEltSplatMask(MaskAsInts);
   if (ShuffleIdx == UndefMaskElem)
     return SplatInfo(nullptr, 0);
+
+  // We have position of shuffleindex as output, turn it to real index
+  ShuffleIdx = MaskAsInts[ShuffleIdx];
+
   // The mask is a splat. Work out which element of which input vector
   // it refers to.
   int InVec1NumElements =
