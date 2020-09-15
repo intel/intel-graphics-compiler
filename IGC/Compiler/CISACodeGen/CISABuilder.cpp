@@ -1725,55 +1725,24 @@ namespace IGC
         }
         else
         {
-            unsigned numParts = 0;
-            if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
-                NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
-                NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true) ||
-                NeedSplitting(src2, m_encoderState.m_srcOperand[2], numParts, true) ||
-                NeedSplitting(src3, m_encoderState.m_srcOperand[3], numParts, true)) {
+            VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
+            VISA_VectorOpnd* srcOpnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
+            VISA_VectorOpnd* srcOpnd2 = GetSourceOperand(src2, m_encoderState.m_srcOperand[2]);
+            VISA_VectorOpnd* srcOpnd3 = GetSourceOperand(src3, m_encoderState.m_srcOperand[3]);
+            VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
+            VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
 
-                VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-                VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-                VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
-
-                for (unsigned thePart = 0; thePart != numParts; ++thePart) {
-                    SModifier newDstMod = SplitVariable(fromExecSize, toExecSize, thePart, dst, m_encoderState.m_dstOperand);
-                    SModifier newSrc0Mod = SplitVariable(fromExecSize, toExecSize, thePart, src0, m_encoderState.m_srcOperand[0], true);
-                    SModifier newSrc1Mod = SplitVariable(fromExecSize, toExecSize, thePart, src1, m_encoderState.m_srcOperand[1], true);
-                    SModifier newSrc2Mod = SplitVariable(fromExecSize, toExecSize, thePart, src2, m_encoderState.m_srcOperand[2], true);
-                    SModifier newSrc3Mod = SplitVariable(fromExecSize, toExecSize, thePart, src3, m_encoderState.m_srcOperand[3], true);
-                    VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, newDstMod);
-                    VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src0, newSrc0Mod);
-                    VISA_VectorOpnd* srcOpnd1 = GetSourceOperand(src1, newSrc1Mod);
-                    VISA_VectorOpnd* srcOpnd2 = GetSourceOperand(src2, newSrc2Mod);
-                    VISA_VectorOpnd* srcOpnd3 = GetSourceOperand(src3, newSrc3Mod);
-                    VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-                    V(vKernel->AppendVISALogicOrShiftInst(opcode, predOpnd, IsSat(),
-                        SplitEMask(fromExecSize, toExecSize, thePart, execMask),
-                        toExecSize,
-                        dstOpnd, srcOpnd0, srcOpnd1, srcOpnd2, srcOpnd3));
-                }
-            }
-            else {
-                VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
-                VISA_VectorOpnd* srcOpnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
-                VISA_VectorOpnd* srcOpnd2 = GetSourceOperand(src2, m_encoderState.m_srcOperand[2]);
-                VISA_VectorOpnd* srcOpnd3 = GetSourceOperand(src3, m_encoderState.m_srcOperand[3]);
-                VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
-                VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-
-                V(vKernel->AppendVISALogicOrShiftInst(
-                    opcode,
-                    predOpnd,
-                    IsSat(),
-                    GetAluEMask(dst),
-                    GetAluExecSize(dst),
-                    dstOpnd,
-                    srcOpnd0,
-                    srcOpnd1,
-                    srcOpnd2,
-                    srcOpnd3));
-            }
+            V(vKernel->AppendVISALogicOrShiftInst(
+                opcode,
+                predOpnd,
+                IsSat(),
+                GetAluEMask(dst),
+                GetAluExecSize(dst),
+                dstOpnd,
+                srcOpnd0,
+                srcOpnd1,
+                srcOpnd2,
+                srcOpnd3));
         }
     }
 
