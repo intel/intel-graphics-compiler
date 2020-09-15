@@ -666,7 +666,7 @@ public:
     VISA_BUILDER_API int GetJitInfo(FINALIZER_INFO *&jitInfo);
     VISA_BUILDER_API int GetCompilerStats(CompilerStats &compilerStats);
     VISA_BUILDER_API int GetErrorMessage(const char *&errorMsg) const;
-    VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&);
+    VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&) const;
     /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
     VISA_BUILDER_API int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries);
     /// GetRelocations -- add vISA created relocations into given relocation list

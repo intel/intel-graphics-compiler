@@ -8077,7 +8077,7 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
     return VISA_SUCCESS;
 }
 
-int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& mapGenISAOffsetToVISAIndex, unsigned int& mapNumElems)
+int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& mapGenISAOffsetToVISAIndex, unsigned int& mapNumElems) const
 {
     unsigned int i = 0;
     buffer = m_genx_debug_info_buffer;
