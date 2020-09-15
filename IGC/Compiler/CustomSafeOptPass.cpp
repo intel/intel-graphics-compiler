@@ -140,6 +140,42 @@ void CustomSafeOptPass::visitInstruction(Instruction& I)
     // nothing
 }
 
+//  Searches for following pattern:
+//    %cmp = icmp slt i32 %x, %y
+//    %cond.not = xor i1 %cond, true
+//    %and.cond = and i1 %cmp, %cond.not
+//    br i1 %or.cond, label %bb1, label %bb2
+//
+//  And changes it to:
+//    %0 = icmp sge i32 %x, %y
+//    %1 = or i1 %cond, %0
+//    br i1 %1, label %bb2, label %bb1
+void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
+    using namespace llvm::PatternMatch;
+
+    if (!I.hasOneUse() ||
+        !isa<BranchInst>(*I.user_begin()) ||
+        !I.getType()->isIntegerTy(1)) {
+        return;
+    }
+
+    Value* XorArgValue;
+    CmpInst::Predicate Pred;
+    auto AndPattern = m_c_And(m_c_Xor(m_Value(XorArgValue), m_SpecificInt(1)), m_ICmp(Pred, m_Value(), m_Value()));
+    if (!match(&I, AndPattern)) return;
+
+    IRBuilder<> builder(&I);
+    auto CompareInst = cast<ICmpInst>(isa<ICmpInst>(I.getOperand(0)) ? I.getOperand(0) : I.getOperand(1));
+    auto NegatedCompareInst = builder.CreateICmp(CompareInst->getInversePredicate(), CompareInst->getOperand(0), CompareInst->getOperand(1));
+    auto OrInst = builder.CreateOr(XorArgValue, NegatedCompareInst);
+
+    auto BrInst = cast<BranchInst>(*I.user_begin());
+    BrInst->setCondition(OrInst);
+    BrInst->swapSuccessors();
+
+    I.eraseFromParent();
+}
+
 
 void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
 {
