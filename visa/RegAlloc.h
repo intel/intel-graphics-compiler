@@ -429,8 +429,8 @@ class LivenessAnalysis
                                             std::vector<BitSet>* summary,
                                             int no_prop_types);
 
-    bool contextFreeUseAnalyze(G4_BB* bb);
-    bool contextFreeDefAnalyze(G4_BB* bb);
+    bool contextFreeUseAnalyze(G4_BB* bb, bool isChanged);
+    bool contextFreeDefAnalyze(G4_BB* bb, bool isChanged);
 
     bool livenessCandidate(G4_Declare* decl, bool verifyRA);
 

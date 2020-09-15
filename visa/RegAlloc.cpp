@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include <vector>
+#include <optional>
 #include <limits.h>
 #include "Mem_Manager.h"
 #include "FlowGraph.h"
@@ -1347,7 +1348,7 @@ void LivenessAnalysis::computeLiveness()
                 // use_in  = use_gen + (use_out - use_kill)
                 //
                 --rit;
-                if (contextFreeUseAnalyze((*rit)))
+                if (contextFreeUseAnalyze((*rit), change))
                 {
                     change = true;
                 }
@@ -1374,7 +1375,7 @@ void LivenessAnalysis::computeLiveness()
                 // def_in   = def_out(p1) + def_out(p2) + ... where p1 p2 ... are the predecessors of bb
                 // def_out |= def_in
                 //
-                if (contextFreeDefAnalyze(bb))
+                if (contextFreeDefAnalyze(bb, change))
                 {
                     change = true;
                 }
@@ -1537,15 +1538,25 @@ void LivenessAnalysis::useAnalysis(FuncInfo* subroutine)
                 }
             }
 
-            BitSet oldUseIn = use_in[bbid];
-
-            use_in[bbid] = use_out[bbid];
-            use_in[bbid] -= use_kill[bbid];
-            use_in[bbid] |= use_gen[bbid];
-
-            if (!(bb->getBBType() & G4_BB_INIT_TYPE) && oldUseIn != use_in[bbid])
+            if (changed)
             {
-                changed = true;
+                // no need to update changed, save a copy
+                use_in[bbid] = use_out[bbid];
+                use_in[bbid] -= use_kill[bbid];
+                use_in[bbid] |= use_gen[bbid];
+            }
+            else
+            {
+                BitSet oldUseIn = use_in[bbid];
+
+                use_in[bbid] = use_out[bbid];
+                use_in[bbid] -= use_kill[bbid];
+                use_in[bbid] |= use_gen[bbid];
+
+                if (!(bb->getBBType() & G4_BB_INIT_TYPE) && oldUseIn != use_in[bbid])
+                {
+                    changed = true;
+                }
             }
         }
     } while (changed);
@@ -1590,15 +1601,25 @@ void LivenessAnalysis::useAnalysisWithArgRetVal(FuncInfo* subroutine,
                 }
             }
 
-            BitSet oldUseIn = use_in[bbid];
-
-            use_in[bbid] = use_out[bbid];
-            use_in[bbid] -= use_kill[bbid];
-            use_in[bbid] |= use_gen[bbid];
-
-            if (!(bb->getBBType() & G4_BB_INIT_TYPE) && oldUseIn != use_in[bbid])
+            if (changed)
             {
-                changed = true;
+                // no need to update changed, save a copy
+                use_in[bbid] = use_out[bbid];
+                use_in[bbid] -= use_kill[bbid];
+                use_in[bbid] |= use_gen[bbid];
+            }
+            else
+            {
+                BitSet oldUseIn = use_in[bbid];
+
+                use_in[bbid] = use_out[bbid];
+                use_in[bbid] -= use_kill[bbid];
+                use_in[bbid] |= use_gen[bbid];
+
+                if (!(bb->getBBType() & G4_BB_INIT_TYPE) && oldUseIn != use_in[bbid])
+                {
+                    changed = true;
+                }
             }
         }
     } while (changed);
@@ -1622,7 +1643,11 @@ void LivenessAnalysis::defAnalysis(FuncInfo* subroutine)
         for (auto&& bb : subroutine->getBBList())
         {
             uint32_t bbid = bb->getId();
-            BitSet oldDefIn = def_in[bbid];
+            std::optional<BitSet> defInOrNull = std::nullopt;
+            if (!changed)
+            {
+                defInOrNull = def_in[bbid];
+            }
             auto phyPredBB = (bb == fg.getEntryBB()) ? nullptr : bb->getPhysicalPred();
             if (phyPredBB && (phyPredBB->getBBType() & G4_BB_CALL_TYPE))
             {
@@ -1646,9 +1671,12 @@ void LivenessAnalysis::defAnalysis(FuncInfo* subroutine)
                 }
             }
 
-            if (def_in[bbid] != oldDefIn)
+            if (!changed)
             {
-                changed = true;
+                if (def_in[bbid] != defInOrNull.value())
+                {
+                    changed = true;
+                }
             }
             def_out[bbid] |= def_in[bbid];
         }
@@ -2655,7 +2683,7 @@ bool LivenessAnalysis::contextSensitiveForwardDataAnalyze(
 // use_out = use_in(s1) + use_in(s2) + ... where s1 s2 ... are the successors of bb
 // use_in  = use_gen + (use_out - use_kill)
 //
-bool LivenessAnalysis::contextFreeUseAnalyze(G4_BB* bb)
+bool LivenessAnalysis::contextFreeUseAnalyze(G4_BB* bb, bool isChanged)
 {
     bool changed;
 
@@ -2665,13 +2693,21 @@ bool LivenessAnalysis::contextFreeUseAnalyze(G4_BB* bb)
     {
         changed = false;
     }
-
+    else if (isChanged)
+    {
+        // no need to update changed. This saves a memcpy
+        for (auto succBB : bb->Succs)
+        {
+            use_out[bbid] |= use_in[succBB->getId()];
+        }
+        changed = true;
+    }
     else
     {
         BitSet old = use_out[bbid];
-        for (BB_LIST_ITER it = bb->Succs.begin(), end = bb->Succs.end(); it != end; it++)
+        for (auto succBB : bb->Succs)
         {
-            use_out[bbid] |= use_in[(*it)->getId()];
+            use_out[bbid] |= use_in[succBB->getId()];
         }
 
         changed = (old != use_out[bbid]);
@@ -2691,7 +2727,7 @@ bool LivenessAnalysis::contextFreeUseAnalyze(G4_BB* bb)
 // def_in = def_out(p1) + def_out(p2) + ... where p1 p2 ... are the predecessors of bb
 // def_out |= def_in
 //
-bool LivenessAnalysis::contextFreeDefAnalyze(G4_BB* bb)
+bool LivenessAnalysis::contextFreeDefAnalyze(G4_BB* bb, bool isChanged)
 {
     bool changed  = false;
     unsigned bbid = bb->getId();
@@ -2700,15 +2736,22 @@ bool LivenessAnalysis::contextFreeDefAnalyze(G4_BB* bb)
     {
         changed = false;
     }
+    else if (isChanged)
+    {
+        // no need to update changed. This saves a memcpy
+        for (auto predBB : bb->Preds)
+        {
+            def_in[bbid] |= def_out[predBB->getId()];
+        }
+        changed = true;
+    }
     else
     {
         BitSet old = def_in[bbid];
-
-        for (BB_LIST_ITER it = bb->Preds.begin(), end = bb->Preds.end(); it != end; it++)
+        for (auto predBB : bb->Preds)
         {
-            def_in[bbid] |= def_out[(*it)->getId()];
+            def_in[bbid] |= def_out[predBB->getId()];
         }
-
         changed = (old != def_in[bbid]);
     }
 
