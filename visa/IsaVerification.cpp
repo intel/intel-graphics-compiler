@@ -551,24 +551,28 @@ void vISAVerifier::verifyRegion(
                     (exec_sz - 1) * h_stride_val * VN_size + VN_size - 1;
             }
 
-            REPORT_INSTRUCTION(options,(COMMON_ISA_GRF_REG_SIZE * 2u) > last_region_elt_byte,
-                "CISA operand region access out of 2 GRF boundary (within %d bytes): %d",
-                (COMMON_ISA_GRF_REG_SIZE * 2),
-                last_region_elt_byte);
+            // Check if the operand may touch more than 2 GRFs due to bad alignment
+            // So far vISA is able to handle the splitting of: Moves
+            if (ISA_Inst_Mov != ISA_Inst_Table[opcode].type)
+            {
+                REPORT_INSTRUCTION(options, (COMMON_ISA_GRF_REG_SIZE * 2u) > last_region_elt_byte,
+                    "CISA operand region access out of 2 GRF boundary (within %d bytes): %d",
+                    (COMMON_ISA_GRF_REG_SIZE * 2),
+                    last_region_elt_byte);
+
+                // check if the operand may touch more than 2 GRFs due to bad alignment
+                unsigned startByte = getStartByteOffset(header, var, numPreDefinedVars) +
+                    row_offset * COMMON_ISA_GRF_REG_SIZE +
+                    col_offset * CISATypeTable[var->getType()].typeSize;
+                unsigned endByte = startByte + last_region_elt_byte;
+                unsigned startGRF = startByte / COMMON_ISA_GRF_REG_SIZE;
+                unsigned endGRF = endByte / COMMON_ISA_GRF_REG_SIZE;
+                REPORT_INSTRUCTION(options, endGRF == startGRF || endGRF == (startGRF + 1),
+                    "CISA operand accesses more than 2 GRF due to mis-alignment: start byte offset = %d, end byte offset = %d",
+                    startByte, endByte);
+            }
 
             unsigned firstElementIndex = row_offset * COMMON_ISA_GRF_REG_SIZE + col_offset;
-
-            // check if the operand may touch more than 2 GRFs due to bad alignment
-            unsigned startByte = getStartByteOffset(header, var, numPreDefinedVars) +
-                row_offset * COMMON_ISA_GRF_REG_SIZE +
-                col_offset * CISATypeTable[var->getType()].typeSize;
-            unsigned endByte = startByte + last_region_elt_byte;
-            unsigned startGRF = startByte / COMMON_ISA_GRF_REG_SIZE;
-            unsigned endGRF = endByte / COMMON_ISA_GRF_REG_SIZE;
-            REPORT_INSTRUCTION(options,endGRF == startGRF || endGRF == (startGRF + 1),
-                "CISA operand accesses more than 2 GRF due to mis-alignment: start byte offset = %d, end byte offset = %d",
-                startByte, endByte);
-
 
             for (int i = 0; i < exec_sz / width_val; i++)
             {
