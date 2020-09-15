@@ -43,23 +43,6 @@ InstSplitPass::InstSplitPass(IR_Builder* builder) : m_builder(builder)
 //      - Instructions with indirect addressing other than 1x1 indirect region
 void InstSplitPass::run()
 {
-    auto hasIndirectAccess = [](G4_INST* inst)
-    {
-        for (int i = 0, srcNum = inst->getNumSrc(); i < srcNum; i++)
-        {
-            G4_Operand* src = inst->getSrc(i);
-            if (!src || !src->isSrcRegRegion())
-                continue;
-
-            const RegionDesc* rd = src->asSrcRegRegion()->getRegion();
-            if (src->getRegAccess() == IndirGRF && rd->isRegionWH())
-            {
-                return true;
-            }
-        }
-        return false;
-    };
-
     for (INST_LIST_ITER it = m_builder->instList.begin(), instlistEnd = m_builder->instList.end(); it != instlistEnd; ++it)
     {
         G4_INST* inst = *it;
@@ -72,12 +55,6 @@ void InstSplitPass::run()
         if (inst->isSend() || inst->opcode() == G4_label ||
             inst->opcode() == G4_pln || inst->opcode() == G4_return ||
             inst->isFlowControl() || inst->isPseudoLogic())
-        {
-            continue;
-        }
-
-        // Skip inst with indirect access for now
-        if (hasIndirectAccess(inst))
         {
             continue;
         }
