@@ -402,6 +402,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
         (ctx.m_DriverInfo.NeedFP64(ctx.platform.getPlatformInfo().eProductFamily) && ctx.platform.hasNoFP64Inst()));
+    needDPEmu &= ctx.m_instrTypes.hasFP64Inst;
     uint32_t theEmuKind = (needDPEmu ? EmuKind::EMU_DP : 0);
     theEmuKind |= (ctx.m_DriverInfo.NeedI64BitDivRem() ? EmuKind::EMU_I64DIVREM : 0);
     theEmuKind |=
