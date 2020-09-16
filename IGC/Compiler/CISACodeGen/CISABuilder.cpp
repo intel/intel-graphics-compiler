@@ -560,79 +560,28 @@ namespace IGC
             flagDst = true;
         }
 
-        unsigned numParts = 0;
+        VISA_VectorOpnd* opnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
+        VISA_VectorOpnd* opnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
 
-        // Due to a simulator quirk, we need to split the instruction even if the
-        // dst operand of the compare is null, if it "looks" too large,
-        // that is, if the execution size is 16 and the comparison type
-        // is QW.
-        bool bNeedSplitting = false;
-        if (flagDst && needsSplitting(GetAluExecSize(dst)) &&
-            (src0->GetElemSize() > 4 || src1->GetElemSize() > 4))
+        if (flagDst)
         {
-            bNeedSplitting = true;
-            numParts = 2;
+            V(vKernel->AppendVISAComparisonInst(
+                subOp,
+                GetAluEMask(dst),
+                GetAluExecSize(dst),
+                dst->visaPredVariable,
+                opnd0,
+                opnd1));
         }
-
-        bNeedSplitting = bNeedSplitting ||
-            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
-            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true);
-
-        if (bNeedSplitting)
+        else
         {
-            VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-            VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-            VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
-
-            for (unsigned thePart = 0; thePart != numParts; ++thePart) {
-                SModifier newSrc0Mod = SplitVariable(fromExecSize, toExecSize, thePart, src0, m_encoderState.m_srcOperand[0], true);
-                SModifier newSrc1Mod = SplitVariable(fromExecSize, toExecSize, thePart, src1, m_encoderState.m_srcOperand[1], true);
-                VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src0, newSrc0Mod);
-                VISA_VectorOpnd* srcOpnd1 = GetSourceOperand(src1, newSrc1Mod);
-                if (flagDst)
-                {
-                    V(vKernel->AppendVISAComparisonInst(subOp,
-                        SplitEMask(fromExecSize, toExecSize, thePart, execMask),
-                        toExecSize,
-                        dst->visaPredVariable,
-                        srcOpnd0, srcOpnd1));
-                }
-                else
-                {
-                    SModifier newDstMod = SplitVariable(fromExecSize, toExecSize, thePart, dst, m_encoderState.m_dstOperand);
-                    VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, newDstMod);
-                    V(vKernel->AppendVISAComparisonInst(subOp,
-                        SplitEMask(fromExecSize, toExecSize, thePart, execMask),
-                        toExecSize,
-                        dstOpnd,
-                        srcOpnd0, srcOpnd1));
-                }
-            }
-        }
-        else {
-            VISA_VectorOpnd* opnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
-            VISA_VectorOpnd* opnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
-
-            if (flagDst)
-            {
-                V(vKernel->AppendVISAComparisonInst(
-                    subOp,
-                    GetAluEMask(dst),
-                    GetAluExecSize(dst),
-                    dst->visaPredVariable,
-                    opnd0,
-                    opnd1));
-            }
-            else
-            {
-                V(vKernel->AppendVISAComparisonInst(
-                    subOp,
-                    GetAluEMask(dst),
-                    GetAluExecSize(dst),
-                    GetDestinationOperand(dst, m_encoderState.m_dstOperand),
-                    opnd0,
-                    opnd1));
-            }
+            V(vKernel->AppendVISAComparisonInst(
+                subOp,
+                GetAluEMask(dst),
+                GetAluExecSize(dst),
+                GetDestinationOperand(dst, m_encoderState.m_dstOperand),
+                opnd0,
+                opnd1));
         }
     }
 
