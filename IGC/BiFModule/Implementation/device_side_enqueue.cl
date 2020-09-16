@@ -47,7 +47,7 @@ uint __builtin_spirv_OpEnqueueMarker_i64_i32_p4i64_p4i64(Queue_t Queue, uint Num
 }
 
 #define DEFN_GET_KERNEL_WORK_GROUP_SIZE(ADDRSPACE_NUMBER, ADDRSPACE_NAME)                                                                                                \
-uint __builtin_spirv_OpGetKernelWorkGroupSize_p0func_p##ADDRSPACE_NUMBER##i8_i32_i32(void (^Invoke)(int), ADDRSPACE_NAME uchar *Param, uint ParamSize, uint ParamAlign)  \
+uint __builtin_spirv_OpGetKernelWorkGroupSize_p0func_p##ADDRSPACE_NUMBER##i8_i32_i32(uchar* Invoke, ADDRSPACE_NAME uchar *Param, uint ParamSize, uint ParamAlign)  \
 {                                                                                                                                                                        \
   return __builtin_IB_get_max_workgroup_size();                                                                                                                          \
 }

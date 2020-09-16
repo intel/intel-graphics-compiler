@@ -4573,7 +4573,7 @@ typedef struct
 
 // OpEnqueueKernel will be custom lowered?
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-uint __builtin_spirv_OpGetKernelWorkGroupSize_fp0i32_p0i8_i32_i32(void (^Invoke)(int), private uchar *Param, uint ParamSize, uint ParamAlign);
+uint __builtin_spirv_OpGetKernelWorkGroupSize_fp0i32_p0i8_i32_i32(uchar* Invoke, private uchar *Param, uint ParamSize, uint ParamAlign);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
