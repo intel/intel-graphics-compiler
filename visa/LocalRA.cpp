@@ -2018,7 +2018,7 @@ inline bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word)
     return isBusy;
 }
 
-inline bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word, int howmany)
+bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word, int howmany)
 {
     bool retval = false;
 

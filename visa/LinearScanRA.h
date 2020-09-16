@@ -51,11 +51,6 @@ class GlobalRA;
 
 vISA::G4_Declare* GetTopDclFromRegRegion(vISA::G4_Operand* opnd);
 
-typedef std::vector<std::tuple<G4_BB*, INST_LIST_ITER, Gen4_Operand_Number>> OPND_REFS;
-typedef std::vector<std::tuple<G4_BB*, INST_LIST_ITER, Gen4_Operand_Number>>::iterator OPND_REFS_ITER;
-typedef std::map<vISA::LSLiveRange*, OPND_REFS> LLR_REF_MAP;
-typedef std::map<vISA::LSLiveRange*, OPND_REFS>::iterator LLR_REF_MAP_ITER;
-
 // Each declaration will have a LSLiveRange object allocated for it
 namespace vISA
 {
@@ -68,7 +63,6 @@ namespace vISA
         G4_Kernel& kernel;
         IR_Builder& builder;
         PhyRegsLocalRA* pregs = nullptr;
-        LLR_REF_MAP LLRRefMap;
         std::vector<LSLiveRange*> globalLiveIntervals;
         std::vector<LSLiveRange*> preAssignedLiveIntervals;
         unsigned int numRegLRA = 0;
@@ -82,8 +76,8 @@ namespace vISA
         bool doBCR = false;
         bool highInternalConflict = false;
         bool hasSplitInsts = false;
-        std::list<LSLiveRange> localLiveRanges;
         int regionID = -1;
+        std::vector<G4_Declare *> globalDeclares;
 
         LSLiveRange* GetOrCreateLocalLiveRange(G4_Declare* topdcl);
         void linearScanMarkReferencesInOpnd(G4_Operand* opnd, bool isEOT, INST_LIST_ITER inst_it, unsigned int pos);
@@ -107,7 +101,6 @@ namespace vISA
         void removeUnrequiredLifetimeOps();
         void setLexicalID(bool includePseudo);
         bool hasDstSrcOverlapPotential(G4_DstRegRegion* dst, G4_SrcRegRegion* src);
-        void addLiveRangeRef(LLR_REF_MAP& LLRRefMap, G4_BB* bb, LSLiveRange* lr, INST_LIST_ITER inst_it, Gen4_Operand_Number opnd_num);
         void setPreAssignedLR(LSLiveRange* lr, std::vector<LSLiveRange*>& preAssignedLiveIntervals);
         void setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declare* dcl, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
         void setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcIdx, G4_Declare* dcl, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
@@ -121,21 +114,22 @@ namespace vISA
         void printInputLiveIntervalsGlobal();
         bool isUseUnAvailableRegister(uint32_t startReg, uint32_t regNum);
         bool assignEOTLiveRanges(IR_Builder& builder, std::vector<LSLiveRange*>& liveIntervals);
-        void spillLiveRange(LSLiveRange* lr, SpillManagerGRF* spillGRF);
-        void spillLiveRanges(std::list<LSLiveRange*>& spillLRs, SpillManagerGRF* spillGRF);
 
         // scratch fields used for parameter passing
         G4_BB* curBB = nullptr;
         int globalIndex = 0;
+        uint32_t nextSpillOffset = 0;
 
     public:
         static void getRowInfo(int size, int& nrows, int& lastRowSize);
         static unsigned int convertSubRegOffFromWords(G4_Declare* dcl, int subregnuminwords);
 
         LinearScanRA(BankConflictPass&, GlobalRA&);
+        void allocForbiddenVector(LSLiveRange* lr);
         bool doLinearScanRA();
         void undoLinearScanRAAssignments();
         bool hasHighInternalBC() const { return highInternalConflict; }
+        uint32_t getSpillSize() { return nextSpillOffset; }
     };
 
 class LSLiveRange
@@ -146,7 +140,6 @@ private:
     G4_INST* lastRef;
     unsigned int lrStartIdx, lrEndIdx;
     int regionID;
-    bool isIndirectAccess;
     G4_VarBase* preg;
     // pregoff is stored in word here
     // But subreg offset stored in regvar should be in units of dcl's element size
@@ -154,8 +147,11 @@ private:
 
     unsigned int numRefsInFG;
     G4_BB* prevBBRef;
-    bool eot;
 
+    bool* forbidden = nullptr;
+
+    bool isIndirectAccess;
+    bool eot;
     bool assigned;
     bool preAssigned;
     bool useUnAvailableReg;
@@ -167,7 +163,6 @@ private:
     const static unsigned int UndefHint = 0xffffffff;
     unsigned int hint = UndefHint;
 public:
-    OPND_REFS opndRef;
     LSLiveRange(IR_Builder& b) : builder(b)
     {
         topdcl = NULL;
@@ -183,6 +178,17 @@ public:
         eot = false;
         useUnAvailableReg = false;
         regionID = -1;
+    }
+
+    const bool* getForbidden() { return forbidden; }
+    void setForbidden(bool* f) { forbidden = f; }
+    void markForbidden(int reg, int numReg)
+    {
+        MUST_BE_TRUE(((int)builder.kernel.getNumRegTotal()) >= reg + numReg, "forbidden register is out of bound");
+        for (int i = reg; i < reg + numReg; ++i)
+        {
+            forbidden[i] = true;
+        }
     }
 
     void setUseUnAvailableReg(bool avail) { useUnAvailableReg = avail; }
@@ -238,6 +244,8 @@ public:
 
     unsigned int getSizeInWords();
 
+    bool isLiveRangeGlobal();
+
     void setAssigned(bool a) { assigned = a; }
     bool getAssigned() { return assigned; }
 
@@ -247,11 +255,11 @@ public:
     void markEOT() { eot = true; }
     bool isEOT() { return eot; }
 
-    void addForbidden(unsigned int f) { forbiddenGRFs.insert(f); }
+    void addForbidden(unsigned int f) { forbiddenGRFs.insert(f); forbidden[f] = true;}
     void addRetRegs(unsigned int f) { retGRFs.insert(f); }
-    std::unordered_set<unsigned int>& getForbidden() { return forbiddenGRFs; }
+    std::unordered_set<unsigned int>& getForbiddenGRF() { return forbiddenGRFs; }
     std::unordered_set<unsigned int>& getRetGRFs() { return retGRFs; }
-    void clearForbidden() { forbiddenGRFs.clear(); }
+    void clearForbiddenGRF() { forbiddenGRFs.clear(); forbidden = nullptr; }
 
     void setHint(unsigned int h) { hint = h; }
     bool hasHint() { return hint != UndefHint; }
@@ -281,8 +289,8 @@ namespace vISA
 {
     typedef struct _ACTIVE_GRFS
     {
-        std::list<LSLiveRange*> activeLV;
-        std::list<LSInputLiveRange*> activeInput;
+        std::vector<LSLiveRange*> activeLV;
+        std::vector<LSInputLiveRange*> activeInput;
     } ACTIVE_GRFS;
 
     class globalLinearScan {
@@ -334,7 +342,7 @@ namespace vISA
 
         void getCallerSaveGRF(vector<unsigned int>& regNum, vector<unsigned int>& regRegNum, G4_Kernel* kernel);
 
-        bool runLinearScan(IR_Builder& builder, LLR_REF_MAP& LLRRefMap, std::vector<LSLiveRange*>& liveIntervals, std::list<LSLiveRange*>& spillLRs);
+        bool runLinearScan(IR_Builder& builder, std::vector<LSLiveRange*>& liveIntervals, std::list<LSLiveRange*>& spillLRs);
         void expireAllActive();
     };
 }

@@ -199,12 +199,14 @@ SpillManagerGRF::SpillManagerGRF(
     unsigned spillAreaOffset,
     unsigned varIdCount,
     const LivenessAnalysis* lvInfo,
+    LSLR_LIST* spilledLSLRs,
     bool useScratchMsg)
     : gra(g)
     , builder_(g.kernel.fg.builder)
     , varIdCount_(varIdCount)
     , latestImplicitVarIdCount_(0)
     , lvInfo_(lvInfo)
+    , spilledLSLRs_(spilledLSLRs)
     , nextSpillOffset_(spillAreaOffset)
     , bbId_(UINT_MAX)
     , doSpillSpaceCompression(false)
@@ -3791,95 +3793,6 @@ void SpillManagerGRF::prunePointsTo(G4_Kernel* kernel, PointsToAnalysis& pointsT
 // physical registers in the current iteration of the graph coloring
 // allocator.
 // returns false if spill fails somehow
-
-bool
-SpillManagerGRF::spillLiveRange(
-    G4_BB* bb, INST_LIST_ITER it
-)
-{
-    G4_INST* inst = *it;
-    curInst = inst;
-
-    G4_RegVar* regVar = nullptr;
-    if (inst->getDst()->getBase()->isRegVar())
-    {
-        regVar = getRegVar(inst->getDst());
-    }
-
-    if (regVar)
-    {
-        if (regVar->getDeclare()->getAddressed())
-        {
-            assert(0);
-        }
-        insertSpillRangeCode(it, bb);
-
-        while (regVar->isAliased()) {
-            G4_Declare* regVarDcl = regVar->getDeclare();
-            regVar = regVarDcl->getAliasDeclare()->getRegVar();
-        }
-        unsigned disp = regVar->getDisp();
-        if (disp != UINT_MAX)
-        {
-            nextSpillOffset_ = std::max(nextSpillOffset_, disp + getByteSize(regVar));
-        }
-        regVar->getDeclare()->setSpillFlag();
-    }
-    else
-    {
-        assert(0);
-    }
-
-    return true;
-}
-
-bool
-SpillManagerGRF::fillLiveRange(
-    G4_BB* bb, INST_LIST_ITER it, Gen4_Operand_Number opndNum
-)
-{
-    G4_INST* inst = *it;
-    int i = inst->getSrcNum(opndNum);
-    curInst = inst;
-
-    if (inst->getSrc(i) &&
-        inst->getSrc(i)->isSrcRegRegion())
-    {
-        auto srcRR = inst->getSrc(i)->asSrcRegRegion();
-        G4_RegVar* regVar = nullptr;
-        if (srcRR->getBase()->isRegVar())
-        {
-            regVar = getRegVar(srcRR);
-        }
-
-        if (regVar)
-        {
-            if (regVar->getDeclare()->getAddressed())
-            {
-                assert(0);
-            }
-            bool mayExceedTwoGRF = (inst->isSend() && i == 0) ||
-                (inst->isSplitSend() && i == 1);
-
-            if (mayExceedTwoGRF)
-            {
-                insertSendFillRangeCode(srcRR, it, bb);
-            }
-            else if (getRFType(regVar) == G4_GRF)
-                insertFillGRFRangeCode(srcRR, it, bb);
-            else
-                assert(0);
-        }
-        else
-        {
-            assert(0);
-        }
-    }
-
-    return true;
-}
-
-
 bool
 SpillManagerGRF::insertSpillFillCode (
     G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis
@@ -4058,6 +3971,122 @@ SpillManagerGRF::insertSpillFillCode (
     return true;
 }
 
+
+bool
+SpillManagerGRF::spillLiveRanges (G4_Kernel * kernel)
+{
+    // Set the spill flag of all spilled regvars.
+    for (LSLR_LIST::const_iterator lt = spilledLSLRs_->begin ();
+        lt != spilledLSLRs_->end (); ++lt) {
+        (*lt)->getTopDcl()->setSpillFlag();
+    }
+
+    // Insert spill/fill code for all basic blocks.
+    FlowGraph& fg = kernel->fg;
+    for (BB_LIST_ITER it = fg.begin(); it != fg.end(); it++)
+    {
+        bbId_ = (*it)->getId();
+        INST_LIST::iterator jt = (*it)->begin();
+
+        while (jt != (*it)->end()) {
+            INST_LIST::iterator kt = jt;
+            ++kt;
+            G4_INST* inst = *jt;
+
+            curInst = inst;
+
+            if (failSafeSpill_)
+            {
+                spillRegOffset_ = spillRegStart_;
+            }
+
+            // Insert spill code, when the target is a spilled register.
+            if (inst->getDst())
+            {
+                G4_RegVar* regVar = nullptr;
+                if (inst->getDst()->getBase()->isRegVar())
+                {
+                    regVar = getRegVar(inst->getDst());
+                }
+
+                if (regVar && regVar->getDeclare()->isSpilled())
+                {
+                    if (getRFType(regVar) == G4_GRF)
+                    {
+                        if (inst->isPseudoKill())
+                        {
+                            (*it)->erase(jt);
+                            jt = kt;
+                            continue;
+                        }
+
+                        insertSpillRangeCode(jt, (*it));
+                    }
+                    else
+                    {
+                        assert(0);
+                    }
+                }
+            }
+
+            // Insert fill code, when the source is a spilled register.
+            for (unsigned i = 0; i < G4_MAX_SRCS; i++)
+            {
+                if (inst->getSrc(i) &&
+                    inst->getSrc(i)->isSrcRegRegion ())
+                {
+                    auto srcRR = inst->getSrc(i)->asSrcRegRegion();
+                    G4_RegVar* regVar = nullptr;
+                    if (srcRR->getBase()->isRegVar())
+                    {
+                        regVar = getRegVar(srcRR);
+                    }
+
+                    if (regVar && regVar->getDeclare()->isSpilled())
+                    {
+                        if (inst->isLifeTimeEnd())
+                        {
+                            (*it)->erase(jt);
+                            break;
+                        }
+                        bool mayExceedTwoGRF = (inst->isSend() && i == 0) ||
+                            (inst->isSplitSend() && i == 1);
+
+                        if (mayExceedTwoGRF)
+                        {
+                            insertSendFillRangeCode(srcRR, jt, *it);
+                        }
+                        else if (getRFType(regVar) == G4_GRF)
+                            insertFillGRFRangeCode(srcRR, jt, *it);
+                        else
+                            assert(0);
+                    }
+                }
+            }
+
+            jt = kt;
+        }
+    }
+
+    bbId_ = UINT_MAX;
+
+    // Calculate the spill memory used in this iteration
+
+    for (auto spill : (*spilledLSLRs_))
+    {
+        unsigned disp = spill->getTopDcl()->getRegVar()->getDisp();
+
+        if (spill->getTopDcl()->getRegVar()->isSpilled ())
+        {
+            if (disp != UINT_MAX)
+            {
+                nextSpillOffset_ = std::max(nextSpillOffset_, disp + getByteSize(spill->getTopDcl()->getRegVar()));
+            }
+        }
+    }
+
+    return true;
+}
 
 
 

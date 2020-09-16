@@ -9356,17 +9356,16 @@ int GlobalRA::coloringRegAlloc()
         //Global linear scan RA
         if (builder.getOption(vISA_LinearScan))
         {
+            TIME_SCOPE(LINEARSCAN_RA);
             copyMissingAlignment();
             BankConflictPass bc(*this);
             LinearScanRA lra(bc, *this);
-            bool success = lra.doLinearScanRA();
-
+            bool  success = lra.doLinearScanRA();
             if (success)
             {
                 assignRegForAliasDcl();
                 computePhyReg();
                 expandSpillFillIntrinsics();
-                //kernel.dump();
                 if (builder.getOption(vISA_verifyLinearScan))
                 {
                     resetGlobalRAStates();

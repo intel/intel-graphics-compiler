@@ -51,6 +51,7 @@ class IR_Builder;
 class LivenessAnalysis;
 class Interference;
 class LiveRange;
+class LSLiveRange;
 class PointsToAnalysis;
 class GlobalRA;
 }
@@ -66,6 +67,7 @@ public:
 
     typedef std::list < G4_Declare * > DECLARE_LIST;
     typedef std::list < LiveRange * > LR_LIST;
+    typedef std::list < LSLiveRange* > LSLR_LIST;
     typedef std::list < G4_INST *, INST_LIST_NODE_ALLOCATOR > INST_LIST;
     typedef struct Edge
     {
@@ -97,20 +99,19 @@ public:
         unsigned spillAreaOffset,
         unsigned varIdCount,
         const LivenessAnalysis* lvInfo,
+        LSLR_LIST* spilledLSLRs,
         bool useScratchMsg);
 
     ~SpillManagerGRF () {}
 
-
-    bool spillLiveRange(G4_BB* bb, INST_LIST_ITER it);
-
-    bool fillLiveRange(G4_BB* bb, INST_LIST_ITER it, Gen4_Operand_Number opndNum);
 
     bool
     insertSpillFillCode    (
         G4_Kernel*         kernel,
         PointsToAnalysis& pointsToAnalysis
     );
+
+    bool spillLiveRanges(G4_Kernel* kernel);
 
     unsigned getNumGRFSpill() const { return numGRFSpill; }
     unsigned getNumGRFFill() const { return numGRFFill; }
@@ -634,6 +635,7 @@ private:
     const LivenessAnalysis * lvInfo_;
     LiveRange **             lrInfo_;
     LR_LIST *                spilledLRs_;
+    LSLR_LIST*               spilledLSLRs_;
     unsigned *               spillRangeCount_;
     unsigned *               fillRangeCount_;
     unsigned *               tmpRangeCount_;

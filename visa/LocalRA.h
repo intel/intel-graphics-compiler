@@ -361,7 +361,7 @@ public:
     bool isH1GRFBusy(int which);
     bool isH2GRFBusy(int which);
     inline bool isWordBusy(int whichgrf, int word);
-    inline bool isWordBusy(int whichgrf, int word, int howmany);
+    bool isWordBusy(int whichgrf, int word, int howmany);
 
     bool findFreeMultipleRegsForward(int regIdx, BankAlign align, int & regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles,
         int instID, bool isHybridAlloc, std::unordered_set<unsigned int>& forbidden, bool hintSet);
@@ -458,6 +458,10 @@ public:
     bool findFreeSingleReg(int regIdx, int size, BankAlign align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg,
         int instID, bool isHybridAlloc, bool forward, std::unordered_set<unsigned int>& forbidden);
 
+    bool findFreeMultipleRegsForward(int regIdx, BankAlign align, int& regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles, int instID, const bool* forbidden);
+
+    bool findFreeSingleReg(int regIdx, int size, BankAlign align, G4_SubReg_Align subalign, int& regnum, int& subregnum, int endReg, const bool* forbidden);
+
 };
 
 class PhyRegsManager
@@ -478,6 +482,8 @@ public:
 
     void freeRegs(int regnum, int subregnum, int numwords, int instID);
     PhyRegsLocalRA * getAvaialableRegs() { return &availableRegs; }
+    int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign, int& regnum, int& subregnum, int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc, std::unordered_set<unsigned int>& forbidden);
+    int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign, int& regnum, int& subregnum, int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, const bool* forbidden);
 };
 
 class LinearScan {
