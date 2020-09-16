@@ -97,7 +97,6 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->numInsts = 0;
     instrList->sampleCmpToDiscardOptimizationPossible = false;
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
-    instrList->hasFP64Inst = false;
 }
 
 void CheckInstrTypes::SetLoopFlags(Function& F)
@@ -127,22 +126,6 @@ bool CheckInstrTypes::runOnFunction(Function& F)
     // check if module has debug info
     g_InstrTypes->hasDebugInfo = F.getParent()->getNamedMetadata("llvm.dbg.cu") != nullptr;
 
-    if (F.getType()->isDoubleTy())
-    {
-        g_InstrTypes->hasFP64Inst = true;
-    }
-    else
-    {
-        for (auto&& AI = F.arg_begin(), AE = F.arg_end(); AI != AE; ++AI)
-        {
-            if ((*AI).getType()->isDoubleTy())
-            {
-                g_InstrTypes->hasFP64Inst = true;
-                break;
-            }
-        }
-    }
-
     visit(F);
     SetLoopFlags(F);
     return false;
@@ -164,11 +147,6 @@ void CheckInstrTypes::visitInstruction(llvm::Instruction& I)
     if (PT && PT->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
     {
         g_InstrTypes->hasGenericAddressSpacePointers = true;
-    }
-
-    if (I.getType()->isDoubleTy())
-    {
-        g_InstrTypes->hasFP64Inst = true;
     }
 }
 
