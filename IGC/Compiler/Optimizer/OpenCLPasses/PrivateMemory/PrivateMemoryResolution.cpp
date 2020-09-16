@@ -1043,6 +1043,15 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
     Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
 
+    auto DL = m_currFunction->getParent()->getDataLayout();
+    int memSize = (int)totalPrivateMemPerWI;
+    //(memSize & -memSize) is to find first set (ffs), then, +3 because totalPrivateMemPerThread = totalPrivateMemPerWI x simdSize|8N
+    uint32_t mask = (memSize & (-memSize) + 3) - 1;
+    //explicitly tell InstCombiner the alignment of perThreadOffset because InstCombiner can only analyze up to depth 6.
+    Value* assumeAlignment = entryBuilder.CreateICmpEQ(entryBuilder.CreateAnd(perThreadOffset, ConstantInt::get(typeInt32, mask)),
+        ConstantInt::get(typeInt32, 0), "perThreadOffset.assumeAlignment");
+    entryBuilder.CreateAssumption(assumeAlignment);
+
     for (auto pAI : allocaInsts)
     {
         // %bufferOffset                = mul i32 %simdSize, <scalarBufferOffset>
@@ -1059,6 +1068,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         unsigned int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
         unsigned int bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
 
+        //explicitly tell InstCombiner that privateMemArg aligns to 0x400
+        builder.CreateAlignmentAssumption(DL, privateMemArg, 0x400);
+
         Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
         Value* bufferOffsetForThread = builder.CreateAdd(perThreadOffset, bufferOffset, VALUE_NAME(pAI->getName() + ".bufferOffsetForThread"));
         Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
@@ -1066,6 +1078,11 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         Value* totalOffset = builder.CreateAdd(bufferOffsetForThread, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
         Value* privateBufferGEP = builder.CreateGEP(privateMemArg, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
+
+        //explicitly tell InstCombiner bufferOffset is aligned to 256 (since bufferOffset = simdsize|8N x ...) because InstCombiner can only analyze up to depth 6.
+        Value* assumeAlignment = builder.CreateICmpEQ(builder.CreateAnd(bufferOffset, ConstantInt::get(typeInt32, 0xFF)),
+            ConstantInt::get(typeInt32, 0), "bufferOffset.assumeAlignment");
+        builder.CreateAssumption(assumeAlignment);
 
         auto DbgUses = llvm::FindDbgAddrUses(pAI);
         for (auto Use : DbgUses)
