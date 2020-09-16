@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CISACodeGen/CVariable.hpp"
 #include "Probe/Assertion.h"
+#include "llvm/Support/Format.h"
 
 #include <sstream>
 
@@ -174,3 +175,38 @@ CVariable::CVariable(VISA_Type type)
     : CVariable(0, type, 0, true)
 {
 }
+
+void CVariable::dump() const
+{
+    print(llvm::errs());
+}
+
+void CVariable::print(llvm::raw_ostream& OS) const
+{
+    OS << "CVariable " << getVisaCString() << " {\n";
+    if (m_isImmediate)
+    {
+        OS << "\tKind: immediate(" << llvm::format_hex(m_immediateValue, 6) << "\n";
+    }
+    else
+    {
+        OS << "\tKind: " << CVariable::getVarTypeStr(m_varType) << "\n";
+    }
+    OS << "\tNumElt: " << m_nbElement << "\n";
+    OS << "\tType: " << CVariable::getVISATypeStr(m_type) << "\n";
+    if (m_numberOfInstance != 1)
+    {
+        OS << "\tNumInstance: " << m_numberOfInstance << "\n";
+    }
+    if (m_alias)
+    {
+        OS << "\tAlias: " << m_alias->getVisaCString();
+        if (m_aliasOffset)
+        {
+            OS << "+" << m_aliasOffset;
+        }
+        OS << "\n";
+    }
+    OS << "}\n";
+}
+

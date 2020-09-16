@@ -246,6 +246,46 @@ namespace IGC {
             return m_llvmName.getVisaCString();
         }
 
+        void print(llvm::raw_ostream& OS) const;
+
+        void dump() const;
+
+        // ToDo: move them elsewhere?
+        static constexpr const char* getVarTypeStr(e_varType varTy)
+        {
+            switch (varTy)
+            {
+                case EVARTYPE_GENERAL: return "general";
+                case EVARTYPE_ADDRESS: return "address";
+                case EVARTYPE_PREDICATE: return "predicate";
+                case EVARTYPE_SURFACE: return "surface";
+                case EVARTYPE_SAMPLER: return "sampler";
+                default: return "illegal";
+            }
+        }
+        static constexpr const char* getVISATypeStr(VISA_Type ty)
+        {
+            switch (ty)
+            {
+            case ISA_TYPE_UD: return "ud";
+            case ISA_TYPE_D: return "d";
+            case ISA_TYPE_UW: return "uw";
+            case ISA_TYPE_W: return "w";
+            case ISA_TYPE_UB: return "ub";
+            case ISA_TYPE_B: return "b";
+            case ISA_TYPE_DF: return "df";
+            case ISA_TYPE_F: return "f";
+            case ISA_TYPE_V: return "v";
+            case ISA_TYPE_VF: return "vf";
+            case ISA_TYPE_BOOL: return "bool";
+            case ISA_TYPE_UQ: return "uq";
+            case ISA_TYPE_Q: return "q";
+            case ISA_TYPE_UV: return "uv";
+            case ISA_TYPE_HF: return "hf";
+            default: return "illegal";
+            }
+        }
+
     private:
         const uint64_t      m_immediateValue;
 
