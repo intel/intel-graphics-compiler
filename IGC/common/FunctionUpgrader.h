@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>

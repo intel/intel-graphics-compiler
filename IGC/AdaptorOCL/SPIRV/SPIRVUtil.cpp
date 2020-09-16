@@ -65,6 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Bitcode/BitcodeWriter.h"
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/Support/ToolOutputFile.h"
@@ -157,7 +158,7 @@ std::string recursive_mangle(const Type* pType)
             return "f16";
         case Type::IntegerTyID:
             return "i" + utostr(pType->getIntegerBitWidth());
-        case Type::VectorTyID:
+        case IGCLLVM::VectorTyID:
         {
             unsigned vecLen = (unsigned)cast<VectorType>(pType)->getNumElements();
             Type* pEltType = cast<VectorType>(pType)->getElementType();
@@ -177,7 +178,7 @@ std::string recursive_mangle(const Type* pType)
         }
         case Type::StructTyID:
         {
-            auto structName = cast<StructType>(pType)->getName();
+            auto structName = cast<StructType>(pType)->getName().str();
             auto pointPos = structName.rfind('.');
             return pointPos != structName.npos ? structName.substr(pointPos + 1) : structName;
         }
@@ -310,7 +311,7 @@ mutateCallInst(Module *M, CallInst *CI,
   auto NewName = ArgMutate(CI, Args);
   std::string InstName;
   if (!CI->getType()->isVoidTy() && CI->hasName()) {
-    InstName = CI->getName();
+    InstName = CI->getName().str();
     CI->setName(InstName + ".old");
   }
 
@@ -331,7 +332,7 @@ mutateCallInst(Module *M, CallInst *CI,
     IRBuilder<> builder(EntryBB);
 
     for (auto OldArgIt = OldF->arg_begin(), NewArgIt = NewF->arg_begin(); OldArgIt != OldF->arg_end(); ++OldArgIt, ++NewArgIt) {
-      NewArgIt->setName(OldArgIt->getName());
+      NewArgIt->setName(OldArgIt->getName().str());
       if (OldArgIt->getType() == NewArgIt->getType()) {
         VMap[&*OldArgIt] = &*NewArgIt;
       }

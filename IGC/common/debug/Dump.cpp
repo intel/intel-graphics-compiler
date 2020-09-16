@@ -721,7 +721,7 @@ DumpName GetDumpNameObj(IGC::CShader* pProgram, const char* ext)
 
     if(pProgram->entry->getName() != "entry")
     {
-        dumpName = dumpName.PostFix(pProgram->entry->getName());
+        dumpName = dumpName.PostFix(pProgram->entry->getName().str());
     }
     if (pProgram->GetShaderType() == ShaderType::PIXEL_SHADER)
     {

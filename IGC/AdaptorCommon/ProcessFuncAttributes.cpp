@@ -617,7 +617,7 @@ void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function* pFunc
         llvm::raw_string_ostream x(typeStr);
         arg->getType()->print(x);
 
-        funcMD->m_OpenCLArgNames.push_back(arg->getName());
+        funcMD->m_OpenCLArgNames.push_back(arg->getName().str());
         funcMD->m_OpenCLArgAccessQualifiers.push_back("none");
         funcMD->m_OpenCLArgBaseTypes.push_back(x.str());
     }

@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/IRBuilder.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <map>
@@ -70,7 +70,7 @@ public:
 private:
     IGC::CodeGenContext* m_pContext;
     IGC::IGCMD::MetaDataUtils* m_pMdUtils;
-    llvm::IRBuilder<>* m_pBuilder;
+    IGCLLVM::IRBuilder<>* m_pBuilder;
     llvm::Module* m_pModule;
 
     bool m_funcSignatureChanged;

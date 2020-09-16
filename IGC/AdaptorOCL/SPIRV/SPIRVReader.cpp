@@ -69,6 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/DIBuilder.h"
 #include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/Support/TypeSize.h"
 
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -2168,7 +2169,7 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
   if (!F->getReturnType()->isStructTy())
     return false;
 
-  std::string Name = F->getName();
+  std::string Name = F->getName().str();
   F->setName(Name + ".old");
 
   std::vector<Type *> ArgTys;
@@ -2214,7 +2215,11 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
       Args.insert(Args.begin(), Alloca);
       auto NewCI = CallInst::Create(NewF, Args, "", CI);
       NewCI->setCallingConv(CI->getCallingConv());
-      auto Load = new LoadInst(Alloca,"",CI);
+      auto Load = new LoadInst(
+#if LLVM_VERSION_MAJOR > 7
+      Alloca->getType()->getPointerElementType(),
+#endif
+      Alloca,"",CI);
       CI->replaceAllUsesWith(Load);
       CI->eraseFromParent();
     }
@@ -2231,7 +2236,8 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
   auto DL = M->getDataLayout();
   auto ptrSize = DL.getPointerSize();
 
-  mutateFunction (F, [=](CallInst *CI, std::vector<Value *> &Args) {
+  mutateFunction (F,
+      [=](CallInst *CI, std::vector<Value *> &Args) {
     auto FBegin = CI->getParent()->getParent()->begin()->getFirstInsertionPt();
     IGCLLVM::IRBuilder<> builder(&(*FBegin));
 
@@ -2266,7 +2272,7 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
         llvm_unreachable("Unknown aggregate type!");
       }
     }
-    return Name;
+    return Name.str();
   }, false, &Attrs);
   return true;
 }
@@ -2747,7 +2753,12 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         nullptr,
         std::string(kPlaceholderPrefix) + BV->getName(),
         0, GlobalVariable::NotThreadLocal, 0);
-    auto LD = new LoadInst(GV, BV->getName(), BB);
+
+    auto LD = new LoadInst(
+#if LLVM_VERSION_MAJOR > 7
+      GV->getType()->getPointerElementType(),
+#endif
+      GV, BV->getName(), BB);
     PlaceholderMap[BV] = LD;
     return mapValue(BV, LD);
   }
@@ -2886,8 +2897,12 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpLoad: {
     SPIRVLoad *BL = static_cast<SPIRVLoad*>(BV);
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
+    auto val = transValue(BL->getSrc(), F, BB);
     return mapValue(BV, new LoadInst(
-      transValue(BL->getSrc(), F, BB),
+#if LLVM_VERSION_MAJOR > 7
+      val->getType()->getPointerElementType(),
+#endif
+      val,
       BV->getName(),
       BL->hasDecorate(DecorationVolatile) || BL->SPIRVMemoryAccess::getVolatile() != 0,
       IGCLLVM::getCorrectAlign(BL->SPIRVMemoryAccess::getAlignment()),
@@ -3129,9 +3144,16 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpFunctionPointerCallINTEL: {
     SPIRVFunctionPointerCallINTEL *BC =
       static_cast<SPIRVFunctionPointerCallINTEL*>(BV);
-    auto Call = CallInst::Create(transValue(BC->getCalledValue(), F, BB),
-      transValue(BC->getArgumentValues(), F, BB),
-      BC->getName(), BB);
+    auto func = transValue(BC->getCalledValue(), F, BB);
+    auto Call = CallInst::Create(
+#if LLVM_VERSION_MAJOR > 7
+        llvm::cast<llvm::FunctionType>(
+            llvm::cast<llvm::PointerType>(func->getType())->getElementType()),
+#endif
+        func,
+        transValue(BC->getArgumentValues(), F, BB),
+        BC->getName(), 
+        BB);
     // Assuming we are calling a regular device function
     Call->setCallingConv(CallingConv::SPIR_FUNC);
     // Don't set attributes, because at translation time we don't know which
@@ -3153,7 +3175,13 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpFNegate: {
     SPIRVUnary *BC = static_cast<SPIRVUnary*>(BV);
-    return mapValue(BV, BinaryOperator::CreateFNeg(
+    return mapValue(BV, 
+#if LLVM_VERSION_MAJOR <= 10
+        BinaryOperator
+#else
+        UnaryOperator
+#endif
+        ::CreateFNeg(
       transValue(BC->getOperand(0), F, BB),
       BV->getName(), BB));
     }
@@ -3229,7 +3257,8 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
           a->getType()->getScalarType(),
           a->getType()->getScalarSizeInBits() - 1);
       auto *ShiftOp = isa<VectorType>(a->getType()) ?
-          ConstantVector::getSplat((unsigned)cast<VectorType>(a->getType())->getNumElements(), ShiftAmt) :
+          ConstantVector::getSplat(
+              IGCLLVM::getElementCount((unsigned)cast<VectorType>(a->getType())->getNumElements()), ShiftAmt) :
           ShiftAmt;
 
       // OCL C:

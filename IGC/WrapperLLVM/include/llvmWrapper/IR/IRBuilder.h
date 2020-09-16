@@ -256,6 +256,34 @@ namespace IGCLLVM
         }
 #endif
 
+        inline llvm::Value* CreateConstInBoundsGEP2_64(
+            llvm::Value* Ptr,
+            uint64_t Idx0,
+            uint64_t Idx1,
+            const llvm::Twine& Name = "")
+        {
+#if LLVM_VERSION_MAJOR <= 10
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64(Ptr, Idx0, Idx1, Name);
+#else
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64(Ptr->getType()->getPointerElementType(), Ptr, Idx0, Idx1, Name);
+#endif
+        }
+
+        inline static llvm::CallInst* Create(llvm::Value* Func, llvm::ArrayRef<llvm::Value*> Args,
+            llvm::ArrayRef<llvm::OperandBundleDef> Bundles = llvm::None,
+            const llvm::Twine& NameStr = "",
+            llvm::Instruction* InsertBefore = nullptr)
+        {
+#if LLVM_VERSION_MAJOR <= 7
+            return llvm::IRBuilder<T, InserterTyDef()>::Create(
+                Func, Args, Bundles, NameStr, InsertBefore);
+#else
+            return llvm::IRBuilder<T, InserterTyDef()>::Create(llvm::cast<llvm::FunctionType>(
+                llvm::cast<llvm::PointerType>(Func->getType())->getElementType()),
+                Func, Args, Bundles, NameStr, InsertBefore);
+#endif
+        }
+
     };
 #endif
 }

@@ -63,7 +63,7 @@ LegalizeFunctionSignatures::LegalizeFunctionSignatures()
 
 bool LegalizeFunctionSignatures::runOnModule(Module& M)
 {
-    llvm::IRBuilder<> builder(M.getContext());
+    IGCLLVM::IRBuilder<> builder(M.getContext());
     m_pBuilder = &builder;
     m_pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();

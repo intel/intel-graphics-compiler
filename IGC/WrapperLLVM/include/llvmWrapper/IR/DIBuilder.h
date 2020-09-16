@@ -131,6 +131,31 @@ namespace IGCLLVM
                 Flags, llvm::DISubprogram::SPFlagDefinition, TParams, Decl, ThrownTypes);
 #endif
         }
+
+        inline llvm::DITemplateTypeParameter* createTemplateTypeParameter(
+            llvm::DIScope* Scope,
+            llvm::StringRef Name,
+            llvm::DIType* Ty)
+        {
+#if LLVM_VERSION_MAJOR <= 10
+            return llvm::DIBuilder::createTemplateTypeParameter(Scope, Name, Ty);
+#else
+            return llvm::DIBuilder::createTemplateTypeParameter(Scope, Name, Ty, true);
+#endif
+        }
+
+        inline llvm::DITemplateValueParameter* createTemplateValueParameter(
+            llvm::DIScope* Scope,
+            llvm::StringRef Name,
+            llvm::DIType* Ty,
+            llvm::Constant* Val)
+        {
+#if LLVM_VERSION_MAJOR <= 10
+            return llvm::DIBuilder::createTemplateValueParameter(Scope, Name, Ty, Val);
+#else
+            return llvm::DIBuilder::createTemplateValueParameter(Scope, Name, Ty, true, Val);
+#endif
+        }
     };
 #endif
 }

@@ -614,7 +614,13 @@ void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNo
             if (argMapIter != argMap.end())
             {
                 IGC_ASSERT(nullptr != argMapIter->second);
-                combineTwoArgDetail(*argData, *(argMapIter->second), N.first);
+                combineTwoArgDetail(*argData, *(argMapIter->second), 
+#if LLVM_VERSION_MAJOR <= 10
+                    N.first
+#else
+                    *N.first
+#endif
+                    );
             }
         }
     }
