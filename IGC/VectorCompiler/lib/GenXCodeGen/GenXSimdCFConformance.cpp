@@ -3962,10 +3962,13 @@ bool GenXSimdCFConformance::isSelectConditionCondEV(SelectInst *Sel,
 }
 
 /***********************************************************************
- * replaceGetEMUse : find and replace GetEM uses with real EM in Inst
+ * replaceGetEMUse : find and replace GetEM uses to fix dominance.
  *
  * This function is called during linear fragment optimization.
- * After we moved Inst to SIMD, we can link it with Real EM.
+ * After we moved Inst to SIMD BB, we need to update EM connections
+ * according to updated DF.
+ *
+ * In many cases we can place real EM instead of lowered one.
  * GetEM may become redundant - it will be removed later in this pass.
  *
  * Note: SIMD CF will be non-conformant if Inst is left at the point
@@ -3977,7 +3980,7 @@ void GenXSimdCFConformance::replaceGetEMUse(Instruction *Inst,
   for (unsigned i = 0, e = Inst->getNumOperands(); i < e; ++i) {
     Instruction *Pred = dyn_cast<Instruction>(Inst->getOperand(i));
 
-    if (!Pred || !canUseRealEM(Inst, i))
+    if (!Pred)
       continue;
 
     // EM must be in the same BB
@@ -3987,26 +3990,37 @@ void GenXSimdCFConformance::replaceGetEMUse(Instruction *Inst,
     if (!isActualStoredEM(Pred, JPData))
       continue;
 
-    // Replace operand
-    Instruction *NewOp = JPData.getRealEM();
-    Instruction *FullEM = nullptr;
-    if (isa<ShuffleVectorInst>(Pred)) {
-      // Copy truncation via SVI
-      NewOp = Pred->clone();
-      NewOp->insertBefore(JPData.getFalsePred()->getTerminator());
-      NewOp->setOperand(0, JPData.getRealEM());
-      FullEM = cast<Instruction>(Pred->getOperand(0));
-    }
-    Inst->setOperand(i, NewOp);
+    if (canUseRealEM(Inst, i)) {
+      // Replace with real EM
+      Instruction *NewOp = JPData.getRealEM();
+      Instruction *FullEM = nullptr;
+      if (isa<ShuffleVectorInst>(Pred)) {
+        // Copy truncation via SVI
+        NewOp = Pred->clone();
+        NewOp->insertBefore(JPData.getFalsePred()->getTerminator());
+        NewOp->setOperand(0, JPData.getRealEM());
+        FullEM = cast<Instruction>(Pred->getOperand(0));
+      }
+      Inst->setOperand(i, NewOp);
 
-    // Remove Pred if it is not needed anymore.
-    // Do the same for FullEM.
-    // GetEM that was used here will be handled later.
-    if (Pred->use_empty()) {
-      Pred->eraseFromParent();
-    }
-    if (FullEM && FullEM->use_empty()) {
-      FullEM->eraseFromParent();
+      // Remove Pred if it is not needed anymore.
+      // Do the same for FullEM.
+      // GetEM that was used here will be handled later.
+      if (Pred->use_empty()) {
+        Pred->eraseFromParent();
+      }
+      if (FullEM && FullEM->use_empty()) {
+        FullEM->eraseFromParent();
+      }
+    } else {
+      // Replace with lowered EM
+      auto it = LoweredEMValsMap.find(JPData.getRealEM());
+      IGC_ASSERT(it != LoweredEMValsMap.end() && "Should be checked earlier");
+      Instruction *LoweredEM = cast<Instruction>(it->second);
+      Inst->setOperand(i, LoweredEM);
+
+      if (Pred->use_empty())
+        Pred->eraseFromParent();
     }
   }
 }
