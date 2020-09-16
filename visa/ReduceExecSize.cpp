@@ -146,6 +146,7 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
     G4_INST *inst = *i;
     bool insertedInst = false;
 
+
     int extypesize = 0;
     G4_Type extype = inst->getOpExecType(extypesize);
 

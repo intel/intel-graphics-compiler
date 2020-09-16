@@ -768,8 +768,7 @@ void BinaryEncodingIGA::translateInstructionDst(
     G4_DstRegRegion* dst = g4inst->getDst();
     DstModifier dstModifier = getIGADstModifier(g4inst->getSaturate());
     Region::Horz hstride = getIGAHorz(dst->getHorzStride());
-    Type type;
-    type = getIGAType(dst->getType(), platform);
+    Type type = getIGAType(g4inst, Opnd_dst, platform);
 
     // workaround for SKL bug
     // not all bits are copied from immediate descriptor
@@ -904,7 +903,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(
             // let IGA take care of types for send/s instructions
             if (!igaInst->getOpSpec().isSendOrSendsFamily())
             {
-                type = getIGAType(src->getType(), platform);
+                type = getIGAType(inst, inst->getSrcOperandNum(i), platform);
             }
             else if (i == 0 && platform >= GENX_SKL && platform < GENX_ICLLP)
             {
@@ -1167,6 +1166,12 @@ iga::RegName BinaryEncodingIGA::getIGAARFName(G4_ArchRegKind areg)
     }
 }
 
+iga::Type BinaryEncodingIGA::getIGAType(const G4_INST* I, Gen4_Operand_Number O, TARGET_PLATFORM P)
+{
+
+    G4_Type Ty = I->getOperand(O)->getType();
+    return getIGAType(Ty, P);
+}
 
 iga::Type BinaryEncodingIGA::getIGAType(G4_Type type, TARGET_PLATFORM genxPlatform)
 {

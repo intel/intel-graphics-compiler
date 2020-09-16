@@ -66,6 +66,35 @@ using namespace std;
 
 char EmitPass::ID = 0;
 
+/// Divide N into multiple of M (must be power of two), and the remaining into M/2,
+/// M/4, ..., 1. Each sequence takes two elements in execsizeSeq, in which first
+/// one has execsize, and the second one the starting offset.
+/// For example with M = 16, N = 47,
+///  {16, 0}, {16, 16}, {8, 32}, {4, 40}, {2, 44} {1, 45}
+static void splitIntoPowerOfTwo(SmallVector<uint32_t, 16>& execsizeSeq, uint32_t N,  uint32_t M)
+{
+    // Max execution size is 16.
+    int n = (int)N / (int)M;
+    uint32_t offset = 0;
+    for (int i = 0; i < n; ++i) {
+        execsizeSeq.push_back(16);
+        execsizeSeq.push_back(offset);
+        offset += 16;
+    }
+
+    int m = (int)(N % M);
+    for (uint32_t s = M/2; m > 0; s = s / 2)
+    {
+        if (m >= (int)s)
+        {
+            execsizeSeq.push_back(s);
+            execsizeSeq.push_back(offset);
+            offset += s;
+            m -= s;
+        }
+    }
+}
+
 EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool canAbortOnSpill, ShaderDispatchMode shaderMode, PSSignature* pSignature)
     : FunctionPass(ID),
     m_SimdMode(mode),

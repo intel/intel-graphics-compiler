@@ -378,7 +378,9 @@ bool hasPredicate(ISA_Opcode op)
         return !(op == ISA_SETP || op == ISA_MOVS || op == ISA_FMINMAX);
     case ISA_Inst_Arith:
     case ISA_Inst_Logic:
+    {
         return true;
+    }
     case ISA_Inst_Compare:
     case ISA_Inst_Address:
     case ISA_Inst_Data_Port:

@@ -502,7 +502,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     { ALL, ISA_RESERVED_1D, ISA_Inst_Reserved, "reserved_1d", 0, 0,{},
     },
 
-    /// 30
+    /// 30 (0x1E)
     { ALL, ISA_RESERVED_1E, ISA_Inst_Reserved, "reserved_1e", 0, 0,{},
     },
 

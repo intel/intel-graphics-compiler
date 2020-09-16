@@ -1383,6 +1383,7 @@ void vISAVerifier::verifyInstructionArith(
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
+
     unsigned i = 0;
     const vector_opnd& dst = getVectorOperand(inst, i);
     VISA_Type         dstType = getVectorOperandType(header, dst);
@@ -2864,6 +2865,7 @@ void vISAVerifier::verifyInstructionDataport(
         default: REPORT_INSTRUCTION(options,false, "Illegal dataport Instruction Opcode: %d, %s.", opcode, ISA_Inst_Table[opcode].str);
     }
 }
+
 
 
 

@@ -2827,6 +2827,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         }
     }
 
+
     return true;
 }
 

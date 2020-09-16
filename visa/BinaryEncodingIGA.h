@@ -258,6 +258,7 @@ private:
 
     static iga::SFID getSFID(const G4_INST* inst);
     static iga::MathFC getMathFC(const G4_INST *inst);
+    iga::Type getIGAType(const G4_INST* I, Gen4_Operand_Number O, TARGET_PLATFORM P);
 
     void *m_kernelBuffer;
     uint32_t m_kernelBufferSize;

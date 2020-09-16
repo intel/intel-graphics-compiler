@@ -277,6 +277,7 @@ rol|ror {
 
 
 
+
 addc|subb {
         TRACE("\n** MATH INST ");
         CISAlval.opcode = str2opcode(yytext);
