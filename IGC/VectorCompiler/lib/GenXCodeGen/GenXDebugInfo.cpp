@@ -74,8 +74,8 @@ struct FinalizerDbgInfo {
     void *VISAMap = nullptr;
     unsigned int DbgSize = 0;
     unsigned int NumElems = 0;
-    if (const_cast<VISAKernel &>(VK).GetGenxDebugInfo(
-            GenXdbgInfo, DbgSize, VISAMap, NumElems) != VISA_SUCCESS) {
+    if (VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize, VISAMap, NumElems) !=
+        VISA_SUCCESS) {
       ErrMsg = "visa info decode error";
       return;
     }

@@ -50,6 +50,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <set>
 #include "Probe/Assertion.h"
 
+#define DEBUG_TYPE "GENX_MODULE"
+
 using namespace llvm;
 
 char GenXModule::ID = 0;
@@ -157,7 +159,23 @@ void GenXModule::updateVisaDebugInfo(const Function *F,
                                      const Instruction *Inst) {
   auto &DebugInfo = VisaDebugMap[F];
   if (Inst) {
-    DebugInfo.Locations.insert(std::make_pair(DebugInfo.visaCounter, Inst));
+    // Unfortunately, our CISA builder routines are not very consistent with
+    // respect to the interfaces used to emit vISA.
+    // There may be situations when the debug information for instruction is
+    // updated several times (like when we emit an additional VISALifeTime
+    // instruction)
+    // This check is a workaround for a problem when we may emit an auxiliary
+    // visa instruction using the interface which requires us to update the
+    // "current instruction" without actually doing so.
+    const Instruction *LastInst = DebugInfo.Locations.empty()
+                                      ? nullptr
+                                      : DebugInfo.Locations.rbegin()->second;
+    if (LastInst != Inst)
+      DebugInfo.Locations.insert(std::make_pair(DebugInfo.visaCounter, Inst));
+    else
+      LLVM_DEBUG(dbgs() << "WARNING: multiple insn locations updates detected! "
+                        << "visaCounter: " << DebugInfo.visaCounter
+                        << ", insn : " << *Inst << "\n");
   }
   // Always advance visa counter
   ++DebugInfo.visaCounter;
