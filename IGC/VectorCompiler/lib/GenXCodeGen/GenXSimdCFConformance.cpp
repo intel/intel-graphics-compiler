@@ -3939,6 +3939,10 @@ bool GenXSimdCFConformance::isSelectConditionCondEV(SelectInst *Sel,
   if (!PN)
     return false;
 
+  // CondEV Phi must be in the same BB
+  if (PN->getParent() != Sel->getParent())
+    return false;
+
   Value *TrueBlockValue = PN->getIncomingValueForBlock(JPData.getTruePred());
   Value *FalseBlockValue = PN->getIncomingValueForBlock(JPData.getFalsePred());
 
