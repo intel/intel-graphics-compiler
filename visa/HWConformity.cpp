@@ -530,7 +530,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
 
         if (dst && dst->getType() == Type_HF)
         {
-            replaceDst(it, Type_F, bb);
+            replaceDst(it, Type_F);
         }
     }
 
@@ -649,8 +649,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
         (!hasSameOffset && inst->getExecSize() != g4::SIMD1 && !builder.isOpndAligned(dst, numEltPerGRF(Type_UB))))
     {
         mov_dst = true;
-        G4_DstRegRegion* new_dst = insertMovAfter(it, dst, extype, bb);
-        inst->setDest(new_dst);
+        replaceDst(it, extype);
     }
     return mov_dst;
 }
@@ -1174,8 +1173,7 @@ void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB* bb)
         if (!isGoodAlign1TernaryDst(inst))
         {
             auto alignment = builder.noSrc2Regioning() ? GRFALIGN : Four_Word;
-            G4_DstRegRegion* tmpDst = insertMovAfter(iter, dst, dst->getType(), bb, alignment);
-            inst->setDest(tmpDst);
+            replaceDst(iter, dst->getType(), alignment);
         }
 
         bool canBeImm = true;
@@ -1228,8 +1226,7 @@ void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB* bb)
         if (dst->getRegAccess() != Direct || dst->getHorzStride() != 1 ||
             !builder.isOpndAligned(dst, (execSize >= 8) ? 32 : execSize * 4))
         {
-            G4_DstRegRegion* tmpDst = insertMovAfter(iter, dst, dst->getType(), bb);
-            inst->setDest(tmpDst);
+            replaceDst(iter, dst->getType());
         }
         for (int i = 0; i < 3; i++)
         {
@@ -1250,10 +1247,7 @@ void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB* bb)
         {
             if (!builder.isOpndAligned(inst->getDst(), 16))
             {
-                G4_DstRegRegion* new_dst = insertMovAfter(iter, inst->getDst(), inst->getDst()->getType(), bb);
-                G4_Declare* tmpDstDcl = new_dst->getTopDcl();
-                tmpDstDcl->setSubRegAlign(Eight_Word);
-                inst->setDest(new_dst);
+                replaceDst(iter, inst->getDst()->getType(), Eight_Word);
             }
         }
     }
@@ -1421,25 +1415,25 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
 
     if (scalarByteToFloat || dstByteSrc64b)
     {
-        inst->setDest(insertMovAfter(i, inst->getDst(), Type_W, bb));
+        replaceDst(i, Type_W);
         return true;
     }
     if (IS_BTYPE(srcType) && (IS_DFTYPE(dstType) || IS_QTYPE(dstType)))
     {
         // mov Q/DF B
-        inst->setDest(insertMovAfter(i, inst->getDst(), Type_W, bb));
+        replaceDst(i, Type_W);
         return true;
     }
     if (isLowPrecisionFloatTy(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType)))
     {
         // mov HF Q/DF
-        inst->setDest(insertMovAfter(i, inst->getDst(), Type_F, bb));
+        replaceDst(i, Type_F);
         return true;
     }
     if (isLowPrecisionFloatTy(srcType) && (IS_DFTYPE(dstType) || IS_QTYPE(dstType)))
     {
         // mov Q/DF HF
-        inst->setDest(insertMovAfter(i, inst->getDst(), Type_F, bb));
+        replaceDst(i, Type_F);
         return true;
     }
 
@@ -1467,7 +1461,8 @@ bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB* bb)
     if (G4_Type_Table[dst->getType()].byteSize != G4_Type_Table[src->getType()].byteSize)
     {
         // keep exec type same and change dst to be same type as src
-        inst->setDest(insertMovAfter(i, dst, src->getType(), bb));
+        replaceDst(i, src->getType());
+        dst = inst->getDst();
         changed = true;
     }
 
@@ -1566,14 +1561,14 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
         IS_TYPE_INT(inst->getSrc(0)->getType()) && IS_TYPE_INT(inst->getSrc(1)->getType())))
     {
         // change dst type to W
-        inst->setDest(insertMovAfter(i, dst, Type_W, bb));
+        replaceDst(i, Type_W);
         return true;
     }
 
     if (byteDst && extypesize == 8)
     {
         // Gen doesn't support hstride 8, so we add a W move here
-        inst->setDest(insertMovAfter(i, dst, Type_W, bb));
+        replaceDst(i, Type_W);
         return true;
     }
 
@@ -4245,6 +4240,8 @@ void HWConformity::localizeForAcc(G4_BB* bb)
     std::unordered_map<const G4_Declare*, vector<struct LiveNode>> useNodes;
     std::vector<const G4_Declare*> erasedCandidates;
 
+    curBB = bb;
+
     for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd; ++instIter)
     {
         G4_INST* inst = *instIter;
@@ -4719,7 +4716,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
         uint16_t offset = 0;
         if (!builder.isOpndAligned(inst->getDst(), offset, numEltPerGRF(Type_UB)))
         {
-            inst->setDest(insertMovAfter(i, inst->getDst(), inst->getDst()->getType(), bb, GRFALIGN));
+            replaceDst(i, inst->getDst()->getType(), GRFALIGN);
         }
 
         G4_Operand* src0 = inst->getSrc(0);
@@ -5298,6 +5295,7 @@ void HWConformity::chkHWConformity()
 
     for (auto bb : kernel.fg)
     {
+        curBB = bb;
         fixIntToHFMove(bb);
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
@@ -6627,7 +6625,7 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
                     {
                         if (!builder.isOpndAligned(inst->getDst(), numEltPerGRF(Type_UB)))
                         {
-                            inst->setDest(insertMovAfter(instIter, inst->getDst(), Type_F, bb, GRFALIGN));
+                            replaceDst(instIter, Type_F, GRFALIGN);
                         }
                         if (!builder.isOpndAligned(inst->getSrc(2), numEltPerGRF(Type_UB)))
                         {
@@ -6780,7 +6778,7 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
         // Check if dst stride aligns with src2.
         if (dstEltSz != G4_Type_Table[srcTy].byteSize)
         {
-            inst->setDest(insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb, GRFALIGN));
+            replaceDst(it, inst->getDst()->getType(), GRFALIGN);
         }
     }
 }
