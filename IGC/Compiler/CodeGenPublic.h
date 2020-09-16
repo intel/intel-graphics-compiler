@@ -268,6 +268,7 @@ namespace IGC
         unsigned int numPsInputs;
         bool sampleCmpToDiscardOptimizationPossible;
         unsigned int sampleCmpToDiscardOptimizationSlot;
+        bool hasFP64Inst;
     };
 
     struct SSimplePushInfo
