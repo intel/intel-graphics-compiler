@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGCLLVM
 {
-#if LLVM_VERSION_MAJOR == 10
+#if LLVM_VERSION_MAJOR == 10 || LLVM_VERSION_MAJOR == 9
     class CallGraphNode : public llvm::CallGraphNode
     {
       public:
