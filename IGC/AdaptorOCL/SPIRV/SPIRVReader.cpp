@@ -4117,12 +4117,24 @@ Instruction* SPIRVToLLVM::transDebugInfo(SPIRVExtInst* BC, BasicBlock* BB)
     case OCLExtOpDbgKind::DbgVal:
     {
         OpDebugValue dbgValue(BC);
+        llvm::Value* Value = nullptr;
         auto lvar = dbgValue.getValueVar();
         SPIRVValue* spirvVal = static_cast<SPIRVValue*>(BM->getEntry(lvar));
-        SPIRVToLLVMValueMap::iterator Loc = ValueMap.find(spirvVal);
-        if (Loc != ValueMap.end())
+        if (spirvVal->getOpCode() == Op::OpConstant)
         {
-            return DbgTran.createDbgValue(BC, Loc->second, BB);
+            Value = transValueWithoutDecoration(spirvVal, BB->getParent(), BB, false);
+        }
+        else {
+            SPIRVToLLVMValueMap::iterator Loc = ValueMap.find(spirvVal);
+            if (Loc != ValueMap.end())
+            {
+                SPIRVToLLVMValueMap::iterator Loc = ValueMap.find(spirvVal);
+                Value = Loc->second;
+            }
+        }
+        if(Value)
+        {
+            return DbgTran.createDbgValue(BC, Value, BB);
         }
         break;
     }
