@@ -163,6 +163,7 @@ struct CompileOptions {
   bool DumpIsa = false;
   bool DumpIR = false;
   bool DumpAsm = false;
+  bool DumpDebugInfo = false;
   bool TimePasses = false;
 };
 

@@ -28,6 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Support/CommandLine.h"
 
+#include <string>
+
 #define DEBUG_TYPE "GenXBackendConfig"
 
 using namespace llvm;
@@ -50,6 +52,13 @@ static cl::opt<bool>
     EnableAsmDumpsOpt("genx-enable-asm-dumps",
                       cl::desc("Enable finalizer assembly dumps"),
                       cl::init(false));
+static cl::opt<bool>
+    EnableDebugInfoDumpOpt("genx-enable-dbginfo-dumps",
+                           cl::desc("Enable debug information-related dumps"),
+                           cl::init(false));
+static cl::opt<std::string> DebugInfoDumpNameOverride(
+    "genx-dbginfo-dumps-name-override",
+    cl::desc("Override for 'suffix' part of debug info dump name"));
 
 //===----------------------------------------------------------------------===//
 //
@@ -60,7 +69,9 @@ char GenXBackendConfig::ID = 0;
 
 GenXBackendOptions::GenXBackendOptions()
     : DumpRegAlloc(DumpRegAllocOpt), StackSurfaceMaxSize(StackMemSizeOpt),
-      EnableAsmDumps(EnableAsmDumpsOpt) {}
+      EnableAsmDumps(EnableAsmDumpsOpt),
+      EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
+      DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride) {}
 
 GenXBackendConfig::GenXBackendConfig() : ImmutablePass(ID) {
   initializeGenXBackendConfigPass(*PassRegistry::getPassRegistry());

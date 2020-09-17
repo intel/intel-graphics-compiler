@@ -69,6 +69,9 @@ struct GenXBackendOptions {
 
   // Whether to enable finalizer dumps.
   bool EnableAsmDumps;
+  // Whether to enable dumps of kernel debug information
+  bool EnableDebugInfoDumps;
+  std::string DebugInfoDumpsNameOverride;
 
   GenXBackendOptions();
 };
@@ -119,6 +122,10 @@ public:
   }
 
   bool asmDumpsEnabled() const { return Options.EnableAsmDumps; }
+  bool dbgInfoDumpsEnabled() const { return Options.EnableDebugInfoDumps; }
+  const std::string &dbgInfoDumpsNameOverride() const {
+    return Options.DebugInfoDumpsNameOverride;
+  }
 };
 } // namespace llvm
 

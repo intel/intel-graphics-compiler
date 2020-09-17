@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GenXDebugInfo.h"
 #include "FunctionGroup.h"
+#include "GenXBackendConfig.h"
 #include "GenXTargetMachine.h"
 
 #include "visa/include/visaBuilder_interface.h"
@@ -51,18 +52,6 @@ using namespace llvm;
 static cl::opt<bool> GenerateDebugInfo(
     "emit-debug-info", cl::init(false), cl::Hidden,
     cl::desc("Generate DWARF debug info for each compiled kernel"));
-
-static cl::opt<bool> DebugInfoDumpGendbg(
-    "debug-info-dump-gendbg", cl::init(false), cl::Hidden,
-    cl::desc("Dump raw gendbg .dump file produced by finalizer"));
-static cl::opt<std::string> DebugInfoGendbgName("deubg-info-gendbg-output-name",
-                                                cl::Hidden);
-
-static cl::opt<bool>
-    DebugInfoDumpsElf("debug-info-dump-elf", cl::init(false), cl::Hidden,
-                      cl::desc("Dump raw elf file containing debug info"));
-static cl::opt<std::string> DebugInfoElfName("debug-info-elf-output-name",
-                                             cl::Hidden);
 
 namespace {
 
@@ -262,17 +251,23 @@ void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
   const auto &KernelName = KF.getName();
   LLVM_DEBUG(dbgs() << "got Debug Info for <" << KernelName << "> "
                     << "- " << ElfBin.size() << " bytes\n");
-  if (DebugInfoDumpsElf) {
-    std::string DumpName = DebugInfoElfName.empty()
-                               ? ("dbg_" + KernelName + ".elf").str()
-                               : DebugInfoElfName;
-    debugDump(DumpName, ElfBin.data(), ElfBin.size());
-  }
-  if (DebugInfoDumpGendbg) {
-    std::string DumpName = DebugInfoGendbgName.empty()
-                               ? ("gendbg_" + KernelName + ".dump").str()
-                               : DebugInfoGendbgName;
-    debugDump(DumpName, GenDbg.BinaryDump.data(), GenDbg.BinaryDump.size());
+
+  const auto &BC = getAnalysis<GenXBackendConfig>();
+  if (BC.dbgInfoDumpsEnabled()) {
+    StringRef NameSuffix = KernelName;
+    if (!BC.dbgInfoDumpsNameOverride().empty())
+      NameSuffix = BC.dbgInfoDumpsNameOverride();
+
+    auto DwarfDumpName = ("dbginfo_" + NameSuffix + "_dwarf.elf").str();
+    auto GendbgDumpName = ("dbginfo_" + NameSuffix + "_gen.dump").str();
+    if (BC.hasShaderDumper()) {
+      BC.getShaderDumper().dumpBinary(ElfBin, DwarfDumpName);
+      BC.getShaderDumper().dumpBinary(GenDbg.BinaryDump, GendbgDumpName);
+    } else {
+      debugDump(DwarfDumpName, ElfBin.data(), ElfBin.size());
+      debugDump(GendbgDumpName, GenDbg.BinaryDump.data(),
+                GenDbg.BinaryDump.size());
+    }
   }
   return;
 }
@@ -281,6 +276,7 @@ void GenXDebugInfo::cleanup() { DebugInfo.clear(); }
 
 void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<FunctionGroupAnalysis>();
+  AU.addRequired<GenXBackendConfig>();
   AU.addRequired<GenXModule>();
   AU.setPreservesAll();
 }
@@ -319,6 +315,9 @@ ModulePass *createGenXDebugInfoPass() {
 
 INITIALIZE_PASS_BEGIN(GenXDebugInfo, "GenXDebugInfo", "GenXDebugInfo", false,
                       true /*analysis*/)
+INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
+INITIALIZE_PASS_DEPENDENCY(GenXModule)
 INITIALIZE_PASS_END(GenXDebugInfo, "GenXDebugInfo", "GenXDebugInfo", false,
                     true /*analysis*/)
 

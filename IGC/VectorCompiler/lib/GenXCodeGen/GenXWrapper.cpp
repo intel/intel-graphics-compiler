@@ -356,6 +356,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   if (Opts.StackMemSize)
     BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
   BackendOpts.EnableAsmDumps = Opts.DumpAsm;
+  BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
   BackendOpts.Dumper = Opts.Dumper.get();
   return BackendOpts;
 }
@@ -765,11 +766,6 @@ composeLLVMArgs(const opt::InputArgList &ApiArgs,
     UpdatedArgs.AddSeparateArg(DbgArg, LLVMOpt,
                                "-finalizer-opts='-generateDebugInfo'");
     UpdatedArgs.AddSeparateArg(DbgArg, LLVMOpt, "-emit-debug-info");
-
-    // TODO: turn off the debug when debug information is stabilized
-    UpdatedArgs.AddSeparateArg(
-        nullptr, LLVMOpt,
-        "-finalizer-opts='-dumpcommonisa -dumpvisa -output -binary'");
   }
 
   if (opt::Arg *GTPinReRa = ApiArgs.getLastArg(vc::options::OPT_gtpin_rera)) {
