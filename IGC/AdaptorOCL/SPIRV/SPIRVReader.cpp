@@ -249,35 +249,192 @@ public:
       for (unsigned int i = 0; i != numOperations; ++i)
       {
           OpDebugOperation operation(BM->get<SPIRVExtInst>(dbgExpr.getOperation(i)));
-          switch (operation.getOperation())
+          SPIRVDebug::ExpressionOpCode op = (SPIRVDebug::ExpressionOpCode)operation.getOperation();
+          switch (op)
           {
-          case SPIRVDebug::ExpressionOpCode::Deref:
-              Exprs.push_back(llvm::dwarf::DW_OP_deref); break;
-          case SPIRVDebug::ExpressionOpCode::Plus:
-              Exprs.push_back(llvm::dwarf::DW_OP_plus); break;
-          case SPIRVDebug::ExpressionOpCode::Minus:
-              Exprs.push_back(llvm::dwarf::DW_OP_minus); break;
-          case SPIRVDebug::ExpressionOpCode::PlusUconst:
-              Exprs.push_back(llvm::dwarf::DW_OP_plus_uconst); break;
-          case SPIRVDebug::ExpressionOpCode::BitPiece:
-              Exprs.push_back(llvm::dwarf::DW_OP_bit_piece); break;
-          case SPIRVDebug::ExpressionOpCode::Swap:
-              Exprs.push_back(llvm::dwarf::DW_OP_swap); break;
-          case SPIRVDebug::ExpressionOpCode::Xderef:
-              Exprs.push_back(llvm::dwarf::DW_OP_xderef); break;
-          case SPIRVDebug::ExpressionOpCode::StackValue:
-              Exprs.push_back(llvm::dwarf::DW_OP_stack_value); break;
-          case SPIRVDebug::ExpressionOpCode::Constu:
-              Exprs.push_back(llvm::dwarf::DW_OP_constu); break;
-          case SPIRVDebug::ExpressionOpCode::Fragment:
-              Exprs.push_back(llvm::dwarf::DW_OP_LLVM_fragment); break;
+#define CASE(dwarfOp, SPIRVOp)             case SPIRVOp: Exprs.push_back(dwarfOp); break;
+
+              CASE(dwarf::DW_OP_deref, SPIRVDebug::ExpressionOpCode::Deref);
+              CASE(dwarf::DW_OP_plus, SPIRVDebug::ExpressionOpCode::Plus);
+              CASE(dwarf::DW_OP_minus, SPIRVDebug::ExpressionOpCode::Minus);
+              CASE(dwarf::DW_OP_plus_uconst, SPIRVDebug::ExpressionOpCode::PlusUconst);
+              CASE(dwarf::DW_OP_bit_piece, SPIRVDebug::ExpressionOpCode::BitPiece);
+              CASE(dwarf::DW_OP_swap, SPIRVDebug::ExpressionOpCode::Swap);
+              CASE(dwarf::DW_OP_xderef, SPIRVDebug::ExpressionOpCode::Xderef);
+              CASE(dwarf::DW_OP_stack_value, SPIRVDebug::ExpressionOpCode::StackValue);
+              CASE(dwarf::DW_OP_constu, SPIRVDebug::ExpressionOpCode::Constu);
+              CASE(dwarf::DW_OP_LLVM_fragment, SPIRVDebug::ExpressionOpCode::Fragment);
+#if LLVM_VERSION_MAJOR >= 9
+              CASE(dwarf::DW_OP_LLVM_convert, SPIRVDebug::ExpressionOpCode::Convert);
+#endif
+              CASE(dwarf::DW_OP_addr, SPIRVDebug::ExpressionOpCode::Addr);
+              CASE(dwarf::DW_OP_const1u, SPIRVDebug::ExpressionOpCode::Const1u);
+              CASE(dwarf::DW_OP_const1s, SPIRVDebug::ExpressionOpCode::Const1s);
+              CASE(dwarf::DW_OP_const2u, SPIRVDebug::ExpressionOpCode::Const2u);
+              CASE(dwarf::DW_OP_const2s, SPIRVDebug::ExpressionOpCode::Const2s);
+              CASE(dwarf::DW_OP_const4u, SPIRVDebug::ExpressionOpCode::Const4u);
+              CASE(dwarf::DW_OP_const4s, SPIRVDebug::ExpressionOpCode::Const4s);
+              CASE(dwarf::DW_OP_const8u, SPIRVDebug::ExpressionOpCode::Const8u);
+              CASE(dwarf::DW_OP_const8s, SPIRVDebug::ExpressionOpCode::Const8s);
+              CASE(dwarf::DW_OP_consts, SPIRVDebug::ExpressionOpCode::Consts);
+              CASE(dwarf::DW_OP_dup, SPIRVDebug::ExpressionOpCode::Dup);
+              CASE(dwarf::DW_OP_drop, SPIRVDebug::ExpressionOpCode::Drop);
+              CASE(dwarf::DW_OP_over, SPIRVDebug::ExpressionOpCode::Over);
+              CASE(dwarf::DW_OP_pick, SPIRVDebug::ExpressionOpCode::Pick);
+              CASE(dwarf::DW_OP_rot, SPIRVDebug::ExpressionOpCode::Rot);
+              CASE(dwarf::DW_OP_abs, SPIRVDebug::ExpressionOpCode::Abs);
+              CASE(dwarf::DW_OP_and, SPIRVDebug::ExpressionOpCode::And);
+              CASE(dwarf::DW_OP_div, SPIRVDebug::ExpressionOpCode::Div);
+              CASE(dwarf::DW_OP_mod, SPIRVDebug::ExpressionOpCode::Mod);
+              CASE(dwarf::DW_OP_mul, SPIRVDebug::ExpressionOpCode::Mul);
+              CASE(dwarf::DW_OP_neg, SPIRVDebug::ExpressionOpCode::Neg);
+              CASE(dwarf::DW_OP_not, SPIRVDebug::ExpressionOpCode::Not);
+              CASE(dwarf::DW_OP_or, SPIRVDebug::ExpressionOpCode::Or);
+              CASE(dwarf::DW_OP_shl, SPIRVDebug::ExpressionOpCode::Shl);
+              CASE(dwarf::DW_OP_shr, SPIRVDebug::ExpressionOpCode::Shr);
+              CASE(dwarf::DW_OP_shra, SPIRVDebug::ExpressionOpCode::Shra);
+              CASE(dwarf::DW_OP_xor, SPIRVDebug::ExpressionOpCode::Xor);
+              CASE(dwarf::DW_OP_bra, SPIRVDebug::ExpressionOpCode::Bra);
+              CASE(dwarf::DW_OP_eq, SPIRVDebug::ExpressionOpCode::Eq);
+              CASE(dwarf::DW_OP_ge, SPIRVDebug::ExpressionOpCode::Ge);
+              CASE(dwarf::DW_OP_gt, SPIRVDebug::ExpressionOpCode::Gt);
+              CASE(dwarf::DW_OP_le, SPIRVDebug::ExpressionOpCode::Le);
+              CASE(dwarf::DW_OP_lt, SPIRVDebug::ExpressionOpCode::Lt);
+              CASE(dwarf::DW_OP_ne, SPIRVDebug::ExpressionOpCode::Ne);
+              CASE(dwarf::DW_OP_skip, SPIRVDebug::ExpressionOpCode::Skip);
+              CASE(dwarf::DW_OP_lit0, SPIRVDebug::ExpressionOpCode::Lit0);
+              CASE(dwarf::DW_OP_lit1, SPIRVDebug::ExpressionOpCode::Lit1);
+              CASE(dwarf::DW_OP_lit2, SPIRVDebug::ExpressionOpCode::Lit2);
+              CASE(dwarf::DW_OP_lit3, SPIRVDebug::ExpressionOpCode::Lit3);
+              CASE(dwarf::DW_OP_lit4, SPIRVDebug::ExpressionOpCode::Lit4);
+              CASE(dwarf::DW_OP_lit5, SPIRVDebug::ExpressionOpCode::Lit5);
+              CASE(dwarf::DW_OP_lit6, SPIRVDebug::ExpressionOpCode::Lit6);
+              CASE(dwarf::DW_OP_lit7, SPIRVDebug::ExpressionOpCode::Lit7);
+              CASE(dwarf::DW_OP_lit8, SPIRVDebug::ExpressionOpCode::Lit8);
+              CASE(dwarf::DW_OP_lit9, SPIRVDebug::ExpressionOpCode::Lit9);
+              CASE(dwarf::DW_OP_lit10, SPIRVDebug::ExpressionOpCode::Lit10);
+              CASE(dwarf::DW_OP_lit11, SPIRVDebug::ExpressionOpCode::Lit11);
+              CASE(dwarf::DW_OP_lit12, SPIRVDebug::ExpressionOpCode::Lit12);
+              CASE(dwarf::DW_OP_lit13, SPIRVDebug::ExpressionOpCode::Lit13);
+              CASE(dwarf::DW_OP_lit14, SPIRVDebug::ExpressionOpCode::Lit14);
+              CASE(dwarf::DW_OP_lit15, SPIRVDebug::ExpressionOpCode::Lit15);
+              CASE(dwarf::DW_OP_lit16, SPIRVDebug::ExpressionOpCode::Lit16);
+              CASE(dwarf::DW_OP_lit17, SPIRVDebug::ExpressionOpCode::Lit17);
+              CASE(dwarf::DW_OP_lit18, SPIRVDebug::ExpressionOpCode::Lit18);
+              CASE(dwarf::DW_OP_lit19, SPIRVDebug::ExpressionOpCode::Lit19);
+              CASE(dwarf::DW_OP_lit20, SPIRVDebug::ExpressionOpCode::Lit20);
+              CASE(dwarf::DW_OP_lit21, SPIRVDebug::ExpressionOpCode::Lit21);
+              CASE(dwarf::DW_OP_lit22, SPIRVDebug::ExpressionOpCode::Lit22);
+              CASE(dwarf::DW_OP_lit23, SPIRVDebug::ExpressionOpCode::Lit23);
+              CASE(dwarf::DW_OP_lit24, SPIRVDebug::ExpressionOpCode::Lit24);
+              CASE(dwarf::DW_OP_lit25, SPIRVDebug::ExpressionOpCode::Lit25);
+              CASE(dwarf::DW_OP_lit26, SPIRVDebug::ExpressionOpCode::Lit26);
+              CASE(dwarf::DW_OP_lit27, SPIRVDebug::ExpressionOpCode::Lit27);
+              CASE(dwarf::DW_OP_lit28, SPIRVDebug::ExpressionOpCode::Lit28);
+              CASE(dwarf::DW_OP_lit29, SPIRVDebug::ExpressionOpCode::Lit29);
+              CASE(dwarf::DW_OP_lit30, SPIRVDebug::ExpressionOpCode::Lit30);
+              CASE(dwarf::DW_OP_lit31, SPIRVDebug::ExpressionOpCode::Lit31);
+              CASE(dwarf::DW_OP_reg0, SPIRVDebug::ExpressionOpCode::Reg0);
+              CASE(dwarf::DW_OP_reg1, SPIRVDebug::ExpressionOpCode::Reg1);
+              CASE(dwarf::DW_OP_reg2, SPIRVDebug::ExpressionOpCode::Reg2);
+              CASE(dwarf::DW_OP_reg3, SPIRVDebug::ExpressionOpCode::Reg3);
+              CASE(dwarf::DW_OP_reg4, SPIRVDebug::ExpressionOpCode::Reg4);
+              CASE(dwarf::DW_OP_reg5, SPIRVDebug::ExpressionOpCode::Reg5);
+              CASE(dwarf::DW_OP_reg6, SPIRVDebug::ExpressionOpCode::Reg6);
+              CASE(dwarf::DW_OP_reg7, SPIRVDebug::ExpressionOpCode::Reg7);
+              CASE(dwarf::DW_OP_reg8, SPIRVDebug::ExpressionOpCode::Reg8);
+              CASE(dwarf::DW_OP_reg9, SPIRVDebug::ExpressionOpCode::Reg9);
+              CASE(dwarf::DW_OP_reg10, SPIRVDebug::ExpressionOpCode::Reg10);
+              CASE(dwarf::DW_OP_reg11, SPIRVDebug::ExpressionOpCode::Reg11);
+              CASE(dwarf::DW_OP_reg12, SPIRVDebug::ExpressionOpCode::Reg12);
+              CASE(dwarf::DW_OP_reg13, SPIRVDebug::ExpressionOpCode::Reg13);
+              CASE(dwarf::DW_OP_reg14, SPIRVDebug::ExpressionOpCode::Reg14);
+              CASE(dwarf::DW_OP_reg15, SPIRVDebug::ExpressionOpCode::Reg15);
+              CASE(dwarf::DW_OP_reg16, SPIRVDebug::ExpressionOpCode::Reg16);
+              CASE(dwarf::DW_OP_reg17, SPIRVDebug::ExpressionOpCode::Reg17);
+              CASE(dwarf::DW_OP_reg18, SPIRVDebug::ExpressionOpCode::Reg18);
+              CASE(dwarf::DW_OP_reg19, SPIRVDebug::ExpressionOpCode::Reg19);
+              CASE(dwarf::DW_OP_reg20, SPIRVDebug::ExpressionOpCode::Reg20);
+              CASE(dwarf::DW_OP_reg21, SPIRVDebug::ExpressionOpCode::Reg21);
+              CASE(dwarf::DW_OP_reg22, SPIRVDebug::ExpressionOpCode::Reg22);
+              CASE(dwarf::DW_OP_reg23, SPIRVDebug::ExpressionOpCode::Reg23);
+              CASE(dwarf::DW_OP_reg24, SPIRVDebug::ExpressionOpCode::Reg24);
+              CASE(dwarf::DW_OP_reg25, SPIRVDebug::ExpressionOpCode::Reg25);
+              CASE(dwarf::DW_OP_reg26, SPIRVDebug::ExpressionOpCode::Reg26);
+              CASE(dwarf::DW_OP_reg27, SPIRVDebug::ExpressionOpCode::Reg27);
+              CASE(dwarf::DW_OP_reg28, SPIRVDebug::ExpressionOpCode::Reg28);
+              CASE(dwarf::DW_OP_reg29, SPIRVDebug::ExpressionOpCode::Reg29);
+              CASE(dwarf::DW_OP_reg30, SPIRVDebug::ExpressionOpCode::Reg30);
+              CASE(dwarf::DW_OP_reg31, SPIRVDebug::ExpressionOpCode::Reg31);
+              CASE(dwarf::DW_OP_breg0, SPIRVDebug::ExpressionOpCode::Breg0);
+              CASE(dwarf::DW_OP_breg1, SPIRVDebug::ExpressionOpCode::Breg1);
+              CASE(dwarf::DW_OP_breg2, SPIRVDebug::ExpressionOpCode::Breg2);
+              CASE(dwarf::DW_OP_breg3, SPIRVDebug::ExpressionOpCode::Breg3);
+              CASE(dwarf::DW_OP_breg4, SPIRVDebug::ExpressionOpCode::Breg4);
+              CASE(dwarf::DW_OP_breg5, SPIRVDebug::ExpressionOpCode::Breg5);
+              CASE(dwarf::DW_OP_breg6, SPIRVDebug::ExpressionOpCode::Breg6);
+              CASE(dwarf::DW_OP_breg7, SPIRVDebug::ExpressionOpCode::Breg7);
+              CASE(dwarf::DW_OP_breg8, SPIRVDebug::ExpressionOpCode::Breg8);
+              CASE(dwarf::DW_OP_breg9, SPIRVDebug::ExpressionOpCode::Breg9);
+              CASE(dwarf::DW_OP_breg10, SPIRVDebug::ExpressionOpCode::Breg10);
+              CASE(dwarf::DW_OP_breg11, SPIRVDebug::ExpressionOpCode::Breg11);
+              CASE(dwarf::DW_OP_breg12, SPIRVDebug::ExpressionOpCode::Breg12);
+              CASE(dwarf::DW_OP_breg13, SPIRVDebug::ExpressionOpCode::Breg13);
+              CASE(dwarf::DW_OP_breg14, SPIRVDebug::ExpressionOpCode::Breg14);
+              CASE(dwarf::DW_OP_breg15, SPIRVDebug::ExpressionOpCode::Breg15);
+              CASE(dwarf::DW_OP_breg16, SPIRVDebug::ExpressionOpCode::Breg16);
+              CASE(dwarf::DW_OP_breg17, SPIRVDebug::ExpressionOpCode::Breg17);
+              CASE(dwarf::DW_OP_breg18, SPIRVDebug::ExpressionOpCode::Breg18);
+              CASE(dwarf::DW_OP_breg19, SPIRVDebug::ExpressionOpCode::Breg19);
+              CASE(dwarf::DW_OP_breg20, SPIRVDebug::ExpressionOpCode::Breg20);
+              CASE(dwarf::DW_OP_breg21, SPIRVDebug::ExpressionOpCode::Breg21);
+              CASE(dwarf::DW_OP_breg22, SPIRVDebug::ExpressionOpCode::Breg22);
+              CASE(dwarf::DW_OP_breg23, SPIRVDebug::ExpressionOpCode::Breg23);
+              CASE(dwarf::DW_OP_breg24, SPIRVDebug::ExpressionOpCode::Breg24);
+              CASE(dwarf::DW_OP_breg25, SPIRVDebug::ExpressionOpCode::Breg25);
+              CASE(dwarf::DW_OP_breg26, SPIRVDebug::ExpressionOpCode::Breg26);
+              CASE(dwarf::DW_OP_breg27, SPIRVDebug::ExpressionOpCode::Breg27);
+              CASE(dwarf::DW_OP_breg28, SPIRVDebug::ExpressionOpCode::Breg28);
+              CASE(dwarf::DW_OP_breg29, SPIRVDebug::ExpressionOpCode::Breg29);
+              CASE(dwarf::DW_OP_breg30, SPIRVDebug::ExpressionOpCode::Breg30);
+              CASE(dwarf::DW_OP_breg31, SPIRVDebug::ExpressionOpCode::Breg31);
+              CASE(dwarf::DW_OP_regx, SPIRVDebug::ExpressionOpCode::Regx);
+              CASE(dwarf::DW_OP_fbreg, SPIRVDebug::ExpressionOpCode::Fbreg);
+              CASE(dwarf::DW_OP_bregx, SPIRVDebug::ExpressionOpCode::Bregx);
+              CASE(dwarf::DW_OP_piece, SPIRVDebug::ExpressionOpCode::Piece);
+              CASE(dwarf::DW_OP_deref_size, SPIRVDebug::ExpressionOpCode::DerefSize);
+              CASE(dwarf::DW_OP_xderef_size, SPIRVDebug::ExpressionOpCode::XderefSize);
+              CASE(dwarf::DW_OP_nop, SPIRVDebug::ExpressionOpCode::Nop);
+              CASE(dwarf::DW_OP_push_object_address, SPIRVDebug::ExpressionOpCode::PushObjectAddress);
+              CASE(dwarf::DW_OP_call2, SPIRVDebug::ExpressionOpCode::Call2);
+              CASE(dwarf::DW_OP_call4, SPIRVDebug::ExpressionOpCode::Call4);
+              CASE(dwarf::DW_OP_call_ref, SPIRVDebug::ExpressionOpCode::CallRef);
+              CASE(dwarf::DW_OP_form_tls_address, SPIRVDebug::ExpressionOpCode::FormTlsAddress);
+              CASE(dwarf::DW_OP_call_frame_cfa, SPIRVDebug::ExpressionOpCode::CallFrameCfa);
+              CASE(dwarf::DW_OP_implicit_value, SPIRVDebug::ExpressionOpCode::ImplicitValue);
+              CASE(dwarf::DW_OP_implicit_pointer, SPIRVDebug::ExpressionOpCode::ImplicitPointer);
+              CASE(dwarf::DW_OP_addrx, SPIRVDebug::ExpressionOpCode::Addrx);
+              CASE(dwarf::DW_OP_constx, SPIRVDebug::ExpressionOpCode::Constx);
+              CASE(dwarf::DW_OP_entry_value, SPIRVDebug::ExpressionOpCode::EntryValue);
+              CASE(dwarf::DW_OP_const_type, SPIRVDebug::ExpressionOpCode::ConstTypeOp);
+              CASE(dwarf::DW_OP_regval_type, SPIRVDebug::ExpressionOpCode::RegvalType);
+              CASE(dwarf::DW_OP_deref_type, SPIRVDebug::ExpressionOpCode::DerefType);
+              CASE(dwarf::DW_OP_xderef_type, SPIRVDebug::ExpressionOpCode::XderefType);
+              CASE(dwarf::DW_OP_reinterpret, SPIRVDebug::ExpressionOpCode::Reinterpret);
           default:
               break;
           }
 
-          for (unsigned int j = 0; j != operation.getNumLiterals(); ++j)
+          unsigned int numOperands = 0;
+          if (SPIRVDebug::OpCountMap.find(op) != SPIRVDebug::OpCountMap.end())
+              numOperands = SPIRVDebug::OpCountMap[op];
+
+          if (numOperands > 0)
           {
-              Exprs.push_back(operation.getLiteral(j));
+              for (unsigned int j = 1; j != numOperands; ++j)
+              {
+                  Exprs.push_back(operation.getLiteral(j));
+              }
           }
       }
 
