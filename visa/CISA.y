@@ -438,12 +438,10 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %type <cond_mod> ConditionalModifier
 
 %type <genOperand> SrcGeneralOperand
-%type <genOperand> SrcGeneralOperand_1
 %type <genOperand> SrcImmOperand
 %type <fltval>     FloatLit
 %type <fltval>     DoubleFloatLit
 %type <genOperand> SrcIndirectOperand
-%type <genOperand> SrcIndirectOperand_1
 %type <genOperand> SrcAddrOperand
 %type <genOperand> SrcAddrOfOperand
 %type <regAccess>  AddrOfVar
@@ -1530,7 +1528,6 @@ VecSrcOperand_G_I_IMM_A:
 
 VecSrcOperand_G_I_IMM:
       VecSrcOperand_G
-    | SrcIndirectOperand_1 {$$ = $1; $$.type = OPERAND_INDIRECT;}
     | SrcIndirectOperand   {$$ = $1; $$.type = OPERAND_INDIRECT;}
     | SrcImmOperand        {$$ = $1; $$.type = OPERAND_IMMEDIATE;}
 
@@ -1551,10 +1548,7 @@ VecSrcOperand_G_A_AO:
       VecSrcOperand_G_A
     | SrcAddrOfOperand    {$$ = $1; $$.type = OPERAND_ADDRESS;}
 
-VecSrcOperand_G:
-      SrcGeneralOperand   {$$ = $1; $$.type = OPERAND_GENERAL;}
-    | SrcGeneralOperand_1 {$$ = $1; $$.type = OPERAND_GENERAL;}
-
+VecSrcOperand_G: SrcGeneralOperand {$$ = $1; $$.type = OPERAND_GENERAL;}
 
 VecSrcOpndSimple: Var TwoDimOffset
     {
@@ -1728,14 +1722,15 @@ SrcAddrOperand: AddrVarAccessWithWidth
                 $1.cisa_decl, $1.elem, $1.row, false, CISAlineno));
     }
 
-SrcGeneralOperand: Var TwoDimOffset SrcRegionDirect
+SrcGeneralOperand:
+                Var TwoDimOffset SrcRegionDirect
     {
         ABORT_ON_FAIL($$.cisa_gen_opnd =
             pBuilder->CISA_create_gen_src_operand(
                 $1, $3.v_stride, $3.width, $3.h_stride, $2.row, $2.elem, MODIFIER_NONE, CISAlineno));
     }
-                    //   1        2       3          4
-SrcGeneralOperand_1: SrcModifier Var TwoDimOffset SrcRegionDirect
+    |
+    SrcModifier Var TwoDimOffset SrcRegionDirect
     {
         ABORT_ON_FAIL($$.cisa_gen_opnd =
             pBuilder->CISA_create_gen_src_operand(
@@ -1809,15 +1804,16 @@ DoubleFloatLit:
 
 
 
-SrcIndirectOperand: IndirectVarAccess SrcRegionDirect DataType
+SrcIndirectOperand:
+                IndirectVarAccess SrcRegionIndirect DataType
     {
         ABORT_ON_FAIL($$.cisa_gen_opnd =
             pBuilder->CISA_create_indirect(
                 $1.cisa_decl, MODIFIER_NONE, $1.row, $1.elem, $1.immOff,
                 $2.v_stride, $2.width, $2.h_stride, $3, CISAlineno));
     }
-
-SrcIndirectOperand_1: SrcModifier IndirectVarAccess SrcRegionIndirect DataType
+    |
+    SrcModifier IndirectVarAccess SrcRegionIndirect DataType
     {
         ABORT_ON_FAIL($$.cisa_gen_opnd =
             pBuilder->CISA_create_indirect(
@@ -1860,7 +1856,8 @@ SrcRegionDirect:
 SrcRegionIndirect:
     SrcRegionDirect
     |
-    LANGLE IntExp COMMA IntExpNRA RANGLE   // <Width,HorzStride>
+//    LANGLE IntExp COMMA IntExpNRA RANGLE   // <Width,HorzStride>
+    LANGLE IntExp COMMA DEC_LIT RANGLE   // <Width,HorzStride>
     {
         MUST_HOLD(($2 == 0 || $2 == 1 || $2 == 2 || $2 == 4 || $2 == 8 || $2 == 16),
                  "Width must be 0, 1, 2, 4, 8 or 16");
