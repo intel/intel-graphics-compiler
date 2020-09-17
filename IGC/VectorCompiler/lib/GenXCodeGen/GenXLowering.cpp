@@ -1756,7 +1756,7 @@ bool GenXLowering::lowerBoolVectorSelect(SelectInst *Inst) {
  * Return:  whether any change was made, and thus the current instruction
  *          is now marked for erasing
  *
- * We handle three cases:
+ * We handle four cases:
  *
  * 1. A slice of the vector, which can be turned into rdpredregion.
  *
@@ -1765,6 +1765,10 @@ bool GenXLowering::lowerBoolVectorSelect(SelectInst *Inst) {
  *    result of a cmp then we can splat the cmp as an optimization.
  *
  * 3. An unslice of the vector, which can be turned into wrpredregion.
+ *
+ * 4. General case. Like in the splat case we convert input via select and
+ *    result is then bitcasted back to vector of i1. Converted vectors are
+ *    then handled by lowerShuffleToMove
  */
 bool GenXLowering::lowerBoolShuffle(ShuffleVectorInst *SI) {
   ShuffleVectorAnalyzer SVA(SI);
@@ -1809,10 +1813,30 @@ bool GenXLowering::lowerBoolShuffle(ShuffleVectorInst *SI) {
   if (SVA.isReplicatedSlice())
     return false;
 
-  // No other cases handled.
-  SI->getContext().emitError(
-      SI, "general bool shuffle vector instruction not implemented");
-  return false;
+  // 4. General case.
+
+  // The idea is to convert input i1 vector to i16 vector via select,
+  // then do a shufflevector lowering for non-bool case
+  // and convert back to i1 vector via icmp instruction.
+
+  IRBuilder<> B(SI);
+  unsigned WidthInput =
+      cast<VectorType>(SI->getOperand(0)->getType())->getNumElements();
+  unsigned WidthResult = cast<VectorType>(SI->getType())->getNumElements();
+  Constant *C1 = ConstantVector::getSplat(IGCLLVM::getElementCount(WidthInput),
+                                          B.getInt16(1));
+  Constant *C0 = ConstantVector::getSplat(IGCLLVM::getElementCount(WidthInput),
+                                          B.getInt16(0));
+  Value *V1 = B.CreateSelect(SI->getOperand(0), C1, C0);
+  Value *V2 = B.CreateSelect(SI->getOperand(1), C1, C0);
+  Value *SI1 = B.CreateShuffleVector(V1, V2, SI->getMask(), SI->getName());
+  Constant *C2 = ConstantVector::getSplat(IGCLLVM::getElementCount(WidthResult),
+                                          B.getInt16(0));
+  Value *Result = B.CreateICmpNE(SI1, C2);
+  SI->replaceAllUsesWith(Result);
+  ToErase.push_back(SI);
+
+  return true;
 }
 
 /***********************************************************************
@@ -2022,7 +2046,7 @@ template <typename Iter> Iter skipUndefs(Iter First, Iter Last) {
 }
 
 /***********************************************************************
- * lowerShuffleToMove : lower a ShuffleInst (element type not i1) to a
+ * lowerShuffleToMove : lower a ShuffleInst (element type is not i1) to a
  *                      sequence of rd/wrregion intrinsics
  */
 void GenXLowering::lowerShuffleToMove(ShuffleVectorInst *SI) {
@@ -2052,8 +2076,7 @@ void GenXLowering::lowerShuffleToMove(ShuffleVectorInst *SI) {
   std::transform(
       RdRegions.begin(), RdRegions.end(), std::back_inserter(RdRegionInsts),
       [SI](ShuffleVectorAnalyzer::OperandRegionInfo &OpRegion) -> Value * {
-        if (cast<VectorType>(OpRegion.Op->getType())->getNumElements() ==
-            OpRegion.R.NumElements)
+        if (OpRegion.R.isWhole(OpRegion.Op->getType()))
           return OpRegion.Op;
         return OpRegion.R.createRdRegion(
             OpRegion.Op, SI->getName() + ".shuffle.rd", SI, SI->getDebugLoc());
