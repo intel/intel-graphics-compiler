@@ -2316,7 +2316,9 @@ namespace IGC
         // Cannot compile simd32 for function calls due to slicing
         if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
         {
-            if (pCtx->m_enableFunctionPointer || simd_size)
+            // Default stack call and functions pointers to SIMD16
+            // If subgroup size is set, only allow SIMD16 and SIMD8
+            if (!pCtx->m_enableSubroutine || simd_size)
             {
                 if (simdMode == SIMDMode::SIMD32)
                 {
@@ -2324,11 +2326,10 @@ namespace IGC
                     return SIMDStatus::SIMD_FUNC_FAIL;
                 }
             }
+            // Default subroutines to SIMD8
             else if (simdMode != SIMDMode::SIMD8)
             {
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-
-                // default simd8
                 return SIMDStatus::SIMD_FUNC_FAIL;
             }
         }
