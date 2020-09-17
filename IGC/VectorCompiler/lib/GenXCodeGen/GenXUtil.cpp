@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvm/ADT/MapVector.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
@@ -1336,7 +1337,9 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
 }
 
 const GlobalVariable *genx::getUnderlyingGlobalVariable(const Value *V) {
-  while (auto CE = dyn_cast_or_null<ConstantExpr>(V)) {
+  while (auto *BI = dyn_cast<BitCastInst>(V))
+    V = BI->getOperand(0);
+  while (auto *CE = dyn_cast_or_null<ConstantExpr>(V)) {
     if (CE->getOpcode() == CastInst::BitCast)
       V = CE->getOperand(0);
     else
@@ -1592,48 +1595,33 @@ Type &genx::fixDegenerateVectorType(Type &Ty) {
       fixDegenerateVectorType(static_cast<const Type &>(Ty)));
 }
 
-Value *genx::getFunctionPointer(Value *V) {
+Function *genx::getFunctionPointerFunc(Value *V) {
   Instruction *I = nullptr;
-  while (I = dyn_cast<Instruction>(V)) {
-    if (isa<SelectInst>(I))
-      V = I->getOperand(1);
-    else if (isa<BitCastInst>(I) || isa<PtrToIntInst>(I))
-      V = I->getOperand(0);
-    else
-      break;
-  }
+  for (; I = dyn_cast<CastInst>(V); V = I->getOperand(0))
+    ;
   ConstantExpr *CE = nullptr;
-  while ((CE = dyn_cast<ConstantExpr>(V)) &&
-         (CE->getOpcode() == Instruction::ExtractElement ||
-          CE->isCast()))
-    V = CE->getOperand(0);
-  if (isa<Constant>(V) && V->getType()->isPointerTy() &&
-      V->getType()->getPointerElementType()->isFunctionTy()) {
-    return V;
-  }
+  for (; (CE = dyn_cast<ConstantExpr>(V)) &&
+         (CE->getOpcode() == Instruction::ExtractElement || CE->isCast());
+       V = CE->getOperand(0))
+    ;
+  if (auto *F = dyn_cast<Function>(V))
+    return F;
+  if (auto *CV = dyn_cast<ConstantVector>(V); CV && CV->getSplatValue())
+    return getFunctionPointerFunc(CV->getSplatValue());
   return nullptr;
 }
 
-bool genx::isFuncPointerVec(Value *V, SetVector<Function *> *Funcs) {
-  bool Res = true;
+bool genx::isFuncPointerVec(Value *V) {
+  bool Res = false;
   if (V->getType()->isVectorTy() && isa<ConstantExpr>(V) &&
-      cast<ConstantExpr>(V)->getOpcode() == Instruction::BitCast) {
-    Res = getFunctionPointer(cast<ConstantExpr>(V)->getOperand(0));
-  } else if (ConstantVector *Vec = dyn_cast<ConstantVector>(V)) {
-    for (auto it = Vec->op_begin(), ie = Vec->op_end(); it != ie; it++) {
-      auto *F = getFunctionPointer(*it);
-      if (F && Funcs) {
-        Funcs->insert(cast<Function>(F));
-      } else if (!F) {
-        Res = false;
-        break;
-      }
-    }
-  } else
-    Res = false;
+      cast<ConstantExpr>(V)->getOpcode() == Instruction::BitCast)
+    Res = isFuncPointerVec(cast<ConstantExpr>(V)->getOperand(0));
+  else if (ConstantVector *Vec = dyn_cast<ConstantVector>(V))
+    Res = std::all_of(Vec->op_begin(), Vec->op_end(), [](Value *V) {
+      return getFunctionPointerFunc(V) != nullptr;
+    });
   return Res;
 }
-
 
 unsigned genx::getLogAlignment(VISA_Align Align, unsigned GRFWidth) {
   switch (Align) {
@@ -1719,4 +1707,97 @@ CallInst *genx::checkFunctionCall(Value *V, Function *F) {
   if (CI && CI->getCalledFunction() == F)
     return CI;
   return nullptr;
+}
+
+Value *genx::breakConstantVector(ConstantVector *CV, Instruction *CurInst,
+                                 Instruction *InsertPt) {
+  IGC_ASSERT(CurInst && InsertPt);
+  if (!CV)
+    return nullptr;
+  // Splat case.
+  if (auto S = dyn_cast_or_null<ConstantExpr>(CV->getSplatValue())) {
+    // Turn element into an instruction
+    auto Inst = S->getAsInstruction();
+    Inst->setDebugLoc(CurInst->getDebugLoc());
+    Inst->insertBefore(InsertPt);
+
+    // Splat this value.
+    IRBuilder<> Builder(InsertPt);
+    Value *NewVal = Builder.CreateVectorSplat(CV->getNumOperands(), Inst);
+
+    // Update i-th operand with newly created splat.
+    CurInst->replaceUsesOfWith(CV, NewVal);
+    return NewVal;
+  }
+
+  SmallVector<Value *, 8> Vals;
+  bool HasConstExpr = false;
+  for (unsigned j = 0, N = CV->getNumOperands(); j < N; ++j) {
+    Value *Elt = CV->getOperand(j);
+    if (auto CE = dyn_cast<ConstantExpr>(Elt)) {
+      auto Inst = CE->getAsInstruction();
+      Inst->setDebugLoc(CurInst->getDebugLoc());
+      Inst->insertBefore(InsertPt);
+      Vals.push_back(Inst);
+      HasConstExpr = true;
+    } else
+      Vals.push_back(Elt);
+  }
+
+  if (HasConstExpr) {
+    Value *Val = UndefValue::get(CV->getType());
+    IRBuilder<> Builder(InsertPt);
+    for (unsigned j = 0, N = CV->getNumOperands(); j < N; ++j)
+      Val = Builder.CreateInsertElement(Val, Vals[j], j);
+    CurInst->replaceUsesOfWith(CV, Val);
+    return Val;
+  }
+  return nullptr;
+}
+
+bool genx::breakConstantExprs(Instruction *I) {
+  if (!I)
+    return false;
+  bool Modified = false;
+  std::list<Instruction *> Worklist = {I};
+  while (!Worklist.empty()) {
+    auto *CurInst = Worklist.front();
+    Worklist.pop_front();
+    PHINode *PN = dyn_cast<PHINode>(CurInst);
+    for (unsigned i = 0, e = CurInst->getNumOperands(); i < e; ++i) {
+      auto *InsertPt = PN ? PN->getIncomingBlock(i)->getTerminator() : CurInst;
+      Value *Op = CurInst->getOperand(i);
+      if (ConstantExpr *CE = dyn_cast<ConstantExpr>(Op)) {
+        Instruction *NewInst = CE->getAsInstruction();
+        NewInst->setDebugLoc(CurInst->getDebugLoc());
+        NewInst->insertBefore(CurInst);
+        CurInst->setOperand(i, NewInst);
+        Worklist.push_back(NewInst);
+        Modified = true;
+      } else if (auto *CV = dyn_cast<ConstantVector>(Op)) {
+        if (auto *CVInst = breakConstantVector(CV, CurInst, InsertPt)) {
+          Worklist.push_back(cast<Instruction>(CVInst));
+          Modified = true;
+        }
+      }
+    }
+  }
+  return Modified;
+}
+
+bool genx::breakConstantExprs(Function *F) {
+  bool Modified = false;
+  for (po_iterator<BasicBlock *> i = po_begin(&F->getEntryBlock()),
+                                 e = po_end(&F->getEntryBlock());
+       i != e; ++i) {
+    BasicBlock *BB = *i;
+    // The effect of this loop is that we process the instructions in reverse
+    // order, and we re-process anything inserted before the instruction
+    // being processed.
+    for (Instruction *CurInst = BB->getTerminator(); CurInst;) {
+      Modified |= breakConstantExprs(CurInst);
+      CurInst = CurInst == &BB->front() ? nullptr : CurInst->getPrevNode();
+    }
+  }
+  return Modified;
 }

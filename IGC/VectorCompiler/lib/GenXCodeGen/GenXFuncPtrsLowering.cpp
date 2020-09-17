@@ -23,9 +23,31 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-//
-/// This pass lowers all function pointers related instructions
-//
+///
+/// GenXFunctionPointersLowering
+/// ---------------------
+///
+/// Function pointers lowering consists of several stages:
+/// 1. Collect all instruction that use function pointers and their users that
+///    have to be modified
+/// 2. Actually modify the instructions collected:
+///    - break constant expression in the instructions collected to simplify the
+///      analysis
+///    - reconstruct existing wrr/rdr instrinsics (remove internal casts, use
+///    i64
+///      types)
+///    - create new wrr/rdrs where necessary, e.g. as a select args for further
+///      baling to succeed
+///    - reconstruct all funcptrs-related phis
+///    - update all users of the instruction modified (may insert additional
+///      casts where necessary, e.g. inttoptr for wrr to indirect call)
+/// 3. Replace all function pointer PtrToIntInsts to genx.faddr.
+///    This is done mainly to prevent them being transformed back into
+///    ConstantExprs which prevents bailing for sure, and maybe some
+///    other analyzes/transformations as well
+/// 4. Sweep all the dead code involved in the function pointers flow,
+///    e.g. InsertElementInsts replaced with wrrs
+///
 //===----------------------------------------------------------------------===//
 
 #include "GenX.h"
@@ -33,7 +55,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
-
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -51,33 +72,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
+#include <deque>
+
 using namespace llvm;
 using namespace genx;
 
 namespace {
 
-// Function pointers lowering consists of two stages:
-// 1. Collect all instruction that use function pointers and their users that
-// have to be modified
-// 2. Actually modify the instructions collected:
-//    - reconstruct existing wrr/rdr instrinsics (remove internal casts, use i64
-//    types)
-//    - create new wrr/rdrs where necessary, e.g. as a select args for further
-//    baling to succeed
-//    - reconstruct all funcptrs-related phis
-//    - update all users of the instruction modified (may insert additional
-//    casts where necessary,
-//                                                    e.g. ptrtoint for wrr to
-//                                                    indirect call)
-
 class GenXFunctionPointersLowering : public ModulePass {
   SetVector<Instruction *> InstToProcess;
-  std::map<PHINode *, unsigned> PhisIndex;
+  std::vector<Instruction *> ToErase;
 
   const DataLayout *DL = nullptr;
   LLVMContext *Ctx = nullptr;
-
-  bool IsFuncPointerVec(Value *V, SetVector<Function *> *Funcs = nullptr);
 
   void collectFuncUsers(User *U);
   void collectFuncUsers(CallInst *CI);
@@ -85,13 +92,12 @@ class GenXFunctionPointersLowering : public ModulePass {
   void collectFuncUsers(CastInst *Phi);
   void collectFuncUsers(SelectInst *SI);
 
-  void reconstructCall(CallInst *CI);
+  void reconstructGenXIntrinsic(CallInst *CI);
   void reconstructPhi(PHINode *Phi);
   void reconstructSelect(SelectInst *SI);
+  Value *reconstructValue(Value *V, Instruction *InsPoint);
 
   void replaceAllUsersCommon(Instruction *Old, Instruction *New);
-
-  Value *transformFuncPtrVec(Value *V);
 
 public:
   static char ID;
@@ -138,7 +144,7 @@ bool GenXFunctionPointersLowering::runOnModule(Module &M) {
     }
 
   for (auto &F : M)
-    if (F.hasFnAttribute("referenced-indirectly"))
+    if (F.hasFnAttribute(genx::FunctionMD::ReferencedIndirectly))
       for (auto *U : F.users())
         collectFuncUsers(U);
 
@@ -148,15 +154,33 @@ bool GenXFunctionPointersLowering::runOnModule(Module &M) {
     if (auto *Phi = dyn_cast<PHINode>(TI))
       reconstructPhi(Phi);
     else if (auto *CI = dyn_cast<CallInst>(TI))
-      reconstructCall(CI);
+      reconstructGenXIntrinsic(CI);
     else if (auto *SI = dyn_cast<SelectInst>(TI))
       reconstructSelect(SI);
     else
       IGC_ASSERT(0 && "Unsupported instruction to process");
   }
+
+  for (auto &F : M)
+    if (F.hasFnAttribute(genx::FunctionMD::ReferencedIndirectly))
+      for (auto *U : F.users()) {
+        if (auto *UI = dyn_cast<PtrToIntInst>(U)) {
+          Function *IntrDecl = GenXIntrinsic::getGenXDeclaration(
+              &M, llvm::GenXIntrinsic::genx_faddr, {F.getType()});
+          auto *IntrCall = CallInst::Create(IntrDecl, {&F}, "faddr", UI);
+          UI->replaceAllUsesWith(IntrCall);
+          ToErase.push_back(UI);
+        } else if (auto *UCE = dyn_cast<ConstantExpr>(U);
+                   !(UCE && UCE->getOpcode() == Instruction::PtrToInt))
+          IGC_ASSERT(isa<CallInst>(U) &&
+                     "Unsupported first-level user of a function");
+      }
+  for (auto *I : ToErase)
+    I->eraseFromParent();
   return Modified;
 }
 
+// TODO: redesign this function
 void GenXFunctionPointersLowering::collectFuncUsers(User *U) {
   if (auto *CI = dyn_cast<CallInst>(U))
     collectFuncUsers(CI);
@@ -168,22 +192,17 @@ void GenXFunctionPointersLowering::collectFuncUsers(User *U) {
     collectFuncUsers(SI);
   else if (auto *ICmp = dyn_cast<ICmpInst>(U)) {
     // skip
-  } else if (auto *EE = dyn_cast<ExtractElementInst>(U)) {
+  } else if (auto *EE = dyn_cast<ExtractElementInst>(U))
     collectFuncUsers(EE);
-  } else if (isa<Constant>(U))
+  else if (isa<Constant>(U))
     for (auto *UU : U->users())
       collectFuncUsers(UU);
-  else {
+  else
     IGC_ASSERT(0 && "unsupported funcptr user");
-  }
 }
 
 void GenXFunctionPointersLowering::collectFuncUsers(CallInst *CI) {
-  if (!IGCLLVM::isIndirectCall(*CI) &&
-      (GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-           GenXIntrinsic::genx_rdregioni ||
-       GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-           GenXIntrinsic::genx_wrregioni)) {
+  if (!IGCLLVM::isIndirectCall(*CI)) {
     InstToProcess.insert(CI);
 
     for (auto *U : CI->users())
@@ -219,22 +238,27 @@ void GenXFunctionPointersLowering::replaceAllUsersCommon(Instruction *Old,
     auto *U = Old->user_back();
     if (auto *CIU = dyn_cast<CallInst>(U)) {
       if (IGCLLVM::getCalledValue(CIU) == Old) {
+        if (New->getType()->isVectorTy()) {
+          IGC_ASSERT(New->getType()->getVectorNumElements() == 1);
+          New = CastInst::CreateBitOrPointerCast(
+              New, New->getType()->getVectorElementType(), "", CIU);
+          New->setDebugLoc(CIU->getDebugLoc());
+        }
         auto *IntToPtr = CastInst::CreateBitOrPointerCast(
             New, IGCLLVM::getCalledValue(CIU)->getType(), "", CIU);
+        IntToPtr->setDebugLoc(Old->getDebugLoc());
         CIU->replaceUsesOfWith(Old, IntToPtr);
-      } else if (GenXIntrinsic::getAnyIntrinsicID(CIU->getCalledFunction()) ==
+      } else if (GenXIntrinsic::getGenXIntrinsicID(CIU->getCalledFunction()) ==
                      GenXIntrinsic::genx_rdregioni ||
-                 GenXIntrinsic::getAnyIntrinsicID(CIU->getCalledFunction()) ==
+                 GenXIntrinsic::getGenXIntrinsicID(CIU->getCalledFunction()) ==
                      GenXIntrinsic::genx_wrregioni ||
                  IGCLLVM::getCalledValue(CIU) != Old) {
         CIU->replaceUsesOfWith(Old, New);
       } else
         IGC_ASSERT(0 && "unsupported call of a function pointer");
-    } else if (isa<IntToPtrInst>(U) || isa<ICmpInst>(U)) {
+    } else if (isa<IntToPtrInst>(U) || isa<ICmpInst>(U) ||
+               isa<BitCastInst>(U) || isa<PHINode>(U)) {
       U->replaceUsesOfWith(Old, New);
-    } else if (auto *Phi = dyn_cast<PHINode>(U)) {
-      Phi->replaceUsesOfWith(Old, New);
-      PhisIndex[Phi]++;
     } else {
       IGC_ASSERT(0 && "Unsupported function pointer user\n");
     }
@@ -242,125 +266,172 @@ void GenXFunctionPointersLowering::replaceAllUsersCommon(Instruction *Old,
   Old->eraseFromParent();
 }
 
-void GenXFunctionPointersLowering::reconstructCall(CallInst *CI) {
-  IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-             GenXIntrinsic::genx_rdregioni ||
-         GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-             GenXIntrinsic::genx_wrregioni);
-  Region R(Type::getInt64Ty(*Ctx));
-  unsigned OffIdx = GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-                            GenXIntrinsic::genx_rdregioni
-                        ? 4
-                        : 5;
-  if (!isa<Constant>(CI->getOperand(OffIdx)))
-    R.Indirect = CI->getOperand(OffIdx);
-  else
-    R.Offset = cast<ConstantInt>(CI->getOperand(OffIdx))->getZExtValue();
-  Instruction *Result = nullptr;
-  if (GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-      GenXIntrinsic::genx_rdregioni) {
-    Result = cast<Instruction>(
-        R.createRdRegion(transformFuncPtrVec(CI->getOperand(0)), CI->getName(),
-                         CI, CI->getDebugLoc(), true));
-  } else if (GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-             GenXIntrinsic::genx_wrregioni)
-    Result = cast<Instruction>(
-        R.createWrRegion(transformFuncPtrVec(CI->getOperand(0)),
-                         transformFuncPtrVec(CI->getOperand(1)), CI->getName(),
-                         CI, CI->getDebugLoc()));
-  if (Result->getType() == CI->getType())
-    return;
-  replaceAllUsersCommon(CI, Result);
-}
-
-void GenXFunctionPointersLowering::reconstructPhi(PHINode *Phi) {
-  for (auto *Op : Phi->operand_values()) {
-    auto *OpTr = transformFuncPtrVec(Op);
-    Phi->replaceUsesOfWith(Op, OpTr);
-    if (OpTr != Op)
-      PhisIndex[Phi]++;
+void GenXFunctionPointersLowering::reconstructGenXIntrinsic(CallInst *CI) {
+  IGC_ASSERT_MESSAGE(GenXIntrinsic::isGenXIntrinsic(CI->getCalledFunction()),
+                     "Unsupported call to process");
+  genx::breakConstantExprs(CI);
+  unsigned OpIdx = 0;
+  switch (GenXIntrinsic::getGenXIntrinsicID(CI->getCalledFunction())) {
+  case GenXIntrinsic::genx_rdregioni:
+    OpIdx = GenXIntrinsic::GenXRegion::OldValueOperandNum;
+    break;
+  case GenXIntrinsic::genx_wrregioni:
+    OpIdx = GenXIntrinsic::GenXRegion::NewValueOperandNum;
+    break;
+  case GenXIntrinsic::genx_scatter_scaled:
+    OpIdx = 6;
+    break;
+  case GenXIntrinsic::genx_scatter_private:
+    OpIdx = 3;
+    break;
+  default:
+    IGC_ASSERT(0 && "Unsupported genx intrinsic");
   }
-  IGC_ASSERT(Phi->getNumOperands() > 0 && Phi->getNumOperands() == PhisIndex[Phi]);
-  Type *NewTy = Phi->value_op_begin()->getType();
-  IGC_ASSERT(std::all_of(Phi->value_op_begin(), Phi->value_op_end(),
-                     [&NewTy](Value *V) { return V->getType() == NewTy; }));
-  auto *NewPhi = PHINode::Create(NewTy, 0, Phi->getName(), Phi);
-  for (unsigned i = 0; i < Phi->getNumIncomingValues(); ++i)
-    NewPhi->addIncoming(Phi->getIncomingValue(i), Phi->getIncomingBlock(i));
-  while (!Phi->user_empty()) {
-    // already checked that this is only wrr/rdr
-    auto *U = Phi->user_back();
-    U->replaceUsesOfWith(Phi, NewPhi);
-  }
-  Phi->eraseFromParent();
+  reconstructValue(CI->getOperand(OpIdx), CI);
 }
 
 void GenXFunctionPointersLowering::reconstructSelect(SelectInst *SI) {
-  Value *TVal = nullptr, *FVal = nullptr;
-  Region R1(SI->getTrueValue()->getType(), DL),
-      R2(SI->getFalseValue()->getType(), DL);
-  auto *BCT = BitCastInst::CreateBitOrPointerCast(
-      transformFuncPtrVec(SI->getTrueValue()), Type::getInt64Ty(*Ctx), "", SI);
-  BCT = BitCastInst::CreateBitOrPointerCast(
-      BCT, IGCLLVM::FixedVectorType::get(Type::getInt64Ty(*Ctx), 1), "", SI);
-  auto *BCF = BitCastInst::CreateBitOrPointerCast(
-      transformFuncPtrVec(SI->getFalseValue()), Type::getInt64Ty(*Ctx), "", SI);
-  BCF = BitCastInst::CreateBitOrPointerCast(
-      BCF, IGCLLVM::FixedVectorType::get(Type::getInt64Ty(*Ctx), 1), "", SI);
-  R1.Width =
-      (SI->getTrueValue()->getType()->isVectorTy())
-          ? cast<VectorType>(SI->getTrueValue()->getType())->getNumElements()
-          : 1;
-  R1.Width =
-      (SI->getFalseValue()->getType()->isVectorTy())
-          ? cast<VectorType>(SI->getFalseValue()->getType())->getNumElements()
-          : 1;
-  R1.Stride = 0, R1.VStride = 0;
-  R2.Stride = 0, R2.VStride = 0;
-  TVal = R1.createRdRegion(BCT, SI->getName(), SI, SI->getDebugLoc(), true);
-  FVal = R2.createRdRegion(BCF, SI->getName(), SI, SI->getDebugLoc(), true);
-  auto *NewSI = SelectInst::Create(SI->getCondition(), TVal, FVal, "", SI);
-  if (SI->getType() == NewSI->getType())
-    SI->replaceAllUsesWith(NewSI);
-  else
-    replaceAllUsersCommon(SI, NewSI);
+  genx::breakConstantExprs(SI);
+  auto *OrigTy = SI->getType();
+  auto *TV = reconstructValue(SI->getTrueValue(), SI);
+  auto *FV = reconstructValue(SI->getFalseValue(), SI);
+  if (TV->getType() != OrigTy) {
+    IGC_ASSERT(
+        OrigTy->getScalarType()->isPointerTy() &&
+        OrigTy->getScalarType()->getPointerElementType()->isFunctionTy());
+    Instruction *NewSel =
+        SelectInst::Create(SI->getCondition(), TV, FV, SI->getName(), SI);
+    replaceAllUsersCommon(SI, NewSel);
+  }
 }
 
-Value *GenXFunctionPointersLowering::transformFuncPtrVec(Value *V) {
-  // quite often wrr/rdr get bitcast of funcptrs to <N * i8> as input,
-  // here we simply don't need them and DCE will sweep them later
-  auto Int64Ty = Type::getInt64Ty(*Ctx);
-  if (isa<UndefValue>(V)) {
-    IGC_ASSERT(V->getType()->isSingleValueType());
-    if (V->getType()->getScalarType()->isIntegerTy(64))
-      return V;
-    else if (V->getType()->isVectorTy())
-      return UndefValue::get(IGCLLVM::FixedVectorType::get(
-          Int64Ty, cast<VectorType>(V->getType())->getNumElements()));
-    else
-      return UndefValue::get(Int64Ty);
+void GenXFunctionPointersLowering::reconstructPhi(PHINode *Phi) {
+  genx::breakConstantExprs(Phi);
+  for (unsigned i = 0; i < Phi->getNumIncomingValues(); i++) {
+    auto *Op = Phi->getIncomingValue(i);
+    auto *OpTr = reconstructValue(Op, &Phi->getIncomingBlock(i)->back());
+    Phi->replaceUsesOfWith(Op, OpTr);
   }
-  if (isa<ConstantExpr>(V) &&
-      cast<ConstantExpr>(V)->getOpcode() == Instruction::BitCast)
-    V = cast<ConstantExpr>(V)->getOperand(0);
-  else if (auto *BC = dyn_cast<BitCastInst>(V))
-    if (!(BC->getType()->isVectorTy() &&
-          BC->getType()->getScalarType() == BC->getOperand(0)->getType()))
-      V = BC->getOperand(0);
-  SetVector<Function *> Funcs;
-  if (!isFuncPointerVec(V, &Funcs))
-    return V;
-  IGC_ASSERT(Funcs.size() > 0);
+}
 
-  IGC_ASSERT(V->getType()->isVectorTy());
-  std::vector<Constant *> CF;
-  for (auto &Val : Funcs)
-    CF.push_back(ConstantExpr::getPtrToInt(cast<Constant>(Val), Int64Ty));
-  Value *NewVal = nullptr;
-  // generate i64 instead of <1 x i64>
-  if (CF.size() > 1)
-    NewVal = ConstantVector::get(CF);
-  else if (CF.size() == 1)
-    NewVal = CF.front();
-  return NewVal;
+Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
+                                                      Instruction *InsPoint) {
+  if (isa<Function>(V)) {
+    Value *Result = CastInst::CreateBitOrPointerCast(V, Type::getInt64Ty(*Ctx),
+                                                     "", InsPoint);
+    cast<Instruction>(Result)->setDebugLoc(InsPoint->getDebugLoc());
+    auto *VecTy = VectorType::get(Result->getType(), 1);
+    Region R(VecTy);
+    Result = R.createWrRegion(UndefValue::get(VecTy), Result, "", InsPoint,
+                              InsPoint->getDebugLoc());
+    return Result;
+  }
+  if (auto *C = dyn_cast<Constant>(V); C && C->isZeroValue())
+    return V;
+  auto *OrigV = V;
+
+  Instruction *Inst = cast<Instruction>(OrigV);
+  bool hasShuffle = false;
+  while (isa<BitCastInst>(Inst) || isa<ShuffleVectorInst>(Inst)) {
+    hasShuffle |= isa<ShuffleVectorInst>(Inst);
+    Inst = cast<Instruction>(Inst->getOperand(0));
+  }
+  InsPoint = Inst;
+  if (!isa<InsertElementInst>(Inst))
+    return V;
+  std::deque<Instruction *> Worklist;
+  std::vector<ExtractElementInst *> Extra;
+  unsigned Scale = 0;
+  while (Inst) {
+    if (auto *EEInst = dyn_cast<ExtractElementInst>(Inst->getOperand(1))) {
+      Extra.push_back(EEInst);
+      ToErase.push_back(Inst);
+    } else
+      Worklist.push_front(Inst);
+    Inst = dyn_cast<InsertElementInst>(Inst->getOperand(0));
+  }
+  // TODO: replace extractelems from the same function/splat vector
+  // with a shufflevector
+  for (auto *EEInst : llvm::reverse(Extra)) {
+    Scale = genx::QWordBytes /
+            (DL->getTypeSizeInBits(EEInst->getType()) / genx::ByteBits);
+    IGC_ASSERT(Scale);
+    if (auto *Idx = dyn_cast<Constant>(EEInst->getIndexOperand());
+        Idx && Idx->getUniqueInteger().getZExtValue() % Scale == 0) {
+      auto *VecOper =
+          (Worklist.empty()
+               ? UndefValue::get(VectorType::get(
+                     IntegerType::get(*Ctx,
+                                      DL->getTypeSizeInBits(EEInst->getType()) *
+                                          Scale),
+                     OrigV->getType()->getVectorNumElements() / Scale))
+               : cast<Value>(Worklist.back()));
+      auto *PTI = CastInst::CreateBitOrPointerCast(
+          getFunctionPointerFunc(EEInst->getVectorOperand()),
+          Type::getInt64Ty(*Ctx), "", EEInst);
+      PTI->setDebugLoc(EEInst->getDebugLoc());
+      Instruction *NewInsElem = InsertElementInst::Create(
+          VecOper, PTI,
+          ConstantExpr::getURem(
+              ConstantExpr::getUDiv(Idx,
+                                    ConstantInt::get(Idx->getType(), Scale)),
+              ConstantInt::get(Idx->getType(),
+                               VecOper->getType()->getVectorNumElements())),
+          "", EEInst);
+      Worklist.push_back(NewInsElem);
+      ToErase.push_back(EEInst);
+    } else
+      ToErase.push_back(EEInst);
+  }
+  if (Scale > 1) {
+    IGC_ASSERT(!Worklist.empty());
+    auto *NewInsElem = CastInst::CreateBitOrPointerCast(
+        Worklist.back(), OrigV->getType(), "recast", InsPoint);
+    NewInsElem->setDebugLoc(InsPoint->getDebugLoc());
+    InsPoint = NewInsElem;
+    OrigV->replaceAllUsesWith(NewInsElem);
+  }
+  Instruction *Result = nullptr;
+  for (auto *I : Worklist) {
+    // ?? to remove
+    if (isa<BitCastInst>(I))
+      I = cast<Instruction>(I->getOperand(0));
+    Region R(I->getOperand(1));
+    R.Indirect = BinaryOperator::CreateMul(
+        I->getOperand(2),
+        ConstantInt::get(I->getOperand(2)->getType(), genx::QWordBytes), "", I);
+    if (!R.Indirect->getType()->isIntegerTy(16)) {
+      R.Indirect = CastInst::CreateTruncOrBitCast(
+          R.Indirect, Type::getInt16Ty(*Ctx), "", I);
+      cast<Instruction>(R.Indirect)->setDebugLoc(I->getDebugLoc());
+    }
+    Result = cast<Instruction>(R.createWrRegion(
+        I->getOperand(0), I->getOperand(1), I->getName() + ".fptr_mem",
+        InsPoint, I->getDebugLoc()));
+    I->replaceAllUsesWith(Result);
+    I->eraseFromParent();
+  }
+  if (hasShuffle) {
+    IGC_ASSERT(Result && Result->hasOneUse());
+    auto *Shuffle = dyn_cast<ShuffleVectorInst>(Result->user_back());
+    // we support only splat values for now
+    IGC_ASSERT(Shuffle && Shuffle->getMask()->isZeroValue());
+
+    Region R(Result);
+    R.Stride = 0;
+    R.Indirect = 0;
+    auto *I64Ty = Type::getInt64Ty(*Ctx);
+    auto V1_64Ty = VectorType::get(I64Ty, 1);
+    auto NewR = Region(V1_64Ty);
+    auto *NewWRR =
+        NewR.createWrRegion(UndefValue::get(V1_64Ty), Result->getOperand(1),
+                            Result->getName(), Shuffle, Result->getDebugLoc());
+    ToErase.push_back(Result);
+    Result = R.createRdRegion(NewWRR, Shuffle->getName() + ".fptr_shuf",
+                              Shuffle, Shuffle->getDebugLoc());
+    Shuffle->replaceAllUsesWith(Result);
+    Shuffle->eraseFromParent();
+  }
+  IGC_ASSERT(Result);
+  return Result;
 }

@@ -473,7 +473,7 @@ private:
   void processRdRegion(Instruction *Inst);
   void processInlineAsm(Instruction *Inst);
   void processExtractValue(ExtractValueInst *EV);
-  void processFuncPointer(PtrToIntInst *Inst);
+  void processFuncPointer(Instruction *Inst);
   void processMainInst(Instruction *Inst, int IntrinID);
   // helper func for buildBale
   void buildBaleSub(Instruction *Inst, genx::Bale *B, bool IncludeAddr) const;

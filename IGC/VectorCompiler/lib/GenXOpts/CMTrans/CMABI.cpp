@@ -900,10 +900,18 @@ CallGraphNode *CMABI::TransformNode(Function *F,
   CallGraphNode *NF_CGN = CG.getOrInsertFunction(NF);
 
   std::vector<llvm::User*> DirectUsers;
+  std::vector<llvm::User*> IndirectUsers;
 
-  for (auto U: F->users()) {
-    if (isa<CallInst>(U))
-      DirectUsers.push_back(U);
+  for (auto *U : F->users())
+    (isa<CallInst>(U) ? DirectUsers : IndirectUsers).push_back(U);
+
+  for (auto *U: IndirectUsers) {
+    // ignore old constexprs as
+    // they may still be hanging around
+    // but are irrelevant as we called breakConstantExprs earlier
+    // in this pass
+    if (!isa<ConstantExpr>(U))
+      U->replaceUsesOfWith(F, NF);
   }
 
   // Loop over all of the callers of the function, transforming the call sites
@@ -1151,9 +1159,6 @@ static void breakConstantVector(unsigned i, Instruction *CurInst,
     auto Inst = S->getAsInstruction();
     Inst->setDebugLoc(CurInst->getDebugLoc());
     Inst->insertBefore(InsertPt);
-    Type *NewTy = IGCLLVM::FixedVectorType::get(Inst->getType(), 1);
-    Inst = CastInst::Create(Instruction::BitCast, Inst, NewTy, "", CurInst);
-    Inst->setDebugLoc(CurInst->getDebugLoc());
 
     // Splat this value.
     IRBuilder<> Builder(InsertPt);

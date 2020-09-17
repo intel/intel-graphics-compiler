@@ -2243,6 +2243,12 @@ void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
   if (!isMaskPacking(CI))
     IGC_ASSERT(!BI.Bits && !Mod && !DstDesc.WrRegion &&
            "non predicate bitcast should not be baled with anything");
+  // ignore bitcasts of volatile globals
+  // (they used to be a part of load/store as a constexpr)
+  if (isa<GlobalVariable>(CI->getOperand(0)) &&
+      cast<GlobalVariable>(CI->getOperand(0))
+          ->hasAttribute(VCModuleMD::VCVolatile))
+    return;
 
   if (CI->getType()->getScalarType()->isIntegerTy(1)) {
     if (CI->getOperand(0)->getType()->getScalarType()->isIntegerTy(1)) {
@@ -2349,10 +2355,13 @@ void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
 
 void GenXKernelBuilder::buildFunctionAddr(Instruction *Inst,
                                           const DstOpndDesc &DstDesc) {
-
+  auto *CI = dyn_cast<CallInst>(Inst);
+  IGC_ASSERT((CI && GenXIntrinsic::getGenXIntrinsicID(CI) ==
+                        GenXIntrinsic::genx_faddr) &&
+             "genx.faddr expected in a FADDR bale");
   auto *Dst = createDestination(Inst, DONTCARESIGNED, MODIFIER_NONE, DstDesc);
   IGC_ASSERT(Dst);
-  auto *F = cast<Function>(cast<PtrToIntInst>(Inst)->getPointerOperand());
+  auto *F = cast<Function>(Inst->getOperand(0));
   CISA_CALL(Kernel->AppendVISACFSymbolInst(F->getName().str(), Dst));
 }
 
@@ -3598,7 +3607,7 @@ bool GenXKernelBuilder::buildBranch(BranchInst *Branch) {
   }
   // Write the conditional branch.
   VISA_PredVar *PredVar = getPredicateVar(Pred);
-  VISA_PredOpnd* PredOperand = createPredOperand(PredVar, State, Control);
+  VISA_PredOpnd *PredOperand = createPredOperand(PredVar, State, Control);
   addDebugInfo();
   CISA_CALL(Kernel->AppendVISACFJmpInst(
       PredOperand, Labels[getOrCreateLabel(True, LABEL_BLOCK)]));

@@ -803,9 +803,17 @@ void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore,
       pScalarizedIdx = IRB.CreateZExtOrTrunc(
           pScalarizedIdx, Type::getInt16Ty(pStore->getContext()));
     }
-    R.Indirect = pScalarizedIdx;
-    WriteOut = R.createWrRegion(WriteOut, NewStoreVal, pStore->getName(),
-                                pStore, pStore->getDebugLoc());
+    if (auto *ConstIdx = dyn_cast<llvm::Constant>(pScalarizedIdx))
+      R.Indirect = ConstantExpr::getMul(
+          ConstIdx,
+          ConstantInt::get(IRB.getInt16Ty(),
+                           m_pDL->getTypeSizeInBits(NewStoreVal->getType()) /
+                               genx::ByteBits));
+    else
+      R.Indirect = pScalarizedIdx;
+    WriteOut =
+        R.createWrRegion(WriteOut, NewStoreVal, pStore->getName() + ".promoted",
+                         pStore, pStore->getDebugLoc());
   } else if (pStoreVal->getType()->isVectorTy()) {
     // A vector store
     // store <2 x float> %v, <2 x float>* %ptr

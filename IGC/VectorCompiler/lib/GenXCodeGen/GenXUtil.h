@@ -108,9 +108,6 @@ Instruction *convertShlShr(Instruction *Inst);
 // splitStructPhis : split all struct phis in a function
 bool splitStructPhis(Function *F);
 
-// breakConstantExprs : break constant expressions in a function.
-bool breakConstantExprs(Function *F);
-
 // normalize g_load with bitcasts.
 //
 // When a single g_load is being bitcast'ed to different types, clone g_loads.
@@ -183,11 +180,11 @@ bool isIntNot(Instruction *Inst);
 
 // if V is a function pointer return function it points to,
 //    nullptr otherwise
-Value *getFunctionPointer(Value *V);
+Function *getFunctionPointerFunc(Value *V);
 
-// return true if V is a const vector of function pointers,
-// fill Funcs with the functions pointed to if provided
-bool isFuncPointerVec(Value *V, SetVector<Function *> *Funcs = nullptr);
+// return true if V is a const vector of function pointers
+// considering any casts and extractelems within
+bool isFuncPointerVec(Value *V);
 
 // ShuffleVectorAnalyzer : class to analyze a shufflevector
 class ShuffleVectorAnalyzer {
@@ -500,14 +497,30 @@ Type &fixDegenerateVectorType(Type &Ty);
 // as legal SETP instruction.
 bool isWrPredRegionLegalSetP(const CallInst &WrPredRegion);
 
-// Cheks if V is a CallInst representing a direct call to F
+// Checks if V is a CallInst representing a direct call to F
 // Many of our analyzes do not check whether a function F's user
 // which is a CallInst calls exactly F. This may not be true
 // when a function pointer is passed as an argument of a call to
 // another function, e.g. genx.faddr intrinsic.
 // Returns V casted to CallInst if the check is true,
-// nullptr otherwise
+// nullptr otherwise.
 CallInst *checkFunctionCall(Value *V, Function *F);
+
+// breakConstantVector : break vector of constexprs into a sequence of
+//                       InsertElementInsts.
+// CV - vector to break
+// CurInst - Instruction CV is a part of
+// InsertPt - point to insert new instructions at
+// Return the last InsertElementInst in the resulting chain,
+// or nullptr if there're no constexprs in CV.
+Value *breakConstantVector(ConstantVector *CV, Instruction *CurInst,
+                           Instruction *InsertPt);
+// breakConstantExprs : break constant expressions in instruction I.
+// Return true if any modifications have been made, false otherwise.
+bool breakConstantExprs(Instruction *I);
+// breakConstantExprs : break constant expressions in function F.
+// Return true if any modifications have been made, false otherwise.
+bool breakConstantExprs(Function *F);
 
 // BinaryDataAccumulator: it's a helper class to accumulate binary data
 // in one buffer.

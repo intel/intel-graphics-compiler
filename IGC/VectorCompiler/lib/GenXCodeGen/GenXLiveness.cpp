@@ -1875,14 +1875,16 @@ void genx::CallGraph::build(GenXLiveness *Liveness) {
   // For each Function, find its call sites and add edges for them.
   for (auto fgi = FG->begin() + 1, fge = FG->end(); fgi != fge; ++fgi) {
     Function *F = *fgi;
-    for (Value::use_iterator ui = F->use_begin(), ue = F->use_end();
-        ui != ue; ++ui) {
+    for (Value::use_iterator ui = F->use_begin(), ue = F->use_end(); ui != ue;
+         ++ui) {
       // TODO: deduce possible callsites thru cast chains
       if (isa<CallInst>(ui->getUser())) {
         auto Call = cast<CallInst>(ui->getUser());
         auto Caller = Call->getParent()->getParent();
-        // do not add edges for recursive calls
-        if (Caller != F)
+        // do not add edges for indirect, recursive and intrinsic calls
+        if (Call->getCalledFunction() &&
+            !GenXIntrinsic::isAnyNonTrivialIntrinsic(Call->getCalledFunction()) &&
+            Caller != F)
           Nodes[Caller].insert(
               Edge(Liveness->getNumbering()->getNumber(Call), Call));
       }

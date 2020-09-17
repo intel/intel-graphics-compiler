@@ -184,6 +184,8 @@ void GenXBaling::processInst(Instruction *Inst)
     processWrPredPredRegion(Inst);
   else if (IntrinID == GenXIntrinsic::genx_sat || GenXIntrinsic::isIntegerSat(IntrinID))
     processSat(Inst);
+  else if (IntrinID == GenXIntrinsic::genx_faddr)
+    processFuncPointer(Inst);
   else if (GenXIntrinsic::isRdRegion(IntrinID))
     processRdRegion(Inst);
   else if (BranchInst *Branch = dyn_cast<BranchInst>(Inst))
@@ -194,12 +196,6 @@ void GenXBaling::processInst(Instruction *Inst)
     processInlineAsm(Inst);
   else if(ExtractValueInst *EV = dyn_cast<ExtractValueInst>(Inst))
     processExtractValue(EV);
-  else if (isa<PtrToIntInst>(Inst) && cast<PtrToIntInst>(Inst)
-                                          ->getPointerOperand()
-                                          ->getType()
-                                          ->getPointerElementType()
-                                          ->isFunctionTy())
-    processFuncPointer(cast<PtrToIntInst>(Inst));
   else {
     // Try to bale a select into cmp's dst. If failed, continue to process
     // select as a main instruction.
@@ -784,44 +780,19 @@ void GenXBaling::processInlineAsm(Instruction *Inst) {
   setBaleInfo(Inst, BI);
 }
 
-void GenXBaling::processFuncPointer(PtrToIntInst *Inst) {
+/***********************************************************************
+ * processFuncPointer : process genx.faddr which is used in <=1 WrRegions
+ *                      and is baled into it.
+ */
+void GenXBaling::processFuncPointer(Instruction *Inst) {
+  auto *CI = dyn_cast<CallInst>(Inst);
+  IGC_ASSERT((CI && GenXIntrinsic::getGenXIntrinsicID(CI) ==
+                        GenXIntrinsic::genx_faddr) &&
+             "genx.faddr expected");
+  IGC_ASSERT(Inst->getNumUses() <= 1);
+  IGC_ASSERT(Inst->use_empty() || GenXIntrinsic::isWrRegion(Inst->user_back()));
+
   BaleInfo BI(BaleInfo::FADDR);
-  for (auto *U : Inst->users()) {
-    if (isa<SelectInst>(U)) {
-      // need to clone wrregion sinking to select
-      // (can't do that on FuncPtrs lowering as it's actually
-      //  a result of post-legalization)
-      // to achieve 3 bales:
-      //  b1=FADDR         b2=FADDR
-      // |ptrtoint|       |ptrtoint|
-      // |   |    |       |   |    |
-      // |   |    |       |   |    |
-      // |  wrr   |       |  wrr   |
-      //     \               /
-      //      \             /
-      //          |select|
-      //          b3=select
-      IGC_ASSERT(Inst->hasOneUse());
-      auto &DL = Inst->getModule()->getDataLayout();
-      Region R(IntegerType::get(Inst->getContext(), 64), &DL);
-      auto NewWrr = R.createWrRegion(
-          UndefValue::get(IntegerType::get(Inst->getContext(), 64)), Inst,
-          Inst->getName(), Inst, Inst->getDebugLoc());
-      U->replaceUsesOfWith(Inst, NewWrr);
-    } else if (isa<BitCastInst>(U)) {
-      // only bitcast -> rdregion are allowed
-      // this is typical for vector selects
-      IGC_ASSERT(Inst->hasOneUse() && U->hasOneUse() &&
-             isa<CallInst>(U->user_back()) &&
-             GenXIntrinsic::isRdRegion(U->user_back()));
-      setBaleInfo(Inst, BI);
-      return;
-    }
-  }
-
-  IGC_ASSERT(Inst->hasOneUse() && isa<CallInst>(Inst->use_begin()->getUser()) &&
-         GenXIntrinsic::isWrRegion(Inst->use_begin()->getUser()));
-
   setBaleInfo(Inst, BI);
 }
 

@@ -589,10 +589,15 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
           // after the source's phi. If the above is the case, then we try
           // and normal coalesce instead, which fails, leading to a copy
           // being generated.
+          // Ignore bitcasts of volatile globals as they normally
+          // participate in load/store only, so no coalescing is possible anyway.
           if (GenXLiveness::wrapsAround(Inst->getOperand(0), Inst)) {
             recordNormalCandidate(Inst, &Inst->getOperandUse(0),
                 getPriority(Inst->getType(), Inst->getParent()));
-          } else if (Liveness->getLiveRangeOrNull(Inst)) {
+          } else if (Liveness->getLiveRangeOrNull(Inst) &&
+                     !(isa<GlobalVariable>(Inst->getOperandUse(0)) &&
+                       cast<GlobalVariable>(Inst->getOperandUse(0))
+                           ->hasAttribute(VCModuleMD::VCVolatile))) {
             recordCopyCandidate(Inst, &Inst->getOperandUse(0),
                 getPriority(Inst->getType(), Inst->getParent()));
           }
