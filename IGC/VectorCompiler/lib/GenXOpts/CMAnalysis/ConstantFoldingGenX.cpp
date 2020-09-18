@@ -70,7 +70,7 @@ bool llvm::canConstantFoldGenXIntrinsic(unsigned IID)
  */
 static Constant *constantFoldRdRegion(Type *RetTy,
                                       ArrayRef<Constant *> Operands,
-                                      const CMRegion &R, const DataLayout *DL) {
+                                      const CMRegion &R, const DataLayout &DL) {
   Constant *Input = Operands[GenXIntrinsic::GenXRegion::OldValueOperandNum];
   // The input can be a ConstantExpr if we are being called from
   // CallAnalyzer.
@@ -86,12 +86,8 @@ static Constant *constantFoldRdRegion(Type *RetTy,
       Operands[GenXIntrinsic::GenXRegion::RdIndexOperandNum]);
   if (!OffsetC)
     return nullptr;
-  int RetElemSize = RetTy->getScalarType()->getPrimitiveSizeInBits() / 8;
-  if (!RetElemSize) {
-    IGC_ASSERT(RetTy->getScalarType()->isPointerTy() &&
-           RetTy->getScalarType()->getPointerElementType()->isFunctionTy());
-    RetElemSize = DL->getTypeSizeInBits(RetTy) / 8;
-  }
+
+  const int RetElemSize = DL.getTypeSizeInBits(RetTy->getScalarType()) / 8;
   unsigned Offset = 0;
   if (!isa<VectorType>(OffsetC->getType()))
     Offset = dyn_cast<ConstantInt>(OffsetC)->getZExtValue() / RetElemSize;
@@ -116,8 +112,8 @@ static Constant *constantFoldRdRegion(Type *RetTy,
     if (isa<VectorType>(OffsetC->getType())) {
       auto EltOffset = 
         dyn_cast<ConstantInt>(OffsetC->getAggregateElement(i))->getZExtValue();
-      EltOffset = EltOffset / 
-        (RetTy->getScalarType()->getPrimitiveSizeInBits() / 8);
+      EltOffset =
+          EltOffset / (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
       Idx += EltOffset;
     }
     if (Idx >= WholeNumElements)
@@ -136,7 +132,7 @@ static Constant *constantFoldRdRegion(Type *RetTy,
  */
 static Constant *constantFoldWrRegion(Type *RetTy,
                                       ArrayRef<Constant *> Operands,
-                                      const CMRegion &R, const DataLayout *DL) {
+                                      const CMRegion &R, const DataLayout &DL) {
   Constant *OldValue = Operands[GenXIntrinsic::GenXRegion::OldValueOperandNum];
   Constant *NewValue = Operands[GenXIntrinsic::GenXRegion::NewValueOperandNum];
   // The inputs can be ConstantExpr if we are being called from
@@ -148,12 +144,8 @@ static Constant *constantFoldWrRegion(Type *RetTy,
       dyn_cast<ConstantInt>(Operands[GenXIntrinsic::GenXRegion::WrIndexOperandNum]);
   if (!OffsetC)
     return nullptr; // allow for but do not const fold when index is vector
-  int RetElemSize = RetTy->getScalarType()->getPrimitiveSizeInBits() / 8;
-  if (!RetElemSize) {
-    IGC_ASSERT(RetTy->getScalarType()->isPointerTy() &&
-           RetTy->getScalarType()->getPointerElementType()->isFunctionTy());
-    RetElemSize = DL->getTypeSizeInBits(RetTy) / 8;
-  }
+
+  const int RetElemSize = DL.getTypeSizeInBits(RetTy->getScalarType()) / 8;
   unsigned Offset = OffsetC->getSExtValue() / RetElemSize;
   if (isa<UndefValue>(OldValue) && R.isContiguous() && (Offset == 0)) {
     // If old value is undef and new value is splat, and the result vector
@@ -162,7 +154,7 @@ static Constant *constantFoldWrRegion(Type *RetTy,
     if (isa<VectorType>(NewValue->getType()))
       Splat = NewValue->getSplatValue();
     if (Splat)
-      if (RetTy->getPrimitiveSizeInBits() <= 2 * 32 * 8)
+      if (DL.getTypeSizeInBits(RetTy) <= 2 * 32 * 8)
         return ConstantVector::getSplat(
             IGCLLVM::getElementCount(cast<VectorType>(RetTy)->getNumElements()),
             Splat);
@@ -225,7 +217,7 @@ static Constant *constantFoldAny(Type *RetTy, Constant *In)
 Constant *llvm::ConstantFoldGenXIntrinsic(unsigned IID, Type *RetTy,
                                           ArrayRef<Constant *> Operands,
                                           Instruction *CSInst,
-                                          const DataLayout *DL) {
+                                          const DataLayout &DL) {
   switch (IID) {
   case GenXIntrinsic::genx_rdregioni:
   case GenXIntrinsic::genx_rdregionf: {
@@ -284,7 +276,7 @@ Constant *llvm::ConstantFoldGenX(Instruction *I, const DataLayout &DL) {
                  FoldOperand);
 
   Constant *Folded = ConstantFoldGenXIntrinsic(
-      IID, CS.getFunctionType()->getReturnType(), ConstantArgs, I, &DL);
+      IID, CS.getFunctionType()->getReturnType(), ConstantArgs, I, DL);
   if (Folded)
     LLVM_DEBUG(dbgs() << "Successfully constant folded intruction to "
                       << *Folded << "\n");

@@ -145,7 +145,7 @@ bool llvm::simplifyWritesWithUndefInput(Function &F) {
  * If this call could not be simplified, returns null.
  */
 Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
-                                   Use *ArgEnd) {
+                                   Use *ArgEnd, const DataLayout &DL) {
   switch (IID) {
     case GenXIntrinsic::genx_rdregioni:
     case GenXIntrinsic::genx_rdregionf:
@@ -162,8 +162,8 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
           return nullptr;
         unsigned Index = 0;
         if (!isa<VectorType>(IndexV->getType()))
-          Index = dyn_cast<ConstantInt>(IndexV)->getZExtValue()
-          / (RetTy->getScalarType()->getPrimitiveSizeInBits() / 8);
+          Index = dyn_cast<ConstantInt>(IndexV)->getZExtValue() /
+                  (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
         else
           return nullptr;
         if ((Index == 0 || Index >= NumElements) &&
@@ -203,8 +203,8 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
               return nullptr;
             unsigned Index = 0;
             if (!isa<VectorType>(IndexV->getType()))
-              Index = dyn_cast<ConstantInt>(IndexV)->getZExtValue()
-              / (RetTy->getScalarType()->getPrimitiveSizeInBits() / 8);
+              Index = dyn_cast<ConstantInt>(IndexV)->getZExtValue() /
+                      (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
             else
               return nullptr;
             if ((Index == 0 || Index >= NumElements) &&
@@ -266,7 +266,7 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
  *
  * If this instruction could not be simplified, returns null.
  */
-Value *llvm::SimplifyGenX(CallInst *I) {
+Value *llvm::SimplifyGenX(CallInst *I, const DataLayout &DL) {
   Value *V = IGCLLVM::getCalledValue(I);
   Type *Ty = V->getType();
   if (auto *PTy = dyn_cast<PointerType>(Ty))
@@ -279,22 +279,18 @@ Value *llvm::SimplifyGenX(CallInst *I) {
   LLVM_DEBUG(dbgs() << "Trying to simplify " << *I << "\n");
   auto GenXID = GenXIntrinsic::getGenXIntrinsicID(F);
   if (Value *Ret = SimplifyGenXIntrinsic(GenXID, FTy->getReturnType(),
-                                         I->arg_begin(), I->arg_end())) {
+                                         I->arg_begin(), I->arg_end(), DL)) {
     LLVM_DEBUG(dbgs() << "Simplified to " << *Ret << "\n");
     return Ret;
   }
 
   LLVM_DEBUG(dbgs() << "Failed to simplify, trying to constant fold\n");
-  Constant *C = ConstantFoldGenX(I, I->getModule()->getDataLayout());
+  Constant *C = ConstantFoldGenX(I, DL);
   if (C)
     LLVM_DEBUG(dbgs() << "Successfully folded to " << *C << "\n");
   else
     LLVM_DEBUG(dbgs() << "Failed to constant fold instruction\n");
   return C;
-}
-
-namespace llvm {
-void initializeGenXSimplifyPass(PassRegistry &);
 }
 
 namespace {
@@ -328,7 +324,7 @@ bool GenXSimplify::runOnFunction(Function &F) {
       Instruction *Inst = &*I++;
       if (auto *CI = dyn_cast<CallInst>(Inst)) {
         if (GenXIntrinsic::isGenXIntrinsic(CI)) {
-          if (Value *V = SimplifyGenX(CI)) {
+          if (Value *V = SimplifyGenX(CI, DL)) {
             CI->replaceAllUsesWith(V);
             CI->eraseFromParent();
             Changed = true;

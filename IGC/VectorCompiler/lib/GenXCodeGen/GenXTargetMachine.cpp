@@ -136,6 +136,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXFunctionPointersLoweringPass(registry);
   initializeGenXBackendConfigPass(registry);
   initializeGenXImportBiFPass(registry);
+  initializeGenXSimplifyPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }

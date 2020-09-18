@@ -55,7 +55,7 @@ bool canConstantFoldGenXIntrinsic(unsigned IID);
 /// unsuccessful.
 Constant *ConstantFoldGenXIntrinsic(unsigned IID, Type *RetTy,
                                     ArrayRef<Constant *> Operands,
-                                    Instruction *CSInst, const DataLayout *DL);
+                                    Instruction *CSInst, const DataLayout &DL);
 
 /// ConstantFoldGenX - Attempt to constant fold genx-related instruction (intrinsic).
 /// This function tries to fold operands and then tries to fold instruction
@@ -67,13 +67,13 @@ Constant *ConstantFoldGenX(Instruction *I, const DataLayout &DL);
 ///
 /// If this call could not be simplified returns null.
 Value *SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
-                             Use *ArgEnd);
+                             Use *ArgEnd, const DataLayout &DL);
 
 /// Given a GenX related intruction, see if we can fold the
 /// result. This function tries simplification and then constant folding.
 ///
 /// If this instruction could not be simplified returns null.
-Value *SimplifyGenX(CallInst *I);
+Value *SimplifyGenX(CallInst *I, const DataLayout &DL);
 
 // simplifyWritesWithUndefInput - removes write instrinsics (currently wrregion,
 // wrpredregion) that have undef as input value, replaces all uses with the old
