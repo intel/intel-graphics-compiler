@@ -228,7 +228,7 @@ void CShader::AddEpilogue(llvm::ReturnInst* ret)
     encoder.Push();
 }
 
-void CShader::InitializeStackVariables()
+CVariable* CShader::CreateFPAndSP()
 {
     // create argument-value register, limited to 12 GRF
     m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, getGRFAlignment(), false, 1, "ARGV");
@@ -242,6 +242,8 @@ void CShader::InitializeStackVariables()
     // create frame-pointer register
     m_FP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "FP");
     encoder.GetVISAPredefinedVar(m_FP, PREDEFINED_FE_FP);
+
+    return m_SP;
 }
 
 /// get max private mem size, varying by simd width
