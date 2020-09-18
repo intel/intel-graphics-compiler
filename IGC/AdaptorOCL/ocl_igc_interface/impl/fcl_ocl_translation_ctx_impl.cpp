@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "ocl_igc_interface/fcl_ocl_translation_ctx.h"
 #include "ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.h"
+#include "ocl_igc_interface/impl/platform_impl.h"
 
 #pragma warning(disable:4141)
 #pragma warning(disable:4146)
@@ -332,6 +333,17 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
                                                                         outType));
     if (outputInterface == nullptr)
         return nullptr;
+
+    PRODUCT_FAMILY product = IGFX_UNKNOWN;
+    uint32_t stepping = 0U;
+
+    if(globalState.GetPlatformImpl()){
+        product = globalState.GetPlatformImpl()->p.eProductFamily;
+        stepping = globalState.GetPlatformImpl()->p.usRevId;
+    }
+
+    (void)product;
+    (void)stepping;
 
     OclTranslationOutputBase& Out = *outputInterface.get();
 

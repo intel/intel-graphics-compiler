@@ -75,6 +75,10 @@ FclOclTranslationCtxBase* CIF_PIMPL(FclOclDeviceCtx)::CreateTranslationCtx(CIF::
     return CIF::InterfaceCreator<FclOclTranslationCtx>::CreateInterfaceVer(version, version, this, inType, outType, err);
 }
 
+PlatformBase *CIF_GET_INTERFACE_CLASS(FclOclDeviceCtx, 4)::GetPlatformHandleImpl(CIF::Version_t ver){
+    return CIF_GET_PIMPL()->GetPlatformHandle(ver);
+}
+
 }
 
 CIF_EXPORT_ENTRY_POINTS_STATIC(IGC::FclOclDeviceCtx);

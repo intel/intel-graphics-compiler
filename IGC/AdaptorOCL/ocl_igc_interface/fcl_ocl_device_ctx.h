@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "ocl_igc_interface/code_type.h"
 #include "ocl_igc_interface/fcl_ocl_translation_ctx.h"
+#include "ocl_igc_interface/platform.h"
 
 #include <cinttypes>
 
@@ -84,9 +85,21 @@ protected:
                                                               CIF::Builtins::BufferSimple* err);
 };
 
-CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(FclOclDeviceCtx, IGC::FclOclTranslationCtx);
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 4, 3) {
+    CIF_INHERIT_CONSTRUCTOR();
+
+    template <typename PlatformInterface = PlatformTagOCL>
+    CIF::RAII::UPtr_t<PlatformInterface> GetPlatformHandle() {
+        return CIF::RAII::RetainAndPack<PlatformInterface>( GetPlatformHandleImpl(PlatformInterface::GetVersion()) );
+    }
+
+protected:
+    virtual PlatformBase *GetPlatformHandleImpl(CIF::Version_t ver);
+};
+
+CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(FclOclDeviceCtx, IGC::FclOclTranslationCtx, IGC::Platform);
 CIF_MARK_LATEST_VERSION(FclOclDeviceCtxLatest, FclOclDeviceCtx);
-using FclOclDeviceCtxTagOCL = FclOclDeviceCtxLatest; // Note : can tag with different version for
+using FclOclDeviceCtxTagOCL = FclOclDeviceCtx<3>; // Note : can tag with different version for
                                                      //        transition periods
 }
 

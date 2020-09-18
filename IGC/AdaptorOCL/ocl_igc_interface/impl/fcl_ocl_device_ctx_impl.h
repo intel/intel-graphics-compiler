@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "ocl_igc_interface/fcl_ocl_device_ctx.h"
+#include "ocl_igc_interface/impl/platform_impl.h"
 
 #include <cinttypes>
 #include <mutex>
@@ -50,6 +51,16 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclDeviceCtx) : CIF::PimplBase
 
     FclOclTranslationCtxBase * CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType);
     FclOclTranslationCtxBase * CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err);
+    
+    PlatformBase * GetPlatformHandle(CIF::Version_t version)
+    {
+        return platform.GetVersion(version);
+    }
+
+    CIF_PIMPL(Platform)* GetPlatformImpl()
+    {
+        return this->platform.GetImpl();
+    }
 
     struct MiscOptions
     {
@@ -69,6 +80,7 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclDeviceCtx) : CIF::PimplBase
     } MiscOptions;
 
 protected:
+    CIF::Multiversion<Platform> platform;
 };
 
 CIF_DEFINE_INTERFACE_TO_PIMPL_FORWARDING_CTOR_DTOR(FclOclDeviceCtx);
