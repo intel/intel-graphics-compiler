@@ -1570,7 +1570,7 @@ namespace IGC
                 if (Is64BitSrc && Is64BitDst)
                 {
                     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-                    if (!predOpnd && !IsSat() && dst->IsUniform() && src->IsUniform() && !src->IsImmediate())
+                    if (!predOpnd && !IsSat() && dst->IsUniform() && src->IsUniform() && !src->IsImmediate() && m_encoderState.m_uniformSIMDSize == SIMDMode::SIMD1)
                     {
                         // special handling for uniform 64b copy by generating SIMD2 move instead of 2xSIMD1
                         // technically we need to check for src modifier and whether dst/src are indirect operand as well,
@@ -1585,7 +1585,7 @@ namespace IGC
                         srcAsUDMod.subReg *= 2;
                         auto dstOpnd = GetDestinationOperand(dstAlias, dstAsUDMod);
                         auto SIMDSize = lanesToSIMDMode(numLanes(m_encoderState.m_uniformSIMDSize) * 2);
-                        auto srcOpnd = srcImmLo ? srcImmLo : GetSourceOperand(srcAlias, srcAsUDMod);
+                        auto srcOpnd = GetSourceOperand(srcAlias, srcAsUDMod);
                         V(vKernel->AppendVISADataMovementInst(opcode, nullptr, false, vISA_EMASK_M1_NM, visaExecSize(SIMDSize),
                             dstOpnd, srcOpnd));
                     }
