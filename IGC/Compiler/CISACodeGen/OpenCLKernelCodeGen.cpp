@@ -1977,10 +1977,6 @@ namespace IGC
 
         if (!modMD->inlineConstantBuffers.empty())
         {
-            // For ZeBin, constants are mantained in two separate buffers
-            // the first is for general constants, and the second for string literals
-
-            // General constants
             auto ipsbMDHandle = modMD->inlineConstantBuffers[0];
             std::unique_ptr<iOpenCL::InitConstantAnnotation> initConstant(new iOpenCL::InitConstantAnnotation());
             initConstant->Alignment = ipsbMDHandle.alignment;
@@ -1991,22 +1987,6 @@ namespace IGC
             memcpy_s(initConstant->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
 
             ctx->m_programInfo.m_initConstantAnnotation.push_back(std::move(initConstant));
-
-            if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
-                modMD->compOpt.EnableZEBinary)
-            {
-                // String literals
-                auto ipsbStringMDHandle = modMD->inlineConstantBuffers[1];
-                std::unique_ptr<iOpenCL::InitConstantAnnotation> initStringConstant(new iOpenCL::InitConstantAnnotation());
-                initStringConstant->Alignment = ipsbStringMDHandle.alignment;
-                initStringConstant->AllocSize = ipsbStringMDHandle.allocSize;
-
-                bufferSize = (ipsbStringMDHandle.Buffer).size();
-                initStringConstant->InlineData.resize(bufferSize);
-                memcpy_s(initStringConstant->InlineData.data(), bufferSize, ipsbStringMDHandle.Buffer.data(), bufferSize);
-
-                ctx->m_programInfo.m_initConstantAnnotation.push_back(std::move(initStringConstant));
-            }
         }
 
         if (!modMD->inlineGlobalBuffers.empty())

@@ -137,33 +137,13 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         {
             if (!hasInlineConstantBuffer)
             {
-                // General constants
                 InlineProgramScopeBuffer ilpsb;
                 ilpsb.alignment = 0;
                 ilpsb.allocSize = 0;
                 modMd->inlineConstantBuffers.push_back(ilpsb);
-
-                // String literals
-                InlineProgramScopeBuffer ilpsbString;
-                ilpsbString.alignment = 0;
-                ilpsbString.allocSize = 0;
-                modMd->inlineConstantBuffers.push_back(ilpsbString);
                 hasInlineConstantBuffer = true;
             }
-
-            // When ZeBin is enabled, constant variables that are string literals
-            // will be stored in the seconf const buffer
-            ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
-            bool isStringConst = cds && (cds->isCString() || cds->isString());
-            if ((IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary) &&
-                isStringConst)
-            {
-                inlineProgramScopeBuffer = &modMd->inlineConstantBuffers[1].Buffer;
-            }
-            else
-            {
-                inlineProgramScopeBuffer = &modMd->inlineConstantBuffers[0].Buffer;
-            }
+            inlineProgramScopeBuffer = &modMd->inlineConstantBuffers.back().Buffer;
         }
 
         if (initializer->isZeroValue())
@@ -207,10 +187,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     if (hasInlineGlobalBuffer)
         modMd->inlineGlobalBuffers.back().allocSize = modMd->inlineGlobalBuffers.back().Buffer.size();
     if (hasInlineConstantBuffer)
-    {
-        modMd->inlineConstantBuffers[0].allocSize = modMd->inlineConstantBuffers[0].Buffer.size();
-        modMd->inlineConstantBuffers[1].allocSize = modMd->inlineConstantBuffers[1].Buffer.size();
-    }
+        modMd->inlineConstantBuffers.back().allocSize = modMd->inlineConstantBuffers.back().Buffer.size();
 
     // Calculate the correct offsets for zero-initialized globals/constants
     // Total allocation size in runtime needs to include zero-init values, but data copied to compiler output can ignore them

@@ -91,8 +91,9 @@ private:
     /// program-scope sections such as global buffer.
     void addProgramScopeInfo(const IGC::SOpenCLProgramInfo& programInfo);
 
-    /// add data section for global constants
-    void addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations);
+    /// add data section for gloabl constants
+    zebin::ZEELFObjectBuilder::SectionID addGlobalConstants(
+        const IGC::SOpenCLProgramInfo& annotations);
     bool hasGlobalConstants(const IGC::SOpenCLProgramInfo& annotations);
 
     /// add data section for gloabls
@@ -173,7 +174,6 @@ private:
     /// sectionID holder for program scope sections
     /// There should be only one global, global constant buffer per program
     zebin::ZEELFObjectBuilder::SectionID mGlobalConstSectID;
-    zebin::ZEELFObjectBuilder::SectionID mConstStringSectID;
     zebin::ZEELFObjectBuilder::SectionID mGlobalSectID;
 };
 

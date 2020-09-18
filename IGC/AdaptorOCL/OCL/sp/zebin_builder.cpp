@@ -129,7 +129,7 @@ void ZEBinaryBuilder::addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations)
 void ZEBinaryBuilder::addProgramScopeInfo(const IGC::SOpenCLProgramInfo& programInfo)
 {
     if (hasGlobalConstants(programInfo))
-        addGlobalConstants(programInfo);
+        mGlobalConstSectID = addGlobalConstants(programInfo);
     if (hasGlobals(programInfo))
         mGlobalSectID = addGlobals(programInfo);
 }
@@ -141,31 +141,19 @@ bool ZEBinaryBuilder::hasGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
     return false;
 }
 
-void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)
+ZEELFObjectBuilder::SectionID
+ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)
 {
     // create a data section for global constant variables
-    // This function should only be called when hasGlobalConstants returns true
-    // Two constant data sections: general constants and string literals
-    IGC_ASSERT(annotations.m_initConstantAnnotation.size() == 2);
-
-    // General constants
-    auto& ca = annotations.m_initConstantAnnotation[0];
+    // This function should only be called when hasGlobalConstants return true
+    // FIXME: not sure in what cases there will be more than one global constant buffer
+    IGC_ASSERT(annotations.m_initConstantAnnotation.size() == 1);
+    auto& ca = annotations.m_initConstantAnnotation.front();
     uint32_t dataSize = ca->InlineData.size();
     uint32_t paddingSize = ca->AllocSize - dataSize;
     uint32_t alignment = ca->Alignment;
-    mGlobalConstSectID = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
+    return mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
         dataSize, paddingSize, alignment);
-
-    // String literals
-    auto& caString = annotations.m_initConstantAnnotation[1];
-    if (caString->InlineData.size() > 0)
-    {
-        dataSize = caString->InlineData.size();
-        paddingSize = caString->AllocSize - dataSize;
-        alignment = caString->Alignment;
-        mConstStringSectID = mBuilder.addSectionData("const.string", (const uint8_t*)caString->InlineData.data(),
-            dataSize, paddingSize, alignment);
-    }
 }
 
 bool ZEBinaryBuilder::hasGlobals(const IGC::SOpenCLProgramInfo& annotations)
