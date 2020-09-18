@@ -1069,42 +1069,18 @@ namespace IGC
     {
         IGC_ASSERT_MESSAGE(nullptr == m_encoderState.m_flag.var, "min/max doesn't support predication");
 
-        unsigned numParts = 0;
-        if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
-            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
-            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true)) {
+        VISA_VectorOpnd* opnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
+        VISA_VectorOpnd* opnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
+        VISA_VectorOpnd* dstopnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
 
-            VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-            VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-            VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
-
-            for (unsigned thePart = 0; thePart != numParts; ++thePart) {
-                SModifier newDstMod = SplitVariable(fromExecSize, toExecSize, thePart, dst, m_encoderState.m_dstOperand);
-                SModifier newSrc0Mod = SplitVariable(fromExecSize, toExecSize, thePart, src0, m_encoderState.m_srcOperand[0], true);
-                SModifier newSrc1Mod = SplitVariable(fromExecSize, toExecSize, thePart, src1, m_encoderState.m_srcOperand[1], true);
-                VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, newDstMod);
-                VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src0, newSrc0Mod);
-                VISA_VectorOpnd* srcOpnd1 = GetSourceOperand(src1, newSrc1Mod);
-                V(vKernel->AppendVISAMinMaxInst(subopcode, IsSat(),
-                    SplitEMask(fromExecSize, toExecSize, thePart, execMask),
-                    toExecSize,
-                    dstOpnd, srcOpnd0, srcOpnd1));
-            }
-        }
-        else {
-            VISA_VectorOpnd* opnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
-            VISA_VectorOpnd* opnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
-            VISA_VectorOpnd* dstopnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
-
-            V(vKernel->AppendVISAMinMaxInst(
-                subopcode,
-                IsSat(),
-                GetAluEMask(dst),
-                GetAluExecSize(dst),
-                dstopnd,
-                opnd0,
-                opnd1));
-        }
+        V(vKernel->AppendVISAMinMaxInst(
+            subopcode,
+            IsSat(),
+            GetAluEMask(dst),
+            GetAluExecSize(dst),
+            dstopnd,
+            opnd0,
+            opnd1));
     }
 
     // NeedSplitting - Check whether a variable needs splitting due to the
