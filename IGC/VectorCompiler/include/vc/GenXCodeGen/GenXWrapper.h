@@ -137,9 +137,7 @@ struct CompileOutput {
 
 using CompileOutput = std::variant<cm::CompileOutput, ocl::CompileOutput>;
 
-enum class FileType {
-  SPIRV, SOURCE
-};
+enum class FileType { SPIRV, SOURCE, LLVM_LL };
 
 enum class OptimizerLevel { None, Full };
 

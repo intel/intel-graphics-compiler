@@ -54,6 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IRReader/IRReader.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Option/ArgList.h"
 #include "llvm/Support/Allocator.h"
@@ -64,6 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Process.h"
+#include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/StringSaver.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
@@ -162,6 +164,23 @@ getModule(ArrayRef<char> Input, LLVMContext &C, ArrayRef<uint32_t> SpecConstIds,
         [](const llvm::ErrorInfoBase &E) {
           return make_error<vc::BadBitcodeError>(E.message());
         });
+
+  if (verifyModule(*ExpModule.get()))
+    return make_error<vc::InvalidModuleError>();
+
+  return ExpModule;
+}
+
+static Expected<std::unique_ptr<llvm::Module>> getModuleLL(ArrayRef<char> Input,
+                                                           LLVMContext &C) {
+  SMDiagnostic Err;
+  llvm::MemoryBufferRef BufferRef(llvm::StringRef(Input.data(), Input.size()),
+                                  "LLVM IR Module");
+  Expected<std::unique_ptr<llvm::Module>> ExpModule =
+      llvm::parseIR(BufferRef, Err, C);
+
+  if (!ExpModule)
+    Err.print("getModuleLL", errs());
 
   if (verifyModule(*ExpModule.get()))
     return make_error<vc::InvalidModuleError>();
@@ -513,7 +532,17 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
   llvm::initializeTarget(Registry);
 
-  auto ExpModule = getModule(Input, Context, SpecConstIds, SpecConstValues);
+  Expected<std::unique_ptr<llvm::Module>> ExpModule = nullptr;
+
+  switch (Opts.FType) {
+  case vc::FileType::SPIRV:
+    ExpModule = getModule(Input, Context, SpecConstIds, SpecConstValues);
+    break;
+  default:
+    ExpModule = getModuleLL(Input, Context);
+    break;
+  }
+
   if (!ExpModule)
     return ExpModule.takeError();
   Module &M = *ExpModule.get();
