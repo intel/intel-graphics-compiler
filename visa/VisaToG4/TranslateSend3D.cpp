@@ -1150,7 +1150,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             srcToUse = createNullSrc(Type_UD);
         }
 
-        Create_SplitSend_Inst_For_RTWrite(
+        Create_SplitSend_Inst_For_RT(
             pred,
             createNullDst(Type_UD),
             m0,

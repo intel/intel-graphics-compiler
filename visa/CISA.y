@@ -76,8 +76,7 @@ static bool ParseEMask(CISA_IR_Builder* pBuilder, const char* sym, VISA_EMask_Ct
 #endif
 
 char * switch_label_array[32];
-std::vector<VISA_opnd*> RTWriteOperands;
-VISA_opnd *opndRTWriteArray[32];
+std::vector<VISA_opnd*> RTRWOperands;
 int num_parameters;
 
 VISA_RawOpnd* rawOperandArray[16];
@@ -1198,19 +1197,19 @@ RTWriteOperandParse:
     }
     | RTWriteOperandParse VecSrcOperand_G_IMM
     {
-        RTWriteOperands.push_back($2.cisa_gen_opnd);
+        RTRWOperands.push_back($2.cisa_gen_opnd);
     }
     | RTWriteOperandParse RawOperand
     {
-        RTWriteOperands.push_back($2);
+        RTRWOperands.push_back($2);
     }
             //      1            2                3                 4           5     6
 RTWriteInstruction: Predicate    RTWRITE_OP_3D    RTWriteModeOpt    ExecSize    Var   RTWriteOperandParse
    {
        bool result = pBuilder->CISA_create_rtwrite_3d_instruction(
            $1, $3, $4.emask, (unsigned int)$4.exec_size, $5,
-           RTWriteOperands, CISAlineno);
-       RTWriteOperands.clear();
+           RTRWOperands, CISAlineno);
+       RTRWOperands.clear();
        if (!result)
            YYABORT; // already reported
    }

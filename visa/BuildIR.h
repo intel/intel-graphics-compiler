@@ -1363,7 +1363,7 @@ public:
         bool is_sendc);
 
 
-    G4_InstSend *Create_SplitSend_Inst_For_RTWrite(
+    G4_InstSend *Create_SplitSend_Inst_For_RT(
         G4_Predicate *pred,
         G4_DstRegRegion *dst,
         G4_SrcRegRegion *src1,

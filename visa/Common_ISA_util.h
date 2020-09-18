@@ -171,5 +171,15 @@ inline uint32_t getvISAMaskOffset(VISA_EMask_Ctrl emask)
 }
 
 
+inline bool isPerSampleSet(uint16_t mode)
+{
+    return (mode & (0x1 << 0x0));
+}
+
+inline bool isSampleIndexSet(uint16_t mode)
+{
+    return (mode & (0x1 << 0x1));
+}
+
 #endif  /* COMMON_ISA_UTIL_INCLUDED */
 

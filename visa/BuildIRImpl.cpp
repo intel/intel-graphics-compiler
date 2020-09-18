@@ -2471,10 +2471,10 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
 
 
 
-// for RTWrite,
+// for reder target messages,
 // desc has a constant BTI value (i.e., no bindless) and no STI
 // extDesc may be indirect (MRT and other bits) and is passed in
-G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(
+G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RT(
     G4_Predicate *pred,
     G4_DstRegRegion *dst,
     G4_SrcRegRegion *src1,
