@@ -223,8 +223,9 @@ struct SStateProcessorContextGen8_0
 
     } Surface;
 };
-CGen8OpenCLStateProcessor::CGen8OpenCLStateProcessor(PLATFORM platform)
-    : m_Platform(platform)
+CGen8OpenCLStateProcessor::CGen8OpenCLStateProcessor(PLATFORM platform, const IProgramContext& ContextProvider)
+    : m_Platform(platform),
+      m_Context(ContextProvider)
 {
     G6HWC::InitializeCapsGen8( &m_HWCaps );
 }
@@ -318,7 +319,7 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
     if (IGC_IS_FLAG_ENABLED(EnableCosDump))
     {
         auto name = DumpName(IGC::Debug::GetShaderOutputName())
-            .Hash(m_Context ? m_Context->hash : ShaderHash())
+            .Hash(m_Context.getProgramHash())
             .Type(ShaderType::OPENCL_SHADER)
             .PostFix("kernel_" + annotations.m_kernelName + std::to_string( annotations.m_executionEnivronment.CompiledSIMDSize))
             .Extension("cos");
@@ -552,19 +553,9 @@ RETVAL CGen8OpenCLStateProcessor::CreateKernelHeap(
     RETVAL retValue = g_cInitRetValue;
 
     // Add the system kernel if required.
-    if (m_Context)
+    if (retValue.Success && m_Context.needsSystemKernel())
     {
-        const auto options = m_Context->m_InternalOptions;
-        if (retValue.Success &&
-            (options.IncludeSIPCSR ||
-             options.IncludeSIPKernelDebug ||
-             options.IncludeSIPKernelDebugWithLocalMemory))
-        {
-            retValue = AddSystemKernel(
-                pSystemThreadKernelOutput,
-                context,
-                membuf);
-        }
+        retValue = AddSystemKernel(pSystemThreadKernelOutput, context, membuf);
     }
 
     if (retValue.Success)
@@ -607,7 +598,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
     std::map<unsigned, SurfaceState> SurfaceStates;
 
     // First, System Thread Surface
-    if (retValue.Success && m_Context && m_Context->m_InternalOptions.KernelDebugEnable)
+    if (retValue.Success && m_Context.isProgramDebuggable())
     {
         unsigned int bti = layout.GetSystemThreadBindingTableIndex();
 
@@ -894,7 +885,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
     if( numSamplers && retValue.Success )
     {
         // Handle border color state:
-        if (m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute())
+        if (m_Context.hasProgrammableBorderColor())
         {
             // Indirect states for argument samplers:
             for (DWORD i = 0; i < numArgumentSamplers && retValue.Success; i++)
@@ -938,7 +929,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
         context.Dynamic.SamplerBorderColorStateOffset = borderColorOffsets[0];
 
         DWORD borderColorIndex = 0;
-        DWORD borderColorStep = (m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) ? 1 : 0;
+        DWORD borderColorStep = m_Context.hasProgrammableBorderColor() ? 1 : 0;
 
         // First handle the sampler arguments
         for (auto i = annotations.m_samplerArgument.begin();
@@ -960,7 +951,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
                 bool    normalizedCoords = true;
                 bool    enable = true;
 
-                IGC_ASSERT((m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == 0);
+                IGC_ASSERT(m_Context.hasProgrammableBorderColor() || borderColorIndex == 0);
 
                 retValue = AddSamplerState(
                     enable,
@@ -1000,7 +991,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
         if( retValue.Success )
         {
-            IGC_ASSERT(!(m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == numArgumentSamplers);
+            IGC_ASSERT(!m_Context.hasProgrammableBorderColor() || borderColorIndex == numArgumentSamplers);
 
             // And then the inline samplers
             for (auto i = annotations.m_samplerInput.begin();
@@ -1015,7 +1006,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
 
                 bool enable = true;
 
-                IGC_ASSERT((m_Context && m_Context->m_DriverInfo.ProgrammableBorderColorInCompute()) || borderColorIndex == 0);
+                IGC_ASSERT(m_Context.hasProgrammableBorderColor() || borderColorIndex == 0);
 
                 retValue = AddSamplerState(
                     enable,
@@ -1437,7 +1428,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for Surface State Scratch Space
 
     // Patch for ALLOCATE_SIP_SURFACE
-    if (retValue.Success && m_Context && m_Context->m_InternalOptions.KernelDebugEnable)
+    if (retValue.Success && m_Context.isProgramDebuggable())
     {
         unsigned int bti = layout.GetSystemThreadBindingTableIndex();
 

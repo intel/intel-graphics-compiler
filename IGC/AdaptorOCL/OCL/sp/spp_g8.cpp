@@ -48,9 +48,26 @@ namespace iOpenCL
 
 extern RETVAL g_cInitRetValue;
 
-CGen8OpenCLProgramBase::CGen8OpenCLProgramBase(PLATFORM platform)
-    : m_Platform(platform)
-    , m_StateProcessor(platform)
+ShaderHash CGen8OpenCLProgram::CLProgramCtxProvider::getProgramHash() const {
+    return m_Context.hash;
+}
+bool CGen8OpenCLProgram::CLProgramCtxProvider::needsSystemKernel() const {
+    const auto& options = m_Context.m_InternalOptions;
+    return options.IncludeSIPCSR ||
+        options.IncludeSIPKernelDebug ||
+        options.IncludeSIPKernelDebugWithLocalMemory;
+}
+bool CGen8OpenCLProgram::CLProgramCtxProvider::isProgramDebuggable() const {
+    return m_Context.m_InternalOptions.KernelDebugEnable;
+}
+bool CGen8OpenCLProgram::CLProgramCtxProvider::hasProgrammableBorderColor() const {
+    return m_Context.m_DriverInfo.ProgrammableBorderColorInCompute();
+}
+
+CGen8OpenCLProgramBase::CGen8OpenCLProgramBase(PLATFORM platform,
+                                               const CGen8OpenCLStateProcessor::IProgramContext& Ctx)
+    : m_Platform(platform),
+      m_StateProcessor(platform, Ctx)
 {
     m_ProgramScopePatchStream = new Util::BinaryStream;
 }
@@ -110,11 +127,11 @@ void CGen8OpenCLProgramBase::CreateProgramScopePatchStream(const IGC::SOpenCLPro
     m_StateProcessor.CreateProgramScopePatchStream(annotations, *m_ProgramScopePatchStream);
 }
 
-CGen8OpenCLProgram::CGen8OpenCLProgram(PLATFORM platform, IGC::OpenCLProgramContext& context)
-    : CGen8OpenCLProgramBase(platform)
-    , m_pContext(&context)
+CGen8OpenCLProgram::CGen8OpenCLProgram(PLATFORM platform, const IGC::OpenCLProgramContext& context)
+    : m_Context(context),
+      m_ContextProvider(context),
+      CGen8OpenCLProgramBase(platform, m_ContextProvider)
 {
-    m_StateProcessor.m_Context = &context;
 }
 
 CGen8OpenCLProgram::~CGen8OpenCLProgram()
@@ -245,7 +262,7 @@ void CGen8OpenCLProgram::GetZEBinary(
     };
 
     ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
-        m_pContext->m_programInfo, (const uint8_t*)spv, spvSize);
+        m_Context.m_programInfo, (const uint8_t*)spv, spvSize);
 
     for (auto pKernel : m_ShaderProgramList)
     {
@@ -257,7 +274,7 @@ void CGen8OpenCLProgram::GetZEBinary(
         // FIXME: We actually expect only one simd mode per kernel. There should not be multiple SIMD mode available
         // for one kernel (runtime cannot support that). So these check can be simplified
         std::vector<IGC::COpenCLKernel*> kernelVec;
-        if (m_pContext->m_DriverInfo.sendMultipleSIMDModes() && (m_pContext->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
+        if (m_Context.m_DriverInfo.sendMultipleSIMDModes() && (m_Context.getModuleMetaData()->csInfo.forcedSIMDSize == 0))
         {
             // For multiple SIMD modes, send SIMD modes in descending order
             if (isValidShader(simd32Shader))
@@ -312,7 +329,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
 
         // Determine how many simd modes we have per kernel
         std::vector<IGC::COpenCLKernel*> kernelVec;
-        if (m_pContext->m_DriverInfo.sendMultipleSIMDModes() && (m_pContext->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
+        if (m_Context.m_DriverInfo.sendMultipleSIMDModes() && (m_Context.getModuleMetaData()->csInfo.forcedSIMDSize == 0))
         {
             // For multiple SIMD modes, send SIMD modes in descending order
             if (isValidShader(simd32Shader))
@@ -344,8 +361,8 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
                 (const char*)pOutput->m_programBin,
                 pOutput->m_programSize,
                 kernel->m_kernelInfo,
-                m_pContext->m_programInfo,
-                m_pContext->btiLayout,
+                m_Context.m_programInfo,
+                m_Context.btiLayout,
                 *(data.kernelBinary),
                 m_pSystemThreadKernelOutput,
                 pOutput->m_unpaddedProgramSize);
@@ -380,7 +397,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
 #if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 // Implementation of CGen8CMProgram.
 CGen8CMProgram::CGen8CMProgram(PLATFORM platform)
-    : CGen8OpenCLProgramBase(platform)
+    : CGen8OpenCLProgramBase(platform, m_ContextProvider)
     , m_programInfo(new IGC::SOpenCLProgramInfo)
 {
 }

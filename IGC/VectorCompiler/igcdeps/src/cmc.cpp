@@ -636,6 +636,7 @@ void vc::createBinary(
     iOpenCL::CGen8CMProgram& CMProgram,
     const std::vector<vc::ocl::CompileInfo>& CompileInfos)
 {
+    bool ProgramIsDebuggable = false;
     for (const vc::ocl::CompileInfo& Info : CompileInfos)
     {
         CMKernel* K = new CMKernel(CMProgram.getPlatform());
@@ -648,5 +649,8 @@ void vc::createBinary(
             Info.DebugInfo.size()};
         populateKernelInfo_v2(Info.KernelInfo, Info.JitInfo, &(Info.GtpinInfo),
                               GenBin, DbgInfo, *K);
+
+        ProgramIsDebuggable |= (Info.DebugInfo.size() > 0);
     }
+    CMProgram.m_ContextProvider.updateDebuggableStatus(ProgramIsDebuggable);
 }

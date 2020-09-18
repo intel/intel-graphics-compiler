@@ -764,7 +764,7 @@ composeLLVMArgs(const opt::InputArgList &ApiArgs,
   if (opt::Arg *DbgArg = ApiArgs.getLastArg(vc::options::OPT_vc_emit_debug)) {
 
     UpdatedArgs.AddSeparateArg(DbgArg, LLVMOpt,
-                               "-finalizer-opts='-generateDebugInfo'");
+        "-finalizer-opts='-generateDebugInfo -addKernelID -setstartbp'");
     UpdatedArgs.AddSeparateArg(DbgArg, LLVMOpt, "-emit-debug-info");
   }
 

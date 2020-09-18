@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../Patch/patch_parser.h"
 #include "inc/common/Compiler/API/SurfaceFormats.h"
+#include "common/shaderHash.hpp"
 #include "usc.h"
 #include "sp_debug.h"
 #include "Probe/Assertion.h"
@@ -85,7 +86,17 @@ class CGen8OpenCLStateProcessor : DisallowCopy
 {
 
 public:
-    explicit CGen8OpenCLStateProcessor(PLATFORM platform);
+    class IProgramContext {
+    public:
+      virtual ShaderHash getProgramHash() const = 0;
+      virtual bool needsSystemKernel() const  = 0;
+      virtual bool isProgramDebuggable() const = 0;
+      virtual bool hasProgrammableBorderColor() const = 0;
+
+      virtual ~IProgramContext () {}
+    };
+
+    explicit CGen8OpenCLStateProcessor(PLATFORM platform, const IProgramContext& Ctx);
     virtual ~CGen8OpenCLStateProcessor( void );
 
     virtual void CreateKernelBinary(
@@ -109,9 +120,7 @@ public:
         const std::string& kernelName,
         Util::BinaryStream& kernelDebugData);
 
-    // Optional OpeneCL program context.
-    const IGC::OpenCLProgramContext *m_Context = nullptr;
-
+    const IProgramContext& m_Context;
     std::string m_oclStateDebugMessagePrintOut;
 
 private:

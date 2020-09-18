@@ -61,7 +61,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "vc/igcdeps/cmc.h"
 #include "vc/igcdeps/ShaderDump.h"
 #include "vc/Support/StatusCode.h"
-#include "vc/GenXCodeGen/GenXWrapper.h"
 #include "common/LLVMWarningsPop.hpp"
 #endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 

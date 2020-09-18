@@ -62,7 +62,8 @@ struct KernelData
 // It owns BinaryStreams allocated.
 class CGen8OpenCLProgramBase : DisallowCopy {
 public:
-    explicit CGen8OpenCLProgramBase(PLATFORM platform);
+    explicit CGen8OpenCLProgramBase(PLATFORM platform,
+                                    const CGen8OpenCLStateProcessor::IProgramContext& PI);
     virtual ~CGen8OpenCLProgramBase();
 
     /// GetProgramBinary - getting legacy (Patch token based) binary format
@@ -100,7 +101,7 @@ protected:
 class CGen8OpenCLProgram : public CGen8OpenCLProgramBase
 {
 public:
-    CGen8OpenCLProgram(PLATFORM platform, IGC::OpenCLProgramContext &context);
+    CGen8OpenCLProgram(PLATFORM platform, const IGC::OpenCLProgramContext &context);
 
     ~CGen8OpenCLProgram();
 
@@ -118,12 +119,43 @@ public:
     std::vector<IGC::CShaderProgram*> m_ShaderProgramList;
 
 private:
-    IGC::OpenCLProgramContext* m_pContext = nullptr;
+
+    class CLProgramCtxProvider : public CGen8OpenCLStateProcessor::IProgramContext {
+    public:
+        CLProgramCtxProvider(const IGC::OpenCLProgramContext& CtxIn): m_Context{CtxIn} {}
+
+        ShaderHash getProgramHash() const override;
+        bool needsSystemKernel() const  override;
+        bool isProgramDebuggable() const override;
+        bool hasProgrammableBorderColor() const override;
+
+    private:
+       const IGC::OpenCLProgramContext& m_Context;
+    };
+
+    const IGC::OpenCLProgramContext& m_Context;
+    CLProgramCtxProvider m_ContextProvider;
 };
 
 #if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 class CGen8CMProgram : public CGen8OpenCLProgramBase {
 public:
+    class CMProgramCtxProvider : public CGen8OpenCLStateProcessor::IProgramContext {
+    public:
+        CMProgramCtxProvider() {}
+
+        ShaderHash getProgramHash() const override  { return {}; }
+        bool needsSystemKernel() const  override { return false; }
+        bool isProgramDebuggable() const override  { return IsDebuggable; }
+        bool hasProgrammableBorderColor() const override { return false ; }
+
+        void updateDebuggableStatus(bool Debuggable) {
+            IsDebuggable = Debuggable;
+        }
+    private:
+        bool IsDebuggable = false;
+    };
+
     explicit CGen8CMProgram(PLATFORM platform);
     ~CGen8CMProgram();
 
@@ -138,6 +170,8 @@ public:
 
     // Data structure to create patch token based binaries.
     std::unique_ptr<IGC::SOpenCLProgramInfo> m_programInfo;
+
+    CMProgramCtxProvider m_ContextProvider;
 };
 #endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 }
