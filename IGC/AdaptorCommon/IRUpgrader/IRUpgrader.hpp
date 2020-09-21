@@ -39,4 +39,6 @@ namespace IGC
     llvm::Pass* CreateUpgradeResourceIntrinsic();
     ///Transfor legacy gen intrisics with prefix "@genx." => "@llvm.genx."
     llvm::Pass* CreateUpgradeGenIntrinsicPrefix();
+    /// Delete legacy resource access intrinsics
+    llvm::Pass* CreateDeleteLegacyIntrinsicDeclarations();
 }

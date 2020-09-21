@@ -269,6 +269,98 @@ bool UpgradeGenIntrinsicPrefix::runOnModule(llvm::Module &M)
     return m_changed;
 }
 
+class DeleteLegacyIntrinsicDeclarations : public ModulePass
+{
+// This pass removes legacy intrinsic declarations that have been changed by UpgradeResourceIntrinsic pass
+
+public:
+    DeleteLegacyIntrinsicDeclarations() : ModulePass(ID) {}
+
+    static char ID;
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+    {
+        AU.setPreservesCFG();
+    }
+
+    bool runOnModule(llvm::Module& M) override;
+
+    llvm::StringRef getPassName() const override
+    {
+        return "DeleteLegacyIntrinsicDeclarations";
+    }
+
+private:
+    bool m_changed = false;
+};
+char DeleteLegacyIntrinsicDeclarations::ID = 0;
+
+bool DeleteLegacyIntrinsicDeclarations::runOnModule(llvm::Module& M)
+{
+    // copied from UpgradeResourceAccess::visitCallInst(CallInst& C)
+    std::vector<std::string> legacyIntrinsicsMustContain = {
+        "genx.GenISA.sample.",
+        "genx.GenISA.sampleB.",
+        "genx.GenISA.sampleD.",
+        "genx.GenISA.sampleC.",
+        "genx.GenISA.sampleL.",
+        "genx.GenISA.gather4.",
+        "genx.GenISA.ldms.",
+        "genx.GenISA.ld.",
+        "genx.GenISA.sampleKill.legacy"
+    };
+
+    std::vector<std::string> legacyIntrinsicsMustEqual = {
+        "llvm.genx.GenISA.ldmcs",
+        "genx.GenISA.ldmcs"
+    };
+
+    std::vector<Function*> funcsToRemove;
+
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+        Function* pFunc = &(*I);
+        if (!pFunc->isIntrinsic()) continue;
+        bool foundIntrinsic = false;
+
+        for (auto i : legacyIntrinsicsMustContain)
+        {
+            if (pFunc->getName().contains(i))
+            {
+                if (pFunc->getNumUses() == 0)
+                {
+                    funcsToRemove.push_back(pFunc);
+                    foundIntrinsic = true;
+                    break;
+                }
+                else
+                    IGC_ASSERT(0);
+            }
+        }
+
+        if (!foundIntrinsic)
+        {
+            for (auto i : legacyIntrinsicsMustEqual)
+            {
+                if (pFunc->getName().equals(i))
+                {
+                    if (pFunc->getNumUses() == 0)
+                    {
+                        funcsToRemove.push_back(pFunc);
+                        break;
+                    }
+                    else
+                        IGC_ASSERT(0);
+                }
+            }
+        }
+    }
+
+    for (auto pFunc : funcsToRemove) {
+        pFunc->removeFromParent();
+    }
+
+    return m_changed;
+}
+
 
 namespace IGC
 {
@@ -282,5 +374,9 @@ Pass* CreateUpgradeGenIntrinsicPrefix()
     return new UpgradeGenIntrinsicPrefix();
 }
 
+Pass* CreateDeleteLegacyIntrinsicDeclarations()
+{
+    return new DeleteLegacyIntrinsicDeclarations();
+}
 
 }
