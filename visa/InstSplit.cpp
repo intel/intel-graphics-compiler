@@ -114,6 +114,22 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
         doSplit = true;
     }
 
+    // Handle split exceptions
+    if (!doSplit)
+    {
+        if (ISA_Inst_Table[inst->opcode()].type == ISA_Inst_Compare)
+            // Due to a simulator quirk, we need to split cmp instruction even if the
+            // dst operand of the compare is null, if it "looks" too large,
+            // that is, if the execution size is 16 and the comparison type
+            // is QW.
+            if (execSize >= 16 &&
+                (G4_Type_Table[inst->getSrc(0)->getType()].byteSize > 4 ||
+                    G4_Type_Table[inst->getSrc(1)->getType()].byteSize > 4 ))
+            {
+                doSplit = true;
+            }
+    }
+
     if (!doSplit)
     {
         return it;
