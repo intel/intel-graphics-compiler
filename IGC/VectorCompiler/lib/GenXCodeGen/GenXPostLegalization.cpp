@@ -129,10 +129,10 @@ bool GenXPostLegalization::runOnFunction(Function &F)
       switch (GenXIntrinsic::getAnyIntrinsicID(Inst)) {
       default:
         // Lower non-simple constant operands.
-        Modified |= loadNonSimpleConstants(Inst, nullptr, ST);
+        Modified |= loadNonSimpleConstants(Inst, *ST, *DL, nullptr);
         break;
       case Intrinsic::fma:
-        Modified |= loadConstants(Inst, ST);
+        Modified |= loadConstants(Inst, *ST, *DL);
         break;
       }
 
@@ -161,8 +161,8 @@ bool GenXPostLegalization::runOnFunction(Function &F)
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
       Instruction *Inst = &*BI;
       if (isa<ReturnInst>(Inst)) {
-        Modified |= loadNonSimpleConstants(Inst, nullptr, ST);
-        Modified |= loadConstants(Inst, ST);
+        Modified |= loadNonSimpleConstants(Inst, *ST, *DL, nullptr);
+        Modified |= loadConstants(Inst, *ST, *DL);
       }
     }
   }

@@ -208,7 +208,7 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
   const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
                                  .getTM<GenXTargetMachine>()
                                  .getGenXSubtarget();
-  loadPhiConstants(&F, DT, true, ST);
+  loadPhiConstants(F, DT, *ST, *DL, true);
   Changed |= distributeIntegerMul(&F);
   Changed |= propagateFoldableRegion(&F);
   Changed |= reassociateIntegerMad(&F);

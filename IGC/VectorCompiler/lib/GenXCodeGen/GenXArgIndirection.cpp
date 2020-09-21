@@ -373,13 +373,14 @@ class GenXArgIndirection : public FunctionGroupPass {
   friend IndirectArgCallSite;
   friend IndirectArgRetCallSite;
 private:
-  FunctionGroup *FG;
-  FunctionGroupAnalysis *FGA;
-  GenXBaling *Baling;
-  GenXLiveness *Liveness;
-  GenXNumbering *Numbering;
-  AlignmentInfo *AI;
-  const GenXSubtarget *ST;
+  FunctionGroup *FG = nullptr;
+  FunctionGroupAnalysis *FGA = nullptr;
+  GenXBaling *Baling = nullptr;
+  GenXLiveness *Liveness = nullptr;
+  GenXNumbering *Numbering = nullptr;
+  AlignmentInfo *AI = nullptr;
+  const GenXSubtarget *ST = nullptr;
+  const DataLayout *DL = nullptr;
   // List of arg live ranges to consider.
   SmallVector<LiveRange *, 4> ArgLRs;
   // For the ArgLR being processed:
@@ -456,6 +457,7 @@ bool GenXArgIndirection::runOnFunctionGroup(FunctionGroup &ArgFG)
   Liveness = &getAnalysis<GenXLiveness>();
   AI = new AlignmentInfo;
   ST = getAnalysis<GenXModule>().getSubtarget();
+  DL = &ArgFG.getModule()->getDataLayout();
   // Gather list of LRs containing an arg that we want to consider. (Two
   // args might be coalesced together, so we consider a whole arg-containing
   // LR at a time.)
@@ -1344,7 +1346,7 @@ Value *ConstArgRetCallSite::process(GenXArgIndirection *Pass,
   // Insert a load the constant. Bitcast it to the right type to replace
   // RetEndWr.
   SmallVector<Instruction *, 4> AddedInsts;
-  ConstantLoader CL(LdConst, nullptr, &AddedInsts);
+  ConstantLoader CL(LdConst, *Pass->ST, *Pass->DL, nullptr, &AddedInsts);
   auto LoadedConst = CL.loadBig(InsertBefore);
   IGC_ASSERT(LoadedConst);
   if (LoadedConst->getType() != RetEndWr->getType()) {

@@ -39,6 +39,10 @@ namespace genx {
 class ConstantLoader {
   Constant *C;
   Instruction *User;
+
+  const GenXSubtarget &Subtarget;
+  const DataLayout &DL;
+
   // NewC != nullptr signals that we should replace C with NewC in User
   // nothing to do otherwise
   Constant *NewC = nullptr;
@@ -64,15 +68,13 @@ public:
   // AddedInstructions = vector to add new instructions to when loading a
   //        non simple constant, so the caller can see all the newly added
   //        instructions.
-  ConstantLoader(Constant *C, Instruction *User = nullptr,
-                 SmallVectorImpl<Instruction *> *AddedInstructions = nullptr,
-                 const GenXSubtarget *Subtarget = nullptr)
-      : C(C), User(User), AddedInstructions(AddedInstructions),
-        Subtarget(Subtarget) {
+  ConstantLoader(Constant *C, const GenXSubtarget &InSubtarget,
+                 const DataLayout &InDL, Instruction *User = nullptr,
+                 SmallVectorImpl<Instruction *> *AddedInstructions = nullptr)
+      : C(C), User(User), Subtarget(InSubtarget), DL(InDL),
+        AddedInstructions(AddedInstructions) {
     analyze();
   }
-  ConstantLoader(Constant *C, const GenXSubtarget *Subtarget)
-      : ConstantLoader(C, nullptr, nullptr, Subtarget) {}
   Instruction *load(Instruction *InsertBefore);
   Instruction *loadBig(Instruction *InsertBefore);
   Instruction *loadNonSimple(Instruction *InsertBefore);
@@ -83,7 +85,6 @@ public:
   bool isLegalSize();
 
 private:
-  const GenXSubtarget *Subtarget;
   bool isPackedIntVector();
   bool isPackedFloatVector();
   void analyze();
@@ -112,29 +113,29 @@ bool areConstantsEqual(Constant *C1, Constant *C2);
 // Load a constant using the llvm.genx.constant intrinsic.
 inline Instruction *
 loadConstant(Constant *C, Instruction *InsertBefore,
-             SmallVectorImpl<Instruction *> *AddedInstructions = nullptr,
-             const GenXSubtarget *Subtarget = nullptr) {
-  return ConstantLoader(C, nullptr, AddedInstructions, Subtarget)
+             const GenXSubtarget &Subtarget, const DataLayout &DL,
+             SmallVectorImpl<Instruction *> *AddedInstructions = nullptr) {
+  return ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
       .load(InsertBefore);
 }
 
 // Load non-simple constants used in an instruction.
 bool loadNonSimpleConstants(
-    Instruction *Inst,
-    SmallVectorImpl<Instruction *> *AddedInstructions = nullptr,
-    const GenXSubtarget *Subtarget = nullptr);
+    Instruction *Inst, const GenXSubtarget &Subtarget, const DataLayout &DL,
+    SmallVectorImpl<Instruction *> *AddedInstructions = nullptr);
 
 bool loadConstantsForInlineAsm(
-    CallInst *Inst, SmallVectorImpl<Instruction *> *AddedInstructions = nullptr,
-    const GenXSubtarget *Subtarget = nullptr);
+    CallInst *Inst, const GenXSubtarget &Subtarget, const DataLayout &DL,
+    SmallVectorImpl<Instruction *> *AddedInstructions = nullptr);
 
 // Load constants used in an instruction.
-bool loadConstants(Instruction *Inst, const GenXSubtarget *Subtarget = nullptr);
+bool loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
+                   const DataLayout &DL);
 
 // Load constants used in phi nodes in a function.
-bool loadPhiConstants(Function *F, DominatorTree *DT,
-                      bool ExcludePredicate = false,
-                      const GenXSubtarget *Subtarget = nullptr);
+bool loadPhiConstants(Function &F, DominatorTree *DT,
+                      const GenXSubtarget &Subtarget, const DataLayout &DL,
+                      bool ExcludePredicate = false);
 
 } // namespace genx
 } // namespace llvm

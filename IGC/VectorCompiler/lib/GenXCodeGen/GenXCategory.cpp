@@ -180,15 +180,18 @@ namespace {
 
   // GenX category pass
   class GenXCategory : public FunctionGroupPass {
-    Function *Func;
+    Function *Func = nullptr;
     KernelMetadata KM;
-    GenXLiveness *Liveness;
-    DominatorTreeGroupWrapperPass *DTs;
+    GenXLiveness *Liveness = nullptr;
+    DominatorTreeGroupWrapperPass *DTs = nullptr;
+    const GenXSubtarget *Subtarget = nullptr;
+    const DataLayout *DL = nullptr;
     SmallVector<Instruction *, 8> ToErase;
-    bool Modified;
+    bool Modified = false;
     // Vector of arguments and phi nodes that did not get a category.
     SmallVector<Value *, 8> NoCategory;
-    bool InFGHead;
+    bool InFGHead = false;
+
   public:
     static char ID;
     explicit GenXCategory() : FunctionGroupPass(ID) { }
@@ -206,7 +209,6 @@ namespace {
     CategoryAndAlignment getCategoryAndAlignmentForDef(Value *V) const;
     CategoryAndAlignment getCategoryAndAlignmentForUse(Value::use_iterator U) const;
   private:
-    const GenXSubtarget *Subtarget;
     using ConvListT = std::array<llvm::Instruction *, RegCategory::NUMCATEGORIES>;
 
     bool processFunction(Function *F);
@@ -407,6 +409,7 @@ bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG)
   Subtarget = &getAnalysis<TargetPassConfig>()
                    .getTM<GenXTargetMachine>()
                    .getGenXSubtarget();
+  DL = &FG.getModule()->getDataLayout();
   bool Modified = false;
   if (KM.isKernel()) {
     // Get the offset of each kernel arg.
@@ -509,7 +512,7 @@ bool GenXCategory::processFunction(Function *F)
   // Before doing the category conversion, fix circular phis.
   Modified = fixCircularPhis(F);
   // Load constants in phi nodes.
-  loadPhiConstants(F, DTs->getDomTree(F), false, Subtarget);
+  loadPhiConstants(*F, DTs->getDomTree(F), *Subtarget, *DL, false);
   // Process all instructions.
   for (po_iterator<BasicBlock *> i = po_begin(&Func->getEntryBlock()),
       e = po_end(&Func->getEntryBlock()); i != e; ++i) {
@@ -518,8 +521,8 @@ bool GenXCategory::processFunction(Function *F)
     BasicBlock *BB = *i;
     for (Instruction *Inst = &BB->back(); Inst;
         Inst = (Inst == &BB->front() ? nullptr : Inst->getPrevNode())) {
-      Modified |= loadNonSimpleConstants(Inst, nullptr, Subtarget);
-      Modified |= loadConstants(Inst, Subtarget);
+      Modified |= loadNonSimpleConstants(Inst, *Subtarget, *DL, nullptr);
+      Modified |= loadConstants(Inst, *Subtarget, *DL);
       if (!processValue(Inst))
         NoCategory.push_back(Inst);
     }

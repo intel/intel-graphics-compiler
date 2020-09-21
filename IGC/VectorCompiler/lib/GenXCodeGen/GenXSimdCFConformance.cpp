@@ -3679,9 +3679,10 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
     }
   }
   // Modify each select into a predicated wrregion.
-  const GenXSubtarget *Subtarget = &getAnalysis<TargetPassConfig>()
-                                        .getTM<GenXTargetMachine>()
-                                        .getGenXSubtarget();
+  const GenXSubtarget &Subtarget = getAnalysis<TargetPassConfig>()
+                                       .getTM<GenXTargetMachine>()
+                                       .getGenXSubtarget();
+  const DataLayout &DL = M->getDataLayout();
   for (auto si = Selects.begin(), se = Selects.end(); si != se; ++si) {
     auto Sel = *si;
     Value *FalseVal = Sel->getFalseValue();
@@ -3723,8 +3724,9 @@ void GenXLateSimdCFConformance::modifyEMUses(Value *EM)
           // The false value needs loading if it is a constant other than
           // undef.
           SmallVector<Instruction *, 4> AddedInstructions;
-          FalseVal = ConstantLoader(C, nullptr, &AddedInstructions, Subtarget)
-                         .loadBig(Sel);
+          FalseVal =
+              ConstantLoader(C, Subtarget, DL, nullptr, &AddedInstructions)
+                  .loadBig(Sel);
           // ConstantLoader generated at least one instruction.  Ensure that
           // each one has debug loc and category.
           for (auto aii = AddedInstructions.begin(),
