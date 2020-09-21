@@ -100,7 +100,7 @@ public:
         if (inst->isPseudoKill() ||
             inst->isLifeTimeEnd())
         {
-            G4_Declare* topdcl;
+            G4_Declare* topdcl = nullptr;
 
             if (inst->isPseudoKill())
             {
@@ -111,7 +111,8 @@ public:
                 topdcl = GetTopDclFromRegRegion(inst->getSrc(0));
             }
 
-            if (gra.getNumRefs(topdcl) == 0 &&
+            if (topdcl &&
+                gra.getNumRefs(topdcl) == 0 &&
                 (topdcl->getRegFile() == G4_GRF ||
                     topdcl->getRegFile() == G4_INPUT))
             {
@@ -1478,7 +1479,7 @@ bool LinearScanRA::linearScanRA()
     G4_BB* entryBB = nullptr;
     for (auto bb : kernel.fg)
     {
-        if (//bb->getBBType() == G4_BB_INIT_TYPE ||
+        if (entryBB == nullptr || //bb->getBBType() == G4_BB_INIT_TYPE ||
             bb->getId() == 0)
         {
             entryBB = bb;
@@ -2561,12 +2562,12 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
             {
                 updateGlobalActiveList(lr);
 
+#ifdef DEBUG_VERBOSE_ON
                 int startregnum, startsregnum;
                 G4_VarBase* op;
                 op = lr->getPhyReg(startsregnum);
 
                 startregnum = op->asGreg()->getRegNum();
-#ifdef DEBUG_VERBOSE_ON
                 COUT_ERROR << "After spill: Assigned physical register to " << lr->getTopDcl()->getName() << " GRF: " << startregnum << std::endl;
 #endif
             }
@@ -2710,7 +2711,7 @@ int globalLinearScan::findSpillCandidate(LSLiveRange* tlr)
     int referenceCount = 0;
     int startGRF = -1;
     float spillCost = (float)(int)0x7FFFFFFF;
-    unsigned lastIdxs = 0;
+    unsigned lastIdxs = 1;
     unsigned tStartIdx = 0;
 
     tlr->getFirstRef(tStartIdx);
@@ -2797,7 +2798,7 @@ int globalLinearScan::findSpillCandidate(LSLiveRange* tlr)
             }
         }
 
-        lastIdxs = 0;
+        lastIdxs = 1;
         lv.clear();
         referenceCount = 0;
     }
@@ -2934,27 +2935,26 @@ void globalLinearScan::expireGlobalRanges(unsigned int idx)
 #ifdef DEBUG_VERBOSE_ON
             COUT_ERROR << "Expiring range " << lr->getTopDcl()->getName() << " With GRF size: " << lr->getTopDcl()->getNumRows() << std::endl;
 #endif
-            G4_VarBase* op;
-            int startsregnum = 0;
-            op = lr->getPhyReg(startsregnum);
-            unsigned startregnum = op->asGreg()->getRegNum();
-            unsigned endregnum = startregnum + lr->getTopDcl()->getNumRows() - 1;
-            for (unsigned i = startregnum; i <= endregnum; i++)
+            if (preg)
             {
-                std::vector<LSLiveRange*>::iterator activeListIter = activeGRF[i].activeLV.begin();
-                while (activeListIter != activeGRF[i].activeLV.end())
+                unsigned startregnum = preg->asGreg()->getRegNum();
+                unsigned endregnum = startregnum + lr->getTopDcl()->getNumRows() - 1;
+                for (unsigned i = startregnum; i <= endregnum; i++)
                 {
-                    std::vector<LSLiveRange*>::iterator nextIt = activeListIter;
-                    nextIt++;
-                    if ((*activeListIter) == lr)
+                    std::vector<LSLiveRange*>::iterator activeListIter = activeGRF[i].activeLV.begin();
+                    while (activeListIter != activeGRF[i].activeLV.end())
                     {
-                        activeGRF[i].activeLV.erase(activeListIter);
-                        break;
+                        std::vector<LSLiveRange*>::iterator nextIt = activeListIter;
+                        nextIt++;
+                        if ((*activeListIter) == lr)
+                        {
+                            activeGRF[i].activeLV.erase(activeListIter);
 #ifdef DEBUG_VERBOSE_ON
-                        COUT_ERROR << "Remove range " << lr->getTopDcl()->getName() << " from activeGRF: " << i << std::endl;
+                            COUT_ERROR << "Remove range " << lr->getTopDcl()->getName() << " from activeGRF: " << i << std::endl;
 #endif
+                        }
+                        activeListIter = nextIt;
                     }
-                    activeListIter = nextIt;
                 }
             }
 
