@@ -1343,6 +1343,49 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         return (DbgVariable*)nullptr;
     };
 
+    auto findClosestStartEnd = [this](uint16_t start, uint16_t end)
+    {
+        std::pair<uint64_t, uint64_t> startEnd = std::make_pair(0, 0);
+        if (start >= end)
+            return startEnd;
+
+        while (start < end)
+        {
+            auto startIt = m_pModule->VISAIndexToAllGenISAOff.find(start);
+            if (startIt == m_pModule->VISAIndexToAllGenISAOff.end())
+            {
+                start++;
+            }
+            else
+            {
+                startEnd.first = (*startIt).second.front();
+                break;
+            }
+        }
+
+        if (start >= end)
+            return startEnd;
+
+        while (end > start && end > 0)
+        {
+            auto endIt = m_pModule->VISAIndexToAllGenISAOff.find(end);
+            if (endIt == m_pModule->VISAIndexToAllGenISAOff.end())
+            {
+                end--;
+            }
+            else
+            {
+                startEnd.second = (*endIt).second.back();
+                break;
+            }
+        }
+
+        if (start >= end)
+            return startEnd;
+
+        return startEnd;
+    };
+
     auto encodeImm = [&](IGC::DotDebugLocEntry& dotLoc, uint64_t rangeStart, uint64_t rangeEnd,
         uint32_t pointerSize, DbgVariable* RegVar, const ConstantInt* pConstInt)
     {
@@ -1405,7 +1448,10 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         // longer part of variable metadata node. This causes auto variable nodes of all inlined functions
         // to collapse in to a single metadata node. Following loop iterates over all dbg.declare instances
         // for inlined functions and creates new DbgVariable instances for each.
-        std::list<std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>> DbgValuesWithGenIP;
+
+        // DbgVariable is created once per variable to be emitted to dwarf.
+        // If a function is inlined x times, there would be x number of DbgVariable instances.
+        std::unordered_map<DbgVariable*, std::list<std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>>> DbgValuesWithGenIP;
         for (auto HI = History.begin(), HE = History.end(); HI != HE; HI++)
         {
             auto H = (*HI);
@@ -1493,183 +1539,192 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             IGC::InsnRange InsnRange(start, end);
             auto GenISARange = m_pModule->getGenISARange(InsnRange);
 
-            if (History.size() == 1 && GenISARange.size() == 1)
-            {
-                // Emit location within the DIE
+            // Emit location within the DIE for dbg.declare
+            if (History.size() == 1 && isa<DbgDeclareInst>(pInst))
                 continue;
-            }
 
             for (auto range : GenISARange)
             {
-                DbgValuesWithGenIP.push_back(std::make_tuple(range.first, range.second, RegVar, pInst));
+                DbgValuesWithGenIP[RegVar].push_back(std::make_tuple(range.first, range.second, RegVar, pInst));
             }
         }
 
         DIVariable* DV = cast<DIVariable>(const_cast<MDNode*>(Var));
-        DbgValuesWithGenIP.sort([](std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>& first,
-            std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>& second)
-            {
-                return std::get<0>(first) < std::get<0>(second);
-            });
-
-        struct PrevLoc
+        for (auto& d : DbgValuesWithGenIP)
         {
-            enum class Type
+            d.second.sort([](std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>& first,
+                std::tuple<unsigned int, unsigned int, DbgVariable*, const llvm::Instruction*>& second)
+                {
+                    return std::get<0>(first) < std::get<0>(second);
+                });
+
+            struct PrevLoc
             {
-                Empty = 0,
-                Imm = 1,
-                Reg = 2
+                enum class Type
+                {
+                    Empty = 0,
+                    Imm = 1,
+                    Reg = 2
+                };
+                Type t = Type::Empty;
+                uint64_t start = 0;
+                uint64_t end = 0;
+                DbgVariable* dbgVar = nullptr;
+                const llvm::Instruction* pInst = nullptr;
+                const ConstantInt* imm = nullptr;
+
+                std::vector<VISAVariableLocation> Locs;
+                DbgDecoder::LiveIntervalsVISA genIsaRange;
             };
-            Type t = Type::Empty;
-            uint64_t start = 0;
-            uint64_t end = 0;
-            DbgVariable* dbgVar = nullptr;
-            const llvm::Instruction* pInst = nullptr;
-            const ConstantInt* imm = nullptr;
 
-            std::vector<VISAVariableLocation> Locs;
-            DbgDecoder::LiveIntervalsVISA genIsaRange;
-        };
-
-        PrevLoc p;
-        auto encodePrevLoc = [&](DotDebugLocEntry& dotLoc, unsigned int& offset)
-        {
-            if (p.dbgVar->getDotDebugLocOffset() == ~0U)
+            PrevLoc p;
+            auto encodePrevLoc = [&](DotDebugLocEntry& dotLoc, unsigned int& offset)
             {
-                p.dbgVar->setDotDebugLocOffset(offset);
-            }
-            auto oldSize = dotLoc.loc.size();
-            if (p.t == PrevLoc::Type::Imm)
-            {
-                encodeImm(dotLoc, p.start, p.end, pointerSize, p.dbgVar, p.imm);
-            }
-            else
-            {
-                encodeReg(dotLoc, p.start, p.end, pointerSize, p.dbgVar, p.Locs, p.genIsaRange);
-            }
-            offset += dotLoc.loc.size() - oldSize;
-            p.t = PrevLoc::Type::Empty;
-        };
-        for (auto& range : DbgValuesWithGenIP)
-        {
-            auto startIp = std::get<0>(range);
-            auto endIp = std::get<1>(range);
-            auto RegVar = std::get<2>(range);
-            auto pInst = std::get<3>(range);
-
-            auto Locs = m_pModule->GetVariableLocation(pInst);
-            auto& Loc = Locs.front();
-
-            DotDebugLocEntry dotLoc(startIp, endIp, pInst, DV);
-            dotLoc.setOffset(offset);
-
-            if (Loc.IsImmediate())
-            {
-                const Constant* pConstVal = Loc.GetImmediate();
-                if (const ConstantInt* pConstInt = dyn_cast<ConstantInt>(pConstVal))
+                if (p.dbgVar->getDotDebugLocOffset() == ~0U)
                 {
-                    // Always emit an 8-byte value
-                    uint64_t rangeStart = startIp;
-                    uint64_t rangeEnd = endIp;
-
-                    if (p.t != PrevLoc::Type::Empty &&
-                        p.end == rangeStart &&
-                        p.t == PrevLoc::Type::Imm &&
-                        p.imm == pConstInt)
-                    {
-                        // extend
-                        p.end = rangeEnd;
-                        continue;
-                    }
-
-                    if(p.t != PrevLoc::Type::Empty)
-                    {
-                        // Emit previous location to debug_loc
-                        encodePrevLoc(dotLoc, offset);
-                        TempDotDebugLocEntries.push_back(dotLoc);
-                    }
-
-                    p.t = PrevLoc::Type::Imm;
-                    p.start = rangeStart;
-                    p.end = rangeEnd;
-                    p.imm = pConstInt;
-                    p.dbgVar = RegVar;
-                    p.pInst = pInst;
+                    p.dbgVar->setDotDebugLocOffset(offset);
                 }
-                RegVar->getDecorations().append("u ");
-            }
-            else if (Loc.IsRegister())
-            {
-                DbgDecoder::VarInfo varInfo;
-                auto regNum = Loc.GetRegister();
-                m_pModule->getVarInfo("V", regNum, varInfo);
-                for (auto& genIsaRange : varInfo.lrs)
+                auto oldSize = dotLoc.loc.size();
+                if (p.t == PrevLoc::Type::Imm)
                 {
-                    auto startIt = m_pModule->VISAIndexToAllGenISAOff.find(genIsaRange.start);
-                    if (startIt == m_pModule->VISAIndexToAllGenISAOff.end())
-                        continue;
-                    uint64_t startRange = (*startIt).second.front();
-                    auto endIt = m_pModule->VISAIndexToAllGenISAOff.find(genIsaRange.end);
-                    if (endIt == m_pModule->VISAIndexToAllGenISAOff.end())
-                        continue;
-                    uint64_t endRange = (*endIt).second.back();
+                    encodeImm(dotLoc, p.start, p.end, pointerSize, p.dbgVar, p.imm);
+                }
+                else
+                {
+                    encodeReg(dotLoc, p.start, p.end, pointerSize, p.dbgVar, p.Locs, p.genIsaRange);
+                }
+                offset += dotLoc.loc.size() - oldSize;
+                p.t = PrevLoc::Type::Empty;
+            };
+            for (auto& range : d.second)
+            {
+                auto startIp = std::get<0>(range);
+                auto endIp = std::get<1>(range);
+                auto RegVar = std::get<2>(range);
+                auto pInst = std::get<3>(range);
 
-                    if (endRange < startIp)
-                        continue;
-                    if (startRange > endIp)
-                        continue;
+                auto Locs = m_pModule->GetVariableLocation(pInst);
+                auto& Loc = Locs.front();
 
-                    startRange = std::max(startRange, (uint64_t)startIp);
-                    endRange = std::min(endRange, (uint64_t)endIp);
+                // Variable has a constant value so inline it in DIE
+                if (d.second.size() == 1 && Loc.IsImmediate())
+                    continue;
 
-                    if (p.t != PrevLoc::Type::Empty &&
-                        p.end == startRange &&
-                        p.t == PrevLoc::Type::Reg)
+                DotDebugLocEntry dotLoc(startIp, endIp, pInst, DV);
+                dotLoc.setOffset(offset);
+
+                if (Loc.IsImmediate())
+                {
+                    const Constant* pConstVal = Loc.GetImmediate();
+                    if (const ConstantInt* pConstInt = dyn_cast<ConstantInt>(pConstVal))
                     {
-                        if ((p.genIsaRange.isGRF() && genIsaRange.isGRF() &&
-                            p.genIsaRange.getGRF() == genIsaRange.getGRF()) ||
-                            (p.genIsaRange.isSpill() && genIsaRange.isSpill() &&
-                                p.genIsaRange.getSpillOffset() == genIsaRange.getSpillOffset()))
+                        // Always emit an 8-byte value
+                        uint64_t rangeStart = startIp;
+                        uint64_t rangeEnd = endIp;
+
+                        if (p.t == PrevLoc::Type::Imm &&
+                            p.end < rangeEnd &&
+                            p.imm == pConstInt)
                         {
                             // extend
-                            p.end = endRange;
+                            p.end = rangeEnd;
                             continue;
                         }
-                    }
 
-                    if (p.t != PrevLoc::Type::Empty)
+                        if (p.end >= rangeEnd)
+                            continue;
+
+                        if (rangeStart == rangeEnd)
+                            continue;
+
+                        if (p.t != PrevLoc::Type::Empty)
+                        {
+                            // Emit previous location to debug_loc
+                            encodePrevLoc(dotLoc, offset);
+                            TempDotDebugLocEntries.push_back(dotLoc);
+                        }
+
+                        p.t = PrevLoc::Type::Imm;
+                        p.start = rangeStart;
+                        p.end = rangeEnd;
+                        p.imm = pConstInt;
+                        p.dbgVar = RegVar;
+                        p.pInst = pInst;
+                    }
+                }
+                else if (Loc.IsRegister())
+                {
+                    DbgDecoder::VarInfo varInfo;
+                    auto regNum = Loc.GetRegister();
+                    m_pModule->getVarInfo("V", regNum, varInfo);
+                    for (auto& genIsaRange : varInfo.lrs)
                     {
-                        encodePrevLoc(dotLoc, offset);
-                        TempDotDebugLocEntries.push_back(dotLoc);
-                    }
-                    p.t = PrevLoc::Type::Reg;
-                    p.start = startRange;
-                    p.end = endRange;
-                    p.dbgVar = RegVar;
-                    p.Locs = Locs;
-                    p.genIsaRange = genIsaRange;
-                    p.pInst = pInst;
+                        auto startEnd = findClosestStartEnd(genIsaRange.start, genIsaRange.end);
 
-                    if (Loc.IsVectorized())
-                        RegVar->getDecorations().append("v ");
-                    else
-                        RegVar->getDecorations().append("u ");
+                        uint64_t startRange = startEnd.first;
+                        uint64_t endRange = startEnd.second;
+
+                        if (startRange == endRange)
+                            continue;
+
+                        if (endRange < startIp)
+                            continue;
+                        if (startRange > endIp)
+                            continue;
+
+                        startRange = std::max(startRange, (uint64_t)startIp);
+                        endRange = std::min(endRange, (uint64_t)endIp);
+
+                        if (p.t == PrevLoc::Type::Reg &&
+                            p.end < endRange)
+                        {
+                            if ((p.genIsaRange.isGRF() && genIsaRange.isGRF() &&
+                                p.genIsaRange.getGRF() == genIsaRange.getGRF()) ||
+                                (p.genIsaRange.isSpill() && genIsaRange.isSpill() &&
+                                    p.genIsaRange.getSpillOffset() == genIsaRange.getSpillOffset()))
+                            {
+                                // extend
+                                p.end = endRange;
+                                continue;
+                            }
+                        }
+
+                        if (p.end >= endRange)
+                            continue;
+
+                        if (startRange == endRange)
+                            continue;
+
+                        if (p.t != PrevLoc::Type::Empty)
+                        {
+                            encodePrevLoc(dotLoc, offset);
+                            TempDotDebugLocEntries.push_back(dotLoc);
+                        }
+
+                        p.t = PrevLoc::Type::Reg;
+                        p.start = startRange;
+                        p.end = endRange;
+                        p.dbgVar = RegVar;
+                        p.Locs = Locs;
+                        p.genIsaRange = genIsaRange;
+                        p.pInst = pInst;
+                    }
                 }
             }
-        }
 
-        if (p.t != PrevLoc::Type::Empty)
-        {
-            DotDebugLocEntry dotLoc(p.start, p.end, p.pInst, DV);
-            dotLoc.setOffset(offset);
-            encodePrevLoc(dotLoc, offset);
-            TempDotDebugLocEntries.push_back(dotLoc);
-        }
+            if (p.t != PrevLoc::Type::Empty)
+            {
+                DotDebugLocEntry dotLoc(p.start, p.end, p.pInst, DV);
+                dotLoc.setOffset(offset);
+                encodePrevLoc(dotLoc, offset);
+                TempDotDebugLocEntries.push_back(dotLoc);
+            }
 
-        if (TempDotDebugLocEntries.size() > origLocSize)
-        {
-            TempDotDebugLocEntries.push_back(DotDebugLocEntry());
-            offset += pointerSize * 2;
+            if (TempDotDebugLocEntries.size() > origLocSize)
+            {
+                TempDotDebugLocEntries.push_back(DotDebugLocEntry());
+                offset += pointerSize * 2;
+            }
         }
     }
 

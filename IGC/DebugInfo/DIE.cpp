@@ -562,7 +562,7 @@ void DIEBlock::EmitToRawBuffer(std::vector<unsigned char>& buffer)
                 auto ulebsize = getULEB128Size(intVal);
                 auto uleb = malloc(ulebsize);
                 encodeULEB128(intVal, (uint8_t*)uleb);
-                insertData(&intVal, ulebsize, buffer);
+                insertData(uleb, ulebsize, buffer);
                 free(uleb);
             }
             else
