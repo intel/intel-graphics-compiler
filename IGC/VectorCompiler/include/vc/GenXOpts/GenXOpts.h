@@ -72,6 +72,8 @@ FunctionPass *createGenXLowerAggrCopiesPass();
 ModulePass *createGenXPacketizePass();
 
 void initializeGenXSimplifyPass(PassRegistry &);
+void initializeCMABIPass(PassRegistry &);
+
 } // End llvm namespace
 
 #endif

@@ -137,6 +137,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXBackendConfigPass(registry);
   initializeGenXImportBiFPass(registry);
   initializeGenXSimplifyPass(registry);
+  initializeCMABIPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
