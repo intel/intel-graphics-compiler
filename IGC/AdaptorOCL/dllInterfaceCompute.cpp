@@ -1409,8 +1409,8 @@ static void adjustFileTypeVC(TB_DATA_FORMAT DataFormat,
     switch (DataFormat)
     {
     case TB_DATA_FORMAT_LLVM_TEXT:
-      Opts.FType = vc::FileType::LLVM_LL;
-      return;
+        Opts.FType = vc::FileType::LLVM_TEXT;
+        return;
     case TB_DATA_FORMAT::TB_DATA_FORMAT_SPIR_V:
         Opts.FType = vc::FileType::SPIRV;
         return;

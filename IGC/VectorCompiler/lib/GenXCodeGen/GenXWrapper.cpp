@@ -144,8 +144,8 @@ translateSPIRVToIR(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
 }
 
 static Expected<std::unique_ptr<llvm::Module>>
-getModule(ArrayRef<char> Input, LLVMContext &C, ArrayRef<uint32_t> SpecConstIds,
-          ArrayRef<uint64_t> SpecConstValues) {
+getModuleFromSPIRV(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
+                   ArrayRef<uint64_t> SpecConstValues, LLVMContext &Ctx) {
   auto ExpIR = translateSPIRVToIR(Input, SpecConstIds, SpecConstValues);
   if (!ExpIR)
     return ExpIR.takeError();
@@ -153,7 +153,7 @@ getModule(ArrayRef<char> Input, LLVMContext &C, ArrayRef<uint32_t> SpecConstIds,
   std::vector<char> &IR = ExpIR.get();
   llvm::MemoryBufferRef BufferRef(llvm::StringRef(IR.data(), IR.size()),
                                   "Deserialized SPIRV Module");
-  auto ExpModule = llvm::parseBitcodeFile(BufferRef, C);
+  auto ExpModule = llvm::parseBitcodeFile(BufferRef, Ctx);
 
   if (!ExpModule)
     return llvm::handleExpected(
@@ -171,8 +171,8 @@ getModule(ArrayRef<char> Input, LLVMContext &C, ArrayRef<uint32_t> SpecConstIds,
   return ExpModule;
 }
 
-static Expected<std::unique_ptr<llvm::Module>> getModuleLL(ArrayRef<char> Input,
-                                                           LLVMContext &C) {
+static Expected<std::unique_ptr<llvm::Module>>
+getModuleFromLLVMText(ArrayRef<char> Input, LLVMContext &C) {
   SMDiagnostic Err;
   llvm::MemoryBufferRef BufferRef(llvm::StringRef(Input.data(), Input.size()),
                                   "LLVM IR Module");
@@ -186,6 +186,19 @@ static Expected<std::unique_ptr<llvm::Module>> getModuleLL(ArrayRef<char> Input,
     return make_error<vc::InvalidModuleError>();
 
   return ExpModule;
+}
+
+static Expected<std::unique_ptr<llvm::Module>>
+getModule(ArrayRef<char> Input, vc::FileType FType,
+          ArrayRef<uint32_t> SpecConstIds, ArrayRef<uint64_t> SpecConstValues,
+          LLVMContext &Ctx) {
+  switch (FType) {
+  case vc::FileType::SPIRV:
+    return getModuleFromSPIRV(Input, SpecConstIds, SpecConstValues, Ctx);
+  case vc::FileType::LLVM_TEXT:
+    return getModuleFromLLVMText(Input, Ctx);
+  }
+  IGC_ASSERT_EXIT_MESSAGE(0, "Unknown input kind");
 }
 
 static vc::ocl::ArgInfo
@@ -532,17 +545,8 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
   llvm::initializeTarget(Registry);
 
-  Expected<std::unique_ptr<llvm::Module>> ExpModule = nullptr;
-
-  switch (Opts.FType) {
-  case vc::FileType::SPIRV:
-    ExpModule = getModule(Input, Context, SpecConstIds, SpecConstValues);
-    break;
-  default:
-    ExpModule = getModuleLL(Input, Context);
-    break;
-  }
-
+  Expected<std::unique_ptr<llvm::Module>> ExpModule =
+      getModule(Input, Opts.FType, SpecConstIds, SpecConstValues, Context);
   if (!ExpModule)
     return ExpModule.takeError();
   Module &M = *ExpModule.get();
