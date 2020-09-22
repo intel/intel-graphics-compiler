@@ -1148,7 +1148,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_subslice_id ||
         GII_id == GenISAIntrinsic::GenISA_eu_id ||
         GII_id == GenISAIntrinsic::GenISA_eu_thread_id ||
-        GII_id == GenISAIntrinsic::GenISA_hw_thread_id)
+        GII_id == GenISAIntrinsic::GenISA_hw_thread_id ||
+        GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca)
     {
         if (intrinsic_name == llvm_input ||
             intrinsic_name == llvm_shaderinputvec)
@@ -1161,6 +1162,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             }
         }
 
+        //Note:GenISA_hw_thread_id is exposed as __builtin_IB_hw_thread_id and we don't know how users use it,
+        //so, to be conservative, we treat it as RANDOM here.
+        //But GenISA_hw_thread_id_alloca is treated as uniform since it's used by IGC internally
         if (GII_id == GenISAIntrinsic::GenISA_hw_thread_id &&
             m_CGCtx->platform.hasFusedEU())
         {

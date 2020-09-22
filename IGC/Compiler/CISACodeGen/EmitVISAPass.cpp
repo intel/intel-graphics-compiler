@@ -8204,6 +8204,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     }
     case GenISAIntrinsic::GenISA_hw_thread_id:
+    case GenISAIntrinsic::GenISA_hw_thread_id_alloca:
     {
         m_encoder->Copy(m_destination, m_currShader->GetHWTID());
         m_encoder->Push();

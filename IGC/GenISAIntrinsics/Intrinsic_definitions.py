@@ -1074,6 +1074,11 @@ Imported_Intrinsics = \
     [],
     "NoMem"]],
 ####################################################################################################
+"GenISA_hw_thread_id_alloca": ["returns the hardware thread id that is located at 'PREDEFINED_HW_TID' and this ID should be used only by alloca",
+    [("int",                           "result"),
+    [],
+    "NoMem"]],
+####################################################################################################
 "GenISA_ibfe": ["",
     [("int",                           "result"),
     [("int",                           "src0"),
