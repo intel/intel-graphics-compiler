@@ -24,6 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "common/EmUtils.h"
+
 #ifndef DECLARE_IGC_GROUP
 #define DECLARE_IGC_GROUP(groupName)
 #endif

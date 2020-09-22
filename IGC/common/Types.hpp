@@ -42,6 +42,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IGC/common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 #include "IGC/common/shaderHash.hpp"
+#include "EmUtils.h"
+
 namespace USC
 {
     struct ShaderD3D;

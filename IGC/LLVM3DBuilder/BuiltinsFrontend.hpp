@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "inc/common/Compiler/API/SurfaceFormats.h"
 #include "inc/common/igfxfmid.h"
 #include "common/IGCIRBuilder.h"
+#include "../common/EmUtils.h"
 
 struct genplatform
 {

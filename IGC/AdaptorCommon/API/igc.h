@@ -43,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include <string>
+#include "../../common/EmUtils.h"
 #include "../IGC/Compiler/CodeGenPublicEnums.h"
 // TODO: add all external declarations so that external projects only need
 // to include this file only.

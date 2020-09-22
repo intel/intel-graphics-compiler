@@ -57,6 +57,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublicEnums.h"
+#include "common/EmUtils.h"
 #include "common/Types.hpp"
 #include "GenIntrinsics.h"
 #include "Probe/Assertion.h"

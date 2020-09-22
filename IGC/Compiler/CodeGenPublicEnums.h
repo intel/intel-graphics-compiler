@@ -28,6 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include "../IGC/common/EmUtils.h"
+
 namespace IGC
 {
     enum HullShaderDispatchModes : signed int
