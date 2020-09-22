@@ -219,12 +219,22 @@ void BIConvert::runOnModule(Module &M) {
         StringRef CalleeName = callee->getName();
         // Check if it exists in the one-intrinsic map.
         if (OneMap.count(CalleeName)) {
-          Type *tys[1];
+          // Some of OneMap intrinsics require only ret type, but others require
+          // arg types (currently only arg0) as well.
+          std::vector<Type *> tys;
+          tys.reserve(InstCall->getNumArgOperands() + 1 /* RetTy */);
           SmallVector<llvm::Value *, 3> args;
           unsigned IID = OneMap[CalleeName];
           // build type-list
-          tys[0] = callee->getReturnType();
-          // tys[1] = InstCall->getArgOperand(0)->getType();
+          if (GenXIntrinsic::isGenXIntrinsic(IID)) {
+            if (GenXIntrinsic::isOverloadedRet(IID))
+              tys.push_back(callee->getReturnType());
+            for (unsigned i = 0; i < InstCall->getNumArgOperands(); ++i)
+              if (GenXIntrinsic::isOverloadedArg(IID, i))
+                tys.push_back(InstCall->getArgOperand(i)->getType());
+          } else
+            tys.push_back(callee->getReturnType());
+
           // build argument list
           args.append(InstCall->op_begin(),
                       InstCall->op_begin() + InstCall->getNumArgOperands());
