@@ -463,9 +463,6 @@ void vISAVerifier::verifyRegion(
     {
         REPORT_INSTRUCTION(options,0 != h_stride_val, "Horizontal Stride should not be 0 for a destination operand.");
 
-        if (-1 != v_stride_val || -1 != width_val)
-            cerr << "There's no reason, to set the vertical stride or width of a destination operand. They are ignored." << endl;
-
         // for dst set width = exec size and vstride = width * hstride, so their bound can be verified
         width_val = exec_sz;
         v_stride_val = width_val * h_stride_val;
@@ -475,8 +472,6 @@ void vISAVerifier::verifyRegion(
     {
         return;
     }
-
-
 
     REPORT_INSTRUCTION(options,h_stride != REGION_NULL, "Horizontal Stride should not be REGION_NULL");
 
@@ -525,6 +520,12 @@ void vISAVerifier::verifyRegion(
             break;
         default: REPORT_INSTRUCTION(options,false, "Legal CISA region vertical stride parameter values: {0, 1, 2, 4, 8, 16, 32}.");
         }
+    }
+    else if (dstIndex != i)
+    {
+        // check for out-of-bound addresses for VxH operand
+        int numAddr = exec_sz / width_val;
+        REPORT_INSTRUCTION(options, numAddr <= 16, "Number of Address for indirect operand exceeds 16");
     }
 
     if (operand_index >= numPreDefinedVars)
@@ -605,28 +606,6 @@ void vISAVerifier::verifyRegion(
             }
         }
 
-
-    if (3 == ISA_Inst_Table[opcode].n_srcs && (ISA_Opcode)opcode == ISA_LRP)
-    {
-        if (dstIndex == i)
-        {
-            REPORT_INSTRUCTION(options,1 == h_stride_val,
-                    "For 3 source operand instructions, "
-                    "the destination operand's horizontal stride must be 1.");
-        }
-
-        VISA_Type opnd_type = getVectorOperandType(header, vect);
-        REPORT_INSTRUCTION(options, opnd_type == ISA_TYPE_F, "LRP instruction only supports sources and destination of type F.");
-
-        if (dstIndex != i)
-        {
-            RegionDesc region(v_stride_val, width_val, h_stride_val);
-
-            REPORT_INSTRUCTION(options, region.isScalar() || region.isContiguous(exec_sz),
-                "For 3 source operand instructions, "
-                "region must be either scalar or contiguous");
-        }
-    }
 }
 
 static bool isDWordType(VISA_Type type)
@@ -1418,7 +1397,7 @@ void vISAVerifier::verifyInstructionArith(
                 "%s does not support saturation on integer types.",
                 ISA_Inst_Table[opcode].str);
         default:
-            break; // Prevent gcc warning
+            break;
         }
     }
 
@@ -1600,29 +1579,13 @@ void vISAVerifier::verifyInstructionArith(
 
     // check for IEEE macros support
     // !hasMadm() check
-    if (platform == GENX_ICLLP || platform == GENX_TGLLP)
+    bool noMadm = (platform == GENX_ICLLP || platform == GENX_TGLLP);
+    if (noMadm)
     {
         bool fOpcodeIEEE = (opcode == ISA_DIVM) || (opcode == ISA_SQRTM);
         bool dfOpcodeIEEE = fOpcodeIEEE || (opcode == ISA_INV) || (opcode == ISA_DIV) || (opcode == ISA_SQRT);
         REPORT_INSTRUCTION(options, !(dstType == ISA_TYPE_DF && dfOpcodeIEEE) && !(dstType == ISA_TYPE_F && fOpcodeIEEE),
             "IEEE instruction %s is not supported on %s platform", ISA_Inst_Table[opcode].str, platformString[platform]);
-}
-
-    // instruction specific checks
-    if (opcode == ISA_LRP)
-    {
-        // for 3-src instructions, only support general/immediate operands
-        REPORT_INSTRUCTION(options, inst->opnd_count == (ISA_Inst_Table[opcode].n_dsts + ISA_Inst_Table[opcode].n_srcs) &&
-            getVectorOperand(inst, 0).getOperandClass() == OPERAND_GENERAL &&
-            (getVectorOperand(inst, 1).getOperandClass() == OPERAND_GENERAL ||
-                getVectorOperand(inst, 1).getOperandClass() == OPERAND_IMMEDIATE) &&
-                (getVectorOperand(inst, 2).getOperandClass() == OPERAND_GENERAL ||
-                    getVectorOperand(inst, 2).getOperandClass() == OPERAND_IMMEDIATE) &&
-                    (getVectorOperand(inst, 3).getOperandClass() == OPERAND_GENERAL ||
-                        getVectorOperand(inst, 3).getOperandClass() == OPERAND_IMMEDIATE),
-            "lrp only supports general/immediate operands");
-
-        //ToDo: should check for alignment here
     }
 }
 
@@ -3055,9 +3018,10 @@ void vISAVerifier::verifyInstruction(
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
     if (!(ISA_RESERVED_0 < opcode && opcode < ISA_NUM_OPCODE))
-        cerr << "Invalid opcode, value: " << (unsigned)opcode << endl;
-
-    ASSERT_USER(ISA_RESERVED_0 < opcode && opcode < ISA_NUM_OPCODE, "Invalid CISA opcode: out of range.");
+    {
+        REPORT_INSTRUCTION(options, false, "Invalid vISA opcode: %d", opcode);
+        return;
+    }
 
     TARGET_PLATFORM instPlatform = CISA_INST_table[opcode].platf;
     if (instPlatform != ALL)
