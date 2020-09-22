@@ -250,7 +250,7 @@ void CollectGeometryShaderProperties::HandleCutOrStreamHeader(llvm::GenIntrinsic
 
     auto pVertexCount = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(I.getNumOperands() - 2));
     // if the emitCount is not a constant int, we have runtime value of vertex count
-    m_gsProps.Output().HasNonstaticVertexCount(pVertexCount == nullptr);
+    m_gsProps.Output().HasNonstaticVertexCount(pVertexCount == nullptr || IGC_IS_FLAG_ENABLED(ForceStaticToDynamic));
 
     // for static number of vertices, we get the actual value,
     // for dynamic, declaration-derived upper bound (for safety)
