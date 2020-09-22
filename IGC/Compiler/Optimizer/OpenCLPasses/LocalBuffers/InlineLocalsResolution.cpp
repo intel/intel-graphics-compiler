@@ -416,8 +416,11 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
         {
             // std::map initializes with zero if the value is not present.
             unsigned int offset = sizeMap[F];
+#if LLVM_VERSION_MAJOR < 11
             offset = iSTD::Align(offset, DL.getPreferredAlignment(G));
-
+#else
+            offset = iSTD::Align(offset, DL.getPreferredAlign(G).value());
+#endif
             // Save the offset of the current local
             // (set the high bits to be non-0 here too)
             offsetMap[F][G] = (offset & 0xFFFF);

@@ -123,7 +123,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
 
         if(this->inType == CodeType::spirV){
             llvm::StringRef strInput = llvm::StringRef(pInput, inputSize);
-            std::istringstream IS(strInput);
+            std::istringstream IS(strInput.str());
 
             // vector of pairs [spec_id, spec_size]
             std::vector<std::pair<uint32_t, uint32_t>> SCInfo;

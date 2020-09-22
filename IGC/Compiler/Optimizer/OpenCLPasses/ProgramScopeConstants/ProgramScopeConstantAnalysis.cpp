@@ -169,7 +169,11 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         // Align the buffer.
         if (inlineProgramScopeBuffer->size() != 0)
         {
+#if LLVM_VERSION_MAJOR < 11
             alignBuffer(*inlineProgramScopeBuffer, m_DL->getPreferredAlignment(globalVar));
+#else
+            alignBuffer(*inlineProgramScopeBuffer, m_DL->getPreferredAlign(globalVar).value());
+#endif
         }
 
         // Ok, buffer is aligned, remember where this inline variable starts.
@@ -191,7 +195,11 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     {
         unsigned AS = cast<PointerType>(globalVar->getType())->getAddressSpace();
         unsigned &offset = (AS == ADDRESS_SPACE_GLOBAL) ? modMd->inlineGlobalBuffers.back().allocSize : modMd->inlineConstantBuffers.back().allocSize;
+#if LLVM_VERSION_MAJOR < 11
         offset = iSTD::Align(offset, m_DL->getPreferredAlignment(globalVar));
+#else
+        offset = iSTD::Align(offset, m_DL->getPreferredAlign(globalVar).value());
+#endif
         inlineProgramScopeOffsets[globalVar] = offset;
         offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getType()->getPointerElementType()));
     }
