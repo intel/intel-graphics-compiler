@@ -754,7 +754,6 @@ namespace IGC
         KernelArg::ArgType type = kernelArg->getArgType();
 
         DWORD constantType = iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN;
-        iOpenCL::IMAGE_MEMORY_OBJECT_TYPE imageType = iOpenCL::IMAGE_MEMORY_OBJECT_INVALID;
         iOpenCL::POINTER_ADDRESS_SPACE addressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_INVALID;
         FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
 
@@ -1076,155 +1075,81 @@ namespace IGC
 
         case KernelArg::ArgType::IMAGE_1D:
         case KernelArg::ArgType::BINDLESS_IMAGE_1D:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_1D;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_1D_BUFFER:
         case KernelArg::ArgType::BINDLESS_IMAGE_1D_BUFFER:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_BUFFER;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_2D:
         case KernelArg::ArgType::BINDLESS_IMAGE_2D:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                if (getExtensionInfo(kernelArg->getAssociatedArgNo()) == ResourceExtensionTypeEnum::MediaResourceType) {
-                    imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA;
-                }
-                else if (getExtensionInfo(kernelArg->getAssociatedArgNo()) == ResourceExtensionTypeEnum::MediaResourceBlockType) {
-                    imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA_BLOCK;
-                }
-                else {
-                    imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D;
-                }
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_3D:
         case KernelArg::ArgType::BINDLESS_IMAGE_3D:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_3D;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_CUBE:
         case KernelArg::ArgType::BINDLESS_IMAGE_CUBE:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_CUBE;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_CUBE_DEPTH:
         case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                // Use regular cube texture for depth:
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_CUBE;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_1D_ARRAY:
         case KernelArg::ArgType::BINDLESS_IMAGE_1D_ARRAY:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_1D_ARRAY;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_2D_ARRAY:
         case KernelArg::ArgType::BINDLESS_IMAGE_2D_ARRAY:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_2D_DEPTH:
         case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_DEPTH;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_2D_DEPTH_ARRAY:
         case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH_ARRAY:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY_DEPTH;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_2D_MSAA:
         case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_MSAA;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_2D_MSAA_ARRAY:
         case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_ARRAY:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY_MSAA;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH:
         case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_MSAA_DEPTH;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH_ARRAY:
         case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH_ARRAY:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY_MSAA_DEPTH;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_CUBE_ARRAY:
         case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_ARRAY:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_CUBE_ARRAY;
-            }
-            // Fall through
         case KernelArg::ArgType::IMAGE_CUBE_DEPTH_ARRAY:
         case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
-            if (imageType == iOpenCL::IMAGE_MEMORY_OBJECT_INVALID) {
-                // Use regular cube texture array for depth:
-                imageType = iOpenCL::IMAGE_MEMORY_OBJECT_CUBE_ARRAY;
-            }
-            // may reach here from IMAGE_1D, IMAGE_2D, IMAGE_3D, MSAA, DEPTH, and IMAGE ARRAYS
-            IGC_ASSERT(imageType != iOpenCL::IMAGE_MEMORY_OBJECT_INVALID);
+        {
+            int argNo = kernelArg->getAssociatedArgNo();
+            SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
+            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+
+            iOpenCL::ImageArgumentAnnotation* imageInput = new iOpenCL::ImageArgumentAnnotation();
+
+            imageInput->AnnotationSize = sizeof(imageInput);
+            imageInput->ArgumentNumber = argNo;
+            imageInput->IsFixedBindingTableIndex = true;
+            imageInput->BindingTableIndex = getBTI(resInfo);
+            imageInput->ImageType = getImageTypeFromKernelArg(*kernelArg);
+            IGC_ASSERT(imageInput->ImageType != iOpenCL::IMAGE_MEMORY_OBJECT_INVALID);
+            imageInput->LocationIndex = kernelArg->getLocationIndex();
+            imageInput->LocationCount = kernelArg->getLocationCount();
+            imageInput->IsEmulationArgument = kernelArg->isEmulationArgument();
+
+            imageInput->AccessedByFloatCoords = kernelArg->getImgAccessedFloatCoords();
+            imageInput->AccessedByIntCoords = kernelArg->getImgAccessedIntCoords();
+            imageInput->IsBindlessAccess = kernelArg->needsAllocation();
+            imageInput->PayloadPosition = payloadPosition;
+
+            switch (resInfo.Type)
             {
-                int argNo = kernelArg->getAssociatedArgNo();
-                SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-                m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
-
-                iOpenCL::ImageArgumentAnnotation* imageInput = new iOpenCL::ImageArgumentAnnotation();
-
-                imageInput->AnnotationSize = sizeof(imageInput);
-                imageInput->ArgumentNumber = argNo;
-                imageInput->IsFixedBindingTableIndex = true;
-                imageInput->BindingTableIndex = getBTI(resInfo);
-                imageInput->ImageType = imageType;
-                imageInput->LocationIndex = kernelArg->getLocationIndex();
-                imageInput->LocationCount = kernelArg->getLocationCount();
-                imageInput->IsEmulationArgument = kernelArg->isEmulationArgument();
-
-                imageInput->AccessedByFloatCoords = kernelArg->getImgAccessedFloatCoords();
-                imageInput->AccessedByIntCoords = kernelArg->getImgAccessedIntCoords();
-                imageInput->IsBindlessAccess = kernelArg->needsAllocation();
-                imageInput->PayloadPosition = payloadPosition;
-
-                switch (resInfo.Type)
-                {
-                case SOpenCLKernelInfo::SResourceInfo::RES_UAV:
-                    if (kernelArg->getAccessQual() == IGC::KernelArg::AccessQual::READ_ONLY)
-                        imageInput->Writeable = false;
-                    else
-                        imageInput->Writeable = true;
-                    break;
-                case SOpenCLKernelInfo::SResourceInfo::RES_SRV:
+            case SOpenCLKernelInfo::SResourceInfo::RES_UAV:
+                if (kernelArg->getAccessQual() == IGC::KernelArg::AccessQual::READ_ONLY)
                     imageInput->Writeable = false;
-                    break;
-                default:
-                    IGC_ASSERT_MESSAGE(0, "Unknown resource type");
-                    break;
-                }
-                m_kernelInfo.m_imageInputAnnotations.push_back(imageInput);
-
-                if (kernelArg->getAccessQual() == IGC::KernelArg::AccessQual::READ_WRITE)
-                {
-                    m_kernelInfo.m_executionEnivronment.HasReadWriteImages = true;
-                }
+                else
+                    imageInput->Writeable = true;
+                break;
+            case SOpenCLKernelInfo::SResourceInfo::RES_SRV:
+                imageInput->Writeable = false;
+                break;
+            default:
+                IGC_ASSERT_MESSAGE(0, "Unknown resource type");
+                break;
             }
-            break;
+            m_kernelInfo.m_imageInputAnnotations.push_back(imageInput);
+
+            if (kernelArg->getAccessQual() == IGC::KernelArg::AccessQual::READ_WRITE)
+            {
+                m_kernelInfo.m_executionEnivronment.HasReadWriteImages = true;
+            }
+        }
+        break;
 
         case KernelArg::ArgType::SAMPLER:
         case KernelArg::ArgType::BINDLESS_SAMPLER:
@@ -1452,6 +1377,86 @@ namespace IGC
             m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
         }
     }
+
+   iOpenCL::IMAGE_MEMORY_OBJECT_TYPE COpenCLKernel::getImageTypeFromKernelArg(const KernelArg& kernelArg)
+   {
+       switch(kernelArg.getArgType()) {
+           case KernelArg::ArgType::IMAGE_1D:
+           case KernelArg::ArgType::BINDLESS_IMAGE_1D:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_1D;
+
+           case KernelArg::ArgType::IMAGE_1D_BUFFER:
+           case KernelArg::ArgType::BINDLESS_IMAGE_1D_BUFFER:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_BUFFER;
+
+           case KernelArg::ArgType::IMAGE_2D:
+           case KernelArg::ArgType::BINDLESS_IMAGE_2D:
+               if (getExtensionInfo(kernelArg.getAssociatedArgNo()) == ResourceExtensionTypeEnum::MediaResourceType)
+                   return iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA;
+               else if (getExtensionInfo(kernelArg.getAssociatedArgNo()) == ResourceExtensionTypeEnum::MediaResourceBlockType)
+                   return iOpenCL::IMAGE_MEMORY_OBJECT_2D_MEDIA_BLOCK;
+               return iOpenCL::IMAGE_MEMORY_OBJECT_2D;
+
+           case KernelArg::ArgType::IMAGE_3D:
+           case KernelArg::ArgType::BINDLESS_IMAGE_3D:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_3D;
+
+           case KernelArg::ArgType::IMAGE_CUBE:
+           case KernelArg::ArgType::BINDLESS_IMAGE_CUBE:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_CUBE;
+
+           case KernelArg::ArgType::IMAGE_CUBE_DEPTH:
+           case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH:
+               // Use regular cube texture for depth:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_CUBE;
+
+           case KernelArg::ArgType::IMAGE_1D_ARRAY:
+           case KernelArg::ArgType::BINDLESS_IMAGE_1D_ARRAY:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_1D_ARRAY;
+
+           case KernelArg::ArgType::IMAGE_2D_ARRAY:
+           case KernelArg::ArgType::BINDLESS_IMAGE_2D_ARRAY:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY;
+
+
+           case KernelArg::ArgType::IMAGE_2D_DEPTH:
+           case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_2D_DEPTH;
+
+           case KernelArg::ArgType::IMAGE_2D_DEPTH_ARRAY:
+           case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH_ARRAY:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY_DEPTH;
+
+           case KernelArg::ArgType::IMAGE_2D_MSAA:
+           case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_2D_MSAA;
+
+           case KernelArg::ArgType::IMAGE_2D_MSAA_ARRAY:
+           case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_ARRAY:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY_MSAA;
+
+           case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH:
+           case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_2D_MSAA_DEPTH;
+
+           case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH_ARRAY:
+           case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH_ARRAY:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_2D_ARRAY_MSAA_DEPTH;
+
+           case KernelArg::ArgType::IMAGE_CUBE_ARRAY:
+           case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_ARRAY:
+               return iOpenCL::IMAGE_MEMORY_OBJECT_CUBE_ARRAY;
+
+           case KernelArg::ArgType::IMAGE_CUBE_DEPTH_ARRAY:
+           case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
+               // Use regular cube texture array for depth
+               return iOpenCL::IMAGE_MEMORY_OBJECT_CUBE_ARRAY;
+
+           default:
+               break;
+       }
+       return iOpenCL::IMAGE_MEMORY_OBJECT_INVALID;
+   }
 
     void COpenCLKernel::ParseShaderSpecificOpcode(llvm::Instruction* inst)
     {

@@ -89,6 +89,9 @@ namespace IGC
         // Return false: if the argument cannot be supported by ZEBinary
         bool CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition);
 
+        // a helper function to get image type from kernelArg
+        iOpenCL::IMAGE_MEMORY_OBJECT_TYPE getImageTypeFromKernelArg(const KernelArg& kernelArg);
+
         // Creates annotations for inline sampler_t objects
         void CreateInlineSamplerAnnotations();
 
