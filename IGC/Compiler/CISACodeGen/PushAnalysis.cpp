@@ -1026,31 +1026,59 @@ namespace IGC
 
     PushConstantMode PushAnalysis::GetPushConstantMode()
     {
-        PushConstantMode pushConstantMode = PushConstantMode::NO_PUSH_CONSTANT;
-        if (CanPushConstants())
+        PushConstantMode pushConstantMode = PushConstantMode::DEFAULT;
+
+        if(!CanPushConstants())
         {
-            if (IGC_IS_FLAG_ENABLED(forcePushConstantMode))
+            // Hardware can not do push constant mode or the registry has been set in a way to disable push altogether
+            pushConstantMode = PushConstantMode::NONE;
+        }
+        else
+        {
+            // Priority order of how the push constant mode is determined:
+            //   1.) Registry Keys
+            //   2.) Compiler Input
+            //   3.) Default Logic dependent on platform and attributes of the shader
+
+            // 1.) Check registry keys
+            if(pushConstantMode == PushConstantMode::DEFAULT)
             {
-                pushConstantMode = (PushConstantMode)IGC_GET_FLAG_VALUE(forcePushConstantMode);
+                if(IGC_IS_FLAG_ENABLED(forcePushConstantMode))
+                {
+                    pushConstantMode = (PushConstantMode)IGC_GET_FLAG_VALUE(forcePushConstantMode);
+                }
             }
-            else if (m_context->m_DriverInfo.SupportsSimplePushOnly())
+            
+            // 2.) Check compiler input
+            if (pushConstantMode == PushConstantMode::DEFAULT)
             {
-                pushConstantMode = PushConstantMode::SIMPLE_PUSH;
+                pushConstantMode = m_context->m_pushConstantMode;
             }
-            else if (m_context->platform.supportsHardwareResourceStreamer() || m_context->m_DriverInfo.SupportsGatherConstantOnly())
+
+            // 3.) Default Logic dependent on platform and attributes of the shader
+            if (pushConstantMode == PushConstantMode::DEFAULT)
             {
-                pushConstantMode = PushConstantMode::GATHER_CONSTANT;
-            }
-            else if (m_context->m_DriverInfo.SupportsHWResourceStreameAndSimplePush())
-            {
-                pushConstantMode = PushConstantMode::SIMPLE_PUSH;
-            }
-            else
-            {
-                //CPU copy
-                pushConstantMode = PushConstantMode::GATHER_CONSTANT;
+                if (m_context->m_DriverInfo.SupportsSimplePushOnly())
+                {
+                    pushConstantMode = PushConstantMode::SIMPLE;
+                }
+                else if (m_context->platform.supportsHardwareResourceStreamer() || m_context->m_DriverInfo.SupportsGatherConstantOnly())
+                {
+                    pushConstantMode = PushConstantMode::GATHER;
+                }
+                else if (m_context->m_DriverInfo.SupportsHWResourceStreameAndSimplePush())
+                {
+                    pushConstantMode = PushConstantMode::SIMPLE;
+                }
+                else
+                {
+                    // CPU copy
+                    pushConstantMode = PushConstantMode::GATHER;
+                }
             }
         }
+
+        IGC_ASSERT_MESSAGE(pushConstantMode != PushConstantMode::DEFAULT, "GetPushConstantMode should resolve a non-DEFAULT mode!");
         return pushConstantMode;
     }
 
@@ -1414,7 +1442,7 @@ namespace IGC
         }
 
         PushConstantMode pushConstantMode = GetPushConstantMode();
-
+        
         if (m_context->type == ShaderType::DOMAIN_SHADER)
         {
             auto valueU = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_U"), WIAnalysis::RANDOM);
@@ -1465,7 +1493,7 @@ namespace IGC
                 int pushableAddressGrfOffset = -1;
                 int pushableOffsetGrfOffset = -1;
                 bool isStateless = false;
-                if (pushConstantMode == PushConstantMode::GATHER_CONSTANT &&
+                if (pushConstantMode == PushConstantMode::GATHER &&
                     IsPushableShaderConstant(inst, bufId, pushableAddressGrfOffset, pushableOffsetGrfOffset, eltId, isStateless) &&
                     !isStateless)
                 {
@@ -1497,7 +1525,7 @@ namespace IGC
             }
         }
 
-        if (pushConstantMode == PushConstantMode::SIMPLE_PUSH)
+        if (pushConstantMode == PushConstantMode::SIMPLE)
         {
             BlockPushConstants();
         }

@@ -798,6 +798,8 @@ namespace IGC
         Float_DenormMode    m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
         Float_DenormMode    m_floatDenormMode64 = FLOAT_DENORM_FLUSH_TO_ZERO;
 
+        PushConstantMode m_pushConstantMode = PushConstantMode::DEFAULT;
+
         SInstrTypes m_instrTypes;
 
         /////  used for instruction statistic before/after pass

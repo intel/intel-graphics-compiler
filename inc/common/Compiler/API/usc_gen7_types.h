@@ -89,6 +89,17 @@ which verifies in compile time whether manual padding is required.
 #define PADDING_4_BYTES_x64_ONLY
 #endif
 
+namespace IGC
+{
+    enum class PushConstantMode : unsigned int
+    {
+        DEFAULT = 0,
+        SIMPLE = 1,
+        GATHER = 2,
+        NONE = 3,
+    };
+}
+
 namespace USC
 {
 
@@ -330,9 +341,12 @@ struct SCompilerInputCommon
     void* m_pGTPinInput;
     const unsigned int* m_pShaderDebugInfo;
 
+    IGC::PushConstantMode m_PushConstantMode;
+
     void Serialize( std::stringstream& shaderCacheBlob ) const
     {
         m_DcfInputs.Serialize( shaderCacheBlob );
+        shaderCacheBlob << (unsigned int)m_PushConstantMode;
 
         // Assume that m_pGTPinInput and m_pShaderDebugInfo are not valid when caching
     }

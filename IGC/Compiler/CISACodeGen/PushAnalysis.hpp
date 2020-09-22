@@ -43,13 +43,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-    enum class PushConstantMode
-    {
-        NO_PUSH_CONSTANT = 0,
-        SIMPLE_PUSH = 1,
-        GATHER_CONSTANT = 2,
-    };
-
     class PushAnalysis : public llvm::ModulePass
     {
         const llvm::DataLayout* m_DL;
