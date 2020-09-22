@@ -371,8 +371,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
             m_pShader->GetMetaDataUtils()->findFunctionsInfoItem(const_cast<Function*>(curFunc));
         CodeGenContext* pCtx = m_pShader->GetContext();
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
-        // TODO: ProcessBuiltinMetaData pass needs to be run when stack call/subroutine is enabled as duplicated functions for
-        // stackcall need updated metadata.
+
         if (itr != m_pShader->GetMetaDataUtils()->end_FunctionsInfo()
             && modMD->FuncMD.find(const_cast<Function*>(curFunc)) != modMD->FuncMD.end())
         {

@@ -158,9 +158,19 @@ Function* GenXCodeGenModule::cloneFunc(Function* F)
                     }
                     else
                     {
-                        IGC::FunctionMetaData fMD;
-                        fMD.isCloned = true;
-                        modMD->FuncMD.insert(std::make_pair(ClonedFunc, fMD));
+                        // copy metadata from original function.
+                        auto orgFuncMetadataIt = modMD->FuncMD.find(F);
+                        if (orgFuncMetadataIt != modMD->FuncMD.end()) {
+                            IGC::FunctionMetaData fMD = orgFuncMetadataIt->second;
+                            fMD.isCloned = true;
+                            modMD->FuncMD.insert(std::make_pair(ClonedFunc, fMD));
+                        }
+                        else
+                        {
+                            // If this assert is triggered, it probably means that ProcessBuiltinMetaData pass
+                            // needs to be changed to recognize duplicate functions and run before DebugInfo pass.
+                            IGC_ASSERT_MESSAGE(false, "Couldn't find metadata for cloned function!");
+                        }
                     }
                     IF_DEBUG_INFO(ClonedFunc->setName(DebugMetadataInfo::getUniqueFuncName(*F));)
                 }
