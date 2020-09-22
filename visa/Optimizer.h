@@ -113,15 +113,6 @@ typedef struct
 // auxiliary structure for inserting save and restore instructions
 namespace vISA
 {
-class SubLoc {
-    G4_BB*  entry;    // entry of the subroutine
-    SubLoc* outter; // outter level that encapsulates the current subroutine
-public:
-    SubLoc(G4_BB* e, SubLoc* s) : entry(e), outter(s) {}
-    G4_BB*  getEntry()       {return entry;}
-    SubLoc* getOutterLevel() {return outter;}
-    void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
-};
 
 class Optimizer
 {
@@ -197,9 +188,6 @@ class Optimizer
     void dce();
 
     void accSubPostSchedule();
-
-    bool hasGen12LPBundleConflict(G4_INST *inst);
-    void swapSrc1(G4_INST * inst);
 
 private:
     /* below member functions are used for message header opt */

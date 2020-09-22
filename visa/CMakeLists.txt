@@ -191,6 +191,7 @@ set(GenX_Common_Sources_External_Other
   LocalDataflow.cpp
   LocalRA.cpp
   Lowered_IR.cpp
+  MergeScalar.cpp
   Optimizer.cpp
   PhyRegCompute.cpp
   PhyRegUsage.cpp
@@ -279,6 +280,7 @@ set(GenX_Common_Headers
   LocalRA.h
   LinearScanRA.h
   Metadata.h
+  MergeScalar.h
   Optimizer.h
   PhyRegUsage.h
   PreDefinedVars.h
