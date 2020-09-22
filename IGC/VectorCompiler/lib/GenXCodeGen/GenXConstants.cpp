@@ -179,8 +179,6 @@ bool genx::loadNonSimpleConstants(
         continue;
       if (isa<UndefValue>(C))
         continue;
-      if (isa<ConstantAggregateZero>(C))
-        continue;
       if (opMustBeConstant(Inst, i))
         continue;
       ConstantLoader CL(C, Subtarget, DL, Inst, AddedInstructions);
@@ -681,9 +679,9 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
           Web, [](Instruction *I) { return isa<PHINode>(I); });
       SmallVector<Instruction *, 4> WebPhis(WebPhisRange);
       std::sort(WebPhis.begin(), WebPhis.end(),
-                [](Instruction *I1, Instruction *I2) {
-                  return I1->getType()->getPrimitiveSizeInBits() >
-                         I2->getType()->getPrimitiveSizeInBits();
+                [&DL](Instruction *I1, Instruction *I2) {
+                  return DL.getTypeSizeInBits(I1->getType()) >
+                         DL.getTypeSizeInBits(I2->getType());
                 });
 
       for (auto *Inst : WebPhis) {
@@ -697,7 +695,7 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
           if (ExcludePredicate) {
             if (C->getType()->getScalarType()->isIntegerTy(1))
               continue;
-            if (C->getType()->getPrimitiveSizeInBits() <= 256)
+            if (DL.getTypeSizeInBits(C->getType()) <= 256)
               continue;
             auto IncomingBlock = Phi->getIncomingBlock(oi);
             if (GotoJoin::isBranchingJoinLabelBlock(IncomingBlock))
@@ -842,12 +840,12 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
     }
     Value *V = UndefValue::get(C->getType());
     unsigned Offset = 0;
-    auto DL = Inst->getDebugLoc();
+    auto DbgLoc = Inst->getDebugLoc();
     for (auto &Q : Quads) {
       VectorType *VTy = cast<VectorType>(Q->getType());
-      Region R(V);
+      Region R(V, &DL);
       R.getSubregion(Offset, VTy->getNumElements());
-      V = R.createWrRegion(V, Q, "constant.quad" + Twine(Offset), Inst, DL);
+      V = R.createWrRegion(V, Q, "constant.quad" + Twine(Offset), Inst, DbgLoc);
       Offset += VTy->getNumElements();
     }
     return cast<Instruction>(V);
@@ -855,7 +853,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
   if (PackedIntScale) {
     auto PackTy = C->getType()->getScalarType();
 	// limit the constant-type to 32-bit because we do not want 64-bit operation
-    if (PackTy->getPrimitiveSizeInBits() > 32)
+    if (DL.getTypeSizeInBits(PackTy) > 32)
       PackTy = Type::getInt32Ty(Inst->getContext());
     // Load as a packed int vector with scale and/or adjust.
     SmallVector<Constant *, 8> PackedVals;
@@ -891,8 +889,8 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
               ConstantInt::get(PackTy, PackedIntAdjust,
                                /*isSigned=*/true)),
           "constantadjust", Inst);
-    if (PackTy->getPrimitiveSizeInBits() < 
-		C->getType()->getScalarType()->getPrimitiveSizeInBits()) {
+    if (DL.getTypeSizeInBits(PackTy) <
+        DL.getTypeSizeInBits(C->getType()->getScalarType())) {
       LoadPacked = CastInst::CreateSExtOrBitCast(
 		  LoadPacked, C->getType(), "constantzext", Inst);
     }
@@ -955,7 +953,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
       ConstantLoader SubLoader(SubC, Subtarget, DL);
       if (SubLoader.PackedIntScale == 0 && !SubLoader.isPackedFloatVector())
         continue;
-      Region R(C);
+      Region R(C, &DL);
       R.getSubregion(Idx, Size);
       if (SubLoader.isSimple()) {
         Value *SubV = SubC;
@@ -1072,7 +1070,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
       // Not the first time round the loop. Set up the splatted subvector,
       // and write it as a region.
       Region R(BestSplatSetBits,
-          VT->getElementType()->getPrimitiveSizeInBits() / 8);
+               DL.getTypeSizeInBits(VT->getElementType()) / genx::ByteBits);
       Constant *NewConst = ConstantVector::getSplat(
           IGCLLVM::getElementCount(R.NumElements), BestSplatSetConst);
       Result = cast<Instruction>(R.createWrConstRegion(Result, NewConst, "constant",
@@ -1178,7 +1176,7 @@ Instruction *ConstantLoader::loadSplatConstant(Instruction *InsertPos) {
   ConstantLoader L(CV, Subtarget, DL);
   Value *V = L.load(InsertPos);
   // Broadcast through rdregion.
-  Region R(V);
+  Region R(V, &DL);
   R.Width = R.NumElements = VTy->getNumElements();
   R.Stride = 0;
   R.VStride = 0;
@@ -1268,7 +1266,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore)
   auto VT = cast<VectorType>(C->getType());
   const unsigned NumElements = VT->getNumElements();
   const unsigned GRFWidthInBits = Subtarget.getGRFWidth() * genx::ByteBits;
-  const unsigned ElementBits = VT->getElementType()->getPrimitiveSizeInBits();
+  const unsigned ElementBits = DL.getTypeSizeInBits(VT->getElementType());
   unsigned MaxSize = 2 * GRFWidthInBits / ElementBits;
   MaxSize = std::min(MaxSize, 32U);
   Instruction *Result = nullptr;
@@ -1281,7 +1279,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore)
     ConstantLoader SubLoader(SubC, Subtarget, DL);
     if (!SubLoader.isSimple())
       SubV = SubLoader.loadNonSimple(InsertBefore);
-    Region R(C);
+    Region R(C, &DL);
     R.getSubregion(Idx, Size);
     Result = cast<Instruction>(R.createWrRegion(
         Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()),
@@ -1302,7 +1300,7 @@ bool ConstantLoader::isLegalSize()
   auto VT = dyn_cast<VectorType>(C->getType());
   if (!VT)
     return true;
-  const int NumBits = C->getType()->getPrimitiveSizeInBits();
+  const int NumBits = DL.getTypeSizeInBits(C->getType());
   if (!llvm::isPowerOf2_32(NumBits))
     return false;
   const int GRFSizeInBits = Subtarget.getGRFWidth() * genx::ByteBits;
@@ -1331,7 +1329,7 @@ bool ConstantLoader::isBigSimple()
     return true; // scalar always simple
   if (C->getSplatValue())
     return true; // splat constant always simple
-  if (VT->getElementType()->getPrimitiveSizeInBits() == 1)
+  if (DL.getTypeSizeInBits(VT->getElementType()) == 1)
     return true; // predicate constant always simple
   return false;
 }
@@ -1422,8 +1420,9 @@ Constant *ConstantLoader::getConsolidatedConstant(Constant *C)
   VectorType *VT = dyn_cast<VectorType>(C->getType());
   if (!VT)
     return nullptr;
-  unsigned BytesPerElement = VT->getElementType()->getPrimitiveSizeInBits() / 8;
-  unsigned NumElements = VT->getNumElements();
+  const unsigned BytesPerElement =
+      DL.getTypeSizeInBits(VT->getElementType()) / genx::ByteBits;
+  const unsigned NumElements = VT->getNumElements();
   if (!BytesPerElement)
     return nullptr; // vector of i1
   if (BytesPerElement >= 4)
