@@ -1497,6 +1497,11 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
     unsigned h_stride = dst->getHorzStride();
     unsigned int extypesize = G4_Type_Table[extype].byteSize;
 
+    if (hasDedicateAlignRegionConformity(i))
+    {
+        return insertMOV;
+    }
+
     if (inst->hasNULLDst())
     {
         if (dst_elsize * h_stride < extypesize)
@@ -1634,8 +1639,6 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
                 return insertMOV;
             }
         }
-
-
 
         if (splitInstListForByteDst(i, bb, (uint16_t)extypesize))
         {
@@ -5136,6 +5139,7 @@ void HWConformity::conformBB(G4_BB* bb)
                 dst_elsize < extypesize &&
                 !IS_VTYPE(extype) &&
                 !inst->isMixedMode() &&
+                !hasDedicateAlignRegionConformity(inst) &&
                 !inst->isSend())
             {
                 fixDstHstride(i, extypesize);
@@ -5893,6 +5897,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
             !(kernel.fg.globalOpndHT.isOpndGlobal(opnd)) &&
             // check if the opnd is used as packed byte
             G4_Type_Table[opnd->getType()].byteSize == 1 &&
+            !hasDedicateAlignRegionConformity(inst) &&
             dcl->getElemSize() == 1 &&
             opnd->asDstRegRegion()->getHorzStride() == 1 &&
             // check if the instruction is a raw mov
@@ -6910,3 +6915,14 @@ void HWConformity::fixPredCtrl(INST_LIST_ITER it, G4_BB* bb)
 }
 
 
+
+
+bool HWConformity::hasDedicateAlignRegionConformity(const G4_INST *I) const
+{
+    switch (I->opcode())
+    {
+    default:
+        break;
+    }
+    return false;
+}

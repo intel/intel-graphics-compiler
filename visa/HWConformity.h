@@ -218,6 +218,15 @@ namespace vISA
 
         void fixPredCtrl(INST_LIST_ITER it, G4_BB* bb);
 
+        // If alignment and region of all operands of any instruction are conformed
+        // by a dedicated function, return true.
+        // This is used to skip generic conformity functions, such as fixOpndTypeAlign().
+        bool hasDedicateAlignRegionConformity(INST_LIST_ITER it) const
+        {
+            return hasDedicateAlignRegionConformity(*it);
+        }
+        bool hasDedicateAlignRegionConformity(const G4_INST *I) const;
+
     public:
         HWConformity(IR_Builder& b, G4_Kernel &k, vISA::Mem_Manager& m) :
             builder(b), kernel(k), mem(m)
