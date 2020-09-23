@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/Process.h>
 #include <llvm/Support/Program.h>
 #include <llvm/Support/StringSaver.h>
+#include <llvm/Support/Host.h>
 #pragma warning(default:4242)
 #pragma warning(default:4146)
 #pragma warning(default:4141)

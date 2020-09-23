@@ -671,7 +671,9 @@ int ShuffleVectorAnalyzer::getAsUnslice()
   return Prefix;
 }
 
+#if LLVM_VERSION_MAJOR <= 10
 constexpr int UndefMaskElem = -1;
+#endif
 
 /***********************************************************************
  * extension of ShuffleVectorInst::isZeroEltSplatMask method
