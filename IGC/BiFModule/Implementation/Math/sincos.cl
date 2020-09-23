@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
+#include "../SVMLReleaseOnly/svml/Math/svml_sincos.cl"
 
     #include "../ExternalLibraries/libclc/trig.cl"
 
@@ -39,8 +40,16 @@ static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, 
     }
     else
     {
-            sin_x = libclc_sin_f32(x);
-            cos_x = libclc_cos_f32(x);
+            float abs_float = __builtin_spirv_OpenCL_fabs_f32(x);
+            if( abs_float > 10000.0f )
+            {
+                sin_x = libclc_sin_f32(x);
+                cos_x = libclc_cos_f32(x);
+            }
+            else
+            {
+                sin_x = precise_sincosf(x, &cos_x);
+            }
     }
     *cosval = cos_x;
     return sin_x;

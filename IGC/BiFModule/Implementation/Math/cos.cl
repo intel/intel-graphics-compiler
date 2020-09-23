@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 #include "../ExternalLibraries/libclc/trig.cl"
+#include "../SVMLReleaseOnly/svml/Math/svml_cos.cl"
 
 
 #if defined(cl_khr_fp64)
@@ -41,7 +42,15 @@ static INLINE float __intel_cos_f32( float x, bool doFast )
     }
     else
     {
-            return libclc_cos_f32(x);
+            float abs_float = __builtin_spirv_OpenCL_fabs_f32(x);
+            if( abs_float > 10000.0f )
+            {
+                return libclc_cos_f32(x);
+            }
+            else
+            {
+                return precise_cosf(x);
+            }
     }
 }
 
