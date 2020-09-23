@@ -4183,7 +4183,8 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
   bool IsPrintf = false;
   std::string FuncName;
 
-  if (Set == SPIRVEIS_DebugInfo)
+  if (Set == SPIRVEIS_DebugInfo ||
+      Set == SPIRVEIS_OpenCL_DebugInfo_100)
   {
       return transDebugInfo(BC, BB);
   }

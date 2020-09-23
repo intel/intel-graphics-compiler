@@ -1181,7 +1181,8 @@ public:
   void setExtSetKindById() {
     IGC_ASSERT_MESSAGE(Module, "Invalid module");
     ExtSetKind = Module->getBuiltinSet(ExtSetId);
-    IGC_ASSERT_MESSAGE((ExtSetKind == SPIRVEIS_OpenCL) || (ExtSetKind == SPIRVEIS_DebugInfo), "not supported");
+    IGC_ASSERT_MESSAGE((ExtSetKind == SPIRVEIS_OpenCL) || (ExtSetKind == SPIRVEIS_DebugInfo) ||
+        (ExtSetKind == SPIRVEIS_OpenCL_DebugInfo_100), "not supported");
   }
   void decode(std::istream &I) {
     getDecoder(I) >> Type >> Id >> ExtSetId;
@@ -1191,6 +1192,7 @@ public:
       getDecoder(I) >> ExtOpOCL;
       break;
     case SPIRVEIS_DebugInfo:
+    case SPIRVEIS_OpenCL_DebugInfo_100:
         getDecoder(I) >> ExtOpDbgInfo;
         break;
     default:
@@ -1226,7 +1228,8 @@ public:
   }
   bool hasNoScope()
   {
-      if (getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo &&
+      if ((getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
+          getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
           ExtOpDbgInfo != OCLExtOpDbgKind::DbgDcl &&
           ExtOpDbgInfo != OCLExtOpDbgKind::DbgVal)
           return true;
@@ -1238,7 +1241,8 @@ public:
 
   bool startsScope()
   {
-      if (getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo &&
+      if ((getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
+          getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
           ExtOpDbgInfo == OCLExtOpDbgKind::Scope)
           return true;
       return false;
@@ -1246,7 +1250,8 @@ public:
 
   bool endsScope()
   {
-      if (getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo &&
+      if ((getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
+          getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
           ExtOpDbgInfo == OCLExtOpDbgKind::NoScope)
           return true;
       return false;

@@ -83,7 +83,8 @@ isOpenCLBuiltinSet (SPIRVExtInstSetKind Set) {
 
 inline bool
 isSPIRVDebugInfoSet(SPIRVExtInstSetKind Set) {
-    return Set == SPIRVEIS_DebugInfo;
+    return Set == SPIRVEIS_DebugInfo ||
+        Set == SPIRVEIS_OpenCL_DebugInfo_100;
 }
 
 typedef OpenCLLIB::Entrypoints OCLExtOpKind;

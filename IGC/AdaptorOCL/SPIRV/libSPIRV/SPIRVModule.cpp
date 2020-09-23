@@ -238,7 +238,8 @@ public:
           if (item.second->getOpCode() == spv::Op::OpExtInst)
           {
               auto extInst = static_cast<SPIRVExtInst*>(item.second);
-              if (extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo &&
+              if ((extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
+                  extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
                   extInst->getExtOp() == OCLExtOpDbgKind::CompileUnit)
                   return extInst;
           }
@@ -256,7 +257,8 @@ public:
           if (item.second->getOpCode() == spv::Op::OpExtInst)
           {
               auto extInst = static_cast<SPIRVExtInst*>(item.second);
-              if (extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo &&
+              if ((extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
+                  extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
                   extInst->getExtOp() == OCLExtOpDbgKind::GlobalVariable)
                   globalVars.push_back(extInst);
           }
