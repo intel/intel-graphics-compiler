@@ -96,6 +96,9 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 <!--- ExecutionEnv -->
 
 ## Payload Arguments
+There are two kinds of payload arguments: **Payload Argument** and **Per Thread Payload Arguments**.
+Payload arguments include explicit user arguments of a kernel, such as payload_arguments with arg_type that is arg_byvalue or arg_bypointer,
+and implicit arguments inserted by the compiler, such as arguments with local_size arg_type.
 
 ### Supported attributes in payload arguments:
 If an attribute is **Required**, it must be present in payload arguments. If it's **Optional** and it's not present, the **Default** value is used.
@@ -112,6 +115,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 <!--- PayloadArgument PayloadArguments -->
 
 ## Per Thread Payload Arguments
+Per Thread Payload Arguments are implicit arguments inserted by the compiler. They are allocated per-thread.
 
 | Attribute | Type | Description |
 | ------ | ------ | ------ |
@@ -121,11 +125,13 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 <!--- PerThreadPayloadArgument PerThreadPayloadArguments -->
 
 ## Binding Table Indices
+Binding table index of the corresponding payload_argument.
+The payload_argument must have **arg_bypointer** arg_type and **stateful** addrmode
 
 | Attribute | Type | Description |
 | ------ | ------ | ------ |
 | bti_value | int32 | |
-| arg_index | int32 | |
+| arg_index | int32 | index of the coressponding payload_argument |
 <!--- BindingTableIndex BindingTableIndices -->
 
 
@@ -178,15 +184,14 @@ arg_byvalue and arg_bypointer are user arguments that are explcitly passed in fr
 <!--- <access_type> ArgAccessType -->
 
 ## Per Thread Memory Buffer
+Memory buffer required by Compiler generated stacks.
 
 |  | Type | Description |
 | ----- | ----- | ----- |
 | type | <allocation_type> | |
 | usage | <memory_usage> | |
-| size | int32 | |
+| size | int32 | Buffer size in bytes |
 <!--- PerThreadMemoryBuffer PerThreadMemoryBuffers -->
-
-Memory buffer required by Compiler generated stacks. Size in bytes.
 
 ### Supported allocation types:
 

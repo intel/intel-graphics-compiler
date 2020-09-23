@@ -662,11 +662,11 @@ namespace IGC
                     0, 0, arg_idx,
                     zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
                     (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
-                    zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
-                    zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
+                      zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
+                      zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
                     (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
-                    zebin::PreDefinedAttrGetter::ArgAccessType::readwrite :
-                    zebin::PreDefinedAttrGetter::ArgAccessType::readonly
+                      zebin::PreDefinedAttrGetter::ArgAccessType::readwrite :
+                      zebin::PreDefinedAttrGetter::ArgAccessType::readonly
                 );
                 // add the corresponding BTI table index
                 zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
@@ -705,7 +705,7 @@ namespace IGC
                   zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
                 (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
                   zebin::PreDefinedAttrGetter::ArgAccessType::readwrite :
-                zebin::PreDefinedAttrGetter::ArgAccessType::readonly
+                  zebin::PreDefinedAttrGetter::ArgAccessType::readonly
                 );
             break;
         }
@@ -727,6 +727,81 @@ namespace IGC
         // Local ids are supported in per-thread payload arguments
         case KernelArg::ArgType::IMPLICIT_LOCAL_IDS:
             break;
+
+        // Images
+        case KernelArg::ArgType::IMAGE_1D:
+        case KernelArg::ArgType::BINDLESS_IMAGE_1D:
+        case KernelArg::ArgType::IMAGE_1D_BUFFER:
+        case KernelArg::ArgType::BINDLESS_IMAGE_1D_BUFFER:
+        case KernelArg::ArgType::IMAGE_2D:
+        case KernelArg::ArgType::BINDLESS_IMAGE_2D:
+        case KernelArg::ArgType::IMAGE_3D:
+        case KernelArg::ArgType::BINDLESS_IMAGE_3D:
+        case KernelArg::ArgType::IMAGE_CUBE:
+        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE:
+        case KernelArg::ArgType::IMAGE_CUBE_DEPTH:
+        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH:
+        case KernelArg::ArgType::IMAGE_1D_ARRAY:
+        case KernelArg::ArgType::BINDLESS_IMAGE_1D_ARRAY:
+        case KernelArg::ArgType::IMAGE_2D_ARRAY:
+        case KernelArg::ArgType::BINDLESS_IMAGE_2D_ARRAY:
+        case KernelArg::ArgType::IMAGE_2D_DEPTH:
+        case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH:
+        case KernelArg::ArgType::IMAGE_2D_DEPTH_ARRAY:
+        case KernelArg::ArgType::BINDLESS_IMAGE_2D_DEPTH_ARRAY:
+        case KernelArg::ArgType::IMAGE_2D_MSAA:
+        case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA:
+        case KernelArg::ArgType::IMAGE_2D_MSAA_ARRAY:
+        case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_ARRAY:
+        case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH:
+        case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH:
+        case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH_ARRAY:
+        case KernelArg::ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH_ARRAY:
+        case KernelArg::ArgType::IMAGE_CUBE_ARRAY:
+        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_ARRAY:
+        case KernelArg::ArgType::IMAGE_CUBE_DEPTH_ARRAY:
+        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
+        {
+            int arg_idx = kernelArg->getAssociatedArgNo();
+            SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
+
+            // check if the image is writeable
+            bool writeable = false;
+            if (resInfo.Type == SOpenCLKernelInfo::SResourceInfo::RES_UAV &&
+                kernelArg->getAccessQual() != IGC::KernelArg::AccessQual::READ_ONLY)
+                writeable = true;
+            IGC_ASSERT_MESSAGE(resInfo.Type == SOpenCLKernelInfo::SResourceInfo::RES_UAV ||
+                resInfo.Type == SOpenCLKernelInfo::SResourceInfo::RES_SRV, "Unknown resource type");
+
+            // the image arg is either bindless of stateful. check from "kernelArg->needsAllocation()"
+            // For statefull image argument, the arg has 0 offset and 0 size
+            zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode =
+                zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
+            uint arg_off = 0;
+            uint arg_size = 0;
+
+            if (kernelArg->needsAllocation()) {
+                // set to bindless
+                arg_addrmode =
+                    zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
+                arg_off = payloadPosition;
+                arg_size = kernelArg->getAllocateSize();
+            } else {
+                // add bti index for this arg if it's stateful
+                zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
+                    getBTI(resInfo), arg_idx);
+            }
+
+            // add the payload argument
+            zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+                arg_off, arg_size, arg_idx, arg_addrmode,
+                  zebin::PreDefinedAttrGetter::ArgAddrSpace::image,
+                writeable ?
+                  zebin::PreDefinedAttrGetter::ArgAccessType::readwrite :
+                  zebin::PreDefinedAttrGetter::ArgAccessType::readonly
+            );
+        }
+        break;
 
         // We don't need these in ZEBinary, can safely skip them
         case KernelArg::ArgType::IMPLICIT_R0:
