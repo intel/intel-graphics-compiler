@@ -12608,7 +12608,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
 
     // atomic_inc and atomic_dec don't have both src0 and src1.
     if (atomic_op != EATOMIC_INC && atomic_op != EATOMIC_DEC &&
-        atomic_op != EATOMIC_INC64 && atomic_op != EATOMIC_DEC64)
+        atomic_op != EATOMIC_INC64 && atomic_op != EATOMIC_DEC64 &&
+        atomic_op != EATOMIC_PREDEC && atomic_op != EATOMIC_PREDEC64)
     {
         pSrc0 = GetSymbol(pllSrc0);
     }

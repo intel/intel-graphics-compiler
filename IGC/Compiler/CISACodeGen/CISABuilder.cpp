@@ -494,7 +494,7 @@ namespace IGC
 
         // Fix types for dword atomics
         VISA_Type type = ISA_TYPE_UD;
-        if (atomic_op == EATOMIC_IMAX || atomic_op == EATOMIC_IMIN || atomic_op == EATOMIC_PREDEC)
+        if (atomic_op == EATOMIC_IMAX || atomic_op == EATOMIC_IMIN)
         {
             type = ISA_TYPE_D;
         }
