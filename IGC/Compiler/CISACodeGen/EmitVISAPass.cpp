@@ -4482,7 +4482,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
 
     bool lastRenderTarget = psProgram->IsLastRTWrite(inst);
     bool EOT = lastRenderTarget && (m_encoder->IsSecondHalf() || m_currShader->m_numberInstance == 1);
-
+    bool isNullRT = false;
     int RTIndex = inst->getRTIndexImm();
     bool oMask = inst->hasMask();
     bool outputDepth = inst->hasDepth();
@@ -4520,6 +4520,8 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
             return;
         }
         bindingTableIndex = m_currShader->m_pBtiLayout->GetNullSurfaceIdx();
+
+        isNullRT = true;
     }
 
     bool directIdx = inst->isImmRTIndex();
@@ -4635,6 +4637,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         src,
         isUndefined,
         lastRenderTarget,
+        isNullRT,
         perSample,
         coarseMode,
         isHeaderMaskFromCe0,

@@ -175,6 +175,7 @@ namespace IGC
         void RenderTargetWrite(CVariable* var[],
             bool isUndefined[],
             bool lastRenderTarget,
+            bool isNullRT,
             bool perSample,
             bool coarseMode,
             bool headerMaskFromCe0,

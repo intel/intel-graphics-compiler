@@ -2205,6 +2205,7 @@ namespace IGC
     void CEncoder::RenderTargetWrite(CVariable* var[],
         bool isUndefined[],
         bool lastRenderTarget,
+        bool isNullRT,
         bool perSample,
         bool coarseMode,
         bool headerMaskFromCe0,
@@ -2298,7 +2299,7 @@ namespace IGC
         cntrls.isLastWrite = lastRenderTarget;
 
         // controls NULL render target enbale bit
-        cntrls.isNullRT = false;
+        cntrls.isNullRT = isNullRT;
 
         //r1Reg should always be populated
         //vISA will decide whether to use it or not.

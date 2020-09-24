@@ -205,6 +205,7 @@ void CShader::EOTRenderTarget(CVariable* r1, bool isPerCoarse)
         src,
         isUndefined,
         true,  // lastRenderTarget,
+        true,  // Null RT
         false, // perSample,
         isPerCoarse, // coarseMode,
         false, // isHeaderMaskFromCe0,
