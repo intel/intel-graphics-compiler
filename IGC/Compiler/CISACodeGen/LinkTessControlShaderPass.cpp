@@ -58,7 +58,7 @@ using namespace IGC::IGCMD;
 //    In this case, for any patch all output control points are handled in
 //    a single thread.
 // 2) TCS shader with thread barrier instructions and number of output control
-//    points equal to 1 with eight patch dispatch or less than 8 with single 
+//    points equal to 1 with eight patch dispatch or less than 8 with single
 //    patch distpatch. All ouptut control points can be processed in a single
 //    physical thread.
 //    In this case the pass removes all barrier instructions and falls back to
@@ -94,15 +94,13 @@ namespace IGC
         /// @param  F The current function.
         virtual bool runOnModule(llvm::Module& M) override;
     private:
-        HullShaderDispatchModes DetermineDispatchMode(llvm::Module* mod, llvm::IRBuilder<>* irBuilder);
+        HullShaderDispatchModes DetermineDispatchMode(
+            llvm::Module* mod,
+            bool hasBarrier);
         llvm::Function* CreateNewTCSFunction(llvm::Function* pCurrentFunc);
         bool CheckIfBarrierInstructionExists(llvm::Function* pFunc);
         void RemoveBarrierInstructions(llvm::Function* pFunc);
         uint GetNumberOfOutputControlPoints(llvm::Module* module);
-
-    private:
-        static const uint32_t SIMDSize;
-        bool m_useMultipleHardwareThread;
     };
 
     char LinkTessControlShader::ID = 0;
@@ -114,10 +112,7 @@ namespace IGC
     IGC_INITIALIZE_PASS_BEGIN(LinkTessControlShader, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
         IGC_INITIALIZE_PASS_END(LinkTessControlShader, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-        // SIMD size for tessellation workloads is SIMD8
-        const uint32_t LinkTessControlShader::SIMDSize = 8;
-
-    LinkTessControlShader::LinkTessControlShader() : llvm::ModulePass(ID), m_useMultipleHardwareThread(false)
+    LinkTessControlShader::LinkTessControlShader() : llvm::ModulePass(ID)
     {
         initializeLinkTessControlShaderPass(*llvm::PassRegistry::getPassRegistry());
     }
@@ -139,12 +134,11 @@ namespace IGC
         return outputControlPointCount;
     }
 
-    HullShaderDispatchModes LinkTessControlShader::DetermineDispatchMode(llvm::Module* mod, llvm::IRBuilder<>* irBuilder)
+    HullShaderDispatchModes LinkTessControlShader::DetermineDispatchMode(
+        llvm::Module* mod,
+        bool hasBarrier)
     {
-        llvm::NamedMDNode* metaData = mod->getOrInsertNamedMetadata("HullShaderDispatchMode");
-
-        // now find out the output control point count
-        uint32_t outputControlPointCount = GetNumberOfOutputControlPoints(mod);
+        const uint outputControlPointCount = GetNumberOfOutputControlPoints(mod);
 
         IGC::CodeGenContext* pCodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
@@ -161,6 +155,7 @@ namespace IGC
         bool useSinglePatch = false;
         if (pCodeGenContext->platform.WaDispatchGRFHWIssueInGSAndHSUnit())
         {
+            IGC_ASSERT(!pCodeGenContext->platform.useOnlyEightPatchDispatchHS());
             llvm::GlobalVariable* pGlobal = mod->getGlobalVariable("TessInputControlPointCount");
             if (pGlobal && pGlobal->hasInitializer())
             {
@@ -172,32 +167,28 @@ namespace IGC
             }
         }
 
+        HullShaderDispatchModes dispatchMode = HullShaderDispatchModes::SINGLE_PATCH_DISPATCH_MODE;
+
         if (pCodeGenContext->platform.useOnlyEightPatchDispatchHS() ||
             (pCodeGenContext->platform.supportHSEightPatchDispatch() &&
-                !(m_useMultipleHardwareThread && outputControlPointCount >= 16) &&
-                !useSinglePatch &&
-                IGC_IS_FLAG_DISABLED(EnableHSSinglePatchDispatch)))
+             !(hasBarrier && outputControlPointCount >= 16) &&
+             !useSinglePatch &&
+             IGC_IS_FLAG_DISABLED(EnableHSSinglePatchDispatch)))
         {
-            Constant* cval = llvm::ConstantInt::get(
-                irBuilder->getInt32Ty(),
-                HullShaderDispatchModes::EIGHT_PATCH_DISPATCH_MODE);
-            llvm::MDNode* mdNode = llvm::MDNode::get(
-                irBuilder->getContext(),
-                llvm::ConstantAsMetadata::get(cval));
-            metaData->addOperand(mdNode);
-            return HullShaderDispatchModes::EIGHT_PATCH_DISPATCH_MODE;
+            dispatchMode = HullShaderDispatchModes::EIGHT_PATCH_DISPATCH_MODE;
         }
-        else
-        {
-            Constant* cval = llvm::ConstantInt::get(
-                irBuilder->getInt32Ty(),
-                HullShaderDispatchModes::SINGLE_PATCH_DISPATCH_MODE);
-            llvm::MDNode* mdNode = llvm::MDNode::get(
-                irBuilder->getContext(),
-                llvm::ConstantAsMetadata::get(cval));
-            metaData->addOperand(mdNode);
-            return HullShaderDispatchModes::SINGLE_PATCH_DISPATCH_MODE;
-        }
+
+        // Set dispatch mode metadata.
+        llvm::NamedMDNode* metaData = mod->getOrInsertNamedMetadata("HullShaderDispatchMode");
+        Constant* cval = ConstantInt::get(
+            Type::getInt32Ty(mod->getContext()),
+            dispatchMode);
+        MDNode* mdNode = MDNode::get(
+            mod->getContext(),
+            ConstantAsMetadata::get(cval));
+        metaData->addOperand(mdNode);
+
+        return dispatchMode;
     }
     /*
         Function pass to create a new entry function
@@ -335,37 +326,34 @@ namespace IGC
         std::string oldEntryFuncName = pFunc->getName().str();
 
         llvm::Function* pNewTCSFunction = CreateNewTCSFunction(pFunc);
+        bool hasBarrier = CheckIfBarrierInstructionExists(pNewTCSFunction);
 
         // Determine the dispatch mode
         const HullShaderDispatchModes dispatchMode = DetermineDispatchMode(
             pNewTCSFunction->getParent(),
-            &builder);
-
-        const uint32_t outputControlPointCount = GetNumberOfOutputControlPoints(&M);
-
+            hasBarrier);
         IGC_ASSERT(dispatchMode == EIGHT_PATCH_DISPATCH_MODE ||
             dispatchMode == SINGLE_PATCH_DISPATCH_MODE);
 
+        const uint32_t outputControlPointCount = GetNumberOfOutputControlPoints(&M);
+
+        const uint numSimdLanes = numLanes(ctx->platform.getMinDispatchMode());
         // Calculate how many physical threads would have to be spawned to
         // generate data for all output control points.
         const uint controlPointsPerThread =
-            (dispatchMode == SINGLE_PATCH_DISPATCH_MODE) ?
-            numLanes(ctx->platform.getMinDispatchMode()) : 1;
-
+            (dispatchMode == SINGLE_PATCH_DISPATCH_MODE) ? numSimdLanes : 1;
         const uint threadCount =
             (outputControlPointCount + controlPointsPerThread - 1) / controlPointsPerThread;
 
-        if (threadCount > 1)
-        {
-            m_useMultipleHardwareThread = CheckIfBarrierInstructionExists(pNewTCSFunction);
-        }
-        else
+        if (threadCount == 1 && hasBarrier)
         {
             // With a single thread, there is no need for thread barriers.
 
             RemoveBarrierInstructions(pNewTCSFunction);
-            m_useMultipleHardwareThread = false;
+            hasBarrier = false;
         }
+
+        const bool needsMultiplePhysicalThreadsPerPatch = hasBarrier;
 
         // This function is the new entry function
         llvm::Function* pNewLoopFunc = llvm::Function::Create(llvm::FunctionType::get(builder.getVoidTy(), false),
@@ -380,51 +368,45 @@ namespace IGC
 
         builder.SetInsertPoint(pEntryBlock);
 
-        // first create a call to simdLaneId() intrinsic
-        llvm::Value* pCPId = nullptr;
-        llvm::Function* pFuncPatchInstanceIdOrSIMDLaneId = nullptr;
-        switch (dispatchMode)
+        // Lambda to create code for getting patch instance id.
+        auto GetPatchInstanceId = [&builder, pNewLoopFunc]()->Value*
         {
-        case SINGLE_PATCH_DISPATCH_MODE:
-            pFuncPatchInstanceIdOrSIMDLaneId = llvm::GenISAIntrinsic::getDeclaration(
-                pNewLoopFunc->getParent(), llvm::GenISAIntrinsic::GenISA_simdLaneId);
-            pCPId = builder.CreateCall(pFuncPatchInstanceIdOrSIMDLaneId);
+            Function* pPatchInstanceIdIntr = GenISAIntrinsic::getDeclaration(
+                pNewLoopFunc->getParent(),
+                GenISAIntrinsic::GenISA_patchInstanceId);
+            return builder.CreateCall(pPatchInstanceIdIntr);
+        };
 
-            if (m_useMultipleHardwareThread)
+        // Calculate the output control point id value depending on
+        // the dispatch mode used.
+        llvm::Value* pCPId = builder.getInt32(0);
+        if (dispatchMode == SINGLE_PATCH_DISPATCH_MODE)
+        {
+            Function* pSimdLaneIdIntr = GenISAIntrinsic::getDeclaration(
+                pNewLoopFunc->getParent(),
+                GenISAIntrinsic::GenISA_simdLaneId);
+            pCPId = builder.CreateZExt(
+                builder.CreateCall(pSimdLaneIdIntr),
+                builder.getInt32Ty());
+
+            if (needsMultiplePhysicalThreadsPerPatch)
             {
                 // CPID = patchInstanceID * 8 + SimdLaneId;
-                pFuncPatchInstanceIdOrSIMDLaneId = llvm::GenISAIntrinsic::getDeclaration(
-                    pNewLoopFunc->getParent(), llvm::GenISAIntrinsic::GenISA_patchInstanceId);
                 pCPId = builder.CreateAdd(
-                    builder.CreateZExt(
-                        pCPId,
-                        builder.getInt32Ty()),
+                    pCPId,
                     builder.CreateMul(
-                        builder.CreateCall(pFuncPatchInstanceIdOrSIMDLaneId),
-                        llvm::ConstantInt::get(builder.getInt32Ty(), SIMDSize)));
+                        GetPatchInstanceId(),
+                        builder.getInt32(numSimdLanes)));
             }
-            break;
-
-        case EIGHT_PATCH_DISPATCH_MODE:
-            if (m_useMultipleHardwareThread)
-            {
-                pFuncPatchInstanceIdOrSIMDLaneId = llvm::GenISAIntrinsic::getDeclaration(
-                    pNewLoopFunc->getParent(), llvm::GenISAIntrinsic::GenISA_patchInstanceId);
-                pCPId = builder.CreateCall(pFuncPatchInstanceIdOrSIMDLaneId);
-            }
-            else
-            {
-                pCPId = builder.getInt32(0);
-            }
-            break;
-
-        default:
-            IGC_ASSERT_MESSAGE(0, "should not reach here");
-            break;
+        }
+        else if (needsMultiplePhysicalThreadsPerPatch)
+        {
+            IGC_ASSERT(dispatchMode == EIGHT_PATCH_DISPATCH_MODE);
+            pCPId = GetPatchInstanceId();
         }
 
         // We don't need to deal with any loops when we are using multiple hardware threads
-        if (!m_useMultipleHardwareThread)
+        if (!needsMultiplePhysicalThreadsPerPatch)
         {
             // initialize instanceCount to output control point count
             llvm::Value* pInstanceCount = builder.getInt32(outputControlPointCount);
@@ -471,12 +453,8 @@ namespace IGC
                 // currentCPID = pCPId + loopCounter x simdsize ( in this case its always simd 8 )
                 pMulLoopCounterRes = builder.CreateMul(
                     pLoadLoopCounter,
-                    llvm::ConstantInt::get(builder.getInt32Ty(), SIMDSize));
-                pCurrentCPID = builder.CreateAdd(
-                    builder.CreateZExt(
-                        pCPId,
-                        builder.getInt32Ty()),
-                    pMulLoopCounterRes);
+                    builder.getInt32(numSimdLanes));
+                pCurrentCPID = builder.CreateAdd(pCPId, pMulLoopCounterRes);
 
                 // cmp currentCPID to instanceCount so we enable only the required lanes
                 pConditionalRes1 = builder.CreateICmpULT(
