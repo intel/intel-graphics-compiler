@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
+#include "../SVMLReleaseOnly/svml/Math/svml_sinpi.cl"
 
     #include "../ExternalLibraries/libclc/trig.cl"
 
@@ -46,7 +47,7 @@ INLINE float __builtin_spirv_OpenCL_sinpi_f32( float x )
     }
     else
     {
-            return libclc_sinpi_f32(x);
+            return precise_sinpif(x);
     }
 }
 
