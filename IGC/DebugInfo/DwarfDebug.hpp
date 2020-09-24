@@ -100,29 +100,16 @@ namespace IGC
         // The variable to which this location entry corresponds.
         const llvm::MDNode* Variable;
 
-        // Whether this location has been merged.
-        bool Merged;
-
     public:
-        DotDebugLocEntry() : Begin(0), End(0), m_pDbgInst(nullptr), Variable(nullptr), Merged(false) { }
+        DotDebugLocEntry() : Begin(0), End(0), m_pDbgInst(nullptr), Variable(nullptr) { }
         DotDebugLocEntry(const llvm::MCSymbol* B, const llvm::MCSymbol* E, const llvm::Instruction* pDbgInst, const llvm::MDNode* V)
-            : Begin(B), End(E), m_pDbgInst(pDbgInst), Variable(V), Merged(false) { }
+            : Begin(B), End(E), m_pDbgInst(pDbgInst), Variable(V) { }
         DotDebugLocEntry(const uint64_t s, const uint64_t e, const llvm::Instruction* pDbgInst, const llvm::MDNode* V)
             : start(s), end(e), m_pDbgInst(pDbgInst), Variable(V) {}
 
         /// \brief Empty entries are also used as a trigger to emit temp label. Such
         /// labels are referenced is used to find debug_loc offset for a given DIE.
         bool isEmpty() { return start == 0 && end == 0; }
-        bool isMerged() { return Merged; }
-        void Merge(DotDebugLocEntry* Next)
-        {
-            if (Begin && m_pDbgInst == Next->m_pDbgInst && End == Next->Begin)
-            {
-                Next->Begin = Begin;
-                Merged = true;
-            }
-        }
-
         const llvm::MDNode* getVariable() const { return Variable; }
         const llvm::MCSymbol* getBeginSym() const { return Begin; }
         const llvm::MCSymbol* getEndSym() const { return End; }
