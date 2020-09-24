@@ -1323,10 +1323,6 @@ void GenXSimdCFConformance::moveCodeInGotoBlocks(bool hoistGotoUsers)
       }
       if (Failed)
         continue;
-      if (Inst->getNumUses() == 0) {
-        Inst->eraseFromParent();
-        continue;
-      }
       // Hoist the instruction.
       Inst->removeFromParent();
       Inst->insertBefore(Goto);
@@ -1550,11 +1546,6 @@ void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join)
     if (auto EV = dyn_cast<ExtractValueInst>(Inst))
       if (EV->getOperand(0) == Join)
         continue; // do not hoist an extract of the join
-    if (Inst->getNumUses() == 0) {
-      Inst->eraseFromParent();
-      Modified = true;
-      continue;
-    }
     // Check that the instruction's operands do not use anything in this block
     // (the phi nodes, or the join and extracts being left behind).
     for (unsigned oi = 0, oe = Inst->getNumOperands(); oi != oe; ++oi) {
