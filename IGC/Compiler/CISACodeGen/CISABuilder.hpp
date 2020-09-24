@@ -591,7 +591,7 @@ namespace IGC
         VISABuilder* vbuilder;
         VISABuilder* vAsmTextBuilder;
 
-        bool m_insideForcedNoMaskRegion;
+        bool m_insideForcedNoMaskRegion = false;
 
         bool m_enableVISAdump;
         bool m_hasInlineAsm;
