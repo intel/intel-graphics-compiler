@@ -526,7 +526,7 @@ bool genx::areConstantsEqual(Constant *C1, Constant *C2) {
     StringRef C1RawData = C1Seq->getRawDataValues();
     StringRef C2RawData = C2Seq->getRawDataValues();
     if (C1RawData.size() == C2RawData.size())
-      return C1RawData.compare(C2RawData);
+      return (C1RawData.compare(C2RawData) == 0);
     return false;
   }
 
