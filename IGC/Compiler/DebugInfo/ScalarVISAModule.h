@@ -81,7 +81,6 @@ private:
     const llvm::Argument* GetTracedArgument(const llvm::Value* pVal, bool isAddress) const;
     const llvm::Argument* GetTracedArgument64Ops(const llvm::Value* pVal) const;
 
-    mutable std::unordered_set<const CVariable*> m_outputVals;
     CShader* m_pShader;
 
 };
