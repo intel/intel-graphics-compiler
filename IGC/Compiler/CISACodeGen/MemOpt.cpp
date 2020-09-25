@@ -239,20 +239,27 @@ namespace {
         {
             if (inst->getAlignment() < 4 && WI->whichDepend(inst) != WIAnalysis::UNIFORM)
             {
+                llvm::Type* dataType = isa<LoadInst>(inst) ? inst->getType() : inst->getOperand(0)->getType();
+                unsigned scalarTypeSizeInBytes = unsigned(DL->getTypeSizeInBits(dataType->getScalarType()) / 8);
+
                 // Need the first offset value (not necessarily zero)
-                auto firstOffset = std::get<1>(AccessIntrs[0]);
+                int64_t firstOffset = std::get<1>(AccessIntrs[0]);
+                int64_t mergedSize = 0;
                 for (auto rit = AccessIntrs.rbegin(),
                     rie = AccessIntrs.rend(); rit != rie; ++rit)
                 {
-                    unsigned accessSize = 0;
-                    auto cur_offset = std::get<1>(*rit);
+                    int64_t accessSize = 0;
+                    int64_t cur_offset = std::get<1>(*rit);
                     auto acessInst = std::get<0>(*rit);
                     if (isa<LoadInst>(acessInst))
-                        accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getType())) / 8;
+                        accessSize = int64_t(DL->getTypeSizeInBits(acessInst->getType())) / 8;
                     else
-                        accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getOperand(0)->getType())) / 8;
-                    if ((cur_offset - firstOffset + accessSize) > 4)
+                        accessSize = int64_t(DL->getTypeSizeInBits(acessInst->getOperand(0)->getType())) / 8;
+                    mergedSize = cur_offset - firstOffset + accessSize;
+                    if (mergedSize > 4)
                         AccessIntrs.pop_back();
+                    else
+                        break;
                 }
 
                 if (AccessIntrs.size() < 2)
@@ -267,8 +274,7 @@ namespace {
 
                 // Need to subtract the last offset by the first offset and add one to
                 // get the new size of the vector
-                auto lastOffset = std::get<1>(AccessIntrs[AccessIntrs.size() - 1]);
-                NumElts = unsigned(lastOffset - firstOffset) + 1;
+                NumElts = unsigned(mergedSize / scalarTypeSizeInBytes);
             }
             return true;
         }
@@ -1057,6 +1063,15 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     StoresToMerge.resize(s);
     std::sort(StoresToMerge.begin(), StoresToMerge.end(), less_tuple<1>());
 
+    // Stores to be merged will be merged into the tailing store. However, the
+    // pointer from the first store (with the minimal offset) will be used as the
+    // new pointer.
+    StoreInst* FirstStore = std::get<0>(StoresToMerge.front());
+
+    // Next we need to check alignment
+    if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge, NumElts))
+        return false;
+
     Type* NewStoreType = IGCLLVM::FixedVectorType::get(LeadingStoreScalarType, NumElts);
     Value* NewStoreVal = UndefValue::get(NewStoreType);
 
@@ -1104,15 +1119,6 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
                 Builder.getInt32(Pos++));
         }
     }
-
-    // Stores to be merged will be merged into the tailing store. However, the
-    // pointer from the first store (with the minimal offset) will be used as the
-    // new pointer.
-    StoreInst* FirstStore = std::get<0>(StoresToMerge.front());
-
-    // Next we need to check alignment
-    if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge, NumElts))
-        return false;
 
     if (!DebugCounter::shouldExecute(MergeStoreCounter))
         return false;
