@@ -52,6 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/Local.h"
 
+#include <forward_list>
 #include <queue>
 #include <utility>
 
@@ -913,6 +914,17 @@ SplitVec(Value *Vec, unsigned NumElts, Instruction *InsertBefore,
   return std::make_pair(First, Second);
 }
 
+static void EraseUsers(Instruction *Inst) {
+  std::forward_list<User *> Users(Inst->user_begin(), Inst->user_end());
+  for (auto U : Users) {
+    Instruction *PotentiallyDeadInst = cast<Instruction>(U);
+    EraseUsers(PotentiallyDeadInst);
+    IGC_ASSERT_MESSAGE(U->getNumUses() == 0,
+                       "Cannot recursively remove users of a replaced alloca");
+    PotentiallyDeadInst->eraseFromParent();
+  }
+}
+
 void SplitScatter(CallInst *CI) {
   IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI) ==
          llvm::GenXIntrinsic::genx_scatter_scaled);
@@ -1229,11 +1241,7 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   }
 
   for (auto AllocaPair : m_allocaToIntrinsic) {
-    while (!AllocaPair.first->user_empty()) {
-      const auto &U = AllocaPair.first->user_back();
-      IGC_ASSERT(U->getNumUses() == 0);
-      cast<Instruction>(U)->eraseFromParent();
-    }
+    EraseUsers(AllocaPair.first);
     IGC_ASSERT(AllocaPair.first->use_empty() &&
            "uses of replaced alloca aren't empty");
     AllocaPair.first->eraseFromParent();
