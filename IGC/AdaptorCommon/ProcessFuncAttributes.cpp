@@ -411,6 +411,11 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             mustAlwaysInline = true;
         }
+        // Enable inlining for -O0 in order to preserve debug info. This may be removed when debug stack call support is enabled.
+        else if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable)
+        {
+            mustAlwaysInline = true;
+        }
         if (mustAlwaysInline)
         {
             F->removeFnAttr(llvm::Attribute::NoInline);
