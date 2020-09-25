@@ -498,8 +498,17 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
 
   if (!isa<VectorType>(LdI->getType()) &&
       isa<VectorType>(ProperGather->getType())) {
-    Instruction *LdVal =
-        CastInst::CreateBitOrPointerCast(ProperGather, LdI->getType());
+    VectorType *GatheredTy = cast<VectorType>(ProperGather->getType());
+    Builder.ClearInsertionPoint();
+    Instruction *LdVal = nullptr;
+    if (GatheredTy->getNumElements() == 1)
+      LdVal = cast<Instruction>(Builder.CreateExtractElement(
+          ProperGather, static_cast<uint64_t>(0ul),
+          ProperGather->getName() + ".tpm.loadres"));
+    else
+      LdVal = cast<Instruction>(Builder.CreateBitOrPointerCast(
+          ProperGather, LdI->getType(),
+          ProperGather->getName() + ".tpm.loadres"));
     LdVal->insertAfter(ProperGather);
     ProperGather = LdVal;
   }
@@ -928,9 +937,16 @@ static void EraseUsers(Instruction *Inst) {
 }
 
 void SplitScatter(CallInst *CI) {
-  IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI) ==
-         llvm::GenXIntrinsic::genx_scatter_scaled);
-  Type *DataTy = CI->getArgOperand(5)->getType();
+  auto IID = static_cast<llvm::GenXIntrinsic::ID>(
+      GenXIntrinsic::getAnyIntrinsicID(CI));
+  IGC_ASSERT((IID == llvm::GenXIntrinsic::genx_scatter_scaled) ||
+             (IID == llvm::GenXIntrinsic::genx_svm_scatter));
+  Type *DataTy = nullptr;
+  if (IID == llvm::GenXIntrinsic::genx_scatter_scaled) {
+    DataTy = CI->getArgOperand(5)->getType();
+  } else if (IID == llvm::GenXIntrinsic::genx_svm_scatter) {
+    DataTy = CI->getArgOperand(2)->getType();
+  }
   unsigned NumElts = cast<VectorType>(DataTy)->getNumElements();
   IGC_ASSERT(NumElts % 2 == 0);
 
@@ -939,34 +955,54 @@ void SplitScatter(CallInst *CI) {
   Splitters.first = FillVecWithSeqVals(Splitters.first, 0, CI);
   Splitters.second = FillVecWithSeqVals(Splitters.second, NumElts / 2, CI);
 
-  Value *Pred = CI->getArgOperand(0);
+  Value *Pred = nullptr;
+  Value *EltOffsets = nullptr;
+  Value *OldVal = nullptr;
+  if (IID == llvm::GenXIntrinsic::genx_scatter_scaled) {
+    Pred = CI->getArgOperand(0);
+    EltOffsets = CI->getArgOperand(5);
+    OldVal = CI->getArgOperand(6);
+  } else if (IID == llvm::GenXIntrinsic::genx_svm_scatter) {
+    Pred = CI->getArgOperand(0);
+    EltOffsets = CI->getArgOperand(2);
+    OldVal = CI->getArgOperand(3);
+  }
+
   std::pair<Value *, Value *> NewPreds = SplitVec(Pred, NumElts, CI, Splitters);
 
-  Value *EltOffsets = CI->getArgOperand(5);
   std::pair<Value *, Value *> NewEltOffsets =
       SplitVec(EltOffsets, NumElts, CI, Splitters);
 
-  Value *OldVal = CI->getArgOperand(6);
   std::pair<Value *, Value *> OldVals =
       SplitVec(OldVal, NumElts, CI, Splitters);
 
-  auto IID = llvm::GenXIntrinsic::genx_scatter_scaled;
   Function *F = GenXIntrinsic::getGenXDeclaration(CI->getModule(), IID,
                                           {NewPreds.first->getType(),
                                            NewEltOffsets.first->getType(),
                                            OldVals.first->getType()});
 
-  Value *LogNumBlock = CI->getArgOperand(1);
-  Value *Scale = CI->getArgOperand(2);
-  Value *Surface = CI->getArgOperand(3);
-  Value *Offset = CI->getArgOperand(4);
+  CallInst *FirstScatter = nullptr;
+  CallInst *SecondScatter = nullptr;
+  if (IID == llvm::GenXIntrinsic::genx_scatter_scaled) {
+    Value *LogNumBlock = CI->getArgOperand(1);
+    Value *Scale = CI->getArgOperand(2);
+    Value *Surface = CI->getArgOperand(3);
+    Value *Offset = CI->getArgOperand(4);
 
-  CallInst *FirstScatter =
-      IntrinsicInst::Create(F, {NewPreds.first, LogNumBlock, Scale, Surface,
-                                Offset, NewEltOffsets.first, OldVals.first});
-  CallInst *SecondScatter =
-      IntrinsicInst::Create(F, {NewPreds.second, LogNumBlock, Scale, Surface,
-                                Offset, NewEltOffsets.second, OldVals.second});
+    FirstScatter =
+        IntrinsicInst::Create(F, {NewPreds.first, LogNumBlock, Scale, Surface,
+                                  Offset, NewEltOffsets.first, OldVals.first});
+    SecondScatter = IntrinsicInst::Create(
+        F, {NewPreds.second, LogNumBlock, Scale, Surface, Offset,
+            NewEltOffsets.second, OldVals.second});
+  } else if (IID == llvm::GenXIntrinsic::genx_svm_scatter) {
+    Value *LogNumBlock = CI->getArgOperand(1);
+    FirstScatter = IntrinsicInst::Create(
+        F, {NewPreds.first, LogNumBlock, NewEltOffsets.first, OldVals.first});
+    SecondScatter =
+        IntrinsicInst::Create(F, {NewPreds.second, LogNumBlock,
+                                  NewEltOffsets.second, OldVals.second});
+  }
 
   FirstScatter->insertAfter(CI);
   SecondScatter->insertAfter(FirstScatter);
@@ -975,8 +1011,10 @@ void SplitScatter(CallInst *CI) {
 }
 
 void SplitGather(CallInst *CI) {
-  IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI) ==
-         llvm::GenXIntrinsic::genx_gather_scaled);
+  auto IID = static_cast<llvm::GenXIntrinsic::ID>(
+      GenXIntrinsic::getAnyIntrinsicID(CI));
+  IGC_ASSERT((IID == llvm::GenXIntrinsic::genx_gather_scaled) ||
+             (IID == llvm::GenXIntrinsic::genx_svm_gather));
   Type *DstTy = CI->getType();
   unsigned NumElts = cast<VectorType>(DstTy)->getNumElements();
   IGC_ASSERT(NumElts % 2 == 0);
@@ -986,33 +1024,52 @@ void SplitGather(CallInst *CI) {
   Splitters.first = FillVecWithSeqVals(Splitters.first, 0, CI);
   Splitters.second = FillVecWithSeqVals(Splitters.second, NumElts / 2, CI);
 
-  Value *Pred = CI->getArgOperand(0);
+  Value *Pred = nullptr;
+  Value *EltOffsets = nullptr;
+  Value *OldVal = nullptr;
+  if (IID == llvm::GenXIntrinsic::genx_gather_scaled) {
+    Pred = CI->getArgOperand(0);
+    EltOffsets = CI->getArgOperand(5);
+    OldVal = CI->getArgOperand(6);
+  } else if (IID == llvm::GenXIntrinsic::genx_svm_gather) {
+    Pred = CI->getArgOperand(0);
+    EltOffsets = CI->getArgOperand(2);
+    OldVal = CI->getArgOperand(3);
+  }
+
   std::pair<Value *, Value *> NewPreds = SplitVec(Pred, NumElts, CI, Splitters);
 
-  Value *EltOffsets = CI->getArgOperand(5);
   std::pair<Value *, Value *> NewEltOffsets =
       SplitVec(EltOffsets, NumElts, CI, Splitters);
-
-  Value *OldVal = CI->getArgOperand(6);
   std::pair<Value *, Value *> OldVals =
       SplitVec(OldVal, NumElts, CI, Splitters);
-  auto IID = llvm::GenXIntrinsic::genx_gather_scaled;
   Function *F = GenXIntrinsic::getGenXDeclaration(CI->getModule(), IID,
                                           {OldVals.first->getType(),
                                            NewPreds.first->getType(),
                                            NewEltOffsets.first->getType()});
 
-  Value *LogNumBlock = CI->getArgOperand(1);
-  Value *Scale = CI->getArgOperand(2);
-  Value *Surface = CI->getArgOperand(3);
-  Value *Offset = CI->getArgOperand(4);
+  CallInst *FirstGather = nullptr;
+  CallInst *SecondGather = nullptr;
+  if (IID == llvm::GenXIntrinsic::genx_gather_scaled) {
+    Value *LogNumBlock = CI->getArgOperand(1);
+    Value *Scale = CI->getArgOperand(2);
+    Value *Surface = CI->getArgOperand(3);
+    Value *Offset = CI->getArgOperand(4);
 
-  CallInst *FirstGather =
-      IntrinsicInst::Create(F, {NewPreds.first, LogNumBlock, Scale, Surface,
-                                Offset, NewEltOffsets.first, OldVals.first});
-  CallInst *SecondGather =
-      IntrinsicInst::Create(F, {NewPreds.second, LogNumBlock, Scale, Surface,
-                                Offset, NewEltOffsets.second, OldVals.second});
+    FirstGather =
+        IntrinsicInst::Create(F, {NewPreds.first, LogNumBlock, Scale, Surface,
+                                  Offset, NewEltOffsets.first, OldVals.first});
+    SecondGather = IntrinsicInst::Create(
+        F, {NewPreds.second, LogNumBlock, Scale, Surface, Offset,
+            NewEltOffsets.second, OldVals.second});
+  } else if (IID == llvm::GenXIntrinsic::genx_svm_gather) {
+    Value *LogNumBlock = CI->getArgOperand(1);
+    FirstGather = IntrinsicInst::Create(
+        F, {NewPreds.first, LogNumBlock, NewEltOffsets.first, OldVals.first});
+    SecondGather =
+        IntrinsicInst::Create(F, {NewPreds.second, LogNumBlock,
+                                  NewEltOffsets.second, OldVals.second});
+  }
 
   FirstGather->insertAfter(CI);
   SecondGather->insertAfter(FirstGather);
