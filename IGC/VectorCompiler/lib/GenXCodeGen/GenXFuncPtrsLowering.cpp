@@ -295,6 +295,7 @@ void GenXFunctionPointersLowering::reconstructSelect(SelectInst *SI) {
   auto *OrigTy = SI->getType();
   auto *TV = reconstructValue(SI->getTrueValue(), SI);
   auto *FV = reconstructValue(SI->getFalseValue(), SI);
+  IGC_ASSERT(TV && FV);
   if (TV->getType() != OrigTy) {
     IGC_ASSERT(
         OrigTy->getScalarType()->isPointerTy() &&
@@ -369,6 +370,7 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
       auto *PTI = CastInst::CreateBitOrPointerCast(
           getFunctionPointerFunc(EEInst->getVectorOperand()),
           Type::getInt64Ty(*Ctx), "", EEInst);
+      IGC_ASSERT(PTI && "CreateBitOrPointerCast failed!");
       PTI->setDebugLoc(EEInst->getDebugLoc());
       Instruction *NewInsElem = InsertElementInst::Create(
           VecOper, PTI,

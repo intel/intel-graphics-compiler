@@ -214,7 +214,9 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
       m_DL->getTypeSizeInBits(From->getType()->getScalarType()) <
           genx::QWordBits) {
     From = NormalizeFuncPtrVec(From, Inst);
+    IGC_ASSERT(From);
     To = From->getType();
+    IGC_ASSERT(To);
     NumElts = To->getVectorNumElements();
   }
   if (To->getScalarType()->isPointerTy() &&
