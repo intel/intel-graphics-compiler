@@ -434,7 +434,9 @@ public:
     void emitRsq(llvm::Instruction* inst);
 
     void emitLLVMbswap(llvm::IntrinsicInst* inst);
-    void emitDP4A(llvm::GenIntrinsicInst* GII);
+    void emitDP4A(llvm::GenIntrinsicInst* GII,
+        const SSource* source = nullptr,
+        const DstModifier& modifier = DstModifier());
 
     void emitLLVMStackSave(llvm::IntrinsicInst* inst);
     void emitLLVMStackRestore(llvm::IntrinsicInst* inst);

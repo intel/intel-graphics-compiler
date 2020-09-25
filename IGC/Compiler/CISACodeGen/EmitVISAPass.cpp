@@ -17539,12 +17539,26 @@ void EmitPass::emitWaveClustered(llvm::GenIntrinsicInst* inst)
     emitReductionClustered(opCode, identity, type, false, clusterSize, src, dst);
 }
 
-void EmitPass::emitDP4A(GenIntrinsicInst* GII) {
+void EmitPass::emitDP4A(GenIntrinsicInst* GII, const SSource* Sources, const DstModifier& modifier) {
     GenISAIntrinsic::ID GIID = GII->getIntrinsicID();
     CVariable* dst = m_destination;
-    CVariable* src0 = GetSymbol(GII->getOperand(0));
-    CVariable* src1 = GetSymbol(GII->getOperand(1));
-    CVariable* src2 = GetSymbol(GII->getOperand(2));
+    CVariable *src0, *src1, *src2;
+
+    // Check if Sources was set in PatternMatch
+    if (!Sources)
+    {
+        src0 = GetSymbol(GII->getOperand(0));
+        src1 = GetSymbol(GII->getOperand(1));
+        src2 = GetSymbol(GII->getOperand(2));
+    }
+    else
+    {
+        m_encoder->SetSrcRegion(1, Sources[1].region[0], Sources[1].region[1], Sources[1].region[2]);
+        src0 = GetSrcVariable(Sources[0]);
+        src1 = GetSrcVariable(Sources[1]);
+        src2 = GetSrcVariable(Sources[2]);
+    }
+
     // Set correct signedness of src1.
     if (GIID == GenISAIntrinsic::GenISA_dp4a_ss ||
         GIID == GenISAIntrinsic::GenISA_dp4a_su)

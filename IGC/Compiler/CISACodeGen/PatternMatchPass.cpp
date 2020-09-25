@@ -1139,6 +1139,12 @@ namespace IGC
             case GenISAIntrinsic::GenISA_UnmaskedRegionEnd:
                 match = MatchUnmaskedRegionBoundary(I, false);
                 break;
+            case GenISAIntrinsic::GenISA_dp4a_ss:
+            case GenISAIntrinsic::GenISA_dp4a_su:
+            case GenISAIntrinsic::GenISA_dp4a_us:
+            case GenISAIntrinsic::GenISA_dp4a_uu:
+                match = MatchDp4a(*CI);
+                break;
             default:
                 match = MatchSingleInstruction(I);
                 // no pattern for the rest of the intrinsics
@@ -3772,6 +3778,117 @@ namespace IGC
         return true;
     }
 
+
+    bool CodeGenPatternMatch::MatchDp4a(GenIntrinsicInst& I)
+    {
+        struct MatchDp4a : public Pattern
+        {
+            SSource source[3];
+            GenIntrinsicInst* instruction;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                pass->emitDP4A(instruction, source, modifier);
+            }
+        };
+
+        // Attempt to find a pattern like this:
+        // %scalar52.6.2474 = extractelement <4 x i8> %145, i32 0
+        // %scalar53.6.2475 = extractelement <4 x i8> % 145, i32 1
+        // %scalar54.6.2476 = extractelement <4 x i8> % 145, i32 2
+        // %scalar55.6.2477 = extractelement <4 x i8> % 145, i32 3
+        // %simdShuffle.6.2480 = call i8 @llvm.genx.GenISA.WaveShuffleIndex.i8(i8 % scalar52.6.2474, i32 0, i32 0)
+        // %simdShuffle33.6.2481 = call i8 @llvm.genx.GenISA.WaveShuffleIndex.i8(i8 % scalar53.6.2475, i32 0, i32 0)
+        // %simdShuffle34.6.2482 = call i8 @llvm.genx.GenISA.WaveShuffleIndex.i8(i8 % scalar54.6.2476, i32 0, i32 0)
+        // %simdShuffle35.6.2483 = call i8 @llvm.genx.GenISA.WaveShuffleIndex.i8(i8 % scalar55.6.2477, i32 0, i32 0)
+        // %assembled.vect.6.2484 = insertelement <4 x i8> undef, i8 % simdShuffle.6.2480, i32 0
+        // %assembled.vect56.6.2485 = insertelement <4 x i8> % assembled.vect.6.2484, i8 % simdShuffle33.6.2481, i32 1
+        // %assembled.vect57.6.2486 = insertelement <4 x i8> % assembled.vect56.6.2485, i8 % simdShuffle34.6.2482, i32 2
+        // %assembled.vect58.6.2487 = insertelement <4 x i8> % assembled.vect57.6.2486, i8 % simdShuffle35.6.2483, i32 3
+        // %astype.i45.6.2489 = bitcast <4 x i8> % assembled.vect58.6.2487 to i32
+        // %call.i4738.6.2490 = call i32 @llvm.genx.GenISA.dp4a.uu(i32 % call.i4738.6.3.1, i32 % astype.i45.6.2489, i32 % 135)
+        // %call.i1239.6.2492 = call i32 @llvm.genx.GenISA.dp4a.uu(i32 % call.i1239.6.3.1, i32 % astype.i45.6.2489, i32 16843009)
+        //
+        // If the pattern is found, we can avoid creating extra movs by changing the source of the dp4a
+        // to use the input from the bitcast instead of using the result of the bitcast.
+        // This pattern only happens if the WaveShuffleIndex uses 0,0 for the arguments.
+        if (llvm::BitCastInst* bcInst = llvm::dyn_cast<BitCastInst> (I.getOperand(1)))
+        {
+            llvm::CallInst* waveInst[4];
+            llvm::InsertElementInst* insertInst[4];
+
+            // Find the 4 x insertelement
+            insertInst[3] = llvm::dyn_cast<InsertElementInst>(bcInst->getOperand(0));
+            if (insertInst[3]) {
+                for (int i = 2; i >= 0; i--) {
+                    insertInst[i] = llvm::dyn_cast<InsertElementInst>(insertInst[i + 1]->getOperand(0));
+                    if (!insertInst[i])
+                        break;
+                }
+            }
+
+            // Find the 4 x WaveShuffleIndex
+            for (int i = 3; i >= 0; i--) {
+                if (!insertInst[i])
+                    break;
+                CallInst* temp = llvm::dyn_cast<CallInst>(insertInst[i]->getOperand(1));
+                if (!temp)
+                    break;
+
+                llvm::GenIntrinsicInst* intrin = llvm::dyn_cast<llvm::GenIntrinsicInst>(temp);
+                if (!intrin || intrin->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveShuffleIndex)
+                    break;
+                waveInst[i] = temp;
+            }
+
+            // Check to see if the WaveShuffleIndex uses 0,0
+            llvm::Constant* wavesrc1, * wavesrc2;
+            if (waveInst[0]) {
+                wavesrc1 = llvm::dyn_cast<llvm::Constant>(waveInst[0]->getOperand(1));
+                wavesrc2 = llvm::dyn_cast<llvm::Constant>(waveInst[0]->getOperand(2));
+            }
+
+            if (wavesrc1 && wavesrc2 && wavesrc1->isZeroValue() && wavesrc2->isZeroValue())
+            {
+                if (llvm::ExtractElementInst* wavesrc0 = llvm::dyn_cast<llvm::ExtractElementInst>(waveInst[0]->getOperand(0)))
+                {
+                    llvm::ExtractElementInst* extractInst[4];
+
+                    // Find the 4 x extractelement
+                    extractInst[0] = llvm::dyn_cast<llvm::ExtractElementInst>(waveInst[0]->getOperand(0));
+                    extractInst[1] = llvm::dyn_cast<llvm::ExtractElementInst>(waveInst[1]->getOperand(0));
+                    extractInst[2] = llvm::dyn_cast<llvm::ExtractElementInst>(waveInst[2]->getOperand(0));
+                    extractInst[3] = llvm::dyn_cast<llvm::ExtractElementInst>(waveInst[3]->getOperand(0));
+
+                    if (extractInst[0] && extractInst[1] && extractInst[2] && extractInst[3] &&
+                        extractInst[0]->getOperand(0) == extractInst[1]->getOperand(0) &&
+                        extractInst[0]->getOperand(0) == extractInst[2]->getOperand(0) &&
+                        extractInst[0]->getOperand(0) == extractInst[3]->getOperand(0))
+                    {
+                        MatchDp4a* pattern = new (m_allocator) MatchDp4a();
+                        pattern->instruction = &I;
+                        pattern->source[0] = GetSource(I.getOperand(0), false, false);
+
+                        // set regioning to: <0;1,0>, as if we were still going to use the result of the WaveShuffleIndex
+                        llvm::BitCastInst* bitCast = llvm::dyn_cast<BitCastInst>(extractInst[0]->getOperand(0));
+                        if (bitCast)
+                        {
+                            pattern->source[1] = GetSource(bitCast->getOperand(0), false, false);
+                            pattern->source[1].region[0] = 0;
+                            pattern->source[1].region[1] = 1;
+                            pattern->source[1].region[2] = 0;
+                            pattern->source[1].region_set = true;
+
+                            pattern->source[2] = GetSource(I.getOperand(2), false, false);
+                            AddPattern(pattern);
+                            return true;
+                        }
+
+                    }
+                }
+            }
+        }
+        return MatchSingleInstruction(I);
+    }
 
     bool CodeGenPatternMatch::MatchLogicAlu(llvm::BinaryOperator& I)
     {

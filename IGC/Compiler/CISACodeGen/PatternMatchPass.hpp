@@ -212,6 +212,7 @@ namespace IGC
         bool MatchCondModifier(llvm::CmpInst& I);
         bool MatchBoolOp(llvm::BinaryOperator& I);
         bool MatchRotate(llvm::Instruction& I);
+        bool MatchDp4a(llvm::GenIntrinsicInst& I);
         bool MatchLogicAlu(llvm::BinaryOperator& I);
         bool MatchRsqrt(llvm::BinaryOperator& I);
         bool MatchLoadStorePointer(llvm::Instruction& I, llvm::Value& ptrVal);
