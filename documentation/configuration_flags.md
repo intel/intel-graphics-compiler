@@ -50,6 +50,7 @@ $ export IGC_ShaderDumpEnable=1
 - **EnableVISADumpCommonISA** - Enable VISA Dump Common ISA
 - **EnableVISAOutput** - Enable VISA GenISA output
 - **EnableVISASlowpath** - Enable VISA Slowpath. Needed to dump .visaasm
+- **FunctionControl** - Control function inlining/subroutine/stackcall. See value defs in igc_flags.hpp
 - **ForceRPE** - Force RPE (RegisterEstimator) computation if > 0. If 2, force RPE per inst
 - **ForceOCLSIMDWidth** - Force using specified SIMD width. Possible values: 0 (off), 8, 16, 32.
 - **InterleaveSourceShader** - Interleave the source shader in asm dump
