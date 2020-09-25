@@ -659,8 +659,6 @@ static Error makeOptionError(const opt::Arg &A, const opt::ArgList &Opts,
 
 static Error fillApiOptions(const opt::ArgList &ApiOptions,
                             vc::CompileOptions &Opts) {
-  if (ApiOptions.hasArg(vc::options::OPT_igcmc))
-    Opts.OptLevel = vc::OptimizerLevel::None;
   if (ApiOptions.hasArg(vc::options::OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
 
