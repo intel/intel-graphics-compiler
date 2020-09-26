@@ -143,6 +143,7 @@ class KernelArgInfoBuilder
                 default:
                     IGC_ASSERT_EXIT_MESSAGE(0, "implicit args cannot appear in kernel arg info");
             }
+            return NotSpecified;
         }
     };
     struct TypeQualifiers
