@@ -1007,74 +1007,121 @@ SendDesc BinaryEncodingIGA::getIGASendDesc(G4_INST* sendInst) const
     return desc;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// ExDesc encoding
+static SendDesc encodeExDescSendUnary(
+    G4_INST* sendInst, int& xlen, InstOptSet& extraOpts)
+{
+    SendDesc exDescIga;
+
+    // old unary packed send
+    // exDesc is stored in SendMsgDesc and must be IMM
+    G4_SendMsgDescriptor* descG4 = sendInst->getMsgDesc();
+    assert(descG4 != nullptr && "null msg desc");
+
+    exDescIga.type = SendDesc::Kind::IMM;
+    uint32_t tVal = descG4->getExtendedDesc();
+
+    // We must clear the funcID in the extended message.
+    // In Gen12+ this is part of the EU encoding, not the descriptor.
+    // vISA/G4IR still treat it as part of the descriptor.
+    if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::GEN12)
+    {
+        tVal = tVal & 0xFFFFFFF0;
+    }
+    exDescIga.imm = tVal;
+
+    // non-split send implies Src1.Length == 0
+    xlen = 0;
+
+    return exDescIga;
+}
+
+////////////////////////////////////////////////////////////////////
+// these handle binary sends (old "sends" and GEN12+ "send"
+//
+SendDesc BinaryEncodingIGA::encodeExDescImm(
+    G4_INST* sendInst,
+    int& xlen,
+    InstOptSet& extraOpts) const
+{
+    SendDesc exDescIga;
+
+    G4_Operand* exDescG4 = sendInst->getSrc(3);
+    G4_SendMsgDescriptor* descG4 = sendInst->getMsgDesc();
+    assert(descG4 != nullptr && "null msg desc");
+
+    xlen = (int)descG4->extMessageLength();
+    //
+    exDescIga.type = SendDesc::Kind::IMM;
+    exDescIga.imm = (uint32_t)exDescG4->asImm()->getImm();
+    // We must clear the funcID in the extended message for Gen12+
+    // because it is part of the EU instruction, not the descriptor,
+    // and, vISA/G4-IR still thinks of it as part of the descriptor.
+    //
+    // Ditto for the EOT bit which is moved out of extDesc
+    //
+    // The extended message format
+    // struct ExtendedMsgDescLayout {
+    //    uint32_t funcID : 4;       // bit 0:3 << not part of ExDesc
+    //    uint32_t unnamed1 : 1;     // bit 4
+    //    uint32_t eot : 1;          // bit 5 << not part of ExDesc
+    //    uint32_t extMsgLength : 5; // bit 6:10
+    //    uint32_t unnamed2 : 5;     // bit 11:15
+    //    uint32_t extFuncCtrl : 16; // bit 16:31
+    // };
+    if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::GEN12)
+    {
+        exDescIga.imm &= 0xFFFFFFC0;
+    }
+
+    return exDescIga;
+}
+
+iga::SendDesc BinaryEncodingIGA::encodeExDescRegA0(
+    G4_INST* sendInst, int& xlen, iga::InstOptSet& extraOpts) const
+{
+    SendDesc exDescIga;
+
+    G4_Operand* exDescG4 = sendInst->getSrc(3);
+    const G4_SendMsgDescriptor* descG4 = sendInst->getMsgDesc();
+    assert(descG4 != nullptr && "null msg desc");
+
+    exDescIga.type = SendDesc::Kind::REG32A;
+    exDescIga.reg.regNum = 0; // must be a0
+    bool valid = false;
+    exDescIga.reg.subRegNum =
+        (uint16_t)exDescG4->asSrcRegRegion()->ExSubRegNum(valid);
+    assert(valid && "invalid subreg");
+
+
+    // G4 IR keeps Src1.Length (xlen) separate.  So it's known,
+    xlen = (int)descG4->extMessageLength();
+
+    return exDescIga;
+}
+
 SendDesc BinaryEncodingIGA::getIGASendExDesc(
     G4_INST* sendInst, int& xlen, iga::InstOptSet& extraOpts) const
 {
-    SendDesc exDescArg;
+    assert(sendInst->isSend() && "expect send inst");
 
     if (sendInst->isEOT())
         extraOpts.add(InstOpt::EOT);
 
     xlen = -1;
 
-    assert(sendInst->isSend() && "expect send inst");
     if (sendInst->isSplitSend())
     {
-        G4_Operand* exDesc = sendInst->getSrc(3);
-        if (exDesc->isImm())
-        {
-            G4_SendMsgDescriptor* g4SendMsg = sendInst->getMsgDesc();
-            xlen = (int)g4SendMsg->extMessageLength();
-            //
-            exDescArg.type = SendDesc::Kind::IMM;
-            uint32_t tVal = (uint32_t)exDesc->asImm()->getImm();
-            //We must clear the funcID in the extended message for Gen12+
-            //It's because the explicit encoding is applied, no mapping anymore.
-            //ditto for the EOT bit which is moved out of extDesc
-            //The extended message format
-            //struct ExtendedMsgDescLayout {
-            //    uint32_t funcID : 4;       // bit 0:3 << not part of ExDesc
-            //    uint32_t unnamed1 : 1;     // bit 4
-            //    uint32_t eot : 1;          // bit 5 << not part of ExDesc
-            //    uint32_t extMsgLength : 5; // bit 6:10
-            //    uint32_t unnamed2 : 5;     // bit 11:15
-            //    uint32_t extFuncCtrl : 16; // bit 16:31
-            //};
-            if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::GEN12)
-            {
-                tVal &= 0xFFFFFFC0;
-            }
-            exDescArg.imm = tVal;
-        }
-        else
-        {
-            exDescArg.type = SendDesc::Kind::REG32A;
-            exDescArg.reg.regNum = 0; // must be a0
-            bool valid = false;
-            exDescArg.reg.subRegNum =
-                (uint8_t)exDesc->asSrcRegRegion()->ExSubRegNum(valid);
-            assert(valid && "invalid subreg");
-        }
+        const G4_Operand* exDesc = sendInst->getSrc(3);
+        return exDesc->isImm() ?
+            encodeExDescImm(sendInst, xlen, extraOpts) :
+            encodeExDescRegA0(sendInst, xlen, extraOpts);
     }
-    else // old unary packed send
+    else
     {
-        // exDesc is stored in SendMsgDesc and must be IMM
-        G4_SendMsgDescriptor* sendDesc = sendInst->getMsgDesc();
-        assert(sendDesc != nullptr && "null msg desc");
-        exDescArg.type = SendDesc::Kind::IMM;
-        uint32_t tVal = sendDesc->getExtendedDesc();
-
-        // We must clear the funcID in the extended message
-        if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::GEN12)
-        {
-            tVal = tVal & 0xFFFFFFF0;
-        }
-        exDescArg.imm = tVal;
-        // non-split send implies Src1.Length == 0
-        xlen = 0;
+        return encodeExDescSendUnary(sendInst, xlen, extraOpts);
     }
-
-    return exDescArg;
 }
 
 void *BinaryEncodingIGA::EmitBinary(uint32_t& binarySize)
