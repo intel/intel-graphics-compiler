@@ -279,7 +279,7 @@ namespace IGC
         {
             if (simd32NoSpill)
             {
-                if (occu32 >= occu16)
+                if (occu32 >= occu16 && occu32 >= occu8)
                 {
                     simdMode = SIMDMode::SIMD32;
                     return m_simdEntries[2];
@@ -291,7 +291,7 @@ namespace IGC
 
             if (simd16NoSpill)
             {
-                if (occu16 >= occu32)
+                if (occu16 >= occu8 && occu16 >= occu32)
                 {
                     simdMode = SIMDMode::SIMD16;
                     return m_simdEntries[1];
