@@ -1104,10 +1104,12 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       // Get the max legal size for the wrregion.
       ThisWidth = std::min(
           ThisWidth,
-          R.getLegalSize(StartIdx, false /*Allow2D*/,
-                         cast<VectorType>(i->Inst->getOperand(0)->getType())
-                             ->getNumElements(),
-                         ST, &(Baling->AlignInfo)));
+         R.getLegalSize(
+              StartIdx, false /*Allow2D*/,
+              cast<VectorType>(i->Inst->getOperand(0)->getType())
+                             ->getNumElements(), ST,
+              &(Baling->AlignInfo)));
+
       if (!Unbale && R.Mask && PredMinWidth > ThisWidth) {
         // The min predicate size (from this wrregion) is bigger than the
         // legal size for this wrregion. We have to rewrite the wrregion as:
@@ -1175,11 +1177,16 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
           R.Indirect && !R.isMultiIndirect()) {
         // This is a single indirect rdregion where we failed to make the
         // valid size any more than one. If possible, increase the valid size
-        // to 4 or 8 on the assumption that we are going to convert it to a
-        // multi indirect.
+        // that we are going to convert it to a multi indirect. Only execution
+        // sizes less then 8 are converted to multi-indirect for now.
         auto NewThisWidth = 1 << genx::log2(R.Width - StartIdx % R.Width);
         if (NewThisWidth >= 4) {
-          ThisWidth = std::min(NewThisWidth, 8);
+          unsigned GRFsPerIndirect =
+              genx::getNumGRFsPerIndirectForRegion(R, ST, true /*Allow2D*/);
+          int MaxThisNewWidth =
+              (GRFsPerIndirect * ST->getGRFWidth()) / R.ElementBytes;
+          ThisWidth =
+              std::min(NewThisWidth, std::min(MaxThisNewWidth, MaxExecSize));
           MustSplit = true;
         }
       }
@@ -1803,13 +1810,15 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     Region R(BInst.Inst, BInst.Info);
     // Check whether this is an indirect operand that was allowed only
     // because we assumed that we are going to convert it to a multi
-    // indirect.
+    // indirect. Only execution widths less then 8 are converted to
+    // mutli-indirect for now. This can be relaxed
     bool ConvertToMulti =
-        R.Indirect && Width != 1 &&
-        R.getLegalSize(StartIdx, true /*Allow2D*/,
-                       cast<VectorType>(BInst.Inst->getOperand(0)->getType())
-                           ->getNumElements(),
-                       ST, &(Baling->AlignInfo)) == 1;
+       R.Indirect && Width != 1 && Width <= 8 &&
+        R.getLegalSize(
+            StartIdx, true /*Allow2D*/,
+            cast<VectorType>(BInst.Inst->getOperand(0)->getType())
+                           ->getNumElements(), ST,
+            &(Baling->AlignInfo)) == 1;
 
     R.getSubregion(StartIdx, Width);
     // The region to read from. This is normally from the input region baled

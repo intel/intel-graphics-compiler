@@ -103,6 +103,8 @@ public:
   Alignment add(Alignment Other) const;
   // Mul one Alignment with another Alignment
   Alignment mul(Alignment Other) const;
+  // Logical and Alignment with constant integer
+  Alignment logicalAnd(ConstantInt *CI) const;
 
   // accessors
   bool isUncomputed() const { return LogAlign == 0xffffffff; }

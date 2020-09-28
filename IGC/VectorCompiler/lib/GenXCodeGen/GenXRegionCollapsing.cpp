@@ -113,6 +113,7 @@ private:
   Value *insertOp(Instruction::BinaryOps Opcode, Value *Lhs, Value *Rhs,
                   const Twine &Name, Instruction *InsertBefore,
                   const DebugLoc &DL);
+  bool isSingleElementRdRExtract(Instruction *I);
 };
 
 }// end namespace llvm
@@ -579,6 +580,21 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd)
       LLVM_DEBUG(dbgs() << "Cannot normalize element type\n");
       return;
     }
+
+    // If it's a signle element extract from an indirect region
+    // then check if there exist some other extracts
+    if (OuterR.Indirect && (OuterR.NumElements != 1) &&
+        isSingleElementRdRExtract(InnerRd)) {
+      auto NumExtracts = llvm::count_if(OuterRd->uses(), [this](Use &U) {
+        return isSingleElementRdRExtract(cast<Instruction>(U.getUser()));
+      });
+      // If there are some more extracts except this one (InnerRd)
+      // then not combine these regions to prevent generation
+      // of extra address conversions for a combined region
+      if (NumExtracts > 1)
+        return;
+    }
+
     Region CombinedR;
     if (!combineRegions(&OuterR, &InnerR, &CombinedR))
       return; // cannot combine
@@ -1463,3 +1479,9 @@ Value *GenXRegionCollapsing::insertOp(Instruction::BinaryOps Opcode, Value *Lhs,
   return Inst;
 }
 
+bool GenXRegionCollapsing::isSingleElementRdRExtract(Instruction *I) {
+  if (!GenXIntrinsic::isRdRegion(I))
+    return false;
+  Region R = Region::getWithOffset(I, /*WantParentWidth=*/true);
+  return R.NumElements == 1 && !R.Indirect;
+}
