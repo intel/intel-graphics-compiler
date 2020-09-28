@@ -62,7 +62,6 @@ namespace vISA
     private:
         G4_Kernel& kernel;
         IR_Builder& builder;
-        LivenessAnalysis& l;
         PhyRegsLocalRA* pregs = nullptr;
         std::vector<LSLiveRange*> globalLiveIntervals;
         std::vector<LSLiveRange*> preAssignedLiveIntervals;
@@ -84,8 +83,6 @@ namespace vISA
         void linearScanMarkReferencesInOpnd(G4_Operand* opnd, bool isEOT, INST_LIST_ITER inst_it, unsigned int pos);
         void linearScanMarkReferencesInInst(INST_LIST_ITER inst_it);
         void linearScanMarkReferences(unsigned int& numRowsEOT);
-        void markBackEdges();
-        void getGlobalDeclares();
         void preRAAnalysis();
         void saveRegs(unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr, unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void saveActiveRegs(std::vector<bool>& saveRegs, unsigned startReg, unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
@@ -108,18 +105,18 @@ namespace vISA
         void setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declare* dcl, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
         void setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcIdx, G4_Declare* dcl, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
         void generateInputIntervals(G4_Declare* topdcl, G4_INST* inst, std::vector<uint32_t>& inputRegLastRef, PhyRegsLocalRA& initPregs, bool avoidSameInstOverlap);
-        void calculateInputIntervalsGlobal(PhyRegsLocalRA& initPregs, std::list<vISA::G4_BB*>& bbList);
-        void calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals);
-        void calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
-        void calculateLiveOutIntervals(G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals);
-        void calculateLiveIntervalsGlobal(G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
+        void calculateInputIntervalsGlobal(LivenessAnalysis* l, PhyRegsLocalRA& initPregs, std::list<vISA::G4_BB*>& bbList);
+        void calculateLiveInIntervals(LivenessAnalysis* l, G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals);
+        void calculateCurrentBBLiveIntervals(LivenessAnalysis* l, G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
+        void calculateLiveOutIntervals(LivenessAnalysis* l, G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals);
+        void calculateLiveIntervalsGlobal(LivenessAnalysis* l, G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
         void printLiveIntervals(std::vector<LSLiveRange*>& liveIntervals);
         void printInputLiveIntervalsGlobal();
         bool isUseUnAvailableRegister(uint32_t startReg, uint32_t regNum);
         bool assignEOTLiveRanges(IR_Builder& builder, std::vector<LSLiveRange*>& liveIntervals);
 
         // scratch fields used for parameter passing
-        G4_BB* curBB_ = nullptr;
+        G4_BB* curBB = nullptr;
         int globalIndex = 0;
         uint32_t nextSpillOffset = 0;
 
@@ -127,7 +124,7 @@ namespace vISA
         static void getRowInfo(int size, int& nrows, int& lastRowSize);
         static unsigned int convertSubRegOffFromWords(G4_Declare* dcl, int subregnuminwords);
 
-        LinearScanRA(BankConflictPass&, GlobalRA&, LivenessAnalysis&);
+        LinearScanRA(BankConflictPass&, GlobalRA&);
         void allocForbiddenVector(LSLiveRange* lr);
         bool doLinearScanRA();
         void undoLinearScanRAAssignments();
@@ -158,8 +155,6 @@ private:
     bool assigned;
     bool preAssigned;
     bool useUnAvailableReg;
-    bool isGlobal;
-    bool isActive;
 
     IR_Builder& builder;
 
@@ -180,18 +175,12 @@ public:
         pregoff = 0;
         assigned = false;
         preAssigned = false;
-        isGlobal = false;
         eot = false;
         useUnAvailableReg = false;
         regionID = -1;
-        isActive = false;
     }
 
-    void setActiveLR(bool a) { isActive = a; }
-    bool isActiveLR() { return isActive; }
     const bool* getForbidden() { return forbidden; }
-    bool isGlobalLR() { return isGlobal; }
-    void setGlobalLR(bool g) { isGlobal = g; }
     void setForbidden(bool* f) { forbidden = f; }
     void markForbidden(int reg, int numReg)
     {
@@ -207,9 +196,9 @@ public:
     void setRegionID(int id) { regionID = id; }
     int getRegionID() { return regionID; }
     // A reference to this live range exists in bb basic block, record it
-    void markIndirectRef() { isIndirectAccess = true; }
+    void recordRef(G4_BB*);
 
-    void recordRef(G4_BB* bb, LivenessAnalysis* l);
+    void markIndirectRef() { isIndirectAccess = true; }
 
     bool isGRFRegAssigned();
 
@@ -327,6 +316,7 @@ namespace vISA
         void freeAllocedRegs(LSLiveRange*, bool);
         void updateGlobalActiveList(LSLiveRange* lr);
         bool insertLiveRange(std::list<LSLiveRange*>* liveIntervals, LSLiveRange* lr);
+        bool shouldSpillRegisterLinearScan(G4_Declare* dcl) const;
         bool canBeSpilledLR(LSLiveRange* tlr, LSLiveRange* lr, int GRFNum);
         int findSpillCandidate(LSLiveRange* tlr);
         void freeSelectedRegistsers(int startGRF, LSLiveRange* tlr, std::list<LSLiveRange*>& spillLRs);

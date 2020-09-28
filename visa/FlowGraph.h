@@ -277,8 +277,6 @@ class G4_BB
     // indicates if the block is part of a natural loop or not
     bool inNaturalLoop;
     bool hasSendInBB;
-    bool backEdgeIn;
-    bool backEdgeOut;
 
     // indicate the nest level of the loop
     unsigned char loopNestLevel;
@@ -406,7 +404,7 @@ public:
         id(i), preId(0), rpostId(0),
         traversal(0), beforeCall(NULL),
         afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
-        inNaturalLoop(false), hasSendInBB(false), backEdgeIn(false), backEdgeOut(false), loopNestLevel(0), scopeID(0),
+        inNaturalLoop(false), hasSendInBB(false), loopNestLevel(0), scopeID(0),
         divergent(false), physicalPred(NULL), physicalSucc(NULL),
         parent(fg), instList(alloc)
     {
@@ -450,10 +448,6 @@ public:
 
     void     setSendInBB(bool val)        { hasSendInBB = val; }
     bool     isSendInBB()                { return hasSendInBB; }
-    void     setBackEdgeIn(bool val) { backEdgeIn = val; }
-    bool     hasBackEdgeIn() { return backEdgeIn; }
-    void     setBackEdgeOut(bool val) { backEdgeOut = val; }
-    bool     hasBackEdgeOut() { return backEdgeOut; }
     void     setNestLevel()                   {loopNestLevel ++;}
     unsigned char getNestLevel()              {return loopNestLevel;}
     void     resetNestLevel()                 { loopNestLevel = 0; }
