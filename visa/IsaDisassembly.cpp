@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
 
+#include "IGC/common/StringMacros.hpp"
 #include <cstdint>
 #include <cctype>
 #include <list>

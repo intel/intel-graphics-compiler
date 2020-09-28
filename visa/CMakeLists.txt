@@ -105,11 +105,20 @@ endif()
 # Set up the bison and flex targets. These commands will set up commands to generate the appropriate
 # source files from the input grammars. It will also set up the dependencies correctly for any
 # library or executable that uses the generated source
-BISON_TARGET(CISAParser CISA.y ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.cpp COMPILE_FLAGS "-vt -p CISA")
-FLEX_TARGET(CISAScanner CISA.l ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.cpp COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
-ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
 
-add_custom_target(CISAScanner_target DEPENDS ${FLEX_CISAScanner_OUTPUTS} ${BISON_CISAParser_OUTPUTS})
+set(bison_output_file ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.cpp)
+set(flex_output_file ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.cpp)
+
+BISON_TARGET(CISAParser CISA.y ${bison_output_file} COMPILE_FLAGS "-vt -p CISA")
+FLEX_TARGET(CISAScanner CISA.l ${flex_output_file} COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
+ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
+set(CISAScanner_dependencies)
+
+list(APPEND CISAScanner_dependencies
+    ${FLEX_CISAScanner_OUTPUTS}
+    ${BISON_CISAParser_OUTPUTS})
+
+add_custom_target(CISAScanner_target DEPENDS ${CISAScanner_dependencies})
 
 if (MSVC)
   #set up standard defines from the common WDK path.

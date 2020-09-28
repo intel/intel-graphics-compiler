@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * external linkage alone with their associated enums.
  */
 
+#include "IGC/common/StringMacros.hpp"
 #include "Common_ISA.h"
 #include "IsaDescription.h"
 

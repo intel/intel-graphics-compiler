@@ -102,6 +102,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 //===----------------------------------------------------------------------===//
 
+#include "IGC/common/debug/DebugMacros.hpp"
 #include "GenX.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
@@ -865,7 +866,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
       }
       Args[DataIdx] = NewVec;
     }
-	// atomic source operands
+    // atomic source operands
     if (AtomicSrcIdx != NONEED) {
       for (int SrcI = 0; SrcI < AtomicNumSrc; ++SrcI) {
         Value *V = CI->getArgOperand(AtomicSrcIdx + SrcI);
@@ -873,7 +874,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
         R.Width = R.NumElements = TargetWidth;
         R.Offset = i * TargetWidth * V->getType()->getScalarSizeInBits()/8; // in bytes
         Args[AtomicSrcIdx + SrcI] = R.createRdRegion(V, "addrsplit", CI, DL);
-	    }
+        }
     }
     // now create the new narrower instruction
     if (NewResult) {

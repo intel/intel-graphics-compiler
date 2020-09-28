@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include "IGC/common/StringMacros.hpp"
 #include "usc.h"
 #include "usc_gen7.h"
 #include "usc_gen9.h"

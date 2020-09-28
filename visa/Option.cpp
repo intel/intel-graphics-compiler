@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 #include "G4_Opcode.h"          // temporarily add to support G4_MAX_SRCS == 3
 #include "DebugInfo.h"
+#include "IGC/common/StringMacros.hpp"
 
 #ifdef _MSC_VER
 // MAX : Disable security enhancements warning (VC2005)
@@ -316,7 +317,7 @@ void Options::showUsage(std::ostream& output)
 void Options::initialize_vISAOptionsToStr(void) {
    #undef DEF_VISA_OPTION
    #define DEF_VISA_OPTION(ENUM, TYPE, STR, ERROR_MSG, DEFAULT_VAL) \
-    vISAOptionsToStr[ENUM] = #ENUM;
+    vISAOptionsToStr[ENUM] = IGC_MANGLE(#ENUM);
    #include "VISAOptions.def"
 }
 

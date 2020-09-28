@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include "IGC/common/StringMacros.hpp"
 #include "3d/common/iStdLib/types.h"
 
 #include "AdaptorCommon/API/igc.h"

@@ -97,6 +97,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <limits>
 #include "Probe/Assertion.h"
+#include "IGC/common/StringMacros.hpp"
+#include "IGC/common/debug/DebugMacros.hpp"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;

@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FlowGraph.h"
 #include "DebugInfo.h"
 #include "IsaVerification.h"
+#include "IGC/common/StringMacros.hpp"
 
 using namespace std;
 using namespace vISA;
@@ -1065,7 +1066,7 @@ bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNum, const char *var, int64_
     do { \
         int __status = m_kernel->FUNC(__VA_ARGS__); \
         if (__status != VISA_SUCCESS) { \
-            RecordParseError(lineNum, #FUNC, ": unknown error (internal line: ", __LINE__, ")"); \
+            RecordParseError(lineNum, IGC_MANGLE(#FUNC), ": unknown error (internal line: ", __LINE__, ")"); \
             return false; \
         } \
     } while (0)
@@ -1074,7 +1075,7 @@ bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNum, const char *var, int64_
     do { \
         int __status = m_kernel->FUNC(__VA_ARGS__); \
         if (__status != VISA_SUCCESS) { \
-            RecordParseError(lineNum, #FUNC, ": unknown error (internal line: ", __LINE__, ")"); \
+            RecordParseError(lineNum, IGC_MANGLE(#FUNC), ": unknown error (internal line: ", __LINE__, ")"); \
             return nullptr; \
         } \
     } while (0)

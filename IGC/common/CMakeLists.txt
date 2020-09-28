@@ -66,6 +66,7 @@ set(IGC_BUILD__HDR__common
 
     "${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntrinsicAnnotator.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/StringMacros.hpp"
   )
 if(LLVM_ON_WIN32)
   set(IGC_BUILD__HDR_Win__common

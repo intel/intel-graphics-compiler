@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "IGC/common/StringMacros.hpp"
 #include "visa_igc_common_header.h"
 #include "common.h"
 #include "G4_Opcode.h"

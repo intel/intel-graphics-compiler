@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "IGC/common/StringMacros.hpp"
 #include "EmitVISAPass.hpp"
 #include "CISABuilder.hpp"
 #include "VertexShaderCodeGen.hpp"

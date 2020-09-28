@@ -54,6 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "JitterDataStruct.h"
 #include "Metadata.h"
 #include "BitSet.h"
+#include "IGC/common/StringMacros.hpp"
 
 #include <memory>
 

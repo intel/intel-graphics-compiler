@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // code directly from LLVM IR.
 //
 //===----------------------------------------------------------------------===//
+#include "IGC/common/StringMacros.hpp"
 #include "GenXIntrinsics.h"
 #include "IsaDescription.h"
 #include "visa_igc_common_header.h"
