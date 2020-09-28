@@ -49,8 +49,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 
-#include "llvmWrapper/IR/InstrTypes.h"
-
 #include "Probe/Assertion.h"
 #include <iterator>
 
@@ -1806,17 +1804,4 @@ bool genx::breakConstantExprs(Function *F) {
     }
   }
   return Modified;
-}
-
-unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
-                                              const GenXSubtarget *ST,
-                                              bool Allow2D) {
-  IGC_ASSERT(R.Indirect && "Indirect region expected");
-  IGC_ASSERT(ST);
-  if (ST->hasIndirectGRFCrossing() &&
-      // SKL+. See if we can allow GRF crossing.
-      (Allow2D || !R.is2D())) {
-    return 2;
-  }
-  return 1;
 }

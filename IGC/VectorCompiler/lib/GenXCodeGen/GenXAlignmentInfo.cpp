@@ -141,10 +141,8 @@ Alignment AlignmentInfo::get(Value *V)
     Alignment A(0, 0); // assume unknown
     if (BinaryOperator *BO = dyn_cast<BinaryOperator>(WorkInst)) {
       A = Alignment(); // assume uncomputed
-      auto *Op0 = BO->getOperand(0);
-      auto *Op1 = BO->getOperand(1);
-      Alignment A0 = getFromInstMap(Op0);
-      Alignment A1 = getFromInstMap(Op1);
+      Alignment A0 = getFromInstMap(BO->getOperand(0));
+      Alignment A1 = getFromInstMap(BO->getOperand(1));
       if (!A0.isUncomputed() && !A1.isUncomputed()) {
         switch (BO->getOpcode()) {
           case Instruction::Add:
@@ -166,17 +164,9 @@ Alignment AlignmentInfo::get(Value *V)
             } else
               A = Alignment::getUnknown();
             break;
-          case Instruction::And:
-            if (auto *CI0 = dyn_cast<ConstantInt>(Op0)) {
-              A = A1.logicalAnd(CI0);
-            } else if (auto *CI1 = dyn_cast<ConstantInt>(Op1)) {
-              A = A0.logicalAnd(CI1);
-            } else
-              A = Alignment::getUnknown();
-            break;
-          default:
-            A = Alignment::getUnknown();
-            break;
+        default:
+          A = Alignment::getUnknown();
+          break;
         }
       }
     } else if (CastInst *CI = dyn_cast<CastInst>(WorkInst)) {
@@ -373,24 +363,6 @@ Alignment Alignment::mul(Alignment Other) const
       (unsigned)countTrailingZeros(ExtraBits2, ZB_Width));
   }
   return Alignment(MinLogAlign, ExtraBits2 & ((1 << MinLogAlign) - 1));
-}
-
-/***********************************************************************
- * logicalAnd : logical and two alignments. Only constant int supported.
- */
-Alignment Alignment::logicalAnd(ConstantInt *CI) const {
-  IGC_ASSERT(!isUncomputed() && CI);
-  // If value doesn't fit into unsigned then be conservative and pretend
-  // that alignement is unknown
-  int64_t Val = CI->getSExtValue();
-  if (Val < std::numeric_limits<int>::min() ||
-      Val > std::numeric_limits<int>::max())
-    return Alignment::getUnknown();
-  unsigned UVal = static_cast<unsigned>(std::abs(Val));
-  unsigned ValLSB = countTrailingZeros(UVal, ZB_Width);
-  // Chop off constant bits according to maximum log align
-  unsigned NewLogAlign = std::max(ValLSB, LogAlign);
-  return Alignment(NewLogAlign, UVal & ((1 << NewLogAlign) - 1));
 }
 
 /***********************************************************************

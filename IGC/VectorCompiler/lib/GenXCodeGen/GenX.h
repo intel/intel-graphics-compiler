@@ -149,8 +149,6 @@ const constexpr unsigned int TotalEMSize = 32;
 const constexpr int G4_MAX_ADDR_IMM = 511;
 const constexpr int G4_MIN_ADDR_IMM = -512;
 
-const constexpr int MaxExecSize = 32;
-
 // Default GRF Width if subtarget is not available
 const constexpr int defaultGRFWidth = 32;
 

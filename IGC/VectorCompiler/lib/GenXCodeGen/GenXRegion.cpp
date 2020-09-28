@@ -361,8 +361,13 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
         // operand or is a 1D source operand (so GenXCisaBuilder can turn it
         // into Nx1 instead of 1xN).  We use Allow2D as a proxy for "is source
         // operand".
-        unsigned GRFsPerIndirect =
-            genx::getNumGRFsPerIndirectForRegion(*this, ST, Allow2D);
+        unsigned GRFsPerIndirect = 1;
+        IGC_ASSERT(ST);
+        if (ST->hasIndirectGRFCrossing() &&
+          // SKL+. See if we can allow GRF crossing.
+            (Allow2D || !is2D())) {
+            GRFsPerIndirect = 2;
+        }
         unsigned Last = (NumElements / Width - 1) * VStride + (Width - 1) * Stride;
         unsigned Max = InputNumElements - Last - 1 + RealIdx;
         unsigned Min = RealIdx;
@@ -373,11 +378,11 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
         else if (MinMaxGRFDiff == 1 && GRFsPerIndirect > 1)
           ElementsToBoundary = ElementsPerGRF - (Max & (ElementsPerGRF - 1));
         // We may be able to refine an indirect region legal width further...
-        if (exactLog2(ParentWidth) >= 0 &&
-            ParentWidth <= GRFsPerIndirect * ElementsPerGRF) {
-          // ParentWidth tells us that a row of our region cannot cross a
-          // possible number of elements addressed by indirect region. Say that
-          // the boundary is at the next multiple of ParentWidth.
+        if (exactLog2(ParentWidth) >= 0
+            && ParentWidth <= ElementsPerGRF) {
+          // ParentWidth tells us that a row of our region cannot cross a GRF
+          // boundary. Say that the boundary is at the next multiple of
+          // ParentWidth.
           ElementsToBoundary = std::max(ParentWidth - RealIdx % ParentWidth,
                 ElementsToBoundary);
         } else if (!isa<VectorType>(Indirect->getType())) {
