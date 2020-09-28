@@ -482,27 +482,11 @@ bool CMABI::runOnSCC(CallGraphSCC &SCC) {
   return Changed;
 }
 
-// Sometimes we can get phi with GEP (or maybe some other inst) as an argument.
-// While GEP's arguments are constants, its OK as GEP is a constant to.
-// But when we replace constants with lokals, GEP becomes a normal instruction,
-// a normal instruction, that is placed before phi - wrong IR, we need to fix
-// it. Here it is fixed.
-static void fixPhiUseIssue(Instruction *Inst) {
-  auto PhiUse = cast<PHINode>(Inst->use_begin()->getUser());
-  auto InstOpNoInPhi = Inst->use_begin()->getOperandNo();
-  IGC_ASSERT(Inst->getParent() == PhiUse->getParent());
-  Inst->removeFromParent();
-  Inst->insertBefore(PhiUse->getIncomingBlock(InstOpNoInPhi)->getTerminator());
-}
-
 // Replace uses of global variables with the corresponding allocas with a
 // specified function.
-//
-// Returns vector of instructions with phi use, that should be later fixed.
-static std::vector<Instruction *>
+static void
 replaceUsesWithinFunction(SmallDenseMap<Value *, Value *> &GlobalsToReplace,
                           Function *F) {
-  std::vector<Instruction *> PhiUseIssueInsts;
   for (auto I = inst_begin(F), E = inst_end(F); I != E; ++I) {
     Instruction *Inst = &*I;
     for (unsigned i = 0, e = Inst->getNumOperands(); i < e; ++i) {
@@ -510,14 +494,7 @@ replaceUsesWithinFunction(SmallDenseMap<Value *, Value *> &GlobalsToReplace,
       if (Iter != GlobalsToReplace.end())
         Inst->setOperand(i, Iter->second);
     }
-    if (Inst->getNumUses() == 1) {
-      auto PhiUse = dyn_cast<PHINode>(Inst->use_begin()->getUser());
-      if (PhiUse && Inst->getParent() == PhiUse->getParent()) {
-        PhiUseIssueInsts.push_back(Inst);
-      }
-    }
   }
-  return PhiUseIssueInsts;
 }
 
 // \brief Create allocas for globals directly used in this kernel and
@@ -544,11 +521,7 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
   }
 
   // Replaces all globals uses within this function.
-  auto PhiUseIssueInsts = replaceUsesWithinFunction(GlobalsToReplace, Fn);
-
-  for (auto InstWithPhiUse : PhiUseIssueInsts) {
-    fixPhiUseIssue(InstWithPhiUse);
-  }
+  replaceUsesWithinFunction(GlobalsToReplace, Fn);
 }
 
 CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
