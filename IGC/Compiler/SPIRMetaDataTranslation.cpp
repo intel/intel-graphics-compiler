@@ -343,8 +343,9 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         for (; coi != coe; ++coi)
         {
             std::string co = *coi;
-            // Compiler options that originate from OpenCL are represented by the same name, without the "-cl" prefix.
-            if (co.find("-cl") == 0)
+            // Compiler options that originate from OpenCL/L0 are represented by the same name, without the "-cl"/"-ze" prefixes.
+            // L0 supports only "-opt-disable" from the options below
+            if (co.find("-cl") == 0 || co.find("-ze") == 0)
             {
                 co.erase(0, 3);
             }

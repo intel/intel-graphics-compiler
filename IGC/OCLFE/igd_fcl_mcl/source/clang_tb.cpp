@@ -1331,6 +1331,7 @@ namespace TC
                             (strcmp(pParam, "-cl-denorms-are-zero") == 0) ||
                             (strcmp(pParam, "-cl-fp32-correctly-rounded-divide-sqrt") == 0) ||
                             (strcmp(pParam, "-cl-opt-disable") == 0) ||
+                            (strcmp(pParam, "-ze-opt-disable") == 0) ||
                             (strcmp(pParam, "-cl-strict-aliasing") == 0) ||
                             (strcmp(pParam, "-cl-mad-enable") == 0) ||
                             (strcmp(pParam, "-cl-no-signed-zeros") == 0) ||
@@ -1356,6 +1357,10 @@ namespace TC
                             (strcmp(pParam, "-dwarf-column-info") == 0) ||
                             (strcmp(pParam, "-cl-intel-no-prera-scheduling") == 0) || //temporary options
                             (strcmp(pParam, "-igc_opts") == 0) || //temporary options
+                            (strcmp(pParam, "-cl-intel-greater-than-4GB-buffer-required") == 0) || //temporary options
+                            (strcmp(pParam, "-ze-opt-greater-than-4GB-buffer-required") == 0) || //temporary options
+                            (strcmp(pParam, "-cl-intel-has-buffer-offset-arg") == 0) || //temporary options
+                            (strcmp(pParam, "-ze-opt-has-buffer-offset-arg") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-debug-info") == 0) ||
                             (strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
                             (strcmp(pParam, "-cl-no-subgroup-ifp") == 0) ||

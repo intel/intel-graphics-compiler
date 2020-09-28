@@ -1183,11 +1183,13 @@ namespace IGC
                     Use32BitPtrArith = true;
                 }
 
-                if (strstr(options, "-intel-greater-than-4GB-buffer-required"))
+                if (strstr(options, "-intel-greater-than-4GB-buffer-required") ||
+                    strstr(options, "-opt-greater-than-4GB-buffer-required"))
                 {
                     IntelGreaterThan4GBBufferRequired = true;
                 }
-                else if (strstr(options, "-intel-has-buffer-offset-arg"))
+                else if (strstr(options, "-intel-has-buffer-offset-arg") ||
+                    strstr(options, "-opt-has-buffer-offset-arg"))
                 {
                     IntelHasBufferOffsetArg = true;
                 }
