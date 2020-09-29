@@ -85,7 +85,6 @@ public:
   bool runOnFunction(Function &F);
 
   void visitAllocaInst(AllocaInst &I);
-  void visitFunction(Function &F);
 
 private:
   bool replacePhi(PHINode *Phi);
@@ -1345,17 +1344,4 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
 
 void GenXThreadPrivateMemory::visitAllocaInst(AllocaInst &I) {
   m_alloca.push_back(&I);
-}
-
-void GenXThreadPrivateMemory::visitFunction(Function &F) {
-  for (auto &Arg : F.args())
-    if (Arg.getType()->isPointerTy() && SVMChecker()(&Arg)) {
-      LLVM_DEBUG(dbgs() << "Switching TPM to SVM: svm arg\n");
-      // TODO: move the name string to vc-intrinsics *MD::useGlobalMem
-      if (!m_useGlobalMem)
-        F.getParent()->addModuleFlag(Module::ModFlagBehavior::Error,
-                                     "genx.useGlobalMem", 1);
-      m_useGlobalMem = true;
-      m_args.push_back(&Arg);
-    }
 }
