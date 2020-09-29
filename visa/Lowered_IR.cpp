@@ -131,10 +131,6 @@ unsigned short G4_SrcRegRegion::ExSubRegNum(bool &valid) {
     return subRegNum;
 }
 
-unsigned short G4_SrcRegRegion::ExIndRegNum(bool &valid) {
-    return base->ExIndRegNum(valid);
-}
-
 unsigned short G4_SrcRegRegion::ExIndSubRegNum(bool &valid) {
     if (base->isRegVar())
     {
@@ -149,22 +145,6 @@ unsigned short G4_SrcRegRegion::ExIndSubRegNum(bool &valid) {
 
 short G4_SrcRegRegion::ExIndImmVal(void) {
     return immAddrOff;
-}
-
-bool G4_SrcRegRegion::ExNegMod(bool &valid) {
-    bool negMod = false;
-    valid = false;
-    switch (mod)
-    {
-    case Mod_Minus:
-    case Mod_Minus_Abs:
-        valid  = true;
-        negMod = true;
-        break;
-    default:
-        break; // Prevent gcc warning
-    }
-    return negMod;
 }
 
 /* G4_DstRegRegion */
@@ -269,10 +249,6 @@ unsigned short G4_DstRegRegion::ExSubRegNum(bool &valid) {
     if (subRegOff == (short)UNDEFINED_SHORT)
         valid = false;
     return subRegNum;
-}
-
-unsigned short G4_DstRegRegion::ExIndRegNum(bool &valid) {
-    return base->ExIndRegNum(valid);
 }
 
 unsigned short G4_DstRegRegion::ExIndSubRegNum(bool &valid) {
