@@ -75,7 +75,7 @@ public:
     return "GenXThreadPrivateMemory";
   }
 
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     ModulePass::getAnalysisUsage(AU);
     AU.addRequired<TargetPassConfig>();
     AU.setPreservesCFG();

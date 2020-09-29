@@ -590,7 +590,7 @@ Region matchMatrixRegionByIndexes(Region FirstRowRegion, ForwardIter FirstIt,
 //                             <3;2,1> vstride=3, width=2, stride=1
 ShuffleVectorAnalyzer::OperandRegionInfo
 ShuffleVectorAnalyzer::getMaskRegionPrefix(int StartIdx) {
-  IGC_ASSERT(StartIdx >= 0 && 
+  IGC_ASSERT(StartIdx >= 0 &&
          StartIdx < static_cast<int>(SI->getShuffleMask().size()) &&
          "Start index is out of bound");
 
@@ -1116,7 +1116,7 @@ void genx::LayoutBlocks(Function &func, LoopInfo &LI)
       if (curLoop) {
         auto hd = curLoop->getHeader();
         if (blk != hd) {
-          // move the block to the beginning of the loop 
+          // move the block to the beginning of the loop
           auto insp = InsPos[hd];
           IGC_ASSERT(insp);
           if (blk != insp) {
@@ -1208,18 +1208,18 @@ void genx::LayoutBlocks(Function &func)
 {
   std::vector<llvm::BasicBlock*> visitVec;
   std::set<llvm::BasicBlock*> visitSet;
-  // Reorder basic block to allow more fall-through 
+  // Reorder basic block to allow more fall-through
   llvm::BasicBlock* entry = &(func.getEntryBlock());
   visitVec.push_back(entry);
   visitSet.insert(entry);
 
   while (!visitVec.empty()) {
     llvm::BasicBlock* blk = visitVec.back();
-    // push in the empty successor 
+    // push in the empty successor
     PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
     if (blk != visitVec.back())
       continue;
-    // push in the other successor 
+    // push in the other successor
     PUSHSUCC(blk, SUCCANYLOOP, SUCCHASINST);
     // pop
     if (blk == visitVec.back()) {
@@ -1597,7 +1597,7 @@ Type &genx::fixDegenerateVectorType(Type &Ty) {
 
 Function *genx::getFunctionPointerFunc(Value *V) {
   Instruction *I = nullptr;
-  for (; I = dyn_cast<CastInst>(V); V = I->getOperand(0))
+  for (; (I = dyn_cast<CastInst>(V)); V = I->getOperand(0))
     ;
   ConstantExpr *CE = nullptr;
   for (; (CE = dyn_cast<ConstantExpr>(V)) &&
