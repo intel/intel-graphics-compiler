@@ -3704,9 +3704,8 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
                                             const DstOpndDesc &DstDesc) {
   bool IsLogic = false;
   ISA_Opcode Opcode = ISA_RESERVED_0;
-
-  Signedness SrcSigned = DONTCARESIGNED;
-  Signedness DstSigned = DONTCARESIGNED;
+  Signedness DstSigned = SIGNED;
+  Signedness SrcSigned = SIGNED;
   unsigned Mod1 = 0;
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
   if (VectorType *VT = dyn_cast<VectorType>(BO->getType()))
@@ -3731,7 +3730,6 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     break;
   case Instruction::AShr:
     Opcode = ISA_ASR;
-    DstSigned = SrcSigned = SIGNED;
     IsLogic = true;
     break;
   case Instruction::LShr:
@@ -3745,7 +3743,6 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     break;
   case Instruction::SDiv:
     Opcode = ISA_DIV;
-    DstSigned = SrcSigned = SIGNED;
     break;
   case Instruction::FDiv: {
     Opcode = ISA_DIV;
@@ -3762,9 +3759,6 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     DstSigned = SrcSigned = UNSIGNED;
     break;
   case Instruction::SRem:
-    DstSigned = SrcSigned = SIGNED;
-    Opcode = ISA_MOD;
-    break;
   case Instruction::FRem:
     Opcode = ISA_MOD;
     break;
@@ -3784,34 +3778,6 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     report_fatal_error("buildBinaryOperator: unimplemented binary operator");
     break;
   }
-
-  // If signedness wasn't set explicitly earlier.
-  if (SrcSigned == DONTCARESIGNED && DstSigned == DONTCARESIGNED) {
-    // Use signed type by default.
-    SrcSigned = DstSigned = SIGNED;
-    Register *R0 = nullptr, *R1 = nullptr;
-    if (Opcode != ISA_INV)
-      R0 = RegAlloc->getRegForValueUntyped(KernFunc, BO->getOperand(0));
-    R1 = RegAlloc->getRegForValueUntyped(KernFunc, BO->getOperand(1));
-
-    // According to basic implicit conversion rules.
-    // "Otherwise (the signedness is different): If the unsigned type has
-    // conversion rank greater than or equal to the rank of the signed type,
-    // then the operand with the signed type is implicitly converted to the
-    // unsigned type." In our case ranks are equal.
-    if (R0 || R1) {
-      bool UseUnsigned = false;
-      Signedness R0Signed = R0 ? R0->Signed : DONTCARESIGNED;
-      Signedness R1Signed = R1 ? R1->Signed : DONTCARESIGNED;
-      UseUnsigned |= R0Signed == UNSIGNED;
-      UseUnsigned |= R1Signed == UNSIGNED;
-      UseUnsigned |= R0Signed == DONTCARESIGNED && R1Signed == DONTCARESIGNED;
-
-      if (UseUnsigned)
-        SrcSigned = DstSigned = UNSIGNED;
-    }
-  }
-
   VISA_VectorOpnd *Dst = createDestination(BO, DstSigned, Mod, DstDesc);
 
   VISA_VectorOpnd *Src0 = nullptr;
