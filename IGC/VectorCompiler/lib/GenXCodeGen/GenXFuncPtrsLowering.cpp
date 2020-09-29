@@ -367,9 +367,10 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
                                           Scale),
                      OrigV->getType()->getVectorNumElements() / Scale))
                : cast<Value>(Worklist.back()));
-      auto *PTI = CastInst::CreateBitOrPointerCast(
-          getFunctionPointerFunc(EEInst->getVectorOperand()),
-          Type::getInt64Ty(*Ctx), "", EEInst);
+      auto *FptrF = getFunctionPointerFunc(EEInst->getVectorOperand());
+      IGC_ASSERT(FptrF);
+      auto *PTI = CastInst::CreateBitOrPointerCast(FptrF,
+            Type::getInt64Ty(*Ctx), "", EEInst);
       IGC_ASSERT(PTI && "CreateBitOrPointerCast failed!");
       PTI->setDebugLoc(EEInst->getDebugLoc());
       Instruction *NewInsElem = InsertElementInst::Create(
