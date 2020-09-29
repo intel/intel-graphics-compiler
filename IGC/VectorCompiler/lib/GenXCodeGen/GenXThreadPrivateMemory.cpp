@@ -1028,43 +1028,52 @@ void SplitGather(CallInst *CI) {
 }
 
 class SVMChecker {
-  std::map<Value *, int> Visited;
+  static constexpr unsigned LoadsThreshold = 1;
+
+  std::map<Value *, unsigned> Visited;
 
 public:
   // pre-transformation analysis to determine
   // which kind of mem should we place TPM at
-  int checkSVMNecessary(Value *V) {
+  unsigned checkSVMNecessary(Value *V) {
     if (Visited.count(V) > 0)
       return Visited.at(V);
     // do not handle ConstExprs for now
     if (!isa<Instruction>(V) && !isa<Argument>(V))
       return 0;
-    int LoadsMet = 0;
+    unsigned LoadsMet = 0;
     if (isa<LoadInst>(V)) {
       ++LoadsMet;
     } else if (auto *CI = dyn_cast<CallInst>(V)) {
       auto IID = GenXIntrinsic::getAnyIntrinsicID(CI);
       if (IID == GenXIntrinsic::genx_gather_private ||
           IID == GenXIntrinsic::genx_scatter_private ||
+          // TODO: make this analysis interprocedural
           IID == GenXIntrinsic::not_any_intrinsic) {
         // do not process users of priv mem intrinsics
         // or calls to other functions
         return 0;
+      } else if (IID == GenXIntrinsic::genx_svm_gather ||
+                 IID == GenXIntrinsic::genx_svm_scatter) {
+        // Switch to SVM immediately once we meet some previously
+        // generated genx.svm intrinsics communicating with private memory
+        // TODO: handling svm.block_ld/st requires support from replace* and
+        // split* methods as well
+        return LoadsThreshold + 1;
       }
     } else if (isa<PHINode>(V) || isa<ICmpInst>(V)) {
       // do not go thru phi as loops may appear and
       // it doesn't seem necessary for the analysis now
       return 0;
     }
-    int Result = 0;
-    for (auto *U : V->users()) {
+    unsigned Result = 0;
+    for (auto *U : V->users())
       Result = std::max(Result, checkSVMNecessary(U));
-    }
     Visited.insert(std::make_pair(V, Result + LoadsMet));
     return Result + LoadsMet;
   }
 
-  bool operator()(Value *V) { return checkSVMNecessary(V) > 1; }
+  bool operator()(Value *V) { return checkSVMNecessary(V) > LoadsThreshold; }
 };
 
 void GenXThreadPrivateMemory::addUsers(Value *V) {
