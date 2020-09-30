@@ -251,9 +251,13 @@ void CMKernel::createSamplerAnnotation(unsigned argNo)
         IGC_ASSERT_MESSAGE(0, "not yet supported for L0 binary");
 }
 
-void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim, bool isWriteable)
+void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI,
+                                     unsigned dim, vc::ocl::ArgAccessKind Access)
 {
     iOpenCL::ImageArgumentAnnotation* imageInput = new iOpenCL::ImageArgumentAnnotation;
+    // As VC uses only statefull addrmode.
+    constexpr int PayloadPosition = 0;
+    constexpr int ArgSize = 0;
 
     imageInput->AnnotationSize = sizeof(imageInput);
     imageInput->ArgumentNumber = argNo;
@@ -273,12 +277,16 @@ void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,
     imageInput->AccessedByFloatCoords = false;
     imageInput->AccessedByIntCoords = false;
     imageInput->IsBindlessAccess = false;
-    imageInput->PayloadPosition = 0;
-    imageInput->Writeable = isWriteable;
+    imageInput->PayloadPosition = PayloadPosition;
+    imageInput->Writeable = Access != vc::ocl::ArgAccessKind::ReadOnly;
     m_kernelInfo.m_imageInputAnnotations.push_back(imageInput);
 
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-        IGC_ASSERT_MESSAGE(0, "not yet supported for L0 binary");
+    zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+        PayloadPosition, ArgSize, argNo, zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
+        zebin::PreDefinedAttrGetter::ArgAddrSpace::image,
+        getZEArgAccessType(Access));
+    zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI,
+                                               argNo);
 }
 
 void CMKernel::createImplicitArgumentsAnnotation(unsigned payloadPosition)
@@ -535,8 +543,6 @@ static void generatePatchTokens_v2(const vc::ocl::KernelInfo& info,
 
     for (const vc::ocl::ArgInfo& arg : info.Args)
     {
-        const bool isWriteable =
-            arg.AccessKind != vc::ocl::ArgAccessKind::ReadOnly;
         IGC_ASSERT_MESSAGE(arg.Offset >= constantPayloadStart,
                            "Argument overlaps with thread payload");
         const unsigned argOffset = arg.Offset - constantPayloadStart;
@@ -575,17 +581,17 @@ static void generatePatchTokens_v2(const vc::ocl::KernelInfo& info,
             break;
         case ArgKind::Image1d:
             kernel.createImageAnnotation(arg.Index, arg.BTI, /*dim=*/1,
-                                         isWriteable);
+                                         arg.AccessKind);
             kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
             break;
         case ArgKind::Image2d:
             kernel.createImageAnnotation(arg.Index, arg.BTI, /*dim=*/2,
-                                         isWriteable);
+                                         arg.AccessKind);
             kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
             break;
         case ArgKind::Image3d:
             kernel.createImageAnnotation(arg.Index, arg.BTI, /*dim=*/3,
-                                         isWriteable);
+                                         arg.AccessKind);
             kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
             break;
         case ArgKind::PrintBuffer:

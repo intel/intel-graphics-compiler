@@ -70,7 +70,7 @@ public:
 
     // 1D/2D/3D Surface
     void createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,
-                               bool isWriteable);
+                               vc::ocl::ArgAccessKind Access);
 
     // add a pointer patch token.
     void createPointerGlobalAnnotation(unsigned index, unsigned offset,
