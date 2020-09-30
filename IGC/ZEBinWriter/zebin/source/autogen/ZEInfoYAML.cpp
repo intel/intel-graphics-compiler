@@ -96,4 +96,5 @@ void MappingTraits<zeInfoPerThreadMemoryBuffer>::mapping(IO& io, zeInfoPerThread
     io.mapRequired("type", info.type);
     io.mapRequired("usage", info.usage);
     io.mapRequired("size", info.size);
+    io.mapOptional("is_simt_thread", info.is_simt_thread, false);
 }

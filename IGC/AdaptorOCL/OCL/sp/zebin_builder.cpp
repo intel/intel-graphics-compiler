@@ -256,11 +256,16 @@ void ZEBinaryBuilder::addMemoryBuffer(
             PreDefinedAttrGetter::MemBufferType::scratch,
             PreDefinedAttrGetter::MemBufferUsage::private_space,
             scratch1);
-    if (private_on_global)
-        ZEInfoBuilder::addPerThreadMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,
-            PreDefinedAttrGetter::MemBufferType::global,
+    if (private_on_global) {
+        ZEInfoBuilder::addPerSIMTThreadGlobalMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,
             PreDefinedAttrGetter::MemBufferUsage::private_space,
             private_on_global);
+        // FIXME: IGC currently generate global buffer with size assume to be per-simt-thread
+        // ZEInfoBuilder::addPerThreadMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,
+        //    PreDefinedAttrGetter::MemBufferType::global,
+        //    PreDefinedAttrGetter::MemBufferUsage::private_space,
+        //    private_on_global);
+    }
 }
 
 uint8_t ZEBinaryBuilder::getSymbolElfType(vISA::ZESymEntry& sym)

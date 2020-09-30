@@ -92,6 +92,7 @@ struct zeInfoPerThreadMemoryBuffer
     zeinfo_str_t type;
     zeinfo_str_t usage;
     zeinfo_int32_t size = 0;
+    zeinfo_bool_t is_simt_thread = false;
 };
 typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
 typedef std::vector<zeInfoPerThreadPayloadArgument> PerThreadPayloadArgumentsTy;

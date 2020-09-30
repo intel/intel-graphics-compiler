@@ -71,6 +71,7 @@ execution_env:
 ~~~
 
 ### Supported attributes in execution environment:
+This section defines the execution_env attribute.
 If an attribute is **Required**, it must be present in exection_env. If it's **Optional** and it's not present, the **Default** value is used.
 
 | Attribute | Type | Required/Optional | Default | Description |
@@ -96,8 +97,9 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 <!--- ExecutionEnv -->
 
 ## Payload Arguments
+This section defines payload_arguments attribute.
 There are two kinds of payload arguments: **Payload Argument** and **Per Thread Payload Arguments**.
-Payload arguments include explicit user arguments of a kernel, such as payload_arguments with arg_type that is arg_byvalue or arg_bypointer,
+The Payload arguments defined here include explicit user arguments of a kernel, such as payload_arguments with arg_type that is arg_byvalue or arg_bypointer,
 and implicit arguments inserted by the compiler, such as arguments with local_size arg_type.
 
 ### Supported attributes in payload arguments:
@@ -114,28 +116,8 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | access_type | <access_type> | Optional | | Present when arg_type is "arg_bypointer" |
 <!--- PayloadArgument PayloadArguments -->
 
-## Per Thread Payload Arguments
-Per Thread Payload Arguments are implicit arguments inserted by the compiler. They are allocated per-thread.
-
-| Attribute | Type | Description |
-| ------ | ------ | ------ |
-| arg_type | <argument_type> | |
-| offset | int32 | |
-| size | int32 | |
-<!--- PerThreadPayloadArgument PerThreadPayloadArguments -->
-
-## Binding Table Indices
-Binding table index of the corresponding payload_argument.
-The payload_argument must have **arg_bypointer** arg_type and **stateful** addrmode
-
-| Attribute | Type | Description |
-| ------ | ------ | ------ |
-| bti_value | int32 | |
-| arg_index | int32 | index of the coressponding payload_argument |
-<!--- BindingTableIndex BindingTableIndices -->
-
-
 ### Supported argument types:
+Supported <argument_type> of payload_arguments.
 
 | Argument Type | Size | Description |
 | ----- | ------ | ------ |
@@ -154,6 +136,7 @@ The payload_argument must have **arg_bypointer** arg_type and **stateful** addrm
 arg_byvalue and arg_bypointer are user arguments that are explcitly passed in from the applications. Other kinds of arguments are implicit arguments that are passed in by runtime.
 
 ### Supported memory addressing modes:
+Supported <memory_addressing_mode> of payload_arguments.
 
 | Memory Addressing Mode | Description |
 | ----- | ----- |
@@ -164,6 +147,7 @@ arg_byvalue and arg_bypointer are user arguments that are explcitly passed in fr
 <!--- <memory_addressing_mode> ArgAddrMode -->
 
 ### Supported address spaces:
+Supported <address_space> of payload_arguments.
 
 | Addresss Space | Description |
 | ----- | ----- |
@@ -175,6 +159,7 @@ arg_byvalue and arg_bypointer are user arguments that are explcitly passed in fr
 <!--- <address_space> ArgAddrSpace -->
 
 ### Supported access types:
+Supported <access_type> of payload_arguments.
 
 | Access Type | Description |
 | ----- | ----- |
@@ -183,17 +168,42 @@ arg_byvalue and arg_bypointer are user arguments that are explcitly passed in fr
 | readwrite | |
 <!--- <access_type> ArgAccessType -->
 
-## Per Thread Memory Buffer
-Memory buffer required by Compiler generated stacks.
+## Per Thread Payload Arguments
+This section defines per_thread_payload_arguments attribute.
+Per Thread Payload Arguments are implicit arguments inserted by the compiler. They are allocated per-thread.
 
-|  | Type | Description |
-| ----- | ----- | ----- |
-| type | <allocation_type> | |
-| usage | <memory_usage> | |
-| size | int32 | Buffer size in bytes |
+| Attribute | Type | Description |
+| ------ | ------ | ------ |
+| arg_type | <argument_type> | |
+| offset | int32 | |
+| size | int32 | |
+<!--- PerThreadPayloadArgument PerThreadPayloadArguments -->
+
+## Binding Table Indices
+This section defines binding_table_indices attribute.
+Binding table index of the corresponding payload_argument.
+The payload_argument must have **arg_bypointer** arg_type and **stateful** addrmode
+
+| Attribute | Type | Description |
+| ------ | ------ | ------ |
+| bti_value | int32 | |
+| arg_index | int32 | |
+<!--- BindingTableIndex BindingTableIndices -->
+
+## Per Thread Memory Buffer
+This section defines the per_thread_memory_buffers attribute,
+which indicate the memory buffer required by the Compiler.
+
+| Attribute | Type | Required/Optional | Default | Description |
+| ----- | ----- | ----- | ----- | ----- |
+| type           | <allocation_type> | Required | | |
+| usage          | <memory_usage>    | Required | | |
+| size           | int32             | Required | | the buffer size in byte |
+| is_simt_thread | bool              | Optional | false | Present when type is "global". Indicate if the global buffer is allocated per-SIMT-thread. If set to false, the buffer is allocated per-hardware-thread |
 <!--- PerThreadMemoryBuffer PerThreadMemoryBuffers -->
 
 ### Supported allocation types:
+Supported <allocation_type> of Per Thread Memory Buffer.
 
 | Allocation Type | Description |
 | ----- | ----- |
@@ -203,6 +213,7 @@ Memory buffer required by Compiler generated stacks.
 <!--- <allocation_type> MemBufferType -->
 
 ### Supported memory usages:
+Supported <memory_usage> of Per Thread Memory Buffer.
 
 | Memory Usage | Description |
 | ----- | ----- |
@@ -210,6 +221,4 @@ Memory buffer required by Compiler generated stacks.
 | spill_fill_space | Memory space for register spill/fill and caller/callee saved for stack call |
 | single_space | All compiler required memory space (privates, arguments passing, spill/fill, call/callee saved) are allocated in one single buffer |
 <!--- <memory_usage> MemBufferUsage -->
-
-
 

@@ -868,3 +868,17 @@ zeInfoPerThreadMemoryBuffer& ZEInfoBuilder::addPerThreadMemoryBuffer(
     info.size = size;
     return info;
 }
+
+zeInfoPerThreadMemoryBuffer& ZEInfoBuilder::addPerSIMTThreadGlobalMemoryBuffer(
+    PerThreadMemoryBuffersTy& mem_buff_list,
+    PreDefinedAttrGetter::MemBufferUsage usage,
+    int32_t size)
+{
+    mem_buff_list.emplace_back();
+    zeInfoPerThreadMemoryBuffer& info = mem_buff_list.back();
+    info.type = PreDefinedAttrGetter::get(PreDefinedAttrGetter::MemBufferType::global);
+    info.usage = PreDefinedAttrGetter::get(usage);
+    info.size = size;
+    info.is_simt_thread = true;
+    return info;
+}

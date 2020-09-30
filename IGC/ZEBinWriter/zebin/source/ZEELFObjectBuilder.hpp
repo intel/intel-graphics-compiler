@@ -412,9 +412,21 @@ public:
         int32_t arg_index);
 
     // addPerThreadMemoryBuffer - add a memory buffer info
+    // If adding buffer with "global" type, this API assume it is allocated per-hardware-thread
+    // Use below addPerSIMTThreadGlobalMemoryBuffer API if attempting to add per-simt-thread global buffer
     static zeInfoPerThreadMemoryBuffer& addPerThreadMemoryBuffer(
         PerThreadMemoryBuffersTy& mem_buff_list,
         PreDefinedAttrGetter::MemBufferType type,
+        PreDefinedAttrGetter::MemBufferUsage usage,
+        int32_t size);
+
+    // addPerSIMTThreadGlobalMemoryBuffer - add a memory buffer info
+    // for global memory buffer with
+    // per_thread_memory_buffers::type set to global
+    // per_thread_memory_buffers::is_simt_thread set to true
+    // Use addPerThreadMemoryBuffer if adding per-hardware-thread global memory buffer
+    static zeInfoPerThreadMemoryBuffer& addPerSIMTThreadGlobalMemoryBuffer(
+        PerThreadMemoryBuffersTy& mem_buff_list,
         PreDefinedAttrGetter::MemBufferUsage usage,
         int32_t size);
 
