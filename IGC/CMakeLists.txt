@@ -3465,6 +3465,7 @@ if(LLVM_ON_WIN32
 
 endif()
 
+
 if(IGC_BUILD__VC_ENABLED AND NOT CMAKE_WDDM_LINUX)
   add_subdirectory(CMFE)
 endif()
@@ -3739,9 +3740,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
 
 list(APPEND _targetLinkLineCommon zebinlib)
 
-  list(APPEND _targetLinkLineCommon
-      "${IGC_BUILD__PROJ__AdaptorOGL}"
-  )
 
 
   list(APPEND _targetLinkLineCommon
