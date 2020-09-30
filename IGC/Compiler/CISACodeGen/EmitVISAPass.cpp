@@ -8069,13 +8069,13 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitSampleOffset(inst);
         break;
     case GenISAIntrinsic::GenISA_ldstructured:
-        emitLdStructured(inst);
+        //emitLdStructured(inst);
         break;
     case GenISAIntrinsic::GenISA_storestructured1:
     case GenISAIntrinsic::GenISA_storestructured2:
     case GenISAIntrinsic::GenISA_storestructured3:
     case GenISAIntrinsic::GenISA_storestructured4:
-        emitStoreStructured(inst);
+        //emitStoreStructured(inst);
         break;
     case GenISAIntrinsic::GenISA_typedread:
         emitTypedRead(inst);
@@ -8111,7 +8111,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_floatatomicstructured:
     case GenISAIntrinsic::GenISA_cmpxchgatomicstructured:
     case GenISAIntrinsic::GenISA_fcmpxchgatomicstructured:
-        emitAtomicStructured(inst);
+        //emitAtomicStructured(inst);
         break;
     case GenISAIntrinsic::GenISA_intatomictyped:
     case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
