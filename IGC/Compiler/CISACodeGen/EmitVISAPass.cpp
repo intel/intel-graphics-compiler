@@ -7250,14 +7250,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     {
         CVariable* src = GetSymbol(inst->getOperand(i));
         src = BroadcastIfUniform(src);
-        if (src->GetAliasOffset() % getGRFSize() != 0)
-        {
-            CVariable* tmp = m_currShader->GetNewVariable(src->GetNumberElement(), src->GetType(), EALIGN_GRF,
-                src->IsUniform(), src->GetNumberInstance(), CName(src->getName(), "_GRFAligned"));
-            m_encoder->Copy(tmp, src);
-            m_encoder->Push();
-            src = tmp;
-        }
+        IGC_ASSERT(src->GetAliasOffset() % getGRFSize() == 0);
         payload.push_back(src);
     }
 
