@@ -412,7 +412,8 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             mustAlwaysInline = true;
         }
         // Enable inlining for -O0 in order to preserve debug info. This may be removed when debug stack call support is enabled.
-        else if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable)
+        else if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable &&
+            IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
         {
             mustAlwaysInline = true;
         }
