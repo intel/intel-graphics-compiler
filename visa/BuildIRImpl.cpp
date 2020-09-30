@@ -942,7 +942,7 @@ G4_INST* IR_Builder::createPseudoKill(G4_Declare* dcl, PseudoKillType ty)
 {
     auto dstRgn = createDst(dcl->getRegVar(), 0, 0, 1, Type_UD);
     G4_INST* inst = createIntrinsicInst(nullptr, Intrinsic::PseudoKill, g4::SIMD1,
-        dstRgn, createImm((unsigned int)ty, Type_UD), nullptr, nullptr, InstOpt_WriteEnable);
+        dstRgn, createImm((unsigned int)ty, Type_UD), nullptr, nullptr, InstOpt_WriteEnable, true);
 
     return inst;
 }
@@ -955,7 +955,7 @@ G4_INST* IR_Builder::createSpill(
     uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option)
 {
     G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
-        header, payload, nullptr, option);
+        header, payload, nullptr, option, true);
     spill->asSpillIntrinsic()->setFP(fp);
     spill->asSpillIntrinsic()->setOffset((uint32_t)
         (((uint64_t)offset * HWORD_BYTE_SIZE) / numEltPerGRF(Type_UB)));
@@ -972,7 +972,7 @@ G4_INST* IR_Builder::createSpill(
     auto rd = getRegionStride1();
     auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
     G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
-        srcRgnr0, payload, nullptr, option);
+        srcRgnr0, payload, nullptr, option, true);
     spill->asSpillIntrinsic()->setFP(fp);
     spill->asSpillIntrinsic()->setOffset((uint32_t)
         (((uint64_t)offset * HWORD_BYTE_SIZE) / numEltPerGRF(Type_UB)));
@@ -986,7 +986,7 @@ G4_INST* IR_Builder::createFill(
     uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option)
 {
     G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
-        header, nullptr, nullptr, option);
+        header, nullptr, nullptr, option, true);
     fill->asFillIntrinsic()->setFP(fp);
     fill->asFillIntrinsic()->setOffset((uint32_t)
         (((uint64_t)offset * HWORD_BYTE_SIZE) / numEltPerGRF(Type_UB)));
@@ -1003,7 +1003,7 @@ G4_INST* IR_Builder::createFill(
     auto rd = getRegionStride1();
     auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
     G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
-        srcRgnr0, nullptr, nullptr, option);
+        srcRgnr0, nullptr, nullptr, option, true);
 
     fill->asFillIntrinsic()->setFP(fp);
     fill->asFillIntrinsic()->setOffset((uint32_t)
@@ -1431,26 +1431,11 @@ G4_INST* IR_Builder::createInst(
     G4_opcode op,
     G4_CondMod* mod,
     G4_Sat sat,
-    G4_ExecSize size,
-    G4_DstRegRegion* dst,
-    G4_Operand* src0,
-    G4_Operand* src1,
-    G4_InstOpts options,
-    bool addToInstList)
-{
-    return createInst(prd, op, mod, sat, size, dst, src0, src1, options, 0, addToInstList);
-}
-G4_INST* IR_Builder::createInst(
-    G4_Predicate* prd,
-    G4_opcode op,
-    G4_CondMod* mod,
-    G4_Sat sat,
     G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_Operand* src0,
     G4_Operand* src1,
     G4_InstOpts options,
-    int lineno,
     bool addToInstList)
 {
     MUST_BE_TRUE(op != G4_math, "IR_Builder::createInst should not be used to create math instructions");
@@ -1474,7 +1459,7 @@ G4_INST* IR_Builder::createInst(
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            i->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
+            i->setLocation(allocateMDLocation(curLine, curFile));
         }
 
         instList.push_back(i);
@@ -1497,32 +1482,9 @@ G4_INST* IR_Builder::createInternalInst(
     G4_Operand* src1,
     G4_InstOpts options)
 {
-    return createInternalInst(prd, op, mod, sat, execSize, dst, src0, src1, options, 0, UNMAPPABLE_VISA_INDEX, NULL);
-}
-
-G4_INST* IR_Builder::createInternalInst(
-    G4_Predicate* prd,
-    G4_opcode op,
-    G4_CondMod* mod,
-    G4_Sat sat,
-    G4_ExecSize execSize,
-    G4_DstRegRegion* dst,
-    G4_Operand* src0,
-    G4_Operand* src1,
-    G4_InstOpts options,
-    int lineno, int CISAoff,
-    const char* srcFilename)
-{
     MUST_BE_TRUE(op != G4_math, "IR_Builder::createInternalInst should not be used to create math instructions");
 
     auto ii = createInst(prd, op, mod, sat, execSize, dst, src0, src1, options, false);
-
-    ii->setCISAOff(CISAoff);
-
-    if (m_options->getOption(vISA_EmitLocation))
-    {
-        ii->setLocation(allocateMDLocation(lineno, curFile));
-    }
 
     return ii;
 }
@@ -1554,7 +1516,7 @@ G4_INST* IR_Builder::createMov(
     {
         newInst = createInst(
             nullptr, G4_mov, nullptr, g4::NOSAT, execSize,
-            dst, src0, nullptr, options);
+            dst, src0, nullptr, options, true);
     }
     else
     {
@@ -1575,7 +1537,7 @@ G4_INST* IR_Builder::createBinOp(
     {
         return createInst(
             pred, op, nullptr, g4::NOSAT, execSize,
-            dst, src0, src1, options);
+            dst, src0, src1, options, true);
     }
     else
     {
@@ -1619,21 +1581,34 @@ G4_INST* IR_Builder::createMacl(
     return maclInst;
 }
 
+G4_INST* IR_Builder::createMadm(
+    G4_Predicate* pred,
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst,
+    G4_SrcRegRegion* src0, G4_SrcRegRegion* src1, G4_SrcRegRegion* src2,
+    G4_InstOpts options)
+{
+    // madm is currently only created in vISA->Gen IR translation
+        return createInst(
+            pred, G4_madm, nullptr, g4::NOSAT, execSize,
+            dst, src0, src1, src2, options, true);
+}
+
 G4_INST* IR_Builder::createIf(G4_Predicate* prd, G4_ExecSize execSize, G4_InstOpts options)
 {
-    auto inst = createCFInst(prd, G4_if, execSize, nullptr, nullptr, options);
+    auto inst = createCFInst(prd, G4_if, execSize, nullptr, nullptr, options, true);
     return inst;
 }
 
 G4_INST* IR_Builder::createElse(G4_ExecSize execSize, G4_InstOpts options)
 {
-    auto inst = createCFInst(nullptr, G4_else, execSize, nullptr, nullptr, options);
+    auto inst = createCFInst(nullptr, G4_else, execSize, nullptr, nullptr, options, true);
     return inst;
 }
 
 G4_INST* IR_Builder::createEndif(G4_ExecSize execSize, G4_InstOpts options)
 {
-    auto inst = createCFInst(nullptr, G4_endif, execSize, nullptr, nullptr, options);
+    auto inst = createCFInst(nullptr, G4_endif, execSize, nullptr, nullptr, options, true);
     return inst;
 }
 
@@ -1642,8 +1617,7 @@ G4_INST* IR_Builder::createLabelInst(G4_Label* label, bool appendToInstList)
     if (appendToInstList)
     {
         return createInst(nullptr, G4_label, nullptr, g4::NOSAT, g4::SIMD_UNDEFINED,
-            nullptr, label, nullptr,
-            0, 0);
+            nullptr, label, nullptr, InstOpt_NoOpt, true);
     }
     else
     {
@@ -1663,7 +1637,7 @@ G4_INST* IR_Builder::createJmp(
     if (appendToInstList)
     {
         return createInst(pred, G4_jmpi, nullptr, g4::NOSAT, g4::SIMD1,
-            nullptr, jmpTarget, nullptr, options);
+            nullptr, jmpTarget, nullptr, options, true);
     }
     else
     {
@@ -1675,21 +1649,12 @@ G4_INST* IR_Builder::createJmp(
 G4_INST* IR_Builder::createInternalCFInst(
     G4_Predicate* prd, G4_opcode op, G4_ExecSize execSize,
     G4_Label* jip, G4_Label* uip,
-    G4_InstOpts options,
-    int lineno, int CISAoff, const char* srcFilename)
+    G4_InstOpts options)
 {
     MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
         "IR_Builder::createInternalCFInst must be used with InstTypeFlow instruction class");
 
-    auto ii = createCFInst(prd, op, execSize, jip, uip, options, lineno, false);
-
-    ii->setCISAOff(CISAoff);
-
-    if (m_options->getOption(vISA_EmitLocation))
-    {
-        ii->setLocation(allocateMDLocation(lineno, srcFilename));
-    }
-
+    auto ii = createCFInst(prd, op, execSize, jip, uip, options, false);
     return ii;
 }
 
@@ -1697,7 +1662,7 @@ G4_INST* IR_Builder::createCFInst(
     G4_Predicate* prd, G4_opcode op, G4_ExecSize execSize,
     G4_Label* jip, G4_Label* uip,
     G4_InstOpts options,
-    int lineno, bool addToInstList)
+    bool addToInstList)
 {
     MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
         "IR_Builder::createCFInst must be used with InstTypeFlow instruction class");
@@ -1710,7 +1675,7 @@ G4_INST* IR_Builder::createCFInst(
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
+            ii->setLocation(allocateMDLocation(curLine, curFile));
         }
         instList.push_back(ii);
     }
@@ -1734,22 +1699,6 @@ G4_INST* IR_Builder::createInst(
     G4_InstOpts options,
     bool addToInstList)
 {
-    return createInst(prd, op, mod, sat, execSize, dst, src0, src1, src2, options, 0);
-}
-G4_INST* IR_Builder::createInst(
-    G4_Predicate* prd,
-    G4_opcode op,
-    G4_CondMod* mod,
-    G4_Sat sat,
-    G4_ExecSize execSize,
-    G4_DstRegRegion* dst,
-    G4_Operand* src0,
-    G4_Operand* src1,
-    G4_Operand* src2,
-    G4_InstOpts options,
-    int lineno,
-    bool addToInstList)
-{
     MUST_BE_TRUE(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow,
         "IR_Builder::createInst should not be used to create math/CF instructions");
 
@@ -1763,7 +1712,7 @@ G4_INST* IR_Builder::createInst(
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            i->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
+            i->setLocation(allocateMDLocation(curLine, curFile));
         }
 
         instList.push_back(i);
@@ -1787,35 +1736,12 @@ G4_INST* IR_Builder::createInternalInst(
     G4_Operand* src2,
     G4_InstOpts options)
 {
-    return createInternalInst(prd, op, mod, sat, execSize, dst, src0, src1, src2, options, 0, UNMAPPABLE_VISA_INDEX, NULL);
-}
-G4_INST* IR_Builder::createInternalInst(
-    G4_Predicate* prd,
-    G4_opcode op,
-    G4_CondMod* mod,
-    G4_Sat sat,
-    G4_ExecSize execSize,
-    G4_DstRegRegion* dst,
-    G4_Operand* src0,
-    G4_Operand* src1,
-    G4_Operand* src2,
-    G4_InstOpts options,
-    int lineno, int CISAoff,
-    const char* srcFilename)
-{
     auto ii = createInst(
         prd, op, mod, sat, execSize,
-        dst, src0, src1, src2, options,
-        lineno, false);
-
-    ii->setCISAOff(CISAoff);
-
-    if (m_options->getOption(vISA_EmitLocation))
-    {
-        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
-    }
+        dst, src0, src1, src2, options, false);
 
     return ii;
+
 }
 
 G4_InstSend* IR_Builder::createSendInst(
@@ -1827,7 +1753,6 @@ G4_InstSend* IR_Builder::createSendInst(
     G4_Operand* msg,
     G4_InstOpts options,
     G4_SendMsgDescriptor *msgDesc,
-    int lineno,
     bool addToInstList)
 {
 
@@ -1841,7 +1766,7 @@ G4_InstSend* IR_Builder::createSendInst(
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            m->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
+            m->setLocation(allocateMDLocation(curLine, curFile));
         }
 
         instList.push_back(m);
@@ -1860,21 +1785,11 @@ G4_InstSend* IR_Builder::createInternalSendInst(
     G4_SrcRegRegion* currSrc,
     G4_Operand* msg,
     G4_InstOpts options,
-    G4_SendMsgDescriptor *msgDesc,
-    int lineno,
-    int CISAoff,
-    const char* srcFilename)
+    G4_SendMsgDescriptor *msgDesc)
 {
     auto ii = createSendInst(prd, op, execSize,
         postDst, currSrc,
-        msg, options, msgDesc, lineno, false);
-
-    ii->setCISAOff(CISAoff);
-
-    if (m_options->getOption(vISA_EmitLocation))
-    {
-        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
-    }
+        msg, options, msgDesc, false);
 
     return ii;
 }
@@ -1895,7 +1810,6 @@ G4_InstSend* IR_Builder::createSplitSendInst(
     G4_InstOpts options,
     G4_SendMsgDescriptor *msgDesc,
     G4_Operand* src3,      // ext msg desciptor: imm or vec
-    int lineno,
     bool addToInstList)
 {
 
@@ -1918,7 +1832,7 @@ G4_InstSend* IR_Builder::createSplitSendInst(
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            m->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
+            m->setLocation(allocateMDLocation(curLine, curFile));
         }
         instList.push_back(m);
     }
@@ -1928,8 +1842,7 @@ G4_InstSend* IR_Builder::createSplitSendInst(
     return m;
 }
 
-G4_InstSend* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
-    G4_opcode op,
+G4_InstSend* IR_Builder::createInternalSplitSendInst(
     G4_ExecSize execSize,
     G4_DstRegRegion* dst,
     G4_SrcRegRegion* src0, // can be header
@@ -1937,20 +1850,10 @@ G4_InstSend* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
     G4_Operand* msg,       // msg descriptor: imm or vec
     G4_InstOpts options,
     G4_SendMsgDescriptor *msgDesc,
-    G4_Operand* src3,      // ext msg desciptor: imm or vec
-    int lineno,
-    int CISAoff,
-    const char* srcFilename)
+    G4_Operand* src3)     // ext msg desciptor: imm or vec)
 {
-    auto ii = createSplitSendInst(prd, op, execSize, dst, src0, src1, msg, options,
-        msgDesc, src3, lineno, false);
-
-    ii->setCISAOff(CISAoff);
-
-    if (m_options->getOption(vISA_EmitLocation))
-    {
-        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
-    }
+    auto ii = createSplitSendInst(nullptr, G4_sends, execSize, dst, src0, src1, msg, options,
+        msgDesc, src3, false);
 
     return ii;
 }
@@ -1970,7 +1873,6 @@ G4_INST* IR_Builder::createMathInst(
     G4_Operand* src1,
     G4_MathOp mathOp,
     G4_InstOpts options,
-    int lineno,
     bool addToInstList)
 {
     G4_INST* i = new (mem)G4_InstMath(
@@ -1982,7 +1884,7 @@ G4_INST* IR_Builder::createMathInst(
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            i->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
+            i->setLocation(allocateMDLocation(curLine, curFile));
         }
         instList.push_back(i);
     }
@@ -2000,20 +1902,9 @@ G4_INST* IR_Builder::createInternalMathInst(
     G4_Operand* src0,
     G4_Operand* src1,
     G4_MathOp mathOp,
-    G4_InstOpts options,
-    int lineno,
-    int CISAoff,
-    const char* srcFilename)
+    G4_InstOpts options)
 {
-    auto ii = createMathInst(prd, sat, execSize, dst, src0, src1, mathOp, options, lineno, false);
-
-    ii->setCISAOff(CISAoff);
-
-    if (m_options->getOption(vISA_EmitLocation))
-    {
-        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
-    }
-
+    auto ii = createMathInst(prd, sat, execSize, dst, src0, src1, mathOp, options, false);
     return ii;
 }
 
@@ -2021,7 +1912,7 @@ G4_INST* IR_Builder::createIntrinsicInst(
     G4_Predicate* prd, Intrinsic intrinId,
     G4_ExecSize size,
     G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-    G4_InstOpts options, int lineno, bool addToInstList)
+    G4_InstOpts options, bool addToInstList)
 {
     G4_INST* i = nullptr;
 
@@ -2041,7 +1932,7 @@ G4_INST* IR_Builder::createIntrinsicInst(
 
         if (m_options->getOption(vISA_EmitLocation))
         {
-            i->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, curFile));
+            i->setLocation(allocateMDLocation(curLine, curFile));
         }
 
         instList.push_back(i);
@@ -2055,17 +1946,9 @@ G4_INST* IR_Builder::createIntrinsicInst(
 G4_INST* IR_Builder::createInternalIntrinsicInst(
     G4_Predicate* prd, Intrinsic intrinId, G4_ExecSize execSize,
     G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-    G4_InstOpts options, int lineno, int CISAoff, const char* srcFilename)
+    G4_InstOpts options)
 {
-    auto ii = createIntrinsicInst(prd, intrinId, execSize, dst, src0, src1, src2, options,
-        lineno, false);
-
-    ii->setCISAOff(CISAoff);
-
-    if (m_options->getOption(vISA_EmitLocation))
-    {
-        ii->setLocation(allocateMDLocation(lineno == 0 ? curLine : lineno, srcFilename));
-    }
+    auto ii = createIntrinsicInst(prd, intrinId, execSize, dst, src0, src1, src2, options, false);
 
     return ii;
 }
@@ -2308,7 +2191,7 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
         descOpnd,
         option,
         msgDesc,
-        0);
+        true);
 }
 
 /*
@@ -2411,12 +2294,12 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
             // (W) and (1) (nz)f0.0 null S31 0x10:uw
             G4_Declare* tmpFlag = createTempFlag(1);
             G4_CondMod* condMod = createCondMod(Mod_nz, tmpFlag->getRegVar(), 0);
-            createInst(nullptr, G4_and, condMod, g4::NOSAT, 1, createNullDst(Type_UD),
-                createSrcRegRegion(*(sti->asSrcRegRegion())), createImm(0x10, Type_UW), InstOpt_WriteEnable);
+            createInst(nullptr, G4_and, condMod, g4::NOSAT, g4::SIMD1, createNullDst(Type_UD),
+                createSrcRegRegion(*(sti->asSrcRegRegion())), createImm(0x10, Type_UW), InstOpt_WriteEnable, true);
             // (W) (f0.0) sel (1) tmp:ud 0x100 0x0
             G4_Predicate* pred = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0);
-            createInst(pred, G4_sel, nullptr, g4::NOSAT, 1, Create_Dst_Opnd_From_Dcl(dcl1, 1),
-                createImm(0x100, Type_UW), createImm(0x0, Type_UW), InstOpt_WriteEnable);
+            createInst(pred, G4_sel, nullptr, g4::NOSAT, g4::SIMD1, Create_Dst_Opnd_From_Dcl(dcl1, 1),
+                createImm(0x100, Type_UW), createImm(0x0, Type_UW), InstOpt_WriteEnable, true);
         }
         else
         {
@@ -2466,7 +2349,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
     return createSplitSendInst(pred, send_opcode, execsize,
         dst, src1, src2,
         descOpnd,
-        option, msgDesc, extDescOpnd, 0);
+        option, msgDesc, extDescOpnd, true);
 }
 
 
@@ -2507,7 +2390,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RT(
 
     return createSplitSendInst(pred, send_opcode, execSize,
         dst, src1, src2, descOpnd,
-        option, msgDesc, extDescOpnd);
+        option, msgDesc, extDescOpnd, true);
 }
 
 // create a declare for send payload
@@ -2554,19 +2437,19 @@ void IR_Builder::Create_ADD_Inst(
 
     if (src0_opnd->isImm() && src0_opnd->asImm()->isZero())
     {
-        createInst(pred, G4_mov, condMod, g4::NOSAT, execsize, dst, src1_opnd, NULL, options);
+        createInst(pred, G4_mov, condMod, g4::NOSAT, execsize, dst, src1_opnd, NULL, options, true);
     }
     else if (src1_opnd->isImm() && src1_opnd->asImm()->isZero())
     {
-        createInst(pred, G4_mov, condMod, g4::NOSAT, execsize, dst, src0_opnd, NULL, options);
+        createInst(pred, G4_mov, condMod, g4::NOSAT, execsize, dst, src0_opnd, NULL, options, true);
     }
     else if (src0_opnd->isImm() && !src1_opnd->isImm())
     {
-        createInst(pred, G4_add, condMod, g4::NOSAT, execsize, dst, src1_opnd, src0_opnd, options);
+        createInst(pred, G4_add, condMod, g4::NOSAT, execsize, dst, src1_opnd, src0_opnd, options, true);
     }
     else
     {
-        createInst(pred, G4_add, condMod, g4::NOSAT, execsize, dst, src0_opnd, src1_opnd, options);
+        createInst(pred, G4_add, condMod, g4::NOSAT, execsize, dst, src0_opnd, src1_opnd, options, true);
     }
 }
 
@@ -2600,7 +2483,7 @@ void IR_Builder::Create_MOV_Inst(
         src_opnd,
         NULL,
         use_nomask ? InstOpt_WriteEnable : InstOpt_NoOpt,
-        0);
+        true);
 }
 
 // send payload preparation.

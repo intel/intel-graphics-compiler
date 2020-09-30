@@ -65,7 +65,7 @@ int IR_Builder::translateVISAAddrInst(
             src0Opnd,
             src1Opnd,
             instOpt,
-            0);
+            true);
     }
 
     return VISA_SUCCESS;
@@ -111,7 +111,8 @@ int IR_Builder::translateVISAArithmeticInst(
                 src0Opnd,
                 src1Opnd,
                 mathOp,
-                instOpt);
+                instOpt,
+                true);
         }
     }
     else if (ISA_Inst_Table[opcode].n_srcs == 3)
@@ -128,7 +129,7 @@ int IR_Builder::translateVISAArithmeticInst(
             src1Opnd,
             src2Opnd,
             instOpt,
-            0);
+            true);
     }
     else
     {
@@ -142,7 +143,7 @@ int IR_Builder::translateVISAArithmeticInst(
             src0Opnd,
             src1Opnd,
             instOpt,
-            0);
+            true);
 
         if (opcode == ISA_ADDC || opcode == ISA_SUBB)
         {
@@ -235,7 +236,7 @@ int IR_Builder::translateVISACompareInst(
 
     createInst(
         NULL,
-        GetGenOpcodeFromVISAOpcode((ISA_Opcode)opcode),
+        GetGenOpcodeFromVISAOpcode(opcode),
         condMod,
         g4::NOSAT,
         exsize,
@@ -243,7 +244,7 @@ int IR_Builder::translateVISACompareInst(
         src0Opnd,
         src1Opnd,
         inst_opt,
-        0);
+        true);
 
     return VISA_SUCCESS;
 }
@@ -281,7 +282,7 @@ int IR_Builder::translateVISACompareInst(
         src0Opnd,
         src1Opnd,
         inst_opt,
-        0);
+        true);
 
     return VISA_SUCCESS;
 }
@@ -374,7 +375,7 @@ int IR_Builder::translateVISALogicInst(
             g4Srcs[0],
             g4Srcs[1],
             inst_opt,
-            0);
+            true);
 
         G4_SrcRegRegion* src0 = Create_Src_Opnd_From_Dcl(tmpDcl,
             (exsize == 1) ? getRegionScalar() : getRegionStride1());
@@ -389,7 +390,7 @@ int IR_Builder::translateVISALogicInst(
             g4Srcs[2],
             g4Srcs[3],
             inst_opt,
-            0);
+            true);
     }
     else
     {
@@ -405,7 +406,7 @@ int IR_Builder::translateVISALogicInst(
             g4Srcs[1],
             g4Srcs[2],
             inst_opt,
-            0);
+            true);
     }
 
     return VISA_SUCCESS;
@@ -446,7 +447,7 @@ int IR_Builder::translateVISADataMovementInst(
             src0Opnd,
             NULL,
             inst_opt,
-            0);
+            true);
     }
     else if (opcode == ISA_SETP)
     {
@@ -497,7 +498,7 @@ int IR_Builder::translateVISADataMovementInst(
                 src0Opnd,
                 NULL,
                 InstOpt_WriteEnable,
-                0);
+                true);
         }
         else if (src0Opnd->isSrcRegRegion() && src0Opnd->asSrcRegRegion()->isScalar() == false)
         {
@@ -517,7 +518,7 @@ int IR_Builder::translateVISADataMovementInst(
                 src0Opnd,
                 createImm(1, Type_UW),
                 inst_opt,
-                0);
+                true);
         }
         else
         {
@@ -552,7 +553,7 @@ int IR_Builder::translateVISADataMovementInst(
             src0Opnd,
             src1Opnd,
             inst_opt,
-            0);
+            true);
     }
 
     return VISA_SUCCESS;

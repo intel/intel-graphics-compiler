@@ -749,7 +749,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                 G4_DstRegRegion* nullDst = createNullDst(Type_UW);
                 G4_CondMod* flagCM = createCondMod(Mod_e, flagVar, 0);
                 createInst(NULL, G4_cmp, flagCM, g4::NOSAT, g4::SIMD16, nullDst,
-                    r0_0, r0_1, Option);
+                    r0_0, r0_1, Option, true);
 
                 G4_SrcRegRegion* flagSrc = createSrcRegRegion(
                     Mod_src_undef, Direct,
@@ -1662,7 +1662,7 @@ int IR_Builder::splitSampleInst(
                 // Copy the write mask message W4.0 into the dst. (No mask?)
                 createInst(pred2, G4_mov, NULL, g4::NOSAT, g4::SIMD1,
                     origDstPtr, src0Ptr, NULL, NULL,
-                    InstOpt_WriteEnable, 0, true);
+                    InstOpt_WriteEnable, true);
                 // Skip the remaining part of the loop.
                 break;
             }
@@ -1700,7 +1700,7 @@ int IR_Builder::splitSampleInst(
                 G4_Predicate* pred2 = dupPredicate(pred);
                 // write to dst.0[8:15]
                 createInst(pred2, G4_mov, NULL, g4::NOSAT, g4::SIMD1,
-                    origDstPtr, src0Ptr, NULL, InstOpt_WriteEnable);
+                    origDstPtr, src0Ptr, NULL, InstOpt_WriteEnable, true);
 
                 // Skip the remaining part of the loop.
                 break;

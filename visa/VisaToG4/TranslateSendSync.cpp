@@ -105,11 +105,11 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
         G4_SrcRegRegion* TDRSrc = createSrcRegRegion(
             Mod_src_undef, Direct, phyregpool.getTDRReg(), 0, 0, getRegionStride1(), Type_UW);
         createInst(predOpnd, G4_and, NULL, g4::NOSAT, g4::SIMD8,
-            TDROpnd, TDRSrc, createImm(0x7FFF, Type_UW), InstOpt_WriteEnable, 0);
+            TDROpnd, TDRSrc, createImm(0x7FFF, Type_UW), InstOpt_WriteEnable, true);
     }
 
     createIntrinsicInst(nullptr, Intrinsic::Wait, g4::SIMD1,
-        nullptr, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
+        nullptr, nullptr, nullptr, nullptr, InstOpt_WriteEnable, true);
 
     return VISA_SUCCESS;
 }
@@ -161,7 +161,7 @@ void IR_Builder::generateBarrierSend()
         createImm(desc, Type_UD),
         InstOpt_WriteEnable,
         msgDesc,
-        0);
+        true);
 }
 
 void IR_Builder::generateBarrierWait()
@@ -179,7 +179,7 @@ void IR_Builder::generateBarrierWait()
         }
     }
     createInst(nullptr, G4_wait, nullptr, g4::NOSAT, g4::SIMD1,
-        nullptr, waitSrc, nullptr, InstOpt_WriteEnable);
+        nullptr, waitSrc, nullptr, InstOpt_WriteEnable, true);
 }
 
 int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
@@ -208,7 +208,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
 
         auto msgDesc = createSyncMsgDesc(SFID::SAMPLER, desc);
         createSendInst(nullptr, G4_send, g4::SIMD8, sendDstOpnd, sendMsgOpnd,
-            createImm(desc, Type_UD), 0, msgDesc, 0);
+            createImm(desc, Type_UD), 0, msgDesc, true);
 
         G4_SrcRegRegion* moveSrcOpnd = createSrcRegRegion(Mod_src_undef, Direct, dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
         Create_MOV_Inst(dstDcl, 0, 0, g4::SIMD8, NULL, NULL, moveSrcOpnd);
@@ -255,7 +255,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
         {
             createIntrinsicInst(
                 nullptr, Intrinsic::MemFence, g4::SIMD1,
-                nullptr, nullptr, nullptr, nullptr, InstOpt_NoOpt);
+                nullptr, nullptr, nullptr, nullptr, InstOpt_NoOpt, true);
         }
         else if (VISA_WA_CHECK(m_pWaTable, WADisableWriteCommitForPageFault))
         {

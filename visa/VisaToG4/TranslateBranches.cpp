@@ -106,7 +106,7 @@ int IR_Builder::translateVISACFCallInst(
         srcLabel,
         nullptr,
         instOpts,
-        0);
+        true);
 
     return VISA_SUCCESS;
 }
@@ -117,15 +117,15 @@ int IR_Builder::translateVISACFJumpInst(G4_Predicate *predOpnd, G4_Label* lab)
 
     createInst(
         predOpnd,
-        GetGenOpcodeFromVISAOpcode((ISA_Opcode)ISA_JMP),
+        GetGenOpcodeFromVISAOpcode(ISA_JMP),
         NULL,
         g4::NOSAT,
         g4::SIMD1,
         NULL,
         lab,
         NULL,
-        0,
-        0);
+        InstOpt_NoOpt,
+        true);
 
     return VISA_SUCCESS;
 }
@@ -160,8 +160,8 @@ int IR_Builder::translateVISACFFCallInst(
         nullptr,
         createLabel(funcName, LABEL_FUNCTION),  //src0 is a fake label containing callee's name
         nullptr,
-        0,
-        0);
+        InstOpt_NoOpt,
+        true);
 
     m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
 
@@ -212,7 +212,7 @@ int IR_Builder::translateVISACFIFCallInst(
         nullptr, Create_Src_Opnd_From_Dcl(callOffset, getRegionScalar()), nullptr, 0, 0);
 */
     auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, g4::NOSAT, exsize,
-        nullptr, src0, nullptr, 0, 0);
+        nullptr, src0, nullptr, InstOpt_NoOpt, true);
 
     m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
 
@@ -280,7 +280,7 @@ int IR_Builder::translateVISACFFretInst(
         NULL, //src0Opnd
         NULL,
         instOpts,
-        0);
+        true);
 
     return VISA_SUCCESS;
 }
@@ -313,14 +313,14 @@ int IR_Builder::translateVISACFRetInst(
             srcOpndToUse,
             NULL,
             instOpts,
-            0);
+            true);
     }
     else
     {
         createCFInst(predOpnd,
             subroutineId == 0 ? G4_pseudo_exit : GetGenOpcodeFromVISAOpcode(ISA_RET),
             exsize,
-            nullptr, nullptr, instOpts);
+            nullptr, nullptr, instOpts, true);
     }
 
     return VISA_SUCCESS;
@@ -345,7 +345,7 @@ int IR_Builder::translateVISAGotoInst(
         nullptr,
         nullptr,
         instOpts,
-        0);
+        true);
     cfInst->asCFInst()->setUip(label);
 
     return VISA_SUCCESS;

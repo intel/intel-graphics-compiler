@@ -1475,7 +1475,7 @@ void SendFusion::doFusion(
         G4_INST* sendInst = Builder->createSplitSendInst(
             Pred, G4_sends, g4::SIMD16, Dst, Src0, Src1,
             Builder->createImm(newDesc->getDesc(), Type_UD),
-            InstOpt_WriteEnable, newDesc, nullptr, 0);
+            InstOpt_WriteEnable, newDesc, nullptr, true);
 
         if (!IsSink)
         {   // move depInst first if doing hoisting
@@ -1541,7 +1541,7 @@ void SendFusion::doFusion(
         sendInst = Builder->createSplitSendInst(
             Pred, G4_sends, G4_ExecSize(execSize*2), Dst, Src0, Src1,
             Builder->createImm(newDesc->getDesc(), Type_UD),
-            InstOpt_WriteEnable, newDesc, nullptr, 0);
+            InstOpt_WriteEnable, newDesc, nullptr, true);
     }
     else
     {
@@ -1549,7 +1549,8 @@ void SendFusion::doFusion(
             Pred, G4_send, G4_ExecSize(execSize*2), Dst, Src0,
             Builder->createImm(newDesc->getDesc(), Type_UD),
             InstOpt_WriteEnable,
-            newDesc);
+            newDesc,
+            true);
     }
 
     if (!IsSink) {

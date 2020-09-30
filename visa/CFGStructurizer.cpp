@@ -2054,20 +2054,8 @@ ANodeBB* CFGStructurizer::addLandingBB(
 
     if (insertAfterBB->getPhysicalSucc() != exitBB)
     {
-        G4_INST *lastInst = insertAfterBB->empty()
-            ? nullptr : insertAfterBB->back();
-        G4_INST *gotoInst;
-        if (lastInst)
-        {
-            gotoInst = CFG->builder->createInternalCFInst(
-                NULL, G4_goto, g4::SIMD1, NULL, targetLabel, InstOpt_NoOpt,
-                lastInst->getLineNo(), lastInst->getCISAOff(), lastInst->getSrcFilename());
-        }
-        else
-        {
-            gotoInst = CFG->builder->createInternalCFInst(
+        G4_INST *gotoInst = CFG->builder->createInternalCFInst(
                 NULL, G4_goto, g4::SIMD1, NULL, targetLabel, InstOpt_NoOpt);
-        }
         newBB->push_back(gotoInst);
     }
     newBB->Succs.push_back(exitBB);
@@ -3279,19 +3267,9 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
             return;
         }
 
-        G4_INST* lastInst = end->empty() ? nullptr : end->back();
-        G4_INST* endifInst;
-        if (lastInst)
-        {
-            endifInst = CFG->builder->createInternalCFInst(
-                NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt,
-                lastInst->getLineNo(), lastInst->getCISAOff(), lastInst->getSrcFilename());
-        }
-        else
-        {
-            endifInst = CFG->builder->createInternalCFInst(
-                NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt);
-        }
+        G4_INST* endifInst = CFG->builder->createInternalCFInst(
+            NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt);
+
         insertAtBegin(exit, endifInst);
 
         // jip = uip = endif
@@ -3299,8 +3277,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         MUST_BE_TRUE(pred != NULL, "if must have non-null predicate");
         pred->setState(pred->getState() == PredState_Plus ? PredState_Minus : PredState_Plus);
         G4_INST* ifInst = CFG->builder->createInternalCFInst(
-            pred, G4_if, execSize, endifLabel, endifLabel, InstOpt_NoOpt,
-            gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
+            pred, G4_if, execSize, endifLabel, endifLabel, InstOpt_NoOpt);
         begin->pop_back();
         begin->push_back(ifInst);
         if (isUniform)
@@ -3395,19 +3372,9 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         // Add endif instruction into exit BB, else into the beginning
         // BB of else part,  and replace goto in the begin BB with if
         // instruction.
-        G4_INST *lastInst = end->empty() ? nullptr : end->back();
-        G4_INST* endifInst;
-        if (lastInst)
-        {
-            endifInst = CFG->builder->createInternalCFInst(
-                NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt,
-                lastInst->getLineNo(), lastInst->getCISAOff(), lastInst->getSrcFilename());
-        }
-        else
-        {
-            endifInst = CFG->builder->createInternalCFInst(
-                NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt);
-        }
+        auto endifInst = CFG->builder->createInternalCFInst(
+            NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt);
+
         insertAtBegin(exit, endifInst);
 
         G4_BB *elseFirstBB = elseNode->getBeginBB();
@@ -3418,8 +3385,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
 
         // if instruction : jip = else_label, uip = endif
         G4_INST* ifInst = CFG->builder->createInternalCFInst(
-            pred, G4_if, execSize, elseLabel, endifLabel, InstOpt_NoOpt,
-            gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
+            pred, G4_if, execSize, elseLabel, endifLabel, InstOpt_NoOpt);
         begin->pop_back();
         begin->push_back(ifInst);
 
@@ -3438,8 +3404,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         }
         G4_INST *thenGoto = newThenLastBB->back();
         G4_INST* elseInst = CFG->builder->createInternalCFInst(
-            NULL, G4_else, execSize, endifLabel, endifLabel, InstOpt_NoOpt,
-            ifInst->getLineNo(), ifInst->getCISAOff(), ifInst->getSrcFilename());
+            NULL, G4_else, execSize, endifLabel, endifLabel, InstOpt_NoOpt);
         if (thenGoto->opcode() == G4_goto)
         {
             newThenLastBB->pop_back();
@@ -3526,8 +3491,7 @@ void CFGStructurizer::convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB)
 
         // jip = uip = do
         G4_INST *whileInst = CFG->builder->createInternalCFInst(
-            gotoInst->getPredicate(), G4_while, execSize, doLabel, doLabel, InstOpt_NoOpt,
-            gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
+            gotoInst->getPredicate(), G4_while, execSize, doLabel, doLabel, InstOpt_NoOpt);
         end->pop_back();
         end->push_back(whileInst);
         if (isUniform)
@@ -3675,44 +3639,10 @@ void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
     {
         G4_BB *whilebb = innermostWhile->getEndBB();
         G4_BB *innerBlock = nextJoinBB ? nextJoinBB : whilebb;
-#if 0
-        // To work around of BDW D0 steping break/while issue(bruteforce/remainder)
-        // create if (p) break; endif,
-        if (gotoInst->getPredicate())
-        {
-            char str[64];
-            SNPRINTF(str, 64, "label_cf_%d_break", beginbb->getId());
-            G4_Label* lab = CFG->builder->createLabel(str);
-
-            // enclosing break in if/endif
-            G4_INST* endifInst = CFG->builder->createInternalCFInst(
-                NULL, G4_endif, execSize, innerBlock->getLabel(), NULL, InstOpt_NoOpt,
-                gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
-            endifInst->setInstLabel(lab);
-
-            G4_INST* ifInst = CFG->builder->createInternalCFInst(
-                gotoInst->getPredicate(), G4_if, execSize, lab, lab, InstOpt_NoOpt,
-                gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
-
-            G4_INST* breakInst = CFG->builder->createInternalCFInst(
-                NULL, G4_break, execSize,
-                lab, whilebb->getLabel(), InstOpt_NoOpt,
-                gotoInst->getLineNo(), gotoInst->getCISAOff(),
-                gotoInst->getSrcFilename());
-            beginbb->pop_back();
-            beginbb->push_back(ifInst);
-            beginbb->push_back(breakInst);
-            beginbb->push_back(endifInst);
-
-            return;
-        }
-#endif
 
         G4_INST* breakInst = CFG->builder->createInternalCFInst(
             gotoInst->getPredicate(), G4_break, execSize,
-            innerBlock->getLabel(), whilebb->getLabel(), InstOpt_NoOpt,
-            gotoInst->getLineNo(), gotoInst->getCISAOff(),
-            gotoInst->getSrcFilename());
+            innerBlock->getLabel(), whilebb->getLabel(), InstOpt_NoOpt);
         beginbb->pop_back();
         beginbb->push_back(breakInst);
         if (isUniform)

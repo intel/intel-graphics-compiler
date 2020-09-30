@@ -3450,10 +3450,7 @@ static void expandPseudoLogic(IR_Builder& builder,
                     newDst,
                     builder.createImm(1, Type_UW),
                     builder.createImm(0, Type_UW),
-                    inst->getOption(),
-                    inst->getLineNo(),
-                    inst->getCISAOff(),
-                    inst->getSrcFilename());
+                    inst->getOption());
                 inst->transferDef(newSel, opNum, Gen4_Operand_Number::Opnd_pred);
                 bb->insertBefore(newIter, newSel);
                 SI = newSel;
@@ -3512,10 +3509,8 @@ static void expandPseudoLogic(IR_Builder& builder,
             nullDst,
             logicSrc0,
             logicSrc1,
-            inst->getOption(),  // keep the original instruction emask
-            inst->getLineNo(),
-            inst->getCISAOff(),
-            inst->getSrcFilename());
+            inst->getOption()  // keep the original instruction emask
+            );
 
         // Fix def-use
         if (Sel0 != nullptr)
@@ -6434,7 +6429,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             newInst = createMathInst(NULL, inst->getSaturate(), ExSize,
                 NULL, NULL, NULL, inst->asMathInst()->getMathCtrl(),
-                inst->getOption());
+                inst->getOption(), true);
             newInst->setCISAOff(inst->getCISAOff());
             newInst->setLocation(inst->getLocation());
         }
@@ -6442,15 +6437,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             newInst = createInternalInst(
                 NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
-                inst->getOption(), inst->getLineNo(), inst->getCISAOff(),
-                inst->getSrcFilename());
+                inst->getOption());
         }
         else
         {
             newInst = createInternalInst(
                 NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
-                NULL, inst->getOption(), inst->getLineNo(), inst->getCISAOff(),
-                inst->getSrcFilename());
+                NULL, inst->getOption());
         }
 
         return newInst;
@@ -6884,7 +6877,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
             G4_INST* sendInst = kernel.fg.builder->createSplitSendInst(
                 nullptr, G4_sends, g4::SIMD16, dstOpnd, headerOpnd, srcOpnd,
-                kernel.fg.builder->createImm(msgDescImm, Type_UD), InstOpt_WriteEnable, desc, nullptr, 0);
+                kernel.fg.builder->createImm(msgDescImm, Type_UD), InstOpt_WriteEnable, desc, nullptr, true);
             bb->insertBefore(iter, sendInst);
         }
     }
@@ -7361,7 +7354,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
                     G4_INST* inst = builder.createSendInst(
                         nullptr, G4_send, g4::SIMD8, dst, src,
-                        builder.createImm(fenceDesc, Type_UD), InstOpt_WriteEnable, msgDesc);
+                        builder.createImm(fenceDesc, Type_UD), InstOpt_WriteEnable, msgDesc, true);
                     bb->insertBefore(iter, inst);
                 }
                 else
@@ -7374,7 +7367,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(dstDcl, 1);
                     G4_INST* sendInst = builder.createSendInst(
                         nullptr, G4_send, g4::SIMD8, dst, src,
-                        builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, msgDesc);
+                        builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, msgDesc, true);
                     bb->insertBefore(iter, sendInst);
                 }
 

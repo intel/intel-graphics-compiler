@@ -230,7 +230,7 @@ G4_INST* FlowGraph::createNewLabelInst(G4_Label* label, int lineNo, int CISAOff)
     //srcFileName is NULL
     // TODO: remove this (use createLabelInst)
     return builder->createInternalInst(NULL, G4_label,
-        NULL, g4::NOSAT, g4::SIMD1, NULL, label, NULL, 0, lineNo, CISAOff, NULL);
+        NULL, g4::NOSAT, g4::SIMD1, NULL, label, NULL, 0);
 }
 
 G4_BB* FlowGraph::createNewBB(bool insertInFG)
@@ -1038,7 +1038,7 @@ void G4_BB::addSamplerFlushBeforeEOT()
         nullptr, G4_send, g4::SIMD8,
         builder->createNullDst(Type_UD), sendMsgOpnd,
         builder->createImm(desc, Type_UD),
-        0, msgDesc, 0);
+        0, msgDesc, true);
     auto iter = std::prev(this->end());
     this->insert(iter, samplerFlushInst);
 }
@@ -3211,8 +3211,7 @@ void FlowGraph::insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip)
         }
         else
         {
-            G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, InstOpt_NoOpt,
-                secondInst->getLineNo(), secondInst->getCISAOff(), secondInst->getSrcFilename());
+            G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, InstOpt_NoOpt);
             bb->insertBefore(iter, jInst);
         }
     }
@@ -4815,7 +4814,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
         builder->createImm(desc, Type_UD),
         InstOpt_WriteEnable,
         msgDesc,
-        0);
+        true);
     // need to make sure builder list is empty since later phases do a splice on the entire list
     builder->instList.pop_back();
     // createSendInst incorrectly sets its cisa offset to the last value of the counter.

@@ -1973,7 +1973,8 @@ int IR_Builder::translateVISASLMUntypedScaledInst(
         createImm(sendMsgDesc->getDesc(), Type_UD),
         instOpt,
         sendMsgDesc,
-        Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar()));
+        Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar()),
+        true);
 
     return VISA_SUCCESS;
 }
@@ -2042,7 +2043,7 @@ int IR_Builder::translateGather4Inst(
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
         G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
-        createInst(pred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt);
+        createInst(pred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt, true);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
 
@@ -2143,7 +2144,7 @@ int IR_Builder::translateScatter4Inst(
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
         G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
-        createInst(pred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt);
+        createInst(pred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt, true);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
 
@@ -2342,7 +2343,8 @@ int IR_Builder::translateVISASLMByteScaledInst(
         createImm(sendMsgDesc->getDesc(), Type_UD),
         instOpt,
         sendMsgDesc,
-        Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar()));
+        Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar()),
+        true);
 
     return VISA_SUCCESS;
 }
@@ -3091,7 +3093,7 @@ G4_SrcRegRegion* IR_Builder::getSVMOffset(
 {
     G4_Declare* dcl = createSendPayloadDcl(exSize, offsets->getType());
     G4_DstRegRegion* tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
-    createInst(pred, G4_add, 0, g4::NOSAT, 8, tmp, offsets, globalOffset, mask);
+    createInst(pred, G4_add, 0, g4::NOSAT, g4::SIMD8, tmp, offsets, globalOffset, mask, true);
     if (exSize == 16)
     {
         // do second half of the 64-bit add
@@ -3099,8 +3101,8 @@ G4_SrcRegRegion* IR_Builder::getSVMOffset(
         auto dst = createDst(dcl->getRegVar(), offset, 0, 1, offsets->getType());
         auto src = createSrcRegRegion(Mod_src_undef, Direct, offsets->getBase(),
             offsets->getRegOff() + offset, offsets->getSubRegOff(), getRegionStride1(), offsets->getType());
-        createInst(duplicateOperand(pred), G4_add, 0, g4::NOSAT, 8, dst, src,
-            duplicateOperand(globalOffset), getSplitHiEMask(16, mask));
+        createInst(duplicateOperand(pred), G4_add, 0, g4::NOSAT, g4::SIMD8, dst, src,
+            duplicateOperand(globalOffset), getSplitHiEMask(16, mask), true);
     }
     return Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
 }

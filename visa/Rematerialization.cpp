@@ -939,7 +939,7 @@ namespace vISA
                 kernel.fg.builder->duplicateOperand(src0)->asSrcRegRegion(),
                 kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
                 kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),
-                newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), dstInst->getLineNo());
+                newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), true);
             dupOp->setLocation(dstInst->getLocation());
             dupOp->setCISAOff(dstInst->getCISAOff());
 

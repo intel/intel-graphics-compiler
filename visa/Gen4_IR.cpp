@@ -7962,7 +7962,7 @@ G4_INST* G4_INST::cloneInst()
     else
     {
         newInst = nonConstBuilder->createInternalInst(prd, op, condMod, getSaturate(), getExecSize(),
-            dst, src0, src1, option, getLineNo(), getCISAOff(), getSrcFilename());
+            dst, src0, src1, option);
 
         if (src2)
             newInst->setSrc(src2, 2);
@@ -7987,7 +7987,7 @@ G4_INST* G4_InstIntrinsic::cloneInst()
     auto src2 = nonConstBuilder->duplicateOperand(getSrc(2));
 
     return nonConstBuilder->createInternalIntrinsicInst(prd, getIntrinsicId(), getExecSize(), dst,
-        src0, src1, src2, option, getLineNo(), getCISAOff(), getSrcFilename());
+        src0, src1, src2, option);
 }
 
 bool RegionDesc::isLegal(unsigned vs, unsigned w, unsigned hs)
@@ -8096,8 +8096,7 @@ G4_INST* G4_InstMath::cloneInst()
 
     return nonConstBuilder->createInternalMathInst(
         prd, getSaturate(), getExecSize(),
-        dst, src0, src1, getMathCtrl(), option,
-        getLineNo(), getCISAOff(), getSrcFilename());
+        dst, src0, src1, getMathCtrl(), option);
 }
 
 

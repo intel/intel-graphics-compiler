@@ -87,7 +87,7 @@ int IR_Builder::translateVISARawSendInst(
         msgDescOpnd,
         inst_opt,
         sendMsgDesc,
-        0);
+        true);
 
     return VISA_SUCCESS;
 }
@@ -174,7 +174,7 @@ int IR_Builder::translateVISARawSendsInst(
         inst_opt,
         sendMsgDesc,
         temp_exdesc_src,
-        0);
+        true);
 
     return VISA_SUCCESS;
 }

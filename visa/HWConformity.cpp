@@ -2355,8 +2355,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
         G4_SrcRegRegion* tmp_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 0, rd, tmp_type);
 
         G4_INST* newInst2 = builder.createInternalInst(
-            pred, G4_mov, condmod, satMod, execSize, dst, tmp_src_opnd, NULL, inst_opt,
-            inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+            pred, G4_mov, condmod, satMod, execSize, dst, tmp_src_opnd, NULL, inst_opt);
 
         newInst->transferUse(newInst2);
         newInst->addDefUse(movInst, Opnd_src0);
@@ -4377,10 +4376,7 @@ void HWConformity::convertMAD2MulAdd(INST_LIST_ITER iter, G4_BB* bb)
         addOpnd1,
         addOpnd2,
         nullptr,
-        inst->getOption(),
-        inst->getLineNo(),
-        inst->getCISAOff(),
-        inst->getSrcFilename());
+        inst->getOption());
 
     bb->insertBefore(tIter, addOp);
 
@@ -4640,10 +4636,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
                 addSrc0Opnd,
                 src2,
                 NULL,
-                inst->getOption(),
-                inst->getLineNo(),
-                inst->getCISAOff(),
-                inst->getSrcFilename());
+                inst->getOption());
 
             INST_LIST_ITER addLoc = i;
             ++addLoc;
@@ -5598,10 +5591,7 @@ G4_INST* HWConformity::splitInstWithByteDst(G4_INST* expand_op)
         NULL,
         NULL,
         NULL,
-        expand_op->getOption(),
-        expand_op->getLineNo(),
-        expand_op->getCISAOff(),
-        expand_op->getSrcFilename());
+        expand_op->getOption());
     MUST_BE_TRUE(expand_sec_half_op != NULL, ERROR_MEM_ALLOC);
 
     expand_op->setExecSize(newExecSize);

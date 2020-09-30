@@ -2380,7 +2380,7 @@ inline G4_INST * SpillManagerGRF::createSendInst(
         isWrite ? SendAccess::WRITE_ONLY : SendAccess::READ_ONLY, nullptr);
     auto sendInst = builder_->createSendInst(
         NULL, G4_send, execSize, postDst,
-        payload, desc, option, msgDesc);
+        payload, desc, option, msgDesc, true);
     sendInst->setCISAOff(curInst->getCISAOff());
 
     return sendInst;
@@ -4213,9 +4213,9 @@ void GlobalRA::expandSpillNonStackcall(
                 0, 1, SFID::DP_DC, numRows, 0, SendAccess::WRITE_ONLY);
             G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
             G4_Imm* extDesc = builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
-            sendInst = builder->createInternalSplitSendInst(nullptr, G4_sends, execSize,
+            sendInst = builder->createInternalSplitSendInst(execSize,
                 inst->getDst(), header, payloadToUse, msgDescImm, inst->getOption(),
-                msgDesc, extDesc, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+                msgDesc, extDesc);
         }
         instIt = bb->insertBefore(instIt, sendInst);
     }
@@ -4235,10 +4235,9 @@ void GlobalRA::expandSpillNonStackcall(
             G4_Imm* extDesc = builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
             G4_ExecSize execSize = inst->getExecSize(); // numRows > 1 ? 16 : 8;
 
-            auto sendInst = builder->createInternalSplitSendInst(nullptr, G4_sends, execSize,
+            auto sendInst = builder->createInternalSplitSendInst(execSize,
                 inst->getDst(), headerOpnd, payloadToUse, msgDescImm,
-                inst->getOption(), msgDesc, extDesc, inst->getLineNo(), inst->getCISAOff(),
-                inst->getSrcFilename());
+                inst->getOption(), msgDesc, extDesc);
 
             instIt = bb->insertBefore(instIt, sendInst);
 
@@ -4286,9 +4285,8 @@ void GlobalRA::expandSpillStackcall(
                 auto msgDesc = builder->createWriteMsgDesc(SFID::DP_DC, (uint32_t)descImm->getInt(), messageLength);
                 G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
                 G4_Imm* extDesc = builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
-                sendInst = builder->createInternalSplitSendInst(nullptr, G4_sends, execSize, dst, sendSrc0, payloadToUse,
-                    msgDescImm, inst->getOption() | InstOpt_WriteEnable, msgDesc, extDesc, inst->getLineNo(), inst->getCISAOff(),
-                    inst->getSrcFilename());
+                sendInst = builder->createInternalSplitSendInst(execSize, dst, sendSrc0, payloadToUse,
+                    msgDescImm, inst->getOption() | InstOpt_WriteEnable, msgDesc, extDesc);
             }
             return sendInst;
         };
@@ -4402,7 +4400,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
              auto msgDesc = builder->createReadMsgDesc(sfId, (uint32_t)desc->getInt());
              G4_Operand* msgDescOpnd = builder->createImm(msgDesc->getDesc(), Type_UD);
              sendInst = builder->createInternalSendInst(nullptr, G4_send, execSize, fillDst, sendSrc0, msgDescOpnd,
-                 InstOpt_WriteEnable, msgDesc, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+                 InstOpt_WriteEnable, msgDesc);
          }
          instIt = bb->insertBefore(instIt, sendInst);
      }
@@ -4425,8 +4423,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
 
              auto sendInst = builder->createInternalSendInst(nullptr,
                  G4_send, g4::SIMD16, fillDst, headerOpnd, msgDescImm, inst->getOption(),
-                 msgDesc, inst->getLineNo(), inst->getCISAOff(),
-                 inst->getSrcFilename());
+                 msgDesc);
 
              sendInst->setCISAOff(inst->getCISAOff());
 
@@ -4473,8 +4470,7 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
                 auto msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
                 sendInst = builder->createInternalSendInst(
                     nullptr, G4_send, execSize, fillVar, sendSrc0, msgDescImm,
-                    InstOpt_WriteEnable, msgDesc,
-                    inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+                    InstOpt_WriteEnable, msgDesc);
             }
             return sendInst;
         };
