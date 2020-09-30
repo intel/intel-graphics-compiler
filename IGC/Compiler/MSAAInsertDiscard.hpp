@@ -24,35 +24,40 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef __CONVERT_MSAA_PAYLOAD_TO16BIT__
-#define __CONVERT_MSAA_PAYLOAD_TO16BIT__
+#ifndef __MSAA_INSERT_DISCARD__
+#define __MSAA_INSERT_DISCARD__
 
 #include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
 {
-    class ConvertMSAAPayloadTo16Bit : public llvm::FunctionPass, public llvm::InstVisitor<ConvertMSAAPayloadTo16Bit>
+    class MSAAInsertDiscard : public llvm::FunctionPass, public llvm::InstVisitor<MSAAInsertDiscard>
     {
+    private:
+        bool done;
         llvm::IRBuilder<>* m_builder;
         CodeGenContextWrapper* m_pCtxWrapper;
+        unsigned int m_kernelSize;
+
+        int getiCMPValue();
+
     public:
 
         static char ID;
-        ConvertMSAAPayloadTo16Bit();
+        MSAAInsertDiscard();
 
-        ~ConvertMSAAPayloadTo16Bit() {}
+        ~MSAAInsertDiscard() {}
 
         virtual bool runOnFunction(llvm::Function& F) override;
 
         virtual llvm::StringRef getPassName() const override
         {
-            return "ConverMSAAPayloadTo16Bit";
+            return "MSAAInsertDiscard";
         }
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override

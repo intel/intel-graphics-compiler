@@ -154,7 +154,6 @@ bool ConvertMSAAPayloadTo16Bit::runOnFunction(Function& F)
     CodeGenContext* cgCtx = m_pCtxWrapper->getCodeGenContext();
     IRBuilder<> builder(F.getContext());
     m_builder = &builder;
-    m_pModule = F.getParent();
     visit(F);
     DumpLLVMIR(cgCtx, "AfterMSAA16bitPayload");
     return true;
