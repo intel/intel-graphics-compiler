@@ -350,7 +350,9 @@ bool CleanImplicitIds::processFunc(Function& F)
         auto OldVar = DbgVal->getValue();
 
         SmallVector<Instruction*, 5> WorkList;
-        WorkList.push_back(cast<Instruction>(OldVar));
+        if (isa<Instruction>(OldVar)) {
+            WorkList.push_back(cast<Instruction>(OldVar));
+        }
 
         DbgVal->eraseFromParent();
         while (WorkList.size() > 0)
