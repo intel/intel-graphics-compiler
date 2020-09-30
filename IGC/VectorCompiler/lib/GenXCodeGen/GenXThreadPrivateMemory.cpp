@@ -966,6 +966,7 @@ void SplitScatter(CallInst *CI) {
     EltOffsets = CI->getArgOperand(2);
     OldVal = CI->getArgOperand(3);
   }
+  IGC_ASSERT(Pred && EltOffsets && OldVal);
 
   std::pair<Value *, Value *> NewPreds = SplitVec(Pred, NumElts, CI, Splitters);
 
@@ -1002,6 +1003,7 @@ void SplitScatter(CallInst *CI) {
         IntrinsicInst::Create(F, {NewPreds.second, LogNumBlock,
                                   NewEltOffsets.second, OldVals.second});
   }
+  IGC_ASSERT(FirstScatter && SecondScatter);
 
   FirstScatter->insertAfter(CI);
   SecondScatter->insertAfter(FirstScatter);
@@ -1035,6 +1037,7 @@ void SplitGather(CallInst *CI) {
     EltOffsets = CI->getArgOperand(2);
     OldVal = CI->getArgOperand(3);
   }
+  IGC_ASSERT(Pred && EltOffsets && OldVal);
 
   std::pair<Value *, Value *> NewPreds = SplitVec(Pred, NumElts, CI, Splitters);
 
@@ -1069,6 +1072,7 @@ void SplitGather(CallInst *CI) {
         IntrinsicInst::Create(F, {NewPreds.second, LogNumBlock,
                                   NewEltOffsets.second, OldVals.second});
   }
+  IGC_ASSERT(FirstGather && SecondGather);
 
   FirstGather->insertAfter(CI);
   SecondGather->insertAfter(FirstGather);
