@@ -236,8 +236,6 @@ public:
     void emitInfoInstruction(llvm::InfoIntrinsic* inst);
     void emitGather4Instruction(llvm::SamplerGatherIntrinsic* inst);
     void emitLdmsInstruction(llvm::Instruction* inst);
-    void emitLdStructured(llvm::Instruction* inst);
-    void emitStoreStructured(llvm::Instruction* inst);
     void emitTypedRead(llvm::Instruction* inst);
     void emitTypedWrite(llvm::Instruction* inst);
     void emitThreadGroupBarrier(llvm::Instruction* inst);
@@ -318,7 +316,6 @@ public:
 
     bool IsUniformAtomic(llvm::Instruction* pInst);
     void emitAtomicRaw(llvm::GenIntrinsicInst* pInst);
-    void emitAtomicStructured(llvm::Instruction* pInst);
     void emitAtomicTyped(llvm::GenIntrinsicInst* pInst);
     void emitAtomicCounter(llvm::GenIntrinsicInst* pInst);
     void emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInst);
