@@ -187,5 +187,6 @@ llvm::Expected<CompileOutput> Compile(llvm::ArrayRef<char> Input,
                                       llvm::ArrayRef<uint64_t> SpecConstValues);
 
 llvm::Expected<CompileOptions> ParseOptions(llvm::StringRef ApiOptions,
-                                            llvm::StringRef InternalOptions);
+                                            llvm::StringRef InternalOptions,
+                                            bool IsStrictMode);
 } // namespace vc

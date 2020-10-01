@@ -592,7 +592,7 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
 
 static Expected<opt::InputArgList>
 parseOptions(const SmallVectorImpl<const char *> &Argv,
-             vc::options::Flags FlagsToInclude) {
+             vc::options::Flags FlagsToInclude, bool IsStrictMode) {
   const opt::OptTable &Options = vc::getOptTable();
 
   const bool IsInternal = FlagsToInclude == vc::options::InternalOption;
@@ -606,7 +606,7 @@ parseOptions(const SmallVectorImpl<const char *> &Argv,
 
   // ocloc uncoditionally passes opencl options to internal options.
   // Skip checking of internal options for now.
-  if (!IsInternal) {
+  if (IsStrictMode) {
     if (opt::Arg *A = InputArgs.getLastArg(vc::options::OPT_UNKNOWN,
                                            vc::options::OPT_INPUT)) {
       std::string BadOpt = A->getAsString(InputArgs);
@@ -617,8 +617,8 @@ parseOptions(const SmallVectorImpl<const char *> &Argv,
   return {std::move(InputArgs)};
 }
 
-static Expected<opt::InputArgList> parseApiOptions(StringSaver &Saver,
-                                                   StringRef ApiOptions) {
+static Expected<opt::InputArgList>
+parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
   SmallVector<const char *, 8> Argv;
   cl::TokenizeGNUCommandLine(ApiOptions, Saver, Argv);
 
@@ -634,12 +634,12 @@ static Expected<opt::InputArgList> parseApiOptions(StringSaver &Saver,
   const std::string VCCodeGenOptName =
       Options.getOption(vc::options::OPT_vc_codegen).getPrefixedName();
   if (HasOption(VCCodeGenOptName))
-    return parseOptions(Argv, vc::options::ApiOption);
+    return parseOptions(Argv, vc::options::ApiOption, IsStrictMode);
   // Deprecated -cmc parsing just for compatibility.
   const std::string IgcmcOptName =
       Options.getOption(vc::options::OPT_igcmc).getPrefixedName();
   if (HasOption(IgcmcOptName))
-    return parseOptions(Argv, vc::options::IgcmcApiOption);
+    return parseOptions(Argv, vc::options::IgcmcApiOption, IsStrictMode);
 
   return make_error<vc::NotVCError>();
 }
@@ -648,7 +648,9 @@ static Expected<opt::InputArgList>
 parseInternalOptions(StringSaver &Saver, StringRef InternalOptions) {
   SmallVector<const char *, 8> Argv;
   cl::TokenizeGNUCommandLine(InternalOptions, Saver, Argv);
-  return parseOptions(Argv, vc::options::InternalOption);
+  // Internal options are always unchecked.
+  constexpr bool IsStrictMode = false;
+  return parseOptions(Argv, vc::options::InternalOption, IsStrictMode);
 }
 
 static Error makeOptionError(const opt::Arg &A, const opt::ArgList &Opts,
@@ -821,10 +823,11 @@ composeLLVMArgs(const opt::InputArgList &ApiArgs,
 }
 
 llvm::Expected<vc::CompileOptions>
-vc::ParseOptions(llvm::StringRef ApiOptions, llvm::StringRef InternalOptions) {
+vc::ParseOptions(llvm::StringRef ApiOptions, llvm::StringRef InternalOptions,
+                 bool IsStrictMode) {
   llvm::BumpPtrAllocator Alloc;
   llvm::StringSaver Saver{Alloc};
-  auto ExpApiArgList = parseApiOptions(Saver, ApiOptions);
+  auto ExpApiArgList = parseApiOptions(Saver, ApiOptions, IsStrictMode);
   if (!ExpApiArgList)
     return ExpApiArgList.takeError();
   const opt::InputArgList &ApiArgs = ExpApiArgList.get();

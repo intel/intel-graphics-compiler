@@ -1547,7 +1547,9 @@ static std::error_code TranslateBuildVC(
         Dumper->dumpBinary(Input, "igc_input.spv");
     }
 
-    auto ExpOptions = vc::ParseOptions(ApiOptions, InternalOptions);
+    const bool IsStrictParser = IGC_GET_FLAG_VALUE(VCStrictOptionParser);
+    auto ExpOptions =
+        vc::ParseOptions(ApiOptions, InternalOptions, IsStrictParser);
     if (!ExpOptions)
         return getErrorVC(ExpOptions.takeError(), pOutputArgs);
 
