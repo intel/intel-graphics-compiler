@@ -814,6 +814,17 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
             {
                 continue;
             }
+
+            if (const auto* st = dyn_cast<StoreInst>(defi))
+            {
+                // If we encounter a store in divergent control flow,
+                // we need to process the associated alloca (if any) again
+                // because it might need to be RANDOM.
+                auto it = m_storeDepMap.find(st);
+                if (it != m_storeDepMap.end())
+                    m_pChangedNew->push_back(it->second);
+            }
+
             if (isRegionInvariant(defi, &br_info, 0))
             {
                 continue;
@@ -1452,35 +1463,36 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
     }
     // find the common dominator block among all the stores
     // that can be considered as the nearest logical location for alloca.
-    const BasicBlock* CommonDomB = nullptr;
-    for (auto it : depIt->second.stores)
+    const BasicBlock* CommonDomBB = nullptr;
+    for (auto *SI : depIt->second.stores)
     {
-        auto BB = (*it).getParent();
+        auto BB = SI->getParent();
         IGC_ASSERT(BB);
-        if (!CommonDomB)
-            CommonDomB = BB;
+        if (!CommonDomBB)
+            CommonDomBB = BB;
         else
-            CommonDomB = DT->findNearestCommonDominator(CommonDomB, BB);
+            CommonDomBB = DT->findNearestCommonDominator(CommonDomBB, BB);
     }
     // if any store is not uniform, then alloca is not uniform
     // if any store is affected by a divergent branch after alloca,
     // then alloca is also not uniform
-    for (auto it : depIt->second.stores)
+    for (auto *SI : depIt->second.stores)
     {
-        if (hasDependency(&(*it)))
+        if (hasDependency(SI))
         {
-            WIAnalysis::WIDependancy dep2 = getDependency(&(*it));
-            if (dep2 != WIAnalysis::UNIFORM)
+            if (getDependency(SI) != WIAnalysis::UNIFORM)
             {
                 return WIAnalysis::RANDOM;
             }
-            if (m_ctrlBranches.find((*it).getParent()) != m_ctrlBranches.end())
+
+            if (auto I = m_ctrlBranches.find(SI->getParent());
+                I != m_ctrlBranches.end())
             {
-                auto Branches = m_ctrlBranches[(*it).getParent()];
-                for (auto BrI = Branches.begin(), BrE = Branches.end();
-                    BrI != BrE; ++BrI) {
+                auto& Branches = I->second;
+                for (auto *BrI : Branches)
+                {
                     // exclude those branches that dominates alloca
-                    if (!DT->dominates((*BrI), CommonDomB))
+                    if (!DT->dominates(BrI, CommonDomBB))
                         return WIAnalysis::RANDOM;
                 }
             }
