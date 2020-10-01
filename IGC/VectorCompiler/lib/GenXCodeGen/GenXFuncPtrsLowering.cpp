@@ -73,6 +73,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/Instructions.h"
 
 #include <deque>
+#include <cassert>
 
 using namespace llvm;
 using namespace genx;
@@ -368,7 +369,7 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
                      OrigV->getType()->getVectorNumElements() / Scale))
                : cast<Value>(Worklist.back()));
       auto *FptrF = getFunctionPointerFunc(EEInst->getVectorOperand());
-      IGC_ASSERT(FptrF);
+      assert(FptrF);
       auto *PTI = CastInst::CreateBitOrPointerCast(FptrF,
             Type::getInt64Ty(*Ctx), "", EEInst);
       IGC_ASSERT(PTI && "CreateBitOrPointerCast failed!");
