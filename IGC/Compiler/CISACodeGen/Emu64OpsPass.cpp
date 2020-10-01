@@ -779,7 +779,6 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
     if (!Emu->isInt64(&BinOp))
         return false;
 
-
     Value* Lo = nullptr, * Hi = nullptr;
     std::tie(Lo, Hi) = Emu->getExpandedValues(BinOp.getOperand(0));
     Value* ShAmt = nullptr;
@@ -900,7 +899,6 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
     if (!Emu->isInt64(&BinOp))
         return false;
 
-
     Value* Lo = nullptr, * Hi = nullptr;
     std::tie(Lo, Hi) = Emu->getExpandedValues(BinOp.getOperand(0));
     Value* ShAmt = nullptr;
@@ -1020,7 +1018,6 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
         return false;
-
 
     Value* Lo = nullptr, * Hi = nullptr;
     std::tie(Lo, Hi) = Emu->getExpandedValues(BinOp.getOperand(0));
@@ -1276,7 +1273,6 @@ bool InstExpander::visitSExt(SExtInst& SEI) {
     if (!Emu->isInt64(&SEI))
         return false;
 
-
     Value* Src = SEI.getOperand(0);
     Type* SrcTy = SEI.getSrcTy();
     IGC_ASSERT(nullptr != SrcTy);
@@ -1297,7 +1293,6 @@ bool InstExpander::visitZExt(ZExtInst& ZEI) {
     if (!Emu->isInt64(&ZEI))
         return false;
 
-
     Value* Src = ZEI.getOperand(0);
     Type* SrcTy = ZEI.getSrcTy();
     IGC_ASSERT(nullptr != SrcTy);
@@ -1317,7 +1312,6 @@ bool InstExpander::visitFPToUI(FPToUIInst& F2U) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&F2U))
         return false;
-
 
     IGCLLVM::Intrinsic IID;
     Value* Src = F2U.getOperand(0);
@@ -1373,7 +1367,6 @@ bool InstExpander::visitFPToSI(FPToSIInst& F2S) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&F2S))
         return false;
-
 
     IGCLLVM::Intrinsic IID;
     Value* Src = F2S.getOperand(0);
@@ -1559,7 +1552,6 @@ bool InstExpander::visitUIToFP(UIToFPInst& U2F) {
     if (!Emu->isInt64(Src))
         return false;
 
-
     Value* Lo = nullptr, * Hi = nullptr;
     std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
 
@@ -1603,7 +1595,6 @@ bool InstExpander::visitSIToFP(SIToFPInst& S2F) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(Src))
         return false;
-
 
     Value* Lo = nullptr, * Hi = nullptr;
     std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
