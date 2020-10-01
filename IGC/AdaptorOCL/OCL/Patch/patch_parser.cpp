@@ -1206,6 +1206,9 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tPerThreadPrivateMemorySize= %d\n",
                     pPatchItem->PerThreadPrivateMemorySize );
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tIsSimtThread= %d\n",
+                    pPatchItem->IsSimtThread);
             }
             break;
 

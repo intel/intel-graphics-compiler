@@ -469,10 +469,13 @@ struct SPatchAllocateStatelessPrivateSurface :
     uint32_t   DataParamOffset;
     uint32_t   DataParamSize;
     uint32_t   PerThreadPrivateMemorySize;
+    // if IsSimtThread is true, API assumes it is allocated per-simt-thread
+    // else, API assumes it's allocated per-hardware-thread
+    uint32_t   IsSimtThread;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchAllocateStatelessPrivateSurface ) == ( 16 + sizeof( SPatchItemHeader ) ) , "The size of SPatchAllocateStatelessPrivateSurface is not what is expected" );
+static_assert( sizeof( SPatchAllocateStatelessPrivateSurface ) == ( 20 + sizeof( SPatchItemHeader ) ) , "The size of SPatchAllocateStatelessPrivateSurface is not what is expected" );
 
 /*****************************************************************************\
 STRUCT: SPatchMediaVFEState

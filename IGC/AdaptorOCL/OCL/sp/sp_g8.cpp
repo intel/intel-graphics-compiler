@@ -1744,6 +1744,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_PRIVATE_MEMORY;
                     patch.Size = sizeof( patch );
                     patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[ bti ];
+                    //FIXME: IGC currently set PerThreadPrivateMemorySize with size assumed to be per-simt-thread by setting IsSimtThread==1
+                    patch.IsSimtThread = 1;
                     patch.PerThreadPrivateMemorySize =
                             std::max((DWORD)IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize),
                                      ptrArg->PerThreadPrivateMemorySize);
