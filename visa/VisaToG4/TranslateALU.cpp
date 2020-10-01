@@ -260,13 +260,22 @@ int IR_Builder::translateVISACompareInst(
     // If it's mix mode HF,F, it will be split down the road anyway, so behavior doesn't change.
     G4_Type src0Type = src0Opnd->getType();
     G4_Type src1Type = src1Opnd->getType();
-    G4_Type dstType = (exsize == 16 && !(src0Type == Type_HF || src1Type == Type_HF)) ? Type_W :
-        (G4_Type_Table[src0Type].byteSize > G4_Type_Table[src1Type].byteSize) ? src0Type : src1Type;
-    if (IS_VTYPE(dstType))
+    G4_Type dstType;
+    if (IS_TYPE_FLOAT_ALL(src0Type))
     {
-        dstType = Type_UD;
+        dstType = (getTypeSize(src0Type) > getTypeSize(src1Type)) ? src0Type : src1Type;
     }
-    G4_DstRegRegion *null_dst_opnd = createNullDst(dstType);
+    else
+    {
+        // FIXME: why does exec size matter here?
+        dstType = exsize == 16 ? Type_W :
+            (getTypeSize(src0Type) > getTypeSize(src1Type) ? src0Type : src1Type);
+        if (IS_VTYPE(dstType))
+        {
+            dstType = Type_UD;
+        }
+    }
+    auto nullDst = createNullDst(dstType);
 
     G4_CondMod* condMod = createCondMod(
         Get_G4_CondModifier_From_Common_ISA_CondModifier(relOp),
@@ -278,7 +287,7 @@ int IR_Builder::translateVISACompareInst(
         condMod,
         g4::NOSAT,
         exsize,
-        null_dst_opnd,
+        nullDst,
         src0Opnd,
         src1Opnd,
         inst_opt,
