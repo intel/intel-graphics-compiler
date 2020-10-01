@@ -175,6 +175,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
 
                 G4_INST* movInst = m_builder->createMov(execSize, m_builder->Create_Dst_Opnd_From_Dcl(dcl, 1),
                     origSrc, InstOpt_WriteEnable, false);
+                movInst->inheritDIFrom(inst);
 
                 INST_LIST_ITER newMovIter = m_builder->instList.insert(it, movInst);
 

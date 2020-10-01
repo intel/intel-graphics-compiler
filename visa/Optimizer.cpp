@@ -6452,8 +6452,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             newInst = createMathInst(NULL, inst->getSaturate(), ExSize,
                 NULL, NULL, NULL, inst->asMathInst()->getMathCtrl(),
                 inst->getOption(), true);
-            newInst->setCISAOff(inst->getCISAOff());
-            newInst->setLocation(inst->getLocation());
         }
         else if (inst->getNumSrc() < 3)
         {
@@ -6467,6 +6465,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
                 NULL, inst->getOption());
         }
+
+        newInst->inheritDIFrom(inst);
 
         return newInst;
     }
