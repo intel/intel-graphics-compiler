@@ -566,13 +566,14 @@ void replaceAllSpilledRegions(G4_Kernel& kernel, G4_Declare* oldDcl, G4_Declare*
         for (auto inst : *bb)
         {
             auto dst = inst->getDst();
-            if (dst &&
-                !dst->isNullReg())
+            if (dst && !dst->isNullReg())
             {
                 if (dst->getTopDcl() == oldDcl)
                 {
-                    G4_DstRegRegion* newDstRgn = kernel.fg.builder->createDstRegRegion(
-                        dst->getRegAccess(), newDcl->getRegVar(), dst->getRegOff(),
+                    // code does not appear to handle indirect
+                    assert(!dst->isIndirect());
+                    G4_DstRegRegion* newDstRgn = kernel.fg.builder->createDst(
+                        newDcl->getRegVar(), dst->getRegOff(),
                         dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
                     inst->setDest(newDstRgn);
                 }
@@ -1957,14 +1958,22 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST
             }
 
             unsigned short defDstHS = defDstRegion->getHorzStride();
-            newDstOpnd = fg.builder->createDstRegRegion(
-                dst->getRegAccess(),
-                dst->getBase(),
-                indirectDst ? dst->getRegOff() : regOff,
-                indirectDst ? dst->getSubRegOff() : subRegOff,
-                dstHS * defDstHS, defDstRegion->getType());
-            newDstOpnd->setImmAddrOff(dst->getAddrImm() +
-                (indirectDst ? (short)tempLen : 0));
+            if (!indirectDst)
+            {
+                newDstOpnd = fg.builder->createDst(
+                    dst->getBase(),
+                    regOff,
+                    subRegOff,
+                    dstHS * defDstHS, defDstRegion->getType());
+            }
+            else
+            {
+                newDstOpnd = fg.builder->createIndirectDst(
+                    dst->getBase(),
+                    dst->getSubRegOff(),
+                    dstHS * defDstHS, defDstRegion->getType(),
+                    (int16_t)dst->getAddrImm() + tempLen);
+            }
         }
         else
         {
@@ -1978,28 +1987,41 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST
             // mov (8) V58(0,0)[1]:w  V59(0,0)[8;8,1]:w [Align1, Q1] %22
             if (dst->getType() == src->getType())
             {
-                newDstOpnd = fg.builder->createDstRegRegion(
-                    dst->getRegAccess(),
-                    dst->getBase(),
-                    dst->getRegOff(),
-                    indirectDst
-                    ? dst->getSubRegOff()
-                    : (scale == 0
-                    ? dst->getSubRegOff() /
-                    (defDstElSize / dstElSize)
-                    : dst->getSubRegOff() * scale),
-                    dstHS, defDstRegion->getType());
-                newDstOpnd->setImmAddrOff(dst->getAddrImm());
+                if (!indirectDst)
+                {
+                    newDstOpnd = fg.builder->createDst(
+                        dst->getBase(),
+                        dst->getRegOff(),
+                        (scale == 0 ?
+                        dst->getSubRegOff() / (defDstElSize / dstElSize) :
+                        dst->getSubRegOff() * scale),
+                        dstHS, defDstRegion->getType());
+                }
+                else
+                {
+                    newDstOpnd = fg.builder->createIndirectDst(
+                        dst->getBase(),
+                        dst->getSubRegOff(),
+                        dstHS, defDstRegion->getType(), dst->getAddrImm());
+                }
             }
             else
             {
-                newDstOpnd = fg.builder->createDstRegRegion(dst->getRegAccess(),
+                if (!indirectDst)
+                {
+                    newDstOpnd = fg.builder->createDst(
+                        dst->getBase(),
+                        dst->getRegOff(),
+                        dst->getSubRegOff(), dstHS,
+                        dst->getType());
+                }
+                else
+                {
+                    newDstOpnd = fg.builder->createIndirectDst(
                     dst->getBase(),
-                    dst->getRegOff(),
                     dst->getSubRegOff(), dstHS,
-                    dst->getType());
-                newDstOpnd->setImmAddrOff(dst->getAddrImm());
-
+                    dst->getType(), dst->getAddrImm());
+                }
             }
         }
     }

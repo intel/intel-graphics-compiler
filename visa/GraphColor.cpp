@@ -10018,7 +10018,7 @@ bool FlagSpillCleanup::replaceWithPreDcl(
         {
             G4_DstRegRegion *orgDstRegion = inst->getDst();
             int regOff = preRegOff + (scratchAccess->leftOff - preScratchAccess->leftOff) / numEltPerGRF(Type_UB) + payloadHeaderSize / numEltPerGRF(Type_UB);
-            G4_DstRegRegion * dstOpnd = builder.createDstRegRegion(orgDstRegion->getRegAccess(),
+            G4_DstRegRegion * dstOpnd = builder.createDst(
                 dcl->getRegVar(),
                 (short)regOff,
                 orgDstRegion->getSubRegOff(),

@@ -910,7 +910,8 @@ namespace vISA
 
                     auto dupOp = headerDefInst->cloneInst();
                     auto headerDefDst = headerDefInst->getDst();
-                    dupOp->setDest(kernel.fg.builder->createDstRegRegion(headerDefDst->getRegAccess(),
+                    assert(!headerDefDst->isIndirect()); // we dont allow send header to be defined indirectly
+                    dupOp->setDest(kernel.fg.builder->createDst(
                         newSrc0Dcl->getRegVar(), headerDefDst->getRegOff(), headerDefDst->getSubRegOff(),
                         headerDefDst->getHorzStride(), headerDefDst->getType()));
                     newInst.push_back(dupOp);

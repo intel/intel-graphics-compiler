@@ -2688,7 +2688,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
 
     auto incrementVar = [&](G4_Operand* var, unsigned int width, unsigned int regOff, unsigned int sregOff, G4_INST* inst, short increment)
     {
-        auto addrDst = builder.createDstRegRegion(Direct, var->getBase(), regOff, sregOff, 1, Type_UW);
+        auto addrDst = builder.createDst(var->getBase(), regOff, sregOff, 1, Type_UW);
         auto addrSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, var->getBase(), regOff, sregOff,
             builder.getRegionStride1(), Type_UW);
         auto incrementImm = builder.createImm(increment, Type_W);
@@ -5601,32 +5601,49 @@ G4_INST* HWConformity::splitInstWithByteDst(G4_INST* expand_op)
         G4_DstRegRegion* old_dst = expand_op->getDst();
         short secondSubRegOff = old_dst->getSubRegOff() + 1;
 
-        G4_DstRegRegion* newDstOpnd = builder.createDstRegRegion(
-            old_dst->getRegAccess(),
-            old_dst->getBase(),
-            old_dst->getRegOff(),
-            old_dst->getSubRegOff(),
-            old_dst->getHorzStride() * 2,
-            old_dst->getType());
-        if (old_dst->getRegAccess() != Direct)
+        G4_DstRegRegion* newDstOpnd = nullptr;
+
+        if (!old_dst->isIndirect())
         {
-            newDstOpnd->setImmAddrOff(old_dst->getAddrImm());
+            newDstOpnd = builder.createDst(
+                old_dst->getBase(),
+                old_dst->getRegOff(),
+                old_dst->getSubRegOff(),
+                old_dst->getHorzStride() * 2,
+                old_dst->getType());
+        }
+        else
+        {
+            newDstOpnd = builder.createIndirectDst(
+                old_dst->getBase(),
+                old_dst->getSubRegOff(),
+                old_dst->getHorzStride() * 2,
+                old_dst->getType(),
+                old_dst->getAddrImm());
             secondSubRegOff -= 1;
         }
 
         expand_op->setDest(newDstOpnd);
 
-        G4_DstRegRegion* secondDstOpnd = builder.createDstRegRegion(
-            old_dst->getRegAccess(),
-            old_dst->getBase(),
-            old_dst->getRegOff(),
-            secondSubRegOff,
-            old_dst->getHorzStride() * 2,
-            old_dst->getType());
+        G4_DstRegRegion* secondDstOpnd = nullptr;
 
-        if (old_dst->getRegAccess() != Direct)
+        if (!old_dst->isIndirect())
         {
-            secondDstOpnd->setImmAddrOff(old_dst->getAddrImm() + 1);
+            secondDstOpnd = builder.createDst(
+                old_dst->getBase(),
+                old_dst->getRegOff(),
+                secondSubRegOff,
+                old_dst->getHorzStride() * 2,
+                old_dst->getType());
+        }
+        else
+        {
+            secondDstOpnd = builder.createIndirectDst(
+                old_dst->getBase(),
+                secondSubRegOff,
+                old_dst->getHorzStride() * 2,
+                old_dst->getType(),
+                old_dst->getAddrImm() + 1);
         }
 
         expand_sec_half_op->setDest(secondDstOpnd);

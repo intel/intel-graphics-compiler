@@ -939,22 +939,6 @@ public:
         return rgn;
     }
 
-    // create a new dstregregion allocated in mem
-    // TODO: Avoid calling this directly since direct dst and indirect dst
-    // have different parameters. Will make it private in the future.
-    G4_DstRegRegion* createDstRegRegion(
-        G4_RegAccess a,
-        G4_VarBase* b,
-        short roff,
-        short sroff,
-        unsigned short hstride,
-        G4_Type        ty,
-        G4_AccRegSel regSel = ACC_UNDEFINED)
-    {
-        G4_DstRegRegion* rgn = new (mem) G4_DstRegRegion(a, b, roff, sroff, hstride, ty, regSel);
-        return rgn;
-    }
-
     // create a direct DstRegRegion
     G4_DstRegRegion* createDst(
         G4_VarBase* b,
@@ -1105,6 +1089,21 @@ public:
     }
 
  private:
+
+    // Avoid calling this directly, use createDst and createIndirectDst instead
+    G4_DstRegRegion* createDstRegRegion(
+        G4_RegAccess a,
+        G4_VarBase* b,
+        short roff,
+        short sroff,
+        unsigned short hstride,
+        G4_Type        ty,
+        G4_AccRegSel regSel = ACC_UNDEFINED)
+    {
+        G4_DstRegRegion* rgn = new (mem) G4_DstRegRegion(a, b, roff, sroff, hstride, ty, regSel);
+        return rgn;
+    }
+
     // please leave all createInst() as private and use the public wrappers below
 
      // cond+sat+binary+line
