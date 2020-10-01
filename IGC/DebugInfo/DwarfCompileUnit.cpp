@@ -2622,7 +2622,8 @@ void CompileUnit::constructMemberDIE(DIE& Buffer, DIDerivedType* DT)
         uint64_t FieldSize = getBaseTypeSize(DD, DT);
         uint64_t OffsetInBytes;
 
-        if (Size != FieldSize)
+        bool IsBitfield = FieldSize && Size != FieldSize;
+        if (IsBitfield)
         {
             // Handle bitfield.
             addUInt(MemberDie, dwarf::DW_AT_byte_size, None,
