@@ -195,31 +195,6 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
         }
     } while (changed);
 
-    // Cleaning redundant addrspacecast instructions
-    // %1 = addrspacecast i32 * %buf to i32 addrspace(4) *
-    // %2 = ptrtoint i32 addrspace(4) * %1 to i64
-    // ->
-    // %2 = ptrtoint i32 * %buf to i64
-    for (inst_iterator i = inst_begin(F); i != inst_end(F); ++i)
-    {
-        if (AddrSpaceCastInst* addrSpaceCastInst = llvm::dyn_cast<AddrSpaceCastInst>(&*i))
-        {
-            if (addrSpaceCastInst->getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE
-                && addrSpaceCastInst->getDestAddressSpace() == ADDRESS_SPACE_GENERIC
-                && addrSpaceCastInst->hasOneUse())
-            {
-                if (PtrToIntInst* ptrtoint = llvm::dyn_cast<PtrToIntInst>(*addrSpaceCastInst->user_begin()))
-                {
-                    IRBuilder<> builder(addrSpaceCastInst);
-                    Value* newPtrToInt = builder.CreatePtrToInt(addrSpaceCastInst->getOperand(0), ptrtoint->getDestTy());
-                    ptrtoint->replaceAllUsesWith(newPtrToInt);
-                    ptrtoint->eraseFromParent();
-                    modified = true;
-                }
-            }
-        }
-    }
-
     return modified;
 }
 
