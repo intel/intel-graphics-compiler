@@ -1359,7 +1359,8 @@ public:
         G4_Predicate* pred,
         G4_CondMod* condMod,
         G4_Operand* src_opnd,
-        bool use_nomask = false);
+        bool use_nomask = false,
+        G4_InstOpts options = InstOpt_NoOpt);
     void Create_ADD_Inst(
         G4_Declare* dcl,
         short         regOff,

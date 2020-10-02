@@ -128,7 +128,7 @@ void IR_Builder::expandPow(
         default:
         {
             G4_Declare* tmpLogSrc = createTempVar(exsize, src0Opnd->getType(), Any);
-            Create_MOV_Inst(tmpLogSrc, 0, 0, exsize, nullptr, nullptr, src0Opnd);
+            Create_MOV_Inst(tmpLogSrc, 0, 0, exsize, nullptr, nullptr, src0Opnd, false, instOpt);
             logSrc = Create_Src_Opnd_From_Dcl(tmpLogSrc, getRegionStride1());
             logSrc->asSrcRegRegion()->setModifier(Mod_Abs);
         }

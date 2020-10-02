@@ -2453,9 +2453,8 @@ void IR_Builder::Create_ADD_Inst(
     }
 }
 
-// curently this function is only called in dataport intrinsic translation functions.
-// if it is used in some other places, the Qtrctrl should be changed if needed. currently it is NOMASK by default.
-// TODO!!! change inst_opt if QtrCtrl is allowed for GATHER later.
+// Currently this function is mostly used in dataport intrinsic translation functions.
+// If it is used in some other places, Qtrctrl should be added in options if needed.
 void IR_Builder::Create_MOV_Inst(
     G4_Declare* dcl,
     short regOff,
@@ -2464,7 +2463,8 @@ void IR_Builder::Create_MOV_Inst(
     G4_Predicate* pred,
     G4_CondMod* condMod,
     G4_Operand* src_opnd,
-    bool use_nomask)
+    bool use_nomask,
+    G4_InstOpts options)
 {
     G4_DstRegRegion* dst2_opnd = createDst(
         dcl->getRegVar(),
@@ -2482,7 +2482,7 @@ void IR_Builder::Create_MOV_Inst(
         dst2_opnd,
         src_opnd,
         NULL,
-        use_nomask ? InstOpt_WriteEnable : InstOpt_NoOpt,
+        use_nomask ? (InstOpt_WriteEnable | options) : options,
         true);
 }
 
