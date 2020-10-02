@@ -2573,9 +2573,9 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
 {
     bool indirect_dst = (dst->getRegAccess() != Direct);
 
-    G4_Operand *def_dst = defInst->getDst();
+    auto def_dst = defInst->getDst();
 
-    if (def_dst == NULL)
+    if (!def_dst)
     {
         // can this actually happen?
         return false;
