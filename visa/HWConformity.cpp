@@ -3936,6 +3936,7 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
     MUST_BE_TRUE(inst->opcode() == G4_pseudo_mad, "expect pseudo mad");
     bool mustDoMad = IS_TYPE_FLOAT_ALL(inst->getDst()->getType());
 
+
     // try swapping src0 (really src2) and src1 to see if we can save a move
     // some conditions where swap may help:
     // -- if src0 is D, as MAD only supports D + D * W
@@ -3944,9 +3945,8 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
     // -- if src1 is scalar, as MAD src2 has more region restrictions
     // We perform the swapping before the dst checks as some platforms require dst and src2 to have the same subreg
     {
-        auto src0 = inst->getSrc(0);
-        auto src1 = inst->getSrc(1);
-
+        G4_Operand* src0 = inst->getSrc(0);
+        G4_Operand* src1 = inst->getSrc(1);
         if (IS_DTYPE(src0->getType()) && src0->isSrcRegRegion() && !IS_DTYPE(src1->getType()))
         {
             inst->swapSrc(0, 1);
@@ -3956,21 +3956,17 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
             //swap src0 and src1 as src0 supports imm
             inst->swapSrc(0, 1);
         }
+        else if (src0->isSrcRegRegion() && !src0->asSrcRegRegion()->isScalar() &&
+            src1->isSrcRegRegion() &&
+            src1->asSrcRegRegion()->isScalar())
+        {
+            // Swap src0 and src1 if src1 is scalar but src0 is not, as src2 regioning support is quite limited.
+            inst->swapSrc(0, 1);
+        }
         else if (isLowPrecisionFloatTy(src0->getType()) && src1->getType() == Type_F)
         {
             inst->swapSrc(0, 1);
         }
-        else if (src1->isSrcRegRegion() && src1->asSrcRegRegion()->isScalar())
-        {
-            bool src0NeedMove = !isGoodAlign1TernarySrc(inst, 0, true) ||
-                (src0->isSrcRegRegion() && inst->getExecSize() * getTypeSize(src0->getType()) < getGRFSize());
-            // Swap src0 and src1 if src1 is scalar but src0 may need a move due to limited src2 regioning support.
-            if (src0NeedMove)
-            {
-                inst->swapSrc(0, 1);
-            }
-        }
-
     }
 
     if (!isGoodAlign1TernaryDst(inst))
