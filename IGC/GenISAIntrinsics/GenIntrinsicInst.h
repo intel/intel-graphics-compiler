@@ -583,6 +583,28 @@ public:
     inline Value* getResourceValue() const {
         return getOperand(0);
     }
+
+    inline IGC::AtomicOp getAtomicOp() const {
+        GenISAIntrinsic::ID ID = getIntrinsicID();
+        switch (ID)
+        {
+        case GenISAIntrinsic::GenISA_intatomicraw:
+        case GenISAIntrinsic::GenISA_intatomicrawA64:
+        case GenISAIntrinsic::GenISA_floatatomicraw:
+        case GenISAIntrinsic::GenISA_floatatomicrawA64:
+            return static_cast<IGC::AtomicOp>(getImm64Operand(3));
+        case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
+            return IGC::EATOMIC_CMPXCHG;
+        case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+            return IGC::EATOMIC_CMPXCHG64;
+        case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+        case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
+            return IGC::EATOMIC_FCMPWR;
+        default:
+            IGC_ASSERT_MESSAGE(false, "Unexpected atomic raw intrinisc!");
+        }
+        return IGC::EATOMIC_UNDEF;
+    }
 };
 
 class AtomicStructuredIntrinsic : public GenIntrinsicInst {

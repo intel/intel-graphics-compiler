@@ -139,8 +139,7 @@ bool Layout::isAtomicRead(llvm::Instruction* inst, bool onlyLocalMem)
             ->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL;
         if (!onlyLocalMem || isLocalMem)
         {
-            llvm::ConstantInt* opOperand = llvm::cast<llvm::ConstantInt>(inst->getOperand(3));
-            AtomicOp atomicOp = static_cast<AtomicOp>(opOperand->getZExtValue());
+            AtomicOp atomicOp = atomicRawInst->getAtomicOp();
             if (auto src = llvm::dyn_cast<llvm::ConstantInt>(atomicRawInst->getOperand(2)))
             {
                 return ((atomicOp == EATOMIC_OR) || (atomicOp == EATOMIC_OR64)) && (src->getZExtValue() == 0);
