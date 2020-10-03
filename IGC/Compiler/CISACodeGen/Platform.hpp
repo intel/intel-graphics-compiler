@@ -450,7 +450,7 @@ bool doScalar64bScan() const
 {
     return false;
 }
-bool useScratchSpaceForOCL(bool ) const
+bool useScratchSpaceForOCL() const
 {
     return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);
 }
