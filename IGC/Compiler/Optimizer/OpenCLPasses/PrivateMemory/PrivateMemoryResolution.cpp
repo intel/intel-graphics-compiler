@@ -154,6 +154,9 @@ namespace IGC {
             return FI ? FI->TotalSize : 0;
         }
 
+        bool getUseByteScatter() const {
+            return mightUseByteScatter;
+        }
     private:
         /// \brief The module being analyzed.
         Module* const M;
@@ -209,6 +212,9 @@ namespace IGC {
         /// \brief Each function has an entry that describes its private memory
         /// usage information.
         DenseMap<Function*, FunctionAllocaInfo*> InfoMap;
+
+        /// \brief whether ByteScatter msg might be used later
+        bool mightUseByteScatter = false;
     };
 
 } // namespace IGC
@@ -299,6 +305,18 @@ void ModuleAllocaInfo::analyze(Function* F, unsigned& Offset,
     for (auto AI : Allocas) {
         // Align alloca offset.
         unsigned Alignment = getAlignment(AI);
+        if (!mightUseByteScatter)
+        {
+            mightUseByteScatter |= Alignment < 4;
+            if (!mightUseByteScatter && AI->getType()->getPointerElementType()->isArrayTy())
+            {
+                Type* eleType = AI->getType()->getPointerElementType()->getArrayElementType();
+                if (eleType->isIntegerTy() || eleType->isFloatingPointTy())
+                {
+                    mightUseByteScatter |= DL->getTypeSizeInBits(eleType) / 8 < 4;
+                }
+            }
+        }
         Offset = iSTD::Align(Offset, Alignment);
 
         // Keep track of the maximal alignment seen so far.
