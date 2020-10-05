@@ -205,8 +205,6 @@ IGC_INITIALIZE_PASS_BEGIN(PixelShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS
 #undef PASS_CFG_ONLY
 #undef PASS_ANALYSIS
 
-#define MAX_INPUTS (32 * 4)
-
     PixelShaderLowering::PixelShaderLowering() :
     FunctionPass(ID),
     m_module(nullptr),
@@ -311,7 +309,12 @@ void PixelShaderLowering::FindIntrinsicOutput(
     Value*& src0Alpha,
     DebugLocArray& debugLocs)
 {
-    bool inputUsed[MAX_INPUTS] = { 0 };
+    constexpr uint cMaxInputs = 32;
+    constexpr uint cMaxInputComponents = cMaxInputs * 4;
+    std::bitset<cMaxInputComponents> inputComponentsUsed;
+    static_assert(EINTERPOLATION_UNDEFINED == 0, "Code below needs update");
+    e_interpolation interpolation[cMaxInputs] = {};
+
     llvm::Instruction* primId = nullptr;
     SmallVector<Instruction*, 4> instructionToRemove;
     Function& F = *m_ReturnBlock->getParent();
@@ -426,8 +429,8 @@ void PixelShaderLowering::FindIntrinsicOutput(
                     uint setupIndex =
                         (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
 
-                    IGC_ASSERT_MESSAGE(setupIndex < MAX_INPUTS, "Max inputs cannot be greater than 32 x 4");
-                    inputUsed[setupIndex] = true;
+                    IGC_ASSERT_MESSAGE(setupIndex < cMaxInputComponents, "Max inputs cannot be greater than 32 x 4");
+                    inputComponentsUsed.set(setupIndex);
 
                     e_interpolation mode = (e_interpolation)
                         llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
@@ -436,17 +439,26 @@ void PixelShaderLowering::FindIntrinsicOutput(
                     {
                         m_isPerSample = true;
                     }
+                    IGC_ASSERT(interpolation[setupIndex / 4] == mode ||
+                        interpolation[setupIndex / 4] == EINTERPOLATION_UNDEFINED);
+                    interpolation[setupIndex / 4] = mode;
                 }
             }
         }
     }
     if (primId)
     {
-        // lower primitive ID to a normal input
+        // When PrimitiveId input is present in shader IGC allocates an additional input and returns
+        // information about the PrimitiveID input to UMD (to program SBE). This new input component 
+        // is created with constant interpolation and cannot be placed in a (4-dword) location that 
+        // has linearly interpolated components. Alernatively code in MarkConstantInterpolation()
+        // could be modified to ignore the additional input created for PrimitveID.
         unsigned int location;
-        for (location = 0; location < MAX_INPUTS; location++)
+        for (location = 0; location < cMaxInputComponents; location++)
         {
-            if (inputUsed[location] == false)
+            if (inputComponentsUsed.test(location) == false &&
+                (interpolation[location / 4] == EINTERPOLATION_CONSTANT ||
+                 interpolation[location / 4] == EINTERPOLATION_UNDEFINED))
             {
                 break;
             }
