@@ -60,6 +60,13 @@ IgcOclTranslationCtxBase *CIF_GET_INTERFACE_CLASS(IgcOclDeviceCtx, 1)::CreateTra
     return CIF_GET_PIMPL()->CreateTranslationCtx(ver, inType, outType);
 }
 
+bool CIF_GET_INTERFACE_CLASS(IgcOclDeviceCtx, 2)::GetSystemRoutine(SystemRoutineType::SystemRoutineType_t typeOfSystemRoutine,
+                                                                    bool bindless,
+                                                                    CIF::Builtins::BufferSimple *outSystemRoutineBuffer,
+                                                                    CIF::Builtins::BufferSimple *stateSaveAreaHeaderInit) {
+    return CIF_GET_PIMPL()->GetSystemRoutine(typeOfSystemRoutine, bindless, outSystemRoutineBuffer, stateSaveAreaHeaderInit);
+}
+
 IgcOclTranslationCtxBase *CIF_PIMPL(IgcOclDeviceCtx)::CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType)
 {
     if(false == CIF_PIMPL(IgcOclTranslationCtx)::SupportsTranslation(inType, outType)){

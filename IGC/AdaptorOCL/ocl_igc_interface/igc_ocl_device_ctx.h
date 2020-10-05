@@ -80,13 +80,32 @@ protected:
                                                              CodeType::CodeType_t outType);
 };
 
+namespace SystemRoutineType {
+    using SystemRoutineType_t = uint64_t;
+    using SystemRoutineTypeCoder = CIF::Coder<SystemRoutineType_t>;
+    constexpr auto contextSaveRestore = SystemRoutineTypeCoder::Enc("CSR");
+    constexpr auto debug = SystemRoutineTypeCoder::Enc("DBG");
+    constexpr auto debugSlm = SystemRoutineTypeCoder::Enc("DBG_SLM");
+    constexpr auto undefined = SystemRoutineTypeCoder::Enc("UNDEFINED");
+    constexpr auto invalid = SystemRoutineTypeCoder::Enc("INVALID");
+}
+
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclDeviceCtx, 2, 1) {
+    CIF_INHERIT_CONSTRUCTOR();
+
+    virtual bool GetSystemRoutine(SystemRoutineType::SystemRoutineType_t typeOfSystemRoutine,
+                                    bool bindless,
+                                    CIF::Builtins::BufferSimple *outSystemRoutineBuffer,
+                                    CIF::Builtins::BufferSimple *stateSaveAreaHeaderInit);
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclDeviceCtx, IGC::Platform, IGC::GTSystemInfo,
                                                                                IGC::OclGenBinary,
                                                                                IGC::IgcFeaturesAndWorkarounds,
                                                                                IGC::IgcOclTranslationCtx
                                                              );
 CIF_MARK_LATEST_VERSION(IgcOclDeviceCtxLatest, IgcOclDeviceCtx);
-using IgcOclDeviceCtxTagOCL = IgcOclDeviceCtxLatest; // Note : can tag with different version for
+using IgcOclDeviceCtxTagOCL = IgcOclDeviceCtx<1>; // Note : can tag with different version for
                                                              //        transition periods
 
 }

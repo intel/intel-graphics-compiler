@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "ocl_igc_interface/igc_ocl_device_ctx.h"
 
-#include<mutex>
+#include <mutex>
 
 #include "cif/common/cif.h"
 #include "cif/export/cif_main_impl.h"
@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ocl_igc_interface/impl/platform_impl.h"
 
 #include "Compiler/CISACodeGen/Platform.hpp"
+#include "common/SystemThread.h"
 
 #include "cif/macros/enable.h"
 
@@ -60,22 +61,54 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
         return this->platform.GetImpl();
     }
 
-    PlatformBase * GetPlatformHandle(CIF::Version_t version)
+    PlatformBase *GetPlatformHandle(CIF::Version_t version)
     {
         return platform.GetVersion(version);
     }
 
-    GTSystemInfoBase * GetGTSystemInfoHandle(CIF::Version_t version)
+    GTSystemInfoBase *GetGTSystemInfoHandle(CIF::Version_t version)
     {
         return gtSystemInfo.GetVersion(version);
     }
 
-    IgcFeaturesAndWorkaroundsBase * GetIgcFeaturesAndWorkaroundsHandle(CIF::Version_t version)
+    IgcFeaturesAndWorkaroundsBase *GetIgcFeaturesAndWorkaroundsHandle(CIF::Version_t version)
     {
         return igcFeaturesAndWorkarounds.GetVersion(version);
     }
 
-    IgcOclTranslationCtxBase * CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType);
+    IgcOclTranslationCtxBase *CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType);
+
+    bool GetSystemRoutine(SystemRoutineType::SystemRoutineType_t typeOfSystemRoutine, bool bindless, CIF::Builtins::BufferSimple *outSystemRoutineBuffer, CIF::Builtins::BufferSimple *stateSaveAreaHeaderInit) {
+        if (nullptr == outSystemRoutineBuffer) {
+            return false;
+        }
+
+        USC::SYSTEM_THREAD_MODE mode;
+        switch (typeOfSystemRoutine) {
+        case SystemRoutineType::contextSaveRestore:
+            mode = USC::SYSTEM_THREAD_MODE_CSR;
+            break;
+        case SystemRoutineType::debug:
+            mode = static_cast<USC::SYSTEM_THREAD_MODE>(USC::SYSTEM_THREAD_MODE_DEBUG | USC::SYSTEM_THREAD_MODE_CSR);
+            break;
+        case SystemRoutineType::debugSlm:
+            mode = static_cast<USC::SYSTEM_THREAD_MODE>(USC::SYSTEM_THREAD_MODE_DEBUG_LOCAL | USC::SYSTEM_THREAD_MODE_CSR);
+            break;
+        default:
+            assert(0);
+            return false;
+        }
+
+        USC::SSystemThreadKernelOutput *systemKernel;
+        if (false == SIP::CSystemThread::CreateSystemThreadKernel(*this->igcPlatform, mode, systemKernel, bindless)) {
+            return false;
+        }
+
+        outSystemRoutineBuffer->Clear();
+        outSystemRoutineBuffer->PushBackRawBytes(systemKernel->m_pKernelProgram, systemKernel->m_KernelProgramSize);
+        SIP::CSystemThread::DeleteSystemThreadKernel(systemKernel);
+        return true;
+    }
 
     struct MiscOptions
     {
