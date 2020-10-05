@@ -424,12 +424,15 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
     Type *ExistingType = CurAlias->Ty;
     ExistingType = &fixDegenerateVectorType(*ExistingType);
     if (ExistingType == OverrideType &&
-        (CurAlias->Signed == Signed || Signed == DONTCARESIGNED))
+        (CurAlias->Signed == Signed || Signed == DONTCARESIGNED)) {
+      LLVM_DEBUG(dbgs() << "Using alias: "; CurAlias->print(dbgs()); dbgs() << "\n");
       return CurAlias;
+    }
   }
   // Run out of aliases. Add a new one.
   Reg *NewReg = createReg(RegCategory::GENERAL, OverrideType, Signed, 0, R);
   LastAlias->NextAlias[kernel] = NewReg;
+  LLVM_DEBUG(dbgs() << "New register: "; NewReg->print(dbgs()); dbgs() << "\n");
   return NewReg;
 }
 

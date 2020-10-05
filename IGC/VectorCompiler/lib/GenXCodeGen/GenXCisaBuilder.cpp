@@ -1942,6 +1942,10 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
                                                  Signedness *SignedRes,
                                                  unsigned MaxWidth,
                                                  unsigned *Offset) {
+  LLVM_DEBUG(dbgs() << "createSource for "
+                    << (Baled ? "baled" : "non-baled") << " value: ");
+  LLVM_DEBUG(V->dump());
+  LLVM_DEBUG(dbgs() << "\n");
   if (SignedRes)
     *SignedRes = Signed;
   if (auto C = dyn_cast<Constant>(V)) {
@@ -2884,6 +2888,7 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
   VISA_GenVar *Decl = nullptr;
 
   if (!Reg.AliasTo) {
+    LLVM_DEBUG(dbgs() << "GenXKernelBuilder::AddGenVar: "; Reg.print(dbgs()); dbgs() << "\n");
     // This is not an aliased register. Go through all the aliases and
     // determine the biggest alignment required. If the register is at least
     // as big as a GRF, make the alignment GRF.
@@ -2914,16 +2919,19 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
     }
   } else {
     if (Reg.AliasTo->Num < visa::VISA_NUM_RESERVED_REGS) {
+      LLVM_DEBUG(dbgs() << "GenXKernelBuilder::AddGenVar alias: " << Reg.AliasTo->Num << "\n");
       CISA_CALL(Kernel->GetPredefinedVar(parentDecl,
                                          (PreDefined_Vars)Reg.AliasTo->Num));
       IGC_ASSERT(parentDecl && "Predefeined variable is null");
     } else {
       parentDecl = Reg.AliasTo->GetVar<VISA_GenVar>(Kernel);
+      LLVM_DEBUG(dbgs() << "GenXKernelBuilder::AddGenVar decl: " << parentDecl << "\n");
       IGC_ASSERT(parentDecl && "Refers to undefined var");
     }
   }
 
   visa::TypeDetails TD(DL, Reg.Ty, Reg.Signed);
+  LLVM_DEBUG(dbgs() << "Resulting #of elements: " << TD.NumElements << "\n");
 
   VISA_Align VA = getVISA_Align(
       Reg.Alignment, Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth);
@@ -2932,6 +2940,7 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
                                      parentDecl, 0));
 
   Reg.SetVar(Kernel, Decl);
+  LLVM_DEBUG(dbgs() << "Resulting decl: " << Decl << "\n");
 
   for (auto &Attr : Reg.Attributes) {
     CISA_CALL(Kernel->AddAttributeToVar(
@@ -3156,10 +3165,14 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
     if (!Const)
       report_fatal_error("Incorrect args to intrinsic call");
-    return static_cast<unsigned>(Const->getSExtValue());
+    unsigned val = Const->getSExtValue();
+    LLVM_DEBUG(dbgs() << "GetUnsignedValue from op #" << AI.getArgIdx()
+                      << " yields: " << val << "\n");
+    return val;
   };
 
   auto CreateSurfaceOperand = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreateSurfaceOperand\n");
     llvm::Value *Arg = CI->getArgOperand(AI.getArgIdx());
     VISA_SurfaceVar *SurfDecl = nullptr;
     int Index = visa::convertToSurfaceIndex(Arg);
@@ -3177,6 +3190,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto CreateSamplerOperand = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreateSamplerOperand\n");
     Register *Reg = RegAlloc->getRegForValue(KernFunc, CI->getArgOperand(AI.getArgIdx()));
     IGC_ASSERT(Reg->Category == RegCategory::SAMPLER &&
            "Expected sampler register");
@@ -3187,6 +3201,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto GetMediaHeght = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "GetMediaHeght\n");
     // constant byte for media height that we need to infer from the
     // media width and the return type or final arg
     ConstantInt *Const =
@@ -3218,6 +3233,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto CreateOperand = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreateOperand from arg #" << AI.getArgIdx() << "\n");
     VISA_VectorOpnd *ResultOperand = nullptr;
     Signedness Signed = DONTCARESIGNED;
     if (AI.needsSigned())
@@ -3242,6 +3258,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto CreateRawOperand = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreateRawOperand from "
+                      << (AI.isRet() ? "Dest" : "Src")
+                      << " op #" << AI.getArgIdx() << "\n");
     VISA_RawOpnd *ResultOperand = nullptr;
     auto Signed = DONTCARESIGNED;
     if (AI.needsSigned())
@@ -3257,6 +3276,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto CreateRawOperands = [&](II::ArgInfo AI, VISA_RawOpnd **Operands) {
+    LLVM_DEBUG(dbgs() << "CreateRawOperands\n");
     IGC_ASSERT(MaxRawOperands != std::numeric_limits<int>::max() &&
            "MaxRawOperands must be defined");
     for (int i = 0; i < AI.getArgIdx() + MaxRawOperands; ++i) {
@@ -3265,6 +3285,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto GetOwords = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "GetOwords\n");
     // constant byte for log2 number of owords
     Value *Arg = CI;
     if (!AI.isRet())
@@ -3281,6 +3302,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto GetExecSize = [&](II::ArgInfo AI, VISA_EMask_Ctrl *Mask) {
+    LLVM_DEBUG(dbgs() << "GetExecSize\n");
     int ExecSize = GenXIntrinsicInfo::getOverridedExecSize(CI, Subtarget);
     if (ExecSize == 0) {
       if (VectorType *VT = dyn_cast<VectorType>(CI->getType())) {
@@ -3296,6 +3318,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
   auto GetExecSizeFromArg = [&](II::ArgInfo AI,
                                 VISA_EMask_Ctrl *ExecMask) {
+    LLVM_DEBUG(dbgs() << "GetExecSizeFromArg\n");
     // exec_size inferred from width of predicate arg, defaulting to 16 if
     // it is scalar i1 (as can happen in raw send). Also get M3 etc flag
     // if the predicate has a baled in rdpredregion, and mark as nomask if
@@ -3320,6 +3343,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto GetExecSizeFromByte = [&](II::ArgInfo AI, VISA_EMask_Ctrl *Mask) {
+    LLVM_DEBUG(dbgs() << "GetExecSizeFromByte\n");
     ConstantInt *Const =
       dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
     if (!Const)
@@ -3333,14 +3357,17 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto CreateImplicitPredication = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreateImplicitPredication\n");
     return createPredFromWrRegion(DstDesc);
   };
 
   auto CreatePredication = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreatePredication\n");
     return createPred(CI, BI, AI.getArgIdx());
   };
 
   auto GetPredicateVar = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "GetPredicateVar\n");
     if (AI.isRet())
       return getPredicateVar(CI);
     else
@@ -3348,6 +3375,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto GetZeroedPredicateVar = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "GetZeroedPredicateVar\n");
     if (AI.isRet())
       return getZeroedPredicateVar(CI);
     else
@@ -3355,12 +3383,14 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto CreateNullRawOperand = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreateNullRawOperand\n");
     VISA_RawOpnd *ResultOperand = nullptr;
     CISA_CALL(Kernel->CreateVISANullRawOperand(ResultOperand, false));
     return ResultOperand;
   };
 
   auto ProcessTwoAddr = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "ProcessTwoAddr\n");
     if (AI.getCategory() != II::TWOADDR)
       return;
     auto Reg = RegAlloc->getRegForValueOrNull(KernFunc, CI, DONTCARESIGNED);
@@ -3371,6 +3401,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
   // Constant vector of i1 (or just scalar i1) as i32 (used in setp)
   auto ConstVi1Asi32 = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "ConstVi1Asi32\n");
     VISA_VectorOpnd *ResultOperand = nullptr;
     auto C = cast<Constant>(CI->getArgOperand(AI.getArgIdx()));
     // Get the bit value of the vXi1 constant.
@@ -3381,6 +3412,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto CreateAddressOperand = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreateAddressOperand\n");
     if (AI.isRet())
       return createAddressOperand(CI, true);
     else
@@ -3388,6 +3420,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto GetArgCount = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "GetArgCount\n");
     auto BaseArg = AI.getArgIdx();
     MaxRawOperands = BaseArg;
 
@@ -3406,6 +3439,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto GetNumGrfs = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "GetNumGrfs\n");
     // constant byte for number of GRFs
     Value *Arg = CI;
     if (!AI.isRet())
@@ -3419,6 +3453,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto GetSampleChMask = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "GetSampleChMask\n");
     ConstantInt *Const =
         dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
     if (!Const)
@@ -3437,6 +3472,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto GetSvmGatherBlockSize = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "GetSvmGatherBlockSize\n");
     // svm gather/scatter "block size" field, set to reflect the element
     // type of the data
     Value *V = CI;
@@ -3466,6 +3502,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   auto CreateOpndPredefinedSrc = [&](PreDefined_Vars RegId, unsigned ROffset,
                                      unsigned COffset, unsigned VStride,
                                      unsigned Width, unsigned HStride) {
+    LLVM_DEBUG(dbgs() << "CreateOpndPredefinedSrc\n");
     VISA_GenVar *Decl = nullptr;
     CISA_CALL(Kernel->GetPredefinedVar(Decl, RegId));
     VISA_VectorOpnd *ResultOperand = nullptr;
@@ -3477,6 +3514,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
   auto CreateOpndPredefinedDst = [&](PreDefined_Vars RegId, unsigned ROffset,
                                      unsigned COffset, unsigned HStride) {
+    LLVM_DEBUG(dbgs() << "CreateOpndPredefinedDst\n");
     VISA_GenVar *Decl = nullptr;
     CISA_CALL(Kernel->GetPredefinedVar(Decl, RegId));
     VISA_VectorOpnd *ResultOperand = nullptr;
@@ -3486,6 +3524,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   };
 
   auto CreateImmOpndFromUInt = [&](VISA_Type ImmType, unsigned Val) {
+    LLVM_DEBUG(dbgs() << "CreateImmOpndFromUInt\n");
     VISA_VectorOpnd *src = nullptr;
     CISA_CALL(Kernel->CreateVISAImmediate(src, &Val, ImmType));
 
@@ -3494,6 +3533,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
   auto MakeSubbAddcDestination =
       [&](GenXIntrinsic::GenXResult::ResultIndexes MemberIdx) {
+        LLVM_DEBUG(dbgs() << "MakeSubbAddcDestination\n");
         IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(CI) ==
                        llvm::GenXIntrinsic::genx_addc ||
                    GenXIntrinsic::getGenXIntrinsicID(CI) ==
@@ -4785,14 +4825,20 @@ VISA_RawOpnd *GenXKernelBuilder::createRawSourceOperand(const Instruction *Inst,
     CISA_CALL(Kernel->CreateVISANullRawOperand(ResultOperand, false));
   } else {
     unsigned ByteOffset = 0;
-    if (Baling->getBaleInfo(Inst).isOperandBaled(OperandNum)) {
+    bool Baled = Baling->getBaleInfo(Inst).isOperandBaled(OperandNum);
+    if (Baled) {
       Instruction *RdRegion = cast<Instruction>(V);
       Region R(RdRegion, BaleInfo());
       ByteOffset = R.Offset;
       V = RdRegion->getOperand(0);
     }
+    LLVM_DEBUG(dbgs() << "createRawSourceOperand for "
+                      << (Baled ? "baled" : "non-baled") << " value: ");
+    LLVM_DEBUG(V->dump());
+    LLVM_DEBUG(dbgs() << "\n");
     Register *Reg = RegAlloc->getRegForValue(KernFunc, V, Signed);
     IGC_ASSERT(Reg->Category == RegCategory::GENERAL);
+    LLVM_DEBUG(dbgs() << "CreateVISARawOperand: "; Reg->print(dbgs()); dbgs() << "\n");
     CISA_CALL(Kernel->CreateVISARawOperand(
         ResultOperand, Reg->GetVar<VISA_GenVar>(Kernel), ByteOffset));
   }
@@ -4824,6 +4870,10 @@ GenXKernelBuilder::createRawDestination(Value *V, const DstOpndDesc &DstDesc,
     IGC_ASSERT(V && "out of sync");
     OverrideType = DstDesc.GStore->getOperand(0)->getType();
   }
+  LLVM_DEBUG(dbgs() << "createRawDestination for "
+                    << (DstDesc.GStore ? "global" : "non-global") << " value: ");
+  LLVM_DEBUG(V->dump());
+  LLVM_DEBUG(dbgs() << "\n");
   Register *Reg = RegAlloc->getRegForValueOrNull(KernFunc, V, Signed, OverrideType);
   if (!Reg) {
     // No register assigned. This happens to an unused raw result where the
@@ -4831,6 +4881,7 @@ GenXKernelBuilder::createRawDestination(Value *V, const DstOpndDesc &DstDesc,
     CISA_CALL(Kernel->CreateVISANullRawOperand(ResultOperand, true));
   } else {
     IGC_ASSERT(Reg->Category == RegCategory::GENERAL);
+    LLVM_DEBUG(dbgs() << "CreateVISARawOperand: "; Reg->print(dbgs()); dbgs() << "\n");
     CISA_CALL(Kernel->CreateVISARawOperand(
         ResultOperand, Reg->GetVar<VISA_GenVar>(Kernel), ByteOffset));
   }
