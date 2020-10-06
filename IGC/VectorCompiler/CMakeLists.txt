@@ -33,7 +33,9 @@
 # - VC_INTRINSICS_SRC
 set(IGC_BUILD__PROJ__VectorCompiler "${IGC_BUILD__PROJ_NAME_PREFIX}VectorCompiler")
 set(IGC_BUILD__PROJ__VectorCompiler "${IGC_BUILD__PROJ__VectorCompiler}" PARENT_SCOPE)
-set(IGC_BUILD__PROJ_VC_LIBS_TO_LINK VCCodeGen VCIGCDeps PARENT_SCOPE)
+# Ordering matters here.
+# FIXME: set proper dependencies for VCCodeGen and others.
+set(IGC_BUILD__PROJ_VC_LIBS_TO_LINK VCIGCDeps VCCodeGen PARENT_SCOPE)
 
 set(IGC_BUILD__PROJ_LABEL__VectorCompiler "${IGC_BUILD__PROJ__VectorCompiler}")
 

@@ -14,6 +14,8 @@ add_library(VCIGCDeps STATIC "")
 
 target_link_libraries(VCIGCDeps
   VCHeaders
+
+  VCCodeGen
   )
 
 add_dependencies(VCIGCDeps
