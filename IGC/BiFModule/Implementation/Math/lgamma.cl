@@ -48,9 +48,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_lgamma, float, float
 
 INLINE double __builtin_spirv_OpenCL_lgamma_f64( double x )
 {
-    // DOWNCAST TO 64-BIT
-    // TODO: No 64-bit implementation of lgamma().  Downcast to 32-bit version.
-    return __builtin_spirv_OpenCL_lgamma_f32((float)x);
+    return libclc_lgamma_f64(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_lgamma, double, double, f64 )

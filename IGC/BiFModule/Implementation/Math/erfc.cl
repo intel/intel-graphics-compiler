@@ -56,9 +56,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_erfc, float, float, f32 )
 
 INLINE double __builtin_spirv_OpenCL_erfc_f64( double x )
 {
-    // DOWNCAST TO 64-BIT
-    // TODO: No 64-bit implementation of erfc().  Downcast to 32-bit version.
-    return __builtin_spirv_OpenCL_erfc_f32((float)x);
+    return libclc_erfc_f64(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_erfc, double, double, f64 )

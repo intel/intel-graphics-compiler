@@ -40,9 +40,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_erf, float, float, f32 )
 
 INLINE double __builtin_spirv_OpenCL_erf_f64( double x )
 {
-    // DOWNCAST TO 64-BIT
-    // TODO: No 64-bit implementation of erf().  Downcast to 32-bit version.
-    return __builtin_spirv_OpenCL_erf_f32((float)x);
+    return libclc_erf_f64(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_erf, double, double, f64 )

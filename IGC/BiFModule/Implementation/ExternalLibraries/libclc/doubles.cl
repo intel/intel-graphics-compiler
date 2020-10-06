@@ -1834,6 +1834,946 @@ INLINE double libclc_tanpi_f64(double x)
     return __builtin_spirv_divide_cr_f64_f64(libclc_sinpi_f64(x),libclc_cospi_f64(x));
 }
 
+/*################################## libclc_erf_f64 ###############################################*/
+
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+/* double erf(double x)
+ * double erfc(double x)
+ *                             x
+ *                      2      |\
+ *     erf(x)  =  ---------  | exp(-t*t)dt
+ *                    sqrt(pi) \|
+ *                             0
+ *
+ *     erfc(x) =  1-erf(x)
+ *  Note that
+ *                erf(-x) = -erf(x)
+ *                erfc(-x) = 2 - erfc(x)
+ *
+ * Method:
+ *        1. For |x| in [0, 0.84375]
+ *            erf(x)  = x + x*R(x^2)
+ *          erfc(x) = 1 - erf(x)           if x in [-.84375,0.25]
+ *                  = 0.5 + ((0.5-x)-x*R)  if x in [0.25,0.84375]
+ *           where R = P/Q where P is an odd poly of degree 8 and
+ *           Q is an odd poly of degree 10.
+ *                                                 -57.90
+ *                        | R - (erf(x)-x)/x | <= 2
+ *
+ *
+ *           Remark. The formula is derived by noting
+ *          erf(x) = (2/sqrt(pi))*(x - x^3/3 + x^5/10 - x^7/42 + ....)
+ *           and that
+ *          2/sqrt(pi) = 1.128379167095512573896158903121545171688
+ *           is close to one. The interval is chosen because the fix
+ *           point of erf(x) is near 0.6174 (i.e., erf(x)=x when x is
+ *           near 0.6174), and by some experiment, 0.84375 is chosen to
+ *            guarantee the error is less than one ulp for erf.
+ *
+ *      2. For |x| in [0.84375,1.25], let s = |x| - 1, and
+ *         c = 0.84506291151 rounded to single (24 bits)
+ *                 erf(x)  = sign(x) * (c  + P1(s)/Q1(s))
+ *                 erfc(x) = (1-c)  - P1(s)/Q1(s) if x > 0
+ *                          1+(c+P1(s)/Q1(s))    if x < 0
+ *                 |P1/Q1 - (erf(|x|)-c)| <= 2**-59.06
+ *           Remark: here we use the taylor series expansion at x=1.
+ *                erf(1+s) = erf(1) + s*Poly(s)
+ *                         = 0.845.. + P1(s)/Q1(s)
+ *           That is, we use rational approximation to approximate
+ *                        erf(1+s) - (c = (single)0.84506291151)
+ *           Note that |P1/Q1|< 0.078 for x in [0.84375,1.25]
+ *           where
+ *                P1(s) = degree 6 poly in s
+ *                Q1(s) = degree 6 poly in s
+ *
+ *      3. For x in [1.25,1/0.35(~2.857143)],
+ *                 erfc(x) = (1/x)*exp(-x*x-0.5625+R1/S1)
+ *                 erf(x)  = 1 - erfc(x)
+ *           where
+ *                R1(z) = degree 7 poly in z, (z=1/x^2)
+ *                S1(z) = degree 8 poly in z
+ *
+ *      4. For x in [1/0.35,28]
+ *                 erfc(x) = (1/x)*exp(-x*x-0.5625+R2/S2) if x > 0
+ *                        = 2.0 - (1/x)*exp(-x*x-0.5625+R2/S2) if -6<x<0
+ *                        = 2.0 - tiny                (if x <= -6)
+ *                 erf(x)  = sign(x)*(1.0 - erfc(x)) if x < 6, else
+ *                 erf(x)  = sign(x)*(1.0 - tiny)
+ *           where
+ *                R2(z) = degree 6 poly in z, (z=1/x^2)
+ *                S2(z) = degree 7 poly in z
+ *
+ *      Note1:
+ *           To compute exp(-x*x-0.5625+R/S), let s be a single
+ *           precision number and s := x; then
+ *                -x*x = -s*s + (s-x)*(s+x)
+ *                exp(-x*x-0.5626+R/S) =
+ *                        exp(-s*s-0.5625)*exp((s-x)*(s+x)+R/S);
+ *      Note2:
+ *           Here 4 and 5 make use of the asymptotic series
+ *                          exp(-x*x)
+ *                erfc(x) ~ ---------- * ( 1 + Poly(1/x^2) )
+ *                          x*sqrt(pi)
+ *           We use rational approximation to approximate
+ *              g(s)=f(1/x^2) = log(erfc(x)*x) - x*x + 0.5625
+ *           Here is the error bound for R1/S1 and R2/S2
+ *              |R1/S1 - f(x)|  < 2**(-62.57)
+ *              |R2/S2 - f(x)|  < 2**(-61.52)
+ *
+ *      5. For inf > x >= 28
+ *                 erf(x)  = sign(x) *(1 - tiny)  (raise inexact)
+ *                 erfc(x) = tiny*tiny (raise underflow) if x > 0
+ *                        = 2 - tiny if x<0
+ *
+ *      7. Special case:
+ *                 erf(0)  = 0, erf(inf)  = 1, erf(-inf) = -1,
+ *                 erfc(0) = 1, erfc(inf) = 0, erfc(-inf) = 2,
+ *                   erfc/erf(NaN) is NaN
+ */
+
+#define AU0 -9.86494292470009928597e-03
+#define AU1 -7.99283237680523006574e-01
+#define AU2 -1.77579549177547519889e+01
+#define AU3 -1.60636384855821916062e+02
+#define AU4 -6.37566443368389627722e+02
+#define AU5 -1.02509513161107724954e+03
+#define AU6 -4.83519191608651397019e+02
+
+#define AV1  3.03380607434824582924e+01
+#define AV2  3.25792512996573918826e+02
+#define AV3  1.53672958608443695994e+03
+#define AV4  3.19985821950859553908e+03
+#define AV5  2.55305040643316442583e+03
+#define AV6  4.74528541206955367215e+02
+#define AV7 -2.24409524465858183362e+01
+
+#define BU0 -9.86494403484714822705e-03
+#define BU1 -6.93858572707181764372e-01
+#define BU2 -1.05586262253232909814e+01
+#define BU3 -6.23753324503260060396e+01
+#define BU4 -1.62396669462573470355e+02
+#define BU5 -1.84605092906711035994e+02
+#define BU6 -8.12874355063065934246e+01
+#define BU7 -9.81432934416914548592e+00
+
+#define BV1  1.96512716674392571292e+01
+#define BV2  1.37657754143519042600e+02
+#define BV3  4.34565877475229228821e+02
+#define BV4  6.45387271733267880336e+02
+#define BV5  4.29008140027567833386e+02
+#define BV6  1.08635005541779435134e+02
+#define BV7  6.57024977031928170135e+00
+#define BV8 -6.04244152148580987438e-02
+
+#define CU0 -2.36211856075265944077e-03
+#define CU1  4.14856118683748331666e-01
+#define CU2 -3.72207876035701323847e-01
+#define CU3  3.18346619901161753674e-01
+#define CU4 -1.10894694282396677476e-01
+#define CU5  3.54783043256182359371e-02
+#define CU6 -2.16637559486879084300e-03
+
+#define CV1  1.06420880400844228286e-01
+#define CV2  5.40397917702171048937e-01
+#define CV3  7.18286544141962662868e-02
+#define CV4  1.26171219808761642112e-01
+#define CV5  1.36370839120290507362e-02
+#define CV6  1.19844998467991074170e-02
+
+#define DU0  1.28379167095512558561e-01
+#define DU1 -3.25042107247001499370e-01
+#define DU2 -2.84817495755985104766e-02
+#define DU3 -5.77027029648944159157e-03
+#define DU4 -2.37630166566501626084e-05
+
+#define DV1  3.97917223959155352819e-01
+#define DV2  6.50222499887672944485e-02
+#define DV3  5.08130628187576562776e-03
+#define DV4  1.32494738004321644526e-04
+#define DV5 -3.96022827877536812320e-06
+
+INLINE double libclc_erf_f64(double y) {
+    double x = fabs(y);
+    double x2 = x * x;
+    double xm1 = x - 1.0;
+
+    // Poly variable
+    double t = 1.0 / x2;
+    t = x < 1.25 ? xm1 : t;
+    t = x < 0.84375 ? x2 : t;
+
+    double u, ut, v, vt;
+
+    // Evaluate rational poly
+    // XXX We need to see of we can grab 16 coefficents from a table
+    // faster than evaluating 3 of the poly pairs
+    // if (x < 6.0)
+    u = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, AU6, AU5), AU4), AU3), AU2), AU1), AU0);
+    v = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, AV7, AV6), AV5), AV4), AV3), AV2), AV1);
+
+    ut = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, BU7, BU6), BU5), BU4), BU3), BU2), BU1), BU0);
+    vt = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, BV8, BV7), BV6), BV5), BV4), BV3), BV2), BV1);
+    u = x < 0x1.6db6ep+1 ? ut : u;
+    v = x < 0x1.6db6ep+1 ? vt : v;
+
+    ut = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, CU6, CU5), CU4), CU3), CU2), CU1), CU0);
+    vt = fma(t, fma(t, fma(t, fma(t, fma(t, CV6, CV5), CV4), CV3), CV2), CV1);
+    u = x < 1.25 ? ut : u;
+    v = x < 1.25 ? vt : v;
+
+    ut = fma(t, fma(t, fma(t, fma(t, DU4, DU3), DU2), DU1), DU0);
+    vt = fma(t, fma(t, fma(t, fma(t, DV5, DV4), DV3), DV2), DV1);
+    u = x < 0.84375 ? ut : u;
+    v = x < 0.84375 ? vt : v;
+
+    v = fma(t, v, 1.0);
+
+    // Compute rational approximation
+    double q = u / v;
+
+    // Compute results
+    double z = as_double(as_long(x) & 0xffffffff00000000L);
+    double r = exp(-z * z - 0.5625) * exp((z - x) * (z + x) + q);
+    r = 1.0 - r / x;
+
+    double ret = x < 6.0 ? r : 1.0;
+
+    r = 8.45062911510467529297e-01 + q;
+    ret = x < 1.25 ? r : ret;
+
+    q = x < 0x1.0p-28 ? 1.28379167095512586316e-01 : q;
+
+    r = fma(x, q, x);
+    ret = x < 0.84375 ? r : ret;
+
+    ret = isnan(x) ? x : ret;
+
+    return y < 0.0 ? -ret : ret;
+}
+
+#undef AU0
+#undef AU1
+#undef AU2
+#undef AU3
+#undef AU4
+#undef AU5
+#undef AU6
+
+#undef AV1
+#undef AV2
+#undef AV3
+#undef AV4
+#undef AV5
+#undef AV6
+#undef AV7
+
+#undef BU0
+#undef BU1
+#undef BU2
+#undef BU3
+#undef BU4
+#undef BU5
+#undef BU6
+#undef BU7
+
+#undef BV1
+#undef BV2
+#undef BV3
+#undef BV4
+#undef BV5
+#undef BV6
+#undef BV7
+#undef BV8
+
+#undef CU0
+#undef CU1
+#undef CU2
+#undef CU3
+#undef CU4
+#undef CU5
+#undef CU6
+
+#undef CV1
+#undef CV2
+#undef CV3
+#undef CV4
+#undef CV5
+#undef CV6
+
+#undef DU0
+#undef DU1
+#undef DU2
+#undef DU3
+#undef DU4
+
+#undef DV1
+#undef DV2
+#undef DV3
+#undef DV4
+#undef DV5
+
+/*################################## libclc_erfc_f64 ###############################################*/
+
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+ /* double erf(double x)
+  * double erfc(double x)
+  *                             x
+  *                      2      |\
+  *     erf(x)  =  ---------  | exp(-t*t)dt
+  *                    sqrt(pi) \|
+  *                             0
+  *
+  *     erfc(x) =  1-erf(x)
+  *  Note that
+  *                erf(-x) = -erf(x)
+  *                erfc(-x) = 2 - erfc(x)
+  *
+  * Method:
+  *        1. For |x| in [0, 0.84375]
+  *            erf(x)  = x + x*R(x^2)
+  *          erfc(x) = 1 - erf(x)           if x in [-.84375,0.25]
+  *                  = 0.5 + ((0.5-x)-x*R)  if x in [0.25,0.84375]
+  *           where R = P/Q where P is an odd poly of degree 8 and
+  *           Q is an odd poly of degree 10.
+  *                                                 -57.90
+  *                        | R - (erf(x)-x)/x | <= 2
+  *
+  *
+  *           Remark. The formula is derived by noting
+  *          erf(x) = (2/sqrt(pi))*(x - x^3/3 + x^5/10 - x^7/42 + ....)
+  *           and that
+  *          2/sqrt(pi) = 1.128379167095512573896158903121545171688
+  *           is close to one. The interval is chosen because the fix
+  *           point of erf(x) is near 0.6174 (i.e., erf(x)=x when x is
+  *           near 0.6174), and by some experiment, 0.84375 is chosen to
+  *            guarantee the error is less than one ulp for erf.
+  *
+  *      2. For |x| in [0.84375,1.25], let s = |x| - 1, and
+  *         c = 0.84506291151 rounded to single (24 bits)
+  *                 erf(x)  = sign(x) * (c  + P1(s)/Q1(s))
+  *                 erfc(x) = (1-c)  - P1(s)/Q1(s) if x > 0
+  *                          1+(c+P1(s)/Q1(s))    if x < 0
+  *                 |P1/Q1 - (erf(|x|)-c)| <= 2**-59.06
+  *           Remark: here we use the taylor series expansion at x=1.
+  *                erf(1+s) = erf(1) + s*Poly(s)
+  *                         = 0.845.. + P1(s)/Q1(s)
+  *           That is, we use rational approximation to approximate
+  *                        erf(1+s) - (c = (single)0.84506291151)
+  *           Note that |P1/Q1|< 0.078 for x in [0.84375,1.25]
+  *           where
+  *                P1(s) = degree 6 poly in s
+  *                Q1(s) = degree 6 poly in s
+  *
+  *      3. For x in [1.25,1/0.35(~2.857143)],
+  *                 erfc(x) = (1/x)*exp(-x*x-0.5625+R1/S1)
+  *                 erf(x)  = 1 - erfc(x)
+  *           where
+  *                R1(z) = degree 7 poly in z, (z=1/x^2)
+  *                S1(z) = degree 8 poly in z
+  *
+  *      4. For x in [1/0.35,28]
+  *                 erfc(x) = (1/x)*exp(-x*x-0.5625+R2/S2) if x > 0
+  *                        = 2.0 - (1/x)*exp(-x*x-0.5625+R2/S2) if -6<x<0
+  *                        = 2.0 - tiny                (if x <= -6)
+  *                 erf(x)  = sign(x)*(1.0 - erfc(x)) if x < 6, else
+  *                 erf(x)  = sign(x)*(1.0 - tiny)
+  *           where
+  *                R2(z) = degree 6 poly in z, (z=1/x^2)
+  *                S2(z) = degree 7 poly in z
+  *
+  *      Note1:
+  *           To compute exp(-x*x-0.5625+R/S), let s be a single
+  *           precision number and s := x; then
+  *                -x*x = -s*s + (s-x)*(s+x)
+  *                exp(-x*x-0.5626+R/S) =
+  *                        exp(-s*s-0.5625)*exp((s-x)*(s+x)+R/S);
+  *      Note2:
+  *           Here 4 and 5 make use of the asymptotic series
+  *                          exp(-x*x)
+  *                erfc(x) ~ ---------- * ( 1 + Poly(1/x^2) )
+  *                          x*sqrt(pi)
+  *           We use rational approximation to approximate
+  *              g(s)=f(1/x^2) = log(erfc(x)*x) - x*x + 0.5625
+  *           Here is the error bound for R1/S1 and R2/S2
+  *              |R1/S1 - f(x)|  < 2**(-62.57)
+  *              |R2/S2 - f(x)|  < 2**(-61.52)
+  *
+  *      5. For inf > x >= 28
+  *                 erf(x)  = sign(x) *(1 - tiny)  (raise inexact)
+  *                 erfc(x) = tiny*tiny (raise underflow) if x > 0
+  *                        = 2 - tiny if x<0
+  *
+  *      7. Special case:
+  *                 erf(0)  = 0, erf(inf)  = 1, erf(-inf) = -1,
+  *                 erfc(0) = 1, erfc(inf) = 0, erfc(-inf) = 2,
+  *                   erfc/erf(NaN) is NaN
+  */
+
+#define AU0 -9.86494292470009928597e-03
+#define AU1 -7.99283237680523006574e-01
+#define AU2 -1.77579549177547519889e+01
+#define AU3 -1.60636384855821916062e+02
+#define AU4 -6.37566443368389627722e+02
+#define AU5 -1.02509513161107724954e+03
+#define AU6 -4.83519191608651397019e+02
+
+#define AV0  3.03380607434824582924e+01
+#define AV1  3.25792512996573918826e+02
+#define AV2  1.53672958608443695994e+03
+#define AV3  3.19985821950859553908e+03
+#define AV4  2.55305040643316442583e+03
+#define AV5  4.74528541206955367215e+02
+#define AV6 -2.24409524465858183362e+01
+
+#define BU0 -9.86494403484714822705e-03
+#define BU1 -6.93858572707181764372e-01
+#define BU2 -1.05586262253232909814e+01
+#define BU3 -6.23753324503260060396e+01
+#define BU4 -1.62396669462573470355e+02
+#define BU5 -1.84605092906711035994e+02
+#define BU6 -8.12874355063065934246e+01
+#define BU7 -9.81432934416914548592e+00
+
+#define BV0  1.96512716674392571292e+01
+#define BV1  1.37657754143519042600e+02
+#define BV2  4.34565877475229228821e+02
+#define BV3  6.45387271733267880336e+02
+#define BV4  4.29008140027567833386e+02
+#define BV5  1.08635005541779435134e+02
+#define BV6  6.57024977031928170135e+00
+#define BV7 -6.04244152148580987438e-02
+
+#define CU0 -2.36211856075265944077e-03
+#define CU1  4.14856118683748331666e-01
+#define CU2 -3.72207876035701323847e-01
+#define CU3  3.18346619901161753674e-01
+#define CU4 -1.10894694282396677476e-01
+#define CU5  3.54783043256182359371e-02
+#define CU6 -2.16637559486879084300e-03
+
+#define CV0 1.06420880400844228286e-01
+#define CV1 5.40397917702171048937e-01
+#define CV2 7.18286544141962662868e-02
+#define CV3 1.26171219808761642112e-01
+#define CV4 1.36370839120290507362e-02
+#define CV5 1.19844998467991074170e-02
+
+#define DU0  1.28379167095512558561e-01
+#define DU1 -3.25042107247001499370e-01
+#define DU2 -2.84817495755985104766e-02
+#define DU3 -5.77027029648944159157e-03
+#define DU4 -2.37630166566501626084e-05
+
+#define DV0  3.97917223959155352819e-01
+#define DV1  6.50222499887672944485e-02
+#define DV2  5.08130628187576562776e-03
+#define DV3  1.32494738004321644526e-04
+#define DV4 -3.96022827877536812320e-06
+
+INLINE double libclc_erfc_f64(double x) {
+    long lx = as_long(x);
+    long ax = lx & 0x7fffffffffffffffL;
+    double absx = as_double(ax);
+    int xneg = lx != ax;
+
+    // Poly arg
+    double x2 = x * x;
+    double xm1 = absx - 1.0;
+    double t = 1.0 / x2;
+    t = absx < 1.25 ? xm1 : t;
+    t = absx < 0.84375 ? x2 : t;
+
+
+    // Evaluate rational poly
+    // XXX Need to evaluate if we can grab the 14 coefficients from a
+    // table faster than evaluating 3 pairs of polys
+    double tu, tv, u, v;
+
+    // |x| < 28
+    u = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, AU6, AU5), AU4), AU3), AU2), AU1), AU0);
+    v = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, AV6, AV5), AV4), AV3), AV2), AV1), AV0);
+
+    tu = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, BU7, BU6), BU5), BU4), BU3), BU2), BU1), BU0);
+    tv = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, BV7, BV6), BV5), BV4), BV3), BV2), BV1), BV0);
+    u = absx < 0x1.6db6dp+1 ? tu : u;
+    v = absx < 0x1.6db6dp+1 ? tv : v;
+
+    tu = fma(t, fma(t, fma(t, fma(t, fma(t, fma(t, CU6, CU5), CU4), CU3), CU2), CU1), CU0);
+    tv = fma(t, fma(t, fma(t, fma(t, fma(t, CV5, CV4), CV3), CV2), CV1), CV0);
+    u = absx < 1.25 ? tu : u;
+    v = absx < 1.25 ? tv : v;
+
+    tu = fma(t, fma(t, fma(t, fma(t, DU4, DU3), DU2), DU1), DU0);
+    tv = fma(t, fma(t, fma(t, fma(t, DV4, DV3), DV2), DV1), DV0);
+    u = absx < 0.84375 ? tu : u;
+    v = absx < 0.84375 ? tv : v;
+
+    v = fma(t, v, 1.0);
+    double q = u / v;
+
+
+    // Evaluate return value
+
+    // |x| < 28
+    double z = as_double(ax & 0xffffffff00000000UL);
+    double ret = exp(-z * z - 0.5625) * exp((z - absx) * (z + absx) + q) / absx;
+    t = 2.0 - ret;
+    ret = xneg ? t : ret;
+
+    const double erx = 8.45062911510467529297e-01;
+    z = erx + q + 1.0;
+    t = 1.0 - erx - q;
+    t = xneg ? z : t;
+    ret = absx < 1.25 ? t : ret;
+
+    // z = 1.0 - fma(x, q, x);
+    // t = 0.5 - fma(x, q, x - 0.5);
+    // t = xneg == 1 | absx < 0.25 ? z : t;
+    t = fma(-x, q, 1.0 - x);
+    ret = absx < 0.84375 ? t : ret;
+
+    ret = x >= 28.0 ? 0.0 : ret;
+    ret = x <= -6.0 ? 2.0 : ret;
+    ret = ax > 0x7ff0000000000000UL ? x : ret;
+
+    return ret;
+}
+
+#undef AU0
+#undef AU1
+#undef AU2
+#undef AU3
+#undef AU4
+#undef AU5
+#undef AU6
+
+#undef AV0
+#undef AV1
+#undef AV2
+#undef AV3
+#undef AV4
+#undef AV5
+#undef AV6
+
+#undef BU0
+#undef BU1
+#undef BU2
+#undef BU3
+#undef BU4
+#undef BU5
+#undef BU6
+#undef BU7
+
+#undef BV0
+#undef BV1
+#undef BV2
+#undef BV3
+#undef BV4
+#undef BV5
+#undef BV6
+#undef BV7
+
+#undef CU0
+#undef CU1
+#undef CU2
+#undef CU3
+#undef CU4
+#undef CU5
+#undef CU6
+
+#undef CV0
+#undef CV1
+#undef CV2
+#undef CV3
+#undef CV4
+#undef CV5
+
+#undef DU0
+#undef DU1
+#undef DU2
+#undef DU3
+#undef DU4
+
+#undef DV0
+#undef DV1
+#undef DV2
+#undef DV3
+#undef DV4
+
+/*################################## libclc_lgamma_r_f64 ###############################################*/
+
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+
+// lgamma_r(x, i)
+// Reentrant version of the logarithm of the Gamma function
+// with user provide pointer for the sign of Gamma(x).
+//
+// Method:
+//   1. Argument Reduction for 0 < x <= 8
+//      Since gamma(1+s)=s*gamma(s), for x in [0,8], we may
+//      reduce x to a number in [1.5,2.5] by
+//              lgamma(1+s) = log(s) + lgamma(s)
+//      for example,
+//              lgamma(7.3) = log(6.3) + lgamma(6.3)
+//                          = log(6.3*5.3) + lgamma(5.3)
+//                          = log(6.3*5.3*4.3*3.3*2.3) + lgamma(2.3)
+//   2. Polynomial approximation of lgamma around its
+//      minimun ymin=1.461632144968362245 to maintain monotonicity.
+//      On [ymin-0.23, ymin+0.27] (i.e., [1.23164,1.73163]), use
+//              Let z = x-ymin;
+//              lgamma(x) = -1.214862905358496078218 + z^2*poly(z)
+//      where
+//              poly(z) is a 14 degree polynomial.
+//   2. Rational approximation in the primary interval [2,3]
+//      We use the following approximation:
+//              s = x-2.0;
+//              lgamma(x) = 0.5*s + s*P(s)/Q(s)
+//      with accuracy
+//              |P/Q - (lgamma(x)-0.5s)| < 2**-61.71
+//      Our algorithms are based on the following observation
+//
+//                             zeta(2)-1    2    zeta(3)-1    3
+// lgamma(2+s) = s*(1-Euler) + --------- * s  -  --------- * s  + ...
+//                                 2                 3
+//
+//      where Euler = 0.5771... is the Euler constant, which is very
+//      close to 0.5.
+//
+//   3. For x>=8, we have
+//      lgamma(x)~(x-0.5)log(x)-x+0.5*log(2pi)+1/(12x)-1/(360x**3)+....
+//      (better formula:
+//         lgamma(x)~(x-0.5)*(log(x)-1)-.5*(log(2pi)-1) + ...)
+//      Let z = 1/x, then we approximation
+//              f(z) = lgamma(x) - (x-0.5)(log(x)-1)
+//      by
+//                                  3       5             11
+//              w = w0 + w1*z + w2*z  + w3*z  + ... + w6*z
+//      where
+//              |w - f(z)| < 2**-58.74
+//
+//   4. For negative x, since (G is gamma function)
+//              -x*G(-x)*G(x) = pi/sin(pi*x),
+//      we have
+//              G(x) = pi/(sin(pi*x)*(-x)*G(-x))
+//      since G(-x) is positive, sign(G(x)) = sign(sin(pi*x)) for x<0
+//      Hence, for x<0, signgam = sign(sin(pi*x)) and
+//              lgamma(x) = log(|Gamma(x)|)
+//                        = log(pi/(|x*sin(pi*x)|)) - lgamma(-x);
+//      Note: one should avoid compute pi*(-x) directly in the
+//            computation of sin(pi*(-x)).
+//
+//   5. Special Cases
+//              lgamma(2+s) ~ s*(1-Euler) for tiny s
+//              lgamma(1)=lgamma(2)=0
+//              lgamma(x) ~ -log(x) for tiny x
+//              lgamma(0) = lgamma(inf) = inf
+//              lgamma(-integer) = +-inf
+//
+#define PI 3.14159265358979311600e+00	/* 0x400921FB, 0x54442D18 */
+
+#define A0 7.72156649015328655494e-02	/* 0x3FB3C467, 0xE37DB0C8 */
+#define A1 3.22467033424113591611e-01	/* 0x3FD4A34C, 0xC4A60FAD */
+#define A2 6.73523010531292681824e-02	/* 0x3FB13E00, 0x1A5562A7 */
+#define A3 2.05808084325167332806e-02	/* 0x3F951322, 0xAC92547B */
+#define A4 7.38555086081402883957e-03	/* 0x3F7E404F, 0xB68FEFE8 */
+#define A5 2.89051383673415629091e-03	/* 0x3F67ADD8, 0xCCB7926B */
+#define A6 1.19270763183362067845e-03	/* 0x3F538A94, 0x116F3F5D */
+#define A7 5.10069792153511336608e-04	/* 0x3F40B6C6, 0x89B99C00 */
+#define A8 2.20862790713908385557e-04	/* 0x3F2CF2EC, 0xED10E54D */
+#define A9 1.08011567247583939954e-04	/* 0x3F1C5088, 0x987DFB07 */
+#define A10 2.52144565451257326939e-05	/* 0x3EFA7074, 0x428CFA52 */
+#define A11 4.48640949618915160150e-05	/* 0x3F07858E, 0x90A45837 */
+
+#define TC 1.46163214496836224576e+00	/* 0x3FF762D8, 0x6356BE3F */
+#define TF -1.21486290535849611461e-01	/* 0xBFBF19B9, 0xBCC38A42 */
+#define TT -3.63867699703950536541e-18	/* 0xBC50C7CA, 0xA48A971F */
+
+#define T0 4.83836122723810047042e-01	/* 0x3FDEF72B, 0xC8EE38A2 */
+#define T1 -1.47587722994593911752e-01	/* 0xBFC2E427, 0x8DC6C509 */
+#define T2 6.46249402391333854778e-02	/* 0x3FB08B42, 0x94D5419B */
+#define T3 -3.27885410759859649565e-02	/* 0xBFA0C9A8, 0xDF35B713 */
+#define T4 1.79706750811820387126e-02	/* 0x3F9266E7, 0x970AF9EC */
+#define T5 -1.03142241298341437450e-02	/* 0xBF851F9F, 0xBA91EC6A */
+#define T6 6.10053870246291332635e-03	/* 0x3F78FCE0, 0xE370E344 */
+#define T7 -3.68452016781138256760e-03	/* 0xBF6E2EFF, 0xB3E914D7 */
+#define T8 2.25964780900612472250e-03	/* 0x3F6282D3, 0x2E15C915 */
+#define T9 -1.40346469989232843813e-03	/* 0xBF56FE8E, 0xBF2D1AF1 */
+#define T10 8.81081882437654011382e-04	/* 0x3F4CDF0C, 0xEF61A8E9 */
+#define T11 -5.38595305356740546715e-04	/* 0xBF41A610, 0x9C73E0EC */
+#define T12 3.15632070903625950361e-04	/* 0x3F34AF6D, 0x6C0EBBF7 */
+#define T13 -3.12754168375120860518e-04	/* 0xBF347F24, 0xECC38C38 */
+#define T14 3.35529192635519073543e-04	/* 0x3F35FD3E, 0xE8C2D3F4 */
+
+#define U0 -7.72156649015328655494e-02	/* 0xBFB3C467, 0xE37DB0C8 */
+#define U1 6.32827064025093366517e-01	/* 0x3FE4401E, 0x8B005DFF */
+#define U2 1.45492250137234768737e+00	/* 0x3FF7475C, 0xD119BD6F */
+#define U3 9.77717527963372745603e-01	/* 0x3FEF4976, 0x44EA8450 */
+#define U4 2.28963728064692451092e-01	/* 0x3FCD4EAE, 0xF6010924 */
+#define U5 1.33810918536787660377e-02	/* 0x3F8B678B, 0xBF2BAB09 */
+
+#define V1 2.45597793713041134822e+00	/* 0x4003A5D7, 0xC2BD619C */
+#define V2 2.12848976379893395361e+00	/* 0x40010725, 0xA42B18F5 */
+#define V3 7.69285150456672783825e-01	/* 0x3FE89DFB, 0xE45050AF */
+#define V4 1.04222645593369134254e-01	/* 0x3FBAAE55, 0xD6537C88 */
+#define V5 3.21709242282423911810e-03	/* 0x3F6A5ABB, 0x57D0CF61 */
+
+#define S0 -7.72156649015328655494e-02	/* 0xBFB3C467, 0xE37DB0C8 */
+#define S1 2.14982415960608852501e-01	/* 0x3FCB848B, 0x36E20878 */
+#define S2 3.25778796408930981787e-01	/* 0x3FD4D98F, 0x4F139F59 */
+#define S3 1.46350472652464452805e-01	/* 0x3FC2BB9C, 0xBEE5F2F7 */
+#define S4 2.66422703033638609560e-02	/* 0x3F9B481C, 0x7E939961 */
+#define S5 1.84028451407337715652e-03	/* 0x3F5E26B6, 0x7368F239 */
+#define S6 3.19475326584100867617e-05	/* 0x3F00BFEC, 0xDD17E945 */
+
+#define R1 1.39200533467621045958e+00	/* 0x3FF645A7, 0x62C4AB74 */
+#define R2 7.21935547567138069525e-01	/* 0x3FE71A18, 0x93D3DCDC */
+#define R3 1.71933865632803078993e-01	/* 0x3FC601ED, 0xCCFBDF27 */
+#define R4 1.86459191715652901344e-02	/* 0x3F9317EA, 0x742ED475 */
+#define R5 7.77942496381893596434e-04	/* 0x3F497DDA, 0xCA41A95B */
+#define R6 7.32668430744625636189e-06	/* 0x3EDEBAF7, 0xA5B38140 */
+
+#define W0 4.18938533204672725052e-01	/* 0x3FDACFE3, 0x90C97D69 */
+#define W1 8.33333333333329678849e-02	/* 0x3FB55555, 0x5555553B */
+#define W2 -2.77777777728775536470e-03	/* 0xBF66C16C, 0x16B02E5C */
+#define W3 7.93650558643019558500e-04	/* 0x3F4A019F, 0x98CF38B6 */
+#define W4 -5.95187557450339963135e-04	/* 0xBF4380CB, 0x8C0FE741 */
+#define W5 8.36339918996282139126e-04	/* 0x3F4B67BA, 0x4CDAD5D1 */
+#define W6 -1.63092934096575273989e-03	/* 0xBF5AB89D, 0x0B9E43E4 */
+
+INLINE double libclc_lgamma_r_f64(double x, private int* ip) {
+    ulong ux = as_ulong(x);
+    ulong ax = ux & EXSIGNBIT_DP64;
+    double absx = as_double(ax);
+
+    if (ax >= 0x7ff0000000000000UL) {
+        // +-Inf, NaN
+        *ip = 1;
+        return absx;
+    }
+
+    if (absx < 0x1.0p-70) {
+        *ip = ax == ux ? 1 : -1;
+        return -log(absx);
+    }
+
+    // Handle rest of range
+    double r;
+
+    if (absx < 2.0) {
+        int i = 0;
+        double y = 2.0 - absx;
+
+        int c = absx < 0x1.bb4c3p+0;
+        double t = absx - TC;
+        i = c ? 1 : i;
+        y = c ? t : y;
+
+        c = absx < 0x1.3b4c4p+0;
+        t = absx - 1.0;
+        i = c ? 2 : i;
+        y = c ? t : y;
+
+        c = absx <= 0x1.cccccp-1;
+        t = -log(absx);
+        r = c ? t : 0.0;
+        t = 1.0 - absx;
+        i = c ? 0 : i;
+        y = c ? t : y;
+
+        c = absx < 0x1.76944p-1;
+        t = absx - (TC - 1.0);
+        i = c ? 1 : i;
+        y = c ? t : y;
+
+        c = absx < 0x1.da661p-3;
+        i = c ? 2 : i;
+        y = c ? absx : y;
+
+        double p, q;
+
+        switch (i) {
+        case 0:
+            p = fma(y, fma(y, fma(y, fma(y, A11, A10), A9), A8), A7);
+            p = fma(y, fma(y, fma(y, fma(y, p, A6), A5), A4), A3);
+            p = fma(y, fma(y, fma(y, p, A2), A1), A0);
+            r = fma(y, p - 0.5, r);
+            break;
+        case 1:
+            p = fma(y, fma(y, fma(y, fma(y, T14, T13), T12), T11), T10);
+            p = fma(y, fma(y, fma(y, fma(y, fma(y, p, T9), T8), T7), T6), T5);
+            p = fma(y, fma(y, fma(y, fma(y, fma(y, p, T4), T3), T2), T1), T0);
+            p = fma(y * y, p, -TT);
+            r += (TF + p);
+            break;
+        case 2:
+            p = y * fma(y, fma(y, fma(y, fma(y, fma(y, U5, U4), U3), U2), U1), U0);
+            q = fma(y, fma(y, fma(y, fma(y, fma(y, V5, V4), V3), V2), V1), 1.0);
+            r += fma(-0.5, y, p / q);
+        }
+    }
+    else if (absx < 8.0) {
+        int i = absx;
+        double y = absx - (double)i;
+        double p = y * fma(y, fma(y, fma(y, fma(y, fma(y, fma(y, S6, S5), S4), S3), S2), S1), S0);
+        double q = fma(y, fma(y, fma(y, fma(y, fma(y, fma(y, R6, R5), R4), R3), R2), R1), 1.0);
+        r = fma(0.5, y, p / q);
+        double z = 1.0;
+        // lgamma(1+s) = log(s) + lgamma(s)
+        double y6 = y + 6.0;
+        double y5 = y + 5.0;
+        double y4 = y + 4.0;
+        double y3 = y + 3.0;
+        double y2 = y + 2.0;
+        z *= i > 6 ? y6 : 1.0;
+        z *= i > 5 ? y5 : 1.0;
+        z *= i > 4 ? y4 : 1.0;
+        z *= i > 3 ? y3 : 1.0;
+        z *= i > 2 ? y2 : 1.0;
+        r += log(z);
+    }
+    else {
+        double z = 1.0 / absx;
+        double z2 = z * z;
+        double w = fma(z, fma(z2, fma(z2, fma(z2, fma(z2, fma(z2, W6, W5), W4), W3), W2), W1), W0);
+        r = (absx - 0.5) * (log(absx) - 1.0) + w;
+    }
+
+    if (x < 0.0) {
+        double t = sinpi(x);
+        r = log(PI / fabs(t * x)) - r;
+        r = t == 0.0 ? as_double(PINFBITPATT_DP64) : r;
+        *ip = t < 0.0 ? -1 : 1;
+    }
+    else
+        *ip = 1;
+
+    return r;
+}
+
+/*################################## libclc_lgamma_f64 ###############################################*/
+
+INLINE double libclc_lgamma_f64(double x) {
+    int s;
+    return libclc_lgamma_r_f64(x, &s);
+}
+
+#undef PI
+
+#undef A0
+#undef A1
+#undef A2
+#undef A3
+#undef A4
+#undef A5
+#undef A6
+#undef A7
+#undef A8
+#undef A9
+#undef A10
+#undef A11
+
+#undef TC
+#undef TF
+#undef TT
+
+#undef T0
+#undef T1
+#undef T2
+#undef T3
+#undef T4
+#undef T5
+#undef T6
+#undef T7
+#undef T8
+#undef T9
+#undef T10
+#undef T11
+#undef T12
+#undef T13
+#undef T14
+
+#undef U0
+#undef U1
+#undef U2
+#undef U3
+#undef U4
+#undef U5
+
+#undef V1
+#undef V2
+#undef V3
+#undef V4
+#undef V5
+
+#undef S0
+#undef S1
+#undef S2
+#undef S3
+#undef S4
+#undef S5
+#undef S6
+
+#undef R1
+#undef R2
+#undef R3
+#undef R4
+#undef R5
+#undef R6
+
+#undef W0
+#undef W1
+#undef W2
+#undef W3
+#undef W4
+#undef W5
+#undef W6
+
+/*################################## libclc_tgamma_f64 ###############################################*/
+
+INLINE double libclc_tgamma_f64(double x) {
+    const double pi = 3.1415926535897932384626433832795;
+    double ax = fabs(x);
+    double lg = libclc_lgamma_f64(ax);
+    double g = exp(lg);
+
+    if (x < 0.0) {
+        double z = sinpi(x);
+        g = g * ax * z;
+        g = pi / g;
+        g = g == 0 ? as_double(PINFBITPATT_DP64) : g;
+        g = z == 0 ? as_double(QNANBITPATT_DP64) : g;
+    }
+
+    return g;
+}
+
 #endif // defined(cl_khr_fp64)
 
 #endif // define __DOUBLES_CL__

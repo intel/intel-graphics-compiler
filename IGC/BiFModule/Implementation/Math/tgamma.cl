@@ -85,9 +85,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tgamma, float, float
 
 INLINE double __builtin_spirv_OpenCL_tgamma_f64( double x )
 {
-    // DOWNCAST TO 64-BIT
-    // TODO: No 64-bit implementation of tgamma().  Downcast to 32-bit version.
-    return __builtin_spirv_OpenCL_tgamma_f32((float)x);
+    return libclc_tgamma_f64(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tgamma, double, double, f64 )
