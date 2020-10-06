@@ -765,6 +765,99 @@ void RdWrRegionSequence::print(raw_ostream &OS) const
   }
 }
 
+static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
+  // if a region has a constant-vector as its indirect offsets,
+  // try to recognize the pattern, and replace it with
+  // a direct region with v-stride, h-stride, h-width
+  Region R(Inst, BaleInfo());
+  if (R.Indirect == nullptr)
+    return Inst;
+
+  auto cv = dyn_cast<ConstantDataVector>(R.Indirect);
+  if (!cv)
+    return Inst;
+  // Flatten the vector out into the elements array
+  llvm::SmallVector<llvm::Constant*, 16> elements;
+  auto vectorLength = cast<VectorType>(cv->getType())->getNumElements();
+  for (unsigned i = 0; i < vectorLength; ++i)
+    elements.push_back(cv->getElementAsConstant(i));
+
+  llvm::ConstantInt* ci = llvm::dyn_cast<llvm::ConstantInt>(elements[0]);
+  if (ci == NULL)
+    return Inst; // Not a vector of integers
+
+  int VStride = 1;
+  unsigned Width = 1;
+  int Stride = 1;
+  int Offset = (-1);
+
+  int64_t val0 = ci->getSExtValue();
+  if (vectorLength == 1) {
+    R.Indirect = nullptr;
+    R.Offset = val0 + R.Offset;
+    R.Stride = 0;
+    R.Width = 1;
+    R.VStride = 0;
+    if (GenXIntrinsic::isRdRegion(Inst))
+      return R.createRdRegion(Inst->getOperand(0),
+        Inst->getName(), Inst, Inst->getDebugLoc());
+    else if (GenXIntrinsic::isWrRegion(Inst))
+      return cast<Instruction>(R.createWrRegion(Inst->getOperand(0),
+        Inst->getOperand(1), Inst->getName(), Inst, Inst->getDebugLoc()));
+    return Inst;
+  }
+  ci = llvm::dyn_cast<llvm::ConstantInt>(elements[1]);
+  if (ci == NULL)
+    return Inst; // Not a vector of integers
+
+  int64_t prevVal = ci->getSExtValue();
+  int64_t diff = prevVal - val0;
+  if (diff < 0)
+    return Inst; // cannot have negative stride
+  int i0 = 0;
+  Offset = val0 + R.Offset;
+  // check if this is a 1d simple-stride region
+  for (int i = 2; i < (int)vectorLength; ++i) {
+    ci = llvm::dyn_cast<llvm::ConstantInt>(elements[i]);
+    if (ci == NULL)
+      return Inst;
+
+    int64_t nextVal = ci->getSExtValue();
+    if (prevVal + diff != nextVal) {
+      if (Width == 1) {
+        Width = i - i0;
+        VStride = nextVal - val0;
+        val0 = nextVal;
+        i0 = i;
+      }
+      else if (nextVal != val0 + VStride || i != i0 + Width)
+        return Inst;
+      else {
+        val0 = nextVal;
+        i0 = i;
+      }
+      if (VStride < 0)
+        return Inst; // cannot have negative stride
+    }
+    prevVal = nextVal;
+  }
+  Stride = diff*8 / R.ElementTy->getPrimitiveSizeInBits();
+  VStride = VStride*8 / R.ElementTy->getPrimitiveSizeInBits();
+  // rewrite the region inst
+  R.Indirect = nullptr;
+  R.Offset = Offset;
+  R.Stride = Stride;
+  R.Width = (Width == 1) ? R.NumElements : Width;
+  R.VStride = VStride;
+  if (GenXIntrinsic::isRdRegion(Inst))
+    return R.createRdRegion(Inst->getOperand(0),
+      Inst->getName(), Inst, Inst->getDebugLoc());
+  else if (GenXIntrinsic::isWrRegion(Inst))
+    return cast<Instruction>(R.createWrRegion(Inst->getOperand(0),
+      Inst->getOperand(1), Inst->getName(), Inst, Inst->getDebugLoc()));
+  return Inst;
+}
+
 static Value *simplifyRegionWrite(Instruction *Inst) {
   IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst));
   Value *NewVal = Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
@@ -837,10 +930,26 @@ Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL) {
   if (Inst->use_empty())
     return nullptr;
 
+  unsigned ID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+  switch (ID) {
+  case GenXIntrinsic::genx_wrregionf:
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_rdregionf:
+  case GenXIntrinsic::genx_rdregioni: {
+    auto replace = simplifyConstIndirectRegion(Inst);
+    if (replace != Inst) {
+      Inst->replaceAllUsesWith(replace);
+      Inst = replace;
+    }
+    break;
+  }
+  default:
+    break;
+  }
   if (Constant *C = ConstantFoldGenX(Inst, *DL))
     return C;
 
-  unsigned ID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+  ID = GenXIntrinsic::getGenXIntrinsicID(Inst);
   switch (ID) {
   case GenXIntrinsic::genx_wrregionf:
   case GenXIntrinsic::genx_wrregioni:
