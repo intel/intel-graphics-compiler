@@ -1,9 +1,12 @@
+#include "llvm/Support/Process.h"
+#include <llvm/ADT/StringExtras.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/ErrorHandling.h>
-#include <llvm/ADT/StringExtras.h>
+#include <llvm/Support/Path.h>
 
 #include <algorithm>
 #include <cassert>
+#include <sstream>
 
 #include "Frontend.h"
 #include "InputArgsWrapper.h"
@@ -15,19 +18,23 @@
 using namespace IGC::AdaptorCM::Frontend;
 
 namespace {
-const char *getClangFELibName() {
-  return CMFE_WRAPPER_NAME;
-}
-
 llvm::sys::DynamicLibrary getFELibrary() {
+  std::string FELibName = CMFE_WRAPPER_NAME;
+  std::string FError;
 
-  static auto DL =
-    llvm::sys::DynamicLibrary::getPermanentLibrary(getClangFELibName());
+  auto EnvFE = llvm::sys::Process::GetEnv("CM_FE_DIR");
+  if (EnvFE)
+    FELibName =
+        llvm::sys::path::convert_to_slash(EnvFE.getValue() + "/" + FELibName);
+
+  static auto DL = llvm::sys::DynamicLibrary::getPermanentLibrary(
+      FELibName.c_str(), &FError);
 
   if (!DL.isValid()) {
-    llvm::report_fatal_error(
-      std::string("AdaptorCM: could not load FEWrapper: <")
-        .append(getClangFELibName()).append(">"), false);
+    std::ostringstream os;
+    os << "AdaptorCM: could not load FEWrapper: <" << FELibName
+       << ">: " << FError;
+    llvm::report_fatal_error(os.str(), false);
   }
   return DL;
 }
