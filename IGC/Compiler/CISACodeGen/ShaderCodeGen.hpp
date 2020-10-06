@@ -462,6 +462,8 @@ public:
     bool GetHasConstantStatelessAccess() const { return m_HasConstantStatelessMemoryAccess; }
     void SetHasGlobalAtomics() { m_HasGlobalAtomics = true; }
     bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
+    void IncStatelessWritesCount() { ++m_StatelessWritesCount; }
+    uint32_t GetStatelessWritesCount() { return m_StatelessWritesCount; }
     calignmentSize as;
 
     // In bytes
@@ -574,6 +576,7 @@ protected:
 
     bool m_HasGlobalAtomics = false;
 
+    uint32_t m_StatelessWritesCount = 0;
 
 };
 

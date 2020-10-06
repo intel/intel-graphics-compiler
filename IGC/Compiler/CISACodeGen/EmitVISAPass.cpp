@@ -15111,7 +15111,9 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         {
             m_encoder->SetNoMask();
             m_encoder->SetUniformSIMDSize(simdmode);
+            {
                 m_encoder->ByteGather(gatherDst, resource, gatherOff, blkBits, nBlks);
+            }
         }
         else
         {

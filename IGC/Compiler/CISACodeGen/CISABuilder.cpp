@@ -548,6 +548,10 @@ namespace IGC
             pSrc0,
             pSrc1,
             pDst));
+        if (ESURFACE_STATELESS == resource.m_surfaceType)
+        {
+            this->m_program->IncStatelessWritesCount();
+        }
     }
 
     void CEncoder::Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* src1)
@@ -2424,6 +2428,10 @@ namespace IGC
         bool feedbackEnable,
         bool nonUniformState)
     {
+
+        if (!m_program->m_Platform->hasSamplerSupport())
+            return;
+
         int numMsgSpecificOpnds = numSources;
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         bool isIdxLT16;
@@ -2474,6 +2482,10 @@ namespace IGC
         bool zeroLOD,
         bool feedbackEnable)
     {
+
+        if (!m_program->m_Platform->hasSamplerSupport())
+            return;
+
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(resource);
         VISA_RawOpnd* dstVar = GetRawDestination(dst);
@@ -2527,6 +2539,10 @@ namespace IGC
         uint channel,
         bool feedbackEnable)
     {
+
+        if (!m_program->m_Platform->hasSamplerSupport())
+            return;
+
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         bool isIdxLT16;
         VISA_StateOpndHandle* samplerOpnd = GetSamplerOperand(sampler, isIdxLT16);
@@ -2955,6 +2971,10 @@ namespace IGC
             ConvertSizeToVisaType(size),
             offset,
             dataVar));
+        if (ESURFACE_STATELESS == surfaceType)
+        {
+            this->m_program->IncStatelessWritesCount();
+        }
     }
 
     void CEncoder::OWStoreA64(CVariable* data, CVariable* src0, uint bytesToBeRead, uint srcOffset)
@@ -3114,6 +3134,10 @@ namespace IGC
             globalOffsetOpnd,
             elementOffset,
             dstVar));
+        if (ISA_SCATTER == opcode && ESURFACE_STATELESS == surface)
+        {
+            this->m_program->IncStatelessWritesCount();
+        }
     }
 
     void CEncoder::GenericAlu(e_opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2)
@@ -4135,6 +4159,12 @@ namespace IGC
             SaveOption(vISA_EnableGroupScheduleForBC, true);
         }
 
+
+
+        if (m_program->m_Platform->hasEarlyGRFRead())
+        {
+            SaveOption(vISA_HasEarlyGRFRead, true);
+        }
 
         if (IGC_GET_FLAG_VALUE(SWSBTokenNum) != 0)
         {
@@ -5430,6 +5460,7 @@ namespace IGC
             visaBlockType(elemSize),
             visaBlockNum(numElems),
             addressOpnd, srcOpnd));
+        this->m_program->IncStatelessWritesCount();
     }
 
     void CEncoder::ByteGather(
@@ -5650,6 +5681,10 @@ namespace IGC
             surfaceOpnd,
             globalOffsetOpnd,
             addressOpnd, srcOpnd));
+        if (ESURFACE_STATELESS == resource.m_surfaceType)
+        {
+            this->m_program->IncStatelessWritesCount();
+        }
     }
 
     void CEncoder::Gather4A64(CVariable* dst, CVariable* offset) {
@@ -5910,6 +5945,7 @@ namespace IGC
                     SplitEMask(fromExecSize, toExecSize, thePart, execMask),
                     toExecSize, atomicOpcode, bitwidth,
                     addressOpnd, src0Opnd, src1Opnd, dstOpnd));
+                this->m_program->IncStatelessWritesCount();
 
                 if (needsTmpDst)
                 {
@@ -5945,6 +5981,7 @@ namespace IGC
             src0Opnd,
             src1Opnd,
             dstOpnd));
+        this->m_program->IncStatelessWritesCount();
     }
 
     void CEncoder::Wait()
@@ -6193,6 +6230,7 @@ namespace IGC
     {
         V(vKernel->AppendVISALLVMInst(inst));
     }
+
 
 
 

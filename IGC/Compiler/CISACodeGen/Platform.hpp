@@ -395,6 +395,11 @@ bool hasEarlyGRFRead() const
     return m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP && m_platformInfo.usRevId == REVISION_A0;
 }
 
+bool hasSamplerSupport() const
+{
+    return true;
+}
+
 bool supportsSIMD16TypedRW() const
 {
     return false;
