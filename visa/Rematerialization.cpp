@@ -528,7 +528,7 @@ namespace vISA
             // range then skip remating this operation.
             // Be less aggressive if this is SIMD8 since we run the
             // chance of perf penalty with this.
-            if (kernel.getSimdSize() == 8 ||
+            if ((kernel.getSimdSize() == 8 && rpe.getRegisterPressure(srcInst) < (float)rematLoopRegPressure * 1.6f) ||
                 rematCandidates[topdcl->getRegVar()->getId()] == false ||
                 rpe.getRegisterPressure(srcInst) < rematLoopRegPressure)
                 return false;
@@ -537,7 +537,13 @@ namespace vISA
             {
                 // Restrict non-SIMD1 remats to a low percent of loop instructions.
                 float loopInstToTotalInstRatio = (float)getNumRematsInLoop() / (float)loopInstsBeforeRemat*100.0f;
-                if (loopInstToTotalInstRatio > 1.75f)
+                if (rpe.getMaxRP() < rematRegPressure * 1.4f)
+                {
+                    // If max RPE is not very high, dont sink too many instructions in loop
+                    if(loopInstToTotalInstRatio > 1.75f)
+                        return false;
+                }
+                else if (loopInstToTotalInstRatio > 3.75f)
                     return false;
             }
         }
@@ -788,7 +794,8 @@ namespace vISA
                 {
                     G4_SrcRegRegion* srcRgn = uniqueDefInst->getSrc(i)->asSrcRegRegion();
 
-                    if (srcRgn->getTopDcl()->getNumElems() > 1)
+                    if (srcRgn->getTopDcl()->getNumElems() > 1 &&
+                        getNumUses(srcRgn->getTopDcl()) < 15)
                     {
                         // Extending non-scalar operands can be expensive
                         return false;
