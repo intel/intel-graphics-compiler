@@ -190,9 +190,6 @@ namespace IGC
     {
         uint offset = 0;
 
-        ComputeShaderContext* pctx =
-            static_cast<ComputeShaderContext*>(GetContext());
-
         // R0 is used as a Predefined variable so that vISA doesn't free it later. In CS, we expect the
         // thread group id's in R0.
         IGC_ASSERT(GetR0());
@@ -203,24 +200,15 @@ namespace IGC
         bool bZeroIDs = !GetNumberOfId();
         // for indirect threads data payload hardware doesn't allow empty per thread buffer
         // so we allocate a dummy thread id in case no IDs are used
-        if (pctx->m_DriverInfo.UsesIndirectPayload() && bZeroIDs)
+        if (bZeroIDs)
         {
             CreateThreadIDinGroup(THREAD_ID_IN_GROUP_X);
-        }
-
-        if (!pctx->m_DriverInfo.UsesIndirectPayload())
-        {
-            // Cross-thread constant data.
-            AllocateNOSConstants(offset);
         }
 
         AllocatePerThreadConstantData(offset);
 
         // Cross-thread constant data.
-        if (pctx->m_DriverInfo.UsesIndirectPayload())
-        {
-            AllocateNOSConstants(offset);
-        }
+        AllocateNOSConstants(offset);
     }
 
 
@@ -294,9 +282,6 @@ namespace IGC
 
     void CComputeShader::FillProgram(SComputeShaderKernelProgram* pKernelProgram)
     {
-        ComputeShaderContext* pctx =
-            static_cast<ComputeShaderContext*>(GetContext());
-
         CreateGatherMap();
         CreateConstantBufferOutput(pKernelProgram);
 
@@ -343,7 +328,7 @@ namespace IGC
 
         pKernelProgram->CSHThreadDispatchChannel = 0;
 
-        pKernelProgram->CompiledForIndirectPayload = pctx->m_DriverInfo.UsesIndirectPayload();
+        pKernelProgram->CompiledForIndirectPayload = 0;
 
         pKernelProgram->DispatchAlongY = m_dispatchAlongY;
 
@@ -386,9 +371,7 @@ namespace IGC
     {
         CreateImplicitArgs();
 
-        if (IGC_IS_FLAG_ENABLED(DispatchGPGPUWalkerAlongYFirst) &&
-            (m_num2DAccesses > m_num1DAccesses) &&
-            GetContext()->m_DriverInfo.SupportsDispatchGPGPUWalkerAlongYFirst())
+        if (IGC_IS_FLAG_ENABLED(DispatchGPGPUWalkerAlongYFirst) && (m_num2DAccesses > m_num1DAccesses))
         {
             m_dispatchAlongY = true;
         }
