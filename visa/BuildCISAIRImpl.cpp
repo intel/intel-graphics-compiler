@@ -463,6 +463,12 @@ static void Stitch_Compiled_Units(
         if (!callee->getRelocationTable().empty())
             mainFunc->getRelocationTable().insert(mainFunc->getRelocationTable().end(),
                 callee->getRelocationTable().begin(), callee->getRelocationTable().end());
+
+        // Make sure caller and callee's number of GRFs are consistent
+        if (mainFunc->getNumRegTotal() < callee->getNumRegTotal())
+        {
+            mainFunc->updateKernelByNumThreads(callee->getNumThreads());
+        }
     }
 
     mainFunc->fg.reassignBlockIDs();

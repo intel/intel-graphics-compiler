@@ -3916,6 +3916,23 @@ void G4_Kernel::setKernelParameters()
 }
 
 //
+// Updates kernel's related structures based on number of threads.
+//
+void G4_Kernel::updateKernelByNumThreads(int nThreads)
+{
+    if (numThreads == nThreads)
+        return;
+
+    numThreads = nThreads;
+
+    // Scale number of GRFs, Acc, SWSB tokens.
+    setKernelParameters();
+
+    // Update physical register pool
+    fg.builder->rebuildPhyRegPool(getNumRegTotal());
+}
+
+//
 // Add declares for the stack and frame pointers.
 //
 void FlowGraph::addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool)

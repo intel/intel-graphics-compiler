@@ -1567,6 +1567,7 @@ public:
     void emit_dep(std::ostream& output);
 
     void setKernelParameters(void);
+    void updateKernelByNumThreads(int nThreads);
 
     void evalAddrExp(void);
     void dumpDotFile(const char* appendix);
