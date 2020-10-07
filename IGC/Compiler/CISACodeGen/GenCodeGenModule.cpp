@@ -604,9 +604,10 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
             {
                 if (CallInst* call = dyn_cast<CallInst>(&*ii))
                 {
+                    if (call->isInlineAsm()) continue;
+
                     Function* calledF = call->getCalledFunction();
-                    if ((!call->isInlineAsm() && !calledF) ||
-                        calledF->hasFnAttribute("IndirectlyCalled"))
+                    if (!calledF || calledF->hasFnAttribute("IndirectlyCalled"))
                     {
                         FG->m_hasStackCall = true;
                         break;

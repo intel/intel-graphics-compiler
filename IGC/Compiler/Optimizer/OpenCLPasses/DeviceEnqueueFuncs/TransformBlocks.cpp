@@ -1564,7 +1564,7 @@ namespace //Anonymous
                         for (auto& I : BB)
                         {
                             auto callInst = dyn_cast<llvm::CallInst>(&I);
-                            if (callInst != nullptr && callInst->getCalledFunction() == nullptr)
+                            if (callInst != nullptr && callInst->getCalledFunction() == nullptr && !callInst->isInlineAsm())
                             {
                                 // assuming indirect call is the block call
                                 unsigned blockArgIdx = callInst->hasStructRetAttr() ? 1 : 0;
