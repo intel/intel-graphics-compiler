@@ -1452,6 +1452,12 @@ namespace IGC
             bool Need64BitEmu =
                 m_program->GetContext()->platform.hasNoInt64Inst() &&
                 (Is64BitDst || Is64BitSrc);
+            if (dst->GetVarType() != EVARTYPE_GENERAL || src->GetVarType() != EVARTYPE_GENERAL)
+            {
+                // code can't handle indirect operands, let vISA do it
+                // ToDo: disable int64b copy emu entirely?
+                Need64BitEmu = false;
+            }
             // If DP is not supported, need to split mov as well.
             if (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
                 m_program->GetContext()->platform.hasNoFP64Inst())
@@ -4492,6 +4498,7 @@ namespace IGC
     {
         vKernel->GetPredefinedVar(pVar->visaGenVariable[0], var);
         switch (var) {
+        case PREDEFINED_NULL:
         case PREDEFINED_TSC:
         case PREDEFINED_SR0:
         case PREDEFINED_CR0:

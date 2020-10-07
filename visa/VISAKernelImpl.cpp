@@ -2265,10 +2265,18 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd, VISA_GenVa
     cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
     if (IS_GEN_BOTH_PATH)
     {
-        //create reg region
         G4_Declare *dcl = cisa_decl->genVar.dcl;
 
-        cisa_opnd->g4opnd = m_builder->createDst(dcl->getRegVar(), rowOffset, colOffset, hStride, dcl->getElemType());
+        // replace vISA %null variable with a null dst to avoid confusing later passes
+        G4_Declare *nullVar = m_builder->preDefVars.getPreDefinedVar(PreDefinedVarsInternal::VAR_NULL);
+        if (dcl == nullVar)
+        {
+            cisa_opnd->g4opnd = m_builder->createNullDst(dcl->getElemType());
+        }
+        else
+        {
+            cisa_opnd->g4opnd = m_builder->createDst(dcl->getRegVar(), rowOffset, colOffset, hStride, dcl->getElemType());
+        }
     }
 
     if (IS_VISA_BOTH_PATH)
