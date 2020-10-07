@@ -63,6 +63,7 @@ bool isSpecialRegion(const RegionDesc* desc, uint16_t& hstride)
             break;
         case 16:
             hstride = DUMMY_HSTRIDE_16_16_0;
+            break;
         default:
             MUST_BE_TRUE(false, "Unexpected special hstride seen");
         }
