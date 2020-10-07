@@ -57,7 +57,11 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
 
 void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Memory, uint Semantics)
 {
-    __intel_atomic_work_item_fence( Memory, Semantics );
+    if (Execution != Subgroup)
+    {
+        // sub group barrier requires no fence
+        __intel_atomic_work_item_fence( Memory, Semantics );
+    }
 
     if( Execution <= Workgroup )
     {
