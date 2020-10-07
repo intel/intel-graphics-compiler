@@ -112,7 +112,6 @@ namespace IGC {
             unsigned int lowId;
             unsigned int highId;
             unsigned int varSize;
-            unsigned int uniformAllocaSize;
         };
 
         std::vector<PromotedLiverange> m_promotedLiveranges;
@@ -280,196 +279,82 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     float grfRatio = m_ctx->getNumGRFPerThread() / 128.0f;
     allowedAllocaSizeInBytes = (uint32_t)(allowedAllocaSizeInBytes * grfRatio);
 
-    if( m_ctx->type == ShaderType::OPENCL_SHADER )
+    if (m_ctx->type == ShaderType::COMPUTE_SHADER)
     {
-        Type* baseType = nullptr;
-        if( !CanUseSOALayout( pAlloca, baseType ) )
-        {
-            return false;
-        }
-        if( !IsNativeType( baseType ) )
-        {
-            return false;
-        }
+        ComputeShaderContext* ctx = static_cast<ComputeShaderContext*>(m_ctx);
+        SIMDMode simdMode = ctx->GetLeastSIMDModeAllowed();
+        unsigned d = simdMode == SIMDMode::SIMD32 ? 4 : 1;
 
-        if( isUniformAlloca )
-        {
-            // Heuristic: for uniform alloca we divide the size by 8 to adjust the pressure
-            // as they will be allocated as uniform array
-            allocaSize = iSTD::Round( allocaSize, 8 ) / 8;
-        }
+        allowedAllocaSizeInBytes = allowedAllocaSizeInBytes / d;
+    }
+    Type* baseType = nullptr;
+    if (!CanUseSOALayout(pAlloca, baseType))
+    {
+        return false;
+    }
+    if (!IsNativeType(baseType))
+    {
+        return false;
+    }
+    if (isUniformAlloca)
+    {
+        // Heuristic: for uniform alloca we divide the size by 8 to adjust the pressure
+        // as they will be allocated as uniform array
+        allocaSize = iSTD::Round(allocaSize, 8) / 8;
+    }
 
-        if( allocaSize <= IGC_GET_FLAG_VALUE( ByPassAllocaSizeHeuristic ) )
-        {
-            return true;
-        }
-
-        // if alloca size exceeds alloc size threshold, return false
-        if( allocaSize > allowedAllocaSizeInBytes )
-        {
-            return false;
-        }
-
-        // if no live range info
-        if( !m_pRegisterPressureEstimate->isAvailable() )
-        {
-            return true;
-        }
-
-        // get all the basic blocks that contain the uses of the alloca
-        // then estimate how much changing this alloca to register adds to the pressure at that block.
-        unsigned int lowestAssignedNumber = 0xFFFFFFFF;
-        unsigned int highestAssignedNumber = 0;
-
-        GetAllocaLiverange( pAlloca, lowestAssignedNumber, highestAssignedNumber, m_pRegisterPressureEstimate );
-
-        unsigned int pressure = 0;
-        for( unsigned int i = lowestAssignedNumber; i <= highestAssignedNumber; i++ )
-        {
-            pressure = std::max(
-                pressure, m_pRegisterPressureEstimate->getRegisterPressureForInstructionFromRPMap( i ) );
-        }
-
-        uint32_t maxGRFPressure = (uint32_t)( grfRatio * MAX_PRESSURE_GRF_NUM * 4 );
-
-        // do not promote if pressure is too high
-        if( pressure > uint32_t( 0.97 * maxGRFPressure ) )
-        {
-            return false;
-        }
-
-        uint32_t nonUniformAllocaPressure = 0;
-        uint32_t uniformAllocaPressure = 0;
-        for( auto it : m_promotedLiveranges )
-        {
-            // check interval intersection
-            if( ( it.lowId < lowestAssignedNumber && it.highId > lowestAssignedNumber ) ||
-                ( it.lowId > lowestAssignedNumber && it.lowId < highestAssignedNumber ) )
-            {
-                nonUniformAllocaPressure += it.varSize;
-                uniformAllocaPressure += it.uniformAllocaSize;
-            }
-        }
-
-        if( nonUniformAllocaPressure + pressure > maxGRFPressure )
-        {
-            return false;
-        }
-
-        PromotedLiverange liverange;
-        liverange.uniformAllocaSize = 0;
-        liverange.varSize = 0;
-
-        if( isUniformAlloca )
-        {
-            uniformAllocaPressure += allocaSize;
-            liverange.uniformAllocaSize = allocaSize;
-        }
-        else
-        {
-            nonUniformAllocaPressure += allocaSize;
-            liverange.varSize = allocaSize;
-        }
-
-        if( !( pressure < uint32_t( 0.88 * maxGRFPressure ) ) )
-        {
-            return false;
-        }
-
-        uint32_t uniformAllocasHWRegs = iSTD::Round( uniformAllocaPressure, 4 ) / 4;
-        uint32_t maxGRFPressure2 = (uint32_t)( grfRatio * ( MAX_PRESSURE_GRF_NUM - uniformAllocasHWRegs ) * 4 );
-
-        if( !( uint32_t( ( pressure + nonUniformAllocaPressure ) * 0.7 ) < maxGRFPressure2 ) )
-        {
-            return false;
-        }
-
-        liverange.lowId = lowestAssignedNumber;
-        liverange.highId = highestAssignedNumber;
-        m_promotedLiveranges.push_back( liverange );
+    if (allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
+    {
         return true;
     }
-    else
+
+    // if alloca size exceeds alloc size threshold, return false
+    if (allocaSize > allowedAllocaSizeInBytes)
     {
-        if( m_ctx->type == ShaderType::COMPUTE_SHADER )
-        {
-            ComputeShaderContext* ctx = static_cast<ComputeShaderContext*>( m_ctx );
-            SIMDMode simdMode = ctx->GetLeastSIMDModeAllowed();
-            unsigned d = simdMode == SIMDMode::SIMD32 ? 4 : 1;
-
-            allowedAllocaSizeInBytes = allowedAllocaSizeInBytes / d;
-        }
-        Type* baseType = nullptr;
-        if( !CanUseSOALayout( pAlloca, baseType ) )
-        {
-            return false;
-        }
-        if( !IsNativeType( baseType ) )
-        {
-            return false;
-        }
-
-        if( isUniformAlloca )
-        {
-            // Heuristic: for uniform alloca we divide the size by 8 to adjust the pressure
-            // as they will be allocated as uniform array
-            allocaSize = iSTD::Round( allocaSize, 8 ) / 8;
-        }
-
-        if( allocaSize <= IGC_GET_FLAG_VALUE( ByPassAllocaSizeHeuristic ) )
-        {
-            return true;
-        }
-
-        // if alloca size exceeds alloc size threshold, return false
-        if( allocaSize > allowedAllocaSizeInBytes )
-        {
-            return false;
-        }
-
-        // if no live range info
-        if( !m_pRegisterPressureEstimate->isAvailable() )
-        {
-            return true;
-        }
-
-        // get all the basic blocks that contain the uses of the alloca
-        // then estimate how much changing this alloca to register adds to the pressure at that block.
-        unsigned int lowestAssignedNumber = 0xFFFFFFFF;
-        unsigned int highestAssignedNumber = 0;
-
-        GetAllocaLiverange( pAlloca, lowestAssignedNumber, highestAssignedNumber, m_pRegisterPressureEstimate );
-
-        uint32_t maxGRFPressure = (uint32_t)( grfRatio * MAX_PRESSURE_GRF_NUM * 4 );
-
-        unsigned int pressure = 0;
-        for( unsigned int i = lowestAssignedNumber; i <= highestAssignedNumber; i++ )
-        {
-            pressure = std::max(
-                pressure, m_pRegisterPressureEstimate->getRegisterPressureForInstructionFromRPMap( i ) );
-        }
-
-        for( auto it : m_promotedLiveranges )
-        {
-            // check interval intersection
-            if( ( it.lowId < lowestAssignedNumber && it.highId > lowestAssignedNumber ) ||
-                ( it.lowId > lowestAssignedNumber && it.lowId < highestAssignedNumber ) )
-            {
-                pressure += it.varSize;
-            }
-        }
-
-        if( allocaSize + pressure > maxGRFPressure )
-        {
-            return false;
-        }
-        PromotedLiverange liverange;
-        liverange.lowId = lowestAssignedNumber;
-        liverange.highId = highestAssignedNumber;
-        liverange.varSize = allocaSize;
-        m_promotedLiveranges.push_back( liverange );
+        return false;
+    }
+    // if no live range info
+    if (!m_pRegisterPressureEstimate->isAvailable())
+    {
         return true;
     }
+
+    // get all the basic blocks that contain the uses of the alloca
+    // then estimate how much changing this alloca to register adds to the pressure at that block.
+    unsigned int lowestAssignedNumber = 0xFFFFFFFF;
+    unsigned int highestAssignedNumber = 0;
+
+    GetAllocaLiverange(pAlloca, lowestAssignedNumber, highestAssignedNumber, m_pRegisterPressureEstimate);
+
+    uint32_t maxGRFPressure = (uint32_t)(grfRatio * MAX_PRESSURE_GRF_NUM * 4);
+
+    unsigned int pressure = 0;
+    for (unsigned int i = lowestAssignedNumber; i <= highestAssignedNumber; i++)
+    {
+        pressure = std::max(
+            pressure, m_pRegisterPressureEstimate->getRegisterPressureForInstructionFromRPMap(i));
+    }
+
+    for (auto it : m_promotedLiveranges)
+    {
+        // check interval intersection
+        if ((it.lowId < lowestAssignedNumber && it.highId > lowestAssignedNumber) ||
+            (it.lowId > lowestAssignedNumber && it.lowId < highestAssignedNumber))
+        {
+            pressure += it.varSize;
+        }
+    }
+
+    if (allocaSize + pressure > maxGRFPressure)
+    {
+        return false;
+    }
+    PromotedLiverange liverange;
+    liverange.lowId = lowestAssignedNumber;
+    liverange.highId = highestAssignedNumber;
+    liverange.varSize = allocaSize;
+    m_promotedLiveranges.push_back(liverange);
+    return true;
 }
 
 static Type* GetBaseType(Type* pType)
