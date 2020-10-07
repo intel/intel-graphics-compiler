@@ -1364,11 +1364,14 @@ void OptimizeIR(CodeGenContext* const pContext)
     // Remove inline attribute if subroutine is enabled.
     purgeInlineAttribute(pContext, NoOpt);
 
-    if (pContext->getModuleMetaData()->compOpt.DashGSpecified)
+    if (pContext->type == ShaderType::OPENCL_SHADER)
     {
-        IGCPassManager mpm(pContext, "CleanImplicitId");
-        IF_DEBUG_INFO(mpm.add(new CleanImplicitIds()));
-        mpm.run(*pContext->getModule());
+        if (((OpenCLProgramContext*)pContext)->m_InternalOptions.KernelDebugEnable)
+        {
+            IGCPassManager mpm(pContext, "CleanImplicitId");
+            IF_DEBUG_INFO(mpm.add(new CleanImplicitIds()));
+            mpm.run(*pContext->getModule());
+        }
     }
     if (NoOpt)
     {
