@@ -1754,7 +1754,13 @@ namespace IGC
                         CVariable* var = GetSymbol(const_cast<Argument*>(A));
                         for (int i = 0; i < numAllocInstances; ++i)
                         {
-                            AllocateInput(var, offset + (allocSize * i), i);
+                            uint totalOffset = offset + (allocSize * i);
+                            if ((totalOffset / getGRFSize()) >= m_Context->getNumGRFPerThread())
+                            {
+                                m_Context->EmitError("Kernel inputs exceed total register size!");
+                                return;
+                            }
+                            AllocateInput(var, totalOffset, i);
                         }
                     }
                     // or else we would just need to increase an offset
