@@ -471,8 +471,9 @@ void VarSplitPass::split()
     unsigned int numIntrinsicsInserted = 0;
 #endif
     // Do actual splitting
-    for (auto curDcl : kernel.Declares)
+    for(unsigned int i = 0; i != kernel.Declares.size(); ++i)
     {
+        auto curDcl = kernel.Declares[i];
         auto isCandidate = splitVars.find(curDcl);
         if (isCandidate == splitVars.end())
             continue;
