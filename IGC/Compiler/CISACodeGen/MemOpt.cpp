@@ -1144,23 +1144,11 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         Value* Ptr = ST->getPointerOperand();
         ST->eraseFromParent();
         RecursivelyDeleteTriviallyDeadInstructions(Ptr);
-
-        if (std::get<2>(I)->first == TailingStore)
-            // Writing NewStore to MemRefs for correct isSafeToMergeLoad working.
-            // For example if MemRefs contains this sequence: S1, S2, S3, L5, L6, L7, S4, L4
-            // after stores merge MemRefs contains : L5, L6, L7, S1234, L4 and loads are
-            // merged to L567, final instructions instructions sequence is L567, S1234, L4.
-            // Otherwise the sequence could be merged to sequence L4567, S1234 with
-            // unordered L4,S4 accesses.
-            std::get<2>(I)->first = NewStore;
-        else {
-            // Mark it as already merged.
-            std::get<2>(I)->first = nullptr;
-            // Checking zero distance is intentionally omitted here due to the first
-            // memory access won't be able to be checked again.
-            std::get<2>(I)->second -= 1;
-        }
-
+        // Mark it as already merged.
+        std::get<2>(I)->first = nullptr;
+        // Checking zero distance is intentionally omitted here due to the first
+        // memory access won't be able to be checked again.
+        std::get<2>(I)->second -= 1;
     }
 
     return true;
