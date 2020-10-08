@@ -1205,10 +1205,9 @@ void LinearScanRA::addCallerSaveRestoreCode()
                 {
                     auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
                     ((*it));
-                    auto fcallInst = (*it)->back();
-                    for (auto it : deltaInstList)
+                    for (auto jt : deltaInstList)
                     {
-                        builder.kernel.getKernelDebugInfo()->addCallerSaveInst(fcallInst, it);
+                        builder.kernel.getKernelDebugInfo()->addCallerSaveInst(*it, jt);
                     }
                 }
             }
@@ -1231,11 +1230,10 @@ void LinearScanRA::addCallerSaveRestoreCode()
                 {
                     auto deltaInsts = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
                     (afterFCallBB);
-                    auto fcallInst = (*it)->back();
-                    for (auto it : deltaInsts)
+                    for (auto jt : deltaInsts)
                     {
                         builder.kernel.getKernelDebugInfo()->addCallerRestoreInst
-                        (fcallInst, it);
+                        (*it, jt);
                     }
                 }
             }
@@ -1537,11 +1535,6 @@ void LinearScanRA::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
     stackCallProlog();
 
     builder.instList.clear();
-
-    if (kernel.getOption(vISA_GenerateDebugInfo))
-    {
-        kernel.getKernelDebugInfo()->computeGRFToStackOffset();
-    }
 }
 
 void LinearScanRA::calculateFuncLastID()

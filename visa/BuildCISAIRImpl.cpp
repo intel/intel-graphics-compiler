@@ -482,10 +482,6 @@ static void Stitch_Compiled_Units(
         {
             // Setup successor/predecessor
             G4_INST* fcall = cur->back();
-            if (mainFunc->getOption(vISA_GenerateDebugInfo))
-            {
-                mainFunc->getKernelDebugInfo()->setFCallInst(fcall);
-            }
 
             if (!fcall->asCFInst()->isIndirectCall())
             {
@@ -514,6 +510,7 @@ static void Stitch_Compiled_Units(
                 auto callInst = builder->createInternalInst(
                     fcall->getPredicate(), G4_call, nullptr, g4::NOSAT, fcall->getExecSize(),
                     fcall->getDst(), calleeLabel->getSrc(0), fcall->getSrc(0), fcall->getOption());
+                callInst->inheritDIFrom(fcall);
                 cur->pop_back();
                 cur->push_back(callInst);
             }
@@ -523,6 +520,7 @@ static void Stitch_Compiled_Units(
                 auto callInst = builder->createInternalInst(
                     fcall->getPredicate(), G4_call, nullptr, g4::NOSAT, fcall->getExecSize(),
                     fcall->getDst(), fcall->getSrc(0), fcall->getSrc(0), fcall->getOption());
+                callInst->inheritDIFrom(fcall);
                 cur->pop_back();
                 cur->push_back(callInst);
             }
@@ -539,6 +537,7 @@ static void Stitch_Compiled_Units(
             auto retInst = builder->createInternalInst(
                 fret->getPredicate(), G4_return, nullptr, g4::NOSAT, fret->getExecSize(),
                 builder->createNullDst(Type_UD), fret->getSrc(0), fret->getSrc(1), fret->getOption());
+            retInst->inheritDIFrom(fret);
             cur->pop_back();
             cur->push_back(retInst);
             FCallRetMap[cur] = fret;

@@ -7342,11 +7342,6 @@ void associateOpndWithInst(G4_Operand* opnd, G4_INST* inst)
     }
 }
 
-const std::vector<std::pair<uint32_t, uint32_t>>& LiveIntervalInfo::getSaveRestore()
-{
-    return saveRestore;
-}
-
 void LiveIntervalInfo:: getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>>& intervals)
 {
     for (auto&& it : liveIntervals)
