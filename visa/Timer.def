@@ -25,6 +25,8 @@ DEF_TIMER(VISA_BUILDER_CREATE_OPND,                   "VB_Create_Operand")
 DEF_TIMER(VISA_BUILDER_IR_CONSTRUCTION,              "VB_IR_Construction")
 DEF_TIMER(LIVENESS,                                            "liveness")
 DEF_TIMER(RPE,                                    "Reg Pressure Estimate")
+DEF_TIMER(GRF_RA,                                    "\tGRF_RA")
+DEF_TIMER(GLOBAL_RA_LIVENESS,                                    "\tGLOBAL_RA_LIVENESS")
 
 
 

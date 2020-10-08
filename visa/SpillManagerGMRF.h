@@ -100,6 +100,7 @@ public:
         unsigned varIdCount,
         const LivenessAnalysis* lvInfo,
         LSLR_LIST* spilledLSLRs,
+        bool enableSpillSpaceCompression,
         bool useScratchMsg);
 
     ~SpillManagerGRF () {}
@@ -110,6 +111,10 @@ public:
         G4_Kernel*         kernel,
         PointsToAnalysis& pointsToAnalysis
     );
+
+    void expireRanges(unsigned int idx, std::list<LSLiveRange*>* liveList);
+
+    void updateActiveList(LSLiveRange* lr, std::list<LSLiveRange*>* liveList);
 
     bool spillLiveRanges(G4_Kernel* kernel);
 
@@ -144,10 +149,15 @@ private:
     // Methods
 
     bool handleAddrTakenSpills( G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis );
+    unsigned int handleAddrTakenLSSpills(G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis);
     void insertAddrTakenSpillFill( G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis );
+    void insertAddrTakenLSSpillFill(G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis);
     void insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB* bb, INST_LIST::iterator inst_it,
         G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid);
+    void insertAddrTakenLSSpillAndFillCode(G4_Kernel* kernel, G4_BB* bb, INST_LIST::iterator inst_it, G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid);
     void prunePointsTo( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis );
+
+    void prunePointsToLS(G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis);
 
     unsigned
     getMaxExecSize (
@@ -281,6 +291,8 @@ private:
     bool spillMemLifetimeInterfere(unsigned i, unsigned j) const;
 
     unsigned calculateSpillDisp(G4_RegVar * lRange) const;
+
+    unsigned calculateSpillDispForLS(G4_RegVar* regVar) const;
 
     template <class REGION_TYPE>
     unsigned getMsgType(REGION_TYPE * region, G4_ExecSize   execSize);
@@ -651,7 +663,7 @@ private:
     unsigned                 spillRegStart_;
     unsigned                 indrSpillRegStart_;
     unsigned                 spillRegOffset_;
-
+    LSLR_LIST                activeLR_;
 
     Interference *             spillIntf_;
     vISA::Mem_Manager              mem_;

@@ -5195,8 +5195,19 @@ bool Interference::linearScanVerify()
                 unsigned GRFEnd_j = GRFStart_j + elemsSize_j - 1;
                 if (!(GRFEnd_i < GRFStart_j || GRFEnd_j < GRFStart_i))
                 {
-                    std::cout << lrs[i]->getDcl()->getName() << "(" << GRFStart_i << ":" << GRFEnd_i << ") vs "
-                        << lrs[j]->getDcl()->getName() << "(" << GRFStart_i << ":" << GRFEnd_j << ")\n";
+                    LSLiveRange* i_LSLR = gra.getLSLR(lrs[i]->getDcl());
+                    LSLiveRange* j_LSLR = gra.getLSLR(lrs[j]->getDcl());
+                    unsigned i_start = 0;
+                    unsigned i_end = 0;
+                    i_LSLR->getFirstRef(i_start);
+                    i_LSLR->getLastRef(i_end);
+                    unsigned j_start = 0;
+                    unsigned j_end = 0;
+                    j_LSLR->getFirstRef(j_start);
+                    j_LSLR->getLastRef(j_end);
+
+                    std::cout << "(" << i << "," << j << ")" << lrs[i]->getDcl()->getName() << "(" << GRFStart_i << ":" << GRFEnd_i << ")[" << i_start << "," << i_end << "] vs "
+                        << lrs[j]->getDcl()->getName() << "(" << GRFStart_i << ":" << GRFEnd_j << ")[" << j_start << "," << j_end << "]" << "\n";
                 }
             }
         }
@@ -9325,6 +9336,8 @@ int GlobalRA::coloringRegAlloc()
     }
 
 
+    TIME_SCOPE(GRF_RA);
+
     //
     // If the graph has stack calls, then add the caller-save/callee-save pseudo declares and code.
     // This currently must be done after flag/addr RA due to the assumption about the location
@@ -9354,12 +9367,15 @@ int GlobalRA::coloringRegAlloc()
         //Global linear scan RA
         if (builder.getOption(vISA_LinearScan))
         {
-            TIME_SCOPE(LINEARSCAN_RA);
             copyMissingAlignment();
             BankConflictPass bc(*this);
-            LinearScanRA lra(bc, *this);
-            bool  success = lra.doLinearScanRA();
-            if (success)
+            LivenessAnalysis liveAnalysis(*this,G4_GRF | G4_INPUT);
+            liveAnalysis.computeLiveness();
+
+            TIME_SCOPE(LINEARSCAN_RA);
+            LinearScanRA lra(bc, *this, liveAnalysis);
+            int  success = lra.doLinearScanRA();
+            if (success == VISA_SUCCESS)
             {
                 assignRegForAliasDcl();
                 computePhyReg();
@@ -9385,6 +9401,11 @@ int GlobalRA::coloringRegAlloc()
                     intf.linearScanVerify();
                 }
                 return VISA_SUCCESS;
+            }
+
+            if (success == VISA_SPILL)
+            {
+                return VISA_SPILL;
             }
         }
         else if (builder.getOption(vISA_LocalRA) && !hasStackCall)
@@ -9502,12 +9523,14 @@ int GlobalRA::coloringRegAlloc()
             reserveSpillReg = true;
         }
 
+        startTimer(TimerID::GLOBAL_RA_LIVENESS);
         LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
         liveAnalysis.computeLiveness();
         if (builder.getOption(vISA_dumpLiveness))
         {
             liveAnalysis.dump();
         }
+        stopTimer(TimerID::GLOBAL_RA_LIVENESS);
 
 #ifdef DEBUG_VERBOSE_ON
         emitFGWithLiveness(liveAnalysis);
