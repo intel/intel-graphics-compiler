@@ -371,7 +371,9 @@ static void GetCalledFunctions(const Function *pFunc,
     const CallInst *pInstCall = dyn_cast<CallInst>(&*it);
     if (!pInstCall)
       continue;
-    ((CallInst *)pInstCall)->setCallingConv(pFunc->getCallingConv());
+    CallingConv::ID CCID = pFunc->getCallingConv();
+    if (CCID != CallingConv::SPIR_KERNEL)
+      ((CallInst *)pInstCall)->setCallingConv(CCID);
     Function *pCalledFunc = pInstCall->getCalledFunction();
     if (!pCalledFunc) {
       // This case can occur only if CallInst is calling something other than
