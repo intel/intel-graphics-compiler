@@ -3930,8 +3930,7 @@ namespace IGC
             SaveOption(vISA_ifCvt, false);
         }
 
-        if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer) ||
-            (!m_program->m_Platform->hasSCF() && IGC_IS_FLAG_DISABLED(ForceVISAStructurizer)))
+        if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer))
         {
             SaveOption(vISA_EnableStructurizer, false);
         }
