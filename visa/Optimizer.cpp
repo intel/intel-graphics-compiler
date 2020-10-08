@@ -9338,9 +9338,8 @@ void Optimizer::legalizeType()
                         inst->getDst()->setType(Type_UQ);
                         inst->getSrc(0)->asSrcRegRegion()->setType(Type_UQ);
                     }
-                    if (hasInt64 && builder.noInt64())
+                    if (hasInt64 && builder.noInt64() && !builder.noFP64())
                     {
-                        assert(!builder.noFP64() && "can't change Q/UQ to DF");
                         inst->getDst()->setType(Type_DF);
                         inst->getSrc(0)->asSrcRegRegion()->setType(Type_DF);
                     }
