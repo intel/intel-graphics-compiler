@@ -122,10 +122,9 @@ Value* CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator* I, Value* Op0, Va
 {
     Type* Ty = Op0->getType();
     IRBuilder<> IRB(I);
-
     std::string FuncName = "__builtin_spirv_divide_cr_f32_f32";
-    SmallVector<Type*, 2> ArgsTypes{ Ty, Ty };
-    auto FT = FunctionType::get(Ty, ArgsTypes, false);
+    SmallVector<Type*, 2> ArgsTypes{ Ty->getScalarType(), Ty->getScalarType() };
+    auto FT = FunctionType::get(Ty->getScalarType(), ArgsTypes, false);
     auto IEEEDivide = m_module->getOrInsertFunction(FuncName, FT);
 
     Value* Divide = nullptr;
