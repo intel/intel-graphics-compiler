@@ -301,6 +301,9 @@ public:
   LoHiSplit splitOperandLoHi(unsigned SourceIdx);
   HalfSplit splitOperandHalf(unsigned SourceIdx);
 
+  LoHiSplit splitValueLoHi(Value &V);
+  HalfSplit splitValueHalf(Value &V);
+
   // Combined values are expected to be a vector of i32 of the same size
   Value *combineLoHiSplit(const LoHiSplit &Split, const Twine &Name,
                           bool Scalarize);
