@@ -806,6 +806,7 @@ namespace IGC
         // We don't need these in ZEBinary, can safely skip them
         case KernelArg::ArgType::IMPLICIT_R0:
         case KernelArg::ArgType::R1:
+        case KernelArg::ArgType::STRUCT:
             break;
 
         // FIXME: should these be supported?
