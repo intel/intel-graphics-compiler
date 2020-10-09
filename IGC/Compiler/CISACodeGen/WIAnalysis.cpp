@@ -1151,13 +1151,14 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_ptr_to_pair ||
         intrinsic_name == llvm_pair_to_ptr ||
         intrinsic_name == llvm_fma ||
-        GII_id == GenISAIntrinsic::GenISA_getSR0 ||
-        GII_id == GenISAIntrinsic::GenISA_mul_rtz ||
-        GII_id == GenISAIntrinsic::GenISA_fma_rtz ||
-        GII_id == GenISAIntrinsic::GenISA_add_rtz ||
+        GII_id == GenISAIntrinsic::GenISA_getSR0   ||
+        GII_id == GenISAIntrinsic::GenISA_getSR0_0 ||
+        GII_id == GenISAIntrinsic::GenISA_mul_rtz  ||
+        GII_id == GenISAIntrinsic::GenISA_fma_rtz  ||
+        GII_id == GenISAIntrinsic::GenISA_add_rtz  ||
         GII_id == GenISAIntrinsic::GenISA_slice_id ||
-        GII_id == GenISAIntrinsic::GenISA_subslice_id ||
-        GII_id == GenISAIntrinsic::GenISA_eu_id ||
+        GII_id == GenISAIntrinsic::GenISA_subslice_id  ||
+        GII_id == GenISAIntrinsic::GenISA_eu_id        ||
         GII_id == GenISAIntrinsic::GenISA_eu_thread_id ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca)

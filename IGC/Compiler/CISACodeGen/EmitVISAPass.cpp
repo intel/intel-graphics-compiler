@@ -8216,8 +8216,14 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     }
     case GenISAIntrinsic::GenISA_getSR0:
     {
-        m_encoder->SetNoMask();
         m_encoder->SetSrcSubReg(0, static_cast<uint16_t>(GetImmediateVal(inst->getOperand(0))));
+        m_encoder->Copy(m_destination, m_currShader->GetSR0());
+        m_encoder->Push();
+        break;
+    }
+    case GenISAIntrinsic::GenISA_getSR0_0:
+    {
+        m_encoder->SetSrcSubReg(0, 0);
         m_encoder->Copy(m_destination, m_currShader->GetSR0());
         m_encoder->Push();
         break;
@@ -16849,7 +16855,7 @@ void EmitPass::ResourceLoop(bool needLoop, CVariable* flag, uint label)
     }
 }
 
-void EmitPass::emitStateRegID(uint64_t and_imm, uint64_t shr_imm)
+void EmitPass::emitStateRegID(uint32_t and_imm, uint32_t shr_imm)
 {
     m_encoder->And(m_destination, m_currShader->GetSR0(), m_currShader->ImmToVariable(and_imm, ISA_TYPE_UD));
     m_encoder->Shr(m_destination, m_destination, m_currShader->ImmToVariable(shr_imm, ISA_TYPE_UD));

@@ -1059,10 +1059,18 @@ Imported_Intrinsics = \
      ("int",                           "id of DW of the message phase")],
     "None"]],
 ####################################################################################################
-"GenISA_getSR0": ["",
-    [("int",                           ""),
-    [("int",                           "")],
+"GenISA_getSR0": ["sr0.# the state register",
+    [("int",                           "result"),
+    [("int",                           "index/offset of the subregister within sr0")],
     "None"]],
+####################################################################################################
+# This is separated from GenISA_getSR0 in order to get the first dword by itself
+# because we want to assumes that sr0.0 is fully Read-Only because we want to perform
+# CSE optimization on the calls.
+"GenISA_getSR0_0": ["sr0.0 the first dword state register",
+    [("int",                           "result"),
+    [],
+    "NoMem"]],
 ####################################################################################################
 "GenISA_globalSync": ["",
     [("void",                          ""),

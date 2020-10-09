@@ -915,7 +915,7 @@ namespace IGC
         CodeGenContext& operator =(CodeGenContext&) = delete;
 
         void initLLVMContextWrapper(bool createResourceDimTypes = true);
-        llvm::LLVMContext* getLLVMContext();
+        llvm::LLVMContext* getLLVMContext() const;
         IGC::IGCMD::MetaDataUtils* getMetaDataUtils();
         IGCLLVM::Module* getModule() const;
 

@@ -562,7 +562,7 @@ namespace IGC
         llvmCtxWrapper->AddRef();
     }
 
-    llvm::LLVMContext* CodeGenContext::getLLVMContext() {
+    llvm::LLVMContext* CodeGenContext::getLLVMContext() const {
         return llvmCtxWrapper;
     }
 
