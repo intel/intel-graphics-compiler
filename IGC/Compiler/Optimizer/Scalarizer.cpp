@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/Alignment.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/Module.h"
@@ -1093,9 +1094,12 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value*>& retValue
         for (unsigned i = 0; i < width; i++)
         {
             // Generate dummy "load" instruction (but don't really place in function)
-            retValues[i + destIdx] = new LoadInst(dummyPtr->getType()->getPointerElementType(), dummyPtr, "", (llvm::Instruction*)nullptr);
+            retValues[i + destIdx] = new LoadInst(dummyPtr->getType()->getPointerElementType(),
+                                                  dummyPtr, "", false, IGCLLVM::getAlign(1));
+
             newDRLEntry.dummyVals[i] = retValues[i + destIdx];
         }
+
         // Copy the data into DRL structure
         m_DRL.push_back(newDRLEntry);
     }
