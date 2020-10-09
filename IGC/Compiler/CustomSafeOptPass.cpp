@@ -2992,7 +2992,7 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
     Constant* C = nullptr;
     if (inst)
     {
-        ConstantFP* C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+        Constant* C0 = dyn_cast<Constant>(inst->getOperand(0));
         EOPCODE igcop = GetOpCode(inst);
 
         switch (igcop)
@@ -3108,6 +3108,20 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             if (C0 && C1)
             {
                 C = constantFolder.CreateFMul(C0, C1, llvm::APFloatBase::rmTowardZero);
+            }
+        }
+        break;
+        case llvm_ubfe:
+        {
+            Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
+            Constant* C2 = dyn_cast<Constant>(inst->getOperand(2));
+            if (C0 && C0->isZeroValue())
+            {
+                C = llvm::ConstantInt::get(inst->getType(), 0);
+            }
+            else if (C0 && C1 && C2)
+            {
+                C = constantFolder.CreateUbfe(C0, C1, C2);
             }
         }
         break;

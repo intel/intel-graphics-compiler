@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/IGCConstantFolder.h"
 #include <cfenv>
 #include "Probe/Assertion.h"
+#include "Types.hpp"
 
 namespace IGC
 {
@@ -59,6 +60,10 @@ llvm::Constant* IGCConstantFolder::CreateGradientY(llvm::Constant* C0) const
 llvm::Constant* IGCConstantFolder::CreateRsq(llvm::Constant* C0) const
 {
     IGC_ASSERT(nullptr != C0);
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return nullptr;
+    }
     IGC_ASSERT(llvm::isa<llvm::ConstantFP>(C0));
     IGC_ASSERT(nullptr != llvm::cast<llvm::ConstantFP>(C0));
     IGC_ASSERT(nullptr != C0->getType());
@@ -80,6 +85,10 @@ llvm::Constant* IGCConstantFolder::CreateRsq(llvm::Constant* C0) const
 llvm::Constant* IGCConstantFolder::CreateRoundNE(llvm::Constant* C0) const
 {
     IGC_ASSERT(nullptr != C0);
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return nullptr;
+    }
     IGC_ASSERT(llvm::isa<llvm::ConstantFP>(C0));
     IGC_ASSERT(nullptr != llvm::cast<llvm::ConstantFP>(C0));
     IGC_ASSERT(nullptr != C0->getType());
@@ -97,6 +106,8 @@ llvm::Constant* IGCConstantFolder::CreateRoundNE(llvm::Constant* C0) const
 llvm::Constant* IGCConstantFolder::CreateFSat(llvm::Constant* C0) const
 {
     IGC_ASSERT(nullptr != C0);
+    if (llvm::isa<llvm::UndefValue>(C0))
+        return nullptr;
     IGC_ASSERT(llvm::isa<llvm::ConstantFP>(C0));
     IGC_ASSERT(nullptr != llvm::cast<llvm::ConstantFP>(C0));
     IGC_ASSERT(nullptr != C0->getType());
@@ -170,6 +181,32 @@ llvm::Constant* IGCConstantFolder::CreateFPTrunc(llvm::Constant* C0, llvm::Type*
     }
 }
 
+llvm::Constant* IGCConstantFolder::CreateUbfe(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1) || llvm::isa<llvm::UndefValue>(C2))
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0); // width
+    llvm::ConstantInt* CI1 = llvm::cast<llvm::ConstantInt>(C1); // offset
+    llvm::ConstantInt* CI2 = llvm::cast<llvm::ConstantInt>(C2); // the number to shift
+    uint32_t width = int_cast<uint32_t>(CI0->getZExtValue());
+    uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue());
+    uint32_t bitwidth = CI2->getType()->getBitWidth();
+
+    llvm::APInt result = CI2->getValue();
+    if ((width + offset) < bitwidth)
+    {
+        result = result.shl(bitwidth - (width + offset));
+        result = result.lshr(bitwidth - width);
+    }
+    else
+    {
+        result = result.lshr(offset);
+    }
+    return llvm::ConstantInt::get(C0->getContext(), result);
+}
+
 llvm::Constant* IGCConstantFolder::CreateCanonicalize(llvm::Constant* C0, bool flushDenorms /*= true*/) const
 {
     if (llvm::isa<llvm::UndefValue>(C0))
@@ -187,6 +224,10 @@ llvm::Constant* IGCConstantFolder::CreateCanonicalize(llvm::Constant* C0, bool f
 llvm::Constant* IGCConstantFolder::CreateGradient(llvm::Constant* C0) const
 {
     IGC_ASSERT(nullptr != C0);
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return nullptr;
+    }
     IGC_ASSERT(llvm::isa<llvm::ConstantFP>(C0));
     IGC_ASSERT(nullptr != llvm::cast<llvm::ConstantFP>(C0));
     if (llvm::cast<llvm::ConstantFP>(C0)->getValueAPF().isFinite())

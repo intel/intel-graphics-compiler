@@ -53,6 +53,7 @@ public:
     llvm::Constant* CreateFAdd(llvm::Constant* C0, llvm::Constant* C1, llvm::APFloatBase::roundingMode roundingMode) const;
     llvm::Constant* CreateFMul(llvm::Constant* C0, llvm::Constant* C1, llvm::APFloatBase::roundingMode roundingMode) const;
     llvm::Constant* CreateFPTrunc(llvm::Constant* C0, llvm::Type* dstType, llvm::APFloatBase::roundingMode roundingMode) const;
+    llvm::Constant* CreateUbfe(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2) const;
     llvm::Constant* CreateCanonicalize(llvm::Constant* C0, bool flushDenorms = true) const;
 
 
