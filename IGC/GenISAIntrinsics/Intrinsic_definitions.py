@@ -582,12 +582,14 @@ Imported_Intrinsics = \
 "GenISA_URBRead": ["",
     [("float8",                        "result"),
     [("int",                           "vertex index"),
-     ("int",                           "URB owordOffset")],
+     ("int",                           "URB owordOffset"
+     )],
     "NoMem"]],
 ####################################################################################################
 "GenISA_URBReadOutput": ["In-place data read using URB Write Handle",
     [("float8",                        ""),
-    [("int",                           "owordOffset")],
+    [("int",                           "owordOffset"
+     )],
     "NoMem"]],
 ####################################################################################################
 "GenISA_URBWrite": ["",
