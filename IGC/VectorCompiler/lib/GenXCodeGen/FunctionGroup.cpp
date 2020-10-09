@@ -134,9 +134,10 @@ void FunctionGroupAnalysis::replaceFunction(Function *OldF, Function *NewF) {
 void FunctionGroupAnalysis::addToFunctionGroup(FunctionGroup *FG, Function *F,
                                                FGType Type) {
   IGC_ASSERT(FG);
-  IGC_ASSERT(FG->getParent()->getModule() == M &&
-         "attaching to FunctionGroup from wrong Module");
-  IGC_ASSERT(!GroupMap[Type][F] && "Function already attached to FunctionGroup");
+  IGC_ASSERT_MESSAGE(FG->getParent()->getModule() == M,
+    "attaching to FunctionGroup from wrong Module");
+  IGC_ASSERT_MESSAGE(!GroupMap[Type][F],
+    "Function already attached to FunctionGroup");
   GroupMap[Type][F] = FG;
   FG->push_back(F);
 }
@@ -292,7 +293,7 @@ public:
   }
 
   Pass *getContainedPass(unsigned N) {
-    IGC_ASSERT(N < PassVector.size() && "Pass number out of range!");
+    IGC_ASSERT_MESSAGE(N < PassVector.size(), "Pass number out of range!");
     return static_cast<Pass *>(PassVector[N]);
   }
 
@@ -327,8 +328,8 @@ bool FGPassManager::runPassOnFunctionGroup(Pass *P, FunctionGroup &FG) {
   }
 
   // TODO: there may be also SCC pass manager.
-  IGC_ASSERT(PM->getPassManagerType() == PMT_FunctionPassManager &&
-         "Invalid FGPassManager member");
+  IGC_ASSERT_MESSAGE(PM->getPassManagerType() == PMT_FunctionPassManager,
+    "Invalid FGPassManager member");
   FPPassManager *FPP = (FPPassManager *)P;
 
   // Run pass P on all functions in the current FunctionGroup.
@@ -380,7 +381,7 @@ bool FGPassManager::doFGInitialization(unsigned Begin, unsigned End,
   for (unsigned i = Begin; i != End; ++i) {
     if (llvm::PMDataManager *PM = getContainedPass(i)->getAsPMDataManager()) {
       // TODO: SCC PassManager?
-      IGC_ASSERT(PM->getPassManagerType() == PMT_FunctionPassManager &&
+      IGC_ASSERT_MESSAGE(PM->getPassManagerType() == PMT_FunctionPassManager,
         "Invalid FGPassManager member");
       Changed |= ((FPPassManager*)PM)->doInitialization(*FGA.getModule());
     } else {
@@ -400,7 +401,7 @@ bool FGPassManager::doFGFinalization(unsigned Begin, unsigned End,
   for (int i = End - 1; i >= static_cast<int>(Begin); --i) {
     if (llvm::PMDataManager *PM = getContainedPass(i)->getAsPMDataManager()) {
       // TODO: SCC PassManager?
-      IGC_ASSERT(PM->getPassManagerType() == PMT_FunctionPassManager &&
+      IGC_ASSERT_MESSAGE(PM->getPassManagerType() == PMT_FunctionPassManager,
         "Invalid FGPassManager member");
       Changed |= ((FPPassManager*)PM)->doFinalization(*FGA.getModule());
     } else {
@@ -548,15 +549,15 @@ void FunctionGroupPass::assignPassManager(PMStack &PMS,
          PMS.top()->getPassManagerType() > PMT_ModulePassManager)
     PMS.pop();
 
-  IGC_ASSERT(!PMS.empty() && "Unable to handle FunctionGroup Pass");
+  IGC_ASSERT_MESSAGE(!PMS.empty(), "Unable to handle FunctionGroup Pass");
   FGPassManager *GFP;
 
   // Check whether this ModulePassManager is our injected function
   // group pass manager. If not, replace old module pass manager
   // with one for function groups.
   auto *PM = PMS.top();
-  IGC_ASSERT(PM->getPassManagerType() == PMT_ModulePassManager &&
-         "Bad pass manager type for function group pass manager");
+  IGC_ASSERT_MESSAGE(PM->getPassManagerType() == PMT_ModulePassManager,
+    "Bad pass manager type for function group pass manager");
   if (PM->getAsPass()->getPassID() == &FGPassManager::ID)
     GFP = static_cast<FGPassManager *>(PM);
   else {
@@ -573,7 +574,7 @@ void FunctionGroupPass::assignPassManager(PMStack &PMS,
     // [3] Assign manager to manage this new manager. This should not create
     // and push new managers into PMS
     TPM->schedulePass(GFP);
-    IGC_ASSERT(PMS.top() == PM && "Pass manager unexpectedly changed");
+    IGC_ASSERT_MESSAGE(PMS.top() == PM, "Pass manager unexpectedly changed");
 
     // [4] Steal analysis info from module pass manager.
     *GFP->getAvailableAnalysis() = std::move(*PM->getAvailableAnalysis());

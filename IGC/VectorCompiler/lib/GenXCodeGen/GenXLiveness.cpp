@@ -127,7 +127,8 @@ void GenXLiveness::clear()
  */
 void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR)
 {
-  IGC_ASSERT(LiveRangeMap.find(V) == LiveRangeMap.end() && "Attempting to set LiveRange for Value that already has one");
+  IGC_ASSERT_MESSAGE(LiveRangeMap.find(V) == LiveRangeMap.end(),
+    "Attempting to set LiveRange for Value that already has one");
   LR->addValue(V);
   LiveRangeMap[V] = LR;
   LR->setAlignmentFromValue(
@@ -718,7 +719,7 @@ LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V)
 LiveRange *GenXLiveness::getLiveRange(SimpleValue V)
 {
   LiveRange *LR = getLiveRangeOrNull(V);
-  IGC_ASSERT(LR && "no live range found");
+  IGC_ASSERT_MESSAGE(LR, "no live range found");
   return LR;
 }
 
@@ -750,9 +751,9 @@ Value *GenXLiveness::getUnifiedRet(Function *F)
  * one of the return instructions.
  */
 Value *GenXLiveness::createUnifiedRet(Function *F) {
-  IGC_ASSERT(!F->isDeclaration() && "must be a function definition");
-  IGC_ASSERT(UnifiedRets.find(F) == UnifiedRets.end() &&
-         "Unified ret must not have been already created");
+  IGC_ASSERT_MESSAGE(!F->isDeclaration(), "must be a function definition");
+  IGC_ASSERT_MESSAGE(UnifiedRets.find(F) == UnifiedRets.end(),
+    "Unified ret must not have been already created");
   Type *Ty = F->getReturnType();
   IGC_ASSERT(!Ty->isVoidTy());
   auto URet = genx::createUnifiedRet(Ty, "", F->getParent());
@@ -761,7 +762,7 @@ Value *GenXLiveness::createUnifiedRet(Function *F) {
   for (auto fi = F->begin(), fe = F->end(); fi != fe; ++fi)
     if ((Ret = dyn_cast<ReturnInst>(fi->getTerminator())))
       break;
-  IGC_ASSERT(Ret && "must find return instruction");
+  IGC_ASSERT_MESSAGE(Ret, "must find return instruction");
   Value *RetVal = Ret->getOperand(0);
   // Use the categories of its operand to set the categories of the unified
   // return value.
@@ -1060,7 +1061,7 @@ bool GenXLiveness::checkIfOverlappingSegmentsInterfere(
   // S1 is phicpy. If its corresponding phi cpy insertion point is for a phi
   // node in LR1 and an incoming in LR2, then this does not cause interference.
   auto PhiIncoming = Numbering->getPhiIncomingFromNumber(S1->getStart());
-  IGC_ASSERT(PhiIncoming.first && "phi incoming not found");
+  IGC_ASSERT_MESSAGE(PhiIncoming.first, "phi incoming not found");
   if (getLiveRange(PhiIncoming.first) != LR1)
     return true; // phi not in LR1, interferes
   if (getLiveRangeOrNull(
@@ -1083,8 +1084,9 @@ bool GenXLiveness::checkIfOverlappingSegmentsInterfere(
 LiveRange *GenXLiveness::coalesce(LiveRange *LR1, LiveRange *LR2,
     bool DisallowCASC)
 {
-  IGC_ASSERT(LR1 != LR2 && "cannot coalesce an LR to itself");
-  IGC_ASSERT(LR1->Category == LR2->Category && "cannot coalesce two LRs with different categories");
+  IGC_ASSERT_MESSAGE(LR1 != LR2, "cannot coalesce an LR to itself");
+  IGC_ASSERT_MESSAGE(LR1->Category == LR2->Category,
+    "cannot coalesce two LRs with different categories");
   // Make LR1 the one with the longer list of segments.
   if (LR2->Segments.size() > LR1->Segments.size()) {
     LiveRange *temp = LR1;
@@ -1436,7 +1438,7 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
     if (Head && isa<StoreInst>(Head)) {
       Value *V = Head->getOperand(1);
       V = getUnderlyingGlobalVariable(V);
-      IGC_ASSERT(V && "null base not expected");
+      IGC_ASSERT_MESSAGE(V, "null base not expected");
       return V;
     }
     return user;
@@ -1444,7 +1446,8 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
   // The above scheme does not work for an address conversion added by
   // GenXArgIndirection. Instead we have AddressBaseMap to provide the mapping.
   auto i = ArgAddressBaseMap.find(Addr);
-  IGC_ASSERT(i != ArgAddressBaseMap.end() && "base register not found for address");
+  IGC_ASSERT_MESSAGE(i != ArgAddressBaseMap.end(),
+    "base register not found for address");
   Value *BaseV = i->second;
   LiveRange *LR = getLiveRange(BaseV);
   // Find a SimpleValue in the live range that is not a struct member.
@@ -1496,22 +1499,29 @@ void GenXLiveness::print(raw_ostream &OS) const
   OS << "\n";
 }
 
-#ifndef NDEBUG
 /***********************************************************************
- * LiveRange::assertOk : assertion test that if no segments abut or overlap or are
- *                       in the wrong order
+ * LiveRange::testLiveRanges : tests if no segments abut or overlap or are
+ * in the wrong order. Live range's segments should be well formed.
  */
-void LiveRange::assertOk()
+bool LiveRange::testLiveRanges() const
 {
-  // Assert that no segments abut or overlap or are in the wrong order.
-  iterator Idx1 = begin(), End1 = end();
-  Idx1++;
-  for (; Idx1 != End1; ++Idx1)
-    IGC_ASSERT(((Idx1 - 1)->Strength != Idx1->Strength ||
-            (Idx1 - 1)->getEnd() < Idx1->getStart()) &&
-           "invalid live range");
+  auto testAdjacentSegments = [](const Segment& A, const Segment& B)
+  {
+    const bool P1 = (A.Strength != B.Strength);
+    const bool P2 = (A.getEnd() < B.getStart());
+    const bool SegmentIsGood = (P1 || P2);
+    IGC_ASSERT(SegmentIsGood);
+    const bool StopSearch = !SegmentIsGood;
+    return StopSearch;
+  };
+
+  const_iterator Begin = begin();
+  const_iterator End = end();
+  const_iterator Failed = std::adjacent_find(Begin, End, testAdjacentSegments);
+
+  const bool Result = (Failed == End);
+  return Result;
 }
-#endif
 
 /***********************************************************************
  * LiveRange::addSegment : add a segment to a live range
@@ -1554,7 +1564,7 @@ void LiveRange::addSegment(Segment Seg)
     // New segment is completely in a hole just before i.
     Segments.insert(i, Seg);
   }
-  assertOk();
+  IGC_ASSERT(testLiveRanges());
 }
 
 /***********************************************************************

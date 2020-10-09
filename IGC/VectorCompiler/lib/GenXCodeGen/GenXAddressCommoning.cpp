@@ -120,6 +120,39 @@ static cl::opt<bool> ConvertAfterWholeRegion("convert-after-whole", cl::init(tru
 
 namespace {
 
+// Local function for testing one assertion statement. Tests if we do not have
+// any duplicates and if they are all in the current function.
+bool testDuplicates(const llvm::ArrayRef<llvm::Instruction *> &Addrs,
+  const llvm::Function *const F) {
+
+  IGC_ASSERT(F);
+
+  auto compareParent = [F](const llvm::Instruction *const I) {
+    IGC_ASSERT(I);
+    IGC_ASSERT(I->getParent());
+    IGC_ASSERT(I->getParent()->getParent());
+    const bool Result = (F == I->getParent()->getParent());
+    IGC_ASSERT(Result);
+    return Result;
+  };
+
+  llvm::ArrayRef<llvm::Instruction *>::const_iterator Begin = Addrs.begin();
+  llvm::ArrayRef<llvm::Instruction *>::const_iterator End = Addrs.end();
+
+  const std::set<llvm::Instruction *> UniqueSet(Begin, End);
+  const size_t UniqueCount = UniqueSet.size();
+  const size_t CurrentCount = Addrs.size();
+
+  const bool AllAreUnique = (CurrentCount == UniqueCount);
+  IGC_ASSERT(AllAreUnique);
+
+  const bool AllAreInCurrentFunction = std::all_of(Begin, End, compareParent);
+  IGC_ASSERT(AllAreInCurrentFunction);
+
+  const bool Result = (AllAreUnique && AllAreInCurrentFunction);
+  return Result;
+}
+
 // Bucket : a bucket for collecting address conversions with the same base reg
 // and the same address calculation value, discarding duplicates.
 struct Bucket {
@@ -444,17 +477,8 @@ bool GenXAddressCommoning::processBaseReg(LiveRange *LR)
  */
 bool GenXAddressCommoning::processCommonAddrs(ArrayRef<Instruction *> Addrs)
 {
-#ifndef NDEBUG
-  // Assert that we do not have any duplicates, and that they are all in the
-  // current function.
-  {
-    std::set<Instruction *> AddrSet;
-    for (auto i = Addrs.begin(), e = Addrs.end(); i != e; ++i) {
-      IGC_ASSERT(AddrSet.insert(*i).second);
-      IGC_ASSERT((*i)->getParent()->getParent() == F);
-    }
-  }
-#endif
+  IGC_ASSERT(testDuplicates(Addrs, F));
+
   bool Modified = false;
   // Get the offsets. (Each address conversion has only one use; that is how
   // GenXCategory set it up.)
@@ -829,7 +853,8 @@ bool GenXAddressCommoning::tryConvertWholeRegion(SmallVector<Extract, 4> &Extrac
       *ui = NewExtract;
     }
     Liveness->removeValue(OldConv);
-    IGC_ASSERT(!Liveness->getLiveRangeOrNull(OldExtract) && "expected extract to be baled in");
+    IGC_ASSERT_MESSAGE(!Liveness->getLiveRangeOrNull(OldExtract),
+      "expected extract to be baled in");
     OldConv->eraseFromParent();
     OldExtract->eraseFromParent();
   }
@@ -1012,7 +1037,8 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
       }
       Liveness->removeValue(OldConv);
       auto OldExtract = cast<Instruction>(OldConv->getOperand(0));
-      IGC_ASSERT(!Liveness->getLiveRangeOrNull(OldExtract) && "expected extract to be baled in");
+      IGC_ASSERT_MESSAGE(!Liveness->getLiveRangeOrNull(OldExtract),
+        "expected extract to be baled in");
       OldConv->eraseFromParent();
       OldExtract->eraseFromParent();
     }

@@ -1550,8 +1550,8 @@ void SubroutineArg::coalesceAddressArgs()
     // subroutine where we are indirecting the arg -- the new address args
     // for each subroutine should coalesce together.
     LLVM_DEBUG(dbgs() << "Failed to coalesce:\n " << *AddressLR << "\n " << *CallArgLR << "\n");
-    IGC_ASSERT(!Pass->FuncMap[CallSite->CI->getParent()->getParent()]
-        && "new address args should coalesce together");
+    IGC_ASSERT_MESSAGE(!Pass->FuncMap[CallSite->CI->getParent()->getParent()],
+      "new address args should coalesce together");
     // We need to insert a copy, in the address arg's pre-copy slot. An address
     // copy is done with a genx.convert, even though it is not actually doing a
     // conversion.
@@ -1599,7 +1599,7 @@ void GenXArgIndirection::indirectBale(Bale *B, LiveRange *ArgLR,
       indirectRegion(&Inst->getOperandUse(
             GenXIntrinsic::GenXRegion::WrIndexOperandNum), AddressArg, Inst);
     } else {
-      // No wrregion: we need to add one, and ensure that the original 
+      // No wrregion: we need to add one, and ensure that the original
       // instruction is baled into it.
       Region R(Inst);
       R.Indirect = AddressArg;

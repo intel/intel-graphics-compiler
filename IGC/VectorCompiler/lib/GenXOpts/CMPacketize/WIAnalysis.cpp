@@ -205,8 +205,8 @@ bool WIAnalysis::validDepend(const llvm::Value *val) {
 }
 
 WIAnalysis::WIDependancy WIAnalysis::whichDepend(const Value *val) {
-  IGC_ASSERT(m_pChangedNew->empty() && "set should be empty before query");
-  IGC_ASSERT(val && "Bad value");
+  IGC_ASSERT_MESSAGE(m_pChangedNew->empty(), "set should be empty before query");
+  IGC_ASSERT_MESSAGE(val, "Bad value");
   if (m_deps.find(val) == m_deps.end()) {
     // We expect all instructions in the map. Otherwise take the safe
     // way return random on release (assertion test on debug). For non-instruction
@@ -228,7 +228,7 @@ bool WIAnalysis::stayUniformIfUsedAt(const Value *val, BasicBlock *use_blk) {
     return true;
   }
   if (m_deps.find(inst) == m_deps.end()) {
-    IGC_ASSERT(0 && "trouble, don't have a record");
+    IGC_ASSERT_MESSAGE(0, "trouble, don't have a record");
     return true;
   }
   if (m_deps[inst] != WIAnalysis::UNIFORM) {
@@ -261,7 +261,7 @@ void WIAnalysis::invalidateDepend(const Value *val) {
 }
 
 bool WIAnalysis::isControlFlowUniform(const Function *F) {
-  IGC_ASSERT(F && "Bad Function");
+  IGC_ASSERT_MESSAGE(F, "Bad Function");
 
   /// Place out-masks
   for (Function::const_iterator it = F->begin(), e = F->end(); it != e; ++it) {
@@ -282,8 +282,8 @@ WIAnalysis::WIDependancy WIAnalysis::getDependency(const Value *val) {
     if (!isa<Instruction>(val)) {
       return WIAnalysis::UNIFORM;
     }
-    // Don't expect this happens, let's do an assertion test here.
-    IGC_ASSERT(false && "Dependence for 'val' should bave been set already!");
+    // Don't expect this happens, let's do an assertion failure here.
+    IGC_ASSERT_MESSAGE(0, "Dependence for 'val' should bave been set already");
     m_deps[val] = WIAnalysis::UNIFORM;
   }
   return m_deps[val];
@@ -298,16 +298,16 @@ bool WIAnalysis::hasDependency(const Value *val) {
 }
 
 void WIAnalysis::calculate_dep(const Value *val) {
-  IGC_ASSERT(val && "Bad value");
+  IGC_ASSERT_MESSAGE(val, "Bad value");
 
   // Not an instruction, must be a constant or an argument
   // Could this vector type be of a constant which
   // is not uniform ?
-  IGC_ASSERT(isa<Instruction>(val) &&
-         "Could we reach here with non instruction value?");
+  IGC_ASSERT_MESSAGE(isa<Instruction>(val),
+    "Could we reach here with non instruction value?");
 
   const Instruction *inst = dyn_cast<Instruction>(val);
-  IGC_ASSERT(inst && "This Value is not an Instruction");
+  IGC_ASSERT_MESSAGE(inst, "This Value is not an Instruction");
 
   bool hasOriginal = hasDependency(inst);
   WIDependancy orig;
@@ -403,7 +403,7 @@ void WIAnalysis::update_cf_dep(const Instruction *inst) {
   // a branch can have NULL immediate post-dominator when a function
   // has multiple exits in llvm-ir
   // compute influence region and the partial-joins
-  IGC_ASSERT(inst->isTerminator() && "Expected terminator inst");
+  IGC_ASSERT_MESSAGE(inst->isTerminator(), "Expected terminator inst");
   BranchInfo br_info(cast<IGCLLVM::TerminatorInst>(inst), ipd);
   // debug: dump influence region and partial-joins
   // br_info.print(ods());
@@ -707,8 +707,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const PHINode *inst) {
     }
   }
 
-  IGC_ASSERT(foundFirst &&
-         "We should not reach here with All incoming values are unset");
+  IGC_ASSERT_MESSAGE(foundFirst, "All incoming values are unset");
 
   return totalDep;
 }
@@ -801,21 +800,22 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CastInst *inst) {
     return WIAnalysis::RANDOM;
   }
   default:
-    IGC_ASSERT(false && "no such opcode");
-    // never get here
+    IGC_ASSERT_MESSAGE(0, "no such opcode");
     return WIAnalysis::RANDOM;
   }
 }
 
 WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const VAArgInst *inst) {
-  IGC_ASSERT(false && "Are we supporting this ??");
+  IGC_ASSERT_MESSAGE(0, "Are we supporting this?");
   return WIAnalysis::RANDOM;
 }
 
 BranchInfo::BranchInfo(const IGCLLVM::TerminatorInst *inst, const BasicBlock *ipd)
     : cbr(inst), full_join(ipd) {
-  IGC_ASSERT(cbr == inst->getParent()->getTerminator() && "block terminator mismatch");
-  IGC_ASSERT(cbr->getNumSuccessors() == 2 && "only for cbr with two successors");
+  IGC_ASSERT_MESSAGE(cbr == inst->getParent()->getTerminator(),
+    "block terminator mismatch");
+  IGC_ASSERT_MESSAGE(cbr->getNumSuccessors() == 2,
+    "only for cbr with two successors");
 
   std::set<BasicBlock *> f_set, t_set;
   std::stack<BasicBlock *> work_set;

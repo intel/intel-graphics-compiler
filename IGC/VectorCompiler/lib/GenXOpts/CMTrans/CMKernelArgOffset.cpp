@@ -172,8 +172,9 @@ private:
   }
 
   // Check whether there is an input/output argument attribute.
-  void checkArgKinds(Function *F) {
-    IGC_ASSERT(KM && KM->isKernel());
+  void checkArgKinds(Function *) {
+    IGC_ASSERT(KM);
+    IGC_ASSERT(KM->isKernel());
     for (unsigned i = 0, e = KM->getNumArgs(); i != e; ++i) {
       auto IOKind = KM->getArgInputOutputKind(i);
       // If there is input/output attribute, compiler will not freely reorder
@@ -194,12 +195,12 @@ private:
     IGC_ASSERT(KM);
     Function *F = dyn_cast_or_null<Function>(
         getValue(KernelMD->getOperand(genx::KernelMDOp::FunctionRef)));
-    IGC_ASSERT(F && "nullptr kernel");
+    IGC_ASSERT_MESSAGE(F, "nullptr kernel");
 
     // All arguments now have offsets. Update the metadata node containing the
     // offsets.
-    IGC_ASSERT(F->arg_size() == KM->getNumArgs() &&
-           "Mismatch between metadata for kernel and number of args");
+    IGC_ASSERT_MESSAGE(F->arg_size() == KM->getNumArgs(),
+      "Mismatch between metadata for kernel and number of args");
     SmallVector<Metadata *, 8> ArgOffsets;
     auto I32Ty = Type::getInt32Ty(F->getContext());
     for (auto ai = F->arg_begin(), ae = F->arg_end(); ai != ae; ++ai) {
@@ -377,8 +378,8 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
           break;
       }
 
-      IGC_ASSERT(zi != ze &&
-             "unable to allocate argument offset (too many arguments?)");
+      IGC_ASSERT_MESSAGE(zi != ze,
+        "unable to allocate argument offset (too many arguments?)");
 
       // Exclude the found block from the free zones list. This may require
       // that the found zone be split in two if the start of the block is
@@ -498,15 +499,16 @@ void CMKernelArgOffset::processKernelOnOCLRT(MDNode *Node, Function *F) {
       if (*Kind == genx::KernelMetadata::AK_SAMPLER ||
           *Kind == genx::KernelMetadata::AK_SURFACE) {
         int32_t BTI = KM->getBTI(Idx);
-        IGC_ASSERT(BTI >= 0 && "unassigned BTI");
+        IGC_ASSERT_MESSAGE(BTI >= 0, "unassigned BTI");
 
         Type *ArgTy = Arg.getType();
         if (ArgTy->isPointerTy()) {
           SmallVector<Instruction *, 8> ToErase;
 
-          IGC_ASSERT(Arg.hasOneUse() && "invalid surface input");
+          IGC_ASSERT_MESSAGE(Arg.hasOneUse(), "invalid surface input");
           auto ArgUse = Arg.use_begin()->getUser();
-          IGC_ASSERT(isa<PtrToIntInst>(ArgUse) && "invalid surface input usage");
+          IGC_ASSERT_MESSAGE(isa<PtrToIntInst>(ArgUse),
+            "invalid surface input usage");
           ToErase.push_back(cast<Instruction>(ArgUse));
 
           for (auto ui = ArgUse->use_begin(), ue = ArgUse->use_end(); ui != ue;

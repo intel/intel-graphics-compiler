@@ -275,7 +275,7 @@ namespace pktz
         }
         else
         {
-            IGC_ASSERT(0 && "Unsupported vector width");
+            IGC_ASSERT_MESSAGE(0, "Unsupported vector width");
             i32Result = BITCAST(mask, mInt8Ty);
         }
         return Z_EXT(i32Result, mInt32Ty);
@@ -523,7 +523,7 @@ namespace pktz
             return 8;
         }
 
-        IGC_ASSERT(false && "Unimplemented type.");
+        IGC_ASSERT_MESSAGE(0, "Unimplemented type.");
         return 0;
     }
 }

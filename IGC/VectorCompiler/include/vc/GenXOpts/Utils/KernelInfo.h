@@ -127,14 +127,14 @@ public:
       if (OffsetsNode == nullptr)
         ArgOffsets.push_back(0);
       else {
-        IGC_ASSERT(OffsetsNode->getNumOperands() == e && "out of sync");
+        IGC_ASSERT_MESSAGE(OffsetsNode->getNumOperands() == e, "out of sync");
         ArgOffsets.push_back(
             getValueAsMetadata<ConstantInt>(OffsetsNode->getOperand(i))
                 ->getZExtValue());
       }
     }
-    IGC_ASSERT(InputOutputKinds &&
-           KindsNode->getNumOperands() >= InputOutputKinds->getNumOperands());
+    IGC_ASSERT(InputOutputKinds);
+    IGC_ASSERT(KindsNode->getNumOperands() >= InputOutputKinds->getNumOperands());
     for (unsigned i = 0, e = InputOutputKinds->getNumOperands(); i != e; ++i)
       ArgIOKinds.push_back(
           getValueAsMetadata<ConstantInt>(InputOutputKinds->getOperand(i))
@@ -225,15 +225,19 @@ public:
     }
     // Scan again and assign BTI to UAV resources.
     Desc = ArgTypeDescs.begin();
-    int Idx = 0;
+    size_t Idx = 0;
     for (auto Kind = ArgKinds.begin(); Kind != ArgKinds.end(); ++Kind) {
-      if (*Kind == AK_SURFACE && BTIs[Idx] == -1)
+      IGC_ASSERT(Idx < BTIs.size());
+      if (*Kind == AK_SURFACE && BTIs[Idx] == -1) {
         BTIs[Idx] = SurfaceID++;
+      }
       // SVM arguments are also assigned an BTI, which is not necessary, but OCL
       // runtime requires it.
       if (*Kind == AK_NORMAL) {
+        IGC_ASSERT(Desc != ArgTypeDescs.end());
         StringRef DescStr = *Desc;
         if (DescStr.find_lower("svmptr_t") != StringRef::npos) {
+          IGC_ASSERT(Idx < BTIs.size());
           BTIs[Idx] = SurfaceID++;
           if (SurfaceID > K_MaxAvailableBtiIndex) {
             llvm::report_fatal_error("not enough BTI indeces", false);
@@ -243,11 +247,14 @@ public:
       // print buffer is also assigned with BTI, which is not necessary, but OCL
       // runtime requires it.
       if (*Kind & KernelMetadata::IMP_OCL_PRINTF_BUFFER) {
+        IGC_ASSERT(Idx < BTIs.size());
         BTIs[Idx] = SurfaceID++;
       }
 
-      if (*Kind & KernelMetadata::IMP_OCL_PRIVATE_BASE)
+      if (*Kind & KernelMetadata::IMP_OCL_PRIVATE_BASE) {
+        IGC_ASSERT(Idx < BTIs.size());
         BTIs[Idx] = SurfaceID++;
+      }
       ++Desc, ++Idx;
     }
   }

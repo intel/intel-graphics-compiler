@@ -206,6 +206,7 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
   Type *FromTy = From->getType();
   IGC_ASSERT(isa<VectorType>(FromTy));
   unsigned NumElts = cast<VectorType>(FromTy)->getNumElements();
+  static_assert(genx::ByteBits);
   unsigned EltSz =
       m_DL->getTypeSizeInBits(FromTy->getScalarType()) / genx::ByteBits;
   IGC_ASSERT(EltSz > 0);
@@ -362,8 +363,8 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
     return ITP->getOperand(0);
   else if (auto AI = dyn_cast<AllocaInst>(Ptr)) {
     auto AllocaIntr = m_allocaToIntrinsic.find(AI);
-    IGC_ASSERT(AllocaIntr != m_allocaToIntrinsic.end() &&
-           "Each alloca must be here");
+    IGC_ASSERT_MESSAGE(AllocaIntr != m_allocaToIntrinsic.end(),
+      "Each alloca must be here");
     return AllocaIntr->second;
   } else if (isa<Argument>(Ptr)) {
     if (Ptr->getType()->isPointerTy()) {
@@ -390,13 +391,13 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
       return Ptr;
     } else {
       // FIXME: unify the return paths for failure cases
-      IGC_ASSERT(0 && "Cannot find pointer replacement");
+      IGC_ASSERT_MESSAGE(0, "Cannot find pointer replacement");
       return nullptr;
     }
   } else if (isa<ConstantPointerNull>(Ptr))
     return ConstantInt::get(Type::getInt32Ty(*m_ctx), 0);
   else {
-    IGC_ASSERT(0 && "Cannot find pointer replacement");
+    IGC_ASSERT_MESSAGE(0, "Cannot find pointer replacement");
     return nullptr;
   }
 }
@@ -809,7 +810,7 @@ bool GenXThreadPrivateMemory::replacePhi(PHINode *Phi) {
           V = VCast;
         }
       } else {
-        IGC_ASSERT(0 && "New phi types mismatch");
+        IGC_ASSERT_MESSAGE(0, "New phi types mismatch");
       }
     };
     std::for_each(PhiOps.begin(), PhiOps.end(), TypeFixer);
@@ -1313,8 +1314,8 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
 
   for (auto AllocaPair : m_allocaToIntrinsic) {
     EraseUsers(AllocaPair.first);
-    IGC_ASSERT(AllocaPair.first->use_empty() &&
-           "uses of replaced alloca aren't empty");
+    IGC_ASSERT_MESSAGE(AllocaPair.first->use_empty(),
+      "uses of replaced alloca aren't empty");
     AllocaPair.first->eraseFromParent();
   }
 

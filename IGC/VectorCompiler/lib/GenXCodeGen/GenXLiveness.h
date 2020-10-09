@@ -383,7 +383,7 @@ public:
   iterator end() { return Segments.end(); }
   const_iterator begin() const { return Segments.begin(); }
   const_iterator end() const { return Segments.end(); }
-  unsigned size() { return Segments.size(); }
+  unsigned size() const { return Segments.size(); }
   void resize(unsigned len) { Segments.resize(len); }
   // Iterator forwarders for Values.
   // This is complicated by the Values vector containing AssertingSV, but the
@@ -450,12 +450,7 @@ public:
   void printSegments(raw_ostream &OS) const;
 private:
   void value_clear() { Values.clear(); }
-#ifndef NDEBUG
-  // assertOk : assertion tests that live range's segments are well formed
-  void assertOk();
-#else
-  void assertOk() {}
-#endif
+  bool testLiveRanges() const;
 };
 
 inline raw_ostream &operator<<(raw_ostream &OS, const LiveRange &LR) {

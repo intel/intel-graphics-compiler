@@ -462,7 +462,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
       }
       break;
     default:
-      IGC_ASSERT(0 && "unexpected use");
+      IGC_ASSERT_MESSAGE(0, "unexpected use");
       break;
     }
   }

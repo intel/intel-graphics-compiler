@@ -80,6 +80,29 @@ private:
   bool isPredefinedVariable(Value *) const;
 };
 
+/***********************************************************************
+ * Local function for testing one assertion statement.
+ * Check we don't have any leftover empty live ranges. If we do, it means
+ * that a pass between GenXCategory and here has erased a value and failed
+ * to erase its LiveRange, or alternatively this pass has failed to erase
+ * the LiveRange for a value that does not need it because it is a baled
+ * in instruction.
+ */
+bool testDuplicates(const llvm::GenXLiveness& Liveness) {
+
+  auto testRange = [](const std::pair<llvm::genx::SimpleValue, llvm::genx::LiveRange *>& X) {
+    const llvm::genx::LiveRange *const LR = X.second;
+    IGC_ASSERT(nullptr != LR);
+    const bool HasSegment = (0 < LR->size());
+    IGC_ASSERT(HasSegment);
+    return HasSegment;
+  };
+
+  const bool Result = std::all_of(Liveness.begin(), Liveness.end(), testRange);
+  IGC_ASSERT(Result);
+  return Result;
+}
+
 } // end anonymous namespace
 
 namespace llvm { void initializeGenXLiveRangesPass(PassRegistry &); }
@@ -120,17 +143,7 @@ bool GenXLiveRanges::runOnFunctionGroup(FunctionGroup &ArgFG)
   // Build the live ranges.
   Liveness->buildSubroutineLRs();
   buildLiveRanges();
-#ifndef NDEBUG
-  // Check we don't have any leftover empty live ranges. If we do, it means
-  // that a pass between GenXCategory and here has erased a value and failed
-  // to erase its LiveRange, or alternatively this pass has failed to erase
-  // the LiveRange for a value that does not need it because it is a baled
-  // in instruction.
-  for (GenXLiveness::iterator i = Liveness->begin(), e = Liveness->end(); i != e; ++i) {
-    LiveRange *LR = i->second;
-    IGC_ASSERT(LR->size()); // Check the LR has at least one segment.
-  }
-#endif // ndef NDEBUG
+  IGC_ASSERT(testDuplicates(*Liveness));
   return false;
 }
 

@@ -73,7 +73,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/Instructions.h"
 
 #include <deque>
-#include <cassert>
 
 using namespace llvm;
 using namespace genx;
@@ -159,7 +158,7 @@ bool GenXFunctionPointersLowering::runOnModule(Module &M) {
     else if (auto *SI = dyn_cast<SelectInst>(TI))
       reconstructSelect(SI);
     else
-      IGC_ASSERT(0 && "Unsupported instruction to process");
+      IGC_ASSERT_MESSAGE(0, "Unsupported instruction to process");
   }
 
   for (auto &F : M)
@@ -173,8 +172,8 @@ bool GenXFunctionPointersLowering::runOnModule(Module &M) {
           ToErase.push_back(UI);
         } else if (auto *UCE = dyn_cast<ConstantExpr>(U);
                    !(UCE && UCE->getOpcode() == Instruction::PtrToInt))
-          IGC_ASSERT(isa<CallInst>(U) &&
-                     "Unsupported first-level user of a function");
+          IGC_ASSERT_MESSAGE(isa<CallInst>(U),
+            "Unsupported first-level user of a function");
       }
   for (auto *I : ToErase)
     I->eraseFromParent();
@@ -199,7 +198,7 @@ void GenXFunctionPointersLowering::collectFuncUsers(User *U) {
     for (auto *UU : U->users())
       collectFuncUsers(UU);
   else
-    IGC_ASSERT(0 && "unsupported funcptr user");
+    IGC_ASSERT_MESSAGE(0, "unsupported funcptr user");
 }
 
 void GenXFunctionPointersLowering::collectFuncUsers(CallInst *CI) {
@@ -256,12 +255,12 @@ void GenXFunctionPointersLowering::replaceAllUsersCommon(Instruction *Old,
                  IGCLLVM::getCalledValue(CIU) != Old) {
         CIU->replaceUsesOfWith(Old, New);
       } else
-        IGC_ASSERT(0 && "unsupported call of a function pointer");
+        IGC_ASSERT_MESSAGE(0, "unsupported call of a function pointer");
     } else if (isa<IntToPtrInst>(U) || isa<ICmpInst>(U) ||
                isa<BitCastInst>(U) || isa<PHINode>(U)) {
       U->replaceUsesOfWith(Old, New);
     } else {
-      IGC_ASSERT(0 && "Unsupported function pointer user\n");
+      IGC_ASSERT_MESSAGE(0, "Unsupported function pointer user");
     }
   }
   Old->eraseFromParent();
@@ -286,7 +285,7 @@ void GenXFunctionPointersLowering::reconstructGenXIntrinsic(CallInst *CI) {
     OpIdx = 3;
     break;
   default:
-    IGC_ASSERT(0 && "Unsupported genx intrinsic");
+    IGC_ASSERT_MESSAGE(0, "Unsupported genx intrinsic");
   }
   reconstructValue(CI->getOperand(OpIdx), CI);
 }
@@ -296,11 +295,11 @@ void GenXFunctionPointersLowering::reconstructSelect(SelectInst *SI) {
   auto *OrigTy = SI->getType();
   auto *TV = reconstructValue(SI->getTrueValue(), SI);
   auto *FV = reconstructValue(SI->getFalseValue(), SI);
-  IGC_ASSERT(TV && FV);
+  IGC_ASSERT(TV);
+  IGC_ASSERT(FV);
   if (TV->getType() != OrigTy) {
-    IGC_ASSERT(
-        OrigTy->getScalarType()->isPointerTy() &&
-        OrigTy->getScalarType()->getPointerElementType()->isFunctionTy());
+    IGC_ASSERT(OrigTy->getScalarType()->isPointerTy());
+    IGC_ASSERT(OrigTy->getScalarType()->getPointerElementType()->isFunctionTy());
     Instruction *NewSel =
         SelectInst::Create(SI->getCondition(), TV, FV, SI->getName(), SI);
     replaceAllUsersCommon(SI, NewSel);
@@ -355,6 +354,8 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
   // TODO: replace extractelems from the same function/splat vector
   // with a shufflevector
   for (auto *EEInst : llvm::reverse(Extra)) {
+    static_assert(genx::ByteBits);
+    IGC_ASSERT(DL->getTypeSizeInBits(EEInst->getType()));
     Scale = genx::QWordBytes /
             (DL->getTypeSizeInBits(EEInst->getType()) / genx::ByteBits);
     IGC_ASSERT(Scale);
@@ -377,11 +378,11 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
       }
 
       auto* FptrF = getFunctionPointerFunc(EEInst->getVectorOperand());
-      assert(FptrF);
+      IGC_ASSERT(FptrF);
       auto* PTI = CastInst::CreateBitOrPointerCast(FptrF,
           Type::getInt64Ty(*Ctx), "", EEInst);
 
-      IGC_ASSERT(PTI && "CreateBitOrPointerCast failed!");
+      IGC_ASSERT_MESSAGE(PTI, "CreateBitOrPointerCast failed!");
       PTI->setDebugLoc(EEInst->getDebugLoc());
       Instruction *NewInsElem = InsertElementInst::Create(
           VecOper, PTI,
@@ -425,10 +426,12 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
     I->eraseFromParent();
   }
   if (hasShuffle) {
-    IGC_ASSERT(Result && Result->hasOneUse());
+    IGC_ASSERT(Result);
+    IGC_ASSERT(Result->hasOneUse());
     auto *Shuffle = dyn_cast<ShuffleVectorInst>(Result->user_back());
     // we support only splat values for now
-    IGC_ASSERT(Shuffle && Shuffle->getMask()->isZeroValue());
+    IGC_ASSERT(Shuffle);
+    IGC_ASSERT(Shuffle->getMask()->isZeroValue());
 
     Region R(Result);
     R.Stride = 0;
