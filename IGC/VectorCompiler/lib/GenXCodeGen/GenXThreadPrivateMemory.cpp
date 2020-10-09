@@ -216,7 +216,7 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
     IGC_ASSERT(From);
     To = From->getType();
     IGC_ASSERT(To);
-    NumElts = To->getVectorNumElements();
+    NumElts = cast<VectorType>(To)->getNumElements();
   }
   if (To->getScalarType()->isPointerTy() &&
       To->getScalarType()->getPointerElementType()->isFunctionTy()) {
@@ -260,8 +260,8 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
     if (From->getType()->isVectorTy() &&
         From->getType()->getScalarType()->isIntegerTy(genx::DWordBits)) {
       auto *NewTy =
-          VectorType::get(Type::getInt64Ty(*m_ctx),
-                          From->getType()->getVectorNumElements() / 2);
+          IGCLLVM::FixedVectorType::get(Type::getInt64Ty(*m_ctx),
+                          cast<VectorType>(From->getType())->getNumElements() / 2);
       NewFrom = CastInst::CreateBitOrPointerCast(From, NewTy);
       NewFrom->insertAfter(From);
       From = NewFrom;

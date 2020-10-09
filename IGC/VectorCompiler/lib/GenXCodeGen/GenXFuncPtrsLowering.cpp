@@ -239,10 +239,10 @@ void GenXFunctionPointersLowering::replaceAllUsersCommon(Instruction *Old,
     auto *U = Old->user_back();
     if (auto *CIU = dyn_cast<CallInst>(U)) {
       if (IGCLLVM::getCalledValue(CIU) == Old) {
-        if (New->getType()->isVectorTy()) {
-          IGC_ASSERT(New->getType()->getVectorNumElements() == 1);
+        if (auto NewVTy = dyn_cast<VectorType>(New->getType())) {
+          IGC_ASSERT(NewVTy->getNumElements() == 1);
           New = CastInst::CreateBitOrPointerCast(
-              New, New->getType()->getVectorElementType(), "", CIU);
+              New, NewVTy->getElementType(), "", CIU);
           New->setDebugLoc(CIU->getDebugLoc());
         }
         auto *IntToPtr = CastInst::CreateBitOrPointerCast(
@@ -322,7 +322,7 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
     Value *Result = CastInst::CreateBitOrPointerCast(V, Type::getInt64Ty(*Ctx),
                                                      "", InsPoint);
     cast<Instruction>(Result)->setDebugLoc(InsPoint->getDebugLoc());
-    auto *VecTy = VectorType::get(Result->getType(), 1);
+    auto *VecTy = IGCLLVM::FixedVectorType::get(Result->getType(), 1);
     Region R(VecTy);
     Result = R.createWrRegion(UndefValue::get(VecTy), Result, "", InsPoint,
                               InsPoint->getDebugLoc());
@@ -360,18 +360,27 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
     IGC_ASSERT(Scale);
     if (auto *Idx = dyn_cast<Constant>(EEInst->getIndexOperand());
         Idx && Idx->getUniqueInteger().getZExtValue() % Scale == 0) {
-      auto *VecOper =
-          (Worklist.empty()
-               ? UndefValue::get(VectorType::get(
-                     IntegerType::get(*Ctx,
-                                      DL->getTypeSizeInBits(EEInst->getType()) *
-                                          Scale),
-                     OrigV->getType()->getVectorNumElements() / Scale))
-               : cast<Value>(Worklist.back()));
-      auto *FptrF = getFunctionPointerFunc(EEInst->getVectorOperand());
+
+      Value *VecOper;
+      if (Worklist.empty()) {
+        IGC_ASSERT(OrigV->getType()->isVectorTy());
+        auto OrigVecTy = cast<VectorType>(OrigV->getType());
+
+        auto VecEltsTy = IntegerType::get(*Ctx, DL->getTypeSizeInBits(EEInst->getType()) * Scale);
+        auto VecNElts = OrigVecTy->getNumElements();
+        auto Vec = IGCLLVM::FixedVectorType::get(VecEltsTy, VecNElts);
+
+        VecOper = cast<Value>(UndefValue::get(Vec));
+      }
+      else {
+        VecOper = cast<Value>(Worklist.back());
+      }
+
+      auto* FptrF = getFunctionPointerFunc(EEInst->getVectorOperand());
       assert(FptrF);
-      auto *PTI = CastInst::CreateBitOrPointerCast(FptrF,
-            Type::getInt64Ty(*Ctx), "", EEInst);
+      auto* PTI = CastInst::CreateBitOrPointerCast(FptrF,
+          Type::getInt64Ty(*Ctx), "", EEInst);
+
       IGC_ASSERT(PTI && "CreateBitOrPointerCast failed!");
       PTI->setDebugLoc(EEInst->getDebugLoc());
       Instruction *NewInsElem = InsertElementInst::Create(
@@ -380,7 +389,7 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
               ConstantExpr::getUDiv(Idx,
                                     ConstantInt::get(Idx->getType(), Scale)),
               ConstantInt::get(Idx->getType(),
-                               VecOper->getType()->getVectorNumElements())),
+                               cast<VectorType>(VecOper->getType())->getNumElements())),
           "", EEInst);
       Worklist.push_back(NewInsElem);
       ToErase.push_back(EEInst);
@@ -425,7 +434,7 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
     R.Stride = 0;
     R.Indirect = 0;
     auto *I64Ty = Type::getInt64Ty(*Ctx);
-    auto V1_64Ty = VectorType::get(I64Ty, 1);
+    auto V1_64Ty = IGCLLVM::FixedVectorType::get(I64Ty, 1);
     auto NewR = Region(V1_64Ty);
     auto *NewWRR =
         NewR.createWrRegion(UndefValue::get(V1_64Ty), Result->getOperand(1),
