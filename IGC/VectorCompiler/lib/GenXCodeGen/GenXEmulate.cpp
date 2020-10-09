@@ -60,21 +60,6 @@ using namespace genx;
 
 namespace {
 
-static cl::opt<bool> OptStrictChecksEnable("genx-i64emu-strict-checks",
-                                           cl::init(false), cl::Hidden,
-                                           cl::desc("enables strict checks"));
-static cl::opt<bool>
-    OptStricterSVM("genx-i64emu-strict-report-svm", cl::init(false), cl::Hidden,
-                   cl::desc("strict check will break on svm* operations"));
-// NOTE: probably should be true by default
-static cl::opt<bool>
-    OptStricterAtomic("genx-i64emu-strict-report-atomic", cl::init(false),
-                      cl::Hidden,
-                      cl::desc("strict check will break on 64-bit atomics"));
-static cl::opt<bool> OptStricterOword(
-    "genx-i64emu-strict-report-oword", cl::init(false), cl::Hidden,
-    cl::desc("strict check will break on 64-bit oword reads/writes"));
-
 static cl::opt<bool> OptIcmpEnable("genx-i64emu-icmp-enable", cl::init(true),
                                    cl::Hidden,
                                    cl::desc("enable icmp emulation"));
@@ -246,7 +231,6 @@ class GenXEmulate : public ModulePass {
                                      const ShiftInfo &SI);
     static ShiftInfo constructShiftInfo(IRBuilder &B, Value *Base);
 
-    static bool hasStrictEmulationRequirement(Instruction *Inst);
   };
 
 public:
@@ -1181,62 +1165,6 @@ GenXEmulate::Emu64Expander::constructShiftInfo(IRBuilder &B, Value *RawSha) {
 
   return ShiftInfo{Sha, Sh32, Mask1, Mask0};
 }
-bool GenXEmulate::Emu64Expander::hasStrictEmulationRequirement(
-    Instruction *Inst) {
-  auto isI64Type = [](Type *T) {
-    if (T->isVectorTy())
-      T = cast<VectorType>(T)->getElementType();
-    return T->isIntegerTy(64) == true;
-  };
-  bool ret64 = isI64Type(Inst->getType());
-  bool uses64 = false;
-  for (unsigned i = 0; i < Inst->getNumOperands(); ++i) {
-    uses64 |= isI64Type(Inst->getOperand(i)->getType());
-  }
-  // if instruction does not touch i64 - it is free to go
-  if (!ret64 && !uses64)
-    return false;
-
-  // now things become (a little) complicated. Currently, we ignore some
-  // instructions/intrinsic types, since they are acceptable by finalizer.
-  // More specifically - everything which is lowered to a plain mov
-  // (non-coverting) is fine.
-  // It seems that sends with i64 addresses are fine too
-
-  // skip moves
-  if (GenXIntrinsic::isWrRegion(Inst) || GenXIntrinsic::isRdRegion(Inst))
-    return false;
-
-  // skip constants
-  if (GenXIntrinsic::getAnyIntrinsicID(Inst) == GenXIntrinsic::genx_constanti)
-    return false;
-
-  switch (GenXIntrinsic::getAnyIntrinsicID(Inst)) {
-  case GenXIntrinsic::genx_svm_scatter:
-  case GenXIntrinsic::genx_svm_gather:
-  case GenXIntrinsic::genx_svm_block_st:
-  case GenXIntrinsic::genx_svm_block_ld:
-    return OptStricterSVM;
-
-  // TODO: not every atomic is covered here, we need to add more
-  case GenXIntrinsic::genx_svm_atomic_add:
-    return OptStricterAtomic;
-
-  case GenXIntrinsic::genx_oword_st:
-  case GenXIntrinsic::genx_oword_ld:
-    return OptStricterOword;
-  }
-
-  // skip casts and phi
-  switch (Inst->getOpcode()) {
-  case Instruction::BitCast:
-  case Instruction::PtrToInt:
-  case Instruction::IntToPtr:
-  case Instruction::PHI:
-    return false;
-  }
-  return true;
-}
 
 char GenXEmulate::ID = 0;
 namespace llvm {
@@ -1354,16 +1282,6 @@ Value *GenXEmulate::emulateInst(Instruction *Inst) {
   if (ST->emulateLongLong()) {
     Value *NewInst = Emu64Expander(*ST, *Inst).tryExpand();
     if (!NewInst) {
-#ifndef NDEBUG
-      if (Emu64Expander::hasStrictEmulationRequirement(Inst)) {
-        LLVM_DEBUG(dbgs() << "i64-emu::WARNING: instruction may require "
-                          << "emulation: " << *Inst << "\n");
-      }
-#endif // NDEBUG
-      if (OptStrictChecksEnable &&
-          Emu64Expander::hasStrictEmulationRequirement(Inst)) {
-        DiscracedList.push_back(Inst);
-      }
     }
 
     return NewInst;
