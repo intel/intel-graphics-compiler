@@ -3416,14 +3416,13 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                 lastInst->asCFInst()->getUip() == bb->getLabel())
             {
                 // backward goto
+                G4_ExecSize eSize = lastInst->getExecSize() > g4::SIMD1 ?
+                    lastInst->getExecSize() : pKernel->getSimdSize();
                 bool isUniform = lastInst->getExecSize() == g4::SIMD1 || lastInst->getPredicate() == NULL;
                 if (isUniform && doScalarJmp)
                 {
                     // can always convert a uniform backward goto into a jmp
                     convertGotoToJmpi(lastInst);
-
-                    // No need to do the following for scalar jump. If there are gotos inside loop,
-                    // the join point will be updated when handling gotos.
 
                     // we still have to add a join point at the BB immediately after the back edge,
                     // since there may be subsequent loop breaks that are waiting there.
@@ -3439,18 +3438,17 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     // In this case the goto exit's JIP should be set to L2 as there may be channels
                     // waiting there due to "goto L2"
                     G4_BB* loopExitBB = predBB->getPhysicalSucc();
-                    // loop exit may be null if the loop is the outer-most one
-                    // (i.e., the loop has no breaks but only EOT sends)
-                    if (loopExitBB != NULL)
-                    {
-                        addBBToActiveJoinList(activeJoinBlocks, loopExitBB, lastInst->getExecSize());
-                    }
 
+                    // loop exit may be null if the loop is the outer-most one (i.e., the loop has
+                    // no breaks but only EOT sends). Also, if it is a single-BB loop, no need to add
+                    // join (TODO: better solution on whether a join is needed).
+                    if (loopExitBB != NULL && predBB != bb)
+                    {
+                        addBBToActiveJoinList(activeJoinBlocks, loopExitBB, eSize);
+                    }
                 }
                 else
                 {
-                    G4_ExecSize eSize = lastInst->getExecSize() > g4::SIMD1 ?
-                        lastInst->getExecSize() : pKernel->getSimdSize();
                     if (lastInst->getExecSize() == g4::SIMD1)
                     {   // For simd1 goto, convert it to a goto with the right execSize.
                         lastInst->setExecSize(eSize);
