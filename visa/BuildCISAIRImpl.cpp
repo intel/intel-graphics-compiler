@@ -464,11 +464,7 @@ static void Stitch_Compiled_Units(
             mainFunc->getRelocationTable().insert(mainFunc->getRelocationTable().end(),
                 callee->getRelocationTable().begin(), callee->getRelocationTable().end());
 
-        // Make sure caller and callee's number of GRFs are consistent
-        if (mainFunc->getNumRegTotal() < callee->getNumRegTotal())
-        {
-            mainFunc->updateKernelByNumThreads(callee->getNumThreads());
-        }
+        ASSERT_USER(mainFunc->getNumRegTotal() == callee->getNumRegTotal(), "caller and callee cannot have different GRF modes");
     }
 
     mainFunc->fg.reassignBlockIDs();
