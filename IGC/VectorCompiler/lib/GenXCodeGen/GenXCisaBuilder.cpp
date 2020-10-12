@@ -4202,6 +4202,8 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
                                     unsigned Mod, const DstOpndDesc &DstDesc) {
   VISA_GenVar *Sp = nullptr;
   CISA_CALL(Kernel->GetPredefinedVar(Sp, PreDefined_Vars::PREDEFINED_FE_SP));
+  if (!Subtarget->hasLongLong())
+    CISA_CALL(Kernel->CreateVISAGenVar(Sp, "Sp", 1, ISA_TYPE_UD, ALIGN_DWORD, Sp));
 
   VISA_VectorOpnd *SpSrc = nullptr;
   CISA_CALL(
@@ -5208,6 +5210,11 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
   VISA_GenVar *Sp = nullptr, *Fp = nullptr, *Hwtid = nullptr;
   CISA_CALL(Kernel->GetPredefinedVar(Sp, PREDEFINED_FE_SP));
   CISA_CALL(Kernel->GetPredefinedVar(Fp, PREDEFINED_FE_FP));
+  // TODO: consider removing the if for local stack
+  if (!Subtarget->hasLongLong()) {
+    CISA_CALL(Kernel->CreateVISAGenVar(Sp, "Sp", 1, ISA_TYPE_UD, ALIGN_DWORD, Sp));
+    CISA_CALL(Kernel->CreateVISAGenVar(Fp, "Fp", 1, ISA_TYPE_UD, ALIGN_DWORD, Fp));
+  }
   CISA_CALL(Kernel->GetPredefinedVar(Hwtid, PREDEFINED_HW_TID));
 
   VISA_VectorOpnd *SpOpSrc = nullptr;
@@ -5248,8 +5255,9 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
           EXEC_SIZE_1, SpOpDst, HwtidOp, Imm));
     } else {
       VISA_GenVar *Tmp = nullptr;
-      CISA_CALL(
-          Kernel->CreateVISAGenVar(Tmp, "SpOff", 1, ISA_TYPE_UQ, ALIGN_DWORD));
+      CISA_CALL(Kernel->CreateVISAGenVar(
+          Tmp, "SpOff", 1, Subtarget->hasLongLong() ? ISA_TYPE_UQ : ISA_TYPE_UD,
+          ALIGN_DWORD));
 
       VISA_VectorOpnd *OffOpDst = nullptr;
       VISA_VectorOpnd *OffOpSrc = nullptr;
@@ -5300,7 +5308,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
 
     if (FPMap.count(Func) == 0) {
       CISA_CALL(
-          Kernel->CreateVISAGenVar(FpTmp, "tmp", 1, ISA_TYPE_UD, ALIGN_DWORD));
+          Kernel->CreateVISAGenVar(FpTmp, "tmp", 1, ISA_TYPE_UQ, ALIGN_DWORD));
       FPMap.insert(std::pair<Function *, VISA_GenVar *>(Func, FpTmp));
     } else
       FpTmp = FPMap[Func];
