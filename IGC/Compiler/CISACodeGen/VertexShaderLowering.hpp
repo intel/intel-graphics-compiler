@@ -100,6 +100,7 @@ namespace IGC
         unsigned int GetURBOffset(ShaderOutputType type, llvm::Value* attribute, llvm::Instruction* inst);
         void CalculateVertexHeaderSize(llvm::Function& F);
         unsigned int InsertInEmptySlot(llvm::Instruction* sgv, bool bInsertAfterLastUsedSlot = false);
+        void InsertSGVRead(llvm::Instruction* sgv, uint index);
         unsigned int GetUnusedInputSlot();
         unsigned int GetUnusedInputSlotAFterLastUsedOne();
         //HACK: to remove once we don't need header anymore

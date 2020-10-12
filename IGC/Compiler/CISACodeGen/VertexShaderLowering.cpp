@@ -91,6 +91,12 @@ namespace IGC
     {
         unsigned int index = bInsertAfterLastUsedSlot ? GetUnusedInputSlotAFterLastUsedOne() : GetUnusedInputSlot();
         m_inputUsed[index] = true;
+        InsertSGVRead(sgv, index);
+        return index;
+    }
+
+    void VertexShaderLowering::InsertSGVRead(Instruction* sgv, uint index)
+    {
         uint usage =
             (uint)llvm::cast<llvm::ConstantInt>(sgv->getOperand(0))->getZExtValue();
 
@@ -123,9 +129,7 @@ namespace IGC
         Value* channel = ConstantInt::get(Type::getInt32Ty(sgv->getContext()), index % 4);
         Instruction* newExt = ExtractElementInst::Create(urbRead, channel, "", sgv);
         sgv->replaceAllUsesWith(newExt);
-        return index;
     }
-
 
     unsigned int VertexShaderLowering::GetUnusedInputSlot()
     {
@@ -327,7 +331,8 @@ namespace IGC
                         case XP0:
                         case XP1:
                         case XP2:
-                            IGC_ASSERT(m_context->platform.supportsDrawParametersSGVs());
+                            IGC_ASSERT(m_context->platform.supportsDrawParametersSGVs() || 
+                                m_context->m_DriverInfo.UsesVertexBuffersToSendShaderDrawParameters());
                             vertexFetchSGVExtendedParameters.at(usage - XP0) = inst;
                             break;
 
@@ -342,23 +347,99 @@ namespace IGC
         {
             AddURBWrite(headerOffset, 0xF, headerData, prevInst);
         }
-        if (vertexId)
+        if (m_context->m_DriverInfo.UsesVertexBuffersToSendShaderDrawParameters())
         {
-            unsigned int slot = InsertInEmptySlot(vertexId);
-            m_vsPropsPass->SetVertexIdSlot(slot);
-        }
-        for (size_t paramIndex = 0; paramIndex < vertexFetchSGVExtendedParameters.size(); ++paramIndex)
-        {
-            if (vertexFetchSGVExtendedParameters[paramIndex])
+            llvm::Instruction* baseVertex = vertexFetchSGVExtendedParameters[0];
+            llvm::Instruction* baseInstance = vertexFetchSGVExtendedParameters[1];
+            llvm::Instruction* drawIndex = vertexFetchSGVExtendedParameters[2];
+
+            if (baseVertex || baseInstance || drawIndex || vertexId || InstanceId)
             {
-                unsigned int slot = InsertInEmptySlot(vertexFetchSGVExtendedParameters[paramIndex]);
-                m_vsPropsPass->SetShaderDrawParameter(paramIndex, slot);
+                // Find first free location at the end i.e. after all user inputs. 
+                unsigned int drawParametersIndex = (ARRAY_COUNT(m_inputUsed) - 1);
+                for (int index = drawParametersIndex; index >= 0; --index)
+                {
+                    if (m_inputUsed[index] == true)
+                    {
+                        drawParametersIndex = ((index + 4) / 4) * 4;
+                        break;
+                    }
+                    if (index == 0)
+                    {
+                        drawParametersIndex = 0;
+                    }
+                }
+
+                /// UMD has to limit the number of user inputs in order 
+                /// to be sure there are 2 free inputs at the end.
+                assert(drawParametersIndex < (ARRAY_COUNT(m_inputUsed) - 8));
+
+                if (baseVertex || baseInstance)
+                {
+                    /// First VB contains base vertex and base instance.
+                    /// UMD always sends both.
+                    m_inputUsed[drawParametersIndex] = true;
+                    m_inputUsed[drawParametersIndex + 1] = true;
+                    if (baseVertex)
+                    {
+                        InsertSGVRead(baseVertex, drawParametersIndex);
+                        m_vsPropsPass->SetShaderDrawParameter(0, drawParametersIndex);
+                    }
+                    if (baseInstance)
+                    {
+                        InsertSGVRead(baseInstance, drawParametersIndex + 1);
+                        m_vsPropsPass->SetShaderDrawParameter(1, drawParametersIndex + 1);
+                    }
+                }
+
+                if (vertexId)
+                {
+                    m_inputUsed[drawParametersIndex + 2] = true;
+                    InsertSGVRead(vertexId, drawParametersIndex + 2);
+                    m_vsPropsPass->SetVertexIdSlot(drawParametersIndex + 2);
+                }
+
+                if (InstanceId)
+                {
+                    m_inputUsed[drawParametersIndex + 3] = true;
+                    InsertSGVRead(InstanceId, drawParametersIndex + 3);
+                    m_vsPropsPass->SetInstanceIdSlot(drawParametersIndex + 3);
+                }
+
+                if (drawIndex)
+                {
+                    if (baseVertex || baseInstance || vertexId || InstanceId)
+                    {
+                        drawParametersIndex += 4;
+                    }
+                    /// Second VB contains draw index.
+                    m_inputUsed[drawParametersIndex] = true;
+                    InsertSGVRead(drawIndex, drawParametersIndex);
+                    m_vsPropsPass->SetShaderDrawParameter(2, drawParametersIndex);
+                }
             }
         }
-        if (InstanceId)
+        else
         {
-            unsigned int slot = InsertInEmptySlot(InstanceId, (!IGC_IS_FLAG_ENABLED(DisableMovingInstanceIDIndexOfVS)));
-            m_vsPropsPass->SetInstanceIdSlot(slot);
+            for (size_t paramIndex = 0; paramIndex < vertexFetchSGVExtendedParameters.size(); ++paramIndex)
+            {
+                if (vertexFetchSGVExtendedParameters[paramIndex])
+                {
+                    unsigned int slot = InsertInEmptySlot(vertexFetchSGVExtendedParameters[paramIndex]);
+                    m_vsPropsPass->SetShaderDrawParameter(paramIndex, slot);
+                }
+            }
+
+            if (vertexId)
+            {
+                unsigned int slot = InsertInEmptySlot(vertexId);
+                m_vsPropsPass->SetVertexIdSlot(slot);
+            }
+            if (InstanceId)
+            {
+                unsigned int slot = InsertInEmptySlot(InstanceId, (!IGC_IS_FLAG_ENABLED(DisableMovingInstanceIDIndexOfVS)));
+                m_vsPropsPass->SetInstanceIdSlot(slot);
+            }
         }
 
         //URB padding to 32Byte offsets

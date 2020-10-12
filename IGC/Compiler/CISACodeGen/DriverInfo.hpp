@@ -268,6 +268,14 @@ namespace IGC
         // Maximum id that can be used by simple push constant buffers. The default is maximum unsigned int (no restriction)
         virtual unsigned int MaximumSimplePushBufferID() const { return std::numeric_limits<unsigned int>::max(); }
 
+        /// Use first VB to send vertex&base instance and second for draw index
+        virtual bool UsesVertexBuffersToSendShaderDrawParameters() const { return false; }
+
+        /// Use indirect payload in CS
+        virtual bool UsesIndirectPayload() const { return true; }
+
+        virtual bool SupportsDispatchGPGPUWalkerAlongYFirst() const { return true; }
+
         /// Check if integer mad is enabled
         virtual bool EnableIntegerMad() const { return false; }
 
