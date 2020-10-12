@@ -74,6 +74,15 @@ namespace IGC
             unsigned addrSpace, llvm::Constant* argNumber, llvm::Instruction* InsertBefore);
         bool pointerIsPositiveOffsetFromKernelArgument(
             llvm::Function* F, llvm::Value* V, llvm::Value*& offset, unsigned int& argNumber);
+
+        // Check if the given gep can be traced back to any kernel argument.
+        // return the kernel argument if found, otherwise return nullptr.
+        // lastGep - the last gep of pointer address, nullptr if no GEP
+        const KernelArg* gepIsFromKernelArgument(const llvm::PointerType& ptrType, llvm::GetElementPtrInst* gep);
+
+        // check if the given pointer can be traced back to any kernel argument
+        bool pointerIsFromKernelArgument(llvm::Value& ptr);
+
         bool getOffsetFromGEP(
             llvm::Function* F, llvm::SmallVector<llvm::GetElementPtrInst*, 4> GEPs,
             uint32_t argNumber, bool isImplicitArg, llvm::Value*& offset);
