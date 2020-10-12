@@ -361,6 +361,8 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
 
   if (Opts.NoVecDecomp)
     Features.AddFeature("disable_vec_decomp");
+  if (Opts.NoJumpTables)
+    Features.AddFeature("disable_jump_tables");
   if (Opts.Binary == vc::BinaryKind::OpenCL ||
       Opts.Binary == vc::BinaryKind::ZE)
     Features.AddFeature("ocl_runtime");
@@ -677,6 +679,9 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
                             vc::CompileOptions &Opts) {
   if (ApiOptions.hasArg(vc::options::OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
+
+  if (ApiOptions.hasArg(vc::options::OPT_fno_jump_tables))
+    Opts.NoJumpTables = true;
 
   if (opt::Arg *A = ApiOptions.getLastArg(vc::options::OPT_optimize)) {
     StringRef Val = A->getValue();

@@ -60,6 +60,12 @@ def FeatureVectorDecomp : SubtargetFeature<"disable_vec_decomp",
                                            "true",
                                            "disable vector decomposition pass">;
 
+def FeatureNoJumpTables : SubtargetFeature<"disable_jump_tables", "DisableJumpTables",
+                                           "true", "disable switch to jump tables lowering">;
+
+def FeatureSwitchjmp : SubtargetFeature<"switchjmp", "HasSwitchjmp", "true",
+                                        "supports switchjmp visa instruction">;
+
 def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
                                     "true", "warn instead of error on callable violation">;
 
@@ -75,16 +81,16 @@ class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, NoItineraries, Features>;
 
 def : Proc<"generic",         []>;
-def : Proc<"HSW",             [FeatureLongLongEmulation]>;
-def : Proc<"BDW",             [FeatureLongLong]>;
-def : Proc<"CHV",             [FeatureLongLong]>;
-def : Proc<"SKL",             [FeatureLongLong]>;
-def : Proc<"BXT",             [FeatureLongLong]>;
-def : Proc<"KBL",             [FeatureLongLong]>;
-def : Proc<"GLK",             [FeatureLongLong]>;
-def : Proc<"CNL",             [FeatureLongLong]>;
-def : Proc<"ICL",             [FeatureLongLong]>;
-def : Proc<"ICLLP",           [FeatureLongLongEmulation]>;
+def : Proc<"HSW",             [FeatureLongLongEmulation, FeatureSwitchjmp]>;
+def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp]>;
+def : Proc<"CHV",             [FeatureLongLong, FeatureSwitchjmp]>;
+def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp]>;
+def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp]>;
+def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp]>;
+def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp]>;
+def : Proc<"CNL",             [FeatureLongLong, FeatureSwitchjmp]>;
+def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp]>;
+def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp]>;
 def : Proc<"TGLLP",           [FeatureLongLongEmulation]>;
 
 def GenX : Target {

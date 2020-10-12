@@ -59,9 +59,11 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   HasLongLong = false;
   DisableJmpi = false;
   DisableVectorDecomposition = false;
+  DisableJumpTables = false;
   WarnCallable = false;
   EmulateLongLong = false;
   OCLRuntime = false;
+  HasSwitchjmp = false;
 
   if (StackScratchMem)
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_T255;
