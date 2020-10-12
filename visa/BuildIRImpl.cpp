@@ -626,13 +626,13 @@ void IR_Builder::createPreDefinedVars()
             case PreDefinedVarsInternal::ARG:
             {
                 dcl = createDeclareNoLookup(name, G4_INPUT, numEltPerGRF(Type_UD), 32, Type_UD);
-                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(ArgRet_Stackcall::Arg), 0);
+                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(28), 0);
                 break;
             }
             case PreDefinedVarsInternal::RET:
             {
                 dcl = createDeclareNoLookup(name, G4_GRF, numEltPerGRF(Type_UD), 12, Type_UD);
-                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(ArgRet_Stackcall::Ret), 0);
+                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(16), 0);
                 dcl->setLiveOut();
                 break;
             }
@@ -640,7 +640,7 @@ void IR_Builder::createPreDefinedVars()
             {
                 unsigned int startReg = kernel.getFPSPGRF();
                 dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
-                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_Stackcall::FE_SP);
+                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_SP);
                 break;
             }
             case PreDefinedVarsInternal::FE_FP:
@@ -648,7 +648,7 @@ void IR_Builder::createPreDefinedVars()
                 // PREDEFINED_FE_FP
                 unsigned int startReg = kernel.getFPSPGRF();
                 dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
-                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_Stackcall::FE_FP);
+                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_FP);
                 break;
             }
             case PreDefinedVarsInternal::HW_TID:

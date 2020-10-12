@@ -883,10 +883,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
 
     int step = align == BankAlign::Even ? 2 : 1;
 
-    // First preference is to accommodate a variable in a free sub-register
-    // irrespective of caller/callee partition to piggyback on save/restore
-    // that'll be emitted anyway.
-    for (int idx = 0; idx < endReg; idx += step)
+    for (int idx = startReg; idx < endReg; idx += step)
     {
         if (forbidden && forbidden[idx])
         {
@@ -907,8 +904,8 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
         }
     }
 
-    // perform bias based assignment first
-    for (auto idx = startReg; idx < endReg; idx += step)
+    // full search as we skipped fully free GRFs earlier
+    for (unsigned int idx = 0; idx < totalGRFNum; idx += step)
     {
         if (forbidden && forbidden[idx])  // forbidden != NULL check forbidden
         {
@@ -921,26 +918,6 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
             phyReg.reg = idx;
             phyReg.subreg = subreg;
             return phyReg;
-        }
-    }
-
-    if (callerSaveBias || calleeSaveBias)
-    {
-        // no bias based assignment possible so search throughout GRF file
-        for (unsigned int idx = 0; idx < totalGRFNum; idx += step)
-        {
-            if (forbidden && forbidden[idx])  // forbidden != NULL check forbidden
-            {
-                continue;
-            }
-
-            int subreg = findContiguousWords(availableSubRegs[idx], subAlign, nwords);
-            if (subreg != -1)
-            {
-                phyReg.reg = idx;
-                phyReg.subreg = subreg;
-                return phyReg;
-            }
         }
     }
 

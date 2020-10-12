@@ -34,6 +34,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GraphColor.h"
 #include <unordered_map>
 
+#define CALLER_SAVE_START 1
+#define CALLEE_SAVE_START 60
 namespace vISA
 {
 class G4_Declare;
@@ -277,7 +279,6 @@ public:
     void generateCISAByteOffsetFromOffset();
     void updateRelocOffset();
     void updateCallStackLiveIntervals();
-    void updateCallStackMain();
     void generateGenISAToVISAIndex();
 
     void computeDebugInfo(std::list<G4_BB*>& stackCallEntryBBs);

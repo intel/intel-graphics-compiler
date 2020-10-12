@@ -372,12 +372,6 @@ private:
     // function call related declares
     G4_Declare* be_sp = nullptr;
     G4_Declare* be_fp = nullptr;
-    // Part FDE inst is the move that stores r125.[0-3] to a temp.
-    // This is used to restore ret %ip, ret EM, and BE ptrs.
-    G4_INST* savePartFDInst = nullptr;
-    // FDE spill inst is first spill instruction that writes frame
-    // descriptor to stack.
-    G4_INST* FDSpillInst = nullptr;
     G4_Declare* tmpFCRet = nullptr;
 
     unsigned short arg_size;
@@ -488,23 +482,12 @@ public:
 
     const USE_DEF_ALLOCATOR& getAllocator() const { return useDefAllocator; }
 
-    // Following enum describes layout of r125 on entry to a function.
-    // Ret_IP and Ret_EM may be altered due to callees. They'll be
-    // restored right before fret.
-    enum SubRegs_Stackcall
+    enum SubRegs_SP_FP
     {
-        Ret_IP = 0, // :ud
-        Ret_EM = 1, // :ud
-        BE_SP = 2, // :ud
-        BE_FP = 3, // :ud
-        FE_FP = 2, // :uq
-        FE_SP = 3, // :uq
-    };
-
-    enum ArgRet_Stackcall
-    {
-        Arg = 28,
-        Ret = 28
+        FE_SP = 0, // Can be either :ud or :uq
+        FE_FP = 1, // Can be either :ud or :uq
+        BE_SP = 6, // :ud
+        BE_FP = 7 // :ud
     };
 
     // Getter/setter for be_sp and be_fp
@@ -513,7 +496,7 @@ public:
         if (be_sp == NULL)
         {
             be_sp = createDeclareNoLookup("be_sp", G4_GRF, 1, 1, Type_UD);
-            be_sp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_Stackcall::BE_SP);
+            be_sp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_SP_FP::BE_SP);
         }
 
         return be_sp;
@@ -524,17 +507,11 @@ public:
         if (be_fp == NULL)
         {
             be_fp = createDeclareNoLookup("be_fp", G4_GRF, 1, 1, Type_UD);
-            be_fp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_Stackcall::BE_FP);
+            be_fp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_SP_FP::BE_FP);
         }
 
         return be_fp;
     }
-
-    G4_INST* getPartFDSaveInst() const { return savePartFDInst; }
-    void setPartFDSaveInst(G4_INST* i) { savePartFDInst = i; }
-
-    G4_INST* getFDSpillInst() const { return FDSpillInst; }
-    void setFDSpillInst(G4_INST* i) { FDSpillInst = i; }
 
     G4_Declare* getStackCallArg() const {
         return preDefVars.getPreDefinedVar(PreDefinedVarsInternal::ARG);

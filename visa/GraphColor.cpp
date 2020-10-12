@@ -6897,23 +6897,7 @@ void GraphColor::stackCallProlog()
     // Kernel should've already setup r0 in r126.
     // Useful data in r126 is expected to be preserved by all functions.
     if (kernel.fg.getIsStackCallFunc())
-    {
-        // emit frame descriptor
-        auto payload = builder.createHardwiredDeclare(8, Type_UD, kernel.getFPSPGRF(), 0);
-        payload->setName(builder.getNameString(builder.kernel.fg.mem, 24, "FrameDescriptorGRF"));
-        auto payloadSrc = builder.Create_Src_Opnd_From_Dcl(payload, builder.getRegionStride1());
-        const unsigned int execSize = 8;
-        G4_DstRegRegion* postDst = builder.createNullDst(Type_UD);
-        G4_INST* store = nullptr;
-        {
-            store = builder.createSpill(postDst, payloadSrc, G4_ExecSize(execSize), 1, 0, builder.getBESP(), InstOpt_WriteEnable);
-        }
-        builder.setFDSpillInst(store);
-        G4_BB* entryBB = builder.kernel.fg.getEntryBB();
-        auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
-        entryBB->insertBefore(iter, store);
         return;
-    }
 
     auto dstRgn = builder.Create_Dst_Opnd_From_Dcl(builder.kernel.fg.scratchRegDcl, 1);
     auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
@@ -6930,17 +6914,17 @@ void GraphColor::stackCallProlog()
 //
 void GraphColor::saveRegs(
     unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
+    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt)
 {
 
     assert(builder.getPlatform() >= GENX_SKL && "stack call only supported on SKL+");
 
     if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
-        // add (1) r126.2<1>:ud    r125.3<0;1,0>:ud    0x2:ud
+        // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
         // sends (8) null<1>:ud    r126.0    r1.0 ...
         G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
-        unsigned messageLength = GlobalRA::owordToGRFSize(owordSize);
+        unsigned messageLength = ROUND(owordSize, 2) / 2;
         G4_Declare* msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
@@ -6950,28 +6934,27 @@ void GraphColor::saveRegs(
         G4_INST* spillIntrinsic = nullptr;
         spillIntrinsic = builder.createSpill(dst, sendSrc2, execSize, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable);
         bb->insertBefore(insertIt, spillIntrinsic);
-        group.insert(spillIntrinsic);
     }
     else if (owordSize > 8)
     {
-        saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group);
-        saveRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt, group);
+        saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        saveRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
     }
     //
     // Split into chunks of sizes 4 and remaining owords.
     //
     else if (owordSize > 4)
     {
-        saveRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group);
-        saveRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt, group);
+        saveRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        saveRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
     }
     //
     // Split into chunks of sizes 2 and remaining owords.
     //
     else if (owordSize > 2)
     {
-        saveRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group);
-        saveRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt, group);
+        saveRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        saveRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
     }
     else
     {
@@ -6984,7 +6967,7 @@ void GraphColor::saveRegs(
 //
 void GraphColor::saveActiveRegs(
     std::vector<bool>& saveRegs, unsigned startReg, unsigned frameOffset,
-    G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
+    G4_BB* bb, INST_LIST_ITER insertIt)
 {
     G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
@@ -7000,7 +6983,7 @@ void GraphColor::saveActiveRegs(
             for (; endPos < saveRegs.size() && saveRegs[endPos] == true; endPos++);
             unsigned owordSize = (endPos - startPos) * GlobalRA::GRFSizeToOwords(1);
             owordSize = std::max(owordSize, GlobalRA::GRFSizeToOwords(1));
-            this->saveRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt, group);
+            this->saveRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt);
             frameOwordPos += owordSize;
             startPos = endPos;
         }
@@ -7017,7 +7000,7 @@ G4_SrcRegRegion* GraphColor::getScratchSurface() const
 //
 void GraphColor::restoreRegs(
     unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
+    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt)
 {
     //
     // Process chunks of size 8, 4, 2 and 1.
@@ -7025,7 +7008,7 @@ void GraphColor::restoreRegs(
     if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
         G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
-        unsigned responseLength = GlobalRA::owordToGRFSize(owordSize);
+        unsigned responseLength = ROUND(owordSize, 2) / 2;
         G4_Declare* dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, GraphColor::StackCallStr);
         dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
@@ -7033,31 +7016,30 @@ void GraphColor::restoreRegs(
         G4_INST* fillIntrinsic = nullptr;
         fillIntrinsic = builder.createFill(dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
         bb->insertBefore(insertIt, fillIntrinsic);
-        group.insert(fillIntrinsic);
     }
     //
     // Split into chunks of sizes 8 and remaining owords.
     //
     else if (owordSize > 8)
     {
-        restoreRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group);
-        restoreRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt, group);
+        restoreRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        restoreRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
     }
     //
     // Split into chunks of sizes 4 and remaining owords.
     //
     else if (owordSize > 4)
     {
-        restoreRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group);
-        restoreRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt, group);
+        restoreRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        restoreRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
     }
     //
     // Split into chunks of sizes 2 and remaining owords.
     //
     else if (owordSize > 2)
     {
-        restoreRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt, group);
-        restoreRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt, group);
+        restoreRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        restoreRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
     }
     else
     {
@@ -7070,7 +7052,7 @@ void GraphColor::restoreRegs(
 //
 void GraphColor::restoreActiveRegs(
     std::vector<bool>& restoreRegs, unsigned startReg, unsigned frameOffset,
-    G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
+    G4_BB* bb, INST_LIST_ITER insertIt)
 {
     G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
@@ -7086,7 +7068,7 @@ void GraphColor::restoreActiveRegs(
             for (; endPos < restoreRegs.size() && restoreRegs[endPos] == true; endPos++);
             unsigned owordSize = (endPos - startPos) * GlobalRA::GRFSizeToOwords(1);
             owordSize = std::max(owordSize, GlobalRA::GRFSizeToOwords(1));
-            this->restoreRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt, group);
+            this->restoreRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt);
             frameOwordPos += owordSize;
             startPos = endPos;
         }
@@ -7292,7 +7274,7 @@ void GraphColor::addCallerSaveRestoreCode()
                 }
 
                 saveActiveRegs(callerSaveRegs, 0, builder.kernel.fg.callerSaveAreaOffset,
-                    (*it), insertSaveIt, gra.callerSaveInsts[callInst]);
+                    (*it), insertSaveIt);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
@@ -7317,7 +7299,7 @@ void GraphColor::addCallerSaveRestoreCode()
                 }
 
                 restoreActiveRegs(callerSaveRegs, 0, builder.kernel.fg.callerSaveAreaOffset,
-                    afterFCallBB, insertRestIt, gra.callerRestoreInsts[callInst]);
+                    afterFCallBB, insertRestIt);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
@@ -7413,7 +7395,7 @@ void GraphColor::addCalleeSaveRestoreCode()
             (builder.kernel.fg.getEntryBB());
         }
         saveActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
-            builder.kernel.fg.getEntryBB(), insertSaveIt, gra.calleeSaveInsts);
+            builder.kernel.fg.getEntryBB(), insertSaveIt);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
@@ -7443,7 +7425,7 @@ void GraphColor::addCalleeSaveRestoreCode()
         }
 
         restoreActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
-            builder.kernel.fg.getUniqueReturnBlock(), insertRestIt, gra.calleeRestoreInsts);
+            builder.kernel.fg.getUniqueReturnBlock(), insertRestIt);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
@@ -7533,8 +7515,21 @@ void GraphColor::addCalleeStackSetupCode()
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
     G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
 
-    MUST_BE_TRUE(frameSize > 0, "frame size cannot be 0");
+    if (frameSize == 0)
+    {
+        // Remove store/restore_be_fp because a new frame is not needed
+        G4_BB* entryBB = builder.kernel.fg.getEntryBB();
+        auto insertIt = std::find(entryBB->begin(), entryBB->end(), gra.getSaveBE_FPInst());
+        builder.kernel.fg.getEntryBB()->erase(insertIt);
 
+        insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
+        for (--insertIt; (*insertIt) != gra.getRestoreBE_FPInst(); --insertIt)
+        {   /* void */
+        };
+        builder.kernel.fg.getUniqueReturnBlock()->erase(insertIt);
+
+        return;
+    }
     //
     // BE_FP = BE_SP
     // BE_SP += FrameSize
@@ -7556,7 +7551,9 @@ void GraphColor::addCalleeStackSetupCode()
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
+            G4_INST* callerFPSave = (*insertIt);
             builder.kernel.getKernelDebugInfo()->setBEFPSetupInst(createBEFP);
+            builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(callerFPSave);
             builder.kernel.getKernelDebugInfo()->setFrameSize(frameSize * 16);
         }
 
@@ -7564,10 +7561,27 @@ void GraphColor::addCalleeStackSetupCode()
         entryBB->insertBefore(insertIt, createBEFP);
         entryBB->insertBefore(insertIt, addInst);
     }
+    //
+    // BE_SP = BE_FP
+    // BE_FP = oldFP (dst of pseudo_restore_be_fp)
+    //
+    {
+        G4_DstRegRegion* sp_dst = builder.createDst(stackPtr->getRegVar(), 0, 0, 1, Type_UD);
+        const RegionDesc* rDesc = builder.getRegionScalar();
+        G4_Operand* fp_src = builder.createSrcRegRegion(
+            Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, rDesc, Type_UD);
+        G4_INST* spRestore = builder.createMov(g4::SIMD1, sp_dst, fp_src, InstOpt_WriteEnable, false);
+        INST_LIST_ITER insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
+        for (--insertIt; (*insertIt) != gra.getRestoreBE_FPInst(); --insertIt);
 
-    // Stack is destroyed in function addStoreRestoreToReturn() where part FDE is restored before fret.
-    // This is an optimization as 1 SIMD4 instruction restores ret %ip, ret EM, caller's BE_FP, BE_SP.
-
+        if (builder.kernel.getOption(vISA_GenerateDebugInfo))
+        {
+            G4_INST* callerFPRestore = (*insertIt);
+            builder.kernel.getKernelDebugInfo()->setCallerSPRestoreInst(spRestore);
+            builder.kernel.getKernelDebugInfo()->setCallerBEFPRestoreInst(callerFPRestore);
+        }
+        builder.kernel.fg.getUniqueReturnBlock()->insertBefore(insertIt, spRestore);
+    }
     builder.instList.clear();
 
     if (m_options->getOption(vISA_OptReport))
@@ -7783,8 +7797,8 @@ void GlobalRA::addCallerSavePseudoCode()
             if (retSize > 0)
             {
                 const char* name = builder.getNameString(builder.mem, 32, "FCALL_RETVAL_%d", retID++);
-                auto retDcl = builder.createHardwiredDeclare(numEltPerGRF(Type_UD) * retSize, Type_UD, IR_Builder::ArgRet_Stackcall::Ret, 0);
-                retDcl->setName(name);
+                G4_Declare* retDcl = builder.createDeclareNoLookup(name, G4_GRF, numEltPerGRF(Type_UD), retSize, Type_UD);
+                retDcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(16), 0);
                 fcallRetMap.insert(std::pair<G4_Declare*, G4_Declare*>(pseudoVCADcl, retDcl));
             }
 
@@ -7838,31 +7852,23 @@ void GlobalRA::addCalleeSavePseudoCode()
 }
 
 //
-// Insert store r125.[0-4] at entry and restore before return.
-// Dst of store will be a hardwired temp at upper end of caller save area.
-// This method emits:
-// (W) mov (4) SR_BEStack<1>:ud    r125.0<4;4,1>:ud <-- in prolog
-// (W) mov (4) r125.0<1>:ud        SR_BEStack<4;4,1>:ud <-- in epilog
-void GlobalRA::addStoreRestoreToReturn()
+// Insert pseudo operation to store fp at entry and restore before return.
+// Dst of store will be a temp that will run through RA and get an allocation.
+//
+void GlobalRA::addStoreRestoreForFP()
 {
-    unsigned int regNum = builder.kernel.getCallerSaveLastGRF();
-    unsigned int subRegNum = numEltPerGRF(Type_UD) - 4;
-    oldFPDcl = builder.createHardwiredDeclare(4, Type_UD, regNum, subRegNum);
-    oldFPDcl->setName(builder.getNameString(builder.kernel.fg.mem, 24, "CallerSaveRetIp_BE_FP"));
+    G4_Declare* prevFP = builder.createTempVar(1, Type_UD, Any);
+    oldFPDcl = prevFP;
+    G4_DstRegRegion* oldFPDst = builder.createDst(prevFP->getRegVar(), 0, 0, 1, Type_UD);
+    const RegionDesc* rd = builder.getRegionScalar();
+    G4_Operand* oldFPSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, prevFP->getRegVar(), 0, 0, rd, Type_UD);
 
-    G4_DstRegRegion* oldFPDst = builder.createDst(oldFPDcl->getRegVar(), 0, 0, 1, Type_UD);
-    const RegionDesc* rd = builder.getRegionStride1();
-    G4_Operand* oldFPSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, oldFPDcl->getRegVar(), 0, 0, rd, Type_UD);
-
-    auto SRDecl = builder.createHardwiredDeclare(4, Type_UD, builder.kernel.getFPSPGRF(), IR_Builder::SubRegs_Stackcall::Ret_IP);
-    SRDecl->setName(builder.getNameString(builder.kernel.fg.mem, 24, "SR_BEStack"));
-    G4_DstRegRegion* FPdst = builder.createDst(SRDecl->getRegVar(), 0, 0, 1, Type_UD);
-    rd = builder.getRegionStride1();
+    G4_DstRegRegion* FPdst = builder.createDst(builder.kernel.fg.framePtrDcl->getRegVar(), 0, 0, 1, Type_UD);
+    rd = builder.getRegionScalar();
     G4_Operand* FPsrc = builder.createSrcRegRegion(
-        Mod_src_undef, Direct, SRDecl->getRegVar(), 0, 0, rd, Type_UD);
+        Mod_src_undef, Direct, builder.kernel.fg.framePtrDcl->getRegVar(), 0, 0, rd, Type_UD);
 
-    saveBE_FPInst = builder.createMov(g4::SIMD4, oldFPDst, FPsrc, InstOpt_WriteEnable, false);
-    builder.setPartFDSaveInst(saveBE_FPInst);
+    saveBE_FPInst = builder.createMov(g4::SIMD1, oldFPDst, FPsrc, InstOpt_WriteEnable, false);
     INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
     for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
         ++insertIt)
@@ -7870,19 +7876,12 @@ void GlobalRA::addStoreRestoreToReturn()
     };
     builder.kernel.fg.getEntryBB()->insertBefore(insertIt, saveBE_FPInst);
 
-    restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
+    restoreBE_FPInst = builder.createMov(g4::SIMD1, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
     insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
     for (--insertIt; (*insertIt)->isFReturn() == false; --insertIt)
     {   /*  void */
     };
     builder.kernel.fg.getUniqueReturnBlock()->insertBefore(insertIt, restoreBE_FPInst);
-
-    if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-    {
-        builder.kernel.getKernelDebugInfo()->setCallerBEFPRestoreInst(restoreBE_FPInst);
-        builder.kernel.getKernelDebugInfo()->setCallerSPRestoreInst(restoreBE_FPInst);
-        builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(saveBE_FPInst);
-    }
 
     auto gtpin = builder.kernel.getGTPinData();
     if (gtpin &&
@@ -9346,7 +9345,7 @@ int GlobalRA::coloringRegAlloc()
         if (builder.getIsKernel() == false)
         {
             addCalleeSavePseudoCode();
-            addStoreRestoreToReturn();
+            addStoreRestoreForFP();
         }
 
         //bind builtinR0 to the reserved stack call ABI GRF so that caller and callee can agree on which GRF to use for r0
@@ -9444,13 +9443,6 @@ int GlobalRA::coloringRegAlloc()
 
     uint32_t nextSpillOffset = 0;
     uint32_t scratchOffset = 0;
-
-    if (kernel.fg.getIsStackCallFunc())
-    {
-        // Allocate space to store Frame Descriptor
-        nextSpillOffset += 32;
-        scratchOffset += 32;
-    }
 
     uint32_t GRFSpillFillCount = 0;
     uint32_t sendAssociatedGRFSpillFillCount = 0;
