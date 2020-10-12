@@ -1114,6 +1114,29 @@ static bool PatchImpArgOffset(Function *F, const GenXSubtarget *ST,
   return false;
 }
 
+static unsigned getStateVariableSizeInBytes(const Type *Ty,
+                                            const unsigned ElemSize) {
+  auto *VTy = dyn_cast<VectorType>(Ty);
+  if (!VTy)
+    return ElemSize;
+  return ElemSize * VTy->getNumElements();
+}
+
+static unsigned getInputSizeInBytes(const DataLayout &DL,
+                                    const unsigned ArgCategory, Type *Ty) {
+  switch (ArgCategory) {
+  case RegCategory::GENERAL:
+    return DL.getTypeSizeInBits(Ty) / genx::ByteBits;
+  case RegCategory::SAMPLER:
+    return getStateVariableSizeInBytes(Ty, genx::SamplerElementBytes);
+  case RegCategory::SURFACE:
+    return getStateVariableSizeInBytes(Ty, genx::SurfaceElementBytes);
+  default:
+    break;
+  }
+  IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected register category for input");
+}
+
 void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
 
   IGC_ASSERT(F->arg_size() == TheKernelMetadata.getNumArgs() &&
@@ -1145,10 +1168,8 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
       Offset = TheKernelMetadata.getArgOffset(Idx);
     }
     // Argument size in bytes.
-    auto &DL = F->getParent()->getDataLayout();
-    Type *Ty = Arg->getType();
-    uint16_t NumBytes = Ty->isPointerTy() ? DL.getPointerTypeSize(Ty)
-                                          : (Ty->getPrimitiveSizeInBits() / 8U);
+    const unsigned NumBytes = getInputSizeInBytes(
+        DL, TheKernelMetadata.getArgCategory(Idx), Arg->getType());
 
     switch (Kind & 0x7) {
     case visa::VISA_INPUT_GENERAL:

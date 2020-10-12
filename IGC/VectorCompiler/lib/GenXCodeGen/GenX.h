@@ -139,6 +139,9 @@ const constexpr int DWordBytes = DWordBits / ByteBits;
 const constexpr int QWordBytes = QWordBits / ByteBits;
 const constexpr int OWordBytes = OWordBits / ByteBits;
 
+const constexpr int SurfaceElementBytes = 4;
+const constexpr int SamplerElementBytes = 4;
+
 // Currently EM determines behavior of 32 lanes.
 // Probably that should be moved to subtarget if
 // different targets will support different EM sizes.
