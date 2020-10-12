@@ -3126,12 +3126,9 @@ void FlowGraph::setABIForStackCallFunctionCalls()
             const char* n = builder->getNameString(mem, 25, "FCALL_RET_LOC_%d", call_id++);
 
             G4_INST* fcall = bb->back();
-            // Set call dst to r1.0, here reserve 8 dwords in r1.0 for the use of call dst
-            // The call dst requires only 2 dword, so in VISAKernelImpl::expandIndirectCallWithRegTarget
-            // we take r1.2, r1.3 as the tmp register for calculating the call target offset, if required.
-            // That function assumes r1.0 is reserved here and r1.2, r1.3 won't be used
+            // Set call dst to r125.0
             G4_Declare* r1_dst = builder->createDeclareNoLookup(n, G4_GRF, numEltPerGRF(Type_UD), 1, Type_UD);
-            r1_dst->getRegVar()->setPhyReg(builder->phyregpool.getGreg(1), 0);
+            r1_dst->getRegVar()->setPhyReg(builder->phyregpool.getGreg(builder->kernel.getFPSPGRF()), IR_Builder::SubRegs_Stackcall::Ret_IP);
             G4_DstRegRegion* dstRgn = builder->createDst(r1_dst->getRegVar(), 0, 0, 1, Type_UD);
             fcall->setDest(dstRgn);
         }
@@ -3142,7 +3139,7 @@ void FlowGraph::setABIForStackCallFunctionCalls()
             G4_INST* fret = bb->back();
             const RegionDesc* rd = builder->createRegionDesc(2, 2, 1);
             G4_Declare* r1_src = builder->createDeclareNoLookup(n, G4_INPUT, numEltPerGRF(Type_UD), 1, Type_UD);
-            r1_src->getRegVar()->setPhyReg(builder->phyregpool.getGreg(1), 0);
+            r1_src->getRegVar()->setPhyReg(builder->phyregpool.getGreg(builder->kernel.getFPSPGRF()), IR_Builder::SubRegs_Stackcall::Ret_IP);
             G4_Operand* srcRgn = builder->createSrcRegRegion(Mod_src_undef, Direct, r1_src->getRegVar(), 0, 0, rd, Type_UD);
             fret->setSrc(srcRgn, 0);
             if (fret->getExecSize() == g4::SIMD1)
