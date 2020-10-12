@@ -489,7 +489,7 @@ unsigned getLogAlignment(VISA_Align Align, unsigned GRFWidth);
 VISA_Align getVISA_Align(unsigned LogAlignment, unsigned GRFWidth);
 // Some log alignments cannot be transparently transformed to VISA_Align. This
 // chooses suitable log alignment which is convertible to VISA_Align.
-unsigned CeilAlignment(unsigned LogAlignment, unsigned GRFWidth);
+unsigned ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth);
 
 // If \p Ty is degenerate vector type <1 x ElTy>,
 // ElTy is returned, otherwise original type \p Ty is returned.

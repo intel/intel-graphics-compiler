@@ -1667,7 +1667,7 @@ VISA_Align genx::getVISA_Align(unsigned LogAlignment, unsigned GRFWidth) {
     report_fatal_error("Unknown log alignment");
 }
 
-unsigned genx::CeilAlignment(unsigned LogAlignment, unsigned GRFWidth) {
+unsigned genx::ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth) {
   if (LogAlignment <= Log2_32(ByteBytes))
     return Log2_32(ByteBytes);
   else if (LogAlignment <= Log2_32(WordBytes))
