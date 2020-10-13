@@ -152,7 +152,6 @@ struct CompileOptions {
 
   // Api accessible options.
   bool NoVecDecomp = false;
-  bool NoJumpTables = false;
   OptimizerLevel OptLevel = OptimizerLevel::Full;
   llvm::Optional<unsigned> StackMemSize;
 

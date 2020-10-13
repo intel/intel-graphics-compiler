@@ -37,7 +37,6 @@ set(CODEGEN_SOURCES
   GenXLiveness.cpp
   GenXLowering.cpp
   GenXLowerAggrCopies.cpp
-  GenXLowerJmpTableSwitch.cpp
   GenXEmulate.cpp
   GenXModule.cpp
   GenXNumbering.cpp
