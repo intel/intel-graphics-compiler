@@ -2423,18 +2423,18 @@ namespace IGC
         // Cannot compile simd32 for function calls due to slicing
         if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
         {
-            // Default stack call and functions pointers to SIMD16
-            // If subgroup size is set, only allow SIMD16 and SIMD8
-            if (!pCtx->m_enableSubroutine || simd_size)
+            // Fail on SIMD32 for all groups with function calls
+            if (simdMode == SIMDMode::SIMD32)
             {
-                if (simdMode == SIMDMode::SIMD32)
-                {
-                    pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-                    return SIMDStatus::SIMD_FUNC_FAIL;
-                }
+                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                return SIMDStatus::SIMD_FUNC_FAIL;
             }
-            // Default subroutines to SIMD8
-            else if (simdMode != SIMDMode::SIMD8)
+            // Group has no stackcalls, is not the SymbolTable dummy kernel, and subgroup size is not set
+            // Just subroutines, default to SIMD8
+            if (!m_FGA->getGroup(&F)->hasStackCall() &&
+                !IGC::isIntelSymbolTableVoidProgram(m_FGA->getGroupHead(&F)) &&
+                simd_size == 0 &&
+                simdMode != SIMDMode::SIMD8)
             {
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                 return SIMDStatus::SIMD_FUNC_FAIL;
