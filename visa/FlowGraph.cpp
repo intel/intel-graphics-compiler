@@ -3372,6 +3372,45 @@ void FlowGraph::setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB)
 */
 void FlowGraph::processGoto(bool HasSIMDCF)
 {
+    // For all BBs in [StartBB, EndBB) (including StartBB, but not including EndBB) that
+    // jump after EndBB (forward jump), return the earlist (closed to EndBB). If no such
+    // BB, return nullptr.
+    // Assumption:  1. BB's id is in the increasing order; and 2) physical succ has been set.
+    auto getEarliestJmpOutBB = [](const G4_BB* StartBB, const G4_BB* EndBB) -> G4_BB*
+    {
+        G4_BB* earliestBB = nullptr;
+        const G4_BB* bb = StartBB;
+        while (bb != EndBB)
+        {
+            const G4_BB* currBB = bb;
+            bb = bb->getPhysicalSucc();
+            if (currBB->empty())
+            {
+                continue;
+            }
+
+            G4_INST* lastInst = currBB->back();
+            if (lastInst->opcode() != G4_goto ||
+                lastInst->asCFInst()->isBackward() ||
+                lastInst->asCFInst()->isUniform())
+            {
+                continue;
+            }
+
+            for (auto SuccBB : currBB->Succs)
+            {
+                G4_BB* tb = SuccBB;
+                uint32_t tb_id = tb->getId();
+                if (tb_id > EndBB->getId() &&
+                    (earliestBB == nullptr || earliestBB->getId() > tb_id))
+                {
+                    earliestBB = tb;
+                }
+            }
+        }
+        return earliestBB;
+    };
+
     // list of active blocks where a join needs to be inserted, sorted in lexical order
     std::list<BlockSizePair> activeJoinBlocks;
     bool doScalarJmp = !builder->noScalarJmp();
@@ -3431,20 +3470,18 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     // (P1) goto exit
                     // (P2) goto L2
                     // goto L1
-                    // L2:
+                    // L2:                <-- earliest after-loop goto target
                     // ...
                     // exit:
                     //
-                    // In this case the goto exit's JIP should be set to L2 as there may be channels
-                    // waiting there due to "goto L2"
-                    G4_BB* loopExitBB = predBB->getPhysicalSucc();
-
-                    // loop exit may be null if the loop is the outer-most one (i.e., the loop has
-                    // no breaks but only EOT sends). Also, if it is a single-BB loop, no need to add
-                    // join (TODO: better solution on whether a join is needed).
-                    if (loopExitBB != NULL && predBB != bb)
+                    // In this case, L2 shall be the 1st after-loop join (not necessarily the one immediately
+                    // after the backward BB). The goto exit's JIP should be set to L2.
+                    //
+                    // Here, we will add the 1st after-loop join so that any out-loop JIP (either goto or
+                    // join) within the loop body will has its JIP set to this join.
+                    if (G4_BB* afterLoopJoinBB = getEarliestJmpOutBB(bb, predBB))
                     {
-                        addBBToActiveJoinList(activeJoinBlocks, loopExitBB, eSize);
+                        addBBToActiveJoinList(activeJoinBlocks, afterLoopJoinBB, eSize);
                     }
                 }
                 else

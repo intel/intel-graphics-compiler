@@ -361,7 +361,9 @@ public:
     size_t size() const { return instList.size(); }
     bool empty() const { return instList.empty(); }
     G4_INST* front() { return instList.front(); }
+    G4_INST* front() const { return instList.front(); }
     G4_INST* back() { return instList.back(); }
+    G4_INST* back() const { return instList.back(); }
     // splice functions below expect caller to have correctly set CISA offset
     // in instructions to be spliced. CISA offsets must be maintained to
     // preserve debug info links.
