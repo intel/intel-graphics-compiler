@@ -2500,22 +2500,23 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
       createSource(Src, Signed, Baled, 0)));
 }
 
-static unsigned getResultedTypeSize(Type *Ty) {
+static unsigned getResultedTypeSize(Type *Ty, const DataLayout& DL) {
   unsigned TySz = 0;
   if (Ty->isVectorTy())
     TySz = cast<VectorType>(Ty)->getNumElements() *
-           getResultedTypeSize(cast<VectorType>(Ty)->getElementType());
+           getResultedTypeSize(cast<VectorType>(Ty)->getElementType(), DL);
   else if (Ty->isArrayTy())
     TySz = Ty->getArrayNumElements() *
-           getResultedTypeSize(Ty->getArrayElementType());
+           getResultedTypeSize(Ty->getArrayElementType(), DL);
   else if (Ty->isStructTy()) {
     StructType *STy = dyn_cast<StructType>(Ty);
     IGC_ASSERT(STy);
     for (Type *Ty : STy->elements())
-      TySz += getResultedTypeSize(Ty);
-  } else if (Ty->isPointerTy() && Ty->getPointerElementType()->isFunctionTy()) {
-    TySz = BYTES_PER_FADDR;
-  } else {
+      TySz += getResultedTypeSize(Ty, DL);
+  } else if (Ty->isPointerTy())
+    TySz = Ty->getPointerElementType()->isFunctionTy() ?
+      BYTES_PER_FADDR : DL.getPointerSize();
+  else {
     TySz = Ty->getPrimitiveSizeInBits() / CHAR_BIT;
     IGC_ASSERT(TySz && "Ty is not primitive?");
   }
@@ -3499,8 +3500,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     Value *V = CI;
     if (!AI.isRet())
       V = CI->getArgOperand(AI.getArgIdx());
-    unsigned ElBytes =
-        V->getType()->getScalarType()->getPrimitiveSizeInBits() / 8;
+    unsigned ElBytes = getResultedTypeSize(V->getType()->getScalarType(), DL);
     switch (ElBytes) {
       // For N = 2 byte data type, use block size 1 and block count 2.
       // Otherwise, use block size N and block count 1.
@@ -4207,7 +4207,7 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
 
   Value *AllocaOff = CI->getOperand(0);
   Type *AllocaOffTy = AllocaOff->getType();
-  unsigned OffVal = getResultedTypeSize(AllocaOffTy);
+  unsigned OffVal = getResultedTypeSize(AllocaOffTy, DL);
 
   VISA_VectorOpnd *Imm = nullptr;
   CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_D));
