@@ -35,8 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
-#include "llvmWrapper/IR/Argument.h"
-#include "llvmWrapper/IR/Attributes.h"
+#include "llvm/IR/Argument.h"
+#include "llvm/IR/Attributes.h"
 #include "llvmWrapper/Analysis/InlineCost.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SCCIterator.h"
@@ -47,7 +47,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Instructions.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/Inliner.h"
-#include "llvm/Transforms/Utils/Cloning.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -365,7 +365,9 @@ static bool DeduceNonNullAttribute(Module& M)
             }
 
             if (NotNull) {
-                IGCLLVM::ArgumentAddAttr(Arg, Arg.getArgNo() + 1, llvm::Attribute::NonNull);
+                // FIXME: Below lines possibly can be refactored to be simpler.
+                AttributeList attrSet = AttributeList::get(Arg.getParent()->getContext(), Arg.getArgNo() + 1, llvm::Attribute::NonNull);
+                Arg.addAttr(attrSet.getAttribute(Arg.getArgNo() + 1, llvm::Attribute::NonNull));
                 Modifided = true;
             }
         }

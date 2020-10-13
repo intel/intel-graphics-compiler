@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/Function.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
@@ -339,7 +339,7 @@ Argument* ImageFuncResolution::getImplicitImageArg(CallInst& CI, ImplicitArg::Ar
     unsigned int implicitArgIndex = m_implicitArgs.getImageArgIndex(argType, image);
 
     Function* pFunc = CI.getParent()->getParent();
-    unsigned int implicitArgIndexInFunc = IGCLLVM::GetFuncArgSize(pFunc) - numImplicitArgs + implicitArgIndex;
+    unsigned int implicitArgIndexInFunc = pFunc->arg_size() - numImplicitArgs + implicitArgIndex;
 
     Function::arg_iterator arg = pFunc->arg_begin();
     for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);

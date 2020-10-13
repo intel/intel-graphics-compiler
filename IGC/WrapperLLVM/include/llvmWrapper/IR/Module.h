@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Module.h"
-#include "Attributes.h"
+#include "llvm/IR/Attributes.h"
 
 namespace IGCLLVM
 {
@@ -47,9 +47,9 @@ namespace IGCLLVM
 		{
             return llvm::Module::getOrInsertFunction(Name, Ty).getCallee();
 		}
-        inline llvm::Value* getOrInsertFunction(llvm::StringRef Name, llvm::FunctionType *Ty, IGCLLVM::AttributeSet AttributeList)
+        inline llvm::Value* getOrInsertFunction(llvm::StringRef Name, llvm::FunctionType *Ty, llvm::AttributeList attributeList)
         {
-            return llvm::Module::getOrInsertFunction(Name, Ty, AttributeList).getCallee();
+            return llvm::Module::getOrInsertFunction(Name, Ty, attributeList).getCallee();
         }
     };
 #endif

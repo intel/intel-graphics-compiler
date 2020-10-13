@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Intrinsics.h>
-#include <llvmWrapper/IR/Function.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -241,7 +241,7 @@ namespace IGC
         llvm::Value* pHSControlPointID = llvm::GenISAIntrinsic::getDeclaration(pNewFunction->getParent(),
             GenISAIntrinsic::GenISA_DCL_HSControlPointID);
 
-        unsigned int argIndexInFunc = IGCLLVM::GetFuncArgSize(pNewFunction) - 1;
+        unsigned int argIndexInFunc = pNewFunction->arg_size() - 1;
         Function::arg_iterator arg = pNewFunction->arg_begin();
         for (unsigned int i = 0; i < argIndexInFunc; ++i, ++arg);
 

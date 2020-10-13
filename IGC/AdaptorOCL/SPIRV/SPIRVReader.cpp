@@ -3378,7 +3378,7 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
   BF->foreachReturnValueAttr([&](SPIRVFuncParamAttrKind Kind){
     if (Kind == FunctionParameterAttributeCount)
       return;
-    F->addAttribute(IGCLLVM::AttributeSet::ReturnIndex,
+    F->addAttribute(AttributeList::ReturnIndex,
         SPIRSPIRVFuncParamAttrMap::rmap(Kind));
   });
 
@@ -4239,7 +4239,7 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
       BC->getName(),
       BB);
   setCallingConv(Call);
-  Call->addAttribute(IGCLLVM::AttributeSet::FunctionIndex, Attribute::NoUnwind);
+  Call->addAttribute(AttributeList::FunctionIndex, Attribute::NoUnwind);
   return Call;
 }
 

@@ -614,7 +614,7 @@ namespace IGC {
             NewLd->setVolatile(RefLd->isVolatile());
             NewLd->setAlignment(IGCLLVM::getCorrectAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
             NewLd->setOrdering(RefLd->getOrdering());
-            IGCLLVM::CopySyncScopeID(NewLd, RefLd);
+            NewLd->setSyncScopeID(RefLd->getSyncScopeID());
         }
 
         template<> inline
@@ -626,7 +626,7 @@ namespace IGC {
             NewSt->setVolatile(RefSt->isVolatile());
             NewSt->setAlignment(IGCLLVM::getCorrectAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
             NewSt->setOrdering(RefSt->getOrdering());
-            IGCLLVM::CopySyncScopeID(NewSt, RefSt);
+            NewSt->setSyncScopeID(RefSt->getSyncScopeID());
         }
 
     } // End Legalizer namespace

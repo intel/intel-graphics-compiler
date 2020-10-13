@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/igc_regkeys.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/Function.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>
@@ -446,7 +446,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
     bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF) || isNonEntryMultirateShader(pF);
 
     ImplicitArgs implicitArgs(*pF, m_pMdUtils);
-    int implicitArgStart = (unsigned)(IGCLLVM::GetFuncArgSize(pF)
+    int implicitArgStart = (unsigned)(pF->arg_size()
         - implicitArgs.size()
         - (IsSubroutine ? 0 : m_ModMD->pushInfo.pushAnalysisWIInfos.size()));
     IGC_ASSERT(implicitArgStart >= 0 && "Function arg size does not match meta data and push args.");

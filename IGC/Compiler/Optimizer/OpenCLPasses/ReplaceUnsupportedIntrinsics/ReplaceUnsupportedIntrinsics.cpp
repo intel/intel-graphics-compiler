@@ -374,7 +374,7 @@ namespace {
         Value* Dst = MC->getRawDest();
         Value* Src = MC->getRawSource();
         Value* LPCount = MC->getLength();
-        uint32_t Align = IGCLLVM::getDestAlignment(MC);
+        uint32_t Align = MC->getDestAlignment();
         const bool IsVolatile = MC->isVolatile();
         const uint32_t SrcAS = MC->getSourceAddressSpace();
         const uint32_t DstAS = MC->getDestAddressSpace();
@@ -487,7 +487,7 @@ namespace {
         Value* Dst = MM->getRawDest();
         Value* Src = MM->getRawSource();
         Value* LPCount = MM->getLength();
-        uint32_t Align = IGCLLVM::getDestAlignment(MM);
+        uint32_t Align = MM->getDestAlignment();
         if (Align == 0)
             Align = 1;
         const bool IsVolatile = MM->isVolatile();
@@ -676,7 +676,7 @@ namespace {
         Value* Dst = MS->getRawDest();
         Value* Src = MS->getValue();
         Value* LPCount = MS->getLength();
-        uint32_t Align = IGCLLVM::getDestAlignment(MS);
+        uint32_t Align = MS->getDestAlignment();
         const bool IsVolatile = MS->isVolatile();
         const uint32_t AS = MS->getDestAddressSpace();
 

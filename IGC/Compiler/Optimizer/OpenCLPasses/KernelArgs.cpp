@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DerivedTypes.h>
-#include <llvmWrapper/IR/Function.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -1057,7 +1057,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
     ImplicitArgs implicitArgs(F, pMdUtils);
     const unsigned int numImplicitArgs = implicitArgs.size();
     const unsigned int numRuntimeValue = moduleMD ? moduleMD->pushInfo.constantReg.size() : 0;
-    const unsigned int numExplicitArgs = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs - numRuntimeValue;
+    const unsigned int numExplicitArgs = F.arg_size() - numImplicitArgs - numRuntimeValue;
     llvm::Function::const_arg_iterator funcArg = F.arg_begin();
 
     FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(&F));

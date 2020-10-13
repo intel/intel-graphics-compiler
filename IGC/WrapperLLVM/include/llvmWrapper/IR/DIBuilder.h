@@ -29,13 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/DIBuilder.h"
-#include "llvmWrapper/IR/DebugInfoMetadata.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 
 namespace IGCLLVM
 {
-#if LLVM_VERSION_MAJOR == 4
-    using llvm::DIBuilder;
-#elif LLVM_VERSION_MAJOR >= 7
     class DIBuilder : public llvm::DIBuilder
     {
     public:
@@ -76,7 +73,7 @@ namespace IGCLLVM
             return llvm::DIBuilder::createNameSpace(Scope, Name, ExportSymbols);
         }
 
-        inline IGCLLVM::DISubprogram* createFunction(
+        inline llvm::DISubprogram* createFunction(
             llvm::DIScope *Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile *File,
             unsigned LineNo, llvm::DISubroutineType *Ty, bool isLocalToUnit,
             bool isDefinition, unsigned ScopeLine,
@@ -84,11 +81,11 @@ namespace IGCLLVM
             llvm::DITemplateParameterArray TParams = nullptr,
             llvm::DISubprogram *Decl = nullptr, llvm::DITypeArray ThrownTypes = nullptr)
         {
-            return (IGCLLVM::DISubprogram*)llvm::DIBuilder::createFunction(
+            return llvm::DIBuilder::createFunction(
 #if LLVM_VERSION_MAJOR == 7
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
-#elif LLVM_VERSION_MAJOR >= 8
+#else
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, Flags,
                 llvm::DISubprogram::SPFlagDefinition, TParams, Decl, ThrownTypes);
 #endif
@@ -107,7 +104,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR == 7
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 Virtuality, VTableIndex, ThisAdjustment, VTableHolder, Flags, isOptimized, TParams, ThrownTypes);
-#elif LLVM_VERSION_MAJOR >= 8
+#else
                 Scope, Name, LinkageName, File, LineNo, Ty, Virtuality, ThisAdjustment,
                 VTableHolder, Flags, llvm::DISubprogram::SPFlagDefinition, TParams, ThrownTypes);
 #endif
@@ -126,7 +123,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR == 7
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
-#elif LLVM_VERSION_MAJOR >= 8
+#else
                 Scope, Name, LinkageName, File, LineNo, Ty, ScopeLine,
                 Flags, llvm::DISubprogram::SPFlagDefinition, TParams, Decl, ThrownTypes);
 #endif
@@ -157,7 +154,6 @@ namespace IGCLLVM
 #endif
         }
     };
-#endif
 }
 
 #endif

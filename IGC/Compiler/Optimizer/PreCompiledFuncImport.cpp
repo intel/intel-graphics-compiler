@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/IR/Module.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Function.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/GenericDomTree.h"
@@ -1926,7 +1926,7 @@ void PreCompiledFuncImport::replaceFunc(Function* old_func, Function* new_func)
         llvm::Function::arg_iterator new_arg_iter = new_func->arg_begin();
         llvm::Function::arg_iterator new_arg_end = new_func->arg_end();
 
-        IGC_ASSERT(IGCLLVM::GetFuncArgSize(new_func) >= numArgOperands);
+        IGC_ASSERT(new_func->arg_size() >= numArgOperands);
 
         // basic arguments
         for (unsigned int i = 0; i < numArgOperands; ++i, ++new_arg_iter)

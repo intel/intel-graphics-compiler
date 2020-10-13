@@ -6,7 +6,7 @@
 #include "DebugInfo/DebugInfoUtils.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Function.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
 
@@ -375,14 +375,14 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         if (itr != m_pShader->GetMetaDataUtils()->end_FunctionsInfo()
             && modMD->FuncMD.find(const_cast<Function*>(curFunc)) != modMD->FuncMD.end())
         {
-            unsigned int explicitArgsNum = IGCLLVM::GetFuncArgSize(curFunc) - itr->second->size_ImplicitArgInfoList();
+            unsigned int explicitArgsNum = curFunc->arg_size() - itr->second->size_ImplicitArgInfoList();
             if (pArgument->getArgNo() < explicitArgsNum)
             {
                 const std::string typeStr = modMD->FuncMD[const_cast<Function*>(curFunc)].m_OpenCLArgBaseTypes[pArgument->getArgNo()];
                 KernelArg::ArgType argType = KernelArg::calcArgType(pArgument, typeStr);
                 FunctionMetaData* funcMD = &modMD->FuncMD[const_cast<Function*>(curFunc)];
                 ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-                IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() == IGCLLVM::GetFuncArgSize(curFunc), "Invalid ArgAllocMDList");
+                IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() == curFunc->arg_size(), "Invalid ArgAllocMDList");
                 ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[pArgument->getArgNo()];
                 unsigned int index = argAlloc->indexType;
 

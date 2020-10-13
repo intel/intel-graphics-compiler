@@ -38,9 +38,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Support/Debug.h"
-#include "llvmWrapper/IR/Function.h"
-#include "llvmWrapper/BinaryFormat/Dwarf.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/IR/Function.h"
+#include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/DIBuilder.h"
@@ -1290,7 +1290,7 @@ bool DwarfDebug::addCurrentFnArgument(const Function* MF, DbgVariable* Var, Lexi
     size_t Size = CurrentFnArguments.size();
     if (Size == 0)
     {
-        CurrentFnArguments.resize(IGCLLVM::GetFuncArgSize(MF));
+        CurrentFnArguments.resize(MF->arg_size());
     }
     // llvm::Function argument size is not good indicator of how many
     // arguments does the function have at source level.

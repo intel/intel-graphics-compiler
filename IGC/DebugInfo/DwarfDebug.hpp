@@ -46,7 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/StringMap.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/Support/Allocator.h"
-#include "llvmWrapper/IR/DebugInfoMetadata.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "VISAModule.hpp"

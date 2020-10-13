@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/DerivedTypes.h>
-#include <llvmWrapper/IR/Function.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -573,10 +573,10 @@ int32_t ImplicitArgs::getStructArgOffset(unsigned int index) const
 
 TODO("Refactor code to avoid code triplication for getArgInFunc(), getImplicitArg() and WIFuncResolution::getImplicitArg()")
 Argument* ImplicitArgs::getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType) {
-    IGC_ASSERT_MESSAGE((IGCLLVM::GetFuncArgSize(F) >= size()), "Invalid number of argumnents in the function!");
+    IGC_ASSERT_MESSAGE((F.arg_size() >= size()), "Invalid number of argumnents in the function!");
 
     unsigned int argIndex       =  getArgIndex(argType);
-    unsigned int argIndexInFunc = IGCLLVM::GetFuncArgSize(F) - size() + argIndex;
+    unsigned int argIndexInFunc = F.arg_size() - size() + argIndex;
     Function::arg_iterator arg  = F.arg_begin();
     for (unsigned int i = 0; i < argIndexInFunc; ++i,  ++arg);
 
@@ -590,7 +590,7 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
         return nullptr;
     unsigned int implicitArgIndex = this->getArgIndex(argType);
 
-    unsigned int implicitArgIndexInFunc = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs + implicitArgIndex;
+    unsigned int implicitArgIndexInFunc = F.arg_size() - numImplicitArgs + implicitArgIndex;
 
     Function::arg_iterator arg = F.arg_begin();
     for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);
@@ -600,14 +600,14 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
 
 Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType, int argNum)
 {
-    IGC_ASSERT_MESSAGE((IGCLLVM::GetFuncArgSize(F) >= size()), "Invalid number of arguments in the function!");
+    IGC_ASSERT_MESSAGE((F.arg_size() >= size()), "Invalid number of arguments in the function!");
 
     unsigned int numImplicitArgs = size();
     unsigned int implicitArgIndex = this->getNumberedArgIndex(argType, argNum);
     if (implicitArgIndex == numImplicitArgs)
       return nullptr;
 
-    unsigned int implicitArgIndexInFunc = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs + implicitArgIndex;
+    unsigned int implicitArgIndexInFunc = F.arg_size() - numImplicitArgs + implicitArgIndex;
 
     Function::arg_iterator arg = F.arg_begin();
     for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);

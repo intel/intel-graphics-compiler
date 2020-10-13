@@ -39,10 +39,6 @@ namespace IGCLLVM
 #define InserterTyDef() InserterTy
 #endif
 
-
-#if LLVM_VERSION_MAJOR == 4
-    using llvm::IRBuilder;
-#elif LLVM_VERSION_MAJOR >= 7
     template <typename T = llvm::ConstantFolder,
         typename InserterTyDef() = llvm::IRBuilderDefaultInserter>
         class IRBuilder : public llvm::IRBuilder<T, InserterTyDef()>
@@ -274,7 +270,7 @@ namespace IGCLLVM
             const llvm::Twine& NameStr = "",
             llvm::Instruction* InsertBefore = nullptr)
         {
-#if LLVM_VERSION_MAJOR <= 7
+#if LLVM_VERSION_MAJOR == 7
             return llvm::IRBuilder<T, InserterTyDef()>::Create(
                 Func, Args, Bundles, NameStr, InsertBefore);
 #else
@@ -285,7 +281,6 @@ namespace IGCLLVM
         }
 
     };
-#endif
 }
 
 #endif

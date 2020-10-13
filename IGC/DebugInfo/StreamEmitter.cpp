@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalValue.h"
-#include "llvmWrapper/MC/MCAsmBackend.h"
+#include "llvm/MC/MCAsmBackend.h"
 #include "llvmWrapper/ADT/STLExtras.h"
 #include "llvm/MC/MCAsmInfoELF.h"
 #include "llvm/MC/MCCodeEmitter.h"
@@ -299,13 +299,13 @@ namespace IGC
         }
     };
 
-    class VISAAsmBackend : public IGCLLVM::MCAsmBackend
+    class VISAAsmBackend : public MCAsmBackend
     {
         StringRef m_targetTriple;
         bool m_is64Bit;
     public:
         VISAAsmBackend(StringRef targetTriple, bool is64Bit)
-            : IGCLLVM::MCAsmBackend(),
+            : MCAsmBackend(support::endianness::little),
             m_targetTriple(targetTriple), m_is64Bit(is64Bit) {}
 
         unsigned getNumFixupKinds() const override

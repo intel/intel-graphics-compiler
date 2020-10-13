@@ -73,7 +73,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 
-#include "llvmWrapper/IR/Attributes.h"
+#include "llvm/IR/Attributes.h"
 
 #include "llvm/ADT/StringSwitch.h"
 #include <llvm/Bitcode/BitcodeReader.h>
@@ -880,7 +880,7 @@ void getFunctionTypeParameterTypes(llvm::FunctionType* FT,
     std::vector<Type*>& ArgTys);
 Function *getOrCreateFunction(Module *M, Type *RetTy,
     ArrayRef<Type *> ArgTypes, StringRef Name, bool Mangle = false,
-    IGCLLVM::AttributeSet *Attrs = nullptr, bool takeName = true);
+    AttributeList *Attrs = nullptr, bool takeName = true);
 std::vector<Value *> getArguments(CallInst* CI);
 
 void decorateSPIRVBuiltin(std::string &S);
@@ -898,17 +898,17 @@ std::string getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> 
 /// \return mutated call instruction.
 CallInst *mutateCallInst(Module *M, CallInst *CI,
     std::function<std::string (CallInst *, std::vector<Value *> &)>ArgMutate,
-    bool Mangle = false, IGCLLVM::AttributeSet *Attrs = nullptr, bool takeName = true);
+    bool Mangle = false, AttributeList *Attrs = nullptr, bool takeName = true);
 
 /// Mutate function by change the arguments.
 /// \param ArgMutate mutates the function arguments.
 void mutateFunction(Function *F,
     std::function<std::string (CallInst *, std::vector<Value *> &)>ArgMutate,
-    bool Builtin , IGCLLVM::AttributeSet *Attrs = nullptr, bool takeName = true);
+    bool Builtin , AttributeList *Attrs = nullptr, bool takeName = true);
 
 /// Add a call instruction at \p Pos.
 CallInst *addCallInst(Module *M, StringRef FuncName, Type *RetTy,
-    ArrayRef<Value *> Args, IGCLLVM::AttributeSet *Attrs, Instruction *Pos,
+    ArrayRef<Value *> Args, AttributeList *Attrs, Instruction *Pos,
     bool Builtin, StringRef InstName, bool TakeFuncName = true);
 
 /// Get a 64 bit integer constant.

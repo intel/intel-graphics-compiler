@@ -148,7 +148,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Transforms/IPO/FunctionAttrs.h>
 #include <llvmWrapper/Transforms/Utils.h>
-#include <llvmWrapper/Transforms/Scalar/InstSimplifyPass.h>
+#include <llvm/Transforms/Scalar/InstSimplifyPass.h>
 #include <llvmWrapper/Transforms/Scalar.h>
 #include <llvmWrapper/Bitcode/BitcodeWriter.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
@@ -688,7 +688,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         ctx.m_hasEmu64BitInsts = true;
     }
 
-    mpm.add(IGCLLVM::createInstSimplifyLegacyPass());
+    mpm.add(createInstSimplifyLegacyPass());
     // This pass inserts bitcasts for vector loads/stores.
     // This pass could be moved further toward EmitPass.
     mpm.add(createVectorProcessPass());

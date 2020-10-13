@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Instruction.h"
-#include "llvmWrapper/IR/Function.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/IntrinsicInst.h"

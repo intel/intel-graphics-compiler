@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SCCIterator.h"
 #include <llvm/IR/Module.h>
-#include <llvmWrapper/IR/Function.h>
+#include <llvm/IR/Function.h>
 #include <llvmWrapper/ADT/STLExtras.h>
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvm/IR/Instructions.h>
@@ -409,7 +409,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
         llvm::Function::arg_iterator new_arg_iter = new_func->arg_begin();
         llvm::Function::arg_iterator new_arg_end = new_func->arg_end();
 
-        IGC_ASSERT(IGCLLVM::GetFuncArgSize(new_func) >= numArgOperands);
+        IGC_ASSERT(new_func->arg_size() >= numArgOperands);
 
         // basic arguments
         for (unsigned int i = 0; i < numArgOperands; ++i, ++new_arg_iter)

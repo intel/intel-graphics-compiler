@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/DebugMacros.hpp" // VALUE_NAME() definition.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
-#include "llvmWrapper/AsmParser/Parser.h"
+#include "llvm/AsmParser/Parser.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Support/Casting.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -3730,7 +3730,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDFloor(llvm::Value
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    const bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    const bool failed = llvm::parseAssemblyInto(codeBuf, mod, nullptr, diagnostic);
     IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_floor_f64");
@@ -3821,7 +3821,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDCeil(llvm::Value 
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    const bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    const bool failed = llvm::parseAssemblyInto(codeBuf, mod, nullptr, diagnostic);
     IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_ceil_f64");
@@ -3902,7 +3902,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDTrunc(llvm::Value
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    const bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    const bool failed = llvm::parseAssemblyInto(codeBuf, mod, nullptr, diagnostic);
     IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_trunc_f64");
@@ -4005,7 +4005,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDRoundNE(llvm::Val
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    const bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    const bool failed = llvm::parseAssemblyInto(codeBuf, mod, nullptr, diagnostic);
     IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_roundne_f64");

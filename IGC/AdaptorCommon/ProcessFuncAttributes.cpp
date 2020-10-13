@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 
-#include "llvmWrapper/IR/Attributes.h"
+#include "llvm/IR/Attributes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
 #include <llvm/Pass.h>
@@ -284,11 +284,11 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         for (auto I : F->users()) {
             if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
                 if (callInst->hasFnAttr(llvm::Attribute::NoInline)) {
-                    callInst->removeAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::NoInline);
+                    callInst->removeAttribute(AttributeList::FunctionIndex, llvm::Attribute::NoInline);
                 }
                 if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable &&
                     callInst->hasFnAttr(llvm::Attribute::AlwaysInline)) {
-                    callInst->removeAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::AlwaysInline);
+                    callInst->removeAttribute(AttributeList::FunctionIndex, llvm::Attribute::AlwaysInline);
                 }
             }
         }

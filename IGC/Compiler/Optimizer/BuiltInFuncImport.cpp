@@ -30,8 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/IRBuilder.h>
-#include "llvmWrapper/IR/Attributes.h"
-#include <llvmWrapper/IR/Function.h>
+#include "llvm/IR/Attributes.h"
+#include <llvm/IR/Function.h>
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvmWrapper/IR/CallSite.h>
 #include <llvm/IR/Module.h>
@@ -403,7 +403,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
                     IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
                 }
                 else {
-                    pFunc->addAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::Builtin);
+                    pFunc->addAttribute(AttributeList::FunctionIndex, llvm::Attribute::Builtin);
                     Explore(pFunc);
                 }
             }
@@ -560,7 +560,7 @@ bool BIImport::runOnModule(Module& M)
                     IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
                 }
                 else {
-                    pFunc->addAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::Builtin);
+                    pFunc->addAttribute(AttributeList::FunctionIndex, llvm::Attribute::Builtin);
                     Explore(pFunc);
                 }
             }
@@ -721,9 +721,9 @@ void BIImport::removeFunctionBitcasts(Module& M)
                         if (notExists)
                         {
                             pDstFunc = Function::Create(pInstCall->getFunctionType(), funcTobeChanged->getLinkage(), funcTobeChanged->getName(), &M);
-                            if (IGCLLVM::GetFuncArgSize(pDstFunc) != IGCLLVM::GetFuncArgSize(funcTobeChanged)) continue;
+                            if (pDstFunc->arg_size() != funcTobeChanged->arg_size()) continue;
                             // Need to copy the attributes over too.
-                            IGCLLVM::AttributeSet FuncAttrs = funcTobeChanged->getAttributes();
+                            AttributeList FuncAttrs = funcTobeChanged->getAttributes();
                             pDstFunc->setAttributes(FuncAttrs);
 
                             // Go through and convert function arguments over, remembering the mapping.

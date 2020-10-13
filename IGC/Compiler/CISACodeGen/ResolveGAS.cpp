@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "WrapperLLVM/Utils.h"
-#include "llvmWrapper/Support/Debug.h"
+#include "llvm/Support/Debug.h"
 #include "llvmWrapper/IR/Constant.h"
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/PostOrderIterator.h>

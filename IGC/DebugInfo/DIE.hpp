@@ -42,7 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Compiler.h"
-#include "llvmWrapper/BinaryFormat/Dwarf.h"
+#include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/ADT/StringRef.h"
 #include "common/LLVMWarningsPop.hpp"
 

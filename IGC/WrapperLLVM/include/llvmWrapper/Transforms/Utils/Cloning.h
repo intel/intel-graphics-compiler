@@ -32,15 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGCLLVM
 {
-#if LLVM_VERSION_MAJOR == 4
-    using llvm::CloneModule;
-#elif LLVM_VERSION_MAJOR >= 7
-    inline std::unique_ptr<llvm::Module> CloneModule(const llvm::Module *M)
-    {
-        return llvm::CloneModule(*M);
-    }
-#endif
-
     inline bool InlineFunction(llvm::CallInst* CB, llvm::InlineFunctionInfo& IFI,
         llvm::AAResults* CalleeAAR = nullptr,
         bool InsertLifetime = true,

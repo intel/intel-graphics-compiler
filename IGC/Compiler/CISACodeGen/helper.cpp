@@ -247,7 +247,7 @@ namespace IGC
         LI->setAlignment(IGCLLVM::getAlign(Orig->getAlignment()));
         if (LI->isAtomic())
         {
-            LI->setAtomic(Orig->getOrdering(), IGCLLVM::getSyncScopeID(Orig));
+            LI->setAtomic(Orig->getOrdering(), Orig->getSyncScopeID());
         }
         // Clone metadata
         llvm::SmallVector<std::pair<unsigned, llvm::MDNode*>, 4> MDs;
@@ -267,7 +267,7 @@ namespace IGC
         SI->setAlignment(IGCLLVM::getAlign(Orig->getAlignment()));
         if (SI->isAtomic())
         {
-            SI->setAtomic(Orig->getOrdering(), IGCLLVM::getSyncScopeID(Orig));
+            SI->setAtomic(Orig->getOrdering(), Orig->getSyncScopeID());
         }
         // Clone metadata
         llvm::SmallVector<std::pair<unsigned, llvm::MDNode*>, 4> MDs;

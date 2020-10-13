@@ -41,11 +41,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Module.h"
-#include "llvmWrapper/IR/Argument.h"
+#include "llvm/IR/Argument.h"
 #include "llvmWrapper/IR/Instructions.h"
-#include "llvmWrapper/IR/Attributes.h"
+#include "llvm/IR/Attributes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
-#include "llvmWrapper/IR/ValueHandle.h"
+#include "llvm/IR/ValueHandle.h"
 #include "llvmWrapper/Transforms/Utils.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -623,7 +623,7 @@ namespace //Anonymous
     struct Capture
     {
         enum { ARG_NUM_NONE = UINT_MAX };
-        IGCLLVM::WeakVH value;
+        llvm::WeakTrackingVH value;
         CaptureKind  kind;
         unsigned     argNum;
 
@@ -2365,7 +2365,9 @@ namespace //Anonymous
                 // note: byValArgs is filled in sorted manner
                 if ((byValI != byValE) && (argNum == *byValI))
                 {
-                    IGCLLVM::ArgumentAddAttr(arg, IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::ByVal);
+                    // FIXME: This potentially can be rewritted to be simpler.
+                    AttributeList attrSet = AttributeList::get(arg.getParent()->getContext(), AttributeList::FunctionIndex, llvm::Attribute::ByVal);
+                    arg.addAttr(attrSet.getAttribute(AttributeList::FunctionIndex, llvm::Attribute::ByVal));
                     ++byValI;
                 }
             }

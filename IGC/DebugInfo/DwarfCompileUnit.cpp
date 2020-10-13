@@ -38,7 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/GlobalValue.h"
+#include "llvm/IR/GlobalValue.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/IR/DIBuilder.h"
@@ -1802,7 +1802,7 @@ IGC::DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
     StringRef LinkageName = SP->getLinkageName();
     if (!LinkageName.empty())
     {
-        addString(SPDie, dwarf::DW_AT_MIPS_linkage_name, IGCLLVM::GlobalValue::getRealLinkageName(LinkageName));
+        addString(SPDie, dwarf::DW_AT_MIPS_linkage_name, llvm::GlobalValue::dropLLVMManglingEscape(LinkageName));
     }
 
     // Constructors and operators for anonymous aggregates do not have names.

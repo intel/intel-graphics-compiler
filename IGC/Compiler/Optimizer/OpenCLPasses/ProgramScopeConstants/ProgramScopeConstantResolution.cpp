@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/Function.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -191,7 +191,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             ImplicitArgs implicitArgs(*userFunc, mdUtils);
 
             // Find the implicit argument representing this constant.
-            unsigned int ImplicitArgsBaseIndex = IGCLLVM::GetFuncArgSize(userFunc) - implicitArgs.size();
+            unsigned int ImplicitArgsBaseIndex = userFunc->arg_size() - implicitArgs.size();
             unsigned int implicitArgIndex = implicitArgs.getArgIndex(argType);
             unsigned int implicitArgIndexInFunc = ImplicitArgsBaseIndex + implicitArgIndex;
             Function::arg_iterator bufArg = userFunc->arg_begin();

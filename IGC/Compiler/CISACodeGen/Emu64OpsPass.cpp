@@ -164,7 +164,7 @@ namespace {
             NewLD->setVolatile(RefLD->isVolatile());
             NewLD->setAlignment(IGCLLVM::getAlign(unsigned(MinAlign(alignment, Off))));
             NewLD->setOrdering(RefLD->getOrdering());
-            IGCLLVM::CopySyncScopeID(NewLD, RefLD);
+            NewLD->setSyncScopeID(RefLD->getSyncScopeID());
             copyKnownMetadata(NewLD, RefLD);
         }
 
@@ -174,7 +174,7 @@ namespace {
             NewST->setVolatile(RefST->isVolatile());
             NewST->setAlignment(IGCLLVM::getAlign(unsigned(MinAlign(alignment, Off))));
             NewST->setOrdering(RefST->getOrdering());
-            IGCLLVM::CopySyncScopeID(NewST, RefST);
+            NewST->setSyncScopeID(RefST->getSyncScopeID());
             copyKnownMetadata(NewST, RefST);
         }
 

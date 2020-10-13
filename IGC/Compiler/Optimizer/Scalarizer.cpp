@@ -1386,7 +1386,7 @@ void ScalarizeFunction::resolveDeferredInstructions()
         // Replace and erase all dummy instructions (don't use eraseFromParent as the dummy is not in the function)
         Instruction *dummyInst = cast<Instruction>(entry.first);
         dummyInst->replaceAllUsesWith(entry.second);
-        IGCLLVM::DeleteInstruction(dummyInst);
+        dummyInst->deleteValue();
     }
 
     // clear DRL

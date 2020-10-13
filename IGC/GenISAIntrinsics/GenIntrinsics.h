@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvmWrapper/IR/Module.h"
 
-#include "llvmWrapper/IR/Attributes.h"
+#include "llvm/IR/Attributes.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -84,7 +84,7 @@ namespace GenISAIntrinsic {
 #else
   Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> OverloadedTys = None);
 #endif
-  IGCLLVM::AttributeSet getGenIntrinsicAttributes(LLVMContext& C, GenISAIntrinsic::ID id);
+  AttributeList getGenIntrinsicAttributes(LLVMContext& C, GenISAIntrinsic::ID id);
 
   //Override of isIntrinsic method defined in Function.h
   inline const char * getGenIntrinsicPrefix() { return "llvm.genx."; }

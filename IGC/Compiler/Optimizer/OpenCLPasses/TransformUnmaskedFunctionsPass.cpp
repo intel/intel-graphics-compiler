@@ -268,9 +268,9 @@ bool TransformUnmaskedFunctionsPass::runOnFunction(llvm::Function& F)
     for (User *U : F.users()) {
         if (CallInst* CI = dyn_cast<CallInst>(U)) {
             if (CI->hasFnAttr(llvm::Attribute::AlwaysInline)) {
-                CI->removeAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::AlwaysInline);
+                CI->removeAttribute(AttributeList::FunctionIndex, llvm::Attribute::AlwaysInline);
             }
-            CI->addAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::NoInline);
+            CI->addAttribute(AttributeList::FunctionIndex, llvm::Attribute::NoInline);
         }
     }
     return true;
