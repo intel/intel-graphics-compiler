@@ -117,11 +117,13 @@ set(VISA_INCLUDE_DIRS ${IGC_BUILD__VISA_DIR})
 add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
 
 if(LLVM_ON_WIN32)
-  add_compile_options(/experimental:external)
-  foreach(INCDIR ${LLVM_INCLUDE_DIRS})
-    add_compile_options("SHELL:/external:I ${INCDIR}")
-  endforeach()
-  add_compile_options(/external:W0)
+  if (MSVC_IDE)
+    add_compile_options(/experimental:external)
+    foreach(INCDIR ${LLVM_INCLUDE_DIRS})
+      add_compile_options("SHELL:/external:I ${INCDIR}")
+    endforeach()
+    add_compile_options(/external:W0)
+  endif()
 
   # disable 32/64 warnings
   add_compile_options(/wd4244)

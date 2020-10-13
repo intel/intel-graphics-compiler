@@ -289,7 +289,8 @@ inline void* CAllocator::Malloc(size_t size)
 #ifdef _WIN32
     if(ptr == nullptr)
     {
-        throw std::bad_alloc();
+        IGC_ASSERT_EXIT_MESSAGE(0,
+            "Could not allocate the required memory to storage");
     }
 #endif
     return ptr;
