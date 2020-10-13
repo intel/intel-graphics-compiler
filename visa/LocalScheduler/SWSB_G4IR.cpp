@@ -108,8 +108,14 @@ static bool hasSamePredicator(G4_INST* inst1, G4_INST* inst2)
 
     if (pred1 && pred2)
     {
-        if (pred1->getRegOff() == pred2->getRegOff() &&
-            pred1->getSubRegOff() == pred2->getSubRegOff())
+        bool flagRegNumValid = true;
+        unsigned short refOff1 = pred1->getBase()->ExRegNum(flagRegNumValid);
+        unsigned short subRefOff1 = pred1->getBase()->asRegVar()->getPhyRegOff();;
+        unsigned short refOff2 = pred2->getBase()->ExRegNum(flagRegNumValid);
+        unsigned short subRefOff2 = pred2->getBase()->asRegVar()->getPhyRegOff();;
+
+        if (refOff1 == refOff2 &&
+            subRefOff1 == subRefOff2)
         {
             return true;
         }
