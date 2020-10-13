@@ -166,6 +166,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/AnnotateUniformAllocas.h"
 #include "Probe/Assertion.h"
 
+#include <iostream>
+
 /***********************************************************************************
 This file contains the generic code generation functions for all the shaders
 The class CShader is inherited for each specific type of shaders to add specific
@@ -751,6 +753,17 @@ static void AddCodeGenPasses(
     COMPILER_TIME_END(&ctx, TIME_CG_Add_CodeGen_Passes);
 }
 
+static void DumpHasNonKernelArgLoadStore(CodeGenContext& ctx) {
+    if(IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
+        // print out the information if context has non-kernel-arg load/store
+        auto get_tf_str = [](bool val) { return val ? "true" : "false"; };
+        std::cerr << "HasNonKernelArgLoad: " << get_tf_str(ctx.m_hasNonKernelArgLoad) << "\n"
+                  << "HasNonKernelArgStore: " << get_tf_str(ctx.m_hasNonKernelArgStore) << "\n"
+                  << "HasNonKernelArgAtomic: " << get_tf_str(ctx.m_hasNonKernelArgAtomic) << "\n";
+
+    }
+}
+
 template<typename ContextType>
 void CodeGen(ContextType* ctx, CShaderProgram::KernelShaderMap& shaders);
 
@@ -1182,6 +1195,9 @@ void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& kernels
     Passes.run(*(ctx->getModule()));
     COMPILER_TIME_END(ctx, TIME_CodeGen);
     DumpLLVMIR(ctx, "codegen");
+
+    DumpHasNonKernelArgLoadStore(*ctx);
+
 } // CodeGen(OpenCLProgramContext*
 
 static void destroyShaderMap(CShaderProgram::KernelShaderMap& shaders)

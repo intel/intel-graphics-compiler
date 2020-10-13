@@ -1371,6 +1371,46 @@ namespace IGC
             opcode == llvm_gradientYfine);
     }
 
+    bool IsStatelessMemLoadIntrinsic(const llvm::GenIntrinsicInst& inst)
+    {
+        switch(inst.getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_simdBlockRead:
+                return true;
+            default:
+                break;
+        }
+        return false;
+    }
+
+    bool IsStatelessMemStoreIntrinsic(const llvm::GenIntrinsicInst& inst)
+    {
+        switch (inst.getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_simdBlockWrite:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    }
+
+    bool IsStatelessMemAtomicIntrinsic(const llvm::GenIntrinsicInst& inst)
+    {
+        // This includes:
+        // GenISA_intatomicraw
+        // GenISA_floatatomicraw
+        // GenISA_intatomicrawA64
+        // GenISA_floatatomicrawA64
+        // GenISA_icmpxchgatomicraw
+        // GenISA_fcmpxchgatomicraw
+        // GenISA_icmpxchgatomicrawA64
+        // GenISA_fcmpxchgatomicrawA64
+        if (IsAtomicIntrinsic(GetOpCode(&inst)))
+            return true;
+
+        return false;
+    }
+
     bool ComputesGradient(llvm::Instruction* inst)
     {
         llvm::SampleIntrinsic* sampleInst = dyn_cast<llvm::SampleIntrinsic>(inst);

@@ -554,6 +554,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
+    if (hasStackCall) {
+        // conservative set the hasNonKernelArgLoad/Store to true
+        m_pCtx->m_hasNonKernelArgLoad = true;
+        m_pCtx->m_hasNonKernelArgStore = true;
+        m_pCtx->m_hasNonKernelArgAtomic = true;
+    }
+
     // Create a symbol relocation entry for each symbol used by F
     emitSymbolRelocation(F);
 

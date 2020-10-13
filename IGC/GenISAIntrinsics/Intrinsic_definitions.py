@@ -47,6 +47,11 @@
 # {int} - LLVMMatchType<{int}>
 # See Intrinsics.json file for entries
 
+#### Update helper functions in Source/IGC/Compiler/CISACodeGen/helper.h when adding a new intrinsic
+#    if required.
+#    For example: Update IsStatelessMemLoadIntrinsic, IsStatelessMemStoreIntrinsic and
+#    IsStatelessMemAtomicIntrinsic if it is a stateless memory read/write intrinsic.
+
 Imported_Intrinsics = \
 {
 ####################################################################################################

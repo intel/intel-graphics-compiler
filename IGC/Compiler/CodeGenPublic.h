@@ -829,6 +829,10 @@ namespace IGC
         std::vector<unsigned> m_indexableTempSize;
         bool         m_highPsRegisterPressure = 0;
 
+        bool m_hasNonKernelArgLoad = false;
+        bool m_hasNonKernelArgStore = false;
+        bool m_hasNonKernelArgAtomic = false;
+
         // For IR dump after pass
         unsigned     m_numPasses = 0;
         bool m_threadCombiningOptDone = false;

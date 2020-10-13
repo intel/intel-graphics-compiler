@@ -175,6 +175,10 @@ namespace IGC
     bool IsSIMDBlockIntrinsic(llvm::Instruction* inst);
     bool isSubGroupIntrinsic(const llvm::Instruction* I);
 
+    bool IsStatelessMemLoadIntrinsic(const llvm::GenIntrinsicInst& inst);
+    bool IsStatelessMemStoreIntrinsic(const llvm::GenIntrinsicInst& inst);
+    bool IsStatelessMemAtomicIntrinsic(const llvm::GenIntrinsicInst& inst);
+
     bool isURBWriteIntrinsic(const llvm::Instruction* inst);
 
     llvm::Instruction* AdjustSystemValueCall(llvm::GenIntrinsicInst* inst);
