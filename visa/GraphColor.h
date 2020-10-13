@@ -962,12 +962,19 @@ namespace vISA
             lr->setTopDcl(dcl);
         }
 
+        LSLiveRange* getSafeLSLR(G4_Declare* dcl) const
+        {
+            auto dclid = dcl->getDeclId();
+            assert(dclid <= vars.size());
+            return vars[dclid].LSLR;
+        }
+
         LSLiveRange* getLSLR(G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
             {
-                return defaultValues.LSLR;
+                return nullptr;
             }
             return vars[dclid].LSLR;
         }

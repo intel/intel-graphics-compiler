@@ -49,6 +49,7 @@ class BankConflictPass;
 class GlobalRA;
 }
 
+#define MAXIMAL_ITERATIONS 10
 vISA::G4_Declare* GetTopDclFromRegRegion(vISA::G4_Operand* opnd);
 
 // Each declaration will have a LSLiveRange object allocated for it
@@ -57,12 +58,43 @@ namespace vISA
     class PhyRegsLocalRA;
     class LSInputLiveRange;
 
+    class G4_BB_LS {
+    private:
+        G4_BB* bb;
+        bool refInput;
+        bool backEdgeIn;
+        bool backEdgeOut;
+
+    public:
+        G4_BB_LS(G4_BB* block) :bb(block)
+        {
+            refInput = false;
+            backEdgeIn = false;
+            backEdgeOut = false;
+        }
+
+        ~G4_BB_LS()
+        {
+
+        }
+        void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
+        void     setBackEdgeIn(bool val) { backEdgeIn = val; }
+        bool     hasBackEdgeIn() { return backEdgeIn; }
+        void     setBackEdgeOut(bool val) { backEdgeOut = val; }
+        bool     hasBackEdgeOut() { return backEdgeOut; }
+        void     setRefInput(bool val) { refInput = val; }
+        bool     hasRefInput() { return refInput; }
+    };
+
+    typedef std::vector<G4_BB_LS*> BB_LS_VECTOR;
+
     class LinearScanRA
     {
     private:
         G4_Kernel& kernel;
         IR_Builder& builder;
         LivenessAnalysis& l;
+        BB_LS_VECTOR BBVector;
         PhyRegsLocalRA* pregs = nullptr;
         std::vector<LSLiveRange*> globalLiveIntervals;
         std::vector<LSLiveRange*> preAssignedLiveIntervals;
@@ -82,12 +114,13 @@ namespace vISA
         std::vector<G4_Declare *> globalDeclares;
         unsigned int funcCnt = 0;
         std::vector<unsigned int> funcLastLexID;
-        //CALL_DECL_MAP callDclMap;
 
         LSLiveRange* GetOrCreateLocalLiveRange(G4_Declare* topdcl);
-        void linearScanMarkReferencesInOpnd(G4_Operand* opnd, bool isEOT, INST_LIST_ITER inst_it, unsigned int pos);
+        LSLiveRange* CreateLocalLiveRange(G4_Declare* topdcl);
+        void createLiveIntervals();
+        void linearScanMarkReferencesInOpnd(G4_Operand* opnd, bool isEOT, bool isCall);
         void linearScanMarkReferencesInInst(INST_LIST_ITER inst_it);
-        void linearScanMarkReferences(unsigned int& numRowsEOT, bool getGlobal);
+        void linearScanMarkReferences(unsigned int& numRowsEOT);
         void markBackEdges();
         void getGlobalDeclares();
         void preRAAnalysis();
@@ -105,9 +138,8 @@ namespace vISA
         void addSaveRestoreCode(unsigned localSpillAreaOwordSize);
         void calculateFuncLastID();
         int linearScanRA();
-        void blockOutputPhyRegs();
         void removeUnrequiredLifetimeOps();
-        void setLexicalID(bool includePseudo);
+        void setLexicalID();
         bool hasDstSrcOverlapPotential(G4_DstRegRegion* dst, G4_SrcRegRegion* src);
         void setPreAssignedLR(LSLiveRange* lr, std::vector<LSLiveRange*>& preAssignedLiveIntervals);
         void setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declare* dcl, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
@@ -155,40 +187,37 @@ private:
     int pregoff;
 
     unsigned int numRefsInFG;
+    unsigned int numRefs;
     G4_BB* prevBBRef;
 
     bool* forbidden = nullptr;
+    bool* retGRFs = nullptr;
 
     bool isIndirectAccess;
     bool eot;
     bool assigned;
     bool preAssigned;
     bool useUnAvailableReg;
-    bool isGlobal;
     bool isActive;
     bool _isCall;
     bool _isCallSite;
 
-    IR_Builder& builder;
-
-    std::unordered_set<unsigned int> forbiddenGRFs;
-    std::unordered_set<unsigned int> retGRFs;
-    const static unsigned int UndefHint = 0xffffffff;
-    unsigned int hint = UndefHint;
+    //std::unordered_set<unsigned int> forbiddenGRFs;
+    //std::unordered_set<unsigned int> retGRFs;
 public:
-    LSLiveRange(IR_Builder& b) : builder(b)
+    LSLiveRange()
     {
         topdcl = NULL;
         firstRef = lastRef = NULL;
         lrStartIdx = lrEndIdx = 0;
         isIndirectAccess = false;
         numRefsInFG = 0;
+        numRefs = 0;
         prevBBRef = NULL;
         preg = NULL;
         pregoff = 0;
         assigned = false;
         preAssigned = false;
-        isGlobal = false;
         eot = false;
         useUnAvailableReg = false;
         regionID = -1;
@@ -200,27 +229,21 @@ public:
     void setActiveLR(bool a) { isActive = a; }
     bool isActiveLR() { return isActive; }
     const bool* getForbidden() { return forbidden; }
-    bool isGlobalLR() { return isGlobal; }
-    void setGlobalLR(bool g) { isGlobal = g; }
     void setForbidden(bool* f) { forbidden = f; }
-    void markForbidden(int reg, int numReg)
-    {
-        MUST_BE_TRUE(((int)builder.kernel.getNumRegTotal()) >= reg + numReg, "forbidden register is out of bound");
-        for (int i = reg; i < reg + numReg; ++i)
-        {
-            forbidden[i] = true;
-        }
-    }
+    void setRegGRFs(bool* f) { retGRFs = f; }
 
     void setUseUnAvailableReg(bool avail) { useUnAvailableReg = avail; }
     bool isUseUnAvailableReg() { return useUnAvailableReg; }
     void setRegionID(int id) { regionID = id; }
     int getRegionID() { return regionID; }
     // A reference to this live range exists in bb basic block, record it
-    void markIndirectRef() { isIndirectAccess = true; }
+    void markIndirectRef(bool indirectAccess) { isIndirectAccess = indirectAccess; }
 
-    void recordRef(G4_BB* bb, LivenessAnalysis* l);
-
+    void recordRef(G4_BB* bb, bool fromEntry);
+    unsigned int getNumRefs()
+    {
+        return numRefs;
+    }
     bool isGRFRegAssigned();
 
     void setTopDcl(G4_Declare* dcl)
@@ -282,15 +305,17 @@ public:
     void markEOT() { eot = true; }
     bool isEOT() { return eot; }
 
-    void addForbidden(unsigned int f) { forbiddenGRFs.insert(f); forbidden[f] = true;}
-    void addRetRegs(unsigned int f) { retGRFs.insert(f); }
-    std::unordered_set<unsigned int>& getForbiddenGRF() { return forbiddenGRFs; }
-    std::unordered_set<unsigned int>& getRetGRFs() { return retGRFs; }
-    void clearForbiddenGRF() { forbiddenGRFs.clear(); forbidden = nullptr; }
-
-    void setHint(unsigned int h) { hint = h; }
-    bool hasHint() { return hint != UndefHint; }
-    unsigned int getHint() { return hint; }
+    void addForbidden(unsigned int f) { /*forbiddenGRFs.insert(f);*/ forbidden[f] = true;}
+    void addRetRegs(unsigned int f) { retGRFs[f] = true; }
+    const bool* getRetGRFs() { return retGRFs; }
+    void clearForbiddenGRF(unsigned GRFSize)
+    {
+        if (retGRFs)
+        {
+            memset(retGRFs, false, GRFSize);
+        }
+        memset(forbidden, false, GRFSize);
+    }
 };
 
 class LSInputLiveRange
@@ -311,6 +336,7 @@ public:
     unsigned int getLrEndIdx() { return lrEndIdx; }
     void setLrEndIdx(unsigned int idx)  { lrEndIdx = idx; }
 };
+
 }
 
 namespace vISA
@@ -345,6 +371,7 @@ namespace vISA
         unsigned short getOccupiedBundle(G4_Declare* dcl);
         BankAlign getBankAlign(LSLiveRange* lr);
         bool allocateRegsLinearScan(LSLiveRange* lr, IR_Builder& builder);
+        void allocRetRegsVector(LSLiveRange* lr);
         void freeAllocedRegs(LSLiveRange*, bool);
         void updateGlobalActiveList(LSLiveRange* lr);
         bool insertLiveRange(std::list<LSLiveRange*>* liveIntervals, LSLiveRange* lr);
