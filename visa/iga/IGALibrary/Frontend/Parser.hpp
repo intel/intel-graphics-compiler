@@ -44,7 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace iga
 {
     template<typename T> using IdentMap =
-        std::initializer_list<std::pair<const char *,T>>;
+        std::initializer_list<std::pair<std::string,T>>;
     template <typename T>
     static inline T Lookup(std::string sym, const IdentMap<T> &M, T orElse) {
         for (const auto &e : M) {
@@ -202,8 +202,8 @@ namespace iga
             if (!LookingAtFrom(k, IDENT)) {
                 return false;
             }
-            for (const std::pair<const char *,T> &p : map) {
-                if (TokenEq(Next(k), p.first)) {
+            for (const auto &p : map) {
+                if (TokenEq(Next(k), p.first.c_str())) {
                     value = p.second;
                     return true;
                 }

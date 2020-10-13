@@ -560,30 +560,6 @@ iga_status_t iga::DiffFieldsFromPCs(
         IGA_SUCCESS;
 }
 
-// emits output such as  "0`001`1`0`001"
-// for SrcImm compacted fields it just emits the value
-static void formatCompactionFieldValue(
-    std::ostream &os,
-    const CompactionMapping &cf,
-    uint64_t val)
-{
-    if (cf.mappings == nullptr) {
-        // srcimm field
-        os << std::setw(16) << "(" << fmtHexValue(val) << ")";
-    } else {
-        int bitOff = (int)cf.countNumBitsMapped();
-        for (int mIx = 0; mIx < (int)cf.numMappings; ++mIx) {
-            if (mIx != 0) {
-                os << "`";
-            }
-            const Field *mf = cf.mappings[mIx];
-            bitOff -= mf->length();
-            auto bs = iga::getBits(val, bitOff, mf->length());
-            fmtBinary(os, bs, mf->length());
-        }
-    }
-}
-
 
 typedef int64_t Mapping;
 typedef std::pair<PC,int> PCStats;
@@ -686,10 +662,10 @@ static bool listInstructionCompaction(
                 continue;
             }
             os << ": ";
-            formatCompactionFieldValue(os, cf, missedMapping);
+            cf.emitBinary(os, missedMapping);
             os << ": (";
             if (cf.format) {
-                os << cf.format(op,missedMapping);
+                os << cf.format(op, missedMapping);
             }
             os << ") is the necessary table entry\n";
 
@@ -701,7 +677,7 @@ static bool listInstructionCompaction(
                 dist++)
             {
                 // closest hits of distance `dist`
-                for (size_t mIx = 0; mIx < cf.numMappings; mIx++) {
+                for (size_t mIx = 0; mIx < cf.numValues; mIx++) {
                     uint64_t val = cf.values[mIx];
                     std::bitset<64> bs(val ^ missedMapping);
                     if (bs.count() == dist) {
@@ -884,7 +860,7 @@ iga_status_t iga::DebugCompaction(
             const MappingStats &mStats = ms.second;
 
             os << "    ";
-            formatCompactionFieldValue(os, *cf, mVal); // e.g. 000`0010`0`00
+            cf->emitBinary(os, mVal); // e.g. 000`0010`0`00
             os << "  total misses:" << mStats.misses.size();
             size_t misses1 = 0, misses2 = 0, misses3plus = 0;
             for (const auto &missExample : mStats.misses) {

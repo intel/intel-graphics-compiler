@@ -22,6 +22,8 @@
 #include "ged_model_gen10.h"
 #include "ged_model_gen11.h"
 #include "ged_model_gen12_1.h"
+
+#ifndef GED_MODELS_ARRAY_HIDDEN
 ModelData ModelsArray[8] =
 {
     { GEN7::Opcodes, "7", 116, (const ged_field_enum_table_t)OpcodeTable3, 29, PositionInterpreterTable0, 3, EnumInterpretersTable0, 0, NULL }, // 0
@@ -33,8 +35,14 @@ ModelData ModelsArray[8] =
     { GEN11::Opcodes, "11", 116, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL }, // 6
     { GEN12_1::Opcodes, "12.1", 116, (const ged_field_enum_table_t)OpcodeTable2, 36, PositionInterpreterTable6, 3, EnumInterpretersTable3, 0, NULL } // 7
 }; // ModelsArray[]
+#endif // GED_MODELS_ARRAY_HIDDEN
 const unsigned int numOfSupportedModels = 8;
+
+#ifndef GED_MODELS_ARRAY_NAMES_HIDDEN
 const char* modelNames[8] = { "gen7", "gen7_5", "gen8", "gen8_1", "gen9", "gen10", "gen11", "gen12_1" };
+#endif // GED_MODELS_ARRAY_NAMES_HIDDEN
+
+#ifndef GED_MODELS_ARRAY_FUNCTION_HIDDEN
 
 /*!
  * Get the GED_MODEL Id for the given model name.
@@ -57,11 +65,14 @@ bool GetModelByName(const string& name, /* GED_MODEL */ unsigned int& model)
     else return false;
     return true;
 }
+#endif // GED_MODELS_ARRAY_FUNCTION_HIDDEN
 const char* GED_GetModelVersionString(GED_MODEL model)
 {
+#ifndef GED_MODELS_ARRAY_HIDDEN
     unsigned int rawModel = static_cast<unsigned int>(model);
     if (rawModel < numOfSupportedModels)
         return ModelsArray[rawModel].modelVersion;
+#endif
     return "";
 }
 const char* GED_GetReturnValueString(GED_RETURN_VALUE returnValue)
@@ -124,7 +135,11 @@ GED_OPCODE GED_GetOpcode(const ged_ins_t* ins)
 }
 const char* GED_GetMnemonic(const ged_ins_t* ins)
 {
+#ifndef GED_OPCODE_HIDDEN
     return GED_GetOpcodeString((GED_OPCODE)(reinterpret_cast<const GEDIns*>(ins)->GetOpcode()));
+#else
+    return "";
+#endif
 }
 GED_RETURN_VALUE GED_SetOpcode(ged_ins_t* ins, const GED_OPCODE opcode)
 {
@@ -1929,166 +1944,326 @@ GED_RETURN_VALUE GED_SetRawBits(ged_ins_t* ins, uint8_t low, uint8_t high, const
     return reinterpret_cast<GEDIns*>(ins)->SetRawBits(low, high, value);
 }
 #endif // GED_EXPERIMENTAL
+
+#ifndef GED_ACCESS_MODE_HIDDEN
 const char* GED_GetAccessModeString(GED_ACCESS_MODE AccessModeValue)
 {
     return AccessModeEnumeration[AccessModeValue];
+
 }
+#endif // GED_ACCESS_MODE_HIDDEN
+
+#ifndef GED_ACC_WR_CTRL_HIDDEN
 const char* GED_GetAccWrCtrlString(GED_ACC_WR_CTRL AccWrCtrlValue)
 {
     return AccWrCtrlEnumeration[AccWrCtrlValue];
+
 }
+#endif // GED_ACC_WR_CTRL_HIDDEN
+
+#ifndef GED_ADDR_MODE_HIDDEN
 const char* GED_GetAddrModeString(GED_ADDR_MODE AddrModeValue)
 {
     return AddrModeEnumeration[AddrModeValue];
+
 }
+#endif // GED_ADDR_MODE_HIDDEN
+
+#ifndef GED_ARCH_REG_HIDDEN
 const char* GED_GetArchRegString(GED_ARCH_REG ArchRegValue)
 {
     return ArchRegEnumeration[ArchRegValue];
+
 }
+#endif // GED_ARCH_REG_HIDDEN
+
+#ifndef GED_ATOMIC_OPERATION_TYPE_HIDDEN
 const char* GED_GetAtomicOperationTypeString(GED_ATOMIC_OPERATION_TYPE AtomicOperationTypeValue)
 {
     return AtomicOperationTypeEnumeration[AtomicOperationTypeValue];
+
 }
+#endif // GED_ATOMIC_OPERATION_TYPE_HIDDEN
+
+#ifndef GED_BLOCK_SIZE_HIDDEN
 const char* GED_GetBlockSizeString(GED_BLOCK_SIZE BlockSizeValue)
 {
     return BlockSizeEnumeration[BlockSizeValue];
+
 }
+#endif // GED_BLOCK_SIZE_HIDDEN
+
+#ifndef GED_BRANCH_CTRL_HIDDEN
 const char* GED_GetBranchCtrlString(GED_BRANCH_CTRL BranchCtrlValue)
 {
     return BranchCtrlEnumeration[BranchCtrlValue];
+
 }
+#endif // GED_BRANCH_CTRL_HIDDEN
+
+#ifndef GED_CHANNEL_MASK_HIDDEN
 const char* GED_GetChannelMaskString(GED_CHANNEL_MASK ChannelMaskValue)
 {
     return ChannelMaskEnumeration[ChannelMaskValue];
+
 }
+#endif // GED_CHANNEL_MASK_HIDDEN
+
+#ifndef GED_CHANNEL_MODE_HIDDEN
 const char* GED_GetChannelModeString(GED_CHANNEL_MODE ChannelModeValue)
 {
     return ChannelModeEnumeration[ChannelModeValue];
+
 }
+#endif // GED_CHANNEL_MODE_HIDDEN
+
+#ifndef GED_CHANNEL_OFFSET_HIDDEN
 const char* GED_GetChannelOffsetString(GED_CHANNEL_OFFSET ChannelOffsetValue)
 {
     return ChannelOffsetEnumeration[ChannelOffsetValue];
+
 }
+#endif // GED_CHANNEL_OFFSET_HIDDEN
+
+#ifndef GED_COND_MODIFIER_HIDDEN
 const char* GED_GetCondModifierString(GED_COND_MODIFIER CondModifierValue)
 {
     return CondModifierEnumeration[CondModifierValue];
+
 }
+#endif // GED_COND_MODIFIER_HIDDEN
+
+#ifndef GED_DATA_TYPE_HIDDEN
 const char* GED_GetDataTypeString(GED_DATA_TYPE DataTypeValue)
 {
     return DataTypeEnumeration[DataTypeValue];
+
 }
+#endif // GED_DATA_TYPE_HIDDEN
+
+#ifndef GED_DEBUG_CTRL_HIDDEN
 const char* GED_GetDebugCtrlString(GED_DEBUG_CTRL DebugCtrlValue)
 {
     return DebugCtrlEnumeration[DebugCtrlValue];
+
 }
+#endif // GED_DEBUG_CTRL_HIDDEN
+
+#ifndef GED_DEP_CTRL_HIDDEN
 const char* GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue)
 {
     return DepCtrlEnumeration[DepCtrlValue];
+
 }
+#endif // GED_DEP_CTRL_HIDDEN
+
+#ifndef GED_DST_CHAN_EN_HIDDEN
 const char* GED_GetDstChanEnString(GED_DST_CHAN_EN DstChanEnValue)
 {
     return DstChanEnEnumeration[DstChanEnValue];
+
 }
+#endif // GED_DST_CHAN_EN_HIDDEN
+
+#ifndef GED_EOT_HIDDEN
 const char* GED_GetEOTString(GED_EOT EOTValue)
 {
     return EOTEnumeration[EOTValue];
+
 }
+#endif // GED_EOT_HIDDEN
+
+#ifndef GED_EXEC_MASK_OFFSET_CTRL_HIDDEN
 const char* GED_GetExecMaskOffsetCtrlString(GED_EXEC_MASK_OFFSET_CTRL ExecMaskOffsetCtrlValue)
 {
     return ExecMaskOffsetCtrlEnumeration[ExecMaskOffsetCtrlValue];
+
 }
+#endif // GED_EXEC_MASK_OFFSET_CTRL_HIDDEN
+
+#ifndef GED_EXECUTION_DATA_TYPE_HIDDEN
 const char* GED_GetExecutionDataTypeString(GED_EXECUTION_DATA_TYPE ExecutionDataTypeValue)
 {
     return ExecutionDataTypeEnumeration[ExecutionDataTypeValue];
+
 }
+#endif // GED_EXECUTION_DATA_TYPE_HIDDEN
+
+#ifndef GED_FUSION_CTRL_HIDDEN
 const char* GED_GetFusionCtrlString(GED_FUSION_CTRL FusionCtrlValue)
 {
     return FusionCtrlEnumeration[FusionCtrlValue];
+
 }
+#endif // GED_FUSION_CTRL_HIDDEN
+
+#ifndef GED_HEADER_PRESENT_HIDDEN
 const char* GED_GetHeaderPresentString(GED_HEADER_PRESENT HeaderPresentValue)
 {
     return HeaderPresentEnumeration[HeaderPresentValue];
+
 }
+#endif // GED_HEADER_PRESENT_HIDDEN
+
+#ifndef GED_MASK_CTRL_HIDDEN
 const char* GED_GetMaskCtrlString(GED_MASK_CTRL MaskCtrlValue)
 {
     return MaskCtrlEnumeration[MaskCtrlValue];
+
 }
+#endif // GED_MASK_CTRL_HIDDEN
+
+#ifndef GED_MATH_FC_HIDDEN
 const char* GED_GetMathFCString(GED_MATH_FC MathFCValue)
 {
     return MathFCEnumeration[MathFCValue];
+
 }
+#endif // GED_MATH_FC_HIDDEN
+
+#ifndef GED_MATH_MACRO_EXT_HIDDEN
 const char* GED_GetMathMacroExtString(GED_MATH_MACRO_EXT MathMacroExtValue)
 {
     return MathMacroExtEnumeration[MathMacroExtValue];
+
 }
+#endif // GED_MATH_MACRO_EXT_HIDDEN
+
+#ifndef GED_MESSAGE_TYPE_HIDDEN
 const char* GED_GetMessageTypeString(GED_MESSAGE_TYPE MessageTypeValue)
 {
     return MessageTypeEnumeration[MessageTypeValue];
+
 }
+#endif // GED_MESSAGE_TYPE_HIDDEN
+
+#ifndef GED_NO_SRC_DEP_SET_HIDDEN
 const char* GED_GetNoSrcDepSetString(GED_NO_SRC_DEP_SET NoSrcDepSetValue)
 {
     return NoSrcDepSetEnumeration[NoSrcDepSetValue];
+
 }
+#endif // GED_NO_SRC_DEP_SET_HIDDEN
+
+#ifndef GED_OPCODE_HIDDEN
 const char* GED_GetOpcodeString(GED_OPCODE OpcodeValue)
 {
     return OpcodeEnumeration[OpcodeValue];
+
 }
+#endif // GED_OPCODE_HIDDEN
+
+#ifndef GED_PRED_CTRL_HIDDEN
 const char* GED_GetPredCtrlString(GED_PRED_CTRL PredCtrlValue)
 {
     return PredCtrlEnumeration[PredCtrlValue];
+
 }
+#endif // GED_PRED_CTRL_HIDDEN
+
+#ifndef GED_PRED_INV_HIDDEN
 const char* GED_GetPredInvString(GED_PRED_INV PredInvValue)
 {
     return PredInvEnumeration[PredInvValue];
+
 }
+#endif // GED_PRED_INV_HIDDEN
+
+#ifndef GED_REG_FILE_HIDDEN
 const char* GED_GetRegFileString(GED_REG_FILE RegFileValue)
 {
     return RegFileEnumeration[RegFileValue];
+
 }
+#endif // GED_REG_FILE_HIDDEN
+
+#ifndef GED_REP_CTRL_HIDDEN
 const char* GED_GetRepCtrlString(GED_REP_CTRL RepCtrlValue)
 {
     return RepCtrlEnumeration[RepCtrlValue];
+
 }
+#endif // GED_REP_CTRL_HIDDEN
+
+#ifndef GED_RETURN_DATA_CONTROL_HIDDEN
 const char* GED_GetReturnDataControlString(GED_RETURN_DATA_CONTROL ReturnDataControlValue)
 {
     return ReturnDataControlEnumeration[ReturnDataControlValue];
+
 }
+#endif // GED_RETURN_DATA_CONTROL_HIDDEN
+
+#ifndef GED_SATURATE_HIDDEN
 const char* GED_GetSaturateString(GED_SATURATE SaturateValue)
 {
     return SaturateEnumeration[SaturateValue];
+
 }
+#endif // GED_SATURATE_HIDDEN
+
+#ifndef GED_SFID_HIDDEN
 const char* GED_GetSFIDString(GED_SFID SFIDValue)
 {
     return SFIDEnumeration[SFIDValue];
+
 }
+#endif // GED_SFID_HIDDEN
+
+#ifndef GED_SIMDMODE_HIDDEN
 const char* GED_GetSIMDModeString(GED_SIMDMODE SIMDModeValue)
 {
     return SIMDModeEnumeration[SIMDModeValue];
+
 }
+#endif // GED_SIMDMODE_HIDDEN
+
+#ifndef GED_SLOT_GROUP_HIDDEN
 const char* GED_GetSlotGroupString(GED_SLOT_GROUP SlotGroupValue)
 {
     return SlotGroupEnumeration[SlotGroupValue];
+
 }
+#endif // GED_SLOT_GROUP_HIDDEN
+
+#ifndef GED_SRC_MOD_HIDDEN
 const char* GED_GetSrcModString(GED_SRC_MOD SrcModValue)
 {
     return SrcModEnumeration[SrcModValue];
+
 }
+#endif // GED_SRC_MOD_HIDDEN
+
+#ifndef GED_SUB_FUNC_ID_HIDDEN
 const char* GED_GetSubFuncIDString(GED_SUB_FUNC_ID SubFuncIDValue)
 {
     return SubFuncIDEnumeration[SubFuncIDValue];
+
 }
+#endif // GED_SUB_FUNC_ID_HIDDEN
+
+#ifndef GED_SWIZZLE_HIDDEN
 const char* GED_GetSwizzleString(GED_SWIZZLE SwizzleValue)
 {
     return SwizzleEnumeration[SwizzleValue];
+
 }
+#endif // GED_SWIZZLE_HIDDEN
+
+#ifndef GED_SYNC_FC_HIDDEN
 const char* GED_GetSyncFCString(GED_SYNC_FC SyncFCValue)
 {
     return SyncFCEnumeration[SyncFCValue];
+
 }
+#endif // GED_SYNC_FC_HIDDEN
+
+#ifndef GED_THREAD_CTRL_HIDDEN
 const char* GED_GetThreadCtrlString(GED_THREAD_CTRL ThreadCtrlValue)
 {
     return ThreadCtrlEnumeration[ThreadCtrlValue];
+
 }
+#endif // GED_THREAD_CTRL_HIDDEN
 uint32_t GED_GetOperandWidth(const GED_DATA_TYPE datatype, const GED_MODEL modelId, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;

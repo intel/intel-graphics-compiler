@@ -30,11 +30,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdarg>
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <ostream>
-#include <string>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #ifdef _MSC_VER
@@ -67,7 +68,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGA_MODEL_STRING(X) X
 
 
+
+
+
+
+
 namespace iga {
+    ///////////////////////////////////////////////////////////////////////////
+    struct ModelString {
+        const char* text;
+        inline constexpr ModelString(const char *s) : text(s == nullptr ? "" : s) { }
+        inline constexpr ModelString() : ModelString(nullptr) { }
+        inline std::string str() const {return text;}
+        inline operator std::string() const {return str();}
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
     // takes a printf-style pattern and converts it to a string
     std::string format(const char *pat, ...);
     std::string formatv(const char *pat, va_list &va);
@@ -112,7 +128,7 @@ namespace iga {
     //   Intercalator comma(os, ",");
     //   for (...) {
     //     comma.insert();
-    //     emitElement(...);
+    //     os << element;
     //   }
     class Intercalator {
         std::ostream &os;

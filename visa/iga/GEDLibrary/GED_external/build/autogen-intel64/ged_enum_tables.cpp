@@ -1412,7 +1412,42 @@ const GED_MESSAGE_TYPE* MessageTypeTable5[32] =
     NULL, // 30
     NULL // 31
 }; // MessageTypeTable5[]
-const GED_MESSAGE_TYPE* MessageTypeTable6[16] =
+const GED_MESSAGE_TYPE* MessageTypeTable6[32] =
+{
+    &MessageTypeVar41, // 0
+    &MessageTypeVar42, // 1
+    NULL, // 2
+    &MessageTypeVar44, // 3
+    &MessageTypeVar45, // 4
+    &MessageTypeVar46, // 5
+    &MessageTypeVar47, // 6
+    NULL, // 7
+    NULL, // 8
+    NULL, // 9
+    NULL, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL, // 15
+    NULL, // 16
+    NULL, // 17
+    NULL, // 18
+    NULL, // 19
+    NULL, // 20
+    NULL, // 21
+    NULL, // 22
+    NULL, // 23
+    NULL, // 24
+    NULL, // 25
+    NULL, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL // 31
+}; // MessageTypeTable6[]
+const GED_MESSAGE_TYPE* MessageTypeTable7[16] =
 {
     NULL, // 0
     &MessageTypeVar45, // 1
@@ -1430,8 +1465,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable6[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable6[]
-const GED_MESSAGE_TYPE* MessageTypeTable7[16] =
+}; // MessageTypeTable7[]
+const GED_MESSAGE_TYPE* MessageTypeTable8[16] =
 {
     NULL, // 0
     NULL, // 1
@@ -1449,8 +1484,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable7[16] =
     &MessageTypeVar55, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable7[]
-const GED_MESSAGE_TYPE* MessageTypeTable8[16] =
+}; // MessageTypeTable8[]
+const GED_MESSAGE_TYPE* MessageTypeTable9[16] =
 {
     &MessageTypeVar41, // 0
     &MessageTypeVar42, // 1
@@ -1468,8 +1503,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable8[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable8[]
-const GED_MESSAGE_TYPE* MessageTypeTable9[16] =
+}; // MessageTypeTable9[]
+const GED_MESSAGE_TYPE* MessageTypeTable10[16] =
 {
     &MessageTypeVar2, // 0
     &MessageTypeVar3, // 1
@@ -1487,8 +1522,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable9[16] =
     &MessageTypeVar58, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable9[]
-const GED_MESSAGE_TYPE* MessageTypeTable10[16] =
+}; // MessageTypeTable10[]
+const GED_MESSAGE_TYPE* MessageTypeTable11[16] =
 {
     &MessageTypeVar47, // 0
     &MessageTypeVar45, // 1
@@ -1506,8 +1541,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable10[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable10[]
-const GED_MESSAGE_TYPE* MessageTypeTable11[16] =
+}; // MessageTypeTable11[]
+const GED_MESSAGE_TYPE* MessageTypeTable12[16] =
 {
     NULL, // 0
     NULL, // 1
@@ -1525,8 +1560,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable11[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable11[]
-const GED_MESSAGE_TYPE* MessageTypeTable12[16] =
+}; // MessageTypeTable12[]
+const GED_MESSAGE_TYPE* MessageTypeTable13[16] =
 {
     NULL, // 0
     &MessageTypeVar13, // 1
@@ -1544,8 +1579,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable12[16] =
     &MessageTypeVar24, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable12[]
-const GED_MESSAGE_TYPE* MessageTypeTable13[16] =
+}; // MessageTypeTable13[]
+const GED_MESSAGE_TYPE* MessageTypeTable14[16] =
 {
     NULL, // 0
     NULL, // 1
@@ -1563,8 +1598,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable13[16] =
     &MessageTypeVar49, // 13
     NULL, // 14
     NULL // 15
-}; // MessageTypeTable13[]
-const GED_MESSAGE_TYPE* MessageTypeTable14[32] =
+}; // MessageTypeTable14[]
+const GED_MESSAGE_TYPE* MessageTypeTable15[32] =
 {
     &MessageTypeVar12, // 0
     &MessageTypeVar13, // 1
@@ -1598,8 +1633,8 @@ const GED_MESSAGE_TYPE* MessageTypeTable14[32] =
     NULL, // 29
     NULL, // 30
     NULL // 31
-}; // MessageTypeTable14[]
-const GED_MESSAGE_TYPE* MessageTypeTable15[32] =
+}; // MessageTypeTable15[]
+const GED_MESSAGE_TYPE* MessageTypeTable16[32] =
 {
     &MessageTypeVar12, // 0
     &MessageTypeVar13, // 1
@@ -1633,7 +1668,7 @@ const GED_MESSAGE_TYPE* MessageTypeTable15[32] =
     &MessageTypeVar61, // 29
     &MessageTypeVar62, // 30
     NULL // 31
-}; // MessageTypeTable15[]
+}; // MessageTypeTable16[]
 static GED_NO_SRC_DEP_SET NoSrcDepSetVar0 = (GED_NO_SRC_DEP_SET)0;
 static GED_NO_SRC_DEP_SET NoSrcDepSetVar1 = (GED_NO_SRC_DEP_SET)1;
 const GED_NO_SRC_DEP_SET* NoSrcDepSetTable0[2] =

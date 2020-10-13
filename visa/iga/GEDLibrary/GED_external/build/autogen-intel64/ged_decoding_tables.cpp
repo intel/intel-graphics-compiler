@@ -12743,7 +12743,7 @@ const ged_ins_field_entry_t DecodingTable435[116] =
     { GED_INS_FIELD_Opcode,                            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     7, /* {   0,   6,   0,   0,       0x7f } */ {      0x600, (void*)(g_uintptr_t)      0x7f }, NULL }, // 0
     { GED_INS_FIELD_CmptCtrl,                          GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  29,  29,   0,  29, 0x20000000 } */ { 0x1d001d1d, (void*)(g_uintptr_t)0x20000000 }, NULL }, // 1
     { GED_INS_FIELD_Reserved,                          GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 2
-    { GED_INS_FIELD_NumOfSourceOperands,               GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     1, { 1 }, NULL }, // 3
+    { GED_INS_FIELD_NumOfSourceOperands,               GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     2, { 2 }, NULL }, // 3
     { GED_INS_FIELD_HasDestinationOperand,             GED_TABLE_ENTRY_TYPE_FIXED_VALUE,     1, { 1 }, NULL }, // 4
     { GED_INS_FIELD_AccessMode,                        GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED,   0, { 0 }, NULL }, // 5
     { GED_INS_FIELD_MaskCtrl,                          GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  31,  31,   0,  31, 0x80000000 } */ { 0x1f001f1f, (void*)(g_uintptr_t)0x80000000 }, RestrictionTable1 }, // 6
@@ -13703,6 +13703,6 @@ const ged_ins_field_entry_t PositionInterpreterTable6[36] =
     { GED_PSEUDO_FIELD_MessageTypeDP_DC0Legacy,       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  14,  17,   0,  14,    0x3c000 } */ {  0xe00110e, (void*)(g_uintptr_t)   0x3c000 }, RestrictionTable82 }, // 31
     { GED_PSEUDO_FIELD_MessageTypeDP_DC0ScratchBlock, GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  17,  17,   0,  17,    0x20000 } */ { 0x11001111, (void*)(g_uintptr_t)   0x20000 }, RestrictionTable101 }, // 32
     { GED_PSEUDO_FIELD_MessageTypeDP_DC2,             GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     5, /* {  14,  18,   0,  14,    0x7c000 } */ {  0xe00120e, (void*)(g_uintptr_t)   0x7c000 }, RestrictionTable115 }, // 33
-    { GED_PSEUDO_FIELD_MessageTypeDP_DCRO,            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     5, /* {  14,  18,   0,  14,    0x7c000 } */ {  0xe00120e, (void*)(g_uintptr_t)   0x7c000 }, RestrictionTable116 }, // 34
+    { GED_PSEUDO_FIELD_MessageTypeDP_DCRO,            GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     5, /* {  14,  18,   0,  14,    0x7c000 } */ {  0xe00120e, (void*)(g_uintptr_t)   0x7c000 }, RestrictionTable155 }, // 34
     { GED_PSEUDO_FIELD_ExMessageLength,               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     5, /* {   6,  10,   0,   6,      0x7c0 } */ {  0x6000a06, (void*)(g_uintptr_t)     0x7c0 }, NULL } // 35
 }; // PositionInterpreterTable6[]

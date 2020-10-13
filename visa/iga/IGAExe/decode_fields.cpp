@@ -393,6 +393,10 @@ bool debugCompaction(Opts opts)
     // (should rethink this, maybe just -Xifs compacted values)
     opts.autoCompact = false;
 
+    if (opts.inputFiles.empty()) {
+        fatalExitWithMessage("iga: -Xdcmp requires an argument");
+        return true;
+    }
     inferPlatformAndMode(opts.inputFiles[0], opts);
     ensurePlatformIsSet(opts);
 

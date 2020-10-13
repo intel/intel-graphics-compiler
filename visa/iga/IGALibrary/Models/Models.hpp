@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
+
     struct RegInfo {
         // the register name corresponding to this platform
         RegName     regName;
@@ -395,15 +396,23 @@ namespace iga
     // Functions to enumerate information about platforms such as names
     // extensions and whatnot.
     //
-    static size_t const MAX_PLATFORM_NAMES = 3;
+    static const size_t MAX_PLATFORM_NAMES = 3;
     struct PlatformEntry {
-        iga::Platform    platform;
-        const char      *suffix; // platform file suffix; e.g. "12p1"
-        const char      *names[MAX_PLATFORM_NAMES]; // various platform names
+        Platform      platform;
+        const char   *suffix; // platform file suffix; e.g. "12p1"
+        ModelString   names[MAX_PLATFORM_NAMES]; // various platform names
+        constexpr PlatformEntry(
+            Platform p, const char *s,
+            ModelString sfx0,
+            ModelString sfx1 = ModelString(),
+            ModelString sfx2 = ModelString())
+            : platform(p), suffix(s), names{sfx0, sfx1, sfx2}
+        {
+        }
     };
     //
     extern const PlatformEntry ALL_PLATFORMS[];
-    extern size_t ALL_PLATFORMS_LEN;
+    extern const size_t ALL_PLATFORMS_LEN;
 } // namespace iga::*
 
 #endif // IGA_MODELS_HPP

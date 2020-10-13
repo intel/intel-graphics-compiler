@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGA_OPSPEC_HPP
 
 #include "../IR/Types.hpp"
+#include "../strings.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -191,19 +192,15 @@ namespace iga
         // methods.
         Platform       platform;
         //
-        // the operation mnemonic; e.g. "addc"
-        const char    *mnemonic;
-        //
         // the physical opcode value encoded
         uint32_t       opcode; // e.g. 0x1 for mov, 0x7E for nop
         //
+        // the operation mnemonic; e.g. "addc"
+        ModelString    mnemonic;
+        //
         // a high-level name for the operation (Name attr from BXML)
         // e.g. "Add With Carry"
-        const char    *name;
-        //
-        // a concatenation of the <Description> elements in BXML as
-        // well as uncategorized <ProgrammingNote> elements
-        const char    *description; // e.g. description from BXML
+        ModelString    name;
         //
         // describes both the syntax and the encoding format for this
         // operation
@@ -216,22 +213,24 @@ namespace iga
         // Wrap in an EnumBitset<OpAttr,uint32_t> to extract OpAttr's
         int            attrs;
         //
-        /*
+#if 0
         constexpr OpSpec(
             Op _op,
             Platform _platform,
-            const char *_mnemonic,
             uint32_t _opcode,
-            const char *_description,
+            const char *_mnemonic,
+            const char *_name,
             Format _format,
-            TypeMapping _typeMappings[24],
+            const TypeMapping _typeMappings[24],
             int _attrs)
-          : op(_op), platform(_platform), mnemonic(_mnemonic), opcode(_opcode),
-            description(_description), format(_format),
+          : op(_op), platform(_platform), opcode(_opcode),
+            , mnemonic(_mnemonic), name(_name),
+            format(_format),
             typeMappings(_typeMappings), attrs(_attrs)
         {
         }
-        */
+        OpSpec(const OpSpec &) = delete;
+#endif
 
         // returns false for reserved opcodes
         bool isValid() const {return !is(Op::INVALID);}

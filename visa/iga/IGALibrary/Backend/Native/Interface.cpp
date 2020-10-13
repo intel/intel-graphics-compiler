@@ -93,7 +93,7 @@ static size_t encodeInst(
     // encode native
     enc.encodeInstruction(ix, *inst, bits);
 
-    if (mustCompact || opts.autoCompact && !mustntCompact) {
+    if (mustCompact || (opts.autoCompact && !mustntCompact)) {
         // attempt compaction
         InstCompactor ic(enc, enc.getModel());
         MathFC mfc = inst->is(Op::MATH) ? inst->getMathFc() : MathFC::INVALID;
@@ -122,41 +122,21 @@ static size_t encodeInst(
                         ss << " ";
                     }
                     uint64_t mappedValue = cbdi->fieldMapping[i];
-                    ss << "for index " << cIx->index.name << " required entry "
-                      "0x" << std::hex << mappedValue << ": ";
+                    ss << "for index " << cIx->index.name << " lacks";
+                    if (cIx->format) {
+                        ss << " (";
+                        ss << cIx->format(inst->getOp(), cbdi->fieldMapping[i]);
+                        ss << "): ";
+                    }
+                    ss <<  "0x" << std::hex << mappedValue << ": ";
                     // convert the field mapping value to separated form
                     // e.g. 00`0110`...
-                    int bIx = (int)cIx->countNumBitsMapped();
-                    for (int fIx = (int)cIx->numMappings - 1;
-                        fIx >= 0;
-                        --fIx)
-                    {
-                        const Field *f = cIx->mappings[fIx];
-                        auto mVal = getBits(
-                            mappedValue, bIx - f->length(), f->length());
-                        fmtBinaryDigits(ss, mVal, f->length());
-                        if (fIx > 0) {
-                            ss << "`";
-                        }
-                    }
-                    if (cIx->format) {
-                        ss << " " <<
-                            cIx->format(inst->getOp(), cbdi->fieldMapping[i]);
-                    }
+                    // mapped fields are from high bits to low bits
+                    cIx->emitBinary(ss, mappedValue);
                 }
-                if (len > 3) {
-                    ss << " all";
-                }
-                ss << (len == 1 ? " misses" : "miss");
-                // TODO: save the mappings and look for the closest entries
-                //   - save the uint64_t
-                //   - save a pointer to the table and table length
-                // e.g. encoded word 1011011
-                //      ====================
-                //      closest are  1011110    "r<8;8,1>"
-                //                       ^ ^
-                //              and  0011010    "r<4;4,1>"
-                //                   ^     ^
+                // TODO: could emit the closest mappings if there's only
+                // a couple with a low enough hamming distance
+                // (see -Xdcmp for that logic)
             }
             if (opts.explicitCompactMissIsWarning) {
                 enc.warningAt(inst->getLoc(), ss.str().c_str());

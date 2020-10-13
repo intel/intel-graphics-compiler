@@ -29,9 +29,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../api/iga_bxml_ops.hpp"
 #include "../../asserts.hpp"
 #include "../../bits.hpp"
+#include "../../strings.hpp"
 
 #include <cstdint>
 #include <cstring>
+#include <iomanip>
+#include <ostream>
 #include <string>
 
 #if (__cplusplus >= 201402L) || (defined(_MSC_VER) && (_MSVC_LANG >= 201402L))
@@ -382,6 +385,26 @@ namespace iga
             return entrySizeBits;
         }
         bool isSrcImmField() const {return mappings == nullptr;}
+
+        // emits output such as  "0`001`1`0`001"
+        // for SrcImm compacted fields it just emits the value
+        void emitBinary(std::ostream &os, uint64_t val) const {
+            if (mappings == nullptr) {
+                // srcimm field
+                os << std::setw(16) << "(" << fmtHex(val) << ")";
+            } else {
+                int bitOff = (int)countNumBitsMapped();
+                for (int mIx = 0; mIx < (int)numMappings; ++mIx) {
+                    if (mIx != 0) {
+                        os << "`";
+                    }
+                    const Field *mf = mappings[mIx];
+                    bitOff -= mf->length();
+                    auto bs = iga::getBits(val, bitOff, mf->length());
+                    fmtBinaryDigits(os, bs, mf->length());
+                }
+            }
+        }
     };
 
     // groups all CompactionMappings for a given platform

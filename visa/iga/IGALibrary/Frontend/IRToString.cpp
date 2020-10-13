@@ -28,8 +28,29 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <ostream>
 
 #include "IRToString.hpp"
+#include "../strings.hpp"
 
 using namespace iga;
+
+
+std::string iga::ToSymbol(Platform x) {
+    switch (x) {
+    MAKE_CASE(Platform, INVALID);
+    MAKE_CASE(Platform, GEN6);
+    MAKE_CASE(Platform, GEN7);
+    MAKE_CASE(Platform, GEN7P5);
+    MAKE_CASE(Platform, GEN8);
+    MAKE_CASE(Platform, GEN8LP);
+    MAKE_CASE(Platform, GEN9);
+    MAKE_CASE(Platform, GEN9LP);
+    MAKE_CASE(Platform, GEN9P5);
+    MAKE_CASE(Platform, GEN10);
+    MAKE_CASE(Platform, GEN11);
+    MAKE_CASE(Platform, GEN12P1);
+    MAKE_CASE(Platform, GENNEXT);
+    MAKE_DEFAULT_CASE(Platform);
+    }
+}
 
 
 

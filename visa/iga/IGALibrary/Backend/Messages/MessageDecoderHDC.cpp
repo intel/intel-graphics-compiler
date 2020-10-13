@@ -34,7 +34,13 @@ static const char *MDC_DS_MEANINGS[] {
     "DE8 (8 data elements per address)",
 };
 
-enum HDC : uint32_t {
+
+// https://gfxspecs.intel.com/Predator/Home/Index/44782
+// https://gfxspecs.intel.com/Predator/Home/Index/44783
+// https://gfxspecs.intel.com/Predator/Home/Index/44785
+using HDCOpcode = uint32_t;
+enum DC0 : uint32_t {
+    /////////////////////////////////////////
     MSD0R_OWB      = 0x00, // oword block read (unaligned)
     MSD0R_OWAB     = 0x01, // oword/hword block read (aligned)
     MSD0W_OWB      = 0x08, // oword block write
@@ -53,6 +59,8 @@ enum HDC : uint32_t {
     //
     MSD_MEMFENCE   = 0x07,
     //
+};
+enum DC1 : uint32_t {
     /////////////////////////////////////////
     MSD1R_US       = 0x01, // untyped read
     MSD1W_US       = 0x09, // untyped write
@@ -88,6 +96,14 @@ enum HDC : uint32_t {
     MSD1A_DWAC     = 0x0B,
     MSD1A_DWTAI    = 0x06,
     //
+    // Gen12+
+    // e.g. MSD1R_WAC MSD1W_WAC => MSD1A_WAC (use "a" for atomic)
+    MSD1A_WAC      = 0x0C, // typed atomic 16b int counter
+    MSD1A_WTAI     = 0x07, // typed atomic 16b int op
+    MSD1A_A64_WAF  = 0x1E, // typed atomic 16b float
+    MSD1A_WAF      = 0x1C,
+    MSD1A_A64_WAI  = 0x13,
+    MSD1A_WAI      = 0x03,
 };
 
 
@@ -99,6 +115,27 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         : MessageDecoderLegacy(
             _platform, _sfid, _exDesc, _desc, _indDesc, _result)
     {
+    }
+
+    void ensurePlatformLT(Platform removed) {
+        if (platform() >= removed) {
+            error(14, 5, "operation not supported on this platform");
+        }
+    }
+    void ensurePlatformLE(Platform removed) {
+        if (platform() > removed) {
+            error(14, 5, "operation not supported on this platform");
+        }
+    }
+    void ensurePlatformGE(Platform introduced) {
+        if (platform() < introduced) {
+            error(14, 5, "operation not supported on this platform");
+        }
+    }
+    void ensurePlatformIn(Platform first, Platform last) {
+        if (platform() < first || platform() > last) {
+            error(14, 5, "operation not supported on this platform");
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -212,7 +249,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
 
     // returns true if high slot group
     bool decodeMDC_SG3() {
-        auto bits = getDescBits(12,2);
+        auto bits = getDescBits(12, 2);
         const char *sym = "??";
         switch (bits) {
         case 0: sym = "SG4x2"; break;
@@ -388,7 +425,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         int addrSize,
         int extraAttrs)
     {
-        auto owBits = getDescBits(8,3);
+        auto owBits = getDescBits(8, 3);
         // if there's only one OW, we pad up to 1 GRF (since it's LO or HI)
         // otherwise, we'll have 2, 4, ... all GRF multiples
         int regBlockSize = owBits < 2 ? 256 : 128;
@@ -483,6 +520,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
     void setHdcTypedSurfaceMessage(
         bool isRead,
         const char *doc,
+        const char *doc12,
         bool returnsStatus = false)
     {
         std::string msgDesc = isRead ?
@@ -510,12 +548,13 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
             decodeMDC_CMASK(),
             DEFAULT_EXEC_SIZE/2,
             MessageInfo::HAS_CHMASK|MessageInfo::HAS_UVRLOD);
-        setDoc(doc);
+        setDoc(doc, doc12);
     }
 
     void setHdcFloatAtomicMessage(
         const char *msgNameDesc, int addrSize, int dataSize,
-        const char *docNoRet, const char *docWiRet)
+        const char *docNoRet, const char *docWiRet,
+        const char *docNoRet12, const char *docWiRet12)
     {
         addField("MessageType", 14, 5, getDescBits(14, 5), msgNameDesc);
 
@@ -552,11 +591,11 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
             extraAttrs |= MessageInfo::ATOMIC_RETURNS;
             msgSym += "_ret";
             ssDesc << " with return";
-            setDoc(docWiRet);
+            setDoc(docWiRet, docWiRet12);
         }
         else
         {
-            setDoc(docNoRet);
+            setDoc(docNoRet, docNoRet12);
         }
         if (op != SendOp::INVALID) {
             setHdcMessage(
@@ -577,8 +616,8 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         int addrSize,
         int dataSize,
         int simdSize,
-        const char *docNoRet,
-        const char *docWiRet)
+        const char *docNoRet, const char *docWiRet,
+        const char *docNoRet12, const char *docWiRet12)
     {
         std::stringstream msgSym;
         msgSym << typedUntyped << "_";
@@ -697,9 +736,9 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         {
             extraAttrs |= MessageInfo::ATOMIC_RETURNS;
             msgSym << "_ret";
-            setDoc(docWiRet);
+            setDoc(docWiRet, docWiRet12);
         } else {
-            setDoc(docNoRet);
+            setDoc(docNoRet, docNoRet12);
         }
         if (op != SendOp::INVALID) {
             msgDesc << " " << opDesc;
@@ -740,35 +779,46 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
 }; // MessageDecoderHDC
 
 
+// Enum of all DCRO ops
+// https://gfxspecs.intel.com/Predator/Home/Index/44785
+enum DCRO_MT {
+    MT_CC_OWB  = 0x00,
+    MT_CC_OWAB = 0x01,
+    MT_CC_DWS  = 0x03,
+};
 
 void MessageDecoderHDC::tryDecodeDCRO() {
-    const int msgType = decodeDescField("MType", 14, 5,
-        [&] (std::stringstream &ss, uint32_t op) {
-            switch (op) {
-            case 0x00: ss << "constant oword block read"; break;
-            case 0x01: ss << "constant unaligned oword block read"; break;
-            case 0x03: ss << "constant dword gathering read"; break;
-            default: ss << "?"; break;
-            }
-        });
+    const int msgType = getDescBits(14, 5);
+    const char *desc = "???";
+
+    auto setMessageTypeDesc = [&](const char *d) {
+        desc = d;
+        addField("MessageType", 14, 5, msgType, d);
+    };
     switch (msgType) {
-    case 0x00: // constant           oword block read
-    case 0x01: // constant unaligned oword block read
+    case MT_CC_OWB:  // constant           oword block read
+    case MT_CC_OWAB: // constant unaligned oword block read
+        setMessageTypeDesc(
+            msgType == MT_CC_OWB ?
+            "constant "      "oword block read" :
+            "constant aligned oword block read");
         setHdcOwBlock(
-            msgType == 0x00 ?
-            "const_load_block" :
-            "unaligned_const_load_block",
-            msgType == 0x00 ?
-            "constant oword block read" :
-            "constant unaligned oword block read",
+            msgType == MT_CC_OWB ?
+                "const_load_block" :
+                "aligned_const_load_block",
+            desc,
             SendOp::LOAD,
             32, // 32b address
             0);
         result.info.cachingL3 = decodeMDC_IAR();
         decodeMDC_HR();
-        setDoc(msgType == 0x00 ? "7041" : "7043");
+        setDoc(
+            msgType == MT_CC_OWB ? "7041" : "7043",
+            msgType == MT_CC_OWB ? "44767" : "44766");
         break;
-    case 0x03: // constant dword gathering read
+    case MT_CC_DWS:
+        setMessageTypeDesc("constant dword gathering read");
+        result.info.cachingL3 = decodeMDC_IAR();
         setHdcMessage(
             "const_load",
             "constant dword gathering read",
@@ -778,71 +828,79 @@ void MessageDecoderHDC::tryDecodeDCRO() {
             decodeMDC_DWS_DS(10),
             decodeMDC_SM2(8),
             0);
-        result.info.cachingL3 = decodeMDC_IAR();
         decodeExpected(9, 1, "LegacySimdMode", 1);
         decodeMDC_H();
-        setDoc("7084");
+        setDoc("7084", "44765");
         break;
     default:
+        setMessageTypeDesc("unknown DCRO message");
+        decodeMDC_H();
+        (void)decodeBTI(32);
         error(14, 5, "unsupported DCRO op");
         return;
     }
 }
 
+// GEN12: DC0 https://gfxspecs.intel.com/Predator/Home/Index/44782
 void MessageDecoderHDC::tryDecodeDC0()
 {
     const int msgType = getDescBits(14, 5);
+    const char *desc = "???";
+    auto addMessageType = [&](const char *d) {
+        addField("MessageType", 14, 5, msgType, d);
+        desc = d;
+    };
     switch (msgType) {
     case MSD0R_OWB: // oword block read (unaligned)
-        addField("MessageType", 14, 5, msgType, "oword block read");
+        addMessageType("oword block read");
         setHdcOwBlock(
             "load_block",
-            "oword block read",
+            desc,
             SendOp::LOAD,
             32, // all 32b addresses
             0);
-        setDoc("7028");
+        setDoc("7028", "44722");
         decodeMDC_HR();
         break;
     case MSD0R_OWAB: // aligned hword/oword block read
         tryDecodeDC0AlignedBlock();
         break;
     case MSD0W_OWB: // hword/oword block write
-        addField("MessageType", 14, 5, msgType, "oword block write");
+        addMessageType("oword block write");
         setHdcOwBlock(
             "store_block",
-            "oword block write",
+            desc,
             SendOp::STORE,
             32, // all 32b addresses
             0);
-        setDoc("7032");
+        setDoc("7032", "44730");
         decodeMDC_HR();
         break;
     case MSD0W_HWAB: // hword aligned block write
-        addField("MessageType", 14, 5, msgType, "hword aligned block write");
+        addMessageType("hword aligned block write");
         setHdcOwBlock(
             "aligned_store_block",
-            "aligned oword block write",
+            desc,
             SendOp::STORE,
             32, // all 32b addresses
             0);
-        setDoc("20862");
+        setDoc("20862", "44727");
         decodeMDC_HR();
         break;
         //
     case MSD0R_OWDB: // oword dual block read
-        addField("MessageType", 14, 5, msgType, "oword dual block read");
-        result.info.description = "oword dual block read";
-        setDoc("7029");
+        addMessageType("oword dual block read");
+        setDoc("7029", "???");
+        result.info.description = desc;
         decodeMDC_HR();
-        error(14,5, "oword dual block read decode not supported");
+        error(14, 5, "oword dual block read decode not supported");
         return;
     case MSD0W_OWDB: // oword dual block write
-        addField("MessageType", 14, 5, msgType, "oword dual block write");
-        result.info.description = "oword dual block write";
-        setDoc("7033");
+        addMessageType("oword dual block write");
+        result.info.description = desc;
+        setDoc("7033", "???");
         decodeMDC_HR();
-        error(14,5,"oword dual block write decode not supported");
+        error(14, 5, "oword dual block write decode not supported");
         return;
         //
     case MSD0R_BS: // byte gathered read
@@ -856,13 +914,13 @@ void MessageDecoderHDC::tryDecodeDC0()
         bool isRead = msgType == MSD0R_DWS;
         const char *msgName = isRead ?
             "dword gathering read" : "dword scattering write";
-        addField("MessageType", 14, 5, msgType, msgName);
+        addMessageType(msgName);
         //
         int elemsPerAddr = decodeMDC_DWS_DS(10);
         std::stringstream ss;
         ss << msgName;
         if (elemsPerAddr != 1)
-            ss << msgName << " x" << elemsPerAddr;
+            ss << " x" << elemsPerAddr;
         //
         setHdcMessage(
             isRead ? "load" : "store",
@@ -874,7 +932,9 @@ void MessageDecoderHDC::tryDecodeDC0()
             decodeMDC_SM2(8),
             0);
         result.info.cachingL3 = decodeMDC_IAR();
-        setDoc(isRead ? "7067" : "7069");
+        setDoc(
+            isRead ? "7067" : "7069",
+            isRead ? "44718" : "44726");
         decodeExpected(9, 1, "LegacySimdMode", 1);
         decodeMDC_H();
         break;
@@ -930,7 +990,7 @@ void MessageDecoderHDC::tryDecodeDC0BSRW(bool isRead)
         decodeMDC_SM2(8),
         0);
     result.info.cachingL3 = decodeMDC_IAR();
-    setDoc(isRead ? "7066" : "7068");
+    setDoc(isRead ? "7066" : "7068", isRead ? "44717" : "44725");
     decodeMDC_H();
 }
 
@@ -968,7 +1028,7 @@ void MessageDecoderHDC::tryDecodeDC0Memfence()
     addField("MessageType", 14, 5, msgType, "fence");
     //
     std::stringstream sym, descs;
-    uint32_t surfId = getDescBits(0,8);
+    uint32_t surfId = getDescBits(0, 8);
     int extraAttrs = 0;
     if (decodeDescBitField("Commit", 13,
         "off (return immediately)",
@@ -989,11 +1049,11 @@ void MessageDecoderHDC::tryDecodeDC0Memfence()
             error(8, 1, "L3 implies L1 flush");
         }
         descs << " flushing";
-        if (decodeDescBitField("L1Flush",8,"Flush L3","FLush L1") != 0) {
+        if (decodeDescBitField("L1Flush", 8, "Flush L3", "FLush L1") != 0) {
             sym << ".l1";
             descs << " L1";
         }
-        if (decodeDescField("L3 Flush Targets",9,4)) {
+        if (decodeDescField("L3 Flush Targets", 9, 4)) {
             if (getDescBits(9, 4) == 0xF) {
                 descs << " all L3 data";
                 sym << ".dcti";// data, const?, text, inst
@@ -1037,7 +1097,7 @@ void MessageDecoderHDC::tryDecodeDC0Memfence()
         1,
         1,
         extraAttrs);
-    setDoc("7049");
+    setDoc("7049", "44768");
     decodeMDC_HR();
 }
 
@@ -1072,13 +1132,13 @@ void MessageDecoderHDC::tryDecodeDC0ScratchBlock()
     if (platform() < Platform::GEN10) {
         decodeDescBitField("ChannelMode", 16, "OWord", "DWord");
     }
-    setDoc(isRead ? "7027" : "7031");
+    setDoc(isRead ? "7027" : "7031", isRead ? "44724" : "44732");
 
     decodeMDC_HR();
 }
 
 #if 0
-experimental work in a table-based approach
+// experimental work in a table-based approach
 
 struct Doc {
     Platform platform;
@@ -1094,75 +1154,178 @@ struct Doc {
 };
 static constexpr Doc INVALID_DOC;
 
+struct AddrSize {
+    enum class Ord {ORD_A16 = 1, ORD_A32, ORD_A64} ordinal;
+    constexpr AddrSize(Ord o) : ordinal(o) { }
+    constexpr int bits() const {return 8 << unsigned(ordinal);}
+    // std::string symbol() {}
+    // static AddrSize FromSyntax(std::string);
+};
+constexpr AddrSize A16(AddrSize::Ord::ORD_A16);
+constexpr AddrSize A32(AddrSize::Ord::ORD_A32);
+constexpr AddrSize A64(AddrSize::Ord::ORD_A64);
+
+struct DataSize {
+    int bitsInReg;
+    int bitsInMem;
+    // enum class ExtendFunction{NOP, ZEXT, SEXT} extend;
+
+    constexpr DataSize(int bRf, int bM) : bitsInReg(bRf), bitsInMem(bM) { }
+    constexpr DataSize(int b) : DataSize(b, b) { }
+    constexpr int bitsInRegisterFile() const {return bitsInReg;}
+    constexpr int bitsInMemory() const {return bitsInMem;}
+};
+constexpr DataSize D8(8);
+constexpr DataSize D8U32(8, 32);
+constexpr DataSize D16U32(16, 32);
+constexpr DataSize D16(16);
+constexpr DataSize D32(32);
+constexpr DataSize D64(64);
+
+struct DataFormat {
+    enum class Order {NONTRANSPOSE = 0, TRANSPOSE = 1};
+    enum class QuadMask {
+        INVALID = 0,
+        X = 1, Y = 2, Z = 4, W = 8,
+        ///////////////////////////////////////////////
+        // friendly combinations for debugger
+        XY = X | Y, XZ = X | Z,  XW = X | W,
+        YZW = W | Z | W, YZ = Y | Z, YW = Y | W,
+    };
+
+    Order dataOrder;
+    DataSize dataSize;
+    int dataElems = 0;
+    QuadMask dataMask = QuadMask::INVALID; // only for load quad
+
+    constexpr DataFormat(Order ord, DataSize ds, int des = 1)
+        : dataOrder(ord), dataSize(ds), dataElems(des) { }
+    constexpr DataFormat(DataSize ds)
+        : DataFormat(Order::NONTRANSPOSE, ds) { }
+    constexpr DataFormat(DataSize ds, QuadMask qm)
+        : DataFormat(Order::NONTRANSPOSE, ds), dataMask(qm),
+        dataElems(
+            (int(dataMask) & int(QuadMask::X) ? 1 : 0) +
+            (int(dataMask) & int(QuadMask::Y) ? 1 : 0) +
+            (int(dataMask) & int(QuadMask::Z) ? 1 : 0) +
+            (int(dataMask) & int(QuadMask::W) ? 1 : 0))
+    {
+    }
+
+    constexpr int elems() const {return dataElems;}
+};
+
 
 struct Format {
+    const char *description;
+    const char *canonicalName;
     uint32_t encoding;
     uint32_t encodingMask;
 
-    const char *mnemonic;
-    const char *description;
-    const char *canonicalName;
-
     SendOp op;
-    int addrBits;
-    int dataBitsRegfile;
+    AddrSize addrSize;
+    DataFormat dataFormat;
+
     int extraAttrs;
 
-    Doc docs[2];
+    Doc docs[3];
 
     constexpr Format(
-        const char *mne,
+        SendOp o,
         const char *desc,
         const char *canon,
-        uint32_t enc,
-        uint32_t encMask,
-        SendOp op,
-        int aSize,
-        int dSize,
-        const Doc &d1 = Doc(),
-        const Doc &d2 = Doc())
-        : mnemonic(mne)
+        uint32_t enc, uint32_t encMask,
+        DataFormat dFormat,
+        AddrSize aSize,
+        const Doc &d1 = INVALID_DOC,
+        const Doc &d2 = INVALID_DOC,
+        const Doc &d3 = INVALID_DOC)
+        : op(o)
         , description(desc)
         , canonicalName(canon)
         , encoding(enc)
         , encodingMask(encMask)
-        , addrBits(aSize)
+        , dataBitsMemory(dSize)
         , dataBitsRegfile(dSize)
+        , dataVectorSize(1)
+        , addrBits(aSize)
         , extraAttrs(0)
     {
         docs[0] = d1;
         docs[1] = d2;
+        docs[2] = d3;
     }
 };
 
 static constexpr uint32_t DC1_OP_MASK = getFieldMask<uint32_t>(14, 4);
 
-static constexpr Format HDC_OP(
-    const char *mne,
+static constexpr Format DC1_OP(
+    SendOp op,
     const char *desc,
     const char *canon,
-    uint32_t enc,
-    int addrSize,
+    HDCOpcode enc,
+    DataSize dSize,
+    AddrSize aSize,
     const Doc &d1 = Doc(),
     const Doc &d2 = Doc())
 {
-    return Format(mne, desc, canon, enc, DC1_OP_MASK, addrSize, d1, d2);
+    return Format(mne, desc, canon, enc, DC1_OP_MASK, dSize, aSize, d1, d2);
 }
 
+static constexpr uint32_t DC0_OP_MASK = getFieldMask<uint32_t>(14, 4);
 
+static constexpr Format DC0_OP(
+    SendOp op,
+    const char *desc,
+    const char *canon,
+    HDCOpcode enc,
+    DataSize dSize,
+    AddrSize aSize,
+    const Doc &d1 = Doc(),
+    const Doc &d2 = Doc())
+{
+    return Format(mne, desc, canon, enc, DC1_OP_MASK, dSize, aSize, d1, d2);
+}
+
+// PROBLEM: how to actually decode all the desc fields...
+// (use smaller table groups and match on mask)
 static constexpr Format DC1_OPS[] {
-    HDC_OP("load_untyped", "untyped surface read",
-        "MSD1R_US", 0x01, 32, "7088"),
-    HDC_OP("store_untyped", "untyped surface write",
-        "MSD1W_US", 0x09, 32, "7091"),
-    HDC_OP("load_untyped", "a64 untyped surface read",
-        "MSD1R_A64_US", 0x11, 64, "7086"),
-    HDC_OP("store_untyped", "a64 untyped surface write",
-        "MSD1W_A64_US", 0x19, 64, "7089"),
+    // must also decode cmask and BTI
+    DC1_OP(SendOp::LOAD_QUAD, "untyped surface read", "MSD1R_US",
+        0x01, D32, A32, "7088", "44747"),
+    DC1_OP(SendOp::STORE_QUAD, "untyped surface write", "MSD1W_US",
+        0x09, D32, A32, "7091", "44757"),
+    DC1_OP(SendOp::LOAD_QUAD, "a64 untyped surface read", "MSD1R_A64_US",
+        0x11, D32, A64, "7086", "44743"),
+    DC1_OP(SendOp::STORE_QUAD, "a64 untyped surface write", "MSD1W_A64_US",
+        0x19, D32, A64, "7089", "44754"),
+    //
+    // must also decode vector size and BTI
+    DC1_OP(SendOp::LOAD, "a64 byte gathering read", "MSD1R_A64_BS",
+        0x19, D8, A64, "7070"),
+    DC1_OP(SendOp::STORE, "a64 byte scattering write", "MSD1W_A64_BS",
+        0x1A, D8, A64, "7073"),
 };
+static constexpr Format DC0_OPS[] {
+    DC0_OP(SendOp::LOAD, "byte gathering read", "MSD1R_BS",
+        0x04, D8, A32, "7066", "44737"),
+    DC0_OP(SendOp::STORE, "byte scattering write", "MSD1W_BS",
+        0x0C, D8, A32, "7068", "44748"),
+    //
+    // bit [13:12] MBZ, [11:10]
+    DC0_OP(SendOp::LOAD, "dword gathering read", "MSD0R_DWS",
+        0x03, D32, A32, "7067", "44738"),
+    DC0_OP(SendOp::STORE, "dword scattered write", "MSD0W_DWS",
+        0x0B, D32, A32, "7069", "44749"),
+    DC0_OP(SendOp::LOAD, "qword gathering read", "MSD0R_QWS",
+        0x05, D64, A32, "33652", "44742"),
+    DC0_OP(SendOp::STORE, "qword scattered write", "MSD0W_QWS",
+        0x0D, D64, A32, "33653", "44753"),
+}
 #endif
 
 
+// DC1 https://gfxspecs.intel.com/Predator/Home/Index/44783
 void MessageDecoderHDC::tryDecodeDC1() {
     const int msgType = getDescBits(14, 5);
     switch (msgType)
@@ -1170,7 +1333,7 @@ void MessageDecoderHDC::tryDecodeDC1() {
     case MSD1R_US: // untyped surface read
     case MSD1W_US: // untyped surface write
     {
-        const char *msgName = msgType == 0x01 ?
+        const char *msgName = msgType == MSD1R_US ?
             "untyped surface read" : "untyped surface write";
         addField("MessageType", 14, 5, msgType, msgName);
         //
@@ -1179,7 +1342,9 @@ void MessageDecoderHDC::tryDecodeDC1() {
             msgType == MSD1R_US,
             32,
             0);
-        setDoc(msgType == MSD1R_US ? "7088" : "7091");
+        setDoc(
+            msgType == MSD1R_US ? "7088" : "7091",
+            msgType == MSD1R_US ? "44747" : "44757");
         decodeMDC_H();
         break;
     }
@@ -1195,7 +1360,9 @@ void MessageDecoderHDC::tryDecodeDC1() {
             msgType == MSD1R_A64_US,
             64, // 8B addrs
             0);
-        setDoc(msgType == MSD1R_A64_US ? "7086" : "7089");
+        setDoc(
+            msgType == MSD1R_A64_US ? "7086" : "7089",
+            msgType == MSD1R_A64_US ? "44743" : "44754");
         decodeMDC_HF();
         break;
     }
@@ -1214,7 +1381,9 @@ void MessageDecoderHDC::tryDecodeDC1() {
             //
             if (subType == BYTE_SUBTYPE) {
                 addField("SubType", 8, 2, subType, "Byte");
-                setDoc(msgType == MSD1R_A64_BS ? "7070" : "7073");
+                setDoc(
+                    msgType == MSD1R_A64_BS ? "7070" : "7073",
+                    msgType == MSD1R_A64_BS ? "44737" : "44748");
             } else { // subType == 0x3
                 addField("SubType", 8, 2, subType, "Byte with Status Return");
                 setDoc(msgType == MSD1R_A64_BS ? "19316" : nullptr);
@@ -1281,7 +1450,9 @@ void MessageDecoderHDC::tryDecodeDC1() {
                 decodeMDC_SM2(12),
                 0);
             if (isDword) {
-                setDoc(isRead ? "7071" : "7074");
+                setDoc(
+                    isRead ? "7071" : "7074",
+                    isRead ? "44738" : "44749");
             } else {
                 setDoc(isRead ? "7072" : "7075");
             }
@@ -1324,15 +1495,18 @@ void MessageDecoderHDC::tryDecodeDC1() {
             });
 
         if (isHword && isUnaligned)
-            setDoc(isRead ? "7034" : "7038");
+            setDoc(isRead ? "7034" : "7038", isRead ? "44739" : "44750");
         else if (isHword && !isUnaligned) {
             bool supported = false;
             if (!supported)
-                error(11,2,"HWord aligned unsupported on this platform");
+                error(11, 2, "HWord aligned unsupported on this platform");
         } else if (!isHword && isUnaligned) {
-            setDoc(isRead ? "7037" : "33440"); // MSD1W_A64_OWAB
+            setDoc(isRead ? "7037" : "33440",
+                isRead ? "44740" : "44751"); // MSD1R_A64_OWAB|MSD1W_A64_OWAB
         } else if (!isHword && !isUnaligned) {
-            setDoc(isRead ? "7039" : "7039"); // MSD1W_A64_OWB
+            setDoc(
+                isRead ? "7039" : "7039",
+                isRead ? "44741" : "44752"); // MSD1R_A64_OWB|MSD1W_A64_OWB
         } else if (subType == 2) {
             setDoc(isRead ? "7036" : "7040");
             result.info.description = "a64 dual block ";
@@ -1388,8 +1562,8 @@ void MessageDecoderHDC::tryDecodeDC1() {
             "a64 float atomic",
             64,
             32,
-            "7126",
-            "7118");
+            "7126", "7118",
+            "44682", "44649");
         decodeMDC_HF();
         break;
 
@@ -1398,8 +1572,8 @@ void MessageDecoderHDC::tryDecodeDC1() {
             "float atomic",
             32,
             32,
-            "7130",
-            "7122");
+            "7130", "7122",
+            "44697", "44664");
         decodeMDC_H();
         break;
     case MSD1W_A64_AI: // a64 untyped atomic int{32,64}
@@ -1407,18 +1581,23 @@ void MessageDecoderHDC::tryDecodeDC1() {
         // the encoding repurposes the SIMD size as the data size and the
         // message and thus the SIMD size is always fixed
         int simd = 8;
-        const char *msgName = "a64 untyped atomic int32";
-        auto dataWidthCtrl =
-            decodeDescBitField("DataWidth", 12, "32b", "64b");
+        auto is64b =
+            decodeDescBitField("DataWidth", 12, "64b", "32b");
+        const char *msgName = is64b ?
+            "a64 untyped atomic int32" : "a64 untyped atomic int64";
+        const char *docNoRet = is64b ? "7161" : "7155";
+        const char *docNoRet12 = is64b ? "44688" : "44685";
+        const char *docWiRet = is64b ? "7143" : "7137";
+        const char *docWiRet12 = is64b ? "44655" : "44652";
         //
         setHdcIntAtomicMessage(
             "untyped",
             msgName,
             64,
-            dataWidthCtrl ? 64 : 32,
+            is64b ? 64 : 32,
             simd,
-            dataWidthCtrl ? "7161" : "7155",
-            dataWidthCtrl ? "7143" : "7137");
+            docNoRet, docWiRet,
+            docNoRet12, docWiRet12);
         decodeMDC_HF();
         break;
     }
@@ -1433,8 +1612,8 @@ void MessageDecoderHDC::tryDecodeDC1() {
             32,
             32,
             decodeMDC_SM2R(12),
-            "7167",
-            "7149");
+            "7167", "7149",
+            "44700", "44667");
         decodeMDC_H();
         break;
     }
@@ -1492,16 +1671,18 @@ void MessageDecoderHDC::tryDecodeDC1() {
             msgType == 0x4 ? SendOp::LOAD : SendOp::STORE,
             32, 8, bytesTransmitted, 1,
             MessageInfo::TRANSPOSED);
-        setDoc(msgType == MSD1R_MB ? "7046" : "7048");
+        setDoc(
+            msgType == MSD1R_MB ? "7046" : "7048",
+            msgType == MSD1R_MB ? "44744" : "44755");
         decodeMDC_HR();
         break;
     }
     case MSD1R_TS: // typed surface read
-        setHdcTypedSurfaceMessage(true, "7087");
+        setHdcTypedSurfaceMessage(true, "7087", "44745");
         decodeMDC_H();
         break;
     case MSD1W_TS: // typed surface write
-        setHdcTypedSurfaceMessage(false, "7090");
+        setHdcTypedSurfaceMessage(false, "7090", "44756");
         decodeMDC_H();
         break;
     case MSD1A_DWAC:
@@ -1511,7 +1692,8 @@ void MessageDecoderHDC::tryDecodeDC1() {
             32, // addrSize
             32, // dataSize
             decodeMDC_SM2R(12),
-            "7109", "7099");
+            "7109", "7099",
+            "44696", "44663");
         decodeMDC_HR();
         result.info.attributeSet |= MessageInfo::HAS_UVRLOD;
         break;
@@ -1526,8 +1708,85 @@ void MessageDecoderHDC::tryDecodeDC1() {
             32, // addrSize
             32, // dataSize
             DEFAULT_EXEC_SIZE/2,
-            "7113", "7103");
+            "7113", "7103",
+            "44703","44670");
         decodeMDC_H();
+        break;
+    }
+    case MSD1A_WAC:
+        setHdcIntAtomicMessage(
+            "typed",
+            "atomic 16-bit counter",
+            32, // addrSize
+            16, // dataSize
+            decodeMDC_SM2R(12),
+            "21412","21411",
+            "44706", "44673");
+        decodeMDC_HR();
+        result.info.attributeSet |= MessageInfo::HAS_UVRLOD;
+        break;
+    case MSD1A_WTAI:
+    {
+        bool sgh = decodeMDC_SG2();
+        setHdcIntAtomicMessage(
+            sgh ?
+            "typed_sgh" :
+            "typed",
+            sgh ?
+            "atomic 16-bit integer (slot group high)" :
+            "atomic 16-bit integer",
+            32, // addrSize
+            16, // dataSize
+            DEFAULT_EXEC_SIZE/2,
+            "21416", "21415",
+            "44703", "44670");
+        decodeMDC_H();
+        result.info.attributeSet |= MessageInfo::HAS_UVRLOD;
+        break;
+    }
+    case MSD1A_A64_WAF: // a64 fp16 atomic
+    case MSD1A_WAF: // fp16 atomic
+    {
+        if (platform() <= Platform::GEN11) {
+            // these used to be SIMD4x2
+            error(14, 5, "SIMD4x2 atomic float decode unsupported");
+            return;
+        }
+        bool isA64 = msgType == MSD1A_A64_WAF;
+        setHdcFloatAtomicMessage(
+            isA64 ?
+            "a64 untyped half-float atomic" : "untyped half-float atomic",
+            isA64 ? 64 : 32,
+            16,
+            isA64 ? "21405" : "21407", isA64 ? "21404" : "21406",
+            isA64 ? "44690" : "54102", isA64 ? "44657" : "54101");
+        if (isA64)
+            decodeMDC_HF();
+        else
+            decodeMDC_H();
+        break;
+    }
+    case MSD1A_A64_WAI: // a64 int16 atomic
+    case MSD1A_WAI: // int16 atomic
+    {
+        if (platform() <= Platform::GEN11) {
+            // these used to be SIMD4x2
+            error(14, 5, "SIMD4x2 atomic int decode unsupported");
+            return;
+        }
+        bool isA64 = msgType == MSD1A_A64_WAI;
+        setHdcIntAtomicMessage(
+            "untyped",
+            isA64 ? "a64 atomic int16" : "atomic int16",
+            msgType == MSD1A_A64_WAI ? 64 : 32,
+            16,
+            decodeMDC_SM2R(12),
+            isA64 ? "21390" : "21396", isA64 ? "21389" : "21397",
+            isA64 ? "44693" : "44710", isA64 ? "44660" : "44677");
+        if (isA64)
+            decodeMDC_HF();
+        else
+            decodeMDC_H();
         break;
     }
     default:

@@ -296,7 +296,7 @@ typedef enum
     GED_MESSAGE_TYPE_MT2W_BS,        ///< GEN10, GEN11, GEN12.1, GEN9
     GED_MESSAGE_TYPE_MT_CC_OWB,      ///< all
     GED_MESSAGE_TYPE_MT_CC_OWUB,     ///< all
-    GED_MESSAGE_TYPE_MT_CC_OWDB,     ///< all
+    GED_MESSAGE_TYPE_MT_CC_OWDB,     ///< GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_MESSAGE_TYPE_MT_CC_DWS,      ///< all
     GED_MESSAGE_TYPE_MT_SC_OWUB,     ///< all
     GED_MESSAGE_TYPE_MT_SC_MB,       ///< all

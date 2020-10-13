@@ -44,9 +44,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <cstring>
 #include <map>
-#include <vector>
 #include <ostream>
 #include <sstream>
+#include <unordered_map>
+#include <vector>
 
 
 using namespace iga;
@@ -153,6 +154,27 @@ iga_status_t iga_platform_symbol_suffix(
     *suffix = nullptr;
     return IGA_INVALID_ARG;
 }
+
+struct PlatformNameMap {
+    std::unordered_map<iga::Platform,std::vector<std::string>> map;
+
+    PlatformNameMap() {
+        // Thus runs at module load-time
+        for (size_t i = 0; i < ALL_PLATFORMS_LEN; i++) {
+            const auto &pe = ALL_PLATFORMS[i];
+            std::vector<std::string> names;
+            for (int nameIdx = 0;
+                nameIdx < MAX_PLATFORM_NAMES &&
+                    !pe.names[nameIdx].str().empty();
+                nameIdx++)
+            {
+                names.push_back(pe.names[nameIdx]);
+            }
+            map[pe.platform] = names;
+        }
+    }
+};
+
 iga_status_t iga_platform_names(
     iga_gen_t gen,
     size_t names_bytes,
@@ -161,25 +183,24 @@ iga_status_t iga_platform_names(
 {
     if (names_bytes != 0 && names == nullptr)
         return IGA_INVALID_ARG;
-    for (size_t i = 0; i < ALL_PLATFORMS_LEN; i++) {
-        const auto &p = ALL_PLATFORMS[i];
-        if (p.platform == static_cast<iga::Platform>(gen)) {
-            int p_names = 0;
-            for (p_names = 0;
-                p.names[p_names] && p_names < MAX_PLATFORM_NAMES;
-                p_names++)
-                ;
-            if (names_bytes_needed)
-                *names_bytes_needed = p_names*sizeof(const char*);
-            const int n_copy = std::min<int>(
-                p_names,
-                (int)names_bytes/sizeof(const char *));
-            for (int ni = 0; ni < n_copy; ni++)
-                names[ni] = p.names[ni];
-            return IGA_SUCCESS;
-        }
+
+    // We run into a minor annoyance here.  We must return IGA memory that
+    // that never gets cleaned up by the user.  Thus we use module global
+    // memory.  On DLL detach it should be cleaned up.
+    static PlatformNameMap s_names;
+    auto itr = s_names.map.find(static_cast<iga::Platform>(gen));
+    if (itr == s_names.map.end()) {
+        return IGA_INVALID_ARG;
     }
-    return IGA_INVALID_ARG;
+    const auto &pltNames = itr->second;
+    if (names_bytes_needed)
+        *names_bytes_needed = pltNames.size()*sizeof(const char*);
+    const int n_copy = std::min<int>(
+        (int)pltNames.size(), (int)names_bytes/sizeof(const char *));
+    for (int ni = 0; ni < n_copy; ni++)
+        names[ni] = pltNames[ni].c_str();
+
+    return IGA_SUCCESS;
 }
 
 class IGAContext {
@@ -1059,7 +1080,8 @@ iga_status_t iga_opspec_mnemonic(
     RETURN_INVALID_ARG_ON_NULL(op);
     RETURN_INVALID_ARG_ON_NULL(mnemonic_len);
 
-    IGA_COPY_OUT_STR(mnemonic, mnemonic_len, opspec_from_handle(op)->mnemonic);
+    const OpSpec *os = opspec_from_handle(op);
+    IGA_COPY_OUT_STR(mnemonic, mnemonic_len, os->mnemonic.str().c_str());
     return IGA_SUCCESS;
 }
 
@@ -1072,7 +1094,8 @@ iga_status_t iga_opspec_name(
     RETURN_INVALID_ARG_ON_NULL(op);
     RETURN_INVALID_ARG_ON_NULL(name_len);
 
-    IGA_COPY_OUT_STR(name, name_len, opspec_from_handle(op)->name);
+    const OpSpec *os = opspec_from_handle(op);
+    IGA_COPY_OUT_STR(name, name_len, os->name.str().c_str());
     return IGA_SUCCESS;
 }
 
@@ -1085,7 +1108,7 @@ iga_status_t iga_opspec_description(
     RETURN_INVALID_ARG_ON_NULL(op);
     RETURN_INVALID_ARG_ON_NULL(desc_len);
 
-    IGA_COPY_OUT_STR(desc, desc_len, opspec_from_handle(op)->description);
+    IGA_COPY_OUT_STR(desc, desc_len, "<description unsupported>");
     return IGA_SUCCESS;
 }
 

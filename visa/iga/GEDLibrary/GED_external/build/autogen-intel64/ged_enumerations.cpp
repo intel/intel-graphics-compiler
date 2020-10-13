@@ -6,24 +6,35 @@
 
 #include <cstddef>
 #include "ged_enumerations_internal.h"
+
+#ifndef GED_ACCESS_MODE_HIDDEN
 const char* AccessModeEnumeration[3] =
 {
     "Align1", // 0
     "Align16", // 1
     NULL // 2
 }; // AccessModeEnumeration[]
+#endif // GED_ACCESS_MODE_HIDDEN
+
+#ifndef GED_ACC_WR_CTRL_HIDDEN
 const char* AccWrCtrlEnumeration[3] =
 {
     "", // 0
     "AccWrEn", // 1
     NULL // 2
 }; // AccWrCtrlEnumeration[]
+#endif // GED_ACC_WR_CTRL_HIDDEN
+
+#ifndef GED_ADDR_MODE_HIDDEN
 const char* AddrModeEnumeration[3] =
 {
     "Direct", // 0
     "Indirect", // 1
     NULL // 2
 }; // AddrModeEnumeration[]
+#endif // GED_ADDR_MODE_HIDDEN
+
+#ifndef GED_ARCH_REG_HIDDEN
 const char* ArchRegEnumeration[16] =
 {
     "null", // 0
@@ -43,6 +54,9 @@ const char* ArchRegEnumeration[16] =
     "dbg0", // 14
     NULL // 15
 }; // ArchRegEnumeration[]
+#endif // GED_ARCH_REG_HIDDEN
+
+#ifndef GED_ATOMIC_OPERATION_TYPE_HIDDEN
 const char* AtomicOperationTypeEnumeration[16] =
 {
     "AOP_AND", // 0
@@ -62,6 +76,9 @@ const char* AtomicOperationTypeEnumeration[16] =
     "AOP_PREDEC", // 14
     NULL // 15
 }; // AtomicOperationTypeEnumeration[]
+#endif // GED_ATOMIC_OPERATION_TYPE_HIDDEN
+
+#ifndef GED_BLOCK_SIZE_HIDDEN
 const char* BlockSizeEnumeration[6] =
 {
     "OW1L", // 0
@@ -71,12 +88,18 @@ const char* BlockSizeEnumeration[6] =
     "OW8", // 4
     NULL // 5
 }; // BlockSizeEnumeration[]
+#endif // GED_BLOCK_SIZE_HIDDEN
+
+#ifndef GED_BRANCH_CTRL_HIDDEN
 const char* BranchCtrlEnumeration[3] =
 {
     "", // 0
     "Branch", // 1
     NULL // 2
 }; // BranchCtrlEnumeration[]
+#endif // GED_BRANCH_CTRL_HIDDEN
+
+#ifndef GED_CHANNEL_MASK_HIDDEN
 const char* ChannelMaskEnumeration[6] =
 {
     "R", // 0
@@ -86,12 +109,18 @@ const char* ChannelMaskEnumeration[6] =
     "A", // 4
     NULL // 5
 }; // ChannelMaskEnumeration[]
+#endif // GED_CHANNEL_MASK_HIDDEN
+
+#ifndef GED_CHANNEL_MODE_HIDDEN
 const char* ChannelModeEnumeration[3] =
 {
     "Oword", // 0
     "Dword", // 1
     NULL // 2
 }; // ChannelModeEnumeration[]
+#endif // GED_CHANNEL_MODE_HIDDEN
+
+#ifndef GED_CHANNEL_OFFSET_HIDDEN
 const char* ChannelOffsetEnumeration[9] =
 {
     "M0", // 0
@@ -104,6 +133,9 @@ const char* ChannelOffsetEnumeration[9] =
     "M28", // 7
     NULL // 8
 }; // ChannelOffsetEnumeration[]
+#endif // GED_CHANNEL_OFFSET_HIDDEN
+
+#ifndef GED_COND_MODIFIER_HIDDEN
 const char* CondModifierEnumeration[10] =
 {
     "", // 0
@@ -117,6 +149,9 @@ const char* CondModifierEnumeration[10] =
     "u", // 8
     NULL // 9
 }; // CondModifierEnumeration[]
+#endif // GED_COND_MODIFIER_HIDDEN
+
+#ifndef GED_DATA_TYPE_HIDDEN
 const char* DataTypeEnumeration[16] =
 {
     "ud", // 0
@@ -136,12 +171,18 @@ const char* DataTypeEnumeration[16] =
     "nf", // 14
     NULL // 15
 }; // DataTypeEnumeration[]
+#endif // GED_DATA_TYPE_HIDDEN
+
+#ifndef GED_DEBUG_CTRL_HIDDEN
 const char* DebugCtrlEnumeration[3] =
 {
     "", // 0
     "Breakpoint", // 1
     NULL // 2
 }; // DebugCtrlEnumeration[]
+#endif // GED_DEBUG_CTRL_HIDDEN
+
+#ifndef GED_DEP_CTRL_HIDDEN
 const char* DepCtrlEnumeration[5] =
 {
     "", // 0
@@ -150,6 +191,9 @@ const char* DepCtrlEnumeration[5] =
     "NoDDClr, NoDDChk", // 3
     NULL // 4
 }; // DepCtrlEnumeration[]
+#endif // GED_DEP_CTRL_HIDDEN
+
+#ifndef GED_DST_CHAN_EN_HIDDEN
 const char* DstChanEnEnumeration[17] =
 {
     "", // 0
@@ -170,12 +214,18 @@ const char* DstChanEnEnumeration[17] =
     "xyzw", // 15
     NULL // 16
 }; // DstChanEnEnumeration[]
+#endif // GED_DST_CHAN_EN_HIDDEN
+
+#ifndef GED_EOT_HIDDEN
 const char* EOTEnumeration[3] =
 {
     "", // 0
     "EOT", // 1
     NULL // 2
 }; // EOTEnumeration[]
+#endif // GED_EOT_HIDDEN
+
+#ifndef GED_EXEC_MASK_OFFSET_CTRL_HIDDEN
 const char* ExecMaskOffsetCtrlEnumeration[15] =
 {
     "N1", // 0
@@ -194,30 +244,45 @@ const char* ExecMaskOffsetCtrlEnumeration[15] =
     "H2", // 13
     NULL // 14
 }; // ExecMaskOffsetCtrlEnumeration[]
+#endif // GED_EXEC_MASK_OFFSET_CTRL_HIDDEN
+
+#ifndef GED_EXECUTION_DATA_TYPE_HIDDEN
 const char* ExecutionDataTypeEnumeration[3] =
 {
     "Integer", // 0
     "Float", // 1
     NULL // 2
 }; // ExecutionDataTypeEnumeration[]
+#endif // GED_EXECUTION_DATA_TYPE_HIDDEN
+
+#ifndef GED_FUSION_CTRL_HIDDEN
 const char* FusionCtrlEnumeration[3] =
 {
     "", // 0
     "Serialized", // 1
     NULL // 2
 }; // FusionCtrlEnumeration[]
+#endif // GED_FUSION_CTRL_HIDDEN
+
+#ifndef GED_HEADER_PRESENT_HIDDEN
 const char* HeaderPresentEnumeration[3] =
 {
     "no", // 0
     "yes", // 1
     NULL // 2
 }; // HeaderPresentEnumeration[]
+#endif // GED_HEADER_PRESENT_HIDDEN
+
+#ifndef GED_MASK_CTRL_HIDDEN
 const char* MaskCtrlEnumeration[3] =
 {
     "", // 0
     "NoMask", // 1
     NULL // 2
 }; // MaskCtrlEnumeration[]
+#endif // GED_MASK_CTRL_HIDDEN
+
+#ifndef GED_MATH_FC_HIDDEN
 const char* MathFCEnumeration[15] =
 {
     "INV", // 0
@@ -236,6 +301,9 @@ const char* MathFCEnumeration[15] =
     "RSQRTM", // 13
     NULL // 14
 }; // MathFCEnumeration[]
+#endif // GED_MATH_FC_HIDDEN
+
+#ifndef GED_MATH_MACRO_EXT_HIDDEN
 const char* MathMacroExtEnumeration[10] =
 {
     "mme0", // 0
@@ -249,6 +317,9 @@ const char* MathMacroExtEnumeration[10] =
     "nomme", // 8
     NULL // 9
 }; // MathMacroExtEnumeration[]
+#endif // GED_MATH_MACRO_EXT_HIDDEN
+
+#ifndef GED_MESSAGE_TYPE_HIDDEN
 const char* MessageTypeEnumeration[64] =
 {
     "MSD0R_HWB", // 0
@@ -316,12 +387,18 @@ const char* MessageTypeEnumeration[64] =
     "MT1A_A64_UF4x2", // 62
     NULL // 63
 }; // MessageTypeEnumeration[]
+#endif // GED_MESSAGE_TYPE_HIDDEN
+
+#ifndef GED_NO_SRC_DEP_SET_HIDDEN
 const char* NoSrcDepSetEnumeration[3] =
 {
     "", // 0
     "NoSrcDepSet", // 1
     NULL // 2
 }; // NoSrcDepSetEnumeration[]
+#endif // GED_NO_SRC_DEP_SET_HIDDEN
+
+#ifndef GED_OPCODE_HIDDEN
 const char* OpcodeEnumeration[76] =
 {
     "illegal", // 0
@@ -401,6 +478,9 @@ const char* OpcodeEnumeration[76] =
     "dim", // 74
     NULL // 75
 }; // OpcodeEnumeration[]
+#endif // GED_OPCODE_HIDDEN
+
+#ifndef GED_PRED_CTRL_HIDDEN
 const char* PredCtrlEnumeration[19] =
 {
     "", // 0
@@ -423,12 +503,18 @@ const char* PredCtrlEnumeration[19] =
     "w", // 17
     NULL // 18
 }; // PredCtrlEnumeration[]
+#endif // GED_PRED_CTRL_HIDDEN
+
+#ifndef GED_PRED_INV_HIDDEN
 const char* PredInvEnumeration[3] =
 {
     "+", // 0
     "-", // 1
     NULL // 2
 }; // PredInvEnumeration[]
+#endif // GED_PRED_INV_HIDDEN
+
+#ifndef GED_REG_FILE_HIDDEN
 const char* RegFileEnumeration[4] =
 {
     "ARF", // 0
@@ -436,24 +522,36 @@ const char* RegFileEnumeration[4] =
     "IMM", // 2
     NULL // 3
 }; // RegFileEnumeration[]
+#endif // GED_REG_FILE_HIDDEN
+
+#ifndef GED_REP_CTRL_HIDDEN
 const char* RepCtrlEnumeration[3] =
 {
     "", // 0
     "", // 1
     NULL // 2
 }; // RepCtrlEnumeration[]
+#endif // GED_REP_CTRL_HIDDEN
+
+#ifndef GED_RETURN_DATA_CONTROL_HIDDEN
 const char* ReturnDataControlEnumeration[3] =
 {
     "", // 0
     "", // 1
     NULL // 2
 }; // ReturnDataControlEnumeration[]
+#endif // GED_RETURN_DATA_CONTROL_HIDDEN
+
+#ifndef GED_SATURATE_HIDDEN
 const char* SaturateEnumeration[3] =
 {
     "", // 0
     "sat", // 1
     NULL // 2
 }; // SaturateEnumeration[]
+#endif // GED_SATURATE_HIDDEN
+
+#ifndef GED_SFID_HIDDEN
 const char* SFIDEnumeration[16] =
 {
     "NULL", // 0
@@ -473,6 +571,9 @@ const char* SFIDEnumeration[16] =
     "DP_CC", // 14
     NULL // 15
 }; // SFIDEnumeration[]
+#endif // GED_SFID_HIDDEN
+
+#ifndef GED_SIMDMODE_HIDDEN
 const char* SIMDModeEnumeration[4] =
 {
     "SIMD4x2", // 0
@@ -480,6 +581,9 @@ const char* SIMDModeEnumeration[4] =
     "SIMD8", // 2
     NULL // 3
 }; // SIMDModeEnumeration[]
+#endif // GED_SIMDMODE_HIDDEN
+
+#ifndef GED_SLOT_GROUP_HIDDEN
 const char* SlotGroupEnumeration[4] =
 {
     "SIMD4x2", // 0
@@ -487,6 +591,9 @@ const char* SlotGroupEnumeration[4] =
     "high_8", // 2
     NULL // 3
 }; // SlotGroupEnumeration[]
+#endif // GED_SLOT_GROUP_HIDDEN
+
+#ifndef GED_SRC_MOD_HIDDEN
 const char* SrcModEnumeration[5] =
 {
     "", // 0
@@ -495,6 +602,9 @@ const char* SrcModEnumeration[5] =
     "-(abs)", // 3
     NULL // 4
 }; // SrcModEnumeration[]
+#endif // GED_SRC_MOD_HIDDEN
+
+#ifndef GED_SUB_FUNC_ID_HIDDEN
 const char* SubFuncIDEnumeration[8] =
 {
     "GetTimeStamp", // 0
@@ -506,6 +616,9 @@ const char* SubFuncIDEnumeration[8] =
     "MMIOReadWrite", // 6
     NULL // 7
 }; // SubFuncIDEnumeration[]
+#endif // GED_SUB_FUNC_ID_HIDDEN
+
+#ifndef GED_SWIZZLE_HIDDEN
 const char* SwizzleEnumeration[5] =
 {
     "x", // 0
@@ -514,6 +627,9 @@ const char* SwizzleEnumeration[5] =
     "w", // 3
     NULL // 4
 }; // SwizzleEnumeration[]
+#endif // GED_SWIZZLE_HIDDEN
+
+#ifndef GED_SYNC_FC_HIDDEN
 const char* SyncFCEnumeration[7] =
 {
     "nop", // 0
@@ -524,6 +640,9 @@ const char* SyncFCEnumeration[7] =
     "host", // 5
     NULL // 6
 }; // SyncFCEnumeration[]
+#endif // GED_SYNC_FC_HIDDEN
+
+#ifndef GED_THREAD_CTRL_HIDDEN
 const char* ThreadCtrlEnumeration[5] =
 {
     "", // 0
@@ -532,3 +651,4 @@ const char* ThreadCtrlEnumeration[5] =
     "Switch", // 3
     NULL // 4
 }; // ThreadCtrlEnumeration[]
+#endif // GED_THREAD_CTRL_HIDDEN

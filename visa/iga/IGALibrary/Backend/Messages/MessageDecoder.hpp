@@ -24,8 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "../../IR/Messages.hpp"
-#include "../Native/Field.hpp"
 #include "../../asserts.hpp"
+#include "../Native/Field.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -96,7 +96,11 @@ namespace iga {
         }
 
         void setDoc(const char *doc) {
-            result.info.docs = doc;
+            setDoc(doc, doc);
+        }
+        void setDoc(const char *preGen12, const char *pstGen12) {
+            result.info.docs = platform() < Platform::GEN12P1 ?
+                preGen12 : pstGen12;
         }
 
         /////////////////////////////////////////////////////////////
@@ -198,7 +202,7 @@ namespace iga {
         {
             Fragment f(fieldName, off, len);
             for (const auto &fvs : result.fields) {
-                auto f1 = std::get<0>(fvs);
+                const auto &f1 = std::get<0>(fvs);
                 if (f1.overlaps(f)) {
                     // uncomment for debugging
                     // std::stringstream ss;

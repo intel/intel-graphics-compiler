@@ -126,7 +126,7 @@ void iga::fmtBinaryDigits(std::ostream &os, uint64_t val, int w)
     if (w == 0) {
         // STL really needs this
         // gcc has __builtin_clzll, but let's ignore the #ifdef nonsense
-        w = std::max<int>(1,findLeadingOne(val) + 1);
+        w = std::max<int>(1, findLeadingOne(val) + 1);
     }
 
     for (int i = w - 1; i >= 0; i--) {

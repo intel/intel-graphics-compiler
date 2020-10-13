@@ -367,7 +367,7 @@ private:
     bool shortOpWouldBeAmbiguous(const OpSpec &us) const {
         for (const OpSpec *them : model->ops()) {
             if (us.op != them->op &&
-                strcmp(us.mnemonic,them->mnemonic) == 0)
+                us.mnemonic.str() == them->mnemonic.str())
             {
                 return true;
             }
@@ -394,7 +394,7 @@ private:
 
         const OpSpec& os = i.getOpSpec();
 
-        emitAnsi(ANSI_MNEMONIC, os.mnemonic);
+        emitAnsi(ANSI_MNEMONIC, os.mnemonic.str());
 
         std::string subfunc;
         switch (os.op) {

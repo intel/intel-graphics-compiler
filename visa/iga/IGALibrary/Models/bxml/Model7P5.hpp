@@ -32,16 +32,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga {
     static const iga::OpSpec MODEL_GEN7P5_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
-        /* Op::0 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::1 */ {Op::ADD, Platform::GEN7P5, "add", 0x40, IGA_MODEL_STRING("Addition"),
-            IGA_MODEL_STRING("The add instruction performs component-wise addition of src0 and src1 and stores the results in dst.\n")
-            IGA_MODEL_STRING("Addition of two floating-point numbers follows rules in add (IEEE mode) or add (ALT mode).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] add[.cmod] (exec_size) dst src0 src1\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Use a source modifier with add to implement subtraction.\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::ADD /* Op::1 */, Platform::GEN7P5, 0x40,
+            "add",
+            "Addition",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
                 // F <- UB,B,UW,W,UD,D
@@ -53,77 +49,52 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::2 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::3 */ {Op::ADDC, Platform::GEN7P5, "addc", 0x4e, IGA_MODEL_STRING("Addition with Carry"),
-            IGA_MODEL_STRING("The addc instruction performs component-wise addition of src0 and src1 and stores the results in dst; it also stores the carry into acc.\n")
-            IGA_MODEL_STRING("If the operation produces a carry out, 0x00000001 is stored in acc, else 0x00000000 is stored in acc.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] addc[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::ADDC /* Op::3 */, Platform::GEN7P5, 0x4E,
+            "addc",
+            "Addition with Carry",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER
         },
-        /* Op::4 */ {Op::AND, Platform::GEN7P5, "and", 0x5, IGA_MODEL_STRING("Logic And"),
-            IGA_MODEL_STRING("The and instruction performs component-wise logic AND operation between src0 and src1 and stores the results in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Register source operands can use source modifiers:\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("[Pre-DevBDW]: Any source modifier is numeric, optionally changing a source value s to -s, abs(s), or -abs(s) before the AND operation.\n")
-            IGA_MODEL_STRING("[DevBDW+]: Any source modifier is logical, optionally changing a source value s to ~s (inverting all source bits). This capability allows expressions like a AND (NOT b) to be calculated with one instruction.\n")
-            IGA_MODEL_STRING("This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("Source modifier is not allowed if source is an accumulator.\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::AND /* Op::4 */, Platform::GEN7P5, 0x05,
+            "and",
+            "Logic And",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::5 */ {Op::ASR, Platform::GEN7P5, "asr", 0xc, IGA_MODEL_STRING("Arithmetic Shift Right"),
-            IGA_MODEL_STRING("Perform component-wise arithmetic right shift of the bits in src0 by the shift count indicated in src1, storing the results in dst. If src0 has a signed type, insert copies of src0\'s sign bit in the number of MSBs indicated by the shift count. Otherwise insert 0 bits.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("[Pre-DevBDW]: The shift count is taken from the low five bits of src1, regardless of the src1 type and treated as an unsigned integer in the range 0 to 31.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("[DevBDW+]: In QWord mode, the shift count is taken from the low six bits of src1 regardless of the src1 type and treated as an unsigned integer in the range 0 to 63. Otherwise the shift count is taken from the low five bits of src1 regardless of the src1 type and treated as an unsigned integer in the range 0 to 31. The operation uses QWord mode if src0 or dst has the Q or UQ type but not if src1 is the only operand with the Q or UQ type.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("For positive values, this operation is src0 / 2shiftCount and for negative values, this operation is src0 / 2shiftCount - 1.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] asr[.cmod] (exec_size) dst src0 src1\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("If src0 is -1, the result is -1 regardless of the shift count.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("For unsigned src0 types, asr and shr produce the same result.\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::ASR /* Op::5 */, Platform::GEN7P5, 0x0C,
+            "asr",
+            "Arithmetic Shift Right",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::6 */ {Op::AVG, Platform::GEN7P5, "avg", 0x42, IGA_MODEL_STRING("Average"),
-            IGA_MODEL_STRING("The avg instruction performs component-wise integer average of src0 and src1 and stores the results in dst. An integer average uses integer upward rounding. It is equivalent to increment one to the addition of src0 and src1 and then apply an arithmetic right shift to this intermediate value.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("The avg instruction performs component-wise integer average of src0 and src1 and stores the results in dst. An integer average uses integer upward rounding. It is equivalent to increment one to the addition of src0 and src1 and then apply an arithmetic right shift to this intermediate value.\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::AVG /* Op::6 */, Platform::GEN7P5, 0x42,
+            "avg",
+            "Average",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::7 */ {Op::BFE, Platform::GEN7P5, "bfe", 0x18, IGA_MODEL_STRING("Bit Field Extract"),
-            IGA_MODEL_STRING("Component-wise extract a bit field from src2 using the bit field width from src0 and the bit field offset from src1. Store the extracted bit field value in the low bits of dst and sign extend (if D type) or zero extend (if UD type).\n")
-            IGA_MODEL_STRING("The width and offset values are from the low five bits of src0 and src1 respectively, or src0 & 0x1f and src1 & 0x1f.\n")
-            IGA_MODEL_STRING("If width is zero, the result is zero.\n")
-            IGA_MODEL_STRING("If offset + width > 32 then the extracted bit field is bits offset to 31 of src2, extracting only 32 - offset bits, less than width as the bit field cannot extend past the MSB of the source value. Otherwise extract width bits extending from bit positions offset to offset + width - 1.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] bfe (exec_size) dst src0 src1 src2\n"),
-            OpSpec::Format::TERNARY_REGIMM_REG_REGIMM, {
+        {Op::BFE /* Op::7 */, Platform::GEN7P5, 0x18,
+            "bfe",
+            "Bit Field Extract",
+            OpSpec::Format::TERNARY_REGIMM_REG_REGIMM,
+            {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)},
                 // D <- D
@@ -131,32 +102,11 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::8 */ {Op::BFI1, Platform::GEN7P5, "bfi1", 0x19, IGA_MODEL_STRING("Bit Field Insert 1"),
-            IGA_MODEL_STRING("The bfi1 instruction is the first instruction in a two-instruction macro for bfi (Bit Field Insert).\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The bfi1 instruction component-wise generates mask with control from src0 and src1 and stores the results in dst. The mask is used in the bfi2 instruction to generate the final result of bfi.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Create a bit mask corresponding to the bit field width and offset in src0 and src1. Store the bit mask in dst. The mask has all bits in the bit field set to 1 and all other bits as 0.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The width and offset values are from the low five bits of src0 and src1 respectively, or src0 & 0x1f and src1 & 0x1f.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If width is zero, the result is zero.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The bfi macro has four source operands: src0 - bit field width in low five bits, src1 - bit field offset/starting bit position in low five bits, src2 - bit field value to insert, using only the number of least significant bits given by width in src0, and src3 - overall value into which the bit field is inserted, providing all bits other than the inserted bits for the result value.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("bfi dst src0 src1 src2 src3\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("// Translates to these two instructions:\n")
-            IGA_MODEL_STRING("bfi1 dst src0 src1\n")
-            IGA_MODEL_STRING("bfi2 dst dst src2 src3\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] bfi1 (exec_size) dst src0 src1\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("No accumulator access, implicit or explicit.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("A SIMD16 instruction is not allowed.\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::BFI1 /* Op::8 */, Platform::GEN7P5, 0x19,
+            "bfi1",
+            "Bit Field Insert 1",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)},
                 // D <- D
@@ -164,24 +114,11 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::9 */ {Op::BFI2, Platform::GEN7P5, "bfi2", 0x1a, IGA_MODEL_STRING("Bit Field Insert 2"),
-            IGA_MODEL_STRING("The bfi2 instruction is the second instruction in a two-instruction macro for bfi (Bit Field Insert).\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The bfi2 instruction component-wise performs the bitfield insert operation on src1 and src2 based on the mask in src0.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Use the mask in src0 to take a bit field value from the low bits of src1 and combine it with the value from src2 (so src2 provides all bits other than those masked out and replaced by the bit field value). Store the result in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The bfi macro has four source operands: src0 - bit field width in low five bits, src1 - bit field offset/starting bit position in low five bits, src2 - bit field value to insert, using only the number of least significant bits given by width in src0, and src3 - overall value into which the bit field is inserted, providing all bits other than the inserted bits for the result value.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("bfi dst src0 src1 src2 src3\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("// Translates to these two instructions:\n")
-            IGA_MODEL_STRING("bfi1 dst src0 src1\n")
-            IGA_MODEL_STRING("bfi2 dst dst src2 src3\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] bfi2 (exec_size) dst src0 src1 src2\n"),
-            OpSpec::Format::TERNARY_REGIMM_REG_REGIMM, {
+        {Op::BFI2 /* Op::9 */, Platform::GEN7P5, 0x1A,
+            "bfi2",
+            "Bit Field Insert 2",
+            OpSpec::Format::TERNARY_REGIMM_REG_REGIMM,
+            {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)},
                 // D <- D
@@ -189,123 +126,79 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::10 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::11 */ {Op::BFREV, Platform::GEN7P5, "bfrev", 0x17, IGA_MODEL_STRING("Bit Field Reverse"),
-            IGA_MODEL_STRING("The bfrev instruction component-wise reverses all the bits in src0 and stores the results in dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] bfrev (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::BFREV /* Op::11 */, Platform::GEN7P5, 0x17,
+            "bfrev",
+            "Bit Field Reverse",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::12 */ {Op::BRC, Platform::GEN7P5, "brc", 0x23, IGA_MODEL_STRING("Branch Converging"),
-            IGA_MODEL_STRING("The brc instruction redirects the execution forward or backward to the instruction pointed by (current IP + offset). The jump will occur if all channels are branched away.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("UIP should reference the instruction where all channels are expected to come together. JIP should reference the end of the innermost conditional block.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("In GEN binary, JIP and UIP are at location src1 when immediates and at location src0 when reg64, where reg64 is accessed as paired DWord (regioning being <2;2,1>). The ip register must be used (for example, by the assembler) as dst. When offsets are immediate, src0 must be null.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] brc (exec_size) JIP UIP\n"),
-            OpSpec::Format::JUMP_BINARY_BRC, {
+        {Op::BRC /* Op::12 */, Platform::GEN7P5, 0x23,
+            "brc",
+            "Branch Converging",
+            OpSpec::Format::JUMP_BINARY_BRC,
+            {
                 //  <- D
                 {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::13 */ {Op::BRD, Platform::GEN7P5, "brd", 0x21, IGA_MODEL_STRING("Branch Diverging"),
-            IGA_MODEL_STRING("The brd instruction redirects the execution forward or backward to the instruction pointed by (current IP + offset). The jump will occur if any channels are branched away.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("In GEN binary, JIP is at location src1 when immediate and at location src0 when reg32, where reg32 is accessed as a scalar DWord. The ip register must be used (for example, by the assembler) as dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] brd (exec_size) JIP\n"),
-            OpSpec::Format::JUMP_UNARY_REGIMM, {
+        {Op::BRD /* Op::13 */, Platform::GEN7P5, 0x21,
+            "brd",
+            "Branch Diverging",
+            OpSpec::Format::JUMP_UNARY_REGIMM,
+            {
                 //  <- D
                 {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::14 */ {Op::BREAK, Platform::GEN7P5, "break", 0x28, IGA_MODEL_STRING("Break"),
-            IGA_MODEL_STRING("The break instruction is used to early-out from the inner most loop, or early out from the inner most switch block.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("When used in a loop, upon execution, the break instruction terminates the loop for all execution channels enabled. If all the enabled channels hit the break instruction, jump to the instruction referenced by JIP. JIP should be the offset to the end of the inner most conditional or loop block, UIP should be the offset to the while instruction of the loop block.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If SPF is ON, the UIP must be used to update IP; JIP is not used in this case\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] break (exec_size) JIP UIP\n"),
-            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
+        {Op::BREAK /* Op::14 */, Platform::GEN7P5, 0x28,
+            "break",
+            "Break",
+            OpSpec::Format::JUMP_BINARY_IMM_IMM,
+            { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::15 */ {Op::CALL, Platform::GEN7P5, "call", 0x2c, IGA_MODEL_STRING("Call"),
-            IGA_MODEL_STRING("The call instruction jumps to a subroutine. It can be predicated or non-predicated. If non-predicated, all enabled channels jump to the subroutine. If predicated, only the channels enabled by PMask jump to the subroutine; the rest of the channels move to the next instruction after the call instruction. If none of the channels jump into the subroutine, the call instruction is treated as a nop.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("In case of a jump, the call instruction stores the return IP onto the first DWord of the destination register and stores the CallMask in the second DWord of the destination register.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("When SPF is on, the predication control must be scalar.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The following section describes JIP, the jump offset, for DevHSW+.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("JIP can be an immediate or register value. When a jump occurs, this value is added to IP pre-increment. For DevHSW+, in GEN binary, JIP is at location src1 and src0 must be null. The GRF register must be put (for example, by the assembler) at dst location.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Format: [(pred)] call (exec_size) dst JIP\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format: [(pred)] call (exec_size) dst JIP\n"),
-            OpSpec::Format::JUMP_UNARY_CALL_REGIMM, {
+        {Op::CALL /* Op::15 */, Platform::GEN7P5, 0x2C,
+            "call",
+            "Call",
+            OpSpec::Format::JUMP_UNARY_CALL_REGIMM,
+            {
                 // D,UD <-
                 {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::16 */ {Op::CALLA, Platform::GEN7P5, "calla", 0x2b, IGA_MODEL_STRING("Call Absolute"),
-            IGA_MODEL_STRING("The calla instruction jumps to a subroutine. It can be predicated or non-predicated. If non-predicated, all enabled channels jump to the subroutine. If predicated, only the channels enabled by PMask jump to the subroutine; the rest of the channels move to the next instruction after the calla instruction. If none of the channels jump into the subroutine, the calla instruction is treated as a nop.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("In case of a jump, the call instruction stores the return IP onto the first DWord of the destination register and stores the CallMask in the second DWord of the destination register.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If SPF is ON, none of the PcIP are updated.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("When SPF is on, the predication control must be scalar.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The difference between calla and call is that calla uses JIP as the IP value rather than adding it to the IP value.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format: [(pred)] calla (exec_size) dst JIP\n"),
-            OpSpec::Format::JUMP_UNARY_CALL_REGIMM, {
+        {Op::CALLA /* Op::16 */, Platform::GEN7P5, 0x2B,
+            "calla",
+            "Call Absolute",
+            OpSpec::Format::JUMP_UNARY_CALL_REGIMM,
+            {
                 // D,UD <-
                 {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::17 */ {Op::CBIT, Platform::GEN7P5, "cbit", 0x4d, IGA_MODEL_STRING("Count Bits Set"),
-            IGA_MODEL_STRING("The cbit instruction counts component-wise the total bits set in src0 and stores the resulting counts in dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] cbit (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::CBIT /* Op::17 */, Platform::GEN7P5, 0x4D,
+            "cbit",
+            "Count Bits Set",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // UD <- UB,UW,UD
                 {TYPE(Type::UD),TYPE(Type::UB)|TYPE(Type::UW)|TYPE(Type::UD)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::18 */ {Op::CMP, Platform::GEN7P5, "cmp", 0x10, IGA_MODEL_STRING("Compare"),
-            IGA_MODEL_STRING("The cmp instruction performs component-wise comparison of src0 and src1 and stores the results in the selected flag register and in dst. It takes component-wise subtraction of src0 and src1, evaluating the conditional code (excluding NS signal) based on the conditional modifier, and storing the conditional bits in bit-packed form in the destination flag register and all bits of dst channels. If the dst is not null, for the enabled channels, then all bits of the destination channel will contain the flag value for the channel. When the instruction operates on packed word format, one general register may store up to 16 such comparison results. In DWord format, one general register may store up to 8 results.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("A conditional modifier must be specified; the conditional modifier field cannot be 0000b. The comparison does not use the NS (NaN source) signals, as described in the Creating Conditional Flags section. Accordingly the conditional modifier should not be .u (unordered).\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("For each enabled channel 0b or 1b is assigned to the appropriate flag bit and 0/all zeros or all ones (e.g, byte 0xFF, word 0xFFFF, DWord 0xFFFFFFFF) is assigned to dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("When any source type is floating-point, the cmp instruction obeys the rules described in the tables in the Floating Point Modes section of the Data Types chapter.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] cmp[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::CMP /* Op::18 */, Platform::GEN7P5, 0x10,
+            "cmp",
+            "Compare",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
                 // F <- UB,B,UW,W,UD,D
@@ -317,18 +210,11 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::19 */ {Op::CMPN, Platform::GEN7P5, "cmpn", 0x11, IGA_MODEL_STRING("Compare NaN"),
-            IGA_MODEL_STRING("The cmpn instruction performs component-wise special-NaN comparison of src0 and src1 and stores the results in the selected flag register and in dst. It takes component-wise subtraction of src0 and src1, evaluating the conditional signals including NS based on the conditional modifier, and storing the conditional flag bits in bit-packed form in the destination flag register and all bits of dst channels. If the dst is not null, for the enabled channels, then all bits of the destination channel will contain the flag value for the channel. When the instruction operates on packed word format, one general register may store up to 16 such comparison results. In DWord format, one general register may store up to 8 results.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("A conditional modifier must be specified; the conditional modifier field cannot be 0000b. More information about the conditional signals used is in the Creating Conditional Flags section.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("For each enabled channel 0b or 1b is assigned to the appropriate flag bit and 0/all zeros or all ones (e.g, byte 0xFF, word 0xFFFF, DWord 0xFFFFFFFF) is assigned to dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Min/Max instructions use cmpn to select the destination from the input sources (see the Min Max of Floating Point Numbers section for details).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] cmpn[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::CMPN /* Op::19 */, Platform::GEN7P5, 0x11,
+            "cmpn",
+            "Compare NaN",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
                 // F <- UB,B,UW,W,UD,D
@@ -340,294 +226,201 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::20 */ {Op::CONT, Platform::GEN7P5, "cont", 0x29, IGA_MODEL_STRING("Continue"),
-            IGA_MODEL_STRING("The cont instruction disables execution for the subset of channels for the remainder of the current loop iteration. Channels remain disabled until right before the while instuction or right before the condition check code block for the while instruction. If all enabled channels hit this instruction, jump to the instruction referenced by JIP where execution continues.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("UIP should always reference the loop\'s associated while instruction. JIP should point to the last instruction of the inner most conditional block if the cont instruction is inside a conditional block. In case of the break instruction directly under the loop, the JIP and the UIP are the same.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If SPF is ON, the UIP must be used to update IP; JIP is not used in this case.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] cont (exec_size) JIP UIP\n"),
-            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
+        {Op::CONT /* Op::20 */, Platform::GEN7P5, 0x29,
+            "cont",
+            "Continue",
+            OpSpec::Format::JUMP_BINARY_IMM_IMM,
+            { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::21 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::22 */ {Op::DIM, Platform::GEN7P5, "dim", 0xa, IGA_MODEL_STRING("Double Precision Floating Point Immediate Data Move"),
-            IGA_MODEL_STRING("The dim instruction moves the 64-bit immediate value into enabled channels of dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] dim[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::DIM /* Op::22 */, Platform::GEN7P5, 0x0A,
+            "dim",
+            "Double Precision Floating Point Immediate Data Move",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // DF <- F
                 {TYPE(Type::DF),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
         },
-        /* Op::23 */ {Op::DP2, Platform::GEN7P5, "dp2", 0x57, IGA_MODEL_STRING("Dot Product 2"),
-            IGA_MODEL_STRING("The dp2 instruction performs a two-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every third and fourth element of src0 (post-source-swizzle if present) are not involved in the computation.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The dp4 instruction includes all four elements of each vector in the dot product. The dp3 instruction includes the first three elements of each vector in the dot product.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] dp2[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::DP2 /* Op::23 */, Platform::GEN7P5, 0x57,
+            "dp2",
+            "Dot Product 2",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::24 */ {Op::DP3, Platform::GEN7P5, "dp3", 0x56, IGA_MODEL_STRING("Dot Product 3"),
-            IGA_MODEL_STRING("The dp3 instruction performs a three-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every fourth element of src0 (post-source-swizzle if present) is not involved in the computation.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The dp4 instruction includes all four elements of each vector in the dot product. The dp2 instruction includes the first two elements of each vector in the dot product.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] dp3[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::DP3 /* Op::24 */, Platform::GEN7P5, 0x56,
+            "dp3",
+            "Dot Product 3",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::25 */ {Op::DP4, Platform::GEN7P5, "dp4", 0x54, IGA_MODEL_STRING("Dot Product 4"),
-            IGA_MODEL_STRING("The dp4 instruction performs a four-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] dp4[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::DP4 /* Op::25 */, Platform::GEN7P5, 0x54,
+            "dp4",
+            "Dot Product 4",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::26 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::27 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::28 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::29 */ {Op::DPH, Platform::GEN7P5, "dph", 0x55, IGA_MODEL_STRING("Dot Product Homogeneous"),
-            IGA_MODEL_STRING("The dph instruction performs a four-wide homogeneous dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every fourth element of src0 (post-source-swizzle if present) is forced to 1.0f.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Use the dp4 instruction to do a four-wide dot product that includes all elements of src0 and src1.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] dph[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::DPH /* Op::29 */, Platform::GEN7P5, 0x55,
+            "dph",
+            "Dot Product Homogeneous",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::30 */ {Op::ELSE, Platform::GEN7P5, "else", 0x24, IGA_MODEL_STRING("Else"),
-            IGA_MODEL_STRING("The else instruction is an optional statement within an if/else/endif block of code. It restricts execution within the else/endif portion to the opposite set of channels enabled under the if/else portion. Channels which were inactive before entering the if/endif block remain inactive throughout the entire block.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("All enabled channels upon arriving at the else instruction are redirected to the matching endif. If all channels are redirected (by else or before else), a relative jump is performed to the location specified by JIP. The jump target should be the the matching endif instruction for that conditional block.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The following table describes the 16-bit JIP. In GEN binary, JIP is at location src1 and must be of type W (signed word integer). JIP must be an immediate operand, it is a signed 16-bit number and is intended to be forward referencing. This value is added to IP pre-increment.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("else (exec_size) JIP\n"),
-            OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
+        {Op::ELSE /* Op::30 */, Platform::GEN7P5, 0x24,
+            "else",
+            "Else",
+            OpSpec::Format::JUMP_UNARY_IMM,
+            { }, // no type mappings
             OpSpec::Attr::NONE
         },
-        /* Op::31 */ {Op::ENDIF, Platform::GEN7P5, "endif", 0x25, IGA_MODEL_STRING("End If"),
-            IGA_MODEL_STRING("The endif instruction terminates an if/else/endif block of code. It restores execution to the channels that were active prior to the if/else/endif block.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The endif instruction is also used to hop out of nested conditionals by jumping to the end of the next outer conditional block when all channels are disabled.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The following table describes the 16-bit JIP. In GEN binary, JIP is at location src1 and must be of type W (signed word integer). JIP must be an immediate operand, it is a signed 16-bit number. This value is added to IP pre-increment.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("endif JIP\n"),
-            OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
+        {Op::ENDIF /* Op::31 */, Platform::GEN7P5, 0x25,
+            "endif",
+            "End If",
+            OpSpec::Format::JUMP_UNARY_IMM,
+            { }, // no type mappings
             OpSpec::Attr::NONE
         },
-        /* Op::32 */ {Op::F16TO32, Platform::GEN7P5, "f16to32", 0x14, IGA_MODEL_STRING("Half Precision Float to Single Precision Float"),
-            IGA_MODEL_STRING("The f16to32 instruction converts the half precision float in src0 to single precision float and storing in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Because this instruction does not have a 16-bit floating-point type, the source data type must be Word (W). The destination type must be F (Float).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] f16to32[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::F16TO32 /* Op::32 */, Platform::GEN7P5, 0x14,
+            "f16to32",
+            "Half Precision Float to Single Precision Float",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // F <- W
                 {TYPE(Type::F),TYPE(Type::W)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::33 */ {Op::F32TO16, Platform::GEN7P5, "f32to16", 0x13, IGA_MODEL_STRING("Single Precision Float to Half Precision Float"),
-            IGA_MODEL_STRING("The f32to16 instruction converts the single precision float in src0 to half precision float and storing in the lower word of each channel in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Because this instruction does not have a 16-bit floating-point type, the destination data type must be Word (W).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] f32to16[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::F32TO16 /* Op::33 */, Platform::GEN7P5, 0x13,
+            "f32to16",
+            "Single Precision Float to Half Precision Float",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // W <- F
                 {TYPE(Type::W),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::34 */ {Op::FBH, Platform::GEN7P5, "fbh", 0x4b, IGA_MODEL_STRING("Find First Bit from MSB Side"),
-            IGA_MODEL_STRING("If src0 is unsigned, the fbh instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If src0 is signed and positive, the fbh instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If src0 is signed and negative, the fbh instruction counts component-wise the leading ones from src0 and stores the resulting counts in dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] fbh (exec_size) dst src0\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("If src0 is zero, store 0xFFFFFFFF in dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("If src0 is signed and is -1 (0xFFFFFFFF), store 0xFFFFFFFF in dst.\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::FBH /* Op::34 */, Platform::GEN7P5, 0x4B,
+            "fbh",
+            "Find First Bit from MSB Side",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // UD <- D,UD
                 {TYPE(Type::UD),TYPE(Type::D)|TYPE(Type::UD)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::35 */ {Op::FBL, Platform::GEN7P5, "fbl", 0x4c, IGA_MODEL_STRING("Find First Bit from LSB Side"),
-            IGA_MODEL_STRING("The fbl instruction counts component-wise the number of LSB 0 bits before the first 1 bit in src0, storing that number in dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] fbl (exec_size) dst src0\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("If src0 contains no 1 bits, store 0xFFFFFFFF in dst.\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::FBL /* Op::35 */, Platform::GEN7P5, 0x4C,
+            "fbl",
+            "Find First Bit from LSB Side",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::36 */ {Op::FRC, Platform::GEN7P5, "frc", 0x43, IGA_MODEL_STRING("Fraction"),
-            IGA_MODEL_STRING("The frc instruction computes, component-wise, the truncate-to-minus-infinity fractional values of src0 and stores the results in dst. The results, in the range of [0.0, 1.0], are the fractional portion of the source data. The result is in the range [0.0, 1.0] irrespective of the rounding mode. Floating-point fraction computation follows the rules in the following tables, based on the current floating-point mode.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] frc[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::FRC /* Op::36 */, Platform::GEN7P5, 0x43,
+            "frc",
+            "Fraction",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::37 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::38 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::39 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::40 */ {Op::HALT, Platform::GEN7P5, "halt", 0x2a, IGA_MODEL_STRING("Halt"),
-            IGA_MODEL_STRING("The halt instruction temporarily suspends execution for all enabled compute channels. Upon execution, the enabled channels are sent to the instruction at (IP + UIP), if all channels are enabled at HALT, jump to the instruction at (IP + JIP).\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If the halt instruction is not inside any conditional code block, the values of JIP and UIP should be the same. If the halt instruction is inside a conditional code block, the UIP should be the end of the program and the JIP should be the end of the inner most conditional code block.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The UIP must point to a HALT Instruction.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If SPF is ON, the UIP must be used to update IP; JIP is not used in this case.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] halt (exec_size) JIP UIP\n"),
-            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::HALT /* Op::40 */, Platform::GEN7P5, 0x2A,
+            "halt",
+            "Halt",
+            OpSpec::Format::JUMP_BINARY_IMM_IMM,
+            { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::41 */ {Op::IF, Platform::GEN7P5, "if", 0x22, IGA_MODEL_STRING("If"),
-            IGA_MODEL_STRING("An if instruction starts an if/endif or an if/else/endif block of code. It restricts execution within the conditional block to only those channels that were enabled via the predicate control.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Each if instruction must have a matching endif instruction and may have up to one matching else instruction before the matching endif.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If all channels are inactive (for the if/endif or if/else/endif block), a jump is performed to the instruction referenced by JIP. This jump must be to right after the matching else instruction when present, or otherwise to the matching endif instruction of the conditional block.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If SPF is ON, the UIP must be used to update IP; JIP is not used in this case.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] if (exec_size) JIP UIP\n"),
-            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
+        {Op::IF /* Op::41 */, Platform::GEN7P5, 0x22,
+            "if",
+            "If",
+            OpSpec::Format::JUMP_BINARY_IMM_IMM,
+            { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::42 */ {Op::ILLEGAL, Platform::GEN7P5, "illegal", 0x0, IGA_MODEL_STRING("Illegal"),
-            IGA_MODEL_STRING("The Illegal Opcode Exception Enable flag in cr0.1 is normally set so the normal processing of an illegal opcode is to transfer control to the System Routine.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Instruction dispatch treats any unused 8-bit opcode (including bit 7 of the instruction, reserved for future opcode expansion) as if it is the illegal opcode.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The illegal opcode is zero because that byte value is more likely than most to be read via a wayward instruction pointer.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The illegal instruction is an instruction only in the same way that a NULL pointer in software is a pointer. Both are special values indicating invalid instances.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("illegal\n"),
-            OpSpec::Format::NULLARY, { }, // no type mappings
+        {Op::ILLEGAL /* Op::42 */, Platform::GEN7P5, 0x00,
+            "illegal",
+            "Illegal",
+            OpSpec::Format::NULLARY,
+            { }, // no type mappings
             OpSpec::Attr::NONE
         },
-        /* Op::43 */ {Op::JMPI, Platform::GEN7P5, "jmpi", 0x20, IGA_MODEL_STRING("Jump Indexed"),
-            IGA_MODEL_STRING("The jmpi instruction redirects program execution to an index offset relative to the post-incremented instruction pointer. The index is a signed integer value, with positive or zero integers for forward jumps, and negative integers for backward jumps. In GEN binary, index is at location src1. The ip register must be put (for example, by the assembler) at the dst and src0 locations. Predication is allowed to provide conditional jump with a scalar condition. As the execution size is 1, the first channel of PMASK (flags post prediction control and negate) is used to determine whether the jump is taken or not. If the condition is false, the jump is not taken and execution continues with the next instruction.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Note: Unlike other flow control instructions, the offset used by jmpi is relative to the incremented instruction pointer rather than the IP value for the instruction itself.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] jmpi (1) index {NoMask}\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("An index of 0 does nothing, continuing execution with the next instruction.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("An index of -16 (if the jmpi instruction is in native format) or -8 (if the jmpi instruction is in compact format) is an infinite loop on the jmpi instruction.\n"),
-            OpSpec::Format::JUMP_UNARY_REGIMM, {
+        {Op::JMPI /* Op::43 */, Platform::GEN7P5, 0x20,
+            "jmpi",
+            "Jump Indexed",
+            OpSpec::Format::JUMP_UNARY_REGIMM,
+            {
                 //  <- D
                 {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::44 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::45 */ {Op::LINE, Platform::GEN7P5, "line", 0x59, IGA_MODEL_STRING("Line"),
-            IGA_MODEL_STRING("The line instruction computes a component-wise line equation (v = p * u + q where u, v are vectors and p, q are scalars) of src0 and src1 and stores the results in dst. src1 is the input vector u. src0 provides input scalars p and q, where p is the scalar value based on the region description of src0 and q is the scalar value implied from src0 region. Specifically, q is the fourth component of the 4-tuple (128-bit aligned) that p belongs to.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] line[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::LINE /* Op::45 */, Platform::GEN7P5, 0x59,
+            "line",
+            "Line",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::46 */ {Op::LRP, Platform::GEN7P5, "lrp", 0x5c, IGA_MODEL_STRING("Linear Interpolation"),
-            IGA_MODEL_STRING("The lrp instruction takes component-wise multiplication of src0 and src1, and adds the result to the component-wise multiplication of src2 and (1 - src0), and then stores the final results in dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] lrp[.cmod] (exec_size) dst src0 src1 src2\n"),
-            OpSpec::Format::TERNARY_REGIMM_REG_REGIMM, {
+        {Op::LRP /* Op::46 */, Platform::GEN7P5, 0x5C,
+            "lrp",
+            "Linear Interpolation",
+            OpSpec::Format::TERNARY_REGIMM_REG_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::47 */ {Op::LZD, Platform::GEN7P5, "lzd", 0x4a, IGA_MODEL_STRING("Leading Zero Detection"),
-            IGA_MODEL_STRING("The lzd instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If src0 is zero, store 32 in dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] lzd[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::LZD /* Op::47 */, Platform::GEN7P5, 0x4A,
+            "lzd",
+            "Leading Zero Detection",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // UD <- D,UD
                 {TYPE(Type::UD),TYPE(Type::D)|TYPE(Type::UD)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::48 */ {Op::MAC, Platform::GEN7P5, "mac", 0x48, IGA_MODEL_STRING("Multiply Accumulate"),
-            IGA_MODEL_STRING("The mac instruction takes component-wise multiplication of src0 and src1, adds the results with the corresponding accumulator values, and then stores the final results in dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] mac[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::MAC /* Op::48 */, Platform::GEN7P5, 0x48,
+            "mac",
+            "Multiply Accumulate",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)},
                 // F <- F
@@ -637,23 +430,11 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::49 */ {Op::MACH, Platform::GEN7P5, "mach", 0x49, IGA_MODEL_STRING("Multiply Accumulate High"),
-            IGA_MODEL_STRING("The mach instruction performs DWord integer multiply-accumulate operation and outputs the high DWord (bits 63:32). For each enabled channel, this instruction multiplies the DWord in src1 with the high word of the DWord in src0, left shifts the result by 16 bits, adds it with the corresponding accumulator values, and keeps the whole 64-bit result in the accumulator. It then stores the high DWord (bits 63:32) of the results in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("This instruction is intended to be used to emulate 32-bit DWord integer multiplication by using the large number of bits available in the accumulator. For example, the following four instructions perform vector multiplication of two 32-bit signed integer sources from r2 and r3 and store the resulting vectors with the high 32 bits in r5 and the low 32 bits in r6.\n")
-            IGA_MODEL_STRING("mul (8) acc0:d r2.0<8;8,1>:d r3.0<8;8,1>:d //All channels must be enabled\n")
-            IGA_MODEL_STRING("mach (8) rTemp<1>:d r2.0<8;8,1>:d r3.0<8;8,1>:d //All channels must be enabled\n")
-            IGA_MODEL_STRING("mov (8) r5.0<1>:d rTemp<8;8,1>:d // High 32 bits\n")
-            IGA_MODEL_STRING("mov (8) r6.0<1>:d acc0:d // Low 32 bits\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The mul and mach instructions must have all channels enabled. The first mov should have channel enable from the destHI of IMUL, the second mov should have the channel enable from the destLO of IMUL. As mach is used to generate part of the 64-bit DWord integer results, saturation modifier should not be used. In fact, saturation modifier should not be used for any of these four instructions. Source and destination operands must be DWord integers. Source and destination must be of the same type, signed integer or unsigned integer. If dst is UD, src0 and src1 may be UD and/or D. However, if any of src0 and src1 is D, source modifier (abs) must be present to convert it to match with dst. If dst is D, src0 and src1 must also be D. They cannot be UD as it may cause unexpected overflow because the computed results are limited to 64 bits.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] mach[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::MACH /* Op::49 */, Platform::GEN7P5, 0x49,
+            "mach",
+            "Multiply Accumulate High",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // D <- D
                 {TYPE(Type::D),TYPE(Type::D)},
                 // UD <- UD
@@ -661,16 +442,12 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::50 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::51 */ {Op::MAD, Platform::GEN7P5, "mad", 0x5b, IGA_MODEL_STRING("Multiply Add"),
-            IGA_MODEL_STRING("The mad instruction takes component-wise multiplication of src1 and src2, adds the results with the corresponding src0 values, and then stores the final results in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The conditional modifier and saturation (.sat) must not be used when src1 or src2 are dwords.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] mad[.cmod] (exec_size) dst src0 src1 src2\n"),
-            OpSpec::Format::TERNARY_REGIMM_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::MAD /* Op::51 */, Platform::GEN7P5, 0x5B,
+            "mad",
+            "Multiply Add",
+            OpSpec::Format::TERNARY_REGIMM_REG_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)},
                 // DF <- DF
@@ -678,15 +455,14 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::52 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::53 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::54 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::55 */ {Op::MATH, Platform::GEN7P5, "math", 0x38, IGA_MODEL_STRING("Extended Math Function"),
-            IGA_MODEL_STRING("The math instruction performs extended math function on the components in src0, or src0 and src1, and write the output to the channels of dst. The type of extended math function are based on the FC[3:0] encoding in the table below.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] math (exec_size) dst src0 src1 <FC>\n"),
-            OpSpec::Format::MATH_BINARY_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::MATH /* Op::55 */, Platform::GEN7P5, 0x38,
+            "math",
+            "Extended Math Function",
+            OpSpec::Format::MATH_BINARY_REG_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)},
                 // D <- D
@@ -696,20 +472,11 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION
         },
-        /* Op::56 */ {Op::MOV, Platform::GEN7P5, "mov", 0x1, IGA_MODEL_STRING("Move"),
-            IGA_MODEL_STRING("The mov instruction moves the components in src0 into the channels of dst. If src0 and dst are of different types, format conversion is performed. If src0 is a scalar immediate, the immediate value is loaded into enabled channels of dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("A mov with the same source and destination type, no source modifier, and no saturation is a raw move. A packed byte destination region (B or UB type with HorzStride == 1 and ExecSize > 1) can only be written using raw move.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("When denorm mode is flush to zero, a raw mov instruction with saturation modifier will not flush the denorm input or output to zero (Denorm is preserved).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format: [(pred)] mov[.cmod] (exec_size) dst src0\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("A mov instruction with a source modifier always copies a denorm source value to a denorm destination value\n")
-            IGA_MODEL_STRING("(in the manner of a raw move).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("There is no direct conversion from B/UB to DF or DF to B/UB. Use two instructions and a word or DWord intermediate type.\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::MOV /* Op::56 */, Platform::GEN7P5, 0x01,
+            "mov",
+            "Move",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
                 // F <- UB,B,UW,W,UD,D
@@ -731,54 +498,11 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::57 */ {Op::MOVI, Platform::GEN7P5, "movi", 0x3, IGA_MODEL_STRING("Move Indexed"),
-            IGA_MODEL_STRING("The movi instruction performs a fast component-wise indexed move for subfields from src0 to dst. The source\n")
-            IGA_MODEL_STRING("operand must be an indirectly-addressed register. All channels of the source operand share the same register\n")
-            IGA_MODEL_STRING("number, which is provided by the register field of the first address subregister, with a possible immediate\n")
-            IGA_MODEL_STRING("register offset. The register fields of the subsequent address subregisters are ignored by hardware. The\n")
-            IGA_MODEL_STRING("subregister number of a source channel is provided by the subregister field of the corresponding address\n")
-            IGA_MODEL_STRING("subregister, with a possible immediate subregister offset.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The destination register may be either a directly-addressed or an indirectly-addressed register.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("This instruction effectively performs a subfield shuffling from one register to another. Up to eight\n")
-            IGA_MODEL_STRING("subfields can be selected by an instruction.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format: [(pred)] movi (exec_size) dst src0\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("HW Implementation Details:\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The source register is calculated by adding the register portion of the first index register with the\n")
-            IGA_MODEL_STRING("register portion of the address immediate, a0.0[11:5] + addr_imm[9:5]\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("For byte movi, byte0 of the destination is selected by (a0.0[4:0]), byte1 is selected by (a0.1[4:0]), ...,\n")
-            IGA_MODEL_STRING("and byte7 is selected by (a0.7[4:0]). The rest of the bytes are undefined.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("For word movi, byte0 of the destination is selected by (a0.0[4:1] & 0), byte1 is selected by (a0.0[4:1]\n")
-            IGA_MODEL_STRING("& 1), byte2 is selected by (a0.1[4:1] & 0), byte3 is selected by (a0.1[4:1] & 1), ..., and byte15\n")
-            IGA_MODEL_STRING("is selected by (a0.7[4:1] & 1). The rest of the bytes are undefined.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("For DWord or float movi, byte0 of the destination is selected by (a0.0[4:2] & 00b), byte1 is selected\n")
-            IGA_MODEL_STRING("by (a0.0[4:2] & 01b), byte2 is selected by (a0.0[4:2] & 10b), byte3 is selected by (a0.0[4:2] &\n")
-            IGA_MODEL_STRING("11b), byte4 is selected by (a0.1[4:2] & 00b), byte5 is selected by (a0.1[4:2] & 01b), ..., byte31\n")
-            IGA_MODEL_STRING("is selected by (a0.7[4:2] & 11b).\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("For all 3 conditions above, a0.n[4:0] = a0.n[4:0] + addr_imm[4:0].\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::MOVI /* Op::57 */, Platform::GEN7P5, 0x03,
+            "movi",
+            "Move Indexed",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // B <- B
                 {TYPE(Type::B),TYPE(Type::B)},
                 // UB <- UB
@@ -796,16 +520,11 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::58 */ {Op::MUL, Platform::GEN7P5, "mul", 0x41, IGA_MODEL_STRING("Multiply"),
-            IGA_MODEL_STRING("The mul instruction performs component-wise multiplication of src0 and src1 and stores the results in dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("When both src0 and src1 are of type D or UD, only the low 16 bits of each element of src1 are used. The accumulator maintains full 48-bit precision. The macro described in the mach instruction should be used to obtain the full precision 64-bit multiplication result.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Multiplication of two floating-point numbers follows the rules in mul - Multiply [Pre-DevBDW] or mul - Multiply [Pre-DevBDW]) based on the applicable floating-point mode.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] mul[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::MUL /* Op::58 */, Platform::GEN7P5, 0x41,
+            "mul",
+            "Multiply",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // B <- B
                 {TYPE(Type::B),TYPE(Type::B)},
                 // W <- B
@@ -825,186 +544,121 @@ namespace iga {
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::59 */ {Op::NOP, Platform::GEN7P5, "nop", 0x7e, IGA_MODEL_STRING("No Operation"),
-            IGA_MODEL_STRING("Do nothing. The nop instruction takes an instruction dispatch but performs no operation. It can be used for assembly patching in memory, or to insert a delay in the program sequence.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("nop\n"),
-            OpSpec::Format::NULLARY, { }, // no type mappings
+        {Op::NOP /* Op::59 */, Platform::GEN7P5, 0x7E,
+            "nop",
+            "No Operation",
+            OpSpec::Format::NULLARY,
+            { }, // no type mappings
             OpSpec::Attr::NONE
         },
-        /* Op::60 */ {Op::NOT, Platform::GEN7P5, "not", 0x4, IGA_MODEL_STRING("Logic Not"),
-            IGA_MODEL_STRING("The not instruction performs logical NOT operation (or one\'s complement) of src0 and storing the results in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("A register source operand can use a source modifier:\n")
-            IGA_MODEL_STRING("Any source modifier is numeric, optionally changing a source value s to -s, abs(s), or -abs(s) before the NOT operation.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] not[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::NOT /* Op::60 */, Platform::GEN7P5, 0x04,
+            "not",
+            "Logic Not",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::61 */ {Op::OR, Platform::GEN7P5, "or", 0x6, IGA_MODEL_STRING("Logic Or"),
-            IGA_MODEL_STRING("The or instruction performs component-wise logic OR operation between src0 and src1 and stores the results in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Register source operands can use source modifiers:\n")
-            IGA_MODEL_STRING("Any source modifier is numeric, optionally changing a source value s to -s, abs(s), or -abs(s) before the OR operation.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] or[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::OR /* Op::61 */, Platform::GEN7P5, 0x06,
+            "or",
+            "Logic Or",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::62 */ {Op::PLN, Platform::GEN7P5, "pln", 0x5a, IGA_MODEL_STRING("Plane"),
-            IGA_MODEL_STRING("The pln instruction computes a component-wise plane equation (w = p*u+q*v+r where u/v/w are vectors and p/q/r are scalars) of src0 and src1 and stores the results in dst. src1 is the input vector u.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("src0 provides input scalars p, q, and r, where p is the scalar value based on the region description of src0 and q and r are the scalar values implied from the src0 region. Specifically, q is the second component and r is the fourth component of the 4-tuple (128-bit aligned) that p belongs to.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] pln[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::PLN /* Op::62 */, Platform::GEN7P5, 0x5A,
+            "pln",
+            "Plane",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
         },
-        /* Op::63 */ {Op::RET, Platform::GEN7P5, "ret", 0x2d, IGA_MODEL_STRING("Return"),
-            IGA_MODEL_STRING("Return execution to the code sequence that called a subroutine.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The ret instruction can be predicated or non-predicated. If non-predicated, all channels jump to the return IP in the first channel of src0 and restore CallMask from the second channel of src0. If predicated, the enabled channels jump to the return IP from the first channel of src0 and the corresponding bits in the CallMask are cleared to zero; if all CallMask bits are zero after the ret instruction, then execution jumps to the return IP from the first channel of src0.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("When SPF is on, the predication control must be scalar.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] ret (exec_size) null src0\n"),
-            OpSpec::Format::JUMP_UNARY_REG, {
+        {Op::RET /* Op::63 */, Platform::GEN7P5, 0x2D,
+            "ret",
+            "Return",
+            OpSpec::Format::JUMP_UNARY_REG,
+            {
                 //  <- D,UD
                 {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)|TYPE(Type::UD)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::64 */ {Op::RNDD, Platform::GEN7P5, "rndd", 0x45, IGA_MODEL_STRING("Round Down"),
-            IGA_MODEL_STRING("The rndd instruction takes component-wise floating point downward rounding (to the integral float number closer to negative infinity) of src0 and storing the rounded integral float results in dst. This is commonly referred to as the floor() function.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Each result follows the rules in the following tables based on the floating-point mode.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] rndd[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::RNDD /* Op::64 */, Platform::GEN7P5, 0x45,
+            "rndd",
+            "Round Down",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::65 */ {Op::RNDE, Platform::GEN7P5, "rnde", 0x46, IGA_MODEL_STRING("Round to Nearest or Even"),
-            IGA_MODEL_STRING("The rnde instruction takes component-wise floating point round-to-even operation of src0 with results in two pieces - a downward rounded integral float results stored in dst and the round-to-even increments stored in the rounding increment bits. The round-to-even increment must be added to the results in dst to create the final round-to-even values to emulate the round-to-even operation, commonly known as the round() function. The final results are the one of the two integral float values that is nearer to the input values. If the neither possibility is nearer, the even alternative is chosen.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Each result follows the rules in the following tables based on the floating-point mode.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] rnde[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::RNDE /* Op::65 */, Platform::GEN7P5, 0x46,
+            "rnde",
+            "Round to Nearest or Even",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::66 */ {Op::RNDU, Platform::GEN7P5, "rndu", 0x44, IGA_MODEL_STRING("Round Up"),
-            IGA_MODEL_STRING("The rndu instruction takes component-wise floating point upward rounding (to the integral float number closer to positive infinity) of src0, commonly known as the ceiling() function.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Each result follows the rules in the following tables based on the floating-point mode.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] rndu[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::RNDU /* Op::66 */, Platform::GEN7P5, 0x44,
+            "rndu",
+            "Round Up",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::67 */ {Op::RNDZ, Platform::GEN7P5, "rndz", 0x47, IGA_MODEL_STRING("Round to Zero"),
-            IGA_MODEL_STRING("The rndz instruction takes component-wise floating point round-to-zero operation of src0 with results in two pieces - a downward rounded integral float results stored in dst and the round-to-zero increments stored in the rounding increment bits. The round-to-zero increment must be added to the results in dst to create the final round-to-zero values to emulate the round-to-zero operation, commonly known as the truncate() function. The final results are the one of the two closest integral float values to the input values that is nearer to zero.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] rndz[.cmod] (exec_size) dst src0\n"),
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
+        {Op::RNDZ /* Op::67 */, Platform::GEN7P5, 0x47,
+            "rndz",
+            "Round to Zero",
+            OpSpec::Format::BASIC_UNARY_REGIMM,
+            {
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::68 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::69 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::70 */ {Op::SAD2, Platform::GEN7P5, "sad2", 0x50, IGA_MODEL_STRING("Sum of Absolute Difference 2"),
-            IGA_MODEL_STRING("The sad2 instruction takes source data channels from src0 and src1 in groups of 2-tuples. For each 2-tuple, it computes the sum-of-absolute-difference (SAD) between src0 and src1 and stores the scalar result in the first channel of the 2-tuple in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The results are also stored in the accumulator register. The destination operand and the accumulator maintain 16 bits per channel precision.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The destination register must be aligned to even word (DWord). The even words in the destination region will contain the correct data. The odd words are also written but with undefined values.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] sad2[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::SAD2 /* Op::70 */, Platform::GEN7P5, 0x50,
+            "sad2",
+            "Sum of Absolute Difference 2",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // W,UW <- B,UB
                 {TYPE(Type::W)|TYPE(Type::UW),TYPE(Type::B)|TYPE(Type::UB)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::71 */ {Op::SADA2, Platform::GEN7P5, "sada2", 0x51, IGA_MODEL_STRING("Sum of Absolute Difference Accumulate 2"),
-            IGA_MODEL_STRING("The sada2 instruction takes source data channels from src0 and src1 in groups of 2-tuples. For each 2-tuple, it computes the sum-of-absolute-difference (SAD) between src0 and src1, adds the intermediate result with the accumulator value corresponding to the first channel, and stores the scalar result in the first channel of the 2-tuple in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The destination operand and the accumulator maintain 16 bits per channel precision. Higher precision (guide bits) stored in the accumulator allows up to 64 rounds of sada2 instructions to be issued back to back without overflowing the accumulator.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The destination register must be aligned to even word (DWord). The even words in the destination region will contain the correct data. The odd words are also written but with undefined values.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] sada2[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::SADA2 /* Op::71 */, Platform::GEN7P5, 0x51,
+            "sada2",
+            "Sum of Absolute Difference Accumulate 2",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // W,UW <- B,UB
                 {TYPE(Type::W)|TYPE(Type::UW),TYPE(Type::B)|TYPE(Type::UB)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::72 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::73 */ {Op::SEL, Platform::GEN7P5, "sel", 0x2, IGA_MODEL_STRING("Select"),
-            IGA_MODEL_STRING("The sel instruction selectively moves the components in src0 or src1 into the channels of dst based on the predication. On a channel by channel basis, if the channel condition is true, data in src0 is moved into dst. Otherwise, data in src1 is moved into dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("As the predication is used to select the two sources, it is not included in the evaluation of WrEn. The predicate clause is mandatory if cmod is omitted/0000b. If both predication and the conditional modifier are omitted, the results are undefined.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If the conditional modifier is specified (not 0000b, a compare is performed and the resulting condition flag is used for the sel instruction. Conditional modifiers .ge and .l follow the cmpn rules, and all other conditional modifiers follow the cmp rules. Predication is not allowed in this mode.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("A sel instruction with cmod .l is used to emulate a MIN instruction.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("A sel instruction with cmod .ge is used to emulate a MAX instruction.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("For a sel instruction with a .l or .ge conditional modifier, if one source is NaN and the other not NaN, the non-NaN source is the result. If both sources are NaNs, the result is NaN. For all other conditional modifiers, if either source is NaN then src1 is selected.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("A sel instruction without a conditional modifier always copies a denorm source value to a denorm destination value (in the manner of a raw move). This applies even if the source modifies are set on the sel instruction sources.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("The sel instruction uses any conditional modifier internally and does not update the flag register if a conditional modifier is used.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("A sel instruction with a conditional modifier flushes any selected denorm source value to a zero destination value.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("(pred) sel[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::SEL /* Op::73 */, Platform::GEN7P5, 0x02,
+            "sel",
+            "Select",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
                 // F <- F
@@ -1014,126 +668,78 @@ namespace iga {
             },
             OpSpec::Attr::IS_SELECT|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::74 */ {Op::SEND, Platform::GEN7P5, "send", 0x31, IGA_MODEL_STRING("Send Message"),
-            IGA_MODEL_STRING("Send a message stored in GRF starting at <src> to a shared function identified by <ex_desc> along with control from <desc> with a GRF writeback location at <dest>.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The send instruction performs data communication between a thread and external function units, including shared functions (Sampler, Data Port Read, Data Port Write, URB, and Message Gateway) and some fixed functions (e.g. Thread Spawner, who also have an unique Shared Function ID). The send instruction adds an entry to the EU\'s message request queue. The request message is stored in a block of contiguous GRF registers. The response message, if present, will be returned to a block of contiguous GRF registers. The return GRF writes may be in any order depending on the external function units. <src> is the lead GRF register for request. <dest> is the lead GRF register for response. The message descriptor field <desc> contains the Message Length (the number of consecutive GRF registers) and the Response Length (the number of consecutive GRF registers). It also contains the header present bit, and the function control signals. The extend mesage descriptor field <ex_desc> contains the target function ID. WrEn is forwarded to the target function in the message sideband.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The send instruction is the only way to terminate a thread. When the EOT (End of Thread) bit of <ex_desc> is set, it indicates the end of thread to the EU, the Thread Dispatcher and, in most cases, the parent fixed function.\n")
-            IGA_MODEL_STRING("Message descriptor field <desc> can be a 32-bit immediate, imm32, or a 32-bit scalar register, <reg32a>. GEN restricts that the 32-bit scalar register <reg32a> must be the leading dword of the address register. It should be in the form of a0.0<0;1,0>:ud. When <desc> is a register operand, only the lower 29 bits of <reg32a> are used.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("<ex_desc> is a 6-bit immediate, imm6. The lower 4bits of the <ex_desc> specifies the SFID for the message. The MSb of the message descriptor, the EOT field, always comes from bit 127 of the instruction word, which is the MSb of imm6. A thread must terminate with a send instruction with EOT turned on.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("<src> is a 256-bit aligned GRF register. It serves as the leading GRF register of the request.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("<dest> serves for two purposes: to provide the leading GRF register location for the response message if present, and to provide parameters to form the channel enable sideband signals.\n")
-            IGA_MODEL_STRING("<dest> signals whether there is a response to the message request. It can be either a null register, a direct-addressed GRF register or a register-indirect GRF register. Otherwise, hardware behavior is undefined.\n")
-            IGA_MODEL_STRING("If <dest> is null, there is no response to the request. Meanwhile, the Response Length field in <desc> must be 0. Certain types of message requests, such as memory write (store) through the Data Port, do not want response data from the function unit. If so, the posted destination operand can be null.\n")
-            IGA_MODEL_STRING("If <dest> is a GRF register, the register number is forwarded to the shared function. In this case, the target function unit must send one or more response message phases back to the requesting thread. The number of response message phases must match the Response Length field in <desc>, which of course cannot be zero. For some cases, it could be an empty return message. An empty return message is defined as a single phase message with all channel enables turned off.\n")
-            IGA_MODEL_STRING("The subregister number, horizontal stride, destination mask and type fields of <dest> are always valid and are used in part to generate on the WrEn. This is true even if <dest> is a null register (this is an exception for null as for most cases these fields are ignored by hardware).\n")
-            IGA_MODEL_STRING("The 16-bit channel enables of the message sideband are formed based on the WrEn. Interpretation of the channel enable sideband signals is subject to the target external function. In general for a \'send\' instruction with return messages, they are used as the destination dword write mask for the GRF registers starting at <dest>. For a message that has multiple return phases, the same set of channel enable signals applies to all the return phases.\n")
-            IGA_MODEL_STRING("Thread managed memory coherency: A special usage of using non-null <dest> is to support write-commit signaling for memory write service by the Data Port Write unit. If <post_dest> is not null for a memory write request, the Data Port along with the Data Cache or Render Cache will wait until all the posted writes for the request have reached the coherent domain before sending back to the requesting thread an empty message to <dest> register. A memory write reaching the coherent domain, also referred to as reaching the global observable state, means that subsequent read to the same memory location, no matter which thread issues the read, must return the data of the write.\n")
-            IGA_MODEL_STRING("The destination dependency control, {NoDDClr}, can be used in this instruction. This allows software to control the destination dependencies for multiple \'read\'-type messages similar to that for multiple instructions using EU execution pipeline. As send does not check register dependencies for the post destination, {NoDDChk} should not be used for this instruction.\n"),
-            OpSpec::Format::SEND_UNARY, { }, // no type mappings
+        {Op::SEND /* Op::74 */, Platform::GEN7P5, 0x31,
+            "send",
+            "Send Message",
+            OpSpec::Format::SEND_UNARY,
+            { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::75 */ {Op::SENDC, Platform::GEN7P5, "sendc", 0x32, IGA_MODEL_STRING("Conditional Send Message"),
-            IGA_MODEL_STRING("The sendc instruction has the same behavior as the send instruction except the following.\n")
-            IGA_MODEL_STRING("sendc first checks the dependent threads inside the Thread Dependency Register. There are up to 8 dependent threads in the TDR register. The sendc instruction executes only when all the dependent threads in the TDR register are retired.\n")
-            IGA_MODEL_STRING("Wait for dependencies in the TDR Register to clear, then send a message stored in registers starting at src to a shared function identified by exdesc along with control from desc with a general register writeback location at dst.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] sendc (exec_size) dst src0 exdesc desc\n"),
-            OpSpec::Format::SEND_UNARY, { }, // no type mappings
+        {Op::SENDC /* Op::75 */, Platform::GEN7P5, 0x32,
+            "sendc",
+            "Conditional Send Message",
+            OpSpec::Format::SEND_UNARY,
+            { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::76 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::77 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::78 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::79 */ {Op::SHL, Platform::GEN7P5, "shl", 0x9, IGA_MODEL_STRING("Shift Left"),
-            IGA_MODEL_STRING("Perform component-wise logical left shift of the bits in src0 by the shift count indicated in src1, storing the results in dst, inserting zero bits in the number of LSBs indicated by the shift count.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Hardware detects overflow properly and uses it to perform any saturation operation on the result, as long as the shifted result is within 33 bits. Otherwise, the result is undefined.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Note: For word and DWord operands, the accumulators have 33 bits.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The shift count is taken from the low five bits of src1, regardless of the src1 type and treated as an unsigned integer in the range 0 to 31.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] shl[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::SHL /* Op::79 */, Platform::GEN7P5, 0x09,
+            "shl",
+            "Shift Left",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::80 */ {Op::SHR, Platform::GEN7P5, "shr", 0x8, IGA_MODEL_STRING("Shift Right"),
-            IGA_MODEL_STRING("Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count. Note: For word and DWord operands, the accumulators have 33 bits. Note: For unsigned src0 types, shr and asr produce the same result.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The shift count is taken from the low five bits of src1, regardless of the src1 type and treated as an unsigned integer in the range 0 to 31.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] shr[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::SHR /* Op::80 */, Platform::GEN7P5, 0x08,
+            "shr",
+            "Shift Right",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,UW,UD <- UB,UW,UD
                 {TYPE(Type::UB)|TYPE(Type::UW)|TYPE(Type::UD),TYPE(Type::UB)|TYPE(Type::UW)|TYPE(Type::UD)}
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        /* Op::81 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::82 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::83 */ {Op::SUBB, Platform::GEN7P5, "subb", 0x4f, IGA_MODEL_STRING("Integer Subtraction with Borrow"),
-            IGA_MODEL_STRING("The subb instruction performs component-wise subtraction of src0 and src1 and stores the results in dst, it also stores the borrow into acc.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If the operation produces a borrow (src0 < src1), write 0x00000001 to acc, else write 0x00000000 to acc.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] subb[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::SUBB /* Op::83 */, Platform::GEN7P5, 0x4F,
+            "subb",
+            "Integer Subtraction with Borrow",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
         },
-        /* Op::84 */ {Op::INVALID, Platform::GEN7P5, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        /* Op::85 */ {Op::WAIT, Platform::GEN7P5, "wait", 0x30, IGA_MODEL_STRING("Wait Notification"),
-            IGA_MODEL_STRING("The wait instruction evaluates the value of the notification count register nreg. If nreg is zero, thread execution is suspended and the thread is put in \'wait_for_notification\' state. If nreg is not zero (i.e., one or more notifications have been received), nreg is decremented by one and the thread continues executing on the next instruction. If a thread is in the \'wait_for_notification\' state, when a notification arrives, the notification count register is incremented by one. As the notification count register becomes nonzero, the thread wakes up to continue execution and at the same time the notification register is decremented by one. If only one notification arrived, the notification register value becomes zero. However, during the above mentioned time period, it is possible that more notifications may arrive, making the notification register nonzero again.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("When multiple notifications are received, software must use wait instructions to decrement notification count registers for each notification.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("Notification register n0.0:ud is for thread to thread communication (via the Message Gateway shared function) and n0.1:ud for host to thread communication (through MMIO registers). See the Message Gateway chapter for thread-thread communication and the Debug chapter for host-to-thread communication.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("wait (exec_size) nreg\n"),
-            OpSpec::Format::SYNC_UNARY, {
+        {Op::INVALID, Platform::GEN7P5, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::WAIT /* Op::85 */, Platform::GEN7P5, 0x30,
+            "wait",
+            "Wait Notification",
+            OpSpec::Format::SYNC_UNARY,
+            {
                 // UD <- UD
                 {TYPE(Type::UD),TYPE(Type::UD)}
             },
             OpSpec::Attr::NONE
         },
-        /* Op::86 */ {Op::WHILE, Platform::GEN7P5, "while", 0x27, IGA_MODEL_STRING("While"),
-            IGA_MODEL_STRING("The while instruction marks the end of a do-while block. The instruction first evaluates the loop termination condition for each channel based on the current channel enables and the predication flags specified in the instruction. If any channel has not terminated, a branch is taken to a destination address specified in the instruction, and the loop continues for those channels. Otherwise, execution continues to the next instruction.ld point to the first instruction with the do label of the do-while block of code. It should be a negative number for the backward referencing.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("If SPF is ON, none of the PcIP are updated.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("The following table describes the 16-bit jump target offset JIP. JIP is a signed 16-bit number, added to IP pre-increment, and should point to the first instruction with the do label of the do-while block of code. It should be a negative number for the backward referencing. In GEN binary, JIP is at location src1 and must be of type W (signed word integer).\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] while (exec_size) JIP\n"),
-            OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
+        {Op::WHILE /* Op::86 */, Platform::GEN7P5, 0x27,
+            "while",
+            "While",
+            OpSpec::Format::JUMP_UNARY_IMM,
+            { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        /* Op::87 */ {Op::XOR, Platform::GEN7P5, "xor", 0x7, IGA_MODEL_STRING("Logic Xor"),
-            IGA_MODEL_STRING("The xor instruction performs component-wise logic XOR operation between src0 and src1 and stores the results in dst.\n")
-            IGA_MODEL_STRING("\n")
-            IGA_MODEL_STRING("This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Register source operands can use source modifiers:\n")
-            IGA_MODEL_STRING("Any source modifier is numeric, optionally changing a source value s to -s, abs(s), or -abs(s) before the XOR operation.\n")
-            IGA_MODEL_STRING("\n\n")
-            IGA_MODEL_STRING("Format:\n")
-            IGA_MODEL_STRING("[(pred)] xor[.cmod] (exec_size) dst src0 src1\n"),
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+        {Op::XOR /* Op::87 */, Platform::GEN7P5, 0x07,
+            "xor",
+            "Logic Xor",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM,
+            {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)}
             },

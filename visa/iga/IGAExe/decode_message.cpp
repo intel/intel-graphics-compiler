@@ -297,10 +297,14 @@ bool decodeSendDescriptor(const Opts &opts)
     if (dr.syntax.isValid()) {
         os << dr.syntax.str("..","D","A","X") << "\n";
     }
-    auto emitDesc = [&](iga::SendDesc sda) {
+    auto emitDesc = [&](iga::SendDesc sda, bool treatSigned = false) {
         std::stringstream ss;
         if (sda.isImm()) {
-            ss << "0x" << std::hex << std::uppercase << sda.imm;
+            if (treatSigned && (int32_t)sda.imm < 0) {
+                ss << "-0x" << std::hex << std::uppercase << -(int32_t)sda.imm;
+            } else {
+                ss << "0x" << std::hex << std::uppercase << sda.imm;
+            }
         } else {
             ss << "a0." << (int)sda.reg.subRegNum;
         }
@@ -384,7 +388,7 @@ bool decodeSendDescriptor(const Opts &opts)
         }
         os << "\n";
         os << "  Immediate Offset:           ";
-        emitYellowText(os, emitDesc(dr.info.immediateOffset));
+        emitYellowText(os, emitDesc(dr.info.immediateOffset, true));
         os << "\n";
         os << "\n";
         os << "  Attributes:\n";
@@ -417,12 +421,13 @@ bool decodeSendDescriptor(const Opts &opts)
         // don't pretend to understand the sampler
         const auto &mi = dr.info;
         bool showDataPayload =
-              mi.op != iga::SendOp::READ_STATE &&
-              mi.op != iga::SendOp::LOAD_STATUS &&
-              mi.op != iga::SendOp::SAMPLER_LOAD &&
-              mi.op != iga::SendOp::RENDER_READ &&
-              mi.op != iga::SendOp::RENDER_WRITE &&
-              mi.op != iga::SendOp::FENCE;
+            mi.op != iga::SendOp::READ_STATE &&
+            mi.op != iga::SendOp::LOAD_STATUS &&
+            mi.op != iga::SendOp::SAMPLER_LOAD &&
+            mi.op != iga::SendOp::RENDER_READ &&
+            mi.op != iga::SendOp::RENDER_WRITE &&
+            mi.op != iga::SendOp::FENCE &&
+            true;
         if (showDataPayload) {
             os << "DATA PAYLOAD\n";
             int grfSize = 32;

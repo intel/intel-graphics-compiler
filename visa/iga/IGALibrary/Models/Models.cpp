@@ -402,16 +402,16 @@ const Model *Model::LookupModel(Platform p)
 }
 
 const PlatformEntry iga::ALL_PLATFORMS[] {
-    {iga::Platform::GEN7,     "7",     {"ivb"}},
-    {iga::Platform::GEN7P5,   "7p5",   {"hsw"}},
-    {iga::Platform::GEN8,     "8",     {"bdw"}},
-    {iga::Platform::GEN8LP,   "8lp",   {"chv"}},
-    {iga::Platform::GEN9,     "9",     {"skl"}},
-    {iga::Platform::GEN9LP,   "9lp",   {"bxt"}},
-    {iga::Platform::GEN9P5,   "9p5",   {"kbl"}},
-    {iga::Platform::GEN10,    "10",    {"cnl"}},
-    {iga::Platform::GEN11,    "11",    {"icl","icllp"}},
-    {iga::Platform::GEN12P1,  "12p1",  {"tgl","tgllp"}},
+    {iga::Platform::GEN7,     "7",   "ivb"},
+    {iga::Platform::GEN7P5,   "7p5", "hsw"},
+    {iga::Platform::GEN8,     "8",   "bdw"},
+    {iga::Platform::GEN8LP,   "8lp",  "chv"},
+    {iga::Platform::GEN9,     "9",    "skl"},
+    {iga::Platform::GEN9LP,   "9lp",  "bxt"},
+    {iga::Platform::GEN9P5,   "9p5",  "kbl"},
+    {iga::Platform::GEN10,    "10",   "cnl"},
+    {iga::Platform::GEN11,    "11",   "icl", "icllp"},
+    {iga::Platform::GEN12P1,  "12p1", "tgl", "tgllp", "dg1"},
 };
 
-size_t iga::ALL_PLATFORMS_LEN = sizeof(ALL_PLATFORMS)/sizeof(ALL_PLATFORMS[0]);
+const size_t iga::ALL_PLATFORMS_LEN = sizeof(ALL_PLATFORMS)/sizeof(ALL_PLATFORMS[0]);

@@ -45,8 +45,9 @@ using namespace iga;
  * add (8) r10 r20 r30
  * add (8) r11 r21 r22
  * if (..)
- *   // if instruction doesn't count in if calculations, but it takes about 6 cycles to resolve for fall through
- *   // can treat it as continue BB. Only when this BB has one predecessor
+ *   // if instruction doesn't count in if calculations, but it takes about 6
+ *   // cycles to resolve for fall through can treat it as continue BB.
+ *   // Only when this BB has one predecessor
  *   add r40 r10 r50 {@2}
  * else
  *   add r60 r70 r80
@@ -59,7 +60,7 @@ using namespace iga;
  *
  * Types of Dependencies
  * dst   src0    src1
- * grf   ind     grf //set distance to 1. If SBID list not empty insert test instruction. Optimization if SBID == 1 AND grf depends on it, set SBID, clear SBIDList
+ * grf   ind     grf // set distance to 1. If SBID list not empty insert test instruction. Optimization if SBID == 1 AND grf depends on it, set SBID, clear SBIDList
  */
 
 /**

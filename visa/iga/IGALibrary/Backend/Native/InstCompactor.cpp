@@ -97,7 +97,6 @@ CompactionResult InstCompactor::tryToCompactImpl() {
 }
 
 
-// NOTE: has to be above encodeForPlatform<GEN12> or we get C2910 in MSVC
 CompactionResult InstCompactor::tryToCompactImplFamilyGen12()
 {
     compactionResult = CompactionResult::CR_NO_FORMAT;

@@ -243,7 +243,7 @@ namespace iga
         //
         // For example a legacy untyped load with a channel mask of XYZ
         // would be 3.  Some scatter/gather messages have a SIMT vector
-        // component similar in funcntion.
+        // component similar in function.
         int          elemsPerAddr;
         //
         // For LOAD_QUAD and STORE_QUAD, this holds a bit mask of up to four

@@ -45,24 +45,9 @@ static inline std::string MakeErrorString(const char *pfx, int t) {
 #define MAKE_CASE(C,S) case C::S: return #C "::" #S
 #define MAKE_DEFAULT_CASE(C) default: return MakeErrorString(#C, (int)x)
 
-static inline std::string ToSymbol(Platform x) {
-    switch (x) {
-    MAKE_CASE(Platform, INVALID);
-    MAKE_CASE(Platform, GEN6);
-    MAKE_CASE(Platform, GEN7);
-    MAKE_CASE(Platform, GEN7P5);
-    MAKE_CASE(Platform, GEN8);
-    MAKE_CASE(Platform, GEN8LP);
-    MAKE_CASE(Platform, GEN9);
-    MAKE_CASE(Platform, GEN9LP);
-    MAKE_CASE(Platform, GEN9P5);
-    MAKE_CASE(Platform, GEN10);
-    MAKE_CASE(Platform, GEN11);
-    MAKE_CASE(Platform, GEN12P1);
-    MAKE_CASE(Platform, GENNEXT);
-    MAKE_DEFAULT_CASE(Platform);
-    }
-}
+
+// e.g. "Platform::GEN11"
+std::string ToSymbol(Platform x);
 
 
 static inline std::string ToSymbol(PredCtrl x) {
