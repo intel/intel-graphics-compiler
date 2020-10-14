@@ -59,7 +59,7 @@ void InstSplitPass::run()
             continue;
         }
 
-        it = splitInstruction(it);
+        it = splitInstruction(it, m_builder->instList);
     }
 }
 
@@ -70,7 +70,7 @@ void InstSplitPass::run()
 //                  -> 2 SIMD16 insts with 64-bit operand(s)
 //    split again into:
 //                  -> 4 SIMD8 insts with 64-bit operand(s)
-INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
+INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& instList)
 {
     G4_INST* inst = *it;
     bool doSplit = false;
@@ -177,7 +177,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
                     origSrc, InstOpt_WriteEnable, false);
                 movInst->inheritDIFrom(inst);
 
-                INST_LIST_ITER newMovIter = m_builder->instList.insert(it, movInst);
+                INST_LIST_ITER newMovIter = instList.insert(it, movInst);
 
                 G4_SrcRegRegion* tmpSrc = m_builder->createSrcRegRegion(modifier, Direct, dcl->getRegVar(),
                     0, 0, m_builder->getRegionStride1(), dcl->getElemType());
@@ -185,7 +185,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
                 srcs[i] = tmpSrc;
 
                 // split new mov if needed
-                splitInstruction(newMovIter);
+                splitInstruction(newMovIter, instList);
             }
         }
     }
@@ -227,7 +227,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
         newInst->setDest(newDst);
         newInst->setPredicate(m_builder->duplicateOperand(newPred));
         newInst->setCondMod(m_builder->duplicateOperand(newCondMod));
-        newInstIterator = m_builder->instList.insert(it, newInst);
+        newInstIterator = instList.insert(it, newInst);
 
         // Set new sources
         for (int j = 0; j < numSrc; j++)
@@ -268,11 +268,11 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it)
         }
 
         // Call recursive splitting function
-        newInstIterator = splitInstruction(newInstIterator);
+        newInstIterator = splitInstruction(newInstIterator, instList);
     }
 
     // remove original instruction
-    m_builder->instList.erase(it);
+    instList.erase(it);
     return newInstIterator;
 }
 

@@ -36,9 +36,9 @@ namespace vISA
     public:
         InstSplitPass(IR_Builder* builder);
         void run();
+        INST_LIST_ITER splitInstruction(INST_LIST_ITER it, INST_LIST& instList);
 
     private:
-        INST_LIST_ITER splitInstruction(INST_LIST_ITER it);
         bool needSplitByExecSize(G4_ExecSize ExecSize) const;
         G4_CmpRelation compareSrcDstRegRegion(G4_DstRegRegion* dstRegRegion, G4_Operand* opnd);
         void computeDstBounds(G4_DstRegRegion* dstRegion, uint32_t& leftBound, uint32_t& rightBound);
