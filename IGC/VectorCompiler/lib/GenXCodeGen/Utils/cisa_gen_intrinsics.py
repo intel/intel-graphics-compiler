@@ -137,11 +137,20 @@ def generate(dscr_filename, out_path):
                 elif key in ('opc'):
                     file.write('LITERAL | {},\n'.format(value))
                 elif isinstance(value, list):
-                    file.write('{},\n'.format(' | '.join([str(x) for x in value if x != 'RAW_OPERANDS'])))
+                    file.write('{},\n'.format(' | '.join([str(x) for x in value
+                        if (x != 'RAW_OPERANDS' and ('BUILD_ONLY::') not in str(x) )])))
                 else:
                     # skip other
                     pass
             file.write('END,\n\n')
+
+    def analyseForBuildMap(x):
+        if isstrinst(x) and 'BUILD_ONLY::' not in str(x):
+            return 'II::' + x
+        elif 'BUILD_ONLY::' in str(x):
+            return str(x).rsplit('BUILD_ONLY::',1)[1]
+        else:
+            return str(x)
 
 
     with open(out_path + '/GenXIntrinsicsBuildMap.inc', 'w') as file:
@@ -191,8 +200,7 @@ def generate(dscr_filename, out_path):
                         continue
                     context = { 'value1': value[1] if len(value) > 1 else None, 'dst': key,
                                 'args': '{}'.format(' | ').join(
-                                ['II::' + x if isstrinst(x)
-                                            else str(x) for x in value if x != 'RAW_OPERANDS']) }
+                                [analyseForBuildMap(x) for x in value if x != 'RAW_OPERANDS']) }
                     if isinstance(replace, list):
                         replace = [x.format(**context) for x in replace]
                     else:
