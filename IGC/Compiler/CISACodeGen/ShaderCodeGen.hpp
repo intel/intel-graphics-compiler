@@ -196,8 +196,6 @@ public:
     void InitializeStackVariables();
     void SaveStackState();
     void RestoreStackState();
-    /// Get the max private mem size based on simd width
-    uint32_t GetMaxPrivateMem();
 
     void        AllocateInput(CVariable* var, uint offset, uint instance = 0);
     void        AllocateOutput(CVariable* var, uint offset, uint instance = 0);

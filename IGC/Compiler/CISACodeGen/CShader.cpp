@@ -244,24 +244,6 @@ void CShader::InitializeStackVariables()
     encoder.GetVISAPredefinedVar(m_FP, PREDEFINED_FE_FP);
 }
 
-/// get max private mem size, varying by simd width
-uint32_t CShader::GetMaxPrivateMem()
-{
-    uint32_t MaxPrivateSize = 0;
-    switch (m_dispatchSize) {
-    default:
-        MaxPrivateSize = 8 * 1024;
-        break;
-    case SIMDMode::SIMD16:
-        MaxPrivateSize = 4 * 1024;
-        break;
-    case SIMDMode::SIMD32:
-        MaxPrivateSize = 2 * 1024;
-        break;
-    }
-    return MaxPrivateSize;
-}
-
 /// save FP of previous frame when entering a stack-call function
 void CShader::SaveStackState()
 {

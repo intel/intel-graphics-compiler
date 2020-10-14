@@ -9890,10 +9890,40 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     CVariable* pSize = nullptr;
 
+    // Do a crude estimation of the stack size required per thread.
+    // Estimated size = PrivateMem of Kernel + PrivateMem of Largest StackCall Func in Module + 2KB (for additional nested calls and arguments)
+    // TODO: Can have a better estimate by analyzing callgraph. However, we won't know the exact value for indirect and recursive calls.
+    auto GetMaxPrivateMem = [&](void)->uint32_t
+    {
+        uint32_t allocMemSize = 0;
+        uint32_t largest = 0;
+        for (auto iter : pModuleMetadata->FuncMD)
+        {
+            Function* pF = iter.first;
+            if (pF == pKernel)
+            {
+                // Get the private mem size of current kernel
+                allocMemSize += (uint32_t)iter.second.privateMemoryPerWI;
+            }
+            else if (pF->hasFnAttribute("visaStackCall"))
+            {
+                // Get the largest private mem size used by stackcalled funcs
+                largest = std::max((uint32_t)iter.second.privateMemoryPerWI, largest);
+            }
+        }
+        // Only add additional stack memory if there are actual stack calls
+        if (m_FGA && m_FGA->getGroup(pKernel)->hasStackCall())
+        {
+            allocMemSize += largest;
+            allocMemSize += (2 * 1024);
+        }
+        return allocMemSize;
+    };
+
     // Maximun private size in byte, per-workitem
     // When there's stack call or vla, we don't know the actual stack size being used,
     // so set a conservative max stack size.
-    uint32_t MaxPrivateSize = m_currShader->GetMaxPrivateMem();
+    uint32_t MaxPrivateSize = GetMaxPrivateMem();
     if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
     {
         // Experimental: Patch private memory size
@@ -9915,21 +9945,12 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 
     // reserve space for alloca
     auto funcMDItr = pModuleMetadata->FuncMD.find(pKernel);
-    if (funcMDItr != pModuleMetadata->FuncMD.end())
+    if (funcMDItr != pModuleMetadata->FuncMD.end() && funcMDItr->second.privateMemoryPerWI != 0)
     {
-        if (funcMDItr->second.privateMemoryPerWI != 0)
-        {
-            totalAllocaSize += funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
-
-            if ((uint32_t)funcMDItr->second.privateMemoryPerWI > MaxPrivateSize)
-            {
-                pCtx->EmitError("Private memory allocation exceeds max allowed size");
-                IGC_ASSERT(0);
-            }
-        }
+        totalAllocaSize += funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
     }
 
-    if (!IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
+    if (IGC_IS_FLAG_DISABLED(EnableRuntimeFuncAttributePatching))
     {
         // If we don't return per-function private memory size,
         // modify private-memory size to a large setting.
@@ -10331,17 +10352,9 @@ void EmitPass::emitStackFuncEntry(Function* F)
 
     // reserve space for all the alloca in the function subgroup
     auto funcMDItr = m_currShader->m_ModuleMetadata->FuncMD.find(F);
-    if (funcMDItr != m_currShader->m_ModuleMetadata->FuncMD.end())
+    if (funcMDItr != m_currShader->m_ModuleMetadata->FuncMD.end() && funcMDItr->second.privateMemoryPerWI != 0)
     {
-        if (funcMDItr->second.privateMemoryPerWI != 0)
-        {
-            totalAllocaSize += funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
-            if ((uint32_t)funcMDItr->second.privateMemoryPerWI > m_currShader->GetMaxPrivateMem())
-            {
-                m_currShader->GetContext()->EmitError("Private memory allocation exceeds max allowed size");
-                IGC_ASSERT(0);
-            }
-        }
+        totalAllocaSize += funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
     }
 
     // save FP before allocation
