@@ -2441,7 +2441,8 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
             //What about the global send come back to current BB?
             //Shouldn't be assgined
             if ((liveNode->globalID != -1) &&
-                (BBVector[bb->getId()]->tokenLiveInDist[liveNode->globalID] != -1))
+                (BBVector[bb->getId()]->tokenLiveInDist[liveNode->globalID] != -1) &&
+                (liveNode->getBBID() != bb->getId() || liveNode->getNodeID() > node->getNodeID()) )
             {
                 nodeDist = BBVector[bb->getId()]->tokenLiveInDist[liveNode->globalID] + (node->getNodeID() - BBVector[bb->getId()]->first_node);
             }
@@ -2474,7 +2475,8 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
                 //What about the global send come back to current BB?
                 //Shouldn't be assgined
                 if ((node->globalID != -1) &&
-                    (BBVector[useNode->getBBID()]->tokenLiveInDist[node->globalID] != -1))
+                    (BBVector[useNode->getBBID()]->tokenLiveInDist[node->globalID] != -1) &&
+                    (useNode->getBBID() != bb->getId() || useNode->getNodeID() > node->getNodeID()))
                 {
                     nodeDist = BBVector[useNode->getBBID()]->tokenLiveInDist[node->globalID] + (useNode->getNodeID() - BBVector[useNode->getBBID()]->first_node);
                 }
@@ -2497,7 +2499,7 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
             }
         }
 
-        if (tokenReuseOverhead < nodeReuseOverhead)
+        if (candidateTokenNode && (tokenReuseOverhead < nodeReuseOverhead))
         {
             nodeReuseOverhead = tokenReuseOverhead;
             candidateNode = candidateTokenNode;
@@ -2676,6 +2678,7 @@ void SWSB::allocateToken(G4_BB* bb)
         {
             continue;
         }
+
 
         send_live = *node->reachingSends; //The tokens will reach current node
 
