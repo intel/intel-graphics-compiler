@@ -353,6 +353,7 @@ int CISA_IR_Builder::ClearAsmTextStreams()
 
 int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 {
+
     if (kernel != NULL)
     {
         assert(0);
@@ -786,9 +787,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                     kernel->getIRBuilder()->setRetVarSize(kernel->getKernelFormat()->return_value_size);
                 }
 
-                auto nameLen = strlen((*iter)->getKernel()->getName()) + 1;
-                pseudoHeader.functions[k].name = (char*)mem.alloc(nameLen);
-                strcpy_s(pseudoHeader.functions[k].name, nameLen, (*iter)->getKernel()->getName());
+                strcpy_s((char*)&pseudoHeader.functions[k].name, COMMON_ISA_MAX_FILENAME_LENGTH, (*iter)->getKernel()->getName());
                 k++;
             }
 

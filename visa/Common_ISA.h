@@ -45,7 +45,7 @@ class G4_Declare;
 #define COMMON_ISA_MAGIC_NUM 0x41534943
 
 #define COMMON_ISA_MAJOR_VER 3
-#define COMMON_ISA_MINOR_VER 7
+#define COMMON_ISA_MINOR_VER 6
 
 #define COMMON_ISA_MAX_ADDRESS_SIZE     16
 #define COMMON_ISA_MAX_SURFACE_SIZE     128
@@ -390,8 +390,8 @@ typedef struct {
 } gen_binary_info;
 
 struct kernel_info_t {
-    unsigned short name_len;
-    char* name;
+    unsigned char name_len;
+    char name[COMMON_ISA_MAX_FILENAME_LENGTH];
     unsigned int offset;
     unsigned int size;
     unsigned int input_offset;
@@ -411,8 +411,8 @@ struct kernel_info_t {
 
 struct function_info_t {
     unsigned char linkage;
-    unsigned short name_len;
-    char* name;
+    unsigned char name_len;
+    char name[COMMON_ISA_MAX_FILENAME_LENGTH];
     unsigned int offset;
     unsigned int size;
     reloc_symtab variable_reloc_symtab; // ded, but leave here to avoid breaking old vISA binary

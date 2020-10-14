@@ -169,6 +169,11 @@ void CisaBinary::initKernel(int kernelIndex, VISAKernelImpl * kernel)
 
     int nameLen = (int) strlen(kernel->getName());
 
+    MUST_BE_TRUE(nameLen <= COMMON_ISA_MAX_FILENAME_LENGTH,
+        "Kernel Name exceeds maximum length allowed.\n");
+
+
+
     if (this->getMajorVersion())
     {
         if (kernel->getIsKernel())
@@ -182,10 +187,8 @@ void CisaBinary::initKernel(int kernelIndex, VISAKernelImpl * kernel)
 
     if (kernel->getIsKernel())
     {
-        m_header.kernels[kernelIndex].name_len = (unsigned short) nameLen;
-        m_header.kernels[kernelIndex].name = (char*)m_mem.alloc(nameLen + 1);
-        m_header.kernels[kernelIndex].name[nameLen] = 0;
-        memcpy_s(m_header.kernels[kernelIndex].name, m_header.kernels[kernelIndex].name_len, kernel->getName(), m_header.kernels[kernelIndex].name_len);
+        m_header.kernels[kernelIndex].name_len = (unsigned char) nameLen;
+        memcpy_s(&m_header.kernels[kernelIndex].name, COMMON_ISA_MAX_FILENAME_LENGTH, kernel->getName(), m_header.kernels[kernelIndex].name_len);
 
         m_header.kernels[kernelIndex].offset = 0; //will be set later during finalize
         m_header.kernels[kernelIndex].size = kernel->getCisaBinarySize();
@@ -208,10 +211,9 @@ void CisaBinary::initKernel(int kernelIndex, VISAKernelImpl * kernel)
     if (!kernel->getIsKernel())
     {
         m_header.functions[functionIndex].linkage = 0; // deprecated and MBZ
-        m_header.functions[functionIndex].name_len = (unsigned short) nameLen;
-        m_header.functions[functionIndex].name = (char*)m_mem.alloc(nameLen + 1);
-        memcpy_s(m_header.functions[functionIndex].name, m_header.functions[functionIndex].name_len, kernel->getName(), m_header.functions[functionIndex].name_len);
-        m_header.functions[functionIndex].name[nameLen] = 0;
+        m_header.functions[functionIndex].name_len = (unsigned char) nameLen;
+        memcpy_s(&m_header.functions[functionIndex].name, COMMON_ISA_MAX_FILENAME_LENGTH, kernel->getName(), m_header.functions[functionIndex].name_len);
+
         m_header.functions[functionIndex].offset = 0; //will be set later during finalize
         m_header.functions[functionIndex].size = kernel->getCisaBinarySize();
         m_header.functions[functionIndex].cisa_binary_buffer = kernel->getCisaBinaryBuffer(); //buffer containing entire kernel
@@ -254,7 +256,8 @@ int CisaBinary::finalizeCisaBinary()
     for (int i = 0; i < m_header.num_kernels; i++)
     {
         writeInToCisaHeaderBuffer(&m_header.kernels[i].name_len, sizeof(m_header.kernels[i].name_len));
-        writeInToCisaHeaderBuffer(m_header.kernels[i].name, m_header.kernels[i].name_len);
+
+        writeInToCisaHeaderBuffer(&m_header.kernels[i].name, m_header.kernels[i].name_len);
 
         //setting offset to the compiled cisa binary kernel
         //to correct offset in final cisa binary
@@ -310,7 +313,8 @@ int CisaBinary::finalizeCisaBinary()
     {
         writeInToCisaHeaderBuffer(&m_header.functions[i].linkage, sizeof(m_header.functions[i].linkage));
         writeInToCisaHeaderBuffer(&m_header.functions[i].name_len, sizeof(m_header.functions[i].name_len));
-        writeInToCisaHeaderBuffer(m_header.functions[i].name, m_header.functions[i].name_len);
+
+        writeInToCisaHeaderBuffer(&m_header.functions[i].name, m_header.functions[i].name_len);
 
         //setting offset to the compiled cisa binary kernel
         //to correct offset in final cisa binary
