@@ -1090,7 +1090,7 @@ int vector_opnd::getSizeInBinary() const
 /*
 function_info {
     ub linkage; // MBZ
-    ub name_len;
+    uw name_len;
     ub name[name_len];
     ud offset;
     ud size;
@@ -1111,7 +1111,7 @@ uint32_t function_info_t::getSizeInBinary() const
 
 /*
     kernel_info {
-    ub name_len;
+    uw name_len;
     ub name[name_len];
     ud offset;
     ud size;
