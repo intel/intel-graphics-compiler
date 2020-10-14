@@ -4926,10 +4926,10 @@ bool LogicalAndToBranch::runOnFunction(Function& F)
                     }
 
                     smallvector<Instruction*, 8> moveInsts;
-                    if (isSafeToConvert(s0, s1, moveInsts))
+                    if (isSafeToConvert(s0, inst, moveInsts))
                     {
-                        // if values defined between s0 & s1 are referenced
-                        // outside of (s0, s1), they need to be moved before
+                        // if values defined between s0 & inst(branch) are referenced
+                        // outside of (s0, inst), they need to be moved before
                         // s0 to keep SSA form.
                         for (auto inst : moveInsts)
                             scheduleUp(bb, inst, s0);
