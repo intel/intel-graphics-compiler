@@ -455,6 +455,12 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             break;
         }
 
+        case GenISAIntrinsic::GenISA_simdBlockRead:
+        {
+            visitSimdBlockRead(inst);
+            break;
+        }
+
         case GenISAIntrinsic::GenISA_umulH:
         {
             visitMulH(inst, false);
@@ -701,6 +707,31 @@ void CustomSafeOptPass::visitFPToUIInst(llvm::FPToUIInst& FPUII)
             }
         }
     }
+}
+// % 2 = call <4 x i16> @llvm.genx.GenISA.simdBlockRead(i16* %ptr)
+// % 4 = bitcast <4 x i16> % 2 to <8 x i8>
+// into
+// % 3 = call <8 x i8> @llvm.genx.GenISA.simdBlockRead(i8* %ptr1)
+void CustomSafeOptPass::visitSimdBlockRead(llvm::CallInst* inst)
+{
+    if (!inst->hasOneUse())
+    {
+        return;
+    }
+
+    BitCastInst* bitcast = dyn_cast<BitCastInst>(*(inst->user_begin()));
+    if (!bitcast)
+    {
+        return;
+    }
+    auto src_ty = inst->getArgOperand(0)->getType();
+    Function* nf = GenISAIntrinsic::getDeclaration(inst->getParent()->getParent()->getParent(),
+        GenISAIntrinsic::GenISA_simdBlockRead, {bitcast->getType(), src_ty} );
+    IRBuilder<> builder(inst);
+    auto replace = builder.CreateCall(nf, inst->getArgOperand(0));
+    bitcast->replaceAllUsesWith(replace);
+    // cannot erase the bitcast and the original simd-block-read,
+    // otherwise causes iterator error
 }
 
 /// This remove simplify bitcast across phi and select instruction
