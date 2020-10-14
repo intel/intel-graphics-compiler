@@ -521,6 +521,12 @@ namespace IGC {
         if (intrinsic_name == llvm_input ||
             intrinsic_name == llvm_shaderinputvec)
         {
+            if( IGC_IS_FLAG_ENABLED( DisableCodeSinkingInputVec ) )
+            {
+                hasAliasConcern = true;
+                reducePressure = false;
+                return false;
+            }
             hasAliasConcern = false;
             reducePressure = true;
             return true;
