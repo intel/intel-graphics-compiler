@@ -1880,7 +1880,7 @@ int IR_Builder::translateVISASampler3DInst(
 
     int numChannels = chMask.getNumEnabledChannels();
 
-    if (execSize > getNativeExecSize() &&
+    if (needsToSplitSampler() && execSize > getNativeExecSize() &&
         (numRows > 11 || actualop == VISA_3D_SAMPLE_D || actualop == VISA_3D_SAMPLE_D_C || actualop == VISA_3D_SAMPLE_KILLPIX))
     {
         // decrementing since we will produce SIMD8 code.

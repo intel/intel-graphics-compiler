@@ -648,6 +648,11 @@
         return true;
     }
 
+    bool needsToSplitSampler() const
+    {
+        return true;
+    }
+
 
     int get3SrcDstAlign() const
     {
