@@ -148,6 +148,8 @@ typedef enum {
 
 // Fast CG always returns simd 8
 #define ValidFastModes(flag, prev_ctx_ptr, stats)     (IsStage1FastCompile(flag, prev_ctx_ptr) && HasSimd(8, stats) && !HasSimd(16, stats) && !HasSimd(32, stats))
+// Fastest CG always returns simd 8
+#define ValidFastestModes(flag, prev_ctx_ptr, stats)     (IsStage1FastestCompile(flag, prev_ctx_ptr) && HasSimd(8, stats) && !HasSimd(16, stats) && !HasSimd(32, stats))
 // Best CG returns simd 8 or 16
 #define ValidBestModes(flag, prev_ctx_ptr, stats)     (IsStage1BestPerf(flag, prev_ctx_ptr) && (HasSimd(8, stats) || HasSimd(16, stats)) && !HasSimd(32, stats))
 // ALL_SIMDS CG must have simd 8 in any case
@@ -164,6 +166,7 @@ typedef enum {
     )
 
 #define ValidGeneratedModes(flag, prev_ctx_ptr, stats) ( \
+    ValidFastestModes(flag, prev_ctx_ptr, stats) || \
     ValidFastModes(flag, prev_ctx_ptr, stats) || \
     ValidBestModes(flag, prev_ctx_ptr, stats) || \
     ValidAllSimdsModes(flag, prev_ctx_ptr, stats) || \
