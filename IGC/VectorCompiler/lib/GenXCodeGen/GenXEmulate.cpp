@@ -106,6 +106,8 @@ class GenXEmulate : public ModulePass {
     Value *visitZExtInst(ZExtInst &I);
     Value *visitSExtInst(SExtInst &I);
 
+    Value *visitGenxTrunc(CallInst &CI);
+    Value *visitGenxMinMax(CallInst &CI);
     // genx_absi
     Value *visitGenxAbsi(CallInst &CI);
     // handles genx_{XX}add_sat cases
@@ -118,6 +120,11 @@ class GenXEmulate : public ModulePass {
     Value *visitCallInst(CallInst &CI);
     Value *visitInstruction(Instruction &I) { return nullptr; }
 
+    // if the value is not an Instruciton (like ConstExpr), return the original
+    // value. Return the emulated sequence otherwise
+    Value *ensureEmulated(Value *Val);
+
+    static bool isConvertOfI64(const Instruction &I);
     static bool isI64ToFP(const Instruction &I);
     static bool isI64Cmp(const Instruction &I);
     static Value *detectBitwiseNot(BinaryOperator &);
@@ -143,7 +150,7 @@ class GenXEmulate : public ModulePass {
 
     bool needsEmulation() const {
       return (SplitBuilder.IsI64Operation() || isI64Cmp(Inst) ||
-              isI64ToFP(Inst));
+              isConvertOfI64(Inst));
     }
 
     IRBuilder getIRBuilder() {
@@ -260,6 +267,21 @@ private:
 
 } // end namespace
 
+bool GenXEmulate::Emu64Expander::isConvertOfI64(const Instruction &I) {
+
+  if (GenXEmulate::Emu64Expander::isI64ToFP(I))
+    return true;
+
+  auto IID = GenXIntrinsic::getAnyIntrinsicID(&I);
+  switch (IID) {
+  case GenXIntrinsic::genx_uutrunc_sat:
+  case GenXIntrinsic::genx_sstrunc_sat:
+  case GenXIntrinsic::genx_ustrunc_sat:
+  case GenXIntrinsic::genx_sutrunc_sat:
+    return I.getOperand(0)->getType()->getScalarType()->isIntegerTy(64);
+  }
+  return false;
+}
 bool GenXEmulate::Emu64Expander::isI64ToFP(const Instruction &I) {
   if (Instruction::UIToFP != I.getOpcode() &&
       Instruction::SIToFP != I.getOpcode()) {
@@ -663,6 +685,138 @@ Value *GenXEmulate::Emu64Expander::visitSExtInst(SExtInst &I) {
   return SplitBuilder.combineLoHiSplit({LoPart, HiPart}, "int_emu.sext64.",
                                        Inst.getType()->isIntegerTy());
 }
+Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
+
+  auto IID = GenXIntrinsic::getAnyIntrinsicID(&Inst);
+  unsigned DstSize = CI.getType()->getScalarType()->getPrimitiveSizeInBits();
+  IGC_ASSERT(DstSize == 8 || DstSize == 16 || DstSize == 32 || DstSize == 64);
+
+  // early exit
+  if (IID == GenXIntrinsic::genx_uutrunc_sat ||
+      IID == GenXIntrinsic::genx_sstrunc_sat) {
+    if (DstSize == 64)
+      return CI.getOperand(0);
+  }
+
+  auto Builder = getIRBuilder();
+  auto VOp = toVector(Builder, CI.getOperand(0));
+
+  auto MakeConstantSplat64 = [](IRBuilder &B, VectorType *VTy, uint64_t Value) {
+     auto* KV = Constant::getIntegerValue(B.getInt64Ty(), APInt(64, Value));
+     return ConstantDataVector::getSplat(VTy->getNumElements(), KV);
+  };
+  auto MaxDstSigned   = [&](unsigned DstSize) {
+     uint64_t MaxVal = (1ull << (DstSize - 1)) - 1;
+     return MakeConstantSplat64(Builder, VOp.VTy, MaxVal);
+  };
+  auto MinDstSigned   = [&](unsigned DstSize) {
+     uint64_t Ones = ~0ull;
+     uint64_t MinVal = Ones << (DstSize - 1);
+     return MakeConstantSplat64(Builder, VOp.VTy, MinVal);
+  };
+  auto MaxDstUnsigned = [&](unsigned DstSize) {
+     uint64_t MaxVal = ~0ull;
+     MaxVal = MaxVal >> (64 - DstSize);
+     return MakeConstantSplat64(Builder, VOp.VTy, MaxVal);
+  };
+  auto MinDstUnsigned = [&](unsigned DstSize) {
+     return MakeConstantSplat64(Builder, VOp.VTy, 0);
+  };
+
+  Value *Cond1 = nullptr;
+  Value *Limit1 = nullptr;
+  // optional
+  Value *Cond2 = nullptr;
+  Value *Limit2 = nullptr;
+
+  switch (IID) {
+  case GenXIntrinsic::genx_uutrunc_sat:
+    // UGT maxDstUnsigend -> maxDstUnsigned
+    Limit1 = MaxDstUnsigned(DstSize);
+    Cond1 = ensureEmulated(Builder.CreateICmpUGT(VOp.V, Limit1));
+  break;
+  case GenXIntrinsic::genx_sstrunc_sat:
+    // Result = Operand
+    // SGT (maxDstSigned) -> maxDstSigned
+    // SLT (minDstSigned) -> minDstSigned
+    // trunc
+    Limit1 = MaxDstSigned(DstSize);
+    Cond1 = ensureEmulated(Builder.CreateICmpSGT(VOp.V, Limit1));
+    Limit2 = MinDstSigned(DstSize);
+    Cond2 = ensureEmulated(Builder.CreateICmpSLT(VOp.V, Limit2));
+  break;
+  case GenXIntrinsic::genx_ustrunc_sat: // unsigned result, signed operand
+    // UGE (maxDstUnsigned) -> maxDstSigned
+    // Operand < 0 -> 0
+    // trunc
+    Limit1 = MaxDstUnsigned(DstSize);
+    Cond1 = ensureEmulated(Builder.CreateICmpUGE(VOp.V, Limit1));
+    Limit2 = MinDstUnsigned(DstSize);
+    Cond2 = ensureEmulated(Builder.CreateICmpSLT(VOp.V, Limit2));
+  break;
+  case GenXIntrinsic::genx_sutrunc_sat: // signed result, unsigned operand
+    // UGT (maxDstSigned) -> maxDstSigned
+    // trunc
+    Limit1 = MaxDstSigned(DstSize);
+    Cond1 = ensureEmulated(Builder.CreateICmpUGT(VOp.V, Limit1));
+  break;
+  }
+  IGC_ASSERT(Cond1 && Limit1);
+  auto *Result = ensureEmulated(Builder.CreateSelect(Cond1, Limit1, VOp.V));
+  if (Cond2) {
+    Result = ensureEmulated(Builder.CreateSelect(Cond2, Limit2, Result));
+  }
+  if (DstSize <= 32) {
+    auto Splitted = SplitBuilder.splitValueLoHi(*Result);
+    if (DstSize == 32) {
+      Result = Splitted.Lo;
+    } else {
+      // DIRTY HACK: since currently our backend does not support
+      // llvm trunc instruction, we just build a 32-bit trunc.sat instead
+      unsigned ElNum = VOp.VTy->getNumElements();
+      auto *CnvType =
+          IGCLLVM::FixedVectorType::get(CI.getType()->getScalarType(), ElNum);
+      // Result = Builder.CreateTrunc(Result, CnvType);
+      Function *TrSatF = GenXIntrinsic::getAnyDeclaration(
+              CI.getModule(), IID, {CnvType, Splitted.Lo->getType()});
+      Result = Builder.CreateCall(TrSatF, Splitted.Lo, "int_emu.trunc.sat.small.");
+    }
+  }
+  if (Result->getType() == CI.getType())
+    return Result;
+
+  return Builder.CreateBitCast(Result, CI.getType());
+}
+Value *GenXEmulate::Emu64Expander::visitGenxMinMax(CallInst &CI) {
+
+  auto Builder = getIRBuilder();
+  Value* Lhs = CI.getOperand(0);
+  Value* Rhs = CI.getOperand(1);
+
+  Value* CondVal = nullptr;
+  // We create 2 64-bit operations:
+  // compare and select.
+  // Then we replace those with yet-another expander instance
+  auto IID = GenXIntrinsic::getAnyIntrinsicID(&Inst);
+  switch (IID) {
+  case GenXIntrinsic::genx_umax:
+    CondVal = Builder.CreateICmpUGT(Lhs, Rhs);
+    break;
+  case GenXIntrinsic::genx_smax:
+    CondVal = Builder.CreateICmpSGT(Lhs, Rhs);
+    break;
+  case GenXIntrinsic::genx_umin:
+    CondVal = Builder.CreateICmpULT(Lhs, Rhs);
+    break;
+  case GenXIntrinsic::genx_smin:
+    CondVal = Builder.CreateICmpSLT(Lhs, Rhs);
+    break;
+  }
+  IGC_ASSERT(CondVal);
+  CondVal = ensureEmulated(CondVal);
+  return ensureEmulated(Builder.CreateSelect(CondVal, Lhs, Rhs));
+}
+
 Value *GenXEmulate::Emu64Expander::visitGenxAbsi(CallInst &CI) {
   auto Builder = getIRBuilder();
   auto Src = SplitBuilder.splitOperandLoHi(0);
@@ -761,6 +915,16 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
 }
 Value *GenXEmulate::Emu64Expander::visitCallInst(CallInst &CI) {
   switch (GenXIntrinsic::getAnyIntrinsicID(&Inst)) {
+  case GenXIntrinsic::genx_uutrunc_sat:
+  case GenXIntrinsic::genx_sstrunc_sat:
+  case GenXIntrinsic::genx_ustrunc_sat:
+  case GenXIntrinsic::genx_sutrunc_sat:
+    return visitGenxTrunc(CI);
+  case GenXIntrinsic::genx_umin:
+  case GenXIntrinsic::genx_umax:
+  case GenXIntrinsic::genx_smin:
+  case GenXIntrinsic::genx_smax:
+    return visitGenxMinMax(CI);
   case GenXIntrinsic::genx_absi:
     return visitGenxAbsi(CI);
   case GenXIntrinsic::genx_suadd_sat:
@@ -770,6 +934,16 @@ Value *GenXEmulate::Emu64Expander::visitCallInst(CallInst &CI) {
     return visitGenxAddSat(CI);
   }
   return nullptr;
+}
+Value *GenXEmulate::Emu64Expander::ensureEmulated(Value *Val) {
+  Instruction *Inst = dyn_cast<Instruction>(Val);
+  if (!Inst)
+    return Val;
+  auto *Emulated = Emu64Expander(ST, *Inst).tryExpand();
+  // we expect to always return an emulated sequence
+  IGC_ASSERT(Emulated);
+  Inst->eraseFromParent();
+  return Emulated;
 }
 Value *GenXEmulate::Emu64Expander::buildTernaryAddition(
     IRBuilder &Builder, Value &A, Value &B, Value &C, const Twine &Name) const {
