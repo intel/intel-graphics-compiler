@@ -82,7 +82,6 @@ namespace IGC
         void visitExtractElementInst(llvm::ExtractElementInst& I);
         void visitLdptr(llvm::CallInst* inst);
         void visitLoadInst(llvm::LoadInst& I);
-        void visitSimdBlockRead(llvm::CallInst* inst);
         void dp4WithIdentityMatrix(llvm::ExtractElementInst& I);
         bool isIdentityMatrix(llvm::ExtractElementInst& I);
         void visitAnd(llvm::BinaryOperator& I);
