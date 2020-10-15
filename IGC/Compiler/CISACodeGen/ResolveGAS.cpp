@@ -218,10 +218,25 @@ bool GASResolving::resolveOnBasicBlock(BasicBlock* BB) const {
             CI->setOperand(0, Src);
             Changed = true;
         }
+        // Since %49 is used twice in a phi instruction like the one below:
+        // %56 = phi %"class.someclass" addrspace(4)* [ %49, %53 ], [ %49, %742 ]
+        // the use iterator was handling such phi instructions twice.
+        // This was causing a crash since propagate function might erase instructions.
+        DenseSet<Instruction*> instructionSet;
+        DenseSet<Use*> useSet;
+        for (auto UI = CI->use_begin(), UE = CI->use_end(); UI != UE; ++UI) {
+            Use* U = &(*UI);
+            Instruction* I = cast<Instruction>(U->getUser());
+            if (instructionSet.find(I) == instructionSet.end())
+            {
+                instructionSet.insert(I);
+                useSet.insert(U);
+            }
+        }
         // Propagate that source through all users of this cast.
-        for (auto UI = CI->use_begin(), UE = CI->use_end(); UI != UE; /* EMPTY */) {
-            Use& U = *UI++; // Propagation may invalidate the use list.
-            Changed |= Propagator->propagate(&U, Src);
+        for (auto it = useSet.begin(); it != useSet.end(); ++it) {
+            Use* U = *it;
+            Changed |= Propagator->propagate(U, Src);
         }
         // Re-update next instruction once there's change.
         if (Changed)
