@@ -201,7 +201,7 @@ namespace IGC
 
     inline bool IsBindless(BufferType t)
     {
-        return t == BINDLESS || t == BINDLESS_READONLY;
+        return t == BINDLESS || t == BINDLESS_CONSTANT_BUFFER || t == BINDLESS_TEXTURE;
     }
 
     bool IsUnsignedCmp(const llvm::CmpInst::Predicate Pred);

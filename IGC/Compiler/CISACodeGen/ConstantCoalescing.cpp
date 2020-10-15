@@ -431,7 +431,7 @@ void ConstantCoalescing::ProcessBlock(
             unsigned int bufId = 0;
             BufferType bufType = DecodeAS4GFXResource(
                 ldRaw->getResourceValue()->getType()->getPointerAddressSpace(), directIdx, bufId);
-            if (bufType != BINDLESS_READONLY)
+            if ((bufType != BINDLESS_CONSTANT_BUFFER) && (bufType != BINDLESS_TEXTURE))
             {
                 continue;
             }
