@@ -1417,6 +1417,16 @@ bool WIAnalysisRunner::TrackAllocaDep(const Value* I, AllocaDep& dep)
             // Not a candidate.
             return false;
         }
+        else if (const GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(*use_it))
+        {
+            GenISAIntrinsic::ID IID = intr->getIntrinsicID();
+            if (IID == GenISAIntrinsic::GenISA_assume_uniform)
+            {
+                dep.assume_uniform = true;
+                continue;
+            }
+            return false;
+        }
         else if (const IntrinsicInst * intr = dyn_cast<IntrinsicInst>(*use_it))
         {
             llvm::Intrinsic::ID  IID = intr->getIntrinsicID();
@@ -1447,6 +1457,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
     if (!hasDependency(inst))
     {
         AllocaDep dep;
+        dep.assume_uniform = false;
         if (TrackAllocaDep(inst, dep))
         {
             m_allocaDepMap.insert(std::make_pair(inst, dep));
@@ -1461,6 +1472,11 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
     {
         // If we haven't been able to track the dependency of the alloca make it random
         return WIAnalysis::RANDOM;
+    }
+    // find assume-uniform
+    if (depIt->second.assume_uniform)
+    {
+        return WIAnalysis::UNIFORM;
     }
     // find the common dominator block among all the stores
     // that can be considered as the nearest logical location for alloca.

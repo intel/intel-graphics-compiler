@@ -8085,6 +8085,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_typedmemoryfence:
         emitTypedMemoryFence(inst);
         break;
+    case GenISAIntrinsic::GenISA_assume_uniform:
+        // nothing to do
+        break;
     case GenISAIntrinsic::GenISA_intatomicraw:
     case GenISAIntrinsic::GenISA_floatatomicraw:
     case GenISAIntrinsic::GenISA_intatomicrawA64:

@@ -160,6 +160,7 @@ namespace IGC
         struct AllocaDep
         {
             std::vector<const llvm::StoreInst*> stores;
+            bool assume_uniform;
         };
 
         /// @brief Update dependency relations between all values

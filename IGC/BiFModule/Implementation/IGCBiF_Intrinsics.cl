@@ -535,6 +535,11 @@ uint __builtin_IB_get_prefered_workgroup_multiple();
 __local   void* __builtin_IB_to_local(void*);
 __private void* __builtin_IB_to_private(void*);
 
+// Internal program hint
+// facility for enforcing uniform property (@WIAnalysis) for
+// a local array residing in thread-private memory
+void __builtin_IB_assume_uniform(void*);
+
 // SubGroup Functions
 int     __builtin_IB_get_simd_size( void );
 int     __builtin_IB_get_simd_id( void );
