@@ -3169,7 +3169,7 @@ void DwarfDebug::gatherDISubprogramNodes()
     {
         if (auto diSubprogram = F.getSubprogram())
         {
-            addUniqueDISP(diSubprogram);
+            DISubprogramNodes.push_back(diSubprogram);
         }
 
         for (auto& bb : F)
@@ -3184,8 +3184,11 @@ void DwarfDebug::gatherDISubprogramNodes()
                         dyn_cast_or_null<llvm::DILocalScope>(scope))
                     {
                         auto DISP = cast<llvm::DILocalScope>(scope)->getSubprogram();
-                        addUniqueDISP(DISP);
-                        DISPToFunction.insert(std::make_pair(DISP, &F));
+                        if (DISPToFunction.find(DISP) == DISPToFunction.end())
+                        {
+                            DISubprogramNodes.push_back(DISP);
+                            DISPToFunction[DISP] = &F;
+                        }
                     }
 
                     if (debugLoc.getInlinedAt())

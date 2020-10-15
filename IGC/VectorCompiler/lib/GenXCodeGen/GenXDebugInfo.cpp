@@ -242,7 +242,7 @@ void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
     Emitter->EndInstruction((Instruction *)Item.second);
   }
 
-  const auto &ElfBin = Emitter->Finalize(true /* really finalize :)*/);
+  const auto &ElfBin = Emitter->Finalize(true /* really finalize :)*/, GenDbg.DecodedInfo.get());
   if (ElfBin.empty())
     report_fatal_error("could not emit .elf image");
 

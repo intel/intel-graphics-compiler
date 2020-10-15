@@ -53,6 +53,8 @@ using namespace std;
 
 namespace IGC
 {
+    class DbgDecoder;
+
     class DebugInfoData
     {
     public:
@@ -102,7 +104,7 @@ namespace IGC
             AU.setPreservesAll();
         }
 
-        void EmitDebugInfo(bool);
+        void EmitDebugInfo(bool, DbgDecoder*);
     };
 
     class CatchAllLineNumber : public llvm::FunctionPass

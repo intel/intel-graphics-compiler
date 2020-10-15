@@ -523,11 +523,7 @@ namespace IGC
 
         ~DwarfDebug()
         {
-            if (decodedDbg)
-            {
-                delete decodedDbg;
-                decodedDbg = nullptr;
-            }
+            decodedDbg = nullptr;
         }
 
         void insertDIE(const llvm::MDNode* TypeMD, DIE* Die)
@@ -591,24 +587,6 @@ namespace IGC
         /// \brief Returns an entry into the string pool with the given
         /// string text.
         llvm::MCSymbol* getStringPoolEntry(llvm::StringRef Str);
-
-        //Following added during LLVM 4.0 upgrade
-
-        // Add DISubprogram node only if it isnt already present.
-        // Not using std::set as we need to preserve order of
-        // insertion and iteration.
-        // Return true if insertion successful, false if entry
-        // already exists.
-        bool addUniqueDISP(llvm::DISubprogram* sp)
-        {
-            auto it = std::find(DISubprogramNodes.begin(), DISubprogramNodes.end(), sp);
-            if (it == DISubprogramNodes.end())
-            {
-                DISubprogramNodes.push_back(sp);
-                return true;
-            }
-            return false;
-        }
 
         void AddVISAModToFunc(VISAModule* M, llvm::Function* F)
         {
@@ -694,10 +672,6 @@ namespace IGC
         DbgDecoder* getDecodedDbg() { return decodedDbg; }
         void setDecodedDbg(DbgDecoder* d)
         {
-            if (decodedDbg)
-            {
-                delete decodedDbg;
-            }
             decodedDbg = d;
         }
         unsigned int CopyDebugLoc(unsigned int offset);

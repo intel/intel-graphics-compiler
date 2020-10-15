@@ -126,7 +126,7 @@ void DebugEmitter::setFunction(llvm::Function* F, bool isCloned)
     m_pVISAModule->SetEntryFunction(F, isCloned);
 }
 
-std::vector<char> DebugEmitter::Finalize(bool finalize)
+std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
 {
     if (!m_debugEnabled)
     {
@@ -135,7 +135,6 @@ std::vector<char> DebugEmitter::Finalize(bool finalize)
 
     if (m_pVISAModule->isDirectElfInput)
     {
-        auto decodedDbg = new DbgDecoder(m_pVISAModule->getGenDebug().data());
         m_pDwarfDebug->setDecodedDbg(decodedDbg);
     }
 

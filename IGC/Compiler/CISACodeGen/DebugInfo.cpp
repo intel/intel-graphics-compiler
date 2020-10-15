@@ -236,7 +236,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             if (--size == 0)
                 finalize = true;
 
-            EmitDebugInfo(finalize);
+            EmitDebugInfo(finalize, &decodedDbg);
         }
 
         // set VISA dbg info to nullptr to indicate 1-step debug is enabled
@@ -259,11 +259,11 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
     return false;
 }
 
-void DebugInfoPass::EmitDebugInfo(bool finalize)
+void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg)
 {
     std::vector<char> buffer;
 
-    IF_DEBUG_INFO_IF(m_pDebugEmitter, buffer = m_pDebugEmitter->Finalize(finalize);)
+    IF_DEBUG_INFO_IF(m_pDebugEmitter, buffer = m_pDebugEmitter->Finalize(finalize, decodedDbg);)
 
     if (!buffer.empty())
     {
