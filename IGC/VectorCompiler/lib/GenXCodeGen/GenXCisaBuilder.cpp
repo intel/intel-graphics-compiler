@@ -757,8 +757,6 @@ private:
   void popStackArg(Value *Dst, VISA_StateOpndHandle *Src, int TotalSz,
                    unsigned &RowOff, unsigned &ColOff, unsigned &SrcRowOff,
                    unsigned &SrcColOff, int &PrevStackOff);
-  Signedness getCommonSignedness(ArrayRef<Value *> Vs);
-  bool isExtOperandBaled(Instruction *Inst, unsigned OpIdx, BaleInfo InstBI);
 
 public:
   GenXKernelBuilder(FunctionGroup &FG)
@@ -3245,31 +3243,10 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return static_cast<uint8_t>(DataSize / RoundedWidth);
   };
 
-  auto ChooseSign = [&](ArrayRef<unsigned> SrcIdxs) {
-    IGC_ASSERT_MESSAGE(!SrcIdxs.empty(), "Expected at least one source index");
-
-    bool hasExt = false;
-    for (unsigned I : SrcIdxs)
-      hasExt |= isExtOperandBaled(CI, I, BI);
-
-    // Keep the old behavior.
-    if (hasExt)
-      return DONTCARESIGNED;
-
-    SmallVector<Value *, 4> SrcValues;
-    std::transform(SrcIdxs.begin(), SrcIdxs.end(),
-                   std::back_inserter(SrcValues),
-                   [CI](unsigned Idx) { return CI->getOperand(Idx); });
-
-    return getCommonSignedness(SrcValues);
-  };
-
-  auto CreateOperand = [&](II::ArgInfo AI, Signedness Signed = DONTCARESIGNED) {
+  auto CreateOperand = [&](II::ArgInfo AI) {
     LLVM_DEBUG(dbgs() << "CreateOperand from arg #" << AI.getArgIdx() << "\n");
     VISA_VectorOpnd *ResultOperand = nullptr;
-    IGC_ASSERT_MESSAGE(Signed == DONTCARESIGNED ||
-                           !(AI.needsSigned() || AI.needsUnsigned()),
-                       "Signedness was set in two different ways.");
+    Signedness Signed = DONTCARESIGNED;
     if (AI.needsSigned())
       Signed = SIGNED;
     else if (AI.needsUnsigned())
@@ -3764,69 +3741,6 @@ void GenXKernelBuilder::buildUnaryOperator(UnaryOperator *UO, BaleInfo BI,
 #endif
 
 /***********************************************************************
- * getCommonSignedness : predict the most suitable sign of a instruction based
- *                       on incoming values.
- *
- * Enter:   Vs = incoming values to use for signedness prediction
- */
-Signedness GenXKernelBuilder::getCommonSignedness(ArrayRef<Value *> Vs) {
-  // Expect the first value is always set.
-  IGC_ASSERT(!Vs.empty());
-  std::vector<Register *> Regs;
-  std::transform(Vs.begin(), Vs.end(), std::back_inserter(Regs),
-                 [F = Func, RA = RegAlloc](Value *V) {
-                   return RA->getRegForValueUntyped(F, V);
-                 });
-  // If there is no register allocated for Value, RegAlloc::getRegForValueUntyped
-  // returns nullptr. Remove such nodes.
-  Regs.erase(std::remove(Regs.begin(), Regs.end(), nullptr), Regs.end());
-
-  if (Regs.empty())
-    // Use SIGNED by default if there are no registers for the values.
-    return SIGNED;
-
-  auto getLastAlias = [F = Func](Register *R) {
-    for (Register *CurAlias = R; CurAlias; CurAlias = CurAlias->NextAlias[F])
-      R = CurAlias;
-    return R;
-  };
-
-  // Get last alias for each register.
-  std::transform(Regs.begin(), Regs.end(), Regs.begin(),
-                 [&getLastAlias](Register *R) { return getLastAlias(R); });
-
-  bool hasSigned = std::any_of(Regs.begin(), Regs.end(),
-                               [](Register *R) { return R->Signed == SIGNED; });
-  bool hasUnsigned = std::any_of(Regs.begin(), Regs.end(), [](Register *R) {
-    return R->Signed == UNSIGNED;
-  });
-  // If there is at least one UNSIGNED and others are UNSIGNED or DONTCARESIGNED
-  // (absence of a register also means DONTCARESIGNED), UNSIGNED must be used.
-  // Otherwise, SIGNED.
-  if (hasUnsigned && !hasSigned)
-    return UNSIGNED;
-  return SIGNED;
-}
-
-/***********************************************************************
- * isExtOperandBaled : check whether a sext/zext operand is baled.
- *
- * Enter:   Inst = Instruction that operand is must be checked
- *          OpIdx = Operand index in Inst
- *          InstBI = BaleInfo for Inst
- */
-
-bool GenXKernelBuilder::isExtOperandBaled(Instruction *Inst, unsigned OpIdx,
-                                          BaleInfo InstBI) {
-  if (!InstBI.isOperandBaled(OpIdx))
-    return false;
-
-  auto OpInst = cast<Instruction>(Inst->getOperand(OpIdx));
-  BaleInfo OpBI = Baling->getBaleInfo(OpInst);
-  return OpBI.Type == BaleInfo::ZEXT || OpBI.Type == BaleInfo::SEXT;
-}
-
-/***********************************************************************
  * buildBinaryOperator : build code for a binary operator
  *
  * Enter:   BO = the BinaryOperator
@@ -3840,9 +3754,8 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
                                             const DstOpndDesc &DstDesc) {
   bool IsLogic = false;
   ISA_Opcode Opcode = ISA_RESERVED_0;
-
-  Signedness SrcSigned = DONTCARESIGNED;
-  Signedness DstSigned = DONTCARESIGNED;
+  Signedness DstSigned = SIGNED;
+  Signedness SrcSigned = SIGNED;
   unsigned Mod1 = 0;
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
   if (VectorType *VT = dyn_cast<VectorType>(BO->getType()))
@@ -3867,7 +3780,6 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     break;
   case Instruction::AShr:
     Opcode = ISA_ASR;
-    DstSigned = SrcSigned = SIGNED;
     IsLogic = true;
     break;
   case Instruction::LShr:
@@ -3881,7 +3793,6 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     break;
   case Instruction::SDiv:
     Opcode = ISA_DIV;
-    DstSigned = SrcSigned = SIGNED;
     break;
   case Instruction::FDiv: {
     Opcode = ISA_DIV;
@@ -3898,9 +3809,6 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     DstSigned = SrcSigned = UNSIGNED;
     break;
   case Instruction::SRem:
-    DstSigned = SrcSigned = SIGNED;
-    Opcode = ISA_MOD;
-    break;
   case Instruction::FRem:
     Opcode = ISA_MOD;
     break;
@@ -3920,37 +3828,6 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     report_fatal_error("buildBinaryOperator: unimplemented binary operator");
     break;
   }
-
-  // If signedness wasn't set explicitly earlier and destination modifier isn't
-  // set.
-  if (SrcSigned == DONTCARESIGNED && DstSigned == DONTCARESIGNED) {
-
-    bool hasExt = false;
-    for (unsigned I = 0; I < BO->getNumOperands(); ++I)
-      hasExt |= isExtOperandBaled(BO, I, BI);
-
-    if (Mod == MODIFIER_NONE && !hasExt) {
-      Value *Op0 = BO->getOperand(0);
-      Value *Op1 = BO->getOperand(1);
-      if (Opcode == ISA_INV)
-        SrcSigned = DstSigned = getCommonSignedness({Op1});
-      else
-        SrcSigned = DstSigned = getCommonSignedness({Op0, Op1});
-    } else
-      // If the modifier is set or SEXT, ZEXT is baled, use old behavior. We do
-      // that because the compiler sometimes might generate instructions like
-      //    .decl V41 v_type=G type=d num_elts=16 alias=<V32, 0>
-      //    .decl V42 v_type=G type=w num_elts=16 alias=<V35, 0>
-      //    add (M1, 16) V40(0,0)<1> V41(0,0)<1;1,0> V42(0,0)<1;1,0>
-      // According to VISA it is incorrect: 'For arithmetic and logic
-      // instructions, all source operand must have the same data type, which
-      // serves as the execution type for the instruction'. A proper fix seems
-      // must be in baling, but it breaks some tests ('correctness' as well as
-      // performance) and can't be committed easily. This doesn't fix the issue
-      // but, at least, tries not to introduce new ones.
-      SrcSigned = DstSigned = SIGNED;
-  }
-
   VISA_VectorOpnd *Dst = createDestination(BO, DstSigned, Mod, DstDesc);
 
   VISA_VectorOpnd *Src0 = nullptr;
