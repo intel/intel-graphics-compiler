@@ -1121,7 +1121,7 @@ void CFGStructurizer::init()
 
     // caching the flags
     doScalarJmp = !CFG->builder->noScalarJmp();
-    doStructCF = CFG->builder->getOption(vISA_StructurizeCF);
+    doStructCF = CFG->builder->getOption(vISA_StructurizerCF);
 
     if (numOfBBs == 0)
     {

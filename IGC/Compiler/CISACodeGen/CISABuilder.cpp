@@ -3930,14 +3930,16 @@ namespace IGC
             SaveOption(vISA_ifCvt, false);
         }
 
-        if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer) ||
-            (!m_program->m_Platform->hasSCF() && IGC_IS_FLAG_DISABLED(ForceVISAStructurizer)))
+        if (IGC_IS_FLAG_ENABLED(EnableVISAStructurizer) &&
+            (m_program->m_Platform->hasSCF() || IGC_IS_FLAG_ENABLED(ForceVISAStructurizer)))
         {
-            SaveOption(vISA_EnableStructurizer, false);
-        }
-        else if (IGC_GET_FLAG_VALUE(EnableVISAStructurizer) == FLAG_SCF_UCFOnly)
-        {
-            SaveOption(vISA_StructurizeCF, false);
+            SaveOption(vISA_EnableStructurizer, true);
+
+            if (IGC_GET_FLAG_VALUE(EnableVISAStructurizer) == FLAG_SCF_UCFOnly)
+            {
+                // visa structurizer will generate UCF only.
+                SaveOption(vISA_StructurizerCF, false);
+            }
         }
 
         if (IGC_IS_FLAG_DISABLED(EnableVISAJmpi))
