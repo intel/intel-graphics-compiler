@@ -604,22 +604,6 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                 m_changed = true;
             }
         }
-        // check if there's non-kernel-arg load/store
-        if (IsStatelessMemStoreIntrinsic(intrinID) ||
-            IsStatelessMemLoadIntrinsic(intrinID)  ||
-            IsStatelessMemAtomicIntrinsic(*Inst, intrinID)) {
-
-            Value* ptr = Inst->getOperand(0);
-            if (!pointerIsFromKernelArgument(*ptr)) {
-                CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-                if (IsStatelessMemStoreIntrinsic(intrinID))
-                    ctx->m_hasNonKernelArgStore = true;
-                else if (IsStatelessMemLoadIntrinsic(intrinID))
-                    ctx->m_hasNonKernelArgLoad = true;
-                else
-                    ctx->m_hasNonKernelArgAtomic = true;
-            }
-        }
     }
 }
 
@@ -668,12 +652,6 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
 
         m_changed = true;
     }
-
-    // check if there's non-kernel-arg load/store
-    if (!pointerIsFromKernelArgument(*ptr)) {
-        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        ctx->m_hasNonKernelArgLoad = true;
-    }
 }
 
 void StatelessToStatefull::visitStoreInst(StoreInst& I)
@@ -714,11 +692,6 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
 
             m_changed = true;
         }
-    }
-
-    if (!pointerIsFromKernelArgument(*ptr)) {
-        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        ctx->m_hasNonKernelArgStore = true;
     }
 }
 
