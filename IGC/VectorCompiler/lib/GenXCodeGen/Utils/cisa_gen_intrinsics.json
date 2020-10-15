@@ -3496,20 +3496,6 @@
         ]
       ]
     ],
-    "ISA_BF_CVT": [
-      [ "CISA_CALL",
-        [ "Kernel->AppendVISADataMovementInst",
-          "opc",
-          "nullptr",
-          "Mod & MODIFIER_SAT",
-          "exec_mask",
-          "exec_size",
-          "dst",
-          "src0",
-          "nullptr"
-        ]
-      ]
-    ],
     "ISA_BFREV": [
       [ "CISA_CALL",
         [ "Kernel->AppendVISALogicOrShiftInst",
