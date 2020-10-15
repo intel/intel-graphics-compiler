@@ -1371,9 +1371,9 @@ namespace IGC
             opcode == llvm_gradientYfine);
     }
 
-    bool IsStatelessMemLoadIntrinsic(const llvm::GenIntrinsicInst& inst)
+    bool IsStatelessMemLoadIntrinsic(llvm::GenISAIntrinsic::ID id)
     {
-        switch(inst.getIntrinsicID())
+        switch(id)
         {
         case GenISAIntrinsic::GenISA_simdBlockRead:
                 return true;
@@ -1383,9 +1383,9 @@ namespace IGC
         return false;
     }
 
-    bool IsStatelessMemStoreIntrinsic(const llvm::GenIntrinsicInst& inst)
+    bool IsStatelessMemStoreIntrinsic(llvm::GenISAIntrinsic::ID id)
     {
-        switch (inst.getIntrinsicID()) {
+        switch (id) {
         case GenISAIntrinsic::GenISA_simdBlockWrite:
             return true;
         default:
@@ -1394,7 +1394,7 @@ namespace IGC
         return false;
     }
 
-    bool IsStatelessMemAtomicIntrinsic(const llvm::GenIntrinsicInst& inst)
+    bool IsStatelessMemAtomicIntrinsic(GenIntrinsicInst& inst, GenISAIntrinsic::ID id)
     {
         // This includes:
         // GenISA_intatomicraw
