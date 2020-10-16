@@ -4024,12 +4024,10 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
   case CmpInst::FCMP_OEQ:
   case CmpInst::ICMP_EQ:
     opSpec = ISA_CMP_E;
-    Signed = UNSIGNED;
     break;
   case CmpInst::FCMP_UNE:
   case CmpInst::ICMP_NE:
     opSpec = ISA_CMP_NE;
-    Signed = UNSIGNED;
     break;
   case CmpInst::FCMP_OGT:
     opSpec = ISA_CMP_G;
