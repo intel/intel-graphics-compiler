@@ -128,66 +128,73 @@ void ZEBinaryBuilder::addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations)
 
 void ZEBinaryBuilder::addProgramScopeInfo(const IGC::SOpenCLProgramInfo& programInfo)
 {
-    if (hasGlobalConstants(programInfo))
-        addGlobalConstants(programInfo);
-    if (hasGlobals(programInfo))
-        mGlobalSectID = addGlobals(programInfo);
-}
-
-bool ZEBinaryBuilder::hasGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)
-{
-    if (!annotations.m_initConstantAnnotation.empty())
-        return true;
-    return false;
+    addGlobalConstants(programInfo);
+    addGlobals(programInfo);
 }
 
 void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)
 {
+    if (annotations.m_initConstantAnnotation.empty())
+        return;
+
     // create a data section for global constant variables
-    // This function should only be called when hasGlobalConstants returns true
     // Two constant data sections: general constants and string literals
     IGC_ASSERT(annotations.m_initConstantAnnotation.size() == 2);
 
     // General constants
-    auto& ca = annotations.m_initConstantAnnotation[0];
-    uint32_t dataSize = ca->InlineData.size();
-    uint32_t paddingSize = ca->AllocSize - dataSize;
-    uint32_t alignment = ca->Alignment;
-    mGlobalConstSectID = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
-        dataSize, paddingSize, alignment);
+    // create a data section for global constant variables
+    auto& ca = annotations.m_initConstantAnnotation.front();
+    if (ca->AllocSize) {
+        uint32_t dataSize = ca->InlineData.size();
+        uint32_t paddingSize = ca->AllocSize - dataSize;
+        uint32_t alignment = ca->Alignment;
+
+        // FIXME: Before runtime can support bss section, we still generate all zero-initialized variables
+        // in the .data.const section and no .bss.const section.
+        // The .bss.const section size is the padding size (ca->AllocSize - ca->InlineData.size()),
+        // and the normal .data.const size is ca->InlineData.size()
+        mGlobalConstSectID = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
+            dataSize, paddingSize, alignment);
+    }
 
     // String literals
     auto& caString = annotations.m_initConstantAnnotation[1];
     if (caString->InlineData.size() > 0)
     {
-        dataSize = caString->InlineData.size();
-        paddingSize = caString->AllocSize - dataSize;
-        alignment = caString->Alignment;
+        uint32_t dataSize = caString->InlineData.size();
+        uint32_t paddingSize = caString->AllocSize - dataSize;
+        uint32_t alignment = caString->Alignment;
         mConstStringSectID = mBuilder.addSectionData("const.string", (const uint8_t*)caString->InlineData.data(),
             dataSize, paddingSize, alignment);
     }
 }
 
-bool ZEBinaryBuilder::hasGlobals(const IGC::SOpenCLProgramInfo& annotations)
+void ZEBinaryBuilder::addGlobals(const IGC::SOpenCLProgramInfo& annotations)
 {
-    if (!annotations.m_initGlobalAnnotation.empty())
-        return true;
-    return false;
-}
+    if (annotations.m_initGlobalAnnotation.empty())
+        return;
 
-
-ZEELFObjectBuilder::SectionID ZEBinaryBuilder::addGlobals(
-    const IGC::SOpenCLProgramInfo& annotations)
-{
     // create a data section for global variables
-    // This function should only be called when hasGlobals return true
     // FIXME: not sure in what cases there will be more than one global buffer
     IGC_ASSERT(annotations.m_initGlobalAnnotation.size() == 1);
     auto& ca = annotations.m_initGlobalAnnotation.front();
+
+    if (!ca->AllocSize)
+        return;
+
     uint32_t dataSize = ca->InlineData.size();
     uint32_t paddingSize = ca->AllocSize - dataSize;
     uint32_t alignment = ca->Alignment;
-    return mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
+
+    // FIXME: Before runtime can support bss section, we still generate all zero-initialized variables
+    // in the .data.global
+    // The .bss.global section size is the padding size (ca->AllocSize - ca->InlineData.size()),
+    // and the normal .data.global size is ca->InlineData.size()
+    // Side note (when adding bss section):
+    // mGlobalSectID is the section id that will be referenced by global symbols.
+    // It should be .data.global if existed. If there's only .bss.global section, then all global
+    // symbols reference to .bss.global section, so set the mGlobalConstSectID to it
+    mGlobalSectID = mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
         dataSize, paddingSize, alignment);
 }
 

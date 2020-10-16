@@ -60,7 +60,8 @@ namespace zebin {
 class ZEELFObjectBuilder {
     friend class ELFWriter;
 public:
-    typedef uint32_t SectionID;
+    // The valid SectionID must be 0 or positive value
+    typedef int32_t SectionID;
 
 public:
     // Each ZEELFObjectBuilder creates one ELF Object
@@ -127,11 +128,21 @@ public:
     // - padding: required padding at the end
     // - align: alignment requirement in byte
     // - return a unique id for referencing in addSymbol
-    // - return a unique id for referencing in addSymbol
     SectionID addSectionData(
         std::string name, const uint8_t* data, uint64_t size, uint32_t padding = 0, uint32_t align = 0);
 
-    // add a data section contains raw data, such as constant or global buffer.
+    // add a bss section which occupies no space in the ELF, but with size and other section information
+    // The bss sections could be used for zero-initialized variables.
+    // - name: section name. Do not includes leading .bss in given name.
+    //         For example, giving "const", the section name will be .bss.const
+    // - size: input buffer size in byte
+    // - padding: required padding at the end
+    // - align: alignment requirement in byte
+    // - return a unique id for referencing in addSymbol
+    SectionID addSectionBss(
+        std::string name, uint64_t size, uint32_t padding = 0, uint32_t align = 0);
+
+    // add a spv section contains the spv source. This section will be set to SHT_ZEBIN_SPIRV type
     // - name: section name. The default name is .spv
     // - size in byte
     // - Note that the alignment requirement of the section should be satisfied
@@ -325,6 +336,7 @@ private:
     // place holder for section default name
     const std::string m_TextName      = ".text";
     const std::string m_DataName      = ".data";
+    const std::string m_BssName       = ".bss";
     const std::string m_SymTabName    = ".symtab";
     const std::string m_RelName       = ".rel";
     const std::string m_SpvName       = ".spv";
@@ -343,12 +355,12 @@ private:
     TargetFlags m_flags;       // e_flags
 
     StandardSectionListTy m_textSections;
-    StandardSectionListTy m_dataSections;
+    StandardSectionListTy m_dataAndbssSections; // data and bss sections
     StandardSectionListTy m_otherStdSections;
     RelocSectionListTy    m_relocSections;
 
     // current section id
-    uint32_t m_sectionId = 0;
+    SectionID m_sectionId = 0;
 
     // every ze object contains only one ze_info section
     ZEInfoSection* m_zeInfoSection = nullptr;

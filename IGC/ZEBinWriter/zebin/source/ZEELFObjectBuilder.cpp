@@ -207,7 +207,23 @@ ZEELFObjectBuilder::addSectionData(
         sectName = m_DataName;
 
     Section& sect = addStandardSection(name, sectName, data, size, ELF::SHT_PROGBITS,
-        padding, align, m_dataSections);
+        padding, align, m_dataAndbssSections);
+    return sect.id();
+}
+
+ZEELFObjectBuilder::SectionID
+ZEELFObjectBuilder::addSectionBss(
+    std::string name, uint64_t size, uint32_t padding, uint32_t align)
+{
+    // adjust the section name to be .bss.givenSectName
+    std::string sectName;
+    if (name != "")
+        sectName = m_BssName + "." + name;
+    else
+        sectName = m_BssName;
+
+    Section& sect = addStandardSection(name, sectName, nullptr, size, ELF::SHT_NOBITS,
+        padding, align, m_dataAndbssSections);
     return sect.id();
 }
 
@@ -310,7 +326,7 @@ std::string ZEELFObjectBuilder::getSectionNameBySectionID(SectionID id)
         if (sect.id() == id)
             return sect.m_name;
     }
-    for (StandardSection& sect : m_dataSections) {
+    for (StandardSection& sect : m_dataAndbssSections) {
         if (sect.id() == id)
             return sect.m_name;
     }
@@ -516,9 +532,16 @@ void ELFWriter::writeSections()
             IGC_ASSERT(entry.section->getKind() == Section::STANDARD);
             const StandardSection* const stdsect =
                 static_cast<const StandardSection*>(entry.section);
-            IGC_ASSERT(nullptr != stdsect);
+            IGC_ASSERT(nullptr != stdsect && nullptr != stdsect->m_data);
             entry.size = writeSectionData(
                 stdsect->m_data, stdsect->m_size, stdsect->m_padding);
+            break;
+        }
+        case ELF::SHT_NOBITS: {
+            const StandardSection* const stdsect =
+                static_cast<const StandardSection*>(entry.section);
+            IGC_ASSERT(nullptr != stdsect);
+            entry.size = stdsect->m_size;
             break;
         }
         case ELF::SHT_SYMTAB:
@@ -529,6 +552,7 @@ void ELFWriter::writeSections()
             // first null symbol
             entry.info = m_ObjBuilder.m_localSymbols.size() + 1;
             break;
+
         case ELF::SHT_REL: {
             IGC_ASSERT(nullptr != entry.section);
             IGC_ASSERT(entry.section->getKind() == Section::RELOC);
@@ -706,7 +730,7 @@ void ELFWriter::createSectionHdrEntries()
     }
 
     // .data
-    for (StandardSection& sect : m_ObjBuilder.m_dataSections) {
+    for (StandardSection& sect : m_ObjBuilder.m_dataAndbssSections) {
         m_SectionIndex.insert(std::make_pair(sect.id(), index));
         ++index;
         createSectionHdrEntry(sect.m_sectName, sect.m_type, &sect);

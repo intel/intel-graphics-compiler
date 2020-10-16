@@ -6,7 +6,9 @@
 | Section headers | Standard ELF section headers ||
 | .text.{*kernel_name*} | Gen binary of kernel/functions in this compiled module | SHT_PROGBITS |
 | .data.const | Constant data section (if any) | SHT_PROGBITS |
+| .bss.const | Constant data with zero-initialized variables (if any) | SHT_NOBITS |
 | .data.global | Global data section (if any) | SHT_PROGBITS |
+| .bss.global | Global data with zero-initialized variables (if any) | SHT_NOBITS |
 | .symtab | Symbol table (if any) | SHT_SYMTAB |
 | .rel.{*kernel_name*} | Relocation table (if any) | SHT_REL |
 | .spv | Spir-v of the module (if required) | SHT_ZEBIN_SPIRV |

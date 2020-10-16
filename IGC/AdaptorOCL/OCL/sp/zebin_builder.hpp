@@ -93,12 +93,9 @@ private:
 
     /// add data section for global constants
     void addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations);
-    bool hasGlobalConstants(const IGC::SOpenCLProgramInfo& annotations);
 
     /// add data section for globals
-    zebin::ZEELFObjectBuilder::SectionID addGlobals(
-        const IGC::SOpenCLProgramInfo& annotations);
-    bool hasGlobals(const IGC::SOpenCLProgramInfo& annotations);
+    void addGlobals(const IGC::SOpenCLProgramInfo& annotations);
 
     /// add spir-v section
     void addSPIRV(const uint8_t* data, uint32_t size);
@@ -172,9 +169,9 @@ private:
 
     /// sectionID holder for program scope sections
     /// There should be only one global, global constant buffer per program
-    zebin::ZEELFObjectBuilder::SectionID mGlobalConstSectID;
-    zebin::ZEELFObjectBuilder::SectionID mConstStringSectID;
-    zebin::ZEELFObjectBuilder::SectionID mGlobalSectID;
+    zebin::ZEELFObjectBuilder::SectionID mGlobalConstSectID = -1;
+    zebin::ZEELFObjectBuilder::SectionID mConstStringSectID = -1;
+    zebin::ZEELFObjectBuilder::SectionID mGlobalSectID = -1;
 };
 
 } //namespace iOpenCL
