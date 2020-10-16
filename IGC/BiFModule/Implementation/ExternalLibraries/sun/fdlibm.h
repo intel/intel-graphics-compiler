@@ -66,7 +66,7 @@ but these catch some common cases. */
 #define    TLOSS        5
 #define    PLOSS        6
 
-extern double scalbn __P((double, int));
+extern double __scalbn_tmp __P((double, int));
 
 extern int matherr __P((struct exception *));
 

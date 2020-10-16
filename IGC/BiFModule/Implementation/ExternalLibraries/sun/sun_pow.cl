@@ -49,9 +49,9 @@ huge   = 1.0e+300,
 tiny   = 1.0e-300;
 
 #ifdef __STDC__
-    double scalbn (double x, int n)
+    double __scalbn_tmp (double x, int n)
 #else
-    double scalbn (x,n)
+    double __scalbn_tmp (x,n)
     double x; int n;
 #endif
 {
@@ -363,7 +363,7 @@ double sun_pow(double x, double y)
     z  = one-(r-z);
     j  = __HI(z);
     j += (n<<20);
-    if((j>>20)<=0) z = scalbn(z,n); /* subnormal output */
+    if((j>>20)<=0) z = __scalbn_tmp(z,n); /* subnormal output */
     else __HI(z) += (n<<20);
     return s*z;
 }
