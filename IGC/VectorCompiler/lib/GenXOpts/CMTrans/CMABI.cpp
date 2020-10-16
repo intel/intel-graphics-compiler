@@ -619,7 +619,7 @@ public:
                      Ptr,
                      "",
                      OrigLoad.isVolatile(),
-                     IGCLLVM::getAlign(OrigLoad.getAlignment()),
+                     IGCLLVM::getAlign(OrigLoad),
                      OrigLoad.getOrdering(),
                      OrigLoad.getSyncScopeID()};
     return NewLoad;

@@ -28,6 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGCLLVM_SUPPORT_ALIGNMENT_H
 
 #include <cstdint>
+#include <type_traits>
+#include "llvm/IR/Value.h"
 #include "llvm/Config/llvm-config.h"
 #if LLVM_VERSION_MAJOR >= 10
 #include "llvm/Support/Alignment.h"
@@ -74,6 +76,35 @@ namespace IGCLLVM {
     {
         return T{ Val };
     }
+
+    // It is meant for copying alignement.
+    // getAlign returns different type for different LLVM versions but
+    // it can be overcome by using auto or direct usage in another LLVM
+    // interface.
+#if LLVM_VERSION_MAJOR <= 9
+    template <typename TValue,
+              std::enable_if_t<std::is_base_of<llvm::Value, TValue>::value, int> = 0>
+    unsigned getAlign(const TValue &Val)
+    {
+        return Val.getAlignment();
+    }
+#elif LLVM_VERSION_MAJOR <= 10
+    template <typename TValue,
+              std::enable_if_t<std::is_base_of<llvm::Value, TValue>::value, int> = 0>
+    llvm::MaybeAlign getAlign(const TValue &Val)
+    {
+        // LLVM 10 instructions accept MaybeAlign but do not provide
+        // getMaybeAlignMethod
+        return llvm::MaybeAlign(Val.getAlignment());
+    }
+#else
+    template <typename TValue,
+              std::enable_if_t<std::is_base_of<llvm::Value, TValue>::value, int> = 0>
+    llvm::Align getAlign(const TValue &Val)
+    {
+        return Val.getAlign();
+    }
+#endif
 
 } // namespace IGCLLVM
 
