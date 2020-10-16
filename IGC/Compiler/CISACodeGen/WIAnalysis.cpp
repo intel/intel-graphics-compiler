@@ -1384,38 +1384,32 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const SelectInst* inst)
 
 bool WIAnalysisRunner::TrackAllocaDep(const Value* I, AllocaDep& dep)
 {
+    bool trackable = true;
+    SmallVector<Instruction*, 4> AssumeToErase;
     for (Value::const_user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
         if (const GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(*use_it))
         {
-            if (TrackAllocaDep(gep, dep))
-                continue;
+            trackable &= TrackAllocaDep(gep, dep);
         }
-        if (const llvm::LoadInst * pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
+        else if (const llvm::LoadInst * pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
         {
-            if (!pLoad->isSimple())
-                return false;
+            trackable &= (pLoad->isSimple());
         }
         else if (const llvm::StoreInst * pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
         {
-            if (!pStore->isSimple())
-                return false;
-            const llvm::Value* pValueOp = pStore->getValueOperand();
-            if (pValueOp == I)
-            {
-                // GEP instruction is the stored value of the StoreInst (not supported case)
-                return false;
-            }
+            trackable &= (pStore->isSimple());
+            // Not supported case: GEP instruction is the stored value of the StoreInst
+            trackable &= (pStore->getValueOperand() != I);
             dep.stores.push_back(pStore);
         }
         else if (const llvm::BitCastInst * pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
         {
-            if (TrackAllocaDep(pBitCast, dep))
-            {
-                continue;
-            }
-            // Not a candidate.
-            return false;
+            trackable &= TrackAllocaDep(pBitCast, dep);
+        }
+        else if (const llvm::AddrSpaceCastInst* pAddrCast = llvm::dyn_cast<llvm::AddrSpaceCastInst>(*use_it))
+        {
+            trackable &= TrackAllocaDep(pAddrCast, dep);
         }
         else if (const GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(*use_it))
         {
@@ -1423,27 +1417,32 @@ bool WIAnalysisRunner::TrackAllocaDep(const Value* I, AllocaDep& dep)
             if (IID == GenISAIntrinsic::GenISA_assume_uniform)
             {
                 dep.assume_uniform = true;
-                continue;
+                // remove this assume-uniform so it will not affect later pass
+                AssumeToErase.push_back((GenIntrinsicInst*)intr);
             }
-            return false;
+            else
+                trackable = false;
         }
         else if (const IntrinsicInst * intr = dyn_cast<IntrinsicInst>(*use_it))
         {
             llvm::Intrinsic::ID  IID = intr->getIntrinsicID();
-            if (IID == llvm::Intrinsic::lifetime_start ||
-                IID == llvm::Intrinsic::lifetime_end)
+            if (IID != llvm::Intrinsic::lifetime_start &&
+                IID != llvm::Intrinsic::lifetime_end)
             {
-                continue;
+                trackable = false;
             }
-            return false;
         }
         else
         {
             // This is some other instruction. Right now we don't want to handle these
-            return false;
+            trackable = false;
         }
     }
-    return true;
+    for (auto* inst : AssumeToErase)
+    {
+        inst->eraseFromParent();
+    }
+    return trackable;
 }
 
 
