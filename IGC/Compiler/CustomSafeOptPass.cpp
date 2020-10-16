@@ -1632,6 +1632,14 @@ bool TrivialLocalMemoryOpsElimination::runOnFunction(Function& F)
 {
     bool change = false;
 
+    IGCMD::MetaDataUtils* pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    if (!isEntryFunc(pMdUtil, &F))
+    {
+        // Skip if it is non-entry function.  For example, a subroutine
+        //   foo ( local int* p) { ...... store v, p; ......}
+        // in which no localMemoptimization will be performed.
+        return change;
+    }
 
     visit(F);
     if (!abortPass && (m_LocalLoadsToRemove.empty() ^ m_LocalStoresToRemove.empty()))

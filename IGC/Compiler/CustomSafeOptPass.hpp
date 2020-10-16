@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 #include "Compiler/CodeGenContextWrapper.hpp"
+#include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/MDFrameWork.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
@@ -124,6 +125,7 @@ namespace IGC
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
             AU.setPreservesCFG();
         }
 
