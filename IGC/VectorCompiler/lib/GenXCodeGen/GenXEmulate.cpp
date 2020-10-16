@@ -665,7 +665,7 @@ Value *GenXEmulate::Emu64Expander::visitZExtInst(ZExtInst &I) {
   Value *LoPart = VOp.V;
   if (VOp.VTy->getScalarType()->getPrimitiveSizeInBits() < 32) {
     auto *ExtendedType =
-        VectorType::get(Builder.getInt32Ty(), VOp.VTy->getNumElements());
+        IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), VOp.VTy->getNumElements());
     LoPart = Builder.CreateZExt(LoPart, ExtendedType, ".zext32");
   }
   auto *ZeroValue = Constant::getNullValue(LoPart->getType());
@@ -678,7 +678,7 @@ Value *GenXEmulate::Emu64Expander::visitSExtInst(SExtInst &I) {
   auto *LoPart = VOp.V;
   if (VOp.VTy->getScalarType()->getPrimitiveSizeInBits() < 32) {
     auto *ExtendedType =
-        VectorType::get(Builder.getInt32Ty(), VOp.VTy->getNumElements());
+        IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), VOp.VTy->getNumElements());
     LoPart = Builder.CreateSExt(LoPart, ExtendedType, ".sext32");
   }
   auto *HiPart = Builder.CreateAShr(LoPart, 31u, ".sign_hi");

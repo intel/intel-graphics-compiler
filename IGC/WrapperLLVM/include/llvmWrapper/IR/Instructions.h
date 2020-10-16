@@ -73,7 +73,17 @@ namespace IGCLLVM
             return false;
         return true;
 #else
-      return CI.isIndirectCall();
+        return CI.isIndirectCall();
+#endif
+    }
+
+
+    inline llvm::Constant* getShuffleMaskForBitcode(llvm::ShuffleVectorInst* SVI)
+    {
+#if LLVM_VERSION_MAJOR < 11
+        return SVI->getMask();
+#else
+        return SVI->getShuffleMaskForBitcode();
 #endif
     }
 }

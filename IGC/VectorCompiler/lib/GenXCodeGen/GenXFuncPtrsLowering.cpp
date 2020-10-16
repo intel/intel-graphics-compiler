@@ -431,7 +431,7 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
     auto *Shuffle = dyn_cast<ShuffleVectorInst>(Result->user_back());
     // we support only splat values for now
     IGC_ASSERT(Shuffle);
-    IGC_ASSERT(Shuffle->getMask()->isZeroValue());
+    IGC_ASSERT(IGCLLVM::getShuffleMaskForBitcode(Shuffle)->isZeroValue());
 
     Region R(Result);
     R.Stride = 0;

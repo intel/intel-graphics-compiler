@@ -123,7 +123,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
@@ -132,6 +131,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
 #include <algorithm>
@@ -1834,7 +1834,7 @@ bool GenXLowering::lowerBoolShuffle(ShuffleVectorInst *SI) {
                                           B.getInt16(0));
   Value *V1 = B.CreateSelect(SI->getOperand(0), C1, C0);
   Value *V2 = B.CreateSelect(SI->getOperand(1), C1, C0);
-  Value *SI1 = B.CreateShuffleVector(V1, V2, SI->getMask(), SI->getName());
+  Value *SI1 = B.CreateShuffleVector(V1, V2, IGCLLVM::getShuffleMaskForBitcode(SI), SI->getName());
   Constant *C2 = ConstantVector::getSplat(IGCLLVM::getElementCount(WidthResult),
                                           B.getInt16(0));
   Value *Result = B.CreateICmpNE(SI1, C2);
