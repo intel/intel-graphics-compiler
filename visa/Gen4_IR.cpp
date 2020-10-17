@@ -7973,6 +7973,38 @@ G4_INST* G4_INST::cloneInst()
     return newInst;
 }
 
+G4_INST* G4_InstSend::cloneInst()
+{
+    auto nonConstBuilder = const_cast<IR_Builder*>(&builder);
+    G4_INST* newInst = nullptr;
+    auto prd = nonConstBuilder->duplicateOperand(getPredicate());
+    auto dst = nonConstBuilder->duplicateOperand(getDst());
+    auto src0 = nonConstBuilder->duplicateOperand(getSrc(0))->asSrcRegRegion();
+
+    if (isSplitSend())
+    {
+        // desc -> src2, extDesc -> src3
+        auto src1 = nonConstBuilder->duplicateOperand(getSrc(1))->asSrcRegRegion();
+        auto desc = nonConstBuilder->duplicateOperand(getSrc(2));
+        auto extDesc = nonConstBuilder->duplicateOperand(getSrc(3));
+        newInst = nonConstBuilder->createInternalSplitSendInst(getExecSize(), dst, src0, src1, desc,
+            getOption(), getMsgDesc(), extDesc);
+        if (prd)
+        {
+            newInst->setPredicate(prd);
+        }
+    }
+    else
+    {
+        auto desc = nonConstBuilder->duplicateOperand(getSrc(1));
+        // desc -> src1, no extDesc (must be imm and stored in SendMsgDesc)
+        newInst = nonConstBuilder->createInternalSendInst(prd, op, getExecSize(),
+            dst, src0, desc, getOption(), getMsgDesc());
+    }
+
+    return newInst;
+}
+
 G4_INST* G4_InstIntrinsic::cloneInst()
 {
     auto nonConstBuilder = const_cast<IR_Builder*>(&builder);

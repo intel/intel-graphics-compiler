@@ -413,6 +413,54 @@ void Optimizer::insertHashMovs()
     }
 }
 
+//
+// Break a sample instruction
+// send.smpl (16) dst src0 src1
+// into
+// (P1) send.smpl (16) dst src0 src1
+// (~P1) send.smpl (16) dst src0 src1
+// where P1 is 0x0F0F (i.e., the even sub-spans)
+//
+// P1 is initialized per BB before the first sample inst; we could make it per shader but I'm worried about flag spill
+// this works for SIMD8 and SIMD32 shaders as well.
+//
+void Optimizer::cloneSampleInst()
+{
+
+    if (!builder.getOption(vISA_cloneSampleInst))
+    {
+        return;
+    }
+
+    bool isSIMD32 = kernel.getSimdSize() == 32;
+    for (auto&& bb : kernel.fg)
+    {
+        auto tmpFlag = builder.createTempFlag(isSIMD32 ? 2 : 1);
+        auto hasSample = false;
+        for (auto I = bb->begin(), E = bb->end(); I != E;)
+        {
+            auto Next = std::next(I);
+            auto inst = *I;
+            if (inst->isSend() && inst->asSendInst()->getMsgDesc()->isSampler() && inst->getExecSize() >= builder.getNativeExecSize())
+            {
+                if (!hasSample)
+                {
+                    hasSample = true;
+                    auto flagInit = builder.createMov(g4::SIMD1, builder.createDst(tmpFlag->getRegVar(), isSIMD32 ? Type_UD : Type_UW),
+                        builder.createImm(isSIMD32 ? 0x0F0F0F0F : 0x0F0F, isSIMD32 ? Type_UD : Type_UW), InstOpt_WriteEnable, false);
+                    bb->insertBefore(I, flagInit);
+                }
+                assert(!inst->getPredicate() && "do not handle predicated sampler inst for now");
+                auto newInst = inst->cloneInst();
+                inst->setPredicate(builder.createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0));
+                newInst->setPredicate(builder.createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0));
+                bb->insertAfter(I, newInst);
+            }
+            I = Next;
+        }
+    }
+}
+
 bool isLifetimeOpRemovalCandidate(G4_INST* inst)
 {
     if (inst->isPseudoKill() || inst->isLifeTimeEnd())
@@ -6490,6 +6538,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
 
         insertFenceAtEntry();
+
+        cloneSampleInst();
     }
 
 

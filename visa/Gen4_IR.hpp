@@ -1436,6 +1436,8 @@ public:
         G4_InstOpts opt,
         G4_SendMsgDescriptor* md);
 
+    G4_INST* cloneInst() override;
+
     bool isSendc() const { return op == G4_sendc || op == G4_sendsc; }
     void setSendc()
     {

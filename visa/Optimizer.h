@@ -253,6 +253,7 @@ private:
 
     void mapOrphans();
     void varSplit();
+    void cloneSampleInst();
 
     G4_Imm* foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op);
 
