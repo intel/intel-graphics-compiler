@@ -126,6 +126,8 @@ GED_FIELD_TYPE fieldTypesByField[116] =
     0x100, // 114
     0x100 // 115
 }; // fieldTypesByField[]
+
+#if GED_VALIDATION_API
 const char* fieldNameByField[116] =
 {
     "Opcode", // 0
@@ -245,6 +247,7 @@ const char* fieldNameByField[116] =
     "DataTypeIndexNoDep", // 114
     "CompactedImm" // 115
 }; // fieldNameByField[]
+#endif // GED_VALIDATION_API
 GED_FIELD_TYPE pseudoFieldTypesByField[36] =
 {
     0x103, // 0
@@ -284,6 +287,8 @@ GED_FIELD_TYPE pseudoFieldTypesByField[36] =
     0x103, // 34
     0x100 // 35
 }; // pseudoFieldTypesByField[]
+
+#if GED_VALIDATION_API
 const char* fieldNameByPseudoField[36] =
 {
     "ArchReg", // 0
@@ -323,3 +328,4 @@ const char* fieldNameByPseudoField[36] =
     "MessageTypeDP_DCRO", // 34
     "ExMessageLength" // 35
 }; // fieldNameByPseudoField[]
+#endif // GED_VALIDATION_API

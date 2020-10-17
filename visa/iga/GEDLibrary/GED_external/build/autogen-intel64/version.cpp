@@ -1,1 +1,1 @@
-const char* gedVersion = "VERSION=dev (5d0e7cb)";
+const char* gedVersion = "VERSION=GED0.71 (4d64f1b)";

@@ -30,53 +30,55 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GEDToIGATranslation.hpp"
 #include "ged.h"
 
+#ifdef GED_PRINT_BIT_LOCATION
+#undef GED_PRINT_BIT_LOCATION
+#endif
+#if GED_VALIDATION_API
+#define GED_PRINT_BIT_LOCATION(FIELD) \
+    do { \
+        std::cout << "FIELD: " << #FIELD << "\n"; \
+        GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
+    } while(0)
+#else
+#define GED_PRINT_BIT_LOCATION(FIELD)
+#endif
 
 #define GED_DECODE_TO(FIELD, TRANS, DST) \
     do { \
-      GED_RETURN_VALUE _status; \
-      if (print_ged_debug) { \
-          std::cout << "FIELD: " << #FIELD << std::endl; \
-          GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
-      } \
-      DST = TRANS(GED_Get ## FIELD(&m_currGedInst, &_status)); \
-      if (_status != GED_RETURN_VALUE_SUCCESS) { \
-          handleGedDecoderError(__LINE__, #FIELD, _status); \
-      } \
+        GED_RETURN_VALUE _status; \
+        GED_PRINT_BIT_LOCATION(FIELD); \
+        DST = TRANS(GED_Get ## FIELD(&m_currGedInst, &_status)); \
+        if (_status != GED_RETURN_VALUE_SUCCESS) { \
+            handleGedDecoderError(__LINE__, #FIELD, _status); \
+        } \
     } while (0)
 
 #define GED_DECODE_RAW_TO(FIELD, DST) \
     do { \
-      GED_RETURN_VALUE _status; \
-      if (print_ged_debug) { \
-          std::cout << "FIELD: " << #FIELD << std::endl; \
-          GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
-      } \
-      DST = GED_Get ## FIELD(&m_currGedInst, &_status); \
-      if (_status != GED_RETURN_VALUE_SUCCESS) { \
-          handleGedDecoderError(__LINE__, #FIELD, _status); \
-      } \
+        GED_RETURN_VALUE _status; \
+        GED_PRINT_BIT_LOCATION(FIELD); \
+        DST = GED_Get ## FIELD(&m_currGedInst, &_status); \
+        if (_status != GED_RETURN_VALUE_SUCCESS) { \
+            handleGedDecoderError(__LINE__, #FIELD, _status); \
+        } \
     } while (0)
 
 #define GED_DECODE_RAW(GED_TYPE, ID, FIELD) \
-        GED_TYPE ID; \
-        GED_DECODE_RAW_TO(FIELD, ID);
+    GED_TYPE ID; \
+    GED_DECODE_RAW_TO(FIELD, ID);
 
 #define GED_DECODE(IGA_TYPE, GED_TYPE, ID, FIELD) \
-        GED_DECODE_RAW(GED_TYPE, GED_ ## ID, FIELD); \
-        IGA_TYPE ID = translate(GED_ ## ID);
-
+    GED_DECODE_RAW(GED_TYPE, GED_ ## ID, FIELD); \
+    IGA_TYPE ID = translate(GED_ ## ID);
 
 #define GED_DECODE_RAW_TO_SRC(DST, TYPE, FIELD) \
     do { \
-      GED_RETURN_VALUE _STATUS; \
-      if (print_ged_debug) { \
-          std::cout << "FIELD: " << #FIELD << std::endl; \
-          GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
-      } \
-      DST = GED_Get ## FIELD(&m_currGedInst, &_STATUS); \
-      if (_STATUS != GED_RETURN_VALUE_SUCCESS) { \
-          handleGedDecoderError(__LINE__, #FIELD, _STATUS); \
-      } \
+        GED_RETURN_VALUE _STATUS; \
+        GED_PRINT_BIT_LOCATION(FIELD); \
+        DST = GED_Get ## FIELD(&m_currGedInst, &_STATUS); \
+        if (_STATUS != GED_RETURN_VALUE_SUCCESS) { \
+            handleGedDecoderError(__LINE__, #FIELD, _STATUS); \
+        } \
     } while (0)
 
 #define RETURN_GED_DECODE_RAW_TO_SRC(TYPE, FIELD) { \
@@ -405,18 +407,6 @@ namespace iga
         template <SourceIndex S> uint8_t          decodeSrcCtxSvRstAccBitsToRegNum();
         void decodeChSelToSwizzle(uint32_t chanSel, GED_SWIZZLE swizzle[4]);
         template <SourceIndex S> bool isChanSelPacked();
-
-#if GED_VALIDATION_API
-        static const bool print_ged_debug = true;
-#else
-        static const bool print_ged_debug = false;
-        static GED_RETURN_VALUE GED_PrintFieldBitLocation(
-            const ged_ins_t*,
-            const GED_INS_FIELD)
-        {
-            return GED_RETURN_VALUE_SUCCESS;
-        };
-#endif
 
         void decodeOptions(Instruction *inst);
 

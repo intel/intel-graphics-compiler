@@ -29,10 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GEDBitProcessor.hpp"
 #include "IGAToGEDTranslation.hpp"
 #include "../EncoderOpts.hpp"
+#include "../../ErrorHandler.hpp"
 #include "../../IR/Instruction.hpp"
 #include "../../IR/Block.hpp"
 #include "../../IR/Kernel.hpp"
-#include "../../ErrorHandler.hpp"
 #include "../../Timer/Timer.hpp"
 
 #include <list>
@@ -41,14 +41,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
-// #define GED_TRACE_SETTERS
-//
-#ifdef GED_TRACE_SETTERS
-#define GED_TRACE_SETTER(X) X
-#else
-#define GED_TRACE_SETTER(X)
-#endif
-
 #define GED_ENCODE(FUNC, ARG) \
     GED_ENCODE_TO(FUNC, ARG, &m_gedInst)
 #if defined(GED_TIMER) || defined(_DEBUG)
@@ -66,40 +58,32 @@ namespace iga
 #define START_ENCODER_TIMER()
 #define STOP_ENCODER_TIMER()
 #endif
-#ifdef GED_DEBUG_PRINT
-static const bool gedDebugPrint = true;
-#else
-static const bool gedDebugPrint = false;
-#endif
 
+#ifdef GED_PRINT_BIT_LOCATION
+#undef GED_PRINT_BIT_LOCATION
+#endif
 #if GED_VALIDATION_API
-static const bool print_ged_debug = true;
+#define GED_PRINT_BIT_LOCATION(FIELD, VAL) \
+    do { \
+        std::cout << "FIELD: " << #FIELD << " <= " \
+            "0x" << std::hex << std::uppercase << (uint64_t)(VAL) << "\n"; \
+            GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
+    } while(0)
 #else
-static const bool print_ged_debug = false;
-static inline GED_RETURN_VALUE GED_PrintFieldBitLocation(
-    const ged_ins_t*, const GED_INS_FIELD)
-{
-    return GED_RETURN_VALUE_SUCCESS;
-}
+#define GED_PRINT_BIT_LOCATION(FIELD, VAL)
 #endif
-
 
 #define GED_ENCODE_TO(FUNC, ARG, GED) \
     do { \
         GED_RETURN_VALUE _status; \
-        if (print_ged_debug) { \
-          std::cout << "FIELD: " << #FUNC << std::endl; \
-          GED_PrintFieldBitLocation(GED, GED_INS_FIELD_ ## FUNC); \
-        } \
+        GED_PRINT_BIT_LOCATION(FIELD, ARG); \
         START_GED_TIMER() \
         _status = GED_Set ## FUNC (GED, ARG); \
         STOP_GED_TIMER() \
-        GED_TRACE_SETTER(printf("%s <= GED_%s(...,%d)\n", \
-            gedReturnValueToString(_status), #FUNC, (int)ARG)); \
         if (_status != GED_RETURN_VALUE_SUCCESS) { \
             handleGedError(__LINE__, #FUNC, _status); \
         } \
-    } while(0)
+    } while (0)
 
 
     typedef list<Block *, std_arena_based_allocator<Block*>> BlockList;

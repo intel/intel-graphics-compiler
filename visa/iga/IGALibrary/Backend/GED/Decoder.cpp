@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IGAToGEDTranslation.hpp"
 #include "GEDToIGATranslation.hpp"
 #include "../../asserts.hpp"
+#include "../../strings.hpp"
 #include "../../Frontend/Formatter.hpp"
 #include "../../Frontend/IRToString.hpp"
 #include "../../IR/Checker/IRChecker.hpp"
@@ -36,6 +37,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <sstream>
 #include <cstring>
+
+
 
 // Used to label expressions that need to be removed once GED is fixed
 #define GED_WORKAROUND(X) (X)

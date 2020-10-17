@@ -23,13 +23,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#include "IGAToGEDTranslation.hpp"
 #include "Encoder.hpp"
-#include "../../IR/Kernel.hpp"
+#include "IGAToGEDTranslation.hpp"
+#include "../../strings.hpp"
 #include "../../Frontend/IRToString.hpp"
+#include "../../IR/Kernel.hpp"
+#include "../../IR/SWSBSetter.hpp"
 #include "../../Models/Models.hpp"
 #include "../../Timer/Timer.hpp"
-#include "../../IR/SWSBSetter.hpp"
+
 #include <cstring>
 
 using namespace iga;
@@ -43,6 +45,7 @@ using namespace iga;
 // This localizes the encoding complexity per format.
 // The various template functions below would be inherited from
 // InstructionEncoder
+
 
 
 static const char *gedReturnValueToString(GED_RETURN_VALUE rv)
@@ -184,8 +187,7 @@ void Encoder::encodeBlock(Block *blk)
 
         GED_RETURN_VALUE status = GED_RETURN_VALUE_SIZE;
         bool mustCompact = inst->hasInstOpt(InstOpt::COMPACTED);
-        bool mustNotCompact =
-            inst->hasInstOpt(InstOpt::NOCOMPACT);
+        bool mustNotCompact = inst->hasInstOpt(InstOpt::NOCOMPACT);
         int32_t iLen = 16;
         if (mustCompact || (!mustNotCompact && m_opts.autoCompact)) {
             // try compact first
@@ -205,7 +207,7 @@ void Encoder::encodeBlock(Block *blk)
             } // else: some other error (unreachable?)
         }
 
-        // try native encoding
+        // try native encoding if compaction failed
         if (status != GED_RETURN_VALUE_SUCCESS) {
             inst->removeInstOpt(InstOpt::COMPACTED);
             status = GED_EncodeIns(&m_gedInst, GED_INS_TYPE_NATIVE, m_instBuf + currentPc());

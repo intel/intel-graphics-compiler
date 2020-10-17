@@ -28,9 +28,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGA_STRINGS_HPP
 
 #include <cstdarg>
-#include <cstdio>
-#include <cstdint>
 #include <cstring>
+#include <cstdint>
+#include <cstdio>
 #include <functional>
 #include <iostream>
 #include <ostream>
