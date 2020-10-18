@@ -521,6 +521,10 @@ Value *GenXEmulate::Emu64Expander::visitAShr(BinaryOperator &Op) {
   return buildRightShift(SplitBuilder, Op);
 }
 Value *GenXEmulate::Emu64Expander::visitFPToUI(FPToUIInst &Op) {
+
+  if (Op.getType()->getScalarType() == Type::getDoubleTy(Op.getContext()))
+    report_fatal_error("int_emu: double->UI conversions are not supported");
+
   // TODO: try to detect the case where operand is a constant expression
   // and do the covertion manually
   auto Builder = getIRBuilder();
@@ -531,6 +535,10 @@ Value *GenXEmulate::Emu64Expander::visitFPToUI(FPToUIInst &Op) {
                                Twine(Op.getOpcodeName()) + ".emu");
 }
 Value *GenXEmulate::Emu64Expander::visitFPToSI(FPToSIInst &Op) {
+
+  if (Op.getType()->getScalarType() == Type::getDoubleTy(Op.getContext()))
+    report_fatal_error("int_emu: double->SI conversions are not supported");
+
   // TODO: try to detect the case where operand is a constant expression
   // and do the covertion manually
   auto Builder = getIRBuilder();
@@ -541,6 +549,9 @@ Value *GenXEmulate::Emu64Expander::visitFPToSI(FPToSIInst &Op) {
                                Twine(Op.getOpcodeName()) + ".emu");
 }
 Value *GenXEmulate::Emu64Expander::visitUIToFP(UIToFPInst &Op) {
+
+  if (Op.getType()->getScalarType() == Type::getDoubleTy(Op.getContext()))
+    report_fatal_error("int_emu: UI->double conversions are not supported");
 
   auto Builder = getIRBuilder();
   auto UI64 = SplitBuilder.splitOperandLoHi(0);
@@ -615,6 +626,10 @@ Value *GenXEmulate::Emu64Expander::visitUIToFP(UIToFPInst &Op) {
   return Result;
 }
 Value *GenXEmulate::Emu64Expander::visitSIToFP(SIToFPInst &Op) {
+
+  if (Op.getType()->getScalarType() == Type::getDoubleTy(Op.getContext()))
+    report_fatal_error("int_emu: UI->double conversions are not supported");
+
   // NOTE: SIToFP is special, since it does not do the convert by itself,
   // Instead it just creates a sequence of 64.bit operations which
   // are then expanded. As such some type convertion trickery is involved.
@@ -1393,8 +1408,7 @@ bool GenXEmulate::runOnModule(Module &M) {
     for (const auto *Insn : DiscracedList) {
       llvm::errs() << "I64EMU-FAILURE: " << *Insn << "\n";
     }
-    report_fatal_error("GenXEmulate - strict emulation requirements failure",
-                       false);
+    report_fatal_error("int_emu: strict emulation requirements failure", false);
   }
   return Changed;
 }
