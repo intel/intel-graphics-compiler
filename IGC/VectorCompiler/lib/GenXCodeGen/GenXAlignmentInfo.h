@@ -71,12 +71,16 @@ class Alignment {
   unsigned LogAlign;
   unsigned ExtraBits;
   unsigned ConstBits;
+
+  static constexpr unsigned MaskForUnknown = 0x7fffffff;
+  static constexpr unsigned UnsignedAllOnes = 0xffffffff;
+
 public:
   // No-arg constructor sets to uncomputed state.
   Alignment() { setUncomputed(); }
   // Constructor given LogAlign and ExtraBits fields.
   Alignment(unsigned LogAlign, unsigned ExtraBits)
-  : LogAlign(LogAlign), ExtraBits(ExtraBits), ConstBits(0x7fffffff) {}
+      : LogAlign(LogAlign), ExtraBits(ExtraBits), ConstBits(MaskForUnknown) {}
   // Constructor given literal value.
   Alignment(unsigned C);
   // Constructor given Constant.
@@ -103,11 +107,17 @@ public:
   Alignment add(Alignment Other) const;
   // Mul one Alignment with another Alignment
   Alignment mul(Alignment Other) const;
+  // Logical and Alignment with constant integer
+  Alignment logicalAnd(ConstantInt *CI) const;
 
   // accessors
-  bool isUncomputed() const { return LogAlign == 0xffffffff; }
-  bool isUnknown() const { return LogAlign == 0 && ConstBits == 0x7fffffff; }
-  bool isConstant() const { return !isUncomputed() && ConstBits != 0x7fffffff; }
+  bool isUncomputed() const { return LogAlign == UnsignedAllOnes; }
+  bool isUnknown() const {
+    return LogAlign == 0 && ConstBits == MaskForUnknown;
+  }
+  bool isConstant() const {
+    return !isUncomputed() && ConstBits != MaskForUnknown;
+  }
   unsigned getLogAlign() const { IGC_ASSERT(!isUncomputed()); return LogAlign; }
   unsigned getExtraBits() const { IGC_ASSERT(!isUncomputed()); return ExtraBits; }
   int64_t getConstBits() const { IGC_ASSERT(isConstant()); return ConstBits; }
@@ -117,14 +127,15 @@ public:
             ExtraBits == Rhs.ExtraBits &&
             ConstBits == Rhs.ConstBits);
   }
+  static Alignment getAlignmentForConstant(Constant *C);
   // Debug dump/print
   void dump() const;
   void print(raw_ostream &OS) const;
 private:
   void setUncomputed() {
-    LogAlign = 0xffffffff;
+    LogAlign = UnsignedAllOnes;
     ExtraBits = 0;
-    ConstBits = 0x7fffffff;
+    ConstBits = MaskForUnknown;
   }
 };
 

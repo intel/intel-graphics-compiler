@@ -37,6 +37,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 #define DEBUG_TYPE "GENX_ALIGNMENT_INFO"
 
+#include "IGC/common/StringMacros.hpp"
+
 #include <algorithm>
 #include "GenX.h"
 #include "GenXAlignmentInfo.h"
@@ -63,6 +65,7 @@ Alignment AlignmentInfo::get(Value *V)
   if (auto C = dyn_cast<Constant>(V))
     return Alignment(C);
   auto Inst = dyn_cast<Instruction>(V);
+
   if (!Inst) {
     // An Argument has unknown alignment.
     // (FIXME: We may need to do better than this, tracing the value of the
@@ -141,8 +144,10 @@ Alignment AlignmentInfo::get(Value *V)
     Alignment A(0, 0); // assume unknown
     if (BinaryOperator *BO = dyn_cast<BinaryOperator>(WorkInst)) {
       A = Alignment(); // assume uncomputed
-      Alignment A0 = getFromInstMap(BO->getOperand(0));
-      Alignment A1 = getFromInstMap(BO->getOperand(1));
+      auto *Op0 = BO->getOperand(0);
+      auto *Op1 = BO->getOperand(1);
+      Alignment A0 = getFromInstMap(Op0);
+      Alignment A1 = getFromInstMap(Op1);
       if (!A0.isUncomputed() && !A1.isUncomputed()) {
         switch (BO->getOpcode()) {
           case Instruction::Add:
@@ -164,9 +169,17 @@ Alignment AlignmentInfo::get(Value *V)
             } else
               A = Alignment::getUnknown();
             break;
-        default:
-          A = Alignment::getUnknown();
-          break;
+          case Instruction::And:
+            if (auto *CI0 = dyn_cast<ConstantInt>(Op0)) {
+              A = A1.logicalAnd(CI0);
+            } else if (auto *CI1 = dyn_cast<ConstantInt>(Op1)) {
+              A = A0.logicalAnd(CI1);
+            } else
+              A = Alignment::getUnknown();
+            break;
+          default:
+            A = Alignment::getUnknown();
+            break;
         }
       }
     } else if (CastInst *CI = dyn_cast<CastInst>(WorkInst)) {
@@ -201,11 +214,11 @@ Alignment AlignmentInfo::get(Value *V)
       switch (GenXIntrinsic::getGenXIntrinsicID(WorkInst)) {
         case GenXIntrinsic::genx_rdregioni:
         case GenXIntrinsic::genx_rdregionf: {
-          // Handle the case of reading a scalar from element 0 of a vector, as
+          // Handle the case of reading a scalar from element of a vector, as
           // a trunc from i32 to i16 is lowered to a bitcast to v2i16 then a
           // rdregion.
           Region R(WorkInst, BaleInfo());
-          if (!R.Indirect && !R.Offset)
+          if (!R.Indirect && (R.NumElements == 1))
             A = getFromInstMap(WorkInst->getOperand(0));
           else
             A = Alignment(0, 0);
@@ -275,7 +288,30 @@ Alignment::Alignment(unsigned C)
 {
   LogAlign = countTrailingZeros(C);
   ExtraBits = 0;
-  ConstBits = (C < 0x7fffffff)? C : 0x7fffffff;
+  ConstBits = (C < MaskForUnknown) ? C : MaskForUnknown;
+}
+
+Alignment Alignment::getAlignmentForConstant(Constant *C) {
+  IGC_ASSERT(!isa<VectorType>(C->getType()));
+  Alignment A;
+  A.setUncomputed();
+  if (isa<UndefValue>(C)) {
+    A.LogAlign = 31;
+    A.ExtraBits = 0;
+    A.ConstBits = MaskForUnknown;
+  } else if (auto CI = dyn_cast<ConstantInt>(C)) {
+    int64_t SVal = CI->getSExtValue();
+    // Get least significant bits to count LogAlign
+    unsigned LSBBits = SVal & UnsignedAllOnes;
+    A.LogAlign = countTrailingZeros(LSBBits);
+
+    A.ExtraBits = 0;
+    A.ConstBits = MaskForUnknown;
+    if (SVal < MaskForUnknown && SVal >= 0 &&
+        SVal <= std::numeric_limits<unsigned>::max())
+      A.ConstBits = static_cast<unsigned>(SVal);
+  }
+  return A;
 }
 
 /***********************************************************************
@@ -284,19 +320,18 @@ Alignment::Alignment(unsigned C)
 Alignment::Alignment(Constant *C)
 {
   setUncomputed();
-  if (isa<VectorType>(C->getType()))
-    C = C->getAggregateElement(0U);
-  if (isa<UndefValue>(C)) {
-    LogAlign = 31;
-    ExtraBits = 0;
-    ConstBits = 0x7fffffff;
-  } else if (auto CI = dyn_cast<ConstantInt>(C)) {
-    LogAlign = countTrailingZeros((unsigned)(CI->getSExtValue()));
-    ExtraBits = 0;
-    ConstBits = 0x7fffffff;
-    if (CI->getSExtValue() < 0x7fffffff && CI->getSExtValue() >= 0)
-      ConstBits = (unsigned)(CI->getSExtValue());
+  if (auto *VT = dyn_cast<VectorType>(C->getType())) {
+    // Take splat if exists
+    if (auto *SplatVal = C->getSplatValue())
+      C = SplatVal;
+    else {
+      // Otherwise be conservative and pretend alignment
+      // unknown for non-splat vectors
+      *this = Alignment::getUnknown();
+      return;
+    }
   }
+  *this = getAlignmentForConstant(C);
 }
 
 /***********************************************************************
@@ -363,6 +398,24 @@ Alignment Alignment::mul(Alignment Other) const
       (unsigned)countTrailingZeros(ExtraBits2, ZB_Width));
   }
   return Alignment(MinLogAlign, ExtraBits2 & ((1 << MinLogAlign) - 1));
+}
+
+/***********************************************************************
+ * logicalAnd : logical and two alignments. Only constant int supported.
+ */
+Alignment Alignment::logicalAnd(ConstantInt *CI) const {
+  IGC_ASSERT(!isUncomputed() && CI);
+  // If value doesn't fit into unsigned then be conservative and pretend
+  // that alignement is unknown
+  int64_t Val = CI->getSExtValue();
+  if (Val < std::numeric_limits<int>::min() ||
+      Val > std::numeric_limits<int>::max())
+    return Alignment::getUnknown();
+  unsigned UVal = static_cast<unsigned>(std::abs(Val));
+  unsigned ValLSB = countTrailingZeros(UVal, ZB_Width);
+  // Chop off constant bits according to maximum log align
+  unsigned NewLogAlign = std::max(ValLSB, LogAlign);
+  return Alignment(NewLogAlign, UVal & ((1 << NewLogAlign) - 1));
 }
 
 /***********************************************************************

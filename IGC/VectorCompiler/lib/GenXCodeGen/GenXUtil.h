@@ -524,6 +524,9 @@ bool breakConstantExprs(Instruction *I);
 // breakConstantExprs : break constant expressions in function F.
 // Return true if any modifications have been made, false otherwise.
 bool breakConstantExprs(Function *F);
+// Get possible number of GRFs for indirect region
+unsigned getNumGRFsPerIndirectForRegion(const genx::Region &R,
+                                        const GenXSubtarget *ST, bool Allow2D);
 
 // BinaryDataAccumulator: it's a helper class to accumulate binary data
 // in one buffer.
