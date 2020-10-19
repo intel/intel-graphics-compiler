@@ -13473,7 +13473,13 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     bool L3_Flush_Texture_Data = llvm::cast<llvm::ConstantInt>((inst->getOperand(3)))->getValue().getBoolValue();
     bool L3_Flush_Instructions = llvm::cast<llvm::ConstantInt>((inst->getOperand(4)))->getValue().getBoolValue();
     bool Global_Mem_Fence = true;
-    bool L1_Invalidate = llvm::cast<llvm::ConstantInt>((inst->getOperand(6)))->getValue().getBoolValue() && ctx->platform.hasL1ReadOnlyCache();
+    bool L1_Invalidate = ctx->platform.hasL1ReadOnlyCache();
+
+    // If passed a non-constant parameter, be conservative and assume that the parameter is true
+    if (ConstantInt* globalConst = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(6)))
+    {
+        L1_Invalidate &= globalConst->getValue().getBoolValue();
+    }
 
     // for untyped memory fence L3 flush is never necessary.
     L3_Flush_RW_Data = false;
@@ -13537,7 +13543,14 @@ void EmitPass::emitTypedMemoryFence(llvm::Instruction* inst)
     bool L3_Flush_Texture_Data = false;
     bool L3_Flush_Instructions = false;
     bool Global_Mem_Fence = true;
-    bool L1_Invalidate = llvm::cast<llvm::ConstantInt>((inst->getOperand(0)))->getValue().getBoolValue() && ctx->platform.hasL1ReadOnlyCache();
+    bool L1_Invalidate = ctx->platform.hasL1ReadOnlyCache();
+
+    // If passed a non-constant parameter, be conservative and assume that the parameter is true
+    if (ConstantInt* globalConst = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0)))
+    {
+        L1_Invalidate &= globalConst->getValue().getBoolValue();
+    }
+
 
 
     m_encoder->Fence(CommitEnable,
